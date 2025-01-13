@@ -5,8 +5,6 @@ import 'package:video_player/video_player.dart';
 import '../data/videos_repository.dart';
 
 
-
-
 class FeedViewModel extends BaseViewModel {
   VideoPlayerController? controller;
   VideosAPI? videoSource;

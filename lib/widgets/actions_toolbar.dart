@@ -43,24 +43,30 @@ class ActionsToolbar extends StatelessWidget {
     );
   }
 
-  Widget _getSocialAction(
-      {required String title, required IconData icon, bool isShare = false}) {
+  Widget _getSocialAction({
+    required String title,
+    required IconData icon,
+    bool isShare = false,
+  }) {
     return Container(
-        margin: EdgeInsets.only(top: 15.0),
-        width: 60.0,
-        height: 60.0,
-        child: Column(children: [
-          Icon(icon, size: isShare ? 25.0 : 35.0, color: Colors.grey[300]),
+      margin: EdgeInsets.only(top: 15.0),
+      width: 60.0, // Keep the width if you want a fixed width
+      child: Column(
+        mainAxisSize: MainAxisSize.min, // Let the column shrink-wrap its contents
+        children: [
+          Icon(icon, size: isShare ? 25.0 : 35.0,  color: Colors.grey[300]),
           Padding(
-            padding: EdgeInsets.only(top: isShare ? 8.0 : 8.0),
-            child: Text(title,
-                style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
-                    fontSize: isShare ? 14.0 : 14.0)),
-          )
-        ]));
+            padding: EdgeInsets.only(top: 8.0),
+            child: Text(
+              title,
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 14.0),
+            ),
+          ),
+        ],
+      ),
+    );
   }
+
 
   Widget _getFollowAction({required String pictureUrl}) {
     return Container(

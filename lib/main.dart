@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hookstr/screens/feed_screen.dart';
+import 'package:hookstr/screens/feed_screen/feed_screen.dart';
 import 'package:hookstr/service_locator.dart';
 import 'package:nostr_sdk/nostr_sdk.dart';
 
