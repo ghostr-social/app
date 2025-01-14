@@ -5,7 +5,9 @@ import '../../../data/video.dart';
 import '../../../widgets/actions_toolbar.dart';
 import '../../../widgets/video_description.dart';
 
-Widget videoCard(Video video, String profileImageURL) {
+Widget videoCard(Video video) {
+  var name = video.user.name ?? video.user.npub!;
+
   return Stack(
     children: [
       video.controller != null
@@ -40,8 +42,8 @@ Widget videoCard(Video video, String profileImageURL) {
             mainAxisSize: MainAxisSize.max,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: <Widget>[
-              VideoDescription(video.user, video.videoTitle, video.songName),
-              ActionsToolbar(video.likes, video.comments, profileImageURL),
+              VideoDescription(username: name, videoTitle:video.videoTitle, songInfo: video.songName),
+              ActionsToolbar(video.likes, video.comments, video.user.profilePicture ?? ""),
             ],
           ),
           SizedBox(height: 20)

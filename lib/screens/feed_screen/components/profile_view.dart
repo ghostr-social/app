@@ -1,7 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:hookstr/data/video.dart';
 
-Widget profileView() {
+Widget profileView(UserData? userData) {
   return Container(
     color: Colors.white,
     child: SafeArea(
@@ -37,7 +38,7 @@ Widget profileView() {
                       ClipOval(
                         child: CachedNetworkImage(
                           imageUrl:
-                          "https://www.andersonsobelcosmetic.com/wp-content/uploads/2018/09/chin-implant-vs-fillers-best-for-improving-profile-bellevue-washington-chin-surgery.jpg",
+                          userData?.profilePicture ?? "",
                           height: 100.0,
                           width: 100.0,
                           placeholder: (context, url) =>

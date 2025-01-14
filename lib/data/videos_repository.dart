@@ -1,8 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:hookstr/data/video.dart';
 import 'package:nostr_sdk/nostr_sdk.dart';
 
+
+
+
 class VideoVariant {
+  final String? title;
   final String? resolution;
   final String? url;
   final String? hash;
@@ -12,6 +17,7 @@ class VideoVariant {
   final String? service;
 
   const VideoVariant({
+    this.title,
     this.resolution,
     this.url,
     this.hash,
@@ -23,9 +29,7 @@ class VideoVariant {
 }
 
 
-
 class VideosAPI {
-  // Store fetched videos in memory
   List<Video> listVideos = <Video>[];
 
   VideosAPI() {
@@ -57,7 +61,50 @@ class VideosAPI {
           .map((event) => _parseEventAsVideo(event))
           .expand((videoList) => videoList)
           .toList();
-      return videos;
+
+      if (videos.isEmpty) {
+        return videos;
+      }
+
+      final authors = videos.map((v) => v.user).toSet();
+
+      final metadataFilter = Filter()
+          .kind(kind: 0)
+          .authors(authors: authors.map((a) => PublicKey.parse(publicKey: a.npub!)).toList());
+
+      final metadataEvents = await client.fetchEvents(
+        filters: [metadataFilter],
+        timeout: const Duration(seconds: 10),
+      );
+
+      final userData = <String, UserData>{};
+
+      for (final metaEvent in metadataEvents) {
+        final pubkeyBech32 = metaEvent.author().toBech32();
+
+        try {
+          final contentJson = jsonDecode(metaEvent.content());
+          final pictureUrl = contentJson['picture'];
+          final name = contentJson['name'];
+
+          if (pictureUrl is String && pictureUrl.isNotEmpty) {
+            userData[pubkeyBech32] = UserData(name: name, profilePicture: pictureUrl);
+          }
+        } catch (e) {
+          print("Error parsing metadata for pubkey $pubkeyBech32: $e");
+        }
+      }
+
+      return videos.map((video) {
+        final data = userData[video.user.npub];
+        video.user = UserData(
+          npub: video.user.npub,
+          name: data?.name,
+          profilePicture: data?.profilePicture,
+        );
+        return video;
+      }).toList();
+
     } catch (e, st) {
       print('Error fetching video events: $e $st');
       return [];
@@ -67,72 +114,71 @@ class VideosAPI {
   }
 
   List<Video> _parseEventAsVideo(Event event) {
-      final tags = event.tags();
-      final videoVariants = <VideoVariant>[];
+    final tags = event.tags();
+    final videoVariants = <VideoVariant>[];
 
-      for (final t in tags) {
-         var vec = t.asVec();
-        if (vec.isNotEmpty && vec[0] == 'imeta') {
-          final fields = <String, List<String>>{};
+    for (final t in tags) {
+      var vec = t.asVec();
+      if (vec.isNotEmpty && vec[0] == 'imeta') {
+        final fields = <String, List<String>>{};
 
-          for (int i = 1; i < vec.length; i++) {
-            final parts = vec[i].split(' ');
-            if (parts.isEmpty) continue;
+        for (int i = 1; i < vec.length; i++) {
+          final parts = vec[i].split(' ');
+          if (parts.isEmpty) continue;
 
-            final key = parts[0].trim();
-            final value = parts.sublist(1).join(' ').trim();
-            fields.putIfAbsent(key, () => []);
-            fields[key]!.add(value);
-          }
-
-          final dim = fields['dim']?.first;
-          final url = fields['url']?.first;
-          final hash = fields['x']?.first;
-          final mimeType = fields['m']?.first;
-          final service = fields['service']?.first;
-          final images = fields['image'] ?? [];
-          final fallbacks = fields['fallback'] ?? [];
-
-          final variant = VideoVariant(
-            resolution: dim,
-            url: url,
-            hash: hash,
-            mimeType: mimeType,
-            images: images,
-            fallbacks: fallbacks,
-            service: service,
-          );
-
-          videoVariants.add(variant);
+          final key = parts[0].trim();
+          final value = parts.sublist(1).join(' ').trim();
+          fields.putIfAbsent(key, () => []);
+          fields[key]!.add(value);
         }
+
+        final dim = fields['dim']?.first;
+        final title = fields['title']?.first ?? "";
+        final url = fields['url']?.first;
+        final hash = fields['x']?.first;
+        final mimeType = fields['m']?.first;
+        final service = fields['service']?.first;
+        final images = fields['image'] ?? [];
+        final fallbacks = fields['fallback'] ?? [];
+
+        final variant = VideoVariant(
+          title: title,
+          resolution: dim,
+          url: url,
+          hash: hash,
+          mimeType: mimeType,
+          images: images,
+          fallbacks: fallbacks,
+          service: service,
+        );
+
+        videoVariants.add(variant);
       }
+    }
 
+    if (videoVariants.isEmpty) {
+      return [];
+    }
 
-      if (videoVariants.isEmpty) {
-        return List.empty();
-      }
-
-      return videoVariants
-          .where((variant) => variant.hash != null)
-          .where((variant) => isValidHttpUrl(variant.url))
-          .map((variant) =>  Video(
-            id: variant.hash!,
-            user: event.author().toBech32(),
-            userPic: "",
-            videoTitle: "NIP–71 Video",
-            songName: "Unknown",
-            comments: "",
-            likes: '',
-            url: variant.url!,
-        )).toList();
+    return videoVariants
+        .where((variant) => variant.hash != null)
+        .where((variant) => isValidHttpUrl(variant.url))
+        .map((variant) => Video(
+                id: variant.hash!,
+                user: UserData(npub: event.author().toBech32()),
+                videoTitle: variant.title ?? "",
+                songName: "Unknown",
+                comments: "",
+                likes: '',
+                url: variant.url!,
+      ),
+    ).toList();
   }
-}
 
-bool isValidHttpUrl(String? url) {
-  if (url == null) return false;
-
-  final uri = Uri.tryParse(url);
-  if (uri == null) return false;
-
-  return (uri.scheme == 'http' || uri.scheme == 'https') && uri.host.isNotEmpty;
+  bool isValidHttpUrl(String? url) {
+    if (url == null) return false;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    return (uri.scheme == 'http' || uri.scheme == 'https') && uri.host.isNotEmpty;
+  }
 }

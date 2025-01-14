@@ -39,11 +39,11 @@ class _FeedScreenState extends State<FeedScreen> {
   Widget build(BuildContext context) {
     return ViewModelBuilder<FeedViewModel>.reactive(
         disposeViewModel: false,
-        builder: (context, model, child) => videoScreen(),
+        builder: (context, model, child) => videoScreen(model.currentUserData()),
         viewModelBuilder: () => feedViewModel);
   }
 
-  Widget videoScreen() {
+  Widget videoScreen(UserData? userData) {
     return Scaffold(
       backgroundColor: GetIt.instance<FeedViewModel>().actualScreen == 0
           ? Colors.black
@@ -65,7 +65,7 @@ class _FeedScreenState extends State<FeedScreen> {
               if (index == 0) {
                 return scrollFeed();
               } else {
-                return profileView();
+                return profileView(userData);
               }
             },
           )
