@@ -5,7 +5,7 @@ import '../../../data/video.dart';
 import '../../../widgets/actions_toolbar.dart';
 import '../../../widgets/video_description.dart';
 
-Widget videoCard(Video video) {
+Widget videoCard(Video video, String profileImageURL) {
   return Stack(
     children: [
       video.controller != null
@@ -41,8 +41,7 @@ Widget videoCard(Video video) {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: <Widget>[
               VideoDescription(video.user, video.videoTitle, video.songName),
-              ActionsToolbar(video.likes, video.comments,
-                  "https://www.andersonsobelcosmetic.com/wp-content/uploads/2018/09/chin-implant-vs-fillers-best-for-improving-profile-bellevue-washington-chin-surgery.jpg"),
+              ActionsToolbar(video.likes, video.comments, profileImageURL),
             ],
           ),
           SizedBox(height: 20)

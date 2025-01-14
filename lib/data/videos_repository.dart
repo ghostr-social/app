@@ -55,9 +55,8 @@ class VideosAPI {
 
       final videos = events
           .map((event) => _parseEventAsVideo(event))
-          .whereType<Video>()
+          .expand((videoList) => videoList)
           .toList();
-
       return videos;
     } catch (e, st) {
       print('Error fetching video events: $e $st');
@@ -67,8 +66,7 @@ class VideosAPI {
     }
   }
 
-  Video? _parseEventAsVideo(Event event) {
-    try {
+  List<Video> _parseEventAsVideo(Event event) {
       final tags = event.tags();
       final videoVariants = <VideoVariant>[];
 
@@ -111,29 +109,30 @@ class VideosAPI {
 
 
       if (videoVariants.isEmpty) {
-        return null;
+        return List.empty();
       }
 
-      var video = videoVariants[0];
-
-      if(video.url == null || video.url == ""){
-        return null;
-      }
-
-      print(video.url);
-      return Video(
-        id: video.hash!,
-        user: event.author().toBech32(),
-        userPic: "",
-        videoTitle: "NIP–71 Video",
-        songName: "Unknown",
-        comments: "",
-        likes: '',
-        url: video.url!,
-      );
-    } catch (err) {
-      print('Error parsing video event: $err');
-      return null;
-    }
+      return videoVariants
+          .where((variant) => variant.hash != null)
+          .where((variant) => isValidHttpUrl(variant.url))
+          .map((variant) =>  Video(
+            id: variant.hash!,
+            user: event.author().toBech32(),
+            userPic: "",
+            videoTitle: "NIP–71 Video",
+            songName: "Unknown",
+            comments: "",
+            likes: '',
+            url: variant.url!,
+        )).toList();
   }
+}
+
+bool isValidHttpUrl(String? url) {
+  if (url == null) return false;
+
+  final uri = Uri.tryParse(url);
+  if (uri == null) return false;
+
+  return (uri.scheme == 'http' || uri.scheme == 'https') && uri.host.isNotEmpty;
 }
