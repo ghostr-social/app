@@ -16,6 +16,7 @@ import '../messages_screen.dart';
 import 'components/feed_videos.dart';
 import 'components/profile_view.dart';
 import 'components/video_card.dart';
+import 'components/video_screen.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -42,65 +43,6 @@ class _FeedScreenState extends State<FeedScreen> {
         builder: (context, model, child) => videoScreen(model.currentUserData()),
         viewModelBuilder: () => feedViewModel);
   }
-
-  Widget videoScreen(UserData? userData) {
-    return Scaffold(
-      backgroundColor: GetIt.instance<FeedViewModel>().actualScreen == 0
-          ? Colors.black
-          : Colors.white,
-      body: Stack(
-        children: [
-          PageView.builder(
-            itemCount: 2,
-            onPageChanged: (value) {
-              print(value);
-              if (value == 1) {
-                SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
-              } else {
-                SystemChrome.setSystemUIOverlayStyle(
-                    SystemUiOverlayStyle.light);
-              }
-            },
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return scrollFeed();
-              } else {
-                return profileView(userData);
-              }
-            },
-          )
-        ],
-      ),
-    );
-  }
-
-
-  Widget scrollFeed() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Expanded(child: currentScreen()),
-        BottomBar(),
-      ],
-    );
-  }
-
-
-  Widget currentScreen() {
-    switch (feedViewModel.actualScreen) {
-      case 0:
-        return feedVideos(feedViewModel);
-      case 1:
-        return SearchScreen();
-      case 2:
-        return MessagesScreen();
-      case 3:
-        return ProfileScreen();
-      default:
-        return feedVideos(feedViewModel);
-    }
-  }
-
 
   @override
   void dispose() {
