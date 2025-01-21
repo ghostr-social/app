@@ -1,6 +1,6 @@
 {
-    "name": "hookstr",
-    "short_name": "hookstr",
+    "name": "ghostr",
+    "short_name": "ghostr",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

@@ -10,9 +10,9 @@ class BottomBar extends StatelessWidget {
   static const double NavigationIconSize = 20.0;
   static const double CreateButtonWidth = 38.0;
 
-  const BottomBar({Key? key}) : super(key: key);
+  const BottomBar({super.key});
 
-  Widget get customCreateIcon => Container(
+  Widget get customCreateIcon => SizedBox(
       width: 45.0,
       height: 27.0,
       child: Stack(children: [
@@ -86,7 +86,7 @@ class BottomBar extends StatelessWidget {
         onTap: () {
           GetIt.instance<FeedViewModel>().setActualScreen(index);
         },
-        child: Container(
+        child: SizedBox(
           height: 45,
           width: 80,
           child: Column(

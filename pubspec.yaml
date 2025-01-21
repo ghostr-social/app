@@ -1,4 +1,4 @@
-name: hookstr
+name: ghostr
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -38,11 +38,9 @@ dependencies:
   stacked: ^3.4.4
   cached_network_image: ^3.4.1
   get_it: ^8.0.3
-  nostr_sdk:
-    git:
-      url: https://github.com/rust-nostr/nostr-sdk-flutter.git
-      ref: ba3d39951b5bafd7a1f522b93f084ea16d3593e8
-
+  rust_lib_ghostr:
+    path: rust_builder
+  flutter_rust_bridge: 2.7.0
 
 dependency_overrides:
   web: ^1.0.0
@@ -57,6 +55,8 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  integration_test:
+    sdk: flutter
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

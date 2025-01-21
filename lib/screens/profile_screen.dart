@@ -231,6 +231,7 @@ class ProfileScreen extends StatelessWidget {
                               border:
                                   Border.all(color: Colors.white70, width: .5)),
                           child: FittedBox(
+                            fit: BoxFit.fill,
                             child: CachedNetworkImage(
                               fit: BoxFit.fill,
                               imageUrl:
@@ -242,7 +243,6 @@ class ProfileScreen extends StatelessWidget {
                               errorWidget: (context, url, error) =>
                                   Icon(Icons.error),
                             ),
-                            fit: BoxFit.fill,
                           ),
                         ),
                       ),
@@ -254,6 +254,7 @@ class ProfileScreen extends StatelessWidget {
                               border:
                                   Border.all(color: Colors.white70, width: .5)),
                           child: FittedBox(
+                            fit: BoxFit.fill,
                             child: CachedNetworkImage(
                               fit: BoxFit.fill,
                               imageUrl:
@@ -265,7 +266,6 @@ class ProfileScreen extends StatelessWidget {
                               errorWidget: (context, url, error) =>
                                   Icon(Icons.error),
                             ),
-                            fit: BoxFit.fill,
                           ),
                         ),
                       ),
@@ -277,6 +277,7 @@ class ProfileScreen extends StatelessWidget {
                               border:
                                   Border.all(color: Colors.white70, width: .5)),
                           child: FittedBox(
+                            fit: BoxFit.fill,
                             child: CachedNetworkImage(
                               fit: BoxFit.fill,
                               imageUrl:
@@ -288,7 +289,6 @@ class ProfileScreen extends StatelessWidget {
                               errorWidget: (context, url, error) =>
                                   Icon(Icons.error),
                             ),
-                            fit: BoxFit.fill,
                           ),
                         ),
                       ),
@@ -304,6 +304,7 @@ class ProfileScreen extends StatelessWidget {
                               border:
                                   Border.all(color: Colors.white70, width: .5)),
                           child: FittedBox(
+                            fit: BoxFit.fill,
                             child: CachedNetworkImage(
                               fit: BoxFit.fill,
                               imageUrl:
@@ -315,7 +316,6 @@ class ProfileScreen extends StatelessWidget {
                               errorWidget: (context, url, error) =>
                                   Icon(Icons.error),
                             ),
-                            fit: BoxFit.fill,
                           ),
                         ),
                       ),
@@ -327,6 +327,7 @@ class ProfileScreen extends StatelessWidget {
                               border:
                                   Border.all(color: Colors.white70, width: .5)),
                           child: FittedBox(
+                            fit: BoxFit.fill,
                             child: CachedNetworkImage(
                               fit: BoxFit.fill,
                               imageUrl:
@@ -338,7 +339,6 @@ class ProfileScreen extends StatelessWidget {
                               errorWidget: (context, url, error) =>
                                   Icon(Icons.error),
                             ),
-                            fit: BoxFit.fill,
                           ),
                         ),
                       ),
@@ -350,6 +350,7 @@ class ProfileScreen extends StatelessWidget {
                               border:
                                   Border.all(color: Colors.white70, width: .5)),
                           child: FittedBox(
+                            fit: BoxFit.fill,
                             child: CachedNetworkImage(
                               fit: BoxFit.fill,
                               imageUrl:
@@ -361,7 +362,6 @@ class ProfileScreen extends StatelessWidget {
                               errorWidget: (context, url, error) =>
                                   Icon(Icons.error),
                             ),
-                            fit: BoxFit.fill,
                           ),
                         ),
                       ),

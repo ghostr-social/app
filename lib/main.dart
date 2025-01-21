@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:hookstr/screens/feed_screen/feed_screen.dart';
-import 'package:hookstr/service_locator.dart';
-import 'package:nostr_sdk/nostr_sdk.dart';
+import 'package:ghostr/screens/feed_screen/feed_screen.dart';
+import 'package:ghostr/service_locator.dart';
+import 'package:ghostr/src/rust/frb_generated.dart';
+import 'package:ghostr/src/rust/video/video.dart';
+
+import 'configs/base.dart';
 
 void main() async {
-  await NostrSdk.init();
+  WidgetsFlutterBinding.ensureInitialized();
+  await RustLib.init();
+  ffiStartServer(address: serverAddress);
   setup();
 
-  // Wrap your FeedScreen with MaterialApp
   runApp(
     MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -15,3 +19,4 @@ void main() async {
     ),
   );
 }
+

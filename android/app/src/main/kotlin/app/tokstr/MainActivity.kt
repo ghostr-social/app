@@ -1,4 +1,4 @@
-package com.hookstr.hookstr
+package app.ghostr
 
 import io.flutter.embedding.android.FlutterActivity
 

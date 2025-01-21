@@ -5,10 +5,10 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = hookstr
+PRODUCT_NAME = ghostr
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.hookstr.hookstr
+PRODUCT_BUNDLE_IDENTIFIER = app.ghostr.ghostr
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2025 com.hookstr. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2025 app.ghostr. All rights reserved.

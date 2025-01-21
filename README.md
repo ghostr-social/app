@@ -1,4 +1,4 @@
-# hookstr
+# ghostr
 
 A new Flutter project.
 

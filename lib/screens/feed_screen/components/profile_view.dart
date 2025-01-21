@@ -1,6 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:hookstr/data/video.dart';
+import 'package:ghostr/data/video.dart';
 
 Widget profileView(UserData? userData) {
   return Container(
@@ -11,8 +11,7 @@ Widget profileView(UserData? userData) {
             child: Column(children: [
               Container(
                 decoration: BoxDecoration(
-                    border:
-                    Border(bottom: BorderSide(color: Colors.black12))),
+                    border: Border(bottom: BorderSide(color: Colors.black12))),
                 padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -20,8 +19,8 @@ Widget profileView(UserData? userData) {
                     Icon(Icons.arrow_back_ios),
                     Text(
                       "Charlotte Stone",
-                      style: TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                     ),
                     Icon(Icons.more_horiz)
                   ],
@@ -37,8 +36,7 @@ Widget profileView(UserData? userData) {
                     children: [
                       ClipOval(
                         child: CachedNetworkImage(
-                          imageUrl:
-                          userData?.profilePicture ?? "",
+                          imageUrl: userData?.profilePicture ?? "",
                           height: 100.0,
                           width: 100.0,
                           placeholder: (context, url) =>
@@ -54,8 +52,7 @@ Widget profileView(UserData? userData) {
                   ),
                   Text(
                     "@Charlotte21",
-                    style:
-                    TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                   ),
                   SizedBox(
                     height: 20,
@@ -223,14 +220,14 @@ Widget profileView(UserData? userData) {
                           height: 160,
                           decoration: BoxDecoration(
                               color: Colors.black26,
-                              border: Border.all(
-                                  color: Colors.white70, width: .5)),
+                              border:
+                                  Border.all(color: Colors.white70, width: .5)),
                           child: FittedBox(
                             fit: BoxFit.fill,
                             child: CachedNetworkImage(
                               fit: BoxFit.fill,
                               imageUrl:
-                              "https://media.giphy.com/media/tOueglJrk5rS8/giphy.gif",
+                                  "https://media.giphy.com/media/tOueglJrk5rS8/giphy.gif",
                               placeholder: (context, url) => Padding(
                                 padding: const EdgeInsets.all(35.0),
                                 child: CircularProgressIndicator(),
@@ -246,14 +243,14 @@ Widget profileView(UserData? userData) {
                           height: 160,
                           decoration: BoxDecoration(
                               color: Colors.black26,
-                              border: Border.all(
-                                  color: Colors.white70, width: .5)),
+                              border:
+                                  Border.all(color: Colors.white70, width: .5)),
                           child: FittedBox(
                             fit: BoxFit.fill,
                             child: CachedNetworkImage(
                               fit: BoxFit.fill,
                               imageUrl:
-                              "https://media.giphy.com/media/665IPY24jyWFa/giphy.gif",
+                                  "https://media.giphy.com/media/665IPY24jyWFa/giphy.gif",
                               placeholder: (context, url) => Padding(
                                 padding: const EdgeInsets.all(35.0),
                                 child: CircularProgressIndicator(),
@@ -269,14 +266,14 @@ Widget profileView(UserData? userData) {
                           height: 160,
                           decoration: BoxDecoration(
                               color: Colors.black26,
-                              border: Border.all(
-                                  color: Colors.white70, width: .5)),
+                              border:
+                                  Border.all(color: Colors.white70, width: .5)),
                           child: FittedBox(
                             fit: BoxFit.fill,
                             child: CachedNetworkImage(
                               fit: BoxFit.fill,
                               imageUrl:
-                              "https://media.giphy.com/media/chjX2ypYJKkr6/giphy.gif",
+                                  "https://media.giphy.com/media/chjX2ypYJKkr6/giphy.gif",
                               placeholder: (context, url) => Padding(
                                 padding: const EdgeInsets.all(35.0),
                                 child: CircularProgressIndicator(),
@@ -296,14 +293,14 @@ Widget profileView(UserData? userData) {
                           height: 160,
                           decoration: BoxDecoration(
                               color: Colors.black26,
-                              border: Border.all(
-                                  color: Colors.white70, width: .5)),
+                              border:
+                                  Border.all(color: Colors.white70, width: .5)),
                           child: FittedBox(
                             fit: BoxFit.fill,
                             child: CachedNetworkImage(
                               fit: BoxFit.fill,
                               imageUrl:
-                              "https://media.giphy.com/media/sC60eX0OVIH7O/giphy.gif",
+                                  "https://media.giphy.com/media/sC60eX0OVIH7O/giphy.gif",
                               placeholder: (context, url) => Padding(
                                 padding: const EdgeInsets.all(35.0),
                                 child: CircularProgressIndicator(),
@@ -319,14 +316,14 @@ Widget profileView(UserData? userData) {
                           height: 160,
                           decoration: BoxDecoration(
                               color: Colors.black26,
-                              border: Border.all(
-                                  color: Colors.white70, width: .5)),
+                              border:
+                                  Border.all(color: Colors.white70, width: .5)),
                           child: FittedBox(
                             fit: BoxFit.fill,
                             child: CachedNetworkImage(
                               fit: BoxFit.fill,
                               imageUrl:
-                              "https://media.giphy.com/media/NsXhybxnMKsh2/giphy.gif",
+                                  "https://media.giphy.com/media/NsXhybxnMKsh2/giphy.gif",
                               placeholder: (context, url) => Padding(
                                 padding: const EdgeInsets.all(35.0),
                                 child: CircularProgressIndicator(),
@@ -342,14 +339,14 @@ Widget profileView(UserData? userData) {
                           height: 160,
                           decoration: BoxDecoration(
                               color: Colors.black26,
-                              border: Border.all(
-                                  color: Colors.white70, width: .5)),
+                              border:
+                                  Border.all(color: Colors.white70, width: .5)),
                           child: FittedBox(
                             fit: BoxFit.fill,
                             child: CachedNetworkImage(
                               fit: BoxFit.fill,
                               imageUrl:
-                              "https://media.giphy.com/media/HE6hyf47yAX1S/giphy.gif",
+                                  "https://media.giphy.com/media/HE6hyf47yAX1S/giphy.gif",
                               placeholder: (context, url) => Padding(
                                 padding: const EdgeInsets.all(35.0),
                                 child: CircularProgressIndicator(),

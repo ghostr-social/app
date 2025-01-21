@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hookstr/screens/feed_screen/components/video_card.dart';
+import 'package:ghostr/data/video.dart';
+import 'package:ghostr/screens/feed_screen/components/video_card.dart';
 
 import '../../feed_viewmodel.dart';
 
@@ -11,15 +12,15 @@ Widget feedVideos(FeedViewModel feedViewModel) {
           initialPage: 0,
           viewportFraction: 1,
         ),
-        itemCount: feedViewModel.videoSource?.listVideos.length,
+        itemCount: feedViewModel.videos.length,
         onPageChanged: (index) {
-          index = (index % (feedViewModel.videoSource!.listVideos.length));
+          index = (index % (feedViewModel.videos.length));
           feedViewModel.changeVideo(index);
         },
         scrollDirection: Axis.vertical,
         itemBuilder: (context, index) {
-          index = (index % (feedViewModel.videoSource!.listVideos.length));
-          var video = feedViewModel.videoSource!.listVideos[index];
+          index = (index % (feedViewModel.videos.length));
+          var video = feedViewModel.videos[index];
           return videoCard(video);
         },
       ),

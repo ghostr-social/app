@@ -1,30 +1,29 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:stacked/stacked.dart';
 import 'package:video_player/video_player.dart';
 
-import '../data/video.dart';
-import '../data/videos_repository.dart';
-
+import '../data/video.dart' as video_source;
 
 class FeedViewModel extends BaseViewModel {
   VideoPlayerController? controller;
-  VideosAPI? videoSource;
+  List<video_source.Video> videos = [];
 
   int prevVideo = 0;
 
   int actualScreen = 0;
 
-  FeedViewModel() {
-    videoSource = VideosAPI();
-  }
+  FeedViewModel() {}
 
   changeVideo(int index) async {
-    final videos = videoSource!.listVideos;
+    final videos = await video_source.getVideos();
+    debugPrint('Videos: $videos');
+
     if (videos.isEmpty) return;
 
     // 1. Load & play the new index if needed
     if (videos[index].controller == null) {
-      await videos[index].loadController();
+      await videos[index].loadController(index);
     }
     videos[index].controller?.play();
 
@@ -42,7 +41,7 @@ class FeedViewModel extends BaseViewModel {
         // If in our preload range, load it if not already loaded
         if (videos[i].controller == null) {
           // Fire & forget—so we don’t block the user
-          videos[i].loadController().catchError((e) {
+          videos[i].loadController(index).catchError((e) {
             print('Error preloading video at index $i: $e');
           });
         }
@@ -60,19 +59,22 @@ class FeedViewModel extends BaseViewModel {
     print('Now playing video index: $index');
   }
 
-  UserData? currentUserData() {
+  video_source.UserData? currentUserData() {
+    if(videos.isEmpty) return null;
+
     try {
-      return videoSource!.listVideos[prevVideo+1].user;
-    } catch(e){
+      return videos[prevVideo + 1].user;
+    } catch (e) {
       print('Error getting userData: $e');
     }
     return null;
   }
+
   void loadVideo(int index) async {
-    if (videoSource!.listVideos.length > index) {
+    if (videos.length > index) {
       try {
-        await videoSource!.listVideos[index].loadController();
-        videoSource!.listVideos[index].controller?.play();
+        await videos[index].loadController(index);
+        videos[index].controller?.play();
         notifyListeners();
       } catch (e) {
         print('Error loading video at index $index: $e');

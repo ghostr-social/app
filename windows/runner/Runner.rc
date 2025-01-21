@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.hookstr" "\0"
-            VALUE "FileDescription", "hookstr" "\0"
+            VALUE "CompanyName", "app.ghostr" "\0"
+            VALUE "FileDescription", "ghostr" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "hookstr" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 com.hookstr. All rights reserved." "\0"
-            VALUE "OriginalFilename", "hookstr.exe" "\0"
-            VALUE "ProductName", "hookstr" "\0"
+            VALUE "InternalName", "ghostr" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025 app.ghostr. All rights reserved." "\0"
+            VALUE "OriginalFilename", "ghostr.exe" "\0"
+            VALUE "ProductName", "ghostr" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

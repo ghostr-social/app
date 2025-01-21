@@ -24,11 +24,12 @@ class ActionsToolbar extends StatelessWidget {
   final String numComments;
   final String userPic;
 
-  ActionsToolbar(this.numLikes, this.numComments, this.userPic);
+  const ActionsToolbar(this.numLikes, this.numComments, this.userPic,
+      {super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: 100.0,
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         _getFollowAction(pictureUrl: userPic),
@@ -52,21 +53,24 @@ class ActionsToolbar extends StatelessWidget {
       margin: EdgeInsets.only(top: 15.0),
       width: 60.0, // Keep the width if you want a fixed width
       child: Column(
-        mainAxisSize: MainAxisSize.min, // Let the column shrink-wrap its contents
+        mainAxisSize:
+            MainAxisSize.min, // Let the column shrink-wrap its contents
         children: [
-          Icon(icon, size: isShare ? 25.0 : 35.0,  color: Colors.grey[300]),
+          Icon(icon, size: isShare ? 25.0 : 35.0, color: Colors.grey[300]),
           Padding(
             padding: EdgeInsets.only(top: 8.0),
             child: Text(
               title,
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 14.0),
+              style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14.0),
             ),
           ),
         ],
       ),
     );
   }
-
 
   Widget _getFollowAction({required String pictureUrl}) {
     return Container(
@@ -111,9 +115,8 @@ class ActionsToolbar extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10000.0),
                 child: CachedNetworkImage(
                   imageUrl: userPic,
-                  placeholder: (context, url) =>
-                      new CircularProgressIndicator(),
-                  errorWidget: (context, url, error) => new Icon(Icons.error),
+                  placeholder: (context, url) => CircularProgressIndicator(),
+                  errorWidget: (context, url, error) => Icon(Icons.error),
                 ))));
   }
 
@@ -146,9 +149,8 @@ class ActionsToolbar extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10000.0),
                   child: CachedNetworkImage(
                     imageUrl: userPic,
-                    placeholder: (context, url) =>
-                        new CircularProgressIndicator(),
-                    errorWidget: (context, url, error) => new Icon(Icons.error),
+                    placeholder: (context, url) => CircularProgressIndicator(),
+                    errorWidget: (context, url, error) => Icon(Icons.error),
                   ))),
         ]));
   }

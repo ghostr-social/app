@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class CircleImageAnimation extends StatefulWidget {
-  CircleImageAnimation({Key? key, this.child}) : super(key: key);
+  const CircleImageAnimation({super.key, this.child});
 
   final Widget? child;
 

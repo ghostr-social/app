@@ -1,0 +1,3 @@
+rust_input: crate::video
+rust_root: rust/
+dart_output: lib/src/rust

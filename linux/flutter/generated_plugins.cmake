@@ -6,7 +6,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
-  nostr_sdk
+  rust_lib_ghostr
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)
