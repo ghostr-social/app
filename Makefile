@@ -18,13 +18,17 @@ rust-no-clean:
 	cd rust && cargo update &&  TARGET=android-arm64-v8a FFMPEG_LIBS_PATH=/Users/gustavo.passos/StudioProjects/ghostr/3rd-party/ffmpeg-libs/  cargo ndk -t arm64-v8a  build && cd .. && \
 	TARGET=android-arm64-v8a FFMPEG_LIBS_PATH=/Users/gustavo.passos/StudioProjects/ghostr/3rd-party/ffmpeg-libs/ flutter_rust_bridge_codegen generate
 
+gen:
+	export FFMPEG_LIBS_PATH=$(pwd)/3rd-party/ffmpeg-libs
+	oTARGET=android-arm64-v8a FFMPEG_LIBS_PATH=/Users/gustavo.passos/StudioProjects/ghostr/3rd-party/ffmpeg-libs/ flutter_rust_bridge_codegen generate
+
 
 
 run: rust
-	TARGET=android-arm64-v8a FFMPEG_LIBS_PATH=/Users/gustavo.passos/StudioProjects/ghostr/3rd-party/ffmpeg-libs/  flutter run
+	TARGET=android-arm64-v8a FFMPEG_LIBS_PATH=/Users/gustavo.passos/StudioProjects/ghostr/3rd-party/ffmpeg-libs/  flutter run $(FLAGS)
 
 run-fast: rust-no-clean
-	TARGET=android-arm64-v8a FFMPEG_LIBS_PATH=/Users/gustavo.passos/StudioProjects/ghostr/3rd-party/ffmpeg-libs/  flutter run &
+	TARGET=android-arm64-v8a FFMPEG_LIBS_PATH=/Users/gustavo.passos/StudioProjects/ghostr/3rd-party/ffmpeg-libs/  flutter run $(FLAGS) &
 	adb forward tcp:3000 tcp:3000 &
 
 

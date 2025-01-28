@@ -12,6 +12,22 @@ class UserData {
     this.name,
     this.profilePicture,
   });
+
+  static UserData fromMap(Map<String, dynamic> map) {
+    return UserData(
+      npub: map['npub'],
+      name: map['name'],
+      profilePicture: map['profilePicture'],
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'npub': npub,
+      'name': name,
+      'profilePicture': profilePicture,
+    };
+  }
 }
 
 class Video {
@@ -34,10 +50,33 @@ class Video {
       required this.comments,
       required this.url});
 
-  Future<Null> loadController(int index) async {
+ static Video fromMap(Map<String, dynamic> map) {
+    return Video(
+      id: map['id'],
+      user: UserData.fromMap(map['user']),
+      videoTitle: map['videoTitle'],
+      songName: map['songName'],
+      likes: map['likes'],
+      comments: map['comments'],
+      url: map['url'],
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'user': user.toMap(),
+      'videoTitle': videoTitle,
+      'songName': songName,
+      'likes': likes,
+      'comments': comments,
+      'url': url,
+    };
+  }
+
+  Future<Null> loadController() async {
     debugPrint("loading $url");
-    var uri = Uri.parse("$baseLoopbackUrl/video.mp4?=$index");
-    debugPrint("loading $uri");
+    var uri = Uri.parse("$baseLoopbackUrl/video.mp4?id=$id");
 
     controller = VideoPlayerController.networkUrl(uri);
     await controller?.initialize();
@@ -47,7 +86,9 @@ class Video {
 
 
 Future<List<Video>> getVideos() async {
+  print("[getVideos] Getting videos");
   var videos = await ffiGetDiscoveredVideos();
+  print("[ffiGetDiscoveredVideos] Got ${videos.length} videos");
   return videos.map((e) => Video(
     id: e.id,
     user: UserData(name: "Unknown", profilePicture: null),

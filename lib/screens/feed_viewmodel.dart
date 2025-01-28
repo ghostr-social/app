@@ -1,79 +1,66 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:stacked/stacked.dart';
-import 'package:video_player/video_player.dart';
+import 'dart:async';
 
+import 'package:stacked/stacked.dart';
 import '../data/video.dart' as video_source;
 
+
 class FeedViewModel extends BaseViewModel {
-  VideoPlayerController? controller;
   List<video_source.Video> videos = [];
-
   int prevVideo = 0;
-
   int actualScreen = 0;
 
-  FeedViewModel() {}
 
-  changeVideo(int index) async {
-    final videos = await video_source.getVideos();
-    debugPrint('Videos: $videos');
+  FeedViewModel() {
+    init();
+  }
+
+  Future<void> init() async {
+    videos.addAll(await video_source.getVideos());
+    notifyListeners();
+  }
+
+
+  Future<void> changeVideo(int index) async {
+    print('Changing video to $index');
 
     if (videos.isEmpty) return;
+    if (index >= videos.length) return;
 
-    // 1. Load & play the new index if needed
     if (videos[index].controller == null) {
-      await videos[index].loadController(index);
+      await videos[index].loadController();
     }
     videos[index].controller?.play();
 
-    // 2. Pause the old video
     if (prevVideo != index && videos[prevVideo].controller != null) {
       videos[prevVideo].controller?.pause();
     }
 
-    // 3. Preload a small range [index-3 .. index+4]
-    final int minRange = (index - 3).clamp(0, videos.length - 1);
-    final int maxRange = (index + 4).clamp(0, videos.length - 1);
-
+    // Preload neighbors
+    final minRange = (index - 1).clamp(0, videos.length - 1);
+    final maxRange = (index + 1).clamp(0, videos.length - 1);
     for (int i = 0; i < videos.length; i++) {
       if (i >= minRange && i <= maxRange) {
-        // If in our preload range, load it if not already loaded
         if (videos[i].controller == null) {
-          // Fire & forget—so we don’t block the user
-          videos[i].loadController(index).catchError((e) {
-            print('Error preloading video at index $i: $e');
+          videos[i].loadController().catchError((e) {
+            print('Error preloading video $i: $e');
           });
         }
       } else {
-        // 4. Dispose controllers outside our cache window
-        if (videos[i].controller != null) {
-          videos[i].controller!.dispose();
-          videos[i].controller = null;
-        }
+        // Dispose outside the cache window
+        videos[i].controller?.dispose();
+        videos[i].controller = null;
       }
     }
 
+    videos.addAll(await video_source.getVideos());
     prevVideo = index;
     notifyListeners();
-    print('Now playing video index: $index');
   }
 
-  video_source.UserData? currentUserData() {
-    if(videos.isEmpty) return null;
-
-    try {
-      return videos[prevVideo + 1].user;
-    } catch (e) {
-      print('Error getting userData: $e');
-    }
-    return null;
-  }
-
-  void loadVideo(int index) async {
-    if (videos.length > index) {
+  Future<void> loadVideo(int index) async {
+    if (index < videos.length) {
       try {
-        await videos[index].loadController(index);
+        await videos[index].loadController();
         videos[index].controller?.play();
         notifyListeners();
       } catch (e) {
@@ -82,13 +69,26 @@ class FeedViewModel extends BaseViewModel {
     }
   }
 
-  void setActualScreen(index) {
-    actualScreen = index;
-    if (index == 0) {
-      SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
-    } else {
-      SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
+  video_source.UserData? currentUserData() {
+    if (videos.isEmpty) {
+      print('No videos');
+      return null;
     }
+    try {
+      return videos[prevVideo + 1].user;
+    } catch (e) {
+      print('Error getting userData: $e');
+    }
+    return null;
+  }
+
+  void setActualScreen(int index) {
+    actualScreen = index;
     notifyListeners();
   }
+
 }
+
+
+
+

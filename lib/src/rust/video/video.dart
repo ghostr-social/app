@@ -10,8 +10,14 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 /// Start the Axum server and store the AppState in GLOBAL_STATE.
 /// Return the bound address as a String.
-Future<String> ffiStartServer({String? address}) =>
-    RustLib.instance.api.crateVideoVideoFfiStartServer(address: address);
+Future<String> ffiStartServer(
+        {required BigInt maxParallelDownloads,
+        required BigInt maxStorageBytes,
+        String? address}) =>
+    RustLib.instance.api.crateVideoVideoFfiStartServer(
+        maxParallelDownloads: maxParallelDownloads,
+        maxStorageBytes: maxStorageBytes,
+        address: address);
 
 /// Return the discovered videos from the stored AppState.
 Future<List<FfiVideoDownload>> ffiGetDiscoveredVideos() =>

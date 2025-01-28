@@ -1,12 +1,17 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:ghostr/data/video.dart';
 import 'package:stacked/stacked.dart';
 
 import '../feed_viewmodel.dart';
 import 'components/video_screen.dart';
 
 class FeedScreen extends StatefulWidget {
-  const FeedScreen({super.key});
+  final List<Video> initialVideos;
+
+  const FeedScreen({super.key, required this.initialVideos});
 
   @override
   _FeedScreenState createState() => _FeedScreenState();
@@ -17,9 +22,7 @@ class _FeedScreenState extends State<FeedScreen> {
   final feedViewModel = GetIt.instance<FeedViewModel>();
   @override
   void initState() {
-    feedViewModel.loadVideo(0);
-    feedViewModel.loadVideo(1);
-
+    feedViewModel.videos.addAll(widget.initialVideos);
     super.initState();
   }
 

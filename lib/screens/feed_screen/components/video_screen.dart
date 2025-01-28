@@ -5,6 +5,7 @@ import 'package:ghostr/screens/feed_screen/components/profile_view.dart';
 
 import '../../../data/video.dart';
 import '../../../widgets/bottom_bar.dart';
+import '../../constants.dart';
 import '../../feed_viewmodel.dart';
 import '../../messages_screen.dart';
 import '../../profile_screen.dart';
@@ -20,7 +21,6 @@ Widget videoScreen(UserData? userData) {
         PageView.builder(
           itemCount: 2,
           onPageChanged: (value) {
-            print(value);
             if (value == 1) {
               SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
             } else {
@@ -28,7 +28,7 @@ Widget videoScreen(UserData? userData) {
             }
           },
           itemBuilder: (context, index) {
-            if (index == 0) {
+            if (index == feedScreenPageID) {
               return scrollFeed();
             } else {
               return profileView(userData);
@@ -53,13 +53,13 @@ Widget scrollFeed() {
 Widget currentScreen() {
   var feed = GetIt.instance<FeedViewModel>();
   switch (feed.actualScreen) {
-    case 0:
+    case feedScreenPageID:
       return feedVideos(feed);
-    case 1:
+    case searchScreenPageID:
       return SearchScreen();
-    case 2:
+    case messagesScreenPageID:
       return MessagesScreen();
-    case 3:
+    case profileScreenPageID:
       return ProfileScreen();
     default:
       return feedVideos(feed);

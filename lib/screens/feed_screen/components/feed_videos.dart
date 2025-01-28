@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:ghostr/data/video.dart';
 import 'package:ghostr/screens/feed_screen/components/video_card.dart';
 
 import '../../feed_viewmodel.dart';
