@@ -184,12 +184,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   FfiVideoDownload dco_decode_ffi_video_download(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return FfiVideoDownload(
       id: dco_decode_String(arr[0]),
       url: dco_decode_String(arr[1]),
       title: dco_decode_opt_String(arr[2]),
+      localPath: dco_decode_opt_String(arr[3]),
     );
   }
 
@@ -248,7 +249,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_id = sse_decode_String(deserializer);
     var var_url = sse_decode_String(deserializer);
     var var_title = sse_decode_opt_String(deserializer);
-    return FfiVideoDownload(id: var_id, url: var_url, title: var_title);
+    var var_localPath = sse_decode_opt_String(deserializer);
+    return FfiVideoDownload(
+        id: var_id, url: var_url, title: var_title, localPath: var_localPath);
   }
 
   @protected
@@ -330,6 +333,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.id, serializer);
     sse_encode_String(self.url, serializer);
     sse_encode_opt_String(self.title, serializer);
+    sse_encode_opt_String(self.localPath, serializer);
   }
 
   @protected

@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../../data/video.dart';
 import '../feed_screen/feed_screen.dart';
 
+
+const minVideosToStartFeed = 3;
+
 class FeedLoader extends StatefulWidget {
   const FeedLoader({super.key});
 
@@ -22,9 +25,9 @@ class _FeedLoaderState extends State<FeedLoader> {
   Future<List<Video>> _retrieveInitialData() async {
     List<Video> videos = [];
 
-    while (videos.length < 10) {
+    while (videos.length < minVideosToStartFeed) {
       videos.addAll(await getVideos());
-      if (videos.length < 10) {
+      if (videos.length < minVideosToStartFeed) {
         await Future.delayed(const Duration(seconds: 2));
       }
     }

@@ -178,10 +178,12 @@ impl SseDecode for crate::video::video::FfiVideoDownload {
         let mut var_id = <String>::sse_decode(deserializer);
         let mut var_url = <String>::sse_decode(deserializer);
         let mut var_title = <Option<String>>::sse_decode(deserializer);
+        let mut var_localPath = <Option<String>>::sse_decode(deserializer);
         return crate::video::video::FfiVideoDownload {
             id: var_id,
             url: var_url,
             title: var_title,
+            local_path: var_localPath,
         };
     }
 }
@@ -305,6 +307,7 @@ impl flutter_rust_bridge::IntoDart for crate::video::video::FfiVideoDownload {
             self.id.into_into_dart().into_dart(),
             self.url.into_into_dart().into_dart(),
             self.title.into_into_dart().into_dart(),
+            self.local_path.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -334,6 +337,7 @@ impl SseEncode for crate::video::video::FfiVideoDownload {
         <String>::sse_encode(self.id, serializer);
         <String>::sse_encode(self.url, serializer);
         <Option<String>>::sse_encode(self.title, serializer);
+        <Option<String>>::sse_encode(self.local_path, serializer);
     }
 }
 

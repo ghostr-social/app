@@ -32,6 +32,11 @@ run-fast: rust-no-clean
 	adb forward tcp:3000 tcp:3000 &
 
 
+run-fast-profile: rust-no-clean
+	TARGET=android-arm64-v8a FFMPEG_LIBS_PATH=/Users/gustavo.passos/StudioProjects/ghostr/3rd-party/ffmpeg-libs/  flutter run --profile $(FLAGS) &
+	adb forward tcp:3000 tcp:3000 &
+
+
 build: rust
 	cd rust && cargo update &&  cd .. && \
 	FFMPEG_LIBS_PATH=/Users/gustavo.passos/StudioProjects/ghostr/3rd-party/ffmpeg-libs/ flutter build apk --release --target-platform android-arm64

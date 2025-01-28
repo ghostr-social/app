@@ -22,7 +22,7 @@ class _FeedScreenState extends State<FeedScreen> {
   final feedViewModel = GetIt.instance<FeedViewModel>();
   @override
   void initState() {
-    feedViewModel.videos.addAll(widget.initialVideos);
+    feedViewModel.videoBank.addAll(widget.initialVideos);
     super.initState();
   }
 
@@ -37,7 +37,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
   @override
   void dispose() {
-    for (var video in feedViewModel.videos) {
+    for (var video in feedViewModel.videoBank) {
       video.controller?.dispose();
     }
     super.dispose();

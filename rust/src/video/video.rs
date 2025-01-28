@@ -15,6 +15,7 @@ pub struct FfiVideoDownload {
     pub id: String,
     pub url: String,
     pub title: Option<String>,
+    pub local_path: Option<String>,
 }
 
 /// Start the Axum server and store the AppState in GLOBAL_STATE.
@@ -43,20 +44,36 @@ pub async fn ffi_get_discovered_videos() -> Vec<FfiVideoDownload> {
         .get()
         .expect("Axum server not started or state not set");
 
-    // Lock the discovered_videos (which is presumably a HashMap<String, VideoDownload>)
-    let discovered = app_state.discovered_videos.lock().await;
+    // Lock the discovered_videos
+    let discovered = app_state.playlist.lock().await.new_content();
     warn!("Discovered videos: {:?}", discovered);
 
-    // Use `values()` to iterate over the VideoDownload objects, ignoring the keys
     discovered
-        .values()
-        .map(|vid| FfiVideoDownload {
-            id: vid.id.to_string(),
-            url: vid.url.clone(),
-            title: Some(vid.nostr.title.clone()),
+        .iter()
+        .map(|vid| {
+            let is_fully_downloaded = match vid.content_length {
+                Some(total) if total > 0 => vid.downloaded_bytes >= total,
+                _ => false,
+            };
+
+            let local_path = if is_fully_downloaded {
+                vid.local_path
+                    .as_ref()
+                    .map(|p| p.to_string_lossy().to_string())
+            } else {
+                None
+            };
+
+            FfiVideoDownload {
+                id: vid.id.to_string(),
+                url: vid.url.clone(),
+                title: Some(vid.nostr.title.clone()),
+                local_path,
+            }
         })
         .collect()
 }
+
 
 /// Initialize your app (logging, etc.). By default, flutter_rust_bridge calls this once at startup.
 #[flutter_rust_bridge::frb(init)]

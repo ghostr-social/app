@@ -27,15 +27,18 @@ class FfiVideoDownload {
   final String id;
   final String url;
   final String? title;
+  final String? localPath;
 
   const FfiVideoDownload({
     required this.id,
     required this.url,
     this.title,
+    this.localPath,
   });
 
   @override
-  int get hashCode => id.hashCode ^ url.hashCode ^ title.hashCode;
+  int get hashCode =>
+      id.hashCode ^ url.hashCode ^ title.hashCode ^ localPath.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -44,5 +47,6 @@ class FfiVideoDownload {
           runtimeType == other.runtimeType &&
           id == other.id &&
           url == other.url &&
-          title == other.title;
+          title == other.title &&
+          localPath == other.localPath;
 }

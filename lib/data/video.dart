@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:ghostr/configs/base.dart';
 import 'package:ghostr/src/rust/video/video.dart';
@@ -38,6 +40,8 @@ class Video {
   String likes;
   String comments;
   String url;
+  String? localPath;
+
 
   VideoPlayerController? controller;
 
@@ -48,7 +52,8 @@ class Video {
       required this.songName,
       required this.likes,
       required this.comments,
-      required this.url});
+      required this.url,
+      this.localPath});
 
  static Video fromMap(Map<String, dynamic> map) {
     return Video(
@@ -59,6 +64,7 @@ class Video {
       likes: map['likes'],
       comments: map['comments'],
       url: map['url'],
+      localPath: map['localPath'] ?? null,
     );
   }
 
@@ -71,14 +77,19 @@ class Video {
       'likes': likes,
       'comments': comments,
       'url': url,
+      'localPath': localPath ?? null,
     };
   }
 
   Future<Null> loadController() async {
     debugPrint("loading $url");
-    var uri = Uri.parse("$baseLoopbackUrl/video.mp4?id=$id");
-
-    controller = VideoPlayerController.networkUrl(uri);
+    if(localPath != null) {
+      var file = File.fromUri(Uri.parse(localPath!));
+      controller = VideoPlayerController.file(file);
+    } else {
+      var uri = Uri.parse("$baseLoopbackUrl/video.mp4?id=$id");
+      controller = VideoPlayerController.networkUrl(uri);
+    }
     await controller?.initialize();
     controller?.setLooping(true);
   }
@@ -97,5 +108,6 @@ Future<List<Video>> getVideos() async {
     likes: "0",
     comments: "0",
     url: e.url,
+    localPath: e.localPath,
   )).toList();
 }

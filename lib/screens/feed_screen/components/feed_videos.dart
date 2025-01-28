@@ -11,16 +11,18 @@ Widget feedVideos(FeedViewModel feedViewModel) {
           initialPage: 0,
           viewportFraction: 1,
         ),
-        itemCount: feedViewModel.videos.length,
+        itemCount: feedViewModel.videoBank.length,
         onPageChanged: (index) {
-          index = (index % (feedViewModel.videos.length));
+          index = (index % (feedViewModel.videoBank.length));
           feedViewModel.changeVideo(index);
         },
         scrollDirection: Axis.vertical,
-        itemBuilder: (context, index) {
-          index = (index % (feedViewModel.videos.length));
-          var video = feedViewModel.videos[index];
-          return videoCard(video);
+        itemBuilder:  (context, index) {
+          final video = feedViewModel.videoBank[index];
+          return KeyedSubtree(
+            key: ValueKey(video.id),
+            child: videoCard(video),
+          );
         },
       ),
       SafeArea(
