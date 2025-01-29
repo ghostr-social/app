@@ -37,9 +37,6 @@ class _FeedScreenState extends State<FeedScreen> {
 
   @override
   void dispose() {
-    for (var video in feedViewModel.videoBank) {
-      video.controller?.dispose();
-    }
     super.dispose();
   }
 }

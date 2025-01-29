@@ -43,8 +43,6 @@ class Video {
   String? localPath;
 
 
-  VideoPlayerController? controller;
-
   Video(
       {required this.id,
       required this.user,
@@ -81,18 +79,6 @@ class Video {
     };
   }
 
-  Future<Null> loadController() async {
-    debugPrint("loading $url");
-    if(localPath != null) {
-      var file = File.fromUri(Uri.parse(localPath!));
-      controller = VideoPlayerController.file(file);
-    } else {
-      var uri = Uri.parse("$baseLoopbackUrl/video.mp4?id=$id");
-      controller = VideoPlayerController.networkUrl(uri);
-    }
-    await controller?.initialize();
-    controller?.setLooping(true);
-  }
 }
 
 
@@ -111,3 +97,4 @@ Future<List<Video>> getVideos() async {
     localPath: e.localPath,
   )).toList();
 }
+

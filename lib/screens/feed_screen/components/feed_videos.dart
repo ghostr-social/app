@@ -4,24 +4,21 @@ import 'package:ghostr/screens/feed_screen/components/video_card.dart';
 import '../../feed_viewmodel.dart';
 
 Widget feedVideos(FeedViewModel feedViewModel) {
+
   return Stack(
     children: [
       PageView.builder(
-        controller: PageController(
-          initialPage: 0,
-          viewportFraction: 1,
-        ),
+        controller: PageController(initialPage: 0, viewportFraction: 1),
         itemCount: feedViewModel.videoBank.length,
-        onPageChanged: (index) {
-          index = (index % (feedViewModel.videoBank.length));
-          feedViewModel.changeVideo(index);
+        onPageChanged: (newIndex) {
+          feedViewModel.changeVideo(newIndex);
         },
         scrollDirection: Axis.vertical,
-        itemBuilder:  (context, index) {
+        itemBuilder: (context, index) {
           final video = feedViewModel.videoBank[index];
           return KeyedSubtree(
             key: ValueKey(video.id),
-            child: videoCard(video),
+            child: videoCard(video, index),
           );
         },
       ),
@@ -59,3 +56,4 @@ Widget feedVideos(FeedViewModel feedViewModel) {
     ],
   );
 }
+
