@@ -1,5 +1,3 @@
-// lib/screens/feed_viewmodel.dart
-
 import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
@@ -23,7 +21,6 @@ class VideoBank extends Iterable<video_source.Video> {
     }
   }
 
-  // If you want to remove a video that is corrupted or cannot load:
   void removeVideo(String videoId) {
     _videos.removeWhere((v) => v.id == videoId);
     _knownVideos.remove(videoId);
@@ -44,10 +41,10 @@ class VideoBank extends Iterable<video_source.Video> {
 class FeedViewModel extends BaseViewModel {
   final VideoBank videoBank = VideoBank();
 
-  // Keep multiple controllers in a pool keyed by the index of the video.
-  final Map<int, VideoPlayerController> _controllerPool = {};
+  // Pool of controllers keyed by the index of the video in videoBank.
+  final Map<int, VideoPlayerController> controllerPool = {};
 
-  // How many "previous" or "future" videos to keep in memory & preload
+  // How many to keep preloaded behind and ahead.
   final int nPrevious = 2;
   final int nAhead = 3;
 
@@ -59,15 +56,12 @@ class FeedViewModel extends BaseViewModel {
   VideoPlayerController? get player => _activeController;
 
   bool _initialFetchDone = false;
-
-  // Used to check concurrency (if multiple changeVideo calls come in quickly).
   int _lastChangeRequestId = 0;
 
   FeedViewModel() {
     init();
   }
 
-  /// Initial load of videos into the [videoBank].
   Future<void> init() async {
     final initial = await video_source.getVideos();
     videoBank.addAll(initial);
@@ -75,70 +69,66 @@ class FeedViewModel extends BaseViewModel {
     notifyListeners();
   }
 
-  /// Called by the UI after your PageView changes to index [newIndex].
-  /// Manages preloading, disposing out-of-range videos, and starting the new active video.
+  /// Called by the UI after PageView changes to index [newIndex].
   Future<void> changeVideo(int newIndex) async {
     if (newIndex < 0 || newIndex >= videoBank.length) return;
 
-    // Each time changeVideo is called, we increment a request counter.
-    final requestId = ++_lastChangeRequestId;
+    // 1) Immediately pause the old video so it doesn't keep playing.
+    if (_activeController != null && _activeController!.value.isPlaying) {
+      _activeController!.pause();
+    }
 
+    // Each call increments a request counter, used to cancel old operations.
+    final requestId = ++_lastChangeRequestId;
     currentVideoIndex = newIndex;
 
-    // If we are near the end, fetch more videos in the background
+    // Attempt to fetch more videos in the background if near the end.
     final threshold = videoBank.length - nAhead;
     if (_initialFetchDone && newIndex >= threshold) {
-      _fetchMoreVideos();
+      unawaited(_fetchMoreVideos());
     }
 
-    // Dispose controllers that are far away from [newIndex].
+    // Dispose controllers that are far from newIndex.
     _disposeOutOfRange(newIndex);
 
-    // Preload in the background so as not to block the UI.
-    // If you want to ensure the *next* video is definitely preloaded, you can
-    // await *only* that next video, and let the others be unawaited.
+    // Preload others around newIndex.
     unawaited(_preloadControllersInRange(newIndex));
 
-    // The new "active" controller
-    final candidateController = _controllerPool[newIndex];
-
-    // If another changeVideo call happens while we wait, we should stop further processing here.
-    if (requestId != _lastChangeRequestId) return;
-
-    // If we have a preloaded controller, use it; if not, create it *synchronously* now
-    // (the user is actually looking at this video).
+    // 2) If there's already a preloaded controller for the newIndex, use it.
+    var candidateController = controllerPool[newIndex];
     if (candidateController == null) {
       await _createAndInitController(newIndex, timeoutSeconds: 5);
+      candidateController = controllerPool[newIndex];
     }
 
-    _activeController = _controllerPool[newIndex];
+    // Check if a newer changeVideo request has superseded this one.
+    if (requestId != _lastChangeRequestId) return;
 
-    // It's possible that controller creation or init failed => controller is null
+    _activeController = candidateController;
+
     if (_activeController == null) {
-      // The video was dropped due to error
+      // The video might have been dropped due to an error.
       notifyListeners();
       return;
     }
 
-    // By the time we get here, we want to ensure the active controller is at least initialized.
+    // Ensure it's initialized before playing.
     if (!_activeController!.value.isInitialized) {
       try {
         await _activeController!.initialize();
       } catch (e) {
-        // If there's an error, remove that video
         _removeVideoAtIndex(newIndex);
         notifyListeners();
         return;
       }
     }
 
-    // Play the new video, pause others in the pool
-    _playCurrentAndPauseOthers(newIndex);
+    // 3) Play the newly active video, and reset all others.
+    _playCurrentAndResetOthers(newIndex);
+
     notifyListeners();
   }
 
-  /// Fetch more videos from the server and add to the [videoBank].
-  /// This runs in background to avoid blocking the user’s scrolling.
   Future<void> _fetchMoreVideos() async {
     try {
       final more = await video_source.getVideos();
@@ -151,51 +141,45 @@ class FeedViewModel extends BaseViewModel {
     }
   }
 
-  /// Dispose controllers that are out of the range [currentIndex - nPrevious, currentIndex + nAhead].
   void _disposeOutOfRange(int currentIndex) {
     final minIndex = (currentIndex - nPrevious).clamp(0, videoBank.length - 1);
     final maxIndex = (currentIndex + nAhead).clamp(0, videoBank.length - 1);
 
     final keysToRemove = <int>[];
-    for (final k in _controllerPool.keys) {
+    for (final k in controllerPool.keys) {
       if (k < minIndex || k > maxIndex) {
         keysToRemove.add(k);
       }
     }
+
     for (final k in keysToRemove) {
-      _controllerPool[k]?.dispose();
-      _controllerPool.remove(k);
+      controllerPool[k]?.dispose();
+      controllerPool.remove(k);
     }
   }
 
-  /// Preload controllers (in parallel) for [currentIndex - nPrevious .. currentIndex + nAhead].
   Future<void> _preloadControllersInRange(int currentIndex) async {
     final minIndex = (currentIndex - nPrevious).clamp(0, videoBank.length - 1);
     final maxIndex = (currentIndex + nAhead).clamp(0, videoBank.length - 1);
 
-    // Collect tasks for any missing controllers
     final tasks = <Future<void>>[];
     for (int i = minIndex; i <= maxIndex; i++) {
-      if (!_controllerPool.containsKey(i)) {
-        tasks.add(_createAndInitController(i, timeoutSeconds: 5));
+      if (!controllerPool.containsKey(i)) {
+        tasks.add(_createAndInitController(i, timeoutSeconds: 2));
       }
     }
-
-    // You can decide to wait for all or none.
-    // Here, we'll wait for them so that the next swipe is definitely smooth.
     if (tasks.isNotEmpty) {
       await Future.wait(tasks);
     }
   }
 
-  /// Creates a [VideoPlayerController], tries to initialize within [timeoutSeconds].
-  /// If it fails or times out, we drop that video from the feed.
-  Future<void> _createAndInitController(int index, {int timeoutSeconds = 5}) async {
+  Future<void> _createAndInitController(int index, {int timeoutSeconds = 1}) async {
     if (index < 0 || index >= videoBank.length) return;
-    if (_controllerPool.containsKey(index)) return; // Already created
+    if (controllerPool.containsKey(index)) return;
 
     final vid = videoBank[index];
     VideoPlayerController controller;
+
     if (vid.localPath != null) {
       controller = VideoPlayerController.file(File(vid.localPath!));
     } else {
@@ -206,72 +190,64 @@ class FeedViewModel extends BaseViewModel {
 
     try {
       await controller.initialize().timeout(Duration(seconds: timeoutSeconds));
-      // If initialization completes, store in pool only if still valid.
-      // It's possible user scrolled far away and we already disposed stuff:
-      if (!_controllerPool.containsKey(index)) {
-        _controllerPool[index] = controller;
+      // If still valid, add to pool. Otherwise dispose.
+      if (!controllerPool.containsKey(index)) {
+        controllerPool[index] = controller;
       } else {
-        // If, for some reason, we already replaced it, dispose this new one.
         controller.dispose();
       }
     } catch (e) {
-      // Possibly timed out or got an error -> remove the video from the feed
       print("Dropping video ${vid.id} due to error/timeout: $e");
       controller.dispose();
-      // Double-check if video is still in the bank at that index
-      // to avoid removing the wrong one if the bank has changed
+
+      // Double-check if it's still the same video in the bank.
       if (index < videoBank.length && videoBank[index].id == vid.id) {
         _removeVideoAtIndex(index);
       }
     }
   }
 
-  /// Plays the [activeIdx] controller (if any), and pauses all others in the pool.
-  void _playCurrentAndPauseOthers(int activeIdx) {
-    _controllerPool.forEach((idx, ctl) {
+  /// Pauses and resets every controller except [activeIdx], which is played.
+  void _playCurrentAndResetOthers(int activeIdx) {
+    controllerPool.forEach((idx, ctl) {
       if (idx == activeIdx) {
         if (ctl.value.isInitialized) {
-          ctl.play();
+          ctl.play(); // If you want the active video to start at zero, do: ctl.seekTo(Duration.zero);
         }
       } else {
-        if (ctl.value.isInitialized && ctl.value.isPlaying) {
+        if (ctl.value.isInitialized) {
           ctl.pause();
+          ctl.seekTo(Duration.zero); // Ensure any inactive video is at the start.
         }
       }
     });
   }
 
-  /// Removes the video from the feed and shifts indices as needed.
   void _removeVideoAtIndex(int index) {
     if (index < 0 || index >= videoBank.length) return;
     final removedID = videoBank[index].id;
     videoBank.removeVideo(removedID);
 
-    // Dispose that controller if it exists
-    final existingController = _controllerPool.remove(index);
+    final existingController = controllerPool.remove(index);
     existingController?.dispose();
 
-    // Re-map any controllers after this index because the list shrinks by 1
-    final oldPool = Map<int, VideoPlayerController>.from(_controllerPool);
-    _controllerPool.clear();
+    // Re-map controllers after removing one video from the list
+    final oldPool = Map<int, VideoPlayerController>.from(controllerPool);
+    controllerPool.clear();
 
-    // For each old key, figure out the new key:
-    // Everything after `index` shifts left by 1
     oldPool.forEach((oldIdx, oldController) {
       if (oldIdx < index) {
-        _controllerPool[oldIdx] = oldController;
+        controllerPool[oldIdx] = oldController;
       } else if (oldIdx > index) {
-        _controllerPool[oldIdx - 1] = oldController;
+        controllerPool[oldIdx - 1] = oldController;
       }
     });
 
-    // If currentVideoIndex was after this index, shift it too
     if (currentVideoIndex > index) {
       currentVideoIndex--;
     }
   }
 
-  /// Get the user data for the currently playing video
   video_source.UserData? currentUserData() {
     if (videoBank.isEmpty) return null;
     if (currentVideoIndex < 0 || currentVideoIndex >= videoBank.length) {
@@ -280,7 +256,6 @@ class FeedViewModel extends BaseViewModel {
     return videoBank[currentVideoIndex].user;
   }
 
-  /// Called from bottom bar to change which screen is displayed
   void setActualScreen(int index) {
     actualScreen = index;
     notifyListeners();
@@ -288,10 +263,10 @@ class FeedViewModel extends BaseViewModel {
 
   @override
   void dispose() {
-    for (final ctl in _controllerPool.values) {
+    for (final ctl in controllerPool.values) {
       ctl.dispose();
     }
-    _controllerPool.clear();
+    controllerPool.clear();
     super.dispose();
   }
 }

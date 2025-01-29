@@ -106,7 +106,6 @@ fn wire__crate__video__video__ffi_start_server_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_max_parallel_downloads = <usize>::sse_decode(&mut deserializer);
             let api_max_storage_bytes = <u64>::sse_decode(&mut deserializer);
-            let api_address = <Option<String>>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
                 transform_result_sse::<_, ()>(
@@ -115,7 +114,6 @@ fn wire__crate__video__video__ffi_start_server_impl(
                             crate::video::video::ffi_start_server(
                                 api_max_parallel_downloads,
                                 api_max_storage_bytes,
-                                api_address,
                             )
                             .await,
                         )?;

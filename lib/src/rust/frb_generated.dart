@@ -82,9 +82,7 @@ abstract class RustLibApi extends BaseApi {
   Future<List<FfiVideoDownload>> crateVideoVideoFfiGetDiscoveredVideos();
 
   Future<String> crateVideoVideoFfiStartServer(
-      {required BigInt maxParallelDownloads,
-      required BigInt maxStorageBytes,
-      String? address});
+      {required BigInt maxParallelDownloads, required BigInt maxStorageBytes});
 
   Future<void> crateVideoVideoInitApp();
 }
@@ -123,15 +121,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @override
   Future<String> crateVideoVideoFfiStartServer(
-      {required BigInt maxParallelDownloads,
-      required BigInt maxStorageBytes,
-      String? address}) {
+      {required BigInt maxParallelDownloads, required BigInt maxStorageBytes}) {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_usize(maxParallelDownloads, serializer);
         sse_encode_u_64(maxStorageBytes, serializer);
-        sse_encode_opt_String(address, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
             funcId: 2, port: port_);
       },
@@ -140,7 +135,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         decodeErrorData: null,
       ),
       constMeta: kCrateVideoVideoFfiStartServerConstMeta,
-      argValues: [maxParallelDownloads, maxStorageBytes, address],
+      argValues: [maxParallelDownloads, maxStorageBytes],
       apiImpl: this,
     ));
   }
@@ -148,7 +143,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateVideoVideoFfiStartServerConstMeta =>
       const TaskConstMeta(
         debugName: "ffi_start_server",
-        argNames: ["maxParallelDownloads", "maxStorageBytes", "address"],
+        argNames: ["maxParallelDownloads", "maxStorageBytes"],
       );
 
   @override

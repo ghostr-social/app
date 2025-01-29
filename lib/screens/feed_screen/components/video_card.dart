@@ -3,74 +3,59 @@ import 'package:get_it/get_it.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../data/video.dart';
-import '../../../widgets/actions_toolbar.dart';
-import '../../../widgets/video_description.dart';
 import '../../feed_viewmodel.dart';
 
 Widget videoCard(Video video, int index) {
   final feedViewModel = GetIt.instance<FeedViewModel>();
-
-  // The single global player
-  final activeController = feedViewModel.player;
-
-  // Check if this card's index is the "current video"
+  final controller = feedViewModel.controllerPool[index];
   final isActive = (index == feedViewModel.currentVideoIndex);
 
-  // Get user name or fallback
-  final name = video.user.name ?? video.user.npub!;
-
-  return Stack(
-    children: [
-      if (isActive && activeController != null && activeController.value.isInitialized)
-      // If this card is active, show the playing video
-        GestureDetector(
-          onTap: () {
-            if (activeController.value.isPlaying) {
-              activeController.pause();
-            } else {
-              activeController.play();
-            }
-          },
-          child: SizedBox.expand(
+  // If we have a preloaded controller & it's initialized, display the paused frame.
+  if (controller != null && controller.value.isInitialized) {
+    return GestureDetector(
+      onTap: () {
+        if (isActive) {
+          // Only let the active video play/pause on tap.
+          if (controller.value.isPlaying) {
+            controller.pause();
+          } else {
+            controller.play();
+          }
+        }
+      },
+      child: Stack(
+        children: [
+          SizedBox.expand(
             child: FittedBox(
               fit: BoxFit.cover,
               child: SizedBox(
-                width: activeController!.value.size.width,
-                height: activeController.value.size.height,
-                child: VideoPlayer(activeController),
+                width: controller.value.size.width,
+                height: controller.value.size.height,
+                child: VideoPlayer(controller),
               ),
             ),
           ),
-        )
-      else
-        Container(
-          color: Colors.black,
-          alignment: Alignment.center,
-          child: const Text("Loading / Paused", style: TextStyle(color: Colors.white)),
-        ),
-      // Overlay elements: Video description and actions toolbar
-      Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: <Widget>[
-          Row(
-            mainAxisSize: MainAxisSize.max,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: <Widget>[
-              VideoDescription(
-                username: name,
-                videoTitle: video.videoTitle,
-                songInfo: video.songName,
-              ),
-              ActionsToolbar(
-                video.likes,
-                video.comments,
-                video.user.profilePicture ?? "",
-              ),
-            ],
+          // The overlays you already have:
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Column(
+              children: [
+                // video description, actions, etc
+              ],
+            ),
           ),
-          const SizedBox(height: 20),
         ],
       ),
-    ],
-  );
+    );
+  } else {
+    // If we *really* have no controller or not initialized, show placeholder
+    return Container(
+      color: Colors.black,
+      alignment: Alignment.center,
+      child: const Text(
+        "Loading / Paused",
+        style: TextStyle(color: Colors.white),
+      ),
+    );
+  }
 }

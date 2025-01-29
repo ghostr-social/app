@@ -12,12 +12,10 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 /// Return the bound address as a String.
 Future<String> ffiStartServer(
         {required BigInt maxParallelDownloads,
-        required BigInt maxStorageBytes,
-        String? address}) =>
+        required BigInt maxStorageBytes}) =>
     RustLib.instance.api.crateVideoVideoFfiStartServer(
         maxParallelDownloads: maxParallelDownloads,
-        maxStorageBytes: maxStorageBytes,
-        address: address);
+        maxStorageBytes: maxStorageBytes);
 
 /// Return the discovered videos from the stored AppState.
 Future<List<FfiVideoDownload>> ffiGetDiscoveredVideos() =>

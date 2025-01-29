@@ -40,12 +40,18 @@ run-fast-profile: rust-no-clean
 build: rust
 	cd rust && cargo update &&  cd .. && \
 	FFMPEG_LIBS_PATH=/Users/gustavo.passos/StudioProjects/ghostr/3rd-party/ffmpeg-libs/ flutter build apk --release --target-platform android-arm64
+	$(MAKE) install
 
-
-build-debug: rust
-	cd rust && cargo update &&  cd .. && \
+build-fast: rust
 	FFMPEG_LIBS_PATH=/Users/gustavo.passos/StudioProjects/ghostr/3rd-party/ffmpeg-libs/ flutter build apk --release --target-platform android-arm64
-	adb install -r build/app/outputs/flutter-apk/app-debug.apk
+	$(MAKE) install
 
+# Define your variables at the top (these are Make variables, not shell variables)
+APK_PATH := build/app/outputs/flutter-apk
+VERSION  := app-release-$(shell date +'%Y-%m-%d-%H-%M').apk
 
-
+install:
+	mv $(APK_PATH)/app-release.apk $(APK_PATH)/$(VERSION)
+	@echo "$(VERSION)"
+	adb push $(APK_PATH)/$(VERSION) /sdcard/
+	adb install -r $(APK_PATH)/$(VERSION)

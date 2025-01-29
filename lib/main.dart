@@ -10,15 +10,16 @@ import 'configs/base.dart';
 void run() async {
   // Rust initialization
   await RustLib.init();
-  await ffiStartServer(
-    address: serverAddress,
+  var endpoint = await ffiStartServer(
     maxParallelDownloads: BigInt.from(10),
     maxStorageBytes: BigInt.from(2 * 1024 * 1024 * 1024),
   );
+  print('Server started at $endpoint');
+
 
   // Flutter initialization
   WidgetsFlutterBinding.ensureInitialized();
-  setup();
+  setup(endpoint);
 
   runApp(
     MaterialApp(

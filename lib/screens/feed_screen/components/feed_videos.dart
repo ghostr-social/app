@@ -9,10 +9,12 @@ Widget feedVideos(FeedViewModel feedViewModel) {
     children: [
       PageView.builder(
         controller: PageController(initialPage: 0, viewportFraction: 1),
+        physics: const FastScrollPhysics(),
         itemCount: feedViewModel.videoBank.length,
         onPageChanged: (newIndex) {
           feedViewModel.changeVideo(newIndex);
         },
+        allowImplicitScrolling: true,
         scrollDirection: Axis.vertical,
         itemBuilder: (context, index) {
           final video = feedViewModel.videoBank[index];
@@ -57,3 +59,27 @@ Widget feedVideos(FeedViewModel feedViewModel) {
   );
 }
 
+
+
+class FastScrollPhysics extends PageScrollPhysics {
+  const FastScrollPhysics({super.parent});
+
+  @override
+  FastScrollPhysics applyTo(ScrollPhysics? ancestor) {
+    return FastScrollPhysics(parent: buildParent(ancestor));
+  }
+
+  @override
+  Simulation? createBallisticSimulation(
+      ScrollMetrics position,
+      double velocity,
+      ) {
+    final simulation = super.createBallisticSimulation(position, velocity);
+    if (simulation == null) return null;
+    return ClampingScrollSimulation(
+      position: position.pixels,
+      velocity: velocity * 2,
+      friction: 0.015,
+    );
+  }
+}

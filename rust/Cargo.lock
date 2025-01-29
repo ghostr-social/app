@@ -267,6 +267,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "axum-extra"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "460fc6f625a1f7705c6cf62d0d070794e94668988b1c38111baeec177c715f7b"
+dependencies = [
+ "axum",
+ "axum-core",
+ "bytes",
+ "futures-util",
+ "http",
+ "http-body",
+ "http-body-util",
+ "mime",
+ "pin-project-lite",
+ "serde",
+ "tower 0.5.2",
+ "tower-layer",
+ "tower-service",
+]
+
+[[package]]
 name = "axum-server"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -821,7 +842,7 @@ dependencies = [
 [[package]]
 name = "ffmpeg-extractor"
 version = "0.1.0"
-source = "git+https://github.com/ghostr-social/ghostr-rs?branch=main#1034bbe7559b51b74c3f92ec2ed34efbe7e56db6"
+source = "git+https://github.com/ghostr-social/ghostr-rs?branch=main#1aae9a1c7f1a2e9ff8f5557f9ec88f9d546af196"
 dependencies = [
  "bindgen",
  "cc",
@@ -1025,11 +1046,12 @@ dependencies = [
 [[package]]
 name = "ghostr-rs"
 version = "0.1.0"
-source = "git+https://github.com/ghostr-social/ghostr-rs?branch=main#1034bbe7559b51b74c3f92ec2ed34efbe7e56db6"
+source = "git+https://github.com/ghostr-social/ghostr-rs?branch=main#1aae9a1c7f1a2e9ff8f5557f9ec88f9d546af196"
 dependencies = [
  "anyhow",
  "async-trait",
  "axum",
+ "axum-extra",
  "axum-server",
  "bytes",
  "ffmpeg-extractor",

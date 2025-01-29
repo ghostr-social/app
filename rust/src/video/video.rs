@@ -23,16 +23,13 @@ pub struct FfiVideoDownload {
 #[frb]
 pub async fn ffi_start_server(
     max_parallel_downloads: usize,
-    max_storage_bytes: u64,
-    address: Option<String>,
-) -> String {
-    match start_axum_server(max_parallel_downloads, max_storage_bytes, address).await {
+    max_storage_bytes: u64) -> String {
+    match start_axum_server(max_parallel_downloads, max_storage_bytes).await {
         Ok((addr, state)) => {
-            // Store the newly created AppState
             GLOBAL_STATE.set(state).ok();
             addr
         }
-        Err(e) => panic!("Error starting server: {e}"),
+        Err(e) => format!("Error starting server: {e}"),
     }
 }
 
