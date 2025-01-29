@@ -22,8 +22,11 @@ class _FeedScreenState extends State<FeedScreen> {
   final feedViewModel = GetIt.instance<FeedViewModel>();
   @override
   void initState() {
-    feedViewModel.videoBank.addAll(widget.initialVideos);
     super.initState();
+    feedViewModel.videoBank.addAll(widget.initialVideos);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      feedViewModel.changeVideo(0);
+    });
   }
 
   @override
