@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ghostr/configs/base.dart';
 import 'package:ghostr/src/rust/video/video.dart';
@@ -83,9 +84,9 @@ class Video {
 
 
 Future<List<Video>> getVideos() async {
-  print("[getVideos] Getting videos");
+  if (kDebugMode) print("[getVideos] Getting videos");
   var videos = await ffiGetDiscoveredVideos();
-  print("[ffiGetDiscoveredVideos] Got ${videos.length} videos");
+  if (kDebugMode) print("[ffiGetDiscoveredVideos] Got ${videos.length} videos");
   return videos.map((e) => Video(
     id: e.id,
     user: UserData(name: "Unknown", profilePicture: null),

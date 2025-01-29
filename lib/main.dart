@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ghostr/screens/feed_loader/feed_loader.dart';
 import 'package:ghostr/service_locator.dart';
@@ -14,7 +15,7 @@ void run() async {
     maxParallelDownloads: BigInt.from(10),
     maxStorageBytes: BigInt.from(2 * 1024 * 1024 * 1024),
   );
-  print('Server started at $endpoint');
+  if (kDebugMode) print('Server started at $endpoint');
 
 
   // Flutter initialization
@@ -33,7 +34,7 @@ void main() async {
   try {
     run();
   } catch (e) {
-    print('Error: $e');
+    if (kDebugMode) print('Error: $e');
   }
 }
 

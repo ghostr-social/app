@@ -1,10 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/video.dart';
 import '../feed_screen/feed_screen.dart';
 
 
-const minVideosToStartFeed = 3;
+const minVideosToStartFeed = 1;
 
 class FeedLoader extends StatefulWidget {
   const FeedLoader({super.key});
@@ -52,7 +53,7 @@ class _FeedLoaderState extends State<FeedLoader> {
           );
         } else {
           var initialVideos =  snapshot.data!;
-          print('Loaded ${initialVideos.length} videos');
+          if (kDebugMode) print('Loaded ${initialVideos.length} videos');
           return FeedScreen(initialVideos: initialVideos,);
         }
       },

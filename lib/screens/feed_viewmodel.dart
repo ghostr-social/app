@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:stacked/stacked.dart';
 import 'package:video_player/video_player.dart';
 
@@ -137,7 +138,7 @@ class FeedViewModel extends BaseViewModel {
         notifyListeners();
       }
     } catch (e) {
-      print('Error fetching more videos: $e');
+      if (kDebugMode) print('Error fetching more videos: $e');
     }
   }
 
@@ -197,7 +198,7 @@ class FeedViewModel extends BaseViewModel {
         controller.dispose();
       }
     } catch (e) {
-      print("Dropping video ${vid.id} due to error/timeout: $e");
+      if (kDebugMode) print("Dropping video ${vid.id} due to error/timeout: $e");
       controller.dispose();
 
       // Double-check if it's still the same video in the bank.
