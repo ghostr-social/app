@@ -5,7 +5,7 @@ import '../../data/video.dart';
 import '../feed_screen/feed_screen.dart';
 
 
-const minVideosToStartFeed = 1;
+const minVideosToStartFeed = 3;
 
 class FeedLoader extends StatefulWidget {
   const FeedLoader({super.key});
