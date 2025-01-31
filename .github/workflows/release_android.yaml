@@ -116,7 +116,7 @@ jobs:
 
       # 13) Upload the resulting APKs as artifacts (optional)
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # Updated from v3 to v4
         with:
           name: android-apks
           path: build/app/outputs/flutter-apk/**/*.apk
