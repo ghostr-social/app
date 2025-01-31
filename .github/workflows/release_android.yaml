@@ -72,7 +72,11 @@ jobs:
         with:
           toolchain: stable
           override: true
-
+          targets: |
+            aarch64-linux-android
+            armv7-linux-androideabi
+            i686-linux-android
+            x86_64-linux-android
       # 9) Install cargo-ndk
       - name: Install cargo-ndk
         run: |
