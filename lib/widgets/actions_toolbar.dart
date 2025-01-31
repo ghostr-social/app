@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:ghostr/src/rust/video/video.dart';
 
+import '../screens/components/share_bottom_sheet.dart';
 import '../utils/tik_tok_icons_icons.dart';
 import 'circle_image_animation.dart';
 
@@ -23,9 +25,11 @@ class ActionsToolbar extends StatelessWidget {
   final String numLikes;
   final String numComments;
   final String userPic;
+  final FfiVideoDownload video;
+
 
   const ActionsToolbar(this.numLikes, this.numComments, this.userPic,
-      {super.key});
+      {super.key, required this.video});
 
   @override
   Widget build(BuildContext context) {
@@ -35,8 +39,10 @@ class ActionsToolbar extends StatelessWidget {
         _getFollowAction(pictureUrl: userPic),
         _getSocialAction(icon: TikTokIcons.heart, title: numLikes),
         _getSocialAction(icon: TikTokIcons.chat_bubble, title: numComments),
-        _getSocialAction(
-            icon: TikTokIcons.reply, title: 'Share', isShare: true),
+        IconButton(
+          icon: const Icon(Icons.reply),
+          onPressed: () => _showShareBottomSheet(context, video),
+        ),
         CircleImageAnimation(
           child: _getMusicPlayerAction(userPic),
         )
@@ -154,4 +160,16 @@ class ActionsToolbar extends StatelessWidget {
                   ))),
         ]));
   }
+}
+
+
+void _showShareBottomSheet(BuildContext context, FfiVideoDownload video) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (BuildContext context) {
+      return ShareBottomSheet(video: video);
+    },
+  );
 }

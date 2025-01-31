@@ -24,6 +24,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String dco_decode_String(dynamic raw);
 
   @protected
+  FfiNostrVideo dco_decode_ffi_nostr_video(dynamic raw);
+
+  @protected
+  FfiUserData dco_decode_ffi_user_data(dynamic raw);
+
+  @protected
   FfiVideoDownload dco_decode_ffi_video_download(dynamic raw);
 
   @protected
@@ -49,6 +55,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String sse_decode_String(SseDeserializer deserializer);
+
+  @protected
+  FfiNostrVideo sse_decode_ffi_nostr_video(SseDeserializer deserializer);
+
+  @protected
+  FfiUserData sse_decode_ffi_user_data(SseDeserializer deserializer);
 
   @protected
   FfiVideoDownload sse_decode_ffi_video_download(SseDeserializer deserializer);
@@ -83,6 +95,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_String(String self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ffi_nostr_video(FfiNostrVideo self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ffi_user_data(FfiUserData self, SseSerializer serializer);
 
   @protected
   void sse_encode_ffi_video_download(

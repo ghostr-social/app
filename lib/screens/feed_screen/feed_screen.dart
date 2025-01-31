@@ -2,14 +2,14 @@ import 'dart:ffi';
 
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:ghostr/data/video.dart';
 import 'package:stacked/stacked.dart';
 
+import '../../src/rust/video/video.dart';
 import '../feed_viewmodel.dart';
 import 'components/video_screen.dart';
 
 class FeedScreen extends StatefulWidget {
-  final List<Video> initialVideos;
+  final List<FfiVideoDownload> initialVideos;
 
   const FeedScreen({super.key, required this.initialVideos});
 

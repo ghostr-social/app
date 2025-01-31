@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:ghostr/screens/feed_screen/components/profile_view.dart';
+import 'package:ghostr/src/rust/video/video.dart';
 
-import '../../../data/video.dart';
 import '../../../widgets/bottom_bar.dart';
 import '../../constants.dart';
 import '../../feed_viewmodel.dart';
@@ -12,7 +12,7 @@ import '../../profile_screen.dart';
 import '../../search_screen.dart';
 import 'feed_videos.dart';
 
-Widget videoScreen(UserData? userData) {
+Widget videoScreen(FfiUserData? userData) {
   var feed = GetIt.instance<FeedViewModel>();
   return Scaffold(
     backgroundColor: feed.actualScreen == 0 ? Colors.black : Colors.white,

@@ -41,6 +41,8 @@ dependencies:
   rust_lib_ghostr:
     path: rust_builder
   flutter_rust_bridge: 2.7.0
+  font_awesome_flutter: ^10.8.0
+  share_plus: ^10.1.4
 
 dependency_overrides:
   web: ^1.0.0

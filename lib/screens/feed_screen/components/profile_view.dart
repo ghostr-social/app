@@ -1,8 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:ghostr/data/video.dart';
 
-Widget profileView(UserData? userData) {
+import '../../../src/rust/video/video.dart';
+
+Widget profileView(FfiUserData? userData) {
   return Container(
     color: Colors.white,
     child: SafeArea(

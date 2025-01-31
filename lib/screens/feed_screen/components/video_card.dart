@@ -3,15 +3,16 @@ import 'package:get_it/get_it.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../data/video.dart';
+import '../../../src/rust/video/video.dart';
 import '../../../widgets/actions_toolbar.dart';
 import '../../../widgets/video_description.dart';
 import '../../feed_viewmodel.dart';
 
-Widget videoCard(Video video, int index) {
+Widget videoCard(FfiVideoDownload video, int index) {
   final feedViewModel = GetIt.instance<FeedViewModel>();
   final controller = feedViewModel.controllerPool[index];
   final isActive = (index == feedViewModel.currentVideoIndex);
-  final name = video.user.name ?? video.user.npub ?? "user";
+  final name = video.nostr.user.name ?? video.nostr.user.npub ?? "user";
 
   // If we have a preloaded controller & it's initialized, display the paused frame.
   if (controller != null && controller.value.isInitialized) {
@@ -50,13 +51,14 @@ Widget videoCard(Video video, int index) {
                   children: <Widget>[
                     VideoDescription(
                       username: name,
-                      videoTitle: video.videoTitle,
-                      songInfo: video.songName,
+                      videoTitle: video.nostr.title,
+                      songInfo: video.nostr.songName,
                     ),
                     ActionsToolbar(
-                      video.likes,
-                      video.comments,
-                      video.user.profilePicture ?? "",
+                      video.nostr.likes,
+                      video.nostr.comments,
+                      video.nostr.user.profilePicture ?? "",
+                      video: video,
                     ),
                   ],
                 ),

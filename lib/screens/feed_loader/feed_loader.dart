@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/video.dart';
+import '../../src/rust/video/video.dart';
 import '../feed_screen/feed_screen.dart';
 
 
@@ -15,7 +16,7 @@ class FeedLoader extends StatefulWidget {
 }
 
 class _FeedLoaderState extends State<FeedLoader> {
-  late Future<List<Video>> _feedDataFuture;
+  late Future<List<FfiVideoDownload>> _feedDataFuture;
 
   @override
   void initState() {
@@ -23,8 +24,8 @@ class _FeedLoaderState extends State<FeedLoader> {
     _feedDataFuture = _retrieveInitialData();
   }
 
-  Future<List<Video>> _retrieveInitialData() async {
-    List<Video> videos = [];
+  Future<List<FfiVideoDownload>> _retrieveInitialData() async {
+    List<FfiVideoDownload> videos = [];
 
     while (videos.length < minVideosToStartFeed) {
       videos.addAll(await getVideos());
@@ -38,7 +39,7 @@ class _FeedLoaderState extends State<FeedLoader> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<Video>>(
+    return FutureBuilder<List<FfiVideoDownload>>(
       future: _feedDataFuture,
       builder: (context, snapshot) {
         if (!snapshot.hasData) {

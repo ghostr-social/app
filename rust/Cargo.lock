@@ -842,7 +842,7 @@ dependencies = [
 [[package]]
 name = "ffmpeg-extractor"
 version = "0.1.0"
-source = "git+https://github.com/ghostr-social/ghostr-rs?branch=main#1aae9a1c7f1a2e9ff8f5557f9ec88f9d546af196"
+source = "git+https://github.com/ghostr-social/ghostr-rs?branch=main#e509fcea622b9380ce0600776fd34d3d2bad5d1a"
 dependencies = [
  "bindgen",
  "cc",
@@ -1046,7 +1046,7 @@ dependencies = [
 [[package]]
 name = "ghostr-rs"
 version = "0.1.0"
-source = "git+https://github.com/ghostr-social/ghostr-rs?branch=main#1aae9a1c7f1a2e9ff8f5557f9ec88f9d546af196"
+source = "git+https://github.com/ghostr-social/ghostr-rs?branch=main#e509fcea622b9380ce0600776fd34d3d2bad5d1a"
 dependencies = [
  "anyhow",
  "async-trait",

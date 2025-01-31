@@ -8,14 +8,15 @@ import 'package:video_player/video_player.dart';
 
 import '../configs/base.dart';
 import '../data/video.dart' as video_source;
+import '../src/rust/video/video.dart';
 
-class VideoBank extends Iterable<video_source.Video> {
-  final List<video_source.Video> _videos = [];
+class VideoBank extends Iterable<FfiVideoDownload> {
+  final List<FfiVideoDownload> _videos = [];
   final HashSet<String> _knownVideos = HashSet<String>();
 
-  void addAll(List<video_source.Video> newVideos) {
+  void addAll(List<FfiVideoDownload> newVideos) {
     for (var video in newVideos) {
-      if (!_knownVideos.contains(video.id)) {
+      if (!_knownVideos.contains(video)) {
         _videos.add(video);
         _knownVideos.add(video.id);
       }
@@ -28,7 +29,7 @@ class VideoBank extends Iterable<video_source.Video> {
   }
 
   @override
-  Iterator<video_source.Video> get iterator => _videos.iterator;
+  Iterator<FfiVideoDownload> get iterator => _videos.iterator;
 
   @override
   int get length => _videos.length;
@@ -36,7 +37,7 @@ class VideoBank extends Iterable<video_source.Video> {
   @override
   bool get isEmpty => _videos.isEmpty;
 
-  video_source.Video operator [](int index) => _videos[index];
+  FfiVideoDownload operator [](int index) => _videos[index];
 }
 
 class FeedViewModel extends BaseViewModel {
@@ -183,8 +184,10 @@ class FeedViewModel extends BaseViewModel {
 
     if (vid.localPath != null) {
       controller = VideoPlayerController.file(File(vid.localPath!));
+      print("Using local path: ${vid.localPath!}");
     } else {
       final uri = Uri.parse("$baseLoopbackUrl/video.mp4?id=${vid.id}");
+      print("Using URL: ${uri.toString()}");
       controller = VideoPlayerController.networkUrl(uri);
     }
     controller.setLooping(true);
@@ -249,12 +252,12 @@ class FeedViewModel extends BaseViewModel {
     }
   }
 
-  video_source.UserData? currentUserData() {
+  FfiUserData? currentUserData() {
     if (videoBank.isEmpty) return null;
     if (currentVideoIndex < 0 || currentVideoIndex >= videoBank.length) {
       return null;
     }
-    return videoBank[currentVideoIndex].user;
+    return videoBank[currentVideoIndex].nostr.user;
   }
 
   void setActualScreen(int index) {

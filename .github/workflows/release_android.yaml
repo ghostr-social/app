@@ -1,0 +1,122 @@
+name: Build Android App (Multiple ABIs)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) Check out the repository
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      # 2) Install Dependencies
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git \
+            wget \
+            curl \
+            unzip \
+            nasm \
+            yasm \
+            pkg-config
+
+      # 3) Set up Java
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      # 4) Set up Android SDK (installing a default or specified API level)
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v2
+        with:
+          # Put your target API here. We'll assume 33.
+          api-level: 33
+          # If you want a specific build-tools version, you can specify:
+          # build-tools: 33.0.0
+          # We'll skip specifying ndk-version to let the action install a default
+
+      # 5) Accept Android SDK licenses
+      - name: Accept licenses
+        run: yes | sdkmanager --licenses
+
+      # 6) Automatically detect the highest available NDK version
+      - name: Find installed NDK
+        id: find-ndk
+        run: |
+          echo "Installed NDKs at: $ANDROID_SDK_ROOT/ndk"
+          ls -1 "$ANDROID_SDK_ROOT/ndk" || true
+          # Get the highest version directory
+          NDK_PATH="$(ls -d $ANDROID_SDK_ROOT/ndk/* | sort -V | tail -n1)"
+          echo "NDK_PATH=$NDK_PATH" >> $GITHUB_ENV
+
+      # 7) Set up Flutter
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          # If you want a specific version, specify 'flutter-version: 3.7.7', etc.
+
+      # 8) Set up Rust (stable)
+      - name: Install Rust stable
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      # 9) Install cargo-ndk
+      - name: Install cargo-ndk
+        run: |
+          cargo install cargo-ndk
+
+      # 10) Build FFmpeg for each Android ABI
+      - name: Build FFmpeg libraries
+        run: |
+          # We'll export NDK so the FFmpeg script can find it
+          export NDK="$NDK_PATH"
+          bash scripts/build_ffmpeg_on_linux_for_android.sh "$PWD/3rd-party/ffmpeg-libs" arm64-v8a
+          bash scripts/build_ffmpeg_on_linux_for_android.sh "$PWD/3rd-party/ffmpeg-libs" armeabi-v7a
+          bash scripts/build_ffmpeg_on_linux_for_android.sh "$PWD/3rd-party/ffmpeg-libs" x86
+          bash scripts/build_ffmpeg_on_linux_for_android.sh "$PWD/3rd-party/ffmpeg-libs" x86_64
+
+      # 11) Build your Rust library (example: for arm64-v8a)
+      - name: Build Rust library (arm64-v8a)
+        run: |
+          export FFMPEG_LIBS_PATH="$PWD/3rd-party/ffmpeg-libs"
+          pushd rust
+          cargo clean
+          cargo update
+          # Example: build for arm64-v8a
+          cargo ndk -t arm64-v8a build --release
+          # Generate flutter_rust_bridge code:
+          TARGET=android-arm64-v8a \
+          FFMPEG_LIBS_PATH="$PWD/3rd-party/ffmpeg-libs" \
+          flutter_rust_bridge_codegen generate
+          popd
+
+      # 12) Build Flutter APK(s)
+      - name: Build Flutter APKs for multiple ABIs
+        run: |
+          flutter pub get
+
+          flutter build apk --release --target-platform android-arm64
+          flutter build apk --release --target-platform android-arm
+          flutter build apk --release --target-platform android-x86
+          flutter build apk --release --target-platform android-x64
+#          flutter build apk --release --split-per-abi
+
+      # 13) Upload the resulting APKs as artifacts (optional)
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-apks
+          path: build/app/outputs/flutter-apk/**/*.apk

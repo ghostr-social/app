@@ -6,7 +6,7 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`
 
 /// Start the Axum server and store the AppState in GLOBAL_STATE.
 /// Return the bound address as a String.
@@ -21,22 +21,95 @@ Future<String> ffiStartServer(
 Future<List<FfiVideoDownload>> ffiGetDiscoveredVideos() =>
     RustLib.instance.api.crateVideoVideoFfiGetDiscoveredVideos();
 
+class FfiNostrVideo {
+  final String id;
+  final FfiUserData user;
+  final String title;
+  final String songName;
+  final String likes;
+  final String comments;
+  final String url;
+
+  const FfiNostrVideo({
+    required this.id,
+    required this.user,
+    required this.title,
+    required this.songName,
+    required this.likes,
+    required this.comments,
+    required this.url,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      user.hashCode ^
+      title.hashCode ^
+      songName.hashCode ^
+      likes.hashCode ^
+      comments.hashCode ^
+      url.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FfiNostrVideo &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          user == other.user &&
+          title == other.title &&
+          songName == other.songName &&
+          likes == other.likes &&
+          comments == other.comments &&
+          url == other.url;
+}
+
+class FfiUserData {
+  final String? npub;
+  final String? name;
+  final String? profilePicture;
+
+  const FfiUserData({
+    this.npub,
+    this.name,
+    this.profilePicture,
+  });
+
+  @override
+  int get hashCode => npub.hashCode ^ name.hashCode ^ profilePicture.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FfiUserData &&
+          runtimeType == other.runtimeType &&
+          npub == other.npub &&
+          name == other.name &&
+          profilePicture == other.profilePicture;
+}
+
 class FfiVideoDownload {
   final String id;
   final String url;
   final String? title;
   final String? localPath;
+  final FfiNostrVideo nostr;
 
   const FfiVideoDownload({
     required this.id,
     required this.url,
     this.title,
     this.localPath,
+    required this.nostr,
   });
 
   @override
   int get hashCode =>
-      id.hashCode ^ url.hashCode ^ title.hashCode ^ localPath.hashCode;
+      id.hashCode ^
+      url.hashCode ^
+      title.hashCode ^
+      localPath.hashCode ^
+      nostr.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -46,5 +119,6 @@ class FfiVideoDownload {
           id == other.id &&
           url == other.url &&
           title == other.title &&
-          localPath == other.localPath;
+          localPath == other.localPath &&
+          nostr == other.nostr;
 }

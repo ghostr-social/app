@@ -170,6 +170,42 @@ impl SseDecode for String {
     }
 }
 
+impl SseDecode for crate::video::video::FfiNostrVideo {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_user = <crate::video::video::FfiUserData>::sse_decode(deserializer);
+        let mut var_title = <String>::sse_decode(deserializer);
+        let mut var_songName = <String>::sse_decode(deserializer);
+        let mut var_likes = <String>::sse_decode(deserializer);
+        let mut var_comments = <String>::sse_decode(deserializer);
+        let mut var_url = <String>::sse_decode(deserializer);
+        return crate::video::video::FfiNostrVideo {
+            id: var_id,
+            user: var_user,
+            title: var_title,
+            song_name: var_songName,
+            likes: var_likes,
+            comments: var_comments,
+            url: var_url,
+        };
+    }
+}
+
+impl SseDecode for crate::video::video::FfiUserData {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_npub = <Option<String>>::sse_decode(deserializer);
+        let mut var_name = <Option<String>>::sse_decode(deserializer);
+        let mut var_profilePicture = <Option<String>>::sse_decode(deserializer);
+        return crate::video::video::FfiUserData {
+            npub: var_npub,
+            name: var_name,
+            profile_picture: var_profilePicture,
+        };
+    }
+}
+
 impl SseDecode for crate::video::video::FfiVideoDownload {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -177,11 +213,13 @@ impl SseDecode for crate::video::video::FfiVideoDownload {
         let mut var_url = <String>::sse_decode(deserializer);
         let mut var_title = <Option<String>>::sse_decode(deserializer);
         let mut var_localPath = <Option<String>>::sse_decode(deserializer);
+        let mut var_nostr = <crate::video::video::FfiNostrVideo>::sse_decode(deserializer);
         return crate::video::video::FfiVideoDownload {
             id: var_id,
             url: var_url,
             title: var_title,
             local_path: var_localPath,
+            nostr: var_nostr,
         };
     }
 }
@@ -299,6 +337,54 @@ fn pde_ffi_dispatcher_sync_impl(
 // Section: rust2dart
 
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::video::video::FfiNostrVideo {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.user.into_into_dart().into_dart(),
+            self.title.into_into_dart().into_dart(),
+            self.song_name.into_into_dart().into_dart(),
+            self.likes.into_into_dart().into_dart(),
+            self.comments.into_into_dart().into_dart(),
+            self.url.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::video::video::FfiNostrVideo
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::video::video::FfiNostrVideo>
+    for crate::video::video::FfiNostrVideo
+{
+    fn into_into_dart(self) -> crate::video::video::FfiNostrVideo {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::video::video::FfiUserData {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.npub.into_into_dart().into_dart(),
+            self.name.into_into_dart().into_dart(),
+            self.profile_picture.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::video::video::FfiUserData
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::video::video::FfiUserData>
+    for crate::video::video::FfiUserData
+{
+    fn into_into_dart(self) -> crate::video::video::FfiUserData {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::video::video::FfiVideoDownload {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -306,6 +392,7 @@ impl flutter_rust_bridge::IntoDart for crate::video::video::FfiVideoDownload {
             self.url.into_into_dart().into_dart(),
             self.title.into_into_dart().into_dart(),
             self.local_path.into_into_dart().into_dart(),
+            self.nostr.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -329,6 +416,28 @@ impl SseEncode for String {
     }
 }
 
+impl SseEncode for crate::video::video::FfiNostrVideo {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <crate::video::video::FfiUserData>::sse_encode(self.user, serializer);
+        <String>::sse_encode(self.title, serializer);
+        <String>::sse_encode(self.song_name, serializer);
+        <String>::sse_encode(self.likes, serializer);
+        <String>::sse_encode(self.comments, serializer);
+        <String>::sse_encode(self.url, serializer);
+    }
+}
+
+impl SseEncode for crate::video::video::FfiUserData {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Option<String>>::sse_encode(self.npub, serializer);
+        <Option<String>>::sse_encode(self.name, serializer);
+        <Option<String>>::sse_encode(self.profile_picture, serializer);
+    }
+}
+
 impl SseEncode for crate::video::video::FfiVideoDownload {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -336,6 +445,7 @@ impl SseEncode for crate::video::video::FfiVideoDownload {
         <String>::sse_encode(self.url, serializer);
         <Option<String>>::sse_encode(self.title, serializer);
         <Option<String>>::sse_encode(self.local_path, serializer);
+        <crate::video::video::FfiNostrVideo>::sse_encode(self.nostr, serializer);
     }
 }
 

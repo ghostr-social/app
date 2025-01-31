@@ -20,6 +20,7 @@ rust-no-clean:
 
 gen:
 	export FFMPEG_LIBS_PATH=$(pwd)/3rd-party/ffmpeg-libs
+	cd rust && cargo update && cd ..
 	oTARGET=android-arm64-v8a FFMPEG_LIBS_PATH=/Users/gustavo.passos/StudioProjects/ghostr/3rd-party/ffmpeg-libs/ flutter_rust_bridge_codegen generate
 
 
