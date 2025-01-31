@@ -15,7 +15,6 @@ jobs:
   build-android-arm64:
     runs-on: ubuntu-latest
     outputs:
-      # Optional: we’ll refer to this if needed, but we primarily use artifacts by name
       apk_name: android-apk-arm64-v8a
 
     steps:
@@ -274,7 +273,6 @@ jobs:
           name: android-apk-x86_64
           path: build/app/outputs/flutter-apk/**/*.apk
 
-
   # ─────────────────────────────────────────────────────────────────
   #  4) Create Release and attach APKs
   # ─────────────────────────────────────────────────────────────────
@@ -282,34 +280,33 @@ jobs:
     name: Publish Release
     runs-on: ubuntu-latest
 
-    # Wait for all three builds to finish:
     needs:
       - build-android-arm64
       - build-android-armeabi-v7a
       - build-android-x86_64
 
     # Only publish if this is a tag push (refs/tags/...).
-    # Otherwise, it will still build but won't make a Release.
     if: startsWith(github.ref, 'refs/tags/')
 
     steps:
+      # Download artifacts with v4 (use 'directory' instead of 'path')
       - name: Download arm64 artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: android-apk-arm64-v8a
-          path: dist/arm64-v8a
+          directory: dist/arm64-v8a
 
       - name: Download armeabi-v7a artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: android-apk-armeabi-v7a
-          path: dist/armeabi-v7a
+          directory: dist/armeabi-v7a
 
       - name: Download x86_64 artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: android-apk-x86_64
-          path: dist/x86_64
+          directory: dist/x86_64
 
       # Create or update GitHub Release
       - name: Create GitHub Release
@@ -323,7 +320,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Upload arm64
+      # Upload the three APKs as release assets
       - name: Upload arm64-v8a APK
         uses: actions/upload-release-asset@v1
         with:
@@ -334,7 +331,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Upload armeabi-v7a
       - name: Upload armeabi-v7a APK
         uses: actions/upload-release-asset@v1
         with:
@@ -345,7 +341,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Upload x86_64
       - name: Upload x86_64 APK
         uses: actions/upload-release-asset@v1
         with:
