@@ -332,7 +332,7 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/arm64-v8a/build/app/outputs/flutter-apk/app-release.apk
+          asset_path: dist/arm64-v8a/app-release.apk
           asset_name: app-arm64-v8a.apk
           asset_content_type: application/vnd.android.package-archive
         env:
@@ -342,7 +342,7 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/armeabi-v7a/build/app/outputs/flutter-apk/app-release.apk
+          asset_path: dist/armeabi-v7a/app-release.apk
           asset_name: app-armeabi-v7a.apk
           asset_content_type: application/vnd.android.package-archive
         env:
@@ -352,7 +352,7 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/x86_64/build/app/outputs/flutter-apk/app-release.apk
+          asset_path: dist/x86_64/app-release.apk
           asset_name: app-x86_64.apk
           asset_content_type: application/vnd.android.package-archive
         env:
