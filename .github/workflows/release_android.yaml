@@ -8,6 +8,9 @@ on:
     tags: [ 'v*' ]
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   # ─────────────────────────────────────────────────────────────────
   #  1) Build Android App for arm64-v8a
