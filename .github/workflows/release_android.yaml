@@ -84,7 +84,7 @@ jobs:
       - name: Build Flutter APK for arm64-v8a
         run: |
           flutter pub get
-          flutter build apk --release --target-platform android-arm64
+          FFMPEG_LIBS_PATH="${GITHUB_WORKSPACE}/3rd-party/ffmpeg-libs" flutter build apk --release --target-platform android-arm64
 
       - name: Upload build artifacts (arm64-v8a)
         uses: actions/upload-artifact@v4
@@ -156,86 +156,16 @@ jobs:
       - name: Build Flutter APK for armeabi-v7a
         run: |
           flutter pub get
-          flutter build apk --release --target-platform android-arm
+          FFMPEG_LIBS_PATH="${GITHUB_WORKSPACE}/3rd-party/ffmpeg-libs" flutter build apk --release --target-platform android-arm
       - name: Upload build artifacts (armeabi-v7a)
         uses: actions/upload-artifact@v4
         with:
           name: android-apk-armeabi-v7a
           path: build/app/outputs/flutter-apk/**/*.apk
 
-  # ─────────────────────────────────────────────────────────────────
-  #  3) Build Android App for x86
-  # ─────────────────────────────────────────────────────────────────
-  build-android-x86:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v3
-      - name: Install Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            git \
-            wget \
-            curl \
-            unzip \
-            nasm \
-            yasm \
-            pkg-config
-      - name: Set up Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v2
-        with:
-          api-level: 33
-      - name: Accept Android licenses
-        run: yes | sdkmanager --licenses
-      - name: Find installed NDK
-        id: find-ndk
-        run: |
-          echo "Installed NDKs at: $ANDROID_SDK_ROOT/ndk"
-          ls -1 "$ANDROID_SDK_ROOT/ndk" || true
-          NDK_PATH="$(ls -d $ANDROID_SDK_ROOT/ndk/* | sort -V | tail -n1)"
-          echo "NDK_PATH=$NDK_PATH" >> $GITHUB_ENV
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-      - name: Install Rust stable
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      - name: Add Android Rust targets
-        run: rustup target add i686-linux-android
-      - name: Install cargo-ndk
-        run: cargo install cargo-ndk
-      - name: "[Optional] Configure bindgen for x86"
-        run: |
-          echo "BINDGEN_EXTRA_CLANG_ARGS_i686_linux_android=--sysroot=$NDK_PATH/toolchains/llvm/prebuilt/linux-x86_64/sysroot --target=i686-linux-android21" >> $GITHUB_ENV
-      - name: Build FFmpeg for x86
-        run: |
-          export NDK="$NDK_PATH"
-          bash scripts/build_ffmpeg_on_linux_for_android.sh "$PWD/3rd-party/ffmpeg-libs" x86
-      - name: Build Rust library for x86
-        run: |
-          export FFMPEG_LIBS_PATH="${GITHUB_WORKSPACE}/3rd-party/ffmpeg-libs"
-          cd rust && cargo ndk -t x86 build --release --target i686-linux-android && cd ..
-      - name: Build Flutter APK for x86
-        run: |
-          flutter pub get
-          flutter build apk --release --target-platform android-x86
-      - name: Upload build artifacts (x86)
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-apk-x86
-          path: build/app/outputs/flutter-apk/**/*.apk
 
   # ─────────────────────────────────────────────────────────────────
-  #  4) Build Android App for x86_64
+  #  3) Build Android App for x86_64
   # ─────────────────────────────────────────────────────────────────
   build-android-x86_64:
     runs-on: ubuntu-latest
@@ -298,7 +228,7 @@ jobs:
       - name: Build Flutter APK for x86_64
         run: |
           flutter pub get
-          flutter build apk --release --target-platform android-x64
+          FFMPEG_LIBS_PATH="${GITHUB_WORKSPACE}/3rd-party/ffmpeg-libs" flutter build apk --release --target-platform android-x64
       - name: Upload build artifacts (x86_64)
         uses: actions/upload-artifact@v4
         with:
