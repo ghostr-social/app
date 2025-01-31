@@ -1,4 +1,4 @@
-name: Build Android App (Multiple ABIs)
+name: Build Android App (Matrix per ABI)
 
 on:
   push:
@@ -9,6 +9,23 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [arm64-v8a, armeabi-v7a, x86, x86_64]
+        include:
+          - abi: arm64-v8a
+            rust_triple: aarch64-linux-android
+            clang_target: aarch64-linux-android21
+          - abi: armeabi-v7a
+            rust_triple: armv7-linux-androideabi
+            clang_target: armv7-linux-androideabi21
+          - abi: x86
+            rust_triple: i686-linux-android
+            clang_target: i686-linux-android21
+          - abi: x86_64
+            rust_triple: x86_64-linux-android
+            clang_target: x86_64-linux-android21
 
     steps:
       # 1) Check out the repository
@@ -39,11 +56,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
         with:
-          # Put your target API here. We'll assume 33.
           api-level: 33
-          # If you want a specific build-tools version, you can specify:
-          # build-tools: 33.0.0
-          # We'll skip specifying ndk-version to let the action install a default
 
       # 5) Accept Android SDK licenses
       - name: Accept licenses
@@ -55,7 +68,6 @@ jobs:
         run: |
           echo "Installed NDKs at: $ANDROID_SDK_ROOT/ndk"
           ls -1 "$ANDROID_SDK_ROOT/ndk" || true
-          # Get the highest version directory
           NDK_PATH="$(ls -d $ANDROID_SDK_ROOT/ndk/* | sort -V | tail -n1)"
           echo "NDK_PATH=$NDK_PATH" >> $GITHUB_ENV
 
@@ -64,67 +76,71 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          # If you want a specific version, specify 'flutter-version: 3.7.7', etc.
 
-      # 8) Set up Rust (stable)
+      # 8) Install Rust stable
       - name: Install Rust stable
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
 
-      - name: Add Android Rust targets
-        run: |
-          rustup target add \
-          aarch64-linux-android \
-          armv7-linux-androideabi \
-          i686-linux-android \
-          x86_64-linux-android
-
       # 9) Install cargo-ndk
       - name: Install cargo-ndk
         run: |
           cargo install cargo-ndk
 
-      # 10) Build FFmpeg for each Android ABI
-      - name: Build FFmpeg libraries
+      # 10) [Optional] Ensure Android Rust targets are added
+      - name: Add Android Rust targets
         run: |
-          # We'll export NDK so the FFmpeg script can find it
-          export NDK="$NDK_PATH"
-          bash scripts/build_ffmpeg_on_linux_for_android.sh "$PWD/3rd-party/ffmpeg-libs" arm64-v8a
-          bash scripts/build_ffmpeg_on_linux_for_android.sh "$PWD/3rd-party/ffmpeg-libs" armeabi-v7a
-          bash scripts/build_ffmpeg_on_linux_for_android.sh "$PWD/3rd-party/ffmpeg-libs" x86
-          bash scripts/build_ffmpeg_on_linux_for_android.sh "$PWD/3rd-party/ffmpeg-libs" x86_64
+          rustup target add \
+            aarch64-linux-android \
+            armv7-linux-androideabi \
+            i686-linux-android \
+            x86_64-linux-android
 
-      # 11) Build your Rust library (example: for arm64-v8a)
-      - name: Build Rust library (arm64-v8a)
+      # 11) (Optional) Configure bindgen to use the correct sysroot.
+      - name: Configure bindgen for each ABI
+        run: |
+          echo "BINDGEN_EXTRA_CLANG_ARGS_${{ matrix.rust_triple//-/_ }}=--sysroot=$NDK_PATH/toolchains/llvm/prebuilt/linux-x86_64/sysroot --target=${{ matrix.clang_target }}" >> $GITHUB_ENV
+
+      # 12) Build FFmpeg for each ABI (matrix)
+      - name: Build FFmpeg for ${{ matrix.abi }}
+        run: |
+          export NDK="$NDK_PATH"
+          bash scripts/build_ffmpeg_on_linux_for_android.sh \
+               "$PWD/3rd-party/ffmpeg-libs" "${{ matrix.abi }}"
+
+      # 13) Build your Rust library for each ABI
+      - name: Build Rust library ${{ matrix.abi }}
         run: |
           export FFMPEG_LIBS_PATH="$PWD/3rd-party/ffmpeg-libs"
-          pushd rust
-          cargo clean
-          cargo update
-          # Example: build for arm64-v8a
-          cargo ndk -t arm64-v8a build --release
-          # Generate flutter_rust_bridge code:
-          TARGET=android-arm64-v8a \
-          FFMPEG_LIBS_PATH="$PWD/3rd-party/ffmpeg-libs" \
-          flutter_rust_bridge_codegen generate
-          popd
+          # cargo ndk picks up the right compiler using "-t <ABI>"
+          cargo ndk -t ${{ matrix.abi }} build --release --target ${{ matrix.rust_triple }}
 
-      # 12) Build Flutter APK(s)
-      - name: Build Flutter APKs for multiple ABIs
+      # 14) Build Flutter APK for each ABI
+      - name: Build Flutter APK for ${{ matrix.abi }}
         run: |
           flutter pub get
 
-          flutter build apk --release --target-platform android-arm64
-          flutter build apk --release --target-platform android-arm
-          flutter build apk --release --target-platform android-x86
-          flutter build apk --release --target-platform android-x64
-#          flutter build apk --release --split-per-abi
+          # Build a single-ABI APK
+          case "${{ matrix.abi }}" in
+            arm64-v8a)
+              flutter build apk --release --target-platform android-arm64
+              ;;
+            armeabi-v7a)
+              flutter build apk --release --target-platform android-arm
+              ;;
+            x86)
+              flutter build apk --release --target-platform android-x86
+              ;;
+            x86_64)
+              flutter build apk --release --target-platform android-x64
+              ;;
+          esac
 
-      # 13) Upload the resulting APKs as artifacts (optional)
+      # 15) Upload the resulting APK as an artifact
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4  # Updated from v3 to v4
+        uses: actions/upload-artifact@v4
         with:
-          name: android-apks
+          name: "android-apk-${{ matrix.abi }}"
           path: build/app/outputs/flutter-apk/**/*.apk

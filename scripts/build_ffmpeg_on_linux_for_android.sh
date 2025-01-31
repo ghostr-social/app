@@ -118,7 +118,7 @@ echo "==> Using compiler: $(which "$CC")"
 ################################################################################
 
 echo "==> Cloning FFmpeg into $FFMPEG_SRC"
-git clone --depth=1 https://github.com/FFmpeg/FFmpeg.git "$FFMPEG_SRC"
+git clone https://github.com/FFmpeg/FFmpeg.git "$FFMPEG_SRC"
 
 ################################################################################
 # Configure FFmpeg
@@ -126,6 +126,7 @@ git clone --depth=1 https://github.com/FFmpeg/FFmpeg.git "$FFMPEG_SRC"
 
 echo "==> Configuring FFmpeg for $ANDROID_ABI..."
 cd "$FFMPEG_SRC"
+git checkout "$(git rev-list -n 1 --before="2025-01-30 23:59:59 +0000" HEAD)"
 
 CONFIGURE_ARGS=(
   --prefix="$INSTALL_PREFIX"
