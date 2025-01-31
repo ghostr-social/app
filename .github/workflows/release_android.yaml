@@ -297,19 +297,23 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: android-apk-arm64-v8a
-          directory: dist/arm64-v8a
+          path: dist/arm64-v8a
 
       - name: Download armeabi-v7a artifact
         uses: actions/download-artifact@v4
         with:
           name: android-apk-armeabi-v7a
-          directory: dist/armeabi-v7a
+          path: dist/armeabi-v7a
 
       - name: Download x86_64 artifact
         uses: actions/download-artifact@v4
         with:
           name: android-apk-x86_64
-          directory: dist/x86_64
+          path: dist/x86_64
+
+      #  Debug step
+      - name: List downloaded files
+        run: find dist -type f
 
       # Create or update GitHub Release
       - name: Create GitHub Release
