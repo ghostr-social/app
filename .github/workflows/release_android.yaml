@@ -78,7 +78,7 @@ jobs:
 
       - name: Build Rust library for arm64-v8a
         run: |
-          export FFMPEG_LIBS_PATH="$PWD/3rd-party/ffmpeg-libs"
+          export FFMPEG_LIBS_PATH="${GITHUB_WORKSPACE}/3rd-party/ffmpeg-libs"
           cd rust && cargo ndk -t arm64-v8a build --release --target aarch64-linux-android && cd ..
 
       - name: Build Flutter APK for arm64-v8a
@@ -151,7 +151,7 @@ jobs:
           bash scripts/build_ffmpeg_on_linux_for_android.sh "$PWD/3rd-party/ffmpeg-libs" armeabi-v7a
       - name: Build Rust library for armeabi-v7a
         run: |
-          export FFMPEG_LIBS_PATH="$PWD/3rd-party/ffmpeg-libs"
+          export FFMPEG_LIBS_PATH="${GITHUB_WORKSPACE}/3rd-party/ffmpeg-libs"
           cd rust && cargo ndk -t armeabi-v7a build --release --target armv7-linux-androideabi && cd ..
       - name: Build Flutter APK for armeabi-v7a
         run: |
@@ -222,7 +222,7 @@ jobs:
           bash scripts/build_ffmpeg_on_linux_for_android.sh "$PWD/3rd-party/ffmpeg-libs" x86
       - name: Build Rust library for x86
         run: |
-          export FFMPEG_LIBS_PATH="$PWD/3rd-party/ffmpeg-libs"
+          export FFMPEG_LIBS_PATH="${GITHUB_WORKSPACE}/3rd-party/ffmpeg-libs"
           cd rust && cargo ndk -t x86 build --release --target i686-linux-android && cd ..
       - name: Build Flutter APK for x86
         run: |
@@ -293,7 +293,7 @@ jobs:
           bash scripts/build_ffmpeg_on_linux_for_android.sh "$PWD/3rd-party/ffmpeg-libs" x86_64
       - name: Build Rust library for x86_64
         run: |
-          export FFMPEG_LIBS_PATH="$PWD/3rd-party/ffmpeg-libs"
+          export FFMPEG_LIBS_PATH="${GITHUB_WORKSPACE}/3rd-party/ffmpeg-libs"
           cd rust && cargo ndk -t x86_64 build --release --target x86_64-linux-android && cd ..
       - name: Build Flutter APK for x86_64
         run: |
