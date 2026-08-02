@@ -1,0 +1,17 @@
+export 'compose_dependencies.dart';
+export 'fake_app_settings_repository.dart';
+export 'fake_activity_repository.dart';
+export 'fake_dependencies.dart';
+export 'fake_media_ports.dart';
+export 'fake_nostr_social_port.dart';
+export 'fake_nostr_session_port.dart';
+export 'fake_nostr_video_publisher_port.dart';
+export 'fake_nostr_event_client.dart';
+export 'fake_nostr_engagement_port.dart';
+export 'fake_nostr_comments_port.dart';
+export 'fake_remote_video_source.dart';
+export 'fake_session_repository.dart';
+export 'fake_video_catalog_repository.dart';
+export 'fake_video_catalog_scenarios.dart';
+export 'fake_video_media_upload_port.dart';
+export 'recording_failure_reporter.dart';

@@ -1,0 +1,44 @@
+import 'package:ghostr/app/app_dependencies.dart';
+import 'package:ghostr/app/video_catalog_services.dart';
+import 'package:ghostr/features/session/domain/session_repository.dart';
+import 'package:ghostr/features/session/domain/user_session.dart';
+import 'package:ghostr/features/settings/domain/app_settings.dart';
+
+import 'fake_activity_repository.dart';
+import 'fake_app_settings_repository.dart';
+import 'fake_media_ports.dart';
+import 'fake_session_repository.dart';
+import 'fake_video_catalog_repository.dart';
+import 'recording_failure_reporter.dart';
+
+AppDependencies buildFakeDependencies({
+  UserSession? session,
+  SessionRepository? sessionRepository,
+  required FakeVideoCatalogRepository catalogRepository,
+  FakeDeviceDependencies device = const FakeDeviceDependencies(),
+}) {
+  return AppDependencies(
+    sessionRepository:
+        sessionRepository ?? FakeSessionRepository(storedSession: session),
+    appSettingsRepository: FakeAppSettingsRepository(AppSettings.defaults()),
+    videoCatalogServices: VideoCatalogServices(
+      feed: catalogRepository,
+      engagement: catalogRepository,
+      profile: catalogRepository,
+      search: catalogRepository,
+      publishing: catalogRepository,
+      comments: catalogRepository,
+    ),
+    activityRepository: device.activity ?? FakeActivityRepository(),
+    mediaPickerPort: device.mediaPicker ?? FakeMediaPickerPort(),
+    videoPlaybackPort: FakeVideoPlaybackPort(),
+    failureReporter: RecordingFailureReporter(),
+  );
+}
+
+class FakeDeviceDependencies {
+  const FakeDeviceDependencies({this.activity, this.mediaPicker});
+
+  final FakeActivityRepository? activity;
+  final FakeMediaPickerPort? mediaPicker;
+}

@@ -3,16 +3,27 @@ name = "rust_lib_ghostr"
 version = "0.1.0"
 edition = "2021"
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
+
 [lib]
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
+anyhow = "1.0.95"
+axum = "0.8.1"
+bytes = "1.10"
 flutter_rust_bridge = "=2.7.0"
-ghostr-rs = { git = "https://github.com/ghostr-social/ghostr-rs", branch = "main" }
+nostr-sdk = "0.38.0"
 once_cell = "1.20.2"
-tracing = "0.1.41"
-tracing-subscriber = { version="0.3.19", features=["env-filter"] }
+tokio = { version = "1.43.0", features = ["full"] }
 log = "0.4.25"
+reqwest = { version = "0.12.12", default-features = false, features = ["rustls-tls", "stream"] }
+serde = { version = "1.0", features = ["derive"] }
+sha2 = "0.10.8"
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
 
 [package.metadata.flutter_rust_bridge]
 enable_lifetime = true
@@ -20,4 +31,3 @@ enable_lifetime = true
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.14.1"
-

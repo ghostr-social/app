@@ -9,7 +9,8 @@ import 'frb_generated.dart';
 import 'frb_generated.io.dart'
     if (dart.library.js_interop) 'frb_generated.web.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
-import 'video/video.dart';
+import 'video/ffi_models.dart';
+import 'video/native_gateway.dart';
 
 /// Main entrypoint of the Rust API
 class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
@@ -57,7 +58,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 
   @override
   Future<void> executeRustInitializers() async {
-    await api.crateVideoVideoInitApp();
+    await api.crateVideoNativeGatewayInitApp();
   }
 
   @override
@@ -68,7 +69,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.7.0';
 
   @override
-  int get rustContentHash => 2060338927;
+  int get rustContentHash => 571399987;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -79,12 +80,16 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
-  Future<List<FfiVideoDownload>> crateVideoVideoFfiGetDiscoveredVideos();
+  Future<List<FfiVideoDownload>>
+      crateVideoNativeGatewayFfiGetDiscoveredVideos();
 
-  Future<String> crateVideoVideoFfiStartServer(
-      {required BigInt maxParallelDownloads, required BigInt maxStorageBytes});
+  Future<String> crateVideoNativeGatewayFfiStartServer(
+      {required String cacheDirectory,
+      required BigInt maxParallelDownloads,
+      required BigInt maxStorageBytes,
+      required String relayUrls});
 
-  Future<void> crateVideoVideoInitApp();
+  Future<void> crateVideoNativeGatewayInitApp();
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -96,7 +101,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
-  Future<List<FfiVideoDownload>> crateVideoVideoFfiGetDiscoveredVideos() {
+  Future<List<FfiVideoDownload>>
+      crateVideoNativeGatewayFfiGetDiscoveredVideos() {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
@@ -107,47 +113,62 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         decodeSuccessData: sse_decode_list_ffi_video_download,
         decodeErrorData: null,
       ),
-      constMeta: kCrateVideoVideoFfiGetDiscoveredVideosConstMeta,
+      constMeta: kCrateVideoNativeGatewayFfiGetDiscoveredVideosConstMeta,
       argValues: [],
       apiImpl: this,
     ));
   }
 
-  TaskConstMeta get kCrateVideoVideoFfiGetDiscoveredVideosConstMeta =>
+  TaskConstMeta get kCrateVideoNativeGatewayFfiGetDiscoveredVideosConstMeta =>
       const TaskConstMeta(
         debugName: "ffi_get_discovered_videos",
         argNames: [],
       );
 
   @override
-  Future<String> crateVideoVideoFfiStartServer(
-      {required BigInt maxParallelDownloads, required BigInt maxStorageBytes}) {
+  Future<String> crateVideoNativeGatewayFfiStartServer(
+      {required String cacheDirectory,
+      required BigInt maxParallelDownloads,
+      required BigInt maxStorageBytes,
+      required String relayUrls}) {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_String(cacheDirectory, serializer);
         sse_encode_usize(maxParallelDownloads, serializer);
         sse_encode_u_64(maxStorageBytes, serializer);
+        sse_encode_String(relayUrls, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
             funcId: 2, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
-        decodeErrorData: null,
+        decodeErrorData: sse_decode_AnyhowException,
       ),
-      constMeta: kCrateVideoVideoFfiStartServerConstMeta,
-      argValues: [maxParallelDownloads, maxStorageBytes],
+      constMeta: kCrateVideoNativeGatewayFfiStartServerConstMeta,
+      argValues: [
+        cacheDirectory,
+        maxParallelDownloads,
+        maxStorageBytes,
+        relayUrls
+      ],
       apiImpl: this,
     ));
   }
 
-  TaskConstMeta get kCrateVideoVideoFfiStartServerConstMeta =>
+  TaskConstMeta get kCrateVideoNativeGatewayFfiStartServerConstMeta =>
       const TaskConstMeta(
         debugName: "ffi_start_server",
-        argNames: ["maxParallelDownloads", "maxStorageBytes"],
+        argNames: [
+          "cacheDirectory",
+          "maxParallelDownloads",
+          "maxStorageBytes",
+          "relayUrls"
+        ],
       );
 
   @override
-  Future<void> crateVideoVideoInitApp() {
+  Future<void> crateVideoNativeGatewayInitApp() {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
@@ -158,16 +179,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         decodeSuccessData: sse_decode_unit,
         decodeErrorData: null,
       ),
-      constMeta: kCrateVideoVideoInitAppConstMeta,
+      constMeta: kCrateVideoNativeGatewayInitAppConstMeta,
       argValues: [],
       apiImpl: this,
     ));
   }
 
-  TaskConstMeta get kCrateVideoVideoInitAppConstMeta => const TaskConstMeta(
+  TaskConstMeta get kCrateVideoNativeGatewayInitAppConstMeta =>
+      const TaskConstMeta(
         debugName: "init_app",
         argNames: [],
       );
+
+  @protected
+  AnyhowException dco_decode_AnyhowException(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return AnyhowException(raw as String);
+  }
 
   @protected
   String dco_decode_String(dynamic raw) {
@@ -176,11 +204,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiNostrEventIdentity dco_decode_ffi_nostr_event_identity(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    return FfiNostrEventIdentity(
+      eventId: dco_decode_String(arr[0]),
+      authorPublicKeyHex: dco_decode_String(arr[1]),
+      kind: dco_decode_u_64(arr[2]),
+      identifier: dco_decode_opt_String(arr[3]),
+      createdAt: dco_decode_u_64(arr[4]),
+      content: dco_decode_String(arr[5]),
+    );
+  }
+
+  @protected
   FfiNostrVideo dco_decode_ffi_nostr_video(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 7)
-      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
+    if (arr.length != 8)
+      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
     return FfiNostrVideo(
       id: dco_decode_String(arr[0]),
       user: dco_decode_ffi_user_data(arr[1]),
@@ -189,6 +233,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       likes: dco_decode_String(arr[4]),
       comments: dco_decode_String(arr[5]),
       url: dco_decode_String(arr[6]),
+      delivery: dco_decode_ffi_video_delivery(arr[7]),
     );
   }
 
@@ -206,18 +251,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiVideoDelivery dco_decode_ffi_video_delivery(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FfiVideoDelivery.values[raw as int];
+  }
+
+  @protected
   FfiVideoDownload dco_decode_ffi_video_download(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return FfiVideoDownload(
       id: dco_decode_String(arr[0]),
       url: dco_decode_String(arr[1]),
       title: dco_decode_opt_String(arr[2]),
       localPath: dco_decode_opt_String(arr[3]),
-      nostr: dco_decode_ffi_nostr_video(arr[4]),
+      event: dco_decode_ffi_nostr_event_identity(arr[4]),
+      nostr: dco_decode_ffi_nostr_video(arr[5]),
     );
+  }
+
+  @protected
+  int dco_decode_i_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
   }
 
   @protected
@@ -263,10 +321,36 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_String(deserializer);
+    return AnyhowException(inner);
+  }
+
+  @protected
   String sse_decode_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_list_prim_u_8_strict(deserializer);
     return utf8.decoder.convert(inner);
+  }
+
+  @protected
+  FfiNostrEventIdentity sse_decode_ffi_nostr_event_identity(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_eventId = sse_decode_String(deserializer);
+    var var_authorPublicKeyHex = sse_decode_String(deserializer);
+    var var_kind = sse_decode_u_64(deserializer);
+    var var_identifier = sse_decode_opt_String(deserializer);
+    var var_createdAt = sse_decode_u_64(deserializer);
+    var var_content = sse_decode_String(deserializer);
+    return FfiNostrEventIdentity(
+        eventId: var_eventId,
+        authorPublicKeyHex: var_authorPublicKeyHex,
+        kind: var_kind,
+        identifier: var_identifier,
+        createdAt: var_createdAt,
+        content: var_content);
   }
 
   @protected
@@ -279,6 +363,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_likes = sse_decode_String(deserializer);
     var var_comments = sse_decode_String(deserializer);
     var var_url = sse_decode_String(deserializer);
+    var var_delivery = sse_decode_ffi_video_delivery(deserializer);
     return FfiNostrVideo(
         id: var_id,
         user: var_user,
@@ -286,7 +371,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         songName: var_songName,
         likes: var_likes,
         comments: var_comments,
-        url: var_url);
+        url: var_url,
+        delivery: var_delivery);
   }
 
   @protected
@@ -300,19 +386,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiVideoDelivery sse_decode_ffi_video_delivery(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return FfiVideoDelivery.values[inner];
+  }
+
+  @protected
   FfiVideoDownload sse_decode_ffi_video_download(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_id = sse_decode_String(deserializer);
     var var_url = sse_decode_String(deserializer);
     var var_title = sse_decode_opt_String(deserializer);
     var var_localPath = sse_decode_opt_String(deserializer);
+    var var_event = sse_decode_ffi_nostr_event_identity(deserializer);
     var var_nostr = sse_decode_ffi_nostr_video(deserializer);
     return FfiVideoDownload(
         id: var_id,
         url: var_url,
         title: var_title,
         localPath: var_localPath,
+        event: var_event,
         nostr: var_nostr);
+  }
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getInt32();
   }
 
   @protected
@@ -370,21 +471,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getInt32();
-  }
-
-  @protected
   bool sse_decode_bool(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint8() != 0;
   }
 
   @protected
+  void sse_encode_AnyhowException(
+      AnyhowException self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.message, serializer);
+  }
+
+  @protected
   void sse_encode_String(String self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
+  }
+
+  @protected
+  void sse_encode_ffi_nostr_event_identity(
+      FfiNostrEventIdentity self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.eventId, serializer);
+    sse_encode_String(self.authorPublicKeyHex, serializer);
+    sse_encode_u_64(self.kind, serializer);
+    sse_encode_opt_String(self.identifier, serializer);
+    sse_encode_u_64(self.createdAt, serializer);
+    sse_encode_String(self.content, serializer);
   }
 
   @protected
@@ -398,6 +512,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.likes, serializer);
     sse_encode_String(self.comments, serializer);
     sse_encode_String(self.url, serializer);
+    sse_encode_ffi_video_delivery(self.delivery, serializer);
   }
 
   @protected
@@ -409,6 +524,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_ffi_video_delivery(
+      FfiVideoDelivery self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
   void sse_encode_ffi_video_download(
       FfiVideoDownload self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -416,7 +538,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.url, serializer);
     sse_encode_opt_String(self.title, serializer);
     sse_encode_opt_String(self.localPath, serializer);
+    sse_encode_ffi_nostr_event_identity(self.event, serializer);
     sse_encode_ffi_nostr_video(self.nostr, serializer);
+  }
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putInt32(self);
   }
 
   @protected
@@ -468,12 +597,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_usize(BigInt self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putBigUint64(self);
-  }
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putInt32(self);
   }
 
   @protected

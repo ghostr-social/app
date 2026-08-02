@@ -8,7 +8,8 @@ import 'dart:convert';
 import 'dart:ffi' as ffi;
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
-import 'video/video.dart';
+import 'video/ffi_models.dart';
+import 'video/native_gateway.dart';
 
 abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RustLibApiImplPlatform({
@@ -19,7 +20,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   });
 
   @protected
+  AnyhowException dco_decode_AnyhowException(dynamic raw);
+
+  @protected
   String dco_decode_String(dynamic raw);
+
+  @protected
+  FfiNostrEventIdentity dco_decode_ffi_nostr_event_identity(dynamic raw);
 
   @protected
   FfiNostrVideo dco_decode_ffi_nostr_video(dynamic raw);
@@ -28,7 +35,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FfiUserData dco_decode_ffi_user_data(dynamic raw);
 
   @protected
+  FfiVideoDelivery dco_decode_ffi_video_delivery(dynamic raw);
+
+  @protected
   FfiVideoDownload dco_decode_ffi_video_download(dynamic raw);
+
+  @protected
+  int dco_decode_i_32(dynamic raw);
 
   @protected
   List<FfiVideoDownload> dco_decode_list_ffi_video_download(dynamic raw);
@@ -52,7 +65,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt dco_decode_usize(dynamic raw);
 
   @protected
+  AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
+
+  @protected
   String sse_decode_String(SseDeserializer deserializer);
+
+  @protected
+  FfiNostrEventIdentity sse_decode_ffi_nostr_event_identity(
+      SseDeserializer deserializer);
 
   @protected
   FfiNostrVideo sse_decode_ffi_nostr_video(SseDeserializer deserializer);
@@ -61,7 +81,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FfiUserData sse_decode_ffi_user_data(SseDeserializer deserializer);
 
   @protected
+  FfiVideoDelivery sse_decode_ffi_video_delivery(SseDeserializer deserializer);
+
+  @protected
   FfiVideoDownload sse_decode_ffi_video_download(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
   List<FfiVideoDownload> sse_decode_list_ffi_video_download(
@@ -86,13 +112,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt sse_decode_usize(SseDeserializer deserializer);
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
-
-  @protected
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
+  void sse_encode_AnyhowException(
+      AnyhowException self, SseSerializer serializer);
+
+  @protected
   void sse_encode_String(String self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ffi_nostr_event_identity(
+      FfiNostrEventIdentity self, SseSerializer serializer);
 
   @protected
   void sse_encode_ffi_nostr_video(FfiNostrVideo self, SseSerializer serializer);
@@ -101,8 +132,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_ffi_user_data(FfiUserData self, SseSerializer serializer);
 
   @protected
+  void sse_encode_ffi_video_delivery(
+      FfiVideoDelivery self, SseSerializer serializer);
+
+  @protected
   void sse_encode_ffi_video_download(
       FfiVideoDownload self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_ffi_video_download(
@@ -126,9 +164,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_usize(BigInt self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_bool(bool self, SseSerializer serializer);

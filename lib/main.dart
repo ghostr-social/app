@@ -1,40 +1,14 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:ghostr/screens/feed_loader/feed_loader.dart';
-import 'package:ghostr/service_locator.dart';
-import 'package:ghostr/src/rust/frb_generated.dart';
-import 'package:ghostr/src/rust/video/video.dart';
+import 'package:ghostr/app/build_production_dependencies.dart';
+import 'package:ghostr/app/startup_gate.dart';
 
-import 'configs/base.dart';
+typedef GhostrRunner = void Function(Widget root);
 
+Future<void> main() => launchGhostr(runApp); // coverage:ignore-line
 
-void run() async {
-  // Rust initialization
-  await RustLib.init();
-  var endpoint = await ffiStartServer(
-    maxParallelDownloads: BigInt.from(10),
-    maxStorageBytes: BigInt.from(2 * 1024 * 1024 * 1024),
-  );
-  if (kDebugMode) print('Server started at $endpoint');
-
-
-  // Flutter initialization
+Future<void> launchGhostr(GhostrRunner runner) async {
   WidgetsFlutterBinding.ensureInitialized();
-  setup(endpoint);
-
-  runApp(
-    MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: FeedLoader(),
-    ),
-  );
+  runner(const StartupGate(
+    loadDependencies: buildProductionDependencies,
+  ));
 }
-
-void main() async {
-  try {
-    run();
-  } catch (e) {
-    if (kDebugMode) print('Error: $e');
-  }
-}
-

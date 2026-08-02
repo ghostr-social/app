@@ -1,0 +1,141 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:ghostr/features/comments/presentation/comments_sheet.dart';
+import 'package:ghostr/features/comments/presentation/comments_cubit.dart';
+import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
+import 'package:ghostr/features/video_catalog/domain/video_post.dart';
+import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
+import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card.dart';
+import 'package:ghostr/shared/media/video_playback_port.dart';
+import 'package:ghostr/shared/widgets/async_state_panel.dart';
+import 'package:ghostr/shared/widgets/loading_panel.dart';
+import 'package:ghostr/shared/theme/app_tokens.dart';
+
+class FeedScreen extends StatelessWidget {
+  const FeedScreen({
+    required this.onOpenProfile,
+    required this.playbackPort,
+    required this.createComments,
+    super.key,
+  });
+
+  final ValueChanged<ProfileId> onOpenProfile;
+  final VideoPlaybackPort playbackPort;
+  final CommentsCubit Function(VideoPost post) createComments;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<FeedCubit, FeedState>(
+      listenWhen: _hasNewNotice,
+      listener: _showNotice,
+      child: BlocBuilder<FeedCubit, FeedState>(builder: _buildFeed),
+    );
+  }
+
+  bool _hasNewNotice(FeedState previous, FeedState current) {
+    return current is FeedLoaded && current.notice != null;
+  }
+
+  void _showNotice(BuildContext context, FeedState state) {
+    final message = (state as FeedLoaded).notice!;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+    context.read<FeedCubit>().clearNotice();
+  }
+
+  Widget _buildFeed(BuildContext context, FeedState state) {
+    return Column(
+      children: [
+        _feedSelector(context, state.kind),
+        Expanded(child: _feedContent(context, state)),
+      ],
+    );
+  }
+
+  Widget _feedSelector(BuildContext context, FeedKind selected) {
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.md,
+          AppSpacing.lg,
+          AppSpacing.sm,
+        ),
+        child: SegmentedButton<FeedKind>(
+          segments: FeedKind.values.map(_segment).toList(),
+          selected: <FeedKind>{selected},
+          onSelectionChanged: (value) =>
+              context.read<FeedCubit>().load(value.first),
+        ),
+      ),
+    );
+  }
+
+  ButtonSegment<FeedKind> _segment(FeedKind kind) {
+    return ButtonSegment<FeedKind>(value: kind, label: Text(kind.label));
+  }
+
+  Widget _feedContent(BuildContext context, FeedState state) {
+    return switch (state) {
+      FeedLoading() => const LoadingPanel(label: 'Loading video feed'),
+      FeedEmpty() => _emptyFeed(),
+      FeedFailure(message: final message) => _feedError(context, message),
+      FeedLoaded() => _feedPages(context, state),
+    };
+  }
+
+  Widget _feedError(BuildContext context, String message) {
+    return AsyncStatePanel(
+      icon: Icons.wifi_tethering_error,
+      title: 'Feed unavailable',
+      message: message,
+      actionLabel: 'Retry',
+      onAction: context.read<FeedCubit>().retry,
+    );
+  }
+
+  Widget _emptyFeed() {
+    return const AsyncStatePanel(
+      icon: Icons.videocam_off,
+      title: 'No videos yet',
+      message: 'Follow creators or publish your first clip to start the loop.',
+    );
+  }
+
+  Widget _feedPages(BuildContext context, FeedLoaded state) {
+    return PageView.builder(
+      scrollDirection: Axis.vertical,
+      itemCount: state.posts.length,
+      onPageChanged: context.read<FeedCubit>().pageChanged,
+      itemBuilder: (_, index) => _feedCard(context, state, index),
+    );
+  }
+
+  Widget _feedCard(BuildContext context, FeedLoaded state, int index) {
+    final post = state.posts[index];
+    return FeedCard(
+      post: post,
+      playbackPort: playbackPort,
+      isActive: index == state.activeIndex,
+      actions: FeedCardActions(
+        onOpenProfile: () => onOpenProfile(post.creator.id),
+        onToggleLike: context.read<FeedCubit>().toggleLike,
+        onOpenComments: () => _openComments(context, post),
+      ),
+    );
+  }
+
+  void _openComments(BuildContext context, VideoPost post) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => BlocProvider(
+        create: (_) => createComments(post)..load(),
+        child: const CommentsSheet(),
+      ),
+    );
+  }
+}

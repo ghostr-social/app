@@ -1,0 +1,37 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card.dart';
+
+import '../support/fake_media_ports.dart';
+import '../support/sample_data.dart';
+
+void main() {
+  testWidgets('disables the like action while its write is pending',
+      (tester) async {
+    final result = Completer<void>();
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: FeedCard(
+          post: samplePost(),
+          playbackPort: FakeVideoPlaybackPort(),
+          isActive: true,
+          actions: FeedCardActions(
+            onOpenProfile: () {},
+            onToggleLike: (_) => result.future,
+            onOpenComments: () {},
+          ),
+        ),
+      ),
+    ));
+
+    await tester.tap(find.byTooltip('Like video'));
+    await tester.pump();
+
+    final chip = tester.widget<ActionChip>(find.byType(ActionChip).first);
+    expect(chip.onPressed, isNull);
+    result.complete();
+    await tester.pump();
+  });
+}
