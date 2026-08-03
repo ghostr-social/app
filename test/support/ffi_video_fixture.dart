@@ -33,6 +33,7 @@ FfiNostrEventIdentity ffiNostrEvent({
   String eventId = testEventId,
   String authorPublicKeyHex = testCreatorPublicKey,
   String? identifier = 'dance',
+  List<String> hashtags = const <String>[],
 }) {
   return FfiNostrEventIdentity(
     eventId: eventId,
@@ -41,6 +42,7 @@ FfiNostrEventIdentity ffiNostrEvent({
     identifier: identifier,
     createdAt: BigInt.from(1785628800),
     content: 'Relay dance',
+    hashtags: hashtags,
   );
 }
 

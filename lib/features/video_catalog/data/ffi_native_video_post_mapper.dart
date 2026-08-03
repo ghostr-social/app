@@ -6,6 +6,7 @@ import 'package:ghostr/features/video_catalog/data/ffi_video_event_matcher.dart'
 import 'package:ghostr/features/video_catalog/domain/nostr_event_reference.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
+import 'package:ghostr/features/video_catalog/domain/video_hashtags.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post_id.dart';
 import 'package:ghostr/src/rust/video/video.dart';
@@ -84,15 +85,27 @@ VideoPostContent _content(
   FfiMediaSourceMapper mediaSource,
 ) {
   final content = event.content.trim();
+  final caption = content.isEmpty ? video.nostr.title : content;
   return VideoPostContent(
-    caption: content.isEmpty ? video.nostr.title : content,
+    caption: caption,
     songName: video.nostr.songName,
     media: mediaSource(video),
     publishedAt: DateTime.fromMillisecondsSinceEpoch(
       event.createdAt.toInt() * 1000,
       isUtc: true,
     ),
+    hashtags: _hashtags(event, caption),
   );
+}
+
+List<String> _hashtags(FfiNostrEventIdentity event, String caption) {
+  final found = <String>{};
+  for (final hashtag in event.hashtags) {
+    final normalized = normalizeHashtag(hashtag);
+    if (normalized != null) found.add(normalized);
+  }
+  found.addAll(extractHashtags(caption));
+  return List<String>.unmodifiable(found);
 }
 
 NostrEventIdentifier? _identifier(String? raw) {

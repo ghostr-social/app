@@ -10,6 +10,7 @@ pub struct FfiNostrEventIdentity {
     pub identifier: Option<String>,
     pub created_at: u64,
     pub content: String,
+    pub hashtags: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -83,6 +84,7 @@ fn ffi_event_identity(identity: &NativeEventIdentity) -> FfiNostrEventIdentity {
         identifier: identity.identifier.clone(),
         created_at: identity.created_at,
         content: identity.content.clone(),
+        hashtags: identity.hashtags.clone(),
     }
 }
 

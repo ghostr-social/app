@@ -49,6 +49,7 @@ pub fn event_identity() -> NativeEventIdentity {
         identifier: None,
         created_at: 42,
         content: "Relay clip".to_owned(),
+        hashtags: Vec::new(),
     }
 }
 

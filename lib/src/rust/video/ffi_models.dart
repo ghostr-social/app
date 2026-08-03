@@ -34,6 +34,7 @@ class FfiNostrEventIdentity {
   final String? identifier;
   final BigInt createdAt;
   final String content;
+  final List<String> hashtags;
 
   const FfiNostrEventIdentity({
     required this.eventId,
@@ -42,6 +43,7 @@ class FfiNostrEventIdentity {
     this.identifier,
     required this.createdAt,
     required this.content,
+    required this.hashtags,
   });
 
   @override
@@ -51,7 +53,8 @@ class FfiNostrEventIdentity {
       kind.hashCode ^
       identifier.hashCode ^
       createdAt.hashCode ^
-      content.hashCode;
+      content.hashCode ^
+      hashtags.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -63,7 +66,8 @@ class FfiNostrEventIdentity {
           kind == other.kind &&
           identifier == other.identifier &&
           createdAt == other.createdAt &&
-          content == other.content;
+          content == other.content &&
+          hashtags == other.hashtags;
 }
 
 class FfiNostrVideo {

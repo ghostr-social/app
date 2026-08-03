@@ -283,8 +283,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   FfiNostrEventIdentity dco_decode_ffi_nostr_event_identity(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
     return FfiNostrEventIdentity(
       eventId: dco_decode_String(arr[0]),
       authorPublicKeyHex: dco_decode_String(arr[1]),
@@ -292,6 +292,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       identifier: dco_decode_opt_String(arr[3]),
       createdAt: dco_decode_u_64(arr[4]),
       content: dco_decode_String(arr[5]),
+      hashtags: dco_decode_list_String(arr[6]),
     );
   }
 
@@ -444,13 +445,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_identifier = sse_decode_opt_String(deserializer);
     var var_createdAt = sse_decode_u_64(deserializer);
     var var_content = sse_decode_String(deserializer);
+    var var_hashtags = sse_decode_list_String(deserializer);
     return FfiNostrEventIdentity(
         eventId: var_eventId,
         authorPublicKeyHex: var_authorPublicKeyHex,
         kind: var_kind,
         identifier: var_identifier,
         createdAt: var_createdAt,
-        content: var_content);
+        content: var_content,
+        hashtags: var_hashtags);
   }
 
   @protected
@@ -623,6 +626,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_String(self.identifier, serializer);
     sse_encode_u_64(self.createdAt, serializer);
     sse_encode_String(self.content, serializer);
+    sse_encode_list_String(self.hashtags, serializer);
   }
 
   @protected

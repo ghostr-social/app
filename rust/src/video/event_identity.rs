@@ -6,6 +6,7 @@ use sha2::{Digest, Sha256};
 
 pub const VIDEO_KINDS: [u16; 4] = [21, 22, 34235, 34236];
 pub const MAX_NATIVE_MEDIA_PER_EVENT: usize = 5;
+pub const MAX_NATIVE_HASHTAGS_PER_EVENT: usize = 20;
 
 #[derive(Clone)]
 pub struct CanonicalNativeVideo {
@@ -69,7 +70,35 @@ fn event_identity(event: &Event, identifier: Option<String>) -> NativeEventIdent
         identifier,
         created_at: event.created_at.as_u64(),
         content: bounded_native_text(&event.content),
+        hashtags: event_hashtags(event),
     }
+}
+
+fn event_hashtags(event: &Event) -> Vec<String> {
+    let mut hashtags = Vec::new();
+    for tag in event.tags.iter() {
+        if hashtags.len() >= MAX_NATIVE_HASHTAGS_PER_EVENT {
+            break;
+        }
+        let values = tag.as_slice();
+        if values.first().map(String::as_str) != Some("t") {
+            continue;
+        }
+        let Some(raw) = values.get(1) else { continue };
+        let Some(normalized) = normalized_hashtag(raw) else {
+            continue;
+        };
+        if !hashtags.contains(&normalized) {
+            hashtags.push(normalized);
+        }
+    }
+    hashtags
+}
+
+fn normalized_hashtag(raw: &str) -> Option<String> {
+    let lowered = raw.trim().to_lowercase();
+    let value = lowered.strip_prefix('#').unwrap_or(&lowered);
+    (!value.is_empty()).then(|| bounded_native_text(value))
 }
 
 fn native_video(event: &Event, tag: &[String]) -> Option<NativeVideo> {

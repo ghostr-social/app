@@ -285,6 +285,7 @@ impl SseDecode for crate::video::ffi_models::FfiNostrEventIdentity {
         let mut var_identifier = <Option<String>>::sse_decode(deserializer);
         let mut var_createdAt = <u64>::sse_decode(deserializer);
         let mut var_content = <String>::sse_decode(deserializer);
+        let mut var_hashtags = <Vec<String>>::sse_decode(deserializer);
         return crate::video::ffi_models::FfiNostrEventIdentity {
             event_id: var_eventId,
             author_public_key_hex: var_authorPublicKeyHex,
@@ -292,6 +293,7 @@ impl SseDecode for crate::video::ffi_models::FfiNostrEventIdentity {
             identifier: var_identifier,
             created_at: var_createdAt,
             content: var_content,
+            hashtags: var_hashtags,
         };
     }
 }
@@ -537,6 +539,7 @@ impl flutter_rust_bridge::IntoDart for crate::video::ffi_models::FfiNostrEventId
             self.identifier.into_into_dart().into_dart(),
             self.created_at.into_into_dart().into_dart(),
             self.content.into_into_dart().into_dart(),
+            self.hashtags.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -688,6 +691,7 @@ impl SseEncode for crate::video::ffi_models::FfiNostrEventIdentity {
         <Option<String>>::sse_encode(self.identifier, serializer);
         <u64>::sse_encode(self.created_at, serializer);
         <String>::sse_encode(self.content, serializer);
+        <Vec<String>>::sse_encode(self.hashtags, serializer);
     }
 }
 

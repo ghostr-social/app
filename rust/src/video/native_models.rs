@@ -21,6 +21,7 @@ pub struct NativeEventIdentity {
     pub identifier: Option<String>,
     pub created_at: u64,
     pub content: String,
+    pub hashtags: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
