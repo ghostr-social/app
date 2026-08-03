@@ -15,7 +15,7 @@ void main() {
     await tester.tap(find.byTooltip('Like video'));
     await tester.pumpAndSettle();
 
-    expect(find.text('43 likes'), findsOneWidget);
+    expect(find.text('43'), findsOneWidget);
     expect(find.byTooltip('Unlike video'), findsOneWidget);
   });
 }

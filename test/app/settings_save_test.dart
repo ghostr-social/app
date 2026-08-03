@@ -55,8 +55,11 @@ Future<void> _selectBudget(WidgetTester tester) async {
 }
 
 Future<void> _save(WidgetTester tester) async {
-  await tester.drag(find.byType(ListView).first, const Offset(0, -240));
-  await tester.pumpAndSettle();
+  await tester.scrollUntilVisible(
+    find.text('Save settings'),
+    300,
+    scrollable: find.byType(Scrollable).first,
+  );
   await tester.tap(find.text('Save settings'));
   await tester.pumpAndSettle();
 }

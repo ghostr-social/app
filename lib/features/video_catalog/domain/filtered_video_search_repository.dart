@@ -19,7 +19,11 @@ class FilteredVideoSearchRepository implements VideoSearchRepository {
   Future<List<VideoPost>> search(String query) async {
     final normalized = _policy.normalize(query);
     if (normalized == null) return const <VideoPost>[];
-    final posts = await _reader.load(searchQuery: normalized);
+    final hashtag = _policy.hashtag(normalized);
+    final posts = await _reader.load(
+      searchQuery: hashtag == null ? normalized : null,
+      hashtags: hashtag == null ? null : {hashtag},
+    );
     return _policy.select(
       posts,
       query: normalized,

@@ -24,12 +24,14 @@ class VideoPostContent {
     required this.songName,
     required this.media,
     required this.publishedAt,
+    this.hashtags = const <String>[],
   });
 
   final String caption;
   final String songName;
   final VideoMediaSource media;
   final DateTime publishedAt;
+  final List<String> hashtags;
 }
 
 class VideoPost {
@@ -48,6 +50,7 @@ class VideoPost {
   NostrEventReference? get nostrReference => identity.nostrReference;
   String get caption => content.caption;
   String get songName => content.songName;
+  List<String> get hashtags => content.hashtags;
   VideoMediaSource get media => content.media;
   DateTime get publishedAt => content.publishedAt;
   int get likeCount => metrics.likeCount;
@@ -75,6 +78,7 @@ class VideoPost {
         songName: songName,
         media: replacement,
         publishedAt: publishedAt,
+        hashtags: hashtags,
       ),
       metrics: metrics,
     );

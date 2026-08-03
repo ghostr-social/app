@@ -21,6 +21,7 @@ class VideoPostStorageMapper {
         songName: _required<String>(map, 'songName'),
         media: _mediaFromMap(_requiredMap(map, 'media')),
         publishedAt: DateTime.parse(_required<String>(map, 'publishedAt')),
+        hashtags: _stringList(map, 'hashtags'),
       ),
       metrics: VideoPostMetrics(
         likeCount: _required<int>(map, 'likeCount'),
@@ -36,6 +37,7 @@ class VideoPostStorageMapper {
       'creator': _profileToMap(post.creator),
       'caption': post.caption,
       'songName': post.songName,
+      'hashtags': post.hashtags,
       'likeCount': post.likeCount,
       'commentCount': post.commentCount,
       'viewerHasLiked': post.viewerHasLiked,

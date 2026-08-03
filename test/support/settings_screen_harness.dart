@@ -4,11 +4,14 @@ import 'package:ghostr/features/settings/domain/app_settings_repository.dart';
 import 'package:ghostr/features/settings/presentation/settings_cubit.dart';
 import 'package:ghostr/features/settings/presentation/settings_screen.dart';
 
-Widget settingsScreenHarness(AppSettingsRepository repository) {
+Widget settingsScreenHarness(
+  AppSettingsRepository repository, {
+  VoidCallback? onOpenWatchHistory,
+}) {
   return MaterialApp(
     home: BlocProvider(
       create: (_) => SettingsCubit(repository)..load(),
-      child: const SettingsScreen(),
+      child: SettingsScreen(onOpenWatchHistory: onOpenWatchHistory),
     ),
   );
 }

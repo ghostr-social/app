@@ -25,10 +25,33 @@ class SettingsForm extends StatelessWidget {
         ..._relaySection(context),
         ..._blossomSection(context),
         ..._inventorySection(context),
+        const SizedBox(height: AppSpacing.xxl),
+        ..._watchHistorySection(context),
         const SizedBox(height: AppSpacing.xl),
         _saveButton(),
       ],
     );
+  }
+
+  List<Widget> _watchHistorySection(BuildContext context) {
+    return [
+      _sectionTitle(context, 'Watch history'),
+      const SizedBox(height: AppSpacing.xs),
+      const Text('Skip videos you already watched when the feed reloads.'),
+      const SizedBox(height: AppSpacing.sm),
+      SwitchListTile(
+        key: const Key('hide-watched-field'),
+        title: const Text('Hide watched videos'),
+        value: settings.hideWatchedVideos,
+        onChanged: isSaving ? null : actions.onHideWatchedChanged,
+      ),
+      ListTile(
+        key: const Key('watch-history-entry'),
+        title: const Text('View watch history'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: actions.onOpenWatchHistory,
+      ),
+    ];
   }
 
   List<Widget> _relaySection(BuildContext context) {

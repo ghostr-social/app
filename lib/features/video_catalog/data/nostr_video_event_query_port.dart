@@ -5,6 +5,7 @@ abstract interface class NostrVideoEventQueryPort {
   Future<List<Nip01Event>> loadVideoEvents({
     Set<NostrPublicKeyHex>? authorPublicKeys,
     String? searchQuery,
+    Set<String>? hashtags,
   });
 
   Future<Map<NostrPublicKeyHex, Metadata>> loadMetadataBatch(

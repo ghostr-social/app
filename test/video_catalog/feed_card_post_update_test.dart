@@ -11,6 +11,7 @@ void main() {
       (tester) async {
     final actions = FeedCardActions(
       onOpenProfile: () {},
+      onOpenHashtag: (_) {},
       onToggleLike: (post) async {},
       onOpenComments: () {},
     );

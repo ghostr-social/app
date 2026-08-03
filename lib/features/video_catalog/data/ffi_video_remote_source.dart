@@ -24,6 +24,7 @@ class FfiVideoRemoteSource implements RemoteVideoSource {
   Future<List<VideoPost>> loadRemoteFeed({
     Set<ProfileId>? creatorIds,
     String? searchQuery,
+    Set<String>? hashtags,
   }) async {
     final nativeVideos = await _loadNativeVideos();
     var posts = _mapper.map(nativeVideos, _snapshotLoader());
@@ -32,6 +33,9 @@ class FfiVideoRemoteSource implements RemoteVideoSource {
     }
     if (searchQuery != null) {
       posts = posts.where((post) => _matches(post, searchQuery));
+    }
+    if (hashtags != null) {
+      posts = posts.where((post) => hashtags.any(post.hashtags.contains));
     }
     return posts.toList();
   }
@@ -54,6 +58,7 @@ class FfiVideoRemoteSource implements RemoteVideoSource {
     return post.caption.toLowerCase().contains(value) ||
         post.songName.toLowerCase().contains(value) ||
         post.creator.displayName.toLowerCase().contains(value) ||
-        post.creator.handle.toLowerCase().contains(value);
+        post.creator.handle.toLowerCase().contains(value) ||
+        post.hashtags.any((hashtag) => hashtag.contains(value));
   }
 }

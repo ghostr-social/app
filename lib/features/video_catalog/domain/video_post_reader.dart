@@ -5,5 +5,6 @@ abstract interface class VideoPostReader {
   Future<List<VideoPost>> load({
     Set<ProfileId>? creatorIds,
     String? searchQuery,
+    Set<String>? hashtags,
   });
 }

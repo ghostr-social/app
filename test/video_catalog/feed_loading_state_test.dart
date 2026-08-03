@@ -24,5 +24,7 @@ class _PendingFeedRepository extends FakeVideoCatalogRepository {
   final _load = Completer<List<VideoPost>>();
 
   @override
-  Future<List<VideoPost>> loadFeed(FeedKind kind) => _load.future;
+  Future<List<VideoPost>> loadFeed(FeedKind kind,
+          {bool excludeWatched = false}) =>
+      _load.future;
 }

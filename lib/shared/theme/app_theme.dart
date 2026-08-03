@@ -12,7 +12,6 @@ ThemeData buildAppTheme() {
     textTheme: _textTheme,
     inputDecorationTheme: _inputDecorationTheme(),
     elevatedButtonTheme: _elevatedButtonTheme(),
-    segmentedButtonTheme: _segmentedButtonTheme(),
   );
 }
 
@@ -61,25 +60,4 @@ ElevatedButtonThemeData _elevatedButtonTheme() {
       ),
     ),
   );
-}
-
-SegmentedButtonThemeData _segmentedButtonTheme() {
-  return SegmentedButtonThemeData(
-    style: ButtonStyle(
-      foregroundColor: WidgetStateProperty.resolveWith(_segmentForeground),
-      backgroundColor: WidgetStateProperty.resolveWith(_segmentBackground),
-    ),
-  );
-}
-
-Color _segmentForeground(Set<WidgetState> states) {
-  return states.contains(WidgetState.selected)
-      ? AppPalette.foreground
-      : AppPalette.mutedForeground;
-}
-
-Color _segmentBackground(Set<WidgetState> states) {
-  return states.contains(WidgetState.selected)
-      ? AppPalette.accentRed.withValues(alpha: 0.85)
-      : AppPalette.altSurface;
 }

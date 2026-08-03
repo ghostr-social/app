@@ -45,7 +45,9 @@ class _DelayedLikeRepository
   final like = Completer<VideoPost>();
 
   @override
-  Future<List<VideoPost>> loadFeed(FeedKind kind) async => <VideoPost>[post];
+  Future<List<VideoPost>> loadFeed(FeedKind kind,
+          {bool excludeWatched = false}) async =>
+      <VideoPost>[post];
 
   @override
   Future<VideoPost> toggleLike(VideoPost post) => like.future;

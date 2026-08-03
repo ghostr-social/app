@@ -79,6 +79,14 @@ class SettingsCubit extends DisposalSafeCubit<SettingsState> {
     emit(SettingsState.ready(settings.copyWith(inventoryBudget: budget)));
   }
 
+  void changeHideWatchedVideos(bool hideWatchedVideos) {
+    final settings = _editableSettings;
+    if (settings == null) return;
+    emit(SettingsState.ready(
+      settings.copyWith(hideWatchedVideos: hideWatchedVideos),
+    ));
+  }
+
   Future<void> save() async {
     final current = state;
     if (current is! SettingsReady || current.isSaving) return;

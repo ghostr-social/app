@@ -18,6 +18,7 @@ class _FakeEventQuery implements NostrVideoEventQueryPort {
   Future<List<Nip01Event>> loadVideoEvents({
     Set<NostrPublicKeyHex>? authorPublicKeys,
     String? searchQuery,
+    Set<String>? hashtags,
   }) async {
     requestedAuthorPublicKeys = authorPublicKeys;
     return events;

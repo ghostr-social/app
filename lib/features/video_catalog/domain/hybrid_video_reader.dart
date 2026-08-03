@@ -27,12 +27,14 @@ class HybridVideoReader implements VideoPostReader {
   Future<List<VideoPost>> load({
     Set<ProfileId>? creatorIds,
     String? searchQuery,
+    Set<String>? hashtags,
   }) async {
     final localPosts = await _loadLocal();
     try {
       final remotePosts = await _remote.loadRemoteFeed(
         creatorIds: creatorIds,
         searchQuery: searchQuery,
+        hashtags: hashtags,
       );
       return _hydrate(_merge(localPosts, remotePosts));
     } on AppFailure catch (error, stackTrace) {

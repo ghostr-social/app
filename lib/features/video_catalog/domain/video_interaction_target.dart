@@ -19,6 +19,8 @@ final class VideoInteractionTarget {
 
   final String _value;
 
+  String get value => _value;
+
   @override
   bool operator ==(Object other) {
     return other is VideoInteractionTarget && other._value == _value;

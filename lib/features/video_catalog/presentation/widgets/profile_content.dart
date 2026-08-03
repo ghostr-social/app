@@ -3,6 +3,7 @@ import 'package:ghostr/features/video_catalog/domain/profile_details.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/profile_video_grid.dart';
 import 'package:ghostr/shared/theme/app_tokens.dart';
+import 'package:ghostr/shared/widgets/profile_avatar.dart';
 
 class ProfileContentActions {
   const ProfileContentActions({
@@ -59,9 +60,10 @@ class _ProfileHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        CircleAvatar(
+        ProfileAvatar(
+          initials: details.profile.initials,
+          avatarUrl: details.profile.avatarUrl,
           radius: AppSize.profileAvatar,
-          child: Text(details.profile.initials),
         ),
         const SizedBox(height: AppSpacing.md),
         Text(details.profile.displayName,

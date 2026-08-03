@@ -38,7 +38,8 @@ class _RetryingFeedRepository extends FakeVideoCatalogRepository {
   int count = 0;
 
   @override
-  Future<List<VideoPost>> loadFeed(FeedKind kind) async {
+  Future<List<VideoPost>> loadFeed(FeedKind kind,
+      {bool excludeWatched = false}) async {
     count += 1;
     if (count == 1) throw const AppFailure('Feed failed.');
     return [samplePost()];

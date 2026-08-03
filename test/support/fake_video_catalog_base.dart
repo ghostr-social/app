@@ -38,9 +38,15 @@ abstract class FakeVideoCatalogBase
   final AppFailure? likeFailure;
   final AppFailure? publishFailure;
   final Set<ProfileId> blockedProfiles = <ProfileId>{};
+  final List<bool> loadFeedExclusions = <bool>[];
+  final List<String> searchQueries = <String>[];
 
   @override
-  Future<List<VideoPost>> loadFeed(FeedKind kind) async {
+  Future<List<VideoPost>> loadFeed(
+    FeedKind kind, {
+    bool excludeWatched = false,
+  }) async {
+    loadFeedExclusions.add(excludeWatched);
     if (feedFailure case final AppFailure failure) throw failure;
     final posts = kind == FeedKind.forYou ? forYouFeed : followingFeed;
     return posts
@@ -59,7 +65,10 @@ abstract class FakeVideoCatalogBase
   }
 
   @override
-  Future<List<VideoPost>> search(String query) async => searchResults;
+  Future<List<VideoPost>> search(String query) async {
+    searchQueries.add(query);
+    return searchResults;
+  }
 
   @override
   Future<bool> toggleFollow(ProfileId profileId) async => true;

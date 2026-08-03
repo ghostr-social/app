@@ -84,6 +84,7 @@ class _OverlappingRemote implements RemoteVideoSource {
   Future<List<VideoPost>> loadRemoteFeed({
     Set<ProfileId>? creatorIds,
     String? searchQuery,
+    Set<String>? hashtags,
   }) {
     return calls++ == 0 ? first.future : second.future;
   }

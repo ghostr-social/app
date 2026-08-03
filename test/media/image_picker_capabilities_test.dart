@@ -8,7 +8,7 @@ void main() {
     for (final platform in [TargetPlatform.android, TargetPlatform.iOS]) {
       expect(
         imagePickerCapabilities(isWeb: false, platform: platform),
-        const MediaPickerCapabilities.allSupported(),
+        MediaPickerCapabilities.allSupported(),
       );
     }
     for (final platform in [

@@ -27,7 +27,8 @@ class _UnexpectedFeedRepository extends FakeVideoCatalogRepository {
   _UnexpectedFeedRepository() : super(forYouFeed: []);
 
   @override
-  Future<List<VideoPost>> loadFeed(FeedKind kind) {
+  Future<List<VideoPost>> loadFeed(FeedKind kind,
+      {bool excludeWatched = false}) {
     throw StateError('relay unavailable');
   }
 }

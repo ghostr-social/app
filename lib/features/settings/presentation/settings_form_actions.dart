@@ -8,13 +8,17 @@ class SettingsFormActions {
     required this.relays,
     required this.blossom,
     required this.onBudgetChanged,
+    required this.onHideWatchedChanged,
     required this.onSave,
+    this.onOpenWatchHistory,
   });
 
   final RelaySettingsActions relays;
   final BlossomSettingsActions blossom;
   final ValueChanged<VideoInventoryBudget> onBudgetChanged;
+  final ValueChanged<bool> onHideWatchedChanged;
   final VoidCallback onSave;
+  final VoidCallback? onOpenWatchHistory;
 }
 
 class RelaySettingsActions {

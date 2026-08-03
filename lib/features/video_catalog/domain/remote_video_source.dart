@@ -6,6 +6,7 @@ abstract interface class RemoteVideoSource {
   Future<List<VideoPost>> loadRemoteFeed({
     Set<ProfileId>? creatorIds,
     String? searchQuery,
+    Set<String>? hashtags,
   });
 }
 
@@ -18,6 +19,7 @@ class DisabledRemoteVideoSource implements RemoteVideoSource {
   Future<List<VideoPost>> loadRemoteFeed({
     Set<ProfileId>? creatorIds,
     String? searchQuery,
+    Set<String>? hashtags,
   }) {
     throw AppFailure(message);
   }

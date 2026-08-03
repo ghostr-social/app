@@ -15,6 +15,7 @@ class _RevisionQuery implements NostrVideoEventQueryPort {
   Future<List<Nip01Event>> loadVideoEvents({
     Set<NostrPublicKeyHex>? authorPublicKeys,
     String? searchQuery,
+    Set<String>? hashtags,
   }) async =>
       events;
 

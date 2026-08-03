@@ -39,7 +39,9 @@ class _PendingFeedRepository extends FakeVideoCatalogRepository {
   };
 
   @override
-  Future<List<VideoPost>> loadFeed(FeedKind kind) => pending[kind]!.future;
+  Future<List<VideoPost>> loadFeed(FeedKind kind,
+          {bool excludeWatched = false}) =>
+      pending[kind]!.future;
 
   void complete(FeedKind kind, List<VideoPost> posts) {
     pending[kind]!.complete(posts);

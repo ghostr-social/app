@@ -18,7 +18,10 @@ class FilteredVideoFeedRepository implements VideoFeedRepository {
   final VideoFeedPolicy _policy;
 
   @override
-  Future<List<VideoPost>> loadFeed(FeedKind kind) async {
+  Future<List<VideoPost>> loadFeed(
+    FeedKind kind, {
+    bool excludeWatched = false,
+  }) async {
     final followed = await _followedFor(kind);
     final posts = await _reader.load(
       creatorIds: kind == FeedKind.following ? followed : null,

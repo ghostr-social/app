@@ -68,7 +68,9 @@ class _Repository implements VideoFeedRepository, VideoEngagementRepository {
   var _load = 0;
 
   @override
-  Future<List<VideoPost>> loadFeed(FeedKind kind) async => [results[_load++]];
+  Future<List<VideoPost>> loadFeed(FeedKind kind,
+          {bool excludeWatched = false}) async =>
+      [results[_load++]];
 
   @override
   Future<VideoPost> toggleLike(VideoPost post) async {

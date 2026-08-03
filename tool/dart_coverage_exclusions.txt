@@ -27,6 +27,7 @@ lib/features/video_catalog/domain/video_feed_repository.dart
 lib/features/video_catalog/domain/video_post_reader.dart
 lib/features/video_catalog/domain/video_profile_repository.dart
 lib/features/video_catalog/domain/video_search_repository.dart
+lib/features/watch_history/domain/watch_history_repository.dart
 lib/features/video_inventory/domain/video_cache_priority.dart
 lib/features/video_inventory/domain/video_cache_store.dart
 lib/features/video_inventory/domain/video_file_downloader.dart

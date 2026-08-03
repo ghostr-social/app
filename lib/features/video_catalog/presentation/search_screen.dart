@@ -20,6 +20,15 @@ class _SearchScreenState extends State<SearchScreen> {
   final _controller = TextEditingController();
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final query = context.read<SearchCubit>().state.query;
+    if (query.isNotEmpty && _controller.text.trim() != query) {
+      _controller.text = query;
+    }
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     super.dispose();
@@ -35,13 +44,24 @@ class _SearchScreenState extends State<SearchScreen> {
             _searchBar(),
             const SizedBox(height: AppSpacing.lg),
             Expanded(
-                child: BlocBuilder<SearchCubit, SearchState>(
-              builder: _buildContent,
-            )),
+              child: BlocConsumer<SearchCubit, SearchState>(
+                listenWhen: _hasExternalQuery,
+                listener: _syncQueryField,
+                builder: _buildContent,
+              ),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  bool _hasExternalQuery(SearchState previous, SearchState current) {
+    return current.query.isNotEmpty && current.query != _controller.text.trim();
+  }
+
+  void _syncQueryField(BuildContext context, SearchState state) {
+    _controller.text = state.query;
   }
 
   Widget _searchBar() {
@@ -51,7 +71,7 @@ class _SearchScreenState extends State<SearchScreen> {
           child: TextField(
             controller: _controller,
             decoration: const InputDecoration(
-              hintText: 'Search creators and clips',
+              hintText: 'Search creators, clips, or #hashtags',
             ),
             onSubmitted: _search,
           ),

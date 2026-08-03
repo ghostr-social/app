@@ -12,6 +12,7 @@ class _UnusedQuery implements NostrVideoEventQueryPort {
   Future<List<Nip01Event>> loadVideoEvents({
     Set<NostrPublicKeyHex>? authorPublicKeys,
     String? searchQuery,
+    Set<String>? hashtags,
   }) async {
     callCount += 1;
     return const [];

@@ -18,18 +18,20 @@ import 'nostr_test_values.dart';
 ProfileSummary sampleCreator({
   String id = 'creator-1',
   String displayName = 'Nora Relay',
+  String? avatarUrl,
 }) {
   return ProfileSummary(
     id: ProfileId.parse(id),
     displayName: displayName,
     handle: '@${displayName.toLowerCase().replaceAll(' ', '')}',
-    avatarUrl: null,
+    avatarUrl: avatarUrl,
   );
 }
 
 VideoPost samplePost({
   String id = 'post-1',
   String caption = 'A relay-side banger',
+  List<String> hashtags = const <String>[],
   ProfileSummary? creator,
   NostrEventReference? nostrReference,
 }) {
@@ -44,6 +46,7 @@ VideoPost samplePost({
       songName: 'Original sound',
       media: VideoMediaSource.remote('https://example.com/video/$id.mp4'),
       publishedAt: DateTime(2026, 3, 12),
+      hashtags: hashtags,
     ),
     metrics: VideoPostMetrics(
       likeCount: 42,

@@ -5,6 +5,7 @@ import 'package:ghostr/features/session/domain/user_session.dart';
 import 'package:ghostr/features/settings/presentation/settings_screen.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_screen.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
+import 'package:ghostr/features/watch_history/presentation/watch_history_screen.dart';
 
 abstract final class AppRouter {
   static Route<void> profile({
@@ -23,9 +24,21 @@ abstract final class AppRouter {
 
   static Route<void> settings(AppControllerFactory controllers) {
     return MaterialPageRoute<void>(
-      builder: (_) => BlocProvider(
+      builder: (context) => BlocProvider(
         create: (_) => controllers.settings()..load(),
-        child: const SettingsScreen(),
+        child: SettingsScreen(
+          onOpenWatchHistory: () =>
+              Navigator.of(context).push(AppRouter.watchHistory(controllers)),
+        ),
+      ),
+    );
+  }
+
+  static Route<void> watchHistory(AppControllerFactory controllers) {
+    return MaterialPageRoute<void>(
+      builder: (_) => BlocProvider(
+        create: (_) => controllers.watchHistory()..load(),
+        child: const WatchHistoryScreen(),
       ),
     );
   }

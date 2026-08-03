@@ -32,7 +32,8 @@ class _FailingRefreshRepository extends FakeVideoCatalogRepository {
   var loads = 0;
 
   @override
-  Future<List<VideoPost>> loadFeed(FeedKind kind) async {
+  Future<List<VideoPost>> loadFeed(FeedKind kind,
+      {bool excludeWatched = false}) async {
     if (loads++ > 0) throw failure;
     return super.loadFeed(kind);
   }

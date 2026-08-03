@@ -10,6 +10,7 @@ import 'package:ghostr/features/publish/domain/uploaded_video_media.dart';
 import 'package:ghostr/features/session/domain/user_session.dart';
 import 'package:ghostr/features/video_catalog/domain/nostr_event_reference.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
+import 'package:ghostr/features/video_catalog/domain/video_hashtags.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post_id.dart';
 
@@ -69,6 +70,7 @@ class NostrVideoPublisher implements NostrVideoPublisherPort {
       <String>['title', title],
       <String>['published_at', '${publishedAt.millisecondsSinceEpoch ~/ 1000}'],
       <String>['alt', title],
+      ...extractHashtags(title).map((hashtag) => <String>['t', hashtag]),
       <String>[
         'imeta',
         'url ${media.primaryUrl}',
@@ -101,6 +103,7 @@ class NostrVideoPublisher implements NostrVideoPublisherPort {
         songName: video.selected.label,
         media: _remoteMedia(uploaded, video.id.value),
         publishedAt: video.publishedAt,
+        hashtags: extractHashtags(video.caption),
       ),
       metrics: VideoPostMetrics(
         likeCount: 0,

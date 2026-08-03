@@ -17,10 +17,12 @@ final class PlayableRemoteVideoSource implements RemoteVideoSource {
   Future<List<VideoPost>> loadRemoteFeed({
     Set<ProfileId>? creatorIds,
     String? searchQuery,
+    Set<String>? hashtags,
   }) async {
     final posts = await _source.loadRemoteFeed(
       creatorIds: creatorIds,
       searchQuery: searchQuery,
+      hashtags: hashtags,
     );
     return posts
         .where((post) => _capabilities.supports(post.media))

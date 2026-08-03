@@ -18,8 +18,7 @@ void main() {
     await tester.pumpWidget(buildTestApp(dependencies));
     await tester.pumpAndSettle();
 
-    expect(find.text('For You'), findsOneWidget);
-    expect(find.text('Following'), findsOneWidget);
+    expect(find.byTooltip('Open profile'), findsOneWidget);
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Messages'), findsNothing);
     expect(find.text(creator.displayName), findsOneWidget);

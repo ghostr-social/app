@@ -38,6 +38,7 @@ void main() {
 
     expect(find.text('Settings'), findsOneWidget);
     expect(find.text('Relay connections'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Video inventory'), 200);
     expect(find.text('Video inventory'), findsOneWidget);
   });
 }

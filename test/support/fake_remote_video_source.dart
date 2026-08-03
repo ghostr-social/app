@@ -11,15 +11,18 @@ class FakeRemoteVideoSource implements RemoteVideoSource {
   int loadCount = 0;
   Set<ProfileId>? requestedCreatorIds;
   String? requestedSearchQuery;
+  Set<String>? requestedHashtags;
 
   @override
   Future<List<VideoPost>> loadRemoteFeed({
     Set<ProfileId>? creatorIds,
     String? searchQuery,
+    Set<String>? hashtags,
   }) async {
     loadCount += 1;
     requestedCreatorIds = creatorIds;
     requestedSearchQuery = searchQuery;
+    requestedHashtags = hashtags;
     if (failure case final failure?) throw failure;
     return posts;
   }

@@ -11,7 +11,7 @@ void main() {
     final repository = FakeVideoCatalogRepository(forYouFeed: [samplePost()]);
     await tester.pumpWidget(feedScreenHarness(repository));
     await tester.pumpAndSettle();
-    expect(find.text('9 comments'), findsOneWidget);
+    expect(find.text('9'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Open comments'));
     await tester.pumpAndSettle();
@@ -23,6 +23,6 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
 
-    expect(find.text('10 comments'), findsOneWidget);
+    expect(find.text('10'), findsOneWidget);
   });
 }

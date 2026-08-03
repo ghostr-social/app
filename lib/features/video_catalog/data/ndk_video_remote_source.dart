@@ -22,12 +22,14 @@ class NdkVideoRemoteSource implements RemoteVideoSource {
   Future<List<VideoPost>> loadRemoteFeed({
     Set<ProfileId>? creatorIds,
     String? searchQuery,
+    Set<String>? hashtags,
   }) async {
     final authors = _decodeCreatorIds(creatorIds);
     if (creatorIds != null && authors!.isEmpty) return const [];
     final events = _canonicalEvents(await _queryPort.loadVideoEvents(
       authorPublicKeys: authors,
       searchQuery: searchQuery,
+      hashtags: hashtags,
     ));
     final metadata = await _loadMetadata(events);
     final posts = <VideoPost>[];

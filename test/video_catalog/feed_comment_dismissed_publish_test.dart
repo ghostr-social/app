@@ -27,11 +27,11 @@ void main() {
     await tester.pump();
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    expect(find.text('9 comments'), findsOneWidget);
+    expect(find.text('9'), findsOneWidget);
 
     barrier.complete();
     await tester.pumpAndSettle();
 
-    expect(find.text('10 comments'), findsOneWidget);
+    expect(find.text('10'), findsOneWidget);
   });
 }

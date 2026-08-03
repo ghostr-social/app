@@ -11,6 +11,7 @@ class LocalAppSettingsRepository implements AppSettingsRepository {
   static const _relaysKey = 'ghostr.settings.relays';
   static const _inventoryBudgetKey = 'ghostr.settings.inventoryBudget';
   static const _blossomServersKey = 'ghostr.settings.blossomServers';
+  static const _hideWatchedKey = 'ghostr.settings.hideWatchedVideos';
 
   final SharedPreferences _preferences;
 
@@ -28,6 +29,8 @@ class LocalAppSettingsRepository implements AppSettingsRepository {
       relays: _loadRelays(defaults.relays),
       inventoryBudget: _loadBudget(defaults.inventoryBudget),
       blossomServers: _loadBlossomServers(defaults.blossomServers),
+      hideWatchedVideos:
+          _preferences.getBool(_hideWatchedKey) ?? defaults.hideWatchedVideos,
     );
   }
 
@@ -52,6 +55,13 @@ class LocalAppSettingsRepository implements AppSettingsRepository {
       () => _preferences.setStringList(
         _blossomServersKey,
         settings.blossomServers.map((server) => server.value).toList(),
+      ),
+    );
+    await requirePreferenceWrite(
+      'Could not save app settings.',
+      () => _preferences.setBool(
+        _hideWatchedKey,
+        settings.hideWatchedVideos,
       ),
     );
   }

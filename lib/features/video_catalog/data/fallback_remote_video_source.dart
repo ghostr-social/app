@@ -18,11 +18,13 @@ class FallbackRemoteVideoSource implements RemoteVideoSource {
   Future<List<VideoPost>> loadRemoteFeed({
     Set<ProfileId>? creatorIds,
     String? searchQuery,
+    Set<String>? hashtags,
   }) async {
     try {
       final posts = await _primary.loadRemoteFeed(
         creatorIds: creatorIds,
         searchQuery: searchQuery,
+        hashtags: hashtags,
       );
       if (posts.isNotEmpty) return posts;
     } on Object catch (error, stackTrace) {
@@ -36,6 +38,7 @@ class FallbackRemoteVideoSource implements RemoteVideoSource {
     return _fallback.loadRemoteFeed(
       creatorIds: creatorIds,
       searchQuery: searchQuery,
+      hashtags: hashtags,
     );
   }
 }

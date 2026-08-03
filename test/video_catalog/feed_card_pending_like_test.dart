@@ -19,6 +19,7 @@ void main() {
           isActive: true,
           actions: FeedCardActions(
             onOpenProfile: () {},
+            onOpenHashtag: (_) {},
             onToggleLike: (_) => result.future,
             onOpenComments: () {},
           ),
@@ -29,8 +30,10 @@ void main() {
     await tester.tap(find.byTooltip('Like video'));
     await tester.pump();
 
-    final chip = tester.widget<ActionChip>(find.byType(ActionChip).first);
-    expect(chip.onPressed, isNull);
+    final button = tester.widget<IconButton>(find.byWidgetPredicate(
+      (widget) => widget is IconButton && widget.tooltip == 'Like video',
+    ));
+    expect(button.onPressed, isNull);
     result.complete();
     await tester.pump();
   });

@@ -54,7 +54,8 @@ class _DelayedRefreshRepository
   var loads = 0;
 
   @override
-  Future<List<VideoPost>> loadFeed(FeedKind kind) {
+  Future<List<VideoPost>> loadFeed(FeedKind kind,
+      {bool excludeWatched = false}) {
     return loads++ == 0 ? Future.value(<VideoPost>[original]) : refresh.future;
   }
 

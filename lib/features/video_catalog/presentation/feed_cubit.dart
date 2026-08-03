@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/errors/boundary_failure.dart';
 import 'package:ghostr/core/presentation/disposal_safe_cubit.dart';
@@ -5,16 +7,23 @@ import 'package:ghostr/features/engagement/domain/video_engagement_repository.da
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
+import 'package:ghostr/features/video_catalog/domain/video_interaction_target.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_interaction_reconciler.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_state.dart';
+import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
 
 export 'feed_state.dart';
 
 class FeedDependencies {
-  const FeedDependencies({required this.feed, required this.engagement});
+  const FeedDependencies({
+    required this.feed,
+    required this.engagement,
+    this.watchTracker,
+  });
 
   final VideoFeedRepository feed;
   final VideoEngagementRepository engagement;
+  final WatchHistoryTracker? watchTracker;
 }
 
 class FeedCubit extends DisposalSafeCubit<FeedState> {
@@ -30,7 +39,8 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     final kind = selectedKind ?? state.kind;
     emit(FeedLoading(kind));
     try {
-      final posts = await _dependencies.feed.loadFeed(kind);
+      final posts =
+          await _dependencies.feed.loadFeed(kind, excludeWatched: true);
       _acceptLoad(request, kind, posts);
     } on AppFailure catch (failure) {
       _emitLoad(request, FeedFailure(kind, failure.message));
@@ -48,6 +58,23 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     final current = state;
     if (current is! FeedLoaded) return load();
     return _refreshLoaded(current);
+  }
+
+  Future<void> reload() async {
+    final previous = state;
+    if (previous is! FeedLoaded) return load();
+    final request = ++_loadRequest;
+    emit(FeedLoading(previous.kind));
+    try {
+      final posts = await _dependencies.feed
+          .loadFeed(previous.kind, excludeWatched: true);
+      _acceptLoad(request, previous.kind, posts);
+    } on AppFailure catch (failure) {
+      _emitLoad(request, previous.withNotice(failure.message));
+    } on Object catch (error, stackTrace) {
+      _emitLoad(
+          request, previous.withNotice(_unexpectedLoad(error, stackTrace)));
+    }
   }
 
   Future<void> _refreshLoaded(FeedLoaded current) async {
@@ -70,12 +97,33 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   ) {
     if (!_acceptsLoad(request)) return;
     final current = state is FeedLoaded ? state as FeedLoaded : initial;
-    final posts = _interactions.reconcile(
+    final reconciled = _interactions.reconcile(
       refreshed: refreshed,
       current: current.posts,
     );
+    final posts = _sessionPosts(current.posts, reconciled);
     _lastPosts = posts;
-    emit(_refreshedState(current, posts));
+    final next = _refreshedState(current, posts);
+    emit(next);
+    if (next is FeedLoaded) _trackWatched(next.posts[next.activeIndex]);
+  }
+
+  // A refresh resynchronizes the posts the viewer is already scrolling
+  // through; it never inserts content above their position. Fresh content
+  // arrives only via load()/reload().
+  List<VideoPost> _sessionPosts(
+    List<VideoPost> current,
+    List<VideoPost> reconciled,
+  ) {
+    final byTarget = <VideoInteractionTarget, VideoPost>{
+      for (final post in reconciled)
+        VideoInteractionTarget.fromPost(post): post,
+    };
+    return [
+      for (final post in current)
+        if (byTarget[VideoInteractionTarget.fromPost(post)] case final post?)
+          post,
+    ];
   }
 
   void _acceptLoad(int request, FeedKind kind, List<VideoPost> refreshed) {
@@ -86,23 +134,41 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     );
     _lastPosts = posts;
     emit(posts.isEmpty ? FeedEmpty(kind) : FeedLoaded(kind, posts));
+    if (posts.isNotEmpty) _trackWatched(posts.first);
   }
 
   FeedState _refreshedState(FeedLoaded current, List<VideoPost> posts) {
     if (posts.isEmpty) return FeedEmpty(current.kind);
-    final lastIndex = posts.length - 1;
-    final activeIndex = _preservedIndex(current.activeIndex, lastIndex);
-    return FeedLoaded(current.kind, posts, activeIndex: activeIndex);
+    return FeedLoaded(
+      current.kind,
+      posts,
+      activeIndex: _preservedIndex(current, posts),
+    );
   }
 
-  int _preservedIndex(int current, int lastIndex) {
-    if (current > lastIndex) return lastIndex;
-    return current;
+  int _preservedIndex(FeedLoaded current, List<VideoPost> posts) {
+    final active = VideoInteractionTarget.fromPost(
+      current.posts[current.activeIndex],
+    );
+    final index = posts.indexWhere(
+      (post) => VideoInteractionTarget.fromPost(post) == active,
+    );
+    if (index >= 0) return index;
+    final lastIndex = posts.length - 1;
+    return current.activeIndex > lastIndex ? lastIndex : current.activeIndex;
   }
 
   void pageChanged(int index) {
     final current = state;
-    if (current is FeedLoaded) emit(current.withPage(index));
+    if (current is! FeedLoaded) return;
+    if (index < 0 || index >= current.posts.length) return;
+    emit(current.withPage(index));
+    _trackWatched(current.posts[index]);
+  }
+
+  void _trackWatched(VideoPost post) {
+    final tracker = _dependencies.watchTracker;
+    if (tracker != null) unawaited(tracker.videoWatched(post));
   }
 
   Future<void> toggleLike(VideoPost post) async {

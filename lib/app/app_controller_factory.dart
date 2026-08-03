@@ -11,6 +11,8 @@ import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/toggle_profile_follow_workflow.dart';
+import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
+import 'package:ghostr/features/watch_history/presentation/watch_history_cubit.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 
 class AppControllerFactory {
@@ -32,7 +34,18 @@ class AppControllerFactory {
     return FeedCubit(FeedDependencies(
       feed: _dependencies.videoCatalogServices.feed,
       engagement: _dependencies.videoCatalogServices.engagement,
+      watchTracker: WatchHistoryTracker(
+        history: _dependencies.watchHistoryRepository,
+        settings: _dependencies.appSettingsRepository,
+        failureReporter: _dependencies.failureReporter,
+      ),
     ));
+  }
+
+  WatchHistoryCubit watchHistory() {
+    return WatchHistoryCubit(
+      _dependencies.watchHistoryRepository.snapshotForActiveAccount(),
+    );
   }
 
   CommentsCubit comments(VideoPost post) {

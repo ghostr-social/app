@@ -21,7 +21,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('No relay accepted the like'), findsOneWidget);
-    expect(find.text('42 likes'), findsOneWidget);
+    expect(find.text('42'), findsOneWidget);
     expect(find.byTooltip('Like video'), findsOneWidget);
   });
 }

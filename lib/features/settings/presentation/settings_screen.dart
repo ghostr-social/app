@@ -8,7 +8,9 @@ import 'package:ghostr/shared/widgets/async_state_panel.dart';
 import 'package:ghostr/shared/widgets/loading_panel.dart';
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({this.onOpenWatchHistory, super.key});
+
+  final VoidCallback? onOpenWatchHistory;
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +59,9 @@ class SettingsScreen extends StatelessWidget {
         onRemove: cubit.removeBlossomServer,
       ),
       onBudgetChanged: cubit.changeBudget,
+      onHideWatchedChanged: cubit.changeHideWatchedVideos,
       onSave: cubit.save,
+      onOpenWatchHistory: onOpenWatchHistory,
     );
   }
 

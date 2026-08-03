@@ -20,7 +20,7 @@ void main() {
     )));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Profile').first);
+    await tester.tap(find.byTooltip('Open profile'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Block'));
     await tester.pumpAndSettle();

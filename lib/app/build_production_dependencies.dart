@@ -24,6 +24,8 @@ import 'package:ghostr/features/video_catalog/domain/filtered_video_feed_reposit
 import 'package:ghostr/features/video_catalog/domain/filtered_video_search_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/hybrid_video_reader.dart';
 import 'package:ghostr/features/video_catalog/domain/nostr_video_interactions.dart';
+import 'package:ghostr/features/watch_history/data/local_watch_history_repository.dart';
+import 'package:ghostr/features/watch_history/domain/watch_aware_video_feed_repository.dart';
 import 'package:ghostr/platform/logging/developer_failure_reporter.dart';
 import 'package:ghostr/platform/media/image_picker_capabilities.dart';
 import 'package:ghostr/platform/media/image_picker_media_picker.dart';
@@ -98,6 +100,10 @@ AppDependencies composeProductionDependencies(
 ) {
   final accountScope =
       AccountStorageScope(() => nostr.eventClient.publicKeyHex);
+  final watchHistory = LocalWatchHistoryRepository(
+    preferences,
+    accountScope: accountScope,
+  );
   return AppDependencies(
     sessionRepository: SecureSessionRepository(
       SecureSecretStore(const FlutterSecureStorage()),
@@ -110,7 +116,10 @@ AppDependencies composeProductionDependencies(
       delivery,
       nostr,
       accountScope,
+      watchHistory: watchHistory,
+      settingsRepository: settingsRepository,
     ),
+    watchHistoryRepository: watchHistory,
     activityRepository: NostrActivityRepository(
       client: nostr.eventClient,
       local: LocalActivityRepository(
@@ -132,8 +141,10 @@ VideoCatalogServices _buildVideoCatalog(
   SharedPreferences preferences,
   ProductionVideoDelivery delivery,
   ProductionNostrServices nostr,
-  AccountStorageScope accountScope,
-) {
+  AccountStorageScope accountScope, {
+  required LocalWatchHistoryRepository watchHistory,
+  required LocalAppSettingsRepository settingsRepository,
+}) {
   final local = LocalVideoStore(preferences, accountScope: accountScope);
   const reporter = DeveloperFailureReporter();
   final social = SocialGraphCache(nostr.adapters.social, local, reporter);
@@ -149,7 +160,12 @@ VideoCatalogServices _buildVideoCatalog(
     failureReporter: reporter,
   );
   return VideoCatalogServices(
-    feed: FilteredVideoFeedRepository(reader, social),
+    feed: WatchAwareVideoFeedRepository(
+      feed: FilteredVideoFeedRepository(reader, social),
+      history: watchHistory,
+      settings: settingsRepository,
+      failureReporter: reporter,
+    ),
     engagement: HybridVideoEngagementRepository(interactions),
     profile: AggregatingVideoProfileRepository(reader, social),
     search: FilteredVideoSearchRepository(reader, social),

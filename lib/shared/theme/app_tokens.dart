@@ -19,6 +19,9 @@ abstract final class AppRadius {
 abstract final class AppSize {
   static const double stateIcon = 42;
   static const double profileAvatar = 38;
+  static const double feedRailAvatar = 24;
+  static const double feedRailIcon = 34;
+  static const double feedSongIcon = 14;
 }
 
 abstract final class AppPalette {

@@ -30,7 +30,8 @@ class _UnexpectedRefreshRepository extends FakeVideoCatalogRepository {
   var loads = 0;
 
   @override
-  Future<List<VideoPost>> loadFeed(FeedKind kind) async {
+  Future<List<VideoPost>> loadFeed(FeedKind kind,
+      {bool excludeWatched = false}) async {
     if (loads++ > 0) throw StateError('disk failure');
     return super.loadFeed(kind);
   }

@@ -11,6 +11,7 @@ import 'fake_video_catalog_repository.dart';
 Widget feedScreenHarness(
   FakeVideoCatalogRepository repository, {
   ValueChanged<String>? onOpenProfile,
+  ValueChanged<String>? onOpenHashtag,
   VideoPlaybackPort? playbackPort,
 }) {
   return MaterialApp(
@@ -24,6 +25,7 @@ Widget feedScreenHarness(
         body: FeedScreen(
           bindings: FeedScreenBindings(
             onOpenProfile: onOpenProfile ?? (_) {},
+            onOpenHashtag: onOpenHashtag ?? (_) {},
             playbackPort: playbackPort ?? FakeVideoPlaybackPort(),
             createComments: (post) => CommentsCubit(repository, post),
             isActive: true,

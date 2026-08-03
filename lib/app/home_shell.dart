@@ -15,6 +15,7 @@ import 'package:ghostr/features/video_catalog/presentation/feed_screen.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_screen.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_cubit.dart';
+import 'package:ghostr/features/video_catalog/presentation/search_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/search_screen.dart';
 import 'package:ghostr/shared/theme/app_tokens.dart';
 
@@ -37,6 +38,7 @@ class _HomeShellState extends State<HomeShell> {
   final Set<HomeTab> _visitedTabs = {HomeTab.home};
   bool _isRouteCovered = false;
   FeedCubit? _feedCubit;
+  SearchCubit? _searchCubit;
   ActivityCubit? _activityCubit;
   ProfileCubit? _profileCubit;
 
@@ -86,12 +88,19 @@ class _HomeShellState extends State<HomeShell> {
 
   void _selectTab(int index) {
     final selected = HomeTab.values[index];
+    final isReselectedHome =
+        selected == HomeTab.home && selected == _currentTab;
     final shouldRefresh = _visitedTabs.contains(selected);
     setState(() {
       _currentTab = selected;
       _visitedTabs.add(selected);
     });
-    if (shouldRefresh) _refreshTab(selected);
+    if (isReselectedHome) {
+      final reload = _feedCubit?.reload();
+      if (reload != null) unawaited(reload);
+    } else if (shouldRefresh) {
+      _refreshTab(selected);
+    }
   }
 
   Widget _home() => BlocProvider(
@@ -99,6 +108,7 @@ class _HomeShellState extends State<HomeShell> {
         child: FeedScreen(
           bindings: FeedScreenBindings(
             onOpenProfile: _openProfile,
+            onOpenHashtag: _openHashtag,
             playbackPort: widget.controllers.videoPlaybackPort,
             createComments: widget.controllers.comments,
             isActive: _currentTab == HomeTab.home && !_isRouteCovered,
@@ -107,7 +117,7 @@ class _HomeShellState extends State<HomeShell> {
       );
 
   Widget _search() => BlocProvider(
-        create: (_) => widget.controllers.search(),
+        create: (_) => _createSearchCubit(),
         child: SearchScreen(onOpenProfile: _openProfile),
       );
 
@@ -135,6 +145,15 @@ class _HomeShellState extends State<HomeShell> {
 
   void _openProfile(ProfileId profileId) {
     unawaited(_openProfileRoute(profileId));
+  }
+
+  void _openHashtag(String hashtag) {
+    final search = _createSearchCubit();
+    setState(() {
+      _currentTab = HomeTab.search;
+      _visitedTabs.add(HomeTab.search);
+    });
+    unawaited(search.search(hashtag));
   }
 
   Future<void> _openProfileRoute(ProfileId profileId) async {
@@ -167,6 +186,10 @@ class _HomeShellState extends State<HomeShell> {
 
   FeedCubit _createFeedCubit() {
     return _feedCubit = widget.controllers.feed()..load();
+  }
+
+  SearchCubit _createSearchCubit() {
+    return _searchCubit ??= widget.controllers.search();
   }
 
   ActivityCubit _createActivityCubit() {

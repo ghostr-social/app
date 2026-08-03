@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_details.dart';
 
@@ -31,7 +30,7 @@ void main() {
     await tester.pumpWidget(buildTestApp(dependencies));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Profile'));
+    await tester.tap(find.byTooltip('Open profile'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();

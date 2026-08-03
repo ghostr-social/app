@@ -6,6 +6,7 @@ import 'package:ghostr/features/video_catalog/domain/nostr_event_reference.dart'
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
+import 'package:ghostr/features/video_catalog/domain/video_hashtags.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post_id.dart';
 import 'package:ndk/ndk.dart';
@@ -42,6 +43,7 @@ class NostrVideoEventMapper {
         songName: _firstTag(event.tags, 'title') ?? 'Original sound',
         media: _source(media, event.id),
         publishedAt: _publishedAt(event.createdAt),
+        hashtags: _hashtags(event),
       ),
       metrics: VideoPostMetrics(
         likeCount: 0,
@@ -154,6 +156,17 @@ class NostrVideoEventMapper {
       if (field.startsWith('$name ')) return field.substring(name.length + 1);
     }
     return null;
+  }
+
+  List<String> _hashtags(Nip01Event event) {
+    final found = <String>{};
+    for (final tag in event.tags.where((tag) => tag.firstOrNull == 't')) {
+      final value = tag.elementAtOrNull(1);
+      final normalized = value == null ? null : normalizeHashtag(value);
+      if (normalized != null) found.add(normalized);
+    }
+    found.addAll(extractHashtags(event.content));
+    return List<String>.unmodifiable(found);
   }
 
   String? _firstTag(List<List<String>> tags, String name) {

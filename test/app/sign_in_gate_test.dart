@@ -17,6 +17,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Import your Nostr key'), findsOneWidget);
-    expect(find.text('For You'), findsNothing);
+    expect(find.byTooltip('Open profile'), findsNothing);
   });
 }

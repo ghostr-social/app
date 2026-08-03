@@ -17,10 +17,12 @@ class InventoryRemoteVideoSource implements RemoteVideoSource {
   Future<List<VideoPost>> loadRemoteFeed({
     Set<ProfileId>? creatorIds,
     String? searchQuery,
+    Set<String>? hashtags,
   }) async {
     final posts = await _source.loadRemoteFeed(
       creatorIds: creatorIds,
       searchQuery: searchQuery,
+      hashtags: hashtags,
     );
     _inventory.prepare(posts.map((post) => post.media).toList());
     return posts;

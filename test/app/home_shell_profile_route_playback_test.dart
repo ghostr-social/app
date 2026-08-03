@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/fakes.dart';
@@ -25,7 +24,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(playback.activity[post.media.debugLabel]!.last, isTrue);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Profile'));
+    await tester.tap(find.byTooltip('Open profile'));
     await tester.pumpAndSettle();
 
     expect(playback.activity[post.media.debugLabel]!.last, isFalse);

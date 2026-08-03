@@ -26,9 +26,14 @@ class NdkNostrVideoEventQuery implements NostrVideoEventQueryPort {
   Future<List<Nip01Event>> loadVideoEvents({
     Set<NostrPublicKeyHex>? authorPublicKeys,
     String? searchQuery,
+    Set<String>? hashtags,
   }) async {
     try {
-      final query = _videoQuery(authorPublicKeys);
+      final query = _videoQuery(
+        authorPublicKeys,
+        hashtags,
+        isSearch: searchQuery != null,
+      );
       final response = _ndk.requests.query(
         name: 'ghostr-video-feed',
         timeout: const Duration(seconds: 5),
@@ -41,13 +46,23 @@ class NdkNostrVideoEventQuery implements NostrVideoEventQueryPort {
     }
   }
 
-  NostrEventQuery _videoQuery(Set<NostrPublicKeyHex>? authorPublicKeys) {
+  NostrEventQuery _videoQuery(
+    Set<NostrPublicKeyHex>? authorPublicKeys,
+    Set<String>? hashtags, {
+    required bool isSearch,
+  }) {
     return NostrEventQuery(
       kinds: _videoKinds,
       scope: NostrEventQueryScope(
         authors: authorPublicKeys?.toList() ?? const <NostrPublicKeyHex>[],
       ),
-      limit: 80,
+      tagFilters: [
+        if (hashtags != null && hashtags.isNotEmpty)
+          NostrTagFilter(name: 't', values: hashtags.toList()),
+      ],
+      // Search and hashtag queries widen the candidate pool because relays
+      // without NIP-50 support only ever return the newest events.
+      limit: isSearch || hashtags != null ? 200 : 80,
     );
   }
 

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ghostr/features/comments/presentation/comments_sheet.dart';
 import 'package:ghostr/features/comments/presentation/comments_cubit.dart';
-import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
@@ -10,17 +9,18 @@ import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card.dar
 import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:ghostr/shared/widgets/async_state_panel.dart';
 import 'package:ghostr/shared/widgets/loading_panel.dart';
-import 'package:ghostr/shared/theme/app_tokens.dart';
 
 class FeedScreenBindings {
   const FeedScreenBindings({
     required this.onOpenProfile,
+    required this.onOpenHashtag,
     required this.playbackPort,
     required this.createComments,
     required this.isActive,
   });
 
   final ValueChanged<ProfileId> onOpenProfile;
+  final ValueChanged<String> onOpenHashtag;
   final VideoPlaybackPort playbackPort;
   final CommentsCubit Function(VideoPost post) createComments;
   final bool isActive;
@@ -63,36 +63,7 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Widget _buildFeed(BuildContext context, FeedState state) {
-    return Column(
-      children: [
-        _feedSelector(context, state.kind),
-        Expanded(child: _feedContent(context, state)),
-      ],
-    );
-  }
-
-  Widget _feedSelector(BuildContext context, FeedKind selected) {
-    return SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg,
-          AppSpacing.md,
-          AppSpacing.lg,
-          AppSpacing.sm,
-        ),
-        child: SegmentedButton<FeedKind>(
-          segments: FeedKind.values.map(_segment).toList(),
-          selected: <FeedKind>{selected},
-          onSelectionChanged: (value) =>
-              context.read<FeedCubit>().load(value.first),
-        ),
-      ),
-    );
-  }
-
-  ButtonSegment<FeedKind> _segment(FeedKind kind) {
-    return ButtonSegment<FeedKind>(value: kind, label: Text(kind.label));
+    return _feedContent(context, state);
   }
 
   Widget _feedContent(BuildContext context, FeedState state) {
@@ -141,6 +112,7 @@ class _FeedScreenState extends State<FeedScreen> {
           index == state.activeIndex,
       actions: FeedCardActions(
         onOpenProfile: () => widget.bindings.onOpenProfile(post.creator.id),
+        onOpenHashtag: widget.bindings.onOpenHashtag,
         onToggleLike: context.read<FeedCubit>().toggleLike,
         onOpenComments: () => _openComments(context, post),
       ),

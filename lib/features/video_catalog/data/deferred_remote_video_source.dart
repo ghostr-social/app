@@ -14,11 +14,13 @@ class DeferredRemoteVideoSource implements RemoteVideoSource {
   Future<List<VideoPost>> loadRemoteFeed({
     Set<ProfileId>? creatorIds,
     String? searchQuery,
+    Set<String>? hashtags,
   }) async {
     final source = await (_source ??= _builder());
     return source.loadRemoteFeed(
       creatorIds: creatorIds,
       searchQuery: searchQuery,
+      hashtags: hashtags,
     );
   }
 }
