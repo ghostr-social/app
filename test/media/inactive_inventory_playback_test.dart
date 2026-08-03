@@ -20,7 +20,7 @@ void main() {
       home: playback.buildSurface(media: remote, isActive: false),
     ));
 
-    expect(find.text('Preparing next video'), findsOneWidget);
+    expect(find.bySemanticsLabel('Preparing next video'), findsOneWidget);
     expect(find.text(remote.debugLabel), findsNothing);
 
     inventory.complete(

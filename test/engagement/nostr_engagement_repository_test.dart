@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/core/nostr/nostr_event_record.dart';
 import 'package:ghostr/features/engagement/data/nostr_engagement_repository.dart';
+import 'package:ghostr/features/engagement/domain/nostr_engagement_port.dart';
 
 import '../support/fake_nostr_event_client.dart';
 import '../support/nostr_reference.dart';
@@ -13,12 +14,15 @@ void main() {
     final repository = NostrEngagementRepository(client);
     final video = nostrReference();
 
-    final liked = await repository.toggleLike(video);
+    final liked = await repository.setLike(video, VideoLikeIntent.like);
 
     expect(liked.likeCount, 2);
     expect(liked.viewerHasLiked, isTrue);
     expect(client.events.last.kind, 7);
     expect(client.events.last.content, '+');
+    expect(client.publishedAuthors, [
+      NostrPublicKeyHex.parse(testViewerPublicKey),
+    ]);
     expect(
         client.events.last.tags,
         containsAll(<List<String>>[
@@ -27,11 +31,15 @@ void main() {
           ['k', '22'],
         ]));
 
-    final unliked = await repository.toggleLike(video);
+    final unliked = await repository.setLike(video, VideoLikeIntent.unlike);
 
     expect(unliked.likeCount, 1);
     expect(unliked.viewerHasLiked, isFalse);
     expect(client.events.last.kind, 5);
+    expect(client.publishedAuthors, [
+      NostrPublicKeyHex.parse(testViewerPublicKey),
+      NostrPublicKeyHex.parse(testViewerPublicKey),
+    ]);
     expect(
         client.events.last.tags,
         containsAll(<List<String>>[

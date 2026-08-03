@@ -23,12 +23,13 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Widget _body(BuildContext context, SettingsState state) {
-    return switch (state.status) {
-      SettingsStatus.loading => const LoadingPanel(label: 'Loading settings'),
-      SettingsStatus.failure => _errorPanel(context, state.message!),
-      SettingsStatus.ready => SettingsForm(
-          settings: state.settings!,
-          isSaving: state.isSaving,
+    return switch (state) {
+      SettingsLoading() => const LoadingPanel(label: 'Loading settings'),
+      SettingsFailure(:final failureMessage) =>
+        _errorPanel(context, failureMessage),
+      SettingsReady(:final readySettings, :final isSaving) => SettingsForm(
+          settings: readySettings,
+          isSaving: isSaving,
           actions: _formActions(context),
         ),
     };

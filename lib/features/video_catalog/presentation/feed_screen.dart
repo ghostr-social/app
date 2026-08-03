@@ -12,17 +12,34 @@ import 'package:ghostr/shared/widgets/async_state_panel.dart';
 import 'package:ghostr/shared/widgets/loading_panel.dart';
 import 'package:ghostr/shared/theme/app_tokens.dart';
 
-class FeedScreen extends StatelessWidget {
-  const FeedScreen({
+class FeedScreenBindings {
+  const FeedScreenBindings({
     required this.onOpenProfile,
     required this.playbackPort,
     required this.createComments,
-    super.key,
+    required this.isActive,
   });
 
   final ValueChanged<ProfileId> onOpenProfile;
   final VideoPlaybackPort playbackPort;
   final CommentsCubit Function(VideoPost post) createComments;
+  final bool isActive;
+}
+
+class FeedScreen extends StatefulWidget {
+  const FeedScreen({
+    required this.bindings,
+    super.key,
+  });
+
+  final FeedScreenBindings bindings;
+
+  @override
+  State<FeedScreen> createState() => _FeedScreenState();
+}
+
+class _FeedScreenState extends State<FeedScreen> {
+  bool _commentsOpen = false;
 
   @override
   Widget build(BuildContext context) {
@@ -118,24 +135,38 @@ class FeedScreen extends StatelessWidget {
     final post = state.posts[index];
     return FeedCard(
       post: post,
-      playbackPort: playbackPort,
-      isActive: index == state.activeIndex,
+      playbackPort: widget.bindings.playbackPort,
+      isActive: widget.bindings.isActive &&
+          !_commentsOpen &&
+          index == state.activeIndex,
       actions: FeedCardActions(
-        onOpenProfile: () => onOpenProfile(post.creator.id),
+        onOpenProfile: () => widget.bindings.onOpenProfile(post.creator.id),
         onToggleLike: context.read<FeedCubit>().toggleLike,
         onOpenComments: () => _openComments(context, post),
       ),
     );
   }
 
-  void _openComments(BuildContext context, VideoPost post) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => BlocProvider(
-        create: (_) => createComments(post)..load(),
-        child: const CommentsSheet(),
-      ),
-    );
+  Future<void> _openComments(BuildContext context, VideoPost post) async {
+    setState(() => _commentsOpen = true);
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => BlocProvider(
+          create: (_) => widget.bindings.createComments(post)..load(),
+          child: CommentsSheet(
+            onCommentPublished: () => _commentPublished(context, post),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _commentsOpen = false);
+    }
+  }
+
+  void _commentPublished(BuildContext context, VideoPost post) {
+    if (!context.mounted) return;
+    context.read<FeedCubit>().commentsPublished(post, 1);
   }
 }

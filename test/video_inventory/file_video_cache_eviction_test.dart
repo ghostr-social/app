@@ -23,12 +23,15 @@ void main() {
     final oldMedia = VideoMediaSource.remote('https://media.test/old.mp4');
     final newMedia = VideoMediaSource.remote('https://media.test/new.mp4');
 
-    final oldCached = await store.download(oldMedia);
-    await File(oldCached!.localPath!).setLastModified(DateTime(2000));
-    final newCached = await store.download(newMedia);
+    final oldCached = (await store.acquire(oldMedia))!;
+    final oldFile = File(oldCached.media.localPath!);
+    await oldFile.setLastModified(DateTime(2000));
+    oldCached.release();
+    final newCached = (await store.acquire(newMedia))!;
 
-    expect(newCached?.isLocal, isTrue);
-    expect(await store.find(oldMedia), isNull);
-    expect(await store.find(newMedia), isNotNull);
+    expect(newCached.media.isLocal, isTrue);
+    expect(await oldFile.exists(), isFalse);
+    expect(await File(newCached.media.localPath!).exists(), isTrue);
+    newCached.release();
   });
 }

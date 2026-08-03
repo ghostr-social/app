@@ -50,8 +50,7 @@ class CommentsCubit extends DisposalSafeCubit<CommentsState> {
   }
 
   bool get _hasContent {
-    return state.status == CommentsStatus.empty ||
-        state.status == CommentsStatus.ready;
+    return state is CommentsContent;
   }
 
   bool _canPublish(String content) {

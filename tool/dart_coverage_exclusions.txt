@@ -1,4 +1,5 @@
 # Declaration-only ports, repositories, enums, and typedefs have no executable lines.
+lib/app/home_tab.dart
 lib/core/errors/failure_reporter.dart
 lib/core/media/media_picker_port.dart
 lib/core/nostr/nostr_event_client.dart
@@ -30,6 +31,7 @@ lib/features/video_inventory/domain/video_cache_priority.dart
 lib/features/video_inventory/domain/video_cache_store.dart
 lib/features/video_inventory/domain/video_file_downloader.dart
 lib/features/video_inventory/domain/video_inventory_port.dart
+lib/features/video_inventory/domain/media_url_policy.dart
 lib/platform/media/cache_directory_provider.dart
 lib/shared/media/video_playback_port.dart
 lib/shared/theme/app_tokens.dart

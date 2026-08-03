@@ -66,27 +66,38 @@ class NdkVideoRemoteSource implements RemoteVideoSource {
     return publicKeys;
   }
 
-  Future<Map<String, Metadata?>> _loadMetadata(List<Nip01Event> events) async {
-    final publicKeys =
-        events.map((event) => NostrPublicKeyHex.parse(event.pubKey)).toSet();
-    final entries = await Future.wait(publicKeys.map(_loadMetadataEntry));
-    return Map.fromEntries(entries);
-  }
-
-  Future<MapEntry<String, Metadata?>> _loadMetadataEntry(
-      NostrPublicKeyHex publicKey) async {
+  Future<Map<String, Metadata>> _loadMetadata(List<Nip01Event> events) async {
+    final publicKeys = _metadataPublicKeys(events);
+    if (publicKeys.isEmpty) return const {};
     try {
-      return MapEntry(
-          publicKey.value, await _queryPort.loadMetadata(publicKey));
+      final batch = await _queryPort.loadMetadataBatch(publicKeys);
+      return {for (final entry in batch.entries) entry.key.value: entry.value};
     } on Object catch (error, stackTrace) {
       log(
-        'Creator metadata could not be loaded.',
+        'Creator metadata batch could not be loaded.',
         name: 'ghostr.video.nostr',
         error: error,
         stackTrace: stackTrace,
       );
-      return MapEntry(publicKey.value, null);
+      return const {};
     }
+  }
+
+  Set<NostrPublicKeyHex> _metadataPublicKeys(List<Nip01Event> events) {
+    final publicKeys = <NostrPublicKeyHex>{};
+    for (final event in events) {
+      try {
+        publicKeys.add(NostrPublicKeyHex.parse(event.pubKey));
+      } on FormatException catch (error, stackTrace) {
+        log(
+          'Skipping malformed creator metadata identity.',
+          name: 'ghostr.video.nostr',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }
+    return publicKeys;
   }
 
   List<Nip01Event> _canonicalEvents(List<Nip01Event> events) {

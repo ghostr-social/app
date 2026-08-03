@@ -1,6 +1,7 @@
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/errors/boundary_failure.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
+import 'package:ghostr/core/media/video_sha256.dart';
 import 'package:ghostr/features/video_catalog/domain/nostr_event_reference.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
@@ -39,11 +40,7 @@ class NostrVideoEventMapper {
       content: VideoPostContent(
         caption: event.content,
         songName: _firstTag(event.tags, 'title') ?? 'Original sound',
-        media: VideoMediaSource.remote(
-          media.urls.first,
-          fallbackUrls: media.urls.skip(1).toList(),
-          delivery: media.delivery,
-        ),
+        media: _source(media, event.id),
         publishedAt: _publishedAt(event.createdAt),
       ),
       metrics: VideoPostMetrics(
@@ -54,6 +51,19 @@ class NostrVideoEventMapper {
     );
   }
 
+  VideoMediaSource _source(_NostrVideoMedia media, String eventId) {
+    var source = VideoMediaSource.remote(
+      media.urls.first,
+      fallbackUrls: media.urls.skip(1).toList(),
+      delivery: media.delivery,
+    );
+    final digest = media.expectedSha256;
+    if (digest != null) {
+      source = VideoMediaSource.withExpectedSha256(source, digest);
+    }
+    return VideoMediaSource.withCacheScope(source, eventId);
+  }
+
   _NostrVideoMedia _requiredVideoMedia(List<List<String>> tags) {
     final media = _videoMedia(tags);
     if (media == null) {
@@ -62,9 +72,8 @@ class NostrVideoEventMapper {
     return media;
   }
 
-  DateTime _publishedAt(int createdAt) {
-    return DateTime.fromMillisecondsSinceEpoch(createdAt * 1000, isUtc: true);
-  }
+  DateTime _publishedAt(int createdAt) =>
+      DateTime.fromMillisecondsSinceEpoch(createdAt * 1000, isUtc: true);
 
   NostrEventReference _reference(Nip01Event event) {
     return NostrEventReference(
@@ -101,21 +110,34 @@ class NostrVideoEventMapper {
 
   _NostrVideoMedia? _videoMedia(List<List<String>> tags) {
     for (final tag in tags.where((tag) => tag.firstOrNull == 'imeta')) {
-      final mimeType = _imetaField(tag, 'm');
-      if (!_isVideoMime(mimeType)) continue;
-      final primary = _imetaField(tag, 'url');
-      final urls = <String>[
-        if (_isHttpUrl(primary)) primary!,
-        ..._validFallbacks(tag),
-      ];
-      if (urls.isNotEmpty) {
-        return _NostrVideoMedia(
-          urls.toSet().toList(),
-          _delivery(mimeType!),
-        );
-      }
+      final media = _tryVideoMedia(tag);
+      if (media != null) return media;
     }
     return null;
+  }
+
+  _NostrVideoMedia? _tryVideoMedia(List<String> tag) {
+    final mimeType = _imetaField(tag, 'm');
+    if (!_isVideoMime(mimeType)) return null;
+    final digest = _videoDigest(tag);
+    if (!digest.valid) return null;
+    final urls = _videoUrls(tag);
+    if (urls.isEmpty) return null;
+    return _NostrVideoMedia(urls, _delivery(mimeType!), digest.value?.value);
+  }
+
+  ({bool valid, VideoSha256? value}) _videoDigest(List<String> tag) {
+    final rawDigest = _imetaField(tag, 'x');
+    final value = rawDigest == null ? null : VideoSha256.tryParse(rawDigest);
+    return (valid: rawDigest == null || value != null, value: value);
+  }
+
+  List<String> _videoUrls(List<String> tag) {
+    final primary = _imetaField(tag, 'url');
+    return <String>{
+      if (_isHttpUrl(primary)) primary!,
+      ..._validFallbacks(tag),
+    }.toList();
   }
 
   List<String> _validFallbacks(List<String> tag) {
@@ -149,20 +171,30 @@ class NostrVideoEventMapper {
   }
 
   bool _isVideoMime(String? value) {
-    return value?.startsWith('video/') == true ||
-        value?.toLowerCase() == 'application/x-mpegurl';
+    return _normalizedMime(value)?.startsWith('video/') == true ||
+        _isHlsMime(value);
   }
 
   VideoMediaDelivery _delivery(String mimeType) {
-    return mimeType.toLowerCase() == 'application/x-mpegurl'
+    return _isHlsMime(mimeType)
         ? VideoMediaDelivery.hls
         : VideoMediaDelivery.progressive;
   }
+
+  bool _isHlsMime(String? value) {
+    return const {
+      'application/x-mpegurl',
+      'application/vnd.apple.mpegurl',
+    }.contains(_normalizedMime(value));
+  }
+
+  String? _normalizedMime(String? value) => value?.trim().toLowerCase();
 }
 
 class _NostrVideoMedia {
-  const _NostrVideoMedia(this.urls, this.delivery);
+  const _NostrVideoMedia(this.urls, this.delivery, this.expectedSha256);
 
   final List<String> urls;
   final VideoMediaDelivery delivery;
+  final String? expectedSha256;
 }

@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/features/video_inventory/data/smart_video_inventory.dart';
 
 import '../support/fake_video_inventory.dart';
+import '../support/scoped_video_media.dart';
 
 void main() {
   test('prefetches future videos in order within the concurrency limit',
@@ -15,7 +15,7 @@ void main() {
     );
     final media = List.generate(
       4,
-      (index) => VideoMediaSource.remote('https://media.test/$index.mp4'),
+      (index) => scopedVideoMedia('https://media.test/$index.mp4'),
     );
 
     inventory.prepare(media);

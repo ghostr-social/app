@@ -12,9 +12,7 @@ void main() {
       (tester) async {
     final platform = FakeVideoPlayerPlatform()..failNextInitialization = true;
     VideoPlayerPlatform.instance = platform;
-    final media = VideoMediaSource.remote(
-      'https://media.example/unavailable.mp4',
-    );
+    final media = VideoMediaSource.local('/cache/unavailable.mp4');
 
     await tester.pumpWidget(
       MaterialApp(

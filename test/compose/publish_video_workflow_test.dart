@@ -24,7 +24,7 @@ void main() {
 
     expect(publishing.forYouFeed.single.caption, sampleMedia().label);
     expect((await activity.load()).single.body, sampleMedia().label);
-    expect(notice, PublishVideoOutcome.published);
+    expect(notice.warnings, isEmpty);
     expect(reporter.sources, isEmpty);
   });
 }

@@ -6,7 +6,7 @@ import 'package:ndk/ndk.dart';
 import '../support/nostr_test_values.dart';
 
 void main() {
-  test('maps a NIP-71 HLS playlist as playable video media', () {
+  test('maps a NIP-71 HLS playlist as adaptive video media', () {
     final event = Nip01Event(
       id: testEventId,
       pubKey:

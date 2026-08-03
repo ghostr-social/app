@@ -10,11 +10,13 @@ class ComposeScreen extends StatefulWidget {
   const ComposeScreen({
     required this.session,
     required this.playbackPort,
+    required this.isActive,
     super.key,
   });
 
   final UserSession session;
   final VideoPlaybackPort playbackPort;
+  final bool isActive;
 
   @override
   State<ComposeScreen> createState() => _ComposeScreenState();
@@ -40,6 +42,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
   Widget _form(BuildContext context, ComposeState state) {
     final selected = state.media;
+    final compose = context.read<ComposeCubit>();
     return ComposeForm(
       model: ComposeFormModel(
         media: selected == null ? null : VideoMediaSource.local(selected.path),
@@ -48,12 +51,16 @@ class _ComposeScreenState extends State<ComposeScreen> {
         errorMessage: state.errorMessage,
       ),
       actions: ComposeFormActions(
-        onChoose: context.read<ComposeCubit>().chooseFromGallery,
-        onCapture: context.read<ComposeCubit>().captureVideo,
+        onChoose: compose.chooseFromGallery,
+        onCapture: compose.captureVideo,
         onPublish: _publish,
       ),
-      captionController: _captionController,
-      playbackPort: widget.playbackPort,
+      bindings: ComposeFormBindings(
+        captionController: _captionController,
+        playbackPort: widget.playbackPort,
+        isActive: widget.isActive,
+        pickerCapabilities: compose.pickerCapabilities,
+      ),
     );
   }
 

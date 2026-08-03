@@ -57,7 +57,10 @@ Future<HybridRepositoryHarness> buildHybridRepositoryHarness(
   HybridHarnessPorts ports = const HybridHarnessPorts(),
 }) async {
   SharedPreferences.setMockInitialValues({});
-  final local = LocalVideoStore(await SharedPreferences.getInstance());
+  final local = LocalVideoStore(
+    await SharedPreferences.getInstance(),
+    accountScope: testAccountStorageScope(),
+  );
   final reporter = RecordingFailureReporter();
   final social = SocialGraphCache(
     ports.social ?? FakeNostrSocialPort(),
@@ -82,6 +85,7 @@ Future<HybridRepositoryHarness> buildHybridRepositoryHarness(
     publishing: HybridVideoPublishingRepository(
       local,
       FakeNostrVideoPublisherPort(),
+      reporter,
     ),
     engagement: HybridVideoEngagementRepository(interactions),
     comments: HybridVideoCommentsRepository(interactions),

@@ -33,13 +33,15 @@ class ProfileCubit extends DisposalSafeCubit<ProfileState> {
 
   final ProfileDependencies _dependencies;
   final ProfileRequest _request;
+  int _generation = 0;
 
   Future<void> load() async {
+    final request = ++_generation;
     emit(const ProfileState.loading());
     try {
-      emit(ProfileState.ready(await _loadDetails()));
+      _emitCurrent(request, ProfileState.ready(await _loadDetails()));
     } on AppFailure catch (failure) {
-      emit(ProfileState.failure(failure.message));
+      _emitCurrent(request, ProfileState.failure(failure.message));
     } on Object catch (error, stackTrace) {
       final failure = translatedBoundaryFailure(
         source: 'ProfileCubit.load',
@@ -47,60 +49,53 @@ class ProfileCubit extends DisposalSafeCubit<ProfileState> {
         error: error,
         stackTrace: stackTrace,
       );
-      emit(ProfileState.failure(failure.message));
+      _emitCurrent(request, ProfileState.failure(failure.message));
     }
   }
 
   Future<void> toggleFollow() async {
     final details = _updatableDetails;
     if (details == null) return;
-    emit(state.updating());
+    final request = _startUpdate(details);
     try {
       final outcome = await _dependencies.toggleFollow.toggle(details);
-      emit(ProfileState.ready(
-        await _loadDetails(),
-        notice: _followNotice(outcome),
-      ));
+      _acceptFollow(request, details, outcome);
     } on AppFailure catch (failure) {
-      emit(ProfileState.ready(details, notice: failure.message));
+      _rejectUpdate(request, details, failure.message);
     } on Object catch (error, stackTrace) {
-      final failure = translatedBoundaryFailure(
-        source: 'ProfileCubit.toggleFollow',
-        message: 'Could not update this follow.',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      emit(ProfileState.ready(details, notice: failure.message));
+      _rejectUpdate(request, details, _unexpectedFollow(error, stackTrace));
     }
   }
 
   Future<void> toggleBlock() async {
     final details = _updatableDetails;
     if (details == null) return;
-    emit(state.updating());
+    final request = _startUpdate(details);
     try {
-      await _dependencies.profile.toggleBlock(details.profile.id);
-      emit(ProfileState.ready(await _loadDetails()));
-    } on AppFailure catch (failure) {
-      emit(ProfileState.ready(details, notice: failure.message));
-    } on Object catch (error, stackTrace) {
-      final failure = translatedBoundaryFailure(
-        source: 'ProfileCubit.toggleBlock',
-        message: 'Could not update this block.',
-        error: error,
-        stackTrace: stackTrace,
+      final isBlocked =
+          await _dependencies.profile.toggleBlock(details.profile.id);
+      _emitCurrent(
+        request,
+        ProfileState.ready(details.copyWith(isBlocked: isBlocked)),
       );
-      emit(ProfileState.ready(details, notice: failure.message));
+    } on AppFailure catch (failure) {
+      _rejectUpdate(request, details, failure.message);
+    } on Object catch (error, stackTrace) {
+      _rejectUpdate(request, details, _unexpectedBlock(error, stackTrace));
     }
   }
 
   void clearNotice() {
-    if (state.notice != null) emit(state.withoutNotice());
+    final current = state;
+    if (current is ProfileReady && current.notice != null) {
+      emit(current.withoutNotice());
+    }
   }
 
   ProfileDetails? get _updatableDetails {
-    if (state.status != ProfileStatus.ready || state.isUpdating) return null;
-    return state.details;
+    final current = state;
+    if (current is! ProfileReady || current.isUpdating) return null;
+    return current.details;
   }
 
   Future<ProfileDetails> _loadDetails() {
@@ -110,9 +105,73 @@ class ProfileCubit extends DisposalSafeCubit<ProfileState> {
     );
   }
 
+  void _emitCurrent(int request, ProfileState next) {
+    if (request == _generation) emit(next);
+  }
+
+  int _startUpdate(ProfileDetails details) {
+    final request = ++_generation;
+    emit(ProfileState.ready(details, isUpdating: true));
+    return request;
+  }
+
+  void _acceptFollow(
+    int request,
+    ProfileDetails details,
+    ToggleProfileFollowOutcome outcome,
+  ) {
+    _emitCurrent(
+      request,
+      ProfileState.ready(
+        details.copyWith(isFollowing: _isFollowing(outcome)),
+        notice: _followNotice(outcome),
+      ),
+    );
+  }
+
+  void _rejectUpdate(int request, ProfileDetails details, String message) {
+    _emitCurrent(request, ProfileState.ready(details, notice: message));
+  }
+
+  String _unexpectedFollow(Object error, StackTrace stackTrace) {
+    return _unexpectedUpdate(
+      'ProfileCubit.toggleFollow',
+      'Could not update this follow.',
+      error,
+      stackTrace,
+    );
+  }
+
+  String _unexpectedBlock(Object error, StackTrace stackTrace) {
+    return _unexpectedUpdate(
+      'ProfileCubit.toggleBlock',
+      'Could not update this block.',
+      error,
+      stackTrace,
+    );
+  }
+
+  String _unexpectedUpdate(
+    String source,
+    String message,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    return translatedBoundaryFailure(
+      source: source,
+      message: message,
+      error: error,
+      stackTrace: stackTrace,
+    ).message;
+  }
+
   String? _followNotice(ToggleProfileFollowOutcome outcome) {
     return outcome == ToggleProfileFollowOutcome.followedWithoutActivity
         ? 'Followed, but local activity history could not be updated.'
         : null;
+  }
+
+  bool _isFollowing(ToggleProfileFollowOutcome outcome) {
+    return outcome != ToggleProfileFollowOutcome.unfollowed;
   }
 }

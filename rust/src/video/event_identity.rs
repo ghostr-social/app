@@ -1,31 +1,27 @@
-use crate::video::native_models::{NativeUserData, NativeVideo, NativeVideoDelivery};
-use crate::video::video::FfiNostrEventIdentity;
+use crate::video::native_media_metadata::native_media;
+use crate::video::native_models::{NativeEventIdentity, NativeUserData, NativeVideo};
+use crate::video::native_text::{bounded_native_text, MAX_NATIVE_IDENTIFIER_BYTES};
 use nostr_sdk::{Event, ToBech32};
 use sha2::{Digest, Sha256};
 
 pub const VIDEO_KINDS: [u16; 4] = [21, 22, 34235, 34236];
+pub const MAX_NATIVE_MEDIA_PER_EVENT: usize = 5;
 
 #[derive(Clone)]
 pub struct CanonicalNativeVideo {
     pub inventory_id: String,
     pub coordinate: String,
-    pub identity: FfiNostrEventIdentity,
+    pub identity: NativeEventIdentity,
     pub video: NativeVideo,
 }
 
-struct CanonicalEvent {
-    coordinate: String,
-    identity: FfiNostrEventIdentity,
+#[derive(Clone)]
+pub(crate) struct CanonicalEvent {
+    pub coordinate: String,
+    pub identity: NativeEventIdentity,
 }
 
-struct NativeMediaMetadata {
-    cache_id: String,
-    delivery: NativeVideoDelivery,
-    title: Option<String>,
-    url: String,
-}
-
-pub fn canonical_video_events(event: &Event) -> Vec<(String, FfiNostrEventIdentity)> {
+pub fn canonical_video_events(event: &Event) -> Vec<(String, NativeEventIdentity)> {
     canonical_native_videos(event)
         .into_iter()
         .map(|item| (item.video.id, item.identity))
@@ -40,8 +36,9 @@ pub fn canonical_native_videos(event: &Event) -> Vec<CanonicalNativeVideo> {
         .tags
         .iter()
         .filter_map(|tag| native_video(event, tag.as_slice()))
+        .take(MAX_NATIVE_MEDIA_PER_EVENT)
         .map(|video| CanonicalNativeVideo {
-            inventory_id: inventory_id(&canonical.coordinate, &video),
+            inventory_id: inventory_id(&canonical.coordinate, &canonical.identity.event_id, &video),
             coordinate: canonical.coordinate.clone(),
             identity: canonical.identity.clone(),
             video,
@@ -49,7 +46,7 @@ pub fn canonical_native_videos(event: &Event) -> Vec<CanonicalNativeVideo> {
         .collect()
 }
 
-fn canonical_event(event: &Event) -> Option<CanonicalEvent> {
+pub(crate) fn canonical_event(event: &Event) -> Option<CanonicalEvent> {
     let kind = event.kind.as_u16();
     if !VIDEO_KINDS.contains(&kind) {
         return None;
@@ -64,28 +61,36 @@ fn canonical_event(event: &Event) -> Option<CanonicalEvent> {
     })
 }
 
-fn event_identity(event: &Event, identifier: Option<String>) -> FfiNostrEventIdentity {
-    FfiNostrEventIdentity {
+fn event_identity(event: &Event, identifier: Option<String>) -> NativeEventIdentity {
+    NativeEventIdentity {
         event_id: event.id.to_hex(),
         author_public_key_hex: event.pubkey.to_hex(),
-        kind: event.kind.as_u16() as u64,
+        kind: event.kind.as_u16(),
         identifier,
         created_at: event.created_at.as_u64(),
-        content: event.content.clone(),
+        content: bounded_native_text(&event.content),
     }
 }
 
 fn native_video(event: &Event, tag: &[String]) -> Option<NativeVideo> {
     let media = native_media(tag)?;
+    let id = media
+        .expected_digest
+        .clone()
+        .unwrap_or_else(|| hashless_cache_id(event, &media.url));
     Some(NativeVideo {
-        id: media.cache_id,
+        id,
+        expected_digest: media.expected_digest,
+        fallback_urls: media.fallback_urls,
         user: NativeUserData {
             npub: event.pubkey.to_bech32().ok(),
             name: None,
             profile_picture: None,
         },
-        title: media.title.unwrap_or_else(|| event.content.clone()),
-        song_name: tag_value(event, "title").unwrap_or_else(|| "Original sound".to_owned()),
+        title: bounded_native_text(media.title.as_deref().unwrap_or(&event.content)),
+        song_name: tag_value(event, "title")
+            .map(bounded_native_text)
+            .unwrap_or_else(|| "Original sound".to_owned()),
         comments: "0".to_owned(),
         likes: "0".to_owned(),
         url: media.url,
@@ -93,44 +98,8 @@ fn native_video(event: &Event, tag: &[String]) -> Option<NativeVideo> {
     })
 }
 
-fn native_media(tag: &[String]) -> Option<NativeMediaMetadata> {
-    if tag.first().map(String::as_str) != Some("imeta") {
-        return None;
-    }
-    let mime = imeta_field(tag, "m")?;
-    if !is_video_mime(&mime) {
-        return None;
-    }
-    let url = imeta_field(tag, "url")?;
-    if !is_http_url(&url) {
-        return None;
-    }
-    Some(NativeMediaMetadata {
-        cache_id: video_cache_key(tag, &url)?,
-        delivery: media_delivery(&mime),
-        title: imeta_field(tag, "title"),
-        url,
-    })
-}
-
-fn video_cache_key(tag: &[String], url: &str) -> Option<String> {
-    let Some(digest) = imeta_field(tag, "x") else {
-        return Some(sha256(url));
-    };
-    (digest.len() == 64 && digest.chars().all(|value| value.is_ascii_hexdigit()))
-        .then(|| digest.to_ascii_lowercase())
-}
-
-fn is_video_mime(value: &str) -> bool {
-    value.starts_with("video/") || value.eq_ignore_ascii_case("application/x-mpegurl")
-}
-
-fn media_delivery(value: &str) -> NativeVideoDelivery {
-    if value.eq_ignore_ascii_case("application/x-mpegurl") {
-        NativeVideoDelivery::Hls
-    } else {
-        NativeVideoDelivery::Progressive
-    }
+fn hashless_cache_id(event: &Event, url: &str) -> String {
+    sha256(&format!("{}\0{url}", event.id.to_hex()))
 }
 
 fn event_coordinate(event: &Event, kind: u16, identifier: Option<&str>) -> String {
@@ -140,37 +109,31 @@ fn event_coordinate(event: &Event, kind: u16, identifier: Option<&str>) -> Strin
     }
 }
 
-fn inventory_id(coordinate: &str, video: &NativeVideo) -> String {
-    sha256(&format!("{coordinate}\0{}\0{}", video.id, video.url))
+fn inventory_id(coordinate: &str, event_id: &str, video: &NativeVideo) -> String {
+    sha256(&format!(
+        "{coordinate}\0{event_id}\0{}\0{}",
+        video.id, video.url
+    ))
 }
 
 fn sha256(value: &str) -> String {
     format!("{:x}", Sha256::digest(value.as_bytes()))
 }
 
-fn imeta_field(tag: &[String], name: &str) -> Option<String> {
-    tag.iter().skip(1).find_map(|value| {
-        let (key, field) = value.split_once(char::is_whitespace)?;
-        (key == name && !field.trim().is_empty()).then(|| field.trim().to_owned())
-    })
-}
-
 fn event_identifier(event: &Event, kind: u16) -> Option<String> {
-    (kind >= 30_000).then(|| tag_value(event, "d")).flatten()
+    if kind < 30_000 {
+        return None;
+    }
+    let identifier = tag_value(event, "d")?;
+    (identifier.len() <= MAX_NATIVE_IDENTIFIER_BYTES).then(|| identifier.to_owned())
 }
 
-fn tag_value(event: &Event, name: &str) -> Option<String> {
+fn tag_value<'a>(event: &'a Event, name: &str) -> Option<&'a str> {
     event.tags.iter().find_map(|tag| {
         let values = tag.as_slice();
         (values.first().map(String::as_str) == Some(name))
-            .then(|| values.get(1).cloned())
+            .then(|| values.get(1).map(String::as_str))
             .flatten()
             .filter(|value| !value.trim().is_empty())
     })
-}
-
-fn is_http_url(value: &str) -> bool {
-    reqwest::Url::parse(value)
-        .map(|url| matches!(url.scheme(), "http" | "https") && url.host().is_some())
-        .unwrap_or(false)
 }

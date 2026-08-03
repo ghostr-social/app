@@ -5,9 +5,8 @@ use rust_lib_ghostr::video::event_identity::canonical_native_videos;
 use rust_lib_ghostr::video::event_index::new_native_video_index;
 use rust_lib_ghostr::video::native_cache::{prepare_native_cache_directory, NativeVideoCache};
 use rust_lib_ghostr::video::native_models::new_native_downloads;
-use rust_lib_ghostr::video::video_manager::NativeVideoManager;
 use std::sync::Arc;
-use support::fixtures::temp_directory;
+use support::fixtures::{temp_directory, trusted_video_manager};
 use support::http::spawn_raw_server;
 use tokio::sync::Mutex;
 
@@ -33,14 +32,14 @@ async fn leaves_hls_remote_instead_of_caching_only_its_manifest() {
         .await;
     let downloads = new_native_downloads();
     let cache = NativeVideoCache::new(directory.clone(), 32, Arc::new(Mutex::new(0)));
-    let manager = NativeVideoManager::new(downloads.clone(), cache, videos, 1);
+    let manager = trusted_video_manager(downloads.clone(), cache, videos, 1);
 
     manager.synchronize_once().await.expect("synchronize");
 
     let values = downloads.lock().await;
     let video = values.values().next().expect("HLS inventory item");
-    assert!(!video.downloading);
-    assert!(video.local_path.is_none());
+    assert!(!video.is_downloading());
+    assert!(video.local_path().is_none());
     drop(values);
     assert_eq!(
         std::fs::read_dir(&directory)

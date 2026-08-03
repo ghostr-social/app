@@ -14,31 +14,47 @@ void main() {
     const publicKey =
         '7e7e9c42a91bfef19fa929e5fda1b72e0ebc1a4c1141673e2794234d86addf4e';
     final ndk = MockNdk();
+    final accounts = MockAccounts();
     final lists = MockLists();
+    final broadcast = MockBroadcast();
+    final response = MockNdkBroadcastResponse();
+    final signer = MockEventSigner();
     final populated = _muteList(publicKey, includeTarget: true);
     final empty = _muteList(publicKey, includeTarget: false);
     var readCount = 0;
+    when(() => ndk.accounts).thenReturn(accounts);
     when(() => ndk.lists).thenReturn(lists);
+    when(() => ndk.broadcast).thenReturn(broadcast);
+    when(accounts.getPublicKey).thenReturn('viewer');
+    when(accounts.getLoggedAccount).thenReturn(Account(
+      type: AccountType.privateKey,
+      pubkey: 'viewer',
+      signer: signer,
+    ));
+    when(signer.getPublicKey).thenReturn('viewer');
+    when(signer.canSign).thenReturn(true);
+    stubEventSigner(signer, 'viewer');
+    when(() => signer.encryptNip44(
+          plaintext: any(named: 'plaintext'),
+          recipientPubKey: 'viewer',
+        )).thenAnswer((_) async => 'encrypted');
+    when(() => response.broadcastDoneFuture)
+        .thenAnswer((_) async => successfulRelayBroadcast());
     when(() => lists.getSingleNip51List(Nip51List.kMute)).thenAnswer(
       (_) async => readCount++ == 0 ? populated : empty,
     );
-    when(
-      () => lists.removeElementFromList(
-        kind: any(named: 'kind'),
-        tag: any(named: 'tag'),
-        value: any(named: 'value'),
-        broadcastRelays: any(named: 'broadcastRelays'),
-      ),
-    ).thenAnswer((_) async => empty);
-    when(
-      () => lists.addElementToList(
-        kind: any(named: 'kind'),
-        tag: any(named: 'tag'),
-        value: any(named: 'value'),
-        broadcastRelays: any(named: 'broadcastRelays'),
-        private: any(named: 'private'),
-      ),
-    ).thenAnswer((_) async => populated);
+    when(() => lists.getSingleNip51List(
+          Nip51List.kMute,
+          forceRefresh: true,
+        )).thenAnswer((_) async {
+      return _muteList(publicKey, includeTarget: false)..createdAt = 5;
+    });
+    when(() => broadcast.broadcast(
+          nostrEvent: any(named: 'nostrEvent'),
+          specificRelays: any(named: 'specificRelays'),
+          customSigner: signer,
+          saveToCache: false,
+        )).thenReturn(response);
     final runtime = NdkNostrSocial(
       ndk: ndk,
       relays: [RelayUrl.parse('wss://relay.example')],
@@ -48,15 +64,16 @@ void main() {
     expect(await runtime.toggleBlock(npub), isFalse);
     expect(await runtime.toggleBlock(npub), isTrue);
 
-    verify(
-      () => lists.addElementToList(
-        kind: Nip51List.kMute,
-        tag: Nip51List.kPubkey,
-        value: publicKey,
-        broadcastRelays: ['wss://relay.example'],
-        private: true,
-      ),
-    ).called(1);
+    verify(() => broadcast.broadcast(
+          nostrEvent: any(named: 'nostrEvent'),
+          specificRelays: ['wss://relay.example'],
+          customSigner: signer,
+          saveToCache: false,
+        )).called(2);
+    verify(() => signer.encryptNip44(
+          plaintext: any(named: 'plaintext'),
+          recipientPubKey: 'viewer',
+        )).called(1);
   });
 }
 

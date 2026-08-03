@@ -1,38 +1,111 @@
+import 'package:ghostr/core/errors/app_failure.dart';
+import 'package:ghostr/core/errors/failure_reporter.dart';
 import 'package:ghostr/core/nostr/nostr_event_client.dart';
+import 'package:ghostr/core/nostr/nostr_event_identity.dart';
+import 'package:ghostr/core/nostr/nostr_reaction.dart';
 import 'package:ghostr/core/nostr/nostr_event_record.dart';
 import 'package:ghostr/features/activity/domain/activity_item.dart';
 import 'package:ghostr/features/activity/domain/activity_repository.dart';
 import 'package:ghostr/features/activity/domain/activity_type.dart';
 
+part 'activity_source_result.dart';
+
 class NostrActivityRepository implements ActivityRepository {
   const NostrActivityRepository({
     required NostrEventClient client,
-    required ActivityRepository local,
+    required AccountScopedActivityStore local,
+    required FailureReporter failureReporter,
   })  : _client = client,
-        _local = local;
+        _local = local,
+        _failureReporter = failureReporter,
+        _pinnedViewer = null;
+
+  const NostrActivityRepository._({
+    required NostrEventClient client,
+    required AccountScopedActivityStore local,
+    required FailureReporter failureReporter,
+    required NostrPublicKeyHex viewer,
+  })  : _client = client,
+        _local = local,
+        _failureReporter = failureReporter,
+        _pinnedViewer = viewer;
 
   final NostrEventClient _client;
-  final ActivityRepository _local;
+  final AccountScopedActivityStore _local;
+  final FailureReporter _failureReporter;
+  final NostrPublicKeyHex? _pinnedViewer;
+
+  @override
+  NostrActivityRepository snapshotForActiveAccount() {
+    if (_pinnedViewer != null) return this;
+    final viewer = _client.publicKeyHex;
+    final local = _local.snapshotForAccount(viewer);
+    return NostrActivityRepository._(
+      client: _client,
+      local: local,
+      failureReporter: _failureReporter,
+      viewer: viewer,
+    );
+  }
 
   @override
   Future<List<ActivityItem>> load() async {
-    final batches = await Future.wait(
-      _queries(_client.publicKeyHex).map(_client.query),
+    final viewer = _pinnedViewer ?? _client.publicKeyHex;
+    final local = _local.snapshotForAccount(viewer);
+    final sources = await Future.wait<_ActivitySourceResult>([
+      _loadRemote(viewer),
+      _loadLocal(local),
+    ]);
+    return _mergeSources(sources);
+  }
+
+  Future<_ActivitySourceResult> _loadRemote(NostrPublicKeyHex viewer) {
+    return _loadActivitySource(
+      _failureReporter,
+      'NostrActivityRepository.loadRemote',
+      () async {
+        final batches = await Future.wait(
+          _queries(viewer).map(_client.query),
+        );
+        final events = _uniqueIncoming(
+          batches.expand((batch) => batch),
+          viewer,
+        );
+        return events.map(_toItem).toList(growable: false);
+      },
     );
-    final events = _uniqueIncoming(batches.expand((batch) => batch));
-    final localItems = await _local.load();
+  }
+
+  Future<_ActivitySourceResult> _loadLocal(
+    AccountScopedActivityStore local,
+  ) {
+    return _loadActivitySource(
+      _failureReporter,
+      'NostrActivityRepository.loadLocal',
+      local.load,
+    );
+  }
+
+  List<ActivityItem> _mergeSources(List<_ActivitySourceResult> sources) {
+    final successful = sources.whereType<_ActivitySourceSuccess>().toList();
+    if (successful.isEmpty) {
+      throw sources.whereType<_ActivitySourceFailure>().first.failure;
+    }
     final items = <String, ActivityItem>{
-      for (final item in localItems) item.id: item,
-      for (final event in events) event.id: _toItem(event),
+      for (final source in successful.reversed)
+        for (final item in source.items) item.id: item,
     }.values.toList();
     items.sort((left, right) => right.occurredAt.compareTo(left.occurredAt));
     return items.take(50).toList();
   }
 
   @override
-  Future<void> record(ActivityItem item) => _local.record(item);
+  Future<void> record(ActivityItem item) {
+    final viewer = _pinnedViewer ?? _client.publicKeyHex;
+    return _local.snapshotForAccount(viewer).record(item);
+  }
 
-  List<NostrEventQuery> _queries(String viewer) {
+  List<NostrEventQuery> _queries(NostrPublicKeyHex viewer) {
     return <NostrEventQuery>[
       _tagQuery(7, 'p', viewer),
       _tagQuery(1111, 'P', viewer),
@@ -41,7 +114,11 @@ class NostrActivityRepository implements ActivityRepository {
     ];
   }
 
-  NostrEventQuery _tagQuery(int kind, String tag, String viewer) {
+  NostrEventQuery _tagQuery(
+    int kind,
+    String tag,
+    NostrPublicKeyHex viewer,
+  ) {
     return NostrEventQuery(
       kinds: <int>[kind],
       tagFilters: <NostrTagFilter>[
@@ -53,11 +130,20 @@ class NostrActivityRepository implements ActivityRepository {
 
   Iterable<NostrEventRecord> _uniqueIncoming(
     Iterable<NostrEventRecord> events,
+    NostrPublicKeyHex viewer,
   ) {
     return <String, NostrEventRecord>{
       for (final event in events)
-        if (event.authorPublicKeyHex != _client.publicKeyHex) event.id: event,
+        if (_isIncomingActivity(event, viewer)) event.id: event,
     }.values;
+  }
+
+  bool _isIncomingActivity(
+    NostrEventRecord event,
+    NostrPublicKeyHex viewer,
+  ) {
+    return event.authorPublicKeyHex != viewer &&
+        (event.kind != 7 || isNostrLikeReaction(event));
   }
 
   ActivityItem _toItem(NostrEventRecord event) {

@@ -3,5 +3,6 @@ abstract interface class VideoFileDownloader {
     Uri source,
     String destinationPath, {
     required int maxBytes,
+    Duration? totalTimeout,
   });
 }

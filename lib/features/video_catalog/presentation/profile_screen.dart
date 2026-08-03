@@ -41,13 +41,13 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _body(BuildContext context, ProfileState state) {
-    return switch (state.status) {
-      ProfileStatus.loading =>
-        const LoadingPanel(label: 'Loading creator profile'),
-      ProfileStatus.failure => _errorPanel(context, state.message!),
-      ProfileStatus.ready => ProfileContent(
-          details: state.details!,
-          isUpdating: state.isUpdating,
+    return switch (state) {
+      ProfileLoading() => const LoadingPanel(label: 'Loading creator profile'),
+      ProfileFailure(:final failureMessage) =>
+        _errorPanel(context, failureMessage),
+      ProfileReady(:final readyDetails, :final isUpdating) => ProfileContent(
+          details: readyDetails,
+          isUpdating: isUpdating,
           actions: ProfileContentActions(
             onFollow: (_) => context.read<ProfileCubit>().toggleFollow(),
             onBlock: (_) => context.read<ProfileCubit>().toggleBlock(),

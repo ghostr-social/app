@@ -8,7 +8,7 @@ import '../support/fake_video_inventory.dart';
 import '../support/nostr_test_values.dart';
 
 void main() {
-  test('plays HLS remotely without caching its playlist as a video file',
+  test('leaves HLS uncached instead of treating its playlist as video bytes',
       () async {
     final media = const NostrVideoEventMapper().map(_hlsEvent(), null).media;
     final store = FakeVideoCacheStore();
@@ -23,8 +23,8 @@ void main() {
 
     expect(store.downloads, isEmpty);
     expect(
-      await inventory.cache(media, VideoCachePriority.foreground),
-      same(media),
+      await inventory.acquire(media, VideoCachePriority.foreground),
+      isNull,
     );
   });
 }

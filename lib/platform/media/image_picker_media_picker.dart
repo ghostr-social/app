@@ -1,14 +1,20 @@
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/errors/boundary_failure.dart';
+import 'package:ghostr/core/media/media_picker_port.dart';
+import 'package:ghostr/core/media/media_picker_capabilities.dart';
 import 'package:ghostr/core/media/selected_media.dart';
 import 'package:ghostr/core/media/video_mime_type.dart';
-import 'package:ghostr/core/media/media_picker_port.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ImagePickerMediaPicker implements MediaPickerPort {
-  ImagePickerMediaPicker(this._imagePicker);
+  ImagePickerMediaPicker(
+    this._imagePicker, {
+    required this.capabilities,
+  });
 
   final ImagePicker _imagePicker;
+  @override
+  final MediaPickerCapabilities capabilities;
 
   @override
   Future<SelectedMedia?> recoverLostVideo() async {
@@ -35,12 +41,20 @@ class ImagePickerMediaPicker implements MediaPickerPort {
   }
 
   @override
-  Future<SelectedMedia?> captureVideo() {
+  Future<SelectedMedia?> captureVideo() async {
+    if (!capabilities.camera) {
+      throw const AppFailure('Video capture is unavailable on this device.');
+    }
     return _pick(ImageSource.camera, MediaPickSource.camera);
   }
 
   @override
-  Future<SelectedMedia?> pickFromGallery() {
+  Future<SelectedMedia?> pickFromGallery() async {
+    if (!capabilities.library) {
+      throw const AppFailure(
+        'Video library selection is unavailable on this device.',
+      );
+    }
     return _pick(ImageSource.gallery, MediaPickSource.gallery);
   }
 

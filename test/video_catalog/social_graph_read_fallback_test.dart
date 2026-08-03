@@ -10,7 +10,10 @@ import '../support/fakes.dart';
 void main() {
   test('uses cached social lists when relay reads fail', () async {
     SharedPreferences.setMockInitialValues({});
-    final local = LocalVideoStore(await SharedPreferences.getInstance());
+    final local = LocalVideoStore(
+      await SharedPreferences.getInstance(),
+      accountScope: testAccountStorageScope(),
+    );
     final followed = ProfileId.parse('followed');
     final blocked = ProfileId.parse('blocked');
     await local.saveFollowedProfiles({followed});

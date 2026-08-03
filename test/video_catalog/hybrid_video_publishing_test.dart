@@ -17,9 +17,9 @@ void main() {
       caption: 'Persisted Nostr clip',
     );
 
-    expect(published.caption, 'Persisted Nostr clip');
+    expect(published.post.caption, 'Persisted Nostr clip');
     final stored = (await harness.localStore.loadPublishedPosts()).single;
-    expect(stored.id, published.id);
-    expect(stored.caption, published.caption);
+    expect(stored.id, published.post.id);
+    expect(stored.caption, published.post.caption);
   });
 }

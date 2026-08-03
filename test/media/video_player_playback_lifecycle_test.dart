@@ -13,25 +13,26 @@ void main() {
     final platform = FakeVideoPlayerPlatform();
     VideoPlayerPlatform.instance = platform;
     const port = VideoPlayerPlaybackPort();
-    final remote = VideoMediaSource.remote('https://media.example/video.mp4');
+    final first = VideoMediaSource.local('/cache/first.mp4');
 
     await tester.pumpWidget(
-      MaterialApp(home: port.buildSurface(media: remote, isActive: true)),
+      MaterialApp(home: port.buildSurface(media: first, isActive: true)),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.byType(VideoPlayer), findsOneWidget);
-    expect(platform.dataSources.single.uri, remote.remoteUrl);
+    expect(
+        platform.dataSources.single.uri, Uri.file(first.localPath!).toString());
     expect(platform.calls, containsAllInOrder(['setLooping', 'play']));
 
     await tester.pumpWidget(
-      MaterialApp(home: port.buildSurface(media: remote, isActive: false)),
+      MaterialApp(home: port.buildSurface(media: first, isActive: false)),
     );
     await tester.pump();
     expect(platform.calls, containsAllInOrder(['pause', 'seekTo']));
 
-    final local = VideoMediaSource.local('/cache/video.mp4');
+    final local = VideoMediaSource.local('/cache/second.mp4');
     await tester.pumpWidget(
       MaterialApp(home: port.buildSurface(media: local, isActive: false)),
     );

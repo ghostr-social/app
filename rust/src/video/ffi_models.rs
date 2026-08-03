@@ -1,5 +1,5 @@
 use crate::video::native_models::{
-    NativeUserData, NativeVideo, NativeVideoDelivery, NativeVideoDownload,
+    NativeEventIdentity, NativeUserData, NativeVideo, NativeVideoDelivery, NativeVideoDownload,
 };
 
 #[derive(Debug, Clone)]
@@ -28,6 +28,8 @@ pub enum FfiVideoDelivery {
 #[derive(Debug, Clone)]
 pub struct FfiNostrVideo {
     pub id: String,
+    pub expected_digest: Option<String>,
+    pub fallback_urls: Vec<String>,
     pub user: FfiUserData,
     pub title: String,
     pub song_name: String,
@@ -47,30 +49,54 @@ pub struct FfiVideoDownload {
     pub nostr: FfiNostrVideo,
 }
 
+#[derive(Debug, Clone)]
+pub struct FfiHlsPlaybackSession {
+    pub session_id: String,
+    pub playback_url: String,
+}
+
+pub fn ffi_hls_playback_session(
+    session: crate::video::hls_playback_gateway::NativeHlsPlaybackSession,
+) -> FfiHlsPlaybackSession {
+    FfiHlsPlaybackSession {
+        session_id: session.id.as_str().to_owned(),
+        playback_url: session.playback_url,
+    }
+}
+
 pub fn ffi_video_download(video: &NativeVideoDownload) -> FfiVideoDownload {
     FfiVideoDownload {
         id: video.id.clone(),
         url: video.url.clone(),
         title: Some(video.nostr.title.clone()),
         local_path: available_local_path(video),
-        event: video.event.clone(),
+        event: ffi_event_identity(&video.event),
         nostr: ffi_nostr_video(&video.nostr),
     }
 }
 
-fn available_local_path(video: &NativeVideoDownload) -> Option<String> {
-    if video.downloading {
-        return None;
+fn ffi_event_identity(identity: &NativeEventIdentity) -> FfiNostrEventIdentity {
+    FfiNostrEventIdentity {
+        event_id: identity.event_id.clone(),
+        author_public_key_hex: identity.author_public_key_hex.clone(),
+        kind: u64::from(identity.kind),
+        identifier: identity.identifier.clone(),
+        created_at: identity.created_at,
+        content: identity.content.clone(),
     }
+}
+
+fn available_local_path(video: &NativeVideoDownload) -> Option<String> {
     video
-        .local_path
-        .as_ref()
+        .local_path()
         .map(|path| path.to_string_lossy().to_string())
 }
 
 fn ffi_nostr_video(video: &NativeVideo) -> FfiNostrVideo {
     FfiNostrVideo {
         id: video.id.clone(),
+        expected_digest: video.expected_digest.clone(),
+        fallback_urls: video.fallback_urls.clone(),
         user: ffi_user_data(&video.user),
         title: video.title.clone(),
         song_name: video.song_name.clone(),

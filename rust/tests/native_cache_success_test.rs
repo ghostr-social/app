@@ -2,7 +2,7 @@ mod support;
 
 use rust_lib_ghostr::video::native_cache::{prepare_native_cache_directory, NativeVideoCache};
 use std::sync::Arc;
-use support::fixtures::{temp_directory, video_id};
+use support::fixtures::{temp_directory, trusted_media_client, video_cache_key};
 use support::http::spawn_raw_server;
 use tokio::sync::Mutex;
 
@@ -17,7 +17,7 @@ async fn stores_a_complete_video_and_accounts_for_its_bytes() {
     let cache = NativeVideoCache::new(directory.clone(), 10, used_bytes.clone());
 
     let cached = cache
-        .download(&reqwest::Client::new(), &video_id(), &url)
+        .download(&trusted_media_client(), &video_cache_key(), &url, None)
         .await
         .expect("cached video");
 

@@ -20,7 +20,7 @@ void main() {
       maxBytes: 3,
     );
 
-    expect(await store.download(remote), isNull);
-    expect(await store.find(remote), isNull);
+    expect(await store.acquire(remote), isNull);
+    expect(directory.listSync().whereType<File>(), isEmpty);
   });
 }

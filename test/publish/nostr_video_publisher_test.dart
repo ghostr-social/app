@@ -61,6 +61,11 @@ void main() {
       'https://media.example/video.mp4',
       'https://mirror.example/video.mp4',
     ]);
+    expect(
+      post.media.expectedSha256?.value,
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    );
+    expect(post.media.cacheScope?.value, publishedEventId(1));
     expect(post.nostrReference?.kind, 22);
     expect(post.publishedAt, publishedAt);
     expect(

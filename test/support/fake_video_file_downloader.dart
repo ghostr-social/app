@@ -20,6 +20,7 @@ class FakeVideoFileDownloader implements VideoFileDownloader {
     Uri source,
     String destinationPath, {
     required int maxBytes,
+    Duration? totalTimeout,
   }) async {
     attemptedUrls.add(source.toString());
     if (error != null) throw error!;

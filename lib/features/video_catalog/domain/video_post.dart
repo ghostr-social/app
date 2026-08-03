@@ -2,6 +2,9 @@ import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/features/video_catalog/domain/nostr_event_reference.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post_id.dart';
+import 'package:ghostr/features/video_catalog/domain/video_post_metrics.dart';
+
+export 'package:ghostr/features/video_catalog/domain/video_post_metrics.dart';
 
 class VideoPostIdentity {
   const VideoPostIdentity({
@@ -29,28 +32,6 @@ class VideoPostContent {
   final DateTime publishedAt;
 }
 
-class VideoPostMetrics {
-  factory VideoPostMetrics({
-    required int likeCount,
-    required int commentCount,
-    required bool viewerHasLiked,
-  }) {
-    _checkCount(likeCount, 'likeCount');
-    _checkCount(commentCount, 'commentCount');
-    return VideoPostMetrics._(likeCount, commentCount, viewerHasLiked);
-  }
-
-  const VideoPostMetrics._(
-    this.likeCount,
-    this.commentCount,
-    this.viewerHasLiked,
-  );
-
-  final int likeCount;
-  final int commentCount;
-  final bool viewerHasLiked;
-}
-
 class VideoPost {
   const VideoPost({
     required this.identity,
@@ -73,18 +54,15 @@ class VideoPost {
   int get commentCount => metrics.commentCount;
   bool get viewerHasLiked => metrics.viewerHasLiked;
 
-  VideoPost withInteraction({
-    required int likeCount,
-    required bool viewerHasLiked,
-    int? commentCount,
-  }) {
+  VideoPost withInteraction(VideoInteractionUpdate update) {
     return VideoPost(
       identity: identity,
       content: content,
       metrics: VideoPostMetrics(
-        likeCount: likeCount,
-        commentCount: commentCount ?? this.commentCount,
-        viewerHasLiked: viewerHasLiked,
+        likeCount: update.likeCount,
+        commentCount: update.commentCount ?? commentCount,
+        viewerHasLiked: update.viewerHasLiked,
+        observations: metrics.observations.applying(update.observations),
       ),
     );
   }
@@ -101,8 +79,4 @@ class VideoPost {
       metrics: metrics,
     );
   }
-}
-
-void _checkCount(int count, String name) {
-  if (count < 0) throw RangeError.value(count, name, 'Cannot be negative.');
 }

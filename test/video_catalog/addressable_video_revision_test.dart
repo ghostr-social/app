@@ -19,7 +19,10 @@ class _RevisionQuery implements NostrVideoEventQueryPort {
       events;
 
   @override
-  Future<Metadata?> loadMetadata(NostrPublicKeyHex publicKey) async => null;
+  Future<Map<NostrPublicKeyHex, Metadata>> loadMetadataBatch(
+    Set<NostrPublicKeyHex> publicKeys,
+  ) async =>
+      const {};
 }
 
 void main() {

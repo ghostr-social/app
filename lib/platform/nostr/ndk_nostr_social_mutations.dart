@@ -1,0 +1,181 @@
+part of 'ndk_nostr_social.dart';
+
+extension _NdkNostrSocialMutations on NdkNostrSocial {
+  Future<bool> _enqueueFollow(String target) {
+    final publicKey = _publicKey!;
+    return _state.queue.run(
+      (publicKey, ContactList.kKind),
+      () => _toggleFollowTarget(publicKey, target),
+    );
+  }
+
+  Future<bool> _enqueueBlock(String target) {
+    final publicKey = _publicKey!;
+    return _state.queue.run(
+      (publicKey, Nip51List.kMute),
+      () => _toggleBlockTarget(publicKey, target),
+    );
+  }
+
+  Future<bool> _toggleFollowTarget(String publicKey, String target) async {
+    final contacts = await _followBaseline(publicKey);
+    final isFollowing = contacts.contacts.contains(target);
+    if (isFollowing) {
+      _removeAllContacts(contacts, target);
+    } else {
+      _addContact(contacts, target);
+    }
+    contacts
+      ..pubKey = publicKey
+      ..createdAt = _nextTimestamp(publicKey, ContactList.kKind, contacts)
+      ..loadedTimestamp = _clock().millisecondsSinceEpoch ~/ 1000;
+    final accepted = await _broadcast(contacts.toEvent());
+    _state.contactFloors[publicKey] = _copyContactList(contacts);
+    await _cacheAcceptedFollow(contacts, accepted);
+    return !isFollowing;
+  }
+
+  Future<bool> _toggleBlockTarget(String publicKey, String target) async {
+    final list = await _muteBaseline(publicKey);
+    final isBlocked = list.pubKeys.any((item) => item.value == target);
+    if (isBlocked) {
+      list.removeElement(Nip51List.kPubkey, target);
+    } else {
+      list.addElement(Nip51List.kPubkey, target, true);
+    }
+    list
+      ..pubKey = publicKey
+      ..createdAt = _nextTimestamp(publicKey, Nip51List.kMute, list);
+    final accepted = await _broadcast(await list.toEvent(_signer));
+    _state.muteFloors[publicKey] = _copyNip51List(list);
+    await _cacheEvent(accepted);
+    return !isBlocked;
+  }
+
+  Future<ContactList> _followBaseline(String publicKey) async {
+    final accepted = _state.contactFloors[publicKey];
+    if (!_isActiveAccount(publicKey)) {
+      if (accepted == null) {
+        throw const AppFailure('The active account changed.');
+      }
+      return _copyContactList(accepted);
+    }
+    final remote = await _ndk.follows.getContactList(
+      publicKey,
+      forceRefresh: true,
+    );
+    final newest = _newestContact(accepted, remote);
+    return newest == null
+        ? ContactList(pubKey: publicKey, contacts: <String>[])
+        : _copyContactList(newest);
+  }
+
+  Future<Nip51List> _muteBaseline(String publicKey) async {
+    final accepted = _state.muteFloors[publicKey];
+    if (!_isActiveAccount(publicKey)) return _acceptedMute(publicKey, accepted);
+    final cached = await _ndk.lists.getSingleNip51List(Nip51List.kMute);
+    if (!_isActiveAccount(publicKey)) return _acceptedMute(publicKey, accepted);
+    final refreshed = await _refreshMute(publicKey);
+    if (!_isActiveAccount(publicKey)) return _acceptedMute(publicKey, accepted);
+    final newest = _newestMute(_newestMute(accepted, cached), refreshed);
+    return newest == null ? _emptyMute(publicKey) : _copyNip51List(newest);
+  }
+
+  Future<Nip51List?> _refreshMute(String publicKey) {
+    if (!_isActiveAccount(publicKey)) return Future<Nip51List?>.value();
+    return _ndk.lists.getSingleNip51List(Nip51List.kMute, forceRefresh: true);
+  }
+
+  Nip51List _acceptedMute(String publicKey, Nip51List? accepted) {
+    if (accepted == null) throw const AppFailure('The active account changed.');
+    return _copyNip51List(accepted);
+  }
+
+  Nip51List _emptyMute(String publicKey) {
+    return Nip51List(
+      pubKey: publicKey,
+      kind: Nip51List.kMute,
+      createdAt: 0,
+      elements: <Nip51ListElement>[],
+    );
+  }
+
+  int _nextTimestamp(String publicKey, int kind, Object source) {
+    final baseline = source is ContactList
+        ? source.createdAt
+        : (source as Nip51List).createdAt;
+    final key = (publicKey, kind);
+    final last = _state.lastTimestamps[key] ?? 0;
+    final now = _clock().millisecondsSinceEpoch ~/ 1000;
+    final next =
+        <int>[now, baseline + 1, last + 1].reduce((a, b) => a > b ? a : b);
+    _state.lastTimestamps[key] = next;
+    return next;
+  }
+
+  void _removeAllContacts(ContactList contacts, String target) {
+    for (var index = contacts.contacts.length - 1; index >= 0; index -= 1) {
+      if (contacts.contacts[index] != target) continue;
+      contacts.contacts.removeAt(index);
+      if (index < contacts.contactRelays.length) {
+        contacts.contactRelays.removeAt(index);
+      }
+      if (index < contacts.petnames.length) contacts.petnames.removeAt(index);
+    }
+  }
+
+  void _addContact(ContactList contacts, String target) {
+    contacts.contacts.add(target);
+    contacts.contactRelays.add('');
+    contacts.petnames.add('');
+  }
+
+  Future<Nip01Event> _broadcast(Nip01Event event) async {
+    final signed = await _signer!.sign(event);
+    final response = _ndk.broadcast.broadcast(
+      nostrEvent: signed,
+      specificRelays: _relayUrls,
+      customSigner: _signer,
+      saveToCache: false,
+    );
+    final results = await response.broadcastDoneFuture;
+    if (!results.any((result) => result.broadcastSuccessful)) {
+      throw const AppFailure('No Nostr relay accepted the event.');
+    }
+    return signed;
+  }
+
+  Future<void> _cacheContact(ContactList contacts) async {
+    try {
+      await _ndk.config.cache.saveContactList(_copyContactList(contacts));
+    } on Object catch (error, stackTrace) {
+      logBoundaryFailure(
+        source: 'ghostr.nostr.social.cache-contact',
+        message: 'An accepted contact list could not be cached locally.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<void> _cacheAcceptedFollow(
+    ContactList contacts,
+    Nip01Event event,
+  ) async {
+    await _cacheEvent(event);
+    await _cacheContact(contacts);
+  }
+
+  Future<void> _cacheEvent(Nip01Event event) async {
+    try {
+      await _ndk.config.cache.saveEvent(event);
+    } on Object catch (error, stackTrace) {
+      logBoundaryFailure(
+        source: 'ghostr.nostr.social.cache-event',
+        message: 'An accepted social event could not be cached locally.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+}

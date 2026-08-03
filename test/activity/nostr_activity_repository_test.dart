@@ -6,6 +6,7 @@ import 'package:ghostr/features/activity/data/nostr_activity_repository.dart';
 import '../support/fake_activity_repository.dart';
 import '../support/fake_nostr_event_client.dart';
 import '../support/nostr_test_values.dart';
+import '../support/recording_failure_reporter.dart';
 import '../support/sample_data.dart';
 
 void main() {
@@ -33,6 +34,7 @@ void main() {
     final repository = NostrActivityRepository(
       client: client,
       local: FakeActivityRepository(items: [sampleActivity()]),
+      failureReporter: RecordingFailureReporter(),
     );
 
     final items = await repository.load();

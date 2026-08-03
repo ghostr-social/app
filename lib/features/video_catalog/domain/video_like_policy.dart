@@ -6,8 +6,10 @@ class VideoLikePolicy {
   VideoPost toggle(VideoPost post) {
     final liked = !post.viewerHasLiked;
     return post.withInteraction(
-      likeCount: post.likeCount + (liked ? 1 : -1),
-      viewerHasLiked: liked,
+      VideoInteractionUpdate(
+        likeCount: post.likeCount + (liked ? 1 : -1),
+        viewerHasLiked: liked,
+      ),
     );
   }
 }

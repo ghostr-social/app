@@ -28,6 +28,7 @@ void main() {
       VideoCachePriority.background,
       VideoCachePriority.foreground,
     ]);
-    expect(find.text(remote.debugLabel), findsOneWidget);
+    expect(find.bySemanticsLabel('Loading video'), findsOneWidget);
+    expect(find.text(remote.debugLabel), findsNothing);
   });
 }

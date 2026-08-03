@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/features/engagement/data/nostr_engagement_repository.dart';
+import 'package:ghostr/features/engagement/domain/nostr_engagement_port.dart';
 
 import '../support/fake_nostr_event_client.dart';
 import '../support/nostr_reference.dart';
@@ -14,7 +15,7 @@ void main() {
       identifier: 'clip-1',
     );
 
-    await repository.toggleLike(video);
+    await repository.setLike(video, VideoLikeIntent.like);
 
     expect(
       client.events.single.tags,

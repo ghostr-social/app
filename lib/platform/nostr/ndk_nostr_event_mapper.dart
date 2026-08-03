@@ -1,9 +1,12 @@
 import 'package:ghostr/core/nostr/nostr_event_record.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
+import 'package:ghostr/core/time/clock.dart';
 import 'package:ndk/ndk.dart';
 
 class NdkNostrEventMapper {
-  const NdkNostrEventMapper();
+  const NdkNostrEventMapper({Clock clock = systemClock}) : _clock = clock;
+
+  final Clock _clock;
 
   NostrEventRecord toRecord(Nip01Event event) {
     return NostrEventRecord(
@@ -39,11 +42,13 @@ class NdkNostrEventMapper {
     NostrUnsignedEvent event,
     String authorPublicKeyHex,
   ) {
+    final createdAt = _clock().millisecondsSinceEpoch ~/ 1000;
     return Nip01Event(
       pubKey: authorPublicKeyHex,
       kind: event.kind.value,
       tags: event.tags.toRaw(),
       content: event.content,
+      createdAt: createdAt,
     );
   }
 }

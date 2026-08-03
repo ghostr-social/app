@@ -36,13 +36,19 @@ class DefaultToggleProfileFollowWorkflow
 
   @override
   Future<ToggleProfileFollowOutcome> toggle(ProfileDetails details) async {
+    final activity = _activity.snapshotForActiveAccount();
     final followed = await _profile.toggleFollow(details.profile.id);
-    return followed ? _record(details) : ToggleProfileFollowOutcome.unfollowed;
+    return followed
+        ? _record(details, activity)
+        : ToggleProfileFollowOutcome.unfollowed;
   }
 
-  Future<ToggleProfileFollowOutcome> _record(ProfileDetails details) async {
+  Future<ToggleProfileFollowOutcome> _record(
+    ProfileDetails details,
+    ActivityRepository activity,
+  ) async {
     try {
-      await _activity.record(_followActivity(details));
+      await activity.record(_followActivity(details));
       return ToggleProfileFollowOutcome.followed;
     } on Object catch (error, stackTrace) {
       _failureReporter.report(

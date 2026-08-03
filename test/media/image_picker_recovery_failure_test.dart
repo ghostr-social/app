@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
+import 'package:ghostr/core/media/media_picker_capabilities.dart';
 import 'package:ghostr/platform/media/image_picker_media_picker.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -16,7 +17,11 @@ void main() {
     );
 
     await expectLater(
-      ImagePickerMediaPicker(picker).recoverLostVideo(),
+      ImagePickerMediaPicker(
+        picker,
+        capabilities:
+            const MediaPickerCapabilities(library: true, camera: false),
+      ).recoverLostVideo(),
       throwsA(isA<AppFailure>().having(
         (failure) => failure.message,
         'message',

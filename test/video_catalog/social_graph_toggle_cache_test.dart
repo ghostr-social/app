@@ -10,7 +10,10 @@ void main() {
   test('mirrors successful relay social changes into the local cache',
       () async {
     SharedPreferences.setMockInitialValues({});
-    final local = LocalVideoStore(await SharedPreferences.getInstance());
+    final local = LocalVideoStore(
+      await SharedPreferences.getInstance(),
+      accountScope: testAccountStorageScope(),
+    );
     final cache = SocialGraphCache(
       FakeNostrSocialPort(),
       local,

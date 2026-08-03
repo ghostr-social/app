@@ -3,31 +3,52 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:ghostr/core/media/video_media_cache_identity.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/platform/media/video_player_surface_view.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:video_player/video_player.dart';
 
+part 'video_player_controller_lifecycle.dart';
+part 'video_player_media_controller.dart';
+
 class VideoPlayerPlaybackPort implements VideoPlaybackPort {
-  const VideoPlayerPlaybackPort();
+  const VideoPlayerPlaybackPort({
+    VideoPlayerControllerDisposer controllerDisposer =
+        disposeVideoPlayerController,
+  }) : _controllerDisposer = controllerDisposer;
+
+  final VideoPlayerControllerDisposer _controllerDisposer;
 
   @override
   Widget buildSurface({
     required VideoMediaSource media,
     required bool isActive,
+    void Function()? onPlaybackMediaReleased,
   }) {
-    return _VideoPlayerSurface(media: media, isActive: isActive);
+    return _VideoPlayerSurface(
+      key: ValueKey(media.inventoryPlaybackIdentity),
+      media: media,
+      isActive: isActive,
+      onPlaybackMediaReleased: onPlaybackMediaReleased,
+      controllerDisposer: _controllerDisposer,
+    );
   }
 }
 
 class _VideoPlayerSurface extends StatefulWidget {
   const _VideoPlayerSurface({
+    super.key,
     required this.media,
     required this.isActive,
+    required this.onPlaybackMediaReleased,
+    required this.controllerDisposer,
   });
 
   final VideoMediaSource media;
   final bool isActive;
+  final void Function()? onPlaybackMediaReleased;
+  final VideoPlayerControllerDisposer controllerDisposer;
 
   @override
   State<_VideoPlayerSurface> createState() => _VideoPlayerSurfaceState();
@@ -35,31 +56,30 @@ class _VideoPlayerSurface extends StatefulWidget {
 
 class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   VideoPlayerController? _controller;
-  bool _hasError = false;
-  int _remoteIndex = 0;
+  late final _lifecycle =
+      _VideoPlayerControllerLifecycle(widget.controllerDisposer);
+  late bool _hasError = !_isPlayableMedia(widget.media);
+  bool _isClosing = false;
 
   @override
   void initState() {
     super.initState();
-    _loadController();
+    if (!_hasError) _startLoad();
   }
 
   @override
   void didUpdateWidget(covariant _VideoPlayerSurface oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.media.debugLabel != widget.media.debugLabel) {
-      _hasError = false;
-      _remoteIndex = 0;
-      _disposeController();
-      _loadController();
-      return;
-    }
-    _syncPlayback();
+    if (oldWidget.isActive != widget.isActive) _syncPlayback();
   }
 
   @override
   void dispose() {
-    _disposeController();
+    _isClosing = true;
+    final released = widget.onPlaybackMediaReleased;
+    final disposal = _disposeCurrentController();
+    if (disposal != null) _lifecycle.track(disposal);
+    unawaited(_releaseWhenClosed(released));
     super.dispose();
   }
 
@@ -86,70 +106,52 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
         error: error,
         stackTrace: stackTrace,
       );
-      if (_tryFallback(controller)) return;
-      _rejectController(controller);
+      await _rejectController(controller);
     }
   }
 
   VideoPlayerController _createController() {
-    if (widget.media.isLocal) {
-      return VideoPlayerController.file(File(widget.media.localPath!));
-    }
-    return VideoPlayerController.networkUrl(
-      Uri.parse(widget.media.remoteUrls[_remoteIndex]),
-    );
-  }
-
-  bool _tryFallback(VideoPlayerController controller) {
-    if (!mounted || _controller != controller) {
-      unawaited(controller.dispose());
-      return true;
-    }
-    if (widget.media.isLocal ||
-        _remoteIndex + 1 >= widget.media.remoteUrls.length) {
-      return false;
-    }
-    _controller = null;
-    _remoteIndex += 1;
-    unawaited(controller.dispose());
-    unawaited(_loadController());
-    return true;
+    return _videoPlayerController(widget.media);
   }
 
   Future<void> _acceptController(VideoPlayerController controller) async {
-    if (!mounted || _controller != controller) {
-      unawaited(controller.dispose());
+    if (!_ownsController(controller)) {
+      await _disposeSafely(controller);
       return;
     }
     await _applyPlayback(controller);
-    if (!mounted || _controller != controller) return;
+    if (!_ownsController(controller)) return;
     setState(() {});
   }
 
-  void _rejectController(VideoPlayerController controller) {
-    if (!mounted || _controller != controller) {
-      unawaited(controller.dispose());
-      return;
-    }
-    setState(() {
+  bool _ownsController(VideoPlayerController controller) {
+    return !_isClosing && mounted && _controller == controller;
+  }
+
+  Future<void> _rejectController(VideoPlayerController controller) async {
+    if (!_isClosing && mounted && _controller == controller) {
+      setState(() {
+        _controller = null;
+        _hasError = true;
+      });
+    } else if (_controller == controller) {
       _controller = null;
-      _hasError = true;
-    });
-    unawaited(controller.dispose());
+    }
+    await _disposeSafely(controller);
   }
 
   void _retry() {
+    if (!_isPlayableMedia(widget.media)) return;
     setState(() {
       _hasError = false;
-      _remoteIndex = 0;
     });
-    _loadController();
+    _startLoad();
   }
 
-  void _disposeController() {
+  Future<void>? _disposeCurrentController() {
     final controller = _controller;
     _controller = null;
-    if (controller != null) unawaited(controller.dispose());
+    return controller == null ? null : _disposeSafely(controller);
   }
 
   void _syncPlayback() {
@@ -157,7 +159,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
     if (controller == null || !controller.value.isInitialized) {
       return;
     }
-    unawaited(_guardPlayback(controller));
+    _lifecycle.track(_guardPlayback(controller));
   }
 
   Future<void> _guardPlayback(VideoPlayerController controller) async {
@@ -170,7 +172,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
         error: error,
         stackTrace: stackTrace,
       );
-      _rejectController(controller);
+      await _rejectController(controller);
     }
   }
 
@@ -181,5 +183,16 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
     }
     await controller.pause();
     await controller.seekTo(Duration.zero);
+  }
+
+  void _startLoad() => _lifecycle.track(_loadController());
+
+  Future<void> _releaseWhenClosed(void Function()? released) async {
+    await _lifecycle.close();
+    released?.call();
+  }
+
+  Future<void> _disposeSafely(VideoPlayerController controller) {
+    return _lifecycle.dispose(controller);
   }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/media/media_picker_port.dart';
+import 'package:ghostr/core/media/media_picker_capabilities.dart';
 import 'package:ghostr/core/media/selected_media.dart';
 import 'package:ghostr/features/compose/presentation/compose_cubit.dart';
 
@@ -31,6 +32,10 @@ void main() {
 class _PendingPicker implements MediaPickerPort {
   final gallery = Completer<SelectedMedia?>();
   int cameraCount = 0;
+
+  @override
+  MediaPickerCapabilities get capabilities =>
+      const MediaPickerCapabilities.allSupported();
 
   @override
   Future<SelectedMedia?> pickFromGallery() => gallery.future;

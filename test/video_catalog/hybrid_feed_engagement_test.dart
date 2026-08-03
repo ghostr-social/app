@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/features/engagement/domain/video_engagement.dart';
+import 'package:ghostr/features/engagement/domain/nostr_engagement_port.dart';
 import 'package:ghostr/features/comments/domain/video_comment.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 
@@ -48,5 +49,6 @@ void main() {
     expect(post.commentCount, 1);
     expect(liked.likeCount, 10);
     expect(liked.viewerHasLiked, isTrue);
+    expect(engagement.intents, [VideoLikeIntent.like]);
   });
 }

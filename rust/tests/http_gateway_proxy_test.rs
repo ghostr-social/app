@@ -3,9 +3,9 @@ mod support;
 use axum::body::{to_bytes, Body};
 use axum::http::header::{ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, RANGE};
 use axum::http::{Request, StatusCode};
-use rust_lib_ghostr::video::http_gateway::configured_router;
+use rust_lib_ghostr::video::http_gateway::configured_router_with_client;
 use rust_lib_ghostr::video::native_models::new_native_downloads;
-use support::fixtures::{native_download, video_id};
+use support::fixtures::{native_download, trusted_media_client, video_id};
 use support::http::spawn_raw_server;
 use tower::ServiceExt;
 
@@ -20,7 +20,7 @@ async fn proxies_video_ranges_and_streaming_headers_from_the_origin() {
         .lock()
         .await
         .insert(video_id(), native_download(&url));
-    let response = configured_router(downloads)
+    let response = configured_router_with_client(downloads, trusted_media_client())
         .oneshot(
             Request::builder()
                 .uri(format!("/video.mp4?id={}", video_id()))

@@ -11,7 +11,7 @@ void main() {
     final platform = FakeVideoPlayerPlatform();
     VideoPlayerPlatform.instance = platform;
     const port = VideoPlayerPlaybackPort();
-    final media = VideoMediaSource.remote('https://media.example/video.mp4');
+    final media = VideoMediaSource.local('/cache/video.mp4');
 
     await tester.pumpWidget(MaterialApp(
       home: port.buildSurface(media: media, isActive: true),

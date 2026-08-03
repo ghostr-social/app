@@ -22,8 +22,10 @@ void main() {
     final completion = expectLater(like, completes);
     await cubit.close();
     engagement.pending.complete(post.withInteraction(
-      likeCount: post.likeCount + 1,
-      viewerHasLiked: true,
+      VideoInteractionUpdate(
+        likeCount: post.likeCount + 1,
+        viewerHasLiked: true,
+      ),
     ));
 
     await completion;

@@ -22,3 +22,12 @@ Future<String> ffiStartServer(
 
 Future<List<FfiVideoDownload>> ffiGetDiscoveredVideos() =>
     RustLib.instance.api.crateVideoNativeGatewayFfiGetDiscoveredVideos();
+
+Future<FfiHlsPlaybackSession> ffiAcquireHlsPlayback(
+        {required List<String> sourceUrls}) =>
+    RustLib.instance.api
+        .crateVideoNativeGatewayFfiAcquireHlsPlayback(sourceUrls: sourceUrls);
+
+Future<bool> ffiReleaseHlsPlayback({required String sessionId}) =>
+    RustLib.instance.api
+        .crateVideoNativeGatewayFfiReleaseHlsPlayback(sessionId: sessionId);

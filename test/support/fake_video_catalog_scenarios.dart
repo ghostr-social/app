@@ -22,11 +22,13 @@ class FakeCommentsScenario {
     this.commentsByPost = const {},
     this.failure,
     this.response,
+    this.publishBarrier,
   });
 
   final Map<String, List<VideoComment>> commentsByPost;
   final AppFailure? failure;
   final Future<List<VideoComment>>? response;
+  final Future<void>? publishBarrier;
 }
 
 class FakeWriteScenario {

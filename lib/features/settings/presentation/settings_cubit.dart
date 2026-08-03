@@ -40,7 +40,7 @@ class SettingsCubit extends DisposalSafeCubit<SettingsState> {
       return;
     }
     final relays = <RelayUrl>{...settings.relays, relay}.toList();
-    emit(state.edited(settings.copyWith(relays: relays)));
+    emit(SettingsState.ready(settings.copyWith(relays: relays)));
   }
 
   void addBlossomServer(String raw) {
@@ -55,14 +55,14 @@ class SettingsCubit extends DisposalSafeCubit<SettingsState> {
       ...settings.blossomServers,
       server,
     }.toList();
-    emit(state.edited(settings.copyWith(blossomServers: servers)));
+    emit(SettingsState.ready(settings.copyWith(blossomServers: servers)));
   }
 
   void removeRelay(RelayUrl relay) {
     final settings = _editableSettings;
     if (settings == null) return;
     final relays = settings.relays.where((item) => item != relay).toList();
-    emit(state.edited(settings.copyWith(relays: relays)));
+    emit(SettingsState.ready(settings.copyWith(relays: relays)));
   }
 
   void removeBlossomServer(BlossomServerUrl server) {
@@ -70,19 +70,20 @@ class SettingsCubit extends DisposalSafeCubit<SettingsState> {
     if (settings == null) return;
     final servers =
         settings.blossomServers.where((item) => item != server).toList();
-    emit(state.edited(settings.copyWith(blossomServers: servers)));
+    emit(SettingsState.ready(settings.copyWith(blossomServers: servers)));
   }
 
   void changeBudget(VideoInventoryBudget budget) {
     final settings = _editableSettings;
     if (settings == null) return;
-    emit(state.edited(settings.copyWith(inventoryBudget: budget)));
+    emit(SettingsState.ready(settings.copyWith(inventoryBudget: budget)));
   }
 
   Future<void> save() async {
-    final settings = state.settings;
-    if (settings == null || state.isSaving) return;
-    emit(state.saving());
+    final current = state;
+    if (current is! SettingsReady || current.isSaving) return;
+    final settings = current.settings;
+    emit(current.saving());
     try {
       await _repository.save(settings);
       _notice(
@@ -101,14 +102,21 @@ class SettingsCubit extends DisposalSafeCubit<SettingsState> {
   }
 
   void clearNotice() {
-    if (state.notice != null) emit(state.withoutNotice());
+    final current = state;
+    if (current is SettingsReady && current.notice != null) {
+      emit(current.withoutNotice());
+    }
   }
 
   void _notice(String message) {
-    if (state.settings != null) emit(state.withNotice(message));
+    final current = state;
+    if (current is SettingsReady) emit(current.withNotice(message));
   }
 
   AppSettings? get _editableSettings {
-    return state.isSaving ? null : state.settings;
+    final current = state;
+    return current is SettingsReady && !current.isSaving
+        ? current.settings
+        : null;
   }
 }

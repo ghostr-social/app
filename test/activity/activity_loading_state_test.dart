@@ -28,6 +28,9 @@ class _PendingActivityRepository implements ActivityRepository {
   final _load = Completer<List<ActivityItem>>();
 
   @override
+  ActivityRepository snapshotForActiveAccount() => this;
+
+  @override
   Future<List<ActivityItem>> load() => _load.future;
 
   @override

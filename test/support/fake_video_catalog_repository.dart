@@ -2,6 +2,7 @@ import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/media/selected_media.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/features/comments/domain/video_comment.dart';
+import 'package:ghostr/features/publish/domain/video_publication.dart';
 import 'package:ghostr/features/session/domain/user_session.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post_id.dart';
@@ -18,9 +19,11 @@ class FakeVideoCatalogRepository extends FakeVideoCatalogBase
     super.feed = const FakeFeedScenario(),
     FakeCommentsScenario comments = const FakeCommentsScenario(),
     super.writes = const FakeWriteScenario(),
+    this.cacheStatus = VideoPublicationCacheStatus.stored,
   })  : commentsByPost = {...comments.commentsByPost},
         commentsFailure = comments.failure,
-        commentsResponse = comments.response;
+        commentsResponse = comments.response,
+        commentPublishBarrier = comments.publishBarrier;
 
   @override
   final Map<String, List<VideoComment>> commentsByPost;
@@ -29,7 +32,10 @@ class FakeVideoCatalogRepository extends FakeVideoCatalogBase
   @override
   final Future<List<VideoComment>>? commentsResponse;
   @override
-  Future<VideoPost> publish({
+  final Future<void>? commentPublishBarrier;
+  final VideoPublicationCacheStatus cacheStatus;
+  @override
+  Future<VideoPublication> publish({
     required UserSession session,
     required SelectedMedia media,
     required String caption,
@@ -53,7 +59,7 @@ class FakeVideoCatalogRepository extends FakeVideoCatalogBase
       ),
     );
     forYouFeed.insert(0, post);
-    return post;
+    return VideoPublication(post: post, cacheStatus: cacheStatus);
   }
 
   @override
@@ -61,8 +67,10 @@ class FakeVideoCatalogRepository extends FakeVideoCatalogBase
     if (likeFailure case final AppFailure failure) throw failure;
     final isLiked = !post.viewerHasLiked;
     final updated = post.withInteraction(
-      likeCount: post.likeCount + (isLiked ? 1 : -1),
-      viewerHasLiked: isLiked,
+      VideoInteractionUpdate(
+        likeCount: post.likeCount + (isLiked ? 1 : -1),
+        viewerHasLiked: isLiked,
+      ),
     );
     replacePost(forYouFeed, updated);
     replacePost(followingFeed, updated);

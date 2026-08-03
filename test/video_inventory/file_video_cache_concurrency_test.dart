@@ -7,8 +7,7 @@ import 'package:ghostr/features/video_inventory/domain/video_file_downloader.dar
 import 'package:ghostr/platform/media/file_video_cache_store.dart';
 
 void main() {
-  test('serializes partial downloads under one aggregate byte budget',
-      () async {
+  test('runs distinct cache acquisitions concurrently', () async {
     final directory = await Directory.systemTemp.createTemp('ghostr-cache-');
     addTearDown(() => directory.delete(recursive: true));
     final downloader = _CoordinatedDownloader();
@@ -20,20 +19,32 @@ void main() {
     final first = VideoMediaSource.remote('https://media.test/first.mp4');
     final second = VideoMediaSource.remote('https://media.test/second.mp4');
 
-    final firstResult = store.download(first);
+    final firstResult = store.acquire(first);
     await downloader.firstPartialWritten.future;
-    final secondResult = store.download(second);
-    await Future<void>.delayed(Duration.zero);
-    expect(downloader.startedCount, 1);
-    downloader.releaseFirst.complete();
+    final secondResult = store.acquire(second);
+    addTearDown(() async {
+      if (!downloader.releaseFirst.isCompleted) {
+        downloader.releaseFirst.complete();
+      }
+      (await firstResult)?.release();
+      (await secondResult)?.release();
+    });
+    final startedConcurrently = await Future.any([
+      downloader.secondStarted.future.then((_) => true),
+      Future<bool>.delayed(const Duration(milliseconds: 100), () => false),
+    ]);
 
-    expect((await firstResult)?.isLocal, isTrue);
-    expect((await secondResult)?.isLocal, isTrue);
+    expect(startedConcurrently, isTrue);
+
+    downloader.releaseFirst.complete();
+    expect((await firstResult)?.media.isLocal, isTrue);
+    expect((await secondResult)?.media.isLocal, isTrue);
   });
 }
 
 class _CoordinatedDownloader implements VideoFileDownloader {
   final firstPartialWritten = Completer<void>();
+  final secondStarted = Completer<void>();
   final releaseFirst = Completer<void>();
   int startedCount = 0;
 
@@ -42,8 +53,10 @@ class _CoordinatedDownloader implements VideoFileDownloader {
     Uri source,
     String destinationPath, {
     required int maxBytes,
+    Duration? totalTimeout,
   }) async {
     startedCount += 1;
+    if (startedCount == 2) secondStarted.complete();
     await File(destinationPath).writeAsBytes([1, 2, 3]);
     if (!source.path.endsWith('first.mp4')) return;
     firstPartialWritten.complete();

@@ -7,8 +7,7 @@ import '../support/fake_media_ports.dart';
 import '../support/fake_video_inventory.dart';
 
 void main() {
-  testWidgets('falls back to remote playback when cache preparation throws',
-      (tester) async {
+  testWidgets('fails closed when cache preparation throws', (tester) async {
     final inventory = FakeVideoInventory();
     final playback = InventoryVideoPlaybackPort(
       delegate: FakeVideoPlaybackPort(),
@@ -22,6 +21,7 @@ void main() {
     inventory.fail(remote.debugLabel);
     await tester.pump();
 
-    expect(find.text(remote.debugLabel), findsOneWidget);
+    expect(find.text(remote.debugLabel), findsNothing);
+    expect(find.text('Video unavailable'), findsOneWidget);
   });
 }

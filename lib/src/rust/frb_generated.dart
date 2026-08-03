@@ -69,7 +69,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.7.0';
 
   @override
-  int get rustContentHash => 571399987;
+  int get rustContentHash => 1234169613;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -80,8 +80,14 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Future<FfiHlsPlaybackSession> crateVideoNativeGatewayFfiAcquireHlsPlayback(
+      {required List<String> sourceUrls});
+
   Future<List<FfiVideoDownload>>
       crateVideoNativeGatewayFfiGetDiscoveredVideos();
+
+  Future<bool> crateVideoNativeGatewayFfiReleaseHlsPlayback(
+      {required String sessionId});
 
   Future<String> crateVideoNativeGatewayFfiStartServer(
       {required String cacheDirectory,
@@ -101,13 +107,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  Future<FfiHlsPlaybackSession> crateVideoNativeGatewayFfiAcquireHlsPlayback(
+      {required List<String> sourceUrls}) {
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_list_String(sourceUrls, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 1, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_ffi_hls_playback_session,
+        decodeErrorData: sse_decode_AnyhowException,
+      ),
+      constMeta: kCrateVideoNativeGatewayFfiAcquireHlsPlaybackConstMeta,
+      argValues: [sourceUrls],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateVideoNativeGatewayFfiAcquireHlsPlaybackConstMeta =>
+      const TaskConstMeta(
+        debugName: "ffi_acquire_hls_playback",
+        argNames: ["sourceUrls"],
+      );
+
+  @override
   Future<List<FfiVideoDownload>>
       crateVideoNativeGatewayFfiGetDiscoveredVideos() {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 1, port: port_);
+            funcId: 2, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_list_ffi_video_download,
@@ -126,6 +158,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<bool> crateVideoNativeGatewayFfiReleaseHlsPlayback(
+      {required String sessionId}) {
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_String(sessionId, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 3, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_bool,
+        decodeErrorData: null,
+      ),
+      constMeta: kCrateVideoNativeGatewayFfiReleaseHlsPlaybackConstMeta,
+      argValues: [sessionId],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateVideoNativeGatewayFfiReleaseHlsPlaybackConstMeta =>
+      const TaskConstMeta(
+        debugName: "ffi_release_hls_playback",
+        argNames: ["sessionId"],
+      );
+
+  @override
   Future<String> crateVideoNativeGatewayFfiStartServer(
       {required String cacheDirectory,
       required BigInt maxParallelDownloads,
@@ -139,7 +197,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_u_64(maxStorageBytes, serializer);
         sse_encode_String(relayUrls, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 2, port: port_);
+            funcId: 4, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -173,7 +231,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 3, port: port_);
+            funcId: 5, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_unit,
@@ -204,6 +262,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  bool dco_decode_bool(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as bool;
+  }
+
+  @protected
+  FfiHlsPlaybackSession dco_decode_ffi_hls_playback_session(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return FfiHlsPlaybackSession(
+      sessionId: dco_decode_String(arr[0]),
+      playbackUrl: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
   FfiNostrEventIdentity dco_decode_ffi_nostr_event_identity(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -223,17 +299,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   FfiNostrVideo dco_decode_ffi_nostr_video(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 8)
-      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    if (arr.length != 10)
+      throw Exception('unexpected arr length: expect 10 but see ${arr.length}');
     return FfiNostrVideo(
       id: dco_decode_String(arr[0]),
-      user: dco_decode_ffi_user_data(arr[1]),
-      title: dco_decode_String(arr[2]),
-      songName: dco_decode_String(arr[3]),
-      likes: dco_decode_String(arr[4]),
-      comments: dco_decode_String(arr[5]),
-      url: dco_decode_String(arr[6]),
-      delivery: dco_decode_ffi_video_delivery(arr[7]),
+      expectedDigest: dco_decode_opt_String(arr[1]),
+      fallbackUrls: dco_decode_list_String(arr[2]),
+      user: dco_decode_ffi_user_data(arr[3]),
+      title: dco_decode_String(arr[4]),
+      songName: dco_decode_String(arr[5]),
+      likes: dco_decode_String(arr[6]),
+      comments: dco_decode_String(arr[7]),
+      url: dco_decode_String(arr[8]),
+      delivery: dco_decode_ffi_video_delivery(arr[9]),
     );
   }
 
@@ -276,6 +354,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   int dco_decode_i_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
+  }
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_String).toList();
   }
 
   @protected
@@ -335,6 +419,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  bool sse_decode_bool(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint8() != 0;
+  }
+
+  @protected
+  FfiHlsPlaybackSession sse_decode_ffi_hls_playback_session(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_sessionId = sse_decode_String(deserializer);
+    var var_playbackUrl = sse_decode_String(deserializer);
+    return FfiHlsPlaybackSession(
+        sessionId: var_sessionId, playbackUrl: var_playbackUrl);
+  }
+
+  @protected
   FfiNostrEventIdentity sse_decode_ffi_nostr_event_identity(
       SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -357,6 +457,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   FfiNostrVideo sse_decode_ffi_nostr_video(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_id = sse_decode_String(deserializer);
+    var var_expectedDigest = sse_decode_opt_String(deserializer);
+    var var_fallbackUrls = sse_decode_list_String(deserializer);
     var var_user = sse_decode_ffi_user_data(deserializer);
     var var_title = sse_decode_String(deserializer);
     var var_songName = sse_decode_String(deserializer);
@@ -366,6 +468,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_delivery = sse_decode_ffi_video_delivery(deserializer);
     return FfiNostrVideo(
         id: var_id,
+        expectedDigest: var_expectedDigest,
+        fallbackUrls: var_fallbackUrls,
         user: var_user,
         title: var_title,
         songName: var_songName,
@@ -414,6 +518,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   int sse_decode_i_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getInt32();
+  }
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <String>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
   }
 
   @protected
@@ -471,12 +587,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  bool sse_decode_bool(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getUint8() != 0;
-  }
-
-  @protected
   void sse_encode_AnyhowException(
       AnyhowException self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -487,6 +597,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_String(String self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
+  }
+
+  @protected
+  void sse_encode_bool(bool self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint8(self ? 1 : 0);
+  }
+
+  @protected
+  void sse_encode_ffi_hls_playback_session(
+      FfiHlsPlaybackSession self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.sessionId, serializer);
+    sse_encode_String(self.playbackUrl, serializer);
   }
 
   @protected
@@ -506,6 +630,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       FfiNostrVideo self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.id, serializer);
+    sse_encode_opt_String(self.expectedDigest, serializer);
+    sse_encode_list_String(self.fallbackUrls, serializer);
     sse_encode_ffi_user_data(self.user, serializer);
     sse_encode_String(self.title, serializer);
     sse_encode_String(self.songName, serializer);
@@ -546,6 +672,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_i_32(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putInt32(self);
+  }
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_String(item, serializer);
+    }
   }
 
   @protected
@@ -597,11 +732,5 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_usize(BigInt self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putBigUint64(self);
-  }
-
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putUint8(self ? 1 : 0);
   }
 }

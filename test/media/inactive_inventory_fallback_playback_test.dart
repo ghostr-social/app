@@ -7,7 +7,7 @@ import '../support/fake_media_ports.dart';
 import '../support/fake_video_inventory.dart';
 
 void main() {
-  testWidgets('uses remote media if background preparation is unavailable',
+  testWidgets('blocks remote media if background preparation is unavailable',
       (tester) async {
     final inventory = FakeVideoInventory();
     final playback = InventoryVideoPlaybackPort(
@@ -22,6 +22,8 @@ void main() {
     inventory.complete(remote.debugLabel, remote);
     await tester.pump();
 
-    expect(find.text(remote.debugLabel), findsOneWidget);
+    expect(find.text(remote.debugLabel), findsNothing);
+    expect(find.text('Video unavailable'), findsOneWidget);
+    expect(inventory.activeLeaseCount, 0);
   });
 }

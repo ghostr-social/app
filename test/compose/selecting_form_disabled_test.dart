@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/media/media_picker_port.dart';
+import 'package:ghostr/core/media/media_picker_capabilities.dart';
 import 'package:ghostr/core/media/selected_media.dart';
 
 import '../support/compose_screen_harness.dart';
@@ -39,6 +40,10 @@ FilledButton _filled(WidgetTester tester, String label) {
 
 class _PendingRecoveryPicker implements MediaPickerPort {
   final pending = Completer<SelectedMedia?>();
+
+  @override
+  MediaPickerCapabilities get capabilities =>
+      const MediaPickerCapabilities.allSupported();
 
   @override
   Future<SelectedMedia?> recoverLostVideo() => pending.future;

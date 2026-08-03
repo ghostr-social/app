@@ -33,18 +33,24 @@ class NostrVideoPublisher implements NostrVideoPublisherPort {
     required String caption,
   }) async {
     _verifyIdentity(session);
+    final authorPublicKeyHex = session.identity.publicKeyHex;
     final uploaded = await _mediaUploader.upload(media);
+    _verifyIdentity(session);
     final publishedAt = _clock().toUtc();
     final title = caption.trim().isEmpty ? media.label : caption.trim();
-    final eventId = await _eventClient.publish(NostrUnsignedEvent(
-      kind: 22,
-      tags: _videoTags(uploaded, title, publishedAt),
-      content: title,
-    ));
+    final eventId = await _eventClient.publish(
+      NostrUnsignedEvent(
+        kind: 22,
+        tags: _videoTags(uploaded, title, publishedAt),
+        content: title,
+      ),
+      expectedAuthor: authorPublicKeyHex,
+    );
     final id = VideoPostId.parse(eventId.value);
     return _toPost(
       session,
       uploaded,
+      authorPublicKeyHex,
       _PublishedVideo(
         selected: media,
         caption: title,
@@ -77,6 +83,7 @@ class NostrVideoPublisher implements NostrVideoPublisherPort {
   VideoPost _toPost(
     UserSession session,
     UploadedVideoMedia uploaded,
+    NostrPublicKeyHex authorPublicKeyHex,
     _PublishedVideo video,
   ) {
     return VideoPost(
@@ -85,17 +92,14 @@ class NostrVideoPublisher implements NostrVideoPublisherPort {
         creator: session.profile,
         nostrReference: NostrEventReference(
           eventId: NostrEventId.parse(video.id.value),
-          authorPublicKeyHex: _eventClient.publicKeyHex,
+          authorPublicKeyHex: authorPublicKeyHex,
           kind: NostrEventKind.parse(22),
         ),
       ),
       content: VideoPostContent(
         caption: video.caption,
         songName: video.selected.label,
-        media: VideoMediaSource.remote(
-          uploaded.primaryUrl,
-          fallbackUrls: uploaded.fallbackUrls,
-        ),
+        media: _remoteMedia(uploaded, video.id.value),
         publishedAt: video.publishedAt,
       ),
       metrics: VideoPostMetrics(
@@ -104,6 +108,16 @@ class NostrVideoPublisher implements NostrVideoPublisherPort {
         viewerHasLiked: false,
       ),
     );
+  }
+
+  VideoMediaSource _remoteMedia(UploadedVideoMedia uploaded, String eventId) {
+    final source = VideoMediaSource.remote(
+      uploaded.primaryUrl,
+      fallbackUrls: uploaded.fallbackUrls,
+    );
+    final verified =
+        VideoMediaSource.withExpectedSha256(source, uploaded.sha256);
+    return VideoMediaSource.withCacheScope(verified, eventId);
   }
 
   void _verifyIdentity(UserSession session) {

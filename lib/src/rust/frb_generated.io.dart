@@ -26,6 +26,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String dco_decode_String(dynamic raw);
 
   @protected
+  bool dco_decode_bool(dynamic raw);
+
+  @protected
+  FfiHlsPlaybackSession dco_decode_ffi_hls_playback_session(dynamic raw);
+
+  @protected
   FfiNostrEventIdentity dco_decode_ffi_nostr_event_identity(dynamic raw);
 
   @protected
@@ -42,6 +48,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   int dco_decode_i_32(dynamic raw);
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw);
 
   @protected
   List<FfiVideoDownload> dco_decode_list_ffi_video_download(dynamic raw);
@@ -71,6 +80,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
+  bool sse_decode_bool(SseDeserializer deserializer);
+
+  @protected
+  FfiHlsPlaybackSession sse_decode_ffi_hls_playback_session(
+      SseDeserializer deserializer);
+
+  @protected
   FfiNostrEventIdentity sse_decode_ffi_nostr_event_identity(
       SseDeserializer deserializer);
 
@@ -88,6 +104,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer);
 
   @protected
   List<FfiVideoDownload> sse_decode_list_ffi_video_download(
@@ -112,14 +131,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt sse_decode_usize(SseDeserializer deserializer);
 
   @protected
-  bool sse_decode_bool(SseDeserializer deserializer);
-
-  @protected
   void sse_encode_AnyhowException(
       AnyhowException self, SseSerializer serializer);
 
   @protected
   void sse_encode_String(String self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ffi_hls_playback_session(
+      FfiHlsPlaybackSession self, SseSerializer serializer);
 
   @protected
   void sse_encode_ffi_nostr_event_identity(
@@ -143,6 +166,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_ffi_video_download(
       List<FfiVideoDownload> self, SseSerializer serializer);
 
@@ -164,9 +190,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_usize(BigInt self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer);
 }
 
 // Section: wire_class

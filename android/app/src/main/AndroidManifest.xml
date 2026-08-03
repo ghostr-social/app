@@ -4,6 +4,8 @@
     <application
         android:label="ghostr"
         android:name="${applicationName}"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:usesCleartextTraffic="true"
         android:icon="@mipmap/ic_launcher">
         <activity

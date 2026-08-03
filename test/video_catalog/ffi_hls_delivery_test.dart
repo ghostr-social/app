@@ -9,7 +9,6 @@ void main() {
   test('preserves HLS delivery from native fallback inventory', () async {
     const url = 'https://media.example/video.m3u8';
     final source = FfiVideoRemoteSource(
-      gatewayBaseUrl: 'http://127.0.0.1:3000',
       snapshotLoader: () => const [],
       loader: () async => [
         ffiVideo(

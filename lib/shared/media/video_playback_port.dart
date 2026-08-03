@@ -5,5 +5,6 @@ abstract interface class VideoPlaybackPort {
   Widget buildSurface({
     required VideoMediaSource media,
     required bool isActive,
+    void Function()? onPlaybackMediaReleased,
   });
 }

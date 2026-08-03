@@ -37,22 +37,34 @@ class ActivityCubit extends DisposalSafeCubit<ActivityState> {
   ActivityCubit(this._repository) : super(const ActivityLoading());
 
   final ActivityRepository _repository;
+  var _loadRequest = 0;
 
   Future<void> load() async {
+    final request = ++_loadRequest;
     emit(const ActivityLoading());
     try {
       final items = await _repository.load();
-      emit(items.isEmpty ? const ActivityEmpty() : ActivityLoaded(items));
-    } on AppFailure catch (failure) {
-      emit(ActivityFailure(failure.message));
-    } on Object catch (error, stackTrace) {
-      final failure = translatedBoundaryFailure(
-        source: 'ActivityCubit.load',
-        message: 'Could not load activity. Try again.',
-        error: error,
-        stackTrace: stackTrace,
+      _emitLoad(
+        request,
+        items.isEmpty ? const ActivityEmpty() : ActivityLoaded(items),
       );
-      emit(ActivityFailure(failure.message));
+    } on AppFailure catch (failure) {
+      _emitLoad(request, ActivityFailure(failure.message));
+    } on Object catch (error, stackTrace) {
+      _emitLoad(request, ActivityFailure(_unexpected(error, stackTrace)));
     }
+  }
+
+  void _emitLoad(int request, ActivityState next) {
+    if (!isClosed && request == _loadRequest) emit(next);
+  }
+
+  String _unexpected(Object error, StackTrace stackTrace) {
+    return translatedBoundaryFailure(
+      source: 'ActivityCubit.load',
+      message: 'Could not load activity. Try again.',
+      error: error,
+      stackTrace: stackTrace,
+    ).message;
   }
 }

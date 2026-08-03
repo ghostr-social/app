@@ -64,11 +64,35 @@ class VideoPostStorageMapper {
   }
 
   VideoMediaSource _mediaFromMap(Map<String, dynamic> map) {
+    var media = _mediaWithoutDigest(map);
+    final expectedSha256 = _optional<String>(map, 'expectedSha256');
+    if (expectedSha256 != null) {
+      media = VideoMediaSource.withExpectedSha256(media, expectedSha256);
+    }
+    final cacheScope = _optional<String>(map, 'cacheScope');
+    return cacheScope == null
+        ? media
+        : VideoMediaSource.withCacheScope(media, cacheScope);
+  }
+
+  VideoMediaSource _mediaWithoutDigest(Map<String, dynamic> map) {
     final localPath = _optional<String>(map, 'localPath');
+    final remoteUrl = _optional<String>(map, 'remoteUrl');
+    final fallbacks = _stringList(map, 'fallbackUrls');
+    final delivery = _deliveryFromMap(map);
+    if (localPath != null && remoteUrl != null) {
+      return VideoMediaSource.cached(
+        localPath,
+        remoteUrl: remoteUrl,
+        fallbackUrls: fallbacks,
+        delivery: delivery,
+      );
+    }
     if (localPath != null) return VideoMediaSource.local(localPath);
     return VideoMediaSource.remote(
-      _required<String>(map, 'remoteUrl'),
-      fallbackUrls: _stringList(map, 'fallbackUrls'),
+      remoteUrl ?? _required<String>(map, 'remoteUrl'),
+      fallbackUrls: fallbacks,
+      delivery: delivery,
     );
   }
 
@@ -77,6 +101,17 @@ class VideoPostStorageMapper {
       'localPath': media.localPath,
       'remoteUrl': media.remoteUrl,
       'fallbackUrls': media.fallbackUrls,
+      'delivery': media.remoteDelivery?.name,
+      'expectedSha256': media.expectedSha256?.value,
+      'cacheScope': media.cacheScope?.value,
+    };
+  }
+
+  VideoMediaDelivery _deliveryFromMap(Map<String, dynamic> map) {
+    return switch (_optional<String>(map, 'delivery')) {
+      null || 'progressive' => VideoMediaDelivery.progressive,
+      'hls' => VideoMediaDelivery.hls,
+      _ => throw const FormatException('Invalid stored media delivery.'),
     };
   }
 

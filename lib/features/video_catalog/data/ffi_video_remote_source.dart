@@ -10,14 +10,12 @@ typedef NostrVideoSnapshotLoader = List<VideoPost> Function();
 
 class FfiVideoRemoteSource implements RemoteVideoSource {
   FfiVideoRemoteSource({
-    required this.gatewayBaseUrl,
     required NostrVideoSnapshotLoader snapshotLoader,
     FfiVideoInventoryLoader loader = ffiGetDiscoveredVideos,
   })  : _snapshotLoader = snapshotLoader,
         _loader = loader,
-        _mapper = FfiVideoPostMapper(gatewayBaseUrl);
+        _mapper = const FfiVideoPostMapper();
 
-  final String gatewayBaseUrl;
   final NostrVideoSnapshotLoader _snapshotLoader;
   final FfiVideoInventoryLoader _loader;
   final FfiVideoPostMapper _mapper;

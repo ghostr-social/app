@@ -2,7 +2,7 @@ mod support;
 
 use rust_lib_ghostr::video::native_cache::{prepare_native_cache_directory, NativeVideoCache};
 use std::sync::Arc;
-use support::fixtures::{temp_directory, video_id};
+use support::fixtures::{temp_directory, trusted_media_client, video_cache_key};
 use support::http::spawn_raw_server;
 use tokio::sync::Mutex;
 
@@ -17,7 +17,7 @@ async fn rejects_a_video_that_exceeds_the_native_inventory_budget() {
     let cache = NativeVideoCache::new(directory.clone(), 4, used_bytes.clone());
 
     let result = cache
-        .download(&reqwest::Client::new(), &video_id(), &url)
+        .download(&trusted_media_client(), &video_cache_key(), &url, None)
         .await;
 
     assert!(result.is_err());

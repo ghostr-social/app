@@ -27,6 +27,7 @@ Widget composeScreenHarness({
         body: ComposeScreen(
           session: sampleSession(),
           playbackPort: FakeVideoPlaybackPort(),
+          isActive: true,
         ),
       ),
     ),

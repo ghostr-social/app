@@ -8,7 +8,9 @@ import 'package:ghostr/shared/widgets/async_state_panel.dart';
 import 'package:ghostr/shared/widgets/loading_panel.dart';
 
 class CommentsSheet extends StatefulWidget {
-  const CommentsSheet({super.key});
+  const CommentsSheet({required this.onCommentPublished, super.key});
+
+  final VoidCallback onCommentPublished;
 
   @override
   State<CommentsSheet> createState() => _CommentsSheetState();
@@ -46,11 +48,13 @@ class _CommentsSheetState extends State<CommentsSheet> {
   );
 
   Widget _body(CommentsState state) {
-    return switch (state.status) {
-      CommentsStatus.loading => const LoadingPanel(label: 'Loading comments'),
-      CommentsStatus.failure => _errorPanel(state.message!),
-      CommentsStatus.empty => const Center(child: Text('No comments yet')),
-      CommentsStatus.ready => _commentList(state.comments, state.isPosting),
+    return switch (state) {
+      CommentsLoading() => const LoadingPanel(label: 'Loading comments'),
+      CommentsFailure(:final failureMessage) => _errorPanel(failureMessage),
+      CommentsContent(:final comments) when comments.isEmpty =>
+        const Center(child: Text('No comments yet')),
+      CommentsContent(:final comments, :final isPosting) =>
+        _commentList(comments, isPosting),
     };
   }
 
@@ -95,7 +99,9 @@ class _CommentsSheetState extends State<CommentsSheet> {
   Future<void> _publish() async {
     final published =
         await context.read<CommentsCubit>().publish(_controller.text);
-    if (published && mounted) _controller.clear();
+    if (!published) return;
+    widget.onCommentPublished();
+    if (mounted) _controller.clear();
   }
 
   void _showNotice(BuildContext context, CommentsState state) {
@@ -106,8 +112,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
   }
 
   bool _hasComposer(CommentsState state) {
-    return state.status == CommentsStatus.empty ||
-        state.status == CommentsStatus.ready;
+    return state is CommentsContent;
   }
 
   @override

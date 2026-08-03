@@ -1,42 +1,71 @@
-import 'dart:convert';
 import 'dart:io';
 
-import 'package:crypto/crypto.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/errors/boundary_failure.dart';
+import 'package:ghostr/core/media/video_media_cache_identity.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
-import 'package:ghostr/core/time/clock.dart';
 import 'package:ghostr/features/video_inventory/domain/video_cache_store.dart';
+import 'package:ghostr/features/video_inventory/domain/video_cache_lease.dart';
 import 'package:ghostr/features/video_inventory/domain/video_download_limit_exceeded.dart';
 import 'package:ghostr/features/video_inventory/domain/video_file_downloader.dart';
 import 'package:ghostr/platform/media/cache_directory_provider.dart';
-import 'package:ghostr/platform/media/video_cache_download_queue.dart';
 import 'package:ghostr/platform/media/video_cache_directory.dart';
 import 'package:ghostr/platform/media/video_cache_files.dart';
+import 'package:ghostr/platform/media/video_cache_flight_registry.dart';
+import 'package:ghostr/platform/media/video_cache_integrity.dart';
+import 'package:ghostr/platform/media/video_cache_lease_registry.dart';
+import 'package:ghostr/platform/media/video_cache_media_files.dart';
+import 'package:ghostr/platform/media/video_cache_metadata_lock.dart';
+import 'package:ghostr/platform/media/video_cache_source_downloader.dart';
+import 'package:ghostr/platform/media/video_cache_source_importer.dart';
+import 'package:ghostr/platform/media/video_cache_store_timing.dart';
+import 'package:ghostr/platform/media/video_cache_transfer_pool.dart';
+
+part 'file_video_cache_import.dart';
+part 'file_video_cache_transfer.dart';
 
 class FileVideoCacheStore implements VideoCacheStore {
   FileVideoCacheStore({
     required CacheDirectoryProvider directoryProvider,
     required VideoFileDownloader downloader,
     required this.maxBytes,
-    Clock clock = systemClock,
+    VideoCacheStoreTiming timing = const VideoCacheStoreTiming(),
+    int maxConcurrentTransfers =
+        VideoCacheTransferPool.defaultMaxConcurrentTransfers,
   })  : _directoryProvider = directoryProvider,
-        _downloader = downloader,
-        _clock = clock;
+        _sourceDownloader = VideoCacheSourceDownloader(downloader),
+        _timing = timing,
+        _transferPool = VideoCacheTransferPool(
+          maxBytes: maxBytes,
+          maxConcurrentTransfers: maxConcurrentTransfers,
+        );
 
   final CacheDirectoryProvider _directoryProvider;
-  final VideoFileDownloader _downloader;
-  final Clock _clock;
+  final VideoCacheSourceDownloader _sourceDownloader;
+  final VideoCacheSourceImporter _sourceImporter =
+      const VideoCacheSourceImporter();
+  final VideoCacheStoreTiming _timing;
+  final VideoCacheTransferPool _transferPool;
   final int maxBytes;
   final Set<String> _activePartialPaths = <String>{};
-  final VideoCacheDownloadQueue _downloadQueue = VideoCacheDownloadQueue();
+  final Set<String> _pendingLeasePaths = <String>{};
+  final VideoCacheLeaseRegistry _leases = VideoCacheLeaseRegistry();
+  final VideoCacheFlightRegistry<VideoMediaSource?> _flights =
+      VideoCacheFlightRegistry<VideoMediaSource?>();
+  final VideoCacheMetadataLock _metadataQueue = VideoCacheMetadataLock();
   late final VideoCacheDirectory _cacheDirectory = VideoCacheDirectory(
     maxBytes,
     _activePartialPaths,
+    _leases.activePaths,
+    pendingLeasePaths: _pendingLeasePaths,
   );
   int _requestId = 0;
 
-  Future<void> initialize() async {
+  Future<void> initialize() {
+    return _metadataQueue.run(_initialize);
+  }
+
+  Future<void> _initialize() async {
     try {
       final directory = await _directoryProvider();
       await _cacheDirectory.maintain(directory);
@@ -48,29 +77,52 @@ class FileVideoCacheStore implements VideoCacheStore {
   }
 
   @override
-  Future<VideoMediaSource?> find(VideoMediaSource media) async {
+  Future<VideoCacheLease?> acquire(VideoMediaSource media) async {
+    if (maxBytes <= 0) return null;
+    final existing = await _acquireExisting(media);
+    if (existing != null) return existing;
+    return _acquireDownloaded(media);
+  }
+
+  Future<VideoCacheLease?> _acquireDownloaded(VideoMediaSource media) async {
+    final key = media.cacheStorageIdentity;
+    final registration = _flights.join(
+      key,
+      media.cacheJobIdentity,
+      () => _download(media),
+    );
+    VideoMediaSource? cached;
+    try {
+      cached = await registration.flight.result;
+      if (cached == null) return null;
+      return await _acquireExisting(media);
+    } on Object {
+      if (!registration.retryOnFailure) rethrow;
+    } finally {
+      if (_flights.leave(registration.flight)) {
+        await _releasePendingLease(cached?.localPath);
+      }
+    }
+    return acquire(media);
+  }
+
+  Future<VideoCacheLease?> _acquireExisting(VideoMediaSource media) {
+    return _metadataQueue.run(() async {
+      final cached = await _find(media);
+      return cached == null ? null : _leases.acquire(cached);
+    });
+  }
+
+  Future<VideoMediaSource?> _find(VideoMediaSource media) async {
     try {
       final directory = await _directoryProvider();
       await _cacheDirectory.maintain(directory);
-      final file = File(_completedPath(directory, media));
-      if (!await file.exists() || await file.length() == 0) return null;
-      await file.setLastModified(_clock());
-      return VideoMediaSource.local(file.path);
-    } on AppFailure {
-      rethrow;
-    } on Object catch (error, stackTrace) {
-      throw _cacheFailure(error, stackTrace);
-    }
-  }
-
-  @override
-  Future<VideoMediaSource?> download(VideoMediaSource media) {
-    return _downloadQueue.run(() => _guardedDownload(media));
-  }
-
-  Future<VideoMediaSource?> _guardedDownload(VideoMediaSource media) async {
-    try {
-      return await _download(media);
+      final file = File(completedVideoCachePath(directory, media));
+      if (!await validateExistingVideoCache(file, media.expectedSha256)) {
+        return null;
+      }
+      await file.setLastModified(_timing.accessClock());
+      return completedVideoCacheMedia(file, media);
     } on AppFailure {
       rethrow;
     } on Object catch (error, stackTrace) {
@@ -79,87 +131,45 @@ class FileVideoCacheStore implements VideoCacheStore {
   }
 
   Future<VideoMediaSource?> _download(VideoMediaSource media) async {
-    if (maxBytes <= 0) return null;
+    final deadline = _timing.startSourceSet();
     final request = await _createRequest(media);
     _activePartialPaths.add(request.partial.path);
     try {
-      return await _completeDownload(request);
+      final completed = await _transferPool.run(
+        directory: request.directory,
+        availableBytes: _availableBytes,
+        evictOldest: _evictOldest,
+        transfer: (limit) => _transfer(request, media, deadline, limit),
+      );
+      return completed
+          ? completedVideoCacheMedia(request.completed, media)
+          : null;
     } on AppFailure {
       await _deleteIfPresent(request.partial);
+      await _releasePendingLease(request.completed.path);
       rethrow;
     } on Object catch (error, stackTrace) {
       await _deleteIfPresent(request.partial);
+      await _releasePendingLease(request.completed.path);
       throw _cacheFailure(error, stackTrace);
     } finally {
       _activePartialPaths.remove(request.partial.path);
     }
   }
 
-  Future<VideoMediaSource?> _completeDownload(VideoCacheRequest request) async {
-    if (!await _downloadWithinBudget(request)) return null;
-    await _replaceCompletedFile(request);
-    await _cacheDirectory.enforceBudget(request.directory);
-    return _completedMedia(request.completed);
-  }
-
-  Future<VideoMediaSource?> _completedMedia(File completed) async {
-    if (!await completed.exists()) return null;
-    return VideoMediaSource.local(completed.path);
-  }
-
-  Future<bool> _downloadWithinBudget(VideoCacheRequest request) async {
-    while (true) {
-      final available = await _cacheDirectory.availableBytes(request.directory);
-      try {
-        await _downloadFromSources(request, available);
-        return true;
-      } on VideoDownloadLimitExceeded {
-        if (!await _cacheDirectory.evictOldest(request.directory)) return false;
-      }
-    }
-  }
-
-  Future<void> _downloadFromSources(
-    VideoCacheRequest request,
-    int availableBytes,
-  ) async {
-    Object? lastError;
-    for (final source in request.sources) {
-      try {
-        await _deleteIfPresent(request.partial);
-        await _downloader.download(
-          source,
-          request.partial.path,
-          maxBytes: availableBytes,
-        );
-        await _validateDownload(request.partial);
-        return;
-      } on Object catch (error, stackTrace) {
-        logBoundaryFailure(
-          source: 'ghostr.media.file-cache',
-          message: 'A video cache source failed; trying its fallback.',
-          error: error,
-          stackTrace: stackTrace,
-        );
-        lastError = error;
-      }
-    }
-    if (lastError is AppFailure) throw lastError;
-    throw const AppFailure('The video could not be cached.');
-  }
-
   Future<VideoCacheRequest> _createRequest(VideoMediaSource media) async {
     final source = Uri.tryParse(media.remoteUrl ?? '');
-    final sources = media.remoteUrls.map(Uri.tryParse).whereType<Uri>().where(
-          (uri) => uri.hasAuthority,
-        );
+    final sources =
+        media.cacheSourceUrls.map(Uri.tryParse).whereType<Uri>().where(
+              (uri) => uri.hasAuthority,
+            );
     if (source == null || !source.hasAuthority || sources.isEmpty) {
       throw const AppFailure('The video URL cannot be cached.');
     }
     final directory = await _directoryProvider();
     await directory.create(recursive: true);
-    await _cacheDirectory.maintain(directory);
-    final completed = File(_completedPath(directory, media));
+    await _metadataQueue.run(() => _cacheDirectory.maintain(directory));
+    final completed = File(completedVideoCachePath(directory, media));
     return VideoCacheRequest(
       directory: directory,
       sources: sources.toList(),
@@ -168,21 +178,9 @@ class FileVideoCacheStore implements VideoCacheStore {
     );
   }
 
-  Future<void> _validateDownload(File file) async {
-    if (!await file.exists() || await file.length() == 0) {
-      throw const AppFailure('The downloaded video was empty.');
-    }
-  }
-
   Future<void> _replaceCompletedFile(VideoCacheRequest request) async {
     await _deleteIfPresent(request.completed);
     await request.partial.rename(request.completed.path);
-  }
-
-  String _completedPath(Directory directory, VideoMediaSource media) {
-    final digest =
-        sha256.convert(utf8.encode(media.remoteUrl ?? '')).toString();
-    return '${directory.path}${Platform.pathSeparator}$digest.video';
   }
 
   Future<void> _deleteIfPresent(File file) async {

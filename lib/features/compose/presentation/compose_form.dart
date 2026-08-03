@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:ghostr/core/media/media_picker_capabilities.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:ghostr/shared/theme/app_tokens.dart';
 import 'package:ghostr/shared/widgets/async_state_panel.dart';
+
+part 'compose_media_picker_buttons.dart';
 
 class ComposeFormModel {
   const ComposeFormModel({
@@ -30,19 +33,31 @@ class ComposeFormActions {
   final VoidCallback onPublish;
 }
 
+class ComposeFormBindings {
+  const ComposeFormBindings({
+    required this.captionController,
+    required this.playbackPort,
+    required this.isActive,
+    required this.pickerCapabilities,
+  });
+
+  final TextEditingController captionController;
+  final VideoPlaybackPort playbackPort;
+  final bool isActive;
+  final MediaPickerCapabilities pickerCapabilities;
+}
+
 class ComposeForm extends StatelessWidget {
   const ComposeForm({
     required this.model,
     required this.actions,
-    required this.captionController,
-    required this.playbackPort,
+    required this.bindings,
     super.key,
   });
 
   final ComposeFormModel model;
   final ComposeFormActions actions;
-  final TextEditingController captionController;
-  final VideoPlaybackPort playbackPort;
+  final ComposeFormBindings bindings;
 
   @override
   Widget build(BuildContext context) {
@@ -77,7 +92,7 @@ class ComposeForm extends StatelessWidget {
         Text('Create', style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: AppSpacing.sm),
         Text(
-          'Publish a new clip from your gallery or camera into your Ghostr profile.',
+          'Publish a new clip from $_mediaSourceLabel into your Ghostr profile.',
           style: Theme.of(context)
               .textTheme
               .bodyLarge
@@ -88,19 +103,10 @@ class ComposeForm extends StatelessWidget {
   }
 
   Widget _mediaButtons() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ElevatedButton(
-          onPressed: _isBusy ? null : actions.onChoose,
-          child: const Text('Choose from library'),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        FilledButton.tonal(
-          onPressed: _isBusy ? null : actions.onCapture,
-          child: const Text('Capture video'),
-        ),
-      ],
+    return _ComposeMediaPickerButtons(
+      capabilities: bindings.pickerCapabilities,
+      actions: actions,
+      isBusy: _isBusy,
     );
   }
 
@@ -113,7 +119,10 @@ class ComposeForm extends StatelessWidget {
           aspectRatio: 9 / 16,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.media),
-            child: playbackPort.buildSurface(media: media, isActive: true),
+            child: bindings.playbackPort.buildSurface(
+              media: media,
+              isActive: bindings.isActive,
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.md),
@@ -132,7 +141,7 @@ class ComposeForm extends StatelessWidget {
   Widget _captionField() {
     return TextField(
       key: const Key('compose-caption-field'),
-      controller: captionController,
+      controller: bindings.captionController,
       enabled: !_isBusy,
       maxLines: 3,
       decoration: InputDecoration(
@@ -150,4 +159,5 @@ class ComposeForm extends StatelessWidget {
   }
 
   bool get _isBusy => model.isPublishing || model.isSelecting;
+  String get _mediaSourceLabel => bindings.pickerCapabilities.sourceLabel;
 }

@@ -2,11 +2,22 @@ import 'dart:io';
 
 import 'package:ghostr/platform/media/video_cache_files.dart';
 
+typedef VideoCacheFileDelete = Future<void> Function(File file);
+
 class VideoCacheDirectory {
-  const VideoCacheDirectory(this.maxBytes, this.activePartialPaths);
+  VideoCacheDirectory(
+    this.maxBytes,
+    this.activePartialPaths,
+    this.activeLeasePaths, {
+    this.pendingLeasePaths = const <String>{},
+    VideoCacheFileDelete deleteFile = _deleteVideoCacheFile,
+  }) : _deleteFile = deleteFile;
 
   final int maxBytes;
   final Set<String> activePartialPaths;
+  final Set<String> activeLeasePaths;
+  final Set<String> pendingLeasePaths;
+  final VideoCacheFileDelete _deleteFile;
 
   Future<void> maintain(Directory directory) async {
     if (!await directory.exists()) return;
@@ -32,7 +43,7 @@ class VideoCacheDirectory {
     var totalBytes = cached.fold<int>(0, (sum, entry) => sum + entry.bytes);
     for (final entry in cached) {
       if (totalBytes <= maxBytes) return;
-      await entry.file.delete();
+      if (_isLeased(entry) || !await _tryDelete(entry.file)) continue;
       totalBytes -= entry.bytes;
     }
   }
@@ -47,8 +58,25 @@ class VideoCacheDirectory {
     final cached = await entries(directory);
     if (cached.isEmpty) return false;
     cached.sort((left, right) => left.modified.compareTo(right.modified));
-    await cached.first.file.delete();
-    return true;
+    for (final entry in cached) {
+      if (_isLeased(entry)) continue;
+      if (await _tryDelete(entry.file)) return true;
+    }
+    return false;
+  }
+
+  bool _isLeased(VideoCacheFile entry) {
+    return activeLeasePaths.contains(entry.file.path) ||
+        pendingLeasePaths.contains(entry.file.path);
+  }
+
+  Future<bool> _tryDelete(File file) async {
+    try {
+      await _deleteFile(file);
+      return true;
+    } on FileSystemException {
+      return false;
+    }
   }
 
   Future<List<VideoCacheFile>> entries(Directory directory) async {
@@ -61,3 +89,5 @@ class VideoCacheDirectory {
     return cached;
   }
 }
+
+Future<void> _deleteVideoCacheFile(File file) => file.delete();

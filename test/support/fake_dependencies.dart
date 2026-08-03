@@ -3,6 +3,7 @@ import 'package:ghostr/app/video_catalog_services.dart';
 import 'package:ghostr/features/session/domain/session_repository.dart';
 import 'package:ghostr/features/session/domain/user_session.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
+import 'package:ghostr/shared/media/video_playback_port.dart';
 
 import 'fake_activity_repository.dart';
 import 'fake_app_settings_repository.dart';
@@ -31,14 +32,19 @@ AppDependencies buildFakeDependencies({
     ),
     activityRepository: device.activity ?? FakeActivityRepository(),
     mediaPickerPort: device.mediaPicker ?? FakeMediaPickerPort(),
-    videoPlaybackPort: FakeVideoPlaybackPort(),
+    videoPlaybackPort: device.playback ?? FakeVideoPlaybackPort(),
     failureReporter: RecordingFailureReporter(),
   );
 }
 
 class FakeDeviceDependencies {
-  const FakeDeviceDependencies({this.activity, this.mediaPicker});
+  const FakeDeviceDependencies({
+    this.activity,
+    this.mediaPicker,
+    this.playback,
+  });
 
   final FakeActivityRepository? activity;
   final FakeMediaPickerPort? mediaPicker;
+  final VideoPlaybackPort? playback;
 }

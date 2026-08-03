@@ -5,6 +5,8 @@ import 'package:ghostr/platform/media/http_video_file_downloader.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import '../support/allow_all_media_url_policy.dart';
+
 void main() {
   test('streams a successful HTTP response into the destination file',
       () async {
@@ -12,7 +14,10 @@ void main() {
     addTearDown(() => directory.delete(recursive: true));
     final destination = File('${directory.path}/video.partial');
     final client = MockClient((_) async => http.Response.bytes([1, 2, 3], 200));
-    final downloader = HttpVideoFileDownloader(client);
+    final downloader = HttpVideoFileDownloader(
+      client,
+      const AllowAllMediaUrlPolicy(),
+    );
 
     await downloader.download(
       Uri.parse('https://media.test/video.mp4'),

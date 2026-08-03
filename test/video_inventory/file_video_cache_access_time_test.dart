@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/platform/media/file_video_cache_store.dart';
+import 'package:ghostr/platform/media/video_cache_store_timing.dart';
 
 import '../support/fake_video_file_downloader.dart';
 
@@ -19,13 +20,15 @@ void main() {
       directoryProvider: () async => directory,
       downloader: downloader,
       maxBytes: 10,
-      clock: () => cachedAt,
+      timing: VideoCacheStoreTiming(accessClock: () => cachedAt),
     );
-    final cached = await store.download(remote);
+    final cached = (await store.acquire(remote))!;
+    cached.release();
 
-    await store.find(remote);
+    final accessed = (await store.acquire(remote))!;
+    accessed.release();
 
-    final modified = await File(cached!.localPath!).lastModified();
+    final modified = await File(cached.media.localPath!).lastModified();
     expect(modified.toUtc(), cachedAt);
   });
 }

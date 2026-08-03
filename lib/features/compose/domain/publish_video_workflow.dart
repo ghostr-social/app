@@ -3,13 +3,21 @@ import 'package:ghostr/core/media/selected_media.dart';
 import 'package:ghostr/features/activity/domain/activity_item.dart';
 import 'package:ghostr/features/activity/domain/activity_repository.dart';
 import 'package:ghostr/features/activity/domain/activity_type.dart';
+import 'package:ghostr/features/publish/domain/video_publication.dart';
 import 'package:ghostr/features/publish/domain/video_publishing_repository.dart';
 import 'package:ghostr/features/session/domain/user_session.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 
 typedef PublishVideoClock = DateTime Function();
 
-enum PublishVideoOutcome { published, publishedWithoutActivity }
+enum PublishVideoWarning { localCatalogUnavailable, localActivityUnavailable }
+
+final class PublishVideoOutcome {
+  PublishVideoOutcome(Iterable<PublishVideoWarning> warnings)
+      : warnings = Set<PublishVideoWarning>.unmodifiable(warnings);
+
+  final Set<PublishVideoWarning> warnings;
+}
 
 abstract interface class PublishVideoWorkflow {
   Future<PublishVideoOutcome> publish({
@@ -41,12 +49,17 @@ class DefaultPublishVideoWorkflow implements PublishVideoWorkflow {
     required SelectedMedia media,
     required String rawCaption,
   }) async {
-    final post = await _publishing.publish(
+    final activity = _activity.snapshotForActiveAccount();
+    final publication = await _publishing.publish(
       session: session,
       media: media,
       caption: _caption(rawCaption, media),
     );
-    return _record(post);
+    final warnings = <PublishVideoWarning>{
+      if (publication.cacheStatus == VideoPublicationCacheStatus.unavailable)
+        PublishVideoWarning.localCatalogUnavailable,
+    };
+    return _record(publication.post, activity, warnings);
   }
 
   String _caption(String rawCaption, SelectedMedia media) {
@@ -54,17 +67,24 @@ class DefaultPublishVideoWorkflow implements PublishVideoWorkflow {
     return caption.isEmpty ? media.label : caption;
   }
 
-  Future<PublishVideoOutcome> _record(VideoPost post) async {
+  Future<PublishVideoOutcome> _record(
+    VideoPost post,
+    ActivityRepository activity,
+    Set<PublishVideoWarning> warnings,
+  ) async {
     try {
-      await _activity.record(_publishedActivity(post));
-      return PublishVideoOutcome.published;
+      await activity.record(_publishedActivity(post));
+      return PublishVideoOutcome(warnings);
     } on Object catch (error, stackTrace) {
       _failureReporter.report(
         source: 'DefaultPublishVideoWorkflow.record',
         error: error,
         stackTrace: stackTrace,
       );
-      return PublishVideoOutcome.publishedWithoutActivity;
+      return PublishVideoOutcome({
+        ...warnings,
+        PublishVideoWarning.localActivityUnavailable,
+      });
     }
   }
 

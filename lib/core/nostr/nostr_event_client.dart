@@ -6,5 +6,10 @@ abstract interface class NostrEventClient {
 
   Future<List<NostrEventRecord>> query(NostrEventQuery query);
 
-  Future<NostrEventId> publish(NostrUnsignedEvent event);
+  Future<List<NostrEventRecord>> queryBatch(List<NostrEventQuery> queries);
+
+  Future<NostrEventId> publish(
+    NostrUnsignedEvent event, {
+    required NostrPublicKeyHex expectedAuthor,
+  });
 }

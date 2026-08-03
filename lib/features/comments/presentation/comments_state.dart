@@ -2,81 +2,110 @@ import 'package:ghostr/features/comments/domain/video_comment.dart';
 
 enum CommentsStatus { loading, empty, ready, failure }
 
-class CommentsState {
-  const CommentsState._({
-    required this.status,
-    this.comments = const [],
-    this.replyTo,
-    this.isPosting = false,
-    this.message,
-    this.notice,
-  });
+sealed class CommentsState {
+  const CommentsState({this.notice});
 
-  const CommentsState.loading() : this._(status: CommentsStatus.loading);
+  const factory CommentsState.loading() = CommentsLoading;
 
-  const CommentsState.failure(String message)
-      : this._(status: CommentsStatus.failure, message: message);
+  const factory CommentsState.failure(String message) = CommentsFailure;
 
   factory CommentsState.content(List<VideoComment> comments) {
-    final status =
-        comments.isEmpty ? CommentsStatus.empty : CommentsStatus.ready;
-    return CommentsState._(
-      status: status,
-      comments: List<VideoComment>.unmodifiable(comments),
-    );
+    return CommentsContent(List<VideoComment>.unmodifiable(comments));
   }
 
-  final CommentsStatus status;
-  final List<VideoComment> comments;
-  final VideoComment? replyTo;
-  final bool isPosting;
-  final String? message;
   final String? notice;
+  CommentsStatus get status;
+  List<VideoComment> get comments => const <VideoComment>[];
+  VideoComment? get replyTo => null;
+  bool get isPosting => false;
+  String? get message => null;
 
-  CommentsState withReply(VideoComment comment) {
-    return CommentsState._(
-      status: status,
-      comments: comments,
-      replyTo: comment,
-      isPosting: isPosting,
-      message: message,
-      notice: notice,
-    );
-  }
+  CommentsState withReply(VideoComment comment) => this;
 
-  CommentsState posting() {
-    return CommentsState._(
-      status: status,
-      comments: comments,
-      replyTo: replyTo,
-      isPosting: true,
-      message: message,
-      notice: notice,
-    );
-  }
+  CommentsState posting() => this;
 
-  CommentsState published(VideoComment comment) {
-    return CommentsState.content([...comments, comment]);
-  }
+  CommentsState published(VideoComment comment) => this;
 
+  CommentsState withNotice(String value) => this;
+
+  CommentsState withoutNotice() => this;
+}
+
+final class CommentsLoading extends CommentsState {
+  const CommentsLoading();
+
+  @override
+  CommentsStatus get status => CommentsStatus.loading;
+}
+
+final class CommentsFailure extends CommentsState {
+  const CommentsFailure(this.failureMessage, {super.notice});
+
+  final String failureMessage;
+
+  @override
+  CommentsStatus get status => CommentsStatus.failure;
+
+  @override
+  String get message => failureMessage;
+
+  @override
   CommentsState withNotice(String value) {
-    return CommentsState._(
-      status: status,
-      comments: comments,
-      replyTo: replyTo,
-      isPosting: isPosting,
-      message: message,
-      notice: value,
-    );
+    return CommentsFailure(failureMessage, notice: value);
+  }
+}
+
+final class CommentsContent extends CommentsState {
+  CommentsContent(
+    List<VideoComment> comments, {
+    this.replyTo,
+    this.isPosting = false,
+    super.notice,
+  }) : comments = List<VideoComment>.unmodifiable(comments);
+
+  @override
+  final List<VideoComment> comments;
+  @override
+  final VideoComment? replyTo;
+  @override
+  final bool isPosting;
+
+  @override
+  CommentsStatus get status =>
+      comments.isEmpty ? CommentsStatus.empty : CommentsStatus.ready;
+
+  @override
+  CommentsState withReply(VideoComment comment) {
+    return _copy(replyTo: comment);
   }
 
-  CommentsState withoutNotice() {
-    return CommentsState._(
-      status: status,
-      comments: comments,
-      replyTo: replyTo,
-      isPosting: isPosting,
-      message: message,
+  @override
+  CommentsState posting() => _copy(isPosting: true);
+
+  @override
+  CommentsState published(VideoComment comment) {
+    return CommentsContent(<VideoComment>[...comments, comment]);
+  }
+
+  @override
+  CommentsState withNotice(String value) {
+    return _copy(isPosting: false, notice: value);
+  }
+
+  @override
+  CommentsState withoutNotice() => _copy(clearNotice: true);
+
+  CommentsContent _copy({
+    VideoComment? replyTo,
+    bool? isPosting,
+    String? notice,
+    bool clearNotice = false,
+  }) {
+    return CommentsContent(
+      comments,
+      replyTo: replyTo ?? this.replyTo,
+      isPosting: isPosting ?? this.isPosting,
+      notice: clearNotice ? null : notice ?? this.notice,
     );
   }
 }

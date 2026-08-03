@@ -19,7 +19,9 @@ class _FailingMetadataQuery implements NostrVideoEventQueryPort {
       [event];
 
   @override
-  Future<Metadata?> loadMetadata(NostrPublicKeyHex publicKey) {
+  Future<Map<NostrPublicKeyHex, Metadata>> loadMetadataBatch(
+    Set<NostrPublicKeyHex> publicKeys,
+  ) {
     throw StateError('metadata offline');
   }
 }

@@ -3,12 +3,17 @@ import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/platform/media/http_video_file_downloader.dart';
 import 'package:http/testing.dart';
 
+import '../support/allow_all_media_url_policy.dart';
+
 void main() {
   test('translates an HTTP transport failure into an app-safe failure',
       () async {
     final client = MockClient((_) => throw StateError('connection closed'));
 
-    final future = HttpVideoFileDownloader(client).download(
+    final future = HttpVideoFileDownloader(
+      client,
+      const AllowAllMediaUrlPolicy(),
+    ).download(
       Uri.parse('https://media.test/video.mp4'),
       '/unwritten/video.partial',
       maxBytes: 10,

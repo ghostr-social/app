@@ -1,7 +1,6 @@
 import 'package:ghostr/core/media/video_media_source.dart';
+import 'package:ghostr/features/video_inventory/domain/video_cache_lease.dart';
 
 abstract interface class VideoCacheStore {
-  Future<VideoMediaSource?> find(VideoMediaSource media);
-
-  Future<VideoMediaSource?> download(VideoMediaSource media);
+  Future<VideoCacheLease?> acquire(VideoMediaSource media);
 }

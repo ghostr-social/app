@@ -28,6 +28,9 @@ void main() {
 
 class _FailingActivityRepository implements ActivityRepository {
   @override
+  ActivityRepository snapshotForActiveAccount() => this;
+
+  @override
   Future<List<ActivityItem>> load() async => const [];
 
   @override

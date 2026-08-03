@@ -1,3 +1,4 @@
+use crate::video::ffi_models::{ffi_hls_playback_session, ffi_video_download};
 use crate::video::gateway_runtime::{GatewayConfiguration, GatewayRuntime};
 use anyhow::bail;
 use flutter_rust_bridge::frb;
@@ -8,7 +9,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 pub use crate::video::ffi_models::{
-    FfiNostrEventIdentity, FfiNostrVideo, FfiUserData, FfiVideoDelivery, FfiVideoDownload,
+    FfiHlsPlaybackSession, FfiNostrEventIdentity, FfiNostrVideo, FfiUserData, FfiVideoDelivery,
+    FfiVideoDownload,
 };
 
 static GLOBAL_STATE: OnceCell<Arc<GatewayRuntime>> = OnceCell::new();
@@ -47,7 +49,31 @@ pub async fn ffi_get_discovered_videos() -> Vec<FfiVideoDownload> {
         warn!("Embedded video server is not initialized");
         return Vec::new();
     };
-    gateway.discovered_videos().await
+    gateway
+        .discovered_videos()
+        .await
+        .iter()
+        .map(ffi_video_download)
+        .collect()
+}
+
+#[frb]
+pub async fn ffi_acquire_hls_playback(
+    source_urls: Vec<String>,
+) -> anyhow::Result<FfiHlsPlaybackSession> {
+    let gateway = GLOBAL_STATE
+        .get()
+        .ok_or_else(|| anyhow::anyhow!("The embedded gateway is not initialized."))?;
+    let session = gateway.acquire_hls(source_urls).await?;
+    Ok(ffi_hls_playback_session(session))
+}
+
+#[frb]
+pub async fn ffi_release_hls_playback(session_id: String) -> bool {
+    let Some(gateway) = GLOBAL_STATE.get() else {
+        return false;
+    };
+    gateway.release_hls(&session_id).await
 }
 
 fn relay_list(raw: &str) -> Vec<String> {

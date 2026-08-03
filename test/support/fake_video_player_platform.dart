@@ -9,6 +9,8 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   final List<DataSource> dataSources = [];
   final Map<int, StreamController<VideoEvent>> _streams = {};
   final Set<String> failingCalls = {};
+  final Completer<void> disposeStarted = Completer<void>();
+  Completer<void>? disposeBarrier;
   bool failNextInitialization = false;
   int _nextTextureId = 0;
 
@@ -53,6 +55,8 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   @override
   Future<void> dispose(int textureId) async {
     calls.add('dispose');
+    if (!disposeStarted.isCompleted) disposeStarted.complete();
+    await disposeBarrier?.future;
     _streams.remove(textureId);
   }
 

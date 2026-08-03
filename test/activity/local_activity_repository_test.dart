@@ -5,12 +5,14 @@ import 'package:ghostr/features/activity/domain/activity_type.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/sample_data.dart';
+import '../support/test_account_storage_scope.dart';
 
 void main() {
   test('persists activity and returns the newest item first', () async {
     SharedPreferences.setMockInitialValues({});
     final repository = LocalActivityRepository(
       await SharedPreferences.getInstance(),
+      accountScope: testAccountStorageScope(),
     );
     final older = sampleActivity();
     final newer = ActivityItem(

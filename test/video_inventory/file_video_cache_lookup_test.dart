@@ -19,15 +19,18 @@ void main() {
       downloader: downloader,
       maxBytes: 10,
     );
-    final cached = await firstStore.download(remote);
+    final cached = (await firstStore.acquire(remote))!;
+    final cachedPath = cached.media.localPath;
+    cached.release();
     final recreatedStore = FileVideoCacheStore(
       directoryProvider: () async => directory,
       downloader: downloader,
       maxBytes: 10,
     );
 
-    final restored = await recreatedStore.find(remote);
+    final restored = (await recreatedStore.acquire(remote))!;
 
-    expect(restored?.localPath, cached?.localPath);
+    expect(restored.media.localPath, cachedPath);
+    restored.release();
   });
 }

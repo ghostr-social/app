@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:ghostr/core/media/video_media_cache_identity.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
+import 'package:ghostr/features/video_inventory/domain/video_cache_lease.dart';
 import 'package:ghostr/features/video_inventory/domain/video_cache_priority.dart';
 import 'package:ghostr/features/video_inventory/domain/video_cache_store.dart';
 import 'package:ghostr/features/video_inventory/domain/video_inventory_port.dart';
@@ -31,7 +33,7 @@ class SmartVideoInventory implements VideoInventoryPort {
   final VideoCacheStore _store;
   final int maxParallelDownloads;
   final int maxPreparedVideos;
-  final Map<String, _CacheJob> _jobs = {};
+  final Map<VideoMediaCacheIdentity, _CacheJob> _jobs = {};
   final List<_CacheJob> _queue = [];
   int _activeDownloads = 0;
 
@@ -44,34 +46,42 @@ class SmartVideoInventory implements VideoInventoryPort {
   }
 
   @override
-  Future<VideoMediaSource> cache(
+  Future<VideoCacheLease?> acquire(
     VideoMediaSource media,
     VideoCachePriority priority,
   ) {
-    if (!_isCacheable(media)) return Future.value(media);
-    final existing = _jobs[media.remoteUrl!];
-    if (existing != null) return _reprioritize(existing, priority);
-    return _enqueue(media, priority);
+    if (!_isCacheable(media)) return Future<VideoCacheLease?>.value();
+    final waiter = Completer<VideoCacheLease?>();
+    _schedule(media, priority, waiter);
+    return waiter.future;
   }
 
   void _prepareInBackground(VideoMediaSource media) {
-    unawaited(cache(media, VideoCachePriority.background));
+    _schedule(media, VideoCachePriority.background);
   }
 
-  Future<VideoMediaSource> _enqueue(
+  _CacheJob _schedule(
     VideoMediaSource media,
-    VideoCachePriority priority,
-  ) {
+    VideoCachePriority priority, [
+    Completer<VideoCacheLease?>? leaseWaiter,
+  ]) {
+    final existing = _jobs[media.cacheJobIdentity];
+    if (existing != null) {
+      if (leaseWaiter != null) existing.leaseWaiters.add(leaseWaiter);
+      _reprioritize(existing, priority);
+      return existing;
+    }
     final job = _CacheJob(media);
-    _jobs[media.remoteUrl!] = job;
+    if (leaseWaiter != null) job.leaseWaiters.add(leaseWaiter);
+    _jobs[media.cacheJobIdentity] = job;
     priority == VideoCachePriority.foreground
         ? _queue.insert(0, job)
         : _queue.add(job);
     _pump();
-    return job.result.future;
+    return job;
   }
 
-  Future<VideoMediaSource> _reprioritize(
+  void _reprioritize(
     _CacheJob job,
     VideoCachePriority priority,
   ) {
@@ -79,7 +89,6 @@ class SmartVideoInventory implements VideoInventoryPort {
       _queue.remove(job);
       _queue.insert(0, job);
     }
-    return job.result.future;
   }
 
   void _pump() {
@@ -91,28 +100,56 @@ class SmartVideoInventory implements VideoInventoryPort {
   }
 
   Future<void> _run(_CacheJob job) async {
-    var result = job.media;
+    VideoCacheLease? lease;
     try {
-      result = await _store.find(job.media) ??
-          await _store.download(job.media) ??
-          job.media;
+      lease = await _store.acquire(job.media);
     } on Object catch (error, stackTrace) {
       log('Video cache fell back to remote playback.',
           name: 'ghostr.inventory', error: error, stackTrace: stackTrace);
     }
-    job.result.complete(result);
+    _complete(job, lease);
     _finish(job);
   }
 
+  void _complete(_CacheJob job, VideoCacheLease? lease) {
+    if (lease == null) {
+      for (final waiter in job.leaseWaiters) {
+        waiter.complete();
+      }
+      return;
+    }
+    _completeLeases(job, lease);
+  }
+
+  void _completeLeases(_CacheJob job, VideoCacheLease lease) {
+    if (job.leaseWaiters.isEmpty) {
+      lease.release();
+      return;
+    }
+    job.leaseWaiters.first.complete(lease);
+    for (final waiter in job.leaseWaiters.skip(1)) {
+      waiter.complete(lease.retain());
+    }
+  }
+
   void _finish(_CacheJob job) {
-    _jobs.remove(job.media.remoteUrl);
+    _jobs.remove(job.media.cacheJobIdentity);
     _activeDownloads -= 1;
     _pump();
   }
 
   bool _isCacheable(VideoMediaSource media) {
-    if (!media.canCacheAsSingleFile) return false;
-    final uri = Uri.tryParse(media.remoteUrl ?? '');
+    return media.canCacheAsSingleFile &&
+        _hasCacheIdentity(media) &&
+        _isRemoteHttp(media.remoteUrl);
+  }
+
+  bool _hasCacheIdentity(VideoMediaSource media) {
+    return media.expectedSha256 != null || media.cacheScope != null;
+  }
+
+  bool _isRemoteHttp(String? source) {
+    final uri = Uri.tryParse(source ?? '');
     return uri != null &&
         uri.host.isNotEmpty &&
         (uri.scheme == 'http' || uri.scheme == 'https');
@@ -123,6 +160,6 @@ class _CacheJob {
   _CacheJob(this.media);
 
   final VideoMediaSource media;
-  final Completer<VideoMediaSource> result = Completer<VideoMediaSource>();
+  final List<Completer<VideoCacheLease?>> leaseWaiters = [];
   bool started = false;
 }

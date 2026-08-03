@@ -15,3 +15,4 @@ export 'fake_video_catalog_repository.dart';
 export 'fake_video_catalog_scenarios.dart';
 export 'fake_video_media_upload_port.dart';
 export 'recording_failure_reporter.dart';
+export 'test_account_storage_scope.dart';

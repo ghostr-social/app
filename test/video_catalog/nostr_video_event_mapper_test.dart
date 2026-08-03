@@ -21,7 +21,7 @@ void main() {
           'imeta',
           'url https://cdn.example/video.mp4',
           'm video/mp4',
-          'x abc123',
+          'x AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
           'image https://cdn.example/poster.jpg',
           'fallback https://mirror.example/video.mp4',
         ],
@@ -44,6 +44,11 @@ void main() {
       'https://cdn.example/video.mp4',
       'https://mirror.example/video.mp4',
     ]);
+    expect(
+      post.media.expectedSha256?.value,
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    );
+    expect(post.media.cacheScope?.value, testEventId);
     expect(post.nostrReference?.eventId, testEventId);
     expect(post.nostrReference?.authorPublicKeyHex, publicKey);
     expect(post.nostrReference?.kind, 34236);

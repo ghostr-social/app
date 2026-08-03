@@ -29,6 +29,9 @@ class _RetryingRepository implements ActivityRepository {
   int count = 0;
 
   @override
+  ActivityRepository snapshotForActiveAccount() => this;
+
+  @override
   Future<List<ActivityItem>> load() async {
     count += 1;
     if (count == 1) throw const AppFailure('Activity failed.');

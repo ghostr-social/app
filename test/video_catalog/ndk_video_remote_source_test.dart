@@ -24,7 +24,10 @@ class _FakeEventQuery implements NostrVideoEventQueryPort {
   }
 
   @override
-  Future<Metadata?> loadMetadata(NostrPublicKeyHex publicKey) async => metadata;
+  Future<Map<NostrPublicKeyHex, Metadata>> loadMetadataBatch(
+    Set<NostrPublicKeyHex> publicKeys,
+  ) async =>
+      {for (final publicKey in publicKeys) publicKey: metadata};
 }
 
 void main() {

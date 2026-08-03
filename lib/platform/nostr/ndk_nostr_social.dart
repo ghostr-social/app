@@ -1,17 +1,57 @@
+import 'package:ghostr/core/async/keyed_serial_task_queue.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/errors/boundary_failure.dart';
+import 'package:ghostr/core/nostr/nostr_event_identity.dart';
+import 'package:ghostr/core/time/clock.dart';
 import 'package:ghostr/features/settings/domain/relay_url.dart';
 import 'package:ghostr/features/social/domain/nostr_social_port.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ndk/ndk.dart';
 
+part 'ndk_nostr_social_models.dart';
+part 'ndk_nostr_social_mutations.dart';
+
 class NdkNostrSocial implements NostrSocialPort {
-  NdkNostrSocial({required Ndk ndk, required List<RelayUrl> relays})
-      : _relayUrls = relays.map((relay) => relay.value).toList(),
-        _ndk = ndk;
+  NdkNostrSocial({
+    required Ndk ndk,
+    required List<RelayUrl> relays,
+    Clock clock = systemClock,
+  })  : _relayUrls = relays.map((relay) => relay.value).toList(),
+        _ndk = ndk,
+        _clock = clock,
+        _scope = _NdkSocialScope(_NdkSocialState(), null, null);
+
+  NdkNostrSocial._(
+    this._ndk,
+    this._relayUrls,
+    this._clock,
+    this._scope,
+  );
 
   final Ndk _ndk;
   final List<String> _relayUrls;
+  final Clock _clock;
+  final _NdkSocialScope _scope;
+  _NdkSocialState get _state => _scope.state;
+  EventSigner? get _signer => _scope.signer;
+  String? get _publicKey => _scope.publicKey;
+
+  @override
+  NostrSocialPort snapshotForActiveAccount() {
+    if (_signer != null) return this;
+    final signer = _requireSigner();
+    return NdkNostrSocial._(
+      _ndk,
+      _relayUrls,
+      _clock,
+      _NdkSocialScope(_state, signer, signer.getPublicKey()),
+    );
+  }
+
+  @override
+  NostrPublicKeyHex get accountPublicKey {
+    return NostrPublicKeyHex.parse(_publicKey ?? _requirePublicKey());
+  }
 
   @override
   Future<Set<ProfileId>> loadBlockedProfiles() {
@@ -31,27 +71,33 @@ class NdkNostrSocial implements NostrSocialPort {
 
   @override
   Future<bool> toggleBlock(ProfileId profileId) {
-    return _guard(
-      'Could not update the Nostr mute list.',
-      () => _toggleBlock(profileId),
-    );
+    return _guard('Could not update the Nostr mute list.', () {
+      final target = _decodeProfile(profileId);
+      return _activeScope._enqueueBlock(target);
+    });
   }
 
   @override
   Future<bool> toggleFollow(ProfileId profileId) {
-    return _guard(
-      'Could not update the Nostr follow list.',
-      () => _toggleFollow(profileId),
-    );
+    return _guard('Could not update the Nostr follow list.', () {
+      final target = _decodeProfile(profileId);
+      return _activeScope._enqueueFollow(target);
+    });
   }
 
   Future<Set<ProfileId>> _loadBlockedProfiles() async {
-    final list = await _ndk.lists.getSingleNip51List(Nip51List.kMute);
+    final publicKey = _publicKey ?? _requirePublicKey();
+    _requireActiveAccount(publicKey);
+    final fetched = await _ndk.lists.getSingleNip51List(Nip51List.kMute);
+    _requireActiveAccount(publicKey);
+    final list = _rememberMuteFloor(_state, publicKey, fetched);
     return list?.pubKeys.map(_encodedProfile).toSet() ?? <ProfileId>{};
   }
 
   Future<Set<ProfileId>> _loadFollowedProfiles() async {
-    final contacts = await _ndk.follows.getContactList(_requirePublicKey());
+    final publicKey = _publicKey ?? _requirePublicKey();
+    final fetched = await _ndk.follows.getContactList(publicKey);
+    final contacts = _rememberContactFloor(_state, publicKey, fetched);
     return contacts?.contacts
             .map(Nip19.encodePubKey)
             .map(ProfileId.parse)
@@ -59,57 +105,36 @@ class NdkNostrSocial implements NostrSocialPort {
         <ProfileId>{};
   }
 
-  ProfileId _encodedProfile(Nip51ListElement element) {
-    return ProfileId.parse(Nip19.encodePubKey(element.value));
+  NdkNostrSocial get _activeScope {
+    return snapshotForActiveAccount() as NdkNostrSocial;
   }
 
-  Future<bool> _toggleBlock(ProfileId profileId) async {
-    final target = _decodeProfile(profileId);
-    final list = await _ndk.lists.getSingleNip51List(Nip51List.kMute);
-    final isBlocked =
-        list?.pubKeys.any((item) => item.value == target) ?? false;
-    return isBlocked ? _removeBlock(target) : _addBlock(target);
+  bool _isActiveAccount(String publicKey) {
+    return _ndk.accounts.getPublicKey() == publicKey;
   }
 
-  Future<bool> _removeBlock(String target) async {
-    await _ndk.lists.removeElementFromList(
-      kind: Nip51List.kMute,
-      tag: Nip51List.kPubkey,
-      value: target,
-      broadcastRelays: _relayUrls,
-    );
-    return false;
-  }
-
-  Future<bool> _addBlock(String target) async {
-    await _ndk.lists.addElementToList(
-      kind: Nip51List.kMute,
-      tag: Nip51List.kPubkey,
-      value: target,
-      broadcastRelays: _relayUrls,
-      private: true,
-    );
-    return true;
-  }
-
-  Future<bool> _toggleFollow(ProfileId profileId) async {
-    final target = _decodeProfile(profileId);
-    final contacts = await _ndk.follows.getContactList(_requirePublicKey());
-    if (contacts?.contacts.contains(target) ?? false) {
-      await _ndk.follows.broadcastRemoveContact(
-        target,
-        customRelays: _relayUrls,
-      );
-      return false;
+  void _requireActiveAccount(String publicKey) {
+    if (!_isActiveAccount(publicKey)) {
+      throw const AppFailure('The active account changed. Try again.');
     }
-    await _ndk.follows.broadcastAddContact(target, customRelays: _relayUrls);
-    return true;
+  }
+
+  EventSigner _requireSigner() {
+    final signer = _ndk.accounts.getLoggedAccount()?.signer;
+    if (signer == null || !signer.canSign()) {
+      throw const AppFailure('Sign in first.');
+    }
+    return signer;
   }
 
   String _requirePublicKey() {
     final publicKey = _ndk.accounts.getPublicKey();
     if (publicKey == null) throw const AppFailure('Sign in first.');
     return publicKey;
+  }
+
+  ProfileId _encodedProfile(Nip51ListElement element) {
+    return ProfileId.parse(Nip19.encodePubKey(element.value));
   }
 
   String _decodeProfile(ProfileId profileId) {

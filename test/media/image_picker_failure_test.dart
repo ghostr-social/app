@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
+import 'package:ghostr/core/media/media_picker_capabilities.dart';
 import 'package:ghostr/platform/media/image_picker_media_picker.dart';
 
 import '../support/fake_image_picker.dart';
@@ -11,7 +12,10 @@ void main() {
       error: PlatformException(code: 'camera_access_denied'),
     );
 
-    final future = ImagePickerMediaPicker(picker).captureVideo();
+    final future = ImagePickerMediaPicker(
+      picker,
+      capabilities: const MediaPickerCapabilities.allSupported(),
+    ).captureVideo();
 
     await expectLater(
       future,

@@ -5,6 +5,7 @@ import 'package:ghostr/features/engagement/domain/video_engagement_repository.da
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_interaction_reconciler.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_state.dart';
 
 export 'feed_state.dart';
@@ -20,6 +21,8 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   FeedCubit(this._dependencies) : super(const FeedLoading(FeedKind.forYou));
 
   final FeedDependencies _dependencies;
+  final _interactions = FeedInteractionReconciler();
+  List<VideoPost> _lastPosts = const <VideoPost>[];
   int _loadRequest = 0;
 
   Future<void> load([FeedKind? selectedKind]) async {
@@ -28,8 +31,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     emit(FeedLoading(kind));
     try {
       final posts = await _dependencies.feed.loadFeed(kind);
-      _emitLoad(
-          request, posts.isEmpty ? FeedEmpty(kind) : FeedLoaded(kind, posts));
+      _acceptLoad(request, kind, posts);
     } on AppFailure catch (failure) {
       _emitLoad(request, FeedFailure(kind, failure.message));
     } on Object catch (error, stackTrace) {
@@ -41,6 +43,62 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   }
 
   Future<void> retry() => load();
+
+  Future<void> refresh() {
+    final current = state;
+    if (current is! FeedLoaded) return load();
+    return _refreshLoaded(current);
+  }
+
+  Future<void> _refreshLoaded(FeedLoaded current) async {
+    final request = ++_loadRequest;
+    try {
+      final posts = await _dependencies.feed.loadFeed(current.kind);
+      _acceptRefresh(request, current, posts);
+    } on AppFailure catch (failure) {
+      _emitLoad(request, current.withNotice(failure.message));
+    } on Object catch (error, stackTrace) {
+      _emitLoad(
+          request, current.withNotice(_unexpectedLoad(error, stackTrace)));
+    }
+  }
+
+  void _acceptRefresh(
+    int request,
+    FeedLoaded initial,
+    List<VideoPost> refreshed,
+  ) {
+    if (!_acceptsLoad(request)) return;
+    final current = state is FeedLoaded ? state as FeedLoaded : initial;
+    final posts = _interactions.reconcile(
+      refreshed: refreshed,
+      current: current.posts,
+    );
+    _lastPosts = posts;
+    emit(_refreshedState(current, posts));
+  }
+
+  void _acceptLoad(int request, FeedKind kind, List<VideoPost> refreshed) {
+    if (!_acceptsLoad(request)) return;
+    final posts = _interactions.reconcile(
+      refreshed: refreshed,
+      current: _lastPosts,
+    );
+    _lastPosts = posts;
+    emit(posts.isEmpty ? FeedEmpty(kind) : FeedLoaded(kind, posts));
+  }
+
+  FeedState _refreshedState(FeedLoaded current, List<VideoPost> posts) {
+    if (posts.isEmpty) return FeedEmpty(current.kind);
+    final lastIndex = posts.length - 1;
+    final activeIndex = _preservedIndex(current.activeIndex, lastIndex);
+    return FeedLoaded(current.kind, posts, activeIndex: activeIndex);
+  }
+
+  int _preservedIndex(int current, int lastIndex) {
+    if (current > lastIndex) return lastIndex;
+    return current;
+  }
 
   void pageChanged(int index) {
     final current = state;
@@ -58,6 +116,18 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     }
   }
 
+  void commentsPublished(VideoPost post, int publishedCount) {
+    if (publishedCount < 1) return;
+    final current = state;
+    final posts = _interactions.acceptComments(
+      post,
+      publishedCount,
+      current is FeedLoaded ? current.posts : _lastPosts,
+    );
+    _lastPosts = posts;
+    if (current is FeedLoaded) emit(current.withPosts(posts));
+  }
+
   void clearNotice() {
     final current = state;
     if (current is FeedLoaded && current.notice != null) {
@@ -67,11 +137,12 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
 
   void _acceptUpdatedPost(VideoPost updated) {
     final current = state;
-    if (current is! FeedLoaded) return;
-    final posts = current.posts
-        .map((post) => post.id == updated.id ? updated : post)
-        .toList();
-    emit(current.withPosts(posts));
+    final posts = _interactions.acceptLike(
+      updated,
+      current is FeedLoaded ? current.posts : _lastPosts,
+    );
+    _lastPosts = posts;
+    if (current is FeedLoaded) emit(current.withPosts(posts));
   }
 
   void _showNotice(String message) {
@@ -80,8 +151,10 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   }
 
   void _emitLoad(int request, FeedState next) {
-    if (!isClosed && request == _loadRequest) emit(next);
+    if (_acceptsLoad(request)) emit(next);
   }
+
+  bool _acceptsLoad(int request) => !isClosed && request == _loadRequest;
 
   String _unexpectedLoad(Object error, StackTrace stackTrace) {
     return translatedBoundaryFailure(

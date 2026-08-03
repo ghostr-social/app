@@ -15,7 +15,7 @@ void main() {
     final requests = MockRequests();
     final metadatas = MockMetadatas();
     final older = Nip01Event(
-      id: 'older',
+      id: testEventId,
       pubKey: testCreatorPublicKey,
       kind: 21,
       tags: const [],
@@ -23,7 +23,7 @@ void main() {
       createdAt: 10,
     );
     final newer = Nip01Event(
-      id: 'newer',
+      id: secondTestEventId,
       pubKey: testCreatorPublicKey,
       kind: 34236,
       tags: const [],
@@ -39,23 +39,24 @@ void main() {
         timeout: any(named: 'timeout'),
       ),
     ).thenReturn(NdkResponse('videos', Stream.fromIterable([older, newer])));
-    when(() => metadatas.loadMetadata(testCreatorPublicKey)).thenAnswer(
-      (_) async => Metadata(
-        pubKey: testCreatorPublicKey,
-        displayName: 'Creator',
-      ),
+    when(() => metadatas.loadMetadatas([testCreatorPublicKey], null))
+        .thenAnswer(
+      (_) async => [
+        Metadata(pubKey: testCreatorPublicKey, displayName: 'Creator'),
+      ],
     );
     final query = NdkNostrVideoEventQuery(ndk);
 
     final events = await query.loadVideoEvents(
       authorPublicKeys: {NostrPublicKeyHex.parse(testCreatorPublicKey)},
     );
-    final metadata = await query.loadMetadata(
-      NostrPublicKeyHex.parse(testCreatorPublicKey),
-    );
+    final publicKey = NostrPublicKeyHex.parse(testCreatorPublicKey);
+    final metadata = await query.loadMetadataBatch({publicKey});
 
-    expect(events.map((event) => event.id), ['newer', 'older']);
-    expect(metadata?.getName(), 'Creator');
+    expect(events.map((event) => event.id), [secondTestEventId, testEventId]);
+    expect(metadata[publicKey]?.getName(), 'Creator');
+    verify(() => metadatas.loadMetadatas([testCreatorPublicKey], null))
+        .called(1);
     final call = verify(
       () => requests.query(
         name: 'ghostr-video-feed',

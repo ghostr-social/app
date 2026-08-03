@@ -1,12 +1,48 @@
+import 'package:ghostr/core/media/video_sha256.dart';
+import 'package:ghostr/core/media/video_media_cache_scope.dart';
+
+part 'expected_sha256_video_media_source.dart';
+part 'cached_video_media_source.dart';
+part 'importable_video_media_source.dart';
+part 'proxied_hls_video_media_source.dart';
+part 'scoped_video_media_source.dart';
+part 'validated_video_media_source.dart';
+
 enum VideoMediaDelivery { progressive, hls }
+
+const maxVideoCacheSourceCount = 5;
 
 sealed class VideoMediaSource {
   const VideoMediaSource();
 
   factory VideoMediaSource.local(String rawPath) {
-    final path = rawPath.trim();
-    if (path.isEmpty) throw const FormatException('Video path is required.');
-    return LocalVideoMediaSource._(path);
+    return LocalVideoMediaSource._(_localPath(rawPath));
+  }
+
+  factory VideoMediaSource.cached(
+    String rawPath, {
+    required String remoteUrl,
+    List<String> fallbackUrls = const [],
+    VideoMediaDelivery delivery = VideoMediaDelivery.progressive,
+  }) {
+    return CachedVideoMediaSource._(
+      _localPath(rawPath),
+      _httpUrl(remoteUrl),
+      List<String>.unmodifiable(fallbackUrls.map(_httpUrl)),
+      delivery,
+    );
+  }
+
+  factory VideoMediaSource.importable(
+    String rawSourcePath, {
+    required String remoteUrl,
+    List<String> fallbackUrls = const [],
+  }) {
+    return ImportableVideoMediaSource._(
+      _localPath(rawSourcePath),
+      _httpUrl(remoteUrl),
+      List<String>.unmodifiable(fallbackUrls.map(_httpUrl)),
+    );
   }
 
   factory VideoMediaSource.remote(
@@ -19,11 +55,43 @@ sealed class VideoMediaSource {
     return RemoteVideoMediaSource._(url, fallbacks, delivery);
   }
 
+  factory VideoMediaSource.proxiedHls(String rawUrl) {
+    return ProxiedHlsVideoMediaSource(rawUrl);
+  }
+
+  factory VideoMediaSource.withExpectedSha256(
+    VideoMediaSource source,
+    String rawSha256,
+  ) {
+    if (source.remoteUrl == null) {
+      throw const FormatException('A remote video is required.');
+    }
+    return _ExpectedSha256VideoMediaSource(
+      source,
+      VideoSha256.parse(rawSha256),
+    );
+  }
+
+  factory VideoMediaSource.withCacheScope(
+    VideoMediaSource source,
+    String rawScope,
+  ) {
+    if (source.remoteUrl == null) {
+      throw const FormatException('A remote video is required.');
+    }
+    return _ScopedVideoMediaSource(
+      source,
+      VideoMediaCacheScope.parse(rawScope),
+    );
+  }
+
   String get debugLabel;
 
   String? get remoteUrl;
 
   String? get localPath;
+
+  String? get importPath => null;
 
   List<String> get fallbackUrls;
 
@@ -34,6 +102,14 @@ sealed class VideoMediaSource {
   VideoMediaDelivery? get remoteDelivery;
 
   List<String> get remoteUrls;
+
+  VideoSha256? get expectedSha256 => null;
+
+  VideoMediaCacheScope? get cacheScope => null;
+
+  List<String> get cacheSourceUrls => List<String>.unmodifiable(
+        remoteUrls.take(maxVideoCacheSourceCount),
+      );
 }
 
 final class LocalVideoMediaSource extends VideoMediaSource {
@@ -103,14 +179,4 @@ final class RemoteVideoMediaSource extends VideoMediaSource {
         url,
         ...fallbackUrls,
       ]);
-}
-
-String _httpUrl(String raw) {
-  final value = raw.trim();
-  final uri = Uri.tryParse(value);
-  final isHttp = uri?.scheme == 'https' || uri?.scheme == 'http';
-  if (uri == null || !isHttp || uri.host.isEmpty) {
-    throw FormatException('Invalid video URL: $raw');
-  }
-  return value;
 }

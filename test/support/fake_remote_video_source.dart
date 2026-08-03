@@ -8,6 +8,7 @@ class FakeRemoteVideoSource implements RemoteVideoSource {
 
   final List<VideoPost> posts;
   AppFailure? failure;
+  int loadCount = 0;
   Set<ProfileId>? requestedCreatorIds;
   String? requestedSearchQuery;
 
@@ -16,6 +17,7 @@ class FakeRemoteVideoSource implements RemoteVideoSource {
     Set<ProfileId>? creatorIds,
     String? searchQuery,
   }) async {
+    loadCount += 1;
     requestedCreatorIds = creatorIds;
     requestedSearchQuery = searchQuery;
     if (failure case final failure?) throw failure;

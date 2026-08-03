@@ -3,9 +3,8 @@ mod support;
 use rust_lib_ghostr::video::event_index::new_native_video_index;
 use rust_lib_ghostr::video::native_cache::{prepare_native_cache_directory, NativeVideoCache};
 use rust_lib_ghostr::video::native_models::new_native_downloads;
-use rust_lib_ghostr::video::video_manager::NativeVideoManager;
 use std::sync::Arc;
-use support::fixtures::{canonical_video, temp_directory, video_id};
+use support::fixtures::{canonical_video, temp_directory, trusted_video_manager, video_id};
 use support::http::spawn_raw_server;
 use tokio::sync::Mutex;
 
@@ -20,7 +19,7 @@ async fn downloads_each_discovered_video_identity_only_once() {
     videos.insert(canonical_video(&url)).await;
     let downloads = new_native_downloads();
     let cache = NativeVideoCache::new(directory.clone(), 10, Arc::new(Mutex::new(0)));
-    let manager = NativeVideoManager::new(downloads.clone(), cache, videos, 1);
+    let manager = trusted_video_manager(downloads.clone(), cache, videos, 1);
 
     manager
         .synchronize_once()
@@ -33,11 +32,8 @@ async fn downloads_each_discovered_video_identity_only_once() {
 
     let values = downloads.lock().await;
     let download = values.get(&video_id()).expect("download");
-    assert!(!download.downloading);
-    assert!(download
-        .local_path
-        .as_ref()
-        .is_some_and(|path| path.exists()));
+    assert!(!download.is_downloading());
+    assert!(download.local_path().is_some_and(|path| path.exists()));
     assert_eq!(values.len(), 1);
     request.await.expect("upstream request");
     std::fs::remove_dir_all(directory).expect("remove cache");

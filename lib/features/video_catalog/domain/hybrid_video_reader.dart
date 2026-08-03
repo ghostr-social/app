@@ -28,7 +28,7 @@ class HybridVideoReader implements VideoPostReader {
     Set<ProfileId>? creatorIds,
     String? searchQuery,
   }) async {
-    final localPosts = await _local.loadPublishedPosts();
+    final localPosts = await _loadLocal();
     try {
       final remotePosts = await _remote.loadRemoteFeed(
         creatorIds: creatorIds,
@@ -36,14 +36,23 @@ class HybridVideoReader implements VideoPostReader {
       );
       return _hydrate(_merge(localPosts, remotePosts));
     } on AppFailure catch (error, stackTrace) {
-      _report(error, stackTrace);
+      _report('HybridVideoReader.load', error, stackTrace);
       if (localPosts.isEmpty) rethrow;
       return localPosts;
     }
   }
 
+  Future<List<VideoPost>> _loadLocal() async {
+    try {
+      return await _local.loadPublishedPosts();
+    } on AppFailure catch (error, stackTrace) {
+      _report('HybridVideoReader.loadLocal', error, stackTrace);
+      return const <VideoPost>[];
+    }
+  }
+
   Future<List<VideoPost>> _hydrate(List<VideoPost> posts) {
-    return Future.wait(posts.map(_interactions.hydrate));
+    return _interactions.hydrateAll(posts);
   }
 
   List<VideoPost> _merge(List<VideoPost> local, List<VideoPost> remote) {
@@ -77,9 +86,9 @@ class HybridVideoReader implements VideoPostReader {
         (time == 0 && incoming.id.value.compareTo(current.id.value) < 0);
   }
 
-  void _report(Object error, StackTrace stackTrace) {
+  void _report(String source, Object error, StackTrace stackTrace) {
     _failureReporter.report(
-      source: 'HybridVideoReader.load',
+      source: source,
       error: error,
       stackTrace: stackTrace,
     );

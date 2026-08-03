@@ -3,29 +3,20 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ghostr/app/app_controller_factory.dart';
+import 'package:ghostr/app/home_tab.dart';
 import 'package:ghostr/app/router/app_router.dart';
+import 'package:ghostr/features/activity/presentation/activity_cubit.dart';
 import 'package:ghostr/features/activity/presentation/activity_screen.dart';
 import 'package:ghostr/features/compose/presentation/compose_screen.dart';
 import 'package:ghostr/features/session/domain/user_session.dart';
 import 'package:ghostr/features/session/presentation/session_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_screen.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_screen.dart';
+import 'package:ghostr/features/video_catalog/presentation/profile_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/search_screen.dart';
 import 'package:ghostr/shared/theme/app_tokens.dart';
-
-enum HomeTab {
-  home('Home', Icons.home_rounded),
-  search('Search', Icons.search_rounded),
-  create('Create', Icons.add_box_rounded),
-  activity('Activity', Icons.notifications_rounded),
-  profile('Profile', Icons.person_rounded);
-
-  const HomeTab(this.label, this.icon);
-
-  final String label;
-  final IconData icon;
-}
 
 class HomeShell extends StatefulWidget {
   const HomeShell({
@@ -43,19 +34,23 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   HomeTab _currentTab = HomeTab.home;
-  int _contentRevision = 0;
+  final Set<HomeTab> _visitedTabs = {HomeTab.home};
+  bool _isRouteCovered = false;
+  FeedCubit? _feedCubit;
+  ActivityCubit? _activityCubit;
+  ProfileCubit? _profileCubit;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _currentScreen(),
+      body: _tabStack(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: HomeTab.values.indexOf(_currentTab),
         type: BottomNavigationBarType.fixed,
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         selectedItemColor: Theme.of(context).colorScheme.primary,
         unselectedItemColor: AppPalette.mutedForeground,
-        onTap: (index) => setState(() => _currentTab = HomeTab.values[index]),
+        onTap: _selectTab,
         items: HomeTab.values
             .map(
               (tab) => BottomNavigationBarItem(
@@ -68,28 +63,50 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  Widget _currentScreen() {
-    return switch (_currentTab) {
-      HomeTab.home => _home(),
-      HomeTab.search => _search(),
-      HomeTab.create => _create(),
-      HomeTab.activity => _activity(),
-      HomeTab.profile => _profile(),
-    };
+  Widget _tabStack() {
+    return IndexedStack(
+      index: HomeTab.values.indexOf(_currentTab),
+      children: HomeTab.values.map(_tabScreen).toList(),
+    );
+  }
+
+  Widget _tabScreen(HomeTab tab) {
+    if (!_visitedTabs.contains(tab)) return const SizedBox.shrink();
+    return KeyedSubtree(
+      key: ValueKey('home-tab-${tab.name}'),
+      child: switch (tab) {
+        HomeTab.home => _home(),
+        HomeTab.search => _search(),
+        HomeTab.create => _create(),
+        HomeTab.activity => _activity(),
+        HomeTab.profile => _profile(),
+      },
+    );
+  }
+
+  void _selectTab(int index) {
+    final selected = HomeTab.values[index];
+    final shouldRefresh = _visitedTabs.contains(selected);
+    setState(() {
+      _currentTab = selected;
+      _visitedTabs.add(selected);
+    });
+    if (shouldRefresh) _refreshTab(selected);
   }
 
   Widget _home() => BlocProvider(
-        key: ValueKey('feed-$_contentRevision'),
-        create: (_) => widget.controllers.feed()..load(),
+        create: (_) => _createFeedCubit(),
         child: FeedScreen(
-          onOpenProfile: _openProfile,
-          playbackPort: widget.controllers.videoPlaybackPort,
-          createComments: widget.controllers.comments,
+          bindings: FeedScreenBindings(
+            onOpenProfile: _openProfile,
+            playbackPort: widget.controllers.videoPlaybackPort,
+            createComments: widget.controllers.comments,
+            isActive: _currentTab == HomeTab.home && !_isRouteCovered,
+          ),
         ),
       );
 
   Widget _search() => BlocProvider(
-        key: ValueKey('search-$_contentRevision'),
         create: (_) => widget.controllers.search(),
         child: SearchScreen(onOpenProfile: _openProfile),
       );
@@ -99,18 +116,17 @@ class _HomeShellState extends State<HomeShell> {
         child: ComposeScreen(
           session: widget.session,
           playbackPort: widget.controllers.videoPlaybackPort,
+          isActive: _currentTab == HomeTab.create,
         ),
       );
 
   Widget _activity() => BlocProvider(
-        create: (_) => widget.controllers.activity()..load(),
+        create: (_) => _createActivityCubit(),
         child: const ActivityScreen(),
       );
 
   Widget _profile() => BlocProvider(
-        create: (_) => widget.controllers
-            .profile(widget.session.profile, widget.session.profile.id)
-          ..load(),
+        create: (_) => _createProfileCubit(),
         child: ProfileScreen(
           onOpenSettings: _openSettings,
           onSignedOut: _signOut,
@@ -122,13 +138,21 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   Future<void> _openProfileRoute(ProfileId profileId) async {
-    await Navigator.of(context).push(AppRouter.profile(
-      session: widget.session,
-      profileId: profileId,
-      controllers: widget.controllers,
-      onSignedOut: _signOut,
-    ));
-    if (mounted) setState(() => _contentRevision += 1);
+    if (_isRouteCovered) return;
+    setState(() => _isRouteCovered = true);
+    try {
+      await Navigator.of(context).push(AppRouter.profile(
+        session: widget.session,
+        profileId: profileId,
+        controllers: widget.controllers,
+        onSignedOut: _signOut,
+      ));
+    } finally {
+      if (mounted) {
+        setState(() => _isRouteCovered = false);
+        _refreshTab(_currentTab);
+      }
+    }
   }
 
   void _openSettings() {
@@ -136,6 +160,32 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   void _signOut() {
-    context.read<SessionCubit>().signOut();
+    final session = context.read<SessionCubit>();
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    session.signOut();
+  }
+
+  FeedCubit _createFeedCubit() {
+    return _feedCubit = widget.controllers.feed()..load();
+  }
+
+  ActivityCubit _createActivityCubit() {
+    return _activityCubit = widget.controllers.activity()..load();
+  }
+
+  ProfileCubit _createProfileCubit() {
+    return _profileCubit = widget.controllers
+        .profile(widget.session.profile, widget.session.profile.id)
+      ..load();
+  }
+
+  void _refreshTab(HomeTab tab) {
+    final refresh = switch (tab) {
+      HomeTab.home => _feedCubit?.refresh(),
+      HomeTab.activity => _activityCubit?.load(),
+      HomeTab.profile => _profileCubit?.load(),
+      HomeTab.search || HomeTab.create => null,
+    };
+    if (refresh != null) unawaited(refresh);
   }
 }

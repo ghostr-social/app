@@ -11,6 +11,7 @@ mixin FakeVideoCatalogComments on FakeVideoCatalogBase
   Map<String, List<VideoComment>> get commentsByPost;
   AppFailure? get commentsFailure;
   Future<List<VideoComment>>? get commentsResponse;
+  Future<void>? get commentPublishBarrier;
 
   int commentLoadCount = 0;
 
@@ -32,6 +33,7 @@ mixin FakeVideoCatalogComments on FakeVideoCatalogBase
     required String content,
     VideoComment? replyTo,
   }) async {
+    await commentPublishBarrier;
     final comments = commentsByPost.putIfAbsent(post.id, () => []);
     final comment = VideoComment(
       identity: VideoCommentIdentity.parse(

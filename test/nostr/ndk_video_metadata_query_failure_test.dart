@@ -12,14 +12,14 @@ void main() {
     final ndk = MockNdk();
     final metadatas = MockMetadatas();
     when(() => ndk.metadata).thenReturn(metadatas);
-    when(() => metadatas.loadMetadata(testCreatorPublicKey)).thenThrow(
+    when(() => metadatas.loadMetadatas([testCreatorPublicKey], null)).thenThrow(
       StateError('metadata socket failed'),
     );
 
     await expectLater(
-      NdkNostrVideoEventQuery(ndk).loadMetadata(
+      NdkNostrVideoEventQuery(ndk).loadMetadataBatch({
         NostrPublicKeyHex.parse(testCreatorPublicKey),
-      ),
+      }),
       throwsA(isA<AppFailure>()),
     );
   });

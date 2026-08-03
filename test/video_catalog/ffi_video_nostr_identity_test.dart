@@ -22,7 +22,6 @@ void main() {
     );
     final canonical = _canonicalPost(reference);
     final source = FfiVideoRemoteSource(
-      gatewayBaseUrl: 'http://127.0.0.1:3000',
       snapshotLoader: () => [canonical],
       loader: () async => [
         ffiVideo(
@@ -43,7 +42,11 @@ void main() {
     expect(posts, hasLength(1));
     expect(posts.single.id, canonical.id);
     expect(posts.single.nostrReference, same(reference));
-    expect(posts.single.media.localPath, '/v.mp4');
+    expect(posts.single.media.localPath, isNull);
+    expect(
+      posts.single.media.remoteUrl,
+      'https://source.example/matched.mp4',
+    );
   });
 }
 

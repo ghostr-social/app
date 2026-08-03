@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/media/selected_media.dart';
+import 'package:ghostr/core/media/media_picker_capabilities.dart';
 import 'package:ghostr/platform/media/image_picker_media_picker.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -15,7 +16,10 @@ void main() {
       ),
     );
 
-    final media = await ImagePickerMediaPicker(picker).captureVideo();
+    final media = await ImagePickerMediaPicker(
+      picker,
+      capabilities: const MediaPickerCapabilities.allSupported(),
+    ).captureVideo();
 
     expect(picker.requestedSource, ImageSource.camera);
     expect(media?.source, MediaPickSource.camera);

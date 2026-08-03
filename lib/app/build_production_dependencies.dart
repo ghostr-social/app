@@ -3,7 +3,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:ghostr/app/app_dependencies.dart';
 import 'package:ghostr/app/production_nostr_services.dart';
 import 'package:ghostr/app/production_video_delivery.dart';
+import 'package:ghostr/app/production_video_playback.dart';
 import 'package:ghostr/app/video_catalog_services.dart';
+import 'package:ghostr/core/storage/account_storage_scope.dart';
 import 'package:ghostr/features/activity/data/local_activity_repository.dart';
 import 'package:ghostr/features/activity/data/nostr_activity_repository.dart';
 import 'package:ghostr/features/comments/data/nostr_comments_repository.dart';
@@ -23,9 +25,8 @@ import 'package:ghostr/features/video_catalog/domain/filtered_video_search_repos
 import 'package:ghostr/features/video_catalog/domain/hybrid_video_reader.dart';
 import 'package:ghostr/features/video_catalog/domain/nostr_video_interactions.dart';
 import 'package:ghostr/platform/logging/developer_failure_reporter.dart';
+import 'package:ghostr/platform/media/image_picker_capabilities.dart';
 import 'package:ghostr/platform/media/image_picker_media_picker.dart';
-import 'package:ghostr/platform/media/inventory_video_playback_port.dart';
-import 'package:ghostr/platform/media/video_player_playback_port.dart';
 import 'package:ghostr/platform/storage/secure_secret_store.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:ndk/ndk.dart';
@@ -95,6 +96,8 @@ AppDependencies composeProductionDependencies(
   ProductionNostrServices nostr,
   ProductionVideoDelivery delivery,
 ) {
+  final accountScope =
+      AccountStorageScope(() => nostr.eventClient.publicKeyHex);
   return AppDependencies(
     sessionRepository: SecureSessionRepository(
       SecureSecretStore(const FlutterSecureStorage()),
@@ -102,16 +105,25 @@ AppDependencies composeProductionDependencies(
       nostr.adapters.session,
     ),
     appSettingsRepository: settingsRepository,
-    videoCatalogServices: _buildVideoCatalog(preferences, delivery, nostr),
+    videoCatalogServices: _buildVideoCatalog(
+      preferences,
+      delivery,
+      nostr,
+      accountScope,
+    ),
     activityRepository: NostrActivityRepository(
       client: nostr.eventClient,
-      local: LocalActivityRepository(preferences),
+      local: LocalActivityRepository(
+        preferences,
+        accountScope: accountScope,
+      ),
+      failureReporter: const DeveloperFailureReporter(),
     ),
-    mediaPickerPort: ImagePickerMediaPicker(ImagePicker()),
-    videoPlaybackPort: InventoryVideoPlaybackPort(
-      delegate: const VideoPlayerPlaybackPort(),
-      inventory: delivery.inventory,
+    mediaPickerPort: ImagePickerMediaPicker(
+      ImagePicker(),
+      capabilities: currentImagePickerCapabilities(),
     ),
+    videoPlaybackPort: buildProductionVideoPlayback(delivery),
     failureReporter: const DeveloperFailureReporter(),
   );
 }
@@ -120,8 +132,9 @@ VideoCatalogServices _buildVideoCatalog(
   SharedPreferences preferences,
   ProductionVideoDelivery delivery,
   ProductionNostrServices nostr,
+  AccountStorageScope accountScope,
 ) {
-  final local = LocalVideoStore(preferences);
+  final local = LocalVideoStore(preferences, accountScope: accountScope);
   const reporter = DeveloperFailureReporter();
   final social = SocialGraphCache(nostr.adapters.social, local, reporter);
   final interactions = NostrVideoInteractions(
@@ -140,7 +153,11 @@ VideoCatalogServices _buildVideoCatalog(
     engagement: HybridVideoEngagementRepository(interactions),
     profile: AggregatingVideoProfileRepository(reader, social),
     search: FilteredVideoSearchRepository(reader, social),
-    publishing: HybridVideoPublishingRepository(local, nostr.publisher),
+    publishing: HybridVideoPublishingRepository(
+      local,
+      nostr.publisher,
+      reporter,
+    ),
     comments: HybridVideoCommentsRepository(interactions),
   );
 }

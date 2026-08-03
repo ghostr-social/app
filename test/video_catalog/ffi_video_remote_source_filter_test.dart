@@ -10,7 +10,6 @@ import '../support/nostr_video_post_fixture.dart';
 void main() {
   test('applies creator and text scopes to native video inventory', () async {
     final source = FfiVideoRemoteSource(
-      gatewayBaseUrl: 'http://127.0.0.1:3000',
       snapshotLoader: () => [
         nostrVideoPost(const NostrVideoPostFixture(
           eventId: testEventId,
@@ -39,6 +38,7 @@ void main() {
             title: 'Relay dance',
             songName: 'Quiet song',
           ),
+          event: ffiNostrEvent(identifier: 'alpha'),
         ),
         ffiVideo(
           id: 'beta',
@@ -46,6 +46,10 @@ void main() {
           options: const FfiVideoFixtureOptions(
             title: 'Second clip',
             songName: 'Loud anthem',
+          ),
+          event: ffiNostrEvent(
+            eventId: secondTestEventId,
+            identifier: 'beta',
           ),
         ),
       ],

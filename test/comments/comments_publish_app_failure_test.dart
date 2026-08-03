@@ -17,6 +17,10 @@ void main() {
 
     expect(published, isFalse);
     expect(cubit.state.notice, 'Relay rejected the comment.');
+    expect(cubit.state.isPosting, isFalse);
+    await cubit.publish('Try again');
+    expect(cubit.state.isPosting, isFalse);
+    expect(cubit.state.notice, 'Relay rejected the comment.');
     cubit.clearNotice();
     expect(cubit.state.notice, isNull);
   });

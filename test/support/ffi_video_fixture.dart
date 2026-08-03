@@ -16,12 +16,14 @@ FfiVideoDownload ffiVideo({
     event: event ?? ffiNostrEvent(),
     nostr: FfiNostrVideo(
       id: id,
+      expectedDigest: options.expectedDigest,
+      fallbackUrls: options.fallbackUrls,
       user: user,
       title: options.title ?? 'Video $id',
       songName: options.songName,
       likes: options.likes,
       comments: '2',
-      url: mediaUrl,
+      url: options.nostrUrl ?? mediaUrl,
       delivery: options.delivery,
     ),
   );
@@ -49,6 +51,9 @@ class FfiVideoFixtureOptions {
     this.title,
     this.songName = 'Original sound',
     this.mediaUrl,
+    this.nostrUrl,
+    this.expectedDigest,
+    this.fallbackUrls = const [],
     this.delivery = FfiVideoDelivery.progressive,
   });
 
@@ -57,5 +62,8 @@ class FfiVideoFixtureOptions {
   final String? title;
   final String songName;
   final String? mediaUrl;
+  final String? nostrUrl;
+  final String? expectedDigest;
+  final List<String> fallbackUrls;
   final FfiVideoDelivery delivery;
 }

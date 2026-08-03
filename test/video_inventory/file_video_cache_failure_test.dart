@@ -18,7 +18,7 @@ void main() {
     );
     final remote = VideoMediaSource.remote('https://media.test/video.mp4');
 
-    await expectLater(store.download(remote), throwsA(isA<AppFailure>()));
+    await expectLater(store.acquire(remote), throwsA(isA<AppFailure>()));
 
     expect(directory.listSync(), isEmpty);
   });

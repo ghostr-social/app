@@ -13,7 +13,7 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: const VideoPlayerPlaybackPort().buildSurface(
-        media: VideoMediaSource.remote('https://media.example/video.mp4'),
+        media: VideoMediaSource.local('/cache/video.mp4'),
         isActive: true,
       ),
     ));

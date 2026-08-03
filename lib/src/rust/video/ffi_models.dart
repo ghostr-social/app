@@ -6,6 +6,27 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+class FfiHlsPlaybackSession {
+  final String sessionId;
+  final String playbackUrl;
+
+  const FfiHlsPlaybackSession({
+    required this.sessionId,
+    required this.playbackUrl,
+  });
+
+  @override
+  int get hashCode => sessionId.hashCode ^ playbackUrl.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FfiHlsPlaybackSession &&
+          runtimeType == other.runtimeType &&
+          sessionId == other.sessionId &&
+          playbackUrl == other.playbackUrl;
+}
+
 class FfiNostrEventIdentity {
   final String eventId;
   final String authorPublicKeyHex;
@@ -47,6 +68,8 @@ class FfiNostrEventIdentity {
 
 class FfiNostrVideo {
   final String id;
+  final String? expectedDigest;
+  final List<String> fallbackUrls;
   final FfiUserData user;
   final String title;
   final String songName;
@@ -57,6 +80,8 @@ class FfiNostrVideo {
 
   const FfiNostrVideo({
     required this.id,
+    this.expectedDigest,
+    required this.fallbackUrls,
     required this.user,
     required this.title,
     required this.songName,
@@ -69,6 +94,8 @@ class FfiNostrVideo {
   @override
   int get hashCode =>
       id.hashCode ^
+      expectedDigest.hashCode ^
+      fallbackUrls.hashCode ^
       user.hashCode ^
       title.hashCode ^
       songName.hashCode ^
@@ -83,6 +110,8 @@ class FfiNostrVideo {
       other is FfiNostrVideo &&
           runtimeType == other.runtimeType &&
           id == other.id &&
+          expectedDigest == other.expectedDigest &&
+          fallbackUrls == other.fallbackUrls &&
           user == other.user &&
           title == other.title &&
           songName == other.songName &&

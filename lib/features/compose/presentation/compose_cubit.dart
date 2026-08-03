@@ -1,6 +1,7 @@
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/errors/boundary_failure.dart';
 import 'package:ghostr/core/media/media_picker_port.dart';
+import 'package:ghostr/core/media/media_picker_capabilities.dart';
 import 'package:ghostr/core/media/selected_media.dart';
 import 'package:ghostr/core/presentation/disposal_safe_cubit.dart';
 import 'package:ghostr/features/compose/domain/publish_video_workflow.dart';
@@ -23,6 +24,9 @@ class ComposeCubit extends DisposalSafeCubit<ComposeState> {
   ComposeCubit(this._dependencies) : super(const ComposeState.idle());
 
   final ComposeDependencies _dependencies;
+
+  MediaPickerCapabilities get pickerCapabilities =>
+      _dependencies.mediaPicker.capabilities;
 
   Future<void> recoverLostVideo() {
     return _select(_dependencies.mediaPicker.recoverLostVideo);
@@ -70,11 +74,23 @@ class ComposeCubit extends DisposalSafeCubit<ComposeState> {
   }
 
   String _publishNotice(PublishVideoOutcome outcome) {
-    return switch (outcome) {
-      PublishVideoOutcome.published => 'Published to your Ghostr profile.',
-      PublishVideoOutcome.publishedWithoutActivity =>
-        'Published, but local activity history could not be updated.',
-    };
+    final catalog = outcome.warnings.contains(
+      PublishVideoWarning.localCatalogUnavailable,
+    );
+    final activity = outcome.warnings.contains(
+      PublishVideoWarning.localActivityUnavailable,
+    );
+    if (catalog && activity) {
+      return 'Published, but your local video list and activity history '
+          'could not be updated.';
+    }
+    if (catalog) {
+      return 'Published, but your local video list could not be updated.';
+    }
+    if (activity) {
+      return 'Published, but local activity history could not be updated.';
+    }
+    return 'Published to your Ghostr profile.';
   }
 
   Future<PublishVideoOutcome> _publish(

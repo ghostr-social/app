@@ -19,7 +19,9 @@ class AppControllerFactory {
   final AppDependencies _dependencies;
 
   ActivityCubit activity() {
-    return ActivityCubit(_dependencies.activityRepository);
+    return ActivityCubit(
+      _dependencies.activityRepository.snapshotForActiveAccount(),
+    );
   }
 
   SearchCubit search() {

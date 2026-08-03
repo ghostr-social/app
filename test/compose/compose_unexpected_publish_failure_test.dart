@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/media/selected_media.dart';
 import 'package:ghostr/features/compose/presentation/compose_cubit.dart';
+import 'package:ghostr/features/publish/domain/video_publication.dart';
 import 'package:ghostr/features/session/domain/user_session.dart';
-import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 
 import '../support/fakes.dart';
 import '../support/sample_data.dart';
@@ -29,7 +29,7 @@ class _UnexpectedPublishingRepository extends FakeVideoCatalogRepository {
   _UnexpectedPublishingRepository() : super(forYouFeed: []);
 
   @override
-  Future<VideoPost> publish({
+  Future<VideoPublication> publish({
     required UserSession session,
     required SelectedMedia media,
     required String caption,

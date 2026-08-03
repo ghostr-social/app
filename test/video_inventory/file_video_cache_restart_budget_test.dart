@@ -22,10 +22,14 @@ void main() {
       downloader: downloader,
       maxBytes: 10,
     );
-    final oldCached = await first.download(oldMedia);
-    final newCached = await first.download(newMedia);
-    await File(oldCached!.localPath!).setLastModified(DateTime(2000));
-    final partial = File('${newCached!.localPath!}.partial');
+    final oldCached = (await first.acquire(oldMedia))!;
+    final newCached = (await first.acquire(newMedia))!;
+    final oldPath = oldCached.media.localPath!;
+    final newPath = newCached.media.localPath!;
+    oldCached.release();
+    newCached.release();
+    await File(oldPath).setLastModified(DateTime(2000));
+    final partial = File('$newPath.partial');
     await partial.writeAsBytes([9]);
 
     final restarted = FileVideoCacheStore(
@@ -33,10 +37,11 @@ void main() {
       downloader: downloader,
       maxBytes: 4,
     );
-    final restored = await restarted.find(newMedia);
+    final restored = (await restarted.acquire(newMedia))!;
 
-    expect(restored?.localPath, newCached.localPath);
-    expect(await File(oldCached.localPath!).exists(), isFalse);
+    expect(restored.media.localPath, newPath);
+    expect(await File(oldPath).exists(), isFalse);
     expect(await partial.exists(), isFalse);
+    restored.release();
   });
 }

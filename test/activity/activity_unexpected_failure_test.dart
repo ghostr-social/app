@@ -20,6 +20,9 @@ void main() {
 
 class _UnexpectedActivityRepository implements ActivityRepository {
   @override
+  ActivityRepository snapshotForActiveAccount() => this;
+
+  @override
   Future<List<ActivityItem>> load() => throw StateError('database unavailable');
 
   @override

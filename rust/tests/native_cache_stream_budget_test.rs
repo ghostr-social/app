@@ -2,7 +2,7 @@ mod support;
 
 use rust_lib_ghostr::video::native_cache::{prepare_native_cache_directory, NativeVideoCache};
 use std::sync::Arc;
-use support::fixtures::{temp_directory, video_id};
+use support::fixtures::{temp_directory, trusted_media_client, video_cache_key};
 use support::http::spawn_raw_server;
 use tokio::sync::Mutex;
 
@@ -16,10 +16,14 @@ async fn enforces_the_budget_for_a_stream_without_content_length() {
     let cache = NativeVideoCache::new(directory.clone(), 4, used_bytes.clone());
 
     let result = cache
-        .download(&reqwest::Client::new(), &video_id(), &url)
+        .download(&trusted_media_client(), &video_cache_key(), &url, None)
         .await;
 
-    assert!(result.is_err());
+    let error = match result {
+        Ok(_) => panic!("oversized stream was accepted"),
+        Err(error) => error,
+    };
+    assert_eq!(error.to_string(), "native video exceeds cache capacity");
     assert_eq!(*used_bytes.lock().await, 0);
     assert_eq!(std::fs::read_dir(&directory).expect("cache").count(), 0);
     request.await.expect("upstream request");

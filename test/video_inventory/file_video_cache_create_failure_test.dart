@@ -14,7 +14,7 @@ void main() {
     );
 
     await expectLater(
-      store.download(VideoMediaSource.remote('https://media.test/video.mp4')),
+      store.acquire(VideoMediaSource.remote('https://media.test/video.mp4')),
       throwsA(isA<AppFailure>()),
     );
   });

@@ -7,5 +7,7 @@ abstract interface class NostrVideoEventQueryPort {
     String? searchQuery,
   });
 
-  Future<Metadata?> loadMetadata(NostrPublicKeyHex publicKey);
+  Future<Map<NostrPublicKeyHex, Metadata>> loadMetadataBatch(
+    Set<NostrPublicKeyHex> publicKeys,
+  );
 }

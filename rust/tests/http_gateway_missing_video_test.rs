@@ -7,6 +7,7 @@ use tower::ServiceExt;
 #[tokio::test]
 async fn returns_not_found_for_an_unknown_video_identity() {
     let response = configured_router(new_native_downloads())
+        .expect("router")
         .oneshot(
             Request::builder()
                 .uri("/video.mp4?id=missing")

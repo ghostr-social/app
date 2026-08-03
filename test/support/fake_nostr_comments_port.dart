@@ -1,4 +1,5 @@
 import 'package:ghostr/core/errors/app_failure.dart';
+import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/features/comments/domain/nostr_comments_port.dart';
 import 'package:ghostr/features/comments/domain/video_comment.dart';
 import 'package:ghostr/features/video_catalog/domain/nostr_event_reference.dart';
@@ -13,6 +14,17 @@ class FakeNostrCommentsPort implements NostrCommentsPort {
   Future<List<VideoComment>> load(NostrEventReference reference) async {
     if (loadFailure case final failure?) throw failure;
     return <VideoComment>[...comments];
+  }
+
+  @override
+  Future<Map<NostrEventId, List<VideoComment>>> loadBatch(
+    List<NostrEventReference> references,
+  ) async {
+    if (loadFailure case final failure?) throw failure;
+    return <NostrEventId, List<VideoComment>>{
+      for (final reference in references)
+        reference.eventId: <VideoComment>[...comments],
+    };
   }
 
   @override

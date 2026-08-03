@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/features/video_catalog/domain/nostr_video_interactions.dart';
+import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 
 import '../support/fakes.dart';
 import '../support/nostr_reference.dart';
@@ -30,6 +31,14 @@ void main() {
     expect(hydrated.likeCount, post.likeCount);
     expect(hydrated.commentCount, post.commentCount);
     expect(hydrated.viewerHasLiked, post.viewerHasLiked);
+    expect(
+      hydrated.metrics.likeObservation,
+      VideoMetricObservation.unobserved,
+    );
+    expect(
+      hydrated.metrics.commentObservation,
+      VideoMetricObservation.unobserved,
+    );
     expect(reporter.sources, [
       'NostrVideoInteractions.loadEngagement',
       'NostrVideoInteractions.loadCommentCount',

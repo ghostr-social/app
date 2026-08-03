@@ -8,7 +8,6 @@ import '../support/nostr_test_values.dart';
 void main() {
   test('builds a canonical Nostr post without a warm Dart snapshot', () async {
     final source = FfiVideoRemoteSource(
-      gatewayBaseUrl: 'http://127.0.0.1:3000',
       snapshotLoader: () => [],
       loader: () async => [
         ffiVideo(
@@ -16,6 +15,11 @@ void main() {
           user: const FfiUserData(
             npub: testViewerNpub,
             name: 'Nora',
+          ),
+          options: const FfiVideoFixtureOptions(
+            localPath: '/cache/cold.mp4',
+            expectedDigest: _digest,
+            fallbackUrls: ['https://mirror.example/cold.mp4'],
           ),
           event: ffiNostrEvent(eventId: secondTestEventId),
         ),
@@ -28,6 +32,17 @@ void main() {
     expect(posts.single.nostrReference?.eventId.value, secondTestEventId);
     expect(posts.single.creator.displayName, 'Nora');
     expect(posts.single.caption, 'Relay dance');
+    expect(posts.single.media.importPath, '/cache/cold.mp4');
+    expect(posts.single.media.localPath, isNull);
     expect(posts.single.media.remoteUrl, 'https://source.example/cold.mp4');
+    expect(posts.single.media.remoteUrls, [
+      'https://source.example/cold.mp4',
+      'https://mirror.example/cold.mp4',
+    ]);
+    expect(posts.single.media.expectedSha256?.value, _digest);
+    expect(posts.single.media.cacheScope?.value, secondTestEventId);
   });
 }
+
+const _digest =
+    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';

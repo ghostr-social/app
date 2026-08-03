@@ -1,8 +1,12 @@
 use rust_lib_ghostr::video::event_identity::CanonicalNativeVideo;
-use rust_lib_ghostr::video::ffi_models::FfiNostrEventIdentity;
+use rust_lib_ghostr::video::event_index::NativeVideoIndex;
+use rust_lib_ghostr::video::native_cache::NativeVideoCache;
 use rust_lib_ghostr::video::native_models::{
-    NativeUserData, NativeVideo, NativeVideoDelivery, NativeVideoDownload,
+    NativeDownloads, NativeEventIdentity, NativeUserData, NativeVideo, NativeVideoCacheKey,
+    NativeVideoDelivery, NativeVideoDownload,
 };
+use rust_lib_ghostr::video::outbound_media_client::MediaHttpClient;
+use rust_lib_ghostr::video::video_manager::{NativeVideoManager, NativeVideoManagerConfiguration};
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -10,9 +14,19 @@ pub fn video_id() -> String {
     "a".repeat(64)
 }
 
+pub fn video_cache_key() -> NativeVideoCacheKey {
+    NativeVideoCacheKey::UrlDerived(video_id())
+}
+
+pub fn video_cache_file_id() -> String {
+    video_cache_key().storage_id().expect("cache file id")
+}
+
 pub fn native_video(url: &str) -> NativeVideo {
     NativeVideo {
         id: video_id(),
+        expected_digest: None,
+        fallback_urls: Vec::new(),
         user: NativeUserData {
             npub: Some("npub1author".to_owned()),
             name: Some("Ghost".to_owned()),
@@ -27,8 +41,8 @@ pub fn native_video(url: &str) -> NativeVideo {
     }
 }
 
-pub fn event_identity() -> FfiNostrEventIdentity {
-    FfiNostrEventIdentity {
+pub fn event_identity() -> NativeEventIdentity {
+    NativeEventIdentity {
         event_id: "event-id".to_owned(),
         author_public_key_hex: "author-key".to_owned(),
         kind: 22,
@@ -57,4 +71,19 @@ pub fn temp_directory(prefix: &str) -> PathBuf {
         .expect("system clock")
         .as_nanos();
     std::env::temp_dir().join(format!("{prefix}-{nonce}"))
+}
+
+pub fn trusted_media_client() -> MediaHttpClient {
+    MediaHttpClient::trusted().expect("trusted media client")
+}
+
+pub fn trusted_video_manager(
+    downloads: NativeDownloads,
+    cache: NativeVideoCache,
+    videos: NativeVideoIndex,
+    max_parallel_downloads: usize,
+) -> NativeVideoManager {
+    let configuration =
+        NativeVideoManagerConfiguration::new(trusted_media_client(), max_parallel_downloads);
+    NativeVideoManager::with_configuration(downloads, cache, videos, configuration)
 }

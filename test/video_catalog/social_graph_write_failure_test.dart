@@ -11,7 +11,10 @@ void main() {
   test('does not fabricate cached social changes after a relay failure',
       () async {
     SharedPreferences.setMockInitialValues({});
-    final local = LocalVideoStore(await SharedPreferences.getInstance());
+    final local = LocalVideoStore(
+      await SharedPreferences.getInstance(),
+      accountScope: testAccountStorageScope(),
+    );
     final remote = FakeNostrSocialPort()
       ..toggleFailure = const AppFailure('relay rejected write');
     final cache = SocialGraphCache(

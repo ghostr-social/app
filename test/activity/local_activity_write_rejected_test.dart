@@ -6,6 +6,8 @@ import 'package:ghostr/features/activity/domain/activity_type.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/test_account_storage_scope.dart';
+
 class _Preferences extends Mock implements SharedPreferences {}
 
 void main() {
@@ -15,7 +17,10 @@ void main() {
     when(() => preferences.getString(any())).thenReturn(null);
     when(() => preferences.setString(any(), any()))
         .thenAnswer((_) async => false);
-    final repository = LocalActivityRepository(preferences);
+    final repository = LocalActivityRepository(
+      preferences,
+      accountScope: testAccountStorageScope(),
+    );
     final item = ActivityItem(
       id: ActivityId.parse('activity-1'),
       type: ActivityType.like,

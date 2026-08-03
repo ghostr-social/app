@@ -28,9 +28,10 @@ void main() {
       fallbackUrls: [fallback],
     );
 
-    final cached = await store.download(media);
+    final cached = (await store.acquire(media))!;
 
-    expect(cached?.isLocal, isTrue);
+    expect(cached.media.isLocal, isTrue);
     expect(downloader.attemptedUrls, [primary, fallback]);
+    cached.release();
   });
 }

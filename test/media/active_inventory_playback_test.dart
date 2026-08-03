@@ -8,7 +8,7 @@ import '../support/fake_media_ports.dart';
 import '../support/fake_video_inventory.dart';
 
 void main() {
-  testWidgets('streams an active video while prioritizing its cache',
+  testWidgets('prepares an active video before starting local playback',
       (tester) async {
     final inventory = FakeVideoInventory();
     final playback = InventoryVideoPlaybackPort(
@@ -21,7 +21,8 @@ void main() {
       home: playback.buildSurface(media: remote, isActive: true),
     ));
 
-    expect(find.text(remote.debugLabel), findsOneWidget);
+    expect(find.bySemanticsLabel('Loading video'), findsOneWidget);
+    expect(find.text(remote.debugLabel), findsNothing);
     expect(inventory.priorities, [VideoCachePriority.foreground]);
 
     inventory.complete(
@@ -30,6 +31,6 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text(remote.debugLabel), findsOneWidget);
+    expect(find.text('/cache/current.mp4'), findsOneWidget);
   });
 }
