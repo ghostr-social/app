@@ -2,7 +2,7 @@ import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/media/video_sha256.dart';
 
 /// Playable media resolved from a Nostr event: `imeta` tags first, then
-/// direct video links written into the note text.
+/// NIP-94 top-level file tags, then direct video links in the note text.
 class NostrVideoMedia {
   const NostrVideoMedia({
     required this.urls,
@@ -18,7 +18,30 @@ class NostrVideoMedia {
     required List<List<String>> tags,
     required String content,
   }) {
-    return _fromImeta(tags) ?? _fromText(content);
+    return _fromImeta(tags) ?? _fromFileTags(tags) ?? _fromText(content);
+  }
+
+  // NIP-94 file metadata carries url / m / x as top-level tags.
+  static NostrVideoMedia? _fromFileTags(List<List<String>> tags) {
+    final url = _tagValue(tags, 'url');
+    final mimeType = _tagValue(tags, 'm');
+    if (url == null || !_isHttpUrl(url)) return null;
+    if (!_playable(mimeType, url)) return null;
+    final rawDigest = _tagValue(tags, 'x');
+    final digest = rawDigest == null ? null : VideoSha256.tryParse(rawDigest);
+    if (rawDigest != null && digest == null) return null;
+    return NostrVideoMedia(
+      urls: [url],
+      delivery: _imetaDelivery(mimeType, url),
+      expectedSha256: digest?.value,
+    );
+  }
+
+  static String? _tagValue(List<List<String>> tags, String name) {
+    for (final tag in tags) {
+      if (tag.length > 1 && tag.first == name) return tag[1];
+    }
+    return null;
   }
 
   static NostrVideoMedia? _fromImeta(List<List<String>> tags) {

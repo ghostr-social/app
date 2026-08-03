@@ -46,10 +46,13 @@ class NdkNostrVideoEventQuery implements NostrVideoEventQueryPort {
         hashtags: hashtags,
         olderThan: olderThan,
       );
-      final relays = await _relayTargets(queries.first);
+      final outboxRelays = await _outboxRelays(queries.first);
       final results = await Future.wait([
-        _queryResponse(queries.first, relays).future,
-        ...queries.skip(1).map((query) => _additiveEvents(query, relays)),
+        _queryResponse(queries.first, _targets(queries.first, outboxRelays))
+            .future,
+        ...queries.skip(1).map(
+              (query) => _additiveEvents(query, _targets(query, outboxRelays)),
+            ),
       ]);
       return acceptNostrVideoEvents(
         events: results.expand((events) => events),
@@ -79,26 +82,27 @@ class NdkNostrVideoEventQuery implements NostrVideoEventQueryPort {
     }
   }
 
-  // NIP-50 terms only work on relays that index for search. Hashtag queries
-  // hit those same deep indexes merged with the outbox; everything else
-  // routes to the outbox relays where the wanted authors actually publish.
-  Future<List<String>?> _relayTargets(NostrEventQuery query) async {
+  // Outbox relays serve the queries of a request that carry no term of
+  // their own; a request built around a viewer term never needs them.
+  Future<List<String>?> _outboxRelays(NostrEventQuery primary) async {
+    final outbox = _outbox;
+    if (primary.search != null || outbox == null) return null;
+    final relays = primary.authors.isEmpty
+        ? await outbox.discoveryRelayUrls()
+        : await outbox.authorWriteRelayUrls(primary.authors.toSet());
+    return relays.isEmpty ? null : relays;
+  }
+
+  // NIP-50 terms only work on relays that index for search. Tag-filtered
+  // queries hit those deep indexes merged with the outbox; plain queries
+  // route to the outbox relays where the wanted authors actually publish.
+  List<String>? _targets(NostrEventQuery query, List<String>? outboxRelays) {
     if (query.search != null) {
       return _searchRelayUrls.isEmpty ? null : _searchRelayUrls;
     }
-    final outbox = await _outboxTargets(query);
-    if (query.tagFilters.isEmpty) return outbox;
-    final merged = {..._searchRelayUrls, ...?outbox};
+    if (query.tagFilters.isEmpty) return outboxRelays;
+    final merged = {..._searchRelayUrls, ...?outboxRelays};
     return merged.isEmpty ? null : merged.toList();
-  }
-
-  Future<List<String>?> _outboxTargets(NostrEventQuery query) async {
-    final outbox = _outbox;
-    if (outbox == null) return null;
-    final relays = query.authors.isEmpty
-        ? await outbox.discoveryRelayUrls()
-        : await outbox.authorWriteRelayUrls(query.authors.toSet());
-    return relays.isEmpty ? null : relays;
   }
 
   NdkResponse _queryResponse(NostrEventQuery query, List<String>? relays) {
@@ -121,11 +125,16 @@ class NdkNostrVideoEventQuery implements NostrVideoEventQueryPort {
   }
 
   String _requestName(NostrEventQuery query) {
-    final notesOnly = query.kinds.length == 1 && query.kinds.single.value == 1;
+    if (_hasOnlyKind(query, 1063)) return 'ghostr-file-hunt';
+    final notes = _hasOnlyKind(query, 1);
     if (_isDiscovery(query)) {
-      return notesOnly ? 'ghostr-note-search' : 'ghostr-video-search';
+      return notes ? 'ghostr-note-search' : 'ghostr-video-search';
     }
-    return notesOnly ? 'ghostr-note-feed' : 'ghostr-video-feed';
+    return notes ? 'ghostr-note-feed' : 'ghostr-video-feed';
+  }
+
+  bool _hasOnlyKind(NostrEventQuery query, int kind) {
+    return query.kinds.length == 1 && query.kinds.single.value == kind;
   }
 
   @override
