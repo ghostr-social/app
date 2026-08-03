@@ -92,6 +92,7 @@ class ProductionVideoDeliveryEnvironment {
           outbox: NdkNostrOutboxDirectory(
             ndk,
             bootstrapRelays: settings.relays,
+            maxOutboxRelays: settings.dataUsage.maxOutboxRelays,
           ),
         ),
       ),

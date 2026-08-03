@@ -12,17 +12,19 @@ class NdkNostrOutboxDirectory {
     this._ndk, {
     List<RelayUrl> bootstrapRelays = const [],
     Clock clock = systemClock,
+    int maxOutboxRelays = 12,
   })  : _bootstrapUrls = List<String>.unmodifiable(
           bootstrapRelays.map((relay) => relay.value),
         ),
-        _clock = clock;
+        _clock = clock,
+        _maxOutboxRelays = maxOutboxRelays;
 
   static const _timeToLive = Duration(minutes: 30);
-  static const _maxOutboxRelays = 12;
 
   final Ndk _ndk;
   final List<String> _bootstrapUrls;
   final Clock _clock;
+  final int _maxOutboxRelays;
   List<String>? _cachedDiscovery;
   DateTime? _cachedAt;
 
