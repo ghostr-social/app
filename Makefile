@@ -9,7 +9,7 @@ ANDROID_RELEASE_APK := build/app/outputs/flutter-apk/app-release.apk
 FLAGS ?=
 
 .PHONY: test-coverage coverage-summary native-check native-test native-coverage rust \
-	rust-no-clean gen run run-fast run-fast-profile android-debug-apk \
+	rust-no-clean gen icons run run-fast run-fast-profile android-debug-apk \
 	android-debug-apk-check android-release-apk android-release-apk-check \
 	build build-fast install
 
@@ -40,6 +40,14 @@ rust-no-clean:
 
 gen:
 	flutter_rust_bridge_codegen generate
+
+icons:
+	inkscape assets/branding/ghostr_icon.svg -w 1024 -h 1024 \
+		-o assets/branding/ghostr_icon.png
+	inkscape assets/branding/ghostr_icon_foreground.svg -w 1024 -h 1024 \
+		-o assets/branding/ghostr_icon_foreground.png
+	$(FLUTTER) pub get
+	dart run flutter_launcher_icons
 
 run:
 	$(FLUTTER) run $(FLAGS)

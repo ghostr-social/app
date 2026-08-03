@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Adaptive-icon foreground: mark scaled into the 66% safe zone. -->
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7df9ff" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#9d8cff" stop-opacity="0.16"/>
+      <stop offset="0.94" stop-color="#9d8cff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7df9ff"/>
+      <stop offset="0.58" stop-color="#9d8cff" stop-opacity="0.85"/>
+      <stop offset="0.94" stop-color="#9d8cff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="2.4"/>
+    </filter>
+  </defs>
+  <g transform="translate(15.36 14.2) scale(0.52)">
+    <path d="M32 5C20.4 5 11 14.4 11 26v26h42V26C53 14.4 43.6 5 32 5Z"
+          fill="none" stroke="#7df9ff" stroke-opacity="0.35" stroke-width="3.2"
+          filter="url(#glow)"/>
+    <path d="M32 5C20.4 5 11 14.4 11 26v26h42V26C53 14.4 43.6 5 32 5Z"
+          fill="url(#body)" stroke="url(#edge)" stroke-width="2.2"/>
+    <g fill="#7df9ff">
+      <circle cx="25" cy="27.5" r="3"/>
+      <circle cx="39" cy="27.5" r="3"/>
+    </g>
+    <g fill="#9d8cff">
+      <circle cx="23.5" cy="55.5" r="1.9" opacity="0.55"/>
+      <circle cx="33" cy="59" r="1.4" opacity="0.4"/>
+      <circle cx="41.5" cy="55" r="1.7" opacity="0.48"/>
+    </g>
+  </g>
+</svg>

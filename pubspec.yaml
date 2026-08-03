@@ -54,6 +54,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   bloc_test: ^10.0.0
+  flutter_launcher_icons: ^0.14.3
   mocktail: ^1.0.4
   video_player_platform_interface: ^6.3.0
 
@@ -68,6 +69,15 @@ dev_dependencies:
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
+
+# Launcher icons are generated from the branding SVGs via `make icons`.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: assets/branding/ghostr_icon.png
+  adaptive_icon_background: "#090909"
+  adaptive_icon_foreground: assets/branding/ghostr_icon_foreground.png
 
 # The following section is specific to Flutter packages.
 flutter:
