@@ -89,10 +89,13 @@ jobs:
           export FFMPEG_LIBS_PATH="${GITHUB_WORKSPACE}/3rd-party/ffmpeg-libs"
           cd rust && cargo ndk -t arm64-v8a build --release --target aarch64-linux-android && cd ..
 
+      - name: Derive build version from ref
+        run: sh tool/android_build_version.sh "$GITHUB_REF" >> "$GITHUB_ENV"
+
       - name: Build Flutter APK for arm64-v8a
         run: |
           flutter pub get
-          FFMPEG_LIBS_PATH="${GITHUB_WORKSPACE}/3rd-party/ffmpeg-libs" flutter build apk --release --target-platform android-arm64
+          FFMPEG_LIBS_PATH="${GITHUB_WORKSPACE}/3rd-party/ffmpeg-libs" flutter build apk --release --target-platform android-arm64 --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
 
       - name: Upload build artifacts (arm64-v8a)
         uses: actions/upload-artifact@v4
@@ -177,10 +180,13 @@ jobs:
           export FFMPEG_LIBS_PATH="${GITHUB_WORKSPACE}/3rd-party/ffmpeg-libs"
           cd rust && cargo ndk -t armeabi-v7a build --release --target armv7-linux-androideabi && cd ..
 
+      - name: Derive build version from ref
+        run: sh tool/android_build_version.sh "$GITHUB_REF" >> "$GITHUB_ENV"
+
       - name: Build Flutter APK for armeabi-v7a
         run: |
           flutter pub get
-          FFMPEG_LIBS_PATH="${GITHUB_WORKSPACE}/3rd-party/ffmpeg-libs" flutter build apk --release --target-platform android-arm
+          FFMPEG_LIBS_PATH="${GITHUB_WORKSPACE}/3rd-party/ffmpeg-libs" flutter build apk --release --target-platform android-arm --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
 
       - name: Upload build artifacts (armeabi-v7a)
         uses: actions/upload-artifact@v4
@@ -265,10 +271,13 @@ jobs:
           export FFMPEG_LIBS_PATH="${GITHUB_WORKSPACE}/3rd-party/ffmpeg-libs"
           cd rust && cargo ndk -t x86_64 build --release --target x86_64-linux-android && cd ..
 
+      - name: Derive build version from ref
+        run: sh tool/android_build_version.sh "$GITHUB_REF" >> "$GITHUB_ENV"
+
       - name: Build Flutter APK for x86_64
         run: |
           flutter pub get
-          FFMPEG_LIBS_PATH="${GITHUB_WORKSPACE}/3rd-party/ffmpeg-libs" flutter build apk --release --target-platform android-x64
+          FFMPEG_LIBS_PATH="${GITHUB_WORKSPACE}/3rd-party/ffmpeg-libs" flutter build apk --release --target-platform android-x64 --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
 
       - name: Upload build artifacts (x86_64)
         uses: actions/upload-artifact@v4
