@@ -13,6 +13,8 @@ void main() {
         'wss://nostr.wine',
         'wss://relay.noswhere.com',
         'wss://search.nos.today',
+        'wss://antiprimal.net',
+        'wss://relay.ditto.pub',
       ],
     );
 

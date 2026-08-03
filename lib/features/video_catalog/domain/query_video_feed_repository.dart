@@ -7,7 +7,9 @@ import 'package:ghostr/features/video_catalog/domain/video_search_repository.dar
 /// A feed bound to one search query or `#hashtag`.
 ///
 /// Feed kind and watch exclusion do not apply: the viewer asked for exactly
-/// this content, so every match plays — watched or not.
+/// this content, so every match plays — watched or not. The search never
+/// reports itself finished either; as long as the viewer keeps swiping, the
+/// feed keeps hunting for more matches.
 class QueryVideoFeedRepository implements VideoFeedRepository {
   const QueryVideoFeedRepository({
     required VideoSearchRepository search,
@@ -32,7 +34,29 @@ class QueryVideoFeedRepository implements VideoFeedRepository {
     FeedKind kind, {
     required DateTime olderThan,
     bool excludeWatched = false,
-  }) {
-    return _search.searchVideos(_query, olderThan: olderThan);
+  }) async {
+    final page = await _search.searchVideos(_query, olderThan: olderThan);
+    if (page.hasMore) return page;
+    if (page.posts.isNotEmpty) return _continued(page);
+    return _freshMatches(olderThan);
+  }
+
+  // A final page must still leave the feed a way forward.
+  VideoFeedPage _continued(VideoFeedPage page) {
+    var oldest = page.posts.first.publishedAt;
+    for (final post in page.posts.skip(1)) {
+      if (post.publishedAt.isBefore(oldest)) oldest = post.publishedAt;
+    }
+    return VideoFeedPage(
+      posts: page.posts,
+      nextOlderThan: oldest.subtract(const Duration(seconds: 1)),
+    );
+  }
+
+  // The past ran dry below the cursor: hunt for matches that arrived since
+  // the feed opened, and keep the cursor so the next swipe digs again.
+  Future<VideoFeedPage> _freshMatches(DateTime olderThan) async {
+    final head = await _search.searchVideos(_query);
+    return VideoFeedPage(posts: head.posts, nextOlderThan: olderThan);
   }
 }

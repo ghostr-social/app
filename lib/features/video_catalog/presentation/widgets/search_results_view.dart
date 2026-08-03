@@ -36,10 +36,10 @@ class SearchResultsView extends StatelessWidget {
         slivers: [
           if (results.creators.isNotEmpty)
             SliverToBoxAdapter(child: _creatorsSection(context)),
-          if (results.videos.isNotEmpty) ...[
-            SliverToBoxAdapter(child: _videosHeader(context)),
-            _videoList(context),
-          ],
+          // The header always renders: the feed entry must stay reachable
+          // even when only creators matched.
+          SliverToBoxAdapter(child: _videosHeader(context)),
+          if (results.videos.isNotEmpty) _videoList(context),
           if (results.isLoadingMore)
             const SliverToBoxAdapter(
               child: Padding(

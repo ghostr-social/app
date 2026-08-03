@@ -21,19 +21,22 @@ void main() {
 
     await tester.tap(find.text('Save settings'));
     await tester.pump();
-    await tester.drag(find.byType(ListView), const Offset(0, 1000));
+    final removeFinder = find.byWidgetPredicate(
+      (widget) =>
+          widget is IconButton &&
+          widget.tooltip == 'Remove wss://relay.damus.io',
+    );
+    await tester.scrollUntilVisible(
+      removeFinder,
+      -300,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
 
     final add = tester.widget<OutlinedButton>(
       find.widgetWithText(OutlinedButton, 'Add relay'),
     );
-    final remove = tester.widget<IconButton>(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is IconButton &&
-            widget.tooltip == 'Remove wss://relay.damus.io',
-      ),
-    );
+    final remove = tester.widget<IconButton>(removeFinder);
     expect(add.onPressed, isNull);
     expect(remove.onPressed, isNull);
     await tester.scrollUntilVisible(

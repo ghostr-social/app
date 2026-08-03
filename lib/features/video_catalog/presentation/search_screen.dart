@@ -99,7 +99,7 @@ class _SearchScreenState extends State<SearchScreen> {
     return switch (state) {
       SearchIdle() => _discoverPanel(),
       SearchLoading() => const LoadingPanel(label: 'Searching Nostr'),
-      SearchEmpty() => _emptyResults(),
+      SearchEmpty(query: final query) => _emptyResults(query),
       SearchLoaded() => _results(context, state),
       SearchFailure(message: final message) => _errorState(message),
     };
@@ -133,11 +133,16 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _emptyResults() {
-    return const AsyncStatePanel(
+  // The feed keeps searching while the viewer watches, so even a query with
+  // no immediate matches is worth opening.
+  Widget _emptyResults(String query) {
+    return AsyncStatePanel(
       icon: Icons.manage_search,
       title: 'No matches found',
-      message: 'Try a creator handle, a caption keyword, or a #hashtag.',
+      message: 'Try a creator handle, a caption keyword, or a #hashtag — '
+          'or open the feed and let the search keep hunting.',
+      actionLabel: 'Open in feed',
+      onAction: () => widget.onOpenFeed(query),
     );
   }
 

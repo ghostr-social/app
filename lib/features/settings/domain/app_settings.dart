@@ -56,6 +56,8 @@ class AppSettings {
       RelayUrl.parse('wss://nostr.wine'),
       RelayUrl.parse('wss://relay.noswhere.com'),
       RelayUrl.parse('wss://search.nos.today'),
+      RelayUrl.parse('wss://antiprimal.net'),
+      RelayUrl.parse('wss://relay.ditto.pub'),
     ],
   );
 

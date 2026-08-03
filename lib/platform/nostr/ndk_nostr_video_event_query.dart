@@ -4,18 +4,13 @@ import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/errors/boundary_failure.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/core/nostr/nostr_event_record.dart';
-import 'package:ghostr/core/nostr/nostr_query_result_policy.dart';
 import 'package:ghostr/features/settings/domain/relay_url.dart';
 import 'package:ghostr/features/video_catalog/data/nostr_video_event_query_port.dart';
-import 'package:ghostr/features/video_catalog/domain/video_hashtags.dart';
 import 'package:ghostr/platform/nostr/ndk_nostr_event_mapper.dart';
 import 'package:ghostr/platform/nostr/ndk_nostr_outbox_directory.dart';
+import 'package:ghostr/platform/nostr/ndk_video_event_selection.dart';
+import 'package:ghostr/platform/nostr/video_discovery_queries.dart';
 import 'package:ndk/ndk.dart';
-
-typedef _MappedVideoEvent = ({
-  Nip01Event transport,
-  NostrEventRecord record,
-});
 
 class NdkNostrVideoEventQuery implements NostrVideoEventQueryPort {
   NdkNostrVideoEventQuery(
@@ -27,8 +22,10 @@ class NdkNostrVideoEventQuery implements NostrVideoEventQueryPort {
         ),
         _outbox = outbox;
 
-  static const _videoKinds = [21, 22, 34235, 34236];
-  static const _timeout = Duration(seconds: 5);
+  static const _feedTimeout = Duration(seconds: 5);
+  // Search relays keep answering after the fast ones went quiet; the extra
+  // seconds are where the long tail of matches comes from.
+  static const _discoveryTimeout = Duration(seconds: 8);
 
   final Ndk _ndk;
   final List<String> _searchRelayUrls;
@@ -43,26 +40,59 @@ class NdkNostrVideoEventQuery implements NostrVideoEventQueryPort {
     DateTime? olderThan,
   }) async {
     try {
-      final query = _videoQuery(
-        authorPublicKeys,
-        hashtags,
+      final queries = videoDiscoveryQueries(
+        authorPublicKeys: authorPublicKeys,
         searchQuery: searchQuery,
+        hashtags: hashtags,
         olderThan: olderThan,
       );
-      final events =
-          await _queryResponse(query, await _relayTargets(query)).future;
-      return _acceptedVideoEvents(events, query);
+      final relays = await _relayTargets(queries.first);
+      final results = await Future.wait([
+        _queryResponse(queries.first, relays).future,
+        ...queries.skip(1).map((query) => _additiveEvents(query, relays)),
+      ]);
+      return acceptNostrVideoEvents(
+        events: results.expand((events) => events),
+        queries: queries,
+      );
     } on Object catch (error, stackTrace) {
       throw _failure('Could not load Nostr videos.', error, stackTrace);
     }
   }
 
-  // NIP-50 terms only work on relays that index for search; everything else
+  // Note results only ever widen the pool; their hiccups must not sink the
+  // primary video results.
+  Future<List<Nip01Event>> _additiveEvents(
+    NostrEventQuery query,
+    List<String>? relays,
+  ) async {
+    try {
+      return await _queryResponse(query, relays).future;
+    } on Object catch (error, stackTrace) {
+      log(
+        'Skipping a failed additive discovery query.',
+        name: 'ghostr.nostr.video-query',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return const <Nip01Event>[];
+    }
+  }
+
+  // NIP-50 terms only work on relays that index for search. Hashtag queries
+  // hit those same deep indexes merged with the outbox; everything else
   // routes to the outbox relays where the wanted authors actually publish.
   Future<List<String>?> _relayTargets(NostrEventQuery query) async {
     if (query.search != null) {
       return _searchRelayUrls.isEmpty ? null : _searchRelayUrls;
     }
+    final outbox = await _outboxTargets(query);
+    if (query.tagFilters.isEmpty) return outbox;
+    final merged = {..._searchRelayUrls, ...?outbox};
+    return merged.isEmpty ? null : merged.toList();
+  }
+
+  Future<List<String>?> _outboxTargets(NostrEventQuery query) async {
     final outbox = _outbox;
     if (outbox == null) return null;
     final relays = query.authors.isEmpty
@@ -72,80 +102,28 @@ class NdkNostrVideoEventQuery implements NostrVideoEventQueryPort {
   }
 
   NdkResponse _queryResponse(NostrEventQuery query, List<String>? relays) {
-    final name =
-        query.search == null ? 'ghostr-video-feed' : 'ghostr-video-search';
+    final name = _requestName(query);
+    final timeout = _isDiscovery(query) ? _discoveryTimeout : _feedTimeout;
     final filter = _mapper.toFilter(query);
     if (relays == null) {
-      return _ndk.requests.query(name: name, timeout: _timeout, filter: filter);
+      return _ndk.requests.query(name: name, timeout: timeout, filter: filter);
     }
     return _ndk.requests.query(
       name: name,
-      timeout: _timeout,
+      timeout: timeout,
       filter: filter,
       explicitRelays: relays,
     );
   }
 
-  NostrEventQuery _videoQuery(
-    Set<NostrPublicKeyHex>? authorPublicKeys,
-    Set<String>? hashtags, {
-    String? searchQuery,
-    DateTime? olderThan,
-  }) {
-    return NostrEventQuery(
-      kinds: _videoKinds,
-      scope: NostrEventQueryScope(
-        authors: authorPublicKeys?.toList() ?? const <NostrPublicKeyHex>[],
-      ),
-      tagFilters: [
-        if (hashtags != null && hashtags.isNotEmpty)
-          NostrTagFilter(
-            name: 't',
-            values:
-                hashtags.expand(hashtagQueryVariants).toSet().toList(),
-          ),
-      ],
-      // Hashtag queries widen the candidate pool because feed relays only
-      // ever return the newest events.
-      limit: searchQuery != null || hashtags != null ? 200 : 80,
-      until: olderThan == null
-          ? null
-          : olderThan.toUtc().millisecondsSinceEpoch ~/ 1000,
-      search: searchQuery,
-    );
+  bool _isDiscovery(NostrEventQuery query) {
+    return query.search != null || query.tagFilters.isNotEmpty;
   }
 
-  List<Nip01Event> _acceptedVideoEvents(
-    Iterable<Nip01Event> events,
-    NostrEventQuery query,
-  ) {
-    final unique = _newestUnique(events);
-    final selected = selectNostrQueryResults(
-      events: unique.values.map((event) => event.record),
-      queries: <NostrEventQuery>[query],
-    );
-    return selected.map((record) => unique[record.id]!.transport).toList();
-  }
-
-  Map<NostrEventId, _MappedVideoEvent> _newestUnique(
-    Iterable<Nip01Event> events,
-  ) {
-    final ordered = events.indexed.toList()..sort(_newestFirst);
-    final unique = <NostrEventId, _MappedVideoEvent>{};
-    for (final (_, transport) in ordered) {
-      final record = _mapper.toRecord(transport);
-      unique.putIfAbsent(
-          record.id, () => (transport: transport, record: record));
-    }
-    return unique;
-  }
-
-  int _newestFirst(
-    (int, Nip01Event) left,
-    (int, Nip01Event) right,
-  ) {
-    final recency = right.$2.createdAt.compareTo(left.$2.createdAt);
-    return recency == 0 ? left.$1.compareTo(right.$1) : recency;
+  String _requestName(NostrEventQuery query) {
+    if (!_isDiscovery(query)) return 'ghostr-video-feed';
+    final notesOnly = query.kinds.length == 1 && query.kinds.single.value == 1;
+    return notesOnly ? 'ghostr-note-search' : 'ghostr-video-search';
   }
 
   @override

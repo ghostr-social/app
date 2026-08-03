@@ -26,15 +26,20 @@ void main() {
     await query.loadVideoEvents(hashtags: {'dance'});
     await query.loadVideoEvents();
 
-    final captured = verify(
+    final hashtagFilter = verify(
+      () => requests.query(
+        name: 'ghostr-video-search',
+        filter: captureAny(named: 'filter'),
+        timeout: any(named: 'timeout'),
+      ),
+    ).captured.single as Filter;
+    final unscopedFilter = verify(
       () => requests.query(
         name: 'ghostr-video-feed',
         filter: captureAny(named: 'filter'),
         timeout: any(named: 'timeout'),
       ),
-    ).captured;
-    final hashtagFilter = captured.first as Filter;
-    final unscopedFilter = captured.last as Filter;
+    ).captured.single as Filter;
     expect(hashtagFilter.tags?.keys, ['#t']);
     expect(
       hashtagFilter.tags?['#t'],

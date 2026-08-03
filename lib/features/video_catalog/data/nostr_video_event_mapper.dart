@@ -1,8 +1,8 @@
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/errors/boundary_failure.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
-import 'package:ghostr/core/media/video_sha256.dart';
 import 'package:ghostr/features/video_catalog/data/creator_profile_summary.dart';
+import 'package:ghostr/features/video_catalog/data/nostr_video_media.dart';
 import 'package:ghostr/features/video_catalog/domain/nostr_event_reference.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/features/video_catalog/domain/video_hashtags.dart';
@@ -29,7 +29,7 @@ class NostrVideoEventMapper {
   }
 
   VideoPost _map(Nip01Event event, Metadata? metadata) {
-    final media = _requiredVideoMedia(event.tags);
+    final media = _requiredVideoMedia(event);
     return VideoPost(
       identity: VideoPostIdentity(
         id: VideoPostId.parse(event.id),
@@ -37,7 +37,7 @@ class NostrVideoEventMapper {
         nostrReference: _reference(event),
       ),
       content: VideoPostContent(
-        caption: event.content,
+        caption: captionWithoutMediaUrls(event.content, media.urls),
         songName: _firstTag(event.tags, 'title') ?? 'Original sound',
         media: _source(media, event.id),
         publishedAt: _publishedAt(event.createdAt),
@@ -51,7 +51,7 @@ class NostrVideoEventMapper {
     );
   }
 
-  VideoMediaSource _source(_NostrVideoMedia media, String eventId) {
+  VideoMediaSource _source(NostrVideoMedia media, String eventId) {
     var source = VideoMediaSource.remote(
       media.urls.first,
       fallbackUrls: media.urls.skip(1).toList(),
@@ -64,8 +64,11 @@ class NostrVideoEventMapper {
     return VideoMediaSource.withCacheScope(source, eventId);
   }
 
-  _NostrVideoMedia _requiredVideoMedia(List<List<String>> tags) {
-    final media = _videoMedia(tags);
+  NostrVideoMedia _requiredVideoMedia(Nip01Event event) {
+    final media = NostrVideoMedia.fromEvent(
+      tags: event.tags,
+      content: event.content,
+    );
     if (media == null) {
       throw const AppFailure('Nostr video event has no playable media.');
     }
@@ -93,54 +96,6 @@ class NostrVideoEventMapper {
     return NostrEventIdentifier.parse(value);
   }
 
-  _NostrVideoMedia? _videoMedia(List<List<String>> tags) {
-    for (final tag in tags.where((tag) => tag.firstOrNull == 'imeta')) {
-      final media = _tryVideoMedia(tag);
-      if (media != null) return media;
-    }
-    return null;
-  }
-
-  _NostrVideoMedia? _tryVideoMedia(List<String> tag) {
-    final mimeType = _imetaField(tag, 'm');
-    if (!_isVideoMime(mimeType)) return null;
-    final digest = _videoDigest(tag);
-    if (!digest.valid) return null;
-    final urls = _videoUrls(tag);
-    if (urls.isEmpty) return null;
-    return _NostrVideoMedia(urls, _delivery(mimeType!), digest.value?.value);
-  }
-
-  ({bool valid, VideoSha256? value}) _videoDigest(List<String> tag) {
-    final rawDigest = _imetaField(tag, 'x');
-    final value = rawDigest == null ? null : VideoSha256.tryParse(rawDigest);
-    return (valid: rawDigest == null || value != null, value: value);
-  }
-
-  List<String> _videoUrls(List<String> tag) {
-    final primary = _imetaField(tag, 'url');
-    return <String>{
-      if (_isHttpUrl(primary)) primary!,
-      ..._validFallbacks(tag),
-    }.toList();
-  }
-
-  List<String> _validFallbacks(List<String> tag) {
-    return tag
-        .skip(1)
-        .where((field) => field.startsWith('fallback '))
-        .map((field) => field.substring('fallback '.length))
-        .where(_isHttpUrl)
-        .toList();
-  }
-
-  String? _imetaField(List<String> tag, String name) {
-    for (final field in tag.skip(1)) {
-      if (field.startsWith('$name ')) return field.substring(name.length + 1);
-    }
-    return null;
-  }
-
   List<String> _hashtags(Nip01Event event) {
     final found = <String>{};
     for (final tag in event.tags.where((tag) => tag.firstOrNull == 't')) {
@@ -158,39 +113,4 @@ class NostrVideoEventMapper {
         .firstOrNull
         ?.elementAtOrNull(1);
   }
-
-  bool _isHttpUrl(String? value) {
-    final uri = value == null ? null : Uri.tryParse(value);
-    return uri != null &&
-        (uri.scheme == 'https' || uri.scheme == 'http') &&
-        uri.host.isNotEmpty;
-  }
-
-  bool _isVideoMime(String? value) {
-    return _normalizedMime(value)?.startsWith('video/') == true ||
-        _isHlsMime(value);
-  }
-
-  VideoMediaDelivery _delivery(String mimeType) {
-    return _isHlsMime(mimeType)
-        ? VideoMediaDelivery.hls
-        : VideoMediaDelivery.progressive;
-  }
-
-  bool _isHlsMime(String? value) {
-    return const {
-      'application/x-mpegurl',
-      'application/vnd.apple.mpegurl',
-    }.contains(_normalizedMime(value));
-  }
-
-  String? _normalizedMime(String? value) => value?.trim().toLowerCase();
-}
-
-class _NostrVideoMedia {
-  const _NostrVideoMedia(this.urls, this.delivery, this.expectedSha256);
-
-  final List<String> urls;
-  final VideoMediaDelivery delivery;
-  final String? expectedSha256;
 }
