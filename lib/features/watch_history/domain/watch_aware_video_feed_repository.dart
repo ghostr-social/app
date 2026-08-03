@@ -3,9 +3,10 @@ import 'package:ghostr/features/settings/domain/app_settings_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
-import 'package:ghostr/features/video_catalog/domain/video_interaction_target.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
+import 'package:ghostr/features/watch_history/domain/watch_history_entry.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_repository.dart';
+import 'package:ghostr/features/watch_history/domain/watched_video_index.dart';
 
 class WatchAwareVideoFeedRepository implements VideoFeedRepository {
   const WatchAwareVideoFeedRepository({
@@ -32,10 +33,9 @@ class WatchAwareVideoFeedRepository implements VideoFeedRepository {
   }) async {
     final posts = await _feed.loadFeed(kind);
     if (!excludeWatched || !await _isEnabled()) return posts;
-    final watched = await _watchedTimes();
+    final watched = await _watchedIndex();
     if (watched.isEmpty) return posts;
-    final fresh =
-        posts.where((post) => !watched.containsKey(_coordinate(post))).toList();
+    final fresh = posts.where((post) => !watched.contains(post)).toList();
     if (fresh.isNotEmpty) return List<VideoPost>.unmodifiable(fresh);
     return _leastRecentlyWatched(posts, watched);
   }
@@ -54,10 +54,9 @@ class WatchAwareVideoFeedRepository implements VideoFeedRepository {
     for (var dig = 0; dig < _maxPageDigs; dig += 1) {
       final page = await _feed.loadOlderFeed(kind, olderThan: cursor);
       if (!filtering) return page;
-      final watched = await _watchedTimes();
-      final fresh = page.posts
-          .where((post) => !watched.containsKey(_coordinate(post)))
-          .toList();
+      final watched = await _watchedIndex();
+      final fresh =
+          page.posts.where((post) => !watched.contains(post)).toList();
       if (fresh.isNotEmpty || !page.hasMore) {
         return VideoFeedPage(posts: fresh, nextOlderThan: page.nextOlderThan);
       }
@@ -71,19 +70,13 @@ class WatchAwareVideoFeedRepository implements VideoFeedRepository {
   // longest ago.
   List<VideoPost> _leastRecentlyWatched(
     List<VideoPost> posts,
-    Map<String, DateTime> watched,
+    WatchedVideoIndex watched,
   ) {
     final ordered = posts.toList()
       ..sort((left, right) {
-        return watched[_coordinate(left)]!.compareTo(
-          watched[_coordinate(right)]!,
-        );
+        return watched.watchedAt(left)!.compareTo(watched.watchedAt(right)!);
       });
     return List<VideoPost>.unmodifiable(ordered);
-  }
-
-  String _coordinate(VideoPost post) {
-    return VideoInteractionTarget.fromPost(post).value;
   }
 
   Future<bool> _isEnabled() async {
@@ -95,13 +88,14 @@ class WatchAwareVideoFeedRepository implements VideoFeedRepository {
     }
   }
 
-  Future<Map<String, DateTime>> _watchedTimes() async {
+  Future<WatchedVideoIndex> _watchedIndex() async {
     try {
-      final entries = await _history.snapshotForActiveAccount().load();
-      return {for (final entry in entries) entry.videoId: entry.watchedAt};
+      return WatchedVideoIndex(
+        await _history.snapshotForActiveAccount().load(),
+      );
     } on Object catch (error, stackTrace) {
       _report('WatchAwareVideoFeedRepository.history', error, stackTrace);
-      return const <String, DateTime>{};
+      return WatchedVideoIndex(const <WatchHistoryEntry>[]);
     }
   }
 

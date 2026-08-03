@@ -42,8 +42,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   final _interactions = FeedInteractionReconciler();
   final _pagination = FeedPagination();
   static const _likePolicy = VideoLikePolicy();
-  static const _loadMoreThreshold = 5;
-  static const _minLoadedPosts = 10;
+  static const _bufferTarget = 10;
   List<VideoPost> _lastPosts = const <VideoPost>[];
   int _loadRequest = 0;
 
@@ -152,9 +151,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
       _trackWatched(posts.first);
       _dependencies.prefetcher?.focus(posts, 0);
     }
-    if (posts.isNotEmpty && posts.length < _minLoadedPosts) {
-      unawaited(loadMore());
-    }
+    _ensureBuffered();
   }
 
   FeedState _refreshedState(FeedLoaded current, List<VideoPost> posts) {
@@ -185,9 +182,16 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     emit(current.withPage(index));
     _trackWatched(current.posts[index]);
     _dependencies.prefetcher?.focus(current.posts, index);
-    if (current.posts.length - index <= _loadMoreThreshold) {
-      unawaited(loadMore());
-    }
+    _ensureBuffered();
+  }
+
+  // The viewer must always have a queue of unwatched videos ahead, so keep
+  // digging older pages until the buffer refills or the past runs dry.
+  void _ensureBuffered() {
+    final current = state;
+    if (current is! FeedLoaded) return;
+    final ahead = current.posts.length - current.activeIndex - 1;
+    if (ahead < _bufferTarget) unawaited(loadMore());
   }
 
   Future<void> loadMore() async {
@@ -222,9 +226,12 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
       current: const <VideoPost>[],
     );
     final posts = FeedPagination.appendNew(current.posts, reconciled);
+    // A page that adds nothing new stops the digging chain; the next swipe
+    // retries from the already-advanced cursor.
     if (posts.length == current.posts.length) return;
     _lastPosts = posts;
     emit(current.withPosts(posts));
+    _ensureBuffered();
   }
 
   void _trackWatched(VideoPost post) {

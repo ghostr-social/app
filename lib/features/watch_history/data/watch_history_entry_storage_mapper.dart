@@ -9,6 +9,8 @@ class WatchHistoryEntryStorageMapper {
       title: _required<String>(map, 'title'),
       creatorName: _required<String>(map, 'creatorName'),
       watchedAt: _watchedAt(map),
+      mediaUrl: _optionalString(map, 'mediaUrl'),
+      mediaSha256: _optionalString(map, 'mediaSha256'),
     );
   }
 
@@ -18,7 +20,17 @@ class WatchHistoryEntryStorageMapper {
       'title': entry.title,
       'creatorName': entry.creatorName,
       'watchedAt': entry.watchedAt.toIso8601String(),
+      if (entry.mediaUrl case final String url) 'mediaUrl': url,
+      if (entry.mediaSha256 case final String digest) 'mediaSha256': digest,
     };
+  }
+
+  // Entries recorded before media tracking simply lack these keys.
+  String? _optionalString(Map<String, dynamic> map, String key) {
+    final value = map[key];
+    if (value == null) return null;
+    if (value is String) return value;
+    throw FormatException('Watch history field "$key" has an invalid type.');
   }
 
   DateTime _watchedAt(Map<String, dynamic> map) {

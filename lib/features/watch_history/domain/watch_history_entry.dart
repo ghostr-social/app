@@ -7,9 +7,13 @@ class WatchHistoryEntry {
     required String title,
     required String creatorName,
     required this.watchedAt,
+    String? mediaUrl,
+    String? mediaSha256,
   })  : videoId = _requireVideoId(videoId),
         title = title.trim(),
-        creatorName = creatorName.trim();
+        creatorName = creatorName.trim(),
+        mediaUrl = _optional(mediaUrl),
+        mediaSha256 = _optional(mediaSha256);
 
   factory WatchHistoryEntry.fromPost(VideoPost post, DateTime watchedAt) {
     final caption = post.caption.trim();
@@ -18,6 +22,8 @@ class WatchHistoryEntry {
       title: caption.isEmpty ? post.songName : caption,
       creatorName: post.creator.displayName,
       watchedAt: watchedAt,
+      mediaUrl: post.media.remoteUrl,
+      mediaSha256: post.media.expectedSha256?.value,
     );
   }
 
@@ -26,11 +32,24 @@ class WatchHistoryEntry {
   final String creatorName;
   final DateTime watchedAt;
 
+  /// Where the video file was streamed from, so republishes of the same
+  /// URL under a new event id still count as watched.
+  final String? mediaUrl;
+
+  /// The file digest when the event declared one, so the same file on a
+  /// different host still counts as watched.
+  final String? mediaSha256;
+
   static String _requireVideoId(String value) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) {
       throw const FormatException('Watch history video id cannot be empty.');
     }
     return trimmed;
+  }
+
+  static String? _optional(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 }

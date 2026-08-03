@@ -23,6 +23,7 @@ import 'package:ghostr/platform/media/http_video_file_downloader.dart';
 import 'package:ghostr/platform/media/video_player_playback_capabilities.dart';
 import 'package:ghostr/platform/network/public_media_address_resolver.dart';
 import 'package:ghostr/platform/network/public_media_http_client.dart';
+import 'package:ghostr/platform/nostr/ndk_nostr_outbox_directory.dart';
 import 'package:ghostr/platform/nostr/ndk_nostr_video_event_query.dart';
 import 'package:ndk/ndk.dart';
 import 'package:path_provider/path_provider.dart';
@@ -85,7 +86,14 @@ class ProductionVideoDeliveryEnvironment {
     final mediaPolicy = PublicMediaAddressResolver();
     return ProductionVideoDeliveryEnvironment(
       canonicalSource: NdkVideoRemoteSource(
-        NdkNostrVideoEventQuery(ndk, searchRelays: settings.searchRelays),
+        NdkNostrVideoEventQuery(
+          ndk,
+          searchRelays: settings.searchRelays,
+          outbox: NdkNostrOutboxDirectory(
+            ndk,
+            bootstrapRelays: settings.relays,
+          ),
+        ),
       ),
       supportDirectoryProvider: getApplicationSupportDirectory,
       downloader: HttpVideoFileDownloader(

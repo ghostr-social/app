@@ -26,6 +26,8 @@ class MockLists extends Mock implements Lists {}
 
 class MockFollows extends Mock implements Follows {}
 
+class MockUserRelayLists extends Mock implements UserRelayLists {}
+
 List<RelayBroadcastResponse> successfulRelayBroadcast() {
   return [
     RelayBroadcastResponse(

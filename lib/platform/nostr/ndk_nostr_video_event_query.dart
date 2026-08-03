@@ -9,6 +9,7 @@ import 'package:ghostr/features/settings/domain/relay_url.dart';
 import 'package:ghostr/features/video_catalog/data/nostr_video_event_query_port.dart';
 import 'package:ghostr/features/video_catalog/domain/video_hashtags.dart';
 import 'package:ghostr/platform/nostr/ndk_nostr_event_mapper.dart';
+import 'package:ghostr/platform/nostr/ndk_nostr_outbox_directory.dart';
 import 'package:ndk/ndk.dart';
 
 typedef _MappedVideoEvent = ({
@@ -17,16 +18,21 @@ typedef _MappedVideoEvent = ({
 });
 
 class NdkNostrVideoEventQuery implements NostrVideoEventQueryPort {
-  NdkNostrVideoEventQuery(this._ndk, {List<RelayUrl> searchRelays = const []})
-      : _searchRelayUrls = List<String>.unmodifiable(
+  NdkNostrVideoEventQuery(
+    this._ndk, {
+    List<RelayUrl> searchRelays = const [],
+    NdkNostrOutboxDirectory? outbox,
+  })  : _searchRelayUrls = List<String>.unmodifiable(
           searchRelays.map((relay) => relay.value),
-        );
+        ),
+        _outbox = outbox;
 
   static const _videoKinds = [21, 22, 34235, 34236];
   static const _timeout = Duration(seconds: 5);
 
   final Ndk _ndk;
   final List<String> _searchRelayUrls;
+  final NdkNostrOutboxDirectory? _outbox;
   final NdkNostrEventMapper _mapper = const NdkNostrEventMapper();
 
   @override
@@ -43,30 +49,40 @@ class NdkNostrVideoEventQuery implements NostrVideoEventQueryPort {
         searchQuery: searchQuery,
         olderThan: olderThan,
       );
-      final events = await _queryResponse(query).future;
+      final events =
+          await _queryResponse(query, await _relayTargets(query)).future;
       return _acceptedVideoEvents(events, query);
     } on Object catch (error, stackTrace) {
       throw _failure('Could not load Nostr videos.', error, stackTrace);
     }
   }
 
-  // NIP-50 terms only work on relays that index for search, so search
-  // requests target the dedicated search relays instead of the feed pool.
-  NdkResponse _queryResponse(NostrEventQuery query) {
-    final filter = _mapper.toFilter(query);
-    if (query.search == null) {
-      return _ndk.requests
-          .query(name: 'ghostr-video-feed', timeout: _timeout, filter: filter);
+  // NIP-50 terms only work on relays that index for search; everything else
+  // routes to the outbox relays where the wanted authors actually publish.
+  Future<List<String>?> _relayTargets(NostrEventQuery query) async {
+    if (query.search != null) {
+      return _searchRelayUrls.isEmpty ? null : _searchRelayUrls;
     }
-    if (_searchRelayUrls.isEmpty) {
-      return _ndk.requests.query(
-          name: 'ghostr-video-search', timeout: _timeout, filter: filter);
+    final outbox = _outbox;
+    if (outbox == null) return null;
+    final relays = query.authors.isEmpty
+        ? await outbox.discoveryRelayUrls()
+        : await outbox.authorWriteRelayUrls(query.authors.toSet());
+    return relays.isEmpty ? null : relays;
+  }
+
+  NdkResponse _queryResponse(NostrEventQuery query, List<String>? relays) {
+    final name =
+        query.search == null ? 'ghostr-video-feed' : 'ghostr-video-search';
+    final filter = _mapper.toFilter(query);
+    if (relays == null) {
+      return _ndk.requests.query(name: name, timeout: _timeout, filter: filter);
     }
     return _ndk.requests.query(
-      name: 'ghostr-video-search',
+      name: name,
       timeout: _timeout,
       filter: filter,
-      explicitRelays: _searchRelayUrls,
+      explicitRelays: relays,
     );
   }
 

@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/platform/nostr/ndk_nostr_profile_search.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:ndk/ndk.dart';
 
 import '../support/ndk_mocks.dart';
 
