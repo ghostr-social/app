@@ -31,9 +31,14 @@ final class ReleasePublisherHarness {
     );
   }
 
-  ProcessResult run() => Process.runSync(
+  ProcessResult run({String? target}) => Process.runSync(
         'sh',
-        ['tool/publish_android_release.sh', 'v1.2.3', ...assets],
+        [
+          'tool/publish_android_release.sh',
+          'v1.2.3',
+          ...assets,
+          if (target != null) target,
+        ],
         environment: {
           'PATH': '${directory.path}:${Platform.environment['PATH'] ?? ''}',
           'GH_CALL_LOG': callLog.path,

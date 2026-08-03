@@ -9,7 +9,9 @@ void main() {
     ).readAsStringSync();
 
     final deriveSteps =
-        'sh tool/android_build_version.sh'.allMatches(workflow).length;
+        r'sh tool/android_build_version.sh "refs/tags/${{ needs.version.outputs.tag }}"'
+            .allMatches(workflow)
+            .length;
     final versionedBuilds = RegExp(
       r'flutter build apk [^\n]*--build-name "\$BUILD_NAME" '
       r'--build-number "\$BUILD_NUMBER"',

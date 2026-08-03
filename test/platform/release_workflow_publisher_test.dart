@@ -13,9 +13,9 @@ void main() {
       allOf(
         contains('name: Check out release tooling'),
         contains('name: Prepare uniquely named APK assets'),
-        contains(r'ghostr-${GITHUB_REF_NAME}-arm64-v8a.apk'),
-        contains(r'ghostr-${GITHUB_REF_NAME}-armeabi-v7a.apk'),
-        contains(r'ghostr-${GITHUB_REF_NAME}-x86_64.apk'),
+        contains(r'ghostr-${RELEASE_TAG}-arm64-v8a.apk'),
+        contains(r'ghostr-${RELEASE_TAG}-armeabi-v7a.apk'),
+        contains(r'ghostr-${RELEASE_TAG}-x86_64.apk'),
         contains('sh tool/publish_android_release.sh'),
         allOf(
           isNot(contains('actions/create-release@v1')),
