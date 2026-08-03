@@ -23,6 +23,7 @@ class NdkVideoRemoteSource implements RemoteVideoSource {
     Set<ProfileId>? creatorIds,
     String? searchQuery,
     Set<String>? hashtags,
+    DateTime? olderThan,
   }) async {
     final authors = _decodeCreatorIds(creatorIds);
     if (creatorIds != null && authors!.isEmpty) return const [];
@@ -30,6 +31,7 @@ class NdkVideoRemoteSource implements RemoteVideoSource {
       authorPublicKeys: authors,
       searchQuery: searchQuery,
       hashtags: hashtags,
+      olderThan: olderThan,
     ));
     final metadata = await _loadMetadata(events);
     final posts = <VideoPost>[];

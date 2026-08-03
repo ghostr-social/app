@@ -35,6 +35,7 @@ class NdkNostrEventMapper {
           : query.eventTags.map((event) => event.value).toList(),
       tags: tags.isEmpty ? null : tags,
       limit: query.limit,
+      until: query.until,
     );
   }
 

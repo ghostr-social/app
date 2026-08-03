@@ -16,6 +16,7 @@ class _RevisionQuery implements NostrVideoEventQueryPort {
     Set<NostrPublicKeyHex>? authorPublicKeys,
     String? searchQuery,
     Set<String>? hashtags,
+    DateTime? olderThan,
   }) async =>
       events;
 

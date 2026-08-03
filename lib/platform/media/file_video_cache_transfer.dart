@@ -45,6 +45,9 @@ extension _FileVideoCacheTransfer on FileVideoCacheStore {
 
   Future<void> _installCompleted(VideoCacheRequest request) async {
     await _replaceCompletedFile(request);
+    // The transfer already validated the digest, so the first playback
+    // acquire must not hash the file again.
+    _verifiedPaths.add(request.completed.path);
     await _cacheDirectory.enforceBudget(request.directory);
     _pendingLeasePaths.add(request.completed.path);
   }

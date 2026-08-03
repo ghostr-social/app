@@ -37,6 +37,7 @@ void main() {
       downloader: downloader,
       maxBytes: 4,
     );
+    await restarted.initialize();
     final restored = (await restarted.acquire(newMedia))!;
 
     expect(restored.media.localPath, newPath);

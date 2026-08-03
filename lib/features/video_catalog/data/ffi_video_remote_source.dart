@@ -25,7 +25,10 @@ class FfiVideoRemoteSource implements RemoteVideoSource {
     Set<ProfileId>? creatorIds,
     String? searchQuery,
     Set<String>? hashtags,
+    DateTime? olderThan,
   }) async {
+    // The native index holds only the newest window; it cannot page back.
+    if (olderThan != null) return const <VideoPost>[];
     final nativeVideos = await _loadNativeVideos();
     var posts = _mapper.map(nativeVideos, _snapshotLoader());
     if (creatorIds != null) {

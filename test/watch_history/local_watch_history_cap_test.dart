@@ -9,10 +9,10 @@ import '../support/nostr_test_values.dart';
 import '../support/test_account_storage_scope.dart';
 
 void main() {
-  test('recording beyond five hundred entries drops the oldest', () async {
+  test('recording beyond two thousand entries drops the oldest', () async {
     SharedPreferences.setMockInitialValues({
       'ghostr.history.watched.$testViewerPublicKey': jsonEncode([
-        for (var index = 0; index < 500; index += 1)
+        for (var index = 0; index < 2000; index += 1)
           <String, Object?>{
             'videoId': 'e:video-$index',
             'title': 'Video $index',
@@ -30,16 +30,16 @@ void main() {
 
     await repository.record(
       WatchHistoryEntry(
-        videoId: 'e:video-500',
-        title: 'Video 500',
+        videoId: 'e:video-2000',
+        title: 'Video 2000',
         creatorName: 'Nora Relay',
         watchedAt: DateTime.utc(2026, 2, 1),
       ),
     );
 
     final entries = await repository.load();
-    expect(entries, hasLength(500));
-    expect(entries.first.videoId, 'e:video-500');
+    expect(entries, hasLength(2000));
+    expect(entries.first.videoId, 'e:video-2000');
     expect(
       entries.where((entry) => entry.videoId == 'e:video-0'),
       isEmpty,

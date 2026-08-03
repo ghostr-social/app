@@ -22,6 +22,7 @@ void main() {
             onOpenHashtag: (_) {},
             onToggleLike: (_) => result.future,
             onOpenComments: () {},
+            onBlockCreator: () {},
           ),
         ),
       ),

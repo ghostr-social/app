@@ -56,6 +56,18 @@ class NostrEngagementReader {
     return _journal.overlay(key, states[reference.eventId]!);
   }
 
+  // Session-local evidence only, for when relays cannot be read.
+  NostrViewerReactionState journalOnlyViewerState(NostrLikeMutationKey key) {
+    verifyViewer(key.viewer);
+    return _journal.overlay(
+      key,
+      NostrReactionState.from(
+        const <NostrEventRecord>[],
+        const <NostrEventId>{},
+      ),
+    );
+  }
+
   void verifyViewer(NostrPublicKeyHex viewer) {
     if (_client.publicKeyHex != viewer) {
       throw const AppFailure('The active account changed. Try again.');

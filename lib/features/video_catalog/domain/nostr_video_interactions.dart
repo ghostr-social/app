@@ -110,9 +110,13 @@ class NostrVideoInteractions {
     final intent =
         post.viewerHasLiked ? VideoLikeIntent.unlike : VideoLikeIntent.like;
     final engagement = await _engagement.setLike(reference, intent);
+    // A journal-only mutation reports a count with no relay baseline, so the
+    // post-derived expectation is the floor for the displayed count.
+    final expected = _likePolicy.toggle(post).likeCount;
     return post.withInteraction(
       VideoInteractionUpdate(
-        likeCount: engagement.likeCount,
+        likeCount:
+            engagement.likeCount > expected ? engagement.likeCount : expected,
         viewerHasLiked: engagement.viewerHasLiked,
       ),
     );

@@ -19,6 +19,7 @@ Widget feedScreenHarness(
       create: (_) => FeedCubit(FeedDependencies(
         feed: repository,
         engagement: repository,
+        social: repository,
       ))
         ..load(),
       child: Scaffold(

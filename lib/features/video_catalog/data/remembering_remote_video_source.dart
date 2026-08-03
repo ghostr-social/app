@@ -15,14 +15,18 @@ class RememberingRemoteVideoSource implements RemoteVideoSource {
     Set<ProfileId>? creatorIds,
     String? searchQuery,
     Set<String>? hashtags,
+    DateTime? olderThan,
   }) async {
-    final isFullLoad =
-        creatorIds == null && searchQuery == null && hashtags == null;
+    final isFullLoad = creatorIds == null &&
+        searchQuery == null &&
+        hashtags == null &&
+        olderThan == null;
     final generation = isFullLoad ? ++_fullLoadGeneration : null;
     final posts = await _source.loadRemoteFeed(
       creatorIds: creatorIds,
       searchQuery: searchQuery,
       hashtags: hashtags,
+      olderThan: olderThan,
     );
     if (generation != null && generation == _fullLoadGeneration) {
       _snapshot.remember(posts);

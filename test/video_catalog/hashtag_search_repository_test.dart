@@ -36,6 +36,14 @@ class _RecordingReader implements VideoPostReader {
     hashtagRequests.add(hashtags);
     return const <VideoPost>[];
   }
+
+  @override
+  Future<List<VideoPost>> loadOlder({
+    required DateTime olderThan,
+    Set<ProfileId>? creatorIds,
+  }) async {
+    return const <VideoPost>[];
+  }
 }
 
 class _NoSocialGraph implements SocialGraphRepository {

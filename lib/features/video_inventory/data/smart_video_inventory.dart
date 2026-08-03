@@ -74,21 +74,29 @@ class SmartVideoInventory implements VideoInventoryPort {
     final job = _CacheJob(media);
     if (leaseWaiter != null) job.leaseWaiters.add(leaseWaiter);
     _jobs[media.cacheJobIdentity] = job;
-    priority == VideoCachePriority.foreground
-        ? _queue.insert(0, job)
-        : _queue.add(job);
+    if (priority == VideoCachePriority.foreground) {
+      job.started = true;
+      _activeDownloads += 1;
+      unawaited(_run(job));
+      return job;
+    }
+    _queue.add(job);
     _pump();
     return job;
   }
 
+  // The viewer's current video must never wait for queued background
+  // prefetches, so a foreground request starts immediately even when every
+  // parallel-download slot is taken.
   void _reprioritize(
     _CacheJob job,
     VideoCachePriority priority,
   ) {
-    if (!job.started && priority == VideoCachePriority.foreground) {
-      _queue.remove(job);
-      _queue.insert(0, job);
-    }
+    if (job.started || priority != VideoCachePriority.foreground) return;
+    _queue.remove(job);
+    job.started = true;
+    _activeDownloads += 1;
+    unawaited(_run(job));
   }
 
   void _pump() {

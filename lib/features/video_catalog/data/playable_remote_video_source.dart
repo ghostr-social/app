@@ -18,11 +18,13 @@ final class PlayableRemoteVideoSource implements RemoteVideoSource {
     Set<ProfileId>? creatorIds,
     String? searchQuery,
     Set<String>? hashtags,
+    DateTime? olderThan,
   }) async {
     final posts = await _source.loadRemoteFeed(
       creatorIds: creatorIds,
       searchQuery: searchQuery,
       hashtags: hashtags,
+      olderThan: olderThan,
     );
     return posts
         .where((post) => _capabilities.supports(post.media))

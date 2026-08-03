@@ -19,7 +19,18 @@ class FallbackRemoteVideoSource implements RemoteVideoSource {
     Set<ProfileId>? creatorIds,
     String? searchQuery,
     Set<String>? hashtags,
+    DateTime? olderThan,
   }) async {
+    // Older pages exist only on relays, so a page request must surface the
+    // primary outcome instead of re-serving the fallback's newest window.
+    if (olderThan != null) {
+      return _primary.loadRemoteFeed(
+        creatorIds: creatorIds,
+        searchQuery: searchQuery,
+        hashtags: hashtags,
+        olderThan: olderThan,
+      );
+    }
     try {
       final posts = await _primary.loadRemoteFeed(
         creatorIds: creatorIds,

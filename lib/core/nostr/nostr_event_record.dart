@@ -64,6 +64,7 @@ class NostrEventQuery {
     NostrEventQueryScope? scope,
     List<NostrTagFilter> tagFilters = const <NostrTagFilter>[],
     this.limit = 500,
+    this.until,
   })  : kinds = List<NostrEventKind>.unmodifiable(
           kinds.map(NostrEventKind.parse),
         ),
@@ -72,12 +73,16 @@ class NostrEventQuery {
     if (limit <= 0) {
       throw const FormatException('Query limit must be positive.');
     }
+    if (until case final int value when value < 0) {
+      throw const FormatException('Query until cannot be negative.');
+    }
   }
 
   final List<NostrEventKind> kinds;
   final NostrEventQueryScope scope;
   final List<NostrTagFilter> tagFilters;
   final int limit;
+  final int? until;
 
   List<NostrPublicKeyHex> get authors => scope.authors;
 
@@ -87,7 +92,12 @@ class NostrEventQuery {
     return _matchesKind(event) &&
         _matchesAuthor(event) &&
         _matchesEventTags(event) &&
+        _matchesUntil(event) &&
         tagFilters.every((filter) => filter.matches(event));
+  }
+
+  bool _matchesUntil(NostrEventRecord event) {
+    return until == null || event.createdAt <= until!;
   }
 
   bool _matchesKind(NostrEventRecord event) => kinds.contains(event.kind);

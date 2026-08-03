@@ -14,6 +14,7 @@ void main() {
       onOpenHashtag: (_) {},
       onToggleLike: (post) async {},
       onOpenComments: () {},
+      onBlockCreator: () {},
     );
 
     await tester.pumpWidget(_app(

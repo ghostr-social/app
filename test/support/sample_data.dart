@@ -34,6 +34,7 @@ VideoPost samplePost({
   List<String> hashtags = const <String>[],
   ProfileSummary? creator,
   NostrEventReference? nostrReference,
+  DateTime? publishedAt,
 }) {
   return VideoPost(
     identity: VideoPostIdentity(
@@ -45,7 +46,7 @@ VideoPost samplePost({
       caption: caption,
       songName: 'Original sound',
       media: VideoMediaSource.remote('https://example.com/video/$id.mp4'),
-      publishedAt: DateTime(2026, 3, 12),
+      publishedAt: publishedAt ?? DateTime(2026, 3, 12),
       hashtags: hashtags,
     ),
     metrics: VideoPostMetrics(

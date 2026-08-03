@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/features/engagement/domain/video_engagement_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
+import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
@@ -68,6 +69,15 @@ class _Repository implements VideoFeedRepository, VideoEngagementRepository {
   Future<List<VideoPost>> loadFeed(FeedKind kind,
           {bool excludeWatched = false}) async =>
       [results[_load++]];
+
+  @override
+  Future<VideoFeedPage> loadOlderFeed(
+    FeedKind kind, {
+    required DateTime olderThan,
+    bool excludeWatched = false,
+  }) async {
+    return VideoFeedPage(posts: const <VideoPost>[]);
+  }
 
   @override
   Future<VideoPost> toggleLike(VideoPost post) => throw UnimplementedError();

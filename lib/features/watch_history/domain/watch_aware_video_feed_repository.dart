@@ -1,6 +1,7 @@
 import 'package:ghostr/core/errors/failure_reporter.dart';
 import 'package:ghostr/features/settings/domain/app_settings_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
+import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_interaction_target.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
@@ -22,6 +23,8 @@ class WatchAwareVideoFeedRepository implements VideoFeedRepository {
   final AppSettingsRepository _settings;
   final FailureReporter _failureReporter;
 
+  static const _maxPageDigs = 3;
+
   @override
   Future<List<VideoPost>> loadFeed(
     FeedKind kind, {
@@ -35,6 +38,32 @@ class WatchAwareVideoFeedRepository implements VideoFeedRepository {
         posts.where((post) => !watched.containsKey(_coordinate(post))).toList();
     if (fresh.isNotEmpty) return List<VideoPost>.unmodifiable(fresh);
     return _leastRecentlyWatched(posts, watched);
+  }
+
+  // Fully-watched pages are skipped by digging further into the past; unlike
+  // the first load there is no replay fallback, because a page that yields
+  // nothing simply leaves the feed as it was.
+  @override
+  Future<VideoFeedPage> loadOlderFeed(
+    FeedKind kind, {
+    required DateTime olderThan,
+    bool excludeWatched = false,
+  }) async {
+    var cursor = olderThan;
+    final filtering = excludeWatched && await _isEnabled();
+    for (var dig = 0; dig < _maxPageDigs; dig += 1) {
+      final page = await _feed.loadOlderFeed(kind, olderThan: cursor);
+      if (!filtering) return page;
+      final watched = await _watchedTimes();
+      final fresh = page.posts
+          .where((post) => !watched.containsKey(_coordinate(post)))
+          .toList();
+      if (fresh.isNotEmpty || !page.hasMore) {
+        return VideoFeedPage(posts: fresh, nextOlderThan: page.nextOlderThan);
+      }
+      cursor = page.nextOlderThan!;
+    }
+    return VideoFeedPage(posts: const <VideoPost>[], nextOlderThan: cursor);
   }
 
   // Only reached when every fetched video is already watched: the feed must

@@ -7,6 +7,7 @@ abstract interface class RemoteVideoSource {
     Set<ProfileId>? creatorIds,
     String? searchQuery,
     Set<String>? hashtags,
+    DateTime? olderThan,
   });
 }
 
@@ -20,6 +21,7 @@ class DisabledRemoteVideoSource implements RemoteVideoSource {
     Set<ProfileId>? creatorIds,
     String? searchQuery,
     Set<String>? hashtags,
+    DateTime? olderThan,
   }) {
     throw AppFailure(message);
   }

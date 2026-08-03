@@ -44,6 +44,20 @@ class HybridVideoReader implements VideoPostReader {
     }
   }
 
+  // Older pages come from relays alone: locally published posts are already
+  // part of the first load, and there is no local fallback for the past.
+  @override
+  Future<List<VideoPost>> loadOlder({
+    required DateTime olderThan,
+    Set<ProfileId>? creatorIds,
+  }) async {
+    final posts = await _remote.loadRemoteFeed(
+      creatorIds: creatorIds,
+      olderThan: olderThan,
+    );
+    return _hydrate(posts);
+  }
+
   Future<List<VideoPost>> _loadLocal() async {
     try {
       return await _local.loadPublishedPosts();

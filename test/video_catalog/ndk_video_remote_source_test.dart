@@ -19,6 +19,7 @@ class _FakeEventQuery implements NostrVideoEventQueryPort {
     Set<NostrPublicKeyHex>? authorPublicKeys,
     String? searchQuery,
     Set<String>? hashtags,
+    DateTime? olderThan,
   }) async {
     requestedAuthorPublicKeys = authorPublicKeys;
     return events;

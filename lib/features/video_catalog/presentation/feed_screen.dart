@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ghostr/features/comments/presentation/comments_sheet.dart';
@@ -96,6 +98,9 @@ class _FeedScreenState extends State<FeedScreen> {
   Widget _feedPages(BuildContext context, FeedLoaded state) {
     return PageView.builder(
       scrollDirection: Axis.vertical,
+      // Keeps the neighbouring pages mounted so their players are already
+      // initialized when the viewer swipes.
+      allowImplicitScrolling: true,
       itemCount: state.posts.length,
       onPageChanged: context.read<FeedCubit>().pageChanged,
       itemBuilder: (_, index) => _feedCard(context, state, index),
@@ -105,6 +110,7 @@ class _FeedScreenState extends State<FeedScreen> {
   Widget _feedCard(BuildContext context, FeedLoaded state, int index) {
     final post = state.posts[index];
     return FeedCard(
+      key: ValueKey(post.id.value),
       post: post,
       playbackPort: widget.bindings.playbackPort,
       isActive: widget.bindings.isActive &&
@@ -115,6 +121,8 @@ class _FeedScreenState extends State<FeedScreen> {
         onOpenHashtag: widget.bindings.onOpenHashtag,
         onToggleLike: context.read<FeedCubit>().toggleLike,
         onOpenComments: () => _openComments(context, post),
+        onBlockCreator: () =>
+            unawaited(context.read<FeedCubit>().blockCreator(post)),
       ),
     );
   }

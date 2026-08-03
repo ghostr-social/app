@@ -49,6 +49,7 @@ class FileVideoCacheStore implements VideoCacheStore {
   final int maxBytes;
   final Set<String> _activePartialPaths = <String>{};
   final Set<String> _pendingLeasePaths = <String>{};
+  final Set<String> _verifiedPaths = <String>{};
   final VideoCacheLeaseRegistry _leases = VideoCacheLeaseRegistry();
   final VideoCacheFlightRegistry<VideoMediaSource?> _flights =
       VideoCacheFlightRegistry<VideoMediaSource?>();
@@ -58,8 +59,14 @@ class FileVideoCacheStore implements VideoCacheStore {
     _activePartialPaths,
     _leases.activePaths,
     pendingLeasePaths: _pendingLeasePaths,
+    deleteFile: _deleteTrackedFile,
   );
   int _requestId = 0;
+
+  Future<void> _deleteTrackedFile(File file) async {
+    _verifiedPaths.remove(file.path);
+    await file.delete();
+  }
 
   Future<void> initialize() {
     return _metadataQueue.run(_initialize);
@@ -113,14 +120,14 @@ class FileVideoCacheStore implements VideoCacheStore {
     });
   }
 
+  // Reads skip directory maintenance (it runs at initialize() and before
+  // downloads) and re-hash a file only the first time this process sees it;
+  // playback must not wait on a full-file digest of an already-verified file.
   Future<VideoMediaSource?> _find(VideoMediaSource media) async {
     try {
       final directory = await _directoryProvider();
-      await _cacheDirectory.maintain(directory);
       final file = File(completedVideoCachePath(directory, media));
-      if (!await validateExistingVideoCache(file, media.expectedSha256)) {
-        return null;
-      }
+      if (!await _isVerified(file, media)) return null;
       await file.setLastModified(_timing.accessClock());
       return completedVideoCacheMedia(file, media);
     } on AppFailure {
@@ -128,6 +135,19 @@ class FileVideoCacheStore implements VideoCacheStore {
     } on Object catch (error, stackTrace) {
       throw _cacheFailure(error, stackTrace);
     }
+  }
+
+  Future<bool> _isVerified(File file, VideoMediaSource media) async {
+    if (_verifiedPaths.contains(file.path)) {
+      if (await file.exists()) return true;
+      _verifiedPaths.remove(file.path);
+      return false;
+    }
+    if (!await validateExistingVideoCache(file, media.expectedSha256)) {
+      return false;
+    }
+    _verifiedPaths.add(file.path);
+    return true;
   }
 
   Future<VideoMediaSource?> _download(VideoMediaSource media) async {

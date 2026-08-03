@@ -133,6 +133,7 @@ AppDependencies composeProductionDependencies(
       capabilities: currentImagePickerCapabilities(),
     ),
     videoPlaybackPort: buildProductionVideoPlayback(delivery),
+    videoInventory: delivery.inventory,
     failureReporter: const DeveloperFailureReporter(),
   );
 }
@@ -175,5 +176,6 @@ VideoCatalogServices _buildVideoCatalog(
       reporter,
     ),
     comments: HybridVideoCommentsRepository(interactions),
+    social: social,
   );
 }

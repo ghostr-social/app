@@ -85,6 +85,7 @@ class _OverlappingRemote implements RemoteVideoSource {
     Set<ProfileId>? creatorIds,
     String? searchQuery,
     Set<String>? hashtags,
+    DateTime? olderThan,
   }) {
     return calls++ == 0 ? first.future : second.future;
   }

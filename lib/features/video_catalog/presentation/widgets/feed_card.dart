@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/caption_text.dart';
+import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card_menu.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:ghostr/shared/theme/app_tokens.dart';
 import 'package:ghostr/shared/widgets/profile_avatar.dart';
@@ -11,12 +14,14 @@ class FeedCardActions {
     required this.onToggleLike,
     required this.onOpenComments,
     required this.onOpenHashtag,
+    required this.onBlockCreator,
   });
 
   final VoidCallback onOpenProfile;
   final Future<void> Function(VideoPost post) onToggleLike;
   final VoidCallback onOpenComments;
   final ValueChanged<String> onOpenHashtag;
+  final VoidCallback onBlockCreator;
 }
 
 class FeedCard extends StatefulWidget {
@@ -47,14 +52,25 @@ class _FeedCardState extends State<FeedCard> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        _videoSurface(),
-        _scrim(),
-        _content(context),
-      ],
+    return GestureDetector(
+      onLongPress: _openMenu,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          _videoSurface(),
+          _scrim(),
+          _content(context),
+        ],
+      ),
     );
+  }
+
+  void _openMenu() {
+    unawaited(showFeedCardMenu(
+      context,
+      post: widget.post,
+      onBlockCreator: widget.actions.onBlockCreator,
+    ));
   }
 
   Widget _videoSurface() {

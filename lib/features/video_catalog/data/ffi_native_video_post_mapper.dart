@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:ghostr/core/media/video_media_source.dart';
+import 'package:ghostr/core/nostr/nostr_bech32.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/features/video_catalog/data/ffi_video_event_matcher.dart';
 import 'package:ghostr/features/video_catalog/domain/nostr_event_reference.dart';
@@ -69,7 +70,9 @@ ProfileSummary _creator(
   FfiNostrEventIdentity event,
 ) {
   final npub = video.nostr.user.npub?.trim();
-  final id = npub == null || npub.isEmpty ? event.authorPublicKeyHex : npub;
+  final id = npub == null || npub.isEmpty
+      ? _encodedAuthor(event.authorPublicKeyHex)
+      : npub;
   final name = video.nostr.user.name?.trim();
   return ProfileSummary(
     id: ProfileId.parse(id),
@@ -106,6 +109,14 @@ List<String> _hashtags(FfiNostrEventIdentity event, String caption) {
   }
   found.addAll(extractHashtags(caption));
   return List<String>.unmodifiable(found);
+}
+
+// Creator ids must stay npub-form everywhere: block lists and follow sets
+// compare ProfileId values verbatim, so a hex id would escape both.
+String _encodedAuthor(String publicKeyHex) {
+  final bytes = nostrKeyBytes(publicKeyHex);
+  final npub = bytes == null ? null : encodeNostrBech32Key('npub', bytes);
+  return npub ?? publicKeyHex;
 }
 
 NostrEventIdentifier? _identifier(String? raw) {

@@ -7,4 +7,9 @@ abstract interface class VideoPostReader {
     String? searchQuery,
     Set<String>? hashtags,
   });
+
+  Future<List<VideoPost>> loadOlder({
+    required DateTime olderThan,
+    Set<ProfileId>? creatorIds,
+  });
 }

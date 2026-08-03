@@ -26,6 +26,55 @@ String nostrKeyHex(List<int> bytes) {
   return bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
 }
 
+List<int>? nostrKeyBytes(String raw) {
+  final value = raw.trim().toLowerCase();
+  if (value.length != 64) return null;
+  final bytes = <int>[];
+  for (var index = 0; index < value.length; index += 2) {
+    final byte = int.tryParse(value.substring(index, index + 2), radix: 16);
+    if (byte == null) return null;
+    bytes.add(byte);
+  }
+  return bytes;
+}
+
+String? encodeNostrBech32Key(String hrp, List<int> bytes) {
+  if (bytes.length != 32) return null;
+  if (bytes.any((byte) => byte < 0 || byte > 255)) return null;
+  final words = _encodePayload(bytes);
+  final payload = [...words, ..._checksum(hrp, words)];
+  return '${hrp}1${payload.map((value) => _alphabet[value]).join()}';
+}
+
+List<int> _encodePayload(List<int> bytes) {
+  var accumulator = 0;
+  var bitCount = 0;
+  final words = <int>[];
+  for (final byte in bytes) {
+    accumulator = (accumulator << 8) | byte;
+    bitCount += 8;
+    while (bitCount >= 5) {
+      bitCount -= 5;
+      words.add((accumulator >> bitCount) & 31);
+    }
+  }
+  if (bitCount > 0) words.add((accumulator << (5 - bitCount)) & 31);
+  return words;
+}
+
+List<int> _checksum(String hrp, List<int> words) {
+  final polymod = _polymod([
+        ..._expandedHrp(hrp),
+        ...words,
+        ...List<int>.filled(6, 0),
+      ]) ^
+      1;
+  return [
+    for (var index = 0; index < 6; index += 1)
+      (polymod >> (5 * (5 - index))) & 31,
+  ];
+}
+
 List<int>? _decodeCharacters(String encoded) {
   final values = encoded.split('').map(_alphabet.indexOf).toList();
   return values.any((value) => value < 0) ? null : values;

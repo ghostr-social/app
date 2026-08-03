@@ -25,7 +25,7 @@ class LocalWatchHistoryRepository implements WatchHistoryRepository {
   LocalWatchHistoryRepository._(this._resources, this._pinnedAccount);
 
   static const _key = 'ghostr.history.watched';
-  static const _capacity = 500;
+  static const _capacity = 2000;
 
   final _LocalWatchHistoryResources _resources;
   final AccountStorageKey? _pinnedAccount;
@@ -41,12 +41,17 @@ class LocalWatchHistoryRepository implements WatchHistoryRepository {
     return LocalWatchHistoryRepository._(_resources, account);
   }
 
+  // Reads share the write queue so a load started right after a record
+  // cannot observe the history without it.
   @override
   Future<List<WatchHistoryEntry>> load() {
     final account = _account;
-    return guardPreferenceStorage(
-      'Could not read watch history.',
-      () => _load(account),
+    return _queue.run(
+      account,
+      () => guardPreferenceStorage(
+        'Could not read watch history.',
+        () => _load(account),
+      ),
     );
   }
 

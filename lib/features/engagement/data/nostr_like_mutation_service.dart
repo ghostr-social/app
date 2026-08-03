@@ -1,4 +1,5 @@
 import 'package:ghostr/core/async/keyed_serial_task_queue.dart';
+import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/nostr/nostr_event_client.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/core/nostr/nostr_event_record.dart';
@@ -37,11 +38,30 @@ class NostrLikeMutationService {
     NostrLikeMutationKey key,
     VideoLikeIntent intent,
   ) async {
-    final current = await _reader.loadViewerState(reference, key);
+    final current = await _viewerState(reference, key, intent);
     return switch (intent) {
       VideoLikeIntent.like => _like(reference, key, current),
       VideoLikeIntent.unlike => _unlike(key, current),
     };
+  }
+
+  // A like can proceed on session-local evidence when relays cannot be read;
+  // an unlike must know which reaction ids to delete, so without journal
+  // evidence the read failure stands.
+  Future<NostrViewerReactionState> _viewerState(
+    NostrEventReference reference,
+    NostrLikeMutationKey key,
+    VideoLikeIntent intent,
+  ) async {
+    try {
+      return await _reader.loadViewerState(reference, key);
+    } on AppFailure {
+      final journalOnly = _reader.journalOnlyViewerState(key);
+      final canRecover =
+          intent == VideoLikeIntent.like || journalOnly.reactionIds.isNotEmpty;
+      if (!canRecover) rethrow;
+      return journalOnly;
+    }
   }
 
   Future<VideoEngagement> _like(
