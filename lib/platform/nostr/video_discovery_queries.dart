@@ -15,10 +15,10 @@ typedef _DiscoveryRequest = ({
 
 /// Builds the relay queries answering one video discovery request.
 ///
-/// Feed requests stay lean: only the dedicated video kinds. Search and
-/// hashtag requests add a kind-1 note query, because most video content on
-/// Nostr is published as ordinary notes carrying a video link — and search
-/// relays index notes far more deeply than the video kinds.
+/// Every request pairs the dedicated video kinds with a kind-1 note query,
+/// because most video content on Nostr is published as ordinary notes
+/// carrying a video link. The note window is always wide: only a fraction
+/// of notes turn out to carry a playable video.
 List<NostrEventQuery> videoDiscoveryQueries({
   Set<NostrPublicKeyHex>? authorPublicKeys,
   String? searchQuery,
@@ -33,12 +33,16 @@ List<NostrEventQuery> videoDiscoveryQueries({
     wide: searchQuery != null || (hashtags?.isNotEmpty ?? false),
   );
   return List<NostrEventQuery>.unmodifiable([
-    _query(videoEventKinds, request),
-    if (request.wide) _query(const [1], request),
+    _query(videoEventKinds, request, limit: request.wide ? 200 : 80),
+    _query(const [1], request, limit: 200),
   ]);
 }
 
-NostrEventQuery _query(List<int> kinds, _DiscoveryRequest request) {
+NostrEventQuery _query(
+  List<int> kinds,
+  _DiscoveryRequest request, {
+  required int limit,
+}) {
   return NostrEventQuery(
     kinds: kinds,
     scope: NostrEventQueryScope(
@@ -51,9 +55,7 @@ NostrEventQuery _query(List<int> kinds, _DiscoveryRequest request) {
           values: tags.expand(hashtagQueryVariants).toSet().toList(),
         ),
     ],
-    // Discovery queries widen the candidate pool because relays only ever
-    // return the newest events under the limit.
-    limit: request.wide ? 200 : 80,
+    limit: limit,
     until: request.olderThan == null
         ? null
         : request.olderThan!.toUtc().millisecondsSinceEpoch ~/ 1000,

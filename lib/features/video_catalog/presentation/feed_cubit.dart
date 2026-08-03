@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:ghostr/core/errors/app_failure.dart';
-import 'package:ghostr/core/errors/boundary_failure.dart';
 import 'package:ghostr/core/presentation/disposal_safe_cubit.dart';
 import 'package:ghostr/features/engagement/domain/video_engagement_repository.dart';
 import 'package:ghostr/features/social/domain/social_graph_repository.dart';
@@ -11,6 +10,8 @@ import 'package:ghostr/features/video_catalog/domain/video_like_policy.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/video_interaction_target.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_failure_messages.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_hunt.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_interaction_reconciler.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_pagination.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_state.dart';
@@ -36,9 +37,12 @@ class FeedDependencies {
 }
 
 class FeedCubit extends DisposalSafeCubit<FeedState> {
-  FeedCubit(this._dependencies) : super(const FeedLoading(FeedKind.forYou));
+  FeedCubit(this._dependencies, {FeedHunt? hunt})
+      : _hunt = hunt ?? FeedHunt(),
+        super(const FeedLoading(FeedKind.forYou));
 
   final FeedDependencies _dependencies;
+  final FeedHunt _hunt;
   final _interactions = FeedInteractionReconciler();
   final _pagination = FeedPagination();
   static const _likePolicy = VideoLikePolicy();
@@ -59,7 +63,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     } on Object catch (error, stackTrace) {
       _emitLoad(
         request,
-        FeedFailure(kind, _unexpectedLoad(error, stackTrace)),
+        FeedFailure(kind, unexpectedFeedLoadMessage(error, stackTrace)),
       );
     }
   }
@@ -85,7 +89,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
       _emitLoad(request, previous.withNotice(failure.message));
     } on Object catch (error, stackTrace) {
       _emitLoad(
-          request, previous.withNotice(_unexpectedLoad(error, stackTrace)));
+          request, previous.withNotice(unexpectedFeedLoadMessage(error, stackTrace)));
     }
   }
 
@@ -98,7 +102,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
       _emitLoad(request, current.withNotice(failure.message));
     } on Object catch (error, stackTrace) {
       _emitLoad(
-          request, current.withNotice(_unexpectedLoad(error, stackTrace)));
+          request, current.withNotice(unexpectedFeedLoadMessage(error, stackTrace)));
     }
   }
 
@@ -117,6 +121,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     _lastPosts = posts;
     final next = _refreshedState(current, posts);
     emit(next);
+    if (next is FeedEmpty) _hunt.emptied(_startHuntAttempt);
     if (next is FeedLoaded) _trackWatched(next.posts[next.activeIndex]);
   }
 
@@ -147,12 +152,37 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     _lastPosts = posts;
     _pagination.restartFrom(posts);
     emit(posts.isEmpty ? FeedEmpty(kind) : FeedLoaded(kind, posts));
-    if (posts.isNotEmpty) {
-      _trackWatched(posts.first);
-      _dependencies.prefetcher?.focus(posts, 0);
+    if (posts.isEmpty) {
+      _hunt.emptied(_startHuntAttempt);
+      return;
     }
+    _hunt.filled();
+    _trackWatched(posts.first);
+    _dependencies.prefetcher?.focus(posts, 0);
     _ensureBuffered();
   }
+
+  // An empty feed is never a dead end: reload quietly — no spinner, no
+  // state churn — until the relays finally hand over content.
+  Future<void> _huntEmptyFeed() async {
+    final current = state;
+    if (current is! FeedEmpty) return;
+    final request = ++_loadRequest;
+    try {
+      final posts =
+          await _dependencies.feed.loadFeed(current.kind, excludeWatched: true);
+      if (!_acceptsLoad(request)) return;
+      if (posts.isEmpty) {
+        _hunt.emptied(_startHuntAttempt);
+      } else {
+        _acceptLoad(request, current.kind, posts);
+      }
+    } on Object {
+      if (_acceptsLoad(request)) _hunt.emptied(_startHuntAttempt);
+    }
+  }
+
+  void _startHuntAttempt() => unawaited(_huntEmptyFeed());
 
   FeedState _refreshedState(FeedLoaded current, List<VideoPost> posts) {
     if (posts.isEmpty) return FeedEmpty(current.kind);
@@ -214,7 +244,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
       _showNotice(failure.message);
     } on Object catch (error, stackTrace) {
       _pagination.failLoad();
-      _showNotice(_unexpectedLoad(error, stackTrace));
+      _showNotice(unexpectedFeedLoadMessage(error, stackTrace));
     }
   }
 
@@ -248,7 +278,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     } on AppFailure catch (failure) {
       _revertLike(post, failure.message);
     } on Object catch (error, stackTrace) {
-      _revertLike(post, _unexpectedLike(error, stackTrace));
+      _revertLike(post, unexpectedFeedLikeMessage(error, stackTrace));
     }
   }
 
@@ -266,7 +296,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     } on AppFailure catch (failure) {
       _showNotice(failure.message);
     } on Object catch (error, stackTrace) {
-      _showNotice(_unexpectedBlock(error, stackTrace));
+      _showNotice(unexpectedFeedBlockMessage(error, stackTrace));
     }
   }
 
@@ -345,30 +375,9 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
 
   bool _acceptsLoad(int request) => !isClosed && request == _loadRequest;
 
-  String _unexpectedLoad(Object error, StackTrace stackTrace) {
-    return translatedBoundaryFailure(
-      source: 'FeedCubit.load',
-      message: 'Could not load the Nostr video feed.',
-      error: error,
-      stackTrace: stackTrace,
-    ).message;
-  }
-
-  String _unexpectedLike(Object error, StackTrace stackTrace) {
-    return translatedBoundaryFailure(
-      source: 'FeedCubit.toggleLike',
-      message: 'Could not update this like.',
-      error: error,
-      stackTrace: stackTrace,
-    ).message;
-  }
-
-  String _unexpectedBlock(Object error, StackTrace stackTrace) {
-    return translatedBoundaryFailure(
-      source: 'FeedCubit.blockCreator',
-      message: 'Could not block this creator.',
-      error: error,
-      stackTrace: stackTrace,
-    ).message;
+  @override
+  Future<void> close() {
+    _hunt.dispose();
+    return super.close();
   }
 }

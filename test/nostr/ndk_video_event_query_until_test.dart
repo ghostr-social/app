@@ -22,25 +22,27 @@ void main() {
         filter: any(named: 'filter'),
         timeout: any(named: 'timeout'),
       ),
-    ).thenReturn(NdkResponse(
-      'videos',
-      Stream.fromIterable([
-        _event(1, createdAt: cutoff - 10),
-        _event(2, createdAt: cutoff + 10),
-      ]),
-    ));
+    ).thenAnswer((_) => NdkResponse(
+          'videos',
+          Stream.fromIterable([
+            _event(1, createdAt: cutoff - 10),
+            _event(2, createdAt: cutoff + 10),
+          ]),
+        ));
 
     final result = await NdkNostrVideoEventQuery(ndk)
         .loadVideoEvents(olderThan: olderThan);
 
-    final filter = verify(
+    final filters = verify(
       () => requests.query(
         name: any(named: 'name'),
         filter: captureAny(named: 'filter'),
         timeout: any(named: 'timeout'),
       ),
-    ).captured.single as Filter;
-    expect(filter.until, cutoff);
+    ).captured.cast<Filter>();
+    for (final filter in filters) {
+      expect(filter.until, cutoff);
+    }
     expect(result.map((event) => event.id), [publishedEventId(1)]);
   });
 }

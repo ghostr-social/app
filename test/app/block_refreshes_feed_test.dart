@@ -27,7 +27,7 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
 
-    expect(find.text('No videos yet'), findsOneWidget);
+    expect(find.text('Hunting for videos'), findsOneWidget);
     expect(find.text(creator.displayName), findsNothing);
   });
 }

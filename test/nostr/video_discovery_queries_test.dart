@@ -35,12 +35,19 @@ void main() {
     }
   });
 
-  test('a plain feed request stays lean: one video query, no notes', () {
+  test('a plain feed request adds a wide kind-1 note query', () {
     final queries = videoDiscoveryQueries();
 
-    expect(queries, hasLength(1));
-    expect(queries.single.search, isNull);
-    expect(queries.single.limit, 80);
-    expect(queries.single.tagFilters, isEmpty);
+    expect(queries, hasLength(2));
+    final video = queries.first;
+    final notes = queries.last;
+    expect(video.kinds.map((kind) => kind.value), [21, 22, 34235, 34236]);
+    expect(video.limit, 80);
+    expect(notes.kinds.map((kind) => kind.value), [1]);
+    expect(notes.limit, 200);
+    for (final query in queries) {
+      expect(query.search, isNull);
+      expect(query.tagFilters, isEmpty);
+    }
   });
 }

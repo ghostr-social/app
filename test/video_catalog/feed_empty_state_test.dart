@@ -5,7 +5,8 @@ import '../support/sample_data.dart';
 import '../support/test_app.dart';
 
 void main() {
-  testWidgets('shows the empty feed state', (tester) async {
+  testWidgets('an empty feed shows the hunting panel with a manual retry',
+      (tester) async {
     final dependencies = buildFakeDependencies(
       session: sampleSession(),
       catalogRepository: FakeVideoCatalogRepository(
@@ -16,6 +17,7 @@ void main() {
     await tester.pumpWidget(buildTestApp(dependencies));
     await tester.pumpAndSettle();
 
-    expect(find.text('No videos yet'), findsOneWidget);
+    expect(find.text('Hunting for videos'), findsOneWidget);
+    expect(find.text('Search again'), findsOneWidget);
   });
 }

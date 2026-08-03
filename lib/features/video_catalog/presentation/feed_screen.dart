@@ -71,7 +71,7 @@ class _FeedScreenState extends State<FeedScreen> {
   Widget _feedContent(BuildContext context, FeedState state) {
     return switch (state) {
       FeedLoading() => const LoadingPanel(label: 'Loading video feed'),
-      FeedEmpty() => _emptyFeed(),
+      FeedEmpty() => _emptyFeed(context),
       FeedFailure(message: final message) => _feedError(context, message),
       FeedLoaded() => _feedPages(context, state),
     };
@@ -87,11 +87,16 @@ class _FeedScreenState extends State<FeedScreen> {
     );
   }
 
-  Widget _emptyFeed() {
-    return const AsyncStatePanel(
-      icon: Icons.videocam_off,
-      title: 'No videos yet',
-      message: 'Follow creators or publish your first clip to start the loop.',
+  // The feed hunts on its own while this panel is visible; the action just
+  // lets an impatient viewer skip the backoff delay.
+  Widget _emptyFeed(BuildContext context) {
+    return AsyncStatePanel(
+      icon: Icons.travel_explore,
+      title: 'Hunting for videos',
+      message: 'The search keeps running — new clips appear the moment a '
+          'relay hands them over. Following creators fills this feed faster.',
+      actionLabel: 'Search again',
+      onAction: context.read<FeedCubit>().retry,
     );
   }
 

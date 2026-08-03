@@ -121,9 +121,11 @@ class NdkNostrVideoEventQuery implements NostrVideoEventQueryPort {
   }
 
   String _requestName(NostrEventQuery query) {
-    if (!_isDiscovery(query)) return 'ghostr-video-feed';
     final notesOnly = query.kinds.length == 1 && query.kinds.single.value == 1;
-    return notesOnly ? 'ghostr-note-search' : 'ghostr-video-search';
+    if (_isDiscovery(query)) {
+      return notesOnly ? 'ghostr-note-search' : 'ghostr-video-search';
+    }
+    return notesOnly ? 'ghostr-note-feed' : 'ghostr-video-feed';
   }
 
   @override
