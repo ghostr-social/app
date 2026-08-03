@@ -117,6 +117,14 @@ jobs:
       - name: Derive build version from release tag
         run: sh tool/android_build_version.sh "refs/tags/${{ needs.version.outputs.tag }}" >> "$GITHUB_ENV"
 
+      - name: Set up release signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: sh tool/setup_android_signing.sh
+
       - name: Build Flutter APK for arm64-v8a
         run: |
           flutter pub get
@@ -209,6 +217,14 @@ jobs:
       - name: Derive build version from release tag
         run: sh tool/android_build_version.sh "refs/tags/${{ needs.version.outputs.tag }}" >> "$GITHUB_ENV"
 
+      - name: Set up release signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: sh tool/setup_android_signing.sh
+
       - name: Build Flutter APK for armeabi-v7a
         run: |
           flutter pub get
@@ -300,6 +316,14 @@ jobs:
 
       - name: Derive build version from release tag
         run: sh tool/android_build_version.sh "refs/tags/${{ needs.version.outputs.tag }}" >> "$GITHUB_ENV"
+
+      - name: Set up release signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: sh tool/setup_android_signing.sh
 
       - name: Build Flutter APK for x86_64
         run: |

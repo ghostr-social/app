@@ -47,3 +47,7 @@ app.*.map.json
 /android/build/
 
 3rd-party/
+
+# Android release signing (never commit; keep private backups)
+/android/key.properties
+/android/app/ghostr-release.jks
