@@ -54,15 +54,34 @@ class SettingsScreen extends StatelessWidget {
         onAdd: () => _addRelay(context),
         onRemove: cubit.removeRelay,
       ),
+      searchRelays: RelaySettingsActions(
+        onAdd: () => _addSearchRelay(context),
+        onRemove: cubit.removeSearchRelay,
+      ),
       blossom: BlossomSettingsActions(
         onAdd: () => _addBlossomServer(context),
         onRemove: cubit.removeBlossomServer,
       ),
       onBudgetChanged: cubit.changeBudget,
+      onDataUsageChanged: cubit.changeDataUsage,
       onHideWatchedChanged: cubit.changeHideWatchedVideos,
       onSave: cubit.save,
       onOpenWatchHistory: onOpenWatchHistory,
     );
+  }
+
+  Future<void> _addSearchRelay(BuildContext context) async {
+    final value = await _showUrlDialog(
+      context,
+      const SettingsUrlDialogRequest(
+        title: 'Add search relay',
+        fieldKey: Key('search-relay-url-field'),
+        hintText: 'wss://search.example',
+      ),
+    );
+    if (context.mounted && value != null) {
+      context.read<SettingsCubit>().addSearchRelay(value);
+    }
   }
 
   Future<void> _addRelay(BuildContext context) async {

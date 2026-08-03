@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/app/build_production_dependencies.dart';
-import 'package:ghostr/app/production_video_delivery.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,6 +11,7 @@ import '../support/fake_nostr_video_publisher_port.dart';
 import '../support/fake_remote_video_source.dart';
 import '../support/fake_video_inventory.dart';
 import '../support/ndk_mocks.dart';
+import '../support/test_video_delivery.dart';
 import '../support/nostr_test_values.dart';
 import '../support/sample_data.dart';
 
@@ -34,9 +34,9 @@ void main() {
     final environment = ProductionDependenciesEnvironment(
       preferencesLoader: () async => preferences,
       nostrServicesBuilder: (_) => nostr,
-      videoDeliveryBuilder: (_, __) async => ProductionVideoDelivery(
-        FakeVideoInventory(),
-        FakeRemoteVideoSource([]),
+      videoDeliveryBuilder: (_, __) async => testVideoDelivery(
+        inventory: FakeVideoInventory(),
+        remoteSource: FakeRemoteVideoSource([]),
       ),
     );
     final dependencies = await buildProductionDependencies(environment);

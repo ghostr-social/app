@@ -35,9 +35,11 @@ void main() {
     ).captured;
     final hashtagFilter = captured.first as Filter;
     final unscopedFilter = captured.last as Filter;
-    expect(hashtagFilter.tags, {
-      '#t': ['dance'],
-    });
+    expect(hashtagFilter.tags?.keys, ['#t']);
+    expect(
+      hashtagFilter.tags?['#t'],
+      unorderedEquals(<String>['dance', 'Dance', 'DANCE']),
+    );
     expect(hashtagFilter.limit, 200);
     expect(unscopedFilter.tTags, isNull);
     expect(unscopedFilter.limit, 80);

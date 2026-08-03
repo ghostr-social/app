@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/features/video_catalog/presentation/search_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/search_screen.dart';
+import 'package:ghostr/features/video_catalog/presentation/trending_hashtags_cubit.dart';
 
 import '../support/fakes.dart';
 import '../support/sample_data.dart';
@@ -16,9 +17,14 @@ void main() {
     await cubit.search('#trend');
 
     await tester.pumpWidget(MaterialApp(
-      home: BlocProvider.value(
-        value: cubit,
-        child: Scaffold(body: SearchScreen(onOpenProfile: (_) {})),
+      home: MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: cubit),
+          BlocProvider(create: (_) => TrendingHashtagsCubit(repository)),
+        ],
+        child: Scaffold(
+          body: SearchScreen(onOpenProfile: (_) {}, onOpenFeed: (_) {}),
+        ),
       ),
     ));
     await tester.pumpAndSettle();

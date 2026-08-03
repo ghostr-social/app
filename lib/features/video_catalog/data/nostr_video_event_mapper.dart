@@ -2,10 +2,9 @@ import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/errors/boundary_failure.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/media/video_sha256.dart';
+import 'package:ghostr/features/video_catalog/data/creator_profile_summary.dart';
 import 'package:ghostr/features/video_catalog/domain/nostr_event_reference.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
-import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
-import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_hashtags.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post_id.dart';
@@ -30,12 +29,11 @@ class NostrVideoEventMapper {
   }
 
   VideoPost _map(Nip01Event event, Metadata? metadata) {
-    final npub = Nip19.encodePubKey(event.pubKey);
     final media = _requiredVideoMedia(event.tags);
     return VideoPost(
       identity: VideoPostIdentity(
         id: VideoPostId.parse(event.id),
-        creator: _profile(npub, event.pubKey, metadata),
+        creator: creatorProfileSummary(event.pubKey, metadata),
         nostrReference: _reference(event),
       ),
       content: VideoPostContent(
@@ -93,21 +91,6 @@ class NostrVideoEventMapper {
       throw const AppFailure('Addressable Nostr video has no identifier.');
     }
     return NostrEventIdentifier.parse(value);
-  }
-
-  ProfileSummary _profile(
-    String npub,
-    String publicKey,
-    Metadata? metadata,
-  ) {
-    final name = metadata?.getName();
-    final hasName = name != null && name != publicKey && name.trim().isNotEmpty;
-    return ProfileSummary(
-      id: ProfileId.parse(npub),
-      displayName: hasName ? name : '${npub.substring(0, 12)}…',
-      handle: '@$npub',
-      avatarUrl: metadata?.picture,
-    );
   }
 
   _NostrVideoMedia? _videoMedia(List<List<String>> tags) {

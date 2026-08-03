@@ -17,10 +17,12 @@ lib/features/session/domain/nostr_identity_deriver.dart
 lib/features/session/domain/nostr_session_port.dart
 lib/features/session/domain/session_repository.dart
 lib/features/settings/domain/app_settings_repository.dart
+lib/features/settings/domain/data_usage_level.dart
 lib/features/social/domain/nostr_social_port.dart
 lib/features/social/domain/social_graph_repository.dart
 lib/features/social/domain/social_graph_store.dart
 lib/features/video_catalog/data/nostr_video_event_query_port.dart
+lib/features/video_catalog/domain/creator_search_source.dart
 lib/features/video_catalog/domain/feed_kind.dart
 lib/features/video_catalog/domain/published_video_store.dart
 lib/features/video_catalog/domain/video_feed_repository.dart

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ghostr/app/production_video_delivery.dart';
 import 'package:ghostr/app/production_video_playback.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/media/video_playback_capabilities.dart';
@@ -10,12 +9,13 @@ import 'package:ghostr/platform/media/inventory_video_playback_port.dart';
 import '../support/fake_hls_playback_gateway.dart';
 import '../support/fake_remote_video_source.dart';
 import '../support/fake_video_inventory.dart';
+import '../support/test_video_delivery.dart';
 
 void main() {
   test('wraps inventory playback with HLS acquisition when available', () {
-    final delivery = ProductionVideoDelivery(
-      FakeVideoInventory(),
-      FakeRemoteVideoSource([]),
+    final delivery = testVideoDelivery(
+      inventory: FakeVideoInventory(),
+      remoteSource: FakeRemoteVideoSource([]),
       hlsPlaybackGateway: FakeHlsPlaybackGateway(),
       playbackCapabilities: VideoPlaybackCapabilities.progressiveAndHls,
     );
@@ -26,9 +26,9 @@ void main() {
   });
 
   test('uses inventory playback directly without a secure HLS gateway', () {
-    final delivery = ProductionVideoDelivery(
-      FakeVideoInventory(),
-      FakeRemoteVideoSource([]),
+    final delivery = testVideoDelivery(
+      inventory: FakeVideoInventory(),
+      remoteSource: FakeRemoteVideoSource([]),
     );
 
     final playback = buildProductionVideoPlayback(delivery);
@@ -37,9 +37,9 @@ void main() {
   });
 
   test('does not trust an HLS gateway without player capability', () {
-    final delivery = ProductionVideoDelivery(
-      FakeVideoInventory(),
-      FakeRemoteVideoSource([]),
+    final delivery = testVideoDelivery(
+      inventory: FakeVideoInventory(),
+      remoteSource: FakeRemoteVideoSource([]),
       hlsPlaybackGateway: FakeHlsPlaybackGateway(),
     );
 
@@ -50,9 +50,9 @@ void main() {
 
   testWidgets('renders a stable surface when the platform has no player',
       (tester) async {
-    final delivery = ProductionVideoDelivery(
-      FakeVideoInventory(),
-      FakeRemoteVideoSource([]),
+    final delivery = testVideoDelivery(
+      inventory: FakeVideoInventory(),
+      remoteSource: FakeRemoteVideoSource([]),
       playbackCapabilities: VideoPlaybackCapabilities.none,
     );
     final playback = buildProductionVideoPlayback(delivery);

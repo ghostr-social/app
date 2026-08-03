@@ -1,51 +1,41 @@
+import 'dart:async';
+
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/errors/boundary_failure.dart';
 import 'package:ghostr/core/presentation/disposal_safe_cubit.dart';
+import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
+import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
 import 'package:ghostr/features/video_catalog/domain/video_search_repository.dart';
-import 'package:ghostr/features/video_catalog/domain/video_post.dart';
+import 'package:ghostr/features/video_catalog/presentation/search_state.dart';
 
-sealed class SearchState {
-  const SearchState(this.query);
-
-  final String query;
-}
-
-class SearchIdle extends SearchState {
-  const SearchIdle() : super('');
-}
-
-class SearchLoading extends SearchState {
-  const SearchLoading(super.query);
-}
-
-class SearchEmpty extends SearchState {
-  const SearchEmpty(super.query);
-}
-
-class SearchLoaded extends SearchState {
-  factory SearchLoaded(String query, List<VideoPost> results) {
-    if (results.isEmpty) throw StateError('Loaded search cannot be empty.');
-    return SearchLoaded._(query, List<VideoPost>.unmodifiable(results));
-  }
-
-  const SearchLoaded._(super.query, this.results);
-
-  final List<VideoPost> results;
-}
-
-class SearchFailure extends SearchState {
-  const SearchFailure(super.query, this.message);
-
-  final String message;
-}
+export 'search_state.dart';
 
 class SearchCubit extends DisposalSafeCubit<SearchState> {
-  SearchCubit(this._repository) : super(const SearchIdle());
+  SearchCubit(
+    this._repository, {
+    Duration debounce = const Duration(milliseconds: 300),
+  })  : _debounceDuration = debounce,
+        super(const SearchIdle());
 
   final VideoSearchRepository _repository;
+  final Duration _debounceDuration;
+  Timer? _debounce;
   int _request = 0;
+  DateTime? _cursor;
+
+  /// Live text edits search automatically after a short pause in typing.
+  void queryChanged(String rawQuery) {
+    _debounce?.cancel();
+    if (rawQuery.trim().isEmpty) {
+      _request += 1;
+      emit(const SearchIdle());
+      return;
+    }
+    _debounce = Timer(_debounceDuration, () => search(rawQuery));
+  }
 
   Future<void> search(String rawQuery) async {
+    _debounce?.cancel();
     final request = ++_request;
     final query = rawQuery.trim();
     if (query.isEmpty) {
@@ -56,13 +46,39 @@ class SearchCubit extends DisposalSafeCubit<SearchState> {
     await _load(request, query);
   }
 
+  Future<void> retry() => search(state.query);
+
+  Future<void> loadMore() async {
+    final current = state;
+    final cursor = _cursor;
+    if (current is! SearchLoaded || current.isLoadingMore || cursor == null) {
+      return;
+    }
+    final request = _request;
+    emit(current.withLoadingMore(true));
+    try {
+      final page =
+          await _repository.searchVideos(current.query, olderThan: cursor);
+      if (!_accepts(request)) return;
+      _cursor = page.nextOlderThan;
+      emit(current.withOlderVideos(page.posts, hasMore: page.hasMore));
+    } on Object {
+      // Older pages are retried by scrolling again; results stay on screen.
+      _emitSearch(request, current.withLoadingMore(false));
+    }
+  }
+
   Future<void> _load(int request, String query) async {
     try {
-      final results = await _repository.search(query);
-      _emitSearch(
-        request,
-        results.isEmpty ? SearchEmpty(query) : SearchLoaded(query, results),
-      );
+      final results = await Future.wait<Object>([
+        _repository.searchVideos(query),
+        _creatorsFor(query),
+      ]);
+      final videos = results.first as VideoFeedPage;
+      final creators = results.last as List<ProfileSummary>;
+      if (!_accepts(request)) return;
+      _cursor = videos.nextOlderThan;
+      emit(_resultState(query, creators, videos));
     } on AppFailure catch (failure) {
       _emitSearch(request, SearchFailure(query, failure.message));
     } on Object catch (error, stackTrace) {
@@ -73,11 +89,32 @@ class SearchCubit extends DisposalSafeCubit<SearchState> {
     }
   }
 
-  Future<void> retry() => search(state.query);
+  // Creator rows are additive: their failure must never blank the videos.
+  Future<List<ProfileSummary>> _creatorsFor(String query) {
+    return _repository.searchCreators(query).catchError(
+          (Object error, StackTrace stackTrace) => const <ProfileSummary>[],
+        );
+  }
+
+  SearchState _resultState(
+    String query,
+    List<ProfileSummary> creators,
+    VideoFeedPage videos,
+  ) {
+    if (creators.isEmpty && videos.posts.isEmpty) return SearchEmpty(query);
+    return SearchLoaded(
+      query,
+      creators: creators,
+      videos: videos.posts,
+      hasMore: videos.hasMore,
+    );
+  }
 
   void _emitSearch(int request, SearchState next) {
-    if (!isClosed && request == _request) emit(next);
+    if (_accepts(request)) emit(next);
   }
+
+  bool _accepts(int request) => !isClosed && request == _request;
 
   String _unexpectedSearch(Object error, StackTrace stackTrace) {
     return translatedBoundaryFailure(
@@ -86,5 +123,11 @@ class SearchCubit extends DisposalSafeCubit<SearchState> {
       error: error,
       stackTrace: stackTrace,
     ).message;
+  }
+
+  @override
+  Future<void> close() {
+    _debounce?.cancel();
+    return super.close();
   }
 }

@@ -65,11 +65,13 @@ class NostrEventQuery {
     List<NostrTagFilter> tagFilters = const <NostrTagFilter>[],
     this.limit = 500,
     this.until,
+    String? search,
   })  : kinds = List<NostrEventKind>.unmodifiable(
           kinds.map(NostrEventKind.parse),
         ),
         scope = scope ?? NostrEventQueryScope(),
-        tagFilters = List<NostrTagFilter>.unmodifiable(tagFilters) {
+        tagFilters = List<NostrTagFilter>.unmodifiable(tagFilters),
+        search = _normalizedSearch(search) {
     if (limit <= 0) {
       throw const FormatException('Query limit must be positive.');
     }
@@ -83,6 +85,14 @@ class NostrEventQuery {
   final List<NostrTagFilter> tagFilters;
   final int limit;
   final int? until;
+
+  /// NIP-50 full-text term. Matching is relay-defined, so [matches] ignores it.
+  final String? search;
+
+  static String? _normalizedSearch(String? raw) {
+    final value = raw?.trim();
+    return value == null || value.isEmpty ? null : value;
+  }
 
   List<NostrPublicKeyHex> get authors => scope.authors;
 

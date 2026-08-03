@@ -4,9 +4,12 @@ import 'package:ghostr/features/comments/presentation/comments_cubit.dart';
 import 'package:ghostr/features/compose/presentation/compose_cubit.dart';
 import 'package:ghostr/features/compose/domain/publish_video_workflow.dart';
 import 'package:ghostr/features/settings/presentation/settings_cubit.dart';
+import 'package:ghostr/features/video_catalog/domain/query_video_feed_repository.dart';
+import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/search_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
+import 'package:ghostr/features/video_catalog/presentation/trending_hashtags_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_cubit.dart';
@@ -31,9 +34,25 @@ class AppControllerFactory {
     return SearchCubit(_dependencies.videoCatalogServices.search);
   }
 
+  TrendingHashtagsCubit trending() {
+    return TrendingHashtagsCubit(_dependencies.videoCatalogServices.trending);
+  }
+
   FeedCubit feed() {
-    return FeedCubit(FeedDependencies(
-      feed: _dependencies.videoCatalogServices.feed,
+    return FeedCubit(_feedDependencies(_dependencies.videoCatalogServices.feed));
+  }
+
+  /// A feed cubit bound to one search query or `#hashtag`.
+  FeedCubit discoveryFeed(String query) {
+    return FeedCubit(_feedDependencies(QueryVideoFeedRepository(
+      search: _dependencies.videoCatalogServices.search,
+      query: query,
+    )));
+  }
+
+  FeedDependencies _feedDependencies(VideoFeedRepository feed) {
+    return FeedDependencies(
+      feed: feed,
       engagement: _dependencies.videoCatalogServices.engagement,
       social: _dependencies.videoCatalogServices.social,
       prefetcher: FeedMediaPrefetcher(inventory: _dependencies.videoInventory),
@@ -42,7 +61,7 @@ class AppControllerFactory {
         settings: _dependencies.appSettingsRepository,
         failureReporter: _dependencies.failureReporter,
       ),
-    ));
+    );
   }
 
   WatchHistoryCubit watchHistory() {

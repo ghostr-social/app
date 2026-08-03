@@ -27,7 +27,7 @@ void main() {
       gateway: _gateway(),
     );
     final environment = ProductionDependenciesEnvironment.production(
-      videoEnvironmentBuilder: (_) => videoEnvironment,
+      videoEnvironmentBuilder: (_, __) => videoEnvironment,
     );
     final services = ProductionNostrServices(
       MockNdk(),

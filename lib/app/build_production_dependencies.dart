@@ -2,30 +2,17 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:ghostr/app/app_dependencies.dart';
 import 'package:ghostr/app/production_nostr_services.dart';
+import 'package:ghostr/app/production_video_catalog.dart';
 import 'package:ghostr/app/production_video_delivery.dart';
 import 'package:ghostr/app/production_video_playback.dart';
-import 'package:ghostr/app/video_catalog_services.dart';
 import 'package:ghostr/core/storage/account_storage_scope.dart';
 import 'package:ghostr/features/activity/data/local_activity_repository.dart';
 import 'package:ghostr/features/activity/data/nostr_activity_repository.dart';
-import 'package:ghostr/features/comments/data/nostr_comments_repository.dart';
-import 'package:ghostr/features/engagement/data/nostr_engagement_repository.dart';
 import 'package:ghostr/features/session/data/ndk_nostr_identity_deriver.dart';
 import 'package:ghostr/features/session/data/secure_session_repository.dart';
 import 'package:ghostr/features/settings/data/local_app_settings_repository.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
-import 'package:ghostr/features/social/data/social_graph_cache.dart';
-import 'package:ghostr/features/video_catalog/data/hybrid_video_comments_repository.dart';
-import 'package:ghostr/features/video_catalog/data/hybrid_video_engagement_repository.dart';
-import 'package:ghostr/features/video_catalog/data/hybrid_video_publishing_repository.dart';
-import 'package:ghostr/features/video_catalog/data/local_video_store.dart';
-import 'package:ghostr/features/video_catalog/domain/aggregating_video_profile_repository.dart';
-import 'package:ghostr/features/video_catalog/domain/filtered_video_feed_repository.dart';
-import 'package:ghostr/features/video_catalog/domain/filtered_video_search_repository.dart';
-import 'package:ghostr/features/video_catalog/domain/hybrid_video_reader.dart';
-import 'package:ghostr/features/video_catalog/domain/nostr_video_interactions.dart';
 import 'package:ghostr/features/watch_history/data/local_watch_history_repository.dart';
-import 'package:ghostr/features/watch_history/domain/watch_aware_video_feed_repository.dart';
 import 'package:ghostr/platform/logging/developer_failure_reporter.dart';
 import 'package:ghostr/platform/media/image_picker_capabilities.dart';
 import 'package:ghostr/platform/media/image_picker_media_picker.dart';
@@ -43,7 +30,7 @@ typedef ProductionNostrServicesBuilder = ProductionNostrServices Function(
 typedef ProductionVideoDeliveryBuilder = Future<ProductionVideoDelivery>
     Function(AppSettings settings, ProductionNostrServices nostr);
 typedef ProductionVideoEnvironmentBuilder = ProductionVideoDeliveryEnvironment
-    Function(Ndk ndk);
+    Function(Ndk ndk, AppSettings settings);
 
 class ProductionDependenciesEnvironment {
   const ProductionDependenciesEnvironment({
@@ -62,7 +49,7 @@ class ProductionDependenciesEnvironment {
       videoDeliveryBuilder: (settings, nostr) {
         return buildProductionVideoDelivery(
           settings,
-          videoEnvironmentBuilder(nostr.ndk),
+          videoEnvironmentBuilder(nostr.ndk, settings),
         );
       },
     );
@@ -111,13 +98,15 @@ AppDependencies composeProductionDependencies(
       nostr.adapters.session,
     ),
     appSettingsRepository: settingsRepository,
-    videoCatalogServices: _buildVideoCatalog(
-      preferences,
-      delivery,
-      nostr,
-      accountScope,
-      watchHistory: watchHistory,
-      settingsRepository: settingsRepository,
+    videoCatalogServices: buildProductionVideoCatalog(
+      ProductionVideoCatalogInputs(
+        preferences: preferences,
+        delivery: delivery,
+        nostr: nostr,
+        accountScope: accountScope,
+        watchHistory: watchHistory,
+        settingsRepository: settingsRepository,
+      ),
     ),
     watchHistoryRepository: watchHistory,
     activityRepository: NostrActivityRepository(
@@ -138,44 +127,3 @@ AppDependencies composeProductionDependencies(
   );
 }
 
-VideoCatalogServices _buildVideoCatalog(
-  SharedPreferences preferences,
-  ProductionVideoDelivery delivery,
-  ProductionNostrServices nostr,
-  AccountStorageScope accountScope, {
-  required LocalWatchHistoryRepository watchHistory,
-  required LocalAppSettingsRepository settingsRepository,
-}) {
-  final local = LocalVideoStore(preferences, accountScope: accountScope);
-  const reporter = DeveloperFailureReporter();
-  final social = SocialGraphCache(nostr.adapters.social, local, reporter);
-  final interactions = NostrVideoInteractions(
-    NostrEngagementRepository(nostr.eventClient),
-    NostrCommentsRepository(nostr.eventClient),
-    reporter,
-  );
-  final reader = HybridVideoReader(
-    remote: delivery.remoteSource,
-    local: local,
-    interactions: interactions,
-    failureReporter: reporter,
-  );
-  return VideoCatalogServices(
-    feed: WatchAwareVideoFeedRepository(
-      feed: FilteredVideoFeedRepository(reader, social),
-      history: watchHistory,
-      settings: settingsRepository,
-      failureReporter: reporter,
-    ),
-    engagement: HybridVideoEngagementRepository(interactions),
-    profile: AggregatingVideoProfileRepository(reader, social),
-    search: FilteredVideoSearchRepository(reader, social),
-    publishing: HybridVideoPublishingRepository(
-      local,
-      nostr.publisher,
-      reporter,
-    ),
-    comments: HybridVideoCommentsRepository(interactions),
-    social: social,
-  );
-}

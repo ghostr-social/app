@@ -11,6 +11,11 @@ void main() {
     await tester.pumpWidget(settingsScreenHarness(repository));
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.text('Add media server'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.text('Add media server'));
     await tester.pumpAndSettle();
     await tester.enterText(

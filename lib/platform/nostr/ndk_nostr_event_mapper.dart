@@ -36,6 +36,7 @@ class NdkNostrEventMapper {
       tags: tags.isEmpty ? null : tags,
       limit: query.limit,
       until: query.until,
+      search: query.search,
     );
   }
 

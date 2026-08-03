@@ -65,6 +65,32 @@ class SettingsCubit extends DisposalSafeCubit<SettingsState> {
     emit(SettingsState.ready(settings.copyWith(relays: relays)));
   }
 
+  void addSearchRelay(String raw) {
+    final settings = _editableSettings;
+    if (settings == null) return;
+    final relay = RelayUrl.tryParse(raw);
+    if (relay == null) {
+      _notice('Enter a valid ws:// or wss:// relay URL.');
+      return;
+    }
+    final relays = <RelayUrl>{...settings.searchRelays, relay}.toList();
+    emit(SettingsState.ready(settings.copyWith(searchRelays: relays)));
+  }
+
+  void removeSearchRelay(RelayUrl relay) {
+    final settings = _editableSettings;
+    if (settings == null) return;
+    final relays =
+        settings.searchRelays.where((item) => item != relay).toList();
+    emit(SettingsState.ready(settings.copyWith(searchRelays: relays)));
+  }
+
+  void changeDataUsage(DataUsageLevel dataUsage) {
+    final settings = _editableSettings;
+    if (settings == null) return;
+    emit(SettingsState.ready(settings.copyWith(dataUsage: dataUsage)));
+  }
+
   void removeBlossomServer(BlossomServerUrl server) {
     final settings = _editableSettings;
     if (settings == null) return;

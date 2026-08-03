@@ -5,7 +5,9 @@ import 'package:ghostr/core/errors/boundary_failure.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/core/nostr/nostr_event_record.dart';
 import 'package:ghostr/core/nostr/nostr_query_result_policy.dart';
+import 'package:ghostr/features/settings/domain/relay_url.dart';
 import 'package:ghostr/features/video_catalog/data/nostr_video_event_query_port.dart';
+import 'package:ghostr/features/video_catalog/domain/video_hashtags.dart';
 import 'package:ghostr/platform/nostr/ndk_nostr_event_mapper.dart';
 import 'package:ndk/ndk.dart';
 
@@ -15,11 +17,16 @@ typedef _MappedVideoEvent = ({
 });
 
 class NdkNostrVideoEventQuery implements NostrVideoEventQueryPort {
-  NdkNostrVideoEventQuery(this._ndk);
+  NdkNostrVideoEventQuery(this._ndk, {List<RelayUrl> searchRelays = const []})
+      : _searchRelayUrls = List<String>.unmodifiable(
+          searchRelays.map((relay) => relay.value),
+        );
 
   static const _videoKinds = [21, 22, 34235, 34236];
+  static const _timeout = Duration(seconds: 5);
 
   final Ndk _ndk;
+  final List<String> _searchRelayUrls;
   final NdkNostrEventMapper _mapper = const NdkNostrEventMapper();
 
   @override
@@ -33,25 +40,40 @@ class NdkNostrVideoEventQuery implements NostrVideoEventQueryPort {
       final query = _videoQuery(
         authorPublicKeys,
         hashtags,
-        isSearch: searchQuery != null,
+        searchQuery: searchQuery,
         olderThan: olderThan,
       );
-      final response = _ndk.requests.query(
-        name: 'ghostr-video-feed',
-        timeout: const Duration(seconds: 5),
-        filter: _videoFilter(query, searchQuery),
-      );
-      final events = await response.future;
+      final events = await _queryResponse(query).future;
       return _acceptedVideoEvents(events, query);
     } on Object catch (error, stackTrace) {
       throw _failure('Could not load Nostr videos.', error, stackTrace);
     }
   }
 
+  // NIP-50 terms only work on relays that index for search, so search
+  // requests target the dedicated search relays instead of the feed pool.
+  NdkResponse _queryResponse(NostrEventQuery query) {
+    final filter = _mapper.toFilter(query);
+    if (query.search == null) {
+      return _ndk.requests
+          .query(name: 'ghostr-video-feed', timeout: _timeout, filter: filter);
+    }
+    if (_searchRelayUrls.isEmpty) {
+      return _ndk.requests.query(
+          name: 'ghostr-video-search', timeout: _timeout, filter: filter);
+    }
+    return _ndk.requests.query(
+      name: 'ghostr-video-search',
+      timeout: _timeout,
+      filter: filter,
+      explicitRelays: _searchRelayUrls,
+    );
+  }
+
   NostrEventQuery _videoQuery(
     Set<NostrPublicKeyHex>? authorPublicKeys,
     Set<String>? hashtags, {
-    required bool isSearch,
+    String? searchQuery,
     DateTime? olderThan,
   }) {
     return NostrEventQuery(
@@ -61,21 +83,20 @@ class NdkNostrVideoEventQuery implements NostrVideoEventQueryPort {
       ),
       tagFilters: [
         if (hashtags != null && hashtags.isNotEmpty)
-          NostrTagFilter(name: 't', values: hashtags.toList()),
+          NostrTagFilter(
+            name: 't',
+            values:
+                hashtags.expand(hashtagQueryVariants).toSet().toList(),
+          ),
       ],
-      // Search and hashtag queries widen the candidate pool because relays
-      // without NIP-50 support only ever return the newest events.
-      limit: isSearch || hashtags != null ? 200 : 80,
+      // Hashtag queries widen the candidate pool because feed relays only
+      // ever return the newest events.
+      limit: searchQuery != null || hashtags != null ? 200 : 80,
       until: olderThan == null
           ? null
           : olderThan.toUtc().millisecondsSinceEpoch ~/ 1000,
+      search: searchQuery,
     );
-  }
-
-  Filter _videoFilter(NostrEventQuery query, String? searchQuery) {
-    // NIP-50 search matching is relay-defined; only structural fields can be
-    // revalidated locally without inventing incompatible search semantics.
-    return _mapper.toFilter(query)..search = searchQuery;
   }
 
   List<Nip01Event> _acceptedVideoEvents(

@@ -1,15 +1,15 @@
-import 'dart:developer';
-
 import 'package:ghostr/app/production_video_delivery_infrastructure.dart';
+import 'package:ghostr/app/production_video_delivery_sources.dart';
 import 'package:ghostr/app/remote_video_delivery_source.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/media/video_playback_capabilities.dart';
+import 'package:ghostr/core/work/retrieval_scheduler.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
-import 'package:ghostr/features/video_catalog/data/ffi_video_remote_source.dart';
 import 'package:ghostr/features/video_catalog/data/ndk_video_remote_source.dart';
 import 'package:ghostr/features/video_catalog/data/nostr_video_snapshot.dart';
 import 'package:ghostr/features/video_catalog/data/playable_remote_video_source.dart';
 import 'package:ghostr/features/video_catalog/data/remembering_remote_video_source.dart';
+import 'package:ghostr/features/video_catalog/data/scheduled_remote_video_source.dart';
 import 'package:ghostr/features/video_catalog/domain/remote_video_source.dart';
 import 'package:ghostr/features/video_inventory/data/inventory_remote_video_source.dart';
 import 'package:ghostr/features/video_inventory/domain/disabled_video_inventory.dart';
@@ -31,20 +31,39 @@ class ProductionVideoDelivery {
   const ProductionVideoDelivery(
     this.inventory,
     this.remoteSource, {
+    required this.searchSource,
+    required this.discoverySource,
+    required this.scheduler,
     this.hlsPlaybackGateway,
     this.playbackCapabilities = VideoPlaybackCapabilities.progressiveOnly,
   });
 
-  const ProductionVideoDelivery.disabled()
-      : inventory = const DisabledVideoInventory(),
-        remoteSource = const DisabledRemoteVideoSource(
-          'Video playback is unavailable on this platform.',
-        ),
-        hlsPlaybackGateway = null,
-        playbackCapabilities = VideoPlaybackCapabilities.none;
+  factory ProductionVideoDelivery.disabled() {
+    const source = DisabledRemoteVideoSource(
+      'Video playback is unavailable on this platform.',
+    );
+    return ProductionVideoDelivery(
+      const DisabledVideoInventory(),
+      source,
+      searchSource: source,
+      discoverySource: source,
+      scheduler: RetrievalScheduler(maxConcurrent: 1),
+      playbackCapabilities: VideoPlaybackCapabilities.none,
+    );
+  }
 
   final VideoInventoryPort inventory;
   final RemoteVideoSource remoteSource;
+
+  /// Lean relay path for search: no local merge, prefetch, or fallback.
+  final RemoteVideoSource searchSource;
+
+  /// Same lean path, unscheduled, for callers that queue work themselves.
+  final RemoteVideoSource discoverySource;
+
+  /// The one queue every content request in the app flows through.
+  final RetrievalScheduler scheduler;
+
   final HlsPlaybackGatewayPort? hlsPlaybackGateway;
   final VideoPlaybackCapabilities playbackCapabilities;
 }
@@ -59,10 +78,15 @@ class ProductionVideoDeliveryEnvironment {
     this.playbackCapabilities = VideoPlaybackCapabilities.progressiveOnly,
   });
 
-  factory ProductionVideoDeliveryEnvironment.production(Ndk ndk) {
+  factory ProductionVideoDeliveryEnvironment.production(
+    Ndk ndk,
+    AppSettings settings,
+  ) {
     final mediaPolicy = PublicMediaAddressResolver();
     return ProductionVideoDeliveryEnvironment(
-      canonicalSource: NdkVideoRemoteSource(NdkNostrVideoEventQuery(ndk)),
+      canonicalSource: NdkVideoRemoteSource(
+        NdkNostrVideoEventQuery(ndk, searchRelays: settings.searchRelays),
+      ),
       supportDirectoryProvider: getApplicationSupportDirectory,
       downloader: HttpVideoFileDownloader(
         createPublicMediaHttpClient(mediaPolicy),
@@ -86,7 +110,7 @@ Future<ProductionVideoDelivery> buildProductionVideoDelivery(
   ProductionVideoDeliveryEnvironment environment,
 ) async {
   if (!environment.playbackCapabilities.supportsAny) {
-    return const ProductionVideoDelivery.disabled();
+    return ProductionVideoDelivery.disabled();
   }
   final infrastructure = await initializeProductionVideoDeliveryInfrastructure(
     settings: settings,
@@ -94,15 +118,21 @@ Future<ProductionVideoDelivery> buildProductionVideoDelivery(
     downloader: environment.downloader,
     gateway: environment.gateway,
   );
+  final scheduler = RetrievalScheduler(
+    maxConcurrent: settings.dataUsage.maxConcurrentRequests,
+  );
   final snapshot = NostrVideoSnapshot();
   final canonical = RememberingRemoteVideoSource(
     environment.canonicalSource,
     snapshot,
   );
   final native =
-      _nativeRemoteVideoSource(infrastructure.gatewayResult, snapshot);
-  final hlsGateway =
-      _activeHlsGateway(infrastructure.gatewayResult, environment);
+      nativeRemoteVideoSource(infrastructure.gatewayResult, snapshot);
+  final hlsGateway = activeHlsGateway(
+    result: infrastructure.gatewayResult,
+    gateway: environment.hlsPlaybackGateway,
+    capabilities: environment.playbackCapabilities,
+  );
   final capabilities = hlsGateway == null
       ? environment.playbackCapabilities.without(VideoMediaDelivery.hls)
       : environment.playbackCapabilities;
@@ -112,9 +142,13 @@ Future<ProductionVideoDelivery> buildProductionVideoDelivery(
     infrastructure.inventory,
     capabilities,
   );
+  final lean = _playable(environment.canonicalSource, capabilities);
   return ProductionVideoDelivery(
     infrastructure.inventory,
-    source,
+    ScheduledRemoteVideoSource(source: source, scheduler: scheduler),
+    searchSource: ScheduledRemoteVideoSource(source: lean, scheduler: scheduler),
+    discoverySource: lean,
+    scheduler: scheduler,
     hlsPlaybackGateway: hlsGateway,
     playbackCapabilities: capabilities,
   );
@@ -140,37 +174,3 @@ PlayableRemoteVideoSource _playable(
   VideoPlaybackCapabilities capabilities,
 ) =>
     PlayableRemoteVideoSource(source: source, capabilities: capabilities);
-
-RemoteVideoSource _nativeRemoteVideoSource(
-  VideoGatewayStartResult result,
-  NostrVideoSnapshot snapshot,
-) {
-  return switch (result) {
-    VideoGatewayStarted() => FfiVideoRemoteSource(
-        snapshotLoader: snapshot.read,
-      ),
-    VideoGatewayFailed(:final message) => _reportedFailure(message),
-  };
-}
-
-HlsPlaybackGatewayPort? _activeHlsGateway(
-  VideoGatewayStartResult result,
-  ProductionVideoDeliveryEnvironment environment,
-) {
-  if (result is! VideoGatewayStarted ||
-      !environment.playbackCapabilities.supportsHls) {
-    return null;
-  }
-  return environment.hlsPlaybackGateway;
-}
-
-DisabledRemoteVideoSource _reportedFailure(String message) {
-  log(message, name: 'ghostr.gateway');
-  return _disabledGateway();
-}
-
-DisabledRemoteVideoSource _disabledGateway() {
-  return const DisabledRemoteVideoSource(
-    'The embedded Nostr gateway is unavailable.',
-  );
-}

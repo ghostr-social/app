@@ -23,8 +23,11 @@ class SettingsForm extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
         ..._relaySection(context),
+        ..._searchRelaySection(context),
         ..._blossomSection(context),
         ..._inventorySection(context),
+        const SizedBox(height: AppSpacing.xxl),
+        ..._dataUsageSection(context),
         const SizedBox(height: AppSpacing.xxl),
         ..._watchHistorySection(context),
         const SizedBox(height: AppSpacing.xl),
@@ -60,9 +63,41 @@ class SettingsForm extends StatelessWidget {
       const SizedBox(height: AppSpacing.xs),
       const Text('Choose which Nostr relays Ghostr reads and writes.'),
       const SizedBox(height: AppSpacing.sm),
-      ...settings.relays.map(_relayTile),
+      ...settings.relays.map(
+        (relay) => _relayTile(relay, actions.relays.onRemove),
+      ),
       _addButton('Add relay', actions.relays.onAdd),
       const SizedBox(height: AppSpacing.xxl),
+    ];
+  }
+
+  List<Widget> _searchRelaySection(BuildContext context) {
+    return [
+      _sectionTitle(context, 'Search relays'),
+      const SizedBox(height: AppSpacing.xs),
+      const Text('Relays with NIP-50 search that power discovery.'),
+      const SizedBox(height: AppSpacing.sm),
+      ...settings.searchRelays.map(
+        (relay) => _relayTile(relay, actions.searchRelays.onRemove),
+      ),
+      _addButton('Add search relay', actions.searchRelays.onAdd),
+      const SizedBox(height: AppSpacing.xxl),
+    ];
+  }
+
+  List<Widget> _dataUsageSection(BuildContext context) {
+    return [
+      _sectionTitle(context, 'Data usage'),
+      const SizedBox(height: AppSpacing.xs),
+      const Text('Control how aggressively Ghostr fetches content.'),
+      const SizedBox(height: AppSpacing.sm),
+      DropdownButtonFormField<DataUsageLevel>(
+        key: const Key('data-usage-field'),
+        initialValue: settings.dataUsage,
+        decoration: const InputDecoration(labelText: 'Network activity'),
+        items: DataUsageLevel.values.map(_dataUsageItem).toList(),
+        onChanged: isSaving ? null : _changeDataUsage,
+      ),
     ];
   }
 
@@ -110,6 +145,14 @@ class SettingsForm extends StatelessWidget {
     if (value != null) actions.onBudgetChanged(value);
   }
 
+  void _changeDataUsage(DataUsageLevel? value) {
+    if (value != null) actions.onDataUsageChanged(value);
+  }
+
+  DropdownMenuItem<DataUsageLevel> _dataUsageItem(DataUsageLevel level) {
+    return DropdownMenuItem(value: level, child: Text(level.label));
+  }
+
   Widget _saveButton() {
     return ElevatedButton(
       onPressed: isSaving ? null : actions.onSave,
@@ -117,13 +160,13 @@ class SettingsForm extends StatelessWidget {
     );
   }
 
-  Widget _relayTile(RelayUrl relay) {
+  Widget _relayTile(RelayUrl relay, ValueChanged<RelayUrl> onRemove) {
     return Card(
       child: ListTile(
         title: Text(relay.value),
         trailing: IconButton(
           tooltip: 'Remove ${relay.value}',
-          onPressed: isSaving ? null : () => actions.relays.onRemove(relay),
+          onPressed: isSaving ? null : () => onRemove(relay),
           icon: const Icon(Icons.delete_outline),
         ),
       ),

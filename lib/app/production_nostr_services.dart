@@ -5,9 +5,11 @@ import 'package:ghostr/features/session/domain/nostr_session_port.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/settings/domain/relay_url.dart';
 import 'package:ghostr/features/social/domain/nostr_social_port.dart';
+import 'package:ghostr/features/video_catalog/data/nostr_profile_search_port.dart';
 import 'package:ghostr/platform/nostr/build_ndk.dart';
 import 'package:ghostr/platform/nostr/ndk_blossom_video_uploader.dart';
 import 'package:ghostr/platform/nostr/ndk_nostr_event_client.dart';
+import 'package:ghostr/platform/nostr/ndk_nostr_profile_search.dart';
 import 'package:ghostr/platform/nostr/ndk_nostr_session.dart';
 import 'package:ghostr/platform/nostr/ndk_nostr_social.dart';
 import 'package:ndk/ndk.dart';
@@ -34,6 +36,10 @@ ProductionNostrServices buildProductionNostrServices(
         servers: settings.blossomServers,
       ),
     ),
+    profileSearch: NdkNostrProfileSearch(
+      ndk,
+      searchRelays: settings.searchRelays,
+    ),
   );
 }
 
@@ -42,13 +48,18 @@ class ProductionNostrServices {
     this.ndk,
     this.adapters,
     this.eventClient,
-    this.publisher,
-  );
+    this.publisher, {
+    NostrProfileSearchPort? profileSearch,
+  }) : _profileSearch = profileSearch;
 
   final Ndk ndk;
   final ProductionNostrAdapters adapters;
   final NostrEventClient eventClient;
   final NostrVideoPublisherPort publisher;
+  final NostrProfileSearchPort? _profileSearch;
+
+  NostrProfileSearchPort get profileSearch =>
+      _profileSearch ?? const NoNostrProfileSearch();
 }
 
 class ProductionNostrAdapters {

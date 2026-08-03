@@ -13,3 +13,18 @@ String? normalizeHashtag(String raw) {
   if (value.startsWith('#')) value = value.substring(1);
   return value.isEmpty ? null : value;
 }
+
+/// Relays match tag values exactly, so a hashtag query must ask for every
+/// case form publishers commonly write: as-typed, lower, UPPER, and Title.
+List<String> hashtagQueryVariants(String raw) {
+  var typed = raw.trim();
+  if (typed.startsWith('#')) typed = typed.substring(1);
+  final tag = normalizeHashtag(typed);
+  if (tag == null) return const <String>[];
+  return List<String>.unmodifiable(<String>{
+    typed,
+    tag,
+    tag.toUpperCase(),
+    tag[0].toUpperCase() + tag.substring(1),
+  });
+}

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ghostr/app/app_controller_factory.dart';
 import 'package:ghostr/app/home_tab.dart';
+import 'package:ghostr/app/home_tab_bar.dart';
+import 'package:ghostr/app/home_tab_stack.dart';
 import 'package:ghostr/app/router/app_router.dart';
 import 'package:ghostr/features/activity/presentation/activity_cubit.dart';
 import 'package:ghostr/features/activity/presentation/activity_screen.dart';
@@ -15,9 +17,8 @@ import 'package:ghostr/features/video_catalog/presentation/feed_screen.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_screen.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_cubit.dart';
+import 'package:ghostr/app/search_tab.dart';
 import 'package:ghostr/features/video_catalog/presentation/search_cubit.dart';
-import 'package:ghostr/features/video_catalog/presentation/search_screen.dart';
-import 'package:ghostr/shared/theme/app_tokens.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({
@@ -45,45 +46,26 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _tabStack(),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: HomeTab.values.indexOf(_currentTab),
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        selectedItemColor: Theme.of(context).colorScheme.primary,
-        unselectedItemColor: AppPalette.mutedForeground,
-        onTap: _selectTab,
-        items: HomeTab.values
-            .map(
-              (tab) => BottomNavigationBarItem(
-                icon: Icon(tab.icon),
-                label: tab.label,
-              ),
-            )
-            .toList(),
+      body: HomeTabStack(
+        currentTab: _currentTab,
+        visitedTabs: _visitedTabs,
+        tabBuilder: _tabScreen,
+      ),
+      bottomNavigationBar: HomeTabBar(
+        currentTab: _currentTab,
+        onSelect: _selectTab,
       ),
     );
   }
 
-  Widget _tabStack() {
-    return IndexedStack(
-      index: HomeTab.values.indexOf(_currentTab),
-      children: HomeTab.values.map(_tabScreen).toList(),
-    );
-  }
-
   Widget _tabScreen(HomeTab tab) {
-    if (!_visitedTabs.contains(tab)) return const SizedBox.shrink();
-    return KeyedSubtree(
-      key: ValueKey('home-tab-${tab.name}'),
-      child: switch (tab) {
-        HomeTab.home => _home(),
-        HomeTab.search => _search(),
-        HomeTab.create => _create(),
-        HomeTab.activity => _activity(),
-        HomeTab.profile => _profile(),
-      },
-    );
+    return switch (tab) {
+      HomeTab.home => _home(),
+      HomeTab.search => _search(),
+      HomeTab.create => _create(),
+      HomeTab.activity => _activity(),
+      HomeTab.profile => _profile(),
+    };
   }
 
   void _selectTab(int index) {
@@ -116,9 +98,11 @@ class _HomeShellState extends State<HomeShell> {
         ),
       );
 
-  Widget _search() => BlocProvider(
-        create: (_) => _createSearchCubit(),
-        child: SearchScreen(onOpenProfile: _openProfile),
+  Widget _search() => SearchTab(
+        createSearchCubit: _createSearchCubit,
+        createTrendingCubit: () => widget.controllers.trending()..load(),
+        onOpenProfile: _openProfile,
+        onOpenFeed: _openDiscoveryFeed,
       );
 
   Widget _create() => BlocProvider(
@@ -144,28 +128,30 @@ class _HomeShellState extends State<HomeShell> {
       );
 
   void _openProfile(ProfileId profileId) {
-    unawaited(_openProfileRoute(profileId));
+    unawaited(_pushCovering(AppRouter.profile(
+      session: widget.session,
+      profileId: profileId,
+      controllers: widget.controllers,
+      onSignedOut: _signOut,
+    )));
   }
 
-  void _openHashtag(String hashtag) {
-    final search = _createSearchCubit();
-    setState(() {
-      _currentTab = HomeTab.search;
-      _visitedTabs.add(HomeTab.search);
-    });
-    unawaited(search.search(hashtag));
+  void _openHashtag(String hashtag) => _openDiscoveryFeed(hashtag);
+
+  void _openDiscoveryFeed(String query) {
+    unawaited(_pushCovering(AppRouter.discoveryFeed(
+      session: widget.session,
+      query: query,
+      controllers: widget.controllers,
+      onSignedOut: _signOut,
+    )));
   }
 
-  Future<void> _openProfileRoute(ProfileId profileId) async {
+  Future<void> _pushCovering(Route<void> route) async {
     if (_isRouteCovered) return;
     setState(() => _isRouteCovered = true);
     try {
-      await Navigator.of(context).push(AppRouter.profile(
-        session: widget.session,
-        profileId: profileId,
-        controllers: widget.controllers,
-        onSignedOut: _signOut,
-      ));
+      await Navigator.of(context).push(route);
     } finally {
       if (mounted) {
         setState(() => _isRouteCovered = false);

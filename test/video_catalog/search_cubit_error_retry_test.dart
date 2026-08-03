@@ -1,7 +1,7 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
-import 'package:ghostr/features/video_catalog/domain/video_post.dart';
+import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
 import 'package:ghostr/features/video_catalog/presentation/search_cubit.dart';
 
 import '../support/fakes.dart';
@@ -31,9 +31,12 @@ class _RetryingSearchRepository extends FakeVideoCatalogRepository {
   int count = 0;
 
   @override
-  Future<List<VideoPost>> search(String query) async {
+  Future<VideoFeedPage> searchVideos(
+    String query, {
+    DateTime? olderThan,
+  }) async {
     count += 1;
     if (count == 1) throw const AppFailure('Search failed.');
-    return [samplePost()];
+    return VideoFeedPage(posts: [samplePost()]);
   }
 }

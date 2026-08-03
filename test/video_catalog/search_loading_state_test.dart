@@ -2,7 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ghostr/features/video_catalog/domain/video_post.dart';
+import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
+import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
 import 'package:ghostr/features/video_catalog/domain/video_search_repository.dart';
 
 import '../support/search_screen_harness.dart';
@@ -20,8 +21,15 @@ void main() {
 }
 
 class _PendingSearchRepository implements VideoSearchRepository {
-  final _search = Completer<List<VideoPost>>();
+  final _search = Completer<VideoFeedPage>();
 
   @override
-  Future<List<VideoPost>> search(String query) => _search.future;
+  Future<VideoFeedPage> searchVideos(String query, {DateTime? olderThan}) {
+    return _search.future;
+  }
+
+  @override
+  Future<List<ProfileSummary>> searchCreators(String query) async {
+    return const <ProfileSummary>[];
+  }
 }

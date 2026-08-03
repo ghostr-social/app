@@ -12,6 +12,8 @@ class LocalAppSettingsRepository implements AppSettingsRepository {
   static const _inventoryBudgetKey = 'ghostr.settings.inventoryBudget';
   static const _blossomServersKey = 'ghostr.settings.blossomServers';
   static const _hideWatchedKey = 'ghostr.settings.hideWatchedVideos';
+  static const _searchRelaysKey = 'ghostr.settings.searchRelays';
+  static const _dataUsageKey = 'ghostr.settings.dataUsage';
 
   final SharedPreferences _preferences;
 
@@ -26,11 +28,13 @@ class LocalAppSettingsRepository implements AppSettingsRepository {
   AppSettings _load() {
     final defaults = AppSettings.defaults();
     return AppSettings(
-      relays: _loadRelays(defaults.relays),
+      relays: _loadRelayList(_relaysKey, defaults.relays),
       inventoryBudget: _loadBudget(defaults.inventoryBudget),
       blossomServers: _loadBlossomServers(defaults.blossomServers),
       hideWatchedVideos:
           _preferences.getBool(_hideWatchedKey) ?? defaults.hideWatchedVideos,
+      searchRelays: _loadRelayList(_searchRelaysKey, defaults.searchRelays),
+      dataUsage: _loadDataUsage(defaults.dataUsage),
     );
   }
 
@@ -64,12 +68,31 @@ class LocalAppSettingsRepository implements AppSettingsRepository {
         settings.hideWatchedVideos,
       ),
     );
+    await requirePreferenceWrite(
+      'Could not save app settings.',
+      () => _preferences.setStringList(
+        _searchRelaysKey,
+        settings.searchRelays.map((relay) => relay.value).toList(),
+      ),
+    );
+    await requirePreferenceWrite(
+      'Could not save app settings.',
+      () => _preferences.setString(_dataUsageKey, settings.dataUsage.name),
+    );
   }
 
-  List<RelayUrl> _loadRelays(List<RelayUrl> defaults) {
-    final saved = _preferences.getStringList(_relaysKey);
+  List<RelayUrl> _loadRelayList(String key, List<RelayUrl> defaults) {
+    final saved = _preferences.getStringList(key);
     if (saved == null) return defaults;
     return saved.map(RelayUrl.tryParse).whereType<RelayUrl>().toSet().toList();
+  }
+
+  DataUsageLevel _loadDataUsage(DataUsageLevel fallback) {
+    final name = _preferences.getString(_dataUsageKey);
+    return DataUsageLevel.values
+            .where((level) => level.name == name)
+            .firstOrNull ??
+        fallback;
   }
 
   List<BlossomServerUrl> _loadBlossomServers(

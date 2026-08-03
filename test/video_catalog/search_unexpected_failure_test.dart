@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ghostr/features/video_catalog/domain/video_post.dart';
+import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
 import 'package:ghostr/features/video_catalog/presentation/search_cubit.dart';
 
 import '../support/fakes.dart';
@@ -20,7 +20,7 @@ class _UnexpectedSearchRepository extends FakeVideoCatalogRepository {
   _UnexpectedSearchRepository() : super(forYouFeed: []);
 
   @override
-  Future<List<VideoPost>> search(String query) {
+  Future<VideoFeedPage> searchVideos(String query, {DateTime? olderThan}) {
     throw StateError('relay unavailable');
   }
 }

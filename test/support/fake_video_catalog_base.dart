@@ -6,6 +6,7 @@ import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_details.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
+import 'package:ghostr/features/video_catalog/domain/trending_hashtags.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
@@ -21,6 +22,7 @@ abstract class FakeVideoCatalogBase
         VideoProfileRepository,
         VideoSearchRepository,
         VideoPublishingRepository,
+        TrendingHashtagsSource,
         SocialGraphRepository {
   FakeVideoCatalogBase({
     required this.forYouFeed,
@@ -44,6 +46,9 @@ abstract class FakeVideoCatalogBase
   final Set<ProfileId> followedProfiles = <ProfileId>{};
   final List<bool> loadFeedExclusions = <bool>[];
   final List<String> searchQueries = <String>[];
+  final List<String> creatorQueries = <String>[];
+  final List<ProfileSummary> creatorResults = <ProfileSummary>[];
+  final List<String> trendingTags = <String>[];
   final List<DateTime> olderFeedRequests = <DateTime>[];
   final List<List<VideoPost>> olderFeedPages = <List<VideoPost>>[];
 
@@ -100,10 +105,24 @@ abstract class FakeVideoCatalogBase
   }
 
   @override
-  Future<List<VideoPost>> search(String query) async {
+  Future<VideoFeedPage> searchVideos(String query, {DateTime? olderThan}) async {
     searchQueries.add(query);
-    return searchResults;
+    final posts = olderThan == null ? searchResults : const <VideoPost>[];
+    return VideoFeedPage(
+      posts: posts
+          .where((post) => !blockedProfiles.contains(post.creator.id))
+          .toList(),
+    );
   }
+
+  @override
+  Future<List<ProfileSummary>> searchCreators(String query) async {
+    creatorQueries.add(query);
+    return creatorResults;
+  }
+
+  @override
+  Future<List<String>> trendingHashtags() async => trendingTags;
 
   @override
   Future<bool> toggleFollow(ProfileId profileId) async => true;

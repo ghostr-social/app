@@ -10,14 +10,12 @@ import 'package:ghostr/features/video_catalog/data/hybrid_video_engagement_repos
 import 'package:ghostr/features/video_catalog/data/hybrid_video_publishing_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/aggregating_video_profile_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/filtered_video_feed_repository.dart';
-import 'package:ghostr/features/video_catalog/domain/filtered_video_search_repository.dart';
 import 'package:ghostr/features/video_catalog/data/local_video_store.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/hybrid_video_reader.dart';
 import 'package:ghostr/features/video_catalog/domain/nostr_video_interactions.dart';
 import 'package:ghostr/features/video_catalog/domain/remote_video_source.dart';
 import 'package:ghostr/features/video_catalog/domain/video_profile_repository.dart';
-import 'package:ghostr/features/video_catalog/domain/video_search_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fakes.dart';
@@ -34,7 +32,6 @@ class HybridRepositoryHarness {
   const HybridRepositoryHarness({
     required this.feed,
     required this.profile,
-    required this.search,
     required this.publishing,
     required this.engagement,
     required this.comments,
@@ -44,7 +41,6 @@ class HybridRepositoryHarness {
 
   final VideoFeedRepository feed;
   final VideoProfileRepository profile;
-  final VideoSearchRepository search;
   final VideoPublishingRepository publishing;
   final VideoEngagementRepository engagement;
   final VideoCommentsRepository comments;
@@ -81,7 +77,6 @@ Future<HybridRepositoryHarness> buildHybridRepositoryHarness(
   return HybridRepositoryHarness(
     feed: FilteredVideoFeedRepository(reader, social),
     profile: AggregatingVideoProfileRepository(reader, social),
-    search: FilteredVideoSearchRepository(reader, social),
     publishing: HybridVideoPublishingRepository(
       local,
       FakeNostrVideoPublisherPort(),

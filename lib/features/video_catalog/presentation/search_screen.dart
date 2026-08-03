@@ -1,16 +1,26 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/presentation/search_cubit.dart';
+import 'package:ghostr/features/video_catalog/presentation/widgets/search_results_view.dart';
+import 'package:ghostr/features/video_catalog/presentation/widgets/trending_hashtag_chips.dart';
 import 'package:ghostr/shared/widgets/async_state_panel.dart';
 import 'package:ghostr/shared/theme/app_tokens.dart';
 import 'package:ghostr/shared/widgets/loading_panel.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({required this.onOpenProfile, super.key});
+  const SearchScreen({
+    required this.onOpenProfile,
+    required this.onOpenFeed,
+    super.key,
+  });
 
   final ValueChanged<ProfileId> onOpenProfile;
+
+  /// Opens a query or `#hashtag` as a full swipeable video feed.
+  final ValueChanged<String> onOpenFeed;
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -71,8 +81,9 @@ class _SearchScreenState extends State<SearchScreen> {
           child: TextField(
             controller: _controller,
             decoration: const InputDecoration(
-              hintText: 'Search creators, clips, or #hashtags',
+              hintText: 'Search videos, creators, or #hashtags',
             ),
+            onChanged: context.read<SearchCubit>().queryChanged,
             onSubmitted: _search,
           ),
         ),
@@ -86,19 +97,39 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Widget _buildContent(BuildContext context, SearchState state) {
     return switch (state) {
-      SearchIdle() => _initialState(),
+      SearchIdle() => _discoverPanel(),
       SearchLoading() => const LoadingPanel(label: 'Searching Nostr'),
       SearchEmpty() => _emptyResults(),
-      SearchLoaded(results: final results) => _resultList(results),
+      SearchLoaded() => _results(context, state),
       SearchFailure(message: final message) => _errorState(message),
     };
   }
 
-  Widget _initialState() {
-    return const AsyncStatePanel(
-      icon: Icons.search,
-      title: 'Search creators and videos',
-      message: 'Type a name, handle, or caption to explore the Nostr timeline.',
+  Widget _results(BuildContext context, SearchLoaded state) {
+    return SearchResultsView(
+      results: state,
+      actions: SearchResultsActions(
+        onOpenProfile: widget.onOpenProfile,
+        onOpenFeed: () => widget.onOpenFeed(state.query),
+        onLoadMore: () => unawaited(context.read<SearchCubit>().loadMore()),
+      ),
+    );
+  }
+
+  Widget _discoverPanel() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TrendingHashtagChips(onOpenHashtag: widget.onOpenFeed),
+        const Expanded(
+          child: AsyncStatePanel(
+            icon: Icons.search,
+            title: 'Search creators and videos',
+            message:
+                'Type to search all of Nostr — or jump into a trending tag.',
+          ),
+        ),
+      ],
     );
   }
 
@@ -106,7 +137,7 @@ class _SearchScreenState extends State<SearchScreen> {
     return const AsyncStatePanel(
       icon: Icons.manage_search,
       title: 'No matches found',
-      message: 'Try a creator handle, a caption keyword, or a song name.',
+      message: 'Try a creator handle, a caption keyword, or a #hashtag.',
     );
   }
 
@@ -120,26 +151,7 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _resultList(List<VideoPost> results) {
-    return ListView.separated(
-      itemCount: results.length,
-      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-      itemBuilder: (_, index) => _resultTile(results[index]),
-    );
+  void _search(String query) {
+    unawaited(context.read<SearchCubit>().search(query));
   }
-
-  Widget _resultTile(VideoPost post) {
-    return ListTile(
-      tileColor: Theme.of(context).colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.control),
-      ),
-      title: Text(post.creator.displayName),
-      subtitle: Text(post.caption),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => widget.onOpenProfile(post.creator.id),
-    );
-  }
-
-  void _search(String query) => context.read<SearchCubit>().search(query);
 }
