@@ -92,6 +92,20 @@ The minimum verification surface for this repository is:
 
 If a repeated workflow has no stable command, add one before the repository accumulates ad hoc variants.
 
+## Dedicated Android Agent Emulator
+
+Use the repository-owned AVD commands for Android device and manual verification:
+
+- `make android-agent-avd-create` installs the required Android 37.1 image when
+  absent and creates `Ghostr_Agent_API_37.1` with 16 GB of internal storage.
+- `make android-agent-avd-run` runs it synchronously on the stable serial
+  `emulator-5580` with full-speed networking. Closing the emulator or stopping
+  the command ends the process.
+
+AVD creation is a durable host change under the Android SDK and
+`~/.android/avd`; starting it is temporary. Never use `--force`, `-wipe-data`,
+or another AVD for Ghostr verification unless the user explicitly requests it.
+
 ## Architecture Contract
 
 - Use clean architecture.
