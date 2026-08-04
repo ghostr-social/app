@@ -12,17 +12,11 @@ import 'package:ghostr/features/video_catalog/data/playable_remote_video_source.
 import 'package:ghostr/features/video_catalog/data/rust_feed_remote_source.dart';
 import 'package:ghostr/features/video_catalog/data/scheduled_remote_video_source.dart';
 import 'package:ghostr/features/video_catalog/domain/remote_video_source.dart';
-import 'package:ghostr/features/video_inventory/domain/disabled_video_inventory.dart';
-import 'package:ghostr/features/video_inventory/domain/video_file_downloader.dart';
-import 'package:ghostr/features/video_inventory/domain/video_inventory_port.dart';
 import 'package:ghostr/features/video_inventory/domain/hls_playback_gateway_port.dart';
 import 'package:ghostr/platform/media/cache_directory_provider.dart';
 import 'package:ghostr/platform/media/ffi_hls_playback_gateway.dart';
 import 'package:ghostr/platform/media/ffi_video_gateway.dart';
-import 'package:ghostr/platform/media/http_video_file_downloader.dart';
 import 'package:ghostr/platform/media/video_player_playback_capabilities.dart';
-import 'package:ghostr/platform/network/public_media_address_resolver.dart';
-import 'package:ghostr/platform/network/public_media_http_client.dart';
 import 'package:ghostr/platform/nostr/ndk_nostr_outbox_directory.dart';
 import 'package:ghostr/platform/nostr/ndk_nostr_video_event_query.dart';
 import 'package:ndk/ndk.dart';
@@ -30,7 +24,6 @@ import 'package:path_provider/path_provider.dart';
 
 class ProductionVideoDelivery {
   const ProductionVideoDelivery(
-    this.inventory,
     this.remoteSource, {
     required this.searchSource,
     required this.discoverySource,
@@ -44,7 +37,6 @@ class ProductionVideoDelivery {
       'Video playback is unavailable on this platform.',
     );
     return ProductionVideoDelivery(
-      const DisabledVideoInventory(),
       source,
       searchSource: source,
       discoverySource: source,
@@ -53,7 +45,6 @@ class ProductionVideoDelivery {
     );
   }
 
-  final VideoInventoryPort inventory;
   final RemoteVideoSource remoteSource;
 
   /// Lean relay path for search: no local merge, prefetch, or fallback.
@@ -69,23 +60,29 @@ class ProductionVideoDelivery {
   final VideoPlaybackCapabilities playbackCapabilities;
 }
 
+/// Builds the Rust discovery pipeline for one viewer. Kept a function
+/// so ndk mode never touches the engine's feed FFI.
+typedef RustFeedSourceFactory = RemoteVideoSource Function(
+  RustFeedViewer viewer,
+);
+
 class ProductionVideoDeliveryEnvironment {
   const ProductionVideoDeliveryEnvironment({
     required this.canonicalSource,
     required this.supportDirectoryProvider,
-    required this.downloader,
     required this.gateway,
     this.hlsPlaybackGateway = const FfiHlsPlaybackGateway(),
     this.playbackCapabilities = VideoPlaybackCapabilities.progressiveOnly,
     this.feedFlag = const FeedPipelineFlag(),
+    this.viewer = noSignedInViewer,
     this.rustFeedSourceBuilder = buildRustFeedSource,
   });
 
   factory ProductionVideoDeliveryEnvironment.production(
     Ndk ndk,
     AppSettings settings,
+    RustFeedViewer viewer,
   ) {
-    final mediaPolicy = PublicMediaAddressResolver();
     return ProductionVideoDeliveryEnvironment(
       canonicalSource: NdkVideoRemoteSource(
         NdkNostrVideoEventQuery(
@@ -99,18 +96,14 @@ class ProductionVideoDeliveryEnvironment {
         ),
       ),
       supportDirectoryProvider: getApplicationSupportDirectory,
-      downloader: HttpVideoFileDownloader(
-        createPublicMediaHttpClient(mediaPolicy),
-        mediaPolicy,
-      ),
       gateway: FfiVideoGateway(),
       playbackCapabilities: currentVideoPlayerPlaybackCapabilities(),
+      viewer: viewer,
     );
   }
 
   final RemoteVideoSource canonicalSource;
   final CacheDirectoryProvider supportDirectoryProvider;
-  final VideoFileDownloader downloader;
   final FfiVideoGateway gateway;
   final HlsPlaybackGatewayPort hlsPlaybackGateway;
   final VideoPlaybackCapabilities playbackCapabilities;
@@ -118,13 +111,18 @@ class ProductionVideoDeliveryEnvironment {
   /// Which discovery pipeline every feed path is built on (plan §5
   /// step 6). ndk until Rust reaches parity.
   final FeedPipelineFlag feedFlag;
-  final RustFeedSourceBuilder rustFeedSourceBuilder;
+
+  /// The account the viewer-scoped feeds belong to, re-read per request
+  /// so signing out — or in as another key — never keeps serving the
+  /// previous viewer's feed.
+  final RustFeedViewer viewer;
+  final RustFeedSourceFactory rustFeedSourceBuilder;
 }
 
 /// The Rust discovery pipeline over the generated feed FFI. Built only
 /// when [FeedPipelineFlag] asks for it.
-RemoteVideoSource buildRustFeedSource() {
-  return const RustFeedRemoteSource(port: FfiRustFeedPort());
+RemoteVideoSource buildRustFeedSource(RustFeedViewer viewer) {
+  return RustFeedRemoteSource(port: const FfiRustFeedPort(), viewer: viewer);
 }
 
 Future<ProductionVideoDelivery> buildProductionVideoDelivery(
@@ -134,18 +132,17 @@ Future<ProductionVideoDelivery> buildProductionVideoDelivery(
   if (!environment.playbackCapabilities.supportsAny) {
     return ProductionVideoDelivery.disabled();
   }
-  final infrastructure = await initializeProductionVideoDeliveryInfrastructure(
+  final gatewayResult = await initializeProductionVideoDeliveryInfrastructure(
     settings: settings,
     directoryProvider: environment.supportDirectoryProvider,
-    downloader: environment.downloader,
     gateway: environment.gateway,
   );
   final scheduler = RetrievalScheduler(
     maxConcurrent: settings.dataUsage.maxConcurrentRequests,
   );
-  logVideoGatewayFailure(infrastructure.gatewayResult);
+  logVideoGatewayFailure(gatewayResult);
   final hlsGateway = activeHlsGateway(
-    result: infrastructure.gatewayResult,
+    result: gatewayResult,
     gateway: environment.hlsPlaybackGateway,
     capabilities: environment.playbackCapabilities,
   );
@@ -156,12 +153,11 @@ Future<ProductionVideoDelivery> buildProductionVideoDelivery(
   // the retired native fallback no longer shadows the relay feed.
   final canonical = environment.feedFlag.select(
     ndk: environment.canonicalSource,
-    rust: environment.rustFeedSourceBuilder,
+    rust: () => environment.rustFeedSourceBuilder(environment.viewer),
   );
   final lean = _playable(canonical, capabilities);
   final source = buildRemoteVideoDeliverySource(primary: lean);
   return ProductionVideoDelivery(
-    infrastructure.inventory,
     ScheduledRemoteVideoSource(source: source, scheduler: scheduler),
     searchSource: ScheduledRemoteVideoSource(source: lean, scheduler: scheduler),
     discoverySource: lean,

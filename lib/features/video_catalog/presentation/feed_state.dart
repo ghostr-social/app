@@ -1,4 +1,5 @@
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
+import 'package:ghostr/features/video_catalog/domain/feed_roster.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 
 sealed class FeedState {
@@ -38,6 +39,17 @@ class FeedLoaded extends FeedState {
     );
   }
 
+  /// The state showing [roster]: its posts, with the viewer standing where
+  /// the roster left them.
+  factory FeedLoaded.of(FeedKind kind, FeedRoster roster, {String? notice}) {
+    return FeedLoaded(
+      kind,
+      roster.posts,
+      activeIndex: roster.activeIndex,
+      notice: notice,
+    );
+  }
+
   const FeedLoaded._(
     super.kind,
     this.posts,
@@ -48,6 +60,9 @@ class FeedLoaded extends FeedState {
   final List<VideoPost> posts;
   final int activeIndex;
   final String? notice;
+
+  /// What the viewer is scrolling through and where they are standing.
+  FeedRoster get roster => FeedRoster(posts, activeIndex: activeIndex);
 
   FeedLoaded withPage(int index) {
     return FeedLoaded(kind, posts, activeIndex: index, notice: notice);

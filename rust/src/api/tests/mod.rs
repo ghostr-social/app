@@ -7,6 +7,7 @@ mod feed_fixtures;
 mod feed_id_parse_test;
 mod feed_outcome_pump_test;
 mod feed_post_payload_test;
+mod feed_post_reference_test;
 mod feed_spec_parse_test;
 mod feed_state_blank_search_test;
 mod feed_state_exhaustion_test;

@@ -5,6 +5,8 @@ import 'package:ghostr/app/production_nostr_services.dart';
 import 'package:ghostr/app/production_video_catalog.dart';
 import 'package:ghostr/app/production_video_delivery.dart';
 import 'package:ghostr/app/production_video_playback.dart';
+import 'package:ghostr/core/errors/app_failure.dart';
+import 'package:ghostr/core/nostr/nostr_event_client.dart';
 import 'package:ghostr/core/storage/account_storage_scope.dart';
 import 'package:ghostr/features/activity/data/local_activity_repository.dart';
 import 'package:ghostr/features/activity/data/nostr_activity_repository.dart';
@@ -12,6 +14,7 @@ import 'package:ghostr/features/session/data/ndk_nostr_identity_deriver.dart';
 import 'package:ghostr/features/session/data/secure_session_repository.dart';
 import 'package:ghostr/features/settings/data/local_app_settings_repository.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
+import 'package:ghostr/features/video_catalog/data/rust_feed_remote_source.dart';
 import 'package:ghostr/features/watch_history/data/local_watch_history_repository.dart';
 import 'package:ghostr/platform/logging/developer_failure_reporter.dart';
 import 'package:ghostr/platform/media/image_picker_capabilities.dart';
@@ -30,7 +33,21 @@ typedef ProductionNostrServicesBuilder = ProductionNostrServices Function(
 typedef ProductionVideoDeliveryBuilder = Future<ProductionVideoDelivery>
     Function(AppSettings settings, ProductionNostrServices nostr);
 typedef ProductionVideoEnvironmentBuilder = ProductionVideoDeliveryEnvironment
-    Function(Ndk ndk, AppSettings settings);
+    Function(Ndk ndk, AppSettings settings, RustFeedViewer viewer);
+
+/// Reads the signed-in account on demand, reporting a signed-out app as
+/// a null viewer: the event client only says "no account" by throwing
+/// (ndk_nostr_event_client.dart), and the graph this feeds is composed
+/// once, before any session is restored.
+RustFeedViewer signedInViewer(NostrEventClient client) {
+  return () {
+    try {
+      return client.publicKeyHex;
+    } on AppFailure {
+      return null;
+    }
+  };
+}
 
 class ProductionDependenciesEnvironment {
   const ProductionDependenciesEnvironment({
@@ -49,7 +66,11 @@ class ProductionDependenciesEnvironment {
       videoDeliveryBuilder: (settings, nostr) {
         return buildProductionVideoDelivery(
           settings,
-          videoEnvironmentBuilder(nostr.ndk, settings),
+          videoEnvironmentBuilder(
+            nostr.ndk,
+            settings,
+            signedInViewer(nostr.eventClient),
+          ),
         );
       },
     );
@@ -122,7 +143,6 @@ AppDependencies composeProductionDependencies(
       capabilities: currentImagePickerCapabilities(),
     ),
     videoPlaybackPort: buildProductionVideoPlayback(delivery),
-    videoInventory: delivery.inventory,
     failureReporter: const DeveloperFailureReporter(),
   );
 }

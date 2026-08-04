@@ -26,6 +26,22 @@ void main() {
     expect(posts.single.id.value, secondTestEventId);
   });
 
+  // An addressable row with no `d` tag has no coordinate to like or
+  // comment on, so it is dropped rather than mapped onto its event id.
+  test('skips addressable rows that name no identifier', () async {
+    final port = FakeRustFeedPort(updates: [
+      rustFeedUpdate(revision: 1, posts: [
+        rustFeedPost(eventId: testEventId, eventKind: 34235),
+        rustFeedPost(eventId: secondTestEventId),
+      ]),
+    ]);
+    final source = RustFeedRemoteSource(port: port);
+
+    final posts = await source.loadRemoteFeed(searchQuery: 'ghost');
+
+    expect(posts.single.id.value, secondTestEventId);
+  });
+
   test('skips rows with an unknown delivery kind', () async {
     final port = FakeRustFeedPort(updates: [
       rustFeedUpdate(revision: 0),

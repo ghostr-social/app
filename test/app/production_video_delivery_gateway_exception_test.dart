@@ -5,7 +5,6 @@ import 'package:ghostr/app/production_video_delivery.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
 
 import '../support/fake_remote_video_source.dart';
-import '../support/fake_video_file_downloader.dart';
 import '../support/stub_video_gateways.dart';
 
 void main() {
@@ -20,7 +19,6 @@ void main() {
       ProductionVideoDeliveryEnvironment(
         canonicalSource: FakeRemoteVideoSource([]),
         supportDirectoryProvider: () async => root,
-        downloader: FakeVideoFileDownloader({}),
         gateway: failingVideoGateway(),
       ),
     );

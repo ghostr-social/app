@@ -1,1 +1,0 @@
-enum VideoCachePriority { background, foreground }

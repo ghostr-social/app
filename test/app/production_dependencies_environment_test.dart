@@ -10,7 +10,6 @@ import '../support/fake_nostr_session_port.dart';
 import '../support/fake_nostr_social_port.dart';
 import '../support/fake_nostr_video_publisher_port.dart';
 import '../support/fake_remote_video_source.dart';
-import '../support/fake_video_file_downloader.dart';
 import '../support/ndk_mocks.dart';
 import '../support/nostr_test_values.dart';
 import '../support/stub_video_gateways.dart';
@@ -23,11 +22,10 @@ void main() {
     final videoEnvironment = ProductionVideoDeliveryEnvironment(
       canonicalSource: FakeRemoteVideoSource([]),
       supportDirectoryProvider: () async => root,
-      downloader: FakeVideoFileDownloader({}),
       gateway: startedVideoGateway(),
     );
     final environment = ProductionDependenciesEnvironment.production(
-      videoEnvironmentBuilder: (_, __) => videoEnvironment,
+      videoEnvironmentBuilder: (_, __, ___) => videoEnvironment,
     );
     final services = ProductionNostrServices(
       MockNdk(),

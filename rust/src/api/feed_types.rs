@@ -53,6 +53,13 @@ pub struct FfiFeedMedia {
 pub struct FfiFeedPost {
     pub post_id: String,
     pub event_id: String,
+    /// The Nostr kind of `event_id`. Named apart from `FfiFeedSpec.kind`
+    /// (a feed shape) and `FfiDeliveryEvent.kind` (an event type); with
+    /// `identifier` it completes the reference Dart's social writes
+    /// address.
+    pub event_kind: u16,
+    /// The addressable `d` tag, present exactly for kinds 30000-39999.
+    pub identifier: Option<String>,
     /// Unix seconds of the post's newest event.
     pub created_at: u64,
     pub caption: String,

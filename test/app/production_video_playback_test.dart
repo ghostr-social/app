@@ -8,13 +8,11 @@ import 'package:ghostr/platform/media/hls_video_playback_port.dart';
 
 import '../support/fake_hls_playback_gateway.dart';
 import '../support/fake_remote_video_source.dart';
-import '../support/fake_video_inventory.dart';
 import '../support/test_video_delivery.dart';
 
 void main() {
   test('wraps gateway playback with HLS acquisition when available', () {
     final delivery = testVideoDelivery(
-      inventory: FakeVideoInventory(),
       remoteSource: FakeRemoteVideoSource([]),
       hlsPlaybackGateway: FakeHlsPlaybackGateway(),
       playbackCapabilities: VideoPlaybackCapabilities.progressiveAndHls,
@@ -27,7 +25,6 @@ void main() {
 
   test('streams progressive playback from the loopback gateway', () {
     final delivery = testVideoDelivery(
-      inventory: FakeVideoInventory(),
       remoteSource: FakeRemoteVideoSource([]),
     );
 
@@ -38,7 +35,6 @@ void main() {
 
   test('does not trust an HLS gateway without player capability', () {
     final delivery = testVideoDelivery(
-      inventory: FakeVideoInventory(),
       remoteSource: FakeRemoteVideoSource([]),
       hlsPlaybackGateway: FakeHlsPlaybackGateway(),
     );
@@ -51,7 +47,6 @@ void main() {
   testWidgets('renders a stable surface when the platform has no player',
       (tester) async {
     final delivery = testVideoDelivery(
-      inventory: FakeVideoInventory(),
       remoteSource: FakeRemoteVideoSource([]),
       playbackCapabilities: VideoPlaybackCapabilities.none,
     );

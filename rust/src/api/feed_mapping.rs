@@ -63,6 +63,8 @@ pub(crate) fn feed_post(post: &ParsedVideoPost, creator: CreatorProfile) -> FfiF
     FfiFeedPost {
         post_id: post_gateway_id(post),
         event_id: post.event_id.clone(),
+        event_kind: post.kind,
+        identifier: post.identifier.clone(),
         created_at: post.created_at,
         caption: post.caption.clone(),
         hashtags: post.hashtags.clone(),

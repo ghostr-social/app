@@ -11,7 +11,6 @@ import '../support/fake_nostr_session_port.dart';
 import '../support/fake_nostr_social_port.dart';
 import '../support/fake_nostr_video_publisher_port.dart';
 import '../support/fake_remote_video_source.dart';
-import '../support/fake_video_inventory.dart';
 import '../support/ndk_mocks.dart';
 import '../support/test_video_delivery.dart';
 import '../support/nostr_test_values.dart';
@@ -33,7 +32,6 @@ void main() {
       preferencesLoader: () async => preferences,
       nostrServicesBuilder: (_) => nostr,
       videoDeliveryBuilder: (_, __) async => testVideoDelivery(
-        inventory: FakeVideoInventory(),
         remoteSource: FakeRemoteVideoSource([]),
       ),
     );

@@ -98,6 +98,15 @@ class FfiFeedPost {
   final String postId;
   final String eventId;
 
+  /// The Nostr kind of `event_id`. Named apart from `FfiFeedSpec.kind`
+  /// (a feed shape) and `FfiDeliveryEvent.kind` (an event type); with
+  /// `identifier` it completes the reference Dart's social writes
+  /// address.
+  final int eventKind;
+
+  /// The addressable `d` tag, present exactly for kinds 30000-39999.
+  final String? identifier;
+
   /// Unix seconds of the post's newest event.
   final BigInt createdAt;
   final String caption;
@@ -108,6 +117,8 @@ class FfiFeedPost {
   const FfiFeedPost({
     required this.postId,
     required this.eventId,
+    required this.eventKind,
+    this.identifier,
     required this.createdAt,
     required this.caption,
     required this.hashtags,
@@ -119,6 +130,8 @@ class FfiFeedPost {
   int get hashCode =>
       postId.hashCode ^
       eventId.hashCode ^
+      eventKind.hashCode ^
+      identifier.hashCode ^
       createdAt.hashCode ^
       caption.hashCode ^
       hashtags.hashCode ^
@@ -132,6 +145,8 @@ class FfiFeedPost {
           runtimeType == other.runtimeType &&
           postId == other.postId &&
           eventId == other.eventId &&
+          eventKind == other.eventKind &&
+          identifier == other.identifier &&
           createdAt == other.createdAt &&
           caption == other.caption &&
           hashtags == other.hashtags &&

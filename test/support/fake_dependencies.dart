@@ -10,7 +10,6 @@ import 'fake_app_settings_repository.dart';
 import 'fake_media_ports.dart';
 import 'fake_session_repository.dart';
 import 'fake_video_catalog_repository.dart';
-import 'fake_video_inventory.dart';
 import 'fake_watch_history_repository.dart';
 import 'recording_failure_reporter.dart';
 
@@ -39,7 +38,6 @@ AppDependencies buildFakeDependencies({
     watchHistoryRepository: watchHistory ?? FakeWatchHistoryRepository(),
     mediaPickerPort: device.mediaPicker ?? FakeMediaPickerPort(),
     videoPlaybackPort: device.playback ?? FakeVideoPlaybackPort(),
-    videoInventory: FakeVideoInventory(),
     failureReporter: RecordingFailureReporter(),
   );
 }

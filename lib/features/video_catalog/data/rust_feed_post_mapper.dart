@@ -2,6 +2,8 @@ import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/errors/boundary_failure.dart';
 import 'package:ghostr/core/media/video_media_metadata.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
+import 'package:ghostr/core/nostr/nostr_event_identity.dart';
+import 'package:ghostr/features/video_catalog/domain/nostr_event_reference.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
@@ -36,9 +38,7 @@ class RustFeedPostMapper {
       identity: VideoPostIdentity(
         id: VideoPostId.parse(post.eventId),
         creator: _creator(post.creator),
-        // Kind and identifier do not cross the feed FFI yet; social
-        // interactions rejoin the Rust rows in a later phase-2 step.
-        nostrReference: null,
+        nostrReference: _reference(post),
       ),
       content: VideoPostContent(
         caption: post.caption,
@@ -49,12 +49,37 @@ class RustFeedPostMapper {
         publishedAt: _publishedAt(post.createdAt),
         hashtags: List<String>.unmodifiable(post.hashtags),
       ),
+      // Rust aggregates no reactions: the counts stay at the ndk
+      // mapper's zero baseline and NostrVideoInteractions.hydrateAll
+      // fills them in from the relays, keyed by the reference above.
       metrics: VideoPostMetrics(
         likeCount: 0,
         commentCount: 0,
         viewerHasLiked: false,
       ),
     );
+  }
+
+  /// The event a like, a comment or a report addresses. Parity spec:
+  /// nostr_video_event_mapper.dart `_reference`.
+  NostrEventReference _reference(FfiFeedPost post) {
+    return NostrEventReference(
+      eventId: NostrEventId.parse(post.eventId),
+      authorPublicKeyHex: NostrPublicKeyHex.parse(post.creator.pubkey),
+      kind: NostrEventKind.parse(post.eventKind),
+      identifier: _identifier(post),
+    );
+  }
+
+  /// Addressable rows must name their `d` tag or the coordinate a
+  /// social write targets would silently degrade to the event id.
+  NostrEventIdentifier? _identifier(FfiFeedPost post) {
+    if (post.eventKind < 30000 || post.eventKind >= 40000) return null;
+    final value = post.identifier;
+    if (value == null) {
+      throw const AppFailure('Addressable Nostr video has no identifier.');
+    }
+    return NostrEventIdentifier.parse(value);
   }
 
   /// Display fields come from the Rust profile store, which mirrors

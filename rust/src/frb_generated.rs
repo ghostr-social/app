@@ -777,6 +777,8 @@ impl SseDecode for crate::api::feed_types::FfiFeedPost {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_postId = <String>::sse_decode(deserializer);
         let mut var_eventId = <String>::sse_decode(deserializer);
+        let mut var_eventKind = <u16>::sse_decode(deserializer);
+        let mut var_identifier = <Option<String>>::sse_decode(deserializer);
         let mut var_createdAt = <u64>::sse_decode(deserializer);
         let mut var_caption = <String>::sse_decode(deserializer);
         let mut var_hashtags = <Vec<String>>::sse_decode(deserializer);
@@ -785,6 +787,8 @@ impl SseDecode for crate::api::feed_types::FfiFeedPost {
         return crate::api::feed_types::FfiFeedPost {
             post_id: var_postId,
             event_id: var_eventId,
+            event_kind: var_eventKind,
+            identifier: var_identifier,
             created_at: var_createdAt,
             caption: var_caption,
             hashtags: var_hashtags,
@@ -1072,6 +1076,13 @@ impl SseDecode for Option<u64> {
     }
 }
 
+impl SseDecode for u16 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_u16::<NativeEndian>().unwrap()
+    }
+}
+
 impl SseDecode for u32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1305,6 +1316,8 @@ impl flutter_rust_bridge::IntoDart for crate::api::feed_types::FfiFeedPost {
         [
             self.post_id.into_into_dart().into_dart(),
             self.event_id.into_into_dart().into_dart(),
+            self.event_kind.into_into_dart().into_dart(),
+            self.identifier.into_into_dart().into_dart(),
             self.created_at.into_into_dart().into_dart(),
             self.caption.into_into_dart().into_dart(),
             self.hashtags.into_into_dart().into_dart(),
@@ -1663,6 +1676,8 @@ impl SseEncode for crate::api::feed_types::FfiFeedPost {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.post_id, serializer);
         <String>::sse_encode(self.event_id, serializer);
+        <u16>::sse_encode(self.event_kind, serializer);
+        <Option<String>>::sse_encode(self.identifier, serializer);
         <u64>::sse_encode(self.created_at, serializer);
         <String>::sse_encode(self.caption, serializer);
         <Vec<String>>::sse_encode(self.hashtags, serializer);
@@ -1867,6 +1882,13 @@ impl SseEncode for Option<u64> {
         if let Some(value) = self {
             <u64>::sse_encode(value, serializer);
         }
+    }
+}
+
+impl SseEncode for u16 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_u16::<NativeEndian>(self).unwrap();
     }
 }
 

@@ -9,7 +9,6 @@ import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 
 import '../support/fake_hls_playback_gateway.dart';
 import '../support/fake_remote_video_source.dart';
-import '../support/fake_video_file_downloader.dart';
 import '../support/sample_data.dart';
 import '../support/stub_video_gateways.dart';
 
@@ -68,7 +67,6 @@ Future<ProductionVideoDelivery> _build(
     ProductionVideoDeliveryEnvironment(
       canonicalSource: FakeRemoteVideoSource(posts),
       supportDirectoryProvider: () async => root,
-      downloader: FakeVideoFileDownloader({}),
       gateway: startedVideoGateway(),
       hlsPlaybackGateway: hlsGateway,
       playbackCapabilities: capabilities,

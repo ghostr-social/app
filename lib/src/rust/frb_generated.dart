@@ -709,16 +709,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   FfiFeedPost dco_decode_ffi_feed_post(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 7)
-      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
+    if (arr.length != 9)
+      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
     return FfiFeedPost(
       postId: dco_decode_String(arr[0]),
       eventId: dco_decode_String(arr[1]),
-      createdAt: dco_decode_u_64(arr[2]),
-      caption: dco_decode_String(arr[3]),
-      hashtags: dco_decode_list_String(arr[4]),
-      creator: dco_decode_ffi_feed_creator(arr[5]),
-      media: dco_decode_ffi_feed_media(arr[6]),
+      eventKind: dco_decode_u_16(arr[2]),
+      identifier: dco_decode_opt_String(arr[3]),
+      createdAt: dco_decode_u_64(arr[4]),
+      caption: dco_decode_String(arr[5]),
+      hashtags: dco_decode_list_String(arr[6]),
+      creator: dco_decode_ffi_feed_creator(arr[7]),
+      media: dco_decode_ffi_feed_media(arr[8]),
     );
   }
 
@@ -915,6 +917,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int dco_decode_u_16(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
   int dco_decode_u_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
@@ -1086,6 +1094,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_postId = sse_decode_String(deserializer);
     var var_eventId = sse_decode_String(deserializer);
+    var var_eventKind = sse_decode_u_16(deserializer);
+    var var_identifier = sse_decode_opt_String(deserializer);
     var var_createdAt = sse_decode_u_64(deserializer);
     var var_caption = sse_decode_String(deserializer);
     var var_hashtags = sse_decode_list_String(deserializer);
@@ -1094,6 +1104,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return FfiFeedPost(
         postId: var_postId,
         eventId: var_eventId,
+        eventKind: var_eventKind,
+        identifier: var_identifier,
         createdAt: var_createdAt,
         caption: var_caption,
         hashtags: var_hashtags,
@@ -1338,6 +1350,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int sse_decode_u_16(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint16();
+  }
+
+  @protected
   int sse_decode_u_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint32();
@@ -1499,6 +1517,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.postId, serializer);
     sse_encode_String(self.eventId, serializer);
+    sse_encode_u_16(self.eventKind, serializer);
+    sse_encode_opt_String(self.identifier, serializer);
     sse_encode_u_64(self.createdAt, serializer);
     sse_encode_String(self.caption, serializer);
     sse_encode_list_String(self.hashtags, serializer);
@@ -1687,6 +1707,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     if (self != null) {
       sse_encode_box_autoadd_u_64(self, serializer);
     }
+  }
+
+  @protected
+  void sse_encode_u_16(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint16(self);
   }
 
   @protected

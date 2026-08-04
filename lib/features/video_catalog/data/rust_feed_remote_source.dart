@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:ghostr/core/errors/app_failure.dart';
+import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_port.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_post_mapper.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_spec_builder.dart';
@@ -20,6 +21,15 @@ const _pageDeadline = Duration(seconds: 6);
 /// problem as this one failure.
 const _feedFailure = AppFailure('Could not load Nostr videos.');
 
+/// Who is signed in right now, or null while signed out. Read once per
+/// request and never captured: the app graph is composed before any
+/// session is restored and outlives every sign-out, so a captured key
+/// would serve the previous account's feed forever.
+typedef RustFeedViewer = NostrPublicKeyHex? Function();
+
+/// The viewer of a build that has no session of its own.
+NostrPublicKeyHex? noSignedInViewer() => null;
+
 /// Serves the pull-shaped [RemoteVideoSource] the app already speaks
 /// from the Rust engine's push-shaped feeds (plan §5): open the feed
 /// named by the request, take the newest snapshot it publishes, and
@@ -27,16 +37,16 @@ const _feedFailure = AppFailure('Could not load Nostr videos.');
 final class RustFeedRemoteSource implements RemoteVideoSource {
   const RustFeedRemoteSource({
     required RustFeedPort port,
-    String? viewerPubkeyHex,
+    RustFeedViewer viewer = noSignedInViewer,
     RustFeedPostMapper mapper = const RustFeedPostMapper(),
     Duration deadline = _pageDeadline,
   })  : _port = port,
-        _viewerPubkeyHex = viewerPubkeyHex,
+        _viewer = viewer,
         _mapper = mapper,
         _deadline = deadline;
 
   final RustFeedPort _port;
-  final String? _viewerPubkeyHex;
+  final RustFeedViewer _viewer;
   final RustFeedPostMapper _mapper;
   final Duration _deadline;
 
@@ -47,14 +57,32 @@ final class RustFeedRemoteSource implements RemoteVideoSource {
     Set<String>? hashtags,
     DateTime? olderThan,
   }) {
+    final viewer = _viewer();
+    if (viewer == null && _viewerScoped(creatorIds, searchQuery, hashtags)) {
+      return Future.value(const <VideoPost>[]);
+    }
     final spec = buildRustFeedSpec(
       creatorIds: creatorIds,
       searchQuery: searchQuery,
       hashtags: hashtags,
-      viewerPubkeyHex: _viewerPubkeyHex,
+      viewerPubkeyHex: viewer?.value,
     );
     if (spec == null) return Future.value(const <VideoPost>[]);
     return _load(spec, olderThan);
+  }
+
+  /// A request naming no search, tag, or creator falls through to the
+  /// viewer's main feed (rust_feed_spec_builder.dart), which Rust
+  /// scopes to a signed-in key. ndk parity: that feed never fails when
+  /// signed out (it stays an unscoped relay query), so the closest
+  /// non-failing behavior here is an empty page.
+  bool _viewerScoped(
+    Set<ProfileId>? creatorIds,
+    String? searchQuery,
+    Set<String>? hashtags,
+  ) {
+    final tagged = hashtags != null && hashtags.isNotEmpty;
+    return !tagged && creatorIds == null && searchQuery == null;
   }
 
   Future<List<VideoPost>> _load(FfiFeedSpec spec, DateTime? olderThan) async {

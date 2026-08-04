@@ -4,44 +4,19 @@
 
 use crate::api::feed_mapping::{feed_post, post_gateway_id};
 use crate::api::focus_mapping::validate_post_id;
+use crate::api::tests::support::{creator_profile, parsed_video_post};
 use crate::discovery::event_parsing::ParsedVideoPost;
-use crate::discovery::profile_store::CreatorProfile;
-use crate::engine::{DeliveryKind, VideoMeta};
+use crate::engine::DeliveryKind;
 
 fn post(delivery: DeliveryKind) -> ParsedVideoPost {
-    ParsedVideoPost {
-        event_id: "e1".to_owned(),
-        author_pubkey: "a1".to_owned(),
-        kind: 34235,
-        identifier: Some("clip".to_owned()),
-        created_at: 77,
-        caption: "sunset ride".to_owned(),
-        title: None,
-        hashtags: vec!["sunset".to_owned()],
-        dimensions: Some((608, 1080)),
-        blurhash: Some("LKO2".to_owned()),
-        thumbnail_url: Some("https://cdn.example/t.jpg".to_owned()),
-        meta: VideoMeta {
-            urls: vec!["https://cdn.example/v.mp4".to_owned()],
-            delivery,
-            sha256: Some("ff".repeat(32)),
-            size_bytes: Some(9),
-            duration_ms: Some(2_000),
-        },
-    }
-}
-
-fn creator() -> CreatorProfile {
-    CreatorProfile {
-        display_name: "Vera".to_owned(),
-        handle: "@npub1vera".to_owned(),
-        avatar_url: Some("https://cdn.example/a.png".to_owned()),
-    }
+    let mut post = parsed_video_post(34_235, Some("clip"));
+    post.meta.delivery = delivery;
+    post
 }
 
 #[test]
 fn every_row_field_is_carried_over() {
-    let row = feed_post(&post(DeliveryKind::Progressive), creator());
+    let row = feed_post(&post(DeliveryKind::Progressive), creator_profile());
     assert_eq!(row.event_id, "e1");
     assert_eq!(row.created_at, 77);
     assert_eq!(row.caption, "sunset ride");
@@ -61,13 +36,13 @@ fn every_row_field_is_carried_over() {
 
 #[test]
 fn hls_delivery_round_trips_the_v1_focus_vocabulary() {
-    let row = feed_post(&post(DeliveryKind::Hls), creator());
+    let row = feed_post(&post(DeliveryKind::Hls), creator_profile());
     assert_eq!(row.media.delivery, "hls");
 }
 
 #[test]
 fn post_ids_are_gateway_safe_and_stable_per_coordinate() {
-    let row = feed_post(&post(DeliveryKind::Progressive), creator());
+    let row = feed_post(&post(DeliveryKind::Progressive), creator_profile());
     validate_post_id(&row.post_id).expect("gateway-safe id");
     let mut revision = post(DeliveryKind::Progressive);
     revision.event_id = "e2".to_owned();

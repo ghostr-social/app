@@ -2,47 +2,22 @@ import 'dart:io';
 
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
-import 'package:ghostr/features/video_inventory/data/smart_video_inventory.dart';
-import 'package:ghostr/features/video_inventory/domain/video_file_downloader.dart';
-import 'package:ghostr/features/video_inventory/domain/video_inventory_port.dart';
 import 'package:ghostr/platform/media/cache_directory_provider.dart';
 import 'package:ghostr/platform/media/ffi_video_gateway.dart';
-import 'package:ghostr/platform/media/file_video_cache_store.dart';
 import 'package:ghostr/platform/media/native_video_cache_directory.dart';
 
-/// The legacy Dart store keeps no budget: the Rust engine owns the
-/// full user budget, and a zero-byte cap drains files cached before
-/// the migration. The store itself dies in phase 3.
-const int _legacyDartCacheBytes = 0;
-
-final class ProductionVideoDeliveryInfrastructure {
-  const ProductionVideoDeliveryInfrastructure({
-    required this.inventory,
-    required this.gatewayResult,
-  });
-
-  final VideoInventoryPort inventory;
-  final VideoGatewayStartResult gatewayResult;
-}
-
-Future<ProductionVideoDeliveryInfrastructure>
-    initializeProductionVideoDeliveryInfrastructure({
+/// Prepares the on-disk media partitions and starts the Rust engine.
+///
+/// The Dart download stack is retired (plan §6), so the only inventory
+/// left is the engine's own.
+Future<VideoGatewayStartResult> initializeProductionVideoDeliveryInfrastructure({
   required AppSettings settings,
   required CacheDirectoryProvider directoryProvider,
-  required VideoFileDownloader downloader,
   required FfiVideoGateway gateway,
 }) async {
   final directories = _VideoDeliveryDirectories(await directoryProvider());
-  final inventory = await _buildInventory(directories.dartCache, downloader);
-  final result = await _startNativeDelivery(
-    settings,
-    directories.nativeCache,
-    gateway,
-  );
-  return ProductionVideoDeliveryInfrastructure(
-    inventory: inventory,
-    gatewayResult: result,
-  );
+  await _removeRetiredDartCache(directories.dartCache);
+  return _startNativeDelivery(settings, directories.nativeCache, gateway);
 }
 
 Future<VideoGatewayStartResult> _startNativeDelivery(
@@ -58,21 +33,18 @@ Future<VideoGatewayStartResult> _startNativeDelivery(
   }
 }
 
-Future<VideoInventoryPort> _buildInventory(
-  Directory directory,
-  VideoFileDownloader downloader,
-) async {
-  final store = FileVideoCacheStore(
-    directoryProvider: () async => directory,
-    downloader: downloader,
-    maxBytes: _legacyDartCacheBytes,
-  );
-  await store.initialize();
-  return SmartVideoInventory(
-    store: store,
-    maxParallelDownloads: 3,
-    maxPreparedVideos: 8,
-  );
+/// Nothing drains the pre-migration Dart partition now that its store is
+/// deleted, so startup reclaims it once and for all. A device that
+/// refuses the delete must still reach playback: the engine caches
+/// elsewhere.
+Future<void> _removeRetiredDartCache(Directory directory) async {
+  try {
+    if (await directory.exists()) {
+      await directory.delete(recursive: true);
+    }
+  } on FileSystemException {
+    return;
+  }
 }
 
 final class _VideoDeliveryDirectories {

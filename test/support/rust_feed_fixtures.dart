@@ -1,5 +1,9 @@
+import 'package:ghostr/core/nostr/nostr_event_identity.dart';
+import 'package:ghostr/features/video_catalog/data/rust_feed_remote_source.dart';
+import 'package:ghostr/features/video_catalog/domain/remote_video_source.dart';
 import 'package:ghostr/src/rust/api/feed_types.dart';
 
+import 'fake_rust_feed_port.dart';
 import 'nostr_test_values.dart';
 
 FfiFeedCreator rustFeedCreator({
@@ -35,6 +39,8 @@ FfiFeedMedia rustFeedMedia({
 FfiFeedPost rustFeedPost({
   String postId = 'a1b2c3',
   String eventId = testEventId,
+  int eventKind = 22,
+  String? identifier,
   int createdAt = 1754000000,
   String caption = 'A relay-side banger',
   List<String> hashtags = const <String>[],
@@ -44,6 +50,8 @@ FfiFeedPost rustFeedPost({
   return FfiFeedPost(
     postId: postId,
     eventId: eventId,
+    eventKind: eventKind,
+    identifier: identifier,
     createdAt: BigInt.from(createdAt),
     caption: caption,
     hashtags: hashtags,
@@ -61,5 +69,16 @@ FfiFeedUpdate rustFeedUpdate({
     feedId: feedId,
     revision: BigInt.from(revision),
     posts: posts,
+  );
+}
+
+/// A signed-in Rust discovery source whose first page is exactly
+/// [posts] — what the app runs on with FeedPipelineMode.rust.
+RemoteVideoSource rustFeedSourceServing(List<FfiFeedPost> posts) {
+  return RustFeedRemoteSource(
+    port: FakeRustFeedPort(
+      updates: <FfiFeedUpdate>[rustFeedUpdate(revision: 1, posts: posts)],
+    ),
+    viewer: () => NostrPublicKeyHex.parse(testViewerPublicKey),
   );
 }

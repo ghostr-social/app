@@ -7,7 +7,6 @@ import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/video_catalog/domain/remote_video_source.dart';
 
 import '../support/fake_remote_video_source.dart';
-import '../support/fake_video_file_downloader.dart';
 import '../support/sample_data.dart';
 import '../support/stub_video_gateways.dart';
 
@@ -17,10 +16,9 @@ Future<ProductionVideoDelivery> buildWithFlag(FeedPipelineFlag flag) async {
   final environment = ProductionVideoDeliveryEnvironment(
     canonicalSource: FakeRemoteVideoSource([samplePost(id: 'ndk-post')]),
     supportDirectoryProvider: () async => root,
-    downloader: FakeVideoFileDownloader({}),
     gateway: startedVideoGateway(),
     feedFlag: flag,
-    rustFeedSourceBuilder: () =>
+    rustFeedSourceBuilder: (_) =>
         FakeRemoteVideoSource([samplePost(id: 'rust-post')]),
   );
   return buildProductionVideoDelivery(AppSettings.defaults(), environment);
