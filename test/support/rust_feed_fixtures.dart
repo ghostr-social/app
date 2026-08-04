@@ -63,14 +63,21 @@ FfiFeedPost rustFeedPost({
 FfiFeedUpdate rustFeedUpdate({
   String feedId = '7',
   int revision = 0,
+  FfiFeedStage stage = FfiFeedStage.settled,
   List<FfiFeedPost> posts = const <FfiFeedPost>[],
 }) {
   return FfiFeedUpdate(
     feedId: feedId,
     revision: BigInt.from(revision),
+    stage: stage,
     posts: posts,
   );
 }
+
+/// The snapshot every subscription opens with: the feed exists, its
+/// first page is still in flight (rust/src/api/feed_updates_stream.rs).
+FfiFeedUpdate rustFeedBaseline() =>
+    rustFeedUpdate(stage: FfiFeedStage.loading);
 
 /// A signed-in Rust discovery source whose first page is exactly
 /// [posts] — what the app runs on with FeedPipelineMode.rust.

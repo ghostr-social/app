@@ -5,7 +5,8 @@
 
 use crate::api::feed_decisions::{LoadMoreAction, LoadMoreDecision, OpenDispatch};
 use crate::api::feed_mapping::{feed_post, resolved_creator};
-use crate::api::feed_types::FfiFeedPost;
+use crate::api::feed_progress::FeedProgress;
+use crate::api::feed_types::{FfiFeedPost, FfiFeedStage};
 use crate::discovery::event_parsing::{video_post_from_event, ParsedVideoPost};
 use crate::discovery::feed_spec::FeedSpec;
 use crate::discovery::feed_store::{FeedId, FeedStore};
@@ -14,21 +15,13 @@ use crate::discovery::profile_store::ProfileStore;
 use crate::discovery::retrieval_queue::FeedContext;
 use crate::discovery::social_graph::SocialGraph;
 use flutter_rust_bridge::frb;
-use nostr_sdk::{Event, Keys, Timestamp};
+use nostr_sdk::{Event, Keys, PublicKey, Timestamp};
 use std::collections::HashMap;
 use tokio::sync::watch;
 
-#[derive(Debug)]
-struct FeedProgress {
-    context: FeedContext,
-    first_loaded: bool,
-    awaiting_first: bool,
-    awaiting_more: bool,
-}
-
-/// Every open feed plus the shared profile store and social graph.
-/// The graph follows the most recent main-feed viewer; until one opens
-/// it belongs to a throwaway session key, so nothing is ever muted.
+/// Every open feed plus the shared profile store and social graph. The
+/// graph belongs to the newest signed-in main-feed viewer; a throwaway
+/// key stands in until one opens, so nothing is muted or follow-routed.
 #[frb(ignore)]
 #[derive(Debug)]
 pub(crate) struct FeedState {
@@ -55,15 +48,9 @@ impl FeedState {
         let feed = self.store.open_feed(spec.clone());
         let context = FeedContext::new(format!("feed-{}", feed.0));
         let dispatch = spec
-            .page_request(None)
+            .page_request(None, &self.graph)
             .map(|request| OpenDispatch { context: context.clone(), request });
-        let progress = FeedProgress {
-            context,
-            first_loaded: false,
-            awaiting_first: dispatch.is_some(),
-            awaiting_more: false,
-        };
-        self.feeds.insert(feed, progress);
+        self.feeds.insert(feed, FeedProgress::new(context, dispatch.is_some()));
         (feed, dispatch)
     }
 
@@ -87,7 +74,7 @@ impl FeedState {
         let Some(progress) = self.feeds.get(&feed) else {
             return LoadMoreDecision::finished();
         };
-        if progress.awaiting_first || progress.awaiting_more {
+        if progress.is_awaiting() {
             return LoadMoreDecision::wait();
         }
         let context = progress.context.clone();
@@ -110,6 +97,14 @@ impl FeedState {
         }
     }
 
+    /// How far the feed's current page got; a feed nobody opened has
+    /// nothing left in flight.
+    pub(crate) fn stage(&self, feed: FeedId) -> FfiFeedStage {
+        self.feeds
+            .get(&feed)
+            .map_or(FfiFeedStage::Settled, FeedProgress::stage)
+    }
+
     /// The feed's visible rows, newest first, creators resolved.
     pub(crate) fn snapshot(&self, feed: FeedId) -> Vec<FfiFeedPost> {
         self.store
@@ -119,19 +114,30 @@ impl FeedState {
             .collect()
     }
 
-    /// A signed-out main feed has no viewer graph to adopt (feed_spec.rs).
+    /// Ingests the viewer's own lists (kind-3 follows, kind-10000
+    /// mutes) from one retrieval; a replaced follow set comes back so
+    /// the caller can re-route by it.
+    pub(crate) fn ingest_social(&mut self, events: &[Event]) -> Option<Vec<PublicKey>> {
+        self.graph.ingest_all(events).then(|| self.graph.follow_list())
+    }
+
+    /// A signed-out main feed has no viewer graph to adopt
+    /// (feed_spec.rs); re-adopting the same viewer keeps the follows and
+    /// mutes already ingested for them.
     fn adopt_viewer(&mut self, spec: &FeedSpec) {
         if let FeedSpec::MainFeed { viewer: Some(viewer) } = spec {
-            self.graph = SocialGraph::new(*viewer);
+            if !self.graph.belongs_to(viewer) {
+                self.graph = SocialGraph::new(*viewer);
+            }
         }
     }
 
     fn reopen(&mut self, feed: FeedId, context: FeedContext) -> LoadMoreDecision {
-        let request = self.store.spec(feed).and_then(|spec| spec.page_request(None));
-        let Some(request) = request else {
+        let spec = self.store.spec(feed);
+        let Some(request) = spec.and_then(|spec| spec.page_request(None, &self.graph)) else {
             return LoadMoreDecision::finished();
         };
-        self.mark(feed, |progress| progress.awaiting_first = true);
+        self.mark(feed, FeedProgress::await_first);
         LoadMoreDecision {
             may_have_more: true,
             action: LoadMoreAction::Reopen(OpenDispatch { context, request }),
@@ -147,48 +153,43 @@ impl FeedState {
         let Some(cursor) = self.store.begin_load_more(feed) else {
             return LoadMoreDecision::finished();
         };
-        self.mark(feed, |progress| progress.awaiting_more = true);
+        self.mark(feed, FeedProgress::await_more);
         LoadMoreDecision {
             may_have_more: true,
             action: LoadMoreAction::Older { context, older_than: explicit.unwrap_or(cursor) },
         }
     }
 
+    /// The store notifies for the rows; the stage moving out of
+    /// `Loading` is a snapshot change of its own, so a page that added
+    /// nothing still publishes a revision.
     fn ingest_page(&mut self, feed: FeedId, events: &[Event]) {
         for event in events {
             self.profiles.ingest(event);
         }
         let posts: Vec<ParsedVideoPost> = events.iter().filter_map(video_post_from_event).collect();
-        if self.first_loaded(feed) {
-            self.store.ingest_older_page(feed, posts, &self.graph);
+        let published = if self.feeds.get(&feed).is_some_and(|it| it.first_loaded) {
+            self.store.ingest_older_page(feed, posts, &self.graph)
         } else {
             self.store.ingest_first_page(feed, posts, &self.graph);
+            true
+        };
+        self.mark(feed, FeedProgress::record_page);
+        if !published {
+            self.store.touch(feed);
         }
-        self.mark(feed, |progress| {
-            progress.first_loaded = true;
-            progress.awaiting_first = false;
-            progress.awaiting_more = false;
-        });
     }
 
     fn record_failure(&mut self, feed: FeedId) {
         self.store.fail_load_more(feed);
-        self.mark(feed, |progress| {
-            progress.awaiting_first = false;
-            progress.awaiting_more = false;
-        });
+        self.mark(feed, FeedProgress::record_failure);
+        self.store.touch(feed);
     }
 
     fn feed_for(&self, context: &FeedContext) -> Option<FeedId> {
         self.feeds
             .iter()
             .find_map(|(feed, progress)| (progress.context == *context).then_some(*feed))
-    }
-
-    fn first_loaded(&self, feed: FeedId) -> bool {
-        self.feeds
-            .get(&feed)
-            .is_some_and(|progress| progress.first_loaded)
     }
 
     fn mark(&mut self, feed: FeedId, update: impl FnOnce(&mut FeedProgress)) {

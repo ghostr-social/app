@@ -803,11 +803,26 @@ impl SseDecode for crate::api::feed_types::FfiFeedSpec {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_kind = <String>::sse_decode(deserializer);
         let mut var_value = <Option<String>>::sse_decode(deserializer);
+        let mut var_creators = <Vec<String>>::sse_decode(deserializer);
         let mut var_viewerPubkey = <Option<String>>::sse_decode(deserializer);
         return crate::api::feed_types::FfiFeedSpec {
             kind: var_kind,
             value: var_value,
+            creators: var_creators,
             viewer_pubkey: var_viewerPubkey,
+        };
+    }
+}
+
+impl SseDecode for crate::api::feed_types::FfiFeedStage {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::feed_types::FfiFeedStage::Loading,
+            1 => crate::api::feed_types::FfiFeedStage::Settled,
+            2 => crate::api::feed_types::FfiFeedStage::Failed,
+            _ => unreachable!("Invalid variant for FfiFeedStage: {}", inner),
         };
     }
 }
@@ -817,10 +832,12 @@ impl SseDecode for crate::api::feed_types::FfiFeedUpdate {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_feedId = <String>::sse_decode(deserializer);
         let mut var_revision = <u64>::sse_decode(deserializer);
+        let mut var_stage = <crate::api::feed_types::FfiFeedStage>::sse_decode(deserializer);
         let mut var_posts = <Vec<crate::api::feed_types::FfiFeedPost>>::sse_decode(deserializer);
         return crate::api::feed_types::FfiFeedUpdate {
             feed_id: var_feedId,
             revision: var_revision,
+            stage: var_stage,
             posts: var_posts,
         };
     }
@@ -1344,6 +1361,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::feed_types::FfiFeedSpec {
         [
             self.kind.into_into_dart().into_dart(),
             self.value.into_into_dart().into_dart(),
+            self.creators.into_into_dart().into_dart(),
             self.viewer_pubkey.into_into_dart().into_dart(),
         ]
         .into_dart()
@@ -1361,11 +1379,34 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::feed_types::FfiFeedSpec>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::feed_types::FfiFeedStage {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Loading => 0.into_dart(),
+            Self::Settled => 1.into_dart(),
+            Self::Failed => 2.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::feed_types::FfiFeedStage
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::feed_types::FfiFeedStage>
+    for crate::api::feed_types::FfiFeedStage
+{
+    fn into_into_dart(self) -> crate::api::feed_types::FfiFeedStage {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::feed_types::FfiFeedUpdate {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.feed_id.into_into_dart().into_dart(),
             self.revision.into_into_dart().into_dart(),
+            self.stage.into_into_dart().into_dart(),
             self.posts.into_into_dart().into_dart(),
         ]
         .into_dart()
@@ -1691,7 +1732,25 @@ impl SseEncode for crate::api::feed_types::FfiFeedSpec {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.kind, serializer);
         <Option<String>>::sse_encode(self.value, serializer);
+        <Vec<String>>::sse_encode(self.creators, serializer);
         <Option<String>>::sse_encode(self.viewer_pubkey, serializer);
+    }
+}
+
+impl SseEncode for crate::api::feed_types::FfiFeedStage {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::feed_types::FfiFeedStage::Loading => 0,
+                crate::api::feed_types::FfiFeedStage::Settled => 1,
+                crate::api::feed_types::FfiFeedStage::Failed => 2,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
     }
 }
 
@@ -1700,6 +1759,7 @@ impl SseEncode for crate::api::feed_types::FfiFeedUpdate {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.feed_id, serializer);
         <u64>::sse_encode(self.revision, serializer);
+        <crate::api::feed_types::FfiFeedStage>::sse_encode(self.stage, serializer);
         <Vec<crate::api::feed_types::FfiFeedPost>>::sse_encode(self.posts, serializer);
     }
 }

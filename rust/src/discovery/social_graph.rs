@@ -39,22 +39,46 @@ impl SocialGraph {
         }
     }
 
+    /// Whether this graph already belongs to the given session pubkey;
+    /// re-adopting the same viewer must not discard what was ingested.
+    pub fn belongs_to(&self, viewer: &PublicKey) -> bool {
+        self.session == *viewer
+    }
+
     /// Ingests the session's kind-3 follow list or kind-10000 mute
-    /// list; other kinds and other authors' lists are ignored.
-    pub fn ingest(&mut self, event: &Event) {
+    /// list; other kinds and other authors' lists are ignored. Reports
+    /// whether the follow set was replaced.
+    pub fn ingest(&mut self, event: &Event) -> bool {
         if event.pubkey != self.session {
-            return;
+            return false;
         }
         match event.kind {
             Kind::ContactList => self.follows.ingest(event),
-            Kind::MuteList => self.mutes.ingest(event),
-            _ => {}
+            Kind::MuteList => {
+                self.mutes.ingest(event);
+                false
+            }
+            _ => false,
         }
+    }
+
+    /// Ingests a whole retrieval's events, reporting whether the follow
+    /// set was replaced by any of them.
+    pub fn ingest_all(&mut self, events: &[Event]) -> bool {
+        events.iter().fold(false, |changed, event| self.ingest(event) | changed)
     }
 
     /// Pubkeys the session follows (p tags of the newest kind-3).
     pub fn follows(&self) -> &HashSet<PublicKey> {
         &self.follows.pubkeys
+    }
+
+    /// The follow set in a stable order, for routing and for the relay
+    /// lists the outbox bootstrap chases.
+    pub fn follow_list(&self) -> Vec<PublicKey> {
+        let mut follows: Vec<PublicKey> = self.follows.pubkeys.iter().copied().collect();
+        follows.sort();
+        follows
     }
 
     /// Whether posts by this creator are muted.
@@ -70,12 +94,14 @@ impl SocialGraph {
 }
 
 impl PubkeyList {
-    fn ingest(&mut self, event: &Event) {
+    /// Reports whether the list was replaced.
+    fn ingest(&mut self, event: &Event) -> bool {
         if !self.accepts(event.created_at) {
-            return;
+            return false;
         }
         self.created_at = Some(event.created_at);
         self.pubkeys = listed_pubkeys(event);
+        true
     }
 
     fn accepts(&self, created_at: Timestamp) -> bool {

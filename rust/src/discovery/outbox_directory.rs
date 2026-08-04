@@ -25,6 +25,7 @@ pub fn max_outbox_relays(level: DataUsageLevel) -> usize {
 pub struct OutboxDirectory {
     bootstrap: Vec<String>,
     write_lists: HashMap<PublicKey, WriteRelayList>,
+    viewer_follows: Vec<PublicKey>,
 }
 
 #[derive(Debug)]
@@ -40,6 +41,7 @@ impl OutboxDirectory {
         Self {
             bootstrap: bootstrap_relays,
             write_lists: HashMap::new(),
+            viewer_follows: Vec::new(),
         }
     }
 
@@ -56,6 +58,30 @@ impl OutboxDirectory {
             urls: write_urls(event),
         };
         self.write_lists.insert(event.pubkey, list);
+    }
+
+    /// Ingests a whole retrieval's events; anything that is not a
+    /// kind-10002 relay list is ignored.
+    pub fn ingest_all(&mut self, events: &[Event]) {
+        for event in events {
+            self.ingest(event);
+        }
+    }
+
+    /// Remembers who the signed-in viewer follows. Dart's directory asks
+    /// ndk for the contact list inside `discoveryRelayUrls`; Rust is told
+    /// instead, by the bootstrap task that retrieved the kind-3. Holding
+    /// it here is what lets a query built before the follow list landed
+    /// still route by it.
+    pub fn track_viewer_follows(&mut self, follows: Vec<PublicKey>) {
+        self.viewer_follows = follows;
+    }
+
+    /// `discoveryRelayUrls`: where the viewer's follows publish. Queries
+    /// route here without filtering by the follows, so the relays answer
+    /// with everything they carry.
+    pub fn discovery_relays(&self, cap: usize) -> Vec<String> {
+        self.relays_for_authors(&self.viewer_follows, cap)
     }
 
     /// The author's declared write relays, in declaration order.

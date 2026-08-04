@@ -11,7 +11,7 @@ void main() {
     const digest =
         'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd';
     final port = FakeRustFeedPort(updates: [
-      rustFeedUpdate(revision: 0),
+      rustFeedBaseline(),
       rustFeedUpdate(revision: 1, posts: [
         rustFeedPost(
           postId: 'engine-post-id',
@@ -46,7 +46,7 @@ void main() {
 
   test('maps hls delivery through to the domain media source', () async {
     final port = FakeRustFeedPort(updates: [
-      rustFeedUpdate(revision: 0),
+      rustFeedBaseline(),
       rustFeedUpdate(revision: 1, posts: [
         rustFeedPost(
           media: rustFeedMedia(

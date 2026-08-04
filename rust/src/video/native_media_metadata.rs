@@ -140,7 +140,10 @@ fn field_value<'a>(value: &'a str, name: &str) -> Option<&'a str> {
     (key == name && !field.is_empty()).then_some(field)
 }
 
+/// Dart `_normalizedMime` trims before judging, so a padded tag value
+/// is the same mime (nostr_video_media.dart).
 fn is_video_mime(value: &str) -> bool {
+    let value = value.trim();
     value.to_ascii_lowercase().starts_with("video/") || is_hls_mime(value)
 }
 
@@ -153,6 +156,7 @@ fn media_delivery(value: &str) -> NativeVideoDelivery {
 }
 
 fn is_hls_mime(value: &str) -> bool {
+    let value = value.trim();
     value.eq_ignore_ascii_case("application/x-mpegurl")
         || value.eq_ignore_ascii_case("application/vnd.apple.mpegurl")
 }

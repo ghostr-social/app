@@ -37,3 +37,7 @@ enable_lifetime = true
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.14.1"
+
+# statvfs, for measuring the free space the video store may not consume.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

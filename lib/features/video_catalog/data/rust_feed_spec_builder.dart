@@ -26,21 +26,32 @@ FfiFeedSpec? buildRustFeedSpec({
 
 FfiFeedSpec? _termSpec(String? searchQuery, Set<String>? hashtags) {
   if (searchQuery != null) {
-    return FfiFeedSpec(kind: 'search', value: searchQuery);
+    return FfiFeedSpec(kind: 'search', value: searchQuery, creators: const []);
   }
   if (hashtags == null || hashtags.isEmpty) return null;
-  return FfiFeedSpec(kind: 'hashtag', value: hashtags.first);
+  return FfiFeedSpec(
+    kind: 'hashtag',
+    value: hashtags.first,
+    creators: const [],
+  );
 }
 
 /// The main feed names the viewer only when one is signed in: Rust
 /// degrades a viewer-less main feed to the unscoped global page ndk
 /// serves signed out (discovery/feed_spec.rs, and
 /// ndk_nostr_outbox_directory.dart knows no follows without an account).
+/// A creator request names every creator it decoded — ndk queries the
+/// whole set as `authors` (ndk_video_remote_source.dart), and the
+/// Following feed asks for every follow at once.
 FfiFeedSpec _identitySpec(List<String>? creators, String? viewerPubkeyHex) {
   if (creators != null) {
-    return FfiFeedSpec(kind: 'profile', value: creators.first);
+    return FfiFeedSpec(kind: 'profile', creators: creators);
   }
-  return FfiFeedSpec(kind: 'main', viewerPubkey: viewerPubkeyHex);
+  return FfiFeedSpec(
+    kind: 'main',
+    creators: const [],
+    viewerPubkey: viewerPubkeyHex,
+  );
 }
 
 /// Creator ids decode exactly as the ndk source's `_decodeCreatorIds`

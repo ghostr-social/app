@@ -1,0 +1,60 @@
+//! A post whose every source failed is terminal: it stops being
+//! retried by later replanning passes and stops being advertised as
+//! servable, instead of being rescheduled forever.
+
+mod support;
+
+use std::time::Duration;
+use support::delivery::{start_harness, DeliveryOptions};
+use support::delivery_items::{focus_now, sized_item};
+use support::delivery_media::{hit_log, hits, media_body, serve_recording, serve_rejecting};
+use support::delivery_wait::wait_for_ranges;
+use tokio::time::Instant;
+
+#[tokio::test]
+async fn delivery_manager_stops_retrying_a_post_with_no_working_source() {
+    let log = hit_log();
+    let broken = serve_rejecting("broken", log.clone()).await;
+    let live = serve_recording("live", media_body(), log.clone()).await;
+    let harness = start_harness("ghostr-delivery-exhausted", DeliveryOptions::default());
+    let doomed = sized_item("aa11", &broken, 16, 1_000);
+
+    harness
+        .handle
+        .update_focus(focus_now(vec![doomed.clone()], 0, 0));
+    wait_for("the doomed post to go terminal", || {
+        attempts(&log) > 0 && !harness.posts.contains("aa11")
+    })
+    .await;
+    tokio::time::sleep(Duration::from_millis(150)).await;
+    let settled = attempts(&log);
+
+    // Every later focus update replans the doomed post; none may retry
+    // it. The fresh post proves those passes really ran.
+    for _ in 0..3 {
+        harness
+            .handle
+            .update_focus(focus_now(vec![doomed.clone()], 0, 0));
+    }
+    harness.handle.update_focus(focus_now(
+        vec![doomed, sized_item("bb22", &live, 16, 1_000)],
+        1,
+        0,
+    ));
+    wait_for_ranges(&harness.store, "bb22", &[(0, 16)]).await;
+
+    assert_eq!(attempts(&log), settled, "a terminal post must stay terminal");
+    std::fs::remove_dir_all(&harness.root).ok();
+}
+
+fn attempts(log: &support::delivery_media::HitLog) -> usize {
+    hits(log).iter().filter(|hit| hit.starts_with("broken:")).count()
+}
+
+async fn wait_for(what: &str, ready: impl Fn() -> bool) {
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while !ready() {
+        assert!(Instant::now() < deadline, "timed out waiting for {what}");
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+}

@@ -20,7 +20,7 @@ fn feed_store_profile_feed_keeps_only_the_target_creators_posts() {
     let (target, stranger) = (Keys::generate(), Keys::generate());
     let graph = SocialGraph::new(Keys::generate().public_key());
     let mut store = FeedStore::new();
-    let feed = store.open_feed(FeedSpec::Profile(target.public_key()));
+    let feed = store.open_feed(FeedSpec::Profile(vec![target.public_key()]));
 
     let fetched = parsed_posts(&[
         video_note(&target, "own", 30),
@@ -43,7 +43,7 @@ fn feed_store_profile_feed_shows_a_muted_targets_own_posts() {
     let mut graph = SocialGraph::new(session.public_key());
     graph.ingest(&mute_list(&session, vec![p_tag(&target.public_key())], 5));
     let mut store = FeedStore::new();
-    let feed = store.open_feed(FeedSpec::Profile(target.public_key()));
+    let feed = store.open_feed(FeedSpec::Profile(vec![target.public_key()]));
 
     store.ingest_first_page(feed, parsed_posts(&[video_note(&target, "own", 30)]), &graph);
 

@@ -1,25 +1,17 @@
-import 'dart:async';
 import 'dart:developer';
 
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
+import 'package:ghostr/features/video_catalog/data/rust_feed_page_reader.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_port.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_post_mapper.dart';
+import 'package:ghostr/features/video_catalog/data/rust_feed_session.dart';
+import 'package:ghostr/features/video_catalog/data/rust_feed_sessions.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_spec_builder.dart';
-import 'package:ghostr/features/video_catalog/data/rust_feed_update_queue.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/remote_video_source.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/src/rust/api/feed_types.dart';
-
-/// How long one pull waits for the Rust feed to publish a page before
-/// it serves whatever the engine has (a feed stays open for its whole
-/// life, so "no revision yet" must never hang the caller).
-const _pageDeadline = Duration(seconds: 6);
-
-/// ndk parity: NdkNostrVideoEventQuery surfaces every transport
-/// problem as this one failure.
-const _feedFailure = AppFailure('Could not load Nostr videos.');
 
 /// Who is signed in right now, or null while signed out. Read once per
 /// request and never captured: the app graph is composed before any
@@ -31,24 +23,29 @@ typedef RustFeedViewer = NostrPublicKeyHex? Function();
 NostrPublicKeyHex? noSignedInViewer() => null;
 
 /// Serves the pull-shaped [RemoteVideoSource] the app already speaks
-/// from the Rust engine's push-shaped feeds (plan §5): open the feed
-/// named by the request, take the newest snapshot it publishes, and
-/// close it again. Nothing is cached here — the engine owns the store.
+/// from the Rust engine's push-shaped feeds (plan §5): the feed named
+/// by the request is opened once and kept open for the life of this
+/// source, and each pull takes the snapshot it holds now.
+///
+/// Nothing is cached here — the engine owns the store, and it keeps
+/// filing pages into an open feed all session. That is what makes a
+/// returning pull instant instead of another cold relay round trip,
+/// and why what it answers only ever grows (see [RustFeedSessions] for
+/// the bounds: how many feeds stay open, and `FEED_POST_RETENTION`
+/// for how many rows each keeps).
 final class RustFeedRemoteSource implements RemoteVideoSource {
-  const RustFeedRemoteSource({
+  RustFeedRemoteSource({
     required RustFeedPort port,
     RustFeedViewer viewer = noSignedInViewer,
     RustFeedPostMapper mapper = const RustFeedPostMapper(),
-    Duration deadline = _pageDeadline,
-  })  : _port = port,
+    Duration deadline = rustFeedPageDeadline,
+  })  : _sessions = RustFeedSessions(port: port, deadline: deadline),
         _viewer = viewer,
-        _mapper = mapper,
-        _deadline = deadline;
+        _mapper = mapper;
 
-  final RustFeedPort _port;
+  final RustFeedSessions _sessions;
   final RustFeedViewer _viewer;
   final RustFeedPostMapper _mapper;
-  final Duration _deadline;
 
   @override
   Future<List<VideoPost>> loadRemoteFeed({
@@ -57,89 +54,67 @@ final class RustFeedRemoteSource implements RemoteVideoSource {
     Set<String>? hashtags,
     DateTime? olderThan,
   }) {
+    final viewer = _viewer()?.value;
     final spec = buildRustFeedSpec(
       creatorIds: creatorIds,
       searchQuery: searchQuery,
       hashtags: hashtags,
-      viewerPubkeyHex: _viewer()?.value,
+      viewerPubkeyHex: viewer,
     );
     if (spec == null) return Future.value(const <VideoPost>[]);
-    return _load(spec, olderThan);
+    return _load(spec, viewer, _cursor(olderThan));
   }
 
-  Future<List<VideoPost>> _load(FfiFeedSpec spec, DateTime? olderThan) async {
-    final feedId = await _opened(spec);
-    final queue = RustFeedUpdateQueue(_port.feedUpdates(feedId));
+  Future<List<VideoPost>> _load(
+    FfiFeedSpec spec,
+    String? viewer,
+    BigInt? cursor,
+  ) async {
+    final session = await _opened(spec, viewer);
     try {
-      return _mapped(await _page(feedId, queue, olderThan), olderThan);
-    } on AppFailure {
-      rethrow;
+      return _mapped((await _page(session, cursor)).posts, cursor);
     } on Object catch (error, stackTrace) {
-      throw _translated(error, stackTrace);
+      await _sessions.retire(session);
+      throw _failure(error, stackTrace);
     } finally {
-      // Fire-and-forget: a feed whose stream never ends must not hold
-      // the close behind its own cancellation.
-      unawaited(queue.dispose());
-      await _port.closeFeed(feedId);
+      await _sessions.retireDead();
     }
   }
 
-  Future<String> _opened(FfiFeedSpec spec) async {
+  Future<RustFeedSession> _opened(FfiFeedSpec spec, String? viewer) async {
     try {
-      return await _port.openFeed(spec);
-    } on AppFailure {
-      rethrow;
+      return await _sessions.open(spec, viewer);
     } on Object catch (error, stackTrace) {
-      throw _translated(error, stackTrace);
+      throw _failure(error, stackTrace);
     }
   }
 
-  /// The rows one request claims: the feed's first page, plus one
-  /// older page when the caller paginates.
-  Future<List<FfiFeedPost>> _page(
-    String feedId,
-    RustFeedUpdateQueue queue,
-    DateTime? olderThan,
-  ) async {
-    final first = await _firstPage(queue);
-    if (olderThan == null) return first;
-    final cursor = _seconds(olderThan);
-    final more = await _port.loadMore(feedId, olderThanSecs: cursor);
-    if (!more) return first;
-    return _olderPage(queue, first, cursor);
+  /// The rows one request claims. A live feed answers from the
+  /// snapshot it already holds and asks for another page behind the
+  /// answer; only a feed that never settled a page, or a cursor past
+  /// everything it holds, waits for relays.
+  Future<RustFeedPage> _page(RustFeedSession session, BigInt? cursor) async {
+    final warm = session.warmPage;
+    if (warm != null && _reaches(warm, cursor)) {
+      session.deepen();
+      return warm;
+    }
+    final loaded = warm ?? await session.firstPage();
+    return cursor == null ? loaded : session.olderPage(loaded, cursor);
   }
 
-  /// The first snapshot that carries rows; empty once the feed ends or
-  /// the deadline passes without one.
-  Future<List<FfiFeedPost>> _firstPage(RustFeedUpdateQueue queue) async {
-    while (true) {
-      final update = await queue.next(_deadline);
-      if (update == null) return const <FfiFeedPost>[];
-      if (update.posts.isNotEmpty) return update.posts;
-    }
-  }
-
-  /// Snapshots are full lists, so an older page shows up as a later
-  /// revision that reaches past the cursor.
-  Future<List<FfiFeedPost>> _olderPage(
-    RustFeedUpdateQueue queue,
-    List<FfiFeedPost> loaded,
-    BigInt cursor,
-  ) async {
-    var newest = loaded;
-    while (true) {
-      final update = await queue.next(_deadline);
-      if (update == null) return newest;
-      newest = update.posts;
-      if (newest.any((post) => post.createdAt < cursor)) return newest;
-    }
+  /// Whether a warm snapshot answers this request as it stands: a
+  /// fresh pull takes it whole, a paginating one needs rows past the
+  /// cursor.
+  bool _reaches(RustFeedPage warm, BigInt? cursor) {
+    return cursor == null ||
+        warm.posts.any((post) => post.createdAt <= cursor);
   }
 
   /// ndk parity: an older page is the `until:` slice alone, and a
   /// malformed row is skipped instead of sinking the page
   /// (ndk_video_remote_source.dart).
-  List<VideoPost> _mapped(List<FfiFeedPost> rows, DateTime? olderThan) {
-    final cursor = olderThan == null ? null : _seconds(olderThan);
+  List<VideoPost> _mapped(List<FfiFeedPost> rows, BigInt? cursor) {
     final posts = <VideoPost>[];
     for (final row in rows) {
       if (cursor != null && row.createdAt > cursor) continue;
@@ -161,17 +136,22 @@ final class RustFeedRemoteSource implements RemoteVideoSource {
     }
   }
 
-  AppFailure _translated(Object error, StackTrace stackTrace) {
+  /// ndk parity: NdkNostrVideoEventQuery surfaces every transport
+  /// problem as the one shared failure, which the page reader already
+  /// raises for a failed page.
+  AppFailure _failure(Object error, StackTrace stackTrace) {
+    if (error is AppFailure) return error;
     log(
       'The Rust feed could not be read.',
       name: 'ghostr.video.rustfeed',
       error: error,
       stackTrace: stackTrace,
     );
-    return _feedFailure;
+    return rustFeedFailure;
   }
 
-  BigInt _seconds(DateTime moment) {
-    return BigInt.from(moment.millisecondsSinceEpoch ~/ 1000);
+  BigInt? _cursor(DateTime? olderThan) {
+    if (olderThan == null) return null;
+    return BigInt.from(olderThan.millisecondsSinceEpoch ~/ 1000);
   }
 }

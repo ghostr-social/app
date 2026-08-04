@@ -50,5 +50,6 @@ fn post_ids_are_gateway_safe_and_stable_per_coordinate() {
     assert_eq!(post_gateway_id(&revision), row.post_id);
     let mut other = post(DeliveryKind::Progressive);
     other.identifier = Some("other-clip".to_owned());
+    other.published_identifier = Some("other-clip".to_owned());
     assert_ne!(post_gateway_id(&other), row.post_id);
 }

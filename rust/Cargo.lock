@@ -1641,6 +1641,7 @@ dependencies = [
  "bytes",
  "flutter_rust_bridge",
  "hmac",
+ "libc",
  "log",
  "nostr-sdk",
  "once_cell",

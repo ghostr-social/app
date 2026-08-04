@@ -69,3 +69,9 @@ fn signed(
         .sign_with_keys(keys)
         .expect("signed fixture event")
 }
+
+/// An empty social graph for a throwaway session: nothing muted, no
+/// follows to route by.
+pub fn empty_graph() -> rust_lib_ghostr::discovery::social_graph::SocialGraph {
+    rust_lib_ghostr::discovery::social_graph::SocialGraph::new(Keys::generate().public_key())
+}

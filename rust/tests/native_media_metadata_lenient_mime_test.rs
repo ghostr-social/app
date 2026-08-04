@@ -62,6 +62,15 @@ fn native_media_metadata_still_honors_an_explicit_mime_when_lenient() {
 }
 
 #[test]
+fn native_media_metadata_rejects_an_imeta_with_no_usable_url() {
+    // Dart `_tryImeta` returns null when `_imetaUrls` finds nothing, and
+    // the event falls through to its file tags or its text links.
+    let none = lenient_native_media(&imeta(&["m video/mp4", "url notaurl"]));
+
+    assert!(none.is_none());
+}
+
+#[test]
 fn native_media_metadata_keeps_media_whose_urls_are_only_fallbacks() {
     // Dart `_imetaUrls` folds primary + fallbacks into one ordered set, so
     // a broken primary still leaves the fallbacks playable.

@@ -12,7 +12,7 @@ void main() {
   // npub — the Rust rows must land on the same domain identities.
   test('maps rust feed rows onto domain posts in feed order', () async {
     final port = FakeRustFeedPort(updates: [
-      rustFeedUpdate(revision: 0),
+      rustFeedBaseline(),
       rustFeedUpdate(revision: 1, posts: [
         rustFeedPost(
           eventId: testEventId,

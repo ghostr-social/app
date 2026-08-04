@@ -6,7 +6,7 @@ use crate::engine::scoring::ChunkRequest;
 use crate::engine::tiers::DemandSignals;
 use crate::engine::{ByteRange, ChunkId, PostId};
 use crate::video::delivery_manager::DeliveryWorker;
-use crate::video::delivery_plan::{planned_work, PlannedWork};
+use crate::video::delivery_plan::{planned_work, PlanInputs, PlannedWork};
 use crate::video::delivery_transfers::{spawn_chunk, spawn_probe};
 use std::collections::{HashMap, HashSet};
 
@@ -17,7 +17,13 @@ impl DeliveryWorker {
         self.ensure_total_lens(&window).await;
         self.launch_probes(&window);
         let demand = self.demand_signals(&present);
-        let planned = planned_work(&mut self.state, self.keeper.stats(), &present, demand);
+        let inputs = PlanInputs {
+            stats: self.keeper.stats(),
+            retry: &self.retry,
+            present: &present,
+            demand,
+        };
+        let planned = planned_work(&mut self.state, inputs);
         self.reconcile_transfers(planned);
         self.keeper.schedule_save(&self.ctx.events);
     }
@@ -54,7 +60,7 @@ impl DeliveryWorker {
     }
 
     fn launch_probes(&mut self, window: &[PostId]) {
-        for (post, url) in self.probes.claim(self.state.catalog(), window) {
+        for (post, url) in self.probes.claim(self.state.catalog(), window, &self.retry) {
             spawn_probe(self.ctx.clone(), post, url);
         }
     }
@@ -95,7 +101,7 @@ impl DeliveryWorker {
 
     fn grant(&mut self, request: &ChunkRequest, urls: &HashMap<PostId, String>) {
         let chunk = &request.chunk;
-        if self.inflight.contains(chunk) || self.cooling.contains(&chunk.post) {
+        if self.inflight.contains(chunk) || self.retry.is_cooling(&chunk.post) {
             return;
         }
         let Some(url) = urls.get(&chunk.post) else { return };

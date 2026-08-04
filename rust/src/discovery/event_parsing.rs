@@ -33,7 +33,14 @@ pub struct ParsedVideoPost {
     pub event_id: String,
     pub author_pubkey: String,
     pub kind: u16,
+    /// The addressable `d` value trimmed, as Dart addresses social
+    /// writes with it (`NostrEventIdentifier.parse`).
     pub identifier: Option<String>,
+    /// The same `d` value exactly as published: two events whose
+    /// identifiers differ only in padding are two different
+    /// coordinates, and ndk compares them raw (`_eventCoordinate` in
+    /// ndk_video_remote_source.dart).
+    pub published_identifier: Option<String>,
     pub created_at: u64,
     pub caption: String,
     pub title: Option<String>,
@@ -66,8 +73,8 @@ fn has_video_file_mime(event: &Event) -> bool {
 }
 
 /// Addressable kinds must name a `d` identifier or the event is skipped
-/// (nostr_video_event_mapper.dart `_identifier`); the value is trimmed like
-/// NostrEventIdentifier.parse.
+/// (nostr_video_event_mapper.dart `_identifier`); the value is kept as
+/// published, and trimmed where the identifier is read.
 fn addressable_identifier(event: &Event) -> Option<Option<String>> {
     if event.kind.as_u16() < 30_000 {
         return Some(None);
@@ -76,13 +83,13 @@ fn addressable_identifier(event: &Event) -> Option<Option<String>> {
         .tags
         .iter()
         .find(|tag| tag.as_slice().first().map(String::as_str) == Some("d"))?;
-    let value = tag.as_slice().get(1)?.trim();
-    (!value.is_empty()).then(|| Some(value.to_owned()))
+    let value = tag.as_slice().get(1)?;
+    (!value.trim().is_empty()).then(|| Some(value.clone()))
 }
 
 fn parsed_post(
     event: &Event,
-    identifier: Option<String>,
+    published: Option<String>,
     media: NativeMediaMetadata,
 ) -> ParsedVideoPost {
     let urls = media_urls(&media);
@@ -90,7 +97,8 @@ fn parsed_post(
         event_id: event.id.to_hex(),
         author_pubkey: event.pubkey.to_hex(),
         kind: event.kind.as_u16(),
-        identifier,
+        identifier: published.as_deref().map(|raw| raw.trim().to_owned()),
+        published_identifier: published,
         created_at: event.created_at.as_u64(),
         caption: caption_without_urls(&event.content, &urls),
         title: media.title.clone(),

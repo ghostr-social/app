@@ -87,6 +87,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FfiFeedSpec dco_decode_ffi_feed_spec(dynamic raw);
 
   @protected
+  FfiFeedStage dco_decode_ffi_feed_stage(dynamic raw);
+
+  @protected
   FfiFeedUpdate dco_decode_ffi_feed_update(dynamic raw);
 
   @protected
@@ -216,6 +219,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiFeedSpec sse_decode_ffi_feed_spec(SseDeserializer deserializer);
+
+  @protected
+  FfiFeedStage sse_decode_ffi_feed_stage(SseDeserializer deserializer);
 
   @protected
   FfiFeedUpdate sse_decode_ffi_feed_update(SseDeserializer deserializer);
@@ -355,6 +361,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_ffi_feed_spec(FfiFeedSpec self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ffi_feed_stage(FfiFeedStage self, SseSerializer serializer);
 
   @protected
   void sse_encode_ffi_feed_update(FfiFeedUpdate self, SseSerializer serializer);

@@ -728,25 +728,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   FfiFeedSpec dco_decode_ffi_feed_spec(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return FfiFeedSpec(
       kind: dco_decode_String(arr[0]),
       value: dco_decode_opt_String(arr[1]),
-      viewerPubkey: dco_decode_opt_String(arr[2]),
+      creators: dco_decode_list_String(arr[2]),
+      viewerPubkey: dco_decode_opt_String(arr[3]),
     );
+  }
+
+  @protected
+  FfiFeedStage dco_decode_ffi_feed_stage(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FfiFeedStage.values[raw as int];
   }
 
   @protected
   FfiFeedUpdate dco_decode_ffi_feed_update(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return FfiFeedUpdate(
       feedId: dco_decode_String(arr[0]),
       revision: dco_decode_u_64(arr[1]),
-      posts: dco_decode_list_ffi_feed_post(arr[2]),
+      stage: dco_decode_ffi_feed_stage(arr[2]),
+      posts: dco_decode_list_ffi_feed_post(arr[3]),
     );
   }
 
@@ -1118,9 +1126,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_kind = sse_decode_String(deserializer);
     var var_value = sse_decode_opt_String(deserializer);
+    var var_creators = sse_decode_list_String(deserializer);
     var var_viewerPubkey = sse_decode_opt_String(deserializer);
     return FfiFeedSpec(
-        kind: var_kind, value: var_value, viewerPubkey: var_viewerPubkey);
+        kind: var_kind,
+        value: var_value,
+        creators: var_creators,
+        viewerPubkey: var_viewerPubkey);
+  }
+
+  @protected
+  FfiFeedStage sse_decode_ffi_feed_stage(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return FfiFeedStage.values[inner];
   }
 
   @protected
@@ -1128,9 +1147,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_feedId = sse_decode_String(deserializer);
     var var_revision = sse_decode_u_64(deserializer);
+    var var_stage = sse_decode_ffi_feed_stage(deserializer);
     var var_posts = sse_decode_list_ffi_feed_post(deserializer);
     return FfiFeedUpdate(
-        feedId: var_feedId, revision: var_revision, posts: var_posts);
+        feedId: var_feedId,
+        revision: var_revision,
+        stage: var_stage,
+        posts: var_posts);
   }
 
   @protected
@@ -1531,7 +1554,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.kind, serializer);
     sse_encode_opt_String(self.value, serializer);
+    sse_encode_list_String(self.creators, serializer);
     sse_encode_opt_String(self.viewerPubkey, serializer);
+  }
+
+  @protected
+  void sse_encode_ffi_feed_stage(FfiFeedStage self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
   }
 
   @protected
@@ -1540,6 +1570,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.feedId, serializer);
     sse_encode_u_64(self.revision, serializer);
+    sse_encode_ffi_feed_stage(self.stage, serializer);
     sse_encode_list_ffi_feed_post(self.posts, serializer);
   }
 

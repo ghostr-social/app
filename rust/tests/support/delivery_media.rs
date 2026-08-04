@@ -32,29 +32,56 @@ struct Recorder {
 }
 
 pub async fn serve_recording(tag: &str, bytes: Vec<u8>, log: HitLog) -> String {
-    let state = Recorder {
+    serve(Router::new().route("/video.mp4", get(record)).with_state(recorder(tag, bytes, log))).await
+}
+
+fn recorder(tag: &str, bytes: Vec<u8>, log: HitLog) -> Recorder {
+    Recorder {
         tag: tag.to_owned(),
         bytes: Arc::new(bytes),
         log,
-    };
-    let app = Router::new().route("/video.mp4", get(record)).with_state(state);
+    }
+}
+
+async fn serve(app: Router) -> String {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind recorder");
     let address = listener.local_addr().expect("recorder address");
     tokio::spawn(async move { axum::serve(listener, app).await.expect("serve recorder") });
     format!("http://{address}/video.mp4")
 }
 
+/// Records every attempt like [`serve_recording`] but answers `404`,
+/// the shape of a source that is gone for good.
+pub async fn serve_rejecting(tag: &str, log: HitLog) -> String {
+    let state = recorder(tag, Vec::new(), log);
+    serve(Router::new().route("/video.mp4", get(reject)).with_state(state)).await
+}
+
+async fn reject(State(state): State<Recorder>, method: Method, headers: HeaderMap) -> Response {
+    note(&state, method, &headers);
+    Response::builder()
+        .status(StatusCode::NOT_FOUND)
+        .body(Body::empty())
+        .expect("rejected response")
+}
+
 async fn record(State(state): State<Recorder>, method: Method, headers: HeaderMap) -> Response {
-    let range = requested(&headers, state.bytes.len() as u64);
+    match note(&state, method, &headers) {
+        Some((start, end)) => partial(&state.bytes, start, end),
+        None => full(&state.bytes),
+    }
+}
+
+/// Logs one attempt as `tag:METHOD:start-end` (or `tag:METHOD:full`)
+/// and reports the requested range.
+fn note(state: &Recorder, method: Method, headers: &HeaderMap) -> Option<(u64, u64)> {
+    let range = requested(headers, state.bytes.len() as u64);
     let label = match range {
         Some((start, end)) => format!("{}:{method}:{start}-{end}", state.tag),
         None => format!("{}:{method}:full", state.tag),
     };
     state.log.lock().expect("hit log").push(label);
-    match range {
-        Some((start, end)) => partial(&state.bytes, start, end),
-        None => full(&state.bytes),
-    }
+    range
 }
 
 fn full(bytes: &[u8]) -> Response {
@@ -87,7 +114,8 @@ fn partial(bytes: &[u8], start: u64, end: u64) -> Response {
 fn requested(headers: &HeaderMap, len: u64) -> Option<(u64, u64)> {
     let value = headers.get(header::RANGE)?.to_str().ok()?;
     let (start, end) = value.strip_prefix("bytes=")?.split_once('-')?;
+    let last = len.saturating_sub(1);
     let start = start.parse().ok()?;
-    let end: u64 = end.parse().unwrap_or(len - 1);
-    Some((start, end.min(len - 1)))
+    let end: u64 = end.parse().unwrap_or(last);
+    Some((start, end.min(last)))
 }

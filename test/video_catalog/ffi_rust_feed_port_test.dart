@@ -25,7 +25,7 @@ void main() {
     );
 
     final feedId = await port.openFeed(
-      const FfiFeedSpec(kind: 'search', value: 'ghost'),
+      const FfiFeedSpec(kind: 'search', value: 'ghost', creators: []),
     );
     final seen = await port.feedUpdates(feedId).first;
     final more = await port.loadMore(feedId, olderThanSecs: BigInt.two);

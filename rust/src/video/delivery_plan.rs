@@ -6,8 +6,17 @@ use crate::engine::inventory_controller::{Mode, PresentRanges};
 use crate::engine::scoring::{next_work, ChunkRequest, NextWorkContext};
 use crate::engine::tiers::DemandSignals;
 use crate::engine::{ByteRange, PostId};
+use crate::video::delivery_retry::RetryBook;
 use crate::video::delivery_state::DeliveryState;
 use std::collections::HashMap;
+
+/// Everything a planning pass reads besides the engine state.
+pub(crate) struct PlanInputs<'a> {
+    pub stats: &'a HostStats,
+    pub retry: &'a RetryBook,
+    pub present: &'a HashMap<PostId, Vec<ByteRange>>,
+    pub demand: DemandSignals,
+}
 
 pub(crate) struct PlannedWork {
     pub requests: Vec<ChunkRequest>,
@@ -15,25 +24,26 @@ pub(crate) struct PlannedWork {
 }
 
 /// Runs the pure engine planner over the manager's current picture.
-pub(crate) fn planned_work(
-    state: &mut DeliveryState,
-    stats: &HostStats,
-    present: &HashMap<PostId, Vec<ByteRange>>,
-    demand: DemandSignals,
-) -> PlannedWork {
-    let inventory = state.observe_inventory(&as_present_ranges(present));
-    let (urls, factors) = source_choices(state, stats, inventory.mode);
-    let present_of = |post: &PostId| present.get(post).cloned().unwrap_or_default();
+/// Posts with no source left to try drop out entirely: they are
+/// terminal, not work to reschedule on the next pass.
+pub(crate) fn planned_work(state: &mut DeliveryState, inputs: PlanInputs<'_>) -> PlannedWork {
+    let inventory = state.observe_inventory(&as_present_ranges(inputs.present));
+    let (urls, factors) = source_choices(state, &inputs, inventory.mode);
+    let present_of = |post: &PostId| inputs.present.get(post).cloned().unwrap_or_default();
     let factor_of = |post: &PostId| factors.get(post).copied().unwrap_or(1.0);
     let requests = next_work(&NextWorkContext {
         catalog: state.catalog(),
         focus: state.focus(),
         params: state.params(),
         inventory,
-        demand,
+        demand: inputs.demand,
         present: &present_of,
         host_factor: &factor_of,
     });
+    let requests = requests
+        .into_iter()
+        .filter(|request| urls.contains_key(&request.chunk.post))
+        .collect();
     PlannedWork { requests, urls }
 }
 
@@ -46,9 +56,11 @@ fn as_present_ranges(present: &HashMap<PostId, Vec<ByteRange>>) -> PresentRanges
 }
 
 /// Best source URL and host speed factor per catalogued window post.
+/// Sources the retry policy retired are not candidates at all, so a
+/// post falls back to its healthy mirrors on its own.
 fn source_choices(
     state: &DeliveryState,
-    stats: &HostStats,
+    inputs: &PlanInputs<'_>,
     mode: Mode,
 ) -> (HashMap<PostId, String>, HashMap<PostId, f64>) {
     let mut urls = HashMap::new();
@@ -57,11 +69,12 @@ fn source_choices(
         let Some(entry) = state.catalog().lookup(&post) else {
             continue;
         };
-        let Some(url) = stats.best_source(&entry.meta.urls, mode).into_iter().next() else {
+        let live = inputs.retry.live_urls(&post, &entry.meta.urls);
+        let Some(url) = inputs.stats.best_source(&live, mode).into_iter().next() else {
             continue;
         };
         let factor = host_of(&url)
-            .map(|host| stats.host_factor(&host, mode))
+            .map(|host| inputs.stats.host_factor(&host, mode))
             .unwrap_or(1.0);
         urls.insert(post.clone(), url);
         factors.insert(post, factor);

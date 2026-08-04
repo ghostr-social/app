@@ -42,15 +42,13 @@ impl DeliveryState {
     }
 
     /// Applies a focus replacement. Progressive posts land in the
-    /// catalog; the returned ids (which double as gateway and store
-    /// keys) refresh the servable-post registry.
-    pub fn apply_focus(&mut self, update: DeliveryFocus) -> Vec<String> {
+    /// catalog, which is what makes them servable; the caller refreshes
+    /// the gateway registry from the catalogued window.
+    pub fn apply_focus(&mut self, update: DeliveryFocus) {
         let mut window = Vec::new();
-        let mut progressive = Vec::new();
         for item in update.items {
             window.push(item.post.clone());
             if item.meta.delivery == DeliveryKind::Progressive {
-                progressive.push(item.post.as_str().to_owned());
                 self.catalog.upsert(item.post, item.meta);
             }
         }
@@ -59,7 +57,6 @@ impl DeliveryState {
             current_index: update.current_index,
             watch_ms: update.watch_ms,
         });
-        progressive
     }
 
     /// Re-derives the budgeted parameters from the pristine base

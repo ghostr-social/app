@@ -41,6 +41,12 @@ pub const WIDE_QUERY_LIMIT: usize = 200;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DiscoveryRequest {
     pub authors: Vec<PublicKey>,
+    /// Authors the request is *routed* by without being filtered by:
+    /// the main feed rides its follows' write relays and still shows
+    /// whatever those relays carry from anyone, which is exactly what
+    /// ndk's unscoped `forYou` query does through `discoveryRelayUrls`.
+    /// Never reaches the wire filter.
+    pub routing_authors: Vec<PublicKey>,
     /// Viewer search term as typed; a blank term still widens the request
     /// but carries no NIP-50 term (Dart normalizes blank to null inside
     /// the query while widening on the raw value).
@@ -54,6 +60,16 @@ impl DiscoveryRequest {
     /// Widened requests carry a viewer term or hashtags.
     pub fn is_wide(&self) -> bool {
         self.search_query.is_some() || !self.hashtags.is_empty()
+    }
+
+    /// The authors this request routes to: the ones it filters by, or —
+    /// when it filters by nobody — the routing-only set.
+    pub fn routed_authors(&self) -> &[PublicKey] {
+        if self.authors.is_empty() {
+            &self.routing_authors
+        } else {
+            &self.authors
+        }
     }
 
     /// Trimmed NIP-50 term; blank input carries no term.

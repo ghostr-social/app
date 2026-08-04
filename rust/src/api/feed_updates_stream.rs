@@ -54,10 +54,14 @@ pub(crate) async fn watch_feed(
     }
 }
 
+/// Stage and rows are read under one lock so a snapshot can never
+/// claim to be settled while showing the previous page's rows.
 fn snapshot_update(state: &SharedFeedState, feed: FeedId, revision: u64) -> FfiFeedUpdate {
+    let state = lock(state);
     FfiFeedUpdate {
         feed_id: feed.0.to_string(),
         revision,
-        posts: lock(state).snapshot(feed),
+        stage: state.stage(feed),
+        posts: state.snapshot(feed),
     }
 }

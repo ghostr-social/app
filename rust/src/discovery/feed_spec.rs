@@ -26,8 +26,11 @@ pub enum FeedSpec {
     MainFeed { viewer: Option<PublicKey> },
     /// Every post carrying one hashtag, as typed (with or without `#`).
     Hashtag(String),
-    /// One creator's grid.
-    Profile(PublicKey),
+    /// The posts of a named set of creators: one creator for a profile
+    /// grid, every follow for the Following feed
+    /// (filtered_video_feed_repository.dart hands its whole `followed`
+    /// set to the source, and ndk queries them all as `authors`).
+    Profile(Vec<PublicKey>),
     /// A viewer search query, as typed.
     Search(String),
 }
@@ -38,11 +41,22 @@ impl FeedSpec {
     /// Dart returns an empty page without querying
     /// (`DiscoveryVideoSearchRepository.searchVideos` on a null
     /// normalization).
-    pub fn page_request(&self, older_than: Option<Timestamp>) -> Option<DiscoveryRequest> {
+    /// The viewer's graph only *routes* the main feed: its follows pick
+    /// the relays (NIP-65 outbox), never the authors the query filters
+    /// by, so a follows-routed page still carries posts by creators the
+    /// viewer does not follow — ndk parity.
+    pub fn page_request(
+        &self,
+        older_than: Option<Timestamp>,
+        graph: &SocialGraph,
+    ) -> Option<DiscoveryRequest> {
         match self {
-            Self::MainFeed { .. } => Some(request(older_than)),
-            Self::Profile(creator) => Some(DiscoveryRequest {
-                authors: vec![*creator],
+            Self::MainFeed { viewer } => Some(DiscoveryRequest {
+                routing_authors: routing_follows(viewer, graph),
+                ..request(older_than)
+            }),
+            Self::Profile(creators) => Some(DiscoveryRequest {
+                authors: creators.clone(),
                 ..request(older_than)
             }),
             Self::Hashtag(raw) => hashtag_request(raw, older_than),
@@ -54,12 +68,12 @@ impl FeedSpec {
     /// creators from the main and query feeds (video_feed_policy.dart,
     /// `_selectPosts` in discovery_video_search_repository.dart); a
     /// signed-out main feed has no viewer whose mutes could apply, and
-    /// a profile grid shows exactly its creator, muted or not
+    /// a profile grid shows exactly its creators, muted or not
     /// (`ProfileDetailsPolicy.build` filters only by creator id).
     pub fn accepts(&self, post: &ParsedVideoPost, graph: &SocialGraph) -> bool {
         match self {
             Self::MainFeed { viewer } => viewer.is_none() || !author_muted(post, graph),
-            Self::Profile(creator) => post.author_pubkey == creator.to_hex(),
+            Self::Profile(creators) => written_by(post, creators),
             Self::Hashtag(raw) => !author_muted(post, graph) && carries_tag(post, raw),
             Self::Search(raw) => !author_muted(post, graph) && matches_search(post, raw),
         }
@@ -71,6 +85,15 @@ impl FeedSpec {
     /// (query_video_feed_repository.dart).
     pub fn exhausts_on_empty_page(&self) -> bool {
         matches!(self, Self::MainFeed { .. } | Self::Profile(_))
+    }
+}
+
+/// A signed-out viewer has no follow set, and a graph belonging to
+/// someone else must not leak into this feed's routing.
+fn routing_follows(viewer: &Option<PublicKey>, graph: &SocialGraph) -> Vec<PublicKey> {
+    match viewer {
+        Some(viewer) if graph.belongs_to(viewer) => graph.follow_list(),
+        _ => Vec::new(),
     }
 }
 
@@ -112,6 +135,12 @@ fn leading_hashtag(query: &str) -> Option<String> {
         return None;
     }
     normalize_hashtag(query)
+}
+
+fn written_by(post: &ParsedVideoPost, creators: &[PublicKey]) -> bool {
+    creators
+        .iter()
+        .any(|creator| post.author_pubkey == creator.to_hex())
 }
 
 fn author_muted(post: &ParsedVideoPost, graph: &SocialGraph) -> bool {

@@ -24,7 +24,7 @@ void main() {
   });
 
   test('translates a stream failure and still closes the feed', () async {
-    final port = FakeRustFeedPort(updates: [rustFeedUpdate(revision: 0)])
+    final port = FakeRustFeedPort(updates: [rustFeedBaseline()])
       ..streamError = StateError('watcher died');
     final source = RustFeedRemoteSource(port: port);
 

@@ -3,6 +3,7 @@
 
 use crate::engine::catalog::Catalog;
 use crate::engine::PostId;
+use crate::video::delivery_retry::RetryBook;
 use std::collections::HashSet;
 
 pub(crate) struct ProbeBook {
@@ -21,14 +22,20 @@ impl ProbeBook {
     }
 
     /// Unknown-size window posts to probe now, bounded by the limit.
-    /// Returned posts are marked as probing until `finished`.
-    pub fn claim(&mut self, catalog: &Catalog, window: &[PostId]) -> Vec<(PostId, String)> {
+    /// Returned posts are marked as probing until `finished`. Sources
+    /// the retry policy retired are never probed again.
+    pub fn claim(
+        &mut self,
+        catalog: &Catalog,
+        window: &[PostId],
+        retry: &RetryBook,
+    ) -> Vec<(PostId, String)> {
         let mut claimed = Vec::new();
         for post in window {
             if self.probing.len() >= self.limit {
                 break;
             }
-            if let Some(url) = self.needed_probe(catalog, post) {
+            if let Some(url) = self.needed_probe(catalog, retry, post) {
                 self.probing.insert(post.clone());
                 claimed.push((post.clone(), url));
             }
@@ -41,7 +48,7 @@ impl ProbeBook {
         self.probed.insert(post.clone());
     }
 
-    fn needed_probe(&self, catalog: &Catalog, post: &PostId) -> Option<String> {
+    fn needed_probe(&self, catalog: &Catalog, retry: &RetryBook, post: &PostId) -> Option<String> {
         if self.probing.contains(post) || self.probed.contains(post) {
             return None;
         }
@@ -49,6 +56,6 @@ impl ProbeBook {
         if entry.total_bytes().is_some() {
             return None;
         }
-        entry.meta.urls.first().cloned()
+        retry.live_urls(post, &entry.meta.urls).into_iter().next()
     }
 }

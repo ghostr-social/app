@@ -10,6 +10,7 @@ pub fn post_with_hashtags(event_id: &str, hashtags: &[&str]) -> ParsedVideoPost 
         author_pubkey: "a".repeat(64),
         kind: 1,
         identifier: None,
+        published_identifier: None,
         created_at: 1,
         caption: String::new(),
         title: None,

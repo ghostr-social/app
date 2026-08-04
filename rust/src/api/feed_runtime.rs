@@ -10,13 +10,14 @@ use crate::discovery::discovery_scheduler::{
 };
 use crate::discovery::feed_spec::FeedSpec;
 use crate::discovery::feed_store::FeedId;
+use crate::discovery::outbox_bootstrap::OutboxBootstrap;
 use crate::discovery::outbox_directory::OutboxDirectory;
 use crate::discovery::relay_plan_executor::{RelayPlanExecutor, SharedOutboxDirectory};
 use crate::discovery::search_queries::SEARCH_RELAY_URLS;
 use crate::engine::inventory_controller::Mode;
 use crate::engine::DataUsageLevel;
 use flutter_rust_bridge::frb;
-use nostr_sdk::{Client, Timestamp};
+use nostr_sdk::{Client, Event, Timestamp};
 use std::sync::{Arc, Mutex, MutexGuard};
 use tokio::sync::{mpsc, watch, RwLock};
 
@@ -39,6 +40,8 @@ pub(crate) struct DiscoveryRuntime {
     pub(crate) state: SharedFeedState,
     pub(crate) client: Arc<Client>,
     pub(crate) outbox: SharedOutboxDirectory,
+    executor: RelayPlanExecutor,
+    bootstrap: Arc<OutboxBootstrap>,
 }
 
 impl DiscoveryRuntime {
@@ -56,24 +59,45 @@ impl DiscoveryRuntime {
         );
         let (sender, outcomes) = mpsc::unbounded_channel();
         let handle = start_discovery_scheduler(DiscoverySchedulerConfig {
-            executor: Arc::new(executor),
+            executor: Arc::new(executor.clone()),
             level: DataUsageLevel::Balanced,
             modes: boot.modes,
-            outcomes: sender,
+            outcomes: sender.clone(),
         });
         let state: SharedFeedState = Arc::new(Mutex::new(FeedState::new()));
-        tokio::spawn(pump_outcomes(state.clone(), outcomes));
-        Self { handle, state, client: boot.client, outbox }
+        let bootstrap = Arc::new(OutboxBootstrap::new(
+            Arc::new(executor.clone()),
+            outbox.clone(),
+            sender,
+        ));
+        tokio::spawn(pump_outcomes(
+            OutcomeSinks { state: state.clone(), bootstrap: bootstrap.clone() },
+            outcomes,
+        ));
+        Self { handle, state, client: boot.client, outbox, executor, bootstrap }
     }
 
     /// Opens the feed, starts its first-page queries, and returns the
-    /// handle Dart uses for every later call.
+    /// handle Dart uses for every later call. The page leaves first and
+    /// the relay-list chase follows it: NIP-65 routing improves the
+    /// pages after it, never delays this one.
     pub(crate) fn open_feed(&self, spec: FeedSpec) -> String {
-        let (feed, dispatch) = lock(&self.state).open(spec);
+        let (feed, dispatch) = lock(&self.state).open(spec.clone());
         if let Some(open) = dispatch {
             self.handle.open_feed(open.context, open.request);
         }
+        self.chase_relay_lists(&spec);
         feed.0.to_string()
+    }
+
+    /// Whose NIP-65 lists this feed needs: the viewer's own lists (which
+    /// bring their follows), or the creators a profile grid just opened.
+    fn chase_relay_lists(&self, spec: &FeedSpec) {
+        match spec {
+            FeedSpec::MainFeed { viewer: Some(viewer) } => self.bootstrap.viewer(*viewer),
+            FeedSpec::Profile(creators) => self.bootstrap.authors(creators),
+            _ => {}
+        }
     }
 
     /// Claims and dispatches one older page; the return value reports
@@ -105,19 +129,45 @@ impl DiscoveryRuntime {
         Ok((self.state.clone(), revisions))
     }
 
+    /// Both knobs the level moves: the worker pool in the scheduler and
+    /// the outbox fan-out in the executor.
     pub(crate) fn set_data_usage(&self, level: DataUsageLevel) {
         self.handle.set_data_usage(level);
+        self.executor.set_data_usage(level);
     }
 }
 
+/// Where a retrieval's events land: feed rows in the state, relay lists
+/// in the outbox directory.
+#[frb(ignore)]
+pub(crate) struct OutcomeSinks {
+    pub(crate) state: SharedFeedState,
+    pub(crate) bootstrap: Arc<OutboxBootstrap>,
+}
+
 /// Feeds every retrieval outcome into the feed state until the
-/// scheduler ends (all handles dropped).
+/// scheduler ends (all handles dropped). Relay lists and the viewer's
+/// own lists are filed on the way through, whether they arrived on a
+/// feed page or on a bootstrap retrieval.
 pub(crate) async fn pump_outcomes(
-    state: SharedFeedState,
+    sinks: OutcomeSinks,
     mut outcomes: mpsc::UnboundedReceiver<RetrievalOutcome>,
 ) {
     while let Some(outcome) = outcomes.recv().await {
-        lock(&state).apply(&outcome.context, outcome.result);
+        if let Ok(events) = &outcome.result {
+            file_lists(&sinks, events).await;
+        }
+        lock(&sinks.state).apply(&outcome.context, outcome.result);
+    }
+}
+
+/// A replaced follow set re-routes the main feed and sends the
+/// bootstrap after the new follows' relay lists.
+async fn file_lists(sinks: &OutcomeSinks, events: &[Event]) {
+    sinks.bootstrap.ingest(events).await;
+    let follows = lock(&sinks.state).ingest_social(events);
+    if let Some(follows) = follows {
+        sinks.bootstrap.track_follows(follows).await;
     }
 }
 

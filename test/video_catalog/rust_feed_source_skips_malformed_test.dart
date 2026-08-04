@@ -10,7 +10,7 @@ void main() {
   // sinking the whole page (ndk_video_remote_source.dart).
   test('skips rows without playable media and keeps the rest', () async {
     final port = FakeRustFeedPort(updates: [
-      rustFeedUpdate(revision: 0),
+      rustFeedBaseline(),
       rustFeedUpdate(revision: 1, posts: [
         rustFeedPost(
           eventId: testEventId,
@@ -44,7 +44,7 @@ void main() {
 
   test('skips rows with an unknown delivery kind', () async {
     final port = FakeRustFeedPort(updates: [
-      rustFeedUpdate(revision: 0),
+      rustFeedBaseline(),
       rustFeedUpdate(revision: 1, posts: [
         rustFeedPost(
           eventId: testEventId,

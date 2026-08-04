@@ -8,10 +8,12 @@ use crate::discovery::plan_executor::{PlanExecutor, PlanFailure, PlanFuture, Pla
 use crate::discovery::search_queries::{resolve_relays, OutboxLookup, PlannedQuery, QueryPlan, QueryRole};
 use crate::engine::DataUsageLevel;
 use log::warn;
-use nostr_sdk::{Client, Event, PublicKey};
+use nostr_sdk::{Client, Event};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
+use tokio_stream::{Stream, StreamExt};
 
 /// Shared, live-updating outbox directory; ingestion happens on the
 /// subscription side, lookups here.
@@ -24,7 +26,9 @@ pub struct RelayPlanExecutor {
     client: Arc<Client>,
     search_relays: Arc<[String]>,
     outbox: SharedOutboxDirectory,
-    outbox_cap: usize,
+    /// Shared with every clone so a live data-usage change reaches the
+    /// executor the scheduler already holds.
+    outbox_cap: Arc<AtomicUsize>,
 }
 
 impl RelayPlanExecutor {
@@ -38,8 +42,15 @@ impl RelayPlanExecutor {
             client,
             search_relays: search_relays.into(),
             outbox,
-            outbox_cap: max_outbox_relays(level),
+            outbox_cap: Arc::new(AtomicUsize::new(max_outbox_relays(level))),
         }
+    }
+
+    /// Live outbox fan-out change (`ffi_set_delivery_config`): the next
+    /// query of every open feed uses the new cap.
+    pub fn set_data_usage(&self, level: DataUsageLevel) {
+        self.outbox_cap
+            .store(max_outbox_relays(level), Ordering::Relaxed);
     }
 
     async fn run(self, plan: QueryPlan) -> Result<Vec<Event>, PlanFailure> {
@@ -52,19 +63,19 @@ impl RelayPlanExecutor {
         collect_events(fetches).await
     }
 
-    /// Dart `_outboxRelays`: an empty resolution falls back to the
+    /// Dart `_outboxRelays`: the wanted authors' write relays, or — for
+    /// a request that names none — the directory's discovery relays,
+    /// which rank the viewer's follows' write relays
+    /// (`discoveryRelayUrls`). An empty resolution falls back to the
     /// client's bootstrap pool.
-    async fn outbox_relays(&self, lookup: &OutboxLookup) -> Option<Vec<String>> {
-        let authors: &[PublicKey] = match lookup {
+    pub(crate) async fn outbox_relays(&self, lookup: &OutboxLookup) -> Option<Vec<String>> {
+        let cap = self.outbox_cap.load(Ordering::Relaxed);
+        let directory = self.outbox.read().await;
+        let relays = match lookup {
             OutboxLookup::Skip => return None,
-            OutboxLookup::DiscoveryRelays => &[],
-            OutboxLookup::AuthorWriteRelays(authors) => authors,
+            OutboxLookup::DiscoveryRelays => directory.discovery_relays(cap),
+            OutboxLookup::AuthorWriteRelays(authors) => directory.relays_for_authors(authors, cap),
         };
-        let relays = self
-            .outbox
-            .read()
-            .await
-            .relays_for_authors(authors, self.outbox_cap);
         if relays.is_empty() {
             None
         } else {
@@ -117,15 +128,33 @@ async fn fetch(
     query: PlannedQuery,
 ) -> Result<Vec<Event>, PlanFailure> {
     let filters = vec![query.filter];
-    let events = match relays {
-        None => client.fetch_events(filters, query.timeout).await,
+    let streamed = match relays {
+        None => client.stream_events(filters, query.timeout).await,
         Some(urls) => {
             ensure_relays(&client, &urls).await;
-            client.fetch_events_from(urls, filters, query.timeout).await
+            client.stream_events_from(urls, filters, query.timeout).await
         }
     }
     .map_err(|error| PlanFailure::new(error.to_string()))?;
-    Ok(events.into_iter().collect())
+    Ok(drain_events(streamed).await)
+}
+
+/// Every event the relays streamed, in arrival order (the feed sorts
+/// its own page). The sibling `fetch_events*` calls would collect into
+/// `Events::new(&filters)`, a set capped at the single filter's
+/// `limit`: that bounds the *union across relays* and drops the oldest,
+/// while the wire filter already caps each relay on its own. ndk merges
+/// the union unbounded, so draining is what keeps the pools the same
+/// size. The pool deduplicates by event id before it streams.
+pub(crate) async fn drain_events<S>(mut streamed: S) -> Vec<Event>
+where
+    S: Stream<Item = Event> + Unpin,
+{
+    let mut events = Vec::new();
+    while let Some(event) = streamed.next().await {
+        events.push(event);
+    }
+    events
 }
 
 async fn ensure_relays(client: &Client, urls: &[String]) {

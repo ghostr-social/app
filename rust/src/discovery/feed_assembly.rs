@@ -8,15 +8,32 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::discovery::event_parsing::ParsedVideoPost;
+use crate::discovery::feed_spec::FeedSpec;
+use crate::discovery::social_graph::SocialGraph;
+
+/// The rows one fetched page contributes to a feed: canonical, ordered,
+/// and only what this feed's spec shows the viewer.
+pub fn select_posts(
+    spec: &FeedSpec,
+    fetched: Vec<ParsedVideoPost>,
+    graph: &SocialGraph,
+) -> Vec<ParsedVideoPost> {
+    canonical_posts(fetched)
+        .into_iter()
+        .filter(|post| spec.accepts(post, graph))
+        .collect()
+}
 
 /// The same-video identity of a post: addressable video revisions share
 /// `kind:pubkey:identifier`, everything else is its event id — mirrors
-/// `_eventCoordinate` (and `VideoInteractionTarget.fromPost`).
+/// `_eventCoordinate` (and `VideoInteractionTarget.fromPost`). The
+/// identifier is compared as published, like the raw `d` tag value ndk
+/// keys on: padding makes a different coordinate, not the same video.
 pub fn post_coordinate(post: &ParsedVideoPost) -> String {
     if !(30_000..40_000).contains(&u32::from(post.kind)) {
         return post.event_id.clone();
     }
-    match &post.identifier {
+    match &post.published_identifier {
         Some(identifier) => {
             format!("{}:{}:{}", post.kind, post.author_pubkey, identifier)
         }

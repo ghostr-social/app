@@ -5,12 +5,14 @@
 /// One feed to open, as Dart names it. `kind` selects the shape:
 /// `"main"` reads the signed-in viewer from `viewer_pubkey` (hex or
 /// npub); `"hashtag"` reads the tag from `value` (leading `#`
-/// optional); `"profile"` reads the creator key from `value`;
-/// `"search"` reads the query from `value`, as typed.
+/// optional); `"search"` reads the query from `value`, as typed;
+/// `"profile"` reads every creator key from `creators` — one for a
+/// profile grid, the whole follow set for the Following feed.
 #[derive(Clone, Debug)]
 pub struct FfiFeedSpec {
     pub kind: String,
     pub value: Option<String>,
+    pub creators: Vec<String>,
     pub viewer_pubkey: Option<String>,
 }
 
@@ -68,6 +70,21 @@ pub struct FfiFeedPost {
     pub media: FfiFeedMedia,
 }
 
+/// How far the snapshot's page got. Row counts cannot answer that — a
+/// plan that resolved to nothing and a plan still in flight both show
+/// zero posts — so the stage is what a pull-shaped caller waits on.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FfiFeedStage {
+    /// A retrieval is in flight; `posts` may still grow.
+    Loading,
+    /// Every query of the page resolved: `posts` is the whole page.
+    Settled,
+    /// The page's primary query failed; `posts` is whatever survived.
+    /// ndk parity: the Dart pipeline raises a failure here rather than
+    /// serving an empty feed (ndk_nostr_video_event_query.dart).
+    Failed,
+}
+
 /// One feed-stream update: the feed's full ordered snapshot, newest
 /// first. Snapshots replace the previous list wholesale — chosen over
 /// diffs so the Dart side has nothing to reconcile; `revision` is the
@@ -76,5 +93,6 @@ pub struct FfiFeedPost {
 pub struct FfiFeedUpdate {
     pub feed_id: String,
     pub revision: u64,
+    pub stage: FfiFeedStage,
     pub posts: Vec<FfiFeedPost>,
 }

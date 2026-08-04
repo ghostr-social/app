@@ -13,7 +13,7 @@ use nostr_sdk::Keys;
 fn an_empty_older_page_exhausts_a_profile_feed() {
     let mut state = FeedState::new();
     let keys = Keys::generate();
-    let (feed, dispatch) = state.open(FeedSpec::Profile(keys.public_key()));
+    let (feed, dispatch) = state.open(FeedSpec::Profile(vec![keys.public_key()]));
     let open = dispatch.expect("profile feeds dispatch a first page");
     state.apply(&open.context, Ok(vec![video_note(&keys, "only", 40)]));
 

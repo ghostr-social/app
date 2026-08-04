@@ -6,6 +6,7 @@ use rust_lib_ghostr::video::delivery_events::DeliveryHandle;
 use rust_lib_ghostr::video::delivery_manager::{
     start_delivery_manager, DeliveryManagerConfig, DeliveryTuning,
 };
+use rust_lib_ghostr::video::delivery_retry::RetryPolicy;
 use rust_lib_ghostr::video::outbound_media_client::MediaHttpClient;
 use rust_lib_ghostr::video::partial_range_store::PartialRangeStore;
 use rust_lib_ghostr::video::playback_demand::{demand_channel, DemandSender};
@@ -49,10 +50,17 @@ pub fn base_params() -> EngineParams {
     }
 }
 
+/// The production ladder, scaled down: pauses in milliseconds and a
+/// revival window far longer than any test run.
 pub fn test_tuning() -> DeliveryTuning {
     DeliveryTuning {
         probe_concurrency: 2,
-        failure_cooldown: Duration::from_millis(200),
+        retry: RetryPolicy {
+            base: Duration::from_millis(50),
+            max: Duration::from_millis(400),
+            jitter: 0.0,
+            ..RetryPolicy::default()
+        },
         stats_debounce: Duration::ZERO,
     }
 }

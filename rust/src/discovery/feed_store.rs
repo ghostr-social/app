@@ -13,10 +13,23 @@ use nostr_sdk::Timestamp;
 use tokio::sync::watch;
 
 use crate::discovery::event_parsing::ParsedVideoPost;
-use crate::discovery::feed_assembly::{append_new, canonical_posts};
+use crate::discovery::feed_assembly::{append_new, select_posts};
 use crate::discovery::feed_spec::FeedSpec;
 use crate::discovery::pagination::next_page_cursor;
 use crate::discovery::social_graph::SocialGraph;
+
+/// How many rows one open feed keeps — about ten pages. Feeds now stay
+/// open for the life of the Dart source
+/// (lib/features/video_catalog/data/rust_feed_sessions.dart) while the
+/// scheduler prefetches older pages into the active one, so an
+/// unbounded list would grow all session, and every revision ships the
+/// whole list over the FFI. The window is anchored at the head: the
+/// newest rows are what a returning pull answers with. Past it the
+/// feed still paginates on the relay side (cursors follow what was
+/// fetched) and Dart keeps the list a viewer scrolled through; if the
+/// limit ever bites, window the snapshot around the reader's cursor
+/// rather than growing this number.
+pub const FEED_POST_RETENTION: usize = 500;
 
 /// Handle of one open feed.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -84,6 +97,7 @@ impl FeedStore {
         open.posts = select_posts(&open.spec, fetched, graph);
         open.cursor = next_page_cursor(created_at(&open.posts));
         open.in_flight = false;
+        open.trim();
         open.notify();
     }
 
@@ -110,19 +124,33 @@ impl FeedStore {
     /// Appends one fetched older page and advances the cursor by what was
     /// fetched, so pages full of filtered creators cannot stall
     /// pagination; subscribers hear only when something was appended.
+    /// Reports whether they did.
     pub fn ingest_older_page(
         &mut self,
         feed: FeedId,
         fetched: Vec<ParsedVideoPost>,
         graph: &SocialGraph,
-    ) {
+    ) -> bool {
         let Some(open) = self.feeds.get_mut(&feed) else {
-            return;
+            return false;
         };
         open.in_flight = false;
         open.cursor = older_cursor(&open.spec, open.cursor, &fetched);
         let page = select_posts(&open.spec, fetched, graph);
-        if append_new(&mut open.posts, page) {
+        if !append_new(&mut open.posts, page) {
+            return false;
+        }
+        open.trim();
+        open.notify();
+        true
+    }
+
+    /// Publishes a revision without changing the list: the API layer
+    /// calls it when the rest of the snapshot moved on — a page that
+    /// finished or failed without adding rows still ends the wait of a
+    /// pull-shaped reader.
+    pub fn touch(&self, feed: FeedId) {
+        if let Some(open) = self.feeds.get(&feed) {
             open.notify();
         }
     }
@@ -142,17 +170,13 @@ impl OpenFeed {
     fn notify(&self) {
         self.revision.send_modify(|revision| *revision += 1);
     }
-}
 
-fn select_posts(
-    spec: &FeedSpec,
-    fetched: Vec<ParsedVideoPost>,
-    graph: &SocialGraph,
-) -> Vec<ParsedVideoPost> {
-    canonical_posts(fetched)
-        .into_iter()
-        .filter(|post| spec.accepts(post, graph))
-        .collect()
+    /// Drops the rows past the retention window. Cursors are computed
+    /// from what was fetched before this runs, so a trim never rewinds
+    /// pagination.
+    fn trim(&mut self) {
+        self.posts.truncate(FEED_POST_RETENTION);
+    }
 }
 
 /// An empty page exhausts a canonical feed but leaves a query feed its

@@ -61,3 +61,26 @@ fn bootstrap_relays_ride_above_the_cap() {
         ],
     );
 }
+
+/// The main feed's lookup is capped the same way: the follows' ranked
+/// write relays, cut to the level's `maxOutboxRelays`, after bootstrap.
+#[test]
+fn caps_the_follows_discovery_relays_at_each_level() {
+    let follows: Vec<Keys> = (0..24).map(|_| Keys::generate()).collect();
+    let mut directory = OutboxDirectory::new(vec!["wss://boot.example".to_owned()]);
+    for (index, keys) in follows.iter().enumerate() {
+        let url = format!("wss://write-{index:02}.example");
+        directory.ingest(&write_relay_list(keys, &[url.as_str()], 10));
+    }
+    directory.track_viewer_follows(follows.iter().map(Keys::public_key).collect());
+
+    for level in [
+        DataUsageLevel::Conservative,
+        DataUsageLevel::Balanced,
+        DataUsageLevel::Aggressive,
+    ] {
+        let relays = directory.discovery_relays(max_outbox_relays(level));
+
+        assert_eq!(relays.len(), max_outbox_relays(level) + 1, "cap for {level:?}");
+    }
+}

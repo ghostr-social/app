@@ -1,5 +1,6 @@
 mod support;
 
+use rust_lib_ghostr::video::partial_range_completion::Completion;
 use rust_lib_ghostr::video::partial_range_store::PartialRangeStore;
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
@@ -16,22 +17,28 @@ async fn partial_range_finalize_promotes_a_complete_file_when_the_digest_matches
     store.set_total_len("clip", 8).await.expect("total length");
     let expected = format!("{:x}", Sha256::digest(b"headtail"));
 
-    let completed = store.finalize("clip", &expected).await.expect("finalize");
+    let completed = store
+        .finalize("clip", Some(expected.as_str()))
+        .await
+        .expect("finalize");
 
     assert_eq!(
         tokio::fs::read(&completed).await.expect("completed bytes"),
         b"headtail"
     );
     assert!(store.is_complete("clip").await.expect("completeness"));
+    let completion = store.completion("clip").await.expect("completion");
+    assert_eq!(completion, Some(Completion::Verified));
+    assert!(completion.expect("promoted").is_verified());
     assert_eq!(
         store.read_range("clip", 4..8).await.expect("read"),
         Some(b"tail".to_vec())
     );
     assert_eq!(*used_bytes.lock().await, 8);
-    assert_eq!(
-        std::fs::read_dir(&root).expect("store contents").count(),
-        1,
-        "only the completed file should remain"
+    assert!(!root.join("clip.part").exists(), "the partial is gone");
+    assert!(
+        !root.join("clip.ranges.json").exists(),
+        "the manifest is gone"
     );
     std::fs::remove_dir_all(root).expect("remove store");
 }

@@ -4,30 +4,15 @@
 
 use crate::api::feed_runtime::{lock, SharedFeedState};
 use crate::api::feed_state::FeedState;
-use crate::api::feed_types::FfiFeedUpdate;
-use crate::api::feed_updates_stream::{watch_feed, FeedOut};
+use crate::api::feed_updates_stream::watch_feed;
 use crate::api::tests::feed_fixtures::video_note;
+use crate::api::tests::feed_watch_support::{next, ChannelOut};
 use crate::discovery::feed_spec::FeedSpec;
 use nostr_sdk::Keys;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
-
-struct ChannelOut(mpsc::UnboundedSender<FfiFeedUpdate>);
-
-impl FeedOut for ChannelOut {
-    fn send(&self, update: FfiFeedUpdate) -> bool {
-        self.0.send(update).is_ok()
-    }
-}
-
-async fn next(updates: &mut mpsc::UnboundedReceiver<FfiFeedUpdate>) -> FfiFeedUpdate {
-    timeout(Duration::from_secs(5), updates.recv())
-        .await
-        .expect("an update should arrive")
-        .expect("the watcher should stay alive")
-}
 
 #[tokio::test]
 async fn snapshots_stream_from_baseline_to_close() {

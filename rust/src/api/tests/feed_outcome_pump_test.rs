@@ -1,9 +1,10 @@
 //! `pump_outcomes`: retrieval outcomes leaving the scheduler land in
 //! the locked feed state and wake the feed's revision watch.
 
-use crate::api::feed_runtime::{lock, pump_outcomes, SharedFeedState};
+use crate::api::feed_runtime::{lock, pump_outcomes, OutcomeSinks, SharedFeedState};
 use crate::api::feed_state::FeedState;
 use crate::api::tests::feed_fixtures::video_note;
+use crate::api::tests::outbox_runtime_support::test_bootstrap;
 use crate::discovery::discovery_scheduler::RetrievalOutcome;
 use crate::discovery::feed_spec::FeedSpec;
 use nostr_sdk::Keys;
@@ -22,7 +23,8 @@ async fn pumped_outcomes_reach_the_feed_state() {
     let mut revisions = lock(&state).subscribe(feed).expect("open feeds subscribe");
 
     let (sender, outcomes) = mpsc::unbounded_channel();
-    let pump = tokio::spawn(pump_outcomes(state.clone(), outcomes));
+    let sinks = OutcomeSinks { state: state.clone(), bootstrap: test_bootstrap().0 };
+    let pump = tokio::spawn(pump_outcomes(sinks, outcomes));
     sender
         .send(RetrievalOutcome {
             context: open.context,

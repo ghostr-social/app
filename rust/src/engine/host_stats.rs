@@ -105,9 +105,11 @@ impl HostStats {
     }
 
     /// Orders imeta URL candidates best-first for the downloader,
-    /// replacing blind sequential fallback. Comfort ranks purely by
-    /// expected throughput — retrying a fast-but-flaky host is how its
-    /// stats heal; hunger additionally penalizes slow and failing
+    /// replacing blind sequential fallback. Every mode discounts a
+    /// candidate by its host's reliability, so a host that keeps
+    /// failing cannot be picked over a healthy mirror however fast it
+    /// once was (a host that only stumbles still outranks a slow one,
+    /// which is how its stats heal); hunger additionally penalizes slow
     /// hosts. Stable: ties keep the imeta order; unparseable URLs sink.
     pub fn best_source(&self, urls: &[String], mode: Mode) -> Vec<String> {
         let mut ranked: Vec<(f64, &String)> = urls
@@ -129,14 +131,27 @@ impl HostStats {
     }
 
     fn hunger_factor(&self, host: &str) -> f64 {
-        let speed = (self.expected_throughput(host) / OPTIMISTIC_THROUGHPUT_BPS).min(1.0);
-        speed * (1.0 - self.failure_ratio(host))
+        self.speed_factor(host) * self.reliability(host)
     }
 
+    /// Measured speed relative to the optimistic baseline, capped at 1.
+    fn speed_factor(&self, host: &str) -> f64 {
+        (self.expected_throughput(host) / OPTIMISTIC_THROUGHPUT_BPS).min(1.0)
+    }
+
+    /// Share of recent attempts that succeeded, in `[0, 1]`.
+    fn reliability(&self, host: &str) -> f64 {
+        1.0 - self.failure_ratio(host)
+    }
+
+    /// Expected throughput discounted by reliability, and in hunger by
+    /// measured speed as well. Reliability counts once in either mode.
     fn source_score(&self, url: &str, mode: Mode) -> f64 {
-        match host_of(url) {
-            Some(host) => self.expected_throughput(&host) * self.host_factor(&host, mode),
-            None => 0.0,
+        let Some(host) = host_of(url) else { return 0.0 };
+        let expected = self.expected_throughput(&host) * self.reliability(&host);
+        match mode {
+            Mode::Comfort => expected,
+            Mode::Hunger => expected * self.speed_factor(&host),
         }
     }
 

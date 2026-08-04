@@ -10,7 +10,15 @@ fn spec(kind: &str, value: Option<&str>, viewer: Option<String>) -> FfiFeedSpec 
     FfiFeedSpec {
         kind: kind.to_owned(),
         value: value.map(str::to_owned),
+        creators: Vec::new(),
         viewer_pubkey: viewer,
+    }
+}
+
+fn creator_spec(creators: &[String]) -> FfiFeedSpec {
+    FfiFeedSpec {
+        creators: creators.to_vec(),
+        ..spec("profile", None, None)
     }
 }
 
@@ -30,11 +38,16 @@ fn a_main_feed_without_a_viewer_is_the_signed_out_feed() {
     assert_eq!(parsed.expect("main parses"), FeedSpec::MainFeed { viewer: None });
 }
 
+/// One creator for a profile grid, the whole follow set for the
+/// Following feed — both arrive in `creators`.
 #[test]
-fn profile_feed_names_the_creator_in_value() {
-    let creator = Keys::generate().public_key();
-    let parsed = parse_feed_spec(&spec("profile", Some(&creator.to_hex()), None));
-    assert_eq!(parsed.expect("profile parses"), FeedSpec::Profile(creator));
+fn profile_feed_names_every_creator() {
+    let creators: Vec<_> = (0..2).map(|_| Keys::generate().public_key()).collect();
+    let hexes: Vec<String> = creators.iter().map(|key| key.to_hex()).collect();
+
+    let parsed = parse_feed_spec(&creator_spec(&hexes));
+
+    assert_eq!(parsed.expect("profile parses"), FeedSpec::Profile(creators));
 }
 
 #[test]
@@ -49,8 +62,8 @@ fn hashtag_and_search_feeds_carry_the_value_as_typed() {
 fn unusable_specs_are_rejected() {
     assert!(parse_feed_spec(&spec("trending", None, None)).is_err());
     assert!(parse_feed_spec(&spec("main", None, Some("not-a-key".to_owned()))).is_err());
-    assert!(parse_feed_spec(&spec("profile", None, None)).is_err());
-    assert!(parse_feed_spec(&spec("profile", Some("bad"), None)).is_err());
+    assert!(parse_feed_spec(&creator_spec(&[])).is_err());
+    assert!(parse_feed_spec(&creator_spec(&["bad".to_owned()])).is_err());
     assert!(parse_feed_spec(&spec("hashtag", None, None)).is_err());
     assert!(parse_feed_spec(&spec("search", None, None)).is_err());
 }

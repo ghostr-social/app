@@ -17,6 +17,7 @@ pub(crate) fn parsed_video_post(kind: u16, identifier: Option<&str>) -> ParsedVi
         author_pubkey: "a1".to_owned(),
         kind,
         identifier: identifier.map(str::to_owned),
+        published_identifier: identifier.map(str::to_owned),
         created_at: 77,
         caption: "sunset ride".to_owned(),
         title: None,

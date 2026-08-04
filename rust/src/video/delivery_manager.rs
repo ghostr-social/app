@@ -4,12 +4,13 @@
 //! triggers one replanning pass — there is no periodic wake-up.
 
 use crate::engine::inventory_controller::Mode;
-use crate::engine::{DataUsageLevel, EngineParams, PostId};
+use crate::engine::{DataUsageLevel, EngineParams};
 use crate::video::delivery_events::{
     command_channel, CommandReceiver, DeliveryCommand, DeliveryHandle,
 };
 use crate::video::delivery_inflight::InFlightChunks;
 use crate::video::delivery_probes::ProbeBook;
+use crate::video::delivery_retry::{RetryBook, RetryPolicy};
 use crate::video::delivery_state::DeliveryState;
 use crate::video::delivery_stats::StatsKeeper;
 use crate::video::delivery_transfers::{InternalEvent, TransferContext};
@@ -18,7 +19,6 @@ use crate::video::partial_range_store::PartialRangeStore;
 use crate::video::playback_demand::{DemandReceiver, DemandSignal};
 use crate::video::progressive_posts::ServablePosts;
 use crate::video::transfer_timeouts::TransferTimeouts;
-use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -29,8 +29,8 @@ use tokio::sync::{mpsc, watch};
 pub struct DeliveryTuning {
     /// Concurrent HEAD probes for unknown-size posts.
     pub probe_concurrency: usize,
-    /// Pause before retrying a post after a failed transfer.
-    pub failure_cooldown: Duration,
+    /// Backoff ladder and give-up budgets for failing sources.
+    pub retry: RetryPolicy,
     /// Quiet period before persisting the host-stats snapshot.
     pub stats_debounce: Duration,
 }
@@ -39,7 +39,7 @@ impl Default for DeliveryTuning {
     fn default() -> Self {
         Self {
             probe_concurrency: 2,
-            failure_cooldown: Duration::from_secs(3),
+            retry: RetryPolicy::default(),
             stats_debounce: Duration::from_secs(2),
         }
     }
@@ -100,11 +100,10 @@ pub(crate) struct DeliveryWorker {
     pub(crate) keeper: StatsKeeper,
     pub(crate) inflight: InFlightChunks,
     pub(crate) probes: ProbeBook,
-    pub(crate) cooling: HashSet<PostId>,
+    pub(crate) retry: RetryBook,
     pub(crate) pending_demand: Option<DemandSignal>,
     pub(crate) ctx: TransferContext,
     pub(crate) posts: ServablePosts,
-    pub(crate) tuning: DeliveryTuning,
     commands: CommandReceiver,
     demand: DemandReceiver,
     events: mpsc::UnboundedReceiver<InternalEvent>,
@@ -128,7 +127,7 @@ impl DeliveryWorker {
             keeper: StatsKeeper::load(config.stats_path, config.tuning.stats_debounce).await,
             inflight: InFlightChunks::new(),
             probes: ProbeBook::new(config.tuning.probe_concurrency),
-            cooling: HashSet::new(),
+            retry: RetryBook::new(config.tuning.retry),
             pending_demand: None,
             ctx: TransferContext {
                 client: config.client,
@@ -137,7 +136,6 @@ impl DeliveryWorker {
                 timeouts: TransferTimeouts::default(),
             },
             posts: config.posts,
-            tuning: config.tuning,
             commands,
             demand,
             events,
@@ -166,8 +164,8 @@ impl DeliveryWorker {
     async fn apply(&mut self, wake: Wake) {
         match wake {
             Wake::Command(DeliveryCommand::Focus(update)) => {
-                let servable = self.state.apply_focus(update);
-                self.posts.replace_all(servable);
+                self.state.apply_focus(update);
+                self.refresh_servable();
             }
             Wake::Command(DeliveryCommand::Config(level)) => self.state.apply_level(level),
             Wake::Demand(signal) => self.pending_demand = Some(signal),
@@ -179,9 +177,7 @@ impl DeliveryWorker {
         match event {
             InternalEvent::ChunkDone(done) => self.finish_chunk(done).await,
             InternalEvent::ProbeDone(done) => self.finish_probe(done).await,
-            InternalEvent::CooldownOver(post) => {
-                self.cooling.remove(&post);
-            }
+            InternalEvent::CooldownOver(post) => self.retry.warm_up(&post),
             InternalEvent::SaveStats => self.keeper.save_now().await,
         }
     }

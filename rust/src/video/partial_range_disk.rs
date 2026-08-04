@@ -1,4 +1,6 @@
+use crate::video::partial_range_completion::{self as completion, Completion};
 use crate::video::partial_range_manifest::RangeManifest;
+use crate::video::partial_range_paths::StorePaths;
 use anyhow::{Context, Result};
 use sha2::{Digest, Sha256};
 use std::io::SeekFrom;
@@ -7,10 +9,15 @@ use std::path::Path;
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 
 /// In-memory bookkeeping for one stored key, rebuilt lazily from disk.
+/// `completion` is `None` while the key is still partial.
 pub struct Entry {
     pub manifest: RangeManifest,
     pub accounted: u64,
-    pub completed: bool,
+    pub completion: Option<Completion>,
+    /// Monotonic use counter driving eviction order; `0` until the key
+    /// is read or written in this run, which makes untouched keys the
+    /// first candidates.
+    pub touched: u64,
 }
 
 impl Entry {
@@ -19,27 +26,30 @@ impl Entry {
         Self {
             manifest,
             accounted,
-            completed: false,
+            completion: None,
+            touched: 0,
         }
     }
 
-    fn completed(len: u64) -> Result<Self> {
+    fn completed(len: u64, completion: Completion) -> Result<Self> {
         let mut manifest = RangeManifest::default();
         manifest.set_total_len(len)?;
         manifest.insert(0..len)?;
         Ok(Self {
             manifest,
             accounted: len,
-            completed: true,
+            completion: Some(completion),
+            touched: 0,
         })
     }
 }
 
-pub async fn load_entry(completed: &Path, manifest: &Path) -> Result<Entry> {
-    if let Some(len) = file_len(completed).await? {
-        return Entry::completed(len);
+pub async fn load_entry(paths: &StorePaths, key: &str) -> Result<Entry> {
+    if let Some(len) = file_len(&paths.completed(key)).await? {
+        let completion = completion::recorded(&paths.verified(key)).await?;
+        return Entry::completed(len, completion);
     }
-    Ok(Entry::partial(load_manifest(manifest).await?))
+    Ok(Entry::partial(load_manifest(&paths.manifest(key)).await?))
 }
 
 pub async fn write_at(path: &Path, offset: u64, bytes: &[u8]) -> Result<()> {
@@ -94,6 +104,14 @@ pub async fn sha256_file(path: &Path) -> Result<String> {
     Ok(format!("{:x}", digest.finalize()))
 }
 
+/// Writes the zero-byte marker that records a verified completion.
+pub async fn write_marker(path: &Path) -> Result<()> {
+    ensure_parent(path).await?;
+    tokio::fs::write(path, [])
+        .await
+        .context("write partial store verification marker")
+}
+
 pub async fn load_manifest(path: &Path) -> Result<RangeManifest> {
     match tokio::fs::read_to_string(path).await {
         Ok(text) => Ok(RangeManifest::from_json(&text).unwrap_or_default()),
@@ -102,12 +120,16 @@ pub async fn load_manifest(path: &Path) -> Result<RangeManifest> {
     }
 }
 
+/// Staged then renamed, so a manifest is never half written. A staging
+/// write that fails — a full disk is the usual reason — leaves nothing
+/// behind and leaves the committed manifest exactly as it was.
 pub async fn save_manifest(path: &Path, manifest: &RangeManifest) -> Result<()> {
     ensure_parent(path).await?;
     let staging = path.with_extension("json.tmp");
-    tokio::fs::write(&staging, manifest.to_json())
-        .await
-        .context("write partial range manifest")?;
+    if let Err(error) = tokio::fs::write(&staging, manifest.to_json()).await {
+        remove_if_present(&staging).await?;
+        return Err(error).context("write partial range manifest");
+    }
     tokio::fs::rename(&staging, path)
         .await
         .context("commit partial range manifest")

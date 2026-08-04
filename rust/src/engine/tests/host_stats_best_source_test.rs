@@ -43,19 +43,18 @@ fn hunger_drops_a_failing_host_behind_an_unknown_mirror() {
 }
 
 #[test]
-fn mode_flips_the_order_for_a_fast_but_failing_host() {
+fn a_failing_host_sinks_behind_a_healthy_mirror_in_every_mode() {
     let mut stats = HostStats::new();
     stats.record_transfer("flaky.example", 8_000_000, Duration::from_secs(1));
     stats.record_failure("flaky.example");
     stats.record_transfer("steady.example", 300_000, Duration::from_secs(1));
     stats.record_success("steady.example");
-    let candidates = urls(&["https://steady.example/v.mp4", "https://flaky.example/v.mp4"]);
+    let candidates = urls(&["https://flaky.example/v.mp4", "https://steady.example/v.mp4"]);
 
-    let comfort = stats.best_source(&candidates, Mode::Comfort);
-    let hunger = stats.best_source(&candidates, Mode::Hunger);
-
-    assert_eq!(comfort[0], "https://flaky.example/v.mp4");
-    assert_eq!(hunger[0], "https://steady.example/v.mp4");
+    for mode in [Mode::Comfort, Mode::Hunger] {
+        let ordered = stats.best_source(&candidates, mode);
+        assert_eq!(ordered[0], "https://steady.example/v.mp4", "{mode:?}");
+    }
 }
 
 #[test]

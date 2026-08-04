@@ -147,15 +147,19 @@ fn target_for(filter: &Filter) -> RelayTarget {
 }
 
 /// Outbox relays serve the queries of a request that carries no term of
-/// its own; a request built around a viewer term never needs them.
+/// its own; a request built around a viewer term never needs them. The
+/// routed authors are the ones the request filters by, or the
+/// routing-only set the main feed carries — a request that knows
+/// neither falls back to the directory's own discovery relays.
 fn outbox_lookup(request: &DiscoveryRequest) -> OutboxLookup {
     if request.normalized_search().is_some() {
         return OutboxLookup::Skip;
     }
-    if request.authors.is_empty() {
+    let routed = request.routed_authors();
+    if routed.is_empty() {
         return OutboxLookup::DiscoveryRelays;
     }
-    OutboxLookup::AuthorWriteRelays(request.authors.clone())
+    OutboxLookup::AuthorWriteRelays(routed.to_vec())
 }
 
 fn merged(search: &[String], outbox: &[String]) -> Vec<String> {

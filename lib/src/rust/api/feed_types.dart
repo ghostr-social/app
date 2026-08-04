@@ -6,7 +6,7 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 /// The creator identity a feed row renders, including the
 /// shortened-npub fallback when no metadata is known.
@@ -157,21 +157,28 @@ class FfiFeedPost {
 /// One feed to open, as Dart names it. `kind` selects the shape:
 /// `"main"` reads the signed-in viewer from `viewer_pubkey` (hex or
 /// npub); `"hashtag"` reads the tag from `value` (leading `#`
-/// optional); `"profile"` reads the creator key from `value`;
-/// `"search"` reads the query from `value`, as typed.
+/// optional); `"search"` reads the query from `value`, as typed;
+/// `"profile"` reads every creator key from `creators` — one for a
+/// profile grid, the whole follow set for the Following feed.
 class FfiFeedSpec {
   final String kind;
   final String? value;
+  final List<String> creators;
   final String? viewerPubkey;
 
   const FfiFeedSpec({
     required this.kind,
     this.value,
+    required this.creators,
     this.viewerPubkey,
   });
 
   @override
-  int get hashCode => kind.hashCode ^ value.hashCode ^ viewerPubkey.hashCode;
+  int get hashCode =>
+      kind.hashCode ^
+      value.hashCode ^
+      creators.hashCode ^
+      viewerPubkey.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -180,7 +187,25 @@ class FfiFeedSpec {
           runtimeType == other.runtimeType &&
           kind == other.kind &&
           value == other.value &&
+          creators == other.creators &&
           viewerPubkey == other.viewerPubkey;
+}
+
+/// How far the snapshot's page got. Row counts cannot answer that — a
+/// plan that resolved to nothing and a plan still in flight both show
+/// zero posts — so the stage is what a pull-shaped caller waits on.
+enum FfiFeedStage {
+  /// A retrieval is in flight; `posts` may still grow.
+  loading,
+
+  /// Every query of the page resolved: `posts` is the whole page.
+  settled,
+
+  /// The page's primary query failed; `posts` is whatever survived.
+  /// ndk parity: the Dart pipeline raises a failure here rather than
+  /// serving an empty feed (ndk_nostr_video_event_query.dart).
+  failed,
+  ;
 }
 
 /// One feed-stream update: the feed's full ordered snapshot, newest
@@ -190,16 +215,19 @@ class FfiFeedSpec {
 class FfiFeedUpdate {
   final String feedId;
   final BigInt revision;
+  final FfiFeedStage stage;
   final List<FfiFeedPost> posts;
 
   const FfiFeedUpdate({
     required this.feedId,
     required this.revision,
+    required this.stage,
     required this.posts,
   });
 
   @override
-  int get hashCode => feedId.hashCode ^ revision.hashCode ^ posts.hashCode;
+  int get hashCode =>
+      feedId.hashCode ^ revision.hashCode ^ stage.hashCode ^ posts.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -208,6 +236,7 @@ class FfiFeedUpdate {
           runtimeType == other.runtimeType &&
           feedId == other.feedId &&
           revision == other.revision &&
+          stage == other.stage &&
           posts == other.posts;
 }
 

@@ -25,7 +25,7 @@ void main() {
       createdAt: 1753990000,
     );
     final port = FakeRustFeedPort(updates: [
-      rustFeedUpdate(revision: 0),
+      rustFeedBaseline(),
       rustFeedUpdate(revision: 1, posts: [newest, boundary]),
       rustFeedUpdate(revision: 2, posts: [newest, boundary, older]),
     ]);
@@ -47,7 +47,7 @@ void main() {
     final only = rustFeedPost(eventId: testEventId, createdAt: 1753990000);
     final port = FakeRustFeedPort(
       updates: [
-        rustFeedUpdate(revision: 0),
+        rustFeedBaseline(),
         rustFeedUpdate(revision: 1, posts: [only]),
       ],
       moreAvailable: false,

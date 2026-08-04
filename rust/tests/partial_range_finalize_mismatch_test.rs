@@ -16,12 +16,14 @@ async fn partial_range_finalize_rejects_and_discards_a_mismatched_digest() {
         .expect("bytes");
     store.set_total_len("clip", 8).await.expect("total length");
 
+    let advertised = "a".repeat(64);
     let error = store
-        .finalize("clip", &"a".repeat(64))
+        .finalize("clip", Some(advertised.as_str()))
         .await
         .expect_err("digest mismatch");
 
     assert!(error.to_string().contains("digest"), "unhelpful: {error}");
+    assert_eq!(store.completion("clip").await.expect("completion"), None);
     assert_eq!(*used_bytes.lock().await, 0);
     assert_eq!(
         store.present_ranges("clip").await.expect("ranges"),

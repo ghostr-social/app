@@ -10,6 +10,8 @@ const testViewerNpub =
     'npub10elfcs4fr0l0r8af98jlmgdh9c8tcxjvz9qkw038js35mp4dma8qzvjptg';
 const testCreatorPublicKey =
     '2222222222222222222222222222222222222222222222222222222222222222';
+const testCreatorNpub =
+    'npub1yg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3q2pw2gm';
 const testAuthorPublicKey =
     '3333333333333333333333333333333333333333333333333333333333333333';
 const testFanPublicKey =

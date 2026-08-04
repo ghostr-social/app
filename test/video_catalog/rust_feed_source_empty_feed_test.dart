@@ -7,7 +7,7 @@ import '../support/rust_feed_fixtures.dart';
 void main() {
   test('serves an empty list when the feed stream ends without a page',
       () async {
-    final port = FakeRustFeedPort(updates: [rustFeedUpdate(revision: 0)]);
+    final port = FakeRustFeedPort(updates: [rustFeedBaseline()]);
     final source = RustFeedRemoteSource(port: port);
 
     final posts = await source.loadRemoteFeed(searchQuery: 'ghost');

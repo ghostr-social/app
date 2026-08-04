@@ -15,6 +15,7 @@ pub mod focus_control;
 pub(crate) mod event_snapshots;
 pub(crate) mod feed_decisions;
 pub(crate) mod feed_mapping;
+pub(crate) mod feed_progress;
 pub(crate) mod feed_runtime;
 pub(crate) mod feed_state;
 pub(crate) mod focus_mapping;

@@ -7,14 +7,30 @@ import '../support/nostr_test_values.dart';
 void main() {
   // ndk parity: NdkVideoRemoteSource skips non-Nostr creator ids and
   // serves const [] when none survive (ndk_video_remote_source.dart).
-  test('drops undecodable creator ids and keeps the first valid one', () {
+  test('drops undecodable creator ids and keeps the decodable ones', () {
     final spec = buildRustFeedSpec(creatorIds: {
       ProfileId.parse('not-an-npub'),
       ProfileId.parse(testViewerNpub),
     });
 
     expect(spec?.kind, 'profile');
-    expect(spec?.value, testViewerPublicKey);
+    expect(spec?.creators, [testViewerPublicKey]);
+  });
+
+  // The Following feed asks for every follow at once
+  // (filtered_video_feed_repository.dart passes the whole set), so a
+  // spec naming one creator would query — and then filter to — a single
+  // author's posts while ndk queries them all.
+  test('names every decoded creator, not just the first', () {
+    final spec = buildRustFeedSpec(creatorIds: {
+      ProfileId.parse(testViewerNpub),
+      ProfileId.parse(testCreatorNpub),
+    });
+
+    expect(
+      spec?.creators,
+      unorderedEquals([testViewerPublicKey, testCreatorPublicKey]),
+    );
   });
 
   test('yields no spec when every creator id is undecodable', () {

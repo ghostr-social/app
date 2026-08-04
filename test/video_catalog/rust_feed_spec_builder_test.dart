@@ -39,7 +39,7 @@ void main() {
     );
 
     expect(spec?.kind, 'profile');
-    expect(spec?.value, testViewerPublicKey);
+    expect(spec?.creators, [testViewerPublicKey]);
   });
 
   test('no filters open the viewer main feed', () {

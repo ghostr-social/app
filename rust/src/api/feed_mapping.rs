@@ -17,7 +17,7 @@ pub(crate) fn parse_feed_spec(spec: &FfiFeedSpec) -> Result<FeedSpec> {
         "main" => Ok(FeedSpec::MainFeed {
             viewer: optional_key(spec.viewer_pubkey.as_deref(), "viewer_pubkey")?,
         }),
-        "profile" => Ok(FeedSpec::Profile(parsed_key(spec.value.as_deref(), "value")?)),
+        "profile" => Ok(FeedSpec::Profile(parsed_keys(&spec.creators)?)),
         "hashtag" => Ok(FeedSpec::Hashtag(required_value(spec)?)),
         "search" => Ok(FeedSpec::Search(required_value(spec)?)),
         other => bail!("unknown feed kind: {other}"),
@@ -32,9 +32,16 @@ pub(crate) fn parse_feed_id(raw: &str) -> Result<FeedId> {
         .map_err(|_| anyhow!("feed ids are the numeric strings ffi_open_feed returned"))
 }
 
-fn parsed_key(raw: Option<&str>, field: &str) -> Result<PublicKey> {
-    let raw = raw.ok_or_else(|| anyhow!("this feed kind needs {field}"))?;
-    public_key(raw, field)
+/// Dart has already dropped the ids that decode to nothing
+/// (rust_feed_spec_builder.dart), so an empty list means the caller
+/// asked for a feed that cannot exist.
+fn parsed_keys(raw: &[String]) -> Result<Vec<PublicKey>> {
+    if raw.is_empty() {
+        bail!("profile feeds need at least one creator");
+    }
+    raw.iter()
+        .map(|creator| public_key(creator, "creators"))
+        .collect()
 }
 
 /// A key Dart may leave out: a missing `main` viewer is a signed-out

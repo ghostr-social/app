@@ -7,6 +7,7 @@
 
 mod feed_support;
 
+use feed_support::empty_graph;
 use nostr_sdk::{Keys, Timestamp};
 use rust_lib_ghostr::discovery::feed_spec::FeedSpec;
 use rust_lib_ghostr::discovery::video_filters::DiscoveryRequest;
@@ -15,7 +16,7 @@ use rust_lib_ghostr::discovery::video_filters::DiscoveryRequest;
 fn feed_spec_main_feed_requests_everything_unscoped() {
     let viewer = Some(Keys::generate().public_key());
 
-    let request = FeedSpec::MainFeed { viewer }.page_request(None);
+    let request = FeedSpec::MainFeed { viewer }.page_request(None, &empty_graph());
 
     assert_eq!(request, Some(DiscoveryRequest::default()));
 }
@@ -25,7 +26,7 @@ fn feed_spec_passes_the_pagination_cursor_through() {
     let viewer = Some(Keys::generate().public_key());
     let cursor = Timestamp::from(1_700_000_000);
 
-    let request = FeedSpec::MainFeed { viewer }.page_request(Some(cursor));
+    let request = FeedSpec::MainFeed { viewer }.page_request(Some(cursor), &empty_graph());
 
     assert_eq!(request.expect("request").older_than, Some(cursor));
 }
@@ -34,14 +35,14 @@ fn feed_spec_passes_the_pagination_cursor_through() {
 fn feed_spec_profile_feed_scopes_to_the_creator() {
     let creator = Keys::generate().public_key();
 
-    let request = FeedSpec::Profile(creator).page_request(None);
+    let request = FeedSpec::Profile(vec![creator]).page_request(None, &empty_graph());
 
     assert_eq!(request.expect("request").authors, vec![creator]);
 }
 
 #[test]
 fn feed_spec_hashtag_feed_carries_the_normalized_tag() {
-    let request = FeedSpec::Hashtag("#Cats ".to_owned()).page_request(None);
+    let request = FeedSpec::Hashtag("#Cats ".to_owned()).page_request(None, &empty_graph());
 
     let request = request.expect("request");
     assert_eq!(request.hashtags, vec!["cats".to_owned()]);
@@ -50,5 +51,5 @@ fn feed_spec_hashtag_feed_carries_the_normalized_tag() {
 
 #[test]
 fn feed_spec_empty_hashtag_never_queries() {
-    assert_eq!(FeedSpec::Hashtag("#".to_owned()).page_request(None), None);
+    assert_eq!(FeedSpec::Hashtag("#".to_owned()).page_request(None, &empty_graph()), None);
 }
