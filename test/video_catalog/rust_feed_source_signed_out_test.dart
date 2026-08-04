@@ -6,12 +6,11 @@ import '../support/rust_feed_fixtures.dart';
 
 void main() {
   // ndk parity: signed out the main feed is still an unscoped relay
-  // query (ndk_nostr_outbox_directory.dart falls back to the bootstrap
-  // relays) and never fails. Rust scopes its main feed to a signed-in
-  // key, so the closest non-failing behavior is an empty page — see the
-  // viewer-less main feed blocker in the plan §5 notes.
-  test('serves an empty main feed while signed out instead of failing',
-      () async {
+  // query (ndk_nostr_outbox_directory.dart knows no follows without an
+  // account and falls back to the bootstrap relays), so it serves a
+  // global recent page instead of nothing. Rust names no viewer on that
+  // feed and skips mute filtering (discovery/feed_spec.rs).
+  test('serves the global main feed while signed out', () async {
     final port = FakeRustFeedPort(updates: [
       rustFeedUpdate(revision: 1, posts: [rustFeedPost()]),
     ]);
@@ -19,8 +18,9 @@ void main() {
 
     final posts = await source.loadRemoteFeed();
 
-    expect(posts, isEmpty);
-    expect(port.openedSpecs, isEmpty);
+    expect(posts, hasLength(1));
+    expect(port.openedSpecs.single.kind, 'main');
+    expect(port.openedSpecs.single.viewerPubkey, isNull);
   });
 
   test('still opens the query feeds a signed-out viewer can read', () async {

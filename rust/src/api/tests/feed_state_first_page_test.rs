@@ -12,7 +12,7 @@ use nostr_sdk::Keys;
 fn the_first_landed_page_becomes_the_snapshot() {
     let mut state = FeedState::new();
     let keys = Keys::generate();
-    let (feed, dispatch) = state.open(FeedSpec::MainFeed { viewer: keys.public_key() });
+    let (feed, dispatch) = state.open(FeedSpec::MainFeed { viewer: Some(keys.public_key()) });
     let open = dispatch.expect("main feeds dispatch a first page");
     assert_eq!(open.request, DiscoveryRequest::default());
 
@@ -33,7 +33,7 @@ fn the_first_landed_page_becomes_the_snapshot() {
 fn outcomes_for_unknown_contexts_are_ignored() {
     let mut state = FeedState::new();
     let keys = Keys::generate();
-    let (feed, dispatch) = state.open(FeedSpec::MainFeed { viewer: keys.public_key() });
+    let (feed, dispatch) = state.open(FeedSpec::MainFeed { viewer: Some(keys.public_key()) });
     let open = dispatch.expect("main feeds dispatch a first page");
     state.close(feed);
     state.apply(&open.context, Ok(vec![video_note(&keys, "late", 50)]));

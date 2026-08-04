@@ -18,7 +18,16 @@ fn spec(kind: &str, value: Option<&str>, viewer: Option<String>) -> FfiFeedSpec 
 fn main_feed_takes_the_viewer_pubkey() {
     let viewer = Keys::generate().public_key();
     let parsed = parse_feed_spec(&spec("main", None, Some(viewer.to_hex())));
+    let viewer = Some(viewer);
     assert_eq!(parsed.expect("main parses"), FeedSpec::MainFeed { viewer });
+}
+
+/// Signed out Dart names no viewer and the feed stays the unscoped
+/// global page ndk serves (rust_feed_spec_builder.dart).
+#[test]
+fn a_main_feed_without_a_viewer_is_the_signed_out_feed() {
+    let parsed = parse_feed_spec(&spec("main", None, None));
+    assert_eq!(parsed.expect("main parses"), FeedSpec::MainFeed { viewer: None });
 }
 
 #[test]
@@ -39,7 +48,6 @@ fn hashtag_and_search_feeds_carry_the_value_as_typed() {
 #[test]
 fn unusable_specs_are_rejected() {
     assert!(parse_feed_spec(&spec("trending", None, None)).is_err());
-    assert!(parse_feed_spec(&spec("main", None, None)).is_err());
     assert!(parse_feed_spec(&spec("main", None, Some("not-a-key".to_owned()))).is_err());
     assert!(parse_feed_spec(&spec("profile", None, None)).is_err());
     assert!(parse_feed_spec(&spec("profile", Some("bad"), None)).is_err());

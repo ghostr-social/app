@@ -119,8 +119,9 @@ impl FeedState {
             .collect()
     }
 
+    /// A signed-out main feed has no viewer graph to adopt (feed_spec.rs).
     fn adopt_viewer(&mut self, spec: &FeedSpec) {
-        if let FeedSpec::MainFeed { viewer } = spec {
+        if let FeedSpec::MainFeed { viewer: Some(viewer) } = spec {
             self.graph = SocialGraph::new(*viewer);
         }
     }

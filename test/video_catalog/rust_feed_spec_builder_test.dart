@@ -49,4 +49,15 @@ void main() {
     expect(spec?.viewerPubkey, testViewerPublicKey);
     expect(spec?.value, isNull);
   });
+
+  // ndk parity: signed out the main feed stays an unscoped relay query
+  // (ndk_nostr_outbox_directory.dart knows no follows without an
+  // account and falls back to the bootstrap relays), so the spec simply
+  // names no viewer instead of refusing to open.
+  test('no viewer opens the signed-out main feed', () {
+    final spec = buildRustFeedSpec();
+
+    expect(spec?.kind, 'main');
+    expect(spec?.viewerPubkey, isNull);
+  });
 }

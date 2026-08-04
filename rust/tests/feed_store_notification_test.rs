@@ -18,7 +18,7 @@ fn feed_store_notifies_subscribers_on_a_fresh_load() {
     let graph = SocialGraph::new(keys.public_key());
     let mut store = FeedStore::new();
     let feed = store.open_feed(FeedSpec::MainFeed {
-        viewer: keys.public_key(),
+        viewer: Some(keys.public_key()),
     });
     let mut updates = store.subscribe(feed).expect("open feed subscribes");
     updates.borrow_and_update();
@@ -34,7 +34,7 @@ fn feed_store_stays_silent_when_an_older_page_adds_nothing() {
     let graph = SocialGraph::new(keys.public_key());
     let mut store = FeedStore::new();
     let feed = store.open_feed(FeedSpec::MainFeed {
-        viewer: keys.public_key(),
+        viewer: Some(keys.public_key()),
     });
     let seen = video_note(&keys, "seen", 50);
     store.ingest_first_page(feed, vec![parsed(&seen)], &graph);
@@ -53,7 +53,7 @@ fn feed_store_notifies_when_an_older_page_extends_the_feed() {
     let graph = SocialGraph::new(keys.public_key());
     let mut store = FeedStore::new();
     let feed = store.open_feed(FeedSpec::MainFeed {
-        viewer: keys.public_key(),
+        viewer: Some(keys.public_key()),
     });
     store.ingest_first_page(feed, parsed_posts(&[video_note(&keys, "a", 50)]), &graph);
     let mut updates = store.subscribe(feed).expect("open feed subscribes");

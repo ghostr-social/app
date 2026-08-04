@@ -10,7 +10,7 @@ use nostr_sdk::Keys;
 fn metadata_in_the_outcome_names_the_creator() {
     let mut state = FeedState::new();
     let keys = Keys::generate();
-    let (feed, dispatch) = state.open(FeedSpec::MainFeed { viewer: keys.public_key() });
+    let (feed, dispatch) = state.open(FeedSpec::MainFeed { viewer: Some(keys.public_key()) });
     let open = dispatch.expect("main feeds dispatch a first page");
 
     let metadata = profile_event(&keys, r#"{"name":"Vera","picture":"https://cdn.example/a.png"}"#, 5);

@@ -9,7 +9,7 @@ use crate::discovery::feed_spec::FeedSpec;
 use nostr_sdk::{Keys, Timestamp};
 
 fn loaded_feed(state: &mut FeedState, keys: &Keys) -> (crate::discovery::feed_store::FeedId, OpenDispatch) {
-    let (feed, dispatch) = state.open(FeedSpec::MainFeed { viewer: keys.public_key() });
+    let (feed, dispatch) = state.open(FeedSpec::MainFeed { viewer: Some(keys.public_key()) });
     let open = dispatch.expect("main feeds dispatch a first page");
     state.apply(&open.context, Ok(vec![video_note(keys, "a", 30), video_note(keys, "b", 40)]));
     (feed, open)

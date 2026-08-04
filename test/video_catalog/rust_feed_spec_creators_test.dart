@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_spec_builder.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 
@@ -28,10 +27,5 @@ void main() {
     final spec = buildRustFeedSpec(creatorIds: const <ProfileId>{});
 
     expect(spec, isNull);
-  });
-
-  test('the main feed needs a signed-in viewer', () {
-    // The Rust main feed is viewer-scoped (api::feed_types FfiFeedSpec).
-    expect(() => buildRustFeedSpec(), throwsA(isA<AppFailure>()));
   });
 }

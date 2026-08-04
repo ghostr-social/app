@@ -13,7 +13,7 @@ use rust_lib_ghostr::discovery::video_filters::DiscoveryRequest;
 
 #[test]
 fn feed_spec_main_feed_requests_everything_unscoped() {
-    let viewer = Keys::generate().public_key();
+    let viewer = Some(Keys::generate().public_key());
 
     let request = FeedSpec::MainFeed { viewer }.page_request(None);
 
@@ -22,7 +22,7 @@ fn feed_spec_main_feed_requests_everything_unscoped() {
 
 #[test]
 fn feed_spec_passes_the_pagination_cursor_through() {
-    let viewer = Keys::generate().public_key();
+    let viewer = Some(Keys::generate().public_key());
     let cursor = Timestamp::from(1_700_000_000);
 
     let request = FeedSpec::MainFeed { viewer }.page_request(Some(cursor));

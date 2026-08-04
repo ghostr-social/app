@@ -26,7 +26,7 @@ fn feed_store_main_feed_drops_muted_creators_posts() {
     let graph = muting_graph(&session, &muted);
     let mut store = FeedStore::new();
     let feed = store.open_feed(FeedSpec::MainFeed {
-        viewer: session.public_key(),
+        viewer: Some(session.public_key()),
     });
 
     let fetched = parsed_posts(&[

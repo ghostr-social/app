@@ -33,7 +33,8 @@ async fn next(updates: &mut mpsc::UnboundedReceiver<FfiFeedUpdate>) -> FfiFeedUp
 async fn snapshots_stream_from_baseline_to_close() {
     let state: SharedFeedState = Arc::new(Mutex::new(FeedState::new()));
     let keys = Keys::generate();
-    let (feed, dispatch) = lock(&state).open(FeedSpec::MainFeed { viewer: keys.public_key() });
+    let viewer = Some(keys.public_key());
+    let (feed, dispatch) = lock(&state).open(FeedSpec::MainFeed { viewer });
     let open = dispatch.expect("main feeds dispatch a first page");
     let revisions = lock(&state).subscribe(feed).expect("open feeds subscribe");
 

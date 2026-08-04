@@ -19,7 +19,7 @@ fn feed_store_main_feed_exhausts_on_an_empty_older_page() {
     let graph = SocialGraph::new(keys.public_key());
     let mut store = FeedStore::new();
     let feed = store.open_feed(FeedSpec::MainFeed {
-        viewer: keys.public_key(),
+        viewer: Some(keys.public_key()),
     });
     store.ingest_first_page(feed, parsed_posts(&[video_note(&keys, "only", 50)]), &graph);
     store.begin_load_more(feed);

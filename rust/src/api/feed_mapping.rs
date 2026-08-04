@@ -15,7 +15,7 @@ use sha2::{Digest, Sha256};
 pub(crate) fn parse_feed_spec(spec: &FfiFeedSpec) -> Result<FeedSpec> {
     match spec.kind.as_str() {
         "main" => Ok(FeedSpec::MainFeed {
-            viewer: parsed_key(spec.viewer_pubkey.as_deref(), "viewer_pubkey")?,
+            viewer: optional_key(spec.viewer_pubkey.as_deref(), "viewer_pubkey")?,
         }),
         "profile" => Ok(FeedSpec::Profile(parsed_key(spec.value.as_deref(), "value")?)),
         "hashtag" => Ok(FeedSpec::Hashtag(required_value(spec)?)),
@@ -34,6 +34,16 @@ pub(crate) fn parse_feed_id(raw: &str) -> Result<FeedId> {
 
 fn parsed_key(raw: Option<&str>, field: &str) -> Result<PublicKey> {
     let raw = raw.ok_or_else(|| anyhow!("this feed kind needs {field}"))?;
+    public_key(raw, field)
+}
+
+/// A key Dart may leave out: a missing `main` viewer is a signed-out
+/// session, but a viewer that is present must still parse.
+fn optional_key(raw: Option<&str>, field: &str) -> Result<Option<PublicKey>> {
+    raw.map(|raw| public_key(raw, field)).transpose()
+}
+
+fn public_key(raw: &str, field: &str) -> Result<PublicKey> {
     PublicKey::parse(raw).map_err(|error| anyhow!("{field} is not a public key: {error}"))
 }
 

@@ -1,6 +1,5 @@
 import 'dart:developer';
 
-import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/src/rust/api/feed_types.dart';
@@ -9,9 +8,10 @@ import 'package:ndk/ndk.dart';
 /// Names the Rust feed one pull request opens, mirroring the request
 /// precedence of `remoteVideoRetrievalContext`
 /// (scheduled_remote_video_source.dart): search, then hashtag, then
-/// profile, then the viewer's main feed. Returns null when no feed can
-/// serve the request — ndk parity: NdkVideoRemoteSource serves
-/// `const []` when a creator set decodes to nothing.
+/// profile, then the main feed — viewer-scoped when signed in, global
+/// when not. Returns null when no feed can serve the request — ndk
+/// parity: NdkVideoRemoteSource serves `const []` when a creator set
+/// decodes to nothing.
 FfiFeedSpec? buildRustFeedSpec({
   Set<ProfileId>? creatorIds,
   String? searchQuery,
@@ -32,13 +32,13 @@ FfiFeedSpec? _termSpec(String? searchQuery, Set<String>? hashtags) {
   return FfiFeedSpec(kind: 'hashtag', value: hashtags.first);
 }
 
+/// The main feed names the viewer only when one is signed in: Rust
+/// degrades a viewer-less main feed to the unscoped global page ndk
+/// serves signed out (discovery/feed_spec.rs, and
+/// ndk_nostr_outbox_directory.dart knows no follows without an account).
 FfiFeedSpec _identitySpec(List<String>? creators, String? viewerPubkeyHex) {
   if (creators != null) {
     return FfiFeedSpec(kind: 'profile', value: creators.first);
-  }
-  if (viewerPubkeyHex == null) {
-    // The Rust main feed is viewer-scoped (api::feed_types FfiFeedSpec).
-    throw const AppFailure('Sign in to load the Rust main feed.');
   }
   return FfiFeedSpec(kind: 'main', viewerPubkey: viewerPubkeyHex);
 }

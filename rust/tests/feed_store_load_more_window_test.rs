@@ -17,7 +17,7 @@ use rust_lib_ghostr::discovery::social_graph::SocialGraph;
 
 fn main_feed(store: &mut FeedStore, viewer: &Keys) -> rust_lib_ghostr::discovery::feed_store::FeedId {
     store.open_feed(FeedSpec::MainFeed {
-        viewer: viewer.public_key(),
+        viewer: Some(viewer.public_key()),
     })
 }
 

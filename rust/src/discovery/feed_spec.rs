@@ -17,9 +17,13 @@ use crate::discovery::video_filters::DiscoveryRequest;
 /// One open feed's identity and query recipe.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum FeedSpec {
-    /// The home feed of one signed-in viewer; their social graph routes
-    /// the query to follows' outbox relays and supplies the mute list.
-    MainFeed { viewer: PublicKey },
+    /// The home feed. A signed-in viewer's social graph routes the
+    /// query to follows' outbox relays and supplies the mute list;
+    /// signed out there is no graph, so the feed degrades to the
+    /// unscoped global page the bootstrap relays answer — ndk parity
+    /// (lib/platform/nostr/ndk_nostr_outbox_directory.dart knows no
+    /// follows without an account and falls back to bootstrap).
+    MainFeed { viewer: Option<PublicKey> },
     /// Every post carrying one hashtag, as typed (with or without `#`).
     Hashtag(String),
     /// One creator's grid.
@@ -49,11 +53,12 @@ impl FeedSpec {
     /// Whether one assembled post is visible in this feed. Mutes hide
     /// creators from the main and query feeds (video_feed_policy.dart,
     /// `_selectPosts` in discovery_video_search_repository.dart); a
-    /// profile grid shows exactly its creator, muted or not
+    /// signed-out main feed has no viewer whose mutes could apply, and
+    /// a profile grid shows exactly its creator, muted or not
     /// (`ProfileDetailsPolicy.build` filters only by creator id).
     pub fn accepts(&self, post: &ParsedVideoPost, graph: &SocialGraph) -> bool {
         match self {
-            Self::MainFeed { .. } => !author_muted(post, graph),
+            Self::MainFeed { viewer } => viewer.is_none() || !author_muted(post, graph),
             Self::Profile(creator) => post.author_pubkey == creator.to_hex(),
             Self::Hashtag(raw) => !author_muted(post, graph) && carries_tag(post, raw),
             Self::Search(raw) => !author_muted(post, graph) && matches_search(post, raw),

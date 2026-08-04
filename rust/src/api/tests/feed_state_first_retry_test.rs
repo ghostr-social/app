@@ -11,7 +11,8 @@ use nostr_sdk::Keys;
 #[test]
 fn load_more_while_the_first_page_is_pending_waits() {
     let mut state = FeedState::new();
-    let (feed, dispatch) = state.open(FeedSpec::MainFeed { viewer: Keys::generate().public_key() });
+    let viewer = Some(Keys::generate().public_key());
+    let (feed, dispatch) = state.open(FeedSpec::MainFeed { viewer });
     assert!(dispatch.is_some());
 
     let decision = state.load_more(feed, None);
@@ -22,7 +23,8 @@ fn load_more_while_the_first_page_is_pending_waits() {
 #[test]
 fn a_failed_first_page_is_reopened_by_the_next_load_more() {
     let mut state = FeedState::new();
-    let (feed, dispatch) = state.open(FeedSpec::MainFeed { viewer: Keys::generate().public_key() });
+    let viewer = Some(Keys::generate().public_key());
+    let (feed, dispatch) = state.open(FeedSpec::MainFeed { viewer });
     let open = dispatch.expect("main feeds dispatch a first page");
     state.apply(&open.context, Err(PlanFailure::new("relay down")));
 

@@ -57,32 +57,14 @@ final class RustFeedRemoteSource implements RemoteVideoSource {
     Set<String>? hashtags,
     DateTime? olderThan,
   }) {
-    final viewer = _viewer();
-    if (viewer == null && _viewerScoped(creatorIds, searchQuery, hashtags)) {
-      return Future.value(const <VideoPost>[]);
-    }
     final spec = buildRustFeedSpec(
       creatorIds: creatorIds,
       searchQuery: searchQuery,
       hashtags: hashtags,
-      viewerPubkeyHex: viewer?.value,
+      viewerPubkeyHex: _viewer()?.value,
     );
     if (spec == null) return Future.value(const <VideoPost>[]);
     return _load(spec, olderThan);
-  }
-
-  /// A request naming no search, tag, or creator falls through to the
-  /// viewer's main feed (rust_feed_spec_builder.dart), which Rust
-  /// scopes to a signed-in key. ndk parity: that feed never fails when
-  /// signed out (it stays an unscoped relay query), so the closest
-  /// non-failing behavior here is an empty page.
-  bool _viewerScoped(
-    Set<ProfileId>? creatorIds,
-    String? searchQuery,
-    Set<String>? hashtags,
-  ) {
-    final tagged = hashtags != null && hashtags.isNotEmpty;
-    return !tagged && creatorIds == null && searchQuery == null;
   }
 
   Future<List<VideoPost>> _load(FfiFeedSpec spec, DateTime? olderThan) async {
