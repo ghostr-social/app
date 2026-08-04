@@ -1,0 +1,78 @@
+//! API-side registry of the progressive posts the event stream
+//! watches, plus the current data-usage level for startability math.
+
+use crate::engine::{DataUsageLevel, VideoMeta};
+use flutter_rust_bridge::frb;
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use tokio::sync::Notify;
+
+#[derive(Clone)]
+#[frb(ignore)]
+pub(crate) struct TrackedItems {
+    inner: Arc<RwLock<Tracked>>,
+    changed: Arc<Notify>,
+}
+
+struct Tracked {
+    items: HashMap<String, VideoMeta>,
+    level: DataUsageLevel,
+}
+
+impl TrackedItems {
+    pub(crate) fn new() -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(Tracked {
+                items: HashMap::new(),
+                level: DataUsageLevel::Balanced,
+            })),
+            changed: Arc::new(Notify::new()),
+        }
+    }
+
+    /// Replaces the watched set, mirroring a focus-window replacement.
+    pub(crate) fn replace(&self, entries: Vec<(String, VideoMeta)>) {
+        self.write().items = entries.into_iter().collect();
+        self.changed.notify_waiters();
+    }
+
+    /// Adds one post (playback registration). It survives only until
+    /// the next focus replacement, exactly like the servable registry.
+    pub(crate) fn insert(&self, id: String, meta: VideoMeta) {
+        self.write().items.insert(id, meta);
+        self.changed.notify_waiters();
+    }
+
+    pub(crate) fn set_level(&self, level: DataUsageLevel) {
+        self.write().level = level;
+        self.changed.notify_waiters();
+    }
+
+    pub(crate) fn level(&self) -> DataUsageLevel {
+        self.read().level
+    }
+
+    /// Entries in stable id order so event emission is deterministic.
+    pub(crate) fn snapshot(&self) -> Vec<(String, VideoMeta)> {
+        let mut entries: Vec<_> = self.read().items.clone().into_iter().collect();
+        entries.sort_by(|left, right| left.0.cmp(&right.0));
+        entries
+    }
+
+    /// Woken after every registry or level change.
+    pub(crate) fn notifier(&self) -> Arc<Notify> {
+        self.changed.clone()
+    }
+
+    fn read(&self) -> RwLockReadGuard<'_, Tracked> {
+        self.inner
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    fn write(&self) -> RwLockWriteGuard<'_, Tracked> {
+        self.inner
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+}

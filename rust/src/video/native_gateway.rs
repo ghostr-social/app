@@ -1,21 +1,19 @@
+use crate::api::engine_control::relay_list;
+use crate::api::runtime_registry;
 use crate::video::ffi_models::{ffi_hls_playback_session, ffi_video_download};
-use crate::video::gateway_runtime::{GatewayConfiguration, GatewayRuntime};
-use anyhow::bail;
+use crate::video::gateway_runtime::GatewayConfiguration;
 use flutter_rust_bridge::frb;
 use log::warn;
-use once_cell::sync::OnceCell;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 
 pub use crate::video::ffi_models::{
     FfiHlsPlaybackSession, FfiNostrEventIdentity, FfiNostrVideo, FfiUserData, FfiVideoDelivery,
     FfiVideoDownload,
 };
 
-static GLOBAL_STATE: OnceCell<Arc<GatewayRuntime>> = OnceCell::new();
-static STARTING: AtomicBool = AtomicBool::new(false);
-
+/// Deprecated alias for `ffi_start_engine` (plan §2): same start path
+/// and shared runtime, with the data-usage level left at its Balanced
+/// default. Kept only until the Dart wiring moves to the new call.
 #[frb]
 pub async fn ffi_start_server(
     cache_directory: String,
@@ -23,33 +21,23 @@ pub async fn ffi_start_server(
     max_storage_bytes: u64,
     relay_urls: String,
 ) -> anyhow::Result<String> {
-    if GLOBAL_STATE.get().is_some() || STARTING.swap(true, Ordering::AcqRel) {
-        bail!("The embedded gateway is already running.");
-    }
     let configuration = GatewayConfiguration {
         cache_directory: PathBuf::from(cache_directory),
         relays: relay_list(&relay_urls),
         max_parallel_downloads,
         max_storage_bytes,
     };
-    let result = GatewayRuntime::start(configuration).await;
-    STARTING.store(false, Ordering::Release);
-    let (endpoint, runtime) = result?;
-    Ok(install_runtime(endpoint, runtime))
-}
-
-fn install_runtime(endpoint: String, runtime: GatewayRuntime) -> String {
-    GLOBAL_STATE.get_or_init(|| Arc::new(runtime));
-    endpoint
+    runtime_registry::start_and_install(configuration).await
 }
 
 #[frb]
 pub async fn ffi_get_discovered_videos() -> Vec<FfiVideoDownload> {
-    let Some(gateway) = GLOBAL_STATE.get() else {
+    let Some(engine) = runtime_registry::engine_if_running() else {
         warn!("Embedded video server is not initialized");
         return Vec::new();
     };
-    gateway
+    engine
+        .gateway
         .discovered_videos()
         .await
         .iter()
@@ -61,27 +49,17 @@ pub async fn ffi_get_discovered_videos() -> Vec<FfiVideoDownload> {
 pub async fn ffi_acquire_hls_playback(
     source_urls: Vec<String>,
 ) -> anyhow::Result<FfiHlsPlaybackSession> {
-    let gateway = GLOBAL_STATE
-        .get()
-        .ok_or_else(|| anyhow::anyhow!("The embedded gateway is not initialized."))?;
-    let session = gateway.acquire_hls(source_urls).await?;
+    let engine = runtime_registry::engine()?;
+    let session = engine.gateway.acquire_hls(source_urls).await?;
     Ok(ffi_hls_playback_session(session))
 }
 
 #[frb]
 pub async fn ffi_release_hls_playback(session_id: String) -> bool {
-    let Some(gateway) = GLOBAL_STATE.get() else {
-        return false;
-    };
-    gateway.release_hls(&session_id).await
-}
-
-fn relay_list(raw: &str) -> Vec<String> {
-    raw.lines()
-        .map(str::trim)
-        .filter(|relay| !relay.is_empty())
-        .map(str::to_owned)
-        .collect()
+    match runtime_registry::engine_if_running() {
+        Some(engine) => engine.gateway.release_hls(&session_id).await,
+        None => false,
+    }
 }
 
 #[flutter_rust_bridge::frb(init)]

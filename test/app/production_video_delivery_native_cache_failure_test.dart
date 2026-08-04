@@ -29,11 +29,11 @@ void main() {
           initialize: () async {
             gatewayInitializations += 1;
           },
-          startServer: ({
-            required cacheDirectory,
-            required maxParallelDownloads,
-            required maxStorageBytes,
-            required relayUrls,
+          startEngine: ({
+            required String cacheDirectory,
+            required String relayUrls,
+            required String dataUsage,
+            required BigInt maxStorageBytes,
           }) async =>
               '127.0.0.1:3000',
         ),

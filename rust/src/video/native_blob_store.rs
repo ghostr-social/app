@@ -71,36 +71,6 @@ impl NativeBlobStore {
         Ok(invalid.into_iter().map(|(id, _)| id).collect())
     }
 
-    pub async fn evict_bytes(
-        &self,
-        keys: &[NativeVideoCacheKey],
-        required: u64,
-    ) -> Result<HashSet<NativeVideoCacheKey>> {
-        let mut evicted = HashSet::new();
-        let mut freed = 0_u64;
-        for key in keys {
-            if freed >= required {
-                break;
-            }
-            if let Some(bytes) = self.evict_one(key).await {
-                freed = freed.saturating_add(bytes);
-                evicted.insert(key.clone());
-            }
-        }
-        Ok(evicted)
-    }
-
-    async fn evict_one(&self, key: &NativeVideoCacheKey) -> Option<u64> {
-        let snapshot = self.entry(key).await?;
-        match self.remove(key, &snapshot.video).await {
-            Ok(()) => Some(snapshot.video.bytes),
-            Err(error) => {
-                warn!("Native cache could not preempt a blob: {error:#}");
-                None
-            }
-        }
-    }
-
     async fn entry(&self, key: &NativeVideoCacheKey) -> Option<NativeBlobSnapshot> {
         self.entries
             .lock()

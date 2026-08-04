@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/app/build_production_dependencies.dart';
 import 'package:ghostr/app/production_video_delivery.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
-import 'package:ghostr/platform/media/ffi_video_gateway.dart';
 
 import '../support/fake_nostr_event_client.dart';
 import '../support/fake_nostr_session_port.dart';
@@ -14,6 +13,7 @@ import '../support/fake_remote_video_source.dart';
 import '../support/fake_video_file_downloader.dart';
 import '../support/ndk_mocks.dart';
 import '../support/nostr_test_values.dart';
+import '../support/stub_video_gateways.dart';
 
 void main() {
   test('uses the production bootstrap factory with an injected video boundary',
@@ -24,7 +24,7 @@ void main() {
       canonicalSource: FakeRemoteVideoSource([]),
       supportDirectoryProvider: () async => root,
       downloader: FakeVideoFileDownloader({}),
-      gateway: _gateway(),
+      gateway: startedVideoGateway(),
     );
     final environment = ProductionDependenciesEnvironment.production(
       videoEnvironmentBuilder: (_, __) => videoEnvironment,
@@ -46,17 +46,4 @@ void main() {
 
     expect(delivery.remoteSource, isNotNull);
   });
-}
-
-FfiVideoGateway _gateway() {
-  return FfiVideoGateway(
-    initialize: () async {},
-    startServer: ({
-      required cacheDirectory,
-      required maxParallelDownloads,
-      required maxStorageBytes,
-      required relayUrls,
-    }) async =>
-        '127.0.0.1:3000',
-  );
 }

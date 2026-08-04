@@ -1,33 +1,35 @@
 import 'package:ghostr/core/errors/boundary_failure.dart';
-import 'package:ghostr/features/video_inventory/domain/video_delivery_plan.dart';
+import 'package:ghostr/features/settings/domain/app_settings.dart';
+import 'package:ghostr/src/rust/api/engine_control.dart';
 import 'package:ghostr/src/rust/frb_generated.dart';
-import 'package:ghostr/src/rust/video/video.dart';
 
 typedef RustGatewayInitializer = Future<void> Function();
-typedef RustGatewayStarter = Future<String> Function({
+typedef RustEngineStarter = Future<String> Function({
   required String cacheDirectory,
-  required BigInt maxParallelDownloads,
-  required BigInt maxStorageBytes,
   required String relayUrls,
+  required String dataUsage,
+  required BigInt maxStorageBytes,
 });
 
+/// Boots the Rust media engine with the FULL inventory budget — the
+/// engine owns the one cache; no byte split with Dart remains.
 class FfiVideoGateway {
   FfiVideoGateway({
     RustGatewayInitializer initialize = RustLib.init,
-    RustGatewayStarter startServer = ffiStartServer,
+    RustEngineStarter startEngine = ffiStartEngine,
   })  : _initialize = initialize,
-        _startServer = startServer;
+        _startEngine = startEngine;
 
   final RustGatewayInitializer _initialize;
-  final RustGatewayStarter _startServer;
+  final RustEngineStarter _startEngine;
 
   Future<VideoGatewayStartResult> start(
-    VideoDeliveryPlan plan,
+    AppSettings settings,
     String cacheDirectory,
   ) async {
     try {
       await _initialize();
-      final endpoint = await _start(plan, cacheDirectory);
+      final endpoint = await _start(settings, cacheDirectory);
       return _endpointResult(endpoint);
     } on Object catch (error, stackTrace) {
       final failure = translatedBoundaryFailure(
@@ -40,12 +42,12 @@ class FfiVideoGateway {
     }
   }
 
-  Future<String> _start(VideoDeliveryPlan plan, String cacheDirectory) {
-    return _startServer(
+  Future<String> _start(AppSettings settings, String cacheDirectory) {
+    return _startEngine(
       cacheDirectory: cacheDirectory,
-      maxParallelDownloads: BigInt.from(8),
-      maxStorageBytes: BigInt.from(plan.nativeCacheBytes),
-      relayUrls: plan.relayUrls.map((relay) => relay.value).join('\n'),
+      relayUrls: settings.relays.map((relay) => relay.value).join('\n'),
+      dataUsage: settings.dataUsage.name,
+      maxStorageBytes: BigInt.from(settings.inventoryBudget.bytes),
     );
   }
 

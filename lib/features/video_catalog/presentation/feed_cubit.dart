@@ -14,8 +14,8 @@ import 'package:ghostr/features/video_catalog/presentation/feed_failure_messages
 import 'package:ghostr/features/video_catalog/presentation/feed_hunt.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_interaction_reconciler.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_pagination.dart';
+import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_state.dart';
-import 'package:ghostr/features/video_inventory/domain/feed_media_prefetcher.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
 
 export 'feed_state.dart';
@@ -25,14 +25,14 @@ class FeedDependencies {
     required this.feed,
     required this.engagement,
     this.social,
-    this.prefetcher,
+    this.focus,
     this.watchTracker,
   });
 
   final VideoFeedRepository feed;
   final VideoEngagementRepository engagement;
   final SocialGraphRepository? social;
-  final FeedMediaPrefetcher? prefetcher;
+  final FeedFocusPort? focus;
   final WatchHistoryTracker? watchTracker;
 }
 
@@ -158,7 +158,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     }
     _hunt.filled();
     _trackWatched(posts.first);
-    _dependencies.prefetcher?.focus(posts, 0);
+    _sendFocus(posts, 0);
     _ensureBuffered();
   }
 
@@ -211,8 +211,16 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     if (index < 0 || index >= current.posts.length) return;
     emit(current.withPage(index));
     _trackWatched(current.posts[index]);
-    _dependencies.prefetcher?.focus(current.posts, index);
+    _sendFocus(current.posts, index);
     _ensureBuffered();
+  }
+
+  // Watch time stays zero: Dart has no playback watch timer yet, so
+  // the engine cannot receive real per-post watch milliseconds.
+  void _sendFocus(List<VideoPost> posts, int index) {
+    _dependencies.focus?.focusChanged(
+      FeedFocus.around(posts: posts, activeIndex: index),
+    );
   }
 
   // The viewer must always have a queue of unwatched videos ahead, so keep

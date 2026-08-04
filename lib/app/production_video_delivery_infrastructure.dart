@@ -3,13 +3,17 @@ import 'dart:io';
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/video_inventory/data/smart_video_inventory.dart';
-import 'package:ghostr/features/video_inventory/domain/video_delivery_plan.dart';
 import 'package:ghostr/features/video_inventory/domain/video_file_downloader.dart';
 import 'package:ghostr/features/video_inventory/domain/video_inventory_port.dart';
 import 'package:ghostr/platform/media/cache_directory_provider.dart';
 import 'package:ghostr/platform/media/ffi_video_gateway.dart';
 import 'package:ghostr/platform/media/file_video_cache_store.dart';
 import 'package:ghostr/platform/media/native_video_cache_directory.dart';
+
+/// The legacy Dart store keeps no budget: the Rust engine owns the
+/// full user budget, and a zero-byte cap drains files cached before
+/// the migration. The store itself dies in phase 3.
+const int _legacyDartCacheBytes = 0;
 
 final class ProductionVideoDeliveryInfrastructure {
   const ProductionVideoDeliveryInfrastructure({
@@ -28,12 +32,10 @@ Future<ProductionVideoDeliveryInfrastructure>
   required VideoFileDownloader downloader,
   required FfiVideoGateway gateway,
 }) async {
-  final plan = VideoDeliveryPlan.fromSettings(settings);
   final directories = _VideoDeliveryDirectories(await directoryProvider());
-  final inventory =
-      await _buildInventory(plan, directories.dartCache, downloader);
+  final inventory = await _buildInventory(directories.dartCache, downloader);
   final result = await _startNativeDelivery(
-    plan,
+    settings,
     directories.nativeCache,
     gateway,
   );
@@ -44,27 +46,26 @@ Future<ProductionVideoDeliveryInfrastructure>
 }
 
 Future<VideoGatewayStartResult> _startNativeDelivery(
-  VideoDeliveryPlan plan,
+  AppSettings settings,
   Directory directory,
   FfiVideoGateway gateway,
 ) async {
   try {
     await NativeVideoCacheDirectory(directory).initialize();
-    return gateway.start(plan, directory.path);
+    return gateway.start(settings, directory.path);
   } on AppFailure catch (failure) {
     return VideoGatewayFailed(failure.message);
   }
 }
 
 Future<VideoInventoryPort> _buildInventory(
-  VideoDeliveryPlan plan,
   Directory directory,
   VideoFileDownloader downloader,
 ) async {
   final store = FileVideoCacheStore(
     directoryProvider: () async => directory,
     downloader: downloader,
-    maxBytes: plan.dartCacheBytes,
+    maxBytes: _legacyDartCacheBytes,
   );
   await store.initialize();
   return SmartVideoInventory(

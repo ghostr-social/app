@@ -56,6 +56,7 @@ class NostrVideoEventMapper {
       media.urls.first,
       fallbackUrls: media.urls.skip(1).toList(),
       delivery: media.delivery,
+      metadata: media.metadata,
     );
     final digest = media.expectedSha256;
     if (digest != null) {

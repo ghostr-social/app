@@ -1,4 +1,3 @@
-use crate::video::native_candidate_round::NativeCandidateRound;
 use crate::video::native_download_state::NativeDownloadState;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -91,7 +90,6 @@ pub struct NativeVideoDownload {
     pub url: String,
     pub event: NativeEventIdentity,
     pub nostr: NativeVideo,
-    candidate_round: NativeCandidateRound,
     state: NativeDownloadState,
     suppressed_by: Option<NativeVideoCacheKey>,
 }
@@ -104,7 +102,6 @@ impl NativeVideoDownload {
             url: nostr.url.clone(),
             event,
             nostr,
-            candidate_round: NativeCandidateRound::default(),
             state,
             suppressed_by: None,
         }
@@ -123,11 +120,7 @@ impl NativeVideoDownload {
     }
 
     pub fn begin_retry(&mut self, now: tokio::time::Instant) -> bool {
-        let due = self.state.begin_retry(now);
-        if due {
-            self.reset_candidate_round();
-        }
-        due
+        self.state.begin_retry(now)
     }
 
     pub fn finish_download(&mut self, path: Option<PathBuf>, retryable: bool) {
@@ -137,34 +130,12 @@ impl NativeVideoDownload {
 
     pub fn mark_available(&mut self, path: PathBuf) {
         self.suppressed_by = None;
-        self.reset_candidate_round();
         self.state.mark_available(path);
     }
 
     pub fn restart_download(&mut self) {
         self.suppressed_by = None;
-        self.reset_candidate_round();
         self.state.restart();
-    }
-
-    pub(crate) fn pending_source_urls(&self) -> impl Iterator<Item = &str> {
-        self.nostr
-            .source_urls()
-            .filter(|url| self.candidate_round.is_pending(url))
-    }
-
-    pub(crate) fn record_candidate_failure(&mut self, url: &str, retryable: bool) -> bool {
-        if !self.nostr.source_urls().any(|candidate| candidate == url) {
-            return false;
-        }
-        self.candidate_round.record_failure(url, retryable);
-        true
-    }
-
-    pub(crate) fn finish_candidate_round_if_exhausted(&mut self) {
-        if self.pending_source_urls().next().is_none() {
-            self.finish_download(None, self.candidate_round.is_retryable());
-        }
     }
 
     pub fn suppress(&mut self, by: NativeVideoCacheKey) {
@@ -178,10 +149,6 @@ impl NativeVideoDownload {
 
     pub fn is_rejected(&self) -> bool {
         self.state.is_rejected()
-    }
-
-    fn reset_candidate_round(&mut self) {
-        self.candidate_round.reset();
     }
 }
 

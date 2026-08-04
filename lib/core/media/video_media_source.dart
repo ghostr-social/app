@@ -1,3 +1,4 @@
+import 'package:ghostr/core/media/video_media_metadata.dart';
 import 'package:ghostr/core/media/video_sha256.dart';
 import 'package:ghostr/core/media/video_media_cache_scope.dart';
 
@@ -5,6 +6,7 @@ part 'expected_sha256_video_media_source.dart';
 part 'cached_video_media_source.dart';
 part 'importable_video_media_source.dart';
 part 'proxied_hls_video_media_source.dart';
+part 'proxied_progressive_video_media_source.dart';
 part 'scoped_video_media_source.dart';
 part 'validated_video_media_source.dart';
 
@@ -49,10 +51,11 @@ sealed class VideoMediaSource {
     String rawUrl, {
     List<String> fallbackUrls = const [],
     VideoMediaDelivery delivery = VideoMediaDelivery.progressive,
+    VideoMediaMetadata metadata = VideoMediaMetadata.none,
   }) {
     final url = _httpUrl(rawUrl);
     final fallbacks = List<String>.unmodifiable(fallbackUrls.map(_httpUrl));
-    return RemoteVideoMediaSource._(url, fallbacks, delivery);
+    return RemoteVideoMediaSource._(url, fallbacks, delivery, metadata);
   }
 
   factory VideoMediaSource.proxiedHls(String rawUrl) {
@@ -107,6 +110,12 @@ sealed class VideoMediaSource {
 
   VideoMediaCacheScope? get cacheScope => null;
 
+  VideoMediaMetadata get mediaMetadata => switch (this) {
+        _ExpectedSha256VideoMediaSource(:final source) => source.mediaMetadata,
+        _ScopedVideoMediaSource(:final source) => source.mediaMetadata,
+        _ => VideoMediaMetadata.none,
+      };
+
   List<String> get cacheSourceUrls => List<String>.unmodifiable(
         remoteUrls.take(maxVideoCacheSourceCount),
       );
@@ -147,6 +156,7 @@ final class RemoteVideoMediaSource extends VideoMediaSource {
     this.url,
     this.fallbackUrls,
     this.delivery,
+    this.mediaMetadata,
   );
 
   final String url;
@@ -155,6 +165,13 @@ final class RemoteVideoMediaSource extends VideoMediaSource {
   final List<String> fallbackUrls;
 
   final VideoMediaDelivery delivery;
+
+  @override
+  final VideoMediaMetadata mediaMetadata;
+
+  int? get sizeBytes => mediaMetadata.sizeBytes;
+
+  int? get durationMs => mediaMetadata.durationMs;
 
   @override
   String get debugLabel => url;

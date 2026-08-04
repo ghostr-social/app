@@ -149,23 +149,6 @@ impl NativeVideoCache {
         self.blobs.retain(active).await
     }
 
-    pub(crate) async fn preempt(
-        &self,
-        priority: &NativeVideoCacheKey,
-        lower_priority: &[NativeVideoCacheKey],
-    ) -> Result<HashSet<NativeVideoCacheKey>> {
-        let used = *self.used_bytes.lock().await;
-        let required = self
-            .capacity
-            .take_required(priority, used)
-            .await
-            .or_else(|| (used >= self.max_bytes).then_some(1));
-        let Some(required) = required else {
-            return Ok(HashSet::new());
-        };
-        self.blobs.evict_bytes(lower_priority, required).await
-    }
-
     pub(crate) async fn reserve(&self, bytes: u64) -> Result<()> {
         let mut used = self.used_bytes.lock().await;
         let next = used

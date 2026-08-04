@@ -1,0 +1,53 @@
+use crate::api::delivery_events_stream::{watch_delivery, EventOut};
+use crate::api::delivery_types::{FfiDeliveryEvent, FfiDeliveryEventKind};
+use crate::api::tests::support::{sized_meta, temp_store};
+use crate::api::tracked_items::TrackedItems;
+use std::time::Duration;
+use tokio::sync::mpsc;
+
+struct ChannelOut(mpsc::UnboundedSender<FfiDeliveryEvent>);
+
+impl EventOut for ChannelOut {
+    fn send(&self, event: FfiDeliveryEvent) -> bool {
+        self.0.send(event).is_ok()
+    }
+}
+
+#[tokio::test]
+async fn streams_readiness_once_the_head_bytes_land() {
+    let store = temp_store("ghostr-api-watch");
+    let tracked = TrackedItems::new();
+    tracked.insert("clip".to_owned(), sized_meta(16, 2_000));
+    let (sender, mut events) = mpsc::unbounded_channel();
+    tokio::spawn(watch_delivery(ChannelOut(sender), store.clone(), tracked));
+
+    let first = recv(&mut events).await;
+    assert_eq!(first.kind, FfiDeliveryEventKind::Readiness);
+    assert!(!first.startable);
+
+    store.set_total_len("clip", 16).await.expect("total length");
+    store.write_range("clip", 0, &[7u8; 16]).await.expect("write");
+
+    let ready = wait_for_startable(&mut events).await;
+    assert_eq!(ready.kind, FfiDeliveryEventKind::Readiness);
+    assert_eq!(ready.bytes_present, 16);
+    assert_eq!(ready.total_bytes, Some(16));
+}
+
+async fn recv(events: &mut mpsc::UnboundedReceiver<FfiDeliveryEvent>) -> FfiDeliveryEvent {
+    tokio::time::timeout(Duration::from_secs(10), events.recv())
+        .await
+        .expect("event deadline")
+        .expect("open stream")
+}
+
+async fn wait_for_startable(
+    events: &mut mpsc::UnboundedReceiver<FfiDeliveryEvent>,
+) -> FfiDeliveryEvent {
+    loop {
+        let event = recv(events).await;
+        if event.startable {
+            return event;
+        }
+    }
+}

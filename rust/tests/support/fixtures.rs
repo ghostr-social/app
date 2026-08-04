@@ -1,12 +1,9 @@
 use rust_lib_ghostr::video::event_identity::CanonicalNativeVideo;
-use rust_lib_ghostr::video::event_index::NativeVideoIndex;
-use rust_lib_ghostr::video::native_cache::NativeVideoCache;
 use rust_lib_ghostr::video::native_models::{
-    NativeDownloads, NativeEventIdentity, NativeUserData, NativeVideo, NativeVideoCacheKey,
-    NativeVideoDelivery, NativeVideoDownload,
+    NativeEventIdentity, NativeUserData, NativeVideo, NativeVideoCacheKey, NativeVideoDelivery,
+    NativeVideoDownload,
 };
 use rust_lib_ghostr::video::outbound_media_client::MediaHttpClient;
-use rust_lib_ghostr::video::video_manager::{NativeVideoManager, NativeVideoManagerConfiguration};
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -76,15 +73,4 @@ pub fn temp_directory(prefix: &str) -> PathBuf {
 
 pub fn trusted_media_client() -> MediaHttpClient {
     MediaHttpClient::trusted().expect("trusted media client")
-}
-
-pub fn trusted_video_manager(
-    downloads: NativeDownloads,
-    cache: NativeVideoCache,
-    videos: NativeVideoIndex,
-    max_parallel_downloads: usize,
-) -> NativeVideoManager {
-    let configuration =
-        NativeVideoManagerConfiguration::new(trusted_media_client(), max_parallel_downloads);
-    NativeVideoManager::with_configuration(downloads, cache, videos, configuration)
 }

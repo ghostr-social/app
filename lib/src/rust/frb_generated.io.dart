@@ -3,6 +3,10 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
+import 'api/delivery_events_stream.dart';
+import 'api/delivery_types.dart';
+import 'api/engine_control.dart';
+import 'api/focus_control.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' as ffi;
@@ -23,10 +27,35 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   AnyhowException dco_decode_AnyhowException(dynamic raw);
 
   @protected
+  RustStreamSink<FfiDeliveryEvent> dco_decode_StreamSink_ffi_delivery_event_Sse(
+      dynamic raw);
+
+  @protected
   String dco_decode_String(dynamic raw);
 
   @protected
+  EventOut dco_decode_TraitDef_EventOut(dynamic raw);
+
+  @protected
   bool dco_decode_bool(dynamic raw);
+
+  @protected
+  FfiDeliveryEvent dco_decode_box_autoadd_ffi_delivery_event(dynamic raw);
+
+  @protected
+  FfiFocusItem dco_decode_box_autoadd_ffi_focus_item(dynamic raw);
+
+  @protected
+  BigInt dco_decode_box_autoadd_u_64(dynamic raw);
+
+  @protected
+  FfiDeliveryEvent dco_decode_ffi_delivery_event(dynamic raw);
+
+  @protected
+  FfiDeliveryEventKind dco_decode_ffi_delivery_event_kind(dynamic raw);
+
+  @protected
+  FfiFocusItem dco_decode_ffi_focus_item(dynamic raw);
 
   @protected
   FfiHlsPlaybackSession dco_decode_ffi_hls_playback_session(dynamic raw);
@@ -53,6 +82,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<String> dco_decode_list_String(dynamic raw);
 
   @protected
+  List<FfiFocusItem> dco_decode_list_ffi_focus_item(dynamic raw);
+
+  @protected
   List<FfiVideoDownload> dco_decode_list_ffi_video_download(dynamic raw);
 
   @protected
@@ -60,6 +92,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  BigInt? dco_decode_opt_box_autoadd_u_64(dynamic raw);
+
+  @protected
+  int dco_decode_u_32(dynamic raw);
 
   @protected
   BigInt dco_decode_u_64(dynamic raw);
@@ -77,10 +115,35 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
 
   @protected
+  RustStreamSink<FfiDeliveryEvent> sse_decode_StreamSink_ffi_delivery_event_Sse(
+      SseDeserializer deserializer);
+
+  @protected
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
   bool sse_decode_bool(SseDeserializer deserializer);
+
+  @protected
+  FfiDeliveryEvent sse_decode_box_autoadd_ffi_delivery_event(
+      SseDeserializer deserializer);
+
+  @protected
+  FfiFocusItem sse_decode_box_autoadd_ffi_focus_item(
+      SseDeserializer deserializer);
+
+  @protected
+  BigInt sse_decode_box_autoadd_u_64(SseDeserializer deserializer);
+
+  @protected
+  FfiDeliveryEvent sse_decode_ffi_delivery_event(SseDeserializer deserializer);
+
+  @protected
+  FfiDeliveryEventKind sse_decode_ffi_delivery_event_kind(
+      SseDeserializer deserializer);
+
+  @protected
+  FfiFocusItem sse_decode_ffi_focus_item(SseDeserializer deserializer);
 
   @protected
   FfiHlsPlaybackSession sse_decode_ffi_hls_playback_session(
@@ -109,6 +172,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<String> sse_decode_list_String(SseDeserializer deserializer);
 
   @protected
+  List<FfiFocusItem> sse_decode_list_ffi_focus_item(
+      SseDeserializer deserializer);
+
+  @protected
   List<FfiVideoDownload> sse_decode_list_ffi_video_download(
       SseDeserializer deserializer);
 
@@ -117,6 +184,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  BigInt? sse_decode_opt_box_autoadd_u_64(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_u_32(SseDeserializer deserializer);
 
   @protected
   BigInt sse_decode_u_64(SseDeserializer deserializer);
@@ -135,10 +208,36 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
       AnyhowException self, SseSerializer serializer);
 
   @protected
+  void sse_encode_StreamSink_ffi_delivery_event_Sse(
+      RustStreamSink<FfiDeliveryEvent> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_ffi_delivery_event(
+      FfiDeliveryEvent self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_ffi_focus_item(
+      FfiFocusItem self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_u_64(BigInt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ffi_delivery_event(
+      FfiDeliveryEvent self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ffi_delivery_event_kind(
+      FfiDeliveryEventKind self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ffi_focus_item(FfiFocusItem self, SseSerializer serializer);
 
   @protected
   void sse_encode_ffi_hls_playback_session(
@@ -169,6 +268,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_ffi_focus_item(
+      List<FfiFocusItem> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_ffi_video_download(
       List<FfiVideoDownload> self, SseSerializer serializer);
 
@@ -178,6 +281,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_64(BigInt? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_64(BigInt self, SseSerializer serializer);

@@ -1,5 +1,6 @@
 use crate::video::native_models::NativeDownloads;
 use crate::video::outbound_media_client::MediaHttpClient;
+use crate::video::progressive_route::{self, ProgressiveState};
 use crate::video::{hls_http_gateway, hls_sessions::HlsSessions};
 use axum::body::Body;
 use axum::extract::{Query, State};
@@ -51,14 +52,40 @@ pub fn configured_router_with_hls_client(
     hls_sessions: HlsSessions,
     client: MediaHttpClient,
 ) -> Router {
-    let state = Arc::new(GatewayHttpState {
+    let state = shared_state(downloads, hls_sessions, client);
+    Router::new()
+        .route("/video.mp4", get(stream_video))
+        .with_state(state.clone())
+        .merge(shared_router(state))
+}
+
+/// The gateway with `/video.mp4` served from the partial store instead of
+/// proxied upstream; HLS routes and `/status` are wired unchanged.
+pub fn configured_router_with_progressive(
+    downloads: NativeDownloads,
+    hls_sessions: HlsSessions,
+    client: MediaHttpClient,
+    progressive: Arc<ProgressiveState>,
+) -> Router {
+    progressive_route::router(progressive)
+        .merge(shared_router(shared_state(downloads, hls_sessions, client)))
+}
+
+fn shared_state(
+    downloads: NativeDownloads,
+    hls_sessions: HlsSessions,
+    client: MediaHttpClient,
+) -> Arc<GatewayHttpState> {
+    Arc::new(GatewayHttpState {
         client,
         downloads,
         hls_sessions,
-    });
+    })
+}
+
+fn shared_router(state: Arc<GatewayHttpState>) -> Router {
     Router::new()
         .route("/status", get(gateway_status))
-        .route("/video.mp4", get(stream_video))
         .route(
             "/hls/{session}/index.m3u8",
             get(hls_http_gateway::root_manifest),

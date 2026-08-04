@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/app/production_video_playback.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/media/video_playback_capabilities.dart';
+import 'package:ghostr/platform/media/gateway_video_playback_port.dart';
 import 'package:ghostr/platform/media/hls_video_playback_port.dart';
-import 'package:ghostr/platform/media/inventory_video_playback_port.dart';
 
 import '../support/fake_hls_playback_gateway.dart';
 import '../support/fake_remote_video_source.dart';
@@ -12,7 +12,7 @@ import '../support/fake_video_inventory.dart';
 import '../support/test_video_delivery.dart';
 
 void main() {
-  test('wraps inventory playback with HLS acquisition when available', () {
+  test('wraps gateway playback with HLS acquisition when available', () {
     final delivery = testVideoDelivery(
       inventory: FakeVideoInventory(),
       remoteSource: FakeRemoteVideoSource([]),
@@ -25,7 +25,7 @@ void main() {
     expect(playback, isA<HlsVideoPlaybackPort>());
   });
 
-  test('uses inventory playback directly without a secure HLS gateway', () {
+  test('streams progressive playback from the loopback gateway', () {
     final delivery = testVideoDelivery(
       inventory: FakeVideoInventory(),
       remoteSource: FakeRemoteVideoSource([]),
@@ -33,7 +33,7 @@ void main() {
 
     final playback = buildProductionVideoPlayback(delivery);
 
-    expect(playback, isA<InventoryVideoPlaybackPort>());
+    expect(playback, isA<GatewayVideoPlaybackPort>());
   });
 
   test('does not trust an HLS gateway without player capability', () {
@@ -45,7 +45,7 @@ void main() {
 
     final playback = buildProductionVideoPlayback(delivery);
 
-    expect(playback, isA<InventoryVideoPlaybackPort>());
+    expect(playback, isA<GatewayVideoPlaybackPort>());
   });
 
   testWidgets('renders a stable surface when the platform has no player',

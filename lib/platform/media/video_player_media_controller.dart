@@ -1,7 +1,9 @@
 part of 'video_player_playback_port.dart';
 
 bool _isPlayableMedia(VideoMediaSource media) {
-  return media.isLocal || media is ProxiedHlsVideoMediaSource;
+  return media.isLocal ||
+      media is ProxiedHlsVideoMediaSource ||
+      media is ProxiedProgressiveVideoMediaSource;
 }
 
 VideoPlayerController _videoPlayerController(VideoMediaSource media) {
@@ -10,6 +12,9 @@ VideoPlayerController _videoPlayerController(VideoMediaSource media) {
       media.playbackUri,
       formatHint: VideoFormat.hls,
     );
+  }
+  if (media is ProxiedProgressiveVideoMediaSource) {
+    return VideoPlayerController.networkUrl(media.playbackUri);
   }
   return VideoPlayerController.file(File(media.localPath!));
 }

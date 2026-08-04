@@ -6,12 +6,9 @@ import 'package:ghostr/core/media/video_playback_capabilities.dart';
 import 'package:ghostr/core/work/retrieval_scheduler.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/video_catalog/data/ndk_video_remote_source.dart';
-import 'package:ghostr/features/video_catalog/data/nostr_video_snapshot.dart';
 import 'package:ghostr/features/video_catalog/data/playable_remote_video_source.dart';
-import 'package:ghostr/features/video_catalog/data/remembering_remote_video_source.dart';
 import 'package:ghostr/features/video_catalog/data/scheduled_remote_video_source.dart';
 import 'package:ghostr/features/video_catalog/domain/remote_video_source.dart';
-import 'package:ghostr/features/video_inventory/data/inventory_remote_video_source.dart';
 import 'package:ghostr/features/video_inventory/domain/disabled_video_inventory.dart';
 import 'package:ghostr/features/video_inventory/domain/video_file_downloader.dart';
 import 'package:ghostr/features/video_inventory/domain/video_inventory_port.dart';
@@ -130,13 +127,7 @@ Future<ProductionVideoDelivery> buildProductionVideoDelivery(
   final scheduler = RetrievalScheduler(
     maxConcurrent: settings.dataUsage.maxConcurrentRequests,
   );
-  final snapshot = NostrVideoSnapshot();
-  final canonical = RememberingRemoteVideoSource(
-    environment.canonicalSource,
-    snapshot,
-  );
-  final native =
-      nativeRemoteVideoSource(infrastructure.gatewayResult, snapshot);
+  logVideoGatewayFailure(infrastructure.gatewayResult);
   final hlsGateway = activeHlsGateway(
     result: infrastructure.gatewayResult,
     gateway: environment.hlsPlaybackGateway,
@@ -145,13 +136,10 @@ Future<ProductionVideoDelivery> buildProductionVideoDelivery(
   final capabilities = hlsGateway == null
       ? environment.playbackCapabilities.without(VideoMediaDelivery.hls)
       : environment.playbackCapabilities;
-  final source = _inventorySource(
-    canonical,
-    native,
-    infrastructure.inventory,
-    capabilities,
-  );
+  // Downloads follow the viewer's focus window (FeedFocusPort → Rust);
+  // the retired native fallback no longer shadows the relay feed.
   final lean = _playable(environment.canonicalSource, capabilities);
+  final source = buildRemoteVideoDeliverySource(primary: lean);
   return ProductionVideoDelivery(
     infrastructure.inventory,
     ScheduledRemoteVideoSource(source: source, scheduler: scheduler),
@@ -161,21 +149,6 @@ Future<ProductionVideoDelivery> buildProductionVideoDelivery(
     hlsPlaybackGateway: hlsGateway,
     playbackCapabilities: capabilities,
   );
-}
-
-RemoteVideoSource _inventorySource(
-  RemoteVideoSource canonical,
-  RemoteVideoSource native,
-  VideoInventoryPort inventory,
-  VideoPlaybackCapabilities capabilities,
-) {
-  final playablePrimary = _playable(canonical, capabilities);
-  final playableFallback = _playable(native, capabilities);
-  final combined = buildRemoteVideoDeliverySource(
-    primary: playablePrimary,
-    nativeFallback: playableFallback,
-  );
-  return InventoryRemoteVideoSource(source: combined, inventory: inventory);
 }
 
 PlayableRemoteVideoSource _playable(

@@ -1,0 +1,43 @@
+mod support;
+
+use axum::body::to_bytes;
+use axum::http::StatusCode;
+use rust_lib_ghostr::engine::ByteRange;
+use support::progressive::{progressive_harness, video_request};
+use tower::ServiceExt;
+
+#[tokio::test]
+async fn missing_bytes_emit_demand_and_stream_once_they_arrive() {
+    let mut harness = progressive_harness("ghostr-progressive-demand");
+    harness.posts.insert("clip");
+    harness
+        .store
+        .set_total_len("clip", 10)
+        .await
+        .expect("total length");
+    harness
+        .store
+        .write_range("clip", 0, b"01234")
+        .await
+        .expect("head bytes");
+
+    let response = harness
+        .router
+        .oneshot(video_request("clip", Some("bytes=0-9")))
+        .await
+        .expect("response");
+    assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
+
+    let signal = harness.demand.recv().await.expect("demand signal");
+    assert_eq!(signal.post.as_str(), "clip");
+    assert_eq!(signal.range, ByteRange::new(5, 10));
+
+    harness
+        .store
+        .write_range("clip", 5, b"56789")
+        .await
+        .expect("tail bytes");
+    let body = to_bytes(response.into_body(), 64).await.expect("body");
+    assert_eq!(&body[..], b"0123456789");
+    std::fs::remove_dir_all(harness.root).expect("remove store");
+}

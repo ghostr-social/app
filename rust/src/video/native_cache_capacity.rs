@@ -44,15 +44,6 @@ impl NativeCacheCapacity {
             .or_insert(target);
     }
 
-    pub async fn take_required(&self, key: &NativeVideoCacheKey, used: u64) -> Option<u64> {
-        self.targets
-            .lock()
-            .await
-            .remove(key)
-            .map(|target| used.saturating_sub(target))
-            .filter(|required| *required > 0)
-    }
-
     pub async fn forget(&self, key: &NativeVideoCacheKey) {
         self.targets.lock().await.remove(key);
     }

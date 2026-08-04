@@ -7,8 +7,9 @@ import '../frb_generated.dart';
 import 'ffi_models.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `install_runtime`, `relay_list`
-
+/// Deprecated alias for `ffi_start_engine` (plan §2): same start path
+/// and shared runtime, with the data-usage level left at its Balanced
+/// default. Kept only until the Dart wiring moves to the new call.
 Future<String> ffiStartServer(
         {required String cacheDirectory,
         required BigInt maxParallelDownloads,

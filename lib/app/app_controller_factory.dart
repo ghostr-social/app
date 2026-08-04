@@ -14,15 +14,25 @@ import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/toggle_profile_follow_workflow.dart';
-import 'package:ghostr/features/video_inventory/domain/feed_media_prefetcher.dart';
+import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
 import 'package:ghostr/features/watch_history/presentation/watch_history_cubit.dart';
+import 'package:ghostr/platform/media/delivery_config_syncing_settings_repository.dart';
+import 'package:ghostr/platform/media/ffi_feed_focus_port.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
+import 'package:ghostr/src/rust/api/engine_control.dart';
 
 class AppControllerFactory {
-  const AppControllerFactory(this._dependencies);
+  const AppControllerFactory(
+    this._dependencies, {
+    FeedFocusPort feedFocus = const FfiFeedFocusPort(),
+    RustDeliveryConfigUpdater deliveryConfigUpdater = ffiSetDeliveryConfig,
+  })  : _feedFocus = feedFocus,
+        _deliveryConfigUpdater = deliveryConfigUpdater;
 
   final AppDependencies _dependencies;
+  final FeedFocusPort _feedFocus;
+  final RustDeliveryConfigUpdater _deliveryConfigUpdater;
 
   ActivityCubit activity() {
     return ActivityCubit(
@@ -55,7 +65,7 @@ class AppControllerFactory {
       feed: feed,
       engagement: _dependencies.videoCatalogServices.engagement,
       social: _dependencies.videoCatalogServices.social,
-      prefetcher: FeedMediaPrefetcher(inventory: _dependencies.videoInventory),
+      focus: _feedFocus,
       watchTracker: WatchHistoryTracker(
         history: _dependencies.watchHistoryRepository,
         settings: _dependencies.appSettingsRepository,
@@ -102,7 +112,10 @@ class AppControllerFactory {
   }
 
   SettingsCubit settings() {
-    return SettingsCubit(_dependencies.appSettingsRepository);
+    return SettingsCubit(DeliveryConfigSyncingSettingsRepository(
+      inner: _dependencies.appSettingsRepository,
+      updateConfig: _deliveryConfigUpdater,
+    ));
   }
 
   VideoPlaybackPort get videoPlaybackPort => _dependencies.videoPlaybackPort;

@@ -1,3 +1,4 @@
+import 'package:ghostr/core/media/video_media_metadata.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/media/video_sha256.dart';
 
@@ -8,11 +9,13 @@ class NostrVideoMedia {
     required this.urls,
     required this.delivery,
     this.expectedSha256,
+    this.metadata = VideoMediaMetadata.none,
   });
 
   final List<String> urls;
   final VideoMediaDelivery delivery;
   final String? expectedSha256;
+  final VideoMediaMetadata metadata;
 
   static NostrVideoMedia? fromEvent({
     required List<List<String>> tags,
@@ -62,6 +65,10 @@ class NostrVideoMedia {
       urls: urls,
       delivery: _imetaDelivery(mimeType, urls.first),
       expectedSha256: digest.value?.value,
+      metadata: VideoMediaMetadata.fromImeta(
+        size: _imetaField(tag, 'size'),
+        duration: _imetaField(tag, 'duration'),
+      ),
     );
   }
 

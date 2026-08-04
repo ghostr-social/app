@@ -6,12 +6,12 @@ import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/media/video_playback_capabilities.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
-import 'package:ghostr/platform/media/ffi_video_gateway.dart';
 
 import '../support/fake_hls_playback_gateway.dart';
 import '../support/fake_remote_video_source.dart';
 import '../support/fake_video_file_downloader.dart';
 import '../support/sample_data.dart';
+import '../support/stub_video_gateways.dart';
 
 void main() {
   test('exposes HLS only with both gateway and platform capabilities',
@@ -69,22 +69,9 @@ Future<ProductionVideoDelivery> _build(
       canonicalSource: FakeRemoteVideoSource(posts),
       supportDirectoryProvider: () async => root,
       downloader: FakeVideoFileDownloader({}),
-      gateway: _startedGateway(),
+      gateway: startedVideoGateway(),
       hlsPlaybackGateway: hlsGateway,
       playbackCapabilities: capabilities,
     ),
-  );
-}
-
-FfiVideoGateway _startedGateway() {
-  return FfiVideoGateway(
-    initialize: () async {},
-    startServer: ({
-      required cacheDirectory,
-      required maxParallelDownloads,
-      required maxStorageBytes,
-      required relayUrls,
-    }) async =>
-        '127.0.0.1:3000',
   );
 }
