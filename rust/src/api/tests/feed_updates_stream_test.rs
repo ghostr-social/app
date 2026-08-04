@@ -1,0 +1,57 @@
+//! `watch_feed`: every subscription starts with a baseline snapshot,
+//! each visible-list revision streams a fresh full snapshot, and the
+//! stream ends when the feed closes.
+
+use crate::api::feed_runtime::{lock, SharedFeedState};
+use crate::api::feed_state::FeedState;
+use crate::api::feed_types::FfiFeedUpdate;
+use crate::api::feed_updates_stream::{watch_feed, FeedOut};
+use crate::api::tests::feed_fixtures::video_note;
+use crate::discovery::feed_spec::FeedSpec;
+use nostr_sdk::Keys;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use tokio::sync::mpsc;
+use tokio::time::timeout;
+
+struct ChannelOut(mpsc::UnboundedSender<FfiFeedUpdate>);
+
+impl FeedOut for ChannelOut {
+    fn send(&self, update: FfiFeedUpdate) -> bool {
+        self.0.send(update).is_ok()
+    }
+}
+
+async fn next(updates: &mut mpsc::UnboundedReceiver<FfiFeedUpdate>) -> FfiFeedUpdate {
+    timeout(Duration::from_secs(5), updates.recv())
+        .await
+        .expect("an update should arrive")
+        .expect("the watcher should stay alive")
+}
+
+#[tokio::test]
+async fn snapshots_stream_from_baseline_to_close() {
+    let state: SharedFeedState = Arc::new(Mutex::new(FeedState::new()));
+    let keys = Keys::generate();
+    let (feed, dispatch) = lock(&state).open(FeedSpec::MainFeed { viewer: keys.public_key() });
+    let open = dispatch.expect("main feeds dispatch a first page");
+    let revisions = lock(&state).subscribe(feed).expect("open feeds subscribe");
+
+    let (sender, mut updates) = mpsc::unbounded_channel();
+    let watcher = tokio::spawn(watch_feed(ChannelOut(sender), state.clone(), feed, revisions));
+
+    let baseline = next(&mut updates).await;
+    assert_eq!(baseline.feed_id, format!("{}", feed.0));
+    assert!(baseline.posts.is_empty());
+
+    lock(&state).apply(&open.context, Ok(vec![video_note(&keys, "clip", 40)]));
+    let loaded = next(&mut updates).await;
+    assert_eq!(loaded.posts.len(), 1);
+    assert!(loaded.revision > baseline.revision);
+
+    lock(&state).close(feed);
+    timeout(Duration::from_secs(5), watcher)
+        .await
+        .expect("the watcher should end when the feed closes")
+        .expect("the watcher task should not panic");
+}

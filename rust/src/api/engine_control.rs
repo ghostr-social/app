@@ -58,6 +58,7 @@ fn apply_level(level: DataUsageLevel) -> anyhow::Result<()> {
     let engine = runtime_registry::engine()?;
     engine.tracked.set_level(level);
     engine.gateway.delivery().set_data_usage(level);
+    engine.discovery.set_data_usage(level);
     Ok(())
 }
 

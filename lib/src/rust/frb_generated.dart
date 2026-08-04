@@ -3,9 +3,13 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
+import 'api/broadcast_control.dart';
 import 'api/delivery_events_stream.dart';
 import 'api/delivery_types.dart';
 import 'api/engine_control.dart';
+import 'api/feed_control.dart';
+import 'api/feed_types.dart';
+import 'api/feed_updates_stream.dart';
 import 'api/focus_control.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -73,7 +77,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.7.0';
 
   @override
-  int get rustContentHash => -1471799293;
+  int get rustContentHash => 1039187493;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -87,10 +91,23 @@ abstract class RustLibApi extends BaseApi {
   Future<FfiHlsPlaybackSession> crateVideoNativeGatewayFfiAcquireHlsPlayback(
       {required List<String> sourceUrls});
 
+  Future<void> crateApiBroadcastControlFfiBroadcastEvent(
+      {required String signedEventJson});
+
+  Future<void> crateApiFeedControlFfiCloseFeed({required String feedId});
+
   Stream<FfiDeliveryEvent> crateApiDeliveryEventsStreamFfiDeliveryEvents();
+
+  Stream<FfiFeedUpdate> crateApiFeedUpdatesStreamFfiFeedUpdates(
+      {required String feedId});
 
   Future<List<FfiVideoDownload>>
       crateVideoNativeGatewayFfiGetDiscoveredVideos();
+
+  Future<bool> crateApiFeedControlFfiLoadMore(
+      {required String feedId, BigInt? olderThanSecs});
+
+  Future<String> crateApiFeedControlFfiOpenFeed({required FfiFeedSpec spec});
 
   Future<String> crateApiFocusControlFfiPlaybackUrl(
       {required FfiFocusItem item});
@@ -138,7 +155,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_list_String(sourceUrls, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 2, port: port_);
+            funcId: 3, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_ffi_hls_playback_session,
@@ -157,6 +174,57 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiBroadcastControlFfiBroadcastEvent(
+      {required String signedEventJson}) {
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_String(signedEventJson, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 4, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_unit,
+        decodeErrorData: sse_decode_AnyhowException,
+      ),
+      constMeta: kCrateApiBroadcastControlFfiBroadcastEventConstMeta,
+      argValues: [signedEventJson],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiBroadcastControlFfiBroadcastEventConstMeta =>
+      const TaskConstMeta(
+        debugName: "ffi_broadcast_event",
+        argNames: ["signedEventJson"],
+      );
+
+  @override
+  Future<void> crateApiFeedControlFfiCloseFeed({required String feedId}) {
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_String(feedId, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 5, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_unit,
+        decodeErrorData: sse_decode_AnyhowException,
+      ),
+      constMeta: kCrateApiFeedControlFfiCloseFeedConstMeta,
+      argValues: [feedId],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiFeedControlFfiCloseFeedConstMeta =>
+      const TaskConstMeta(
+        debugName: "ffi_close_feed",
+        argNames: ["feedId"],
+      );
+
+  @override
   Stream<FfiDeliveryEvent> crateApiDeliveryEventsStreamFfiDeliveryEvents() {
     final sink = RustStreamSink<FfiDeliveryEvent>();
     unawaited(handler.executeNormal(NormalTask(
@@ -164,7 +232,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_StreamSink_ffi_delivery_event_Sse(sink, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 3, port: port_);
+            funcId: 6, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_unit,
@@ -184,13 +252,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Stream<FfiFeedUpdate> crateApiFeedUpdatesStreamFfiFeedUpdates(
+      {required String feedId}) {
+    final sink = RustStreamSink<FfiFeedUpdate>();
+    unawaited(handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_String(feedId, serializer);
+        sse_encode_StreamSink_ffi_feed_update_Sse(sink, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 7, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_unit,
+        decodeErrorData: sse_decode_AnyhowException,
+      ),
+      constMeta: kCrateApiFeedUpdatesStreamFfiFeedUpdatesConstMeta,
+      argValues: [feedId, sink],
+      apiImpl: this,
+    )));
+    return sink.stream;
+  }
+
+  TaskConstMeta get kCrateApiFeedUpdatesStreamFfiFeedUpdatesConstMeta =>
+      const TaskConstMeta(
+        debugName: "ffi_feed_updates",
+        argNames: ["feedId", "sink"],
+      );
+
+  @override
   Future<List<FfiVideoDownload>>
       crateVideoNativeGatewayFfiGetDiscoveredVideos() {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 4, port: port_);
+            funcId: 8, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_list_ffi_video_download,
@@ -209,6 +306,58 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<bool> crateApiFeedControlFfiLoadMore(
+      {required String feedId, BigInt? olderThanSecs}) {
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_String(feedId, serializer);
+        sse_encode_opt_box_autoadd_u_64(olderThanSecs, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 9, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_bool,
+        decodeErrorData: sse_decode_AnyhowException,
+      ),
+      constMeta: kCrateApiFeedControlFfiLoadMoreConstMeta,
+      argValues: [feedId, olderThanSecs],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiFeedControlFfiLoadMoreConstMeta =>
+      const TaskConstMeta(
+        debugName: "ffi_load_more",
+        argNames: ["feedId", "olderThanSecs"],
+      );
+
+  @override
+  Future<String> crateApiFeedControlFfiOpenFeed({required FfiFeedSpec spec}) {
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_box_autoadd_ffi_feed_spec(spec, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 10, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_String,
+        decodeErrorData: sse_decode_AnyhowException,
+      ),
+      constMeta: kCrateApiFeedControlFfiOpenFeedConstMeta,
+      argValues: [spec],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiFeedControlFfiOpenFeedConstMeta =>
+      const TaskConstMeta(
+        debugName: "ffi_open_feed",
+        argNames: ["spec"],
+      );
+
+  @override
   Future<String> crateApiFocusControlFfiPlaybackUrl(
       {required FfiFocusItem item}) {
     return handler.executeNormal(NormalTask(
@@ -216,7 +365,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_box_autoadd_ffi_focus_item(item, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 5, port: port_);
+            funcId: 11, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -242,7 +391,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_String(sessionId, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 6, port: port_);
+            funcId: 12, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_bool,
@@ -269,7 +418,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_String(dataUsage, serializer);
         sse_encode_u_64(maxStorageBytes, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 7, port: port_);
+            funcId: 13, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_unit,
@@ -301,7 +450,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_String(dataUsage, serializer);
         sse_encode_u_64(maxStorageBytes, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 8, port: port_);
+            funcId: 14, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -338,7 +487,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_u_64(maxStorageBytes, serializer);
         sse_encode_String(relayUrls, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 9, port: port_);
+            funcId: 15, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -380,7 +529,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_u_32(currentIndex, serializer);
         sse_encode_u_64(watchMs, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 10, port: port_);
+            funcId: 16, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_unit,
@@ -404,7 +553,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 11, port: port_);
+            funcId: 17, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_unit,
@@ -436,6 +585,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RustStreamSink<FfiFeedUpdate> dco_decode_StreamSink_ffi_feed_update_Sse(
+      dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    throw UnimplementedError();
+  }
+
+  @protected
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as String;
@@ -443,6 +599,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   EventOut dco_decode_TraitDef_EventOut(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    throw UnimplementedError();
+  }
+
+  @protected
+  FeedOut dco_decode_TraitDef_FeedOut(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     throw UnimplementedError();
   }
@@ -460,9 +622,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiFeedSpec dco_decode_box_autoadd_ffi_feed_spec(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_ffi_feed_spec(raw);
+  }
+
+  @protected
+  FfiFeedUpdate dco_decode_box_autoadd_ffi_feed_update(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_ffi_feed_update(raw);
+  }
+
+  @protected
   FfiFocusItem dco_decode_box_autoadd_ffi_focus_item(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_ffi_focus_item(raw);
+  }
+
+  @protected
+  FfiMediaDim dco_decode_box_autoadd_ffi_media_dim(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_ffi_media_dim(raw);
   }
 
   @protected
@@ -494,6 +674,81 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiFeedCreator dco_decode_ffi_feed_creator(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return FfiFeedCreator(
+      pubkey: dco_decode_String(arr[0]),
+      displayName: dco_decode_String(arr[1]),
+      handle: dco_decode_String(arr[2]),
+      avatarUrl: dco_decode_opt_String(arr[3]),
+    );
+  }
+
+  @protected
+  FfiFeedMedia dco_decode_ffi_feed_media(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 8)
+      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    return FfiFeedMedia(
+      urls: dco_decode_list_String(arr[0]),
+      delivery: dco_decode_String(arr[1]),
+      sha256: dco_decode_opt_String(arr[2]),
+      sizeBytes: dco_decode_opt_box_autoadd_u_64(arr[3]),
+      durationMs: dco_decode_opt_box_autoadd_u_64(arr[4]),
+      dim: dco_decode_opt_box_autoadd_ffi_media_dim(arr[5]),
+      blurhash: dco_decode_opt_String(arr[6]),
+      thumbUrl: dco_decode_opt_String(arr[7]),
+    );
+  }
+
+  @protected
+  FfiFeedPost dco_decode_ffi_feed_post(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
+    return FfiFeedPost(
+      postId: dco_decode_String(arr[0]),
+      eventId: dco_decode_String(arr[1]),
+      createdAt: dco_decode_u_64(arr[2]),
+      caption: dco_decode_String(arr[3]),
+      hashtags: dco_decode_list_String(arr[4]),
+      creator: dco_decode_ffi_feed_creator(arr[5]),
+      media: dco_decode_ffi_feed_media(arr[6]),
+    );
+  }
+
+  @protected
+  FfiFeedSpec dco_decode_ffi_feed_spec(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return FfiFeedSpec(
+      kind: dco_decode_String(arr[0]),
+      value: dco_decode_opt_String(arr[1]),
+      viewerPubkey: dco_decode_opt_String(arr[2]),
+    );
+  }
+
+  @protected
+  FfiFeedUpdate dco_decode_ffi_feed_update(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return FfiFeedUpdate(
+      feedId: dco_decode_String(arr[0]),
+      revision: dco_decode_u_64(arr[1]),
+      posts: dco_decode_list_ffi_feed_post(arr[2]),
+    );
+  }
+
+  @protected
   FfiFocusItem dco_decode_ffi_focus_item(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -518,6 +773,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return FfiHlsPlaybackSession(
       sessionId: dco_decode_String(arr[0]),
       playbackUrl: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
+  FfiMediaDim dco_decode_ffi_media_dim(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return FfiMediaDim(
+      width: dco_decode_u_32(arr[0]),
+      height: dco_decode_u_32(arr[1]),
     );
   }
 
@@ -606,6 +873,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<FfiFeedPost> dco_decode_list_ffi_feed_post(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_ffi_feed_post).toList();
+  }
+
+  @protected
   List<FfiFocusItem> dco_decode_list_ffi_focus_item(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_ffi_focus_item).toList();
@@ -627,6 +900,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   String? dco_decode_opt_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_String(raw);
+  }
+
+  @protected
+  FfiMediaDim? dco_decode_opt_box_autoadd_ffi_media_dim(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_ffi_media_dim(raw);
   }
 
   @protected
@@ -680,6 +959,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RustStreamSink<FfiFeedUpdate> sse_decode_StreamSink_ffi_feed_update_Sse(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    throw UnimplementedError('Unreachable ()');
+  }
+
+  @protected
   String sse_decode_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_list_prim_u_8_strict(deserializer);
@@ -700,10 +986,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiFeedSpec sse_decode_box_autoadd_ffi_feed_spec(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_ffi_feed_spec(deserializer));
+  }
+
+  @protected
+  FfiFeedUpdate sse_decode_box_autoadd_ffi_feed_update(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_ffi_feed_update(deserializer));
+  }
+
+  @protected
   FfiFocusItem sse_decode_box_autoadd_ffi_focus_item(
       SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_ffi_focus_item(deserializer));
+  }
+
+  @protected
+  FfiMediaDim sse_decode_box_autoadd_ffi_media_dim(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_ffi_media_dim(deserializer));
   }
 
   @protected
@@ -739,6 +1046,82 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiFeedCreator sse_decode_ffi_feed_creator(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_pubkey = sse_decode_String(deserializer);
+    var var_displayName = sse_decode_String(deserializer);
+    var var_handle = sse_decode_String(deserializer);
+    var var_avatarUrl = sse_decode_opt_String(deserializer);
+    return FfiFeedCreator(
+        pubkey: var_pubkey,
+        displayName: var_displayName,
+        handle: var_handle,
+        avatarUrl: var_avatarUrl);
+  }
+
+  @protected
+  FfiFeedMedia sse_decode_ffi_feed_media(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_urls = sse_decode_list_String(deserializer);
+    var var_delivery = sse_decode_String(deserializer);
+    var var_sha256 = sse_decode_opt_String(deserializer);
+    var var_sizeBytes = sse_decode_opt_box_autoadd_u_64(deserializer);
+    var var_durationMs = sse_decode_opt_box_autoadd_u_64(deserializer);
+    var var_dim = sse_decode_opt_box_autoadd_ffi_media_dim(deserializer);
+    var var_blurhash = sse_decode_opt_String(deserializer);
+    var var_thumbUrl = sse_decode_opt_String(deserializer);
+    return FfiFeedMedia(
+        urls: var_urls,
+        delivery: var_delivery,
+        sha256: var_sha256,
+        sizeBytes: var_sizeBytes,
+        durationMs: var_durationMs,
+        dim: var_dim,
+        blurhash: var_blurhash,
+        thumbUrl: var_thumbUrl);
+  }
+
+  @protected
+  FfiFeedPost sse_decode_ffi_feed_post(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_postId = sse_decode_String(deserializer);
+    var var_eventId = sse_decode_String(deserializer);
+    var var_createdAt = sse_decode_u_64(deserializer);
+    var var_caption = sse_decode_String(deserializer);
+    var var_hashtags = sse_decode_list_String(deserializer);
+    var var_creator = sse_decode_ffi_feed_creator(deserializer);
+    var var_media = sse_decode_ffi_feed_media(deserializer);
+    return FfiFeedPost(
+        postId: var_postId,
+        eventId: var_eventId,
+        createdAt: var_createdAt,
+        caption: var_caption,
+        hashtags: var_hashtags,
+        creator: var_creator,
+        media: var_media);
+  }
+
+  @protected
+  FfiFeedSpec sse_decode_ffi_feed_spec(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_kind = sse_decode_String(deserializer);
+    var var_value = sse_decode_opt_String(deserializer);
+    var var_viewerPubkey = sse_decode_opt_String(deserializer);
+    return FfiFeedSpec(
+        kind: var_kind, value: var_value, viewerPubkey: var_viewerPubkey);
+  }
+
+  @protected
+  FfiFeedUpdate sse_decode_ffi_feed_update(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_feedId = sse_decode_String(deserializer);
+    var var_revision = sse_decode_u_64(deserializer);
+    var var_posts = sse_decode_list_ffi_feed_post(deserializer);
+    return FfiFeedUpdate(
+        feedId: var_feedId, revision: var_revision, posts: var_posts);
+  }
+
+  @protected
   FfiFocusItem sse_decode_ffi_focus_item(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_postId = sse_decode_String(deserializer);
@@ -764,6 +1147,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_playbackUrl = sse_decode_String(deserializer);
     return FfiHlsPlaybackSession(
         sessionId: var_sessionId, playbackUrl: var_playbackUrl);
+  }
+
+  @protected
+  FfiMediaDim sse_decode_ffi_media_dim(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_width = sse_decode_u_32(deserializer);
+    var var_height = sse_decode_u_32(deserializer);
+    return FfiMediaDim(width: var_width, height: var_height);
   }
 
   @protected
@@ -867,6 +1258,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<FfiFeedPost> sse_decode_list_ffi_feed_post(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <FfiFeedPost>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_ffi_feed_post(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   List<FfiFocusItem> sse_decode_list_ffi_focus_item(
       SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -905,6 +1309,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
     if (sse_decode_bool(deserializer)) {
       return (sse_decode_String(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  FfiMediaDim? sse_decode_opt_box_autoadd_ffi_media_dim(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_ffi_media_dim(deserializer));
     } else {
       return null;
     }
@@ -971,6 +1387,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_StreamSink_ffi_feed_update_Sse(
+      RustStreamSink<FfiFeedUpdate> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(
+        self.setupAndSerialize(
+            codec: SseCodec(
+          decodeSuccessData: sse_decode_ffi_feed_update,
+          decodeErrorData: sse_decode_AnyhowException,
+        )),
+        serializer);
+  }
+
+  @protected
   void sse_encode_String(String self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
@@ -990,10 +1419,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_ffi_feed_spec(
+      FfiFeedSpec self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_ffi_feed_spec(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_ffi_feed_update(
+      FfiFeedUpdate self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_ffi_feed_update(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_ffi_focus_item(
       FfiFocusItem self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_ffi_focus_item(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_ffi_media_dim(
+      FfiMediaDim self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_ffi_media_dim(self, serializer);
   }
 
   @protected
@@ -1022,6 +1472,58 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_ffi_feed_creator(
+      FfiFeedCreator self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.pubkey, serializer);
+    sse_encode_String(self.displayName, serializer);
+    sse_encode_String(self.handle, serializer);
+    sse_encode_opt_String(self.avatarUrl, serializer);
+  }
+
+  @protected
+  void sse_encode_ffi_feed_media(FfiFeedMedia self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_String(self.urls, serializer);
+    sse_encode_String(self.delivery, serializer);
+    sse_encode_opt_String(self.sha256, serializer);
+    sse_encode_opt_box_autoadd_u_64(self.sizeBytes, serializer);
+    sse_encode_opt_box_autoadd_u_64(self.durationMs, serializer);
+    sse_encode_opt_box_autoadd_ffi_media_dim(self.dim, serializer);
+    sse_encode_opt_String(self.blurhash, serializer);
+    sse_encode_opt_String(self.thumbUrl, serializer);
+  }
+
+  @protected
+  void sse_encode_ffi_feed_post(FfiFeedPost self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.postId, serializer);
+    sse_encode_String(self.eventId, serializer);
+    sse_encode_u_64(self.createdAt, serializer);
+    sse_encode_String(self.caption, serializer);
+    sse_encode_list_String(self.hashtags, serializer);
+    sse_encode_ffi_feed_creator(self.creator, serializer);
+    sse_encode_ffi_feed_media(self.media, serializer);
+  }
+
+  @protected
+  void sse_encode_ffi_feed_spec(FfiFeedSpec self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.kind, serializer);
+    sse_encode_opt_String(self.value, serializer);
+    sse_encode_opt_String(self.viewerPubkey, serializer);
+  }
+
+  @protected
+  void sse_encode_ffi_feed_update(
+      FfiFeedUpdate self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.feedId, serializer);
+    sse_encode_u_64(self.revision, serializer);
+    sse_encode_list_ffi_feed_post(self.posts, serializer);
+  }
+
+  @protected
   void sse_encode_ffi_focus_item(FfiFocusItem self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.postId, serializer);
@@ -1038,6 +1540,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.sessionId, serializer);
     sse_encode_String(self.playbackUrl, serializer);
+  }
+
+  @protected
+  void sse_encode_ffi_media_dim(FfiMediaDim self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_32(self.width, serializer);
+    sse_encode_u_32(self.height, serializer);
   }
 
   @protected
@@ -1112,6 +1621,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_ffi_feed_post(
+      List<FfiFeedPost> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_ffi_feed_post(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_ffi_focus_item(
       List<FfiFocusItem> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -1146,6 +1665,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_String(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_ffi_media_dim(
+      FfiMediaDim? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_ffi_media_dim(self, serializer);
     }
   }
 

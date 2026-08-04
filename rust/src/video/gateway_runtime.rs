@@ -1,7 +1,8 @@
+use crate::engine::inventory_controller::Mode;
 use crate::engine::{DataUsageLevel, EngineParams};
 use crate::video::delivery_events::DeliveryHandle;
 use crate::video::delivery_manager::{
-    start_delivery_manager, DeliveryManagerConfig, DeliveryTuning,
+    start_delivery_manager_with_modes, DeliveryManagerConfig, DeliveryTuning,
 };
 use crate::video::event_identity::VIDEO_KINDS;
 pub use crate::video::event_index::MAX_NATIVE_INVENTORY_ITEMS;
@@ -18,11 +19,10 @@ use crate::video::progressive_posts::ServablePosts;
 use crate::video::progressive_route::{ProgressiveState, ProgressiveTiming};
 use log::warn;
 use nostr_sdk::{Client, Filter, Kind};
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::{future::Future, io};
-use tokio::net::TcpListener;
-use tokio::sync::Mutex;
+use std::{future::Future, io, path::PathBuf, sync::Arc};
+use tokio::{net::TcpListener, sync::watch, sync::Mutex};
+
+type DeliveryParts = (axum::Router, DeliveryHandle, Arc<ProgressiveState>, watch::Receiver<Mode>);
 
 pub struct GatewayConfiguration {
     pub cache_directory: PathBuf,
@@ -39,7 +39,11 @@ pub struct GatewayRuntime {
 }
 
 impl GatewayRuntime {
-    pub async fn start(configuration: GatewayConfiguration) -> anyhow::Result<(String, Self)> {
+    /// Starts everything: endpoint, runtime, and the discovery boot
+    /// inputs (shared Nostr client + inventory-mode watch, plan §5.4).
+    pub async fn start(
+        configuration: GatewayConfiguration,
+    ) -> anyhow::Result<(String, Self, Arc<Client>, watch::Receiver<Mode>)> {
         validate(&configuration)?;
         prepare_native_cache_directory(&configuration.cache_directory)?;
         let listener = TcpListener::bind("127.0.0.1:0").await?;
@@ -50,16 +54,15 @@ impl GatewayRuntime {
         spawn_event_identity_indexer(client.clone(), videos.clone());
         configure_client(&client, &configuration.relays).await;
         let hls_sessions = HlsSessions::production();
-        let (router, delivery, progressive) =
+        let (router, delivery, progressive, modes) =
             start_progressive_delivery(&configuration, hls_sessions.clone())?;
         spawn_http_server(listener, router);
         let hls = HlsPlaybackGateway::new(address, hls_sessions);
         let runtime = Self { hls, videos, delivery, progressive };
-        Ok((endpoint, runtime))
+        Ok((endpoint, runtime, client, modes))
     }
 
-    /// Indexed feed metadata for the Dart fallback, built straight
-    /// from the event index — no poll loop feeds it any more.
+    /// Indexed feed metadata for the Dart fallback, from the index.
     pub async fn discovered_videos(&self) -> Vec<NativeVideoDownload> {
         self.videos
             .ordered_videos()
@@ -119,10 +122,7 @@ async fn configure_client(client: &Client, relays: &[String]) {
 }
 
 pub fn video_filter() -> Filter {
-    let kinds = VIDEO_KINDS
-        .into_iter()
-        .map(Kind::Custom)
-        .collect::<Vec<_>>();
+    let kinds = VIDEO_KINDS.into_iter().map(Kind::Custom);
     Filter::new().kinds(kinds).limit(MAX_NATIVE_INVENTORY_ITEMS)
 }
 
@@ -132,13 +132,12 @@ pub fn deletion_filter() -> Filter {
         .limit(MAX_NATIVE_INVENTORY_ITEMS)
 }
 
-/// Progressive delivery replaces the old poll-driven video manager:
-/// the router serves `/video.mp4` from the partial store, and the
-/// event-driven delivery manager owns every download decision.
+/// Progressive delivery: the router serves `/video.mp4` from the partial
+/// store; the manager's mode watch feeds the discovery control loop.
 fn start_progressive_delivery(
     configuration: &GatewayConfiguration,
     hls_sessions: HlsSessions,
-) -> anyhow::Result<(axum::Router, DeliveryHandle, Arc<ProgressiveState>)> {
+) -> anyhow::Result<DeliveryParts> {
     let store = Arc::new(PartialRangeStore::new(
         configuration.cache_directory.join("progressive"),
         Arc::new(Mutex::new(0)),
@@ -156,7 +155,8 @@ fn start_progressive_delivery(
         new_native_downloads(), hls_sessions, client.clone(), progressive.clone(),
     );
     let config = delivery_config(configuration, store, client, posts);
-    Ok((router, start_delivery_manager(config, demand), progressive))
+    let (delivery, modes) = start_delivery_manager_with_modes(config, demand);
+    Ok((router, delivery, progressive, modes))
 }
 
 fn delivery_config(

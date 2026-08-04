@@ -2,6 +2,7 @@
 //! and the deprecated `ffi_start_server` alias install here, so every
 //! FFI function sees the same runtime whichever start path ran.
 
+use crate::api::feed_runtime::{DiscoveryBoot, DiscoveryRuntime};
 use crate::api::tracked_items::TrackedItems;
 use crate::video::gateway_runtime::{GatewayConfiguration, GatewayRuntime};
 use anyhow::bail;
@@ -17,31 +18,36 @@ pub(crate) struct EngineHandles {
     pub endpoint: String,
     pub gateway: Arc<GatewayRuntime>,
     pub tracked: TrackedItems,
+    pub discovery: DiscoveryRuntime,
 }
 
 static INSTALLED: OnceCell<Arc<EngineHandles>> = OnceCell::new();
 static STARTING: AtomicBool = AtomicBool::new(false);
 
-/// Starts the gateway runtime once per process and installs it. A
-/// second call — from either start path — is rejected.
+/// Starts the gateway runtime once per process, boots discovery on
+/// its client and inventory modes, and installs both. A second call —
+/// from either start path — is rejected.
 pub(crate) async fn start_and_install(
     configuration: GatewayConfiguration,
 ) -> anyhow::Result<String> {
     if INSTALLED.get().is_some() || STARTING.swap(true, Ordering::AcqRel) {
         bail!("The embedded gateway is already running.");
     }
+    let bootstrap = configuration.relays.clone();
     let result = GatewayRuntime::start(configuration).await;
     STARTING.store(false, Ordering::Release);
-    let (endpoint, runtime) = result?;
-    install(endpoint.clone(), runtime);
+    let (endpoint, runtime, client, modes) = result?;
+    let discovery = DiscoveryRuntime::start(DiscoveryBoot { client, modes, bootstrap });
+    install(endpoint.clone(), runtime, discovery);
     Ok(endpoint)
 }
 
-fn install(endpoint: String, runtime: GatewayRuntime) {
+fn install(endpoint: String, runtime: GatewayRuntime, discovery: DiscoveryRuntime) {
     let handles = EngineHandles {
         endpoint,
         gateway: Arc::new(runtime),
         tracked: TrackedItems::new(),
+        discovery,
     };
     INSTALLED.get_or_init(|| Arc::new(handles));
 }

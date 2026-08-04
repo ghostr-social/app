@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.7.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1471799293;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1039187493;
 
 // Section: executor
 
@@ -75,6 +75,82 @@ fn wire__crate__video__native_gateway__ffi_acquire_hls_playback_impl(
                         let output_ok =
                             crate::video::native_gateway::ffi_acquire_hls_playback(api_source_urls)
                                 .await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__broadcast_control__ffi_broadcast_event_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ffi_broadcast_event",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_signed_event_json = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::broadcast_control::ffi_broadcast_event(
+                            api_signed_event_json,
+                        )
+                        .await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__feed_control__ffi_close_feed_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ffi_close_feed",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_feed_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok =
+                            crate::api::feed_control::ffi_close_feed(api_feed_id).await?;
                         Ok(output_ok)
                     })()
                     .await,
@@ -124,6 +200,50 @@ fn wire__crate__api__delivery_events_stream__ffi_delivery_events_impl(
         },
     )
 }
+fn wire__crate__api__feed_updates_stream__ffi_feed_updates_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ffi_feed_updates",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_feed_id = <String>::sse_decode(&mut deserializer);
+            let api_sink = <StreamSink<
+                crate::api::feed_types::FfiFeedUpdate,
+                flutter_rust_bridge::for_generated::SseCodec,
+            >>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::feed_updates_stream::ffi_feed_updates(
+                            api_feed_id,
+                            api_sink,
+                        )
+                        .await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
 fn wire__crate__video__native_gateway__ffi_get_discovered_videos_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -153,6 +273,83 @@ fn wire__crate__video__native_gateway__ffi_get_discovered_videos_impl(
                         let output_ok = Result::<_, ()>::Ok(
                             crate::video::native_gateway::ffi_get_discovered_videos().await,
                         )?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__feed_control__ffi_load_more_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ffi_load_more",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_feed_id = <String>::sse_decode(&mut deserializer);
+            let api_older_than_secs = <Option<u64>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::feed_control::ffi_load_more(
+                            api_feed_id,
+                            api_older_than_secs,
+                        )
+                        .await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__feed_control__ffi_open_feed_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ffi_open_feed",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_spec = <crate::api::feed_types::FfiFeedSpec>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::feed_control::ffi_open_feed(api_spec).await?;
                         Ok(output_ok)
                     })()
                     .await,
@@ -473,6 +670,19 @@ impl SseDecode
     }
 }
 
+impl SseDecode
+    for StreamSink<
+        crate::api::feed_types::FfiFeedUpdate,
+        flutter_rust_bridge::for_generated::SseCodec,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <String>::sse_decode(deserializer);
+        return StreamSink::deserialize(inner);
+    }
+}
+
 impl SseDecode for String {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -522,6 +732,96 @@ impl SseDecode for crate::api::delivery_types::FfiDeliveryEventKind {
     }
 }
 
+impl SseDecode for crate::api::feed_types::FfiFeedCreator {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_pubkey = <String>::sse_decode(deserializer);
+        let mut var_displayName = <String>::sse_decode(deserializer);
+        let mut var_handle = <String>::sse_decode(deserializer);
+        let mut var_avatarUrl = <Option<String>>::sse_decode(deserializer);
+        return crate::api::feed_types::FfiFeedCreator {
+            pubkey: var_pubkey,
+            display_name: var_displayName,
+            handle: var_handle,
+            avatar_url: var_avatarUrl,
+        };
+    }
+}
+
+impl SseDecode for crate::api::feed_types::FfiFeedMedia {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_urls = <Vec<String>>::sse_decode(deserializer);
+        let mut var_delivery = <String>::sse_decode(deserializer);
+        let mut var_sha256 = <Option<String>>::sse_decode(deserializer);
+        let mut var_sizeBytes = <Option<u64>>::sse_decode(deserializer);
+        let mut var_durationMs = <Option<u64>>::sse_decode(deserializer);
+        let mut var_dim = <Option<crate::api::feed_types::FfiMediaDim>>::sse_decode(deserializer);
+        let mut var_blurhash = <Option<String>>::sse_decode(deserializer);
+        let mut var_thumbUrl = <Option<String>>::sse_decode(deserializer);
+        return crate::api::feed_types::FfiFeedMedia {
+            urls: var_urls,
+            delivery: var_delivery,
+            sha256: var_sha256,
+            size_bytes: var_sizeBytes,
+            duration_ms: var_durationMs,
+            dim: var_dim,
+            blurhash: var_blurhash,
+            thumb_url: var_thumbUrl,
+        };
+    }
+}
+
+impl SseDecode for crate::api::feed_types::FfiFeedPost {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_postId = <String>::sse_decode(deserializer);
+        let mut var_eventId = <String>::sse_decode(deserializer);
+        let mut var_createdAt = <u64>::sse_decode(deserializer);
+        let mut var_caption = <String>::sse_decode(deserializer);
+        let mut var_hashtags = <Vec<String>>::sse_decode(deserializer);
+        let mut var_creator = <crate::api::feed_types::FfiFeedCreator>::sse_decode(deserializer);
+        let mut var_media = <crate::api::feed_types::FfiFeedMedia>::sse_decode(deserializer);
+        return crate::api::feed_types::FfiFeedPost {
+            post_id: var_postId,
+            event_id: var_eventId,
+            created_at: var_createdAt,
+            caption: var_caption,
+            hashtags: var_hashtags,
+            creator: var_creator,
+            media: var_media,
+        };
+    }
+}
+
+impl SseDecode for crate::api::feed_types::FfiFeedSpec {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_kind = <String>::sse_decode(deserializer);
+        let mut var_value = <Option<String>>::sse_decode(deserializer);
+        let mut var_viewerPubkey = <Option<String>>::sse_decode(deserializer);
+        return crate::api::feed_types::FfiFeedSpec {
+            kind: var_kind,
+            value: var_value,
+            viewer_pubkey: var_viewerPubkey,
+        };
+    }
+}
+
+impl SseDecode for crate::api::feed_types::FfiFeedUpdate {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_feedId = <String>::sse_decode(deserializer);
+        let mut var_revision = <u64>::sse_decode(deserializer);
+        let mut var_posts = <Vec<crate::api::feed_types::FfiFeedPost>>::sse_decode(deserializer);
+        return crate::api::feed_types::FfiFeedUpdate {
+            feed_id: var_feedId,
+            revision: var_revision,
+            posts: var_posts,
+        };
+    }
+}
+
 impl SseDecode for crate::api::delivery_types::FfiFocusItem {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -550,6 +850,18 @@ impl SseDecode for crate::video::ffi_models::FfiHlsPlaybackSession {
         return crate::video::ffi_models::FfiHlsPlaybackSession {
             session_id: var_sessionId,
             playback_url: var_playbackUrl,
+        };
+    }
+}
+
+impl SseDecode for crate::api::feed_types::FfiMediaDim {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_width = <u32>::sse_decode(deserializer);
+        let mut var_height = <u32>::sse_decode(deserializer);
+        return crate::api::feed_types::FfiMediaDim {
+            width: var_width,
+            height: var_height,
         };
     }
 }
@@ -671,6 +983,20 @@ impl SseDecode for Vec<String> {
     }
 }
 
+impl SseDecode for Vec<crate::api::feed_types::FfiFeedPost> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::feed_types::FfiFeedPost>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<crate::api::delivery_types::FfiFocusItem> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -716,6 +1042,19 @@ impl SseDecode for Option<String> {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
             return Some(<String>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<crate::api::feed_types::FfiMediaDim> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::api::feed_types::FfiMediaDim>::sse_decode(
+                deserializer,
+            ));
         } else {
             return None;
         }
@@ -775,61 +1114,76 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        2 => wire__crate__video__native_gateway__ffi_acquire_hls_playback_impl(
+        3 => wire__crate__video__native_gateway__ffi_acquire_hls_playback_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        3 => wire__crate__api__delivery_events_stream__ffi_delivery_events_impl(
+        4 => wire__crate__api__broadcast_control__ffi_broadcast_event_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        4 => wire__crate__video__native_gateway__ffi_get_discovered_videos_impl(
+        5 => wire__crate__api__feed_control__ffi_close_feed_impl(port, ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__delivery_events_stream__ffi_delivery_events_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        5 => wire__crate__api__focus_control__ffi_playback_url_impl(
+        7 => wire__crate__api__feed_updates_stream__ffi_feed_updates_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        6 => wire__crate__video__native_gateway__ffi_release_hls_playback_impl(
+        8 => wire__crate__video__native_gateway__ffi_get_discovered_videos_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        7 => wire__crate__api__engine_control__ffi_set_delivery_config_impl(
+        9 => wire__crate__api__feed_control__ffi_load_more_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__feed_control__ffi_open_feed_impl(port, ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__focus_control__ffi_playback_url_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        8 => wire__crate__api__engine_control__ffi_start_engine_impl(
+        12 => wire__crate__video__native_gateway__ffi_release_hls_playback_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        9 => wire__crate__video__native_gateway__ffi_start_server_impl(
+        13 => wire__crate__api__engine_control__ffi_set_delivery_config_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        10 => wire__crate__api__focus_control__ffi_update_focus_impl(
+        14 => wire__crate__api__engine_control__ffi_start_engine_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        11 => wire__crate__video__native_gateway__init_app_impl(port, ptr, rust_vec_len, data_len),
+        15 => wire__crate__video__native_gateway__ffi_start_server_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        16 => wire__crate__api__focus_control__ffi_update_focus_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        17 => wire__crate__video__native_gateway__init_app_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -896,6 +1250,126 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::delivery_types::FfiDeliveryEv
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::feed_types::FfiFeedCreator {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.pubkey.into_into_dart().into_dart(),
+            self.display_name.into_into_dart().into_dart(),
+            self.handle.into_into_dart().into_dart(),
+            self.avatar_url.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::feed_types::FfiFeedCreator
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::feed_types::FfiFeedCreator>
+    for crate::api::feed_types::FfiFeedCreator
+{
+    fn into_into_dart(self) -> crate::api::feed_types::FfiFeedCreator {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::feed_types::FfiFeedMedia {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.urls.into_into_dart().into_dart(),
+            self.delivery.into_into_dart().into_dart(),
+            self.sha256.into_into_dart().into_dart(),
+            self.size_bytes.into_into_dart().into_dart(),
+            self.duration_ms.into_into_dart().into_dart(),
+            self.dim.into_into_dart().into_dart(),
+            self.blurhash.into_into_dart().into_dart(),
+            self.thumb_url.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::feed_types::FfiFeedMedia
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::feed_types::FfiFeedMedia>
+    for crate::api::feed_types::FfiFeedMedia
+{
+    fn into_into_dart(self) -> crate::api::feed_types::FfiFeedMedia {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::feed_types::FfiFeedPost {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.post_id.into_into_dart().into_dart(),
+            self.event_id.into_into_dart().into_dart(),
+            self.created_at.into_into_dart().into_dart(),
+            self.caption.into_into_dart().into_dart(),
+            self.hashtags.into_into_dart().into_dart(),
+            self.creator.into_into_dart().into_dart(),
+            self.media.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::feed_types::FfiFeedPost
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::feed_types::FfiFeedPost>
+    for crate::api::feed_types::FfiFeedPost
+{
+    fn into_into_dart(self) -> crate::api::feed_types::FfiFeedPost {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::feed_types::FfiFeedSpec {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.kind.into_into_dart().into_dart(),
+            self.value.into_into_dart().into_dart(),
+            self.viewer_pubkey.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::feed_types::FfiFeedSpec
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::feed_types::FfiFeedSpec>
+    for crate::api::feed_types::FfiFeedSpec
+{
+    fn into_into_dart(self) -> crate::api::feed_types::FfiFeedSpec {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::feed_types::FfiFeedUpdate {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.feed_id.into_into_dart().into_dart(),
+            self.revision.into_into_dart().into_dart(),
+            self.posts.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::feed_types::FfiFeedUpdate
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::feed_types::FfiFeedUpdate>
+    for crate::api::feed_types::FfiFeedUpdate
+{
+    fn into_into_dart(self) -> crate::api::feed_types::FfiFeedUpdate {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::delivery_types::FfiFocusItem {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -938,6 +1412,27 @@ impl flutter_rust_bridge::IntoIntoDart<crate::video::ffi_models::FfiHlsPlaybackS
     for crate::video::ffi_models::FfiHlsPlaybackSession
 {
     fn into_into_dart(self) -> crate::video::ffi_models::FfiHlsPlaybackSession {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::feed_types::FfiMediaDim {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.width.into_into_dart().into_dart(),
+            self.height.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::feed_types::FfiMediaDim
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::feed_types::FfiMediaDim>
+    for crate::api::feed_types::FfiMediaDim
+{
+    fn into_into_dart(self) -> crate::api::feed_types::FfiMediaDim {
         self
     }
 }
@@ -1084,6 +1579,18 @@ impl SseEncode
     }
 }
 
+impl SseEncode
+    for StreamSink<
+        crate::api::feed_types::FfiFeedUpdate,
+        flutter_rust_bridge::for_generated::SseCodec,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        unimplemented!("")
+    }
+}
+
 impl SseEncode for String {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1127,6 +1634,61 @@ impl SseEncode for crate::api::delivery_types::FfiDeliveryEventKind {
     }
 }
 
+impl SseEncode for crate::api::feed_types::FfiFeedCreator {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.pubkey, serializer);
+        <String>::sse_encode(self.display_name, serializer);
+        <String>::sse_encode(self.handle, serializer);
+        <Option<String>>::sse_encode(self.avatar_url, serializer);
+    }
+}
+
+impl SseEncode for crate::api::feed_types::FfiFeedMedia {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Vec<String>>::sse_encode(self.urls, serializer);
+        <String>::sse_encode(self.delivery, serializer);
+        <Option<String>>::sse_encode(self.sha256, serializer);
+        <Option<u64>>::sse_encode(self.size_bytes, serializer);
+        <Option<u64>>::sse_encode(self.duration_ms, serializer);
+        <Option<crate::api::feed_types::FfiMediaDim>>::sse_encode(self.dim, serializer);
+        <Option<String>>::sse_encode(self.blurhash, serializer);
+        <Option<String>>::sse_encode(self.thumb_url, serializer);
+    }
+}
+
+impl SseEncode for crate::api::feed_types::FfiFeedPost {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.post_id, serializer);
+        <String>::sse_encode(self.event_id, serializer);
+        <u64>::sse_encode(self.created_at, serializer);
+        <String>::sse_encode(self.caption, serializer);
+        <Vec<String>>::sse_encode(self.hashtags, serializer);
+        <crate::api::feed_types::FfiFeedCreator>::sse_encode(self.creator, serializer);
+        <crate::api::feed_types::FfiFeedMedia>::sse_encode(self.media, serializer);
+    }
+}
+
+impl SseEncode for crate::api::feed_types::FfiFeedSpec {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.kind, serializer);
+        <Option<String>>::sse_encode(self.value, serializer);
+        <Option<String>>::sse_encode(self.viewer_pubkey, serializer);
+    }
+}
+
+impl SseEncode for crate::api::feed_types::FfiFeedUpdate {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.feed_id, serializer);
+        <u64>::sse_encode(self.revision, serializer);
+        <Vec<crate::api::feed_types::FfiFeedPost>>::sse_encode(self.posts, serializer);
+    }
+}
+
 impl SseEncode for crate::api::delivery_types::FfiFocusItem {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1144,6 +1706,14 @@ impl SseEncode for crate::video::ffi_models::FfiHlsPlaybackSession {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.session_id, serializer);
         <String>::sse_encode(self.playback_url, serializer);
+    }
+}
+
+impl SseEncode for crate::api::feed_types::FfiMediaDim {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u32>::sse_encode(self.width, serializer);
+        <u32>::sse_encode(self.height, serializer);
     }
 }
 
@@ -1230,6 +1800,16 @@ impl SseEncode for Vec<String> {
     }
 }
 
+impl SseEncode for Vec<crate::api::feed_types::FfiFeedPost> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::feed_types::FfiFeedPost>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<crate::api::delivery_types::FfiFocusItem> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1266,6 +1846,16 @@ impl SseEncode for Option<String> {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
             <String>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<crate::api::feed_types::FfiMediaDim> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::api::feed_types::FfiMediaDim>::sse_encode(value, serializer);
         }
     }
 }

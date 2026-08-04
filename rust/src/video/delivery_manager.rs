@@ -3,6 +3,7 @@
 //! demand, and transfer completions arrive over channels; every event
 //! triggers one replanning pass — there is no periodic wake-up.
 
+use crate::engine::inventory_controller::Mode;
 use crate::engine::{DataUsageLevel, EngineParams, PostId};
 use crate::video::delivery_events::{
     command_channel, CommandReceiver, DeliveryCommand, DeliveryHandle,
@@ -21,7 +22,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, watch};
 
 /// Operational knobs outside the engine's tuning table.
 #[derive(Clone, Copy, Debug)]
@@ -62,12 +63,34 @@ pub fn start_delivery_manager(
     demand: DemandReceiver,
 ) -> DeliveryHandle {
     let (handle, commands) = command_channel();
-    tokio::spawn(run(config, commands, demand));
+    tokio::spawn(run(config, commands, demand, None));
     handle
 }
 
-async fn run(config: DeliveryManagerConfig, commands: CommandReceiver, demand: DemandReceiver) {
+/// Like [`start_delivery_manager`], but additionally exposes the
+/// inventory mode transitions the discovery control loop subscribes
+/// to (plan §5.4). The receiver starts at [`Mode::Hunger`], matching
+/// a fresh controller.
+pub fn start_delivery_manager_with_modes(
+    config: DeliveryManagerConfig,
+    demand: DemandReceiver,
+) -> (DeliveryHandle, watch::Receiver<Mode>) {
+    let (modes, mode_updates) = watch::channel(Mode::Hunger);
+    let (handle, commands) = command_channel();
+    tokio::spawn(run(config, commands, demand, Some(modes)));
+    (handle, mode_updates)
+}
+
+async fn run(
+    config: DeliveryManagerConfig,
+    commands: CommandReceiver,
+    demand: DemandReceiver,
+    modes: Option<watch::Sender<Mode>>,
+) {
     let mut worker = DeliveryWorker::create(config, commands, demand).await;
+    if let Some(sender) = modes {
+        worker.state.publish_modes(sender);
+    }
     while worker.step().await {}
     worker.keeper.save_now().await;
 }

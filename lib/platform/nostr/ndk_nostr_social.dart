@@ -5,7 +5,10 @@ import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/core/time/clock.dart';
 import 'package:ghostr/features/settings/domain/relay_url.dart';
 import 'package:ghostr/features/social/domain/nostr_social_port.dart';
+import 'package:ghostr/features/social/domain/signed_event_broadcast_port.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
+import 'package:ghostr/platform/nostr/ndk_broadcast_adapter.dart';
+import 'package:ghostr/platform/nostr/signed_nostr_event_json.dart';
 import 'package:ndk/ndk.dart';
 
 part 'ndk_nostr_social_models.dart';
@@ -15,21 +18,23 @@ class NdkNostrSocial implements NostrSocialPort {
   NdkNostrSocial({
     required Ndk ndk,
     required List<RelayUrl> relays,
+    SignedEventBroadcastPort? broadcast,
     Clock clock = systemClock,
-  })  : _relayUrls = relays.map((relay) => relay.value).toList(),
+  })  : _broadcastPort =
+            broadcast ?? NdkBroadcastAdapter(ndk: ndk, relays: relays),
         _ndk = ndk,
         _clock = clock,
         _scope = _NdkSocialScope(_NdkSocialState(), null, null);
 
   NdkNostrSocial._(
     this._ndk,
-    this._relayUrls,
+    this._broadcastPort,
     this._clock,
     this._scope,
   );
 
   final Ndk _ndk;
-  final List<String> _relayUrls;
+  final SignedEventBroadcastPort _broadcastPort;
   final Clock _clock;
   final _NdkSocialScope _scope;
   _NdkSocialState get _state => _scope.state;
@@ -42,7 +47,7 @@ class NdkNostrSocial implements NostrSocialPort {
     final signer = _requireSigner();
     return NdkNostrSocial._(
       _ndk,
-      _relayUrls,
+      _broadcastPort,
       _clock,
       _NdkSocialScope(_state, signer, signer.getPublicKey()),
     );

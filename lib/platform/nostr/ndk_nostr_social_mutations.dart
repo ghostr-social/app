@@ -130,18 +130,11 @@ extension _NdkNostrSocialMutations on NdkNostrSocial {
     contacts.petnames.add('');
   }
 
+  /// Signs in Dart, then hands the canonical NIP-01 JSON to the
+  /// transport. The accepted event returns for the local caches.
   Future<Nip01Event> _broadcast(Nip01Event event) async {
     final signed = await _signer!.sign(event);
-    final response = _ndk.broadcast.broadcast(
-      nostrEvent: signed,
-      specificRelays: _relayUrls,
-      customSigner: _signer,
-      saveToCache: false,
-    );
-    final results = await response.broadcastDoneFuture;
-    if (!results.any((result) => result.broadcastSuccessful)) {
-      throw const AppFailure('No Nostr relay accepted the event.');
-    }
+    await _broadcastPort.broadcast(encodeSignedNostrEvent(signed));
     return signed;
   }
 

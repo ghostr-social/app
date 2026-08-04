@@ -1,3 +1,4 @@
+import 'package:ghostr/app/feed_pipeline_flag.dart';
 import 'package:ghostr/app/production_video_delivery_infrastructure.dart';
 import 'package:ghostr/app/production_video_delivery_sources.dart';
 import 'package:ghostr/app/remote_video_delivery_source.dart';
@@ -5,8 +6,10 @@ import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/media/video_playback_capabilities.dart';
 import 'package:ghostr/core/work/retrieval_scheduler.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
+import 'package:ghostr/features/video_catalog/data/ffi_rust_feed_port.dart';
 import 'package:ghostr/features/video_catalog/data/ndk_video_remote_source.dart';
 import 'package:ghostr/features/video_catalog/data/playable_remote_video_source.dart';
+import 'package:ghostr/features/video_catalog/data/rust_feed_remote_source.dart';
 import 'package:ghostr/features/video_catalog/data/scheduled_remote_video_source.dart';
 import 'package:ghostr/features/video_catalog/domain/remote_video_source.dart';
 import 'package:ghostr/features/video_inventory/domain/disabled_video_inventory.dart';
@@ -74,6 +77,8 @@ class ProductionVideoDeliveryEnvironment {
     required this.gateway,
     this.hlsPlaybackGateway = const FfiHlsPlaybackGateway(),
     this.playbackCapabilities = VideoPlaybackCapabilities.progressiveOnly,
+    this.feedFlag = const FeedPipelineFlag(),
+    this.rustFeedSourceBuilder = buildRustFeedSource,
   });
 
   factory ProductionVideoDeliveryEnvironment.production(
@@ -109,6 +114,17 @@ class ProductionVideoDeliveryEnvironment {
   final FfiVideoGateway gateway;
   final HlsPlaybackGatewayPort hlsPlaybackGateway;
   final VideoPlaybackCapabilities playbackCapabilities;
+
+  /// Which discovery pipeline every feed path is built on (plan §5
+  /// step 6). ndk until Rust reaches parity.
+  final FeedPipelineFlag feedFlag;
+  final RustFeedSourceBuilder rustFeedSourceBuilder;
+}
+
+/// The Rust discovery pipeline over the generated feed FFI. Built only
+/// when [FeedPipelineFlag] asks for it.
+RemoteVideoSource buildRustFeedSource() {
+  return const RustFeedRemoteSource(port: FfiRustFeedPort());
 }
 
 Future<ProductionVideoDelivery> buildProductionVideoDelivery(
@@ -138,7 +154,11 @@ Future<ProductionVideoDelivery> buildProductionVideoDelivery(
       : environment.playbackCapabilities;
   // Downloads follow the viewer's focus window (FeedFocusPort → Rust);
   // the retired native fallback no longer shadows the relay feed.
-  final lean = _playable(environment.canonicalSource, capabilities);
+  final canonical = environment.feedFlag.select(
+    ndk: environment.canonicalSource,
+    rust: environment.rustFeedSourceBuilder,
+  );
+  final lean = _playable(canonical, capabilities);
   final source = buildRemoteVideoDeliverySource(primary: lean);
   return ProductionVideoDelivery(
     infrastructure.inventory,
