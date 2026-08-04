@@ -5,6 +5,7 @@ pub mod event_parsing;
 
 pub mod control_loop;
 pub mod discovery_scheduler;
+pub mod event_cache;
 pub mod feed_assembly;
 pub mod feed_spec;
 pub mod feed_store;

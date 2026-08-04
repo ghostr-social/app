@@ -9,16 +9,26 @@ mod feed_support;
 
 use feed_support::empty_graph;
 use nostr_sdk::{Keys, Timestamp};
+use rust_lib_ghostr::discovery::event_cache::ViewerScope;
 use rust_lib_ghostr::discovery::feed_spec::FeedSpec;
 use rust_lib_ghostr::discovery::video_filters::DiscoveryRequest;
 
+/// Nothing narrows the wire filter — no authors, tag or term — and the
+/// only thing the main feed stamps is the session pool's viewer scope,
+/// which never reaches the wire.
 #[test]
 fn feed_spec_main_feed_requests_everything_unscoped() {
-    let viewer = Some(Keys::generate().public_key());
+    let viewer = Keys::generate().public_key();
 
-    let request = FeedSpec::MainFeed { viewer }.page_request(None, &empty_graph());
+    let request = FeedSpec::MainFeed { viewer: Some(viewer) }.page_request(None, &empty_graph());
 
-    assert_eq!(request, Some(DiscoveryRequest::default()));
+    assert_eq!(
+        request,
+        Some(DiscoveryRequest {
+            viewer: ViewerScope::SignedIn(viewer),
+            ..DiscoveryRequest::default()
+        })
+    );
 }
 
 #[test]

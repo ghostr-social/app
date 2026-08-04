@@ -9,6 +9,7 @@
 
 use nostr_sdk::{PublicKey, Timestamp};
 
+use crate::discovery::event_cache::ViewerScope;
 use crate::discovery::event_parsing::ParsedVideoPost;
 use crate::discovery::hashtags::normalize_hashtag;
 use crate::discovery::social_graph::SocialGraph;
@@ -53,6 +54,7 @@ impl FeedSpec {
         match self {
             Self::MainFeed { viewer } => Some(DiscoveryRequest {
                 routing_authors: routing_follows(viewer, graph),
+                viewer: viewer_scope(viewer),
                 ..request(older_than)
             }),
             Self::Profile(creators) => Some(DiscoveryRequest {
@@ -94,6 +96,17 @@ fn routing_follows(viewer: &Option<PublicKey>, graph: &SocialGraph) -> Vec<Publi
     match viewer {
         Some(viewer) if graph.belongs_to(viewer) => graph.follow_list(),
         _ => Vec::new(),
+    }
+}
+
+/// The main feed is the only feed that knows who is looking, so it is
+/// the only one that scopes the session's event pool. Signing out is a
+/// scope change of its own: a signed-out feed must not answer from the
+/// rows the previous viewer's session gathered.
+fn viewer_scope(viewer: &Option<PublicKey>) -> ViewerScope {
+    match viewer {
+        Some(viewer) => ViewerScope::SignedIn(*viewer),
+        None => ViewerScope::SignedOut,
     }
 }
 

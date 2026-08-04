@@ -39,20 +39,44 @@ pub struct SpacedStore {
     pub used_bytes: Arc<Mutex<u64>>,
     pub space: Arc<FakeSpace>,
     pub root: PathBuf,
+    pub limits: Limits,
+    pub recheck: Duration,
 }
 
 /// A store that re-measures free space on every check, so a test sees
 /// its move immediately.
 pub fn spaced_store(prefix: &str, limits: Limits, available: u64) -> SpacedStore {
-    let root = temp_root(prefix);
-    let space = FakeSpace::new(available);
+    paced_store(prefix, limits, available, Duration::ZERO)
+}
+
+/// A store that holds one free-space measurement for `recheck`, the way
+/// the device does. Whatever the store gives back has to be visible
+/// inside that window without another syscall.
+pub fn paced_store(prefix: &str, limits: Limits, available: u64, recheck: Duration) -> SpacedStore {
+    on_disk(temp_root(prefix), FakeSpace::new(available), limits, recheck)
+}
+
+/// The same root on the same filesystem, opened again as a restarted
+/// process sees it: nothing in memory, everything still on disk.
+pub fn reopened(fixture: &SpacedStore) -> SpacedStore {
+    on_disk(
+        fixture.root.clone(),
+        fixture.space.clone(),
+        fixture.limits,
+        fixture.recheck,
+    )
+}
+
+fn on_disk(root: PathBuf, space: Arc<FakeSpace>, limits: Limits, recheck: Duration) -> SpacedStore {
     let used_bytes = Arc::new(Mutex::new(0));
-    let capacity = StoreCapacity::new(limits, space.clone()).with_recheck(Duration::ZERO);
+    let capacity = StoreCapacity::new(limits, space.clone()).with_recheck(recheck);
     SpacedStore {
         store: PartialRangeStore::with_capacity(root.clone(), used_bytes.clone(), capacity),
         used_bytes,
         space,
         root,
+        limits,
+        recheck,
     }
 }
 

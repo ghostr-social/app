@@ -9,6 +9,7 @@ use std::time::Duration;
 
 use nostr_sdk::{Filter, PublicKey};
 
+use crate::discovery::event_cache::ViewerScope;
 use crate::discovery::video_filters::{discovery_filters, DiscoveryRequest};
 
 /// Relays known to implement NIP-50 full-text search
@@ -77,6 +78,8 @@ pub struct PlannedQuery {
 pub struct QueryPlan {
     pub outbox: OutboxLookup,
     pub queries: Vec<PlannedQuery>,
+    /// Whose session the executor's event pool answers this plan from.
+    pub viewer: ViewerScope,
 }
 
 /// Lays out the full query plan for one discovery request.
@@ -89,6 +92,7 @@ pub fn plan_discovery(request: &DiscoveryRequest) -> QueryPlan {
     QueryPlan {
         outbox: outbox_lookup(request),
         queries,
+        viewer: request.viewer,
     }
 }
 

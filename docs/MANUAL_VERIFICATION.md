@@ -465,3 +465,188 @@ The AVD and the two unrelated applications on it were kept. The shadow-mode
 profile build was uninstalled at the end so no non-shipping build is left behind,
 which also removed its settings and cached video store; `/data` was left with
 403 MB free.
+
+## Android — 2026-08-04 (fourth pass) — parity after the session event pool, the store reload and the eviction-first space guard
+
+Branch `rust-media-engine` (`c28ed04` plus the branch's uncommitted work).
+Purpose: re-measure feed parity now that the Rust Nostr client keeps its own
+event database, so a query answers stored UNION network the way ndk's
+`MemCacheManager` does — the root cause the previous three passes kept
+measuring. Also to re-check the three defects the third pass recorded: the
+progressive store not surviving a restart, the burst of store write-refusals
+with its `Video unavailable` panel, and the one-off ExoPlayer
+`OutOfMemoryError`.
+
+Environment: same AVD `Medium_Phone_API_36.1`, Android 36.1 x86_64, real
+outbound network. Native library built with `ANDROID_ABI=x86_64 make
+rust-no-clean`, app with `flutter build apk --profile --target-platform
+android-x64` — 60,129,167 bytes, SHA-256
+`43e41225a177de3372ac2be5c593c96d929705e71412509690b0d3491ff228fe`,
+x86_64-only, `libapp.so` + `libvmservice_snapshot.so` + `librust_lib_ghostr.so`
++ `librust_lib_ndk.so` + `libflutter.so` + `libdatastore_shared_counter.so`.
+Profile again, not debug: `/data` had 403 MB free. `FeedPipelineFlag`'s default
+was temporarily `FeedPipelineMode.shadow`. The tested binary really carries the
+work: the packaged `librust_lib_ghostr.so` (11,477,008 bytes) contains
+`rust_lib_ghostr::discovery::event_cache`, `src/discovery/event_cache.rs`,
+`The session event pool could not be read/cleared/store an event`,
+`Video store could not reload`, `Video store could not clear unusable` and
+`Video store has no room for … pausing the post instead of its source`, and
+`libapp.so` contains `ShadowCompareRemoteVideoSource`, `RustFeedPageReader` and
+`FfiFeedStage`. Signed in with the public NIP-19 test-vector nsec from
+`test/nostr/ndk_nostr_session_test.dart`; no real user key. The flag was
+reverted afterwards and `git diff lib/app/feed_pipeline_flag.dart` is empty.
+
+Session shape, chosen for comparability with the third pass and to give a
+session-accumulating cache a fair chance to warm: 12:57 to 14:31, four app
+launches, ~270 feed swipes, 20 main-feed loads (one cold load per launch plus
+16 forced Profile→Home rebuilds), and 80 deliberate search submissions over the
+same ten terms (`nostr`, `music`, `bitcoin`, `art`, `dance`, `guitar`, `surf`,
+`coffee`, `skateboard`, `dog`), six to nine repetitions of each. Every launch
+browsed the feed for four to seven minutes *before* its search sweep, and the
+sweeps were repeated as the session aged.
+
+Records were read exactly as the second and third passes document: VM service
+URI out of logcat, `adb forward`, WebSocket `streamListen{streamId:"Logging"}`,
+every `valueAsStringIsTruncated` message re-read with chunked `getObject`, and
+the socket's read loop never awaiting. 130 of 130 records came back complete;
+zero unresolved truncations. Swiping an already-buffered feed issues no pull, so
+main-feed data points come from launches and forced reloads, not from swipes.
+
+Measured — feed parity in shadow mode:
+
+- **Parity still does not hold, and on the defining defect it did not improve.**
+  130 `ghostr.feedparity` divergence records; **28 excluded** because the ndk
+  truth was unhealthy (below), leaving **102 against a healthy ndk truth**.
+- Zero `Shadow feed failed` records: the Rust pipeline answered every request
+  without throwing, as in all three previous passes.
+- Zero `orderMismatches` in all 130 records. Among the ids both pipelines serve
+  the ranking still agrees exactly; the disagreement is membership only.
+  Unchanged across all four passes.
+- **97 of the 102 healthy records list rows the ndk truth served and the Rust
+  shadow did not, and 96 of those hit the reporter's five-entry cap.** Third
+  pass: 56 of 60, 55 at the cap. Direction split: `missing` only 8, both lists
+  89, `extra` only 5, agreement 0. The cap was hit on some list in 101 of 102.
+- **Main feed: 28 healthy records, 27 of them carrying `missing` rows, 26 at the
+  cap.** Third pass: 12 of 13. Every one of the 20 deliberate loads diverged.
+- **Deliberate searches: 73 healthy records from 70 healthy submissions, 70 of
+  them carrying `missing` rows, every one at the cap.** Third pass: 41 of 42.
+  Two further records came from prefix queries the search screen fires while a
+  term is typed (`skateboar`, `d`); they are reported apart.
+- Repeat stability: each term was run six to nine times across the session and
+  diverged every single time; per term there were only two to six distinct
+  `missing` sets, and reruns inside one launch were frequently byte-identical.
+- **The trend with session age is flat.** Mean `|missing|` per ten-minute
+  bucket, healthy records only: 5.00, 5.00, 5.00, 5.00, 3.57, 4.75, 4.38, 5.00,
+  5.00, 4.69. No decay. Per launch, `missing` rows appear in 7 of 7, 7 of 8, 5
+  of 5 and 8 of 8 main-feed records — a two-hour-old pool is no better than a
+  two-minute-old one.
+- The pool is nevertheless demonstrably live, and it moved the *other*
+  direction. Mean `|extra|` went from 0.00 on the session's first cold load to
+  4.2–5.0 within ten minutes and stayed there. The clearest single proof: the
+  13:08:06 main-feed record's `extra` list is exactly the five ids the 12:58:35
+  record had listed as `missing` — rows Rust could not serve on the cold query,
+  served ten minutes later out of the pool, by which time the ndk truth had
+  rotated them out. The fix does what it says; it just does not reach the rows
+  ndk has and Rust never fetched.
+- Net against the third pass: the record count rose from 60 to 130 because this
+  session issued more requests. The rates that matter are unchanged or slightly
+  worse — 95% of healthy records short (third pass 93%), main feed 27 of 28
+  (12 of 13), searches 70 of 73 (41 of 42). Against a healthy ndk baseline the
+  Rust pipeline is still serving fewer rows than the shipping path on almost
+  every request. The extra rows it also serves are not the blocker.
+
+Excluded records — the ndk truth collapsed again:
+
+- From 14:08:04 to 14:16:01, spanning the end of the third launch and the first
+  minute of the fourth, every record is `missing=[] extra=[5 ids]`: 28 records
+  (17 `feed`, 10 search, 1 prefix). Screenshots at 14:06:40, 14:08:45 and
+  14:09:45 show the "Hunting for videos" empty state, and the search screen at
+  14:14:29 shows "No matches found" for `dog`, a term that had returned eight
+  videos at 13:17. A process restart recovered it, as in the second pass. Those
+  records measure ndk's collapse, not Rust's membership.
+- The collapse arrived after roughly eight minutes of the third launch, not the
+  ~30 minutes the second pass saw. Everything outside that window is counted.
+
+Verified — progressive playback did not regress:
+
+- Real frames, not logs: three sets of five `screencap`s 0.7 s apart, at 13:07,
+  13:53 and 14:29, gave five distinct frames every time, and the pairs read back
+  show genuinely different moments of the same clip (a dog running from the left
+  edge of a crosswalk into the middle of it; a camera panning across two lions
+  so the framing and their heads move; an animated masked figure turning its
+  head and shifting its arms).
+- ExoPlayer (`AndroidXMedia3/1.4.1`) bound `c2.goldfish.h264.decoder` to the
+  surface throughout — 243 `ExoPlayerImpl` inits over the session — and the
+  loopback gateway served every launch (`127.0.0.1:44317`, `:39293`, `:42775`,
+  `:38771`).
+
+Verified — the free-space guard now evicts instead of refusing:
+
+- **Zero store refusals in 94 minutes.** No `video store is out of space` and no
+  `Video store has no room for … pausing the post instead of its source` line
+  was logged at all. Third pass: sixteen refusals inside one second at 11:29,
+  with further bursts at 11:11 and 11:19.
+- 181 disk samples taken every 30 s. Free space bottomed at exactly 256 MB — the
+  `DEFAULT_RESERVE_BYTES` line — at 14:22:17 with the store at 149 MB, and
+  recovered; earlier the store cycled 147 → 131 → 105 MB while free space
+  climbed back from 265 to 307 MB. Eviction on the write path is silent by
+  design (`partial_range_store/admission.rs`, `make_room`), and the timer path's
+  `Video store gave back …` never had to fire.
+
+Verified — the third pass's `OutOfMemoryError` did not recur:
+
+- Zero `OutOfMemoryError`, zero `Fatal signal`, zero `FATAL EXCEPTION` across
+  four launches, 243 player inits and 94 minutes.
+
+Not verified — and one fix that does not reach the device:
+
+- **The progressive store still does not survive a restart, and the Rust half of
+  the fix never runs.** Before the second launch the store held 66 files /
+  105,152 KB; ten seconds after it, `files/native_video_inventory` was empty —
+  no `progressive/`, no `host_stats.json`. Before the third launch: 46 files /
+  144,932 KB → 8 KB. The sampler reads `store_kb=8` at 12:58:41, 13:30:24 and
+  14:01:09, the same signature the third pass recorded. The cause is on the Dart
+  side, not in Rust: `lib/platform/media/native_video_cache_directory.dart`'s
+  `initialize()` still runs `if (await directory.exists()) await
+  directory.delete(recursive: true);`, and
+  `lib/app/production_video_delivery_infrastructure.dart` calls it immediately
+  before `gateway.start(...)`, so `PartialRangeStore::load_existing`
+  (`rust/src/video/partial_range_store/reload.rs`, called from
+  `video/gateway_delivery.rs`) always adopts an empty directory.
+  `prepare_native_cache_directory` was correctly narrowed to sweep only stale
+  `*.mp4` / `*.partial`, but the directory is gone before it looks.
+- Exact divergence sizes, again: the reporter caps each list at five and 101 of
+  102 healthy records hit that cap, so "5" almost always means "5 or more".
+- Profile feeds, for the third pass running: no `profile:` context was ever
+  reported.
+- Hashtag (`tag:`) feeds, older-page parity on search results, HLS playback,
+  resume-after-kill, and the arm64 release build.
+
+Problems seen:
+
+- **`Video unavailable` panels recurred, and more often than last pass.** Caught
+  in screenshots at 13:22, 13:34, 13:37 and 14:04, with 57 `Video player
+  initialization failed` records over the session (third pass: seven). They are
+  *not* store refusals this time — there were none. logcat shows 57
+  `ExoPlaybackException: Source error`, of which 39 are
+  `UnrecognizedInputFormatException` ("none of the available extractors could
+  read the stream") and 15 are `InvalidResponseCodeException` (404 or 503 from
+  the loopback gateway). At least one panel sat on a post whose content is
+  `https://image.nostr.build/b1d733a0…` — a still image admitted into a video
+  feed, which no extractor can read.
+- 10 `cannot write into a finalized video` warnings, new this pass.
+- 15 `No working source left for <id>; reporting it unplayable`, 78
+  `Chunk transfer failed` and 11 `Probe failed` — retry backoff is still holding
+  (no storm), and `Video store could not reload` never appeared.
+- The ndk path's own faults are unchanged and, on this run, louder: 287
+  `could not connect to wss://…` timeouts (`relay.nostr.band` 181,
+  `relay.ditto.pub` 81, `relay.damus.io` 25) and 40 unhandled `Null check
+  operator used on a null value` exceptions from
+  `RelayManager.registerRelayRequest`.
+- Installing again needed `sys_storage_threshold_percentage` lowered to 1; it
+  was deleted afterwards and reads `null` (the default) again.
+
+The AVD and the two unrelated applications on it were kept. The shadow-mode
+profile build was uninstalled at the end so no non-shipping build is left
+behind, which also removed its settings and cached video store; `/data` was left
+with 415 MB free.

@@ -9,12 +9,14 @@ use crate::video::delivery_events::{
     command_channel, CommandReceiver, DeliveryCommand, DeliveryHandle,
 };
 use crate::video::delivery_inflight::InFlightChunks;
+use crate::video::delivery_pressure::StorePressure;
 use crate::video::delivery_probes::ProbeBook;
 use crate::video::delivery_retry::{RetryBook, RetryPolicy};
 use crate::video::delivery_state::DeliveryState;
 use crate::video::delivery_stats::StatsKeeper;
 use crate::video::delivery_transfers::{InternalEvent, TransferContext};
 use crate::video::outbound_media_client::MediaHttpClient;
+use crate::video::partial_range_store::capacity::DEFAULT_RECHECK;
 use crate::video::partial_range_store::PartialRangeStore;
 use crate::video::playback_demand::{DemandReceiver, DemandSignal};
 use crate::video::progressive_posts::ServablePosts;
@@ -33,6 +35,9 @@ pub struct DeliveryTuning {
     pub retry: RetryPolicy,
     /// Quiet period before persisting the host-stats snapshot.
     pub stats_debounce: Duration,
+    /// How long a post waits after the store refused its bytes. One
+    /// capacity measurement is the earliest a new answer can exist.
+    pub store_pressure_pause: Duration,
 }
 
 impl Default for DeliveryTuning {
@@ -41,6 +46,7 @@ impl Default for DeliveryTuning {
             probe_concurrency: 2,
             retry: RetryPolicy::default(),
             stats_debounce: Duration::from_secs(2),
+            store_pressure_pause: DEFAULT_RECHECK,
         }
     }
 }
@@ -101,6 +107,7 @@ pub(crate) struct DeliveryWorker {
     pub(crate) inflight: InFlightChunks,
     pub(crate) probes: ProbeBook,
     pub(crate) retry: RetryBook,
+    pub(crate) pressure: StorePressure,
     pub(crate) pending_demand: Option<DemandSignal>,
     pub(crate) ctx: TransferContext,
     pub(crate) posts: ServablePosts,
@@ -128,6 +135,7 @@ impl DeliveryWorker {
             inflight: InFlightChunks::new(),
             probes: ProbeBook::new(config.tuning.probe_concurrency),
             retry: RetryBook::new(config.tuning.retry),
+            pressure: StorePressure::new(config.tuning.store_pressure_pause),
             pending_demand: None,
             ctx: TransferContext {
                 client: config.client,

@@ -5,6 +5,7 @@
 
 use crate::video::partial_range_store::free_space::{FreeSpace, SystemFreeSpace};
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
@@ -40,15 +41,19 @@ impl Limits {
 struct Sample {
     taken: Instant,
     available: Option<u64>,
+    generation: u64,
 }
 
 /// Measures free space (at most once per recheck window) and turns the
-/// measurement into the store's effective cap.
+/// measurement into the store's effective cap. Between measurements the
+/// store's own writes and evictions move the standing measurement, so a
+/// cap taken inside one window still describes the file system.
 pub struct StoreCapacity {
     limits: Limits,
     space: Arc<dyn FreeSpace>,
     recheck: Duration,
     sample: Mutex<Option<Sample>>,
+    generations: AtomicU64,
 }
 
 impl StoreCapacity {
@@ -58,6 +63,7 @@ impl StoreCapacity {
             space,
             recheck: DEFAULT_RECHECK,
             sample: Mutex::new(None),
+            generations: AtomicU64::new(0),
         }
     }
 
@@ -74,20 +80,55 @@ impl StoreCapacity {
     /// The most the store may occupy, given the `used` bytes it already
     /// holds: `min(budget, used + free - reserve)`, never below zero.
     pub async fn cap(&self, root: &Path, used: u64) -> u64 {
-        cap_for(self.limits, used, self.available(root).await)
+        let mut sample = self.sample.lock().await;
+        cap_for(self.limits, used, self.current(&mut sample, root))
     }
 
-    async fn available(&self, root: &Path) -> Option<u64> {
+    /// Identifies the measurement in force right now: it changes when
+    /// free space is re-measured and when the store gives bytes back,
+    /// which are the only two things that can turn a refusal around.
+    pub fn generation(&self) -> u64 {
+        self.generations.load(Ordering::Relaxed)
+    }
+
+    /// The store handed `bytes` back to the file system, so the standing
+    /// measurement understates free space by exactly that much. Without
+    /// this an eviction is invisible until the next syscall, and the
+    /// store goes on refusing writes it has just made room for.
+    pub async fn gave_back(&self, bytes: u64) {
+        if bytes == 0 {
+            return;
+        }
         let mut sample = self.sample.lock().await;
-        if let Some(current) = sample.as_ref().filter(|s| s.taken.elapsed() < self.recheck) {
-            return current.available;
+        let Some(current) = sample.as_mut() else { return };
+        current.available = current.available.map(|free| free.saturating_add(bytes));
+        current.generation = self.next_generation();
+    }
+
+    /// The store spent `bytes`: the same measurement, that much less of
+    /// it left. Keeps the reserve exact between measurements.
+    pub async fn spent(&self, bytes: u64) {
+        let mut sample = self.sample.lock().await;
+        let Some(current) = sample.as_mut() else { return };
+        current.available = current.available.map(|free| free.saturating_sub(bytes));
+    }
+
+    /// The standing measurement, re-measuring once the window is up.
+    fn current(&self, sample: &mut Option<Sample>, root: &Path) -> Option<u64> {
+        if let Some(fresh) = sample.as_ref().filter(|s| s.taken.elapsed() < self.recheck) {
+            return fresh.available;
         }
         let available = self.space.available_bytes(root);
         *sample = Some(Sample {
             taken: Instant::now(),
             available,
+            generation: self.next_generation(),
         });
         available
+    }
+
+    fn next_generation(&self) -> u64 {
+        self.generations.fetch_add(1, Ordering::Relaxed).saturating_add(1)
     }
 }
 

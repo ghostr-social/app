@@ -1,28 +1,19 @@
+use crate::discovery::event_cache::client_with_event_cache;
 use crate::engine::inventory_controller::Mode;
-use crate::engine::{DataUsageLevel, EngineParams};
 use crate::video::delivery_events::DeliveryHandle;
-use crate::video::delivery_manager::{
-    start_delivery_manager_with_modes, DeliveryManagerConfig, DeliveryTuning,
-};
 use crate::video::event_identity::VIDEO_KINDS;
 pub use crate::video::event_index::MAX_NATIVE_INVENTORY_ITEMS;
 use crate::video::event_index::{spawn_event_identity_indexer, NativeVideoIndex};
+use crate::video::gateway_delivery::start_progressive_delivery;
 use crate::video::hls_playback_gateway::{HlsPlaybackGateway, NativeHlsPlaybackSession};
 use crate::video::hls_sessions::HlsSessions;
-use crate::video::http_gateway::configured_router_with_progressive;
 use crate::video::native_cache::prepare_native_cache_directory;
-use crate::video::native_models::{new_native_downloads, NativeVideoDownload};
-use crate::video::outbound_media_client::MediaHttpClient;
-use crate::video::partial_range_store::PartialRangeStore;
-use crate::video::playback_demand::demand_channel;
-use crate::video::progressive_posts::ServablePosts;
-use crate::video::progressive_route::{ProgressiveState, ProgressiveTiming};
+use crate::video::native_models::NativeVideoDownload;
+use crate::video::progressive_route::ProgressiveState;
 use log::warn;
 use nostr_sdk::{Client, Filter, Kind};
 use std::{future::Future, io, path::PathBuf, sync::Arc};
-use tokio::{net::TcpListener, sync::watch, sync::Mutex};
-
-type DeliveryParts = (axum::Router, DeliveryHandle, Arc<ProgressiveState>, watch::Receiver<Mode>);
+use tokio::{net::TcpListener, sync::watch};
 
 pub struct GatewayConfiguration {
     pub cache_directory: PathBuf,
@@ -49,13 +40,16 @@ impl GatewayRuntime {
         let listener = TcpListener::bind("127.0.0.1:0").await?;
         let address = listener.local_addr()?;
         let endpoint = address.to_string();
-        let client = Arc::new(Client::default());
+        // Never `Client::default()`: its database stores no events, so
+        // every query would be a cold network round while ndk answers
+        // from cache UNION network (crate::discovery::event_cache).
+        let client = Arc::new(client_with_event_cache());
         let videos = NativeVideoIndex::new(MAX_NATIVE_INVENTORY_ITEMS);
         spawn_event_identity_indexer(client.clone(), videos.clone());
         configure_client(&client, &configuration.relays).await;
         let hls_sessions = HlsSessions::production();
         let (router, delivery, progressive, modes) =
-            start_progressive_delivery(&configuration, hls_sessions.clone())?;
+            start_progressive_delivery(&configuration, hls_sessions.clone()).await?;
         spawn_http_server(listener, router);
         let hls = HlsPlaybackGateway::new(address, hls_sessions);
         let runtime = Self { hls, videos, delivery, progressive };
@@ -130,54 +124,6 @@ pub fn deletion_filter() -> Filter {
     Filter::new()
         .kind(Kind::EventDeletion)
         .limit(MAX_NATIVE_INVENTORY_ITEMS)
-}
-
-/// Progressive delivery: the router serves `/video.mp4` from the partial
-/// store; the manager's mode watch feeds the discovery control loop.
-fn start_progressive_delivery(
-    configuration: &GatewayConfiguration,
-    hls_sessions: HlsSessions,
-) -> anyhow::Result<DeliveryParts> {
-    let store = Arc::new(PartialRangeStore::new(
-        configuration.cache_directory.join("progressive"),
-        Arc::new(Mutex::new(0)),
-    ));
-    let posts = ServablePosts::new();
-    let (demand_sender, demand) = demand_channel();
-    let client = MediaHttpClient::public()?;
-    let progressive = Arc::new(ProgressiveState {
-        store: store.clone(),
-        demand: demand_sender,
-        posts: posts.clone(),
-        timing: ProgressiveTiming::default(),
-    });
-    let router = configured_router_with_progressive(
-        new_native_downloads(), hls_sessions, client.clone(), progressive.clone(),
-    );
-    let config = delivery_config(configuration, store, client, posts);
-    let (delivery, modes) = start_delivery_manager_with_modes(config, demand);
-    Ok((router, delivery, progressive, modes))
-}
-
-fn delivery_config(
-    configuration: &GatewayConfiguration,
-    store: Arc<PartialRangeStore>,
-    client: MediaHttpClient,
-    posts: ServablePosts,
-) -> DeliveryManagerConfig {
-    let params = EngineParams {
-        balanced_concurrency: configuration.max_parallel_downloads,
-        ..EngineParams::default()
-    };
-    DeliveryManagerConfig {
-        store,
-        client,
-        posts,
-        stats_path: configuration.cache_directory.join("host_stats.json"),
-        params,
-        level: DataUsageLevel::Balanced,
-        tuning: DeliveryTuning::default(),
-    }
 }
 
 fn spawn_http_server(listener: TcpListener, app: axum::Router) {

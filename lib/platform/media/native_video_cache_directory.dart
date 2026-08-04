@@ -7,9 +7,11 @@ class NativeVideoCacheDirectory {
 
   final Directory directory;
 
+  /// Ensures the directory exists without disturbing what it holds: the
+  /// engine reloads the partial-range store and its host statistics from
+  /// here on start, and Rust sweeps the legacy whole-file artifacts.
   Future<void> initialize() async {
     try {
-      if (await directory.exists()) await directory.delete(recursive: true);
       await directory.create(recursive: true);
     } on Object catch (error, stackTrace) {
       throw translatedBoundaryFailure(

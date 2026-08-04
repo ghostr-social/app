@@ -5,6 +5,7 @@
 
 use nostr_sdk::{Alphabet, Filter, Kind, PublicKey, SingleLetterTag, Timestamp};
 
+use crate::discovery::event_cache::ViewerScope;
 use crate::discovery::hashtags::hashtag_filter_values;
 
 /// Every NIP-71 video kind: normal + short, current + deprecated addressable.
@@ -54,6 +55,11 @@ pub struct DiscoveryRequest {
     pub hashtags: Vec<String>,
     /// Inclusive publication cutoff (`until`) for older pages.
     pub older_than: Option<Timestamp>,
+    /// Whose session this request belongs to, for the event pool
+    /// (`crate::discovery::event_cache`). Like `routing_authors` it
+    /// never reaches the wire filter; only the main feed knows a viewer,
+    /// so every other feed leaves the scope alone.
+    pub viewer: ViewerScope,
 }
 
 impl DiscoveryRequest {

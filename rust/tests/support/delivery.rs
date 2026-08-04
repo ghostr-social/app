@@ -62,6 +62,7 @@ pub fn test_tuning() -> DeliveryTuning {
             ..RetryPolicy::default()
         },
         stats_debounce: Duration::ZERO,
+        store_pressure_pause: Duration::from_millis(10),
     }
 }
 
@@ -70,24 +71,30 @@ pub fn start_harness(prefix: &str, options: DeliveryOptions) -> DeliveryHarness 
 }
 
 pub fn start_harness_at(root: PathBuf, options: DeliveryOptions) -> DeliveryHarness {
-    let store = Arc::new(PartialRangeStore::new(root.clone(), Arc::new(Mutex::new(0))));
+    let store = PartialRangeStore::new(root.clone(), Arc::new(Mutex::new(0)));
+    start_harness_with_store(Arc::new(store), root, options)
+}
+
+/// A manager over a store the test built itself, e.g. one whose free
+/// space it can move.
+pub fn start_harness_with_store(
+    store: Arc<PartialRangeStore>,
+    root: PathBuf,
+    options: DeliveryOptions,
+) -> DeliveryHarness {
     let posts = ServablePosts::new();
     let (demand, demand_receiver) = demand_channel();
-    let config = DeliveryManagerConfig {
-        store: store.clone(),
-        client: MediaHttpClient::trusted().expect("trusted media client"),
-        posts: posts.clone(),
-        stats_path: root.join("host_stats.json"),
-        params: options.params,
-        level: options.level,
-        tuning: options.tuning,
-    };
-    let handle = start_delivery_manager(config, demand_receiver);
-    DeliveryHarness {
-        handle,
-        demand,
-        store,
-        posts,
-        root,
-    }
+    let handle = start_delivery_manager(
+        DeliveryManagerConfig {
+            store: store.clone(),
+            client: MediaHttpClient::trusted().expect("trusted media client"),
+            posts: posts.clone(),
+            stats_path: root.join("host_stats.json"),
+            params: options.params,
+            level: options.level,
+            tuning: options.tuning,
+        },
+        demand_receiver,
+    );
+    DeliveryHarness { handle, demand, store, posts, root }
 }

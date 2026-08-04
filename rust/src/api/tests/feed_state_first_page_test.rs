@@ -4,6 +4,7 @@
 
 use crate::api::feed_state::FeedState;
 use crate::api::tests::feed_fixtures::video_note;
+use crate::discovery::event_cache::ViewerScope;
 use crate::discovery::feed_spec::FeedSpec;
 use crate::discovery::video_filters::DiscoveryRequest;
 use nostr_sdk::Keys;
@@ -14,7 +15,15 @@ fn the_first_landed_page_becomes_the_snapshot() {
     let keys = Keys::generate();
     let (feed, dispatch) = state.open(FeedSpec::MainFeed { viewer: Some(keys.public_key()) });
     let open = dispatch.expect("main feeds dispatch a first page");
-    assert_eq!(open.request, DiscoveryRequest::default());
+    // The default query shape, scoped to the viewer whose session pool
+    // it answers from (discovery::event_cache).
+    assert_eq!(
+        open.request,
+        DiscoveryRequest {
+            viewer: ViewerScope::SignedIn(keys.public_key()),
+            ..DiscoveryRequest::default()
+        }
+    );
 
     let revisions = state.subscribe(feed).expect("open feeds subscribe");
     let events = vec![video_note(&keys, "older", 30), video_note(&keys, "newer", 40)];

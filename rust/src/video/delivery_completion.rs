@@ -25,11 +25,19 @@ impl DeliveryWorker {
         self.ctx.store.enforce_capacity().await;
         match done.outcome {
             Ok(result) => self.absorb_chunk(&done.chunk.post, &done.url, result).await,
-            Err(error) => {
-                warn!("Chunk transfer failed: {error:#}");
-                self.note_failed_attempt(&done.chunk.post, &done.url, classify(&error));
-            }
+            Err(error) => self.absorb_failure(&done.chunk.post, &done.url, &error),
         }
+    }
+
+    /// A transfer that failed on the local store is the device's
+    /// problem, not the source's, and must not spend its attempts
+    /// (see `delivery_pressure`).
+    fn absorb_failure(&mut self, post: &PostId, url: &str, error: &anyhow::Error) {
+        if self.absorb_store_pressure(post, error) {
+            return;
+        }
+        warn!("Chunk transfer failed: {error:#}");
+        self.note_failed_attempt(post, url, classify(error));
     }
 
     async fn absorb_chunk(&mut self, post: &PostId, url: &str, result: ChunkResult) {
@@ -155,7 +163,7 @@ impl DeliveryWorker {
             .is_some_and(|entry| !self.retry.all_retired(post, &entry.meta.urls))
     }
 
-    fn start_cooldown(&mut self, post: PostId, wait: Duration) {
+    pub(crate) fn start_cooldown(&mut self, post: PostId, wait: Duration) {
         if !self.retry.cool_down(post.clone()) {
             return;
         }

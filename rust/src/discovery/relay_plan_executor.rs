@@ -3,6 +3,7 @@
 //! plan's queries out concurrently. Parity source:
 //! lib/platform/nostr/ndk_nostr_video_event_query.dart.
 
+use crate::discovery::event_cache::EventCache;
 use crate::discovery::outbox_directory::{max_outbox_relays, OutboxDirectory};
 use crate::discovery::plan_executor::{PlanExecutor, PlanFailure, PlanFuture, PlannedRetrieval};
 use crate::discovery::search_queries::{resolve_relays, OutboxLookup, PlannedQuery, QueryPlan, QueryRole};
@@ -24,6 +25,10 @@ type FetchHandle = JoinHandle<Result<Vec<Event>, PlanFailure>>;
 #[derive(Clone)]
 pub struct RelayPlanExecutor {
     client: Arc<Client>,
+    /// The session event pool, shared with every clone: the client's own
+    /// database, read back into each query's answer so a repeat query
+    /// serves stored UNION network (ndk's cache parity).
+    cache: Arc<EventCache>,
     search_relays: Arc<[String]>,
     outbox: SharedOutboxDirectory,
     /// Shared with every clone so a live data-usage change reaches the
@@ -39,11 +44,23 @@ impl RelayPlanExecutor {
         level: DataUsageLevel,
     ) -> Self {
         Self {
+            cache: Arc::new(EventCache::of(&client)),
             client,
             search_relays: search_relays.into(),
             outbox,
             outbox_cap: Arc::new(AtomicUsize::new(max_outbox_relays(level))),
         }
+    }
+
+    /// The session event pool this executor reads and files into.
+    pub fn cache(&self) -> Arc<EventCache> {
+        self.cache.clone()
+    }
+
+    /// Scopes the pool to whoever this plan's feed named, before any of
+    /// its queries reads it; reports whether the pool was emptied.
+    pub(crate) async fn adopt_plan_viewer(&self, plan: &QueryPlan) -> bool {
+        self.cache.adopt(plan.viewer).await
     }
 
     /// Live outbox fan-out change (`ffi_set_delivery_config`): the next
@@ -54,6 +71,7 @@ impl RelayPlanExecutor {
     }
 
     async fn run(self, plan: QueryPlan) -> Result<Vec<Event>, PlanFailure> {
+        self.adopt_plan_viewer(&plan).await;
         let outbox = self.outbox_relays(&plan.outbox).await;
         let fetches: Vec<(QueryRole, FetchHandle)> = plan
             .queries
@@ -85,7 +103,7 @@ impl RelayPlanExecutor {
 
     fn spawn_fetch(&self, query: PlannedQuery, outbox: Option<&[String]>) -> FetchHandle {
         let relays = resolve_relays(&query.target, &self.search_relays, outbox);
-        tokio::spawn(fetch(self.client.clone(), relays, query))
+        tokio::spawn(fetch(self.client.clone(), self.cache.clone(), relays, query))
     }
 }
 
@@ -121,13 +139,17 @@ async fn joined(fetch: FetchHandle) -> Result<Vec<Event>, PlanFailure> {
 
 /// `None` relays query the bootstrap pool, like Dart passing no
 /// explicit relays to ndk; explicit relays are ensured in the pool
-/// before fetching.
+/// before fetching. The relays' answer is filed in the session pool and
+/// merged with what the pool already held for the same filter —
+/// `stream_events*` reaches relays only (nostr-relay-pool 0.38
+/// `pool/inner.rs`), so the union is assembled here.
 async fn fetch(
     client: Arc<Client>,
+    cache: Arc<EventCache>,
     relays: Option<Vec<String>>,
     query: PlannedQuery,
 ) -> Result<Vec<Event>, PlanFailure> {
-    let filters = vec![query.filter];
+    let filters = vec![query.filter.clone()];
     let streamed = match relays {
         None => client.stream_events(filters, query.timeout).await,
         Some(urls) => {
@@ -136,7 +158,8 @@ async fn fetch(
         }
     }
     .map_err(|error| PlanFailure::new(error.to_string()))?;
-    Ok(drain_events(streamed).await)
+    let fetched = drain_events(streamed).await;
+    Ok(cache.union(&query.filter, fetched).await)
 }
 
 /// Every event the relays streamed, in arrival order (the feed sorts

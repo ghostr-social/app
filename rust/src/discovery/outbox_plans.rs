@@ -5,6 +5,7 @@
 //! `loadMissingRelayListsFromNip65OrNip02`
 //! (lib/platform/nostr/ndk_nostr_outbox_directory.dart).
 
+use crate::discovery::event_cache::ViewerScope;
 use crate::discovery::search_queries::{
     OutboxLookup, PlannedQuery, QueryPlan, QueryRole, RelayTarget, FEED_QUERY_TIMEOUT,
 };
@@ -45,9 +46,12 @@ pub fn author_relay_lists_plan(authors: &[PublicKey]) -> QueryPlan {
 /// Relay-list work rides the same relays a feed would use — bootstrap
 /// until the directory knows better, the follows' relays afterwards —
 /// and gives up on the feed timeout so a quiet relay never pins a task.
+/// It claims no viewer, so a relay-list chase never rescopes the
+/// session's event pool.
 fn plan(filter: Filter) -> QueryPlan {
     QueryPlan {
         outbox: OutboxLookup::DiscoveryRelays,
+        viewer: ViewerScope::Unknown,
         queries: vec![PlannedQuery {
             filter,
             target: RelayTarget::OutboxRelays,
