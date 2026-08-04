@@ -17,37 +17,37 @@ FLAGS ?=
 .PHONY: test-coverage coverage-summary native-check native-test native-coverage rust \
 	rust-no-clean gen icons run run-fast run-fast-profile android-debug-apk \
 	android-debug-apk-check android-release-apk android-release-apk-check \
-	android-agent-avd-create android-agent-avd-run build build-fast install
+	android-agent-avd-create android-agent-avd-run build build-fast install help
 
-test-coverage:
+test-coverage: ## Run Flutter tests and collect Dart coverage.
 	$(FLUTTER) test --coverage
 
-coverage-summary:
+coverage-summary: ## Report and enforce Dart coverage requirements.
 	@awk 'BEGIN{FS=":"; include=1} /^SF:/{include=($$0 !~ /lib\/src\/rust\//)} include && /^DA:/{split($$2,a,","); if (a[2] > 0) hit++; total++} END {if (total == 0) {print "No coverage data"; exit 1} printf("Line coverage: %.2f%% (%d/%d)\n", (hit/total)*100, hit, total)}' coverage/lcov.info
 	@sh tool/check_dart_coverage_sources.sh coverage/lcov.info lib tool/dart_coverage_exclusions.txt
 	@awk -f tool/check_dart_coverage.awk coverage/lcov.info
 
-native-check:
+native-check: ## Check the Rust package.
 	cd rust && cargo check
 
-native-test:
+native-test: ## Run Rust tests.
 	cd rust && cargo test
 
-native-coverage:
+native-coverage: ## Run Rust tests and enforce native coverage.
 	cd rust && cargo llvm-cov --ignore-filename-regex 'frb_generated.rs' --lcov --output-path target/native-coverage.lcov --fail-under-lines 95
 	awk -f tool/check_native_coverage.awk rust/target/native-coverage.lcov
 
-rust:
+rust: ## Clean and build the Rust Android library.
 	cd rust && cargo clean
 	$(MAKE) rust-no-clean
 
-rust-no-clean:
+rust-no-clean: ## Build the Rust Android library without cleaning.
 	cd rust && cargo ndk -t "$(ANDROID_ABI)" build
 
-gen:
+gen: ## Generate the Flutter-Rust bridge bindings.
 	flutter_rust_bridge_codegen generate
 
-icons:
+icons: ## Generate app icon assets.
 	inkscape assets/branding/ghostr_icon.svg -w 1024 -h 1024 \
 		-o assets/branding/ghostr_icon.png
 	inkscape assets/branding/ghostr_icon_foreground.svg -w 1024 -h 1024 \
@@ -55,30 +55,30 @@ icons:
 	$(FLUTTER) pub get
 	dart run flutter_launcher_icons
 
-run:
+run: ## Run the Flutter app.
 	$(FLUTTER) run $(FLAGS)
 
-run-fast:
+run-fast: ## Run the Flutter app.
 	$(FLUTTER) run $(FLAGS)
 
-run-fast-profile:
+run-fast-profile: ## Run the Flutter app in profile mode.
 	$(FLUTTER) run --profile $(FLAGS)
 
-android-debug-apk:
+android-debug-apk: ## Build the Android debug APK.
 	$(FLUTTER) build apk --debug --target-platform "$(ANDROID_DEBUG_TARGET)"
 
-android-debug-apk-check: android-debug-apk
+android-debug-apk-check: android-debug-apk ## Build the Android debug APK and verify its ABI.
 	@sh tool/check_android_apk_abi.sh "$(ANDROID_DEBUG_APK)" "$(ANDROID_DEBUG_ABI)"
 
-android-release-apk:
+android-release-apk: ## Build the Android release APK.
 	$(FLUTTER) build apk --release --target-platform "$(ANDROID_RELEASE_TARGET)" --config-only
 	$(FLUTTER) build apk --release --target-platform "$(ANDROID_RELEASE_TARGET)"
 
-android-release-apk-check: android-release-apk
+android-release-apk-check: android-release-apk ## Build and validate the Android release APK.
 	@sh tool/check_android_apk_abi.sh "$(ANDROID_RELEASE_APK)" "$(ANDROID_RELEASE_ABI)"
 	@sh tool/check_android_release_apk.sh "$(ANDROID_RELEASE_APK)"
 
-android-agent-avd-create:
+android-agent-avd-create: ## Install and create the dedicated Android agent AVD.
 	@test -n "$(ANDROID_AGENT_SDK)" || { echo "Set ANDROID_SDK_ROOT or ANDROID_HOME." >&2; exit 1; }
 	@test -x "$(ANDROID_AGENT_SDK)/cmdline-tools/latest/bin/sdkmanager" || { echo "Android command-line tools are missing." >&2; exit 1; }
 	@if [ ! -d "$(ANDROID_AGENT_IMAGE_DIR)" ]; then \
@@ -103,23 +103,27 @@ android-agent-avd-create:
 	fi; \
 	echo "$(ANDROID_AGENT_AVD_NAME) is ready with 16 GB of durable internal storage."
 
-android-agent-avd-run: android-agent-avd-create
+android-agent-avd-run: android-agent-avd-create ## Start the dedicated Android agent AVD on emulator-5580.
 	@exec "$(ANDROID_AGENT_SDK)/emulator/emulator" -avd "$(ANDROID_AGENT_AVD_NAME)" \
 		-port "$(ANDROID_AGENT_AVD_PORT)" -netdelay none -netspeed full
 
-build:
+build: ## Build and install the Android release APK.
 	$(MAKE) android-release-apk
 	$(MAKE) install
 
-build-fast:
+build-fast: ## Build and install the Android release APK.
 	$(MAKE) android-release-apk
 	$(MAKE) install
 
 APK_PATH := build/app/outputs/flutter-apk
 VERSION := app-release-$(shell date +'%Y-%m-%d-%H-%M').apk
 
-install:
+install: ## Rename, push, and install the Android release APK.
 	mv "$(APK_PATH)/app-release.apk" "$(APK_PATH)/$(VERSION)"
 	@echo "$(VERSION)"
 	adb push "$(APK_PATH)/$(VERSION)" /sdcard/
 	adb install -r "$(APK_PATH)/$(VERSION)"
+
+help: ## List all commands and their descriptions.
+	@printf 'Available commands:\n'
+	@awk 'BEGIN {FS = ":.*## "} /^[[:alnum:]_.-]+:.*## / {printf "  %-31s %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort
