@@ -40,7 +40,7 @@ async fn snapshots_stream_from_baseline_to_close() {
     assert_eq!(loaded.posts.len(), 1);
     assert!(loaded.revision > baseline.revision);
 
-    lock(&state).close(feed);
+    let _ = lock(&state).close(feed);
     timeout(Duration::from_secs(5), watcher)
         .await
         .expect("the watcher should end when the feed closes")

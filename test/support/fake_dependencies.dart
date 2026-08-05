@@ -29,6 +29,7 @@ AppDependencies buildFakeDependencies({
       engagement: catalogRepository,
       profile: catalogRepository,
       search: catalogRepository,
+      searchUpdates: catalogRepository,
       trending: catalogRepository,
       publishing: catalogRepository,
       comments: catalogRepository,

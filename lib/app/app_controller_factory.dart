@@ -41,7 +41,8 @@ class AppControllerFactory {
   }
 
   SearchCubit search() {
-    return SearchCubit(_dependencies.videoCatalogServices.search);
+    final services = _dependencies.videoCatalogServices;
+    return SearchCubit(services.search, updates: services.searchUpdates);
   }
 
   TrendingHashtagsCubit trending() {

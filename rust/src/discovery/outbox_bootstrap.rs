@@ -157,7 +157,11 @@ impl OutboxBootstrap {
             if result.is_err() {
                 release(&session, generation, &claimed);
             }
-            let _ = outcomes.send(RetrievalOutcome { context, result });
+            let _ = outcomes.send(RetrievalOutcome::Completed {
+                context,
+                result,
+                purpose: crate::discovery::discovery_scheduler::RetrievalPurpose::Head,
+            });
         });
     }
 }

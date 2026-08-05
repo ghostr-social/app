@@ -55,8 +55,8 @@ class _SearchScreenState extends State<SearchScreen> {
             const SizedBox(height: AppSpacing.lg),
             Expanded(
               child: BlocConsumer<SearchCubit, SearchState>(
-                listenWhen: _hasExternalQuery,
-                listener: _syncQueryField,
+                listenWhen: _hasSideEffect,
+                listener: _handleSideEffect,
                 builder: _buildContent,
               ),
             ),
@@ -66,12 +66,23 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  bool _hasExternalQuery(SearchState previous, SearchState current) {
-    return current.query.isNotEmpty && current.query != _controller.text.trim();
+  bool _hasSideEffect(SearchState previous, SearchState current) {
+    return _hasExternalQuery(current) ||
+        (current.notice != null && current.notice != previous.notice);
   }
 
-  void _syncQueryField(BuildContext context, SearchState state) {
-    _controller.text = state.query;
+  bool _hasExternalQuery(SearchState state) {
+    return state.query.isNotEmpty && state.query != _controller.text.trim();
+  }
+
+  void _handleSideEffect(BuildContext context, SearchState state) {
+    if (_hasExternalQuery(state)) _controller.text = state.query;
+    final notice = state.notice;
+    if (notice == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(notice)),
+    );
+    context.read<SearchCubit>().clearNotice();
   }
 
   Widget _searchBar() {
@@ -133,16 +144,20 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  // The feed keeps searching while the viewer watches, so even a query with
-  // no immediate matches is worth opening.
+  // The full feed can deliberately dig deeper than this compact result view.
   Widget _emptyResults(String query) {
-    return AsyncStatePanel(
-      icon: Icons.manage_search,
-      title: 'No matches found',
-      message: 'Try a creator handle, a caption keyword, or a #hashtag — '
-          'or open the feed and let the search keep hunting.',
-      actionLabel: 'Open in feed',
-      onAction: () => widget.onOpenFeed(query),
+    return Semantics(
+      container: true,
+      explicitChildNodes: true,
+      label: 'Searching Nostr for more matches',
+      child: AsyncStatePanel(
+        icon: Icons.manage_search,
+        title: 'No matches yet',
+        message: 'No relay has returned a playable match yet. Try a creator '
+            'handle, caption keyword, or #hashtag.',
+        actionLabel: 'Open in feed',
+        onAction: () => widget.onOpenFeed(query),
+      ),
     );
   }
 

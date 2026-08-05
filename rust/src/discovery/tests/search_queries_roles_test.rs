@@ -1,6 +1,5 @@
-//! Only the primary video-kind query can fail the whole load; note and
-//! file results only ever widen the pool, so their hiccups must not sink
-//! the primary results.
+//! The dedicated video query is primary and note/file queries are additive;
+//! every planned role still participates in settling the page boundary.
 
 use crate::discovery::search_queries::{plan_discovery, QueryRole};
 use crate::discovery::video_filters::DiscoveryRequest;

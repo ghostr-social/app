@@ -31,6 +31,7 @@ pub(crate) struct RelayReadRequest {
     pub session: SessionGeneration,
     pub relays: Option<Vec<String>>,
     pub query: crate::discovery::search_queries::PlannedQuery,
+    pub progress: Option<crate::discovery::plan_executor::EventProgress>,
 }
 
 pub(crate) struct RelayBroadcastRequest {

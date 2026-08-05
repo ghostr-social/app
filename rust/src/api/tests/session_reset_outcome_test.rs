@@ -4,7 +4,7 @@ use crate::api::feed_runtime::{lock, pump_outcomes, OutcomeSinks, SharedFeedStat
 use crate::api::feed_state::FeedState;
 use crate::api::tests::feed_fixtures::{relay_list_event, signed_event, SignedEventFixture};
 use crate::api::tests::outbox_runtime_support::{test_bootstrap, BOOTSTRAP_RELAY};
-use crate::discovery::discovery_scheduler::RetrievalOutcome;
+use crate::discovery::discovery_scheduler::{RetrievalOutcome, RetrievalPurpose};
 use crate::discovery::feed_spec::FeedSpec;
 use nostr_sdk::{Event, Keys, Kind, PublicKey};
 use std::sync::{Arc, Mutex};
@@ -47,12 +47,13 @@ async fn old_outcome_is_ignored_after_a_new_session_opens() {
     ));
 
     sender
-        .send(RetrievalOutcome {
+        .send(RetrievalOutcome::Completed {
             context: stale_context,
             result: Ok(vec![
                 contact_list(&viewer, follow.public_key()),
                 relay_list_event(&follow, &["wss://old.example"], 10),
             ]),
+            purpose: RetrievalPurpose::Head,
         })
         .expect("pump");
     drop(sender);

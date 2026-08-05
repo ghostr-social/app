@@ -7,19 +7,22 @@ use crate::api::feed_decisions::{LoadMoreAction, LoadMoreDecision, OpenDispatch}
 use crate::api::feed_mapping::{feed_post, resolved_creator};
 use crate::api::feed_progress::FeedProgress;
 use crate::api::feed_types::{FfiFeedPost, FfiFeedStage};
-use crate::discovery::event_parsing::{video_post_from_event, ParsedVideoPost};
 use crate::discovery::feed_spec::FeedSpec;
 use crate::discovery::feed_store::{FeedId, FeedStore};
+#[cfg(test)]
 use crate::discovery::plan_executor::PlanFailure;
 use crate::discovery::profile_store::ProfileStore;
 use crate::discovery::retrieval_queue::FeedContext;
 use crate::discovery::session_generation::SessionGeneration;
 use crate::discovery::social_graph::SocialGraph;
 use flutter_rust_bridge::frb;
-use nostr_sdk::{Event, Keys, Timestamp};
+#[cfg(test)]
+use nostr_sdk::Event;
+use nostr_sdk::{Keys, Timestamp};
 use std::collections::HashMap;
 use tokio::sync::watch;
 
+mod ingestion;
 mod session;
 
 /// Every open feed plus the shared profile store and social graph. The
@@ -63,9 +66,9 @@ impl FeedState {
         (feed, dispatch)
     }
 
-    pub(crate) fn close(&mut self, feed: FeedId) {
+    pub(crate) fn close(&mut self, feed: FeedId) -> Option<FeedContext> {
         self.store.close_feed(feed);
-        self.feeds.remove(&feed);
+        self.feeds.remove(&feed).map(|progress| progress.context)
     }
 
     pub(crate) fn subscribe(&self, feed: FeedId) -> Option<watch::Receiver<u64>> {
@@ -93,9 +96,8 @@ impl FeedState {
         self.claim_older(feed, context, explicit)
     }
 
-    /// Routes one retrieval outcome into the store: the first landed
-    /// page replaces the feed, every later one (interactive or
-    /// background prefetch) appends as an older page.
+    /// Compatibility helper for focused state tests.
+    #[cfg(test)]
     pub(crate) fn apply(&mut self, context: &FeedContext, result: Result<Vec<Event>, PlanFailure>) {
         let Some(feed) = self.feed_for(context) else {
             return;
@@ -124,8 +126,7 @@ impl FeedState {
     }
 
     fn reopen(&mut self, feed: FeedId, context: FeedContext) -> LoadMoreDecision {
-        let spec = self.store.spec(feed);
-        let Some(request) = spec.and_then(|spec| spec.page_request(None, &self.graph)) else {
+        let Some(request) = self.store.spec(feed).page_request(None, &self.graph) else {
             return LoadMoreDecision::finished();
         };
         self.mark(feed, FeedProgress::await_first);
@@ -141,43 +142,32 @@ impl FeedState {
         context: FeedContext,
         explicit: Option<Timestamp>,
     ) -> LoadMoreDecision {
-        let Some(cursor) = self.store.begin_load_more(feed) else {
-            return LoadMoreDecision::finished();
+        let Some(cursor) = self.store.begin_load_more_at(feed, explicit) else {
+            return self.refresh_query(feed, context);
         };
         self.mark(feed, FeedProgress::await_more);
         LoadMoreDecision {
             may_have_more: true,
             action: LoadMoreAction::Older {
                 context,
-                older_than: explicit.unwrap_or(cursor),
+                older_than: cursor,
             },
         }
     }
 
-    /// The store notifies for the rows; the stage moving out of
-    /// `Loading` is a snapshot change of its own, so a page that added
-    /// nothing still publishes a revision.
-    fn ingest_page(&mut self, feed: FeedId, events: &[Event]) {
-        for event in events {
-            self.profiles.ingest(event);
+    fn refresh_query(&mut self, feed: FeedId, context: FeedContext) -> LoadMoreDecision {
+        let spec = self.store.spec(feed);
+        if spec.exhausts_on_empty_page() {
+            return LoadMoreDecision::finished();
         }
-        let posts: Vec<ParsedVideoPost> = events.iter().filter_map(video_post_from_event).collect();
-        let published = if self.feeds.get(&feed).is_some_and(|it| it.first_loaded) {
-            self.store.ingest_older_page(feed, posts, &self.graph)
-        } else {
-            self.store.ingest_first_page(feed, posts, &self.graph);
-            true
+        let Some(request) = spec.page_request(None, &self.graph) else {
+            return LoadMoreDecision::finished();
         };
-        self.mark(feed, FeedProgress::record_page);
-        if !published {
-            self.store.touch(feed);
+        self.mark(feed, FeedProgress::await_more);
+        LoadMoreDecision {
+            may_have_more: true,
+            action: LoadMoreAction::Reopen(OpenDispatch { context, request }),
         }
-    }
-
-    fn record_failure(&mut self, feed: FeedId) {
-        self.store.fail_load_more(feed);
-        self.mark(feed, FeedProgress::record_failure);
-        self.store.touch(feed);
     }
 
     fn feed_for(&self, context: &FeedContext) -> Option<FeedId> {

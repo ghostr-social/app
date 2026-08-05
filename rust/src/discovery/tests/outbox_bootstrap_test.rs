@@ -1,9 +1,5 @@
-//! The outbox bootstrap chases relay lists off the feed's critical
-//! path: it runs its own retrievals (never the scheduler's worker
-//! slots), asks for each pubkey's list once, and feeds what comes back
-//! into the directory. Every call here returns while its retrieval is
-//! still outstanding — a caller that had to wait would hang these
-//! tests, because the recording executor never completes one.
+//! Outbox bootstrap chases relay lists outside scheduler worker slots.
+//! These calls return while the recording executor remains outstanding.
 
 use crate::discovery::outbox_bootstrap::OutboxBootstrap;
 use crate::discovery::plan_executor::PlannedRetrieval;
@@ -72,7 +68,10 @@ async fn a_failed_chase_is_asked_again() {
         .await
         .expect("the failure should be reported")
         .expect("the channel should stay open");
-    assert!(failed.result.is_err());
+    assert!(matches!(
+        failed,
+        crate::discovery::discovery_scheduler::RetrievalOutcome::Completed { result: Err(_), .. }
+    ));
     bootstrap.viewer(author(AUTHOR_A));
 
     requested_authors(&mut retrievals).await;

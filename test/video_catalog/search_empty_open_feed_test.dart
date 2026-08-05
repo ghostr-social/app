@@ -21,7 +21,11 @@ void main() {
     await tester.tap(find.text('Search'));
     await tester.pumpAndSettle();
 
-    expect(find.text('No matches found'), findsOneWidget);
+    expect(find.text('No matches yet'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('Searching Nostr for more matches'),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Open in feed'));
     expect(opened, ['rare topic']);
   });

@@ -30,6 +30,7 @@ async fn successful_empty_answer_remains_successful() {
         session,
         relays: Some(vec!["wss://read.example".to_owned()]),
         query,
+        progress: None,
     })
     .await
     .expect("successful empty relay answer");

@@ -19,9 +19,7 @@ List<FfiFeedPost> _posts(int count) {
 }
 
 void main() {
-  // Rows alone never mean "done": the page is complete when Rust says
-  // the plan settled (FfiFeedStage in rust/src/api/feed_types.rs).
-  test('waits for the settled snapshot instead of the first one with rows', () {
+  test('returns progressive rows while Rust keeps searching', () {
     fakeAsync((async) {
       final port = TimedRustFeedPort([
         (
@@ -43,9 +41,9 @@ void main() {
       source
           .loadRemoteFeed(searchQuery: 'ghost')
           .then((posts) => result = posts);
-      async.elapse(const Duration(seconds: 20));
+      async.elapse(const Duration(milliseconds: 1500));
 
-      expect(result, hasLength(6));
+      expect(result, hasLength(2));
     });
   });
 

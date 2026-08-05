@@ -12,12 +12,13 @@ use tokio::sync::watch;
 use crate::discovery::event_parsing::ParsedVideoPost;
 use crate::discovery::feed_assembly::{append_new, select_posts};
 use crate::discovery::feed_spec::FeedSpec;
-use crate::discovery::pagination::next_page_cursor;
+use crate::discovery::feed_store_cursor::{older_cursor, post_cursor};
 use crate::discovery::social_graph::SocialGraph;
 
-/// How many rows one open feed keeps. The window is anchored at the head,
-/// while relay pagination cursors continue to follow every fetched page.
-/// Dart retains rows already shown to the viewer.
+mod progress;
+
+/// How many rows a canonical feed keeps. Query feeds preserve their complete
+/// discovered history so native snapshots can expose result 501 and beyond.
 pub const FEED_POST_RETENTION: usize = 500;
 
 /// Handle of one open feed.
@@ -63,8 +64,8 @@ impl FeedStore {
         self.feeds.clear();
     }
 
-    pub fn spec(&self, feed: FeedId) -> Option<&FeedSpec> {
-        self.feeds.get(&feed).map(|open| &open.spec)
+    pub fn spec(&self, feed: FeedId) -> &FeedSpec {
+        &self.feeds[&feed].spec
     }
 
     /// The feed's visible posts, newest first; empty for unknown feeds.
@@ -91,7 +92,7 @@ impl FeedStore {
             return;
         };
         open.posts = select_posts(&open.spec, fetched, graph);
-        open.cursor = next_page_cursor(created_at(&open.posts));
+        open.cursor = post_cursor(&open.posts);
         open.in_flight = false;
         open.trim();
         open.notify();
@@ -100,11 +101,19 @@ impl FeedStore {
     /// Claims the cursor for one older request; `None` when the feed is
     /// exhausted or a request is already in flight (`beginLoad`).
     pub fn begin_load_more(&mut self, feed: FeedId) -> Option<Timestamp> {
+        self.begin_load_more_at(feed, None)
+    }
+
+    pub fn begin_load_more_at(
+        &mut self,
+        feed: FeedId,
+        explicit: Option<Timestamp>,
+    ) -> Option<Timestamp> {
         let open = self.feeds.get_mut(&feed)?;
         if open.in_flight {
             return None;
         }
-        let cursor = open.cursor?;
+        let cursor = explicit.or(open.cursor)?;
         open.in_flight = true;
         Some(cursor)
     }
@@ -114,6 +123,14 @@ impl FeedStore {
     pub fn fail_load_more(&mut self, feed: FeedId) {
         if let Some(open) = self.feeds.get_mut(&feed) {
             open.in_flight = false;
+        }
+    }
+
+    /// Advances pagination from raw wire events, including matching notes
+    /// that were not playable enough to become rows.
+    pub fn set_retrieval_cursor(&mut self, feed: FeedId, cursor: Option<Timestamp>) {
+        if let (Some(open), Some(cursor)) = (self.feeds.get_mut(&feed), cursor) {
+            open.cursor = Some(cursor);
         }
     }
 
@@ -167,28 +184,11 @@ impl OpenFeed {
         self.revision.send_modify(|revision| *revision += 1);
     }
 
-    /// Drops the rows past the retention window. Cursors are computed
-    /// from what was fetched before this runs, so a trim never rewinds
-    /// pagination.
+    /// Bounds canonical feeds while query feeds preserve discovered history.
+    /// Cursors are computed before this runs, so trimming never rewinds them.
     fn trim(&mut self) {
-        self.posts.truncate(FEED_POST_RETENTION);
+        if !self.spec.is_query() {
+            self.posts.truncate(FEED_POST_RETENTION);
+        }
     }
-}
-
-/// An empty page exhausts a canonical feed but leaves a query feed its
-/// cursor — the search keeps hunting (query_video_feed_repository.dart).
-fn older_cursor(
-    spec: &FeedSpec,
-    current: Option<Timestamp>,
-    fetched: &[ParsedVideoPost],
-) -> Option<Timestamp> {
-    match next_page_cursor(created_at(fetched)) {
-        Some(next) => Some(next),
-        None if spec.exhausts_on_empty_page() => None,
-        None => current,
-    }
-}
-
-fn created_at(posts: &[ParsedVideoPost]) -> impl Iterator<Item = Timestamp> + '_ {
-    posts.iter().map(|post| Timestamp::from(post.created_at))
 }

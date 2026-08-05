@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:ghostr/features/video_catalog/data/rust_feed_update_observer.dart';
 import 'package:ghostr/src/rust/api/feed_types.dart';
 
 /// Buffers one feed's snapshot stream so the pull-shaped source can
@@ -23,7 +24,9 @@ final class RustFeedUpdateQueue {
 
   late final StreamSubscription<FfiFeedUpdate> _subscription;
   FfiFeedUpdate? _pending;
+  FfiFeedUpdate? _latest;
   final Set<Completer<FfiFeedUpdate?>> _waiters = {};
+  final Set<RustFeedUpdateObserver> _observers = {};
   (Object, StackTrace)? _error;
   bool _done = false;
 
@@ -55,9 +58,19 @@ final class RustFeedUpdateQueue {
     return pending;
   }
 
-  Future<void> dispose() {
+  /// Replays the latest revision, then forwards every later one. Observing
+  /// never consumes the pull reader's pending snapshot.
+  Stream<FfiFeedUpdate> watch() {
+    return RustFeedUpdateObserver(
+      onStarted: _observe,
+      onCancelled: _observers.remove,
+    ).stream;
+  }
+
+  Future<void> dispose() async {
     _completeAll(null);
-    return _subscription.cancel();
+    await _subscription.cancel();
+    _closeObservers();
   }
 
   Future<FfiFeedUpdate?> _awaited(Duration timeout) {
@@ -71,6 +84,10 @@ final class RustFeedUpdateQueue {
   }
 
   void _add(FfiFeedUpdate update) {
+    _latest = update;
+    for (final observer in {..._observers}) {
+      observer.publish(update);
+    }
     if (_waiters.isEmpty) {
       _pending = update;
     } else {
@@ -82,6 +99,9 @@ final class RustFeedUpdateQueue {
   /// feed is finished either way — the error is reported first.
   void _fail(Object error, StackTrace stackTrace) {
     _done = true;
+    for (final observer in _takeObservers()) {
+      unawaited(observer.fail(error, stackTrace));
+    }
     if (_waiters.isEmpty) {
       _error = (error, stackTrace);
     } else {
@@ -95,6 +115,9 @@ final class RustFeedUpdateQueue {
   void _finish() {
     _done = true;
     _completeAll(null);
+    for (final observer in _takeObservers()) {
+      unawaited(observer.close());
+    }
   }
 
   void _complete(Completer<FfiFeedUpdate?> waiter, FfiFeedUpdate? update) {
@@ -111,5 +134,30 @@ final class RustFeedUpdateQueue {
     final waiters = _waiters.toList(growable: false);
     _waiters.clear();
     return waiters;
+  }
+
+  void _observe(RustFeedUpdateObserver observer) {
+    if (_error case (final error, final stackTrace)) {
+      unawaited(observer.fail(error, stackTrace));
+      return;
+    }
+    if (_done) {
+      unawaited(observer.close());
+    } else {
+      _observers.add(observer);
+      if (_latest case final latest?) observer.publish(latest);
+    }
+  }
+
+  Set<RustFeedUpdateObserver> _takeObservers() {
+    final observers = {..._observers};
+    _observers.clear();
+    return observers;
+  }
+
+  void _closeObservers() {
+    for (final observer in _takeObservers()) {
+      unawaited(observer.close());
+    }
   }
 }

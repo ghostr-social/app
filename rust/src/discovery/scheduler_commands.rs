@@ -1,7 +1,7 @@
 //! Discovery command dispatch, kept separate from the scheduler wake loop.
 
 use crate::discovery::discovery_scheduler::{
-    max_concurrent_requests, DiscoveryCommand, SchedulerWorker,
+    max_concurrent_requests, DiscoveryCommand, RetrievalOutcome, SchedulerWorker,
 };
 use crate::discovery::retrieval_queue::{FeedContext, RetrievalPriority, RetrievalRequest};
 use crate::discovery::search_queries::{plan_discovery, QueryPlan};
@@ -17,6 +17,8 @@ impl SchedulerWorker {
             }
             DiscoveryCommand::ResetSession { reply } => self.reset_session(reply),
             DiscoveryCommand::OpenFeed { context, request } => self.open_feed(context, request),
+            DiscoveryCommand::CloseFeed(context) => self.close_feed(context),
+            DiscoveryCommand::ContinueQuery { context, head } => self.continue_query(context, head),
             DiscoveryCommand::LoadMore {
                 context,
                 older_than,
@@ -50,6 +52,7 @@ impl SchedulerWorker {
     }
 
     fn load_more(&mut self, context: FeedContext, older_than: Option<Timestamp>) {
+        self.cancel_hunt(&context);
         let Some(request) = self.feeds.older_page_request(&context, older_than) else {
             return;
         };
@@ -67,6 +70,11 @@ impl SchedulerWorker {
         priority: RetrievalPriority,
         plan: QueryPlan,
     ) {
+        if priority == RetrievalPriority::Background {
+            let _ = self.outcomes.send(RetrievalOutcome::Started {
+                context: context.clone(),
+            });
+        }
         self.queue
             .push(RetrievalRequest { context, priority }, plan);
     }

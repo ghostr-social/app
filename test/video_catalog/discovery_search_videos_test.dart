@@ -22,9 +22,11 @@ void main() {
     final cursor = DateTime.utc(2026, 4, 1);
     final page = await repository.searchVideos(' Ghost ', olderThan: cursor);
 
-    expect(harness.source.searchQueries, ['ghost']);
-    expect(harness.source.hashtags, [null]);
-    expect(harness.source.olderThans, [cursor]);
+    expect(harness.source.searchQueries, isEmpty);
+    expect(harness.source.hashtags, isEmpty);
+    expect(harness.source.olderThans, isEmpty);
+    expect(harness.source.loadMoreQueries, ['ghost']);
+    expect(harness.source.loadMoreHashtags, [null]);
     expect(page.posts.map((post) => post.id.value), ['new', 'old']);
     // The cursor advances past the oldest fetched post, blocked or not.
     expect(
@@ -35,6 +37,6 @@ void main() {
     final blank = await repository.searchVideos('   ');
     expect(blank.posts, isEmpty);
     expect(blank.hasMore, isFalse);
-    expect(harness.source.searchQueries, hasLength(1));
+    expect(harness.source.searchQueries, isEmpty);
   });
 }

@@ -1,5 +1,6 @@
 //! Additive kind-0 lookup for the creators returned by a feed query.
 
+use super::fetches::FetchRequest;
 use super::RelayPlanExecutor;
 use crate::discovery::event_parsing::video_post_from_event;
 use crate::discovery::event_queries::plan_event_queries;
@@ -44,7 +45,13 @@ impl RelayPlanExecutor {
             .into_iter()
             .zip(outboxes)
             .map(|(query, outbox)| {
-                let fetch = self.spawn_fetch(session, query, outbox.as_deref(), route.clone());
+                let fetch = self.spawn_fetch(FetchRequest {
+                    session,
+                    query,
+                    outbox,
+                    route: route.clone(),
+                    progress: None,
+                });
                 (QueryRole::Additive, fetch)
             })
             .collect()

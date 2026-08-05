@@ -9,12 +9,15 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio_stream::{Stream, StreamExt};
 
+use crate::discovery::plan_executor::EventProgress;
+
 pub(crate) type RelayIoFuture<'a, T> = Pin<Box<dyn Future<Output = anyhow::Result<T>> + Send + 'a>>;
 
 pub(crate) struct RelayReadIo {
     pub relays: Vec<String>,
     pub filter: Filter,
     pub timeout: Duration,
+    pub progress: Option<EventProgress>,
 }
 
 pub(crate) struct RelayBroadcastIo {
@@ -54,7 +57,7 @@ impl RelayIo for SdkRelayIo {
                 .stream_events_from(request.relays, vec![request.filter], request.timeout)
                 .await
                 .context("relay query failed")?;
-            Ok(drain_events(stream).await)
+            Ok(drain_events_with_progress(stream, request.progress).await)
         })
     }
 
@@ -70,12 +73,26 @@ impl RelayIo for SdkRelayIo {
     }
 }
 
+#[cfg(test)]
 pub(crate) async fn drain_events<S>(mut stream: S) -> Vec<Event>
+where
+    S: Stream<Item = Event> + Unpin,
+{
+    drain_events_with_progress(&mut stream, None).await
+}
+
+pub(crate) async fn drain_events_with_progress<S>(
+    mut stream: S,
+    progress: Option<EventProgress>,
+) -> Vec<Event>
 where
     S: Stream<Item = Event> + Unpin,
 {
     let mut events = Vec::new();
     while let Some(event) = stream.next().await {
+        if let Some(progress) = &progress {
+            let _ = progress.send(event.clone()).await;
+        }
         events.push(event);
     }
     events

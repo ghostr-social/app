@@ -30,6 +30,10 @@ impl DiscoveryHandle {
         let _ = self.sender.send(DiscoveryCommand::Focus(context));
     }
 
+    pub fn close_feed(&self, context: FeedContext) {
+        let _ = self.sender.send(DiscoveryCommand::CloseFeed(context));
+    }
+
     pub fn background(&self, context: FeedContext, request: DiscoveryRequest) {
         let _ = self
             .sender

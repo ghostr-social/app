@@ -26,9 +26,10 @@ void main() {
     expect(state.videos.map((video) => video.id.value), ['a', 'b']);
     expect(state.hasMore, isFalse);
     expect(state.isLoadingMore, isFalse);
-    expect(repository.olderThans.last, isNotNull);
+    expect(repository.loadMoreQueries, ['ghost']);
 
     await cubit.loadMore();
-    expect(repository.queries, hasLength(2));
+    expect(repository.queries, hasLength(1));
+    expect(repository.loadMoreQueries, hasLength(1));
   });
 }

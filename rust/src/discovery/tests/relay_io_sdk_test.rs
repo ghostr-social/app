@@ -20,6 +20,7 @@ async fn configured_zero_timeout_read_drains_to_empty() {
             relays: vec![relay.to_owned()],
             filter: Filter::new(),
             timeout: Duration::ZERO,
+            progress: None,
         })
         .await
         .expect("the stream itself is valid");

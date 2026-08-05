@@ -35,10 +35,10 @@ class QueryVideoFeedRepository implements VideoFeedRepository {
     required DateTime olderThan,
     bool excludeWatched = false,
   }) async {
-    final page = await _search.searchVideos(_query, olderThan: olderThan);
+    final page = await _search.loadMoreVideos(_query);
     if (page.hasMore) return page;
     if (page.posts.isNotEmpty) return _continued(page);
-    return _freshMatches(olderThan);
+    return VideoFeedPage(posts: const <VideoPost>[], nextOlderThan: olderThan);
   }
 
   // A final page must still leave the feed a way forward.
@@ -51,12 +51,5 @@ class QueryVideoFeedRepository implements VideoFeedRepository {
       posts: page.posts,
       nextOlderThan: oldest.subtract(const Duration(seconds: 1)),
     );
-  }
-
-  // The past ran dry below the cursor: hunt for matches that arrived since
-  // the feed opened, and keep the cursor so the next swipe digs again.
-  Future<VideoFeedPage> _freshMatches(DateTime olderThan) async {
-    final head = await _search.searchVideos(_query);
-    return VideoFeedPage(posts: head.posts, nextOlderThan: olderThan);
   }
 }

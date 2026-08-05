@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/features/video_catalog/data/recent_videos_trending_hashtags.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/remote_video_source.dart';
+import 'package:ghostr/features/video_catalog/domain/remote_video_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 
 import '../support/sample_data.dart';
@@ -40,5 +41,23 @@ class _CountingSource implements RemoteVideoSource {
     return [
       samplePost(hashtags: const ['dance'])
     ];
+  }
+
+  @override
+  Future<List<VideoPost>> loadMoreRemoteFeed({
+    Set<ProfileId>? creatorIds,
+    String? searchQuery,
+    Set<String>? hashtags,
+  }) async {
+    return const <VideoPost>[];
+  }
+
+  @override
+  Stream<RemoteVideoSnapshot> watchRemoteFeed({
+    Set<ProfileId>? creatorIds,
+    String? searchQuery,
+    Set<String>? hashtags,
+  }) {
+    return const Stream.empty();
   }
 }

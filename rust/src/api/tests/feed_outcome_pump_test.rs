@@ -5,7 +5,7 @@ use crate::api::feed_runtime::{lock, pump_outcomes, OutcomeSinks, SharedFeedStat
 use crate::api::feed_state::FeedState;
 use crate::api::tests::feed_fixtures::video_note;
 use crate::api::tests::outbox_runtime_support::test_bootstrap;
-use crate::discovery::discovery_scheduler::RetrievalOutcome;
+use crate::discovery::discovery_scheduler::{RetrievalOutcome, RetrievalPurpose};
 use crate::discovery::feed_spec::FeedSpec;
 use nostr_sdk::Keys;
 use std::sync::{Arc, Mutex};
@@ -29,9 +29,10 @@ async fn pumped_outcomes_reach_the_feed_state() {
     };
     let pump = tokio::spawn(pump_outcomes(sinks, outcomes));
     sender
-        .send(RetrievalOutcome {
+        .send(RetrievalOutcome::Completed {
             context: open.context,
             result: Ok(vec![video_note(&keys, "clip", 40)]),
+            purpose: RetrievalPurpose::Head,
         })
         .expect("the pump should be listening");
 

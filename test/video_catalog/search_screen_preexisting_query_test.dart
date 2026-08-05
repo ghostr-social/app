@@ -12,7 +12,9 @@ void main() {
   testWidgets('shows the query of a search finished before the screen opened',
       (tester) async {
     final repository = FakeVideoCatalogRepository(forYouFeed: [samplePost()]);
-    final cubit = SearchCubit(repository);
+    final cubit = SearchCubit(
+      repository,
+    );
     addTearDown(cubit.close);
     await cubit.search('#trend');
 
@@ -27,7 +29,7 @@ void main() {
         ),
       ),
     ));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     final field = tester.widget<TextField>(find.byType(TextField));
     expect(field.controller?.text, '#trend');

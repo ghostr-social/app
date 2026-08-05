@@ -51,7 +51,7 @@ fn outcomes_for_unknown_contexts_are_ignored() {
         viewer: Some(keys.public_key()),
     });
     let open = dispatch.expect("main feeds dispatch a first page");
-    state.close(feed);
+    let _ = state.close(feed);
     state.apply(&open.context, Ok(vec![video_note(&keys, "late", 50)]));
     assert!(state.snapshot(feed).is_empty());
 }

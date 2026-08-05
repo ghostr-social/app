@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'dart:developer';
-
 import 'package:ghostr/features/video_catalog/data/rust_feed_identity.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_page_reader.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_port.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_update_queue.dart';
+import 'package:ghostr/src/rust/api/feed_types.dart';
 
 /// One Rust feed held open across pulls (plan §5.3). The engine keeps
 /// filing pages into an open feed — the scheduler prefetches older
@@ -43,65 +42,73 @@ final class RustFeedSession {
   /// serving from it.
   bool get isLive => !_updates.isFinished;
 
-  /// The newest page this feed settled on, or null while it has never
-  /// settled one. Reading it takes in whatever landed since the last
+  /// The newest page this feed yielded, or null while it has never
+  /// yielded one. Reading it takes in whatever landed since the last
   /// pull, so a returning caller sees the engine's latest rows.
   RustFeedPage? get warmPage {
     final page = _page;
     if (page == null) return null;
     final pending = _updates.drain();
     if (pending != null && pending.revision >= page.revision) {
-      _page = (revision: pending.revision, posts: pending.posts);
+      _remember((
+        revision: pending.revision,
+        posts: pending.posts,
+        stage: pending.stage,
+      ));
     }
     return _page;
   }
 
-  /// Waits for the feed's first settled page.
-  Future<RustFeedPage> firstPage() async => _settled(await _reader.firstPage());
+  /// Waits for the feed's first available page.
+  Future<RustFeedPage> firstPage() async =>
+      _remember(await _reader.firstPage());
 
-  /// Claims the page below [cursor] and waits for it; a feed that
-  /// reports itself exhausted keeps [loaded].
-  Future<RustFeedPage> olderPage(RustFeedPage loaded, BigInt cursor) async {
-    final more = await _link.port.loadMore(
-      _link.feedId,
-      olderThanSecs: cursor,
-    );
+  /// Claims an older page using Rust's raw-event cursor. A feed that reports
+  /// itself exhausted keeps [loaded].
+  Future<RustFeedPage> olderPage(RustFeedPage loaded) async {
+    final more = await _link.port.loadMore(_link.feedId);
     if (!more) return loaded;
-    return _settled(await _reader.olderPage(loaded));
+    return _remember(await _reader.olderPage(loaded));
   }
 
-  /// Asks the engine for another page without waiting for it: the rows
-  /// land in this feed's snapshot and answer the pull after this one.
-  /// The engine picks the cursor — it tracks how deep the feed got.
-  void deepen() => unawaited(_deepened());
+  /// Every useful full snapshot Rust publishes for this open session.
+  Stream<RustFeedPage> watchPages() {
+    return _updates
+        .watch()
+        .where(_isVisible)
+        .map(_pageFromUpdate)
+        .map(_remember);
+  }
 
-  Future<void> close() {
-    // Fire-and-forget: a feed whose stream never ends must not hold
-    // the close behind its own cancellation.
-    unawaited(_updates.dispose());
-    return _link.port.closeFeed(_link.feedId);
+  Future<void> close() async {
+    await _updates.dispose();
+    await _link.port.closeFeed(_link.feedId);
   }
 
   /// Revision zero is the baseline snapshot Rust publishes before any
   /// retrieval lands, and it is what the reader hands back when no page
-  /// settled in time (rust_feed_page_reader.dart): neither is warm
+  /// became available in time (rust_feed_page_reader.dart): neither is warm
   /// state a later pull may answer with.
-  RustFeedPage _settled(RustFeedPage page) {
-    if (page.revision > BigInt.zero) _page = page;
-    return page;
+  RustFeedPage _remember(RustFeedPage page) {
+    if (page.revision == BigInt.zero) return page;
+    final current = _page;
+    if (current == null || page.revision >= current.revision) _page = page;
+    return _page!;
   }
 
-  Future<void> _deepened() async {
-    try {
-      await _link.port.loadMore(_link.feedId);
-    } on Object catch (error, stackTrace) {
-      log(
-        'The Rust feed could not be deepened.',
-        name: 'ghostr.video.rustfeed',
-        error: error,
-        stackTrace: stackTrace,
-      );
+  bool _isVisible(FfiFeedUpdate update) {
+    if (update.stage == FfiFeedStage.failed && update.posts.isEmpty) {
+      throw rustFeedFailure;
     }
+    return update.stage != FfiFeedStage.loading || update.posts.isNotEmpty;
+  }
+
+  RustFeedPage _pageFromUpdate(FfiFeedUpdate update) {
+    return (
+      revision: update.revision,
+      posts: update.posts,
+      stage: update.stage,
+    );
   }
 }
 

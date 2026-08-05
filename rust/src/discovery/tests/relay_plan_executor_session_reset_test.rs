@@ -31,3 +31,24 @@ async fn stale_query_is_rejected_before_it_can_return_events() {
 
     assert_eq!(failure.message, "the Nostr session was reset");
 }
+
+#[tokio::test]
+async fn stale_outbox_routing_is_rejected_before_relay_fetches_start() {
+    let directory = empty_directory();
+    let executor = RelayPlanExecutor::new(
+        Arc::new(client_with_event_cache()),
+        Vec::new(),
+        directory.clone(),
+        DataUsageLevel::Balanced,
+    );
+    let stale = SessionGeneration::initial();
+    directory.write().await.reset_session(stale.next());
+    let plan = plan_event_queries(vec![Filter::new().kind(Kind::TextNote)]);
+
+    let failure = executor
+        .session_plan_outboxes(stale, &plan)
+        .await
+        .expect_err("stale outbox session");
+
+    assert_eq!(failure.message, "the Nostr session was reset");
+}

@@ -26,7 +26,8 @@ void main() {
       olderThan: cursor,
     );
     expect(older.posts.map((post) => post.id.value), ['older']);
-    expect(search.queries, ['#dance', '#dance']);
-    expect(search.olderThans, [null, cursor]);
+    expect(search.queries, ['#dance']);
+    expect(search.olderThans, [null]);
+    expect(search.loadMoreQueries, ['#dance']);
   });
 }

@@ -48,13 +48,13 @@ pub enum RelayTarget {
     SearchAndOutboxRelays,
 }
 
-/// Whether a query's failure sinks the load or only narrows the pool.
+/// One query's role in the assembled content page.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum QueryRole {
     /// The video-kind query: its failure fails the whole request.
     Primary,
-    /// Note and file results only ever widen the pool; their hiccups must
-    /// not sink the primary results.
+    /// Note and file results widen the pool. Their failure leaves the page
+    /// unsettled so its pagination boundary remains retryable.
     Additive,
 }
 

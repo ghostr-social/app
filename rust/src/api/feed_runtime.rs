@@ -111,7 +111,9 @@ impl DiscoveryRuntime {
     }
 
     pub(crate) fn close_feed(&self, feed: FeedId) {
-        lock(&self.state).close(feed);
+        if let Some(context) = lock(&self.state).close(feed) {
+            self.handle.close_feed(context);
+        }
     }
 
     /// The state handle plus a revision watch for one stream watcher.
@@ -150,10 +152,24 @@ pub(crate) async fn pump_outcomes(
     mut outcomes: mpsc::UnboundedReceiver<RetrievalOutcome>,
 ) {
     while let Some(outcome) = outcomes.recv().await {
-        if let Ok(events) = &outcome.result {
-            file_lists_for(&sinks, outcome.context.session(), events).await;
+        match outcome {
+            RetrievalOutcome::Started { context } => {
+                lock(&sinks.state).apply_started(&context);
+            }
+            RetrievalOutcome::Progress { context, event } => {
+                lock(&sinks.state).apply_progress(&context, *event);
+            }
+            RetrievalOutcome::Completed {
+                context,
+                result,
+                purpose,
+            } => {
+                if let Ok(events) = &result {
+                    file_lists_for(&sinks, context.session(), events).await;
+                }
+                lock(&sinks.state).apply_retrieval(&context, result, purpose);
+            }
         }
-        lock(&sinks.state).apply(&outcome.context, outcome.result);
     }
 }
 

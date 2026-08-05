@@ -1,8 +1,8 @@
 //! A feed now lives as long as the app does
 //! (lib/features/video_catalog/data/rust_feed_sessions.dart), so the
-//! store bounds what one feed keeps: the newest rows stay, the tail the
-//! viewer already scrolled past is dropped, and trimming it never
-//! rewinds pagination.
+//! store bounds what one canonical feed keeps: the newest rows stay,
+//! the tail the viewer already scrolled past is dropped, and trimming
+//! it never rewinds pagination.
 
 use crate::discovery::feed_spec::FeedSpec;
 use crate::discovery::feed_store::{FeedId, FeedStore, FEED_POST_RETENTION};

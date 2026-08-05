@@ -21,7 +21,7 @@ void main() {
 
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
     await tester.pump();
-    expect(repository.olderThans.whereType<DateTime>(), isNotEmpty);
+    expect(repository.loadMoreCalls, 1);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
     repository.second.complete(VideoFeedPage(
@@ -36,12 +36,16 @@ void main() {
 
 class _TwoPageRepository implements VideoSearchRepository {
   final second = Completer<VideoFeedPage>();
-  final olderThans = <DateTime?>[];
+  int loadMoreCalls = 0;
+
+  @override
+  Future<VideoFeedPage> loadMoreVideos(String query) {
+    loadMoreCalls += 1;
+    return second.future;
+  }
 
   @override
   Future<VideoFeedPage> searchVideos(String query, {DateTime? olderThan}) {
-    olderThans.add(olderThan);
-    if (olderThan != null) return second.future;
     return Future.value(VideoFeedPage(
       posts: [samplePost(id: 'first', caption: 'First clip')],
       nextOlderThan: DateTime.utc(2026, 1, 1),

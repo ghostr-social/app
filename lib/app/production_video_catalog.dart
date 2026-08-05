@@ -62,6 +62,12 @@ VideoCatalogServices buildProductionVideoCatalog(
     interactions: interactions,
     failureReporter: reporter,
   );
+  final search = DiscoveryVideoSearchRepository(
+    videos: delivery.searchSource,
+    creators: NostrCreatorSearchSource(nostr.eventClient),
+    social: social,
+    failureReporter: reporter,
+  );
   return VideoCatalogServices(
     feed: WatchAwareVideoFeedRepository(
       feed: FilteredVideoFeedRepository(reader, social),
@@ -71,12 +77,8 @@ VideoCatalogServices buildProductionVideoCatalog(
     ),
     engagement: HybridVideoEngagementRepository(interactions),
     profile: AggregatingVideoProfileRepository(reader, social),
-    search: DiscoveryVideoSearchRepository(
-      videos: delivery.searchSource,
-      creators: NostrCreatorSearchSource(nostr.eventClient),
-      social: social,
-      failureReporter: reporter,
-    ),
+    search: search,
+    searchUpdates: search,
     trending: RecentVideosTrendingHashtags(delivery.discoverySource),
     publishing: HybridVideoPublishingRepository(
       local,

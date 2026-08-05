@@ -8,11 +8,10 @@ import 'package:ghostr/src/rust/api/feed_types.dart';
 
 /// How many Rust feeds one source holds open at a time. Reopening a
 /// feed costs a cold relay round trip, so feeds stay; but each one
-/// keeps a bounded row window in the engine
-/// (`FEED_POST_RETENTION`, rust/src/discovery/feed_store.rs) and one
-/// snapshot stream, so a source keeps only what a viewer moves
-/// between: the feed they are in, the one they came from, and the
-/// search or profile they just opened.
+/// keeps one snapshot stream, so a source holds only what a viewer
+/// moves between: the feed they are in, the one they came from, and
+/// the search or profile they just opened. Canonical feed rows are
+/// bounded natively; active query feeds preserve their discovered history.
 const rustFeedLiveLimit = 3;
 
 /// The Rust feeds one source holds open, keyed by the spec that named
@@ -29,6 +28,7 @@ final class RustFeedSessions {
   /// Insertion order is recency: the least recently pulled feed first.
   final Map<RustFeedSpecKey, Future<RustFeedSession>> _live =
       <RustFeedSpecKey, Future<RustFeedSession>>{};
+  final Map<RustFeedSession, int> _pinCounts = <RustFeedSession, int>{};
   RustFeedAccountSession? _nativeSession;
   int _generation = 0;
   Future<void> _adoption = Future<void>.value();
@@ -59,7 +59,27 @@ final class RustFeedSessions {
     final live = await _resolved(_live[session.specKey]);
     if (!identical(live, session)) return;
     _live.remove(session.specKey);
+    _pinCounts.remove(session);
     await _closed(session);
+  }
+
+  /// A passive watcher pins its session so unrelated pulls cannot evict and
+  /// silently end the active query.
+  void pin(RustFeedSession session) {
+    _pinCounts.update(session, (count) => count + 1, ifAbsent: () => 1);
+  }
+
+  /// Releases one watcher pin and reports whether it was the last one.
+  Future<bool> unpin(RustFeedSession session) async {
+    final count = _pinCounts[session];
+    if (count == null) return false;
+    if (count > 1) {
+      _pinCounts[session] = count - 1;
+      return false;
+    }
+    _pinCounts.remove(session);
+    await _evictOverflow();
+    return true;
   }
 
   /// Retires the feeds whose snapshot stream ended — Rust closed them,
@@ -75,6 +95,7 @@ final class RustFeedSessions {
   Future<void> closeAll() async {
     final live = _live.values.toList();
     _live.clear();
+    _pinCounts.clear();
     for (final opening in live) {
       await _closed(await _resolved(opening));
     }
@@ -129,9 +150,20 @@ final class RustFeedSessions {
 
   Future<void> _evictOverflow() async {
     while (_live.length > rustFeedLiveLimit) {
-      final oldest = _live.remove(_live.keys.first);
-      await _closed(await _resolved(oldest));
+      if (!await _evictOldestUnpinned()) return;
     }
+  }
+
+  Future<bool> _evictOldestUnpinned() async {
+    for (final entry in _live.entries.toList()) {
+      final session = await _resolved(entry.value);
+      if (session != null && _pinCounts.containsKey(session)) continue;
+      if (!identical(_live[entry.key], entry.value)) continue;
+      _live.remove(entry.key);
+      await _closed(session);
+      return true;
+    }
+    return false;
   }
 
   /// Awaits an open that may still be in flight; a failed one has

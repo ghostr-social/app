@@ -25,6 +25,7 @@ void main() {
     expect(page.posts.map((post) => post.id.value), ['newer', 'last']);
     expect(page.hasMore, isTrue);
     expect(page.nextOlderThan, published.subtract(const Duration(seconds: 1)));
-    expect(search.queries, hasLength(1));
+    expect(search.queries, isEmpty);
+    expect(search.loadMoreQueries, ['ghost']);
   });
 }

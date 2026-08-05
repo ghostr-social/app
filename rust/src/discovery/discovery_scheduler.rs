@@ -3,7 +3,7 @@
 //! data-usage knob. Commands arrive over a channel and executed
 //! batches stream out — no polling loops.
 
-use crate::discovery::plan_executor::{PlanExecutor, PlanFailure};
+use crate::discovery::plan_executor::{PlanExecutor, PlanFailure, PlanPage};
 use crate::discovery::retrieval_queue::{FeedContext, RetrievalQueue};
 use crate::discovery::scheduler_feeds::FeedBook;
 use crate::discovery::scheduler_queries::{QueryBook, QueryResult};
@@ -15,6 +15,7 @@ use nostr_sdk::{Event, Timestamp};
 use std::collections::HashMap;
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
+use tokio::sync::mpsc::WeakUnboundedSender;
 use tokio::sync::{mpsc, oneshot, watch};
 use tokio::task::AbortHandle;
 
@@ -52,6 +53,10 @@ pub enum DiscoveryCommand {
         context: FeedContext,
         request: DiscoveryRequest,
     },
+    /// Ends queued, running, and delayed work for a closed feed.
+    CloseFeed(FeedContext),
+    /// Rust-owned continuation of an active query hunt.
+    ContinueQuery { context: FeedContext, head: bool },
     /// A generic read shares the queue but answers only its caller.
     Query {
         context: FeedContext,
@@ -64,11 +69,28 @@ pub enum DiscoveryCommand {
     ResetSession { reply: oneshot::Sender<()> },
 }
 
-/// One executed retrieval, streamed to feed assembly.
+/// One executed retrieval, streamed to feed assembly without invalid
+/// provisional-failure combinations.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RetrievalPurpose {
+    Head,
+    Older,
+}
+
 #[derive(Clone, Debug)]
-pub struct RetrievalOutcome {
-    pub context: FeedContext,
-    pub result: Result<Vec<Event>, PlanFailure>,
+pub enum RetrievalOutcome {
+    Started {
+        context: FeedContext,
+    },
+    Progress {
+        context: FeedContext,
+        event: Box<Event>,
+    },
+    Completed {
+        context: FeedContext,
+        result: Result<Vec<Event>, PlanFailure>,
+        purpose: RetrievalPurpose,
+    },
 }
 
 /// Cloneable control handle; sends never block. The scheduler task
@@ -92,7 +114,11 @@ pub struct DiscoverySchedulerConfig {
 /// Starts the scheduler task and returns its control handle.
 pub fn start_discovery_scheduler(config: DiscoverySchedulerConfig) -> DiscoveryHandle {
     let (sender, commands) = mpsc::unbounded_channel();
-    tokio::spawn(run(SchedulerWorker::create(config, commands)));
+    tokio::spawn(run(SchedulerWorker::create(
+        config,
+        commands,
+        sender.downgrade(),
+    )));
     DiscoveryHandle {
         sender,
         query_sequence: Arc::new(AtomicU64::new(0)),
@@ -106,7 +132,13 @@ async fn run(mut worker: SchedulerWorker) {
 pub(crate) struct FinishedRetrieval {
     pub(crate) task_id: u64,
     pub(crate) context: FeedContext,
-    pub(crate) result: Result<Vec<Event>, PlanFailure>,
+    pub(crate) result: Result<PlanPage, PlanFailure>,
+    pub(crate) purpose: RetrievalPurpose,
+}
+
+pub(crate) struct ActiveRetrieval {
+    pub(crate) context: FeedContext,
+    pub(crate) abort: AbortHandle,
 }
 
 pub(crate) struct SchedulerWorker {
@@ -118,9 +150,11 @@ pub(crate) struct SchedulerWorker {
     pub(crate) outcomes: mpsc::UnboundedSender<RetrievalOutcome>,
     pub(crate) finished_sender: mpsc::UnboundedSender<FinishedRetrieval>,
     pub(crate) finished: mpsc::UnboundedReceiver<FinishedRetrieval>,
-    pub(crate) tasks: HashMap<u64, AbortHandle>,
+    pub(crate) tasks: HashMap<u64, ActiveRetrieval>,
+    pub(crate) hunts: HashMap<FeedContext, AbortHandle>,
     pub(crate) next_task_id: u64,
     pub(crate) commands: mpsc::UnboundedReceiver<DiscoveryCommand>,
+    pub(crate) command_sender: WeakUnboundedSender<DiscoveryCommand>,
     pub(crate) modes: watch::Receiver<Mode>,
     pub(crate) modes_live: bool,
 }
@@ -129,6 +163,7 @@ impl SchedulerWorker {
     fn create(
         config: DiscoverySchedulerConfig,
         commands: mpsc::UnboundedReceiver<DiscoveryCommand>,
+        command_sender: WeakUnboundedSender<DiscoveryCommand>,
     ) -> Self {
         let (finished_sender, finished) = mpsc::unbounded_channel();
         Self {
@@ -141,10 +176,23 @@ impl SchedulerWorker {
             finished_sender,
             finished,
             tasks: HashMap::new(),
+            hunts: HashMap::new(),
             next_task_id: 0,
             commands,
+            command_sender,
             modes: config.modes,
             modes_live: true,
+        }
+    }
+}
+
+impl Drop for SchedulerWorker {
+    fn drop(&mut self) {
+        for task in self.tasks.values() {
+            task.abort.abort();
+        }
+        for hunt in self.hunts.values() {
+            hunt.abort();
         }
     }
 }

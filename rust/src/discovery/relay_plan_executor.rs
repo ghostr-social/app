@@ -4,28 +4,28 @@
 use crate::discovery::event_cache::EventCache;
 use crate::discovery::live_search_relays::LiveSearchRelays;
 use crate::discovery::outbox_directory::{max_outbox_relays, OutboxDirectory};
-use crate::discovery::plan_executor::{PlanExecutor, PlanFailure, PlanFuture, PlannedRetrieval};
-use crate::discovery::relay_fetch::{fetch, RelayFetch};
-use crate::discovery::relay_plan_collector::{collect_events, FetchHandle};
+use crate::discovery::plan_executor::{
+    EventProgress, PlanExecutor, PlanFailure, PlanFuture, PlanPageFuture, PlannedRetrieval,
+};
 #[cfg(test)]
 use crate::discovery::relay_plan_routes::outbox_relays as resolved_outbox;
 use crate::discovery::relay_plan_routes::plan_outbox_relays as resolved_plan_outboxes;
 #[cfg(test)]
 use crate::discovery::relay_pool_owner::RelayPoolConfiguration;
 use crate::discovery::relay_pool_owner::RelayPoolOwner;
-use crate::discovery::relay_pool_route::RelayPoolRoute;
 #[cfg(test)]
 use crate::discovery::search_queries::OutboxLookup;
-use crate::discovery::search_queries::{resolve_relays, PlannedQuery, QueryPlan, QueryRole};
+use crate::discovery::search_queries::QueryPlan;
 use crate::discovery::session_generation::{SessionGeneration, SESSION_RESET_MESSAGE};
 use crate::engine::DataUsageLevel;
 #[cfg(test)]
 use nostr_sdk::Client;
-use nostr_sdk::Event;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+mod execution;
+mod fetches;
 mod profile_enrichment;
 
 /// Shared live outbox directory; ingestion happens on the subscription side.
@@ -102,36 +102,6 @@ impl RelayPlanExecutor {
         self.search_relays.snapshot()
     }
 
-    async fn run(self, retrieval: PlannedRetrieval) -> Result<Vec<Event>, PlanFailure> {
-        let session = retrieval.context.session();
-        let priority = retrieval.priority;
-        let plan = retrieval.plan;
-        let route = self.relay_pool.begin_route(session).await?;
-        self.adopt_session_viewer(session, &plan).await?;
-        let outboxes = self.session_plan_outboxes(session, &plan).await?;
-        let fetches: Vec<(QueryRole, FetchHandle)> = plan
-            .queries
-            .into_iter()
-            .zip(outboxes)
-            .map(|(query, outbox)| {
-                (
-                    query.role.clone(),
-                    self.spawn_fetch(session, query, outbox.as_deref(), route.clone()),
-                )
-            })
-            .collect();
-        let events = collect_events(fetches).await?;
-        let events = self
-            .enrich_profiles(session, priority, events, route.clone())
-            .await?;
-        route.ensure_current()?;
-        if self.cache.is_current(session).await {
-            Ok(events)
-        } else {
-            Err(PlanFailure::new(SESSION_RESET_MESSAGE))
-        }
-    }
-
     async fn adopt_session_viewer(
         &self,
         session: SessionGeneration,
@@ -160,7 +130,7 @@ impl RelayPlanExecutor {
         resolved_plan_outboxes(&directory, plan, cap)
     }
 
-    async fn session_plan_outboxes(
+    pub(crate) async fn session_plan_outboxes(
         &self,
         session: SessionGeneration,
         plan: &QueryPlan,
@@ -172,28 +142,18 @@ impl RelayPlanExecutor {
         }
         Ok(resolved_plan_outboxes(&directory, plan, cap))
     }
-
-    fn spawn_fetch(
-        &self,
-        session: SessionGeneration,
-        query: PlannedQuery,
-        outbox: Option<&[String]>,
-        route: Arc<RelayPoolRoute>,
-    ) -> FetchHandle {
-        let configured = self.search_relays();
-        let relays = resolve_relays(&query.target, &configured, outbox);
-        tokio::spawn(fetch(RelayFetch {
-            route,
-            cache: self.cache.clone(),
-            session,
-            relays,
-            query,
-        }))
-    }
 }
 
 impl PlanExecutor for RelayPlanExecutor {
     fn execute(&self, retrieval: PlannedRetrieval) -> PlanFuture {
-        Box::pin(self.clone().run(retrieval))
+        Box::pin(self.clone().run(retrieval, None))
+    }
+
+    fn execute_page_with_progress(
+        &self,
+        retrieval: PlannedRetrieval,
+        progress: EventProgress,
+    ) -> PlanPageFuture {
+        Box::pin(self.clone().run_page(retrieval, Some(progress)))
     }
 }

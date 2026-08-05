@@ -24,6 +24,9 @@ class _PendingSearchRepository implements VideoSearchRepository {
   final _search = Completer<VideoFeedPage>();
 
   @override
+  Future<VideoFeedPage> loadMoreVideos(String query) => _search.future;
+
+  @override
   Future<VideoFeedPage> searchVideos(String query, {DateTime? olderThan}) {
     return _search.future;
   }

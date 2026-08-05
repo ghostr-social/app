@@ -6,12 +6,14 @@ import 'package:ghostr/features/video_catalog/domain/trending_hashtags.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
 import 'package:ghostr/features/video_catalog/domain/video_profile_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_search_repository.dart';
+import 'package:ghostr/features/video_catalog/domain/video_search_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 
 mixin FakeVideoCatalogDiscoveryBehavior
     implements
         VideoProfileRepository,
         VideoSearchRepository,
+        VideoSearchUpdates,
         TrendingHashtagsSource,
         SocialGraphRepository {
   Map<String, ProfileDetails> get profiles;
@@ -54,10 +56,18 @@ mixin FakeVideoCatalogDiscoveryBehavior
   }
 
   @override
+  Future<VideoFeedPage> loadMoreVideos(String query) async {
+    return VideoFeedPage(posts: const <VideoPost>[]);
+  }
+
+  @override
   Future<List<ProfileSummary>> searchCreators(String query) async {
     creatorQueries.add(query);
     return creatorResults;
   }
+
+  @override
+  Stream<VideoSearchSnapshot> watchVideos(String query) => const Stream.empty();
 
   @override
   Future<List<String>> trendingHashtags() async => trendingTags;

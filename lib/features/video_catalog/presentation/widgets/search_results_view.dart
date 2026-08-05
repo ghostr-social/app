@@ -53,7 +53,7 @@ class SearchResultsView extends StatelessWidget {
   }
 
   bool _maybeLoadMore(ScrollNotification notification) {
-    if (results.hasMore && notification.metrics.extentAfter < 400) {
+    if (results.canLoadMore && notification.metrics.extentAfter < 400) {
       actions.onLoadMore();
     }
     return false;

@@ -7,7 +7,7 @@ use crate::api::feed_runtime::{lock, pump_outcomes, OutcomeSinks, SharedFeedStat
 use crate::api::feed_state::FeedState;
 use crate::api::tests::feed_fixtures::{relay_list_event, signed_event, SignedEventFixture};
 use crate::api::tests::outbox_runtime_support::{test_bootstrap, BOOTSTRAP_RELAY};
-use crate::discovery::discovery_scheduler::RetrievalOutcome;
+use crate::discovery::discovery_scheduler::{RetrievalOutcome, RetrievalPurpose};
 use crate::discovery::feed_spec::FeedSpec;
 use crate::discovery::outbox_bootstrap::OUTBOX_CONTEXT;
 use crate::discovery::retrieval_queue::FeedContext;
@@ -46,12 +46,13 @@ async fn a_landed_follow_list_routes_the_feed_to_the_follows_relays() {
     tokio::spawn(pump_outcomes(OutcomeSinks { state, bootstrap }, outcomes));
 
     sender
-        .send(RetrievalOutcome {
+        .send(RetrievalOutcome::Completed {
             context: FeedContext::new(OUTBOX_CONTEXT),
             result: Ok(vec![
                 contact_list(&viewer, &follow.public_key()),
                 relay_list_event(&follow, &["wss://follow.write"], 10),
             ]),
+            purpose: RetrievalPurpose::Head,
         })
         .expect("the pump should be listening");
 

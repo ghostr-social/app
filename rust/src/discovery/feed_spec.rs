@@ -73,7 +73,13 @@ impl FeedSpec {
     /// query feeds never report themselves finished
     /// (query_video_feed_repository.dart).
     pub fn exhausts_on_empty_page(&self) -> bool {
-        matches!(self, Self::MainFeed { .. } | Self::Profile(_))
+        !self.is_query()
+    }
+
+    /// Search and hashtag feeds keep extending while their native hunt stays
+    /// open; canonical feeds may retain only a bounded head window.
+    pub fn is_query(&self) -> bool {
+        matches!(self, Self::Hashtag(_) | Self::Search(_))
     }
 }
 

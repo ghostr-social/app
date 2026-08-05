@@ -15,6 +15,7 @@ class PagedSearchRepository implements VideoSearchRepository {
   final List<String> queries = <String>[];
   final List<String> creatorQueries = <String>[];
   final List<DateTime?> olderThans = <DateTime?>[];
+  final List<String> loadMoreQueries = <String>[];
   Object? videosFailure;
 
   @override
@@ -22,6 +23,16 @@ class PagedSearchRepository implements VideoSearchRepository {
       {DateTime? olderThan}) async {
     queries.add(query);
     olderThans.add(olderThan);
+    return _nextPage();
+  }
+
+  @override
+  Future<VideoFeedPage> loadMoreVideos(String query) async {
+    loadMoreQueries.add(query);
+    return _nextPage();
+  }
+
+  VideoFeedPage _nextPage() {
     if (videosFailure case final Object failure) throw failure;
     final posts = _pages.isEmpty ? const <VideoPost>[] : _pages.removeAt(0);
     return VideoFeedPage(

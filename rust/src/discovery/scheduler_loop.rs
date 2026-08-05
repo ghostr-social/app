@@ -4,14 +4,17 @@
 
 use crate::discovery::control_loop::{discovery_action, DiscoveryAction};
 use crate::discovery::discovery_scheduler::{
-    DiscoveryCommand, FinishedRetrieval, RetrievalOutcome, SchedulerWorker,
+    ActiveRetrieval, DiscoveryCommand, FinishedRetrieval, RetrievalOutcome, RetrievalPurpose,
+    SchedulerWorker,
 };
 use crate::discovery::feed_cursor::playable_cursor;
-use crate::discovery::plan_executor::PlannedRetrieval;
+use crate::discovery::plan_executor::PlanFailure;
 use crate::discovery::retrieval_queue::{FeedContext, RetrievalPriority, RetrievalRequest};
 use crate::discovery::scheduler_plans::widened_plan;
+use crate::discovery::scheduler_progress::{spawn_retrieval_task, RetrievalTaskInput};
 use crate::discovery::search_queries::{plan_discovery, QueryPlan};
 use crate::engine::inventory_controller::Mode;
+use nostr_sdk::{Event, Timestamp};
 
 enum Wake {
     Command(DiscoveryCommand),
@@ -65,6 +68,9 @@ impl SchedulerWorker {
         let Some(context) = self.feeds.active().cloned() else {
             return;
         };
+        if self.feeds.is_query(&context) {
+            return;
+        }
         let queued = self.queue.has_pending(&context);
         match discovery_action(mode, self.feeds.query_state(&context, queued)) {
             DiscoveryAction::Idle => {}
@@ -73,7 +79,7 @@ impl SchedulerWorker {
         }
     }
 
-    fn prefetch(&mut self, context: FeedContext) {
+    pub(crate) fn prefetch(&mut self, context: FeedContext) {
         let Some(request) = self.feeds.older_page_request(&context, None) else {
             return;
         };
@@ -99,18 +105,39 @@ impl SchedulerWorker {
     fn finish(&mut self, done: FinishedRetrieval) {
         self.tasks.remove(&done.task_id);
         self.feeds.record_done(&done.context);
-        let result = match self.queries.finish(&done.context, done.result) {
+        let cursor = done.result.as_ref().ok().and_then(|page| page.cursor);
+        let result = done.result.map(|page| page.events);
+        let result = match self.queries.finish(&done.context, result) {
             Ok(()) => return,
             Err(result) => result,
         };
-        if let Ok(events) = &result {
-            let cursor = playable_cursor(events);
-            self.feeds.record_page(&done.context, cursor);
-        }
-        let _ = self.outcomes.send(RetrievalOutcome {
-            context: done.context,
+        self.record_feed_result(&done.context, &result, cursor, done.purpose);
+        let context = done.context;
+        let _ = self.outcomes.send(RetrievalOutcome::Completed {
+            context: context.clone(),
             result,
+            purpose: done.purpose,
         });
+        self.advance_query(context);
+    }
+
+    fn record_feed_result(
+        &mut self,
+        context: &FeedContext,
+        result: &Result<Vec<Event>, PlanFailure>,
+        query_cursor: Option<Timestamp>,
+        purpose: RetrievalPurpose,
+    ) {
+        let Ok(events) = result else {
+            return self.feeds.record_failure(context);
+        };
+        let cursor = if self.feeds.is_query(context) {
+            query_cursor
+        } else {
+            playable_cursor(events)
+        };
+        self.feeds
+            .record_page(context, cursor, purpose == RetrievalPurpose::Head);
     }
 
     fn pump(&mut self) {
@@ -126,22 +153,21 @@ impl SchedulerWorker {
     fn spawn_retrieval(&mut self, request: RetrievalRequest, plan: QueryPlan) {
         let task_id = self.next_task_id;
         self.next_task_id = self.next_task_id.wrapping_add(1);
-        let executor = self.executor.clone();
-        let finished = self.finished_sender.clone();
-        let task = tokio::spawn(async move {
-            let context = request.context.clone();
-            let retrieval = PlannedRetrieval {
-                context: request.context,
-                priority: request.priority,
-                plan,
-            };
-            let result = executor.execute(retrieval).await;
-            let _ = finished.send(FinishedRetrieval {
-                task_id,
-                context,
-                result,
-            });
+        let task_context = request.context.clone();
+        let task = spawn_retrieval_task(RetrievalTaskInput {
+            task_id,
+            executor: self.executor.clone(),
+            finished: self.finished_sender.clone(),
+            outcomes: self.outcomes.clone(),
+            request,
+            plan,
         });
-        self.tasks.insert(task_id, task.abort_handle());
+        self.tasks.insert(
+            task_id,
+            ActiveRetrieval {
+                context: task_context,
+                abort: task.abort_handle(),
+            },
+        );
     }
 }

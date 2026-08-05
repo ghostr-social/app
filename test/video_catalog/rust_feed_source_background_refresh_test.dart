@@ -5,10 +5,9 @@ import '../support/live_rust_feed_port.dart';
 import '../support/rust_feed_fixtures.dart';
 
 void main() {
-  // Answering warm must not let the feed go stale: the pull returns
-  // what is known and asks Rust for the next page behind it, so the
-  // rows are there for the pull after this one. Nothing waits for it.
-  test('asks the engine for another page after answering warm', () async {
+  // Reading a snapshot is passive. Rust owns whether and when another Nostr
+  // request is needed; a Dart cache read must never deepen the feed.
+  test('does not request another page after answering warm', () async {
     final port = LiveRustFeedPort(
       firstPage: [
         rustFeedUpdate(revision: 1, posts: [rustFeedPost()]),
@@ -22,10 +21,6 @@ void main() {
     await source.loadRemoteFeed(searchQuery: 'ghost');
     await pumpEventQueue();
 
-    expect(
-      port.loadMoreCursors,
-      [null],
-      reason: 'the engine picks the cursor for a background page',
-    );
+    expect(port.loadMoreCursors, isEmpty);
   });
 }

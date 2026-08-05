@@ -49,7 +49,7 @@ async fn the_capped_collection_would_have_dropped_the_oldest() {
 }
 
 #[tokio::test]
-async fn additive_failure_keeps_the_primary_answer() {
+async fn additive_failure_keeps_the_page_unsettled() {
     let primary_event = note(&Keys::generate(), 100);
     let primary = tokio::spawn({
         let event = primary_event.clone();
@@ -57,12 +57,12 @@ async fn additive_failure_keeps_the_primary_answer() {
     });
     let additive = tokio::spawn(async { Err(PlanFailure::new("additive failed")) });
 
-    let events = collect_events(vec![
+    let failure = collect_events(vec![
         (QueryRole::Primary, primary),
         (QueryRole::Additive, additive),
     ])
     .await
-    .expect("additive failure only narrows the answer");
+    .expect_err("a lossy page cannot commit its cursor");
 
-    assert_eq!(events, vec![primary_event]);
+    assert_eq!(failure.message, "additive failed");
 }

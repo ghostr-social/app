@@ -94,6 +94,14 @@ impl<T> RetrievalQueue<T> {
         self.focused = None;
     }
 
+    pub(crate) fn remove(&mut self, context: &FeedContext) {
+        self.pending
+            .retain(|entry| &entry.request.context != context);
+        if self.focused.as_ref() == Some(context) {
+            self.focused = None;
+        }
+    }
+
     pub fn has_pending(&self, context: &FeedContext) -> bool {
         self.pending
             .iter()

@@ -16,6 +16,6 @@ void main() {
     await tester.tap(find.text('Search'));
     await tester.pumpAndSettle();
 
-    expect(find.text('No matches found'), findsOneWidget);
+    expect(find.text('No matches yet'), findsOneWidget);
   });
 }

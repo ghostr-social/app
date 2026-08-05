@@ -82,5 +82,6 @@ pub(crate) fn read_request(relay: &str) -> RelayReadRequest {
             timeout: Duration::from_secs(5),
             outbox: OutboxRoute::Shared,
         },
+        progress: None,
     }
 }

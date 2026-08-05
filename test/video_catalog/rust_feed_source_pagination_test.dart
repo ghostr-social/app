@@ -11,9 +11,9 @@ void main() {
     isUtc: true,
   );
 
-  // Older pulls pass an inclusive unix-seconds cursor to Rust and return
-  // only the snapshot rows at or older than that boundary.
-  test('claims one older page and returns only rows at or past the cursor',
+  // Dart's cursor slices the domain page, but Rust chooses the request cursor
+  // from every raw Nostr match so unplayable rows cannot stall discovery.
+  test('lets Rust claim its raw cursor and slices the returned domain page',
       () async {
     final newest = rustFeedPost(eventId: testEventId, createdAt: 1754005000);
     final boundary = rustFeedPost(
@@ -36,7 +36,7 @@ void main() {
       olderThan: cursor,
     );
 
-    expect(port.loadMoreCursors, [BigInt.from(1754000000)]);
+    expect(port.loadMoreCursors, [null]);
     expect(posts.map((post) => post.id.value), [
       secondTestEventId,
       publishedTestEventId,

@@ -100,6 +100,7 @@ impl RelayPoolRoute {
             relays,
             filter: request.query.filter,
             timeout: request.query.timeout,
+            progress: request.progress,
         };
         tokio::select! {
             biased;
