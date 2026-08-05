@@ -36,7 +36,8 @@ final class VideoPlayerValueListener {
   void _handleValue() {
     final value = _listenable?.value;
     if (value == null) return;
-    final stalled = value.isInitialized && value.isBuffering;
+    final stalled =
+        value.isInitialized && value.isBuffering && !value.isPlaying;
     final failed = value.hasError;
     if (stalled == _isStalled && failed == _hasError) return;
     _isStalled = stalled;

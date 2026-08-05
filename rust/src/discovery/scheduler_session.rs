@@ -14,6 +14,20 @@ impl SchedulerWorker {
         self.queue.reset_session();
         self.feeds.reset_session();
         self.queries.reset_session();
+        self.retry_attempts.clear();
+        self.pending_feed_retries.clear();
+        self.pending_query_hunts.clear();
         let _ = reply.send(());
+    }
+}
+
+impl Drop for SchedulerWorker {
+    fn drop(&mut self) {
+        for task in self.tasks.values() {
+            task.abort.abort();
+        }
+        for hunt in self.hunts.values() {
+            hunt.abort();
+        }
     }
 }

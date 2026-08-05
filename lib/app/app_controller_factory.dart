@@ -6,6 +6,7 @@ import 'package:ghostr/features/compose/domain/publish_video_workflow.dart';
 import 'package:ghostr/features/settings/presentation/settings_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/query_video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
+import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/search_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
@@ -27,8 +28,8 @@ class AppControllerFactory {
     FeedFocusPort feedFocus = const FfiFeedFocusPort(),
     RustDeliveryConfigUpdater deliveryConfigUpdater =
         updateRustEngineConfiguration,
-  })  : _feedFocus = feedFocus,
-        _deliveryConfigUpdater = deliveryConfigUpdater;
+  }) : _feedFocus = feedFocus,
+       _deliveryConfigUpdater = deliveryConfigUpdater;
 
   final AppDependencies _dependencies;
   final FeedFocusPort _feedFocus;
@@ -50,19 +51,28 @@ class AppControllerFactory {
   }
 
   FeedCubit feed() {
+    final services = _dependencies.videoCatalogServices;
     return FeedCubit(
-        _feedDependencies(_dependencies.videoCatalogServices.feed));
+      _feedDependencies(services.feed, updates: services.feedUpdates),
+    );
   }
 
   /// A feed cubit bound to one search query or `#hashtag`.
   FeedCubit discoveryFeed(String query) {
-    return FeedCubit(_feedDependencies(QueryVideoFeedRepository(
-      search: _dependencies.videoCatalogServices.search,
-      query: query,
-    )));
+    return FeedCubit(
+      _feedDependencies(
+        QueryVideoFeedRepository(
+          search: _dependencies.videoCatalogServices.search,
+          query: query,
+        ),
+      ),
+    );
   }
 
-  FeedDependencies _feedDependencies(VideoFeedRepository feed) {
+  FeedDependencies _feedDependencies(
+    VideoFeedRepository feed, {
+    VideoFeedUpdates? updates,
+  }) {
     return FeedDependencies(
       feed: feed,
       engagement: _dependencies.videoCatalogServices.engagement,
@@ -74,6 +84,7 @@ class AppControllerFactory {
           settings: _dependencies.appSettingsRepository,
           failureReporter: _dependencies.failureReporter,
         ),
+        updates: updates,
       ),
     );
   }
@@ -89,15 +100,17 @@ class AppControllerFactory {
   }
 
   ComposeCubit compose() {
-    return ComposeCubit(ComposeDependencies(
-      publishVideo: DefaultPublishVideoWorkflow(
-        publishing: _dependencies.videoCatalogServices.publishing,
-        activity: _dependencies.activityRepository,
-        clock: DateTime.now,
-        failureReporter: _dependencies.failureReporter,
+    return ComposeCubit(
+      ComposeDependencies(
+        publishVideo: DefaultPublishVideoWorkflow(
+          publishing: _dependencies.videoCatalogServices.publishing,
+          activity: _dependencies.activityRepository,
+          clock: DateTime.now,
+          failureReporter: _dependencies.failureReporter,
+        ),
+        mediaPicker: _dependencies.mediaPickerPort,
       ),
-      mediaPicker: _dependencies.mediaPickerPort,
-    ));
+    );
   }
 
   ProfileCubit profile(ProfileSummary viewer, ProfileId profileId) {
@@ -116,10 +129,12 @@ class AppControllerFactory {
   }
 
   SettingsCubit settings() {
-    return SettingsCubit(DeliveryConfigSyncingSettingsRepository(
-      inner: _dependencies.appSettingsRepository,
-      updateConfig: _deliveryConfigUpdater,
-    ));
+    return SettingsCubit(
+      DeliveryConfigSyncingSettingsRepository(
+        inner: _dependencies.appSettingsRepository,
+        updateConfig: _deliveryConfigUpdater,
+      ),
+    );
   }
 
   VideoPlaybackPort get videoPlaybackPort => _dependencies.videoPlaybackPort;

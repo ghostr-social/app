@@ -20,9 +20,9 @@ class SearchCubit extends DisposalSafeCubit<SearchState> {
     this._repository, {
     Duration debounce = const Duration(milliseconds: 300),
     VideoSearchUpdates? updates,
-  })  : _debounceDuration = debounce,
-        _updates = updates,
-        super(const SearchIdle());
+  }) : _debounceDuration = debounce,
+       _updates = updates,
+       super(const SearchIdle());
 
   final VideoSearchRepository _repository;
   final VideoSearchUpdates? _updates;
@@ -31,6 +31,8 @@ class SearchCubit extends DisposalSafeCubit<SearchState> {
   StreamSubscription<VideoSearchSnapshot>? _subscription;
   int _request = 0;
   BigInt _liveRevision = BigInt.from(-1);
+  String? _activeQuery;
+  int? _activeSearchRequest;
 
   void queryChanged(String rawQuery) {
     _debounce?.cancel();
@@ -43,22 +45,42 @@ class SearchCubit extends DisposalSafeCubit<SearchState> {
     _debounce = Timer(_debounceDuration, () => search(rawQuery));
   }
 
-  Future<void> search(String rawQuery) async {
+  Future<void> search(String rawQuery) => _search(rawQuery);
+
+  Future<void> _search(String rawQuery, {bool force = false}) async {
     _debounce?.cancel();
-    final request = ++_request;
     final query = rawQuery.trim();
+    if (!force && _isActiveSearch(query)) return;
+    final request = ++_request;
     _liveRevision = BigInt.from(-1);
     if (query.isEmpty) {
       await _stopUpdates();
       emit(const SearchIdle());
       return;
     }
-    emit(SearchLoading(query));
-    await _replaceUpdates(request, query);
-    if (_accepts(request)) await _load(request, query);
+    await _runSearch(request, query);
   }
 
-  Future<void> retry() => search(state.query);
+  bool _isActiveSearch(String query) {
+    return _activeQuery == query && _activeSearchRequest == _request;
+  }
+
+  Future<void> _runSearch(int request, String query) async {
+    _activeQuery = query;
+    _activeSearchRequest = request;
+    try {
+      emit(SearchLoading(query));
+      await _replaceUpdates(request, query);
+      if (_accepts(request)) await _load(request, query);
+    } finally {
+      if (_activeSearchRequest == request) {
+        _activeQuery = null;
+        _activeSearchRequest = null;
+      }
+    }
+  }
+
+  Future<void> retry() => _search(state.query, force: true);
 
   Future<void> loadMore() async {
     final current = state;

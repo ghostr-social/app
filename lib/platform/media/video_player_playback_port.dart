@@ -13,6 +13,7 @@ import 'package:ghostr/shared/widgets/loading_panel.dart';
 import 'package:video_player/video_player.dart';
 
 part 'video_player_controller_lifecycle.dart';
+part 'video_player_buffering_overlay.dart';
 part 'video_player_media_controller.dart';
 part 'video_player_surface.dart';
 

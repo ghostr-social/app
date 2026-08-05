@@ -12,6 +12,7 @@ use crate::discovery::plan_executor::PlanFailure;
 use crate::discovery::retrieval_queue::{FeedContext, RetrievalPriority, RetrievalRequest};
 use crate::discovery::scheduler_plans::widened_plan;
 use crate::discovery::scheduler_progress::{spawn_retrieval_task, RetrievalTaskInput};
+use crate::discovery::scheduler_retry::should_retry_feed;
 use crate::discovery::search_queries::{plan_discovery, QueryPlan};
 use crate::engine::inventory_controller::Mode;
 use nostr_sdk::{Event, Timestamp};
@@ -103,7 +104,9 @@ impl SchedulerWorker {
     }
 
     fn finish(&mut self, done: FinishedRetrieval) {
-        self.tasks.remove(&done.task_id);
+        if self.tasks.remove(&done.task_id).is_none() {
+            return;
+        }
         self.feeds.record_done(&done.context);
         let cursor = done.result.as_ref().ok().and_then(|page| page.cursor);
         let result = done.result.map(|page| page.events);
@@ -111,6 +114,14 @@ impl SchedulerWorker {
             Ok(()) => return,
             Err(result) => result,
         };
+        if done.had_playable_progress {
+            self.feeds.record_playable(&done.context);
+        }
+        let retry = should_retry_feed(
+            &result,
+            done.purpose,
+            self.feeds.has_playable(&done.context),
+        );
         self.record_feed_result(&done.context, &result, cursor, done.purpose);
         let context = done.context;
         let _ = self.outcomes.send(RetrievalOutcome::Completed {
@@ -118,7 +129,7 @@ impl SchedulerWorker {
             result,
             purpose: done.purpose,
         });
-        self.advance_query(context);
+        self.advance_feed(context, retry, done.purpose);
     }
 
     fn record_feed_result(

@@ -8,21 +8,30 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 import '../support/scripted_video_player_platform.dart';
 
 void main() {
-  testWidgets('surfaces a buffering panel while playback is stalled',
-      (tester) async {
+  testWidgets('surfaces a buffering panel while playback is stalled', (
+    tester,
+  ) async {
     final platform = ScriptedVideoPlayerPlatform();
     VideoPlayerPlatform.instance = platform;
 
-    await tester.pumpWidget(MaterialApp(
-      home: const VideoPlayerPlaybackPort().buildSurface(
-        media: VideoMediaSource.local('/cache/video.mp4'),
-        isActive: true,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: const VideoPlayerPlaybackPort().buildSurface(
+          media: VideoMediaSource.local('/cache/video.mp4'),
+          isActive: true,
+        ),
       ),
-    ));
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.byType(VideoPlayer), findsOneWidget);
 
+    platform.emit(
+      VideoEvent(
+        eventType: VideoEventType.isPlayingStateUpdate,
+        isPlaying: false,
+      ),
+    );
     platform.emit(VideoEvent(eventType: VideoEventType.bufferingStart));
     await tester.pump();
 

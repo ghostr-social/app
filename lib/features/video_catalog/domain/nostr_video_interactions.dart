@@ -18,8 +18,8 @@ class NostrVideoInteractions {
     this._failureReporter, {
     VideoLikePolicy likePolicy = const VideoLikePolicy(),
     Duration hydrationTimeout = const Duration(seconds: 10),
-  })  : _likePolicy = likePolicy,
-        _hydrationTimeout = hydrationTimeout;
+  }) : _likePolicy = likePolicy,
+       _hydrationTimeout = hydrationTimeout;
 
   final NostrEngagementPort _engagement;
   final NostrCommentsPort _comments;
@@ -31,16 +31,24 @@ class NostrVideoInteractions {
     return (await hydrateAll(<VideoPost>[post])).single;
   }
 
-  Future<List<VideoPost>> hydrateAll(List<VideoPost> posts) async {
+  Future<List<VideoPost>> hydrateAll(
+    List<VideoPost> posts, {
+    Duration? budget,
+  }) async {
     final references = posts
         .map((post) => post.nostrReference)
         .whereType<NostrEventReference>()
         .toList(growable: false);
     if (references.isEmpty) return posts;
     try {
-      return await _hydrateAll(posts, references).timeout(_hydrationTimeout);
+      return await _hydrateAll(
+        posts,
+        references,
+      ).timeout(budget ?? _hydrationTimeout);
     } on TimeoutException catch (error, stackTrace) {
-      _report('NostrVideoInteractions.hydrateAll', error, stackTrace);
+      if (budget == null) {
+        _report('NostrVideoInteractions.hydrateAll', error, stackTrace);
+      }
       return posts;
     }
   }
@@ -53,15 +61,17 @@ class NostrVideoInteractions {
     final commentCountsFuture = _loadCommentCountsBatch(references);
     final engagements = await engagementFuture;
     final commentCounts = await commentCountsFuture;
-    return posts.map((post) {
-      return _withHydratedInteractions(post, engagements, commentCounts);
-    }).toList(growable: false);
+    return posts
+        .map((post) {
+          return _withHydratedInteractions(post, engagements, commentCounts);
+        })
+        .toList(growable: false);
   }
 
   VideoPost _withHydratedInteractions(
     VideoPost post,
-    _EngagementLoad engagements,
-    _CommentCountLoad commentCounts,
+    _Engagements engagements,
+    _CommentCounts commentCounts,
   ) {
     final reference = post.nostrReference;
     if (reference == null) return post;
@@ -74,11 +84,11 @@ class NostrVideoInteractions {
         commentCount: commentCounts.values[eventId] ?? post.commentCount,
         observations: VideoMetricObservationUpdate(
           likes: _observation(
-            engagements.succeeded,
+            engagements.ok,
             engagements.values.containsKey(eventId),
           ),
           comments: _observation(
-            commentCounts.succeeded,
+            commentCounts.ok,
             commentCounts.values.containsKey(eventId),
           ),
         ),
@@ -89,7 +99,7 @@ class NostrVideoInteractions {
   VideoEngagement _engagementFor(
     VideoPost post,
     NostrEventId eventId,
-    _EngagementLoad engagements,
+    _Engagements engagements,
   ) {
     return engagements.values[eventId] ??
         VideoEngagement(
@@ -107,16 +117,18 @@ class NostrVideoInteractions {
   Future<VideoPost> toggleLike(VideoPost post) async {
     final reference = post.nostrReference;
     if (reference == null) return _likePolicy.toggle(post);
-    final intent =
-        post.viewerHasLiked ? VideoLikeIntent.unlike : VideoLikeIntent.like;
+    final intent = post.viewerHasLiked
+        ? VideoLikeIntent.unlike
+        : VideoLikeIntent.like;
     final engagement = await _engagement.setLike(reference, intent);
     // A journal-only mutation reports a count with no relay baseline, so the
     // post-derived expectation is the floor for the displayed count.
     final expected = _likePolicy.toggle(post).likeCount;
     return post.withInteraction(
       VideoInteractionUpdate(
-        likeCount:
-            engagement.likeCount > expected ? engagement.likeCount : expected,
+        likeCount: engagement.likeCount > expected
+            ? engagement.likeCount
+            : expected,
         viewerHasLiked: engagement.viewerHasLiked,
       ),
     );
@@ -144,24 +156,18 @@ class NostrVideoInteractions {
     );
   }
 
-  Future<_EngagementLoad> _loadEngagementBatch(
+  Future<_Engagements> _loadEngagementBatch(
     List<NostrEventReference> references,
   ) async {
     try {
-      return (
-        values: await _engagement.loadBatch(references),
-        succeeded: true,
-      );
+      return (values: await _engagement.loadBatch(references), ok: true);
     } on AppFailure catch (error, stackTrace) {
       _report('NostrVideoInteractions.loadEngagement', error, stackTrace);
-      return (
-        values: const <NostrEventId, VideoEngagement>{},
-        succeeded: false
-      );
+      return (values: const <NostrEventId, VideoEngagement>{}, ok: false);
     }
   }
 
-  Future<_CommentCountLoad> _loadCommentCountsBatch(
+  Future<_CommentCounts> _loadCommentCountsBatch(
     List<NostrEventReference> references,
   ) async {
     try {
@@ -170,11 +176,11 @@ class NostrVideoInteractions {
         values: <NostrEventId, int>{
           for (final entry in comments.entries) entry.key: entry.value.length,
         },
-        succeeded: true,
+        ok: true,
       );
     } on AppFailure catch (error, stackTrace) {
       _report('NostrVideoInteractions.loadCommentCount', error, stackTrace);
-      return (values: const <NostrEventId, int>{}, succeeded: false);
+      return (values: const <NostrEventId, int>{}, ok: false);
     }
   }
 
@@ -187,11 +193,5 @@ class NostrVideoInteractions {
   }
 }
 
-typedef _EngagementLoad = ({
-  Map<NostrEventId, VideoEngagement> values,
-  bool succeeded,
-});
-typedef _CommentCountLoad = ({
-  Map<NostrEventId, int> values,
-  bool succeeded,
-});
+typedef _Engagements = ({Map<NostrEventId, VideoEngagement> values, bool ok});
+typedef _CommentCounts = ({Map<NostrEventId, int> values, bool ok});

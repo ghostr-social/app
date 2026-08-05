@@ -3,6 +3,7 @@
 use crate::discovery::discovery_scheduler::{
     FinishedRetrieval, RetrievalOutcome, RetrievalPurpose,
 };
+use crate::discovery::feed_cursor::playable_cursor;
 use crate::discovery::plan_executor::{
     PlanExecutor, PlanFailure, PlanPage, PlanPageFuture, PlannedRetrieval,
 };
@@ -34,13 +35,14 @@ pub(crate) fn spawn_retrieval_task(input: RetrievalTaskInput) -> JoinHandle<()> 
             plan: input.plan,
         };
         let purpose = purpose(&retrieval);
-        let result =
+        let progress =
             execute_progressively(input.executor, retrieval, context.clone(), input.outcomes).await;
         let _ = input.finished.send(FinishedRetrieval {
             task_id: input.task_id,
             context,
-            result,
+            result: progress.result,
             purpose,
+            had_playable_progress: progress.had_playable,
         });
     })
 }
@@ -63,7 +65,7 @@ pub(crate) async fn execute_progressively(
     retrieval: PlannedRetrieval,
     context: FeedContext,
     outcomes: mpsc::UnboundedSender<RetrievalOutcome>,
-) -> Result<PlanPage, PlanFailure> {
+) -> ProgressiveResult {
     let (progress, mut events) = mpsc::channel(PROGRESS_BUFFER);
     let mut execution = executor.execute_page_with_progress(retrieval, progress);
     forward_events(&mut execution, &mut events, context, outcomes).await
@@ -74,20 +76,27 @@ async fn forward_events(
     events: &mut mpsc::Receiver<Event>,
     context: FeedContext,
     outcomes: mpsc::UnboundedSender<RetrievalOutcome>,
-) -> Result<PlanPage, PlanFailure> {
+) -> ProgressiveResult {
     let mut reported = 0;
+    let mut had_playable = false;
     loop {
         tokio::select! {
             biased;
             Some(event) = events.recv() => {
+                had_playable |= playable_cursor(std::slice::from_ref(&event)).is_some();
                 if reported < MAX_PROGRESS_OUTCOMES {
                     send_progress(&outcomes, &context, event);
                     reported += 1;
                 }
             },
-            result = &mut *execution => return result,
+            result = &mut *execution => return ProgressiveResult { result, had_playable },
         }
     }
+}
+
+pub(crate) struct ProgressiveResult {
+    result: Result<PlanPage, PlanFailure>,
+    had_playable: bool,
 }
 
 fn send_progress(

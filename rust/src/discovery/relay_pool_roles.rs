@@ -1,9 +1,10 @@
 //! Reference-counted READ/WRITE roles for the single shared relay pool.
 
+use crate::discovery::relay_registration::{RelayRegistration, RelayRegistrationPolicy};
 use crate::discovery::relay_removal::{RelayRemoval, RelayRoleIo};
+use crate::discovery::relay_role_book::{unique, DesiredRoles, RoleBook};
 use log::warn;
 use nostr_sdk::{Client, RelayServiceFlags};
-use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -19,26 +20,10 @@ pub(crate) enum RelayRole {
     Write,
 }
 
-#[derive(Clone, Copy, Default)]
-struct RelayUse {
-    reads: usize,
-    writes: usize,
-}
-
-#[derive(Clone, Copy)]
-struct DesiredRoles {
-    read: bool,
-    write: bool,
-}
-
-struct RoleBook {
-    configuration: RelayPoolConfiguration,
-    active: HashMap<String, RelayUse>,
-}
-
 pub(crate) struct RelayPoolRoles {
     client: Arc<Client>,
     removal: Arc<dyn RelayRemoval>,
+    registration: Arc<dyn RelayRegistration>,
     book: Mutex<RoleBook>,
 }
 
@@ -47,10 +32,8 @@ impl RelayPoolRoles {
         Self {
             client: io.client,
             removal: io.removal,
-            book: Mutex::new(RoleBook {
-                configuration,
-                active: HashMap::new(),
-            }),
+            registration: io.registration,
+            book: Mutex::new(RoleBook::new(configuration)),
         }
     }
 
@@ -78,14 +61,14 @@ impl RelayPoolRoles {
 
     pub(crate) async fn replace_configuration(&self, configuration: RelayPoolConfiguration) {
         let mut book = self.book.lock().await;
-        book.active.clear();
+        book.clear();
         book.configuration = configuration;
         self.reconcile(&book).await;
     }
 
     pub(crate) async fn reset_session(&self) {
         let mut book = self.book.lock().await;
-        book.active.clear();
+        book.clear();
         self.reconcile(&book).await;
     }
 
@@ -107,25 +90,11 @@ impl RelayPoolRoles {
             self.remove(url).await;
             return;
         }
-        if desired.read {
-            self.add_read(url).await;
-        }
-        if desired.write {
-            self.add_write(url).await;
+        let policy = RelayRegistrationPolicy::eager(desired.flags());
+        if let Err(error) = self.registration.register(url, policy).await {
+            warn!("Nostr relay {url} was rejected: {error}");
         }
         self.remove_extra_roles(url, desired).await;
-    }
-
-    async fn add_read(&self, url: &str) {
-        if let Err(error) = self.client.add_read_relay(url).await {
-            warn!("Nostr read relay {url} was rejected: {error}");
-        }
-    }
-
-    async fn add_write(&self, url: &str) {
-        if let Err(error) = self.client.add_write_relay(url).await {
-            warn!("Nostr write relay {url} was rejected: {error}");
-        }
     }
 
     async fn remove_extra_roles(&self, url: &str, desired: DesiredRoles) {
@@ -147,54 +116,8 @@ impl RelayPoolRoles {
         }
         if let Err(error) = self.removal.remove(url).await {
             warn!("Nostr relay {url} could not be removed: {error}");
+        } else {
+            self.registration.forget(url);
         }
     }
-}
-
-impl RoleBook {
-    fn acquire(&mut self, url: &str, role: RelayRole) {
-        let usage = self.active.entry(url.to_owned()).or_default();
-        match role {
-            RelayRole::Read => usage.reads += 1,
-            RelayRole::Write => usage.writes += 1,
-        }
-    }
-
-    fn release(&mut self, url: &str, role: RelayRole) {
-        let Some(usage) = self.active.get_mut(url) else {
-            return;
-        };
-        match role {
-            RelayRole::Read => usage.reads = usage.reads.saturating_sub(1),
-            RelayRole::Write => usage.writes = usage.writes.saturating_sub(1),
-        }
-        if usage.reads == 0 && usage.writes == 0 {
-            self.active.remove(url);
-        }
-    }
-
-    fn desired(&self, url: &str) -> DesiredRoles {
-        let usage = self.active.get(url).copied().unwrap_or_default();
-        DesiredRoles {
-            read: self.persistent_relays().contains(url) || usage.reads > 0,
-            write: usage.writes > 0,
-        }
-    }
-
-    fn persistent_relays(&self) -> HashSet<String> {
-        self.configuration
-            .read_relays
-            .iter()
-            .chain(&self.configuration.search_relays)
-            .cloned()
-            .collect()
-    }
-}
-
-fn unique(urls: &[String]) -> Vec<String> {
-    let mut seen = HashSet::new();
-    urls.iter()
-        .filter(|url| seen.insert(url.as_str()))
-        .cloned()
-        .collect()
 }

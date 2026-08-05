@@ -6,16 +6,16 @@ use std::sync::Arc;
 use std::time::Duration;
 
 #[tokio::test]
-async fn configured_zero_timeout_read_drains_to_empty() {
+async fn cold_disconnected_read_is_not_authoritative_empty() {
     let client = Arc::new(Client::default());
     let relay = "ws://127.0.0.1:1";
     client
         .add_read_relay(relay)
         .await
         .expect("valid local relay URL");
-    let io = SdkRelayIo::new(client);
+    let io = SdkRelayIo::with_readiness_timeout(client, Duration::ZERO);
 
-    let events = io
+    let error = io
         .read(RelayReadIo {
             relays: vec![relay.to_owned()],
             filter: Filter::new(),
@@ -23,9 +23,9 @@ async fn configured_zero_timeout_read_drains_to_empty() {
             progress: None,
         })
         .await
-        .expect("the stream itself is valid");
+        .expect_err("a cold relay cannot prove that the query is empty");
 
-    assert!(events.is_empty());
+    assert!(error.to_string().contains("no target relay connected"));
 }
 
 #[tokio::test]

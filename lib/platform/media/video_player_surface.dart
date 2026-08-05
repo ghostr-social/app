@@ -20,10 +20,13 @@ class _VideoPlayerSurface extends StatefulWidget {
 
 class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   VideoPlayerController? _controller;
-  late final _lifecycle =
-      _VideoPlayerControllerLifecycle(widget.controllerDisposer);
-  late final _valueWatch =
-      VideoPlayerValueListener(onStateChanged: _handleValueChange);
+  late final _lifecycle = _VideoPlayerControllerLifecycle(
+    widget.controllerDisposer,
+  );
+  late final _valueWatch = VideoPlayerValueListener(
+    onStateChanged: _handleValueChange,
+  );
+  final Completer<void> _closing = Completer<void>();
   late bool _hasError = !_isPlayableMedia(widget.media);
   bool _isClosing = false;
 
@@ -42,6 +45,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   @override
   void dispose() {
     _isClosing = true;
+    _closing.complete();
     _valueWatch.detach();
     final released = widget.onPlaybackMediaReleased;
     final disposal = _disposeCurrentController();
@@ -69,7 +73,8 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
     _controller = controller;
     try {
       await controller.setLooping(true);
-      await controller.initialize();
+      if (!await _initializeUntilClosing(controller)) return;
+      _requireVisibleVideo(controller);
       await _acceptController(controller);
     } on Object catch (error, stackTrace) {
       log(
@@ -80,6 +85,15 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
       );
       await _rejectController(controller);
     }
+  }
+
+  Future<bool> _initializeUntilClosing(VideoPlayerController controller) async {
+    if (_isClosing) return false;
+    final initialization = controller.initialize();
+    await Future.any<void>([initialization, _closing.future]);
+    if (_isClosing) return false;
+    await initialization;
+    return true;
   }
 
   VideoPlayerController _createController() {
@@ -178,17 +192,5 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
 
   Future<void> _disposeSafely(VideoPlayerController controller) {
     return _lifecycle.dispose(controller);
-  }
-}
-
-final class _BufferingOverlay extends StatelessWidget {
-  const _BufferingOverlay();
-
-  @override
-  Widget build(BuildContext context) {
-    return const ColoredBox(
-      color: AppPalette.videoLoadingBackground,
-      child: LoadingPanel(label: 'Buffering video'),
-    );
   }
 }

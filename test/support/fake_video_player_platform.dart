@@ -5,6 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
+  FakeVideoPlayerPlatform({this.autoInitialize = true});
+
+  final bool autoInitialize;
   final List<String> calls = [];
   final List<DataSource> dataSources = [];
   final Map<int, StreamController<VideoEvent>> _streams = {};
@@ -23,7 +26,7 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
       onCancel: () => calls.add('cancel'),
     );
     _streams[id] = stream;
-    Timer.run(() => _initialize(stream));
+    if (autoInitialize) Timer.run(() => _initialize(stream));
     return id;
   }
 

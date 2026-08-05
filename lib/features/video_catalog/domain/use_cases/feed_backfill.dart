@@ -53,17 +53,20 @@ final class FeedBackfill {
 
   /// Digs one page further into the past.
   Future<FeedDig> dig(FeedKind kind) async {
-    final cursor = _pagination.beginLoad();
-    if (cursor == null) return const FeedDigSkipped();
+    final lease = _pagination.beginLoad();
+    if (lease == null) return const FeedDigSkipped();
     final request = _loads.pending;
-    final result = await _fetch.older(kind, cursor);
+    final result = await _fetch.older(kind, lease.cursor);
     if (result is FeedUnavailable) {
-      _pagination.failLoad();
+      _pagination.failLoad(lease);
       return FeedDigFailed(result);
     }
-    if (!_loads.accepts(request)) return const FeedDigSkipped();
+    if (!_loads.accepts(request)) {
+      _pagination.failLoad(lease);
+      return const FeedDigSkipped();
+    }
     final page = (result as FeedFetched).page;
-    _pagination.completeLoad(page);
+    _pagination.completeLoad(lease, page);
     return FeedDigPage(page.posts);
   }
 }

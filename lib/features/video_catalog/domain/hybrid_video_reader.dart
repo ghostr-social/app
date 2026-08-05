@@ -7,16 +7,18 @@ import 'package:ghostr/features/video_catalog/domain/remote_video_source.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post_reader.dart';
 
+const _feedHydrationBudget = Duration(milliseconds: 100);
+
 class HybridVideoReader implements VideoPostReader {
   const HybridVideoReader({
     required RemoteVideoSource remote,
     required PublishedVideoStore local,
     required NostrVideoInteractions interactions,
     required FailureReporter failureReporter,
-  })  : _remote = remote,
-        _local = local,
-        _interactions = interactions,
-        _failureReporter = failureReporter;
+  }) : _remote = remote,
+       _local = local,
+       _interactions = interactions,
+       _failureReporter = failureReporter;
 
   final RemoteVideoSource _remote;
   final PublishedVideoStore _local;
@@ -68,7 +70,7 @@ class HybridVideoReader implements VideoPostReader {
   }
 
   Future<List<VideoPost>> _hydrate(List<VideoPost> posts) {
-    return _interactions.hydrateAll(posts);
+    return _interactions.hydrateAll(posts, budget: _feedHydrationBudget);
   }
 
   List<VideoPost> _merge(List<VideoPost> local, List<VideoPost> remote) {

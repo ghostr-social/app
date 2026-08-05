@@ -3,6 +3,8 @@
 use super::{DiscoveryCommand, DiscoveryHandle};
 use crate::discovery::plan_executor::PlanFailure;
 use crate::discovery::retrieval_queue::FeedContext;
+#[cfg(test)]
+use crate::discovery::scheduler_hunt::HuntToken;
 use crate::discovery::scheduler_queries::QueryResult;
 use crate::discovery::search_queries::QueryPlan;
 use crate::discovery::session_generation::SessionGeneration;
@@ -64,6 +66,14 @@ impl DiscoveryHandle {
 
     pub fn set_data_usage(&self, level: DataUsageLevel) {
         let _ = self.sender.send(DiscoveryCommand::SetDataUsage(level));
+    }
+
+    #[cfg(test)]
+    pub(crate) fn inject_retry(&self, context: FeedContext, token: u64) {
+        let _ = self.sender.send(DiscoveryCommand::RetryFeed {
+            context,
+            token: HuntToken(token),
+        });
     }
 }
 

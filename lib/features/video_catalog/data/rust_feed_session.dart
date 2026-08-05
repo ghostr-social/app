@@ -85,21 +85,20 @@ final class RustFeedSession {
     await _link.port.closeFeed(_link.feedId);
   }
 
-  /// Revision zero is the baseline snapshot Rust publishes before any
-  /// retrieval lands, and it is what the reader hands back when no page
-  /// became available in time (rust_feed_page_reader.dart): neither is warm
-  /// state a later pull may answer with.
+  /// Baselines and empty retry failures carry no page a later pull can use.
+  /// The failure is still visible to passive watchers, while pull readers
+  /// stay parked for the Rust-owned retry.
   RustFeedPage _remember(RustFeedPage page) {
-    if (page.revision == BigInt.zero) return page;
+    if (page.revision == BigInt.zero ||
+        page.stage == FfiFeedStage.failed && page.posts.isEmpty) {
+      return page;
+    }
     final current = _page;
     if (current == null || page.revision >= current.revision) _page = page;
     return _page!;
   }
 
   bool _isVisible(FfiFeedUpdate update) {
-    if (update.stage == FfiFeedStage.failed && update.posts.isEmpty) {
-      throw rustFeedFailure;
-    }
     return update.stage != FfiFeedStage.loading || update.posts.isNotEmpty;
   }
 

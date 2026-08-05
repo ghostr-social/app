@@ -2,6 +2,7 @@ import 'package:ghostr/features/engagement/domain/video_engagement_repository.da
 import 'package:ghostr/features/social/domain/social_graph_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
+import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
 
 /// Everything a feed needs from the outside world. The optional ports stay
@@ -21,6 +22,7 @@ class FeedDependencies {
   SocialGraphRepository? get social => optional.social;
   FeedFocusPort? get focus => optional.focus;
   WatchHistoryTracker? get watchTracker => optional.watchTracker;
+  VideoFeedUpdates? get updates => optional.updates;
 }
 
 /// Capabilities a feed can omit without changing its retrieval contract.
@@ -29,9 +31,11 @@ final class FeedOptionalDependencies {
     this.social,
     this.focus,
     this.watchTracker,
+    this.updates,
   });
 
   final SocialGraphRepository? social;
   final FeedFocusPort? focus;
   final WatchHistoryTracker? watchTracker;
+  final VideoFeedUpdates? updates;
 }

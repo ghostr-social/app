@@ -28,6 +28,9 @@ linter:
   # producing the lint.
   rules:
     avoid_print: true
+    # Dart 3.12 activates this advisory style lint across legacy constructors.
+    # Migrate those constructors separately from the playback SDK upgrade.
+    prefer_initializing_formals: false
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

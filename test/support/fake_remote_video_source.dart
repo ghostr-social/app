@@ -16,6 +16,7 @@ class FakeRemoteVideoSource implements RemoteVideoSource {
   String? requestedSearchQuery;
   Set<String>? requestedHashtags;
   Set<ProfileId>? requestedLoadMoreCreatorIds;
+  Set<ProfileId>? requestedWatchCreatorIds;
   String? requestedLoadMoreSearchQuery;
   Set<String>? requestedLoadMoreHashtags;
   final List<DateTime> requestedOlderThan = <DateTime>[];
@@ -55,10 +56,13 @@ class FakeRemoteVideoSource implements RemoteVideoSource {
     String? searchQuery,
     Set<String>? hashtags,
   }) {
-    return Stream.value(RemoteVideoSnapshot(
-      revision: BigInt.one,
-      phase: snapshotPhase,
-      posts: posts,
-    ));
+    requestedWatchCreatorIds = creatorIds;
+    return Stream.value(
+      RemoteVideoSnapshot(
+        revision: BigInt.one,
+        phase: snapshotPhase,
+        posts: posts,
+      ),
+    );
   }
 }

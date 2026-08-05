@@ -7,28 +7,32 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../support/fakes.dart';
 
 void main() {
-  test('mirrors successful relay social changes into the local cache',
-      () async {
-    SharedPreferences.setMockInitialValues({});
-    final local = LocalVideoStore(
-      await SharedPreferences.getInstance(),
-      accountScope: testAccountStorageScope(),
-    );
-    final cache = SocialGraphCache(
-      FakeNostrSocialPort(),
-      local,
-      RecordingFailureReporter(),
-    );
-    final creator = ProfileId.parse('creator');
+  test(
+    'mirrors successful relay social changes into the local cache',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final local = LocalVideoStore(
+        await SharedPreferences.getInstance(),
+        accountScope: testAccountStorageScope(),
+      );
+      final cache = SocialGraphCache(
+        FakeNostrSocialPort(),
+        local,
+        RecordingFailureReporter(),
+      );
+      final creator = ProfileId.parse('creator');
 
-    expect(await cache.toggleFollow(creator), isTrue);
-    expect(await cache.toggleBlock(creator), isTrue);
-    expect(await local.loadFollowedProfiles(), {creator});
-    expect(await local.loadBlockedProfiles(), {creator});
+      expect(await cache.loadBlockedProfiles(), isEmpty);
+      expect(await cache.toggleFollow(creator), isTrue);
+      expect(await cache.toggleBlock(creator), isTrue);
+      expect(await cache.loadBlockedProfiles(), {creator});
+      expect(await local.loadFollowedProfiles(), {creator});
+      expect(await local.loadBlockedProfiles(), {creator});
 
-    expect(await cache.toggleFollow(creator), isFalse);
-    expect(await cache.toggleBlock(creator), isFalse);
-    expect(await local.loadFollowedProfiles(), isEmpty);
-    expect(await local.loadBlockedProfiles(), isEmpty);
-  });
+      expect(await cache.toggleFollow(creator), isFalse);
+      expect(await cache.toggleBlock(creator), isFalse);
+      expect(await local.loadFollowedProfiles(), isEmpty);
+      expect(await local.loadBlockedProfiles(), isEmpty);
+    },
+  );
 }

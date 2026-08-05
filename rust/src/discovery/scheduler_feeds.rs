@@ -1,6 +1,4 @@
-//! Per-context feed bookkeeping behind the discovery scheduler: base
-//! request, older-page cursor, and in-flight accounting — everything
-//! the control-loop policy asks about the active feed.
+//! Per-context request, cursor, and in-flight discovery bookkeeping.
 
 use crate::discovery::control_loop::FeedQueryState;
 use crate::discovery::retrieval_queue::FeedContext;
@@ -33,6 +31,7 @@ struct FeedProgress {
     query: bool,
     older_pages: u8,
     failed: bool,
+    playable: bool,
 }
 
 impl FeedBook {
@@ -50,6 +49,7 @@ impl FeedBook {
                 query,
                 older_pages: 0,
                 failed: false,
+                playable: false,
             },
         );
         self.active = Some(context);
@@ -120,6 +120,7 @@ impl FeedBook {
             let first = !feed.loaded;
             feed.loaded = true;
             feed.failed = false;
+            feed.playable |= cursor.is_some();
             if first || !head {
                 feed.cursor = cursor;
             }
@@ -134,6 +135,16 @@ impl FeedBook {
             feed.loaded = true;
             feed.failed = true;
         }
+    }
+
+    pub(crate) fn record_playable(&mut self, context: &FeedContext) {
+        if let Some(feed) = self.feeds.get_mut(context) {
+            feed.playable = true;
+        }
+    }
+
+    pub(crate) fn has_playable(&self, context: &FeedContext) -> bool {
+        self.feeds.get(context).is_some_and(|feed| feed.playable)
     }
 
     pub(crate) fn head_request(&self, context: &FeedContext) -> Option<DiscoveryRequest> {

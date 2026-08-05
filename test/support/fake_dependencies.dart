@@ -1,8 +1,10 @@
 import 'package:ghostr/app/app_dependencies.dart';
 import 'package:ghostr/app/video_catalog_services.dart';
+import 'package:ghostr/app/video_feed_binding.dart';
 import 'package:ghostr/features/session/domain/session_repository.dart';
 import 'package:ghostr/features/session/domain/user_session.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
+import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 
 import 'fake_activity_repository.dart';
@@ -17,6 +19,7 @@ AppDependencies buildFakeDependencies({
   UserSession? session,
   SessionRepository? sessionRepository,
   required FakeVideoCatalogRepository catalogRepository,
+  VideoFeedUpdates? feedUpdates,
   FakeWatchHistoryRepository? watchHistory,
   FakeDeviceDependencies device = const FakeDeviceDependencies(),
 }) {
@@ -25,7 +28,10 @@ AppDependencies buildFakeDependencies({
         sessionRepository ?? FakeSessionRepository(storedSession: session),
     appSettingsRepository: FakeAppSettingsRepository(AppSettings.defaults()),
     videoCatalogServices: VideoCatalogServices(
-      feed: catalogRepository,
+      feed: VideoFeedBinding(
+        repository: catalogRepository,
+        updates: feedUpdates,
+      ),
       engagement: catalogRepository,
       profile: catalogRepository,
       search: catalogRepository,

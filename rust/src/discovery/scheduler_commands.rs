@@ -18,7 +18,14 @@ impl SchedulerWorker {
             DiscoveryCommand::ResetSession { reply } => self.reset_session(reply),
             DiscoveryCommand::OpenFeed { context, request } => self.open_feed(context, request),
             DiscoveryCommand::CloseFeed(context) => self.close_feed(context),
-            DiscoveryCommand::ContinueQuery { context, head } => self.continue_query(context, head),
+            DiscoveryCommand::ContinueQuery {
+                context,
+                head,
+                token,
+            } => self.continue_query(context, head, token),
+            DiscoveryCommand::RetryFeed { context, token } => {
+                self.continue_feed_retry(context, token)
+            }
             DiscoveryCommand::LoadMore {
                 context,
                 older_than,
@@ -42,6 +49,10 @@ impl SchedulerWorker {
     }
 
     fn open_feed(&mut self, context: FeedContext, request: DiscoveryRequest) {
+        self.cancel_hunt(&context);
+        self.clear_feed_retry(&context);
+        self.cancel_context_work(&context);
+        self.feeds.close(&context);
         self.feeds.open(context.clone(), request.clone());
         self.queue.focus(context.clone());
         self.enqueue(
@@ -52,7 +63,9 @@ impl SchedulerWorker {
     }
 
     fn load_more(&mut self, context: FeedContext, older_than: Option<Timestamp>) {
-        self.cancel_hunt(&context);
+        if self.feeds.is_query(&context) {
+            self.cancel_hunt(&context);
+        }
         let Some(request) = self.feeds.older_page_request(&context, older_than) else {
             return;
         };

@@ -21,17 +21,22 @@ void main() {
 
     final dig = backfill.dig(FeedKind.forYou);
     loads.take();
-    repository.pending.complete(VideoFeedPage(
-      posts: [samplePost(id: 'older-0')],
-      nextOlderThan: DateTime(2026, 3, 11),
-    ));
+    repository.pending.complete(
+      VideoFeedPage(
+        posts: [samplePost(id: 'older-0')],
+        nextOlderThan: DateTime(2026, 3, 11),
+      ),
+    );
 
     expect(await dig, isA<FeedDigSkipped>());
+    expect(await backfill.dig(FeedKind.forYou), isA<FeedDigPage>());
+    expect(repository.loadCalls, 2);
   });
 }
 
 class _PendingOlderFeedRepository implements VideoFeedRepository {
   final pending = Completer<VideoFeedPage>();
+  int loadCalls = 0;
 
   @override
   Future<List<VideoPost>> loadFeed(
@@ -47,6 +52,8 @@ class _PendingOlderFeedRepository implements VideoFeedRepository {
     required DateTime olderThan,
     bool excludeWatched = false,
   }) {
-    return pending.future;
+    loadCalls += 1;
+    if (loadCalls == 1) return pending.future;
+    return Future.value(VideoFeedPage(posts: [samplePost(id: 'older-1')]));
   }
 }

@@ -7,14 +7,29 @@ bool _isPlayableMedia(VideoMediaSource media) {
 }
 
 VideoPlayerController _videoPlayerController(VideoMediaSource media) {
+  const viewType = VideoViewType.textureView;
   if (media is ProxiedHlsVideoMediaSource) {
     return VideoPlayerController.networkUrl(
       media.playbackUri,
       formatHint: VideoFormat.hls,
+      viewType: viewType,
     );
   }
   if (media is ProxiedProgressiveVideoMediaSource) {
-    return VideoPlayerController.networkUrl(media.playbackUri);
+    return VideoPlayerController.networkUrl(
+      media.playbackUri,
+      viewType: viewType,
+    );
   }
-  return VideoPlayerController.file(File(media.localPath!));
+  return VideoPlayerController.file(File(media.localPath!), viewType: viewType);
+}
+
+void _requireVisibleVideo(VideoPlayerController controller) {
+  final size = controller.value.size;
+  if (!size.width.isFinite ||
+      !size.height.isFinite ||
+      size.width <= 0 ||
+      size.height <= 0) {
+    throw StateError('Media has no visible video track.');
+  }
 }

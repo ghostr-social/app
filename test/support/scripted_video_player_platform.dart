@@ -7,8 +7,12 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 /// A player platform that initializes immediately and lets the test
 /// script later value events (buffering, errors) onto the stream.
 class ScriptedVideoPlayerPlatform extends VideoPlayerPlatform {
+  ScriptedVideoPlayerPlatform({this.initializedSize = const Size(180, 320)});
+
+  final Size initializedSize;
   final List<DataSource> dataSources = [];
   final Map<int, StreamController<VideoEvent>> _streams = {};
+  int playCalls = 0;
   int _nextTextureId = 0;
 
   void emit(VideoEvent event) => _latestStream.add(event);
@@ -29,11 +33,13 @@ class ScriptedVideoPlayerPlatform extends VideoPlayerPlatform {
     final stream = StreamController<VideoEvent>.broadcast();
     _streams[id] = stream;
     Timer.run(() {
-      stream.add(VideoEvent(
-        eventType: VideoEventType.initialized,
-        size: const Size(180, 320),
-        duration: const Duration(seconds: 10),
-      ));
+      stream.add(
+        VideoEvent(
+          eventType: VideoEventType.initialized,
+          size: initializedSize,
+          duration: const Duration(seconds: 10),
+        ),
+      );
     });
     return id;
   }
@@ -50,7 +56,9 @@ class ScriptedVideoPlayerPlatform extends VideoPlayerPlatform {
   Future<void> dispose(int textureId) async {}
 
   @override
-  Future<void> play(int textureId) async {}
+  Future<void> play(int textureId) async {
+    playCalls += 1;
+  }
 
   @override
   Future<void> pause(int textureId) async {}

@@ -1,11 +1,9 @@
-//! Event-driven discovery scheduler: the one queue every relay
-//! retrieval flows through, with a bounded worker pool as the
-//! data-usage knob. Commands arrive over a channel and executed
-//! batches stream out — no polling loops.
+//! Event-driven relay retrieval queue with a bounded worker pool.
 
 use crate::discovery::plan_executor::{PlanExecutor, PlanFailure, PlanPage};
 use crate::discovery::retrieval_queue::{FeedContext, RetrievalQueue};
 use crate::discovery::scheduler_feeds::FeedBook;
+use crate::discovery::scheduler_hunt::HuntToken;
 use crate::discovery::scheduler_queries::{QueryBook, QueryResult};
 use crate::discovery::search_queries::QueryPlan;
 use crate::discovery::video_filters::DiscoveryRequest;
@@ -21,9 +19,7 @@ use tokio::task::AbortHandle;
 
 mod handle;
 
-/// Worker-pool cap per data-usage level; mirrors
-/// `maxConcurrentRequests` (2/4/6) in
-/// lib/features/settings/domain/data_usage_level.dart.
+/// Mirrors Dart's `maxConcurrentRequests` worker-pool cap.
 pub fn max_concurrent_requests(level: DataUsageLevel) -> usize {
     match level {
         DataUsageLevel::Conservative => 2,
@@ -34,7 +30,7 @@ pub fn max_concurrent_requests(level: DataUsageLevel) -> usize {
 
 /// Control events the scheduler reacts to.
 #[derive(Debug)]
-pub enum DiscoveryCommand {
+pub(crate) enum DiscoveryCommand {
     /// Interactive feed/search/tag load; focuses its context.
     OpenFeed {
         context: FeedContext,
@@ -56,7 +52,16 @@ pub enum DiscoveryCommand {
     /// Ends queued, running, and delayed work for a closed feed.
     CloseFeed(FeedContext),
     /// Rust-owned continuation of an active query hunt.
-    ContinueQuery { context: FeedContext, head: bool },
+    ContinueQuery {
+        context: FeedContext,
+        head: bool,
+        token: HuntToken,
+    },
+    /// Rust-owned retry of a canonical feed after relay failure.
+    RetryFeed {
+        context: FeedContext,
+        token: HuntToken,
+    },
     /// A generic read shares the queue but answers only its caller.
     Query {
         context: FeedContext,
@@ -69,8 +74,7 @@ pub enum DiscoveryCommand {
     ResetSession { reply: oneshot::Sender<()> },
 }
 
-/// One executed retrieval, streamed to feed assembly without invalid
-/// provisional-failure combinations.
+/// One executed retrieval's role in feed assembly.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RetrievalPurpose {
     Head,
@@ -134,6 +138,7 @@ pub(crate) struct FinishedRetrieval {
     pub(crate) context: FeedContext,
     pub(crate) result: Result<PlanPage, PlanFailure>,
     pub(crate) purpose: RetrievalPurpose,
+    pub(crate) had_playable_progress: bool,
 }
 
 pub(crate) struct ActiveRetrieval {
@@ -152,6 +157,10 @@ pub(crate) struct SchedulerWorker {
     pub(crate) finished: mpsc::UnboundedReceiver<FinishedRetrieval>,
     pub(crate) tasks: HashMap<u64, ActiveRetrieval>,
     pub(crate) hunts: HashMap<FeedContext, AbortHandle>,
+    pub(crate) retry_attempts: HashMap<FeedContext, usize>,
+    pub(crate) pending_feed_retries: HashMap<FeedContext, HuntToken>,
+    pub(crate) pending_query_hunts: HashMap<FeedContext, HuntToken>,
+    pub(crate) next_hunt_token: u64,
     pub(crate) next_task_id: u64,
     pub(crate) commands: mpsc::UnboundedReceiver<DiscoveryCommand>,
     pub(crate) command_sender: WeakUnboundedSender<DiscoveryCommand>,
@@ -177,22 +186,15 @@ impl SchedulerWorker {
             finished,
             tasks: HashMap::new(),
             hunts: HashMap::new(),
+            retry_attempts: HashMap::new(),
+            pending_feed_retries: HashMap::new(),
+            pending_query_hunts: HashMap::new(),
+            next_hunt_token: 0,
             next_task_id: 0,
             commands,
             command_sender,
             modes: config.modes,
             modes_live: true,
-        }
-    }
-}
-
-impl Drop for SchedulerWorker {
-    fn drop(&mut self) {
-        for task in self.tasks.values() {
-            task.abort.abort();
-        }
-        for hunt in self.hunts.values() {
-            hunt.abort();
         }
     }
 }

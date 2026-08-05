@@ -1,3 +1,4 @@
+import 'package:ghostr/core/async/parallel_wait.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/errors/failure_reporter.dart';
 import 'package:ghostr/features/social/domain/social_graph_repository.dart';
@@ -21,10 +22,10 @@ class DiscoveryVideoSearchRepository
     required CreatorSearchSource creators,
     required SocialGraphRepository social,
     required FailureReporter failureReporter,
-  })  : _videos = videos,
-        _creators = creators,
-        _social = social,
-        _failureReporter = failureReporter;
+  }) : _videos = videos,
+       _creators = creators,
+       _social = social,
+       _failureReporter = failureReporter;
 
   static const _policy = VideoSearchPolicy();
 
@@ -42,11 +43,13 @@ class DiscoveryVideoSearchRepository
     final normalized = _policy.normalize(query);
     if (normalized == null) return VideoFeedPage(posts: const <VideoPost>[]);
     final tag = _policy.hashtag(normalized);
-    final fetched = await _videos.loadRemoteFeed(
+    final fetched = _videos.loadRemoteFeed(
       searchQuery: tag == null ? normalized : null,
       hashtags: tag == null ? null : <String>{tag},
     );
-    return _page(fetched, tag, await _social.loadBlockedProfiles());
+    final blocked = _social.loadBlockedProfiles();
+    final (posts, _) = await waitForBoth(fetched, blocked);
+    return _pageWithFreshBlocks(posts, tag);
   }
 
   @override
@@ -54,11 +57,13 @@ class DiscoveryVideoSearchRepository
     final normalized = _policy.normalize(query);
     if (normalized == null) return VideoFeedPage(posts: const <VideoPost>[]);
     final tag = _policy.hashtag(normalized);
-    final fetched = await _videos.loadMoreRemoteFeed(
+    final fetched = _videos.loadMoreRemoteFeed(
       searchQuery: tag == null ? normalized : null,
       hashtags: tag == null ? null : <String>{tag},
     );
-    return _page(fetched, tag, await _social.loadBlockedProfiles());
+    final blocked = _social.loadBlockedProfiles();
+    final (posts, _) = await waitForBoth(fetched, blocked);
+    return _pageWithFreshBlocks(posts, tag);
   }
 
   @override
@@ -107,8 +112,9 @@ class DiscoveryVideoSearchRepository
       // NIP-50 text matching is the relay's judgement; tags we can recheck.
       return tag == null || post.hashtags.contains(tag);
     }).toList();
-    selected
-        .sort((left, right) => right.publishedAt.compareTo(left.publishedAt));
+    selected.sort(
+      (left, right) => right.publishedAt.compareTo(left.publishedAt),
+    );
     return List<VideoPost>.unmodifiable(selected);
   }
 
@@ -145,6 +151,13 @@ class DiscoveryVideoSearchRepository
       posts: _selectPosts(fetched, tag, blocked),
       nextOlderThan: _nextCursor(fetched),
     );
+  }
+
+  Future<VideoFeedPage> _pageWithFreshBlocks(
+    List<VideoPost> fetched,
+    String? tag,
+  ) async {
+    return _page(fetched, tag, await _social.loadBlockedProfiles());
   }
 
   // The cursor advances by what was fetched, not what survived filtering,

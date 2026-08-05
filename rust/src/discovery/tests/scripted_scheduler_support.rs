@@ -1,7 +1,7 @@
 use crate::discovery::discovery_scheduler::{
     start_discovery_scheduler, DiscoveryHandle, DiscoverySchedulerConfig, RetrievalOutcome,
 };
-use crate::discovery::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
+use crate::discovery::plan_executor::{PlanExecutor, PlanFailure, PlanFuture, PlannedRetrieval};
 use crate::engine::{inventory_controller::Mode, DataUsageLevel};
 use nostr_sdk::Event;
 use std::collections::VecDeque;
@@ -10,7 +10,7 @@ use tokio::sync::{mpsc, watch};
 
 struct ScriptedExecutor {
     starts: mpsc::UnboundedSender<PlannedRetrieval>,
-    pages: Mutex<VecDeque<Vec<Event>>>,
+    pages: Mutex<VecDeque<Result<Vec<Event>, PlanFailure>>>,
 }
 
 impl PlanExecutor for ScriptedExecutor {
@@ -19,7 +19,7 @@ impl PlanExecutor for ScriptedExecutor {
         let page = self.pages.lock().expect("pages").pop_front();
         Box::pin(async move {
             match page {
-                Some(events) => Ok(events),
+                Some(result) => result,
                 None => std::future::pending().await,
             }
         })
@@ -33,6 +33,12 @@ pub struct ScriptedScheduler {
 }
 
 pub fn scripted_scheduler(pages: Vec<Vec<Event>>) -> ScriptedScheduler {
+    scripted_scheduler_results(pages.into_iter().map(Ok).collect())
+}
+
+pub fn scripted_scheduler_results(
+    pages: Vec<Result<Vec<Event>, PlanFailure>>,
+) -> ScriptedScheduler {
     let (starts, started) = mpsc::unbounded_channel();
     let executor = Arc::new(ScriptedExecutor {
         starts,

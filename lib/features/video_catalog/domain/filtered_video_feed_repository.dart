@@ -1,3 +1,4 @@
+import 'package:ghostr/core/async/parallel_wait.dart';
 import 'package:ghostr/features/social/domain/social_graph_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
@@ -24,15 +25,12 @@ class FilteredVideoFeedRepository implements VideoFeedRepository {
     bool excludeWatched = false,
   }) async {
     final followed = await _followedFor(kind);
-    final posts = await _reader.load(
+    final posts = _reader.load(
       creatorIds: kind == FeedKind.following ? followed : null,
     );
-    return _policy.select(
-      kind: kind,
-      posts: posts,
-      followed: followed,
-      blocked: await _social.loadBlockedProfiles(),
-    );
+    final blocked = _social.loadBlockedProfiles();
+    final (loadedPosts, _) = await waitForBoth(posts, blocked);
+    return _selectWithFreshBlocks(kind, loadedPosts, followed);
   }
 
   @override
@@ -42,19 +40,19 @@ class FilteredVideoFeedRepository implements VideoFeedRepository {
     bool excludeWatched = false,
   }) async {
     final followed = await _followedFor(kind);
-    final posts = await _reader.loadOlder(
+    final posts = _reader.loadOlder(
       olderThan: olderThan,
       creatorIds: kind == FeedKind.following ? followed : null,
     );
-    final selected = _policy.select(
-      kind: kind,
-      posts: posts,
-      followed: followed,
-      blocked: await _social.loadBlockedProfiles(),
-    );
+    final blocked = _social.loadBlockedProfiles();
+    final (loadedPosts, _) = await waitForBoth(posts, blocked);
+    final selected = await _selectWithFreshBlocks(kind, loadedPosts, followed);
     // The cursor advances by what was fetched, not what survived filtering,
     // so pages full of blocked creators cannot stall pagination.
-    return VideoFeedPage(posts: selected, nextOlderThan: _nextCursor(posts));
+    return VideoFeedPage(
+      posts: selected,
+      nextOlderThan: _nextCursor(loadedPosts),
+    );
   }
 
   DateTime? _nextCursor(List<VideoPost> fetched) {
@@ -70,5 +68,18 @@ class FilteredVideoFeedRepository implements VideoFeedRepository {
     return kind == FeedKind.following
         ? _social.loadFollowedProfiles()
         : Future.value(const <ProfileId>{});
+  }
+
+  Future<List<VideoPost>> _selectWithFreshBlocks(
+    FeedKind kind,
+    List<VideoPost> posts,
+    Set<ProfileId> followed,
+  ) async {
+    return _policy.select(
+      kind: kind,
+      posts: posts,
+      followed: followed,
+      blocked: await _social.loadBlockedProfiles(),
+    );
   }
 }

@@ -1,9 +1,9 @@
-import 'package:ghostr/core/async/keyed_serial_task_queue.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/errors/failure_reporter.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/features/social/data/accepted_social_mutations.dart';
 import 'package:ghostr/features/social/data/best_effort_social_graph_mirror.dart';
+import 'package:ghostr/features/social/data/social_graph_task_coordinator.dart';
 import 'package:ghostr/features/social/domain/social_graph_store.dart';
 import 'package:ghostr/features/social/domain/social_graph_repository.dart';
 import 'package:ghostr/features/social/domain/nostr_social_port.dart';
@@ -13,15 +13,17 @@ class SocialGraphCache implements SocialGraphRepository {
   SocialGraphCache(
     this._remote,
     this._local,
-    FailureReporter failureReporter,
-  )   : _failureReporter = failureReporter,
-        _localMirror = BestEffortSocialGraphMirror(failureReporter);
+    FailureReporter failureReporter, {
+    DateTime Function()? clock,
+  }) : _failureReporter = failureReporter,
+       _localMirror = BestEffortSocialGraphMirror(failureReporter),
+       _tasks = SocialGraphTaskCoordinator(clock: clock);
 
   final NostrSocialPort _remote;
   final SocialGraphStore _local;
   final FailureReporter _failureReporter;
   final BestEffortSocialGraphMirror _localMirror;
-  final KeyedSerialTaskQueue _mutationQueue = KeyedSerialTaskQueue();
+  final SocialGraphTaskCoordinator _tasks;
   final _accepted = AcceptedSocialMutations();
 
   @override
@@ -29,8 +31,9 @@ class SocialGraphCache implements SocialGraphRepository {
     final local = _local.snapshotForActiveAccount();
     final remote = _remote.snapshotForActiveAccount();
     final account = _matchingAccount(local, remote);
-    return _mutationQueue.run(
-      (account, SocialGraphMembership.followed),
+    return _tasks.read(
+      account,
+      SocialGraphMembership.followed,
       () => _loadFollowed(account, remote, local),
     );
   }
@@ -46,11 +49,7 @@ class SocialGraphCache implements SocialGraphRepository {
     } on AppFailure catch (error, stackTrace) {
       _report('SocialGraphCache.loadFollowedProfiles', error, stackTrace);
       final cached = await local.loadFollowedProfiles();
-      return _accepted.project(
-        account,
-        SocialGraphMembership.followed,
-        cached,
-      );
+      return _accepted.project(account, SocialGraphMembership.followed, cached);
     }
     final current = _accepted.project(
       account,
@@ -67,8 +66,9 @@ class SocialGraphCache implements SocialGraphRepository {
     final local = _local.snapshotForActiveAccount();
     final remote = _remote.snapshotForActiveAccount();
     final account = _matchingAccount(local, remote);
-    return _mutationQueue.run(
-      (account, SocialGraphMembership.blocked),
+    return _tasks.read(
+      account,
+      SocialGraphMembership.blocked,
       () => _loadBlocked(account, remote, local),
     );
   }
@@ -84,11 +84,7 @@ class SocialGraphCache implements SocialGraphRepository {
     } on AppFailure catch (error, stackTrace) {
       _report('SocialGraphCache.loadBlockedProfiles', error, stackTrace);
       final cached = await local.loadBlockedProfiles();
-      return _accepted.project(
-        account,
-        SocialGraphMembership.blocked,
-        cached,
-      );
+      return _accepted.project(account, SocialGraphMembership.blocked, cached);
     }
     final current = _accepted.project(
       account,
@@ -105,8 +101,9 @@ class SocialGraphCache implements SocialGraphRepository {
     final local = _local.snapshotForActiveAccount();
     final remote = _remote.snapshotForActiveAccount();
     final account = _matchingAccount(local, remote);
-    return _mutationQueue.run(
-      (account, SocialGraphMembership.followed),
+    return _tasks.mutate(
+      account,
+      SocialGraphMembership.followed,
       () => _toggleFollow(account, remote, local, profileId),
     );
   }
@@ -133,8 +130,9 @@ class SocialGraphCache implements SocialGraphRepository {
     final local = _local.snapshotForActiveAccount();
     final remote = _remote.snapshotForActiveAccount();
     final account = _matchingAccount(local, remote);
-    return _mutationQueue.run(
-      (account, SocialGraphMembership.blocked),
+    return _tasks.mutate(
+      account,
+      SocialGraphMembership.blocked,
       () => _toggleBlock(account, remote, local, profileId),
     );
   }

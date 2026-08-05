@@ -2,11 +2,18 @@ import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
 import 'package:ghostr/features/video_catalog/domain/video_interaction_target.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 
+/// Exclusive ownership of one older-page cursor.
+final class FeedPageLease {
+  const FeedPageLease(this.cursor);
+
+  final DateTime cursor;
+}
+
 /// Tracks how far into the past the feed has been paged and keeps a single
 /// older-page request in flight at a time.
 final class FeedPagination {
   DateTime? _cursor;
-  bool _inFlight = false;
+  FeedPageLease? _active;
 
   /// Rebases the cursor just below the oldest post of a fresh load.
   void restartFrom(List<VideoPost> posts) {
@@ -17,25 +24,25 @@ final class FeedPagination {
       }
     }
     _cursor = oldest?.subtract(const Duration(seconds: 1));
-    _inFlight = false;
+    _active = null;
   }
 
   /// Claims the cursor for one request; null when exhausted or already busy.
-  DateTime? beginLoad() {
-    if (_inFlight) return null;
+  FeedPageLease? beginLoad() {
+    if (_active != null) return null;
     final cursor = _cursor;
     if (cursor == null) return null;
-    _inFlight = true;
-    return cursor;
+    return _active = FeedPageLease(cursor);
   }
 
-  void completeLoad(VideoFeedPage page) {
+  void completeLoad(FeedPageLease lease, VideoFeedPage page) {
+    if (!identical(_active, lease)) return;
     _cursor = page.nextOlderThan;
-    _inFlight = false;
+    _active = null;
   }
 
-  void failLoad() {
-    _inFlight = false;
+  void failLoad(FeedPageLease lease) {
+    if (identical(_active, lease)) _active = null;
   }
 
   /// Appends the page posts that are not already in the list.

@@ -1,6 +1,7 @@
 import 'package:ghostr/app/production_nostr_services.dart';
 import 'package:ghostr/app/production_video_delivery.dart';
 import 'package:ghostr/app/video_catalog_services.dart';
+import 'package:ghostr/app/video_feed_binding.dart';
 import 'package:ghostr/core/storage/account_storage_scope.dart';
 import 'package:ghostr/features/comments/data/nostr_comments_repository.dart';
 import 'package:ghostr/features/engagement/data/nostr_engagement_repository.dart';
@@ -17,6 +18,7 @@ import 'package:ghostr/features/video_catalog/domain/discovery_video_search_repo
 import 'package:ghostr/features/video_catalog/domain/filtered_video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/hybrid_video_reader.dart';
 import 'package:ghostr/features/video_catalog/domain/nostr_video_interactions.dart';
+import 'package:ghostr/features/video_catalog/domain/remote_video_feed_updates.dart';
 import 'package:ghostr/features/watch_history/data/local_watch_history_repository.dart';
 import 'package:ghostr/features/watch_history/domain/watch_aware_video_feed_repository.dart';
 import 'package:ghostr/platform/logging/developer_failure_reporter.dart';
@@ -42,50 +44,72 @@ class ProductionVideoCatalogInputs {
 
 VideoCatalogServices buildProductionVideoCatalog(
   ProductionVideoCatalogInputs inputs,
-) {
-  final delivery = inputs.delivery;
-  final nostr = inputs.nostr;
-  final local = LocalVideoStore(
+) => _ProductionVideoCatalog(inputs).build();
+
+final class _ProductionVideoCatalog {
+  _ProductionVideoCatalog(this.inputs);
+
+  final ProductionVideoCatalogInputs inputs;
+  static const _reporter = DeveloperFailureReporter();
+
+  late final _delivery = inputs.delivery;
+  late final _nostr = inputs.nostr;
+  late final _local = LocalVideoStore(
     inputs.preferences,
     accountScope: inputs.accountScope,
   );
-  const reporter = DeveloperFailureReporter();
-  final social = SocialGraphCache(nostr.adapters.social, local, reporter);
-  final interactions = NostrVideoInteractions(
-    NostrEngagementRepository(nostr.eventClient),
-    NostrCommentsRepository(nostr.eventClient),
-    reporter,
+  late final _social = SocialGraphCache(
+    _nostr.adapters.social,
+    _local,
+    _reporter,
   );
-  final reader = HybridVideoReader(
-    remote: delivery.remoteSource,
-    local: local,
-    interactions: interactions,
-    failureReporter: reporter,
+  late final _interactions = NostrVideoInteractions(
+    NostrEngagementRepository(_nostr.eventClient),
+    NostrCommentsRepository(_nostr.eventClient),
+    _reporter,
   );
-  final search = DiscoveryVideoSearchRepository(
-    videos: delivery.searchSource,
-    creators: NostrCreatorSearchSource(nostr.eventClient),
-    social: social,
-    failureReporter: reporter,
+  late final _reader = HybridVideoReader(
+    remote: _delivery.remoteSource,
+    local: _local,
+    interactions: _interactions,
+    failureReporter: _reporter,
   );
-  return VideoCatalogServices(
-    feed: WatchAwareVideoFeedRepository(
-      feed: FilteredVideoFeedRepository(reader, social),
-      history: inputs.watchHistory,
-      settings: inputs.settingsRepository,
-      failureReporter: reporter,
-    ),
-    engagement: HybridVideoEngagementRepository(interactions),
-    profile: AggregatingVideoProfileRepository(reader, social),
-    search: search,
-    searchUpdates: search,
-    trending: RecentVideosTrendingHashtags(delivery.discoverySource),
-    publishing: HybridVideoPublishingRepository(
-      local,
-      nostr.publisher,
-      reporter,
-    ),
-    comments: HybridVideoCommentsRepository(interactions),
-    social: social,
+  late final _feed = WatchAwareVideoFeedRepository(
+    feed: FilteredVideoFeedRepository(_reader, _social),
+    history: inputs.watchHistory,
+    settings: inputs.settingsRepository,
+    failureReporter: _reporter,
   );
+  late final _search = DiscoveryVideoSearchRepository(
+    videos: _delivery.searchSource,
+    creators: NostrCreatorSearchSource(_nostr.eventClient),
+    social: _social,
+    failureReporter: _reporter,
+  );
+
+  VideoCatalogServices build() {
+    return VideoCatalogServices(
+      feed: VideoFeedBinding(
+        repository: _feed,
+        updates: _delivery.playbackCapabilities.supportsAny
+            ? RemoteVideoFeedUpdates(
+                remote: _delivery.remoteSource,
+                social: _social,
+              )
+            : null,
+      ),
+      engagement: HybridVideoEngagementRepository(_interactions),
+      profile: AggregatingVideoProfileRepository(_reader, _social),
+      search: _search,
+      searchUpdates: _search,
+      trending: RecentVideosTrendingHashtags(_delivery.discoverySource),
+      publishing: HybridVideoPublishingRepository(
+        _local,
+        _nostr.publisher,
+        _reporter,
+      ),
+      comments: HybridVideoCommentsRepository(_interactions),
+      social: _social,
+    );
+  }
 }

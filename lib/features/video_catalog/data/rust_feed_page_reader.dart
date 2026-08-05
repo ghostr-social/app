@@ -2,6 +2,10 @@ import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_update_queue.dart';
 import 'package:ghostr/src/rust/api/feed_types.dart';
 
+final _feedPageStopwatch = Stopwatch()..start();
+
+Duration _feedPageElapsed() => _feedPageStopwatch.elapsed;
+
 /// The slowest query a Rust discovery plan can contain, mirrored from
 /// `DISCOVERY_QUERY_TIMEOUT` (rust/src/discovery/search_queries.rs).
 /// Every search, hashtag and note-hunt query runs on it. Playable rows
@@ -32,23 +36,25 @@ typedef RustFeedPage = ({
 /// snapshot is useful provisional data; an empty one still waits until Rust
 /// settles because it cannot distinguish "no matches" from "not yet".
 final class RustFeedPageReader {
-  const RustFeedPageReader(
-    this._updates, {
+  factory RustFeedPageReader(
+    RustFeedUpdateQueue updates, {
     Duration deadline = rustFeedPageDeadline,
-  }) : _deadline = deadline;
+    Duration Function()? elapsedClock,
+  }) {
+    return RustFeedPageReader._(updates, deadline, elapsedClock);
+  }
+
+  const RustFeedPageReader._(this._updates, this._deadline, this._elapsedClock);
 
   final RustFeedUpdateQueue _updates;
   final Duration _deadline;
+  final Duration Function()? _elapsedClock;
 
   /// The feed's first available page. Empty only when the deadline passes.
   Future<RustFeedPage> firstPage() async {
     const empty = <FfiFeedPost>[];
     return await _available(_anyRevision) ??
-        (
-          revision: BigInt.zero,
-          posts: empty,
-          stage: FfiFeedStage.loading,
-        );
+        (revision: BigInt.zero, posts: empty, stage: FfiFeedStage.loading);
   }
 
   /// The page after [loaded]: the next revision to settle. Snapshots are
@@ -62,17 +68,25 @@ final class RustFeedPageReader {
   }
 
   /// The first accepted snapshot that has rows or is done loading.
-  Future<RustFeedPage?> _available(
-    bool Function(FfiFeedUpdate) accept,
-  ) async {
+  Future<RustFeedPage?> _available(bool Function(FfiFeedUpdate) accept) async {
+    final startedAt = _elapsed();
     while (true) {
-      final update = await _updates.next(_deadline);
+      final remaining = _remaining(startedAt);
+      if (remaining == Duration.zero) return null;
+      final update = await _updates.next(remaining);
       if (update == null && _updates.isFinished) throw rustFeedFailure;
       if (update == null) return null;
       final page = _availablePage(update, accept);
       if (page != null) return page;
     }
   }
+
+  Duration _remaining(Duration startedAt) {
+    final remaining = _deadline - (_elapsed() - startedAt);
+    return remaining > Duration.zero ? remaining : Duration.zero;
+  }
+
+  Duration _elapsed() => (_elapsedClock ?? _feedPageElapsed)();
 
   static bool _anyRevision(FfiFeedUpdate update) => true;
 }
@@ -82,13 +96,11 @@ RustFeedPage? _availablePage(
   bool Function(FfiFeedUpdate) accept,
 ) {
   if (!accept(update)) return null;
+  // Rust owns retry timing. A live stream may recover after this snapshot;
+  // only a stream that ends without another page is a terminal failure.
   if (update.stage == FfiFeedStage.failed && update.posts.isEmpty) {
-    throw rustFeedFailure;
+    return null;
   }
   if (update.stage == FfiFeedStage.loading && update.posts.isEmpty) return null;
-  return (
-    revision: update.revision,
-    posts: update.posts,
-    stage: update.stage,
-  );
+  return (revision: update.revision, posts: update.posts, stage: update.stage);
 }
