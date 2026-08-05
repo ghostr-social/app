@@ -42,8 +42,16 @@ fn measure(path: &Path) -> Option<u64> {
     let outcome = unsafe { libc::statvfs(path.as_ptr(), stats.as_mut_ptr()) };
     statvfs_available(outcome, || {
         let stats = unsafe { stats.assume_init() };
-        stats.f_bavail.checked_mul(stats.f_frsize)
+        checked_available_bytes(stats.f_bavail, stats.f_frsize)
     })
+}
+
+#[cfg(unix)]
+pub(crate) fn checked_available_bytes(
+    blocks: impl Into<u64>,
+    fragment_size: impl Into<u64>,
+) -> Option<u64> {
+    blocks.into().checked_mul(fragment_size.into())
 }
 
 #[cfg(unix)]
