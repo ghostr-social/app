@@ -1,7 +1,5 @@
 //! Hashtags rank by how many recent posts carry them; ties break
-//! alphabetically so the ordering is stable across refreshes — parity:
-//! rankTrendingHashtags in
-//! lib/features/video_catalog/domain/trending_hashtags.dart.
+//! alphabetically so ordering remains stable across refreshes.
 
 use super::trending_support::post_with_hashtags;
 use crate::discovery::trending::{rank_trending_hashtags, TRENDING_HASHTAG_LIMIT};

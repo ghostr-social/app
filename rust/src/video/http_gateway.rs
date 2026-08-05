@@ -67,8 +67,11 @@ pub fn configured_router_with_progressive(
     client: MediaHttpClient,
     progressive: Arc<ProgressiveState>,
 ) -> Router {
-    progressive_route::router(progressive)
-        .merge(shared_router(shared_state(downloads, hls_sessions, client)))
+    progressive_route::router(progressive).merge(shared_router(shared_state(
+        downloads,
+        hls_sessions,
+        client,
+    )))
 }
 
 fn shared_state(

@@ -14,9 +14,7 @@ fn note(content: &str, hashtags: &[&str]) -> Event {
 
 #[test]
 fn event_parsing_merges_t_tags_with_content_hashtags() {
-    // Order and normalization mirror nostr_video_event_mapper.dart
-    // `_hashtags` + lib/features/video_catalog/domain/video_hashtags.dart:
-    // t-tags first (trimmed, lowered, '#' stripped), then content hashtags,
+    // Canonical order is normalized t-tags first, then content hashtags,
     // deduplicated in first-seen order.
     let post = video_post_from_event(&note(
         "clip https://cdn.example/a.mp4 #Sunset ride #Caf\u{e9}_2026 ## #skate",
@@ -29,8 +27,8 @@ fn event_parsing_merges_t_tags_with_content_hashtags() {
 
 #[test]
 fn event_parsing_extracts_unicode_content_hashtags() {
-    // Dart hashtagPattern `#([\p{L}\p{N}_]+)` is unicode-aware and stops at
-    // punctuation.
+    // Hashtags accept Unicode letters, numbers, and underscores, and stop
+    // at punctuation.
     let post = video_post_from_event(&note(
         "https://cdn.example/a.mp4 #V\u{ed}deo! mid#word #tag_1,#tag_1",
         &[],

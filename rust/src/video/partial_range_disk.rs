@@ -137,11 +137,16 @@ pub async fn save_manifest(path: &Path, manifest: &RangeManifest) -> Result<()> 
 
 pub async fn file_len(path: &Path) -> Result<Option<u64>> {
     match tokio::fs::symlink_metadata(path).await {
-        Ok(metadata) if metadata.file_type().is_file() => Ok(Some(metadata.len())),
-        Ok(_) => Ok(None),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(error).context("inspect partial store file"),
+        Ok(metadata) => Ok(metadata.file_type().is_file().then_some(metadata.len())),
+        Err(error) => metadata_failure(error),
     }
+}
+
+fn metadata_failure(error: std::io::Error) -> Result<Option<u64>> {
+    if error.kind() == std::io::ErrorKind::NotFound {
+        return Ok(None);
+    }
+    Err(error).context("inspect partial store file")
 }
 
 pub async fn remove_if_present(path: &Path) -> Result<()> {

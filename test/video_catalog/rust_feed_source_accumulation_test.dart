@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/features/video_catalog/data/rust_feed_identity.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_remote_source.dart';
 
 import '../support/live_rust_feed_port.dart';
@@ -9,8 +10,7 @@ void main() {
   // The engine keeps filing pages into an open feed — background
   // prefetch and hunger widening both land there — so what a returning
   // pull serves is everything gathered this session, not one page.
-  test('serves the rows the live feed gathered since the last pull',
-      () async {
+  test('serves the rows the live feed gathered since the last pull', () async {
     final opening = rustFeedPost(eventId: testEventId, createdAt: 1754005000);
     final later = rustFeedPost(
       eventId: secondTestEventId,
@@ -24,7 +24,10 @@ void main() {
     final source = RustFeedRemoteSource(port: port);
 
     final first = await source.loadRemoteFeed(searchQuery: 'ghost');
-    port.publish('1', rustFeedUpdate(revision: 2, posts: [opening, later]));
+    port.publish(
+      RustFeedId.parse('1'),
+      rustFeedUpdate(revision: 2, posts: [opening, later]),
+    );
     await pumpEventQueue();
     final second = await source.loadRemoteFeed(searchQuery: 'ghost');
 

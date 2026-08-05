@@ -1,16 +1,25 @@
-//! Data shapes of the FFI v2 feed surface (plan §2 phase-2 additions):
-//! feed specs in, ordered post snapshots out. Additive to the frozen
-//! v1 surface in `delivery_types`.
+//! Generated FFI feed contract: typed feed specs in, ordered post
+//! snapshots out.
 
-/// One feed to open, as Dart names it. `kind` selects the shape:
-/// `"main"` reads the signed-in viewer from `viewer_pubkey` (hex or
-/// npub); `"hashtag"` reads the tag from `value` (leading `#`
-/// optional); `"search"` reads the query from `value`, as typed;
-/// `"profile"` reads every creator key from `creators` — one for a
+use crate::api::delivery_types::FfiMediaDelivery;
+
+/// The shape of one feed opened by Dart.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FfiFeedKind {
+    Main,
+    Hashtag,
+    Search,
+    Profile,
+}
+
+/// One feed to open, as Dart names it. `Main` reads the signed-in
+/// viewer from `viewer_pubkey` (hex or npub); `Hashtag` reads the tag
+/// from `value` (leading `#` optional); `Search` reads the query from
+/// `value`, as typed; `Profile` reads every creator key from `creators` — one for a
 /// profile grid, the whole follow set for the Following feed.
 #[derive(Clone, Debug)]
 pub struct FfiFeedSpec {
-    pub kind: String,
+    pub kind: FfiFeedKind,
     pub value: Option<String>,
     pub creators: Vec<String>,
     pub viewer_pubkey: Option<String>,
@@ -34,12 +43,12 @@ pub struct FfiMediaDim {
 }
 
 /// Playable media of one post. `delivery` round-trips with
-/// `FfiFocusItem.delivery` (`"progressive"` / `"hls"`).
+/// `FfiFocusItem.delivery`.
 #[derive(Clone, Debug)]
 pub struct FfiFeedMedia {
     /// Playback candidates in preference order (imeta url + fallbacks).
     pub urls: Vec<String>,
-    pub delivery: String,
+    pub delivery: FfiMediaDelivery,
     pub sha256: Option<String>,
     pub size_bytes: Option<u64>,
     pub duration_ms: Option<u64>,
@@ -65,6 +74,7 @@ pub struct FfiFeedPost {
     /// Unix seconds of the post's newest event.
     pub created_at: u64,
     pub caption: String,
+    pub title: Option<String>,
     pub hashtags: Vec<String>,
     pub creator: FfiFeedCreator,
     pub media: FfiFeedMedia,
@@ -79,9 +89,8 @@ pub enum FfiFeedStage {
     Loading,
     /// Every query of the page resolved: `posts` is the whole page.
     Settled,
-    /// The page's primary query failed; `posts` is whatever survived.
-    /// ndk parity: the Dart pipeline raises a failure here rather than
-    /// serving an empty feed (ndk_nostr_video_event_query.dart).
+    /// The page's primary query failed; Dart renders a failure rather
+    /// than treating the partial rows as an empty feed.
     Failed,
 }
 

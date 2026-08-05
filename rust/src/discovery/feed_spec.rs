@@ -1,11 +1,5 @@
-//! The feed shapes production actually builds (plan §5.3), each mirroring
-//! one Dart repository: the main feed
-//! (lib/features/video_catalog/domain/filtered_video_feed_repository.dart,
-//! FeedKind.forYou — unscoped query, outbox-routed to the viewer's
-//! follows), profile grids (aggregating_video_profile_repository.dart),
-//! and hashtag/search query feeds
-//! (discovery_video_search_repository.dart via
-//! query_video_feed_repository.dart).
+//! The feed shapes the Rust engine serves: main, profile, hashtag, and
+//! search, including viewer-scoped routing and visibility rules.
 
 use nostr_sdk::{PublicKey, Timestamp};
 
@@ -20,17 +14,13 @@ use crate::discovery::video_filters::DiscoveryRequest;
 pub enum FeedSpec {
     /// The home feed. A signed-in viewer's social graph routes the
     /// query to follows' outbox relays and supplies the mute list;
-    /// signed out there is no graph, so the feed degrades to the
-    /// unscoped global page the bootstrap relays answer — ndk parity
-    /// (lib/platform/nostr/ndk_nostr_outbox_directory.dart knows no
-    /// follows without an account and falls back to bootstrap).
+    /// signed out there is no graph, so configured read relays answer an
+    /// unscoped global page.
     MainFeed { viewer: Option<PublicKey> },
     /// Every post carrying one hashtag, as typed (with or without `#`).
     Hashtag(String),
     /// The posts of a named set of creators: one creator for a profile
-    /// grid, every follow for the Following feed
-    /// (filtered_video_feed_repository.dart hands its whole `followed`
-    /// set to the source, and ndk queries them all as `authors`).
+    /// grid, or every followed creator for the Following feed.
     Profile(Vec<PublicKey>),
     /// A viewer search query, as typed.
     Search(String),
@@ -38,14 +28,11 @@ pub enum FeedSpec {
 
 impl FeedSpec {
     /// The discovery request answering one page of this feed; `None` when
-    /// the spec can never produce content (blank query, empty hashtag) —
-    /// Dart returns an empty page without querying
-    /// (`DiscoveryVideoSearchRepository.searchVideos` on a null
-    /// normalization).
+    /// the spec can never produce content (blank query or empty hashtag).
     /// The viewer's graph only *routes* the main feed: its follows pick
     /// the relays (NIP-65 outbox), never the authors the query filters
     /// by, so a follows-routed page still carries posts by creators the
-    /// viewer does not follow — ndk parity.
+    /// viewer does not follow.
     pub fn page_request(
         &self,
         older_than: Option<Timestamp>,
@@ -74,10 +61,10 @@ impl FeedSpec {
     /// (`ProfileDetailsPolicy.build` filters only by creator id).
     pub fn accepts(&self, post: &ParsedVideoPost, graph: &SocialGraph) -> bool {
         match self {
-            Self::MainFeed { viewer } => viewer.is_none() || !author_muted(post, graph),
+            Self::MainFeed { viewer } => accepts_main_feed(viewer, post, graph),
             Self::Profile(creators) => written_by(post, creators),
-            Self::Hashtag(raw) => !author_muted(post, graph) && carries_tag(post, raw),
-            Self::Search(raw) => !author_muted(post, graph) && matches_search(post, raw),
+            Self::Hashtag(raw) => accepts_query(post, graph, carries_tag(post, raw)),
+            Self::Search(raw) => accepts_query(post, graph, matches_search(post, raw)),
         }
     }
 
@@ -154,6 +141,18 @@ fn written_by(post: &ParsedVideoPost, creators: &[PublicKey]) -> bool {
     creators
         .iter()
         .any(|creator| post.author_pubkey == creator.to_hex())
+}
+
+fn accepts_main_feed(
+    viewer: &Option<PublicKey>,
+    post: &ParsedVideoPost,
+    graph: &SocialGraph,
+) -> bool {
+    viewer.is_none() || !author_muted(post, graph)
+}
+
+fn accepts_query(post: &ParsedVideoPost, graph: &SocialGraph, matches: bool) -> bool {
+    !author_muted(post, graph) && matches
 }
 
 fn author_muted(post: &ParsedVideoPost, graph: &SocialGraph) -> bool {

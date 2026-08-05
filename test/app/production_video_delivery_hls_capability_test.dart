@@ -65,10 +65,12 @@ Future<ProductionVideoDelivery> _build(
   return buildProductionVideoDelivery(
     AppSettings.defaults(),
     ProductionVideoDeliveryEnvironment(
-      canonicalSource: FakeRemoteVideoSource(posts),
-      supportDirectoryProvider: () async => root,
-      gateway: startedVideoGateway(),
-      hlsPlaybackGateway: hlsGateway,
+      source: FakeRemoteVideoSource(posts),
+      adapters: ProductionVideoDeliveryAdapters(
+        supportDirectoryProvider: () async => root,
+        gateway: startedVideoGateway(),
+        hlsPlaybackGateway: hlsGateway,
+      ),
       playbackCapabilities: capabilities,
     ),
   );

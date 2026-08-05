@@ -6,9 +6,10 @@ mod support;
 
 use range_fixture::reject::serve_failing;
 use rust_lib_ghostr::engine::EngineParams;
-use support::delivery::{base_params, start_harness, DeliveryOptions};
+use support::delivery::start_harness;
 use support::delivery_items::{focus_now, sized_item, unsized_item};
 use support::delivery_media::{hit_log, media_body, serve_recording};
+use support::delivery_options::{base_params, DeliveryOptions};
 use support::delivery_wait::{wait_for_file, wait_for_ranges};
 
 #[tokio::test]

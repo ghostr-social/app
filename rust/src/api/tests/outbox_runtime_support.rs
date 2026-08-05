@@ -44,6 +44,9 @@ pub(crate) fn test_bootstrap() -> (Arc<OutboxBootstrap>, BootstrapProbe) {
     );
     (
         Arc::new(bootstrap),
-        BootstrapProbe { started: started_probe, directory },
+        BootstrapProbe {
+            started: started_probe,
+            directory,
+        },
     )
 }

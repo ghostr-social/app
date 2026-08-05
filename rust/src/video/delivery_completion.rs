@@ -8,24 +8,36 @@ use crate::engine::host_stats::host_of;
 use crate::engine::PostId;
 use crate::video::chunk_downloader::ChunkResult;
 use crate::video::delivery_failure::{classify, FailureClass};
+use crate::video::delivery_inflight::CompletionStatus;
 use crate::video::delivery_manager::DeliveryWorker;
 use crate::video::delivery_retry::{Retry, Source};
-use crate::video::delivery_transfers::{ChunkDone, InternalEvent, ProbeDone};
-use crate::video::media_probe::ProbeResult;
+use crate::video::delivery_transfers::{ChunkDone, InternalEvent};
 use log::warn;
 use std::time::Duration;
 
 impl DeliveryWorker {
     pub(crate) async fn finish_chunk(&mut self, done: ChunkDone) {
+        let status = self.inflight.finish(&done.attempt);
+        let post = &done.attempt.chunk.post;
+        if !self.accepts_completion(post, status) {
+            return;
+        }
         self.keeper.note_chunk(&done);
-        self.inflight.remove(&done.chunk);
         // Free space moves while a chunk is in flight — other apps write
         // to the same volume — so every finished chunk re-measures it and
         // evicts down to the cap instead of waiting for the next write.
         self.ctx.store.enforce_capacity().await;
         match done.outcome {
-            Ok(result) => self.absorb_chunk(&done.chunk.post, &done.url, result).await,
-            Err(error) => self.absorb_failure(&done.chunk.post, &done.url, &error),
+            Ok(result) => self.absorb_chunk(post, &done.url, result).await,
+            Err(error) => self.absorb_failure(post, &done.url, &error),
+        }
+    }
+
+    fn accepts_completion(&self, post: &PostId, status: CompletionStatus) -> bool {
+        match status {
+            CompletionStatus::Current => true,
+            CompletionStatus::Untracked => self.state.window_posts().contains(post),
+            CompletionStatus::Superseded => false,
         }
     }
 
@@ -41,44 +53,33 @@ impl DeliveryWorker {
     }
 
     async fn absorb_chunk(&mut self, post: &PostId, url: &str, result: ChunkResult) {
-        self.learn(post, url, result.total_bytes, result.accept_ranges).await;
+        self.learn(post, url, result.total_bytes, result.accept_ranges)
+            .await;
         if result.bytes_written == 0 && !result.cancelled {
             // The server ignored the range: no progress is possible
             // right now, so it counts as a failed attempt.
             return self.note_failed_attempt(post, url, FailureClass::Transient);
         }
-        self.retry.note_success(&Source::new(post.clone(), url.to_owned()));
+        self.retry
+            .note_success(&Source::new(post.clone(), url.to_owned()));
         self.try_finalize(post, url).await;
     }
 
-    pub(crate) async fn finish_probe(&mut self, done: ProbeDone) {
-        self.keeper.note_probe(&done);
-        self.probes.finished(&done.post);
-        match done.outcome {
-            Ok(result) => self.absorb_probe(&done.post, &done.url, result).await,
-            Err(error) => {
-                warn!("Probe failed: {error:#}");
-                self.note_failed_attempt(&done.post, &done.url, classify(&error));
-            }
-        }
-    }
-
-    async fn absorb_probe(&mut self, post: &PostId, url: &str, result: ProbeResult) {
-        self.retry.note_success(&Source::new(post.clone(), url.to_owned()));
-        self.learn(post, url, result.content_length, result.accept_ranges)
-            .await;
-    }
-
-    async fn learn(&mut self, post: &PostId, url: &str, total: Option<u64>, ranged: bool) {
+    pub(crate) async fn learn(
+        &mut self,
+        post: &PostId,
+        url: &str,
+        total: Option<u64>,
+        ranged: bool,
+    ) {
         let facts = LearnedFacts {
             content_length: total,
             accept_ranges: Some(ranged),
             host: host_of(url),
         };
         self.state.catalog_mut().learn(post, facts);
-        if let Some(total) = total {
-            self.set_store_total(post, total).await;
-        }
+        let Some(total) = total else { return };
+        self.set_store_total(post, total).await;
     }
 
     /// Declares the store total once; a conflicting later fact only
@@ -87,11 +88,12 @@ impl DeliveryWorker {
         let key = post.as_str();
         match self.ctx.store.total_len(key).await {
             Ok(Some(_)) => {}
-            Ok(None) => {
-                if let Err(error) = self.ctx.store.set_total_len(key, total).await {
-                    warn!("Total length rejected for {key}: {error:#}");
-                }
-            }
+            Ok(None) => self
+                .ctx
+                .store
+                .set_total_len(key, total)
+                .await
+                .unwrap_or_else(|error| warn!("Total length rejected for {key}: {error:#}")),
             Err(error) => warn!("Store lookup failed for {key}: {error:#}"),
         }
     }
@@ -102,7 +104,13 @@ impl DeliveryWorker {
     /// Bytes that fail that check came from the source, so a failed
     /// finalize is charged to it like any other failed attempt.
     async fn try_finalize(&mut self, post: &PostId, url: &str) {
-        if !self.ctx.store.is_complete(post.as_str()).await.unwrap_or(false) {
+        if !self
+            .ctx
+            .store
+            .is_complete(post.as_str())
+            .await
+            .unwrap_or(false)
+        {
             return;
         }
         let advertised = self
@@ -124,7 +132,7 @@ impl DeliveryWorker {
     /// Charges one failed attempt to the source: either a paced retry
     /// with the policy's backoff, or retirement of the source, which
     /// falls back to the post's other mirrors.
-    fn note_failed_attempt(&mut self, post: &PostId, url: &str, class: FailureClass) {
+    pub(crate) fn note_failed_attempt(&mut self, post: &PostId, url: &str, class: FailureClass) {
         let source = Source::new(post.clone(), url.to_owned());
         match self.retry.note_failure(source, class) {
             Retry::After(wait) => self.start_cooldown(post.clone(), wait),

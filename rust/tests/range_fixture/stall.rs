@@ -5,7 +5,9 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
 pub async fn serve_stalling(prefix: Vec<u8>, total: u64) -> String {
-    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind stall fixture");
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind stall fixture");
     let address = listener.local_addr().expect("stall address");
     tokio::spawn(async move {
         let (mut socket, _) = listener.accept().await.expect("stall accept");

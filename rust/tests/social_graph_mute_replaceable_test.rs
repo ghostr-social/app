@@ -33,7 +33,11 @@ fn stale_mute_list_arriving_late_is_ignored() {
     let mut graph = SocialGraph::new(session.public_key());
 
     graph.ingest(&mute_list(&session, Vec::new(), 20));
-    graph.ingest(&mute_list(&session, vec![p_tag(&stale_target.public_key())], 10));
+    graph.ingest(&mute_list(
+        &session,
+        vec![p_tag(&stale_target.public_key())],
+        10,
+    ));
 
     assert!(!graph.is_muted(&stale_target.public_key()));
 }

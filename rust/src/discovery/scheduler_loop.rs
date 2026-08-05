@@ -4,16 +4,14 @@
 
 use crate::discovery::control_loop::{discovery_action, DiscoveryAction};
 use crate::discovery::discovery_scheduler::{
-    max_concurrent_requests, DiscoveryCommand, FinishedRetrieval, RetrievalOutcome,
-    SchedulerWorker,
+    DiscoveryCommand, FinishedRetrieval, RetrievalOutcome, SchedulerWorker,
 };
-use crate::discovery::pagination::next_page_cursor;
+use crate::discovery::feed_cursor::playable_cursor;
 use crate::discovery::plan_executor::PlannedRetrieval;
 use crate::discovery::retrieval_queue::{FeedContext, RetrievalPriority, RetrievalRequest};
+use crate::discovery::scheduler_plans::widened_plan;
 use crate::discovery::search_queries::{plan_discovery, QueryPlan};
-use crate::discovery::video_filters::{DiscoveryRequest, WIDE_QUERY_LIMIT};
 use crate::engine::inventory_controller::Mode;
-use nostr_sdk::Timestamp;
 
 enum Wake {
     Command(DiscoveryCommand),
@@ -61,36 +59,6 @@ impl SchedulerWorker {
         }
     }
 
-    fn apply_command(&mut self, command: DiscoveryCommand) {
-        match command {
-            DiscoveryCommand::OpenFeed { context, request } => self.open_feed(context, request),
-            DiscoveryCommand::LoadMore { context, older_than } => {
-                self.load_more(context, older_than);
-            }
-            DiscoveryCommand::Focus(context) => self.queue.focus(context),
-            DiscoveryCommand::Background { context, request } => {
-                self.enqueue(context, RetrievalPriority::Background, plan_discovery(&request));
-            }
-            DiscoveryCommand::SetDataUsage(level) => {
-                self.max_concurrent = max_concurrent_requests(level);
-            }
-        }
-    }
-
-    fn open_feed(&mut self, context: FeedContext, request: DiscoveryRequest) {
-        self.feeds.open(context.clone(), request.clone());
-        self.queue.focus(context.clone());
-        self.enqueue(context, RetrievalPriority::Interactive, plan_discovery(&request));
-    }
-
-    fn load_more(&mut self, context: FeedContext, older_than: Option<Timestamp>) {
-        let Some(request) = self.feeds.older_page_request(&context, older_than) else {
-            return;
-        };
-        self.queue.focus(context.clone());
-        self.enqueue(context, RetrievalPriority::Interactive, plan_discovery(&request));
-    }
-
     /// Unified control loop (plan §5.4): hunger widens the active
     /// feed's querying, comfort keeps the radio quiet.
     fn apply_mode(&mut self, mode: Mode) {
@@ -109,7 +77,11 @@ impl SchedulerWorker {
         let Some(request) = self.feeds.older_page_request(&context, None) else {
             return;
         };
-        self.enqueue(context, RetrievalPriority::Background, plan_discovery(&request));
+        self.enqueue(
+            context,
+            RetrievalPriority::Background,
+            plan_discovery(&request),
+        );
     }
 
     fn widen(&mut self, context: FeedContext) {
@@ -117,23 +89,28 @@ impl SchedulerWorker {
             return;
         };
         self.feeds.mark_widened(&context);
-        self.enqueue(context, RetrievalPriority::Background, widened_plan(&request));
+        self.enqueue(
+            context,
+            RetrievalPriority::Background,
+            widened_plan(&request),
+        );
     }
 
     fn finish(&mut self, done: FinishedRetrieval) {
+        self.tasks.remove(&done.task_id);
         self.feeds.record_done(&done.context);
-        if let Ok(events) = &done.result {
-            let cursor = next_page_cursor(events.iter().map(|event| event.created_at));
+        let result = match self.queries.finish(&done.context, done.result) {
+            Ok(()) => return,
+            Err(result) => result,
+        };
+        if let Ok(events) = &result {
+            let cursor = playable_cursor(events);
             self.feeds.record_page(&done.context, cursor);
         }
         let _ = self.outcomes.send(RetrievalOutcome {
             context: done.context,
-            result: done.result,
+            result,
         });
-    }
-
-    fn enqueue(&mut self, context: FeedContext, priority: RetrievalPriority, plan: QueryPlan) {
-        self.queue.push(RetrievalRequest { context, priority }, plan);
     }
 
     fn pump(&mut self) {
@@ -146,10 +123,12 @@ impl SchedulerWorker {
         }
     }
 
-    fn spawn_retrieval(&self, request: RetrievalRequest, plan: QueryPlan) {
+    fn spawn_retrieval(&mut self, request: RetrievalRequest, plan: QueryPlan) {
+        let task_id = self.next_task_id;
+        self.next_task_id = self.next_task_id.wrapping_add(1);
         let executor = self.executor.clone();
         let finished = self.finished_sender.clone();
-        tokio::spawn(async move {
+        let task = tokio::spawn(async move {
             let context = request.context.clone();
             let retrieval = PlannedRetrieval {
                 context: request.context,
@@ -157,17 +136,12 @@ impl SchedulerWorker {
                 plan,
             };
             let result = executor.execute(retrieval).await;
-            let _ = finished.send(FinishedRetrieval { context, result });
+            let _ = finished.send(FinishedRetrieval {
+                task_id,
+                context,
+                result,
+            });
         });
+        self.tasks.insert(task_id, task.abort_handle());
     }
-}
-
-/// Hunger widening: the primary video query re-issued at the wide
-/// limit (`video_filters::WIDE_QUERY_LIMIT`) to deepen the pool.
-fn widened_plan(request: &DiscoveryRequest) -> QueryPlan {
-    let mut plan = plan_discovery(request);
-    if let Some(primary) = plan.queries.first_mut() {
-        primary.filter = primary.filter.clone().limit(WIDE_QUERY_LIMIT);
-    }
-    plan
 }

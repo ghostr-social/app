@@ -11,7 +11,7 @@ class NdkNostrSession implements NostrSessionPort {
   final Ndk _ndk;
 
   @override
-  void activate(AuthSecret secret, NostrIdentity identity) {
+  Future<void> activate(AuthSecret secret, NostrIdentity identity) async {
     _guard('Could not activate the Nostr account.', () {
       if (_ndk.accounts.isLoggedIn) _ndk.accounts.logout();
       _ndk.accounts.loginPrivateKey(
@@ -22,7 +22,7 @@ class NdkNostrSession implements NostrSessionPort {
   }
 
   @override
-  void deactivate() {
+  Future<void> deactivate() async {
     _guard('Could not deactivate the Nostr account.', () {
       if (_ndk.accounts.isLoggedIn) _ndk.accounts.logout();
     });

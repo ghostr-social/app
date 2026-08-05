@@ -23,11 +23,11 @@ void main() {
     cubit.changeDataUsage(DataUsageLevel.aggressive);
     await cubit.save();
 
-    final (dataUsage, maxStorageBytes) = updater.pushes.single;
-    expect(dataUsage, 'aggressive');
+    final update = updater.pushes.single;
+    expect(update.dataUsage, DataUsageLevel.aggressive);
     expect(
-      maxStorageBytes,
-      BigInt.from(AppSettings.defaults().inventoryBudget.bytes),
+      update.inventoryBudget,
+      AppSettings.defaults().inventoryBudget,
     );
   });
 }

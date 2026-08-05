@@ -38,6 +38,11 @@ async fn delivery_retry_drops_a_retired_source_from_the_candidates() {
     while book.note_failure(cdn_source(), FailureClass::Permanent) != Retry::GiveUp {}
 
     assert!(book.is_retired(&cdn_source()), "the dead source stays dead");
+    assert_eq!(
+        book.note_failure(cdn_source(), FailureClass::Permanent),
+        Retry::GiveUp,
+        "more failures cannot revive a retired source"
+    );
     assert_eq!(book.live_urls(&post, &urls), vec![mirror]);
     assert!(!book.all_retired(&post, &urls), "a healthy mirror remains");
 }

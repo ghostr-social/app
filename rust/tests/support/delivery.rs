@@ -1,20 +1,17 @@
 //! Harness that runs a real delivery manager against fixture servers
 //! and a temp partial-range store.
 
-use rust_lib_ghostr::engine::{DataUsageLevel, EngineParams};
 use rust_lib_ghostr::video::delivery_events::DeliveryHandle;
-use rust_lib_ghostr::video::delivery_manager::{
-    start_delivery_manager, DeliveryManagerConfig, DeliveryTuning,
-};
-use rust_lib_ghostr::video::delivery_retry::RetryPolicy;
+use rust_lib_ghostr::video::delivery_manager::{start_delivery_manager, DeliveryManagerConfig};
 use rust_lib_ghostr::video::outbound_media_client::MediaHttpClient;
 use rust_lib_ghostr::video::partial_range_store::PartialRangeStore;
 use rust_lib_ghostr::video::playback_demand::{demand_channel, DemandSender};
 use rust_lib_ghostr::video::progressive_posts::ServablePosts;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Mutex;
+
+use super::delivery_options::DeliveryOptions;
 
 pub struct DeliveryHarness {
     pub handle: DeliveryHandle,
@@ -22,48 +19,6 @@ pub struct DeliveryHarness {
     pub store: Arc<PartialRangeStore>,
     pub posts: ServablePosts,
     pub root: PathBuf,
-}
-
-pub struct DeliveryOptions {
-    pub params: EngineParams,
-    pub level: DataUsageLevel,
-    pub tuning: DeliveryTuning,
-}
-
-impl Default for DeliveryOptions {
-    fn default() -> Self {
-        Self {
-            params: base_params(),
-            level: DataUsageLevel::Balanced,
-            tuning: test_tuning(),
-        }
-    }
-}
-
-/// Small chunks and a tiny assumed bitrate so 16-byte fixture files
-/// exercise real head/tail splits.
-pub fn base_params() -> EngineParams {
-    EngineParams {
-        chunk_bytes: 8,
-        assumed_bitrate_bps: 64,
-        ..EngineParams::default()
-    }
-}
-
-/// The production ladder, scaled down: pauses in milliseconds and a
-/// revival window far longer than any test run.
-pub fn test_tuning() -> DeliveryTuning {
-    DeliveryTuning {
-        probe_concurrency: 2,
-        retry: RetryPolicy {
-            base: Duration::from_millis(50),
-            max: Duration::from_millis(400),
-            jitter: 0.0,
-            ..RetryPolicy::default()
-        },
-        stats_debounce: Duration::ZERO,
-        store_pressure_pause: Duration::from_millis(10),
-    }
 }
 
 pub fn start_harness(prefix: &str, options: DeliveryOptions) -> DeliveryHarness {
@@ -96,5 +51,11 @@ pub fn start_harness_with_store(
         },
         demand_receiver,
     );
-    DeliveryHarness { handle, demand, store, posts, root }
+    DeliveryHarness {
+        handle,
+        demand,
+        store,
+        posts,
+        root,
+    }
 }

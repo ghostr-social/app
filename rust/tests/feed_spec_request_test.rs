@@ -1,9 +1,6 @@
-//! Each production feed shape builds exactly the discovery request its
-//! Dart repository issues: the main feed queries unscoped (FeedKind.forYou
-//! in lib/features/video_catalog/domain/filtered_video_feed_repository.dart),
-//! profiles scope to the creator (aggregating_video_profile_repository.dart),
-//! hashtag feeds carry the normalized tag
-//! (discovery_video_search_repository.dart).
+//! Each production feed shape builds its canonical discovery request:
+//! the main feed queries unscoped, profiles scope to the creator, and
+//! hashtag feeds carry the normalized tag.
 
 mod feed_support;
 
@@ -20,7 +17,10 @@ use rust_lib_ghostr::discovery::video_filters::DiscoveryRequest;
 fn feed_spec_main_feed_requests_everything_unscoped() {
     let viewer = Keys::generate().public_key();
 
-    let request = FeedSpec::MainFeed { viewer: Some(viewer) }.page_request(None, &empty_graph());
+    let request = FeedSpec::MainFeed {
+        viewer: Some(viewer),
+    }
+    .page_request(None, &empty_graph());
 
     assert_eq!(
         request,
@@ -61,5 +61,8 @@ fn feed_spec_hashtag_feed_carries_the_normalized_tag() {
 
 #[test]
 fn feed_spec_empty_hashtag_never_queries() {
-    assert_eq!(FeedSpec::Hashtag("#".to_owned()).page_request(None, &empty_graph()), None);
+    assert_eq!(
+        FeedSpec::Hashtag("#".to_owned()).page_request(None, &empty_graph()),
+        None
+    );
 }

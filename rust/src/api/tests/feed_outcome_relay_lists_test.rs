@@ -5,7 +5,7 @@
 
 use crate::api::feed_runtime::{lock, pump_outcomes, OutcomeSinks, SharedFeedState};
 use crate::api::feed_state::FeedState;
-use crate::api::tests::feed_fixtures::{relay_list_event, signed_event};
+use crate::api::tests::feed_fixtures::{relay_list_event, signed_event, SignedEventFixture};
 use crate::api::tests::outbox_runtime_support::{test_bootstrap, BOOTSTRAP_RELAY};
 use crate::discovery::discovery_scheduler::RetrievalOutcome;
 use crate::discovery::feed_spec::FeedSpec;
@@ -19,12 +19,20 @@ use tokio::time::timeout;
 
 fn contact_list(viewer: &Keys, follow: &PublicKey) -> Event {
     let tags = vec![vec!["p".to_owned(), follow.to_hex()]];
-    signed_event(viewer, Kind::ContactList, "", tags, 20)
+    signed_event(SignedEventFixture {
+        keys: viewer,
+        kind: Kind::ContactList,
+        content: "",
+        tags,
+        created_at: 20,
+    })
 }
 
 fn opened_state(viewer: &Keys) -> SharedFeedState {
     let state: SharedFeedState = Arc::new(Mutex::new(FeedState::new()));
-    lock(&state).open(FeedSpec::MainFeed { viewer: Some(viewer.public_key()) });
+    lock(&state).open(FeedSpec::MainFeed {
+        viewer: Some(viewer.public_key()),
+    });
     state
 }
 

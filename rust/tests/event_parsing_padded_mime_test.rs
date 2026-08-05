@@ -1,8 +1,6 @@
-//! Publishers pad tag values. Dart normalizes a mime with
-//! `value.trim().toLowerCase()` before judging it
-//! (lib/features/video_catalog/data/nostr_video_media.dart
-//! `_normalizedMime`), so a leading space must not cost the post — the
-//! Rust feed has to be at least as complete as the ndk one.
+//! Publishers pad tag values. Mime matching is whitespace- and
+//! ASCII-case-insensitive, so padding must not cost an otherwise playable
+//! post.
 
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, Tag};
 use rust_lib_ghostr::discovery::event_parsing::video_post_from_event;
@@ -28,8 +26,7 @@ fn event_parsing_accepts_a_padded_video_mime() {
 
 #[test]
 fn event_parsing_reads_hls_through_a_padded_mime() {
-    let post = video_post_from_event(&video_event(" application/x-mpegurl "))
-        .expect("parsed post");
+    let post = video_post_from_event(&video_event(" application/x-mpegurl ")).expect("parsed post");
 
     assert_eq!(post.meta.delivery, DeliveryKind::Hls);
 }

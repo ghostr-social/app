@@ -1,13 +1,13 @@
 import 'package:ghostr/core/async/keyed_serial_task_queue.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/errors/boundary_failure.dart';
+import 'package:ghostr/core/nostr/nostr_event_client.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
+import 'package:ghostr/core/nostr/nostr_event_record.dart';
 import 'package:ghostr/core/time/clock.dart';
-import 'package:ghostr/features/settings/domain/relay_url.dart';
 import 'package:ghostr/features/social/domain/nostr_social_port.dart';
 import 'package:ghostr/features/social/domain/signed_event_broadcast_port.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
-import 'package:ghostr/platform/nostr/ndk_broadcast_adapter.dart';
 import 'package:ghostr/platform/nostr/signed_nostr_event_json.dart';
 import 'package:ndk/ndk.dart';
 
@@ -17,24 +17,23 @@ part 'ndk_nostr_social_mutations.dart';
 class NdkNostrSocial implements NostrSocialPort {
   NdkNostrSocial({
     required Ndk ndk,
-    required List<RelayUrl> relays,
-    SignedEventBroadcastPort? broadcast,
+    required NostrEventClient eventClient,
+    required SignedEventBroadcastPort broadcast,
     Clock clock = systemClock,
-  })  : _broadcastPort =
-            broadcast ?? NdkBroadcastAdapter(ndk: ndk, relays: relays),
+  })  : _transport = _NdkSocialTransport(eventClient, broadcast),
         _ndk = ndk,
         _clock = clock,
         _scope = _NdkSocialScope(_NdkSocialState(), null, null);
 
   NdkNostrSocial._(
     this._ndk,
-    this._broadcastPort,
+    this._transport,
     this._clock,
     this._scope,
   );
 
   final Ndk _ndk;
-  final SignedEventBroadcastPort _broadcastPort;
+  final _NdkSocialTransport _transport;
   final Clock _clock;
   final _NdkSocialScope _scope;
   _NdkSocialState get _state => _scope.state;
@@ -47,7 +46,7 @@ class NdkNostrSocial implements NostrSocialPort {
     final signer = _requireSigner();
     return NdkNostrSocial._(
       _ndk,
-      _broadcastPort,
+      _transport,
       _clock,
       _NdkSocialScope(_state, signer, signer.getPublicKey()),
     );
@@ -92,8 +91,15 @@ class NdkNostrSocial implements NostrSocialPort {
 
   Future<Set<ProfileId>> _loadBlockedProfiles() async {
     final publicKey = _publicKey ?? _requirePublicKey();
+    final signer = _signer ?? _requireSigner();
     _requireActiveAccount(publicKey);
-    final fetched = await _ndk.lists.getSingleNip51List(Nip51List.kMute);
+    final key = _SocialRecordKey.parse(Nip51List.kMute, publicKey);
+    final records = await _transport.events.query(_socialQuery(key));
+    _requireActiveAccount(publicKey);
+    final record = _newestSocialRecord(records, key);
+    final fetched = record == null
+        ? null
+        : await Nip51List.fromEvent(_localEvent(record), signer);
     _requireActiveAccount(publicKey);
     final list = _rememberMuteFloor(_state, publicKey, fetched);
     return list?.pubKeys.map(_encodedProfile).toSet() ?? <ProfileId>{};
@@ -101,7 +107,11 @@ class NdkNostrSocial implements NostrSocialPort {
 
   Future<Set<ProfileId>> _loadFollowedProfiles() async {
     final publicKey = _publicKey ?? _requirePublicKey();
-    final fetched = await _ndk.follows.getContactList(publicKey);
+    final key = _SocialRecordKey.parse(ContactList.kKind, publicKey);
+    final records = await _transport.events.query(_socialQuery(key));
+    final record = _newestSocialRecord(records, key);
+    final fetched =
+        record == null ? null : ContactList.fromEvent(_localEvent(record));
     final contacts = _rememberContactFloor(_state, publicKey, fetched);
     return contacts?.contacts
             .map(Nip19.encodePubKey)

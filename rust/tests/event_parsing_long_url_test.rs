@@ -1,8 +1,5 @@
-//! Signed CDN URLs get long. Dart bounds nothing
-//! (lib/features/video_catalog/data/nostr_video_media.dart), so a Rust
-//! byte bound tight enough to reject a real link is a parity break that
-//! costs the feed a post. The bound stays — pathological content must
-//! not reach the native cache — but it sits well past any real URL.
+//! Signed CDN URLs get long. The safety bound must admit realistic links
+//! while still keeping pathological content out of the native cache.
 
 use nostr_sdk::{Event, EventBuilder, Keys};
 use rust_lib_ghostr::discovery::event_parsing::video_post_from_event;

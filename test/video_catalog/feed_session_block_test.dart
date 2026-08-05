@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ghostr/features/video_catalog/presentation/feed_session.dart';
+import 'package:ghostr/features/video_catalog/domain/use_cases/feed_session.dart';
 
 import '../support/sample_data.dart';
 

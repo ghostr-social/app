@@ -5,9 +5,9 @@ import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
-import 'package:ghostr/features/video_catalog/presentation/feed_backfill.dart';
-import 'package:ghostr/features/video_catalog/presentation/feed_fetcher.dart';
-import 'package:ghostr/features/video_catalog/presentation/feed_loads.dart';
+import 'package:ghostr/features/video_catalog/domain/use_cases/feed_backfill.dart';
+import 'package:ghostr/features/video_catalog/domain/use_cases/feed_fetcher.dart';
+import 'package:ghostr/features/video_catalog/domain/use_cases/feed_loads.dart';
 
 import '../support/sample_data.dart';
 

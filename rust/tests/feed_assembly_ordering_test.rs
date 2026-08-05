@@ -1,6 +1,5 @@
 //! Assembled feed pages order newest-first by created_at with ascending
-//! event-id tiebreak — mirrors `_compareNewest` in
-//! lib/features/video_catalog/data/ndk_video_remote_source.dart.
+//! event-ID tiebreak.
 
 mod feed_support;
 

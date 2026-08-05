@@ -1,45 +1,45 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ghostr/platform/nostr/ndk_nostr_social.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:ndk/ndk.dart';
 
 import '../support/ndk_mocks.dart';
+import '../support/nostr_test_values.dart';
+import '../support/social_broadcast_harness.dart';
+import '../support/social_event_fixtures.dart';
 
 void main() {
-  test('loads NIP-02 follows and NIP-51 muted profiles as npubs', () async {
-    const publicKey =
-        '7e7e9c42a91bfef19fa929e5fda1b72e0ebc1a4c1141673e2794234d86addf4e';
-    final ndk = MockNdk();
-    final accounts = MockAccounts();
-    final lists = MockLists();
-    final follows = MockFollows();
-    when(() => ndk.accounts).thenReturn(accounts);
-    when(() => ndk.lists).thenReturn(lists);
-    when(() => ndk.follows).thenReturn(follows);
-    when(accounts.getPublicKey).thenReturn(publicKey);
-    when(() => lists.getSingleNip51List(Nip51List.kMute)).thenAnswer(
-      (_) async => Nip51List(
-        pubKey: publicKey,
-        kind: Nip51List.kMute,
-        createdAt: 10,
-        elements: [
-          Nip51ListElement(
-            tag: Nip51List.kPubkey,
-            value: publicKey,
-            private: true,
-          ),
+  setUpAll(registerNdkFallbackValues);
+
+  test('loads NIP-02 follows and private NIP-51 mutes as npubs', () async {
+    final harness = SocialBroadcastHarness();
+    harness.events.events.addAll([
+      socialEvent(
+        identity: socialEventIdentity(1, ContactList.kKind, 10),
+        tags: const [
+          ['p', testCreatorPublicKey],
         ],
       ),
-    );
-    when(() => follows.getContactList(publicKey)).thenAnswer(
-      (_) async => ContactList(pubKey: publicKey, contacts: [publicKey]),
-    );
-    final runtime = NdkNostrSocial(ndk: ndk, relays: const []);
+      socialEvent(
+        identity: socialEventIdentity(2, Nip51List.kMute, 10),
+        content: 'ciphertext',
+      ),
+    ]);
+    when(() => harness.signer.decryptNip44(
+          ciphertext: 'ciphertext',
+          senderPubKey: testViewerPublicKey,
+        )).thenAnswer((_) async {
+      return jsonEncode([
+        ['p', testFanPublicKey],
+      ]);
+    });
+    final social = harness.build();
 
-    final blocked = await runtime.loadBlockedProfiles();
-    final followed = await runtime.loadFollowedProfiles();
+    final blocked = await social.loadBlockedProfiles();
+    final followed = await social.loadFollowedProfiles();
 
-    expect(blocked, {Nip19.encodePubKey(publicKey)});
-    expect(followed, {Nip19.encodePubKey(publicKey)});
+    expect(blocked, {Nip19.encodePubKey(testFanPublicKey)});
+    expect(followed, {Nip19.encodePubKey(testCreatorPublicKey)});
   });
 }

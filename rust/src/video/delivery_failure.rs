@@ -7,6 +7,7 @@
 //! exists to spend the radio carefully (plan §3).
 
 use crate::video::native_cache_failure::PermanentCacheFailure;
+use crate::video::origin_content_type::UnsupportedOriginMediaType;
 use reqwest::StatusCode;
 
 /// How hopeless one failed attempt against a source looks.
@@ -37,6 +38,9 @@ const HOPELESS: &[&str] = &[
 /// Triages one failed chunk transfer or probe.
 pub fn classify(error: &anyhow::Error) -> FailureClass {
     if error.downcast_ref::<PermanentCacheFailure>().is_some() {
+        return FailureClass::Permanent;
+    }
+    if error.downcast_ref::<UnsupportedOriginMediaType>().is_some() {
         return FailureClass::Permanent;
     }
     if let Some(status) = rejected_status(error) {

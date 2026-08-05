@@ -8,7 +8,26 @@ use std::collections::{HashMap, HashSet};
 
 #[derive(Default)]
 pub(crate) struct InFlightChunks {
-    transfers: HashMap<ChunkId, CancelHandle>,
+    transfers: HashMap<ChunkId, ActiveChunk>,
+    next_id: u64,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct ChunkAttempt {
+    pub chunk: ChunkId,
+    id: u64,
+}
+
+struct ActiveChunk {
+    id: u64,
+    handle: CancelHandle,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum CompletionStatus {
+    Current,
+    Untracked,
+    Superseded,
 }
 
 impl InFlightChunks {
@@ -24,22 +43,44 @@ impl InFlightChunks {
         self.transfers.contains_key(chunk)
     }
 
-    pub fn insert(&mut self, chunk: ChunkId, handle: CancelHandle) {
-        self.transfers.insert(chunk, handle);
+    pub fn next_attempt(&mut self, chunk: ChunkId) -> ChunkAttempt {
+        self.next_id = self
+            .next_id
+            .checked_add(1)
+            .expect("chunk attempt id exhausted");
+        ChunkAttempt {
+            chunk,
+            id: self.next_id,
+        }
     }
 
-    pub fn remove(&mut self, chunk: &ChunkId) {
-        self.transfers.remove(chunk);
+    pub fn insert(&mut self, attempt: &ChunkAttempt, handle: CancelHandle) {
+        let active = ActiveChunk {
+            id: attempt.id,
+            handle,
+        };
+        self.transfers.insert(attempt.chunk.clone(), active);
+    }
+
+    pub fn finish(&mut self, attempt: &ChunkAttempt) -> CompletionStatus {
+        let Some(active) = self.transfers.get(&attempt.chunk) else {
+            return CompletionStatus::Untracked;
+        };
+        if active.id != attempt.id {
+            return CompletionStatus::Superseded;
+        }
+        self.transfers.remove(&attempt.chunk);
+        CompletionStatus::Current
     }
 
     /// Cancels every transfer the fresh plan no longer wants (the
     /// scroll-past rule) and frees their slots immediately; fetched
     /// bytes stay in the store, resumable.
     pub fn cancel_absent(&mut self, wanted: &HashSet<ChunkId>) {
-        self.transfers.retain(|chunk, handle| {
+        self.transfers.retain(|chunk, active| {
             let keep = wanted.contains(chunk);
             if !keep {
-                handle.cancel();
+                active.handle.cancel();
             }
             keep
         });

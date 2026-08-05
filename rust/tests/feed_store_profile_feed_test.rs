@@ -45,7 +45,11 @@ fn feed_store_profile_feed_shows_a_muted_targets_own_posts() {
     let mut store = FeedStore::new();
     let feed = store.open_feed(FeedSpec::Profile(vec![target.public_key()]));
 
-    store.ingest_first_page(feed, parsed_posts(&[video_note(&target, "own", 30)]), &graph);
+    store.ingest_first_page(
+        feed,
+        parsed_posts(&[video_note(&target, "own", 30)]),
+        &graph,
+    );
 
     assert_eq!(store.posts(feed).len(), 1);
 }

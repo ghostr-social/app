@@ -12,7 +12,10 @@ async fn partial_range_write_evicts_unleased_content_instead_of_refusing() {
     let fixture = spaced_store("ghostr-write-evict", limits(1_000, 0), 100_000);
     let store = &fixture.store;
     store.write_range("cold", 0, &[1; 400]).await.expect("cold");
-    store.write_range("watched", 0, &[2; 400]).await.expect("watched");
+    store
+        .write_range("watched", 0, &[2; 400])
+        .await
+        .expect("watched");
     let lease = store.lease("watched");
 
     store
@@ -27,13 +30,22 @@ async fn partial_range_write_evicts_unleased_content_instead_of_refusing() {
         "the coldest unleased video paid for the write"
     );
     assert_eq!(
-        store.present_ranges("watched").await.expect("watched ranges"),
+        store
+            .present_ranges("watched")
+            .await
+            .expect("watched ranges"),
         vec![0..400],
         "the leased video is never evicted, however old"
     );
-    assert_eq!(store.present_ranges("hot").await.expect("hot ranges"), vec![0..400]);
+    assert_eq!(
+        store.present_ranges("hot").await.expect("hot ranges"),
+        vec![0..400]
+    );
     assert_eq!(*fixture.used_bytes.lock().await, 800);
-    assert!(store.effective_capacity().await >= 800, "the budget still holds");
+    assert!(
+        store.effective_capacity().await >= 800,
+        "the budget still holds"
+    );
 
     drop(lease);
     discard(&fixture.root);

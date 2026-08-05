@@ -10,6 +10,7 @@ void main() {
     expect(media.playbackUri.toString(), trusted);
     expect(media.isLocal, isFalse);
     expect(media.localPath, isNull);
+    expect(media.fallbackUrls, isEmpty);
     expect(media.canCacheAsSingleFile, isFalse);
     expect(media.remoteDelivery, VideoMediaDelivery.progressive);
     expect(media.remoteUrls, [trusted]);

@@ -1,7 +1,6 @@
 //! Search relays keep answering after the fast ones went quiet: discovery
 //! queries (term or tag filter) wait 8 seconds, canonical feed queries 5
-//! (lib/platform/nostr/ndk_nostr_video_event_query.dart `_feedTimeout`,
-//! `_discoveryTimeout`, `_isDiscovery`).
+//! to preserve the distinct latency contracts.
 
 use std::time::Duration;
 
@@ -11,7 +10,7 @@ use crate::discovery::search_queries::{
 use crate::discovery::video_filters::DiscoveryRequest;
 
 #[test]
-fn timeout_constants_match_the_dart_values() {
+fn timeout_constants_match_the_query_contract() {
     assert_eq!(FEED_QUERY_TIMEOUT, Duration::from_secs(5));
     assert_eq!(DISCOVERY_QUERY_TIMEOUT, Duration::from_secs(8));
 }
@@ -19,8 +18,7 @@ fn timeout_constants_match_the_dart_values() {
 #[test]
 fn plain_feed_queries_wait_five_seconds_hunts_wait_eight() {
     let plan = plan_discovery(&DiscoveryRequest::default());
-    let timeouts: Vec<Duration> =
-        plan.queries.iter().map(|query| query.timeout).collect();
+    let timeouts: Vec<Duration> = plan.queries.iter().map(|query| query.timeout).collect();
 
     assert_eq!(
         timeouts,

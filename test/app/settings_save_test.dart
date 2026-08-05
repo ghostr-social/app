@@ -22,7 +22,7 @@ void main() {
     expect(saved?.inventoryBudget, VideoInventoryBudget.fourGigabytes);
     expect(
       find.text(
-        'Settings saved. Restart Ghostr to apply connection and cache changes.',
+        'Settings saved. Blossom server changes apply after restart.',
       ),
       findsOneWidget,
     );

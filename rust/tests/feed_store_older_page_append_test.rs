@@ -32,10 +32,18 @@ fn feed_store_appends_older_posts_below_the_current_list() {
     let graph = SocialGraph::new(keys.public_key());
     let mut store = FeedStore::new();
     let feed = open_main(&mut store, &keys);
-    store.ingest_first_page(feed, parsed_posts(&[video_note(&keys, "first", 50)]), &graph);
+    store.ingest_first_page(
+        feed,
+        parsed_posts(&[video_note(&keys, "first", 50)]),
+        &graph,
+    );
     store.begin_load_more(feed);
 
-    store.ingest_older_page(feed, parsed_posts(&[video_note(&keys, "older", 40)]), &graph);
+    store.ingest_older_page(
+        feed,
+        parsed_posts(&[video_note(&keys, "older", 40)]),
+        &graph,
+    );
 
     assert_eq!(
         slugs(&store, feed),

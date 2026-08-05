@@ -22,10 +22,10 @@ typedef RustFeedViewer = NostrPublicKeyHex? Function();
 /// The viewer of a build that has no session of its own.
 NostrPublicKeyHex? noSignedInViewer() => null;
 
-/// Serves the pull-shaped [RemoteVideoSource] the app already speaks
-/// from the Rust engine's push-shaped feeds (plan §5): the feed named
-/// by the request is opened once and kept open for the life of this
-/// source, and each pull takes the snapshot it holds now.
+/// Adapts the Rust engine's push-shaped feed snapshots to the app's
+/// pull-shaped [RemoteVideoSource]. The feed named by a request opens
+/// once, stays open for this source's lifetime, and each pull takes its
+/// current snapshot.
 ///
 /// Nothing is cached here — the engine owns the store, and it keeps
 /// filing pages into an open feed all session. That is what makes a
@@ -54,12 +54,12 @@ final class RustFeedRemoteSource implements RemoteVideoSource {
     Set<String>? hashtags,
     DateTime? olderThan,
   }) {
-    final viewer = _viewer()?.value;
+    final viewer = _viewer();
     final spec = buildRustFeedSpec(
       creatorIds: creatorIds,
       searchQuery: searchQuery,
       hashtags: hashtags,
-      viewerPubkeyHex: viewer,
+      viewerPubkeyHex: viewer?.value,
     );
     if (spec == null) return Future.value(const <VideoPost>[]);
     return _load(spec, viewer, _cursor(olderThan));
@@ -67,7 +67,7 @@ final class RustFeedRemoteSource implements RemoteVideoSource {
 
   Future<List<VideoPost>> _load(
     FfiFeedSpec spec,
-    String? viewer,
+    NostrPublicKeyHex? viewer,
     BigInt? cursor,
   ) async {
     final session = await _opened(spec, viewer);
@@ -81,7 +81,10 @@ final class RustFeedRemoteSource implements RemoteVideoSource {
     }
   }
 
-  Future<RustFeedSession> _opened(FfiFeedSpec spec, String? viewer) async {
+  Future<RustFeedSession> _opened(
+    FfiFeedSpec spec,
+    NostrPublicKeyHex? viewer,
+  ) async {
     try {
       return await _sessions.open(spec, viewer);
     } on Object catch (error, stackTrace) {
@@ -107,13 +110,11 @@ final class RustFeedRemoteSource implements RemoteVideoSource {
   /// fresh pull takes it whole, a paginating one needs rows past the
   /// cursor.
   bool _reaches(RustFeedPage warm, BigInt? cursor) {
-    return cursor == null ||
-        warm.posts.any((post) => post.createdAt <= cursor);
+    return cursor == null || warm.posts.any((post) => post.createdAt <= cursor);
   }
 
-  /// ndk parity: an older page is the `until:` slice alone, and a
-  /// malformed row is skipped instead of sinking the page
-  /// (ndk_video_remote_source.dart).
+  /// An older page is the `until:` slice alone. A malformed row is
+  /// skipped instead of sinking the page.
   List<VideoPost> _mapped(List<FfiFeedPost> rows, BigInt? cursor) {
     final posts = <VideoPost>[];
     for (final row in rows) {
@@ -136,9 +137,7 @@ final class RustFeedRemoteSource implements RemoteVideoSource {
     }
   }
 
-  /// ndk parity: NdkNostrVideoEventQuery surfaces every transport
-  /// problem as the one shared failure, which the page reader already
-  /// raises for a failed page.
+  /// Every transport problem crosses this boundary as one shared failure.
   AppFailure _failure(Object error, StackTrace stackTrace) {
     if (error is AppFailure) return error;
     log(

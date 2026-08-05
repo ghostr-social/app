@@ -19,8 +19,12 @@ pub(crate) struct PlanInputs<'a> {
 }
 
 pub(crate) struct PlannedWork {
-    pub requests: Vec<ChunkRequest>,
-    pub urls: HashMap<PostId, String>,
+    pub transfers: Vec<PlannedTransfer>,
+}
+
+pub(crate) struct PlannedTransfer {
+    pub request: ChunkRequest,
+    pub url: String,
 }
 
 /// Runs the pure engine planner over the manager's current picture.
@@ -40,11 +44,21 @@ pub(crate) fn planned_work(state: &mut DeliveryState, inputs: PlanInputs<'_>) ->
         present: &present_of,
         host_factor: &factor_of,
     });
-    let requests = requests
+    let transfers = pair_requests(requests, &urls);
+    PlannedWork { transfers }
+}
+
+fn pair_requests(
+    requests: Vec<ChunkRequest>,
+    urls: &HashMap<PostId, String>,
+) -> Vec<PlannedTransfer> {
+    requests
         .into_iter()
-        .filter(|request| urls.contains_key(&request.chunk.post))
-        .collect();
-    PlannedWork { requests, urls }
+        .filter_map(|request| {
+            let url = urls.get(&request.chunk.post)?.clone();
+            Some(PlannedTransfer { request, url })
+        })
+        .collect()
 }
 
 fn as_present_ranges(present: &HashMap<PostId, Vec<ByteRange>>) -> PresentRanges {

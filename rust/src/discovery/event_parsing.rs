@@ -1,7 +1,4 @@
-//! One Nostr event -> one playable video post. The Dart pipeline is the
-//! specification: media per lib/features/video_catalog/data/
-//! nostr_video_media.dart, display fields per nostr_video_event_mapper.dart,
-//! accepted kinds per lib/platform/nostr/video_discovery_queries.dart.
+//! Converts one accepted Nostr event into one playable video post.
 //! Feed assembly consumes [`video_post_from_event`]; nothing here does IO.
 
 use crate::engine::{DeliveryKind, VideoMeta};
@@ -17,8 +14,7 @@ use nostr_sdk::Event;
 pub const NOTE_KIND: u16 = 1;
 pub const FILE_METADATA_KIND: u16 = 1063;
 
-/// Server-side `#m` filter on the kind-1063 discovery query
-/// (video_discovery_queries.dart `videoFileMimeTypes`, matched exactly).
+/// Server-side `#m` values accepted by the kind-1063 discovery query.
 const VIDEO_FILE_MIME_TYPES: [&str; 6] = [
     "video/mp4",
     "video/webm",
@@ -38,8 +34,8 @@ pub struct ParsedVideoPost {
     pub identifier: Option<String>,
     /// The same `d` value exactly as published: two events whose
     /// identifiers differ only in padding are two different
-    /// coordinates, and ndk compares them raw (`_eventCoordinate` in
-    /// ndk_video_remote_source.dart).
+    /// coordinates, so the published value remains available for
+    /// canonical coordinate comparison.
     pub published_identifier: Option<String>,
     pub created_at: u64,
     pub caption: String,
@@ -72,9 +68,8 @@ fn has_video_file_mime(event: &Event) -> bool {
     tag_values(event, "m").any(|value| VIDEO_FILE_MIME_TYPES.contains(&value))
 }
 
-/// Addressable kinds must name a `d` identifier or the event is skipped
-/// (nostr_video_event_mapper.dart `_identifier`); the value is kept as
-/// published, and trimmed where the identifier is read.
+/// Addressable kinds must name a non-blank `d` identifier or the event is
+/// skipped. The value stays exact for coordinates and is trimmed for display.
 fn addressable_identifier(event: &Event) -> Option<Option<String>> {
     if event.kind.as_u16() < 30_000 {
         return Some(None);
@@ -133,8 +128,7 @@ fn delivery_kind(delivery: NativeVideoDelivery) -> DeliveryKind {
     }
 }
 
-/// t-tags first, then content hashtags, deduplicated in first-seen order
-/// (nostr_video_event_mapper.dart `_hashtags`).
+/// t-tags first, then content hashtags, deduplicated in first-seen order.
 fn post_hashtags(event: &Event) -> Vec<String> {
     let mut found = Vec::new();
     for raw in tag_values(event, "t") {

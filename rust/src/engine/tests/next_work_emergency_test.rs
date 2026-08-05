@@ -6,12 +6,14 @@ use crate::engine::{ByteRange, PostId};
 // Current post: 8 MB / 16 s, head (2 MB) already on disk, tail missing.
 fn bench() -> WorkBench {
     let mut bench = WorkBench::new();
-    bench
-        .catalog
-        .upsert(PostId::new("a"), progressive_meta(Some(8_000_000), Some(16_000)));
-    bench
-        .catalog
-        .upsert(PostId::new("b"), progressive_meta(Some(2_000_000), Some(4_000)));
+    bench.catalog.upsert(
+        PostId::new("a"),
+        progressive_meta(Some(8_000_000), Some(16_000)),
+    );
+    bench.catalog.upsert(
+        PostId::new("b"),
+        progressive_meta(Some(2_000_000), Some(4_000)),
+    );
     bench
         .present
         .insert(PostId::new("a"), vec![ByteRange::new(0, 2_000_000)]);
@@ -47,6 +49,10 @@ fn gateway_demand_promotes_the_current_tail_to_t0() {
 fn without_demand_the_uncommitted_current_tail_waits_in_hunger() {
     let requests = bench().run();
 
-    assert!(requests.iter().all(|request| request.chunk.post.as_str() == "b"));
-    assert!(requests.iter().all(|request| request.tier == Tier::T2Startability));
+    assert!(requests
+        .iter()
+        .all(|request| request.chunk.post.as_str() == "b"));
+    assert!(requests
+        .iter()
+        .all(|request| request.tier == Tier::T2Startability));
 }

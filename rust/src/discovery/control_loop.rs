@@ -42,14 +42,24 @@ pub fn discovery_action(mode: Mode, feed: FeedQueryState) -> DiscoveryAction {
 }
 
 fn hunger_action(feed: FeedQueryState) -> DiscoveryAction {
-    if !feed.open || feed.busy {
+    if !feed.available() {
         return DiscoveryAction::Idle;
     }
     if feed.has_cursor {
         return DiscoveryAction::PrefetchNextPage;
     }
-    if feed.loaded && !feed.widened {
+    if feed.can_widen() {
         return DiscoveryAction::WidenActiveQuery;
     }
     DiscoveryAction::Idle
+}
+
+impl FeedQueryState {
+    fn available(self) -> bool {
+        self.open && !self.busy
+    }
+
+    fn can_widen(self) -> bool {
+        self.loaded && !self.widened
+    }
 }

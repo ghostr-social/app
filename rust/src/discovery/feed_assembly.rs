@@ -1,9 +1,6 @@
-//! Canonical post selection and ordering for one feed page. Parity
-//! source: lib/features/video_catalog/data/ndk_video_remote_source.dart —
-//! `_canonicalEvents` keeps one newest event per same-video coordinate
-//! and orders newest-first; `FeedPagination.appendNew`
-//! (lib/features/video_catalog/presentation/feed_pagination.dart) appends
-//! older pages below the list without re-adding identities already there.
+//! Canonical post selection and ordering for one feed page: one newest
+//! event per video coordinate, newest-first, with older unique rows
+//! appended below the existing snapshot.
 
 use std::collections::{HashMap, HashSet};
 
@@ -25,10 +22,9 @@ pub fn select_posts(
 }
 
 /// The same-video identity of a post: addressable video revisions share
-/// `kind:pubkey:identifier`, everything else is its event id — mirrors
-/// `_eventCoordinate` (and `VideoInteractionTarget.fromPost`). The
-/// identifier is compared as published, like the raw `d` tag value ndk
-/// keys on: padding makes a different coordinate, not the same video.
+/// `kind:pubkey:identifier`, everything else is its event id. The
+/// identifier is compared exactly as published: padding names a distinct
+/// coordinate.
 pub fn post_coordinate(post: &ParsedVideoPost) -> String {
     if !(30_000..40_000).contains(&u32::from(post.kind)) {
         return post.event_id.clone();
@@ -43,7 +39,7 @@ pub fn post_coordinate(post: &ParsedVideoPost) -> String {
 
 /// One canonical post per coordinate — newest created_at wins, ties keep
 /// the lexicographically smaller event id — ordered newest-first with
-/// ascending-id tiebreak (`_isNewer` / `_compareNewest`).
+/// ascending-ID tiebreak.
 pub fn canonical_posts(fetched: Vec<ParsedVideoPost>) -> Vec<ParsedVideoPost> {
     let mut selected: HashMap<String, ParsedVideoPost> = HashMap::new();
     for post in fetched {
@@ -65,7 +61,7 @@ pub fn canonical_posts(fetched: Vec<ParsedVideoPost>) -> Vec<ParsedVideoPost> {
 
 /// Appends the incoming posts whose coordinate is not already present,
 /// below the current list and in their given order; reports whether the
-/// list changed (`FeedPagination.appendNew`).
+/// list changed.
 pub fn append_new(current: &mut Vec<ParsedVideoPost>, incoming: Vec<ParsedVideoPost>) -> bool {
     let mut seen: HashSet<String> = current.iter().map(post_coordinate).collect();
     let before = current.len();

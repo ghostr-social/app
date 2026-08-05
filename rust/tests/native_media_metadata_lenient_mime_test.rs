@@ -9,8 +9,8 @@ fn imeta(fields: &[&str]) -> Vec<String> {
 
 #[test]
 fn native_media_metadata_accepts_mimeless_imeta_with_a_video_extension() {
-    // lib/features/video_catalog/data/nostr_video_media.dart `_playable`:
-    // publishers often omit the mime; the URL extension is proof enough.
+    // Publishers often omit the mime; recognized URL extensions still
+    // identify playable media.
     let cases = [
         (
             "https://cdn.example/a.mp4",
@@ -63,8 +63,7 @@ fn native_media_metadata_still_honors_an_explicit_mime_when_lenient() {
 
 #[test]
 fn native_media_metadata_rejects_an_imeta_with_no_usable_url() {
-    // Dart `_tryImeta` returns null when `_imetaUrls` finds nothing, and
-    // the event falls through to its file tags or its text links.
+    // An imeta tag without a bounded HTTP URL cannot produce media.
     let none = lenient_native_media(&imeta(&["m video/mp4", "url notaurl"]));
 
     assert!(none.is_none());
@@ -72,8 +71,8 @@ fn native_media_metadata_rejects_an_imeta_with_no_usable_url() {
 
 #[test]
 fn native_media_metadata_keeps_media_whose_urls_are_only_fallbacks() {
-    // Dart `_imetaUrls` folds primary + fallbacks into one ordered set, so
-    // a broken primary still leaves the fallbacks playable.
+    // Primary and fallback URLs form one ordered set, so a broken primary
+    // still leaves the fallbacks playable.
     let media = lenient_native_media(&imeta(&[
         "url notaurl",
         "fallback https://mirror.example/clip.mp4",

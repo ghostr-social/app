@@ -18,7 +18,8 @@ class PagedSearchRepository implements VideoSearchRepository {
   Object? videosFailure;
 
   @override
-  Future<VideoFeedPage> searchVideos(String query, {DateTime? olderThan}) async {
+  Future<VideoFeedPage> searchVideos(String query,
+      {DateTime? olderThan}) async {
     queries.add(query);
     olderThans.add(olderThan);
     if (videosFailure case final Object failure) throw failure;

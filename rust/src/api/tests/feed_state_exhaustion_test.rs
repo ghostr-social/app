@@ -1,6 +1,5 @@
-//! Exhaustion parity: an empty older page ends a canonical feed
-//! (filtered_video_feed_repository.dart `_nextCursor` null), while a
-//! failed older page keeps the cursor for the next swipe (`failLoad`).
+//! An empty older page exhausts a canonical feed, while a failed older
+//! page preserves its cursor for retry.
 
 use crate::api::feed_decisions::LoadMoreAction;
 use crate::api::feed_state::FeedState;
@@ -29,7 +28,9 @@ fn an_empty_older_page_exhausts_a_profile_feed() {
 fn a_failed_older_page_keeps_the_cursor_for_a_retry() {
     let mut state = FeedState::new();
     let keys = Keys::generate();
-    let (feed, dispatch) = state.open(FeedSpec::MainFeed { viewer: Some(keys.public_key()) });
+    let (feed, dispatch) = state.open(FeedSpec::MainFeed {
+        viewer: Some(keys.public_key()),
+    });
     let open = dispatch.expect("main feeds dispatch a first page");
     state.apply(&open.context, Ok(vec![video_note(&keys, "only", 40)]));
 

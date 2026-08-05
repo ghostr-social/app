@@ -70,10 +70,21 @@ fn change_kind(
 ) -> Option<FfiDeliveryEventKind> {
     match previous {
         None => Some(FfiDeliveryEventKind::Readiness),
-        Some(prev) if prev.startable != current.startable => Some(FfiDeliveryEventKind::Readiness),
-        Some(prev) if prev != current => Some(FfiDeliveryEventKind::Progress),
-        Some(_) => None,
+        Some(previous) => changed_snapshot(previous, current),
     }
+}
+
+fn changed_snapshot(
+    previous: &DeliverySnapshot,
+    current: &DeliverySnapshot,
+) -> Option<FfiDeliveryEventKind> {
+    if previous == current {
+        return None;
+    }
+    if previous.startable != current.startable {
+        return Some(FfiDeliveryEventKind::Readiness);
+    }
+    Some(FfiDeliveryEventKind::Progress)
 }
 
 pub(crate) fn error_event(post_id: &str, detail: String) -> FfiDeliveryEvent {

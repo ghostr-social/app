@@ -35,8 +35,14 @@ async fn the_viewer_is_chased_once() {
     bootstrap.viewer(author(AUTHOR_A));
     bootstrap.viewer(author(AUTHOR_A));
 
-    assert_eq!(requested_authors(&mut retrievals).await, serde_json::json!([AUTHOR_A]));
-    assert!(retrievals.try_recv().is_err(), "the second ask is deduplicated");
+    assert_eq!(
+        requested_authors(&mut retrievals).await,
+        serde_json::json!([AUTHOR_A])
+    );
+    assert!(
+        retrievals.try_recv().is_err(),
+        "the second ask is deduplicated"
+    );
 }
 
 #[tokio::test]
@@ -48,11 +54,13 @@ async fn landed_follows_are_chased_for_their_relay_lists() {
 
     bootstrap.track_follows(vec![author(AUTHOR_A)]).await;
 
-    assert_eq!(requested_authors(&mut retrievals).await, serde_json::json!([AUTHOR_A]));
+    assert_eq!(
+        requested_authors(&mut retrievals).await,
+        serde_json::json!([AUTHOR_A])
+    );
 }
 
-/// Relays that were unreachable at startup must not cost the session
-/// its NIP-65 routing: a failed chase releases its claim.
+/// A failed startup chase releases its NIP-65 routing claim.
 #[tokio::test]
 async fn a_failed_chase_is_asked_again() {
     let (executor, mut retrievals) = failing_executor();
@@ -68,7 +76,10 @@ async fn a_failed_chase_is_asked_again() {
     bootstrap.viewer(author(AUTHOR_A));
 
     requested_authors(&mut retrievals).await;
-    assert_eq!(requested_authors(&mut retrievals).await, serde_json::json!([AUTHOR_A]));
+    assert_eq!(
+        requested_authors(&mut retrievals).await,
+        serde_json::json!([AUTHOR_A])
+    );
 }
 
 #[tokio::test]

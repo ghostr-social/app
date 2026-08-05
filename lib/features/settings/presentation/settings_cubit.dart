@@ -120,8 +120,7 @@ class SettingsCubit extends DisposalSafeCubit<SettingsState> {
     emit(current.saving());
     try {
       await _repository.save(settings);
-      _notice(
-          'Settings saved. Restart Ghostr to apply connection and cache changes.');
+      _notice('Settings saved. Blossom server changes apply after restart.');
     } on AppFailure catch (failure) {
       _notice(failure.message);
     } on Object catch (error, stackTrace) {

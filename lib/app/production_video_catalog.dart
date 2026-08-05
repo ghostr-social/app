@@ -1,7 +1,6 @@
 import 'package:ghostr/app/production_nostr_services.dart';
 import 'package:ghostr/app/production_video_delivery.dart';
 import 'package:ghostr/app/video_catalog_services.dart';
-import 'package:ghostr/core/nostr/scheduled_nostr_event_client.dart';
 import 'package:ghostr/core/storage/account_storage_scope.dart';
 import 'package:ghostr/features/comments/data/nostr_comments_repository.dart';
 import 'package:ghostr/features/engagement/data/nostr_engagement_repository.dart';
@@ -11,9 +10,8 @@ import 'package:ghostr/features/video_catalog/data/hybrid_video_comments_reposit
 import 'package:ghostr/features/video_catalog/data/hybrid_video_engagement_repository.dart';
 import 'package:ghostr/features/video_catalog/data/hybrid_video_publishing_repository.dart';
 import 'package:ghostr/features/video_catalog/data/local_video_store.dart';
-import 'package:ghostr/features/video_catalog/data/metadata_creator_search_source.dart';
+import 'package:ghostr/features/video_catalog/data/nostr_creator_search_source.dart';
 import 'package:ghostr/features/video_catalog/data/recent_videos_trending_hashtags.dart';
-import 'package:ghostr/features/video_catalog/data/scheduled_creator_search_source.dart';
 import 'package:ghostr/features/video_catalog/domain/aggregating_video_profile_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/discovery_video_search_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/filtered_video_feed_repository.dart';
@@ -53,15 +51,9 @@ VideoCatalogServices buildProductionVideoCatalog(
   );
   const reporter = DeveloperFailureReporter();
   final social = SocialGraphCache(nostr.adapters.social, local, reporter);
-  // Engagement reads queue behind the shared pool so like/comment counts
-  // never crowd out what the viewer is actively looking at.
-  final scheduledEvents = ScheduledNostrEventClient(
-    client: nostr.eventClient,
-    scheduler: delivery.scheduler,
-  );
   final interactions = NostrVideoInteractions(
-    NostrEngagementRepository(scheduledEvents),
-    NostrCommentsRepository(scheduledEvents),
+    NostrEngagementRepository(nostr.eventClient),
+    NostrCommentsRepository(nostr.eventClient),
     reporter,
   );
   final reader = HybridVideoReader(
@@ -81,17 +73,11 @@ VideoCatalogServices buildProductionVideoCatalog(
     profile: AggregatingVideoProfileRepository(reader, social),
     search: DiscoveryVideoSearchRepository(
       videos: delivery.searchSource,
-      creators: ScheduledCreatorSearchSource(
-        source: MetadataCreatorSearchSource(nostr.profileSearch),
-        scheduler: delivery.scheduler,
-      ),
+      creators: NostrCreatorSearchSource(nostr.eventClient),
       social: social,
       failureReporter: reporter,
     ),
-    trending: RecentVideosTrendingHashtags(
-      delivery.discoverySource,
-      delivery.scheduler,
-    ),
+    trending: RecentVideosTrendingHashtags(delivery.discoverySource),
     publishing: HybridVideoPublishingRepository(
       local,
       nostr.publisher,

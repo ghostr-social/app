@@ -1,12 +1,11 @@
-import 'package:ghostr/features/settings/domain/relay_url.dart';
 import 'package:ndk/ndk.dart';
 
-Ndk buildNdk(List<RelayUrl> relays) {
+Ndk buildNdk() {
   return Ndk(
     NdkConfig(
       eventVerifier: Bip340EventVerifier(),
       cache: MemCacheManager(),
-      bootstrapRelays: relays.map((relay) => relay.value).toList(),
+      bootstrapRelays: const [],
       engine: NdkEngine.JIT,
       logLevel: LogLevel.error,
     ),

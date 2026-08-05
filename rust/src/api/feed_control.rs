@@ -4,16 +4,42 @@
 use crate::api::feed_mapping::{parse_feed_id, parse_feed_spec};
 use crate::api::feed_types::FfiFeedSpec;
 use crate::api::runtime_registry;
+use crate::discovery::feed_spec::FeedSpec;
+use crate::discovery::session_generation::SessionGeneration;
+use anyhow::ensure;
 use flutter_rust_bridge::frb;
-use nostr_sdk::Timestamp;
+use nostr_sdk::{PublicKey, Timestamp};
+
+/// Captures the native account-session token before Dart waits on any
+/// previous feed. A later open must present the same token.
+#[frb]
+pub async fn ffi_feed_session(expected_account_hex: Option<String>) -> anyhow::Result<u64> {
+    let expected_account = parse_expected_account(expected_account_hex)?;
+    let engine = runtime_registry::engine()?;
+    Ok(engine
+        .discovery
+        .feed_session(expected_account)
+        .await?
+        .value())
+}
 
 /// Opens one feed in the Rust feed store, starts its first-page
 /// queries, and returns the feed handle every later call names.
 #[frb]
-pub async fn ffi_open_feed(spec: FfiFeedSpec) -> anyhow::Result<String> {
+pub async fn ffi_open_feed(
+    spec: FfiFeedSpec,
+    expected_account_hex: Option<String>,
+    expected_session_generation: u64,
+) -> anyhow::Result<String> {
     let parsed = parse_feed_spec(&spec)?;
+    let expected_account = parse_expected_account(expected_account_hex)?;
+    validate_main_account(&parsed, expected_account)?;
     let engine = runtime_registry::engine()?;
-    Ok(engine.discovery.open_feed(parsed))
+    let expected_session = SessionGeneration::from_value(expected_session_generation);
+    engine
+        .discovery
+        .open_feed(parsed, expected_account, expected_session)
+        .await
 }
 
 /// Requests one older page. Returns whether more content may exist:
@@ -34,5 +60,22 @@ pub async fn ffi_load_more(feed_id: String, older_than_secs: Option<u64>) -> any
 pub async fn ffi_close_feed(feed_id: String) -> anyhow::Result<()> {
     let feed = parse_feed_id(&feed_id)?;
     runtime_registry::engine()?.discovery.close_feed(feed);
+    Ok(())
+}
+
+fn parse_expected_account(raw: Option<String>) -> anyhow::Result<Option<PublicKey>> {
+    Ok(raw.map(|value| PublicKey::from_hex(&value)).transpose()?)
+}
+
+fn validate_main_account(
+    spec: &FeedSpec,
+    expected_account: Option<PublicKey>,
+) -> anyhow::Result<()> {
+    if let FeedSpec::MainFeed { viewer } = spec {
+        ensure!(
+            viewer.as_ref() == expected_account.as_ref(),
+            "the main feed viewer does not match the expected account"
+        );
+    }
     Ok(())
 }

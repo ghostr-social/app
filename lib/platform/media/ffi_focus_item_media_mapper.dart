@@ -17,11 +17,18 @@ FfiFocusItem ffiFocusItemForMedia(VideoMediaSource media) {
   return FfiFocusItem(
     postId: ffiPostIdForMedia(media),
     urls: urls,
-    delivery: delivery.name,
+    delivery: _delivery(delivery),
     sha256: media.expectedSha256?.value,
     sizeBytes: _bigInt(metadata.sizeBytes),
     durationMs: _bigInt(metadata.durationMs),
   );
+}
+
+FfiMediaDelivery _delivery(VideoMediaDelivery delivery) {
+  return switch (delivery) {
+    VideoMediaDelivery.progressive => FfiMediaDelivery.progressive,
+    VideoMediaDelivery.hls => FfiMediaDelivery.hls,
+  };
 }
 
 /// Stable gateway id for one post: the nostr event scope when it is

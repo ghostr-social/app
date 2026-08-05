@@ -4,8 +4,7 @@ import '../support/discovery_search_harness.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('a hashtag query becomes a tag filter revalidated on results',
-      () async {
+  test('a hashtag query becomes a tag filter revalidated on results', () async {
     final harness = DiscoverySearchHarness(posts: [
       samplePost(id: 'tagged', hashtags: const ['dance', 'music']),
       samplePost(id: 'untagged', hashtags: const ['other']),

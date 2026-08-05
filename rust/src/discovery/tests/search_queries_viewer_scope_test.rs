@@ -37,5 +37,8 @@ fn the_viewer_scope_never_reaches_a_wire_filter() {
 
 #[test]
 fn a_relay_list_chase_leaves_the_scope_alone() {
-    assert_eq!(viewer_lists_plan(author(AUTHOR_A)).viewer, ViewerScope::Unknown);
+    assert_eq!(
+        viewer_lists_plan(author(AUTHOR_A)).viewer,
+        ViewerScope::Unknown
+    );
 }

@@ -2,13 +2,15 @@ part of 'gateway_video_playback_port.dart';
 
 final class _GatewayVideoPlaybackSurface extends StatefulWidget {
   const _GatewayVideoPlaybackSurface({
-    required this.port,
+    required this.delegate,
+    required this.createCubit,
     required this.media,
     required this.isActive,
     required this.onPlaybackMediaReleased,
   });
 
-  final GatewayVideoPlaybackPort port;
+  final VideoPlaybackPort delegate;
+  final GatewayPlaybackCubit Function(VideoMediaSource) createCubit;
   final VideoMediaSource media;
   final bool isActive;
   final void Function()? onPlaybackMediaReleased;
@@ -20,15 +22,13 @@ final class _GatewayVideoPlaybackSurface extends StatefulWidget {
 
 final class _GatewayVideoPlaybackSurfaceState
     extends State<_GatewayVideoPlaybackSurface> {
-  ProxiedProgressiveVideoMediaSource? _playbackMedia;
-  bool _isPreparing = true;
-  bool _hasPreparationError = false;
-  int _requestVersion = 0;
+  late final GatewayPlaybackCubit _cubit;
 
   @override
   void initState() {
     super.initState();
-    _requestGateway();
+    _cubit = widget.createCubit(widget.media);
+    unawaited(_cubit.load(widget.media));
   }
 
   @override
@@ -36,22 +36,35 @@ final class _GatewayVideoPlaybackSurfaceState
     super.didUpdateWidget(oldWidget);
     if (oldWidget.media.inventoryPlaybackIdentity !=
         widget.media.inventoryPlaybackIdentity) {
-      _resetMedia();
+      unawaited(_cubit.load(widget.media));
     }
   }
 
   @override
   void dispose() {
-    _requestVersion += 1;
+    unawaited(_cubit.close());
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_hasPreparationError) return _buildError();
-    final media = _playbackMedia;
-    if (_isPreparing || media == null) return _buildLoading();
-    return widget.port._delegate.buildSurface(
+    return BlocBuilder<GatewayPlaybackCubit, GatewayPlaybackState>(
+      key: ValueKey(widget.media.inventoryPlaybackIdentity),
+      bloc: _cubit,
+      builder: _buildState,
+    );
+  }
+
+  Widget _buildState(BuildContext context, GatewayPlaybackState state) {
+    return switch (state) {
+      GatewayPlaybackFailed() => _buildError(),
+      GatewayPlaybackReady(:final media) => _buildPlayback(media),
+      GatewayPlaybackPreparing() => _buildLoading(),
+    };
+  }
+
+  Widget _buildPlayback(ProxiedProgressiveVideoMediaSource media) {
+    return widget.delegate.buildSurface(
       media: media,
       isActive: widget.isActive,
       onPlaybackMediaReleased: widget.onPlaybackMediaReleased,
@@ -72,67 +85,9 @@ final class _GatewayVideoPlaybackSurfaceState
       title: 'Video unavailable',
       message: 'Ghostr could not reach the local video gateway.',
       actionLabel: 'Retry',
-      onAction: _retry,
+      onAction: () => unawaited(_cubit.retry()),
     );
   }
-
-  void _resetMedia() {
-    _requestVersion += 1;
-    _playbackMedia = null;
-    _isPreparing = true;
-    _hasPreparationError = false;
-    _requestGateway();
-  }
-
-  void _requestGateway() {
-    final version = ++_requestVersion;
-    unawaited(_loadGatewayMedia(version));
-  }
-
-  Future<void> _loadGatewayMedia(int version) async {
-    try {
-      final media = await widget.port._gateway.resolve(widget.media);
-      if (_isCurrent(version)) _acceptMedia(media);
-    } catch (error, stackTrace) {
-      _logFailure(error, stackTrace);
-      if (_isCurrent(version)) _rejectMedia();
-    }
-  }
-
-  bool _isCurrent(int version) => mounted && version == _requestVersion;
-
-  void _acceptMedia(ProxiedProgressiveVideoMediaSource media) {
-    setState(() {
-      _playbackMedia = media;
-      _isPreparing = false;
-      _hasPreparationError = false;
-    });
-  }
-
-  void _rejectMedia() {
-    setState(() {
-      _playbackMedia = null;
-      _isPreparing = false;
-      _hasPreparationError = true;
-    });
-  }
-
-  void _retry() {
-    setState(() {
-      _isPreparing = true;
-      _hasPreparationError = false;
-    });
-    _requestGateway();
-  }
-}
-
-void _logFailure(Object error, StackTrace stackTrace) {
-  log(
-    'Progressive gateway resolution failed.',
-    name: 'ghostr.video.gateway',
-    error: error,
-    stackTrace: stackTrace,
-  );
 }
 
 final class _UnsupportedStreamPanel extends StatelessWidget {

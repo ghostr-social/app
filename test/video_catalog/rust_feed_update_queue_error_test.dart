@@ -22,8 +22,7 @@ void main() {
     await queue.dispose();
   });
 
-  test('reports the buffered snapshot before the error behind it',
-      () async {
+  test('reports the buffered snapshot before the error behind it', () async {
     final updates = StreamController<FfiFeedUpdate>();
     final queue = RustFeedUpdateQueue(updates.stream);
     updates.add(rustFeedBaseline());

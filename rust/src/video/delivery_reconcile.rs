@@ -2,12 +2,12 @@
 //! store, launch due probes, plan with the pure engine, then bring the
 //! in-flight transfers in line with the freshly ordered plan.
 
-use crate::engine::scoring::ChunkRequest;
 use crate::engine::tiers::DemandSignals;
 use crate::engine::{ByteRange, ChunkId, PostId};
 use crate::video::delivery_manager::DeliveryWorker;
-use crate::video::delivery_plan::{planned_work, PlanInputs, PlannedWork};
+use crate::video::delivery_plan::{planned_work, PlanInputs, PlannedTransfer, PlannedWork};
 use crate::video::delivery_transfers::{spawn_chunk, spawn_probe};
+use crate::video::playback_demand::DemandSignal;
 use std::collections::{HashMap, HashSet};
 
 impl DeliveryWorker {
@@ -53,7 +53,11 @@ impl DeliveryWorker {
     /// declare it as soon as the catalog knows (imeta or probe).
     async fn ensure_total_lens(&mut self, window: &[PostId]) {
         for post in window {
-            let known = self.state.catalog().lookup(post).and_then(|e| e.total_bytes());
+            let known = self
+                .state
+                .catalog()
+                .lookup(post)
+                .and_then(|e| e.total_bytes());
             let Some(total) = known else { continue };
             self.set_store_total(post, total).await;
         }
@@ -68,45 +72,56 @@ impl DeliveryWorker {
     /// Live gateway demand counts while it concerns the playing post
     /// and the demanded bytes are still missing; stale demand drops.
     fn demand_signals(&mut self, present: &HashMap<PostId, Vec<ByteRange>>) -> DemandSignals {
-        let Some(signal) = self.pending_demand.clone() else {
-            return DemandSignals::default();
-        };
-        let playing = self.state.focus().current() == Some(&signal.post);
-        if !playing || covered(signal.range, present.get(&signal.post)) {
-            self.pending_demand = None;
-            return DemandSignals::default();
-        }
-        DemandSignals {
-            gateway_demand: true,
-            ..DemandSignals::default()
-        }
+        resolve_demand(
+            &mut self.pending_demand,
+            self.state.focus().current(),
+            present,
+        )
     }
 
     /// Grants the ordered plan up to the concurrency limit; whatever
     /// the plan no longer contains is cancelled first (scroll-past).
     fn reconcile_transfers(&mut self, planned: PlannedWork) {
         let wanted: HashSet<ChunkId> = planned
-            .requests
+            .transfers
             .iter()
-            .map(|request| request.chunk.clone())
+            .map(|transfer| transfer.request.chunk.clone())
             .collect();
         self.inflight.cancel_absent(&wanted);
-        for request in &planned.requests {
+        for transfer in &planned.transfers {
             if self.inflight.len() >= self.state.concurrency() {
                 break;
             }
-            self.grant(request, &planned.urls);
+            self.grant(transfer);
         }
     }
 
-    fn grant(&mut self, request: &ChunkRequest, urls: &HashMap<PostId, String>) {
-        let chunk = &request.chunk;
+    fn grant(&mut self, transfer: &PlannedTransfer) {
+        let chunk = &transfer.request.chunk;
         if self.inflight.contains(chunk) || self.retry.is_cooling(&chunk.post) {
             return;
         }
-        let Some(url) = urls.get(&chunk.post) else { return };
-        let handle = spawn_chunk(self.ctx.clone(), chunk.clone(), url.clone());
-        self.inflight.insert(chunk.clone(), handle);
+        let attempt = self.inflight.next_attempt(chunk.clone());
+        let handle = spawn_chunk(self.ctx.clone(), attempt.clone(), transfer.url.clone());
+        self.inflight.insert(&attempt, handle);
+    }
+}
+
+pub(crate) fn resolve_demand(
+    pending: &mut Option<DemandSignal>,
+    playing: Option<&PostId>,
+    present: &HashMap<PostId, Vec<ByteRange>>,
+) -> DemandSignals {
+    let Some(signal) = pending.as_ref() else {
+        return DemandSignals::default();
+    };
+    if playing != Some(&signal.post) || covered(signal.range, present.get(&signal.post)) {
+        *pending = None;
+        return DemandSignals::default();
+    }
+    DemandSignals {
+        gateway_demand: true,
+        ..DemandSignals::default()
     }
 }
 

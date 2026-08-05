@@ -7,9 +7,8 @@ import '../support/fake_rust_feed_port.dart';
 import '../support/rust_feed_fixtures.dart';
 
 void main() {
-  // ndk parity: a failed primary query raises AppFailure so the feed can
-  // show its error state (ndk_nostr_video_event_query.dart). Serving an
-  // empty list instead would read to the user as "nothing was posted".
+  // A failed primary query raises AppFailure so the feed can show its
+  // error state; an empty list would read as "nothing was posted".
   test('raises the shared feed failure when the page fails', () async {
     final port = FakeRustFeedPort(updates: [
       rustFeedBaseline(),

@@ -11,9 +11,10 @@ use rust_lib_ghostr::video::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
 use std::time::Duration;
 use store_space::{discard, limits, spaced_store};
-use support::delivery::{start_harness_with_store, DeliveryOptions};
+use support::delivery::start_harness_with_store;
 use support::delivery_items::{focus_now, sized_item};
 use support::delivery_media::{hit_log, media_body, serve_recording};
+use support::delivery_options::DeliveryOptions;
 use tokio::time::Instant;
 
 #[tokio::test]
@@ -22,10 +23,13 @@ async fn delivery_keeps_a_post_playable_while_the_store_is_full() {
     std::fs::create_dir_all(&fixture.root).expect("store root");
     let origin = serve_recording("origin", media_body(), hit_log()).await;
     let root = fixture.root.clone();
-    let harness = start_harness_with_store(Arc::new(fixture.store), root, DeliveryOptions::default());
-    harness
-        .handle
-        .update_focus(focus_now(vec![sized_item("aa11", &origin, 16, 1_000)], 0, 5_000));
+    let harness =
+        start_harness_with_store(Arc::new(fixture.store), root, DeliveryOptions::default());
+    harness.handle.update_focus(focus_now(
+        vec![sized_item("aa11", &origin, 16, 1_000)],
+        0,
+        5_000,
+    ));
 
     wait_for_refusals(&harness.store, 6).await;
 

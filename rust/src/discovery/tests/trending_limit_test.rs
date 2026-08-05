@@ -1,6 +1,5 @@
-//! The trending answer is capped at the requested limit; the default
-//! cap mirrors the Dart `limit` of 12 — parity:
-//! lib/features/video_catalog/domain/trending_hashtags.dart.
+//! The trending answer is capped at the requested limit; the product
+//! default is twelve tags.
 
 use super::trending_support::post_with_hashtags;
 use crate::discovery::trending::{rank_trending_hashtags, TRENDING_HASHTAG_LIMIT};

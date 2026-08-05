@@ -6,12 +6,14 @@ use crate::engine::{ByteRange, PostId};
 // Current post: 8 MB / 16 s, head (2 MB) on disk; next post unfetched.
 fn bench(watch_ms: u64) -> WorkBench {
     let mut bench = WorkBench::new();
-    bench
-        .catalog
-        .upsert(PostId::new("a"), progressive_meta(Some(8_000_000), Some(16_000)));
-    bench
-        .catalog
-        .upsert(PostId::new("b"), progressive_meta(Some(2_000_000), Some(4_000)));
+    bench.catalog.upsert(
+        PostId::new("a"),
+        progressive_meta(Some(8_000_000), Some(16_000)),
+    );
+    bench.catalog.upsert(
+        PostId::new("b"),
+        progressive_meta(Some(2_000_000), Some(4_000)),
+    );
     bench
         .present
         .insert(PostId::new("a"), vec![ByteRange::new(0, 2_000_000)]);
@@ -48,5 +50,7 @@ fn committed_tail_chunks_come_in_file_order_before_startability() {
 fn watch_time_below_the_threshold_is_not_commitment() {
     let requests = bench(2_999).run();
 
-    assert!(requests.iter().all(|request| request.tier != Tier::T1CurrentTail));
+    assert!(requests
+        .iter()
+        .all(|request| request.tier != Tier::T1CurrentTail));
 }

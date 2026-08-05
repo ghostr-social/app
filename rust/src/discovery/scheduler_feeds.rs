@@ -43,6 +43,12 @@ impl FeedBook {
         self.active.as_ref()
     }
 
+    pub(crate) fn reset_session(&mut self) {
+        self.active = None;
+        self.feeds.clear();
+        self.inflight.clear();
+    }
+
     pub(crate) fn base_request(&self, context: &FeedContext) -> Option<&DiscoveryRequest> {
         self.feeds.get(context).map(|feed| &feed.request)
     }

@@ -14,10 +14,7 @@ fn the_head_splits_into_one_megabyte_chunks_with_a_short_last_chunk() {
     // Head budget: 1_250_000 bytes at the default assumed bitrate.
     let ranges = plan(None, 2_500_000).head_ranges();
 
-    let expected = vec![
-        ByteRange::new(0, MIB),
-        ByteRange::new(MIB, 1_250_000),
-    ];
+    let expected = vec![ByteRange::new(0, MIB), ByteRange::new(MIB, 1_250_000)];
     assert_eq!(ranges, expected);
 }
 

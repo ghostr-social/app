@@ -30,8 +30,14 @@ fn detects_a_top_level_moov_box_within_the_available_head_bytes() {
     let moov = full_box(b"moov", 16);
     let cases: Vec<(Vec<u8>, bool)> = vec![
         (joined(&[ftyp.clone(), moov, full_box(b"mdat", 4)]), true),
-        (joined(&[ftyp.clone(), sized_header(b"mdat", 1_000_000)]), false),
-        (joined(&[ftyp.clone(), sized_header(b"moov", 1_000_000)]), true),
+        (
+            joined(&[ftyp.clone(), sized_header(b"mdat", 1_000_000)]),
+            false,
+        ),
+        (
+            joined(&[ftyp.clone(), sized_header(b"moov", 1_000_000)]),
+            true,
+        ),
         (joined(&[ftyp.clone(), sized_header(b"mdat", 0)]), false),
         (joined(&[ftyp.clone(), sized_header(b"moov", 0)]), true),
         (
@@ -42,8 +48,14 @@ fn detects_a_top_level_moov_box_within_the_available_head_bytes() {
             joined(&[large_box(b"free", 8, 8), full_box(b"moov", 4)]),
             false,
         ),
-        (joined(&[sized_header(b"free", 1), full_box(b"moov", 4)]), false),
-        (joined(&[sized_header(b"free", 4), full_box(b"moov", 4)]), false),
+        (
+            joined(&[sized_header(b"free", 1), full_box(b"moov", 4)]),
+            false,
+        ),
+        (
+            joined(&[sized_header(b"free", 4), full_box(b"moov", 4)]),
+            false,
+        ),
         (ftyp[..6].to_vec(), false),
         (Vec::new(), false),
     ];

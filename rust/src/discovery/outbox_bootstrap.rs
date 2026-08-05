@@ -14,6 +14,7 @@ use crate::discovery::plan_executor::{PlanExecutor, PlannedRetrieval};
 use crate::discovery::relay_plan_executor::SharedOutboxDirectory;
 use crate::discovery::retrieval_queue::{FeedContext, RetrievalPriority};
 use crate::discovery::search_queries::QueryPlan;
+use crate::discovery::session_generation::SessionGeneration;
 use nostr_sdk::{Event, Kind, PublicKey};
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
@@ -29,12 +30,15 @@ pub struct OutboxBootstrap {
     executor: Arc<dyn PlanExecutor>,
     outbox: SharedOutboxDirectory,
     outcomes: mpsc::UnboundedSender<RetrievalOutcome>,
-    requested: Requested,
+    session: SharedSession,
 }
 
-/// Pubkeys already asked for, shared with the retrieval tasks so a
-/// failure can hand its claim back.
-type Requested = Arc<Mutex<HashSet<PublicKey>>>;
+type SharedSession = Arc<Mutex<BootstrapSession>>;
+
+struct BootstrapSession {
+    generation: SessionGeneration,
+    requested: HashSet<PublicKey>,
+}
 
 impl OutboxBootstrap {
     pub fn new(
@@ -46,71 +50,114 @@ impl OutboxBootstrap {
             executor,
             outbox,
             outcomes,
-            requested: Arc::new(Mutex::new(HashSet::new())),
+            session: Arc::new(Mutex::new(BootstrapSession {
+                generation: SessionGeneration::initial(),
+                requested: HashSet::new(),
+            })),
         }
+    }
+
+    pub(crate) fn reset_session(&self, generation: SessionGeneration) {
+        let mut session = locked(&self.session);
+        session.generation = generation;
+        session.requested.clear();
     }
 
     /// Chases the viewer's own follow, mute, and relay lists once.
     pub fn viewer(&self, viewer: PublicKey) {
-        let claimed = self.claim(&[viewer]);
+        let (generation, claimed) = self.claim(&[viewer]);
         if claimed.is_empty() {
             return;
         }
-        self.spawn(claimed, viewer_lists_plan(viewer));
+        self.spawn(generation, claimed, viewer_lists_plan(viewer));
     }
 
     /// Chases the relay lists of authors a feed just opened on (profile
     /// creators, or the viewer's follows).
     pub fn authors(&self, authors: &[PublicKey]) {
-        for batch in self.claim(authors).chunks(MAX_RELAY_LIST_AUTHORS) {
-            self.spawn(batch.to_vec(), author_relay_lists_plan(batch));
-        }
+        let generation = locked(&self.session).generation;
+        self.authors_for(generation, authors);
     }
 
     /// Adopts a landed follow set as the main feed's routing set and
     /// chases the relay lists it does not know yet.
     pub async fn track_follows(&self, follows: Vec<PublicKey>) {
-        self.outbox.write().await.track_viewer_follows(follows.clone());
-        self.authors(&follows);
+        let generation = locked(&self.session).generation;
+        self.track_follows_for(generation, follows).await;
+    }
+
+    pub(crate) async fn track_follows_for(
+        &self,
+        generation: SessionGeneration,
+        follows: Vec<PublicKey>,
+    ) {
+        self.outbox
+            .write()
+            .await
+            .track_viewer_follows_for(generation, follows.clone());
+        self.authors_for(generation, &follows);
     }
 
     /// Files every relay list in a retrieval's events. Every page flows
     /// through here, so a page carrying none never takes the lock.
     pub async fn ingest(&self, events: &[Event]) {
+        let generation = locked(&self.session).generation;
+        self.ingest_for(generation, events).await;
+    }
+
+    pub(crate) async fn ingest_for(&self, generation: SessionGeneration, events: &[Event]) {
         if !events.iter().any(|event| event.kind == Kind::RelayList) {
             return;
         }
-        self.outbox.write().await.ingest_all(events);
+        self.outbox.write().await.ingest_all_for(generation, events);
     }
 
     /// The pubkeys not asked for before, now marked as asked for.
-    fn claim(&self, authors: &[PublicKey]) -> Vec<PublicKey> {
-        let mut requested = locked(&self.requested);
+    fn claim(&self, authors: &[PublicKey]) -> (SessionGeneration, Vec<PublicKey>) {
+        let mut session = locked(&self.session);
+        let claimed = authors
+            .iter()
+            .filter(|author| session.requested.insert(**author))
+            .copied()
+            .collect();
+        (session.generation, claimed)
+    }
+
+    fn authors_for(&self, generation: SessionGeneration, authors: &[PublicKey]) {
+        let claimed = self.claim_for(generation, authors);
+        for batch in claimed.chunks(MAX_RELAY_LIST_AUTHORS) {
+            self.spawn(generation, batch.to_vec(), author_relay_lists_plan(batch));
+        }
+    }
+
+    fn claim_for(&self, generation: SessionGeneration, authors: &[PublicKey]) -> Vec<PublicKey> {
+        let mut session = locked(&self.session);
+        if session.generation != generation {
+            return Vec::new();
+        }
         authors
             .iter()
-            .filter(|author| requested.insert(**author))
+            .filter(|author| session.requested.insert(**author))
             .copied()
             .collect()
     }
 
-    fn spawn(&self, claimed: Vec<PublicKey>, plan: QueryPlan) {
+    fn spawn(&self, generation: SessionGeneration, claimed: Vec<PublicKey>, plan: QueryPlan) {
+        let context = FeedContext::for_session(OUTBOX_CONTEXT, generation);
         let retrieval = PlannedRetrieval {
-            context: FeedContext::new(OUTBOX_CONTEXT),
+            context: context.clone(),
             priority: RetrievalPriority::Background,
             plan,
         };
         let executor = self.executor.clone();
         let outcomes = self.outcomes.clone();
-        let requested = self.requested.clone();
+        let session = self.session.clone();
         tokio::spawn(async move {
             let result = executor.execute(retrieval).await;
             if result.is_err() {
-                release(&requested, &claimed);
+                release(&session, generation, &claimed);
             }
-            let _ = outcomes.send(RetrievalOutcome {
-                context: FeedContext::new(OUTBOX_CONTEXT),
-                result,
-            });
+            let _ = outcomes.send(RetrievalOutcome { context, result });
         });
     }
 }
@@ -118,15 +165,18 @@ impl OutboxBootstrap {
 /// Unreachable relays must not cost the session its NIP-65 routing for
 /// good: a failed chase hands its claim back, so the next feed open
 /// asks again.
-fn release(requested: &Requested, claimed: &[PublicKey]) {
-    let mut requested = locked(requested);
+fn release(session: &SharedSession, generation: SessionGeneration, claimed: &[PublicKey]) {
+    let mut session = locked(session);
+    if session.generation != generation {
+        return;
+    }
     for author in claimed {
-        requested.remove(author);
+        session.requested.remove(author);
     }
 }
 
-fn locked(requested: &Requested) -> std::sync::MutexGuard<'_, HashSet<PublicKey>> {
-    requested
+fn locked(session: &SharedSession) -> std::sync::MutexGuard<'_, BootstrapSession> {
+    session
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
 }

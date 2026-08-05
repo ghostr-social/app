@@ -14,7 +14,7 @@ void main() {
     final cubit = FeedCubit(FeedDependencies(
       feed: repository,
       engagement: repository,
-      focus: focusPort,
+      optional: FeedOptionalDependencies(focus: focusPort),
     ));
     addTearDown(cubit.close);
 

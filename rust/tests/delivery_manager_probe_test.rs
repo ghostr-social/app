@@ -3,9 +3,10 @@
 
 mod support;
 
-use support::delivery::{start_harness, DeliveryOptions};
+use support::delivery::start_harness;
 use support::delivery_items::{focus_now, unsized_item};
 use support::delivery_media::{hit_log, hits, media_body, serve_recording};
+use support::delivery_options::DeliveryOptions;
 use support::delivery_wait::{wait_for_ranges, wait_total_len};
 
 #[tokio::test]

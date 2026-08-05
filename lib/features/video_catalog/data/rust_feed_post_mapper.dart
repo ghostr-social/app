@@ -8,13 +8,12 @@ import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post_id.dart';
+import 'package:ghostr/src/rust/api/delivery_types.dart';
 import 'package:ghostr/src/rust/api/feed_types.dart';
 import 'package:ndk/ndk.dart';
 
-/// Maps one Rust feed row onto the domain post. The ndk mapper
-/// (nostr_video_event_mapper.dart) is the parity spec: the post id
-/// stays the Nostr event id and creators arrive with the ndk display
-/// fallbacks already applied by the Rust profile store.
+/// Maps one Rust feed row onto the domain post. The post id stays the
+/// Nostr event id and the Rust profile store applies creator fallbacks.
 class RustFeedPostMapper {
   const RustFeedPostMapper();
 
@@ -42,16 +41,12 @@ class RustFeedPostMapper {
       ),
       content: VideoPostContent(
         caption: post.caption,
-        // The FFI row carries no `title` tag; the ndk mapper's
-        // fallback applies unconditionally.
-        songName: 'Original sound',
+        songName: post.title ?? 'Original sound',
         media: _media(post),
         publishedAt: _publishedAt(post.createdAt),
         hashtags: List<String>.unmodifiable(post.hashtags),
       ),
-      // Rust aggregates no reactions: the counts stay at the ndk
-      // mapper's zero baseline and NostrVideoInteractions.hydrateAll
-      // fills them in from the relays, keyed by the reference above.
+      // Interaction repositories hydrate these counts from Rust queries.
       metrics: VideoPostMetrics(
         likeCount: 0,
         commentCount: 0,
@@ -60,8 +55,7 @@ class RustFeedPostMapper {
     );
   }
 
-  /// The event a like, a comment or a report addresses. Parity spec:
-  /// nostr_video_event_mapper.dart `_reference`.
+  /// The event a like, comment, or report addresses.
   NostrEventReference _reference(FfiFeedPost post) {
     return NostrEventReference(
       eventId: NostrEventId.parse(post.eventId),
@@ -82,9 +76,8 @@ class RustFeedPostMapper {
     return NostrEventIdentifier.parse(value);
   }
 
-  /// Display fields come from the Rust profile store, which mirrors
-  /// creator_profile_summary.dart; the id must still be the npub the
-  /// profile routes expect.
+  /// Display fields come from the Rust profile store; the id remains the
+  /// npub identity that profile routes expect.
   ProfileSummary _creator(FfiFeedCreator creator) {
     return ProfileSummary(
       id: ProfileId.parse(Nip19.encodePubKey(creator.pubkey)),
@@ -119,11 +112,10 @@ class RustFeedPostMapper {
   }
 
   /// Round-trips `FfiFeedMedia.delivery` (api::feed_types contract).
-  VideoMediaDelivery _delivery(String name) {
-    return switch (name) {
-      'progressive' => VideoMediaDelivery.progressive,
-      'hls' => VideoMediaDelivery.hls,
-      _ => throw AppFailure('Rust feed delivery kind is unknown: $name.'),
+  VideoMediaDelivery _delivery(FfiMediaDelivery delivery) {
+    return switch (delivery) {
+      FfiMediaDelivery.progressive => VideoMediaDelivery.progressive,
+      FfiMediaDelivery.hls => VideoMediaDelivery.hls,
     };
   }
 

@@ -2,9 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
-import 'package:ghostr/features/video_catalog/presentation/feed_backfill.dart';
-import 'package:ghostr/features/video_catalog/presentation/feed_fetcher.dart';
-import 'package:ghostr/features/video_catalog/presentation/feed_loads.dart';
+import 'package:ghostr/features/video_catalog/domain/use_cases/feed_backfill.dart';
+import 'package:ghostr/features/video_catalog/domain/use_cases/feed_fetcher.dart';
+import 'package:ghostr/features/video_catalog/domain/use_cases/feed_loads.dart';
 
 import '../support/fakes.dart';
 import '../support/sample_data.dart';
@@ -17,10 +17,9 @@ void main() {
 
     final failed = await backfill.dig(FeedKind.forYou);
 
-    expect(
-      (failed as FeedDigFailed).message,
-      'Older videos are unavailable right now.',
-    );
+    final cause = (failed as FeedDigFailed).failure.failure.cause;
+    expect((cause as AppFailure).message,
+        'Older videos are unavailable right now.');
 
     repository.failOlderFeed = false;
     repository.olderFeedPages.add([samplePost(id: 'older-0')]);

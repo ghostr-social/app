@@ -11,13 +11,26 @@ class FeedDependencies {
   const FeedDependencies({
     required this.feed,
     required this.engagement,
+    this.optional = const FeedOptionalDependencies(),
+  });
+
+  final VideoFeedRepository feed;
+  final VideoEngagementRepository engagement;
+  final FeedOptionalDependencies optional;
+
+  SocialGraphRepository? get social => optional.social;
+  FeedFocusPort? get focus => optional.focus;
+  WatchHistoryTracker? get watchTracker => optional.watchTracker;
+}
+
+/// Capabilities a feed can omit without changing its retrieval contract.
+final class FeedOptionalDependencies {
+  const FeedOptionalDependencies({
     this.social,
     this.focus,
     this.watchTracker,
   });
 
-  final VideoFeedRepository feed;
-  final VideoEngagementRepository engagement;
   final SocialGraphRepository? social;
   final FeedFocusPort? focus;
   final WatchHistoryTracker? watchTracker;

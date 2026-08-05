@@ -1,7 +1,5 @@
-//! Playable media resolved from a whole Nostr event, mirroring
-//! NostrVideoMedia.fromEvent in lib/features/video_catalog/data/
-//! nostr_video_media.dart: imeta tags, then NIP-94 top-level file tags,
-//! then direct video links in the note text.
+//! Playable media resolved from a whole Nostr event: imeta tags first,
+//! then NIP-94 top-level file tags, then direct video links in note text.
 
 use crate::video::imeta_extras::ImetaExtras;
 use crate::video::native_media_metadata::{
@@ -16,7 +14,7 @@ pub fn event_media(event: &Event) -> Option<NativeMediaMetadata> {
         .or_else(|| text_media(event))
 }
 
-/// Dart `_fromImeta`: the first imeta tag that parses wins.
+/// The first imeta tag that parses wins.
 fn imeta_media(event: &Event) -> Option<NativeMediaMetadata> {
     event
         .tags
@@ -24,8 +22,7 @@ fn imeta_media(event: &Event) -> Option<NativeMediaMetadata> {
         .find_map(|tag| lenient_native_media(tag.as_slice()))
 }
 
-/// NIP-94 file events carry url / m / x as top-level tags
-/// (nostr_video_media.dart `_fromFileTags`).
+/// NIP-94 file events carry URL, mime, and digest as top-level tags.
 fn file_tag_media(event: &Event) -> Option<NativeMediaMetadata> {
     let url = tag_values(event, "url").next()?;
     if !is_bounded_http_url(url) {
@@ -53,7 +50,7 @@ fn file_digest(event: &Event) -> Option<Option<String>> {
     parse_sha256(raw.trim()).map(Some)
 }
 
-/// Dart `_fromText`: the first direct video link becomes the media.
+/// The first direct video link becomes the media.
 fn text_media(event: &Event) -> Option<NativeMediaMetadata> {
     let url = first_video_link(&event.content)?;
     Some(NativeMediaMetadata {
@@ -66,8 +63,7 @@ fn text_media(event: &Event) -> Option<NativeMediaMetadata> {
     })
 }
 
-/// Every value of the named tags, like Dart NostrEventTags.values: tags
-/// shorter than two entries are skipped.
+/// Every value of the named tags; tags shorter than two entries are skipped.
 pub(crate) fn tag_values<'a>(
     event: &'a Event,
     name: &'a str,

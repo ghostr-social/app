@@ -12,10 +12,7 @@ fn plan() -> ChunkPlan {
 
 #[test]
 fn with_nothing_fetched_the_first_head_chunk_is_next() {
-    assert_eq!(
-        plan().next_missing_chunk(&[]),
-        Some(ByteRange::new(0, MIB))
-    );
+    assert_eq!(plan().next_missing_chunk(&[]), Some(ByteRange::new(0, MIB)));
 }
 
 #[test]

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/media/video_media_metadata.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/platform/media/ffi_focus_item_media_mapper.dart';
+import 'package:ghostr/src/rust/api/delivery_types.dart';
 
 void main() {
   test('maps remote media onto the FFI focus item payload', () {
@@ -24,7 +25,7 @@ void main() {
       'https://media.test/clip.mp4',
       'https://mirror.test/clip.mp4',
     ]);
-    expect(item.delivery, 'progressive');
+    expect(item.delivery, FfiMediaDelivery.progressive);
     expect(item.sha256, 'a' * 64);
     expect(item.sizeBytes, BigInt.from(1234));
     expect(item.durationMs, BigInt.from(5678));
@@ -38,7 +39,7 @@ void main() {
 
     final item = ffiFocusItemForMedia(media);
 
-    expect(item.delivery, 'hls');
+    expect(item.delivery, FfiMediaDelivery.hls);
     expect(item.sha256, isNull);
     expect(item.sizeBytes, isNull);
     expect(item.durationMs, isNull);

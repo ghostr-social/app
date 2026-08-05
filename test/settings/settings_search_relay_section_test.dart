@@ -21,8 +21,7 @@ void main() {
     expect(harness.removedSearchRelays, [RelayUrl.parse('wss://nostr.wine')]);
   });
 
-  testWidgets('search relay actions are disabled while saving',
-      (tester) async {
+  testWidgets('search relay actions are disabled while saving', (tester) async {
     final harness = SettingsFormHarness(AppSettings.defaults(), isSaving: true);
     await harness.pump(tester);
 

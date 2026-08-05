@@ -22,8 +22,8 @@ impl ProbeBook {
     }
 
     /// Unknown-size window posts to probe now, bounded by the limit.
-    /// Returned posts are marked as probing until `finished`. Sources
-    /// the retry policy retired are never probed again.
+    /// Returned posts are marked as probing until released or learned.
+    /// Sources the retry policy retired are never probed again.
     pub fn claim(
         &mut self,
         catalog: &Catalog,
@@ -43,13 +43,17 @@ impl ProbeBook {
         claimed
     }
 
-    pub fn finished(&mut self, post: &PostId) {
+    pub fn learned(&mut self, post: &PostId) {
         self.probing.remove(post);
         self.probed.insert(post.clone());
     }
 
+    pub fn release(&mut self, post: &PostId) {
+        self.probing.remove(post);
+    }
+
     fn needed_probe(&self, catalog: &Catalog, retry: &RetryBook, post: &PostId) -> Option<String> {
-        if self.probing.contains(post) || self.probed.contains(post) {
+        if self.probing.contains(post) || self.probed.contains(post) || retry.is_cooling(post) {
             return None;
         }
         let entry = catalog.lookup(post)?;

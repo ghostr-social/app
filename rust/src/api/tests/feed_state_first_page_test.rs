@@ -1,6 +1,6 @@
 //! Opening a feed dispatches its first page and a landed page becomes
-//! the visible snapshot: newest first (feed_assembly parity), with the
-//! shortened-npub fallback identity from the profile store.
+//! the newest-first visible snapshot, with the shortened-npub fallback
+//! identity from the profile store.
 
 use crate::api::feed_state::FeedState;
 use crate::api::tests::feed_fixtures::video_note;
@@ -13,7 +13,9 @@ use nostr_sdk::Keys;
 fn the_first_landed_page_becomes_the_snapshot() {
     let mut state = FeedState::new();
     let keys = Keys::generate();
-    let (feed, dispatch) = state.open(FeedSpec::MainFeed { viewer: Some(keys.public_key()) });
+    let (feed, dispatch) = state.open(FeedSpec::MainFeed {
+        viewer: Some(keys.public_key()),
+    });
     let open = dispatch.expect("main feeds dispatch a first page");
     // The default query shape, scoped to the viewer whose session pool
     // it answers from (discovery::event_cache).
@@ -26,7 +28,10 @@ fn the_first_landed_page_becomes_the_snapshot() {
     );
 
     let revisions = state.subscribe(feed).expect("open feeds subscribe");
-    let events = vec![video_note(&keys, "older", 30), video_note(&keys, "newer", 40)];
+    let events = vec![
+        video_note(&keys, "older", 30),
+        video_note(&keys, "newer", 40),
+    ];
     state.apply(&open.context, Ok(events));
 
     assert!(revisions.has_changed().expect("revision sender alive"));
@@ -42,7 +47,9 @@ fn the_first_landed_page_becomes_the_snapshot() {
 fn outcomes_for_unknown_contexts_are_ignored() {
     let mut state = FeedState::new();
     let keys = Keys::generate();
-    let (feed, dispatch) = state.open(FeedSpec::MainFeed { viewer: Some(keys.public_key()) });
+    let (feed, dispatch) = state.open(FeedSpec::MainFeed {
+        viewer: Some(keys.public_key()),
+    });
     let open = dispatch.expect("main feeds dispatch a first page");
     state.close(feed);
     state.apply(&open.context, Ok(vec![video_note(&keys, "late", 50)]));

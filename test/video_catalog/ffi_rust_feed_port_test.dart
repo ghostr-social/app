@@ -1,7 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/features/video_catalog/data/ffi_rust_feed_port.dart';
+import 'package:ghostr/features/video_catalog/data/rust_feed_identity.dart';
 import 'package:ghostr/src/rust/api/feed_types.dart';
 
+import '../support/nostr_test_values.dart';
 import '../support/rust_feed_fixtures.dart';
 
 void main() {
@@ -9,8 +12,19 @@ void main() {
     final calls = <String>[];
     final update = rustFeedUpdate(revision: 3);
     final port = FfiRustFeedPort(
-      open: ({required spec}) async {
-        calls.add('open:${spec.kind}');
+      session: ({expectedAccountHex}) async {
+        calls.add('session:$expectedAccountHex');
+        return BigInt.from(4);
+      },
+      open: ({
+        required spec,
+        expectedAccountHex,
+        required expectedSessionGeneration,
+      }) async {
+        calls.add(
+          'open:${spec.kind.name}:$expectedAccountHex:'
+          '$expectedSessionGeneration',
+        );
         return '9';
       },
       watch: ({required feedId}) {
@@ -24,16 +38,29 @@ void main() {
       close: ({required feedId}) async => calls.add('close:$feedId'),
     );
 
+    final account = NostrPublicKeyHex.parse(testViewerPublicKey);
+    final session = await port.captureSession(account);
     final feedId = await port.openFeed(
-      const FfiFeedSpec(kind: 'search', value: 'ghost', creators: []),
+      const FfiFeedSpec(
+        kind: FfiFeedKind.search,
+        value: 'ghost',
+        creators: [],
+      ),
+      session,
     );
     final seen = await port.feedUpdates(feedId).first;
     final more = await port.loadMore(feedId, olderThanSecs: BigInt.two);
     await port.closeFeed(feedId);
 
-    expect(feedId, '9');
+    expect(feedId, RustFeedId.parse('9'));
     expect(seen, update);
     expect(more, isTrue);
-    expect(calls, ['open:search', 'watch:9', 'more:9:2', 'close:9']);
+    expect(calls, [
+      'session:$testViewerPublicKey',
+      'open:search:$testViewerPublicKey:4',
+      'watch:9',
+      'more:9:2',
+      'close:9',
+    ]);
   });
 }

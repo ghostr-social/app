@@ -27,10 +27,10 @@ void main() {
 
 class _FailingSessionPort implements NostrSessionPort {
   @override
-  void activate(AuthSecret secret, NostrIdentity identity) {
+  Future<void> activate(AuthSecret secret, NostrIdentity identity) async {
     throw StateError('signer unavailable');
   }
 
   @override
-  void deactivate() {}
+  Future<void> deactivate() async {}
 }

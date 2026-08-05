@@ -30,7 +30,10 @@ pub fn progressive_harness_with_timing(
     timing: ProgressiveTiming,
 ) -> ProgressiveHarness {
     let root = super::fixtures::temp_directory(prefix);
-    let store = Arc::new(PartialRangeStore::new(root.clone(), Arc::new(Mutex::new(0))));
+    let store = Arc::new(PartialRangeStore::new(
+        root.clone(),
+        Arc::new(Mutex::new(0)),
+    ));
     let posts = ServablePosts::new();
     let (sender, demand) = demand_channel();
     let state = Arc::new(ProgressiveState {

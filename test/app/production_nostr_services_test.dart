@@ -1,22 +1,23 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/app/build_production_dependencies.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
-import 'package:ghostr/platform/nostr/ndk_nostr_session.dart';
-import 'package:ghostr/platform/nostr/ndk_nostr_social.dart';
+import 'package:mocktail/mocktail.dart';
 
 import '../support/ndk_mocks.dart';
+import '../support/nostr_test_values.dart';
 
 void main() {
-  test('builds Nostr adapters around the configured NDK instance', () {
+  test('reads the active local signer from the configured NDK instance', () {
     final ndk = MockNdk();
+    final accounts = MockAccounts();
+    when(() => ndk.accounts).thenReturn(accounts);
+    when(accounts.getPublicKey).thenReturn(testViewerPublicKey);
 
     final services = buildProductionNostrServices(
       AppSettings.defaults(),
-      ndkBuilder: (_) => ndk,
+      ndkBuilder: () => ndk,
     );
 
-    expect(services.ndk, same(ndk));
-    expect(services.adapters.session, isA<NdkNostrSession>());
-    expect(services.adapters.social, isA<NdkNostrSocial>());
+    expect(services.eventClient.publicKeyHex.value, testViewerPublicKey);
   });
 }

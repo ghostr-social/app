@@ -10,8 +10,7 @@ void main() {
   // Follows, mutes and outbox routing belong to the signed-in account
   // and colour every feed Rust assembles, not only the main one — so
   // signing in as somebody else drops all of them, search feeds too.
-  test('closes every live feed when the signed-in account changes',
-      () async {
+  test('closes every live feed when the signed-in account changes', () async {
     NostrPublicKeyHex? viewer = NostrPublicKeyHex.parse(testViewerPublicKey);
     final port = LiveRustFeedPort(
       firstPage: [
@@ -25,7 +24,7 @@ void main() {
     viewer = NostrPublicKeyHex.parse(testCreatorPublicKey);
     await source.loadRemoteFeed();
 
-    expect(port.closedFeedIds, ['1', '2']);
+    expect(port.closedFeedIds.map((id) => id.value), ['1', '2']);
     expect(port.openedSpecs.last.viewerPubkey, testCreatorPublicKey);
   });
 
@@ -42,7 +41,7 @@ void main() {
     viewer = null;
     await source.loadRemoteFeed();
 
-    expect(port.closedFeedIds, ['1']);
+    expect(port.closedFeedIds.map((id) => id.value), ['1']);
     expect(port.openedSpecs.last.viewerPubkey, isNull);
   });
 }

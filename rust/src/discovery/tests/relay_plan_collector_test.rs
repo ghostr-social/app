@@ -1,12 +1,14 @@
 //! The executor keeps every relay's answer. `Client::fetch_events_from`
 //! collects into `Events::new(&filters)`, a set capped at the single
 //! filter's `limit` (see relay_fetch_union_limit_test), so the limit
-//! bounds the *union across relays* and the oldest events fall out. ndk
-//! applies the limit per relay and merges unbounded — its kind-1 pool is
-//! up to six times larger on a search feed, and video posts are a sparse
-//! subset of that pool. Draining the pool's stream restores the union.
+//! bounds the *union across relays* and the oldest events fall out.
+//! Draining the pool's stream preserves each relay's contribution before
+//! the engine merges the union.
 
-use crate::discovery::relay_plan_executor::drain_events;
+use crate::discovery::plan_executor::PlanFailure;
+use crate::discovery::relay_io::drain_events;
+use crate::discovery::relay_plan_collector::collect_events;
+use crate::discovery::search_queries::QueryRole;
 use nostr_sdk::prelude::*;
 
 fn note(keys: &Keys, created_at: u64) -> Event {
@@ -44,4 +46,23 @@ async fn the_capped_collection_would_have_dropped_the_oldest() {
 
     assert_eq!(capped.len(), 2, "the union, not the per-relay answer");
     assert!(!capped.iter().any(|event| event.created_at.as_u64() == 100));
+}
+
+#[tokio::test]
+async fn additive_failure_keeps_the_primary_answer() {
+    let primary_event = note(&Keys::generate(), 100);
+    let primary = tokio::spawn({
+        let event = primary_event.clone();
+        async move { Ok(vec![event]) }
+    });
+    let additive = tokio::spawn(async { Err(PlanFailure::new("additive failed")) });
+
+    let events = collect_events(vec![
+        (QueryRole::Primary, primary),
+        (QueryRole::Additive, additive),
+    ])
+    .await
+    .expect("additive failure only narrows the answer");
+
+    assert_eq!(events, vec![primary_event]);
 }

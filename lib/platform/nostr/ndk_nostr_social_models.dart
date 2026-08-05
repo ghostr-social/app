@@ -1,5 +1,12 @@
 part of 'ndk_nostr_social.dart';
 
+class _NdkSocialTransport {
+  const _NdkSocialTransport(this.events, this.broadcast);
+
+  final NostrEventClient events;
+  final SignedEventBroadcastPort broadcast;
+}
+
 class _NdkSocialScope {
   const _NdkSocialScope(this.state, this.signer, this.publicKey);
 
@@ -13,6 +20,63 @@ class _NdkSocialState {
   final contactFloors = <String, ContactList>{};
   final muteFloors = <String, Nip51List>{};
   final lastTimestamps = <(String, int), int>{};
+}
+
+final class _SocialRecordKey {
+  factory _SocialRecordKey.parse(int kind, String publicKey) {
+    return _SocialRecordKey._(
+      NostrEventKind.parse(kind),
+      NostrPublicKeyHex.parse(publicKey),
+    );
+  }
+
+  const _SocialRecordKey._(this.kind, this.publicKey);
+
+  final NostrEventKind kind;
+  final NostrPublicKeyHex publicKey;
+
+  bool matches(NostrEventRecord record) {
+    return record.kind == kind && record.authorPublicKeyHex == publicKey;
+  }
+}
+
+NostrEventQuery _socialQuery(_SocialRecordKey key) {
+  return NostrEventQuery(
+    kinds: [key.kind.value],
+    scope: NostrEventQueryScope.parse(authors: [key.publicKey.value]),
+    limit: 1,
+  );
+}
+
+NostrEventRecord? _newestSocialRecord(
+  List<NostrEventRecord> records,
+  _SocialRecordKey key,
+) {
+  return records.where(key.matches).fold<NostrEventRecord?>(
+        null,
+        _newerSocialRecord,
+      );
+}
+
+NostrEventRecord _newerSocialRecord(
+  NostrEventRecord? current,
+  NostrEventRecord candidate,
+) {
+  if (current == null || candidate.createdAt > current.createdAt) {
+    return candidate;
+  }
+  return current;
+}
+
+Nip01Event _localEvent(NostrEventRecord record) {
+  return Nip01Event(
+    id: record.id.value,
+    pubKey: record.authorPublicKeyHex.value,
+    createdAt: record.createdAt,
+    kind: record.kind.value,
+    tags: record.tags.toRaw(),
+    content: record.content,
+  );
 }
 
 ContactList _copyContactList(ContactList source) {

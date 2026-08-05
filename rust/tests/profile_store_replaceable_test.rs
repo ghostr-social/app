@@ -1,9 +1,6 @@
 //! Kind-0 metadata is replaceable: strictly newer created_at wins, ties
-//! and older revisions keep what is stored — mirrors
-//! `_newestUniqueMetadata` in
-//! lib/platform/nostr/ndk_nostr_profile_search.dart. Events whose content
-//! is not a JSON object are dropped whole, like the throwing casts in
-//! ndk `Metadata.fromEvent`.
+//! and older revisions keep what is stored. Events whose content is not
+//! a JSON object are ignored.
 
 mod feed_support;
 
@@ -53,5 +50,8 @@ fn profile_store_ignores_events_of_other_kinds() {
     store.ingest(&feed_support::video_note(&creator, "clip", 10));
 
     let npub_short = &store.profile(&creator.public_key()).display_name;
-    assert!(npub_short.starts_with("npub1"), "kept the fallback identity");
+    assert!(
+        npub_short.starts_with("npub1"),
+        "kept the fallback identity"
+    );
 }

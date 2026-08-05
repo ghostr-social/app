@@ -1,72 +1,33 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/core/nostr/nostr_event_record.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
-import 'package:ghostr/platform/nostr/ndk_nostr_social.dart';
+import 'package:ghostr/platform/nostr/signed_nostr_event_json.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:ndk/ndk.dart';
 
 import '../support/ndk_mocks.dart';
 import '../support/nostr_test_values.dart';
+import '../support/scripted_nostr_event_client.dart';
+import '../support/social_broadcast_harness.dart';
+import '../support/social_event_fixtures.dart';
 
 void main() {
   setUpAll(registerNdkFallbackValues);
 
   test('serializes follows and issues monotonic replacement events', () async {
-    final ndk = MockNdk();
-    final accounts = MockAccounts();
-    final follows = MockFollows();
-    final broadcast = MockBroadcast();
-    final signer = MockEventSigner();
-    final config = MockNdkConfig();
-    final cache = MockCacheManager();
     final started = Completer<void>();
     final release = Completer<void>();
-    final events = <Nip01Event>[];
     var reads = 0;
-    var activeAccount = testViewerPublicKey;
-    when(() => ndk.accounts).thenReturn(accounts);
-    when(() => ndk.follows).thenReturn(follows);
-    when(() => ndk.broadcast).thenReturn(broadcast);
-    when(() => ndk.config).thenReturn(config);
-    when(() => config.cache).thenReturn(cache);
-    when(accounts.getPublicKey).thenAnswer((_) => activeAccount);
-    when(() => accounts.getLoggedAccount()).thenReturn(Account(
-      type: AccountType.privateKey,
-      pubkey: testViewerPublicKey,
-      signer: signer,
-    ));
-    stubEventSigner(signer, testViewerPublicKey);
-    when(() => cache.saveEvent(any())).thenAnswer((_) async {});
-    when(() => cache.saveContactList(any())).thenAnswer((_) async {});
-    when(() => follows.getContactList(
-          testViewerPublicKey,
-          forceRefresh: true,
-        )).thenAnswer((_) async {
+    final client = ScriptedNostrEventClient((_) async {
       reads += 1;
-      if (reads == 1) {
-        started.complete();
-        await release.future;
-      }
-      return ContactList(pubKey: testViewerPublicKey, contacts: <String>[])
-        ..createdAt = 10;
+      started.complete();
+      await release.future;
+      return [_contacts()];
     });
-    when(() => broadcast.broadcast(
-          nostrEvent: any(named: 'nostrEvent'),
-          specificRelays: any(named: 'specificRelays'),
-          customSigner: signer,
-          saveToCache: false,
-        )).thenAnswer((call) {
-      final event = call.namedArguments[#nostrEvent] as Nip01Event;
-      events.add(event);
-      return NdkBroadcastResponse(
-        publishEvent: event,
-        broadcastDoneStream: Stream.value(successfulRelayBroadcast()),
-      );
-    });
-    final social = NdkNostrSocial(
-      ndk: ndk,
-      relays: const [],
+    final harness = SocialBroadcastHarness(events: client);
+    final social = harness.build(
       clock: () => DateTime.fromMillisecondsSinceEpoch(100000),
     );
 
@@ -75,18 +36,25 @@ void main() {
     final second = social.toggleFollow(_profile(testAuthorPublicKey));
     await Future<void>.delayed(Duration.zero);
     expect(reads, 1);
-    activeAccount = testFanPublicKey;
+    harness.activePublicKey = testCreatorPublicKey;
     release.complete();
     await Future.wait(<Future<bool>>[first, second]);
 
+    final events = harness.port.broadcasts.map(decodeSignedNostrEvent).toList();
     expect(events[1].createdAt, greaterThan(events[0].createdAt));
     expect(events[1].pTags, {testFanPublicKey, testAuthorPublicKey});
     expect(reads, 1);
-    final cached = verify(() => cache.saveEvent(captureAny())).captured;
+    final cached = verify(() => harness.cache.saveEvent(captureAny())).captured;
     expect(cached.cast<Nip01Event>().map((event) => event.sig),
         everyElement('sig'));
-    verify(() => cache.saveContactList(any())).called(2);
+    verify(() => harness.cache.saveContactList(any())).called(2);
   });
+}
+
+NostrEventRecord _contacts() {
+  return socialEvent(
+    identity: socialEventIdentity(1, ContactList.kKind, 10),
+  );
 }
 
 ProfileId _profile(String publicKey) {

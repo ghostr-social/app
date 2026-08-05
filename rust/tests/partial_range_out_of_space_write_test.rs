@@ -10,7 +10,10 @@ async fn partial_range_out_of_space_write_leaves_the_manifest_consistent() {
     let fixture = spaced_store("ghostr-out-of-space", limits(1_000_000, 1_000), 3_000);
     let store = &fixture.store;
     store.write_range("clip", 0, &[3; 400]).await.expect("head");
-    store.set_total_len("clip", 4_000).await.expect("total length");
+    store
+        .set_total_len("clip", 4_000)
+        .await
+        .expect("total length");
     let manifest = fixture.root.join("clip.ranges.json");
     let before = std::fs::read_to_string(&manifest).expect("manifest");
 
@@ -20,13 +23,19 @@ async fn partial_range_out_of_space_write_leaves_the_manifest_consistent() {
         .await
         .expect_err("no room for the next chunk");
 
-    assert!(refused.to_string().contains("space"), "unhelpful: {refused}");
+    assert!(
+        refused.to_string().contains("space"),
+        "unhelpful: {refused}"
+    );
     assert_eq!(
         std::fs::read_to_string(&manifest).expect("manifest"),
         before,
         "the manifest must not record bytes that never landed"
     );
-    assert_eq!(store.present_ranges("clip").await.expect("ranges"), vec![0..400]);
+    assert_eq!(
+        store.present_ranges("clip").await.expect("ranges"),
+        vec![0..400]
+    );
     assert_eq!(store.total_len("clip").await.expect("total"), Some(4_000));
     assert!(!store.is_complete("clip").await.expect("completeness"));
     assert_eq!(*fixture.used_bytes.lock().await, 400);
@@ -41,7 +50,10 @@ async fn partial_range_out_of_space_write_leaves_the_manifest_consistent() {
         .write_range("clip", 400, &[4; 400])
         .await
         .expect("resume once space returns");
-    assert_eq!(store.present_ranges("clip").await.expect("ranges"), vec![0..800]);
+    assert_eq!(
+        store.present_ranges("clip").await.expect("ranges"),
+        vec![0..800]
+    );
 
     discard(&fixture.root);
 }

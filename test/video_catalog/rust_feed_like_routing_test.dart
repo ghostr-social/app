@@ -10,8 +10,7 @@ import '../support/rust_feed_fixtures.dart';
 void main() {
   // A like on a Rust-served row must reach the same relay write the
   // ndk pipeline makes: the port is keyed by the row's reference.
-  test('routes a like on a rust-served row to the engagement port',
-      () async {
+  test('routes a like on a rust-served row to the engagement port', () async {
     final engagement = FakeNostrEngagementPort();
     final harness = await buildHybridRepositoryHarness(
       rustFeedSourceServing([

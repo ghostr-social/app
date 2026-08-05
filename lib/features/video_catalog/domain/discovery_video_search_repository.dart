@@ -31,7 +31,8 @@ class DiscoveryVideoSearchRepository implements VideoSearchRepository {
   final FailureReporter _failureReporter;
 
   @override
-  Future<VideoFeedPage> searchVideos(String query, {DateTime? olderThan}) async {
+  Future<VideoFeedPage> searchVideos(String query,
+      {DateTime? olderThan}) async {
     final normalized = _policy.normalize(query);
     if (normalized == null) return VideoFeedPage(posts: const <VideoPost>[]);
     final tag = _policy.hashtag(normalized);
@@ -78,7 +79,8 @@ class DiscoveryVideoSearchRepository implements VideoSearchRepository {
       // NIP-50 text matching is the relay's judgement; tags we can recheck.
       return tag == null || post.hashtags.contains(tag);
     }).toList();
-    selected.sort((left, right) => right.publishedAt.compareTo(left.publishedAt));
+    selected
+        .sort((left, right) => right.publishedAt.compareTo(left.publishedAt));
     return List<VideoPost>.unmodifiable(selected);
   }
 

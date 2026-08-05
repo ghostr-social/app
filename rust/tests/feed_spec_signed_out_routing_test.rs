@@ -1,9 +1,5 @@
-//! Signed out the main feed routes exactly like ndk's: no viewer means
-//! no follows to route to, so the request stays unscoped, its outbox
-//! lookup asks for discovery relays, and with no follow relay lists
-//! known the directory answers with the bootstrap set alone — mirrors
-//! `_followedPubkeys` returning nothing and `_merged` yielding the
-//! bootstrap urls in lib/platform/nostr/ndk_nostr_outbox_directory.dart.
+//! A signed-out main feed has no follows to route to. Its request stays
+//! unscoped, asks for discovery relays, and uses configured read relays.
 
 use nostr_sdk::Keys;
 use rust_lib_ghostr::discovery::event_cache::ViewerScope;
@@ -29,7 +25,10 @@ fn feed_spec_signed_out_main_feed_queries_the_bootstrap_relays() {
         }
     );
 
-    assert_eq!(plan_discovery(&request).outbox, OutboxLookup::DiscoveryRelays);
+    assert_eq!(
+        plan_discovery(&request).outbox,
+        OutboxLookup::DiscoveryRelays
+    );
 
     let directory = OutboxDirectory::new(vec![BOOTSTRAP.to_owned()]);
     let relays = directory.discovery_relays(12);

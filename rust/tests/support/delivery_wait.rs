@@ -2,6 +2,7 @@
 //! change notifier before every re-check, with a hard deadline.
 
 use rust_lib_ghostr::video::partial_range_store::PartialRangeStore;
+use rust_lib_ghostr::video::progressive_posts::ServablePosts;
 use std::ops::Range;
 use std::time::Duration;
 use tokio::time::{timeout_at, Instant};
@@ -10,7 +11,8 @@ const WAIT_LIMIT: Duration = Duration::from_secs(10);
 
 pub async fn wait_for_ranges(store: &PartialRangeStore, key: &str, want: &[(u64, u64)]) {
     wait_until(store, key, |ranges| {
-        want.iter().all(|(start, end)| covered(ranges, *start, *end))
+        want.iter()
+            .all(|(start, end)| covered(ranges, *start, *end))
     })
     .await;
 }
@@ -54,6 +56,17 @@ pub async fn wait_for_file(path: &std::path::Path) {
         if Instant::now() >= deadline {
             panic!("timed out waiting for {}", path.display());
         }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+}
+
+pub async fn wait_not_servable(posts: &ServablePosts, key: &str) {
+    let deadline = Instant::now() + WAIT_LIMIT;
+    while posts.contains(key) {
+        assert!(
+            Instant::now() < deadline,
+            "timed out waiting for {key} to become unservable"
+        );
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
 }

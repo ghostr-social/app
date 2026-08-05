@@ -1,7 +1,6 @@
 //! Plain feed queries route to the outbox relays where the wanted authors
 //! actually publish; the mp4 note hunt still needs the search relays and
-//! the tag-scoped file query merges both
-//! (lib/platform/nostr/ndk_nostr_video_event_query.dart `_targets`).
+//! the tag-scoped file query merges both.
 
 use crate::discovery::search_queries::{plan_discovery, OutboxLookup, RelayTarget};
 use crate::discovery::video_filters::DiscoveryRequest;
@@ -9,8 +8,11 @@ use crate::discovery::video_filters::DiscoveryRequest;
 #[test]
 fn plain_feed_targets_outbox_hunt_targets_search() {
     let plan = plan_discovery(&DiscoveryRequest::default());
-    let targets: Vec<RelayTarget> =
-        plan.queries.iter().map(|query| query.target.clone()).collect();
+    let targets: Vec<RelayTarget> = plan
+        .queries
+        .iter()
+        .map(|query| query.target.clone())
+        .collect();
 
     assert_eq!(
         targets,

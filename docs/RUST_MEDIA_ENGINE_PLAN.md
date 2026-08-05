@@ -160,12 +160,18 @@ downloads visibly reprioritizing on scroll; `flutter analyze`, `flutter test`,
    quiets the radio. Relay budgets from `DataUsageLevel` move into the engine.
 5. Writes: `ffi_broadcast_event(signed_json)` with outbox-aware relay
    selection. Keys never cross the FFI.
-6. Feature flag in Dart: feed served by ndk (default) or Rust; shadow-compare
-   both pipelines (log divergence) until parity holds.
+6. Historical migration step: feed served by ndk (default) or Rust, with a
+   shadow comparator while both transports existed. The branch task owner
+   subsequently chose the Phase-3 Rust-only cutover; the old measurements in
+   `MANUAL_VERIFICATION.md` remain diagnostic history, not a requirement to
+   retain a second Dart relay engine.
 
 ## 6. Phase 3 — Cutover and deletion
 
-- Flip the flag; remove ndk from the media path (Dart keeps only signing).
+- Rust-only cutover decision: remove the flag, comparator, and ndk relay path;
+  Dart keeps local signing/decryption/cache duties only. This intentionally
+  supersedes the temporary dual-transport gate above: production must not keep
+  a shadow socket pool merely to compare against the retired architecture.
 - Delete: Dart download stack (`smart_video_inventory.dart`,
   `file_video_cache_store.dart`, `video_cache_*.dart`,
   `http_video_file_downloader.dart`, transfer pool), Dart imeta parser,

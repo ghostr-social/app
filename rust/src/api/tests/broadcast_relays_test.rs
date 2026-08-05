@@ -17,13 +17,20 @@ fn write_relays_follow_the_bootstrap_set() {
     let relays = broadcast_relays(&directory, &keys.public_key(), DataUsageLevel::Balanced);
     assert_eq!(
         relays,
-        vec!["wss://boot.example".to_owned(), "wss://write.example".to_owned()]
+        vec![
+            "wss://boot.example".to_owned(),
+            "wss://write.example".to_owned()
+        ]
     );
 }
 
 #[test]
 fn an_unknown_author_broadcasts_to_the_bootstrap_set() {
     let directory = OutboxDirectory::new(vec!["wss://boot.example".to_owned()]);
-    let relays = broadcast_relays(&directory, &Keys::generate().public_key(), DataUsageLevel::Balanced);
+    let relays = broadcast_relays(
+        &directory,
+        &Keys::generate().public_key(),
+        DataUsageLevel::Balanced,
+    );
     assert_eq!(relays, vec!["wss://boot.example".to_owned()]);
 }

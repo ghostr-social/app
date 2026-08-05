@@ -5,14 +5,14 @@ import '../support/fakes.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('digging chains through older pages until the buffer refills',
-      () async {
+  test('digging chains through older pages until the buffer refills', () async {
     final repository = FakeVideoCatalogRepository(forYouFeed: [
       for (var index = 0; index < 12; index += 1) samplePost(id: 'post-$index'),
     ])
       ..olderFeedPages.add([samplePost(id: 'older-0')])
       ..olderFeedPages.add([
-        for (var index = 1; index < 11; index += 1) samplePost(id: 'older-$index'),
+        for (var index = 1; index < 11; index += 1)
+          samplePost(id: 'older-$index'),
       ])
       ..olderFeedPages.add([samplePost(id: 'unreached')]);
     final cubit = FeedCubit(FeedDependencies(

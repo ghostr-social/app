@@ -12,7 +12,6 @@ import '../support/fake_nostr_session_port.dart';
 import '../support/fake_nostr_social_port.dart';
 import '../support/fake_nostr_video_publisher_port.dart';
 import '../support/fake_remote_video_source.dart';
-import '../support/ndk_mocks.dart';
 import '../support/nostr_test_values.dart';
 import '../support/stub_video_gateways.dart';
 
@@ -27,13 +26,14 @@ void main() {
     final client = FakeNostrEventClient(publicKeyHex: testViewerPublicKey);
     RustFeedViewer? handed;
     final bootstrap = ProductionDependenciesEnvironment.production(
-      videoEnvironmentBuilder: (_, __, viewer) {
+      videoEnvironmentBuilder: (viewer) {
         handed = viewer;
         return ProductionVideoDeliveryEnvironment(
-          canonicalSource: FakeRemoteVideoSource([]),
-          supportDirectoryProvider: () async => root,
-          gateway: startedVideoGateway(),
-          viewer: viewer,
+          source: FakeRemoteVideoSource([]),
+          adapters: ProductionVideoDeliveryAdapters(
+            supportDirectoryProvider: () async => root,
+            gateway: startedVideoGateway(),
+          ),
         );
       },
     );
@@ -51,7 +51,6 @@ void main() {
 
 ProductionNostrServices _services(FakeNostrEventClient client) {
   return ProductionNostrServices(
-    MockNdk(),
     ProductionNostrAdapters(FakeNostrSessionPort(), FakeNostrSocialPort()),
     client,
     FakeNostrVideoPublisherPort(),

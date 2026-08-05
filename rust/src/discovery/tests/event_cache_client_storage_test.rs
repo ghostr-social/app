@@ -1,13 +1,8 @@
-//! Root cause of the parity gap. nostr-sdk's `Client::default()` builds
-//! `MemoryDatabase::default()`, whose `events` option is *false*: it
-//! remembers ids and stores no event, so every Rust query was a cold
-//! network round. ndk answers from cache UNION network for the whole
-//! session (MemCacheManager with cacheRead/cacheWrite in
-//! lib/platform/nostr/build_ndk.dart), which is a one-directional
-//! membership advantage no relay coverage can close. The engine's
-//! client must store what it receives.
+//! Relay bookkeeping is deliberately separate from account cache rows.
+//! The client remembers bounded IDs but cannot rebuild deletion or
+//! replaceable indexes after reset; `EventCache` owns queryable events.
 
-use crate::discovery::event_cache::client_with_event_cache;
+use crate::discovery::event_cache::{client_with_event_cache, EventCache};
 use crate::discovery::tests::event_cache_support::{ids, note, notes};
 use nostr_sdk::prelude::*;
 
@@ -21,16 +16,21 @@ async fn stored(client: &Client) -> Vec<Event> {
 }
 
 #[tokio::test]
-async fn the_engine_client_keeps_the_events_it_receives() {
+async fn the_engine_client_keeps_only_seen_ids() {
     let client = client_with_event_cache();
+    let event = note(300);
 
     client
         .database()
-        .save_event(&note(300))
+        .save_event(&event)
         .await
         .expect("the database accepts an event");
 
-    assert_eq!(ids(&stored(&client).await), ids(&[note(300)]));
+    assert!(ids(&stored(&client).await).is_empty());
+    assert_eq!(
+        client.database().check_id(&event.id).await.unwrap(),
+        DatabaseEventStatus::Saved
+    );
 }
 
 #[tokio::test]
@@ -47,4 +47,16 @@ async fn the_sdk_default_client_keeps_nothing() {
         stored(&client).await.is_empty(),
         "Client::default() stores ids, not events"
     );
+}
+
+#[tokio::test]
+async fn the_session_cache_does_not_write_through_the_client_database() {
+    let client = client_with_event_cache();
+    let cache = EventCache::of(&client);
+    let event = note(400);
+
+    cache.remember(std::slice::from_ref(&event)).await;
+
+    assert_eq!(ids(&cache.stored(&notes()).await), vec![event.id]);
+    assert!(stored(&client).await.is_empty());
 }

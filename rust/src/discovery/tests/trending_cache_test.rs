@@ -1,6 +1,5 @@
-//! A computed trending answer keeps serving for 15 minutes and expires
-//! exactly at the time-to-live — parity: `_timeToLive` in
-//! lib/features/video_catalog/data/recent_videos_trending_hashtags.dart.
+//! A computed trending answer serves for 15 minutes and expires exactly
+//! at the time-to-live.
 
 use crate::discovery::trending::{TrendingHashtagsCache, TRENDING_TIME_TO_LIVE};
 use std::time::{Duration, Instant};

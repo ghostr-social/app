@@ -1,6 +1,5 @@
 //! A focused context's work leaves the queue first, regardless of
-//! priority class, and refocusing reorders already-queued work —
-//! parity: `focus` in lib/core/work/retrieval_scheduler.dart.
+//! priority class, and refocusing reorders already-queued work.
 
 use crate::discovery::retrieval_queue::{
     FeedContext, RetrievalPriority, RetrievalQueue, RetrievalRequest,
@@ -36,4 +35,11 @@ fn refocusing_reorders_queued_work() {
 
     assert_eq!(queue.take_next().map(|(_, p)| p), Some(2));
     assert_eq!(queue.take_next().map(|(_, p)| p), Some(1));
+}
+
+#[test]
+fn context_exposes_its_stable_name() {
+    let context = FeedContext::new("discover");
+
+    assert_eq!(context.as_str(), "discover");
 }

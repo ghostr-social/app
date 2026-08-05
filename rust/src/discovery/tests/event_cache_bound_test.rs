@@ -1,7 +1,5 @@
-//! The pool is bounded. ndk's MemCacheManager grows without a ceiling
-//! for the life of the process; a phone session cannot — the third
-//! device pass already recorded an out-of-memory kill. Past the bound
-//! the oldest rows fall out, and falling out must stay a plain eviction:
+//! The session event pool is bounded. Past the bound the oldest rows
+//! fall out, and falling out must stay a plain eviction:
 //! a tombstoned id would make the client drop that event on arrival
 //! (nostr-relay-pool 0.38 relay/inner.rs skips a `Deleted` status), which
 //! is the very defect this pool exists to fix.
@@ -29,7 +27,10 @@ async fn the_pool_never_grows_past_its_bound() {
 async fn an_evicted_row_is_not_tombstoned() {
     let database = session_event_database(2);
     for created_at in [100, 200, 300] {
-        database.save_event(&note(created_at)).await.expect("stored");
+        database
+            .save_event(&note(created_at))
+            .await
+            .expect("stored");
     }
 
     let status = database.check_id(&note(100).id).await.expect("checked");

@@ -1,86 +1,36 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ghostr/features/settings/domain/relay_url.dart';
-import 'package:ghostr/platform/nostr/ndk_nostr_social.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
-import 'package:mocktail/mocktail.dart';
+import 'package:ghostr/platform/nostr/signed_nostr_event_json.dart';
 import 'package:ndk/ndk.dart';
 
 import '../support/ndk_mocks.dart';
+import '../support/nostr_test_values.dart';
+import '../support/social_broadcast_harness.dart';
+import '../support/social_event_fixtures.dart';
 
 void main() {
   setUpAll(registerNdkFallbackValues);
 
-  test('removes and adds a contact through NIP-02', () async {
-    const publicKey =
-        '7e7e9c42a91bfef19fa929e5fda1b72e0ebc1a4c1141673e2794234d86addf4e';
-    const other =
-        '8e7e9c42a91bfef19fa929e5fda1b72e0ebc1a4c1141673e2794234d86addf4e';
-    final ndk = MockNdk();
-    final accounts = MockAccounts();
-    final follows = MockFollows();
-    final broadcast = MockBroadcast();
-    final response = MockNdkBroadcastResponse();
-    final signer = MockEventSigner();
-    final populated = ContactList(
-      pubKey: 'viewer',
-      contacts: [publicKey, other, publicKey],
-    )
-      ..contactRelays = ['first', 'other-relay', 'second']
-      ..petnames = ['one', 'friend', 'two'];
-    var readCount = 0;
-    when(() => ndk.accounts).thenReturn(accounts);
-    when(() => ndk.follows).thenReturn(follows);
-    when(() => ndk.broadcast).thenReturn(broadcast);
-    when(accounts.getPublicKey).thenReturn('viewer');
-    when(accounts.getLoggedAccount).thenReturn(Account(
-      type: AccountType.privateKey,
-      pubkey: 'viewer',
-      signer: signer,
+  test('removes duplicate contacts and adds one replacement contact', () async {
+    final harness = SocialBroadcastHarness();
+    harness.events.events.add(socialEvent(
+      identity: socialEventIdentity(1, ContactList.kKind, 10),
+      tags: const [
+        ['p', testFanPublicKey, 'first', 'one'],
+        ['p', testCreatorPublicKey, 'creator-relay', 'friend'],
+        ['p', testFanPublicKey, 'second', 'two'],
+      ],
     ));
-    when(signer.getPublicKey).thenReturn('viewer');
-    when(signer.canSign).thenReturn(true);
-    stubEventSigner(signer, 'viewer');
-    when(() => response.broadcastDoneFuture)
-        .thenAnswer((_) async => successfulRelayBroadcast());
-    when(() => follows.getContactList('viewer', forceRefresh: true)).thenAnswer(
-      (_) async => ContactList(
-        pubKey: 'viewer',
-        contacts: readCount++ == 0 ? populated.contacts : [],
-      )
-        ..contactRelays = readCount == 1 ? populated.contactRelays : []
-        ..petnames = readCount == 1 ? populated.petnames : [],
-    );
-    when(() => broadcast.broadcast(
-          nostrEvent: any(named: 'nostrEvent'),
-          specificRelays: any(named: 'specificRelays'),
-          customSigner: signer,
-          saveToCache: false,
-        )).thenReturn(response);
-    final runtime = NdkNostrSocial(
-      ndk: ndk,
-      relays: [RelayUrl.parse('wss://relay.example')],
-    );
-    final npub = ProfileId.parse(Nip19.encodePubKey(publicKey));
+    final social = harness.build();
+    final target = ProfileId.parse(Nip19.encodePubKey(testFanPublicKey));
 
-    expect(await runtime.toggleFollow(npub), isFalse);
-    expect(await runtime.toggleFollow(npub), isTrue);
+    expect(await social.toggleFollow(target), isFalse);
+    expect(await social.toggleFollow(target), isTrue);
 
-    final events = verify(() => broadcast.broadcast(
-          nostrEvent: captureAny(named: 'nostrEvent'),
-          specificRelays: ['wss://relay.example'],
-          customSigner: signer,
-          saveToCache: false,
-        )).captured.cast<Nip01Event>();
-    expect(events, hasLength(2));
-    expect(events.first.tags.where((tag) => tag.first == 'p'), [
-      ['p', other, 'other-relay', 'friend'],
+    final events = harness.port.broadcasts.map(decodeSignedNostrEvent).toList();
+    expect(events.first.tags, [
+      ['p', testCreatorPublicKey, 'creator-relay', 'friend'],
     ]);
-    expect(populated.contacts, [publicKey, other, publicKey]);
-    expect(
-      events.last.tags,
-      contains(predicate<List<String>>(
-        (tag) => tag.length >= 2 && tag[0] == 'p' && tag[1] == publicKey,
-      )),
-    );
+    expect(events.last.pTags, {testCreatorPublicKey, testFanPublicKey});
   });
 }

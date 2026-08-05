@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/features/social/domain/signed_nostr_event_json.dart';
 import 'package:ghostr/platform/nostr/rust_broadcast_adapter.dart';
 import 'package:ghostr/platform/nostr/signed_nostr_event_json.dart';
 
@@ -16,7 +17,10 @@ void main() {
 
     await adapter.broadcast(json);
 
-    expect(sent, [json]);
-    expect(decodeSignedNostrEvent(sent.single).sig, testEventSignature);
+    expect(sent, [json.value]);
+    expect(
+      decodeSignedNostrEvent(SignedNostrEventJson.parse(sent.single)).sig,
+      testEventSignature,
+    );
   });
 }

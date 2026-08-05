@@ -35,20 +35,22 @@ async fn chunk_downloader_cancellation_mid_stream_keeps_the_partial_bytes() {
     let result = result.expect("cancelled download");
     assert!(result.cancelled);
     assert_eq!(result.bytes_written, 4);
-    assert_eq!(
-        store.present_ranges("clip").await.expect("ranges"),
-        vec![0..4]
-    );
+    let ranges = store.present_ranges("clip").await.expect("ranges");
+    assert!(is_head_only(&ranges));
     let _ = std::fs::remove_dir_all(root);
 }
 
 async fn cancel_once_partial(store: &PartialRangeStore, handle: &CancelHandle) {
     loop {
         let ranges = store.present_ranges("clip").await.expect("poll ranges");
-        if ranges == vec![0..4] {
+        if is_head_only(&ranges) {
             handle.cancel();
             return;
         }
         tokio::time::sleep(Duration::from_millis(5)).await;
     }
+}
+
+fn is_head_only(ranges: &[std::ops::Range<u64>]) -> bool {
+    matches!(ranges, [range] if range.start == 0 && range.end == 4)
 }

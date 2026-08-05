@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-
 //! A filesystem whose free space the test moves at will, so the store's
 //! effective cap can be pushed around without filling a real disk.
 
@@ -49,15 +48,17 @@ pub fn spaced_store(prefix: &str, limits: Limits, available: u64) -> SpacedStore
     paced_store(prefix, limits, available, Duration::ZERO)
 }
 
-/// A store that holds one free-space measurement for `recheck`, the way
-/// the device does. Whatever the store gives back has to be visible
-/// inside that window without another syscall.
+/// A store that holds one free-space measurement for `recheck`.
 pub fn paced_store(prefix: &str, limits: Limits, available: u64, recheck: Duration) -> SpacedStore {
-    on_disk(temp_root(prefix), FakeSpace::new(available), limits, recheck)
+    on_disk(
+        temp_root(prefix),
+        FakeSpace::new(available),
+        limits,
+        recheck,
+    )
 }
 
-/// The same root on the same filesystem, opened again as a restarted
-/// process sees it: nothing in memory, everything still on disk.
+/// Reopens the same root with fresh in-memory state.
 pub fn reopened(fixture: &SpacedStore) -> SpacedStore {
     on_disk(
         fixture.root.clone(),

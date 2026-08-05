@@ -1,10 +1,11 @@
 import 'dart:async';
-import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ghostr/core/media/video_media_cache_identity.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/features/video_inventory/domain/progressive_playback_gateway_port.dart';
+import 'package:ghostr/platform/media/gateway_playback_cubit.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:ghostr/shared/theme/app_tokens.dart';
 import 'package:ghostr/shared/widgets/async_state_panel.dart';
@@ -16,14 +17,14 @@ part 'gateway_video_playback_surface.dart';
 /// gateway so playback starts on partial bytes; local files and
 /// already-proxied streams stay on the delegate chain.
 final class GatewayVideoPlaybackPort implements VideoPlaybackPort {
-  const GatewayVideoPlaybackPort({
+  GatewayVideoPlaybackPort({
     required VideoPlaybackPort delegate,
     required ProgressivePlaybackGatewayPort gateway,
   })  : _delegate = delegate,
-        _gateway = gateway;
+        _createCubit = ((media) => GatewayPlaybackCubit(gateway, media));
 
   final VideoPlaybackPort _delegate;
-  final ProgressivePlaybackGatewayPort _gateway;
+  final GatewayPlaybackCubit Function(VideoMediaSource) _createCubit;
 
   @override
   Widget buildSurface({
@@ -40,7 +41,8 @@ final class GatewayVideoPlaybackPort implements VideoPlaybackPort {
       );
     }
     return _GatewayVideoPlaybackSurface(
-      port: this,
+      delegate: _delegate,
+      createCubit: _createCubit,
       media: media,
       isActive: isActive,
       onPlaybackMediaReleased: onPlaybackMediaReleased,

@@ -5,13 +5,11 @@ import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/src/rust/api/feed_types.dart';
 import 'package:ndk/ndk.dart';
 
-/// Names the Rust feed one pull request opens, mirroring the request
-/// precedence of `remoteVideoRetrievalContext`
-/// (scheduled_remote_video_source.dart): search, then hashtag, then
-/// profile, then the main feed — viewer-scoped when signed in, global
-/// when not. Returns null when no feed can serve the request — ndk
-/// parity: NdkVideoRemoteSource serves `const []` when a creator set
-/// decodes to nothing.
+/// Names the Rust feed for one pull request.
+///
+/// Filter precedence is search, hashtag, profile, then main. The main
+/// feed is viewer-scoped when signed in and global otherwise. A creator
+/// request with no valid Nostr identities has no corresponding feed.
 FfiFeedSpec? buildRustFeedSpec({
   Set<ProfileId>? creatorIds,
   String? searchQuery,
@@ -26,36 +24,34 @@ FfiFeedSpec? buildRustFeedSpec({
 
 FfiFeedSpec? _termSpec(String? searchQuery, Set<String>? hashtags) {
   if (searchQuery != null) {
-    return FfiFeedSpec(kind: 'search', value: searchQuery, creators: const []);
+    return FfiFeedSpec(
+      kind: FfiFeedKind.search,
+      value: searchQuery,
+      creators: const [],
+    );
   }
   if (hashtags == null || hashtags.isEmpty) return null;
   return FfiFeedSpec(
-    kind: 'hashtag',
+    kind: FfiFeedKind.hashtag,
     value: hashtags.first,
     creators: const [],
   );
 }
 
-/// The main feed names the viewer only when one is signed in: Rust
-/// degrades a viewer-less main feed to the unscoped global page ndk
-/// serves signed out (discovery/feed_spec.rs, and
-/// ndk_nostr_outbox_directory.dart knows no follows without an account).
-/// A creator request names every creator it decoded — ndk queries the
-/// whole set as `authors` (ndk_video_remote_source.dart), and the
-/// Following feed asks for every follow at once.
+/// Main feeds name the viewer only while signed in. Creator feeds name
+/// every valid creator because the Following feed requests the set at once.
 FfiFeedSpec _identitySpec(List<String>? creators, String? viewerPubkeyHex) {
   if (creators != null) {
-    return FfiFeedSpec(kind: 'profile', creators: creators);
+    return FfiFeedSpec(kind: FfiFeedKind.profile, creators: creators);
   }
   return FfiFeedSpec(
-    kind: 'main',
+    kind: FfiFeedKind.main,
     creators: const [],
     viewerPubkey: viewerPubkeyHex,
   );
 }
 
-/// Creator ids decode exactly as the ndk source's `_decodeCreatorIds`
-/// does (ndk_video_remote_source.dart): non-Nostr ids drop out.
+/// Non-Nostr creator identifiers are ignored.
 List<String> _decodedCreators(Set<ProfileId> creatorIds) {
   final decoded = <String>[];
   for (final creatorId in creatorIds) {

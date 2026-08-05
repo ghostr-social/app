@@ -39,10 +39,8 @@ pub fn native_media(tag: &[String]) -> Option<NativeMediaMetadata> {
     })
 }
 
-/// Dart-parity imeta parse for discovery, mirroring `_tryImeta` in
-/// lib/features/video_catalog/data/nostr_video_media.dart: the mime is
-/// optional when the URL extension proves a video, and fallback URLs can
-/// carry the media when the primary is unusable.
+/// Lenient discovery imeta parsing: mime is optional when the URL
+/// extension proves a video, and a fallback may supply the playable media.
 pub fn lenient_native_media(tag: &[String]) -> Option<NativeMediaMetadata> {
     if tag.first().map(String::as_str) != Some("imeta") {
         return None;
@@ -66,7 +64,7 @@ pub fn lenient_native_media(tag: &[String]) -> Option<NativeMediaMetadata> {
     })
 }
 
-/// Dart `_imetaUrls`: an ordered, deduplicated set of primary + fallbacks.
+/// An ordered, deduplicated set of the primary URL and its fallbacks.
 fn lenient_imeta_urls(tag: &[String]) -> Vec<String> {
     let mut urls: Vec<String> = imeta_field(tag, "url")
         .filter(|url| is_bounded_http_url(url))
@@ -85,8 +83,8 @@ fn lenient_imeta_urls(tag: &[String]) -> Vec<String> {
     urls
 }
 
-/// Dart `_playable`: publishers often omit the mime; the URL extension is
-/// proof enough.
+/// Publishers often omit the mime; a recognized URL extension is enough
+/// to identify playable media.
 pub(crate) fn playable_media(mime: Option<&str>, url: &str) -> bool {
     match mime {
         Some(mime) => is_video_mime(mime),
@@ -94,7 +92,7 @@ pub(crate) fn playable_media(mime: Option<&str>, url: &str) -> bool {
     }
 }
 
-/// Dart `_imetaDelivery`: an explicit mime decides, else the extension.
+/// An explicit mime decides delivery; otherwise the URL extension does.
 pub(crate) fn mime_or_url_delivery(mime: Option<&str>, url: &str) -> NativeVideoDelivery {
     match mime {
         Some(mime) => media_delivery(mime),
@@ -121,8 +119,7 @@ fn expected_digest(tag: &[String]) -> Option<Option<String>> {
     parse_sha256(digest).map(Some)
 }
 
-/// Digest validity per lib/core/media/video_sha256.dart: 64 hex characters,
-/// normalized to lowercase.
+/// A valid digest is 64 hexadecimal characters, normalized to lowercase.
 pub(crate) fn parse_sha256(raw: &str) -> Option<String> {
     (raw.len() == 64 && raw.chars().all(|value| value.is_ascii_hexdigit()))
         .then(|| raw.to_ascii_lowercase())
@@ -140,8 +137,7 @@ fn field_value<'a>(value: &'a str, name: &str) -> Option<&'a str> {
     (key == name && !field.is_empty()).then_some(field)
 }
 
-/// Dart `_normalizedMime` trims before judging, so a padded tag value
-/// is the same mime (nostr_video_media.dart).
+/// Whitespace and ASCII case do not change the meaning of a mime value.
 fn is_video_mime(value: &str) -> bool {
     let value = value.trim();
     value.to_ascii_lowercase().starts_with("video/") || is_hls_mime(value)

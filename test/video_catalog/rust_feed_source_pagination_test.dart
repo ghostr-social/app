@@ -11,8 +11,8 @@ void main() {
     isUtc: true,
   );
 
-  // ndk parity: an older page is the `until:` slice alone
-  // (video_discovery_queries.dart sends the cursor as unix seconds).
+  // Older pulls pass an inclusive unix-seconds cursor to Rust and return
+  // only the snapshot rows at or older than that boundary.
   test('claims one older page and returns only rows at or past the cursor',
       () async {
     final newest = rustFeedPost(eventId: testEventId, createdAt: 1754005000);

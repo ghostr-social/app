@@ -6,7 +6,12 @@ use crate::engine::PostId;
 fn an_upcoming_tail_deepens_in_comfort() {
     let focus = focus_at(&["a", "b"], 0, 0);
 
-    let tier = classify(&PostId::new("b"), &focus, comfort(true), DemandSignals::default());
+    let tier = classify(
+        &PostId::new("b"),
+        &focus,
+        comfort(true),
+        DemandSignals::default(),
+    );
 
     assert_eq!(tier, Some(Tier::T3Deepening));
 }
@@ -15,7 +20,12 @@ fn an_upcoming_tail_deepens_in_comfort() {
 fn an_uncommitted_current_tail_deepens_in_comfort() {
     let focus = focus_at(&["a", "b"], 0, 500);
 
-    let tier = classify(&PostId::new("a"), &focus, comfort(true), DemandSignals::default());
+    let tier = classify(
+        &PostId::new("a"),
+        &focus,
+        comfort(true),
+        DemandSignals::default(),
+    );
 
     assert_eq!(tier, Some(Tier::T3Deepening));
 }
@@ -24,7 +34,12 @@ fn an_uncommitted_current_tail_deepens_in_comfort() {
 fn an_upcoming_tail_yields_nothing_in_hunger() {
     let focus = focus_at(&["a", "b"], 0, 0);
 
-    let tier = classify(&PostId::new("b"), &focus, hunger(true), DemandSignals::default());
+    let tier = classify(
+        &PostId::new("b"),
+        &focus,
+        hunger(true),
+        DemandSignals::default(),
+    );
 
     assert_eq!(tier, None);
 }
@@ -33,7 +48,12 @@ fn an_upcoming_tail_yields_nothing_in_hunger() {
 fn a_behind_tail_is_speculative_in_comfort() {
     let focus = focus_at(&["a", "b"], 1, 0);
 
-    let tier = classify(&PostId::new("a"), &focus, comfort(true), DemandSignals::default());
+    let tier = classify(
+        &PostId::new("a"),
+        &focus,
+        comfort(true),
+        DemandSignals::default(),
+    );
 
     assert_eq!(tier, Some(Tier::T4Speculative));
 }
@@ -42,7 +62,12 @@ fn a_behind_tail_is_speculative_in_comfort() {
 fn a_behind_tail_yields_nothing_in_hunger() {
     let focus = focus_at(&["a", "b"], 1, 0);
 
-    let tier = classify(&PostId::new("a"), &focus, hunger(true), DemandSignals::default());
+    let tier = classify(
+        &PostId::new("a"),
+        &focus,
+        hunger(true),
+        DemandSignals::default(),
+    );
 
     assert_eq!(tier, None);
 }

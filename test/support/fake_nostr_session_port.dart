@@ -7,12 +7,12 @@ class FakeNostrSessionPort implements NostrSessionPort {
   int deactivationCount = 0;
 
   @override
-  void activate(AuthSecret secret, NostrIdentity identity) {
+  Future<void> activate(AuthSecret secret, NostrIdentity identity) async {
     activationCount += 1;
   }
 
   @override
-  void deactivate() {
+  Future<void> deactivate() async {
     deactivationCount += 1;
   }
 }

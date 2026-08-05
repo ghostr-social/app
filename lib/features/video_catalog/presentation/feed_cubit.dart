@@ -2,19 +2,22 @@ import 'dart:async';
 
 import 'package:ghostr/core/presentation/disposal_safe_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
+import 'package:ghostr/features/video_catalog/domain/use_cases/feed_backfill.dart';
+import 'package:ghostr/features/video_catalog/domain/use_cases/feed_engagement.dart';
+import 'package:ghostr/features/video_catalog/domain/use_cases/feed_fetcher.dart';
+import 'package:ghostr/features/video_catalog/domain/use_cases/feed_loads.dart';
+import 'package:ghostr/features/video_catalog/domain/use_cases/feed_session.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
-import 'package:ghostr/features/video_catalog/presentation/feed_backfill.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_dependencies.dart';
-import 'package:ghostr/features/video_catalog/presentation/feed_engagement.dart';
-import 'package:ghostr/features/video_catalog/presentation/feed_fetcher.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_failure_messages.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_hunt.dart';
-import 'package:ghostr/features/video_catalog/presentation/feed_loads.dart';
-import 'package:ghostr/features/video_catalog/presentation/feed_session.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_state.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_viewer.dart';
 
 export 'feed_dependencies.dart';
 export 'feed_state.dart';
+
+part 'feed_cubit_engagement.dart';
 
 /// Turns feed intents into feed states. The rules behind a transition — what
 /// survives a refresh, when to dig into the past — live in collaborators.
@@ -58,7 +61,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     if (isClosed || result == null) return;
     switch (result) {
       case FeedUnavailable():
-        emit(previous.withNotice(result.describe()));
+        emit(previous.withNotice(feedLoadFailureMessage(result.failure)));
       case FeedFetched(:final posts):
         _acceptRefresh(previous, posts);
     }
@@ -72,7 +75,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     if (isClosed || result == null) return;
     switch (result) {
       case FeedUnavailable():
-        emit(unavailable(result.describe()));
+        emit(unavailable(feedLoadFailureMessage(result.failure)));
       case FeedFetched(:final posts):
         _acceptLoad(kind, posts);
     }
@@ -134,46 +137,19 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   Future<void> loadMore() async {
     if (state is! FeedLoaded) return;
     final dug = await _backfill.dig(state.kind);
-    if (dug case FeedDigFailed(:final message)) return _showNotice(message);
+    if (dug case FeedDigFailed(:final failure)) {
+      return _showNotice(feedLoadFailureMessage(failure.failure));
+    }
     if (dug case FeedDigPage(:final posts)) _appendPage(posts);
   }
 
   void _appendPage(List<VideoPost> incoming) {
     final current = state;
     if (current is! FeedLoaded) return;
-    final posts = _session.appended(current, incoming);
+    final posts = _session.appended(current.roster, incoming);
     if (posts == null) return;
     emit(current.withPosts(posts));
     _ensureBuffered();
-  }
-
-  // The heart flips immediately; the relay mutation confirms or reverts it.
-  Future<void> toggleLike(VideoPost post) async {
-    _applyPosts(_session.liked(state, _engagement.optimistic(post)));
-    final settled = await _engagement.confirmLike(post);
-    _applyPosts(_session.liked(state, settled.post));
-    if (settled.message case final reason?) _showNotice(reason);
-  }
-
-  Future<void> blockCreator(VideoPost post) async {
-    final result = await _engagement.block(post);
-    if (result is FeedBlockFailed) return _showNotice(result.message);
-    if (result is FeedCreatorBlocked) await _removeBlockedCreator(post);
-  }
-
-  Future<void> _removeBlockedCreator(VideoPost post) async {
-    final current = state;
-    _session.dropCreator(post.creator.id);
-    if (current is! FeedLoaded) return;
-    final roster = current.roster.withoutCreator(post.creator.id);
-    if (roster.isEmpty) return load();
-    final blocked = 'Blocked ${post.creator.handle}';
-    emit(FeedLoaded.of(current.kind, roster, notice: blocked));
-  }
-
-  void commentsPublished(VideoPost post, int publishedCount) {
-    if (publishedCount < 1) return;
-    _applyPosts(_session.commented(state, post, publishedCount));
   }
 
   void clearNotice() {
@@ -182,15 +158,12 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     emit(current.withoutNotice());
   }
 
-  void _applyPosts(List<VideoPost> posts) {
-    final current = state;
-    if (current is FeedLoaded) emit(current.withPosts(posts));
-  }
-
   void _showNotice(String message) {
     final current = state;
     if (current is FeedLoaded) emit(current.withNotice(message));
   }
+
+  void _emitState(FeedState next) => emit(next);
 
   @override
   Future<void> close() {

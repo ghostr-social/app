@@ -27,7 +27,12 @@ async fn loaded(state: &SharedFeedState, keys: &Keys, seen: Event) -> (FeedConte
     lock(state).apply(&open.context, Ok(vec![seen]));
     let revisions = lock(state).subscribe(feed).expect("open feeds subscribe");
     let (sender, mut updates) = mpsc::unbounded_channel();
-    tokio::spawn(watch_feed(ChannelOut(sender), state.clone(), feed, revisions));
+    tokio::spawn(watch_feed(
+        ChannelOut(sender),
+        state.clone(),
+        feed,
+        revisions,
+    ));
     lock(state).load_more(feed, None);
     next(&mut updates).await;
     (open.context, updates)

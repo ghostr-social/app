@@ -21,7 +21,7 @@ void main() {
         create: (_) => FeedCubit(FeedDependencies(
           feed: QueryVideoFeedRepository(search: repository, query: '#dance'),
           engagement: repository,
-          social: repository,
+          optional: FeedOptionalDependencies(social: repository),
         ))
           ..load(),
         child: DiscoveryFeedScreen(

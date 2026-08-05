@@ -30,7 +30,6 @@ final class FfiFeedFocusPort implements FeedFocusPort {
   @override
   void focusChanged(FeedFocus focus) {
     final window = _FfiFocusWindow.of(focus);
-    if (window.items.isEmpty) return;
     unawaited(_send(window, focus.watched));
   }
 

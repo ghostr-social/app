@@ -2,10 +2,7 @@
 //! (plan §5.2): kind-3 follow lists and NIP-51 kind-10000 mute lists.
 //! Pure ingestion and lookup — lists are edited and published by Dart,
 //! only consumed here. Mutes hide creators: a muted pubkey's posts are
-//! filtered by author, never by hashtag or single event, mirroring
-//! `_loadBlockedProfiles` (only `pubKeys` is read) in
-//! lib/platform/nostr/ndk_nostr_social.dart and the blocked-creator
-//! filter in lib/features/video_catalog/domain/video_feed_policy.dart.
+//! filtered by author, never by hashtag or single event.
 //! Private (encrypted) mute entries stay in Dart: decryption needs the
 //! keys, and keys never cross the FFI.
 
@@ -21,9 +18,8 @@ pub struct SocialGraph {
     mutes: PubkeyList,
 }
 
-/// One replaceable list of pubkeys: strictly newer created_at replaces
-/// it, ties keep the existing list — mirrors the newest-wins floors in
-/// lib/platform/nostr/ndk_nostr_social_models.dart.
+/// One replaceable list of pubkeys: a strictly newer timestamp replaces
+/// it; ties keep the accepted value.
 #[derive(Debug, Default)]
 struct PubkeyList {
     created_at: Option<Timestamp>,
@@ -65,7 +61,9 @@ impl SocialGraph {
     /// Ingests a whole retrieval's events, reporting whether the follow
     /// set was replaced by any of them.
     pub fn ingest_all(&mut self, events: &[Event]) -> bool {
-        events.iter().fold(false, |changed, event| self.ingest(event) | changed)
+        events
+            .iter()
+            .fold(false, |changed, event| self.ingest(event) | changed)
     }
 
     /// Pubkeys the session follows (p tags of the newest kind-3).
@@ -105,8 +103,7 @@ impl PubkeyList {
     }
 
     fn accepts(&self, created_at: Timestamp) -> bool {
-        self.created_at
-            .is_none_or(|current| created_at > current)
+        self.created_at.is_none_or(|current| created_at > current)
     }
 }
 
@@ -118,8 +115,7 @@ fn listed_pubkeys(event: &Event) -> HashSet<PublicKey> {
         .collect()
 }
 
-/// The pubkey of a well-formed public p tag; malformed hex is skipped
-/// (ndk carries the raw string, but it can never resolve to a creator).
+/// The pubkey of a well-formed public p tag; malformed hex is skipped.
 fn p_tag_pubkey(tag: &[String]) -> Option<PublicKey> {
     if tag.len() < 2 || tag[0] != "p" {
         return None;

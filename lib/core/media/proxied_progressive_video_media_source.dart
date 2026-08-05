@@ -47,13 +47,20 @@ Uri _trustedProgressiveGatewayUri(String raw) {
 }
 
 bool _isTrustedProgressiveGatewayUri(Uri uri) {
-  return uri.scheme == 'http' &&
-      _isLiteralLoopback(uri.host) &&
-      uri.hasPort &&
+  if (!_isLoopbackHttp(uri)) return false;
+  if (!_isSafeGatewayLocation(uri)) return false;
+  return _isSinglePostIdQuery(uri);
+}
+
+bool _isLoopbackHttp(Uri uri) {
+  return uri.scheme == 'http' && _isLiteralLoopback(uri.host);
+}
+
+bool _isSafeGatewayLocation(Uri uri) {
+  return uri.hasPort &&
       uri.userInfo.isEmpty &&
       !uri.hasFragment &&
-      uri.path == '/video.mp4' &&
-      _isSinglePostIdQuery(uri);
+      uri.path == '/video.mp4';
 }
 
 bool _isSinglePostIdQuery(Uri uri) {

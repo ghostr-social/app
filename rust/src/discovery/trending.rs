@@ -1,18 +1,14 @@
-//! Trending hashtags over recent posts. Parity sources:
-//! lib/features/video_catalog/domain/trending_hashtags.dart
-//! (`rankTrendingHashtags`) and
-//! lib/features/video_catalog/data/recent_videos_trending_hashtags.dart
-//! (the 15-minute answer cache; the scheduler runs the refresh at
-//! background priority so garnish never competes with feeds).
+//! Trending hashtags over recent posts, with deterministic ranking and a
+//! 15-minute answer cache. Refreshes run as background discovery work.
 
 use crate::discovery::event_parsing::ParsedVideoPost;
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
-/// Most hashtags a trending answer carries (Dart default `limit`).
+/// Most hashtags a trending answer carries.
 pub const TRENDING_HASHTAG_LIMIT: usize = 12;
 
-/// How long a computed answer keeps serving (Dart `_timeToLive`).
+/// How long a computed answer keeps serving.
 pub const TRENDING_TIME_TO_LIVE: Duration = Duration::from_secs(15 * 60);
 
 /// Ranks hashtags by how many recent posts carry them; a tag repeated
@@ -27,7 +23,11 @@ pub fn rank_trending_hashtags(posts: &[ParsedVideoPost], limit: usize) -> Vec<St
         }
     }
     let mut ranked: Vec<&str> = counts.keys().copied().collect();
-    ranked.sort_by(|left, right| counts[right].cmp(&counts[left]).then_with(|| left.cmp(right)));
+    ranked.sort_by(|left, right| {
+        counts[right]
+            .cmp(&counts[left])
+            .then_with(|| left.cmp(right))
+    });
     ranked.truncate(limit);
     ranked.into_iter().map(str::to_owned).collect()
 }
@@ -40,8 +40,7 @@ pub struct TrendingHashtagsCache {
 }
 
 impl TrendingHashtagsCache {
-    /// The cached answer while it is still fresh (Dart's strict
-    /// `difference < ttl`), otherwise `None`.
+    /// The cached answer while its age is strictly below the TTL.
     pub fn fresh(&self, now: Instant) -> Option<&[String]> {
         let (tags, stored_at) = self.cached.as_ref()?;
         if now.duration_since(*stored_at) < TRENDING_TIME_TO_LIVE {

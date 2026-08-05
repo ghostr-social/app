@@ -25,7 +25,7 @@ void main() {
     expect(update.currentIndex, 0);
   });
 
-  test('sends nothing when no window item is deliverable', () async {
+  test('clears Rust focus when no window item is deliverable', () async {
     final updater = RecordingRustFocusUpdater();
     final port = FfiFeedFocusPort(updateFocus: updater.call);
     final local = samplePost(id: 'local')
@@ -34,6 +34,8 @@ void main() {
     port.focusChanged(FeedFocus.around(posts: [local], activeIndex: 0));
     await pumpEventQueue();
 
-    expect(updater.updates, isEmpty);
+    final update = updater.updates.single;
+    expect(update.items, isEmpty);
+    expect(update.currentIndex, 0);
   });
 }

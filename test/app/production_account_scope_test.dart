@@ -9,7 +9,6 @@ import '../support/fake_nostr_session_port.dart';
 import '../support/fake_nostr_social_port.dart';
 import '../support/fake_nostr_video_publisher_port.dart';
 import '../support/fake_remote_video_source.dart';
-import '../support/ndk_mocks.dart';
 import '../support/test_video_delivery.dart';
 import '../support/nostr_test_values.dart';
 import '../support/sample_data.dart';
@@ -22,7 +21,6 @@ void main() {
     final social =
         FakeNostrSocialPort(activeAccount: () => client.publicKeyHex);
     final nostr = ProductionNostrServices(
-      MockNdk(),
       ProductionNostrAdapters(
         FakeNostrSessionPort(),
         social,

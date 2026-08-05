@@ -27,15 +27,19 @@ fn unknown_duration_adds_the_tail_probe_to_startability_work() {
             ByteRange::new(7_737_856, 8_000_000),
         ]
     );
-    assert!(requests.iter().all(|request| request.tier == Tier::T2Startability));
+    assert!(requests
+        .iter()
+        .all(|request| request.tier == Tier::T2Startability));
 }
 
 #[test]
 fn tail_chunks_wait_until_head_and_probe_are_on_disk() {
     let requests = bench().run();
 
-    assert!(requests.iter().all(|request| request.chunk.range.start < 1_250_000
-        || request.chunk.range.start == 7_737_856));
+    assert!(requests
+        .iter()
+        .all(|request| request.chunk.range.start < 1_250_000
+            || request.chunk.range.start == 7_737_856));
 }
 
 // With head and probe on disk the lone-post window satisfies its
@@ -45,12 +49,20 @@ fn once_startable_the_remaining_tail_deepens_in_comfort() {
     let mut bench = bench();
     bench.present.insert(
         PostId::new("p"),
-        vec![ByteRange::new(0, 1_250_000), ByteRange::new(7_737_856, 8_000_000)],
+        vec![
+            ByteRange::new(0, 1_250_000),
+            ByteRange::new(7_737_856, 8_000_000),
+        ],
     );
 
     let requests = bench.run();
 
     assert_eq!(requests.len(), 7);
-    assert_eq!(requests[0].chunk.range, ByteRange::new(1_250_000, 2_298_576));
-    assert!(requests.iter().all(|request| request.tier == Tier::T3Deepening));
+    assert_eq!(
+        requests[0].chunk.range,
+        ByteRange::new(1_250_000, 2_298_576)
+    );
+    assert!(requests
+        .iter()
+        .all(|request| request.tier == Tier::T3Deepening));
 }

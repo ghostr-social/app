@@ -6,8 +6,8 @@ import '../support/fake_rust_feed_port.dart';
 import '../support/rust_feed_fixtures.dart';
 
 void main() {
-  // ndk parity: NdkNostrVideoEventQuery surfaces every transport
-  // problem as AppFailure('Could not load Nostr videos.').
+  // The feed boundary exposes every engine/open/watch failure through
+  // the shared user-safe AppFailure.
   test('translates an open failure into the shared feed failure', () async {
     final port = FakeRustFeedPort()..openError = StateError('engine down');
     final source = RustFeedRemoteSource(port: port);

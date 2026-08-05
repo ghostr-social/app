@@ -11,8 +11,7 @@ fn file_event(tags: Vec<Tag>) -> Event {
 
 #[test]
 fn event_parsing_maps_nip94_top_level_file_tags() {
-    // NIP-94 carries url / m / x as top-level tags, per
-    // lib/features/video_catalog/data/nostr_video_media.dart `_fromFileTags`.
+    // NIP-94 carries URL, mime, and digest metadata as top-level tags.
     let post = video_post_from_event(&file_event(vec![
         Tag::parse(["url", "https://file.example/clip.mp4"]).expect("url tag"),
         Tag::parse(["m", "video/mp4"]).expect("m tag"),
@@ -41,8 +40,8 @@ fn event_parsing_uses_the_file_mime_for_hls_delivery() {
 
 #[test]
 fn event_parsing_rejects_file_tags_with_an_invalid_digest() {
-    // Dart `_fromFileTags` returns null when a present `x` will not parse;
-    // with no text link left, the whole event yields nothing.
+    // A present but invalid digest rejects the file metadata; without a
+    // text link, the event yields no playable post.
     let post = video_post_from_event(&file_event(vec![
         Tag::parse(["url", "https://file.example/clip.mp4"]).expect("url tag"),
         Tag::parse(["m", "video/mp4"]).expect("m tag"),

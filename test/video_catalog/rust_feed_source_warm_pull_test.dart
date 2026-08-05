@@ -10,8 +10,7 @@ void main() {
   // made every load a cold relay round trip (up to eight seconds) for
   // rows the engine already had. One feed per spec stays open, and a
   // returning pull reads its snapshot.
-  test('answers a second pull for the same spec from the live feed',
-      () async {
+  test('answers a second pull for the same spec from the live feed', () async {
     final port = LiveRustFeedPort(
       firstPage: [
         rustFeedUpdate(revision: 1, posts: [rustFeedPost()]),

@@ -12,7 +12,12 @@ const RECHECK: Duration = Duration::from_secs(2);
 
 #[tokio::test(start_paused = true)]
 async fn partial_range_refusal_is_decided_once_per_measurement() {
-    let fixture = paced_store("ghostr-refuse-once", limits(u64::MAX, 1_000), 1_000, RECHECK);
+    let fixture = paced_store(
+        "ghostr-refuse-once",
+        limits(u64::MAX, 1_000),
+        1_000,
+        RECHECK,
+    );
     let store = &fixture.store;
 
     for buffer in 0..16_u64 {
@@ -20,7 +25,10 @@ async fn partial_range_refusal_is_decided_once_per_measurement() {
             .write_range("hot", buffer * 100, &[7; 100])
             .await
             .expect_err("nothing above the reserve is spendable");
-        assert!(refused.to_string().contains("space"), "unhelpful: {refused}");
+        assert!(
+            refused.to_string().contains("space"),
+            "unhelpful: {refused}"
+        );
     }
 
     assert_eq!(store.refusals(), 1, "one decision, not sixteen");

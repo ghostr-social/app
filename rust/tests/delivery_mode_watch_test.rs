@@ -22,7 +22,10 @@ use tokio::time::timeout;
 #[tokio::test]
 async fn delivery_manager_publishes_mode_transitions() {
     let root = temp_directory("ghostr-mode-watch");
-    let store = Arc::new(PartialRangeStore::new(root.clone(), Arc::new(Mutex::new(0))));
+    let store = Arc::new(PartialRangeStore::new(
+        root.clone(),
+        Arc::new(Mutex::new(0)),
+    ));
     let (_demand, demand_receiver) = demand_channel();
     let config = DeliveryManagerConfig {
         store,
@@ -34,7 +37,11 @@ async fn delivery_manager_publishes_mode_transitions() {
         tuning: DeliveryTuning::default(),
     };
     let (handle, mut modes) = start_delivery_manager_with_modes(config, demand_receiver);
-    assert_eq!(*modes.borrow(), Mode::Hunger, "a fresh controller is hungry");
+    assert_eq!(
+        *modes.borrow(),
+        Mode::Hunger,
+        "a fresh controller is hungry"
+    );
 
     // An empty focus window meets its (empty) startable target.
     handle.update_focus(focus_now(Vec::new(), 0, 0));

@@ -1,9 +1,6 @@
-//! Addressable coordinates are compared as published. ndk keys the
-//! same-video coordinate on the raw `d` tag value
-//! (`_eventCoordinate` in
-//! lib/features/video_catalog/data/ndk_video_remote_source.dart, which
-//! only rejects a blank one), so `"clip"` and `" clip "` are two
-//! videos. Folding them together silently drops one of the two.
+//! Addressable coordinates compare the raw published `d` value, so
+//! `"clip"` and `" clip "` name distinct videos. Folding them together
+//! would silently drop one.
 
 mod feed_support;
 
@@ -24,8 +21,7 @@ fn feed_assembly_keeps_identifiers_that_differ_only_in_padding() {
     assert_eq!(canonical.len(), 2);
 }
 
-/// The identifier Dart addresses social writes with stays trimmed, like
-/// NostrEventIdentifier.parse.
+/// The domain identifier used for social writes remains trimmed.
 #[test]
 fn feed_assembly_still_reports_the_trimmed_identifier() {
     let keys = Keys::generate();

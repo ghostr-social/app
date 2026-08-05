@@ -4,13 +4,7 @@ import 'package:ghostr/platform/media/ffi_video_gateway.dart';
 FfiVideoGateway startedVideoGateway({String endpoint = '127.0.0.1:3000'}) {
   return FfiVideoGateway(
     initialize: () async {},
-    startEngine: ({
-      required String cacheDirectory,
-      required String relayUrls,
-      required String dataUsage,
-      required BigInt maxStorageBytes,
-    }) async =>
-        endpoint,
+    startEngine: (_) async => endpoint,
   );
 }
 
@@ -18,12 +12,6 @@ FfiVideoGateway startedVideoGateway({String endpoint = '127.0.0.1:3000'}) {
 FfiVideoGateway failingVideoGateway() {
   return FfiVideoGateway(
     initialize: () async {},
-    startEngine: ({
-      required String cacheDirectory,
-      required String relayUrls,
-      required String dataUsage,
-      required BigInt maxStorageBytes,
-    }) async =>
-        throw StateError('port unavailable'),
+    startEngine: (_) async => throw StateError('port unavailable'),
   );
 }

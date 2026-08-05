@@ -41,6 +41,12 @@ pub fn unsized_item(id: &'static str, url: &str) -> FocusItem {
     })
 }
 
+pub fn unsized_mirrored_item(id: &'static str, first: &str, second: &str) -> FocusItem {
+    let mut item = unsized_item(id, first);
+    item.meta.urls.push(second.to_owned());
+    item
+}
+
 pub fn focus_now(items: Vec<FocusItem>, current_index: usize, watch_ms: u64) -> DeliveryFocus {
     DeliveryFocus {
         items,

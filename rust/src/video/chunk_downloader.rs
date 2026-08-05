@@ -7,13 +7,13 @@
 use crate::engine::host_stats::{host_of, HostStats};
 use crate::engine::ByteRange;
 use crate::video::chunk_cancel::CancelToken;
-use crate::video::content_range;
+use crate::video::chunk_response::{classify, RangeReply};
 use crate::video::outbound_media_client::MediaHttpClient;
 use crate::video::partial_range_store::PartialRangeStore;
 use crate::video::transfer_timeouts::TransferTimeouts;
-use anyhow::{bail, ensure, Context, Result};
-use reqwest::header::{CONTENT_RANGE, RANGE};
-use reqwest::{Response, StatusCode};
+use anyhow::{ensure, Context, Result};
+use reqwest::header::RANGE;
+use reqwest::Response;
 use std::time::Duration;
 use tokio::time::Instant;
 
@@ -73,12 +73,16 @@ async fn transfer(
     let full_length = response.content_length();
     match classify(&response, spec.range)? {
         RangeReply::Ignored => Ok(range_ignored(full_length)),
-        RangeReply::Partial { total } => {
-            completed(stream_into(response, spec, sink, cancel).await?, true, total)
-        }
-        RangeReply::FullBody => {
-            completed(stream_into(response, spec, sink, cancel).await?, false, full_length)
-        }
+        RangeReply::Partial { total } => completed(
+            stream_into(response, spec, sink, cancel).await?,
+            true,
+            total,
+        ),
+        RangeReply::FullBody => completed(
+            stream_into(response, spec, sink, cancel).await?,
+            false,
+            full_length,
+        ),
     }
 }
 
@@ -89,34 +93,9 @@ async fn send_ranged(spec: &ChunkSpec<'_>) -> Result<Response> {
         .await
         .context("chunk response headers timed out")?
         .context("chunk request failed")?;
-    response.error_for_status().context("chunk request rejected")
-}
-
-enum RangeReply {
-    Partial { total: Option<u64> },
-    FullBody,
-    Ignored,
-}
-
-fn classify(response: &Response, range: ByteRange) -> Result<RangeReply> {
-    if response.status() == StatusCode::PARTIAL_CONTENT {
-        let total = verified_total(response, range.start)?;
-        return Ok(RangeReply::Partial { total });
-    }
-    if range.start == 0 {
-        return Ok(RangeReply::FullBody);
-    }
-    Ok(RangeReply::Ignored)
-}
-
-fn verified_total(response: &Response, expected_start: u64) -> Result<Option<u64>> {
-    let header = response.headers().get(CONTENT_RANGE);
-    let Some(value) = header.and_then(|value| value.to_str().ok()) else {
-        bail!("partial content response is missing Content-Range");
-    };
-    let (start, total) = content_range::parse(value).context("unparseable Content-Range")?;
-    ensure!(start == expected_start, "server answered a different range offset");
-    Ok(total)
+    response
+        .error_for_status()
+        .context("chunk request rejected")
 }
 
 struct Streamed {
@@ -141,7 +120,10 @@ async fn stream_into(
         let Some(chunk) = chunk else { break };
         written += write_capped(spec, sink, written, &chunk).await?;
     }
-    Ok(Streamed { bytes: written, cancelled: false })
+    Ok(Streamed {
+        bytes: written,
+        cancelled: false,
+    })
 }
 
 async fn next_chunk(response: &mut Response, idle: Duration) -> Result<Option<bytes::Bytes>> {
@@ -160,11 +142,17 @@ async fn write_capped(
     let remaining = (spec.range.len() - written) as usize;
     let take = chunk.len().min(remaining);
     let offset = spec.range.start + written;
-    sink.store.write_range(sink.key, offset, &chunk[..take]).await?;
+    sink.store
+        .write_range(sink.key, offset, &chunk[..take])
+        .await?;
     Ok(take as u64)
 }
 
-fn completed(streamed: Streamed, accept_ranges: bool, total_bytes: Option<u64>) -> Result<ChunkResult> {
+fn completed(
+    streamed: Streamed,
+    accept_ranges: bool,
+    total_bytes: Option<u64>,
+) -> Result<ChunkResult> {
     Ok(ChunkResult {
         bytes_written: streamed.bytes,
         accept_ranges,

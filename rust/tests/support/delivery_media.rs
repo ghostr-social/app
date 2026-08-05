@@ -1,9 +1,11 @@
 //! Range-capable fixture server that records every request as
 //! `tag:METHOD:start-end` (or `tag:METHOD:full`) for order assertions.
 
+mod response;
+
 use axum::body::Body;
 use axum::extract::State;
-use axum::http::{header, HeaderMap, Method, StatusCode};
+use axum::http::{HeaderMap, Method, StatusCode};
 use axum::response::Response;
 use axum::routing::get;
 use axum::Router;
@@ -32,7 +34,12 @@ struct Recorder {
 }
 
 pub async fn serve_recording(tag: &str, bytes: Vec<u8>, log: HitLog) -> String {
-    serve(Router::new().route("/video.mp4", get(record)).with_state(recorder(tag, bytes, log))).await
+    serve(
+        Router::new()
+            .route("/video.mp4", get(record))
+            .with_state(recorder(tag, bytes, log)),
+    )
+    .await
 }
 
 fn recorder(tag: &str, bytes: Vec<u8>, log: HitLog) -> Recorder {
@@ -44,7 +51,9 @@ fn recorder(tag: &str, bytes: Vec<u8>, log: HitLog) -> Recorder {
 }
 
 async fn serve(app: Router) -> String {
-    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind recorder");
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind recorder");
     let address = listener.local_addr().expect("recorder address");
     tokio::spawn(async move { axum::serve(listener, app).await.expect("serve recorder") });
     format!("http://{address}/video.mp4")
@@ -54,7 +63,12 @@ async fn serve(app: Router) -> String {
 /// the shape of a source that is gone for good.
 pub async fn serve_rejecting(tag: &str, log: HitLog) -> String {
     let state = recorder(tag, Vec::new(), log);
-    serve(Router::new().route("/video.mp4", get(reject)).with_state(state)).await
+    serve(
+        Router::new()
+            .route("/video.mp4", get(reject))
+            .with_state(state),
+    )
+    .await
 }
 
 async fn reject(State(state): State<Recorder>, method: Method, headers: HeaderMap) -> Response {
@@ -67,55 +81,19 @@ async fn reject(State(state): State<Recorder>, method: Method, headers: HeaderMa
 
 async fn record(State(state): State<Recorder>, method: Method, headers: HeaderMap) -> Response {
     match note(&state, method, &headers) {
-        Some((start, end)) => partial(&state.bytes, start, end),
-        None => full(&state.bytes),
+        Some((start, end)) => response::partial(&state.bytes, start, end),
+        None => response::full(&state.bytes),
     }
 }
 
 /// Logs one attempt as `tag:METHOD:start-end` (or `tag:METHOD:full`)
 /// and reports the requested range.
 fn note(state: &Recorder, method: Method, headers: &HeaderMap) -> Option<(u64, u64)> {
-    let range = requested(headers, state.bytes.len() as u64);
+    let range = response::requested(headers, state.bytes.len() as u64);
     let label = match range {
         Some((start, end)) => format!("{}:{method}:{start}-{end}", state.tag),
         None => format!("{}:{method}:full", state.tag),
     };
     state.log.lock().expect("hit log").push(label);
     range
-}
-
-fn full(bytes: &[u8]) -> Response {
-    Response::builder()
-        .status(StatusCode::OK)
-        .header(header::CONTENT_TYPE, "video/mp4")
-        .header(header::CONTENT_LENGTH, bytes.len())
-        .header(header::ACCEPT_RANGES, "bytes")
-        .body(Body::from(bytes.to_vec()))
-        .expect("full response")
-}
-
-fn partial(bytes: &[u8], start: u64, end: u64) -> Response {
-    let slice = bytes
-        .get(start as usize..(end + 1) as usize)
-        .unwrap_or(&[])
-        .to_vec();
-    Response::builder()
-        .status(StatusCode::PARTIAL_CONTENT)
-        .header(header::CONTENT_TYPE, "video/mp4")
-        .header(header::CONTENT_LENGTH, slice.len())
-        .header(
-            header::CONTENT_RANGE,
-            format!("bytes {start}-{end}/{}", bytes.len()),
-        )
-        .body(Body::from(slice))
-        .expect("partial response")
-}
-
-fn requested(headers: &HeaderMap, len: u64) -> Option<(u64, u64)> {
-    let value = headers.get(header::RANGE)?.to_str().ok()?;
-    let (start, end) = value.strip_prefix("bytes=")?.split_once('-')?;
-    let last = len.saturating_sub(1);
-    let start = start.parse().ok()?;
-    let end: u64 = end.parse().unwrap_or(last);
-    Some((start, end.min(last)))
 }

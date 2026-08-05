@@ -3,9 +3,10 @@
 mod support;
 
 use rust_lib_ghostr::engine::{DataUsageLevel, EngineParams};
-use support::delivery::{base_params, start_harness, DeliveryOptions};
+use support::delivery::start_harness;
 use support::delivery_items::{focus_now, sized_item};
 use support::delivery_media::{hit_log, hits, media_body, serve_recording};
+use support::delivery_options::{base_params, DeliveryOptions};
 use support::delivery_wait::wait_for_ranges;
 
 #[tokio::test]
@@ -28,7 +29,9 @@ async fn delivery_manager_downloads_heads_in_priority_order() {
     wait_for_ranges(&harness.store, "bb22", &[(0, 16)]).await;
     let recorded = hits(&log);
     assert!(
-        recorded.first().is_some_and(|hit| hit.starts_with("current:")),
+        recorded
+            .first()
+            .is_some_and(|hit| hit.starts_with("current:")),
         "the current post must be fetched first: {recorded:?}"
     );
     assert!(recorded.iter().any(|hit| hit.starts_with("next:")));

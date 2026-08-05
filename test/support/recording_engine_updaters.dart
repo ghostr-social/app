@@ -1,4 +1,5 @@
 import 'package:ghostr/src/rust/api/delivery_types.dart';
+import 'package:ghostr/platform/media/rust_engine_configuration.dart';
 
 /// Records `ffi_update_focus` payloads handed to the Rust engine; set
 /// [failure] to make the next call throw instead.
@@ -30,15 +31,12 @@ final class RecordedFocusUpdate {
 /// Records `ffi_set_delivery_config` pushes to the Rust engine; set
 /// [failure] to make the next push throw instead.
 final class RecordingDeliveryConfigUpdater {
-  final List<(String, BigInt)> pushes = [];
+  final List<RustEngineConfiguration> pushes = [];
   Object? failure;
 
-  Future<void> call({
-    required String dataUsage,
-    required BigInt maxStorageBytes,
-  }) async {
+  Future<void> call(RustEngineConfiguration configuration) async {
     final error = failure;
     if (error != null) throw error;
-    pushes.add((dataUsage, maxStorageBytes));
+    pushes.add(configuration);
   }
 }

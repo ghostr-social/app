@@ -7,10 +7,24 @@ import '../frb_generated.dart';
 import 'feed_types.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// These functions are ignored because they are not marked as `pub`: `parse_expected_account`, `validate_main_account`
+
+/// Captures the native account-session token before Dart waits on any
+/// previous feed. A later open must present the same token.
+Future<BigInt> ffiFeedSession({String? expectedAccountHex}) => RustLib
+    .instance.api
+    .crateApiFeedControlFfiFeedSession(expectedAccountHex: expectedAccountHex);
+
 /// Opens one feed in the Rust feed store, starts its first-page
 /// queries, and returns the feed handle every later call names.
-Future<String> ffiOpenFeed({required FfiFeedSpec spec}) =>
-    RustLib.instance.api.crateApiFeedControlFfiOpenFeed(spec: spec);
+Future<String> ffiOpenFeed(
+        {required FfiFeedSpec spec,
+        String? expectedAccountHex,
+        required BigInt expectedSessionGeneration}) =>
+    RustLib.instance.api.crateApiFeedControlFfiOpenFeed(
+        spec: spec,
+        expectedAccountHex: expectedAccountHex,
+        expectedSessionGeneration: expectedSessionGeneration);
 
 /// Requests one older page. Returns whether more content may exist:
 /// `false` once the feed is exhausted (or unknown), `true` while a

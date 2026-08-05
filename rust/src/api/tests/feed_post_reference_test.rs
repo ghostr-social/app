@@ -1,8 +1,5 @@
-//! The social reference of a feed row. Dart rebuilds
-//! `NostrEventReference` from `event_id` + `creator.pubkey` +
-//! `event_kind` + `identifier`, so a like, a comment or a report on a
-//! Rust-served row addresses the same coordinate the ndk pipeline
-//! addresses (nostr_video_event_mapper.dart `_reference`).
+//! A feed row carries every field needed to rebuild its social reference:
+//! event ID, creator public key, event kind, and optional identifier.
 
 use crate::api::feed_mapping::feed_post;
 use crate::api::tests::support::{creator_profile, parsed_video_post};

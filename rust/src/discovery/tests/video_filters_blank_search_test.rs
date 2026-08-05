@@ -1,8 +1,6 @@
 //! A blank search term still widens limits and skips the mp4 hunt, but
-//! adds no NIP-50 term: Dart decides widening and hunt inclusion on the
-//! raw searchQuery while NostrEventQuery normalizes blank to null
-//! (lib/platform/nostr/video_discovery_queries.dart +
-//! lib/core/nostr/nostr_event_record.dart `_normalizedSearch`).
+//! adds no NIP-50 term: widening uses the supplied value while the wire
+//! filter uses its trimmed, non-blank form.
 
 use serde_json::json;
 

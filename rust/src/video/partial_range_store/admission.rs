@@ -21,7 +21,11 @@ pub struct OutOfSpace {
 
 impl fmt::Display for OutOfSpace {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "video store is out of space: {} bytes short", self.short)
+        write!(
+            formatter,
+            "video store is out of space: {} bytes short",
+            self.short
+        )
     }
 }
 
@@ -42,17 +46,31 @@ impl PartialRangeStore {
         self.refusals.load(Ordering::Relaxed)
     }
 
+    /// Applies a positive user budget to subsequent admissions. The
+    /// entry lock makes a shrink wait for any already-admitted write,
+    /// then evicts immediately against the final accounted usage.
+    pub async fn set_storage_budget(&self, budget: u64) -> Result<()> {
+        self.capacity.set_budget(budget)?;
+        let mut entries = self.entries.lock().await;
+        self.enforce_locked(&mut entries).await;
+        Ok(())
+    }
+
     /// Re-measures free space and evicts, least recently used first,
     /// until the store fits under the effective cap. Returns the bytes
     /// given back. Safe to call on a timer: other apps consume the same
     /// file system, so the cap shrinks without the store doing anything.
     pub async fn enforce_capacity(&self) -> u64 {
+        let mut entries = self.entries.lock().await;
+        self.enforce_locked(&mut entries).await
+    }
+
+    async fn enforce_locked(&self, entries: &mut Entries) -> u64 {
         let short = self.shortfall(0).await;
         if short == 0 {
             return 0;
         }
-        let mut entries = self.entries.lock().await;
-        let freed = self.evict(&mut entries, "", short).await;
+        let freed = self.evict(entries, "", short).await;
         // Only what actually moved is news. This runs after every chunk,
         // so reporting a shortfall the store cannot cover would be the
         // same log storm the refusal path exists to avoid; that case is

@@ -1,26 +1,26 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_spec_builder.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
+import 'package:ghostr/src/rust/api/feed_types.dart';
 
 import '../support/nostr_test_values.dart';
 
 void main() {
-  // Precedence mirrors remoteVideoRetrievalContext
-  // (scheduled_remote_video_source.dart): search, tag, profile, feed.
+  // Feed precedence is search, tag, profile, then main.
   test('a search term opens a search feed', () {
     final spec = buildRustFeedSpec(
       searchQuery: 'ghost tapes',
       hashtags: {'ghostr'},
     );
 
-    expect(spec?.kind, 'search');
+    expect(spec?.kind, FfiFeedKind.search);
     expect(spec?.value, 'ghost tapes');
   });
 
   test('a hashtag opens a hashtag feed', () {
     final spec = buildRustFeedSpec(hashtags: {'ghostr'});
 
-    expect(spec?.kind, 'hashtag');
+    expect(spec?.kind, FfiFeedKind.hashtag);
     expect(spec?.value, 'ghostr');
   });
 
@@ -30,7 +30,7 @@ void main() {
       viewerPubkeyHex: testViewerPublicKey,
     );
 
-    expect(spec?.kind, 'main');
+    expect(spec?.kind, FfiFeedKind.main);
   });
 
   test('a creator id opens a profile feed keyed by the decoded hex', () {
@@ -38,26 +38,22 @@ void main() {
       creatorIds: {ProfileId.parse(testViewerNpub)},
     );
 
-    expect(spec?.kind, 'profile');
+    expect(spec?.kind, FfiFeedKind.profile);
     expect(spec?.creators, [testViewerPublicKey]);
   });
 
   test('no filters open the viewer main feed', () {
     final spec = buildRustFeedSpec(viewerPubkeyHex: testViewerPublicKey);
 
-    expect(spec?.kind, 'main');
+    expect(spec?.kind, FfiFeedKind.main);
     expect(spec?.viewerPubkey, testViewerPublicKey);
     expect(spec?.value, isNull);
   });
 
-  // ndk parity: signed out the main feed stays an unscoped relay query
-  // (ndk_nostr_outbox_directory.dart knows no follows without an
-  // account and falls back to the bootstrap relays), so the spec simply
-  // names no viewer instead of refusing to open.
   test('no viewer opens the signed-out main feed', () {
     final spec = buildRustFeedSpec();
 
-    expect(spec?.kind, 'main');
+    expect(spec?.kind, FfiFeedKind.main);
     expect(spec?.viewerPubkey, isNull);
   });
 }

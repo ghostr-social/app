@@ -22,9 +22,9 @@ pub fn relay_list_event(keys: &Keys, url: &str) -> Event {
 
 /// A kind-3 follow list naming every given pubkey.
 pub fn contact_list_event(keys: &Keys, follows: &[PublicKey]) -> Event {
-    let tags = follows.iter().map(|follow| {
-        Tag::parse(vec!["p".to_owned(), follow.to_hex()]).expect("fixture tag")
-    });
+    let tags = follows
+        .iter()
+        .map(|follow| Tag::parse(vec!["p".to_owned(), follow.to_hex()]).expect("fixture tag"));
     EventBuilder::new(Kind::ContactList, "")
         .tags(tags)
         .custom_created_at(Timestamp::from(20))
@@ -38,7 +38,10 @@ pub fn directory_with_follows(count: usize) -> OutboxDirectory {
     let mut directory = OutboxDirectory::new(vec![BOOTSTRAP_RELAY.to_owned()]);
     let follows: Vec<Keys> = (0..count).map(|_| Keys::generate()).collect();
     for (index, keys) in follows.iter().enumerate() {
-        directory.ingest(&relay_list_event(keys, &format!("wss://write{index:02}.example")));
+        directory.ingest(&relay_list_event(
+            keys,
+            &format!("wss://write{index:02}.example"),
+        ));
     }
     directory.track_viewer_follows(follows.iter().map(Keys::public_key).collect());
     directory
@@ -66,7 +69,10 @@ impl PlanExecutor for RecordingExecutor {
     }
 }
 
-pub fn recording_executor() -> (Arc<dyn PlanExecutor>, mpsc::UnboundedReceiver<PlannedRetrieval>) {
+pub fn recording_executor() -> (
+    Arc<dyn PlanExecutor>,
+    mpsc::UnboundedReceiver<PlannedRetrieval>,
+) {
     let (started, retrievals) = mpsc::unbounded_channel();
     (Arc::new(RecordingExecutor { started }), retrievals)
 }
@@ -84,7 +90,10 @@ impl PlanExecutor for FailingExecutor {
     }
 }
 
-pub fn failing_executor() -> (Arc<dyn PlanExecutor>, mpsc::UnboundedReceiver<PlannedRetrieval>) {
+pub fn failing_executor() -> (
+    Arc<dyn PlanExecutor>,
+    mpsc::UnboundedReceiver<PlannedRetrieval>,
+) {
     let (started, retrievals) = mpsc::unbounded_channel();
     (Arc::new(FailingExecutor { started }), retrievals)
 }

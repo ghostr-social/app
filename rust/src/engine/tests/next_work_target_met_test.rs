@@ -9,9 +9,10 @@ use crate::engine::{ByteRange, EngineParams, PostId};
 fn bench() -> WorkBench {
     let mut bench = WorkBench::new();
     for post in ["a", "c"] {
-        bench
-            .catalog
-            .upsert(PostId::new(post), progressive_meta(Some(2_000_000), Some(4_000)));
+        bench.catalog.upsert(
+            PostId::new(post),
+            progressive_meta(Some(2_000_000), Some(4_000)),
+        );
     }
     bench
         .present
@@ -27,8 +28,12 @@ fn heads_beyond_the_satisfied_window_are_speculative() {
     let requests = bench().run();
 
     assert!(!requests.is_empty());
-    assert!(requests.iter().all(|request| request.chunk.post.as_str() == "c"));
-    assert!(requests.iter().all(|request| request.tier == Tier::T4Speculative));
+    assert!(requests
+        .iter()
+        .all(|request| request.chunk.post.as_str() == "c"));
+    assert!(requests
+        .iter()
+        .all(|request| request.tier == Tier::T4Speculative));
 }
 
 #[test]

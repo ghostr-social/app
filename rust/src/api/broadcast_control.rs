@@ -5,10 +5,12 @@
 use crate::api::feed_runtime::DiscoveryRuntime;
 use crate::api::runtime_registry;
 use crate::discovery::outbox_directory::{max_outbox_relays, OutboxDirectory};
+use crate::discovery::relay_pool_owner::RelayBroadcastRequest;
+use crate::discovery::session_generation::{SessionGeneration, SESSION_RESET_MESSAGE};
 use crate::engine::DataUsageLevel;
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use flutter_rust_bridge::frb;
-use nostr_sdk::{Client, Event, JsonUtil, PublicKey};
+use nostr_sdk::{Event, JsonUtil, PublicKey};
 
 /// Validates one pre-signed event and publishes it with outbox-aware
 /// relay selection: the author's declared write relays after the
@@ -17,13 +19,20 @@ use nostr_sdk::{Client, Event, JsonUtil, PublicKey};
 pub async fn ffi_broadcast_event(signed_event_json: String) -> anyhow::Result<()> {
     let event = verified_event(&signed_event_json)?;
     let engine = runtime_registry::engine()?;
+    let session = engine.discovery.session_generation();
     let level = engine.tracked.level();
-    engine.discovery.broadcast(event, level).await
+    engine
+        .discovery
+        .broadcast(session, event.clone(), level)
+        .await?;
+    engine.discovery.remember_accepted(session, &event).await;
+    Ok(())
 }
 
 /// The parsed event, if and only if its id and signature verify.
 pub(crate) fn verified_event(json: &str) -> anyhow::Result<Event> {
-    let event = Event::from_json(json).map_err(|error| anyhow!("unparseable event JSON: {error}"))?;
+    let event =
+        Event::from_json(json).map_err(|error| anyhow!("unparseable event JSON: {error}"))?;
     event
         .verify()
         .map_err(|_| anyhow!("the event id or signature does not verify"))?;
@@ -41,27 +50,27 @@ pub(crate) fn broadcast_relays(
 }
 
 impl DiscoveryRuntime {
-    pub(crate) async fn broadcast(&self, event: Event, level: DataUsageLevel) -> anyhow::Result<()> {
-        let relays = broadcast_relays(&*self.outbox.read().await, &event.pubkey, level);
-        if relays.is_empty() {
-            self.client.send_event(event).await.context("broadcast failed")?;
-            return Ok(());
-        }
-        ensure_relays(&self.client, &relays).await;
-        self.client
-            .send_event_to(relays, event)
+    pub(crate) async fn broadcast(
+        &self,
+        session: SessionGeneration,
+        event: Event,
+        level: DataUsageLevel,
+    ) -> anyhow::Result<()> {
+        let route = self
+            .relay_pool
+            .begin_route(session)
             .await
-            .context("broadcast failed")?;
-        Ok(())
-    }
-}
-
-/// Explicit relays are ensured in the pool and connected before the
-/// send, like the plan executor does before a fetch.
-async fn ensure_relays(client: &Client, urls: &[String]) {
-    for url in urls {
-        if client.add_relay(url).await.unwrap_or(false) {
-            let _ = client.connect_relay(url).await;
-        }
+            .map_err(|failure| anyhow!(failure.message))?;
+        let directory = self.outbox.read().await;
+        anyhow::ensure!(directory.is_session(session), SESSION_RESET_MESSAGE);
+        let relays = broadcast_relays(&directory, &event.pubkey, level);
+        drop(directory);
+        route
+            .broadcast(RelayBroadcastRequest {
+                session,
+                relays,
+                event,
+            })
+            .await
     }
 }

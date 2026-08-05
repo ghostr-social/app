@@ -2,68 +2,51 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
+import 'package:ghostr/core/nostr/nostr_event_record.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
-import 'package:ghostr/platform/nostr/ndk_nostr_social.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:ndk/ndk.dart';
 
 import '../support/ndk_mocks.dart';
 import '../support/nostr_test_values.dart';
+import '../support/scripted_nostr_event_client.dart';
+import '../support/social_broadcast_harness.dart';
+import '../support/social_event_fixtures.dart';
 
 void main() {
   setUpAll(registerNdkFallbackValues);
 
-  test('rejects when a refreshed mute list crosses an account switch',
-      () async {
-    var account = testViewerPublicKey;
-    final refresh = Completer<Nip51List?>();
-    final ndk = MockNdk();
-    final accounts = MockAccounts();
-    final lists = MockLists();
-    final signer = MockEventSigner();
-    when(() => ndk.accounts).thenReturn(accounts);
-    when(() => ndk.lists).thenReturn(lists);
-    when(accounts.getPublicKey).thenAnswer((_) => account);
-    when(accounts.getLoggedAccount).thenReturn(Account(
-      type: AccountType.privateKey,
-      pubkey: testViewerPublicKey,
-      signer: signer,
-    ));
-    stubEventSigner(signer, testViewerPublicKey);
-    when(() => signer.encryptNip44(
-          plaintext: any(named: 'plaintext'),
-          recipientPubKey: testViewerPublicKey,
-        )).thenAnswer((_) async => 'encrypted');
-    when(() => lists.getSingleNip51List(Nip51List.kMute))
-        .thenAnswer((_) async => null);
-    when(() => lists.getSingleNip51List(
-          Nip51List.kMute,
-          forceRefresh: true,
-        )).thenAnswer((_) => refresh.future);
-    final social = NdkNostrSocial(ndk: ndk, relays: const []);
+  test('rejects when a mute event query crosses an account switch', () async {
+    final started = Completer<void>();
+    final response = Completer<List<NostrEventRecord>>();
+    final client = ScriptedNostrEventClient((_) {
+      started.complete();
+      return response.future;
+    });
+    final harness = SocialBroadcastHarness(events: client);
+    final social = harness.build();
 
     final pending = social.toggleBlock(ProfileId.parse(testViewerNpub));
-    await Future<void>.delayed(Duration.zero);
-    account = testAuthorPublicKey;
-    refresh.complete(_muteList(testAuthorPublicKey));
+    await started.future;
+    harness.activePublicKey = testAuthorPublicKey;
+    response.complete([_muteFromNextAccount()]);
 
     await expectLater(pending, throwsA(isA<AppFailure>()));
-    verifyNever(() => signer.sign(any()));
-    verifyNever(() => ndk.config);
+    verifyNever(() => harness.signer.sign(any()));
+    verifyNever(() => harness.ndk.config);
   });
 }
 
-Nip51List _muteList(String publicKey) {
-  return Nip51List(
-    pubKey: publicKey,
-    kind: Nip51List.kMute,
-    createdAt: 10,
-    elements: <Nip51ListElement>[
-      Nip51ListElement(
-        tag: Nip51List.kPubkey,
-        value: testFanPublicKey,
-        private: true,
-      ),
+NostrEventRecord _muteFromNextAccount() {
+  return socialEvent(
+    identity: socialEventIdentity(
+      1,
+      Nip51List.kMute,
+      10,
+      testAuthorPublicKey,
+    ),
+    tags: const [
+      ['p', testFanPublicKey],
     ],
   );
 }

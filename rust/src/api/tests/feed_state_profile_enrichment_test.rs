@@ -10,14 +10,26 @@ use nostr_sdk::Keys;
 fn metadata_in_the_outcome_names_the_creator() {
     let mut state = FeedState::new();
     let keys = Keys::generate();
-    let (feed, dispatch) = state.open(FeedSpec::MainFeed { viewer: Some(keys.public_key()) });
+    let (feed, dispatch) = state.open(FeedSpec::MainFeed {
+        viewer: Some(keys.public_key()),
+    });
     let open = dispatch.expect("main feeds dispatch a first page");
 
-    let metadata = profile_event(&keys, r#"{"name":"Vera","picture":"https://cdn.example/a.png"}"#, 5);
-    state.apply(&open.context, Ok(vec![metadata, video_note(&keys, "clip", 40)]));
+    let metadata = profile_event(
+        &keys,
+        r#"{"name":"Vera","picture":"https://cdn.example/a.png"}"#,
+        5,
+    );
+    state.apply(
+        &open.context,
+        Ok(vec![metadata, video_note(&keys, "clip", 40)]),
+    );
 
     let posts = state.snapshot(feed);
     assert_eq!(posts.len(), 1, "metadata events are not feed rows");
     assert_eq!(posts[0].creator.display_name, "Vera");
-    assert_eq!(posts[0].creator.avatar_url.as_deref(), Some("https://cdn.example/a.png"));
+    assert_eq!(
+        posts[0].creator.avatar_url.as_deref(),
+        Some("https://cdn.example/a.png")
+    );
 }

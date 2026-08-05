@@ -14,10 +14,11 @@ ANDROID_AGENT_AVD_HOME ?= $(if $(ANDROID_AVD_HOME),$(ANDROID_AVD_HOME),$(if $(AN
 ANDROID_AGENT_IMAGE_DIR := $(ANDROID_AGENT_SDK)/system-images/android-37.1/google_apis_playstore_ps16k/x86_64
 FLAGS ?=
 
-.PHONY: test-coverage coverage-summary native-check native-test native-coverage rust \
-	rust-no-clean gen icons run run-fast run-fast-profile android-debug-apk \
-	android-debug-apk-check android-release-apk android-release-apk-check \
-	android-agent-avd-create android-agent-avd-run build build-fast install help
+.PHONY: test-coverage coverage-summary native-check native-test native-coverage \
+	native-coverage-contract-test rust rust-no-clean gen icons run run-fast \
+	run-fast-profile android-debug-apk android-debug-apk-check \
+	android-release-apk android-release-apk-check android-agent-avd-create \
+	android-agent-avd-run build build-fast install help
 
 test-coverage: ## Run Flutter tests and collect Dart coverage.
 	$(FLUTTER) test --coverage
@@ -28,12 +29,15 @@ coverage-summary: ## Report and enforce Dart coverage requirements.
 	@awk -f tool/check_dart_coverage.awk coverage/lcov.info
 
 native-check: ## Check the Rust package.
-	cd rust && cargo check
+	cd rust && cargo clippy --all-targets --all-features -- -D warnings
 
 native-test: ## Run Rust tests.
 	cd rust && cargo test
 
-native-coverage: ## Run Rust tests and enforce native coverage.
+native-coverage-contract-test: ## Test the per-file native coverage contract.
+	sh test/tool/native_coverage_contract_test.sh
+
+native-coverage: native-coverage-contract-test ## Run Rust tests and enforce native coverage.
 	cd rust && cargo llvm-cov --ignore-filename-regex 'frb_generated.rs' --lcov --output-path target/native-coverage.lcov --fail-under-lines 95
 	awk -f tool/check_native_coverage.awk rust/target/native-coverage.lcov
 

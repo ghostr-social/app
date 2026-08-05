@@ -1,8 +1,6 @@
 //! Only the primary video-kind query can fail the whole load; note and
 //! file results only ever widen the pool, so their hiccups must not sink
-//! the primary results
-//! (lib/platform/nostr/ndk_nostr_video_event_query.dart `loadVideoEvents`
-//! awaits the first query and wraps the rest in `_additiveEvents`).
+//! the primary results.
 
 use crate::discovery::search_queries::{plan_discovery, QueryRole};
 use crate::discovery::video_filters::DiscoveryRequest;
@@ -10,8 +8,11 @@ use crate::discovery::video_filters::DiscoveryRequest;
 #[test]
 fn the_first_query_is_primary_and_the_rest_are_additive() {
     let plan = plan_discovery(&DiscoveryRequest::default());
-    let roles: Vec<QueryRole> =
-        plan.queries.iter().map(|query| query.role.clone()).collect();
+    let roles: Vec<QueryRole> = plan
+        .queries
+        .iter()
+        .map(|query| query.role.clone())
+        .collect();
 
     assert_eq!(
         roles,

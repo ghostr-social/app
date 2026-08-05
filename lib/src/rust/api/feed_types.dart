@@ -4,9 +4,10 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import '../frb_generated.dart';
+import 'delivery_types.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 /// The creator identity a feed row renders, including the
 /// shortened-npub fallback when no metadata is known.
@@ -41,12 +42,21 @@ class FfiFeedCreator {
           avatarUrl == other.avatarUrl;
 }
 
+/// The shape of one feed opened by Dart.
+enum FfiFeedKind {
+  main,
+  hashtag,
+  search,
+  profile,
+  ;
+}
+
 /// Playable media of one post. `delivery` round-trips with
-/// `FfiFocusItem.delivery` (`"progressive"` / `"hls"`).
+/// `FfiFocusItem.delivery`.
 class FfiFeedMedia {
   /// Playback candidates in preference order (imeta url + fallbacks).
   final List<String> urls;
-  final String delivery;
+  final FfiMediaDelivery delivery;
   final String? sha256;
   final BigInt? sizeBytes;
   final BigInt? durationMs;
@@ -110,6 +120,7 @@ class FfiFeedPost {
   /// Unix seconds of the post's newest event.
   final BigInt createdAt;
   final String caption;
+  final String? title;
   final List<String> hashtags;
   final FfiFeedCreator creator;
   final FfiFeedMedia media;
@@ -121,6 +132,7 @@ class FfiFeedPost {
     this.identifier,
     required this.createdAt,
     required this.caption,
+    this.title,
     required this.hashtags,
     required this.creator,
     required this.media,
@@ -134,6 +146,7 @@ class FfiFeedPost {
       identifier.hashCode ^
       createdAt.hashCode ^
       caption.hashCode ^
+      title.hashCode ^
       hashtags.hashCode ^
       creator.hashCode ^
       media.hashCode;
@@ -149,19 +162,19 @@ class FfiFeedPost {
           identifier == other.identifier &&
           createdAt == other.createdAt &&
           caption == other.caption &&
+          title == other.title &&
           hashtags == other.hashtags &&
           creator == other.creator &&
           media == other.media;
 }
 
-/// One feed to open, as Dart names it. `kind` selects the shape:
-/// `"main"` reads the signed-in viewer from `viewer_pubkey` (hex or
-/// npub); `"hashtag"` reads the tag from `value` (leading `#`
-/// optional); `"search"` reads the query from `value`, as typed;
-/// `"profile"` reads every creator key from `creators` — one for a
+/// One feed to open, as Dart names it. `Main` reads the signed-in
+/// viewer from `viewer_pubkey` (hex or npub); `Hashtag` reads the tag
+/// from `value` (leading `#` optional); `Search` reads the query from
+/// `value`, as typed; `Profile` reads every creator key from `creators` — one for a
 /// profile grid, the whole follow set for the Following feed.
 class FfiFeedSpec {
-  final String kind;
+  final FfiFeedKind kind;
   final String? value;
   final List<String> creators;
   final String? viewerPubkey;
@@ -201,9 +214,8 @@ enum FfiFeedStage {
   /// Every query of the page resolved: `posts` is the whole page.
   settled,
 
-  /// The page's primary query failed; `posts` is whatever survived.
-  /// ndk parity: the Dart pipeline raises a failure here rather than
-  /// serving an empty feed (ndk_nostr_video_event_query.dart).
+  /// The page's primary query failed; Dart renders a failure rather
+  /// than treating the partial rows as an empty feed.
   failed,
   ;
 }

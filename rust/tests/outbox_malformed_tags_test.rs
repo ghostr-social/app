@@ -22,16 +22,16 @@ fn skips_malformed_and_non_write_declarations() {
     let relays = ingested(
         &alice,
         vec![
-            vec!["r".to_owned()],                            // no url
+            vec!["r".to_owned()],                                  // no url
             vec!["e".to_owned(), "wss://note.example".to_owned()], // not an r tag
-            r_tag("https://web.example"),                    // wrong scheme
-            r_tag("ws://insecure.example"),                  // ws off localhost
-            r_tag("wss://query.example?limit=1"),            // query rejected
-            r_tag("wss://fragment.example#top"),             // fragment rejected
-            r_tag("wss://bad-port.example:relay"),           // port not numeric
-            r_tag("wss://"),                                 // empty host
-            r_tag("wss://-hyphen.example"),                  // invalid host edge
-            r_tag_marked("wss://read-only.example", "read"), // not a write relay
+            r_tag("https://web.example"),                          // wrong scheme
+            r_tag("ws://insecure.example"),                        // ws off localhost
+            r_tag("wss://query.example?limit=1"),                  // query rejected
+            r_tag("wss://fragment.example#top"),                   // fragment rejected
+            r_tag("wss://bad-port.example:relay"),                 // port not numeric
+            r_tag("wss://"),                                       // empty host
+            r_tag("wss://-hyphen.example"),                        // invalid host edge
+            r_tag_marked("wss://read-only.example", "read"),       // not a write relay
             r_tag("wss://kept.example"),
         ],
     );

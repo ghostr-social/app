@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
-import 'package:ghostr/features/video_catalog/presentation/feed_fetcher.dart';
+import 'package:ghostr/features/video_catalog/domain/use_cases/feed_fetcher.dart';
 
 import '../support/fakes.dart';
 import '../support/sample_data.dart';

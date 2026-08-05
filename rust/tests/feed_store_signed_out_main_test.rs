@@ -1,9 +1,6 @@
 //! A signed-out main feed filters nothing: with no viewer there is no
 //! social graph whose mutes could apply, so the page stays the unscoped
-//! global one ndk serves signed out
-//! (lib/platform/nostr/ndk_nostr_outbox_directory.dart knows no follows
-//! without an account). The viewer-scoped feed keeps dropping muted
-//! creators — feed_store_mute_parity_test.rs.
+//! global page. Viewer-scoped feeds still drop muted creators.
 
 mod discovery_support;
 mod feed_support;

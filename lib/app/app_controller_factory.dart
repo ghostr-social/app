@@ -20,13 +20,13 @@ import 'package:ghostr/features/watch_history/presentation/watch_history_cubit.d
 import 'package:ghostr/platform/media/delivery_config_syncing_settings_repository.dart';
 import 'package:ghostr/platform/media/ffi_feed_focus_port.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
-import 'package:ghostr/src/rust/api/engine_control.dart';
 
 class AppControllerFactory {
   const AppControllerFactory(
     this._dependencies, {
     FeedFocusPort feedFocus = const FfiFeedFocusPort(),
-    RustDeliveryConfigUpdater deliveryConfigUpdater = ffiSetDeliveryConfig,
+    RustDeliveryConfigUpdater deliveryConfigUpdater =
+        updateRustEngineConfiguration,
   })  : _feedFocus = feedFocus,
         _deliveryConfigUpdater = deliveryConfigUpdater;
 
@@ -49,7 +49,8 @@ class AppControllerFactory {
   }
 
   FeedCubit feed() {
-    return FeedCubit(_feedDependencies(_dependencies.videoCatalogServices.feed));
+    return FeedCubit(
+        _feedDependencies(_dependencies.videoCatalogServices.feed));
   }
 
   /// A feed cubit bound to one search query or `#hashtag`.
@@ -64,12 +65,14 @@ class AppControllerFactory {
     return FeedDependencies(
       feed: feed,
       engagement: _dependencies.videoCatalogServices.engagement,
-      social: _dependencies.videoCatalogServices.social,
-      focus: _feedFocus,
-      watchTracker: WatchHistoryTracker(
-        history: _dependencies.watchHistoryRepository,
-        settings: _dependencies.appSettingsRepository,
-        failureReporter: _dependencies.failureReporter,
+      optional: FeedOptionalDependencies(
+        social: _dependencies.videoCatalogServices.social,
+        focus: _feedFocus,
+        watchTracker: WatchHistoryTracker(
+          history: _dependencies.watchHistoryRepository,
+          settings: _dependencies.appSettingsRepository,
+          failureReporter: _dependencies.failureReporter,
+        ),
       ),
     );
   }

@@ -1,0 +1,73 @@
+//! Discovery command dispatch, kept separate from the scheduler wake loop.
+
+use crate::discovery::discovery_scheduler::{
+    max_concurrent_requests, DiscoveryCommand, SchedulerWorker,
+};
+use crate::discovery::retrieval_queue::{FeedContext, RetrievalPriority, RetrievalRequest};
+use crate::discovery::search_queries::{plan_discovery, QueryPlan};
+use crate::discovery::video_filters::DiscoveryRequest;
+use nostr_sdk::Timestamp;
+
+impl SchedulerWorker {
+    pub(crate) fn apply_command(&mut self, command: DiscoveryCommand) {
+        match command {
+            DiscoveryCommand::Focus(context) => self.queue.focus(context),
+            DiscoveryCommand::SetDataUsage(level) => {
+                self.max_concurrent = max_concurrent_requests(level)
+            }
+            DiscoveryCommand::ResetSession { reply } => self.reset_session(reply),
+            DiscoveryCommand::OpenFeed { context, request } => self.open_feed(context, request),
+            DiscoveryCommand::LoadMore {
+                context,
+                older_than,
+            } => self.load_more(context, older_than),
+            DiscoveryCommand::Background { context, request } => {
+                self.enqueue(
+                    context,
+                    RetrievalPriority::Background,
+                    plan_discovery(&request),
+                );
+            }
+            DiscoveryCommand::Query {
+                context,
+                plan,
+                reply,
+            } => {
+                self.queries.register(context.clone(), reply);
+                self.enqueue(context, RetrievalPriority::Enrichment, plan);
+            }
+        }
+    }
+
+    fn open_feed(&mut self, context: FeedContext, request: DiscoveryRequest) {
+        self.feeds.open(context.clone(), request.clone());
+        self.queue.focus(context.clone());
+        self.enqueue(
+            context,
+            RetrievalPriority::Interactive,
+            plan_discovery(&request),
+        );
+    }
+
+    fn load_more(&mut self, context: FeedContext, older_than: Option<Timestamp>) {
+        let Some(request) = self.feeds.older_page_request(&context, older_than) else {
+            return;
+        };
+        self.queue.focus(context.clone());
+        self.enqueue(
+            context,
+            RetrievalPriority::Interactive,
+            plan_discovery(&request),
+        );
+    }
+
+    pub(crate) fn enqueue(
+        &mut self,
+        context: FeedContext,
+        priority: RetrievalPriority,
+        plan: QueryPlan,
+    ) {
+        self.queue
+            .push(RetrievalRequest { context, priority }, plan);
+    }
+}

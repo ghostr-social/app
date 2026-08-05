@@ -14,7 +14,12 @@ fn urgent() -> DemandSignals {
 fn a_post_outside_the_window_yields_no_head_work() {
     let focus = focus_at(&["a", "b"], 0, 0);
 
-    let tier = classify(&PostId::new("gone"), &focus, hunger(false), DemandSignals::default());
+    let tier = classify(
+        &PostId::new("gone"),
+        &focus,
+        hunger(false),
+        DemandSignals::default(),
+    );
 
     assert_eq!(tier, None);
 }
@@ -23,7 +28,12 @@ fn a_post_outside_the_window_yields_no_head_work() {
 fn a_post_outside_the_window_yields_no_tail_work_even_in_comfort() {
     let focus = focus_at(&["a", "b"], 0, 0);
 
-    let tier = classify(&PostId::new("gone"), &focus, comfort(true), DemandSignals::default());
+    let tier = classify(
+        &PostId::new("gone"),
+        &focus,
+        comfort(true),
+        DemandSignals::default(),
+    );
 
     assert_eq!(tier, None);
 }

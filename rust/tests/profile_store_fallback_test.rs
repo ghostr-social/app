@@ -1,7 +1,6 @@
 //! A creator with no kind-0 metadata still gets a full identity: the
 //! first twelve npub characters plus an ellipsis as display name, the
-//! full `@npub` handle, and no avatar — mirrors `creatorProfileSummary`
-//! in lib/features/video_catalog/data/creator_profile_summary.dart.
+//! full `@npub` handle, and no avatar.
 
 mod feed_support;
 

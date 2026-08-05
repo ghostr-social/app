@@ -1,13 +1,11 @@
-//! Process-wide home of the started engine. Both `ffi_start_engine`
-//! and the deprecated `ffi_start_server` alias install here, so every
-//! FFI function sees the same runtime whichever start path ran.
+//! Process-wide home of the started engine.
 
 use crate::api::feed_runtime::{DiscoveryBoot, DiscoveryRuntime};
 use crate::api::tracked_items::TrackedItems;
 use crate::video::gateway_runtime::{GatewayConfiguration, GatewayRuntime};
 use anyhow::bail;
 use flutter_rust_bridge::frb;
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -22,22 +20,35 @@ pub(crate) struct EngineHandles {
 }
 
 static INSTALLED: OnceCell<Arc<EngineHandles>> = OnceCell::new();
-static STARTING: AtomicBool = AtomicBool::new(false);
+static START_GATE: Lazy<Arc<StartGate>> = Lazy::new(|| Arc::new(StartGate::new()));
+
+#[frb(ignore)]
+pub(crate) struct StartGate {
+    starting: AtomicBool,
+}
+
+#[frb(ignore)]
+pub(crate) struct StartPermit {
+    gate: Arc<StartGate>,
+}
 
 /// Starts the gateway runtime once per process, boots discovery on
 /// its client and inventory modes, and installs both. A second call —
 /// from either start path — is rejected.
 pub(crate) async fn start_and_install(
     configuration: GatewayConfiguration,
+    search_relays: Vec<String>,
 ) -> anyhow::Result<String> {
-    if INSTALLED.get().is_some() || STARTING.swap(true, Ordering::AcqRel) {
-        bail!("The embedded gateway is already running.");
-    }
+    let _permit = START_GATE.acquire(|| INSTALLED.get().is_some())?;
     let bootstrap = configuration.relays.clone();
-    let result = GatewayRuntime::start(configuration).await;
-    STARTING.store(false, Ordering::Release);
-    let (endpoint, runtime, client, modes) = result?;
-    let discovery = DiscoveryRuntime::start(DiscoveryBoot { client, modes, bootstrap });
+    let (endpoint, runtime, client, modes) = GatewayRuntime::start(configuration).await?;
+    let discovery = DiscoveryRuntime::start(DiscoveryBoot {
+        client,
+        modes,
+        bootstrap,
+        search_relays,
+    })
+    .await;
     install(endpoint.clone(), runtime, discovery);
     Ok(endpoint)
 }
@@ -58,4 +69,36 @@ pub(crate) fn engine() -> anyhow::Result<Arc<EngineHandles>> {
 
 pub(crate) fn engine_if_running() -> Option<Arc<EngineHandles>> {
     INSTALLED.get().cloned()
+}
+
+impl StartGate {
+    pub(crate) fn new() -> Self {
+        Self {
+            starting: AtomicBool::new(false),
+        }
+    }
+
+    pub(crate) fn acquire(
+        self: &Arc<Self>,
+        is_installed: impl FnOnce() -> bool,
+    ) -> anyhow::Result<StartPermit> {
+        let acquired = self
+            .starting
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_ok();
+        if !acquired {
+            bail!("The embedded gateway is already running.");
+        }
+        let permit = StartPermit { gate: self.clone() };
+        if is_installed() {
+            bail!("The embedded gateway is already running.");
+        }
+        Ok(permit)
+    }
+}
+
+impl Drop for StartPermit {
+    fn drop(&mut self) {
+        self.gate.starting.store(false, Ordering::Release);
+    }
 }

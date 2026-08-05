@@ -6,9 +6,9 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `clone`, `clone`, `clone`, `eq`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`
 
-/// One per-post delivery update streamed to Dart (plan §2 row 5).
+/// One per-post delivery update streamed to Dart.
 class FfiDeliveryEvent {
   final String postId;
   final FfiDeliveryEventKind kind;
@@ -70,9 +70,9 @@ class FfiFocusItem {
   /// Playback candidates in preference order (imeta url + fallbacks).
   final List<String> urls;
 
-  /// `"progressive"` or `"hls"`. HLS items ride in the window for
-  /// correct scroll distances but are never downloaded progressively.
-  final String delivery;
+  /// HLS items ride in the window for correct scroll distances but
+  /// are never downloaded progressively.
+  final FfiMediaDelivery delivery;
   final String? sha256;
   final BigInt? sizeBytes;
   final BigInt? durationMs;
@@ -106,4 +106,11 @@ class FfiFocusItem {
           sha256 == other.sha256 &&
           sizeBytes == other.sizeBytes &&
           durationMs == other.durationMs;
+}
+
+/// How the engine delivers one playable media item.
+enum FfiMediaDelivery {
+  progressive,
+  hls,
+  ;
 }

@@ -1,22 +1,37 @@
-//! The pending-retrieval queue and its takeout order. Parity source:
-//! lib/core/work/retrieval_scheduler.dart — the focused context leaves
-//! first, then the more urgent priority class, then submission order.
+//! The pending-retrieval queue and its takeout order: the focused
+//! context leaves first, then the more urgent priority class, then
+//! submission order.
 
 use std::cmp::Ordering;
 
+use crate::discovery::session_generation::SessionGeneration;
+
 /// Screen-level scope a retrieval serves, e.g. `feed`, `search:ghost`,
-/// `tag:dance`, or `discover` — the context strings Dart builds in
-/// lib/features/video_catalog/data/scheduled_remote_video_source.dart.
+/// `tag:dance`, or `discover`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct FeedContext(String);
+pub struct FeedContext {
+    value: String,
+    session: SessionGeneration,
+}
 
 impl FeedContext {
     pub fn new(value: impl Into<String>) -> Self {
-        Self(value.into())
+        Self::for_session(value, SessionGeneration::initial())
+    }
+
+    pub(crate) fn for_session(value: impl Into<String>, session: SessionGeneration) -> Self {
+        Self {
+            value: value.into(),
+            session,
+        }
     }
 
     pub fn as_str(&self) -> &str {
-        &self.0
+        &self.value
+    }
+
+    pub(crate) fn session(&self) -> SessionGeneration {
+        self.session
     }
 }
 
@@ -72,6 +87,11 @@ impl<T> RetrievalQueue<T> {
             sequence: self.sequence,
         });
         self.sequence += 1;
+    }
+
+    pub(crate) fn reset_session(&mut self) {
+        self.pending.clear();
+        self.focused = None;
     }
 
     pub fn has_pending(&self, context: &FeedContext) -> bool {

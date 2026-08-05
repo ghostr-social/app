@@ -15,7 +15,10 @@ use rust_lib_ghostr::discovery::feed_spec::FeedSpec;
 use rust_lib_ghostr::discovery::feed_store::FeedStore;
 use rust_lib_ghostr::discovery::social_graph::SocialGraph;
 
-fn main_feed(store: &mut FeedStore, viewer: &Keys) -> rust_lib_ghostr::discovery::feed_store::FeedId {
+fn main_feed(
+    store: &mut FeedStore,
+    viewer: &Keys,
+) -> rust_lib_ghostr::discovery::feed_store::FeedId {
     store.open_feed(FeedSpec::MainFeed {
         viewer: Some(viewer.public_key()),
     })
@@ -62,10 +65,7 @@ fn feed_store_advances_the_cursor_by_the_fetched_page() {
     store.ingest_first_page(feed, parsed_posts(&[video_note(&session, "a", 50)]), &graph);
     store.begin_load_more(feed);
 
-    let older = parsed_posts(&[
-        video_note(&session, "b", 40),
-        video_note(&session, "c", 30),
-    ]);
+    let older = parsed_posts(&[video_note(&session, "b", 40), video_note(&session, "c", 30)]);
     store.ingest_older_page(feed, older, &graph);
 
     assert_eq!(store.begin_load_more(feed), Some(Timestamp::from(29)));

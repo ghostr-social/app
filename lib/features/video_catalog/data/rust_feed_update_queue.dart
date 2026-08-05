@@ -23,7 +23,7 @@ final class RustFeedUpdateQueue {
 
   late final StreamSubscription<FfiFeedUpdate> _subscription;
   FfiFeedUpdate? _pending;
-  Completer<FfiFeedUpdate?>? _waiter;
+  final Set<Completer<FfiFeedUpdate?>> _waiters = {};
   (Object, StackTrace)? _error;
   bool _done = false;
 
@@ -56,22 +56,25 @@ final class RustFeedUpdateQueue {
   }
 
   Future<void> dispose() {
-    _complete(null);
+    _completeAll(null);
     return _subscription.cancel();
   }
 
   Future<FfiFeedUpdate?> _awaited(Duration timeout) {
     final waiter = Completer<FfiFeedUpdate?>();
-    _waiter = waiter;
-    final deadline = Timer(timeout, () => _complete(null));
-    return waiter.future.whenComplete(deadline.cancel);
+    _waiters.add(waiter);
+    final deadline = Timer(timeout, () => _complete(waiter, null));
+    return waiter.future.whenComplete(() {
+      deadline.cancel();
+      _waiters.remove(waiter);
+    });
   }
 
   void _add(FfiFeedUpdate update) {
-    if (_waiter == null) {
+    if (_waiters.isEmpty) {
       _pending = update;
     } else {
-      _complete(update);
+      _completeAll(update);
     }
   }
 
@@ -79,23 +82,34 @@ final class RustFeedUpdateQueue {
   /// feed is finished either way — the error is reported first.
   void _fail(Object error, StackTrace stackTrace) {
     _done = true;
-    final waiter = _waiter;
-    _waiter = null;
-    if (waiter == null) {
+    if (_waiters.isEmpty) {
       _error = (error, stackTrace);
     } else {
-      waiter.completeError(error, stackTrace);
+      final waiters = _takeWaiters();
+      for (final waiter in waiters) {
+        waiter.completeError(error, stackTrace);
+      }
     }
   }
 
   void _finish() {
     _done = true;
-    _complete(null);
+    _completeAll(null);
   }
 
-  void _complete(FfiFeedUpdate? update) {
-    final waiter = _waiter;
-    _waiter = null;
-    if (waiter != null && !waiter.isCompleted) waiter.complete(update);
+  void _complete(Completer<FfiFeedUpdate?> waiter, FfiFeedUpdate? update) {
+    if (_waiters.remove(waiter) && !waiter.isCompleted) waiter.complete(update);
+  }
+
+  void _completeAll(FfiFeedUpdate? update) {
+    for (final waiter in _takeWaiters()) {
+      if (!waiter.isCompleted) waiter.complete(update);
+    }
+  }
+
+  List<Completer<FfiFeedUpdate?>> _takeWaiters() {
+    final waiters = _waiters.toList(growable: false);
+    _waiters.clear();
+    return waiters;
   }
 }

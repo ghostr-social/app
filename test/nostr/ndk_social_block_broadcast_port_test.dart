@@ -14,12 +14,6 @@ void main() {
   test('sends a mute list through the transport as signed NIP-01 JSON',
       () async {
     final harness = SocialBroadcastHarness();
-    when(() => harness.lists.getSingleNip51List(Nip51List.kMute))
-        .thenAnswer((_) async => null);
-    when(() => harness.lists.getSingleNip51List(
-          Nip51List.kMute,
-          forceRefresh: true,
-        )).thenAnswer((_) async => null);
     final social = harness.build();
 
     final blocked = await social.toggleBlock(

@@ -21,7 +21,7 @@ void main() {
 
     expect(sent?.postId, 'e' * 64);
     expect(sent?.urls, ['https://media.test/clip.mp4']);
-    expect(sent?.delivery, 'progressive');
+    expect(sent?.delivery, FfiMediaDelivery.progressive);
     expect(
       proxied.playbackUri.toString(),
       'http://127.0.0.1:3210/video.mp4?id=${'e' * 64}',

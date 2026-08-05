@@ -8,10 +8,14 @@ import '../support/nostr_reference.dart';
 
 void main() {
   test('comment query stages share one total deadline', () async {
-    final client = _SlowBatchClient();
+    var elapsed = Duration.zero;
+    final client = _SlowBatchClient(() {
+      elapsed += const Duration(milliseconds: 30);
+    });
     final repository = NostrCommentsRepository(
       client,
       hydrationTimeout: const Duration(milliseconds: 50),
+      elapsedClock: () => elapsed,
     );
 
     await expectLater(
@@ -25,15 +29,14 @@ void main() {
       ]),
       throwsA(isA<AppFailure>()),
     );
-    await Future<void>.delayed(const Duration(milliseconds: 40));
-
     expect(client.calls, 2);
   });
 }
 
 class _SlowBatchClient extends FakeNostrEventClient {
-  _SlowBatchClient() : super(publicKeyHex: testViewerPublicKey);
+  _SlowBatchClient(this._advance) : super(publicKeyHex: testViewerPublicKey);
 
+  final void Function() _advance;
   var calls = 0;
 
   @override
@@ -41,7 +44,7 @@ class _SlowBatchClient extends FakeNostrEventClient {
     List<NostrEventQuery> batch,
   ) async {
     calls += 1;
-    await Future<void>.delayed(const Duration(milliseconds: 30));
+    _advance();
     return const <NostrEventRecord>[];
   }
 }

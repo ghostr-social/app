@@ -13,7 +13,9 @@ async fn explicit_cursor_drives_the_older_page() {
     harness.handle.open_feed(context("feed"), request());
     next_started(&mut harness.started).await;
 
-    harness.handle.load_more(context("feed"), Some(Timestamp::from(50)));
+    harness
+        .handle
+        .load_more(context("feed"), Some(Timestamp::from(50)));
 
     let page = next_started(&mut harness.started).await;
     assert_eq!(page.priority, RetrievalPriority::Interactive);

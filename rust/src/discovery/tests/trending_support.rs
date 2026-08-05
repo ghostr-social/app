@@ -1,4 +1,4 @@
-//! Builders for trending-hashtag parity fixtures.
+//! Builders for trending-hashtag contract fixtures.
 
 use crate::discovery::event_parsing::ParsedVideoPost;
 use crate::engine::{DeliveryKind, VideoMeta};

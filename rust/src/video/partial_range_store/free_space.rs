@@ -40,12 +40,21 @@ fn measure(path: &Path) -> Option<u64> {
     // correctly sized, writable `statvfs`, read back only after the call
     // reports success.
     let outcome = unsafe { libc::statvfs(path.as_ptr(), stats.as_mut_ptr()) };
+    statvfs_available(outcome, || {
+        let stats = unsafe { stats.assume_init() };
+        stats.f_bavail.checked_mul(stats.f_frsize)
+    })
+}
+
+#[cfg(unix)]
+pub(crate) fn statvfs_available(
+    outcome: libc::c_int,
+    measured: impl FnOnce() -> Option<u64>,
+) -> Option<u64> {
     if outcome != 0 {
         return None;
     }
-    let stats = unsafe { stats.assume_init() };
-    let blocks = u64::try_from(stats.f_bavail).ok()?;
-    blocks.checked_mul(u64::try_from(stats.f_frsize).ok()?)
+    measured()
 }
 
 /// No portable measurement outside Unix; the budget then stands alone.

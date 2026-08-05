@@ -1,8 +1,5 @@
-//! The executor's session pool is the shared client's own database, so
-//! every event the relay layer stores on receipt (nostr-relay-pool
-//! 0.38 relay/inner.rs saves each accepted event) is a row the next
-//! query can answer with — the pool grows as the viewer browses. It is
-//! scoped before any query reads it.
+//! The executor pool is separate from the client's seen-ID database, so
+//! late relay bookkeeping cannot cross an account reset.
 
 use crate::discovery::event_cache::{client_with_event_cache, ViewerScope};
 use crate::discovery::relay_plan_executor::RelayPlanExecutor;
@@ -16,7 +13,12 @@ use nostr_sdk::prelude::*;
 use std::sync::Arc;
 
 fn executor(client: Arc<Client>) -> RelayPlanExecutor {
-    RelayPlanExecutor::new(client, Vec::new(), empty_directory(), DataUsageLevel::Balanced)
+    RelayPlanExecutor::new(
+        client,
+        Vec::new(),
+        empty_directory(),
+        DataUsageLevel::Balanced,
+    )
 }
 
 fn request(viewer: ViewerScope) -> DiscoveryRequest {
@@ -27,7 +29,7 @@ fn request(viewer: ViewerScope) -> DiscoveryRequest {
 }
 
 #[tokio::test]
-async fn the_pool_the_executor_reads_is_the_clients_own_database() {
+async fn client_seen_ids_are_not_rows_in_the_account_cache() {
     let client = Arc::new(client_with_event_cache());
     let executor = executor(client.clone());
 
@@ -37,10 +39,7 @@ async fn the_pool_the_executor_reads_is_the_clients_own_database() {
         .await
         .expect("the client stores what it receives");
 
-    assert_eq!(
-        ids(&executor.cache().stored(&notes()).await),
-        ids(&[note(100)])
-    );
+    assert!(ids(&executor.cache().stored(&notes()).await).is_empty());
 }
 
 #[tokio::test]

@@ -1,8 +1,5 @@
-//! Routing-only authors route a request without narrowing it. ndk's
-//! `forYou` query is unscoped — it carries no `authors` — yet it is sent
-//! to the follows' write relays (`discoveryRelayUrls` in
-//! lib/platform/nostr/ndk_nostr_outbox_directory.dart), so those relays'
-//! whole catalogue comes back, not just the follows' own posts.
+//! Routing-only authors choose relays without narrowing the wire filter,
+//! so those relays' whole catalogue remains eligible.
 
 use crate::discovery::tests::support::{author, filter_json, AUTHOR_A, AUTHOR_B};
 use crate::discovery::video_filters::{discovery_filters, DiscoveryRequest};

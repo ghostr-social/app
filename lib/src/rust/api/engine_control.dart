@@ -6,27 +6,62 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `apply_level`, `engine_configuration`, `relay_list`
+// These functions are ignored because they are not marked as `pub`: `apply_level`, `engine_configuration`, `validated_relay_urls`
+// These types are ignored because they are not used by any `pub` functions: `EngineConfiguration`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `from`, `try_from`
 
 /// Starts the media engine and returns the loopback endpoint as
-/// `host:port`. Replaces `ffi_start_server`; download concurrency is
-/// owned by the engine's parameter table, scaled by `data_usage`
-/// (`"conservative"` / `"balanced"` / `"aggressive"`).
+/// `host:port`. Download concurrency is owned by the engine's parameter
+/// table and scaled by `data_usage`.
 Future<String> ffiStartEngine(
         {required String cacheDirectory,
-        required String relayUrls,
-        required String dataUsage,
-        required BigInt maxStorageBytes}) =>
+        required FfiEngineConfiguration configuration}) =>
     RustLib.instance.api.crateApiEngineControlFfiStartEngine(
-        cacheDirectory: cacheDirectory,
-        relayUrls: relayUrls,
-        dataUsage: dataUsage,
-        maxStorageBytes: maxStorageBytes);
+        cacheDirectory: cacheDirectory, configuration: configuration);
 
-/// Live data-usage change. `max_storage_bytes` is validated only in
-/// this slice: progressive-store eviction is not enforced yet (plan
-/// divergence), so the budget cannot resize a running store.
+/// Applies relay, data-usage, and progressive-storage settings without
+/// restarting the engine.
 Future<void> ffiSetDeliveryConfig(
-        {required String dataUsage, required BigInt maxStorageBytes}) =>
+        {required FfiEngineConfiguration configuration}) =>
     RustLib.instance.api.crateApiEngineControlFfiSetDeliveryConfig(
-        dataUsage: dataUsage, maxStorageBytes: maxStorageBytes);
+        configuration: configuration);
+
+/// User-selected network and delivery pressure.
+enum FfiDataUsageLevel {
+  conservative,
+  balanced,
+  aggressive,
+  ;
+}
+
+/// Settings shared by Nostr discovery and progressive delivery.
+class FfiEngineConfiguration {
+  final List<String> readRelayUrls;
+  final List<String> searchRelayUrls;
+  final FfiDataUsageLevel dataUsage;
+  final BigInt maxStorageBytes;
+
+  const FfiEngineConfiguration({
+    required this.readRelayUrls,
+    required this.searchRelayUrls,
+    required this.dataUsage,
+    required this.maxStorageBytes,
+  });
+
+  @override
+  int get hashCode =>
+      readRelayUrls.hashCode ^
+      searchRelayUrls.hashCode ^
+      dataUsage.hashCode ^
+      maxStorageBytes.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FfiEngineConfiguration &&
+          runtimeType == other.runtimeType &&
+          readRelayUrls == other.readRelayUrls &&
+          searchRelayUrls == other.searchRelayUrls &&
+          dataUsage == other.dataUsage &&
+          maxStorageBytes == other.maxStorageBytes;
+}

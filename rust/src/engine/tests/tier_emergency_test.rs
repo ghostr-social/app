@@ -23,7 +23,12 @@ fn gateway_demand_for_the_current_post_is_an_emergency() {
 fn low_buffer_ahead_for_the_current_post_is_an_emergency() {
     let focus = focus_at(&["a", "b"], 0, 0);
 
-    let tier = classify(&PostId::new("a"), &focus, hunger(false), demand(false, true));
+    let tier = classify(
+        &PostId::new("a"),
+        &focus,
+        hunger(false),
+        demand(false, true),
+    );
 
     assert_eq!(tier, Some(Tier::T0PlaybackEmergency));
 }
@@ -41,7 +46,12 @@ fn demand_for_a_non_current_post_is_not_an_emergency() {
 fn a_calm_current_post_is_not_an_emergency() {
     let focus = focus_at(&["a", "b"], 0, 0);
 
-    let tier = classify(&PostId::new("a"), &focus, hunger(false), demand(false, false));
+    let tier = classify(
+        &PostId::new("a"),
+        &focus,
+        hunger(false),
+        demand(false, false),
+    );
 
     assert_eq!(tier, Some(Tier::T2Startability));
 }

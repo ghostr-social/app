@@ -5,9 +5,10 @@ mod support;
 
 use rust_lib_ghostr::engine::{DeliveryKind, PostId, VideoMeta};
 use rust_lib_ghostr::video::delivery_events::FocusItem;
-use support::delivery::{start_harness, DeliveryOptions};
+use support::delivery::start_harness;
 use support::delivery_items::focus_now;
 use support::delivery_media::{hit_log, hits, media_body, serve_recording, serve_rejecting};
+use support::delivery_options::DeliveryOptions;
 use support::delivery_wait::wait_for_ranges;
 
 #[tokio::test]

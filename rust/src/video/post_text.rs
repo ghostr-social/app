@@ -1,12 +1,9 @@
-//! Display text derived from a video post's note, mirroring
-//! `captionWithoutMediaUrls` in lib/features/video_catalog/data/
-//! nostr_video_media.dart and lib/features/video_catalog/domain/
-//! video_hashtags.dart.
+//! Display text and hashtags derived from a video post's note.
 
 use crate::video::native_text::bounded_native_text;
 
 /// Links that became the playable media are noise once the video renders:
-/// strip them and collapse whitespace, like the Dart caption helper.
+/// strip them and collapse whitespace.
 pub fn caption_without_urls(content: &str, urls: &[String]) -> String {
     let mut caption = content.to_owned();
     for url in urls {
@@ -16,15 +13,15 @@ pub fn caption_without_urls(content: &str, urls: &[String]) -> String {
     bounded_native_text(&collapsed)
 }
 
-/// Dart `normalizeHashtag`: trim, lowercase, strip one leading '#'.
+/// Trim, lowercase, and strip one leading `#`.
 pub fn normalized_hashtag(raw: &str) -> Option<String> {
     let lowered = raw.trim().to_lowercase();
     let value = lowered.strip_prefix('#').unwrap_or(&lowered);
     (!value.is_empty()).then(|| bounded_native_text(value))
 }
 
-/// Dart `extractHashtags` pattern `#([\p{L}\p{N}_]+)`, lowered, in order.
-/// Duplicates are kept; callers dedupe while merging with t-tags.
+/// Extract lowered Unicode letter, number, and underscore hashtags in order.
+/// Duplicates are kept; callers deduplicate while merging with `t` tags.
 pub fn content_hashtags(content: &str) -> Vec<String> {
     let mut tags = Vec::new();
     for piece in content.split('#').skip(1) {

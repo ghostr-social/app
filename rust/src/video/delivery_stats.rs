@@ -36,7 +36,9 @@ impl StatsKeeper {
 
     /// Mirrors the downloader's recording rules on the owned stats.
     pub fn note_chunk(&mut self, done: &ChunkDone) {
-        let Some(host) = host_of(&done.url) else { return };
+        let Some(host) = host_of(&done.url) else {
+            return;
+        };
         match &done.outcome {
             Ok(result) => {
                 if result.bytes_written > 0 {
@@ -52,10 +54,13 @@ impl StatsKeeper {
 
     /// Mirrors the probe service's recording rules on the owned stats.
     pub fn note_probe(&mut self, done: &ProbeDone) {
-        let Some(host) = host_of(&done.url) else { return };
+        let Some(host) = host_of(&done.url) else {
+            return;
+        };
         match &done.outcome {
             Ok(result) => {
-                self.stats.record_ttfb(&host, result.ttfb.as_millis() as u64);
+                self.stats
+                    .record_ttfb(&host, result.ttfb.as_millis() as u64);
                 self.stats.record_success(&host);
             }
             Err(_) => self.stats.record_failure(&host),

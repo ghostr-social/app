@@ -1,6 +1,4 @@
-//! Author-scoped requests carry the wanted authors on every query
-//! (lib/platform/nostr/video_discovery_queries.dart: `scope.authors` from
-//! `authorPublicKeys` lands on each built query).
+//! Author-scoped requests carry the wanted authors on every query.
 
 use serde_json::json;
 

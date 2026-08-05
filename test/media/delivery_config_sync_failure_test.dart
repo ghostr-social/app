@@ -6,10 +6,11 @@ import '../support/fake_app_settings_repository.dart';
 import '../support/recording_engine_updaters.dart';
 
 void main() {
-  test('a failed engine push never fails the settings save', () async {
+  test('a failed engine push fails and restores persisted settings', () async {
     final updater = RecordingDeliveryConfigUpdater()
       ..failure = StateError('engine offline');
-    final inner = FakeAppSettingsRepository(AppSettings.defaults());
+    final previous = AppSettings.defaults();
+    final inner = FakeAppSettingsRepository(previous);
     final repository = DeliveryConfigSyncingSettingsRepository(
       inner: inner,
       updateConfig: updater.call,
@@ -18,9 +19,12 @@ void main() {
       dataUsage: DataUsageLevel.conservative,
     );
 
-    await repository.save(settings);
+    await expectLater(
+      repository.save(settings),
+      throwsA(isA<StateError>()),
+    );
 
-    expect(inner.savedSettings, same(settings));
+    expect(inner.settings, same(previous));
     expect(updater.pushes, isEmpty);
   });
 }

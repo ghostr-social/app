@@ -1,13 +1,11 @@
 //! The retrievals that populate the outbox directory and the social
 //! graph: the viewer's own lists and the relay lists of the pubkeys a
 //! feed cares about. Pure plans — [`crate::discovery::outbox_bootstrap`]
-//! runs them. Rust stand-in for ndk's `getContactList` plus
-//! `loadMissingRelayListsFromNip65OrNip02`
-//! (lib/platform/nostr/ndk_nostr_outbox_directory.dart).
+//! runs them.
 
 use crate::discovery::event_cache::ViewerScope;
 use crate::discovery::search_queries::{
-    OutboxLookup, PlannedQuery, QueryPlan, QueryRole, RelayTarget, FEED_QUERY_TIMEOUT,
+    OutboxLookup, OutboxRoute, PlannedQuery, QueryPlan, QueryRole, RelayTarget, FEED_QUERY_TIMEOUT,
 };
 use nostr_sdk::{Filter, Kind, PublicKey};
 
@@ -57,6 +55,7 @@ fn plan(filter: Filter) -> QueryPlan {
             target: RelayTarget::OutboxRelays,
             role: QueryRole::Primary,
             timeout: FEED_QUERY_TIMEOUT,
+            outbox: OutboxRoute::Shared,
         }],
     }
 }

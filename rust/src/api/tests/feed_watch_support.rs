@@ -16,9 +16,7 @@ impl FeedOut for ChannelOut {
     }
 }
 
-pub(crate) async fn next(
-    updates: &mut mpsc::UnboundedReceiver<FfiFeedUpdate>,
-) -> FfiFeedUpdate {
+pub(crate) async fn next(updates: &mut mpsc::UnboundedReceiver<FfiFeedUpdate>) -> FfiFeedUpdate {
     timeout(Duration::from_secs(5), updates.recv())
         .await
         .expect("an update should arrive")

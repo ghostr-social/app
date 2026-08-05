@@ -31,9 +31,8 @@ fn event_parsing_maps_an_imeta_event_into_a_parsed_post() {
 
     let post = video_post_from_event(&event).expect("parsed post");
 
-    // Product decisions mirrored from lib/features/video_catalog/data/
-    // nostr_video_media.dart: primary-then-fallback URL order with dedup,
-    // digest lowercased, caption per `captionWithoutMediaUrls`.
+    // URLs keep primary-then-fallback order with deduplication, digests
+    // are lowercased, and playable URLs are removed from the caption.
     assert_eq!(
         post.meta.urls,
         ["https://cdn.example/a.mp4", "https://mirror.example/a.mp4"]

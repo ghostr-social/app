@@ -1,13 +1,8 @@
-//! Relay URL validation for outbox routing. Mirrors the observable
-//! composition the Dart app applies to NIP-65 urls: ndk's
-//! `cleanRelayUrl` followed by `RelayUrl.tryParse`
-//! (lib/features/settings/domain/relay_url.dart) — wss:// anywhere,
-//! ws:// only on local development hosts, no query or fragment,
-//! userinfo stripped, lowercase scheme and host, default ports and
-//! trailing slashes removed.
+//! Canonical relay URL policy for configured and NIP-65 values:
+//! `wss` anywhere, `ws` only on local development hosts, no query or
+//! fragment, no userinfo, lowercase scheme and host, and no default
+//! ports or trailing slashes.
 
-// `::1` also appears in the Dart policy but is unreachable there too:
-// ndk's regex validation rejects IPv6 hosts before the policy runs.
 const LOCAL_HOSTS: [&str; 2] = ["localhost", "127.0.0.1"];
 
 /// The validated, normalized relay URL, or `None` when the raw value
@@ -22,7 +17,12 @@ pub fn normalize_relay_url(raw: &str) -> Option<String> {
     if !scheme_allows_host(&scheme, &host) {
         return None;
     }
-    Some(assemble(&scheme, &host, without_default_port(&scheme, port), path))
+    Some(assemble(
+        &scheme,
+        &host,
+        without_default_port(&scheme, port),
+        path,
+    ))
 }
 
 fn split_scheme(raw: &str) -> Option<(String, &str)> {
@@ -31,7 +31,7 @@ fn split_scheme(raw: &str) -> Option<(String, &str)> {
     if scheme != "ws" && scheme != "wss" {
         return None;
     }
-    // ndk repairs extra slashes after the scheme (wss:/// -> wss://).
+    // Repair extra slashes after the scheme (`wss:///` -> `wss://`).
     Some((scheme, rest.trim_start_matches('/')))
 }
 
@@ -42,8 +42,7 @@ fn split_authority(rest: &str) -> (&str, &str) {
     }
 }
 
-// ndk rebuilds the URL without userinfo, so credentials never reach
-// the strict policy: they are dropped, not rejected.
+// Credentials are never part of a relay identity or network target.
 fn strip_userinfo(authority: &str) -> &str {
     authority
         .rsplit_once('@')
@@ -60,12 +59,15 @@ fn split_host_port(authority: &str) -> Option<(String, Option<u16>)> {
 }
 
 fn host_is_valid(host: &str) -> bool {
-    !host.is_empty()
-        && !host.starts_with('-')
-        && !host.ends_with('-')
-        && host
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-')
+    !has_invalid_edge(host) && host.chars().all(is_host_character)
+}
+
+fn has_invalid_edge(host: &str) -> bool {
+    host.is_empty() || host.starts_with('-') || host.ends_with('-')
+}
+
+fn is_host_character(character: char) -> bool {
+    character.is_ascii_alphanumeric() || matches!(character, '.' | '-')
 }
 
 fn scheme_allows_host(scheme: &str, host: &str) -> bool {

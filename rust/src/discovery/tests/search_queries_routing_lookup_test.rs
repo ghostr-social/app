@@ -1,7 +1,6 @@
 //! A request's routing set decides the outbox lookup: routing-only
 //! authors send the plan to their write relays even though no query
-//! filters by them, mirroring ndk sending the unscoped `forYou` query to
-//! `discoveryRelayUrls`.
+//! filters by them.
 
 use crate::discovery::search_queries::{plan_discovery, OutboxLookup};
 use crate::discovery::tests::support::{author, AUTHOR_A, AUTHOR_B};

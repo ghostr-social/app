@@ -1,11 +1,8 @@
 //! Open feeds and their assembled post lists (plan §5.3). Pages arrive
 //! already parsed; the store canonicalizes, filters through the feed's
 //! spec, windows pagination, and notifies subscribers when the visible
-//! list changes. Cursor semantics mirror `FeedPagination`
-//! (lib/features/video_catalog/presentation/feed_pagination.dart): a
-//! fresh load rebases one second below the oldest *visible* post
-//! (feed_cubit.dart `_acceptLoad`), older pages advance by what was
-//! *fetched* (filtered_video_feed_repository.dart `_nextCursor`).
+//! list changes. A fresh load rebases one second below the oldest
+//! visible post; older pages advance by what was fetched.
 
 use std::collections::HashMap;
 
@@ -18,17 +15,9 @@ use crate::discovery::feed_spec::FeedSpec;
 use crate::discovery::pagination::next_page_cursor;
 use crate::discovery::social_graph::SocialGraph;
 
-/// How many rows one open feed keeps — about ten pages. Feeds now stay
-/// open for the life of the Dart source
-/// (lib/features/video_catalog/data/rust_feed_sessions.dart) while the
-/// scheduler prefetches older pages into the active one, so an
-/// unbounded list would grow all session, and every revision ships the
-/// whole list over the FFI. The window is anchored at the head: the
-/// newest rows are what a returning pull answers with. Past it the
-/// feed still paginates on the relay side (cursors follow what was
-/// fetched) and Dart keeps the list a viewer scrolled through; if the
-/// limit ever bites, window the snapshot around the reader's cursor
-/// rather than growing this number.
+/// How many rows one open feed keeps. The window is anchored at the head,
+/// while relay pagination cursors continue to follow every fetched page.
+/// Dart retains rows already shown to the viewer.
 pub const FEED_POST_RETENTION: usize = 500;
 
 /// Handle of one open feed.
@@ -65,6 +54,13 @@ impl FeedStore {
 
     pub fn close_feed(&mut self, feed: FeedId) {
         self.feeds.remove(&feed);
+    }
+
+    /// Ends every feed while preserving the id sequence. Receivers of
+    /// the dropped revision senders close, and stale ids cannot alias a
+    /// feed opened by the next account session.
+    pub fn reset_session(&mut self) {
+        self.feeds.clear();
     }
 
     pub fn spec(&self, feed: FeedId) -> Option<&FeedSpec> {

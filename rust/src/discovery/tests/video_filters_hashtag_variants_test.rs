@@ -1,9 +1,6 @@
 //! Relays match tag values exactly, so hashtag queries expand to every
 //! case form publishers commonly write: as-typed, lower, UPPER, Title,
-//! deduplicated in that order
-//! (lib/features/video_catalog/domain/video_hashtags.dart
-//! `hashtagQueryVariants`; cross-set dedup mirrors
-//! video_discovery_queries.dart `_hashtagFilters`).
+//! deduplicated in that order and across the whole requested set.
 
 use crate::discovery::hashtags::{hashtag_filter_values, hashtag_query_variants};
 

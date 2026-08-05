@@ -7,9 +7,10 @@ mod support;
 use range_fixture::reject::serve_failing;
 use rust_lib_ghostr::engine::{ByteRange, EngineParams, PostId};
 use rust_lib_ghostr::video::playback_demand::DemandSignal;
-use support::delivery::{base_params, start_harness, DeliveryOptions};
+use support::delivery::start_harness;
 use support::delivery_items::{focus_now, sized_item, unsized_item};
 use support::delivery_media::{hit_log, media_body, serve_recording};
+use support::delivery_options::{base_params, DeliveryOptions};
 use support::delivery_wait::wait_for_ranges;
 
 #[tokio::test]
@@ -29,7 +30,11 @@ async fn delivery_manager_promotes_demanded_bytes_to_emergency() {
         0,
     ));
     wait_for_ranges(&harness.store, "aa11", &[(0, 4)]).await;
-    let missing = harness.store.missing_within("aa11", 4..16).await.expect("gaps");
+    let missing = harness
+        .store
+        .missing_within("aa11", 4..16)
+        .await
+        .expect("gaps");
     assert_eq!(missing, vec![4..16], "hunger withholds the tail");
 
     harness.demand.emit(DemandSignal {

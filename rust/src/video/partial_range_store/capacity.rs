@@ -4,6 +4,7 @@
 //! reserve the store must never spend.
 
 use crate::video::partial_range_store::free_space::{FreeSpace, SystemFreeSpace};
+use anyhow::{ensure, Result};
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -49,7 +50,8 @@ struct Sample {
 /// store's own writes and evictions move the standing measurement, so a
 /// cap taken inside one window still describes the file system.
 pub struct StoreCapacity {
-    limits: Limits,
+    budget: AtomicU64,
+    reserve: u64,
     space: Arc<dyn FreeSpace>,
     recheck: Duration,
     sample: Mutex<Option<Sample>>,
@@ -59,7 +61,8 @@ pub struct StoreCapacity {
 impl StoreCapacity {
     pub fn new(limits: Limits, space: Arc<dyn FreeSpace>) -> Self {
         Self {
-            limits,
+            budget: AtomicU64::new(limits.budget),
+            reserve: limits.reserve,
             space,
             recheck: DEFAULT_RECHECK,
             sample: Mutex::new(None),
@@ -81,14 +84,26 @@ impl StoreCapacity {
     /// holds: `min(budget, used + free - reserve)`, never below zero.
     pub async fn cap(&self, root: &Path, used: u64) -> u64 {
         let mut sample = self.sample.lock().await;
-        cap_for(self.limits, used, self.current(&mut sample, root))
+        cap_for(self.limits(), used, self.current(&mut sample, root))
+    }
+
+    /// Replaces the user ceiling for future decisions. A real change
+    /// invalidates a standing refusal even when free space is unchanged.
+    pub fn set_budget(&self, budget: u64) -> Result<bool> {
+        ensure!(budget > 0, "video store budget must be positive");
+        let previous = self.budget.swap(budget, Ordering::SeqCst);
+        if previous == budget {
+            return Ok(false);
+        }
+        self.next_generation();
+        Ok(true)
     }
 
     /// Identifies the measurement in force right now: it changes when
     /// free space is re-measured and when the store gives bytes back,
     /// which are the only two things that can turn a refusal around.
     pub fn generation(&self) -> u64 {
-        self.generations.load(Ordering::Relaxed)
+        self.generations.load(Ordering::SeqCst)
     }
 
     /// The store handed `bytes` back to the file system, so the standing
@@ -100,7 +115,9 @@ impl StoreCapacity {
             return;
         }
         let mut sample = self.sample.lock().await;
-        let Some(current) = sample.as_mut() else { return };
+        let Some(current) = sample.as_mut() else {
+            return;
+        };
         current.available = current.available.map(|free| free.saturating_add(bytes));
         current.generation = self.next_generation();
     }
@@ -109,7 +126,9 @@ impl StoreCapacity {
     /// it left. Keeps the reserve exact between measurements.
     pub async fn spent(&self, bytes: u64) {
         let mut sample = self.sample.lock().await;
-        let Some(current) = sample.as_mut() else { return };
+        let Some(current) = sample.as_mut() else {
+            return;
+        };
         current.available = current.available.map(|free| free.saturating_sub(bytes));
     }
 
@@ -128,7 +147,16 @@ impl StoreCapacity {
     }
 
     fn next_generation(&self) -> u64 {
-        self.generations.fetch_add(1, Ordering::Relaxed).saturating_add(1)
+        self.generations
+            .fetch_add(1, Ordering::SeqCst)
+            .saturating_add(1)
+    }
+
+    fn limits(&self) -> Limits {
+        Limits {
+            budget: self.budget.load(Ordering::SeqCst),
+            reserve: self.reserve,
+        }
     }
 }
 
@@ -139,7 +167,6 @@ fn cap_for(limits: Limits, used: u64, available: Option<u64>) -> u64 {
     let Some(available) = available else {
         return limits.budget;
     };
-    let spendable =
-        i128::from(used) + i128::from(available) - i128::from(limits.reserve);
+    let spendable = i128::from(used) + i128::from(available) - i128::from(limits.reserve);
     u64::try_from(spendable.clamp(0, i128::from(limits.budget))).unwrap_or(0)
 }

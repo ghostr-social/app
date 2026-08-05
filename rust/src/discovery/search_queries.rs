@@ -1,9 +1,6 @@
-//! Relay routing for discovery queries: which relay set answers which
-//! filter, and in what role. Pure data the scheduler executes. Parity
-//! sources: lib/platform/nostr/ndk_nostr_video_event_query.dart
-//! (targeting, roles, timeouts) and
-//! lib/features/settings/domain/app_settings.dart (the NIP-50 search
-//! relay set, wired in via production_nostr_services.dart).
+//! Relay routing for discovery queries: which relay set answers each
+//! filter, in what role, and under which timeout. Pure data executed by
+//! the scheduler.
 
 use std::time::Duration;
 
@@ -12,17 +9,6 @@ use nostr_sdk::{Filter, PublicKey};
 use crate::discovery::event_cache::ViewerScope;
 use crate::discovery::video_filters::{discovery_filters, DiscoveryRequest};
 
-/// Relays known to implement NIP-50 full-text search
-/// (`AppSettings.defaultSearchRelays`).
-pub const SEARCH_RELAY_URLS: [&str; 6] = [
-    "wss://relay.nostr.band",
-    "wss://nostr.wine",
-    "wss://relay.noswhere.com",
-    "wss://search.nos.today",
-    "wss://antiprimal.net",
-    "wss://relay.ditto.pub",
-];
-
 /// Canonical feed queries give up quickly; the feed must stay fluid.
 pub const FEED_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -30,8 +16,8 @@ pub const FEED_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
 /// seconds are where the long tail of matches comes from.
 pub const DISCOVERY_QUERY_TIMEOUT: Duration = Duration::from_secs(8);
 
-/// How the outbox directory serves a whole request; resolved once and
-/// shared by every query in the plan.
+/// A concrete outbox-directory lookup, used either as a plan default or
+/// as one query's independent route.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum OutboxLookup {
     /// A request built around a viewer term never needs the outbox.
@@ -40,6 +26,14 @@ pub enum OutboxLookup {
     DiscoveryRelays,
     /// Write relays of the authors the request asks for.
     AuthorWriteRelays(Vec<PublicKey>),
+}
+
+/// Whether one query uses its request's shared outbox lookup or carries
+/// a lookup that must be resolved independently.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum OutboxRoute {
+    Shared,
+    Filter(OutboxLookup),
 }
 
 /// Which relay set executes one query. Resolution to concrete URLs
@@ -71,11 +65,13 @@ pub struct PlannedQuery {
     pub target: RelayTarget,
     pub role: QueryRole,
     pub timeout: Duration,
+    pub outbox: OutboxRoute,
 }
 
 /// Relays x filters for one discovery request: pure data, no IO.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct QueryPlan {
+    /// Default lookup for queries whose route is [`OutboxRoute::Shared`].
     pub outbox: OutboxLookup,
     pub queries: Vec<PlannedQuery>,
     /// Whose session the executor's event pool answers this plan from.
@@ -97,8 +93,8 @@ pub fn plan_discovery(request: &DiscoveryRequest) -> QueryPlan {
 }
 
 /// Concrete relay list for one target, given the configured search relays
-/// and the outbox lookup's result. `None` means the client's bootstrap
-/// relay set answers (Dart passes no explicit relays to ndk).
+/// and the outbox lookup's result. `None` means the owner's configured
+/// read relays answer.
 pub fn resolve_relays(
     target: &RelayTarget,
     search_relays: &[String],
@@ -128,19 +124,19 @@ fn planned(filter: Filter, primary: bool) -> PlannedQuery {
         },
         timeout,
         filter,
+        outbox: OutboxRoute::Shared,
     }
 }
 
-/// Discovery queries carry a NIP-50 term or tag filters
-/// (`_isDiscovery` in ndk_nostr_video_event_query.dart).
-fn is_discovery(filter: &Filter) -> bool {
+/// Discovery queries carry a NIP-50 term or generic tag filters.
+pub(crate) fn is_discovery(filter: &Filter) -> bool {
     filter.search.is_some() || !filter.generic_tags.is_empty()
 }
 
 /// NIP-50 terms only work on relays that index for search. Tag-filtered
 /// queries hit those deep indexes merged with the outbox; plain queries
 /// route to the outbox relays where the wanted authors actually publish.
-fn target_for(filter: &Filter) -> RelayTarget {
+pub(crate) fn target_for(filter: &Filter) -> RelayTarget {
     if filter.search.is_some() {
         return RelayTarget::SearchRelays;
     }

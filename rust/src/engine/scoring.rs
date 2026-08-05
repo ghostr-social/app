@@ -88,7 +88,8 @@ fn post_requests(ctx: &NextWorkContext<'_>, post: &PostId) -> Vec<ChunkRequest> 
         .into_iter()
         .partition(|chunk| chunk.start < plan.head_bytes());
     heads.extend(missing_probe(ctx, post, &plan, &have));
-    let inventory = PostInventory::new(ctx.inventory, ctx.params.startable_window, heads.is_empty());
+    let inventory =
+        PostInventory::new(ctx.inventory, ctx.params.startable_window, heads.is_empty());
     let Some(tier) = classify(post, ctx.focus, inventory, demand_for(ctx, post)) else {
         return Vec::new();
     };

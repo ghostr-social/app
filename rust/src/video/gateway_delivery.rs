@@ -46,7 +46,10 @@ pub(crate) async fn start_progressive_delivery(
         timing: ProgressiveTiming::default(),
     });
     let router = configured_router_with_progressive(
-        new_native_downloads(), hls_sessions, client.clone(), progressive.clone(),
+        new_native_downloads(),
+        hls_sessions,
+        client.clone(),
+        progressive.clone(),
     );
     let config = delivery_config(configuration, store, client, posts);
     let (delivery, modes) = start_delivery_manager_with_modes(config, demand);

@@ -24,7 +24,7 @@ void main() {
 
     final encoded = encodeSignedNostrEvent(signed);
 
-    expect(jsonDecode(encoded), <String, Object?>{
+    expect(jsonDecode(encoded.value), <String, Object?>{
       'id': testEventId,
       'pubkey': testViewerPublicKey,
       'created_at': 1700000000,
@@ -45,5 +45,6 @@ void main() {
     expect(restored.content, 'note body');
     expect(restored.sig, signature);
     expect(encodeSignedNostrEvent(restored), encoded);
+    expect({encoded, encodeSignedNostrEvent(restored)}, hasLength(1));
   });
 }

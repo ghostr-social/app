@@ -10,8 +10,8 @@ fn note(content: &str) -> Event {
 
 #[test]
 fn event_parsing_scrapes_the_first_video_link_from_a_kind1_note() {
-    // Regex behavior, extension set, and trailing-punctuation trim mirror
-    // lib/features/video_catalog/data/nostr_video_media.dart `_fromText`.
+    // The leftmost recognized extension wins after trailing punctuation
+    // is trimmed.
     let cases = [
         (
             "watch https://cdn.example/clip.mp4!",

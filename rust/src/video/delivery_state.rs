@@ -4,7 +4,9 @@
 use crate::engine::budget::params_for;
 use crate::engine::catalog::Catalog;
 use crate::engine::focus::{FocusState, FocusUpdate};
-use crate::engine::inventory_controller::{InventoryController, InventoryState, Mode, PresentRanges};
+use crate::engine::inventory_controller::{
+    InventoryController, InventoryState, Mode, PresentRanges,
+};
 use crate::engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId};
 use crate::video::delivery_events::DeliveryFocus;
 use std::collections::HashSet;

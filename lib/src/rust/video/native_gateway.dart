@@ -7,22 +7,7 @@ import '../frb_generated.dart';
 import 'ffi_models.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-/// Deprecated alias for `ffi_start_engine` (plan §2): same start path
-/// and shared runtime, with the data-usage level left at its Balanced
-/// default. Kept only until the Dart wiring moves to the new call.
-Future<String> ffiStartServer(
-        {required String cacheDirectory,
-        required BigInt maxParallelDownloads,
-        required BigInt maxStorageBytes,
-        required String relayUrls}) =>
-    RustLib.instance.api.crateVideoNativeGatewayFfiStartServer(
-        cacheDirectory: cacheDirectory,
-        maxParallelDownloads: maxParallelDownloads,
-        maxStorageBytes: maxStorageBytes,
-        relayUrls: relayUrls);
-
-Future<List<FfiVideoDownload>> ffiGetDiscoveredVideos() =>
-    RustLib.instance.api.crateVideoNativeGatewayFfiGetDiscoveredVideos();
+// These functions are ignored because they are not marked as `pub`: `acquire_hls_playback`, `release_hls_playback`
 
 Future<FfiHlsPlaybackSession> ffiAcquireHlsPlayback(
         {required List<String> sourceUrls}) =>

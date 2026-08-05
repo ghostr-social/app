@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
+import 'package:ghostr/src/rust/api/delivery_types.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_remote_source.dart';
 
 import '../support/fake_rust_feed_port.dart';
@@ -51,7 +52,7 @@ void main() {
         rustFeedPost(
           media: rustFeedMedia(
             urls: const ['https://cdn.example/clip.m3u8'],
-            delivery: 'hls',
+            delivery: FfiMediaDelivery.hls,
           ),
         ),
       ]),

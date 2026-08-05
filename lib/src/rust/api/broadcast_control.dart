@@ -6,7 +6,7 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `broadcast_relays`, `broadcast`, `ensure_relays`, `verified_event`
+// These functions are ignored because they are not marked as `pub`: `broadcast_relays`, `broadcast`, `verified_event`
 
 /// Validates one pre-signed event and publishes it with outbox-aware
 /// relay selection: the author's declared write relays after the

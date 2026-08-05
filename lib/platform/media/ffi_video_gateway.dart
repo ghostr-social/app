@@ -1,14 +1,19 @@
 import 'package:ghostr/core/errors/boundary_failure.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
+import 'package:ghostr/platform/media/rust_engine_configuration.dart';
+import 'package:ghostr/platform/media/rust_engine_configuration_mapper.dart';
 import 'package:ghostr/src/rust/api/engine_control.dart';
 import 'package:ghostr/src/rust/frb_generated.dart';
 
+export 'rust_engine_configuration.dart';
+
 typedef RustGatewayInitializer = Future<void> Function();
-typedef RustEngineStarter = Future<String> Function({
+typedef RustEngineStarter = Future<String> Function(
+  RustEngineStartConfiguration configuration,
+);
+typedef RustFfiEngineStarter = Future<String> Function({
   required String cacheDirectory,
-  required String relayUrls,
-  required String dataUsage,
-  required BigInt maxStorageBytes,
+  required FfiEngineConfiguration configuration,
 });
 
 /// Boots the Rust media engine with the FULL inventory budget — the
@@ -16,7 +21,7 @@ typedef RustEngineStarter = Future<String> Function({
 class FfiVideoGateway {
   FfiVideoGateway({
     RustGatewayInitializer initialize = RustLib.init,
-    RustEngineStarter startEngine = ffiStartEngine,
+    RustEngineStarter startEngine = startRustEngine,
   })  : _initialize = initialize,
         _startEngine = startEngine;
 
@@ -43,12 +48,11 @@ class FfiVideoGateway {
   }
 
   Future<String> _start(AppSettings settings, String cacheDirectory) {
-    return _startEngine(
-      cacheDirectory: cacheDirectory,
-      relayUrls: settings.relays.map((relay) => relay.value).join('\n'),
-      dataUsage: settings.dataUsage.name,
-      maxStorageBytes: BigInt.from(settings.inventoryBudget.bytes),
+    final configuration = RustEngineStartConfiguration(
+      cacheDirectory,
+      RustEngineConfiguration.fromSettings(settings),
     );
+    return _startEngine(configuration);
   }
 
   VideoGatewayStartResult _endpointResult(String rawEndpoint) {
@@ -60,6 +64,16 @@ class FfiVideoGateway {
       'The embedded video gateway returned an empty endpoint.',
     );
   }
+}
+
+Future<String> startRustEngine(
+  RustEngineStartConfiguration configuration, {
+  RustFfiEngineStarter ffiStart = ffiStartEngine,
+}) {
+  return ffiStart(
+    cacheDirectory: configuration.cacheDirectory,
+    configuration: ffiEngineConfiguration(configuration.engine),
+  );
 }
 
 sealed class VideoGatewayStartResult {

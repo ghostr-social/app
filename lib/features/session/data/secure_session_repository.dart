@@ -32,7 +32,7 @@ class SecureSessionRepository implements SessionRepository {
     final session = UserSession.fromIdentity(secret, identity);
     await _secretStore.write(secret.value);
     try {
-      _nostrSession.activate(secret, identity);
+      await _nostrSession.activate(secret, identity);
     } on Object {
       await _secretStore.clear();
       rethrow;
@@ -45,7 +45,7 @@ class SecureSessionRepository implements SessionRepository {
     final stored = await _secretStore.read();
     await _secretStore.clear();
     try {
-      _nostrSession.deactivate();
+      await _nostrSession.deactivate();
     } on Object {
       if (stored != null) await _secretStore.write(stored);
       rethrow;
@@ -55,18 +55,18 @@ class SecureSessionRepository implements SessionRepository {
   @override
   Future<void> resetStoredSession() async {
     await _secretStore.clear();
-    _nostrSession.deactivate();
+    await _nostrSession.deactivate();
   }
 
-  UserSession _activate(AuthSecret secret) {
+  Future<UserSession> _activate(AuthSecret secret) async {
     final identity = _identityDeriver.derive(secret);
-    _nostrSession.activate(secret, identity);
+    await _nostrSession.activate(secret, identity);
     return UserSession.fromIdentity(secret, identity);
   }
 
   Future<UserSession> _activatePersisted(AuthSecret secret) async {
     try {
-      return _activate(secret);
+      return await _activate(secret);
     } on Object {
       await _secretStore.clear();
       rethrow;

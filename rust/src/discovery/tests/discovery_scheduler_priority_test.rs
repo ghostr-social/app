@@ -1,6 +1,5 @@
 //! With every slot busy, an interactive open-feed load overtakes
-//! earlier-queued background work — parity: priority classes in
-//! lib/core/work/retrieval_scheduler.dart.
+//! earlier-queued background work.
 
 use super::scheduler_support::{context, next_started, request, start_scheduler};
 use crate::engine::DataUsageLevel;
@@ -17,7 +16,13 @@ async fn open_feed_overtakes_queued_background_work() {
     harness.handle.open_feed(context("urgent"), request());
 
     harness.gate.add_permits(1);
-    assert_eq!(next_started(&mut harness.started).await.context, context("urgent"));
+    assert_eq!(
+        next_started(&mut harness.started).await.context,
+        context("urgent")
+    );
     harness.gate.add_permits(1);
-    assert_eq!(next_started(&mut harness.started).await.context, context("late"));
+    assert_eq!(
+        next_started(&mut harness.started).await.context,
+        context("late")
+    );
 }

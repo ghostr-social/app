@@ -29,7 +29,9 @@ pub fn app(route: MethodRouter<Media>, bytes: Vec<u8>) -> Router {
 }
 
 pub async fn serve(app: Router) -> String {
-    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind fixture");
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind fixture");
     let address = listener.local_addr().expect("fixture address");
     tokio::spawn(async move { axum::serve(listener, app).await.expect("serve fixture") });
     format!("http://{address}/video.mp4")

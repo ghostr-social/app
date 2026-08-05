@@ -1,78 +1,39 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ghostr/features/settings/domain/relay_url.dart';
+import 'package:ghostr/core/nostr/nostr_event_record.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
-import 'package:ghostr/platform/nostr/ndk_nostr_social.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:ndk/ndk.dart';
 
 import '../support/ndk_mocks.dart';
 import '../support/nostr_test_values.dart';
+import '../support/social_broadcast_harness.dart';
+import '../support/social_event_fixtures.dart';
 
 void main() {
   setUpAll(registerNdkFallbackValues);
 
-  test('stale mute reads cannot undo an accepted replacement', () async {
-    final ndk = MockNdk();
-    final accounts = MockAccounts();
-    final lists = MockLists();
-    final broadcast = MockBroadcast();
-    final response = MockNdkBroadcastResponse();
-    final signer = MockEventSigner();
-    final config = MockNdkConfig();
-    final cache = MockCacheManager();
-    var reads = 0;
-    when(() => ndk.accounts).thenReturn(accounts);
-    when(() => ndk.lists).thenReturn(lists);
-    when(() => ndk.broadcast).thenReturn(broadcast);
-    when(() => ndk.config).thenReturn(config);
-    when(() => config.cache).thenReturn(cache);
-    when(accounts.getPublicKey).thenReturn(testViewerPublicKey);
-    when(accounts.getLoggedAccount).thenReturn(Account(
-      type: AccountType.privateKey,
-      pubkey: testViewerPublicKey,
-      signer: signer,
-    ));
-    stubEventSigner(signer, testViewerPublicKey);
-    when(() => signer.encryptNip44(
-          plaintext: any(named: 'plaintext'),
-          recipientPubKey: testViewerPublicKey,
-        )).thenAnswer((_) async => 'encrypted');
-    when(() => lists.getSingleNip51List(Nip51List.kMute)).thenAnswer((_) async {
-      reads += 1;
-      return _mute(reads == 3 ? 30 : 10);
-    });
-    when(() => lists.getSingleNip51List(
-          Nip51List.kMute,
-          forceRefresh: true,
-        )).thenAnswer((_) async => _mute(10));
-    when(() => response.broadcastDoneFuture)
-        .thenAnswer((_) async => successfulRelayBroadcast());
-    when(() => broadcast.broadcast(
-          nostrEvent: any(named: 'nostrEvent'),
-          specificRelays: any(named: 'specificRelays'),
-          customSigner: signer,
-          saveToCache: false,
-        )).thenReturn(response);
-    when(() => cache.saveEvent(any())).thenThrow(StateError('cache failed'));
-    final social = NdkNostrSocial(
-      ndk: ndk,
-      relays: [RelayUrl.parse('wss://relay.example')],
+  test('stale mute events cannot undo an accepted replacement', () async {
+    final harness = SocialBroadcastHarness();
+    harness.events.events.add(_mute(1, 10));
+    final social = harness.build(
       clock: () => DateTime.fromMillisecondsSinceEpoch(20000),
     );
     final target = ProfileId.parse(Nip19.encodePubKey(testFanPublicKey));
 
     expect(await social.toggleBlock(target), isTrue);
     expect(await social.loadBlockedProfiles(), {target});
+    harness.events.events
+      ..clear()
+      ..add(_mute(2, 30));
     expect(await social.loadBlockedProfiles(), isEmpty);
+    harness.events.events
+      ..clear()
+      ..add(_mute(3, 10));
     expect(await social.loadBlockedProfiles(), isEmpty);
   });
 }
 
-Nip51List _mute(int createdAt) {
-  return Nip51List(
-    pubKey: testViewerPublicKey,
-    kind: Nip51List.kMute,
-    createdAt: createdAt,
-    elements: <Nip51ListElement>[],
+NostrEventRecord _mute(int sequence, int createdAt) {
+  return socialEvent(
+    identity: socialEventIdentity(sequence, Nip51List.kMute, createdAt),
   );
 }

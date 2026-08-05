@@ -1,7 +1,5 @@
 //! A viewer search term drops the mp4 note hunt, widens the video limit,
-//! and carries the trimmed term on every query
-//! (lib/platform/nostr/video_discovery_queries.dart: the hunt only runs
-//! when searchQuery == null; NostrEventQuery trims the term).
+//! and carries the trimmed term on every query.
 
 use serde_json::json;
 

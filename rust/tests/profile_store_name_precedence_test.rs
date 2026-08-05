@@ -1,7 +1,5 @@
-//! Display-name precedence mirrors ndk `Metadata.getName` filtered by
-//! `creatorProfileSummary`: `display_name` when non-blank, else `name`
-//! when non-blank, and a name equal to the hex pubkey is no name at all
-//! (lib/features/video_catalog/data/creator_profile_summary.dart).
+//! Display-name precedence is `display_name` when non-blank, then `name`;
+//! a name equal to the creator's hex public key is treated as missing.
 
 mod feed_support;
 
@@ -50,7 +48,11 @@ fn profile_store_treats_a_hex_pubkey_name_as_no_name() {
     let hex = creator.public_key().to_hex();
     let npub = creator.public_key().to_bech32().expect("npub encodes");
     let mut store = ProfileStore::new();
-    store.ingest(&profile_event(&creator, &format!(r#"{{"name":"{hex}"}}"#), 10));
+    store.ingest(&profile_event(
+        &creator,
+        &format!(r#"{{"name":"{hex}"}}"#),
+        10,
+    ));
 
     let profile = store.profile(&creator.public_key());
 

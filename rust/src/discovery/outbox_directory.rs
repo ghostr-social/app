@@ -1,10 +1,9 @@
-//! NIP-65 outbox routing (plan §5.2): kind-10002 relay lists become
-//! per-author write-relay lists so queries reach the relays where the
-//! wanted authors actually publish. Pure ingestion and lookup — the
-//! scheduler owns subscriptions and refresh. Mirrors
-//! lib/platform/nostr/ndk_nostr_outbox_directory.dart.
+//! NIP-65 outbox routing: kind-10002 relay lists become per-author
+//! write-relay lists so queries reach the relays where wanted authors
+//! publish. Pure ingestion and lookup; the scheduler owns retrieval.
 
-use crate::discovery::relay_url::normalize_relay_url;
+use crate::discovery::outbox_relay_list::write_urls;
+use crate::discovery::session_generation::SessionGeneration;
 use crate::engine::DataUsageLevel;
 use nostr_sdk::{Event, Kind, PublicKey, Timestamp};
 use std::collections::{HashMap, HashSet};
@@ -26,6 +25,7 @@ pub struct OutboxDirectory {
     bootstrap: Vec<String>,
     write_lists: HashMap<PublicKey, WriteRelayList>,
     viewer_follows: Vec<PublicKey>,
+    session: SessionGeneration,
 }
 
 #[derive(Debug)]
@@ -42,13 +42,28 @@ impl OutboxDirectory {
             bootstrap: bootstrap_relays,
             write_lists: HashMap::new(),
             viewer_follows: Vec::new(),
+            session: SessionGeneration::initial(),
         }
     }
 
+    /// Drops account-derived routing while retaining configured relays.
+    pub(crate) fn reset_session(&mut self, session: SessionGeneration) {
+        self.session = session;
+        self.write_lists.clear();
+        self.viewer_follows.clear();
+    }
+
+    pub(crate) fn is_session(&self, session: SessionGeneration) -> bool {
+        self.session == session
+    }
+
+    pub(crate) fn replace_bootstrap(&mut self, relays: Vec<String>) -> Vec<String> {
+        std::mem::replace(&mut self.bootstrap, relays)
+    }
+
     /// Ingests a kind-10002 relay list; anything else is ignored.
-    /// Replaceable semantics: a strictly newer created_at replaces the
-    /// author's list (ties keep the existing one, like the newest-wins
-    /// floors in lib/platform/nostr/ndk_nostr_social_models.dart).
+    /// Replaceable semantics: a strictly newer timestamp replaces the
+    /// author's list; ties keep the accepted value.
     pub fn ingest(&mut self, event: &Event) {
         if event.kind != Kind::RelayList || !self.accepts(&event.pubkey, event.created_at) {
             return;
@@ -60,6 +75,12 @@ impl OutboxDirectory {
         self.write_lists.insert(event.pubkey, list);
     }
 
+    pub(crate) fn ingest_for(&mut self, session: SessionGeneration, event: &Event) {
+        if self.session == session {
+            self.ingest(event);
+        }
+    }
+
     /// Ingests a whole retrieval's events; anything that is not a
     /// kind-10002 relay list is ignored.
     pub fn ingest_all(&mut self, events: &[Event]) {
@@ -68,13 +89,27 @@ impl OutboxDirectory {
         }
     }
 
-    /// Remembers who the signed-in viewer follows. Dart's directory asks
-    /// ndk for the contact list inside `discoveryRelayUrls`; Rust is told
-    /// instead, by the bootstrap task that retrieved the kind-3. Holding
-    /// it here is what lets a query built before the follow list landed
-    /// still route by it.
+    pub(crate) fn ingest_all_for(&mut self, session: SessionGeneration, events: &[Event]) {
+        for event in events {
+            self.ingest_for(session, event);
+        }
+    }
+
+    /// Remembers the signed-in viewer's follows after the bootstrap task
+    /// retrieves their kind-3 list. Later unscoped feed queries can then
+    /// route through those authors' write relays.
     pub fn track_viewer_follows(&mut self, follows: Vec<PublicKey>) {
         self.viewer_follows = follows;
+    }
+
+    pub(crate) fn track_viewer_follows_for(
+        &mut self,
+        session: SessionGeneration,
+        follows: Vec<PublicKey>,
+    ) {
+        if self.session == session {
+            self.track_viewer_follows(follows);
+        }
     }
 
     /// `discoveryRelayUrls`: where the viewer's follows publish. Queries
@@ -115,41 +150,14 @@ impl OutboxDirectory {
             }
         }
         let mut ranked: Vec<&String> = counts.keys().copied().collect();
-        ranked.sort_by(|left, right| counts[right].cmp(&counts[left]).then_with(|| left.cmp(right)));
+        ranked.sort_by(|left, right| {
+            counts[right]
+                .cmp(&counts[left])
+                .then_with(|| left.cmp(right))
+        });
         ranked.truncate(cap);
         ranked.into_iter().cloned().collect()
     }
-}
-
-/// Validated write relays of one relay list event, in first-seen
-/// order. ndk keys r tags by cleaned url with the last marker winning,
-/// then the app keeps entries whose marker allows writes.
-fn write_urls(event: &Event) -> Vec<String> {
-    let mut order: Vec<String> = Vec::new();
-    let mut writable: HashMap<String, bool> = HashMap::new();
-    for tag in event.tags.iter() {
-        let Some((url, write)) = write_declaration(tag.as_slice()) else {
-            continue;
-        };
-        if !writable.contains_key(&url) {
-            order.push(url.clone());
-        }
-        writable.insert(url, write);
-    }
-    order.retain(|url| writable[url]);
-    order
-}
-
-/// An r tag as `(normalized url, declares write)`; `None` for non-r
-/// tags and invalid urls. A missing or unknown marker means
-/// read+write, so only an explicit `read` excludes the relay.
-fn write_declaration(tag: &[String]) -> Option<(String, bool)> {
-    if tag.len() < 2 || tag[0] != "r" {
-        return None;
-    }
-    let url = normalize_relay_url(&tag[1])?;
-    let write = tag.get(2).is_none_or(|marker| marker != "read");
-    Some((url, write))
 }
 
 fn merged(bootstrap: &[String], outbox: Vec<String>) -> Vec<String> {

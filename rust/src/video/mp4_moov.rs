@@ -7,16 +7,24 @@
 /// corrupt header), so the moov — if any — lives beyond the head.
 pub fn head_contains_moov(head: &[u8]) -> bool {
     let mut offset = 0usize;
-    while head.len() >= 8 && offset <= head.len() - 8 {
+    while box_header(head, offset).is_some() {
         if &head[offset + 4..offset + 8] == b"moov" {
             return true;
         }
-        match next_offset(head, offset) {
-            Some(next) if next > offset => offset = next,
-            _ => return false,
-        }
+        let Some(next) = advancing_offset(head, offset) else {
+            return false;
+        };
+        offset = next;
     }
     false
+}
+
+fn box_header(head: &[u8], offset: usize) -> Option<&[u8]> {
+    head.get(offset..offset.checked_add(8)?)
+}
+
+fn advancing_offset(head: &[u8], offset: usize) -> Option<usize> {
+    next_offset(head, offset).filter(|next| *next > offset)
 }
 
 /// The offset just past the box starting at `offset`: 32-bit size, 64-bit

@@ -8,8 +8,7 @@ import '../support/rust_feed_fixtures.dart';
 void main() {
   // Commenting needs the parent reference; without it the catalog
   // refuses the write outright (nostr_video_interactions.dart).
-  test('routes a comment on a rust-served row to the comments port',
-      () async {
+  test('routes a comment on a rust-served row to the comments port', () async {
     final comments = FakeNostrCommentsPort();
     final harness = await buildHybridRepositoryHarness(
       rustFeedSourceServing([

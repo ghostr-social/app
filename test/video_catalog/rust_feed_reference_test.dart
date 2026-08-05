@@ -7,11 +7,9 @@ import '../support/nostr_test_values.dart';
 import '../support/rust_feed_fixtures.dart';
 
 void main() {
-  // Parity spec: nostr_video_event_mapper.dart `_reference` — the kind
-  // and the `d` tag decide whether a social write addresses the event
-  // or the addressable coordinate, so both must cross the feed FFI.
-  test('mapped rust rows carry the reference social writes address',
-      () async {
+  // The kind and `d` tag decide whether a social write addresses the
+  // event or its addressable coordinate, so both cross the feed FFI.
+  test('mapped rust rows carry the reference social writes address', () async {
     final port = FakeRustFeedPort(updates: [
       rustFeedUpdate(revision: 1, posts: [
         rustFeedPost(eventKind: 34235, identifier: 'clip-1'),

@@ -26,8 +26,7 @@ void main() {
     expect(gateway.requests, isEmpty);
   });
 
-  testWidgets('passes already-proxied media through untouched',
-      (tester) async {
+  testWidgets('passes already-proxied media through untouched', (tester) async {
     final gateway = FakeProgressivePlaybackGateway();
     final playback = GatewayVideoPlaybackPort(
       delegate: FakeVideoPlaybackPort(),

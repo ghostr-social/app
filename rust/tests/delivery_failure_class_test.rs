@@ -11,8 +11,14 @@ use rust_lib_ghostr::video::outbound_media_client::MediaHttpClient;
 const UNRESOLVABLE: &str = "http://cdn.ghostr-nonexistent.invalid/video.mp4";
 
 async fn attempt(client: &MediaHttpClient, url: &str) -> Result<()> {
-    let response = client.get(url)?.send().await.context("chunk request failed")?;
-    response.error_for_status().context("chunk request rejected")?;
+    let response = client
+        .get(url)?
+        .send()
+        .await
+        .context("chunk request failed")?;
+    response
+        .error_for_status()
+        .context("chunk request rejected")?;
     Ok(())
 }
 

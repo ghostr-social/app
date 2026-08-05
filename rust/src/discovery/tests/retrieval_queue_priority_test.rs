@@ -1,5 +1,4 @@
-//! Takeout order follows the priority class, then submission order —
-//! parity: `_ordersBefore` in lib/core/work/retrieval_scheduler.dart.
+//! Takeout order follows the priority class, then submission order.
 
 use crate::discovery::retrieval_queue::{
     FeedContext, RetrievalPriority, RetrievalQueue, RetrievalRequest,

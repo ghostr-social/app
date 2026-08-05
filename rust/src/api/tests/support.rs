@@ -1,6 +1,6 @@
 //! Shared builders for the API mapping and watcher tests.
 
-use crate::api::delivery_types::FfiFocusItem;
+use crate::api::delivery_types::{FfiFocusItem, FfiMediaDelivery};
 use crate::discovery::event_parsing::ParsedVideoPost;
 use crate::discovery::profile_store::CreatorProfile;
 use crate::engine::{DeliveryKind, VideoMeta};
@@ -43,11 +43,11 @@ pub(crate) fn creator_profile() -> CreatorProfile {
     }
 }
 
-pub(crate) fn ffi_item(id: &str, delivery: &str) -> FfiFocusItem {
+pub(crate) fn ffi_item(id: &str, delivery: FfiMediaDelivery) -> FfiFocusItem {
     FfiFocusItem {
         post_id: id.to_owned(),
         urls: vec![format!("https://media.example/{id}.mp4")],
-        delivery: delivery.to_owned(),
+        delivery,
         sha256: Some("ab".repeat(32)),
         size_bytes: Some(16),
         duration_ms: Some(2_000),

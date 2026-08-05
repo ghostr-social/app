@@ -15,8 +15,7 @@ fn imeta(fields: &[&str]) -> Tag {
 }
 
 fn bad_imeta() -> Tag {
-    // A present-but-invalid `x` digest rejects the whole imeta tag, per
-    // nostr_video_media.dart `_imetaDigest`.
+    // A present but invalid digest rejects the whole imeta tag.
     imeta(&[
         "url https://imeta.example/bad.mp4",
         "m video/mp4",
@@ -33,9 +32,7 @@ fn file_tags() -> Vec<Tag> {
 
 #[test]
 fn event_parsing_prefers_imeta_over_file_tags_and_text() {
-    // Resolution order mirrors NostrVideoMedia.fromEvent in
-    // lib/features/video_catalog/data/nostr_video_media.dart:
-    // imeta -> NIP-94 file tags -> note text.
+    // Resolution order is imeta, NIP-94 file tags, then note text.
     let mut tags = file_tags();
     tags.push(imeta(&["url https://imeta.example/i.mp4", "m video/mp4"]));
     let event = signed("text https://text.example/t.mp4", tags);

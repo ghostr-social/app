@@ -11,9 +11,9 @@ use crate::engine::inventory_controller::Mode;
 use crate::engine::DataUsageLevel;
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, Timestamp};
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::{mpsc, watch, Semaphore};
-use tokio::time::timeout;
+
+pub use super::scheduler_wait::{next_outcome, next_started, no_start};
 
 /// Executor that reports every start and holds each retrieval until a
 /// gate permit is released; completed retrievals return `events`.
@@ -29,7 +29,10 @@ impl PlanExecutor for GatedExecutor {
         let gate = self.gate.clone();
         let events = self.events.clone();
         Box::pin(async move {
-            let permit = gate.acquire().await.map_err(|e| PlanFailure::new(e.to_string()))?;
+            let permit = gate
+                .acquire()
+                .await
+                .map_err(|e| PlanFailure::new(e.to_string()))?;
             permit.forget();
             Ok(events)
         })
@@ -49,7 +52,11 @@ pub struct SchedulerHarness {
 pub fn start_scheduler(level: DataUsageLevel, events: Vec<Event>) -> SchedulerHarness {
     let (starts, started) = mpsc::unbounded_channel();
     let gate = Arc::new(Semaphore::new(0));
-    let executor = Arc::new(GatedExecutor { starts, gate: gate.clone(), events });
+    let executor = Arc::new(GatedExecutor {
+        starts,
+        gate: gate.clone(),
+        events,
+    });
     let (outcome_sender, outcomes) = mpsc::unbounded_channel();
     let (modes, mode_updates) = watch::channel(Mode::Comfort);
     let handle = start_discovery_scheduler(DiscoverySchedulerConfig {
@@ -58,7 +65,13 @@ pub fn start_scheduler(level: DataUsageLevel, events: Vec<Event>) -> SchedulerHa
         modes: mode_updates,
         outcomes: outcome_sender,
     });
-    SchedulerHarness { handle, started, gate, outcomes, modes }
+    SchedulerHarness {
+        handle,
+        started,
+        gate,
+        outcomes,
+        modes,
+    }
 }
 
 pub fn context(name: &str) -> FeedContext {
@@ -69,29 +82,10 @@ pub fn request() -> DiscoveryRequest {
     DiscoveryRequest::default()
 }
 
-/// A signed kind-1 event pinned to `created_at`, for cursor math.
+/// A playable kind-1 video note pinned to `created_at`, for cursor math.
 pub fn note_at(created_at: u64) -> Event {
-    EventBuilder::new(Kind::TextNote, "")
+    EventBuilder::new(Kind::TextNote, "https://cdn.example/clip.mp4")
         .custom_created_at(Timestamp::from(created_at))
         .sign_with_keys(&Keys::generate())
         .expect("signed test event")
-}
-
-pub async fn next_started(started: &mut mpsc::UnboundedReceiver<PlannedRetrieval>) -> PlannedRetrieval {
-    timeout(Duration::from_secs(5), started.recv())
-        .await
-        .expect("a retrieval should start")
-        .expect("scheduler should stay alive")
-}
-
-pub async fn no_start(started: &mut mpsc::UnboundedReceiver<PlannedRetrieval>) {
-    let result = timeout(Duration::from_millis(50), started.recv()).await;
-    assert!(result.is_err(), "no further retrieval may start");
-}
-
-pub async fn next_outcome(outcomes: &mut mpsc::UnboundedReceiver<RetrievalOutcome>) -> RetrievalOutcome {
-    timeout(Duration::from_secs(5), outcomes.recv())
-        .await
-        .expect("an outcome should arrive")
-        .expect("scheduler should stay alive")
 }

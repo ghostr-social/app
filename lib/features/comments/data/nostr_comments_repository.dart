@@ -10,17 +10,22 @@ import 'package:ghostr/features/comments/domain/nostr_comments_port.dart';
 import 'package:ghostr/features/comments/domain/video_comment.dart';
 import 'package:ghostr/features/video_catalog/domain/nostr_event_reference.dart';
 
+part 'nostr_comment_record_mapper.dart';
+
 class NostrCommentsRepository implements NostrCommentsPort {
   const NostrCommentsRepository(
     this._client, {
     Clock clock = systemClock,
     Duration hydrationTimeout = nostrHydrationDeadline,
+    NostrElapsedClock? elapsedClock,
   })  : _clock = clock,
-        _hydrationTimeout = hydrationTimeout;
+        _hydrationTimeout = hydrationTimeout,
+        _elapsedClock = elapsedClock;
 
   final NostrEventClient _client;
   final Clock _clock;
   final Duration _hydrationTimeout;
+  final NostrElapsedClock? _elapsedClock;
 
   @override
   Future<List<VideoComment>> load(NostrEventReference reference) async {
@@ -34,7 +39,7 @@ class NostrCommentsRepository implements NostrCommentsPort {
   ) async {
     final unique = _uniqueReferences(references);
     if (unique.isEmpty) return const <NostrEventId, List<VideoComment>>{};
-    final budget = NostrQueryBudget(_hydrationTimeout);
+    final budget = _newBudget();
     final events = await loadNostrCommentEvents(_client, unique, budget);
     final groups = unique.map((reference) {
       return _commentEventsFor(events, reference);
@@ -48,6 +53,12 @@ class NostrCommentsRepository implements NostrCommentsPort {
       for (final reference in unique)
         reference.eventId: _commentsFor(events, deletedIds, reference),
     });
+  }
+
+  NostrQueryBudget _newBudget() {
+    final elapsedClock = _elapsedClock;
+    if (elapsedClock == null) return NostrQueryBudget(_hydrationTimeout);
+    return NostrQueryBudget.withClock(_hydrationTimeout, elapsedClock);
   }
 
   List<VideoComment> _commentsFor(
@@ -162,39 +173,4 @@ class NostrCommentsRepository implements NostrCommentsPort {
       <String>['p', reference.authorPublicKeyHex],
     ];
   }
-
-  VideoComment _toComment(NostrEventRecord event) {
-    return VideoComment(
-      identity: VideoCommentIdentity.parse(
-        id: event.id,
-        authorPublicKeyHex: event.authorPublicKeyHex,
-      ),
-      text: VideoCommentText(
-        authorLabel: _authorLabel(event.authorPublicKeyHex),
-        content: event.content.trim(),
-      ),
-      createdAt: DateTime.fromMillisecondsSinceEpoch(
-        event.createdAt * 1000,
-        isUtc: true,
-      ),
-      parentCommentId: _parentCommentId(event),
-    );
-  }
-
-  NostrEventId? _parentCommentId(NostrEventRecord event) {
-    if (!event.tagValues('k').contains('1111')) return null;
-    final id = event.tagValues('e').firstOrNull;
-    if (id == null) return null;
-    try {
-      return NostrEventId.parse(id);
-    } on FormatException {
-      return null;
-    }
-  }
-
-  String _authorLabel(String publicKey) {
-    return publicKey.length > 12 ? '${publicKey.substring(0, 12)}…' : publicKey;
-  }
-
-  bool _hasContent(NostrEventRecord event) => event.content.trim().isNotEmpty;
 }

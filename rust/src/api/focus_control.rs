@@ -56,7 +56,11 @@ fn progressive_entries(focus: &DeliveryFocus) -> Vec<(String, VideoMeta)> {
 }
 
 fn register_progressive(engine: &EngineHandles, item: &FocusItem) {
-    engine.gateway.progressive().posts.insert(item.post.as_str());
+    engine
+        .gateway
+        .progressive()
+        .posts
+        .insert(item.post.as_str());
     engine
         .tracked
         .insert(item.post.as_str().to_owned(), item.meta.clone());

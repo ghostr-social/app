@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:ghostr/core/nostr/nostr_event_identity.dart';
+import 'package:ghostr/features/video_catalog/data/rust_feed_identity.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_port.dart';
 import 'package:ghostr/src/rust/api/feed_types.dart';
 
@@ -13,21 +15,34 @@ class FakeRustFeedPort implements RustFeedPort {
   bool closeStreamAfterUpdates = true;
   Object? openError;
   Object? streamError;
-  String feedId = '7';
+  RustFeedId feedId = RustFeedId.parse('7');
 
   final List<FfiFeedSpec> openedSpecs = <FfiFeedSpec>[];
   final List<BigInt?> loadMoreCursors = <BigInt?>[];
-  final List<String> closedFeedIds = <String>[];
+  final List<RustFeedId> closedFeedIds = <RustFeedId>[];
 
   @override
-  Future<String> openFeed(FfiFeedSpec spec) async {
+  Future<RustFeedAccountSession> captureSession(
+    NostrPublicKeyHex? expectedAccount,
+  ) async {
+    return RustFeedAccountSession(
+      account: expectedAccount,
+      generation: RustNostrSessionGeneration.fromBridge(BigInt.zero),
+    );
+  }
+
+  @override
+  Future<RustFeedId> openFeed(
+    FfiFeedSpec spec,
+    RustFeedAccountSession session,
+  ) async {
     openedSpecs.add(spec);
     if (openError case final error?) throw error;
     return feedId;
   }
 
   @override
-  Stream<FfiFeedUpdate> feedUpdates(String feedId) async* {
+  Stream<FfiFeedUpdate> feedUpdates(RustFeedId feedId) async* {
     for (final update in updates) {
       yield update;
     }
@@ -36,13 +51,13 @@ class FakeRustFeedPort implements RustFeedPort {
   }
 
   @override
-  Future<bool> loadMore(String feedId, {BigInt? olderThanSecs}) async {
+  Future<bool> loadMore(RustFeedId feedId, {BigInt? olderThanSecs}) async {
     loadMoreCursors.add(olderThanSecs);
     return moreAvailable;
   }
 
   @override
-  Future<void> closeFeed(String feedId) async {
+  Future<void> closeFeed(RustFeedId feedId) async {
     closedFeedIds.add(feedId);
   }
 }

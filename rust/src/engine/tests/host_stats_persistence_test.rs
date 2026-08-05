@@ -20,7 +20,9 @@ async fn missing_file_loads_fresh_stats() {
 #[tokio::test]
 async fn corrupt_file_loads_fresh_stats() {
     let path = temp_path("corrupt");
-    tokio::fs::write(&path, "not json").await.expect("write fixture");
+    tokio::fs::write(&path, "not json")
+        .await
+        .expect("write fixture");
 
     let loaded = load_host_stats(&path).await;
 

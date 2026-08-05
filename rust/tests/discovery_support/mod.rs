@@ -50,7 +50,11 @@ pub fn p_tag(pubkey: &PublicKey) -> Vec<String> {
 
 /// A relay list declaring plain write relays for `keys`.
 pub fn write_relay_list(keys: &Keys, urls: &[&str], created_at: u64) -> Event {
-    relay_list(keys, urls.iter().map(|url| r_tag(url)).collect(), created_at)
+    relay_list(
+        keys,
+        urls.iter().map(|url| r_tag(url)).collect(),
+        created_at,
+    )
 }
 
 /// A kind-1 note authored by `keys`, for mute filtering checks.

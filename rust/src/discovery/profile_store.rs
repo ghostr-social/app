@@ -1,10 +1,6 @@
-//! Creator identities from kind-0 metadata events. Parity sources:
-//! lib/features/video_catalog/data/creator_profile_summary.dart (display
-//! name, `@npub` handle, avatar, and the shortened-npub fallback), ndk's
-//! `Metadata.getName`/`fromEvent` (display_name over name, whole event
-//! dropped when the content casts fail), and the strictly-newer
-//! replacement in lib/platform/nostr/ndk_nostr_profile_search.dart. A
-//! creator with no stored metadata still gets a full fallback identity.
+//! Creator identities from kind-0 metadata events. `display_name` wins
+//! over `name`, strictly newer events replace stored metadata, and a
+//! creator without usable metadata receives an npub-based identity.
 
 use std::collections::HashMap;
 
@@ -69,11 +65,11 @@ impl ProfileStore {
     }
 }
 
-/// `display_name` over `name`, skipping blanks (`Metadata.getName`); a
-/// name equal to the hex pubkey is no name (`creatorProfileSummary`).
+/// `display_name` over `name`, skipping blanks; a name equal to the hex
+/// public key is treated as missing.
 fn display_name(fields: Option<&ProfileFields>, author: &PublicKey, npub: &str) -> String {
-    let candidate = fields
-        .and_then(|profile| non_blank(&profile.display_name).or(non_blank(&profile.name)));
+    let candidate =
+        fields.and_then(|profile| non_blank(&profile.display_name).or(non_blank(&profile.name)));
     match candidate {
         Some(name) if name != author.to_hex() => name.to_owned(),
         _ => short_npub(npub),
@@ -90,9 +86,8 @@ fn non_blank(value: &Option<String>) -> Option<&str> {
     value.as_deref().filter(|name| !name.trim().is_empty())
 }
 
-/// Blank content is an empty profile (Dart skips parsing it); anything
-/// else must be a JSON object with string-or-absent known fields, or the
-/// whole event is dropped like ndk's throwing `as String?` casts.
+/// Blank content is an empty profile. Any other content must be a JSON
+/// object with string-or-absent known fields, or the event is dropped.
 fn parsed_fields(event: &Event) -> Option<ProfileFields> {
     if event.content.trim().is_empty() {
         return Some(empty_fields(event.created_at));

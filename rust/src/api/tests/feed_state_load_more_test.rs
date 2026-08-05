@@ -1,6 +1,6 @@
 //! Load-more gating: one older request in flight at a time, the claimed
 //! cursor rides the dispatch, and an explicit FFI cursor wins over the
-//! tracked one (scheduler LoadMore parity).
+//! tracked cursor.
 
 use crate::api::feed_decisions::{LoadMoreAction, OpenDispatch};
 use crate::api::feed_state::FeedState;
@@ -8,10 +8,18 @@ use crate::api::tests::feed_fixtures::video_note;
 use crate::discovery::feed_spec::FeedSpec;
 use nostr_sdk::{Keys, Timestamp};
 
-fn loaded_feed(state: &mut FeedState, keys: &Keys) -> (crate::discovery::feed_store::FeedId, OpenDispatch) {
-    let (feed, dispatch) = state.open(FeedSpec::MainFeed { viewer: Some(keys.public_key()) });
+fn loaded_feed(
+    state: &mut FeedState,
+    keys: &Keys,
+) -> (crate::discovery::feed_store::FeedId, OpenDispatch) {
+    let (feed, dispatch) = state.open(FeedSpec::MainFeed {
+        viewer: Some(keys.public_key()),
+    });
     let open = dispatch.expect("main feeds dispatch a first page");
-    state.apply(&open.context, Ok(vec![video_note(keys, "a", 30), video_note(keys, "b", 40)]));
+    state.apply(
+        &open.context,
+        Ok(vec![video_note(keys, "a", 30), video_note(keys, "b", 40)]),
+    );
     (feed, open)
 }
 
@@ -24,7 +32,10 @@ fn load_more_claims_the_cursor_below_the_oldest_visible_post() {
     let decision = state.load_more(feed, None);
     assert!(decision.may_have_more);
     match decision.action {
-        LoadMoreAction::Older { context, older_than } => {
+        LoadMoreAction::Older {
+            context,
+            older_than,
+        } => {
             assert_eq!(context, open.context);
             assert_eq!(older_than, Timestamp::from(29));
         }
@@ -40,7 +51,10 @@ fn only_one_older_request_flies_at_a_time() {
 
     assert!(state.load_more(feed, None).may_have_more);
     let second = state.load_more(feed, None);
-    assert!(second.may_have_more, "an in-flight load still promises more");
+    assert!(
+        second.may_have_more,
+        "an in-flight load still promises more"
+    );
     assert!(matches!(second.action, LoadMoreAction::None));
 }
 

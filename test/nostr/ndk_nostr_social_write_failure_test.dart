@@ -1,15 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
-import 'package:ghostr/platform/nostr/ndk_nostr_social.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
-import 'package:mocktail/mocktail.dart';
 
 import '../support/ndk_mocks.dart';
+import '../support/social_broadcast_harness.dart';
 
 void main() {
+  setUpAll(registerNdkFallbackValues);
+
   test('rejects social writes without a Nostr profile identifier', () async {
-    final ndk = MockNdk();
-    final runtime = NdkNostrSocial(ndk: ndk, relays: const []);
+    final harness = SocialBroadcastHarness();
+    final runtime = harness.build();
 
     await expectLater(
       runtime.toggleBlock(ProfileId.parse('local-creator')),
@@ -27,7 +28,7 @@ void main() {
         'This creator has no Nostr public key.',
       )),
     );
-    verifyNever(() => ndk.lists);
-    verifyNever(() => ndk.follows);
+    expect(harness.events.queries, isEmpty);
+    expect(harness.port.broadcasts, isEmpty);
   });
 }

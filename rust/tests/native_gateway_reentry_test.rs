@@ -1,27 +1,12 @@
-use rust_lib_ghostr::video::video::ffi_start_server;
-use std::time::{SystemTime, UNIX_EPOCH};
+mod support;
+
+use support::{engine, fixtures::temp_directory};
 
 #[tokio::test]
 async fn rejects_a_second_native_gateway_start() {
-    let nonce = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("system clock")
-        .as_nanos();
-    let directory = std::env::temp_dir().join(format!("ghostr-reentry-{nonce}"));
-    let first = ffi_start_server(
-        directory.to_string_lossy().to_string(),
-        1,
-        1024,
-        String::new(),
-    )
-    .await;
-    let second = ffi_start_server(
-        directory.to_string_lossy().to_string(),
-        1,
-        1024,
-        String::new(),
-    )
-    .await;
+    let directory = temp_directory("ghostr-reentry");
+    let first = engine::start(&directory, 1024).await;
+    let second = engine::start(&directory, 1024).await;
 
     assert!(first.is_ok());
     assert!(second.is_err());

@@ -13,11 +13,14 @@ use crate::discovery::feed_store::{FeedId, FeedStore};
 use crate::discovery::plan_executor::PlanFailure;
 use crate::discovery::profile_store::ProfileStore;
 use crate::discovery::retrieval_queue::FeedContext;
+use crate::discovery::session_generation::SessionGeneration;
 use crate::discovery::social_graph::SocialGraph;
 use flutter_rust_bridge::frb;
-use nostr_sdk::{Event, Keys, PublicKey, Timestamp};
+use nostr_sdk::{Event, Keys, Timestamp};
 use std::collections::HashMap;
 use tokio::sync::watch;
+
+mod session;
 
 /// Every open feed plus the shared profile store and social graph. The
 /// graph belongs to the newest signed-in main-feed viewer; a throwaway
@@ -29,6 +32,7 @@ pub(crate) struct FeedState {
     profiles: ProfileStore,
     graph: SocialGraph,
     feeds: HashMap<FeedId, FeedProgress>,
+    session: SessionGeneration,
 }
 
 impl FeedState {
@@ -38,6 +42,7 @@ impl FeedState {
             profiles: ProfileStore::new(),
             graph: SocialGraph::new(Keys::generate().public_key()),
             feeds: HashMap::new(),
+            session: SessionGeneration::initial(),
         }
     }
 
@@ -46,11 +51,15 @@ impl FeedState {
     pub(crate) fn open(&mut self, spec: FeedSpec) -> (FeedId, Option<OpenDispatch>) {
         self.adopt_viewer(&spec);
         let feed = self.store.open_feed(spec.clone());
-        let context = FeedContext::new(format!("feed-{}", feed.0));
+        let context = FeedContext::for_session(format!("feed-{}", feed.0), self.session);
         let dispatch = spec
             .page_request(None, &self.graph)
-            .map(|request| OpenDispatch { context: context.clone(), request });
-        self.feeds.insert(feed, FeedProgress::new(context, dispatch.is_some()));
+            .map(|request| OpenDispatch {
+                context: context.clone(),
+                request,
+            });
+        self.feeds
+            .insert(feed, FeedProgress::new(context, dispatch.is_some()));
         (feed, dispatch)
     }
 
@@ -114,24 +123,6 @@ impl FeedState {
             .collect()
     }
 
-    /// Ingests the viewer's own lists (kind-3 follows, kind-10000
-    /// mutes) from one retrieval; a replaced follow set comes back so
-    /// the caller can re-route by it.
-    pub(crate) fn ingest_social(&mut self, events: &[Event]) -> Option<Vec<PublicKey>> {
-        self.graph.ingest_all(events).then(|| self.graph.follow_list())
-    }
-
-    /// A signed-out main feed has no viewer graph to adopt
-    /// (feed_spec.rs); re-adopting the same viewer keeps the follows and
-    /// mutes already ingested for them.
-    fn adopt_viewer(&mut self, spec: &FeedSpec) {
-        if let FeedSpec::MainFeed { viewer: Some(viewer) } = spec {
-            if !self.graph.belongs_to(viewer) {
-                self.graph = SocialGraph::new(*viewer);
-            }
-        }
-    }
-
     fn reopen(&mut self, feed: FeedId, context: FeedContext) -> LoadMoreDecision {
         let spec = self.store.spec(feed);
         let Some(request) = spec.and_then(|spec| spec.page_request(None, &self.graph)) else {
@@ -156,7 +147,10 @@ impl FeedState {
         self.mark(feed, FeedProgress::await_more);
         LoadMoreDecision {
             may_have_more: true,
-            action: LoadMoreAction::Older { context, older_than: explicit.unwrap_or(cursor) },
+            action: LoadMoreAction::Older {
+                context,
+                older_than: explicit.unwrap_or(cursor),
+            },
         }
     }
 

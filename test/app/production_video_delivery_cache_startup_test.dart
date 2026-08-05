@@ -22,9 +22,11 @@ void main() {
     final cached = File('${nativeCache.path}/progressive/post.part');
     await cached.writeAsBytes([1]);
     final environment = ProductionVideoDeliveryEnvironment(
-      canonicalSource: FakeRemoteVideoSource([]),
-      supportDirectoryProvider: () async => root,
-      gateway: startedVideoGateway(),
+      source: FakeRemoteVideoSource([]),
+      adapters: ProductionVideoDeliveryAdapters(
+        supportDirectoryProvider: () async => root,
+        gateway: startedVideoGateway(),
+      ),
     );
 
     await buildProductionVideoDelivery(AppSettings.defaults(), environment);

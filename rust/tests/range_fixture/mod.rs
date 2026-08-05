@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+pub mod content_type;
 pub mod ranged;
 pub mod reject;
 pub mod stall;

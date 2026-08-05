@@ -10,10 +10,12 @@ use support::delivery_retry::{cdn_source, retry_policy};
 
 fn waits(book: &mut RetryBook, attempts: usize) -> Vec<Duration> {
     (0..attempts)
-        .map(|_| match book.note_failure(cdn_source(), FailureClass::Transient) {
-            Retry::After(wait) => wait,
-            Retry::GiveUp => panic!("the policy gave up before the attempt budget ran out"),
-        })
+        .map(
+            |_| match book.note_failure(cdn_source(), FailureClass::Transient) {
+                Retry::After(wait) => wait,
+                Retry::GiveUp => panic!("the policy gave up before the attempt budget ran out"),
+            },
+        )
         .collect()
 }
 

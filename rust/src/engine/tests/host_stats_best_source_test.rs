@@ -34,11 +34,17 @@ fn tied_hosts_keep_their_imeta_order() {
 fn hunger_drops_a_failing_host_behind_an_unknown_mirror() {
     let mut stats = HostStats::new();
     stats.record_failure("flaky.example");
-    let candidates = urls(&["https://flaky.example/v.mp4", "https://mirror.example/v.mp4"]);
+    let candidates = urls(&[
+        "https://flaky.example/v.mp4",
+        "https://mirror.example/v.mp4",
+    ]);
 
     let ordered = stats.best_source(&candidates, Mode::Hunger);
 
-    let expected = urls(&["https://mirror.example/v.mp4", "https://flaky.example/v.mp4"]);
+    let expected = urls(&[
+        "https://mirror.example/v.mp4",
+        "https://flaky.example/v.mp4",
+    ]);
     assert_eq!(ordered, expected);
 }
 
@@ -49,7 +55,10 @@ fn a_failing_host_sinks_behind_a_healthy_mirror_in_every_mode() {
     stats.record_failure("flaky.example");
     stats.record_transfer("steady.example", 300_000, Duration::from_secs(1));
     stats.record_success("steady.example");
-    let candidates = urls(&["https://flaky.example/v.mp4", "https://steady.example/v.mp4"]);
+    let candidates = urls(&[
+        "https://flaky.example/v.mp4",
+        "https://steady.example/v.mp4",
+    ]);
 
     for mode in [Mode::Comfort, Mode::Hunger] {
         let ordered = stats.best_source(&candidates, mode);
@@ -69,8 +78,14 @@ fn unparseable_urls_sink_to_the_end() {
 
 #[test]
 fn host_of_extracts_the_lowercased_authority() {
-    assert_eq!(host_of("https://CDN.Example:8443/v.mp4?x=1"), Some("cdn.example:8443".to_owned()));
-    assert_eq!(host_of("https://user@cdn.example/v.mp4"), Some("cdn.example".to_owned()));
+    assert_eq!(
+        host_of("https://CDN.Example:8443/v.mp4?x=1"),
+        Some("cdn.example:8443".to_owned())
+    );
+    assert_eq!(
+        host_of("https://user@cdn.example/v.mp4"),
+        Some("cdn.example".to_owned())
+    );
     assert_eq!(host_of("no-scheme/v.mp4"), None);
     assert_eq!(host_of("https:///v.mp4"), None);
 }

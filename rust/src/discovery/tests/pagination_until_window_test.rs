@@ -1,7 +1,5 @@
-//! Older pages set the inclusive `until` cutoff on every query, mirroring
-//! Dart's olderThan handling (lib/platform/nostr/video_discovery_queries.dart
-//! `_build`: until = olderThan in unix seconds; NIP-01 `until` matches
-//! `created_at <= until`, exactly like NostrEventQuery `_matchesUntil`).
+//! Older pages set the inclusive `until` cutoff on every query; NIP-01
+//! matches events whose `created_at` is at or below that boundary.
 
 use nostr_sdk::Timestamp;
 use serde_json::json;

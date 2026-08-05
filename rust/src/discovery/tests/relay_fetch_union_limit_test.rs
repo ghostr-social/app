@@ -2,9 +2,8 @@
 //! filter. nostr-sdk collects into `Events::new(&filters)`, a set capped
 //! at the single filter's `limit` (OverCapacityPolicy::Last), so the
 //! limit bounds the *union* across relays and the oldest events fall out.
-//! ndk has no such cap: StreamResponseCleaner only dedupes by id, so its
-//! union is limit-per-relay (lib/platform/nostr/ndk_nostr_video_event_query.dart
-//! → ndk requests.query).
+//! The engine instead drains the relay stream so the filter limit applies
+//! independently to each relay before the results are merged.
 
 use nostr_sdk::prelude::*;
 

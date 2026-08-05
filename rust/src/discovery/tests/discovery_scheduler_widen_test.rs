@@ -17,7 +17,10 @@ async fn hunger_widens_an_exhausted_feed_once() {
     harness.gate.add_permits(1);
     next_outcome(&mut harness.outcomes).await;
 
-    harness.modes.send(Mode::Hunger).expect("scheduler subscribed");
+    harness
+        .modes
+        .send(Mode::Hunger)
+        .expect("scheduler subscribed");
 
     let widened = next_started(&mut harness.started).await;
     assert_eq!(widened.priority, RetrievalPriority::Background);
@@ -27,7 +30,13 @@ async fn hunger_widens_an_exhausted_feed_once() {
 
     harness.gate.add_permits(1);
     next_outcome(&mut harness.outcomes).await;
-    harness.modes.send(Mode::Comfort).expect("scheduler subscribed");
-    harness.modes.send(Mode::Hunger).expect("scheduler subscribed");
+    harness
+        .modes
+        .send(Mode::Comfort)
+        .expect("scheduler subscribed");
+    harness
+        .modes
+        .send(Mode::Hunger)
+        .expect("scheduler subscribed");
     no_start(&mut harness.started).await;
 }

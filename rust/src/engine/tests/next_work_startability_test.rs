@@ -9,9 +9,10 @@ const MIB: u64 = 1024 * 1024;
 fn bench() -> WorkBench {
     let mut bench = WorkBench::new();
     for post in ["a", "b"] {
-        bench
-            .catalog
-            .upsert(PostId::new(post), progressive_meta(Some(2_000_000), Some(4_000)));
+        bench.catalog.upsert(
+            PostId::new(post),
+            progressive_meta(Some(2_000_000), Some(4_000)),
+        );
     }
     bench.focus = focus_at(&["a", "b"], 0, 0);
     bench
@@ -25,17 +26,16 @@ fn hunger_orders_head_chunks_current_first_then_ahead() {
         .iter()
         .map(|request| (request.chunk.post.as_str(), request.chunk.range.start))
         .collect();
-    assert_eq!(
-        chunks,
-        vec![("a", 0), ("a", MIB), ("b", 0), ("b", MIB)]
-    );
+    assert_eq!(chunks, vec![("a", 0), ("a", MIB), ("b", 0), ("b", MIB)]);
 }
 
 #[test]
 fn all_head_work_below_target_is_startability_tier() {
     let requests = bench().run();
 
-    assert!(requests.iter().all(|request| request.tier == Tier::T2Startability));
+    assert!(requests
+        .iter()
+        .all(|request| request.tier == Tier::T2Startability));
 }
 
 #[test]

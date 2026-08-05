@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/features/social/domain/signed_nostr_event_json.dart';
 import 'package:ghostr/platform/nostr/signed_nostr_event_json.dart';
 import 'package:ndk/ndk.dart';
 
@@ -19,22 +20,25 @@ void main() {
       () => encodeSignedNostrEvent(unsigned),
       throwsA(isA<FormatException>()),
     );
-    expect(() => decodeSignedNostrEvent('[]'), throwsFormatException);
-    expect(() => decodeSignedNostrEvent('{"id":7}'), throwsFormatException);
+    expect(() => SignedNostrEventJson.parse('[]'), throwsFormatException);
     expect(
-      () => decodeSignedNostrEvent(_payload('"created_at":"now"')),
+      () => SignedNostrEventJson.parse('{"id":7}'),
       throwsFormatException,
     );
     expect(
-      () => decodeSignedNostrEvent(_payload('"tags":{}')),
+      () => SignedNostrEventJson.parse(_payload('"created_at":"now"')),
       throwsFormatException,
     );
     expect(
-      () => decodeSignedNostrEvent(_payload('"tags":["p"]')),
+      () => SignedNostrEventJson.parse(_payload('"tags":{}')),
       throwsFormatException,
     );
     expect(
-      () => decodeSignedNostrEvent(_payload('"tags":[[1]]')),
+      () => SignedNostrEventJson.parse(_payload('"tags":["p"]')),
+      throwsFormatException,
+    );
+    expect(
+      () => SignedNostrEventJson.parse(_payload('"tags":[[1]]')),
       throwsFormatException,
     );
   });

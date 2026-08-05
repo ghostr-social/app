@@ -23,7 +23,7 @@ void main() {
 
     expect(port.openedSpecs, hasLength(rustFeedLiveLimit + 1));
     expect(
-      port.closedFeedIds,
+      port.closedFeedIds.map((id) => id.value),
       ['1'],
       reason: 'the least recently pulled feed is the one to drop',
     );
@@ -45,6 +45,6 @@ void main() {
     }
     await source.loadRemoteFeed(searchQuery: 'overflow');
 
-    expect(port.closedFeedIds, isNot(contains('1')));
+    expect(port.closedFeedIds.map((id) => id.value), isNot(contains('1')));
   });
 }

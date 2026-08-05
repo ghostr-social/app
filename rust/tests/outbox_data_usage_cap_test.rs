@@ -81,6 +81,10 @@ fn caps_the_follows_discovery_relays_at_each_level() {
     ] {
         let relays = directory.discovery_relays(max_outbox_relays(level));
 
-        assert_eq!(relays.len(), max_outbox_relays(level) + 1, "cap for {level:?}");
+        assert_eq!(
+            relays.len(),
+            max_outbox_relays(level) + 1,
+            "cap for {level:?}"
+        );
     }
 }

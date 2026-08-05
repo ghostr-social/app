@@ -23,8 +23,7 @@ class TrendingHashtagsUnavailable extends TrendingHashtagsState {
 /// Discovery garnish for the search screen: failures stay silent and the
 /// section simply hides when nothing is trending.
 class TrendingHashtagsCubit extends DisposalSafeCubit<TrendingHashtagsState> {
-  TrendingHashtagsCubit(this._source)
-      : super(const TrendingHashtagsLoading());
+  TrendingHashtagsCubit(this._source) : super(const TrendingHashtagsLoading());
 
   final TrendingHashtagsSource _source;
 

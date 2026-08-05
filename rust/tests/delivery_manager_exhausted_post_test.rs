@@ -5,9 +5,10 @@
 mod support;
 
 use std::time::Duration;
-use support::delivery::{start_harness, DeliveryOptions};
+use support::delivery::start_harness;
 use support::delivery_items::{focus_now, sized_item};
 use support::delivery_media::{hit_log, hits, media_body, serve_recording, serve_rejecting};
+use support::delivery_options::DeliveryOptions;
 use support::delivery_wait::wait_for_ranges;
 use tokio::time::Instant;
 
@@ -43,12 +44,19 @@ async fn delivery_manager_stops_retrying_a_post_with_no_working_source() {
     ));
     wait_for_ranges(&harness.store, "bb22", &[(0, 16)]).await;
 
-    assert_eq!(attempts(&log), settled, "a terminal post must stay terminal");
+    assert_eq!(
+        attempts(&log),
+        settled,
+        "a terminal post must stay terminal"
+    );
     std::fs::remove_dir_all(&harness.root).ok();
 }
 
 fn attempts(log: &support::delivery_media::HitLog) -> usize {
-    hits(log).iter().filter(|hit| hit.starts_with("broken:")).count()
+    hits(log)
+        .iter()
+        .filter(|hit| hit.starts_with("broken:"))
+        .count()
 }
 
 async fn wait_for(what: &str, ready: impl Fn() -> bool) {

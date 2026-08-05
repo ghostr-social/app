@@ -21,8 +21,7 @@ List<FfiFeedPost> _posts(int count) {
 void main() {
   // Rows alone never mean "done": the page is complete when Rust says
   // the plan settled (FfiFeedStage in rust/src/api/feed_types.rs).
-  test('waits for the settled snapshot instead of the first one with rows',
-      () {
+  test('waits for the settled snapshot instead of the first one with rows', () {
     fakeAsync((async) {
       final port = TimedRustFeedPort([
         (

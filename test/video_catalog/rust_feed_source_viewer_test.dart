@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_remote_source.dart';
+import 'package:ghostr/src/rust/api/feed_types.dart';
 
 import '../support/fake_rust_feed_port.dart';
 import '../support/nostr_test_values.dart';
@@ -22,7 +23,7 @@ void main() {
     final posts = await source.loadRemoteFeed();
 
     expect(posts, hasLength(1));
-    expect(port.openedSpecs.single.kind, 'main');
+    expect(port.openedSpecs.single.kind, FfiFeedKind.main);
     expect(port.openedSpecs.single.viewerPubkey, testViewerPublicKey);
   });
 }

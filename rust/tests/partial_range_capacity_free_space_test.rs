@@ -19,7 +19,10 @@ async fn partial_range_effective_capacity_follows_free_space() {
     assert_eq!(store.effective_capacity().await, 0, "below the reserve");
 
     fixture.space.set(4_000);
-    store.write_range("clip", 0, &[7; 500]).await.expect("write");
+    store
+        .write_range("clip", 0, &[7; 500])
+        .await
+        .expect("write");
     fixture.space.set(3_500); // the file system really lost those bytes
     assert_eq!(
         store.effective_capacity().await,
@@ -33,7 +36,10 @@ async fn partial_range_effective_capacity_follows_free_space() {
         .write_range("clip", 500, &[7; 500])
         .await
         .expect_err("write past the cap");
-    assert!(refused.to_string().contains("space"), "unhelpful: {refused}");
+    assert!(
+        refused.to_string().contains("space"),
+        "unhelpful: {refused}"
+    );
 
     fixture.space.set(3_500);
     store

@@ -15,10 +15,12 @@ void main() {
     final cubit = FeedCubit(FeedDependencies(
       feed: repository,
       engagement: repository,
-      watchTracker: WatchHistoryTracker(
-        history: history,
-        settings: FakeAppSettingsRepository(AppSettings.defaults()),
-        failureReporter: RecordingFailureReporter(),
+      optional: FeedOptionalDependencies(
+        watchTracker: WatchHistoryTracker(
+          history: history,
+          settings: FakeAppSettingsRepository(AppSettings.defaults()),
+          failureReporter: RecordingFailureReporter(),
+        ),
       ),
     ));
     addTearDown(cubit.close);

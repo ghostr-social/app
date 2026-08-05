@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ghostr/core/work/retrieval_scheduler.dart';
 import 'package:ghostr/features/video_catalog/data/recent_videos_trending_hashtags.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/remote_video_source.dart';
@@ -14,7 +13,6 @@ void main() {
     final source = _CountingSource();
     final trending = RecentVideosTrendingHashtags(
       source,
-      RetrievalScheduler(maxConcurrent: 1),
       clock: () => now,
     );
 
@@ -39,6 +37,8 @@ class _CountingSource implements RemoteVideoSource {
     DateTime? olderThan,
   }) async {
     calls += 1;
-    return [samplePost(hashtags: const ['dance'])];
+    return [
+      samplePost(hashtags: const ['dance'])
+    ];
   }
 }

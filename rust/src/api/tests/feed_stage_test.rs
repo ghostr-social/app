@@ -1,8 +1,8 @@
 //! Every snapshot says how far its page got, so Dart stops guessing
 //! completeness from the row count: a page in flight is `Loading`, a
 //! resolved plan is `Settled`, and a failed primary query publishes a
-//! revision of its own so the adapter can raise the same failure ndk
-//! raises (ndk_nostr_video_event_query.dart) instead of serving empty.
+//! revision of its own so the adapter raises a failure instead of
+//! treating partial rows as an empty feed.
 
 use crate::api::feed_runtime::{lock, SharedFeedState};
 use crate::api::feed_state::FeedState;
@@ -28,7 +28,12 @@ async fn a_page_in_flight_streams_as_loading_and_then_settles() {
     let open = dispatch.expect("main feeds dispatch a first page");
     let revisions = lock(&state).subscribe(feed).expect("open feeds subscribe");
     let (sender, mut updates) = mpsc::unbounded_channel();
-    tokio::spawn(watch_feed(ChannelOut(sender), state.clone(), feed, revisions));
+    tokio::spawn(watch_feed(
+        ChannelOut(sender),
+        state.clone(),
+        feed,
+        revisions,
+    ));
 
     let baseline = next(&mut updates).await;
     lock(&state).apply(&open.context, Ok(vec![video_note(&keys, "clip", 40)]));
@@ -46,10 +51,18 @@ async fn a_failed_first_page_publishes_a_failed_revision() {
     let open = dispatch.expect("main feeds dispatch a first page");
     let revisions = lock(&state).subscribe(feed).expect("open feeds subscribe");
     let (sender, mut updates) = mpsc::unbounded_channel();
-    tokio::spawn(watch_feed(ChannelOut(sender), state.clone(), feed, revisions));
+    tokio::spawn(watch_feed(
+        ChannelOut(sender),
+        state.clone(),
+        feed,
+        revisions,
+    ));
 
     let baseline = next(&mut updates).await;
-    lock(&state).apply(&open.context, Err(PlanFailure::new("relay down".to_owned())));
+    lock(&state).apply(
+        &open.context,
+        Err(PlanFailure::new("relay down".to_owned())),
+    );
     let failed = next(&mut updates).await;
 
     assert_eq!(failed.stage, FfiFeedStage::Failed);
@@ -64,7 +77,12 @@ async fn a_feed_that_dispatches_nothing_is_settled_at_once() {
     let (feed, dispatch) = lock(&state).open(FeedSpec::Search("   ".to_owned()));
     let revisions = lock(&state).subscribe(feed).expect("open feeds subscribe");
     let (sender, mut updates) = mpsc::unbounded_channel();
-    tokio::spawn(watch_feed(ChannelOut(sender), state.clone(), feed, revisions));
+    tokio::spawn(watch_feed(
+        ChannelOut(sender),
+        state.clone(),
+        feed,
+        revisions,
+    ));
 
     assert!(dispatch.is_none());
     assert_eq!(next(&mut updates).await.stage, FfiFeedStage::Settled);

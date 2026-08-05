@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:ghostr/features/video_catalog/data/rust_feed_identity.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_page_reader.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_port.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_update_queue.dart';
@@ -8,15 +9,14 @@ import 'package:ghostr/features/video_catalog/data/rust_feed_update_queue.dart';
 /// One Rust feed held open across pulls (plan §5.3). The engine keeps
 /// filing pages into an open feed — the scheduler prefetches older
 /// pages and widens the active query — so its newest snapshot is
-/// everything discovery gathered this session, the way ndk answers
-/// from a session-lifetime cache merged into its response stream.
+/// everything discovery gathered this session.
 /// A returning pull reads that snapshot; only a feed that never
 /// settled a page waits for relays.
 final class RustFeedSession {
   factory RustFeedSession({
     required RustFeedPort port,
-    required String feedId,
-    required String specKey,
+    required RustFeedId feedId,
+    required RustFeedSpecKey specKey,
     required Duration deadline,
   }) {
     final updates = RustFeedUpdateQueue(port.feedUpdates(feedId));
@@ -36,7 +36,7 @@ final class RustFeedSession {
 
   /// The spec this feed was opened for; two pulls that name it share
   /// this session.
-  String get specKey => _link.specKey;
+  RustFeedSpecKey get specKey => _link.specKey;
 
   /// Whether the snapshot stream is still alive. A finished one means
   /// Rust ended the feed, or its watcher died: reopen instead of
@@ -114,6 +114,6 @@ final class RustFeedSessionLink {
   });
 
   final RustFeedPort port;
-  final String feedId;
-  final String specKey;
+  final RustFeedId feedId;
+  final RustFeedSpecKey specKey;
 }

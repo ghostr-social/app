@@ -60,10 +60,11 @@ extension _NdkNostrSocialMutations on NdkNostrSocial {
       }
       return _copyContactList(accepted);
     }
-    final remote = await _ndk.follows.getContactList(
-      publicKey,
-      forceRefresh: true,
-    );
+    final key = _SocialRecordKey.parse(ContactList.kKind, publicKey);
+    final records = await _transport.events.query(_socialQuery(key));
+    final record = _newestSocialRecord(records, key);
+    final remote =
+        record == null ? null : ContactList.fromEvent(_localEvent(record));
     final newest = _newestContact(accepted, remote);
     return newest == null
         ? ContactList(pubKey: publicKey, contacts: <String>[])
@@ -73,17 +74,16 @@ extension _NdkNostrSocialMutations on NdkNostrSocial {
   Future<Nip51List> _muteBaseline(String publicKey) async {
     final accepted = _state.muteFloors[publicKey];
     if (!_isActiveAccount(publicKey)) return _acceptedMute(publicKey, accepted);
-    final cached = await _ndk.lists.getSingleNip51List(Nip51List.kMute);
+    final key = _SocialRecordKey.parse(Nip51List.kMute, publicKey);
+    final records = await _transport.events.query(_socialQuery(key));
     if (!_isActiveAccount(publicKey)) return _acceptedMute(publicKey, accepted);
-    final refreshed = await _refreshMute(publicKey);
+    final record = _newestSocialRecord(records, key);
+    final remote = record == null
+        ? null
+        : await Nip51List.fromEvent(_localEvent(record), _signer);
     if (!_isActiveAccount(publicKey)) return _acceptedMute(publicKey, accepted);
-    final newest = _newestMute(_newestMute(accepted, cached), refreshed);
+    final newest = _newestMute(accepted, remote);
     return newest == null ? _emptyMute(publicKey) : _copyNip51List(newest);
-  }
-
-  Future<Nip51List?> _refreshMute(String publicKey) {
-    if (!_isActiveAccount(publicKey)) return Future<Nip51List?>.value();
-    return _ndk.lists.getSingleNip51List(Nip51List.kMute, forceRefresh: true);
   }
 
   Nip51List _acceptedMute(String publicKey, Nip51List? accepted) {
@@ -134,7 +134,7 @@ extension _NdkNostrSocialMutations on NdkNostrSocial {
   /// transport. The accepted event returns for the local caches.
   Future<Nip01Event> _broadcast(Nip01Event event) async {
     final signed = await _signer!.sign(event);
-    await _broadcastPort.broadcast(encodeSignedNostrEvent(signed));
+    await _transport.broadcast.broadcast(encodeSignedNostrEvent(signed));
     return signed;
   }
 

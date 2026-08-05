@@ -1,6 +1,6 @@
-//! A plain feed request issues the four Dart query shapes in order:
+//! A plain feed request issues the four canonical query shapes in order:
 //! dedicated video kinds, a kind-1 note window, the mp4 note hunt, and a
-//! NIP-94 file query (lib/platform/nostr/video_discovery_queries.dart).
+//! NIP-94 file query.
 
 use serde_json::json;
 
@@ -48,7 +48,7 @@ fn file_filter_asks_kind_1063_scoped_to_video_mimes() {
 
     assert_eq!(json["kinds"], json!([1063]));
     assert_eq!(json["limit"], json!(200));
-    // nostr_sdk stores tag values as an ordered set; same members as Dart.
+    // nostr_sdk stores tag values as an ordered set.
     assert_eq!(
         json["#m"],
         json!([

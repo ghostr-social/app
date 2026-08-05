@@ -123,7 +123,8 @@ class SearchResultsView extends StatelessWidget {
     return SliverList.separated(
       itemCount: results.videos.length,
       separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-      itemBuilder: (context, index) => _videoTile(context, results.videos[index]),
+      itemBuilder: (context, index) =>
+          _videoTile(context, results.videos[index]),
     );
   }
 

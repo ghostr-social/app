@@ -1,8 +1,6 @@
 //! The membership fix. Every query files what it fetched, so a repeat
 //! of the same query answers with the rows the session already holds
-//! plus whatever the relays added — ndk's cache UNION network, which is
-//! why ndk served rows the Rust feed did not on 56 of 60 divergence
-//! records in the third device pass.
+//! plus whatever the relays added.
 
 use crate::discovery::tests::event_cache_support::{cache, note, notes, timestamps};
 

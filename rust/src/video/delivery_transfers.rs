@@ -4,9 +4,10 @@
 //! owned instance, keeping the statistics single-owner and lock-free.
 
 use crate::engine::host_stats::HostStats;
-use crate::engine::{ChunkId, PostId};
+use crate::engine::PostId;
 use crate::video::chunk_cancel::{cancel_pair, CancelHandle};
 use crate::video::chunk_downloader::{download_chunk, ChunkResult, ChunkSink, ChunkSpec};
+use crate::video::delivery_inflight::ChunkAttempt;
 use crate::video::media_probe::{probe, ProbeResult};
 use crate::video::outbound_media_client::MediaHttpClient;
 use crate::video::partial_range_store::PartialRangeStore;
@@ -24,7 +25,7 @@ pub(crate) enum InternalEvent {
 }
 
 pub(crate) struct ChunkDone {
-    pub chunk: ChunkId,
+    pub attempt: ChunkAttempt,
     pub url: String,
     pub elapsed: Duration,
     pub outcome: anyhow::Result<ChunkResult>,
@@ -46,24 +47,28 @@ pub(crate) struct TransferContext {
 }
 
 /// Starts one granted chunk transfer; the returned handle cancels it.
-pub(crate) fn spawn_chunk(ctx: TransferContext, chunk: ChunkId, url: String) -> CancelHandle {
+pub(crate) fn spawn_chunk(
+    ctx: TransferContext,
+    attempt: ChunkAttempt,
+    url: String,
+) -> CancelHandle {
     let (handle, token) = cancel_pair();
     tokio::spawn(async move {
         let started = Instant::now();
         let spec = ChunkSpec {
             client: &ctx.client,
             url: &url,
-            range: chunk.range,
+            range: attempt.chunk.range,
             timeouts: ctx.timeouts,
         };
         let sink = ChunkSink {
             store: &ctx.store,
-            key: chunk.post.as_str(),
+            key: attempt.chunk.post.as_str(),
         };
         let mut scratch = HostStats::new();
         let outcome = download_chunk(&spec, &sink, &mut scratch, &token).await;
         let done = ChunkDone {
-            chunk,
+            attempt,
             url,
             elapsed: started.elapsed(),
             outcome,

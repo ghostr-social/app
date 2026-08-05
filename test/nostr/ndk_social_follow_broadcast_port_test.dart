@@ -14,12 +14,6 @@ void main() {
   test('sends a follow list through the transport as signed NIP-01 JSON',
       () async {
     final harness = SocialBroadcastHarness();
-    when(() => harness.follows.getContactList(
-          testViewerPublicKey,
-          forceRefresh: true,
-        )).thenAnswer((_) async {
-      return ContactList(pubKey: testViewerPublicKey, contacts: <String>[]);
-    });
     final social = harness.build();
 
     final followed = await social.toggleFollow(

@@ -21,7 +21,6 @@ import 'package:ghostr/platform/media/image_picker_capabilities.dart';
 import 'package:ghostr/platform/media/image_picker_media_picker.dart';
 import 'package:ghostr/platform/storage/secure_secret_store.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:ndk/ndk.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 export 'production_nostr_services.dart';
@@ -33,12 +32,9 @@ typedef ProductionNostrServicesBuilder = ProductionNostrServices Function(
 typedef ProductionVideoDeliveryBuilder = Future<ProductionVideoDelivery>
     Function(AppSettings settings, ProductionNostrServices nostr);
 typedef ProductionVideoEnvironmentBuilder = ProductionVideoDeliveryEnvironment
-    Function(Ndk ndk, AppSettings settings, RustFeedViewer viewer);
+    Function(RustFeedViewer viewer);
 
-/// Reads the signed-in account on demand, reporting a signed-out app as
-/// a null viewer: the event client only says "no account" by throwing
-/// (ndk_nostr_event_client.dart), and the graph this feeds is composed
-/// once, before any session is restored.
+/// Reads the signed-in account on demand. A missing account is a null viewer.
 RustFeedViewer signedInViewer(NostrEventClient client) {
   return () {
     try {
@@ -66,11 +62,7 @@ class ProductionDependenciesEnvironment {
       videoDeliveryBuilder: (settings, nostr) {
         return buildProductionVideoDelivery(
           settings,
-          videoEnvironmentBuilder(
-            nostr.ndk,
-            settings,
-            signedInViewer(nostr.eventClient),
-          ),
+          videoEnvironmentBuilder(signedInViewer(nostr.eventClient)),
         );
       },
     );
@@ -146,4 +138,3 @@ AppDependencies composeProductionDependencies(
     failureReporter: const DeveloperFailureReporter(),
   );
 }
-

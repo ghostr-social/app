@@ -2,9 +2,8 @@ use nostr_sdk::{EventBuilder, Keys, Kind, Tag};
 use rust_lib_ghostr::video::event_identity::canonical_native_videos;
 
 const MAX_NATIVE_TEXT_CHARACTERS: usize = 4_096;
-/// Mirrors `MAX_NATIVE_URL_BYTES` (rust/src/video/native_text.rs): the
-/// bound is Rust-side hardening with no Dart equivalent, so it sits far
-/// past any real signed CDN link and only stops absurd input.
+/// Mirrors `MAX_NATIVE_URL_BYTES` in the engine. The bound sits far past
+/// ordinary signed CDN links and only stops unreasonable input.
 const MAX_NATIVE_URL_BYTES: usize = 8_192;
 
 #[test]

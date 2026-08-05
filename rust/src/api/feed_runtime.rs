@@ -4,22 +4,20 @@
 //! `EngineHandles` by `runtime_registry`.
 
 use crate::api::feed_decisions::LoadMoreAction;
+use crate::api::feed_outcomes::file_lists_for;
 use crate::api::feed_state::FeedState;
-use crate::discovery::discovery_scheduler::{
-    start_discovery_scheduler, DiscoveryHandle, DiscoverySchedulerConfig, RetrievalOutcome,
-};
+use crate::discovery::discovery_scheduler::{DiscoveryHandle, RetrievalOutcome};
 use crate::discovery::feed_spec::FeedSpec;
 use crate::discovery::feed_store::FeedId;
 use crate::discovery::outbox_bootstrap::OutboxBootstrap;
-use crate::discovery::outbox_directory::OutboxDirectory;
 use crate::discovery::relay_plan_executor::{RelayPlanExecutor, SharedOutboxDirectory};
-use crate::discovery::search_queries::SEARCH_RELAY_URLS;
+use crate::discovery::relay_pool_owner::RelayPoolOwner;
 use crate::engine::inventory_controller::Mode;
 use crate::engine::DataUsageLevel;
 use flutter_rust_bridge::frb;
-use nostr_sdk::{Client, Event, Timestamp};
+use nostr_sdk::{Client, Timestamp};
 use std::sync::{Arc, Mutex, MutexGuard};
-use tokio::sync::{mpsc, watch, RwLock};
+use tokio::sync::{mpsc, watch};
 
 /// The one `FeedState` behind a lock; stream watchers snapshot
 /// through it while the pump task and FFI calls mutate it.
@@ -31,6 +29,7 @@ pub(crate) struct DiscoveryBoot {
     pub client: Arc<Client>,
     pub modes: watch::Receiver<Mode>,
     pub bootstrap: Vec<String>,
+    pub search_relays: Vec<String>,
 }
 
 /// The FFI layer's grip on Rust discovery after a successful start.
@@ -40,61 +39,55 @@ pub(crate) struct DiscoveryRuntime {
     pub(crate) state: SharedFeedState,
     pub(crate) client: Arc<Client>,
     pub(crate) outbox: SharedOutboxDirectory,
-    executor: RelayPlanExecutor,
-    bootstrap: Arc<OutboxBootstrap>,
+    pub(crate) executor: RelayPlanExecutor,
+    pub(crate) bootstrap: Arc<OutboxBootstrap>,
+    pub(crate) relay_pool: Arc<RelayPoolOwner>,
 }
 
 impl DiscoveryRuntime {
     /// Starts the scheduler and the outcome pump. Discovery begins at
     /// the balanced data-usage level, like the delivery manager;
     /// `ffi_set_delivery_config` adjusts it live.
-    pub(crate) fn start(boot: DiscoveryBoot) -> Self {
-        let outbox: SharedOutboxDirectory =
-            Arc::new(RwLock::new(OutboxDirectory::new(boot.bootstrap)));
-        let executor = RelayPlanExecutor::new(
-            boot.client.clone(),
-            search_relays(),
-            outbox.clone(),
-            DataUsageLevel::Balanced,
-        );
-        let (sender, outcomes) = mpsc::unbounded_channel();
-        let handle = start_discovery_scheduler(DiscoverySchedulerConfig {
-            executor: Arc::new(executor.clone()),
-            level: DataUsageLevel::Balanced,
-            modes: boot.modes,
-            outcomes: sender.clone(),
-        });
-        let state: SharedFeedState = Arc::new(Mutex::new(FeedState::new()));
-        let bootstrap = Arc::new(OutboxBootstrap::new(
-            Arc::new(executor.clone()),
-            outbox.clone(),
-            sender,
-        ));
-        tokio::spawn(pump_outcomes(
-            OutcomeSinks { state: state.clone(), bootstrap: bootstrap.clone() },
-            outcomes,
-        ));
-        Self { handle, state, client: boot.client, outbox, executor, bootstrap }
+    pub(crate) async fn start(boot: DiscoveryBoot) -> Self {
+        crate::api::feed_runtime_start::start(boot).await
     }
 
     /// Opens the feed, starts its first-page queries, and returns the
     /// handle Dart uses for every later call. The page leaves first and
     /// the relay-list chase follows it: NIP-65 routing improves the
     /// pages after it, never delays this one.
-    pub(crate) fn open_feed(&self, spec: FeedSpec) -> String {
+    pub(crate) async fn open_feed(
+        &self,
+        spec: FeedSpec,
+        expected_account: Option<nostr_sdk::PublicKey>,
+        expected_session: crate::discovery::session_generation::SessionGeneration,
+    ) -> anyhow::Result<String> {
+        let _account_guard = self
+            .relay_pool
+            .begin_account_request(expected_account, expected_session)
+            .await?;
         let (feed, dispatch) = lock(&self.state).open(spec.clone());
         if let Some(open) = dispatch {
             self.handle.open_feed(open.context, open.request);
         }
         self.chase_relay_lists(&spec);
-        feed.0.to_string()
+        Ok(feed.0.to_string())
+    }
+
+    pub(crate) async fn feed_session(
+        &self,
+        expected_account: Option<nostr_sdk::PublicKey>,
+    ) -> anyhow::Result<crate::discovery::session_generation::SessionGeneration> {
+        self.relay_pool.account_session(expected_account).await
     }
 
     /// Whose NIP-65 lists this feed needs: the viewer's own lists (which
     /// bring their follows), or the creators a profile grid just opened.
     fn chase_relay_lists(&self, spec: &FeedSpec) {
         match spec {
-            FeedSpec::MainFeed { viewer: Some(viewer) } => self.bootstrap.viewer(*viewer),
+            FeedSpec::MainFeed {
+                viewer: Some(viewer),
+            } => self.bootstrap.viewer(*viewer),
             FeedSpec::Profile(creators) => self.bootstrap.authors(creators),
             _ => {}
         }
@@ -107,7 +100,10 @@ impl DiscoveryRuntime {
         match decision.action {
             LoadMoreAction::None => {}
             LoadMoreAction::Reopen(open) => self.handle.open_feed(open.context, open.request),
-            LoadMoreAction::Older { context, older_than } => {
+            LoadMoreAction::Older {
+                context,
+                older_than,
+            } => {
                 self.handle.load_more(context, Some(older_than));
             }
         }
@@ -155,28 +151,16 @@ pub(crate) async fn pump_outcomes(
 ) {
     while let Some(outcome) = outcomes.recv().await {
         if let Ok(events) = &outcome.result {
-            file_lists(&sinks, events).await;
+            file_lists_for(&sinks, outcome.context.session(), events).await;
         }
         lock(&sinks.state).apply(&outcome.context, outcome.result);
-    }
-}
-
-/// A replaced follow set re-routes the main feed and sends the
-/// bootstrap after the new follows' relay lists.
-async fn file_lists(sinks: &OutcomeSinks, events: &[Event]) {
-    sinks.bootstrap.ingest(events).await;
-    let follows = lock(&sinks.state).ingest_social(events);
-    if let Some(follows) = follows {
-        sinks.bootstrap.track_follows(follows).await;
     }
 }
 
 /// Locks the feed state, recovering from poisoning like the other
 /// api-side registries.
 pub(crate) fn lock(state: &SharedFeedState) -> MutexGuard<'_, FeedState> {
-    state.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
-}
-
-fn search_relays() -> Vec<String> {
-    SEARCH_RELAY_URLS.iter().map(|url| (*url).to_owned()).collect()
+    state
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }

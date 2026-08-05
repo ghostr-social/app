@@ -39,10 +39,16 @@ pub(crate) struct LoadMoreDecision {
 
 impl LoadMoreDecision {
     pub(crate) fn finished() -> Self {
-        Self { may_have_more: false, action: LoadMoreAction::None }
+        Self {
+            may_have_more: false,
+            action: LoadMoreAction::None,
+        }
     }
 
     pub(crate) fn wait() -> Self {
-        Self { may_have_more: true, action: LoadMoreAction::None }
+        Self {
+            may_have_more: true,
+            action: LoadMoreAction::None,
+        }
     }
 }

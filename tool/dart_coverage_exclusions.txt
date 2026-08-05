@@ -19,9 +19,10 @@ lib/features/session/domain/session_repository.dart
 lib/features/settings/domain/app_settings_repository.dart
 lib/features/settings/domain/data_usage_level.dart
 lib/features/social/domain/nostr_social_port.dart
+lib/features/social/domain/signed_event_broadcast_port.dart
 lib/features/social/domain/social_graph_repository.dart
 lib/features/social/domain/social_graph_store.dart
-lib/features/video_catalog/data/nostr_video_event_query_port.dart
+lib/features/video_catalog/data/rust_feed_port.dart
 lib/features/video_catalog/domain/creator_search_source.dart
 lib/features/video_catalog/domain/feed_kind.dart
 lib/features/video_catalog/domain/published_video_store.dart
@@ -30,11 +31,7 @@ lib/features/video_catalog/domain/video_post_reader.dart
 lib/features/video_catalog/domain/video_profile_repository.dart
 lib/features/video_catalog/domain/video_search_repository.dart
 lib/features/watch_history/domain/watch_history_repository.dart
-lib/features/video_inventory/domain/video_cache_priority.dart
-lib/features/video_inventory/domain/video_cache_store.dart
-lib/features/video_inventory/domain/video_file_downloader.dart
-lib/features/video_inventory/domain/video_inventory_port.dart
-lib/features/video_inventory/domain/media_url_policy.dart
+lib/features/video_inventory/domain/progressive_playback_gateway_port.dart
 lib/platform/media/cache_directory_provider.dart
 lib/shared/media/video_playback_port.dart
 lib/shared/theme/app_tokens.dart

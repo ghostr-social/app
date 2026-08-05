@@ -1,6 +1,5 @@
-//! Hashtag case-variant expansion for `#t` tag filters. Parity source:
-//! lib/features/video_catalog/domain/video_hashtags.dart — its variant
-//! set is a product decision this module must match exactly.
+//! Product hashtag normalization and case-variant expansion for exact
+//! Nostr `#t` tag filters.
 
 /// Lowercased, `#`-stripped form of a hashtag; `None` when nothing remains.
 pub fn normalize_hashtag(raw: &str) -> Option<String> {
@@ -28,8 +27,7 @@ pub fn hashtag_query_variants(raw: &str) -> Vec<String> {
     }
 }
 
-/// Expanded, deduplicated `#t` values for a whole hashtag set
-/// (video_discovery_queries.dart `_hashtagFilters`).
+/// Expanded, deduplicated `#t` values for a whole hashtag set.
 pub fn hashtag_filter_values(hashtags: &[String]) -> Vec<String> {
     let mut values = Vec::new();
     for hashtag in hashtags {
@@ -42,14 +40,13 @@ fn strip_hash(value: &str) -> &str {
     value.strip_prefix('#').unwrap_or(value)
 }
 
-/// Dart uppercases the first UTF-16 unit; uppercasing the first `char` is
-/// the sane equivalent for the tags this app meets.
+/// Uppercase the first Unicode scalar while preserving the rest.
 fn title_case(tag: &str) -> String {
-    let mut chars = tag.chars();
-    match chars.next() {
-        None => String::new(),
-        Some(first) => first.to_uppercase().chain(chars).collect(),
-    }
+    tag.chars()
+        .take(1)
+        .flat_map(char::to_uppercase)
+        .chain(tag.chars().skip(1))
+        .collect()
 }
 
 fn dedup_in_order(values: Vec<String>) -> Vec<String> {

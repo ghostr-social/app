@@ -5,10 +5,13 @@
 
 use crate::engine::host_stats::{host_of, HostStats};
 use crate::video::content_range;
+use crate::video::origin_content_type;
 use crate::video::outbound_media_client::MediaHttpClient;
 use crate::video::transfer_timeouts::TransferTimeouts;
 use anyhow::{Context, Result};
-use reqwest::header::{HeaderName, ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, RANGE};
+use reqwest::header::{
+    HeaderName, ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, RANGE,
+};
 use reqwest::{Method, Response, StatusCode};
 use std::future::Future;
 use std::time::Duration;
@@ -47,6 +50,7 @@ struct ProbeFacts {
 async fn describe(client: &MediaHttpClient, url: &str, wait: Duration) -> Result<ProbeFacts> {
     let head = send_head(client, url, wait).await?;
     if head.status().is_success() {
+        origin_content_type::require_admissible(head.headers())?;
         return Ok(facts_from_head(&head));
     }
     facts_from_ranged_get(send_ranged_get(client, url, wait).await?)
@@ -83,13 +87,17 @@ fn facts_from_head(response: &Response) -> ProbeFacts {
 
 fn facts_from_ranged_get(response: Response) -> Result<ProbeFacts> {
     if response.status() == StatusCode::PARTIAL_CONTENT {
+        origin_content_type::require_admissible(response.headers())?;
         return Ok(ProbeFacts {
             content_length: partial_total(&response),
             accept_ranges: true,
             content_type: header_text(&response, &CONTENT_TYPE),
         });
     }
-    let response = response.error_for_status().context("probe fallback rejected")?;
+    let response = response
+        .error_for_status()
+        .context("probe fallback rejected")?;
+    origin_content_type::require_admissible(response.headers())?;
     Ok(ProbeFacts {
         content_length: header_u64(&response, &CONTENT_LENGTH),
         accept_ranges: false,

@@ -1,6 +1,5 @@
 //! Focusing a context pulls its queued work ahead of everything else,
-//! even across priority classes — parity: `focus` reordering in
-//! lib/core/work/retrieval_scheduler.dart.
+//! even across priority classes.
 
 use super::scheduler_support::{context, next_started, request, start_scheduler};
 use crate::engine::DataUsageLevel;
@@ -18,7 +17,13 @@ async fn focused_context_overtakes_queued_interactive_work() {
     harness.handle.focus(context("discover"));
 
     harness.gate.add_permits(1);
-    assert_eq!(next_started(&mut harness.started).await.context, context("discover"));
+    assert_eq!(
+        next_started(&mut harness.started).await.context,
+        context("discover")
+    );
     harness.gate.add_permits(1);
-    assert_eq!(next_started(&mut harness.started).await.context, context("feed"));
+    assert_eq!(
+        next_started(&mut harness.started).await.context,
+        context("feed")
+    );
 }

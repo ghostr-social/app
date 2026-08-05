@@ -24,7 +24,9 @@ async fn a_stored_row_never_answers_a_filter_it_does_not_match() {
 #[tokio::test]
 async fn the_querys_own_limit_caps_what_the_pool_adds() {
     let cache = cache();
-    cache.union(&notes(), vec![note(100), note(200), note(300)]).await;
+    cache
+        .union(&notes(), vec![note(100), note(200), note(300)])
+        .await;
 
     let answered = cache.union(&notes().limit(2), Vec::new()).await;
 

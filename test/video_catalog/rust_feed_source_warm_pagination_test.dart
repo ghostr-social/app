@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/features/video_catalog/data/rust_feed_identity.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_remote_source.dart';
 
 import '../support/live_rust_feed_port.dart';
@@ -14,8 +15,7 @@ void main() {
   // Older pages the engine prefetched land in the same open feed, so a
   // swipe past the cursor is answered from what is already known —
   // only a cursor past everything the feed holds waits for relays.
-  test('answers an older page from rows the live feed already holds',
-      () async {
+  test('answers an older page from rows the live feed already holds', () async {
     final newest = rustFeedPost(eventId: testEventId, createdAt: 1754005000);
     final boundary = rustFeedPost(
       eventId: secondTestEventId,
@@ -34,7 +34,7 @@ void main() {
 
     await source.loadRemoteFeed(searchQuery: 'ghost');
     port.publish(
-      '1',
+      RustFeedId.parse('1'),
       rustFeedUpdate(revision: 2, posts: [newest, boundary, older]),
     );
     await pumpEventQueue();

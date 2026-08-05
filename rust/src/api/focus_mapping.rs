@@ -1,25 +1,17 @@
 //! Pure mapping from FFI payloads to engine types. No IO, no state —
 //! fully covered by the unit tests in `crate::api::tests`.
 
-use crate::api::delivery_types::FfiFocusItem;
-use crate::engine::{DataUsageLevel, DeliveryKind, PostId, VideoMeta};
+use crate::api::delivery_types::{FfiFocusItem, FfiMediaDelivery};
+use crate::engine::{DeliveryKind, PostId, VideoMeta};
 use crate::video::delivery_events::{DeliveryFocus, FocusItem};
 use anyhow::{bail, Result};
 
-pub(crate) fn parse_data_usage(raw: &str) -> Result<DataUsageLevel> {
-    match raw {
-        "conservative" => Ok(DataUsageLevel::Conservative),
-        "balanced" => Ok(DataUsageLevel::Balanced),
-        "aggressive" => Ok(DataUsageLevel::Aggressive),
-        other => bail!("unknown data usage level: {other}"),
-    }
-}
-
-pub(crate) fn parse_delivery_kind(raw: &str) -> Result<DeliveryKind> {
-    match raw {
-        "progressive" => Ok(DeliveryKind::Progressive),
-        "hls" => Ok(DeliveryKind::Hls),
-        other => bail!("unknown delivery kind: {other}"),
+impl From<FfiMediaDelivery> for DeliveryKind {
+    fn from(delivery: FfiMediaDelivery) -> Self {
+        match delivery {
+            FfiMediaDelivery::Progressive => Self::Progressive,
+            FfiMediaDelivery::Hls => Self::Hls,
+        }
     }
 }
 
@@ -43,7 +35,7 @@ pub(crate) fn focus_item(item: &FfiFocusItem) -> Result<FocusItem> {
 fn video_meta(item: &FfiFocusItem) -> Result<VideoMeta> {
     Ok(VideoMeta {
         urls: item.urls.clone(),
-        delivery: parse_delivery_kind(&item.delivery)?,
+        delivery: item.delivery.into(),
         sha256: item.sha256.clone(),
         size_bytes: item.size_bytes,
         duration_ms: item.duration_ms,

@@ -23,7 +23,10 @@ async fn pumped_outcomes_reach_the_feed_state() {
     let mut revisions = lock(&state).subscribe(feed).expect("open feeds subscribe");
 
     let (sender, outcomes) = mpsc::unbounded_channel();
-    let sinks = OutcomeSinks { state: state.clone(), bootstrap: test_bootstrap().0 };
+    let sinks = OutcomeSinks {
+        state: state.clone(),
+        bootstrap: test_bootstrap().0,
+    };
     let pump = tokio::spawn(pump_outcomes(sinks, outcomes));
     sender
         .send(RetrievalOutcome {

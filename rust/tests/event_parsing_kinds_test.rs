@@ -12,9 +12,8 @@ fn signed(kind: u16, content: &str, tags: Vec<Tag>) -> Event {
 
 #[test]
 fn event_parsing_accepts_the_video_discovery_query_kinds() {
-    // Kind set mirrors lib/platform/nostr/video_discovery_queries.dart:
-    // every NIP-71 kind, kind-1 notes carrying a video link (the recent
-    // widening), and NIP-94 kind-1063 file events.
+    // The contract admits every NIP-71 kind, kind-1 notes carrying a
+    // video link, and NIP-94 kind-1063 file events.
     let d_tag = Tag::parse(["d", "clip"]).expect("d tag");
     let accepted = [
         signed(1, &format!("note {LINK}"), vec![]),
@@ -50,12 +49,9 @@ fn event_parsing_rejects_kinds_outside_the_discovery_queries() {
             &format!("article {LINK}"),
             vec![Tag::parse(["d", "post"]).expect("d tag")],
         ),
-        // Addressable video without its `d` identifier is skipped, per
-        // nostr_video_event_mapper.dart `_identifier`.
+        // Addressable video without its `d` identifier is invalid.
         signed(34235, &format!("addressable {LINK}"), vec![]),
-        // The kind-1063 query filters `#m` to video mimes server-side
-        // (video_discovery_queries.dart), so a file event without one never
-        // reaches the Dart mapper.
+        // A kind-1063 file event must declare an accepted video mime.
         signed(
             1063,
             &format!("file {LINK}"),

@@ -16,7 +16,7 @@ void main() {
     final cubit = FeedCubit(FeedDependencies(
       feed: repository,
       engagement: repository,
-      social: repository,
+      optional: FeedOptionalDependencies(social: repository),
     ));
     addTearDown(cubit.close);
     await cubit.load();

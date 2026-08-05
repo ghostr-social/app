@@ -24,7 +24,12 @@ async fn snapshots_stream_from_baseline_to_close() {
     let revisions = lock(&state).subscribe(feed).expect("open feeds subscribe");
 
     let (sender, mut updates) = mpsc::unbounded_channel();
-    let watcher = tokio::spawn(watch_feed(ChannelOut(sender), state.clone(), feed, revisions));
+    let watcher = tokio::spawn(watch_feed(
+        ChannelOut(sender),
+        state.clone(),
+        feed,
+        revisions,
+    ));
 
     let baseline = next(&mut updates).await;
     assert_eq!(baseline.feed_id, format!("{}", feed.0));

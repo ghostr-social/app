@@ -1,12 +1,14 @@
 import 'dart:convert';
 
+import 'package:ghostr/features/social/domain/signed_nostr_event_json.dart';
 import 'package:ndk/ndk.dart';
 
 /// The canonical NIP-01 wire form of a signed event, the only payload a
 /// [SignedEventBroadcastPort] carries. Relay metadata that ndk keeps on
 /// the event (sources, signature verdicts) is not part of the wire form.
-String encodeSignedNostrEvent(Nip01Event event) {
-  return jsonEncode(_signedNostrEventPayload(event));
+SignedNostrEventJson encodeSignedNostrEvent(Nip01Event event) {
+  final json = jsonEncode(_signedNostrEventPayload(event));
+  return SignedNostrEventJson.parse(json);
 }
 
 /// The NIP-01 fields of [event], in the order the spec lists them.
@@ -28,8 +30,8 @@ Map<String, Object?> _signedNostrEventPayload(Nip01Event event) {
 
 /// Reads a signed event back, keeping the id and signature that were
 /// written rather than recomputing either.
-Nip01Event decodeSignedNostrEvent(String signedEventJson) {
-  final payload = jsonDecode(signedEventJson);
+Nip01Event decodeSignedNostrEvent(SignedNostrEventJson signedEventJson) {
+  final payload = jsonDecode(signedEventJson.value);
   if (payload is! Map<String, Object?>) {
     throw const FormatException('A signed Nostr event must be an object.');
   }

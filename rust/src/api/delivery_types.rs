@@ -1,5 +1,11 @@
-//! Data shapes of FFI contract v1 (plan §2). Additive changes only
-//! until phase 2 — the surface is frozen.
+//! Data shapes of the versioned FFI delivery contract.
+
+/// How the engine delivers one playable media item.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FfiMediaDelivery {
+    Progressive,
+    Hls,
+}
 
 /// One entry of the ordered focus window, including the current item.
 /// `post_id` doubles as the partial-store key and the gateway `?id=`
@@ -9,9 +15,9 @@ pub struct FfiFocusItem {
     pub post_id: String,
     /// Playback candidates in preference order (imeta url + fallbacks).
     pub urls: Vec<String>,
-    /// `"progressive"` or `"hls"`. HLS items ride in the window for
-    /// correct scroll distances but are never downloaded progressively.
-    pub delivery: String,
+    /// HLS items ride in the window for correct scroll distances but
+    /// are never downloaded progressively.
+    pub delivery: FfiMediaDelivery,
     pub sha256: Option<String>,
     pub size_bytes: Option<u64>,
     pub duration_ms: Option<u64>,
@@ -28,7 +34,7 @@ pub enum FfiDeliveryEventKind {
     Error,
 }
 
-/// One per-post delivery update streamed to Dart (plan §2 row 5).
+/// One per-post delivery update streamed to Dart.
 #[derive(Clone, Debug)]
 pub struct FfiDeliveryEvent {
     pub post_id: String,

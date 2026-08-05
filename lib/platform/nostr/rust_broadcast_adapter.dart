@@ -1,5 +1,6 @@
 import 'package:ghostr/core/errors/boundary_failure.dart';
 import 'package:ghostr/features/social/domain/signed_event_broadcast_port.dart';
+import 'package:ghostr/features/social/domain/signed_nostr_event_json.dart';
 import 'package:ghostr/src/rust/api/broadcast_control.dart' as engine;
 
 typedef RustEventBroadcast = Future<void> Function({
@@ -16,9 +17,9 @@ class RustBroadcastAdapter implements SignedEventBroadcastPort {
   final RustEventBroadcast _send;
 
   @override
-  Future<void> broadcast(String signedEventJson) async {
+  Future<void> broadcast(SignedNostrEventJson event) async {
     try {
-      await _send(signedEventJson: signedEventJson);
+      await _send(signedEventJson: event.value);
     } on Object catch (error, stackTrace) {
       // Callers only know relay rejection, so an engine or validation
       // error has to read as the same refused write.

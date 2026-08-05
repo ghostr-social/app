@@ -1,20 +1,24 @@
 //! Event-driven discovery scheduler: the one queue every relay
 //! retrieval flows through, with a bounded worker pool as the
-//! data-usage knob. Parity source: RetrievalScheduler in
-//! lib/core/work/retrieval_scheduler.dart, wired by
-//! lib/app/production_video_delivery.dart. Commands arrive over a
-//! channel and executed batches stream out — no polling loops.
+//! data-usage knob. Commands arrive over a channel and executed
+//! batches stream out — no polling loops.
 
 use crate::discovery::plan_executor::{PlanExecutor, PlanFailure};
 use crate::discovery::retrieval_queue::{FeedContext, RetrievalQueue};
 use crate::discovery::scheduler_feeds::FeedBook;
+use crate::discovery::scheduler_queries::{QueryBook, QueryResult};
 use crate::discovery::search_queries::QueryPlan;
 use crate::discovery::video_filters::DiscoveryRequest;
 use crate::engine::inventory_controller::Mode;
 use crate::engine::DataUsageLevel;
 use nostr_sdk::{Event, Timestamp};
+use std::collections::HashMap;
+use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
-use tokio::sync::{mpsc, watch};
+use tokio::sync::{mpsc, oneshot, watch};
+use tokio::task::AbortHandle;
+
+mod handle;
 
 /// Worker-pool cap per data-usage level; mirrors
 /// `maxConcurrentRequests` (2/4/6) in
@@ -28,7 +32,7 @@ pub fn max_concurrent_requests(level: DataUsageLevel) -> usize {
 }
 
 /// Control events the scheduler reacts to.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum DiscoveryCommand {
     /// Interactive feed/search/tag load; focuses its context.
     OpenFeed {
@@ -48,8 +52,16 @@ pub enum DiscoveryCommand {
         context: FeedContext,
         request: DiscoveryRequest,
     },
+    /// A generic read shares the queue but answers only its caller.
+    Query {
+        context: FeedContext,
+        plan: QueryPlan,
+        reply: oneshot::Sender<QueryResult>,
+    },
     /// Live data-usage knob change.
     SetDataUsage(DataUsageLevel),
+    /// Drops queued session work and every pending generic reply.
+    ResetSession { reply: oneshot::Sender<()> },
 }
 
 /// One executed retrieval, streamed to feed assembly.
@@ -64,28 +76,7 @@ pub struct RetrievalOutcome {
 #[derive(Clone, Debug)]
 pub struct DiscoveryHandle {
     sender: mpsc::UnboundedSender<DiscoveryCommand>,
-}
-
-impl DiscoveryHandle {
-    pub fn open_feed(&self, context: FeedContext, request: DiscoveryRequest) {
-        let _ = self.sender.send(DiscoveryCommand::OpenFeed { context, request });
-    }
-
-    pub fn load_more(&self, context: FeedContext, older_than: Option<Timestamp>) {
-        let _ = self.sender.send(DiscoveryCommand::LoadMore { context, older_than });
-    }
-
-    pub fn focus(&self, context: FeedContext) {
-        let _ = self.sender.send(DiscoveryCommand::Focus(context));
-    }
-
-    pub fn background(&self, context: FeedContext, request: DiscoveryRequest) {
-        let _ = self.sender.send(DiscoveryCommand::Background { context, request });
-    }
-
-    pub fn set_data_usage(&self, level: DataUsageLevel) {
-        let _ = self.sender.send(DiscoveryCommand::SetDataUsage(level));
-    }
+    query_sequence: Arc<AtomicU64>,
 }
 
 /// Everything the scheduler owns or reaches, as one typed object.
@@ -102,7 +93,10 @@ pub struct DiscoverySchedulerConfig {
 pub fn start_discovery_scheduler(config: DiscoverySchedulerConfig) -> DiscoveryHandle {
     let (sender, commands) = mpsc::unbounded_channel();
     tokio::spawn(run(SchedulerWorker::create(config, commands)));
-    DiscoveryHandle { sender }
+    DiscoveryHandle {
+        sender,
+        query_sequence: Arc::new(AtomicU64::new(0)),
+    }
 }
 
 async fn run(mut worker: SchedulerWorker) {
@@ -110,6 +104,7 @@ async fn run(mut worker: SchedulerWorker) {
 }
 
 pub(crate) struct FinishedRetrieval {
+    pub(crate) task_id: u64,
     pub(crate) context: FeedContext,
     pub(crate) result: Result<Vec<Event>, PlanFailure>,
 }
@@ -117,11 +112,14 @@ pub(crate) struct FinishedRetrieval {
 pub(crate) struct SchedulerWorker {
     pub(crate) queue: RetrievalQueue<QueryPlan>,
     pub(crate) feeds: FeedBook,
+    pub(crate) queries: QueryBook,
     pub(crate) executor: Arc<dyn PlanExecutor>,
     pub(crate) max_concurrent: usize,
     pub(crate) outcomes: mpsc::UnboundedSender<RetrievalOutcome>,
     pub(crate) finished_sender: mpsc::UnboundedSender<FinishedRetrieval>,
     pub(crate) finished: mpsc::UnboundedReceiver<FinishedRetrieval>,
+    pub(crate) tasks: HashMap<u64, AbortHandle>,
+    pub(crate) next_task_id: u64,
     pub(crate) commands: mpsc::UnboundedReceiver<DiscoveryCommand>,
     pub(crate) modes: watch::Receiver<Mode>,
     pub(crate) modes_live: bool,
@@ -136,11 +134,14 @@ impl SchedulerWorker {
         Self {
             queue: RetrievalQueue::new(),
             feeds: FeedBook::default(),
+            queries: QueryBook::default(),
             executor: config.executor,
             max_concurrent: max_concurrent_requests(config.level),
             outcomes: config.outcomes,
             finished_sender,
             finished,
+            tasks: HashMap::new(),
+            next_task_id: 0,
             commands,
             modes: config.modes,
             modes_live: true,

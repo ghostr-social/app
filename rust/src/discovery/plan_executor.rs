@@ -16,9 +16,8 @@ pub struct PlannedRetrieval {
     pub plan: QueryPlan,
 }
 
-/// Why a whole retrieval failed. Mirrors the Dart contract in
-/// ndk_nostr_video_event_query.dart: only the primary query's failure
-/// sinks a load; additive hiccups never surface.
+/// Why a whole retrieval failed. Only a primary query failure sinks a
+/// load; additive failures merely narrow its result set.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PlanFailure {
     pub message: String,

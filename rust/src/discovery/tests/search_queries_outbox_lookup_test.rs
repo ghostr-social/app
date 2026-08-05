@@ -1,6 +1,5 @@
 //! Outbox relays serve requests that carry no viewer term: the directory's
-//! discovery relays when unscoped, the authors' write relays when scoped
-//! (lib/platform/nostr/ndk_nostr_video_event_query.dart `_outboxRelays`).
+//! discovery relays when unscoped, and the authors' write relays when scoped.
 
 use crate::discovery::search_queries::{plan_discovery, OutboxLookup};
 use crate::discovery::tests::support::{author, AUTHOR_A};

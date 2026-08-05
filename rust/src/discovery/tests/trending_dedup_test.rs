@@ -1,6 +1,4 @@
-//! A hashtag repeated inside one post counts once — parity: the
-//! per-post `toSet()` in rankTrendingHashtags
-//! (lib/features/video_catalog/domain/trending_hashtags.dart).
+//! A hashtag repeated inside one post counts once.
 
 use super::trending_support::post_with_hashtags;
 use crate::discovery::trending::{rank_trending_hashtags, TRENDING_HASHTAG_LIMIT};

@@ -9,14 +9,16 @@ import 'package:ghostr/src/rust/api/feed_types.dart';
 /// pipeline's own worst case for one page.
 const rustDiscoveryQueryTimeout = Duration(seconds: 8);
 
-/// How long one request waits for a page to settle. A safety net for a
-/// stuck pipeline, never the normal exit path: it sits above
-/// [rustDiscoveryQueryTimeout] plus the scheduler's queue slack, so the
-/// adapter cannot answer before the only revision that carries the page.
-const rustFeedPageDeadline = Duration(seconds: 10);
+/// The additive kind-0 lookup that follows a page's video queries,
+/// mirrored from `FEED_QUERY_TIMEOUT`.
+const rustProfileEnrichmentQueryTimeout = Duration(seconds: 5);
 
-/// ndk parity: NdkNostrVideoEventQuery surfaces every transport problem
-/// as this one failure.
+/// How long one request waits for a page to settle. A safety net for a
+/// stuck pipeline, never the normal exit path: it sits above discovery
+/// plus sequential profile enrichment with scheduler slack.
+const rustFeedPageDeadline = Duration(seconds: 15);
+
+/// Shared user-facing failure for Rust feed transport errors.
 const rustFeedFailure = AppFailure('Could not load Nostr videos.');
 
 /// One snapshot claimed as a page: its rows and the revision they came
@@ -41,7 +43,8 @@ final class RustFeedPageReader {
   /// passes without a settled snapshot.
   Future<RustFeedPage> firstPage() async {
     const empty = <FfiFeedPost>[];
-    return await _settled(_anyRevision) ?? (revision: BigInt.zero, posts: empty);
+    return await _settled(_anyRevision) ??
+        (revision: BigInt.zero, posts: empty);
   }
 
   /// The page after [loaded]: the next revision to settle. Snapshots are
@@ -59,12 +62,20 @@ final class RustFeedPageReader {
     while (true) {
       final update = await _updates.next(_deadline);
       if (update == null) return null;
-      if (!accept(update)) continue;
-      if (update.stage == FfiFeedStage.failed) throw rustFeedFailure;
-      if (update.stage == FfiFeedStage.loading) continue;
-      return (revision: update.revision, posts: update.posts);
+      final page = _settledPage(update, accept);
+      if (page != null) return page;
     }
   }
 
   static bool _anyRevision(FfiFeedUpdate update) => true;
+}
+
+RustFeedPage? _settledPage(
+  FfiFeedUpdate update,
+  bool Function(FfiFeedUpdate) accept,
+) {
+  if (!accept(update)) return null;
+  if (update.stage == FfiFeedStage.failed) throw rustFeedFailure;
+  if (update.stage == FfiFeedStage.loading) return null;
+  return (revision: update.revision, posts: update.posts);
 }

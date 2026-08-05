@@ -26,7 +26,10 @@ async fn streams_readiness_once_the_head_bytes_land() {
     assert!(!first.startable);
 
     store.set_total_len("clip", 16).await.expect("total length");
-    store.write_range("clip", 0, &[7u8; 16]).await.expect("write");
+    store
+        .write_range("clip", 0, &[7u8; 16])
+        .await
+        .expect("write");
 
     let ready = wait_for_startable(&mut events).await;
     assert_eq!(ready.kind, FfiDeliveryEventKind::Readiness);

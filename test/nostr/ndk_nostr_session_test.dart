@@ -8,7 +8,7 @@ import 'package:ndk/ndk.dart';
 import '../support/ndk_mocks.dart';
 
 void main() {
-  test('activates and deactivates the imported private-key account', () {
+  test('activates and deactivates the imported private-key account', () async {
     const nsec =
         'nsec1vl029mgpspedva04g90vltkh6fvh240zqtv9k0t9af8935ke9laqsnlfe5';
     final identity = NostrIdentity.parse(
@@ -29,8 +29,8 @@ void main() {
     ).thenReturn(null);
     final session = NdkNostrSession(ndk);
 
-    session.activate(AuthSecret.parse(nsec), identity);
-    session.deactivate();
+    await session.activate(AuthSecret.parse(nsec), identity);
+    await session.deactivate();
 
     verify(accounts.logout).called(2);
     verify(

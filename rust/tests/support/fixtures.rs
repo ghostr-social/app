@@ -1,4 +1,3 @@
-use rust_lib_ghostr::video::event_identity::CanonicalNativeVideo;
 use rust_lib_ghostr::video::native_models::{
     NativeEventIdentity, NativeUserData, NativeVideo, NativeVideoCacheKey, NativeVideoDelivery,
     NativeVideoDownload,
@@ -52,15 +51,6 @@ pub fn event_identity() -> NativeEventIdentity {
 
 pub fn native_download(url: &str) -> NativeVideoDownload {
     NativeVideoDownload::new(video_id(), native_video(url), event_identity())
-}
-
-pub fn canonical_video(url: &str) -> CanonicalNativeVideo {
-    CanonicalNativeVideo {
-        inventory_id: video_id(),
-        coordinate: "event-id".to_owned(),
-        identity: event_identity(),
-        video: native_video(url),
-    }
 }
 
 pub fn temp_directory(prefix: &str) -> PathBuf {

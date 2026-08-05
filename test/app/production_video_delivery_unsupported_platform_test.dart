@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/app/production_video_delivery.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
@@ -9,8 +11,10 @@ import '../support/fake_remote_video_source.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('disables media startup when the platform has no player backend',
+  test('starts Rust but disables playback when no player backend exists',
       () async {
+    final root = await Directory.systemTemp.createTemp('ghostr-engine-only-');
+    addTearDown(() => root.delete(recursive: true));
     var directoryRequests = 0;
     var gatewayInitializations = 0;
     var gatewayStarts = 0;
@@ -18,32 +22,29 @@ void main() {
     final delivery = await buildProductionVideoDelivery(
       AppSettings.defaults(),
       ProductionVideoDeliveryEnvironment(
-        canonicalSource: canonical,
-        supportDirectoryProvider: () {
-          directoryRequests += 1;
-          throw StateError('filesystem must stay idle');
-        },
-        gateway: FfiVideoGateway(
-          initialize: () async {
-            gatewayInitializations += 1;
+        source: canonical,
+        adapters: ProductionVideoDeliveryAdapters(
+          supportDirectoryProvider: () async {
+            directoryRequests += 1;
+            return root;
           },
-          startEngine: ({
-            required String cacheDirectory,
-            required String relayUrls,
-            required String dataUsage,
-            required BigInt maxStorageBytes,
-          }) async {
-            gatewayStarts += 1;
-            return '127.0.0.1:3000';
-          },
+          gateway: FfiVideoGateway(
+            initialize: () async {
+              gatewayInitializations += 1;
+            },
+            startEngine: (_) async {
+              gatewayStarts += 1;
+              return '127.0.0.1:3000';
+            },
+          ),
         ),
         playbackCapabilities: VideoPlaybackCapabilities.none,
       ),
     );
 
-    expect(directoryRequests, 0);
-    expect(gatewayInitializations, 0);
-    expect(gatewayStarts, 0);
+    expect(directoryRequests, 1);
+    expect(gatewayInitializations, 1);
+    expect(gatewayStarts, 1);
     expect(
       delivery.remoteSource.loadRemoteFeed,
       throwsA(

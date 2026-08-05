@@ -1,5 +1,7 @@
 import 'dart:developer';
 
+import 'package:ghostr/core/nostr/nostr_event_identity.dart';
+import 'package:ghostr/features/video_catalog/data/rust_feed_identity.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_port.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_session.dart';
 import 'package:ghostr/src/rust/api/feed_types.dart';
@@ -25,21 +27,29 @@ final class RustFeedSessions {
   final Duration _deadline;
 
   /// Insertion order is recency: the least recently pulled feed first.
-  final Map<String, Future<RustFeedSession>> _live =
-      <String, Future<RustFeedSession>>{};
-  String? _viewer;
-  bool _adopted = false;
+  final Map<RustFeedSpecKey, Future<RustFeedSession>> _live =
+      <RustFeedSpecKey, Future<RustFeedSession>>{};
+  RustFeedAccountSession? _nativeSession;
+  int _generation = 0;
+  Future<void> _adoption = Future<void>.value();
 
   /// The live feed for [spec], opening one when this viewer has none.
-  Future<RustFeedSession> open(FfiFeedSpec spec, String? viewer) async {
-    await _adopt(viewer);
-    final key = _keyOf(spec);
-    final opening = _live.remove(key) ?? _opening(spec, key);
+  Future<RustFeedSession> open(
+    FfiFeedSpec spec,
+    NostrPublicKeyHex? viewer,
+  ) async {
+    final nativeSession = await _port.captureSession(viewer);
+    final generation = await _adopt(nativeSession);
+    final key = RustFeedSpecKey.fromSpec(spec);
+    final opening =
+        _live.remove(key) ?? _opening(spec, key, nativeSession, generation);
     _live[key] = opening;
     // Awaited before anything else runs: an open left unheard between
     // two microtasks reports its failure as an unhandled error.
     final session = await opening;
+    _ensureCurrent(generation);
     await _evictOverflow();
+    _ensureCurrent(generation);
     return session;
   }
 
@@ -73,26 +83,47 @@ final class RustFeedSessions {
   /// Follows, mutes and outbox routing belong to the signed-in account
   /// and colour every feed the engine assembles, not only the main
   /// one, so a changed identity drops all of them.
-  Future<void> _adopt(String? viewer) async {
-    if (_adopted && _viewer == viewer) return;
-    _adopted = true;
-    _viewer = viewer;
-    await closeAll();
+  Future<int> _adopt(RustFeedAccountSession nativeSession) async {
+    final currentSession = _nativeSession;
+    if (currentSession != null &&
+        nativeSession.generation.isBefore(currentSession.generation)) {
+      throw StateError('The Rust feed account session is stale.');
+    }
+    if (currentSession == null || !nativeSession.hasSameOwner(currentSession)) {
+      _nativeSession = nativeSession;
+      _generation++;
+      _adoption = closeAll();
+    }
+    final generation = _generation;
+    await _adoption;
+    _ensureCurrent(generation);
+    return generation;
   }
 
   /// One open per spec even when two pulls race: both await the same
   /// handle. A failed open leaves nothing behind to serve later pulls.
-  Future<RustFeedSession> _opening(FfiFeedSpec spec, String key) async {
+  Future<RustFeedSession> _opening(
+    FfiFeedSpec spec,
+    RustFeedSpecKey key,
+    RustFeedAccountSession nativeSession,
+    int generation,
+  ) async {
     try {
       return RustFeedSession(
         port: _port,
-        feedId: await _port.openFeed(spec),
+        feedId: await _port.openFeed(spec, nativeSession),
         specKey: key,
         deadline: _deadline,
       );
     } on Object {
-      _live.remove(key);
+      if (_generation == generation) _live.remove(key);
       rethrow;
+    }
+  }
+
+  void _ensureCurrent(int generation) {
+    if (_generation != generation) {
+      throw StateError('The Rust feed account changed.');
     }
   }
 
@@ -124,17 +155,5 @@ final class RustFeedSessions {
         stackTrace: stackTrace,
       );
     }
-  }
-
-  /// One key per feed the engine can serve. `FfiFeedSpec` equality is
-  /// identity-based on its creator list, so the parts are joined
-  /// instead — on NUL, which no relay query or hex key carries.
-  String _keyOf(FfiFeedSpec spec) {
-    return <String>[
-      spec.kind,
-      spec.value ?? '',
-      spec.viewerPubkey ?? '',
-      ...spec.creators,
-    ].join('\u0000');
   }
 }

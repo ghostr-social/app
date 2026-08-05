@@ -1,7 +1,6 @@
-//! Targets resolve to explicit relay lists with Dart's fallbacks: empty
-//! sets fall back to the bootstrap relays (`None`), and merged targets
-//! dedupe with the search relays first
-//! (lib/platform/nostr/ndk_nostr_video_event_query.dart `_targets`).
+//! Targets resolve to explicit relay lists: empty sets fall back to the
+//! configured read relays (`None`), and merged targets dedupe with the
+//! search relays first.
 
 use crate::discovery::search_queries::{resolve_relays, RelayTarget};
 
@@ -23,12 +22,14 @@ fn search_target_uses_the_search_relays_or_bootstrap() {
 fn outbox_target_uses_the_lookup_result_or_bootstrap() {
     let outbox = relays(&["wss://write"]);
 
-    let resolved =
-        resolve_relays(&RelayTarget::OutboxRelays, &relays(&["wss://a"]), Some(&outbox));
+    let resolved = resolve_relays(
+        &RelayTarget::OutboxRelays,
+        &relays(&["wss://a"]),
+        Some(&outbox),
+    );
 
     assert_eq!(resolved, Some(outbox));
-    let unresolved =
-        resolve_relays(&RelayTarget::OutboxRelays, &relays(&["wss://a"]), None);
+    let unresolved = resolve_relays(&RelayTarget::OutboxRelays, &relays(&["wss://a"]), None);
     assert_eq!(unresolved, None);
 }
 
@@ -37,11 +38,7 @@ fn merged_target_dedupes_with_search_relays_first() {
     let search = relays(&["wss://a", "wss://b"]);
     let outbox = relays(&["wss://b", "wss://c"]);
 
-    let resolved = resolve_relays(
-        &RelayTarget::SearchAndOutboxRelays,
-        &search,
-        Some(&outbox),
-    );
+    let resolved = resolve_relays(&RelayTarget::SearchAndOutboxRelays, &search, Some(&outbox));
 
     assert_eq!(resolved, Some(relays(&["wss://a", "wss://b", "wss://c"])));
 }

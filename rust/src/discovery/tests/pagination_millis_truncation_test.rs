@@ -1,7 +1,5 @@
-//! Dart hands the pagination cutoff as a DateTime; the relay `until` comes
-//! from truncating division of its unix milliseconds
-//! (lib/platform/nostr/video_discovery_queries.dart `_build`:
-//! `olderThan.toUtc().millisecondsSinceEpoch ~/ 1000`).
+//! Pagination accepts UTC unix milliseconds and truncates them to the
+//! whole seconds required by Nostr's `until` field.
 
 use nostr_sdk::Timestamp;
 

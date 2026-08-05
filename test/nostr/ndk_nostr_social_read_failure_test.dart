@@ -1,36 +1,36 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
-import 'package:ghostr/platform/nostr/ndk_nostr_social.dart';
-import 'package:mocktail/mocktail.dart';
-import 'package:ndk/ndk.dart';
+import 'package:ghostr/core/nostr/nostr_event_record.dart';
 
+import '../support/fake_nostr_event_client.dart';
 import '../support/ndk_mocks.dart';
+import '../support/nostr_test_values.dart';
+import '../support/social_broadcast_harness.dart';
 
 void main() {
-  test('translates social-list read failures into app-safe failures', () async {
-    final ndk = MockNdk();
-    final accounts = MockAccounts();
-    final lists = MockLists();
-    final follows = MockFollows();
-    when(() => ndk.accounts).thenReturn(accounts);
-    when(() => ndk.lists).thenReturn(lists);
-    when(() => ndk.follows).thenReturn(follows);
-    when(accounts.getPublicKey).thenReturn('viewer');
-    when(
-      () => lists.getSingleNip51List(Nip51List.kMute),
-    ).thenThrow(StateError('list offline'));
-    when(
-      () => follows.getContactList('viewer'),
-    ).thenThrow(StateError('contacts offline'));
-    final runtime = NdkNostrSocial(ndk: ndk, relays: const []);
+  setUpAll(registerNdkFallbackValues);
+
+  test('translates social event-query failures into app-safe failures',
+      () async {
+    final harness = SocialBroadcastHarness(events: _FailingSocialClient());
+    final social = harness.build();
 
     await expectLater(
-      runtime.loadBlockedProfiles(),
+      social.loadBlockedProfiles(),
       throwsA(isA<AppFailure>()),
     );
     await expectLater(
-      runtime.loadFollowedProfiles(),
+      social.loadFollowedProfiles(),
       throwsA(isA<AppFailure>()),
     );
   });
+}
+
+final class _FailingSocialClient extends FakeNostrEventClient {
+  _FailingSocialClient() : super(publicKeyHex: testViewerPublicKey);
+
+  @override
+  Future<List<NostrEventRecord>> query(NostrEventQuery query) {
+    throw StateError('relays offline');
+  }
 }

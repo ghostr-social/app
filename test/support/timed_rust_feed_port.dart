@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:ghostr/core/nostr/nostr_event_identity.dart';
+import 'package:ghostr/features/video_catalog/data/rust_feed_identity.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_port.dart';
 import 'package:ghostr/src/rust/api/feed_types.dart';
 
@@ -13,15 +15,29 @@ class TimedRustFeedPort implements RustFeedPort {
   TimedRustFeedPort(this.schedule);
 
   final List<TimedFeedUpdate> schedule;
-  final List<String> closedFeedIds = <String>[];
+  final List<RustFeedId> closedFeedIds = <RustFeedId>[];
   bool moreAvailable = false;
-  String feedId = '7';
+  RustFeedId feedId = RustFeedId.parse('7');
 
   @override
-  Future<String> openFeed(FfiFeedSpec spec) async => feedId;
+  Future<RustFeedAccountSession> captureSession(
+    NostrPublicKeyHex? expectedAccount,
+  ) async {
+    return RustFeedAccountSession(
+      account: expectedAccount,
+      generation: RustNostrSessionGeneration.fromBridge(BigInt.zero),
+    );
+  }
 
   @override
-  Stream<FfiFeedUpdate> feedUpdates(String feedId) {
+  Future<RustFeedId> openFeed(
+    FfiFeedSpec spec,
+    RustFeedAccountSession session,
+  ) async =>
+      feedId;
+
+  @override
+  Stream<FfiFeedUpdate> feedUpdates(RustFeedId feedId) {
     final timers = <Timer>[];
     final controller = StreamController<FfiFeedUpdate>();
     controller
@@ -39,9 +55,9 @@ class TimedRustFeedPort implements RustFeedPort {
   }
 
   @override
-  Future<bool> loadMore(String feedId, {BigInt? olderThanSecs}) async =>
+  Future<bool> loadMore(RustFeedId feedId, {BigInt? olderThanSecs}) async =>
       moreAvailable;
 
   @override
-  Future<void> closeFeed(String feedId) async => closedFeedIds.add(feedId);
+  Future<void> closeFeed(RustFeedId feedId) async => closedFeedIds.add(feedId);
 }

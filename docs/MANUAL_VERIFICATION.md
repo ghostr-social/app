@@ -650,3 +650,61 @@ The AVD and the two unrelated applications on it were kept. The shadow-mode
 profile build was uninstalled at the end so no non-shipping build is left
 behind, which also removed its settings and cached video store; `/data` was left
 with 415 MB free.
+
+## Android — 2026-08-05 — Rust Nostr engine cutover
+
+Purpose: verify the completed production cutover with Rust as the sole relay
+communication engine, including account activation, live feed/search reads, and
+account reset on sign-out.
+
+Environment: Android 17 / API 37 x86_64 emulator (`emulator-5580`, 1080x2400,
+14 GB free under `/data`). The native library was built with
+`ANDROID_ABI=x86_64 make rust-no-clean`; `make android-debug-apk-check` built and
+validated an x86_64-only debug APK. The APK is 104,411,495 bytes with SHA-256
+`86b30fac938c6c27f706fa025d658774069944eb3f47e595d02a98b19029c8a1`.
+Its four packaged native libraries are `libdatastore_shared_counter.so`,
+`libflutter.so`, `librust_lib_ghostr.so`, and `librust_lib_ndk.so`.
+
+The app was freshly installed after confirming `app.ghostr` was absent. Only
+Ghostr's newly installed app data was reset while preparing the run; unrelated
+applications and emulator data were not changed. Sign-in used the repository's
+public NIP-19 test-vector nsec, never a real user key, and no event was
+published.
+
+Verified:
+
+- A cold launch rendered the password-protected Nostr-key import screen.
+- The public test identity activated successfully and opened the authenticated
+  five-tab application shell.
+- The main feed left `Loading video feed` and populated from live relays with a
+  playable Nostr video row.
+- The search tab populated live trending tags. Searching for `dog` returned
+  both creator matches and video matches, without an error or unsafe empty
+  state.
+- The profile read resolved the test identity as `Nostr 0ELF`, including its
+  public npub and 60 followed accounts.
+- Sign-out returned immediately to the key-import screen. Force-stopping and
+  cold-launching the app again stayed signed out, confirming the persisted
+  session and Rust account scope were reset.
+- A process-scoped logcat scan found no Rust panic, fatal exception, unhandled
+  Flutter exception, segmentation fault, or crash during sign-in, feed,
+  search, profile, sign-out, and cold restart.
+
+One Android platform advisory repeated in logcat:
+`AIBinder_linkToDeath ... no onUnlink callback ... will become an abort`.
+There was no actual abort or user-visible failure, and the app completed the
+entire smoke flow.
+
+### Post-review rebuild and cold-start re-smoke
+
+After the final review fixes, the x86_64 native library and debug APK were
+rebuilt with `ANDROID_ABI=x86_64 make rust-no-clean` and
+`make android-debug-apk-check`. The ABI-validated APK is 104,411,495 bytes with
+SHA-256
+`e129d17d9e28ee6105ce251de226982ef593b6701be993272e6ff53fccb136e6`.
+
+The APK installed successfully on `emulator-5580`. A forced cold launch
+completed in 5,146 ms, the process stayed alive, and the password-protected
+Nostr key-import screen rendered while the previously verified signed-out
+state remained cleared. A launch-scoped AndroidRuntime, Flutter, Rust, libc,
+and native-debug error scan was empty.

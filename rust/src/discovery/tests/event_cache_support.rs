@@ -25,7 +25,10 @@ pub fn notes() -> Filter {
 }
 
 pub fn timestamps(events: &[Event]) -> Vec<u64> {
-    events.iter().map(|event| event.created_at.as_u64()).collect()
+    events
+        .iter()
+        .map(|event| event.created_at.as_u64())
+        .collect()
 }
 
 /// Identity, not the whole event: a schnorr signature carries fresh

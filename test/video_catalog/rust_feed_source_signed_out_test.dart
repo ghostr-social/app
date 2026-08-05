@@ -1,15 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_remote_source.dart';
+import 'package:ghostr/src/rust/api/feed_types.dart';
 
 import '../support/fake_rust_feed_port.dart';
 import '../support/rust_feed_fixtures.dart';
 
 void main() {
-  // ndk parity: signed out the main feed is still an unscoped relay
-  // query (ndk_nostr_outbox_directory.dart knows no follows without an
-  // account and falls back to the bootstrap relays), so it serves a
-  // global recent page instead of nothing. Rust names no viewer on that
-  // feed and skips mute filtering (discovery/feed_spec.rs).
+  // A signed-out main feed has no viewer-scoped routing or mute graph,
+  // so Rust serves the configured relays' global recent page.
   test('serves the global main feed while signed out', () async {
     final port = FakeRustFeedPort(updates: [
       rustFeedUpdate(revision: 1, posts: [rustFeedPost()]),
@@ -19,7 +17,7 @@ void main() {
     final posts = await source.loadRemoteFeed();
 
     expect(posts, hasLength(1));
-    expect(port.openedSpecs.single.kind, 'main');
+    expect(port.openedSpecs.single.kind, FfiFeedKind.main);
     expect(port.openedSpecs.single.viewerPubkey, isNull);
   });
 
@@ -32,6 +30,6 @@ void main() {
     final posts = await source.loadRemoteFeed(searchQuery: 'ghost');
 
     expect(posts, hasLength(1));
-    expect(port.openedSpecs.single.kind, 'search');
+    expect(port.openedSpecs.single.kind, FfiFeedKind.search);
   });
 }

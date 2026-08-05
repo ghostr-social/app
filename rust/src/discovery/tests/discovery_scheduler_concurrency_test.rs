@@ -1,6 +1,5 @@
 //! The worker pool bounds concurrent retrievals at the data-usage cap
-//! (conservative: 2), admitting queued work only as slots free up —
-//! parity: RetrievalScheduler in lib/core/work/retrieval_scheduler.dart.
+//! (conservative: 2), admitting queued work only as slots free up.
 
 use super::scheduler_support::{context, next_started, no_start, request, start_scheduler};
 use crate::engine::DataUsageLevel;
@@ -13,10 +12,19 @@ async fn conservative_level_runs_two_retrievals_at_once() {
         harness.handle.background(context(name), request());
     }
 
-    assert_eq!(next_started(&mut harness.started).await.context, context("a"));
-    assert_eq!(next_started(&mut harness.started).await.context, context("b"));
+    assert_eq!(
+        next_started(&mut harness.started).await.context,
+        context("a")
+    );
+    assert_eq!(
+        next_started(&mut harness.started).await.context,
+        context("b")
+    );
     no_start(&mut harness.started).await;
 
     harness.gate.add_permits(1);
-    assert_eq!(next_started(&mut harness.started).await.context, context("c"));
+    assert_eq!(
+        next_started(&mut harness.started).await.context,
+        context("c")
+    );
 }

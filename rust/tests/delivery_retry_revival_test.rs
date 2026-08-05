@@ -18,10 +18,16 @@ async fn delivery_retry_revives_a_retired_source_after_the_long_cooldown() {
     while book.note_failure(cdn_source(), FailureClass::Permanent) != Retry::GiveUp {}
     let post = PostId::new("aa11");
     let urls = vec![CDN_URL.to_owned()];
-    assert!(book.all_retired(&post, &urls), "the source starts out retired");
+    assert!(
+        book.all_retired(&post, &urls),
+        "the source starts out retired"
+    );
 
     tokio::time::sleep(policy.revive_after + Duration::from_secs(1)).await;
 
-    assert!(!book.is_retired(&cdn_source()), "the revival window expired");
+    assert!(
+        !book.is_retired(&cdn_source()),
+        "the revival window expired"
+    );
     assert_eq!(book.live_urls(&post, &urls), urls);
 }

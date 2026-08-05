@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ghostr/features/video_catalog/presentation/feed_loads.dart';
+import 'package:ghostr/features/video_catalog/domain/use_cases/feed_loads.dart';
 
 void main() {
   test('only the newest request may still change the feed', () {

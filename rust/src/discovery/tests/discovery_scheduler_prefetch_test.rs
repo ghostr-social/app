@@ -12,15 +12,20 @@ use nostr_sdk::Timestamp;
 
 #[tokio::test(start_paused = true)]
 async fn hunger_prefetches_the_next_older_page() {
-    let mut harness =
-        start_scheduler(DataUsageLevel::Conservative, vec![note_at(100), note_at(90)]);
+    let mut harness = start_scheduler(
+        DataUsageLevel::Conservative,
+        vec![note_at(100), note_at(90)],
+    );
     harness.handle.open_feed(context("feed"), request());
     let first = next_started(&mut harness.started).await;
     assert_eq!(first.priority, RetrievalPriority::Interactive);
 
     harness.gate.add_permits(1);
     next_outcome(&mut harness.outcomes).await;
-    harness.modes.send(Mode::Hunger).expect("scheduler subscribed");
+    harness
+        .modes
+        .send(Mode::Hunger)
+        .expect("scheduler subscribed");
 
     let prefetch = next_started(&mut harness.started).await;
     assert_eq!(prefetch.context, context("feed"));

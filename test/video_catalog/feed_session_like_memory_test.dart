@@ -1,8 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
-import 'package:ghostr/features/video_catalog/presentation/feed_session.dart';
-import 'package:ghostr/features/video_catalog/presentation/feed_state.dart';
+import 'package:ghostr/features/video_catalog/domain/use_cases/feed_session.dart';
 
 import '../support/sample_data.dart';
 
@@ -13,7 +11,7 @@ void main() {
     session.loaded([post]);
 
     session.liked(
-      FeedLoaded(FeedKind.forYou, [post]),
+      [post],
       post.withInteraction(
         VideoInteractionUpdate(likeCount: 43, viewerHasLiked: true),
       ),

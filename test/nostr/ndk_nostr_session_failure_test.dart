@@ -8,7 +8,8 @@ import 'package:mocktail/mocktail.dart';
 import '../support/ndk_mocks.dart';
 
 void main() {
-  test('translates an NDK account activation error into an app failure', () {
+  test('translates an NDK account activation error into an app failure',
+      () async {
     final ndk = MockNdk();
     final accounts = MockAccounts();
     when(() => ndk.accounts).thenReturn(accounts);
@@ -21,8 +22,8 @@ void main() {
       npub: 'npub10elfcs4fr0l0r8af98jlmgdh9c8tcxjvz9qkw038js35mp4dma8qzvjptg',
     );
 
-    expect(
-      () => session.activate(
+    await expectLater(
+      session.activate(
         AuthSecret.parse(
           'nsec1vl029mgpspedva04g90vltkh6fvh240zqtv9k0t9af8935ke9laqsnlfe5',
         ),

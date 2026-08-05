@@ -1,10 +1,7 @@
-//! Relay coverage of the outbox lookup the main feed rides on. Parity
-//! source: lib/platform/nostr/ndk_nostr_outbox_directory.dart —
-//! `discoveryRelayUrls` ranks the *follows'* write relays and merges them
-//! after the bootstrap set. The directory is told who the viewer follows
-//! (Dart asks ndk for the contact list; here the bootstrap task hands the
-//! set over), so a lookup issued before kind-3 landed still benefits once
-//! it does.
+//! Relay coverage of the outbox lookup the main feed rides on.
+//! Discovery ranks the follows' write relays after the bootstrap set.
+//! The bootstrap task supplies the viewer's follow set, so a lookup
+//! issued before kind-3 landed still benefits once it does.
 
 use crate::discovery::outbox_directory::OutboxDirectory;
 use nostr_sdk::prelude::*;
@@ -50,11 +47,33 @@ fn a_viewer_without_tracked_follows_reaches_only_the_bootstrap_relays() {
 }
 
 /// A follow whose kind-10002 never arrived contributes nothing, exactly
-/// like an author ndk found no relay list for.
+/// like an author with no known relay list.
 #[test]
 fn a_follow_without_an_ingested_relay_list_adds_no_relays() {
     let mut directory = OutboxDirectory::new(bootstrap());
     directory.track_viewer_follows(vec![Keys::generate().public_key()]);
 
     assert_eq!(directory.discovery_relays(12), bootstrap());
+}
+
+#[test]
+fn a_retrievals_relay_lists_are_ingested_as_one_batch() {
+    let first = Keys::generate();
+    let second = Keys::generate();
+    let mut directory = OutboxDirectory::new(bootstrap());
+    let events = [
+        relay_list_event(&first, "wss://first.write"),
+        relay_list_event(&second, "wss://second.write"),
+    ];
+
+    directory.ingest_all(&events);
+
+    assert_eq!(
+        directory.write_relays(&first.public_key()),
+        ["wss://first.write"],
+    );
+    assert_eq!(
+        directory.write_relays(&second.public_key()),
+        ["wss://second.write"],
+    );
 }

@@ -1,7 +1,5 @@
-//! Pure relay-filter builders answering one video discovery request.
-//! Parity source: lib/platform/nostr/video_discovery_queries.dart — its
-//! query shapes (kinds, limits, search terms, tag filters) are the
-//! specification; every divergence is a bug.
+//! Pure relay-filter builders for the Rust video-discovery contract:
+//! canonical kinds, limits, search terms, and tag filters.
 
 use nostr_sdk::{Alphabet, Filter, Kind, PublicKey, SingleLetterTag, Timestamp};
 
@@ -37,20 +35,17 @@ pub const FEED_VIDEO_LIMIT: usize = 80;
 /// Limit for widened video queries and every note/file query.
 pub const WIDE_QUERY_LIMIT: usize = 200;
 
-/// One video discovery request as the Dart feed layer issues it
-/// (`NdkVideoRemoteSource.loadRemoteFeed` parameters).
+/// One video-discovery request accepted by the Rust engine.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DiscoveryRequest {
     pub authors: Vec<PublicKey>,
     /// Authors the request is *routed* by without being filtered by:
     /// the main feed rides its follows' write relays and still shows
-    /// whatever those relays carry from anyone, which is exactly what
-    /// ndk's unscoped `forYou` query does through `discoveryRelayUrls`.
+    /// whatever those relays carry from anyone.
     /// Never reaches the wire filter.
     pub routing_authors: Vec<PublicKey>,
     /// Viewer search term as typed; a blank term still widens the request
-    /// but carries no NIP-50 term (Dart normalizes blank to null inside
-    /// the query while widening on the raw value).
+    /// but carries no NIP-50 term.
     pub search_query: Option<String>,
     pub hashtags: Vec<String>,
     /// Inclusive publication cutoff (`until`) for older pages.
@@ -89,9 +84,8 @@ impl DiscoveryRequest {
     }
 }
 
-/// Builds the relay filters answering one request, in the order Dart
-/// issues them: dedicated video kinds first (the primary query), then the
-/// additive note, note-hunt, and file queries.
+/// Builds the filters in canonical order: dedicated video kinds first,
+/// then the additive note, note-hunt, and file queries.
 pub fn discovery_filters(request: &DiscoveryRequest) -> Vec<Filter> {
     let mut filters = vec![video_kinds_filter(request), note_filter(request)];
     if request.search_query.is_none() {
@@ -126,8 +120,10 @@ pub fn note_hunt_filter(request: &DiscoveryRequest) -> Filter {
 
 /// NIP-94 file query filtered server-side to video mimes.
 pub fn file_event_filter(request: &DiscoveryRequest) -> Filter {
-    let filter = scoped(request, &[FILE_EVENT_KIND], WIDE_QUERY_LIMIT)
-        .custom_tag(SingleLetterTag::lowercase(Alphabet::M), VIDEO_FILE_MIME_TYPES);
+    let filter = scoped(request, &[FILE_EVENT_KIND], WIDE_QUERY_LIMIT).custom_tag(
+        SingleLetterTag::lowercase(Alphabet::M),
+        VIDEO_FILE_MIME_TYPES,
+    );
     with_search(filter, request.normalized_search())
 }
 

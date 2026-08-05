@@ -3,6 +3,7 @@ use crate::video::playback_demand::DemandSignal;
 use crate::video::progressive_route::ProgressiveState;
 use axum::body::Body;
 use bytes::Bytes;
+use std::future::Future;
 use std::io;
 use std::ops::Range;
 use std::sync::Arc;
@@ -24,28 +25,81 @@ pub(crate) fn body_for_span(state: Arc<ProgressiveState>, key: String, span: Ran
 }
 
 async fn pump(state: Arc<ProgressiveState>, key: String, span: Range<u64>, sender: ChunkSender) {
-    let notify = state.store.change_notifier();
     let mut cursor = span.start;
     let mut demanded = None;
     let mut deadline = Instant::now() + state.timing.idle_timeout;
     while cursor < span.end {
-        let changed = notify.notified();
-        match next_chunk(&state, &key, cursor..span.end).await {
-            Err(_) => return,
-            Ok(Some(bytes)) => {
-                cursor += bytes.len() as u64;
+        let step = advance(
+            PumpIteration {
+                state: &state,
+                key: &key,
+                remaining: cursor..span.end,
+                deadline,
+            },
+            &sender,
+            &mut demanded,
+        )
+        .await;
+        match step {
+            PumpStep::Advanced(next) => {
+                cursor = next;
                 deadline = Instant::now() + state.timing.idle_timeout;
-                if sender.send(Ok(Bytes::from(bytes))).await.is_err() {
-                    return;
-                }
             }
-            Ok(None) => {
-                emit_demand(&state, &key, cursor..span.end, &mut demanded);
-                if timeout_at(deadline, changed).await.is_err() {
-                    return;
-                }
-            }
+            PumpStep::Retry => {}
+            PumpStep::Stop => return,
         }
+    }
+}
+
+struct PumpIteration<'a> {
+    state: &'a ProgressiveState,
+    key: &'a str,
+    remaining: Range<u64>,
+    deadline: Instant,
+}
+
+enum PumpStep {
+    Advanced(u64),
+    Retry,
+    Stop,
+}
+
+async fn advance(
+    iteration: PumpIteration<'_>,
+    sender: &ChunkSender,
+    demanded: &mut Option<u64>,
+) -> PumpStep {
+    let notify = iteration.state.store.change_notifier();
+    let changed = notify.notified();
+    match next_chunk(iteration.state, iteration.key, iteration.remaining.clone()).await {
+        Err(_) => PumpStep::Stop,
+        Ok(Some(bytes)) => send_bytes(sender, iteration.remaining.start, bytes).await,
+        Ok(None) => wait_for_bytes(iteration, changed, demanded).await,
+    }
+}
+
+async fn send_bytes(sender: &ChunkSender, cursor: u64, bytes: Vec<u8>) -> PumpStep {
+    let next = cursor + bytes.len() as u64;
+    match sender.send(Ok(Bytes::from(bytes))).await {
+        Ok(()) => PumpStep::Advanced(next),
+        Err(_) => PumpStep::Stop,
+    }
+}
+
+async fn wait_for_bytes(
+    iteration: PumpIteration<'_>,
+    changed: impl Future<Output = ()>,
+    demanded: &mut Option<u64>,
+) -> PumpStep {
+    emit_demand(
+        iteration.state,
+        iteration.key,
+        iteration.remaining,
+        demanded,
+    );
+    match timeout_at(iteration.deadline, changed).await {
+        Ok(()) => PumpStep::Retry,
+        Err(_) => PumpStep::Stop,
     }
 }
 

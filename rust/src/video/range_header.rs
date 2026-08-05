@@ -45,14 +45,26 @@ fn parsed_bounds(from: &str, to: &str) -> Option<Spec> {
 }
 
 fn resolved_spec(spec: Spec, total: u64) -> ResolvedRange {
-    let (start, end) = match spec {
-        Spec::FromTo(start, last) if start > last => return ResolvedRange::Full,
-        Spec::FromTo(start, last) => (start, last.saturating_add(1).min(total)),
-        Spec::From(start) => (start, total),
-        Spec::Suffix(len) => (total.saturating_sub(len), total),
+    let Some((start, end)) = resolved_bounds(spec, total) else {
+        return ResolvedRange::Full;
     };
     if start >= end {
         return ResolvedRange::Unsatisfiable;
     }
     ResolvedRange::Partial { start, end }
+}
+
+fn resolved_bounds(spec: Spec, total: u64) -> Option<(u64, u64)> {
+    match spec {
+        Spec::FromTo(start, last) => from_to_bounds(start, last, total),
+        Spec::From(start) => Some((start, total)),
+        Spec::Suffix(len) => Some((total.saturating_sub(len), total)),
+    }
+}
+
+fn from_to_bounds(start: u64, last: u64, total: u64) -> Option<(u64, u64)> {
+    if start > last {
+        return None;
+    }
+    Some((start, last.saturating_add(1).min(total)))
 }

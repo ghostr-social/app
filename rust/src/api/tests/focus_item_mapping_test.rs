@@ -1,10 +1,11 @@
+use crate::api::delivery_types::FfiMediaDelivery;
 use crate::api::focus_mapping::focus_item;
 use crate::api::tests::support::ffi_item;
 use crate::engine::DeliveryKind;
 
 #[test]
 fn carries_the_discovery_metadata_into_the_engine_item() {
-    let item = ffi_item("clip", "progressive");
+    let item = ffi_item("clip", FfiMediaDelivery::Progressive);
 
     let mapped = focus_item(&item).expect("mapped item");
 
@@ -18,7 +19,7 @@ fn carries_the_discovery_metadata_into_the_engine_item() {
 
 #[test]
 fn rejects_an_item_with_an_unsafe_post_id() {
-    let item = ffi_item("../escape", "progressive");
+    let item = ffi_item("../escape", FfiMediaDelivery::Progressive);
 
     assert!(focus_item(&item).is_err());
 }

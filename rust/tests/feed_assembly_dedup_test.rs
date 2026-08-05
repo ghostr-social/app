@@ -1,8 +1,6 @@
 //! One canonical post per identity: duplicate event ids collapse, and
 //! addressable revisions sharing `kind:pubkey:d` keep only the newest,
-//! ties keeping the lexicographically smaller event id — mirrors
-//! `_canonicalEvents` / `_isNewer` in
-//! lib/features/video_catalog/data/ndk_video_remote_source.dart.
+//! with ties keeping the lexicographically smaller event ID.
 
 mod feed_support;
 

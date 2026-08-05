@@ -9,8 +9,14 @@ use store_space::{discard, limits, spaced_store};
 async fn partial_range_capacity_evicts_least_recently_used_when_free_space_shrinks() {
     let fixture = spaced_store("ghostr-cap-evict", limits(1_000_000, 1_000), 3_000);
     let store = &fixture.store;
-    store.write_range("older", 0, &[1; 400]).await.expect("older");
-    store.write_range("newer", 0, &[2; 400]).await.expect("newer");
+    store
+        .write_range("older", 0, &[1; 400])
+        .await
+        .expect("older");
+    store
+        .write_range("newer", 0, &[2; 400])
+        .await
+        .expect("newer");
     assert_eq!(*fixture.used_bytes.lock().await, 800);
 
     fixture.space.set(600);

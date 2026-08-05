@@ -8,25 +8,15 @@ void main() {
       () async {
     final settings = AppSettings.defaults().copyWith(
       relays: [RelayUrl.parse('wss://native.example')],
+      searchRelays: [RelayUrl.parse('wss://search.example')],
       dataUsage: DataUsageLevel.conservative,
       inventoryBudget: VideoInventoryBudget.oneGigabyte,
     );
-    String? receivedDirectory;
-    String? receivedRelays;
-    String? receivedUsage;
-    BigInt? receivedBytes;
+    RustEngineStartConfiguration? received;
     final gateway = FfiVideoGateway(
       initialize: () async {},
-      startEngine: ({
-        required String cacheDirectory,
-        required String relayUrls,
-        required String dataUsage,
-        required BigInt maxStorageBytes,
-      }) async {
-        receivedDirectory = cacheDirectory;
-        receivedRelays = relayUrls;
-        receivedUsage = dataUsage;
-        receivedBytes = maxStorageBytes;
+      startEngine: (configuration) async {
+        received = configuration;
         return '127.0.0.1:3000';
       },
     );
@@ -34,9 +24,12 @@ void main() {
     final result = await gateway.start(settings, '/cache/native');
 
     expect(result, isA<VideoGatewayStarted>());
-    expect(receivedDirectory, '/cache/native');
-    expect(receivedRelays, 'wss://native.example');
-    expect(receivedUsage, 'conservative');
-    expect(receivedBytes, BigInt.from(VideoInventoryBudget.oneGigabyte.bytes));
+    expect(received?.cacheDirectory, '/cache/native');
+    expect(received?.relayUrls, [RelayUrl.parse('wss://native.example')]);
+    expect(received?.searchRelayUrls, [
+      RelayUrl.parse('wss://search.example'),
+    ]);
+    expect(received?.dataUsage, DataUsageLevel.conservative);
+    expect(received?.inventoryBudget, VideoInventoryBudget.oneGigabyte);
   });
 }

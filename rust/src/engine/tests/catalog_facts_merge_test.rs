@@ -40,7 +40,10 @@ fn later_lessons_overwrite_only_freshly_learned_fields() {
 fn total_bytes_prefers_probed_content_length_over_imeta_size() {
     let post = PostId::new("a");
     let mut catalog = catalog_with_post(&post);
-    assert_eq!(catalog.lookup(&post).expect("entry").total_bytes(), Some(500));
+    assert_eq!(
+        catalog.lookup(&post).expect("entry").total_bytes(),
+        Some(500)
+    );
 
     catalog.learn(
         &post,
@@ -50,7 +53,10 @@ fn total_bytes_prefers_probed_content_length_over_imeta_size() {
         },
     );
 
-    assert_eq!(catalog.lookup(&post).expect("entry").total_bytes(), Some(777));
+    assert_eq!(
+        catalog.lookup(&post).expect("entry").total_bytes(),
+        Some(777)
+    );
 }
 
 #[test]

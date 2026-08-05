@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
 import 'package:ghostr/platform/media/ffi_feed_focus_port.dart';
 import 'package:ghostr/platform/media/ffi_focus_item_media_mapper.dart';
+import 'package:ghostr/src/rust/api/delivery_types.dart';
 
 import '../support/recording_engine_updaters.dart';
 import '../support/sample_data.dart';
@@ -27,7 +28,7 @@ void main() {
     );
     expect(
       update.items.map((item) => item.delivery),
-      everyElement('progressive'),
+      everyElement(FfiMediaDelivery.progressive),
     );
     expect(
       update.items.map((item) => item.postId),

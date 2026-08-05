@@ -27,8 +27,7 @@ void main() {
     await queue.dispose();
   });
 
-  test('hands the newest snapshot to a caller that will not wait',
-      () async {
+  test('hands the newest snapshot to a caller that will not wait', () async {
     final updates = StreamController<FfiFeedUpdate>();
     final queue = RustFeedUpdateQueue(updates.stream);
     updates

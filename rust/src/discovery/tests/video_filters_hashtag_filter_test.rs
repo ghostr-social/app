@@ -1,6 +1,5 @@
 //! Hashtag requests put the expanded `#t` values on every query, widen the
-//! video limit, and keep the mp4 hunt (no viewer term)
-//! (lib/platform/nostr/video_discovery_queries.dart `_hashtagFilters`).
+//! video limit, and keep the mp4 hunt because no viewer term is present.
 
 use serde_json::json;
 
@@ -22,12 +21,8 @@ fn hashtags_keep_all_four_queries() {
 #[test]
 fn every_filter_carries_the_case_variant_tag_values() {
     for filter in discovery_filters(&request()) {
-        // nostr_sdk stores tag values as an ordered set; same members as
-        // Dart's {surf, SURF, Surf} expansion.
-        assert_eq!(
-            filter_json(&filter)["#t"],
-            json!(["SURF", "Surf", "surf"])
-        );
+        // nostr_sdk stores tag values as an ordered set.
+        assert_eq!(filter_json(&filter)["#t"], json!(["SURF", "Surf", "surf"]));
     }
 }
 

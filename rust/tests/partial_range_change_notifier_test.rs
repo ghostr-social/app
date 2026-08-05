@@ -14,7 +14,10 @@ async fn wakes_change_waiters_on_writes_and_total_length_declarations() {
     let notify = store.change_notifier();
 
     let waiter = notify.notified();
-    store.set_total_len("clip", 4).await.expect("declare length");
+    store
+        .set_total_len("clip", 4)
+        .await
+        .expect("declare length");
     timeout(Duration::from_secs(1), waiter)
         .await
         .expect("woken by the total length declaration");

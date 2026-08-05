@@ -1,6 +1,7 @@
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_remote_source.dart';
 import 'package:ghostr/features/video_catalog/domain/remote_video_source.dart';
+import 'package:ghostr/src/rust/api/delivery_types.dart';
 import 'package:ghostr/src/rust/api/feed_types.dart';
 
 import 'fake_rust_feed_port.dart';
@@ -22,7 +23,7 @@ FfiFeedCreator rustFeedCreator({
 
 FfiFeedMedia rustFeedMedia({
   List<String> urls = const ['https://cdn.example/clip.mp4'],
-  String delivery = 'progressive',
+  FfiMediaDelivery delivery = FfiMediaDelivery.progressive,
   String? sha256,
   int? sizeBytes,
   int? durationMs,
@@ -43,6 +44,7 @@ FfiFeedPost rustFeedPost({
   String? identifier,
   int createdAt = 1754000000,
   String caption = 'A relay-side banger',
+  String? title,
   List<String> hashtags = const <String>[],
   FfiFeedCreator? creator,
   FfiFeedMedia? media,
@@ -54,6 +56,7 @@ FfiFeedPost rustFeedPost({
     identifier: identifier,
     createdAt: BigInt.from(createdAt),
     caption: caption,
+    title: title,
     hashtags: hashtags,
     creator: creator ?? rustFeedCreator(),
     media: media ?? rustFeedMedia(),
@@ -76,11 +79,9 @@ FfiFeedUpdate rustFeedUpdate({
 
 /// The snapshot every subscription opens with: the feed exists, its
 /// first page is still in flight (rust/src/api/feed_updates_stream.rs).
-FfiFeedUpdate rustFeedBaseline() =>
-    rustFeedUpdate(stage: FfiFeedStage.loading);
+FfiFeedUpdate rustFeedBaseline() => rustFeedUpdate(stage: FfiFeedStage.loading);
 
-/// A signed-in Rust discovery source whose first page is exactly
-/// [posts] — what the app runs on with FeedPipelineMode.rust.
+/// A signed-in Rust discovery source whose first page is exactly [posts].
 RemoteVideoSource rustFeedSourceServing(List<FfiFeedPost> posts) {
   return RustFeedRemoteSource(
     port: FakeRustFeedPort(
