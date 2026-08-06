@@ -5,6 +5,9 @@ Short videos and ephemeral interactions on Nostr.
 
 # Acknowledgements
 
-Initially based on https://github.com/salvadordeveloper/flutter-tiktok
+- Extremely vibe-coded
+- Insecure -- avoid to use your usual credentials
+
+
 
 
