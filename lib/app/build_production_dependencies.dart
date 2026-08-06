@@ -5,6 +5,7 @@ import 'package:ghostr/app/production_nostr_services.dart';
 import 'package:ghostr/app/production_video_catalog.dart';
 import 'package:ghostr/app/production_video_delivery.dart';
 import 'package:ghostr/app/production_video_playback.dart';
+import 'package:ghostr/app/production_video_sharing.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/nostr/nostr_event_client.dart';
 import 'package:ghostr/core/storage/account_storage_scope.dart';
@@ -26,13 +27,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 export 'production_nostr_services.dart';
 
 typedef PreferencesLoader = Future<SharedPreferences> Function();
-typedef ProductionNostrServicesBuilder = ProductionNostrServices Function(
-  AppSettings settings,
-);
-typedef ProductionVideoDeliveryBuilder = Future<ProductionVideoDelivery>
-    Function(AppSettings settings, ProductionNostrServices nostr);
-typedef ProductionVideoEnvironmentBuilder = ProductionVideoDeliveryEnvironment
-    Function(RustFeedViewer viewer);
+typedef ProductionNostrServicesBuilder =
+    ProductionNostrServices Function(AppSettings settings);
+typedef ProductionVideoDeliveryBuilder =
+    Future<ProductionVideoDelivery> Function(
+      AppSettings settings,
+      ProductionNostrServices nostr,
+    );
+typedef ProductionVideoEnvironmentBuilder =
+    ProductionVideoDeliveryEnvironment Function(RustFeedViewer viewer);
 
 /// Reads the signed-in account on demand. A missing account is a null viewer.
 RustFeedViewer signedInViewer(NostrEventClient client) {
@@ -98,8 +101,9 @@ AppDependencies composeProductionDependencies(
   ProductionNostrServices nostr,
   ProductionVideoDelivery delivery,
 ) {
-  final accountScope =
-      AccountStorageScope(() => nostr.eventClient.publicKeyHex);
+  final accountScope = AccountStorageScope(
+    () => nostr.eventClient.publicKeyHex,
+  );
   final watchHistory = LocalWatchHistoryRepository(
     preferences,
     accountScope: accountScope,
@@ -124,10 +128,7 @@ AppDependencies composeProductionDependencies(
     watchHistoryRepository: watchHistory,
     activityRepository: NostrActivityRepository(
       client: nostr.eventClient,
-      local: LocalActivityRepository(
-        preferences,
-        accountScope: accountScope,
-      ),
+      local: LocalActivityRepository(preferences, accountScope: accountScope),
       failureReporter: const DeveloperFailureReporter(),
     ),
     mediaPickerPort: ImagePickerMediaPicker(
@@ -135,6 +136,7 @@ AppDependencies composeProductionDependencies(
       capabilities: currentImagePickerCapabilities(),
     ),
     videoPlaybackPort: buildProductionVideoPlayback(delivery),
+    videoShareWorkflow: buildProductionVideoSharing(),
     failureReporter: const DeveloperFailureReporter(),
   );
 }

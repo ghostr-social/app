@@ -7,7 +7,10 @@ import 'package:ghostr/features/comments/presentation/comments_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
+import 'package:ghostr/features/video_catalog/presentation/video_share_feed_scope.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card.dart';
+import 'package:ghostr/features/video_sharing/domain/video_share_workflow.dart';
+import 'package:ghostr/features/video_sharing/presentation/video_share_cubit.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:ghostr/shared/widgets/async_state_panel.dart';
 import 'package:ghostr/shared/widgets/loading_panel.dart';
@@ -17,6 +20,7 @@ class FeedScreenBindings {
     required this.onOpenProfile,
     required this.onOpenHashtag,
     required this.playbackPort,
+    required this.shareWorkflow,
     required this.createComments,
     required this.isActive,
   });
@@ -24,15 +28,13 @@ class FeedScreenBindings {
   final ValueChanged<ProfileId> onOpenProfile;
   final ValueChanged<String> onOpenHashtag;
   final VideoPlaybackPort playbackPort;
+  final VideoShareWorkflow shareWorkflow;
   final CommentsCubit Function(VideoPost post) createComments;
   final bool isActive;
 }
 
 class FeedScreen extends StatefulWidget {
-  const FeedScreen({
-    required this.bindings,
-    super.key,
-  });
+  const FeedScreen({required this.bindings, super.key});
 
   final FeedScreenBindings bindings;
 
@@ -45,10 +47,13 @@ class _FeedScreenState extends State<FeedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<FeedCubit, FeedState>(
-      listenWhen: _hasNewNotice,
-      listener: _showNotice,
-      child: BlocBuilder<FeedCubit, FeedState>(builder: _buildFeed),
+    return VideoShareFeedScope(
+      workflow: widget.bindings.shareWorkflow,
+      child: BlocListener<FeedCubit, FeedState>(
+        listenWhen: _hasNewNotice,
+        listener: _showNotice,
+        child: BlocBuilder<FeedCubit, FeedState>(builder: _buildFeed),
+      ),
     );
   }
 
@@ -58,9 +63,9 @@ class _FeedScreenState extends State<FeedScreen> {
 
   void _showNotice(BuildContext context, FeedState state) {
     final message = (state as FeedLoaded).notice!;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
     context.read<FeedCubit>().clearNotice();
   }
 
@@ -93,7 +98,8 @@ class _FeedScreenState extends State<FeedScreen> {
     return AsyncStatePanel(
       icon: Icons.travel_explore,
       title: 'Hunting for videos',
-      message: 'The search keeps running — new clips appear the moment a '
+      message:
+          'The search keeps running — new clips appear the moment a '
           'relay hands them over. Following creators fills this feed faster.',
       actionLabel: 'Search again',
       onAction: context.read<FeedCubit>().retry,
@@ -114,22 +120,51 @@ class _FeedScreenState extends State<FeedScreen> {
 
   Widget _feedCard(BuildContext context, FeedLoaded state, int index) {
     final post = state.posts[index];
-    return FeedCard(
-      key: ValueKey(post.id.value),
-      post: post,
-      playbackPort: widget.bindings.playbackPort,
-      isActive: widget.bindings.isActive &&
-          !_commentsOpen &&
-          index == state.activeIndex,
-      actions: FeedCardActions(
-        onOpenProfile: () => widget.bindings.onOpenProfile(post.creator.id),
-        onOpenHashtag: widget.bindings.onOpenHashtag,
-        onToggleLike: context.read<FeedCubit>().toggleLike,
-        onOpenComments: () => _openComments(context, post),
-        onBlockCreator: () =>
-            unawaited(context.read<FeedCubit>().blockCreator(post)),
+    return BlocBuilder<VideoShareCubit, VideoShareState>(
+      builder: (context, sharing) => FeedCard(
+        key: ValueKey(post.id.value),
+        post: post,
+        playbackPort: widget.bindings.playbackPort,
+        isActive:
+            widget.bindings.isActive &&
+            !_commentsOpen &&
+            index == state.activeIndex,
+        actions: _actions(context, post, sharing),
       ),
     );
+  }
+
+  FeedCardActions _actions(
+    BuildContext context,
+    VideoPost post,
+    VideoShareState sharing,
+  ) {
+    return FeedCardActions(
+      onOpenProfile: () => widget.bindings.onOpenProfile(post.creator.id),
+      onOpenHashtag: widget.bindings.onOpenHashtag,
+      onToggleLike: context.read<FeedCubit>().toggleLike,
+      onOpenComments: () => _openComments(context, post),
+      onBlockCreator: () =>
+          unawaited(context.read<FeedCubit>().blockCreator(post)),
+      onShare: (post, origin) =>
+          context.read<VideoShareCubit>().share(post, origin: origin),
+      shareStatus: _shareStatus(context, post, sharing),
+    );
+  }
+
+  FeedCardShareStatus _shareStatus(
+    BuildContext context,
+    VideoPost post,
+    VideoShareState state,
+  ) {
+    final sharing = context.read<VideoShareCubit>();
+    if (!sharing.supports(post)) return FeedCardShareStatus.unavailable;
+    if (state case VideoShareInProgress(:final postId)) {
+      return postId == post.id
+          ? FeedCardShareStatus.downloading
+          : FeedCardShareStatus.busy;
+    }
+    return FeedCardShareStatus.available;
   }
 
   Future<void> _openComments(BuildContext context, VideoPost post) async {

@@ -12,6 +12,7 @@ import 'discovery_search_fakes.dart';
 import 'fake_media_ports.dart';
 import 'hybrid_repository_harness.dart';
 import 'live_rust_feed_port.dart';
+import 'fake_video_sharing.dart';
 import 'rust_feed_fixtures.dart';
 
 final class RustFeedScreenHarness {
@@ -48,6 +49,7 @@ final class RustFeedScreenHarness {
               onOpenProfile: (_) {},
               onOpenHashtag: (_) {},
               playbackPort: FakeVideoPlaybackPort(),
+              shareWorkflow: FakeVideoShareWorkflow(),
               createComments: (post) =>
                   CommentsCubit(repositories.comments, post),
               isActive: true,

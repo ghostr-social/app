@@ -5,6 +5,7 @@ import 'package:ghostr/features/session/domain/session_repository.dart';
 import 'package:ghostr/features/session/domain/user_session.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
+import 'package:ghostr/features/video_sharing/domain/video_share_workflow.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 
 import 'fake_activity_repository.dart';
@@ -12,6 +13,7 @@ import 'fake_app_settings_repository.dart';
 import 'fake_media_ports.dart';
 import 'fake_session_repository.dart';
 import 'fake_video_catalog_repository.dart';
+import 'fake_video_sharing.dart';
 import 'fake_watch_history_repository.dart';
 import 'recording_failure_reporter.dart';
 
@@ -45,6 +47,7 @@ AppDependencies buildFakeDependencies({
     watchHistoryRepository: watchHistory ?? FakeWatchHistoryRepository(),
     mediaPickerPort: device.mediaPicker ?? FakeMediaPickerPort(),
     videoPlaybackPort: device.playback ?? FakeVideoPlaybackPort(),
+    videoShareWorkflow: device.sharing ?? FakeVideoShareWorkflow(),
     failureReporter: RecordingFailureReporter(),
   );
 }
@@ -54,9 +57,11 @@ class FakeDeviceDependencies {
     this.activity,
     this.mediaPicker,
     this.playback,
+    this.sharing,
   });
 
   final FakeActivityRepository? activity;
   final FakeMediaPickerPort? mediaPicker;
   final VideoPlaybackPort? playback;
+  final VideoShareWorkflow? sharing;
 }

@@ -8,33 +8,42 @@ import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_screen.dart';
 
 import '../support/fakes.dart';
+import '../support/fake_video_sharing.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  testWidgets('a hashtag feed plays search matches under its own title',
-      (tester) async {
+  testWidgets('a hashtag feed plays search matches under its own title', (
+    tester,
+  ) async {
     final repository = FakeVideoCatalogRepository(
       forYouFeed: [samplePost(caption: 'Tagged clip')],
     );
-    await tester.pumpWidget(MaterialApp(
-      home: BlocProvider(
-        create: (_) => FeedCubit(FeedDependencies(
-          feed: QueryVideoFeedRepository(search: repository, query: '#dance'),
-          engagement: repository,
-          optional: FeedOptionalDependencies(social: repository),
-        ))
-          ..load(),
-        child: DiscoveryFeedScreen(
-          request: DiscoveryFeedRequest(
-            query: '#dance',
-            playbackPort: FakeVideoPlaybackPort(),
-            createComments: (post) => CommentsCubit(repository, post),
-            onOpenProfile: (_) {},
-            onOpenHashtag: (_) {},
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocProvider(
+          create: (_) => FeedCubit(
+            FeedDependencies(
+              feed: QueryVideoFeedRepository(
+                search: repository,
+                query: '#dance',
+              ),
+              engagement: repository,
+              optional: FeedOptionalDependencies(social: repository),
+            ),
+          )..load(),
+          child: DiscoveryFeedScreen(
+            request: DiscoveryFeedRequest(
+              query: '#dance',
+              playbackPort: FakeVideoPlaybackPort(),
+              shareWorkflow: FakeVideoShareWorkflow(),
+              createComments: (post) => CommentsCubit(repository, post),
+              onOpenProfile: (_) {},
+              onOpenHashtag: (_) {},
+            ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(AppBar, '#dance'), findsOneWidget);

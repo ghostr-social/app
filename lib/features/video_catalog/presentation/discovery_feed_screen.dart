@@ -4,12 +4,14 @@ import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_screen.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
+import 'package:ghostr/features/video_sharing/domain/video_share_workflow.dart';
 
 class DiscoveryFeedRequest {
   const DiscoveryFeedRequest({
     required this.query,
     required this.playbackPort,
     required this.createComments,
+    required this.shareWorkflow,
     required this.onOpenProfile,
     required this.onOpenHashtag,
   });
@@ -17,6 +19,7 @@ class DiscoveryFeedRequest {
   final String query;
   final VideoPlaybackPort playbackPort;
   final CommentsCubit Function(VideoPost post) createComments;
+  final VideoShareWorkflow shareWorkflow;
   final ValueChanged<ProfileId> onOpenProfile;
   final ValueChanged<String> onOpenHashtag;
 }
@@ -37,6 +40,7 @@ class DiscoveryFeedScreen extends StatelessWidget {
           onOpenProfile: request.onOpenProfile,
           onOpenHashtag: request.onOpenHashtag,
           playbackPort: request.playbackPort,
+          shareWorkflow: request.shareWorkflow,
           createComments: request.createComments,
           // Playback pauses whenever another route covers this feed.
           isActive: ModalRoute.of(context)?.isCurrent ?? true,

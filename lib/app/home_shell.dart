@@ -6,6 +6,7 @@ import 'package:ghostr/app/app_controller_factory.dart';
 import 'package:ghostr/app/home_tab.dart';
 import 'package:ghostr/app/home_tab_bar.dart';
 import 'package:ghostr/app/home_tab_stack.dart';
+import 'package:ghostr/app/home_navigation.dart';
 import 'package:ghostr/app/router/app_router.dart';
 import 'package:ghostr/features/activity/presentation/activity_cubit.dart';
 import 'package:ghostr/features/activity/presentation/activity_screen.dart';
@@ -42,7 +43,6 @@ class _HomeShellState extends State<HomeShell> {
   SearchCubit? _searchCubit;
   ActivityCubit? _activityCubit;
   ProfileCubit? _profileCubit;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -86,66 +86,53 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   Widget _home() => BlocProvider(
-        create: (_) => _createFeedCubit(),
-        child: FeedScreen(
-          bindings: FeedScreenBindings(
-            onOpenProfile: _openProfile,
-            onOpenHashtag: _openHashtag,
-            playbackPort: widget.controllers.videoPlaybackPort,
-            createComments: widget.controllers.comments,
-            isActive: _currentTab == HomeTab.home && !_isRouteCovered,
-          ),
-        ),
-      );
-
-  Widget _search() => SearchTab(
-        createSearchCubit: _createSearchCubit,
-        createTrendingCubit: () => widget.controllers.trending()..load(),
+    create: (_) => _createFeedCubit(),
+    child: FeedScreen(
+      bindings: FeedScreenBindings(
         onOpenProfile: _openProfile,
-        onOpenFeed: _openDiscoveryFeed,
-      );
-
+        onOpenHashtag: _openHashtag,
+        playbackPort: widget.controllers.videoPlaybackPort,
+        shareWorkflow: widget.controllers.videoShareWorkflow,
+        createComments: widget.controllers.comments,
+        isActive: _currentTab == HomeTab.home && !_isRouteCovered,
+      ),
+    ),
+  );
+  Widget _search() => SearchTab(
+    createSearchCubit: _createSearchCubit,
+    createTrendingCubit: () => widget.controllers.trending()..load(),
+    onOpenProfile: _openProfile,
+    onOpenFeed: _openDiscoveryFeed,
+  );
   Widget _create() => BlocProvider(
-        create: (_) => widget.controllers.compose()..recoverLostVideo(),
-        child: ComposeScreen(
-          session: widget.session,
-          playbackPort: widget.controllers.videoPlaybackPort,
-          isActive: _currentTab == HomeTab.create,
-        ),
-      );
-
-  Widget _activity() => BlocProvider(
-        create: (_) => _createActivityCubit(),
-        child: const ActivityScreen(),
-      );
-
-  Widget _profile() => BlocProvider(
-        create: (_) => _createProfileCubit(),
-        child: ProfileScreen(
-          onOpenSettings: _openSettings,
-          onSignedOut: _signOut,
-        ),
-      );
-
-  void _openProfile(ProfileId profileId) {
-    unawaited(_pushCovering(AppRouter.profile(
+    create: (_) => widget.controllers.compose()..recoverLostVideo(),
+    child: ComposeScreen(
       session: widget.session,
-      profileId: profileId,
-      controllers: widget.controllers,
-      onSignedOut: _signOut,
-    )));
-  }
+      playbackPort: widget.controllers.videoPlaybackPort,
+      isActive: _currentTab == HomeTab.create,
+    ),
+  );
+  Widget _activity() => BlocProvider(
+    create: (_) => _createActivityCubit(),
+    child: const ActivityScreen(),
+  );
+  Widget _profile() => BlocProvider(
+    create: (_) => _createProfileCubit(),
+    child: ProfileScreen(onOpenSettings: _openSettings, onSignedOut: _signOut),
+  );
+
+  void _openProfile(ProfileId profileId) => _navigation.openProfile(profileId);
 
   void _openHashtag(String hashtag) => _openDiscoveryFeed(hashtag);
 
-  void _openDiscoveryFeed(String query) {
-    unawaited(_pushCovering(AppRouter.discoveryFeed(
-      session: widget.session,
-      query: query,
-      controllers: widget.controllers,
-      onSignedOut: _signOut,
-    )));
-  }
+  void _openDiscoveryFeed(String query) => _navigation.openDiscoveryFeed(query);
+
+  HomeNavigation get _navigation => HomeNavigation(
+    session: widget.session,
+    controllers: widget.controllers,
+    onSignedOut: _signOut,
+    pushCovering: _pushCovering,
+  );
 
   Future<void> _pushCovering(Route<void> route) async {
     if (_isRouteCovered) return;
@@ -183,9 +170,10 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   ProfileCubit _createProfileCubit() {
-    return _profileCubit = widget.controllers
-        .profile(widget.session.profile, widget.session.profile.id)
-      ..load();
+    return _profileCubit = widget.controllers.profile(
+      widget.session.profile,
+      widget.session.profile.id,
+    )..load();
   }
 
   void _refreshTab(HomeTab tab) {

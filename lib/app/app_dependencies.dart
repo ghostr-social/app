@@ -5,6 +5,7 @@ import 'package:ghostr/features/activity/domain/activity_repository.dart';
 import 'package:ghostr/features/session/domain/session_repository.dart';
 import 'package:ghostr/features/settings/domain/app_settings_repository.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_repository.dart';
+import 'package:ghostr/features/video_sharing/domain/video_share_workflow.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 
 class AppDependencies {
@@ -16,6 +17,7 @@ class AppDependencies {
     required this.watchHistoryRepository,
     required this.mediaPickerPort,
     required this.videoPlaybackPort,
+    required this.videoShareWorkflow,
     required this.failureReporter,
   });
 
@@ -26,5 +28,6 @@ class AppDependencies {
   final WatchHistoryRepository watchHistoryRepository;
   final MediaPickerPort mediaPickerPort;
   final VideoPlaybackPort videoPlaybackPort;
+  final VideoShareWorkflow videoShareWorkflow;
   final FailureReporter failureReporter;
 }

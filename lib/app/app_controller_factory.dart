@@ -18,6 +18,7 @@ import 'package:ghostr/features/video_catalog/domain/toggle_profile_follow_workf
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
 import 'package:ghostr/features/watch_history/presentation/watch_history_cubit.dart';
+import 'package:ghostr/features/video_sharing/domain/video_share_workflow.dart';
 import 'package:ghostr/platform/media/delivery_config_syncing_settings_repository.dart';
 import 'package:ghostr/platform/media/ffi_feed_focus_port.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
@@ -138,4 +139,6 @@ class AppControllerFactory {
   }
 
   VideoPlaybackPort get videoPlaybackPort => _dependencies.videoPlaybackPort;
+
+  VideoShareWorkflow get videoShareWorkflow => _dependencies.videoShareWorkflow;
 }

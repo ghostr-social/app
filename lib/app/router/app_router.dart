@@ -23,6 +23,7 @@ abstract final class AppRouter {
           request: DiscoveryFeedRequest(
             query: query,
             playbackPort: controllers.videoPlaybackPort,
+            shareWorkflow: controllers.videoShareWorkflow,
             createComments: controllers.comments,
             onOpenProfile: (profileId) => Navigator.of(context).push(
               AppRouter.profile(

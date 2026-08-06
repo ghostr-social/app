@@ -7,24 +7,30 @@ import '../support/fake_media_ports.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  testWidgets('renders a replacement post when the card state is reused',
-      (tester) async {
+  testWidgets('renders a replacement post when the card state is reused', (
+    tester,
+  ) async {
     final actions = FeedCardActions(
       onOpenProfile: () {},
       onOpenHashtag: (_) {},
       onToggleLike: (post) async {},
       onOpenComments: () {},
       onBlockCreator: () {},
+      onShare: (_, __) async {},
     );
 
-    await tester.pumpWidget(_app(
-      post: samplePost(id: 'first', caption: 'First caption'),
-      actions: actions,
-    ));
-    await tester.pumpWidget(_app(
-      post: samplePost(id: 'second', caption: 'Second caption'),
-      actions: actions,
-    ));
+    await tester.pumpWidget(
+      _app(
+        post: samplePost(id: 'first', caption: 'First caption'),
+        actions: actions,
+      ),
+    );
+    await tester.pumpWidget(
+      _app(
+        post: samplePost(id: 'second', caption: 'Second caption'),
+        actions: actions,
+      ),
+    );
 
     expect(find.text('Second caption'), findsOneWidget);
     expect(find.text('First caption'), findsNothing);

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/app/build_production_dependencies.dart';
 import 'package:ghostr/features/session/data/secure_session_repository.dart';
 import 'package:ghostr/features/settings/data/local_app_settings_repository.dart';
+import 'package:ghostr/features/video_sharing/data/default_video_share_workflow.dart';
 import 'package:ghostr/platform/media/image_picker_capabilities.dart';
 import 'package:ghostr/platform/media/image_picker_media_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,19 +20,15 @@ void main() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final preferences = await SharedPreferences.getInstance();
     final nostr = ProductionNostrServices(
-      ProductionNostrAdapters(
-        FakeNostrSessionPort(),
-        FakeNostrSocialPort(),
-      ),
+      ProductionNostrAdapters(FakeNostrSessionPort(), FakeNostrSocialPort()),
       FakeNostrEventClient(publicKeyHex: testViewerPublicKey),
       FakeNostrVideoPublisherPort(),
     );
     final environment = ProductionDependenciesEnvironment(
       preferencesLoader: () async => preferences,
       nostrServicesBuilder: (_) => nostr,
-      videoDeliveryBuilder: (_, __) async => testVideoDelivery(
-        remoteSource: FakeRemoteVideoSource([]),
-      ),
+      videoDeliveryBuilder: (_, __) async =>
+          testVideoDelivery(remoteSource: FakeRemoteVideoSource([])),
     );
 
     final dependencies = await buildProductionDependencies(environment);
@@ -48,5 +45,6 @@ void main() {
       dependencies.mediaPickerPort.capabilities,
       currentImagePickerCapabilities(),
     );
+    expect(dependencies.videoShareWorkflow, isA<DefaultVideoShareWorkflow>());
   });
 }
