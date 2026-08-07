@@ -1,4 +1,4 @@
-use ghostr_gateway::hls_sessions::{HlsSessionLimits, HlsSessions};
+use ghostr_gateway::hls::sessions::{HlsSessionLimits, HlsSessions};
 use reqwest::Url;
 use std::time::Duration;
 

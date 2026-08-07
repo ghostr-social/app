@@ -1,7 +1,7 @@
 //! Nostr account-session lifecycle over the installed engine.
 
-use crate::api::feed_runtime::{lock, DiscoveryRuntime};
-use crate::api::runtime_registry;
+use crate::api::runtime::discovery::{lock, DiscoveryRuntime};
+use crate::api::runtime::registry;
 use flutter_rust_bridge::frb;
 use nostr_sdk::PublicKey;
 use std::error::Error;
@@ -37,7 +37,7 @@ pub async fn ffi_reset_nostr_session(
         .transpose()
         .map_err(|_| NostrSessionResetError::InvalidExpectedPublicKey)?;
     let engine =
-        runtime_registry::engine_if_running().ok_or(NostrSessionResetError::EngineNotStarted)?;
+        registry::engine_if_running().ok_or(NostrSessionResetError::EngineNotStarted)?;
     engine.discovery.reset_session(expected_account).await;
     Ok(())
 }

@@ -5,7 +5,7 @@ use delivery_fixture::media::{hit_log, media_body, serve_recording};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use delivery_fixture::wait::wait_for_ranges;
-use ghostr_delivery::debug_network::NetworkProfile;
+use ghostr_delivery::debug::network::NetworkProfile;
 use std::time::Duration;
 
 #[tokio::test]

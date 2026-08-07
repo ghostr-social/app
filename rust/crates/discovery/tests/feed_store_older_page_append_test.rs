@@ -8,9 +8,9 @@ mod feed_support;
 
 use feed_support::{addressable_video, parsed, parsed_posts, video_note};
 use nostr_sdk::Keys;
-use ghostr_discovery::feed_spec::FeedSpec;
-use ghostr_discovery::feed_store::{FeedId, FeedStore};
-use ghostr_discovery::social_graph::SocialGraph;
+use ghostr_discovery::feed::spec::FeedSpec;
+use ghostr_discovery::feed::store::{FeedId, FeedStore};
+use ghostr_discovery::content::social_graph::SocialGraph;
 
 fn open_main(store: &mut FeedStore, viewer: &Keys) -> FeedId {
     store.open_feed(FeedSpec::MainFeed {

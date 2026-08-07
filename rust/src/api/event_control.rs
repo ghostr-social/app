@@ -1,7 +1,7 @@
 //! Generic Nostr reads over the shared Rust discovery engine.
 
 use crate::api::event_types::{FfiNostrEvent, FfiNostrEventFilter};
-use crate::api::runtime_registry;
+use crate::api::runtime::registry;
 use anyhow::{anyhow, Result};
 use flutter_rust_bridge::frb;
 use nostr_sdk::Filter;
@@ -29,7 +29,7 @@ async fn query_filters(filters: Vec<FfiNostrEventFilter>) -> Result<Vec<FfiNostr
         return Ok(Vec::new());
     }
     let filters = validated_filters(filters)?;
-    let engine = runtime_registry::engine()?;
+    let engine = registry::engine()?;
     let events = engine
         .discovery
         .query_events(filters)

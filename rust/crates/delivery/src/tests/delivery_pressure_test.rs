@@ -1,4 +1,4 @@
-use crate::delivery_pressure::StorePressure;
+use crate::manager::pressure::StorePressure;
 use std::time::Duration;
 
 #[test]

@@ -1,4 +1,4 @@
-use ghostr_delivery::debug_network::{NetworkProfile, NetworkThrottle};
+use ghostr_delivery::debug::network::{NetworkProfile, NetworkThrottle};
 use std::time::Duration;
 use tokio::time::{timeout, Instant};
 

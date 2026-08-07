@@ -4,7 +4,7 @@ mod feed_support;
 
 use feed_support::profile_event;
 use nostr_sdk::{Keys, ToBech32};
-use ghostr_discovery::profile_store::ProfileStore;
+use ghostr_discovery::content::profiles::ProfileStore;
 
 #[test]
 fn blank_metadata_replaces_named_profile_with_fallback() {

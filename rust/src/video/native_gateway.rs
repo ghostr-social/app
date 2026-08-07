@@ -1,4 +1,4 @@
-use crate::api::runtime_registry;
+use crate::api::runtime::registry;
 use crate::video::ffi_models::ffi_hls_playback_session;
 use flutter_rust_bridge::frb;
 
@@ -12,7 +12,7 @@ pub async fn ffi_acquire_hls_playback(
 }
 
 async fn acquire_hls_playback(source_urls: Vec<String>) -> anyhow::Result<FfiHlsPlaybackSession> {
-    let engine = runtime_registry::engine()?;
+    let engine = registry::engine()?;
     let session = engine.gateway.acquire_hls(source_urls).await?;
     Ok(ffi_hls_playback_session(session))
 }
@@ -23,7 +23,7 @@ pub async fn ffi_release_hls_playback(session_id: String) -> bool {
 }
 
 async fn release_hls_playback(session_id: &str) -> bool {
-    match runtime_registry::engine_if_running() {
+    match registry::engine_if_running() {
         Some(engine) => engine.gateway.release_hls(session_id).await,
         None => false,
     }

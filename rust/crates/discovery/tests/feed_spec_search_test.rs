@@ -4,7 +4,7 @@
 mod feed_support;
 
 use feed_support::empty_graph;
-use ghostr_discovery::feed_spec::FeedSpec;
+use ghostr_discovery::feed::spec::FeedSpec;
 
 fn search(query: &str) -> FeedSpec {
     FeedSpec::Search(query.to_owned())

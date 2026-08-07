@@ -1,6 +1,6 @@
 #![cfg(feature = "video-debug-web")]
 
-use rust_lib_ghostr::api::debug_nostr::DebugNostrConfiguration;
+use rust_lib_ghostr::api::debug::nostr::DebugNostrConfiguration;
 
 #[test]
 fn standalone_debugger_has_real_nostr_relays_by_default() {

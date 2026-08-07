@@ -1,7 +1,7 @@
-use crate::event_cache::client_with_event_cache;
-use crate::relay_io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo};
-use crate::relay_plan_executor::RelayPlanExecutor;
-use crate::relay_pool_owner::{RelayPoolConfiguration, RelayPoolOwner};
+use crate::cache::client_with_event_cache;
+use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo};
+use crate::execution::relay_executor::RelayPlanExecutor;
+use crate::relay::pool::{RelayPoolConfiguration, RelayPoolOwner};
 use crate::tests::outbox_support::{empty_directory, BOOTSTRAP_RELAY};
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::{Event, Filter, Kind};

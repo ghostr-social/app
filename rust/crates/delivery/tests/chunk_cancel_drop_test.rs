@@ -1,4 +1,4 @@
-use ghostr_delivery::chunk_cancel::cancel_pair;
+use ghostr_delivery::chunk::cancel::cancel_pair;
 use std::time::Duration;
 
 #[tokio::test(start_paused = true)]

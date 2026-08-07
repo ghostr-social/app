@@ -1,4 +1,4 @@
-use ghostr_gateway::gateway_runtime::{report_http_server_failure, supervise_http_server};
+use ghostr_gateway::runtime::{report_http_server_failure, supervise_http_server};
 use log::{LevelFilter, Log, Metadata, Record};
 use std::io;
 use std::sync::Mutex;

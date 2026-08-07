@@ -8,7 +8,7 @@ mod discovery_support;
 
 use discovery_support::{mute_list, p_tag, plain_note};
 use nostr_sdk::Keys;
-use ghostr_discovery::social_graph::SocialGraph;
+use ghostr_discovery::content::social_graph::SocialGraph;
 
 #[test]
 fn mutes_creators_listed_in_p_tags_only() {

@@ -2,8 +2,8 @@ mod delivery_fixture;
 mod raw_http;
 
 use delivery_fixture::{media_client, temp_directory};
-use ghostr_delivery::chunk_cancel::cancel_pair;
-use ghostr_delivery::chunk_downloader::{download_chunk, ChunkSink, ChunkSpec};
+use ghostr_delivery::chunk::cancel::cancel_pair;
+use ghostr_delivery::chunk::downloader::{download_chunk, ChunkSink, ChunkSpec};
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::ByteRange;
 use ghostr_net::transfer_timeouts::TransferTimeouts;

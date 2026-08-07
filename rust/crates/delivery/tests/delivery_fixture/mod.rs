@@ -12,9 +12,9 @@ pub mod probe_origins;
 pub mod retry;
 pub mod wait;
 
-use ghostr_delivery::debug_network::NetworkThrottle;
+use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_delivery::delivery_events::DeliveryHandle;
-use ghostr_delivery::delivery_manager::{start_delivery_manager, DeliveryManagerConfig};
+use ghostr_delivery::manager::{start_delivery_manager, DeliveryManagerConfig};
 use ghostr_delivery::playback_demand::{demand_channel, DemandSender};
 use ghostr_delivery::progressive_posts::ServablePosts;
 use ghostr_net::outbound_media_client::MediaHttpClient;

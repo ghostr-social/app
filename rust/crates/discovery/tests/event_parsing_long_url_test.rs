@@ -2,7 +2,7 @@
 //! while still keeping pathological content out of the native cache.
 
 use nostr_sdk::{Event, EventBuilder, Keys};
-use ghostr_discovery::event_parsing::video_post_from_event;
+use ghostr_discovery::content::parsing::video_post_from_event;
 
 fn note_linking(url: &str) -> Event {
     EventBuilder::text_note(format!("watch this {url}"))

@@ -2,7 +2,7 @@ mod feed_support;
 
 use feed_support::video_note;
 use nostr_sdk::{EventBuilder, Keys, Kind};
-use ghostr_discovery::candidate_registry::{CandidateAdmission, CandidateRegistry};
+use ghostr_discovery::content::candidates::{CandidateAdmission, CandidateRegistry};
 
 #[test]
 fn raw_events_are_parsed_validated_and_deduplicated_once() {

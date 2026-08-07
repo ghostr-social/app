@@ -4,7 +4,7 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use gateway_fixture::raw_http::unused_loopback_url;
 use gateway_fixture::{media_client, native_download, video_id};
-use ghostr_gateway::http_gateway::configured_router_with_client;
+use ghostr_gateway::router::configured_router_with_client;
 use ghostr_media_model::native_models::new_native_downloads;
 use tower::ServiceExt;
 

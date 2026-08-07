@@ -1,7 +1,7 @@
 //! Parsed-post builders for the feed store's own tests: posts identified
 //! by the second they were created, so a page reads as a time window.
 
-use crate::event_parsing::ParsedVideoPost;
+use crate::content::parsing::ParsedVideoPost;
 use ghostr_engine::{DeliveryKind, VideoMeta};
 
 /// One fetched page: `count` posts newest first, one second apart,

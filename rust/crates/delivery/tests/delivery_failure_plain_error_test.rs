@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use ghostr_delivery::delivery_failure::{classify, FailureClass};
+use ghostr_delivery::manager::failure::{classify, FailureClass};
 
 #[test]
 fn ordinary_errors_remain_transient_delivery_failures() {

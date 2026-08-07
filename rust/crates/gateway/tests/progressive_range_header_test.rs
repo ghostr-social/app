@@ -1,5 +1,5 @@
 use axum::http::HeaderValue;
-use ghostr_gateway::range_header::{resolve, ResolvedRange};
+use ghostr_gateway::progressive::range_header::{resolve, ResolvedRange};
 
 fn resolved(header: Option<&str>, total: u64) -> ResolvedRange {
     let value = header.map(|text| HeaderValue::from_str(text).expect("header"));

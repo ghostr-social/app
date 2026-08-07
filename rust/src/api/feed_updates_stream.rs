@@ -3,12 +3,12 @@
 //! baseline snapshot, then one full snapshot per visible-list change.
 //! The stream ends when the feed closes or Dart cancels it.
 
-use crate::api::feed_mapping::parse_feed_id;
-use crate::api::feed_projection::project;
-use crate::api::feed_runtime::{lock, SharedFeedState};
+use crate::api::feed::mapping::parse_feed_id;
+use crate::api::feed::projection::project;
+use crate::api::runtime::discovery::{lock, SharedFeedState};
 use crate::api::feed_types::FfiFeedUpdate;
-use crate::api::runtime_registry;
-use crate::discovery::feed_store::FeedId;
+use crate::api::runtime::registry;
+use crate::discovery::feed::store::FeedId;
 use crate::frb_generated::StreamSink;
 use flutter_rust_bridge::frb;
 use tokio::sync::watch;
@@ -32,7 +32,7 @@ pub async fn ffi_feed_updates(
     sink: StreamSink<FfiFeedUpdate>,
 ) -> anyhow::Result<()> {
     let feed = parse_feed_id(&feed_id)?;
-    let engine = runtime_registry::engine()?;
+    let engine = registry::engine()?;
     let (state, revisions) = engine.discovery.watch_inputs(feed)?;
     tokio::spawn(watch_feed(sink, state, feed, revisions));
     Ok(())

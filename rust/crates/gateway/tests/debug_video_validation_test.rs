@@ -1,7 +1,7 @@
 #![cfg(feature = "video-debug-web")]
 
 use ghostr_delivery::delivery_events::command_channel;
-use ghostr_gateway::debug_videos::{DebugVideoRegistration, DebugVideos};
+use ghostr_gateway::debug::videos::{DebugVideoRegistration, DebugVideos};
 
 #[test]
 fn debug_video_registration_rejects_invalid_urls_and_measurements() {

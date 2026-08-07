@@ -1,6 +1,6 @@
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
 use crate::delivery_events::{DeliveryCandidate, DeliveryFocus, FocusItem};
-use crate::delivery_state::DeliveryState;
+use crate::manager::state::DeliveryState;
 
 #[test]
 fn explicit_candidate_priority_replaces_the_current_focus() {

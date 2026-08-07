@@ -1,19 +1,19 @@
 //! Shared fakes and builders for discovery scheduler tests: a gated
 //! executor stands in for relay IO so no test ever touches the network.
 
-use crate::discovery_scheduler::{
+use crate::scheduler::{
     start_discovery_scheduler, DiscoveryHandle, DiscoverySchedulerConfig,
 };
 use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::retrieval_types::{FeedContext, PlanFailure, RetrievalOutcome};
-use crate::video_filters::DiscoveryRequest;
+use crate::query::video_filters::DiscoveryRequest;
 use ghostr_engine::inventory_controller::Mode;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, Timestamp};
 use std::sync::Arc;
 use tokio::sync::{mpsc, watch, Semaphore};
 
-pub use super::scheduler_wait::{next_outcome, next_started, no_start};
+pub use crate::tests::scheduler_wait::{next_outcome, next_started, no_start};
 
 /// Executor that reports every start and holds each retrieval until a
 /// gate permit is released; completed retrievals return `events`.

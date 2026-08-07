@@ -2,8 +2,8 @@ mod range_fixture;
 
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::ByteRange;
-use ghostr_delivery::chunk_cancel::{cancel_pair, CancelHandle};
-use ghostr_delivery::chunk_downloader::{download_chunk, ChunkSink, ChunkSpec};
+use ghostr_delivery::chunk::cancel::{cancel_pair, CancelHandle};
+use ghostr_delivery::chunk::downloader::{download_chunk, ChunkSink, ChunkSpec};
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use std::time::Duration;

@@ -2,10 +2,10 @@
 //! and broadcasts. Keys never cross this boundary — only pre-signed
 //! event JSON, and only when its id and signature verify.
 
-use crate::api::feed_runtime::DiscoveryRuntime;
-use crate::api::runtime_registry;
-use crate::discovery::outbox_directory::{max_outbox_relays, OutboxDirectory};
-use crate::discovery::relay_pool_owner::RelayBroadcastRequest;
+use crate::api::runtime::discovery::DiscoveryRuntime;
+use crate::api::runtime::registry;
+use crate::discovery::outbox::directory::{max_outbox_relays, OutboxDirectory};
+use crate::discovery::relay::pool::RelayBroadcastRequest;
 use crate::discovery::session_generation::{SessionGeneration, SESSION_RESET_MESSAGE};
 use crate::engine::DataUsageLevel;
 use anyhow::anyhow;
@@ -18,7 +18,7 @@ use nostr_sdk::{Event, JsonUtil, PublicKey};
 #[frb]
 pub async fn ffi_broadcast_event(signed_event_json: String) -> anyhow::Result<()> {
     let event = verified_event(&signed_event_json)?;
-    let engine = runtime_registry::engine()?;
+    let engine = registry::engine()?;
     let session = engine.discovery.session_generation();
     let level = engine.tracked.level();
     engine

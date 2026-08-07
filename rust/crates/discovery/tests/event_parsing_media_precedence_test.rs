@@ -1,5 +1,5 @@
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, Tag};
-use ghostr_discovery::event_parsing::video_post_from_event;
+use ghostr_discovery::content::parsing::video_post_from_event;
 
 fn signed(content: &str, tags: Vec<Tag>) -> Event {
     EventBuilder::new(Kind::Custom(22), content)

@@ -4,8 +4,8 @@
 mod delivery_fixture;
 
 use delivery_fixture::retry::{cdn_source, retry_policy};
-use ghostr_delivery::delivery_failure::FailureClass;
-use ghostr_delivery::delivery_retry::{Retry, RetryBook};
+use ghostr_delivery::manager::failure::FailureClass;
+use ghostr_delivery::manager::retry::{Retry, RetryBook};
 
 #[tokio::test]
 async fn delivery_retry_backoff_resets_after_a_success() {

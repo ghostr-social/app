@@ -6,8 +6,8 @@ mod delivery_fixture;
 
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::{media_client, temp_directory};
-use ghostr_delivery::debug_network::NetworkThrottle;
-use ghostr_delivery::delivery_manager::{
+use ghostr_delivery::debug::network::NetworkThrottle;
+use ghostr_delivery::manager::{
     start_delivery_manager_with_modes, DeliveryManagerConfig, DeliveryTuning,
 };
 use ghostr_delivery::playback_demand::demand_channel;

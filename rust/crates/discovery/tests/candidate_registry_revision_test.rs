@@ -2,7 +2,7 @@ mod feed_support;
 
 use feed_support::addressable_video;
 use nostr_sdk::Keys;
-use ghostr_discovery::candidate_registry::{CandidateAdmission, CandidateRegistry};
+use ghostr_discovery::content::candidates::{CandidateAdmission, CandidateRegistry};
 
 #[test]
 fn a_new_addressable_revision_replaces_the_same_candidate() {

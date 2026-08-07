@@ -4,8 +4,8 @@
 
 mod support;
 
-use ghostr_discovery::event_cache::client_with_event_cache;
-use ghostr_gateway::gateway_runtime::{GatewayConfiguration, GatewayRuntime};
+use ghostr_discovery::cache::client_with_event_cache;
+use ghostr_gateway::runtime::{GatewayConfiguration, GatewayRuntime};
 use std::sync::Arc;
 use support::fixtures::temp_directory;
 

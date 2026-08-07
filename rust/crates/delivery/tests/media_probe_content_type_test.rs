@@ -1,7 +1,7 @@
 mod range_fixture;
 
 use ghostr_engine::host_stats::HostStats;
-use ghostr_delivery::media_probe::probe;
+use ghostr_delivery::probe::media::probe;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 
 #[tokio::test]

@@ -5,7 +5,7 @@ mod feed_support;
 
 use feed_support::{parsed_posts, video_note};
 use nostr_sdk::Keys;
-use ghostr_discovery::feed_assembly::canonical_posts;
+use ghostr_discovery::feed::assembly::canonical_posts;
 
 #[test]
 fn feed_assembly_orders_posts_newest_first() {

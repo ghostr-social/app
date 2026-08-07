@@ -1,8 +1,8 @@
 //! Focus-window updates and playback URLs (plan §2 rows 3–4).
 
 use crate::api::delivery_types::FfiFocusItem;
-use crate::api::focus_mapping::{delivery_focus, focus_item};
-use crate::api::runtime_registry::{self, EngineHandles};
+use crate::api::delivery::focus_mapping::{delivery_focus, focus_item};
+use crate::api::runtime::registry::{self, EngineHandles};
 use crate::engine::{DeliveryKind, VideoMeta};
 use ghostr_delivery::delivery_events::{DeliveryFocus, FocusItem};
 use anyhow::bail;
@@ -21,7 +21,7 @@ pub async fn ffi_update_focus(
 ) -> anyhow::Result<()> {
     let _ = feed_id;
     let focus = delivery_focus(&items, current_index, watch_ms)?;
-    let engine = runtime_registry::engine()?;
+    let engine = registry::engine()?;
     engine.tracked.replace(progressive_entries(&focus));
     engine.gateway.delivery().update_focus(focus);
     Ok(())
@@ -39,7 +39,7 @@ pub async fn ffi_playback_url(item: FfiFocusItem) -> anyhow::Result<String> {
     if mapped.meta.delivery == DeliveryKind::Hls {
         bail!("HLS items have no progressive URL; use ffi_acquire_hls_playback");
     }
-    let engine = runtime_registry::engine()?;
+    let engine = registry::engine()?;
     register_progressive(&engine, &mapped);
     Ok(progressive_url(&engine.endpoint, mapped.post.as_str()))
 }

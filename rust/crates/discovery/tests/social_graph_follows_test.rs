@@ -7,7 +7,7 @@ mod discovery_support;
 
 use discovery_support::{contact_list, p_tag};
 use nostr_sdk::Keys;
-use ghostr_discovery::social_graph::SocialGraph;
+use ghostr_discovery::content::social_graph::SocialGraph;
 
 #[test]
 fn collects_deduplicated_p_tag_follows() {

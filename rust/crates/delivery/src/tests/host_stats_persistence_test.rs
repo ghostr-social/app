@@ -1,6 +1,6 @@
 //! Async load/save of host stats snapshots in the cache directory.
 
-use crate::delivery_stats::{load_host_stats, save_host_stats};
+use crate::manager::stats::{load_host_stats, save_host_stats};
 use ghostr_engine::host_stats::HostStats;
 use std::path::PathBuf;
 use std::time::Duration;

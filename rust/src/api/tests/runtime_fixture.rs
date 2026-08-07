@@ -1,6 +1,6 @@
 //! Real discovery runtime with no external relays for API-side tests.
 
-use crate::api::feed_runtime::{DiscoveryBoot, DiscoveryRuntime};
+use crate::api::runtime::discovery::{DiscoveryBoot, DiscoveryRuntime};
 use crate::engine::inventory_controller::Mode;
 use nostr_sdk::Client;
 use std::sync::Arc;

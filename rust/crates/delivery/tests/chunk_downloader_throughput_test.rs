@@ -2,8 +2,8 @@ mod range_fixture;
 
 use ghostr_engine::host_stats::{host_of, HostStats, OPTIMISTIC_THROUGHPUT_BPS};
 use ghostr_engine::ByteRange;
-use ghostr_delivery::chunk_cancel::cancel_pair;
-use ghostr_delivery::chunk_downloader::{download_chunk, ChunkSink, ChunkSpec};
+use ghostr_delivery::chunk::cancel::cancel_pair;
+use ghostr_delivery::chunk::downloader::{download_chunk, ChunkSink, ChunkSpec};
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 
 #[tokio::test]

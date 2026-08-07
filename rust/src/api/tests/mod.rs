@@ -1,60 +1,17 @@
-mod api_broadcast_runtime_test;
-mod broadcast_acceptance_test;
-mod broadcast_mute_acceptance_test;
-mod broadcast_relays_test;
-mod broadcast_validation_test;
-mod data_usage_mapping_test;
-#[cfg(feature = "video-debug-web")]
-mod debug_nostr_mapping_test;
-#[cfg(feature = "video-debug-web")]
-mod debug_relay_status_test;
-mod delivery_kind_mapping_test;
-mod delivery_watcher_cancellation_test;
-mod discovery_runtime_relay_boot_test;
-mod engine_relay_configuration_test;
-mod event_diff_test;
-mod event_query_cached_result_test;
-mod feed_candidate_pipeline_test;
+//! Shared fixtures sit here; each folder holds the tests
+//! for the matching folder of the crate.
+
 mod feed_fixtures;
-mod feed_id_parse_test;
-mod feed_native_hunt_stage_test;
-mod feed_outcome_pump_test;
-mod feed_outcome_relay_lists_test;
-mod feed_post_payload_test;
-mod feed_post_reference_test;
-mod feed_progressive_update_test;
-mod feed_spec_parse_test;
-mod feed_stage_older_page_test;
-mod feed_stage_test;
-mod feed_state_blank_search_test;
-mod feed_state_exhaustion_test;
-mod feed_state_first_page_test;
-mod feed_state_first_retry_test;
-mod feed_state_follow_routing_test;
-mod feed_state_load_more_test;
-mod feed_state_profile_enrichment_test;
-mod feed_state_query_reopen_test;
-mod feed_state_raw_cursor_test;
-mod feed_updates_stream_test;
 mod feed_watch_support;
-mod feed_watcher_cancellation_test;
-mod focus_item_mapping_test;
-mod focus_window_mapping_test;
 mod outbox_runtime_support;
-mod playback_url_test;
-mod post_id_validation_test;
-mod profile_feed_relay_chase_test;
-mod runtime_event_query_test;
-mod runtime_feed_watch_lifecycle_test;
 mod runtime_fixture;
-mod runtime_load_more_dispatch_test;
-mod runtime_relay_configuration_pool_test;
-mod runtime_start_gate_test;
-mod session_generation_test;
-mod session_reset_feed_state_test;
-mod session_reset_outcome_test;
-mod session_reset_relay_pool_test;
 mod signed_event_fixture;
-mod snapshot_readiness_test;
 mod support;
-mod watcher_stream_test;
+
+mod broadcast;
+#[cfg(feature = "video-debug-web")]
+mod debug;
+mod delivery;
+mod event;
+mod feed;
+mod runtime;

@@ -1,7 +1,7 @@
 use super::support::temp_directory;
 use ghostr_engine::PostId;
-use crate::delivery_stats::StatsKeeper;
-use crate::delivery_transfers::ProbeDone;
+use crate::manager::stats::StatsKeeper;
+use crate::manager::transfers::ProbeDone;
 use anyhow::anyhow;
 use std::time::Duration;
 

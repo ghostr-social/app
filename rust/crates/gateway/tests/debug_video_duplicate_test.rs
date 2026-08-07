@@ -1,7 +1,7 @@
 #![cfg(feature = "video-debug-web")]
 
 use ghostr_delivery::delivery_events::{command_channel, DeliveryCommand};
-use ghostr_gateway::debug_videos::{DebugVideoRegistration, DebugVideos};
+use ghostr_gateway::debug::videos::{DebugVideoRegistration, DebugVideos};
 
 #[tokio::test]
 async fn registering_the_same_url_updates_one_focus_item() {

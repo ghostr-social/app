@@ -1,4 +1,4 @@
-use crate::discovery_scheduler::{
+use crate::scheduler::{
     start_discovery_scheduler, DiscoveryHandle, DiscoverySchedulerConfig,
 };
 use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};

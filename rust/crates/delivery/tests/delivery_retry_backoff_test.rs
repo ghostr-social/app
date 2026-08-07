@@ -4,8 +4,8 @@
 mod delivery_fixture;
 
 use delivery_fixture::retry::{cdn_source, retry_policy};
-use ghostr_delivery::delivery_failure::FailureClass;
-use ghostr_delivery::delivery_retry::{Retry, RetryBook};
+use ghostr_delivery::manager::failure::FailureClass;
+use ghostr_delivery::manager::retry::{Retry, RetryBook};
 use std::time::Duration;
 
 fn waits(book: &mut RetryBook, attempts: usize) -> Vec<Duration> {
@@ -36,7 +36,7 @@ async fn delivery_retry_backoff_grows_and_stays_bounded() {
 
 #[tokio::test]
 async fn delivery_retry_backoff_spreads_jittered_waits_around_the_ceiling() {
-    let policy = ghostr_delivery::delivery_retry::RetryPolicy {
+    let policy = ghostr_delivery::manager::retry::RetryPolicy {
         jitter: 0.25,
         ..retry_policy()
     };

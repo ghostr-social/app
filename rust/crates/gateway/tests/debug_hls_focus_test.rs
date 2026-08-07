@@ -5,7 +5,7 @@ mod gateway_fixture;
 use axum::body::Body;
 use axum::http::{Method, Request, StatusCode};
 use gateway_fixture::progressive::progressive_harness;
-use ghostr_delivery::debug_feed::{DebugFeedItem, DebugFeedStage};
+use ghostr_delivery::debug::feed::{DebugFeedItem, DebugFeedStage};
 use ghostr_engine::{DeliveryKind, VideoMeta};
 use tower::ServiceExt;
 
