@@ -1,9 +1,7 @@
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
+use ghostr_gateway::hls_sessions::{HlsResourceId, HlsSessionId, HlsSessionLimits, HlsSessions};
 use reqwest::Url;
-use ghostr_gateway::hls_sessions::{
-    HlsResourceId, HlsSessionId, HlsSessionLimits, HlsSessions,
-};
 use std::time::Duration;
 
 #[tokio::test]

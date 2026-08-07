@@ -37,5 +37,6 @@ tokio-stream = { workspace = true }
 # commit 4d400c6.
 [dev-dependencies]
 ghostr-discovery = { path = "../discovery" }
+serde_json = { workspace = true }
 tokio = { workspace = true, features = ["test-util"] }
 tower = { workspace = true }

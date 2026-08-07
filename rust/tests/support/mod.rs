@@ -6,5 +6,3 @@ pub mod fixtures;
 pub mod http;
 pub mod native_cache;
 pub mod nostr_relay;
-pub mod progressive;
-mod progressive_request;

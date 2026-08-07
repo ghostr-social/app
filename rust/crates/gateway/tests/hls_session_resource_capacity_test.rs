@@ -1,5 +1,5 @@
-use reqwest::Url;
 use ghostr_gateway::hls_sessions::{HlsResourceId, HlsSessionLimits, HlsSessions};
+use reqwest::Url;
 use std::time::Duration;
 
 #[tokio::test]
