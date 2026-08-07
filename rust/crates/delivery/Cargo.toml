@@ -1,0 +1,21 @@
+[package]
+name = "ghostr-delivery"
+version = "0.1.0"
+edition = "2021"
+description = "Delivery scheduling and chunk transfer for the media engine."
+
+[features]
+video-debug-web = []
+
+[dependencies]
+ghostr-engine = { path = "../engine" }
+ghostr-media-store = { path = "../media-store" }
+ghostr-net = { path = "../net" }
+
+anyhow = { workspace = true }
+bytes = { workspace = true }
+log = { workspace = true }
+rand = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true }

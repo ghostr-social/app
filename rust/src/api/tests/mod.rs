@@ -1,3 +1,4 @@
+mod api_broadcast_runtime_test;
 mod broadcast_acceptance_test;
 mod broadcast_mute_acceptance_test;
 mod broadcast_relays_test;

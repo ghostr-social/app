@@ -1,0 +1,20 @@
+[package]
+name = "ghostr-media-store"
+version = "0.1.0"
+edition = "2021"
+description = "On-disk media storage: partial byte-range store and whole-blob cache."
+
+[dependencies]
+ghostr-media-model = { path = "../media-model" }
+ghostr-net = { path = "../net" }
+
+anyhow = { workspace = true }
+bytes = { workspace = true }
+log = { workspace = true }
+reqwest = { workspace = true }
+sha2 = { workspace = true }
+tokio = { workspace = true }
+
+# statvfs, for measuring the free space the video store may not consume.
+[target.'cfg(unix)'.dependencies]
+libc = { workspace = true }

@@ -36,11 +36,11 @@ coverage-summary: ## Report and enforce Dart coverage requirements.
 	@awk -f tool/check_dart_coverage.awk coverage/lcov.info
 
 native-check: ## Check the Rust package.
-	cd rust && cargo clippy --all-targets --all-features -- -D warnings
+	cd rust && cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 native-test: web-contract-test ## Run Rust tests.
 	cd rust && cargo test --no-default-features --test debug_web_exclusion_test
-	cd rust && cargo test --all-features
+	cd rust && cargo test --workspace --all-features
 
 web-contract-test: ## Verify that the web tool is Rust-only.
 	sh test/tool/web_target_contract_test.sh
@@ -51,7 +51,7 @@ native-coverage-contract-test: ## Test the per-file native coverage contract.
 	sh test/tool/native_coverage_contract_test.sh
 
 native-coverage: native-coverage-contract-test ## Run Rust tests and enforce native coverage.
-	cd rust && cargo llvm-cov --all-features --ignore-filename-regex 'frb_generated.rs' --lcov --output-path target/native-coverage.lcov --fail-under-lines 95
+	cd rust && cargo llvm-cov --workspace --all-features --ignore-filename-regex 'frb_generated.rs' --lcov --output-path target/native-coverage.lcov --fail-under-lines 95
 	awk -f tool/check_native_coverage.awk rust/target/native-coverage.lcov
 
 web: ## Run the standalone Rust video debugging dashboard.
@@ -63,7 +63,7 @@ rust: ## Clean and build the Rust Android library.
 	$(MAKE) rust-no-clean
 
 rust-no-clean: ## Build the Rust Android library without cleaning.
-	cd rust && cargo ndk -t "$(ANDROID_ABI)" build
+	cd rust && cargo ndk -t "$(ANDROID_ABI)" build -p rust_lib_ghostr
 
 gen: ## Generate the Flutter-Rust bridge bindings.
 	flutter_rust_bridge_codegen generate

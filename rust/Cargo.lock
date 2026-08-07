@@ -770,6 +770,116 @@ dependencies = [
 ]
 
 [[package]]
+name = "ghostr-delivery"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "ghostr-engine",
+ "ghostr-media-store",
+ "ghostr-net",
+ "log",
+ "rand 0.8.7",
+ "reqwest",
+ "serde",
+ "tokio",
+]
+
+[[package]]
+name = "ghostr-discovery"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "futures-util",
+ "ghostr-engine",
+ "ghostr-media-model",
+ "log",
+ "nostr-sdk",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "tokio-stream",
+ "tokio-tungstenite",
+]
+
+[[package]]
+name = "ghostr-engine"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "ghostr-gateway"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "base64",
+ "bytes",
+ "ghostr-delivery",
+ "ghostr-discovery",
+ "ghostr-engine",
+ "ghostr-hls-manifest",
+ "ghostr-media-model",
+ "ghostr-media-store",
+ "ghostr-net",
+ "hmac",
+ "log",
+ "nostr-sdk",
+ "rand 0.8.7",
+ "reqwest",
+ "serde",
+ "sha2",
+ "tokio",
+ "tokio-stream",
+]
+
+[[package]]
+name = "ghostr-hls-manifest"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "reqwest",
+]
+
+[[package]]
+name = "ghostr-media-model"
+version = "0.1.0"
+dependencies = [
+ "nostr-sdk",
+ "reqwest",
+ "sha2",
+ "tokio",
+]
+
+[[package]]
+name = "ghostr-media-store"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "ghostr-media-model",
+ "ghostr-net",
+ "libc",
+ "log",
+ "reqwest",
+ "sha2",
+ "tokio",
+]
+
+[[package]]
+name = "ghostr-net"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "reqwest",
+ "tokio",
+]
+
+[[package]]
 name = "gimli"
 version = "0.32.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1641,6 +1751,14 @@ dependencies = [
  "bytes",
  "flutter_rust_bridge",
  "futures-util",
+ "ghostr-delivery",
+ "ghostr-discovery",
+ "ghostr-engine",
+ "ghostr-gateway",
+ "ghostr-hls-manifest",
+ "ghostr-media-model",
+ "ghostr-media-store",
+ "ghostr-net",
  "hmac",
  "libc",
  "log",

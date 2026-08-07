@@ -5,7 +5,7 @@ pub struct FfiHlsPlaybackSession {
 }
 
 pub fn ffi_hls_playback_session(
-    session: crate::video::hls_playback_gateway::NativeHlsPlaybackSession,
+    session: ghostr_gateway::hls_playback_gateway::NativeHlsPlaybackSession,
 ) -> FfiHlsPlaybackSession {
     FfiHlsPlaybackSession {
         session_id: session.id.as_str().to_owned(),

@@ -1,0 +1,11 @@
+[package]
+name = "ghostr-media-model"
+version = "0.1.0"
+edition = "2021"
+description = "Nostr event to media description: imeta parsing, video identity, media metadata models."
+
+[dependencies]
+nostr-sdk = { workspace = true }
+reqwest = { workspace = true }
+sha2 = { workspace = true }
+tokio = { workspace = true }
