@@ -14,6 +14,7 @@ ghostr-hls-manifest = { path = "../hls-manifest" }
 ghostr-media-model = { path = "../media-model" }
 ghostr-media-store = { path = "../media-store" }
 ghostr-net = { path = "../net" }
+ghostr-partial-store = { path = "../partial-store" }
 
 anyhow = { workspace = true }
 axum = { workspace = true }

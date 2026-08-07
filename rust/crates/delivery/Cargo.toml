@@ -9,8 +9,8 @@ video-debug-web = []
 
 [dependencies]
 ghostr-engine = { path = "../engine" }
-ghostr-media-store = { path = "../media-store" }
 ghostr-net = { path = "../net" }
+ghostr-partial-store = { path = "../partial-store" }
 
 anyhow = { workspace = true }
 bytes = { workspace = true }

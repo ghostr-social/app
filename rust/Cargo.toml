@@ -57,6 +57,7 @@ ghostr-hls-manifest = { path = "crates/hls-manifest" }
 ghostr-media-model = { path = "crates/media-model" }
 ghostr-media-store = { path = "crates/media-store" }
 ghostr-net = { path = "crates/net" }
+ghostr-partial-store = { path = "crates/partial-store" }
 
 anyhow = { workspace = true }
 axum = { workspace = true }

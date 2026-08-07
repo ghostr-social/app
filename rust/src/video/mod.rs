@@ -10,6 +10,7 @@ pub use ghostr_hls_manifest::*;
 pub use ghostr_media_model::*;
 pub use ghostr_media_store::*;
 pub use ghostr_net::*;
+pub use ghostr_partial_store::*;
 
 pub mod ffi_models;
 pub mod native_gateway;
