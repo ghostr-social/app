@@ -1,11 +1,20 @@
 //! Shared scaffolding for the gateway's routed tests: a temp root, a
-//! trusted media client, and a real delivery manager behind them.
+//! trusted media client, the downloads a proxied request resolves
+//! against, and the harnesses that put a real router behind them.
 
 #![allow(dead_code)]
 
+#[cfg(feature = "video-debug-web")]
 pub mod debug_clear;
 pub mod delivery;
+pub mod free_space;
+pub mod progressive;
+mod progressive_request;
+pub mod raw_http;
 
+use ghostr_media_model::native_models::{
+    NativeEventIdentity, NativeUserData, NativeVideo, NativeVideoDelivery, NativeVideoDownload,
+};
 use ghostr_net::outbound_media_client::MediaHttpClient;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -20,4 +29,43 @@ pub fn temp_directory(prefix: &str) -> PathBuf {
 
 pub fn media_client() -> MediaHttpClient {
     MediaHttpClient::trusted().expect("trusted media client")
+}
+
+pub fn video_id() -> String {
+    "a".repeat(64)
+}
+
+pub fn native_download(url: &str) -> NativeVideoDownload {
+    NativeVideoDownload::new(video_id(), native_video(url), event_identity())
+}
+
+fn native_video(url: &str) -> NativeVideo {
+    NativeVideo {
+        id: video_id(),
+        expected_digest: None,
+        fallback_urls: Vec::new(),
+        user: NativeUserData {
+            npub: Some("npub1author".to_owned()),
+            name: Some("Ghost".to_owned()),
+            profile_picture: Some("https://media.example/avatar.png".to_owned()),
+        },
+        title: "Relay clip".to_owned(),
+        song_name: "Original sound".to_owned(),
+        comments: "4".to_owned(),
+        likes: "12".to_owned(),
+        url: url.to_owned(),
+        delivery: NativeVideoDelivery::Progressive,
+    }
+}
+
+fn event_identity() -> NativeEventIdentity {
+    NativeEventIdentity {
+        event_id: "event-id".to_owned(),
+        author_public_key_hex: "author-key".to_owned(),
+        kind: 22,
+        identifier: None,
+        created_at: 42,
+        content: "Relay clip".to_owned(),
+        hashtags: Vec::new(),
+    }
 }
