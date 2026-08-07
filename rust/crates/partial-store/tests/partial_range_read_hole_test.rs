@@ -1,13 +1,13 @@
-mod support;
+mod store_fixture;
 
-use rust_lib_ghostr::video::partial_range_store::PartialRangeStore;
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
-use support::fixtures::temp_directory;
+use store_fixture::temp_root;
 use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn partial_range_reads_refuse_spans_that_cross_holes() {
-    let root = temp_directory("ghostr-partial-holes");
+    let root = temp_root("ghostr-partial-holes");
     let store = PartialRangeStore::new(root.clone(), Arc::new(Mutex::new(0)));
 
     store.write_range("clip", 0, b"aaaa").await.expect("head");

@@ -1,6 +1,6 @@
-mod store_space;
+mod store_fixture;
 
-use store_space::{discard, limits, spaced_store};
+use store_fixture::{discard, limits, spaced_store};
 
 #[tokio::test]
 async fn partial_range_store_applies_shrinks_now_and_expansions_to_future_writes() {

@@ -4,10 +4,10 @@
 //! space again: a measurement taken before an eviction must not go on
 //! refusing writes the store has just made room for.
 
-mod store_space;
+mod store_fixture;
 
 use std::time::Duration;
-use store_space::{discard, limits, paced_store};
+use store_fixture::{discard, limits, paced_store};
 
 const RECHECK: Duration = Duration::from_secs(2);
 

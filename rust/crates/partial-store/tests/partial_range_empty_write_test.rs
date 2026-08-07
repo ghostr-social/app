@@ -1,13 +1,13 @@
-mod support;
+mod store_fixture;
 
-use rust_lib_ghostr::video::partial_range_store::PartialRangeStore;
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
-use support::fixtures::temp_directory;
+use store_fixture::temp_root;
 use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn empty_partial_write_changes_nothing() {
-    let root = temp_directory("ghostr-empty-range-write");
+    let root = temp_root("ghostr-empty-range-write");
     let store = PartialRangeStore::new(root.clone(), Arc::new(Mutex::new(0)));
 
     store

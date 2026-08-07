@@ -1,13 +1,13 @@
-mod support;
+mod store_fixture;
 
-use rust_lib_ghostr::video::partial_range_store::PartialRangeStore;
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
-use support::fixtures::temp_directory;
+use store_fixture::temp_root;
 use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn partial_range_store_reports_an_unreadable_manifest_entry() {
-    let root = temp_directory("ghostr-manifest-read-failure");
+    let root = temp_root("ghostr-manifest-read-failure");
     std::fs::create_dir_all(&root).expect("create store root");
     std::fs::create_dir(root.join("clip.ranges.json")).expect("blocking manifest directory");
     let store = PartialRangeStore::new(root.clone(), Arc::new(Mutex::new(0)));

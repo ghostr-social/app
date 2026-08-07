@@ -1,6 +1,6 @@
-mod store_space;
+mod store_fixture;
 
-use store_space::{discard, limits, spaced_store};
+use store_fixture::{discard, limits, spaced_store};
 
 /// Running out of room mid-transfer must cost only the chunk that could
 /// not land: the partial file, its manifest and its accounting stay

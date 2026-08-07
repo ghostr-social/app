@@ -1,9 +1,9 @@
 #![cfg(unix)]
 
-mod store_space;
+mod store_fixture;
 
 use std::os::unix::fs::PermissionsExt;
-use store_space::{discard, limits, spaced_store};
+use store_fixture::{discard, limits, spaced_store};
 
 #[tokio::test]
 async fn failed_partial_range_eviction_reports_no_freed_bytes() {
