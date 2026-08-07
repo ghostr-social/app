@@ -1,11 +1,11 @@
 #![cfg(unix)]
 
-mod support;
+mod cache_fixture;
 
+use cache_fixture::video_cache_key;
+use cache_fixture::{NativeCacheHarness, VIDEO_RESPONSE};
 use std::collections::HashSet;
 use std::os::unix::fs::PermissionsExt;
-use support::fixtures::video_cache_key;
-use support::native_cache::{NativeCacheHarness, VIDEO_RESPONSE};
 
 #[tokio::test]
 async fn unremovable_invalid_active_blob_stays_charged_and_is_reported() {

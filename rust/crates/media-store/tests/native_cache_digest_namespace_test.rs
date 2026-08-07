@@ -1,10 +1,10 @@
-mod support;
+mod cache_fixture;
 
-use rust_lib_ghostr::video::native_cache::{prepare_native_cache_directory, NativeVideoCache};
-use rust_lib_ghostr::video::native_models::NativeVideoCacheKey;
+use cache_fixture::raw_http::spawn_raw_server;
+use cache_fixture::{media_client, temp_directory, video_id};
+use ghostr_media_model::native_models::NativeVideoCacheKey;
+use ghostr_media_store::native_cache::{prepare_native_cache_directory, NativeVideoCache};
 use std::sync::Arc;
-use support::fixtures::{temp_directory, trusted_media_client, video_id};
-use support::http::spawn_raw_server;
 use tokio::sync::Mutex;
 
 #[tokio::test]
@@ -21,16 +21,11 @@ async fn does_not_reuse_a_hashless_blob_for_an_advertised_digest() {
     let digest_key = NativeVideoCacheKey::AdvertisedDigest(collision.clone());
 
     let cached = cache
-        .download(&trusted_media_client(), &hashless_key, &hashless_url, None)
+        .download(&media_client(), &hashless_key, &hashless_url, None)
         .await
         .expect("hashless cache entry");
     let advertised = cache
-        .download(
-            &trusted_media_client(),
-            &digest_key,
-            &digest_url,
-            Some(&collision),
-        )
+        .download(&media_client(), &digest_key, &digest_url, Some(&collision))
         .await;
 
     assert!(advertised.is_err());

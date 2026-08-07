@@ -1,7 +1,7 @@
-mod support;
+mod media_fixture;
 
-use rust_lib_ghostr::video::native_models::NativeVideoCacheKey;
-use support::fixtures::native_video;
+use ghostr_media_model::native_models::NativeVideoCacheKey;
+use media_fixture::native_video;
 
 #[test]
 fn native_video_source_identity_uses_digest_or_url_namespace() {

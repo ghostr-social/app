@@ -1,14 +1,14 @@
 #![cfg(unix)]
 
-mod support;
+mod cache_fixture;
 
-use rust_lib_ghostr::video::native_cache::{prepare_native_cache_directory, NativeVideoCache};
+use cache_fixture::raw_http::spawn_raw_server;
+use cache_fixture::{media_client, temp_directory, video_cache_key};
+use ghostr_media_store::native_cache::{prepare_native_cache_directory, NativeVideoCache};
 use std::collections::HashSet;
 use std::os::unix::fs::PermissionsExt;
 use std::sync::Arc;
 use std::time::Duration;
-use support::fixtures::{temp_directory, trusted_media_client, video_cache_key};
-use support::http::spawn_raw_server;
 use tokio::sync::Mutex;
 
 #[tokio::test]
@@ -25,7 +25,7 @@ async fn stale_cleanup_failure_does_not_abort_cache_synchronization() {
         Duration::ZERO,
     );
     cache
-        .download(&trusted_media_client(), &video_cache_key(), &url, None)
+        .download(&media_client(), &video_cache_key(), &url, None)
         .await
         .expect("cached video");
     std::fs::set_permissions(&directory, std::fs::Permissions::from_mode(0o500))

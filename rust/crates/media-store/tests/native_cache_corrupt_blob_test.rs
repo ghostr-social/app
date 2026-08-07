@@ -1,8 +1,8 @@
-mod support;
+mod cache_fixture;
 
+use cache_fixture::{advertised_key, NativeCacheHarness, VIDEO_DIGEST, VIDEO_RESPONSE};
 use std::fs::{FileTimes, OpenOptions};
 use std::time::SystemTime;
-use support::native_cache::{advertised_key, NativeCacheHarness, VIDEO_DIGEST, VIDEO_RESPONSE};
 
 #[tokio::test]
 async fn corrupted_advertised_native_blob_is_removed_and_downloaded_again() {
