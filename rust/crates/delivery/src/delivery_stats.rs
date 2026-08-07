@@ -3,10 +3,10 @@
 //! persisted to the cache directory on a debounce.
 
 use ghostr_engine::host_stats::{host_of, HostStats};
-use ghostr_engine::host_stats_persistence::{load_host_stats, save_host_stats};
 use crate::delivery_transfers::{ChunkDone, InternalEvent, ProbeDone};
 use log::warn;
-use std::path::PathBuf;
+use std::io;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -94,4 +94,18 @@ impl StatsKeeper {
             Err(error) => warn!("Host stats snapshot failed: {error}"),
         }
     }
+}
+
+/// Loads persisted host stats. A missing or corrupt file yields fresh
+/// stats — the model is a heuristic cache, never worth failing over.
+pub(crate) async fn load_host_stats(path: &Path) -> HostStats {
+    match tokio::fs::read_to_string(path).await {
+        Ok(json) => HostStats::from_json(&json).unwrap_or_default(),
+        Err(_) => HostStats::new(),
+    }
+}
+
+/// Writes the current snapshot; callers decide the cadence.
+pub(crate) async fn save_host_stats(path: &Path, stats: &HostStats) -> io::Result<()> {
+    tokio::fs::write(path, stats.to_json()).await
 }
