@@ -14,7 +14,6 @@ mod host_stats_ewma_test;
 mod host_stats_factor_test;
 mod host_stats_failure_ratio_test;
 mod host_stats_json_test;
-mod host_stats_persistence_test;
 mod host_stats_support;
 mod host_stats_unknown_host_test;
 mod inventory_counts_test;

@@ -8,7 +8,6 @@ pub mod catalog;
 pub mod chunk_plan;
 pub mod focus;
 pub mod host_stats;
-pub mod host_stats_persistence;
 pub mod inventory_controller;
 pub mod scoring;
 pub mod tiers;

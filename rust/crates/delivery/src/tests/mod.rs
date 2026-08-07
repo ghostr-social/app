@@ -6,5 +6,6 @@ mod delivery_probe_limit_test;
 mod delivery_stale_demand_test;
 mod delivery_stats_retry_test;
 mod delivery_stats_unhosted_test;
+mod host_stats_persistence_test;
 mod mutable_priority_queue_test;
 mod support;

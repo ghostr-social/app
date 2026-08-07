@@ -7,4 +7,3 @@ description = "Pure, deterministic delivery policy: catalog, scoring, tiers, foc
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
-tokio = { workspace = true }
