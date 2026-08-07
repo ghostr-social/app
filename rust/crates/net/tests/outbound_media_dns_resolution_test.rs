@@ -1,5 +1,5 @@
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
-use rust_lib_ghostr::video::outbound_media_client::MediaHttpClient;
+use ghostr_net::outbound_media_client::MediaHttpClient;
 use std::error::Error;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};

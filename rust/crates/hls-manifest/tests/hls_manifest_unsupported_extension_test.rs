@@ -1,5 +1,5 @@
-use reqwest::Url;
-use rust_lib_ghostr::video::hls_manifest::rewrite_hls_manifest;
+use url::Url;
+use ghostr_hls_manifest::hls_manifest::rewrite_hls_manifest;
 
 #[test]
 fn rejects_content_steering_that_could_escape_the_gateway() {

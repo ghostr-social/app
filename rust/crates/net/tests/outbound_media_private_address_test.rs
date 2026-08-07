@@ -1,9 +1,9 @@
-use rust_lib_ghostr::video::outbound_media_client::MediaHttpClient;
+use ghostr_net::outbound_media_client::MediaHttpClient;
 
 #[test]
 fn rejects_literal_non_public_destinations() {
     let client = MediaHttpClient::public().expect("media client");
-    for address in include_str!("../../test/support/public_media_private_addresses.txt").lines() {
+    for address in include_str!("../../../../test/support/public_media_private_addresses.txt").lines() {
         let url = media_url(address);
         assert!(client.get(&url).is_err(), "accepted {url}");
     }
