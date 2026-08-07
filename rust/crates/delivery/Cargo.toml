@@ -19,3 +19,9 @@ rand = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
 tokio = { workspace = true }
+
+# `range_fixture` serves real ranged responses over a loopback listener, so the
+# chunk downloader and probes are exercised against an actual HTTP origin.
+[dev-dependencies]
+axum = { workspace = true }
+tokio = { workspace = true, features = ["test-util"] }

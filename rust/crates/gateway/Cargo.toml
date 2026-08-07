@@ -29,3 +29,9 @@ serde = { workspace = true }
 sha2 = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
+
+# `tower::ServiceExt::oneshot` drives a route without binding a port; tokio's
+# `test-util` lets the session tests expire leases without sleeping.
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+tower = { workspace = true }
