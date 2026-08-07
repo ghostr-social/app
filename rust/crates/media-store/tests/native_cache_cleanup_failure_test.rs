@@ -1,11 +1,9 @@
-mod support;
+mod cache_fixture;
 
-use rust_lib_ghostr::video::native_cache::{prepare_native_cache_directory, NativeVideoCache};
+use cache_fixture::raw_http::spawn_raw_server;
+use cache_fixture::{media_client, temp_directory, video_cache_file_id, video_cache_key};
+use ghostr_media_store::native_cache::{prepare_native_cache_directory, NativeVideoCache};
 use std::sync::Arc;
-use support::fixtures::{
-    temp_directory, trusted_media_client, video_cache_file_id, video_cache_key,
-};
-use support::http::spawn_raw_server;
 use tokio::sync::Mutex;
 
 #[tokio::test]
@@ -20,7 +18,7 @@ async fn reports_the_original_and_partial_cleanup_failures() {
     let cache = NativeVideoCache::new(directory.clone(), 10, Arc::new(Mutex::new(0)));
 
     let error = match cache
-        .download(&trusted_media_client(), &video_cache_key(), &url, None)
+        .download(&media_client(), &video_cache_key(), &url, None)
         .await
     {
         Ok(_) => panic!("download must fail"),

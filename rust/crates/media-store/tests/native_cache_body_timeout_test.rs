@@ -1,10 +1,10 @@
-mod support;
+mod cache_fixture;
 
-use rust_lib_ghostr::video::native_cache::{prepare_native_cache_directory, NativeVideoCache};
-use rust_lib_ghostr::video::outbound_media_client::{MediaHttpClient, MediaHttpTimeouts};
+use cache_fixture::{temp_directory, video_cache_key};
+use ghostr_media_store::native_cache::{prepare_native_cache_directory, NativeVideoCache};
+use ghostr_net::outbound_media_client::{MediaHttpClient, MediaHttpTimeouts};
 use std::sync::Arc;
 use std::time::Duration;
-use support::fixtures::{temp_directory, video_cache_key};
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;

@@ -1,10 +1,10 @@
-mod support;
+mod cache_fixture;
 
+use cache_fixture::media_client;
+use cache_fixture::raw_http::unused_loopback_url;
+use cache_fixture::{advertised_key, NativeCacheHarness, VIDEO_DIGEST, VIDEO_RESPONSE};
 use std::fs::{FileTimes, OpenOptions};
 use std::time::SystemTime;
-use support::fixtures::trusted_media_client;
-use support::http::unused_loopback_url;
-use support::native_cache::{advertised_key, NativeCacheHarness, VIDEO_DIGEST, VIDEO_RESPONSE};
 
 #[tokio::test]
 async fn advertised_native_blob_is_rehashed_after_its_mtime_changes() {
@@ -23,12 +23,7 @@ async fn advertised_native_blob_is_rehashed_after_its_mtime_changes() {
 
     let reused = harness
         .cache
-        .download(
-            &trusted_media_client(),
-            &key,
-            &unavailable,
-            Some(VIDEO_DIGEST),
-        )
+        .download(&media_client(), &key, &unavailable, Some(VIDEO_DIGEST))
         .await
         .expect("rehash cached blob");
 

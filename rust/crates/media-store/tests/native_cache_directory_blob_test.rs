@@ -1,7 +1,7 @@
-mod support;
+mod cache_fixture;
 
-use support::fixtures::video_cache_key;
-use support::native_cache::{NativeCacheHarness, VIDEO_RESPONSE};
+use cache_fixture::video_cache_key;
+use cache_fixture::{NativeCacheHarness, VIDEO_RESPONSE};
 
 #[tokio::test]
 async fn directory_at_a_native_blob_path_is_removed_before_refetch() {

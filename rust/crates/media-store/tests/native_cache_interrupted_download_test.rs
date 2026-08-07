@@ -1,9 +1,9 @@
-mod support;
+mod cache_fixture;
 
-use rust_lib_ghostr::video::native_cache::{prepare_native_cache_directory, NativeVideoCache};
+use cache_fixture::{media_client, video_cache_key};
+use ghostr_media_store::native_cache::{prepare_native_cache_directory, NativeVideoCache};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use support::fixtures::{trusted_media_client, video_cache_key};
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
@@ -30,7 +30,7 @@ async fn releases_reserved_bytes_after_an_interrupted_download() {
 
     let result = cache
         .download(
-            &trusted_media_client(),
+            &media_client(),
             &video_cache_key(),
             &format!("http://{address}/video.mp4"),
             None,

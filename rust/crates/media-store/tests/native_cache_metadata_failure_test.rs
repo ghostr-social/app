@@ -1,8 +1,8 @@
-mod support;
+mod cache_fixture;
 
-use support::fixtures::{trusted_media_client, video_cache_key};
-use support::http::unused_loopback_url;
-use support::native_cache::{NativeCacheHarness, VIDEO_RESPONSE};
+use cache_fixture::raw_http::unused_loopback_url;
+use cache_fixture::{media_client, video_cache_key};
+use cache_fixture::{NativeCacheHarness, VIDEO_RESPONSE};
 
 #[tokio::test]
 async fn native_blob_metadata_failure_is_reported_without_network_fallback() {
@@ -15,7 +15,7 @@ async fn native_blob_metadata_failure_is_reported_without_network_fallback() {
 
     let result = harness
         .cache
-        .download(&trusted_media_client(), &key, &unavailable, None)
+        .download(&media_client(), &key, &unavailable, None)
         .await;
     let error = match result {
         Ok(_) => panic!("metadata inspection must fail"),

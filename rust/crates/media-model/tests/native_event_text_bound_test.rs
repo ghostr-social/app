@@ -1,5 +1,5 @@
-use nostr_sdk::{EventBuilder, Keys, Kind, Tag};
 use ghostr_media_model::event_identity::canonical_native_videos;
+use nostr_sdk::{EventBuilder, Keys, Kind, Tag};
 
 const MAX_NATIVE_TEXT_CHARACTERS: usize = 4_096;
 /// Mirrors `MAX_NATIVE_URL_BYTES` in the engine. The bound sits far past

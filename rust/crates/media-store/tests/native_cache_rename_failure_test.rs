@@ -1,11 +1,9 @@
-mod support;
+mod cache_fixture;
 
-use rust_lib_ghostr::video::native_cache::{prepare_native_cache_directory, NativeVideoCache};
+use cache_fixture::raw_http::spawn_raw_server;
+use cache_fixture::{media_client, temp_directory, video_cache_file_id, video_cache_key};
+use ghostr_media_store::native_cache::{prepare_native_cache_directory, NativeVideoCache};
 use std::sync::Arc;
-use support::fixtures::{
-    temp_directory, trusted_media_client, video_cache_file_id, video_cache_key,
-};
-use support::http::spawn_raw_server;
 use tokio::sync::Mutex;
 
 #[tokio::test]
@@ -21,7 +19,7 @@ async fn releases_reserved_bytes_when_a_completed_file_cannot_be_installed() {
     let cache = NativeVideoCache::new(directory.clone(), 10, used_bytes.clone());
 
     let result = cache
-        .download(&trusted_media_client(), &video_cache_key(), &url, None)
+        .download(&media_client(), &video_cache_key(), &url, None)
         .await;
 
     assert!(result.is_err());

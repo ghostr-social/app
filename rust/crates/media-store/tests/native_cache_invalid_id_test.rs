@@ -1,9 +1,9 @@
-mod support;
+mod cache_fixture;
 
-use rust_lib_ghostr::video::native_cache::{prepare_native_cache_directory, NativeVideoCache};
-use rust_lib_ghostr::video::native_models::NativeVideoCacheKey;
+use cache_fixture::{media_client, temp_directory};
+use ghostr_media_model::native_models::NativeVideoCacheKey;
+use ghostr_media_store::native_cache::{prepare_native_cache_directory, NativeVideoCache};
 use std::sync::Arc;
-use support::fixtures::{temp_directory, trusted_media_client};
 use tokio::sync::Mutex;
 
 #[tokio::test]
@@ -14,7 +14,7 @@ async fn rejects_an_unvalidated_cache_identifier_before_network_io() {
 
     let result = cache
         .download(
-            &trusted_media_client(),
+            &media_client(),
             &NativeVideoCacheKey::UrlDerived("not-a-sha256".to_owned()),
             "http://127.0.0.1:1/video.mp4",
             None,

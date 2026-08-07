@@ -1,11 +1,11 @@
-mod support;
+mod media_fixture;
 
-use rust_lib_ghostr::video::native_models::{
+use ghostr_media_model::native_models::{
     NativeVideoCacheKey, NativeVideoDelivery, NativeVideoDownload,
 };
+use media_fixture::{event_identity, native_download, native_video, video_id};
 use std::path::PathBuf;
 use std::time::Duration;
-use support::fixtures::{event_identity, native_download, native_video, video_id};
 
 #[tokio::test(start_paused = true)]
 async fn native_download_state_tracks_retry_rejection_suppression_and_availability() {

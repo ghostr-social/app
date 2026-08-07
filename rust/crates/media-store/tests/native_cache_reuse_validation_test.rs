@@ -1,8 +1,8 @@
-mod support;
+mod cache_fixture;
 
-use support::fixtures::{trusted_media_client, video_cache_key};
-use support::http::unused_loopback_url;
-use support::native_cache::{NativeCacheHarness, VIDEO_RESPONSE};
+use cache_fixture::raw_http::unused_loopback_url;
+use cache_fixture::{media_client, video_cache_key};
+use cache_fixture::{NativeCacheHarness, VIDEO_RESPONSE};
 
 #[tokio::test]
 async fn valid_native_blob_is_reused_without_contacting_the_origin() {
@@ -13,7 +13,7 @@ async fn valid_native_blob_is_reused_without_contacting_the_origin() {
 
     let second = harness
         .cache
-        .download(&trusted_media_client(), &key, &unavailable, None)
+        .download(&media_client(), &key, &unavailable, None)
         .await
         .expect("reuse cached blob");
 

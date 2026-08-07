@@ -1,8 +1,8 @@
-mod support;
+mod media_fixture;
 
+use media_fixture::native_download;
 use std::path::PathBuf;
 use std::time::Duration;
-use support::fixtures::native_download;
 
 #[tokio::test(start_paused = true)]
 async fn retries_a_failed_refresh_of_an_available_download() {
