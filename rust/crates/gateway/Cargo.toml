@@ -31,7 +31,11 @@ tokio = { workspace = true }
 tokio-stream = { workspace = true }
 
 # `tower::ServiceExt::oneshot` drives a route without binding a port; tokio's
-# `test-util` lets the session tests expire leases without sleeping.
+# `test-util` lets the session tests expire leases without sleeping. The debug
+# router takes a cached Nostr client, so the tests that build one reach for
+# `ghostr-discovery` — a test-only edge, not the production one dropped in
+# commit 4d400c6.
 [dev-dependencies]
+ghostr-discovery = { path = "../discovery" }
 tokio = { workspace = true, features = ["test-util"] }
 tower = { workspace = true }
