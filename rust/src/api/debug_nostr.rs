@@ -9,7 +9,7 @@ use crate::discovery::feed_spec::FeedSpec;
 use crate::discovery::feed_store::FeedId;
 use crate::engine::inventory_controller::Mode;
 use crate::engine::VideoMeta;
-use crate::video::debug_feed::{DebugFeed, DebugFeedItem, DebugFeedStage};
+use ghostr_delivery::debug_feed::{DebugFeed, DebugFeedItem, DebugFeedStage};
 use nostr_sdk::Client;
 use std::sync::Arc;
 use tokio::sync::watch;

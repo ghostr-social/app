@@ -13,7 +13,7 @@ use crate::discovery::relay_plan_executor::{RelayPlanExecutor, SharedOutboxDirec
 use crate::discovery::relay_pool_owner::RelayPoolOwner;
 use crate::engine::inventory_controller::Mode;
 use crate::engine::DataUsageLevel;
-use crate::video::delivery_events::DeliveryHandle;
+use ghostr_delivery::delivery_events::DeliveryHandle;
 use flutter_rust_bridge::frb;
 use nostr_sdk::{Client, Timestamp};
 use std::sync::{Arc, Mutex, MutexGuard};

@@ -1,6 +1,6 @@
 use crate::discovery::candidate_registry::VideoCandidate;
 use crate::engine::PostId;
-use crate::video::delivery_events::{DeliveryCandidate, DeliveryHandle};
+use ghostr_delivery::delivery_events::{DeliveryCandidate, DeliveryHandle};
 
 pub(crate) fn admit(handle: Option<&DeliveryHandle>, candidate: Option<VideoCandidate>) {
     let (Some(handle), Some(candidate)) = (handle, candidate) else {

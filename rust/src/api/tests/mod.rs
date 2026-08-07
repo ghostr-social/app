@@ -54,7 +54,6 @@ mod session_generation_test;
 mod session_reset_feed_state_test;
 mod session_reset_outcome_test;
 mod session_reset_relay_pool_test;
-#[path = "../../../tests/support/signed_event.rs"]
 mod signed_event_fixture;
 mod snapshot_readiness_test;
 mod support;

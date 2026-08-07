@@ -4,7 +4,7 @@ use crate::api::runtime_configuration;
 use crate::api::runtime_registry;
 use crate::discovery::relay_url::normalize_relay_url;
 use crate::engine::{DataUsageLevel, EngineParams};
-use crate::video::gateway_runtime::GatewayConfiguration;
+use ghostr_gateway::gateway_runtime::GatewayConfiguration;
 use flutter_rust_bridge::frb;
 use std::collections::HashSet;
 use std::path::PathBuf;

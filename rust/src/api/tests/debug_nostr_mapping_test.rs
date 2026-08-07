@@ -6,7 +6,7 @@ use crate::api::feed_types::FfiFeedStage;
 use crate::api::tests::support::{creator_profile, parsed_video_post};
 use crate::discovery::profile_store::CreatorProfile;
 use crate::engine::DeliveryKind;
-use crate::video::debug_feed::DebugFeedStage;
+use ghostr_delivery::debug_feed::DebugFeedStage;
 
 #[test]
 fn progressive_feed_rows_become_debug_delivery_items() {

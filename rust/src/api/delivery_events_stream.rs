@@ -12,7 +12,7 @@ use crate::api::tracked_items::TrackedItems;
 use crate::engine::budget::params_for;
 use crate::engine::{ByteRange, EngineParams, PostId, VideoMeta};
 use crate::frb_generated::StreamSink;
-use crate::video::partial_range_store::PartialRangeStore;
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use flutter_rust_bridge::frb;
 use std::collections::HashMap;
 use std::sync::Arc;

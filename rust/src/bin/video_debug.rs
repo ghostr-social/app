@@ -2,9 +2,9 @@
 compile_error!("video-debug is available only in debug builds on non-mobile hosts");
 
 use anyhow::Context;
+use ghostr_gateway::gateway_runtime::{GatewayConfiguration, GatewayRuntime};
 use rust_lib_ghostr::api::debug_nostr::{DebugNostrConfiguration, DebugNostrRuntime};
 use rust_lib_ghostr::discovery::event_cache::client_with_event_cache;
-use rust_lib_ghostr::video::gateway_runtime::{GatewayConfiguration, GatewayRuntime};
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::sync::Arc;

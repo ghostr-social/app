@@ -4,7 +4,7 @@ use crate::api::delivery_types::FfiFocusItem;
 use crate::api::focus_mapping::{delivery_focus, focus_item};
 use crate::api::runtime_registry::{self, EngineHandles};
 use crate::engine::{DeliveryKind, VideoMeta};
-use crate::video::delivery_events::{DeliveryFocus, FocusItem};
+use ghostr_delivery::delivery_events::{DeliveryFocus, FocusItem};
 use anyhow::bail;
 use flutter_rust_bridge::frb;
 

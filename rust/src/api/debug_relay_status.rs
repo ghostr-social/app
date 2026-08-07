@@ -1,6 +1,6 @@
 //! Live relay status projection for the debug web page.
 
-use crate::video::debug_feed::{DebugFeed, DebugRelaySnapshot};
+use ghostr_delivery::debug_feed::{DebugFeed, DebugRelaySnapshot};
 use nostr_sdk::Client;
 use std::sync::Arc;
 use std::time::Duration;

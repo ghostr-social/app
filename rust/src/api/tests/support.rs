@@ -4,7 +4,7 @@ use crate::api::delivery_types::{FfiFocusItem, FfiMediaDelivery};
 use crate::discovery::event_parsing::ParsedVideoPost;
 use crate::discovery::profile_store::CreatorProfile;
 use crate::engine::{DeliveryKind, VideoMeta};
-use crate::video::partial_range_store::PartialRangeStore;
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;

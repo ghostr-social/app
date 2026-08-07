@@ -3,7 +3,7 @@
 use crate::api::feed_runtime::{DiscoveryBoot, DiscoveryRuntime};
 use crate::api::tracked_items::TrackedItems;
 use crate::discovery::event_cache::client_with_event_cache;
-use crate::video::gateway_runtime::{GatewayConfiguration, GatewayRuntime};
+use ghostr_gateway::gateway_runtime::{GatewayConfiguration, GatewayRuntime};
 use anyhow::bail;
 use flutter_rust_bridge::frb;
 use once_cell::sync::{Lazy, OnceCell};
