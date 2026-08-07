@@ -1,6 +1,6 @@
 use nostr_sdk::{EventBuilder, Keys, Kind, Tag};
-use rust_lib_ghostr::video::event_identity::canonical_native_videos;
-use rust_lib_ghostr::video::native_models::NativeVideoDelivery;
+use ghostr_media_model::event_identity::canonical_native_videos;
+use ghostr_media_model::native_models::NativeVideoDelivery;
 
 #[test]
 fn accepts_the_registered_apple_hls_media_type() {

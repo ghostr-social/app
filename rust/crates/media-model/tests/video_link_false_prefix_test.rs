@@ -1,4 +1,4 @@
-use rust_lib_ghostr::video::video_link_scan::first_video_link;
+use ghostr_media_model::video_link_scan::first_video_link;
 
 #[test]
 fn video_link_scan_skips_http_text_that_is_not_a_link_scheme() {

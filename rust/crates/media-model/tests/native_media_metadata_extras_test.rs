@@ -1,4 +1,4 @@
-use rust_lib_ghostr::video::native_media_metadata::native_media;
+use ghostr_media_model::native_media_metadata::native_media;
 
 fn imeta(fields: &[&str]) -> Vec<String> {
     let mut tag = vec!["imeta".to_owned()];

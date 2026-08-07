@@ -1,6 +1,6 @@
 mod store_space;
 
-use rust_lib_ghostr::video::partial_range_store::capacity::StoreCapacity;
+use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use store_space::{limits, temp_root, FakeSpace};
 
 #[tokio::test]
