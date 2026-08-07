@@ -774,6 +774,7 @@ name = "ghostr-delivery"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "axum",
  "bytes",
  "ghostr-engine",
  "ghostr-net",
@@ -834,6 +835,7 @@ dependencies = [
  "sha2",
  "tokio",
  "tokio-stream",
+ "tower",
 ]
 
 [[package]]
