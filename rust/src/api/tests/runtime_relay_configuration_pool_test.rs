@@ -23,6 +23,7 @@ async fn live_configuration_removes_unconfigured_pool_relays() {
         modes: mode_updates,
         bootstrap: vec!["wss://old-config.example".to_owned()],
         search_relays: vec!["wss://kept.example".to_owned()],
+        candidates: None,
     })
     .await;
 

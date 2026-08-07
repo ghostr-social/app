@@ -5,15 +5,14 @@ use crate::api::delivery_types::FfiMediaDelivery;
 use crate::api::feed_types::{
     FfiFeedCreator, FfiFeedKind, FfiFeedMedia, FfiFeedPost, FfiFeedSpec, FfiMediaDim,
 };
+use crate::discovery::candidate_registry::CandidateId;
 use crate::discovery::event_parsing::ParsedVideoPost;
-use crate::discovery::feed_assembly::post_coordinate;
 use crate::discovery::feed_spec::FeedSpec;
 use crate::discovery::feed_store::FeedId;
 use crate::discovery::profile_store::{CreatorProfile, ProfileStore};
 use crate::engine::DeliveryKind;
 use anyhow::{anyhow, bail, Result};
 use nostr_sdk::PublicKey;
-use sha2::{Digest, Sha256};
 
 pub(crate) fn parse_feed_spec(spec: &FfiFeedSpec) -> Result<FeedSpec> {
     match spec.kind {
@@ -66,7 +65,7 @@ fn required_value(spec: &FfiFeedSpec, kind: &str) -> Result<String> {
 /// hex of the same-video coordinate, so every revision of an
 /// addressable video keeps one id and one cache entry.
 pub(crate) fn post_gateway_id(post: &ParsedVideoPost) -> String {
-    format!("{:x}", Sha256::digest(post_coordinate(post).as_bytes()))
+    CandidateId::for_post(post).as_str().to_owned()
 }
 
 /// The stored identity of one post's creator; parsed posts always

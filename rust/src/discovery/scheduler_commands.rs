@@ -18,11 +18,11 @@ impl SchedulerWorker {
             DiscoveryCommand::ResetSession { reply } => self.reset_session(reply),
             DiscoveryCommand::OpenFeed { context, request } => self.open_feed(context, request),
             DiscoveryCommand::CloseFeed(context) => self.close_feed(context),
-            DiscoveryCommand::ContinueQuery {
+            DiscoveryCommand::ContinueFeed {
                 context,
                 head,
                 token,
-            } => self.continue_query(context, head, token),
+            } => self.continue_feed(context, head, token),
             DiscoveryCommand::RetryFeed { context, token } => {
                 self.continue_feed_retry(context, token)
             }
@@ -63,7 +63,7 @@ impl SchedulerWorker {
     }
 
     fn load_more(&mut self, context: FeedContext, older_than: Option<Timestamp>) {
-        if self.feeds.is_query(&context) {
+        if self.feeds.is_continuous(&context) {
             self.cancel_hunt(&context);
         }
         let Some(request) = self.feeds.older_page_request(&context, older_than) else {

@@ -3,12 +3,17 @@ mod broadcast_mute_acceptance_test;
 mod broadcast_relays_test;
 mod broadcast_validation_test;
 mod data_usage_mapping_test;
+#[cfg(feature = "video-debug-web")]
+mod debug_nostr_mapping_test;
+#[cfg(feature = "video-debug-web")]
+mod debug_relay_status_test;
 mod delivery_kind_mapping_test;
 mod delivery_watcher_cancellation_test;
 mod discovery_runtime_relay_boot_test;
 mod engine_relay_configuration_test;
 mod event_diff_test;
 mod event_query_cached_result_test;
+mod feed_candidate_pipeline_test;
 mod feed_fixtures;
 mod feed_id_parse_test;
 mod feed_native_hunt_stage_test;

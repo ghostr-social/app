@@ -24,6 +24,7 @@ async fn accepted_broadcast_is_sent_and_immediately_queryable_locally() {
         modes: mode_updates,
         bootstrap: vec![RELAY.to_owned()],
         search_relays: Vec::new(),
+        candidates: None,
     })
     .await;
     let io = Arc::new(TestRelayIo::blocked());

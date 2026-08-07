@@ -51,8 +51,8 @@ pub(crate) enum DiscoveryCommand {
     },
     /// Ends queued, running, and delayed work for a closed feed.
     CloseFeed(FeedContext),
-    /// Rust-owned continuation of an active query hunt.
-    ContinueQuery {
+    /// Rust-owned continuation of a continuous feed.
+    ContinueFeed {
         context: FeedContext,
         head: bool,
         token: HuntToken,
@@ -159,7 +159,7 @@ pub(crate) struct SchedulerWorker {
     pub(crate) hunts: HashMap<FeedContext, AbortHandle>,
     pub(crate) retry_attempts: HashMap<FeedContext, usize>,
     pub(crate) pending_feed_retries: HashMap<FeedContext, HuntToken>,
-    pub(crate) pending_query_hunts: HashMap<FeedContext, HuntToken>,
+    pub(crate) pending_feed_hunts: HashMap<FeedContext, HuntToken>,
     pub(crate) next_hunt_token: u64,
     pub(crate) next_task_id: u64,
     pub(crate) commands: mpsc::UnboundedReceiver<DiscoveryCommand>,
@@ -188,7 +188,7 @@ impl SchedulerWorker {
             hunts: HashMap::new(),
             retry_attempts: HashMap::new(),
             pending_feed_retries: HashMap::new(),
-            pending_query_hunts: HashMap::new(),
+            pending_feed_hunts: HashMap::new(),
             next_hunt_token: 0,
             next_task_id: 0,
             commands,

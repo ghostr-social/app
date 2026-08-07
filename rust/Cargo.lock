@@ -1640,6 +1640,7 @@ dependencies = [
  "base64",
  "bytes",
  "flutter_rust_bridge",
+ "futures-util",
  "hmac",
  "libc",
  "log",
@@ -1652,6 +1653,7 @@ dependencies = [
  "sha2",
  "tokio",
  "tokio-stream",
+ "tokio-tungstenite",
  "tower",
 ]
 

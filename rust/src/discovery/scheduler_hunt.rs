@@ -2,28 +2,28 @@
 
 use crate::discovery::discovery_scheduler::{DiscoveryCommand, SchedulerWorker};
 use crate::discovery::retrieval_queue::{FeedContext, RetrievalPriority};
-use crate::discovery::scheduler_feeds::{QueryHuntAction, QUERY_HUNT_BACKOFF};
+use crate::discovery::scheduler_feeds::{FeedHuntAction, FEED_REFRESH_BACKOFF};
 use crate::discovery::search_queries::plan_discovery;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct HuntToken(pub(crate) u64);
 
 impl SchedulerWorker {
-    pub(crate) fn advance_query(&mut self, context: FeedContext) {
+    pub(crate) fn advance_feed_hunt(&mut self, context: FeedContext) {
         match self.feeds.hunt_action(&context) {
-            Some(QueryHuntAction::OlderNow) => self.prefetch(context),
-            Some(QueryHuntAction::HeadLater) => self.schedule_head(context),
+            Some(FeedHuntAction::OlderNow) => self.prefetch(context),
+            Some(FeedHuntAction::HeadLater) => self.schedule_head(context),
             None => {}
         }
     }
 
-    pub(crate) fn continue_query(&mut self, context: FeedContext, head: bool, token: HuntToken) {
-        if self.pending_query_hunts.get(&context) != Some(&token) {
+    pub(crate) fn continue_feed(&mut self, context: FeedContext, head: bool, token: HuntToken) {
+        if self.pending_feed_hunts.get(&context) != Some(&token) {
             return;
         }
-        self.pending_query_hunts.remove(&context);
+        self.pending_feed_hunts.remove(&context);
         self.hunts.remove(&context);
-        if !self.feeds.is_query(&context) || self.query_busy(&context) {
+        if !self.feeds.is_continuous(&context) || self.feed_busy(&context) {
             return;
         }
         if head {
@@ -51,7 +51,7 @@ impl SchedulerWorker {
     }
 
     pub(crate) fn cancel_hunt(&mut self, context: &FeedContext) {
-        self.pending_query_hunts.remove(context);
+        self.pending_feed_hunts.remove(context);
         if let Some(task) = self.hunts.remove(context) {
             task.abort();
         }
@@ -71,13 +71,13 @@ impl SchedulerWorker {
     fn schedule_head(&mut self, context: FeedContext) {
         self.cancel_hunt(&context);
         let token = self.next_hunt_token();
-        self.pending_query_hunts.insert(context.clone(), token);
+        self.pending_feed_hunts.insert(context.clone(), token);
         let sender = self.command_sender.clone();
         let scheduled = context.clone();
         let task = tokio::spawn(async move {
-            tokio::time::sleep(QUERY_HUNT_BACKOFF).await;
+            tokio::time::sleep(FEED_REFRESH_BACKOFF).await;
             if let Some(sender) = sender.upgrade() {
-                let _ = sender.send(DiscoveryCommand::ContinueQuery {
+                let _ = sender.send(DiscoveryCommand::ContinueFeed {
                     context: scheduled,
                     head: true,
                     token,
@@ -87,7 +87,7 @@ impl SchedulerWorker {
         self.hunts.insert(context, task.abort_handle());
     }
 
-    pub(crate) fn query_busy(&self, context: &FeedContext) -> bool {
+    pub(crate) fn feed_busy(&self, context: &FeedContext) -> bool {
         let queued = self.queue.has_pending(context);
         self.feeds.query_state(context, queued).busy
     }

@@ -33,6 +33,7 @@ async fn accepted_contact_list_is_cached_and_routes_the_next_feed() {
     let sinks = OutcomeSinks {
         state: state.clone(),
         bootstrap,
+        candidates: None,
     };
     let cache = EventCache::new(Arc::new(session_event_database(16)));
 

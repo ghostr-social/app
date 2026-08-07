@@ -43,7 +43,14 @@ async fn a_landed_follow_list_routes_the_feed_to_the_follows_relays() {
     let state = opened_state(&viewer);
     let (bootstrap, mut probe) = test_bootstrap();
     let (sender, outcomes) = mpsc::unbounded_channel();
-    tokio::spawn(pump_outcomes(OutcomeSinks { state, bootstrap }, outcomes));
+    tokio::spawn(pump_outcomes(
+        OutcomeSinks {
+            state,
+            bootstrap,
+            candidates: None,
+        },
+        outcomes,
+    ));
 
     sender
         .send(RetrievalOutcome::Completed {

@@ -6,7 +6,8 @@
 use crate::engine::host_stats::HostStats;
 use crate::engine::PostId;
 use crate::video::chunk_cancel::{cancel_pair, CancelHandle};
-use crate::video::chunk_downloader::{download_chunk, ChunkResult, ChunkSink, ChunkSpec};
+use crate::video::chunk_downloader::{download_chunk_throttled, ChunkResult, ChunkSink, ChunkSpec};
+use crate::video::debug_network::NetworkThrottle;
 use crate::video::delivery_inflight::ChunkAttempt;
 use crate::video::media_probe::{probe, ProbeResult};
 use crate::video::outbound_media_client::MediaHttpClient;
@@ -44,6 +45,7 @@ pub(crate) struct TransferContext {
     pub store: Arc<PartialRangeStore>,
     pub events: UnboundedSender<InternalEvent>,
     pub timeouts: TransferTimeouts,
+    pub network: NetworkThrottle,
 }
 
 /// Starts one granted chunk transfer; the returned handle cancels it.
@@ -66,7 +68,11 @@ pub(crate) fn spawn_chunk(
             key: attempt.chunk.post.as_str(),
         };
         let mut scratch = HostStats::new();
-        let outcome = download_chunk(&spec, &sink, &mut scratch, &token).await;
+        let outcome =
+            download_chunk_throttled(&spec, &sink, &mut scratch, &token, &ctx.network).await;
+        if cancelled_before_request(&outcome) {
+            return;
+        }
         let done = ChunkDone {
             attempt,
             url,
@@ -76,6 +82,10 @@ pub(crate) fn spawn_chunk(
         let _ = ctx.events.send(InternalEvent::ChunkDone(done));
     });
     handle
+}
+
+pub(crate) fn cancelled_before_request(outcome: &anyhow::Result<ChunkResult>) -> bool {
+    outcome.as_ref().is_ok_and(|result| !result.request_started)
 }
 
 /// Starts one HEAD probe for a post whose size is still unknown.

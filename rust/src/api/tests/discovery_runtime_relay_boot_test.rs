@@ -13,6 +13,7 @@ async fn discovery_boot_uses_only_the_configured_read_and_search_relays() {
         modes: mode_updates,
         bootstrap: vec!["wss://read.example".to_owned()],
         search_relays: vec!["wss://search.example".to_owned()],
+        candidates: None,
     })
     .await;
 

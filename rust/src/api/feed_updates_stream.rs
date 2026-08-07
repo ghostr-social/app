@@ -4,6 +4,7 @@
 //! The stream ends when the feed closes or Dart cancels it.
 
 use crate::api::feed_mapping::parse_feed_id;
+use crate::api::feed_projection::project;
 use crate::api::feed_runtime::{lock, SharedFeedState};
 use crate::api::feed_types::FfiFeedUpdate;
 use crate::api::runtime_registry;
@@ -58,10 +59,11 @@ pub(crate) async fn watch_feed(
 /// claim to be settled while showing the previous page's rows.
 fn snapshot_update(state: &SharedFeedState, feed: FeedId, revision: u64) -> FfiFeedUpdate {
     let state = lock(state);
+    let projection = project(&state, feed);
     FfiFeedUpdate {
         feed_id: feed.0.to_string(),
         revision,
-        stage: state.stage(feed),
-        posts: state.snapshot(feed),
+        stage: projection.stage,
+        posts: projection.posts,
     }
 }

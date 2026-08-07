@@ -1,7 +1,7 @@
 use super::scheduler_support::{context, next_outcome, next_started, no_start, note_at, request};
 use super::scripted_scheduler_support::scripted_scheduler;
 use crate::discovery::discovery_scheduler::RetrievalOutcome;
-use crate::discovery::scheduler_feeds::QUERY_HUNT_BACKOFF;
+use crate::discovery::scheduler_feeds::FEED_REFRESH_BACKOFF;
 
 #[tokio::test(start_paused = true)]
 async fn exhausted_query_rechecks_head_after_native_backoff() {
@@ -15,7 +15,7 @@ async fn exhausted_query_rechecks_head_after_native_backoff() {
     next_outcome(&mut harness.outcomes).await;
     no_start(&mut harness.started).await;
 
-    tokio::time::advance(QUERY_HUNT_BACKOFF).await;
+    tokio::time::advance(FEED_REFRESH_BACKOFF).await;
     let refreshed = next_started(&mut harness.started).await;
     assert_eq!(refreshed.plan.queries[0].filter.until, None);
     assert!(matches!(
@@ -48,7 +48,7 @@ async fn three_history_pages_are_followed_by_a_head_refresh() {
     }
     no_start(&mut harness.started).await;
 
-    tokio::time::advance(QUERY_HUNT_BACKOFF).await;
+    tokio::time::advance(FEED_REFRESH_BACKOFF).await;
     let refreshed = next_started(&mut harness.started).await;
     assert_eq!(refreshed.plan.queries[0].filter.until, None);
 }

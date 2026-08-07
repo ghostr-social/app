@@ -40,7 +40,7 @@ async fn queued_completion_is_ignored_after_its_feed_closes() {
         hunts: HashMap::new(),
         retry_attempts: HashMap::new(),
         pending_feed_retries: HashMap::new(),
-        pending_query_hunts: HashMap::new(),
+        pending_feed_hunts: HashMap::new(),
         next_hunt_token: 0,
         next_task_id: 1,
         commands,

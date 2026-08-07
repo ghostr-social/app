@@ -12,6 +12,7 @@ use tokio::sync::{Mutex, Notify};
 
 mod admission;
 pub mod capacity;
+mod clear;
 mod eviction;
 mod finalize;
 pub mod free_space;

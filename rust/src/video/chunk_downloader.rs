@@ -7,7 +7,10 @@
 use crate::engine::host_stats::{host_of, HostStats};
 use crate::engine::ByteRange;
 use crate::video::chunk_cancel::CancelToken;
+use crate::video::chunk_network::{prepare_network, NetworkPreparation};
 use crate::video::chunk_response::{classify, RangeReply};
+use crate::video::chunk_stream::{stream_into, Streamed};
+use crate::video::debug_network::NetworkThrottle;
 use crate::video::outbound_media_client::MediaHttpClient;
 use crate::video::partial_range_store::PartialRangeStore;
 use crate::video::transfer_timeouts::TransferTimeouts;
@@ -38,6 +41,7 @@ pub struct ChunkResult {
     pub accept_ranges: bool,
     pub cancelled: bool,
     pub total_bytes: Option<u64>,
+    pub request_started: bool,
 }
 
 /// Downloads one granted chunk into the store. Accepts `206 Partial
@@ -53,9 +57,33 @@ pub async fn download_chunk(
     stats: &mut HostStats,
     cancel: &CancelToken,
 ) -> Result<ChunkResult> {
+    run_download(spec, sink, stats, cancel, None).await
+}
+
+pub(crate) async fn download_chunk_throttled(
+    spec: &ChunkSpec<'_>,
+    sink: &ChunkSink<'_>,
+    stats: &mut HostStats,
+    cancel: &CancelToken,
+    network: &NetworkThrottle,
+) -> Result<ChunkResult> {
+    run_download(spec, sink, stats, cancel, Some(network)).await
+}
+
+async fn run_download(
+    spec: &ChunkSpec<'_>,
+    sink: &ChunkSink<'_>,
+    stats: &mut HostStats,
+    cancel: &CancelToken,
+    network: Option<&NetworkThrottle>,
+) -> Result<ChunkResult> {
     ensure!(!spec.range.is_empty(), "chunk grant must not be empty");
     let started = Instant::now();
-    match transfer(spec, sink, cancel).await {
+    let _permit = match prepare_network(network, spec.url, cancel).await {
+        NetworkPreparation::Ready(permit) => permit,
+        NetworkPreparation::Cancelled => return Ok(cancelled_before_request()),
+    };
+    match transfer(spec, sink, cancel, network).await {
         Ok(result) => {
             note_delivery(stats, spec.url, &result, started.elapsed());
             Ok(result)
@@ -68,18 +96,19 @@ async fn transfer(
     spec: &ChunkSpec<'_>,
     sink: &ChunkSink<'_>,
     cancel: &CancelToken,
+    network: Option<&NetworkThrottle>,
 ) -> Result<ChunkResult> {
     let response = send_ranged(spec).await?;
     let full_length = response.content_length();
     match classify(&response, spec.range)? {
         RangeReply::Ignored => Ok(range_ignored(full_length)),
         RangeReply::Partial { total } => completed(
-            stream_into(response, spec, sink, cancel).await?,
+            stream_into(response, spec, sink, cancel, network).await?,
             true,
             total,
         ),
         RangeReply::FullBody => completed(
-            stream_into(response, spec, sink, cancel).await?,
+            stream_into(response, spec, sink, cancel, network).await?,
             false,
             full_length,
         ),
@@ -98,56 +127,6 @@ async fn send_ranged(spec: &ChunkSpec<'_>) -> Result<Response> {
         .context("chunk request rejected")
 }
 
-struct Streamed {
-    bytes: u64,
-    cancelled: bool,
-}
-
-async fn stream_into(
-    mut response: Response,
-    spec: &ChunkSpec<'_>,
-    sink: &ChunkSink<'_>,
-    cancel: &CancelToken,
-) -> Result<Streamed> {
-    let cancelled = cancel.cancelled();
-    tokio::pin!(cancelled);
-    let mut written = 0;
-    while written < spec.range.len() {
-        let chunk = tokio::select! {
-            _ = &mut cancelled => return Ok(Streamed { bytes: written, cancelled: true }),
-            chunk = next_chunk(&mut response, spec.timeouts.idle) => chunk?,
-        };
-        let Some(chunk) = chunk else { break };
-        written += write_capped(spec, sink, written, &chunk).await?;
-    }
-    Ok(Streamed {
-        bytes: written,
-        cancelled: false,
-    })
-}
-
-async fn next_chunk(response: &mut Response, idle: Duration) -> Result<Option<bytes::Bytes>> {
-    tokio::time::timeout(idle, response.chunk())
-        .await
-        .context("chunk body read timed out")?
-        .context("chunk body read failed")
-}
-
-async fn write_capped(
-    spec: &ChunkSpec<'_>,
-    sink: &ChunkSink<'_>,
-    written: u64,
-    chunk: &[u8],
-) -> Result<u64> {
-    let remaining = (spec.range.len() - written) as usize;
-    let take = chunk.len().min(remaining);
-    let offset = spec.range.start + written;
-    sink.store
-        .write_range(sink.key, offset, &chunk[..take])
-        .await?;
-    Ok(take as u64)
-}
-
 fn completed(
     streamed: Streamed,
     accept_ranges: bool,
@@ -158,6 +137,7 @@ fn completed(
         accept_ranges,
         cancelled: streamed.cancelled,
         total_bytes,
+        request_started: true,
     })
 }
 
@@ -167,6 +147,17 @@ fn range_ignored(total_bytes: Option<u64>) -> ChunkResult {
         accept_ranges: false,
         cancelled: false,
         total_bytes,
+        request_started: true,
+    }
+}
+
+fn cancelled_before_request() -> ChunkResult {
+    ChunkResult {
+        bytes_written: 0,
+        accept_ranges: false,
+        cancelled: true,
+        total_bytes: None,
+        request_started: false,
     }
 }
 

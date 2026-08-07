@@ -32,3 +32,19 @@ async fn load_more_without_any_cursor_is_ignored() {
 
     no_start(&mut harness.started).await;
 }
+
+#[tokio::test(start_paused = true)]
+async fn load_more_replaces_a_query_hunt_with_the_requested_page() {
+    let mut harness = start_scheduler(DataUsageLevel::Conservative, Vec::new());
+    let mut query = request();
+    query.search_query = Some("ghost".to_owned());
+    harness.handle.open_feed(context("search"), query);
+    next_started(&mut harness.started).await;
+
+    harness
+        .handle
+        .load_more(context("search"), Some(Timestamp::from(50)));
+
+    let page = next_started(&mut harness.started).await;
+    assert_eq!(page.plan.queries[0].filter.until, Some(Timestamp::from(50)));
+}

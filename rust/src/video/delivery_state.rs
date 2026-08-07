@@ -8,7 +8,8 @@ use crate::engine::inventory_controller::{
     InventoryController, InventoryState, Mode, PresentRanges,
 };
 use crate::engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId};
-use crate::video::delivery_events::DeliveryFocus;
+use crate::video::candidate_priority::CandidatePriority;
+use crate::video::delivery_events::{DeliveryCandidate, DeliveryFocus};
 use std::collections::HashSet;
 use tokio::sync::watch;
 
@@ -20,6 +21,8 @@ pub struct DeliveryState {
     effective: EngineParams,
     level: DataUsageLevel,
     mode_watch: Option<watch::Sender<Mode>>,
+    candidates: CandidatePriority,
+    projection_focus: bool,
 }
 
 impl DeliveryState {
@@ -33,7 +36,40 @@ impl DeliveryState {
             effective,
             level,
             mode_watch: None,
+            candidates: CandidatePriority::default(),
+            projection_focus: true,
         }
+    }
+
+    /// Admits validated relay output independently of any UI round trip.
+    /// Until a consumer supplies focus, newest candidates form the
+    /// initial priority window and begin probing/downloading immediately.
+    pub fn apply_candidate(&mut self, candidate: DeliveryCandidate) {
+        if candidate.meta.delivery != DeliveryKind::Progressive {
+            return;
+        }
+        self.catalog.upsert(candidate.post.clone(), candidate.meta);
+        self.candidates
+            .rank(candidate.post, candidate.discovered_at);
+        if self.projection_focus {
+            self.focus.update_focus(FocusUpdate {
+                window: self.candidates.ranked(),
+                current_index: 0,
+                watch_ms: 0,
+            });
+        }
+    }
+
+    pub fn prioritize(&mut self, post: PostId) {
+        let mut window = self.candidate_posts();
+        window.retain(|candidate| candidate != &post);
+        window.insert(0, post);
+        self.projection_focus = false;
+        self.focus.update_focus(FocusUpdate {
+            window,
+            current_index: 0,
+            watch_ms: 0,
+        });
     }
 
     /// Publishes inventory mode transitions to `sender` (unified
@@ -51,9 +87,11 @@ impl DeliveryState {
         for item in update.items {
             window.push(item.post.clone());
             if item.meta.delivery == DeliveryKind::Progressive {
-                self.catalog.upsert(item.post, item.meta);
+                self.catalog.upsert(item.post.clone(), item.meta);
+                self.candidates.rank(item.post, 0);
             }
         }
+        self.projection_focus = false;
         self.focus.update_focus(FocusUpdate {
             window,
             current_index: update.current_index,
@@ -67,6 +105,14 @@ impl DeliveryState {
         self.level = level;
         self.effective = params_for(level, self.base);
         self.controller = InventoryController::new(self.effective);
+    }
+
+    pub fn clear(&mut self) {
+        self.catalog = Catalog::new();
+        self.focus = FocusState::new();
+        self.controller = InventoryController::new(self.effective);
+        self.candidates = CandidatePriority::default();
+        self.projection_focus = true;
     }
 
     pub fn observe_inventory(&mut self, present: &PresentRanges) -> InventoryState {
@@ -119,5 +165,19 @@ impl DeliveryState {
             .filter(|post| seen.insert((*post).clone()))
             .cloned()
             .collect()
+    }
+
+    /// Probe order is mutable: focused posts first, then every other
+    /// admitted candidate by newest discovery rank.
+    pub fn candidate_posts(&self) -> Vec<PostId> {
+        let mut posts = self.window_posts();
+        let mut seen: HashSet<_> = posts.iter().cloned().collect();
+        posts.extend(
+            self.candidates
+                .ranked()
+                .into_iter()
+                .filter(|post| seen.insert(post.clone())),
+        );
+        posts
     }
 }

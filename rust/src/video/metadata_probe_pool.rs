@@ -6,13 +6,13 @@ use crate::engine::PostId;
 use crate::video::delivery_retry::RetryBook;
 use std::collections::HashSet;
 
-pub(crate) struct ProbeBook {
+pub(crate) struct MetadataProbePool {
     limit: usize,
     probing: HashSet<PostId>,
     probed: HashSet<PostId>,
 }
 
-impl ProbeBook {
+impl MetadataProbePool {
     pub fn new(limit: usize) -> Self {
         Self {
             limit: limit.max(1),
@@ -50,6 +50,11 @@ impl ProbeBook {
 
     pub fn release(&mut self, post: &PostId) {
         self.probing.remove(post);
+    }
+
+    pub fn clear(&mut self) {
+        self.probing.clear();
+        self.probed.clear();
     }
 
     fn needed_probe(&self, catalog: &Catalog, retry: &RetryBook, post: &PostId) -> Option<String> {

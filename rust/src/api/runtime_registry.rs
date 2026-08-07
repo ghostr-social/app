@@ -47,6 +47,7 @@ pub(crate) async fn start_and_install(
         modes,
         bootstrap,
         search_relays,
+        candidates: Some(runtime.delivery()),
     })
     .await;
     install(endpoint.clone(), runtime, discovery);

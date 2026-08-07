@@ -1,7 +1,10 @@
 BEGIN {
   threshold["rust/src/api/accepted_events.rs"] = 95
   threshold["rust/src/api/broadcast_control.rs"] = 95
+  threshold["rust/src/api/candidate_delivery.rs"] = 95
   threshold["rust/src/api/delivery_events_stream.rs"] = 95
+  threshold["rust/src/api/debug_nostr.rs"] = 95
+  threshold["rust/src/api/debug_relay_status.rs"] = 95
   threshold["rust/src/api/engine_control.rs"] = 95
   threshold["rust/src/api/event_control.rs"] = 95
   threshold["rust/src/api/event_runtime.rs"] = 95
@@ -10,8 +13,10 @@ BEGIN {
   threshold["rust/src/api/feed_control.rs"] = 95
   threshold["rust/src/api/feed_decisions.rs"] = 100
   threshold["rust/src/api/feed_mapping.rs"] = 100
+  threshold["rust/src/api/feed_outcome_pump.rs"] = 95
   threshold["rust/src/api/feed_outcomes.rs"] = 95
   threshold["rust/src/api/feed_progress.rs"] = 100
+  threshold["rust/src/api/feed_projection.rs"] = 100
   threshold["rust/src/api/feed_runtime.rs"] = 95
   threshold["rust/src/api/feed_runtime_start.rs"] = 95
   threshold["rust/src/api/feed_state.rs"] = 100
@@ -28,6 +33,7 @@ BEGIN {
   threshold["rust/src/api/tracked_items.rs"] = 100
 
   threshold["rust/src/discovery/cache_fallback.rs"] = 100
+  threshold["rust/src/discovery/candidate_registry.rs"] = 100
   threshold["rust/src/discovery/control_loop.rs"] = 100
   threshold["rust/src/discovery/discovery_scheduler.rs"] = 95
   threshold["rust/src/discovery/discovery_scheduler/handle.rs"] = 95
@@ -85,24 +91,35 @@ BEGIN {
   threshold["rust/src/engine/scoring.rs"] = 100
   threshold["rust/src/engine/tiers.rs"] = 100
 
+  threshold["rust/src/video/cache_registry.rs"] = 100
+  threshold["rust/src/video/candidate_priority.rs"] = 100
   threshold["rust/src/video/chunk_cancel.rs"] = 100
   threshold["rust/src/video/chunk_downloader.rs"] = 95
+  threshold["rust/src/video/chunk_network.rs"] = 95
   threshold["rust/src/video/chunk_response.rs"] = 100
+  threshold["rust/src/video/chunk_stream.rs"] = 95
   threshold["rust/src/video/content_range.rs"] = 100
+  threshold["rust/src/video/debug_http.rs"] = 95
+  threshold["rust/src/video/debug_feed.rs"] = 100
+  threshold["rust/src/video/debug_network.rs"] = 95
+  threshold["rust/src/video/debug_state.rs"] = 95
+  threshold["rust/src/video/debug_videos.rs"] = 95
   threshold["rust/src/video/delivery_completion.rs"] = 100
+  threshold["rust/src/video/delivery_cache.rs"] = 95
   threshold["rust/src/video/delivery_events.rs"] = 100
   threshold["rust/src/video/delivery_failure.rs"] = 100
   threshold["rust/src/video/delivery_inflight.rs"] = 100
   threshold["rust/src/video/delivery_manager.rs"] = 95
   threshold["rust/src/video/delivery_plan.rs"] = 100
   threshold["rust/src/video/delivery_probe_completion.rs"] = 100
-  threshold["rust/src/video/delivery_probes.rs"] = 100
   threshold["rust/src/video/delivery_pressure.rs"] = 100
   threshold["rust/src/video/delivery_reconcile.rs"] = 100
   threshold["rust/src/video/delivery_retry.rs"] = 100
   threshold["rust/src/video/delivery_state.rs"] = 100
   threshold["rust/src/video/delivery_stats.rs"] = 100
   threshold["rust/src/video/delivery_transfers.rs"] = 95
+  threshold["rust/src/video/delivery_wake.rs"] = 95
+  threshold["rust/src/video/download_workers.rs"] = 95
   threshold["rust/src/video/event_identity.rs"] = 100
   threshold["rust/src/video/ffi_models.rs"] = 95
   threshold["rust/src/video/gateway_delivery.rs"] = 95
@@ -119,7 +136,9 @@ BEGIN {
   threshold["rust/src/video/http_gateway.rs"] = 95
   threshold["rust/src/video/imeta_extras.rs"] = 100
   threshold["rust/src/video/media_probe.rs"] = 95
+  threshold["rust/src/video/metadata_probe_pool.rs"] = 100
   threshold["rust/src/video/mp4_moov.rs"] = 100
+  threshold["rust/src/video/mutable_priority_queue.rs"] = 100
   threshold["rust/src/video/native_blob_integrity.rs"] = 95
   threshold["rust/src/video/native_blob_store.rs"] = 95
   threshold["rust/src/video/native_cache.rs"] = 95
@@ -154,7 +173,6 @@ BEGIN {
   threshold["rust/src/video/partial_range_store/writes.rs"] = 95
   threshold["rust/src/video/playback_demand.rs"] = 100
   threshold["rust/src/video/post_text.rs"] = 100
-  threshold["rust/src/video/progressive_posts.rs"] = 100
   threshold["rust/src/video/progressive_route.rs"] = 95
   threshold["rust/src/video/progressive_stream.rs"] = 95
   threshold["rust/src/video/public_dns_resolver.rs"] = 95

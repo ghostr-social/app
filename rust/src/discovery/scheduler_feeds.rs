@@ -7,10 +7,10 @@ use nostr_sdk::Timestamp;
 use std::collections::HashMap;
 use std::time::Duration;
 
-pub(crate) const QUERY_HUNT_BACKOFF: Duration = Duration::from_secs(8);
-const QUERY_HUNT_PAGE_BURST: u8 = 3;
+pub(crate) const FEED_REFRESH_BACKOFF: Duration = Duration::from_secs(8);
+const FEED_HISTORY_PAGE_BURST: u8 = 3;
 
-pub(crate) enum QueryHuntAction {
+pub(crate) enum FeedHuntAction {
     OlderNow,
     HeadLater,
 }
@@ -28,7 +28,7 @@ struct FeedProgress {
     cursor: Option<Timestamp>,
     loaded: bool,
     widened: bool,
-    query: bool,
+    continuous: bool,
     older_pages: u8,
     failed: bool,
     playable: bool,
@@ -38,7 +38,7 @@ impl FeedBook {
     /// Opens (or reopens) a feed with a fresh page history and makes
     /// it the active one.
     pub(crate) fn open(&mut self, context: FeedContext, request: DiscoveryRequest) {
-        let query = request.is_wide();
+        let continuous = request.is_continuous();
         self.feeds.insert(
             context.clone(),
             FeedProgress {
@@ -46,7 +46,7 @@ impl FeedBook {
                 cursor: None,
                 loaded: false,
                 widened: false,
-                query,
+                continuous,
                 older_pages: 0,
                 failed: false,
                 playable: false,
@@ -155,24 +155,24 @@ impl FeedBook {
         })
     }
 
-    pub(crate) fn is_query(&self, context: &FeedContext) -> bool {
-        self.feeds.get(context).is_some_and(|feed| feed.query)
+    pub(crate) fn is_continuous(&self, context: &FeedContext) -> bool {
+        self.feeds.get(context).is_some_and(|feed| feed.continuous)
     }
 
-    pub(crate) fn hunt_action(&mut self, context: &FeedContext) -> Option<QueryHuntAction> {
+    pub(crate) fn hunt_action(&mut self, context: &FeedContext) -> Option<FeedHuntAction> {
         let feed = self.feeds.get_mut(context)?;
-        if !feed.query || self.inflight.get(context).copied().unwrap_or(0) > 0 {
+        if !feed.continuous || self.inflight.get(context).copied().unwrap_or(0) > 0 {
             return None;
         }
         if feed.failed || feed.cursor.is_none() {
             feed.failed = false;
-            return Some(QueryHuntAction::HeadLater);
+            return Some(FeedHuntAction::HeadLater);
         }
-        if feed.older_pages >= QUERY_HUNT_PAGE_BURST {
+        if feed.older_pages >= FEED_HISTORY_PAGE_BURST {
             feed.older_pages = 0;
-            return Some(QueryHuntAction::HeadLater);
+            return Some(FeedHuntAction::HeadLater);
         }
-        Some(QueryHuntAction::OlderNow)
+        Some(FeedHuntAction::OlderNow)
     }
 
     pub(crate) fn total_inflight(&self) -> usize {

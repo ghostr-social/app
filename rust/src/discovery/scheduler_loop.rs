@@ -69,7 +69,7 @@ impl SchedulerWorker {
         let Some(context) = self.feeds.active().cloned() else {
             return;
         };
-        if self.feeds.is_query(&context) {
+        if self.feeds.is_continuous(&context) {
             return;
         }
         let queued = self.queue.has_pending(&context);
@@ -142,7 +142,7 @@ impl SchedulerWorker {
         let Ok(events) = result else {
             return self.feeds.record_failure(context);
         };
-        let cursor = if self.feeds.is_query(context) {
+        let cursor = if self.feeds.is_continuous(context) {
             query_cursor
         } else {
             playable_cursor(events)

@@ -1,6 +1,13 @@
+use crate::video::cache_registry::CacheRegistry;
+#[cfg(all(
+    feature = "video-debug-web",
+    debug_assertions,
+    not(any(target_os = "android", target_os = "ios"))
+))]
+use crate::video::debug_feed::DebugFeed;
+use crate::video::debug_network::NetworkThrottle;
 use crate::video::partial_range_store::PartialRangeStore;
 use crate::video::playback_demand::DemandSender;
-use crate::video::progressive_posts::ServablePosts;
 use crate::video::progressive_stream::body_for_span;
 use crate::video::range_header::{self, ResolvedRange};
 use axum::body::Body;
@@ -8,7 +15,7 @@ use axum::extract::{Query, State};
 use axum::http::header::{
     ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, RANGE, RETRY_AFTER,
 };
-use axum::http::{HeaderMap, StatusCode};
+use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::Response;
 use axum::routing::get;
 use axum::Router;
@@ -19,6 +26,8 @@ use std::time::Duration;
 use tokio::time::{timeout_at, Instant};
 
 const VIDEO_MIME: &str = "video/mp4";
+const WEBM_MIME: &str = "video/webm";
+const MEDIA_HEADER_BYTES: u64 = 64;
 
 /// How long progressive serving waits on the store before giving up.
 #[derive(Clone, Copy, Debug)]
@@ -42,8 +51,15 @@ impl Default for ProgressiveTiming {
 pub struct ProgressiveState {
     pub store: Arc<PartialRangeStore>,
     pub demand: DemandSender,
-    pub posts: ServablePosts,
+    pub cache: CacheRegistry,
+    pub network: NetworkThrottle,
     pub timing: ProgressiveTiming,
+    #[cfg(all(
+        feature = "video-debug-web",
+        debug_assertions,
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
+    pub debug_feed: DebugFeed,
 }
 
 #[derive(Deserialize)]
@@ -62,18 +78,35 @@ async fn serve(
     Query(query): Query<VideoQuery>,
     headers: HeaderMap,
 ) -> Result<Response, StatusCode> {
-    if !state.posts.contains(&query.id) {
+    if !state.cache.contains(&query.id) {
         return Err(StatusCode::NOT_FOUND);
     }
     let Some(total) = awaited_total_len(&state, &query.id).await? else {
         return retry_later();
     };
-    match range_header::resolve(headers.get(RANGE), total) {
+    let mime = video_mime(&state, &query.id, total).await;
+    let mut response = match range_header::resolve(headers.get(RANGE), total) {
         ResolvedRange::Full => full_response(state, query.id, total),
         ResolvedRange::Partial { start, end } => {
             partial_response(state, query.id, total, start..end)
         }
         ResolvedRange::Unsatisfiable => unsatisfiable_response(total),
+    }?;
+    response
+        .headers_mut()
+        .insert(CONTENT_TYPE, HeaderValue::from_static(mime));
+    Ok(response)
+}
+
+async fn video_mime(state: &ProgressiveState, id: &str, total: u64) -> &'static str {
+    let end = total.min(MEDIA_HEADER_BYTES);
+    let Ok(Some(bytes)) = state.store.read_range(id, 0..end).await else {
+        return VIDEO_MIME;
+    };
+    if bytes.starts_with(b"\x1a\x45\xdf\xa3") && bytes.windows(4).any(|part| part == b"webm") {
+        WEBM_MIME
+    } else {
+        VIDEO_MIME
     }
 }
 

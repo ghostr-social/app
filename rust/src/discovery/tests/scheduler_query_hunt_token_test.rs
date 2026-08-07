@@ -4,7 +4,7 @@ use super::scheduler_support::{context, request};
 use crate::discovery::discovery_scheduler::SchedulerWorker;
 use crate::discovery::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::discovery::retrieval_queue::RetrievalQueue;
-use crate::discovery::scheduler_feeds::{FeedBook, QUERY_HUNT_BACKOFF};
+use crate::discovery::scheduler_feeds::{FeedBook, FEED_REFRESH_BACKOFF};
 use crate::discovery::scheduler_queries::QueryBook;
 use crate::engine::inventory_controller::Mode;
 use std::collections::HashMap;
@@ -38,7 +38,7 @@ async fn stale_query_continuation_preserves_the_newer_hunt() {
         hunts: HashMap::new(),
         retry_attempts: HashMap::new(),
         pending_feed_retries: HashMap::new(),
-        pending_query_hunts: HashMap::new(),
+        pending_feed_hunts: HashMap::new(),
         next_hunt_token: 0,
         next_task_id: 0,
         commands,
@@ -50,13 +50,13 @@ async fn stale_query_continuation_preserves_the_newer_hunt() {
     let mut query = request();
     query.search_query = Some("ghost".to_owned());
     worker.feeds.open(feed.clone(), query);
-    worker.advance_query(feed.clone());
+    worker.advance_feed_hunt(feed.clone());
     tokio::task::yield_now().await;
-    tokio::time::advance(QUERY_HUNT_BACKOFF).await;
+    tokio::time::advance(FEED_REFRESH_BACKOFF).await;
     tokio::task::yield_now().await;
     let stale = worker.commands.try_recv().expect("old hunt command");
 
-    worker.advance_query(feed.clone());
+    worker.advance_feed_hunt(feed.clone());
     assert!(worker.hunts.contains_key(&feed), "new hunt precondition");
     worker.apply_command(stale);
 

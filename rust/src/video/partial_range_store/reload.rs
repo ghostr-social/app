@@ -61,7 +61,7 @@ async fn reusable(paths: &StorePaths, key: &str) -> Result<Option<Entry>> {
 
 /// Every key the root holds. File names are `{key}.{extension}` and a
 /// key may carry no dot, so the key is the leading segment.
-async fn stored_keys(root: &Path) -> BTreeSet<String> {
+pub(super) async fn stored_keys(root: &Path) -> BTreeSet<String> {
     let Ok(mut listing) = tokio::fs::read_dir(root).await else {
         return BTreeSet::new();
     };

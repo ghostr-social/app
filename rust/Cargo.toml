@@ -9,6 +9,15 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
 [lib]
 crate-type = ["cdylib", "staticlib", "rlib"]
 
+[features]
+default = []
+video-debug-web = []
+
+[[bin]]
+name = "video-debug"
+path = "src/bin/video_debug.rs"
+required-features = ["video-debug-web"]
+
 [dependencies]
 anyhow = "1.0.95"
 axum = "0.8.1"
@@ -28,7 +37,9 @@ serde_json = "1.0"
 sha2 = "0.10.8"
 
 [dev-dependencies]
+futures-util = "0.3"
 tokio = { version = "1.43.0", features = ["test-util"] }
+tokio-tungstenite = "0.24"
 tower = { version = "0.5", features = ["util"] }
 
 [package.metadata.flutter_rust_bridge]

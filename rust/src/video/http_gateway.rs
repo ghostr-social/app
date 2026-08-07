@@ -1,6 +1,12 @@
 use crate::video::native_models::NativeDownloads;
 use crate::video::outbound_media_client::MediaHttpClient;
 use crate::video::progressive_route::{self, ProgressiveState};
+#[cfg(all(
+    feature = "video-debug-web",
+    debug_assertions,
+    not(any(target_os = "android", target_os = "ios"))
+))]
+use crate::video::{debug_http, delivery_events::DeliveryHandle};
 use crate::video::{hls_http_gateway, hls_sessions::HlsSessions};
 use axum::body::Body;
 use axum::extract::{Query, State};
@@ -9,6 +15,12 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
 use axum::routing::get;
 use axum::Router;
+#[cfg(all(
+    feature = "video-debug-web",
+    debug_assertions,
+    not(any(target_os = "android", target_os = "ios"))
+))]
+use nostr_sdk::Client;
 use reqwest::RequestBuilder;
 use serde::Deserialize;
 use std::sync::Arc;
@@ -72,6 +84,29 @@ pub fn configured_router_with_progressive(
         hls_sessions,
         client,
     )))
+}
+
+#[cfg(all(
+    feature = "video-debug-web",
+    debug_assertions,
+    not(any(target_os = "android", target_os = "ios"))
+))]
+pub fn configured_router_with_progressive_debug(
+    downloads: NativeDownloads,
+    hls_sessions: HlsSessions,
+    client: MediaHttpClient,
+    progressive: Arc<ProgressiveState>,
+    delivery: DeliveryHandle,
+    nostr: Arc<Client>,
+) -> Router {
+    progressive_route::router(progressive.clone())
+        .merge(debug_http::router(
+            progressive,
+            delivery,
+            hls_sessions.clone(),
+            nostr,
+        ))
+        .merge(shared_router(shared_state(downloads, hls_sessions, client)))
 }
 
 fn shared_state(

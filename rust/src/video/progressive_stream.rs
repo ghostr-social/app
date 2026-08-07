@@ -20,7 +20,11 @@ type ChunkSender = mpsc::Sender<Result<Bytes, io::Error>>;
 /// waits. The stream ends once no byte arrives within the idle timeout.
 pub(crate) fn body_for_span(state: Arc<ProgressiveState>, key: String, span: Range<u64>) -> Body {
     let (sender, receiver) = mpsc::channel(4);
-    tokio::spawn(pump(state, key, span, sender));
+    let lease = state.store.lease(&key);
+    tokio::spawn(async move {
+        let _lease = lease;
+        pump(state, key, span, sender).await;
+    });
     Body::from_stream(ReceiverStream::new(receiver))
 }
 

@@ -10,6 +10,10 @@ use log::warn;
 
 impl DeliveryWorker {
     pub(crate) async fn finish_probe(&mut self, done: ProbeDone) {
+        if self.state.catalog().lookup(&done.post).is_none() {
+            self.probes.release(&done.post);
+            return;
+        }
         self.keeper.note_probe(&done);
         match done.outcome {
             Ok(result) => {

@@ -3,19 +3,20 @@
 //! in-flight transfers in line with the freshly ordered plan.
 
 use crate::engine::tiers::DemandSignals;
-use crate::engine::{ByteRange, ChunkId, PostId};
+use crate::engine::{ByteRange, PostId};
 use crate::video::delivery_manager::DeliveryWorker;
 use crate::video::delivery_plan::{planned_work, PlanInputs, PlannedTransfer, PlannedWork};
-use crate::video::delivery_transfers::{spawn_chunk, spawn_probe};
+use crate::video::delivery_transfers::spawn_probe;
 use crate::video::playback_demand::DemandSignal;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 impl DeliveryWorker {
     pub(crate) async fn reconcile(&mut self) {
         let window = self.state.window_posts();
+        let candidates = self.state.candidate_posts();
         let present = self.collect_present(&window).await;
-        self.ensure_total_lens(&window).await;
-        self.launch_probes(&window);
+        self.ensure_total_lens(&candidates).await;
+        self.launch_probes(&candidates);
         let demand = self.demand_signals(&present);
         let inputs = PlanInputs {
             stats: self.keeper.stats(),
@@ -25,6 +26,7 @@ impl DeliveryWorker {
         };
         let planned = planned_work(&mut self.state, inputs);
         self.reconcile_transfers(planned);
+        self.refresh_cache_registry().await;
         self.keeper.schedule_save(&self.ctx.events);
     }
 
@@ -82,28 +84,22 @@ impl DeliveryWorker {
     /// Grants the ordered plan up to the concurrency limit; whatever
     /// the plan no longer contains is cancelled first (scroll-past).
     fn reconcile_transfers(&mut self, planned: PlannedWork) {
-        let wanted: HashSet<ChunkId> = planned
-            .transfers
-            .iter()
-            .map(|transfer| transfer.request.chunk.clone())
-            .collect();
-        self.inflight.cancel_absent(&wanted);
-        for transfer in &planned.transfers {
-            if self.inflight.len() >= self.state.concurrency() {
-                break;
-            }
+        self.queue.replace(planned.transfers);
+        self.downloads.cancel_absent(&self.queue.wanted());
+        while self.downloads.len() < self.state.concurrency() {
+            let Some(transfer) = self.queue.pop() else {
+                return;
+            };
             self.grant(transfer);
         }
     }
 
-    fn grant(&mut self, transfer: &PlannedTransfer) {
+    fn grant(&mut self, transfer: PlannedTransfer) {
         let chunk = &transfer.request.chunk;
-        if self.inflight.contains(chunk) || self.retry.is_cooling(&chunk.post) {
+        if self.downloads.contains(chunk) || self.retry.is_cooling(&chunk.post) {
             return;
         }
-        let attempt = self.inflight.next_attempt(chunk.clone());
-        let handle = spawn_chunk(self.ctx.clone(), attempt.clone(), transfer.url.clone());
-        self.inflight.insert(&attempt, handle);
+        self.downloads.start(self.ctx.clone(), transfer);
     }
 }
 
