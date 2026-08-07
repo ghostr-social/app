@@ -5,8 +5,8 @@ use crate::api::feed_runtime::{lock, pump_outcomes, OutcomeSinks, SharedFeedStat
 use crate::api::feed_state::FeedState;
 use crate::api::tests::feed_fixtures::video_note;
 use crate::api::tests::outbox_runtime_support::test_bootstrap;
-use crate::discovery::discovery_scheduler::{RetrievalOutcome, RetrievalPurpose};
 use crate::discovery::feed_spec::FeedSpec;
+use crate::discovery::retrieval_types::{RetrievalOutcome, RetrievalPurpose};
 use nostr_sdk::Keys;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;

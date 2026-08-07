@@ -2,10 +2,11 @@
 
 use super::scheduler_support::{context, request};
 use crate::discovery_scheduler::{
-    ActiveRetrieval, DiscoveryCommand, FinishedRetrieval, RetrievalPurpose, SchedulerWorker,
+    ActiveRetrieval, DiscoveryCommand, FinishedRetrieval, SchedulerWorker,
 };
-use crate::plan_executor::{PlanExecutor, PlanFailure, PlanFuture, PlannedRetrieval};
+use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::retrieval_queue::RetrievalQueue;
+use crate::retrieval_types::{PlanFailure, RetrievalPurpose};
 use crate::scheduler_feeds::FeedBook;
 use crate::scheduler_queries::QueryBook;
 use ghostr_engine::inventory_controller::Mode;

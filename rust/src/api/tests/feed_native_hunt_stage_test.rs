@@ -1,7 +1,7 @@
 use crate::api::feed_state::FeedState;
 use crate::api::tests::feed_fixtures::video_note;
-use crate::discovery::discovery_scheduler::RetrievalPurpose;
 use crate::discovery::feed_spec::FeedSpec;
+use crate::discovery::retrieval_types::RetrievalPurpose;
 use nostr_sdk::Keys;
 
 #[test]

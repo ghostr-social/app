@@ -1,8 +1,7 @@
 //! Takeout order follows the priority class, then submission order.
 
-use crate::retrieval_queue::{
-    FeedContext, RetrievalPriority, RetrievalQueue, RetrievalRequest,
-};
+use crate::retrieval_queue::RetrievalQueue;
+use crate::retrieval_types::{FeedContext, RetrievalPriority, RetrievalRequest};
 
 fn request(context: &str, priority: RetrievalPriority) -> RetrievalRequest {
     RetrievalRequest {

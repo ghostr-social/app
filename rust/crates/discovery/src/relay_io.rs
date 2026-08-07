@@ -13,7 +13,7 @@ use tokio::task::JoinSet;
 use tokio::time::{sleep, timeout};
 use tokio_stream::{Stream, StreamExt};
 
-use crate::plan_executor::EventProgress;
+use crate::retrieval_types::EventProgress;
 
 const RELAY_READINESS_TIMEOUT: Duration = Duration::from_secs(15);
 

@@ -1,7 +1,7 @@
 //! Reset invalidates bootstrap contexts and releases every author claim.
 
-use crate::discovery_scheduler::RetrievalOutcome;
 use crate::outbox_bootstrap::OutboxBootstrap;
+use crate::retrieval_types::RetrievalOutcome;
 use crate::session_generation::SessionGeneration;
 use crate::tests::outbox_support::{empty_directory, recording_executor};
 use nostr_sdk::Keys;

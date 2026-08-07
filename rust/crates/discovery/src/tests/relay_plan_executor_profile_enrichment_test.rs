@@ -1,6 +1,6 @@
 use super::profile_enrichment_support::{executor, has_kind, ProfileIo};
 use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
-use crate::retrieval_queue::{FeedContext, RetrievalPriority};
+use crate::retrieval_types::{FeedContext, RetrievalPriority};
 use crate::search_queries::plan_discovery;
 use crate::video_filters::DiscoveryRequest;
 use nostr_sdk::{EventBuilder, Keys, Kind, Timestamp};

@@ -1,7 +1,7 @@
 use super::profile_enrichment_support::{executor, has_kind, ProfileIo};
 use crate::event_queries::plan_event_queries;
 use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
-use crate::retrieval_queue::{FeedContext, RetrievalPriority};
+use crate::retrieval_types::{FeedContext, RetrievalPriority};
 use nostr_sdk::{EventBuilder, Filter, Keys, Kind};
 
 #[tokio::test]

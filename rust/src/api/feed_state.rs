@@ -10,10 +10,10 @@ use crate::api::feed_types::{FfiFeedPost, FfiFeedStage};
 use crate::discovery::candidate_registry::CandidateRegistry;
 use crate::discovery::feed_spec::FeedSpec;
 use crate::discovery::feed_store::{FeedId, FeedStore};
-#[cfg(test)]
-use crate::discovery::plan_executor::PlanFailure;
 use crate::discovery::profile_store::ProfileStore;
-use crate::discovery::retrieval_queue::FeedContext;
+use crate::discovery::retrieval_types::FeedContext;
+#[cfg(test)]
+use crate::discovery::retrieval_types::PlanFailure;
 use crate::discovery::session_generation::SessionGeneration;
 use crate::discovery::social_graph::SocialGraph;
 use flutter_rust_bridge::frb;

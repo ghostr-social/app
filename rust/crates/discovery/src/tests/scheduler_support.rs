@@ -2,10 +2,10 @@
 //! executor stands in for relay IO so no test ever touches the network.
 
 use crate::discovery_scheduler::{
-    start_discovery_scheduler, DiscoveryHandle, DiscoverySchedulerConfig, RetrievalOutcome,
+    start_discovery_scheduler, DiscoveryHandle, DiscoverySchedulerConfig,
 };
-use crate::plan_executor::{PlanExecutor, PlanFailure, PlanFuture, PlannedRetrieval};
-use crate::retrieval_queue::FeedContext;
+use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
+use crate::retrieval_types::{FeedContext, PlanFailure, RetrievalOutcome};
 use crate::video_filters::DiscoveryRequest;
 use ghostr_engine::inventory_controller::Mode;
 use ghostr_engine::DataUsageLevel;

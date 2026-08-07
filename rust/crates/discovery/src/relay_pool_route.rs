@@ -1,11 +1,11 @@
 //! A stable configuration route held through its relay network operations.
 
-use crate::plan_executor::PlanFailure;
 use crate::relay_io::{RelayBroadcastIo, RelayReadIo};
 use crate::relay_pool_owner::{
     session_failure, RelayBroadcastRequest, RelayPoolOwner, RelayReadRequest,
 };
 use crate::relay_pool_roles::RelayRole;
+use crate::retrieval_types::PlanFailure;
 use std::sync::Arc;
 use tokio::sync::{watch, OwnedRwLockReadGuard};
 

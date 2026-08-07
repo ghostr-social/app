@@ -1,11 +1,9 @@
 use super::FeedState;
 use crate::api::feed_progress::FeedProgress;
 use crate::discovery::candidate_registry::{CandidateAdmission, VideoCandidate};
-use crate::discovery::discovery_scheduler::RetrievalPurpose;
 use crate::discovery::feed_cursor::retrieval_cursor;
 use crate::discovery::feed_store::FeedId;
-use crate::discovery::plan_executor::PlanFailure;
-use crate::discovery::retrieval_queue::FeedContext;
+use crate::discovery::retrieval_types::{FeedContext, PlanFailure, RetrievalPurpose};
 use nostr_sdk::Event;
 
 impl FeedState {

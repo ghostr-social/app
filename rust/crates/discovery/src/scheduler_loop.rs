@@ -4,12 +4,13 @@
 
 use crate::control_loop::{discovery_action, DiscoveryAction};
 use crate::discovery_scheduler::{
-    ActiveRetrieval, DiscoveryCommand, FinishedRetrieval, RetrievalOutcome, RetrievalPurpose,
-    SchedulerWorker,
+    ActiveRetrieval, DiscoveryCommand, FinishedRetrieval, SchedulerWorker,
 };
 use crate::feed_cursor::playable_cursor;
-use crate::plan_executor::PlanFailure;
-use crate::retrieval_queue::{FeedContext, RetrievalPriority, RetrievalRequest};
+use crate::retrieval_types::{
+    FeedContext, PlanFailure, RetrievalOutcome, RetrievalPriority, RetrievalPurpose,
+    RetrievalRequest,
+};
 use crate::scheduler_plans::widened_plan;
 use crate::scheduler_progress::{spawn_retrieval_task, RetrievalTaskInput};
 use crate::scheduler_retry::should_retry_feed;

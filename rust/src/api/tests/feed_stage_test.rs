@@ -11,7 +11,7 @@ use crate::api::feed_updates_stream::watch_feed;
 use crate::api::tests::feed_fixtures::video_note;
 use crate::api::tests::feed_watch_support::{next, ChannelOut};
 use crate::discovery::feed_spec::FeedSpec;
-use crate::discovery::plan_executor::PlanFailure;
+use crate::discovery::retrieval_types::PlanFailure;
 use nostr_sdk::Keys;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;

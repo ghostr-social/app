@@ -6,7 +6,7 @@
 use crate::api::feed_decisions::LoadMoreAction;
 use crate::api::feed_state::FeedState;
 use crate::discovery::feed_spec::FeedSpec;
-use crate::discovery::retrieval_queue::FeedContext;
+use crate::discovery::retrieval_types::FeedContext;
 
 #[test]
 fn blank_searches_never_query_and_never_have_more() {

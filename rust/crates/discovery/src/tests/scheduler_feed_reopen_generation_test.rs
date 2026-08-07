@@ -2,9 +2,10 @@
 
 use super::scheduler_support::{context, next_outcome, next_started, no_start, note_at, request};
 use crate::discovery_scheduler::{
-    start_discovery_scheduler, DiscoveryHandle, DiscoverySchedulerConfig, RetrievalOutcome,
+    start_discovery_scheduler, DiscoveryHandle, DiscoverySchedulerConfig,
 };
-use crate::plan_executor::{PlanExecutor, PlanFailure, PlanFuture, PlannedRetrieval};
+use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
+use crate::retrieval_types::{PlanFailure, RetrievalOutcome};
 use ghostr_engine::{inventory_controller::Mode, DataUsageLevel};
 use nostr_sdk::Event;
 use std::collections::VecDeque;

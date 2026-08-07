@@ -3,8 +3,7 @@
 
 use super::scheduler_support::{context, next_outcome, next_started, no_start, note_at, request};
 use super::scripted_scheduler_support::scripted_scheduler_results;
-use crate::discovery_scheduler::RetrievalOutcome;
-use crate::plan_executor::PlanFailure;
+use crate::retrieval_types::{PlanFailure, RetrievalOutcome};
 use std::time::Duration;
 
 #[tokio::test(start_paused = true)]

@@ -2,9 +2,9 @@
 
 use crate::cache_fallback::cached_or_failure;
 use crate::event_cache::EventCache;
-use crate::plan_executor::{EventProgress, PlanFailure};
 use crate::relay_pool_owner::RelayReadRequest;
 use crate::relay_pool_route::RelayPoolRoute;
+use crate::retrieval_types::{EventProgress, PlanFailure};
 use crate::search_queries::PlannedQuery;
 use crate::session_generation::{SessionGeneration, SESSION_RESET_MESSAGE};
 use nostr_sdk::Event;

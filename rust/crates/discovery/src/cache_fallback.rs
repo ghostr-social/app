@@ -1,7 +1,7 @@
 //! Offline answer policy for one failed relay query.
 
 use crate::event_cache::EventCache;
-use crate::plan_executor::PlanFailure;
+use crate::retrieval_types::PlanFailure;
 use crate::session_generation::{SessionGeneration, SESSION_RESET_MESSAGE};
 use nostr_sdk::{Event, Filter};
 

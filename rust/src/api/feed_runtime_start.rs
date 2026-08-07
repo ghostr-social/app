@@ -6,11 +6,12 @@ use crate::api::feed_runtime::{
 use crate::api::feed_state::FeedState;
 use crate::api::runtime_configuration;
 use crate::discovery::discovery_scheduler::{
-    start_discovery_scheduler, DiscoveryHandle, DiscoverySchedulerConfig, RetrievalOutcome,
+    start_discovery_scheduler, DiscoveryHandle, DiscoverySchedulerConfig,
 };
 use crate::discovery::outbox_bootstrap::OutboxBootstrap;
 use crate::discovery::outbox_directory::OutboxDirectory;
 use crate::discovery::relay_plan_executor::{RelayPlanExecutor, SharedOutboxDirectory};
+use crate::discovery::retrieval_types::RetrievalOutcome;
 use crate::engine::inventory_controller::Mode;
 use crate::engine::DataUsageLevel;
 use std::sync::{Arc, Mutex};

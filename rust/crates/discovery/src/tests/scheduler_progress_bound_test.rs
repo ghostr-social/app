@@ -1,8 +1,7 @@
 use super::scheduler_support::{context, next_outcome, note_at, request};
-use crate::discovery_scheduler::{
-    start_discovery_scheduler, DiscoverySchedulerConfig, RetrievalOutcome,
-};
-use crate::plan_executor::{EventProgress, PlanExecutor, PlanFuture, PlannedRetrieval};
+use crate::discovery_scheduler::{start_discovery_scheduler, DiscoverySchedulerConfig};
+use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
+use crate::retrieval_types::{EventProgress, RetrievalOutcome};
 use ghostr_engine::{inventory_controller::Mode, DataUsageLevel};
 use std::sync::Arc;
 use tokio::sync::{mpsc, watch};

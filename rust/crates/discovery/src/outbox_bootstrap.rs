@@ -6,13 +6,12 @@
 //! uses. The first page therefore leaves with whatever the directory
 //! already knows, and every later page benefits from what landed since.
 
-use crate::discovery_scheduler::RetrievalOutcome;
 use crate::outbox_plans::{
     author_relay_lists_plan, viewer_lists_plan, MAX_RELAY_LIST_AUTHORS,
 };
 use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
 use crate::relay_plan_executor::SharedOutboxDirectory;
-use crate::retrieval_queue::{FeedContext, RetrievalPriority};
+use crate::retrieval_types::{FeedContext, RetrievalOutcome, RetrievalPriority};
 use crate::search_queries::QueryPlan;
 use crate::session_generation::SessionGeneration;
 use nostr_sdk::{Event, Kind, PublicKey};
@@ -160,7 +159,7 @@ impl OutboxBootstrap {
             let _ = outcomes.send(RetrievalOutcome::Completed {
                 context,
                 result,
-                purpose: crate::discovery_scheduler::RetrievalPurpose::Head,
+                purpose: crate::retrieval_types::RetrievalPurpose::Head,
             });
         });
     }

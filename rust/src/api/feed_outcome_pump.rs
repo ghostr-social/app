@@ -1,9 +1,9 @@
 use crate::api::feed_outcomes::file_lists_for;
 use crate::api::feed_runtime::{lock, SharedFeedState};
-use crate::discovery::discovery_scheduler::{RetrievalOutcome, RetrievalPurpose};
 use crate::discovery::outbox_bootstrap::OutboxBootstrap;
-use crate::discovery::plan_executor::PlanFailure;
-use crate::discovery::retrieval_queue::FeedContext;
+use crate::discovery::retrieval_types::{
+    FeedContext, PlanFailure, RetrievalOutcome, RetrievalPurpose,
+};
 use crate::video::delivery_events::DeliveryHandle;
 use flutter_rust_bridge::frb;
 use nostr_sdk::Event;

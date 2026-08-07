@@ -70,7 +70,7 @@ async fn a_failed_chase_is_asked_again() {
         .expect("the channel should stay open");
     assert!(matches!(
         failed,
-        crate::discovery_scheduler::RetrievalOutcome::Completed { result: Err(_), .. }
+        crate::retrieval_types::RetrievalOutcome::Completed { result: Err(_), .. }
     ));
     bootstrap.viewer(author(AUTHOR_A));
 

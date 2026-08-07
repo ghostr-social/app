@@ -1,8 +1,7 @@
 use super::scheduler_support::{context, next_outcome, next_started, request};
 use crate::discovery_scheduler::{start_discovery_scheduler, DiscoverySchedulerConfig};
-use crate::plan_executor::{
-    EventProgress, PlanExecutor, PlanFuture, PlanPage, PlanPageFuture, PlannedRetrieval,
-};
+use crate::plan_executor::{PlanExecutor, PlanFuture, PlanPage, PlanPageFuture, PlannedRetrieval};
+use crate::retrieval_types::EventProgress;
 use ghostr_engine::{inventory_controller::Mode, DataUsageLevel};
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, Timestamp};
 use std::collections::VecDeque;
