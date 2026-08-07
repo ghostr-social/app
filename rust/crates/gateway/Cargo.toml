@@ -9,7 +9,6 @@ video-debug-web = ["ghostr-delivery/video-debug-web"]
 
 [dependencies]
 ghostr-delivery = { path = "../delivery" }
-ghostr-discovery = { path = "../discovery" }
 ghostr-engine = { path = "../engine" }
 ghostr-hls-manifest = { path = "../hls-manifest" }
 ghostr-media-model = { path = "../media-model" }

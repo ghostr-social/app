@@ -1,17 +1,22 @@
 mod support;
 
+use rust_lib_ghostr::discovery::event_cache::client_with_event_cache;
 use rust_lib_ghostr::video::gateway_runtime::{GatewayConfiguration, GatewayRuntime};
+use std::sync::Arc;
 use support::fixtures::temp_directory;
 
 #[tokio::test]
 async fn gateway_runtime_applies_live_storage_budget_to_progressive_media() {
     let directory = temp_directory("ghostr-gateway-live-budget");
-    let (_endpoint, runtime, _client, _modes) = GatewayRuntime::start(GatewayConfiguration {
-        cache_directory: directory.clone(),
-        relays: Vec::new(),
-        max_parallel_downloads: 1,
-        max_storage_bytes: 800,
-    })
+    let (_endpoint, runtime, _modes) = GatewayRuntime::start(
+        GatewayConfiguration {
+            cache_directory: directory.clone(),
+            relays: Vec::new(),
+            max_parallel_downloads: 1,
+            max_storage_bytes: 800,
+        },
+        Arc::new(client_with_event_cache()),
+    )
     .await
     .expect("gateway start");
     let progressive = runtime.progressive();
