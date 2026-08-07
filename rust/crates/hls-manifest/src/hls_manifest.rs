@@ -1,5 +1,5 @@
 use anyhow::{bail, ensure, Context, Result};
-use reqwest::Url;
+use url::Url;
 
 use crate::hls_manifest_attributes::quoted_attribute;
 use crate::hls_manifest_names::{attribute, tag};
