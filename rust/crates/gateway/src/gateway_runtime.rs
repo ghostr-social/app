@@ -1,4 +1,3 @@
-use ghostr_discovery::event_cache::client_with_event_cache;
 use ghostr_engine::inventory_controller::Mode;
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use crate::gateway_delivery::start_progressive_delivery;
@@ -25,19 +24,23 @@ pub struct GatewayRuntime {
 }
 
 impl GatewayRuntime {
-    /// Starts everything: endpoint, runtime, and the discovery boot
-    /// inputs (shared Nostr client + inventory-mode watch, plan §5.4).
+    /// Starts everything: endpoint, runtime, and the remaining discovery
+    /// boot input (the inventory-mode watch, plan §5.4). The shared Nostr
+    /// client is supplied by the caller so this crate stays free of
+    /// discovery.
+    ///
+    /// Contract on `client`: build it with `client_with_event_cache()`,
+    /// never `Client::default()` — the shared client must retain verified
+    /// events for session-scoped cache union and deduplication.
     pub async fn start(
         configuration: GatewayConfiguration,
-    ) -> anyhow::Result<(String, Self, Arc<Client>, watch::Receiver<Mode>)> {
+        client: Arc<Client>,
+    ) -> anyhow::Result<(String, Self, watch::Receiver<Mode>)> {
         validate(&configuration)?;
         prepare_native_cache_directory(&configuration.cache_directory)?;
         let listener = TcpListener::bind("127.0.0.1:0").await?;
         let address = listener.local_addr()?;
         let endpoint = address.to_string();
-        // Never `Client::default()`: the shared client must retain
-        // verified events for session-scoped cache union and deduplication.
-        let client = Arc::new(client_with_event_cache());
         let hls_sessions = HlsSessions::production();
         let (router, delivery, progressive, modes) =
             start_progressive_delivery(&configuration, hls_sessions.clone(), client.clone())
@@ -49,7 +52,7 @@ impl GatewayRuntime {
             delivery,
             progressive,
         };
-        Ok((endpoint, runtime, client, modes))
+        Ok((endpoint, runtime, modes))
     }
 
     /// Control surface for focus, demand, and data-usage updates.

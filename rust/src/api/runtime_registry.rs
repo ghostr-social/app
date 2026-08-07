@@ -2,6 +2,7 @@
 
 use crate::api::feed_runtime::{DiscoveryBoot, DiscoveryRuntime};
 use crate::api::tracked_items::TrackedItems;
+use crate::discovery::event_cache::client_with_event_cache;
 use crate::video::gateway_runtime::{GatewayConfiguration, GatewayRuntime};
 use anyhow::bail;
 use flutter_rust_bridge::frb;
@@ -41,7 +42,10 @@ pub(crate) async fn start_and_install(
 ) -> anyhow::Result<String> {
     let _permit = START_GATE.acquire(|| INSTALLED.get().is_some())?;
     let bootstrap = configuration.relays.clone();
-    let (endpoint, runtime, client, modes) = GatewayRuntime::start(configuration).await?;
+    // Never `Client::default()`: the shared client must retain verified
+    // events for session-scoped cache union and deduplication.
+    let client = Arc::new(client_with_event_cache());
+    let (endpoint, runtime, modes) = GatewayRuntime::start(configuration, client.clone()).await?;
     let discovery = DiscoveryRuntime::start(DiscoveryBoot {
         client,
         modes,

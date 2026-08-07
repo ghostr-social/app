@@ -4,7 +4,9 @@
 
 mod support;
 
+use rust_lib_ghostr::discovery::event_cache::client_with_event_cache;
 use rust_lib_ghostr::video::gateway_runtime::{GatewayConfiguration, GatewayRuntime};
+use std::sync::Arc;
 use support::fixtures::temp_directory;
 
 const MANIFEST: &str = r#"{"total_len":16,"ranges":[[0,16]]}"#;
@@ -18,12 +20,15 @@ async fn starting_the_gateway_keeps_the_progressive_store() {
     std::fs::write(progressive.join("clip.ranges.json"), MANIFEST).expect("manifest");
     std::fs::write(directory.join("host_stats.json"), b"{}").expect("host model");
 
-    let (_endpoint, runtime, _client, _modes) = GatewayRuntime::start(GatewayConfiguration {
-        cache_directory: directory.clone(),
-        relays: Vec::new(),
-        max_parallel_downloads: 1,
-        max_storage_bytes: 1_048_576,
-    })
+    let (_endpoint, runtime, _modes) = GatewayRuntime::start(
+        GatewayConfiguration {
+            cache_directory: directory.clone(),
+            relays: Vec::new(),
+            max_parallel_downloads: 1,
+            max_storage_bytes: 1_048_576,
+        },
+        Arc::new(client_with_event_cache()),
+    )
     .await
     .expect("gateway start");
 
