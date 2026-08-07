@@ -23,6 +23,7 @@ tokio = { version = "1.43.0", features = ["full"] }
 tokio-stream = "0.1"
 tokio-tungstenite = "0.24"
 tower = { version = "0.5", features = ["util"] }
+url = "2.5.8"
 
 [package]
 name = "rust_lib_ghostr"

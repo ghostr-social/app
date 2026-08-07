@@ -6,4 +6,4 @@ description = "HLS playlist parsing and URL rewriting."
 
 [dependencies]
 anyhow = { workspace = true }
-reqwest = { workspace = true }
+url = { workspace = true }
