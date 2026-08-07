@@ -1,5 +1,5 @@
 use nostr_sdk::{EventBuilder, Keys, Kind, Tag};
-use rust_lib_ghostr::video::event_identity::canonical_video_events;
+use ghostr_media_model::event_identity::canonical_video_events;
 
 #[test]
 fn normalizes_and_deduplicates_event_hashtags() {

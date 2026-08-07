@@ -1,5 +1,5 @@
-use rust_lib_ghostr::video::imeta_extras::ImetaExtras;
-use rust_lib_ghostr::video::native_media_metadata::native_media;
+use ghostr_media_model::imeta_extras::ImetaExtras;
+use ghostr_media_model::native_media_metadata::native_media;
 
 fn with_field(field: &str) -> Vec<String> {
     vec![

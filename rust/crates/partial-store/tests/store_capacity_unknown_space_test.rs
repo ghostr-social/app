@@ -1,5 +1,5 @@
-use rust_lib_ghostr::video::partial_range_store::capacity::{Limits, StoreCapacity};
-use rust_lib_ghostr::video::partial_range_store::free_space::FreeSpace;
+use ghostr_partial_store::partial_range_store::capacity::{Limits, StoreCapacity};
+use ghostr_partial_store::partial_range_store::free_space::FreeSpace;
 use std::path::Path;
 use std::sync::Arc;
 

@@ -1,5 +1,5 @@
 use nostr_sdk::{EventBuilder, Keys, Kind, Tag};
-use rust_lib_ghostr::video::event_identity::{
+use ghostr_media_model::event_identity::{
     canonical_video_events, MAX_NATIVE_HASHTAGS_PER_EVENT,
 };
 

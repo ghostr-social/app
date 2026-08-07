@@ -1,4 +1,4 @@
-use rust_lib_ghostr::video::partial_range_manifest::RangeManifest;
+use ghostr_partial_store::partial_range_manifest::RangeManifest;
 
 #[test]
 fn range_manifest_rejects_conflicting_bounds_and_handles_empty_states() {

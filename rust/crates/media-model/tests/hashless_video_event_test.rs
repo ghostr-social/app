@@ -1,5 +1,5 @@
 use nostr_sdk::{EventBuilder, Keys, Kind, Tag};
-use rust_lib_ghostr::video::event_identity::canonical_native_videos;
+use ghostr_media_model::event_identity::canonical_native_videos;
 
 #[test]
 fn derives_a_stable_cache_key_when_nip92_has_no_digest() {

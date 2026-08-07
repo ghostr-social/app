@@ -10,6 +10,11 @@ log = { workspace = true }
 sha2 = { workspace = true }
 tokio = { workspace = true }
 
+# `start_paused` and `time::advance`, for driving eviction and refusal timing
+# without sleeping.
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+
 # statvfs, for measuring the free space the video store may not consume.
 [target.'cfg(unix)'.dependencies]
 libc = { workspace = true }
