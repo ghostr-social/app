@@ -1,6 +1,6 @@
-mod store_space;
+mod store_fixture;
 
-use store_space::{discard, limits, spaced_store};
+use store_fixture::{discard, limits, spaced_store};
 
 /// Other apps eat the same filesystem, so the cap can fall under what
 /// the store already holds. Refusing new writes is not enough then: the

@@ -1,13 +1,13 @@
-mod support;
+mod store_fixture;
 
-use rust_lib_ghostr::video::partial_range_store::PartialRangeStore;
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
-use support::fixtures::temp_directory;
+use store_fixture::temp_root;
 use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn partial_range_missing_within_reports_only_the_gaps_inside_the_span() {
-    let root = temp_directory("ghostr-partial-missing");
+    let root = temp_root("ghostr-partial-missing");
     let store = PartialRangeStore::new(root.clone(), Arc::new(Mutex::new(0)));
 
     store.write_range("clip", 2, b"aa").await.expect("first");

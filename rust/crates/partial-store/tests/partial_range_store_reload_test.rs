@@ -3,16 +3,16 @@
 //! and partial files with a usable manifest are accounted for and
 //! reusable before anything asks for them.
 
-mod support;
+mod store_fixture;
 
-use rust_lib_ghostr::video::partial_range_store::PartialRangeStore;
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
-use support::fixtures::temp_directory;
+use store_fixture::temp_root;
 use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn partial_range_store_reloads_its_contents_at_startup() {
-    let root = temp_directory("ghostr-store-reload");
+    let root = temp_root("ghostr-store-reload");
     seed(&root).await;
     std::fs::write(root.join("orphan.part"), b"nomanifest").expect("orphan bytes");
 

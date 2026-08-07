@@ -1,15 +1,15 @@
-mod support;
+mod store_fixture;
 
-use rust_lib_ghostr::video::partial_range_store::PartialRangeStore;
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
 use std::time::Duration;
-use support::fixtures::temp_directory;
+use store_fixture::temp_root;
 use tokio::sync::Mutex;
 use tokio::time::timeout;
 
 #[tokio::test]
 async fn wakes_change_waiters_on_writes_and_total_length_declarations() {
-    let root = temp_directory("ghostr-partial-notify");
+    let root = temp_root("ghostr-partial-notify");
     let store = PartialRangeStore::new(root.clone(), Arc::new(Mutex::new(0)));
     let notify = store.change_notifier();
 

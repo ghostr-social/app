@@ -1,5 +1,6 @@
 #![allow(dead_code)]
-//! A filesystem whose free space the test moves at will, so the store's
+//! Roots the store may be built over: a plain temp directory, or a
+//! filesystem whose free space the test moves at will, so the store's
 //! effective cap can be pushed around without filling a real disk.
 
 use ghostr_partial_store::partial_range_store::capacity::{Limits, StoreCapacity};

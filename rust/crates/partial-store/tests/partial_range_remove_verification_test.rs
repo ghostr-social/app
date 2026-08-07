@@ -1,18 +1,18 @@
 //! Evicting a key clears its verification record, so bytes downloaded
 //! later under the same key cannot inherit the old file's provenance.
 
-mod support;
+mod store_fixture;
 
-use rust_lib_ghostr::video::partial_range_completion::Completion;
-use rust_lib_ghostr::video::partial_range_store::PartialRangeStore;
+use ghostr_partial_store::partial_range_completion::Completion;
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
-use support::fixtures::temp_directory;
+use store_fixture::temp_root;
 use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn partial_range_remove_clears_the_verification_record() {
-    let root = temp_directory("ghostr-partial-remove-verified");
+    let root = temp_root("ghostr-partial-remove-verified");
     let used_bytes = Arc::new(Mutex::new(0));
     let store = PartialRangeStore::new(root.clone(), used_bytes.clone());
     let digest = format!("{:x}", Sha256::digest(b"headtail"));

@@ -1,7 +1,7 @@
-mod store_space;
+mod store_fixture;
 
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
-use store_space::{limits, temp_root, FakeSpace};
+use store_fixture::{limits, temp_root, FakeSpace};
 
 #[tokio::test]
 async fn store_capacity_budget_change_is_immediate_and_advances_its_generation() {

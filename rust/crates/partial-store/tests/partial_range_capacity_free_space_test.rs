@@ -1,6 +1,6 @@
-mod store_space;
+mod store_fixture;
 
-use store_space::{discard, limits, spaced_store};
+use store_fixture::{discard, limits, spaced_store};
 
 /// The configured budget is only half the answer: what the device can
 /// actually spare decides the cap, and it is re-measured rather than

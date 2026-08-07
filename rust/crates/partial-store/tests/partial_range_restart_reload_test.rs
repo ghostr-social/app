@@ -1,13 +1,13 @@
-mod support;
+mod store_fixture;
 
-use rust_lib_ghostr::video::partial_range_store::PartialRangeStore;
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
-use support::fixtures::temp_directory;
+use store_fixture::temp_root;
 use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn partial_range_manifest_reloads_from_disk_after_a_restart() {
-    let root = temp_directory("ghostr-partial-restart");
+    let root = temp_root("ghostr-partial-restart");
     {
         let store = PartialRangeStore::new(root.clone(), Arc::new(Mutex::new(0)));
         store.set_total_len("clip", 8).await.expect("total length");

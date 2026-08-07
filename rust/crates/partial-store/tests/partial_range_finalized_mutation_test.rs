@@ -1,13 +1,13 @@
-mod support;
+mod store_fixture;
 
-use rust_lib_ghostr::video::partial_range_store::PartialRangeStore;
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
-use support::fixtures::temp_directory;
+use store_fixture::temp_root;
 use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn finalized_video_rejects_resize_and_more_bytes() {
-    let root = temp_directory("ghostr-finalized-mutation");
+    let root = temp_root("ghostr-finalized-mutation");
     let store = PartialRangeStore::new(root.clone(), Arc::new(Mutex::new(0)));
     store.write_range("clip", 0, b"video").await.expect("bytes");
     store.set_total_len("clip", 5).await.expect("total");

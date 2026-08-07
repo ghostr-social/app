@@ -2,18 +2,18 @@
 //! digest-checked file stays distinguishable from one that merely
 //! finished downloading.
 
-mod support;
+mod store_fixture;
 
-use rust_lib_ghostr::video::partial_range_completion::Completion;
-use rust_lib_ghostr::video::partial_range_store::PartialRangeStore;
+use ghostr_partial_store::partial_range_completion::Completion;
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
-use support::fixtures::temp_directory;
+use store_fixture::temp_root;
 use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn partial_range_completion_survives_a_restart() {
-    let root = temp_directory("ghostr-partial-completion-reload");
+    let root = temp_root("ghostr-partial-completion-reload");
     {
         let store = PartialRangeStore::new(root.clone(), Arc::new(Mutex::new(0)));
         let digest = format!("{:x}", Sha256::digest(b"headtail"));
