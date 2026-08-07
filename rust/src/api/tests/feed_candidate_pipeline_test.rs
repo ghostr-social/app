@@ -4,7 +4,7 @@ use crate::api::tests::feed_fixtures::video_note;
 use crate::api::tests::outbox_runtime_support::test_bootstrap;
 use crate::discovery::feed_spec::FeedSpec;
 use crate::discovery::retrieval_types::RetrievalOutcome;
-use crate::video::delivery_events::{command_channel, DeliveryCommand};
+use ghostr_delivery::delivery_events::{command_channel, DeliveryCommand};
 use nostr_sdk::Keys;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;

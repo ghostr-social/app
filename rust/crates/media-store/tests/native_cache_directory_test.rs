@@ -3,13 +3,15 @@
 //! bookkeeping — while the progressive store and the host model in the
 //! same directory have to outlive the process.
 
+mod cache_fixture;
+
+use cache_fixture::temp_directory;
 use ghostr_media_store::native_cache::prepare_native_cache_directory;
 use std::fs;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
 fn keeps_the_progressive_store_and_clears_stale_downloads() {
-    let directory = fixture_directory();
+    let directory = temp_directory("ghostr-cache-housekeeping");
     let progressive = directory.join("progressive");
     fs::create_dir_all(&progressive).expect("create fixture");
     fs::write(progressive.join("clip.part"), b"prefetched").expect("partial video");
@@ -31,18 +33,10 @@ fn keeps_the_progressive_store_and_clears_stale_downloads() {
 
 #[test]
 fn creates_the_cache_directory_when_it_is_missing() {
-    let directory = fixture_directory();
+    let directory = temp_directory("ghostr-cache-missing");
 
     prepare_native_cache_directory(&directory).expect("prepare cache");
 
     assert!(directory.is_dir());
     fs::remove_dir_all(&directory).expect("remove fixture");
-}
-
-fn fixture_directory() -> std::path::PathBuf {
-    let nonce = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("system clock")
-        .as_nanos();
-    std::env::temp_dir().join(format!("ghostr-cache-{nonce}"))
 }

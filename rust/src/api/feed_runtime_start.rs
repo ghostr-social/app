@@ -59,7 +59,7 @@ impl DiscoveryPipeline {
         executor: RelayPlanExecutor,
         outbox: SharedOutboxDirectory,
         modes: watch::Receiver<Mode>,
-        candidates: Option<crate::video::delivery_events::DeliveryHandle>,
+        candidates: Option<ghostr_delivery::delivery_events::DeliveryHandle>,
     ) -> Self {
         let (sender, outcomes) = mpsc::unbounded_channel();
         let handle = scheduler(executor.clone(), modes, sender.clone());
@@ -90,7 +90,7 @@ fn scheduler(
 fn spawn_pump(
     state: SharedFeedState,
     bootstrap: Arc<OutboxBootstrap>,
-    candidates: Option<crate::video::delivery_events::DeliveryHandle>,
+    candidates: Option<ghostr_delivery::delivery_events::DeliveryHandle>,
     outcomes: mpsc::UnboundedReceiver<RetrievalOutcome>,
 ) {
     tokio::spawn(pump_outcomes(

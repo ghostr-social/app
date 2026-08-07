@@ -3,7 +3,7 @@
 
 use crate::api::delivery_types::{FfiFocusItem, FfiMediaDelivery};
 use crate::engine::{DeliveryKind, PostId, VideoMeta};
-use crate::video::delivery_events::{DeliveryFocus, FocusItem};
+use ghostr_delivery::delivery_events::{DeliveryFocus, FocusItem};
 use anyhow::{bail, Result};
 
 impl From<FfiMediaDelivery> for DeliveryKind {
