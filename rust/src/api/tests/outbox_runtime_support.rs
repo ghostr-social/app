@@ -2,11 +2,11 @@
 //! executor that records retrievals and never completes them, so a test
 //! can prove nothing on the feed path waits for a relay list.
 
-use crate::discovery::discovery_scheduler::RetrievalOutcome;
 use crate::discovery::outbox_bootstrap::OutboxBootstrap;
 use crate::discovery::outbox_directory::OutboxDirectory;
 use crate::discovery::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::discovery::relay_plan_executor::SharedOutboxDirectory;
+use crate::discovery::retrieval_types::RetrievalOutcome;
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
 

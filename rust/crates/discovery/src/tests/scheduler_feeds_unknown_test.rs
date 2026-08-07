@@ -1,7 +1,7 @@
 //! Queue state for an unknown context never pretends a feed is open.
 
 use crate::control_loop::FeedQueryState;
-use crate::retrieval_queue::FeedContext;
+use crate::retrieval_types::FeedContext;
 use crate::scheduler_feeds::FeedBook;
 
 #[test]

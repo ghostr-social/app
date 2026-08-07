@@ -5,7 +5,7 @@
 use super::scheduler_support::{
     context, next_outcome, next_started, note_at, request, start_scheduler,
 };
-use crate::retrieval_queue::RetrievalPriority;
+use crate::retrieval_types::RetrievalPriority;
 use ghostr_engine::inventory_controller::Mode;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::Timestamp;

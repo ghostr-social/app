@@ -1,7 +1,7 @@
 //! Primary failure still joins additive work so its relay lease can clean up.
 
-use crate::plan_executor::PlanFailure;
 use crate::relay_plan_collector::collect_events;
+use crate::retrieval_types::PlanFailure;
 use crate::search_queries::QueryRole;
 use std::time::Duration;
 use tokio::sync::oneshot;

@@ -1,9 +1,7 @@
 //! Discovery command dispatch, kept separate from the scheduler wake loop.
 
-use crate::discovery_scheduler::{
-    max_concurrent_requests, DiscoveryCommand, RetrievalOutcome, SchedulerWorker,
-};
-use crate::retrieval_queue::{FeedContext, RetrievalPriority, RetrievalRequest};
+use crate::discovery_scheduler::{max_concurrent_requests, DiscoveryCommand, SchedulerWorker};
+use crate::retrieval_types::{FeedContext, RetrievalOutcome, RetrievalPriority, RetrievalRequest};
 use crate::search_queries::{plan_discovery, QueryPlan};
 use crate::video_filters::DiscoveryRequest;
 use nostr_sdk::Timestamp;

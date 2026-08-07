@@ -1,7 +1,7 @@
 //! Per-context request, cursor, and in-flight discovery bookkeeping.
 
 use crate::control_loop::FeedQueryState;
-use crate::retrieval_queue::FeedContext;
+use crate::retrieval_types::FeedContext;
 use crate::video_filters::DiscoveryRequest;
 use nostr_sdk::Timestamp;
 use std::collections::HashMap;

@@ -1,7 +1,6 @@
 //! One-shot callers waiting on generic scheduler work.
 
-use crate::plan_executor::PlanFailure;
-use crate::retrieval_queue::FeedContext;
+use crate::retrieval_types::{FeedContext, PlanFailure};
 use nostr_sdk::Event;
 use std::collections::HashMap;
 use tokio::sync::oneshot;

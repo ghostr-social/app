@@ -4,7 +4,7 @@
 use super::scheduler_support::{
     context, next_outcome, next_started, no_start, request, start_scheduler,
 };
-use crate::retrieval_queue::RetrievalPriority;
+use crate::retrieval_types::RetrievalPriority;
 use crate::video_filters::WIDE_QUERY_LIMIT;
 use ghostr_engine::inventory_controller::Mode;
 use ghostr_engine::DataUsageLevel;

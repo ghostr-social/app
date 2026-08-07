@@ -7,7 +7,7 @@ use crate::event_queries::plan_event_queries;
 use crate::outbox_directory::OutboxDirectory;
 use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
 use crate::relay_plan_executor::RelayPlanExecutor;
-use crate::retrieval_queue::{FeedContext, RetrievalPriority};
+use crate::retrieval_types::{FeedContext, RetrievalPriority};
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::{Client, Filter, Kind};
 use std::sync::Arc;

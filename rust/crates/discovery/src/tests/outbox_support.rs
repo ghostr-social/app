@@ -3,8 +3,9 @@
 //! it was asked to run instead of touching relays.
 
 use crate::outbox_directory::OutboxDirectory;
-use crate::plan_executor::{PlanExecutor, PlanFailure, PlanFuture, PlannedRetrieval};
+use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::relay_plan_executor::SharedOutboxDirectory;
+use crate::retrieval_types::PlanFailure;
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, PublicKey, Tag, Timestamp};
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};

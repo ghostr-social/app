@@ -2,8 +2,9 @@
 
 use super::fetches::ContentFetchRequest;
 use super::RelayPlanExecutor;
-use crate::plan_executor::{EventProgress, PlanFailure, PlanPage, PlannedRetrieval};
+use crate::plan_executor::{PlanPage, PlannedRetrieval};
 use crate::relay_plan_collector::collect_page;
+use crate::retrieval_types::{EventProgress, PlanFailure};
 use crate::session_generation::SESSION_RESET_MESSAGE;
 use nostr_sdk::Event;
 

@@ -40,6 +40,7 @@ mod relay_removal;
 mod relay_role_book;
 pub mod relay_url;
 pub mod retrieval_queue;
+pub mod retrieval_types;
 mod scheduler_commands;
 mod scheduler_feeds;
 mod scheduler_hunt;

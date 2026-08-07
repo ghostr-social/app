@@ -3,7 +3,7 @@
 //! (plan §2 `ffi_load_more`).
 
 use super::scheduler_support::{context, next_started, no_start, request, start_scheduler};
-use crate::retrieval_queue::RetrievalPriority;
+use crate::retrieval_types::RetrievalPriority;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::Timestamp;
 

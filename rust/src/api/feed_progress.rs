@@ -4,7 +4,7 @@
 //! genuinely complete instead of guessing from the row count.
 
 use crate::api::feed_types::FfiFeedStage;
-use crate::discovery::retrieval_queue::FeedContext;
+use crate::discovery::retrieval_types::FeedContext;
 use flutter_rust_bridge::frb;
 
 #[frb(ignore)]

@@ -4,51 +4,7 @@
 
 use std::cmp::Ordering;
 
-use crate::session_generation::SessionGeneration;
-
-/// Screen-level scope a retrieval serves, e.g. `feed`, `search:ghost`,
-/// `tag:dance`, or `discover`.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct FeedContext {
-    value: String,
-    session: SessionGeneration,
-}
-
-impl FeedContext {
-    pub fn new(value: impl Into<String>) -> Self {
-        Self::for_session(value, SessionGeneration::initial())
-    }
-
-    pub fn for_session(value: impl Into<String>, session: SessionGeneration) -> Self {
-        Self {
-            value: value.into(),
-            session,
-        }
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.value
-    }
-
-    pub fn session(&self) -> SessionGeneration {
-        self.session
-    }
-}
-
-/// Priority classes for content retrieval, most urgent first.
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub enum RetrievalPriority {
-    Interactive,
-    Enrichment,
-    Background,
-}
-
-/// Describes one unit of network retrieval for scheduling decisions.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct RetrievalRequest {
-    pub context: FeedContext,
-    pub priority: RetrievalPriority,
-}
+use crate::retrieval_types::{FeedContext, RetrievalRequest};
 
 /// Pending retrievals awaiting a worker slot, in submission order;
 /// urgency is decided at takeout so a late `focus` still reorders.

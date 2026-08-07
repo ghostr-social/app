@@ -4,7 +4,7 @@ use crate::event_cache::client_with_event_cache;
 use crate::event_queries::plan_event_queries;
 use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
 use crate::relay_plan_executor::RelayPlanExecutor;
-use crate::retrieval_queue::{FeedContext, RetrievalPriority};
+use crate::retrieval_types::{FeedContext, RetrievalPriority};
 use crate::session_generation::SessionGeneration;
 use crate::tests::outbox_support::empty_directory;
 use ghostr_engine::DataUsageLevel;

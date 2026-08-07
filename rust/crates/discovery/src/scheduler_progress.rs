@@ -1,13 +1,11 @@
 //! Forwards executor events while the full retrieval remains in flight.
 
-use crate::discovery_scheduler::{
-    FinishedRetrieval, RetrievalOutcome, RetrievalPurpose,
-};
+use crate::discovery_scheduler::FinishedRetrieval;
 use crate::feed_cursor::playable_cursor;
-use crate::plan_executor::{
-    PlanExecutor, PlanFailure, PlanPage, PlanPageFuture, PlannedRetrieval,
+use crate::plan_executor::{PlanExecutor, PlanPage, PlanPageFuture, PlannedRetrieval};
+use crate::retrieval_types::{
+    FeedContext, PlanFailure, RetrievalOutcome, RetrievalPurpose, RetrievalRequest,
 };
-use crate::retrieval_queue::{FeedContext, RetrievalRequest};
 use crate::search_queries::QueryPlan;
 use nostr_sdk::Event;
 use std::sync::Arc;

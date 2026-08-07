@@ -1,7 +1,8 @@
 //! Event-driven relay retrieval queue with a bounded worker pool.
 
-use crate::plan_executor::{PlanExecutor, PlanFailure, PlanPage};
-use crate::retrieval_queue::{FeedContext, RetrievalQueue};
+use crate::plan_executor::{PlanExecutor, PlanPage};
+use crate::retrieval_queue::RetrievalQueue;
+use crate::retrieval_types::{FeedContext, PlanFailure, RetrievalOutcome, RetrievalPurpose};
 use crate::scheduler_feeds::FeedBook;
 use crate::scheduler_hunt::HuntToken;
 use crate::scheduler_queries::{QueryBook, QueryResult};
@@ -9,7 +10,7 @@ use crate::search_queries::QueryPlan;
 use crate::video_filters::DiscoveryRequest;
 use ghostr_engine::inventory_controller::Mode;
 use ghostr_engine::DataUsageLevel;
-use nostr_sdk::{Event, Timestamp};
+use nostr_sdk::Timestamp;
 use std::collections::HashMap;
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
@@ -72,29 +73,6 @@ pub(crate) enum DiscoveryCommand {
     SetDataUsage(DataUsageLevel),
     /// Drops queued session work and every pending generic reply.
     ResetSession { reply: oneshot::Sender<()> },
-}
-
-/// One executed retrieval's role in feed assembly.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum RetrievalPurpose {
-    Head,
-    Older,
-}
-
-#[derive(Clone, Debug)]
-pub enum RetrievalOutcome {
-    Started {
-        context: FeedContext,
-    },
-    Progress {
-        context: FeedContext,
-        event: Box<Event>,
-    },
-    Completed {
-        context: FeedContext,
-        result: Result<Vec<Event>, PlanFailure>,
-        purpose: RetrievalPurpose,
-    },
 }
 
 /// Cloneable control handle; sends never block. The scheduler task

@@ -1,7 +1,6 @@
 use super::scheduler_support::{context, next_outcome, next_started, no_start, note_at, request};
 use super::scripted_scheduler_support::scripted_scheduler_results;
-use crate::discovery_scheduler::{RetrievalOutcome, RetrievalPurpose};
-use crate::plan_executor::PlanFailure;
+use crate::retrieval_types::{PlanFailure, RetrievalOutcome, RetrievalPurpose};
 use nostr_sdk::Timestamp;
 use std::time::Duration;
 

@@ -4,7 +4,7 @@ use crate::api::feed_runtime::lock;
 use crate::api::tests::feed_fixtures::video_note;
 use crate::api::tests::runtime_fixture::runtime;
 use crate::discovery::feed_spec::FeedSpec;
-use crate::discovery::plan_executor::PlanFailure;
+use crate::discovery::retrieval_types::PlanFailure;
 use nostr_sdk::Keys;
 
 #[tokio::test]

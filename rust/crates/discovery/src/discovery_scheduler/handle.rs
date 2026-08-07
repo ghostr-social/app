@@ -1,8 +1,7 @@
 //! Calls made through the cloneable discovery scheduler handle.
 
 use super::{DiscoveryCommand, DiscoveryHandle};
-use crate::plan_executor::PlanFailure;
-use crate::retrieval_queue::FeedContext;
+use crate::retrieval_types::{FeedContext, PlanFailure};
 #[cfg(test)]
 use crate::scheduler_hunt::HuntToken;
 use crate::scheduler_queries::QueryResult;

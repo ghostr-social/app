@@ -4,8 +4,8 @@ use crate::api::feed_runtime::{lock, pump_outcomes, OutcomeSinks, SharedFeedStat
 use crate::api::feed_state::FeedState;
 use crate::api::tests::feed_fixtures::{relay_list_event, signed_event, SignedEventFixture};
 use crate::api::tests::outbox_runtime_support::{test_bootstrap, BOOTSTRAP_RELAY};
-use crate::discovery::discovery_scheduler::{RetrievalOutcome, RetrievalPurpose};
 use crate::discovery::feed_spec::FeedSpec;
+use crate::discovery::retrieval_types::{RetrievalOutcome, RetrievalPurpose};
 use nostr_sdk::{Event, Keys, Kind, PublicKey};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;

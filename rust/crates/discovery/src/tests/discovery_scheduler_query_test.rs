@@ -1,9 +1,8 @@
 //! Generic reads use scheduler enrichment slots and return only to their caller.
 
 use super::scheduler_support::{next_started, start_scheduler};
-use crate::discovery_scheduler::RetrievalOutcome;
 use crate::event_queries::plan_event_queries;
-use crate::retrieval_queue::RetrievalPriority;
+use crate::retrieval_types::{RetrievalOutcome, RetrievalPriority};
 use crate::session_generation::SessionGeneration;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::{Filter, Kind};

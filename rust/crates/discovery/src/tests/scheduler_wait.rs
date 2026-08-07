@@ -1,7 +1,7 @@
 //! Async observations shared by scheduler behavior tests.
 
-use crate::discovery_scheduler::RetrievalOutcome;
 use crate::plan_executor::PlannedRetrieval;
+use crate::retrieval_types::RetrievalOutcome;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time::timeout;

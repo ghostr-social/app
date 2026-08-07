@@ -5,7 +5,7 @@ use crate::api::feed_decisions::LoadMoreAction;
 use crate::api::feed_state::FeedState;
 use crate::api::tests::feed_fixtures::video_note;
 use crate::discovery::feed_spec::FeedSpec;
-use crate::discovery::plan_executor::PlanFailure;
+use crate::discovery::retrieval_types::PlanFailure;
 use nostr_sdk::Keys;
 
 #[test]

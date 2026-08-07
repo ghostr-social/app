@@ -4,15 +4,14 @@
 use crate::event_cache::EventCache;
 use crate::live_search_relays::LiveSearchRelays;
 use crate::outbox_directory::{max_outbox_relays, OutboxDirectory};
-use crate::plan_executor::{
-    EventProgress, PlanExecutor, PlanFailure, PlanFuture, PlanPageFuture, PlannedRetrieval,
-};
+use crate::plan_executor::{PlanExecutor, PlanFuture, PlanPageFuture, PlannedRetrieval};
 #[cfg(test)]
 use crate::relay_plan_routes::outbox_relays as resolved_outbox;
 use crate::relay_plan_routes::plan_outbox_relays as resolved_plan_outboxes;
 #[cfg(test)]
 use crate::relay_pool_owner::RelayPoolConfiguration;
 use crate::relay_pool_owner::RelayPoolOwner;
+use crate::retrieval_types::{EventProgress, PlanFailure};
 #[cfg(test)]
 use crate::search_queries::OutboxLookup;
 use crate::search_queries::QueryPlan;

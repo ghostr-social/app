@@ -1,9 +1,8 @@
 //! A focused context's work leaves the queue first, regardless of
 //! priority class, and refocusing reorders already-queued work.
 
-use crate::retrieval_queue::{
-    FeedContext, RetrievalPriority, RetrievalQueue, RetrievalRequest,
-};
+use crate::retrieval_queue::RetrievalQueue;
+use crate::retrieval_types::{FeedContext, RetrievalPriority, RetrievalRequest};
 
 fn request(context: &str, priority: RetrievalPriority) -> RetrievalRequest {
     RetrievalRequest {

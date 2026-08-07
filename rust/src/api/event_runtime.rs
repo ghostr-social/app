@@ -2,7 +2,7 @@
 
 use crate::api::feed_runtime::{lock, DiscoveryRuntime};
 use crate::discovery::event_queries::plan_event_queries;
-use crate::discovery::plan_executor::PlanFailure;
+use crate::discovery::retrieval_types::PlanFailure;
 use nostr_sdk::{Event, Filter};
 
 impl DiscoveryRuntime {
