@@ -11,7 +11,7 @@ use crate::debug_network::NetworkThrottle;
 use crate::delivery_inflight::ChunkAttempt;
 use crate::media_probe::{probe, ProbeResult};
 use ghostr_net::outbound_media_client::MediaHttpClient;
-use ghostr_media_store::partial_range_store::PartialRangeStore;
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use std::sync::Arc;
 use std::time::Duration;

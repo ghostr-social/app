@@ -14,7 +14,3 @@ log = { workspace = true }
 reqwest = { workspace = true }
 sha2 = { workspace = true }
 tokio = { workspace = true }
-
-# statvfs, for measuring the free space the video store may not consume.
-[target.'cfg(unix)'.dependencies]
-libc = { workspace = true }

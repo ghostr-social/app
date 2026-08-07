@@ -1,0 +1,15 @@
+[package]
+name = "ghostr-partial-store"
+version = "0.1.0"
+edition = "2021"
+description = "Sparse on-disk store of partially downloaded byte ranges, with free-space-aware capacity and LRU eviction."
+
+[dependencies]
+anyhow = { workspace = true }
+log = { workspace = true }
+sha2 = { workspace = true }
+tokio = { workspace = true }
+
+# statvfs, for measuring the free space the video store may not consume.
+[target.'cfg(unix)'.dependencies]
+libc = { workspace = true }

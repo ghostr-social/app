@@ -12,7 +12,7 @@ use crate::chunk_response::{classify, RangeReply};
 use crate::chunk_stream::{stream_into, Streamed};
 use crate::debug_network::NetworkThrottle;
 use ghostr_net::outbound_media_client::MediaHttpClient;
-use ghostr_media_store::partial_range_store::PartialRangeStore;
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use anyhow::{ensure, Context, Result};
 use reqwest::header::RANGE;

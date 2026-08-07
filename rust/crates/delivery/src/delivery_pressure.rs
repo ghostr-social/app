@@ -12,7 +12,7 @@
 
 use ghostr_engine::PostId;
 use crate::delivery_manager::DeliveryWorker;
-use ghostr_media_store::partial_range_store::OutOfSpace;
+use ghostr_partial_store::partial_range_store::OutOfSpace;
 use log::warn;
 use std::time::Duration;
 

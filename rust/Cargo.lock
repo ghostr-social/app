@@ -776,8 +776,8 @@ dependencies = [
  "anyhow",
  "bytes",
  "ghostr-engine",
- "ghostr-media-store",
  "ghostr-net",
+ "ghostr-partial-store",
  "log",
  "rand 0.8.7",
  "reqwest",
@@ -808,7 +808,6 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
- "tokio",
 ]
 
 [[package]]
@@ -820,12 +819,12 @@ dependencies = [
  "base64",
  "bytes",
  "ghostr-delivery",
- "ghostr-discovery",
  "ghostr-engine",
  "ghostr-hls-manifest",
  "ghostr-media-model",
  "ghostr-media-store",
  "ghostr-net",
+ "ghostr-partial-store",
  "hmac",
  "log",
  "nostr-sdk",
@@ -842,7 +841,7 @@ name = "ghostr-hls-manifest"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "reqwest",
+ "url",
 ]
 
 [[package]]
@@ -863,7 +862,6 @@ dependencies = [
  "bytes",
  "ghostr-media-model",
  "ghostr-net",
- "libc",
  "log",
  "reqwest",
  "sha2",
@@ -876,6 +874,17 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "reqwest",
+ "tokio",
+]
+
+[[package]]
+name = "ghostr-partial-store"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "libc",
+ "log",
+ "sha2",
  "tokio",
 ]
 
@@ -1759,6 +1768,7 @@ dependencies = [
  "ghostr-media-model",
  "ghostr-media-store",
  "ghostr-net",
+ "ghostr-partial-store",
  "hmac",
  "libc",
  "log",

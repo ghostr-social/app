@@ -9,11 +9,6 @@ mod native_cache_directory;
 mod native_cache_fetch;
 mod native_cache_transfer;
 mod native_partial_store;
-pub mod partial_range_completion;
-mod partial_range_disk;
-pub mod partial_range_manifest;
-mod partial_range_paths;
-pub mod partial_range_store;
 
 #[cfg(test)]
 mod tests;

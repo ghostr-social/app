@@ -6,7 +6,7 @@ use ghostr_delivery::cache_registry::CacheRegistry;
 ))]
 use ghostr_delivery::debug_feed::DebugFeed;
 use ghostr_delivery::debug_network::NetworkThrottle;
-use ghostr_media_store::partial_range_store::PartialRangeStore;
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use ghostr_delivery::playback_demand::DemandSender;
 use crate::progressive_stream::body_for_span;
 use crate::range_header::{self, ResolvedRange};
