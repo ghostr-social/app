@@ -1,6 +1,6 @@
 //! Shared fixtures for the session event pool's tests.
 
-use crate::event_cache::{session_event_database, EventCache};
+use crate::cache::{session_event_database, EventCache};
 use nostr_sdk::prelude::*;
 use std::sync::Arc;
 

@@ -5,7 +5,7 @@
 mod feed_support;
 
 use nostr_sdk::{Keys, ToBech32};
-use ghostr_discovery::profile_store::ProfileStore;
+use ghostr_discovery::content::profiles::ProfileStore;
 
 #[test]
 fn profile_store_falls_back_to_a_shortened_npub_identity() {

@@ -1,10 +1,10 @@
 use super::support::temp_directory;
 use ghostr_engine::{ByteRange, ChunkId, PostId};
-use crate::chunk_downloader::ChunkResult;
-use crate::delivery_inflight::InFlightChunks;
-use crate::delivery_stats::StatsKeeper;
-use crate::delivery_transfers::{ChunkDone, ProbeDone};
-use crate::media_probe::ProbeResult;
+use crate::chunk::downloader::ChunkResult;
+use crate::manager::inflight::InFlightChunks;
+use crate::manager::stats::StatsKeeper;
+use crate::manager::transfers::{ChunkDone, ProbeDone};
+use crate::probe::media::ProbeResult;
 use std::time::Duration;
 
 #[tokio::test]

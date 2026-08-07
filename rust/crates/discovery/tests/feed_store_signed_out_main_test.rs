@@ -8,9 +8,9 @@ mod feed_support;
 use discovery_support::{mute_list, p_tag};
 use feed_support::{parsed_posts, video_note};
 use nostr_sdk::Keys;
-use ghostr_discovery::feed_spec::FeedSpec;
-use ghostr_discovery::feed_store::FeedStore;
-use ghostr_discovery::social_graph::SocialGraph;
+use ghostr_discovery::feed::spec::FeedSpec;
+use ghostr_discovery::feed::store::FeedStore;
+use ghostr_discovery::content::social_graph::SocialGraph;
 
 #[test]
 fn feed_store_signed_out_main_feed_keeps_every_creator() {

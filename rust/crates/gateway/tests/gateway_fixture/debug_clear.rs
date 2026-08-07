@@ -1,4 +1,4 @@
-use ghostr_delivery::debug_feed::DebugFeedItem;
+use ghostr_delivery::debug::feed::DebugFeedItem;
 use ghostr_engine::{DeliveryKind, VideoMeta};
 
 pub fn progressive_meta() -> VideoMeta {

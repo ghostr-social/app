@@ -4,11 +4,11 @@
 //! every manager state change surfaces without polling.
 
 use crate::api::delivery_types::FfiDeliveryEvent;
-use crate::api::event_snapshots::{
+use crate::api::delivery::snapshots::{
     compute_snapshot, error_event, event_for, DeliverySnapshot, SnapshotInput,
 };
-use crate::api::runtime_registry;
-use crate::api::tracked_items::TrackedItems;
+use crate::api::runtime::registry;
+use crate::api::runtime::tracked_items::TrackedItems;
 use crate::engine::budget::params_for;
 use crate::engine::{ByteRange, EngineParams, PostId, VideoMeta};
 use crate::frb_generated::StreamSink;
@@ -34,7 +34,7 @@ impl EventOut for StreamSink<FfiDeliveryEvent> {
 /// watched post; the stream ends when the Dart side cancels it.
 #[frb]
 pub async fn ffi_delivery_events(sink: StreamSink<FfiDeliveryEvent>) -> anyhow::Result<()> {
-    let engine = runtime_registry::engine()?;
+    let engine = registry::engine()?;
     let store = engine.gateway.progressive().store.clone();
     tokio::spawn(watch_delivery(sink, store, engine.tracked.clone()));
     Ok(())

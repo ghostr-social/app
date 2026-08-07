@@ -1,0 +1,8 @@
+mod event_cache_admission_test;
+mod event_cache_bound_test;
+mod event_cache_client_storage_test;
+mod event_cache_cold_query_test;
+mod event_cache_identity_change_test;
+mod event_cache_repeat_query_test;
+mod event_cache_session_reset_test;
+mod event_cache_viewerless_scope_test;

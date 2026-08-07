@@ -3,7 +3,7 @@ mod gateway_fixture;
 use axum::body::to_bytes;
 use gateway_fixture::free_space::{discard, limits, spaced_store};
 use gateway_fixture::progressive::{progressive_harness_with_store, video_request};
-use ghostr_gateway::progressive_route::ProgressiveTiming;
+use ghostr_gateway::progressive::route::ProgressiveTiming;
 use std::sync::Arc;
 use tower::ServiceExt;
 

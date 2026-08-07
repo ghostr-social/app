@@ -1,5 +1,5 @@
 use nostr_sdk::{Event, EventBuilder, Keys, Kind};
-use ghostr_discovery::event_parsing::video_post_from_event;
+use ghostr_discovery::content::parsing::video_post_from_event;
 use ghostr_engine::DeliveryKind;
 
 fn note(content: &str) -> Event {

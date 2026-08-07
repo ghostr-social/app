@@ -6,7 +6,7 @@ mod discovery_support;
 
 use discovery_support::write_relay_list;
 use nostr_sdk::Keys;
-use ghostr_discovery::outbox_directory::{max_outbox_relays, OutboxDirectory};
+use ghostr_discovery::outbox::directory::{max_outbox_relays, OutboxDirectory};
 use ghostr_engine::DataUsageLevel;
 
 #[test]

@@ -4,7 +4,6 @@ mod feed_support;
 
 use feed_support::{addressable_video, parsed};
 use nostr_sdk::Keys;
-use ghostr_discovery::feed_assembly::post_coordinate;
 
 #[test]
 fn addressable_post_without_identifier_uses_event_identity() {
@@ -12,7 +11,7 @@ fn addressable_post_without_identifier_uses_event_identity() {
     let mut post = parsed(&event);
     post.published_identifier = None;
 
-    let coordinate = post_coordinate(&post);
+    let coordinate = post.coordinate();
 
     assert_eq!(coordinate, post.event_id);
 }

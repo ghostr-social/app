@@ -6,7 +6,7 @@ mod feed_support;
 
 use feed_support::{addressable_video, parsed, parsed_posts, video_note};
 use nostr_sdk::Keys;
-use ghostr_discovery::feed_assembly::canonical_posts;
+use ghostr_discovery::feed::assembly::canonical_posts;
 
 #[test]
 fn feed_assembly_collapses_duplicate_event_ids() {

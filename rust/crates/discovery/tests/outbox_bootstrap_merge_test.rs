@@ -7,7 +7,7 @@ mod discovery_support;
 
 use discovery_support::write_relay_list;
 use nostr_sdk::Keys;
-use ghostr_discovery::outbox_directory::OutboxDirectory;
+use ghostr_discovery::outbox::directory::OutboxDirectory;
 
 fn bootstrap() -> Vec<String> {
     vec![

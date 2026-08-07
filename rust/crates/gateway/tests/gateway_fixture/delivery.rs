@@ -3,9 +3,9 @@
 //! bare command channel will not stand in for it.
 
 use super::{media_client, temp_directory};
-use ghostr_delivery::debug_network::NetworkThrottle;
+use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_delivery::delivery_events::DeliveryHandle;
-use ghostr_delivery::delivery_manager::{
+use ghostr_delivery::manager::{
     start_delivery_manager, DeliveryManagerConfig, DeliveryTuning,
 };
 use ghostr_delivery::playback_demand::{demand_channel, DemandSender};

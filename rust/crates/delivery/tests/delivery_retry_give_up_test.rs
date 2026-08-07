@@ -5,8 +5,8 @@
 mod delivery_fixture;
 
 use delivery_fixture::retry::{cdn_source, retry_policy, CDN_URL};
-use ghostr_delivery::delivery_failure::FailureClass;
-use ghostr_delivery::delivery_retry::{Retry, RetryBook};
+use ghostr_delivery::manager::failure::FailureClass;
+use ghostr_delivery::manager::retry::{Retry, RetryBook};
 use ghostr_engine::PostId;
 
 fn attempts_until_give_up(class: FailureClass) -> usize {

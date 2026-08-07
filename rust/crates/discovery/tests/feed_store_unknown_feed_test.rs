@@ -3,7 +3,7 @@
 mod feed_support;
 
 use feed_support::empty_graph;
-use ghostr_discovery::feed_store::{FeedId, FeedStore};
+use ghostr_discovery::feed::store::{FeedId, FeedStore};
 
 #[test]
 fn unknown_feed_ignores_fresh_and_older_pages() {

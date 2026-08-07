@@ -1,10 +1,10 @@
 //! Engine lifecycle and live configuration (plan §2 rows 1–2).
 
-use crate::api::runtime_configuration;
-use crate::api::runtime_registry;
-use crate::discovery::relay_url::normalize_relay_url;
+use crate::api::runtime::configuration;
+use crate::api::runtime::registry;
+use crate::discovery::relay::url::normalize_relay_url;
 use crate::engine::{DataUsageLevel, EngineParams};
-use ghostr_gateway::gateway_runtime::GatewayConfiguration;
+use ghostr_gateway::runtime::GatewayConfiguration;
 use flutter_rust_bridge::frb;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -72,7 +72,7 @@ pub async fn ffi_start_engine(
     let level = configuration.level;
     let search_relays = configuration.search_relays.clone();
     let gateway = engine_configuration(cache_directory, &configuration);
-    let endpoint = runtime_registry::start_and_install(gateway, search_relays).await?;
+    let endpoint = registry::start_and_install(gateway, search_relays).await?;
     apply_level(level)?;
     Ok(endpoint)
 }
@@ -82,13 +82,13 @@ pub async fn ffi_start_engine(
 #[frb]
 pub async fn ffi_set_delivery_config(configuration: FfiEngineConfiguration) -> anyhow::Result<()> {
     let configuration = EngineConfiguration::try_from(configuration)?;
-    let engine = runtime_registry::engine()?;
+    let engine = registry::engine()?;
     let mut transition = engine.discovery.relay_pool.begin_configuration().await;
     engine
         .gateway
         .set_storage_budget(configuration.max_storage_bytes)
         .await?;
-    runtime_configuration::replace_relays(
+    configuration::replace_relays(
         &engine.discovery,
         &mut transition,
         configuration.read_relays,
@@ -111,7 +111,7 @@ fn engine_configuration(
 }
 
 fn apply_level(level: DataUsageLevel) -> anyhow::Result<()> {
-    let engine = runtime_registry::engine()?;
+    let engine = registry::engine()?;
     engine.tracked.set_level(level);
     engine.gateway.delivery().set_data_usage(level);
     engine.discovery.set_data_usage(level);

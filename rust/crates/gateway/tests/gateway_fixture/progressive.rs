@@ -1,15 +1,15 @@
 use axum::Router;
-use ghostr_delivery::debug_network::NetworkThrottle;
+use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_delivery::playback_demand::{demand_channel, DemandReceiver};
 use ghostr_delivery::progressive_posts::ServablePosts;
 #[cfg(feature = "video-debug-web")]
-use ghostr_discovery::event_cache::client_with_event_cache;
-use ghostr_gateway::hls_sessions::HlsSessions;
+use ghostr_discovery::cache::client_with_event_cache;
+use ghostr_gateway::hls::sessions::HlsSessions;
 #[cfg(not(feature = "video-debug-web"))]
-use ghostr_gateway::http_gateway::configured_router_with_progressive;
+use ghostr_gateway::router::configured_router_with_progressive;
 #[cfg(feature = "video-debug-web")]
-use ghostr_gateway::http_gateway::configured_router_with_progressive_debug;
-use ghostr_gateway::progressive_route::{ProgressiveState, ProgressiveTiming};
+use ghostr_gateway::router::configured_router_with_progressive_debug;
+use ghostr_gateway::progressive::route::{ProgressiveState, ProgressiveTiming};
 use ghostr_media_model::native_models::new_native_downloads;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::{path::PathBuf, sync::Arc};
@@ -23,7 +23,7 @@ pub struct ProgressiveHarness {
     pub demand: DemandReceiver,
     pub root: PathBuf,
     #[cfg(feature = "video-debug-web")]
-    pub debug_feed: ghostr_delivery::debug_feed::DebugFeed,
+    pub debug_feed: ghostr_delivery::debug::feed::DebugFeed,
     #[cfg(feature = "video-debug-web")]
     pub hls_sessions: HlsSessions,
 }
@@ -60,7 +60,7 @@ pub fn progressive_harness_with_store(
     let (debug_delivery, _) = ghostr_delivery::delivery_events::command_channel();
     #[cfg(feature = "video-debug-web")]
     let debug_feed =
-        ghostr_delivery::debug_feed::DebugFeed::new(debug_delivery.clone(), Vec::new());
+        ghostr_delivery::debug::feed::DebugFeed::new(debug_delivery.clone(), Vec::new());
     #[cfg(feature = "video-debug-web")]
     let hls_sessions = HlsSessions::production();
     let state = Arc::new(ProgressiveState {

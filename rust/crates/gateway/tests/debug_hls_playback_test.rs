@@ -6,7 +6,7 @@ use axum::body::{to_bytes, Body};
 use axum::http::{Method, Request, StatusCode};
 use gateway_fixture::progressive::progressive_harness;
 use gateway_fixture::raw_http::spawn_raw_server;
-use ghostr_delivery::debug_feed::{DebugFeedItem, DebugFeedStage};
+use ghostr_delivery::debug::feed::{DebugFeedItem, DebugFeedStage};
 use ghostr_engine::{DeliveryKind, VideoMeta};
 use serde_json::Value;
 use tower::ServiceExt;
@@ -58,7 +58,7 @@ async fn web_hls_uses_the_shared_gateway_session_and_never_enters_cache() {
     assert_eq!(response.status(), StatusCode::NO_CONTENT);
     assert!(harness
         .hls_sessions
-        .sources(&ghostr_gateway::hls_sessions::HlsSessionId::parse(id).expect("valid id"))
+        .sources(&ghostr_gateway::hls::sessions::HlsSessionId::parse(id).expect("valid id"))
         .await
         .is_none());
 }

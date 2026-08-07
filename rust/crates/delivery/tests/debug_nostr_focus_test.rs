@@ -1,6 +1,6 @@
 #![cfg(feature = "video-debug-web")]
 
-use ghostr_delivery::debug_feed::{DebugFeed, DebugFeedItem, DebugFeedStage, DebugRelaySnapshot};
+use ghostr_delivery::debug::feed::{DebugFeed, DebugFeedItem, DebugFeedStage, DebugRelaySnapshot};
 use ghostr_delivery::delivery_events::{command_channel, DeliveryCommand};
 use ghostr_engine::{DeliveryKind, VideoMeta};
 

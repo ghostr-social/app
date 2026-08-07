@@ -2,12 +2,12 @@
 //! unscoped, asks for discovery relays, and uses configured read relays.
 
 use nostr_sdk::Keys;
-use ghostr_discovery::event_cache::ViewerScope;
-use ghostr_discovery::feed_spec::FeedSpec;
-use ghostr_discovery::outbox_directory::OutboxDirectory;
-use ghostr_discovery::search_queries::{plan_discovery, OutboxLookup};
-use ghostr_discovery::social_graph::SocialGraph;
-use ghostr_discovery::video_filters::{DiscoveryFlow, DiscoveryRequest};
+use ghostr_discovery::cache::ViewerScope;
+use ghostr_discovery::feed::spec::FeedSpec;
+use ghostr_discovery::outbox::directory::OutboxDirectory;
+use ghostr_discovery::query::search::{plan_discovery, OutboxLookup};
+use ghostr_discovery::content::social_graph::SocialGraph;
+use ghostr_discovery::query::video_filters::{DiscoveryFlow, DiscoveryRequest};
 
 const BOOTSTRAP: &str = "wss://boot.example";
 

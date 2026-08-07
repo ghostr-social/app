@@ -1,0 +1,2 @@
+mod debug_nostr_mapping_test;
+mod debug_relay_status_test;

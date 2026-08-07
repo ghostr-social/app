@@ -1,6 +1,6 @@
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
-use ghostr_gateway::http_gateway::configured_router;
+use ghostr_gateway::router::configured_router;
 use ghostr_media_model::native_models::new_native_downloads;
 use tower::ServiceExt;
 

@@ -3,9 +3,9 @@
 //! Gated behind the `test-support` feature so dependents can drive the relay
 //! pool with a scripted IO port instead of reaching a live relay.
 
-use crate::relay_io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo};
-use crate::relay_pool_owner::RelayReadRequest;
-use crate::search_queries::{OutboxRoute, PlannedQuery, QueryRole, RelayTarget};
+use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo};
+use crate::relay::pool::RelayReadRequest;
+use crate::query::search::{OutboxRoute, PlannedQuery, QueryRole, RelayTarget};
 use crate::session_generation::SessionGeneration;
 use nostr_sdk::{Event, Filter};
 use std::sync::atomic::{AtomicUsize, Ordering};

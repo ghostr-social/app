@@ -4,8 +4,8 @@ use axum::body::{to_bytes, Body};
 use axum::http::Request;
 use gateway_fixture::media_client;
 use gateway_fixture::raw_http::spawn_response_sequence;
-use ghostr_gateway::hls_sessions::HlsSessions;
-use ghostr_gateway::http_gateway::configured_router_with_hls_client;
+use ghostr_gateway::hls::sessions::HlsSessions;
+use ghostr_gateway::router::configured_router_with_hls_client;
 use ghostr_media_model::native_models::new_native_downloads;
 use tower::ServiceExt;
 

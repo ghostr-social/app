@@ -4,7 +4,7 @@
 //! left the plan disappears, while newly focused work moves to the front.
 
 use ghostr_engine::ChunkId;
-use crate::delivery_plan::PlannedTransfer;
+use crate::manager::plan::PlannedTransfer;
 use std::collections::{HashSet, VecDeque};
 
 #[derive(Default)]

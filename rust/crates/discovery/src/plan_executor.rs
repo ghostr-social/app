@@ -2,9 +2,9 @@
 //! one planned retrieval; tests inject fakes so scheduling logic never
 //! touches relays.
 
-use crate::feed_cursor::retrieval_cursor;
+use crate::feed::cursor::retrieval_cursor;
 use crate::retrieval_types::{EventProgress, FeedContext, PlanFailure, RetrievalPriority};
-use crate::search_queries::QueryPlan;
+use crate::query::search::QueryPlan;
 use nostr_sdk::{Event, Timestamp};
 use std::future::Future;
 use std::pin::Pin;

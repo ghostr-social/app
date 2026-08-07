@@ -2,7 +2,7 @@ mod delivery_fixture;
 mod raw_http;
 
 use delivery_fixture::media_client;
-use ghostr_delivery::media_probe::probe;
+use ghostr_delivery::probe::media::probe;
 use ghostr_engine::host_stats::HostStats;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use raw_http::spawn_response_sequence;

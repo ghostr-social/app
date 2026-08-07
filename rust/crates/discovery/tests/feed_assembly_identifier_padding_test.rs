@@ -6,7 +6,7 @@ mod feed_support;
 
 use feed_support::{addressable_video, parsed_posts};
 use nostr_sdk::Keys;
-use ghostr_discovery::feed_assembly::canonical_posts;
+use ghostr_discovery::feed::assembly::canonical_posts;
 
 #[test]
 fn feed_assembly_keeps_identifiers_that_differ_only_in_padding() {

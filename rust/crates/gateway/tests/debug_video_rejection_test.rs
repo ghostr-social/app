@@ -5,9 +5,9 @@ mod gateway_fixture;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use ghostr_delivery::delivery_events::command_channel;
-use ghostr_discovery::event_cache::client_with_event_cache;
-use ghostr_gateway::hls_sessions::HlsSessions;
-use ghostr_gateway::http_gateway::configured_router_with_progressive_debug;
+use ghostr_discovery::cache::client_with_event_cache;
+use ghostr_gateway::hls::sessions::HlsSessions;
+use ghostr_gateway::router::configured_router_with_progressive_debug;
 use ghostr_media_model::native_models::new_native_downloads;
 use tower::ServiceExt;
 
@@ -16,13 +16,13 @@ async fn debug_api_rejects_a_non_http_video_url() {
     let harness = gateway_fixture::progressive::progressive_harness("debug-video-reject");
     let (delivery, _) = command_channel();
     let (demand, _) = ghostr_delivery::playback_demand::demand_channel();
-    let state = std::sync::Arc::new(ghostr_gateway::progressive_route::ProgressiveState {
+    let state = std::sync::Arc::new(ghostr_gateway::progressive::route::ProgressiveState {
         store: harness.store,
         demand,
         cache: harness.posts,
         network: harness.network,
         timing: Default::default(),
-        debug_feed: ghostr_delivery::debug_feed::DebugFeed::new(delivery.clone(), Vec::new()),
+        debug_feed: ghostr_delivery::debug::feed::DebugFeed::new(delivery.clone(), Vec::new()),
     });
     let router = configured_router_with_progressive_debug(
         new_native_downloads(),

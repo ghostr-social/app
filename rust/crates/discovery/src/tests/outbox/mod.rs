@@ -1,0 +1,7 @@
+mod outbox_bootstrap_authors_test;
+mod outbox_bootstrap_session_reset_test;
+mod outbox_bootstrap_test;
+mod outbox_directory_discovery_relays_test;
+mod outbox_live_read_relays_test;
+mod outbox_plans_test;
+mod outbox_session_reset_test;

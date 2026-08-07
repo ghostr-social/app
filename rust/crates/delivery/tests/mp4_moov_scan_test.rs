@@ -1,4 +1,4 @@
-use ghostr_delivery::mp4_moov::head_contains_moov;
+use ghostr_delivery::probe::mp4_moov::head_contains_moov;
 
 fn full_box(kind: &[u8; 4], payload_len: usize) -> Vec<u8> {
     let mut bytes = ((payload_len + 8) as u32).to_be_bytes().to_vec();

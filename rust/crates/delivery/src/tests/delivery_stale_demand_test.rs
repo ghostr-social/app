@@ -1,6 +1,6 @@
 use ghostr_engine::tiers::DemandSignals;
 use ghostr_engine::{ByteRange, PostId};
-use crate::delivery_reconcile::resolve_demand;
+use crate::manager::reconcile::resolve_demand;
 use crate::playback_demand::DemandSignal;
 use std::collections::HashMap;
 

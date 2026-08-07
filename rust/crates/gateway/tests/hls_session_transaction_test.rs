@@ -1,6 +1,6 @@
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use ghostr_gateway::hls_sessions::{HlsResourceId, HlsSessionId, HlsSessionLimits, HlsSessions};
+use ghostr_gateway::hls::sessions::{HlsResourceId, HlsSessionId, HlsSessionLimits, HlsSessions};
 use reqwest::Url;
 use std::time::Duration;
 

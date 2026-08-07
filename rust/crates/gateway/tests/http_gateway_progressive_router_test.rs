@@ -3,12 +3,12 @@ mod gateway_fixture;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::Router;
-use ghostr_delivery::debug_network::NetworkThrottle;
+use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_delivery::playback_demand::demand_channel;
 use ghostr_delivery::progressive_posts::ServablePosts;
-use ghostr_gateway::hls_sessions::HlsSessions;
-use ghostr_gateway::http_gateway::configured_router_with_progressive;
-use ghostr_gateway::progressive_route::{ProgressiveState, ProgressiveTiming};
+use ghostr_gateway::hls::sessions::HlsSessions;
+use ghostr_gateway::router::configured_router_with_progressive;
+use ghostr_gateway::progressive::route::{ProgressiveState, ProgressiveTiming};
 use ghostr_media_model::native_models::new_native_downloads;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::PathBuf;
@@ -31,7 +31,7 @@ fn standard_router() -> (Router, PathBuf) {
         network: NetworkThrottle::new(),
         timing: ProgressiveTiming::default(),
         #[cfg(feature = "video-debug-web")]
-        debug_feed: ghostr_delivery::debug_feed::DebugFeed::new(delivery, Vec::new()),
+        debug_feed: ghostr_delivery::debug::feed::DebugFeed::new(delivery, Vec::new()),
     });
     (
         configured_router_with_progressive(

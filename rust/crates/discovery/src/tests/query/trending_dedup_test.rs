@@ -1,0 +1,16 @@
+//! A hashtag repeated inside one post counts once.
+
+use crate::tests::trending_support::post_with_hashtags;
+use crate::query::trending::{rank_trending_hashtags, TRENDING_HASHTAG_LIMIT};
+
+#[test]
+fn repeated_tag_in_one_post_counts_once() {
+    let posts = vec![
+        post_with_hashtags("p1", &["zebra", "zebra", "zebra"]),
+        post_with_hashtags("p2", &["art"]),
+    ];
+
+    let ranked = rank_trending_hashtags(&posts, TRENDING_HASHTAG_LIMIT);
+
+    assert_eq!(ranked, vec!["art", "zebra"]);
+}

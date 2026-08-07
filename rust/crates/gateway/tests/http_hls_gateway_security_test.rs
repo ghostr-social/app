@@ -4,8 +4,8 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use gateway_fixture::media_client;
 use gateway_fixture::raw_http::spawn_raw_server;
-use ghostr_gateway::hls_sessions::HlsSessions;
-use ghostr_gateway::http_gateway::configured_router_with_hls_client;
+use ghostr_gateway::hls::sessions::HlsSessions;
+use ghostr_gateway::router::configured_router_with_hls_client;
 use ghostr_media_model::native_models::new_native_downloads;
 use ghostr_net::outbound_media_client::MediaHttpClient;
 use tower::ServiceExt;
@@ -46,7 +46,7 @@ async fn rejects_non_hls_mime_and_malformed_manifests() {
     }
 }
 
-fn request(id: &ghostr_gateway::hls_sessions::HlsSessionId) -> Request<Body> {
+fn request(id: &ghostr_gateway::hls::sessions::HlsSessionId) -> Request<Body> {
     Request::builder()
         .uri(format!("/hls/{}/index.m3u8", id.as_str()))
         .body(Body::empty())

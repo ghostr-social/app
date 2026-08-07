@@ -11,14 +11,14 @@ mod feed_support;
 use discovery_support::{mute_list, p_tag};
 use feed_support::{parsed_posts, video_note};
 use nostr_sdk::{Keys, Timestamp};
-use ghostr_discovery::feed_spec::FeedSpec;
-use ghostr_discovery::feed_store::FeedStore;
-use ghostr_discovery::social_graph::SocialGraph;
+use ghostr_discovery::feed::spec::FeedSpec;
+use ghostr_discovery::feed::store::FeedStore;
+use ghostr_discovery::content::social_graph::SocialGraph;
 
 fn main_feed(
     store: &mut FeedStore,
     viewer: &Keys,
-) -> ghostr_discovery::feed_store::FeedId {
+) -> ghostr_discovery::feed::store::FeedId {
     store.open_feed(FeedSpec::MainFeed {
         viewer: Some(viewer.public_key()),
     })

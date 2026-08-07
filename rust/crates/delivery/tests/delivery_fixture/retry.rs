@@ -1,6 +1,6 @@
 //! Shared fixtures for the per-source retry policy tests.
 
-use ghostr_delivery::delivery_retry::{RetryPolicy, Source};
+use ghostr_delivery::manager::retry::{RetryPolicy, Source};
 use ghostr_engine::PostId;
 use std::time::Duration;
 

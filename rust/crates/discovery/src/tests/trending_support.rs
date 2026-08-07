@@ -1,6 +1,6 @@
 //! Builders for trending-hashtag contract fixtures.
 
-use crate::event_parsing::ParsedVideoPost;
+use crate::content::parsing::ParsedVideoPost;
 use ghostr_engine::{DeliveryKind, VideoMeta};
 
 /// A minimal parsed post carrying exactly the given hashtags.

@@ -1,8 +1,8 @@
 //! Shared builders for the API mapping and watcher tests.
 
 use crate::api::delivery_types::{FfiFocusItem, FfiMediaDelivery};
-use crate::discovery::event_parsing::ParsedVideoPost;
-use crate::discovery::profile_store::CreatorProfile;
+use crate::discovery::content::parsing::ParsedVideoPost;
+use crate::discovery::content::profiles::CreatorProfile;
 use crate::engine::{DeliveryKind, VideoMeta};
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;

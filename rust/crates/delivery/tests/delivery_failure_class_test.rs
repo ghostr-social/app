@@ -5,7 +5,7 @@
 mod range_fixture;
 
 use anyhow::{Context, Result};
-use ghostr_delivery::delivery_failure::{classify, FailureClass};
+use ghostr_delivery::manager::failure::{classify, FailureClass};
 use ghostr_net::outbound_media_client::MediaHttpClient;
 
 const UNRESOLVABLE: &str = "http://cdn.ghostr-nonexistent.invalid/video.mp4";

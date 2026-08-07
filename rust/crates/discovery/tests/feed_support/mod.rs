@@ -7,7 +7,7 @@
 mod signed_event_fixture;
 
 use nostr_sdk::{Event, Keys, Kind};
-use ghostr_discovery::event_parsing::{video_post_from_event, ParsedVideoPost};
+use ghostr_discovery::content::parsing::{video_post_from_event, ParsedVideoPost};
 use signed_event_fixture::{signed_event, SignedEventFixture};
 
 /// A kind-1 note whose content links one direct mp4, the most common
@@ -71,6 +71,6 @@ fn content(slug: &str) -> String {
 
 /// An empty social graph for a throwaway session: nothing muted, no
 /// follows to route by.
-pub fn empty_graph() -> ghostr_discovery::social_graph::SocialGraph {
-    ghostr_discovery::social_graph::SocialGraph::new(Keys::generate().public_key())
+pub fn empty_graph() -> ghostr_discovery::content::social_graph::SocialGraph {
+    ghostr_discovery::content::social_graph::SocialGraph::new(Keys::generate().public_key())
 }

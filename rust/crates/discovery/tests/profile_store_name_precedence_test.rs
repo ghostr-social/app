@@ -5,7 +5,7 @@ mod feed_support;
 
 use feed_support::profile_event;
 use nostr_sdk::{Keys, ToBech32};
-use ghostr_discovery::profile_store::ProfileStore;
+use ghostr_discovery::content::profiles::ProfileStore;
 
 fn display_name(content: &str) -> String {
     let creator = Keys::generate();

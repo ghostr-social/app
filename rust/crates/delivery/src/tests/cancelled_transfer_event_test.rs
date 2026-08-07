@@ -1,5 +1,5 @@
-use crate::chunk_downloader::ChunkResult;
-use crate::delivery_transfers::cancelled_before_request;
+use crate::chunk::downloader::ChunkResult;
+use crate::manager::transfers::cancelled_before_request;
 
 #[test]
 fn only_pre_request_cancellation_suppresses_the_manager_event() {

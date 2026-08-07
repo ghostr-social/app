@@ -5,11 +5,11 @@ mod gateway_fixture;
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
 use ghostr_delivery::delivery_events::{command_channel, DeliveryCommand};
-use ghostr_discovery::event_cache::client_with_event_cache;
+use ghostr_discovery::cache::client_with_event_cache;
 use ghostr_engine::DeliveryKind;
-use ghostr_gateway::hls_sessions::HlsSessions;
-use ghostr_gateway::http_gateway::configured_router_with_progressive_debug;
-use ghostr_gateway::progressive_route::ProgressiveState;
+use ghostr_gateway::hls::sessions::HlsSessions;
+use ghostr_gateway::router::configured_router_with_progressive_debug;
+use ghostr_gateway::progressive::route::ProgressiveState;
 use ghostr_media_model::native_models::new_native_downloads;
 use serde_json::Value;
 use std::sync::Arc;
@@ -66,7 +66,7 @@ fn progressive_state(
         cache: harness.posts.clone(),
         network: harness.network.clone(),
         timing: Default::default(),
-        debug_feed: ghostr_delivery::debug_feed::DebugFeed::new(
+        debug_feed: ghostr_delivery::debug::feed::DebugFeed::new(
             ghostr_delivery::delivery_events::command_channel().0,
             Vec::new(),
         ),

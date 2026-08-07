@@ -1,0 +1,9 @@
+mod inventory_counts_test;
+mod inventory_mode_hysteresis_test;
+mod inventory_startable_test;
+mod next_work_commitment_test;
+mod next_work_emergency_test;
+mod next_work_probe_test;
+mod next_work_scroll_past_test;
+mod next_work_startability_test;
+mod next_work_target_met_test;

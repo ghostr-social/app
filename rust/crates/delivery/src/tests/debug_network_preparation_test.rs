@@ -1,6 +1,6 @@
-use crate::chunk_cancel::cancel_pair;
-use crate::chunk_network::{prepare_network, NetworkPreparation};
-use crate::debug_network::{NetworkProfile, NetworkThrottle};
+use crate::chunk::cancel::cancel_pair;
+use crate::chunk::network::{prepare_network, NetworkPreparation};
+use crate::debug::network::{NetworkProfile, NetworkThrottle};
 use std::time::Duration;
 use tokio::time::timeout;
 

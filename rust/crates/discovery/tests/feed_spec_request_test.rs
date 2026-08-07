@@ -6,9 +6,9 @@ mod feed_support;
 
 use feed_support::empty_graph;
 use nostr_sdk::{Keys, Timestamp};
-use ghostr_discovery::event_cache::ViewerScope;
-use ghostr_discovery::feed_spec::FeedSpec;
-use ghostr_discovery::video_filters::{DiscoveryFlow, DiscoveryRequest};
+use ghostr_discovery::cache::ViewerScope;
+use ghostr_discovery::feed::spec::FeedSpec;
+use ghostr_discovery::query::video_filters::{DiscoveryFlow, DiscoveryRequest};
 
 /// Nothing narrows the wire filter — no authors, tag or term — and the
 /// only thing the main feed stamps is the session pool's viewer scope,
