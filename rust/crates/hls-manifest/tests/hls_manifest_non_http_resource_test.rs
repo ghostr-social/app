@@ -1,5 +1,5 @@
-use reqwest::Url;
-use rust_lib_ghostr::video::hls_manifest::rewrite_hls_manifest;
+use url::Url;
+use ghostr_hls_manifest::hls_manifest::rewrite_hls_manifest;
 
 #[test]
 fn rejects_non_http_resources_before_issuing_a_gateway_route() {

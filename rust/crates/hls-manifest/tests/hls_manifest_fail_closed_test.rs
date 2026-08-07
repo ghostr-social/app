@@ -1,5 +1,5 @@
-use reqwest::Url;
-use rust_lib_ghostr::video::hls_manifest::{rewrite_hls_manifest, HlsResourceKind};
+use url::Url;
+use ghostr_hls_manifest::hls_manifest::{rewrite_hls_manifest, HlsResourceKind};
 
 #[test]
 fn rewrites_low_latency_and_image_playlist_resources() {

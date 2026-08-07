@@ -1,4 +1,4 @@
-use rust_lib_ghostr::video::outbound_media_client::MediaHttpClient;
+use ghostr_net::outbound_media_client::MediaHttpClient;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 

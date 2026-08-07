@@ -1,4 +1,4 @@
-use rust_lib_ghostr::video::outbound_media_client::MediaHttpTimeouts;
+use ghostr_net::outbound_media_client::MediaHttpTimeouts;
 use std::time::Duration;
 
 #[test]

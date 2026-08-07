@@ -1,4 +1,4 @@
-use rust_lib_ghostr::video::outbound_media_client::MediaHttpClient;
+use ghostr_net::outbound_media_client::MediaHttpClient;
 
 #[test]
 fn accepts_literal_public_destinations() {
