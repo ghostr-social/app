@@ -7,9 +7,9 @@ trap 'rm -rf "$fixture"' EXIT
 
 resolve_path() {
   case "$1" in
-    rust/src/*) printf '%s\n' "$1" ;;
+    rust/src/*|rust/crates/*) printf '%s\n' "$1" ;;
     *)
-      rg --files rust/src |
+      rg --files rust/src rust/crates |
         awk -F/ -v name="$1" '$NF == name { print; exit }'
       ;;
   esac
@@ -45,12 +45,12 @@ require_threshold() {
   fi
 }
 
-require_threshold rust/src/engine/budget.rs 100
-require_threshold rust/src/engine/inventory_controller.rs 100
-require_threshold rust/src/discovery/plan_executor.rs 100
-require_threshold rust/src/video/delivery_retry.rs 100
-require_threshold rust/src/video/partial_range_manifest.rs 100
-require_threshold rust/src/video/cache_registry.rs 100
+require_threshold rust/crates/engine/src/budget.rs 100
+require_threshold rust/crates/engine/src/inventory_controller.rs 100
+require_threshold rust/crates/discovery/src/plan_executor.rs 100
+require_threshold rust/crates/delivery/src/delivery_retry.rs 100
+require_threshold rust/crates/media-store/src/partial_range_manifest.rs 100
+require_threshold rust/crates/delivery/src/cache_registry.rs 100
 
 if ! awk -f "$checker" "$collision_lcov" >"$collision_output" 2>&1; then
   printf '%s\n' 'unrelated same-basename LCOV record changed the contract result'
@@ -59,7 +59,7 @@ if ! awk -f "$checker" "$collision_lcov" >"$collision_output" 2>&1; then
 fi
 
 missing_lcov=$fixture/missing.lcov
-sed 's#rust/src/video/event_identity.rs#rust/src/synthetic/event_identity.rs#' \
+sed 's#rust/crates/media-model/src/event_identity.rs#rust/src/synthetic/event_identity.rs#' \
   "$complete_lcov" >"$missing_lcov"
 missing_output=$fixture/missing.out
 if awk -f "$checker" "$missing_lcov" >"$missing_output" 2>&1; then
@@ -67,7 +67,7 @@ if awk -f "$checker" "$missing_lcov" >"$missing_output" 2>&1; then
   failed=1
 fi
 if ! grep -Fq \
-  'Missing native coverage record for rust/src/video/event_identity.rs' \
+  'Missing native coverage record for rust/crates/media-model/src/event_identity.rs' \
   "$missing_output"; then
   printf '%s\n' 'missing canonical path was not reported exactly'
   sed -n '1,$p' "$missing_output"

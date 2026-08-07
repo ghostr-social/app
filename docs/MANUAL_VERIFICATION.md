@@ -611,8 +611,9 @@ Not verified — and one fix that does not reach the device:
   directory.delete(recursive: true);`, and
   `lib/app/production_video_delivery_infrastructure.dart` calls it immediately
   before `gateway.start(...)`, so `PartialRangeStore::load_existing`
-  (`rust/src/video/partial_range_store/reload.rs`, called from
-  `video/gateway_delivery.rs`) always adopts an empty directory.
+  (`rust/crates/media-store/src/partial_range_store/reload.rs`, called from
+  `rust/crates/gateway/src/gateway_delivery.rs`) always adopts an empty
+  directory.
   `prepare_native_cache_directory` was correctly narrowed to sweep only stale
   `*.mp4` / `*.partial`, but the directory is gone before it looks.
 - Exact divergence sizes, again: the reporter caps each list at five and 101 of

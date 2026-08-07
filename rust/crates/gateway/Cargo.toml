@@ -1,0 +1,31 @@
+[package]
+name = "ghostr-gateway"
+version = "0.1.0"
+edition = "2021"
+description = "Local HTTP gateway serving progressive and HLS playback, plus the debug web dashboard."
+
+[features]
+video-debug-web = ["ghostr-delivery/video-debug-web"]
+
+[dependencies]
+ghostr-delivery = { path = "../delivery" }
+ghostr-discovery = { path = "../discovery" }
+ghostr-engine = { path = "../engine" }
+ghostr-hls-manifest = { path = "../hls-manifest" }
+ghostr-media-model = { path = "../media-model" }
+ghostr-media-store = { path = "../media-store" }
+ghostr-net = { path = "../net" }
+
+anyhow = { workspace = true }
+axum = { workspace = true }
+base64 = { workspace = true }
+bytes = { workspace = true }
+hmac = { workspace = true }
+log = { workspace = true }
+nostr-sdk = { workspace = true }
+rand = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+sha2 = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }

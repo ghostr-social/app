@@ -1,3 +1,29 @@
+[workspace]
+members = ["crates/*"]
+
+# One version per third-party crate, shared by the facade and every member.
+[workspace.dependencies]
+anyhow = "1.0.95"
+axum = "0.8.1"
+base64 = "0.22.1"
+bytes = "1.10"
+flutter_rust_bridge = "=2.7.0"
+futures-util = "0.3"
+hmac = "0.12.1"
+libc = "0.2"
+log = "0.4.25"
+nostr-sdk = "0.38.0"
+once_cell = "1.20.2"
+rand = "0.8.7"
+reqwest = { version = "0.12.12", default-features = false, features = ["rustls-tls", "stream"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10.8"
+tokio = { version = "1.43.0", features = ["full"] }
+tokio-stream = "0.1"
+tokio-tungstenite = "0.24"
+tower = { version = "0.5", features = ["util"] }
+
 [package]
 name = "rust_lib_ghostr"
 version = "0.1.0"
@@ -11,7 +37,10 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 
 [features]
 default = []
-video-debug-web = []
+video-debug-web = [
+    "ghostr-delivery/video-debug-web",
+    "ghostr-gateway/video-debug-web",
+]
 
 [[bin]]
 name = "video-debug"
@@ -19,28 +48,38 @@ path = "src/bin/video_debug.rs"
 required-features = ["video-debug-web"]
 
 [dependencies]
-anyhow = "1.0.95"
-axum = "0.8.1"
-base64 = "0.22.1"
-bytes = "1.10"
-flutter_rust_bridge = "=2.7.0"
-nostr-sdk = "0.38.0"
-once_cell = "1.20.2"
-rand = "0.8.7"
-tokio = { version = "1.43.0", features = ["full"] }
-tokio-stream = "0.1"
-log = "0.4.25"
-hmac = "0.12.1"
-reqwest = { version = "0.12.12", default-features = false, features = ["rustls-tls", "stream"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-sha2 = "0.10.8"
+ghostr-delivery = { path = "crates/delivery" }
+ghostr-discovery = { path = "crates/discovery" }
+ghostr-engine = { path = "crates/engine" }
+ghostr-gateway = { path = "crates/gateway" }
+ghostr-hls-manifest = { path = "crates/hls-manifest" }
+ghostr-media-model = { path = "crates/media-model" }
+ghostr-media-store = { path = "crates/media-store" }
+ghostr-net = { path = "crates/net" }
+
+anyhow = { workspace = true }
+axum = { workspace = true }
+base64 = { workspace = true }
+bytes = { workspace = true }
+flutter_rust_bridge = { workspace = true }
+nostr-sdk = { workspace = true }
+once_cell = { workspace = true }
+rand = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+log = { workspace = true }
+hmac = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
 
 [dev-dependencies]
-futures-util = "0.3"
+ghostr-discovery = { path = "crates/discovery", features = ["test-support"] }
+futures-util = { workspace = true }
 tokio = { version = "1.43.0", features = ["test-util"] }
-tokio-tungstenite = "0.24"
-tower = { version = "0.5", features = ["util"] }
+tokio-tungstenite = { workspace = true }
+tower = { workspace = true }
 
 [package.metadata.flutter_rust_bridge]
 enable_lifetime = true
@@ -51,4 +90,4 @@ android_logger = "0.14.1"
 
 # statvfs, for measuring the free space the video store may not consume.
 [target.'cfg(unix)'.dependencies]
-libc = "0.2"
+libc = { workspace = true }

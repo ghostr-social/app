@@ -1,0 +1,26 @@
+[package]
+name = "ghostr-discovery"
+version = "0.1.0"
+edition = "2021"
+description = "Nostr discovery: relay querying, outbox routing, search, and feed assembly."
+
+[features]
+# Exposes the scripted relay IO port so dependents can test against it.
+test-support = []
+
+[dependencies]
+ghostr-engine = { path = "../engine" }
+ghostr-media-model = { path = "../media-model" }
+
+anyhow = { workspace = true }
+log = { workspace = true }
+nostr-sdk = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+
+[dev-dependencies]
+futures-util = { workspace = true }
+tokio = { workspace = true, features = ["test-util"] }
+tokio-tungstenite = { workspace = true }

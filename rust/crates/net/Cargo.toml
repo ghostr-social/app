@@ -1,0 +1,10 @@
+[package]
+name = "ghostr-net"
+version = "0.1.0"
+edition = "2021"
+description = "Guarded outbound media HTTP: public-address checks, DNS resolution, range and content-type handling."
+
+[dependencies]
+anyhow = { workspace = true }
+reqwest = { workspace = true }
+tokio = { workspace = true }
