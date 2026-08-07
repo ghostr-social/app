@@ -5,6 +5,8 @@
 mod discovery_scheduler_comfort_test;
 #[path = "discovery_scheduler_concurrency_test.rs"]
 mod discovery_scheduler_concurrency_test;
+#[path = "discovery_scheduler_continuous_feed_test.rs"]
+mod discovery_scheduler_continuous_feed_test;
 #[path = "discovery_scheduler_data_usage_test.rs"]
 mod discovery_scheduler_data_usage_test;
 #[path = "discovery_scheduler_empty_feed_retry_test.rs"]

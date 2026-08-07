@@ -1,6 +1,7 @@
 //! Builders for focus updates fed to the delivery manager.
 
 use rust_lib_ghostr::engine::{DeliveryKind, PostId, VideoMeta};
+use rust_lib_ghostr::video::delivery_events::DeliveryCandidate;
 use rust_lib_ghostr::video::delivery_events::{DeliveryFocus, FocusItem};
 
 pub struct ItemSpec {
@@ -20,6 +21,25 @@ pub fn progressive_item(spec: ItemSpec) -> FocusItem {
             size_bytes: spec.size,
             duration_ms: spec.duration_ms,
         },
+    }
+}
+
+pub fn candidate(
+    id: &'static str,
+    url: &str,
+    size: Option<u64>,
+    discovered_at: u64,
+) -> DeliveryCandidate {
+    let item = progressive_item(ItemSpec {
+        id,
+        url: url.to_owned(),
+        size,
+        duration_ms: Some(1_000),
+    });
+    DeliveryCandidate {
+        post: item.post,
+        meta: item.meta,
+        discovered_at,
     }
 }
 

@@ -34,6 +34,7 @@ impl FeedState {
     pub(crate) fn reset_session(&mut self) -> SessionGeneration {
         self.session = self.session.next();
         self.store.reset_session();
+        self.candidates.clear();
         self.profiles = ProfileStore::new();
         self.graph = SocialGraph::new(Keys::generate().public_key());
         self.feeds.clear();

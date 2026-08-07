@@ -21,6 +21,7 @@ impl DiscoveryRuntime {
         let sinks = OutcomeSinks {
             state: self.state.clone(),
             bootstrap: self.bootstrap.clone(),
+            candidates: None,
         };
         cache
             .remember_for(session, std::slice::from_ref(event))

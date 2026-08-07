@@ -4,9 +4,8 @@
 //! `EngineHandles` by `runtime_registry`.
 
 use crate::api::feed_decisions::LoadMoreAction;
-use crate::api::feed_outcomes::file_lists_for;
 use crate::api::feed_state::FeedState;
-use crate::discovery::discovery_scheduler::{DiscoveryHandle, RetrievalOutcome};
+use crate::discovery::discovery_scheduler::DiscoveryHandle;
 use crate::discovery::feed_spec::FeedSpec;
 use crate::discovery::feed_store::FeedId;
 use crate::discovery::outbox_bootstrap::OutboxBootstrap;
@@ -14,10 +13,13 @@ use crate::discovery::relay_plan_executor::{RelayPlanExecutor, SharedOutboxDirec
 use crate::discovery::relay_pool_owner::RelayPoolOwner;
 use crate::engine::inventory_controller::Mode;
 use crate::engine::DataUsageLevel;
+use crate::video::delivery_events::DeliveryHandle;
 use flutter_rust_bridge::frb;
 use nostr_sdk::{Client, Timestamp};
 use std::sync::{Arc, Mutex, MutexGuard};
-use tokio::sync::{mpsc, watch};
+use tokio::sync::watch;
+
+pub(crate) use crate::api::feed_outcome_pump::{pump_outcomes, OutcomeSinks};
 
 /// The one `FeedState` behind a lock; stream watchers snapshot
 /// through it while the pump task and FFI calls mutate it.
@@ -30,6 +32,7 @@ pub(crate) struct DiscoveryBoot {
     pub modes: watch::Receiver<Mode>,
     pub bootstrap: Vec<String>,
     pub search_relays: Vec<String>,
+    pub candidates: Option<DeliveryHandle>,
 }
 
 /// The FFI layer's grip on Rust discovery after a successful start.
@@ -132,44 +135,6 @@ impl DiscoveryRuntime {
     pub(crate) fn set_data_usage(&self, level: DataUsageLevel) {
         self.handle.set_data_usage(level);
         self.executor.set_data_usage(level);
-    }
-}
-
-/// Where a retrieval's events land: feed rows in the state, relay lists
-/// in the outbox directory.
-#[frb(ignore)]
-pub(crate) struct OutcomeSinks {
-    pub(crate) state: SharedFeedState,
-    pub(crate) bootstrap: Arc<OutboxBootstrap>,
-}
-
-/// Feeds every retrieval outcome into the feed state until the
-/// scheduler ends (all handles dropped). Relay lists and the viewer's
-/// own lists are filed on the way through, whether they arrived on a
-/// feed page or on a bootstrap retrieval.
-pub(crate) async fn pump_outcomes(
-    sinks: OutcomeSinks,
-    mut outcomes: mpsc::UnboundedReceiver<RetrievalOutcome>,
-) {
-    while let Some(outcome) = outcomes.recv().await {
-        match outcome {
-            RetrievalOutcome::Started { context } => {
-                lock(&sinks.state).apply_started(&context);
-            }
-            RetrievalOutcome::Progress { context, event } => {
-                lock(&sinks.state).apply_progress(&context, *event);
-            }
-            RetrievalOutcome::Completed {
-                context,
-                result,
-                purpose,
-            } => {
-                if let Ok(events) = &result {
-                    file_lists_for(&sinks, context.session(), events).await;
-                }
-                lock(&sinks.state).apply_retrieval(&context, result, purpose);
-            }
-        }
     }
 }
 

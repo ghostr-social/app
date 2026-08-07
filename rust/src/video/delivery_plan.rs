@@ -22,6 +22,7 @@ pub(crate) struct PlannedWork {
     pub transfers: Vec<PlannedTransfer>,
 }
 
+#[derive(Clone)]
 pub(crate) struct PlannedTransfer {
     pub request: ChunkRequest,
     pub url: String,
@@ -83,6 +84,9 @@ fn source_choices(
         let Some(entry) = state.catalog().lookup(&post) else {
             continue;
         };
+        if entry.total_bytes().is_none() {
+            continue;
+        }
         let live = inputs.retry.live_urls(&post, &entry.meta.urls);
         let Some(url) = inputs.stats.best_source(&live, mode).into_iter().next() else {
             continue;

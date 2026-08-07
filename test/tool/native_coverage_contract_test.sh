@@ -50,7 +50,7 @@ require_threshold rust/src/engine/inventory_controller.rs 100
 require_threshold rust/src/discovery/plan_executor.rs 100
 require_threshold rust/src/video/delivery_retry.rs 100
 require_threshold rust/src/video/partial_range_manifest.rs 100
-require_threshold rust/src/video/progressive_posts.rs 100
+require_threshold rust/src/video/cache_registry.rs 100
 
 if ! awk -f "$checker" "$collision_lcov" >"$collision_output" 2>&1; then
   printf '%s\n' 'unrelated same-basename LCOV record changed the contract result'

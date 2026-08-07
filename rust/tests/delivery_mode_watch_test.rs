@@ -6,6 +6,7 @@ mod support;
 
 use rust_lib_ghostr::engine::inventory_controller::Mode;
 use rust_lib_ghostr::engine::{DataUsageLevel, EngineParams};
+use rust_lib_ghostr::video::debug_network::NetworkThrottle;
 use rust_lib_ghostr::video::delivery_manager::{
     start_delivery_manager_with_modes, DeliveryManagerConfig, DeliveryTuning,
 };
@@ -30,7 +31,8 @@ async fn delivery_manager_publishes_mode_transitions() {
     let config = DeliveryManagerConfig {
         store,
         client: trusted_media_client(),
-        posts: ServablePosts::new(),
+        cache: ServablePosts::new(),
+        network: NetworkThrottle::new(),
         stats_path: root.join("host_stats.json"),
         params: EngineParams::default(),
         level: DataUsageLevel::Balanced,

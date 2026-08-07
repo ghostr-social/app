@@ -3,12 +3,12 @@ use crate::discovery::discovery_scheduler::{
     start_discovery_scheduler, DiscoverySchedulerConfig, RetrievalOutcome,
 };
 use crate::discovery::plan_executor::{EventProgress, PlanExecutor, PlanFuture, PlannedRetrieval};
-use crate::discovery::scheduler_progress::MAX_PROGRESS_OUTCOMES;
 use crate::engine::{inventory_controller::Mode, DataUsageLevel};
 use std::sync::Arc;
 use tokio::sync::{mpsc, watch};
 
 struct BurstExecutor;
+const BURST_SIZE: usize = 256;
 
 impl PlanExecutor for BurstExecutor {
     fn execute(&self, retrieval: PlannedRetrieval) -> PlanFuture {
@@ -23,7 +23,7 @@ impl PlanExecutor for BurstExecutor {
     ) -> PlanFuture {
         Box::pin(async move {
             let event = note_at(40);
-            for _ in 0..(MAX_PROGRESS_OUTCOMES * 4) {
+            for _ in 0..BURST_SIZE {
                 progress.send(event.clone()).await.expect("live progress");
             }
             Ok(vec![event])
@@ -32,7 +32,7 @@ impl PlanExecutor for BurstExecutor {
 }
 
 #[tokio::test]
-async fn relay_bursts_have_a_bounded_number_of_progress_outcomes() {
+async fn relay_bursts_stream_every_event_through_bounded_backpressure() {
     let (outcomes, mut reported) = mpsc::unbounded_channel();
     let (_, modes) = watch::channel(Mode::Comfort);
     let handle = start_discovery_scheduler(DiscoverySchedulerConfig {
@@ -52,5 +52,5 @@ async fn relay_bursts_have_a_bounded_number_of_progress_outcomes() {
         }
     }
 
-    assert_eq!(progress, MAX_PROGRESS_OUTCOMES);
+    assert_eq!(progress, BURST_SIZE);
 }

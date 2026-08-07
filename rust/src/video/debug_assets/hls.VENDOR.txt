@@ -1,0 +1,11 @@
+hls.js 1.6.16
+Copyright (c) 2017 Dailymotion and hls.js contributors
+
+Source distribution:
+https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js
+
+SHA-256:
+442f599c34f103c3355b375a23bdff560592d7117d09a8c847242ea3de2d40e0
+
+License:
+Apache-2.0; see hls.LICENSE.txt in this directory.

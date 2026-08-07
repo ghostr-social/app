@@ -59,7 +59,7 @@ fn register_progressive(engine: &EngineHandles, item: &FocusItem) {
     engine
         .gateway
         .progressive()
-        .posts
+        .cache
         .insert(item.post.as_str());
     engine
         .tracked

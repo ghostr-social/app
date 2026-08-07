@@ -16,7 +16,7 @@ impl SchedulerWorker {
         self.queries.reset_session();
         self.retry_attempts.clear();
         self.pending_feed_retries.clear();
-        self.pending_query_hunts.clear();
+        self.pending_feed_hunts.clear();
         let _ = reply.send(());
     }
 }

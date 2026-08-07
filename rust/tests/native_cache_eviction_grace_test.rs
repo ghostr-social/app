@@ -22,10 +22,12 @@ async fn reclaims_an_unreferenced_blob_after_the_eviction_grace() {
         used_bytes.clone(),
         Duration::from_secs(30),
     );
+    tokio::time::resume();
     let cached = cache
         .download(&trusted_media_client(), &video_cache_key(), &url, None)
         .await
         .expect("cached video");
+    tokio::time::pause();
 
     cache.retain(&HashSet::new()).await.expect("mark orphan");
     assert!(cached.path.exists());

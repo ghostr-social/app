@@ -1,6 +1,7 @@
 //! Nostr discovery: relay querying, outbox routing, search, and feed
 //! assembly for the media engine. Modules register below as they land.
 
+pub mod candidate_registry;
 pub mod event_parsing;
 
 mod cache_fallback;

@@ -4,21 +4,40 @@
 
 use crate::engine::inventory_controller::Mode;
 use crate::engine::{DataUsageLevel, EngineParams};
+use crate::video::cache_registry::CacheRegistry;
+#[cfg(all(
+    feature = "video-debug-web",
+    debug_assertions,
+    not(any(target_os = "android", target_os = "ios"))
+))]
+use crate::video::debug_feed::DebugFeed;
+use crate::video::debug_network::NetworkThrottle;
 use crate::video::delivery_events::DeliveryHandle;
 use crate::video::delivery_manager::{
     start_delivery_manager_with_modes, DeliveryManagerConfig, DeliveryTuning,
 };
 use crate::video::gateway_runtime::GatewayConfiguration;
 use crate::video::hls_sessions::HlsSessions;
+#[cfg(not(all(
+    feature = "video-debug-web",
+    debug_assertions,
+    not(any(target_os = "android", target_os = "ios"))
+)))]
 use crate::video::http_gateway::configured_router_with_progressive;
+#[cfg(all(
+    feature = "video-debug-web",
+    debug_assertions,
+    not(any(target_os = "android", target_os = "ios"))
+))]
+use crate::video::http_gateway::configured_router_with_progressive_debug;
 use crate::video::native_models::new_native_downloads;
 use crate::video::outbound_media_client::MediaHttpClient;
 use crate::video::partial_range_store::capacity::StoreCapacity;
 use crate::video::partial_range_store::PartialRangeStore;
 use crate::video::playback_demand::demand_channel;
-use crate::video::progressive_posts::ServablePosts;
 use crate::video::progressive_route::{ProgressiveState, ProgressiveTiming};
 use log::warn;
+use nostr_sdk::Client;
 use std::sync::Arc;
 use tokio::sync::{watch, Mutex};
 
@@ -34,25 +53,64 @@ pub(crate) type DeliveryParts = (
 pub(crate) async fn start_progressive_delivery(
     configuration: &GatewayConfiguration,
     hls_sessions: HlsSessions,
+    nostr: Arc<Client>,
 ) -> anyhow::Result<DeliveryParts> {
     let store = Arc::new(opened_store(configuration).await);
-    let posts = ServablePosts::new();
+    let cache = CacheRegistry::new();
     let (demand_sender, demand) = demand_channel();
     let client = MediaHttpClient::public()?;
+    let network = NetworkThrottle::new();
+    let config = delivery_config(
+        configuration,
+        store.clone(),
+        client.clone(),
+        cache.clone(),
+        network.clone(),
+    );
+    let (delivery, modes) = start_delivery_manager_with_modes(config, demand);
     let progressive = Arc::new(ProgressiveState {
         store: store.clone(),
         demand: demand_sender,
-        posts: posts.clone(),
+        cache,
+        network,
         timing: ProgressiveTiming::default(),
+        #[cfg(all(
+            feature = "video-debug-web",
+            debug_assertions,
+            not(any(target_os = "android", target_os = "ios"))
+        ))]
+        debug_feed: DebugFeed::new(delivery.clone(), configuration.relays.clone()),
     });
+    #[cfg(all(
+        feature = "video-debug-web",
+        debug_assertions,
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
+    let router = configured_router_with_progressive_debug(
+        new_native_downloads(),
+        hls_sessions,
+        client,
+        progressive.clone(),
+        delivery.clone(),
+        nostr,
+    );
+    #[cfg(not(all(
+        feature = "video-debug-web",
+        debug_assertions,
+        not(any(target_os = "android", target_os = "ios"))
+    )))]
     let router = configured_router_with_progressive(
         new_native_downloads(),
         hls_sessions,
-        client.clone(),
+        client,
         progressive.clone(),
     );
-    let config = delivery_config(configuration, store, client, posts);
-    let (delivery, modes) = start_delivery_manager_with_modes(config, demand);
+    #[cfg(not(all(
+        feature = "video-debug-web",
+        debug_assertions,
+        not(any(target_os = "android", target_os = "ios"))
+    )))]
+    let _ = nostr;
     Ok((router, delivery, progressive, modes))
 }
 
@@ -75,7 +133,8 @@ fn delivery_config(
     configuration: &GatewayConfiguration,
     store: Arc<PartialRangeStore>,
     client: MediaHttpClient,
-    posts: ServablePosts,
+    cache: CacheRegistry,
+    network: NetworkThrottle,
 ) -> DeliveryManagerConfig {
     let params = EngineParams {
         balanced_concurrency: configuration.max_parallel_downloads,
@@ -84,7 +143,8 @@ fn delivery_config(
     DeliveryManagerConfig {
         store,
         client,
-        posts,
+        cache,
+        network,
         stats_path: configuration.cache_directory.join("host_stats.json"),
         params,
         level: DataUsageLevel::Balanced,

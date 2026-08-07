@@ -15,7 +15,6 @@ use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
 const PROGRESS_BUFFER: usize = 8;
-pub(crate) const MAX_PROGRESS_OUTCOMES: usize = 64;
 
 pub(crate) struct RetrievalTaskInput {
     pub(crate) task_id: u64,
@@ -77,19 +76,17 @@ async fn forward_events(
     context: FeedContext,
     outcomes: mpsc::UnboundedSender<RetrievalOutcome>,
 ) -> ProgressiveResult {
-    let mut reported = 0;
     let mut had_playable = false;
     loop {
         tokio::select! {
             biased;
             Some(event) = events.recv() => {
-                had_playable |= playable_cursor(std::slice::from_ref(&event)).is_some();
-                if reported < MAX_PROGRESS_OUTCOMES {
-                    send_progress(&outcomes, &context, event);
-                    reported += 1;
-                }
+                forward_event(&outcomes, &context, event, &mut had_playable);
             },
-            result = &mut *execution => return ProgressiveResult { result, had_playable },
+            result = &mut *execution => {
+                drain_buffer(events, &outcomes, &context, &mut had_playable);
+                return ProgressiveResult { result, had_playable };
+            },
         }
     }
 }
@@ -108,4 +105,25 @@ fn send_progress(
         context: context.clone(),
         event: Box::new(event),
     });
+}
+
+fn drain_buffer(
+    events: &mut mpsc::Receiver<Event>,
+    outcomes: &mpsc::UnboundedSender<RetrievalOutcome>,
+    context: &FeedContext,
+    had_playable: &mut bool,
+) {
+    while let Ok(event) = events.try_recv() {
+        forward_event(outcomes, context, event, had_playable);
+    }
+}
+
+fn forward_event(
+    outcomes: &mpsc::UnboundedSender<RetrievalOutcome>,
+    context: &FeedContext,
+    event: Event,
+    had_playable: &mut bool,
+) {
+    *had_playable |= playable_cursor(std::slice::from_ref(&event)).is_some();
+    send_progress(outcomes, context, event);
 }

@@ -22,6 +22,7 @@ async fn reset_keeps_only_current_configured_relays() {
         modes: mode_updates,
         bootstrap: vec![READ_RELAY.to_owned()],
         search_relays: vec![SEARCH_RELAY.to_owned()],
+        candidates: None,
     })
     .await;
     client

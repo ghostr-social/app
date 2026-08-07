@@ -7,7 +7,7 @@ use rust_lib_ghostr::discovery::feed_spec::FeedSpec;
 use rust_lib_ghostr::discovery::outbox_directory::OutboxDirectory;
 use rust_lib_ghostr::discovery::search_queries::{plan_discovery, OutboxLookup};
 use rust_lib_ghostr::discovery::social_graph::SocialGraph;
-use rust_lib_ghostr::discovery::video_filters::DiscoveryRequest;
+use rust_lib_ghostr::discovery::video_filters::{DiscoveryFlow, DiscoveryRequest};
 
 const BOOTSTRAP: &str = "wss://boot.example";
 
@@ -21,6 +21,7 @@ fn feed_spec_signed_out_main_feed_queries_the_bootstrap_relays() {
         request,
         DiscoveryRequest {
             viewer: ViewerScope::SignedOut,
+            flow: DiscoveryFlow::Continuous,
             ..DiscoveryRequest::default()
         }
     );

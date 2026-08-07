@@ -26,8 +26,14 @@ async fn pumped_outcomes_reach_the_feed_state() {
     let sinks = OutcomeSinks {
         state: state.clone(),
         bootstrap: test_bootstrap().0,
+        candidates: None,
     };
     let pump = tokio::spawn(pump_outcomes(sinks, outcomes));
+    sender
+        .send(RetrievalOutcome::Started {
+            context: open.context.clone(),
+        })
+        .expect("the pump should be listening");
     sender
         .send(RetrievalOutcome::Completed {
             context: open.context,

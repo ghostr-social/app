@@ -30,7 +30,12 @@ pub(crate) async fn start(boot: DiscoveryBoot) -> DiscoveryRuntime {
         outbox.clone(),
         DataUsageLevel::Balanced,
     );
-    let pipeline = DiscoveryPipeline::start(executor.clone(), outbox.clone(), boot.modes);
+    let pipeline = DiscoveryPipeline::start(
+        executor.clone(),
+        outbox.clone(),
+        boot.modes,
+        boot.candidates,
+    );
     DiscoveryRuntime {
         handle: pipeline.handle,
         state: pipeline.state,
@@ -53,12 +58,13 @@ impl DiscoveryPipeline {
         executor: RelayPlanExecutor,
         outbox: SharedOutboxDirectory,
         modes: watch::Receiver<Mode>,
+        candidates: Option<crate::video::delivery_events::DeliveryHandle>,
     ) -> Self {
         let (sender, outcomes) = mpsc::unbounded_channel();
         let handle = scheduler(executor.clone(), modes, sender.clone());
         let state = Arc::new(Mutex::new(FeedState::new()));
         let bootstrap = Arc::new(OutboxBootstrap::new(Arc::new(executor), outbox, sender));
-        spawn_pump(state.clone(), bootstrap.clone(), outcomes);
+        spawn_pump(state.clone(), bootstrap.clone(), candidates, outcomes);
         Self {
             handle,
             state,
@@ -83,9 +89,17 @@ fn scheduler(
 fn spawn_pump(
     state: SharedFeedState,
     bootstrap: Arc<OutboxBootstrap>,
+    candidates: Option<crate::video::delivery_events::DeliveryHandle>,
     outcomes: mpsc::UnboundedReceiver<RetrievalOutcome>,
 ) {
-    tokio::spawn(pump_outcomes(OutcomeSinks { state, bootstrap }, outcomes));
+    tokio::spawn(pump_outcomes(
+        OutcomeSinks {
+            state,
+            bootstrap,
+            candidates,
+        },
+        outcomes,
+    ));
 }
 
 fn shared_outbox(bootstrap: Vec<String>) -> SharedOutboxDirectory {

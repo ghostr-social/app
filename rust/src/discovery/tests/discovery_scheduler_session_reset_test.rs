@@ -4,7 +4,7 @@ use super::scheduler_support::{context, next_outcome, no_start, request};
 use super::scheduler_support::{next_started, start_scheduler};
 use super::scripted_scheduler_support::scripted_scheduler;
 use crate::discovery::event_queries::plan_event_queries;
-use crate::discovery::scheduler_feeds::QUERY_HUNT_BACKOFF;
+use crate::discovery::scheduler_feeds::FEED_REFRESH_BACKOFF;
 use crate::discovery::session_generation::SessionGeneration;
 use crate::engine::DataUsageLevel;
 use nostr_sdk::{Filter, Kind};
@@ -46,7 +46,7 @@ async fn reset_cancels_a_delayed_query_hunt() {
         .reset_session()
         .await
         .expect("scheduler reset");
-    tokio::time::advance(QUERY_HUNT_BACKOFF).await;
+    tokio::time::advance(FEED_REFRESH_BACKOFF).await;
 
     no_start(&mut harness.started).await;
 }

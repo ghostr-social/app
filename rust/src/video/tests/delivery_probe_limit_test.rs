@@ -1,7 +1,7 @@
 use crate::engine::catalog::Catalog;
 use crate::engine::{DeliveryKind, PostId, VideoMeta};
-use crate::video::delivery_probes::ProbeBook;
 use crate::video::delivery_retry::{RetryBook, RetryPolicy};
+use crate::video::metadata_probe_pool::MetadataProbePool;
 
 #[test]
 fn probe_claims_respect_the_configured_concurrency_limit() {
@@ -20,7 +20,7 @@ fn probe_claims_respect_the_configured_concurrency_limit() {
         );
     }
     let retry = RetryBook::new(RetryPolicy::default());
-    let mut probes = ProbeBook::new(1);
+    let mut probes = MetadataProbePool::new(1);
 
     let claimed = probes.claim(&catalog, &posts, &retry);
 

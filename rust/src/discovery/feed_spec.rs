@@ -7,7 +7,7 @@ use crate::discovery::event_cache::ViewerScope;
 use crate::discovery::event_parsing::ParsedVideoPost;
 use crate::discovery::hashtags::normalize_hashtag;
 use crate::discovery::social_graph::SocialGraph;
-use crate::discovery::video_filters::DiscoveryRequest;
+use crate::discovery::video_filters::{DiscoveryFlow, DiscoveryRequest};
 
 /// One open feed's identity and query recipe.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -42,6 +42,7 @@ impl FeedSpec {
             Self::MainFeed { viewer } => Some(DiscoveryRequest {
                 routing_authors: routing_follows(viewer, graph),
                 viewer: viewer_scope(viewer),
+                flow: DiscoveryFlow::Continuous,
                 ..request(older_than)
             }),
             Self::Profile(creators) => Some(DiscoveryRequest {

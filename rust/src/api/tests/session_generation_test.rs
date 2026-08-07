@@ -15,6 +15,7 @@ async fn reset_advances_the_runtime_session_generation() {
         modes: mode_updates,
         bootstrap: Vec::new(),
         search_relays: Vec::new(),
+        candidates: None,
     })
     .await;
 

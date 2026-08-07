@@ -35,6 +35,15 @@ pub const FEED_VIDEO_LIMIT: usize = 80;
 /// Limit for widened video queries and every note/file query.
 pub const WIDE_QUERY_LIMIT: usize = 200;
 
+/// Whether the scheduler serves one requested page or keeps the relay
+/// source alive by alternating history bursts with head refreshes.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum DiscoveryFlow {
+    #[default]
+    Page,
+    Continuous,
+}
+
 /// One video-discovery request accepted by the Rust engine.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DiscoveryRequest {
@@ -55,12 +64,17 @@ pub struct DiscoveryRequest {
     /// never reaches the wire filter; only the main feed knows a viewer,
     /// so every other feed leaves the scope alone.
     pub viewer: ViewerScope,
+    pub flow: DiscoveryFlow,
 }
 
 impl DiscoveryRequest {
     /// Widened requests carry a viewer term or hashtags.
     pub fn is_wide(&self) -> bool {
         self.search_query.is_some() || !self.hashtags.is_empty()
+    }
+
+    pub fn is_continuous(&self) -> bool {
+        self.flow == DiscoveryFlow::Continuous || self.is_wide()
     }
 
     /// The authors this request routes to: the ones it filters by, or —

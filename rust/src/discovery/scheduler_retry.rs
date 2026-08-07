@@ -51,8 +51,8 @@ impl SchedulerWorker {
         retry: bool,
         purpose: RetrievalPurpose,
     ) {
-        if self.feeds.is_query(&context) {
-            return self.advance_query(context);
+        if self.feeds.is_continuous(&context) {
+            return self.advance_feed_hunt(context);
         }
         if purpose != RetrievalPurpose::Head {
             return;
@@ -70,10 +70,10 @@ impl SchedulerWorker {
         }
         self.pending_feed_retries.remove(&context);
         self.hunts.remove(&context);
-        if self.feeds.is_query(&context) {
+        if self.feeds.is_continuous(&context) {
             return;
         }
-        if self.query_busy(&context) {
+        if self.feed_busy(&context) {
             return self.defer_feed_retry(context);
         }
         if let Some(request) = self.feeds.head_request(&context) {

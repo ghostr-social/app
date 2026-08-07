@@ -92,6 +92,10 @@ impl HlsSessions {
         state.prune(now, self.limits.idle_ttl);
         state.sessions.remove(id).is_some()
     }
+
+    pub async fn clear(&self) {
+        self.state.lock().await.sessions.clear();
+    }
 }
 
 fn resource_path(session: &HlsSessionId, resource: HlsResourceId, kind: HlsResourceKind) -> String {

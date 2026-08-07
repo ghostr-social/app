@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ghostr video delivery debugger</title>
+  <link rel="stylesheet" href="/debug/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <p class="eyebrow">Ghostr engineering · Rust delivery engine</p>
+      <h1>Video delivery debugger</h1>
+    </div>
+    <div class="header-actions">
+      <span class="live"><i></i> Live</span>
+      <button id="clear-debug-data" class="button danger" type="button">
+        Clear debug data
+      </button>
+      <button id="add-video-button" class="button secondary" type="button"
+              aria-controls="video-modal">Add video</button>
+      <button id="network-button" class="button" type="button"
+              aria-controls="network-modal">Network settings</button>
+    </div>
+  </header>
+
+  <main class="debug-layout">
+    <section class="column playback-column" aria-labelledby="playback-heading">
+      <div class="column-heading">
+        <div><p class="eyebrow">Playback</p><h2 id="playback-heading">Device preview</h2></div>
+        <span id="player-state" class="pill">Idle</span>
+      </div>
+      <div class="phone-shell">
+        <div class="phone-speaker" aria-hidden="true"></div>
+        <div class="phone-screen">
+          <video id="player" aria-labelledby="player-title"
+                 controls playsinline muted autoplay preload="metadata"></video>
+          <div id="player-empty" class="player-empty">
+            <b>Select a video</b>
+            <span>Playback reads from the Rust media gateway.</span>
+          </div>
+          <div class="phone-overlay">
+            <p id="player-title">Nothing playing</p>
+            <span id="player-host">Waiting for the queue</span>
+          </div>
+        </div>
+        <div class="phone-home" aria-hidden="true"></div>
+      </div>
+      <nav class="playback-controls" aria-label="Video navigation">
+        <button id="previous-video" class="button secondary" type="button"
+                aria-label="Play previous video" disabled>← Previous</button>
+        <button id="next-video" class="button secondary" type="button"
+                aria-label="Play next video" disabled>Next →</button>
+      </nav>
+      <div class="playback-buffer">
+        <div>
+          <span>Ready to play</span>
+          <strong id="phone-buffered">—</strong>
+        </div>
+        <progress id="phone-progress" aria-label="Playback buffer progress" max="1" value="0"></progress>
+      </div>
+    </section>
+
+    <section class="column queue-column" aria-labelledby="queue-heading">
+      <div class="column-heading">
+        <div><p class="eyebrow">Sequence</p><h2 id="queue-heading">Playback queue</h2></div>
+        <span id="video-count" class="muted">0 videos</span>
+      </div>
+      <p class="column-copy">Selected video first, upcoming next, and playback history at the end.</p>
+      <div id="video-queue" class="video-queue" aria-live="polite">
+        <p class="empty">Add a progressive video to begin.</p>
+      </div>
+      <p id="updated" class="updated">Waiting for delivery state…</p>
+    </section>
+
+    <aside id="download-inspector" class="column telemetry-column" aria-labelledby="inspector-heading">
+      <div class="column-heading">
+        <div><p class="eyebrow">Delivery</p><h2 id="inspector-heading">Download inspector</h2></div>
+        <span id="inspector-status" class="pill">Queued</span>
+      </div>
+      <div class="selected-download">
+        <p id="inspector-title">No video selected</p>
+        <span id="inspector-host" class="muted">—</span>
+        <div class="buffer-number">
+          <strong id="buffered-seconds">0s</strong>
+          <span>preloaded of <b id="total-duration">unknown</b></span>
+        </div>
+        <progress id="selected-progress" aria-label="Selected video download progress" max="1" value="0"></progress>
+        <div class="progress-label">
+          <span id="selected-percent">0%</span>
+          <span id="selected-bytes">0 B / Unknown</span>
+        </div>
+      </div>
+
+      <div class="metrics" aria-label="Delivery summary">
+        <article><span>Store</span><strong id="stored">—</strong><small id="storage-total">—</small></article>
+        <article><span>Cached</span><strong id="cached">—</strong><small>complete videos</small></article>
+        <article><span>Download rate</span><strong id="rate">—</strong><small>observed</small></article>
+        <article><span>Active hosts</span><strong id="relay-count">—</strong><small id="connection-count">—</small></article>
+      </div>
+
+      <section class="inspector-section" aria-labelledby="nostr-heading">
+        <div class="subheading"><h3 id="nostr-heading">Nostr discovery</h3><span id="nostr-stage">Loading</span></div>
+        <div class="nostr-summary"><strong id="nostr-count">0</strong><span>videos discovered</span></div>
+        <div id="nostr-relays" class="nostr-relays"><p class="empty">No relays configured</p></div>
+      </section>
+      <section class="inspector-section" aria-labelledby="activity-heading">
+        <div class="subheading"><h3 id="activity-heading">Download activity</h3><span>Preloaded</span></div>
+        <div id="download-activity" class="download-activity"><p class="empty">No active downloads</p></div>
+      </section>
+      <section class="inspector-section" aria-labelledby="connections-heading">
+        <div class="subheading"><h3 id="connections-heading">Media hosts</h3><span>Connections</span></div>
+        <div id="connections" class="connection-list"><p class="empty">No active connections</p></div>
+      </section>
+      <details>
+        <summary>Stored byte ranges for selected video</summary>
+        <code id="selected-ranges">No stored ranges</code>
+      </details>
+    </aside>
+  </main>
+
+  <template id="video-row-template">
+    <article class="video-row">
+      <button class="row-play" type="button" aria-label="Play video"><span class="row-index"></span></button>
+      <div class="row-main">
+        <div class="row-title"><h3></h3><span class="queue-state"></span></div>
+        <p class="host"></p>
+        <progress aria-label="Download progress" max="1" value="0"></progress>
+        <div class="progress-label"><span class="buffered"></span><span class="bytes"></span></div>
+      </div>
+    </article>
+  </template>
+
+  <dialog id="video-modal" aria-labelledby="video-modal-title">
+    <div class="modal-heading"><div><p class="eyebrow">Input</p><h2 id="video-modal-title">Add progressive video</h2></div>
+      <button class="icon-button" type="button" data-close-video aria-label="Close add video dialog">×</button></div>
+    <form id="video-form">
+      <label>Public HTTP(S) video URL<input id="video-url" type="url" required placeholder="https://cdn.example/video.mp4"></label>
+      <div class="form-pair">
+        <label>Known size <span><input id="video-size" type="number" min="1" step="1"> bytes</span><small>Optional; otherwise probed</small></label>
+        <label>Known duration <span><input id="video-duration" type="number" min="0.001" step="0.001"> seconds</span><small>Optional</small></label>
+      </div>
+      <p id="video-form-status" class="form-status" role="status"></p>
+      <button type="submit">Add to playback queue</button>
+    </form>
+  </dialog>
+
+  <dialog id="network-modal" aria-labelledby="network-title">
+    <div class="modal-heading"><div><p class="eyebrow">Simulation</p><h2 id="network-title">Network conditions</h2></div>
+      <button class="icon-button" type="button" data-close-network aria-label="Close network settings">×</button></div>
+    <p class="modal-copy">Limits are applied live to progressive media range transfers.</p>
+    <form id="network-form">
+      <label>Bandwidth per transfer <span><input id="bandwidth" type="number" min="0" max="10000000" step="1"> Kbps</span><small>0 is unlimited</small></label>
+      <label>Added request latency <span><input id="latency" type="number" min="0" max="60000" step="10"> ms</span><small>Applied before each range request</small></label>
+      <label>Connections per host <input id="connections-limit" type="number" min="0" max="64" step="1"><small>0 is unlimited</small></label>
+      <p id="form-status" class="form-status" role="status"></p>
+      <button type="submit">Apply network conditions</button>
+    </form>
+  </dialog>
+
+  <script src="/debug/hls.min.js" defer></script>
+  <script src="/debug/hls_player.js" defer></script>
+  <script src="/debug/app.js" defer></script>
+  <script src="/debug/player_events.js" defer></script>
+  <script src="/debug/navigation.js" defer></script>
+  <script src="/debug/nostr_feed.js" defer></script>
+  <script src="/debug/network_modal.js" defer></script>
+  <script src="/debug/video_form.js" defer></script>
+  <script src="/debug/clear_data.js" defer></script>
+</body>
+</html>

@@ -27,6 +27,7 @@ async fn unhosted_outcomes_do_not_dirty_or_persist_host_stats() {
             accept_ranges: true,
             cancelled: false,
             total_bytes: Some(1),
+            request_started: true,
         }),
     });
     keeper.note_probe(&ProbeDone {

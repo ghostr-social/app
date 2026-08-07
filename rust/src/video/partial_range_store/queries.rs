@@ -10,6 +10,10 @@ use std::ops::Range;
 use std::path::PathBuf;
 
 impl PartialRangeStore {
+    pub async fn used_bytes(&self) -> u64 {
+        *self.used_bytes.lock().await
+    }
+
     pub async fn total_len(&self, key: &str) -> Result<Option<u64>> {
         let mut entries = self.entries.lock().await;
         Ok(self.entry(&mut entries, key).await?.manifest.total_len())

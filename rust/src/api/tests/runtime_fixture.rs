@@ -13,6 +13,7 @@ pub(crate) async fn runtime() -> DiscoveryRuntime {
         modes: mode_updates,
         bootstrap: Vec::new(),
         search_relays: Vec::new(),
+        candidates: None,
     })
     .await
 }

@@ -17,7 +17,7 @@ use std::time::Duration;
 
 impl DeliveryWorker {
     pub(crate) async fn finish_chunk(&mut self, done: ChunkDone) {
-        let status = self.inflight.finish(&done.attempt);
+        let status = self.downloads.finish(&done.attempt);
         let post = &done.attempt.chunk.post;
         if !self.accepts_completion(post, status) {
             return;
@@ -147,28 +147,6 @@ impl DeliveryWorker {
             return;
         }
         warn!("No working source left for {id}; reporting it unplayable");
-        self.refresh_servable();
-    }
-
-    /// The gateway may only advertise posts that something can still be
-    /// fetched for: an exhausted post answers 404 instead of stalling
-    /// the player on bytes that will never arrive.
-    pub(crate) fn refresh_servable(&self) {
-        let live = self
-            .state
-            .window_posts()
-            .into_iter()
-            .filter(|post| self.is_servable(post))
-            .map(|post| post.0);
-        self.posts.replace_all(live);
-    }
-
-    /// Catalogued (therefore progressive) and with a live source left.
-    fn is_servable(&self, post: &PostId) -> bool {
-        self.state
-            .catalog()
-            .lookup(post)
-            .is_some_and(|entry| !self.retry.all_retired(post, &entry.meta.urls))
     }
 
     pub(crate) fn start_cooldown(&mut self, post: PostId, wait: Duration) {

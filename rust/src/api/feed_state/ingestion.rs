@@ -1,7 +1,7 @@
 use super::FeedState;
 use crate::api::feed_progress::FeedProgress;
+use crate::discovery::candidate_registry::{CandidateAdmission, VideoCandidate};
 use crate::discovery::discovery_scheduler::RetrievalPurpose;
-use crate::discovery::event_parsing::{video_post_from_event, ParsedVideoPost};
 use crate::discovery::feed_cursor::retrieval_cursor;
 use crate::discovery::feed_store::FeedId;
 use crate::discovery::plan_executor::PlanFailure;
@@ -23,36 +23,41 @@ impl FeedState {
         context: &FeedContext,
         result: Result<Vec<Event>, PlanFailure>,
         purpose: RetrievalPurpose,
-    ) {
+    ) -> Vec<VideoCandidate> {
         let Some(feed) = self.feed_for(context) else {
-            return;
+            return Vec::new();
         };
         match result {
-            Ok(events) if self.is_head_refresh(feed, purpose) => self.ingest_head(feed, &events),
-            Ok(events) => self.ingest_page(feed, &events),
-            Err(_) => self.record_failure(feed),
+            Ok(events) => self.apply_events(feed, &events, purpose),
+            Err(_) => {
+                self.record_failure(feed);
+                Vec::new()
+            }
         }
     }
 
-    pub(crate) fn apply_progress(&mut self, context: &FeedContext, event: Event) {
-        let Some(feed) = self.feed_for(context) else {
-            return;
-        };
-        let Some(post) = video_post_from_event(&event) else {
-            return;
-        };
-        self.store.ingest_progress(feed, post, &self.graph);
+    pub(crate) fn apply_progress(
+        &mut self,
+        context: &FeedContext,
+        event: Event,
+    ) -> Option<VideoCandidate> {
+        let feed = self.feed_for(context)?;
+        let inspected = self.candidates.inspect(&event);
+        if let Some(post) = inspected.post {
+            self.store.ingest_progress(feed, post, &self.graph);
+        }
+        admitted(inspected.admission)
     }
 
-    pub(super) fn ingest_page(&mut self, feed: FeedId, events: &[Event]) {
+    pub(super) fn ingest_page(&mut self, feed: FeedId, events: &[Event]) -> Vec<VideoCandidate> {
         for event in events {
             self.profiles.ingest(event);
         }
-        let posts = parsed_posts(events);
+        let batch = self.candidates.inspect_all(events);
         let published = if self.feeds.get(&feed).is_some_and(|it| it.first_loaded) {
-            self.store.ingest_older_page(feed, posts, &self.graph)
+            self.store.ingest_older_page(feed, batch.posts, &self.graph)
         } else {
-            self.store.ingest_first_page(feed, posts, &self.graph);
+            self.store.ingest_first_page(feed, batch.posts, &self.graph);
             true
         };
         self.store
@@ -61,19 +66,20 @@ impl FeedState {
         if !published {
             self.store.touch(feed);
         }
+        batch.admitted
     }
 
-    pub(super) fn ingest_head(&mut self, feed: FeedId, events: &[Event]) {
+    pub(super) fn ingest_head(&mut self, feed: FeedId, events: &[Event]) -> Vec<VideoCandidate> {
         for event in events {
             self.profiles.ingest(event);
         }
-        let published = self
-            .store
-            .ingest_head_page(feed, parsed_posts(events), &self.graph);
+        let batch = self.candidates.inspect_all(events);
+        let published = self.store.ingest_head_page(feed, batch.posts, &self.graph);
         self.mark(feed, FeedProgress::record_page);
         if !published {
             self.store.touch(feed);
         }
+        batch.admitted
     }
 
     pub(super) fn record_failure(&mut self, feed: FeedId) {
@@ -89,8 +95,26 @@ impl FeedState {
                 .get(&feed)
                 .is_some_and(|progress| progress.first_loaded)
     }
+
+    fn apply_events(
+        &mut self,
+        feed: FeedId,
+        events: &[Event],
+        purpose: RetrievalPurpose,
+    ) -> Vec<VideoCandidate> {
+        if self.is_head_refresh(feed, purpose) {
+            self.ingest_head(feed, events)
+        } else {
+            self.ingest_page(feed, events)
+        }
+    }
 }
 
-fn parsed_posts(events: &[Event]) -> Vec<ParsedVideoPost> {
-    events.iter().filter_map(video_post_from_event).collect()
+fn admitted(admission: CandidateAdmission) -> Option<VideoCandidate> {
+    match admission {
+        CandidateAdmission::Accepted(candidate) | CandidateAdmission::Replaced(candidate) => {
+            Some(candidate)
+        }
+        CandidateAdmission::Duplicate | CandidateAdmission::Rejected => None,
+    }
 }

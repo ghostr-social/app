@@ -1,6 +1,7 @@
 //! Harness that runs a real delivery manager against fixture servers
 //! and a temp partial-range store.
 
+use rust_lib_ghostr::video::debug_network::NetworkThrottle;
 use rust_lib_ghostr::video::delivery_events::DeliveryHandle;
 use rust_lib_ghostr::video::delivery_manager::{start_delivery_manager, DeliveryManagerConfig};
 use rust_lib_ghostr::video::outbound_media_client::MediaHttpClient;
@@ -18,6 +19,8 @@ pub struct DeliveryHarness {
     pub demand: DemandSender,
     pub store: Arc<PartialRangeStore>,
     pub posts: ServablePosts,
+    pub cache: ServablePosts,
+    pub network: NetworkThrottle,
     pub root: PathBuf,
 }
 
@@ -38,12 +41,14 @@ pub fn start_harness_with_store(
     options: DeliveryOptions,
 ) -> DeliveryHarness {
     let posts = ServablePosts::new();
+    let network = NetworkThrottle::new();
     let (demand, demand_receiver) = demand_channel();
     let handle = start_delivery_manager(
         DeliveryManagerConfig {
             store: store.clone(),
             client: MediaHttpClient::trusted().expect("trusted media client"),
-            posts: posts.clone(),
+            cache: posts.clone(),
+            network: network.clone(),
             stats_path: root.join("host_stats.json"),
             params: options.params,
             level: options.level,
@@ -51,11 +56,14 @@ pub fn start_harness_with_store(
         },
         demand_receiver,
     );
+    let cache = posts.clone();
     DeliveryHarness {
         handle,
         demand,
         store,
         posts,
+        cache,
+        network,
         root,
     }
 }

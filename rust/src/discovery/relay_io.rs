@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast::error::RecvError;
 use tokio::task::JoinSet;
-use tokio::time::timeout;
+use tokio::time::{sleep, timeout};
 use tokio_stream::{Stream, StreamExt};
 
 use crate::discovery::plan_executor::EventProgress;
@@ -76,12 +76,13 @@ impl RelayIo for SdkRelayIo {
     fn read(&self, request: RelayReadIo) -> RelayIoFuture<'_, Vec<Event>> {
         Box::pin(async move {
             self.await_connected_target(&request.relays).await?;
+            let deadline = request.timeout.saturating_add(Duration::from_secs(1));
             let stream = self
                 .client
                 .stream_events_from(request.relays, vec![request.filter], request.timeout)
                 .await
                 .context("relay query failed")?;
-            Ok(drain_events_with_progress(stream, request.progress).await)
+            Ok(drain_events_until(stream, request.progress, deadline).await)
         })
     }
 
@@ -92,6 +93,9 @@ impl RelayIo for SdkRelayIo {
                     warn!("Nostr relay {relay} could not connect: {error}");
                 }
             }
+            self.await_connected_target(&request.relays)
+                .await
+                .context("broadcast failed")?;
             self.client
                 .send_event_to(request.relays, request.event)
                 .await
@@ -141,6 +145,7 @@ where
     drain_events_with_progress(&mut stream, None).await
 }
 
+#[cfg(test)]
 pub(crate) async fn drain_events_with_progress<S>(
     mut stream: S,
     progress: Option<EventProgress>,
@@ -156,4 +161,31 @@ where
         events.push(event);
     }
     events
+}
+
+pub(crate) async fn drain_events_until<S>(
+    mut stream: S,
+    progress: Option<EventProgress>,
+    wait: Duration,
+) -> Vec<Event>
+where
+    S: Stream<Item = Event> + Unpin,
+{
+    let deadline = sleep(wait);
+    tokio::pin!(deadline);
+    let mut events = Vec::new();
+    loop {
+        tokio::select! {
+            _ = &mut deadline => return events,
+            event = stream.next() => match event {
+                Some(event) => {
+                    if let Some(progress) = &progress {
+                        let _ = progress.send(event.clone()).await;
+                    }
+                    events.push(event);
+                }
+                None => return events,
+            }
+        }
+    }
 }

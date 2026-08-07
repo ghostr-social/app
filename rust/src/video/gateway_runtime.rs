@@ -40,7 +40,8 @@ impl GatewayRuntime {
         let client = Arc::new(client_with_event_cache());
         let hls_sessions = HlsSessions::production();
         let (router, delivery, progressive, modes) =
-            start_progressive_delivery(&configuration, hls_sessions.clone()).await?;
+            start_progressive_delivery(&configuration, hls_sessions.clone(), client.clone())
+                .await?;
         spawn_http_server(listener, router);
         let hls = HlsPlaybackGateway::new(address, hls_sessions);
         let runtime = Self {

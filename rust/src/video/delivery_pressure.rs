@@ -29,6 +29,18 @@ impl StorePressure {
     pub(crate) fn new(pause: Duration) -> Self {
         Self { reported: 0, pause }
     }
+
+    fn claim_report(&mut self, decisions: u64) -> bool {
+        if decisions == self.reported {
+            return false;
+        }
+        self.reported = decisions;
+        true
+    }
+
+    pub(crate) fn report(&mut self, decisions: u64, short: u64) -> Option<u64> {
+        self.claim_report(decisions).then_some(short)
+    }
 }
 
 impl DeliveryWorker {
@@ -46,12 +58,15 @@ impl DeliveryWorker {
 
     fn report_pressure(&mut self, short: u64) {
         let decisions = self.ctx.store.refusals();
-        if decisions == self.pressure.reported {
-            return;
-        }
-        self.pressure.reported = decisions;
-        warn!("Video store has no room for {short} more bytes; pausing the post instead of its source");
+        let _ = self
+            .pressure
+            .report(decisions, short)
+            .inspect(|short| warn_pressure(*short));
     }
+}
+
+fn warn_pressure(short: u64) {
+    warn!("Video store has no room for {short} more bytes; pausing the post instead of its source");
 }
 
 /// The shortfall a store refusal carried, wherever it sits in the chain.

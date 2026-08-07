@@ -6,7 +6,7 @@ use crate::api::feed_state::FeedState;
 use crate::api::tests::feed_fixtures::video_note;
 use crate::discovery::event_cache::ViewerScope;
 use crate::discovery::feed_spec::FeedSpec;
-use crate::discovery::video_filters::DiscoveryRequest;
+use crate::discovery::video_filters::{DiscoveryFlow, DiscoveryRequest};
 use nostr_sdk::Keys;
 
 #[test]
@@ -23,6 +23,7 @@ fn the_first_landed_page_becomes_the_snapshot() {
         open.request,
         DiscoveryRequest {
             viewer: ViewerScope::SignedIn(keys.public_key()),
+            flow: DiscoveryFlow::Continuous,
             ..DiscoveryRequest::default()
         }
     );

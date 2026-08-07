@@ -22,6 +22,7 @@ async fn accepted_mute_list_filters_the_active_viewers_feed() {
     let sinks = OutcomeSinks {
         state: state.clone(),
         bootstrap,
+        candidates: None,
     };
     let cache = EventCache::new(Arc::new(session_event_database(16)));
     let mute = signed_event(SignedEventFixture {

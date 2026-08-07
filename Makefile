@@ -1,4 +1,6 @@
 FLUTTER ?= flutter
+FLUTTER_TEST_CONCURRENCY ?= 4
+FLUTTER_TEST_OPEN_FILES ?= 4096
 ANDROID_ABI ?= arm64-v8a
 ANDROID_RELEASE_TARGET ?= android-arm64
 ANDROID_DEBUG_TARGET ?= android-x64
@@ -13,15 +15,20 @@ ANDROID_AGENT_AVD_PACKAGE := system-images;android-37.1;google_apis_playstore_ps
 ANDROID_AGENT_AVD_HOME ?= $(if $(ANDROID_AVD_HOME),$(ANDROID_AVD_HOME),$(if $(ANDROID_USER_HOME),$(ANDROID_USER_HOME)/avd,$(HOME)/.android/avd))
 ANDROID_AGENT_IMAGE_DIR := $(ANDROID_AGENT_SDK)/system-images/android-37.1/google_apis_playstore_ps16k/x86_64
 FLAGS ?=
+WEB_DEBUG_CACHE_DIR ?= $(CURDIR)/rust/target/video-debug-cache
+WEB_DEBUG_RUST_DIR ?= $(CURDIR)/rust
+WEB_DEBUG_STATE_DIR ?= $(CURDIR)/rust/target/video-debug-web
 
-.PHONY: test-coverage coverage-summary native-check native-test native-coverage \
+.PHONY: test-coverage coverage-summary native-check native-test native-coverage web \
+	web-contract-test \
 	native-coverage-contract-test rust rust-no-clean gen icons run run-fast \
 	run-fast-profile android-debug-apk android-debug-apk-check \
 	android-release-apk android-release-apk-check android-agent-avd-create \
 	android-agent-avd-run build build-fast install help
 
 test-coverage: ## Run Flutter tests and collect Dart coverage.
-	$(FLUTTER) test --coverage
+	@ulimit -n "$(FLUTTER_TEST_OPEN_FILES)"; \
+	exec $(FLUTTER) test --coverage --concurrency="$(FLUTTER_TEST_CONCURRENCY)"
 
 coverage-summary: ## Report and enforce Dart coverage requirements.
 	@awk 'BEGIN{FS=":"; include=1} /^SF:/{include=($$0 !~ /lib\/src\/rust\//)} include && /^DA:/{split($$2,a,","); if (a[2] > 0) hit++; total++} END {if (total == 0) {print "No coverage data"; exit 1} printf("Line coverage: %.2f%% (%d/%d)\n", (hit/total)*100, hit, total)}' coverage/lcov.info
@@ -31,15 +38,25 @@ coverage-summary: ## Report and enforce Dart coverage requirements.
 native-check: ## Check the Rust package.
 	cd rust && cargo clippy --all-targets --all-features -- -D warnings
 
-native-test: ## Run Rust tests.
-	cd rust && cargo test
+native-test: web-contract-test ## Run Rust tests.
+	cd rust && cargo test --no-default-features --test debug_web_exclusion_test
+	cd rust && cargo test --all-features
+
+web-contract-test: ## Verify that the web tool is Rust-only.
+	sh test/tool/web_target_contract_test.sh
+	sh test/tool/web_lifecycle_contract_test.sh
+	sh test/tool/web_untrusted_owner_contract_test.sh
 
 native-coverage-contract-test: ## Test the per-file native coverage contract.
 	sh test/tool/native_coverage_contract_test.sh
 
 native-coverage: native-coverage-contract-test ## Run Rust tests and enforce native coverage.
-	cd rust && cargo llvm-cov --ignore-filename-regex 'frb_generated.rs' --lcov --output-path target/native-coverage.lcov --fail-under-lines 95
+	cd rust && cargo llvm-cov --all-features --ignore-filename-regex 'frb_generated.rs' --lcov --output-path target/native-coverage.lcov --fail-under-lines 95
 	awk -f tool/check_native_coverage.awk rust/target/native-coverage.lcov
+
+web: ## Run the standalone Rust video debugging dashboard.
+	@sh "$(CURDIR)/tool/run_video_debug_web.sh" \
+		"$(WEB_DEBUG_CACHE_DIR)" "$(WEB_DEBUG_STATE_DIR)" "$(WEB_DEBUG_RUST_DIR)"
 
 rust: ## Clean and build the Rust Android library.
 	cd rust && cargo clean

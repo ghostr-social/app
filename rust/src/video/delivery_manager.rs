@@ -5,21 +5,21 @@
 
 use crate::engine::inventory_controller::Mode;
 use crate::engine::{DataUsageLevel, EngineParams};
-use crate::video::delivery_events::{
-    command_channel, CommandReceiver, DeliveryCommand, DeliveryHandle,
-};
-use crate::video::delivery_inflight::InFlightChunks;
+use crate::video::cache_registry::CacheRegistry;
+use crate::video::debug_network::NetworkThrottle;
+use crate::video::delivery_events::{command_channel, CommandReceiver, DeliveryHandle};
 use crate::video::delivery_pressure::StorePressure;
-use crate::video::delivery_probes::ProbeBook;
 use crate::video::delivery_retry::{RetryBook, RetryPolicy};
 use crate::video::delivery_state::DeliveryState;
 use crate::video::delivery_stats::StatsKeeper;
 use crate::video::delivery_transfers::{InternalEvent, TransferContext};
+use crate::video::download_workers::DownloadWorkers;
+use crate::video::metadata_probe_pool::MetadataProbePool;
+use crate::video::mutable_priority_queue::MutablePriorityQueue;
 use crate::video::outbound_media_client::MediaHttpClient;
 use crate::video::partial_range_store::capacity::DEFAULT_RECHECK;
 use crate::video::partial_range_store::PartialRangeStore;
 use crate::video::playback_demand::{DemandReceiver, DemandSignal};
-use crate::video::progressive_posts::ServablePosts;
 use crate::video::transfer_timeouts::TransferTimeouts;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -55,7 +55,8 @@ impl Default for DeliveryTuning {
 pub struct DeliveryManagerConfig {
     pub store: Arc<PartialRangeStore>,
     pub client: MediaHttpClient,
-    pub posts: ServablePosts,
+    pub cache: CacheRegistry,
+    pub network: NetworkThrottle,
     pub stats_path: PathBuf,
     pub params: EngineParams,
     pub level: DataUsageLevel,
@@ -104,22 +105,17 @@ async fn run(
 pub(crate) struct DeliveryWorker {
     pub(crate) state: DeliveryState,
     pub(crate) keeper: StatsKeeper,
-    pub(crate) inflight: InFlightChunks,
-    pub(crate) probes: ProbeBook,
+    pub(crate) downloads: DownloadWorkers,
+    pub(crate) queue: MutablePriorityQueue,
+    pub(crate) probes: MetadataProbePool,
     pub(crate) retry: RetryBook,
     pub(crate) pressure: StorePressure,
     pub(crate) pending_demand: Option<DemandSignal>,
     pub(crate) ctx: TransferContext,
-    pub(crate) posts: ServablePosts,
-    commands: CommandReceiver,
-    demand: DemandReceiver,
-    events: mpsc::UnboundedReceiver<InternalEvent>,
-}
-
-enum Wake {
-    Command(DeliveryCommand),
-    Demand(DemandSignal),
-    Internal(InternalEvent),
+    pub(crate) cache: CacheRegistry,
+    pub(crate) commands: CommandReceiver,
+    pub(crate) demand: DemandReceiver,
+    pub(crate) events: mpsc::UnboundedReceiver<InternalEvent>,
 }
 
 impl DeliveryWorker {
@@ -132,8 +128,9 @@ impl DeliveryWorker {
         Self {
             state: DeliveryState::new(config.params, config.level),
             keeper: StatsKeeper::load(config.stats_path, config.tuning.stats_debounce).await,
-            inflight: InFlightChunks::new(),
-            probes: ProbeBook::new(config.tuning.probe_concurrency),
+            downloads: DownloadWorkers::new(),
+            queue: MutablePriorityQueue::new(),
+            probes: MetadataProbePool::new(config.tuning.probe_concurrency),
             retry: RetryBook::new(config.tuning.retry),
             pressure: StorePressure::new(config.tuning.store_pressure_pause),
             pending_demand: None,
@@ -142,51 +139,12 @@ impl DeliveryWorker {
                 store: config.store,
                 events: events_sender,
                 timeouts: TransferTimeouts::default(),
+                network: config.network,
             },
-            posts: config.posts,
+            cache: config.cache,
             commands,
             demand,
             events,
-        }
-    }
-
-    /// Waits for one event, applies it, and replans. Returns `false`
-    /// only when the control channel is gone (shutdown).
-    async fn step(&mut self) -> bool {
-        let Some(wake) = self.next_wake().await else {
-            return false;
-        };
-        self.apply(wake).await;
-        self.reconcile().await;
-        true
-    }
-
-    async fn next_wake(&mut self) -> Option<Wake> {
-        tokio::select! {
-            command = self.commands.recv() => command.map(Wake::Command),
-            Some(signal) = self.demand.recv() => Some(Wake::Demand(signal)),
-            Some(event) = self.events.recv() => Some(Wake::Internal(event)),
-        }
-    }
-
-    async fn apply(&mut self, wake: Wake) {
-        match wake {
-            Wake::Command(DeliveryCommand::Focus(update)) => {
-                self.state.apply_focus(update);
-                self.refresh_servable();
-            }
-            Wake::Command(DeliveryCommand::Config(level)) => self.state.apply_level(level),
-            Wake::Demand(signal) => self.pending_demand = Some(signal),
-            Wake::Internal(event) => self.apply_internal(event).await,
-        }
-    }
-
-    async fn apply_internal(&mut self, event: InternalEvent) {
-        match event {
-            InternalEvent::ChunkDone(done) => self.finish_chunk(done).await,
-            InternalEvent::ProbeDone(done) => self.finish_probe(done).await,
-            InternalEvent::CooldownOver(post) => self.retry.warm_up(&post),
-            InternalEvent::SaveStats => self.keeper.save_now().await,
         }
     }
 }

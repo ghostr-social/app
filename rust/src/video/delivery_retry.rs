@@ -142,6 +142,12 @@ impl RetryBook {
         self.cooling.contains(post)
     }
 
+    pub fn clear(&mut self) {
+        self.attempts.clear();
+        self.retired.clear();
+        self.cooling.clear();
+    }
+
     fn charge(&mut self, source: &Source) -> u32 {
         let attempts = self.attempts.entry(source.clone()).or_insert(0);
         *attempts += 1;

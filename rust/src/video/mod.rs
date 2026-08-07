@@ -1,7 +1,49 @@
+pub mod cache_registry;
+mod candidate_priority;
 pub mod chunk_cancel;
 pub mod chunk_downloader;
+mod chunk_network;
 mod chunk_response;
+mod chunk_stream;
 mod content_range;
+#[cfg(all(
+    feature = "video-debug-web",
+    debug_assertions,
+    not(any(target_os = "android", target_os = "ios"))
+))]
+mod debug_assets;
+#[cfg(all(
+    feature = "video-debug-web",
+    debug_assertions,
+    not(any(target_os = "android", target_os = "ios"))
+))]
+pub mod debug_feed;
+#[cfg(all(
+    feature = "video-debug-web",
+    debug_assertions,
+    not(any(target_os = "android", target_os = "ios"))
+))]
+mod debug_hls;
+#[cfg(all(
+    feature = "video-debug-web",
+    debug_assertions,
+    not(any(target_os = "android", target_os = "ios"))
+))]
+mod debug_http;
+pub mod debug_network;
+#[cfg(all(
+    feature = "video-debug-web",
+    debug_assertions,
+    not(any(target_os = "android", target_os = "ios"))
+))]
+mod debug_state;
+#[cfg(all(
+    feature = "video-debug-web",
+    debug_assertions,
+    not(any(target_os = "android", target_os = "ios"))
+))]
+pub mod debug_videos;
+mod delivery_cache;
 mod delivery_completion;
 pub mod delivery_events;
 pub mod delivery_failure;
@@ -10,12 +52,14 @@ pub mod delivery_manager;
 mod delivery_plan;
 mod delivery_pressure;
 mod delivery_probe_completion;
-mod delivery_probes;
 mod delivery_reconcile;
+mod delivery_reset;
 pub mod delivery_retry;
 mod delivery_state;
 mod delivery_stats;
 mod delivery_transfers;
+mod delivery_wake;
+mod download_workers;
 pub mod event_identity;
 pub mod ffi_models;
 mod gateway_delivery;
@@ -32,7 +76,9 @@ pub mod hls_sessions;
 pub mod http_gateway;
 pub mod imeta_extras;
 pub mod media_probe;
+mod metadata_probe_pool;
 pub mod mp4_moov;
+mod mutable_priority_queue;
 mod native_blob_integrity;
 mod native_blob_store;
 pub mod native_cache;

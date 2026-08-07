@@ -7,6 +7,7 @@ use crate::api::feed_decisions::{LoadMoreAction, LoadMoreDecision, OpenDispatch}
 use crate::api::feed_mapping::{feed_post, resolved_creator};
 use crate::api::feed_progress::FeedProgress;
 use crate::api::feed_types::{FfiFeedPost, FfiFeedStage};
+use crate::discovery::candidate_registry::CandidateRegistry;
 use crate::discovery::feed_spec::FeedSpec;
 use crate::discovery::feed_store::{FeedId, FeedStore};
 #[cfg(test)]
@@ -36,6 +37,7 @@ pub(crate) struct FeedState {
     graph: SocialGraph,
     feeds: HashMap<FeedId, FeedProgress>,
     session: SessionGeneration,
+    candidates: CandidateRegistry,
 }
 
 impl FeedState {
@@ -46,6 +48,7 @@ impl FeedState {
             graph: SocialGraph::new(Keys::generate().public_key()),
             feeds: HashMap::new(),
             session: SessionGeneration::initial(),
+            candidates: CandidateRegistry::new(),
         }
     }
 
@@ -103,7 +106,9 @@ impl FeedState {
             return;
         };
         match result {
-            Ok(events) => self.ingest_page(feed, &events),
+            Ok(events) => {
+                self.ingest_page(feed, &events);
+            }
             Err(_) => self.record_failure(feed),
         }
     }

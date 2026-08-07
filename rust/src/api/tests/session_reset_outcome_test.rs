@@ -42,6 +42,7 @@ async fn old_outcome_is_ignored_after_a_new_session_opens() {
         OutcomeSinks {
             state: state.clone(),
             bootstrap,
+            candidates: None,
         },
         outcomes,
     ));
