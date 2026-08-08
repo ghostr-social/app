@@ -27,9 +27,8 @@ pub(crate) type Entries = HashMap<String, Entry>;
 
 /// Sparse on-disk store of partially downloaded videos: per key one data
 /// file written at byte offsets plus a persisted manifest of the present
-/// ranges. What it may occupy is not the configured budget alone but
-/// [`PartialRangeStore::effective_capacity`] — the budget capped by the
-/// device's real free space.
+/// ranges. Its configured budget is capped by the device's real free
+/// space.
 pub struct PartialRangeStore {
     root: PathBuf,
     paths: StorePaths,
@@ -45,12 +44,6 @@ pub struct PartialRangeStore {
 }
 
 impl PartialRangeStore {
-    /// A store bounded by the device's free space alone. Callers that
-    /// know the user's budget use [`Self::with_capacity`].
-    pub fn new(root: PathBuf, used_bytes: Arc<Mutex<u64>>) -> Self {
-        Self::with_capacity(root, used_bytes, StoreCapacity::system(u64::MAX))
-    }
-
     pub fn with_capacity(
         root: PathBuf,
         used_bytes: Arc<Mutex<u64>>,
@@ -81,16 +74,6 @@ impl PartialRangeStore {
     /// evicts some other video instead of one that is in use.
     pub fn lease(&self, key: &str) -> StoreLease {
         self.leases.acquire(key)
-    }
-
-    pub async fn remove(&self, key: &str) -> Result<()> {
-        let mut entries = self.entries.lock().await;
-        self.entry(&mut entries, key).await?;
-        self.discard(&mut entries, key).await
-    }
-
-    pub fn completed_path(&self, key: &str) -> PathBuf {
-        self.paths.completed(key)
     }
 
     async fn discard(&self, entries: &mut Entries, key: &str) -> Result<()> {

@@ -1,9 +1,9 @@
 mod range_fixture;
 
+use ghostr_delivery::chunk::cancel::cancel_pair;
+use ghostr_delivery::chunk::downloader::{download_chunk_throttled, ChunkSink, ChunkSpec};
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::ByteRange;
-use ghostr_delivery::chunk::cancel::cancel_pair;
-use ghostr_delivery::chunk::downloader::{download_chunk, ChunkSink, ChunkSpec};
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 
 #[tokio::test]
@@ -26,7 +26,8 @@ async fn chunk_downloader_rejects_an_explicit_image_before_writing_bytes() {
         key: "clip",
     };
 
-    let result = download_chunk(&spec, &sink, &mut stats, &token).await;
+    let result =
+        download_chunk_throttled(&spec, &sink, &mut stats, &token, &range_fixture::network()).await;
 
     assert!(result.is_err(), "an image response must not be downloaded");
     assert_eq!(store.present_ranges("clip").await.expect("ranges"), vec![]);

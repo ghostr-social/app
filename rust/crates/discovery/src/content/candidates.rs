@@ -66,10 +66,6 @@ impl CandidateRegistry {
         Self::default()
     }
 
-    pub fn admit(&mut self, event: &Event) -> CandidateAdmission {
-        self.inspect(event).admission
-    }
-
     pub fn inspect(&mut self, event: &Event) -> CandidateInspection {
         let event_id = event.id.to_hex();
         if let Some(post) = self.parsed.get(&event_id) {
@@ -90,14 +86,6 @@ impl CandidateRegistry {
             admitted.extend(admitted_candidate(inspected.admission));
         }
         CandidateBatch { posts, admitted }
-    }
-
-    pub fn len(&self) -> usize {
-        self.canonical.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.canonical.is_empty()
     }
 
     pub fn clear(&mut self) {

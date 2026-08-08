@@ -42,11 +42,6 @@ async fn partial_range_write_evicts_unleased_content_instead_of_refusing() {
         vec![0..400]
     );
     assert_eq!(*fixture.used_bytes.lock().await, 800);
-    assert!(
-        store.effective_capacity().await >= 800,
-        "the budget still holds"
-    );
-
     drop(lease);
     discard(&fixture.root);
 }

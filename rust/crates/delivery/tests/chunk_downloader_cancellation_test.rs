@@ -1,11 +1,11 @@
 mod range_fixture;
 
+use ghostr_delivery::chunk::cancel::{cancel_pair, CancelHandle};
+use ghostr_delivery::chunk::downloader::{download_chunk_throttled, ChunkSink, ChunkSpec};
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::ByteRange;
-use ghostr_delivery::chunk::cancel::{cancel_pair, CancelHandle};
-use ghostr_delivery::chunk::downloader::{download_chunk, ChunkSink, ChunkSpec};
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::time::Duration;
 
 #[tokio::test]
@@ -26,9 +26,10 @@ async fn chunk_downloader_cancellation_mid_stream_keeps_the_partial_bytes() {
         store: &store,
         key: "clip",
     };
+    let network = range_fixture::network();
 
     let (result, ()) = tokio::join!(
-        download_chunk(&spec, &sink, &mut stats, &token),
+        download_chunk_throttled(&spec, &sink, &mut stats, &token, &network),
         cancel_once_partial(&store, &handle),
     );
 

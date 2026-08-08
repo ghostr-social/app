@@ -4,9 +4,7 @@
 
 use std::time::Duration;
 
-use crate::query::search::{
-    plan_discovery, DISCOVERY_QUERY_TIMEOUT, FEED_QUERY_TIMEOUT,
-};
+use crate::query::search::{plan_discovery, DISCOVERY_QUERY_TIMEOUT, FEED_QUERY_TIMEOUT};
 use crate::query::video_filters::DiscoveryRequest;
 
 #[test]

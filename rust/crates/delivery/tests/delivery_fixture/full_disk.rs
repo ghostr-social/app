@@ -29,8 +29,7 @@ pub struct SpacedStore {
 /// is always the one this fixture was built with.
 pub fn spaced_store(prefix: &str, limits: Limits, available: u64) -> SpacedStore {
     let root = temp_directory(prefix);
-    let capacity =
-        StoreCapacity::new(limits, Arc::new(FixedSpace { available })).with_recheck(Duration::ZERO);
+    let capacity = StoreCapacity::new(limits, Arc::new(FixedSpace { available }), Duration::ZERO);
     SpacedStore {
         store: PartialRangeStore::with_capacity(root.clone(), Arc::new(Mutex::new(0)), capacity),
         root,

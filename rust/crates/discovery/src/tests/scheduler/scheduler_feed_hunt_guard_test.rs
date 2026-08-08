@@ -1,5 +1,5 @@
-use crate::tests::scheduler_support::{context, request};
 use crate::scheduler::feeds::FeedBook;
+use crate::tests::scheduler_support::{context, request};
 
 #[test]
 fn canonical_feed_never_enters_the_query_hunt() {

@@ -1,14 +1,12 @@
 //! A completion already queued at close time belongs to the closed lifecycle.
 
-use crate::tests::scheduler_support::{context, request};
-use crate::scheduler::{
-    ActiveRetrieval, DiscoveryCommand, FinishedRetrieval, SchedulerWorker,
-};
 use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
-use crate::scheduler::queue::RetrievalQueue;
 use crate::retrieval_types::{PlanFailure, RetrievalPurpose};
 use crate::scheduler::feeds::FeedBook;
 use crate::scheduler::queries::QueryBook;
+use crate::scheduler::queue::RetrievalQueue;
+use crate::scheduler::{ActiveRetrieval, DiscoveryCommand, FinishedRetrieval, SchedulerWorker};
+use crate::tests::scheduler_support::{context, request};
 use ghostr_engine::inventory_controller::Mode;
 use std::collections::HashMap;
 use std::sync::Arc;

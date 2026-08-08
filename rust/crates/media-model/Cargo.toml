@@ -7,10 +7,3 @@ description = "Nostr event to media description: imeta parsing, video identity, 
 [dependencies]
 nostr-sdk = { workspace = true }
 reqwest = { workspace = true }
-sha2 = { workspace = true }
-tokio = { workspace = true }
-
-# `start_paused` and `advance`, for stepping a download's retry clock
-# without sleeping.
-[dev-dependencies]
-tokio = { workspace = true, features = ["test-util"] }

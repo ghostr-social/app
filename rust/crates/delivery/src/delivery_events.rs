@@ -82,11 +82,7 @@ pub struct CommandReceiver {
 }
 
 impl CommandReceiver {
-    pub async fn recv(&mut self) -> Option<DeliveryCommand> {
-        self.commands.recv().await
-    }
-
-    pub(crate) fn receivers(
+    pub fn receivers(
         &mut self,
     ) -> (
         &mut mpsc::UnboundedReceiver<DeliveryCommand>,

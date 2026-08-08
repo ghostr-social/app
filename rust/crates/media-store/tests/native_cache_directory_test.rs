@@ -3,11 +3,18 @@
 //! bookkeeping — while the progressive store and the host model in the
 //! same directory have to outlive the process.
 
-mod cache_fixture;
-
-use cache_fixture::temp_directory;
 use ghostr_media_store::native_cache::prepare_native_cache_directory;
 use std::fs;
+use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+fn temp_directory(prefix: &str) -> PathBuf {
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock")
+        .as_nanos();
+    std::env::temp_dir().join(format!("{prefix}-{nonce}"))
+}
 
 #[test]
 fn keeps_the_progressive_store_and_clears_stale_downloads() {

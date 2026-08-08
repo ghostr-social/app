@@ -1,7 +1,7 @@
-use crate::tests::scheduler_support::{context, next_outcome, note_at, request};
-use crate::scheduler::{start_discovery_scheduler, DiscoverySchedulerConfig};
 use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::retrieval_types::{EventProgress, RetrievalOutcome};
+use crate::scheduler::{start_discovery_scheduler, DiscoverySchedulerConfig};
+use crate::tests::scheduler_support::{context, next_outcome, note_at, request};
 use ghostr_engine::inventory_controller::Mode;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::Event;

@@ -2,10 +2,10 @@
 //! background priority, cursored one second below the oldest fetched
 //! post (plan §5.4; discovery::pagination::next_page_cursor).
 
+use crate::retrieval_types::RetrievalPriority;
 use crate::tests::scheduler_support::{
     context, next_outcome, next_started, note_at, request, start_scheduler,
 };
-use crate::retrieval_types::RetrievalPriority;
 use ghostr_engine::inventory_controller::Mode;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::Timestamp;

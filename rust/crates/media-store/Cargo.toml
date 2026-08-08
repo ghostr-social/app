@@ -2,20 +2,7 @@
 name = "ghostr-media-store"
 version = "0.1.0"
 edition = "2021"
-description = "On-disk media storage: partial byte-range store and whole-blob cache."
+description = "Startup housekeeping for on-disk media storage."
 
 [dependencies]
-ghostr-media-model = { path = "../media-model" }
-ghostr-net = { path = "../net" }
-
 anyhow = { workspace = true }
-bytes = { workspace = true }
-log = { workspace = true }
-reqwest = { workspace = true }
-sha2 = { workspace = true }
-tokio = { workspace = true }
-
-# `pause` and `advance`, for aging a cached blob past its eviction grace
-# period without sleeping.
-[dev-dependencies]
-tokio = { workspace = true, features = ["test-util"] }

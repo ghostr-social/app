@@ -1,6 +1,5 @@
 //! Shared scaffolding for the gateway's routed tests: a temp root, a
-//! trusted media client, the downloads a proxied request resolves
-//! against, and the harnesses that put a real router behind them.
+//! local media client, and harnesses that put a real router behind them.
 
 #![allow(dead_code)]
 
@@ -9,15 +8,17 @@ pub mod debug_clear;
 pub mod delivery;
 pub mod free_space;
 pub mod progressive;
+pub mod progressive_hls;
 mod progressive_request;
 pub mod raw_http;
 
-use ghostr_media_model::native_models::{
-    NativeEventIdentity, NativeUserData, NativeVideo, NativeVideoDelivery, NativeVideoDownload,
-};
-use ghostr_net::outbound_media_client::MediaHttpClient;
+use ghostr_delivery::cache_registry::{CacheStatus, CacheVideo};
+use ghostr_engine::VideoMeta;
+use ghostr_net::outbound_media_client::MediaHttpRequests;
+use reqwest::{Client, RequestBuilder};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// A directory no other caller holds. The clock alone cannot promise
@@ -36,45 +37,26 @@ pub fn temp_directory(prefix: &str) -> PathBuf {
     std::env::temp_dir().join(format!("{prefix}-{nonce}-{process}-{sequence}"))
 }
 
-pub fn media_client() -> MediaHttpClient {
-    MediaHttpClient::trusted().expect("trusted media client")
-}
+struct LocalMediaHttpClient(Client);
 
-pub fn video_id() -> String {
-    "a".repeat(64)
-}
-
-pub fn native_download(url: &str) -> NativeVideoDownload {
-    NativeVideoDownload::new(video_id(), native_video(url), event_identity())
-}
-
-fn native_video(url: &str) -> NativeVideo {
-    NativeVideo {
-        id: video_id(),
-        expected_digest: None,
-        fallback_urls: Vec::new(),
-        user: NativeUserData {
-            npub: Some("npub1author".to_owned()),
-            name: Some("Ghost".to_owned()),
-            profile_picture: Some("https://media.example/avatar.png".to_owned()),
-        },
-        title: "Relay clip".to_owned(),
-        song_name: "Original sound".to_owned(),
-        comments: "4".to_owned(),
-        likes: "12".to_owned(),
-        url: url.to_owned(),
-        delivery: NativeVideoDelivery::Progressive,
+impl MediaHttpRequests for LocalMediaHttpClient {
+    fn get(&self, raw_url: &str) -> anyhow::Result<RequestBuilder> {
+        Ok(self.0.get(raw_url))
     }
 }
 
-fn event_identity() -> NativeEventIdentity {
-    NativeEventIdentity {
-        event_id: "event-id".to_owned(),
-        author_public_key_hex: "author-key".to_owned(),
-        kind: 22,
-        identifier: None,
-        created_at: 42,
-        content: "Relay clip".to_owned(),
-        hashtags: Vec::new(),
+pub fn media_client() -> Arc<dyn MediaHttpRequests> {
+    let client = Client::builder()
+        .no_proxy()
+        .build()
+        .expect("local media client");
+    Arc::new(LocalMediaHttpClient(client))
+}
+
+pub fn cache_video(id: impl Into<String>, meta: VideoMeta) -> CacheVideo {
+    CacheVideo {
+        id: id.into(),
+        meta,
+        status: CacheStatus::Ready,
     }
 }

@@ -11,7 +11,9 @@ use nostr_sdk::Event;
 
 #[cfg(test)]
 pub(crate) async fn remember_accepted(cache: &EventCache, sinks: &OutcomeSinks, event: &Event) {
-    cache.remember(std::slice::from_ref(event)).await;
+    cache
+        .remember_for(SessionGeneration::initial(), std::slice::from_ref(event))
+        .await;
     file_lists(sinks, std::slice::from_ref(event)).await;
 }
 

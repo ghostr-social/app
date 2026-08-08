@@ -1,14 +1,13 @@
 mod store_fixture;
 
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
-use store_fixture::temp_root;
+use store_fixture::{plain_store, temp_root};
 use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn partial_range_reads_refuse_spans_that_cross_holes() {
     let root = temp_root("ghostr-partial-holes");
-    let store = PartialRangeStore::new(root.clone(), Arc::new(Mutex::new(0)));
+    let store = plain_store(root.clone(), Arc::new(Mutex::new(0)));
 
     store.write_range("clip", 0, b"aaaa").await.expect("head");
     store.write_range("clip", 8, b"cccc").await.expect("tail");

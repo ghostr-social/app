@@ -1,7 +1,7 @@
 //! An empty explicit/configured target never falls through to the SDK pool.
 
-use crate::test_support::{read_request, TestRelayIo};
 use crate::relay::pool::{RelayPoolConfiguration, RelayPoolOwner};
+use crate::test_support::{read_request, TestRelayIo};
 use nostr_sdk::Client;
 use std::sync::Arc;
 

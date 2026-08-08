@@ -3,8 +3,8 @@
 //! hashtag or profile feed names nobody and leaves the scope alone.
 
 use crate::cache::ViewerScope;
-use crate::feed::spec::FeedSpec;
 use crate::content::social_graph::SocialGraph;
+use crate::feed::spec::FeedSpec;
 use crate::tests::support::{author, AUTHOR_A, AUTHOR_B};
 
 fn scope(spec: &FeedSpec) -> ViewerScope {

@@ -2,9 +2,6 @@ use crate::imeta_extras::{imeta_extras, ImetaExtras};
 use crate::native_models::NativeVideoDelivery;
 use crate::native_text::bounded_native_text;
 use crate::video_link_scan::{is_bounded_http_url, is_video_url, url_delivery};
-use std::collections::HashSet;
-
-const MAX_NATIVE_FALLBACK_URLS: usize = 4;
 
 pub struct NativeMediaMetadata {
     pub delivery: NativeVideoDelivery,
@@ -13,30 +10,6 @@ pub struct NativeMediaMetadata {
     pub fallback_urls: Vec<String>,
     pub title: Option<String>,
     pub url: String,
-}
-
-/// Strict imeta parse used by the event indexer: the mime is mandatory and
-/// the primary URL must stand on its own.
-pub fn native_media(tag: &[String]) -> Option<NativeMediaMetadata> {
-    if tag.first().map(String::as_str) != Some("imeta") {
-        return None;
-    }
-    let mime = imeta_field(tag, "m")?;
-    if mime.len() > 255 || !is_video_mime(mime) {
-        return None;
-    }
-    let url = imeta_field(tag, "url")?;
-    if !is_bounded_http_url(url) {
-        return None;
-    }
-    Some(NativeMediaMetadata {
-        delivery: media_delivery(mime),
-        expected_digest: expected_digest(tag)?,
-        extras: imeta_extras(tag),
-        fallback_urls: fallback_urls(tag, url),
-        title: imeta_field(tag, "title").map(bounded_native_text),
-        url: url.to_owned(),
-    })
 }
 
 /// Lenient discovery imeta parsing: mime is optional when the URL
@@ -98,18 +71,6 @@ pub(crate) fn mime_or_url_delivery(mime: Option<&str>, url: &str) -> NativeVideo
         Some(mime) => media_delivery(mime),
         None => url_delivery(url),
     }
-}
-
-fn fallback_urls(tag: &[String], primary: &str) -> Vec<String> {
-    let mut seen = HashSet::from([primary.to_owned()]);
-    tag.iter()
-        .skip(1)
-        .filter_map(|value| field_value(value, "fallback"))
-        .filter(|url| is_bounded_http_url(url))
-        .filter(|url| seen.insert((*url).to_owned()))
-        .take(MAX_NATIVE_FALLBACK_URLS)
-        .map(str::to_owned)
-        .collect()
 }
 
 fn expected_digest(tag: &[String]) -> Option<Option<String>> {

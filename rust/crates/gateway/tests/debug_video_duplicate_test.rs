@@ -18,11 +18,22 @@ async fn registering_the_same_url_updates_one_focus_item() {
     videos.add(first).expect("first video");
     videos.add(updated).expect("updated video");
 
-    let DeliveryCommand::Candidate(first) = commands.recv().await.expect("first candidate") else {
+    let DeliveryCommand::Candidate(first) = commands
+        .receivers()
+        .0
+        .recv()
+        .await
+        .expect("first candidate")
+    else {
         panic!("expected candidate");
     };
-    let _ = commands.recv().await.expect("first priority");
-    let DeliveryCommand::Candidate(updated) = commands.recv().await.expect("updated candidate")
+    let _ = commands.receivers().0.recv().await.expect("first priority");
+    let DeliveryCommand::Candidate(updated) = commands
+        .receivers()
+        .0
+        .recv()
+        .await
+        .expect("updated candidate")
     else {
         panic!("expected candidate");
     };

@@ -1,10 +1,10 @@
 //! Configured relays receive the eager, responsive registration policy.
 
-use crate::relay::roles::{RelayPoolConfiguration, RelayPoolRoles};
 use crate::relay::registration::{
     RelayRegistration, RelayRegistrationFuture, RelayRegistrationPolicy,
 };
 use crate::relay::removal::RelayRoleIo;
+use crate::relay::roles::{RelayPoolConfiguration, RelayPoolRoles};
 use nostr_sdk::{Client, RelayServiceFlags};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;

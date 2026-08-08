@@ -2,8 +2,8 @@
 //! live — parity: `maxConcurrentRequests` in
 //! lib/features/settings/domain/data_usage_level.dart.
 
-use crate::tests::scheduler_support::{context, next_started, no_start, request, start_scheduler};
 use crate::scheduler::max_concurrent_requests;
+use crate::tests::scheduler_support::{context, next_started, no_start, request, start_scheduler};
 use ghostr_engine::DataUsageLevel;
 
 #[test]

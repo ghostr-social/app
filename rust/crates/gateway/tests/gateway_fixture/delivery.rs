@@ -6,12 +6,12 @@ use super::{media_client, temp_directory};
 use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_delivery::manager::{
-    start_delivery_manager, DeliveryManagerConfig, DeliveryTuning,
+    start_delivery_manager_with_modes, DeliveryManagerConfig, DeliveryTuning,
 };
 use ghostr_delivery::playback_demand::{demand_channel, DemandSender};
 use ghostr_delivery::progressive_posts::ServablePosts;
 use ghostr_engine::{DataUsageLevel, EngineParams};
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
+use ghostr_partial_store::partial_range_store::{capacity::StoreCapacity, PartialRangeStore};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -27,14 +27,15 @@ pub struct DeliveryFixture {
 
 pub fn start_delivery(prefix: &str) -> DeliveryFixture {
     let root = temp_directory(prefix);
-    let store = Arc::new(PartialRangeStore::new(
+    let store = Arc::new(PartialRangeStore::with_capacity(
         root.clone(),
         Arc::new(Mutex::new(0)),
+        StoreCapacity::system(u64::MAX),
     ));
     let cache = ServablePosts::new();
     let network = NetworkThrottle::new();
     let (demand, demand_receiver) = demand_channel();
-    let handle = start_delivery_manager(
+    let (handle, _modes) = start_delivery_manager_with_modes(
         DeliveryManagerConfig {
             store: store.clone(),
             client: media_client(),

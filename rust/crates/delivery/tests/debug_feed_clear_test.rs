@@ -26,10 +26,11 @@ async fn cleared_events_stay_hidden_while_new_discovery_keeps_flowing() {
     let (delivery, mut commands) = command_channel();
     let feed = DebugFeed::new(delivery, Vec::new());
     feed.publish(1, DebugFeedStage::Settled, vec![item("old")]);
-    commands.recv().await.expect("initial focus");
+    commands.receivers().0.recv().await.expect("initial focus");
 
     feed.clear();
-    let DeliveryCommand::Focus(cleared) = commands.recv().await.expect("clear focus") else {
+    let DeliveryCommand::Focus(cleared) = commands.receivers().0.recv().await.expect("clear focus")
+    else {
         panic!("expected focus");
     };
     assert!(cleared.items.is_empty());

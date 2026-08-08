@@ -7,10 +7,10 @@
 mod feed_support;
 
 use feed_support::{addressable_video, parsed, parsed_posts, video_note};
-use nostr_sdk::Keys;
+use ghostr_discovery::content::social_graph::SocialGraph;
 use ghostr_discovery::feed::spec::FeedSpec;
 use ghostr_discovery::feed::store::{FeedId, FeedStore};
-use ghostr_discovery::content::social_graph::SocialGraph;
+use nostr_sdk::Keys;
 
 fn open_main(store: &mut FeedStore, viewer: &Keys) -> FeedId {
     store.open_feed(FeedSpec::MainFeed {
@@ -37,7 +37,7 @@ fn feed_store_appends_older_posts_below_the_current_list() {
         parsed_posts(&[video_note(&keys, "first", 50)]),
         &graph,
     );
-    store.begin_load_more(feed);
+    store.begin_load_more_at(feed, None);
 
     store.ingest_older_page(
         feed,
@@ -63,7 +63,7 @@ fn feed_store_skips_posts_already_present_by_same_video_identity() {
     let seen = video_note(&keys, "seen", 50);
     let revision = addressable_video(&keys, "vid-1", "cut-one", 45);
     store.ingest_first_page(feed, parsed_posts(&[seen.clone(), revision]), &graph);
-    store.begin_load_more(feed);
+    store.begin_load_more_at(feed, None);
 
     // The same note again plus another revision of the same addressable
     // video: both resolve to identities already on screen.

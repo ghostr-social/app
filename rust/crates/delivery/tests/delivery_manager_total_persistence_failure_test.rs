@@ -5,6 +5,7 @@ use delivery_fixture::media::{hit_log, hits, media_body, serve_recording, HitLog
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness_with_store;
 use delivery_fixture::temp_directory;
+use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
 use std::time::Duration;
@@ -16,9 +17,10 @@ async fn unpersistable_total_length_does_not_stop_delivery_reconciliation() {
     std::fs::create_dir(&parent).expect("create test directory");
     let blocked_root = parent.join("blocked");
     std::fs::create_dir(&blocked_root).expect("create store root");
-    let store = Arc::new(PartialRangeStore::new(
+    let store = Arc::new(PartialRangeStore::with_capacity(
         blocked_root.clone(),
         Arc::new(Mutex::new(0)),
+        StoreCapacity::system(u64::MAX),
     ));
     assert_eq!(store.total_len("aa11").await.expect("prime entry"), None);
     std::fs::remove_dir(&blocked_root).expect("remove store root");

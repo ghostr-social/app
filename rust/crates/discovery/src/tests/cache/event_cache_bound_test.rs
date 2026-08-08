@@ -5,6 +5,7 @@
 //! is the very defect this pool exists to fix.
 
 use crate::cache::session_event_database;
+use crate::session_generation::SessionGeneration;
 use crate::tests::event_cache_support::{bounded_cache, note, notes, timestamps};
 use nostr_sdk::prelude::*;
 
@@ -14,7 +15,10 @@ async fn the_pool_never_grows_past_its_bound() {
     let fetched: Vec<_> = (1..=6).map(|step| note(step * 100)).collect();
 
     cache.union(&notes(), fetched).await;
-    let stored = cache.stored(&notes()).await;
+    let stored = cache
+        .stored_for(SessionGeneration::initial(), &notes())
+        .await
+        .expect("current session");
 
     assert_eq!(
         timestamps(&stored),

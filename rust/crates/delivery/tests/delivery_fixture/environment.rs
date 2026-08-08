@@ -1,0 +1,33 @@
+//! Test-only HTTP and filesystem environment for delivery fixtures.
+
+use ghostr_net::outbound_media_client::MediaHttpRequests;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+pub struct LocalMediaClient(reqwest::Client);
+
+impl MediaHttpRequests for LocalMediaClient {
+    fn get(&self, url: &str) -> anyhow::Result<reqwest::RequestBuilder> {
+        Ok(self.0.get(url))
+    }
+}
+
+pub fn media_client() -> LocalMediaClient {
+    let client = reqwest::Client::builder()
+        .no_proxy()
+        .build()
+        .expect("local media client");
+    LocalMediaClient(client)
+}
+
+pub fn temp_directory(prefix: &str) -> PathBuf {
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock")
+        .as_nanos();
+    let sequence = NEXT.fetch_add(1, Ordering::Relaxed);
+    let process = std::process::id();
+    std::env::temp_dir().join(format!("{prefix}-{nonce}-{process}-{sequence}"))
+}

@@ -10,9 +10,8 @@ use ghostr_delivery::playback_demand::demand_channel;
 use ghostr_discovery::cache::client_with_event_cache;
 use ghostr_engine::{DeliveryKind, VideoMeta};
 use ghostr_gateway::hls::sessions::HlsSessions;
-use ghostr_gateway::router::configured_router_with_progressive_debug;
 use ghostr_gateway::progressive::route::ProgressiveState;
-use ghostr_media_model::native_models::new_native_downloads;
+use ghostr_gateway::router::configured_router_with_progressive_debug;
 use std::sync::Arc;
 use tower::ServiceExt;
 
@@ -39,7 +38,7 @@ async fn browser_selection_updates_the_native_delivery_focus() {
     let (delivery, mut commands) = command_channel();
     let feed = DebugFeed::new(delivery.clone(), vec!["wss://relay.example".to_owned()]);
     feed.publish(1, DebugFeedStage::Settled, vec![item("a"), item("b")]);
-    commands.recv().await.expect("initial focus");
+    commands.receivers().0.recv().await.expect("initial focus");
     let (demand, _) = demand_channel();
     let state = Arc::new(ProgressiveState {
         store: harness.store,
@@ -50,7 +49,6 @@ async fn browser_selection_updates_the_native_delivery_focus() {
         debug_feed: feed,
     });
     let router = configured_router_with_progressive_debug(
-        new_native_downloads(),
         HlsSessions::production(),
         gateway_fixture::media_client(),
         state,
@@ -63,7 +61,9 @@ async fn browser_selection_updates_the_native_delivery_focus() {
         .expect("request");
 
     let response = router.oneshot(request).await.expect("response");
-    let DeliveryCommand::Focus(focus) = commands.recv().await.expect("selected focus") else {
+    let DeliveryCommand::Focus(focus) =
+        commands.receivers().0.recv().await.expect("selected focus")
+    else {
         panic!("expected focus");
     };
 

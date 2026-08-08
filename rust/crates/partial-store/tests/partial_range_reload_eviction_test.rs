@@ -26,11 +26,6 @@ async fn partial_range_reloaded_content_is_evictable() {
 
     restarted.space.set(600);
     assert_eq!(
-        restarted.store.effective_capacity().await,
-        0,
-        "free space has fallen under the reserve"
-    );
-    assert_eq!(
         restarted.store.enforce_capacity().await,
         400,
         "the reloaded video is given back without ever being read"

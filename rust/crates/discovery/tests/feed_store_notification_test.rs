@@ -7,10 +7,10 @@
 mod feed_support;
 
 use feed_support::{parsed, parsed_posts, video_note};
-use nostr_sdk::Keys;
+use ghostr_discovery::content::social_graph::SocialGraph;
 use ghostr_discovery::feed::spec::FeedSpec;
 use ghostr_discovery::feed::store::FeedStore;
-use ghostr_discovery::content::social_graph::SocialGraph;
+use nostr_sdk::Keys;
 
 #[test]
 fn feed_store_notifies_subscribers_on_a_fresh_load() {
@@ -41,7 +41,7 @@ fn feed_store_stays_silent_when_an_older_page_adds_nothing() {
     let mut updates = store.subscribe(feed).expect("open feed subscribes");
     updates.borrow_and_update();
 
-    store.begin_load_more(feed);
+    store.begin_load_more_at(feed, None);
     store.ingest_older_page(feed, vec![parsed(&seen)], &graph);
 
     assert!(!updates.has_changed().expect("feed still open"));
@@ -59,7 +59,7 @@ fn feed_store_notifies_when_an_older_page_extends_the_feed() {
     let mut updates = store.subscribe(feed).expect("open feed subscribes");
     updates.borrow_and_update();
 
-    store.begin_load_more(feed);
+    store.begin_load_more_at(feed, None);
     store.ingest_older_page(feed, parsed_posts(&[video_note(&keys, "b", 40)]), &graph);
 
     assert!(updates.has_changed().expect("feed still open"));

@@ -15,14 +15,6 @@ pub enum Completion {
     Unverified,
 }
 
-impl Completion {
-    /// True only for bytes that were hashed and matched. Callers that
-    /// need integrity must ask this instead of assuming completeness.
-    pub fn is_verified(self) -> bool {
-        matches!(self, Self::Verified)
-    }
-}
-
 /// Decides a byte-complete file's fate. Plan §8 keeps mismatched bytes
 /// out of the cache, but most Nostr video notes advertise no `imeta x`
 /// at all: those files are kept as [`Completion::Unverified`] instead

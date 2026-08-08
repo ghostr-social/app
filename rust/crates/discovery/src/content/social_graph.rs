@@ -66,11 +66,6 @@ impl SocialGraph {
             .fold(false, |changed, event| self.ingest(event) | changed)
     }
 
-    /// Pubkeys the session follows (p tags of the newest kind-3).
-    pub fn follows(&self) -> &HashSet<PublicKey> {
-        &self.follows.pubkeys
-    }
-
     /// The follow set in a stable order, for routing and for the relay
     /// lists the outbox bootstrap chases.
     pub fn follow_list(&self) -> Vec<PublicKey> {
@@ -82,12 +77,6 @@ impl SocialGraph {
     /// Whether posts by this creator are muted.
     pub fn is_muted(&self, author: &PublicKey) -> bool {
         self.mutes.pubkeys.contains(author)
-    }
-
-    /// Whether the mute list hides this event: mutes filter by the
-    /// event's author, matching `VideoFeedPolicy.select`.
-    pub fn filters_event(&self, event: &Event) -> bool {
-        self.is_muted(&event.pubkey)
     }
 }
 

@@ -9,11 +9,6 @@ async fn partial_range_capacity_never_consumes_the_free_space_reserve() {
     let fixture = spaced_store("ghostr-cap-reserve", limits(u64::MAX, 1_000), 1_000);
     let store = &fixture.store;
 
-    assert_eq!(
-        store.effective_capacity().await,
-        0,
-        "only the reserve is left"
-    );
     let refused = store
         .write_range("clip", 0, &[9; 1])
         .await

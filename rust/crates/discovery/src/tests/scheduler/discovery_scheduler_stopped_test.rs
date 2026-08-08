@@ -1,6 +1,8 @@
 //! A handle whose owning runtime ended reports a stopped scheduler.
 
-use crate::tests::scheduler_support::{context, next_outcome, next_started, request, start_scheduler};
+use crate::tests::scheduler_support::{
+    context, next_outcome, next_started, request, start_scheduler,
+};
 use crate::tests::scripted_scheduler_support::scripted_scheduler;
 use ghostr_engine::DataUsageLevel;
 use std::time::Duration;

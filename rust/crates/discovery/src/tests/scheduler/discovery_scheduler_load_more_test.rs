@@ -2,8 +2,8 @@
 //! over the tracked one, and without any cursor nothing is issued
 //! (plan §2 `ffi_load_more`).
 
-use crate::tests::scheduler_support::{context, next_started, no_start, request, start_scheduler};
 use crate::retrieval_types::RetrievalPriority;
+use crate::tests::scheduler_support::{context, next_started, no_start, request, start_scheduler};
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::Timestamp;
 

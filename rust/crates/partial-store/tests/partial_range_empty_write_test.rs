@@ -1,14 +1,13 @@
 mod store_fixture;
 
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
-use store_fixture::temp_root;
+use store_fixture::{plain_store, temp_root};
 use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn empty_partial_write_changes_nothing() {
     let root = temp_root("ghostr-empty-range-write");
-    let store = PartialRangeStore::new(root.clone(), Arc::new(Mutex::new(0)));
+    let store = plain_store(root.clone(), Arc::new(Mutex::new(0)));
 
     store
         .write_range("clip", 4, &[])

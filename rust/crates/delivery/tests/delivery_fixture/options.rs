@@ -1,7 +1,7 @@
 //! Delivery-manager settings scaled for deterministic fixture servers.
 
-use ghostr_delivery::manager::DeliveryTuning;
 use ghostr_delivery::manager::retry::RetryPolicy;
+use ghostr_delivery::manager::DeliveryTuning;
 use ghostr_engine::{DataUsageLevel, EngineParams};
 use std::time::Duration;
 

@@ -17,10 +17,6 @@ pub struct FeedContext {
 }
 
 impl FeedContext {
-    pub fn new(value: impl Into<String>) -> Self {
-        Self::for_session(value, SessionGeneration::initial())
-    }
-
     pub fn for_session(value: impl Into<String>, session: SessionGeneration) -> Self {
         Self {
             value: value.into(),

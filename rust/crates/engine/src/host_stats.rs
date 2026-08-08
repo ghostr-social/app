@@ -81,11 +81,6 @@ impl HostStats {
             .unwrap_or(OPTIMISTIC_THROUGHPUT_BPS)
     }
 
-    /// Expected time-to-first-byte; `None` until one is observed.
-    pub fn expected_ttfb_ms(&self, host: &str) -> Option<f64> {
-        self.lookup(host).and_then(|record| record.ttfb_ms.value)
-    }
-
     /// Share of recent attempts that failed, in `[0, 1]`; `0` unknown.
     pub fn failure_ratio(&self, host: &str) -> f64 {
         self.lookup(host)

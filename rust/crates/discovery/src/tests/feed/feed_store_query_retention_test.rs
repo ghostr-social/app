@@ -1,9 +1,9 @@
 //! Search and hashtag snapshots preserve every discovered row so native
 //! pagination can expose history beyond the canonical-feed retention window.
 
+use crate::content::social_graph::SocialGraph;
 use crate::feed::spec::FeedSpec;
 use crate::feed::store::{FeedStore, FEED_POST_RETENTION};
-use crate::content::social_graph::SocialGraph;
 use crate::tests::feed_store_support::page;
 use nostr_sdk::Keys;
 
@@ -22,7 +22,7 @@ fn query_feeds_keep_rows_beyond_the_canonical_retention_window() {
         store.ingest_first_page(feed, query_page(NEWEST), &graph);
 
         for index in 1..=FEED_POST_RETENTION as u64 / PAGE {
-            store.begin_load_more(feed);
+            store.begin_load_more_at(feed, None);
             store.ingest_older_page(feed, query_page(NEWEST - index * PAGE), &graph);
         }
 

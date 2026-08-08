@@ -5,6 +5,7 @@ use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::query::video_filters::DiscoveryRequest;
 use crate::retrieval_types::{FeedContext, PlanFailure, RetrievalOutcome};
 use crate::scheduler::{start_discovery_scheduler, DiscoveryHandle, DiscoverySchedulerConfig};
+use crate::session_generation::SessionGeneration;
 use ghostr_engine::inventory_controller::Mode;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, Timestamp};
@@ -73,7 +74,7 @@ pub(crate) fn start_scheduler(level: DataUsageLevel, events: Vec<Event>) -> Sche
 }
 
 pub(crate) fn context(name: &str) -> FeedContext {
-    FeedContext::new(name)
+    FeedContext::for_session(name, SessionGeneration::initial())
 }
 
 pub(crate) fn request() -> DiscoveryRequest {

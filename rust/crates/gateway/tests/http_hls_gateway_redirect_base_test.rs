@@ -3,9 +3,8 @@ mod gateway_fixture;
 use axum::body::{to_bytes, Body};
 use axum::http::Request;
 use gateway_fixture::media_client;
+use gateway_fixture::progressive_hls::router_with_hls;
 use ghostr_gateway::hls::sessions::{HlsResourceId, HlsSessions};
-use ghostr_gateway::router::configured_router_with_hls_client;
-use ghostr_media_model::native_models::new_native_downloads;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tower::ServiceExt;
@@ -20,8 +19,7 @@ async fn resolves_relative_resources_against_the_final_redirect_url() {
         .acquire(vec![format!("http://{address}/start.m3u8")])
         .await
         .expect("session");
-    let app =
-        configured_router_with_hls_client(new_native_downloads(), sessions.clone(), media_client());
+    let app = router_with_hls(sessions.clone(), media_client());
 
     let request = Request::builder()
         .uri(format!("/hls/{}/index.m3u8", id.as_str()))

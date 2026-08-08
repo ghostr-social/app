@@ -15,11 +15,10 @@ fn unknown_host_gets_the_optimistic_throughput() {
 }
 
 #[test]
-fn unknown_host_has_no_failures_and_no_ttfb() {
+fn unknown_host_has_no_failures() {
     let stats = HostStats::new();
 
     assert_close(stats.failure_ratio(HOST), 0.0);
-    assert_eq!(stats.expected_ttfb_ms(HOST), None);
 }
 
 #[test]

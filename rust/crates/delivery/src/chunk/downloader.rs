@@ -12,7 +12,7 @@ use crate::debug::network::NetworkThrottle;
 use anyhow::{ensure, Context, Result};
 use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_engine::ByteRange;
-use ghostr_net::outbound_media_client::MediaHttpClient;
+use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use reqwest::header::RANGE;
@@ -22,7 +22,7 @@ use tokio::time::Instant;
 
 /// One granted transfer: which range of which URL to fetch.
 pub struct ChunkSpec<'a> {
-    pub client: &'a MediaHttpClient,
+    pub client: &'a dyn MediaHttpRequests,
     pub url: &'a str,
     pub range: ByteRange,
     pub timeouts: TransferTimeouts,
@@ -51,16 +51,7 @@ pub struct ChunkResult {
 /// the engine reclassifies the video as all-or-nothing. Completed and
 /// cancelled transfers record host throughput and success; failures
 /// record a host failure. Cancelled transfers keep persisted bytes.
-pub async fn download_chunk(
-    spec: &ChunkSpec<'_>,
-    sink: &ChunkSink<'_>,
-    stats: &mut HostStats,
-    cancel: &CancelToken,
-) -> Result<ChunkResult> {
-    run_download(spec, sink, stats, cancel, None).await
-}
-
-pub(crate) async fn download_chunk_throttled(
+pub async fn download_chunk_throttled(
     spec: &ChunkSpec<'_>,
     sink: &ChunkSink<'_>,
     stats: &mut HostStats,

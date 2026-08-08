@@ -1,7 +1,7 @@
 //! A transient SDK removal failure leaves role cleanup retryable.
 
-use crate::relay::roles::{RelayPoolConfiguration, RelayPoolRoles, RelayRole};
 use crate::relay::removal::{RelayRemoval, RelayRemovalFuture, RelayRoleIo};
+use crate::relay::roles::{RelayPoolConfiguration, RelayPoolRoles, RelayRole};
 use nostr_sdk::Client;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;

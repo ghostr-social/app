@@ -3,10 +3,9 @@ mod gateway_fixture;
 use axum::body::{to_bytes, Body};
 use axum::http::Request;
 use gateway_fixture::media_client;
+use gateway_fixture::progressive_hls::router_with_hls;
 use gateway_fixture::raw_http::spawn_response_sequence;
 use ghostr_gateway::hls::sessions::HlsSessions;
-use ghostr_gateway::router::configured_router_with_hls_client;
-use ghostr_media_model::native_models::new_native_downloads;
 use tower::ServiceExt;
 
 #[tokio::test]
@@ -17,7 +16,7 @@ async fn proxies_nested_manifests_keys_maps_and_segments() {
     let (origin, requests) = spawn_response_sequence(vec![root, nested, asset]).await;
     let sessions = HlsSessions::production();
     let id = sessions.acquire(vec![origin]).await.expect("session");
-    let app = configured_router_with_hls_client(new_native_downloads(), sessions, media_client());
+    let app = router_with_hls(sessions, media_client());
 
     let root_body = response_text(&app, &format!("/hls/{}/index.m3u8", id.as_str())).await;
     let nested_path = root_body

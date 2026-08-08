@@ -4,9 +4,9 @@
 //! the tail the viewer already scrolled past is dropped, and trimming
 //! it never rewinds pagination.
 
+use crate::content::social_graph::SocialGraph;
 use crate::feed::spec::FeedSpec;
 use crate::feed::store::{FeedId, FeedStore, FEED_POST_RETENTION};
-use crate::content::social_graph::SocialGraph;
 use crate::tests::feed_store_support::page;
 use nostr_sdk::{Keys, Timestamp};
 
@@ -23,7 +23,7 @@ fn overfilled_feed() -> (FeedStore, FeedId, SocialGraph) {
     let pages = FEED_POST_RETENTION as u64 / PAGE + 1;
     for index in 1..pages {
         let newest = NEWEST - index * PAGE;
-        store.begin_load_more(feed);
+        store.begin_load_more_at(feed, None);
         store.ingest_older_page(feed, page(newest, PAGE), &graph);
     }
     (store, feed, graph)
@@ -47,7 +47,7 @@ fn trimming_the_tail_leaves_pagination_where_the_last_page_ended() {
     let fetched_pages = FEED_POST_RETENTION as u64 / PAGE + 1;
     let oldest_fetched = NEWEST + 1 - fetched_pages * PAGE;
     assert_eq!(
-        store.begin_load_more(feed),
+        store.begin_load_more_at(feed, None),
         Some(Timestamp::from(oldest_fetched - 1)),
         "the cursor follows what was fetched, not what was kept"
     );

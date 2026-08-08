@@ -9,6 +9,7 @@ use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness_at;
 use delivery_fixture::temp_directory;
 use delivery_fixture::wait::wait_for_ranges;
+use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -16,7 +17,11 @@ use tokio::sync::Mutex;
 #[tokio::test]
 async fn delivery_manager_resumes_from_the_persisted_manifest() {
     let root = temp_directory("ghostr-delivery-restart");
-    let earlier = PartialRangeStore::new(root.clone(), Arc::new(Mutex::new(0)));
+    let earlier = PartialRangeStore::with_capacity(
+        root.clone(),
+        Arc::new(Mutex::new(0)),
+        StoreCapacity::system(u64::MAX),
+    );
     earlier
         .write_range("aa11", 0, &media_body()[..8])
         .await

@@ -1,9 +1,9 @@
 //! A generic query started before reset resolves as stale, not as data.
 
 use crate::cache::client_with_event_cache;
-use crate::query::events::plan_event_queries;
-use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
 use crate::execution::relay_executor::RelayPlanExecutor;
+use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
+use crate::query::events::plan_event_queries;
 use crate::retrieval_types::{FeedContext, RetrievalPriority};
 use crate::session_generation::SessionGeneration;
 use crate::tests::outbox_support::empty_directory;

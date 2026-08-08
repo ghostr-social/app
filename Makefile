@@ -18,6 +18,9 @@ FLAGS ?=
 WEB_DEBUG_CACHE_DIR ?= $(CURDIR)/rust/target/video-debug-cache
 WEB_DEBUG_RUST_DIR ?= $(CURDIR)/rust
 WEB_DEBUG_STATE_DIR ?= $(CURDIR)/rust/target/video-debug-web
+HAWK_REPOSITORY := https://github.com/gu1p/hawk
+HAWK_REVISION := 98efa9f7590d12672ece0527e4a908788792a997
+HAWK_REVISION_SHORT := 98efa9f
 
 .PHONY: test-coverage coverage-summary native-check native-test native-coverage web \
 	native-dead-code-install native-dead-code \
@@ -43,13 +46,13 @@ native-dead-code-install: ## Install the Rust toolchain and Hawk dead-code analy
 	@if ! rustup component list --toolchain 1.97.1 --installed 2>/dev/null | grep -q '^rustc-dev-'; then \
 		rustup toolchain install 1.97.1 --component rustc-dev; \
 	fi
-	@if ! command -v cargo-hawk >/dev/null 2>&1; then \
-		curl --proto '=https' --tlsv1.2 -LsSf \
-			https://github.com/astral-sh/hawk/releases/latest/download/cargo-hawk-installer.sh | sh; \
+	@if ! cargo +1.97.1 install --list 2>/dev/null | grep -q '$(HAWK_REVISION_SHORT)'; then \
+		RUSTC_BOOTSTRAP=1 cargo +1.97.1 install --locked --force \
+			--git "$(HAWK_REPOSITORY)" --rev "$(HAWK_REVISION)" cargo-hawk; \
 	fi
 
-native-dead-code: native-dead-code-install ## Find Rust code unused by production targets.
-	cd rust && cargo +1.97.1 hawk check
+native-dead-code: native-dead-code-install ## Find Rust declarations reachable only from tests.
+	cd rust && cargo +1.97.1 hawk check --only test-only -D hawk::test_only
 
 native-test: web-contract-test ## Run Rust tests.
 	cd rust && cargo test --no-default-features --test debug_web_exclusion_test

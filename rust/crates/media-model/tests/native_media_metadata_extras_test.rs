@@ -1,4 +1,4 @@
-use ghostr_media_model::native_media_metadata::native_media;
+use ghostr_media_model::native_media_metadata::lenient_native_media;
 
 fn imeta(fields: &[&str]) -> Vec<String> {
     let mut tag = vec!["imeta".to_owned()];
@@ -12,7 +12,7 @@ fn base(extra: &str) -> Vec<String> {
 
 #[test]
 fn native_media_metadata_parses_the_free_imeta_planning_extras() {
-    let media = native_media(&imeta(&[
+    let media = lenient_native_media(&imeta(&[
         "url https://cdn.example/clip.mp4",
         "m video/mp4",
         "size 2048",
@@ -48,7 +48,7 @@ fn native_media_metadata_converts_imeta_duration_seconds_to_milliseconds() {
         ("duration  7 ", 7_000),
     ];
     for (field, expected) in cases {
-        let media = native_media(&base(field)).expect(field);
+        let media = lenient_native_media(&base(field)).expect(field);
         assert_eq!(media.extras.duration_ms, Some(expected), "{field}");
     }
 }
@@ -56,6 +56,6 @@ fn native_media_metadata_converts_imeta_duration_seconds_to_milliseconds() {
 #[test]
 fn native_media_metadata_reads_imeta_size_as_bytes() {
     // lib/core/media/video_media_metadata.dart: `size` is bytes, > 0.
-    let media = native_media(&base("size 123456789")).expect("media");
+    let media = lenient_native_media(&base("size 123456789")).expect("media");
     assert_eq!(media.extras.size_bytes, Some(123_456_789));
 }

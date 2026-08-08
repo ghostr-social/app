@@ -70,7 +70,7 @@ fn native_media_metadata_rejects_an_imeta_with_no_usable_url() {
 }
 
 #[test]
-fn native_media_metadata_keeps_media_whose_urls_are_only_fallbacks() {
+fn native_media_metadata_uses_a_fallback_when_the_primary_is_unusable() {
     // Primary and fallback URLs form one ordered set, so a broken primary
     // still leaves the fallbacks playable.
     let media = lenient_native_media(&imeta(&[

@@ -1,7 +1,7 @@
-use crate::tests::profile_enrichment_support::{executor, has_kind, ProfileIo};
-use crate::query::events::plan_event_queries;
 use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
+use crate::query::events::plan_event_queries;
 use crate::retrieval_types::{FeedContext, RetrievalPriority};
+use crate::tests::profile_enrichment_support::{executor, has_kind, ProfileIo};
 use nostr_sdk::{EventBuilder, Filter, Keys, Kind};
 
 #[tokio::test]
@@ -15,7 +15,10 @@ async fn generic_reads_do_not_wait_for_creator_metadata() {
         .expect("profile");
     let io = ProfileIo::new(Kind::Reaction, reaction.clone(), profile);
     let retrieval = PlannedRetrieval {
-        context: FeedContext::new("query"),
+        context: FeedContext::for_session(
+            "query",
+            crate::session_generation::SessionGeneration::initial(),
+        ),
         priority: RetrievalPriority::Enrichment,
         plan: plan_event_queries(vec![Filter::new().kind(Kind::Reaction)]),
     };

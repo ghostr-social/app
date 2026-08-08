@@ -3,5 +3,4 @@
 //! how many probes run at once.
 
 pub mod media;
-pub mod mp4_moov;
 pub(crate) mod pool;

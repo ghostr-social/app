@@ -4,6 +4,7 @@ use crate::api::delivery_types::{FfiFocusItem, FfiMediaDelivery};
 use crate::discovery::content::parsing::ParsedVideoPost;
 use crate::discovery::content::profiles::CreatorProfile;
 use crate::engine::{DeliveryKind, VideoMeta};
+use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -72,5 +73,9 @@ pub(crate) fn temp_store(prefix: &str) -> Arc<PartialRangeStore> {
         .expect("system clock")
         .as_nanos();
     let root = std::env::temp_dir().join(format!("{prefix}-{nonce}"));
-    Arc::new(PartialRangeStore::new(root, Arc::new(Mutex::new(0))))
+    Arc::new(PartialRangeStore::with_capacity(
+        root,
+        Arc::new(Mutex::new(0)),
+        StoreCapacity::system(u64::MAX),
+    ))
 }

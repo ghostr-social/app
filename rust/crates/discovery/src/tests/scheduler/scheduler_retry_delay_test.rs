@@ -1,5 +1,5 @@
-use crate::tests::scheduler_support::context;
 use crate::scheduler::retry::retry_delay;
+use crate::tests::scheduler_support::context;
 use std::time::Duration;
 
 #[test]

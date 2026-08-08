@@ -1,5 +1,5 @@
-use crate::tests::scheduler_support::note_at;
 use crate::relay::io::drain_events_until;
+use crate::tests::scheduler_support::note_at;
 use std::time::Duration;
 use tokio_stream::StreamExt;
 

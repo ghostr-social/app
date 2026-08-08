@@ -3,10 +3,9 @@ mod gateway_fixture;
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
 use gateway_fixture::media_client;
+use gateway_fixture::progressive_hls::router_with_hls;
 use gateway_fixture::raw_http::spawn_raw_server;
 use ghostr_gateway::hls::sessions::{HlsSessionLimits, HlsSessions};
-use ghostr_gateway::router::configured_router_with_hls_client;
-use ghostr_media_model::native_models::new_native_downloads;
 use std::time::Duration;
 use tower::ServiceExt;
 
@@ -19,8 +18,7 @@ Content-Length: 72\r\nConnection: close\r\n\r\n\
     let (origin, request) = spawn_raw_server(response).await;
     let sessions = sessions();
     let id = sessions.acquire(vec![origin]).await.expect("session");
-    let router =
-        configured_router_with_hls_client(new_native_downloads(), sessions, media_client());
+    let router = router_with_hls(sessions, media_client());
 
     let response = router
         .oneshot(request_for(&format!("/hls/{}/index.m3u8", id.as_str())))

@@ -55,8 +55,7 @@ impl EventCache {
     /// nothing, so a cold query behaves exactly as it did before.
     #[cfg(test)]
     pub(crate) async fn union(&self, filter: &Filter, fetched: Vec<Event>) -> Vec<Event> {
-        let session = self.generation().await;
-        self.union_for(session, filter, fetched)
+        self.union_for(SessionGeneration::initial(), filter, fetched)
             .await
             .unwrap_or_default()
     }
@@ -78,16 +77,7 @@ impl EventCache {
         Some(merged(fetched, stored))
     }
 
-    /// Everything stored for one filter, newest first, capped by that
-    /// filter's own `limit` exactly as a relay caps its own answer.
-    pub async fn stored(&self, filter: &Filter) -> Vec<Event> {
-        let generation = self.generation().await;
-        self.stored_for(generation, filter)
-            .await
-            .unwrap_or_default()
-    }
-
-    pub(crate) async fn stored_for(
+    pub async fn stored_for(
         &self,
         generation: SessionGeneration,
         filter: &Filter,
@@ -109,13 +99,6 @@ impl EventCache {
                 Vec::new()
             }
         }
-    }
-
-    /// Files an answer in the pool. Rejections (duplicate, replaced,
-    /// ephemeral) are ordinary results, not errors.
-    pub async fn remember(&self, events: &[Event]) {
-        let generation = self.generation().await;
-        self.remember_for(generation, events).await;
     }
 
     pub async fn remember_for(&self, generation: SessionGeneration, events: &[Event]) -> bool {
@@ -142,8 +125,9 @@ impl EventCache {
     /// must not answer from the previous viewer's rows.
     #[cfg(test)]
     pub(crate) async fn adopt(&self, viewer: ViewerScope) -> bool {
-        let generation = self.generation().await;
-        self.adopt_for(generation, viewer).await.unwrap_or(false)
+        self.adopt_for(SessionGeneration::initial(), viewer)
+            .await
+            .unwrap_or(false)
     }
 
     pub(crate) async fn adopt_for(
@@ -170,10 +154,6 @@ impl EventCache {
 
     pub(crate) async fn is_current(&self, generation: SessionGeneration) -> bool {
         self.session.lock().await.matches(generation)
-    }
-
-    async fn generation(&self) -> SessionGeneration {
-        self.session.lock().await.generation()
     }
 
     async fn wipe(&self) {

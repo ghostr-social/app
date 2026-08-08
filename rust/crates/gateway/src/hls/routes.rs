@@ -61,7 +61,7 @@ pub(crate) async fn asset(
         .await
         .filter(|item| item.kind == HlsResourceKind::Asset)
         .ok_or(StatusCode::NOT_FOUND)?;
-    let upstream = upstream_request(&state.client, resource.url.to_string(), &headers)?
+    let upstream = upstream_request(state.client.as_ref(), resource.url.to_string(), &headers)?
         .send()
         .await
         .map_err(|_| StatusCode::BAD_GATEWAY)?;

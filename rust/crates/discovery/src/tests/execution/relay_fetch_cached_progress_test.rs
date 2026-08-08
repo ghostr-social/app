@@ -1,10 +1,10 @@
-use crate::test_support::TestRelayIo;
-use crate::tests::scheduler_support::note_at;
 use crate::cache::EventCache;
-use crate::query::events::plan_event_queries;
 use crate::execution::fetch::{fetch, RelayFetch};
+use crate::query::events::plan_event_queries;
 use crate::relay::pool::{RelayPoolConfiguration, RelayPoolOwner};
 use crate::session_generation::SessionGeneration;
+use crate::test_support::TestRelayIo;
+use crate::tests::scheduler_support::note_at;
 use nostr_sdk::{Client, Filter, Kind};
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -23,7 +23,9 @@ async fn cached_matches_arrive_before_the_network_finishes() {
     let query = plan_event_queries(vec![filter]).queries.remove(0);
     let event = note_at(40);
     let cache = Arc::new(EventCache::session());
-    cache.remember(std::slice::from_ref(&event)).await;
+    cache
+        .remember_for(session, std::slice::from_ref(&event))
+        .await;
     let (progress, mut updates) = mpsc::channel(1);
 
     let fetching = tokio::spawn(fetch(RelayFetch {

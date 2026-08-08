@@ -10,15 +10,12 @@ mod feed_support;
 
 use discovery_support::{mute_list, p_tag};
 use feed_support::{parsed_posts, video_note};
-use nostr_sdk::{Keys, Timestamp};
+use ghostr_discovery::content::social_graph::SocialGraph;
 use ghostr_discovery::feed::spec::FeedSpec;
 use ghostr_discovery::feed::store::FeedStore;
-use ghostr_discovery::content::social_graph::SocialGraph;
+use nostr_sdk::{Keys, Timestamp};
 
-fn main_feed(
-    store: &mut FeedStore,
-    viewer: &Keys,
-) -> ghostr_discovery::feed::store::FeedId {
+fn main_feed(store: &mut FeedStore, viewer: &Keys) -> ghostr_discovery::feed::store::FeedId {
     store.open_feed(FeedSpec::MainFeed {
         viewer: Some(viewer.public_key()),
     })
@@ -39,7 +36,10 @@ fn feed_store_rebases_the_cursor_below_the_oldest_visible_post() {
     ]);
     store.ingest_first_page(feed, fetched, &graph);
 
-    assert_eq!(store.begin_load_more(feed), Some(Timestamp::from(99)));
+    assert_eq!(
+        store.begin_load_more_at(feed, None),
+        Some(Timestamp::from(99))
+    );
 }
 
 #[test]
@@ -50,10 +50,16 @@ fn feed_store_allows_one_older_request_in_flight() {
     let feed = main_feed(&mut store, &session);
     store.ingest_first_page(feed, parsed_posts(&[video_note(&session, "a", 50)]), &graph);
 
-    assert_eq!(store.begin_load_more(feed), Some(Timestamp::from(49)));
-    assert_eq!(store.begin_load_more(feed), None);
+    assert_eq!(
+        store.begin_load_more_at(feed, None),
+        Some(Timestamp::from(49))
+    );
+    assert_eq!(store.begin_load_more_at(feed, None), None);
     store.fail_load_more(feed);
-    assert_eq!(store.begin_load_more(feed), Some(Timestamp::from(49)));
+    assert_eq!(
+        store.begin_load_more_at(feed, None),
+        Some(Timestamp::from(49))
+    );
 }
 
 #[test]
@@ -63,10 +69,13 @@ fn feed_store_advances_the_cursor_by_the_fetched_page() {
     let mut store = FeedStore::new();
     let feed = main_feed(&mut store, &session);
     store.ingest_first_page(feed, parsed_posts(&[video_note(&session, "a", 50)]), &graph);
-    store.begin_load_more(feed);
+    store.begin_load_more_at(feed, None);
 
     let older = parsed_posts(&[video_note(&session, "b", 40), video_note(&session, "c", 30)]);
     store.ingest_older_page(feed, older, &graph);
 
-    assert_eq!(store.begin_load_more(feed), Some(Timestamp::from(29)));
+    assert_eq!(
+        store.begin_load_more_at(feed, None),
+        Some(Timestamp::from(29))
+    );
 }

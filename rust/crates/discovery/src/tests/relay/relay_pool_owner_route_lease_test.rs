@@ -1,8 +1,8 @@
 //! A route snapshot and its network operation share one configuration lease.
 
-use crate::test_support::{read_request, TestRelayIo};
 use crate::relay::pool::{RelayPoolConfiguration, RelayPoolOwner};
 use crate::session_generation::SessionGeneration;
+use crate::test_support::{read_request, TestRelayIo};
 use nostr_sdk::Client;
 use std::sync::Arc;
 use tokio::sync::oneshot;

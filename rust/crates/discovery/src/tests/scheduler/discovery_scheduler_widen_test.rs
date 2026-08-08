@@ -1,11 +1,11 @@
 //! Hunger over an exhausted feed widens the primary query once to the
 //! wide limit; a second hunger transition stays idle (plan §5.4).
 
+use crate::query::video_filters::WIDE_QUERY_LIMIT;
+use crate::retrieval_types::RetrievalPriority;
 use crate::tests::scheduler_support::{
     context, next_outcome, next_started, no_start, request, start_scheduler,
 };
-use crate::retrieval_types::RetrievalPriority;
-use crate::query::video_filters::WIDE_QUERY_LIMIT;
 use ghostr_engine::inventory_controller::Mode;
 use ghostr_engine::DataUsageLevel;
 

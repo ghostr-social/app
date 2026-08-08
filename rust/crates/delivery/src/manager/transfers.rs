@@ -10,7 +10,7 @@ use crate::manager::inflight::ChunkAttempt;
 use crate::probe::media::{probe, ProbeResult};
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::PostId;
-use ghostr_net::outbound_media_client::MediaHttpClient;
+use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
@@ -41,7 +41,7 @@ pub(crate) struct ProbeDone {
 /// Everything a spawned transfer needs; cheap to clone per task.
 #[derive(Clone)]
 pub(crate) struct TransferContext {
-    pub client: MediaHttpClient,
+    pub client: Arc<dyn MediaHttpRequests>,
     pub store: Arc<PartialRangeStore>,
     pub events: UnboundedSender<InternalEvent>,
     pub timeouts: TransferTimeouts,
@@ -58,7 +58,7 @@ pub(crate) fn spawn_chunk(
     tokio::spawn(async move {
         let started = Instant::now();
         let spec = ChunkSpec {
-            client: &ctx.client,
+            client: ctx.client.as_ref(),
             url: &url,
             range: attempt.chunk.range,
             timeouts: ctx.timeouts,
@@ -92,7 +92,7 @@ pub(crate) fn cancelled_before_request(outcome: &anyhow::Result<ChunkResult>) ->
 pub(crate) fn spawn_probe(ctx: TransferContext, post: PostId, url: String) {
     tokio::spawn(async move {
         let mut scratch = HostStats::new();
-        let outcome = probe(&ctx.client, &url, ctx.timeouts, &mut scratch).await;
+        let outcome = probe(ctx.client.as_ref(), &url, ctx.timeouts, &mut scratch).await;
         let _ = ctx
             .events
             .send(InternalEvent::ProbeDone(ProbeDone { post, url, outcome }));

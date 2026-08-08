@@ -7,9 +7,9 @@ use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_delivery::playback_demand::demand_channel;
 use ghostr_delivery::progressive_posts::ServablePosts;
 use ghostr_gateway::hls::sessions::HlsSessions;
-use ghostr_gateway::router::configured_router_with_progressive;
 use ghostr_gateway::progressive::route::{ProgressiveState, ProgressiveTiming};
-use ghostr_media_model::native_models::new_native_downloads;
+use ghostr_gateway::router::configured_router_with_progressive;
+use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -22,9 +22,10 @@ fn standard_router() -> (Router, PathBuf) {
     #[cfg(feature = "video-debug-web")]
     let (delivery, _) = ghostr_delivery::delivery_events::command_channel();
     let progressive = Arc::new(ProgressiveState {
-        store: Arc::new(PartialRangeStore::new(
+        store: Arc::new(PartialRangeStore::with_capacity(
             root.clone(),
             Arc::new(Mutex::new(0)),
+            StoreCapacity::system(u64::MAX),
         )),
         demand,
         cache: ServablePosts::new(),
@@ -35,7 +36,6 @@ fn standard_router() -> (Router, PathBuf) {
     });
     (
         configured_router_with_progressive(
-            new_native_downloads(),
             HlsSessions::production(),
             gateway_fixture::media_client(),
             progressive,

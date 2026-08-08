@@ -1,9 +1,9 @@
 //! Playable content permanently ends cold-start retry for one feed generation.
 
-use crate::tests::scheduler_support::{context, next_outcome, next_started, note_at, request};
-use crate::scheduler::{start_discovery_scheduler, DiscoverySchedulerConfig};
 use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::retrieval_types::{EventProgress, PlanFailure, RetrievalOutcome};
+use crate::scheduler::{start_discovery_scheduler, DiscoverySchedulerConfig};
+use crate::tests::scheduler_support::{context, next_outcome, next_started, note_at, request};
 use ghostr_engine::{inventory_controller::Mode, DataUsageLevel};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;

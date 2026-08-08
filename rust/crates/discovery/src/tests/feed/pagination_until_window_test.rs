@@ -4,8 +4,8 @@
 use nostr_sdk::Timestamp;
 use serde_json::json;
 
-use crate::tests::support::filter_json;
 use crate::query::video_filters::{discovery_filters, DiscoveryRequest};
+use crate::tests::support::filter_json;
 
 const CURSOR_SECS: u64 = 1_722_000_000;
 

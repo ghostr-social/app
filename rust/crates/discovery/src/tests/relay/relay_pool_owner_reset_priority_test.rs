@@ -1,8 +1,8 @@
 //! Reset cancellation is not trapped behind an already queued config writer.
 
-use crate::test_support::{read_request, TestRelayIo};
 use crate::relay::pool::{RelayPoolConfiguration, RelayPoolOwner};
 use crate::session_generation::SessionGeneration;
+use crate::test_support::{read_request, TestRelayIo};
 use nostr_sdk::Client;
 use std::sync::Arc;
 use std::time::Duration;

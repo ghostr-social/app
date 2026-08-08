@@ -19,6 +19,7 @@ async fn unknown_free_space_falls_back_to_budget_without_a_standing_sample() {
             reserve: 400,
         },
         Arc::new(UnknownSpace),
+        std::time::Duration::ZERO,
     );
     capacity.gave_back(100).await;
     capacity.spent(100).await;

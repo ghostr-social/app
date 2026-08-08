@@ -27,7 +27,9 @@ async fn nostr_feed_drives_delivery_focus_and_selection() {
     let feed = DebugFeed::new(delivery, vec!["wss://relay.example".to_owned()]);
 
     feed.publish(7, DebugFeedStage::Settled, vec![item("a"), item("b")]);
-    let DeliveryCommand::Focus(initial) = commands.recv().await.expect("initial focus") else {
+    let DeliveryCommand::Focus(initial) =
+        commands.receivers().0.recv().await.expect("initial focus")
+    else {
         panic!("expected focus");
     };
     assert_eq!(initial.items.len(), 2);
@@ -42,7 +44,9 @@ async fn nostr_feed_drives_delivery_focus_and_selection() {
     assert_eq!(feed.snapshot().relays[0].status, "connected");
 
     feed.select("b").expect("select discovered video");
-    let DeliveryCommand::Focus(selected) = commands.recv().await.expect("selected focus") else {
+    let DeliveryCommand::Focus(selected) =
+        commands.receivers().0.recv().await.expect("selected focus")
+    else {
         panic!("expected focus");
     };
     assert_eq!(selected.current_index, 1);
@@ -55,18 +59,21 @@ async fn feed_revisions_retain_selection_and_can_clear_the_window() {
     let (delivery, mut commands) = command_channel();
     let feed = DebugFeed::new(delivery, Vec::new());
     feed.publish(1, DebugFeedStage::Loading, vec![item("a"), item("b")]);
-    commands.recv().await.expect("initial focus");
+    commands.receivers().0.recv().await.expect("initial focus");
     feed.select("b").expect("selection");
-    commands.recv().await.expect("selected focus");
+    commands.receivers().0.recv().await.expect("selected focus");
 
     feed.publish(2, DebugFeedStage::Settled, vec![item("b"), item("a")]);
-    let DeliveryCommand::Focus(retained) = commands.recv().await.expect("retained focus") else {
+    let DeliveryCommand::Focus(retained) =
+        commands.receivers().0.recv().await.expect("retained focus")
+    else {
         panic!("expected focus");
     };
     assert_eq!(retained.current_index, 0);
 
     feed.publish(3, DebugFeedStage::Settled, Vec::new());
-    let DeliveryCommand::Focus(empty) = commands.recv().await.expect("empty focus") else {
+    let DeliveryCommand::Focus(empty) = commands.receivers().0.recv().await.expect("empty focus")
+    else {
         panic!("expected focus");
     };
     assert!(empty.items.is_empty());

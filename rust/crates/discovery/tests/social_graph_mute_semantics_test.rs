@@ -7,8 +7,8 @@
 mod discovery_support;
 
 use discovery_support::{mute_list, p_tag, plain_note};
-use nostr_sdk::Keys;
 use ghostr_discovery::content::social_graph::SocialGraph;
+use nostr_sdk::Keys;
 
 #[test]
 fn mutes_creators_listed_in_p_tags_only() {
@@ -38,8 +38,8 @@ fn filters_posts_authored_by_muted_creators() {
     let mut graph = SocialGraph::new(session.public_key());
     graph.ingest(&mute_list(&session, vec![p_tag(&muted.public_key())], 10));
 
-    assert!(graph.filters_event(&plain_note(&muted, 20)));
-    assert!(!graph.filters_event(&plain_note(&visible, 20)));
+    assert!(graph.is_muted(&plain_note(&muted, 20).pubkey));
+    assert!(!graph.is_muted(&plain_note(&visible, 20).pubkey));
 }
 
 #[test]

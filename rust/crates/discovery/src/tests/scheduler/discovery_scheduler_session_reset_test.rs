@@ -1,11 +1,11 @@
 //! Scheduler reset promptly cancels an old account's generic query reply.
 
-use crate::tests::scheduler_support::{context, next_outcome, no_start, request};
-use crate::tests::scheduler_support::{next_started, start_scheduler};
-use crate::tests::scripted_scheduler_support::scripted_scheduler;
 use crate::query::events::plan_event_queries;
 use crate::scheduler::feeds::FEED_REFRESH_BACKOFF;
 use crate::session_generation::SessionGeneration;
+use crate::tests::scheduler_support::{context, next_outcome, no_start, request};
+use crate::tests::scheduler_support::{next_started, start_scheduler};
+use crate::tests::scripted_scheduler_support::scripted_scheduler;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::{Filter, Kind};
 

@@ -3,8 +3,8 @@
 //! filters by them.
 
 use crate::query::search::{plan_discovery, OutboxLookup};
-use crate::tests::support::{author, AUTHOR_A, AUTHOR_B};
 use crate::query::video_filters::DiscoveryRequest;
+use crate::tests::support::{author, AUTHOR_A, AUTHOR_B};
 
 #[test]
 fn routing_authors_pick_their_write_relays() {
