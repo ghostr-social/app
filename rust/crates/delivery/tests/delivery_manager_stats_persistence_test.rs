@@ -30,7 +30,6 @@ async fn delivery_manager_persists_host_stats_snapshots() {
         .strip_prefix("http://")
         .and_then(|rest| rest.split('/').next())
         .expect("fixture host");
-    assert!(stats.expected_ttfb_ms(host).is_some() || stats.failure_ratio(host) == 0.0);
     assert!(stats.expected_throughput(host) > 0.0);
     std::fs::remove_dir_all(&harness.root).ok();
 }

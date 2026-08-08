@@ -854,8 +854,6 @@ version = "0.1.0"
 dependencies = [
  "nostr-sdk",
  "reqwest",
- "sha2",
- "tokio",
 ]
 
 [[package]]
@@ -863,13 +861,6 @@ name = "ghostr-media-store"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bytes",
- "ghostr-media-model",
- "ghostr-net",
- "log",
- "reqwest",
- "sha2",
- "tokio",
 ]
 
 [[package]]

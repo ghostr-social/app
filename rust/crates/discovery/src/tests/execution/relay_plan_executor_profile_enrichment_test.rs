@@ -1,8 +1,8 @@
-use crate::tests::profile_enrichment_support::{executor, has_kind, ProfileIo};
 use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
-use crate::retrieval_types::{FeedContext, RetrievalPriority};
 use crate::query::search::plan_discovery;
 use crate::query::video_filters::DiscoveryRequest;
+use crate::retrieval_types::{FeedContext, RetrievalPriority};
+use crate::tests::profile_enrichment_support::{executor, has_kind, ProfileIo};
 use nostr_sdk::{EventBuilder, Keys, Kind, Timestamp};
 
 #[tokio::test]
@@ -37,7 +37,10 @@ async fn feed_execution_loads_metadata_for_the_returned_creator() {
 
 fn retrieval() -> PlannedRetrieval {
     PlannedRetrieval {
-        context: FeedContext::new("feed"),
+        context: FeedContext::for_session(
+            "feed",
+            crate::session_generation::SessionGeneration::initial(),
+        ),
         priority: RetrievalPriority::Interactive,
         plan: plan_discovery(&DiscoveryRequest::default()),
     }

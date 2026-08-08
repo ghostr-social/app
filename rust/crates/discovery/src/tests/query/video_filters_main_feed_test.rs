@@ -4,8 +4,8 @@
 
 use serde_json::json;
 
-use crate::tests::support::filter_json;
 use crate::query::video_filters::{discovery_filters, DiscoveryRequest};
+use crate::tests::support::filter_json;
 
 #[test]
 fn plain_feed_builds_four_filters_in_dart_order() {

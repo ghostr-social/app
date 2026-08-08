@@ -5,10 +5,10 @@
 //! Draining the pool's stream preserves each relay's contribution before
 //! the engine merges the union.
 
-use crate::relay::io::drain_events;
 use crate::execution::collector::collect_events;
-use crate::retrieval_types::PlanFailure;
 use crate::query::search::QueryRole;
+use crate::relay::io::drain_events;
+use crate::retrieval_types::PlanFailure;
 use nostr_sdk::prelude::*;
 
 fn note(keys: &Keys, created_at: u64) -> Event {

@@ -1,13 +1,14 @@
 //! A failed relay read serves matching warm rows, but never hides a cold failure.
 
-use crate::tests::event_cache_support::note;
-use crate::tests::outbox_support::shared_directory;
 use crate::cache::client_with_event_cache;
-use crate::query::events::plan_event_queries;
+use crate::execution::relay_executor::RelayPlanExecutor;
 use crate::outbox::directory::OutboxDirectory;
 use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
-use crate::execution::relay_executor::RelayPlanExecutor;
+use crate::query::events::plan_event_queries;
 use crate::retrieval_types::{FeedContext, RetrievalPriority};
+use crate::session_generation::SessionGeneration;
+use crate::tests::event_cache_support::note;
+use crate::tests::outbox_support::shared_directory;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::{Client, Filter, Kind};
 use std::sync::Arc;
@@ -24,7 +25,7 @@ fn executor(client: Arc<Client>) -> RelayPlanExecutor {
 
 fn retrieval() -> PlannedRetrieval {
     PlannedRetrieval {
-        context: FeedContext::new("offline-query"),
+        context: FeedContext::for_session("offline-query", SessionGeneration::initial()),
         priority: RetrievalPriority::Enrichment,
         plan: plan_event_queries(vec![Filter::new().kind(Kind::TextNote)]),
     }
@@ -34,7 +35,10 @@ fn retrieval() -> PlannedRetrieval {
 async fn failed_network_query_returns_matching_warm_rows() {
     let client = Arc::new(client_with_event_cache());
     let executor = executor(client);
-    executor.cache().remember(&[note(100)]).await;
+    executor
+        .cache()
+        .remember_for(SessionGeneration::initial(), &[note(100)])
+        .await;
 
     let events = executor.execute(retrieval()).await.expect("warm fallback");
 

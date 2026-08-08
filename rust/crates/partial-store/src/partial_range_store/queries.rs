@@ -2,7 +2,6 @@
 //! recently used, which is what keeps the video being watched at the
 //! safe end of the eviction order.
 
-use crate::partial_range_completion::Completion;
 use crate::partial_range_disk as disk;
 use crate::partial_range_store::PartialRangeStore;
 use anyhow::Result;
@@ -42,14 +41,6 @@ impl PartialRangeStore {
         let mut entries = self.entries.lock().await;
         let entry = self.entry(&mut entries, key).await?;
         Ok(entry.completion.is_some() || entry.manifest.is_complete())
-    }
-
-    /// How a finished file was checked, or `None` while it is still
-    /// partial. Unverified files answer `Some(Completion::Unverified)`,
-    /// never `Verified`, so they cannot pass as attested bytes.
-    pub async fn completion(&self, key: &str) -> Result<Option<Completion>> {
-        let mut entries = self.entries.lock().await;
-        Ok(self.entry(&mut entries, key).await?.completion)
     }
 
     /// The file holding `span`, or `None` when the store does not have

@@ -1,11 +1,11 @@
 //! A successful relay read is merged with the session cache.
 
-use crate::test_support::TestRelayIo;
 use crate::cache::EventCache;
-use crate::query::events::plan_event_queries;
 use crate::execution::fetch::{fetch, RelayFetch};
+use crate::query::events::plan_event_queries;
 use crate::relay::pool::{RelayPoolConfiguration, RelayPoolOwner};
 use crate::session_generation::SessionGeneration;
+use crate::test_support::TestRelayIo;
 use nostr_sdk::{Client, Filter, Kind};
 use std::sync::Arc;
 

@@ -7,3 +7,6 @@ pub mod outbound_media_client;
 mod public_dns_resolver;
 mod public_media_address;
 pub mod transfer_timeouts;
+
+#[cfg(test)]
+mod tests;

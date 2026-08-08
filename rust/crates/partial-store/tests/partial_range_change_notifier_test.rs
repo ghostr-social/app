@@ -1,16 +1,15 @@
 mod store_fixture;
 
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
 use std::time::Duration;
-use store_fixture::temp_root;
+use store_fixture::{plain_store, temp_root};
 use tokio::sync::Mutex;
 use tokio::time::timeout;
 
 #[tokio::test]
 async fn wakes_change_waiters_on_writes_and_total_length_declarations() {
     let root = temp_root("ghostr-partial-notify");
-    let store = PartialRangeStore::new(root.clone(), Arc::new(Mutex::new(0)));
+    let store = plain_store(root.clone(), Arc::new(Mutex::new(0)));
     let notify = store.change_notifier();
 
     let waiter = notify.notified();

@@ -2,9 +2,7 @@
 //! receive as a standalone query.
 
 use crate::query::events::plan_event_queries;
-use crate::query::search::{
-    OutboxLookup, OutboxRoute, QueryRole, DISCOVERY_QUERY_TIMEOUT,
-};
+use crate::query::search::{OutboxLookup, OutboxRoute, QueryRole, DISCOVERY_QUERY_TIMEOUT};
 use nostr_sdk::{Filter, Keys, Kind};
 
 #[test]

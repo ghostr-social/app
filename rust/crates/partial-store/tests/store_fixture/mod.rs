@@ -1,7 +1,5 @@
 #![allow(dead_code)]
-//! Roots the store may be built over: a plain temp directory, or a
-//! filesystem whose free space the test moves at will, so the store's
-//! effective cap can be pushed around without filling a real disk.
+//! Test stores use either a temp root or controllable free space.
 
 use ghostr_partial_store::partial_range_store::capacity::{Limits, StoreCapacity};
 use ghostr_partial_store::partial_range_store::free_space::FreeSpace;
@@ -9,8 +7,18 @@ use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 use tokio::sync::Mutex;
+
+mod paths;
+
+pub fn discard(root: &Path) {
+    paths::discard(root);
+}
+
+pub fn temp_root(prefix: &str) -> PathBuf {
+    paths::temp_root(prefix)
+}
 
 pub struct FakeSpace {
     available: AtomicU64,
@@ -71,7 +79,7 @@ pub fn reopened(fixture: &SpacedStore) -> SpacedStore {
 
 fn on_disk(root: PathBuf, space: Arc<FakeSpace>, limits: Limits, recheck: Duration) -> SpacedStore {
     let used_bytes = Arc::new(Mutex::new(0));
-    let capacity = StoreCapacity::new(limits, space.clone()).with_recheck(recheck);
+    let capacity = StoreCapacity::new(limits, space.clone(), recheck);
     SpacedStore {
         store: PartialRangeStore::with_capacity(root.clone(), used_bytes.clone(), capacity),
         used_bytes,
@@ -86,24 +94,6 @@ pub fn limits(budget: u64, reserve: u64) -> Limits {
     Limits { budget, reserve }
 }
 
-/// A directory no other caller holds. The clock alone cannot promise
-/// that: it repeats a nanosecond reading often enough that two fixtures
-/// built in the same instant would share a root, so the process and a
-/// per-call counter carry the uniqueness and the reading only separates
-/// this run from an earlier one that left a directory behind.
-pub fn temp_root(prefix: &str) -> PathBuf {
-    static NEXT: AtomicU64 = AtomicU64::new(0);
-    let nonce = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("system clock")
-        .as_nanos();
-    let sequence = NEXT.fetch_add(1, Ordering::Relaxed);
-    let process = std::process::id();
-    std::env::temp_dir().join(format!("{prefix}-{nonce}-{process}-{sequence}"))
-}
-
-pub fn discard(root: &Path) {
-    if root.exists() {
-        std::fs::remove_dir_all(root).expect("remove store");
-    }
+pub fn plain_store(root: PathBuf, used_bytes: Arc<Mutex<u64>>) -> PartialRangeStore {
+    PartialRangeStore::with_capacity(root, used_bytes, StoreCapacity::system(u64::MAX))
 }

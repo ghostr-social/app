@@ -20,7 +20,6 @@ async fn partial_range_capacity_evicts_least_recently_used_when_free_space_shrin
     assert_eq!(*fixture.used_bytes.lock().await, 800);
 
     fixture.space.set(600);
-    assert_eq!(store.effective_capacity().await, 400, "cap is under usage");
     let evicted = store.enforce_capacity().await;
 
     assert_eq!(evicted, 400, "exactly the shortfall");

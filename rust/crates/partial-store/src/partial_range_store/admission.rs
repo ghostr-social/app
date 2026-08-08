@@ -32,13 +32,6 @@ impl fmt::Display for OutOfSpace {
 impl std::error::Error for OutOfSpace {}
 
 impl PartialRangeStore {
-    /// The most this store may occupy right now: the configured budget,
-    /// capped by what the file system can spare above its reserve.
-    pub async fn effective_capacity(&self) -> u64 {
-        let used = *self.used_bytes.lock().await;
-        self.capacity.cap(&self.root, used).await
-    }
-
     /// Refusal decisions taken so far. Writes that repeat a standing
     /// refusal do not add one, so this counts pressure episodes rather
     /// than refused buffers.

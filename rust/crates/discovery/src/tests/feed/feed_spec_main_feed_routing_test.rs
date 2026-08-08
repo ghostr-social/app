@@ -3,8 +3,8 @@
 //! `authors`. The unscoped query is outbox-routed, so the follows' relays
 //! answer with everything they carry.
 
-use crate::feed::spec::FeedSpec;
 use crate::content::social_graph::SocialGraph;
+use crate::feed::spec::FeedSpec;
 use crate::tests::outbox_support::contact_list_event;
 use nostr_sdk::prelude::*;
 

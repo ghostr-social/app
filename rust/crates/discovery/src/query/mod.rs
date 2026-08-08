@@ -6,5 +6,4 @@ pub mod events;
 pub(crate) mod hashtags;
 pub mod live_search_relays;
 pub mod search;
-pub mod trending;
 pub mod video_filters;

@@ -1,10 +1,8 @@
 //! Reset waits for an old send, then rejects that author in the new session.
 
-use crate::test_support::TestRelayIo;
-use crate::relay::pool::{
-    RelayBroadcastRequest, RelayPoolConfiguration, RelayPoolOwner,
-};
+use crate::relay::pool::{RelayBroadcastRequest, RelayPoolConfiguration, RelayPoolOwner};
 use crate::session_generation::SessionGeneration;
+use crate::test_support::TestRelayIo;
 use nostr_sdk::{Client, EventBuilder, Keys, Kind};
 use std::sync::Arc;
 use tokio::sync::oneshot;

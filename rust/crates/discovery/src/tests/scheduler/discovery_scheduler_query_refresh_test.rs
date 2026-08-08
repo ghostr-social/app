@@ -1,7 +1,9 @@
-use crate::tests::scheduler_support::{context, next_outcome, next_started, no_start, note_at, request};
-use crate::tests::scripted_scheduler_support::scripted_scheduler;
 use crate::retrieval_types::RetrievalOutcome;
 use crate::scheduler::feeds::FEED_REFRESH_BACKOFF;
+use crate::tests::scheduler_support::{
+    context, next_outcome, next_started, no_start, note_at, request,
+};
+use crate::tests::scripted_scheduler_support::scripted_scheduler;
 
 #[tokio::test(start_paused = true)]
 async fn exhausted_query_rechecks_head_after_native_backoff() {

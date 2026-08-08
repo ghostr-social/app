@@ -1,8 +1,8 @@
 //! Routing-only authors choose relays without narrowing the wire filter,
 //! so those relays' whole catalogue remains eligible.
 
-use crate::tests::support::{author, filter_json, AUTHOR_A, AUTHOR_B};
 use crate::query::video_filters::{discovery_filters, DiscoveryRequest};
+use crate::tests::support::{author, filter_json, AUTHOR_A, AUTHOR_B};
 
 #[test]
 fn routing_authors_never_reach_the_wire_filter() {

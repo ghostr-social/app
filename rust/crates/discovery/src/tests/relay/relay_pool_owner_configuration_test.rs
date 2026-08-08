@@ -1,7 +1,7 @@
 //! Live relay replacement is serialized and authoritative.
 
-use crate::test_support::TestRelayIo;
 use crate::relay::pool::{RelayPoolConfiguration, RelayPoolOwner};
+use crate::test_support::TestRelayIo;
 use nostr_sdk::Client;
 use std::sync::Arc;
 use tokio::sync::oneshot;

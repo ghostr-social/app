@@ -1,9 +1,11 @@
 //! A cold canonical feed recovers without user input after its first
 //! relay attempt fails.
 
-use crate::tests::scheduler_support::{context, next_outcome, next_started, no_start, note_at, request};
-use crate::tests::scripted_scheduler_support::scripted_scheduler_results;
 use crate::retrieval_types::{PlanFailure, RetrievalOutcome};
+use crate::tests::scheduler_support::{
+    context, next_outcome, next_started, no_start, note_at, request,
+};
+use crate::tests::scripted_scheduler_support::scripted_scheduler_results;
 use std::time::Duration;
 
 #[tokio::test(start_paused = true)]

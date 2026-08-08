@@ -6,8 +6,8 @@
 use crate::cache::ViewerScope;
 use crate::outbox::plans::viewer_lists_plan;
 use crate::query::search::plan_discovery;
-use crate::tests::support::{author, filter_json, AUTHOR_A};
 use crate::query::video_filters::DiscoveryRequest;
+use crate::tests::support::{author, filter_json, AUTHOR_A};
 
 fn request() -> DiscoveryRequest {
     DiscoveryRequest {

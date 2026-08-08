@@ -1,6 +1,6 @@
+use crate::scheduler::feeds::FEED_REFRESH_BACKOFF;
 use crate::tests::scheduler_support::{context, next_outcome, next_started, no_start, request};
 use crate::tests::scripted_scheduler_support::scripted_scheduler;
-use crate::scheduler::feeds::FEED_REFRESH_BACKOFF;
 
 #[tokio::test(start_paused = true)]
 async fn closing_query_cancels_its_scheduled_native_hunt() {

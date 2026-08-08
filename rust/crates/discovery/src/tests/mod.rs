@@ -10,7 +10,6 @@ mod scheduler_support;
 mod scheduler_wait;
 mod scripted_scheduler_support;
 mod support;
-mod trending_support;
 
 mod cache;
 mod execution;

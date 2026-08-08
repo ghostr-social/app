@@ -1,12 +1,12 @@
 //! A generic batch resolves each filter's outbox lookup independently,
 //! so the data-usage cap cannot spend one filter's relay budget on another.
 
-use crate::query::events::plan_event_queries;
-use crate::outbox::directory::OutboxDirectory;
 use crate::execution::relay_executor::RelayPlanExecutor;
+use crate::outbox::directory::OutboxDirectory;
+use crate::query::events::plan_event_queries;
 use crate::query::search::plan_discovery;
-use crate::tests::outbox_support::{shared_directory, BOOTSTRAP_RELAY};
 use crate::query::video_filters::DiscoveryRequest;
+use crate::tests::outbox_support::{shared_directory, BOOTSTRAP_RELAY};
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::{Client, EventBuilder, Filter, Keys, Kind, Tag, Timestamp};
 use std::sync::Arc;

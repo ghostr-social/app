@@ -31,10 +31,6 @@ impl EventCacheSession {
         }
     }
 
-    pub(crate) fn generation(&self) -> SessionGeneration {
-        self.generation
-    }
-
     pub(crate) fn matches(&self, generation: SessionGeneration) -> bool {
         self.generation == generation
     }

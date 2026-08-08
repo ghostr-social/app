@@ -1,5 +1,5 @@
 use ghostr_media_model::imeta_extras::ImetaExtras;
-use ghostr_media_model::native_media_metadata::native_media;
+use ghostr_media_model::native_media_metadata::lenient_native_media;
 
 fn with_field(field: &str) -> Vec<String> {
     vec![
@@ -33,7 +33,7 @@ fn native_media_metadata_turns_malformed_extras_into_none_without_failing() {
         "image notaurl",
     ];
     for field in cases {
-        let media = native_media(&with_field(field)).expect(field);
+        let media = lenient_native_media(&with_field(field)).expect(field);
         assert_eq!(media.extras, ImetaExtras::default(), "{field}");
         assert_eq!(media.url, "https://cdn.example/clip.mp4", "{field}");
     }
@@ -41,7 +41,7 @@ fn native_media_metadata_turns_malformed_extras_into_none_without_failing() {
 
 #[test]
 fn native_media_metadata_leaves_absent_extras_as_none() {
-    let media = native_media(&[
+    let media = lenient_native_media(&[
         "imeta".to_owned(),
         "url https://cdn.example/clip.mp4".to_owned(),
         "m video/mp4".to_owned(),

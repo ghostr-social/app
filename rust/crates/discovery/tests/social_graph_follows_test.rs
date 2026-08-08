@@ -6,8 +6,8 @@
 mod discovery_support;
 
 use discovery_support::{contact_list, p_tag};
-use nostr_sdk::Keys;
 use ghostr_discovery::content::social_graph::SocialGraph;
+use nostr_sdk::Keys;
 
 #[test]
 fn collects_deduplicated_p_tag_follows() {
@@ -27,9 +27,10 @@ fn collects_deduplicated_p_tag_follows() {
         10,
     ));
 
-    assert_eq!(graph.follows().len(), 2);
-    assert!(graph.follows().contains(&alice.public_key()));
-    assert!(graph.follows().contains(&bob.public_key()));
+    let follows = graph.follow_list();
+    assert_eq!(follows.len(), 2);
+    assert!(follows.contains(&alice.public_key()));
+    assert!(follows.contains(&bob.public_key()));
 }
 
 #[test]
@@ -44,12 +45,12 @@ fn ignores_contact_lists_from_other_authors() {
         10,
     ));
 
-    assert!(graph.follows().is_empty());
+    assert!(graph.follow_list().is_empty());
 }
 
 #[test]
 fn starts_with_no_follows() {
     let graph = SocialGraph::new(Keys::generate().public_key());
 
-    assert!(graph.follows().is_empty());
+    assert!(graph.follow_list().is_empty());
 }

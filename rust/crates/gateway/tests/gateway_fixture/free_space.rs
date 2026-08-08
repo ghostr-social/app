@@ -41,7 +41,7 @@ pub fn spaced_store(prefix: &str, limits: Limits, available: u64) -> SpacedStore
     let space = Arc::new(FakeSpace {
         available: AtomicU64::new(available),
     });
-    let capacity = StoreCapacity::new(limits, space.clone()).with_recheck(Duration::ZERO);
+    let capacity = StoreCapacity::new(limits, space.clone(), Duration::ZERO);
     SpacedStore {
         store: PartialRangeStore::with_capacity(root.clone(), Arc::new(Mutex::new(0)), capacity),
         space,

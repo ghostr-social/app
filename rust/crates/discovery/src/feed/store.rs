@@ -98,12 +98,6 @@ impl FeedStore {
         open.notify();
     }
 
-    /// Claims the cursor for one older request; `None` when the feed is
-    /// exhausted or a request is already in flight (`beginLoad`).
-    pub fn begin_load_more(&mut self, feed: FeedId) -> Option<Timestamp> {
-        self.begin_load_more_at(feed, None)
-    }
-
     pub fn begin_load_more_at(
         &mut self,
         feed: FeedId,

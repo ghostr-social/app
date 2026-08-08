@@ -11,7 +11,7 @@ use tower::ServiceExt;
 #[tokio::test]
 async fn debug_gateway_does_not_expose_a_web_only_progressive_alias() {
     let harness = progressive_harness("debug-progressive-url-parity");
-    harness.posts.insert_video(
+    harness.posts.replace([gateway_fixture::cache_video(
         "clip",
         VideoMeta {
             urls: vec!["https://media.example/clip.mp4".to_owned()],
@@ -20,7 +20,7 @@ async fn debug_gateway_does_not_expose_a_web_only_progressive_alias() {
             size_bytes: Some(1),
             duration_ms: Some(1),
         },
-    );
+    )]);
     harness
         .store
         .set_total_len("clip", 1)

@@ -1,12 +1,10 @@
 //! Concurrent explicit read/write leases clean only their own relay role.
 
-use crate::test_support::{read_request, TestRelayIo};
-use crate::relay::pool::{
-    RelayBroadcastRequest, RelayPoolConfiguration, RelayPoolOwner,
-};
-use crate::relay::roles::{RelayPoolRoles, RelayRole};
+use crate::relay::pool::{RelayBroadcastRequest, RelayPoolConfiguration, RelayPoolOwner};
 use crate::relay::removal::RelayRoleIo;
+use crate::relay::roles::{RelayPoolRoles, RelayRole};
 use crate::session_generation::SessionGeneration;
+use crate::test_support::{read_request, TestRelayIo};
 use nostr_sdk::{Client, EventBuilder, Keys, Kind};
 use std::sync::Arc;
 

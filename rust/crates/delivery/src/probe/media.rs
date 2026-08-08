@@ -7,7 +7,7 @@ use anyhow::{Context, Result};
 use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_net::content_range;
 use ghostr_net::origin_content_type;
-use ghostr_net::outbound_media_client::MediaHttpClient;
+use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use reqwest::header::{
     HeaderName, ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, RANGE,
@@ -31,7 +31,7 @@ pub struct ProbeResult {
 /// carries the total length). Success records TTFB and a success
 /// sample for the URL's host; any failure records a host failure.
 pub async fn probe(
-    client: &MediaHttpClient,
+    client: &dyn MediaHttpRequests,
     url: &str,
     timeouts: TransferTimeouts,
     stats: &mut HostStats,
@@ -47,7 +47,7 @@ struct ProbeFacts {
     content_type: Option<String>,
 }
 
-async fn describe(client: &MediaHttpClient, url: &str, wait: Duration) -> Result<ProbeFacts> {
+async fn describe(client: &dyn MediaHttpRequests, url: &str, wait: Duration) -> Result<ProbeFacts> {
     let head = send_head(client, url, wait).await?;
     if head.status().is_success() {
         origin_content_type::require_admissible(head.headers())?;
@@ -56,14 +56,18 @@ async fn describe(client: &MediaHttpClient, url: &str, wait: Duration) -> Result
     facts_from_ranged_get(send_ranged_get(client, url, wait).await?)
 }
 
-async fn send_head(client: &MediaHttpClient, url: &str, wait: Duration) -> Result<Response> {
+async fn send_head(client: &dyn MediaHttpRequests, url: &str, wait: Duration) -> Result<Response> {
     let (inner, request) = client.get(url)?.build_split();
     let mut request = request.context("build probe request")?;
     *request.method_mut() = Method::HEAD;
     await_headers(inner.execute(request), wait).await
 }
 
-async fn send_ranged_get(client: &MediaHttpClient, url: &str, wait: Duration) -> Result<Response> {
+async fn send_ranged_get(
+    client: &dyn MediaHttpRequests,
+    url: &str,
+    wait: Duration,
+) -> Result<Response> {
     await_headers(client.get(url)?.header(RANGE, "bytes=0-0").send(), wait).await
 }
 

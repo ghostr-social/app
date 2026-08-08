@@ -1,9 +1,9 @@
 mod range_fixture;
 
+use ghostr_delivery::chunk::cancel::cancel_pair;
+use ghostr_delivery::chunk::downloader::{download_chunk_throttled, ChunkSink, ChunkSpec};
 use ghostr_engine::host_stats::{host_of, HostStats, OPTIMISTIC_THROUGHPUT_BPS};
 use ghostr_engine::ByteRange;
-use ghostr_delivery::chunk::cancel::cancel_pair;
-use ghostr_delivery::chunk::downloader::{download_chunk, ChunkSink, ChunkSpec};
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 
 #[tokio::test]
@@ -25,7 +25,7 @@ async fn chunk_downloader_records_throughput_and_success_for_the_host() {
         key: "clip",
     };
 
-    download_chunk(&spec, &sink, &mut stats, &token)
+    download_chunk_throttled(&spec, &sink, &mut stats, &token, &range_fixture::network())
         .await
         .expect("chunk download");
 

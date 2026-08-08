@@ -6,11 +6,11 @@ mod range_fixture;
 
 use anyhow::{Context, Result};
 use ghostr_delivery::manager::failure::{classify, FailureClass};
-use ghostr_net::outbound_media_client::MediaHttpClient;
+use ghostr_net::outbound_media_client::{MediaHttpClient, MediaHttpRequests};
 
 const UNRESOLVABLE: &str = "http://cdn.ghostr-nonexistent.invalid/video.mp4";
 
-async fn attempt(client: &MediaHttpClient, url: &str) -> Result<()> {
+async fn attempt(client: &dyn MediaHttpRequests, url: &str) -> Result<()> {
     let response = client
         .get(url)?
         .send()
@@ -22,7 +22,7 @@ async fn attempt(client: &MediaHttpClient, url: &str) -> Result<()> {
     Ok(())
 }
 
-async fn class_of(client: &MediaHttpClient, url: &str) -> FailureClass {
+async fn class_of(client: &dyn MediaHttpRequests, url: &str) -> FailureClass {
     let error = attempt(client, url)
         .await
         .expect_err("the fixture must reject this request");

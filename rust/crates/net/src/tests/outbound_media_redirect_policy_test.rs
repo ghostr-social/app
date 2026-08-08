@@ -1,28 +1,21 @@
-use ghostr_net::outbound_media_client::MediaHttpClient;
+use crate::outbound_media_client::public_redirect_policy;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
 #[tokio::test]
-async fn rejects_a_redirect_to_a_private_address() {
+async fn public_redirect_policy_rejects_a_private_target() {
     let target = TcpListener::bind("127.0.0.1:0").await.expect("target");
     let target_address = target.local_addr().expect("target address");
     let target_server = tokio::spawn(async move {
-        let (mut socket, _) = target.accept().await.expect("target request");
-        let mut request = [0; 1024];
-        let bytes = socket.read(&mut request).await.expect("read target");
-        assert!(bytes > 0, "empty target request");
-        socket
-            .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
-            .await
-            .expect("target response");
+        let _ = target.accept().await.expect("target request");
     });
     let origin = TcpListener::bind("127.0.0.1:0").await.expect("origin");
     let origin_address = origin.local_addr().expect("origin address");
     let origin_server = tokio::spawn(async move {
         let (mut socket, _) = origin.accept().await.expect("origin request");
         let mut request = [0; 1024];
-        let bytes = socket.read(&mut request).await.expect("read origin");
-        assert!(bytes > 0, "empty origin request");
+        let bytes_read = socket.read(&mut request).await.expect("read origin");
+        assert!(bytes_read > 0, "origin request was empty");
         let response = format!(
             "HTTP/1.1 302 Found\r\nLocation: http://{target_address}/private\r\nContent-Length: 0\r\n\r\n"
         );
@@ -31,11 +24,14 @@ async fn rejects_a_redirect_to_a_private_address() {
             .await
             .expect("origin response");
     });
-    let client = MediaHttpClient::trusted().expect("media client");
+    let client = reqwest::Client::builder()
+        .no_proxy()
+        .redirect(public_redirect_policy())
+        .build()
+        .expect("media client");
 
     let result = client
-        .get(&format!("http://{origin_address}/video.mp4"))
-        .expect("request")
+        .get(format!("http://{origin_address}/video.mp4"))
         .send()
         .await;
 

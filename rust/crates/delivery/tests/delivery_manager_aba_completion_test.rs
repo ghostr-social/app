@@ -39,7 +39,7 @@ async fn delivery_manager_ignores_stale_completion_after_focus_returns_to_a() {
     );
 
     origin.release_body();
-    wait_for_file(&harness.store.completed_path("aa11")).await;
+    wait_for_file(&harness.root.join("aa11.video")).await;
     let stored = harness.store.read_range("aa11", 0..8).await.expect("read");
     assert_eq!(stored, Some(bytes));
     assert_eq!(origin.hits(), 2);

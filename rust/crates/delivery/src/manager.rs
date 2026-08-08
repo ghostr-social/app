@@ -38,7 +38,7 @@ use crate::playback_demand::{DemandReceiver, DemandSignal};
 use crate::probe::pool::MetadataProbePool;
 use ghostr_engine::inventory_controller::Mode;
 use ghostr_engine::{DataUsageLevel, EngineParams};
-use ghostr_net::outbound_media_client::MediaHttpClient;
+use ghostr_net::outbound_media_client::{MediaHttpClient, MediaHttpRequests};
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use ghostr_partial_store::partial_range_store::capacity::DEFAULT_RECHECK;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
@@ -73,9 +73,9 @@ impl Default for DeliveryTuning {
 }
 
 /// Everything the manager owns or reaches, as one typed object.
-pub struct DeliveryManagerConfig {
+pub struct DeliveryManagerConfig<C = MediaHttpClient> {
     pub store: Arc<PartialRangeStore>,
-    pub client: MediaHttpClient,
+    pub client: C,
     pub cache: CacheRegistry,
     pub network: NetworkThrottle,
     pub stats_path: PathBuf,
@@ -84,37 +84,30 @@ pub struct DeliveryManagerConfig {
     pub tuning: DeliveryTuning,
 }
 
-/// Starts the manager task and returns its control handle. The task
-/// drains, saves its stats, and ends once every handle is dropped.
-pub fn start_delivery_manager(
-    config: DeliveryManagerConfig,
+/// Starts the manager task and exposes the inventory mode transitions the
+/// discovery control loop subscribes to. The receiver starts at
+/// [`Mode::Hunger`], matching a fresh controller.
+pub fn start_delivery_manager_with_modes<C>(
+    config: DeliveryManagerConfig<C>,
     demand: DemandReceiver,
-) -> DeliveryHandle {
-    let (handle, commands) = command_channel();
-    tokio::spawn(run(config, commands, demand, None));
-    handle
-}
-
-/// Like [`start_delivery_manager`], but additionally exposes the
-/// inventory mode transitions the discovery control loop subscribes
-/// to (plan §5.4). The receiver starts at [`Mode::Hunger`], matching
-/// a fresh controller.
-pub fn start_delivery_manager_with_modes(
-    config: DeliveryManagerConfig,
-    demand: DemandReceiver,
-) -> (DeliveryHandle, watch::Receiver<Mode>) {
+) -> (DeliveryHandle, watch::Receiver<Mode>)
+where
+    C: MediaHttpRequests + 'static,
+{
     let (modes, mode_updates) = watch::channel(Mode::Hunger);
     let (handle, commands) = command_channel();
     tokio::spawn(run(config, commands, demand, Some(modes)));
     (handle, mode_updates)
 }
 
-async fn run(
-    config: DeliveryManagerConfig,
+async fn run<C>(
+    config: DeliveryManagerConfig<C>,
     commands: CommandReceiver,
     demand: DemandReceiver,
     modes: Option<watch::Sender<Mode>>,
-) {
+) where
+    C: MediaHttpRequests + 'static,
+{
     let mut worker = DeliveryWorker::create(config, commands, demand).await;
     if let Some(sender) = modes {
         worker.state.publish_modes(sender);
@@ -140,11 +133,14 @@ pub(crate) struct DeliveryWorker {
 }
 
 impl DeliveryWorker {
-    async fn create(
-        config: DeliveryManagerConfig,
+    async fn create<C>(
+        config: DeliveryManagerConfig<C>,
         commands: CommandReceiver,
         demand: DemandReceiver,
-    ) -> Self {
+    ) -> Self
+    where
+        C: MediaHttpRequests + 'static,
+    {
         let (events_sender, events) = mpsc::unbounded_channel();
         Self {
             state: DeliveryState::new(config.params, config.level),
@@ -156,7 +152,7 @@ impl DeliveryWorker {
             pressure: StorePressure::new(config.tuning.store_pressure_pause),
             pending_demand: None,
             ctx: TransferContext {
-                client: config.client,
+                client: Arc::new(config.client),
                 store: config.store,
                 events: events_sender,
                 timeouts: TransferTimeouts::default(),

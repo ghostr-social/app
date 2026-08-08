@@ -1,21 +1,20 @@
 mod store_fixture;
 
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
-use store_fixture::temp_root;
+use store_fixture::{plain_store, temp_root};
 use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn partial_range_manifest_reloads_from_disk_after_a_restart() {
     let root = temp_root("ghostr-partial-restart");
     {
-        let store = PartialRangeStore::new(root.clone(), Arc::new(Mutex::new(0)));
+        let store = plain_store(root.clone(), Arc::new(Mutex::new(0)));
         store.set_total_len("clip", 8).await.expect("total length");
         store.write_range("clip", 0, b"head").await.expect("head");
     }
 
     let used_bytes = Arc::new(Mutex::new(0));
-    let store = PartialRangeStore::new(root.clone(), used_bytes.clone());
+    let store = plain_store(root.clone(), used_bytes.clone());
 
     assert_eq!(
         store.present_ranges("clip").await.expect("ranges"),

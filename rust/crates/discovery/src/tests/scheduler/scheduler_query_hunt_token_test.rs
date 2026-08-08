@@ -1,11 +1,11 @@
 //! A queued query continuation cannot steal a newer hunt lifecycle.
 
-use crate::tests::scheduler_support::{context, request};
-use crate::scheduler::SchedulerWorker;
 use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
-use crate::scheduler::queue::RetrievalQueue;
 use crate::scheduler::feeds::{FeedBook, FEED_REFRESH_BACKOFF};
 use crate::scheduler::queries::QueryBook;
+use crate::scheduler::queue::RetrievalQueue;
+use crate::scheduler::SchedulerWorker;
+use crate::tests::scheduler_support::{context, request};
 use ghostr_engine::inventory_controller::Mode;
 use std::collections::HashMap;
 use std::sync::Arc;

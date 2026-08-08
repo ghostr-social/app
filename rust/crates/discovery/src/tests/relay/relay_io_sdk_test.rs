@@ -1,7 +1,7 @@
 //! The SDK adapter drains completed reads and contextualizes send failures.
 
-use crate::tests::relay_io_relay_fixture::relay_serving;
 use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayReadIo, SdkRelayIo};
+use crate::tests::relay_io_relay_fixture::relay_serving;
 use nostr_sdk::{Client, EventBuilder, Filter, Keys, Kind};
 use std::sync::Arc;
 use std::time::Duration;

@@ -32,8 +32,7 @@ use ghostr_delivery::manager::{
 use ghostr_delivery::playback_demand::demand_channel;
 use ghostr_engine::inventory_controller::Mode;
 use ghostr_engine::{DataUsageLevel, EngineParams};
-use ghostr_media_model::native_models::new_native_downloads;
-use ghostr_net::outbound_media_client::MediaHttpClient;
+use ghostr_net::outbound_media_client::{MediaHttpClient, MediaHttpRequests};
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use log::warn;
@@ -68,6 +67,7 @@ pub(crate) async fn start_progressive_delivery(
         network.clone(),
     );
     let (delivery, modes) = start_delivery_manager_with_modes(config, demand);
+    let router_client: Arc<dyn MediaHttpRequests> = Arc::new(client);
     let progressive = Arc::new(ProgressiveState {
         store: store.clone(),
         demand: demand_sender,
@@ -87,9 +87,8 @@ pub(crate) async fn start_progressive_delivery(
         not(any(target_os = "android", target_os = "ios"))
     ))]
     let router = configured_router_with_progressive_debug(
-        new_native_downloads(),
         hls_sessions,
-        client,
+        router_client,
         progressive.clone(),
         delivery.clone(),
         nostr,
@@ -99,12 +98,8 @@ pub(crate) async fn start_progressive_delivery(
         debug_assertions,
         not(any(target_os = "android", target_os = "ios"))
     )))]
-    let router = configured_router_with_progressive(
-        new_native_downloads(),
-        hls_sessions,
-        client,
-        progressive.clone(),
-    );
+    let router =
+        configured_router_with_progressive(hls_sessions, router_client, progressive.clone());
     #[cfg(not(all(
         feature = "video-debug-web",
         debug_assertions,

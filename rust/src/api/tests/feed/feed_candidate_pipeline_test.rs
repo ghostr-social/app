@@ -1,5 +1,5 @@
-use crate::api::runtime::discovery::{lock, pump_outcomes, OutcomeSinks, SharedFeedState};
 use crate::api::feed::state::FeedState;
+use crate::api::runtime::discovery::{lock, pump_outcomes, OutcomeSinks, SharedFeedState};
 use crate::api::tests::feed_fixtures::video_note;
 use crate::api::tests::outbox_runtime_support::test_bootstrap;
 use crate::discovery::feed::spec::FeedSpec;
@@ -33,7 +33,7 @@ async fn relay_progress_admits_a_candidate_before_page_completion() {
         })
         .expect("progress receiver");
 
-    let command = tokio::time::timeout(Duration::from_secs(1), commands.recv())
+    let command = tokio::time::timeout(Duration::from_secs(1), commands.receivers().0.recv())
         .await
         .expect("candidate should be immediate")
         .expect("delivery command");

@@ -59,12 +59,12 @@ pub struct StoreCapacity {
 }
 
 impl StoreCapacity {
-    pub fn new(limits: Limits, space: Arc<dyn FreeSpace>) -> Self {
+    pub fn new(limits: Limits, space: Arc<dyn FreeSpace>, recheck: Duration) -> Self {
         Self {
             budget: AtomicU64::new(limits.budget),
             reserve: limits.reserve,
             space,
-            recheck: DEFAULT_RECHECK,
+            recheck,
             sample: Mutex::new(None),
             generations: AtomicU64::new(0),
         }
@@ -72,12 +72,11 @@ impl StoreCapacity {
 
     /// The device's own file system under `budget`.
     pub fn system(budget: u64) -> Self {
-        Self::new(Limits::budget(budget), Arc::new(SystemFreeSpace))
-    }
-
-    pub fn with_recheck(mut self, recheck: Duration) -> Self {
-        self.recheck = recheck;
-        self
+        Self::new(
+            Limits::budget(budget),
+            Arc::new(SystemFreeSpace),
+            DEFAULT_RECHECK,
+        )
     }
 
     /// The most the store may occupy, given the `used` bytes it already

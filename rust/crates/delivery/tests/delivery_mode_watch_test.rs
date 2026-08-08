@@ -14,6 +14,7 @@ use ghostr_delivery::playback_demand::demand_channel;
 use ghostr_delivery::progressive_posts::ServablePosts;
 use ghostr_engine::inventory_controller::Mode;
 use ghostr_engine::{DataUsageLevel, EngineParams};
+use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
 use std::time::Duration;
@@ -23,9 +24,10 @@ use tokio::time::timeout;
 #[tokio::test]
 async fn delivery_manager_publishes_mode_transitions() {
     let root = temp_directory("ghostr-mode-watch");
-    let store = Arc::new(PartialRangeStore::new(
+    let store = Arc::new(PartialRangeStore::with_capacity(
         root.clone(),
         Arc::new(Mutex::new(0)),
+        StoreCapacity::system(u64::MAX),
     ));
     let (_demand, demand_receiver) = demand_channel();
     let config = DeliveryManagerConfig {

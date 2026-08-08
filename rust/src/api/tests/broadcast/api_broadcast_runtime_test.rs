@@ -1,8 +1,8 @@
 //! Accepted API broadcasts cross relay IO and enter the local event pool.
 
-use ghostr_discovery::test_support::TestRelayIo;
 use crate::api::runtime::discovery::{DiscoveryBoot, DiscoveryRuntime};
 use ghostr_discovery::relay::pool::{RelayPoolConfiguration, RelayPoolOwner};
+use ghostr_discovery::test_support::TestRelayIo;
 use ghostr_engine::inventory_controller::Mode;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::{Client, EventBuilder, Filter, Keys, Kind};
@@ -47,6 +47,11 @@ async fn accepted_broadcast_is_sent_and_immediately_queryable_locally() {
     runtime.remember_accepted(session, &event).await;
 
     assert_eq!(io.send_count(), 1);
-    let cached = runtime.executor.cache().stored(&Filter::new()).await;
+    let cached = runtime
+        .executor
+        .cache()
+        .stored_for(session, &Filter::new())
+        .await
+        .expect("current session");
     assert!(cached.iter().any(|known| known.id == event.id));
 }

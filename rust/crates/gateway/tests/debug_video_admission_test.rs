@@ -8,9 +8,8 @@ use ghostr_delivery::delivery_events::{command_channel, DeliveryCommand};
 use ghostr_discovery::cache::client_with_event_cache;
 use ghostr_engine::DeliveryKind;
 use ghostr_gateway::hls::sessions::HlsSessions;
-use ghostr_gateway::router::configured_router_with_progressive_debug;
 use ghostr_gateway::progressive::route::ProgressiveState;
-use ghostr_media_model::native_models::new_native_downloads;
+use ghostr_gateway::router::configured_router_with_progressive_debug;
 use serde_json::Value;
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -20,7 +19,6 @@ async fn debug_api_registers_a_video_with_the_rust_delivery_engine() {
     let harness = gateway_fixture::progressive::progressive_harness("debug-video-add");
     let (delivery, mut commands) = command_channel();
     let router = configured_router_with_progressive_debug(
-        new_native_downloads(),
         HlsSessions::production(),
         gateway_fixture::media_client(),
         progressive_state(&harness),
@@ -47,7 +45,9 @@ async fn debug_api_registers_a_video_with_the_rust_delivery_engine() {
         .as_str()
         .unwrap_or_default()
         .starts_with("debug-"));
-    let DeliveryCommand::Candidate(candidate) = commands.recv().await.expect("candidate") else {
+    let DeliveryCommand::Candidate(candidate) =
+        commands.receivers().0.recv().await.expect("candidate")
+    else {
         panic!("expected candidate command");
     };
     assert_eq!(candidate.meta.urls, ["https://cdn.example/video.mp4"]);

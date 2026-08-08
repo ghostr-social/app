@@ -3,11 +3,11 @@ mod gateway_fixture;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use gateway_fixture::media_client;
+use gateway_fixture::progressive_hls::router_with_hls;
 use gateway_fixture::raw_http::spawn_raw_server;
 use ghostr_gateway::hls::sessions::HlsSessions;
-use ghostr_gateway::router::configured_router_with_hls_client;
-use ghostr_media_model::native_models::new_native_downloads;
 use ghostr_net::outbound_media_client::MediaHttpClient;
+use std::sync::Arc;
 use tower::ServiceExt;
 
 #[tokio::test]
@@ -16,10 +16,9 @@ async fn rejects_private_root_manifest_without_contacting_it() {
     let (origin, upstream) = spawn_raw_server(valid).await;
     let sessions = HlsSessions::production();
     let id = sessions.acquire(vec![origin]).await.expect("session");
-    let app = configured_router_with_hls_client(
-        new_native_downloads(),
+    let app = router_with_hls(
         sessions,
-        MediaHttpClient::public().expect("public client"),
+        Arc::new(MediaHttpClient::public().expect("public client")),
     );
 
     let response = app.oneshot(request(&id)).await.expect("gateway response");
@@ -38,8 +37,7 @@ async fn rejects_non_hls_mime_and_malformed_manifests() {
         let (origin, upstream) = spawn_raw_server(upstream_response).await;
         let sessions = HlsSessions::production();
         let id = sessions.acquire(vec![origin]).await.expect("session");
-        let app =
-            configured_router_with_hls_client(new_native_downloads(), sessions, media_client());
+        let app = router_with_hls(sessions, media_client());
         let response = app.oneshot(request(&id)).await.expect("gateway response");
         assert_eq!(response.status(), StatusCode::BAD_GATEWAY);
         upstream.await.expect("upstream request");

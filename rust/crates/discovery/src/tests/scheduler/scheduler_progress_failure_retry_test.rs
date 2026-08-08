@@ -1,7 +1,9 @@
-use crate::tests::scheduler_support::{context, next_outcome, next_started, no_start, note_at, request};
-use crate::scheduler::{start_discovery_scheduler, DiscoverySchedulerConfig};
 use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::retrieval_types::{EventProgress, PlanFailure, RetrievalOutcome};
+use crate::scheduler::{start_discovery_scheduler, DiscoverySchedulerConfig};
+use crate::tests::scheduler_support::{
+    context, next_outcome, next_started, no_start, note_at, request,
+};
 use ghostr_engine::{inventory_controller::Mode, DataUsageLevel};
 use std::sync::Arc;
 use std::time::Duration;

@@ -2,8 +2,8 @@
 //! discovery relays when unscoped, and the authors' write relays when scoped.
 
 use crate::query::search::{plan_discovery, OutboxLookup};
-use crate::tests::support::{author, AUTHOR_A};
 use crate::query::video_filters::DiscoveryRequest;
+use crate::tests::support::{author, AUTHOR_A};
 
 #[test]
 fn unscoped_requests_look_up_the_discovery_relays() {

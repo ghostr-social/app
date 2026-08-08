@@ -29,7 +29,7 @@ async fn delivery_manager_finishes_committed_posts() {
     ));
 
     wait_for_ranges(&harness.store, "aa11", &[(0, 16)]).await;
-    wait_for_file(&harness.store.completed_path("aa11")).await;
+    wait_for_file(&harness.root.join("aa11.video")).await;
     std::fs::remove_dir_all(&harness.root).ok();
 }
 

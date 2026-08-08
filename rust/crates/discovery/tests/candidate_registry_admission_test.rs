@@ -1,8 +1,8 @@
 mod feed_support;
 
 use feed_support::video_note;
-use nostr_sdk::{EventBuilder, Keys, Kind};
 use ghostr_discovery::content::candidates::{CandidateAdmission, CandidateRegistry};
+use nostr_sdk::{EventBuilder, Keys, Kind};
 
 #[test]
 fn raw_events_are_parsed_validated_and_deduplicated_once() {
@@ -12,9 +12,7 @@ fn raw_events_are_parsed_validated_and_deduplicated_once() {
         .sign_with_keys(&keys)
         .expect("signed metadata");
     let mut registry = CandidateRegistry::new();
-    assert!(registry.is_empty());
-
-    let CandidateAdmission::Accepted(candidate) = registry.admit(&video) else {
+    let CandidateAdmission::Accepted(candidate) = registry.inspect(&video).admission else {
         panic!("video should be admitted");
     };
 
@@ -24,9 +22,16 @@ fn raw_events_are_parsed_validated_and_deduplicated_once() {
         .as_str()
         .chars()
         .all(|char| char.is_ascii_hexdigit()));
-    assert_eq!(registry.admit(&video), CandidateAdmission::Duplicate);
-    assert_eq!(registry.admit(&invalid), CandidateAdmission::Rejected);
-    assert_eq!(registry.admit(&invalid), CandidateAdmission::Rejected);
-    assert_eq!(registry.len(), 1);
-    assert!(!registry.is_empty());
+    assert_eq!(
+        registry.inspect(&video).admission,
+        CandidateAdmission::Duplicate
+    );
+    assert_eq!(
+        registry.inspect(&invalid).admission,
+        CandidateAdmission::Rejected
+    );
+    assert_eq!(
+        registry.inspect(&invalid).admission,
+        CandidateAdmission::Rejected
+    );
 }

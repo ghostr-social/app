@@ -29,7 +29,7 @@ async fn json_request(
 #[tokio::test]
 async fn debug_state_reports_downloaded_bytes_duration_and_source() {
     let harness = progressive_harness("ghostr-debug-state");
-    harness.posts.insert_video(
+    harness.posts.replace([gateway_fixture::cache_video(
         "clip",
         VideoMeta {
             urls: vec!["https://relay.example/media/clip.mp4".to_owned()],
@@ -38,7 +38,7 @@ async fn debug_state_reports_downloaded_bytes_duration_and_source() {
             size_bytes: Some(1_000),
             duration_ms: Some(120_000),
         },
-    );
+    )]);
     harness
         .store
         .set_total_len("clip", 1_000)

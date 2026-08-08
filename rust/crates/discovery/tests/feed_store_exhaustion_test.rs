@@ -8,10 +8,10 @@
 mod feed_support;
 
 use feed_support::{parsed_posts, video_note};
-use nostr_sdk::{Keys, Timestamp};
+use ghostr_discovery::content::social_graph::SocialGraph;
 use ghostr_discovery::feed::spec::FeedSpec;
 use ghostr_discovery::feed::store::FeedStore;
-use ghostr_discovery::content::social_graph::SocialGraph;
+use nostr_sdk::{Keys, Timestamp};
 
 #[test]
 fn feed_store_main_feed_exhausts_on_an_empty_older_page() {
@@ -22,11 +22,11 @@ fn feed_store_main_feed_exhausts_on_an_empty_older_page() {
         viewer: Some(keys.public_key()),
     });
     store.ingest_first_page(feed, parsed_posts(&[video_note(&keys, "only", 50)]), &graph);
-    store.begin_load_more(feed);
+    store.begin_load_more_at(feed, None);
 
     store.ingest_older_page(feed, Vec::new(), &graph);
 
-    assert_eq!(store.begin_load_more(feed), None);
+    assert_eq!(store.begin_load_more_at(feed, None), None);
 }
 
 #[test]
@@ -36,12 +36,15 @@ fn feed_store_search_feed_keeps_its_cursor_on_an_empty_older_page() {
     let mut store = FeedStore::new();
     let feed = store.open_feed(FeedSpec::Search("surf".to_owned()));
     store.ingest_first_page(feed, parsed_posts(&[video_note(&keys, "surf", 50)]), &graph);
-    store.begin_load_more(feed);
+    store.begin_load_more_at(feed, None);
 
     store.ingest_older_page(feed, Vec::new(), &graph);
 
     // The next swipe digs again from the same spot.
-    assert_eq!(store.begin_load_more(feed), Some(Timestamp::from(49)));
+    assert_eq!(
+        store.begin_load_more_at(feed, None),
+        Some(Timestamp::from(49))
+    );
 }
 
 #[test]
@@ -54,5 +57,5 @@ fn feed_store_query_feed_with_an_empty_first_load_has_no_cursor() {
 
     // An empty first load leaves a query feed with no cursor at all —
     // the head re-query (`loadFeed`) is how it hunts, not pagination.
-    assert_eq!(store.begin_load_more(feed), None);
+    assert_eq!(store.begin_load_more_at(feed, None), None);
 }

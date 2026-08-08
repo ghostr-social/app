@@ -4,10 +4,11 @@
 use crate::cache::{client_with_event_cache, ViewerScope};
 use crate::execution::relay_executor::RelayPlanExecutor;
 use crate::query::search::plan_discovery;
+use crate::query::video_filters::DiscoveryRequest;
+use crate::session_generation::SessionGeneration;
 use crate::tests::event_cache_support::{ids, note, notes};
 use crate::tests::outbox_support::empty_directory;
 use crate::tests::support::{author, AUTHOR_A, AUTHOR_B};
-use crate::query::video_filters::DiscoveryRequest;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::prelude::*;
 use std::sync::Arc;
@@ -39,7 +40,13 @@ async fn client_seen_ids_are_not_rows_in_the_account_cache() {
         .await
         .expect("the client stores what it receives");
 
-    assert!(ids(&executor.cache().stored(&notes()).await).is_empty());
+    let session = SessionGeneration::initial();
+    let cached = executor
+        .cache()
+        .stored_for(session, &notes())
+        .await
+        .expect("current session");
+    assert!(ids(&cached).is_empty());
 }
 
 #[tokio::test]
@@ -47,10 +54,16 @@ async fn a_plan_naming_a_new_viewer_empties_the_pool_before_it_queries() {
     let executor = executor(Arc::new(client_with_event_cache()));
     let signed_in = plan_discovery(&request(ViewerScope::SignedIn(author(AUTHOR_A))));
     executor.adopt_plan_viewer(&signed_in).await;
-    executor.cache().remember(&[note(100)]).await;
+    let session = SessionGeneration::initial();
+    executor.cache().remember_for(session, &[note(100)]).await;
 
     let other = plan_discovery(&request(ViewerScope::SignedIn(author(AUTHOR_B))));
 
     assert!(executor.adopt_plan_viewer(&other).await);
-    assert!(executor.cache().stored(&notes()).await.is_empty());
+    let cached = executor
+        .cache()
+        .stored_for(session, &notes())
+        .await
+        .expect("current session");
+    assert!(cached.is_empty());
 }

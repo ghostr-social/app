@@ -5,9 +5,8 @@
 
 mod store_fixture;
 
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
-use store_fixture::temp_root;
+use store_fixture::{plain_store, temp_root};
 use tokio::sync::Mutex;
 
 #[tokio::test]
@@ -17,7 +16,7 @@ async fn partial_range_store_reloads_its_contents_at_startup() {
     std::fs::write(root.join("orphan.part"), b"nomanifest").expect("orphan bytes");
 
     let used_bytes = Arc::new(Mutex::new(0));
-    let store = PartialRangeStore::new(root.clone(), used_bytes.clone());
+    let store = plain_store(root.clone(), used_bytes.clone());
     store.load_existing().await.expect("reload");
 
     assert_eq!(
@@ -58,7 +57,7 @@ async fn partial_range_store_reloads_its_contents_at_startup() {
 }
 
 async fn seed(root: &std::path::Path) {
-    let store = PartialRangeStore::new(root.to_path_buf(), Arc::new(Mutex::new(0)));
+    let store = plain_store(root.to_path_buf(), Arc::new(Mutex::new(0)));
     store
         .write_range("done", 0, b"headtail")
         .await

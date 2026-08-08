@@ -1,15 +1,14 @@
 mod store_fixture;
 
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
-use store_fixture::temp_root;
+use store_fixture::{plain_store, temp_root};
 use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn partial_range_writes_coalesce_overlaps_and_adjacency_and_account_bytes() {
     let root = temp_root("ghostr-partial-merge");
     let used_bytes = Arc::new(Mutex::new(0));
-    let store = PartialRangeStore::new(root.clone(), used_bytes.clone());
+    let store = plain_store(root.clone(), used_bytes.clone());
 
     store.write_range("clip", 0, b"aaaa").await.expect("head");
     store.write_range("clip", 8, b"cccc").await.expect("tail");

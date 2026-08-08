@@ -2,8 +2,8 @@
 
 use serde_json::json;
 
-use crate::tests::support::{author, filter_json, AUTHOR_A, AUTHOR_B};
 use crate::query::video_filters::{discovery_filters, DiscoveryRequest};
+use crate::tests::support::{author, filter_json, AUTHOR_A, AUTHOR_B};
 
 fn request() -> DiscoveryRequest {
     DiscoveryRequest {

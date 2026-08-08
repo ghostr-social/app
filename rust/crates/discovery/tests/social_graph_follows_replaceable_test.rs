@@ -5,8 +5,8 @@
 mod discovery_support;
 
 use discovery_support::{contact_list, p_tag};
-use nostr_sdk::Keys;
 use ghostr_discovery::content::social_graph::SocialGraph;
+use nostr_sdk::Keys;
 
 #[test]
 fn newer_contact_list_replaces_the_previous_one() {
@@ -25,8 +25,9 @@ fn newer_contact_list_replaces_the_previous_one() {
         20,
     ));
 
-    assert!(graph.follows().contains(&new_follow.public_key()));
-    assert!(!graph.follows().contains(&old_follow.public_key()));
+    let follows = graph.follow_list();
+    assert!(follows.contains(&new_follow.public_key()));
+    assert!(!follows.contains(&old_follow.public_key()));
 }
 
 #[test]
@@ -46,8 +47,9 @@ fn stale_contact_list_arriving_late_is_ignored() {
         10,
     ));
 
-    assert!(graph.follows().contains(&new_follow.public_key()));
-    assert!(!graph.follows().contains(&old_follow.public_key()));
+    let follows = graph.follow_list();
+    assert!(follows.contains(&new_follow.public_key()));
+    assert!(!follows.contains(&old_follow.public_key()));
 }
 
 #[test]
@@ -67,6 +69,7 @@ fn equal_created_at_keeps_the_existing_contact_list() {
         10,
     ));
 
-    assert!(graph.follows().contains(&first.public_key()));
-    assert!(!graph.follows().contains(&second.public_key()));
+    let follows = graph.follow_list();
+    assert!(follows.contains(&first.public_key()));
+    assert!(!follows.contains(&second.public_key()));
 }

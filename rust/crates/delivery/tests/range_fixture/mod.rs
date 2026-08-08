@@ -5,7 +5,9 @@ pub mod ranged;
 pub mod reject;
 pub mod stall;
 
-use ghostr_net::outbound_media_client::MediaHttpClient;
+use ghostr_delivery::debug::network::NetworkThrottle;
+use ghostr_net::outbound_media_client::MediaHttpRequests;
+use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -13,8 +15,24 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 
-pub fn media_client() -> MediaHttpClient {
-    MediaHttpClient::trusted().expect("trusted media client")
+pub struct LocalMediaClient(reqwest::Client);
+
+impl MediaHttpRequests for LocalMediaClient {
+    fn get(&self, url: &str) -> anyhow::Result<reqwest::RequestBuilder> {
+        Ok(self.0.get(url))
+    }
+}
+
+pub fn media_client() -> LocalMediaClient {
+    let client = reqwest::Client::builder()
+        .no_proxy()
+        .build()
+        .expect("local media client");
+    LocalMediaClient(client)
+}
+
+pub fn network() -> NetworkThrottle {
+    NetworkThrottle::new()
 }
 
 /// A directory no other caller holds. The clock alone cannot promise
@@ -34,7 +52,11 @@ pub fn temp_root(prefix: &str) -> PathBuf {
 }
 
 pub fn store(root: PathBuf) -> PartialRangeStore {
-    PartialRangeStore::new(root, Arc::new(Mutex::new(0)))
+    PartialRangeStore::with_capacity(
+        root,
+        Arc::new(Mutex::new(0)),
+        StoreCapacity::system(u64::MAX),
+    )
 }
 
 pub fn body() -> Vec<u8> {

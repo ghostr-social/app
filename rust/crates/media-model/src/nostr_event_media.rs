@@ -64,10 +64,7 @@ fn text_media(event: &Event) -> Option<NativeMediaMetadata> {
 }
 
 /// Every value of the named tags; tags shorter than two entries are skipped.
-pub fn tag_values<'a>(
-    event: &'a Event,
-    name: &'a str,
-) -> impl Iterator<Item = &'a str> + 'a {
+pub fn tag_values<'a>(event: &'a Event, name: &'a str) -> impl Iterator<Item = &'a str> + 'a {
     event.tags.iter().filter_map(move |tag| {
         let values = tag.as_slice();
         (values.first().map(String::as_str) == Some(name))

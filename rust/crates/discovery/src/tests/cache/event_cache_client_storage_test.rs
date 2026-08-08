@@ -3,6 +3,7 @@
 //! replaceable indexes after reset; `EventCache` owns queryable events.
 
 use crate::cache::{client_with_event_cache, EventCache};
+use crate::session_generation::SessionGeneration;
 use crate::tests::event_cache_support::{ids, note, notes};
 use nostr_sdk::prelude::*;
 
@@ -55,8 +56,15 @@ async fn the_session_cache_does_not_write_through_the_client_database() {
     let cache = EventCache::of(&client);
     let event = note(400);
 
-    cache.remember(std::slice::from_ref(&event)).await;
+    let session = SessionGeneration::initial();
+    cache
+        .remember_for(session, std::slice::from_ref(&event))
+        .await;
 
-    assert_eq!(ids(&cache.stored(&notes()).await), vec![event.id]);
+    let cached = cache
+        .stored_for(session, &notes())
+        .await
+        .expect("current session");
+    assert_eq!(ids(&cached), vec![event.id]);
     assert!(stored(&client).await.is_empty());
 }

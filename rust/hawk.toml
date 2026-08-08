@@ -2,21 +2,21 @@
 package = "rust_lib_ghostr"
 lib = "rust_lib_ghostr"
 reason = "Native library shipped with the Flutter application"
+feature-profiles = ["no-default", "all"]
 
 [[production]]
 package = "rust_lib_ghostr"
 bin = "video-debug"
 reason = "Workspace binary discovered by Hawk when no configuration exists"
+feature-profiles = ["all"]
 
-[[exclude]]
-crate = "rust_lib_ghostr"
-module = "api"
-reason = "Flutter Rust Bridge API consumed by generated Dart bindings"
+[[feature-profile]]
+name = "no-default"
+no-default-features = true
 
-[[exclude]]
-crate = "rust_lib_ghostr"
-module = "video"
-reason = "Flutter Rust Bridge video API consumed by generated Dart bindings"
+[[feature-profile]]
+name = "all"
+all-features = true
 
 [[exclude]]
 crate = "rust_lib_ghostr"

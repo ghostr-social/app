@@ -9,9 +9,8 @@ use gateway_fixture::delivery::start_delivery;
 use ghostr_delivery::debug::feed::{DebugFeed, DebugFeedStage};
 use ghostr_discovery::cache::client_with_event_cache;
 use ghostr_gateway::hls::sessions::HlsSessions;
-use ghostr_gateway::router::configured_router_with_progressive_debug;
 use ghostr_gateway::progressive::route::{ProgressiveState, ProgressiveTiming};
-use ghostr_media_model::native_models::new_native_downloads;
+use ghostr_gateway::router::configured_router_with_progressive_debug;
 use nostr_sdk::{EventBuilder, Filter, Keys, Kind};
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -26,7 +25,9 @@ async fn clear_api_removes_feed_download_hls_and_nostr_database_state() {
         .acquire(vec!["https://media.example/live.m3u8".to_owned()])
         .await
         .expect("HLS session");
-    delivery.cache.insert_video("stored", progressive_meta());
+    delivery
+        .cache
+        .replace([gateway_fixture::cache_video("stored", progressive_meta())]);
     delivery
         .store
         .write_range("stored", 0, &[7; 16])
@@ -50,7 +51,6 @@ async fn clear_api_removes_feed_download_hls_and_nostr_database_state() {
         debug_feed: feed.clone(),
     });
     let router = configured_router_with_progressive_debug(
-        new_native_downloads(),
         hls.clone(),
         gateway_fixture::media_client(),
         state,

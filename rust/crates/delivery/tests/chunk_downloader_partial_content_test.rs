@@ -1,9 +1,9 @@
 mod range_fixture;
 
+use ghostr_delivery::chunk::cancel::cancel_pair;
+use ghostr_delivery::chunk::downloader::{download_chunk_throttled, ChunkSink, ChunkSpec};
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::ByteRange;
-use ghostr_delivery::chunk::cancel::cancel_pair;
-use ghostr_delivery::chunk::downloader::{download_chunk, ChunkSink, ChunkSpec};
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 
 #[tokio::test]
@@ -25,9 +25,10 @@ async fn chunk_downloader_streams_partial_content_into_the_store() {
         key: "clip",
     };
 
-    let result = download_chunk(&spec, &sink, &mut stats, &token)
-        .await
-        .expect("chunk download");
+    let result =
+        download_chunk_throttled(&spec, &sink, &mut stats, &token, &range_fixture::network())
+            .await
+            .expect("chunk download");
 
     assert_eq!(result.bytes_written, 8);
     assert!(result.accept_ranges);

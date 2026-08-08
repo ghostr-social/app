@@ -22,8 +22,10 @@ fn metadata() -> VideoMeta {
 #[tokio::test]
 async fn debug_state_distinguishes_queued_and_cached_videos() {
     let harness = progressive_harness("ghostr-debug-status");
-    harness.posts.insert_video("cached", metadata());
-    harness.posts.insert_video("queued", metadata());
+    harness.posts.replace([
+        gateway_fixture::cache_video("cached", metadata()),
+        gateway_fixture::cache_video("queued", metadata()),
+    ]);
     harness
         .store
         .set_total_len("cached", 100)

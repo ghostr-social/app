@@ -1,13 +1,11 @@
-use ghostr_engine::{DeliveryKind, VideoMeta};
 use ghostr_delivery::cache_registry::{CacheRegistry, CacheStatus, CacheVideo};
+use ghostr_engine::{DeliveryKind, VideoMeta};
 
 #[test]
 fn cache_registry_projects_stable_ready_partial_and_complete_entries() {
     let registry = CacheRegistry::new();
     registry.insert("pending");
-    registry.insert_video("ready", metadata("ready"));
     assert!(registry.contains("pending"));
-    assert_eq!(registry.videos()[0].status, CacheStatus::Ready);
 
     registry.replace([
         video("second", CacheStatus::Partial),
@@ -18,8 +16,6 @@ fn cache_registry_projects_stable_ready_partial_and_complete_entries() {
     assert_eq!(videos[0].id, "first");
     assert_eq!(videos[0].status, CacheStatus::Complete);
     assert_eq!(videos[1].status, CacheStatus::Partial);
-    registry.remove("first");
-    assert!(!registry.contains("first"));
 }
 
 fn video(id: &str, status: CacheStatus) -> CacheVideo {

@@ -1,17 +1,15 @@
 mod store_fixture;
 
-use ghostr_partial_store::partial_range_completion::Completion;
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
-use store_fixture::temp_root;
+use store_fixture::{plain_store, temp_root};
 use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn partial_range_finalize_promotes_a_complete_file_when_the_digest_matches() {
     let root = temp_root("ghostr-partial-finalize");
     let used_bytes = Arc::new(Mutex::new(0));
-    let store = PartialRangeStore::new(root.clone(), used_bytes.clone());
+    let store = plain_store(root.clone(), used_bytes.clone());
     store.write_range("clip", 4, b"tail").await.expect("tail");
     store.write_range("clip", 0, b"head").await.expect("head");
     store.set_total_len("clip", 8).await.expect("total length");
@@ -27,9 +25,6 @@ async fn partial_range_finalize_promotes_a_complete_file_when_the_digest_matches
         b"headtail"
     );
     assert!(store.is_complete("clip").await.expect("completeness"));
-    let completion = store.completion("clip").await.expect("completion");
-    assert_eq!(completion, Some(Completion::Verified));
-    assert!(completion.expect("promoted").is_verified());
     assert_eq!(
         store.read_range("clip", 4..8).await.expect("read"),
         Some(b"tail".to_vec())

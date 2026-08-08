@@ -21,7 +21,15 @@ async fn stale_session_writes_are_rejected_after_reset() {
             .is_none(),
         "the late old-account read must be rejected",
     );
-    assert!(cache.stored(&notes()).await.is_empty());
+    assert!(cache
+        .stored_for(fresh, &notes())
+        .await
+        .expect("fresh session")
+        .is_empty());
     assert!(cache.remember_for(fresh, &[note(300)]).await);
-    assert_eq!(timestamps(&cache.stored(&notes()).await), vec![300]);
+    let stored = cache
+        .stored_for(fresh, &notes())
+        .await
+        .expect("fresh session");
+    assert_eq!(timestamps(&stored), vec![300]);
 }

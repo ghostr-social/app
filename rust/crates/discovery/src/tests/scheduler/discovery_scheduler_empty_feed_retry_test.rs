@@ -1,9 +1,9 @@
 //! A cold canonical feed keeps trying when relays settle its first
 //! page without any playable content.
 
+use crate::retrieval_types::RetrievalOutcome;
 use crate::tests::scheduler_support::{context, next_outcome, next_started, note_at, request};
 use crate::tests::scripted_scheduler_support::scripted_scheduler;
-use crate::retrieval_types::RetrievalOutcome;
 use std::time::Duration;
 
 #[tokio::test(start_paused = true)]

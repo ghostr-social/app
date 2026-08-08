@@ -1,6 +1,8 @@
 //! Auto-prefetch advances from playable rows, not older junk in relay results.
 
-use crate::tests::scheduler_support::{context, next_outcome, next_started, request, start_scheduler};
+use crate::tests::scheduler_support::{
+    context, next_outcome, next_started, request, start_scheduler,
+};
 use ghostr_engine::{inventory_controller::Mode, DataUsageLevel};
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, Timestamp};
 

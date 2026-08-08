@@ -1,11 +1,14 @@
 //! Takeout order follows the priority class, then submission order.
 
-use crate::scheduler::queue::RetrievalQueue;
 use crate::retrieval_types::{FeedContext, RetrievalPriority, RetrievalRequest};
+use crate::scheduler::queue::RetrievalQueue;
 
 fn request(context: &str, priority: RetrievalPriority) -> RetrievalRequest {
     RetrievalRequest {
-        context: FeedContext::new(context),
+        context: FeedContext::for_session(
+            context,
+            crate::session_generation::SessionGeneration::initial(),
+        ),
         priority,
     }
 }

@@ -45,17 +45,6 @@ fn ten_opposite_samples_halve_the_distance() {
 }
 
 #[test]
-fn ttfb_blends_like_throughput() {
-    let mut stats = HostStats::new();
-
-    stats.record_ttfb(HOST, 200);
-    stats.record_ttfb(HOST, 100);
-
-    let expected = EWMA_ALPHA * 100.0 + (1.0 - EWMA_ALPHA) * 200.0;
-    assert_close(stats.expected_ttfb_ms(HOST).expect("recorded"), expected);
-}
-
-#[test]
 fn zero_elapsed_transfers_carry_no_rate_and_are_ignored() {
     let mut stats = HostStats::new();
 

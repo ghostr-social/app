@@ -30,9 +30,10 @@ fn item() -> DebugFeedItem {
 async fn debug_state_exposes_nostr_feed_and_post_metadata() {
     let harness = progressive_harness("debug-nostr-state");
     let video = item();
-    harness
-        .posts
-        .insert_video(video.id.clone(), video.meta.clone());
+    harness.posts.replace([gateway_fixture::cache_video(
+        video.id.clone(),
+        video.meta.clone(),
+    )]);
     harness
         .debug_feed
         .publish(4, DebugFeedStage::Settled, vec![video]);

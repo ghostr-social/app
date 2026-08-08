@@ -1,9 +1,9 @@
+use crate::content::social_graph::SocialGraph;
+use crate::feed::spec::FeedSpec;
+use crate::query::video_filters::DiscoveryRequest;
+use crate::scheduler::feeds::FEED_REFRESH_BACKOFF;
 use crate::tests::scheduler_support::{context, next_outcome, next_started, no_start, note_at};
 use crate::tests::scripted_scheduler_support::scripted_scheduler;
-use crate::feed::spec::FeedSpec;
-use crate::scheduler::feeds::FEED_REFRESH_BACKOFF;
-use crate::content::social_graph::SocialGraph;
-use crate::query::video_filters::DiscoveryRequest;
 use nostr_sdk::{Keys, Timestamp};
 
 fn main_request() -> DiscoveryRequest {

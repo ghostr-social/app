@@ -34,20 +34,6 @@ impl CacheRegistry {
         self.write().insert(id.into(), None);
     }
 
-    pub fn insert_video(&self, id: impl Into<String>, meta: VideoMeta) {
-        let id = id.into();
-        let video = CacheVideo {
-            id: id.clone(),
-            meta,
-            status: CacheStatus::Ready,
-        };
-        self.write().insert(id, Some(video));
-    }
-
-    pub fn remove(&self, id: &str) {
-        self.write().remove(id);
-    }
-
     pub fn replace(&self, videos: impl IntoIterator<Item = CacheVideo>) {
         let mut guard = self.write();
         guard.clear();

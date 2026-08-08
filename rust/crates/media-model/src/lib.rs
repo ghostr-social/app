@@ -2,7 +2,6 @@
 
 pub mod event_identity;
 pub mod imeta_extras;
-mod native_download_state;
 pub mod native_media_metadata;
 pub mod native_models;
 mod native_text;
