@@ -10,16 +10,16 @@ use nostr_sdk::Timestamp;
 use tokio::sync::watch;
 
 use crate::content::parsing::ParsedVideoPost;
+use crate::content::social_graph::SocialGraph;
 use crate::feed::assembly::{append_new, select_posts};
 use crate::feed::spec::FeedSpec;
 use crate::feed::store_cursor::{older_cursor, post_cursor};
-use crate::content::social_graph::SocialGraph;
 
 mod progress;
 
 /// How many rows a canonical feed keeps. Query feeds preserve their complete
 /// discovered history so native snapshots can expose result 501 and beyond.
-pub const FEED_POST_RETENTION: usize = 500;
+pub(crate) const FEED_POST_RETENTION: usize = 500;
 
 /// Handle of one open feed.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

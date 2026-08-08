@@ -1,6 +1,6 @@
 use crate::delivery_events::{ClearRequest, DeliveryCommand};
-use crate::manager::DeliveryWorker;
 use crate::manager::transfers::InternalEvent;
+use crate::manager::DeliveryWorker;
 use crate::playback_demand::DemandSignal;
 use tokio::sync::oneshot;
 

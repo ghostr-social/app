@@ -93,7 +93,7 @@ impl PartialRangeStore {
         self.paths.completed(key)
     }
 
-    pub(crate) async fn discard(&self, entries: &mut Entries, key: &str) -> Result<()> {
+    async fn discard(&self, entries: &mut Entries, key: &str) -> Result<()> {
         for path in self.paths.all(key) {
             disk::remove_if_present(&path).await?;
         }
@@ -103,11 +103,7 @@ impl PartialRangeStore {
         Ok(())
     }
 
-    pub(crate) async fn entry<'a>(
-        &self,
-        entries: &'a mut Entries,
-        key: &str,
-    ) -> Result<&'a mut Entry> {
+    async fn entry<'a>(&self, entries: &'a mut Entries, key: &str) -> Result<&'a mut Entry> {
         validate_key(key)?;
         if !entries.contains_key(key) {
             let loaded = disk::load_entry(&self.paths, key).await?;
@@ -118,11 +114,11 @@ impl PartialRangeStore {
     }
 
     /// Monotonic use counter: newer means more recently used.
-    pub(crate) fn tick(&self) -> u64 {
+    fn tick(&self) -> u64 {
         self.clock.fetch_add(1, Ordering::Relaxed).saturating_add(1)
     }
 
-    pub(crate) async fn credit(&self, bytes: u64) {
+    async fn credit(&self, bytes: u64) {
         let mut used = self.used_bytes.lock().await;
         *used = used.saturating_add(bytes);
     }

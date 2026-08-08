@@ -1,9 +1,9 @@
 //! Rust-owned lifecycle for active search and hashtag feeds.
 
-use crate::scheduler::{DiscoveryCommand, SchedulerWorker};
+use crate::query::search::plan_discovery;
 use crate::retrieval_types::{FeedContext, RetrievalPriority};
 use crate::scheduler::feeds::{FeedHuntAction, FEED_REFRESH_BACKOFF};
-use crate::query::search::plan_discovery;
+use crate::scheduler::{DiscoveryCommand, SchedulerWorker};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct HuntToken(pub(crate) u64);

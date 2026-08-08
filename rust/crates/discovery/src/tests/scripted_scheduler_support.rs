@@ -1,8 +1,6 @@
-use crate::scheduler::{
-    start_discovery_scheduler, DiscoveryHandle, DiscoverySchedulerConfig,
-};
 use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::retrieval_types::{PlanFailure, RetrievalOutcome};
+use crate::scheduler::{start_discovery_scheduler, DiscoveryHandle, DiscoverySchedulerConfig};
 use ghostr_engine::{inventory_controller::Mode, DataUsageLevel};
 use nostr_sdk::Event;
 use std::collections::VecDeque;
@@ -27,17 +25,17 @@ impl PlanExecutor for ScriptedExecutor {
     }
 }
 
-pub struct ScriptedScheduler {
-    pub handle: DiscoveryHandle,
-    pub started: mpsc::UnboundedReceiver<PlannedRetrieval>,
-    pub outcomes: mpsc::UnboundedReceiver<RetrievalOutcome>,
+pub(crate) struct ScriptedScheduler {
+    pub(crate) handle: DiscoveryHandle,
+    pub(crate) started: mpsc::UnboundedReceiver<PlannedRetrieval>,
+    pub(crate) outcomes: mpsc::UnboundedReceiver<RetrievalOutcome>,
 }
 
-pub fn scripted_scheduler(pages: Vec<Vec<Event>>) -> ScriptedScheduler {
+pub(crate) fn scripted_scheduler(pages: Vec<Vec<Event>>) -> ScriptedScheduler {
     scripted_scheduler_results(pages.into_iter().map(Ok).collect())
 }
 
-pub fn scripted_scheduler_results(
+pub(crate) fn scripted_scheduler_results(
     pages: Vec<Result<Vec<Event>, PlanFailure>>,
 ) -> ScriptedScheduler {
     let (starts, started) = mpsc::unbounded_channel();

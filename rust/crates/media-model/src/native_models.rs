@@ -79,28 +79,24 @@ pub enum NativeVideoDelivery {
 }
 
 impl NativeVideoDelivery {
-    pub fn can_cache_as_single_file(self) -> bool {
+    fn can_cache_as_single_file(self) -> bool {
         self == Self::Progressive
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct NativeVideoDownload {
-    pub id: String,
     pub url: String,
-    pub event: NativeEventIdentity,
-    pub nostr: NativeVideo,
+    nostr: NativeVideo,
     state: NativeDownloadState,
     suppressed_by: Option<NativeVideoCacheKey>,
 }
 
 impl NativeVideoDownload {
-    pub fn new(inventory_id: String, nostr: NativeVideo, event: NativeEventIdentity) -> Self {
+    pub fn new(_inventory_id: String, nostr: NativeVideo, _event: NativeEventIdentity) -> Self {
         let state = NativeDownloadState::initial(nostr.delivery.can_cache_as_single_file());
         Self {
-            id: inventory_id,
             url: nostr.url.clone(),
-            event,
             nostr,
             state,
             suppressed_by: None,

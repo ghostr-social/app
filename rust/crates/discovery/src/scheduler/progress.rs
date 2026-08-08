@@ -1,12 +1,12 @@
 //! Forwards executor events while the full retrieval remains in flight.
 
-use crate::scheduler::FinishedRetrieval;
 use crate::feed::cursor::playable_cursor;
 use crate::plan_executor::{PlanExecutor, PlanPage, PlanPageFuture, PlannedRetrieval};
+use crate::query::search::QueryPlan;
 use crate::retrieval_types::{
     FeedContext, PlanFailure, RetrievalOutcome, RetrievalPurpose, RetrievalRequest,
 };
-use crate::query::search::QueryPlan;
+use crate::scheduler::FinishedRetrieval;
 use nostr_sdk::Event;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -44,7 +44,7 @@ pub(crate) fn spawn_retrieval_task(input: RetrievalTaskInput) -> JoinHandle<()> 
     })
 }
 
-pub(crate) fn purpose(retrieval: &PlannedRetrieval) -> RetrievalPurpose {
+fn purpose(retrieval: &PlannedRetrieval) -> RetrievalPurpose {
     if retrieval
         .plan
         .queries
@@ -57,7 +57,7 @@ pub(crate) fn purpose(retrieval: &PlannedRetrieval) -> RetrievalPurpose {
     }
 }
 
-pub(crate) async fn execute_progressively(
+async fn execute_progressively(
     executor: Arc<dyn PlanExecutor>,
     retrieval: PlannedRetrieval,
     context: FeedContext,
@@ -89,7 +89,7 @@ async fn forward_events(
     }
 }
 
-pub(crate) struct ProgressiveResult {
+struct ProgressiveResult {
     result: Result<PlanPage, PlanFailure>,
     had_playable: bool,
 }

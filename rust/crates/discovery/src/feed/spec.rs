@@ -5,8 +5,8 @@ use nostr_sdk::{PublicKey, Timestamp};
 
 use crate::cache::ViewerScope;
 use crate::content::parsing::ParsedVideoPost;
-use crate::query::hashtags::normalize_hashtag;
 use crate::content::social_graph::SocialGraph;
+use crate::query::hashtags::normalize_hashtag;
 use crate::query::video_filters::{DiscoveryFlow, DiscoveryRequest};
 
 /// One open feed's identity and query recipe.
@@ -60,7 +60,7 @@ impl FeedSpec {
     /// signed-out main feed has no viewer whose mutes could apply, and
     /// a profile grid shows exactly its creators, muted or not
     /// (`ProfileDetailsPolicy.build` filters only by creator id).
-    pub fn accepts(&self, post: &ParsedVideoPost, graph: &SocialGraph) -> bool {
+    pub(crate) fn accepts(&self, post: &ParsedVideoPost, graph: &SocialGraph) -> bool {
         match self {
             Self::MainFeed { viewer } => accepts_main_feed(viewer, post, graph),
             Self::Profile(creators) => written_by(post, creators),
@@ -79,7 +79,7 @@ impl FeedSpec {
 
     /// Search and hashtag feeds keep extending while their native hunt stays
     /// open; canonical feeds may retain only a bounded head window.
-    pub fn is_query(&self) -> bool {
+    pub(crate) fn is_query(&self) -> bool {
         matches!(self, Self::Hashtag(_) | Self::Search(_))
     }
 }

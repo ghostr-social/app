@@ -2,12 +2,12 @@
 //! store, launch due probes, plan with the pure engine, then bring the
 //! in-flight transfers in line with the freshly ordered plan.
 
-use ghostr_engine::tiers::DemandSignals;
-use ghostr_engine::{ByteRange, PostId};
-use crate::manager::DeliveryWorker;
 use crate::manager::plan::{planned_work, PlanInputs, PlannedTransfer, PlannedWork};
 use crate::manager::transfers::spawn_probe;
+use crate::manager::DeliveryWorker;
 use crate::playback_demand::DemandSignal;
+use ghostr_engine::tiers::DemandSignals;
+use ghostr_engine::{ByteRange, PostId};
 use std::collections::HashMap;
 
 impl DeliveryWorker {

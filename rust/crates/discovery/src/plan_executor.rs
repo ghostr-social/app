@@ -3,8 +3,8 @@
 //! touches relays.
 
 use crate::feed::cursor::retrieval_cursor;
-use crate::retrieval_types::{EventProgress, FeedContext, PlanFailure, RetrievalPriority};
 use crate::query::search::QueryPlan;
+use crate::retrieval_types::{EventProgress, FeedContext, PlanFailure, RetrievalPriority};
 use nostr_sdk::{Event, Timestamp};
 use std::future::Future;
 use std::pin::Pin;
@@ -12,8 +12,8 @@ use std::pin::Pin;
 /// One retrieval as handed to the executor.
 #[derive(Clone, Debug)]
 pub struct PlannedRetrieval {
-    pub context: FeedContext,
-    pub priority: RetrievalPriority,
+    pub(crate) context: FeedContext,
+    pub(crate) priority: RetrievalPriority,
     pub plan: QueryPlan,
 }
 
@@ -23,8 +23,8 @@ pub type PlanFuture = Pin<Box<dyn Future<Output = Result<Vec<Event>, PlanFailure
 /// A completed scheduled page plus the conservative cursor its wire filters
 /// reached. Generic executors derive it from their merged events.
 pub struct PlanPage {
-    pub events: Vec<Event>,
-    pub cursor: Option<Timestamp>,
+    pub(crate) events: Vec<Event>,
+    pub(crate) cursor: Option<Timestamp>,
 }
 
 impl PlanPage {

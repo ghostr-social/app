@@ -4,7 +4,7 @@
 
 pub mod assembly;
 pub mod cursor;
-pub mod pagination;
+pub(crate) mod pagination;
 pub mod spec;
 pub mod store;
-pub mod store_cursor;
+pub(crate) mod store_cursor;

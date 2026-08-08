@@ -3,17 +3,17 @@
 //! it was asked to run instead of touching relays.
 
 use crate::outbox::directory::OutboxDirectory;
-use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::outbox::directory::SharedOutboxDirectory;
+use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::retrieval_types::PlanFailure;
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, PublicKey, Tag, Timestamp};
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
 
-pub const BOOTSTRAP_RELAY: &str = "wss://boot.example";
+pub(crate) const BOOTSTRAP_RELAY: &str = "wss://boot.example";
 
 /// A kind-10002 relay list declaring one write relay.
-pub fn relay_list_event(keys: &Keys, url: &str) -> Event {
+pub(crate) fn relay_list_event(keys: &Keys, url: &str) -> Event {
     EventBuilder::new(Kind::RelayList, "")
         .tags([Tag::parse(vec!["r".to_owned(), url.to_owned()]).expect("fixture tag")])
         .custom_created_at(Timestamp::from(10))
@@ -22,7 +22,7 @@ pub fn relay_list_event(keys: &Keys, url: &str) -> Event {
 }
 
 /// A kind-3 follow list naming every given pubkey.
-pub fn contact_list_event(keys: &Keys, follows: &[PublicKey]) -> Event {
+pub(crate) fn contact_list_event(keys: &Keys, follows: &[PublicKey]) -> Event {
     let tags = follows
         .iter()
         .map(|follow| Tag::parse(vec!["p".to_owned(), follow.to_hex()]).expect("fixture tag"));
@@ -35,7 +35,7 @@ pub fn contact_list_event(keys: &Keys, follows: &[PublicKey]) -> Event {
 
 /// A directory whose viewer follows `count` creators, each with one
 /// distinct declared write relay.
-pub fn directory_with_follows(count: usize) -> OutboxDirectory {
+pub(crate) fn directory_with_follows(count: usize) -> OutboxDirectory {
     let mut directory = OutboxDirectory::new(vec![BOOTSTRAP_RELAY.to_owned()]);
     let follows: Vec<Keys> = (0..count).map(|_| Keys::generate()).collect();
     for (index, keys) in follows.iter().enumerate() {
@@ -48,19 +48,19 @@ pub fn directory_with_follows(count: usize) -> OutboxDirectory {
     directory
 }
 
-pub fn shared_directory(directory: OutboxDirectory) -> SharedOutboxDirectory {
+pub(crate) fn shared_directory(directory: OutboxDirectory) -> SharedOutboxDirectory {
     Arc::new(RwLock::new(directory))
 }
 
 /// A shared directory that knows the bootstrap relay and nothing else.
-pub fn empty_directory() -> SharedOutboxDirectory {
+pub(crate) fn empty_directory() -> SharedOutboxDirectory {
     shared_directory(OutboxDirectory::new(vec![BOOTSTRAP_RELAY.to_owned()]))
 }
 
 /// Executor that reports every retrieval and never completes one, so a
 /// test can prove nothing waits on it.
 pub struct RecordingExecutor {
-    pub started: mpsc::UnboundedSender<PlannedRetrieval>,
+    started: mpsc::UnboundedSender<PlannedRetrieval>,
 }
 
 impl PlanExecutor for RecordingExecutor {
@@ -70,7 +70,7 @@ impl PlanExecutor for RecordingExecutor {
     }
 }
 
-pub fn recording_executor() -> (
+pub(crate) fn recording_executor() -> (
     Arc<dyn PlanExecutor>,
     mpsc::UnboundedReceiver<PlannedRetrieval>,
 ) {
@@ -81,7 +81,7 @@ pub fn recording_executor() -> (
 /// Executor that reports every retrieval and fails it, standing in for
 /// relays that were unreachable when the app started.
 pub struct FailingExecutor {
-    pub started: mpsc::UnboundedSender<PlannedRetrieval>,
+    started: mpsc::UnboundedSender<PlannedRetrieval>,
 }
 
 impl PlanExecutor for FailingExecutor {
@@ -91,7 +91,7 @@ impl PlanExecutor for FailingExecutor {
     }
 }
 
-pub fn failing_executor() -> (
+pub(crate) fn failing_executor() -> (
     Arc<dyn PlanExecutor>,
     mpsc::UnboundedReceiver<PlannedRetrieval>,
 ) {

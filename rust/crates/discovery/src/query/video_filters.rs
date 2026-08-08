@@ -7,16 +7,16 @@ use crate::cache::ViewerScope;
 use crate::query::hashtags::hashtag_filter_values;
 
 /// Every NIP-71 video kind: normal + short, current + deprecated addressable.
-pub const VIDEO_EVENT_KINDS: [u16; 4] = [21, 22, 34235, 34236];
+pub(crate) const VIDEO_EVENT_KINDS: [u16; 4] = [21, 22, 34235, 34236];
 
 /// Kind-1 notes: most Nostr videos travel as plain notes with a link.
-pub const VIDEO_NOTE_KIND: u16 = 1;
+pub(crate) const VIDEO_NOTE_KIND: u16 = 1;
 
 /// NIP-94 file-metadata events, filtered server-side to video mimes.
-pub const FILE_EVENT_KIND: u16 = 1063;
+pub(crate) const FILE_EVENT_KIND: u16 = 1063;
 
 /// Mime values worth asking NIP-94 file events for, via the `#m` filter.
-pub const VIDEO_FILE_MIME_TYPES: [&str; 6] = [
+pub(crate) const VIDEO_FILE_MIME_TYPES: [&str; 6] = [
     "video/mp4",
     "video/webm",
     "video/quicktime",
@@ -27,13 +27,13 @@ pub const VIDEO_FILE_MIME_TYPES: [&str; 6] = [
 
 /// NIP-50 term hunting notes that literally mention a video file, issued
 /// only when the viewer gave no term of their own.
-pub const VIDEO_NOTE_HUNT_TERM: &str = "mp4";
+pub(crate) const VIDEO_NOTE_HUNT_TERM: &str = "mp4";
 
 /// Video-kind query limit for a plain (non-widened) feed page.
-pub const FEED_VIDEO_LIMIT: usize = 80;
+pub(crate) const FEED_VIDEO_LIMIT: usize = 80;
 
 /// Limit for widened video queries and every note/file query.
-pub const WIDE_QUERY_LIMIT: usize = 200;
+pub(crate) const WIDE_QUERY_LIMIT: usize = 200;
 
 /// Whether the scheduler serves one requested page or keeps the relay
 /// source alive by alternating history bursts with head refreshes.
@@ -69,17 +69,17 @@ pub struct DiscoveryRequest {
 
 impl DiscoveryRequest {
     /// Widened requests carry a viewer term or hashtags.
-    pub fn is_wide(&self) -> bool {
+    fn is_wide(&self) -> bool {
         self.search_query.is_some() || !self.hashtags.is_empty()
     }
 
-    pub fn is_continuous(&self) -> bool {
+    pub(crate) fn is_continuous(&self) -> bool {
         self.flow == DiscoveryFlow::Continuous || self.is_wide()
     }
 
     /// The authors this request routes to: the ones it filters by, or —
     /// when it filters by nobody — the routing-only set.
-    pub fn routed_authors(&self) -> &[PublicKey] {
+    pub(crate) fn routed_authors(&self) -> &[PublicKey] {
         if self.authors.is_empty() {
             &self.routing_authors
         } else {
@@ -88,7 +88,7 @@ impl DiscoveryRequest {
     }
 
     /// Trimmed NIP-50 term; blank input carries no term.
-    pub fn normalized_search(&self) -> Option<&str> {
+    pub(crate) fn normalized_search(&self) -> Option<&str> {
         let term = self.search_query.as_deref()?.trim();
         if term.is_empty() {
             None
@@ -100,7 +100,7 @@ impl DiscoveryRequest {
 
 /// Builds the filters in canonical order: dedicated video kinds first,
 /// then the additive note, note-hunt, and file queries.
-pub fn discovery_filters(request: &DiscoveryRequest) -> Vec<Filter> {
+pub(crate) fn discovery_filters(request: &DiscoveryRequest) -> Vec<Filter> {
     let mut filters = vec![video_kinds_filter(request), note_filter(request)];
     if request.search_query.is_none() {
         filters.push(note_hunt_filter(request));
@@ -110,7 +110,7 @@ pub fn discovery_filters(request: &DiscoveryRequest) -> Vec<Filter> {
 }
 
 /// Dedicated NIP-71 video kinds; narrow limit unless the request widened.
-pub fn video_kinds_filter(request: &DiscoveryRequest) -> Filter {
+fn video_kinds_filter(request: &DiscoveryRequest) -> Filter {
     let limit = if request.is_wide() {
         WIDE_QUERY_LIMIT
     } else {
@@ -121,19 +121,19 @@ pub fn video_kinds_filter(request: &DiscoveryRequest) -> Filter {
 }
 
 /// Kind-1 note window paired with every request.
-pub fn note_filter(request: &DiscoveryRequest) -> Filter {
+fn note_filter(request: &DiscoveryRequest) -> Filter {
     let filter = scoped(request, &[VIDEO_NOTE_KIND], WIDE_QUERY_LIMIT);
     with_search(filter, request.normalized_search())
 }
 
 /// NIP-50 hunt for notes mentioning a video file; only built when the
 /// viewer gave no term of their own.
-pub fn note_hunt_filter(request: &DiscoveryRequest) -> Filter {
+fn note_hunt_filter(request: &DiscoveryRequest) -> Filter {
     scoped(request, &[VIDEO_NOTE_KIND], WIDE_QUERY_LIMIT).search(VIDEO_NOTE_HUNT_TERM)
 }
 
 /// NIP-94 file query filtered server-side to video mimes.
-pub fn file_event_filter(request: &DiscoveryRequest) -> Filter {
+fn file_event_filter(request: &DiscoveryRequest) -> Filter {
     let filter = scoped(request, &[FILE_EVENT_KIND], WIDE_QUERY_LIMIT).custom_tag(
         SingleLetterTag::lowercase(Alphabet::M),
         VIDEO_FILE_MIME_TYPES,

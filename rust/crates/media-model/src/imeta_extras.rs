@@ -20,7 +20,7 @@ pub struct ImetaExtras {
     pub image_url: Option<String>,
 }
 
-pub fn imeta_extras(tag: &[String]) -> ImetaExtras {
+pub(crate) fn imeta_extras(tag: &[String]) -> ImetaExtras {
     ImetaExtras {
         size_bytes: imeta_field(tag, "size").and_then(size_bytes),
         duration_ms: imeta_field(tag, "duration").and_then(duration_ms),

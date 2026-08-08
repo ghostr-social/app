@@ -88,7 +88,8 @@ impl OutboxDirectory {
 
     /// Ingests a whole retrieval's events; anything that is not a
     /// kind-10002 relay list is ignored.
-    pub fn ingest_all(&mut self, events: &[Event]) {
+    #[cfg(test)]
+    pub(crate) fn ingest_all(&mut self, events: &[Event]) {
         for event in events {
             self.ingest(event);
         }
@@ -125,7 +126,7 @@ impl OutboxDirectory {
     }
 
     /// The author's declared write relays, in declaration order.
-    pub fn write_relays(&self, author: &PublicKey) -> &[String] {
+    pub(crate) fn write_relays(&self, author: &PublicKey) -> &[String] {
         self.write_lists
             .get(author)
             .map_or(&[], |list| list.urls.as_slice())

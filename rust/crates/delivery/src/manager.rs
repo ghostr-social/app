@@ -8,24 +8,22 @@
 //! `completion` and `probe_completion` absorb the results, and
 //! `retry`/`failure`/`pressure` decide what a failure means.
 
-pub mod cache;
-pub mod completion;
+mod cache;
+mod completion;
 pub mod failure;
-pub mod inflight;
-pub mod plan;
-pub mod pressure;
-pub mod probe_completion;
-pub mod reconcile;
-pub mod reset;
+pub(crate) mod inflight;
+pub(crate) mod plan;
+pub(crate) mod pressure;
+mod probe_completion;
+pub(crate) mod reconcile;
+mod reset;
 pub mod retry;
-pub mod state;
-pub mod stats;
-pub mod transfers;
-pub mod wake;
-pub mod workers;
+pub(crate) mod state;
+pub(crate) mod stats;
+pub(crate) mod transfers;
+mod wake;
+pub(crate) mod workers;
 
-use ghostr_engine::inventory_controller::Mode;
-use ghostr_engine::{DataUsageLevel, EngineParams};
 use crate::cache_registry::CacheRegistry;
 use crate::debug::network::NetworkThrottle;
 use crate::delivery_events::{command_channel, CommandReceiver, DeliveryHandle};
@@ -35,13 +33,15 @@ use crate::manager::state::DeliveryState;
 use crate::manager::stats::StatsKeeper;
 use crate::manager::transfers::{InternalEvent, TransferContext};
 use crate::manager::workers::DownloadWorkers;
-use crate::probe::pool::MetadataProbePool;
 use crate::mutable_priority_queue::MutablePriorityQueue;
+use crate::playback_demand::{DemandReceiver, DemandSignal};
+use crate::probe::pool::MetadataProbePool;
+use ghostr_engine::inventory_controller::Mode;
+use ghostr_engine::{DataUsageLevel, EngineParams};
 use ghostr_net::outbound_media_client::MediaHttpClient;
+use ghostr_net::transfer_timeouts::TransferTimeouts;
 use ghostr_partial_store::partial_range_store::capacity::DEFAULT_RECHECK;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
-use crate::playback_demand::{DemandReceiver, DemandSignal};
-use ghostr_net::transfer_timeouts::TransferTimeouts;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -124,19 +124,19 @@ async fn run(
 }
 
 pub(crate) struct DeliveryWorker {
-    pub(crate) state: DeliveryState,
-    pub(crate) keeper: StatsKeeper,
-    pub(crate) downloads: DownloadWorkers,
-    pub(crate) queue: MutablePriorityQueue,
-    pub(crate) probes: MetadataProbePool,
-    pub(crate) retry: RetryBook,
-    pub(crate) pressure: StorePressure,
-    pub(crate) pending_demand: Option<DemandSignal>,
-    pub(crate) ctx: TransferContext,
-    pub(crate) cache: CacheRegistry,
-    pub(crate) commands: CommandReceiver,
-    pub(crate) demand: DemandReceiver,
-    pub(crate) events: mpsc::UnboundedReceiver<InternalEvent>,
+    state: DeliveryState,
+    keeper: StatsKeeper,
+    downloads: DownloadWorkers,
+    queue: MutablePriorityQueue,
+    probes: MetadataProbePool,
+    retry: RetryBook,
+    pressure: StorePressure,
+    pending_demand: Option<DemandSignal>,
+    ctx: TransferContext,
+    cache: CacheRegistry,
+    commands: CommandReceiver,
+    demand: DemandReceiver,
+    events: mpsc::UnboundedReceiver<InternalEvent>,
 }
 
 impl DeliveryWorker {

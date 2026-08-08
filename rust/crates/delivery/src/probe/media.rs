@@ -3,12 +3,12 @@
 //! client, falling back to a one-byte ranged GET when the server
 //! rejects HEAD. Every probe outcome feeds the per-host model.
 
+use anyhow::{Context, Result};
 use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_net::content_range;
 use ghostr_net::origin_content_type;
 use ghostr_net::outbound_media_client::MediaHttpClient;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
-use anyhow::{Context, Result};
 use reqwest::header::{
     HeaderName, ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, RANGE,
 };
@@ -23,7 +23,7 @@ pub struct ProbeResult {
     pub content_length: Option<u64>,
     pub accept_ranges: bool,
     pub content_type: Option<String>,
-    pub ttfb: Duration,
+    pub(crate) ttfb: Duration,
 }
 
 /// Probes `url` with a HEAD request; when the server rejects HEAD it

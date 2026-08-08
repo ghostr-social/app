@@ -1,9 +1,9 @@
 //! Bounded owners of active range-download tasks.
 
-use ghostr_engine::ChunkId;
 use crate::manager::inflight::{ChunkAttempt, CompletionStatus, InFlightChunks};
 use crate::manager::plan::PlannedTransfer;
 use crate::manager::transfers::{spawn_chunk, TransferContext};
+use ghostr_engine::ChunkId;
 use std::collections::HashSet;
 
 #[derive(Default)]

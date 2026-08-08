@@ -2,19 +2,17 @@
 //! retrieval, or inventory-mode transition, applies it, then fills the
 //! free worker slots — never a periodic wake-up.
 
-use crate::scheduler::control::{discovery_action, DiscoveryAction};
-use crate::scheduler::{
-    ActiveRetrieval, DiscoveryCommand, FinishedRetrieval, SchedulerWorker,
-};
 use crate::feed::cursor::playable_cursor;
+use crate::query::search::{plan_discovery, QueryPlan};
 use crate::retrieval_types::{
     FeedContext, PlanFailure, RetrievalOutcome, RetrievalPriority, RetrievalPurpose,
     RetrievalRequest,
 };
+use crate::scheduler::control::{discovery_action, DiscoveryAction};
 use crate::scheduler::plans::widened_plan;
 use crate::scheduler::progress::{spawn_retrieval_task, RetrievalTaskInput};
 use crate::scheduler::retry::should_retry_feed;
-use crate::query::search::{plan_discovery, QueryPlan};
+use crate::scheduler::{ActiveRetrieval, DiscoveryCommand, FinishedRetrieval, SchedulerWorker};
 use ghostr_engine::inventory_controller::Mode;
 use nostr_sdk::{Event, Timestamp};
 

@@ -1,0 +1,29 @@
+[[production]]
+package = "rust_lib_ghostr"
+lib = "rust_lib_ghostr"
+reason = "Native library shipped with the Flutter application"
+
+[[production]]
+package = "rust_lib_ghostr"
+bin = "video-debug"
+reason = "Workspace binary discovered by Hawk when no configuration exists"
+
+[[exclude]]
+crate = "rust_lib_ghostr"
+module = "api"
+reason = "Flutter Rust Bridge API consumed by generated Dart bindings"
+
+[[exclude]]
+crate = "rust_lib_ghostr"
+module = "video"
+reason = "Flutter Rust Bridge video API consumed by generated Dart bindings"
+
+[[exclude]]
+crate = "rust_lib_ghostr"
+file = "src/frb_generated.rs"
+reason = "Generated Flutter Rust Bridge implementation"
+
+[[exclude]]
+crate = "rust_lib_ghostr"
+file = "src/lib.rs"
+reason = "Native library exports consumed by Flutter and generated bindings"

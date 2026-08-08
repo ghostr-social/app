@@ -2,10 +2,8 @@
 
 use crate::debug::assets as debug_assets;
 use crate::debug::hls as debug_hls;
-use ghostr_delivery::debug::network::NetworkProfile;
 use crate::debug::state::{self as debug_state, DebugSnapshot};
 use crate::debug::videos::{DebugVideoRegistration, DebugVideos};
-use ghostr_delivery::delivery_events::DeliveryHandle;
 use crate::hls::sessions::HlsSessions;
 use crate::progressive::route::ProgressiveState;
 use axum::extract::State;
@@ -14,6 +12,8 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{delete, get, post, put};
 use axum::{Json, Router};
+use ghostr_delivery::debug::network::NetworkProfile;
+use ghostr_delivery::delivery_events::DeliveryHandle;
 use nostr_sdk::Client;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;

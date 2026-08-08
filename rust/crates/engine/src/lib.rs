@@ -66,7 +66,8 @@ impl ByteRange {
         self.len() == 0
     }
 
-    pub fn contains_offset(&self, offset: u64) -> bool {
+    #[cfg(test)]
+    fn contains_offset(&self, offset: u64) -> bool {
         offset >= self.start && offset < self.end
     }
 }

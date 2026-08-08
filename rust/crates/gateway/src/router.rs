@@ -1,18 +1,10 @@
-use ghostr_media_model::native_models::NativeDownloads;
-use ghostr_net::outbound_media_client::MediaHttpClient;
-use crate::progressive::route::{self as progressive_route, ProgressiveState};
 #[cfg(all(
     feature = "video-debug-web",
     debug_assertions,
     not(any(target_os = "android", target_os = "ios"))
 ))]
 use crate::debug::http as debug_http;
-#[cfg(all(
-    feature = "video-debug-web",
-    debug_assertions,
-    not(any(target_os = "android", target_os = "ios"))
-))]
-use ghostr_delivery::delivery_events::DeliveryHandle;
+use crate::progressive::route::{self as progressive_route, ProgressiveState};
 use crate::{hls::routes as hls_routes, hls::sessions::HlsSessions};
 use axum::body::Body;
 use axum::extract::{Query, State};
@@ -21,6 +13,14 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
 use axum::routing::get;
 use axum::Router;
+#[cfg(all(
+    feature = "video-debug-web",
+    debug_assertions,
+    not(any(target_os = "android", target_os = "ios"))
+))]
+use ghostr_delivery::delivery_events::DeliveryHandle;
+use ghostr_media_model::native_models::NativeDownloads;
+use ghostr_net::outbound_media_client::MediaHttpClient;
 #[cfg(all(
     feature = "video-debug-web",
     debug_assertions,
@@ -47,7 +47,7 @@ pub fn configured_router(downloads: NativeDownloads) -> anyhow::Result<Router> {
     configured_router_with_hls_sessions(downloads, HlsSessions::production())
 }
 
-pub fn configured_router_with_hls_sessions(
+fn configured_router_with_hls_sessions(
     downloads: NativeDownloads,
     hls_sessions: HlsSessions,
 ) -> anyhow::Result<Router> {
@@ -130,18 +130,12 @@ fn shared_state(
 fn shared_router(state: Arc<GatewayHttpState>) -> Router {
     Router::new()
         .route("/status", get(gateway_status))
-        .route(
-            "/hls/{session}/index.m3u8",
-            get(hls_routes::root_manifest),
-        )
+        .route("/hls/{session}/index.m3u8", get(hls_routes::root_manifest))
         .route(
             "/hls/{session}/manifests/{resource}/index.m3u8",
             get(hls_routes::nested_manifest),
         )
-        .route(
-            "/hls/{session}/assets/{resource}",
-            get(hls_routes::asset),
-        )
+        .route("/hls/{session}/assets/{resource}", get(hls_routes::asset))
         .with_state(state)
 }
 

@@ -1,13 +1,13 @@
 //! One planning pass: on-disk byte ranges plus engine state in, the
 //! ordered chunk-request list and per-post source URLs out.
 
+use crate::manager::retry::RetryBook;
+use crate::manager::state::DeliveryState;
 use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_engine::inventory_controller::{Mode, PresentRanges};
 use ghostr_engine::scoring::{next_work, ChunkRequest, NextWorkContext};
 use ghostr_engine::tiers::DemandSignals;
 use ghostr_engine::{ByteRange, PostId};
-use crate::manager::retry::RetryBook;
-use crate::manager::state::DeliveryState;
 use std::collections::HashMap;
 
 /// Everything a planning pass reads besides the engine state.

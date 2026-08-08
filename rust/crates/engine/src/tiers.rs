@@ -39,15 +39,15 @@ impl DemandSignals {
 /// observation flattened, plus this post's own startability status.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PostInventory {
-    pub mode: Mode,
-    pub startable_target_met: bool,
-    pub startable_window: usize,
-    pub head_complete: bool,
+    pub(crate) mode: Mode,
+    pub(crate) startable_target_met: bool,
+    pub(crate) startable_window: usize,
+    pub(crate) head_complete: bool,
 }
 
 impl PostInventory {
     /// Flattens a controller observation for one post's classification.
-    pub fn new(state: InventoryState, startable_window: usize, head_complete: bool) -> Self {
+    pub(crate) fn new(state: InventoryState, startable_window: usize, head_complete: bool) -> Self {
         Self {
             mode: state.mode,
             startable_target_met: state.counts.startable >= state.counts.target,
@@ -60,7 +60,7 @@ impl PostInventory {
 /// Classifies the post's next chunk of work. `None` means the engine
 /// owes this post nothing right now — notably any post outside the
 /// focus window: scrolling past a post cancels its work.
-pub fn classify(
+pub(crate) fn classify(
     post: &PostId,
     focus: &FocusState,
     inventory: PostInventory,

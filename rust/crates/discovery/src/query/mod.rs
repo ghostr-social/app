@@ -3,7 +3,7 @@
 //! touches a relay or a cache.
 
 pub mod events;
-pub mod hashtags;
+pub(crate) mod hashtags;
 pub mod live_search_relays;
 pub mod search;
 pub mod trending;

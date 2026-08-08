@@ -6,13 +6,13 @@ use std::sync::Arc;
 
 /// One deterministic author for every fixture, so two runs of the same
 /// note produce the same event id and the pool can deduplicate them.
-pub fn keys() -> Keys {
+fn keys() -> Keys {
     Keys::parse("1111111111111111111111111111111111111111111111111111111111111111")
         .expect("valid fixture secret key")
 }
 
 /// A kind-1 note whose id is a function of its timestamp alone.
-pub fn note(created_at: u64) -> Event {
+pub(crate) fn note(created_at: u64) -> Event {
     EventBuilder::text_note(format!("note {created_at}"))
         .custom_created_at(Timestamp::from(created_at))
         .sign_with_keys(&keys())
@@ -20,11 +20,11 @@ pub fn note(created_at: u64) -> Event {
 }
 
 /// Every fixture note is a kind-1, so this filter matches them all.
-pub fn notes() -> Filter {
+pub(crate) fn notes() -> Filter {
     Filter::new().kind(Kind::TextNote)
 }
 
-pub fn timestamps(events: &[Event]) -> Vec<u64> {
+pub(crate) fn timestamps(events: &[Event]) -> Vec<u64> {
     events
         .iter()
         .map(|event| event.created_at.as_u64())
@@ -34,14 +34,14 @@ pub fn timestamps(events: &[Event]) -> Vec<u64> {
 /// Identity, not the whole event: a schnorr signature carries fresh
 /// auxiliary randomness, so two signings of one note differ by `sig`
 /// while sharing the id every deduplication keys on.
-pub fn ids(events: &[Event]) -> Vec<EventId> {
+pub(crate) fn ids(events: &[Event]) -> Vec<EventId> {
     events.iter().map(|event| event.id).collect()
 }
 
-pub fn cache() -> EventCache {
+pub(crate) fn cache() -> EventCache {
     bounded_cache(64)
 }
 
-pub fn bounded_cache(max_events: usize) -> EventCache {
+pub(crate) fn bounded_cache(max_events: usize) -> EventCache {
     EventCache::new(Arc::new(session_event_database(max_events)))
 }

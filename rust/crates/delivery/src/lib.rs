@@ -13,7 +13,7 @@ pub mod probe;
 
 pub mod cache_registry;
 mod candidate_priority;
-pub mod mutable_priority_queue;
+pub(crate) mod mutable_priority_queue;
 pub mod playback_demand;
 pub mod progressive_posts;
 

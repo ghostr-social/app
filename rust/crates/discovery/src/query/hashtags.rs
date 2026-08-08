@@ -2,7 +2,7 @@
 //! Nostr `#t` tag filters.
 
 /// Lowercased, `#`-stripped form of a hashtag; `None` when nothing remains.
-pub fn normalize_hashtag(raw: &str) -> Option<String> {
+pub(crate) fn normalize_hashtag(raw: &str) -> Option<String> {
     let lowered = raw.trim().to_lowercase();
     let value = lowered.strip_prefix('#').unwrap_or(&lowered);
     if value.is_empty() {
@@ -15,7 +15,7 @@ pub fn normalize_hashtag(raw: &str) -> Option<String> {
 /// Relays match tag values exactly, so a hashtag query must ask for every
 /// case form publishers commonly write: as-typed, lower, UPPER, and Title,
 /// deduplicated in that order.
-pub fn hashtag_query_variants(raw: &str) -> Vec<String> {
+pub(crate) fn hashtag_query_variants(raw: &str) -> Vec<String> {
     let typed = strip_hash(raw.trim());
     match normalize_hashtag(typed) {
         None => Vec::new(),
@@ -28,7 +28,7 @@ pub fn hashtag_query_variants(raw: &str) -> Vec<String> {
 }
 
 /// Expanded, deduplicated `#t` values for a whole hashtag set.
-pub fn hashtag_filter_values(hashtags: &[String]) -> Vec<String> {
+pub(crate) fn hashtag_filter_values(hashtags: &[String]) -> Vec<String> {
     let mut values = Vec::new();
     for hashtag in hashtags {
         values.extend(hashtag_query_variants(hashtag));

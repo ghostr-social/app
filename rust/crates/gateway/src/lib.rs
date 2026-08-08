@@ -4,7 +4,7 @@
 //! and `delivery` compose the crate; each folder below owns one way of
 //! serving media.
 
-pub mod delivery;
+pub(crate) mod delivery;
 pub mod router;
 pub mod runtime;
 

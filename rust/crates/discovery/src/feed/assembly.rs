@@ -5,12 +5,12 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::content::parsing::ParsedVideoPost;
-use crate::feed::spec::FeedSpec;
 use crate::content::social_graph::SocialGraph;
+use crate::feed::spec::FeedSpec;
 
 /// The rows one fetched page contributes to a feed: canonical, ordered,
 /// and only what this feed's spec shows the viewer.
-pub fn select_posts(
+pub(crate) fn select_posts(
     spec: &FeedSpec,
     fetched: Vec<ParsedVideoPost>,
     graph: &SocialGraph,
@@ -46,7 +46,10 @@ pub fn canonical_posts(fetched: Vec<ParsedVideoPost>) -> Vec<ParsedVideoPost> {
 /// Appends the incoming posts whose coordinate is not already present,
 /// below the current list and in their given order; reports whether the
 /// list changed.
-pub fn append_new(current: &mut Vec<ParsedVideoPost>, incoming: Vec<ParsedVideoPost>) -> bool {
+pub(crate) fn append_new(
+    current: &mut Vec<ParsedVideoPost>,
+    incoming: Vec<ParsedVideoPost>,
+) -> bool {
     let mut seen: HashSet<String> = current.iter().map(ParsedVideoPost::coordinate).collect();
     let before = current.len();
     for post in incoming {

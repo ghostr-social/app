@@ -2,8 +2,8 @@
 //! folder is gated once, at its declaration in `lib.rs`, so nothing
 //! inside repeats the target and feature checks.
 
-pub mod assets;
-pub mod hls;
-pub mod http;
+pub(crate) mod assets;
+pub(crate) mod hls;
+pub(crate) mod http;
 pub mod state;
 pub mod videos;

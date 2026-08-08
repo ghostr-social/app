@@ -2,19 +2,19 @@
 //! session-safe relay-pool owner.
 
 use crate::cache::EventCache;
-use crate::query::live_search_relays::LiveSearchRelays;
-use crate::outbox::directory::{max_outbox_relays, SharedOutboxDirectory};
-use crate::plan_executor::{PlanExecutor, PlanFuture, PlanPageFuture, PlannedRetrieval};
 #[cfg(test)]
 use crate::execution::routes::outbox_relays as resolved_outbox;
 use crate::execution::routes::plan_outbox_relays as resolved_plan_outboxes;
+use crate::outbox::directory::{max_outbox_relays, SharedOutboxDirectory};
+use crate::plan_executor::{PlanExecutor, PlanFuture, PlanPageFuture, PlannedRetrieval};
+use crate::query::live_search_relays::LiveSearchRelays;
+#[cfg(test)]
+use crate::query::search::OutboxLookup;
+use crate::query::search::QueryPlan;
 #[cfg(test)]
 use crate::relay::pool::RelayPoolConfiguration;
 use crate::relay::pool::RelayPoolOwner;
 use crate::retrieval_types::{EventProgress, PlanFailure};
-#[cfg(test)]
-use crate::query::search::OutboxLookup;
-use crate::query::search::QueryPlan;
 use crate::session_generation::{SessionGeneration, SESSION_RESET_MESSAGE};
 use ghostr_engine::DataUsageLevel;
 #[cfg(test)]
@@ -41,7 +41,7 @@ pub struct RelayPlanExecutor {
 
 impl RelayPlanExecutor {
     #[cfg(test)]
-    pub fn new(
+    pub(crate) fn new(
         client: Arc<Client>,
         search_relays: Vec<String>,
         outbox: SharedOutboxDirectory,

@@ -4,4 +4,4 @@
 
 pub mod media;
 pub mod mp4_moov;
-pub mod pool;
+pub(crate) mod pool;

@@ -3,8 +3,8 @@
 //! Every delivery event can replace the ordering in place. Work that
 //! left the plan disappears, while newly focused work moves to the front.
 
-use ghostr_engine::ChunkId;
 use crate::manager::plan::PlannedTransfer;
+use ghostr_engine::ChunkId;
 use std::collections::{HashSet, VecDeque};
 
 #[derive(Default)]

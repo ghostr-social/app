@@ -9,7 +9,7 @@ pub struct RangeManifest {
 }
 
 impl RangeManifest {
-    pub fn total_len(&self) -> Option<u64> {
+    pub(crate) fn total_len(&self) -> Option<u64> {
         self.total_len
     }
 
@@ -41,11 +41,11 @@ impl RangeManifest {
         self.ranges.iter().map(|&(start, end)| start..end).collect()
     }
 
-    pub fn covered_bytes(&self) -> u64 {
+    pub(crate) fn covered_bytes(&self) -> u64 {
         self.ranges.iter().map(|(start, end)| end - start).sum()
     }
 
-    pub fn contains(&self, span: &Range<u64>) -> bool {
+    pub(crate) fn contains(&self, span: &Range<u64>) -> bool {
         span.start >= span.end
             || self
                 .ranges
@@ -53,7 +53,7 @@ impl RangeManifest {
                 .any(|&(start, end)| start <= span.start && span.end <= end)
     }
 
-    pub fn missing_within(&self, span: &Range<u64>) -> Vec<Range<u64>> {
+    pub(crate) fn missing_within(&self, span: &Range<u64>) -> Vec<Range<u64>> {
         let mut missing = Vec::new();
         let mut cursor = span.start;
         for &(start, end) in &self.ranges {
@@ -76,7 +76,7 @@ impl RangeManifest {
         }
     }
 
-    pub fn to_json(&self) -> String {
+    pub(crate) fn to_json(&self) -> String {
         let total = self
             .total_len
             .map_or_else(|| "null".to_owned(), |len| len.to_string());
@@ -89,7 +89,7 @@ impl RangeManifest {
         format!("{{\"total_len\":{total},\"ranges\":[{ranges}]}}")
     }
 
-    pub fn from_json(text: &str) -> Option<Self> {
+    pub(crate) fn from_json(text: &str) -> Option<Self> {
         let compact: String = text.chars().filter(|c| !c.is_whitespace()).collect();
         let total_len = parse_total(field(&compact, "\"total_len\":")?)?;
         let pairs = parse_pairs(field(&compact, "\"ranges\":")?)?;

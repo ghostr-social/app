@@ -10,15 +10,15 @@ use ghostr_engine::inventory_controller::Mode;
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct FeedQueryState {
     /// An open feed context exists.
-    pub open: bool,
+    pub(crate) open: bool,
     /// A retrieval for that context is queued or running.
-    pub busy: bool,
+    pub(crate) busy: bool,
     /// An older-page cursor is known (the last page was non-empty).
-    pub has_cursor: bool,
+    pub(crate) has_cursor: bool,
     /// At least one page has landed.
-    pub loaded: bool,
+    pub(crate) loaded: bool,
     /// The feed's query was already widened once since it opened.
-    pub widened: bool,
+    pub(crate) widened: bool,
 }
 
 /// Speculative discovery work one mode transition may trigger.
@@ -34,7 +34,7 @@ pub enum DiscoveryAction {
 
 /// Hunger prefetches when a cursor is known and widens once when the
 /// feed looks exhausted; comfort always stays idle.
-pub fn discovery_action(mode: Mode, feed: FeedQueryState) -> DiscoveryAction {
+pub(crate) fn discovery_action(mode: Mode, feed: FeedQueryState) -> DiscoveryAction {
     match mode {
         Mode::Comfort => DiscoveryAction::Idle,
         Mode::Hunger => hunger_action(feed),

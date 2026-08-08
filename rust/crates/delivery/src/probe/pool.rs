@@ -1,9 +1,9 @@
 //! Probe-pipeline bookkeeping: which unknown-size posts are being
 //! HEAD-probed, with bounded concurrency and probe-once memory.
 
+use crate::manager::retry::RetryBook;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::PostId;
-use crate::manager::retry::RetryBook;
 use std::collections::HashSet;
 
 pub(crate) struct MetadataProbePool {

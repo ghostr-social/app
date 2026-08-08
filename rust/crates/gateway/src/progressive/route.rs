@@ -1,15 +1,5 @@
-use ghostr_delivery::cache_registry::CacheRegistry;
-#[cfg(all(
-    feature = "video-debug-web",
-    debug_assertions,
-    not(any(target_os = "android", target_os = "ios"))
-))]
-use ghostr_delivery::debug::feed::DebugFeed;
-use ghostr_delivery::debug::network::NetworkThrottle;
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
-use ghostr_delivery::playback_demand::DemandSender;
-use crate::progressive::stream::body_for_span;
 use crate::progressive::range_header::{self, ResolvedRange};
+use crate::progressive::stream::body_for_span;
 use axum::body::Body;
 use axum::extract::{Query, State};
 use axum::http::header::{
@@ -19,6 +9,16 @@ use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::Response;
 use axum::routing::get;
 use axum::Router;
+use ghostr_delivery::cache_registry::CacheRegistry;
+#[cfg(all(
+    feature = "video-debug-web",
+    debug_assertions,
+    not(any(target_os = "android", target_os = "ios"))
+))]
+use ghostr_delivery::debug::feed::DebugFeed;
+use ghostr_delivery::debug::network::NetworkThrottle;
+use ghostr_delivery::playback_demand::DemandSender;
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use serde::Deserialize;
 use std::ops::Range;
 use std::sync::Arc;
@@ -33,9 +33,9 @@ const MEDIA_HEADER_BYTES: u64 = 64;
 #[derive(Clone, Copy, Debug)]
 pub struct ProgressiveTiming {
     /// Wait for the total length to be learned before answering 503.
-    pub unknown_length_wait: Duration,
+    unknown_length_wait: Duration,
     /// Abort a stalled stream once no byte lands for this long.
-    pub idle_timeout: Duration,
+    pub(crate) idle_timeout: Duration,
 }
 
 impl Default for ProgressiveTiming {

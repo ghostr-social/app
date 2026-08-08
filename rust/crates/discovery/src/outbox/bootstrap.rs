@@ -6,13 +6,11 @@
 //! uses. The first page therefore leaves with whatever the directory
 //! already knows, and every later page benefits from what landed since.
 
-use crate::outbox::plans::{
-    author_relay_lists_plan, viewer_lists_plan, MAX_RELAY_LIST_AUTHORS,
-};
-use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
 use crate::outbox::directory::SharedOutboxDirectory;
-use crate::retrieval_types::{FeedContext, RetrievalOutcome, RetrievalPriority};
+use crate::outbox::plans::{author_relay_lists_plan, viewer_lists_plan, MAX_RELAY_LIST_AUTHORS};
+use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
 use crate::query::search::QueryPlan;
+use crate::retrieval_types::{FeedContext, RetrievalOutcome, RetrievalPriority};
 use crate::session_generation::SessionGeneration;
 use nostr_sdk::{Event, Kind, PublicKey};
 use std::collections::HashSet;
@@ -80,16 +78,13 @@ impl OutboxBootstrap {
 
     /// Adopts a landed follow set as the main feed's routing set and
     /// chases the relay lists it does not know yet.
-    pub async fn track_follows(&self, follows: Vec<PublicKey>) {
+    #[cfg(test)]
+    pub(crate) async fn track_follows(&self, follows: Vec<PublicKey>) {
         let generation = locked(&self.session).generation;
         self.track_follows_for(generation, follows).await;
     }
 
-    pub async fn track_follows_for(
-        &self,
-        generation: SessionGeneration,
-        follows: Vec<PublicKey>,
-    ) {
+    pub async fn track_follows_for(&self, generation: SessionGeneration, follows: Vec<PublicKey>) {
         self.outbox
             .write()
             .await
@@ -99,7 +94,8 @@ impl OutboxBootstrap {
 
     /// Files every relay list in a retrieval's events. Every page flows
     /// through here, so a page carrying none never takes the lock.
-    pub async fn ingest(&self, events: &[Event]) {
+    #[cfg(test)]
+    pub(crate) async fn ingest(&self, events: &[Event]) {
         let generation = locked(&self.session).generation;
         self.ingest_for(generation, events).await;
     }

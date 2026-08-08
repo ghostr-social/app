@@ -1,8 +1,8 @@
 //! Joins every routed fetch so no relay lease outlives its retrieval.
 
 use crate::feed::cursor::wire_retrieval_cursor;
-use crate::retrieval_types::PlanFailure;
 use crate::query::search::QueryRole;
+use crate::retrieval_types::PlanFailure;
 use nostr_sdk::{Event, Timestamp};
 use tokio::task::JoinHandle;
 

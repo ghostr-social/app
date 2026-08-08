@@ -20,15 +20,15 @@ const RELAY_READINESS_TIMEOUT: Duration = Duration::from_secs(15);
 pub type RelayIoFuture<'a, T> = Pin<Box<dyn Future<Output = anyhow::Result<T>> + Send + 'a>>;
 
 pub struct RelayReadIo {
-    pub relays: Vec<String>,
-    pub filter: Filter,
-    pub timeout: Duration,
-    pub progress: Option<EventProgress>,
+    pub(crate) relays: Vec<String>,
+    pub(crate) filter: Filter,
+    pub(crate) timeout: Duration,
+    pub(crate) progress: Option<EventProgress>,
 }
 
 pub struct RelayBroadcastIo {
-    pub relays: Vec<String>,
-    pub event: Event,
+    pub(crate) relays: Vec<String>,
+    pub(crate) event: Event,
 }
 
 pub trait RelayIo: Send + Sync {

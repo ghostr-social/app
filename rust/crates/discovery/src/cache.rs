@@ -7,17 +7,18 @@
 //! answers. See [`MAX_CACHED_EVENTS`] for the in-memory bound.
 
 pub mod database;
-pub mod merge;
+pub(crate) mod merge;
 pub mod session;
 
 use log::warn;
-use nostr_sdk::prelude::{Client, Event, Filter, NostrDatabase};
+use nostr_sdk::prelude::{Event, Filter, NostrDatabase};
+#[cfg(test)]
+use nostr_sdk::Client;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-pub use crate::cache::database::{
-    client_with_event_cache, session_event_database, MAX_CACHED_EVENTS,
-};
+use crate::cache::database::MAX_CACHED_EVENTS;
+pub use crate::cache::database::{client_with_event_cache, session_event_database};
 use crate::cache::merge::merged;
 use crate::cache::session::EventCacheSession;
 pub use crate::cache::session::ViewerScope;
@@ -32,7 +33,8 @@ pub struct EventCache {
 impl EventCache {
     /// Uses a private pool: the client's seen-ID database is deliberately
     /// eventless so late relay work cannot mutate account cache state.
-    pub fn of(_client: &Client) -> Self {
+    #[cfg(test)]
+    pub(crate) fn of(_client: &Client) -> Self {
         Self::session()
     }
 
@@ -51,7 +53,8 @@ impl EventCache {
     /// order, plus the rows this session already holds for the same
     /// filter and the relays did not repeat. An empty pool changes
     /// nothing, so a cold query behaves exactly as it did before.
-    pub async fn union(&self, filter: &Filter, fetched: Vec<Event>) -> Vec<Event> {
+    #[cfg(test)]
+    pub(crate) async fn union(&self, filter: &Filter, fetched: Vec<Event>) -> Vec<Event> {
         let session = self.generation().await;
         self.union_for(session, filter, fetched)
             .await
@@ -115,11 +118,7 @@ impl EventCache {
         self.remember_for(generation, events).await;
     }
 
-    pub async fn remember_for(
-        &self,
-        generation: SessionGeneration,
-        events: &[Event],
-    ) -> bool {
+    pub async fn remember_for(&self, generation: SessionGeneration, events: &[Event]) -> bool {
         let mut session = self.session.lock().await;
         if !session.matches(generation) {
             return false;
@@ -141,7 +140,8 @@ impl EventCache {
     /// The engine outlives a sign-out — the gateway and its client are
     /// installed once per process — so a session that changes identity
     /// must not answer from the previous viewer's rows.
-    pub async fn adopt(&self, viewer: ViewerScope) -> bool {
+    #[cfg(test)]
+    pub(crate) async fn adopt(&self, viewer: ViewerScope) -> bool {
         let generation = self.generation().await;
         self.adopt_for(generation, viewer).await.unwrap_or(false)
     }

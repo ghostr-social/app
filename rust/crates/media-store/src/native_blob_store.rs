@@ -1,7 +1,7 @@
 use crate::native_blob_integrity::{remove_if_present, validate_blob, NativeBlobSnapshot};
 use crate::native_cache::CachedVideo;
-use ghostr_media_model::native_models::NativeVideoCacheKey;
 use anyhow::Result;
+use ghostr_media_model::native_models::NativeVideoCacheKey;
 use log::warn;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -22,7 +22,7 @@ pub struct NativeBlobStore {
 }
 
 impl NativeBlobStore {
-    pub fn new(used_bytes: Arc<Mutex<u64>>, eviction_grace: Duration) -> Self {
+    pub(crate) fn new(used_bytes: Arc<Mutex<u64>>, eviction_grace: Duration) -> Self {
         Self {
             entries: Mutex::new(HashMap::new()),
             eviction_grace,
@@ -30,7 +30,7 @@ impl NativeBlobStore {
         }
     }
 
-    pub async fn find(&self, key: &NativeVideoCacheKey) -> Result<Option<CachedVideo>> {
+    pub(crate) async fn find(&self, key: &NativeVideoCacheKey) -> Result<Option<CachedVideo>> {
         let Some(snapshot) = self.entry(key).await else {
             return Ok(None);
         };
@@ -43,7 +43,7 @@ impl NativeBlobStore {
         Ok(Some(snapshot.video))
     }
 
-    pub async fn remember(&self, key: NativeVideoCacheKey, video: CachedVideo) {
+    pub(crate) async fn remember(&self, key: NativeVideoCacheKey, video: CachedVideo) {
         let entry = NativeBlobEntry {
             modified: modified_time(&video).await,
             orphaned_at: None,
@@ -52,7 +52,7 @@ impl NativeBlobStore {
         self.entries.lock().await.insert(key, entry);
     }
 
-    pub async fn retain(
+    pub(crate) async fn retain(
         &self,
         active: &HashSet<NativeVideoCacheKey>,
     ) -> Result<HashSet<NativeVideoCacheKey>> {

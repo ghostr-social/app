@@ -41,24 +41,25 @@ impl FocusState {
         self.window.get(self.current_index)
     }
 
-    pub fn current_index(&self) -> usize {
+    pub(crate) fn current_index(&self) -> usize {
         self.current_index
     }
 
-    pub fn watch_ms(&self) -> u64 {
+    #[cfg(test)]
+    pub(crate) fn watch_ms(&self) -> u64 {
         self.watch_ms
     }
 
     /// Signed scroll distance: 0 = current, positive = ahead, negative =
     /// behind. `None` when the post is outside the window.
-    pub fn distance_of(&self, post: &PostId) -> Option<i64> {
+    pub(crate) fn distance_of(&self, post: &PostId) -> Option<i64> {
         let position = self.window.iter().position(|item| item == post)?;
         Some(position as i64 - self.current_index as i64)
     }
 
     /// Whether the viewer has watched past the commitment threshold
     /// (plan §3: commitment means the engine should finish this video).
-    pub fn is_committed(&self, commitment_ms: u64) -> bool {
+    pub(crate) fn is_committed(&self, commitment_ms: u64) -> bool {
         self.watch_ms >= commitment_ms
     }
 }

@@ -7,7 +7,7 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-pub(crate) const RELAY_RETRY_INTERVAL: Duration = Duration::from_secs(4);
+const RELAY_RETRY_INTERVAL: Duration = Duration::from_secs(4);
 
 #[derive(Clone, Copy)]
 pub(crate) struct RelayRegistrationPolicy {

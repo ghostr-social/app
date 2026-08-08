@@ -1,8 +1,8 @@
+use crate::manager::plan::PlannedTransfer;
+use crate::mutable_priority_queue::MutablePriorityQueue;
 use ghostr_engine::scoring::ChunkRequest;
 use ghostr_engine::tiers::Tier;
 use ghostr_engine::{ByteRange, ChunkId, PostId};
-use crate::manager::plan::PlannedTransfer;
-use crate::mutable_priority_queue::MutablePriorityQueue;
 
 #[test]
 fn replacement_reprioritizes_work_and_drops_stale_entries() {

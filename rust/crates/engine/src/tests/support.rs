@@ -1,6 +1,6 @@
 use crate::{DeliveryKind, PostId, VideoMeta};
 
-pub fn progressive_meta(size_bytes: Option<u64>, duration_ms: Option<u64>) -> VideoMeta {
+pub(super) fn progressive_meta(size_bytes: Option<u64>, duration_ms: Option<u64>) -> VideoMeta {
     VideoMeta {
         urls: vec!["https://host.example/video.mp4".to_owned()],
         delivery: DeliveryKind::Progressive,
@@ -10,6 +10,6 @@ pub fn progressive_meta(size_bytes: Option<u64>, duration_ms: Option<u64>) -> Vi
     }
 }
 
-pub fn ids(raw: &[&str]) -> Vec<PostId> {
+pub(super) fn ids(raw: &[&str]) -> Vec<PostId> {
     raw.iter().map(|value| PostId::new(*value)).collect()
 }

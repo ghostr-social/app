@@ -23,7 +23,7 @@ struct Entry<T> {
 }
 
 impl<T> RetrievalQueue<T> {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             pending: Vec::new(),
             sequence: 0,
@@ -32,11 +32,11 @@ impl<T> RetrievalQueue<T> {
     }
 
     /// Marks `context` as what the viewer is looking at right now.
-    pub fn focus(&mut self, context: FeedContext) {
+    pub(crate) fn focus(&mut self, context: FeedContext) {
         self.focused = Some(context);
     }
 
-    pub fn push(&mut self, request: RetrievalRequest, payload: T) {
+    pub(crate) fn push(&mut self, request: RetrievalRequest, payload: T) {
         self.pending.push(Entry {
             request,
             payload,
@@ -58,14 +58,14 @@ impl<T> RetrievalQueue<T> {
         }
     }
 
-    pub fn has_pending(&self, context: &FeedContext) -> bool {
+    pub(crate) fn has_pending(&self, context: &FeedContext) -> bool {
         self.pending
             .iter()
             .any(|entry| &entry.request.context == context)
     }
 
     /// Removes and returns the most urgent pending retrieval.
-    pub fn take_next(&mut self) -> Option<(RetrievalRequest, T)> {
+    pub(crate) fn take_next(&mut self) -> Option<(RetrievalRequest, T)> {
         let best = self.best_index()?;
         let entry = self.pending.remove(best);
         Some((entry.request, entry.payload))

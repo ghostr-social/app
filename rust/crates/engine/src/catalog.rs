@@ -31,7 +31,7 @@ impl LearnedFacts {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CatalogEntry {
     pub meta: VideoMeta,
-    pub facts: LearnedFacts,
+    pub(crate) facts: LearnedFacts,
 }
 
 impl CatalogEntry {
@@ -86,17 +86,19 @@ impl Catalog {
         self.entries.get(post)
     }
 
-    pub fn len(&self) -> usize {
+    #[cfg(test)]
+    pub(crate) fn len(&self) -> usize {
         self.entries.len()
     }
 
-    pub fn is_empty(&self) -> bool {
+    #[cfg(test)]
+    pub(crate) fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
 
     /// Bits per second from best-known size and duration; falls back to
     /// the assumed bitrate when either is unknown or degenerate.
-    pub fn estimated_bitrate(&self, post: &PostId, params: &EngineParams) -> u64 {
+    pub(crate) fn estimated_bitrate(&self, post: &PostId, params: &EngineParams) -> u64 {
         self.lookup(post)
             .and_then(measured_bitrate)
             .unwrap_or(params.assumed_bitrate_bps)

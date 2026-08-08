@@ -3,16 +3,16 @@
 //! scratch `HostStats`; the manager re-records outcomes into the one
 //! owned instance, keeping the statistics single-owner and lock-free.
 
-use ghostr_engine::host_stats::HostStats;
-use ghostr_engine::PostId;
 use crate::chunk::cancel::{cancel_pair, CancelHandle};
 use crate::chunk::downloader::{download_chunk_throttled, ChunkResult, ChunkSink, ChunkSpec};
 use crate::debug::network::NetworkThrottle;
 use crate::manager::inflight::ChunkAttempt;
 use crate::probe::media::{probe, ProbeResult};
+use ghostr_engine::host_stats::HostStats;
+use ghostr_engine::PostId;
 use ghostr_net::outbound_media_client::MediaHttpClient;
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;

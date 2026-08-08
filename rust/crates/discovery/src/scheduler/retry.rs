@@ -1,10 +1,10 @@
 //! Bounded retry ladder for canonical feeds whose relay page failed.
 
-use crate::scheduler::{DiscoveryCommand, SchedulerWorker};
 use crate::feed::cursor::playable_cursor;
+use crate::query::search::plan_discovery;
 use crate::retrieval_types::{FeedContext, PlanFailure, RetrievalPriority, RetrievalPurpose};
 use crate::scheduler::hunt::HuntToken;
-use crate::query::search::plan_discovery;
+use crate::scheduler::{DiscoveryCommand, SchedulerWorker};
 use nostr_sdk::Event;
 use std::time::Duration;
 
