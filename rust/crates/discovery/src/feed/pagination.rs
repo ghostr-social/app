@@ -4,10 +4,11 @@ use nostr_sdk::Timestamp;
 
 /// Seconds stepped back from the oldest fetched post so the next page's
 /// inclusive `until` cannot re-fetch that post.
-pub const NEXT_PAGE_BACKSTEP_SECS: u64 = 1;
+pub(crate) const NEXT_PAGE_BACKSTEP_SECS: u64 = 1;
 
 /// Inclusive `until` cutoff from a UTC unix-millisecond clock value.
-pub fn older_than_from_unix_millis(millis: u64) -> Timestamp {
+#[cfg(test)]
+pub(crate) fn older_than_from_unix_millis(millis: u64) -> Timestamp {
     Timestamp::from(millis / 1000)
 }
 
@@ -15,7 +16,7 @@ pub fn older_than_from_unix_millis(millis: u64) -> Timestamp {
 /// oldest fetched `created_at`; `None` when nothing was fetched (the feed
 /// is exhausted). Callers pass what was fetched, not what survived
 /// filtering, so pages full of blocked creators cannot stall pagination.
-pub fn next_page_cursor<I>(fetched_created_at: I) -> Option<Timestamp>
+pub(crate) fn next_page_cursor<I>(fetched_created_at: I) -> Option<Timestamp>
 where
     I: IntoIterator<Item = Timestamp>,
 {

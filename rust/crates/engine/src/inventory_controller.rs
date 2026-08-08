@@ -30,7 +30,7 @@ impl PresentRanges {
         self.by_post.insert(post, ranges);
     }
 
-    pub fn ranges(&self, post: &PostId) -> &[ByteRange] {
+    fn ranges(&self, post: &PostId) -> &[ByteRange] {
         self.by_post.get(post).map(Vec::as_slice).unwrap_or(&[])
     }
 }
@@ -40,18 +40,18 @@ impl PresentRanges {
 pub struct InventoryCounts {
     /// Posts actually considered: current + ahead, capped at
     /// `startable_window`.
-    pub considered: usize,
+    pub(crate) considered: usize,
     /// How many of those are startable right now.
-    pub startable: usize,
+    pub(crate) startable: usize,
     /// Effective target: the configured target, never above
     /// `considered`.
-    pub target: usize,
+    pub(crate) target: usize,
 }
 
 /// One control-loop observation: the counts and the resulting mode.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct InventoryState {
-    pub counts: InventoryCounts,
+    pub(crate) counts: InventoryCounts,
     pub mode: Mode,
 }
 
@@ -71,7 +71,8 @@ impl InventoryController {
         }
     }
 
-    pub fn mode(&self) -> Mode {
+    #[cfg(test)]
+    pub(crate) fn mode(&self) -> Mode {
         self.mode
     }
 
@@ -96,7 +97,7 @@ impl InventoryController {
 /// Hysteresis rule (plan §3): enter comfort once the target is met;
 /// fall back to hunger only below `target - 1`, so losing a single
 /// startable post cannot flap the mode.
-pub fn next_mode(current: Mode, startable: usize, target: usize) -> Mode {
+pub(crate) fn next_mode(current: Mode, startable: usize, target: usize) -> Mode {
     if startable >= target {
         Mode::Comfort
     } else if startable + 1 < target {

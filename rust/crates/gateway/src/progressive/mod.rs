@@ -3,4 +3,4 @@
 
 pub mod range_header;
 pub mod route;
-pub mod stream;
+pub(crate) mod stream;

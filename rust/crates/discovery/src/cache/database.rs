@@ -3,7 +3,7 @@
 use nostr_sdk::prelude::{Client, ClientBuilder, MemoryDatabase, MemoryDatabaseOptions};
 
 /// How many events one account session keeps.
-pub const MAX_CACHED_EVENTS: usize = 10_000;
+pub(super) const MAX_CACHED_EVENTS: usize = 10_000;
 
 /// The shared client keeps only bounded seen IDs. Relay-pool 0.38 still
 /// streams `Saved` events, while disabling events keeps late old fetches

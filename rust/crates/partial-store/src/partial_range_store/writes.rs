@@ -9,7 +9,7 @@ use anyhow::{bail, Context, Result};
 use std::ops::Range;
 
 /// The manifest a write would produce and the bytes it would add.
-pub(crate) struct PlannedWrite {
+struct PlannedWrite {
     manifest: RangeManifest,
     added: u64,
 }

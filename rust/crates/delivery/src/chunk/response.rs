@@ -1,8 +1,8 @@
 //! Validation and range classification for chunk origin responses.
 
+use anyhow::{bail, ensure, Context, Result};
 use ghostr_engine::ByteRange;
 use ghostr_net::{content_range, origin_content_type};
-use anyhow::{bail, ensure, Context, Result};
 use reqwest::header::CONTENT_RANGE;
 use reqwest::{Response, StatusCode};
 

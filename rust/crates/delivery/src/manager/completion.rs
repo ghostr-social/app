@@ -3,15 +3,15 @@
 //! loop cannot hammer a broken source, and complete files are
 //! finalized.
 
-use ghostr_engine::catalog::LearnedFacts;
-use ghostr_engine::host_stats::host_of;
-use ghostr_engine::PostId;
 use crate::chunk::downloader::ChunkResult;
 use crate::manager::failure::{classify, FailureClass};
 use crate::manager::inflight::CompletionStatus;
-use crate::manager::DeliveryWorker;
 use crate::manager::retry::{Retry, Source};
 use crate::manager::transfers::{ChunkDone, InternalEvent};
+use crate::manager::DeliveryWorker;
+use ghostr_engine::catalog::LearnedFacts;
+use ghostr_engine::host_stats::host_of;
+use ghostr_engine::PostId;
 use log::warn;
 use std::time::Duration;
 

@@ -2,8 +2,8 @@
 //! outcomes feed the single owned [`HostStats`]; the JSON snapshot is
 //! persisted to the cache directory on a debounce.
 
-use ghostr_engine::host_stats::{host_of, HostStats};
 use crate::manager::transfers::{ChunkDone, InternalEvent, ProbeDone};
+use ghostr_engine::host_stats::{host_of, HostStats};
 use log::warn;
 use std::io;
 use std::path::{Path, PathBuf};

@@ -11,19 +11,19 @@ use nostr_sdk::{Filter, Kind, PublicKey};
 
 /// The viewer's own replaceable lists: kind-3 follows (routing),
 /// kind-10000 mutes (filtering), kind-10002 relays (their own outbox).
-pub const VIEWER_LIST_KINDS: [u16; 3] = [3, 10_000, 10_002];
+const VIEWER_LIST_KINDS: [u16; 3] = [3, 10_000, 10_002];
 
 /// NIP-65 relay list.
-pub const RELAY_LIST_KIND: u16 = 10_002;
+const RELAY_LIST_KIND: u16 = 10_002;
 
 /// How many authors one relay-list query may name. Relay lists are
 /// replaceable, so the wire limit equals the author count and a filter
 /// naming every follow of a large account would be rejected by many
 /// relays; the bootstrap chases the rest on later batches.
-pub const MAX_RELAY_LIST_AUTHORS: usize = 100;
+pub(crate) const MAX_RELAY_LIST_AUTHORS: usize = 100;
 
 /// Everything the viewer publishes about themselves, in one query.
-pub fn viewer_lists_plan(viewer: PublicKey) -> QueryPlan {
+pub(crate) fn viewer_lists_plan(viewer: PublicKey) -> QueryPlan {
     let filter = Filter::new()
         .kinds(VIEWER_LIST_KINDS.iter().copied().map(Kind::from))
         .author(viewer)
@@ -33,7 +33,7 @@ pub fn viewer_lists_plan(viewer: PublicKey) -> QueryPlan {
 
 /// The relay lists of a named set of authors: the viewer's follows, or
 /// the creators a profile feed just opened.
-pub fn author_relay_lists_plan(authors: &[PublicKey]) -> QueryPlan {
+pub(crate) fn author_relay_lists_plan(authors: &[PublicKey]) -> QueryPlan {
     let filter = Filter::new()
         .kind(Kind::from(RELAY_LIST_KIND))
         .authors(authors.iter().copied())

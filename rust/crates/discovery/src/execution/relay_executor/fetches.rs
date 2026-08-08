@@ -1,9 +1,9 @@
 use super::RelayPlanExecutor;
-use crate::execution::fetch::{fetch, RelayFetch};
 use crate::execution::collector::FetchHandle;
+use crate::execution::fetch::{fetch, RelayFetch};
+use crate::query::search::{resolve_relays, PlannedQuery, QueryPlan, QueryRole};
 use crate::relay::route::RelayPoolRoute;
 use crate::retrieval_types::EventProgress;
-use crate::query::search::{resolve_relays, PlannedQuery, QueryPlan, QueryRole};
 use crate::session_generation::SessionGeneration;
 use std::sync::Arc;
 

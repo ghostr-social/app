@@ -1,23 +1,23 @@
 use crate::native_cache::CachedVideo;
-use ghostr_media_model::native_models::NativeVideoCacheKey;
 use anyhow::{Context, Result};
+use ghostr_media_model::native_models::NativeVideoCacheKey;
 use sha2::{Digest, Sha256};
 use std::time::SystemTime;
 use tokio::io::AsyncReadExt;
 
 #[derive(Clone)]
 pub struct NativeBlobSnapshot {
-    pub key: NativeVideoCacheKey,
-    pub modified: Option<SystemTime>,
-    pub video: CachedVideo,
+    pub(crate) key: NativeVideoCacheKey,
+    pub(crate) modified: Option<SystemTime>,
+    pub(crate) video: CachedVideo,
 }
 
-pub struct NativeBlobValidation {
-    pub modified: Option<SystemTime>,
-    pub valid: bool,
+pub(crate) struct NativeBlobValidation {
+    pub(crate) modified: Option<SystemTime>,
+    pub(crate) valid: bool,
 }
 
-pub async fn validate_blob(snapshot: &NativeBlobSnapshot) -> Result<NativeBlobValidation> {
+pub(crate) async fn validate_blob(snapshot: &NativeBlobSnapshot) -> Result<NativeBlobValidation> {
     let metadata = match tokio::fs::symlink_metadata(&snapshot.video.path).await {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(invalid()),
@@ -72,7 +72,7 @@ fn invalid() -> NativeBlobValidation {
     }
 }
 
-pub async fn remove_if_present(path: &std::path::Path) -> Result<()> {
+pub(crate) async fn remove_if_present(path: &std::path::Path) -> Result<()> {
     let metadata = match tokio::fs::symlink_metadata(path).await {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),

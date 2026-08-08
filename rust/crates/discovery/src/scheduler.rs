@@ -1,25 +1,25 @@
 //! Event-driven relay retrieval queue with a bounded worker pool.
 
-pub mod commands;
+pub(crate) mod commands;
 pub mod control;
-pub mod event_loop;
-pub mod feeds;
+pub(crate) mod event_loop;
+pub(crate) mod feeds;
 pub mod hunt;
-pub mod plans;
-pub mod progress;
+pub(crate) mod plans;
+pub(crate) mod progress;
 pub mod queries;
 pub mod queue;
-pub mod retry;
-pub mod session;
+pub(crate) mod retry;
+pub(crate) mod session;
 
 use crate::plan_executor::{PlanExecutor, PlanPage};
-use crate::scheduler::queue::RetrievalQueue;
+use crate::query::search::QueryPlan;
+use crate::query::video_filters::DiscoveryRequest;
 use crate::retrieval_types::{FeedContext, PlanFailure, RetrievalOutcome, RetrievalPurpose};
 use crate::scheduler::feeds::FeedBook;
 use crate::scheduler::hunt::HuntToken;
 use crate::scheduler::queries::{QueryBook, QueryResult};
-use crate::query::search::QueryPlan;
-use crate::query::video_filters::DiscoveryRequest;
+use crate::scheduler::queue::RetrievalQueue;
 use ghostr_engine::inventory_controller::Mode;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::Timestamp;
@@ -33,7 +33,7 @@ use tokio::task::AbortHandle;
 mod handle;
 
 /// Mirrors Dart's `maxConcurrentRequests` worker-pool cap.
-pub fn max_concurrent_requests(level: DataUsageLevel) -> usize {
+pub(crate) fn max_concurrent_requests(level: DataUsageLevel) -> usize {
     match level {
         DataUsageLevel::Conservative => 2,
         DataUsageLevel::Balanced => 4,
@@ -56,8 +56,16 @@ pub(crate) enum DiscoveryCommand {
         older_than: Option<Timestamp>,
     },
     /// Reorders queued work in the viewer's favor without loading.
+    #[allow(
+        dead_code,
+        reason = "focus commands are exercised only by scheduler tests"
+    )]
     Focus(FeedContext),
     /// Background work (trending, backfill); never steals focus.
+    #[allow(
+        dead_code,
+        reason = "background commands are exercised only by scheduler tests"
+    )]
     Background {
         context: FeedContext,
         request: DiscoveryRequest,

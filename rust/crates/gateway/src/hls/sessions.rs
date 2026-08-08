@@ -1,8 +1,8 @@
-use ghostr_hls_manifest::hls_manifest::{rewrite_hls_manifest, HlsResource, HlsResourceKind};
 use crate::hls::capability::{issue, open};
 use crate::hls::state::{HlsSession, HlsSessionState};
 use crate::hls::types::validated_sources;
 use anyhow::{bail, Result};
+use ghostr_hls_manifest::hls_manifest::{rewrite_hls_manifest, HlsResource, HlsResourceKind};
 use reqwest::Url;
 use std::sync::Arc;
 use std::time::Duration;
@@ -93,7 +93,12 @@ impl HlsSessions {
         state.sessions.remove(id).is_some()
     }
 
-    pub async fn clear(&self) {
+    #[cfg(all(
+        feature = "video-debug-web",
+        debug_assertions,
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
+    pub(crate) async fn clear(&self) {
         self.state.lock().await.sessions.clear();
     }
 }

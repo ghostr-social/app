@@ -26,7 +26,7 @@ pub struct ChunkRequest {
 
 /// Exponential decay by scroll distance; behind items take a heavy
 /// extra discount on top of their distance decay.
-pub fn position_weight(distance: i64) -> f64 {
+pub(crate) fn position_weight(distance: i64) -> f64 {
     let decay = AHEAD_DECAY.powi(distance.unsigned_abs().min(64) as i32);
     match distance >= 0 {
         true => decay,
@@ -35,13 +35,13 @@ pub fn position_weight(distance: i64) -> f64 {
 }
 
 /// Milestone playback seconds a chunk unlocks, per byte fetched.
-pub fn value_per_byte(milestone_seconds: f64, chunk_bytes: u64) -> f64 {
+pub(crate) fn value_per_byte(milestone_seconds: f64, chunk_bytes: u64) -> f64 {
     milestone_seconds / chunk_bytes.max(1) as f64
 }
 
 /// Total deterministic ordering: tier first, higher score next, then
 /// post id and range start so equal scores cannot reorder runs.
-pub fn compare(a: &ChunkRequest, b: &ChunkRequest) -> Ordering {
+pub(crate) fn compare(a: &ChunkRequest, b: &ChunkRequest) -> Ordering {
     a.tier
         .cmp(&b.tier)
         .then_with(|| b.score.total_cmp(&a.score))

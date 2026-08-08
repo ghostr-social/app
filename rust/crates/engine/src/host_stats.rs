@@ -11,7 +11,7 @@ use std::time::Duration;
 /// EWMA weight giving a half-life of ~10 samples: `1 - 0.5^(1/10)`.
 /// After ten samples of a new steady value the estimate has moved
 /// halfway from its old value to the new one.
-pub const EWMA_ALPHA: f64 = 0.066_967_008_463_192_6;
+pub(crate) const EWMA_ALPHA: f64 = 0.066_967_008_463_192_6;
 
 /// Throughput assumed for hosts never transferred from, in bytes/s.
 /// Deliberately optimistic (~4 MiB/s) so unknown hosts get sampled

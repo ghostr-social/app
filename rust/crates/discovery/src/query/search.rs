@@ -10,11 +10,11 @@ use crate::cache::ViewerScope;
 use crate::query::video_filters::{discovery_filters, DiscoveryRequest};
 
 /// Canonical feed queries give up quickly; the feed must stay fluid.
-pub const FEED_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
+pub(crate) const FEED_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Search relays keep answering after the fast ones went quiet; the extra
 /// seconds are where the long tail of matches comes from.
-pub const DISCOVERY_QUERY_TIMEOUT: Duration = Duration::from_secs(8);
+pub(crate) const DISCOVERY_QUERY_TIMEOUT: Duration = Duration::from_secs(8);
 
 /// A concrete outbox-directory lookup, used either as a plan default or
 /// as one query's independent route.
@@ -62,10 +62,10 @@ pub enum QueryRole {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PlannedQuery {
     pub filter: Filter,
-    pub target: RelayTarget,
-    pub role: QueryRole,
-    pub timeout: Duration,
-    pub outbox: OutboxRoute,
+    pub(crate) target: RelayTarget,
+    pub(crate) role: QueryRole,
+    pub(crate) timeout: Duration,
+    pub(crate) outbox: OutboxRoute,
 }
 
 /// Relays x filters for one discovery request: pure data, no IO.
@@ -75,7 +75,7 @@ pub struct QueryPlan {
     pub outbox: OutboxLookup,
     pub queries: Vec<PlannedQuery>,
     /// Whose session the executor's event pool answers this plan from.
-    pub viewer: ViewerScope,
+    pub(crate) viewer: ViewerScope,
 }
 
 /// Lays out the full query plan for one discovery request.
@@ -95,7 +95,7 @@ pub fn plan_discovery(request: &DiscoveryRequest) -> QueryPlan {
 /// Concrete relay list for one target, given the configured search relays
 /// and the outbox lookup's result. `None` means the owner's configured
 /// read relays answer.
-pub fn resolve_relays(
+pub(crate) fn resolve_relays(
     target: &RelayTarget,
     search_relays: &[String],
     outbox_relays: Option<&[String]>,

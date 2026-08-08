@@ -10,8 +10,8 @@
 //! room, leaves the source's ledger untouched, and is reported once per
 //! refusal decision rather than once per buffer.
 
-use ghostr_engine::PostId;
 use crate::manager::DeliveryWorker;
+use ghostr_engine::PostId;
 use ghostr_partial_store::partial_range_store::OutOfSpace;
 use log::warn;
 use std::time::Duration;

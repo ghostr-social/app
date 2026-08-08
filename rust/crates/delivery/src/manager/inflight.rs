@@ -2,8 +2,8 @@
 //! Handles must stay alive until cancelled: dropping one silently
 //! would leave its transfer running unsupervised.
 
-use ghostr_engine::ChunkId;
 use crate::chunk::cancel::CancelHandle;
+use ghostr_engine::ChunkId;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Default)]

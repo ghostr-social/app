@@ -1,13 +1,13 @@
 //! Calls made through the cloneable discovery scheduler handle.
 
 use super::{DiscoveryCommand, DiscoveryHandle};
+use crate::query::search::QueryPlan;
+use crate::query::video_filters::DiscoveryRequest;
 use crate::retrieval_types::{FeedContext, PlanFailure};
 #[cfg(test)]
 use crate::scheduler::hunt::HuntToken;
 use crate::scheduler::queries::QueryResult;
-use crate::query::search::QueryPlan;
 use crate::session_generation::SessionGeneration;
-use crate::query::video_filters::DiscoveryRequest;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::Timestamp;
 use std::sync::atomic::Ordering;
@@ -27,7 +27,11 @@ impl DiscoveryHandle {
         });
     }
 
-    pub fn focus(&self, context: FeedContext) {
+    #[allow(
+        dead_code,
+        reason = "focus control is exercised only by scheduler tests"
+    )]
+    pub(crate) fn focus(&self, context: FeedContext) {
         let _ = self.sender.send(DiscoveryCommand::Focus(context));
     }
 
@@ -35,7 +39,11 @@ impl DiscoveryHandle {
         let _ = self.sender.send(DiscoveryCommand::CloseFeed(context));
     }
 
-    pub fn background(&self, context: FeedContext, request: DiscoveryRequest) {
+    #[allow(
+        dead_code,
+        reason = "background control is exercised only by scheduler tests"
+    )]
+    pub(crate) fn background(&self, context: FeedContext, request: DiscoveryRequest) {
         let _ = self
             .sender
             .send(DiscoveryCommand::Background { context, request });

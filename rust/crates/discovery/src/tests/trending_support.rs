@@ -4,7 +4,7 @@ use crate::content::parsing::ParsedVideoPost;
 use ghostr_engine::{DeliveryKind, VideoMeta};
 
 /// A minimal parsed post carrying exactly the given hashtags.
-pub fn post_with_hashtags(event_id: &str, hashtags: &[&str]) -> ParsedVideoPost {
+pub(crate) fn post_with_hashtags(event_id: &str, hashtags: &[&str]) -> ParsedVideoPost {
     ParsedVideoPost {
         event_id: event_id.to_owned(),
         author_pubkey: "a".repeat(64),

@@ -4,8 +4,8 @@
 //! crate root — `scheduler` and `outbox` depend on it too, so it must
 //! not live inside one of its own implementations.
 
-pub mod cache_fallback;
-pub mod collector;
-pub mod fetch;
+pub(crate) mod cache_fallback;
+pub(crate) mod collector;
+pub(crate) mod fetch;
 pub mod relay_executor;
-pub mod routes;
+pub(crate) mod routes;

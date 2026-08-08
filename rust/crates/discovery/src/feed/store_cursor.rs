@@ -1,6 +1,6 @@
 use crate::content::parsing::ParsedVideoPost;
-use crate::feed::spec::FeedSpec;
 use crate::feed::pagination::next_page_cursor;
+use crate::feed::spec::FeedSpec;
 use nostr_sdk::Timestamp;
 
 pub(crate) fn post_cursor(posts: &[ParsedVideoPost]) -> Option<Timestamp> {

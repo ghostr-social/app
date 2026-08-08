@@ -14,7 +14,7 @@ use tokio::time::Instant;
 
 /// Free space the store leaves to the rest of the device, so caching
 /// videos can never take the file system to zero.
-pub const DEFAULT_RESERVE_BYTES: u64 = 256 * 1024 * 1024;
+const DEFAULT_RESERVE_BYTES: u64 = 256 * 1024 * 1024;
 
 /// How long one free-space measurement is trusted. Short enough that a
 /// device filling up is noticed within a chunk or two.
@@ -31,7 +31,7 @@ pub struct Limits {
 
 impl Limits {
     /// `budget` against the default device reserve.
-    pub fn budget(budget: u64) -> Self {
+    fn budget(budget: u64) -> Self {
         Self {
             budget,
             reserve: DEFAULT_RESERVE_BYTES,

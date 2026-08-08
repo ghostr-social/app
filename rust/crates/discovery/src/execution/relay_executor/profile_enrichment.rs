@@ -3,11 +3,11 @@
 use super::fetches::FetchRequest;
 use super::RelayPlanExecutor;
 use crate::content::parsing::video_post_from_event;
-use crate::query::events::plan_event_queries;
 use crate::execution::collector::{collect_events, FetchHandle};
+use crate::query::events::plan_event_queries;
+use crate::query::search::{QueryPlan, QueryRole};
 use crate::relay::route::RelayPoolRoute;
 use crate::retrieval_types::{PlanFailure, RetrievalPriority};
-use crate::query::search::{QueryPlan, QueryRole};
 use crate::session_generation::SessionGeneration;
 use nostr_sdk::{Event, Filter, Kind};
 use std::collections::BTreeSet;

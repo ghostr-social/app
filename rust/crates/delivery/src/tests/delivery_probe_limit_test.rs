@@ -1,7 +1,7 @@
-use ghostr_engine::catalog::Catalog;
-use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 use crate::manager::retry::{RetryBook, RetryPolicy};
 use crate::probe::pool::MetadataProbePool;
+use ghostr_engine::catalog::Catalog;
+use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 
 #[test]
 fn probe_claims_respect_the_configured_concurrency_limit() {

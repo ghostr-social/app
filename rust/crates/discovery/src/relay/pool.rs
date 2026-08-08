@@ -1,8 +1,8 @@
 //! Linearized session-safe access to the process-wide Nostr relay pool.
 
 use crate::relay::io::{RelayIo, SdkRelayIo};
-use crate::relay::roles::RelayPoolRoles;
 use crate::relay::removal::RelayRoleIo;
+use crate::relay::roles::RelayPoolRoles;
 use crate::retrieval_types::PlanFailure;
 use crate::session_generation::{SessionGeneration, SESSION_RESET_MESSAGE};
 use nostr_sdk::{Client, Event, PublicKey};
@@ -27,11 +27,11 @@ pub struct RelayPoolOwner {
     pub(super) io: Arc<dyn RelayIo>,
 }
 
-pub struct RelayReadRequest {
-    pub session: SessionGeneration,
-    pub relays: Option<Vec<String>>,
-    pub query: crate::query::search::PlannedQuery,
-    pub progress: Option<crate::retrieval_types::EventProgress>,
+pub(crate) struct RelayReadRequest {
+    pub(crate) session: SessionGeneration,
+    pub(crate) relays: Option<Vec<String>>,
+    pub(crate) query: crate::query::search::PlannedQuery,
+    pub(crate) progress: Option<crate::retrieval_types::EventProgress>,
 }
 
 pub struct RelayBroadcastRequest {

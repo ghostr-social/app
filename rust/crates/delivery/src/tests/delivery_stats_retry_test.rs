@@ -1,8 +1,8 @@
 use super::support::temp_directory;
-use ghostr_engine::PostId;
 use crate::manager::stats::StatsKeeper;
 use crate::manager::transfers::ProbeDone;
 use anyhow::anyhow;
+use ghostr_engine::PostId;
 use std::time::Duration;
 
 #[tokio::test]

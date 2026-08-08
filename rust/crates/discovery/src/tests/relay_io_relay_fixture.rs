@@ -4,7 +4,7 @@ use serde_json::Value;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::tungstenite::Message;
 
-pub async fn relay_serving(event: Event) -> String {
+pub(crate) async fn relay_serving(event: Event) -> String {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("relay");
     let url = format!("ws://{}", listener.local_addr().expect("relay address"));
     tokio::spawn(async move {

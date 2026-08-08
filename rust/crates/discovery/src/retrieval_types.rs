@@ -28,7 +28,7 @@ impl FeedContext {
         }
     }
 
-    pub fn as_str(&self) -> &str {
+    pub(crate) fn as_str(&self) -> &str {
         &self.value
     }
 
@@ -48,8 +48,8 @@ pub enum RetrievalPriority {
 /// Describes one unit of network retrieval for scheduling decisions.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RetrievalRequest {
-    pub context: FeedContext,
-    pub priority: RetrievalPriority,
+    pub(crate) context: FeedContext,
+    pub(crate) priority: RetrievalPriority,
 }
 
 /// Why a whole retrieval could not settle. Any planned content-query failure

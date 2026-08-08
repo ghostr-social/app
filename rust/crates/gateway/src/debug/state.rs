@@ -1,78 +1,78 @@
 //! Serializable view of progressive delivery for the debug web app.
 
-use ghostr_engine::host_stats::host_of;
+use crate::progressive::route::ProgressiveState;
 use ghostr_delivery::cache_registry::CacheVideo;
 use ghostr_delivery::debug::feed::{DebugFeedItem, DebugFeedSnapshot};
 use ghostr_delivery::debug::network::NetworkProfile;
-use crate::progressive::route::ProgressiveState;
+use ghostr_engine::host_stats::host_of;
 use serde::Serialize;
 use std::ops::Range;
 
 #[derive(Debug, Serialize)]
 pub struct DebugSnapshot {
-    pub nostr: DebugFeedSnapshot,
-    pub network: NetworkProfile,
-    pub connections: Vec<ConnectionSnapshot>,
-    pub storage: StorageSnapshot,
-    pub videos: Vec<VideoSnapshot>,
-    pub hls_videos: Vec<HlsVideoSnapshot>,
+    nostr: DebugFeedSnapshot,
+    network: NetworkProfile,
+    connections: Vec<ConnectionSnapshot>,
+    storage: StorageSnapshot,
+    videos: Vec<VideoSnapshot>,
+    hls_videos: Vec<HlsVideoSnapshot>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct ConnectionSnapshot {
-    pub host: String,
-    pub active: usize,
+    host: String,
+    active: usize,
 }
 
 #[derive(Debug, Serialize)]
 pub struct StorageSnapshot {
-    pub used_bytes: u64,
-    pub known_bytes: u64,
-    pub video_count: usize,
-    pub complete_count: usize,
+    used_bytes: u64,
+    known_bytes: u64,
+    video_count: usize,
+    complete_count: usize,
 }
 
 #[derive(Debug, Serialize)]
 pub struct VideoSnapshot {
-    pub id: String,
-    pub nostr_event_id: Option<String>,
-    pub title: Option<String>,
-    pub creator: Option<String>,
-    pub created_at: Option<u64>,
-    pub source_host: Option<String>,
-    pub source_count: usize,
-    pub total_bytes: Option<u64>,
-    pub downloaded_bytes: u64,
-    pub duration_ms: Option<u64>,
-    pub downloaded_duration_ms: Option<u64>,
-    pub progress: Option<f64>,
-    pub complete: bool,
-    pub status: &'static str,
-    pub ranges: Vec<RangeSnapshot>,
-    pub playback_url: String,
+    id: String,
+    nostr_event_id: Option<String>,
+    title: Option<String>,
+    creator: Option<String>,
+    created_at: Option<u64>,
+    source_host: Option<String>,
+    source_count: usize,
+    total_bytes: Option<u64>,
+    downloaded_bytes: u64,
+    duration_ms: Option<u64>,
+    downloaded_duration_ms: Option<u64>,
+    progress: Option<f64>,
+    complete: bool,
+    status: &'static str,
+    ranges: Vec<RangeSnapshot>,
+    playback_url: String,
 }
 
 #[derive(Debug, Serialize)]
 pub struct HlsVideoSnapshot {
-    pub id: String,
-    pub nostr_event_id: String,
-    pub title: Option<String>,
-    pub creator: String,
-    pub created_at: u64,
-    pub source_host: Option<String>,
-    pub source_count: usize,
-    pub duration_ms: Option<u64>,
-    pub delivery: &'static str,
-    pub status: &'static str,
+    id: String,
+    nostr_event_id: String,
+    title: Option<String>,
+    creator: String,
+    created_at: u64,
+    source_host: Option<String>,
+    source_count: usize,
+    duration_ms: Option<u64>,
+    delivery: &'static str,
+    status: &'static str,
 }
 
 #[derive(Debug, Serialize)]
 pub struct RangeSnapshot {
-    pub start: u64,
-    pub end: u64,
+    start: u64,
+    end: u64,
 }
 
-pub async fn snapshot(state: &ProgressiveState) -> DebugSnapshot {
+pub(crate) async fn snapshot(state: &ProgressiveState) -> DebugSnapshot {
     let mut videos = Vec::new();
     for video in state.cache.videos() {
         videos.push(video_snapshot(state, video).await);

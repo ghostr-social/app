@@ -6,7 +6,7 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 
-pub async fn next_started(
+pub(super) async fn next_started(
     started: &mut mpsc::UnboundedReceiver<PlannedRetrieval>,
 ) -> PlannedRetrieval {
     timeout(Duration::from_secs(5), started.recv())
@@ -15,12 +15,12 @@ pub async fn next_started(
         .expect("scheduler should stay alive")
 }
 
-pub async fn no_start(started: &mut mpsc::UnboundedReceiver<PlannedRetrieval>) {
+pub(super) async fn no_start(started: &mut mpsc::UnboundedReceiver<PlannedRetrieval>) {
     let result = timeout(Duration::from_millis(50), started.recv()).await;
     assert!(result.is_err(), "no further retrieval may start");
 }
 
-pub async fn next_outcome(
+pub(super) async fn next_outcome(
     outcomes: &mut mpsc::UnboundedReceiver<RetrievalOutcome>,
 ) -> RetrievalOutcome {
     timeout(Duration::from_secs(5), outcomes.recv())

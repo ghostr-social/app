@@ -3,13 +3,13 @@ use crate::native_cache_capacity::{capacity_exhausted, NativeCacheCapacity};
 use crate::native_cache_digest::verify_digest;
 pub use crate::native_cache_directory::prepare_native_cache_directory;
 use crate::native_cache_directory::{completed_path, install};
-use ghostr_net::native_cache_failure::permanent;
 use crate::native_cache_fetch::{fetch, FetchedVideo};
 use crate::native_cache_transfer::reserved_bytes;
-use ghostr_media_model::native_models::NativeVideoCacheKey;
 use crate::native_partial_store::NativePartialStore;
-use ghostr_net::outbound_media_client::MediaHttpClient;
 use anyhow::Result;
+use ghostr_media_model::native_models::NativeVideoCacheKey;
+use ghostr_net::native_cache_failure::permanent;
+use ghostr_net::outbound_media_client::MediaHttpClient;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -64,7 +64,7 @@ impl NativeVideoCache {
         self.download_request(key, expected_digest, request).await
     }
 
-    pub(crate) async fn download_request(
+    async fn download_request(
         &self,
         key: &NativeVideoCacheKey,
         expected_digest: Option<&str>,

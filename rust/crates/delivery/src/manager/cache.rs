@@ -1,8 +1,8 @@
 //! Projects playable candidates and stored-byte state into the cache registry.
 
-use ghostr_engine::{PostId, VideoMeta};
 use crate::cache_registry::{CacheStatus, CacheVideo};
 use crate::manager::DeliveryWorker;
+use ghostr_engine::{PostId, VideoMeta};
 use std::ops::Range;
 
 impl DeliveryWorker {

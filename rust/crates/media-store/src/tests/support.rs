@@ -2,7 +2,7 @@ use crate::native_cache::CachedVideo;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub fn temp_directory(prefix: &str) -> PathBuf {
+pub(super) fn temp_directory(prefix: &str) -> PathBuf {
     let nonce = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("system clock")
@@ -12,7 +12,7 @@ pub fn temp_directory(prefix: &str) -> PathBuf {
     path
 }
 
-pub fn cached(path: &Path, bytes: u64) -> CachedVideo {
+pub(super) fn cached(path: &Path, bytes: u64) -> CachedVideo {
     CachedVideo {
         path: path.to_path_buf(),
         bytes,

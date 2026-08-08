@@ -1,11 +1,11 @@
 //! Completion policy for media-size probes.
 
-use ghostr_engine::PostId;
 use crate::manager::failure::{classify, FailureClass};
-use crate::manager::DeliveryWorker;
 use crate::manager::retry::Source;
 use crate::manager::transfers::ProbeDone;
+use crate::manager::DeliveryWorker;
 use crate::probe::media::ProbeResult;
+use ghostr_engine::PostId;
 use log::warn;
 
 impl DeliveryWorker {

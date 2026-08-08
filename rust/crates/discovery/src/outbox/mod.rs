@@ -3,5 +3,5 @@
 
 pub mod bootstrap;
 pub mod directory;
-pub mod plans;
-pub mod relay_list;
+pub(crate) mod plans;
+pub(crate) mod relay_list;

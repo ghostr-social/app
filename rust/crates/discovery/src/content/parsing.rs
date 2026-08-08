@@ -11,8 +11,8 @@ use ghostr_media_model::post_text::{
 };
 use nostr_sdk::Event;
 
-pub const NOTE_KIND: u16 = 1;
-pub const FILE_METADATA_KIND: u16 = 1063;
+const NOTE_KIND: u16 = 1;
+const FILE_METADATA_KIND: u16 = 1063;
 
 /// Server-side `#m` values accepted by the kind-1063 discovery query.
 const VIDEO_FILE_MIME_TYPES: [&str; 6] = [

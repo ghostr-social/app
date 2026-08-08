@@ -1,5 +1,3 @@
-use ghostr_hls_manifest::hls_manifest::HlsResourceKind;
-use ghostr_hls_manifest::hls_manifest::MAX_HLS_MANIFEST_BYTES;
 use crate::hls::sessions::{HlsResourceId, HlsSessionId};
 use crate::router::{proxy_response, upstream_request, GatewayHttpState};
 use anyhow::{bail, Context, Result};
@@ -7,6 +5,8 @@ use axum::body::Body;
 use axum::extract::{Path, State};
 use axum::http::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use axum::http::{HeaderMap, Response, StatusCode};
+use ghostr_hls_manifest::hls_manifest::HlsResourceKind;
+use ghostr_hls_manifest::hls_manifest::MAX_HLS_MANIFEST_BYTES;
 use reqwest::Url;
 use std::sync::Arc;
 use std::time::Duration;

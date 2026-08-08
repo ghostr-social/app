@@ -4,6 +4,6 @@
 
 pub mod cancel;
 pub mod downloader;
-pub mod network;
+pub(crate) mod network;
 mod response;
 mod stream;

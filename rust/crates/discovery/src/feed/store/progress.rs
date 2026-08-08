@@ -1,7 +1,7 @@
 use super::{FeedId, FeedStore};
 use crate::content::parsing::ParsedVideoPost;
-use crate::feed::assembly::select_posts;
 use crate::content::social_graph::SocialGraph;
+use crate::feed::assembly::select_posts;
 
 impl FeedStore {
     pub fn begin_background_load(&mut self, feed: FeedId) {

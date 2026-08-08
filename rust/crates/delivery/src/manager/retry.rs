@@ -9,8 +9,8 @@
 //! post falls back to another mirror or becomes terminal instead of
 //! being rescheduled by every reconcile pass.
 
-use ghostr_engine::PostId;
 use crate::manager::failure::FailureClass;
+use ghostr_engine::PostId;
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 use tokio::time::Instant;
@@ -18,8 +18,8 @@ use tokio::time::Instant;
 /// One post's use of one source URL: the unit attempts are counted on.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Source {
-    pub post: PostId,
-    pub url: String,
+    post: PostId,
+    url: String,
 }
 
 impl Source {
@@ -130,19 +130,19 @@ impl RetryBook {
 
     /// Marks the post as pausing between attempts. `false` when a
     /// pause was already running, so timers are not stacked.
-    pub fn cool_down(&mut self, post: PostId) -> bool {
+    pub(crate) fn cool_down(&mut self, post: PostId) -> bool {
         self.cooling.insert(post)
     }
 
-    pub fn warm_up(&mut self, post: &PostId) {
+    pub(crate) fn warm_up(&mut self, post: &PostId) {
         self.cooling.remove(post);
     }
 
-    pub fn is_cooling(&self, post: &PostId) -> bool {
+    pub(crate) fn is_cooling(&self, post: &PostId) -> bool {
         self.cooling.contains(post)
     }
 
-    pub fn clear(&mut self) {
+    pub(crate) fn clear(&mut self) {
         self.attempts.clear();
         self.retired.clear();
         self.cooling.clear();

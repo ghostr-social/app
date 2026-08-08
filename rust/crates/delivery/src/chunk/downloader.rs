@@ -4,17 +4,17 @@
 //! cooperative cancellation so scroll-past can abandon transfers while
 //! keeping the bytes already fetched.
 
-use ghostr_engine::host_stats::{host_of, HostStats};
-use ghostr_engine::ByteRange;
 use crate::chunk::cancel::CancelToken;
 use crate::chunk::network::{prepare_network, NetworkPreparation};
 use crate::chunk::response::{classify, RangeReply};
 use crate::chunk::stream::{stream_into, Streamed};
 use crate::debug::network::NetworkThrottle;
-use ghostr_net::outbound_media_client::MediaHttpClient;
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
-use ghostr_net::transfer_timeouts::TransferTimeouts;
 use anyhow::{ensure, Context, Result};
+use ghostr_engine::host_stats::{host_of, HostStats};
+use ghostr_engine::ByteRange;
+use ghostr_net::outbound_media_client::MediaHttpClient;
+use ghostr_net::transfer_timeouts::TransferTimeouts;
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use reqwest::header::RANGE;
 use reqwest::Response;
 use std::time::Duration;
@@ -41,7 +41,7 @@ pub struct ChunkResult {
     pub accept_ranges: bool,
     pub cancelled: bool,
     pub total_bytes: Option<u64>,
-    pub request_started: bool,
+    pub(crate) request_started: bool,
 }
 
 /// Downloads one granted chunk into the store. Accepts `206 Partial

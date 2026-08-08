@@ -1,19 +1,17 @@
 //! Shared fakes and builders for discovery scheduler tests: a gated
 //! executor stands in for relay IO so no test ever touches the network.
 
-use crate::scheduler::{
-    start_discovery_scheduler, DiscoveryHandle, DiscoverySchedulerConfig,
-};
 use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
-use crate::retrieval_types::{FeedContext, PlanFailure, RetrievalOutcome};
 use crate::query::video_filters::DiscoveryRequest;
+use crate::retrieval_types::{FeedContext, PlanFailure, RetrievalOutcome};
+use crate::scheduler::{start_discovery_scheduler, DiscoveryHandle, DiscoverySchedulerConfig};
 use ghostr_engine::inventory_controller::Mode;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, Timestamp};
 use std::sync::Arc;
 use tokio::sync::{mpsc, watch, Semaphore};
 
-pub use crate::tests::scheduler_wait::{next_outcome, next_started, no_start};
+pub(super) use crate::tests::scheduler_wait::{next_outcome, next_started, no_start};
 
 /// Executor that reports every start and holds each retrieval until a
 /// gate permit is released; completed retrievals return `events`.
@@ -39,17 +37,17 @@ impl PlanExecutor for GatedExecutor {
     }
 }
 
-pub struct SchedulerHarness {
-    pub handle: DiscoveryHandle,
-    pub started: mpsc::UnboundedReceiver<PlannedRetrieval>,
-    pub gate: Arc<Semaphore>,
-    pub outcomes: mpsc::UnboundedReceiver<RetrievalOutcome>,
-    pub modes: watch::Sender<Mode>,
+pub(crate) struct SchedulerHarness {
+    pub(crate) handle: DiscoveryHandle,
+    pub(crate) started: mpsc::UnboundedReceiver<PlannedRetrieval>,
+    pub(crate) gate: Arc<Semaphore>,
+    pub(crate) outcomes: mpsc::UnboundedReceiver<RetrievalOutcome>,
+    pub(crate) modes: watch::Sender<Mode>,
 }
 
 /// Boots a scheduler over a gated executor. The mode watch starts in
 /// Comfort so a test-sent Hunger is a real transition.
-pub fn start_scheduler(level: DataUsageLevel, events: Vec<Event>) -> SchedulerHarness {
+pub(crate) fn start_scheduler(level: DataUsageLevel, events: Vec<Event>) -> SchedulerHarness {
     let (starts, started) = mpsc::unbounded_channel();
     let gate = Arc::new(Semaphore::new(0));
     let executor = Arc::new(GatedExecutor {
@@ -74,16 +72,16 @@ pub fn start_scheduler(level: DataUsageLevel, events: Vec<Event>) -> SchedulerHa
     }
 }
 
-pub fn context(name: &str) -> FeedContext {
+pub(crate) fn context(name: &str) -> FeedContext {
     FeedContext::new(name)
 }
 
-pub fn request() -> DiscoveryRequest {
+pub(crate) fn request() -> DiscoveryRequest {
     DiscoveryRequest::default()
 }
 
 /// A playable kind-1 video note pinned to `created_at`, for cursor math.
-pub fn note_at(created_at: u64) -> Event {
+pub(crate) fn note_at(created_at: u64) -> Event {
     EventBuilder::new(Kind::TextNote, "https://cdn.example/clip.mp4")
         .custom_created_at(Timestamp::from(created_at))
         .sign_with_keys(&Keys::generate())

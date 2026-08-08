@@ -4,17 +4,17 @@ use crate::inventory_controller::PresentRanges;
 use crate::tests::support::progressive_meta;
 use crate::{ByteRange, PostId};
 
-pub struct Scenario {
-    pub catalog: Catalog,
-    pub focus: FocusState,
-    pub present: PresentRanges,
-    pub posts: Vec<PostId>,
+pub(super) struct Scenario {
+    pub(super) catalog: Catalog,
+    pub(super) focus: FocusState,
+    pub(super) present: PresentRanges,
+    pub(super) posts: Vec<PostId>,
 }
 
 /// A window of `window` tiny posts (1000 bytes, 1 s → the head is the
 /// whole file), the first `startable` of them fully on disk, and the
 /// focus on index zero.
-pub fn scenario(window: usize, startable: usize) -> Scenario {
+pub(super) fn scenario(window: usize, startable: usize) -> Scenario {
     let posts: Vec<PostId> = (0..window).map(|i| PostId::new(format!("p{i}"))).collect();
     let mut catalog = Catalog::new();
     let mut present = PresentRanges::new();

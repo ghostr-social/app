@@ -1,8 +1,8 @@
-use ghostr_hls_manifest::hls_manifest::{HlsResource, HlsResourceKind};
 use crate::hls::sessions::HlsResourceId;
 use anyhow::{ensure, Result};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
+use ghostr_hls_manifest::hls_manifest::{HlsResource, HlsResourceKind};
 use hmac::{Hmac, Mac};
 use reqwest::Url;
 use sha2::Sha256;

@@ -38,11 +38,11 @@ fn link_token(rest: &str) -> &str {
         .map_or(rest, |end| &rest[..end])
 }
 
-pub fn is_video_url(url: &str) -> bool {
+pub(crate) fn is_video_url(url: &str) -> bool {
     is_bounded_http_url(url) && video_url_extension(url).is_some()
 }
 
-pub fn url_delivery(url: &str) -> NativeVideoDelivery {
+pub(crate) fn url_delivery(url: &str) -> NativeVideoDelivery {
     if video_url_extension(url) == Some(".m3u8") {
         NativeVideoDelivery::Hls
     } else {
@@ -58,7 +58,7 @@ fn video_url_extension(url: &str) -> Option<&'static str> {
         .copied()
 }
 
-pub(crate) fn is_http_url(value: &str) -> bool {
+fn is_http_url(value: &str) -> bool {
     reqwest::Url::parse(value)
         .map(|url| matches!(url.scheme(), "http" | "https") && url.host().is_some())
         .unwrap_or(false)

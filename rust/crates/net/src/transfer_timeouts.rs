@@ -7,10 +7,10 @@
 use std::time::Duration;
 
 /// Longest wait for response headers after sending a request.
-pub const HEADERS_TIMEOUT: Duration = Duration::from_secs(15);
+const HEADERS_TIMEOUT: Duration = Duration::from_secs(15);
 
 /// Longest tolerated silence between two body chunks.
-pub const IDLE_TIMEOUT: Duration = Duration::from_secs(15);
+const IDLE_TIMEOUT: Duration = Duration::from_secs(15);
 
 /// Timeout pair applied by the probe and the chunk downloader.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -20,7 +20,7 @@ pub struct TransferTimeouts {
 }
 
 impl TransferTimeouts {
-    pub fn new(headers: Duration, idle: Duration) -> Self {
+    fn new(headers: Duration, idle: Duration) -> Self {
         Self { headers, idle }
     }
 }

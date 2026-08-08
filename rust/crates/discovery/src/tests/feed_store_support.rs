@@ -6,12 +6,12 @@ use ghostr_engine::{DeliveryKind, VideoMeta};
 
 /// One fetched page: `count` posts newest first, one second apart,
 /// starting at `newest_at`.
-pub fn page(newest_at: u64, count: u64) -> Vec<ParsedVideoPost> {
+pub(crate) fn page(newest_at: u64, count: u64) -> Vec<ParsedVideoPost> {
     (0..count).map(|step| post(newest_at - step)).collect()
 }
 
 /// A minimal parsed post whose identity is its creation second.
-pub fn post(created_at: u64) -> ParsedVideoPost {
+fn post(created_at: u64) -> ParsedVideoPost {
     ParsedVideoPost {
         event_id: format!("{created_at:064}"),
         author_pubkey: "a".repeat(64),
