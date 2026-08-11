@@ -36,6 +36,7 @@ pub struct PlaybackStatus {
     observation: Option<PlaybackObservation>,
     sequence: Option<PlaybackObservationSequence>,
     authorized_end: u64,
+    authorized_media_ms: u64,
     latest_generation: u64,
 }
 
@@ -92,6 +93,18 @@ impl PlaybackStatus {
         Some(self.authorized_end)
     }
 
+    pub fn authorize_media_ms(
+        &mut self,
+        session: &PlaybackSession,
+        requested_end_ms: u64,
+    ) -> Option<u64> {
+        if !self.matches(session) {
+            return None;
+        }
+        self.authorized_media_ms = self.authorized_media_ms.max(requested_end_ms);
+        Some(self.authorized_media_ms)
+    }
+
     pub fn session(&self) -> Option<&PlaybackSession> {
         self.session.as_ref()
     }
@@ -102,6 +115,10 @@ impl PlaybackStatus {
 
     pub fn authorized_end(&self) -> Option<u64> {
         self.session.as_ref().map(|_| self.authorized_end)
+    }
+
+    pub fn authorized_media_ms(&self) -> Option<u64> {
+        self.session.as_ref().map(|_| self.authorized_media_ms)
     }
 
     fn matches(&self, session: &PlaybackSession) -> bool {
@@ -116,5 +133,6 @@ impl PlaybackStatus {
         self.observation = None;
         self.sequence = None;
         self.authorized_end = 0;
+        self.authorized_media_ms = 0;
     }
 }

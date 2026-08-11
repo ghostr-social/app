@@ -43,15 +43,7 @@ Future<void> pumpSurface(
   VideoPlayerPlaybackPort port,
   VideoPlaybackSurfaceRequest request,
 ) async {
-  await tester.pumpWidget(
-    MaterialApp(
-      home: port.buildSurface(
-        media: request.media,
-        videoId: request.videoId,
-        isActive: request.isActive,
-      ),
-    ),
-  );
+  await tester.pumpWidget(MaterialApp(home: port.buildSurface(request)));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 100));
 }

@@ -3,11 +3,13 @@ part of 'gateway_video_playback_port.dart';
 final class _GatewayVideoPlaybackSurface extends StatefulWidget {
   const _GatewayVideoPlaybackSurface({
     required this.delegate,
+    required this.gateway,
     required this.createCubit,
     required this.request,
   });
 
   final VideoPlaybackPort delegate;
+  final ProgressivePlaybackGatewayPort gateway;
   final GatewayPlaybackCubit Function(VideoMediaSource) createCubit;
   final VideoPlaybackSurfaceRequest request;
 
@@ -66,10 +68,16 @@ final class _GatewayVideoPlaybackSurfaceState
 
   Widget _buildPlayback(ProxiedProgressiveVideoMediaSource media) {
     return widget.delegate.buildSurface(
-      media: media,
-      videoId: widget.videoId,
-      isActive: widget.isActive,
-      onPlaybackMediaReleased: widget.onPlaybackMediaReleased,
+      VideoPlaybackSurfaceRequest(
+        media: media,
+        videoId: widget.videoId,
+        isActive: widget.isActive,
+        progressiveRefresh: _GatewayProgressivePlaybackRefresh(
+          widget.gateway,
+          widget.media,
+        ),
+        onPlaybackMediaReleased: widget.onPlaybackMediaReleased,
+      ),
     );
   }
 

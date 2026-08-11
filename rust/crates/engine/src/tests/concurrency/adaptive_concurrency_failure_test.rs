@@ -1,4 +1,6 @@
-use crate::concurrency::{AdaptiveConcurrency, ConcurrencyEvidence, NetworkSetback};
+use crate::concurrency::{
+    AdaptiveConcurrency, ConcurrencyEvidence, ConcurrencyOccupancy, NetworkSetback,
+};
 use std::time::Duration;
 
 #[test]
@@ -7,7 +9,7 @@ fn a_network_failure_reduces_an_accepted_parallel_limit() {
 
     policy.observe(ConcurrencyEvidence {
         aggregate_bytes_per_second: 0,
-        active_transfers: 2,
+        occupancy: ConcurrencyOccupancy::new(2, 2),
         saturated: false,
         ttfb: Duration::ZERO,
         setback: NetworkSetback::Failure,

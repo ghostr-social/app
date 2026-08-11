@@ -5,13 +5,16 @@ import 'package:ghostr/core/media/video_media_source.dart';
 void main() {
   test('keys playback surfaces by the proxied progressive stream', () {
     final first = ProxiedProgressiveVideoMediaSource(
-      'http://127.0.0.1:3210/video.mp4?id=post-1',
+      'http://127.0.0.1:3210/video.mp4?id=post-1&cap='
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     );
     final second = ProxiedProgressiveVideoMediaSource(
-      'http://127.0.0.1:3210/video.mp4?id=post-2',
+      'http://127.0.0.1:3210/video.mp4?id=post-2&cap='
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     );
     final firstAgain = ProxiedProgressiveVideoMediaSource(
-      'http://127.0.0.1:3210/video.mp4?id=post-1',
+      'http://127.0.0.1:3210/video.mp4?id=post-1&cap='
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     );
 
     expect(

@@ -32,6 +32,7 @@ pub(crate) struct DeliveryState {
 
 mod focus;
 mod playback;
+mod probes;
 mod representation;
 
 impl DeliveryState {
@@ -60,7 +61,11 @@ impl DeliveryState {
         if candidate.meta.delivery != DeliveryKind::Progressive {
             return;
         }
-        self.upsert_progressive(candidate.post.clone(), candidate.meta);
+        self.upsert_progressive_renditions(
+            candidate.post.clone(),
+            candidate.meta,
+            candidate.renditions,
+        );
         self.candidates
             .rank(candidate.post, candidate.discovered_at);
         if self.projection_focus {

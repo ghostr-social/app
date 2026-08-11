@@ -19,14 +19,18 @@ fn bench() -> WorkBench {
 }
 
 #[test]
-fn hunger_orders_head_chunks_current_first_then_ahead() {
+fn hunger_starts_current_then_lets_ahead_catch_up() {
     let requests = bench().run();
 
     let chunks: Vec<(&str, u64)> = requests
         .iter()
         .map(|request| (request.chunk.post.as_str(), request.chunk.range.start))
         .collect();
-    assert_eq!(chunks, vec![("a", 0), ("a", MIB), ("b", 0), ("b", MIB)]);
+    assert_eq!(chunks[0], ("a", 0));
+    assert_eq!(chunks[1], ("b", 0));
+    let current_depth = chunks.iter().position(|chunk| *chunk == ("a", MIB));
+    let ahead_seed = chunks.iter().position(|chunk| *chunk == ("b", 0));
+    assert!(ahead_seed < current_depth);
 }
 
 #[test]
@@ -47,8 +51,12 @@ fn already_fetched_head_chunks_are_not_requested_again() {
 
     let requests = bench.run();
 
-    let first = &requests[0];
-    assert_eq!(first.chunk.post, PostId::new("a"));
-    assert_eq!(first.chunk.range, ByteRange::new(MIB, 2_000_000));
-    assert_eq!(requests.len(), 3);
+    assert_eq!(requests[0].chunk.post, PostId::new("b"));
+    assert!(requests.iter().any(|request| {
+        request.chunk.post == PostId::new("a")
+            && request.chunk.range == ByteRange::new(MIB, 2_000_000)
+    }));
+    assert!(requests.iter().all(|request| {
+        request.chunk.post != PostId::new("a") || request.chunk.range.start >= MIB
+    }));
 }

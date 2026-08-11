@@ -1,13 +1,22 @@
 import {createServer} from "node:http";
 import {once} from "node:events";
-import {playableMp4} from "./media_fixture.mjs";
+import {playableMedia} from "./media_fixture.mjs";
+import {
+  commitOriginFailure, createOriginFailurePlan, planOriginFailure,
+} from "./origin_failure_plan.mjs";
+import {requestedRange} from "./requested_range.mjs";
+import {writeResponseChunk} from "./response_chunk.mjs";
 import {delay} from "./wait.mjs";
 
 export async function startLocalOrigin(options = {}) {
   const settings = {
-    virtualBytes: options.virtualBytes ?? 4 * 1024 * 1024,
+    virtualBytes: options.virtualBytes ?? playableMedia.bytes.length,
     chunkBytes: options.chunkBytes ?? 64 * 1024,
     chunkDelayMs: options.chunkDelayMs ?? 20,
+    failurePlan: createOriginFailurePlan(options),
+    abortAfterBytes: options.abortAfterBytes ?? Number.POSITIVE_INFINITY,
+    failSource: options.failSource ?? null,
+    nextEventOrdinal: 0,
   };
   const requests = [];
   const active = new Set();
@@ -21,8 +30,15 @@ export async function startLocalOrigin(options = {}) {
     url: `http://127.0.0.1:${address.port}`,
     requests,
     activeRequests: () => active.size,
+    waitForIdle: () => waitForIdle(active),
     close: () => close(server, active),
   };
+}
+
+async function waitForIdle(active) {
+  while (active.size > 0) {
+    await Promise.allSettled([...active]);
+  }
 }
 
 function trackRequest(active, serving, response) {
@@ -35,43 +51,114 @@ function trackRequest(active, serving, response) {
 async function serve(request, response, settings, requests) {
   const range = requestedRange(request.headers.range, settings.virtualBytes);
   if (!range) return rejectRange(response, settings.virtualBytes);
-  const id = new URL(request.url, "http://127.0.0.1").pathname
-    .split("/").at(-1).replace(/\.mp4$/, "");
-  requests.push({id, ...range, started_at_ms: Date.now()});
+  const id = requestId(request.url);
+  const outcome = requestOutcome({
+    id, range, requestOrdinal: requests.length + 1, settings, method: request.method,
+  });
+  requests.push(outcome);
+  if (id.includes(settings.failSource ?? "\0")) return failSource(response, outcome);
   writeHeaders(response, range, settings.virtualBytes, request.method);
-  if (request.method === "HEAD") return response.end();
-  for (let offset = range.start; offset < range.end; offset += settings.chunkBytes) {
-    const end = Math.min(offset + settings.chunkBytes, range.end);
-    if (!await writeChunk(response, mediaSlice(offset, end))) return;
-    if (end < range.end) await delay(settings.chunkDelayMs);
-  }
-  if (!response.destroyed) response.end();
+  await serveBody(request.method, {response, range, settings, outcome});
 }
 
-function writeChunk(response, bytes) {
+function requestId(url) {
+  return new URL(url, "http://127.0.0.1").pathname
+    .split("/").at(-1).replace(/\.mp4$/, "");
+}
+
+async function serveBody(method, transfer) {
+  if (method === "HEAD") return completeResponse(transfer.response, transfer.outcome);
+  await writeBody(transfer);
+}
+
+async function writeBody({response, range, settings, outcome}) {
+  for (let offset = range.start; offset < range.end; offset += settings.chunkBytes) {
+    const end = Math.min(offset + settings.chunkBytes, range.end);
+    const bytes = mediaSlice(offset, end);
+    const written = writeResponseChunk(
+      response, bytes, () => recordChunk(settings, outcome, bytes.length),
+    );
+    if (!await written) return finalize(outcome, false);
+    if (shouldAbort(outcome, settings)) return abortResponse(response, outcome);
+    if (end < range.end) await delay(settings.chunkDelayMs);
+  }
+  await completeResponse(response, outcome);
+}
+
+function recordChunk(settings, outcome, bytes) {
+  outcome.bytes_sent += bytes;
+  outcome.chunk_events.push({at_ms: Date.now(), ordinal: takeEventOrdinal(settings), bytes});
+}
+
+function requestOutcome(input) {
+  const {id, range, requestOrdinal, settings, method} = input;
+  const video = id.split("-")[0];
+  const failure = planOriginFailure(settings.failurePlan, {video, method, requestOrdinal});
+  return {
+    id,
+    video,
+    method,
+    ...range,
+    started_at_ms: Date.now(),
+    bytes_sent: 0,
+    chunk_events: [],
+    start_ordinal: method === "HEAD" ? null : takeEventOrdinal(settings),
+    completed: false,
+    canceled: false,
+    ...failure,
+    planned_failure: failure.targeted_failure || failure.periodic_failure,
+    injected_failure: false,
+  };
+}
+
+function takeEventOrdinal(settings) {
+  const ordinal = settings.nextEventOrdinal;
+  settings.nextEventOrdinal += 1;
+  return ordinal;
+}
+
+function shouldAbort(outcome, settings) {
+  if (!outcome.planned_failure || outcome.bytes_sent < settings.abortAfterBytes) return false;
+  return commitOriginFailure(settings.failurePlan, outcome);
+}
+
+function abortResponse(response, outcome) {
+  outcome.injected_failure = true;
+  response.destroy();
+  finalize(outcome, false);
+}
+
+async function failSource(response, outcome) {
+  outcome.failed_status = 503;
+  response.writeHead(503);
+  await completeResponse(response, outcome);
+}
+
+async function completeResponse(response, outcome) {
+  const completed = await endResponse(response);
+  finalize(outcome, completed);
+}
+
+function endResponse(response) {
   if (response.destroyed) return false;
-  if (response.write(bytes)) return true;
   return new Promise((resolve) => {
-    const done = (writable) => {
-      response.off("drain", drained);
-      response.off("close", closed);
-      resolve(writable);
+    const finish = () => done(true);
+    const close = () => done(false);
+    const done = (completed) => {
+      response.off("finish", finish);
+      response.off("close", close);
+      resolve(completed);
     };
-    const drained = () => done(true);
-    const closed = () => done(false);
-    response.once("drain", drained);
-    response.once("close", closed);
+    response.once("finish", finish);
+    response.once("close", close);
+    response.end();
   });
 }
 
-function requestedRange(header, total) {
-  if (!header) return {start: 0, end: total, partial: false};
-  const match = /^bytes=(\d+)-(\d*)$/.exec(header);
-  if (!match) return null;
-  const start = Number(match[1]);
-  const inclusive = match[2] ? Number(match[2]) : total - 1;
-  if (!Number.isSafeInteger(start) || start >= total || inclusive < start) return null;
-  return {start, end: Math.min(inclusive + 1, total), partial: true};
+function finalize(outcome, completed) {
+  outcome.completed = completed;
+  outcome.canceled = !completed && !outcome.injected_failure;
+  outcome.closed_at_ms = Date.now();
 }
 
 function writeHeaders(response, range, total, method) {
@@ -92,10 +179,10 @@ function rejectRange(response, total) {
 
 function mediaSlice(start, end) {
   const bytes = Buffer.alloc(end - start);
-  const fixtureStart = Math.min(start, playableMp4.length);
-  const fixtureEnd = Math.min(end, playableMp4.length);
+  const fixtureStart = Math.min(start, playableMedia.bytes.length);
+  const fixtureEnd = Math.min(end, playableMedia.bytes.length);
   if (fixtureEnd > fixtureStart) {
-    playableMp4.copy(bytes, fixtureStart - start, fixtureStart, fixtureEnd);
+    playableMedia.bytes.copy(bytes, fixtureStart - start, fixtureStart, fixtureEnd);
   }
   return bytes;
 }

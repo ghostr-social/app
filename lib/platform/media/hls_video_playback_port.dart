@@ -26,27 +26,18 @@ final class HlsVideoPlaybackPort implements VideoPlaybackPort {
   final HlsPlaybackGatewayPort _gateway;
 
   @override
-  Widget buildSurface({
-    required VideoMediaSource media,
-    PlaybackVideoId? videoId,
-    required bool isActive,
-    void Function()? onPlaybackMediaReleased,
-  }) {
+  Widget buildSurface(VideoPlaybackSurfaceRequest request) {
+    final media = request.media;
     if (!_requiresGateway(media)) {
-      return _delegate.buildSurface(
-        media: media,
-        videoId: videoId,
-        isActive: isActive,
-        onPlaybackMediaReleased: onPlaybackMediaReleased,
-      );
+      return _delegate.buildSurface(request);
     }
     return _HlsVideoPlaybackSurface(
       port: this,
       request: VideoPlaybackSurfaceRequest(
         media: media,
-        videoId: videoId,
-        isActive: isActive,
-        onPlaybackMediaReleased: onPlaybackMediaReleased,
+        videoId: request.videoId,
+        isActive: request.isActive,
+        onPlaybackMediaReleased: request.onPlaybackMediaReleased,
       ),
     );
   }

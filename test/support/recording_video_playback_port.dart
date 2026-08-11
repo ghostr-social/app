@@ -1,21 +1,14 @@
 import 'package:flutter/widgets.dart';
-import 'package:ghostr/core/media/playback_video_id.dart';
-import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 
 class RecordingVideoPlaybackPort implements VideoPlaybackPort {
   final Map<String, List<bool>> activity = {};
 
   @override
-  Widget buildSurface({
-    required VideoMediaSource media,
-    PlaybackVideoId? videoId,
-    required bool isActive,
-    void Function()? onPlaybackMediaReleased,
-  }) {
-    (activity[media.debugLabel] ??= []).add(isActive);
+  Widget buildSurface(VideoPlaybackSurfaceRequest request) {
+    (activity[request.media.debugLabel] ??= []).add(request.isActive);
     return _ReleaseOnDispose(
-      onReleased: onPlaybackMediaReleased,
+      onReleased: request.onPlaybackMediaReleased,
       child: const SizedBox.expand(),
     );
   }

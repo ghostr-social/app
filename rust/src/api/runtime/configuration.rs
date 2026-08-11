@@ -1,9 +1,7 @@
 //! Live Nostr relay replacement for the installed discovery runtime.
 
 use crate::api::runtime::discovery::DiscoveryRuntime;
-use crate::discovery::relay::pool::{
-    RelayPoolConfiguration, RelayPoolOwner, RelayPoolTransition,
-};
+use crate::discovery::relay::pool::{RelayPoolConfiguration, RelayPoolOwner, RelayPoolTransition};
 use nostr_sdk::Client;
 use std::sync::Arc;
 

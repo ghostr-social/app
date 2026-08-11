@@ -93,10 +93,9 @@ class ComposeForm extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         Text(
           'Publish a new clip from $_mediaSourceLabel into your Ghostr profile.',
-          style: Theme.of(context)
-              .textTheme
-              .bodyLarge
-              ?.copyWith(color: AppPalette.mutedForeground),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge?.copyWith(color: AppPalette.mutedForeground),
         ),
       ],
     );
@@ -120,8 +119,10 @@ class ComposeForm extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.media),
             child: bindings.playbackPort.buildSurface(
-              media: media,
-              isActive: bindings.isActive,
+              VideoPlaybackSurfaceRequest(
+                media: media,
+                isActive: bindings.isActive,
+              ),
             ),
           ),
         ),

@@ -12,26 +12,32 @@ pub(crate) mod admission;
 mod cache;
 mod completion;
 pub(crate) mod concurrency;
+pub(crate) mod cooldown_timers;
 pub mod failure;
+mod focus_lease;
 pub(crate) mod inflight;
 pub(crate) mod plan;
 pub(crate) mod pressure;
 mod probe_completion;
+pub(crate) mod quality;
 pub(crate) mod reconcile;
 mod reset;
 pub mod retry;
+mod retry_completion;
 pub(crate) mod state;
 pub(crate) mod stats;
+pub(crate) mod timeline;
 pub(crate) mod traffic;
 pub(crate) mod transfers;
-mod wake;
+pub(crate) mod wake;
 pub(crate) mod wake_lane;
-mod wake_select;
+pub(crate) mod wake_select;
 pub(crate) mod workers;
 
 use crate::cache_registry::CacheRegistry;
 use crate::debug::network::NetworkThrottle;
 use crate::delivery_events::{command_channel, CommandReceiver, DeliveryHandle};
+use crate::manager::cooldown_timers::CooldownTimers;
 use crate::manager::pressure::StorePressure;
 use crate::manager::retry::{RetryBook, RetryPolicy};
 use crate::manager::state::DeliveryState;
@@ -54,6 +60,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{mpsc, watch};
+
+pub(crate) use focus_lease::FocusedStoreLease;
 
 const TRAFFIC_MAILBOX_CAPACITY: usize = 64;
 
@@ -133,7 +141,9 @@ pub(crate) struct DeliveryWorker {
     queue: MutablePriorityQueue,
     probes: MetadataProbePool,
     retry: RetryBook,
+    cooldown_timers: CooldownTimers,
     pressure: StorePressure,
+    focus_lease: FocusedStoreLease,
     pending_demand: Option<DemandSignal>,
     ctx: TransferContext,
     cache: CacheRegistry,
@@ -166,7 +176,9 @@ impl DeliveryWorker {
             queue: MutablePriorityQueue::new(),
             probes: MetadataProbePool::new(config.tuning.probe_concurrency),
             retry: RetryBook::new(config.tuning.retry),
+            cooldown_timers: CooldownTimers::default(),
             pressure: StorePressure::new(config.tuning.store_pressure_pause),
+            focus_lease: FocusedStoreLease::default(),
             pending_demand: None,
             ctx: TransferContext {
                 client: Arc::new(config.client),

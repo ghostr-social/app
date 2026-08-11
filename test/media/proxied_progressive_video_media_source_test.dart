@@ -2,7 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 
 void main() {
-  const trusted = 'http://127.0.0.1:3210/video.mp4?id=post_1-A';
+  const trusted =
+      'http://127.0.0.1:3210/video.mp4?id=post_1-A&cap='
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
   test('accepts a loopback progressive gateway URL', () {
     final media = ProxiedProgressiveVideoMediaSource(trusted);
@@ -23,8 +25,11 @@ void main() {
       'http://media.test/video.mp4?id=post-1',
       'http://127.0.0.1/video.mp4?id=post-1',
       'http://127.0.0.1:3210/video.mp4',
+      'http://127.0.0.1:3210/video.mp4?id=post-1',
       'http://127.0.0.1:3210/other.mp4?id=post-1',
-      'http://127.0.0.1:3210/video.mp4?id=post-1&extra=1',
+      'http://127.0.0.1:3210/video.mp4?id=post-1&cap=short',
+      'http://127.0.0.1:3210/video.mp4?id=post-1&cap='
+          'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&extra=1',
       'http://127.0.0.1:3210/video.mp4?id=bad%20id',
       'http://127.0.0.1:3210/video.mp4?id=',
       'http://127.0.0.1:3210/video.mp4?id=post-1#clip',

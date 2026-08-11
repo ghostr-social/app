@@ -11,52 +11,67 @@ pub fn is_startable(
     have: &[ByteRange],
     params: &EngineParams,
 ) -> bool {
-    is_startable_with(catalog, post, have, params, params.head_seconds)
+    is_startable_with(
+        StartabilityInputs {
+            catalog,
+            params,
+            head_seconds: params.head_seconds,
+        },
+        post,
+        have,
+    )
 }
 
-pub(crate) fn is_startable_with(
-    catalog: &Catalog,
-    post: &PostId,
-    have: &[ByteRange],
-    params: &EngineParams,
+struct StartabilityInputs<'a> {
+    catalog: &'a Catalog,
+    params: &'a EngineParams,
     head_seconds: u64,
-) -> bool {
-    let Some(entry) = catalog.lookup(post) else {
+}
+
+fn is_startable_with(inputs: StartabilityInputs<'_>, post: &PostId, have: &[ByteRange]) -> bool {
+    let Some(entry) = inputs.catalog.lookup(post) else {
         return false;
     };
+    if let Some(startable) = super::timeline::is_startable(entry, have, inputs.head_seconds) {
+        return startable;
+    }
     let input = PlanInput {
         size_bytes: entry.total_bytes(),
-        duration_ms: entry.meta.duration_ms,
-        bitrate_bps: catalog.estimated_bitrate(post, params),
+        bitrate_bps: inputs.catalog.estimated_bitrate(post, inputs.params),
+        needs_tail_probe: entry.needs_tail_probe(),
     };
-    let plan = ChunkPlan::from_input_with_head_seconds(input, params, head_seconds);
+    let plan = ChunkPlan::from_input_with_head_seconds(input, inputs.params, inputs.head_seconds);
     head_complete(&plan, have) && moov_present(&plan, have)
 }
 
-pub(super) fn count_inventory(
-    catalog: &Catalog,
-    focus: &FocusState,
-    present: &PresentRanges,
-    params: &EngineParams,
-    head_seconds: &dyn Fn(&PostId) -> u64,
-) -> InventoryCounts {
-    let upcoming = upcoming_window(focus, params.startable_window);
+pub(super) struct InventoryInputs<'a> {
+    pub(super) catalog: &'a Catalog,
+    pub(super) focus: &'a FocusState,
+    pub(super) present: &'a PresentRanges,
+    pub(super) params: &'a EngineParams,
+    pub(super) head_seconds: &'a dyn Fn(&PostId) -> u64,
+}
+
+pub(super) fn count_inventory(inputs: InventoryInputs<'_>) -> InventoryCounts {
+    let upcoming = upcoming_window(inputs.focus, inputs.params.startable_window);
     let startable = upcoming
         .iter()
-        .filter(|post| {
+        .take_while(|post| {
             is_startable_with(
-                catalog,
+                StartabilityInputs {
+                    catalog: inputs.catalog,
+                    params: inputs.params,
+                    head_seconds: (inputs.head_seconds)(post),
+                },
                 post,
-                present.ranges(post),
-                params,
-                head_seconds(post),
+                inputs.present.ranges(post),
             )
         })
         .count();
     InventoryCounts {
         considered: upcoming.len(),
         startable,
-        target: params.startable_target.min(upcoming.len()),
+        target: inputs.params.startable_target.min(upcoming.len()),
     }
 }
 

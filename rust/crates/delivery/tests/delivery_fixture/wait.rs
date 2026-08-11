@@ -1,6 +1,7 @@
 //! Event-driven waiting on the partial-range store: registers on the
 //! change notifier before every re-check, with a hard deadline.
 
+use ghostr_delivery::cache_registry::CacheRegistry;
 use ghostr_delivery::progressive_posts::ServablePosts;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::ops::Range;
@@ -68,6 +69,21 @@ pub async fn wait_not_servable(posts: &ServablePosts, key: &str) {
             "timed out waiting for {key} to become unservable"
         );
         tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+}
+
+pub async fn wait_cache_first(cache: &CacheRegistry, expected: &str) {
+    let deadline = Instant::now() + WAIT_LIMIT;
+    loop {
+        if cache
+            .videos()
+            .first()
+            .is_some_and(|video| video.id == expected)
+        {
+            return;
+        }
+        assert!(Instant::now() < deadline, "cache order did not update");
+        tokio::task::yield_now().await;
     }
 }
 

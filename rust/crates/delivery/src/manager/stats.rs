@@ -88,7 +88,9 @@ impl StatsKeeper {
         let debounce = self.debounce;
         tokio::spawn(async move {
             tokio::time::sleep(debounce).await;
-            let _ = events.send(InternalEvent::SaveStats);
+            let _ = events.send(InternalEvent::Maintenance(
+                crate::manager::transfers::MaintenanceEvent::SaveStats,
+            ));
         });
     }
 

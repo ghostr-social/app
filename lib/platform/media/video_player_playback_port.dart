@@ -4,9 +4,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
+import 'package:ghostr/core/media/progressive_playback_refresh_port.dart';
 import 'package:ghostr/core/media/video_media_cache_identity.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_observation.dart';
+import 'package:ghostr/features/video_inventory/domain/playback_recovery_policy.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_session.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_telemetry_port.dart';
 import 'package:ghostr/platform/media/video_player_playback_observer.dart';
@@ -23,6 +25,7 @@ part 'video_player_media_controller.dart';
 part 'video_player_surface.dart';
 part 'video_player_surface_commands.dart';
 part 'video_player_surface_loading.dart';
+part 'video_player_surface_recovery.dart';
 part 'video_player_surface_telemetry.dart';
 
 class VideoPlayerPlaybackPort implements VideoPlaybackPort {
@@ -30,29 +33,38 @@ class VideoPlayerPlaybackPort implements VideoPlaybackPort {
     VideoPlayerControllerDisposer controllerDisposer =
         disposeVideoPlayerController,
     PlaybackTelemetryPort telemetry = const NoopPlaybackTelemetryPort(),
+    PlaybackRecoveryPolicy recoveryPolicy =
+        const PlaybackRecoveryPolicy.standard(),
   }) : _controllerDisposer = controllerDisposer,
-       _telemetry = telemetry;
+       _telemetry = telemetry,
+       _recoveryPolicy = recoveryPolicy;
 
   final VideoPlayerControllerDisposer _controllerDisposer;
   final PlaybackTelemetryPort _telemetry;
+  final PlaybackRecoveryPolicy _recoveryPolicy;
 
   @override
-  Widget buildSurface({
-    required VideoMediaSource media,
-    PlaybackVideoId? videoId,
-    required bool isActive,
-    void Function()? onPlaybackMediaReleased,
-  }) {
+  Widget buildSurface(VideoPlaybackSurfaceRequest request) {
     return _VideoPlayerSurface(
-      key: ValueKey((media.inventoryPlaybackIdentity, videoId)),
-      request: VideoPlaybackSurfaceRequest(
-        media: media,
-        videoId: videoId,
-        isActive: isActive,
-        onPlaybackMediaReleased: onPlaybackMediaReleased,
+      key: ValueKey((request.media.inventoryPlaybackIdentity, request.videoId)),
+      request: request,
+      dependencies: _VideoPlayerSurfaceDependencies(
+        controllerDisposer: _controllerDisposer,
+        telemetry: _telemetry,
+        recoveryPolicy: _recoveryPolicy,
       ),
-      controllerDisposer: _controllerDisposer,
-      telemetry: _telemetry,
     );
   }
+}
+
+final class _VideoPlayerSurfaceDependencies {
+  const _VideoPlayerSurfaceDependencies({
+    required this.controllerDisposer,
+    required this.telemetry,
+    required this.recoveryPolicy,
+  });
+
+  final VideoPlayerControllerDisposer controllerDisposer;
+  final PlaybackTelemetryPort telemetry;
+  final PlaybackRecoveryPolicy recoveryPolicy;
 }

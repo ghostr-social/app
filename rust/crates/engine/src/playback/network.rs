@@ -47,6 +47,18 @@ impl NetworkConditions {
             ),
         )
     }
+
+    /// Throughput available after discounting observed variation according
+    /// to the amount and freshness of supporting evidence.
+    pub fn sustainable_bits_per_second(self) -> u64 {
+        let throughput = self.bytes_per_second.saturating_mul(8);
+        let variability = self.variability_bytes_per_second.saturating_mul(8);
+        throughput.saturating_sub(discounted_variability(variability, self.confidence))
+    }
+
+    pub fn confidence(self) -> EstimateConfidence {
+        self.confidence
+    }
 }
 
 impl EstimateConfidence {
@@ -67,4 +79,12 @@ fn finite_u64(value: f64) -> u64 {
         return 0;
     }
     value.min(u64::MAX as f64).round() as u64
+}
+
+fn discounted_variability(variability: u64, confidence: EstimateConfidence) -> u64 {
+    match confidence {
+        EstimateConfidence::Low => variability.saturating_mul(2),
+        EstimateConfidence::Medium => variability.saturating_mul(3) / 2,
+        EstimateConfidence::High => variability,
+    }
 }

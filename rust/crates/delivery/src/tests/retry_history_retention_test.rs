@@ -15,9 +15,13 @@ fn evicted_retry_history_is_dropped_without_reviving_retained_sources() {
     });
     assert_eq!(retire(&mut retry, &old, &old_url), Retry::GiveUp);
     assert_eq!(retire(&mut retry, &kept, &kept_url), Retry::GiveUp);
+    retry.cool_down(old.clone()).unwrap();
+    retry.cool_down(kept.clone()).unwrap();
 
     retry.retain_history(&HashSet::from([kept.clone()]));
 
+    assert!(!retry.is_cooling(&old));
+    assert!(retry.is_cooling(&kept));
     assert_eq!(
         retry.live_urls(&old, std::slice::from_ref(&old_url)),
         vec![old_url]

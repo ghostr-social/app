@@ -5,8 +5,8 @@
 mod discovery_support;
 
 use discovery_support::write_relay_list;
-use nostr_sdk::Keys;
 use ghostr_discovery::outbox::directory::OutboxDirectory;
+use nostr_sdk::Keys;
 
 #[test]
 fn ranks_relays_by_author_count_then_url() {

@@ -1,6 +1,7 @@
 mod adaptive_concurrency_backoff_test;
 mod adaptive_concurrency_cap_test;
 mod adaptive_concurrency_demand_limited_test;
+mod adaptive_concurrency_effective_capacity_test;
 mod adaptive_concurrency_failure_test;
 mod adaptive_concurrency_gain_test;
 mod adaptive_concurrency_latency_test;

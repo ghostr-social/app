@@ -1,5 +1,5 @@
-use reqwest::dns::{Addrs, Name, Resolve, Resolving};
 use ghostr_net::outbound_media_client::MediaHttpClient;
+use reqwest::dns::{Addrs, Name, Resolve, Resolving};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;

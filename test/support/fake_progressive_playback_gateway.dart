@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/features/video_inventory/domain/progressive_playback_gateway_port.dart';
 
-const fakeProgressivePlaybackUrl = 'http://127.0.0.1:3210/video.mp4?id=post-1';
+const fakeProgressivePlaybackUrl =
+    'http://127.0.0.1:3210/video.mp4?id=post-1&cap='
+    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
 class FakeProgressivePlaybackGateway implements ProgressivePlaybackGatewayPort {
   final requests = <VideoMediaSource>[];

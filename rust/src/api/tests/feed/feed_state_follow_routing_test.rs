@@ -3,8 +3,8 @@
 //! bootstrap relays, and the viewer's kind-3 landing afterwards routes
 //! every later request by the follows — without ever filtering by them.
 
-use crate::api::runtime::discovery::{lock, SharedFeedState};
 use crate::api::feed::state::FeedState;
+use crate::api::runtime::discovery::{lock, SharedFeedState};
 use crate::api::tests::feed_fixtures::{signed_event, SignedEventFixture};
 use crate::discovery::feed::spec::FeedSpec;
 use nostr_sdk::{Event, Keys, Kind, PublicKey};

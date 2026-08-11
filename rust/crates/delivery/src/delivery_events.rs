@@ -3,6 +3,7 @@
 //! instead of polling.
 
 use ghostr_engine::playback::{PlaybackObservation, PlaybackObservationSequence, PlaybackSession};
+use ghostr_engine::video_rendition::VideoRendition;
 use ghostr_engine::{DataUsageLevel, PostId, VideoMeta};
 use tokio::sync::{mpsc, oneshot};
 
@@ -28,6 +29,7 @@ pub struct FocusItem {
 pub struct DeliveryCandidate {
     pub post: PostId,
     pub meta: VideoMeta,
+    pub renditions: Vec<VideoRendition>,
     pub discovered_at: u64,
 }
 

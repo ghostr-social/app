@@ -1,10 +1,11 @@
+use ghostr_engine::playback::PLAYBACK_SLICE_BYTES;
+
 mod gateway_fixture;
 
 use gateway_fixture::progressive::progressive_harness;
 use tower::ServiceExt;
 
 const LARGE_VIDEO_BYTES: u64 = 8 * 1024 * 1024;
-const MAX_SINGLE_DEMAND_BYTES: u64 = 256 * 1024;
 
 #[tokio::test]
 async fn an_open_ended_player_request_demands_only_the_next_bounded_window() {
@@ -22,8 +23,7 @@ async fn an_open_ended_player_request_demands_only_the_next_bounded_window() {
     let signal = harness.demand.recv().await.expect("demand signal");
 
     assert_eq!(signal.range.start, 1);
-    assert!(signal.range.end < LARGE_VIDEO_BYTES);
-    assert!(signal.range.end - signal.range.start <= MAX_SINGLE_DEMAND_BYTES);
+    assert_eq!(signal.range.end - signal.range.start, PLAYBACK_SLICE_BYTES);
     drop(response);
     std::fs::remove_dir_all(harness.root).ok();
 }

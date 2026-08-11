@@ -3,28 +3,29 @@
 //! of chunk requests for the transfer layer. No IO, no async.
 
 use crate::catalog::Catalog;
-use crate::chunk_plan::{ChunkPlan, PlanInput};
 use crate::focus::FocusState;
-use crate::inventory_controller::{is_startable_with, InventoryState};
+use crate::inventory_controller::InventoryState;
+use crate::playback::PLAYBACK_SLICE_BYTES;
 use crate::tiers::{classify, DemandSignals, PostInventory, Tier};
 use crate::{ByteRange, ChunkId, EngineParams, PostId};
 use std::cmp::Ordering;
 use std::collections::HashSet;
 
+mod fallback;
 mod frontier;
-use frontier::bounded_tails;
+mod timeline;
 
 /// Per-step weight decay for posts ahead of the viewer.
 const AHEAD_DECAY: f64 = 0.7;
 /// Extra discount for posts behind the viewer (scroll-back).
 const BEHIND_DISCOUNT: f64 = 0.15;
-
 /// One ordered unit of transfer work granted to the downloader.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ChunkRequest {
     pub chunk: ChunkId,
     pub tier: Tier,
     pub score: f64,
+    pub startup_depth_bytes: u64,
 }
 
 /// Exponential decay by scroll distance; behind items take a heavy
@@ -44,12 +45,20 @@ pub(crate) fn value_per_byte(milestone_seconds: f64, chunk_bytes: u64) -> f64 {
 
 /// Total deterministic ordering: tier first, higher score next, then
 /// post id and range start so equal scores cannot reorder runs.
-pub(crate) fn compare(a: &ChunkRequest, b: &ChunkRequest) -> Ordering {
+pub fn compare(a: &ChunkRequest, b: &ChunkRequest) -> Ordering {
     a.tier
         .cmp(&b.tier)
+        .then_with(|| startup_depth_order(a, b))
         .then_with(|| b.score.total_cmp(&a.score))
         .then_with(|| a.chunk.post.cmp(&b.chunk.post))
         .then_with(|| a.chunk.range.start.cmp(&b.chunk.range.start))
+}
+
+fn startup_depth_order(a: &ChunkRequest, b: &ChunkRequest) -> Ordering {
+    match a.tier == Tier::T2Startability && b.tier == Tier::T2Startability {
+        true => a.startup_depth_bytes.cmp(&b.startup_depth_bytes),
+        false => Ordering::Equal,
+    }
 }
 
 /// Everything `next_work` reads. `present` reports the byte ranges
@@ -65,6 +74,8 @@ pub struct NextWorkContext<'a> {
     pub host_factor: &'a dyn Fn(&PostId) -> f64,
     pub head_seconds: &'a dyn Fn(&PostId) -> u64,
     pub tail_end: &'a dyn Fn(&PostId) -> Option<u64>,
+    pub media_window: &'a dyn Fn(&PostId) -> Option<crate::media_timeline::PlaybackWindow>,
+    pub direct_range: &'a dyn Fn(&PostId) -> Option<ByteRange>,
 }
 
 /// The single pure planning entry point: every chunk the engine wants
@@ -85,73 +96,39 @@ pub fn next_work(ctx: &NextWorkContext<'_>) -> Vec<ChunkRequest> {
 /// Missing startability work (head chunks, then the moov probe) is
 /// emitted first; tail chunks are withheld until the post is startable.
 fn post_requests(ctx: &NextWorkContext<'_>, post: &PostId) -> Vec<ChunkRequest> {
-    let Some(plan) = plan_for(ctx, post) else {
-        return Vec::new();
-    };
     let have = (ctx.present)(post);
-    let (mut heads, tails): (Vec<_>, Vec<_>) = missing_chunks(&plan, &have)
-        .into_iter()
-        .partition(|chunk| chunk.start < plan.head_bytes());
-    let tails = bounded_tails(ctx, post, plan.head_bytes(), tails);
-    heads.extend(missing_probe(ctx, post, &plan, &have));
-    let inventory =
-        PostInventory::new(ctx.inventory, ctx.params.startable_window, heads.is_empty());
-    let Some(tier) = classify(post, ctx.focus, inventory, demand_for(ctx, post)) else {
+    let (heads, tails) = match timeline::planned_ranges(ctx, post, &have) {
+        Some(ranges) => ranges,
+        None => fallback::planned_ranges(ctx, post, &have),
+    };
+    let has_heads = !heads.is_empty();
+    let inventory = PostInventory::new(ctx.inventory, heads.is_empty());
+    let demand = demand_for(ctx, post);
+    let Some(tier) = classify(post, ctx.focus, inventory, demand) else {
         return Vec::new();
     };
-    let ranges = match heads.is_empty() {
-        true => tails,
-        false => heads,
+    let is_current = ctx.focus.current() == Some(post);
+    let ranges = match (has_heads, is_current) {
+        (true, true) => heads,
+        (true, false) => split_startup_ranges(heads),
+        (false, _) => tails,
     };
     score_requests(ctx, post, tier, ranges)
 }
 
-fn plan_for(ctx: &NextWorkContext<'_>, post: &PostId) -> Option<ChunkPlan> {
-    let entry = ctx.catalog.lookup(post)?;
-    let input = PlanInput {
-        size_bytes: entry.total_bytes(),
-        duration_ms: entry.meta.duration_ms,
-        bitrate_bps: ctx.catalog.estimated_bitrate(post, ctx.params),
-    };
-    Some(ChunkPlan::from_input_with_head_seconds(
-        input,
-        ctx.params,
-        (ctx.head_seconds)(post),
-    ))
+fn split_startup_ranges(ranges: Vec<ByteRange>) -> Vec<ByteRange> {
+    ranges.into_iter().flat_map(split_startup_range).collect()
 }
 
-/// All planned chunks not yet covered, in head-then-tail fetch order.
-fn missing_chunks(plan: &ChunkPlan, have: &[ByteRange]) -> Vec<ByteRange> {
-    let mut assumed = have.to_vec();
-    let mut missing = Vec::new();
-    while let Some(chunk) = plan.next_missing_chunk(&assumed) {
-        assumed.push(chunk);
-        missing.push(chunk);
+fn split_startup_range(range: ByteRange) -> Vec<ByteRange> {
+    let mut start = range.start;
+    let mut split = Vec::new();
+    while start < range.end {
+        let end = start.saturating_add(PLAYBACK_SLICE_BYTES).min(range.end);
+        split.push(ByteRange::new(start, end));
+        start = end;
     }
-    missing
-}
-
-/// With the whole head assumed on disk, `is_startable` reduces to "is
-/// the moov question settled"; when it is not, the probe range is the
-/// missing piece (`None` while the file size is still unknown).
-fn missing_probe(
-    ctx: &NextWorkContext<'_>,
-    post: &PostId,
-    plan: &ChunkPlan,
-    have: &[ByteRange],
-) -> Option<ByteRange> {
-    let mut assumed = have.to_vec();
-    assumed.extend(plan.head_ranges());
-    match is_startable_with(
-        ctx.catalog,
-        post,
-        &assumed,
-        ctx.params,
-        (ctx.head_seconds)(post),
-    ) {
-        true => None,
-        false => plan.tail_probe_range(),
-    }
+    split
 }
 
 /// Demand belongs to the playing post; other posts see calm signals.
@@ -175,17 +152,35 @@ fn score_requests(
 ) -> Vec<ChunkRequest> {
     let weight = position_weight(ctx.focus.distance_of(post).unwrap_or(0));
     let score = weight * post_value(ctx, post) * (ctx.host_factor)(post);
+    let mut assumed = (ctx.present)(post);
     ranges
         .into_iter()
-        .map(|range| ChunkRequest {
-            chunk: ChunkId {
-                post: post.clone(),
-                range,
-            },
-            tier,
-            score,
+        .map(|range| {
+            let startup_depth_bytes = contiguous_prefix_end(&assumed);
+            let request = ChunkRequest {
+                chunk: ChunkId {
+                    post: post.clone(),
+                    range,
+                },
+                tier,
+                score,
+                startup_depth_bytes,
+            };
+            assumed.push(range);
+            request
         })
         .collect()
+}
+
+fn contiguous_prefix_end(have: &[ByteRange]) -> u64 {
+    let mut end = 0;
+    for range in crate::media_timeline::normalize(have.to_vec()) {
+        if range.start > end {
+            break;
+        }
+        end = end.max(range.end);
+    }
+    end
 }
 
 /// Seconds gained per byte at the post's bitrate, measured on one

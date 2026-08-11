@@ -47,6 +47,7 @@ fn candidate(index: usize) -> DeliveryCandidate {
     DeliveryCandidate {
         post: PostId::new(&id),
         meta: metadata(&id),
+        renditions: Vec::new(),
         discovered_at: index as u64,
     }
 }

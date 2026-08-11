@@ -8,6 +8,8 @@ use std::time::Duration;
 
 mod window;
 use window::EvidenceWindow;
+mod occupancy;
+pub use occupancy::ConcurrencyOccupancy;
 
 const LEARNING_SAMPLES: usize = 4;
 const TRIAL_SAMPLES: usize = 4;
@@ -25,7 +27,7 @@ pub enum NetworkSetback {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ConcurrencyEvidence {
     pub aggregate_bytes_per_second: u64,
-    pub active_transfers: usize,
+    pub occupancy: ConcurrencyOccupancy,
     pub saturated: bool,
     pub ttfb: Duration,
     pub setback: NetworkSetback,
@@ -91,7 +93,7 @@ impl AdaptiveConcurrency {
 
     fn is_capacity_sample(&self, evidence: ConcurrencyEvidence) -> bool {
         evidence.saturated
-            && evidence.active_transfers == self.limit
+            && evidence.occupancy.fills(self.limit)
             && evidence.aggregate_bytes_per_second > 0
     }
 

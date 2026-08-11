@@ -11,6 +11,7 @@ fn request(post: &str, start: u64, tier: Tier, score: f64) -> ChunkRequest {
         },
         tier,
         score,
+        startup_depth_bytes: 0,
     }
 }
 
@@ -29,6 +30,15 @@ fn a_higher_score_wins_within_a_tier() {
 
     assert_eq!(compare(&strong, &weak), Ordering::Less);
     assert_eq!(compare(&weak, &strong), Ordering::Greater);
+}
+
+#[test]
+fn less_startup_depth_wins_before_position_score() {
+    let mut deeper = request("current", 0, Tier::T2Startability, 2.0);
+    deeper.startup_depth_bytes = 64;
+    let seed = request("next", 0, Tier::T2Startability, 1.0);
+
+    assert_eq!(compare(&seed, &deeper), Ordering::Less);
 }
 
 #[test]

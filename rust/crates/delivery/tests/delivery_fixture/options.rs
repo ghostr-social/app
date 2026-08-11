@@ -31,6 +31,15 @@ pub fn base_params() -> EngineParams {
     }
 }
 
+pub fn serial_long_retry_options(transient_attempts: u32) -> DeliveryOptions {
+    let mut options = DeliveryOptions::default();
+    options.params.balanced_concurrency = 1;
+    options.tuning.retry.base = Duration::from_secs(5);
+    options.tuning.retry.max = Duration::from_secs(5);
+    options.tuning.retry.transient_attempts = transient_attempts;
+    options
+}
+
 /// The production ladder, scaled down: pauses in milliseconds and a
 /// revival window far longer than any test run.
 fn test_tuning() -> DeliveryTuning {

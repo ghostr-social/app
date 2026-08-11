@@ -1,22 +1,36 @@
 import {ArtifactStore} from "./artifacts.mjs";
-import {startBrowser} from "./browser_process.mjs";
+import {createEvidenceSender} from "./impairment_evidence.mjs";
+import {
+  bootstrapImpairmentActions, impairmentOriginOptions,
+} from "./impairment_plan.mjs";
 import {validateJourney} from "./journey_outcome.mjs";
 import {OwnedLifecycle} from "./lifecycle.mjs";
-import {startLocalOrigin} from "./local_origin.mjs";
+import {measureQoe, requireQoeTargets} from "./qoe_metrics.mjs";
 import {
-  controlPoint, debugSnapshot, dispatchTrustedClick, playerSnapshot,
-} from "./page_runtime.mjs";
-import {createRunFiles, removeTransientRunFiles} from "./run_files.mjs";
-import {startServer} from "./server_process.mjs";
-import {writeFailure, writeSuccess} from "./trace_artifacts.mjs";
+  measureOrderedPrefetch, requireOrderedPrefetchTargets,
+} from "./ordered_prefetch_acceptance.mjs";
+import {ORDERED_PREFETCH_TARGETS, QOE_TARGETS} from "./qoe_targets.mjs";
+import {establishOrderedFocus} from "./ordered_focus_warmup.mjs";
+import {recordInitialFocusLocality} from "./focus_locality.mjs";
+import {createRunnerBoundaries} from "./runner_boundaries.mjs";
+import {playRunnerJourney} from "./runner_journey.mjs";
+import {waitForWarmPrefetch} from "./warm_prefetch.mjs";
 import {poll, withDeadline} from "./wait.mjs";
 
 const TOTAL_TIMEOUT_MS = 180_000;
-const VIRTUAL_BYTES = 4 * 1024 * 1024;
+const ORDERED_PREFETCH_SCENARIO = "ordered_prefetch";
+const ORDERED_PREFETCH_OBSERVATION_MS = 500;
 
-export async function runVideoUserE2e({root, environment, browser}) {
-  const files = await createRunFiles(root, environment);
-  const context = createContext(files, environment, browser);
+export function createVideoUserE2eRunner(overrides = {}) {
+  const boundaries = createRunnerBoundaries(overrides);
+  return (input) => runVideoUserE2eWith(boundaries, input);
+}
+
+export const runVideoUserE2e = createVideoUserE2eRunner();
+
+async function runVideoUserE2eWith(boundaries, {root, environment, browser, scenario = null}) {
+  const files = await boundaries.createRunFiles(root, environment);
+  const context = createContext({files, environment, browser, scenario, boundaries});
   try {
     const trace = await withDeadline({
       run: (signal) => runScenario(context, signal),
@@ -24,63 +38,135 @@ export async function runVideoUserE2e({root, environment, browser}) {
       label: "local video user E2E",
     });
     context.trace = trace;
-    await writeSuccess(context, trace);
+    await boundaries.writeSuccess(context, trace);
     return {artifacts: files.artifacts, trace};
   } catch (error) {
-    await writeFailure(context, error);
+    await boundaries.writeFailure(context, error);
     throw new Error(`${error.message}; artifacts: ${files.artifacts}`, {cause: error});
   } finally {
     context.browserRun?.cdp.close();
     await context.origin?.close();
     await context.lifecycle.teardown();
-    await removeTransientRunFiles(files);
+    await boundaries.removeTransientRunFiles(files);
   }
 }
 
 async function runScenario(context, signal) {
-  context.origin = await startLocalOrigin();
-  context.server = await startServer({...context, signal, timeoutMs: 90_000});
-  const ids = await registerVideos(context.server.url, context.origin.url);
-  context.browserRun = await startBrowser({
+  const admission = await prepareAdmission(context, signal);
+  const session = await prepareBrowser(context, admission, signal);
+  if (isOrderedPrefetch(context)) await observeOrderedPrefetch(context, session, signal);
+  else await playRunnerJourney(context, admission.ids, session.trace, signal);
+  return finishTrace(context, session.trace);
+}
+
+async function observeOrderedPrefetch(context, session, signal) {
+  await session.warm;
+  await context.boundaries.delay(ORDERED_PREFETCH_OBSERVATION_MS, signal);
+  session.trace.warm_prefetch.post_readiness_observation_ms = ORDERED_PREFETCH_OBSERVATION_MS;
+}
+
+async function prepareAdmission(context, signal) {
+  context.origin = await context.boundaries.startLocalOrigin(
+    impairmentOriginOptions(context.scenario),
+  );
+  context.server = await context.boundaries.startServer({...context, signal, timeoutMs: 90_000});
+  await applyBootstrapImpairments(context);
+  const ids = await context.boundaries.registerOrderedVideos({
+    server: context.server.url,
+    origin: context.origin.url,
+    scenario: context.scenario,
+  });
+  return {ids};
+}
+
+async function prepareBrowser(context, admission, signal) {
+  context.browserRun = await context.boundaries.startBrowser({
     ...context, signal, url: context.server.url, timeoutMs: 30_000,
   });
-  await waitForVideos(context.browserRun.page, ids, signal);
-  await requireUserStartsPlayback(context.browserRun.page);
-  const trace = {clicks: [], samples: [], requests: []};
-  const started = Date.now();
-  for (const id of [ids[0], ids[1], ids[0]]) {
-    await clickVideo(context.browserRun.page, id, signal);
-    trace.clicks.push({id, at_ms: Date.now() - started});
-    await watchProgress({
-      page: context.browserRun.page, id, trace, started, signal,
-    });
-  }
+  const trace = createTrace(context.scenario, admission.ids, context.impairments);
+  context.trace = trace;
+  const focus = await establishOrderedFocus({
+    ids: admission.ids,
+    read: () => context.boundaries.refreshDebugSnapshot(context.browserRun.page),
+    select: (id) => context.boundaries.selectVideoFocus(context.server.url, id),
+    record: initialFocusRecorder(context, admission.ids, trace),
+    warm: isOrderedPrefetch(context)
+      ? (timing) => warmPrefetch(context, admission.ids, timing, signal)
+      : undefined,
+  });
+  await waitForVideos(context, admission.ids, signal);
+  await context.boundaries.requireUserStartsPlayback(context.browserRun.page);
+  trace.started_at_epoch_ms = focus.startedAt;
+  return {trace, warm: focus.warm};
+}
+
+function finishTrace(context, trace) {
   trace.requests = context.browserRun.ledger.entries;
+  trace.origin_requests = structuredClone(context.origin.requests);
+  if (isOrderedPrefetch(context)) return finishOrderedPrefetch(trace);
+  trace.qoe = measureQoe(trace);
   validateJourney(trace);
+  requireQoeTargets(trace.qoe, QOE_TARGETS);
   return trace;
 }
 
-async function registerVideos(server, origin) {
-  const ids = [];
-  for (const name of ["a", "b"]) {
-    const response = await fetch(`${server}/api/videos`, {
-      method: "POST",
-      headers: {"content-type": "application/json"},
-      body: JSON.stringify({
-        url: `${origin}/${name}.mp4`,
-        size_bytes: VIRTUAL_BYTES,
-        duration_ms: 3_000,
-      }),
-    });
-    if (response.status !== 201) throw new Error(`video registration failed: ${response.status}`);
-    ids.push((await response.json()).id);
-  }
-  return ids;
+function finishOrderedPrefetch(trace) {
+  trace.qoe = measureOrderedPrefetch(trace);
+  requireOrderedPrefetchTargets(trace.qoe, ORDERED_PREFETCH_TARGETS);
+  return trace;
 }
 
-async function waitForVideos(page, ids, signal) {
+function createTrace(scenario, ids, impairments) {
+  return {
+    scenario,
+    started_at_epoch_ms: null,
+    video_ids: Object.fromEntries(ids.map((id, index) => [`v${index}`, id])),
+    ordered_video_ids: ids,
+    clicks: [],
+    samples: [],
+    requests: [],
+    impairments,
+  };
+}
+
+async function warmPrefetch(context, ids, timing, signal) {
+  return waitForWarmPrefetch({
+    orderedIds: ids,
+    protectedCount: ORDERED_PREFETCH_TARGETS.protected_count,
+    baseline: timing.baseline,
+    minimumBytes: ORDERED_PREFETCH_TARGETS.minimum_bytes,
+    deadlineMs: ORDERED_PREFETCH_TARGETS.latency_ms,
+    startedAt: timing.startedAt,
+    read: () => context.boundaries.refreshDebugSnapshot(context.browserRun.page),
+    signal,
+    onEvidence: (evidence) => { context.trace.warm_prefetch = evidence; },
+  });
+}
+
+function initialFocusRecorder(context, ids, trace) {
+  return ({id, baseline, startedAt}) => recordInitialFocusLocality({
+    trace, id, state: baseline, startedAt, orderedIds: ids,
+    protectedCount: ORDERED_PREFETCH_TARGETS.protected_count,
+    minimumBytes: ORDERED_PREFETCH_TARGETS.minimum_bytes,
+    originRequests: context.origin.requests,
+  });
+}
+
+function isOrderedPrefetch(context) {
+  return context.scenario === ORDERED_PREFETCH_SCENARIO;
+}
+
+async function applyBootstrapImpairments(context) {
+  const send = createEvidenceSender({evidence: context.impairments,
+    send: (action) => context.boundaries.sendControlAction(context.server.url, action)});
+  for (const action of bootstrapImpairmentActions(context.scenario)) {
+    await send(action);
+  }
+}
+
+async function waitForVideos(context, ids, signal) {
   await poll({
-    read: () => debugSnapshot(page),
+    read: () => context.boundaries.refreshDebugSnapshot(context.browserRun.page),
     accept: (state) => ids.every((id) => state?.videos.some((video) => video.id === id)),
     timeoutMs: 15_000,
     intervalMs: 100,
@@ -89,65 +175,19 @@ async function waitForVideos(page, ids, signal) {
   });
 }
 
-async function requireUserStartsPlayback(page) {
-  const player = await playerSnapshot(page);
-  if (player.id !== null || !player.paused) {
-    throw new Error("playback started before a visible user control was clicked");
-  }
-}
-
-async function clickVideo(page, id, signal) {
-  const point = await poll({
-    read: () => controlPoint(page, id),
-    accept: (value) => value?.ready === true,
-    timeoutMs: 10_000,
-    intervalMs: 100,
-    label: `${id} visible play control`,
-    signal,
-  });
-  if (!point.label?.startsWith("Play ")) throw new Error("untrusted play control label");
-  await dispatchTrustedClick(page, point);
-}
-
-async function watchProgress(input) {
-  const first = await collectUntil({...input, accept: (sample) => {
-    return sample.player.id === input.id && sample.player.phase === "playing";
-  }, label: `${input.id} playing`});
-  await collectUntil({...input, accept: (sample) => {
-    return sample.player.id === input.id && sample.player.phase === "playing"
-      && sample.player.current_time >= first.player.current_time + 0.5;
-  }, label: `${input.id} media time`});
-}
-
-function collectUntil(input) {
-  return poll({
-    read: async () => {
-      const sample = {
-        at_ms: Date.now() - input.started,
-        player: await playerSnapshot(input.page),
-        state: await debugSnapshot(input.page),
-      };
-      input.trace.samples.push(sample);
-      return sample;
-    },
-    accept: input.accept,
-    timeoutMs: 15_000,
-    intervalMs: 100,
-    label: input.label,
-    signal: input.signal,
-  });
-}
-
-function createContext(files, environment, browser) {
+function createContext(input) {
   return {
-    files,
-    environment,
-    browser,
+    files: input.files,
+    environment: input.environment,
+    browser: input.browser,
+    scenario: input.scenario,
+    boundaries: input.boundaries,
     lifecycle: new OwnedLifecycle(),
-    store: new ArtifactStore({directory: files.artifacts}),
+    store: new ArtifactStore({directory: input.files.artifacts}),
     origin: null,
     server: null,
     browserRun: null,
     trace: null,
+    impairments: [],
   };
 }

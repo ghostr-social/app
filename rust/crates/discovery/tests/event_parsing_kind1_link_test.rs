@@ -1,6 +1,6 @@
-use nostr_sdk::{Event, EventBuilder, Keys, Kind};
 use ghostr_discovery::content::parsing::video_post_from_event;
 use ghostr_engine::DeliveryKind;
+use nostr_sdk::{Event, EventBuilder, Keys, Kind};
 
 fn note(content: &str) -> Event {
     EventBuilder::new(Kind::Custom(1), content)

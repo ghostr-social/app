@@ -1,38 +1,29 @@
-use super::support::transfer_identity;
-use crate::manager::plan::PlannedTransfer;
-use crate::mutable_priority_queue::MutablePriorityQueue;
-use ghostr_engine::scoring::ChunkRequest;
+use super::support::planned_transfer;
+use crate::mutable_priority_queue::{ForegroundSlots, MutablePriorityQueue};
 use ghostr_engine::tiers::Tier;
-use ghostr_engine::{ByteRange, ChunkId, PostId};
 use std::collections::HashSet;
 
 #[test]
-fn an_idle_host_is_selected_before_more_work_for_an_active_host() {
+fn host_breadth_never_crosses_the_head_tier() {
     let mut queue = MutablePriorityQueue::new();
     queue.replace(vec![
-        transfer("urgent", "slow.example"),
-        transfer("ahead", "fast.example"),
+        planned_transfer("urgent", "slow.example", Tier::T2Startability),
+        planned_transfer("peer", "fast.example", Tier::T2Startability),
+        planned_transfer("far", "other.example", Tier::T4Speculative),
     ]);
     let active = HashSet::from(["slow.example".to_owned()]);
 
-    let selected = queue.pop_for_hosts(&active).expect("healthy work");
+    let selected = queue
+        .pop_for_hosts(&active, ForegroundSlots::default())
+        .expect("healthy work");
 
-    assert_eq!(selected.request.chunk.post.as_str(), "ahead");
-}
-
-fn transfer(post: &str, host: &str) -> PlannedTransfer {
-    let post = PostId::new(post);
-    let url = format!("https://{host}/{}.mp4", post.as_str());
-    PlannedTransfer {
-        identity: transfer_identity(&post, &url),
-        request: ChunkRequest {
-            chunk: ChunkId {
-                post,
-                range: ByteRange::new(0, 4),
-            },
-            tier: Tier::T2Startability,
-            score: 1.0,
-        },
-        url,
-    }
+    assert_eq!(selected.request.chunk.post.as_str(), "peer");
+    assert!(queue.pop_for_idle_host(&active).is_none());
+    let selected = queue
+        .pop_for_hosts(&active, ForegroundSlots::default())
+        .expect("head-tier work");
+    assert_eq!(selected.request.chunk.post.as_str(), "urgent");
+    assert!(queue
+        .pop_for_hosts(&HashSet::new(), ForegroundSlots::default())
+        .is_none());
 }

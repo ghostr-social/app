@@ -67,13 +67,27 @@ input and live network simulation controls are kept in modal dialogs.
 
 The controls update the running downloader without restarting it:
 
-- bandwidth in Kbps, applied per range transfer
+- one aggregate bandwidth budget in Kbps, shared fairly by active media transfers
 - latency in milliseconds before each range request
 - maximum simultaneous range connections per media host
 
 Zero disables the corresponding limit. Limits affect progressive media range
 downloads. They do not alter Nostr discovery, HLS proxying, or the loopback
 telemetry requests made by the debug page.
+
+## Automated delivery acceptance
+
+`make video-user-e2e-impairments` runs the browser acceptance rows as separate
+processes with separate private caches. Its first `ordered_prefetch` row holds
+focus on video zero and requires videos zero through three to store at least
+`48 KiB` within four seconds, with no origin body start or bytes for video four
+or later, including during a `500 ms` fixed-focus observation after readiness.
+The moving impairment rows then start cold in their own caches and measure
+focus-local transition, rebuffer, cancellation, duplicate, activation, and
+bandwidth-order gates without waiting for that fixed initial warm-up.
+
+The exact release budgets and evidence rules are documented in
+[VIDEO_QOE_TARGETS.md](../standards/VIDEO_QOE_TARGETS.md).
 
 ## HTTP surface
 
@@ -86,6 +100,7 @@ telemetry requests made by the debug page.
 | `DELETE` | `/debug/api/hls/{session}` | Release a Rust HLS playback session |
 | `POST` | `/debug/api/videos` | Register a progressive video with the Rust delivery engine |
 | `PUT` | `/debug/api/network` | Replace the live network profile |
+| `PUT` | `/debug/api/storage` | Replace the partial-store byte budget |
 
 The network profile JSON has this shape:
 

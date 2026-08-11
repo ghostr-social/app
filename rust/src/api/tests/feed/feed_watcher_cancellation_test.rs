@@ -1,9 +1,9 @@
 //! A cancelled feed receiver ends its watcher after the baseline snapshot.
 
-use crate::api::runtime::discovery::{lock, SharedFeedState};
 use crate::api::feed::state::FeedState;
 use crate::api::feed_types::FfiFeedUpdate;
 use crate::api::feed_updates_stream::{watch_feed, FeedOut};
+use crate::api::runtime::discovery::{lock, SharedFeedState};
 use crate::discovery::feed::spec::FeedSpec;
 use std::sync::{Arc, Mutex};
 

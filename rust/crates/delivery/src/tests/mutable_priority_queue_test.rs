@@ -1,6 +1,6 @@
 use super::support::transfer_identity;
 use crate::manager::plan::PlannedTransfer;
-use crate::mutable_priority_queue::MutablePriorityQueue;
+use crate::mutable_priority_queue::{ForegroundSlots, MutablePriorityQueue};
 use ghostr_engine::scoring::ChunkRequest;
 use ghostr_engine::tiers::Tier;
 use ghostr_engine::{ByteRange, ChunkId, PostId};
@@ -18,7 +18,7 @@ fn replacement_reprioritizes_work_and_drops_stale_entries() {
     assert_eq!(queue.wanted(), [high.id()].into());
     assert_eq!(
         queue
-            .pop_for_hosts(&HashSet::new())
+            .pop_for_hosts(&HashSet::new(), ForegroundSlots::default())
             .expect("queued work")
             .request
             .chunk
@@ -26,7 +26,9 @@ fn replacement_reprioritizes_work_and_drops_stale_entries() {
             .0,
         "high"
     );
-    assert!(queue.pop_for_hosts(&HashSet::new()).is_none());
+    assert!(queue
+        .pop_for_hosts(&HashSet::new(), ForegroundSlots::default())
+        .is_none());
 }
 
 fn transfer(id: &str, score: f64) -> PlannedTransfer {
@@ -41,6 +43,7 @@ fn transfer(id: &str, score: f64) -> PlannedTransfer {
             },
             tier: Tier::T2Startability,
             score,
+            startup_depth_bytes: 0,
         },
         url,
     }
