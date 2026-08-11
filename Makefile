@@ -24,7 +24,8 @@ HAWK_REVISION_SHORT := 98efa9f
 
 .PHONY: test-coverage coverage-summary native-check native-test native-coverage web \
 	native-dead-code-install native-dead-code \
-	web-contract-test \
+	web-contract-test video-user-e2e video-user-e2e-contract-test \
+	video-user-e2e-prerequisite-check \
 	native-coverage-contract-test rust rust-no-clean gen icons run run-fast \
 	run-fast-profile android-debug-apk android-debug-apk-check \
 	android-release-apk android-release-apk-check android-agent-avd-create \
@@ -55,13 +56,22 @@ native-dead-code: native-dead-code-install ## Find Rust declarations reachable o
 	cd rust && cargo +1.97.1 hawk check --only test-only -D hawk::test_only
 
 native-test: web-contract-test ## Run Rust tests.
-	cd rust && cargo test --no-default-features --test debug_web_exclusion_test
+	cd rust && cargo test -p ghostr-gateway --no-default-features --test debug_web_exclusion_test
 	cd rust && cargo test --workspace --all-features
 
 web-contract-test: ## Verify that the web tool is Rust-only.
 	sh test/tool/web_target_contract_test.sh
 	sh test/tool/web_lifecycle_contract_test.sh
 	sh test/tool/web_untrusted_owner_contract_test.sh
+
+video-user-e2e-contract-test: ## Test the deterministic local video E2E harness.
+	node --test test/tool/video_user_e2e/*_test.mjs
+
+video-user-e2e-prerequisite-check: ## Verify the exact pinned browser without launching it.
+	node tool/video_user_e2e/main.mjs --check-prerequisites
+
+video-user-e2e: video-user-e2e-contract-test ## Run the deterministic local browser journey.
+	node tool/video_user_e2e/main.mjs
 
 native-coverage-contract-test: ## Test the per-file native coverage contract.
 	sh test/tool/native_coverage_contract_test.sh

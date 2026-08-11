@@ -24,12 +24,14 @@ import 'package:ghostr/platform/media/ffi_feed_focus_port.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 
 class AppControllerFactory {
-  const AppControllerFactory(
+  static final FeedFocusPort _defaultFeedFocus = FfiFeedFocusPort();
+
+  AppControllerFactory(
     this._dependencies, {
-    FeedFocusPort feedFocus = const FfiFeedFocusPort(),
+    FeedFocusPort? feedFocus,
     RustDeliveryConfigUpdater deliveryConfigUpdater =
         updateRustEngineConfiguration,
-  }) : _feedFocus = feedFocus,
+  }) : _feedFocus = feedFocus ?? _defaultFeedFocus,
        _deliveryConfigUpdater = deliveryConfigUpdater;
 
   final AppDependencies _dependencies;

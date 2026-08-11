@@ -784,6 +784,7 @@ dependencies = [
  "reqwest",
  "serde",
  "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
@@ -809,6 +810,7 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]
@@ -877,6 +879,7 @@ name = "ghostr-partial-store"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ghostr-engine",
  "libc",
  "log",
  "sha2",

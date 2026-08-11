@@ -28,8 +28,12 @@ pub struct SpacedStore {
 /// Re-measures free space on every check, so the cap the store enforces
 /// is always the one this fixture was built with.
 pub fn spaced_store(prefix: &str, limits: Limits, available: u64) -> SpacedStore {
+    paced_store(prefix, limits, available, Duration::ZERO)
+}
+
+pub fn paced_store(prefix: &str, limits: Limits, available: u64, recheck: Duration) -> SpacedStore {
     let root = temp_directory(prefix);
-    let capacity = StoreCapacity::new(limits, Arc::new(FixedSpace { available }), Duration::ZERO);
+    let capacity = StoreCapacity::new(limits, Arc::new(FixedSpace { available }), recheck);
     SpacedStore {
         store: PartialRangeStore::with_capacity(root.clone(), Arc::new(Mutex::new(0)), capacity),
         root,

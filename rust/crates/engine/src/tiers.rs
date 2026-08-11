@@ -87,8 +87,8 @@ fn head_tier(distance: i64, inventory: PostInventory) -> Tier {
     }
 }
 
-/// Tail chunks: commitment finishes the current video in any mode;
-/// otherwise deepening is comfort-only and scroll-back speculative.
+/// Tail chunks: commitment gives the current item a bounded reserve;
+/// the planner owns that bound. Other deepening is comfort-only.
 fn tail_tier(distance: i64, mode: Mode, demand: DemandSignals) -> Option<Tier> {
     if distance == 0 && demand.viewer_committed {
         return Some(Tier::T1CurrentTail);

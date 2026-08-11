@@ -4,32 +4,22 @@ import 'package:ghostr/platform/media/video_player_value_listener.dart';
 import 'package:video_player/video_player.dart';
 
 void main() {
-  test('flips the stalled state as playback buffering changes', () {
+  test('forwards player values only while attached', () {
     final notifier = ValueNotifier<VideoPlayerValue>(
       const VideoPlayerValue(duration: Duration.zero),
     );
-    var changes = 0;
-    final listener = VideoPlayerValueListener(
-      onStateChanged: () => changes += 1,
-    );
+    final values = <VideoPlayerValue>[];
+    final listener = VideoPlayerValueListener(onValueChanged: values.add);
 
     listener.attach(notifier);
-    expect(listener.isStalled, isFalse);
+    expect(values, hasLength(1));
 
     notifier.value = const VideoPlayerValue(
       duration: Duration(seconds: 10),
       isInitialized: true,
       isBuffering: true,
     );
-    expect(listener.isStalled, isTrue);
-    expect(changes, 1);
-
-    notifier.value = const VideoPlayerValue(
-      duration: Duration(seconds: 10),
-      isInitialized: true,
-    );
-    expect(listener.isStalled, isFalse);
-    expect(changes, 2);
+    expect(values.last.isBuffering, isTrue);
 
     listener.detach();
     notifier.value = const VideoPlayerValue(
@@ -37,7 +27,6 @@ void main() {
       isInitialized: true,
       isBuffering: true,
     );
-    expect(listener.isStalled, isFalse);
-    expect(changes, 2);
+    expect(values, hasLength(2));
   });
 }

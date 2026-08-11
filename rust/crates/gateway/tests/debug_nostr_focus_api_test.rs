@@ -46,6 +46,7 @@ async fn browser_selection_updates_the_native_delivery_focus() {
         cache: harness.posts,
         network: harness.network,
         timing: Default::default(),
+        capabilities: harness.capabilities,
         debug_feed: feed,
     });
     let router = configured_router_with_progressive_debug(

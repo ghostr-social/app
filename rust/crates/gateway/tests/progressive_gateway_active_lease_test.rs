@@ -2,7 +2,7 @@ mod gateway_fixture;
 
 use axum::body::to_bytes;
 use gateway_fixture::free_space::{discard, limits, spaced_store};
-use gateway_fixture::progressive::{progressive_harness_with_store, video_request};
+use gateway_fixture::progressive::progressive_harness_with_store;
 use ghostr_gateway::progressive::route::ProgressiveTiming;
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -28,11 +28,8 @@ async fn active_gateway_stream_keeps_its_cached_file_alive() {
         .expect("video bytes");
     store.finalize("clip", None).await.expect("finalize");
 
-    let response = harness
-        .router
-        .oneshot(video_request("clip", None))
-        .await
-        .expect("response");
+    let request = harness.video_request("clip", None).await;
+    let response = harness.router.oneshot(request).await.expect("response");
     space.set(0);
     assert_eq!(
         store.enforce_capacity().await,

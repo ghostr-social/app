@@ -42,6 +42,8 @@ pub(super) struct WorkBench {
     pub(super) params: EngineParams,
     pub(super) demand: DemandSignals,
     pub(super) present: HashMap<PostId, Vec<ByteRange>>,
+    pub(super) head_seconds: HashMap<PostId, u64>,
+    pub(super) tail_end: HashMap<PostId, u64>,
 }
 
 impl WorkBench {
@@ -52,6 +54,8 @@ impl WorkBench {
             params: EngineParams::default(),
             demand: DemandSignals::default(),
             present: HashMap::new(),
+            head_seconds: HashMap::new(),
+            tail_end: HashMap::new(),
         }
     }
 
@@ -59,6 +63,13 @@ impl WorkBench {
         let inventory = self.observe();
         let present = |post: &PostId| self.present.get(post).cloned().unwrap_or_default();
         let host_factor = |_: &PostId| 1.0;
+        let head_seconds = |post: &PostId| {
+            self.head_seconds
+                .get(post)
+                .copied()
+                .unwrap_or(self.params.head_seconds)
+        };
+        let tail_end = |post: &PostId| self.tail_end.get(post).copied();
         next_work(&NextWorkContext {
             catalog: &self.catalog,
             focus: &self.focus,
@@ -67,6 +78,8 @@ impl WorkBench {
             demand: self.demand,
             present: &present,
             host_factor: &host_factor,
+            head_seconds: &head_seconds,
+            tail_end: &tail_end,
         })
     }
 
@@ -76,6 +89,12 @@ impl WorkBench {
             ranges.set(post.clone(), have.clone());
         }
         let mut controller = InventoryController::new(self.params);
-        controller.inventory_state(&self.catalog, &self.focus, &ranges)
+        let target = |post: &PostId| {
+            self.head_seconds
+                .get(post)
+                .copied()
+                .unwrap_or(self.params.head_seconds)
+        };
+        controller.inventory_state_with(&self.catalog, &self.focus, &ranges, &target)
     }
 }

@@ -5,5 +5,6 @@
 pub(crate) mod assets;
 pub(crate) mod hls;
 pub(crate) mod http;
+pub mod media;
 pub mod state;
 pub mod videos;

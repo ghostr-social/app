@@ -8,8 +8,10 @@
 //! `completion` and `probe_completion` absorb the results, and
 //! `retry`/`failure`/`pressure` decide what a failure means.
 
+pub(crate) mod admission;
 mod cache;
 mod completion;
+pub(crate) mod concurrency;
 pub mod failure;
 pub(crate) mod inflight;
 pub(crate) mod plan;
@@ -20,8 +22,11 @@ mod reset;
 pub mod retry;
 pub(crate) mod state;
 pub(crate) mod stats;
+pub(crate) mod traffic;
 pub(crate) mod transfers;
 mod wake;
+pub(crate) mod wake_lane;
+mod wake_select;
 pub(crate) mod workers;
 
 use crate::cache_registry::CacheRegistry;
@@ -31,11 +36,14 @@ use crate::manager::pressure::StorePressure;
 use crate::manager::retry::{RetryBook, RetryPolicy};
 use crate::manager::state::DeliveryState;
 use crate::manager::stats::StatsKeeper;
+use crate::manager::traffic::{channel as traffic_channel, TrafficInbox};
 use crate::manager::transfers::{InternalEvent, TransferContext};
+use crate::manager::wake_lane::WakeCursor;
 use crate::manager::workers::DownloadWorkers;
 use crate::mutable_priority_queue::MutablePriorityQueue;
 use crate::playback_demand::{DemandReceiver, DemandSignal};
 use crate::probe::pool::MetadataProbePool;
+use ghostr_engine::concurrency::AdaptiveConcurrency;
 use ghostr_engine::inventory_controller::Mode;
 use ghostr_engine::{DataUsageLevel, EngineParams};
 use ghostr_net::outbound_media_client::{MediaHttpClient, MediaHttpRequests};
@@ -47,6 +55,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{mpsc, watch};
 
+const TRAFFIC_MAILBOX_CAPACITY: usize = 64;
+
 /// Operational knobs outside the engine's tuning table.
 #[derive(Clone, Copy, Debug)]
 pub struct DeliveryTuning {
@@ -56,8 +66,8 @@ pub struct DeliveryTuning {
     pub retry: RetryPolicy,
     /// Quiet period before persisting the host-stats snapshot.
     pub stats_debounce: Duration,
-    /// How long a post waits after the store refused its bytes. One
-    /// capacity measurement is the earliest a new answer can exist.
+    /// Delay before one free-space recheck after a store refusal. Later
+    /// retries remain parked until a real capacity event.
     pub store_pressure_pause: Duration,
 }
 
@@ -130,6 +140,9 @@ pub(crate) struct DeliveryWorker {
     commands: CommandReceiver,
     demand: DemandReceiver,
     events: mpsc::UnboundedReceiver<InternalEvent>,
+    traffic: TrafficInbox,
+    wake_cursor: WakeCursor,
+    concurrency: AdaptiveConcurrency,
 }
 
 impl DeliveryWorker {
@@ -142,8 +155,12 @@ impl DeliveryWorker {
         C: MediaHttpRequests + 'static,
     {
         let (events_sender, events) = mpsc::unbounded_channel();
+        let (traffic_publisher, traffic) =
+            traffic_channel(events_sender.clone(), TRAFFIC_MAILBOX_CAPACITY);
+        let state = DeliveryState::new(config.params, config.level);
+        let concurrency = AdaptiveConcurrency::new(1, state.concurrency());
         Self {
-            state: DeliveryState::new(config.params, config.level),
+            state,
             keeper: StatsKeeper::load(config.stats_path, config.tuning.stats_debounce).await,
             downloads: DownloadWorkers::new(),
             queue: MutablePriorityQueue::new(),
@@ -157,11 +174,15 @@ impl DeliveryWorker {
                 events: events_sender,
                 timeouts: TransferTimeouts::default(),
                 network: config.network,
+                traffic: traffic_publisher,
             },
             cache: config.cache,
             commands,
             demand,
             events,
+            traffic,
+            wake_cursor: WakeCursor::default(),
+            concurrency,
         }
     }
 }

@@ -25,7 +25,7 @@ fn unknown_posts_have_no_entry() {
 }
 
 #[test]
-fn upsert_replaces_meta_but_keeps_learned_facts() {
+fn representation_change_discards_learned_facts() {
     let mut catalog = Catalog::new();
     let post = PostId::new("a");
     catalog.upsert(post.clone(), progressive_meta(None, None));
@@ -40,7 +40,7 @@ fn upsert_replaces_meta_but_keeps_learned_facts() {
 
     let entry = catalog.lookup(&post).expect("entry");
     assert_eq!(entry.meta, progressive_meta(Some(7), Some(1_000)));
-    assert_eq!(entry.facts, learned);
+    assert_eq!(entry.facts, LearnedFacts::default());
     assert_eq!(catalog.len(), 1);
 }
 

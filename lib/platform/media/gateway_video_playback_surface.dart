@@ -4,16 +4,17 @@ final class _GatewayVideoPlaybackSurface extends StatefulWidget {
   const _GatewayVideoPlaybackSurface({
     required this.delegate,
     required this.createCubit,
-    required this.media,
-    required this.isActive,
-    required this.onPlaybackMediaReleased,
+    required this.request,
   });
 
   final VideoPlaybackPort delegate;
   final GatewayPlaybackCubit Function(VideoMediaSource) createCubit;
-  final VideoMediaSource media;
-  final bool isActive;
-  final void Function()? onPlaybackMediaReleased;
+  final VideoPlaybackSurfaceRequest request;
+
+  VideoMediaSource get media => request.media;
+  PlaybackVideoId? get videoId => request.videoId;
+  bool get isActive => request.isActive;
+  VoidCallback? get onPlaybackMediaReleased => request.onPlaybackMediaReleased;
 
   @override
   State<_GatewayVideoPlaybackSurface> createState() =>
@@ -66,6 +67,7 @@ final class _GatewayVideoPlaybackSurfaceState
   Widget _buildPlayback(ProxiedProgressiveVideoMediaSource media) {
     return widget.delegate.buildSurface(
       media: media,
+      videoId: widget.videoId,
       isActive: widget.isActive,
       onPlaybackMediaReleased: widget.onPlaybackMediaReleased,
     );

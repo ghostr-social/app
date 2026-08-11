@@ -6,11 +6,14 @@
 use crate::chunk::downloader::ChunkResult;
 use crate::manager::failure::{classify, FailureClass};
 use crate::manager::inflight::CompletionStatus;
+use crate::manager::pressure::is_store_pressure;
 use crate::manager::retry::{Retry, Source};
 use crate::manager::transfers::{ChunkDone, InternalEvent};
 use crate::manager::DeliveryWorker;
 use ghostr_engine::catalog::LearnedFacts;
+use ghostr_engine::concurrency::NetworkSetback;
 use ghostr_engine::host_stats::host_of;
+use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::PostId;
 use log::warn;
 use std::time::Duration;
@@ -18,25 +21,26 @@ use std::time::Duration;
 impl DeliveryWorker {
     pub(crate) async fn finish_chunk(&mut self, done: ChunkDone) {
         let status = self.downloads.finish(&done.attempt);
-        let post = &done.attempt.chunk.post;
-        if !self.accepts_completion(post, status) {
+        if !Self::accepts_completion(status) {
             return;
         }
-        self.keeper.note_chunk(&done);
+        let identity = done.attempt.identity().clone();
+        if !done.outcome.as_ref().err().is_some_and(is_store_pressure) {
+            self.keeper.note_chunk(&done);
+        }
         // Free space moves while a chunk is in flight — other apps write
         // to the same volume — so every finished chunk re-measures it and
         // evicts down to the cap instead of waiting for the next write.
         self.ctx.store.enforce_capacity().await;
         match done.outcome {
-            Ok(result) => self.absorb_chunk(post, &done.url, result).await,
-            Err(error) => self.absorb_failure(post, &done.url, &error),
+            Ok(result) => self.absorb_chunk(&identity, result).await,
+            Err(error) => self.absorb_failure(identity.post(), &done.url, &error),
         }
     }
 
-    fn accepts_completion(&self, post: &PostId, status: CompletionStatus) -> bool {
+    fn accepts_completion(status: CompletionStatus) -> bool {
         match status {
             CompletionStatus::Current => true,
-            CompletionStatus::Untracked => self.state.window_posts().contains(post),
             CompletionStatus::Superseded => false,
         }
     }
@@ -48,38 +52,63 @@ impl DeliveryWorker {
         if self.absorb_store_pressure(post, error) {
             return;
         }
+        self.note_network_setback(NetworkSetback::Failure);
         warn!("Chunk transfer failed: {error:#}");
         self.note_failed_attempt(post, url, classify(error));
     }
 
-    async fn absorb_chunk(&mut self, post: &PostId, url: &str, result: ChunkResult) {
-        self.learn(post, url, result.total_bytes, result.accept_ranges)
-            .await;
+    async fn absorb_chunk(&mut self, identity: &TransferIdentity, result: ChunkResult) {
+        if !self
+            .learn_transfer(identity, result.total_bytes, result.accept_ranges)
+            .await
+        {
+            return;
+        }
         if result.bytes_written == 0 && !result.cancelled {
             // The server ignored the range: no progress is possible
             // right now, so it counts as a failed attempt.
-            return self.note_failed_attempt(post, url, FailureClass::Transient);
+            return self.note_failed_attempt(
+                identity.post(),
+                identity.source().as_str(),
+                FailureClass::Transient,
+            );
         }
+        let source = identity.source().as_str();
         self.retry
-            .note_success(&Source::new(post.clone(), url.to_owned()));
-        self.try_finalize(post, url).await;
+            .note_success(&Source::new(identity.post().clone(), source.to_owned()));
+        self.try_finalize(identity.post(), source).await;
     }
 
-    pub(crate) async fn learn(
+    pub(crate) async fn learn_transfer(
         &mut self,
-        post: &PostId,
-        url: &str,
+        identity: &TransferIdentity,
         total: Option<u64>,
         ranged: bool,
-    ) {
+    ) -> bool {
+        if !self.ctx.store.transfer_is_current(identity).await {
+            return false;
+        }
+        self.learn_identity(identity, total, ranged).await
+    }
+
+    pub(crate) async fn learn_identity(
+        &mut self,
+        identity: &TransferIdentity,
+        total: Option<u64>,
+        ranged: bool,
+    ) -> bool {
         let facts = LearnedFacts {
             content_length: total,
             accept_ranges: Some(ranged),
-            host: host_of(url),
+            host: host_of(identity.source().as_str()),
         };
-        self.state.catalog_mut().learn(post, facts);
-        let Some(total) = total else { return };
-        self.set_store_total(post, total).await;
+        if !self.state.catalog_mut().learn_for(identity, facts) {
+            return false;
+        }
+        if let Some(total) = total {
+            self.set_store_total(identity.post(), total).await;
+        }
+        true
     }
 
     /// Declares the store total once; a conflicting later fact only

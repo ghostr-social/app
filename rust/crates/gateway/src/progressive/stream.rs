@@ -17,7 +17,7 @@ type ChunkSender = mpsc::Sender<Result<Bytes, io::Error>>;
 
 /// A response body over `span` that serves what the store already holds and
 /// keeps streaming as missing bytes land, emitting a demand signal while it
-/// waits. The stream ends once no byte arrives within the idle timeout.
+/// waits. The body fails once no byte arrives within the idle timeout.
 pub(crate) fn body_for_span(state: Arc<ProgressiveState>, key: String, span: Range<u64>) -> Body {
     let (sender, receiver) = mpsc::channel(4);
     let lease = state.store.lease(&key);
@@ -50,6 +50,11 @@ async fn pump(state: Arc<ProgressiveState>, key: String, span: Range<u64>, sende
                 deadline = Instant::now() + state.timing.idle_timeout;
             }
             PumpStep::Retry => {}
+            PumpStep::TimedOut => {
+                let error = io::Error::new(io::ErrorKind::TimedOut, "progressive stream stalled");
+                let _ = sender.send(Err(error)).await;
+                return;
+            }
             PumpStep::Stop => return,
         }
     }
@@ -65,6 +70,7 @@ struct PumpIteration<'a> {
 enum PumpStep {
     Advanced(u64),
     Retry,
+    TimedOut,
     Stop,
 }
 
@@ -103,7 +109,7 @@ async fn wait_for_bytes(
     );
     match timeout_at(iteration.deadline, changed).await {
         Ok(()) => PumpStep::Retry,
-        Err(_) => PumpStep::Stop,
+        Err(_) => PumpStep::TimedOut,
     }
 }
 
@@ -145,8 +151,12 @@ fn emit_demand(
         return;
     }
     *demanded = Some(missing.start);
+    let end = missing
+        .start
+        .saturating_add(READ_CHUNK_BYTES)
+        .min(missing.end);
     state.demand.emit(DemandSignal {
         post: PostId::new(key),
-        range: ByteRange::new(missing.start, missing.end),
+        range: ByteRange::new(missing.start, end),
     });
 }

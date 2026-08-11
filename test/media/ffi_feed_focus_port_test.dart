@@ -22,6 +22,7 @@ void main() {
     expect(update.feedId, 'primary');
     expect(update.currentIndex, 1);
     expect(update.watchMs, BigInt.zero);
+    expect(update.generation, BigInt.one);
     expect(
       update.items.map((item) => item.urls.single),
       posts.map((post) => post.media.remoteUrl),

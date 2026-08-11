@@ -9,6 +9,7 @@ use crate::playback_demand::DemandSignal;
 use ghostr_engine::tiers::DemandSignals;
 use ghostr_engine::{ByteRange, PostId};
 use std::collections::HashMap;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 impl DeliveryWorker {
     pub(crate) async fn reconcile(&mut self) {
@@ -18,11 +19,14 @@ impl DeliveryWorker {
         self.ensure_total_lens(&candidates).await;
         self.launch_probes(&candidates);
         let demand = self.demand_signals(&present);
+        let demanded_end = self.pending_demand.as_ref().map(|signal| signal.range.end);
         let inputs = PlanInputs {
             stats: self.keeper.stats(),
             retry: &self.retry,
             present: &present,
             demand,
+            observed_at_ms: unix_time_ms(),
+            demanded_end,
         };
         let planned = planned_work(&mut self.state, inputs);
         self.reconcile_transfers(planned);
@@ -84,23 +88,62 @@ impl DeliveryWorker {
     /// Grants the ordered plan up to the concurrency limit; whatever
     /// the plan no longer contains is cancelled first (scroll-past).
     fn reconcile_transfers(&mut self, planned: PlannedWork) {
+        let emergency = planned.emergency;
+        let priority: Vec<_> = planned
+            .transfers
+            .iter()
+            .map(|transfer| transfer.request.chunk.clone())
+            .collect();
         self.queue.replace(planned.transfers);
         self.downloads.cancel_absent(&self.queue.wanted());
-        while self.downloads.len() < self.state.concurrency() {
-            let Some(transfer) = self.queue.pop() else {
+        if let Some(current) = self.state.focus().current() {
+            self.downloads
+                .preempt_for_current(current, &priority, self.concurrency_limit());
+        }
+        while self.downloads.len() < self.concurrency_limit() {
+            let active_hosts = self.downloads.active_hosts();
+            let Some(transfer) = self.queue.pop_for_hosts(&active_hosts) else {
                 return;
             };
+            self.grant(transfer);
+        }
+        if !emergency {
+            self.grant_origin_exploration();
+        }
+    }
+
+    fn grant_origin_exploration(&mut self) {
+        let exploration_limit = self
+            .concurrency_limit()
+            .saturating_add(1)
+            .min(self.state.concurrency());
+        if self.downloads.len() >= exploration_limit {
+            return;
+        }
+        let active_hosts = self.downloads.active_hosts();
+        if let Some(transfer) = self.queue.pop_for_idle_host(&active_hosts) {
             self.grant(transfer);
         }
     }
 
     fn grant(&mut self, transfer: PlannedTransfer) {
         let chunk = &transfer.request.chunk;
-        if self.downloads.contains(chunk) || self.retry.is_cooling(&chunk.post) {
+        if self.downloads.contains(chunk)
+            || self.retry.is_cooling(&chunk.post)
+            || self.pressure.is_parked()
+        {
             return;
         }
         self.downloads.start(self.ctx.clone(), transfer);
     }
+}
+
+fn unix_time_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .min(u128::from(u64::MAX)) as u64
 }
 
 pub(crate) fn resolve_demand(

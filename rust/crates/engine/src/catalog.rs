@@ -1,6 +1,7 @@
 //! Indexed posts: discovery metadata plus facts learned from probing.
 //! Pure bookkeeping — probing itself happens elsewhere.
 
+use crate::representation::{RepresentationBinding, RepresentationGeneration, TransferIdentity};
 use crate::{EngineParams, PostId, VideoMeta};
 use std::collections::HashMap;
 
@@ -30,16 +31,30 @@ impl LearnedFacts {
 /// One catalogued post: what discovery said plus what probing taught us.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CatalogEntry {
+    post: PostId,
     pub meta: VideoMeta,
     pub(crate) facts: LearnedFacts,
+    binding: RepresentationBinding,
 }
 
 impl CatalogEntry {
-    fn new(meta: VideoMeta) -> Self {
+    fn new(post: PostId, meta: VideoMeta, generation: RepresentationGeneration) -> Self {
         Self {
+            binding: RepresentationBinding::new(post.clone(), &meta, generation),
+            post,
             meta,
             facts: LearnedFacts::default(),
         }
+    }
+
+    fn refresh(&mut self, meta: VideoMeta, generation: RepresentationGeneration) {
+        self.binding = RepresentationBinding::new(self.post.clone(), &meta, generation);
+        self.meta = meta;
+        self.facts = LearnedFacts::default();
+    }
+
+    pub fn binding(&self) -> RepresentationBinding {
+        self.binding.clone()
     }
 
     /// Best-known file size: a probed `Content-Length` beats imeta `size`.
@@ -49,9 +64,19 @@ impl CatalogEntry {
 }
 
 /// All posts the engine currently knows how to deliver.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Catalog {
     entries: HashMap<PostId, CatalogEntry>,
+    next_generation: RepresentationGeneration,
+}
+
+impl Default for Catalog {
+    fn default() -> Self {
+        Self {
+            entries: HashMap::new(),
+            next_generation: RepresentationGeneration::first(),
+        }
+    }
 }
 
 impl Catalog {
@@ -59,15 +84,36 @@ impl Catalog {
         Self::default()
     }
 
-    /// Inserts a post or refreshes its discovery metadata. Learned facts
-    /// survive metadata refreshes.
-    pub fn upsert(&mut self, post: PostId, meta: VideoMeta) {
-        match self.entries.get_mut(&post) {
-            Some(entry) => entry.meta = meta,
-            None => {
-                self.entries.insert(post, CatalogEntry::new(meta));
+    /// Inserts a post or refreshes its representation. Facts learned for
+    /// a replaced representation are discarded with its old identity.
+    pub fn upsert(&mut self, post: PostId, meta: VideoMeta) -> RepresentationBinding {
+        let changed = self
+            .entries
+            .get(&post)
+            .is_none_or(|entry| entry.meta != meta);
+        if changed {
+            let generation = self.allocate_generation();
+            match self.entries.get_mut(&post) {
+                Some(entry) => entry.refresh(meta, generation),
+                None => {
+                    self.entries.insert(
+                        post.clone(),
+                        CatalogEntry::new(post.clone(), meta, generation),
+                    );
+                }
             }
         }
+        self.binding(&post).expect("upserted catalog entry")
+    }
+
+    pub fn retain(&mut self, mut keep: impl FnMut(&PostId) -> bool) {
+        self.entries.retain(|post, _| keep(post));
+    }
+
+    fn allocate_generation(&mut self) -> RepresentationGeneration {
+        let generation = self.next_generation;
+        self.next_generation = generation.next();
+        generation
     }
 
     /// Merges freshly learned facts into a known post. Returns `false`
@@ -80,6 +126,25 @@ impl Catalog {
             }
             None => false,
         }
+    }
+
+    pub fn learn_for(&mut self, identity: &TransferIdentity, facts: LearnedFacts) -> bool {
+        let Some(entry) = self.entries.get_mut(identity.post()) else {
+            return false;
+        };
+        if entry.binding.transfer(identity.source().as_str()).as_ref() != Some(identity) {
+            return false;
+        }
+        entry.facts.merge(facts);
+        true
+    }
+
+    pub fn binding(&self, post: &PostId) -> Option<RepresentationBinding> {
+        self.lookup(post).map(CatalogEntry::binding)
+    }
+
+    pub fn transfer_identity(&self, post: &PostId, url: &str) -> Option<TransferIdentity> {
+        self.lookup(post)?.binding.transfer(url)
     }
 
     pub fn lookup(&self, post: &PostId) -> Option<&CatalogEntry> {
@@ -98,7 +163,7 @@ impl Catalog {
 
     /// Bits per second from best-known size and duration; falls back to
     /// the assumed bitrate when either is unknown or degenerate.
-    pub(crate) fn estimated_bitrate(&self, post: &PostId, params: &EngineParams) -> u64 {
+    pub fn estimated_bitrate(&self, post: &PostId, params: &EngineParams) -> u64 {
         self.lookup(post)
             .and_then(measured_bitrate)
             .unwrap_or(params.assumed_bitrate_bps)

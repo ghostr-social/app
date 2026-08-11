@@ -91,12 +91,11 @@ async fn select_focus(
     State(state): State<DebugHttpState>,
     Json(request): Json<SelectFocusRequest>,
 ) -> Result<StatusCode, StatusCode> {
-    state
-        .progressive
-        .debug_feed
-        .select(&request.id)
-        .map_err(|_| StatusCode::NOT_FOUND)?;
-    Ok(StatusCode::NO_CONTENT)
+    let selected_from_feed = state.progressive.debug_feed.select(&request.id).is_ok();
+    match selected_from_feed || state.videos.select(&request.id) {
+        true => Ok(StatusCode::NO_CONTENT),
+        false => Err(StatusCode::NOT_FOUND),
+    }
 }
 
 async fn add_video(
@@ -117,6 +116,7 @@ async fn add_video(
 
 async fn clear_data(State(state): State<DebugHttpState>) -> Result<StatusCode, StatusCode> {
     state.progressive.debug_feed.clear();
+    state.videos.clear();
     let delivery = state.delivery.clear();
     let database = state.client.database().wipe();
     let hls = state.hls.clear();

@@ -1,16 +1,24 @@
 //! Pins that keep one video in the store while something is using it,
 //! so capacity pressure never pulls a file out from under a reader.
 
+use super::capacity::CapacityEvents;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 /// Reference counts of the keys callers are actively holding.
-#[derive(Default)]
 pub struct StoreLeases {
     counts: Mutex<HashMap<String, u32>>,
+    events: CapacityEvents,
 }
 
 impl StoreLeases {
+    pub(crate) fn new(events: CapacityEvents) -> Self {
+        Self {
+            counts: Mutex::new(HashMap::new()),
+            events,
+        }
+    }
+
     pub(crate) fn acquire(self: &Arc<Self>, key: &str) -> StoreLease {
         *self.counts().entry(key.to_owned()).or_insert(0) += 1;
         StoreLease {
@@ -32,6 +40,7 @@ impl StoreLeases {
         *count = count.saturating_sub(1);
         if *count == 0 {
             counts.remove(key);
+            self.events.signal();
         }
     }
 

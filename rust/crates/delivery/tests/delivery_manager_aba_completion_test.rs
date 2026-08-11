@@ -9,14 +9,14 @@ use delivery_fixture::options::{base_params, DeliveryOptions};
 use delivery_fixture::start_harness;
 use delivery_fixture::wait::wait_for_file;
 use ghostr_engine::{DataUsageLevel, EngineParams};
-use range_fixture::stall::serve_stalling;
+use range_fixture::stall::serve_stalling_signaled;
 use std::time::Duration;
 
 #[tokio::test]
 async fn delivery_manager_ignores_stale_completion_after_focus_returns_to_a() {
     let bytes = b"abcdefgh".to_vec();
     let (a_url, origin) = serve(bytes.clone()).await;
-    let b_url = serve_stalling(Vec::new(), 8).await;
+    let (b_url, b_started) = serve_stalling_signaled(Vec::new(), 8).await;
     let harness = start_harness("ghostr-delivery-aba", serial_options());
     let a = sized_item("aa11", &a_url, 8, 1_000);
 
@@ -27,6 +27,10 @@ async fn delivery_manager_ignores_stale_completion_after_focus_returns_to_a() {
     harness
         .handle
         .update_focus(focus_now(vec![sized_item("bb22", &b_url, 8, 1_000)], 0, 0));
+    tokio::time::timeout(Duration::from_secs(1), b_started)
+        .await
+        .expect("middle focus must start")
+        .expect("middle focus signal");
     harness.handle.update_focus(focus_now(vec![a], 0, 0));
     origin.wait_for_hits(2).await;
 

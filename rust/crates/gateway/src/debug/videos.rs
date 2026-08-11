@@ -5,8 +5,11 @@ use ghostr_delivery::delivery_events::{DeliveryCandidate, DeliveryHandle};
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 use reqwest::Url;
 use sha2::{Digest, Sha256};
+use std::collections::VecDeque;
+use std::sync::{Arc, Mutex, MutexGuard};
 
 const MAX_URL_BYTES: usize = 8_192;
+const MAX_SELECTABLE_VIDEOS: usize = 64;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DebugVideoRegistration {
@@ -18,19 +21,61 @@ pub struct DebugVideoRegistration {
 #[derive(Clone, Debug)]
 pub struct DebugVideos {
     delivery: DeliveryHandle,
+    retained: Arc<Mutex<VecDeque<DeliveryCandidate>>>,
 }
 
 impl DebugVideos {
     pub fn new(delivery: DeliveryHandle) -> Self {
-        Self { delivery }
+        Self {
+            delivery,
+            retained: Arc::new(Mutex::new(VecDeque::new())),
+        }
     }
 
     pub fn add(&self, registration: DebugVideoRegistration) -> anyhow::Result<String> {
         let candidate = delivery_candidate(registration)?;
         let id = candidate.post.as_str().to_owned();
-        self.delivery.admit_candidate(candidate.clone());
-        self.delivery.prioritize_candidate(candidate.post);
+        self.remember(candidate.clone());
+        self.dispatch(candidate);
         Ok(id)
+    }
+
+    pub fn select(&self, id: &str) -> bool {
+        let candidate = self
+            .retained()
+            .iter()
+            .find(|candidate| candidate.post.as_str() == id)
+            .cloned();
+        let Some(candidate) = candidate else {
+            return false;
+        };
+        self.dispatch(candidate);
+        true
+    }
+
+    pub fn clear(&self) {
+        self.retained().clear();
+    }
+
+    fn remember(&self, candidate: DeliveryCandidate) {
+        let mut retained = self.retained();
+        retained.retain(|item| item.post != candidate.post);
+        if retained.len() == MAX_SELECTABLE_VIDEOS {
+            retained.pop_front();
+        }
+        retained.push_back(candidate);
+    }
+
+    fn dispatch(&self, candidate: DeliveryCandidate) {
+        let post = candidate.post.clone();
+        self.delivery.admit_candidate(candidate);
+        self.delivery.prioritize_candidate(post);
+    }
+
+    fn retained(&self) -> MutexGuard<'_, VecDeque<DeliveryCandidate>> {
+        self.retained
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 }
 

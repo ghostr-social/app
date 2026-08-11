@@ -26,12 +26,22 @@ fn chunks_covered_by_split_ranges_are_skipped() {
 }
 
 #[test]
-fn a_partially_covered_chunk_is_still_missing() {
+fn a_hole_inside_a_chunk_is_requested_without_overwriting_present_bytes() {
     let have = [ByteRange::new(0, 400_000), ByteRange::new(500_000, MIB)];
 
     assert_eq!(
         plan().next_missing_chunk(&have),
-        Some(ByteRange::new(0, MIB))
+        Some(ByteRange::new(400_000, 500_000))
+    );
+}
+
+#[test]
+fn a_short_server_range_resumes_at_the_first_missing_byte() {
+    let have = [ByteRange::new(0, 64 * 1024)];
+
+    assert_eq!(
+        plan().next_missing_chunk(&have),
+        Some(ByteRange::new(64 * 1024, MIB))
     );
 }
 
