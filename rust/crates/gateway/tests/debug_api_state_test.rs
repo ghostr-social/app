@@ -62,7 +62,10 @@ async fn debug_state_reports_downloaded_bytes_duration_and_source() {
     assert_eq!(state["videos"][0]["downloaded_bytes"], 250);
     assert_eq!(state["videos"][0]["duration_ms"], 120_000);
     assert_eq!(state["videos"][0]["downloaded_duration_ms"], 30_000);
-    assert_eq!(state["videos"][0]["playback_url"], "/video.mp4?id=clip");
+    let playback_url = state["videos"][0]["playback_url"]
+        .as_str()
+        .expect("playback URL");
+    assert!(playback_url.starts_with("/video.mp4?id=clip&cap="));
 }
 
 #[tokio::test]

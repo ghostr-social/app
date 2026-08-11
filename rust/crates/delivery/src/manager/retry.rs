@@ -148,6 +148,15 @@ impl RetryBook {
         self.cooling.clear();
     }
 
+    /// Completed attempt/retirement history follows hot scheduling
+    /// retention. Live cooldowns keep their timer ownership until expiry.
+    pub(crate) fn retain_history(&mut self, retained: &HashSet<PostId>) {
+        self.attempts
+            .retain(|source, _| retained.contains(&source.post));
+        self.retired
+            .retain(|source, _| retained.contains(&source.post));
+    }
+
     fn charge(&mut self, source: &Source) -> u32 {
         let attempts = self.attempts.entry(source.clone()).or_insert(0);
         *attempts += 1;

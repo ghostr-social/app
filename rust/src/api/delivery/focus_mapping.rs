@@ -3,8 +3,8 @@
 
 use crate::api::delivery_types::{FfiFocusItem, FfiMediaDelivery};
 use crate::engine::{DeliveryKind, PostId, VideoMeta};
-use ghostr_delivery::delivery_events::{DeliveryFocus, FocusItem};
 use anyhow::{bail, Result};
+use ghostr_delivery::delivery_events::{DeliveryFocus, FocusGeneration, FocusItem};
 
 impl From<FfiMediaDelivery> for DeliveryKind {
     fn from(delivery: FfiMediaDelivery) -> Self {
@@ -48,11 +48,16 @@ pub(crate) fn delivery_focus(
     items: &[FfiFocusItem],
     current_index: u32,
     watch_ms: u64,
+    generation: u64,
 ) -> Result<DeliveryFocus> {
+    let Some(generation) = FocusGeneration::try_new(generation) else {
+        bail!("focus generation must be positive");
+    };
     let items = items.iter().map(focus_item).collect::<Result<Vec<_>>>()?;
     Ok(DeliveryFocus {
         items,
         current_index: current_index as usize,
         watch_ms,
+        generation,
     })
 }

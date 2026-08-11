@@ -6,9 +6,12 @@
 pub mod budget;
 pub mod catalog;
 pub mod chunk_plan;
+pub mod concurrency;
 pub mod focus;
 pub mod host_stats;
 pub mod inventory_controller;
+pub mod playback;
+pub mod representation;
 pub mod scoring;
 pub mod tiers;
 

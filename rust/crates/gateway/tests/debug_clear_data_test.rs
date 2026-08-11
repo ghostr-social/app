@@ -48,6 +48,8 @@ async fn clear_api_removes_feed_download_hls_and_nostr_database_state() {
         cache: delivery.cache.clone(),
         network: delivery.network.clone(),
         timing: ProgressiveTiming::default(),
+        capabilities:
+            ghostr_gateway::progressive::capabilities::ProgressiveCapabilities::production(),
         debug_feed: feed.clone(),
     });
     let router = configured_router_with_progressive_debug(

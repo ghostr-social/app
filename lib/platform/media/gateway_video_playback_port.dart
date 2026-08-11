@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/core/media/video_media_cache_identity.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/features/video_inventory/domain/progressive_playback_gateway_port.dart';
@@ -20,8 +21,8 @@ final class GatewayVideoPlaybackPort implements VideoPlaybackPort {
   GatewayVideoPlaybackPort({
     required VideoPlaybackPort delegate,
     required ProgressivePlaybackGatewayPort gateway,
-  })  : _delegate = delegate,
-        _createCubit = ((media) => GatewayPlaybackCubit(gateway, media));
+  }) : _delegate = delegate,
+       _createCubit = ((media) => GatewayPlaybackCubit(gateway, media));
 
   final VideoPlaybackPort _delegate;
   final GatewayPlaybackCubit Function(VideoMediaSource) _createCubit;
@@ -29,6 +30,7 @@ final class GatewayVideoPlaybackPort implements VideoPlaybackPort {
   @override
   Widget buildSurface({
     required VideoMediaSource media,
+    PlaybackVideoId? videoId,
     required bool isActive,
     void Function()? onPlaybackMediaReleased,
   }) {
@@ -36,6 +38,7 @@ final class GatewayVideoPlaybackPort implements VideoPlaybackPort {
     if (!_requiresProgressiveGateway(media)) {
       return _delegate.buildSurface(
         media: media,
+        videoId: videoId,
         isActive: isActive,
         onPlaybackMediaReleased: onPlaybackMediaReleased,
       );
@@ -43,9 +46,12 @@ final class GatewayVideoPlaybackPort implements VideoPlaybackPort {
     return _GatewayVideoPlaybackSurface(
       delegate: _delegate,
       createCubit: _createCubit,
-      media: media,
-      isActive: isActive,
-      onPlaybackMediaReleased: onPlaybackMediaReleased,
+      request: VideoPlaybackSurfaceRequest(
+        media: media,
+        videoId: videoId,
+        isActive: isActive,
+        onPlaybackMediaReleased: onPlaybackMediaReleased,
+      ),
     );
   }
 }

@@ -3,12 +3,13 @@
 
 use crate::manager::retry::RetryBook;
 use ghostr_engine::catalog::Catalog;
+use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::PostId;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 pub(crate) struct MetadataProbePool {
     limit: usize,
-    probing: HashSet<PostId>,
+    probing: HashMap<PostId, TransferIdentity>,
     probed: HashSet<PostId>,
 }
 
@@ -16,7 +17,7 @@ impl MetadataProbePool {
     pub fn new(limit: usize) -> Self {
         Self {
             limit: limit.max(1),
-            probing: HashSet::new(),
+            probing: HashMap::new(),
             probed: HashSet::new(),
         }
     }
@@ -36,7 +37,10 @@ impl MetadataProbePool {
                 break;
             }
             if let Some(url) = self.needed_probe(catalog, retry, post) {
-                self.probing.insert(post.clone());
+                let identity = catalog
+                    .transfer_identity(post, &url)
+                    .expect("probe source came from the catalog");
+                self.probing.insert(post.clone(), identity);
                 claimed.push((post.clone(), url));
             }
         }
@@ -57,8 +61,25 @@ impl MetadataProbePool {
         self.probed.clear();
     }
 
+    /// Active probes remain counted until completion; only completed
+    /// probe-once history follows hot scheduling retention.
+    pub(crate) fn retain_history(&mut self, retained: &HashSet<PostId>) {
+        self.probed.retain(|post| retained.contains(post));
+    }
+
+    pub(crate) fn current_identity(
+        &self,
+        catalog: &Catalog,
+        post: &PostId,
+        url: &str,
+    ) -> Option<TransferIdentity> {
+        let claimed = self.probing.get(post)?;
+        let current = catalog.transfer_identity(post, url)?;
+        (claimed == &current).then_some(current)
+    }
+
     fn needed_probe(&self, catalog: &Catalog, retry: &RetryBook, post: &PostId) -> Option<String> {
-        if self.probing.contains(post) || self.probed.contains(post) || retry.is_cooling(post) {
+        if self.probing.contains_key(post) || self.probed.contains(post) || retry.is_cooling(post) {
             return None;
         }
         let entry = catalog.lookup(post)?;

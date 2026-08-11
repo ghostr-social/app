@@ -3,6 +3,7 @@ use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_delivery::playback_demand::demand_channel;
 use ghostr_delivery::progressive_posts::ServablePosts;
 use ghostr_gateway::hls::sessions::HlsSessions;
+use ghostr_gateway::progressive::capabilities::ProgressiveCapabilities;
 use ghostr_gateway::progressive::route::{ProgressiveState, ProgressiveTiming};
 use ghostr_gateway::router::configured_router_with_progressive;
 use ghostr_net::outbound_media_client::MediaHttpRequests;
@@ -24,6 +25,7 @@ pub fn router_with_hls(hls_sessions: HlsSessions, client: Arc<dyn MediaHttpReque
         cache: ServablePosts::new(),
         network: NetworkThrottle::new(),
         timing: ProgressiveTiming::default(),
+        capabilities: ProgressiveCapabilities::production(),
         #[cfg(feature = "video-debug-web")]
         debug_feed: test_debug_feed(),
     });

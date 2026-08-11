@@ -8,31 +8,29 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `apply_level`, `engine_configuration`, `validated_relay_urls`
 // These types are ignored because they are not used by any `pub` functions: `EngineConfiguration`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `from`, `try_from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `from`, `try_from`
 
 /// Starts the media engine and returns the loopback endpoint as
 /// `host:port`. Download concurrency is owned by the engine's parameter
 /// table and scaled by `data_usage`.
-Future<String> ffiStartEngine(
-        {required String cacheDirectory,
-        required FfiEngineConfiguration configuration}) =>
-    RustLib.instance.api.crateApiEngineControlFfiStartEngine(
-        cacheDirectory: cacheDirectory, configuration: configuration);
+Future<String> ffiStartEngine({
+  required String cacheDirectory,
+  required FfiEngineConfiguration configuration,
+}) => RustLib.instance.api.crateApiEngineControlFfiStartEngine(
+  cacheDirectory: cacheDirectory,
+  configuration: configuration,
+);
 
 /// Applies relay, data-usage, and progressive-storage settings without
 /// restarting the engine.
-Future<void> ffiSetDeliveryConfig(
-        {required FfiEngineConfiguration configuration}) =>
-    RustLib.instance.api.crateApiEngineControlFfiSetDeliveryConfig(
-        configuration: configuration);
+Future<void> ffiSetDeliveryConfig({
+  required FfiEngineConfiguration configuration,
+}) => RustLib.instance.api.crateApiEngineControlFfiSetDeliveryConfig(
+  configuration: configuration,
+);
 
 /// User-selected network and delivery pressure.
-enum FfiDataUsageLevel {
-  conservative,
-  balanced,
-  aggressive,
-  ;
-}
+enum FfiDataUsageLevel { conservative, balanced, aggressive }
 
 /// Settings shared by Nostr discovery and progressive delivery.
 class FfiEngineConfiguration {

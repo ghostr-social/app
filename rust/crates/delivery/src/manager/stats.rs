@@ -2,13 +2,16 @@
 //! outcomes feed the single owned [`HostStats`]; the JSON snapshot is
 //! persisted to the cache directory on a debounce.
 
+use crate::manager::traffic::{OverallTrafficWindow, TrafficBatch, TrafficMeter};
 use crate::manager::transfers::{ChunkDone, InternalEvent, ProbeDone};
+use crate::manager::DeliveryWorker;
 use ghostr_engine::host_stats::{host_of, HostStats};
-use log::warn;
+use log::{trace, warn};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::mpsc::UnboundedSender;
+use tokio::time::Instant;
 
 pub(crate) struct StatsKeeper {
     stats: HostStats,
@@ -16,6 +19,7 @@ pub(crate) struct StatsKeeper {
     debounce: Duration,
     dirty: bool,
     save_pending: bool,
+    traffic: TrafficMeter,
 }
 
 impl StatsKeeper {
@@ -27,6 +31,7 @@ impl StatsKeeper {
             debounce,
             dirty: false,
             save_pending: false,
+            traffic: TrafficMeter::new(Instant::now(), unix_time_ms()),
         }
     }
 
@@ -40,16 +45,21 @@ impl StatsKeeper {
             return;
         };
         match &done.outcome {
-            Ok(result) => {
-                if result.bytes_written > 0 {
-                    self.stats
-                        .record_transfer(&host, result.bytes_written, done.elapsed);
-                }
+            Ok(_) => {
                 self.stats.record_success(&host);
             }
             Err(_) => self.stats.record_failure(&host),
         }
         self.dirty = true;
+    }
+
+    pub fn note_traffic(&mut self, batch: TrafficBatch) -> Option<OverallTrafficWindow> {
+        self.dirty = true;
+        let window = self.traffic.apply(batch, &mut self.stats);
+        if let Some(window) = window {
+            trace_window(window);
+        }
+        window
     }
 
     /// Mirrors the probe service's recording rules on the owned stats.
@@ -94,6 +104,35 @@ impl StatsKeeper {
             Err(error) => warn!("Host stats snapshot failed: {error}"),
         }
     }
+}
+
+impl DeliveryWorker {
+    pub(crate) fn absorb_traffic(&mut self) {
+        let batch = self.traffic.drain(Instant::now());
+        if let Some(window) = self.keeper.note_traffic(batch) {
+            self.observe_capacity(window);
+        }
+    }
+}
+
+fn unix_time_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .min(u128::from(u64::MAX)) as u64
+}
+
+fn trace_window(window: OverallTrafficWindow) {
+    trace!(
+        "traffic window: bytes={}, elapsed={:?}, rate={}, peak={}, at={}, ttfb={:?}",
+        window.bytes(),
+        window.elapsed(),
+        window.bytes_per_second(),
+        window.peak_active_transfers(),
+        window.observed_at_ms(),
+        window.latest_ttfb(),
+    );
 }
 
 /// Loads persisted host stats. A missing or corrupt file yields fresh

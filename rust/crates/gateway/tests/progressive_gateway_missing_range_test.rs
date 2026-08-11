@@ -2,7 +2,7 @@ mod gateway_fixture;
 
 use axum::body::to_bytes;
 use axum::http::StatusCode;
-use gateway_fixture::progressive::{progressive_harness, video_request};
+use gateway_fixture::progressive::progressive_harness;
 use ghostr_engine::ByteRange;
 use tower::ServiceExt;
 
@@ -21,11 +21,8 @@ async fn missing_bytes_emit_demand_and_stream_once_they_arrive() {
         .await
         .expect("head bytes");
 
-    let response = harness
-        .router
-        .oneshot(video_request("clip", Some("bytes=0-9")))
-        .await
-        .expect("response");
+    let request = harness.video_request("clip", Some("bytes=0-9")).await;
+    let response = harness.router.oneshot(request).await.expect("response");
     assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
 
     let signal = harness.demand.recv().await.expect("demand signal");

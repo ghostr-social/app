@@ -57,8 +57,8 @@ impl FocusState {
         Some(position as i64 - self.current_index as i64)
     }
 
-    /// Whether the viewer has watched past the commitment threshold
-    /// (plan §3: commitment means the engine should finish this video).
+    /// Whether the viewer has watched past the commitment threshold;
+    /// scheduling may use this to reserve bounded current-item work.
     pub(crate) fn is_committed(&self, commitment_ms: u64) -> bool {
         self.watch_ms >= commitment_ms
     }

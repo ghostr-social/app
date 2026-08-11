@@ -74,13 +74,6 @@ function selectedVideo(videos) {
     || videos.find((video) => !video.complete && video.downloaded_bytes > 0)
     || videos[0];
 }
-function hydratePlayback(state) {
-  if (currentId) return;
-  const videos = debugVideos(state);
-  const video = videos.find((item) => item.id === state.nostr.current_id) || videos[0];
-  if (!video) return;
-  play(video);
-}
 function renderSelected(video) {
   const progress = video?.progress || 0;
   const rate = video ? rates.get(video.id) || 0 : 0;
@@ -156,7 +149,6 @@ function render(state) {
   const now = performance.now();
   let totalRate = 0;
   state.videos.forEach((video) => { totalRate += observedRate(video, now); });
-  hydratePlayback(state);
   const selected = selectedVideo(videos);
   renderQueue(videos);
   renderSelected(selected);

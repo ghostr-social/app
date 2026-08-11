@@ -6,4 +6,6 @@ pub mod cancel;
 pub mod downloader;
 pub(crate) mod network;
 mod response;
+pub(crate) mod sink;
 mod stream;
+pub(crate) mod traffic;

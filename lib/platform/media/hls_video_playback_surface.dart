@@ -1,17 +1,15 @@
 part of 'hls_video_playback_port.dart';
 
 final class _HlsVideoPlaybackSurface extends StatefulWidget {
-  const _HlsVideoPlaybackSurface({
-    required this.port,
-    required this.media,
-    required this.isActive,
-    required this.onPlaybackMediaReleased,
-  });
+  const _HlsVideoPlaybackSurface({required this.port, required this.request});
 
   final HlsVideoPlaybackPort port;
-  final VideoMediaSource media;
-  final bool isActive;
-  final void Function()? onPlaybackMediaReleased;
+  final VideoPlaybackSurfaceRequest request;
+
+  VideoMediaSource get media => request.media;
+  PlaybackVideoId? get videoId => request.videoId;
+  bool get isActive => request.isActive;
+  VoidCallback? get onPlaybackMediaReleased => request.onPlaybackMediaReleased;
 
   @override
   State<_HlsVideoPlaybackSurface> createState() =>

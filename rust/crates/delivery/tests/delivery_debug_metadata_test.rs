@@ -15,7 +15,7 @@ async fn delivery_focus_exposes_video_metadata_to_the_debug_gateway() {
         0,
         0,
     ));
-    wait_for_ranges(&harness.store, "clip", &[(0, 16)]).await;
+    wait_for_ranges(&harness.store, "clip", &[(0, 1)]).await;
 
     let videos = harness.posts.videos();
 
@@ -23,5 +23,6 @@ async fn delivery_focus_exposes_video_metadata_to_the_debug_gateway() {
     assert_eq!(videos[0].id, "clip");
     assert_eq!(videos[0].meta.duration_ms, Some(90_000));
     assert_eq!(videos[0].meta.urls, vec![origin]);
+    assert!(!harness.root.join("clip.video").exists());
     std::fs::remove_dir_all(&harness.root).expect("remove store");
 }

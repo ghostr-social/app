@@ -1,46 +1,48 @@
-//! Watch time past the commitment threshold promotes the current
-//! post's tail, finishing and finalizing the file even in hunger mode.
+//! Commitment gives the current item a small serial startup reserve,
+//! then yields to ahead startup instead of monopolizing the origin.
 
 mod delivery_fixture;
-mod range_fixture;
 
-use delivery_fixture::items::{focus_now, sized_item, unsized_item};
+use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::media::{hit_log, media_body, serve_recording};
 use delivery_fixture::options::{base_params, DeliveryOptions};
 use delivery_fixture::start_harness;
-use delivery_fixture::wait::{wait_for_file, wait_for_ranges};
-use ghostr_engine::EngineParams;
-use range_fixture::reject::serve_failing;
-
-const BODY_SHA256: &str = "9f9f5111f7b27a781f1f1ddde5ebc2dd2b796bfc7365c9c28b548e564176929f";
+use delivery_fixture::wait::wait_for_ranges;
+use ghostr_engine::{DataUsageLevel, EngineParams};
 
 #[tokio::test]
-async fn delivery_manager_finishes_committed_posts() {
-    let origin = serve_recording("origin", media_body(), hit_log()).await;
-    let hungry = serve_failing().await;
+async fn committed_current_yields_the_serial_slot_before_eof() {
+    let current = serve_recording("current", vec![1; 80], hit_log()).await;
+    let ahead = serve_recording("ahead", media_body(), hit_log()).await;
     let harness = start_harness("ghostr-delivery-commit", short_head_options());
 
-    let mut committed = sized_item("aa11", &origin, 16, 4_000);
-    committed.meta.sha256 = Some(BODY_SHA256.to_owned());
     harness.handle.update_focus(focus_now(
-        vec![committed, unsized_item("bb22", &hungry)],
+        vec![
+            sized_item("aa11", &current, 80, 20_000),
+            sized_item("bb22", &ahead, 16, 4_000),
+        ],
         0,
         5_000,
     ));
 
-    wait_for_ranges(&harness.store, "aa11", &[(0, 16)]).await;
-    wait_for_file(&harness.root.join("aa11.video")).await;
+    wait_for_ranges(&harness.store, "aa11", &[(0, 8)]).await;
+    wait_for_ranges(&harness.store, "bb22", &[(0, 4)]).await;
+    let current_ranges = harness.store.present_ranges("aa11").await.unwrap();
+    assert!(current_ranges.iter().all(|range| range.end < 80));
+    assert!(!harness.root.join("aa11.video").exists());
     std::fs::remove_dir_all(&harness.root).ok();
 }
 
-/// Same head split as the demand test: head [0,4), tail [4,16).
+/// One transfer at a time with four-byte startup/refill ranges.
 fn short_head_options() -> DeliveryOptions {
     DeliveryOptions {
         params: EngineParams {
             head_seconds: 1,
             chunk_bytes: 4,
+            conservative_concurrency: 1,
             ..base_params()
         },
+        level: DataUsageLevel::Conservative,
         ..DeliveryOptions::default()
     }
 }

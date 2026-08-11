@@ -26,13 +26,22 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.byType(VideoPlayer), findsOneWidget);
 
+    platform.position = const Duration(seconds: 1);
+    await tester.pump(const Duration(milliseconds: 100));
+    platform.emit(
+      VideoEvent(
+        eventType: VideoEventType.isPlayingStateUpdate,
+        isPlaying: true,
+      ),
+    );
+    platform.emit(VideoEvent(eventType: VideoEventType.bufferingStart));
     platform.emit(
       VideoEvent(
         eventType: VideoEventType.isPlayingStateUpdate,
         isPlaying: false,
       ),
     );
-    platform.emit(VideoEvent(eventType: VideoEventType.bufferingStart));
+    await tester.pump();
     await tester.pump();
 
     expect(find.bySemanticsLabel('Buffering video'), findsOneWidget);

@@ -1,5 +1,7 @@
 use ghostr_engine::PostId;
 
+const RETAINED_CANDIDATES: usize = 64;
+
 #[derive(Clone)]
 struct CandidateRank {
     post: PostId,
@@ -15,25 +17,28 @@ impl CandidatePriority {
     pub(crate) fn rank(&mut self, post: PostId, discovered_at: u64) {
         if let Some(known) = self.candidates.iter_mut().find(|known| known.post == post) {
             known.discovered_at = discovered_at.max(known.discovered_at);
-            return;
+        } else {
+            self.candidates.push(CandidateRank {
+                post,
+                discovered_at,
+            });
         }
-        self.candidates.push(CandidateRank {
-            post,
-            discovered_at,
-        });
+        self.candidates.sort_by(newest_first);
+        self.candidates.truncate(RETAINED_CANDIDATES);
     }
 
     pub(crate) fn ranked(&self) -> Vec<PostId> {
-        let mut candidates = self.candidates.clone();
-        candidates.sort_by(|left, right| {
-            right
-                .discovered_at
-                .cmp(&left.discovered_at)
-                .then_with(|| left.post.cmp(&right.post))
-        });
-        candidates
-            .into_iter()
-            .map(|candidate| candidate.post)
+        self.candidates
+            .iter()
+            .map(|candidate| &candidate.post)
+            .cloned()
             .collect()
     }
+}
+
+fn newest_first(left: &CandidateRank, right: &CandidateRank) -> std::cmp::Ordering {
+    right
+        .discovered_at
+        .cmp(&left.discovered_at)
+        .then_with(|| left.post.cmp(&right.post))
 }

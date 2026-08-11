@@ -163,11 +163,7 @@ fn delivery_focus(state: &FeedState) -> DeliveryFocus {
         .as_ref()
         .and_then(|id| state.items.iter().position(|item| &item.id == id))
         .unwrap_or(0);
-    DeliveryFocus {
-        items,
-        current_index,
-        watch_ms: 0,
-    }
+    DeliveryFocus::compatibility(items, current_index, 0)
 }
 
 fn focus_item(item: DebugFeedItem) -> FocusItem {

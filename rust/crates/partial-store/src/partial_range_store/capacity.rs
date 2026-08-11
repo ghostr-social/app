@@ -12,6 +12,10 @@ use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
 
+mod events;
+pub(crate) use events::CapacityEvents;
+pub use events::CapacityRevision;
+
 /// Free space the store leaves to the rest of the device, so caching
 /// videos can never take the file system to zero.
 const DEFAULT_RESERVE_BYTES: u64 = 256 * 1024 * 1024;
@@ -56,6 +60,7 @@ pub struct StoreCapacity {
     recheck: Duration,
     sample: Mutex<Option<Sample>>,
     generations: AtomicU64,
+    events: CapacityEvents,
 }
 
 impl StoreCapacity {
@@ -67,6 +72,7 @@ impl StoreCapacity {
             recheck,
             sample: Mutex::new(None),
             generations: AtomicU64::new(0),
+            events: CapacityEvents::new(),
         }
     }
 
@@ -83,7 +89,16 @@ impl StoreCapacity {
     /// holds: `min(budget, used + free - reserve)`, never below zero.
     pub async fn cap(&self, root: &Path, used: u64) -> u64 {
         let mut sample = self.sample.lock().await;
-        cap_for(self.limits(), used, self.current(&mut sample, root))
+        cap_for(self.limits(), used, self.current(&mut sample, root, used))
+    }
+
+    pub(crate) async fn recheck(&self, root: &Path, used: u64) {
+        let mut sample = self.sample.lock().await;
+        self.measure(&mut sample, root, used);
+    }
+
+    pub(crate) fn events(&self) -> CapacityEvents {
+        self.events.clone()
     }
 
     /// Replaces the user ceiling for future decisions. A real change
@@ -95,6 +110,7 @@ impl StoreCapacity {
             return Ok(false);
         }
         self.next_generation();
+        self.events.signal();
         Ok(true)
     }
 
@@ -119,6 +135,7 @@ impl StoreCapacity {
         };
         current.available = current.available.map(|free| free.saturating_add(bytes));
         current.generation = self.next_generation();
+        self.events.signal();
     }
 
     /// The store spent `bytes`: the same measurement, that much less of
@@ -132,16 +149,27 @@ impl StoreCapacity {
     }
 
     /// The standing measurement, re-measuring once the window is up.
-    fn current(&self, sample: &mut Option<Sample>, root: &Path) -> Option<u64> {
+    fn current(&self, sample: &mut Option<Sample>, root: &Path, used: u64) -> Option<u64> {
         if let Some(fresh) = sample.as_ref().filter(|s| s.taken.elapsed() < self.recheck) {
             return fresh.available;
         }
+        self.measure(sample, root, used)
+    }
+
+    fn measure(&self, sample: &mut Option<Sample>, root: &Path, used: u64) -> Option<u64> {
         let available = self.space.available_bytes(root);
+        let limits = self.limits();
+        let changed = sample.as_ref().is_some_and(|previous| {
+            cap_for(limits, used, previous.available) != cap_for(limits, used, available)
+        });
         *sample = Some(Sample {
             taken: Instant::now(),
             available,
             generation: self.next_generation(),
         });
+        if changed {
+            self.events.signal();
+        }
         available
     }
 

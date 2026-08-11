@@ -13,6 +13,8 @@ import 'api/feed_control.dart';
 import 'api/feed_types.dart';
 import 'api/feed_updates_stream.dart';
 import 'api/focus_control.dart';
+import 'api/playback_control.dart';
+import 'api/playback_types.dart';
 import 'api/session_control.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -35,11 +37,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   RustStreamSink<FfiDeliveryEvent> dco_decode_StreamSink_ffi_delivery_event_Sse(
-      dynamic raw);
+    dynamic raw,
+  );
 
   @protected
   RustStreamSink<FfiFeedUpdate> dco_decode_StreamSink_ffi_feed_update_Sse(
-      dynamic raw);
+    dynamic raw,
+  );
 
   @protected
   String dco_decode_String(dynamic raw);
@@ -58,7 +62,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiEngineConfiguration dco_decode_box_autoadd_ffi_engine_configuration(
-      dynamic raw);
+    dynamic raw,
+  );
 
   @protected
   FfiFeedSpec dco_decode_box_autoadd_ffi_feed_spec(dynamic raw);
@@ -70,11 +75,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FfiFocusItem dco_decode_box_autoadd_ffi_focus_item(dynamic raw);
 
   @protected
+  FfiFocusUpdate dco_decode_box_autoadd_ffi_focus_update(dynamic raw);
+
+  @protected
   FfiMediaDim dco_decode_box_autoadd_ffi_media_dim(dynamic raw);
 
   @protected
   FfiNostrEventFilter dco_decode_box_autoadd_ffi_nostr_event_filter(
-      dynamic raw);
+    dynamic raw,
+  );
+
+  @protected
+  FfiPlaybackObservation dco_decode_box_autoadd_ffi_playback_observation(
+    dynamic raw,
+  );
 
   @protected
   BigInt dco_decode_box_autoadd_u_64(dynamic raw);
@@ -116,6 +130,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FfiFocusItem dco_decode_ffi_focus_item(dynamic raw);
 
   @protected
+  FfiFocusUpdate dco_decode_ffi_focus_update(dynamic raw);
+
+  @protected
   FfiHlsPlaybackSession dco_decode_ffi_hls_playback_session(dynamic raw);
 
   @protected
@@ -132,6 +149,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiNostrTagFilter dco_decode_ffi_nostr_tag_filter(dynamic raw);
+
+  @protected
+  FfiPlaybackObservation dco_decode_ffi_playback_observation(dynamic raw);
+
+  @protected
+  FfiPlaybackPhase dco_decode_ffi_playback_phase(dynamic raw);
 
   @protected
   int dco_decode_i_32(dynamic raw);
@@ -195,11 +218,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   RustStreamSink<FfiDeliveryEvent> sse_decode_StreamSink_ffi_delivery_event_Sse(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   RustStreamSink<FfiFeedUpdate> sse_decode_StreamSink_ffi_feed_update_Sse(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   String sse_decode_String(SseDeserializer deserializer);
@@ -209,49 +234,69 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiDeliveryEvent sse_decode_box_autoadd_ffi_delivery_event(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   FfiEngineConfiguration sse_decode_box_autoadd_ffi_engine_configuration(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   FfiFeedSpec sse_decode_box_autoadd_ffi_feed_spec(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   FfiFeedUpdate sse_decode_box_autoadd_ffi_feed_update(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   FfiFocusItem sse_decode_box_autoadd_ffi_focus_item(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiFocusUpdate sse_decode_box_autoadd_ffi_focus_update(
+    SseDeserializer deserializer,
+  );
 
   @protected
   FfiMediaDim sse_decode_box_autoadd_ffi_media_dim(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   FfiNostrEventFilter sse_decode_box_autoadd_ffi_nostr_event_filter(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiPlaybackObservation sse_decode_box_autoadd_ffi_playback_observation(
+    SseDeserializer deserializer,
+  );
 
   @protected
   BigInt sse_decode_box_autoadd_u_64(SseDeserializer deserializer);
 
   @protected
   FfiDataUsageLevel sse_decode_ffi_data_usage_level(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   FfiDeliveryEvent sse_decode_ffi_delivery_event(SseDeserializer deserializer);
 
   @protected
   FfiDeliveryEventKind sse_decode_ffi_delivery_event_kind(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   FfiEngineConfiguration sse_decode_ffi_engine_configuration(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   FfiFeedCreator sse_decode_ffi_feed_creator(SseDeserializer deserializer);
@@ -278,8 +323,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FfiFocusItem sse_decode_ffi_focus_item(SseDeserializer deserializer);
 
   @protected
+  FfiFocusUpdate sse_decode_ffi_focus_update(SseDeserializer deserializer);
+
+  @protected
   FfiHlsPlaybackSession sse_decode_ffi_hls_playback_session(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   FfiMediaDelivery sse_decode_ffi_media_delivery(SseDeserializer deserializer);
@@ -292,11 +341,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiNostrEventFilter sse_decode_ffi_nostr_event_filter(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   FfiNostrTagFilter sse_decode_ffi_nostr_tag_filter(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiPlaybackObservation sse_decode_ffi_playback_observation(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiPlaybackPhase sse_decode_ffi_playback_phase(SseDeserializer deserializer);
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
@@ -309,19 +368,23 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<FfiFocusItem> sse_decode_list_ffi_focus_item(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<FfiNostrEvent> sse_decode_list_ffi_nostr_event(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<FfiNostrEventFilter> sse_decode_list_ffi_nostr_event_filter(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<FfiNostrTagFilter> sse_decode_list_ffi_nostr_tag_filter(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<List<String>> sse_decode_list_list_String(SseDeserializer deserializer);
@@ -334,14 +397,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   NostrSessionResetError sse_decode_nostr_session_reset_error(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
   FfiMediaDim? sse_decode_opt_box_autoadd_ffi_media_dim(
-      SseDeserializer deserializer);
+    SseDeserializer deserializer,
+  );
 
   @protected
   BigInt? sse_decode_opt_box_autoadd_u_64(SseDeserializer deserializer);
@@ -363,15 +428,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_AnyhowException(
-      AnyhowException self, SseSerializer serializer);
+    AnyhowException self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_StreamSink_ffi_delivery_event_Sse(
-      RustStreamSink<FfiDeliveryEvent> self, SseSerializer serializer);
+    RustStreamSink<FfiDeliveryEvent> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_StreamSink_ffi_feed_update_Sse(
-      RustStreamSink<FfiFeedUpdate> self, SseSerializer serializer);
+    RustStreamSink<FfiFeedUpdate> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_String(String self, SseSerializer serializer);
@@ -381,54 +452,90 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_box_autoadd_ffi_delivery_event(
-      FfiDeliveryEvent self, SseSerializer serializer);
+    FfiDeliveryEvent self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_box_autoadd_ffi_engine_configuration(
-      FfiEngineConfiguration self, SseSerializer serializer);
+    FfiEngineConfiguration self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_box_autoadd_ffi_feed_spec(
-      FfiFeedSpec self, SseSerializer serializer);
+    FfiFeedSpec self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_box_autoadd_ffi_feed_update(
-      FfiFeedUpdate self, SseSerializer serializer);
+    FfiFeedUpdate self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_box_autoadd_ffi_focus_item(
-      FfiFocusItem self, SseSerializer serializer);
+    FfiFocusItem self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_ffi_focus_update(
+    FfiFocusUpdate self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_box_autoadd_ffi_media_dim(
-      FfiMediaDim self, SseSerializer serializer);
+    FfiMediaDim self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_box_autoadd_ffi_nostr_event_filter(
-      FfiNostrEventFilter self, SseSerializer serializer);
+    FfiNostrEventFilter self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_ffi_playback_observation(
+    FfiPlaybackObservation self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_box_autoadd_u_64(BigInt self, SseSerializer serializer);
 
   @protected
   void sse_encode_ffi_data_usage_level(
-      FfiDataUsageLevel self, SseSerializer serializer);
+    FfiDataUsageLevel self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_ffi_delivery_event(
-      FfiDeliveryEvent self, SseSerializer serializer);
+    FfiDeliveryEvent self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_ffi_delivery_event_kind(
-      FfiDeliveryEventKind self, SseSerializer serializer);
+    FfiDeliveryEventKind self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_ffi_engine_configuration(
-      FfiEngineConfiguration self, SseSerializer serializer);
+    FfiEngineConfiguration self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_ffi_feed_creator(
-      FfiFeedCreator self, SseSerializer serializer);
+    FfiFeedCreator self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_ffi_feed_kind(FfiFeedKind self, SseSerializer serializer);
@@ -452,12 +559,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_ffi_focus_item(FfiFocusItem self, SseSerializer serializer);
 
   @protected
+  void sse_encode_ffi_focus_update(
+    FfiFocusUpdate self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_ffi_hls_playback_session(
-      FfiHlsPlaybackSession self, SseSerializer serializer);
+    FfiHlsPlaybackSession self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_ffi_media_delivery(
-      FfiMediaDelivery self, SseSerializer serializer);
+    FfiMediaDelivery self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_ffi_media_dim(FfiMediaDim self, SseSerializer serializer);
@@ -467,11 +584,27 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_ffi_nostr_event_filter(
-      FfiNostrEventFilter self, SseSerializer serializer);
+    FfiNostrEventFilter self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_ffi_nostr_tag_filter(
-      FfiNostrTagFilter self, SseSerializer serializer);
+    FfiNostrTagFilter self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_playback_observation(
+    FfiPlaybackObservation self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_playback_phase(
+    FfiPlaybackPhase self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
@@ -481,46 +614,66 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_list_ffi_feed_post(
-      List<FfiFeedPost> self, SseSerializer serializer);
+    List<FfiFeedPost> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_ffi_focus_item(
-      List<FfiFocusItem> self, SseSerializer serializer);
+    List<FfiFocusItem> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_ffi_nostr_event(
-      List<FfiNostrEvent> self, SseSerializer serializer);
+    List<FfiNostrEvent> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_ffi_nostr_event_filter(
-      List<FfiNostrEventFilter> self, SseSerializer serializer);
+    List<FfiNostrEventFilter> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_ffi_nostr_tag_filter(
-      List<FfiNostrTagFilter> self, SseSerializer serializer);
+    List<FfiNostrTagFilter> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_list_String(
-      List<List<String>> self, SseSerializer serializer);
+    List<List<String>> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_prim_u_16_strict(
-      Uint16List self, SseSerializer serializer);
+    Uint16List self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_prim_u_8_strict(
-      Uint8List self, SseSerializer serializer);
+    Uint8List self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_nostr_session_reset_error(
-      NostrSessionResetError self, SseSerializer serializer);
+    NostrSessionResetError self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_box_autoadd_ffi_media_dim(
-      FfiMediaDim? self, SseSerializer serializer);
+    FfiMediaDim? self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_opt_box_autoadd_u_64(BigInt? self, SseSerializer serializer);
@@ -549,9 +702,9 @@ class RustLibWire implements BaseWire {
 
   /// Holds the symbol lookup function.
   final ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName)
-      _lookup;
+  _lookup;
 
   /// The symbols are looked up in [dynamicLibrary].
   RustLibWire(ffi.DynamicLibrary dynamicLibrary)
-      : _lookup = dynamicLibrary.lookup;
+    : _lookup = dynamicLibrary.lookup;
 }

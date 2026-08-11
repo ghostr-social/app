@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card_action_rail.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card_menu.dart';
@@ -10,18 +11,23 @@ import 'package:ghostr/shared/theme/app_tokens.dart';
 
 export 'feed_card_action_rail.dart' show FeedCardActions, FeedCardShareStatus;
 
+final class FeedCardPlayback {
+  const FeedCardPlayback({required this.port, required this.isActive});
+
+  final VideoPlaybackPort port;
+  final bool isActive;
+}
+
 class FeedCard extends StatelessWidget {
   const FeedCard({
     required this.post,
-    required this.playbackPort,
-    required this.isActive,
+    required this.playback,
     required this.actions,
     super.key,
   });
 
   final VideoPost post;
-  final VideoPlaybackPort playbackPort;
-  final bool isActive;
+  final FeedCardPlayback playback;
   final FeedCardActions actions;
 
   @override
@@ -31,7 +37,11 @@ class FeedCard extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          playbackPort.buildSurface(media: post.media, isActive: isActive),
+          playback.port.buildSurface(
+            media: post.media,
+            videoId: PlaybackVideoId.parse(post.id),
+            isActive: playback.isActive,
+          ),
           const _FeedScrim(),
           _content(),
         ],

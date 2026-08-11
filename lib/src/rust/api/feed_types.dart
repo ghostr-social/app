@@ -7,7 +7,7 @@ import '../frb_generated.dart';
 import 'delivery_types.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 /// The creator identity a feed row renders, including the
 /// shortened-npub fallback when no metadata is known.
@@ -43,13 +43,7 @@ class FfiFeedCreator {
 }
 
 /// The shape of one feed opened by Dart.
-enum FfiFeedKind {
-  main,
-  hashtag,
-  search,
-  profile,
-  ;
-}
+enum FfiFeedKind { main, hashtag, search, profile }
 
 /// Playable media of one post. `delivery` round-trips with
 /// `FfiFocusItem.delivery`.
@@ -217,7 +211,6 @@ enum FfiFeedStage {
   /// The page's primary query failed; Dart renders a failure rather
   /// than treating the partial rows as an empty feed.
   failed,
-  ;
 }
 
 /// One feed-stream update: the feed's full ordered snapshot, newest
@@ -257,10 +250,7 @@ class FfiMediaDim {
   final int width;
   final int height;
 
-  const FfiMediaDim({
-    required this.width,
-    required this.height,
-  });
+  const FfiMediaDim({required this.width, required this.height});
 
   @override
   int get hashCode => width.hashCode ^ height.hashCode;

@@ -9,6 +9,7 @@ impl DeliveryWorker {
         self.queue.clear();
         self.probes.clear();
         self.retry.clear();
+        self.pressure.clear();
         self.pending_demand = None;
         self.state.clear();
         self.cache.replace(Vec::new());

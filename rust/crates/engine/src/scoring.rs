@@ -5,11 +5,14 @@
 use crate::catalog::Catalog;
 use crate::chunk_plan::{ChunkPlan, PlanInput};
 use crate::focus::FocusState;
-use crate::inventory_controller::{is_startable, InventoryState};
+use crate::inventory_controller::{is_startable_with, InventoryState};
 use crate::tiers::{classify, DemandSignals, PostInventory, Tier};
 use crate::{ByteRange, ChunkId, EngineParams, PostId};
 use std::cmp::Ordering;
 use std::collections::HashSet;
+
+mod frontier;
+use frontier::bounded_tails;
 
 /// Per-step weight decay for posts ahead of the viewer.
 const AHEAD_DECAY: f64 = 0.7;
@@ -60,6 +63,8 @@ pub struct NextWorkContext<'a> {
     pub demand: DemandSignals,
     pub present: &'a dyn Fn(&PostId) -> Vec<ByteRange>,
     pub host_factor: &'a dyn Fn(&PostId) -> f64,
+    pub head_seconds: &'a dyn Fn(&PostId) -> u64,
+    pub tail_end: &'a dyn Fn(&PostId) -> Option<u64>,
 }
 
 /// The single pure planning entry point: every chunk the engine wants
@@ -87,6 +92,7 @@ fn post_requests(ctx: &NextWorkContext<'_>, post: &PostId) -> Vec<ChunkRequest> 
     let (mut heads, tails): (Vec<_>, Vec<_>) = missing_chunks(&plan, &have)
         .into_iter()
         .partition(|chunk| chunk.start < plan.head_bytes());
+    let tails = bounded_tails(ctx, post, plan.head_bytes(), tails);
     heads.extend(missing_probe(ctx, post, &plan, &have));
     let inventory =
         PostInventory::new(ctx.inventory, ctx.params.startable_window, heads.is_empty());
@@ -107,7 +113,11 @@ fn plan_for(ctx: &NextWorkContext<'_>, post: &PostId) -> Option<ChunkPlan> {
         duration_ms: entry.meta.duration_ms,
         bitrate_bps: ctx.catalog.estimated_bitrate(post, ctx.params),
     };
-    Some(ChunkPlan::from_input(input, ctx.params))
+    Some(ChunkPlan::from_input_with_head_seconds(
+        input,
+        ctx.params,
+        (ctx.head_seconds)(post),
+    ))
 }
 
 /// All planned chunks not yet covered, in head-then-tail fetch order.
@@ -132,7 +142,13 @@ fn missing_probe(
 ) -> Option<ByteRange> {
     let mut assumed = have.to_vec();
     assumed.extend(plan.head_ranges());
-    match is_startable(ctx.catalog, post, &assumed, ctx.params) {
+    match is_startable_with(
+        ctx.catalog,
+        post,
+        &assumed,
+        ctx.params,
+        (ctx.head_seconds)(post),
+    ) {
         true => None,
         false => plan.tail_probe_range(),
     }

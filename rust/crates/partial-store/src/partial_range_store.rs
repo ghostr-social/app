@@ -4,10 +4,11 @@ use crate::partial_range_paths::{validate_key, StorePaths};
 use crate::partial_range_store::capacity::StoreCapacity;
 use crate::partial_range_store::leases::{StoreLease, StoreLeases};
 use anyhow::{Context, Result};
+use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex as StdMutex};
 use tokio::sync::{Mutex, Notify};
 
 mod admission;
@@ -19,6 +20,7 @@ pub mod free_space;
 pub mod leases;
 mod queries;
 mod reload;
+mod representation;
 mod writes;
 
 pub use admission::OutOfSpace;
@@ -41,6 +43,9 @@ pub struct PartialRangeStore {
     /// The capacity measurement a refusal was last decided against.
     refused: Mutex<Option<u64>>,
     refusals: AtomicU64,
+    representations: Mutex<HashMap<String, RepresentationBinding>>,
+    representation_updates: Mutex<()>,
+    selected_transfers: StdMutex<HashMap<String, TransferIdentity>>,
 }
 
 impl PartialRangeStore {
@@ -49,6 +54,7 @@ impl PartialRangeStore {
         used_bytes: Arc<Mutex<u64>>,
         capacity: StoreCapacity,
     ) -> Self {
+        let leases = Arc::new(StoreLeases::new(capacity.events()));
         Self {
             root: root.clone(),
             paths: StorePaths::new(root),
@@ -56,10 +62,13 @@ impl PartialRangeStore {
             used_bytes,
             changed: Arc::new(Notify::new()),
             capacity,
-            leases: Arc::default(),
+            leases,
             clock: AtomicU64::new(0),
             refused: Mutex::new(None),
             refusals: AtomicU64::new(0),
+            representations: Mutex::new(HashMap::new()),
+            representation_updates: Mutex::new(()),
+            selected_transfers: StdMutex::new(HashMap::new()),
         }
     }
 

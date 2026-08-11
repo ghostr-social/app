@@ -35,14 +35,21 @@ impl StorePaths {
         self.named(key, "verified")
     }
 
+    pub fn representation(&self, key: &str) -> PathBuf {
+        self.named(key, "representation")
+    }
+
     /// Every file of the key, partial and completed alike.
-    pub fn all(&self, key: &str) -> [PathBuf; 5] {
+    pub fn all(&self, key: &str) -> [PathBuf; 7] {
         [
             self.partial(key),
             self.manifest(key),
             self.manifest(key).with_extension("json.tmp"),
             self.completed(key),
             self.verified(key),
+            self.representation(key),
+            self.representation(key)
+                .with_extension("representation.tmp"),
         ]
     }
 

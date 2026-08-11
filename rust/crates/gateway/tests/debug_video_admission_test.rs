@@ -66,6 +66,7 @@ fn progressive_state(
         cache: harness.posts.clone(),
         network: harness.network.clone(),
         timing: Default::default(),
+        capabilities: harness.capabilities.clone(),
         debug_feed: ghostr_delivery::debug::feed::DebugFeed::new(
             ghostr_delivery::delivery_events::command_channel().0,
             Vec::new(),

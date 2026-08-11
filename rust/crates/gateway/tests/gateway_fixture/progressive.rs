@@ -5,6 +5,7 @@ use ghostr_delivery::progressive_posts::ServablePosts;
 #[cfg(feature = "video-debug-web")]
 use ghostr_discovery::cache::client_with_event_cache;
 use ghostr_gateway::hls::sessions::HlsSessions;
+use ghostr_gateway::progressive::capabilities::ProgressiveCapabilities;
 use ghostr_gateway::progressive::route::{ProgressiveState, ProgressiveTiming};
 #[cfg(not(feature = "video-debug-web"))]
 use ghostr_gateway::router::configured_router_with_progressive;
@@ -19,6 +20,7 @@ pub struct ProgressiveHarness {
     pub store: Arc<PartialRangeStore>,
     pub posts: ServablePosts,
     pub network: NetworkThrottle,
+    pub capabilities: ProgressiveCapabilities,
     pub demand: DemandReceiver,
     pub root: PathBuf,
     #[cfg(feature = "video-debug-web")]
@@ -29,10 +31,6 @@ pub struct ProgressiveHarness {
 
 pub fn progressive_harness(prefix: &str) -> ProgressiveHarness {
     progressive_harness_with_timing(prefix, ProgressiveTiming::default())
-}
-
-pub fn video_request(id: &str, range: Option<&str>) -> axum::http::Request<axum::body::Body> {
-    super::progressive_request::video_request(id, range)
 }
 
 pub fn progressive_harness_with_timing(
@@ -56,6 +54,7 @@ pub fn progressive_harness_with_store(
     let posts = ServablePosts::new();
     let (sender, demand) = demand_channel();
     let network = NetworkThrottle::new();
+    let capabilities = ProgressiveCapabilities::production();
     #[cfg(feature = "video-debug-web")]
     let (debug_delivery, _) = ghostr_delivery::delivery_events::command_channel();
     #[cfg(feature = "video-debug-web")]
@@ -69,6 +68,7 @@ pub fn progressive_harness_with_store(
         cache: posts.clone(),
         network: network.clone(),
         timing,
+        capabilities: capabilities.clone(),
         #[cfg(feature = "video-debug-web")]
         debug_feed: debug_feed.clone(),
     });
@@ -88,6 +88,7 @@ pub fn progressive_harness_with_store(
         store,
         posts,
         network,
+        capabilities,
         demand,
         root,
         #[cfg(feature = "video-debug-web")]
