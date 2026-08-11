@@ -7,9 +7,9 @@ use crate::api::feed_types::{
 };
 use crate::discovery::content::candidates::CandidateId;
 use crate::discovery::content::parsing::ParsedVideoPost;
+use crate::discovery::content::profiles::{CreatorProfile, ProfileStore};
 use crate::discovery::feed::spec::FeedSpec;
 use crate::discovery::feed::store::FeedId;
-use crate::discovery::content::profiles::{CreatorProfile, ProfileStore};
 use crate::engine::DeliveryKind;
 use anyhow::{anyhow, bail, Result};
 use nostr_sdk::PublicKey;

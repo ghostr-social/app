@@ -1,7 +1,7 @@
+use super::support::chunk_request;
 use crate::chunk::cancel::cancel_pair;
 use crate::manager::inflight::{CompletionStatus, InFlightChunks};
 use crate::manager::plan::PlannedTransfer;
-use crate::mutable_priority_queue::MutablePriorityQueue;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::scoring::ChunkRequest;
 use ghostr_engine::tiers::Tier;
@@ -22,13 +22,16 @@ fn same_range_from_a_replacement_representation_cancels_the_old_attempt() {
     let mut active = InFlightChunks::new();
     let old = active.next_attempt(chunk.clone(), old_identity);
     let (handle, token) = cancel_pair();
-    active.insert(&old, "a.example".to_owned(), handle);
+    active.insert(
+        &old,
+        chunk_request(chunk.clone(), Tier::T2Startability),
+        "a.example".to_owned(),
+        handle,
+    );
 
     catalog.upsert(post.clone(), meta("https://b.example/video"));
     let replacement = transfer(&catalog, chunk, "https://b.example/video");
-    let mut queue = MutablePriorityQueue::new();
-    queue.replace(vec![replacement]);
-    active.cancel_absent(&queue.wanted());
+    active.reconcile(&[replacement], 1);
 
     assert!(token.is_cancelled());
     assert_eq!(active.finish(&old), CompletionStatus::Superseded);
@@ -41,6 +44,7 @@ fn transfer(catalog: &Catalog, chunk: ChunkId, url: &str) -> PlannedTransfer {
             chunk,
             tier: Tier::T2Startability,
             score: 1.0,
+            startup_depth_bytes: 0,
         },
         url: url.to_owned(),
     }

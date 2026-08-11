@@ -8,41 +8,61 @@ use crate::debug::network::NetworkThrottle;
 use anyhow::{bail, Context, Result};
 use reqwest::Response;
 use std::time::Duration;
-use tokio::time::Instant;
+
+const PACED_WRITE_BYTES: usize = 16 * 1024;
 
 pub(crate) struct Streamed {
     pub bytes: u64,
     pub cancelled: bool,
 }
 
+pub(crate) struct StreamInput<'a, 'spec, W: ChunkWrite + ?Sized> {
+    pub response: Response,
+    pub spec: &'a ChunkSpec<'spec>,
+    pub sink: &'a W,
+    pub cancel: &'a CancelToken,
+    pub network: Option<&'a NetworkThrottle>,
+    pub traffic: &'a mut dyn ChunkTraffic,
+}
+
 pub(crate) async fn stream_into<W: ChunkWrite + ?Sized>(
-    mut response: Response,
-    spec: &ChunkSpec<'_>,
-    sink: &W,
-    cancel: &CancelToken,
-    network: Option<&NetworkThrottle>,
-    traffic: &mut dyn ChunkTraffic,
+    mut input: StreamInput<'_, '_, W>,
 ) -> Result<Streamed> {
     let mut written = 0;
-    let started = Instant::now();
-    while written < spec.range.len() {
-        let Some(chunk) = next_or_cancel(&mut response, spec.timeouts.idle, cancel).await? else {
-            if cancel.is_cancelled() {
+    while written < input.spec.range.len() {
+        let Some(chunk) =
+            next_or_cancel(&mut input.response, input.spec.timeouts.idle, input.cancel).await?
+        else {
+            return ended(written, input.cancel);
+        };
+        let take = capped_len(input.spec, written, &chunk) as usize;
+        let quantum = write_quantum(input.network, take);
+        for part in chunk[..take].chunks(quantum) {
+            if pace_or_cancel(input.network, part.len() as u64, input.cancel).await {
                 return Ok(stopped(written, true));
             }
-            bail!("response body ended before its advertised range");
-        };
-        let received = written + capped_len(spec, written, &chunk);
-        if pace_or_cancel(network, received, started, cancel).await {
-            return Ok(stopped(written, true));
+            let Some(stored) = write_capped(input.spec, input.sink, written, part).await? else {
+                return Ok(stopped(written, true));
+            };
+            written += stored;
+            input.traffic.wrote(stored);
         }
-        let Some(stored) = write_capped(spec, sink, written, &chunk).await? else {
-            return Ok(stopped(written, true));
-        };
-        written += stored;
-        traffic.wrote(stored);
     }
     Ok(stopped(written, false))
+}
+
+fn ended(written: u64, cancel: &CancelToken) -> Result<Streamed> {
+    if cancel.is_cancelled() {
+        return Ok(stopped(written, true));
+    }
+    bail!("response body ended before its advertised range")
+}
+
+fn write_quantum(network: Option<&NetworkThrottle>, available: usize) -> usize {
+    match network.is_some_and(|throttle| throttle.profile().bandwidth_kbps > 0) {
+        true => available.clamp(1, PACED_WRITE_BYTES),
+        false => available.max(1),
+    }
 }
 
 async fn next_or_cancel(
@@ -59,7 +79,6 @@ async fn next_or_cancel(
 async fn pace_or_cancel(
     network: Option<&NetworkThrottle>,
     bytes: u64,
-    started: Instant,
     cancel: &CancelToken,
 ) -> bool {
     let Some(throttle) = network else {
@@ -67,7 +86,7 @@ async fn pace_or_cancel(
     };
     tokio::select! {
         _ = cancel.cancelled() => true,
-        _ = throttle.pace(bytes, started) => false,
+        _ = throttle.pace(bytes) => false,
     }
 }
 

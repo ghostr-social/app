@@ -1,5 +1,8 @@
 # Video Pipeline
 
+Release-level latency, rebuffering, cancellation, and prefetch budgets are
+defined in [VIDEO_QOE_TARGETS.md](../standards/VIDEO_QOE_TARGETS.md).
+
 The progressive-video path is one staged pipeline:
 
 ```text
@@ -52,11 +55,19 @@ FeedProjection
 
 ## Priority contract
 
-Before a UI supplies focus, newly admitted candidates are ranked newest first
-and can begin prefetch immediately. Once focus is supplied, the focused window
-controls download ordering. All admitted candidates remain eligible for the
-probe pool and cache registry, so focus changes priority rather than identity
-or admission.
+Before a UI supplies focus, the newest projected candidate can begin metadata
+probing and initial prefetch immediately. Once focus is supplied, origin media
+IO is limited to the current post and the next `startable_target - 1` posts. A
+post outside that protected startup prefix cannot consume a probe or download
+slot until focus advances. All admitted candidates remain in the cache
+registry; focus changes scheduling eligibility, not identity or admission.
 
 HLS media shares relay admission and feed projection but stays outside the
 progressive range-download queue; it continues through the HLS session gateway.
+
+The browser acceptance keeps the two consequences of this contract independent.
+A fresh-cache held-focus row proves the first protected prefix becomes ready
+without any origin body use beyond it. Each moving-focus impairment row starts
+from another fresh cache and records the initial pre-click origin boundary plus
+every later focus boundary, so transition QoE cannot pass using bytes retained
+by a preceding warm-up scenario.

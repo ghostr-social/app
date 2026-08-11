@@ -41,6 +41,7 @@ pub fn candidate(
     DeliveryCandidate {
         post: item.post,
         meta: item.meta,
+        renditions: Vec::new(),
         discovered_at,
     }
 }

@@ -9,6 +9,7 @@ use crate::chunk::sink::TransferChunkSink;
 use crate::chunk::traffic::ChunkTraffic;
 use crate::debug::network::NetworkThrottle;
 use crate::manager::inflight::ChunkAttempt;
+use crate::manager::retry::CooldownId;
 use crate::manager::traffic::{TrafficPublisher, TransferKey};
 use crate::probe::media::{probe, ProbeResult};
 use ghostr_engine::host_stats::HostStats;
@@ -22,12 +23,20 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
 pub(crate) enum InternalEvent {
+    Transfer(TransferEvent),
+    Maintenance(MaintenanceEvent),
+    TrafficChanged,
+}
+
+pub(crate) enum TransferEvent {
     ChunkDone(ChunkDone),
     ProbeDone(ProbeDone),
-    CooldownOver(PostId),
+}
+
+pub(crate) enum MaintenanceEvent {
+    CooldownOver(PostId, CooldownId),
     SaveStats,
     StoreCapacityChanged(u64),
-    TrafficChanged,
 }
 
 pub(crate) struct ChunkDone {
@@ -89,7 +98,9 @@ pub(crate) fn spawn_chunk(
             url,
             outcome,
         };
-        let _ = ctx.events.send(InternalEvent::ChunkDone(done));
+        let _ = ctx
+            .events
+            .send(InternalEvent::Transfer(TransferEvent::ChunkDone(done)));
     });
     handle
 }
@@ -149,6 +160,8 @@ pub(crate) fn spawn_probe(ctx: TransferContext, post: PostId, url: String) {
         let outcome = probe(ctx.client.as_ref(), &url, ctx.timeouts, &mut scratch).await;
         let _ = ctx
             .events
-            .send(InternalEvent::ProbeDone(ProbeDone { post, url, outcome }));
+            .send(InternalEvent::Transfer(TransferEvent::ProbeDone(
+                ProbeDone { post, url, outcome },
+            )));
     });
 }

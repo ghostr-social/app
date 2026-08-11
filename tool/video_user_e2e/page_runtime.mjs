@@ -12,6 +12,10 @@ export function debugSnapshot(page) {
   return evaluate(page, "typeof latestState === 'undefined' ? null : latestState");
 }
 
+export function refreshDebugSnapshot(page) {
+  return evaluate(page, "refresh().then(() => latestState)");
+}
+
 export function playerSnapshot(page) {
   return evaluate(page, `(() => {
     const player = document.getElementById("player");

@@ -1,5 +1,5 @@
 use crate::delivery_events::{DeliveryFocus, DeliveryPlayback, FocusItem};
-use crate::manager::plan::playback::playback_plan;
+use crate::manager::plan::playback::{playback_plan, PlaybackPlanInputs};
 use crate::manager::state::DeliveryState;
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::playback::{
@@ -14,12 +14,28 @@ fn playback_authorizes_a_bounded_frontier_and_pause_does_not_extend_it() {
     let mut state = state();
     assert!(state.apply_playback(update(1, PlaybackPhase::Playing)));
     let urls = HashMap::from([(PostId::new("current"), media_url())]);
-    let playing = playback_plan(&mut state, &HostStats::new(), &urls, 1_000, None);
+    let playing = playback_plan(
+        &mut state,
+        PlaybackPlanInputs {
+            stats: &HostStats::new(),
+            urls: &urls,
+            observed_at_ms: 1_000,
+            demanded_end: None,
+        },
+    );
     let end = playing.tail_end(&PostId::new("current")).unwrap();
 
     assert!(end > 0 && end < 80_000_000);
     assert!(state.apply_playback(update(2, PlaybackPhase::Paused)));
-    let paused = playback_plan(&mut state, &HostStats::new(), &urls, 2_000, None);
+    let paused = playback_plan(
+        &mut state,
+        PlaybackPlanInputs {
+            stats: &HostStats::new(),
+            urls: &urls,
+            observed_at_ms: 2_000,
+            demanded_end: None,
+        },
+    );
 
     assert_eq!(paused.tail_end(&PostId::new("current")), Some(end));
     assert!(!paused.emergency());

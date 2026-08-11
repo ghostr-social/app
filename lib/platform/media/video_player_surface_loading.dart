@@ -2,13 +2,17 @@ part of 'video_player_playback_port.dart';
 
 extension _VideoPlayerSurfaceLoading on _VideoPlayerSurfaceState {
   Future<void> _loadController() async {
-    final controller = _videoPlayerController(widget.media);
+    final controller = _videoPlayerController(_playbackMedia);
     _controller = controller;
     try {
       await controller.setLooping(true);
       if (!await _initializeUntilClosing(controller)) return;
       _requireVisibleVideo(controller);
+      await _restorePlayhead(controller);
       await _acceptController(controller);
+    } on _InvisibleVideoTrack catch (error, stackTrace) {
+      _logInitializationFailure(error, stackTrace);
+      await _rejectControllerPermanently(controller);
     } on Object catch (error, stackTrace) {
       _logInitializationFailure(error, stackTrace);
       await _rejectController(controller);
@@ -40,24 +44,12 @@ extension _VideoPlayerSurfaceLoading on _VideoPlayerSurfaceState {
   }
 
   Future<void> _rejectController(VideoPlayerController controller) async {
-    _valueWatch.detach();
-    _endObservation(controller.value);
-    _markControllerFailed(controller);
-    await _disposeSafely(controller);
-  }
-
-  void _markControllerFailed(VideoPlayerController controller) {
-    if (_isClosing || !mounted || _controller != controller) return;
-    _refresh(() {
-      _controller = null;
-      _hasError = true;
-    });
+    await _recoverController(controller);
   }
 
   void _retry() {
     if (!_hasError || !_isPlayableMedia(widget.media)) return;
-    _refresh(() => _hasError = false);
-    _startLoad();
+    _retryPlayback();
   }
 
   void _startLoad() => _lifecycle.track(_loadController());

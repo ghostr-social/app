@@ -1,5 +1,5 @@
-use url::Url;
 use ghostr_hls_manifest::hls_manifest::rewrite_hls_manifest;
+use url::Url;
 
 #[test]
 fn rejects_oversized_input_before_issuing_resources() {

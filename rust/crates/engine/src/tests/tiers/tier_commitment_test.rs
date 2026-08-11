@@ -50,7 +50,7 @@ fn commitment_on_a_non_current_post_does_not_make_its_tail_t1() {
     let tier = classify(
         &PostId::new("b"),
         &focus,
-        state(Mode::Comfort, true, true),
+        state(Mode::Comfort, true),
         committed(),
     );
 

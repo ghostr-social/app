@@ -15,7 +15,7 @@ use std::sync::Arc;
 use tower::ServiceExt;
 
 #[tokio::test]
-async fn debug_api_registers_a_video_with_the_rust_delivery_engine() {
+async fn debug_api_submits_a_registered_video_only_when_focused() {
     let harness = gateway_fixture::progressive::progressive_harness("debug-video-add");
     let (delivery, mut commands) = command_channel();
     let router = configured_router_with_progressive_debug(
@@ -34,26 +34,29 @@ async fn debug_api_registers_a_video_with_the_rust_delivery_engine() {
         ))
         .expect("request");
 
-    let response = router.oneshot(request).await.expect("response");
+    let response = router.clone().oneshot(request).await.expect("response");
 
     assert_eq!(response.status(), StatusCode::CREATED);
     let body = to_bytes(response.into_body(), usize::MAX)
         .await
         .expect("body");
     let json: Value = serde_json::from_slice(&body).expect("json");
-    assert!(json["id"]
-        .as_str()
-        .unwrap_or_default()
-        .starts_with("debug-"));
-    let DeliveryCommand::Candidate(candidate) =
-        commands.receivers().0.recv().await.expect("candidate")
-    else {
-        panic!("expected candidate command");
+    let id = json["id"].as_str().expect("id");
+    assert!(id.starts_with("debug-"));
+    let select = Request::put("/debug/api/focus")
+        .header("content-type", "application/json")
+        .body(Body::from(format!(r#"{{"id":"{id}"}}"#)))
+        .expect("focus request");
+    let selected = router.oneshot(select).await.expect("focus response");
+
+    assert_eq!(selected.status(), StatusCode::NO_CONTENT);
+    let DeliveryCommand::Focus(focus) = commands.receivers().0.recv().await.expect("focus") else {
+        panic!("expected focus command");
     };
-    assert_eq!(candidate.meta.urls, ["https://cdn.example/video.mp4"]);
-    assert_eq!(candidate.meta.size_bytes, Some(12_000));
-    assert_eq!(candidate.meta.duration_ms, Some(90_000));
-    assert_eq!(candidate.meta.delivery, DeliveryKind::Progressive);
+    assert_eq!(focus.items[0].meta.urls, ["https://cdn.example/video.mp4"]);
+    assert_eq!(focus.items[0].meta.size_bytes, Some(12_000));
+    assert_eq!(focus.items[0].meta.duration_ms, Some(90_000));
+    assert_eq!(focus.items[0].meta.delivery, DeliveryKind::Progressive);
 }
 
 fn progressive_state(

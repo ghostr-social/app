@@ -3,12 +3,15 @@
 //! would leave its transfer running unsupervised.
 
 use crate::chunk::cancel::CancelHandle;
-use crate::manager::plan::PlannedTransferId;
 use ghostr_engine::representation::TransferIdentity;
-use ghostr_engine::{ChunkId, PostId};
+use ghostr_engine::scoring::ChunkRequest;
+use ghostr_engine::tiers::Tier;
+use ghostr_engine::ChunkId;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+
+mod reconciliation;
 
 #[derive(Default)]
 pub(crate) struct InFlightChunks {
@@ -41,9 +44,17 @@ impl ChunkAttempt {
 struct ActiveChunk {
     id: u64,
     identity: TransferIdentity,
+    request: ChunkRequest,
+    started_as_seed: bool,
     io_finished: Arc<AtomicBool>,
     host: String,
     handle: CancelHandle,
+}
+
+impl ActiveChunk {
+    fn io_finished(&self) -> bool {
+        self.io_finished.load(Ordering::Acquire)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -58,11 +69,16 @@ impl InFlightChunks {
     }
 
     pub fn len(&self) -> usize {
-        self.transfers.len()
+        self.transfers
+            .values()
+            .filter(|active| !active.io_finished())
+            .count()
     }
 
     pub fn contains(&self, chunk: &ChunkId) -> bool {
-        self.transfers.keys().any(|active| covers(active, chunk))
+        self.transfers.iter().any(|(active, state)| {
+            overlaps(active, chunk) || (state.io_finished() && active.post == chunk.post)
+        })
     }
 
     pub fn cancel(&mut self, chunk: &ChunkId) -> bool {
@@ -71,21 +87,6 @@ impl InFlightChunks {
         };
         active.handle.cancel();
         true
-    }
-
-    pub fn preempt_for_current(&mut self, current: &PostId, priority: &[ChunkId], capacity: usize) {
-        if capacity == 0 || self.transfers.keys().any(|chunk| &chunk.post == current) {
-            return;
-        }
-        let Some(rank) = priority.iter().position(|chunk| &chunk.post == current) else {
-            return;
-        };
-        while self.len() >= capacity {
-            let Some(victim) = self.lower_priority_victim(current, &priority[rank + 1..]) else {
-                return;
-            };
-            self.cancel(&victim);
-        }
     }
 
     pub fn next_attempt(&mut self, chunk: ChunkId, identity: TransferIdentity) -> ChunkAttempt {
@@ -101,10 +102,19 @@ impl InFlightChunks {
         }
     }
 
-    pub fn insert(&mut self, attempt: &ChunkAttempt, host: String, handle: CancelHandle) {
+    pub fn insert(
+        &mut self,
+        attempt: &ChunkAttempt,
+        request: ChunkRequest,
+        host: String,
+        handle: CancelHandle,
+    ) {
+        let started_as_seed = request.tier == Tier::T2Startability;
         let active = ActiveChunk {
             id: attempt.id,
             identity: attempt.identity.clone(),
+            request,
+            started_as_seed,
             io_finished: Arc::clone(&attempt.io_finished),
             host,
             handle,
@@ -115,8 +125,22 @@ impl InFlightChunks {
     pub fn active_hosts(&self) -> HashSet<String> {
         self.transfers
             .values()
+            .filter(|active| !active.io_finished())
             .map(|active| active.host.clone())
             .collect()
+    }
+
+    pub fn foreground_len(&self) -> usize {
+        self.transfers
+            .values()
+            .filter(|active| {
+                !active.io_finished()
+                    && matches!(
+                        active.request.tier,
+                        Tier::T0PlaybackEmergency | Tier::T1CurrentTail
+                    )
+            })
+            .count()
     }
 
     pub fn finish(&mut self, attempt: &ChunkAttempt) -> CompletionStatus {
@@ -130,49 +154,16 @@ impl InFlightChunks {
         CompletionStatus::Current
     }
 
-    /// Cancels every transfer the fresh plan no longer wants (the
-    /// scroll-past rule) and frees their slots immediately; fetched
-    /// bytes stay in the store, resumable.
-    pub fn cancel_absent(&mut self, wanted: &HashSet<PlannedTransferId>) {
-        self.transfers.retain(|chunk, active| {
-            let keep = active.io_finished.load(Ordering::Acquire)
-                || wanted
-                    .iter()
-                    .any(|request| covers_identity(chunk, &active.identity, request));
-            if !keep {
-                active.handle.cancel();
-            }
-            keep
-        });
-    }
-
     pub fn clear(&mut self) {
         for active in self.transfers.values() {
             active.handle.cancel();
         }
         self.transfers.clear();
     }
-
-    fn lower_priority_victim(&self, current: &PostId, priority: &[ChunkId]) -> Option<ChunkId> {
-        priority.iter().rev().find_map(|request| {
-            self.transfers
-                .keys()
-                .find(|active| &active.post != current && covers(active, request))
-                .cloned()
-        })
-    }
 }
 
-fn covers(active: &ChunkId, request: &ChunkId) -> bool {
+fn overlaps(active: &ChunkId, request: &ChunkId) -> bool {
     active.post == request.post
-        && active.range.start <= request.range.start
-        && active.range.end >= request.range.end
-}
-
-fn covers_identity(
-    active: &ChunkId,
-    identity: &TransferIdentity,
-    request: &PlannedTransferId,
-) -> bool {
-    identity == &request.identity && covers(active, &request.chunk)
+        && active.range.start < request.range.end
+        && request.range.start < active.range.end
 }

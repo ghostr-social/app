@@ -3,14 +3,21 @@ use crate::partial_range_paths::validate_key;
 use crate::partial_range_representation_disk as identity_disk;
 use anyhow::Result;
 use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
+use std::ops::Range;
 use std::sync::MutexGuard;
+
+pub enum RepresentationRead {
+    Present(Vec<u8>),
+    Missing,
+    Superseded,
+}
 
 impl PartialRangeStore {
     pub async fn bind_representation(&self, binding: RepresentationBinding) -> Result<()> {
         let key = binding.post().as_str();
         validate_key(key)?;
         let _update = self.representation_updates.lock().await;
-        if self.binding_is_current(&binding).await {
+        if self.representation_is_current(&binding).await {
             return Ok(());
         }
         self.install_binding(binding.clone()).await;
@@ -49,6 +56,35 @@ impl PartialRangeStore {
             .insert(identity.post().as_str().to_owned(), identity);
     }
 
+    pub async fn representation_binding(&self, key: &str) -> Option<RepresentationBinding> {
+        self.representations.lock().await.get(key).cloned()
+    }
+
+    pub async fn representation_is_current(&self, binding: &RepresentationBinding) -> bool {
+        self.representations
+            .lock()
+            .await
+            .get(binding.post().as_str())
+            == Some(binding)
+    }
+
+    pub async fn read_for_representation(
+        &self,
+        binding: &RepresentationBinding,
+        span: Range<u64>,
+    ) -> Result<RepresentationRead> {
+        let _update = self.representation_updates.lock().await;
+        if !self.representation_is_current(binding).await {
+            return Ok(RepresentationRead::Superseded);
+        }
+        Ok(
+            match self.read_range(binding.post().as_str(), span).await? {
+                Some(bytes) => RepresentationRead::Present(bytes),
+                None => RepresentationRead::Missing,
+            },
+        )
+    }
+
     pub(super) async fn clear_representation_bindings(&self) {
         self.representations.lock().await.clear();
         self.selected().clear();
@@ -77,14 +113,6 @@ impl PartialRangeStore {
             .await?;
         }
         Ok(())
-    }
-
-    async fn binding_is_current(&self, binding: &RepresentationBinding) -> bool {
-        self.representations
-            .lock()
-            .await
-            .get(binding.post().as_str())
-            == Some(binding)
     }
 
     async fn install_binding(&self, binding: RepresentationBinding) {

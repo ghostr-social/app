@@ -8,7 +8,7 @@ use crate::chunk::cancel::CancelToken;
 use crate::chunk::network::{prepare_network, NetworkPreparation};
 use crate::chunk::response::{classify, RangeReply};
 use crate::chunk::sink::ChunkWrite;
-use crate::chunk::stream::{stream_into, Streamed};
+use crate::chunk::stream::{stream_into, StreamInput, Streamed};
 use crate::chunk::traffic::{ChunkTraffic, NoopTraffic};
 use crate::debug::network::NetworkThrottle;
 use anyhow::{ensure, Result};
@@ -113,13 +113,29 @@ async fn transfer<W: ChunkWrite + ?Sized>(
                 timeouts: spec.timeouts,
             };
             completed(
-                stream_into(response, &returned, sink, cancel, network, traffic).await?,
+                stream_into(StreamInput {
+                    response,
+                    spec: &returned,
+                    sink,
+                    cancel,
+                    network,
+                    traffic,
+                })
+                .await?,
                 true,
                 total,
             )
         }
         RangeReply::FullBody => completed(
-            stream_into(response, spec, sink, cancel, network, traffic).await?,
+            stream_into(StreamInput {
+                response,
+                spec,
+                sink,
+                cancel,
+                network,
+                traffic,
+            })
+            .await?,
             false,
             full_length,
         ),

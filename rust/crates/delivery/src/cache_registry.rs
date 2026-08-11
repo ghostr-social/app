@@ -20,7 +20,13 @@ pub struct CacheVideo {
 
 #[derive(Clone, Debug, Default)]
 pub struct CacheRegistry {
-    inner: Arc<RwLock<HashMap<String, Option<CacheVideo>>>>,
+    inner: Arc<RwLock<CacheEntries>>,
+}
+
+#[derive(Debug, Default)]
+struct CacheEntries {
+    order: Vec<String>,
+    by_id: HashMap<String, Option<CacheVideo>>,
 }
 
 impl CacheRegistry {
@@ -31,38 +37,52 @@ impl CacheRegistry {
     /// Compatibility admission for a playback URL registered before
     /// delivery has published its metadata.
     pub fn insert(&self, id: impl Into<String>) {
-        self.write().insert(id.into(), None);
+        let id = id.into();
+        let mut entries = self.write();
+        if !entries.by_id.contains_key(&id) {
+            entries.order.push(id.clone());
+        }
+        entries.by_id.insert(id, None);
     }
 
     pub fn replace(&self, videos: impl IntoIterator<Item = CacheVideo>) {
-        let mut guard = self.write();
-        guard.clear();
-        guard.extend(
-            videos
-                .into_iter()
-                .map(|video| (video.id.clone(), Some(video))),
-        );
+        let mut entries = self.write();
+        entries.order.clear();
+        entries.by_id.clear();
+        for video in videos {
+            remember(&mut entries, video);
+        }
     }
 
     pub fn contains(&self, id: &str) -> bool {
-        self.read().contains_key(id)
+        self.read().by_id.contains_key(id)
     }
 
     pub fn videos(&self) -> Vec<CacheVideo> {
-        let mut videos: Vec<_> = self.read().values().filter_map(Clone::clone).collect();
-        videos.sort_by(|left, right| left.id.cmp(&right.id));
-        videos
+        let entries = self.read();
+        entries
+            .order
+            .iter()
+            .filter_map(|id| entries.by_id.get(id).cloned().flatten())
+            .collect()
     }
 
-    fn read(&self) -> RwLockReadGuard<'_, HashMap<String, Option<CacheVideo>>> {
+    fn read(&self) -> RwLockReadGuard<'_, CacheEntries> {
         self.inner
             .read()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
-    fn write(&self) -> RwLockWriteGuard<'_, HashMap<String, Option<CacheVideo>>> {
+    fn write(&self) -> RwLockWriteGuard<'_, CacheEntries> {
         self.inner
             .write()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
+}
+
+fn remember(entries: &mut CacheEntries, video: CacheVideo) {
+    if !entries.by_id.contains_key(&video.id) {
+        entries.order.push(video.id.clone());
+    }
+    entries.by_id.insert(video.id.clone(), Some(video));
 }

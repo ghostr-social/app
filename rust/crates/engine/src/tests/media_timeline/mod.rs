@@ -1,0 +1,8 @@
+mod cmaf_sidx_timeline_test;
+mod cmaf_sidx_validation_test;
+mod fragmented_init_timeline_test;
+mod malformed_timeline_test;
+mod mp4_table_validation_test;
+mod mp4_table_variants_test;
+mod mp4_vbr_timeline_test;
+mod tail_moov_timeline_test;

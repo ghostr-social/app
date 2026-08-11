@@ -1,7 +1,7 @@
 //! A late old-feed outcome cannot restore account routing after reset.
 
-use crate::api::runtime::discovery::{lock, pump_outcomes, OutcomeSinks, SharedFeedState};
 use crate::api::feed::state::FeedState;
+use crate::api::runtime::discovery::{lock, pump_outcomes, OutcomeSinks, SharedFeedState};
 use crate::api::tests::feed_fixtures::{relay_list_event, signed_event, SignedEventFixture};
 use crate::api::tests::outbox_runtime_support::{test_bootstrap, BOOTSTRAP_RELAY};
 use crate::discovery::feed::spec::FeedSpec;

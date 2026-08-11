@@ -81,6 +81,11 @@ impl StorePressure {
         self.reported = 0;
         self.parked = false;
     }
+
+    pub(crate) fn focus_changed(&mut self) {
+        self.wait_generation = self.wait_generation.saturating_add(1);
+        self.parked = false;
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -133,7 +138,11 @@ impl DeliveryWorker {
                 _ = events.closed() => false,
             };
             if changed {
-                let _ = events.send(InternalEvent::StoreCapacityChanged(wait.generation));
+                let _ = events.send(InternalEvent::Maintenance(
+                    crate::manager::transfers::MaintenanceEvent::StoreCapacityChanged(
+                        wait.generation,
+                    ),
+                ));
             }
         });
     }

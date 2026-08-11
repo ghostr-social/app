@@ -8,11 +8,13 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
 use tokio::sync::Notify;
-use tokio::time::Instant;
+
+mod bandwidth;
+use bandwidth::SharedBandwidth;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct NetworkProfile {
-    /// Aggregate-like limit applied independently to each transfer.
+    /// Aggregate limit shared by all simulated media transfers.
     /// Zero disables bandwidth pacing.
     pub bandwidth_kbps: u64,
     /// Delay before each media request. Zero disables added latency.
@@ -30,7 +32,9 @@ pub struct NetworkThrottle {
 struct ThrottleInner {
     profile: RwLock<NetworkProfile>,
     active: Mutex<HashMap<String, usize>>,
-    changed: Notify,
+    bandwidth: SharedBandwidth,
+    connections_changed: Notify,
+    profile_changed: Notify,
 }
 
 impl Default for NetworkThrottle {
@@ -60,7 +64,8 @@ impl NetworkThrottle {
             .profile
             .write()
             .unwrap_or_else(|poisoned| poisoned.into_inner()) = profile;
-        self.inner.changed.notify_waiters();
+        self.inner.connections_changed.notify_waiters();
+        self.inner.profile_changed.notify_waiters();
     }
 
     pub fn active_connections(&self) -> Vec<(String, usize)> {
@@ -80,7 +85,7 @@ impl NetworkThrottle {
     pub async fn acquire(&self, url: &str) -> ConnectionPermit {
         let host = host_of(url).unwrap_or_else(|| url.to_owned());
         loop {
-            let changed = self.inner.changed.notified();
+            let changed = self.inner.connections_changed.notified();
             tokio::pin!(changed);
             changed.as_mut().enable();
             if self.try_claim(&host) {
@@ -100,13 +105,11 @@ impl NetworkThrottle {
         }
     }
 
-    pub async fn pace(&self, bytes: u64, started: Instant) {
-        let Some(target) = transfer_duration(bytes, self.profile().bandwidth_kbps) else {
-            return;
-        };
-        if let Some(wait) = target.checked_sub(started.elapsed()) {
-            tokio::time::sleep(wait).await;
-        }
+    pub async fn pace(&self, bytes: u64) {
+        self.inner
+            .bandwidth
+            .pace(bytes, &self.inner.profile, &self.inner.profile_changed)
+            .await;
     }
 
     fn try_claim(&self, host: &str) -> bool {
@@ -135,7 +138,7 @@ impl NetworkThrottle {
         }
         active.retain(|_, count| *count > 0);
         drop(active);
-        self.inner.changed.notify_waiters();
+        self.inner.connections_changed.notify_waiters();
     }
 }
 
@@ -148,14 +151,4 @@ impl Drop for ConnectionPermit {
     fn drop(&mut self) {
         self.throttle.release(&self.host);
     }
-}
-
-fn transfer_duration(bytes: u64, bandwidth_kbps: u64) -> Option<Duration> {
-    if bandwidth_kbps == 0 {
-        return None;
-    }
-    let bits = bytes as f64 * 8.0;
-    Some(Duration::from_secs_f64(
-        bits / (bandwidth_kbps as f64 * 1_000.0),
-    ))
 }

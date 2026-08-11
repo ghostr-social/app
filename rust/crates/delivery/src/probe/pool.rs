@@ -61,6 +61,11 @@ impl MetadataProbePool {
         self.probed.clear();
     }
 
+    pub(crate) fn representation_changed(&mut self, post: &PostId) {
+        self.probing.remove(post);
+        self.probed.remove(post);
+    }
+
     /// Active probes remain counted until completion; only completed
     /// probe-once history follows hot scheduling retention.
     pub(crate) fn retain_history(&mut self, retained: &HashSet<PostId>) {

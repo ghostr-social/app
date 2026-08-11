@@ -38,9 +38,11 @@ class FeedCard extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           playback.port.buildSurface(
-            media: post.media,
-            videoId: PlaybackVideoId.parse(post.id),
-            isActive: playback.isActive,
+            VideoPlaybackSurfaceRequest(
+              media: post.media,
+              videoId: PlaybackVideoId.parse(post.id),
+              isActive: playback.isActive,
+            ),
           ),
           const _FeedScrim(),
           _content(),

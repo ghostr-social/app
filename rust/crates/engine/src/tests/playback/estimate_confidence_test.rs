@@ -1,5 +1,7 @@
 use crate::host_stats::{HostStats, ThroughputSample};
-use crate::playback::{AdaptiveBufferPolicy, MediaConsumption, NetworkConditions};
+use crate::playback::{
+    AdaptiveBufferPolicy, EstimateConfidence, MediaConsumption, NetworkConditions,
+};
 use std::time::Duration;
 
 #[test]
@@ -14,9 +16,13 @@ fn fresh_repeated_evidence_needs_less_reserve_than_the_same_stale_estimate() {
     let estimate = stats.host_throughput("cdn.example").unwrap();
     let ttfb = Duration::from_millis(100);
     let fresh = NetworkConditions::from_estimate(estimate, ttfb, 8_000);
+    let aging = NetworkConditions::from_estimate(estimate, ttfb, 108_000);
     let stale = NetworkConditions::from_estimate(estimate, ttfb, 608_000);
     let media = MediaConsumption::new(4_000_000, 1_000);
     let policy = AdaptiveBufferPolicy::default();
 
+    assert_eq!(fresh.confidence(), EstimateConfidence::High);
+    assert_eq!(aging.confidence(), EstimateConfidence::Medium);
+    assert_eq!(stale.confidence(), EstimateConfidence::Low);
     assert!(policy.target(fresh, media).steady() < policy.target(stale, media).steady());
 }

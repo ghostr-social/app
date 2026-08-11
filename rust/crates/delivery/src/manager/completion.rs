@@ -7,8 +7,7 @@ use crate::chunk::downloader::ChunkResult;
 use crate::manager::failure::{classify, FailureClass};
 use crate::manager::inflight::CompletionStatus;
 use crate::manager::pressure::is_store_pressure;
-use crate::manager::retry::{Retry, Source};
-use crate::manager::transfers::{ChunkDone, InternalEvent};
+use crate::manager::transfers::ChunkDone;
 use crate::manager::DeliveryWorker;
 use ghostr_engine::catalog::LearnedFacts;
 use ghostr_engine::concurrency::NetworkSetback;
@@ -16,7 +15,6 @@ use ghostr_engine::host_stats::host_of;
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::PostId;
 use log::warn;
-use std::time::Duration;
 
 impl DeliveryWorker {
     pub(crate) async fn finish_chunk(&mut self, done: ChunkDone) {
@@ -74,8 +72,7 @@ impl DeliveryWorker {
             );
         }
         let source = identity.source().as_str();
-        self.retry
-            .note_success(&Source::new(identity.post().clone(), source.to_owned()));
+        self.note_successful_attempt(identity.post(), source);
         self.try_finalize(identity.post(), source).await;
     }
 
@@ -156,36 +153,5 @@ impl DeliveryWorker {
             warn!("Finalize failed for {}: {error:#}", post.as_str());
             self.note_failed_attempt(post, url, FailureClass::Transient);
         }
-    }
-
-    /// Charges one failed attempt to the source: either a paced retry
-    /// with the policy's backoff, or retirement of the source, which
-    /// falls back to the post's other mirrors.
-    pub(crate) fn note_failed_attempt(&mut self, post: &PostId, url: &str, class: FailureClass) {
-        let source = Source::new(post.clone(), url.to_owned());
-        match self.retry.note_failure(source, class) {
-            Retry::After(wait) => self.start_cooldown(post.clone(), wait),
-            Retry::GiveUp => self.retire_source(post, url),
-        }
-    }
-
-    fn retire_source(&mut self, post: &PostId, url: &str) {
-        let id = post.as_str();
-        if self.is_servable(post) {
-            warn!("Giving up on {url} for {id}; another source remains");
-            return;
-        }
-        warn!("No working source left for {id}; reporting it unplayable");
-    }
-
-    pub(crate) fn start_cooldown(&mut self, post: PostId, wait: Duration) {
-        if !self.retry.cool_down(post.clone()) {
-            return;
-        }
-        let events = self.ctx.events.clone();
-        tokio::spawn(async move {
-            tokio::time::sleep(wait).await;
-            let _ = events.send(InternalEvent::CooldownOver(post));
-        });
     }
 }

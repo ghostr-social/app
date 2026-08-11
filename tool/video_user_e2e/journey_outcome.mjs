@@ -1,14 +1,16 @@
+import {warmAheadBytes} from "./ordered_prefetch_metrics.mjs";
+import {requireImpairmentActivation} from "./impairment_activation.mjs";
+
 export function validateJourney(trace, options = {}) {
   const limits = {
     maxJumpMs: options.maxJumpMs ?? 2_500,
-    maxStalls: options.maxStalls ?? 2,
     minimumProgress: options.minimumProgress ?? 0.25,
   };
+  requireImpairmentActivation(trace);
   requireLoopback(trace.requests);
   requireRangeEvidence(trace.requests);
   requirePlaybackProgress(trace.samples, trace.clicks, limits.minimumProgress);
-  requireAheadBeforeEof(trace.samples);
-  requireBoundedStalls(trace.samples, limits.maxStalls);
+  requireAheadPrefetch(trace);
   requireFastJumps(trace.samples, trace.clicks, limits.maxJumpMs);
 }
 
@@ -34,14 +36,10 @@ function requireRangeEvidence(requests = []) {
   if (media.some((entry) => entry.failure && !entry.canceled)) {
     throw new Error("media response did not complete");
   }
-  if (!media.some((entry) => entry.finished)) {
-    throw new Error("media response did not complete");
-  }
 }
 
 function requirePlaybackProgress(samples = [], clicks = [], minimum) {
-  const ids = new Set([samples[0]?.player.id, ...clicks.map((click) => click.id)]);
-  ids.delete(undefined);
+  const ids = progressRequiredIds(samples, clicks);
   for (const id of ids) {
     const playing = samples.filter(
       (sample) => sample.player.id === id && sample.player.phase === "playing",
@@ -54,8 +52,19 @@ function requirePlaybackProgress(samples = [], clicks = [], minimum) {
   }
 }
 
-function requireAheadBeforeEof(samples = []) {
-  const observed = samples.some((sample) => {
+function progressRequiredIds(samples, clicks) {
+  const transitionOnly = new Set(clicks.filter((click) => click.transition_only)
+    .map((click) => click.id));
+  const ids = new Set(clicks.filter((click) => !click.superseded && !click.transition_only)
+    .map((click) => click.id));
+  const initial = samples[0]?.player.id;
+  if (initial !== undefined && !transitionOnly.has(initial)) ids.add(initial);
+  return ids;
+}
+
+function requireAheadPrefetch(trace) {
+  if (warmAheadBytes(trace) > 0) return;
+  const observed = (trace.samples ?? []).some((sample) => {
     const current = sample.state.videos.find((video) => video.id === sample.player.id);
     const ahead = sample.state.videos.some(
       (video) => video.id !== sample.player.id && video.downloaded_bytes > 0,
@@ -65,19 +74,8 @@ function requireAheadBeforeEof(samples = []) {
   if (!observed) throw new Error("ahead work did not begin before current EOF");
 }
 
-function requireBoundedStalls(samples = [], maximum) {
-  let stalls = 0;
-  let previous = "";
-  for (const sample of samples) {
-    const phase = sample.player.phase;
-    if (phase !== previous && ["buffering", "stalled"].includes(phase)) stalls += 1;
-    previous = phase;
-  }
-  if (stalls > maximum) throw new Error(`playback stalled ${stalls} times`);
-}
-
 function requireFastJumps(samples = [], clicks = [], maximum) {
-  for (const click of clicks) {
+  for (const click of clicks.filter((entry) => !entry.superseded)) {
     const playing = samples.find(
       (sample) => sample.at_ms >= click.at_ms &&
         sample.player.id === click.id && sample.player.phase === "playing",

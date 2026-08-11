@@ -5,8 +5,13 @@ export async function poll(input) {
     requireActive(input.signal);
     last = await input.read();
     if (input.accept(last)) return last;
-    await delay(input.intervalMs ?? 250, input.signal);
+    const remaining = input.timeoutMs - (Date.now() - started);
+    if (remaining <= 0) break;
+    await delay(Math.min(input.intervalMs ?? 250, remaining), input.signal);
   }
+  requireActive(input.signal);
+  last = await input.read();
+  if (input.accept(last)) return last;
   throw new Error(`${input.label} timed out after ${input.timeoutMs} ms: ${describe(last)}`);
 }
 

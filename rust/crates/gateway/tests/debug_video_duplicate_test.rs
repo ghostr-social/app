@@ -9,34 +9,21 @@ async fn registering_the_same_url_updates_one_focus_item() {
     let videos = DebugVideos::new(delivery);
     let first = DebugVideoRegistration {
         url: "https://cdn.example/video.mp4".to_owned(),
+        mirrors: Vec::new(),
         size_bytes: None,
         duration_ms: None,
     };
     let mut updated = first.clone();
     updated.duration_ms = Some(42_000);
 
-    videos.add(first).expect("first video");
+    let id = videos.add(first).expect("first video");
     videos.add(updated).expect("updated video");
+    assert!(videos.select(&id));
 
-    let DeliveryCommand::Candidate(first) = commands
-        .receivers()
-        .0
-        .recv()
-        .await
-        .expect("first candidate")
-    else {
-        panic!("expected candidate");
+    let DeliveryCommand::Focus(focus) = commands.receivers().0.recv().await.expect("focus") else {
+        panic!("expected focus");
     };
-    let _ = commands.receivers().0.recv().await.expect("first priority");
-    let DeliveryCommand::Candidate(updated) = commands
-        .receivers()
-        .0
-        .recv()
-        .await
-        .expect("updated candidate")
-    else {
-        panic!("expected candidate");
-    };
-    assert_eq!(updated.post, first.post);
-    assert_eq!(updated.meta.duration_ms, Some(42_000));
+    assert_eq!(focus.items.len(), 1);
+    assert_eq!(focus.items[0].post.as_str(), id);
+    assert_eq!(focus.items[0].meta.duration_ms, Some(42_000));
 }

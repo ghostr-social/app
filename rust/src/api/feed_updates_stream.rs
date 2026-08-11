@@ -5,8 +5,8 @@
 
 use crate::api::feed::mapping::parse_feed_id;
 use crate::api::feed::projection::project;
-use crate::api::runtime::discovery::{lock, SharedFeedState};
 use crate::api::feed_types::FfiFeedUpdate;
+use crate::api::runtime::discovery::{lock, SharedFeedState};
 use crate::api::runtime::registry;
 use crate::discovery::feed::store::FeedId;
 use crate::frb_generated::StreamSink;

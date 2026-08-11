@@ -4,18 +4,22 @@ class _VideoPlayerSurface extends StatefulWidget {
   const _VideoPlayerSurface({
     super.key,
     required this.request,
-    required this.controllerDisposer,
-    required this.telemetry,
+    required this.dependencies,
   });
 
   final VideoPlaybackSurfaceRequest request;
-  final VideoPlayerControllerDisposer controllerDisposer;
-  final PlaybackTelemetryPort telemetry;
+  final _VideoPlayerSurfaceDependencies dependencies;
 
   VideoMediaSource get media => request.media;
   PlaybackVideoId? get videoId => request.videoId;
   bool get isActive => request.isActive;
+  ProgressivePlaybackRefreshPort? get progressiveRefresh =>
+      request.progressiveRefresh;
   VoidCallback? get onPlaybackMediaReleased => request.onPlaybackMediaReleased;
+  VideoPlayerControllerDisposer get controllerDisposer =>
+      dependencies.controllerDisposer;
+  PlaybackTelemetryPort get telemetry => dependencies.telemetry;
+  PlaybackRecoveryPolicy get recoveryPolicy => dependencies.recoveryPolicy;
 
   @override
   State<_VideoPlayerSurface> createState() => _VideoPlayerSurfaceState();
@@ -23,6 +27,7 @@ class _VideoPlayerSurface extends StatefulWidget {
 
 class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   VideoPlayerController? _controller;
+  late VideoMediaSource _playbackMedia = widget.media;
   late final _lifecycle = _VideoPlayerControllerLifecycle(
     widget.controllerDisposer,
   );
@@ -35,7 +40,15 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   PlaybackPhase? _playbackPhase;
   Future<void> _playbackTail = Future<void>.value();
   int _playbackIntent = 0;
-  late bool _hasError = !_isPlayableMedia(widget.media);
+  late _VideoPlayerRecoveryState _recoveryState = _isPlayableMedia(widget.media)
+      ? _VideoPlayerRecoveryState.ready
+      : _VideoPlayerRecoveryState.exhausted;
+  PlaybackRecoveryAttempt _recoveryAttempt = PlaybackRecoveryAttempt.first;
+  PlaybackResumePoint _resumePoint = PlaybackResumePoint.start;
+  PlaybackResumePoint _recoveryBaseline = PlaybackResumePoint.start;
+  Timer? _recoveryTimer;
+  int _recoveryVersion = 0;
+  bool _isRecoveryWindowOpen = false;
   bool _isObserving = false;
   bool _isClosing = false;
 
@@ -48,12 +61,13 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   @override
   void didUpdateWidget(covariant _VideoPlayerSurface oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.isActive != widget.isActive) _syncPlayback();
+    if (oldWidget.isActive != widget.isActive) _handleActivityChange();
   }
 
   @override
   void dispose() {
     _isClosing = true;
+    _cancelRecovery();
     _closing.complete();
     _endObservation(_controller?.value);
     _valueWatch.detach();
@@ -79,7 +93,8 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   }
 
   void _handleValueChange(VideoPlayerValue value) {
-    if (_isClosing || !mounted) return;
+    if (_cannotObservePlayback) return;
+    _rememberPlaybackValue(value);
     final phaseChanged = _captureObservation(value);
     final controller = _controller;
     if (controller != null && value.hasError) {
@@ -90,6 +105,10 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   }
 
   void _refresh(VoidCallback update) => setState(update);
+
+  bool get _cannotObservePlayback => _isClosing || !mounted;
+
+  bool get _hasError => _recoveryState == _VideoPlayerRecoveryState.exhausted;
 
   Future<void>? _disposeCurrentController() {
     final controller = _controller;

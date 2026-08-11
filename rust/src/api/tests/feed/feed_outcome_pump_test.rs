@@ -1,8 +1,8 @@
 //! `pump_outcomes`: retrieval outcomes leaving the scheduler land in
 //! the locked feed state and wake the feed's revision watch.
 
-use crate::api::runtime::discovery::{lock, pump_outcomes, OutcomeSinks, SharedFeedState};
 use crate::api::feed::state::FeedState;
+use crate::api::runtime::discovery::{lock, pump_outcomes, OutcomeSinks, SharedFeedState};
 use crate::api::tests::feed_fixtures::video_note;
 use crate::api::tests::outbox_runtime_support::test_bootstrap;
 use crate::discovery::feed::spec::FeedSpec;

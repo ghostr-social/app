@@ -12,10 +12,11 @@ fn traffic_windows_preserve_aggregate_rate_occupancy_and_latency() {
         Some(Duration::from_millis(120)),
     );
 
-    let evidence = capacity_evidence(window, true, Duration::from_secs(1));
+    let evidence = capacity_evidence(window, true, Duration::from_secs(1), 3);
 
     assert_eq!(evidence.aggregate_bytes_per_second, 2_000_000);
-    assert_eq!(evidence.active_transfers, 3);
+    assert_eq!(evidence.occupancy.active_transfers(), 3);
+    assert_eq!(evidence.occupancy.admitted_capacity(), 3);
     assert!(evidence.saturated);
     assert_eq!(evidence.ttfb, Duration::from_millis(120));
 }

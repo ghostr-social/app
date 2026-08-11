@@ -1,5 +1,5 @@
 use crate::delivery_events::{DeliveryFocus, DeliveryPlayback, FocusItem};
-use crate::manager::plan::playback::playback_plan;
+use crate::manager::plan::playback::{playback_plan, PlaybackPlanInputs};
 use crate::manager::state::DeliveryState;
 use ghostr_engine::host_stats::{HostStats, ThroughputSample};
 use ghostr_engine::playback::{
@@ -36,10 +36,12 @@ fn a_zero_byte_live_sample_requests_emergency_refill_without_invalid_rate_math()
 
     let plan = playback_plan(
         &mut state,
-        &stats,
-        &HashMap::from([(post, url)]),
-        1_000,
-        None,
+        PlaybackPlanInputs {
+            stats: &stats,
+            urls: &HashMap::from([(post, url)]),
+            observed_at_ms: 1_000,
+            demanded_end: None,
+        },
     );
 
     assert!(plan.emergency());

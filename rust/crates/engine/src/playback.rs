@@ -12,6 +12,9 @@ pub use network::{EstimateConfidence, NetworkConditions};
 pub use session::{PlaybackObservationSequence, PlaybackSession, PlaybackStatus};
 use std::time::Duration;
 
+/// Byte window shared by protected prefetch grants and progressive demand.
+pub const PLAYBACK_SLICE_BYTES: u64 = 256 * 1024;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PlaybackPhase {
     Starting,

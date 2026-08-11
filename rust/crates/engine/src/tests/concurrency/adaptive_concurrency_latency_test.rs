@@ -1,4 +1,6 @@
-use crate::concurrency::{AdaptiveConcurrency, ConcurrencyEvidence, NetworkSetback};
+use crate::concurrency::{
+    AdaptiveConcurrency, ConcurrencyEvidence, ConcurrencyOccupancy, NetworkSetback,
+};
 use std::time::Duration;
 
 #[test]
@@ -31,7 +33,7 @@ fn drive(
 fn evidence(active: usize, throughput: u64, ttfb_ms: u64) -> ConcurrencyEvidence {
     ConcurrencyEvidence {
         aggregate_bytes_per_second: throughput,
-        active_transfers: active,
+        occupancy: ConcurrencyOccupancy::new(active, active),
         saturated: true,
         ttfb: Duration::from_millis(ttfb_ms),
         setback: NetworkSetback::None,

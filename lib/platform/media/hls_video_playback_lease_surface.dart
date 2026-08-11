@@ -8,13 +8,15 @@ extension on _HlsVideoPlaybackSurfaceState {
     return KeyedSubtree(
       key: ObjectKey(lease),
       child: widget.port._delegate.buildSurface(
-        media: media,
-        videoId: widget.videoId,
-        isActive: widget.isActive,
-        onPlaybackMediaReleased: () {
-          final released = _releaseRenderedLease(lease);
-          if (released) upstreamRelease?.call();
-        },
+        VideoPlaybackSurfaceRequest(
+          media: media,
+          videoId: widget.videoId,
+          isActive: widget.isActive,
+          onPlaybackMediaReleased: () {
+            final released = _releaseRenderedLease(lease);
+            if (released) upstreamRelease?.call();
+          },
+        ),
       ),
     );
   }

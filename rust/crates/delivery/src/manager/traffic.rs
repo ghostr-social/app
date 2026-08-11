@@ -79,10 +79,8 @@ impl TrafficMeter {
         let elapsed = self.active_elapsed(window);
         let summary = self.summary(elapsed, window.ended());
         if summary.is_some() {
-            if let Some(sample) = self.sample(self.bytes, elapsed, self.peak_active, window.ended())
-            {
-                stats.record_overall_throughput(sample);
-            }
+            let sample = self.sample(self.bytes, elapsed, self.peak_active, window.ended());
+            stats.record_overall_throughput(sample);
             self.flush_hosts(window, stats);
             self.reset_window(window.ended());
         } else if self.timing.active() == 0 {
@@ -118,9 +116,8 @@ impl TrafficMeter {
             let bytes = self.host_bytes.remove(&host).unwrap_or_default();
             let elapsed = self.host_elapsed(&host, window);
             if self.should_sample(bytes, elapsed) {
-                if let Some(sample) = self.sample(bytes, elapsed, active, window.ended()) {
-                    stats.record_host_throughput(&host, sample);
-                }
+                let sample = self.sample(bytes, elapsed, active, window.ended());
+                stats.record_host_throughput(&host, sample);
             }
         }
         self.host_bytes.clear();
@@ -132,9 +129,10 @@ impl TrafficMeter {
         elapsed: Duration,
         active: usize,
         at: Instant,
-    ) -> Option<ThroughputSample> {
+    ) -> ThroughputSample {
         let observed = self.observed_at_ms(at);
         ThroughputSample::new(bytes, elapsed, observed, active)
+            .expect("sample guard requires elapsed time and active transfers")
     }
 
     fn summary(&self, elapsed: Duration, at: Instant) -> Option<OverallTrafficWindow> {

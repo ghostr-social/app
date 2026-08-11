@@ -9,7 +9,8 @@ void main() {
     final gateway = FfiProgressivePlaybackGateway(
       resolvePlaybackUrl: ({required FfiFocusItem item}) async {
         sent = item;
-        return 'http://127.0.0.1:3210/video.mp4?id=${item.postId}';
+        return 'http://127.0.0.1:3210/video.mp4?id=${item.postId}&cap='
+            'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
       },
     );
     final media = VideoMediaSource.withCacheScope(
@@ -24,7 +25,8 @@ void main() {
     expect(sent?.delivery, FfiMediaDelivery.progressive);
     expect(
       proxied.playbackUri.toString(),
-      'http://127.0.0.1:3210/video.mp4?id=${'e' * 64}',
+      'http://127.0.0.1:3210/video.mp4?id=${'e' * 64}&cap='
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     );
   });
 }

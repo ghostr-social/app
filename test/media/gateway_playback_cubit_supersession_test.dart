@@ -18,7 +18,9 @@ void main() {
 
     expect(cubit.state, isA<GatewayPlaybackPreparing>());
 
-    const secondUrl = 'http://127.0.0.1:3210/video.mp4?id=post-2';
+    const secondUrl =
+        'http://127.0.0.1:3210/video.mp4?id=post-2&cap='
+        'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
     gateway.completeNext(playbackUrl: secondUrl);
     await secondLoad;
 

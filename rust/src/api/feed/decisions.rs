@@ -2,8 +2,8 @@
 //! runtime, which forwards them to the discovery scheduler outside the
 //! state lock.
 
-use crate::discovery::retrieval_types::FeedContext;
 use crate::discovery::query::video_filters::DiscoveryRequest;
+use crate::discovery::retrieval_types::FeedContext;
 use flutter_rust_bridge::frb;
 use nostr_sdk::Timestamp;
 

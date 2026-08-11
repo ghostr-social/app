@@ -24,6 +24,7 @@ mod representation;
 mod writes;
 
 pub use admission::OutOfSpace;
+pub use representation::RepresentationRead;
 
 pub(crate) type Entries = HashMap<String, Entry>;
 

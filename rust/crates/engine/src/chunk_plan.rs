@@ -13,8 +13,8 @@ pub(crate) const TAIL_PROBE_BYTES: u64 = 256 * 1024;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PlanInput {
     pub(crate) size_bytes: Option<u64>,
-    pub(crate) duration_ms: Option<u64>,
     pub(crate) bitrate_bps: u64,
+    pub(crate) needs_tail_probe: bool,
 }
 
 /// The chunk layout for one video under the current parameters.
@@ -32,8 +32,8 @@ impl ChunkPlan {
         Self::from_input(
             PlanInput {
                 size_bytes: meta.size_bytes,
-                duration_ms: meta.duration_ms,
                 bitrate_bps,
+                needs_tail_probe: meta.duration_ms.is_none(),
             },
             params,
         )
@@ -53,7 +53,7 @@ impl ChunkPlan {
             size_bytes: input.size_bytes,
             head_bytes: head_bytes(input, params, head_seconds),
             chunk_bytes: params.chunk_bytes.max(1),
-            needs_tail_probe: input.duration_ms.is_none(),
+            needs_tail_probe: input.needs_tail_probe,
         }
     }
 
@@ -90,6 +90,11 @@ impl ChunkPlan {
         }
         let size = self.size_bytes?;
         Some(ByteRange::new(size.saturating_sub(TAIL_PROBE_BYTES), size))
+    }
+
+    pub(crate) fn next_missing_tail_probe(&self, have: &[ByteRange]) -> Option<ByteRange> {
+        self.tail_probe_range()
+            .and_then(|range| first_missing_within(range, have))
     }
 
     /// First planned chunk (head first, then tail) not fully covered by

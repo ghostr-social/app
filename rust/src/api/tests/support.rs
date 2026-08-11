@@ -33,6 +33,7 @@ pub(crate) fn parsed_video_post(kind: u16, identifier: Option<&str>) -> ParsedVi
             size_bytes: Some(9),
             duration_ms: Some(2_000),
         },
+        renditions: Vec::new(),
     }
 }
 

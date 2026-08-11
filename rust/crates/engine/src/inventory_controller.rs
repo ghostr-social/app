@@ -8,9 +8,9 @@ use crate::{ByteRange, EngineParams, PostId};
 use std::collections::HashMap;
 
 mod startability;
-use startability::count_inventory;
+mod timeline;
 pub use startability::is_startable;
-pub(crate) use startability::is_startable_with;
+use startability::{count_inventory, InventoryInputs};
 
 /// Control-loop mode: hunger races for startability, comfort deepens.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -45,7 +45,7 @@ pub struct InventoryCounts {
     /// Posts actually considered: current + ahead, capped at
     /// `startable_window`.
     pub(crate) considered: usize,
-    /// How many of those are startable right now.
+    /// How many consecutive posts from current are startable now.
     pub(crate) startable: usize,
     /// Effective target: the configured target, never above
     /// `considered`.
@@ -57,6 +57,12 @@ pub struct InventoryCounts {
 pub struct InventoryState {
     pub(crate) counts: InventoryCounts,
     pub mode: Mode,
+}
+
+impl InventoryState {
+    pub fn current_startable(self) -> bool {
+        self.counts.startable > 0
+    }
 }
 
 /// Remembers the mode across observations so hysteresis has memory.
@@ -100,7 +106,13 @@ impl InventoryController {
         present: &PresentRanges,
         head_seconds: &dyn Fn(&PostId) -> u64,
     ) -> InventoryState {
-        let counts = count_inventory(catalog, focus, present, &self.params, head_seconds);
+        let counts = count_inventory(InventoryInputs {
+            catalog,
+            focus,
+            present,
+            params: &self.params,
+            head_seconds,
+        });
         self.mode = next_mode(self.mode, counts.startable, counts.target);
         InventoryState {
             counts,

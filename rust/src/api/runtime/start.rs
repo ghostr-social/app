@@ -1,18 +1,18 @@
 //! Discovery runtime composition kept separate from its live control surface.
 
+use crate::api::feed::state::FeedState;
+use crate::api::runtime::configuration;
 use crate::api::runtime::discovery::{
     pump_outcomes, DiscoveryBoot, DiscoveryRuntime, OutcomeSinks, SharedFeedState,
 };
-use crate::api::feed::state::FeedState;
-use crate::api::runtime::configuration;
+use crate::discovery::execution::relay_executor::RelayPlanExecutor;
+use crate::discovery::outbox::bootstrap::OutboxBootstrap;
+use crate::discovery::outbox::directory::OutboxDirectory;
+use crate::discovery::outbox::directory::SharedOutboxDirectory;
+use crate::discovery::retrieval_types::RetrievalOutcome;
 use crate::discovery::scheduler::{
     start_discovery_scheduler, DiscoveryHandle, DiscoverySchedulerConfig,
 };
-use crate::discovery::outbox::bootstrap::OutboxBootstrap;
-use crate::discovery::outbox::directory::OutboxDirectory;
-use crate::discovery::execution::relay_executor::RelayPlanExecutor;
-use crate::discovery::outbox::directory::SharedOutboxDirectory;
-use crate::discovery::retrieval_types::RetrievalOutcome;
 use crate::engine::inventory_controller::Mode;
 use crate::engine::DataUsageLevel;
 use std::sync::{Arc, Mutex};

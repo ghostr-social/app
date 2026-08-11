@@ -1,7 +1,6 @@
 //! Completion policy for media-size probes.
 
 use crate::manager::failure::{classify, FailureClass};
-use crate::manager::retry::Source;
 use crate::manager::transfers::ProbeDone;
 use crate::manager::DeliveryWorker;
 use crate::probe::media::ProbeResult;
@@ -45,8 +44,7 @@ impl DeliveryWorker {
 
     async fn absorb_probe(&mut self, identity: &TransferIdentity, result: ProbeResult) {
         let source = identity.source().as_str();
-        self.retry
-            .note_success(&Source::new(identity.post().clone(), source.to_owned()));
+        self.note_successful_attempt(identity.post(), source);
         self.learn_identity(identity, result.content_length, result.accept_ranges)
             .await;
     }

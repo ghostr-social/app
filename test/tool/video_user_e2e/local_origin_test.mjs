@@ -19,6 +19,11 @@ test("local media origin serves truthful paced byte ranges", async () => {
     assert.deepEqual(origin.requests.map(({id, start, end}) => ({id, start, end})), [
       {id: "a", start: 10, end: 20},
     ]);
+    assert.deepEqual(origin.requests.map((entry) => ({
+      bytes_sent: entry.bytes_sent,
+      completed: entry.completed,
+      canceled: entry.canceled,
+    })), [{bytes_sent: 10, completed: true, canceled: false}]);
   } finally {
     await origin.close();
   }

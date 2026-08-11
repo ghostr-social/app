@@ -51,6 +51,7 @@ fn candidate(id: &str, discovered_at: u64) -> DeliveryCandidate {
     DeliveryCandidate {
         post: PostId::new(id),
         meta: metadata(id),
+        renditions: Vec::new(),
         discovered_at,
     }
 }
