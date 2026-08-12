@@ -1,5 +1,5 @@
 import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
-import 'package:ghostr/features/video_catalog/domain/video_interaction_target.dart';
+import 'package:ghostr/features/video_catalog/domain/video_media_identity.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 
 /// Exclusive ownership of one older-page cursor.
@@ -45,18 +45,16 @@ final class FeedPagination {
     if (identical(_active, lease)) _active = null;
   }
 
-  /// Appends the page posts that are not already in the list.
+  /// Appends the page posts whose videos the list does not already play.
   static List<VideoPost> appendNew(
     List<VideoPost> current,
     List<VideoPost> incoming,
   ) {
-    final seen = <VideoInteractionTarget>{
-      for (final post in current) VideoInteractionTarget.fromPost(post),
-    };
+    final seen = SeenVideoIdentities(current);
     return [
       ...current,
       for (final post in incoming)
-        if (seen.add(VideoInteractionTarget.fromPost(post))) post,
+        if (seen.add(post)) post,
     ];
   }
 }

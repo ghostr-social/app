@@ -78,11 +78,27 @@ class NdkNostrSocial implements NostrSocialPort {
   }
 
   @override
-  Future<bool> toggleBlock(ProfileId profileId) {
+  Future<bool> toggleBlock(
+    ProfileId profileId, {
+    Set<ProfileId> knownBlocked = const {},
+  }) {
     return _guard('Could not update the Nostr mute list.', () {
       final target = _decodeProfile(profileId);
-      return _activeScope._enqueueBlock(target);
+      return _activeScope._enqueueBlock(target, _decodeSeeds(knownBlocked));
     });
+  }
+
+  // Entries that never held a decodable key cannot travel on the wire.
+  Set<String> _decodeSeeds(Set<ProfileId> profiles) {
+    final seeds = <String>{};
+    for (final profile in profiles) {
+      try {
+        seeds.add(_decodeProfile(profile));
+      } on AppFailure {
+        continue;
+      }
+    }
+    return seeds;
   }
 
   @override

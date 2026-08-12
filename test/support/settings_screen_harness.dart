@@ -7,6 +7,7 @@ import 'package:ghostr/features/settings/presentation/settings_screen.dart';
 Widget settingsScreenHarness(
   AppSettingsRepository repository, {
   VoidCallback? onOpenWatchHistory,
+  VoidCallback? onOpenBlockedAccounts,
   VoidCallback? onCheckForUpdates,
 }) {
   return MaterialApp(
@@ -14,6 +15,7 @@ Widget settingsScreenHarness(
       create: (_) => SettingsCubit(repository)..load(),
       child: SettingsScreen(
         onOpenWatchHistory: onOpenWatchHistory,
+        onOpenBlockedAccounts: onOpenBlockedAccounts,
         onCheckForUpdates: onCheckForUpdates,
       ),
     ),
