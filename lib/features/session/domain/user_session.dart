@@ -1,17 +1,12 @@
-import 'package:ghostr/features/session/domain/auth_secret.dart';
 import 'package:ghostr/features/session/domain/nostr_identity.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 
 class UserSession {
-  const UserSession._(this.secret, this.identity, this.profile);
+  const UserSession._(this.identity, this.profile);
 
-  factory UserSession.fromIdentity(
-    AuthSecret secret,
-    NostrIdentity identity,
-  ) {
+  factory UserSession.fromIdentity(NostrIdentity identity) {
     return UserSession._(
-      secret,
       identity,
       ProfileSummary(
         id: ProfileId.parse(identity.npub),
@@ -22,7 +17,13 @@ class UserSession {
     );
   }
 
-  final AuthSecret secret;
   final NostrIdentity identity;
   final ProfileSummary profile;
+
+  UserSession withProfile(ProfileSummary updated) {
+    if (updated.id != profile.id) {
+      throw StateError('Session profile must match the Nostr identity.');
+    }
+    return UserSession._(identity, updated);
+  }
 }

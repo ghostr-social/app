@@ -12,8 +12,10 @@ void main() {
     expect(loading.status, ProfileStatus.loading);
     expect(loading.details, isNull);
     expect(loading.isUpdating, isFalse);
+    expect(loading.isRefreshing, isFalse);
     expect(loading.message, isNull);
     expect(loading.notice, isNull);
+    expect(loading.refreshError, isNull);
     expect(failure.status, ProfileStatus.failure);
     expect(failure.message, 'offline');
     expect(ready.status, ProfileStatus.ready);

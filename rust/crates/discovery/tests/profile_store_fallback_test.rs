@@ -21,20 +21,19 @@ fn profile_store_falls_back_to_a_shortened_npub_identity() {
 }
 
 #[test]
-fn profile_store_keeps_the_npub_handle_even_with_metadata() {
+fn profile_store_uses_the_metadata_name_as_handle() {
     let creator = Keys::generate();
-    let npub = creator.public_key().to_bech32().expect("npub encodes");
     let mut store = ProfileStore::new();
     store.ingest(&feed_support::profile_event(
         &creator,
-        r#"{"name":"alice","picture":"https://cdn.example/alice.png"}"#,
+        r#"{"name":"Alice_42","picture":"https://cdn.example/alice.png"}"#,
         10,
     ));
 
     let profile = store.profile(&creator.public_key());
 
-    assert_eq!(profile.display_name, "alice");
-    assert_eq!(profile.handle, format!("@{npub}"));
+    assert_eq!(profile.display_name, "Alice_42");
+    assert_eq!(profile.handle, "@Alice_42");
     assert_eq!(
         profile.avatar_url,
         Some("https://cdn.example/alice.png".to_owned()),

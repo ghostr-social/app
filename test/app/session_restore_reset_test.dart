@@ -8,8 +8,9 @@ import '../support/fakes.dart';
 import '../support/test_app.dart';
 
 void main() {
-  testWidgets('clears a broken stored key and returns to sign in',
-      (tester) async {
+  testWidgets('clears a broken stored key and returns to account access', (
+    tester,
+  ) async {
     final repository = _RestoreFailureRepository();
     final dependencies = buildFakeDependencies(
       sessionRepository: repository,
@@ -22,7 +23,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.clearCount, 1);
-    expect(find.text('Import your Nostr key'), findsOneWidget);
+    expect(find.text('Welcome to Ghostr'), findsOneWidget);
+    expect(find.text('Create a Nostr account'), findsOneWidget);
+    expect(find.text('Use an existing key'), findsOneWidget);
   });
 }
 

@@ -5,6 +5,7 @@ import 'package:ghostr/features/session/domain/session_repository.dart';
 import 'package:ghostr/features/session/domain/auth_secret.dart';
 import 'package:ghostr/features/session/domain/user_session.dart';
 import 'package:ghostr/features/session/presentation/session_state.dart';
+import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 
 export 'session_state.dart';
 
@@ -35,6 +36,17 @@ class SessionCubit extends DisposalSafeCubit<SessionState> {
     await _completeSignIn(secret);
   }
 
+  void acceptCreatedSession(UserSession session) {
+    if (!_canStart) return;
+    emit(SessionSignedIn(session));
+  }
+
+  void updateProfile(ProfileSummary profile) {
+    final signedIn = state;
+    if (signedIn is! SessionSignedIn) return;
+    emit(SessionSignedIn(signedIn.session.withProfile(profile)));
+  }
+
   Future<void> _completeSignIn(AuthSecret secret) async {
     try {
       emit(SessionSignedIn(await _repository.signIn(secret)));
@@ -59,10 +71,12 @@ class SessionCubit extends DisposalSafeCubit<SessionState> {
     } on AppFailure catch (failure) {
       emit(SessionSignedIn(signedIn.session, errorMessage: failure.message));
     } on Object catch (error, stackTrace) {
-      emit(SessionSignedIn(
-        signedIn.session,
-        errorMessage: _signOutError(error, stackTrace),
-      ));
+      emit(
+        SessionSignedIn(
+          signedIn.session,
+          errorMessage: _signOutError(error, stackTrace),
+        ),
+      );
     }
   }
 

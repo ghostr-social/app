@@ -7,6 +7,7 @@ import 'package:ghostr/app/home_tab.dart';
 import 'package:ghostr/app/home_tab_bar.dart';
 import 'package:ghostr/app/home_tab_stack.dart';
 import 'package:ghostr/app/home_navigation.dart';
+import 'package:ghostr/app/profile_edit_navigation.dart';
 import 'package:ghostr/app/router/app_router.dart';
 import 'package:ghostr/core/media/incoming_video_share.dart';
 import 'package:ghostr/core/media/selected_media.dart';
@@ -152,9 +153,12 @@ class _HomeShellState extends State<HomeShell> {
   );
   Widget _profile() => BlocProvider(
     create: (_) => _createProfileCubit(),
-    child: ProfileScreen(onOpenSettings: _openSettings, onSignedOut: _signOut),
+    child: ProfileScreen(
+      onOpenSettings: _openSettings,
+      onEditProfile: _editProfile,
+      onSignedOut: _signOut,
+    ),
   );
-
   FeedCubit _createFeedCubit() {
     return _feedCubit = widget.controllers.feed()..load();
   }
@@ -171,6 +175,7 @@ class _HomeShellState extends State<HomeShell> {
     return _profileCubit = widget.controllers.profile(
       widget.session.profile,
       widget.session.profile.id,
+      onCurrentProfileUpdated: context.read<SessionCubit>().updateProfile,
     )..load();
   }
 

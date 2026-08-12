@@ -17,11 +17,13 @@ const _forbidden = <String>[
 const _ndkImportAllowlist = <String>{
   'lib/app/production_nostr_services.dart',
   'lib/features/session/data/ndk_nostr_identity_deriver.dart',
+  'lib/features/session/data/ndk_nostr_account_generator.dart',
   'lib/features/video_catalog/data/rust_feed_post_mapper.dart',
   'lib/features/video_catalog/data/rust_feed_spec_builder.dart',
   'lib/platform/nostr/blossom_upload_result_mapper.dart',
   'lib/platform/nostr/build_ndk.dart',
   'lib/platform/nostr/ndk_blossom_video_uploader.dart',
+  'lib/platform/nostr/ndk_blossom_profile_image_uploader.dart',
   'lib/platform/nostr/ndk_nostr_session.dart',
   'lib/platform/nostr/ndk_nostr_social.dart',
   'lib/platform/nostr/rust_nostr_event_client.dart',
@@ -51,8 +53,9 @@ void main() {
   });
 
   test('production composition exposes no NDK transport escape hatch', () {
-    final source =
-        File('lib/app/production_nostr_services.dart').readAsStringSync();
+    final source = File(
+      'lib/app/production_nostr_services.dart',
+    ).readAsStringSync();
 
     expect(source, isNot(contains('final Ndk ndk;')));
     expect(source, isNot(contains('SignedEventBroadcastPort? broadcast')));

@@ -42,7 +42,6 @@ class FakeSessionRepository implements SessionRepository {
   Future<UserSession> signIn(AuthSecret secret) async {
     if (signInFailure case final failure?) throw failure;
     storedSession = UserSession.fromIdentity(
-      secret,
       NostrIdentity.parse(
         publicKeyHex: testViewerPublicKey,
         npub: testViewerNpub,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/profile_content.dart';
+import 'package:ghostr/features/video_catalog/presentation/widgets/profile_refresh_status.dart';
 import 'package:ghostr/shared/widgets/async_state_panel.dart';
 import 'package:ghostr/shared/widgets/loading_panel.dart';
 
@@ -9,11 +10,13 @@ class ProfileScreen extends StatelessWidget {
   const ProfileScreen({
     required this.onSignedOut,
     this.onOpenSettings,
+    this.onEditProfile,
     super.key,
   });
 
   final VoidCallback? onOpenSettings;
   final VoidCallback onSignedOut;
+  final VoidCallback? onEditProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -43,17 +46,31 @@ class ProfileScreen extends StatelessWidget {
   Widget _body(BuildContext context, ProfileState state) {
     return switch (state) {
       ProfileLoading() => const LoadingPanel(label: 'Loading creator profile'),
-      ProfileFailure(:final failureMessage) =>
-        _errorPanel(context, failureMessage),
-      ProfileReady(:final readyDetails, :final isUpdating) => ProfileContent(
-          details: readyDetails,
-          isUpdating: isUpdating,
-          actions: ProfileContentActions(
-            onFollow: (_) => context.read<ProfileCubit>().toggleFollow(),
-            onBlock: (_) => context.read<ProfileCubit>().toggleBlock(),
-            onSignOut: onSignedOut,
+      ProfileFailure(:final failureMessage) => _errorPanel(
+        context,
+        failureMessage,
+      ),
+      ProfileReady() => Column(
+        children: [
+          ProfileRefreshStatus(
+            isRefreshing: state.isRefreshing,
+            error: state.refreshError,
+            onRetry: context.read<ProfileCubit>().load,
           ),
-        ),
+          Expanded(
+            child: ProfileContent(
+              details: state.readyDetails,
+              isUpdating: state.isUpdating,
+              actions: ProfileContentActions(
+                onFollow: (_) => context.read<ProfileCubit>().toggleFollow(),
+                onBlock: (_) => context.read<ProfileCubit>().toggleBlock(),
+                onSignOut: onSignedOut,
+                onEdit: onEditProfile,
+              ),
+            ),
+          ),
+        ],
+      ),
     };
   }
 
@@ -68,9 +85,9 @@ class ProfileScreen extends StatelessWidget {
   }
 
   void _showNotice(BuildContext context, ProfileState state) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(state.notice!)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(state.notice!)));
     context.read<ProfileCubit>().clearNotice();
   }
 }

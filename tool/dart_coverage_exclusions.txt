@@ -17,7 +17,13 @@ lib/features/engagement/domain/video_engagement_repository.dart
 lib/features/publish/domain/nostr_video_publisher_port.dart
 lib/features/publish/domain/video_media_upload_port.dart
 lib/features/publish/domain/video_publishing_repository.dart
+lib/features/profile/domain/profile_image_picker_port.dart
+lib/features/profile/domain/profile_image_upload_port.dart
+lib/features/profile/domain/profile_metadata_repository.dart
+lib/features/session/domain/account_provisioning_repository.dart
+lib/features/session/domain/nostr_account_generator.dart
 lib/features/session/domain/nostr_identity_deriver.dart
+lib/features/session/domain/secret_backup_port.dart
 lib/features/session/domain/nostr_session_port.dart
 lib/features/session/domain/session_repository.dart
 lib/features/settings/domain/app_settings_repository.dart

@@ -12,6 +12,7 @@ extension _HomeShellNavigation on _HomeShellState {
     controllers: widget.controllers,
     onSignedOut: _signOut,
     pushCovering: _pushCovering,
+    onCurrentProfileUpdated: context.read<SessionCubit>().updateProfile,
   );
 
   Future<void> _pushCovering(Route<void> route) async {
@@ -26,6 +27,15 @@ extension _HomeShellNavigation on _HomeShellState {
 
   void _openSettings() {
     Navigator.of(context).push(AppRouter.settings(widget.controllers));
+  }
+
+  Future<void> _editProfile() async {
+    await openProfileEditor(context, widget.session, widget.controllers, (
+      updated,
+    ) {
+      _profileCubit?.updateCurrentUser(updated);
+      context.read<SessionCubit>().updateProfile(updated);
+    });
   }
 
   void _dismissCoveredRoutes() {

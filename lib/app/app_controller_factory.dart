@@ -2,6 +2,8 @@ import 'package:ghostr/app/app_dependencies.dart';
 import 'package:ghostr/core/media/incoming_video_share.dart';
 import 'package:ghostr/features/activity/presentation/activity_cubit.dart';
 import 'package:ghostr/features/comments/presentation/comments_cubit.dart';
+import 'package:ghostr/features/profile/presentation/profile_edit_cubit.dart';
+import 'package:ghostr/features/session/domain/nostr_identity.dart';
 import 'package:ghostr/features/compose/presentation/compose_cubit.dart';
 import 'package:ghostr/features/compose/domain/publish_video_workflow.dart';
 import 'package:ghostr/features/settings/presentation/settings_cubit.dart';
@@ -117,10 +119,16 @@ class AppControllerFactory {
     );
   }
 
-  ProfileCubit profile(ProfileSummary viewer, ProfileId profileId) {
+  ProfileCubit profile(
+    ProfileSummary viewer,
+    ProfileId profileId, {
+    void Function(ProfileSummary)? onCurrentProfileUpdated,
+  }) {
     return ProfileCubit(
       ProfileDependencies(
         profile: _dependencies.videoCatalogServices.profile,
+        metadata: _dependencies.profileMetadataRepository,
+        onCurrentProfileUpdated: onCurrentProfileUpdated,
         toggleFollow: DefaultToggleProfileFollowWorkflow(
           profile: _dependencies.videoCatalogServices.profile,
           activity: _dependencies.activityRepository,
@@ -129,6 +137,14 @@ class AppControllerFactory {
         ),
       ),
       ProfileRequest(viewer: viewer, profileId: profileId),
+    );
+  }
+
+  ProfileEditCubit profileEdit(NostrIdentity identity) {
+    return ProfileEditCubit(
+      _dependencies.profileMetadataRepository,
+      identity,
+      _dependencies.profileImageWorkflow,
     );
   }
 

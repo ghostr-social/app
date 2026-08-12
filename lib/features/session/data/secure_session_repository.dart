@@ -29,7 +29,7 @@ class SecureSessionRepository implements SessionRepository {
   @override
   Future<UserSession> signIn(AuthSecret secret) async {
     final identity = _identityDeriver.derive(secret);
-    final session = UserSession.fromIdentity(secret, identity);
+    final session = UserSession.fromIdentity(identity);
     await _secretStore.write(secret.value);
     try {
       await _nostrSession.activate(secret, identity);
@@ -61,7 +61,7 @@ class SecureSessionRepository implements SessionRepository {
   Future<UserSession> _activate(AuthSecret secret) async {
     final identity = _identityDeriver.derive(secret);
     await _nostrSession.activate(secret, identity);
-    return UserSession.fromIdentity(secret, identity);
+    return UserSession.fromIdentity(identity);
   }
 
   Future<UserSession> _activatePersisted(AuthSecret secret) async {

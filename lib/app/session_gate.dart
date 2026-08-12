@@ -3,7 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ghostr/app/app_controller_factory.dart';
 import 'package:ghostr/app/home_shell.dart';
 import 'package:ghostr/features/session/presentation/session_cubit.dart';
-import 'package:ghostr/features/session/presentation/sign_in_screen.dart';
+import 'package:ghostr/features/session/presentation/account_access_flow.dart';
+import 'package:ghostr/features/session/domain/secret_backup_port.dart';
 import 'package:ghostr/shared/widgets/async_state_panel.dart';
 
 class SessionGate extends StatelessWidget {
@@ -23,19 +24,37 @@ class SessionGate extends StatelessWidget {
 
   Widget _content(BuildContext context, SessionState state) {
     return switch (state) {
+      SessionLoading(operation: SessionOperation.signingIn) => _accountAccess(
+        context,
+        isSigningIn: true,
+      ),
       SessionLoading() => _loading(),
       SessionSigningOut() => _signingOut(),
-      SessionSignedOut(errorMessage: final message) => SignInScreen(
-          errorMessage: message,
-          onSubmit: context.read<SessionCubit>().signIn,
-        ),
+      SessionSignedOut(errorMessage: final message) => _accountAccess(
+        context,
+        errorMessage: message,
+      ),
       SessionRestoreFailure(message: final message) => _failure(
-          context,
-          message,
-        ),
-      SessionSignedIn(session: final session) =>
-        HomeShell(session: session, controllers: controllers),
+        context,
+        message,
+      ),
+      SessionSignedIn(session: final session) => HomeShell(
+        session: session,
+        controllers: controllers,
+      ),
     };
+  }
+
+  Widget _accountAccess(
+    BuildContext context, {
+    String? errorMessage,
+    bool isSigningIn = false,
+  }) {
+    return AccountAccessFlow(
+      secretBackup: context.read<SecretBackupPort>(),
+      errorMessage: errorMessage,
+      isSigningIn: isSigningIn,
+    );
   }
 
   Widget _loading() {
@@ -81,9 +100,9 @@ class SessionGate extends StatelessWidget {
 
   void _showSignedInError(BuildContext context, SessionState state) {
     final signedIn = state as SessionSignedIn;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(signedIn.errorMessage!)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(signedIn.errorMessage!)));
     context.read<SessionCubit>().clearError();
   }
 }

@@ -98,6 +98,18 @@ class ProfileDetails {
       ),
     );
   }
+
+  ProfileDetails withProfile(ProfileSummary updated) {
+    if (updated.id != profile.id) {
+      throw StateError('Updated profile identity does not match.');
+    }
+    return ProfileDetails(
+      profile: updated,
+      posts: posts,
+      statistics: statistics,
+      relationship: relationship,
+    );
+  }
 }
 
 void _checkCount(int count, String name) {

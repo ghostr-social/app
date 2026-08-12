@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:ghostr/app/app_dependencies.dart';
+import 'package:ghostr/app/production_account_services.dart';
 import 'package:ghostr/app/production_nostr_services.dart';
 import 'package:ghostr/app/production_incoming_video_sharing.dart';
 import 'package:ghostr/app/production_app_update.dart';
@@ -11,20 +11,17 @@ import 'package:ghostr/app/production_video_playback.dart';
 import 'package:ghostr/app/production_video_sharing.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/nostr/nostr_event_client.dart';
-import 'package:ghostr/core/storage/account_storage_scope.dart';
 import 'package:ghostr/features/activity/data/local_activity_repository.dart';
 import 'package:ghostr/features/activity/data/nostr_activity_repository.dart';
-import 'package:ghostr/features/session/data/ndk_nostr_identity_deriver.dart';
-import 'package:ghostr/features/session/data/secure_session_repository.dart';
+import 'package:ghostr/features/session/data/ndk_nostr_account_generator.dart';
 import 'package:ghostr/features/settings/data/local_app_settings_repository.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/settings/domain/app_settings_repository.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_remote_source.dart';
-import 'package:ghostr/features/watch_history/data/local_watch_history_repository.dart';
+import 'package:ghostr/platform/session/system_secret_clipboard.dart';
 import 'package:ghostr/platform/logging/developer_failure_reporter.dart';
 import 'package:ghostr/platform/media/image_picker_capabilities.dart';
 import 'package:ghostr/platform/media/image_picker_media_picker.dart';
-import 'package:ghostr/platform/storage/secure_secret_store.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -143,37 +140,37 @@ AppDependencies composeProductionDependencies(
   final settingsRepository = input.settingsRepository;
   final nostr = input.nostr;
   final delivery = input.delivery;
-  final accountScope = AccountStorageScope(
-    () => nostr.eventClient.publicKeyHex,
-  );
-  final watchHistory = LocalWatchHistoryRepository(
-    preferences,
-    accountScope: accountScope,
+  final account = buildProductionAccountServices(
+    ProductionAccountServicesInputs(preferences: preferences, nostr: nostr),
   );
   return AppDependencies(
-    sessionRepository: SecureSessionRepository(
-      SecureSecretStore(const FlutterSecureStorage()),
-      const NdkNostrIdentityDeriver(),
-      nostr.adapters.session,
-    ),
+    sessionRepository: account.sessionRepository,
     appSettingsRepository: settingsRepository,
     videoCatalogServices: buildProductionVideoCatalog(
       ProductionVideoCatalogInputs(
         preferences: preferences,
         delivery: delivery,
         nostr: nostr,
-        accountScope: accountScope,
-        watchHistory: watchHistory,
+        accountScope: account.accountScope,
+        watchHistory: account.watchHistory,
         settingsRepository: settingsRepository,
       ),
     ),
-    watchHistoryRepository: watchHistory,
+    watchHistoryRepository: account.watchHistory,
     incomingVideoSharePort: buildProductionIncomingVideoSharing(),
     activityRepository: NostrActivityRepository(
       client: nostr.eventClient,
-      local: LocalActivityRepository(preferences, accountScope: accountScope),
+      local: LocalActivityRepository(
+        preferences,
+        accountScope: account.accountScope,
+      ),
       failureReporter: const DeveloperFailureReporter(),
     ),
+    accountGenerator: const NdkNostrAccountGenerator(),
+    accountProvisioningRepository: account.provisioningRepository,
+    profileMetadataRepository: account.profileMetadataRepository,
+    profileImageWorkflow: account.profileImageWorkflow,
+    secretBackupPort: SystemSecretClipboard(),
     mediaPickerPort: ImagePickerMediaPicker(
       ImagePicker(),
       capabilities: currentImagePickerCapabilities(),

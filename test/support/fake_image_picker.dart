@@ -7,6 +7,27 @@ class FakeImagePicker extends ImagePicker {
   final Object? error;
   final LostDataResponse? lostData;
   ImageSource? requestedSource;
+  ImageSource? requestedImageSource;
+  double? requestedImageWidth;
+  double? requestedImageHeight;
+  int? requestedImageQuality;
+
+  @override
+  Future<XFile?> pickImage({
+    required ImageSource source,
+    double? maxWidth,
+    double? maxHeight,
+    int? imageQuality,
+    CameraDevice preferredCameraDevice = CameraDevice.rear,
+    bool requestFullMetadata = true,
+  }) async {
+    requestedImageSource = source;
+    requestedImageWidth = maxWidth;
+    requestedImageHeight = maxHeight;
+    requestedImageQuality = imageQuality;
+    if (error != null) throw error!;
+    return result;
+  }
 
   @override
   Future<XFile?> pickVideo({

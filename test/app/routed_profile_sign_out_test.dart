@@ -6,8 +6,9 @@ import '../support/sample_data.dart';
 import '../support/test_app.dart';
 
 void main() {
-  testWidgets('signing out from a pushed profile reveals sign in',
-      (tester) async {
+  testWidgets('signing out from a pushed profile returns to account access', (
+    tester,
+  ) async {
     final session = sampleSession();
     final ownPost = samplePost(creator: session.profile);
     final details = ProfileDetails(
@@ -35,7 +36,9 @@ void main() {
     await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Import your Nostr key'), findsOneWidget);
+    expect(find.text('Welcome to Ghostr'), findsOneWidget);
+    expect(find.text('Create a Nostr account'), findsOneWidget);
+    expect(find.text('Use an existing key'), findsOneWidget);
     expect(find.text('Sign out'), findsNothing);
   });
 }
