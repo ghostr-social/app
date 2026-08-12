@@ -8,8 +8,11 @@ import 'package:ghostr/app/home_tab_bar.dart';
 import 'package:ghostr/app/home_tab_stack.dart';
 import 'package:ghostr/app/home_navigation.dart';
 import 'package:ghostr/app/router/app_router.dart';
+import 'package:ghostr/core/media/incoming_video_share.dart';
+import 'package:ghostr/core/media/selected_media.dart';
 import 'package:ghostr/features/activity/presentation/activity_cubit.dart';
 import 'package:ghostr/features/activity/presentation/activity_screen.dart';
+import 'package:ghostr/features/compose/presentation/compose_cubit.dart';
 import 'package:ghostr/features/compose/presentation/compose_screen.dart';
 import 'package:ghostr/features/session/domain/user_session.dart';
 import 'package:ghostr/features/session/presentation/session_cubit.dart';
@@ -20,6 +23,9 @@ import 'package:ghostr/features/video_catalog/presentation/profile_screen.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_cubit.dart';
 import 'package:ghostr/app/search_tab.dart';
 import 'package:ghostr/features/video_catalog/presentation/search_cubit.dart';
+
+part 'home_shell_incoming_video.dart';
+part 'home_shell_navigation.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({
@@ -43,6 +49,20 @@ class _HomeShellState extends State<HomeShell> {
   SearchCubit? _searchCubit;
   ActivityCubit? _activityCubit;
   ProfileCubit? _profileCubit;
+  late final ComposeCubit _composeCubit;
+  late final StreamSubscription<IncomingVideoShareEvent> _incomingVideoShares;
+  Future<void>? _composeRecovery;
+  bool _composeRecoveryStarted = false;
+  int _latestIncomingVideoRequest = 0;
+  final Map<int, SelectedMedia> _pendingIncomingVideos = {};
+  final Map<String, SelectedMedia> _unmountedIncomingVideos = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeIncomingVideos();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -73,16 +93,25 @@ class _HomeShellState extends State<HomeShell> {
     final isReselectedHome =
         selected == HomeTab.home && selected == _currentTab;
     final shouldRefresh = _visitedTabs.contains(selected);
-    setState(() {
-      _currentTab = selected;
-      _visitedTabs.add(selected);
-    });
+    _activateTab(selected);
     if (isReselectedHome) {
       final reload = _feedCubit?.reload();
       if (reload != null) unawaited(reload);
     } else if (shouldRefresh) {
       _refreshTab(selected);
     }
+  }
+
+  void _activateTab(HomeTab selected) {
+    setState(() {
+      _currentTab = selected;
+      _visitedTabs.add(selected);
+    });
+  }
+
+  void _setRouteCovered(bool isCovered) {
+    setState(() => _isRouteCovered = isCovered);
+    if (!isCovered) _refreshTab(_currentTab);
   }
 
   Widget _home() => BlocProvider(
@@ -104,14 +133,19 @@ class _HomeShellState extends State<HomeShell> {
     onOpenProfile: _openProfile,
     onOpenFeed: _openDiscoveryFeed,
   );
-  Widget _create() => BlocProvider(
-    create: (_) => widget.controllers.compose()..recoverLostVideo(),
-    child: ComposeScreen(
-      session: widget.session,
-      playbackPort: widget.controllers.videoPlaybackPort,
-      isActive: _currentTab == HomeTab.create,
-    ),
-  );
+  Widget _create() {
+    _recoverComposeDraft();
+    return BlocProvider.value(
+      value: _composeCubit,
+      child: ComposeScreen(
+        session: widget.session,
+        playbackPort: widget.controllers.videoPlaybackPort,
+        isActive: _currentTab == HomeTab.create && !_isRouteCovered,
+        onPreviewMounted: _claimIncomingVideoPreview,
+      ),
+    );
+  }
+
   Widget _activity() => BlocProvider(
     create: (_) => _createActivityCubit(),
     child: const ActivityScreen(),
@@ -120,42 +154,6 @@ class _HomeShellState extends State<HomeShell> {
     create: (_) => _createProfileCubit(),
     child: ProfileScreen(onOpenSettings: _openSettings, onSignedOut: _signOut),
   );
-
-  void _openProfile(ProfileId profileId) => _navigation.openProfile(profileId);
-
-  void _openHashtag(String hashtag) => _openDiscoveryFeed(hashtag);
-
-  void _openDiscoveryFeed(String query) => _navigation.openDiscoveryFeed(query);
-
-  HomeNavigation get _navigation => HomeNavigation(
-    session: widget.session,
-    controllers: widget.controllers,
-    onSignedOut: _signOut,
-    pushCovering: _pushCovering,
-  );
-
-  Future<void> _pushCovering(Route<void> route) async {
-    if (_isRouteCovered) return;
-    setState(() => _isRouteCovered = true);
-    try {
-      await Navigator.of(context).push(route);
-    } finally {
-      if (mounted) {
-        setState(() => _isRouteCovered = false);
-        _refreshTab(_currentTab);
-      }
-    }
-  }
-
-  void _openSettings() {
-    Navigator.of(context).push(AppRouter.settings(widget.controllers));
-  }
-
-  void _signOut() {
-    final session = context.read<SessionCubit>();
-    Navigator.of(context).popUntil((route) => route.isFirst);
-    session.signOut();
-  }
 
   FeedCubit _createFeedCubit() {
     return _feedCubit = widget.controllers.feed()..load();
@@ -184,5 +182,11 @@ class _HomeShellState extends State<HomeShell> {
       HomeTab.search || HomeTab.create => null,
     };
     if (refresh != null) unawaited(refresh);
+  }
+
+  @override
+  void dispose() {
+    _disposeIncomingVideos();
+    super.dispose();
   }
 }

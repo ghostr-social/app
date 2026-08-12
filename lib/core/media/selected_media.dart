@@ -1,6 +1,6 @@
 import 'package:ghostr/core/media/video_mime_type.dart';
 
-enum MediaPickSource { gallery, camera }
+enum MediaPickSource { gallery, camera, externalShare }
 
 class SelectedMedia {
   factory SelectedMedia({

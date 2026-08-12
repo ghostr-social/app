@@ -4,12 +4,14 @@ import 'package:ghostr/app/video_feed_binding.dart';
 import 'package:ghostr/features/session/domain/session_repository.dart';
 import 'package:ghostr/features/session/domain/user_session.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
+import 'package:ghostr/features/publish/domain/video_publishing_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
 import 'package:ghostr/features/video_sharing/domain/video_share_workflow.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 
 import 'fake_activity_repository.dart';
 import 'fake_app_settings_repository.dart';
+import 'fake_incoming_video_share_port.dart';
 import 'fake_media_ports.dart';
 import 'fake_session_repository.dart';
 import 'fake_video_catalog_repository.dart';
@@ -23,6 +25,7 @@ AppDependencies buildFakeDependencies({
   required FakeVideoCatalogRepository catalogRepository,
   VideoFeedUpdates? feedUpdates,
   FakeWatchHistoryRepository? watchHistory,
+  VideoPublishingRepository? publishing,
   FakeDeviceDependencies device = const FakeDeviceDependencies(),
 }) {
   return AppDependencies(
@@ -39,12 +42,14 @@ AppDependencies buildFakeDependencies({
       search: catalogRepository,
       searchUpdates: catalogRepository,
       trending: catalogRepository,
-      publishing: catalogRepository,
+      publishing: publishing ?? catalogRepository,
       comments: catalogRepository,
       social: catalogRepository,
     ),
     activityRepository: device.activity ?? FakeActivityRepository(),
     watchHistoryRepository: watchHistory ?? FakeWatchHistoryRepository(),
+    incomingVideoSharePort:
+        device.incomingVideoShares ?? FakeIncomingVideoSharePort(),
     mediaPickerPort: device.mediaPicker ?? FakeMediaPickerPort(),
     videoPlaybackPort: device.playback ?? FakeVideoPlaybackPort(),
     videoShareWorkflow: device.sharing ?? FakeVideoShareWorkflow(),
@@ -55,12 +60,14 @@ AppDependencies buildFakeDependencies({
 class FakeDeviceDependencies {
   const FakeDeviceDependencies({
     this.activity,
+    this.incomingVideoShares,
     this.mediaPicker,
     this.playback,
     this.sharing,
   });
 
   final FakeActivityRepository? activity;
+  final FakeIncomingVideoSharePort? incomingVideoShares;
   final FakeMediaPickerPort? mediaPicker;
   final VideoPlaybackPort? playback;
   final VideoShareWorkflow? sharing;

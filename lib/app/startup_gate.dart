@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
@@ -20,6 +21,8 @@ class StartupGate extends StatefulWidget {
 
 class _StartupGateState extends State<StartupGate> {
   late Future<AppDependencies> _dependencies = _load();
+  AppDependencies? _ownedDependencies;
+  bool _isDisposed = false;
 
   @override
   Widget build(BuildContext context) {
@@ -56,10 +59,20 @@ class _StartupGateState extends State<StartupGate> {
 
   Future<AppDependencies> _load() async {
     try {
-      return await widget.loadDependencies();
+      final dependencies = await widget.loadDependencies();
+      if (_isDisposed) {
+        await dependencies.close();
+      } else {
+        _ownedDependencies = dependencies;
+      }
+      return dependencies;
     } catch (error, stackTrace) {
-      log('Application startup failed.',
-          name: 'ghostr.startup', error: error, stackTrace: stackTrace);
+      log(
+        'Application startup failed.',
+        name: 'ghostr.startup',
+        error: error,
+        stackTrace: stackTrace,
+      );
       rethrow;
     }
   }
@@ -68,5 +81,14 @@ class _StartupGateState extends State<StartupGate> {
     setState(() {
       _dependencies = _load();
     });
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    final dependencies = _ownedDependencies;
+    _ownedDependencies = null;
+    if (dependencies != null) unawaited(dependencies.close());
+    super.dispose();
   }
 }

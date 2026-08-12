@@ -1,4 +1,5 @@
 import 'package:ghostr/app/app_dependencies.dart';
+import 'package:ghostr/core/media/incoming_video_share.dart';
 import 'package:ghostr/features/activity/presentation/activity_cubit.dart';
 import 'package:ghostr/features/comments/presentation/comments_cubit.dart';
 import 'package:ghostr/features/compose/presentation/compose_cubit.dart';
@@ -139,6 +140,9 @@ class AppControllerFactory {
   }
 
   VideoPlaybackPort get videoPlaybackPort => _dependencies.videoPlaybackPort;
+
+  IncomingVideoSharePort get incomingVideoSharePort =>
+      _dependencies.incomingVideoSharePort;
 
   VideoShareWorkflow get videoShareWorkflow => _dependencies.videoShareWorkflow;
 }
