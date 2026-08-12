@@ -46,6 +46,7 @@ lib/features/video_sharing/domain/video_file_share_port.dart
 lib/features/video_sharing/domain/video_share_workflow.dart
 lib/features/watch_history/domain/watch_history_repository.dart
 lib/features/video_inventory/domain/progressive_playback_gateway_port.dart
+lib/features/video_inventory/domain/screen_awake_port.dart
 lib/platform/media/cache_directory_provider.dart
 lib/shared/media/video_playback_port.dart
 lib/shared/theme/app_tokens.dart
