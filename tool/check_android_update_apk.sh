@@ -60,9 +60,13 @@ assert_value package app.ghostr "$package_name"
 assert_value 'version name' "$expected_name" "$version_name"
 assert_value 'version code' "$expected_code" "$version_code"
 
+# Build-tools <35 print "Signer #1 ..."; newer ones print "V2 Signer: ..."
+# (or V3/V3.1). Both anchors skip any "Source Stamp Signer" line.
 certificate_output=$("$apksigner" verify --print-certs "$apk_path")
 certificate=$(printf '%s\n' "$certificate_output" \
-  | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
+  | sed -n \
+      -e 's/^Signer #1 certificate SHA-256 digest: //p' \
+      -e 's/^V[0-9][0-9.]* Signer: certificate SHA-256 digest: //p' \
   | head -n 1 \
   | tr '[:upper:]' '[:lower:]')
 test "$certificate" = "$stable_certificate" || {

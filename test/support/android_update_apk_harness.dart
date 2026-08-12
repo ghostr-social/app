@@ -24,7 +24,7 @@ final class AndroidUpdateApkHarness {
     );
     _writeExecutable(
       '${directory.path}/apksigner',
-      _apksignerSource(fixture.certificate),
+      _apksignerSource(fixture.certificate, fixture.apksignerFormat),
     );
     File('${directory.path}/classes.dex').writeAsStringSync(
       fixture.includesIntegrationTest
@@ -80,7 +80,10 @@ case "\$2" in
 esac
 ''';
 
-String _apksignerSource(String certificate) =>
+String _apksignerSource(
+  String certificate,
+  ApksignerCertificateFormat format,
+) =>
     '''#!/bin/sh
-printf '%s\\n' 'Signer #1 certificate SHA-256 digest: $certificate'
+printf '%s\\n' '${format.label}: $certificate'
 ''';
