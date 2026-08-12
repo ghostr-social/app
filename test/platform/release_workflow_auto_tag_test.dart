@@ -15,7 +15,7 @@ void main() {
         contains(r'RELEASE_TAG: ${{ needs.version.outputs.tag }}'),
         contains("github.ref == 'refs/heads/main'"),
         contains(r'"$GITHUB_SHA"'),
-        contains(r'group: ${{ github.workflow }}-${{ github.ref }}'),
+        contains("&& 'android-release-publisher'"),
         contains('cancel-in-progress: false'),
       ),
     );

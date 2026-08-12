@@ -3,6 +3,10 @@ import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/settings/domain/blossom_server_url.dart';
 import 'package:ghostr/features/settings/domain/relay_url.dart';
 import 'package:ghostr/features/settings/presentation/settings_form_actions.dart';
+import 'package:ghostr/features/settings/presentation/settings_update_section.dart';
+import 'package:ghostr/features/settings/presentation/settings_watch_history_section.dart';
+import 'package:ghostr/features/app_update/presentation/app_update_status_panel.dart';
+import 'package:ghostr/features/app_update/presentation/app_update_state.dart';
 import 'package:ghostr/shared/theme/app_tokens.dart';
 
 class SettingsForm extends StatelessWidget {
@@ -10,12 +14,16 @@ class SettingsForm extends StatelessWidget {
     required this.settings,
     required this.isSaving,
     required this.actions,
+    this.updateState,
+    this.updateActions,
     super.key,
   });
 
   final AppSettings settings;
   final bool isSaving;
   final SettingsFormActions actions;
+  final AppUpdateState? updateState;
+  final AppUpdateStatusActions? updateActions;
 
   @override
   Widget build(BuildContext context) {
@@ -29,32 +37,25 @@ class SettingsForm extends StatelessWidget {
         const SizedBox(height: AppSpacing.xxl),
         ..._dataUsageSection(context),
         const SizedBox(height: AppSpacing.xxl),
-        ..._watchHistorySection(context),
+        SettingsUpdateSection(
+          preferences: settings.updatePreferences,
+          isSaving: isSaving,
+          onChanged: actions.updates.onChanged,
+          onCheckNow: actions.updates.onCheckNow,
+          updateState: updateState,
+          updateActions: updateActions,
+        ),
+        const SizedBox(height: AppSpacing.xxl),
+        SettingsWatchHistorySection(
+          hideWatchedVideos: settings.hideWatchedVideos,
+          isSaving: isSaving,
+          onHideWatchedChanged: actions.onHideWatchedChanged,
+          onOpenWatchHistory: actions.onOpenWatchHistory,
+        ),
         const SizedBox(height: AppSpacing.xl),
         _saveButton(),
       ],
     );
-  }
-
-  List<Widget> _watchHistorySection(BuildContext context) {
-    return [
-      _sectionTitle(context, 'Watch history'),
-      const SizedBox(height: AppSpacing.xs),
-      const Text('Skip videos you already watched when the feed reloads.'),
-      const SizedBox(height: AppSpacing.sm),
-      SwitchListTile(
-        key: const Key('hide-watched-field'),
-        title: const Text('Hide watched videos'),
-        value: settings.hideWatchedVideos,
-        onChanged: isSaving ? null : actions.onHideWatchedChanged,
-      ),
-      ListTile(
-        key: const Key('watch-history-entry'),
-        title: const Text('View watch history'),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: actions.onOpenWatchHistory,
-      ),
-    ];
   }
 
   List<Widget> _relaySection(BuildContext context) {
@@ -155,6 +156,7 @@ class SettingsForm extends StatelessWidget {
 
   Widget _saveButton() {
     return ElevatedButton(
+      key: const Key('save-settings-button'),
       onPressed: isSaving ? null : actions.onSave,
       child: Text(isSaving ? 'Saving...' : 'Save settings'),
     );

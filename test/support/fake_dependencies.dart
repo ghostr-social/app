@@ -1,5 +1,6 @@
 import 'package:ghostr/app/app_dependencies.dart';
 import 'package:ghostr/app/video_catalog_services.dart';
+import 'package:ghostr/app/production_app_update.dart';
 import 'package:ghostr/app/video_feed_binding.dart';
 import 'package:ghostr/features/session/domain/session_repository.dart';
 import 'package:ghostr/features/session/domain/user_session.dart';
@@ -23,6 +24,7 @@ AppDependencies buildFakeDependencies({
   required FakeVideoCatalogRepository catalogRepository,
   VideoFeedUpdates? feedUpdates,
   FakeWatchHistoryRepository? watchHistory,
+  AppUpdateRuntime? appUpdateRuntime,
   FakeDeviceDependencies device = const FakeDeviceDependencies(),
 }) {
   return AppDependencies(
@@ -49,6 +51,7 @@ AppDependencies buildFakeDependencies({
     videoPlaybackPort: device.playback ?? FakeVideoPlaybackPort(),
     videoShareWorkflow: device.sharing ?? FakeVideoShareWorkflow(),
     failureReporter: RecordingFailureReporter(),
+    appUpdateRuntime: appUpdateRuntime,
   );
 }
 

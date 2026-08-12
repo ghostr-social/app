@@ -13,6 +13,7 @@ class SettingsFormHarness {
   final bool isSaving;
   final List<RelayUrl> removedSearchRelays = <RelayUrl>[];
   final List<DataUsageLevel> dataUsageChanges = <DataUsageLevel>[];
+  final List<AppUpdatePreferences> updateChanges = <AppUpdatePreferences>[];
   int searchRelayAdds = 0;
 
   /// Uses a tall viewport so every settings section is built and hittable.
@@ -39,6 +40,10 @@ class SettingsFormHarness {
             onBudgetChanged: (_) {},
             onDataUsageChanged: dataUsageChanges.add,
             onHideWatchedChanged: (_) {},
+            updates: UpdateSettingsActions(
+              onChanged: updateChanges.add,
+              onCheckNow: null,
+            ),
             onSave: () {},
           ),
         ),

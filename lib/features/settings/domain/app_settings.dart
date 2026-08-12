@@ -1,8 +1,10 @@
+import 'package:ghostr/features/settings/domain/app_update_preferences.dart';
 import 'package:ghostr/features/settings/domain/blossom_server_url.dart';
 import 'package:ghostr/features/settings/domain/data_usage_level.dart';
 import 'package:ghostr/features/settings/domain/relay_url.dart';
 import 'package:ghostr/features/settings/domain/video_inventory_budget.dart';
 
+export 'app_update_preferences.dart';
 export 'data_usage_level.dart';
 export 'video_inventory_budget.dart';
 
@@ -14,6 +16,7 @@ class AppSettings {
     required bool hideWatchedVideos,
     List<RelayUrl>? searchRelays,
     DataUsageLevel dataUsage = DataUsageLevel.balanced,
+    AppUpdatePreferences updatePreferences = AppUpdatePreferences.defaults,
   }) {
     return AppSettings._(
       List<RelayUrl>.unmodifiable(relays),
@@ -22,6 +25,7 @@ class AppSettings {
       hideWatchedVideos,
       List<RelayUrl>.unmodifiable(searchRelays ?? defaultSearchRelays),
       dataUsage,
+      updatePreferences,
     );
   }
 
@@ -32,6 +36,7 @@ class AppSettings {
     this.hideWatchedVideos,
     this.searchRelays,
     this.dataUsage,
+    this.updatePreferences,
   );
 
   factory AppSettings.defaults() {
@@ -42,24 +47,21 @@ class AppSettings {
         RelayUrl.parse('wss://relay.nostr.band'),
       ],
       inventoryBudget: VideoInventoryBudget.twoGigabytes,
-      blossomServers: [
-        BlossomServerUrl.parse('https://blossom.primal.net'),
-      ],
+      blossomServers: [BlossomServerUrl.parse('https://blossom.primal.net')],
       hideWatchedVideos: true,
     );
   }
 
   /// Relays known to implement NIP-50 full-text search.
-  static final List<RelayUrl> defaultSearchRelays = List<RelayUrl>.unmodifiable(
-    <RelayUrl>[
-      RelayUrl.parse('wss://relay.nostr.band'),
-      RelayUrl.parse('wss://nostr.wine'),
-      RelayUrl.parse('wss://relay.noswhere.com'),
-      RelayUrl.parse('wss://search.nos.today'),
-      RelayUrl.parse('wss://antiprimal.net'),
-      RelayUrl.parse('wss://relay.ditto.pub'),
-    ],
-  );
+  static final List<RelayUrl> defaultSearchRelays =
+      List<RelayUrl>.unmodifiable(<RelayUrl>[
+        RelayUrl.parse('wss://relay.nostr.band'),
+        RelayUrl.parse('wss://nostr.wine'),
+        RelayUrl.parse('wss://relay.noswhere.com'),
+        RelayUrl.parse('wss://search.nos.today'),
+        RelayUrl.parse('wss://antiprimal.net'),
+        RelayUrl.parse('wss://relay.ditto.pub'),
+      ]);
 
   final List<RelayUrl> relays;
   final VideoInventoryBudget inventoryBudget;
@@ -67,6 +69,7 @@ class AppSettings {
   final bool hideWatchedVideos;
   final List<RelayUrl> searchRelays;
   final DataUsageLevel dataUsage;
+  final AppUpdatePreferences updatePreferences;
 
   AppSettings copyWith({
     List<RelayUrl>? relays,
@@ -75,6 +78,7 @@ class AppSettings {
     bool? hideWatchedVideos,
     List<RelayUrl>? searchRelays,
     DataUsageLevel? dataUsage,
+    AppUpdatePreferences? updatePreferences,
   }) {
     return AppSettings(
       relays: relays ?? this.relays,
@@ -83,6 +87,7 @@ class AppSettings {
       hideWatchedVideos: hideWatchedVideos ?? this.hideWatchedVideos,
       searchRelays: searchRelays ?? this.searchRelays,
       dataUsage: dataUsage ?? this.dataUsage,
+      updatePreferences: updatePreferences ?? this.updatePreferences,
     );
   }
 }
