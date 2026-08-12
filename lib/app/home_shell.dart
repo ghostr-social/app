@@ -160,7 +160,9 @@ class _HomeShellState extends State<HomeShell> {
     ),
   );
   FeedCubit _createFeedCubit() {
-    return _feedCubit = widget.controllers.feed()..load();
+    return _feedCubit = widget.controllers.feed(
+      viewerId: widget.session.profile.id,
+    )..load();
   }
 
   SearchCubit _createSearchCubit() {

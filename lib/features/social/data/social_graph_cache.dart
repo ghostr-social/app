@@ -4,6 +4,7 @@ import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/features/social/data/accepted_social_mutations.dart';
 import 'package:ghostr/features/social/data/best_effort_social_graph_mirror.dart';
 import 'package:ghostr/features/social/data/social_graph_task_coordinator.dart';
+import 'package:ghostr/features/social/domain/follow_outcome.dart';
 import 'package:ghostr/features/social/domain/social_graph_store.dart';
 import 'package:ghostr/features/social/domain/social_graph_repository.dart';
 import 'package:ghostr/features/social/domain/nostr_social_port.dart';
@@ -94,6 +95,30 @@ class SocialGraphCache implements SocialGraphRepository {
     );
     await _localMirror.saveBlocked(local, current);
     return current;
+  }
+
+  @override
+  Future<FollowOutcome> follow(ProfileId profileId) {
+    final local = _local.snapshotForActiveAccount();
+    final remote = _remote.snapshotForActiveAccount();
+    final account = _matchingAccount(local, remote);
+    return _tasks.mutate(
+      account,
+      SocialGraphMembership.followed,
+      () => _follow(account, remote, local, profileId),
+    );
+  }
+
+  Future<FollowOutcome> _follow(
+    NostrPublicKeyHex account,
+    NostrSocialPort remote,
+    SocialGraphStore local,
+    ProfileId profileId,
+  ) async {
+    final outcome = await remote.follow(profileId);
+    _accepted.accept(account, SocialGraphMembership.followed, profileId, true);
+    await _localMirror.applyFollow(local, profileId, true);
+    return outcome;
   }
 
   @override

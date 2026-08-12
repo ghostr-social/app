@@ -18,6 +18,7 @@ import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/toggle_profile_follow_workflow.dart';
+import 'package:ghostr/features/video_catalog/domain/follow_profile_workflow.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
 import 'package:ghostr/features/watch_history/presentation/watch_history_cubit.dart';
@@ -56,34 +57,48 @@ class AppControllerFactory {
     return TrendingHashtagsCubit(_dependencies.videoCatalogServices.trending);
   }
 
-  FeedCubit feed() {
+  FeedCubit feed({ProfileId? viewerId}) {
     final services = _dependencies.videoCatalogServices;
     return FeedCubit(
-      _feedDependencies(services.feed, updates: services.feedUpdates),
+      _feedDependencies(
+        services.feed,
+        viewerId: viewerId,
+        updates: services.feedUpdates,
+      ),
     );
   }
 
   /// A feed cubit bound to one search query or `#hashtag`.
-  FeedCubit discoveryFeed(String query) {
+  FeedCubit discoveryFeed(String query, {ProfileId? viewerId}) {
     return FeedCubit(
       _feedDependencies(
         QueryVideoFeedRepository(
           search: _dependencies.videoCatalogServices.search,
           query: query,
         ),
+        viewerId: viewerId,
       ),
     );
   }
 
   FeedDependencies _feedDependencies(
     VideoFeedRepository feed, {
+    ProfileId? viewerId,
     VideoFeedUpdates? updates,
   }) {
+    final services = _dependencies.videoCatalogServices;
     return FeedDependencies(
+      viewerId: viewerId,
       feed: feed,
-      engagement: _dependencies.videoCatalogServices.engagement,
+      engagement: services.engagement,
+      followProfile: DefaultFollowProfileWorkflow(
+        social: services.social,
+        activity: _dependencies.activityRepository,
+        clock: DateTime.now,
+        failureReporter: _dependencies.failureReporter,
+      ),
       optional: FeedOptionalDependencies(
-        social: _dependencies.videoCatalogServices.social,
+        social: services.social,
         focus: _feedFocus,
         watchTracker: WatchHistoryTracker(
           history: _dependencies.watchHistoryRepository,

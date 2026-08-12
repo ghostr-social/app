@@ -6,15 +6,18 @@ import '../support/recording_video_playback_port.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  testWidgets('comments pause feed playback until the sheet closes',
-      (tester) async {
+  testWidgets('comments pause feed playback until the sheet closes', (
+    tester,
+  ) async {
     final post = samplePost();
     final playback = RecordingVideoPlaybackPort();
     final repository = FakeVideoCatalogRepository(forYouFeed: [post]);
-    await tester.pumpWidget(feedScreenHarness(
-      repository,
-      playbackPort: playback,
-    ));
+    await tester.pumpWidget(
+      feedScreenHarness(
+        repository,
+        options: FeedScreenHarnessOptions(playbackPort: playback),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(playback.activity[post.media.debugLabel]!.last, isTrue);
 

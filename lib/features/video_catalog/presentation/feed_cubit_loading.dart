@@ -20,7 +20,7 @@ extension FeedCubitLoading on FeedCubit {
     final roster = _session.loaded(fresh);
     _backfill.restartFrom(roster.posts);
     if (roster.isEmpty) return _emitEmpty(kind);
-    _emitState(FeedLoaded.of(kind, roster));
+    _emitState(FeedLoaded.of(kind, roster, follows: _follows));
     _hunt.filled();
     _viewer.landedOn(roster.posts, 0);
     _ensureBuffered();
@@ -30,7 +30,7 @@ extension FeedCubitLoading on FeedCubit {
     final current = state is FeedLoaded ? state as FeedLoaded : initial;
     final roster = _session.resynced(current.roster, refreshed);
     if (roster.isEmpty) return _emitEmpty(current.kind);
-    _emitState(FeedLoaded.of(current.kind, roster));
+    _emitState(FeedLoaded.of(current.kind, roster, follows: _follows));
     _viewer.stayedOn(roster.active);
     _ensureBuffered();
   }

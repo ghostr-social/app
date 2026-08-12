@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
+import 'package:ghostr/features/video_catalog/presentation/widgets/feed_profile_action.dart';
 import 'package:ghostr/features/video_sharing/domain/video_share_origin.dart';
 import 'package:ghostr/shared/theme/app_tokens.dart';
-import 'package:ghostr/shared/widgets/profile_avatar.dart';
 
 enum FeedCardShareStatus { available, unavailable, downloading, busy }
 
 class FeedCardActions {
   const FeedCardActions({
     required this.onOpenProfile,
+    this.onFollowCreator,
     required this.onToggleLike,
     required this.onOpenComments,
     required this.onOpenHashtag,
@@ -18,6 +20,7 @@ class FeedCardActions {
   });
 
   final VoidCallback onOpenProfile;
+  final Future<void> Function(ProfileSummary creator)? onFollowCreator;
   final Future<void> Function(VideoPost post) onToggleLike;
   final VoidCallback onOpenComments;
   final ValueChanged<String> onOpenHashtag;
@@ -50,7 +53,11 @@ class _FeedCardActionRailState extends State<FeedCardActionRail> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _profileButton(),
+        FeedProfileAction(
+          profile: widget.post.creator,
+          onOpenProfile: widget.actions.onOpenProfile,
+          onFollow: widget.actions.onFollowCreator == null ? null : _follow,
+        ),
         const SizedBox(height: AppSpacing.lg),
         _likeButton(),
         const SizedBox(height: AppSpacing.md),
@@ -61,24 +68,8 @@ class _FeedCardActionRailState extends State<FeedCardActionRail> {
     );
   }
 
-  Widget _profileButton() {
-    return Tooltip(
-      message: 'Open profile',
-      child: GestureDetector(
-        onTap: widget.actions.onOpenProfile,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: AppPalette.foreground, width: 1.5),
-          ),
-          child: ProfileAvatar(
-            initials: widget.post.creator.initials,
-            avatarUrl: widget.post.creator.avatarUrl,
-            radius: AppSize.feedRailAvatar,
-          ),
-        ),
-      ),
-    );
+  Future<void> _follow() {
+    return widget.actions.onFollowCreator!(widget.post.creator);
   }
 
   Widget _likeButton() {

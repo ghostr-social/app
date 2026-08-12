@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:ghostr/features/social/domain/follow_outcome.dart';
 import 'package:ghostr/features/social/domain/social_graph_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
@@ -10,6 +11,7 @@ final class ProfileAggregationProbe
   final posts = Completer<List<VideoPost>>();
   final followed = Completer<Set<ProfileId>>();
   final blocked = Completer<Set<ProfileId>>();
+  final _acceptedFollows = <ProfileId>{};
   var postReads = 0;
   var followedReads = 0;
   var blockedReads = 0;
@@ -37,6 +39,13 @@ final class ProfileAggregationProbe
   }
 
   @override
+  Future<FollowOutcome> follow(ProfileId profileId) async {
+    return _acceptedFollows.add(profileId)
+        ? FollowOutcome.newlyFollowed
+        : FollowOutcome.alreadyFollowing;
+  }
+
+  @override
   Future<List<VideoPost>> loadOlder({
     required DateTime olderThan,
     Set<ProfileId>? creatorIds,
@@ -46,7 +55,11 @@ final class ProfileAggregationProbe
   Future<bool> toggleBlock(ProfileId profileId) async => false;
 
   @override
-  Future<bool> toggleFollow(ProfileId profileId) async => false;
+  Future<bool> toggleFollow(ProfileId profileId) async {
+    if (_acceptedFollows.remove(profileId)) return false;
+    _acceptedFollows.add(profileId);
+    return true;
+  }
 
   void release({List<VideoPost> loadedPosts = const <VideoPost>[]}) {
     if (!posts.isCompleted) posts.complete(loadedPosts);

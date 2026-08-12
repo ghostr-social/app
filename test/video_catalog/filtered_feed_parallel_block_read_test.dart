@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/features/social/domain/follow_outcome.dart';
 import 'package:ghostr/features/social/domain/social_graph_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/filtered_video_feed_repository.dart';
@@ -57,6 +58,7 @@ final class _DeferredReader implements VideoPostReader {
 
 final class _DeferredSocial implements SocialGraphRepository {
   final result = Completer<Set<ProfileId>>();
+  final followed = <ProfileId>{};
   bool started = false;
 
   @override
@@ -66,11 +68,22 @@ final class _DeferredSocial implements SocialGraphRepository {
   }
 
   @override
-  Future<Set<ProfileId>> loadFollowedProfiles() async => const <ProfileId>{};
+  Future<Set<ProfileId>> loadFollowedProfiles() async => {...followed};
+
+  @override
+  Future<FollowOutcome> follow(ProfileId profileId) async {
+    return followed.add(profileId)
+        ? FollowOutcome.newlyFollowed
+        : FollowOutcome.alreadyFollowing;
+  }
 
   @override
   Future<bool> toggleBlock(ProfileId profileId) async => false;
 
   @override
-  Future<bool> toggleFollow(ProfileId profileId) async => false;
+  Future<bool> toggleFollow(ProfileId profileId) async {
+    if (followed.remove(profileId)) return false;
+    followed.add(profileId);
+    return true;
+  }
 }

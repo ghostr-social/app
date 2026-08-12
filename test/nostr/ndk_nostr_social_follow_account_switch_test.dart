@@ -10,14 +10,17 @@ import '../support/ndk_mocks.dart';
 import '../support/nostr_test_values.dart';
 import '../support/scripted_nostr_event_client.dart';
 import '../support/social_broadcast_harness.dart';
+import '../support/social_event_fixtures.dart';
 
 void main() {
   setUpAll(registerNdkFallbackValues);
 
-  test('keeps follow mutation bound to the initiating signer', () async {
+  test('keeps follow state isolated to the initiating signer', () async {
     final started = Completer<void>();
     final response = Completer<List<NostrEventRecord>>();
+    var queries = 0;
     final client = ScriptedNostrEventClient((_) {
+      if (queries++ > 0) return <NostrEventRecord>[];
       started.complete();
       return response.future;
     });
@@ -29,11 +32,19 @@ void main() {
     );
     await started.future;
     harness.activePublicKey = testAuthorPublicKey;
-    response.complete(<NostrEventRecord>[]);
+    response.complete([
+      socialEvent(
+        identity: socialEventIdentity(1, ContactList.kKind, 10),
+        tags: const [
+          ['p', testCreatorPublicKey, '', ''],
+        ],
+      ),
+    ]);
 
     await expectLater(pending, completion(isTrue));
     final event = decodeSignedNostrEvent(harness.port.broadcasts.single);
     expect(event.pubKey, testViewerPublicKey);
-    expect(event.pTags, {testFanPublicKey});
+    expect(event.pTags, {testCreatorPublicKey, testFanPublicKey});
+    expect(await social.loadFollowedProfiles(), isEmpty);
   });
 }

@@ -1,20 +1,38 @@
 part of 'ndk_nostr_social.dart';
 
 extension _NdkNostrSocialMutations on NdkNostrSocial {
-  Future<bool> _enqueueFollow(String target) {
+  Future<FollowOutcome> _enqueueFollow(String target) {
     final publicKey = _publicKey!;
-    return _state.queue.run(
-      (publicKey, ContactList.kKind),
-      () => _toggleFollowTarget(publicKey, target),
-    );
+    return _state.queue.run((
+      publicKey,
+      ContactList.kKind,
+    ), () => _followTarget(publicKey, target));
+  }
+
+  Future<bool> _enqueueToggleFollow(String target) {
+    final publicKey = _publicKey!;
+    return _state.queue.run((
+      publicKey,
+      ContactList.kKind,
+    ), () => _toggleFollowTarget(publicKey, target));
+  }
+
+  Future<FollowOutcome> _followTarget(String publicKey, String target) async {
+    final contacts = await _followBaseline(publicKey);
+    if (contacts.contacts.contains(target)) {
+      return FollowOutcome.alreadyFollowing;
+    }
+    _addContact(contacts, target);
+    await _publishContacts(publicKey, contacts);
+    return FollowOutcome.newlyFollowed;
   }
 
   Future<bool> _enqueueBlock(String target) {
     final publicKey = _publicKey!;
-    return _state.queue.run(
-      (publicKey, Nip51List.kMute),
-      () => _toggleBlockTarget(publicKey, target),
-    );
+    return _state.queue.run((
+      publicKey,
+      Nip51List.kMute,
+    ), () => _toggleBlockTarget(publicKey, target));
   }
 
   Future<bool> _toggleFollowTarget(String publicKey, String target) async {
@@ -25,6 +43,11 @@ extension _NdkNostrSocialMutations on NdkNostrSocial {
     } else {
       _addContact(contacts, target);
     }
+    await _publishContacts(publicKey, contacts);
+    return !isFollowing;
+  }
+
+  Future<void> _publishContacts(String publicKey, ContactList contacts) async {
     contacts
       ..pubKey = publicKey
       ..createdAt = _nextTimestamp(publicKey, ContactList.kKind, contacts)
@@ -32,7 +55,6 @@ extension _NdkNostrSocialMutations on NdkNostrSocial {
     final accepted = await _broadcast(contacts.toEvent());
     _state.contactFloors[publicKey] = _copyContactList(contacts);
     await _cacheAcceptedFollow(contacts, accepted);
-    return !isFollowing;
   }
 
   Future<bool> _toggleBlockTarget(String publicKey, String target) async {
@@ -63,12 +85,11 @@ extension _NdkNostrSocialMutations on NdkNostrSocial {
     final key = _SocialRecordKey.parse(ContactList.kKind, publicKey);
     final records = await _transport.events.query(_socialQuery(key));
     final record = _newestSocialRecord(records, key);
-    final remote =
-        record == null ? null : ContactList.fromEvent(_localEvent(record));
-    final newest = _newestContact(accepted, remote);
-    return newest == null
-        ? ContactList(pubKey: publicKey, contacts: <String>[])
-        : _copyContactList(newest);
+    final remote = record == null
+        ? null
+        : ContactList.fromEvent(_localEvent(record));
+    final newest = _rememberContactFloor(_state, publicKey, remote);
+    return newest ?? ContactList(pubKey: publicKey, contacts: <String>[]);
   }
 
   Future<Nip51List> _muteBaseline(String publicKey) async {
@@ -107,8 +128,11 @@ extension _NdkNostrSocialMutations on NdkNostrSocial {
     final key = (publicKey, kind);
     final last = _state.lastTimestamps[key] ?? 0;
     final now = _clock().millisecondsSinceEpoch ~/ 1000;
-    final next =
-        <int>[now, baseline + 1, last + 1].reduce((a, b) => a > b ? a : b);
+    final next = <int>[
+      now,
+      baseline + 1,
+      last + 1,
+    ].reduce((a, b) => a > b ? a : b);
     _state.lastTimestamps[key] = next;
     return next;
   }
