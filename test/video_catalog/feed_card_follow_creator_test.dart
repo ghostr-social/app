@@ -50,7 +50,11 @@ void main() {
       final avatarRect = tester.getRect(avatar);
       final followRect = tester.getRect(follow);
       expect(followRect.center.dy, greaterThan(avatarRect.center.dy));
-      expect(followRect.top, lessThan(avatarRect.bottom + 12));
+      // TikTok-style intersection: the badge straddles the avatar's bottom
+      // edge instead of floating detached below it.
+      expect(followRect.top, lessThan(avatarRect.bottom));
+      expect(followRect.center.dy, moreOrLessEquals(avatarRect.bottom));
+      expect(followRect.center.dx, moreOrLessEquals(avatarRect.center.dx));
 
       await tester.tap(follow);
       await tester.pumpAndSettle();
