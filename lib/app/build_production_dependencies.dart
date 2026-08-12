@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:ghostr/app/app_dependencies.dart';
 import 'package:ghostr/app/production_nostr_services.dart';
+import 'package:ghostr/app/production_incoming_video_sharing.dart';
 import 'package:ghostr/app/production_video_catalog.dart';
 import 'package:ghostr/app/production_video_delivery.dart';
 import 'package:ghostr/app/production_video_playback.dart';
@@ -126,6 +127,7 @@ AppDependencies composeProductionDependencies(
       ),
     ),
     watchHistoryRepository: watchHistory,
+    incomingVideoSharePort: buildProductionIncomingVideoSharing(),
     activityRepository: NostrActivityRepository(
       client: nostr.eventClient,
       local: LocalActivityRepository(preferences, accountScope: accountScope),

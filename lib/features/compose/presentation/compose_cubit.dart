@@ -24,6 +24,7 @@ class ComposeCubit extends DisposalSafeCubit<ComposeState> {
   ComposeCubit(this._dependencies) : super(const ComposeState.idle());
 
   final ComposeDependencies _dependencies;
+  Future<void> Function(SelectedMedia media)? _onPreviewReleased;
 
   MediaPickerCapabilities get pickerCapabilities =>
       _dependencies.mediaPicker.capabilities;
@@ -38,6 +39,37 @@ class ComposeCubit extends DisposalSafeCubit<ComposeState> {
 
   Future<void> chooseFromGallery() {
     return _select(_dependencies.mediaPicker.pickFromGallery);
+  }
+
+  bool acceptSharedVideo(SelectedMedia media) {
+    if (state.isBusy) return false;
+    emit(state.selected(media));
+    return true;
+  }
+
+  void bindPreviewRelease(Future<void> Function(SelectedMedia media) release) {
+    _onPreviewReleased = release;
+  }
+
+  Future<void> releasePreviewMedia(SelectedMedia media) async {
+    if (media.source != MediaPickSource.externalShare) return;
+    await _waitForPublishedMedia(media);
+    try {
+      await _onPreviewReleased?.call(media);
+    } on Object {
+      return;
+    }
+  }
+
+  Future<void> _waitForPublishedMedia(SelectedMedia media) async {
+    final isActiveUpload =
+        state.isPublishing && state.media?.path == media.path;
+    if (!isActiveUpload) return;
+    try {
+      await stream.firstWhere((state) => !state.isPublishing);
+    } on StateError {
+      return;
+    }
   }
 
   Future<bool> publish(UserSession session, String rawCaption) async {
@@ -65,7 +97,11 @@ class ComposeCubit extends DisposalSafeCubit<ComposeState> {
     emit(state.selecting());
     try {
       final media = await operation();
-      emit(media == null ? state.selectionFinished() : state.selected(media));
+      if (media == null) {
+        emit(state.selectionFinished());
+        return;
+      }
+      emit(state.selected(media));
     } on AppFailure catch (failure) {
       emit(state.failed(failure.message));
     } on Object catch (error, stackTrace) {

@@ -1,4 +1,5 @@
 import 'package:ghostr/core/media/media_picker_port.dart';
+import 'package:ghostr/core/media/incoming_video_share.dart';
 import 'package:ghostr/core/errors/failure_reporter.dart';
 import 'package:ghostr/app/video_catalog_services.dart';
 import 'package:ghostr/features/activity/domain/activity_repository.dart';
@@ -15,6 +16,7 @@ class AppDependencies {
     required this.videoCatalogServices,
     required this.activityRepository,
     required this.watchHistoryRepository,
+    required this.incomingVideoSharePort,
     required this.mediaPickerPort,
     required this.videoPlaybackPort,
     required this.videoShareWorkflow,
@@ -26,8 +28,11 @@ class AppDependencies {
   final VideoCatalogServices videoCatalogServices;
   final ActivityRepository activityRepository;
   final WatchHistoryRepository watchHistoryRepository;
+  final IncomingVideoSharePort incomingVideoSharePort;
   final MediaPickerPort mediaPickerPort;
   final VideoPlaybackPort videoPlaybackPort;
   final VideoShareWorkflow videoShareWorkflow;
   final FailureReporter failureReporter;
+
+  Future<void> close() => incomingVideoSharePort.close();
 }

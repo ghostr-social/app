@@ -8,7 +8,9 @@ void main() {
 
     expect(
       makefile,
-      contains('cargo clippy --all-targets --all-features -- -D warnings'),
+      contains(
+        'cargo clippy --workspace --all-targets --all-features -- -D warnings',
+      ),
     );
   });
 }

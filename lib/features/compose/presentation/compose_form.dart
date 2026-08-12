@@ -39,12 +39,14 @@ class ComposeFormBindings {
     required this.playbackPort,
     required this.isActive,
     required this.pickerCapabilities,
+    this.onMediaReleased,
   });
 
   final TextEditingController captionController;
   final VideoPlaybackPort playbackPort;
   final bool isActive;
   final MediaPickerCapabilities pickerCapabilities;
+  final VoidCallback? onMediaReleased;
 }
 
 class ComposeForm extends StatelessWidget {
@@ -93,10 +95,9 @@ class ComposeForm extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         Text(
           'Publish a new clip from $_mediaSourceLabel into your Ghostr profile.',
-          style: Theme.of(context)
-              .textTheme
-              .bodyLarge
-              ?.copyWith(color: AppPalette.mutedForeground),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge?.copyWith(color: AppPalette.mutedForeground),
         ),
       ],
     );
@@ -122,6 +123,7 @@ class ComposeForm extends StatelessWidget {
             child: bindings.playbackPort.buildSurface(
               media: media,
               isActive: bindings.isActive,
+              onPlaybackMediaReleased: bindings.onMediaReleased,
             ),
           ),
         ),

@@ -1,6 +1,7 @@
 plugins {
     id "com.android.application"
     id "kotlin-android"
+    id "jacoco"
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id "dev.flutter.flutter-gradle-plugin"
 }
@@ -86,6 +87,62 @@ android {
             signingConfig = keystorePropertiesFile.exists()
                 ? signingConfigs.release
                 : signingConfigs.debug
+        }
+    }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+}
+
+dependencies {
+    testImplementation "junit:junit:4.13.2"
+    testImplementation "org.robolectric:robolectric:4.16"
+}
+
+jacoco {
+    toolVersion = "0.8.13"
+}
+
+tasks.withType(Test).configureEach {
+    jacoco.includeNoLocationClasses = true
+    jacoco.excludes = ["jdk.internal.*"]
+}
+
+def incomingVideoShareExecutionData = file(
+    "$buildDir/jacoco/testDebugUnitTest.exec",
+)
+def incomingVideoShareClasses = fileTree("$buildDir/tmp/kotlin-classes/debug") {
+    include "app/ghostr/IncomingVideoShare*.class"
+    include "app/ghostr/CapturedIncomingVideoIntent.class"
+}
+
+tasks.register("incomingVideoShareCoverageReport", JacocoReport) {
+    dependsOn "testDebugUnitTest"
+    executionData.from(incomingVideoShareExecutionData)
+    sourceDirectories.from(files("src/main/kotlin"))
+    classDirectories.from(incomingVideoShareClasses)
+    reports {
+        html.required = true
+        xml.required = true
+    }
+}
+
+tasks.register("incomingVideoShareCoverageCheck", JacocoCoverageVerification) {
+    dependsOn "incomingVideoShareCoverageReport"
+    executionData.from(incomingVideoShareExecutionData)
+    sourceDirectories.from(files("src/main/kotlin"))
+    classDirectories.from(incomingVideoShareClasses)
+    violationRules {
+        rule {
+            element = "SOURCEFILE"
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = 0.95
+            }
         }
     }
 }

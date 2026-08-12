@@ -14,6 +14,8 @@ ANDROID_AGENT_AVD_PORT ?= 5580
 ANDROID_AGENT_AVD_PACKAGE := system-images;android-37.1;google_apis_playstore_ps16k;x86_64
 ANDROID_AGENT_AVD_HOME ?= $(if $(ANDROID_AVD_HOME),$(ANDROID_AVD_HOME),$(if $(ANDROID_USER_HOME),$(ANDROID_USER_HOME)/avd,$(HOME)/.android/avd))
 ANDROID_AGENT_IMAGE_DIR := $(ANDROID_AGENT_SDK)/system-images/android-37.1/google_apis_playstore_ps16k/x86_64
+ANDROID_GRADLE_JAVA_HOME ?= $(shell if [ -x /usr/libexec/java_home ]; then /usr/libexec/java_home -v 21; fi)
+ANDROID_GRADLE_JAVA_OPTION := $(if $(ANDROID_GRADLE_JAVA_HOME),-Dorg.gradle.java.home=$(ANDROID_GRADLE_JAVA_HOME),)
 FLAGS ?=
 WEB_DEBUG_CACHE_DIR ?= $(CURDIR)/rust/target/video-debug-cache
 WEB_DEBUG_RUST_DIR ?= $(CURDIR)/rust
@@ -26,7 +28,7 @@ HAWK_REVISION_SHORT := 98efa9f
 	native-dead-code-install native-dead-code \
 	web-contract-test \
 	native-coverage-contract-test rust rust-no-clean gen icons run run-fast \
-	run-fast-profile android-debug-apk android-debug-apk-check \
+	run-fast-profile android-unit-tests android-debug-apk android-debug-apk-check \
 	android-release-apk android-release-apk-check android-agent-avd-create \
 	android-agent-avd-run build build-fast install help
 
@@ -100,6 +102,11 @@ run-fast: ## Run the Flutter app.
 
 run-fast-profile: ## Run the Flutter app in profile mode.
 	$(FLUTTER) run --profile $(FLAGS)
+
+android-unit-tests: ## Run host-side Android bridge and share-receiver tests.
+	$(FLUTTER) pub get
+	cd android && ./gradlew $(ANDROID_GRADLE_JAVA_OPTION) \
+		:app:incomingVideoShareCoverageCheck
 
 android-debug-apk: ## Build the Android debug APK.
 	$(FLUTTER) build apk --debug --target-platform "$(ANDROID_DEBUG_TARGET)"

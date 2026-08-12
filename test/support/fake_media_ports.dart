@@ -13,6 +13,7 @@ class FakeMediaPickerPort implements MediaPickerPort {
     this.galleryFailure,
     this.cameraFailure,
     this.recoveredMedia,
+    this.recoveredMediaFuture,
   });
 
   SelectedMedia? galleryMedia;
@@ -20,6 +21,7 @@ class FakeMediaPickerPort implements MediaPickerPort {
   AppFailure? galleryFailure;
   AppFailure? cameraFailure;
   SelectedMedia? recoveredMedia;
+  Future<SelectedMedia?>? recoveredMediaFuture;
   @override
   MediaPickerCapabilities capabilities =
       const MediaPickerCapabilities.allSupported();
@@ -41,7 +43,8 @@ class FakeMediaPickerPort implements MediaPickerPort {
   }
 
   @override
-  Future<SelectedMedia?> recoverLostVideo() async => recoveredMedia;
+  Future<SelectedMedia?> recoverLostVideo() =>
+      recoveredMediaFuture ?? Future.value(recoveredMedia);
 }
 
 class FakeVideoPlaybackPort implements VideoPlaybackPort {
@@ -52,14 +55,12 @@ class FakeVideoPlaybackPort implements VideoPlaybackPort {
     void Function()? onPlaybackMediaReleased,
   }) {
     return _ReleaseOnDispose(
+      key: ValueKey(media.debugLabel),
       onReleased: onPlaybackMediaReleased,
       child: ColoredBox(
         color: isActive ? Colors.black : Colors.black54,
         child: Center(
-          child: Text(
-            media.debugLabel,
-            textAlign: TextAlign.center,
-          ),
+          child: Text(media.debugLabel, textAlign: TextAlign.center),
         ),
       ),
     );
@@ -67,7 +68,11 @@ class FakeVideoPlaybackPort implements VideoPlaybackPort {
 }
 
 class _ReleaseOnDispose extends StatefulWidget {
-  const _ReleaseOnDispose({required this.onReleased, required this.child});
+  const _ReleaseOnDispose({
+    required this.onReleased,
+    required this.child,
+    super.key,
+  });
 
   final void Function()? onReleased;
   final Widget child;

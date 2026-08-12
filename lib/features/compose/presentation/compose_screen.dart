@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:ghostr/core/media/selected_media.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/features/compose/presentation/compose_cubit.dart';
 import 'package:ghostr/features/compose/presentation/compose_form.dart';
@@ -11,12 +14,14 @@ class ComposeScreen extends StatefulWidget {
     required this.session,
     required this.playbackPort,
     required this.isActive,
+    this.onPreviewMounted,
     super.key,
   });
 
   final UserSession session;
   final VideoPlaybackPort playbackPort;
   final bool isActive;
+  final ValueChanged<SelectedMedia>? onPreviewMounted;
 
   @override
   State<ComposeScreen> createState() => _ComposeScreenState();
@@ -42,6 +47,7 @@ class _ComposeScreenState extends State<ComposeScreen> {
 
   Widget _form(BuildContext context, ComposeState state) {
     final selected = state.media;
+    _notifyPreviewMounted(selected);
     final compose = context.read<ComposeCubit>();
     return ComposeForm(
       model: ComposeFormModel(
@@ -60,22 +66,34 @@ class _ComposeScreenState extends State<ComposeScreen> {
         playbackPort: widget.playbackPort,
         isActive: widget.isActive,
         pickerCapabilities: compose.pickerCapabilities,
+        onMediaReleased: selected == null
+            ? null
+            : () => unawaited(compose.releasePreviewMedia(selected)),
       ),
     );
   }
 
+  void _notifyPreviewMounted(SelectedMedia? media) {
+    if (media == null || widget.onPreviewMounted == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final selected = context.read<ComposeCubit>().state.media;
+      if (selected?.path == media.path) widget.onPreviewMounted!(media);
+    });
+  }
+
   void _publish() {
     context.read<ComposeCubit>().publish(
-          widget.session,
-          _captionController.text,
-        );
+      widget.session,
+      _captionController.text,
+    );
   }
 
   void _showNotice(BuildContext context, ComposeState state) {
     _captionController.clear();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(state.notice!)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(state.notice!)));
     context.read<ComposeCubit>().clearNotice();
   }
 }
