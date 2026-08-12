@@ -63,6 +63,7 @@ UserSession sampleSession() => UserSession.fromIdentity(
 ProfileDetails sampleProfileDetails({
   ProfileSummary? profile,
   List<VideoPost>? posts,
+  ProfileRelationship? relationship,
 }) {
   final summary = profile ?? sampleCreator();
   final profilePosts = posts ?? <VideoPost>[samplePost(creator: summary)];
@@ -70,11 +71,12 @@ ProfileDetails sampleProfileDetails({
     profile: summary,
     posts: profilePosts,
     statistics: ProfileStatistics(totalLikes: 42, followingCount: 3),
-    relationship: ProfileRelationship(
-      isFollowing: false,
-      isBlocked: false,
-      isCurrentUser: false,
-    ),
+    relationship: relationship ??
+        ProfileRelationship(
+          isFollowing: false,
+          isBlocked: false,
+          isCurrentUser: false,
+        ),
   );
 }
 

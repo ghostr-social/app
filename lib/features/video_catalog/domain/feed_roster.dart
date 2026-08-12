@@ -1,6 +1,7 @@
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_interaction_target.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
+import 'package:ghostr/features/video_catalog/domain/video_post_id.dart';
 
 /// The posts a viewer is scrolling through and where they are standing in
 /// them.
@@ -21,6 +22,14 @@ final class FeedRoster {
 
   /// How many videos are still queued after the one on screen.
   int get ahead => posts.length - activeIndex - 1;
+
+  /// The viewer enters the feed standing on [postId] — the video they chose
+  /// on a profile grid. Opens at the top when the post is absent.
+  FeedRoster openedAt(VideoPostId? postId) {
+    if (postId == null) return this;
+    final index = posts.indexWhere((post) => post.id == postId);
+    return index < 0 ? this : FeedRoster(posts, activeIndex: index);
+  }
 
   /// Replaces every held post with its [refreshed] revision and drops the
   /// ones the relays stopped returning. Posts the viewer has not reached

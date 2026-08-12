@@ -5,6 +5,7 @@ import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_profile_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/toggle_profile_follow_workflow.dart';
+import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_screen.dart';
 
@@ -18,6 +19,7 @@ Widget profileScreenHarness({
   VoidCallback? onSignedOut,
   ProfileMetadataRepository? metadata,
   ValueChanged<ProfileSummary>? onCurrentProfileUpdated,
+  ValueChanged<VideoPost>? onOpenVideo,
 }) {
   final cubit = ProfileCubit(
     ProfileDependencies(
@@ -36,7 +38,10 @@ Widget profileScreenHarness({
   return MaterialApp(
     home: BlocProvider.value(
       value: cubit..load(),
-      child: ProfileScreen(onSignedOut: onSignedOut ?? () {}),
+      child: ProfileScreen(
+        onSignedOut: onSignedOut ?? () {},
+        onOpenVideo: onOpenVideo,
+      ),
     ),
   );
 }

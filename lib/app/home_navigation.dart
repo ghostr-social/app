@@ -7,6 +7,7 @@ import 'package:ghostr/app/router/app_router.dart';
 import 'package:ghostr/features/session/domain/user_session.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
+import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 
 final class HomeNavigation {
   const HomeNavigation({
@@ -30,6 +31,22 @@ final class HomeNavigation {
           ProfileRouteRequest(
             session: session,
             profileId: profileId,
+            controllers: controllers,
+            onSignedOut: onSignedOut,
+            onCurrentProfileUpdated: onCurrentProfileUpdated,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void openProfileFeed(VideoPost post) {
+    unawaited(
+      pushCovering(
+        AppRouter.profileFeed(
+          ProfileFeedRouteRequest(
+            post: post,
+            session: session,
             controllers: controllers,
             onSignedOut: onSignedOut,
             onCurrentProfileUpdated: onCurrentProfileUpdated,
