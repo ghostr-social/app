@@ -1,7 +1,7 @@
 use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::retrieval_types::{PlanFailure, RetrievalOutcome};
 use crate::scheduler::{start_discovery_scheduler, DiscoveryHandle, DiscoverySchedulerConfig};
-use ghostr_engine::{inventory_controller::Mode, DataUsageLevel};
+use ghostr_engine::{adaptive::DiscoveryDemand, DataUsageLevel};
 use nostr_sdk::Event;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
@@ -44,11 +44,11 @@ pub(crate) fn scripted_scheduler_results(
         pages: Mutex::new(pages.into()),
     });
     let (outcome_sender, outcomes) = mpsc::unbounded_channel();
-    let (_, modes) = watch::channel(Mode::Comfort);
+    let (_, demand) = watch::channel(DiscoveryDemand::Hold);
     let handle = start_discovery_scheduler(DiscoverySchedulerConfig {
         executor,
         level: DataUsageLevel::Conservative,
-        modes,
+        demand,
         outcomes: outcome_sender,
     });
     ScriptedScheduler {

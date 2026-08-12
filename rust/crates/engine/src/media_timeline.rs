@@ -20,33 +20,6 @@ impl<'a> MediaSegment<'a> {
     }
 }
 
-/// A validated half-open media-time interval.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct PlaybackWindow {
-    start_ms: u64,
-    end_ms: u64,
-}
-
-impl PlaybackWindow {
-    pub fn try_new(start_ms: u64, end_ms: u64) -> Result<Self, PlaybackWindowError> {
-        if start_ms >= end_ms {
-            return Err(PlaybackWindowError);
-        }
-        Ok(Self { start_ms, end_ms })
-    }
-
-    pub(crate) const fn start_ms(self) -> u64 {
-        self.start_ms
-    }
-
-    pub(crate) const fn end_ms(self) -> u64 {
-        self.end_ms
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct PlaybackWindowError;
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TimelineError {
     Unavailable,
@@ -57,8 +30,14 @@ pub enum TimelineError {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MediaTimeline {
-    metadata: Vec<ByteRange>,
-    media: Vec<TimedRange>,
+    pub(crate) metadata: Vec<ByteRange>,
+    pub(crate) media: Vec<TimedRange>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct PlayableExtent {
+    pub(crate) bytes: ByteRange,
+    pub(crate) playable_ms: u64,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -69,35 +48,28 @@ pub(crate) struct TimedRange {
 }
 
 impl MediaTimeline {
-    pub fn duration_ms(&self) -> u64 {
-        self.media
-            .iter()
-            .map(|range| range.end_ms)
-            .max()
-            .unwrap_or(0)
-    }
-
-    pub fn media_ranges(&self, window: PlaybackWindow) -> Vec<ByteRange> {
-        normalize(
-            self.media
-                .iter()
-                .filter(|range| overlaps(**range, window))
-                .map(|range| range.bytes)
-                .collect(),
-        )
-    }
-
-    pub fn required_ranges(&self, window: PlaybackWindow) -> Vec<ByteRange> {
-        let mut ranges = self.metadata.clone();
-        ranges.extend(self.media_ranges(window));
-        normalize(ranges)
-    }
-
     pub fn fits_within(&self, total_bytes: u64) -> bool {
         self.metadata
             .iter()
             .chain(self.media.iter().map(|range| &range.bytes))
             .all(|range| range.end <= total_bytes)
+    }
+
+    pub(crate) fn playable_extents(&self) -> Vec<PlayableExtent> {
+        let mut extents: Vec<_> = self
+            .metadata
+            .iter()
+            .copied()
+            .map(|bytes| PlayableExtent {
+                bytes,
+                playable_ms: 1,
+            })
+            .collect();
+        extents.extend(self.media.iter().map(|range| PlayableExtent {
+            bytes: range.bytes,
+            playable_ms: range.end_ms.saturating_sub(range.start_ms).max(1),
+        }));
+        extents
     }
 
     pub(crate) fn from_parts(metadata: Vec<ByteRange>, media: Vec<TimedRange>) -> Self {
@@ -163,11 +135,7 @@ fn select_media(parsed: ParsedMedia, truncated: bool) -> Result<Vec<TimedRange>,
     Ok(media)
 }
 
-fn overlaps(range: TimedRange, window: PlaybackWindow) -> bool {
-    range.start_ms < window.end_ms() && range.end_ms > window.start_ms()
-}
-
-pub(crate) fn normalize(mut ranges: Vec<ByteRange>) -> Vec<ByteRange> {
+pub fn normalize(mut ranges: Vec<ByteRange>) -> Vec<ByteRange> {
     ranges.retain(|range| !range.is_empty());
     ranges.sort_by_key(|range| (range.start, range.end));
     ranges.into_iter().fold(Vec::new(), merge_range)

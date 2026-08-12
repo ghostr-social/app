@@ -2,16 +2,16 @@ use super::support::transfer_identity;
 use crate::chunk::cancel::{cancel_pair, CancelToken};
 use crate::manager::inflight::{ChunkAttempt, CompletionStatus, InFlightChunks};
 use crate::manager::plan::PlannedTransfer;
-use ghostr_engine::scoring::ChunkRequest;
-use ghostr_engine::tiers::Tier;
+use ghostr_engine::adaptive::PreemptionAuthority;
+use ghostr_engine::scheduling::RangeRequest;
 use ghostr_engine::{ByteRange, ChunkId, PostId};
 
 #[test]
 fn finished_fence_does_not_evict_live_protected_work() {
-    let current = transfer("current", 0, Tier::T0PlaybackEmergency, 0);
-    let next = transfer("next", 64, Tier::T2Startability, 64);
-    let farther = transfer("farther", 0, Tier::T2Startability, 0);
-    let adjacent = transfer("current", 64, Tier::T0PlaybackEmergency, 64);
+    let current = transfer("current", 0, PreemptionAuthority::PlaybackCritical, 0);
+    let next = transfer("next", 64, PreemptionAuthority::Transition, 64);
+    let farther = transfer("farther", 0, PreemptionAuthority::Transition, 0);
+    let adjacent = transfer("current", 64, PreemptionAuthority::PlaybackCritical, 64);
     let mut active = InFlightChunks::new();
     let (attempt, _) = insert(&mut active, &current);
     let (_, next_token) = insert(&mut active, &next);
@@ -33,8 +33,8 @@ fn finished_fence_does_not_evict_live_protected_work() {
 
 #[test]
 fn finished_fence_is_excluded_from_live_accounting() {
-    let current = transfer("current", 0, Tier::T0PlaybackEmergency, 0);
-    let unrelated = transfer("other", 0, Tier::T2Startability, 0);
+    let current = transfer("current", 0, PreemptionAuthority::PlaybackCritical, 0);
+    let unrelated = transfer("other", 0, PreemptionAuthority::Transition, 0);
     let mut active = InFlightChunks::new();
     let (attempt, _) = insert(&mut active, &current);
     attempt.mark_io_finished();
@@ -48,8 +48,8 @@ fn finished_fence_is_excluded_from_live_accounting() {
 
 #[test]
 fn finished_attempt_fences_adjacent_same_post_work_until_absorbed() {
-    let first = transfer("current", 0, Tier::T0PlaybackEmergency, 0);
-    let adjacent = transfer("current", 64, Tier::T0PlaybackEmergency, 64);
+    let first = transfer("current", 0, PreemptionAuthority::PlaybackCritical, 0);
+    let adjacent = transfer("current", 64, PreemptionAuthority::PlaybackCritical, 64);
     let mut active = InFlightChunks::new();
     let (attempt, _) = insert(&mut active, &first);
     attempt.mark_io_finished();
@@ -66,25 +66,27 @@ fn insert(active: &mut InFlightChunks, transfer: &PlannedTransfer) -> (ChunkAtte
         &attempt,
         transfer.request.clone(),
         "shared.example".to_owned(),
+        transfer.commitment_until_ms,
         handle,
     );
     (attempt, token)
 }
 
-fn transfer(post: &str, start: u64, tier: Tier, depth: u64) -> PlannedTransfer {
+fn transfer(post: &str, start: u64, authority: PreemptionAuthority, depth: u64) -> PlannedTransfer {
     let post = PostId::new(post);
     let url = format!("https://shared.example/{}.mp4", post.as_str());
     PlannedTransfer {
         identity: transfer_identity(&post, &url),
-        request: ChunkRequest {
+        request: RangeRequest {
             chunk: ChunkId {
                 post,
                 range: ByteRange::new(start, start + 64),
             },
-            tier,
+            authority,
             score: 1.0,
-            startup_depth_bytes: depth,
+            contiguous_depth_bytes: depth,
         },
         url,
+        commitment_until_ms: 0,
     }
 }

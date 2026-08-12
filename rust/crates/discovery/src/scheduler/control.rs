@@ -1,9 +1,7 @@
-//! Unified control loop policy (plan §5.4): the delivery engine's
-//! inventory mode steers discovery. Hunger widens the active feed's
-//! querying; comfort never spends the radio speculatively. Pure and
-//! table-tested — the scheduler only executes the returned action.
+//! Adaptive candidate demand steers speculative discovery. Expansion
+//! widens the active feed; hold keeps the radio quiet.
 
-use ghostr_engine::inventory_controller::Mode;
+use ghostr_engine::adaptive::DiscoveryDemand;
 
 /// What the scheduler knows about the active feed when a mode
 /// transition lands.
@@ -21,7 +19,7 @@ pub struct FeedQueryState {
     pub(crate) widened: bool,
 }
 
-/// Speculative discovery work one mode transition may trigger.
+/// Speculative discovery work one demand transition may trigger.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DiscoveryAction {
     /// Nothing speculative.
@@ -32,16 +30,16 @@ pub enum DiscoveryAction {
     WidenActiveQuery,
 }
 
-/// Hunger prefetches when a cursor is known and widens once when the
-/// feed looks exhausted; comfort always stays idle.
-pub(crate) fn discovery_action(mode: Mode, feed: FeedQueryState) -> DiscoveryAction {
-    match mode {
-        Mode::Comfort => DiscoveryAction::Idle,
-        Mode::Hunger => hunger_action(feed),
+/// Expansion prefetches when a cursor is known and widens once when the
+/// feed looks exhausted; held demand always stays idle.
+pub(crate) fn discovery_action(demand: DiscoveryDemand, feed: FeedQueryState) -> DiscoveryAction {
+    match demand {
+        DiscoveryDemand::Hold => DiscoveryAction::Idle,
+        DiscoveryDemand::Expand => expansion_action(feed),
     }
 }
 
-fn hunger_action(feed: FeedQueryState) -> DiscoveryAction {
+fn expansion_action(feed: FeedQueryState) -> DiscoveryAction {
     if !feed.available() {
         return DiscoveryAction::Idle;
     }

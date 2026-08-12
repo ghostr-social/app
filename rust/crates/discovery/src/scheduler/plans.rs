@@ -3,7 +3,7 @@
 use crate::query::search::{plan_discovery, QueryPlan};
 use crate::query::video_filters::{DiscoveryRequest, WIDE_QUERY_LIMIT};
 
-/// Reissues the primary video query at the wide hunger limit.
+/// Reissues the primary video query at the wide expansion limit.
 pub(crate) fn widened_plan(request: &DiscoveryRequest) -> QueryPlan {
     let mut plan = plan_discovery(request);
     if let Some(primary) = plan.queries.first_mut() {

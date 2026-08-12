@@ -1,4 +1,5 @@
-use crate::media_timeline::{parse_mp4_segments, MediaSegment, PlaybackWindow};
+use crate::media_timeline::{parse_mp4_segments, MediaSegment};
+use crate::tests::media_timeline_assertions::media_ranges;
 use crate::tests::media_timeline_support::{advanced_moov, atom, classic_moov, joined};
 use crate::ByteRange;
 
@@ -9,7 +10,7 @@ fn version_one_time_co64_fixed_sizes_and_multi_sample_chunks_are_supported() {
     let timeline = parse_mp4_segments(&[MediaSegment::new(0, &moov)]).unwrap();
 
     assert_eq!(
-        timeline.media_ranges(PlaybackWindow::try_new(0, 2_000).unwrap()),
+        media_ranges(&timeline, 0, 2_000),
         vec![ByteRange::new(offset, offset + 500)]
     );
 }
@@ -25,7 +26,7 @@ fn overlapping_tracks_produce_one_non_overlapping_range_intent() {
     let timeline = parse_mp4_segments(&[MediaSegment::new(0, &moov)]).unwrap();
 
     assert_eq!(
-        timeline.media_ranges(PlaybackWindow::try_new(0, 1_000).unwrap()),
+        media_ranges(&timeline, 0, 1_000),
         vec![ByteRange::new(1_000, 1_750)]
     );
 }

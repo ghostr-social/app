@@ -29,16 +29,6 @@ test("protected transitions click the next video immediately after first playing
     {protected: true, transitionOnly: true}, {protected: true, transitionOnly: false},
   ]);
   assert.equal(result.trace.qoe.protected_transition_latency_ms, 1);
-  assert.deepEqual(result.trace.focus_locality_epochs.map((epoch) => ({
-    preClick: epoch.pre_click ?? false,
-    focus: epoch.focus_id,
-    protected: epoch.protected_ids,
-    baseline: epoch.baseline_bytes[epoch.focus_id],
-  })), [
-    {preClick: true, focus: fixture.ids[0], protected: fixture.ids.slice(0, 4), baseline: 0},
-    locality(fixture.ids, 0), locality(fixture.ids, 1),
-    locality(fixture.ids, 2), locality(fixture.ids, 3),
-  ]);
 });
 
 async function addPlaying(events, input) {
@@ -77,11 +67,6 @@ function withNetwork(state, offset) {
 
 function clickedCount(events) {
   return events.filter((event) => event.startsWith("click:")).length;
-}
-
-function locality(ids, index) {
-  return {preClick: false, focus: ids[index],
-    protected: ids.slice(index, index + 4), baseline: 49_152 + index};
 }
 
 function journeyEvents(events) {

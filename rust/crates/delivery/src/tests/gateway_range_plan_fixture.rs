@@ -1,0 +1,98 @@
+use crate::delivery_events::{DeliveryFocus, FocusItem};
+use crate::manager::plan::{planned_work, PlanInputs, PlannedWork};
+use crate::manager::retry::{RetryBook, RetryPolicy};
+use crate::manager::state::DeliveryState;
+use crate::playback_demand::DemandSignal;
+use crate::tests::adaptive_plan_fixture::playback_for;
+use crate::tests::media_timeline_fixture::classic_moov;
+use ghostr_engine::adaptive::StorageSnapshot;
+use ghostr_engine::catalog::LearnedFacts;
+use ghostr_engine::host_stats::{HostStats, ThroughputSample};
+use ghostr_engine::media_timeline::{parse_mp4_segments, MediaSegment};
+use ghostr_engine::{ByteRange, DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
+use std::collections::HashMap;
+use std::time::Duration;
+
+pub(super) fn demand_plan(demanded: ByteRange) -> PlannedWork {
+    build_demand_plan(demanded, false)
+}
+
+pub(super) fn buffered_demand_plan(demanded: ByteRange) -> PlannedWork {
+    build_demand_plan(demanded, true)
+}
+
+fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
+    let post = PostId::new("current");
+    let mut state = state(post.clone());
+    if buffered {
+        state.apply_playback(playback_for(post.clone(), 10_000));
+    }
+    let stats = stats(buffered);
+    let retry = RetryBook::new(RetryPolicy::default());
+    planned_work(
+        &mut state,
+        PlanInputs {
+            stats: &stats,
+            retry: &retry,
+            present: &HashMap::new(),
+            in_flight: &[],
+            storage: StorageSnapshot::new(2_000_000_000, 0),
+            connection_capacity: 1,
+            connection_ceiling: 1,
+            packet_loss_bps: 0,
+            observed_at_ms: 1,
+            demanded: Some(DemandSignal {
+                post,
+                range: demanded,
+            }),
+        },
+    )
+}
+
+fn stats(buffered: bool) -> HostStats {
+    let mut stats = HostStats::new();
+    if buffered {
+        let sample = ThroughputSample::new(1_000_000, Duration::from_secs(1), 1_000, 1).unwrap();
+        stats.record_overall_throughput(sample);
+        stats.record_host_throughput("media.example", sample);
+    }
+    stats
+}
+
+fn state(post: PostId) -> DeliveryState {
+    let meta = VideoMeta {
+        urls: vec!["https://media.example/video.mp4".into()],
+        delivery: DeliveryKind::Progressive,
+        sha256: None,
+        size_bytes: Some(20_000),
+        duration_ms: Some(1_000),
+    };
+    let mut state = DeliveryState::new(EngineParams::default(), DataUsageLevel::Balanced);
+    state.apply_focus(
+        DeliveryFocus::compatibility(
+            vec![FocusItem {
+                post: post.clone(),
+                meta,
+            }],
+            0,
+            0,
+        ),
+        0,
+    );
+    state.catalog_mut().learn(
+        &post,
+        LearnedFacts {
+            accept_ranges: Some(true),
+            ..LearnedFacts::default()
+        },
+    );
+    install_timeline(&mut state, &post);
+    state
+}
+
+fn install_timeline(state: &mut DeliveryState, post: &PostId) {
+    let moov = classic_moov(100, 100);
+    let timeline = parse_mp4_segments(&[MediaSegment::new(10_000, &moov)]).unwrap();
+    let binding = state.catalog().binding(post).unwrap();
+    assert!(state.catalog_mut().learn_timeline_for(&binding, timeline));
+}

@@ -5,14 +5,14 @@
 
 use crate::manager::admission::origin_key;
 use crate::manager::plan::{PlannedTransfer, PlannedTransferId};
-use ghostr_engine::tiers::Tier;
+use ghostr_engine::adaptive::PreemptionAuthority;
 use std::collections::{HashSet, VecDeque};
 
 #[derive(Default)]
 pub(crate) struct MutablePriorityQueue {
     pending: VecDeque<PlannedTransfer>,
     wanted: HashSet<PlannedTransferId>,
-    frontier: Option<Tier>,
+    frontier: Option<PreemptionAuthority>,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -42,7 +42,10 @@ impl MutablePriorityQueue {
             .into_iter()
             .filter(|transfer| seen.insert(transfer.id()))
             .collect();
-        self.frontier = self.pending.front().map(|transfer| transfer.request.tier);
+        self.frontier = self
+            .pending
+            .front()
+            .map(|transfer| transfer.request.authority);
         self.wanted = seen;
     }
 
@@ -69,7 +72,8 @@ impl MutablePriorityQueue {
     fn idle_frontier_index(&self, active_hosts: &HashSet<String>) -> Option<usize> {
         let frontier = self.frontier?;
         self.pending.iter().position(|transfer| {
-            transfer.request.tier == frontier && !active_hosts.contains(&origin_key(&transfer.url))
+            transfer.request.authority == frontier
+                && !active_hosts.contains(&origin_key(&transfer.url))
         })
     }
 
@@ -77,7 +81,7 @@ impl MutablePriorityQueue {
         let frontier = self.frontier?;
         self.pending
             .iter()
-            .position(|transfer| transfer.request.tier == frontier)
+            .position(|transfer| transfer.request.authority == frontier)
     }
 
     fn playback_index(
@@ -88,9 +92,7 @@ impl MutablePriorityQueue {
         let idle = || self.idle_foreground_index(active_hosts);
         let foreground_index = || self.foreground_index();
         if foreground.needs_fill() {
-            return idle()
-                .or_else(foreground_index)
-                .or_else(|| self.protected_index());
+            return idle().or_else(foreground_index);
         }
         self.protected_index()
             .or_else(idle)
@@ -99,7 +101,7 @@ impl MutablePriorityQueue {
 
     fn idle_foreground_index(&self, active_hosts: &HashSet<String>) -> Option<usize> {
         self.pending.iter().position(|transfer| {
-            is_foreground(transfer.request.tier)
+            is_foreground(transfer.request.authority)
                 && !active_hosts.contains(&origin_key(&transfer.url))
         })
     }
@@ -107,13 +109,13 @@ impl MutablePriorityQueue {
     fn foreground_index(&self) -> Option<usize> {
         self.pending
             .iter()
-            .position(|transfer| is_foreground(transfer.request.tier))
+            .position(|transfer| is_foreground(transfer.request.authority))
     }
 
     fn protected_index(&self) -> Option<usize> {
         self.pending
             .iter()
-            .position(|transfer| transfer.request.tier == Tier::T2Startability)
+            .position(|transfer| transfer.request.authority == PreemptionAuthority::Transition)
     }
 
     #[cfg(test)]
@@ -132,6 +134,6 @@ impl MutablePriorityQueue {
     }
 }
 
-fn is_foreground(tier: Tier) -> bool {
-    matches!(tier, Tier::T0PlaybackEmergency | Tier::T1CurrentTail)
+fn is_foreground(authority: PreemptionAuthority) -> bool {
+    authority == PreemptionAuthority::PlaybackCritical
 }

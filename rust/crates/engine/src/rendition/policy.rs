@@ -7,33 +7,14 @@ use crate::playback::{BufferTarget, EstimateConfidence, NetworkConditions, Playb
 const DEFAULT_DOWNGRADE_HEADROOM_MILLI: u16 = 1_100;
 const DEFAULT_UPGRADE_HEADROOM_MILLI: u16 = 1_400;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum DowngradeCause {
-    ThroughputRisk,
-    BufferRisk,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum QualityChange {
-    Initial,
-    Maintained,
-    Upgraded,
-    Downgraded(DowngradeCause),
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct QualityDecision {
     selected: Rendition,
-    change: QualityChange,
 }
 
 impl QualityDecision {
     pub fn selected(&self) -> &Rendition {
         &self.selected
-    }
-
-    pub fn change(&self) -> QualityChange {
-        self.change
     }
 }
 
@@ -96,10 +77,7 @@ impl QualitySelectionPolicy {
         risk: BufferRisk,
     ) -> QualityDecision {
         let limit = selection_limit(input, risk, self.upgrade_headroom_milli);
-        decision(
-            renditions.highest_at_or_below(limit),
-            QualityChange::Initial,
-        )
+        decision(renditions.highest_at_or_below(limit))
     }
 
     fn select_from_current(
@@ -110,7 +88,7 @@ impl QualitySelectionPolicy {
         risk: BufferRisk,
     ) -> QualityDecision {
         if risk == BufferRisk::Frozen {
-            return decision(current, QualityChange::Maintained);
+            return decision(current);
         }
         let safe = renditions.highest_at_or_below(selection_limit(
             input,
@@ -118,7 +96,7 @@ impl QualitySelectionPolicy {
             self.downgrade_headroom_milli,
         ));
         if safe.bitrate_bits_per_second() < current.bitrate_bits_per_second() {
-            return decision(safe, QualityChange::Downgraded(risk.cause()));
+            return decision(safe);
         }
         self.upgrade_or_hold(renditions, current, input, risk)
     }
@@ -132,7 +110,7 @@ impl QualitySelectionPolicy {
     ) -> QualityDecision {
         if risk != BufferRisk::Comfortable || input.network.confidence() != EstimateConfidence::High
         {
-            return decision(current, QualityChange::Maintained);
+            return decision(current);
         }
         let candidate = renditions.highest_at_or_below(selection_limit(
             input,
@@ -140,9 +118,9 @@ impl QualitySelectionPolicy {
             self.upgrade_headroom_milli,
         ));
         if candidate.bitrate_bits_per_second() > current.bitrate_bits_per_second() {
-            decision(candidate, QualityChange::Upgraded)
+            decision(candidate)
         } else {
-            decision(current, QualityChange::Maintained)
+            decision(current)
         }
     }
 }
@@ -156,9 +134,8 @@ fn selection_limit(input: &QualitySelectionInput, risk: BufferRisk, headroom_mil
     limited.min(u128::from(u64::MAX)) as u64
 }
 
-fn decision(selected: &Rendition, change: QualityChange) -> QualityDecision {
+fn decision(selected: &Rendition) -> QualityDecision {
     QualityDecision {
         selected: selected.clone(),
-        change,
     }
 }

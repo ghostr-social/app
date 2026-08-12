@@ -1,7 +1,8 @@
-//! Inbound control surface of the delivery manager: focus and config
-//! updates arrive over a channel so the manager reacts to events
+//! Inbound control surface of the delivery manager: focus, config, and
+//! network updates arrive over a channel so the manager reacts to events
 //! instead of polling.
 
+use ghostr_engine::adaptive::AllocationPlan;
 use ghostr_engine::playback::{PlaybackObservation, PlaybackObservationSequence, PlaybackSession};
 use ghostr_engine::video_rendition::VideoRendition;
 use ghostr_engine::{DataUsageLevel, PostId, VideoMeta};
@@ -9,10 +10,13 @@ use tokio::sync::{mpsc, oneshot};
 
 mod focus_generation;
 mod mailbox;
+mod plan_evidence;
 pub(crate) use focus_generation::FocusGenerationGuard;
 pub use focus_generation::{FocusAdmission, FocusGeneration};
 pub use mailbox::MailboxReceiver;
 use mailbox::MailboxSender;
+pub use plan_evidence::PlanEvidence;
+use plan_evidence::PlanEvidenceHistory;
 
 const DEFAULT_CANDIDATE_CAPACITY: usize = 32;
 
@@ -23,8 +27,7 @@ pub struct FocusItem {
     pub meta: VideoMeta,
 }
 
-/// A validated discovery candidate. Admission makes metadata available
-/// to probing immediately; feed focus only changes its download rank.
+/// A validated discovery candidate available to probes before focus ranks it.
 #[derive(Clone, Debug)]
 pub struct DeliveryCandidate {
     pub post: PostId,
@@ -64,10 +67,11 @@ pub struct DeliveryPlayback {
 #[derive(Debug)]
 pub enum DeliveryCommand {
     Candidate(DeliveryCandidate),
-    Prioritize(PostId),
     Focus(DeliveryFocus),
     Playback(DeliveryPlayback),
     Config(DataUsageLevel),
+    NetworkChanged,
+    StorageChanged,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -84,15 +88,12 @@ pub enum CandidateAdmission {
 pub struct DeliveryHandle {
     sender: MailboxSender,
     clears: mpsc::Sender<ClearRequest>,
+    plans: PlanEvidenceHistory,
 }
 
 impl DeliveryHandle {
     pub fn admit_candidate(&self, candidate: DeliveryCandidate) -> CandidateAdmission {
         self.sender.send_candidate(candidate)
-    }
-
-    pub fn prioritize_candidate(&self, post: PostId) {
-        self.sender.send_control(DeliveryCommand::Prioritize(post));
     }
 
     pub fn update_focus(&self, focus: DeliveryFocus) -> FocusAdmission {
@@ -106,6 +107,18 @@ impl DeliveryHandle {
 
     pub fn set_data_usage(&self, level: DataUsageLevel) {
         self.sender.send_control(DeliveryCommand::Config(level));
+    }
+
+    pub fn network_changed(&self) {
+        self.sender.send_control(DeliveryCommand::NetworkChanged);
+    }
+
+    pub fn storage_changed(&self) {
+        self.sender.send_control(DeliveryCommand::StorageChanged);
+    }
+
+    pub fn plan_history(&self) -> Vec<PlanEvidence> {
+        self.plans.snapshot()
     }
 
     pub async fn clear(&self) -> anyhow::Result<()> {
@@ -125,6 +138,7 @@ pub type ClearRequest = oneshot::Sender<anyhow::Result<()>>;
 pub struct CommandReceiver {
     commands: MailboxReceiver,
     clears: mpsc::Receiver<ClearRequest>,
+    plans: PlanEvidenceHistory,
 }
 
 impl CommandReceiver {
@@ -148,12 +162,16 @@ impl CommandReceiver {
         self.commands.has_candidate()
     }
 
-    pub(crate) fn try_control(&mut self) -> Option<DeliveryCommand> {
+    pub fn try_control(&mut self) -> Option<DeliveryCommand> {
         self.commands.try_control()
     }
 
-    pub(crate) fn try_candidate(&mut self) -> Option<DeliveryCandidate> {
+    pub fn try_candidate(&mut self) -> Option<DeliveryCandidate> {
         self.commands.try_candidate()
+    }
+
+    pub fn publish_plan(&mut self, observed_at_ms: u64, plan: AllocationPlan) {
+        self.plans.publish(observed_at_ms, plan);
     }
 }
 
@@ -166,11 +184,17 @@ pub fn command_channel_with_candidate_capacity(
 ) -> (DeliveryHandle, CommandReceiver) {
     let (sender, commands) = mailbox::channel(capacity);
     let (clear_sender, clears) = mpsc::channel(1);
+    let plans = PlanEvidenceHistory::default();
     (
         DeliveryHandle {
             sender,
             clears: clear_sender,
+            plans: plans.clone(),
         },
-        CommandReceiver { commands, clears },
+        CommandReceiver {
+            commands,
+            clears,
+            plans,
+        },
     )
 }

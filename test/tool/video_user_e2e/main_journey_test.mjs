@@ -10,7 +10,7 @@ test("the main adapter runs the selected impairment and reports artifacts", asyn
     arguments: ["--scenario=packet_loss"],
     environment: {TOKEN: "local"},
     root: "/workspace",
-    verify: async () => ({version: "1", sha256: "abc", path: "/browser"}),
+    verify: async () => ({version: "Server Chromium 1", path: "/browser"}),
     run: async (value) => { input = value; return {artifacts: "/artifacts/run-1"}; },
     log: (message) => logs.push(message),
   });

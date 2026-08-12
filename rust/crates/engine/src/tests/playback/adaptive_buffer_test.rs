@@ -18,7 +18,7 @@ fn network(
 }
 
 #[test]
-fn a_fast_stable_host_keeps_startup_shorter_than_steady_reserve() {
+fn a_fast_stable_host_keeps_a_small_steady_reserve() {
     let policy = AdaptiveBufferPolicy::default();
     let media = MediaConsumption::new(4_000_000, 1_000);
 
@@ -27,7 +27,6 @@ fn a_fast_stable_host_keeps_startup_shorter_than_steady_reserve() {
         media,
     );
 
-    assert!(target.startup() < target.steady());
     assert!(target.steady() <= Duration::from_secs(8));
 }
 
@@ -41,8 +40,6 @@ fn latency_and_variability_buy_more_reserve_for_the_same_media() {
     let stable_target = policy.target(stable, media);
     let risky_target = policy.target(risky, media);
 
-    assert!(risky_target.startup() > stable_target.startup());
-    assert!(risky_target.startup() <= Duration::from_secs(6));
     assert!(risky_target.steady() > stable_target.steady());
     assert!(risky_target.emergency_horizon() > stable_target.emergency_horizon());
 }
@@ -55,5 +52,5 @@ fn a_host_that_cannot_sustain_playback_uses_the_bounded_maximum() {
 
     let target = policy.target(constrained, media);
 
-    assert_eq!(target.steady(), policy.maximum());
+    assert_eq!(target.steady(), Duration::from_secs(30));
 }

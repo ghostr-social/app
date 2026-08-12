@@ -4,7 +4,7 @@ use crate::tests::scripted_scheduler_support::scripted_scheduler;
 use nostr_sdk::{EventBuilder, Keys, Kind, Timestamp};
 
 #[tokio::test]
-async fn query_walks_raw_cursor_without_a_dart_or_mode_command() {
+async fn query_walks_raw_cursor_without_a_dart_or_demand_command() {
     let junk = EventBuilder::new(Kind::TextNote, "not playable")
         .custom_created_at(Timestamp::from(100))
         .sign_with_keys(&Keys::generate())

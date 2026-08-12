@@ -7,9 +7,8 @@
 use crate::chunk::cancel::CancelToken;
 use crate::chunk::network::{prepare_network, NetworkPreparation};
 use crate::chunk::response::{classify, RangeReply};
-use crate::chunk::sink::ChunkWrite;
 use crate::chunk::stream::{stream_into, StreamInput, Streamed};
-use crate::chunk::traffic::{ChunkTraffic, NoopTraffic};
+use crate::chunk::traffic::ChunkTraffic;
 use crate::debug::network::NetworkThrottle;
 use anyhow::{ensure, Result};
 use ghostr_engine::host_stats::{host_of, HostStats};
@@ -20,7 +19,8 @@ use std::time::Duration;
 use tokio::time::Instant;
 
 mod opened;
-pub use crate::chunk::sink::ChunkSink;
+pub use crate::chunk::sink::{ChunkSink, ChunkWrite};
+pub use crate::chunk::traffic::ChunkTraffic as DownloadTraffic;
 use opened::send_ranged;
 
 /// One granted transfer: which range of which URL to fetch.
@@ -41,24 +41,8 @@ pub struct ChunkResult {
     pub(crate) request_started: bool,
 }
 
-/// Downloads one granted chunk into the store. Accepts `206 Partial
-/// Content`, and `200 OK` only for grants starting at byte zero (the
-/// body is a full-file stream, capped at the grant). A `200` at a
-/// nonzero offset writes nothing and reports `accept_ranges: false` so
-/// the engine reclassifies the video as all-or-nothing. Completed and
-/// cancelled transfers record host throughput and success; failures
-/// record a host failure. Cancelled transfers keep persisted bytes.
-pub async fn download_chunk_throttled(
-    spec: &ChunkSpec<'_>,
-    sink: &ChunkSink<'_>,
-    stats: &mut HostStats,
-    cancel: &CancelToken,
-    network: &NetworkThrottle,
-) -> Result<ChunkResult> {
-    run_download(spec, sink, stats, cancel, Some(network), &mut NoopTraffic).await
-}
-
-pub(crate) async fn download_chunk_observed<W: ChunkWrite + ?Sized>(
+/// Executes an admitted range and emits transfer observations.
+pub async fn download_chunk_observed<W: ChunkWrite + ?Sized>(
     spec: &ChunkSpec<'_>,
     sink: &W,
     stats: &mut HostStats,

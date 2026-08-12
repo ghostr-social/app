@@ -11,7 +11,6 @@ fn an_observation_preserves_the_measured_playback_frontier_and_rate() {
     )
     .expect("valid playback observation");
 
-    assert_eq!(observation.position(), Duration::from_secs(7));
     assert_eq!(observation.buffer_ahead(), Duration::from_secs(5));
     assert_eq!(observation.playback_rate_milli(), 1_250);
     assert_eq!(observation.phase(), PlaybackPhase::Playing);

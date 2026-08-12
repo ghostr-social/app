@@ -1,6 +1,4 @@
-use crate::media_timeline::{
-    parse_mp4_segments, MediaSegment, PlaybackWindow, PlaybackWindowError, TimelineError,
-};
+use crate::media_timeline::{parse_mp4_segments, MediaSegment, TimelineError};
 use crate::tests::cmaf_timeline_support::cmaf_sidx;
 use crate::tests::media_timeline_support::{atom, classic_moov};
 
@@ -27,11 +25,7 @@ fn an_invalid_media_timescale_is_rejected() {
 }
 
 #[test]
-fn invalid_windows_and_missing_metadata_are_explicit() {
-    assert_eq!(
-        PlaybackWindow::try_new(1_000, 1_000),
-        Err(PlaybackWindowError)
-    );
+fn missing_metadata_is_explicit() {
     assert_eq!(
         parse_mp4_segments(&[MediaSegment::new(0, b"not an mp4")]),
         Err(TimelineError::Unavailable)

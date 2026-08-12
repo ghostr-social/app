@@ -20,7 +20,7 @@ fn catalog_switches_to_the_safe_representation_without_merging_mirrors() {
     );
     let unchanged =
         catalog.upsert_with_renditions(post.clone(), high.meta().clone(), vec![high, low.clone()]);
-    assert_eq!(unchanged.generation(), first.generation());
+    assert_eq!(unchanged, first);
     let network = NetworkConditions::new(
         250_000,
         0,
@@ -41,7 +41,7 @@ fn catalog_switches_to_the_safe_representation_without_merging_mirrors() {
         .select_rendition(&post, network, observation, target)
         .expect("quality changed");
 
-    assert_ne!(switched.generation(), first.generation());
+    assert_ne!(switched, first);
     assert_eq!(catalog.lookup(&post).unwrap().meta, low.meta().clone());
     assert_eq!(
         catalog.estimated_bitrate(&post, &Default::default()),

@@ -2,7 +2,7 @@ use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::retrieval_types::{EventProgress, RetrievalOutcome};
 use crate::scheduler::{start_discovery_scheduler, DiscoverySchedulerConfig};
 use crate::tests::scheduler_support::{context, next_outcome, note_at, request};
-use ghostr_engine::{inventory_controller::Mode, DataUsageLevel};
+use ghostr_engine::{adaptive::DiscoveryDemand, DataUsageLevel};
 use std::sync::Arc;
 use tokio::sync::{mpsc, watch};
 
@@ -33,11 +33,11 @@ impl PlanExecutor for BurstExecutor {
 #[tokio::test]
 async fn relay_bursts_stream_every_event_through_bounded_backpressure() {
     let (outcomes, mut reported) = mpsc::unbounded_channel();
-    let (_, modes) = watch::channel(Mode::Comfort);
+    let (_, demand) = watch::channel(DiscoveryDemand::Hold);
     let handle = start_discovery_scheduler(DiscoverySchedulerConfig {
         executor: Arc::new(BurstExecutor),
         level: DataUsageLevel::Conservative,
-        modes,
+        demand,
         outcomes,
     });
     handle.open_feed(context("bounded"), request());

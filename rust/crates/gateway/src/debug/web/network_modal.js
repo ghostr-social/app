@@ -4,6 +4,7 @@ function formProfile() {
   return {
     bandwidth_kbps: Number(byId("bandwidth").value),
     latency_ms: Number(byId("latency").value),
+    packet_loss_bps: Number(byId("packet-loss").value),
     max_connections_per_host: Number(byId("connections-limit").value),
   };
 }

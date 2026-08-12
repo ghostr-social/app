@@ -1,14 +1,14 @@
 use crate::delivery_events::{
     command_channel, CandidateAdmission, DeliveryCandidate, DeliveryFocus, FocusAdmission,
 };
-use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
+use ghostr_engine::{DataUsageLevel, DeliveryKind, PostId, VideoMeta};
 
 #[tokio::test]
 async fn closed_mailbox_reports_rejection_and_ends_receiving() {
     let (handle, receiver) = command_channel();
     drop(receiver);
 
-    handle.prioritize_candidate(PostId::new("control"));
+    handle.set_data_usage(DataUsageLevel::Balanced);
     assert_eq!(
         handle.update_focus(DeliveryFocus::compatibility(Vec::new(), 0, 0)),
         FocusAdmission::Closed
@@ -21,7 +21,7 @@ async fn closed_mailbox_reports_rejection_and_ends_receiving() {
     let (handle, mut receiver) = command_channel();
     drop(handle);
     let (commands, _) = receiver.receivers();
-    assert!(commands.recv().await.is_none());
+    assert!(!commands.changed().await);
 }
 
 fn candidate() -> DeliveryCandidate {

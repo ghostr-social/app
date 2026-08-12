@@ -5,7 +5,6 @@ import {QOE_TARGETS} from "../../../tool/video_user_e2e/qoe_targets.mjs";
 
 test("startup and every visible focus switch meet their latency targets", () => {
   const trace = {
-    warm_prefetch: {latency_ms: 1_000},
     clicks: [{id: "a", at_ms: 0}, {id: "b", at_ms: 1_000}],
     samples: [
       player("a", "starting", 100),

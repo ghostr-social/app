@@ -1,16 +1,19 @@
 use super::support::{active_hosts, planned_queue, transfer_posts};
 use crate::mutable_priority_queue::ForegroundSlots;
-use ghostr_engine::tiers::Tier;
+use ghostr_engine::adaptive::PreemptionAuthority;
 use std::collections::HashSet;
 
 #[test]
 fn playback_frontier_opens_one_protected_startup_lane() {
-    for tier in [Tier::T0PlaybackEmergency, Tier::T1CurrentTail] {
+    for authority in [
+        PreemptionAuthority::PlaybackCritical,
+        PreemptionAuthority::PlaybackCritical,
+    ] {
         let mut queue = planned_queue(
             &[
-                ("playing", tier),
-                ("depth", tier),
-                ("next", Tier::T2Startability),
+                ("playing", authority),
+                ("depth", authority),
+                ("next", PreemptionAuthority::Transition),
             ],
             "shared.example",
         );
@@ -31,9 +34,9 @@ fn playback_frontier_opens_one_protected_startup_lane() {
 fn seed_only_replan_restores_missing_playback_before_another_seed() {
     let mut queue = planned_queue(
         &[
-            ("playing", Tier::T0PlaybackEmergency),
-            ("active-seed", Tier::T2Startability),
-            ("next-seed", Tier::T2Startability),
+            ("playing", PreemptionAuthority::PlaybackCritical),
+            ("active-seed", PreemptionAuthority::Transition),
+            ("next-seed", PreemptionAuthority::Transition),
         ],
         "shared.example",
     );
@@ -43,6 +46,23 @@ fn seed_only_replan_restores_missing_playback_before_another_seed() {
         .expect("missing playback");
 
     assert_eq!(selected.request.chunk.post.as_str(), "playing");
+}
+
+#[test]
+fn a_missing_playback_slot_is_not_loaned_to_another_transition() {
+    let mut queue = planned_queue(
+        &[
+            ("cooling-playback", PreemptionAuthority::PlaybackCritical),
+            ("active-seed", PreemptionAuthority::Transition),
+            ("next-seed", PreemptionAuthority::Transition),
+        ],
+        "shared.example",
+    );
+    let _cooling = queue.pop_for_hosts(&HashSet::new(), slots(0, 1));
+
+    assert!(queue
+        .pop_for_hosts(&active_hosts("shared.example"), slots(0, 1))
+        .is_none());
 }
 
 fn slots(active: usize, goal: usize) -> ForegroundSlots {

@@ -1,6 +1,6 @@
 use crate::playback::EstimateConfidence;
-use crate::rendition::{DowngradeCause, QualityChange, QualitySelectionPolicy};
-use crate::tests::rendition_support::{ladder, network, playing_input};
+use crate::rendition::QualitySelectionPolicy;
+use crate::tests::rendition_support::{id, ladder, network, playing_input};
 
 #[test]
 fn a_buffer_below_steady_target_recovers_on_a_lower_rendition() {
@@ -9,9 +9,5 @@ fn a_buffer_below_steady_target_recovers_on_a_lower_rendition() {
 
     let decision = policy.select(&ladder(), playing_input(network, Some("high"), 4, 1_000));
 
-    assert_eq!(decision.selected().id().as_str(), "medium");
-    assert_eq!(
-        decision.change(),
-        QualityChange::Downgraded(DowngradeCause::BufferRisk),
-    );
+    assert_eq!(decision.selected().id(), &id("medium"));
 }

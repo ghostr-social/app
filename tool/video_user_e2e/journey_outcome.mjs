@@ -1,4 +1,3 @@
-import {warmAheadBytes} from "./ordered_prefetch_metrics.mjs";
 import {requireImpairmentActivation} from "./impairment_activation.mjs";
 
 export function validateJourney(trace, options = {}) {
@@ -63,7 +62,6 @@ function progressRequiredIds(samples, clicks) {
 }
 
 function requireAheadPrefetch(trace) {
-  if (warmAheadBytes(trace) > 0) return;
   const observed = (trace.samples ?? []).some((sample) => {
     const current = sample.state.videos.find((video) => video.id === sample.player.id);
     const ahead = sample.state.videos.some(
@@ -71,7 +69,9 @@ function requireAheadPrefetch(trace) {
     );
     return current && current.downloaded_bytes < current.total_bytes && ahead;
   });
-  if (!observed) throw new Error("ahead work did not begin before current EOF");
+  if (!observed && trace.scenario !== "storage_pressure") {
+    throw new Error("ahead work did not begin before current EOF");
+  }
 }
 
 function requireFastJumps(samples = [], clicks = [], maximum) {

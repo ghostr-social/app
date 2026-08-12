@@ -1,6 +1,4 @@
-//! The delivery manager publishes inventory mode transitions over a
-//! watch channel so discovery can widen on hunger and stay quiet in
-//! comfort (plan §5.4 unified control loop).
+//! The delivery manager publishes resource-driven candidate demand to discovery.
 
 mod delivery_fixture;
 
@@ -8,11 +6,11 @@ use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::{media_client, temp_directory};
 use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_delivery::manager::{
-    start_delivery_manager_with_modes, DeliveryManagerConfig, DeliveryTuning,
+    start_delivery_manager_with_discovery_demand, DeliveryManagerConfig, DeliveryTuning,
 };
 use ghostr_delivery::playback_demand::demand_channel;
 use ghostr_delivery::progressive_posts::ServablePosts;
-use ghostr_engine::inventory_controller::Mode;
+use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_engine::{DataUsageLevel, EngineParams};
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
@@ -22,7 +20,7 @@ use tokio::sync::Mutex;
 use tokio::time::timeout;
 
 #[tokio::test]
-async fn delivery_manager_publishes_mode_transitions() {
+async fn delivery_manager_publishes_adaptive_discovery_demand() {
     let root = temp_directory("ghostr-mode-watch");
     let store = Arc::new(PartialRangeStore::with_capacity(
         root.clone(),
@@ -40,36 +38,32 @@ async fn delivery_manager_publishes_mode_transitions() {
         level: DataUsageLevel::Balanced,
         tuning: DeliveryTuning::default(),
     };
-    let (handle, mut modes) = start_delivery_manager_with_modes(config, demand_receiver);
+    let (handle, mut discovery_demand) =
+        start_delivery_manager_with_discovery_demand(config, demand_receiver);
     assert_eq!(
-        *modes.borrow(),
-        Mode::Hunger,
-        "a fresh controller is hungry"
+        *discovery_demand.borrow(),
+        DiscoveryDemand::Expand,
+        "an empty candidate supply needs expansion"
     );
 
-    // An empty focus window meets its (empty) startable target.
-    handle.update_focus(focus_now(Vec::new(), 0, 0));
-    timeout(Duration::from_secs(5), modes.changed())
-        .await
-        .expect("a mode transition should publish")
-        .expect("manager should stay alive");
-    assert_eq!(*modes.borrow(), Mode::Comfort);
-
-    // Two unfetched posts drop the inventory below target minus the
-    // hysteresis margin, so the controller falls back to hunger.
     let unreachable = "http://127.0.0.1:9/video.mp4";
     handle.update_focus(focus_now(
-        vec![
-            sized_item("aa11", unreachable, 64, 1_000),
-            sized_item("bb22", unreachable, 64, 1_000),
-        ],
+        vec![sized_item("aa11", unreachable, 64, 1_000)],
         0,
         0,
     ));
-    timeout(Duration::from_secs(5), modes.changed())
+    timeout(Duration::from_secs(5), discovery_demand.changed())
         .await
-        .expect("a second transition should publish")
+        .expect("emergency demand should publish")
         .expect("manager should stay alive");
-    assert_eq!(*modes.borrow(), Mode::Hunger);
+    assert_eq!(*discovery_demand.borrow(), DiscoveryDemand::Hold);
+
+    handle.update_focus(focus_now(Vec::new(), 0, 0));
+    timeout(Duration::from_secs(5), discovery_demand.changed())
+        .await
+        .expect("empty supply should request expansion")
+        .expect("manager should stay alive");
+    assert_eq!(*discovery_demand.borrow(), DiscoveryDemand::Expand);
+    handle.clear().await.unwrap();
     std::fs::remove_dir_all(&root).ok();
 }

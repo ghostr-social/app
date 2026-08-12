@@ -1,11 +1,12 @@
 mod range_fixture;
 
 use ghostr_delivery::chunk::cancel::{cancel_pair, CancelHandle};
-use ghostr_delivery::chunk::downloader::{download_chunk_throttled, ChunkSink, ChunkSpec};
+use ghostr_delivery::chunk::downloader::{ChunkSink, ChunkSpec};
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::ByteRange;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
+use range_fixture::download_chunk_throttled;
 use std::time::Duration;
 
 #[tokio::test]

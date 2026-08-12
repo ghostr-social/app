@@ -1,5 +1,8 @@
 #![cfg(feature = "video-debug-web")]
 
+mod gateway_fixture;
+
+use gateway_fixture::commands::next_control;
 use ghostr_delivery::delivery_events::{command_channel, DeliveryCommand};
 use ghostr_gateway::debug::videos::{DebugVideoRegistration, DebugVideos};
 
@@ -20,7 +23,7 @@ async fn registering_the_same_url_updates_one_focus_item() {
     videos.add(updated).expect("updated video");
     assert!(videos.select(&id));
 
-    let DeliveryCommand::Focus(focus) = commands.receivers().0.recv().await.expect("focus") else {
+    let DeliveryCommand::Focus(focus) = next_control(&mut commands).await else {
         panic!("expected focus");
     };
     assert_eq!(focus.items.len(), 1);

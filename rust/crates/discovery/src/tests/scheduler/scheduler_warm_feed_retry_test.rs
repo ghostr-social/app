@@ -4,7 +4,7 @@ use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::retrieval_types::{EventProgress, PlanFailure, RetrievalOutcome};
 use crate::scheduler::{start_discovery_scheduler, DiscoverySchedulerConfig};
 use crate::tests::scheduler_support::{context, next_outcome, next_started, note_at, request};
-use ghostr_engine::{inventory_controller::Mode, DataUsageLevel};
+use ghostr_engine::{adaptive::DiscoveryDemand, DataUsageLevel};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -45,10 +45,10 @@ impl PlanExecutor for WarmThenFail {
 }
 
 #[tokio::test(start_paused = true)]
-async fn hunger_failure_does_not_restart_retry_after_playable_progress() {
+async fn expansion_failure_does_not_restart_retry_after_playable_progress() {
     let (starts, mut started) = mpsc::unbounded_channel();
     let (outcome_sender, mut outcomes) = mpsc::unbounded_channel();
-    let (modes, mode_updates) = watch::channel(Mode::Comfort);
+    let (demand_sender, demand) = watch::channel(DiscoveryDemand::Hold);
     let first_page_gate = Arc::new(Semaphore::new(0));
     let handle = start_discovery_scheduler(DiscoverySchedulerConfig {
         executor: Arc::new(WarmThenFail {
@@ -57,7 +57,7 @@ async fn hunger_failure_does_not_restart_retry_after_playable_progress() {
             first_page_gate: first_page_gate.clone(),
         }),
         level: DataUsageLevel::Conservative,
-        modes: mode_updates,
+        demand,
         outcomes: outcome_sender,
     });
     handle.open_feed(context("main"), request());
@@ -69,7 +69,9 @@ async fn hunger_failure_does_not_restart_retry_after_playable_progress() {
     first_page_gate.add_permits(1);
     next_outcome(&mut outcomes).await;
 
-    modes.send(Mode::Hunger).expect("hunger");
+    demand_sender
+        .send(DiscoveryDemand::Expand)
+        .expect("scheduler subscribed");
     next_started(&mut started).await;
     next_outcome(&mut outcomes).await;
     next_outcome(&mut outcomes).await;

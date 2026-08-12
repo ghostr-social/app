@@ -8,15 +8,16 @@ use delivery_fixture::temp_directory;
 use delivery_fixture::wait::wait_not_servable;
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
-use raw_http::spawn_raw_server;
+use raw_http::spawn_response_sequence;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn range_blind_origin_cannot_erase_or_advance_a_resumed_download() {
     let root = temp_directory("ghostr-manager-range-blind");
-    let response = b"HTTP/1.1 200 OK\r\nContent-Type: video/mp4\r\nContent-Length: 16\r\nConnection: close\r\n\r\n0123456789abcdef";
-    let (origin, request) = spawn_raw_server(response).await;
+    let probe = b"HTTP/1.1 200 OK\r\nContent-Type: video/mp4\r\nContent-Length: 16\r\nAccept-Ranges: bytes\r\nConnection: close\r\n\r\n";
+    let ignored = b"HTTP/1.1 200 OK\r\nContent-Type: video/mp4\r\nContent-Length: 16\r\nConnection: close\r\n\r\n0123456789abcdef";
+    let (origin, requests) = spawn_response_sequence(vec![probe, ignored]).await;
     let item = sized_item("aa11", &origin, 16, 1_000);
     let earlier = PartialRangeStore::with_capacity(
         root.clone(),
@@ -29,7 +30,7 @@ async fn range_blind_origin_cannot_erase_or_advance_a_resumed_download() {
     let harness = start_harness_at(root, options);
 
     harness.handle.update_focus(focus_now(vec![item], 0, 5_000));
-    request.await.expect("range request");
+    requests.await.expect("probe and range request");
     wait_not_servable(&harness.posts, "aa11").await;
 
     assert_eq!(

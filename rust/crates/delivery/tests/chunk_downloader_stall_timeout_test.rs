@@ -1,10 +1,11 @@
 mod range_fixture;
 
 use ghostr_delivery::chunk::cancel::cancel_pair;
-use ghostr_delivery::chunk::downloader::{download_chunk_throttled, ChunkSink, ChunkSpec};
+use ghostr_delivery::chunk::downloader::{ChunkSink, ChunkSpec};
 use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_engine::ByteRange;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
+use range_fixture::download_chunk_throttled;
 
 #[tokio::test(start_paused = true)]
 async fn chunk_downloader_times_out_on_a_stalled_transfer_and_records_a_failure() {

@@ -37,6 +37,19 @@ impl RangeManifest {
         Ok(())
     }
 
+    pub(crate) fn remove(&mut self, span: &Range<u64>) -> u64 {
+        if span.start >= span.end {
+            return 0;
+        }
+        let before = self.covered_bytes();
+        let mut remaining = Vec::new();
+        for &(start, end) in &self.ranges {
+            retain_outside(&mut remaining, start..end, span);
+        }
+        self.ranges = remaining;
+        before.saturating_sub(self.covered_bytes())
+    }
+
     pub fn ranges(&self) -> Vec<Range<u64>> {
         self.ranges.iter().map(|&(start, end)| start..end).collect()
     }
@@ -101,6 +114,19 @@ impl RangeManifest {
             manifest.set_total_len(len).ok()?;
         }
         Some(manifest)
+    }
+}
+
+fn retain_outside(remaining: &mut Vec<(u64, u64)>, stored: Range<u64>, removed: &Range<u64>) {
+    if removed.end <= stored.start || removed.start >= stored.end {
+        remaining.push((stored.start, stored.end));
+        return;
+    }
+    if stored.start < removed.start {
+        remaining.push((stored.start, removed.start.min(stored.end)));
+    }
+    if removed.end < stored.end {
+        remaining.push((removed.end.max(stored.start), stored.end));
     }
 }
 

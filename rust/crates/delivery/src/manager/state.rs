@@ -3,33 +3,34 @@
 
 use crate::candidate_priority::CandidatePriority;
 use crate::delivery_events::{DeliveryCandidate, FocusGenerationGuard};
+use ghostr_engine::adaptive::{DiscoveryDemand, NavigationHistory, NavigationSnapshot};
 use ghostr_engine::budget::params_for;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::focus::{FocusState, FocusUpdate};
-use ghostr_engine::inventory_controller::{
-    InventoryController, InventoryState, Mode, PresentRanges,
-};
 use ghostr_engine::playback::PlaybackStatus;
 use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use tokio::sync::watch;
 
 pub(crate) struct DeliveryState {
     catalog: Catalog,
     focus: FocusState,
-    controller: InventoryController,
     base: EngineParams,
     effective: EngineParams,
     level: DataUsageLevel,
-    mode_watch: Option<watch::Sender<Mode>>,
+    discovery_watch: Option<watch::Sender<DiscoveryDemand>>,
     candidates: CandidatePriority,
     projection_focus: bool,
     playback: PlaybackStatus,
     focus_generations: FocusGenerationGuard,
     pending_representations: Vec<RepresentationBinding>,
+    changed_representations: Vec<PostId>,
+    navigation: NavigationHistory,
+    recent_evictions: HashMap<PostId, Vec<ghostr_engine::ByteRange>>,
 }
 
+mod evictions;
 mod focus;
 mod playback;
 mod probes;
@@ -41,16 +42,18 @@ impl DeliveryState {
         Self {
             catalog: Catalog::new(),
             focus: FocusState::new(),
-            controller: InventoryController::new(effective),
             base,
             effective,
             level,
-            mode_watch: None,
+            discovery_watch: None,
             candidates: CandidatePriority::default(),
             projection_focus: true,
             playback: PlaybackStatus::default(),
             focus_generations: FocusGenerationGuard::default(),
             pending_representations: Vec::new(),
+            changed_representations: Vec::new(),
+            navigation: NavigationHistory::default(),
+            recent_evictions: HashMap::new(),
         }
     }
 
@@ -78,25 +81,8 @@ impl DeliveryState {
         self.prune_scheduling_state();
     }
 
-    pub(crate) fn prioritize(&mut self, post: PostId) {
-        let mut window = self.candidate_posts();
-        window.retain(|candidate| candidate != &post);
-        window.insert(0, post);
-        self.projection_focus = false;
-        self.focus.update_focus(FocusUpdate {
-            window,
-            current_index: 0,
-            watch_ms: 0,
-        });
-        self.discard_inactive_playback();
-        self.prune_scheduling_state();
-    }
-
-    /// Publishes inventory mode transitions to `sender` (unified
-    /// control loop, plan §5.4): discovery widens on hunger and stays
-    /// quiet in comfort. Only actual transitions notify receivers.
-    pub(crate) fn publish_modes(&mut self, sender: watch::Sender<Mode>) {
-        self.mode_watch = Some(sender);
+    pub(crate) fn publish_discovery_demand(&mut self, sender: watch::Sender<DiscoveryDemand>) {
+        self.discovery_watch = Some(sender);
     }
 
     /// Re-derives the budgeted parameters from the pristine base
@@ -104,39 +90,28 @@ impl DeliveryState {
     pub(crate) fn apply_level(&mut self, level: DataUsageLevel) {
         self.level = level;
         self.effective = params_for(level, self.base);
-        self.controller = InventoryController::new(self.effective);
     }
 
     pub(crate) fn clear(&mut self) {
         self.catalog = Catalog::new();
         self.focus = FocusState::new();
-        self.controller = InventoryController::new(self.effective);
         self.candidates = CandidatePriority::default();
         self.projection_focus = true;
         self.playback.discard_session();
         self.pending_representations.clear();
+        self.changed_representations.clear();
+        self.navigation = NavigationHistory::default();
+        self.recent_evictions.clear();
     }
 
-    pub(crate) fn observe_inventory(
-        &mut self,
-        present: &PresentRanges,
-        head_seconds: &dyn Fn(&PostId) -> u64,
-    ) -> InventoryState {
-        let state =
-            self.controller
-                .inventory_state_with(&self.catalog, &self.focus, present, head_seconds);
-        self.notify_mode(state.mode);
-        state
-    }
-
-    fn notify_mode(&self, mode: Mode) {
-        let Some(sender) = &self.mode_watch else {
+    pub(crate) fn observe_discovery_demand(&self, demand: DiscoveryDemand) {
+        let Some(sender) = &self.discovery_watch else {
             return;
         };
         sender.send_if_modified(|current| {
-            let changed = *current != mode;
+            let changed = *current != demand;
             if changed {
-                *current = mode;
+                *current = demand;
             }
             changed
         });
@@ -160,6 +135,10 @@ impl DeliveryState {
 
     pub(crate) fn concurrency(&self) -> usize {
         self.effective.concurrency(self.level)
+    }
+
+    pub(crate) fn navigation(&self, observed_at_ms: u64) -> NavigationSnapshot {
+        self.navigation.snapshot(observed_at_ms)
     }
 
     /// Window posts in scroll order, deduplicated.

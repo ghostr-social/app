@@ -3,12 +3,22 @@
 //! safe end of the eviction order.
 
 use crate::partial_range_disk as disk;
+use crate::partial_range_store::capacity::CapacitySnapshot;
 use crate::partial_range_store::PartialRangeStore;
 use anyhow::Result;
 use std::ops::Range;
 use std::path::PathBuf;
 
 impl PartialRangeStore {
+    /// Effective storage limit and total accounted usage from one
+    /// write-serialized observation.
+    pub async fn capacity_snapshot(&self) -> CapacitySnapshot {
+        let _entries = self.entries.lock().await;
+        let used = *self.used_bytes.lock().await;
+        let limit = self.capacity.cap(&self.root, used).await;
+        CapacitySnapshot::new(limit, used)
+    }
+
     pub async fn used_bytes(&self) -> u64 {
         *self.used_bytes.lock().await
     }

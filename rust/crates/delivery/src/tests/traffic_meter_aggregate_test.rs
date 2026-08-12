@@ -30,7 +30,6 @@ fn simultaneous_host_bytes_form_one_overall_wall_window() {
     assert_eq!(window.observed_at_ms(), unix_started_ms + 1_000);
     assert_eq!(window.latest_ttfb(), Some(Duration::from_millis(50)));
     assert_eq!(overall.bytes_per_second(), 4_000.0);
-    assert_eq!(overall.active_transfers(), 2);
     assert_eq!(overall.last_observed_at_ms(), unix_started_ms + 1_000);
     assert_eq!(
         stats

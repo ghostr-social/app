@@ -1,16 +1,16 @@
-//! Hunger over an exhausted feed widens the primary query once to the
-//! wide limit; a second hunger transition stays idle (plan §5.4).
+//! Expansion demand over an exhausted feed widens the primary query once;
+//! a second expansion transition stays idle (plan §5.4).
 
 use crate::query::video_filters::WIDE_QUERY_LIMIT;
 use crate::retrieval_types::RetrievalPriority;
 use crate::tests::scheduler_support::{
     context, next_outcome, next_started, no_start, request, start_scheduler,
 };
-use ghostr_engine::inventory_controller::Mode;
+use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_engine::DataUsageLevel;
 
 #[tokio::test(start_paused = true)]
-async fn hunger_widens_an_exhausted_feed_once() {
+async fn expansion_widens_an_exhausted_feed_once() {
     let mut harness = start_scheduler(DataUsageLevel::Conservative, Vec::new());
     harness.handle.open_feed(context("feed"), request());
     next_started(&mut harness.started).await;
@@ -18,8 +18,8 @@ async fn hunger_widens_an_exhausted_feed_once() {
     next_outcome(&mut harness.outcomes).await;
 
     harness
-        .modes
-        .send(Mode::Hunger)
+        .demand
+        .send(DiscoveryDemand::Expand)
         .expect("scheduler subscribed");
 
     let widened = next_started(&mut harness.started).await;
@@ -31,12 +31,12 @@ async fn hunger_widens_an_exhausted_feed_once() {
     harness.gate.add_permits(1);
     next_outcome(&mut harness.outcomes).await;
     harness
-        .modes
-        .send(Mode::Comfort)
+        .demand
+        .send(DiscoveryDemand::Hold)
         .expect("scheduler subscribed");
     harness
-        .modes
-        .send(Mode::Hunger)
+        .demand
+        .send(DiscoveryDemand::Expand)
         .expect("scheduler subscribed");
     no_start(&mut harness.started).await;
 }

@@ -8,7 +8,7 @@ import '../support/rust_feed_fixtures.dart';
 
 void main() {
   // The engine keeps filing pages into an open feed — background
-  // prefetch and hunger widening both land there — so what a returning
+  // prefetch and adaptive expansion both land there — so what a returning
   // pull serves is everything gathered this session, not one page.
   test('serves the rows the live feed gathered since the last pull', () async {
     final opening = rustFeedPost(eventId: testEventId, createdAt: 1754005000);

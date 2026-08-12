@@ -1,6 +1,6 @@
 use crate::playback::EstimateConfidence;
-use crate::rendition::{DowngradeCause, QualityChange, QualitySelectionPolicy};
-use crate::tests::rendition_support::{ladder, network, playing_input};
+use crate::rendition::QualitySelectionPolicy;
+use crate::tests::rendition_support::{id, ladder, network, playing_input};
 
 #[test]
 fn the_lowest_rendition_is_the_safe_fallback_when_none_are_sustainable() {
@@ -12,9 +12,5 @@ fn the_lowest_rendition_is_the_safe_fallback_when_none_are_sustainable() {
         playing_input(unusable, Some("medium"), 40, 1_000),
     );
 
-    assert_eq!(decision.selected().id().as_str(), "low");
-    assert_eq!(
-        decision.change(),
-        QualityChange::Downgraded(DowngradeCause::ThroughputRisk),
-    );
+    assert_eq!(decision.selected().id(), &id("low"));
 }

@@ -1,6 +1,6 @@
 use crate::playback::EstimateConfidence;
-use crate::rendition::{QualityChange, QualitySelectionPolicy};
-use crate::tests::rendition_support::{ladder, network, playing_input};
+use crate::rendition::QualitySelectionPolicy;
+use crate::tests::rendition_support::{id, ladder, network, playing_input};
 
 #[test]
 fn an_upgrade_waits_for_high_confidence_even_with_abundant_bandwidth() {
@@ -14,11 +14,9 @@ fn an_upgrade_waits_for_high_confidence_even_with_abundant_bandwidth() {
             &ladder(),
             playing_input(evidence, Some("medium"), 40, 1_000),
         );
-        assert_eq!(decision.selected().id().as_str(), "medium");
-        assert_eq!(decision.change(), QualityChange::Maintained);
+        assert_eq!(decision.selected().id(), &id("medium"));
     }
 
     let upgraded = policy.select(&ladder(), playing_input(high, Some("medium"), 20, 1_000));
-    assert_eq!(upgraded.selected().id().as_str(), "high");
-    assert_eq!(upgraded.change(), QualityChange::Upgraded);
+    assert_eq!(upgraded.selected().id(), &id("high"));
 }

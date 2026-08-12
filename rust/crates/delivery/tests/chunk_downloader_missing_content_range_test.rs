@@ -1,15 +1,17 @@
 mod delivery_fixture;
+mod range_fixture;
 mod raw_http;
 
 use delivery_fixture::{media_client, temp_directory};
 use ghostr_delivery::chunk::cancel::cancel_pair;
-use ghostr_delivery::chunk::downloader::{download_chunk_throttled, ChunkSink, ChunkSpec};
+use ghostr_delivery::chunk::downloader::{ChunkSink, ChunkSpec};
 use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::ByteRange;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
+use range_fixture::download_chunk_throttled;
 use raw_http::spawn_raw_server;
 use std::sync::Arc;
 use tokio::sync::Mutex;

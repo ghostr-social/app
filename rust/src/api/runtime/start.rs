@@ -13,7 +13,7 @@ use crate::discovery::retrieval_types::RetrievalOutcome;
 use crate::discovery::scheduler::{
     start_discovery_scheduler, DiscoveryHandle, DiscoverySchedulerConfig,
 };
-use crate::engine::inventory_controller::Mode;
+use crate::engine::adaptive::DiscoveryDemand;
 use crate::engine::DataUsageLevel;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{mpsc, watch, RwLock};
@@ -35,7 +35,7 @@ pub(crate) async fn start(boot: DiscoveryBoot) -> DiscoveryRuntime {
     let pipeline = DiscoveryPipeline::start(
         executor.clone(),
         outbox.clone(),
-        boot.modes,
+        boot.demand,
         boot.candidates,
     );
     DiscoveryRuntime {
@@ -59,11 +59,11 @@ impl DiscoveryPipeline {
     fn start(
         executor: RelayPlanExecutor,
         outbox: SharedOutboxDirectory,
-        modes: watch::Receiver<Mode>,
+        demand: watch::Receiver<DiscoveryDemand>,
         candidates: Option<ghostr_delivery::delivery_events::DeliveryHandle>,
     ) -> Self {
         let (sender, outcomes) = mpsc::unbounded_channel();
-        let handle = scheduler(executor.clone(), modes, sender.clone());
+        let handle = scheduler(executor.clone(), demand, sender.clone());
         let state = Arc::new(Mutex::new(FeedState::new()));
         let bootstrap = Arc::new(OutboxBootstrap::new(Arc::new(executor), outbox, sender));
         spawn_pump(state.clone(), bootstrap.clone(), candidates, outcomes);
@@ -77,13 +77,13 @@ impl DiscoveryPipeline {
 
 fn scheduler(
     executor: RelayPlanExecutor,
-    modes: watch::Receiver<Mode>,
+    demand: watch::Receiver<DiscoveryDemand>,
     outcomes: mpsc::UnboundedSender<RetrievalOutcome>,
 ) -> DiscoveryHandle {
     start_discovery_scheduler(DiscoverySchedulerConfig {
         executor: Arc::new(executor),
         level: DataUsageLevel::Balanced,
-        modes,
+        demand,
         outcomes,
     })
 }

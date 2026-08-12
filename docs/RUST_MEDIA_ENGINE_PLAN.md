@@ -22,8 +22,8 @@ Migration is delivery-first (strangler): the app ships at every phase.
 │ discovery  nostr_sdk — outbox NIP-65, search NIP-50, pagination,   │
 │            trending, follows/mutes, dedup, imeta parsing           │
 │ catalog    indexed posts + metadata (size/duration/sha256/host)    │
-│ engine     tiers + scoring, inventory control loop, host stats,    │
-│            HEAD probes, data-usage budgets                         │
+│ engine     adaptive playability policy, host stats, HEAD probes,   │
+│            exact allocation plans, data-usage budgets              │
 │ transfer   ranged/resumable chunk downloader, partial-range store, │
 │            streaming SHA-256                                       │
 │ cache      ONE cache, full user budget, lease/evict                │
@@ -33,7 +33,8 @@ Migration is delivery-first (strangler): the app ships at every phase.
 ```
 
 Player urgency needs no FFI: the gateway sees the player's own Range
-requests and promotes those bytes to the top tier directly.
+requests, feeds that demand into the same policy snapshot, and admits the
+resulting exact missing range with playback-critical authority.
 
 ## 2. FFI contract (freeze early, keep narrow)
 
@@ -51,49 +52,61 @@ Phase-2 additions: `ffi_open_feed(spec)`, `ffi_load_more(feed_id, older_than)`,
 feed-update stream, `ffi_broadcast_event(signed_json)`. When `open_feed`
 lands, `update_focus` items slim down to post ids (catalog already knows them).
 
-## 3. Scheduler specification (the heuristics)
+## 3. Adaptive scheduler specification
 
-Unit of work: a **byte range of a video**, never a whole file. Per video:
-probe → head chunk (first ~4 s + moov, what makes it "startable") → tail
-chunks (~1 MB each).
+The unit of work is an **exact half-open byte range** that adds known playable
+time. The policy never assumes that a file prefix is independently playable.
+Catalog metadata and parsed media timelines map byte ranges to playback time;
+an unknown layout is probed first, including a bounded tail probe when MP4
+layout discovery requires it. A source without range support is one
+complete-file opportunity and is deferred until its delivery cost fits the
+playable coverage already available before it.
 
-Tiers first, score within tier:
+Each event builds one immutable `PlayabilitySnapshot` from:
 
-- **T0 playback emergency** — playing video's buffer-ahead < 5 s (detected via
-  gateway demand); all bandwidth here.
-- **T1 current video tail** — watch time past ~3 s = commitment; finish it.
-- **T2 startability** — head chunks for the upcoming window until the
-  inventory target holds (default: 4 of next 6 startable).
-- **T3 deepening** — tails, large files, slow hosts (comfort mode only).
-- **T4 speculative** — beyond-window heads, scroll-back neighbours.
+- current playback phase and measured buffer ahead;
+- throughput confidence, RTT, packet loss, and usable connection capacity;
+- storage budget, occupancy, and exact sparse ranges already present;
+- forward/backward navigation velocity and per-candidate view probability;
+- bitrate, duration, playable timeline, origin health, and live in-flight
+  commitments for every candidate.
 
-Within tier: `positionWeight(distance) × valuePerByte × hostSpeedFactor`.
+`AdaptivePlayabilityPolicy` is the sole allocation authority. It first protects
+an endangered current video, then preserves still-useful committed work, and
+uses remaining measured network/storage capacity for candidates ranked by
+`view probability × additional playable milliseconds / expected delivery
+milliseconds`. Rapid navigation shortens per-candidate depth so the same
+budget can cover more plausible destinations. Storage pressure suppresses new
+speculation and produces exact low-value eviction ranges.
 
-Control loop modes with hysteresis: **hunger** (below target — cheapest
-ETA-to-startable first, skip slow hosts, hard head-budget cap per video) and
-**comfort** (deepen, admit big files and slow hosts). Scroll-past cancels a
-video's in-flight chunks; fetched ranges are kept and resumable.
+Every allocation records its source, exact range, expected playable gain,
+delivery cost, utility, authority, commitment horizon, and reason. Present and
+identity-current in-flight ranges are subtracted before admission, so a plan
+cannot authorize duplicate origin bytes. A later snapshot may retain,
+preempt, or replace work explicitly. Scroll-past does not blindly cancel useful
+committed work, while stale representation identities are fenced.
 
-Host model: per-host EWMA of throughput, TTFB, failure rate; updated by every
-probe and chunk; persisted as JSON in the cache dir. Drives ETA ranking and
-best-URL choice among imeta fallbacks. `Accept-Ranges: none` marks a video
-all-or-nothing (comfort-mode only unless imminent).
+There is deliberately no fixed current-plus-N frontier, startability count, or
+whole-file completion target. Healthy capacity normally expands coverage;
+loss, RTT, concurrency, storage pressure, source failure, or an endangered
+current video may contract it to one post or suppress speculation entirely.
+The plan publishes `DiscoveryDemand::Expand` only when useful capacity remains
+and no known waiting candidate can consume it; otherwise it publishes `Hold`.
 
-Metadata precedence: imeta `size`/`duration` (free) → HEAD probe → assumed
-~2.5 Mbps refined from observed bytes.
+Host evidence is a bounded, persisted per-origin model of throughput, TTFB,
+failure, and recency. It contributes to delivery cost and source selection.
+Metadata precedence remains imeta `size`/`duration` → HTTP probe → measured or
+assumed bitrate, with later observations refining the estimate.
 
-Default parameters (one config struct, scaled by `DataUsageLevel`):
+Primitive defaults live in one `EngineParams` value; allocation breadth and
+depth are computed from snapshots rather than stored as targets:
 
 | Parameter | Default |
 |---|---|
-| Head budget | ~4 s, cap 3 MB |
-| Chunk size | 1 MB |
-| Startability target | 4 of next 6 |
-| Deep target | current + next fully cached |
-| Commitment threshold | 3 s watched |
-| Emergency threshold | buffer-ahead < 5 s |
+| Transfer chunk size | 1 MiB |
+| Useful-work commitment | 3 s |
 | Concurrent chunks (cons/bal/aggr) | 2 / 3 / 4 |
-| Host EWMA half-life | ~10 transfers |
+| Unknown-media bitrate estimate | 2.5 Mbps |
 
 ## 4. Phase 1 — Delivery engine (ships the fluid-feed win)
 
@@ -107,10 +120,10 @@ Commit-sized steps, each test-first per AGENTS.md:
    `VideoMediaSource`. (Parser tests; currently these fields are dropped.)
 2. **FFI contract v1** — new `rust/src/api` module + FRB regen; Dart adapter
    behind a port (`lib/platform/media/`), fake for tests.
-3. **Engine core (pure Rust, table-driven tests)** — new `rust/src/engine/`:
-   `catalog.rs`, `focus.rs`, `tiers.rs`, `scoring.rs`,
-   `inventory_controller.rs` (hunger/comfort + hysteresis), `chunk_plan.rs`,
-   `host_stats.rs`, `budget.rs`. No IO in these modules; 100% coverage
+3. **Engine core (pure Rust, table-driven tests)** — the engine crate contains
+   `adaptive/` (snapshots, admission, ranges, resources, sources, commitments,
+   eviction, and plans), plus `catalog.rs`, `focus.rs`, `media_timeline.rs`,
+   `host_stats.rs`, and `budget.rs`. No IO in these modules; 100% coverage
    (repo gate for deterministic engine logic). Use `tokio::time::pause` for
    anything timed — no wall-clock flakiness.
 4. **Partial-range store** — extend `rust/src/video/native_partial_store.rs`
@@ -123,8 +136,9 @@ Commit-sized steps, each test-first per AGENTS.md:
 6. **Progressive gateway serving** — implement the dormant `/video.mp4?id=`
    route in `rust/src/video/http_gateway.rs`: correct `Content-Length` from
    probe/imeta, Range responses served from the partial store, missing bytes
-   stream as they arrive and promote to T0/T1. moov-at-end: head fetch sniffs
-   moov; absent → also fetch tail ~256 KB before marking startable.
+   stream as they arrive and publish exact player demand to the policy.
+   Moov-at-end media receives a bounded tail probe before playable ranges are
+   admitted.
 7. **Event-driven manager** — replace the 1 s poll loop in
    `rust/src/video/video_manager.rs` with reactions to focus updates, chunk
    completions, gateway demand, config changes.
@@ -156,8 +170,10 @@ downloads visibly reprioritizing on scroll; `flutter analyze`, `flutter test`,
    work from 9daf579 / 75a0dca / f372406).
 3. Feed assembly in the catalog; `ffi_open_feed` / `ffi_load_more` + feed
    update stream.
-4. **Unified control loop**: inventory hunger widens discovery; comfort
-   quiets the radio. Relay budgets from `DataUsageLevel` move into the engine.
+4. **Unified control loop**: delivery publishes adaptive `Expand` demand when
+   measured capacity remains without a known candidate to consume it; `Hold`
+   keeps speculative discovery quiet. Relay budgets from `DataUsageLevel` move
+   into the engine.
 5. Writes: `ffi_broadcast_event(signed_json)` with outbox-aware relay
    selection. Keys never cross the FFI.
 6. Historical migration step: feed served by ndk (default) or Rust, with a

@@ -2,7 +2,7 @@
 
 use crate::api::runtime::configuration;
 use crate::api::runtime::discovery::{DiscoveryBoot, DiscoveryRuntime};
-use crate::engine::inventory_controller::Mode;
+use crate::engine::adaptive::DiscoveryDemand;
 use nostr_sdk::Client;
 use std::sync::Arc;
 use tokio::sync::watch;
@@ -17,10 +17,10 @@ async fn live_configuration_removes_unconfigured_pool_relays() {
     ] {
         client.add_relay(relay).await.expect("relay");
     }
-    let (_modes, mode_updates) = watch::channel(Mode::Comfort);
+    let (_demand_sender, demand) = watch::channel(DiscoveryDemand::Hold);
     let runtime = DiscoveryRuntime::start(DiscoveryBoot {
         client: client.clone(),
-        modes: mode_updates,
+        demand,
         bootstrap: vec!["wss://old-config.example".to_owned()],
         search_relays: vec!["wss://kept.example".to_owned()],
         candidates: None,

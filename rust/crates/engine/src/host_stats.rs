@@ -3,7 +3,6 @@
 //! ranking and best-URL choice among imeta fallbacks. Pure and
 //! deterministic — persistence lives in `host_stats_persistence`.
 
-use crate::inventory_controller::Mode;
 use evidence::HostRecord;
 pub use evidence::{ThroughputEstimate, ThroughputSample};
 use serde::{Deserialize, Serialize};
@@ -106,28 +105,14 @@ impl HostStats {
             .unwrap_or(0.0)
     }
 
-    /// Score multiplier for chunk scoring (plan §3). Comfort admits
-    /// every host at full weight; hunger scales by measured speed
-    /// (relative to the optimistic baseline, capped at 1) times
-    /// reliability, so slow or failing hosts are skipped under pressure.
-    pub fn host_factor(&self, host: &str, mode: Mode) -> f64 {
-        match mode {
-            Mode::Comfort => 1.0,
-            Mode::Hunger => self.hunger_factor(host),
-        }
-    }
-
     /// Orders imeta URL candidates best-first for the downloader,
-    /// replacing blind sequential fallback. Every mode discounts a
-    /// candidate by its host's reliability, so a host that keeps
-    /// failing cannot be picked over a healthy mirror however fast it
-    /// once was (a host that only stumbles still outranks a slow one,
-    /// which is how its stats heal); hunger additionally penalizes slow
-    /// hosts. Stable: ties keep the imeta order; unparseable URLs sink.
-    pub fn best_source(&self, urls: &[String], mode: Mode) -> Vec<String> {
+    /// replacing blind sequential fallback. Expected throughput is
+    /// discounted by reliability; ties keep imeta order and invalid
+    /// URLs sink.
+    pub fn best_source(&self, urls: &[String]) -> Vec<String> {
         let mut ranked: Vec<(f64, &String)> = urls
             .iter()
-            .map(|url| (self.source_score(url, mode), url))
+            .map(|url| (self.source_score(url), url))
             .collect();
         ranked.sort_by(|left, right| right.0.total_cmp(&left.0));
         ranked.into_iter().map(|(_, url)| url.clone()).collect()
@@ -145,29 +130,14 @@ impl HostStats {
         Ok(stats)
     }
 
-    fn hunger_factor(&self, host: &str) -> f64 {
-        self.speed_factor(host) * self.reliability(host)
-    }
-
-    /// Measured speed relative to the optimistic baseline, capped at 1.
-    fn speed_factor(&self, host: &str) -> f64 {
-        (self.expected_throughput(host) / OPTIMISTIC_THROUGHPUT_BPS).min(1.0)
-    }
-
     /// Share of recent attempts that succeeded, in `[0, 1]`.
     fn reliability(&self, host: &str) -> f64 {
         1.0 - self.failure_ratio(host)
     }
 
-    /// Expected throughput discounted by reliability, and in hunger by
-    /// measured speed as well. Reliability counts once in either mode.
-    fn source_score(&self, url: &str, mode: Mode) -> f64 {
+    fn source_score(&self, url: &str) -> f64 {
         let Some(host) = host_of(url) else { return 0.0 };
-        let expected = self.expected_throughput(&host) * self.reliability(&host);
-        match mode {
-            Mode::Comfort => expected,
-            Mode::Hunger => expected * self.speed_factor(&host),
-        }
+        self.expected_throughput(&host) * self.reliability(&host)
     }
 
     fn lookup(&self, host: &str) -> Option<&HostRecord> {

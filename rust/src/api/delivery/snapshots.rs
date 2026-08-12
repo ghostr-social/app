@@ -2,8 +2,8 @@
 //! the watcher feeds it store reads, tests feed it tables.
 
 use crate::api::delivery_types::{FfiDeliveryEvent, FfiDeliveryEventKind};
+use crate::engine::adaptive::{candidate_snapshot, CandidateEvidence, ViewProbability};
 use crate::engine::catalog::{Catalog, LearnedFacts};
-use crate::engine::inventory_controller::is_startable;
 use crate::engine::{ByteRange, EngineParams, PostId, VideoMeta};
 
 /// What one tracked post looks like right now.
@@ -26,14 +26,38 @@ pub(crate) struct SnapshotInput<'a> {
 pub(crate) fn compute_snapshot(post: &PostId, input: SnapshotInput<'_>) -> DeliverySnapshot {
     let catalog = catalog_for(post, input.meta, input.stored_total);
     DeliverySnapshot {
-        startable: is_startable(&catalog, post, input.ranges, input.params),
+        startable: initial_playable_range_is_cached(&catalog, post, &input),
         bytes_present: input.ranges.iter().map(ByteRange::len).sum(),
         total_bytes: input.stored_total.or(input.meta.size_bytes),
     }
 }
 
-/// A single-post catalog so the engine's startability rule (head on
-/// disk, moov reachable) is reused instead of re-derived here.
+fn initial_playable_range_is_cached(
+    catalog: &Catalog,
+    post: &PostId,
+    input: &SnapshotInput<'_>,
+) -> bool {
+    let evidence = CandidateEvidence {
+        post: post.clone(),
+        feed_distance: 0,
+        view_probability: ViewProbability::new(1.0).expect("valid probability"),
+        present: input.ranges.to_vec(),
+        recently_evicted: Vec::new(),
+        in_flight: Vec::new(),
+        origins: Vec::new(),
+    };
+    candidate_snapshot(catalog, input.params, evidence)
+        .and_then(|candidate| candidate.playable_ranges.into_iter().next())
+        .is_some_and(|playable| covers(input.ranges, playable.bytes))
+}
+
+fn covers(ranges: &[ByteRange], wanted: ByteRange) -> bool {
+    crate::engine::media_timeline::normalize(ranges.to_vec())
+        .iter()
+        .any(|range| range.start <= wanted.start && range.end >= wanted.end)
+}
+
+/// A single-post catalog so adaptive playable-range geometry is reused.
 fn catalog_for(post: &PostId, meta: &VideoMeta, stored_total: Option<u64>) -> Catalog {
     let mut catalog = Catalog::new();
     catalog.upsert(post.clone(), meta.clone());

@@ -41,7 +41,6 @@ async fn delivery_manager_finalizes_posts_without_an_advertised_digest() {
 fn short_head_options() -> DeliveryOptions {
     DeliveryOptions {
         params: EngineParams {
-            head_seconds: 1,
             chunk_bytes: 4,
             ..base_params()
         },

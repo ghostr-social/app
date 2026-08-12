@@ -1,5 +1,5 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
@@ -19,6 +19,7 @@ pub async fn serve() -> GatedFailure {
     let attempts = Arc::new(AtomicUsize::new(0));
     let release = Arc::new(Notify::new());
     let (started, observed) = oneshot::channel();
+    let started = Arc::new(Mutex::new(Some(started)));
     tokio::spawn(accept(listener, attempts.clone(), release.clone(), started));
     GatedFailure {
         url: format!("http://{address}/video.mp4"),
@@ -62,23 +63,31 @@ async fn accept(
     listener: TcpListener,
     attempts: Arc<AtomicUsize>,
     release: Arc<Notify>,
-    started: oneshot::Sender<()>,
+    started: Arc<Mutex<Option<oneshot::Sender<()>>>>,
 ) {
-    let mut started = Some(started);
     while let Ok((socket, _)) = listener.accept().await {
-        attempts.fetch_add(1, Ordering::SeqCst);
-        let signal = started.take();
+        let attempts = attempts.clone();
+        let started = started.clone();
         let release = release.clone();
-        tokio::spawn(async move { answer(socket, signal, release).await });
+        tokio::spawn(async move { answer(socket, attempts, started, release).await });
     }
 }
 
-async fn answer(mut socket: TcpStream, started: Option<oneshot::Sender<()>>, release: Arc<Notify>) {
+async fn answer(
+    mut socket: TcpStream,
+    attempts: Arc<AtomicUsize>,
+    started: Arc<Mutex<Option<oneshot::Sender<()>>>>,
+    release: Arc<Notify>,
+) {
     let mut request = [0; 4096];
-    let _ = socket.read(&mut request).await;
-    if let Some(started) = started {
-        started.send(()).ok();
-        release.notified().await;
+    let read = socket.read(&mut request).await.unwrap_or(0);
+    if request[..read].starts_with(b"HEAD ") {
+        attempts.fetch_add(1, Ordering::SeqCst);
+        let signal = started.lock().expect("started").take();
+        if let Some(signal) = signal {
+            signal.send(()).ok();
+            release.notified().await;
+        }
     }
     let response = b"HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n";
     socket.write_all(response).await.ok();

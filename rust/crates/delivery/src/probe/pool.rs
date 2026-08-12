@@ -1,5 +1,4 @@
-//! Probe-pipeline bookkeeping: which unknown-size posts are being
-//! HEAD-probed, with bounded concurrency and probe-once memory.
+//! Probe-pipeline bookkeeping for unresolved HTTP media capabilities.
 
 use crate::manager::retry::RetryBook;
 use ghostr_engine::catalog::Catalog;
@@ -22,7 +21,7 @@ impl MetadataProbePool {
         }
     }
 
-    /// Unknown-size window posts to probe now, bounded by the limit.
+    /// Window posts with unresolved size or range support, bounded by the limit.
     /// Returned posts are marked as probing until released or learned.
     /// Sources the retry policy retired are never probed again.
     pub fn claim(
@@ -88,7 +87,7 @@ impl MetadataProbePool {
             return None;
         }
         let entry = catalog.lookup(post)?;
-        if entry.total_bytes().is_some() {
+        if entry.total_bytes().is_some() && entry.accepts_byte_ranges().is_some() {
             return None;
         }
         retry.live_urls(post, &entry.meta.urls).into_iter().next()

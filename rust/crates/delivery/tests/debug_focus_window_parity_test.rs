@@ -1,5 +1,8 @@
 #![cfg(feature = "video-debug-web")]
 
+mod command_fixture;
+
+use command_fixture::next_control;
 use ghostr_delivery::debug::feed::{DebugFeed, DebugFeedItem, DebugFeedStage};
 use ghostr_delivery::delivery_events::{command_channel, DeliveryCommand};
 use ghostr_engine::{DeliveryKind, VideoMeta};
@@ -10,10 +13,10 @@ async fn debug_focus_matches_the_product_two_behind_six_ahead_window() {
     let feed = DebugFeed::new(delivery, Vec::new());
     let items: Vec<_> = (0..12).map(item).collect();
     feed.publish(1, DebugFeedStage::Settled, items);
-    commands.receivers().0.recv().await.expect("initial focus");
+    next_control(&mut commands).await;
 
     feed.select("post-5").expect("feed selection");
-    let DeliveryCommand::Focus(focus) = commands.receivers().0.recv().await.expect("focus") else {
+    let DeliveryCommand::Focus(focus) = next_control(&mut commands).await else {
         panic!("expected focus command");
     };
     let ids: Vec<_> = focus.items.iter().map(|item| item.post.as_str()).collect();
