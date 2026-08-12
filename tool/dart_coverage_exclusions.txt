@@ -28,6 +28,7 @@ lib/features/session/domain/nostr_session_port.dart
 lib/features/session/domain/session_repository.dart
 lib/features/settings/domain/app_settings_repository.dart
 lib/features/settings/domain/data_usage_level.dart
+lib/features/social/domain/follow_outcome.dart
 lib/features/social/domain/nostr_social_port.dart
 lib/features/social/domain/signed_event_broadcast_port.dart
 lib/features/social/domain/social_graph_repository.dart

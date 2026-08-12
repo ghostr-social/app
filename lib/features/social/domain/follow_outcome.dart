@@ -1,0 +1,1 @@
+enum FollowOutcome { newlyFollowed, alreadyFollowing }

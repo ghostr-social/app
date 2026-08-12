@@ -21,7 +21,10 @@ void main() {
       ],
     );
     await tester.pumpWidget(
-      feedScreenHarness(repository, shareWorkflow: sharing),
+      feedScreenHarness(
+        repository,
+        options: FeedScreenHarnessOptions(shareWorkflow: sharing),
+      ),
     );
     await tester.pumpAndSettle();
 

@@ -20,7 +20,10 @@ void main() {
     );
     final repository = FakeVideoCatalogRepository(forYouFeed: [post]);
     await tester.pumpWidget(
-      feedScreenHarness(repository, shareWorkflow: sharing),
+      feedScreenHarness(
+        repository,
+        options: FeedScreenHarnessOptions(shareWorkflow: sharing),
+      ),
     );
     await tester.pumpAndSettle();
 

@@ -3,35 +3,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ghostr/features/comments/presentation/comments_sheet.dart';
-import 'package:ghostr/features/comments/presentation/comments_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
-import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_screen_bindings.dart';
 import 'package:ghostr/features/video_catalog/presentation/video_share_feed_scope.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card.dart';
-import 'package:ghostr/features/video_sharing/domain/video_share_workflow.dart';
+import 'package:ghostr/features/video_catalog/presentation/widgets/feed_page_view.dart';
 import 'package:ghostr/features/video_sharing/presentation/video_share_cubit.dart';
-import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:ghostr/shared/widgets/async_state_panel.dart';
 import 'package:ghostr/shared/widgets/loading_panel.dart';
 
-class FeedScreenBindings {
-  const FeedScreenBindings({
-    required this.onOpenProfile,
-    required this.onOpenHashtag,
-    required this.playbackPort,
-    required this.shareWorkflow,
-    required this.createComments,
-    required this.isActive,
-  });
-
-  final ValueChanged<ProfileId> onOpenProfile;
-  final ValueChanged<String> onOpenHashtag;
-  final VideoPlaybackPort playbackPort;
-  final VideoShareWorkflow shareWorkflow;
-  final CommentsCubit Function(VideoPost post) createComments;
-  final bool isActive;
-}
+export 'feed_screen_bindings.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({required this.bindings, super.key});
@@ -107,11 +89,7 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Widget _feedPages(BuildContext context, FeedLoaded state) {
-    return PageView.builder(
-      scrollDirection: Axis.vertical,
-      // Keeps the neighbouring pages mounted so their players are already
-      // initialized when the viewer swipes.
-      allowImplicitScrolling: true,
+    return FeedPageView(
       itemCount: state.posts.length,
       onPageChanged: context.read<FeedCubit>().pageChanged,
       itemBuilder: (_, index) => _feedCard(context, state, index),
@@ -131,18 +109,22 @@ class _FeedScreenState extends State<FeedScreen> {
               !_commentsOpen &&
               index == state.activeIndex,
         ),
-        actions: _actions(context, post, sharing),
+        actions: _actions(context, state, post, sharing),
       ),
     );
   }
 
   FeedCardActions _actions(
     BuildContext context,
+    FeedLoaded state,
     VideoPost post,
     VideoShareState sharing,
   ) {
     return FeedCardActions(
       onOpenProfile: () => widget.bindings.onOpenProfile(post.creator.id),
+      onFollowCreator: state.canFollow(post.creator.id)
+          ? context.read<FeedCubit>().followCreator
+          : null,
       onOpenHashtag: widget.bindings.onOpenHashtag,
       onToggleLike: context.read<FeedCubit>().toggleLike,
       onOpenComments: () => _openComments(context, post),

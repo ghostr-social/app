@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ghostr/features/comments/presentation/comments_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_screen.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:ghostr/features/video_sharing/domain/video_share_workflow.dart';
 
@@ -20,8 +24,8 @@ class DiscoveryFeedRequest {
   final VideoPlaybackPort playbackPort;
   final CommentsCubit Function(VideoPost post) createComments;
   final VideoShareWorkflow shareWorkflow;
-  final ValueChanged<ProfileId> onOpenProfile;
-  final ValueChanged<String> onOpenHashtag;
+  final Future<void> Function(ProfileId) onOpenProfile;
+  final Future<void> Function(String) onOpenHashtag;
 }
 
 /// A full swipeable video feed for one search query or `#hashtag` — the
@@ -37,8 +41,8 @@ class DiscoveryFeedScreen extends StatelessWidget {
       appBar: AppBar(title: Text(request.query)),
       body: FeedScreen(
         bindings: FeedScreenBindings(
-          onOpenProfile: request.onOpenProfile,
-          onOpenHashtag: request.onOpenHashtag,
+          onOpenProfile: (profileId) => _openProfile(context, profileId),
+          onOpenHashtag: (hashtag) => _openHashtag(context, hashtag),
           playbackPort: request.playbackPort,
           shareWorkflow: request.shareWorkflow,
           createComments: request.createComments,
@@ -47,5 +51,21 @@ class DiscoveryFeedScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _openProfile(BuildContext context, ProfileId profileId) {
+    unawaited(_openAndRefresh(context, () => request.onOpenProfile(profileId)));
+  }
+
+  void _openHashtag(BuildContext context, String hashtag) {
+    unawaited(_openAndRefresh(context, () => request.onOpenHashtag(hashtag)));
+  }
+
+  Future<void> _openAndRefresh(
+    BuildContext context,
+    Future<void> Function() open,
+  ) async {
+    await open();
+    if (context.mounted) await context.read<FeedCubit>().refresh();
   }
 }

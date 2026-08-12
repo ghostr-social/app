@@ -1,6 +1,8 @@
 import 'package:ghostr/features/engagement/domain/video_engagement_repository.dart';
 import 'package:ghostr/features/social/domain/social_graph_repository.dart';
+import 'package:ghostr/features/video_catalog/domain/follow_profile_workflow.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
+import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
@@ -12,11 +14,15 @@ class FeedDependencies {
   const FeedDependencies({
     required this.feed,
     required this.engagement,
+    this.viewerId,
+    this.followProfile,
     this.optional = const FeedOptionalDependencies(),
   });
 
+  final ProfileId? viewerId;
   final VideoFeedRepository feed;
   final VideoEngagementRepository engagement;
+  final FollowProfileWorkflow? followProfile;
   final FeedOptionalDependencies optional;
 
   SocialGraphRepository? get social => optional.social;

@@ -19,35 +19,42 @@ abstract final class AppRouter {
     final controllers = request.controllers;
     return MaterialPageRoute<void>(
       builder: (context) => BlocProvider(
-        create: (_) => controllers.discoveryFeed(request.query)..load(),
+        create: (_) => controllers.discoveryFeed(
+          request.query,
+          viewerId: session.profile.id,
+        )..load(),
         child: DiscoveryFeedScreen(
           request: DiscoveryFeedRequest(
             query: request.query,
             playbackPort: controllers.videoPlaybackPort,
             shareWorkflow: controllers.videoShareWorkflow,
             createComments: controllers.comments,
-            onOpenProfile: (profileId) => Navigator.of(context).push(
-              AppRouter.profile(
-                ProfileRouteRequest(
-                  session: session,
-                  profileId: profileId,
-                  controllers: controllers,
-                  onSignedOut: request.onSignedOut,
-                  onCurrentProfileUpdated: request.onCurrentProfileUpdated,
+            onOpenProfile: (profileId) async {
+              await Navigator.of(context).push(
+                AppRouter.profile(
+                  ProfileRouteRequest(
+                    session: session,
+                    profileId: profileId,
+                    controllers: controllers,
+                    onSignedOut: request.onSignedOut,
+                    onCurrentProfileUpdated: request.onCurrentProfileUpdated,
+                  ),
                 ),
-              ),
-            ),
-            onOpenHashtag: (hashtag) => Navigator.of(context).push(
-              AppRouter.discoveryFeed(
-                DiscoveryFeedRouteRequest(
-                  session: session,
-                  query: hashtag,
-                  controllers: controllers,
-                  onSignedOut: request.onSignedOut,
-                  onCurrentProfileUpdated: request.onCurrentProfileUpdated,
+              );
+            },
+            onOpenHashtag: (hashtag) async {
+              await Navigator.of(context).push(
+                AppRouter.discoveryFeed(
+                  DiscoveryFeedRouteRequest(
+                    session: session,
+                    query: hashtag,
+                    controllers: controllers,
+                    onSignedOut: request.onSignedOut,
+                    onCurrentProfileUpdated: request.onCurrentProfileUpdated,
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ),
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/features/social/domain/follow_outcome.dart';
 import 'package:ghostr/features/social/domain/social_graph_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/filtered_video_feed_repository.dart';
@@ -59,16 +60,28 @@ class _Social implements SocialGraphRepository {
   _Social(this.blocked);
 
   final Set<ProfileId> blocked;
+  final Set<ProfileId> followed = <ProfileId>{};
 
   @override
   Future<Set<ProfileId>> loadBlockedProfiles() async => blocked;
 
   @override
-  Future<Set<ProfileId>> loadFollowedProfiles() async => const <ProfileId>{};
+  Future<Set<ProfileId>> loadFollowedProfiles() async => {...followed};
+
+  @override
+  Future<FollowOutcome> follow(ProfileId profileId) async {
+    return followed.add(profileId)
+        ? FollowOutcome.newlyFollowed
+        : FollowOutcome.alreadyFollowing;
+  }
 
   @override
   Future<bool> toggleBlock(ProfileId profileId) async => true;
 
   @override
-  Future<bool> toggleFollow(ProfileId profileId) async => true;
+  Future<bool> toggleFollow(ProfileId profileId) async {
+    if (followed.remove(profileId)) return false;
+    followed.add(profileId);
+    return true;
+  }
 }
