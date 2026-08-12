@@ -7,10 +7,12 @@ class FeedPageView extends StatefulWidget {
     required this.itemCount,
     required this.onPageChanged,
     required this.itemBuilder,
+    this.initialPage = 0,
     super.key,
   });
 
   final int itemCount;
+  final int initialPage;
   final ValueChanged<int> onPageChanged;
   final IndexedWidgetBuilder itemBuilder;
 
@@ -19,7 +21,7 @@ class FeedPageView extends StatefulWidget {
 }
 
 class _FeedPageViewState extends State<FeedPageView> {
-  final _controller = PageController();
+  late final _controller = PageController(initialPage: widget.initialPage);
   final _gesture = FeedSwipeGesture();
   late final _physics = FeedSwipePhysics(gesture: _gesture);
   int? _activePointer;

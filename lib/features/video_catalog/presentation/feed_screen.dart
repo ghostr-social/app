@@ -91,6 +91,7 @@ class _FeedScreenState extends State<FeedScreen> {
   Widget _feedPages(BuildContext context, FeedLoaded state) {
     return FeedPageView(
       itemCount: state.posts.length,
+      initialPage: state.activeIndex,
       onPageChanged: context.read<FeedCubit>().pageChanged,
       itemBuilder: (_, index) => _feedCard(context, state, index),
     );
