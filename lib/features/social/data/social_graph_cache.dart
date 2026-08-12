@@ -3,6 +3,7 @@ import 'package:ghostr/core/errors/failure_reporter.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/features/social/data/accepted_social_mutations.dart';
 import 'package:ghostr/features/social/data/best_effort_social_graph_mirror.dart';
+import 'package:ghostr/features/social/data/social_graph_membership_reads.dart';
 import 'package:ghostr/features/social/data/social_graph_task_coordinator.dart';
 import 'package:ghostr/features/social/domain/follow_outcome.dart';
 import 'package:ghostr/features/social/domain/social_graph_store.dart';
@@ -26,6 +27,7 @@ class SocialGraphCache implements SocialGraphRepository {
   final BestEffortSocialGraphMirror _localMirror;
   final SocialGraphTaskCoordinator _tasks;
   final _accepted = AcceptedSocialMutations();
+  late final _reads = SocialGraphMembershipReader(_accepted, _failureReporter);
 
   @override
   Future<Set<ProfileId>> loadFollowedProfiles() async {
@@ -35,31 +37,8 @@ class SocialGraphCache implements SocialGraphRepository {
     return _tasks.read(
       account,
       SocialGraphMembership.followed,
-      () => _loadFollowed(account, remote, local),
+      () => _reads.load(account, _followedRead(remote, local)),
     );
-  }
-
-  Future<Set<ProfileId>> _loadFollowed(
-    NostrPublicKeyHex account,
-    NostrSocialPort remote,
-    SocialGraphStore local,
-  ) async {
-    late final Set<ProfileId> followed;
-    try {
-      followed = await remote.loadFollowedProfiles();
-    } on AppFailure catch (error, stackTrace) {
-      _report('SocialGraphCache.loadFollowedProfiles', error, stackTrace);
-      final cached = await local.loadFollowedProfiles();
-      return _accepted.project(account, SocialGraphMembership.followed, cached);
-    }
-    final current = _accepted.project(
-      account,
-      SocialGraphMembership.followed,
-      followed,
-      observed: true,
-    );
-    await _localMirror.saveFollowed(local, current);
-    return current;
   }
 
   @override
@@ -70,31 +49,28 @@ class SocialGraphCache implements SocialGraphRepository {
     return _tasks.read(
       account,
       SocialGraphMembership.blocked,
-      () => _loadBlocked(account, remote, local),
+      () => _reads.load(account, _blockedRead(remote, local)),
     );
   }
 
-  Future<Set<ProfileId>> _loadBlocked(
-    NostrPublicKeyHex account,
-    NostrSocialPort remote,
-    SocialGraphStore local,
-  ) async {
-    late final Set<ProfileId> blocked;
-    try {
-      blocked = await remote.loadBlockedProfiles();
-    } on AppFailure catch (error, stackTrace) {
-      _report('SocialGraphCache.loadBlockedProfiles', error, stackTrace);
-      final cached = await local.loadBlockedProfiles();
-      return _accepted.project(account, SocialGraphMembership.blocked, cached);
-    }
-    final current = _accepted.project(
-      account,
-      SocialGraphMembership.blocked,
-      blocked,
-      observed: true,
+  MembershipRead _followedRead(NostrSocialPort remote, SocialGraphStore local) {
+    return MembershipRead(
+      membership: SocialGraphMembership.followed,
+      source: 'SocialGraphCache.loadFollowedProfiles',
+      remote: remote.loadFollowedProfiles,
+      cached: local.loadFollowedProfiles,
+      persist: (profiles) => _localMirror.saveFollowed(local, profiles),
     );
-    await _localMirror.saveBlocked(local, current);
-    return current;
+  }
+
+  MembershipRead _blockedRead(NostrSocialPort remote, SocialGraphStore local) {
+    return MembershipRead(
+      membership: SocialGraphMembership.blocked,
+      source: 'SocialGraphCache.loadBlockedProfiles',
+      remote: remote.loadBlockedProfiles,
+      cached: local.loadBlockedProfiles,
+      persist: (profiles) => _localMirror.saveBlocked(local, profiles),
+    );
   }
 
   @override
@@ -168,7 +144,12 @@ class SocialGraphCache implements SocialGraphRepository {
     SocialGraphStore local,
     ProfileId profileId,
   ) async {
-    final isBlocked = await remote.toggleBlock(profileId);
+    final known = _accepted.project(
+      account,
+      SocialGraphMembership.blocked,
+      await _reads.cached(_blockedRead(remote, local)),
+    );
+    final isBlocked = await remote.toggleBlock(profileId, knownBlocked: known);
     _accepted.accept(
       account,
       SocialGraphMembership.blocked,
@@ -188,11 +169,4 @@ class SocialGraphCache implements SocialGraphRepository {
     }
     return local.accountPublicKey;
   }
-
-  void _report(String source, Object error, StackTrace stackTrace) =>
-      _failureReporter.report(
-        source: source,
-        error: error,
-        stackTrace: stackTrace,
-      );
 }

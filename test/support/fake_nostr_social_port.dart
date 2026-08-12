@@ -22,6 +22,7 @@ class FakeNostrSocialPort implements NostrSocialPort {
   final FakeActiveAccountReader _activeAccount;
   AppFailure? loadFailure;
   AppFailure? toggleFailure;
+  Set<ProfileId>? lastKnownBlocked;
 
   @override
   NostrPublicKeyHex get accountPublicKey => _activeAccount();
@@ -59,8 +60,13 @@ class FakeNostrSocialPort implements NostrSocialPort {
   }
 
   @override
-  Future<bool> toggleBlock(ProfileId profileId) async {
+  Future<bool> toggleBlock(
+    ProfileId profileId, {
+    Set<ProfileId> knownBlocked = const {},
+  }) async {
     if (toggleFailure case final failure?) throw failure;
+    blockedProfiles.addAll(knownBlocked);
+    lastKnownBlocked = {...knownBlocked};
     if (blockedProfiles.remove(profileId)) return false;
     blockedProfiles.add(profileId);
     return true;
@@ -88,8 +94,11 @@ class _ScopedFakeNostrSocialPort implements NostrSocialPort {
       _delegate.follow(profileId);
 
   @override
-  Future<bool> toggleBlock(ProfileId profileId) =>
-      _delegate.toggleBlock(profileId);
+  Future<bool> toggleBlock(
+    ProfileId profileId, {
+    Set<ProfileId> knownBlocked = const {},
+  }) =>
+      _delegate.toggleBlock(profileId, knownBlocked: knownBlocked);
 
   @override
   Future<bool> toggleFollow(ProfileId profileId) =>

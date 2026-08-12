@@ -7,6 +7,7 @@ import 'package:ghostr/features/session/domain/nostr_identity.dart';
 import 'package:ghostr/features/compose/presentation/compose_cubit.dart';
 import 'package:ghostr/features/compose/domain/publish_video_workflow.dart';
 import 'package:ghostr/features/settings/presentation/settings_cubit.dart';
+import 'package:ghostr/features/social/presentation/blocked_accounts_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/query_video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
@@ -113,6 +114,13 @@ class AppControllerFactory {
   WatchHistoryCubit watchHistory() {
     return WatchHistoryCubit(
       _dependencies.watchHistoryRepository.snapshotForActiveAccount(),
+    );
+  }
+
+  BlockedAccountsCubit blockedAccounts() {
+    return BlockedAccountsCubit(
+      _dependencies.videoCatalogServices.social,
+      _dependencies.profileMetadataRepository,
     );
   }
 

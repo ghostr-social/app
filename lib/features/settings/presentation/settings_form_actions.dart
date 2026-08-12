@@ -16,6 +16,7 @@ class SettingsFormActions {
     required this.updates,
     required this.onSave,
     this.onOpenWatchHistory,
+    this.onOpenBlockedAccounts,
   });
 
   final RelaySettingsActions relays;
@@ -27,6 +28,7 @@ class SettingsFormActions {
   final UpdateSettingsActions updates;
   final VoidCallback onSave;
   final VoidCallback? onOpenWatchHistory;
+  final VoidCallback? onOpenBlockedAccounts;
 }
 
 class UpdateSettingsActions {

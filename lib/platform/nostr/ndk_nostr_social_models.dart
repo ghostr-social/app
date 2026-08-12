@@ -91,6 +91,29 @@ ContactList _copyContactList(ContactList source) {
     ..sources = List.of(source.sources);
 }
 
+Nip51List _acceptedMute(String publicKey, Nip51List? accepted) {
+  if (accepted == null) throw const AppFailure('The active account changed.');
+  return _copyNip51List(accepted);
+}
+
+Nip51List _emptyMute(String publicKey) {
+  return Nip51List(
+    pubKey: publicKey,
+    kind: Nip51List.kMute,
+    createdAt: 0,
+    elements: <Nip51ListElement>[],
+  );
+}
+
+/// Widens a mute baseline with blocks this device knows about, so a
+/// publish never drops entries the relays failed to return.
+void _seedMutePrivatePubkeys(Nip51List list, Set<String> seeds) {
+  for (final seed in seeds) {
+    final present = list.pubKeys.any((element) => element.value == seed);
+    if (!present) list.addElement(Nip51List.kPubkey, seed, true);
+  }
+}
+
 Nip51List _copyNip51List(Nip51List source) {
   return Nip51List(
     pubKey: source.pubKey,

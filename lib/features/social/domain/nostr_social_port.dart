@@ -13,7 +13,13 @@ abstract interface class NostrSocialPort {
 
   Future<FollowOutcome> follow(ProfileId profileId);
 
-  Future<bool> toggleBlock(ProfileId profileId);
+  /// Toggles [profileId] on the mute list. [knownBlocked] carries every
+  /// block this device already knows about, so a publish never shrinks the
+  /// list just because the relays failed to return it.
+  Future<bool> toggleBlock(
+    ProfileId profileId, {
+    Set<ProfileId> knownBlocked,
+  });
 
   Future<bool> toggleFollow(ProfileId profileId);
 }

@@ -56,7 +56,11 @@ class _ScopedSocial implements NostrSocialPort {
       FollowOutcome.newlyFollowed;
 
   @override
-  Future<bool> toggleBlock(ProfileId profileId) async => true;
+  Future<bool> toggleBlock(
+    ProfileId profileId, {
+    Set<ProfileId> knownBlocked = const {},
+  }) async =>
+      true;
 
   @override
   Future<bool> toggleFollow(ProfileId profileId) async => true;
