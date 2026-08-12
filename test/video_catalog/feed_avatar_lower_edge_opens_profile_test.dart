@@ -5,28 +5,34 @@ import '../support/feed_screen_harness.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  testWidgets('the lower avatar edge opens the profile instead of following', (
-    tester,
-  ) async {
-    final creator = sampleCreator();
-    final repository = FakeVideoCatalogRepository(
-      forYouFeed: [samplePost(creator: creator)],
-    );
-    final openedProfiles = <String>[];
-    await tester.pumpWidget(
-      feedScreenHarness(
-        repository,
-        options: FeedScreenHarnessOptions(onOpenProfile: openedProfiles.add),
-      ),
-    );
-    await tester.pumpAndSettle();
-    final avatar = find.byTooltip('Open profile');
-    final avatarRect = tester.getRect(avatar);
+  testWidgets(
+    'the lower avatar edge beside the follow badge opens the profile',
+    (tester) async {
+      final creator = sampleCreator();
+      final repository = FakeVideoCatalogRepository(
+        forYouFeed: [samplePost(creator: creator)],
+      );
+      final openedProfiles = <String>[];
+      await tester.pumpWidget(
+        feedScreenHarness(
+          repository,
+          options: FeedScreenHarnessOptions(onOpenProfile: openedProfiles.add),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final avatarRect = tester.getRect(find.byTooltip('Open profile'));
+      final followRect = tester.getRect(
+        find.byTooltip('Follow ${creator.displayName}'),
+      );
 
-    await tester.tapAt(avatarRect.bottomCenter.translate(0, -2));
-    await tester.pumpAndSettle();
+      // The follow badge straddles the avatar's bottom edge and owns the
+      // taps inside its circle; the avatar's lower rim beside it must still
+      // open the profile rather than follow.
+      await tester.tapAt(Offset(followRect.left - 2, avatarRect.bottom - 6));
+      await tester.pumpAndSettle();
 
-    expect(openedProfiles, [creator.id.value]);
-    expect(repository.followedProfiles, isNot(contains(creator.id)));
-  });
+      expect(openedProfiles, [creator.id.value]);
+      expect(repository.followedProfiles, isNot(contains(creator.id)));
+    },
+  );
 }
