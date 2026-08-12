@@ -8,10 +8,13 @@ import 'package:ghostr/features/settings/domain/app_settings_repository.dart';
 import '../support/settings_screen_harness.dart';
 
 void main() {
-  testWidgets('disables every settings edit while a save is pending',
-      (tester) async {
+  testWidgets('disables every settings edit while a save is pending', (
+    tester,
+  ) async {
     final repository = _PendingSettingsRepository();
-    await tester.pumpWidget(settingsScreenHarness(repository));
+    await tester.pumpWidget(
+      settingsScreenHarness(repository, onCheckForUpdates: () {}),
+    );
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('Save settings'),
@@ -48,6 +51,28 @@ void main() {
       find.byKey(const Key('inventory-budget-field')),
     );
     expect(budget.onChanged, isNull);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('automatic-update-checks-field')),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    final checks = tester.widget<SwitchListTile>(
+      find.byKey(const Key('automatic-update-checks-field')),
+    );
+    final downloads = tester
+        .widget<DropdownButtonFormField<UpdateDownloadPolicy>>(
+          find.byKey(const Key('update-download-policy-field')),
+        );
+    final install = tester.widget<SwitchListTile>(
+      find.byKey(const Key('automatic-update-install-field')),
+    );
+    final checkNow = tester.widget<OutlinedButton>(
+      find.byKey(const Key('check-for-updates-button')),
+    );
+    expect(checks.onChanged, isNull);
+    expect(downloads.onChanged, isNull);
+    expect(install.onChanged, isNull);
+    expect(checkNow.onPressed, isNull);
     repository.release.complete();
   });
 }

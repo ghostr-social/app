@@ -28,7 +28,7 @@ def selectedAndroidAbis = flutterTargetPlatforms
     .findAll { it != null }
 
 android {
-    namespace = "app.ghostr"
+    namespace = "social.ghostr"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

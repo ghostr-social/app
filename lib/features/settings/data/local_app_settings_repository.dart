@@ -14,15 +14,18 @@ class LocalAppSettingsRepository implements AppSettingsRepository {
   static const _hideWatchedKey = 'ghostr.settings.hideWatchedVideos';
   static const _searchRelaysKey = 'ghostr.settings.searchRelays';
   static const _dataUsageKey = 'ghostr.settings.dataUsage';
+  static const _automaticUpdateChecksKey =
+      'ghostr.settings.updates.automaticChecks';
+  static const _updateDownloadPolicyKey =
+      'ghostr.settings.updates.downloadPolicy';
+  static const _automaticUpdateInstallKey =
+      'ghostr.settings.updates.automaticInstall';
 
   final SharedPreferences _preferences;
 
   @override
   Future<AppSettings> load() {
-    return guardPreferenceStorage(
-      'Could not read app settings.',
-      _load,
-    );
+    return guardPreferenceStorage('Could not read app settings.', _load);
   }
 
   AppSettings _load() {
@@ -35,11 +38,19 @@ class LocalAppSettingsRepository implements AppSettingsRepository {
           _preferences.getBool(_hideWatchedKey) ?? defaults.hideWatchedVideos,
       searchRelays: _loadRelayList(_searchRelaysKey, defaults.searchRelays),
       dataUsage: _loadDataUsage(defaults.dataUsage),
+      updatePreferences: _loadUpdatePreferences(defaults.updatePreferences),
     );
   }
 
   @override
   Future<void> save(AppSettings settings) async {
+    await _saveConnections(settings);
+    await _saveMedia(settings);
+    await _saveBehavior(settings);
+    await _saveUpdatePreferences(settings.updatePreferences);
+  }
+
+  Future<void> _saveConnections(AppSettings settings) async {
     await requirePreferenceWrite(
       'Could not save app settings.',
       () => _preferences.setStringList(
@@ -47,6 +58,16 @@ class LocalAppSettingsRepository implements AppSettingsRepository {
         settings.relays.map((relay) => relay.value).toList(),
       ),
     );
+    await requirePreferenceWrite(
+      'Could not save app settings.',
+      () => _preferences.setStringList(
+        _searchRelaysKey,
+        settings.searchRelays.map((relay) => relay.value).toList(),
+      ),
+    );
+  }
+
+  Future<void> _saveMedia(AppSettings settings) async {
     await requirePreferenceWrite(
       'Could not save app settings.',
       () => _preferences.setString(
@@ -61,23 +82,40 @@ class LocalAppSettingsRepository implements AppSettingsRepository {
         settings.blossomServers.map((server) => server.value).toList(),
       ),
     );
+  }
+
+  Future<void> _saveBehavior(AppSettings settings) async {
     await requirePreferenceWrite(
       'Could not save app settings.',
-      () => _preferences.setBool(
-        _hideWatchedKey,
-        settings.hideWatchedVideos,
-      ),
-    );
-    await requirePreferenceWrite(
-      'Could not save app settings.',
-      () => _preferences.setStringList(
-        _searchRelaysKey,
-        settings.searchRelays.map((relay) => relay.value).toList(),
-      ),
+      () => _preferences.setBool(_hideWatchedKey, settings.hideWatchedVideos),
     );
     await requirePreferenceWrite(
       'Could not save app settings.',
       () => _preferences.setString(_dataUsageKey, settings.dataUsage.name),
+    );
+  }
+
+  Future<void> _saveUpdatePreferences(AppUpdatePreferences updates) async {
+    await requirePreferenceWrite(
+      'Could not save app settings.',
+      () => _preferences.setBool(
+        _automaticUpdateChecksKey,
+        updates.automaticChecks,
+      ),
+    );
+    await requirePreferenceWrite(
+      'Could not save app settings.',
+      () => _preferences.setString(
+        _updateDownloadPolicyKey,
+        updates.downloadPolicy.name,
+      ),
+    );
+    await requirePreferenceWrite(
+      'Could not save app settings.',
+      () => _preferences.setBool(
+        _automaticUpdateInstallKey,
+        updates.automaticInstall,
+      ),
     );
   }
 
@@ -95,9 +133,25 @@ class LocalAppSettingsRepository implements AppSettingsRepository {
         fallback;
   }
 
-  List<BlossomServerUrl> _loadBlossomServers(
-    List<BlossomServerUrl> defaults,
-  ) {
+  AppUpdatePreferences _loadUpdatePreferences(AppUpdatePreferences fallback) {
+    final savedPolicy = _preferences.getString(_updateDownloadPolicyKey);
+    final policy =
+        UpdateDownloadPolicy.values
+            .where((value) => value.name == savedPolicy)
+            .firstOrNull ??
+        fallback.downloadPolicy;
+    return AppUpdatePreferences(
+      automaticChecks:
+          _preferences.getBool(_automaticUpdateChecksKey) ??
+          fallback.automaticChecks,
+      downloadPolicy: policy,
+      automaticInstall:
+          _preferences.getBool(_automaticUpdateInstallKey) ??
+          fallback.automaticInstall,
+    );
+  }
+
+  List<BlossomServerUrl> _loadBlossomServers(List<BlossomServerUrl> defaults) {
     final saved = _preferences.getStringList(_blossomServersKey);
     if (saved == null) return defaults;
     return saved
