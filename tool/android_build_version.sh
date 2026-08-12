@@ -18,7 +18,11 @@ case "$ref" in
     rest=${name#*.}
     minor=${rest%%.*}
     patch=${rest#*.}
-    code=$((major * 10000 + minor * 100 + patch))
+    if [ "$minor" -gt 999 ] || [ "$patch" -gt 999 ]; then
+      echo "Release minor and patch versions must be at most 999." >&2
+      exit 65
+    fi
+    code=$((major * 1000000 + minor * 1000 + patch))
     if [ "$code" -lt 1 ]; then
       echo "Release tag must produce a positive Android versionCode." >&2
       exit 65

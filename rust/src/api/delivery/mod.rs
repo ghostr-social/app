@@ -3,4 +3,5 @@
 
 pub(crate) mod candidates;
 pub(crate) mod focus_mapping;
+pub(crate) mod playback_mapping;
 pub(crate) mod snapshots;

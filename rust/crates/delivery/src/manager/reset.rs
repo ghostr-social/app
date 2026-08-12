@@ -9,8 +9,11 @@ impl DeliveryWorker {
         self.queue.clear();
         self.probes.clear();
         self.retry.clear();
+        self.cooldown_timers.clear();
+        self.pressure.clear();
         self.pending_demand = None;
         self.state.clear();
+        self.focus_lease.pin(self.ctx.store.as_ref(), None);
         self.cache.replace(Vec::new());
         self.ctx.store.clear().await
     }

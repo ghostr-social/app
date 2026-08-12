@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/media/media_picker_capabilities.dart';
-import 'package:ghostr/core/media/selected_media.dart';
-import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/media/media_picker_port.dart';
+import 'package:ghostr/core/media/selected_media.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 
 class FakeMediaPickerPort implements MediaPickerPort {
@@ -49,18 +48,14 @@ class FakeMediaPickerPort implements MediaPickerPort {
 
 class FakeVideoPlaybackPort implements VideoPlaybackPort {
   @override
-  Widget buildSurface({
-    required VideoMediaSource media,
-    required bool isActive,
-    void Function()? onPlaybackMediaReleased,
-  }) {
+  Widget buildSurface(VideoPlaybackSurfaceRequest request) {
     return _ReleaseOnDispose(
-      key: ValueKey(media.debugLabel),
-      onReleased: onPlaybackMediaReleased,
+      key: ValueKey(request.media.debugLabel),
+      onReleased: request.onPlaybackMediaReleased,
       child: ColoredBox(
-        color: isActive ? Colors.black : Colors.black54,
+        color: request.isActive ? Colors.black : Colors.black54,
         child: Center(
-          child: Text(media.debugLabel, textAlign: TextAlign.center),
+          child: Text(request.media.debugLabel, textAlign: TextAlign.center),
         ),
       ),
     );

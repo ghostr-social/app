@@ -9,6 +9,7 @@ pub(crate) fn admit(handle: Option<&DeliveryHandle>, candidate: Option<VideoCand
     handle.admit_candidate(DeliveryCandidate {
         post: PostId::new(candidate.id.as_str()),
         meta: candidate.post.meta,
+        renditions: candidate.post.renditions,
         discovered_at: candidate.post.created_at,
     });
 }

@@ -4,10 +4,10 @@
 //! over. Without it a spent feed costs the adapter its whole deadline
 //! (rust_feed_page_reader.dart).
 
-use crate::api::runtime::discovery::{lock, SharedFeedState};
 use crate::api::feed::state::FeedState;
 use crate::api::feed_types::FfiFeedStage;
 use crate::api::feed_updates_stream::watch_feed;
+use crate::api::runtime::discovery::{lock, SharedFeedState};
 use crate::api::tests::feed_fixtures::video_note;
 use crate::api::tests::feed_watch_support::{next, ChannelOut};
 use crate::discovery::feed::spec::FeedSpec;

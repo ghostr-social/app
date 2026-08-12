@@ -43,9 +43,9 @@ fn tail_chunks_wait_until_head_and_probe_are_on_disk() {
 }
 
 // With head and probe on disk the lone-post window satisfies its
-// target, so the controller lands in comfort and the tail deepens.
+// target, but absent playback evidence deepening stays bounded.
 #[test]
-fn once_startable_the_remaining_tail_deepens_in_comfort() {
+fn once_startable_comfort_adds_one_bounded_reserve_chunk() {
     let mut bench = bench();
     bench.present.insert(
         PostId::new("p"),
@@ -57,7 +57,7 @@ fn once_startable_the_remaining_tail_deepens_in_comfort() {
 
     let requests = bench.run();
 
-    assert_eq!(requests.len(), 7);
+    assert_eq!(requests.len(), 1);
     assert_eq!(
         requests[0].chunk.range,
         ByteRange::new(1_250_000, 2_298_576)

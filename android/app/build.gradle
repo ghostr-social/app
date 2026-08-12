@@ -29,7 +29,7 @@ def selectedAndroidAbis = flutterTargetPlatforms
     .findAll { it != null }
 
 android {
-    namespace = "app.ghostr"
+    namespace = "social.ghostr"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -115,8 +115,8 @@ def incomingVideoShareExecutionData = file(
     "$buildDir/jacoco/testDebugUnitTest.exec",
 )
 def incomingVideoShareClasses = fileTree("$buildDir/tmp/kotlin-classes/debug") {
-    include "app/ghostr/IncomingVideoShare*.class"
-    include "app/ghostr/CapturedIncomingVideoIntent.class"
+    include "social/ghostr/IncomingVideoShare*.class"
+    include "social/ghostr/CapturedIncomingVideoIntent.class"
 }
 
 tasks.register("incomingVideoShareCoverageReport", JacocoReport) {

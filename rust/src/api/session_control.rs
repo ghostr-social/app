@@ -36,8 +36,7 @@ pub async fn ffi_reset_nostr_session(
         .map(|value| PublicKey::from_hex(&value))
         .transpose()
         .map_err(|_| NostrSessionResetError::InvalidExpectedPublicKey)?;
-    let engine =
-        registry::engine_if_running().ok_or(NostrSessionResetError::EngineNotStarted)?;
+    let engine = registry::engine_if_running().ok_or(NostrSessionResetError::EngineNotStarted)?;
     engine.discovery.reset_session(expected_account).await;
     Ok(())
 }

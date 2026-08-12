@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('Android safely bridges cold and warm shared videos', () {
-    final sourceRoot = 'android/app/src/main/kotlin/app/ghostr';
+    final sourceRoot = 'android/app/src/main/kotlin/social/ghostr';
     final activity = File('$sourceRoot/MainActivity.kt').readAsStringSync();
     final bridge = File(
       '$sourceRoot/IncomingVideoShareBridge.kt',

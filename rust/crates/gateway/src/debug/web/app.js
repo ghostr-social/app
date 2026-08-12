@@ -42,7 +42,10 @@ function queueState(video) {
   return playedIds.has(video.id) ? "Played" : "Up next";
 }
 function queueRank(video) {
-  return video.id === currentId ? 0 : { "Up next": 1, Played: 2 }[queueState(video)];
+  if (video.id === currentId) return 0;
+  if (video.focus_distance > 0) return video.focus_distance;
+  if (video.focus_distance < 0) return 10_000 + Math.abs(video.focus_distance);
+  return { "Up next": 1_000, Played: 20_000 }[queueState(video)];
 }
 function renderQueueRow(video, index) {
   const row = byId("video-row-template").content.firstElementChild.cloneNode(true);
@@ -73,13 +76,6 @@ function selectedVideo(videos) {
   return videos.find((video) => video.id === currentId)
     || videos.find((video) => !video.complete && video.downloaded_bytes > 0)
     || videos[0];
-}
-function hydratePlayback(state) {
-  if (currentId) return;
-  const videos = debugVideos(state);
-  const video = videos.find((item) => item.id === state.nostr.current_id) || videos[0];
-  if (!video) return;
-  play(video);
 }
 function renderSelected(video) {
   const progress = video?.progress || 0;
@@ -152,11 +148,11 @@ function rangesText(items) {
 }
 function render(state) {
   latestState = state;
+  currentId ??= state.nostr.current_id;
   const videos = debugVideos(state);
   const now = performance.now();
   let totalRate = 0;
   state.videos.forEach((video) => { totalRate += observedRate(video, now); });
-  hydratePlayback(state);
   const selected = selectedVideo(videos);
   renderQueue(videos);
   renderSelected(selected);
@@ -182,7 +178,9 @@ function play(video) {
 function playNext() {
   if (!latestState || !currentId) return;
   playedIds.add(currentId);
-  const next = debugVideos(latestState).find((video) => !playedIds.has(video.id));
+  const videos = debugVideos(latestState);
+  const index = videos.findIndex((video) => video.id === currentId);
+  const next = videos.find((video) => video.focus_distance === 1) || videos[index + 1];
   currentId = null;
   next ? play(next) : render(latestState);
 }

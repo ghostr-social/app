@@ -11,7 +11,10 @@ class ScriptedVideoPlayerPlatform extends VideoPlayerPlatform {
 
   final Size initializedSize;
   final List<DataSource> dataSources = [];
+  final List<String> commands = [];
   final Map<int, StreamController<VideoEvent>> _streams = {};
+  Completer<void>? pauseGate;
+  Duration position = Duration.zero;
   int playCalls = 0;
   int _nextTextureId = 0;
 
@@ -57,17 +60,23 @@ class ScriptedVideoPlayerPlatform extends VideoPlayerPlatform {
 
   @override
   Future<void> play(int textureId) async {
+    commands.add('play');
     playCalls += 1;
   }
 
   @override
-  Future<void> pause(int textureId) async {}
+  Future<void> pause(int textureId) async {
+    commands.add('pause');
+    await pauseGate?.future;
+  }
 
   @override
-  Future<void> seekTo(int textureId, Duration position) async {}
+  Future<void> seekTo(int textureId, Duration position) async {
+    commands.add('seek:${position.inMilliseconds}');
+  }
 
   @override
-  Future<Duration> getPosition(int textureId) async => Duration.zero;
+  Future<Duration> getPosition(int textureId) async => position;
 
   @override
   Future<void> setLooping(int textureId, bool looping) async {}

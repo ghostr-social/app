@@ -13,8 +13,8 @@ pub(crate) const TAIL_PROBE_BYTES: u64 = 256 * 1024;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PlanInput {
     pub(crate) size_bytes: Option<u64>,
-    pub(crate) duration_ms: Option<u64>,
     pub(crate) bitrate_bps: u64,
+    pub(crate) needs_tail_probe: bool,
 }
 
 /// The chunk layout for one video under the current parameters.
@@ -32,19 +32,28 @@ impl ChunkPlan {
         Self::from_input(
             PlanInput {
                 size_bytes: meta.size_bytes,
-                duration_ms: meta.duration_ms,
                 bitrate_bps,
+                needs_tail_probe: meta.duration_ms.is_none(),
             },
             params,
         )
     }
 
-    pub(crate) fn from_input(input: PlanInput, params: &EngineParams) -> Self {
+    #[cfg(test)]
+    fn from_input(input: PlanInput, params: &EngineParams) -> Self {
+        Self::from_input_with_head_seconds(input, params, params.head_seconds)
+    }
+
+    pub(crate) fn from_input_with_head_seconds(
+        input: PlanInput,
+        params: &EngineParams,
+        head_seconds: u64,
+    ) -> Self {
         Self {
             size_bytes: input.size_bytes,
-            head_bytes: head_bytes(input, params),
+            head_bytes: head_bytes(input, params, head_seconds),
             chunk_bytes: params.chunk_bytes.max(1),
-            needs_tail_probe: input.duration_ms.is_none(),
+            needs_tail_probe: input.needs_tail_probe,
         }
     }
 
@@ -83,20 +92,25 @@ impl ChunkPlan {
         Some(ByteRange::new(size.saturating_sub(TAIL_PROBE_BYTES), size))
     }
 
+    pub(crate) fn next_missing_tail_probe(&self, have: &[ByteRange]) -> Option<ByteRange> {
+        self.tail_probe_range()
+            .and_then(|range| first_missing_within(range, have))
+    }
+
     /// First planned chunk (head first, then tail) not fully covered by
     /// the ranges already on disk.
     pub(crate) fn next_missing_chunk(&self, have: &[ByteRange]) -> Option<ByteRange> {
         self.head_ranges()
             .into_iter()
             .chain(self.tail_ranges())
-            .find(|range| !is_covered(*range, have))
+            .find_map(|range| first_missing_within(range, have))
     }
 }
 
 /// Head budget: `head_seconds` at the estimated bitrate, capped, and
 /// never more than the whole file.
-fn head_bytes(input: PlanInput, params: &EngineParams) -> u64 {
-    let ideal = params.head_seconds.saturating_mul(input.bitrate_bps) / 8;
+fn head_bytes(input: PlanInput, params: &EngineParams, head_seconds: u64) -> u64 {
+    let ideal = head_seconds.saturating_mul(input.bitrate_bps) / 8;
     let capped = ideal.min(params.head_cap_bytes);
     match input.size_bytes {
         Some(size) => capped.min(size),
@@ -115,15 +129,20 @@ fn split(start: u64, end: u64, chunk: u64) -> Vec<ByteRange> {
     ranges
 }
 
-fn is_covered(range: ByteRange, have: &[ByteRange]) -> bool {
+fn first_missing_within(range: ByteRange, have: &[ByteRange]) -> Option<ByteRange> {
     let mut cursor = range.start;
     while cursor < range.end {
         match furthest_reach(cursor, have) {
-            Some(reach) => cursor = reach,
-            None => return false,
+            Some(reach) => cursor = reach.min(range.end),
+            None => {
+                return Some(ByteRange::new(
+                    cursor,
+                    next_present(cursor, range.end, have),
+                ))
+            }
         }
     }
-    true
+    None
 }
 
 fn furthest_reach(cursor: u64, have: &[ByteRange]) -> Option<u64> {
@@ -131,4 +150,13 @@ fn furthest_reach(cursor: u64, have: &[ByteRange]) -> Option<u64> {
         .filter(|range| range.start <= cursor && range.end > cursor)
         .map(|range| range.end)
         .max()
+}
+
+fn next_present(cursor: u64, end: u64, have: &[ByteRange]) -> u64 {
+    have.iter()
+        .filter(|range| range.start > cursor)
+        .map(|range| range.start)
+        .min()
+        .unwrap_or(end)
+        .min(end)
 }

@@ -709,3 +709,47 @@ completed in 5,146 ms, the process stayed alive, and the password-protected
 Nostr key-import screen rendered while the previously verified signed-out
 state remained cleared. A launch-scoped AndroidRuntime, Flutter, Rust, libc,
 and native-debug error scan was empty.
+
+## Android — 2026-08-12 — self-update verification
+
+Purpose: verify the direct Android release feed, package contract, native
+installer bridge, and settings flow introduced for self-updating builds.
+
+Verified automatically and through live infrastructure:
+
+- `https://ghostr-social.github.io/stable.json` returned the complete v0.0.19
+  manifest for `app.ghostr`, namespace `ghostr.social`, and all three supported
+  ABIs. The Pages sync workflow completed successfully from its current `main`
+  revision.
+- The current GitHub release exposes the same `stable.json` as a release asset.
+- Parser, version/ABI selection, Wi-Fi gating, streamed exact-size/SHA-256
+  verification, interrupted-download cleanup, and lifecycle resumption passed
+  automated tests.
+- Method-channel tests covered installed identity, network state, source
+  permission, verified install submission, process-persistent status recovery,
+  and malformed/failing Android payloads.
+- Android contract checks confirm an explicit non-exported install receiver,
+  private APK/package/version/signing-lineage validation, and the Android 12+
+  best-effort unattended-install request with confirmation fallback.
+- If Android delivers confirmation while no activity is attached, the retained
+  status now exposes `Open Android installer`; that action abandons the stale
+  session, revalidates the cached APK, and submits a new confirmation-required
+  session without requiring Android 13 notification permission.
+- Settings widget and route tests covered automatic checks, manual/Wi-Fi/any
+  network downloads, automatic installation, Check now, progress, permission,
+  failure, and disabled states.
+
+Not manually exercised on a device:
+
+- The repository-owned `Ghostr_Agent_API_37.1` AVD is x86_64, but this machine
+  is an arm64 host. Emulator 37.1.11 rejected it before boot with
+  `Avd's CPU Architecture 'x86_64' is not supported ... on aarch64 host`.
+  The AVD was not forced, wiped, or replaced, as required by `AGENTS.md`.
+- No v0.0.20 production-signed APK exists yet, so a real installed v0.0.19 to
+  v0.0.20 PackageInstaller transition could not be performed without publishing
+  an unreviewed release. The next green `main` release should receive that final
+  on-device upgrade smoke pass, including inactive-app confirmation recovery, on
+  a compatible Android device or arm64 AVD.
+- The published v0.0.19 binary predates the updater. Existing v0.0.19 users need
+  one manual website install of the first updater-enabled, release-signed APK;
+  automatic checks and installs can take over for subsequent releases.

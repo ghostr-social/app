@@ -33,9 +33,8 @@ final class ProxiedProgressiveVideoMediaSource extends VideoMediaSource {
   VideoMediaDelivery get remoteDelivery => VideoMediaDelivery.progressive;
 
   @override
-  List<String> get remoteUrls => List<String>.unmodifiable([
-        playbackUri.toString(),
-      ]);
+  List<String> get remoteUrls =>
+      List<String>.unmodifiable([playbackUri.toString()]);
 }
 
 Uri _trustedProgressiveGatewayUri(String raw) {
@@ -49,7 +48,7 @@ Uri _trustedProgressiveGatewayUri(String raw) {
 bool _isTrustedProgressiveGatewayUri(Uri uri) {
   if (!_isLoopbackHttp(uri)) return false;
   if (!_isSafeGatewayLocation(uri)) return false;
-  return _isSinglePostIdQuery(uri);
+  return _isGatewayPlaybackQuery(uri);
 }
 
 bool _isLoopbackHttp(Uri uri) {
@@ -63,11 +62,20 @@ bool _isSafeGatewayLocation(Uri uri) {
       uri.path == '/video.mp4';
 }
 
-bool _isSinglePostIdQuery(Uri uri) {
+bool _isGatewayPlaybackQuery(Uri uri) {
   final parameters = uri.queryParametersAll;
-  if (parameters.length != 1) return false;
-  final ids = parameters['id'];
-  return ids != null && ids.length == 1 && _isGatewayPostId(ids.single);
+  if (parameters.length != 2) return false;
+  final id = _singleQueryValue(parameters, 'id');
+  final capability = _singleQueryValue(parameters, 'cap');
+  return id != null &&
+      capability != null &&
+      _isGatewayPostId(id) &&
+      _isGatewayCapability(capability);
+}
+
+String? _singleQueryValue(Map<String, List<String>> parameters, String key) {
+  final values = parameters[key];
+  return values?.length == 1 ? values!.single : null;
 }
 
 bool _isGatewayPostId(String value) {
@@ -75,3 +83,8 @@ bool _isGatewayPostId(String value) {
 }
 
 final _gatewayPostIdPattern = RegExp(r'^[A-Za-z0-9_-]+$');
+final _gatewayCapabilityPattern = RegExp(r'^[A-Za-z0-9_-]{43}$');
+
+bool _isGatewayCapability(String value) {
+  return _gatewayCapabilityPattern.hasMatch(value);
+}

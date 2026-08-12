@@ -5,7 +5,7 @@ use crate::{ByteRange, EngineParams, PostId};
 
 // Whole 2 MB files are their own heads. The startable window is
 // narrowed to 1, so the fully cached current post "a" satisfies the
-// target on its own and "c" (distance 1) sits beyond the window.
+// target on its own and "c" (distance 1) sits beyond the protected prefix.
 fn bench() -> WorkBench {
     let mut bench = WorkBench::new();
     for post in ["a", "c"] {
@@ -24,16 +24,8 @@ fn bench() -> WorkBench {
 }
 
 #[test]
-fn heads_beyond_the_satisfied_window_are_speculative() {
-    let requests = bench().run();
-
-    assert!(!requests.is_empty());
-    assert!(requests
-        .iter()
-        .all(|request| request.chunk.post.as_str() == "c"));
-    assert!(requests
-        .iter()
-        .all(|request| request.tier == Tier::T4Speculative));
+fn heads_beyond_the_protected_prefix_are_not_speculative() {
+    assert!(bench().run().is_empty());
 }
 
 #[test]

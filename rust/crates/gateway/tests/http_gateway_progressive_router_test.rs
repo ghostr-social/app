@@ -7,6 +7,7 @@ use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_delivery::playback_demand::demand_channel;
 use ghostr_delivery::progressive_posts::ServablePosts;
 use ghostr_gateway::hls::sessions::HlsSessions;
+use ghostr_gateway::progressive::capabilities::ProgressiveCapabilities;
 use ghostr_gateway::progressive::route::{ProgressiveState, ProgressiveTiming};
 use ghostr_gateway::router::configured_router_with_progressive;
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
@@ -31,6 +32,7 @@ fn standard_router() -> (Router, PathBuf) {
         cache: ServablePosts::new(),
         network: NetworkThrottle::new(),
         timing: ProgressiveTiming::default(),
+        capabilities: ProgressiveCapabilities::production(),
         #[cfg(feature = "video-debug-web")]
         debug_feed: ghostr_delivery::debug::feed::DebugFeed::new(delivery, Vec::new()),
     });

@@ -40,18 +40,16 @@ impl DemandSignals {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PostInventory {
     pub(crate) mode: Mode,
-    pub(crate) startable_target_met: bool,
-    pub(crate) startable_window: usize,
+    pub(crate) startable_target: usize,
     pub(crate) head_complete: bool,
 }
 
 impl PostInventory {
     /// Flattens a controller observation for one post's classification.
-    pub(crate) fn new(state: InventoryState, startable_window: usize, head_complete: bool) -> Self {
+    pub(crate) fn new(state: InventoryState, head_complete: bool) -> Self {
         Self {
             mode: state.mode,
-            startable_target_met: state.counts.startable >= state.counts.target,
-            startable_window,
+            startable_target: state.counts.target,
             head_complete,
         }
     }
@@ -67,28 +65,29 @@ pub(crate) fn classify(
     demand: DemandSignals,
 ) -> Option<Tier> {
     let distance = focus.distance_of(post)?;
+    if distance >= inventory.startable_target as i64 {
+        return None;
+    }
     if distance == 0 && demand.is_emergency() {
         return Some(Tier::T0PlaybackEmergency);
     }
     match inventory.head_complete {
-        false => Some(head_tier(distance, inventory)),
+        false => Some(head_tier(distance)),
         true => tail_tier(distance, inventory.mode, demand),
     }
 }
 
-/// Head chunks: the current post is always startability work; other
-/// upcoming posts only while the target is unmet. Everything else —
-/// beyond-window and scroll-back heads — is speculative.
-fn head_tier(distance: i64, inventory: PostInventory) -> Tier {
-    let upcoming = (0..inventory.startable_window as i64).contains(&distance);
-    match distance == 0 || (upcoming && !inventory.startable_target_met) {
-        true => Tier::T2Startability,
-        false => Tier::T4Speculative,
+/// Protected upcoming heads are startability work; scroll-back heads remain
+/// speculative. Far upcoming posts are rejected before classification.
+fn head_tier(distance: i64) -> Tier {
+    match distance < 0 {
+        true => Tier::T4Speculative,
+        false => Tier::T2Startability,
     }
 }
 
-/// Tail chunks: commitment finishes the current video in any mode;
-/// otherwise deepening is comfort-only and scroll-back speculative.
+/// Tail chunks: commitment gives the current item a bounded reserve;
+/// the planner owns that bound. Other deepening is comfort-only.
 fn tail_tier(distance: i64, mode: Mode, demand: DemandSignals) -> Option<Tier> {
     if distance == 0 && demand.viewer_committed {
         return Some(Tier::T1CurrentTail);

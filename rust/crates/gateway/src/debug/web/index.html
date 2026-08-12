@@ -34,7 +34,7 @@
         <div class="phone-speaker" aria-hidden="true"></div>
         <div class="phone-screen">
           <video id="player" aria-labelledby="player-title"
-                 controls playsinline muted autoplay preload="metadata"></video>
+                 controls playsinline muted preload="metadata"></video>
           <div id="player-empty" class="player-empty">
             <b>Select a video</b>
             <span>Playback reads from the Rust media gateway.</span>
@@ -150,7 +150,7 @@
       <button class="icon-button" type="button" data-close-network aria-label="Close network settings">×</button></div>
     <p class="modal-copy">Limits are applied live to progressive media range transfers.</p>
     <form id="network-form">
-      <label>Bandwidth per transfer <span><input id="bandwidth" type="number" min="0" max="10000000" step="1"> Kbps</span><small>0 is unlimited</small></label>
+      <label>Shared media bandwidth <span><input id="bandwidth" type="number" min="0" max="10000000" step="1"> Kbps</span><small>Aggregate across active transfers; 0 is unlimited</small></label>
       <label>Added request latency <span><input id="latency" type="number" min="0" max="60000" step="10"> ms</span><small>Applied before each range request</small></label>
       <label>Connections per host <input id="connections-limit" type="number" min="0" max="64" step="1"><small>0 is unlimited</small></label>
       <p id="form-status" class="form-status" role="status"></p>

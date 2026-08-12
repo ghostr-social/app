@@ -5,6 +5,7 @@ import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/media/video_playback_capabilities.dart';
 import 'package:ghostr/platform/media/gateway_video_playback_port.dart';
 import 'package:ghostr/platform/media/hls_video_playback_port.dart';
+import 'package:ghostr/shared/media/video_playback_port.dart';
 
 import '../support/fake_hls_playback_gateway.dart';
 import '../support/fake_remote_video_source.dart';
@@ -24,9 +25,7 @@ void main() {
   });
 
   test('streams progressive playback from the loopback gateway', () {
-    final delivery = testVideoDelivery(
-      remoteSource: FakeRemoteVideoSource([]),
-    );
+    final delivery = testVideoDelivery(remoteSource: FakeRemoteVideoSource([]));
 
     final playback = buildProductionVideoPlayback(delivery);
 
@@ -44,8 +43,9 @@ void main() {
     expect(playback, isA<GatewayVideoPlaybackPort>());
   });
 
-  testWidgets('renders a stable surface when the platform has no player',
-      (tester) async {
+  testWidgets('renders a stable surface when the platform has no player', (
+    tester,
+  ) async {
     final delivery = testVideoDelivery(
       remoteSource: FakeRemoteVideoSource([]),
       playbackCapabilities: VideoPlaybackCapabilities.none,
@@ -56,16 +56,20 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: playback.buildSurface(
-          media: VideoMediaSource.local('/videos/draft.mp4'),
-          isActive: true,
-          onPlaybackMediaReleased: () => releases += 1,
+          VideoPlaybackSurfaceRequest(
+            media: VideoMediaSource.local('/videos/draft.mp4'),
+            isActive: true,
+            onPlaybackMediaReleased: () => releases += 1,
+          ),
         ),
       ),
     );
 
     expect(find.text('Video playback unavailable'), findsOneWidget);
-    expect(find.text('This platform has no compatible video player.'),
-        findsOneWidget);
+    expect(
+      find.text('This platform has no compatible video player.'),
+      findsOneWidget,
+    );
     expect(releases, 0);
 
     await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));

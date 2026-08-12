@@ -13,9 +13,9 @@ fn cache_registry_projects_stable_ready_partial_and_complete_entries() {
     ]);
 
     let videos = registry.videos();
-    assert_eq!(videos[0].id, "first");
-    assert_eq!(videos[0].status, CacheStatus::Complete);
-    assert_eq!(videos[1].status, CacheStatus::Partial);
+    assert_eq!(videos[0].id, "second");
+    assert_eq!(videos[0].status, CacheStatus::Partial);
+    assert_eq!(videos[1].status, CacheStatus::Complete);
 }
 
 fn video(id: &str, status: CacheStatus) -> CacheVideo {

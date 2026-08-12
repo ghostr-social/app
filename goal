@@ -1,0 +1,169 @@
+A previous agent wrote a bunch of code in this branch, but it looks like it is failing. It also failed to make the "make native-dead-code" to pass clean. Here was the goal, that we should persuit
+improving/cleaning the current changes in this branch:
+
+----
+# Handoff: Adaptive Video Playability Architecture
+
+Build an adaptive video-delivery architecture that continuously allocates network, storage, and connection capacity to maximize the probability that playback remains uninterrupted as the user navigates the
+feed.
+
+The goal is not “download the current video plus exactly three videos.”
+
+There must be no fixed number of videos ahead. The amount and depth of prefetching must change according to:
+
+- Current playable-buffer duration and stall risk.
+- Observed throughput, RTT, packet loss, and connection capacity.
+- Each video’s bitrate, duration, byte layout, and playable ranges.
+- Feed position and probability that each candidate will be viewed next.
+- Swipe speed and recent navigation behavior.
+- Existing cached ranges and useful in-flight work.
+- Origin health and source alternatives.
+- Available storage and eviction pressure (default 2GB, but configurable)
+- The cost of cancellation, duplication, and restarting requests.
+
+## Required behavior
+
+The scheduler should optimize these priorities lexicographically:
+
+1. Prevent interruption of the currently playing video.
+2. Maximize expected playability of likely upcoming choices.
+3. Preserve useful paid/in-flight work.
+4. Minimize duplicate downloads, cancellation waste, and unnecessary data use.
+5. Expand speculative coverage only when resources and playback safety permit it.
+
+
+Examples:
+
+- Low current buffer or degraded network: deepen the current video and the most likely immediate transition.
+- Healthy current buffer and high throughput: prepare more candidates.
+- Rapid forward swiping: increase breadth because several transitions may occur quickly.
+- Slow viewing: concentrate more depth in fewer likely candidates.
+- High storage pressure: reduce speculative coverage and evict the lowest-value ranges.
+- Failed or slow origin: move capacity to viable sources without losing already useful ranges.
+
+## Proposed architecture
+
+Introduce a pure adaptive policy:
+
+PlayabilitySnapshot
+playback buffer and state
+navigation probabilities
+video timelines and bitrates
+present and in-flight ranges
+network estimate and confidence
+origin health
+storage budget
+recent swipe behavior
+
+        ↓
+
+AdaptivePlayabilityPolicy
+
+        ↓
+
+AllocationPlan
+selected candidates
+exact byte ranges
+expected playable-time gain
+urgency
+admission/preemption authority
+commitment lifetime
+reason/evidence
+
+Candidate value should be based on expected playable-time gain, approximately:
+
+view_probability
+× additional_playable_seconds
+÷ expected_delivery_cost
+
+Current-stall prevention remains an overriding constraint, not merely another score.
+
+The plan may produce a frontier of one video, four videos, ten videos, or another size. Its size must emerge from the current resource and playability state—not from a constant such as protected_count = 4.
+
+Use hysteresis/commitments so small telemetry changes do not repeatedly cancel and restart useful transfers.
+
+## Admission and preemption invariants
+
+- No candidate receives origin work unless the adaptive policy admitted it.
+- A lower-value candidate cannot consume capacity required by a higher-value unplayable candidate.
+- A started useful range remains committed unless:
+  - current playback is genuinely endangered,
+  - the user navigated away and its probability collapsed,
+  - its representation/source identity became obsolete,
+  - or storage/network policy explicitly displaced it.
+
+- Replanning must subtract stored and in-flight ranges before issuing another request.
+- Completed origin ranges must never overlap successful earlier ranges.
+- Playback-critical demand and ordinary read-ahead must have distinct preemption authority.
+
+## Correct acceptance strategy
+
+Do not assert that exactly four videos become ready.
+
+Test adaptation itself:
+
+- Poor network/current low buffer produces a narrow, deeper plan.
+- Healthy network/current safe buffer produces a broader plan.
+- Rapid swiping expands breadth.
+- Storage pressure contracts speculative allocation.
+- Origin failure reallocates work.
+- Changing network conditions changes the plan without restarting useful ranges.
+- Every admitted range has a policy reason and measurable expected playability gain.
+- No unadmitted candidate receives origin bytes.
+- Duplicate completed origin bytes remain exactly zero.
+- Rebuffer remains ≤1%.
+- Startup and transition latency remain within product targets.
+- Cancellation waste remains bounded.
+
+The browser matrix should verify multiple policy outcomes rather than encode one fixed current-plus-three policy.
+
+## Current branch mismatch
+
+I incorrectly converted the adaptive requirement into:
+
+startable_target = 4
+protected_count = 4
+current + next 3
+
+That is a fundamental requirements error.
+
+Several useful mechanisms in the branch should be retained:
+
+- Media-timeline parsing and playable-range calculation.
+- Exact origin chronology and duplicate-byte measurement.
+- Aggregate bandwidth simulation.
+- Incremental storage writes.
+- Retry/cooldown handling.
+- Source-health tracking.
+- In-flight range commitments.
+- Fail-closed browser evidence.
+
+But the fixed-prefix policy in engine, delivery admission, and browser targets must be replaced by the adaptive policy described above.
+
+## Current observed defect
+
+Rapid forward swiping still produces a 314-byte duplicate:
+
+v1 [238043, 238357)
+v1 [238043, 285652)
+
+Artifact: .artifacts/video-user-e2e/run-vtTNg2/failure.json
+
+This race still requires a deterministic manager + downloader + real store regression. However, it is secondary to correcting the fixed-window architecture. Do not continue polishing the hard-coded four-video
+policy as though it satisfies the product goal.
+
+## Test-first next step
+
+1. Add pure failing policy tests showing different snapshots yield different frontier sizes and allocation depths.
+2. Introduce PlayabilitySnapshot, CandidateUtility, and AllocationPlan.
+3. Move the fixed target out of engine and delivery admission.
+4. Make origin admission consume only the adaptive plan.
+5. Replace fixed-four browser assertions with plan-evidence assertions.
+6. Then reproduce and fix the 314-byte store/replan race.
+7. Run the complete impairment matrix against the adaptive policy.
+
+==
+COMMENT: Another BIG problem is that we are also downloading videos that are not "streameable", so those only work if we download the whole video. We need to download those, HOWEVER, we need to have sufficient amount of content to buy time to download those.
+So we need to be aware of the kind of file and, if we detect that video is not streameable, we may download it layer (deprioritize at that moment.)
+==
+------

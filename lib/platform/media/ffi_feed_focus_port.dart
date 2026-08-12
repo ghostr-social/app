@@ -8,42 +8,50 @@ import 'package:ghostr/platform/media/ffi_focus_item_media_mapper.dart';
 import 'package:ghostr/src/rust/api/delivery_types.dart';
 import 'package:ghostr/src/rust/api/focus_control.dart';
 
-typedef RustFocusUpdater = Future<void> Function({
-  required String feedId,
-  required List<FfiFocusItem> items,
-  required int currentIndex,
-  required BigInt watchMs,
-});
+part 'ffi_feed_focus_scheduler.dart';
+
+typedef RustFocusUpdater =
+    Future<void> Function({required FfiFocusUpdate update});
 
 /// Forwards the viewer's focus window to the Rust delivery engine via
 /// `ffi_update_focus`, mapping media through the shared focus-item
 /// mapper so post ids match the engine's partial-store keys.
 final class FfiFeedFocusPort implements FeedFocusPort {
-  const FfiFeedFocusPort({RustFocusUpdater updateFocus = ffiUpdateFocus})
-      : _updateFocus = updateFocus;
+  FfiFeedFocusPort({RustFocusUpdater updateFocus = ffiUpdateFocus})
+    : _updateFocus = updateFocus;
 
   /// One feed exists in phase 1; Rust accepts the id unread.
   static const feedId = 'primary';
 
   final RustFocusUpdater _updateFocus;
+  final _scheduler = _FocusWriteScheduler();
+  var _generation = BigInt.zero;
 
   @override
   void focusChanged(FeedFocus focus) {
     final window = _FfiFocusWindow.of(focus);
-    unawaited(_send(window, focus.watched));
+    _generation += BigInt.one;
+    _scheduler.schedule(_FocusWrite(window, focus.watched, _generation), _send);
   }
 
-  Future<void> _send(_FfiFocusWindow window, Duration watched) async {
+  Future<void> _send(_FocusWrite work) async {
     try {
       await _updateFocus(
-        feedId: feedId,
-        items: window.items,
-        currentIndex: window.currentIndex,
-        watchMs: BigInt.from(watched.inMilliseconds),
+        update: FfiFocusUpdate(
+          feedId: feedId,
+          items: work.window.items,
+          currentIndex: work.window.currentIndex,
+          watchMs: BigInt.from(work.watched.inMilliseconds),
+          generation: work.generation,
+        ),
       );
     } on Object catch (error, stackTrace) {
-      log('Focus update did not reach the delivery engine.',
-          name: 'ghostr.video.focus', error: error, stackTrace: stackTrace);
+      log(
+        'Focus update did not reach the delivery engine.',
+        name: 'ghostr.video.focus',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
   }
 }

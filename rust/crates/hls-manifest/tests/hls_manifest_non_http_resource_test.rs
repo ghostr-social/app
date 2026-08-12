@@ -1,5 +1,5 @@
-use url::Url;
 use ghostr_hls_manifest::hls_manifest::rewrite_hls_manifest;
+use url::Url;
 
 #[test]
 fn rejects_non_http_resources_before_issuing_a_gateway_route() {

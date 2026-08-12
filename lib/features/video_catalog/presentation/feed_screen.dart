@@ -124,11 +124,13 @@ class _FeedScreenState extends State<FeedScreen> {
       builder: (context, sharing) => FeedCard(
         key: ValueKey(post.id.value),
         post: post,
-        playbackPort: widget.bindings.playbackPort,
-        isActive:
-            widget.bindings.isActive &&
-            !_commentsOpen &&
-            index == state.activeIndex,
+        playback: FeedCardPlayback(
+          port: widget.bindings.playbackPort,
+          isActive:
+              widget.bindings.isActive &&
+              !_commentsOpen &&
+              index == state.activeIndex,
+        ),
         actions: _actions(context, post, sharing),
       ),
     );

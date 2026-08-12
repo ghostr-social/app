@@ -1,10 +1,12 @@
 //! Playable media resolved from a whole Nostr event: imeta tags first,
 //! then NIP-94 top-level file tags, then direct video links in note text.
 
+use crate::event_identity::VIDEO_KINDS;
 use crate::imeta_extras::ImetaExtras;
 use crate::native_media_metadata::{
     lenient_native_media, mime_or_url_delivery, parse_sha256, playable_media, NativeMediaMetadata,
 };
+use crate::native_models::NativeVideoDelivery;
 use crate::video_link_scan::{first_video_link, is_bounded_http_url, url_delivery};
 use nostr_sdk::Event;
 
@@ -14,12 +16,31 @@ pub fn event_media(event: &Event) -> Option<NativeMediaMetadata> {
         .or_else(|| text_media(event))
 }
 
-/// The first imeta tag that parses wins.
-fn imeta_media(event: &Event) -> Option<NativeMediaMetadata> {
+/// Every independently valid video `imeta`, preserving publisher order.
+pub fn event_imeta_media(event: &Event) -> Vec<NativeMediaMetadata> {
     event
         .tags
         .iter()
-        .find_map(|tag| lenient_native_media(tag.as_slice()))
+        .filter_map(|tag| lenient_native_media(tag.as_slice()))
+        .collect()
+}
+
+/// The first imeta tag that parses wins.
+fn imeta_media(event: &Event) -> Option<NativeMediaMetadata> {
+    let mut media = event_imeta_media(event);
+    if media.is_empty() {
+        return None;
+    }
+    let preferred = VIDEO_KINDS
+        .contains(&event.kind.as_u16())
+        .then(|| {
+            media
+                .iter()
+                .position(|item| item.delivery == NativeVideoDelivery::Progressive)
+        })
+        .flatten()
+        .unwrap_or(0);
+    Some(media.remove(preferred))
 }
 
 /// NIP-94 file events carry URL, mime, and digest as top-level tags.

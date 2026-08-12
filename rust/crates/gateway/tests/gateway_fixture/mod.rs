@@ -7,9 +7,12 @@
 pub mod debug_clear;
 pub mod delivery;
 pub mod free_space;
+#[cfg(feature = "video-debug-web")]
+pub mod media_origin;
 pub mod progressive;
+mod progressive_capability;
 pub mod progressive_hls;
-mod progressive_request;
+pub mod progressive_request;
 pub mod raw_http;
 
 use ghostr_delivery::cache_registry::{CacheStatus, CacheVideo};

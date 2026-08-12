@@ -1,6 +1,10 @@
 mod host_stats_best_source_test;
+mod host_stats_bounded_persistence_test;
+mod host_stats_evidence_test;
 mod host_stats_ewma_test;
 mod host_stats_factor_test;
 mod host_stats_failure_ratio_test;
 mod host_stats_json_test;
+mod host_stats_overall_fallback_test;
+mod host_stats_ttfb_fallback_test;
 mod host_stats_unknown_host_test;

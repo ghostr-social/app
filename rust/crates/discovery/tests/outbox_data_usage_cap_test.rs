@@ -5,9 +5,9 @@
 mod discovery_support;
 
 use discovery_support::write_relay_list;
-use nostr_sdk::Keys;
 use ghostr_discovery::outbox::directory::{max_outbox_relays, OutboxDirectory};
 use ghostr_engine::DataUsageLevel;
+use nostr_sdk::Keys;
 
 #[test]
 fn mirrors_dart_max_outbox_relays_per_level() {

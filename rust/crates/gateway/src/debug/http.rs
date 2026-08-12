@@ -34,6 +34,8 @@ struct DebugHttpState {
 #[derive(Deserialize)]
 struct AddVideoRequest {
     url: String,
+    #[serde(default)]
+    mirrors: Vec<String>,
     size_bytes: Option<u64>,
     duration_ms: Option<u64>,
 }
@@ -46,6 +48,11 @@ struct AddVideoResponse {
 #[derive(Deserialize)]
 struct SelectFocusRequest {
     id: String,
+}
+
+#[derive(Deserialize)]
+struct StorageBudgetRequest {
+    budget_bytes: u64,
 }
 
 pub(crate) fn router(
@@ -67,6 +74,7 @@ pub(crate) fn router(
         .route("/debug/api/network", put(update_network))
         .route("/debug/api/focus", put(select_focus))
         .route("/debug/api/videos", post(add_video))
+        .route("/debug/api/storage", put(update_storage))
         .route("/debug/api/data", delete(clear_data))
         .with_state(state)
         .merge(debug_assets::router())
@@ -91,12 +99,11 @@ async fn select_focus(
     State(state): State<DebugHttpState>,
     Json(request): Json<SelectFocusRequest>,
 ) -> Result<StatusCode, StatusCode> {
-    state
-        .progressive
-        .debug_feed
-        .select(&request.id)
-        .map_err(|_| StatusCode::NOT_FOUND)?;
-    Ok(StatusCode::NO_CONTENT)
+    let selected_from_feed = state.progressive.debug_feed.select(&request.id).is_ok();
+    match selected_from_feed || state.videos.select(&request.id) {
+        true => Ok(StatusCode::NO_CONTENT),
+        false => Err(StatusCode::NOT_FOUND),
+    }
 }
 
 async fn add_video(
@@ -105,6 +112,7 @@ async fn add_video(
 ) -> Result<(StatusCode, Json<AddVideoResponse>), StatusCode> {
     let registration = DebugVideoRegistration {
         url: request.url,
+        mirrors: request.mirrors,
         size_bytes: request.size_bytes,
         duration_ms: request.duration_ms,
     };
@@ -115,8 +123,22 @@ async fn add_video(
     Ok((StatusCode::CREATED, Json(AddVideoResponse { id })))
 }
 
+async fn update_storage(
+    State(state): State<DebugHttpState>,
+    Json(request): Json<StorageBudgetRequest>,
+) -> Result<StatusCode, StatusCode> {
+    state
+        .progressive
+        .store
+        .set_storage_budget(request.budget_bytes)
+        .await
+        .map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 async fn clear_data(State(state): State<DebugHttpState>) -> Result<StatusCode, StatusCode> {
     state.progressive.debug_feed.clear();
+    state.videos.clear();
     let delivery = state.delivery.clear();
     let database = state.client.database().wipe();
     let hls = state.hls.clear();

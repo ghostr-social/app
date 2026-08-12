@@ -158,5 +158,5 @@ fn accepts_byte_ranges(response: &Response) -> bool {
 
 fn partial_total(response: &Response) -> Option<u64> {
     let value = header_text(response, &CONTENT_RANGE)?;
-    content_range::parse(&value)?.1
+    content_range::parse(&value)?.total
 }

@@ -10,24 +10,35 @@
 //! room, leaves the source's ledger untouched, and is reported once per
 //! refusal decision rather than once per buffer.
 
+use crate::manager::transfers::InternalEvent;
 use crate::manager::DeliveryWorker;
 use ghostr_engine::PostId;
+use ghostr_partial_store::partial_range_store::capacity::CapacityRevision;
 use ghostr_partial_store::partial_range_store::OutOfSpace;
 use log::warn;
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::watch;
 
 /// What the manager carries between refusals.
 pub(crate) struct StorePressure {
     /// Refusal decisions already reported, so a burst of buffers
     /// hitting one decision is logged once.
     reported: u64,
-    /// How long a post waits before asking the store again.
+    /// Delay before one external free-space recheck.
     pause: Duration,
+    parked: bool,
+    wait_generation: u64,
 }
 
 impl StorePressure {
     pub(crate) fn new(pause: Duration) -> Self {
-        Self { reported: 0, pause }
+        Self {
+            reported: 0,
+            pause,
+            parked: false,
+            wait_generation: 0,
+        }
     }
 
     fn claim_report(&mut self, decisions: u64) -> bool {
@@ -41,19 +52,64 @@ impl StorePressure {
     pub(crate) fn report(&mut self, decisions: u64, short: u64) -> Option<u64> {
         self.claim_report(decisions).then_some(short)
     }
+
+    pub(crate) fn is_parked(&self) -> bool {
+        self.parked
+    }
+
+    fn park(&mut self, observed: CapacityRevision) -> Option<CapacityWait> {
+        if self.parked {
+            return None;
+        }
+        self.parked = true;
+        self.wait_generation = self.wait_generation.saturating_add(1);
+        Some(CapacityWait {
+            generation: self.wait_generation,
+            recheck_after: self.pause,
+            observed,
+        })
+    }
+
+    pub(crate) fn resume(&mut self, generation: u64) {
+        if self.wait_generation == generation {
+            self.parked = false;
+        }
+    }
+
+    pub(crate) fn clear(&mut self) {
+        self.wait_generation = self.wait_generation.saturating_add(1);
+        self.reported = 0;
+        self.parked = false;
+    }
+
+    pub(crate) fn focus_changed(&mut self) {
+        self.wait_generation = self.wait_generation.saturating_add(1);
+        self.parked = false;
+    }
+}
+
+#[derive(Clone, Copy)]
+struct CapacityWait {
+    generation: u64,
+    recheck_after: Duration,
+    observed: CapacityRevision,
 }
 
 impl DeliveryWorker {
     /// Absorbs a chunk that failed on the store rather than on the
     /// network. `true` when it was one, so the caller leaves the
     /// source's retry ledger alone.
-    pub(crate) fn absorb_store_pressure(&mut self, post: &PostId, error: &anyhow::Error) -> bool {
-        let Some(short) = out_of_space(error) else {
+    pub(crate) fn absorb_store_pressure(&mut self, _post: &PostId, error: &anyhow::Error) -> bool {
+        let Some(refusal) = out_of_space(error) else {
             return false;
         };
-        self.report_pressure(short);
-        self.start_cooldown(post.clone(), self.pressure.pause);
+        self.report_pressure(refusal.short);
+        self.park_for_capacity(refusal.capacity_revision());
         true
+    }
+
+    pub(crate) fn resume_store_capacity(&mut self, generation: u64) {
+        self.pressure.resume(generation);
     }
 
     fn report_pressure(&mut self, short: u64) {
@@ -63,16 +119,64 @@ impl DeliveryWorker {
             .report(decisions, short)
             .inspect(|short| warn_pressure(*short));
     }
+
+    fn park_for_capacity(&mut self, observed: CapacityRevision) {
+        let Some(wait) = self.pressure.park(observed) else {
+            return;
+        };
+        let store = Arc::clone(&self.ctx.store);
+        let mut changes = store.capacity_changes();
+        let events = self.ctx.events.clone();
+        tokio::spawn(async move {
+            let changed = tokio::select! {
+                changed = capacity_changed(
+                    &store,
+                    &mut changes,
+                    wait.recheck_after,
+                    wait.observed,
+                ) => changed,
+                _ = events.closed() => false,
+            };
+            if changed {
+                let _ = events.send(InternalEvent::Maintenance(
+                    crate::manager::transfers::MaintenanceEvent::StoreCapacityChanged(
+                        wait.generation,
+                    ),
+                ));
+            }
+        });
+    }
+}
+
+pub(crate) async fn capacity_changed(
+    store: &ghostr_partial_store::partial_range_store::PartialRangeStore,
+    changes: &mut watch::Receiver<u64>,
+    recheck_after: Duration,
+    observed: CapacityRevision,
+) -> bool {
+    if *changes.borrow_and_update() != observed.value() {
+        return true;
+    }
+    tokio::select! {
+        result = changes.changed() => result.is_ok(),
+        _ = tokio::time::sleep(recheck_after) => {
+            store.recheck_capacity().await;
+            changes.changed().await.is_ok()
+        }
+    }
 }
 
 fn warn_pressure(short: u64) {
     warn!("Video store has no room for {short} more bytes; pausing the post instead of its source");
 }
 
+pub(crate) fn is_store_pressure(error: &anyhow::Error) -> bool {
+    out_of_space(error).is_some()
+}
+
 /// The shortfall a store refusal carried, wherever it sits in the chain.
-fn out_of_space(error: &anyhow::Error) -> Option<u64> {
+fn out_of_space(error: &anyhow::Error) -> Option<&OutOfSpace> {
     error
         .chain()
         .find_map(|cause| cause.downcast_ref::<OutOfSpace>())
-        .map(|refusal| refusal.short)
 }

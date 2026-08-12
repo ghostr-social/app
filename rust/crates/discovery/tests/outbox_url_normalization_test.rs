@@ -7,8 +7,8 @@
 mod discovery_support;
 
 use discovery_support::{r_tag, r_tag_marked, relay_list};
-use nostr_sdk::Keys;
 use ghostr_discovery::outbox::directory::OutboxDirectory;
+use nostr_sdk::Keys;
 
 fn ingested(keys: &Keys, tags: Vec<Vec<String>>) -> Vec<String> {
     let mut directory = OutboxDirectory::new(Vec::new());

@@ -2,13 +2,15 @@
 //! and the inventory control loop. Pure bookkeeping — no IO.
 
 use crate::candidate_priority::CandidatePriority;
-use crate::delivery_events::{DeliveryCandidate, DeliveryFocus};
+use crate::delivery_events::{DeliveryCandidate, FocusGenerationGuard};
 use ghostr_engine::budget::params_for;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::focus::{FocusState, FocusUpdate};
 use ghostr_engine::inventory_controller::{
     InventoryController, InventoryState, Mode, PresentRanges,
 };
+use ghostr_engine::playback::PlaybackStatus;
+use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId};
 use std::collections::HashSet;
 use tokio::sync::watch;
@@ -23,7 +25,15 @@ pub(crate) struct DeliveryState {
     mode_watch: Option<watch::Sender<Mode>>,
     candidates: CandidatePriority,
     projection_focus: bool,
+    playback: PlaybackStatus,
+    focus_generations: FocusGenerationGuard,
+    pending_representations: Vec<RepresentationBinding>,
 }
+
+mod focus;
+mod playback;
+mod probes;
+mod representation;
 
 impl DeliveryState {
     pub(crate) fn new(base: EngineParams, level: DataUsageLevel) -> Self {
@@ -38,6 +48,9 @@ impl DeliveryState {
             mode_watch: None,
             candidates: CandidatePriority::default(),
             projection_focus: true,
+            playback: PlaybackStatus::default(),
+            focus_generations: FocusGenerationGuard::default(),
+            pending_representations: Vec::new(),
         }
     }
 
@@ -48,7 +61,11 @@ impl DeliveryState {
         if candidate.meta.delivery != DeliveryKind::Progressive {
             return;
         }
-        self.catalog.upsert(candidate.post.clone(), candidate.meta);
+        self.upsert_progressive_renditions(
+            candidate.post.clone(),
+            candidate.meta,
+            candidate.renditions,
+        );
         self.candidates
             .rank(candidate.post, candidate.discovered_at);
         if self.projection_focus {
@@ -58,6 +75,7 @@ impl DeliveryState {
                 watch_ms: 0,
             });
         }
+        self.prune_scheduling_state();
     }
 
     pub(crate) fn prioritize(&mut self, post: PostId) {
@@ -70,6 +88,8 @@ impl DeliveryState {
             current_index: 0,
             watch_ms: 0,
         });
+        self.discard_inactive_playback();
+        self.prune_scheduling_state();
     }
 
     /// Publishes inventory mode transitions to `sender` (unified
@@ -77,26 +97,6 @@ impl DeliveryState {
     /// quiet in comfort. Only actual transitions notify receivers.
     pub(crate) fn publish_modes(&mut self, sender: watch::Sender<Mode>) {
         self.mode_watch = Some(sender);
-    }
-
-    /// Applies a focus replacement. Progressive posts land in the
-    /// catalog, which is what makes them servable; the caller refreshes
-    /// the gateway registry from the catalogued window.
-    pub(crate) fn apply_focus(&mut self, update: DeliveryFocus) {
-        let mut window = Vec::new();
-        for item in update.items {
-            window.push(item.post.clone());
-            if item.meta.delivery == DeliveryKind::Progressive {
-                self.catalog.upsert(item.post.clone(), item.meta);
-                self.candidates.rank(item.post, 0);
-            }
-        }
-        self.projection_focus = false;
-        self.focus.update_focus(FocusUpdate {
-            window,
-            current_index: update.current_index,
-            watch_ms: update.watch_ms,
-        });
     }
 
     /// Re-derives the budgeted parameters from the pristine base
@@ -113,12 +113,18 @@ impl DeliveryState {
         self.controller = InventoryController::new(self.effective);
         self.candidates = CandidatePriority::default();
         self.projection_focus = true;
+        self.playback.discard_session();
+        self.pending_representations.clear();
     }
 
-    pub(crate) fn observe_inventory(&mut self, present: &PresentRanges) -> InventoryState {
-        let state = self
-            .controller
-            .inventory_state(&self.catalog, &self.focus, present);
+    pub(crate) fn observe_inventory(
+        &mut self,
+        present: &PresentRanges,
+        head_seconds: &dyn Fn(&PostId) -> u64,
+    ) -> InventoryState {
+        let state =
+            self.controller
+                .inventory_state_with(&self.catalog, &self.focus, present, head_seconds);
         self.notify_mode(state.mode);
         state
     }

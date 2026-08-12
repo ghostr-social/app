@@ -2,6 +2,7 @@ use crate::progressive::route::ProgressiveState;
 use axum::body::Body;
 use bytes::Bytes;
 use ghostr_delivery::playback_demand::DemandSignal;
+use ghostr_engine::playback::PLAYBACK_SLICE_BYTES;
 use ghostr_engine::{ByteRange, PostId};
 use std::future::Future;
 use std::io;
@@ -11,53 +12,101 @@ use tokio::sync::mpsc;
 use tokio::time::{timeout_at, Instant};
 use tokio_stream::wrappers::ReceiverStream;
 
-const READ_CHUNK_BYTES: u64 = 256 * 1024;
+mod source;
+pub(crate) use source::StreamSource;
+use source::{next_chunk, ChunkRead};
 
 type ChunkSender = mpsc::Sender<Result<Bytes, io::Error>>;
 
 /// A response body over `span` that serves what the store already holds and
 /// keeps streaming as missing bytes land, emitting a demand signal while it
-/// waits. The stream ends once no byte arrives within the idle timeout.
-pub(crate) fn body_for_span(state: Arc<ProgressiveState>, key: String, span: Range<u64>) -> Body {
+/// waits. The body fails once no byte arrives within the idle timeout.
+pub(crate) fn body_for_span(
+    state: Arc<ProgressiveState>,
+    source: StreamSource,
+    span: Range<u64>,
+) -> Body {
     let (sender, receiver) = mpsc::channel(4);
-    let lease = state.store.lease(&key);
+    let lease = state.store.lease(source.key());
     tokio::spawn(async move {
         let _lease = lease;
-        pump(state, key, span, sender).await;
+        pump(state, source, span, sender).await;
     });
     Body::from_stream(ReceiverStream::new(receiver))
 }
 
-async fn pump(state: Arc<ProgressiveState>, key: String, span: Range<u64>, sender: ChunkSender) {
-    let mut cursor = span.start;
+async fn pump(
+    state: Arc<ProgressiveState>,
+    source: StreamSource,
+    span: Range<u64>,
+    sender: ChunkSender,
+) {
+    let mut progress = PumpProgress::new(span.start, state.timing.idle_timeout);
     let mut demanded = None;
-    let mut deadline = Instant::now() + state.timing.idle_timeout;
-    while cursor < span.end {
+    while progress.cursor < span.end {
         let step = advance(
             PumpIteration {
                 state: &state,
-                key: &key,
-                remaining: cursor..span.end,
-                deadline,
+                source: &source,
+                remaining: progress.cursor..span.end,
+                deadline: progress.deadline,
             },
             &sender,
             &mut demanded,
         )
         .await;
-        match step {
-            PumpStep::Advanced(next) => {
-                cursor = next;
-                deadline = Instant::now() + state.timing.idle_timeout;
-            }
-            PumpStep::Retry => {}
-            PumpStep::Stop => return,
+        if apply_step(step, &mut progress, &sender, state.timing.idle_timeout).await {
+            return;
         }
     }
 }
 
+struct PumpProgress {
+    cursor: u64,
+    deadline: Instant,
+}
+
+impl PumpProgress {
+    fn new(cursor: u64, timeout: std::time::Duration) -> Self {
+        Self {
+            cursor,
+            deadline: Instant::now() + timeout,
+        }
+    }
+
+    fn advance(&mut self, cursor: u64, timeout: std::time::Duration) {
+        self.cursor = cursor;
+        self.deadline = Instant::now() + timeout;
+    }
+}
+
+async fn apply_step(
+    step: PumpStep,
+    progress: &mut PumpProgress,
+    sender: &ChunkSender,
+    timeout: std::time::Duration,
+) -> bool {
+    match step {
+        PumpStep::Advanced(next) => progress.advance(next, timeout),
+        PumpStep::Retry => {}
+        PumpStep::TimedOut => {
+            let error = io::Error::new(io::ErrorKind::TimedOut, "progressive stream stalled");
+            let _ = sender.send(Err(error)).await;
+            return true;
+        }
+        PumpStep::Superseded => {
+            let error = io::Error::other("progressive representation changed");
+            let _ = sender.send(Err(error)).await;
+            return true;
+        }
+        PumpStep::Stop => return true,
+    }
+    false
+}
+
 struct PumpIteration<'a> {
     state: &'a ProgressiveState,
-    key: &'a str,
+    source: &'a StreamSource,
     remaining: Range<u64>,
     deadline: Instant,
 }
@@ -65,6 +114,8 @@ struct PumpIteration<'a> {
 enum PumpStep {
     Advanced(u64),
     Retry,
+    TimedOut,
+    Superseded,
     Stop,
 }
 
@@ -75,10 +126,17 @@ async fn advance(
 ) -> PumpStep {
     let notify = iteration.state.store.change_notifier();
     let changed = notify.notified();
-    match next_chunk(iteration.state, iteration.key, iteration.remaining.clone()).await {
+    match next_chunk(
+        iteration.state,
+        iteration.source,
+        iteration.remaining.clone(),
+    )
+    .await
+    {
         Err(_) => PumpStep::Stop,
-        Ok(Some(bytes)) => send_bytes(sender, iteration.remaining.start, bytes).await,
-        Ok(None) => wait_for_bytes(iteration, changed, demanded).await,
+        Ok(ChunkRead::Present(bytes)) => send_bytes(sender, iteration.remaining.start, bytes).await,
+        Ok(ChunkRead::Missing) => wait_for_bytes(iteration, changed, sender, demanded).await,
+        Ok(ChunkRead::Superseded) => PumpStep::Superseded,
     }
 }
 
@@ -93,46 +151,23 @@ async fn send_bytes(sender: &ChunkSender, cursor: u64, bytes: Vec<u8>) -> PumpSt
 async fn wait_for_bytes(
     iteration: PumpIteration<'_>,
     changed: impl Future<Output = ()>,
+    sender: &ChunkSender,
     demanded: &mut Option<u64>,
 ) -> PumpStep {
     emit_demand(
         iteration.state,
-        iteration.key,
+        iteration.source.key(),
         iteration.remaining,
         demanded,
     );
-    match timeout_at(iteration.deadline, changed).await {
-        Ok(()) => PumpStep::Retry,
-        Err(_) => PumpStep::Stop,
+    tokio::select! {
+        biased;
+        _ = sender.closed() => PumpStep::Stop,
+        result = timeout_at(iteration.deadline, changed) => match result {
+            Ok(()) => PumpStep::Retry,
+            Err(_) => PumpStep::TimedOut,
+        }
     }
-}
-
-/// The next slice of bytes present at the cursor, capped for bounded memory;
-/// `None` when the cursor itself is still missing from the store.
-async fn next_chunk(
-    state: &ProgressiveState,
-    key: &str,
-    remaining: Range<u64>,
-) -> anyhow::Result<Option<Vec<u8>>> {
-    let Some(span) = available_prefix(state, key, remaining).await? else {
-        return Ok(None);
-    };
-    state.store.read_range(key, span).await
-}
-
-async fn available_prefix(
-    state: &ProgressiveState,
-    key: &str,
-    remaining: Range<u64>,
-) -> anyhow::Result<Option<Range<u64>>> {
-    let missing = state.store.missing_within(key, remaining.clone()).await?;
-    let available_end = match missing.first() {
-        Some(hole) if hole.start <= remaining.start => return Ok(None),
-        Some(hole) => hole.start,
-        None => remaining.end,
-    };
-    let end = available_end.min(remaining.start.saturating_add(READ_CHUNK_BYTES));
-    Ok(Some(remaining.start..end))
 }
 
 fn emit_demand(
@@ -145,8 +180,12 @@ fn emit_demand(
         return;
     }
     *demanded = Some(missing.start);
+    let end = missing
+        .start
+        .saturating_add(PLAYBACK_SLICE_BYTES)
+        .min(missing.end);
     state.demand.emit(DemandSignal {
         post: PostId::new(key),
-        range: ByteRange::new(missing.start, missing.end),
+        range: ByteRange::new(missing.start, end),
     });
 }

@@ -4,8 +4,8 @@ use crate::discovery::outbox::bootstrap::OutboxBootstrap;
 use crate::discovery::retrieval_types::{
     FeedContext, PlanFailure, RetrievalOutcome, RetrievalPurpose,
 };
-use ghostr_delivery::delivery_events::DeliveryHandle;
 use flutter_rust_bridge::frb;
+use ghostr_delivery::delivery_events::DeliveryHandle;
 use nostr_sdk::Event;
 use std::sync::Arc;
 use tokio::sync::mpsc;

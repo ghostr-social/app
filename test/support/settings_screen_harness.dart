@@ -7,11 +7,15 @@ import 'package:ghostr/features/settings/presentation/settings_screen.dart';
 Widget settingsScreenHarness(
   AppSettingsRepository repository, {
   VoidCallback? onOpenWatchHistory,
+  VoidCallback? onCheckForUpdates,
 }) {
   return MaterialApp(
     home: BlocProvider(
       create: (_) => SettingsCubit(repository)..load(),
-      child: SettingsScreen(onOpenWatchHistory: onOpenWatchHistory),
+      child: SettingsScreen(
+        onOpenWatchHistory: onOpenWatchHistory,
+        onCheckForUpdates: onCheckForUpdates,
+      ),
     ),
   );
 }

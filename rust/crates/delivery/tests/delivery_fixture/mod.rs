@@ -4,13 +4,23 @@
 #![allow(dead_code)]
 
 pub mod aba_origin;
+pub mod concurrency_origin;
+pub mod cooling_plan_origin;
 mod environment;
 pub mod full_disk;
+pub mod gated_failure;
+pub mod host_hol;
 pub mod items;
 pub mod media;
 pub mod options;
+pub mod paced_media;
+pub mod partial_failure_origin;
+pub mod probe_gate;
 pub mod probe_origins;
+pub mod protected_capacity;
 pub mod retry;
+pub mod stats;
+pub mod transient_origin;
 pub mod wait;
 
 use ghostr_delivery::debug::network::NetworkThrottle;

@@ -25,6 +25,7 @@ fn debug_video_registration_rejects_invalid_urls_and_measurements() {
 fn registration(url: &str) -> DebugVideoRegistration {
     DebugVideoRegistration {
         url: url.to_owned(),
+        mirrors: Vec::new(),
         size_bytes: None,
         duration_ms: None,
     }

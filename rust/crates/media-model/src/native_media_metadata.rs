@@ -3,6 +3,7 @@ use crate::native_models::NativeVideoDelivery;
 use crate::native_text::bounded_native_text;
 use crate::video_link_scan::{is_bounded_http_url, is_video_url, url_delivery};
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NativeMediaMetadata {
     pub delivery: NativeVideoDelivery,
     pub expected_digest: Option<String>,

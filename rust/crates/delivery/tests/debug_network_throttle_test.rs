@@ -33,7 +33,7 @@ async fn latency_and_bandwidth_are_applied_to_transfer_time() {
     let started = Instant::now();
 
     throttle.wait_for_latency().await;
-    throttle.pace(1_000, Instant::now()).await;
+    throttle.pace(1_000).await;
 
     assert!(started.elapsed() >= Duration::from_millis(1_250));
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/platform/media/video_player_playback_port.dart';
+import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 import '../support/capturing_video_view_platform.dart';
@@ -16,11 +17,14 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: const VideoPlayerPlaybackPort().buildSurface(
-            media: ProxiedProgressiveVideoMediaSource(
-              'http://127.0.0.1:3210/video.mp4?id=post-1',
+          home: VideoPlayerPlaybackPort().buildSurface(
+            VideoPlaybackSurfaceRequest(
+              media: ProxiedProgressiveVideoMediaSource(
+                'http://127.0.0.1:3210/video.mp4?id=post-1&cap='
+                'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+              ),
+              isActive: true,
             ),
-            isActive: true,
           ),
         ),
       );

@@ -1,3 +1,4 @@
+use crate::progressive::capabilities::ProgressiveCapabilities;
 use crate::progressive::range_header::{self, ResolvedRange};
 use crate::progressive::stream::body_for_span;
 use axum::body::Body;
@@ -23,11 +24,11 @@ use serde::Deserialize;
 use std::ops::Range;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::time::{timeout_at, Instant};
+
+mod snapshot;
+use snapshot::{awaited_snapshot, VideoSnapshot};
 
 const VIDEO_MIME: &str = "video/mp4";
-const WEBM_MIME: &str = "video/webm";
-const MEDIA_HEADER_BYTES: u64 = 64;
 
 /// How long progressive serving waits on the store before giving up.
 #[derive(Clone, Copy, Debug)]
@@ -54,6 +55,7 @@ pub struct ProgressiveState {
     pub cache: CacheRegistry,
     pub network: NetworkThrottle,
     pub timing: ProgressiveTiming,
+    pub capabilities: ProgressiveCapabilities,
     #[cfg(all(
         feature = "video-debug-web",
         debug_assertions,
@@ -65,6 +67,7 @@ pub struct ProgressiveState {
 #[derive(Deserialize)]
 struct VideoQuery {
     id: String,
+    cap: Option<String>,
 }
 
 pub(crate) fn router(state: Arc<ProgressiveState>) -> Router {
@@ -78,59 +81,32 @@ async fn serve(
     Query(query): Query<VideoQuery>,
     headers: HeaderMap,
 ) -> Result<Response, StatusCode> {
-    if !state.cache.contains(&query.id) {
-        return Err(StatusCode::NOT_FOUND);
-    }
-    let Some(total) = awaited_total_len(&state, &query.id).await? else {
+    require_servable(&state, &query).await?;
+    let Some(snapshot) = awaited_snapshot(&state, query.id).await? else {
         return retry_later();
     };
-    let mime = video_mime(&state, &query.id, total).await;
-    let mut response = match range_header::resolve(headers.get(RANGE), total) {
-        ResolvedRange::Full => full_response(state, query.id, total),
-        ResolvedRange::Partial { start, end } => {
-            partial_response(state, query.id, total, start..end)
-        }
-        ResolvedRange::Unsatisfiable => unsatisfiable_response(total),
+    let mut response = match range_header::resolve(headers.get(RANGE), snapshot.total) {
+        ResolvedRange::Full => full_response(state, snapshot),
+        ResolvedRange::Partial { start, end } => partial_response(state, snapshot, start..end),
+        ResolvedRange::Unsatisfiable => unsatisfiable_response(snapshot.total),
     }?;
     response
         .headers_mut()
-        .insert(CONTENT_TYPE, HeaderValue::from_static(mime));
+        .insert(CONTENT_TYPE, HeaderValue::from_static(VIDEO_MIME));
     Ok(response)
 }
 
-async fn video_mime(state: &ProgressiveState, id: &str, total: u64) -> &'static str {
-    let end = total.min(MEDIA_HEADER_BYTES);
-    let Ok(Some(bytes)) = state.store.read_range(id, 0..end).await else {
-        return VIDEO_MIME;
-    };
-    if bytes.starts_with(b"\x1a\x45\xdf\xa3") && bytes.windows(4).any(|part| part == b"webm") {
-        WEBM_MIME
-    } else {
-        VIDEO_MIME
+async fn require_servable(state: &ProgressiveState, query: &VideoQuery) -> Result<(), StatusCode> {
+    if authorized(state, query).await && state.cache.contains(&query.id) {
+        return Ok(());
     }
+    Err(StatusCode::NOT_FOUND)
 }
 
-/// The total length must be known (probe or imeta) before the first serve;
-/// wait briefly for the store to learn it, then hand back `None` for a 503.
-async fn awaited_total_len(
-    state: &Arc<ProgressiveState>,
-    id: &str,
-) -> Result<Option<u64>, StatusCode> {
-    let deadline = Instant::now() + state.timing.unknown_length_wait;
-    let notify = state.store.change_notifier();
-    loop {
-        let changed = notify.notified();
-        let known = state
-            .store
-            .total_len(id)
-            .await
-            .map_err(|_| StatusCode::NOT_FOUND)?;
-        if known.is_some() {
-            return Ok(known);
-        }
-        if timeout_at(deadline, changed).await.is_err() {
-            return Ok(None);
-        }
+async fn authorized(state: &ProgressiveState, query: &VideoQuery) -> bool {
+    match query.cap.as_deref() {
+        Some(capability) => state.capabilities.authorizes(capability, &query.id).await,
+        None => false,
     }
 }
 
@@ -144,14 +120,13 @@ fn retry_later() -> Result<Response, StatusCode> {
 
 fn full_response(
     state: Arc<ProgressiveState>,
-    id: String,
-    total: u64,
+    snapshot: VideoSnapshot,
 ) -> Result<Response, StatusCode> {
-    let body = body_for_span(state, id, 0..total);
+    let body = body_for_span(state, snapshot.source, 0..snapshot.total);
     Response::builder()
         .status(StatusCode::OK)
         .header(CONTENT_TYPE, VIDEO_MIME)
-        .header(CONTENT_LENGTH, total)
+        .header(CONTENT_LENGTH, snapshot.total)
         .header(ACCEPT_RANGES, "bytes")
         .body(body)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
@@ -159,13 +134,12 @@ fn full_response(
 
 fn partial_response(
     state: Arc<ProgressiveState>,
-    id: String,
-    total: u64,
+    snapshot: VideoSnapshot,
     span: Range<u64>,
 ) -> Result<Response, StatusCode> {
-    let content_range = format!("bytes {}-{}/{}", span.start, span.end - 1, total);
+    let content_range = format!("bytes {}-{}/{}", span.start, span.end - 1, snapshot.total);
     let length = span.end - span.start;
-    let body = body_for_span(state, id, span);
+    let body = body_for_span(state, snapshot.source, span);
     Response::builder()
         .status(StatusCode::PARTIAL_CONTENT)
         .header(CONTENT_TYPE, VIDEO_MIME)

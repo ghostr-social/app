@@ -1,10 +1,10 @@
 //! Account-session transitions for [`FeedState`].
 
 use super::FeedState;
-use crate::discovery::feed::spec::FeedSpec;
 use crate::discovery::content::profiles::ProfileStore;
-use crate::discovery::session_generation::SessionGeneration;
 use crate::discovery::content::social_graph::SocialGraph;
+use crate::discovery::feed::spec::FeedSpec;
+use crate::discovery::session_generation::SessionGeneration;
 use nostr_sdk::{Event, Keys, PublicKey};
 
 impl FeedState {

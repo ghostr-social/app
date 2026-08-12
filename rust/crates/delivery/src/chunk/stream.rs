@@ -1,38 +1,68 @@
 //! Streams one origin response into its granted sparse-store span.
 
 use crate::chunk::cancel::CancelToken;
-use crate::chunk::downloader::{ChunkSink, ChunkSpec};
+use crate::chunk::downloader::ChunkSpec;
+use crate::chunk::sink::ChunkWrite;
+use crate::chunk::traffic::ChunkTraffic;
 use crate::debug::network::NetworkThrottle;
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use reqwest::Response;
 use std::time::Duration;
-use tokio::time::Instant;
+
+const PACED_WRITE_BYTES: usize = 16 * 1024;
 
 pub(crate) struct Streamed {
     pub bytes: u64,
     pub cancelled: bool,
 }
 
-pub(crate) async fn stream_into(
-    mut response: Response,
-    spec: &ChunkSpec<'_>,
-    sink: &ChunkSink<'_>,
-    cancel: &CancelToken,
-    network: Option<&NetworkThrottle>,
+pub(crate) struct StreamInput<'a, 'spec, W: ChunkWrite + ?Sized> {
+    pub response: Response,
+    pub spec: &'a ChunkSpec<'spec>,
+    pub sink: &'a W,
+    pub cancel: &'a CancelToken,
+    pub network: Option<&'a NetworkThrottle>,
+    pub traffic: &'a mut dyn ChunkTraffic,
+}
+
+pub(crate) async fn stream_into<W: ChunkWrite + ?Sized>(
+    mut input: StreamInput<'_, '_, W>,
 ) -> Result<Streamed> {
     let mut written = 0;
-    let started = Instant::now();
-    while written < spec.range.len() {
-        let Some(chunk) = next_or_cancel(&mut response, spec.timeouts.idle, cancel).await? else {
-            return Ok(stopped(written, cancel.is_cancelled()));
+    while written < input.spec.range.len() {
+        let Some(chunk) =
+            next_or_cancel(&mut input.response, input.spec.timeouts.idle, input.cancel).await?
+        else {
+            return ended(written, input.cancel);
         };
-        let received = written + capped_len(spec, written, &chunk);
-        if pace_or_cancel(network, received, started, cancel).await {
-            return Ok(stopped(written, true));
+        let take = capped_len(input.spec, written, &chunk) as usize;
+        let quantum = write_quantum(input.network, take);
+        for part in chunk[..take].chunks(quantum) {
+            if pace_or_cancel(input.network, part.len() as u64, input.cancel).await {
+                return Ok(stopped(written, true));
+            }
+            let Some(stored) = write_capped(input.spec, input.sink, written, part).await? else {
+                return Ok(stopped(written, true));
+            };
+            written += stored;
+            input.traffic.wrote(stored);
         }
-        written += write_capped(spec, sink, written, &chunk).await?;
     }
     Ok(stopped(written, false))
+}
+
+fn ended(written: u64, cancel: &CancelToken) -> Result<Streamed> {
+    if cancel.is_cancelled() {
+        return Ok(stopped(written, true));
+    }
+    bail!("response body ended before its advertised range")
+}
+
+fn write_quantum(network: Option<&NetworkThrottle>, available: usize) -> usize {
+    match network.is_some_and(|throttle| throttle.profile().bandwidth_kbps > 0) {
+        true => available.clamp(1, PACED_WRITE_BYTES),
+        false => available.max(1),
+    }
 }
 
 async fn next_or_cancel(
@@ -49,7 +79,6 @@ async fn next_or_cancel(
 async fn pace_or_cancel(
     network: Option<&NetworkThrottle>,
     bytes: u64,
-    started: Instant,
     cancel: &CancelToken,
 ) -> bool {
     let Some(throttle) = network else {
@@ -57,7 +86,7 @@ async fn pace_or_cancel(
     };
     tokio::select! {
         _ = cancel.cancelled() => true,
-        _ = throttle.pace(bytes, started) => false,
+        _ = throttle.pace(bytes) => false,
     }
 }
 
@@ -68,18 +97,18 @@ async fn next_chunk(response: &mut Response, idle: Duration) -> Result<Option<by
         .context("chunk body read failed")
 }
 
-async fn write_capped(
+async fn write_capped<W: ChunkWrite + ?Sized>(
     spec: &ChunkSpec<'_>,
-    sink: &ChunkSink<'_>,
+    sink: &W,
     written: u64,
     chunk: &[u8],
-) -> Result<u64> {
+) -> Result<Option<u64>> {
     let take = capped_len(spec, written, chunk) as usize;
     let offset = spec.range.start + written;
-    sink.store
-        .write_range(sink.key, offset, &chunk[..take])
-        .await?;
-    Ok(take as u64)
+    match sink.write(offset, &chunk[..take]).await? {
+        true => Ok(Some(take as u64)),
+        false => Ok(None),
+    }
 }
 
 fn capped_len(spec: &ChunkSpec<'_>, written: u64, chunk: &[u8]) -> u64 {

@@ -9,11 +9,12 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `query_filters`, `validated_filters`
 
-Future<List<FfiNostrEvent>> ffiQueryEvents(
-        {required FfiNostrEventFilter filter}) =>
-    RustLib.instance.api.crateApiEventControlFfiQueryEvents(filter: filter);
+Future<List<FfiNostrEvent>> ffiQueryEvents({
+  required FfiNostrEventFilter filter,
+}) => RustLib.instance.api.crateApiEventControlFfiQueryEvents(filter: filter);
 
-Future<List<FfiNostrEvent>> ffiQueryEventsBatch(
-        {required List<FfiNostrEventFilter> filters}) =>
-    RustLib.instance.api
-        .crateApiEventControlFfiQueryEventsBatch(filters: filters);
+Future<List<FfiNostrEvent>> ffiQueryEventsBatch({
+  required List<FfiNostrEventFilter> filters,
+}) => RustLib.instance.api.crateApiEventControlFfiQueryEventsBatch(
+  filters: filters,
+);

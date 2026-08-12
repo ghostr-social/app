@@ -13,4 +13,5 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 /// bootstrap set, capped by the current data-usage level.
 Future<void> ffiBroadcastEvent({required String signedEventJson}) =>
     RustLib.instance.api.crateApiBroadcastControlFfiBroadcastEvent(
-        signedEventJson: signedEventJson);
+      signedEventJson: signedEventJson,
+    );

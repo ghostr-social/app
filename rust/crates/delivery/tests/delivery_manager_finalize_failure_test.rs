@@ -6,22 +6,28 @@ use delivery_fixture::options::{base_params, DeliveryOptions};
 use delivery_fixture::start_harness_at;
 use delivery_fixture::temp_directory;
 use delivery_fixture::wait::{wait_for_ranges, wait_not_servable};
-use ghostr_engine::{DataUsageLevel, EngineParams};
+use ghostr_delivery::playback_demand::DemandSignal;
+use ghostr_engine::{ByteRange, DataUsageLevel, EngineParams, PostId};
 
 #[tokio::test]
 async fn failed_finalization_keeps_complete_bytes_partial_and_retires_the_attempt() {
     let root = temp_directory("ghostr-manager-finalize-failure");
-    std::fs::create_dir_all(root.join("aa11.video")).expect("blocking completed path");
     let origin = serve_recording("origin", media_body(), hit_log()).await;
     let mut options = serial_options();
     options.tuning.retry.transient_attempts = 1;
     let harness = start_harness_at(root, options);
 
     harness.handle.update_focus(focus_now(
-        vec![sized_item("aa11", &origin, 16, 1_000)],
+        vec![sized_item("aa11", &origin, 16, 4_000)],
         0,
         5_000,
     ));
+    wait_for_ranges(&harness.store, "aa11", &[(0, 8)]).await;
+    std::fs::create_dir_all(harness.root.join("aa11.video")).expect("blocking completed path");
+    harness.demand.emit(DemandSignal {
+        post: PostId::new("aa11"),
+        range: ByteRange::new(8, 16),
+    });
     wait_for_ranges(&harness.store, "aa11", &[(0, 16)]).await;
     wait_not_servable(&harness.posts, "aa11").await;
 
@@ -37,7 +43,8 @@ async fn failed_finalization_keeps_complete_bytes_partial_and_retires_the_attemp
 fn serial_options() -> DeliveryOptions {
     DeliveryOptions {
         params: EngineParams {
-            chunk_bytes: 16,
+            head_seconds: 1,
+            chunk_bytes: 4,
             conservative_concurrency: 1,
             ..base_params()
         },

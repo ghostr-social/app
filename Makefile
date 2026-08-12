@@ -1,4 +1,5 @@
 FLUTTER ?= flutter
+ADB ?= adb
 FLUTTER_TEST_CONCURRENCY ?= 4
 FLUTTER_TEST_OPEN_FILES ?= 4096
 ANDROID_ABI ?= arm64-v8a
@@ -16,6 +17,18 @@ ANDROID_AGENT_AVD_HOME ?= $(if $(ANDROID_AVD_HOME),$(ANDROID_AVD_HOME),$(if $(AN
 ANDROID_AGENT_IMAGE_DIR := $(ANDROID_AGENT_SDK)/system-images/android-37.1/google_apis_playstore_ps16k/x86_64
 ANDROID_GRADLE_JAVA_HOME ?= $(shell if [ -x /usr/libexec/java_home ]; then /usr/libexec/java_home -v 21; fi)
 ANDROID_GRADLE_JAVA_OPTION := $(if $(ANDROID_GRADLE_JAVA_HOME),-Dorg.gradle.java.home=$(ANDROID_GRADLE_JAVA_HOME),)
+VIDEO_ANDROID_EMULATOR_SERIAL ?= emulator-5580
+ANDROID_PHYSICAL_SERIAL ?=
+VIDEO_IMPAIRMENT_SCENARIOS := bandwidth_drop packet_loss high_rtt rapid_swipes \
+	storage_pressure source_failure protected_transitions
+VIDEO_BROWSER_SCENARIOS := ordered_prefetch $(VIDEO_IMPAIRMENT_SCENARIOS)
+VIDEO_ANDROID_INTEGRATION_TESTS := \
+	integration_test/bandwidth_drop_video_test.dart \
+	integration_test/packet_loss_video_test.dart \
+	integration_test/high_rtt_video_test.dart \
+	integration_test/rapid_swipes_video_test.dart \
+	integration_test/held_response_video_test.dart \
+	integration_test/manifest_retry_video_test.dart
 FLAGS ?=
 WEB_DEBUG_CACHE_DIR ?= $(CURDIR)/rust/target/video-debug-cache
 WEB_DEBUG_RUST_DIR ?= $(CURDIR)/rust
@@ -26,7 +39,10 @@ HAWK_REVISION_SHORT := 98efa9f
 
 .PHONY: test-coverage coverage-summary native-check native-test native-coverage web \
 	native-dead-code-install native-dead-code \
-	web-contract-test \
+	web-contract-test video-user-e2e video-user-e2e-contract-test \
+	video-user-e2e-prerequisite-check video-user-e2e-impairments \
+	video-delivery-target-contract-test video-android-emulator-tests \
+	video-android-physical-tests \
 	native-coverage-contract-test rust rust-no-clean gen icons run run-fast \
 	run-fast-profile android-unit-tests android-debug-apk android-debug-apk-check \
 	android-release-apk android-release-apk-check android-agent-avd-create \
@@ -57,13 +73,44 @@ native-dead-code: native-dead-code-install ## Find Rust declarations reachable o
 	cd rust && cargo +1.97.1 hawk check --only test-only -D hawk::test_only
 
 native-test: web-contract-test ## Run Rust tests.
-	cd rust && cargo test --no-default-features --test debug_web_exclusion_test
+	cd rust && cargo test -p ghostr-gateway --no-default-features --test debug_web_exclusion_test
 	cd rust && cargo test --workspace --all-features
 
 web-contract-test: ## Verify that the web tool is Rust-only.
 	sh test/tool/web_target_contract_test.sh
 	sh test/tool/web_lifecycle_contract_test.sh
 	sh test/tool/web_untrusted_owner_contract_test.sh
+
+video-user-e2e-contract-test: ## Test the deterministic local video E2E harness.
+	node --test test/tool/video_user_e2e/*_test.mjs
+
+video-user-e2e-prerequisite-check: ## Verify the exact pinned browser without launching it.
+	node tool/video_user_e2e/main.mjs --check-prerequisites
+
+video-user-e2e: video-user-e2e-contract-test ## Run the deterministic local browser journey.
+	node tool/video_user_e2e/main.mjs
+
+video-user-e2e-impairments: video-user-e2e-contract-test ## Run every deterministic browser impairment.
+	@set -e; for scenario in $(VIDEO_BROWSER_SCENARIOS); do \
+		node tool/video_user_e2e/main.mjs --scenario="$$scenario"; \
+	done
+
+video-delivery-target-contract-test: ## Verify stable browser and Android video test targets.
+	sh test/tool/video_browser_impairment_target_contract_test.sh
+	sh test/tool/video_android_emulator_target_contract_test.sh
+	sh test/tool/video_android_physical_target_contract_test.sh
+
+video-android-emulator-tests: ## Run the device video playback matrix on emulator-5580.
+	$(FLUTTER) test $(VIDEO_ANDROID_INTEGRATION_TESTS) -d "$(VIDEO_ANDROID_EMULATOR_SERIAL)"
+
+video-android-physical-tests: ## Run the device video playback matrix on physical Android.
+	@test -n "$(ANDROID_PHYSICAL_SERIAL)" || { echo "Set ANDROID_PHYSICAL_SERIAL to an attached device serial." >&2; exit 1; }
+	@case "$(ANDROID_PHYSICAL_SERIAL)" in emulator-*) echo "ANDROID_PHYSICAL_SERIAL must identify physical hardware." >&2; exit 1;; esac
+	@state=$$($(ADB) -s "$(ANDROID_PHYSICAL_SERIAL)" get-state 2>/dev/null || true); \
+		test "$$state" = device || { echo "Android device $(ANDROID_PHYSICAL_SERIAL) is not ready." >&2; exit 1; }; \
+		qemu=$$($(ADB) -s "$(ANDROID_PHYSICAL_SERIAL)" shell getprop ro.kernel.qemu | tr -d '\r'); \
+		test "$$qemu" != 1 || { echo "ANDROID_PHYSICAL_SERIAL must identify physical hardware." >&2; exit 1; }
+	$(FLUTTER) test $(VIDEO_ANDROID_INTEGRATION_TESTS) -d "$(ANDROID_PHYSICAL_SERIAL)"
 
 native-coverage-contract-test: ## Test the per-file native coverage contract.
 	sh test/tool/native_coverage_contract_test.sh

@@ -8,14 +8,14 @@ use crate::api::feed::mapping::{feed_post, resolved_creator};
 use crate::api::feed::progress::FeedProgress;
 use crate::api::feed_types::{FfiFeedPost, FfiFeedStage};
 use crate::discovery::content::candidates::CandidateRegistry;
+use crate::discovery::content::profiles::ProfileStore;
+use crate::discovery::content::social_graph::SocialGraph;
 use crate::discovery::feed::spec::FeedSpec;
 use crate::discovery::feed::store::{FeedId, FeedStore};
-use crate::discovery::content::profiles::ProfileStore;
 use crate::discovery::retrieval_types::FeedContext;
 #[cfg(test)]
 use crate::discovery::retrieval_types::PlanFailure;
 use crate::discovery::session_generation::SessionGeneration;
-use crate::discovery::content::social_graph::SocialGraph;
 use flutter_rust_bridge::frb;
 #[cfg(test)]
 use nostr_sdk::Event;

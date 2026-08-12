@@ -1,5 +1,7 @@
 import 'package:ghostr/app/production_video_delivery.dart';
 import 'package:ghostr/features/video_inventory/domain/progressive_playback_gateway_port.dart';
+import 'package:ghostr/features/video_inventory/domain/playback_telemetry_port.dart';
+import 'package:ghostr/platform/media/ffi_playback_telemetry_port.dart';
 import 'package:ghostr/platform/media/ffi_progressive_playback_gateway.dart';
 import 'package:ghostr/platform/media/gateway_video_playback_port.dart';
 import 'package:ghostr/platform/media/hls_video_playback_port.dart';
@@ -13,20 +15,20 @@ VideoPlaybackPort buildProductionVideoPlayback(
   ProductionVideoDelivery delivery, {
   ProgressivePlaybackGatewayPort progressiveGateway =
       const FfiProgressivePlaybackGateway(),
+  PlaybackTelemetryPort? playbackTelemetry,
 }) {
   if (!delivery.playbackCapabilities.supportsAny) {
     return const UnsupportedVideoPlaybackPort();
   }
   final progressivePlayback = GatewayVideoPlaybackPort(
-    delegate: const VideoPlayerPlaybackPort(),
+    delegate: VideoPlayerPlaybackPort(
+      telemetry: playbackTelemetry ?? FfiPlaybackTelemetryPort(),
+    ),
     gateway: progressiveGateway,
   );
   final gateway = delivery.hlsPlaybackGateway;
   if (gateway == null || !delivery.playbackCapabilities.supportsHls) {
     return progressivePlayback;
   }
-  return HlsVideoPlaybackPort(
-    delegate: progressivePlayback,
-    gateway: gateway,
-  );
+  return HlsVideoPlaybackPort(delegate: progressivePlayback, gateway: gateway);
 }

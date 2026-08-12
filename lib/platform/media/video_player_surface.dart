@@ -3,16 +3,23 @@ part of 'video_player_playback_port.dart';
 class _VideoPlayerSurface extends StatefulWidget {
   const _VideoPlayerSurface({
     super.key,
-    required this.media,
-    required this.isActive,
-    required this.onPlaybackMediaReleased,
-    required this.controllerDisposer,
+    required this.request,
+    required this.dependencies,
   });
 
-  final VideoMediaSource media;
-  final bool isActive;
-  final void Function()? onPlaybackMediaReleased;
-  final VideoPlayerControllerDisposer controllerDisposer;
+  final VideoPlaybackSurfaceRequest request;
+  final _VideoPlayerSurfaceDependencies dependencies;
+
+  VideoMediaSource get media => request.media;
+  PlaybackVideoId? get videoId => request.videoId;
+  bool get isActive => request.isActive;
+  ProgressivePlaybackRefreshPort? get progressiveRefresh =>
+      request.progressiveRefresh;
+  VoidCallback? get onPlaybackMediaReleased => request.onPlaybackMediaReleased;
+  VideoPlayerControllerDisposer get controllerDisposer =>
+      dependencies.controllerDisposer;
+  PlaybackTelemetryPort get telemetry => dependencies.telemetry;
+  PlaybackRecoveryPolicy get recoveryPolicy => dependencies.recoveryPolicy;
 
   @override
   State<_VideoPlayerSurface> createState() => _VideoPlayerSurfaceState();
@@ -20,14 +27,29 @@ class _VideoPlayerSurface extends StatefulWidget {
 
 class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   VideoPlayerController? _controller;
+  late VideoMediaSource _playbackMedia = widget.media;
   late final _lifecycle = _VideoPlayerControllerLifecycle(
     widget.controllerDisposer,
   );
   late final _valueWatch = VideoPlayerValueListener(
-    onStateChanged: _handleValueChange,
+    onValueChanged: _handleValueChange,
   );
+  final _playbackObserver = VideoPlayerPlaybackObserver();
   final Completer<void> _closing = Completer<void>();
-  late bool _hasError = !_isPlayableMedia(widget.media);
+  PlaybackSession? _playbackSession;
+  PlaybackPhase? _playbackPhase;
+  Future<void> _playbackTail = Future<void>.value();
+  int _playbackIntent = 0;
+  late _VideoPlayerRecoveryState _recoveryState = _isPlayableMedia(widget.media)
+      ? _VideoPlayerRecoveryState.ready
+      : _VideoPlayerRecoveryState.exhausted;
+  PlaybackRecoveryAttempt _recoveryAttempt = PlaybackRecoveryAttempt.first;
+  PlaybackResumePoint _resumePoint = PlaybackResumePoint.start;
+  PlaybackResumePoint _recoveryBaseline = PlaybackResumePoint.start;
+  Timer? _recoveryTimer;
+  int _recoveryVersion = 0;
+  bool _isRecoveryWindowOpen = false;
+  bool _isObserving = false;
   bool _isClosing = false;
 
   @override
@@ -39,13 +61,15 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   @override
   void didUpdateWidget(covariant _VideoPlayerSurface oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.isActive != widget.isActive) _syncPlayback();
+    if (oldWidget.isActive != widget.isActive) _handleActivityChange();
   }
 
   @override
   void dispose() {
     _isClosing = true;
+    _cancelRecovery();
     _closing.complete();
+    _endObservation(_controller?.value);
     _valueWatch.detach();
     final released = widget.onPlaybackMediaReleased;
     final disposal = _disposeCurrentController();
@@ -61,129 +85,36 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
       hasError: _hasError,
       onRetry: _retry,
     );
-    if (!_valueWatch.isStalled) return surface;
+    if (_playbackPhase != PlaybackPhase.networkStalled) return surface;
     return Stack(
       fit: StackFit.expand,
       children: [surface, const _BufferingOverlay()],
     );
   }
 
-  Future<void> _loadController() async {
-    final controller = _createController();
-    _controller = controller;
-    try {
-      await controller.setLooping(true);
-      if (!await _initializeUntilClosing(controller)) return;
-      _requireVisibleVideo(controller);
-      await _acceptController(controller);
-    } on Object catch (error, stackTrace) {
-      log(
-        'Video player initialization failed.',
-        name: 'ghostr.video.player',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      await _rejectController(controller);
-    }
-  }
-
-  Future<bool> _initializeUntilClosing(VideoPlayerController controller) async {
-    if (_isClosing) return false;
-    final initialization = controller.initialize();
-    await Future.any<void>([initialization, _closing.future]);
-    if (_isClosing) return false;
-    await initialization;
-    return true;
-  }
-
-  VideoPlayerController _createController() {
-    return _videoPlayerController(widget.media);
-  }
-
-  Future<void> _acceptController(VideoPlayerController controller) async {
-    if (!_ownsController(controller)) {
-      await _disposeSafely(controller);
-      return;
-    }
-    await _applyPlayback(controller);
-    if (!_ownsController(controller)) return;
-    _valueWatch.attach(controller);
-    setState(() {});
-  }
-
-  bool _ownsController(VideoPlayerController controller) {
-    return !_isClosing && mounted && _controller == controller;
-  }
-
-  Future<void> _rejectController(VideoPlayerController controller) async {
-    _valueWatch.detach();
-    if (!_isClosing && mounted && _controller == controller) {
-      setState(() {
-        _controller = null;
-        _hasError = true;
-      });
-    } else if (_controller == controller) {
-      _controller = null;
-    }
-    await _disposeSafely(controller);
-  }
-
-  void _handleValueChange() {
-    if (_isClosing || !mounted) return;
+  void _handleValueChange(VideoPlayerValue value) {
+    if (_cannotObservePlayback) return;
+    _rememberPlaybackValue(value);
+    final phaseChanged = _captureObservation(value);
     final controller = _controller;
-    if (controller != null && _valueWatch.hasError) {
+    if (controller != null && value.hasError) {
       _lifecycle.track(_rejectController(controller));
       return;
     }
-    setState(() {});
+    if (phaseChanged) setState(() {});
   }
 
-  void _retry() {
-    if (!_isPlayableMedia(widget.media)) return;
-    setState(() {
-      _hasError = false;
-    });
-    _startLoad();
-  }
+  void _refresh(VoidCallback update) => setState(update);
+
+  bool get _cannotObservePlayback => _isClosing || !mounted;
+
+  bool get _hasError => _recoveryState == _VideoPlayerRecoveryState.exhausted;
 
   Future<void>? _disposeCurrentController() {
     final controller = _controller;
     _controller = null;
     return controller == null ? null : _disposeSafely(controller);
   }
-
-  void _syncPlayback() {
-    final controller = _controller;
-    if (controller == null || !controller.value.isInitialized) {
-      return;
-    }
-    _lifecycle.track(_guardPlayback(controller));
-  }
-
-  Future<void> _guardPlayback(VideoPlayerController controller) async {
-    try {
-      await _applyPlayback(controller);
-    } on Object catch (error, stackTrace) {
-      log(
-        'Video playback command failed.',
-        name: 'ghostr.video.player',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      await _rejectController(controller);
-    }
-  }
-
-  Future<void> _applyPlayback(VideoPlayerController controller) async {
-    if (widget.isActive) {
-      await controller.play();
-      return;
-    }
-    await controller.pause();
-    await controller.seekTo(Duration.zero);
-  }
-
-  void _startLoad() => _lifecycle.track(_loadController());
 
   Future<void> _releaseWhenClosed(void Function()? released) async {
     await _lifecycle.close();

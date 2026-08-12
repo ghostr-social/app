@@ -1,7 +1,7 @@
 //! Live configuration makes its relay set authoritative over the client pool.
 
-use crate::api::runtime::discovery::{DiscoveryBoot, DiscoveryRuntime};
 use crate::api::runtime::configuration;
+use crate::api::runtime::discovery::{DiscoveryBoot, DiscoveryRuntime};
 use crate::engine::inventory_controller::Mode;
 use nostr_sdk::Client;
 use std::sync::Arc;

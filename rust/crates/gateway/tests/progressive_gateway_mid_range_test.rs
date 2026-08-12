@@ -3,7 +3,7 @@ mod gateway_fixture;
 use axum::body::to_bytes;
 use axum::http::header::{ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE};
 use axum::http::StatusCode;
-use gateway_fixture::progressive::{progressive_harness, video_request};
+use gateway_fixture::progressive::progressive_harness;
 use tower::ServiceExt;
 
 #[tokio::test]
@@ -21,11 +21,8 @@ async fn serves_a_mid_file_range_with_a_correct_content_range() {
         .await
         .expect("bytes");
 
-    let response = harness
-        .router
-        .oneshot(video_request("clip", Some("bytes=2-5")))
-        .await
-        .expect("response");
+    let request = harness.video_request("clip", Some("bytes=2-5")).await;
+    let response = harness.router.oneshot(request).await.expect("response");
 
     assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
     assert_eq!(response.headers()[CONTENT_TYPE], "video/mp4");

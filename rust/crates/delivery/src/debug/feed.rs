@@ -2,12 +2,14 @@
 
 mod clearing;
 mod hls;
+mod window;
 
-use crate::delivery_events::{DeliveryFocus, DeliveryHandle, FocusItem};
-use ghostr_engine::{PostId, VideoMeta};
+use crate::delivery_events::DeliveryHandle;
+use ghostr_engine::VideoMeta;
 use serde::Serialize;
 use std::collections::HashSet;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use window::delivery_focus;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -48,6 +50,8 @@ pub struct DebugFeedMetadata {
     pub title: Option<String>,
     pub creator: String,
     pub created_at: u64,
+    pub feed_index: usize,
+    pub focus_distance: i64,
 }
 
 #[derive(Clone, Debug)]
@@ -128,11 +132,9 @@ impl DebugFeed {
     }
 
     pub fn metadata(&self, id: &str) -> Option<DebugFeedMetadata> {
-        self.read()
-            .items
-            .iter()
-            .find(|item| item.id == id)
-            .map(metadata)
+        let state = self.read();
+        let index = state.items.iter().position(|item| item.id == id)?;
+        Some(metadata(&state, index))
     }
 
     fn read(&self) -> RwLockReadGuard<'_, FeedState> {
@@ -156,33 +158,20 @@ fn retained_current(current: &Option<String>, items: &[DebugFeedItem]) -> Option
         .or_else(|| items.first().map(|item| item.id.clone()))
 }
 
-fn delivery_focus(state: &FeedState) -> DeliveryFocus {
-    let items: Vec<_> = state.items.iter().cloned().map(focus_item).collect();
-    let current_index = state
+fn metadata(state: &FeedState, index: usize) -> DebugFeedMetadata {
+    let item = &state.items[index];
+    let current = state
         .current_id
         .as_ref()
         .and_then(|id| state.items.iter().position(|item| &item.id == id))
         .unwrap_or(0);
-    DeliveryFocus {
-        items,
-        current_index,
-        watch_ms: 0,
-    }
-}
-
-fn focus_item(item: DebugFeedItem) -> FocusItem {
-    FocusItem {
-        post: PostId::new(item.id),
-        meta: item.meta,
-    }
-}
-
-fn metadata(item: &DebugFeedItem) -> DebugFeedMetadata {
     DebugFeedMetadata {
         event_id: item.event_id.clone(),
         title: item.title.clone(),
         creator: item.creator.clone(),
         created_at: item.created_at,
+        feed_index: index,
+        focus_distance: index as i64 - current as i64,
     }
 }
 

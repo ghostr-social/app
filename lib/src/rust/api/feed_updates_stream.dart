@@ -12,9 +12,10 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 // These functions are ignored (category: IgnoreBecauseNotAllowedOwner): `send`
 
 /// Subscribes to one open feed's snapshots.
-Stream<FfiFeedUpdate> ffiFeedUpdates({required String feedId}) =>
-    RustLib.instance.api
-        .crateApiFeedUpdatesStreamFfiFeedUpdates(feedId: feedId);
+Stream<FfiFeedUpdate> ffiFeedUpdates({required String feedId}) => RustLib
+    .instance
+    .api
+    .crateApiFeedUpdatesStreamFfiFeedUpdates(feedId: feedId);
 
 abstract class FeedOut {
   /// Returns `false` once the receiver is gone: the watcher stops.

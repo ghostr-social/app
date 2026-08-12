@@ -10,10 +10,10 @@ mod feed_support;
 
 use discovery_support::{mute_list, p_tag};
 use feed_support::{parsed_posts, video_note};
-use nostr_sdk::Keys;
+use ghostr_discovery::content::social_graph::SocialGraph;
 use ghostr_discovery::feed::spec::FeedSpec;
 use ghostr_discovery::feed::store::FeedStore;
-use ghostr_discovery::content::social_graph::SocialGraph;
+use nostr_sdk::Keys;
 
 #[test]
 fn feed_store_profile_feed_keeps_only_the_target_creators_posts() {
