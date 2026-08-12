@@ -60,11 +60,29 @@ class LocalWatchHistoryRepository implements WatchHistoryRepository {
     if (raw == null || raw.isEmpty) {
       return const <WatchHistoryEntry>[];
     }
-    final decoded = jsonDecode(raw) as List<dynamic>;
-    return decoded
-        .map((entry) => _mapper.fromMap(entry as Map<String, dynamic>))
-        .toList()
+    return _decode(raw)
       ..sort((left, right) => right.watchedAt.compareTo(left.watchedAt));
+  }
+
+  // Corruption never poisons the whole history: an unreadable payload or
+  // entry would otherwise disable watched-video filtering and block every
+  // future record, so salvage what still decodes and move on.
+  List<WatchHistoryEntry> _decode(String raw) {
+    final List<dynamic> decoded;
+    try {
+      decoded = jsonDecode(raw) as List<dynamic>;
+    } on Object {
+      return <WatchHistoryEntry>[];
+    }
+    return decoded.map(_decodeEntry).nonNulls.toList();
+  }
+
+  WatchHistoryEntry? _decodeEntry(Object? entry) {
+    try {
+      return _mapper.fromMap(entry as Map<String, dynamic>);
+    } on Object {
+      return null;
+    }
   }
 
   @override

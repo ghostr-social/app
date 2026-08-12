@@ -27,12 +27,12 @@ extension _NdkNostrSocialMutations on NdkNostrSocial {
     return FollowOutcome.newlyFollowed;
   }
 
-  Future<bool> _enqueueBlock(String target) {
+  Future<bool> _enqueueBlock(String target, Set<String> seeds) {
     final publicKey = _publicKey!;
     return _state.queue.run((
       publicKey,
       Nip51List.kMute,
-    ), () => _toggleBlockTarget(publicKey, target));
+    ), () => _toggleBlockTarget(publicKey, target, seeds));
   }
 
   Future<bool> _toggleFollowTarget(String publicKey, String target) async {
@@ -57,8 +57,13 @@ extension _NdkNostrSocialMutations on NdkNostrSocial {
     await _cacheAcceptedFollow(contacts, accepted);
   }
 
-  Future<bool> _toggleBlockTarget(String publicKey, String target) async {
+  Future<bool> _toggleBlockTarget(
+    String publicKey,
+    String target,
+    Set<String> seeds,
+  ) async {
     final list = await _muteBaseline(publicKey);
+    _seedMutePrivatePubkeys(list, seeds);
     final isBlocked = list.pubKeys.any((item) => item.value == target);
     if (isBlocked) {
       list.removeElement(Nip51List.kPubkey, target);
@@ -105,20 +110,6 @@ extension _NdkNostrSocialMutations on NdkNostrSocial {
     if (!_isActiveAccount(publicKey)) return _acceptedMute(publicKey, accepted);
     final newest = _newestMute(accepted, remote);
     return newest == null ? _emptyMute(publicKey) : _copyNip51List(newest);
-  }
-
-  Nip51List _acceptedMute(String publicKey, Nip51List? accepted) {
-    if (accepted == null) throw const AppFailure('The active account changed.');
-    return _copyNip51List(accepted);
-  }
-
-  Nip51List _emptyMute(String publicKey) {
-    return Nip51List(
-      pubKey: publicKey,
-      kind: Nip51List.kMute,
-      createdAt: 0,
-      elements: <Nip51ListElement>[],
-    );
   }
 
   int _nextTimestamp(String publicKey, int kind, Object source) {

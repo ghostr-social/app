@@ -6,6 +6,7 @@ import 'package:ghostr/app/profile_route_request.dart';
 import 'package:ghostr/features/session/domain/user_session.dart';
 import 'package:ghostr/features/profile/presentation/profile_edit_screen.dart';
 import 'package:ghostr/features/settings/presentation/settings_screen.dart';
+import 'package:ghostr/features/social/presentation/blocked_accounts_screen.dart';
 import 'package:ghostr/features/video_catalog/presentation/discovery_feed_screen.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_screen.dart';
@@ -114,6 +115,9 @@ abstract final class AppRouter {
             onCheckForUpdates: updates?.checkNow,
             onOpenWatchHistory: () =>
                 Navigator.of(context).push(AppRouter.watchHistory(controllers)),
+            onOpenBlockedAccounts: () => Navigator.of(
+              context,
+            ).push(AppRouter.blockedAccounts(controllers)),
           ),
         );
       },
@@ -125,6 +129,15 @@ abstract final class AppRouter {
       builder: (_) => BlocProvider(
         create: (_) => controllers.watchHistory()..load(),
         child: const WatchHistoryScreen(),
+      ),
+    );
+  }
+
+  static Route<void> blockedAccounts(AppControllerFactory controllers) {
+    return MaterialPageRoute<void>(
+      builder: (_) => BlocProvider(
+        create: (_) => controllers.blockedAccounts()..load(),
+        child: const BlockedAccountsScreen(),
       ),
     );
   }

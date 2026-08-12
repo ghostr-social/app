@@ -16,6 +16,10 @@ class SecureSessionRepository implements SessionRepository {
   final NostrIdentityDeriver _identityDeriver;
   final NostrSessionPort _nostrSession;
 
+  // Activation failures leave the stored secret alone: the engine being
+  // unavailable is retryable, and clearing would silently discard the
+  // viewer's identity along with everything namespaced under it. The
+  // session gate offers "Use another key" for a deliberate reset.
   @override
   Future<UserSession?> restore() async {
     final stored = await _secretStore.read();
@@ -23,7 +27,7 @@ class SecureSessionRepository implements SessionRepository {
     if (secret == null) {
       return null;
     }
-    return _activatePersisted(secret);
+    return _activate(secret);
   }
 
   @override
@@ -62,14 +66,5 @@ class SecureSessionRepository implements SessionRepository {
     final identity = _identityDeriver.derive(secret);
     await _nostrSession.activate(secret, identity);
     return UserSession.fromIdentity(identity);
-  }
-
-  Future<UserSession> _activatePersisted(AuthSecret secret) async {
-    try {
-      return await _activate(secret);
-    } on Object {
-      await _secretStore.clear();
-      rethrow;
-    }
   }
 }

@@ -35,14 +35,13 @@ class WatchAwareVideoFeedRepository implements VideoFeedRepository {
     if (!excludeWatched || !await _isEnabled()) return posts;
     final watched = await _watchedIndex();
     if (watched.isEmpty) return posts;
-    final fresh = posts.where((post) => !watched.contains(post)).toList();
-    if (fresh.isNotEmpty) return List<VideoPost>.unmodifiable(fresh);
-    return _leastRecentlyWatched(posts, watched);
+    final fresh = _fresh(posts, watched);
+    if (fresh.isNotEmpty || posts.isEmpty) return fresh;
+    return _digPastWatched(kind, posts, watched);
   }
 
-  // Fully-watched pages are skipped by digging further into the past; unlike
-  // the first load there is no replay fallback, because a page that yields
-  // nothing simply leaves the feed as it was.
+  // Fully-watched pages are skipped by digging further into the past; a
+  // page that yields nothing simply leaves the feed as it was.
   @override
   Future<VideoFeedPage> loadOlderFeed(
     FeedKind kind, {
@@ -55,8 +54,7 @@ class WatchAwareVideoFeedRepository implements VideoFeedRepository {
       final page = await _feed.loadOlderFeed(kind, olderThan: cursor);
       if (!filtering) return page;
       final watched = await _watchedIndex();
-      final fresh =
-          page.posts.where((post) => !watched.contains(post)).toList();
+      final fresh = _fresh(page.posts, watched);
       if (fresh.isNotEmpty || !page.hasMore) {
         return VideoFeedPage(posts: fresh, nextOlderThan: page.nextOlderThan);
       }
@@ -65,18 +63,37 @@ class WatchAwareVideoFeedRepository implements VideoFeedRepository {
     return VideoFeedPage(posts: const <VideoPost>[], nextOlderThan: cursor);
   }
 
-  // Only reached when every fetched video is already watched: the feed must
-  // not dead-end, so repeat the pool starting from the videos watched
-  // longest ago.
-  List<VideoPost> _leastRecentlyWatched(
+  // A watched video is never served again, so a fully watched snapshot
+  // digs into the past for unseen ones and an exhausted feed simply comes
+  // back empty for the empty-feed hunt to refill.
+  Future<List<VideoPost>> _digPastWatched(
+    FeedKind kind,
     List<VideoPost> posts,
     WatchedVideoIndex watched,
-  ) {
-    final ordered = posts.toList()
-      ..sort((left, right) {
-        return watched.watchedAt(left)!.compareTo(watched.watchedAt(right)!);
-      });
-    return List<VideoPost>.unmodifiable(ordered);
+  ) async {
+    var cursor = _oldestPublishedAt(posts);
+    for (var dig = 0; dig < _maxPageDigs; dig += 1) {
+      final page = await _feed.loadOlderFeed(kind, olderThan: cursor);
+      final fresh = _fresh(page.posts, watched);
+      if (fresh.isNotEmpty) return fresh;
+      if (!page.hasMore) break;
+      cursor = page.nextOlderThan!;
+    }
+    return const <VideoPost>[];
+  }
+
+  List<VideoPost> _fresh(List<VideoPost> posts, WatchedVideoIndex watched) {
+    return List<VideoPost>.unmodifiable(
+      posts.where((post) => !watched.contains(post)),
+    );
+  }
+
+  DateTime _oldestPublishedAt(List<VideoPost> posts) {
+    var oldest = posts.first.publishedAt;
+    for (final post in posts.skip(1)) {
+      if (post.publishedAt.isBefore(oldest)) oldest = post.publishedAt;
+    }
+    return oldest.subtract(const Duration(seconds: 1));
   }
 
   Future<bool> _isEnabled() async {

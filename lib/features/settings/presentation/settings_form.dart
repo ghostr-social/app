@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/settings/domain/blossom_server_url.dart';
 import 'package:ghostr/features/settings/domain/relay_url.dart';
+import 'package:ghostr/features/settings/presentation/settings_blocked_accounts_section.dart';
 import 'package:ghostr/features/settings/presentation/settings_form_actions.dart';
 import 'package:ghostr/features/settings/presentation/settings_update_section.dart';
 import 'package:ghostr/features/settings/presentation/settings_watch_history_section.dart';
@@ -51,6 +52,10 @@ class SettingsForm extends StatelessWidget {
           isSaving: isSaving,
           onHideWatchedChanged: actions.onHideWatchedChanged,
           onOpenWatchHistory: actions.onOpenWatchHistory,
+        ),
+        const SizedBox(height: AppSpacing.xxl),
+        SettingsBlockedAccountsSection(
+          onOpenBlockedAccounts: actions.onOpenBlockedAccounts,
         ),
         const SizedBox(height: AppSpacing.xl),
         _saveButton(),
@@ -130,9 +135,8 @@ class SettingsForm extends StatelessWidget {
     ];
   }
 
-  Widget _sectionTitle(BuildContext context, String title) {
-    return Text(title, style: Theme.of(context).textTheme.titleLarge);
-  }
+  Widget _sectionTitle(BuildContext context, String title) =>
+      Text(title, style: Theme.of(context).textTheme.titleLarge);
 
   Widget _addButton(String label, VoidCallback onPressed) {
     return OutlinedButton.icon(

@@ -10,22 +10,22 @@ import '../support/nostr_test_values.dart';
 import '../support/recording_failure_reporter.dart';
 
 void main() {
-  test('returns relay social lists when cache writes fail', () async {
+  test('returns merged social lists when cache writes fail', () async {
     final followed = ProfileId.parse('npub1followed');
     final blocked = ProfileId.parse('npub1blocked');
-    final stale = ProfileId.parse('npub1stale');
+    final mirrored = ProfileId.parse('npub1mirrored');
     final reporter = RecordingFailureReporter();
     final cache = SocialGraphCache(
       FakeNostrSocialPort(
         followedProfiles: {followed},
         blockedProfiles: {blocked},
       ),
-      _StaleRejectingStore(stale),
+      _StaleRejectingStore(mirrored),
       reporter,
     );
 
-    expect(await cache.loadFollowedProfiles(), {followed});
-    expect(await cache.loadBlockedProfiles(), {blocked});
+    expect(await cache.loadFollowedProfiles(), {followed, mirrored});
+    expect(await cache.loadBlockedProfiles(), {blocked, mirrored});
     expect(reporter.sources, [
       'SocialGraphCache.cacheFollow',
       'SocialGraphCache.cacheBlock',
@@ -34,9 +34,9 @@ void main() {
 }
 
 class _StaleRejectingStore implements SocialGraphStore {
-  const _StaleRejectingStore(this.stale);
+  const _StaleRejectingStore(this.mirrored);
 
-  final ProfileId stale;
+  final ProfileId mirrored;
 
   @override
   NostrPublicKeyHex get accountPublicKey {
@@ -47,10 +47,10 @@ class _StaleRejectingStore implements SocialGraphStore {
   SocialGraphStore snapshotForActiveAccount() => this;
 
   @override
-  Future<Set<ProfileId>> loadBlockedProfiles() async => {stale};
+  Future<Set<ProfileId>> loadBlockedProfiles() async => {mirrored};
 
   @override
-  Future<Set<ProfileId>> loadFollowedProfiles() async => {stale};
+  Future<Set<ProfileId>> loadFollowedProfiles() async => {mirrored};
 
   @override
   Future<void> saveBlockedProfiles(Set<ProfileId> profileIds) {

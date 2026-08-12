@@ -8,19 +8,22 @@ import '../support/fakes.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('replays the least recently watched videos when all are watched',
-      () async {
-    final older = samplePost(id: 'older-1');
-    final newer = samplePost(id: 'newer-1');
+  test('keeps digging past fully watched older pages', () async {
+    final watchedNew = samplePost(id: 'watched-new');
+    final watchedOld = samplePost(id: 'watched-old');
+    final fresh = samplePost(id: 'fresh-1');
     final history = FakeWatchHistoryRepository();
     await history.record(
-      WatchHistoryEntry.fromPost(newer, DateTime.utc(2026, 8, 2)),
+      WatchHistoryEntry.fromPost(watchedNew, DateTime.utc(2026, 8, 2)),
     );
     await history.record(
-      WatchHistoryEntry.fromPost(older, DateTime.utc(2026, 8, 1)),
+      WatchHistoryEntry.fromPost(watchedOld, DateTime.utc(2026, 8, 1)),
     );
+    final inner = FakeVideoCatalogRepository(forYouFeed: [watchedNew])
+      ..olderFeedPages.add([watchedOld])
+      ..olderFeedPages.add([fresh]);
     final feed = WatchAwareVideoFeedRepository(
-      feed: FakeVideoCatalogRepository(forYouFeed: [newer, older]),
+      feed: inner,
       history: history,
       settings: FakeAppSettingsRepository(AppSettings.defaults()),
       failureReporter: RecordingFailureReporter(),
@@ -28,6 +31,7 @@ void main() {
 
     final posts = await feed.loadFeed(FeedKind.forYou, excludeWatched: true);
 
-    expect(posts.map((post) => post.id.value), ['older-1', 'newer-1']);
+    expect(posts.map((post) => post.id.value), ['fresh-1']);
+    expect(inner.olderFeedRequests, hasLength(2));
   });
 }

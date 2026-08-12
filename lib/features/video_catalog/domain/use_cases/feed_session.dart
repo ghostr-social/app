@@ -2,6 +2,7 @@ import 'package:ghostr/features/video_catalog/domain/feed_roster.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_interaction_reconciler.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_pagination.dart';
+import 'package:ghostr/features/video_catalog/domain/video_media_identity.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 
 /// The posts one viewing session holds, with the viewer's own interactions
@@ -18,9 +19,10 @@ final class FeedSession {
   /// Every post the session holds, on screen or not.
   List<VideoPost> get held => _held;
 
-  /// A fresh feed: the viewer starts at the top of what arrived.
+  /// A fresh feed: the viewer starts at the top of what arrived, with
+  /// later same-video repeats dropped.
   FeedRoster loaded(List<VideoPost> fresh) {
-    return _holding(FeedRoster(_reconciled(fresh, _held)));
+    return _holding(FeedRoster(_reconciled(distinctVideoPosts(fresh), _held)));
   }
 
   /// A refresh: [visible] keeps its order and the viewer keeps their place.
