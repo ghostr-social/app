@@ -8,7 +8,8 @@ void main() {
   test('disabled image workflow rejects an attempted upload', () async {
     final metadata = ProfileMetadata.parse(displayName: 'Nora', handle: 'nora');
 
-    final upload = const ProfileImageWorkflow.disabled().resolve(
+    // Deliberately non-const so the constructor executes at runtime.
+    final upload = ProfileImageWorkflow.disabled().resolve(
       metadata,
       sampleProfileImage(),
     );

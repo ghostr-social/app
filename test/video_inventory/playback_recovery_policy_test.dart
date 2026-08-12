@@ -40,6 +40,31 @@ void main() {
     );
   });
 
+  test('the standard policy retries immediately, at 250ms, then at 1s', () {
+    // Deliberately non-const so the constructor executes at runtime.
+    final policy = PlaybackRecoveryPolicy.standard();
+    var attempt = PlaybackRecoveryAttempt.first;
+
+    expect(
+      policy.decide(attempt, PlaybackSurfaceActivity.active),
+      PlaybackRecoveryScheduled(Duration.zero),
+    );
+    attempt = attempt.next;
+    expect(
+      policy.decide(attempt, PlaybackSurfaceActivity.active),
+      PlaybackRecoveryScheduled(const Duration(milliseconds: 250)),
+    );
+    attempt = attempt.next;
+    expect(
+      policy.decide(attempt, PlaybackSurfaceActivity.active),
+      PlaybackRecoveryScheduled(const Duration(seconds: 1)),
+    );
+    expect(
+      policy.decide(attempt.next, PlaybackSurfaceActivity.active),
+      const PlaybackRecoveryExhausted(),
+    );
+  });
+
   test('an explicitly disabled policy never retries', () {
     const policy = PlaybackRecoveryPolicy.disabled();
 
