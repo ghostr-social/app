@@ -10,11 +10,13 @@ class ProfileContentActions {
     required this.onFollow,
     required this.onBlock,
     required this.onSignOut,
+    this.onEdit,
   });
 
   final ValueChanged<ProfileId> onFollow;
   final ValueChanged<ProfileId> onBlock;
   final VoidCallback onSignOut;
+  final VoidCallback? onEdit;
 }
 
 class ProfileContent extends StatelessWidget {
@@ -66,14 +68,17 @@ class _ProfileHeader extends StatelessWidget {
           radius: AppSize.profileAvatar,
         ),
         const SizedBox(height: AppSpacing.md),
-        Text(details.profile.displayName,
-            style: Theme.of(context).textTheme.headlineMedium),
+        Text(
+          details.profile.displayName,
+          style: Theme.of(context).textTheme.headlineMedium,
+        ),
         const SizedBox(height: AppSpacing.xxs),
-        Text(details.profile.handle,
-            style: Theme.of(context)
-                .textTheme
-                .bodyLarge
-                ?.copyWith(color: AppPalette.mutedForeground)),
+        Text(
+          details.profile.handle,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge?.copyWith(color: AppPalette.mutedForeground),
+        ),
         const SizedBox(height: AppSpacing.lg),
         _ProfileMetrics(details: details),
       ],
@@ -121,6 +126,20 @@ class _ProfileActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (details.isCurrentUser) {
+      return _currentUserActions();
+    }
+    return Row(
+      children: [
+        Expanded(child: _followButton()),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(child: _blockButton()),
+      ],
+    );
+  }
+
+  Widget _currentUserActions() {
+    final edit = actions.onEdit;
+    if (edit == null) {
       return OutlinedButton(
         onPressed: actions.onSignOut,
         child: const Text('Sign out'),
@@ -128,9 +147,19 @@ class _ProfileActions extends StatelessWidget {
     }
     return Row(
       children: [
-        Expanded(child: _followButton()),
+        Expanded(
+          child: FilledButton.tonal(
+            onPressed: edit,
+            child: const Text('Edit profile'),
+          ),
+        ),
         const SizedBox(width: AppSpacing.sm),
-        Expanded(child: _blockButton()),
+        Expanded(
+          child: OutlinedButton(
+            onPressed: actions.onSignOut,
+            child: const Text('Sign out'),
+          ),
+        ),
       ],
     );
   }

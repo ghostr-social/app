@@ -7,36 +7,39 @@ import '../support/fake_nostr_event_client.dart';
 import '../support/nostr_test_values.dart';
 
 void main() {
-  test('returns newest valid profile per author and skips malformed rows',
-      () async {
-    final client = FakeNostrEventClient(publicKeyHex: testViewerPublicKey);
-    client.events.addAll([
-      _metadata('a', testViewerPublicKey, 10, '{"display_name":"Older"}'),
-      _metadata('b', testViewerPublicKey, 30, 'not-json'),
-      _metadata(
-        'c',
-        testViewerPublicKey,
-        20,
-        '{"display_name":"Alice","name":"ignored",'
-            '"picture":"https://example.com/alice.png"}',
-      ),
-      _metadata('d', testCreatorPublicKey, 5, '{}'),
-      _metadata('e', testAuthorPublicKey, 4, '{"display_name":42}'),
-      _metadata('f', testFanPublicKey, 3, '[]'),
-    ]);
+  test(
+    'returns newest valid profile per author and skips malformed rows',
+    () async {
+      final client = FakeNostrEventClient(publicKeyHex: testViewerPublicKey);
+      client.events.addAll([
+        _metadata('a', testViewerPublicKey, 10, '{"display_name":"Older"}'),
+        _metadata('b', testViewerPublicKey, 30, 'not-json'),
+        _metadata(
+          'c',
+          testViewerPublicKey,
+          20,
+          '{"display_name":"Alice","name":"ignored",'
+              '"picture":"https://example.com/alice.png"}',
+        ),
+        _metadata('d', testCreatorPublicKey, 5, '{}'),
+        _metadata('e', testAuthorPublicKey, 4, '{"display_name":42}'),
+        _metadata('f', testFanPublicKey, 3, '[]'),
+      ]);
 
-    final creators =
-        await NostrCreatorSearchSource(client).searchCreators('ali');
+      final creators = await NostrCreatorSearchSource(
+        client,
+      ).searchCreators('ali');
 
-    expect(creators, hasLength(2));
-    expect(creators.first.id.value, testViewerNpub);
-    expect(creators.first.displayName, 'Alice');
-    expect(creators.first.handle, '@$testViewerNpub');
-    expect(creators.first.avatarUrl, 'https://example.com/alice.png');
-    expect(creators.last.id.value, testCreatorNpub);
-    expect(creators.last.displayName, startsWith('npub1'));
-    expect(creators.last.displayName, endsWith('…'));
-  });
+      expect(creators, hasLength(2));
+      expect(creators.first.id.value, testViewerNpub);
+      expect(creators.first.displayName, 'Alice');
+      expect(creators.first.handle, '@ignored');
+      expect(creators.first.avatarUrl, 'https://example.com/alice.png');
+      expect(creators.last.id.value, testCreatorNpub);
+      expect(creators.last.displayName, startsWith('npub1'));
+      expect(creators.last.displayName, endsWith('…'));
+    },
+  );
 }
 
 NostrEventRecord _metadata(

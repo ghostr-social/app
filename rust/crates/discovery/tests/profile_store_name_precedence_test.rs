@@ -56,5 +56,6 @@ fn profile_store_treats_a_hex_pubkey_name_as_no_name() {
 
     let profile = store.profile(&creator.public_key());
 
+    assert_eq!(profile.handle, format!("@{npub}"));
     assert_eq!(profile.display_name, format!("{}…", &npub[..12]));
 }

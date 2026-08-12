@@ -9,8 +9,8 @@ class ProfileSocialContext {
     required this.targetId,
     required Set<ProfileId> followed,
     required Set<ProfileId> blocked,
-  })  : followed = Set<ProfileId>.unmodifiable(followed),
-        blocked = Set<ProfileId>.unmodifiable(blocked);
+  }) : followed = Set<ProfileId>.unmodifiable(followed),
+       blocked = Set<ProfileId>.unmodifiable(blocked);
 
   final ProfileSummary viewer;
   final ProfileId targetId;
@@ -21,12 +21,10 @@ class ProfileSocialContext {
 class ProfileDetailsPolicy {
   const ProfileDetailsPolicy();
 
-  ProfileDetails build(
-    ProfileSocialContext context,
-    List<VideoPost> posts,
-  ) {
-    final items =
-        posts.where((post) => post.creator.id == context.targetId).toList();
+  ProfileDetails build(ProfileSocialContext context, List<VideoPost> posts) {
+    final items = posts
+        .where((post) => post.creator.id == context.targetId)
+        .toList();
     final isCurrentUser = context.targetId == context.viewer.id;
     return ProfileDetails(
       profile: _summary(context, items),
@@ -36,14 +34,11 @@ class ProfileDetailsPolicy {
     );
   }
 
-  ProfileSummary _summary(
-    ProfileSocialContext context,
-    List<VideoPost> posts,
-  ) {
-    if (posts.isNotEmpty) return posts.first.creator;
-    return context.targetId == context.viewer.id
-        ? context.viewer
-        : ProfileSummary.unknown(context.targetId);
+  ProfileSummary _summary(ProfileSocialContext context, List<VideoPost> posts) {
+    if (context.targetId == context.viewer.id) return context.viewer;
+    return posts.isEmpty
+        ? ProfileSummary.unknown(context.targetId)
+        : posts.first.creator;
   }
 
   ProfileStatistics _statistics(

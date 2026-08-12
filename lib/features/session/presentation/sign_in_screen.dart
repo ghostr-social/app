@@ -5,11 +5,17 @@ class SignInScreen extends StatefulWidget {
   const SignInScreen({
     required this.onSubmit,
     this.errorMessage,
+    this.isSigningIn = false,
+    this.fieldKey,
+    this.onBack,
     super.key,
   });
 
   final ValueChanged<String> onSubmit;
   final String? errorMessage;
+  final bool isSigningIn;
+  final Key? fieldKey;
+  final VoidCallback? onBack;
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
@@ -27,6 +33,15 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: widget.onBack == null
+          ? null
+          : AppBar(
+              leading: IconButton(
+                tooltip: 'Back',
+                onPressed: widget.isSigningIn ? null : widget.onBack,
+                icon: const Icon(Icons.arrow_back),
+              ),
+            ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.xl),
@@ -67,23 +82,27 @@ class _SignInScreenState extends State<SignInScreen> {
 
   Widget _secretField() {
     return TextField(
+      key: widget.fieldKey,
       controller: _controller,
       autocorrect: false,
       obscureText: true,
+      enabled: !widget.isSigningIn,
       enableSuggestions: false,
       keyboardType: TextInputType.visiblePassword,
       decoration: InputDecoration(
         labelText: 'Nostr secret key',
         errorText: widget.errorMessage,
       ),
-      onSubmitted: widget.onSubmit,
+      onSubmitted: widget.isSigningIn ? null : widget.onSubmit,
     );
   }
 
   Widget _continueButton() {
     return ElevatedButton(
-      onPressed: () => widget.onSubmit(_controller.text),
-      child: const Text('Continue'),
+      onPressed: widget.isSigningIn
+          ? null
+          : () => widget.onSubmit(_controller.text),
+      child: Text(widget.isSigningIn ? 'Signing in…' : 'Continue'),
     );
   }
 }

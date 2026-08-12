@@ -4,7 +4,12 @@ import 'package:ghostr/core/errors/failure_reporter.dart';
 import 'package:ghostr/app/video_catalog_services.dart';
 import 'package:ghostr/app/production_app_update.dart';
 import 'package:ghostr/features/activity/domain/activity_repository.dart';
+import 'package:ghostr/features/profile/domain/profile_metadata_repository.dart';
+import 'package:ghostr/features/profile/domain/profile_image_workflow.dart';
+import 'package:ghostr/features/session/domain/nostr_account_generator.dart';
+import 'package:ghostr/features/session/domain/account_provisioning_repository.dart';
 import 'package:ghostr/features/session/domain/session_repository.dart';
+import 'package:ghostr/features/session/domain/secret_backup_port.dart';
 import 'package:ghostr/features/settings/domain/app_settings_repository.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_repository.dart';
 import 'package:ghostr/features/video_sharing/domain/video_share_workflow.dart';
@@ -16,6 +21,11 @@ class AppDependencies {
     required this.appSettingsRepository,
     required this.videoCatalogServices,
     required this.activityRepository,
+    required this.accountGenerator,
+    required this.accountProvisioningRepository,
+    required this.profileMetadataRepository,
+    required this.profileImageWorkflow,
+    required this.secretBackupPort,
     required this.watchHistoryRepository,
     required this.incomingVideoSharePort,
     required this.mediaPickerPort,
@@ -29,6 +39,11 @@ class AppDependencies {
   final AppSettingsRepository appSettingsRepository;
   final VideoCatalogServices videoCatalogServices;
   final ActivityRepository activityRepository;
+  final NostrAccountGenerator accountGenerator;
+  final AccountProvisioningRepository accountProvisioningRepository;
+  final ProfileMetadataRepository profileMetadataRepository;
+  final ProfileImageWorkflow profileImageWorkflow;
+  final SecretBackupPort secretBackupPort;
   final WatchHistoryRepository watchHistoryRepository;
   final IncomingVideoSharePort incomingVideoSharePort;
   final MediaPickerPort mediaPickerPort;

@@ -6,6 +6,8 @@ import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/social/domain/nostr_social_port.dart';
 import 'package:ghostr/platform/nostr/build_ndk.dart';
 import 'package:ghostr/platform/nostr/ndk_blossom_video_uploader.dart';
+import 'package:ghostr/platform/nostr/ndk_blossom_profile_image_uploader.dart';
+import 'package:ghostr/features/profile/domain/profile_image_upload_port.dart';
 import 'package:ghostr/platform/nostr/ndk_nostr_session.dart';
 import 'package:ghostr/platform/nostr/ndk_nostr_social.dart';
 import 'package:ghostr/platform/nostr/rust_broadcast_adapter.dart';
@@ -27,15 +29,10 @@ ProductionNostrServices buildProductionNostrServices(
     ProductionNostrAdapters(
       RustNostrSession(
         local: NdkNostrSession(ndk),
-        reset: (account) => engine.ffiResetNostrSession(
-          expectedPublicKeyHex: account?.value,
-        ),
+        reset: (account) =>
+            engine.ffiResetNostrSession(expectedPublicKeyHex: account?.value),
       ),
-      NdkNostrSocial(
-        ndk: ndk,
-        eventClient: eventClient,
-        broadcast: broadcast,
-      ),
+      NdkNostrSocial(ndk: ndk, eventClient: eventClient, broadcast: broadcast),
     ),
     eventClient,
     NostrVideoPublisher(
@@ -45,6 +42,7 @@ ProductionNostrServices buildProductionNostrServices(
         servers: settings.blossomServers,
       ),
     ),
+    NdkBlossomProfileImageUploader(ndk: ndk, servers: settings.blossomServers),
   );
 }
 
@@ -52,12 +50,14 @@ class ProductionNostrServices {
   const ProductionNostrServices(
     this.adapters,
     this.eventClient,
-    this.publisher,
-  );
+    this.publisher, [
+    this.profileImageUploader,
+  ]);
 
   final ProductionNostrAdapters adapters;
   final NostrEventClient eventClient;
   final NostrVideoPublisherPort publisher;
+  final ProfileImageUploadPort? profileImageUploader;
 }
 
 class ProductionNostrAdapters {

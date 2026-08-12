@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:ghostr/features/profile/domain/profile_metadata_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_profile_repository.dart';
@@ -15,6 +16,8 @@ Widget profileScreenHarness({
   required ProfileSummary viewer,
   required ProfileId profileId,
   VoidCallback? onSignedOut,
+  ProfileMetadataRepository? metadata,
+  ValueChanged<ProfileSummary>? onCurrentProfileUpdated,
 }) {
   final cubit = ProfileCubit(
     ProfileDependencies(
@@ -25,6 +28,8 @@ Widget profileScreenHarness({
         clock: () => DateTime(2026, 8, 2),
         failureReporter: RecordingFailureReporter(),
       ),
+      metadata: metadata,
+      onCurrentProfileUpdated: onCurrentProfileUpdated,
     ),
     ProfileRequest(viewer: viewer, profileId: profileId),
   );

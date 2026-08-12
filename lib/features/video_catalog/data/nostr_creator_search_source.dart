@@ -4,6 +4,7 @@ import 'package:ghostr/core/nostr/nostr_bech32.dart';
 import 'package:ghostr/core/nostr/nostr_event_client.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/core/nostr/nostr_event_record.dart';
+import 'package:ghostr/features/profile/domain/profile_metadata_projection.dart';
 import 'package:ghostr/features/video_catalog/domain/creator_search_source.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
@@ -45,11 +46,18 @@ final class NostrCreatorSearchSource implements CreatorSearchSource {
       final metadata = _metadata(event);
       if (metadata == null) continue;
       final current = newest[event.authorPublicKeyHex];
-      if (current == null || event.createdAt > current.event.createdAt) {
+      if (current == null || _isNewer(event, current.event)) {
         newest[event.authorPublicKeyHex] = (event: event, metadata: metadata);
       }
     }
     return newest.values.map(_profile).toList(growable: false);
+  }
+
+  bool _isNewer(NostrEventRecord candidate, NostrEventRecord current) {
+    if (candidate.createdAt != current.createdAt) {
+      return candidate.createdAt > current.createdAt;
+    }
+    return candidate.id.compareTo(current.id) < 0;
   }
 
   _ProfileMetadata? _metadata(NostrEventRecord event) {
@@ -57,17 +65,32 @@ final class NostrCreatorSearchSource implements CreatorSearchSource {
     try {
       final payload = jsonDecode(event.content);
       if (payload is! Map<String, dynamic>) return null;
+      final displayName = _text(payload, 'display_name');
+      final name = _text(payload, 'name');
+      final picture = _text(payload, 'picture');
       return (
-        displayName: _optionalText(payload, 'display_name'),
-        name: _optionalText(payload, 'name'),
-        picture: _optionalText(payload, 'picture'),
+        displayName: projectRelayProfileIdentityText(
+          displayName,
+          50,
+          event.authorPublicKeyHex,
+        ),
+        name: projectRelayProfileIdentityText(
+          name,
+          50,
+          event.authorPublicKeyHex,
+        ),
+        handle: projectRelayProfileIdentityHandle(
+          name,
+          event.authorPublicKeyHex,
+        ),
+        picture: projectRelayProfilePicture(picture),
       );
     } on FormatException {
       return null;
     }
   }
 
-  String? _optionalText(Map<String, dynamic> payload, String key) {
+  String? _text(Map<String, dynamic> payload, String key) {
     final value = payload[key];
     if (value == null || value is String) return value as String?;
     throw FormatException('Nostr profile field "$key" must be text.');
@@ -79,7 +102,7 @@ final class NostrCreatorSearchSource implements CreatorSearchSource {
     return ProfileSummary(
       id: ProfileId.parse(npub),
       displayName: _profileName(result.metadata, npub),
-      handle: '@$npub',
+      handle: _profileHandle(result.metadata, npub),
       avatarUrl: result.metadata.picture,
     );
   }
@@ -90,15 +113,17 @@ final class NostrCreatorSearchSource implements CreatorSearchSource {
     }
     return '${npub.substring(0, 12)}…';
   }
+
+  String _profileHandle(_ProfileMetadata metadata, String npub) {
+    return '@${metadata.handle ?? npub}';
+  }
 }
 
 typedef _ProfileMetadata = ({
   String? displayName,
   String? name,
+  String? handle,
   String? picture,
 });
 
-typedef _MetadataResult = ({
-  NostrEventRecord event,
-  _ProfileMetadata metadata,
-});
+typedef _MetadataResult = ({NostrEventRecord event, _ProfileMetadata metadata});

@@ -1,3 +1,4 @@
+import 'package:ghostr/core/async/parallel_wait.dart';
 import 'package:ghostr/features/social/domain/social_graph_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_details.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_details_policy.dart';
@@ -22,12 +23,21 @@ class AggregatingVideoProfileRepository implements VideoProfileRepository {
     ProfileSummary viewer,
     ProfileId profileId,
   ) async {
-    final posts = await _reader.load(creatorIds: <ProfileId>{profileId});
+    final postsLoad = _reader.load(creatorIds: <ProfileId>{profileId});
+    final followedLoad = _social.loadFollowedProfiles();
+    final isCurrentUser = viewer.id == profileId;
+    final blockedLoad = isCurrentUser
+        ? Future<Set<ProfileId>>.value(<ProfileId>{})
+        : _social.loadBlockedProfiles();
+    final (posts, social) = await waitForBoth(
+      postsLoad,
+      waitForBoth(followedLoad, blockedLoad),
+    );
     final context = ProfileSocialContext(
       viewer: viewer,
       targetId: profileId,
-      followed: await _social.loadFollowedProfiles(),
-      blocked: await _social.loadBlockedProfiles(),
+      followed: social.$1,
+      blocked: social.$2,
     );
     return _policy.build(context, posts);
   }

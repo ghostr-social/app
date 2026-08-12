@@ -3,7 +3,6 @@ import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/media/video_mime_type.dart';
 import 'package:ghostr/features/activity/domain/activity_item.dart';
 import 'package:ghostr/features/activity/domain/activity_type.dart';
-import 'package:ghostr/features/session/domain/auth_secret.dart';
 import 'package:ghostr/features/session/domain/nostr_identity.dart';
 import 'package:ghostr/features/session/domain/user_session.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_details.dart';
@@ -57,18 +56,14 @@ VideoPost samplePost({
   );
 }
 
-UserSession sampleSession() {
-  return UserSession.fromIdentity(
-    AuthSecret.parse(testNsec),
-    NostrIdentity.parse(
-      publicKeyHex: testViewerPublicKey,
-      npub: testViewerNpub,
-    ),
-  );
-}
+UserSession sampleSession() => UserSession.fromIdentity(
+  NostrIdentity.parse(publicKeyHex: testViewerPublicKey, npub: testViewerNpub),
+);
 
-ProfileDetails sampleProfileDetails(
-    {ProfileSummary? profile, List<VideoPost>? posts}) {
+ProfileDetails sampleProfileDetails({
+  ProfileSummary? profile,
+  List<VideoPost>? posts,
+}) {
   final summary = profile ?? sampleCreator();
   final profilePosts = posts ?? <VideoPost>[samplePost(creator: summary)];
   return ProfileDetails(
@@ -84,11 +79,11 @@ ProfileDetails sampleProfileDetails(
 }
 
 SelectedMedia sampleMedia() => SelectedMedia(
-      path: '/tmp/ghostr-test.mp4',
-      source: MediaPickSource.gallery,
-      label: 'ghostr-test.mp4',
-      mimeType: VideoMimeType.fromFileName('ghostr-test.mp4'),
-    );
+  path: '/tmp/ghostr-test.mp4',
+  source: MediaPickSource.gallery,
+  label: 'ghostr-test.mp4',
+  mimeType: VideoMimeType.fromFileName('ghostr-test.mp4'),
+);
 
 ActivityItem sampleActivity() {
   return ActivityItem(

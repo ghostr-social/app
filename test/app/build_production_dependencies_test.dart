@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/app/build_production_dependencies.dart';
-import 'package:ghostr/features/session/data/secure_session_repository.dart';
+import 'package:ghostr/features/session/data/pending_first_session_repository.dart';
 import 'package:ghostr/features/settings/data/local_app_settings_repository.dart';
 import 'package:ghostr/features/video_sharing/data/default_video_share_workflow.dart';
 import 'package:ghostr/platform/media/image_picker_capabilities.dart';
@@ -33,7 +33,11 @@ void main() {
 
     final dependencies = await buildProductionDependencies(environment);
 
-    expect(dependencies.sessionRepository, isA<SecureSessionRepository>());
+    expect(
+      dependencies.sessionRepository,
+      isA<PendingFirstSessionRepository>(),
+    );
+    expect(dependencies.accountProvisioningRepository, isNotNull);
     expect(
       dependencies.appSettingsRepository,
       isA<LocalAppSettingsRepository>(),

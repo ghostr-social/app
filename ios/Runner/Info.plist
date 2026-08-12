@@ -30,7 +30,7 @@
 		<true/>
 	</dict>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Ghostr needs photo-library access so you can choose a video to publish.</string>
+	<string>Ghostr needs photo-library access so you can choose a profile picture or video to publish.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Ghostr needs camera access so you can record a video to publish.</string>
 	<key>NSMicrophoneUsageDescription</key>
