@@ -52,6 +52,8 @@ class FeedProfileAction extends StatelessWidget {
     );
   }
 
+  // Sized to its visible circle so the avatar stays tappable beside the
+  // badge it straddles.
   Widget _followButton() {
     final label = 'Follow ${profile.displayName}';
     return Semantics(
@@ -64,20 +66,17 @@ class FeedProfileAction extends StatelessWidget {
         child: IconButton(
           onPressed: onFollow,
           tooltip: label,
-          alignment: Alignment.topCenter,
-          icon: const DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppPalette.accentRed,
-              shape: BoxShape.circle,
-            ),
-            child: SizedBox.square(
-              dimension: AppSize.feedFollowButton,
-              child: Icon(
-                Icons.add,
-                color: AppPalette.foreground,
-                size: AppSize.feedFollowIcon,
-              ),
-            ),
+          style: IconButton.styleFrom(
+            backgroundColor: AppPalette.accentRed,
+            padding: EdgeInsets.zero,
+            fixedSize: const Size.square(AppSize.feedFollowButton),
+            minimumSize: const Size.square(AppSize.feedFollowButton),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          icon: const Icon(
+            Icons.add,
+            color: AppPalette.foreground,
+            size: AppSize.feedFollowIcon,
           ),
         ),
       ),
