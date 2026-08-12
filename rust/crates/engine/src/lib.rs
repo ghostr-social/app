@@ -3,19 +3,17 @@
 //! No IO, no async, no clocks: everything here is deterministic and
 //! table-testable.
 
+pub mod adaptive;
 pub mod budget;
 pub mod catalog;
-pub mod chunk_plan;
 pub mod concurrency;
 pub mod focus;
 pub mod host_stats;
-pub mod inventory_controller;
 pub mod media_timeline;
 pub mod playback;
 pub mod rendition;
 pub mod representation;
-pub mod scoring;
-pub mod tiers;
+pub mod scheduling;
 pub mod video_rendition;
 
 #[cfg(test)]
@@ -71,11 +69,6 @@ impl ByteRange {
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
-
-    #[cfg(test)]
-    fn contains_offset(&self, offset: u64) -> bool {
-        offset >= self.start && offset < self.end
-    }
 }
 
 /// Unit of transfer work: one byte range of one post's video.
@@ -97,13 +90,8 @@ pub enum DataUsageLevel {
 /// parameter-driven and tuning happens in tests, not on-device.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct EngineParams {
-    pub head_seconds: u64,
-    pub head_cap_bytes: u64,
     pub chunk_bytes: u64,
-    pub startable_target: usize,
-    pub startable_window: usize,
     pub commitment_ms: u64,
-    pub emergency_buffer_s: u64,
     pub conservative_concurrency: usize,
     pub balanced_concurrency: usize,
     pub aggressive_concurrency: usize,
@@ -123,13 +111,8 @@ impl EngineParams {
 impl Default for EngineParams {
     fn default() -> Self {
         Self {
-            head_seconds: 4,
-            head_cap_bytes: 3 * 1024 * 1024,
             chunk_bytes: 1024 * 1024,
-            startable_target: 4,
-            startable_window: 6,
             commitment_ms: 3_000,
-            emergency_buffer_s: 5,
             conservative_concurrency: 2,
             balanced_concurrency: 3,
             aggressive_concurrency: 4,

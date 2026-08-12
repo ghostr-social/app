@@ -3,31 +3,30 @@ use crate::manager::state::DeliveryState;
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
 
 #[test]
-fn probes_follow_the_current_startup_prefix() {
-    let params = EngineParams {
-        startable_target: 3,
-        ..EngineParams::default()
-    };
-    let mut state = DeliveryState::new(params, DataUsageLevel::Balanced);
+fn probe_candidates_include_the_whole_upcoming_policy_frontier() {
+    let mut state = DeliveryState::new(EngineParams::default(), DataUsageLevel::Balanced);
     assert!(state.probe_posts().is_empty());
 
     state.apply_candidate(candidate("first", 1));
     state.apply_candidate(candidate("latest", 2));
     assert_eq!(state.probe_posts(), vec![PostId::new("latest")]);
 
-    state.apply_focus(DeliveryFocus::compatibility(
-        [
-            "behind", "current", "next-1", "next-2", "next-3", "far-1", "far-2",
-        ]
-        .into_iter()
-        .map(focus_item)
-        .collect(),
-        1,
+    state.apply_focus(
+        DeliveryFocus::compatibility(
+            [
+                "behind", "current", "next-1", "next-2", "next-3", "far-1", "far-2",
+            ]
+            .into_iter()
+            .map(focus_item)
+            .collect(),
+            1,
+            0,
+        ),
         0,
-    ));
+    );
     assert_eq!(
         state.probe_posts(),
-        ["current", "next-1", "next-2"].map(PostId::new)
+        ["current", "next-1", "next-2", "next-3", "far-1", "far-2"].map(PostId::new)
     );
 }
 

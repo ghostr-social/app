@@ -1,4 +1,8 @@
 import {ArtifactStore} from "./artifacts.mjs";
+import {
+  requireAdaptiveBaseline, requireAdaptivePlanEvidence,
+} from "./adaptive_plan_acceptance.mjs";
+import {requireAdaptiveScenarioOutcome} from "./adaptive_scenario_acceptance.mjs";
 import {createEvidenceSender} from "./impairment_evidence.mjs";
 import {
   bootstrapImpairmentActions, impairmentOriginOptions,
@@ -6,20 +10,15 @@ import {
 import {validateJourney} from "./journey_outcome.mjs";
 import {OwnedLifecycle} from "./lifecycle.mjs";
 import {measureQoe, requireQoeTargets} from "./qoe_metrics.mjs";
-import {
-  measureOrderedPrefetch, requireOrderedPrefetchTargets,
-} from "./ordered_prefetch_acceptance.mjs";
-import {ORDERED_PREFETCH_TARGETS, QOE_TARGETS} from "./qoe_targets.mjs";
-import {establishOrderedFocus} from "./ordered_focus_warmup.mjs";
-import {recordInitialFocusLocality} from "./focus_locality.mjs";
+import {QOE_TARGETS} from "./qoe_targets.mjs";
+import {establishInitialFocus} from "./initial_focus.mjs";
 import {createRunnerBoundaries} from "./runner_boundaries.mjs";
 import {playRunnerJourney} from "./runner_journey.mjs";
-import {waitForWarmPrefetch} from "./warm_prefetch.mjs";
 import {poll, withDeadline} from "./wait.mjs";
 
 const TOTAL_TIMEOUT_MS = 180_000;
-const ORDERED_PREFETCH_SCENARIO = "ordered_prefetch";
-const ORDERED_PREFETCH_OBSERVATION_MS = 500;
+const ADAPTIVE_PLAN_SCENARIO = "adaptive_plans";
+const ADAPTIVE_PLAN_OBSERVATION_MS = 4_000;
 
 export function createVideoUserE2eRunner(overrides = {}) {
   const boundaries = createRunnerBoundaries(overrides);
@@ -54,15 +53,19 @@ async function runVideoUserE2eWith(boundaries, {root, environment, browser, scen
 async function runScenario(context, signal) {
   const admission = await prepareAdmission(context, signal);
   const session = await prepareBrowser(context, admission, signal);
-  if (isOrderedPrefetch(context)) await observeOrderedPrefetch(context, session, signal);
+  if (isAdaptivePlanScenario(context)) await observeAdaptivePlans(context, signal);
   else await playRunnerJourney(context, admission.ids, session.trace, signal);
+  await captureAdaptivePlans(context, session.trace);
   return finishTrace(context, session.trace);
 }
 
-async function observeOrderedPrefetch(context, session, signal) {
-  await session.warm;
-  await context.boundaries.delay(ORDERED_PREFETCH_OBSERVATION_MS, signal);
-  session.trace.warm_prefetch.post_readiness_observation_ms = ORDERED_PREFETCH_OBSERVATION_MS;
+async function captureAdaptivePlans(context, trace) {
+  const state = await context.boundaries.refreshDebugSnapshot(context.browserRun.page);
+  trace.adaptive_plans = structuredClone(state?.adaptive_plans);
+}
+
+async function observeAdaptivePlans(context, signal) {
+  await context.boundaries.delay(ADAPTIVE_PLAN_OBSERVATION_MS, signal);
 }
 
 async function prepareAdmission(context, signal) {
@@ -85,34 +88,29 @@ async function prepareBrowser(context, admission, signal) {
   });
   const trace = createTrace(context.scenario, admission.ids, context.impairments);
   context.trace = trace;
-  const focus = await establishOrderedFocus({
+  const focus = await establishInitialFocus({
     ids: admission.ids,
-    read: () => context.boundaries.refreshDebugSnapshot(context.browserRun.page),
     select: (id) => context.boundaries.selectVideoFocus(context.server.url, id),
-    record: initialFocusRecorder(context, admission.ids, trace),
-    warm: isOrderedPrefetch(context)
-      ? (timing) => warmPrefetch(context, admission.ids, timing, signal)
-      : undefined,
   });
   await waitForVideos(context, admission.ids, signal);
   await context.boundaries.requireUserStartsPlayback(context.browserRun.page);
   trace.started_at_epoch_ms = focus.startedAt;
-  return {trace, warm: focus.warm};
+  return {trace};
 }
 
 function finishTrace(context, trace) {
   trace.requests = context.browserRun.ledger.entries;
   trace.origin_requests = structuredClone(context.origin.requests);
-  if (isOrderedPrefetch(context)) return finishOrderedPrefetch(trace);
-  trace.qoe = measureQoe(trace);
+  if (isAdaptivePlanScenario(context)) return finishAdaptivePlans(trace);
+  trace.qoe = {...measureQoe(trace), ...requireAdaptivePlanEvidence(trace)};
+  requireAdaptiveScenarioOutcome(trace);
   validateJourney(trace);
   requireQoeTargets(trace.qoe, QOE_TARGETS);
   return trace;
 }
 
-function finishOrderedPrefetch(trace) {
-  trace.qoe = measureOrderedPrefetch(trace);
-  requireOrderedPrefetchTargets(trace.qoe, ORDERED_PREFETCH_TARGETS);
+function finishAdaptivePlans(trace) {
+  trace.qoe = requireAdaptiveBaseline(trace);
   return trace;
 }
 
@@ -129,31 +127,8 @@ function createTrace(scenario, ids, impairments) {
   };
 }
 
-async function warmPrefetch(context, ids, timing, signal) {
-  return waitForWarmPrefetch({
-    orderedIds: ids,
-    protectedCount: ORDERED_PREFETCH_TARGETS.protected_count,
-    baseline: timing.baseline,
-    minimumBytes: ORDERED_PREFETCH_TARGETS.minimum_bytes,
-    deadlineMs: ORDERED_PREFETCH_TARGETS.latency_ms,
-    startedAt: timing.startedAt,
-    read: () => context.boundaries.refreshDebugSnapshot(context.browserRun.page),
-    signal,
-    onEvidence: (evidence) => { context.trace.warm_prefetch = evidence; },
-  });
-}
-
-function initialFocusRecorder(context, ids, trace) {
-  return ({id, baseline, startedAt}) => recordInitialFocusLocality({
-    trace, id, state: baseline, startedAt, orderedIds: ids,
-    protectedCount: ORDERED_PREFETCH_TARGETS.protected_count,
-    minimumBytes: ORDERED_PREFETCH_TARGETS.minimum_bytes,
-    originRequests: context.origin.requests,
-  });
-}
-
-function isOrderedPrefetch(context) {
-  return context.scenario === ORDERED_PREFETCH_SCENARIO;
+function isAdaptivePlanScenario(context) {
+  return context.scenario === ADAPTIVE_PLAN_SCENARIO;
 }
 
 async function applyBootstrapImpairments(context) {

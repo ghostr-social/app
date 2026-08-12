@@ -25,6 +25,10 @@ impl StorePaths {
         self.named(key, "part")
     }
 
+    pub fn partial_staging(&self, key: &str) -> PathBuf {
+        self.named(key, "part.tmp")
+    }
+
     /// The persisted set of present ranges of the partial file.
     pub fn manifest(&self, key: &str) -> PathBuf {
         self.named(key, "ranges.json")
@@ -40,9 +44,10 @@ impl StorePaths {
     }
 
     /// Every file of the key, partial and completed alike.
-    pub fn all(&self, key: &str) -> [PathBuf; 7] {
+    pub fn all(&self, key: &str) -> [PathBuf; 8] {
         [
             self.partial(key),
+            self.partial_staging(key),
             self.manifest(key),
             self.manifest(key).with_extension("json.tmp"),
             self.completed(key),

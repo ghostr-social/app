@@ -1,8 +1,8 @@
-//! Mode-transition policy table (plan §5.4 unified control loop):
-//! hunger widens the active feed's querying, comfort stays quiet.
+//! Demand-transition policy table (plan §5.4 unified control loop):
+//! expansion widens the active feed's querying; hold stays quiet.
 
 use crate::scheduler::control::{discovery_action, DiscoveryAction, FeedQueryState};
-use ghostr_engine::inventory_controller::Mode;
+use ghostr_engine::adaptive::DiscoveryDemand;
 
 fn feed() -> FeedQueryState {
     FeedQueryState {
@@ -12,16 +12,16 @@ fn feed() -> FeedQueryState {
 }
 
 #[test]
-fn mode_policy_table() {
+fn demand_policy_table() {
     let ready = FeedQueryState {
         has_cursor: true,
         loaded: true,
         ..feed()
     };
     let cases = [
-        (Mode::Comfort, ready, DiscoveryAction::Idle),
+        (DiscoveryDemand::Hold, ready, DiscoveryAction::Idle),
         (
-            Mode::Comfort,
+            DiscoveryDemand::Hold,
             FeedQueryState {
                 loaded: true,
                 ..feed()
@@ -29,22 +29,26 @@ fn mode_policy_table() {
             DiscoveryAction::Idle,
         ),
         (
-            Mode::Hunger,
+            DiscoveryDemand::Expand,
             FeedQueryState::default(),
             DiscoveryAction::Idle,
         ),
         (
-            Mode::Hunger,
+            DiscoveryDemand::Expand,
             FeedQueryState {
                 busy: true,
                 ..ready
             },
             DiscoveryAction::Idle,
         ),
-        (Mode::Hunger, ready, DiscoveryAction::PrefetchNextPage),
-        (Mode::Hunger, feed(), DiscoveryAction::Idle),
         (
-            Mode::Hunger,
+            DiscoveryDemand::Expand,
+            ready,
+            DiscoveryAction::PrefetchNextPage,
+        ),
+        (DiscoveryDemand::Expand, feed(), DiscoveryAction::Idle),
+        (
+            DiscoveryDemand::Expand,
             FeedQueryState {
                 loaded: true,
                 ..feed()
@@ -52,7 +56,7 @@ fn mode_policy_table() {
             DiscoveryAction::WidenActiveQuery,
         ),
         (
-            Mode::Hunger,
+            DiscoveryDemand::Expand,
             FeedQueryState {
                 loaded: true,
                 widened: true,
@@ -62,11 +66,11 @@ fn mode_policy_table() {
         ),
     ];
 
-    for (mode, state, expected) in cases {
+    for (demand, state, expected) in cases {
         assert_eq!(
-            discovery_action(mode, state),
+            discovery_action(demand, state),
             expected,
-            "{mode:?} over {state:?}"
+            "{demand:?} over {state:?}"
         );
     }
 }

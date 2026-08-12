@@ -35,8 +35,6 @@ pub struct PlaybackStatus {
     session: Option<PlaybackSession>,
     observation: Option<PlaybackObservation>,
     sequence: Option<PlaybackObservationSequence>,
-    authorized_end: u64,
-    authorized_media_ms: u64,
     latest_generation: u64,
 }
 
@@ -51,14 +49,6 @@ impl PlaybackStatus {
         self.latest_generation = session.generation;
         self.session = Some(session);
         self.reset_evidence();
-        true
-    }
-
-    pub fn deactivate(&mut self, session: &PlaybackSession) -> bool {
-        if !self.matches(session) {
-            return false;
-        }
-        self.discard_session();
         true
     }
 
@@ -81,44 +71,12 @@ impl PlaybackStatus {
         true
     }
 
-    pub fn authorize_bytes(
-        &mut self,
-        session: &PlaybackSession,
-        requested_end: u64,
-    ) -> Option<u64> {
-        if !self.matches(session) {
-            return None;
-        }
-        self.authorized_end = self.authorized_end.max(requested_end);
-        Some(self.authorized_end)
-    }
-
-    pub fn authorize_media_ms(
-        &mut self,
-        session: &PlaybackSession,
-        requested_end_ms: u64,
-    ) -> Option<u64> {
-        if !self.matches(session) {
-            return None;
-        }
-        self.authorized_media_ms = self.authorized_media_ms.max(requested_end_ms);
-        Some(self.authorized_media_ms)
-    }
-
     pub fn session(&self) -> Option<&PlaybackSession> {
         self.session.as_ref()
     }
 
     pub fn observation(&self) -> Option<PlaybackObservation> {
         self.observation
-    }
-
-    pub fn authorized_end(&self) -> Option<u64> {
-        self.session.as_ref().map(|_| self.authorized_end)
-    }
-
-    pub fn authorized_media_ms(&self) -> Option<u64> {
-        self.session.as_ref().map(|_| self.authorized_media_ms)
     }
 
     fn matches(&self, session: &PlaybackSession) -> bool {
@@ -132,7 +90,5 @@ impl PlaybackStatus {
     fn reset_evidence(&mut self) {
         self.observation = None;
         self.sequence = None;
-        self.authorized_end = 0;
-        self.authorized_media_ms = 0;
     }
 }

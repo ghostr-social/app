@@ -2,7 +2,7 @@ use super::support::{chunk_request, transfer_identity};
 use crate::chunk::cancel::cancel_pair;
 use crate::manager::inflight::InFlightChunks;
 use crate::manager::plan::PlannedTransfer;
-use ghostr_engine::tiers::Tier;
+use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::{ByteRange, ChunkId, PostId};
 
 #[test]
@@ -17,14 +17,16 @@ fn stored_prefix_progress_keeps_the_overlapping_origin_request_in_flight() {
     let (handle, token) = cancel_pair();
     active.insert(
         &attempt,
-        chunk_request(active_chunk, Tier::T2Startability),
+        chunk_request(active_chunk, PreemptionAuthority::Transition),
         "media.example".to_owned(),
+        0,
         handle,
     );
     let transfer = PlannedTransfer {
         identity,
-        request: chunk_request(wanted_chunk.clone(), Tier::T0PlaybackEmergency),
+        request: chunk_request(wanted_chunk.clone(), PreemptionAuthority::PlaybackCritical),
         url: url.to_owned(),
+        commitment_until_ms: 0,
     };
 
     active.reconcile(&[transfer], 1);
@@ -35,12 +37,15 @@ fn stored_prefix_progress_keeps_the_overlapping_origin_request_in_flight() {
 
 #[test]
 fn foreground_promotion_retains_a_narrower_startup_seed() {
-    for tier in [Tier::T0PlaybackEmergency, Tier::T1CurrentTail] {
-        assert_foreground_supersedes_seed(tier);
+    for authority in [
+        PreemptionAuthority::PlaybackCritical,
+        PreemptionAuthority::PlaybackCritical,
+    ] {
+        assert_foreground_supersedes_seed(authority);
     }
 }
 
-fn assert_foreground_supersedes_seed(tier: Tier) {
+fn assert_foreground_supersedes_seed(authority: PreemptionAuthority) {
     let post = PostId::new("playing");
     let url = "https://media.example/playing.mp4";
     let identity = transfer_identity(&post, url);
@@ -51,14 +56,16 @@ fn assert_foreground_supersedes_seed(tier: Tier) {
     let (handle, token) = cancel_pair();
     active.insert(
         &attempt,
-        chunk_request(seed, Tier::T2Startability),
+        chunk_request(seed, PreemptionAuthority::Transition),
         "media.example".to_owned(),
+        0,
         handle,
     );
     let planned = PlannedTransfer {
         identity,
-        request: chunk_request(foreground.clone(), tier),
+        request: chunk_request(foreground.clone(), authority),
         url: url.to_owned(),
+        commitment_until_ms: 0,
     };
 
     active.reconcile(&[planned], 2);

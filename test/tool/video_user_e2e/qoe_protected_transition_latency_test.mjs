@@ -30,8 +30,7 @@ function sample(at_ms, current_time) {
 }
 
 function smooth(metrics) {
-  return {...metrics, warm_prefetch_latency_ms: 0, startup_latency_ms: 0,
+  return {...metrics, startup_latency_ms: 0,
     focus_switch_latency_ms: 0, rebuffer_ratio: 0, cancellation_waste_bytes: 0,
-    ahead_prefetch_bytes: 49_152, far_ahead_before_frontier_bytes: 0,
-    far_ahead_request_starts_before_frontier: 0, duplicate_completed_origin_bytes: 0};
+    ahead_prefetch_bytes: 49_152, duplicate_completed_origin_bytes: 0};
 }

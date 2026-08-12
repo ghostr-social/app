@@ -1,5 +1,8 @@
 #![cfg(feature = "video-debug-web")]
 
+mod command_fixture;
+
+use command_fixture::next_control;
 use ghostr_delivery::debug::feed::{DebugFeed, DebugFeedItem, DebugFeedStage};
 use ghostr_delivery::delivery_events::{command_channel, DeliveryCommand};
 use ghostr_engine::{DeliveryKind, VideoMeta};
@@ -26,11 +29,10 @@ async fn cleared_events_stay_hidden_while_new_discovery_keeps_flowing() {
     let (delivery, mut commands) = command_channel();
     let feed = DebugFeed::new(delivery, Vec::new());
     feed.publish(1, DebugFeedStage::Settled, vec![item("old")]);
-    commands.receivers().0.recv().await.expect("initial focus");
+    next_control(&mut commands).await;
 
     feed.clear();
-    let DeliveryCommand::Focus(cleared) = commands.receivers().0.recv().await.expect("clear focus")
-    else {
+    let DeliveryCommand::Focus(cleared) = next_control(&mut commands).await else {
         panic!("expected focus");
     };
     assert!(cleared.items.is_empty());

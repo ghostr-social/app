@@ -1,8 +1,8 @@
 use super::support::transfer_identity;
 use crate::manager::plan::PlannedTransfer;
 use crate::mutable_priority_queue::{ForegroundSlots, MutablePriorityQueue};
-use ghostr_engine::scoring::ChunkRequest;
-use ghostr_engine::tiers::Tier;
+use ghostr_engine::adaptive::PreemptionAuthority;
+use ghostr_engine::scheduling::RangeRequest;
 use ghostr_engine::{ByteRange, ChunkId, PostId};
 use std::collections::HashSet;
 
@@ -36,15 +36,16 @@ fn transfer(id: &str, score: f64) -> PlannedTransfer {
     let url = format!("https://media.example/{id}.mp4");
     PlannedTransfer {
         identity: transfer_identity(&post, &url),
-        request: ChunkRequest {
+        request: RangeRequest {
             chunk: ChunkId {
                 post,
                 range: ByteRange::new(0, 4),
             },
-            tier: Tier::T2Startability,
+            authority: PreemptionAuthority::Transition,
             score,
-            startup_depth_bytes: 0,
+            contiguous_depth_bytes: 0,
         },
         url,
+        commitment_until_ms: 0,
     }
 }

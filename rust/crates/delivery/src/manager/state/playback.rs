@@ -18,10 +18,6 @@ impl DeliveryState {
         &self.playback
     }
 
-    pub(crate) fn playback_mut(&mut self) -> &mut PlaybackStatus {
-        &mut self.playback
-    }
-
     pub(super) fn discard_inactive_playback(&mut self) {
         let active = self.playback.session().map(|session| session.post());
         if active != self.focus.current() {

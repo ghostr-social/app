@@ -17,11 +17,10 @@ fn a_full_protected_override_can_supply_base_learning_evidence() {
     }
 
     assert_eq!(policy.observe(evidence), 2);
-    assert_eq!(
-        policy.accepted_limit(),
-        1,
-        "the higher base remains a trial"
-    );
+    for _ in 0..3 {
+        assert_eq!(policy.observe(evidence), 2, "the trial remains active");
+    }
+    assert_eq!(policy.observe(evidence), 1, "an ungained trial is rejected");
 }
 
 #[test]
@@ -32,7 +31,7 @@ fn a_partially_occupied_override_cannot_supply_learning_evidence() {
         assert_eq!(policy.observe(protected_override_evidence(1)), 1);
     }
 
-    assert_eq!(policy.accepted_limit(), 1);
+    assert_eq!(policy.limit(), 1);
 }
 
 fn protected_override_evidence(active: usize) -> ConcurrencyEvidence {

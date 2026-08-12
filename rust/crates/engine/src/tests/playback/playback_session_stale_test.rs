@@ -17,8 +17,7 @@ fn only_the_active_generation_accepts_increasing_observations() {
     assert!(!status.report(&old, sequence(1), observation()));
     assert!(status.report(&active, sequence(2), observation()));
     assert!(!status.report(&active, sequence(2), observation()));
-    assert!(!status.deactivate(&old));
-    assert!(status.deactivate(&active));
+    status.discard_session();
     assert!(status.observation().is_none());
     assert!(!status.activate(old));
 }

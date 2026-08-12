@@ -1,4 +1,3 @@
-import {createFocusLocalityClick} from "./focus_locality.mjs";
 import {createEvidenceSender} from "./impairment_evidence.mjs";
 import {runImpairmentJourney} from "./impairment_journey.mjs";
 import {
@@ -19,7 +18,7 @@ function journeyInputs(context, ids, trace, signal) {
     startedAt: started,
     now: Date.now,
     signal,
-    click: localityClick(context, ids, trace, signal),
+    click: (id) => context.boundaries.clickVideo(context.browserRun.page, id, signal),
     ...playbackWatchers(context, ids, trace, signal),
     send: evidenceSender(context, trace, started),
   };
@@ -48,17 +47,5 @@ function evidenceSender(context, trace, startedAt) {
     startedAt,
     read: () => context.boundaries.refreshDebugSnapshot(context.browserRun.page),
     send: (action) => context.boundaries.sendControlAction(context.server.url, action),
-  });
-}
-
-function localityClick(context, ids, trace, signal) {
-  return createFocusLocalityClick({
-    trace,
-    orderedIds: ids,
-    protectedCount: 4,
-    minimumBytes: 48 * 1_024,
-    originRequests: context.origin.requests,
-    read: () => context.boundaries.refreshDebugSnapshot(context.browserRun.page),
-    click: (id) => context.boundaries.clickVideo(context.browserRun.page, id, signal),
   });
 }

@@ -12,12 +12,12 @@ test("the main adapter stops after a successful prerequisite check", async () =>
       arguments: ["--check-prerequisites"],
       environment: {},
       root: "/workspace",
-      verify: async () => ({version: "1", sha256: "abc"}),
+      verify: async () => ({version: "Server Chromium 1"}),
       run: async () => { ranJourney = true; },
       log: (message) => logs.push(message),
     },
   });
 
   assert.equal(ranJourney, false);
-  assert.deepEqual(logs, ["Pinned browser verified: 1 (abc)"]);
+  assert.deepEqual(logs, ["Browser executable verified: Server Chromium 1"]);
 });

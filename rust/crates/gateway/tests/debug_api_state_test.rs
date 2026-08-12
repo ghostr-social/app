@@ -5,6 +5,7 @@ mod gateway_fixture;
 use axum::body::{to_bytes, Body};
 use axum::http::{header::CONTENT_TYPE, Method, Request, StatusCode};
 use gateway_fixture::progressive::progressive_harness;
+use ghostr_delivery::delivery_events::DeliveryCommand;
 use ghostr_engine::{DeliveryKind, VideoMeta};
 use serde_json::{json, Value};
 use tower::ServiceExt;
@@ -70,10 +71,11 @@ async fn debug_state_reports_downloaded_bytes_duration_and_source() {
 
 #[tokio::test]
 async fn debug_network_profile_can_be_changed_without_restart() {
-    let harness = progressive_harness("ghostr-debug-network");
+    let mut harness = progressive_harness("ghostr-debug-network");
     let payload = json!({
         "bandwidth_kbps": 768,
         "latency_ms": 350,
+        "packet_loss_bps": 2_500,
         "max_connections_per_host": 1
     });
     let request = Request::builder()
@@ -86,4 +88,9 @@ async fn debug_network_profile_can_be_changed_without_restart() {
 
     assert_eq!(updated, payload);
     assert_eq!(harness.network.profile().bandwidth_kbps, 768);
+    assert_eq!(harness.network.profile().packet_loss_bps, 2_500);
+    assert!(matches!(
+        harness.debug_commands.try_control(),
+        Some(DeliveryCommand::NetworkChanged)
+    ));
 }

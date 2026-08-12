@@ -6,7 +6,7 @@ use crate::scheduler::queries::QueryBook;
 use crate::scheduler::queue::RetrievalQueue;
 use crate::scheduler::SchedulerWorker;
 use crate::tests::scheduler_support::{context, request};
-use ghostr_engine::inventory_controller::Mode;
+use ghostr_engine::adaptive::DiscoveryDemand;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{mpsc, watch};
@@ -24,7 +24,7 @@ async fn stale_query_continuation_preserves_the_newer_hunt() {
     let (outcome_sender, _outcomes) = mpsc::unbounded_channel();
     let (finished_sender, finished) = mpsc::unbounded_channel();
     let (command_sender, commands) = mpsc::unbounded_channel();
-    let (_mode_sender, modes) = watch::channel(Mode::Comfort);
+    let (_demand_sender, demand) = watch::channel(DiscoveryDemand::Hold);
     let mut worker = SchedulerWorker {
         queue: RetrievalQueue::new(),
         feeds: FeedBook::default(),
@@ -43,8 +43,8 @@ async fn stale_query_continuation_preserves_the_newer_hunt() {
         next_task_id: 0,
         commands,
         command_sender: command_sender.downgrade(),
-        modes,
-        modes_live: true,
+        demand,
+        demand_live: true,
     };
     let feed = context("search");
     let mut query = request();

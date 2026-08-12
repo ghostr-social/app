@@ -28,5 +28,4 @@ fn active_host_without_progress_contributes_a_silence_sample() {
 
     assert_eq!(window.bytes(), 0);
     assert_eq!(host.bytes_per_second(), 0.0);
-    assert_eq!(host.active_transfers(), 1);
 }

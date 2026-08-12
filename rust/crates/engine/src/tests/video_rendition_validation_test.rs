@@ -1,3 +1,4 @@
+use crate::rendition::RenditionId;
 use crate::video_rendition::{VideoRendition, VideoRenditionError};
 use crate::{DeliveryKind, VideoMeta};
 
@@ -22,8 +23,8 @@ fn video_rendition_rejects_invalid_boundaries_and_keeps_optional_bitrate() {
     assert_eq!(unrated.bitrate_bits_per_second(), None);
     assert!(unrated.quality().is_none());
     assert_eq!(
-        unrated.quality_id().as_str(),
-        unrated.identity().fingerprint()
+        unrated.quality_id(),
+        RenditionId::try_new(unrated.identity().fingerprint()).unwrap()
     );
 }
 

@@ -23,11 +23,11 @@ export async function startBrowser(input) {
     marker: "DevTools listening on",
     parse: parseDevToolsUrl,
     timeoutMs: input.timeoutMs,
-    label: "pinned browser",
+    label: "browser",
     signal: input.signal,
   });
   output.catch(() => {});
-  await trackSpawned(child, input.lifecycle, "pinned browser");
+  await trackSpawned(child, input.lifecycle, "browser");
   const cdp = await connectCdp(await output);
   const ledger = new RequestLedger();
   const page = await openPage({cdp, url: input.url, ledger, signal: input.signal});

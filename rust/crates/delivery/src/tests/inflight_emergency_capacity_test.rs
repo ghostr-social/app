@@ -1,7 +1,7 @@
 use super::support::{chunk_request, transfer_identity};
 use crate::chunk::cancel::cancel_pair;
 use crate::manager::inflight::InFlightChunks;
-use ghostr_engine::tiers::Tier;
+use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::{ByteRange, ChunkId, PostId};
 
 #[test]
@@ -78,8 +78,9 @@ fn insert(active: &mut InFlightChunks, chunk: &ChunkId) -> crate::chunk::cancel:
     let (handle, token) = cancel_pair();
     active.insert(
         &attempt,
-        chunk_request(chunk.clone(), Tier::T4Speculative),
+        chunk_request(chunk.clone(), PreemptionAuthority::Speculative),
         "slow.example".to_owned(),
+        0,
         handle,
     );
     token

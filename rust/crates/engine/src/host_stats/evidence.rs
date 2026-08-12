@@ -11,7 +11,6 @@ pub struct ThroughputSample {
     bytes: u64,
     elapsed: Duration,
     observed_at_ms: u64,
-    active_transfers: NonZeroUsize,
 }
 
 impl ThroughputSample {
@@ -21,11 +20,11 @@ impl ThroughputSample {
         observed_at_ms: u64,
         active_transfers: usize,
     ) -> Option<Self> {
+        NonZeroUsize::new(active_transfers)?;
         Some(Self {
             bytes,
             elapsed: (!elapsed.is_zero()).then_some(elapsed)?,
             observed_at_ms,
-            active_transfers: NonZeroUsize::new(active_transfers)?,
         })
     }
 
@@ -44,8 +43,6 @@ pub struct ThroughputEstimate {
     variability_bytes_per_second: f64,
     sample_count: u64,
     last_observed_at_ms: u64,
-    active_transfers: usize,
-    peak_active_transfers: usize,
 }
 
 impl ThroughputEstimate {
@@ -63,14 +60,6 @@ impl ThroughputEstimate {
 
     pub fn last_observed_at_ms(self) -> u64 {
         self.last_observed_at_ms
-    }
-
-    pub fn active_transfers(self) -> usize {
-        self.active_transfers
-    }
-
-    pub fn peak_active_transfers(self) -> usize {
-        self.peak_active_transfers
     }
 }
 
@@ -103,10 +92,6 @@ pub(super) struct HostRecord {
     throughput_samples: u64,
     #[serde(default)]
     last_observed_at_ms: u64,
-    #[serde(default)]
-    active_transfers: usize,
-    #[serde(default)]
-    peak_active_transfers: usize,
 }
 
 impl HostRecord {
@@ -120,8 +105,6 @@ impl HostRecord {
         self.throughput_bps.observe_weighted(rate, weight);
         self.throughput_samples = self.throughput_samples.saturating_add(1);
         self.last_observed_at_ms = sample.observed_at_ms;
-        self.active_transfers = sample.active_transfers.get();
-        self.peak_active_transfers = self.peak_active_transfers.max(self.active_transfers);
         true
     }
 
@@ -131,8 +114,6 @@ impl HostRecord {
             variability_bytes_per_second: self.throughput_variance.max(0.0).sqrt(),
             sample_count: self.throughput_samples,
             last_observed_at_ms: self.last_observed_at_ms,
-            active_transfers: self.active_transfers,
-            peak_active_transfers: self.peak_active_transfers,
         })
     }
 
@@ -162,10 +143,6 @@ impl HostRecord {
         if self.throughput_bps.value.is_some() && self.throughput_samples == 0 {
             self.throughput_samples = 1;
         }
-        if self.throughput_bps.value.is_some() && self.active_transfers == 0 {
-            self.active_transfers = 1;
-        }
-        self.peak_active_transfers = self.peak_active_transfers.max(self.active_transfers);
         self.throughput_variance = self.throughput_variance.max(0.0);
     }
 

@@ -2,7 +2,7 @@ use crate::plan_executor::{PlanExecutor, PlanFuture, PlanPage, PlanPageFuture, P
 use crate::retrieval_types::EventProgress;
 use crate::scheduler::{start_discovery_scheduler, DiscoverySchedulerConfig};
 use crate::tests::scheduler_support::{context, next_outcome, next_started, request};
-use ghostr_engine::{inventory_controller::Mode, DataUsageLevel};
+use ghostr_engine::{adaptive::DiscoveryDemand, DataUsageLevel};
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, Timestamp};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
@@ -61,11 +61,11 @@ async fn scheduler_uses_the_shallowest_wire_filter_cursor() {
         ),
     };
     let (outcomes, mut reported) = mpsc::unbounded_channel();
-    let (_, modes) = watch::channel(Mode::Comfort);
+    let (_, demand) = watch::channel(DiscoveryDemand::Hold);
     let handle = start_discovery_scheduler(DiscoverySchedulerConfig {
         executor: Arc::new(executor),
         level: DataUsageLevel::Conservative,
-        modes,
+        demand,
         outcomes,
     });
     let mut query = request();

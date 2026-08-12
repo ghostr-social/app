@@ -19,7 +19,6 @@ fn maps_explicit_playback_evidence_into_the_delivery_domain() {
     assert_eq!(mapped.session.post().as_str(), "video_1");
     assert_eq!(mapped.session.generation(), 7);
     assert_eq!(mapped.observation.phase(), PlaybackPhase::NetworkStalled);
-    assert_eq!(mapped.observation.position(), Duration::from_millis(2_500));
     assert_eq!(
         mapped.observation.buffer_ahead(),
         Duration::from_millis(1_500)

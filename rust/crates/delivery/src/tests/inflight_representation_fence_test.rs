@@ -2,9 +2,9 @@ use super::support::chunk_request;
 use crate::chunk::cancel::cancel_pair;
 use crate::manager::inflight::{CompletionStatus, InFlightChunks};
 use crate::manager::plan::PlannedTransfer;
+use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::catalog::Catalog;
-use ghostr_engine::scoring::ChunkRequest;
-use ghostr_engine::tiers::Tier;
+use ghostr_engine::scheduling::RangeRequest;
 use ghostr_engine::{ByteRange, ChunkId, DeliveryKind, PostId, VideoMeta};
 
 #[test]
@@ -24,8 +24,9 @@ fn same_range_from_a_replacement_representation_cancels_the_old_attempt() {
     let (handle, token) = cancel_pair();
     active.insert(
         &old,
-        chunk_request(chunk.clone(), Tier::T2Startability),
+        chunk_request(chunk.clone(), PreemptionAuthority::Transition),
         "a.example".to_owned(),
+        0,
         handle,
     );
 
@@ -37,16 +38,47 @@ fn same_range_from_a_replacement_representation_cancels_the_old_attempt() {
     assert_eq!(active.finish(&old), CompletionStatus::Superseded);
 }
 
+#[test]
+fn binding_change_cancels_obsolete_committed_work_before_replanning() {
+    let post = PostId::new("same");
+    let mut catalog = Catalog::new();
+    catalog.upsert(post.clone(), meta("https://a.example/video"));
+    let old_identity = catalog
+        .transfer_identity(&post, "https://a.example/video")
+        .unwrap();
+    let chunk = ChunkId {
+        post: post.clone(),
+        range: ByteRange::new(0, 8),
+    };
+    let mut active = InFlightChunks::new();
+    let old = active.next_attempt(chunk.clone(), old_identity);
+    let (handle, token) = cancel_pair();
+    active.insert(
+        &old,
+        chunk_request(chunk, PreemptionAuthority::Transition),
+        "a.example".to_owned(),
+        5_000,
+        handle,
+    );
+
+    let replacement = catalog.upsert(post, meta("https://b.example/video"));
+    active.cancel_obsolete(&replacement);
+
+    assert!(token.is_cancelled());
+    assert_eq!(active.len(), 0);
+}
+
 fn transfer(catalog: &Catalog, chunk: ChunkId, url: &str) -> PlannedTransfer {
     PlannedTransfer {
         identity: catalog.transfer_identity(&chunk.post, url).unwrap(),
-        request: ChunkRequest {
+        request: RangeRequest {
             chunk,
-            tier: Tier::T2Startability,
+            authority: PreemptionAuthority::Transition,
             score: 1.0,
-            startup_depth_bytes: 0,
+            contiguous_depth_bytes: 0,
         },
         url: url.to_owned(),
+        commitment_until_ms: 0,
     }
 }
 

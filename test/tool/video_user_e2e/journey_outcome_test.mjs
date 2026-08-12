@@ -36,6 +36,24 @@ test("rejects a journey whose media time never advances", () => {
   assert.throws(() => validateJourney(trace), /media time did not advance/);
 });
 
+test("storage pressure may finish current media before safe ahead work begins", () => {
+  const trace = {
+    scenario: "storage_pressure",
+    clicks: [],
+    impairments: [storage(2_097_152), storage(67_108_864, 1_000)],
+    samples: [
+      sample({id: "a", at: 100, time: 0.2, currentBytes: 4_000, aheadBytes: 0}),
+      sample({id: "a", at: 700, time: 0.9, currentBytes: 4_000, aheadBytes: 500}),
+      storageSample(800, 2_050_000), storageSample(900, 2_050_000),
+      storageSample(1_100, 2_100_000),
+    ],
+    requests: [{url: "http://127.0.0.1/video.mp4", range: "bytes=0-255",
+      status: 206, content_range: "bytes 0-255/4000", finished: true}],
+  };
+
+  assert.doesNotThrow(() => validateJourney(trace));
+});
+
 function sample(input) {
   return {
     at_ms: input.at,
@@ -48,4 +66,15 @@ function sample(input) {
       ],
     },
   };
+}
+
+function storage(budget_bytes, at_ms) {
+  return {kind: "storage", payload: {budget_bytes}, ...(at_ms ? {at_ms} : {})};
+}
+
+function storageSample(at_ms, used_bytes) {
+  return {...sample({id: "a", at: at_ms, time: at_ms / 1_000,
+    currentBytes: 4_000, aheadBytes: 500}), state: {storage: {used_bytes},
+    videos: sample({id: "a", at: at_ms, time: 0,
+      currentBytes: 4_000, aheadBytes: 500}).state.videos}};
 }

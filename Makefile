@@ -21,7 +21,7 @@ VIDEO_ANDROID_EMULATOR_SERIAL ?= emulator-5580
 ANDROID_PHYSICAL_SERIAL ?=
 VIDEO_IMPAIRMENT_SCENARIOS := bandwidth_drop packet_loss high_rtt rapid_swipes \
 	storage_pressure source_failure protected_transitions
-VIDEO_BROWSER_SCENARIOS := ordered_prefetch $(VIDEO_IMPAIRMENT_SCENARIOS)
+VIDEO_BROWSER_SCENARIOS := adaptive_plans $(VIDEO_IMPAIRMENT_SCENARIOS)
 VIDEO_ANDROID_INTEGRATION_TESTS := \
 	integration_test/bandwidth_drop_video_test.dart \
 	integration_test/packet_loss_video_test.dart \
@@ -38,7 +38,7 @@ HAWK_REVISION := 98efa9f7590d12672ece0527e4a908788792a997
 HAWK_REVISION_SHORT := 98efa9f
 
 .PHONY: test-coverage coverage-summary native-check native-test native-coverage web \
-	native-dead-code-install native-dead-code \
+	native-dead-code-install native-dead-code native-dead-code-contract-test \
 	web-contract-test video-user-e2e video-user-e2e-contract-test \
 	video-user-e2e-prerequisite-check video-user-e2e-impairments \
 	video-delivery-target-contract-test video-android-emulator-tests \
@@ -69,8 +69,11 @@ native-dead-code-install: ## Install the Rust toolchain and Hawk dead-code analy
 			--git "$(HAWK_REPOSITORY)" --rev "$(HAWK_REVISION)" cargo-hawk; \
 	fi
 
-native-dead-code: native-dead-code-install ## Find Rust declarations reachable only from tests.
+native-dead-code: ## Find Rust declarations reachable only from tests.
 	cd rust && cargo +1.97.1 hawk check --only test-only -D hawk::test_only
+
+native-dead-code-contract-test: ## Verify dead-code checks do not inspect user-scoped tooling.
+	sh test/tool/native_dead_code_target_contract_test.sh
 
 native-test: web-contract-test ## Run Rust tests.
 	cd rust && cargo test -p ghostr-gateway --no-default-features --test debug_web_exclusion_test
@@ -84,7 +87,7 @@ web-contract-test: ## Verify that the web tool is Rust-only.
 video-user-e2e-contract-test: ## Test the deterministic local video E2E harness.
 	node --test test/tool/video_user_e2e/*_test.mjs
 
-video-user-e2e-prerequisite-check: ## Verify the exact pinned browser without launching it.
+video-user-e2e-prerequisite-check: ## Verify the configured browser executable without launching it.
 	node tool/video_user_e2e/main.mjs --check-prerequisites
 
 video-user-e2e: video-user-e2e-contract-test ## Run the deterministic local browser journey.

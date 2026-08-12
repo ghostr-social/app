@@ -1,9 +1,4 @@
 mod adaptive_buffer_test;
 mod estimate_confidence_test;
-mod playback_authorization_monotonic_test;
-mod playback_low_buffer_test;
-mod playback_media_authorization_test;
 mod playback_observation_validation_test;
-mod playback_risk_test;
 mod playback_session_stale_test;
-mod playback_sustainable_inflow_test;

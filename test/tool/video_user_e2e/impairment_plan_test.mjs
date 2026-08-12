@@ -11,11 +11,14 @@ import {
 test("impairment plans translate contracts into executable deterministic actions", () => {
   assert.deepEqual(impairmentOriginOptions("packet_loss"), {
     abortFirstAttempts: {video: "v2", count: 2},
-    abortAfterBytes: 131_072,
+    abortAfterBytes: 65_536,
   });
   assert.deepEqual(impairmentOriginOptions("source_failure"), {
     failSource: "primary",
   });
+  assert.deepEqual(playbackImpairmentActions("packet_loss").map((step) => {
+    return step.payload.packet_loss_bps;
+  }), [6_000, 0]);
   assert.deepEqual(impairmentActions("high_rtt"), [{
     at_ms: 0,
     kind: "network",
@@ -32,7 +35,16 @@ test("impairment plans translate contracts into executable deterministic actions
       payload: {bandwidth_kbps: 2_500, latency_ms: 450, max_connections_per_host: 3},
     },
   ]);
-  assert.deepEqual(bootstrapImpairmentActions("rapid_swipes"), []);
+  assert.deepEqual(bootstrapImpairmentActions("rapid_swipes"), [{
+    at_ms: 0,
+    kind: "network",
+    payload: {bandwidth_kbps: 2_500, latency_ms: 0, max_connections_per_host: 3},
+  }]);
+  assert.deepEqual(bootstrapImpairmentActions("source_failure"), [{
+    at_ms: 0,
+    kind: "network",
+    payload: {bandwidth_kbps: 2_500, latency_ms: 0, max_connections_per_host: 3},
+  }]);
   assert.deepEqual(bootstrapImpairmentActions("protected_transitions"), [{
     at_ms: 0,
     kind: "network",

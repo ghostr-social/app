@@ -1,4 +1,6 @@
 use crate::delivery_events::{ClearRequest, DeliveryCommand};
+use crate::manager::concurrency::network_profile_setback;
+use crate::manager::time::unix_time_ms;
 use crate::manager::transfers::{InternalEvent, MaintenanceEvent, TransferEvent};
 use crate::manager::DeliveryWorker;
 use crate::playback_demand::DemandSignal;
@@ -47,13 +49,17 @@ impl DeliveryWorker {
     async fn apply_command(&mut self, command: DeliveryCommand) {
         match command {
             DeliveryCommand::Candidate(candidate) => self.state.apply_candidate(candidate),
-            DeliveryCommand::Prioritize(post) => self.state.prioritize(post),
             DeliveryCommand::Focus(focus) => self.apply_focus_command(focus),
             DeliveryCommand::Playback(playback) => self.apply_playback(playback),
             DeliveryCommand::Config(level) => {
                 self.state.apply_level(level);
                 self.update_concurrency_ceiling();
             }
+            DeliveryCommand::NetworkChanged => {
+                let loss = self.ctx.network.profile().packet_loss_bps;
+                self.note_network_setback(network_profile_setback(loss));
+            }
+            DeliveryCommand::StorageChanged => {}
         }
         self.prune_scheduling_history();
         self.bind_representations().await;
@@ -61,10 +67,15 @@ impl DeliveryWorker {
 
     fn apply_focus_command(&mut self, focus: crate::delivery_events::DeliveryFocus) {
         let previous = self.state.focus().current().cloned();
-        if !self.state.apply_focus(focus) {
+        if !self.state.apply_focus(focus, unix_time_ms()) {
             return;
         }
         let current = self.state.focus().current().cloned();
+        for post in self.state.take_changed_representations() {
+            self.cooldown_timers.cancel(&post);
+            self.probes.representation_changed(&post);
+            self.retry.representation_changed(&post);
+        }
         self.retry
             .focus_changed(previous.as_ref(), current.as_ref());
         if previous != current {
@@ -86,6 +97,7 @@ impl DeliveryWorker {
 
     pub(crate) async fn bind_representations(&mut self) {
         for binding in self.state.take_representation_bindings() {
+            self.downloads.cancel_obsolete(&binding);
             if let Err(error) = self.ctx.store.bind_representation(binding).await {
                 log::warn!("Video representation binding failed: {error:#}");
             }

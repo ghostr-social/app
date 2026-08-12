@@ -19,7 +19,6 @@ pub struct MailboxReceiver {
     state: Arc<Mutex<MailboxState>>,
     control_wake: mpsc::Receiver<()>,
     candidate_wake: mpsc::Receiver<()>,
-    candidate_next: bool,
 }
 
 #[derive(Debug)]
@@ -49,7 +48,6 @@ pub(super) fn channel(capacity: usize) -> (MailboxSender, MailboxReceiver) {
             state,
             control_wake,
             candidate_wake,
-            candidate_next: true,
         },
     )
 }
@@ -101,17 +99,6 @@ impl MailboxSender {
 }
 
 impl MailboxReceiver {
-    pub async fn recv(&mut self) -> Option<DeliveryCommand> {
-        loop {
-            if let Some(command) = self.try_compatible() {
-                return Some(command);
-            }
-            if !self.changed().await {
-                return None;
-            }
-        }
-    }
-
     pub(crate) async fn changed(&mut self) -> bool {
         if self.has_ready() {
             return true;
@@ -149,25 +136,6 @@ impl MailboxReceiver {
 
     fn has_ready(&self) -> bool {
         self.has_control() || self.has_candidate()
-    }
-
-    fn try_compatible(&mut self) -> Option<DeliveryCommand> {
-        for _ in 0..2 {
-            let command = if self.candidate_next {
-                self.try_candidate().map(DeliveryCommand::Candidate)
-            } else {
-                self.try_control()
-            };
-            self.rotate_compatibility_lane();
-            if command.is_some() {
-                return command;
-            }
-        }
-        None
-    }
-
-    fn rotate_compatibility_lane(&mut self) {
-        self.candidate_next = !self.candidate_next;
     }
 
     fn lock(&self) -> MutexGuard<'_, MailboxState> {

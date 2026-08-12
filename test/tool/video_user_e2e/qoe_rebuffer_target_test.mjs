@@ -5,7 +5,6 @@ import {QOE_TARGETS} from "../../../tool/video_user_e2e/qoe_targets.mjs";
 
 test("rebuffer time is measured after startup and rejected above one percent", () => {
   const trace = {
-    warm_prefetch: {latency_ms: 1_000},
     clicks: [{id: "a", at_ms: 0}],
     samples: [
       player("a", "starting", 0),

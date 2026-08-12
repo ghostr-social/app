@@ -1,6 +1,3 @@
-import {
-  farAheadBeforeFrontier, farAheadRequestStartsBeforeFrontier, warmAheadBytes,
-} from "./ordered_prefetch_metrics.mjs";
 import {duplicateCompletedOriginBytes} from "./duplicate_origin_metrics.mjs";
 import {protectedTransitionLatency} from "./transition_metrics.mjs";
 export {requireQoeTargets} from "./qoe_target_validation.mjs";
@@ -13,24 +10,15 @@ export function measureQoe(trace) {
   const latency = measureLatencies(clicks, trace.samples ?? []);
   const rebuffer = measureRebuffer(clicks, trace.samples ?? []);
   return {
-    ...warmMetric(trace),
     ...latency,
     ...rebuffer,
     cancellation_waste_bytes: cancellationWaste(trace),
     ahead_prefetch_bytes: aheadPrefetch(trace, clicks, trace.samples ?? []),
-    far_ahead_before_frontier_bytes: farAheadBeforeFrontier(trace),
-    far_ahead_request_starts_before_frontier: farAheadRequestStartsBeforeFrontier(trace),
     duplicate_completed_origin_bytes: duplicateCompletedOriginBytes(trace.origin_requests),
     protected_transition_latency_ms: protectedTransitionLatency(
       trace.clicks, trace.samples,
     ),
   };
-}
-
-function warmMetric(trace) {
-  return trace.warm_prefetch
-    ? {warm_prefetch_latency_ms: trace.warm_prefetch.latency_ms}
-    : {};
 }
 
 function measureLatencies(clicks, samples) {
@@ -108,14 +96,14 @@ function requestVideoId(trace, request) {
 }
 
 function aheadPrefetch(trace, clicks, samples) {
-  return Math.max(warmAheadBytes(trace), playbackAheadPrefetch(trace, clicks, samples));
+  return playbackAheadPrefetch(trace, clicks, samples);
 }
 
 function playbackAheadPrefetch(trace, clicks, samples) {
   const click = clicks[0];
   if (!click) return 0;
   const end = clicks[1]?.at_ms ?? Number.POSITIVE_INFINITY;
-  const baseline = trace.warm_prefetch?.baseline_bytes ?? {};
+  const baseline = {};
   return Math.max(0, ...samples.map((sample) => {
     if (!isInitialFocusSample(sample, click, end)) return 0;
     return sample.state.videos.reduce((sum, video) => {

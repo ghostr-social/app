@@ -3,14 +3,6 @@ use super::{HostRecord, HostStats};
 const HOST_CAPACITY: usize = 128;
 
 impl HostStats {
-    pub const fn host_capacity() -> usize {
-        HOST_CAPACITY
-    }
-
-    pub fn retained_host_count(&self) -> usize {
-        self.hosts.len()
-    }
-
     pub(super) fn record(&mut self, host: &str) -> &mut HostRecord {
         self.make_room_for(host);
         self.hosts.entry(host.to_owned()).or_default()

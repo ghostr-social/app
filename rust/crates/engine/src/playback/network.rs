@@ -62,7 +62,7 @@ impl NetworkConditions {
 }
 
 impl EstimateConfidence {
-    fn from_evidence(sample_count: u64, sampled_at_ms: u64, now_ms: u64) -> Self {
+    pub fn from_evidence(sample_count: u64, sampled_at_ms: u64, now_ms: u64) -> Self {
         let age_ms = now_ms.saturating_sub(sampled_at_ms);
         if sample_count >= 8 && age_ms <= 60_000 {
             return Self::High;

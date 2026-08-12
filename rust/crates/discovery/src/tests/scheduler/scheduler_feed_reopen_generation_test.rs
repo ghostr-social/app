@@ -6,7 +6,7 @@ use crate::scheduler::{start_discovery_scheduler, DiscoveryHandle, DiscoverySche
 use crate::tests::scheduler_support::{
     context, next_outcome, next_started, no_start, note_at, request,
 };
-use ghostr_engine::{inventory_controller::Mode, DataUsageLevel};
+use ghostr_engine::{adaptive::DiscoveryDemand, DataUsageLevel};
 use nostr_sdk::Event;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
@@ -49,11 +49,11 @@ fn controlled_scheduler(
         completions: Mutex::new(completions.into()),
     });
     let (outcome_sender, outcomes) = mpsc::unbounded_channel();
-    let (_, modes) = watch::channel(Mode::Comfort);
+    let (_, demand) = watch::channel(DiscoveryDemand::Hold);
     let handle = start_discovery_scheduler(DiscoverySchedulerConfig {
         executor,
         level: DataUsageLevel::Conservative,
-        modes,
+        demand,
         outcomes: outcome_sender,
     });
     ControlledScheduler {
