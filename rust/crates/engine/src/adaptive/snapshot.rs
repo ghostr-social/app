@@ -105,6 +105,10 @@ pub struct CandidateSnapshot {
     pub layout: MediaLayout,
     pub timeline_probe: Option<PlayableRange>,
     pub playable_ranges: Vec<PlayableRange>,
+    /// Bytes a live consumer is blocked on right now (a gateway read
+    /// outside the buffered region). Always fetched, independent of
+    /// how comfortable the playback reserve currently is.
+    pub demanded: Option<ByteRange>,
     pub present: Vec<ByteRange>,
     pub recently_evicted: Vec<ByteRange>,
     pub in_flight: Vec<InFlightRange>,
@@ -115,6 +119,9 @@ pub struct CandidateSnapshot {
 pub struct PlayabilitySnapshot {
     pub observed_at_ms: u64,
     pub commitment_ms: u64,
+    /// Upper bound for one origin range request; missing extents are
+    /// merged and split so no request exceeds it.
+    pub request_slice_bytes: u64,
     pub playback: PlaybackSnapshot,
     pub network: NetworkSnapshot,
     pub storage: StorageSnapshot,

@@ -9,7 +9,7 @@ fn probe_candidates_include_the_whole_upcoming_policy_frontier() {
 
     state.apply_candidate(candidate("first", 1));
     state.apply_candidate(candidate("latest", 2));
-    assert_eq!(state.probe_posts(), vec![PostId::new("latest")]);
+    assert_eq!(state.probe_posts(), vec![PostId::new("first")]);
 
     state.apply_focus(
         DeliveryFocus::compatibility(

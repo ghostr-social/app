@@ -4,10 +4,25 @@ use crate::playback::{EstimateConfidence, PlaybackPhase};
 
 const STORAGE_TARGET_BPS: u64 = 9_900;
 
+/// An emergency exists only while network work can still improve the
+/// current video. A fully stored current post (including the natural
+/// low-buffer tail of every finished download) must not displace the
+/// speculative work the next swipe depends on. In-flight ranges do
+/// not settle a post: work still on the wire keeps its lane priority.
 pub(super) fn endangered(snapshot: &PlayabilitySnapshot, current: &CandidateSnapshot) -> bool {
+    if fully_stored(current) {
+        return false;
+    }
     phase_endangered(&snapshot.playback)
         || snapshot.playback.buffer_ahead_ms < 4_000
         || effective_network_bps(snapshot) < current.bitrate_bps
+}
+
+fn fully_stored(candidate: &CandidateSnapshot) -> bool {
+    candidate
+        .playable_ranges
+        .iter()
+        .all(|playable| uncovered_bytes(playable.bytes, &candidate.present) == 0)
 }
 
 pub(super) fn speculative_budget(snapshot: &PlayabilitySnapshot) -> u64 {

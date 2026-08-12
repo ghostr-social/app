@@ -22,6 +22,20 @@ test("accepts smooth playback, prefetch before EOF, and a fast visible jump", ()
   assert.doesNotThrow(() => validateJourney(trace, {maxJumpMs: 2_000}));
 });
 
+test("accepts prefetch proven only after every download finished", () => {
+  const trace = {
+    clicks: [],
+    samples: [
+      sample({id: "a", at: 100, time: 0.2, currentBytes: 4_000, aheadBytes: 4_000}),
+      sample({id: "a", at: 700, time: 0.9, currentBytes: 4_000, aheadBytes: 4_000}),
+    ],
+    requests: [{url: "http://127.0.0.1/video.mp4", range: "bytes=0-255",
+      status: 206, content_range: "bytes 0-255/4000", finished: true}],
+  };
+
+  assert.doesNotThrow(() => validateJourney(trace));
+});
+
 test("rejects a journey whose media time never advances", () => {
   const trace = {
     clicks: [],

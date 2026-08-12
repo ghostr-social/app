@@ -1,14 +1,15 @@
-use super::resources::{storage_displaces_speculation, storage_target_bytes};
+use super::resources::storage_target_bytes;
 use super::{CandidateSnapshot, Eviction, EvictionReason, PlayabilitySnapshot};
 use crate::ByteRange;
 
-pub(super) fn evictions(snapshot: &PlayabilitySnapshot) -> Vec<Eviction> {
-    if !storage_displaces_speculation(snapshot) {
+pub(super) fn evictions(snapshot: &PlayabilitySnapshot, current_need_bytes: u64) -> Vec<Eviction> {
+    let wanted = bytes_to_release(snapshot, current_need_bytes);
+    if wanted == 0 {
         return Vec::new();
     }
     let mut candidates = eviction_candidates(snapshot);
     candidates.sort_by(eviction_order);
-    take_until(candidates, bytes_to_release(snapshot))
+    take_until(candidates, wanted)
 }
 
 fn eviction_candidates(snapshot: &PlayabilitySnapshot) -> Vec<Eviction> {
@@ -58,11 +59,21 @@ fn eviction_order(left: &Eviction, right: &Eviction) -> std::cmp::Ordering {
         .then_with(|| right.range.start.cmp(&left.range.start))
 }
 
-fn bytes_to_release(snapshot: &PlayabilitySnapshot) -> u64 {
-    snapshot
+/// Releases whatever the soft target demands, and additionally enough
+/// hard room for the bytes the current video will write this pass:
+/// writing into a full store makes it reject or sweep wholesale,
+/// forfeiting paid sibling bytes that then have to be bought again.
+fn bytes_to_release(snapshot: &PlayabilitySnapshot, current_need_bytes: u64) -> u64 {
+    let soft = snapshot
         .storage
         .used_bytes
-        .saturating_sub(storage_target_bytes(snapshot))
+        .saturating_sub(storage_target_bytes(snapshot));
+    let hard = snapshot
+        .storage
+        .used_bytes
+        .saturating_add(current_need_bytes)
+        .saturating_sub(snapshot.storage.budget_bytes);
+    soft.max(hard)
 }
 
 fn take_until(candidates: Vec<Eviction>, wanted: u64) -> Vec<Eviction> {

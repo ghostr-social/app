@@ -96,6 +96,33 @@ struct CapacityWait {
 }
 
 impl DeliveryWorker {
+    /// Replans on every store capacity revision. The policy budgets
+    /// origin work to the room the store reports, so a capacity change
+    /// must wake planning even when nothing is parked on a refusal.
+    pub(crate) fn spawn_capacity_replans(&self) {
+        let store = Arc::clone(&self.ctx.store);
+        let events = self.ctx.events.clone();
+        tokio::spawn(async move {
+            let mut changes = store.capacity_changes();
+            loop {
+                tokio::select! {
+                    result = changes.changed() => {
+                        if result.is_err() {
+                            return;
+                        }
+                        let woke = events.send(InternalEvent::Maintenance(
+                            crate::manager::transfers::MaintenanceEvent::StoreCapacityChanged(0),
+                        ));
+                        if woke.is_err() {
+                            return;
+                        }
+                    }
+                    _ = events.closed() => return,
+                }
+            }
+        });
+    }
+
     /// Absorbs a chunk that failed on the store rather than on the
     /// network. `true` when it was one, so the caller leaves the
     /// source's retry ledger alone.

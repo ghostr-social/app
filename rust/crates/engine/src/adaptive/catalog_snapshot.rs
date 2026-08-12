@@ -34,6 +34,7 @@ pub fn candidate_snapshot(
         layout,
         timeline_probe: timeline_probe(entry, layout, &playable_ranges),
         playable_ranges,
+        demanded: None,
         present: evidence.present,
         recently_evicted: evidence.recently_evicted,
         in_flight: evidence.in_flight,

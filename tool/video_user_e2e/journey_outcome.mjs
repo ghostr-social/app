@@ -67,7 +67,12 @@ function requireAheadPrefetch(trace) {
     const ahead = sample.state.videos.some(
       (video) => video.id !== sample.player.id && video.downloaded_bytes > 0,
     );
-    return current && current.downloaded_bytes < current.total_bytes && ahead;
+    if (!current || !ahead) return false;
+    // Sibling bytes present while the current video is incomplete or
+    // still playing both prove prefetch ran ahead of need; on a fast
+    // link every download can finish between two samples.
+    return current.downloaded_bytes < current.total_bytes ||
+      sample.player.phase === "playing";
   });
   if (!observed && trace.scenario !== "storage_pressure") {
     throw new Error("ahead work did not begin before current EOF");

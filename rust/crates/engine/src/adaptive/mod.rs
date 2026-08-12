@@ -14,6 +14,7 @@ mod resources;
 mod snapshot;
 mod sources;
 
+pub use allocation::REQUEST_SLICE_BYTES;
 pub use catalog_snapshot::{candidate_snapshot, CandidateEvidence};
 pub use navigation::{FeedOffset, NavigationDirection, NavigationHistory};
 pub use plan::{

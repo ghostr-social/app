@@ -18,6 +18,7 @@ pub(super) fn snapshot(
     PlayabilitySnapshot {
         observed_at_ms: 10_000,
         commitment_ms: 3_000,
+        request_slice_bytes: crate::adaptive::REQUEST_SLICE_BYTES,
         playback: PlaybackSnapshot {
             current: PostId::new("p0"),
             phase: PlaybackPhase::Playing,
@@ -50,6 +51,7 @@ fn candidate(distance: usize) -> CandidateSnapshot {
         layout: MediaLayout::Streamable,
         timeline_probe: None,
         playable_ranges: (0..15).map(playable_range).collect(),
+        demanded: None,
         present: Vec::new(),
         recently_evicted: Vec::new(),
         in_flight: Vec::new(),

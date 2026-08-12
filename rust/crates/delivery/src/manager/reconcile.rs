@@ -15,16 +15,15 @@ impl DeliveryWorker {
     pub(crate) async fn reconcile(&mut self) {
         let observed_at_ms = unix_time_ms();
         self.select_playback_rendition(observed_at_ms).await;
-        let window = self.state.window_posts();
-        let candidates = self.state.candidate_posts();
+        let capacity = self.ctx.store.capacity_snapshot().await;
+        let window = self.collection_window(&capacity);
         let probe_posts = self.state.probe_posts();
         let present = self.collect_present(&window).await;
         self.hydrate_timelines(&window, &present).await;
-        self.ensure_total_lens(&candidates).await;
+        self.ensure_total_lens(&window).await;
         self.launch_probes(&probe_posts);
         self.resolve_gateway_demand(&present);
         let demanded = self.pending_demand.clone();
-        let capacity = self.ctx.store.capacity_snapshot().await;
         let in_flight = self.downloads.ranges();
         let connection_ceiling = self.connection_ceiling();
         let inputs = PlanInputs {
@@ -48,6 +47,19 @@ impl DeliveryWorker {
         self.reconcile_transfers(planned);
         self.refresh_cache_registry().await;
         self.keeper.schedule_save(&self.ctx.events);
+    }
+
+    /// The planning slice of the window, widened to the full roster
+    /// only under storage pressure so eviction can weigh every stored
+    /// post, not just the current neighbourhood.
+    fn collection_window(
+        &self,
+        capacity: &ghostr_partial_store::partial_range_store::capacity::CapacitySnapshot,
+    ) -> Vec<PostId> {
+        if capacity.used_bytes() >= capacity.limit_bytes().saturating_mul(9) / 10 {
+            return self.state.window_posts();
+        }
+        self.state.planning_window_posts()
     }
 
     async fn collect_present(&self, window: &[PostId]) -> HashMap<PostId, Vec<ByteRange>> {

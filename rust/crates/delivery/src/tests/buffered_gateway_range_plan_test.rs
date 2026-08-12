@@ -10,8 +10,11 @@ fn buffered_gateway_read_ahead_keeps_ordinary_preemption_authority() {
     let transfer = work
         .transfers
         .iter()
-        .find(|transfer| transfer.request.chunk.range == demanded)
-        .expect("exact demanded range");
+        .find(|transfer| {
+            transfer.request.chunk.range.start == demanded.start
+                && transfer.request.chunk.range.end >= demanded.end
+        })
+        .expect("transfer starting at the demanded offset");
 
     assert!(!work.emergency, "buffered read-ahead is not a stall");
     assert_eq!(transfer.request.authority, PreemptionAuthority::Transition);

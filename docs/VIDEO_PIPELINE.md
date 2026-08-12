@@ -72,8 +72,14 @@ fixed prefix: it may contain one candidate or many, and both its breadth and
 per-candidate depth emerge from the current snapshot.
 
 Every origin body request must exactly match an allocation recorded before
-the request began. Replanning subtracts stored and live in-flight ranges and
-keeps useful commitments, so completed origin ranges never overlap. A
+the request began. Missing extents are repacked into bounded request slices
+(contiguous neighbours merge, no slice exceeds the configured request bound),
+so an interrupted transfer forfeits at most one slice and per-sample
+micro-extents never cost a round trip each. Replanning subtracts stored and
+live in-flight ranges and keeps useful commitments, so completed origin
+ranges never overlap. The planning pass reads store state for a bounded
+neighbourhood around the current post rather than the whole roster; the
+admitted frontier stays adaptive within that neighbourhood. A
 range-blind file is represented as one complete-file opportunity and is
 deferred until existing playable coverage can pay its delivery time; a bounded
 tail layout probe may run earlier to determine whether that deferral is needed.
