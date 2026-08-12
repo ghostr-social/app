@@ -32,7 +32,10 @@ void main() {
       contains('android:networkSecurityConfig="@xml/network_security_config"'),
     );
     expect(networkSecurity, contains('cleartextTrafficPermitted="false"'));
-    expect(networkSecurity, contains('<domain>127.0.0.1</domain>'));
+    expect(
+      networkSecurity,
+      contains('<domain includeSubdomains="false">127.0.0.1</domain>'),
+    );
     expect(
       networkSecurity,
       isNot(contains('<base-config cleartextTrafficPermitted="true"')),
