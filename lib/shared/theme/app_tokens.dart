@@ -21,6 +21,11 @@ abstract final class AppSize {
   static const double profileAvatar = 38;
   static const double feedRailAvatar = 24;
   static const double feedRailIcon = 34;
+  static const double feedProfileActionWidth = 52;
+  static const double feedProfileActionHeight = 96;
+  static const double feedFollowOffset = 48;
+  static const double feedFollowButton = 24;
+  static const double feedFollowIcon = 18;
   static const double feedSongIcon = 14;
 }
 

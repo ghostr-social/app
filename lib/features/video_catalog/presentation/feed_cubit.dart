@@ -1,16 +1,21 @@
 import 'dart:async';
 
+import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/presentation/disposal_safe_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_backfill.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_engagement.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_fetcher.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_loads.dart';
+import 'package:ghostr/features/video_catalog/domain/use_cases/feed_operation_failure.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_session.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
+import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
+import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_dependencies.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_failure_messages.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_follow_state.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_hunt.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_state.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_update_retry.dart';
@@ -20,6 +25,7 @@ export 'feed_dependencies.dart';
 export 'feed_state.dart';
 
 part 'feed_cubit_engagement.dart';
+part 'feed_cubit_follow.dart';
 part 'feed_cubit_loading.dart';
 part 'feed_cubit_updates.dart';
 
@@ -46,8 +52,14 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     focus: _dependencies.focus,
     watchTracker: _dependencies.watchTracker,
   );
+  late FeedFollowState _follows = FeedFollowState.unavailable(
+    viewerId: _dependencies.viewerId,
+  );
+  int _followLoadRequest = 0;
+  final _followRequests = <ProfileId, int>{};
 
   Future<void> load([FeedKind? selectedKind]) async {
+    final follows = _reloadFollows();
     await _runFeedPull(() async {
       final kind = selectedKind ?? state.kind;
       emit(FeedLoading(kind));
@@ -55,6 +67,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
       if (isClosed || state.kind != kind) return;
       await _accepting(kind, (reason) => FeedFailure(kind, reason));
     });
+    await follows;
   }
 
   Future<void> retry() => load();
@@ -62,24 +75,37 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   Future<void> reload() async {
     final previous = state;
     if (previous is! FeedLoaded) return load();
+    final follows = _reloadFollows();
     emit(FeedLoading(previous.kind));
-    await _runFeedPull(() => _accepting(previous.kind, previous.withNotice));
+    await _runFeedPull(
+      () => _accepting(
+        previous.kind,
+        (reason) => previous.withFollows(_follows).withNotice(reason),
+      ),
+    );
+    await follows;
   }
 
   Future<void> refresh() async {
     final previous = state;
     if (previous is! FeedLoaded) return load();
+    final follows = _reloadFollows();
     await _runFeedPull(() async {
       await _refreshFeedUpdates(previous.kind);
       final result = await _loads.newest(() => _fetch.resync(previous.kind));
       if (isClosed || result == null) return;
       if (result case FeedUnavailable()) {
-        emit(previous.withNotice(feedLoadFailureMessage(result.failure)));
+        emit(
+          previous
+              .withFollows(_follows)
+              .withNotice(feedLoadFailureMessage(result.failure)),
+        );
       } else if (result case FeedFetched(:final posts)) {
         _acknowledgePendingFeedUpdate();
         _acceptRefresh(previous, posts);
       }
     });
+    await follows;
   }
 
   void pageChanged(int index) {

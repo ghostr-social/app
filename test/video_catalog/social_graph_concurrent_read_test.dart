@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/features/social/data/social_graph_cache.dart';
+import 'package:ghostr/features/social/domain/follow_outcome.dart';
 import 'package:ghostr/features/social/domain/nostr_social_port.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 
@@ -46,6 +47,7 @@ void main() {
 final class _DeferredBlockedSocial implements NostrSocialPort {
   final started = Completer<void>();
   final result = Completer<Set<ProfileId>>();
+  final followed = <ProfileId>{};
   var calls = 0;
 
   @override
@@ -63,11 +65,22 @@ final class _DeferredBlockedSocial implements NostrSocialPort {
   }
 
   @override
-  Future<Set<ProfileId>> loadFollowedProfiles() async => const <ProfileId>{};
+  Future<Set<ProfileId>> loadFollowedProfiles() async => {...followed};
+
+  @override
+  Future<FollowOutcome> follow(ProfileId profileId) async {
+    return followed.add(profileId)
+        ? FollowOutcome.newlyFollowed
+        : FollowOutcome.alreadyFollowing;
+  }
 
   @override
   Future<bool> toggleBlock(ProfileId profileId) async => false;
 
   @override
-  Future<bool> toggleFollow(ProfileId profileId) async => false;
+  Future<bool> toggleFollow(ProfileId profileId) async {
+    if (followed.remove(profileId)) return false;
+    followed.add(profileId);
+    return true;
+  }
 }

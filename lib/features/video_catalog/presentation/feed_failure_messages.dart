@@ -28,6 +28,14 @@ String feedBlockFailureMessage(FeedOperationFailure failure) {
   );
 }
 
+String feedFollowFailureMessage(FeedOperationFailure failure) {
+  return _message(
+    source: 'FeedCubit.followCreator',
+    message: 'Could not follow this creator.',
+    failure: failure,
+  );
+}
+
 String _message({
   required String source,
   required String message,

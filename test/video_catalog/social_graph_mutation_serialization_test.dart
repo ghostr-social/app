@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/features/social/data/social_graph_cache.dart';
+import 'package:ghostr/features/social/domain/follow_outcome.dart';
 import 'package:ghostr/features/social/domain/nostr_social_port.dart';
 import 'package:ghostr/features/social/domain/social_graph_store.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
@@ -37,12 +38,17 @@ class _DelayedSocial implements NostrSocialPort {
   var calls = 0;
 
   @override
-  NostrPublicKeyHex get accountPublicKey {
-    return NostrPublicKeyHex.parse(testViewerPublicKey);
-  }
+  NostrPublicKeyHex get accountPublicKey =>
+      NostrPublicKeyHex.parse(testViewerPublicKey);
 
   @override
   NostrSocialPort snapshotForActiveAccount() => this;
+
+  @override
+  Future<FollowOutcome> follow(ProfileId profileId) async =>
+      followed.add(profileId)
+      ? FollowOutcome.newlyFollowed
+      : FollowOutcome.alreadyFollowing;
 
   @override
   Future<bool> toggleFollow(ProfileId profileId) async {

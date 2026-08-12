@@ -14,6 +14,7 @@ void main() {
 
     expect(selected, isNull);
     expect(resolved, same(metadata));
-    expect(await const ProfileImageWorkflow.disabled().select(), isNull);
+    final disabled = ProfileImageWorkflow.disabled();
+    expect(await disabled.select(), isNull);
   });
 }

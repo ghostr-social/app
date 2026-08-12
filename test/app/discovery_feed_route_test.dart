@@ -48,12 +48,18 @@ void main() {
     final request = tester
         .widget<DiscoveryFeedScreen>(find.byType(DiscoveryFeedScreen))
         .request;
-    request.onOpenHashtag('#music');
+    final hashtagRoute = request.onOpenHashtag('#music');
     await tester.pumpAndSettle();
     expect(find.widgetWithText(AppBar, '#music'), findsOneWidget);
+    tester.state<NavigatorState>(find.byType(Navigator)).pop();
+    await tester.pumpAndSettle();
+    await hashtagRoute;
 
-    request.onOpenProfile(sampleCreator().id);
+    final profileRoute = request.onOpenProfile(sampleCreator().id);
     await tester.pumpAndSettle();
     expect(find.byType(ProfileScreen), findsOneWidget);
+    tester.state<NavigatorState>(find.byType(Navigator)).pop();
+    await tester.pumpAndSettle();
+    await profileRoute;
   });
 }

@@ -5,6 +5,7 @@ import 'package:ghostr/core/nostr/nostr_event_client.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/core/nostr/nostr_event_record.dart';
 import 'package:ghostr/core/time/clock.dart';
+import 'package:ghostr/features/social/domain/follow_outcome.dart';
 import 'package:ghostr/features/social/domain/nostr_social_port.dart';
 import 'package:ghostr/features/social/domain/signed_event_broadcast_port.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
@@ -20,17 +21,12 @@ class NdkNostrSocial implements NostrSocialPort {
     required NostrEventClient eventClient,
     required SignedEventBroadcastPort broadcast,
     Clock clock = systemClock,
-  })  : _transport = _NdkSocialTransport(eventClient, broadcast),
-        _ndk = ndk,
-        _clock = clock,
-        _scope = _NdkSocialScope(_NdkSocialState(), null, null);
+  }) : _transport = _NdkSocialTransport(eventClient, broadcast),
+       _ndk = ndk,
+       _clock = clock,
+       _scope = _NdkSocialScope(_NdkSocialState(), null, null);
 
-  NdkNostrSocial._(
-    this._ndk,
-    this._transport,
-    this._clock,
-    this._scope,
-  );
+  NdkNostrSocial._(this._ndk, this._transport, this._clock, this._scope);
 
   final Ndk _ndk;
   final _NdkSocialTransport _transport;
@@ -74,6 +70,14 @@ class NdkNostrSocial implements NostrSocialPort {
   }
 
   @override
+  Future<FollowOutcome> follow(ProfileId profileId) {
+    return _guard('Could not update the Nostr follow list.', () {
+      final target = _decodeProfile(profileId);
+      return _activeScope._enqueueFollow(target);
+    });
+  }
+
+  @override
   Future<bool> toggleBlock(ProfileId profileId) {
     return _guard('Could not update the Nostr mute list.', () {
       final target = _decodeProfile(profileId);
@@ -85,7 +89,7 @@ class NdkNostrSocial implements NostrSocialPort {
   Future<bool> toggleFollow(ProfileId profileId) {
     return _guard('Could not update the Nostr follow list.', () {
       final target = _decodeProfile(profileId);
-      return _activeScope._enqueueFollow(target);
+      return _activeScope._enqueueToggleFollow(target);
     });
   }
 
@@ -110,8 +114,9 @@ class NdkNostrSocial implements NostrSocialPort {
     final key = _SocialRecordKey.parse(ContactList.kKind, publicKey);
     final records = await _transport.events.query(_socialQuery(key));
     final record = _newestSocialRecord(records, key);
-    final fetched =
-        record == null ? null : ContactList.fromEvent(_localEvent(record));
+    final fetched = record == null
+        ? null
+        : ContactList.fromEvent(_localEvent(record));
     final contacts = _rememberContactFloor(_state, publicKey, fetched);
     return contacts?.contacts
             .map(Nip19.encodePubKey)
