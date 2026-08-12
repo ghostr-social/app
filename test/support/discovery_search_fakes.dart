@@ -1,4 +1,5 @@
 import 'package:ghostr/core/errors/app_failure.dart';
+import 'package:ghostr/features/social/domain/follow_outcome.dart';
 import 'package:ghostr/features/social/domain/social_graph_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/creator_search_source.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
@@ -52,11 +53,13 @@ class RecordingRemoteVideoSource implements RemoteVideoSource {
   }) {
     watchQueries.add(searchQuery);
     watchHashtags.add(hashtags);
-    return Stream.value(RemoteVideoSnapshot(
-      revision: BigInt.one,
-      phase: snapshotPhase,
-      posts: posts,
-    ));
+    return Stream.value(
+      RemoteVideoSnapshot(
+        revision: BigInt.one,
+        phase: snapshotPhase,
+        posts: posts,
+      ),
+    );
   }
 }
 
@@ -78,17 +81,20 @@ class RecordingCreatorSearchSource implements CreatorSearchSource {
 class FakeSocialGraph implements SocialGraphRepository {
   final Set<ProfileId> blocked = <ProfileId>{};
   final Set<ProfileId> followed = <ProfileId>{};
-
   @override
   Future<Set<ProfileId>> loadBlockedProfiles() async => blocked;
-
   @override
   Future<Set<ProfileId>> loadFollowedProfiles() async => followed;
+  @override
+  Future<FollowOutcome> follow(ProfileId profileId) async {
+    return followed.add(profileId)
+        ? FollowOutcome.newlyFollowed
+        : FollowOutcome.alreadyFollowing;
+  }
 
   @override
   Future<bool> toggleBlock(ProfileId profileId) async => blocked.add(profileId);
-
   @override
   Future<bool> toggleFollow(ProfileId profileId) async =>
-      followed.add(profileId);
+      followed.remove(profileId) ? false : followed.add(profileId);
 }

@@ -1,3 +1,4 @@
+import 'package:ghostr/features/social/domain/follow_outcome.dart';
 import 'package:ghostr/features/social/domain/social_graph_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_details.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
@@ -26,14 +27,12 @@ mixin FakeVideoCatalogDiscoveryBehavior
   List<String> get trendingTags;
 
   @override
-  Future<Set<ProfileId>> loadFollowedProfiles() async {
-    return Set<ProfileId>.of(followedProfiles);
-  }
+  Future<Set<ProfileId>> loadFollowedProfiles() async =>
+      Set<ProfileId>.of(followedProfiles);
 
   @override
-  Future<Set<ProfileId>> loadBlockedProfiles() async {
-    return Set<ProfileId>.of(blockedProfiles);
-  }
+  Future<Set<ProfileId>> loadBlockedProfiles() async =>
+      Set<ProfileId>.of(blockedProfiles);
 
   @override
   Future<ProfileDetails> loadProfile(
@@ -73,7 +72,18 @@ mixin FakeVideoCatalogDiscoveryBehavior
   Future<List<String>> trendingHashtags() async => trendingTags;
 
   @override
-  Future<bool> toggleFollow(ProfileId profileId) async => true;
+  Future<FollowOutcome> follow(ProfileId profileId) async {
+    return followedProfiles.add(profileId)
+        ? FollowOutcome.newlyFollowed
+        : FollowOutcome.alreadyFollowing;
+  }
+
+  @override
+  Future<bool> toggleFollow(ProfileId profileId) async {
+    if (followedProfiles.remove(profileId)) return false;
+    followedProfiles.add(profileId);
+    return true;
+  }
 
   @override
   Future<bool> toggleBlock(ProfileId profileId) async {

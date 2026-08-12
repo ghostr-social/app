@@ -26,7 +26,9 @@ extension FeedCubitEngagementActions on FeedCubit {
     final roster = current.roster.withoutCreator(post.creator.id);
     if (roster.isEmpty) return load();
     final blocked = 'Blocked ${post.creator.handle}';
-    _emitState(FeedLoaded.of(current.kind, roster, notice: blocked));
+    _emitState(
+      FeedLoaded.of(current.kind, roster, notice: blocked, follows: _follows),
+    );
   }
 
   void commentsPublished(VideoPost post, int publishedCount) {
