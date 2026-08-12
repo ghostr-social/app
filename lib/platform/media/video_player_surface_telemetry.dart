@@ -17,6 +17,7 @@ extension _VideoPlayerSurfaceTelemetry on _VideoPlayerSurfaceState {
     final previous = _playbackPhase;
     final phase = _playbackObserver.classify(value, isActive: true);
     _playbackPhase = phase;
+    widget.screenAwake.observePhase(this, phase);
     _reportObservation(value, phase);
     return phase != previous;
   }
@@ -31,6 +32,7 @@ extension _VideoPlayerSurfaceTelemetry on _VideoPlayerSurfaceState {
     final session = _playbackSession;
     _playbackSession = null;
     _isObserving = false;
+    widget.screenAwake.release(this);
     if (session != null) widget.telemetry.deactivate(session);
   }
 

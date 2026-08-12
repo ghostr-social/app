@@ -10,6 +10,17 @@ enum PlaybackPhase {
   inactive;
 
   bool get isNetworkStall => this == PlaybackPhase.networkStalled;
+
+  /// Whether this phase advances (or is about to advance) media on screen and
+  /// therefore must keep the device screen awake without touch input.
+  bool get keepsScreenAwake => switch (this) {
+    PlaybackPhase.starting ||
+    PlaybackPhase.playing ||
+    PlaybackPhase.networkStalled => true,
+    PlaybackPhase.paused ||
+    PlaybackPhase.ended ||
+    PlaybackPhase.inactive => false,
+  };
 }
 
 final class PlaybackObservation {
