@@ -6,9 +6,13 @@ pub async fn wait_for(path: &Path, ready: impl Fn(&HostStats) -> bool) -> HostSt
     tokio::time::timeout(Duration::from_secs(2), async {
         loop {
             if let Ok(json) = tokio::fs::read_to_string(path).await {
-                let stats = HostStats::from_json(&json).expect("valid host stats");
-                if ready(&stats) {
-                    return stats;
+                // The snapshot is written non-atomically; a read that lands
+                // mid-write sees a torn file. Treat it as not ready, like
+                // the production loader does.
+                if let Ok(stats) = HostStats::from_json(&json) {
+                    if ready(&stats) {
+                        return stats;
+                    }
                 }
             }
             tokio::time::sleep(Duration::from_millis(5)).await;
