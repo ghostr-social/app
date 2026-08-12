@@ -18,6 +18,7 @@ mod eviction;
 mod finalize;
 pub mod free_space;
 pub mod leases;
+mod policy_eviction;
 mod queries;
 mod reload;
 mod representation;

@@ -20,7 +20,7 @@ use crate::scheduler::feeds::FeedBook;
 use crate::scheduler::hunt::HuntToken;
 use crate::scheduler::queries::{QueryBook, QueryResult};
 use crate::scheduler::queue::RetrievalQueue;
-use ghostr_engine::inventory_controller::Mode;
+use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::Timestamp;
 use std::collections::HashMap;
@@ -107,9 +107,8 @@ pub struct DiscoveryHandle {
 pub struct DiscoverySchedulerConfig {
     pub executor: Arc<dyn PlanExecutor>,
     pub level: DataUsageLevel,
-    /// Inventory mode transitions from the delivery manager
-    /// (`start_delivery_manager_with_modes`), plan §5.4.
-    pub modes: watch::Receiver<Mode>,
+    /// Resource-driven candidate demand from the delivery manager.
+    pub demand: watch::Receiver<DiscoveryDemand>,
     pub outcomes: mpsc::UnboundedSender<RetrievalOutcome>,
 }
 
@@ -162,8 +161,8 @@ pub(crate) struct SchedulerWorker {
     pub(crate) next_task_id: u64,
     pub(crate) commands: mpsc::UnboundedReceiver<DiscoveryCommand>,
     pub(crate) command_sender: WeakUnboundedSender<DiscoveryCommand>,
-    pub(crate) modes: watch::Receiver<Mode>,
-    pub(crate) modes_live: bool,
+    pub(crate) demand: watch::Receiver<DiscoveryDemand>,
+    pub(crate) demand_live: bool,
 }
 
 impl SchedulerWorker {
@@ -191,8 +190,8 @@ impl SchedulerWorker {
             next_task_id: 0,
             commands,
             command_sender,
-            modes: config.modes,
-            modes_live: true,
+            demand: config.demand,
+            demand_live: true,
         }
     }
 }

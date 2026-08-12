@@ -11,11 +11,10 @@ fn long_discovery_keeps_newest_candidates_without_bounding_the_focus_window() {
     for index in 0..DISCOVERED {
         state.apply_candidate(candidate(index));
     }
-    state.apply_focus(DeliveryFocus::compatibility(
-        vec![focus_item("focus-only")],
+    state.apply_focus(
+        DeliveryFocus::compatibility(vec![focus_item("focus-only")], 0, 0),
         0,
-        0,
-    ));
+    );
 
     let posts = state.candidate_posts();
     assert_eq!(posts.len(), RETAINED + 1);

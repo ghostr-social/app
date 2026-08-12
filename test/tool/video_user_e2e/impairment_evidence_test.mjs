@@ -21,6 +21,7 @@ test("an impairment receipt retains application time and surrounding debug state
   assert.deepEqual(evidence, [{
     kind: "network",
     payload: {bandwidth_kbps: 700},
+    requested_at_epoch_ms: 11_502,
     applied_at_epoch_ms: 11_502,
     at_ms: 1_502,
     before: {network: {bandwidth_kbps: 8_000}},
@@ -37,6 +38,7 @@ test("an impairment receipt retains application time and surrounding debug state
   assert.deepEqual(bootstrap, [{
     kind: "network",
     payload: {bandwidth_kbps: 700},
+    requested_at_epoch_ms: 9_000,
     applied_at_epoch_ms: 9_000,
   }]);
 });

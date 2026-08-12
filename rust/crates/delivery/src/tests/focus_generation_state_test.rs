@@ -6,8 +6,8 @@ use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMet
 fn applied_focus_cannot_move_back_to_an_older_generation() {
     let mut state = DeliveryState::new(EngineParams::default(), DataUsageLevel::Balanced);
 
-    assert!(state.apply_focus(focus("new", 2)));
-    assert!(!state.apply_focus(focus("old", 1)));
+    assert!(state.apply_focus(focus("new", 2), 2));
+    assert!(!state.apply_focus(focus("old", 1), 1));
 
     assert_eq!(state.focus().current(), Some(&PostId::new("new")));
 }
@@ -15,11 +15,11 @@ fn applied_focus_cannot_move_back_to_an_older_generation() {
 #[test]
 fn clearing_state_does_not_reopen_an_old_focus_generation() {
     let mut state = DeliveryState::new(EngineParams::default(), DataUsageLevel::Balanced);
-    assert!(state.apply_focus(focus("new", 2)));
+    assert!(state.apply_focus(focus("new", 2), 2));
 
     state.clear();
 
-    assert!(!state.apply_focus(focus("old", 1)));
+    assert!(!state.apply_focus(focus("old", 1), 1));
     assert!(state.focus().current().is_none());
 }
 

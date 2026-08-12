@@ -8,6 +8,7 @@ async fn per_host_cap_blocks_only_matching_host_connections() {
     throttle.update(NetworkProfile {
         bandwidth_kbps: 0,
         latency_ms: 0,
+        packet_loss_bps: 0,
         max_connections_per_host: 1,
     });
     let first = throttle.acquire("https://relay.example/a").await;
@@ -28,6 +29,7 @@ async fn latency_and_bandwidth_are_applied_to_transfer_time() {
     throttle.update(NetworkProfile {
         bandwidth_kbps: 8,
         latency_ms: 250,
+        packet_loss_bps: 0,
         max_connections_per_host: 0,
     });
     let started = Instant::now();

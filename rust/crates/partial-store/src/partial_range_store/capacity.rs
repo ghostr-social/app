@@ -13,8 +13,10 @@ use tokio::sync::Mutex;
 use tokio::time::Instant;
 
 mod events;
+mod limits;
 pub(crate) use events::CapacityEvents;
 pub use events::CapacityRevision;
+pub use limits::{CapacitySnapshot, Limits};
 
 /// Free space the store leaves to the rest of the device, so caching
 /// videos can never take the file system to zero.
@@ -23,25 +25,6 @@ const DEFAULT_RESERVE_BYTES: u64 = 256 * 1024 * 1024;
 /// How long one free-space measurement is trusted. Short enough that a
 /// device filling up is noticed within a chunk or two.
 pub const DEFAULT_RECHECK: Duration = Duration::from_secs(2);
-
-/// The two ceilings the store obeys.
-#[derive(Clone, Copy, Debug)]
-pub struct Limits {
-    /// What the user configured; `u64::MAX` means "no budget of its own".
-    pub budget: u64,
-    /// Free space that must survive whatever the store does.
-    pub reserve: u64,
-}
-
-impl Limits {
-    /// `budget` against the default device reserve.
-    fn budget(budget: u64) -> Self {
-        Self {
-            budget,
-            reserve: DEFAULT_RESERVE_BYTES,
-        }
-    }
-}
 
 struct Sample {
     taken: Instant,

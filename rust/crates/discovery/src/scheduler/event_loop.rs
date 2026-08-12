@@ -1,5 +1,5 @@
 //! The scheduler's event loop: waits for one command, finished
-//! retrieval, or inventory-mode transition, applies it, then fills the
+//! retrieval, or candidate-demand transition, applies it, then fills the
 //! free worker slots — never a periodic wake-up.
 
 use crate::feed::cursor::playable_cursor;
@@ -13,13 +13,13 @@ use crate::scheduler::plans::widened_plan;
 use crate::scheduler::progress::{spawn_retrieval_task, RetrievalTaskInput};
 use crate::scheduler::retry::should_retry_feed;
 use crate::scheduler::{ActiveRetrieval, DiscoveryCommand, FinishedRetrieval, SchedulerWorker};
-use ghostr_engine::inventory_controller::Mode;
+use ghostr_engine::adaptive::DiscoveryDemand;
 use nostr_sdk::{Event, Timestamp};
 
 enum Wake {
     Command(DiscoveryCommand),
     Finished(FinishedRetrieval),
-    Mode(Mode),
+    Demand(DiscoveryDemand),
     Quiet,
 }
 
@@ -39,15 +39,15 @@ impl SchedulerWorker {
         tokio::select! {
             command = self.commands.recv() => command.map(Wake::Command),
             Some(done) = self.finished.recv() => Some(Wake::Finished(done)),
-            changed = self.modes.changed(), if self.modes_live => Some(self.mode_wake(changed.is_ok())),
+            changed = self.demand.changed(), if self.demand_live => Some(self.demand_wake(changed.is_ok())),
         }
     }
 
-    /// A dead mode sender quiets the branch instead of busy-waking.
-    fn mode_wake(&mut self, live: bool) -> Wake {
-        self.modes_live = live;
+    /// A dead demand sender quiets the branch instead of busy-waking.
+    fn demand_wake(&mut self, live: bool) -> Wake {
+        self.demand_live = live;
         if live {
-            Wake::Mode(*self.modes.borrow_and_update())
+            Wake::Demand(*self.demand.borrow_and_update())
         } else {
             Wake::Quiet
         }
@@ -57,14 +57,12 @@ impl SchedulerWorker {
         match wake {
             Wake::Command(command) => self.apply_command(command),
             Wake::Finished(done) => self.finish(done),
-            Wake::Mode(mode) => self.apply_mode(mode),
+            Wake::Demand(demand) => self.apply_demand(demand),
             Wake::Quiet => {}
         }
     }
 
-    /// Unified control loop (plan §5.4): hunger widens the active
-    /// feed's querying, comfort keeps the radio quiet.
-    fn apply_mode(&mut self, mode: Mode) {
+    fn apply_demand(&mut self, demand: DiscoveryDemand) {
         let Some(context) = self.feeds.active().cloned() else {
             return;
         };
@@ -72,7 +70,7 @@ impl SchedulerWorker {
             return;
         }
         let queued = self.queue.has_pending(&context);
-        match discovery_action(mode, self.feeds.query_state(&context, queued)) {
+        match discovery_action(demand, self.feeds.query_state(&context, queued)) {
             DiscoveryAction::Idle => {}
             DiscoveryAction::PrefetchNextPage => self.prefetch(context),
             DiscoveryAction::WidenActiveQuery => self.widen(context),

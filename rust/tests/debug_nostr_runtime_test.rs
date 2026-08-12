@@ -5,7 +5,7 @@ mod support;
 use ghostr_delivery::debug::feed::DebugFeedStage;
 use ghostr_delivery::delivery_events::command_channel;
 use ghostr_discovery::cache::client_with_event_cache;
-use ghostr_engine::inventory_controller::Mode;
+use ghostr_engine::adaptive::DiscoveryDemand;
 use nostr_sdk::{EventBuilder, Keys, Kind, Timestamp};
 use rust_lib_ghostr::api::debug::nostr::{DebugNostrConfiguration, DebugNostrRuntime};
 use std::sync::Arc;
@@ -15,12 +15,12 @@ use tokio::sync::watch;
 #[tokio::test]
 async fn nostr_discovery_failure_reaches_the_debug_feed() {
     let client = Arc::new(client_with_event_cache());
-    let (_mode_updates, modes) = watch::channel(Mode::Hunger);
+    let (_demand_sender, demand) = watch::channel(DiscoveryDemand::Expand);
     let (delivery, _commands) = command_channel();
     let feed = ghostr_delivery::debug::feed::DebugFeed::new(delivery, Vec::new());
     let _nostr = DebugNostrRuntime::start(
         client,
-        modes,
+        demand,
         DebugNostrConfiguration {
             read_relays: Vec::new(),
             search_relays: Vec::new(),
@@ -53,13 +53,13 @@ async fn consecutive_relay_events_keep_advancing_the_debug_feed() {
     });
     let relay = support::nostr_relay::relay_serving(events.collect()).await;
     let client = Arc::new(client_with_event_cache());
-    let (_mode_updates, modes) = watch::channel(Mode::Hunger);
+    let (_demand_sender, demand) = watch::channel(DiscoveryDemand::Expand);
     let (delivery, _commands) = command_channel();
     let feed = ghostr_delivery::debug::feed::DebugFeed::new(delivery, vec![relay.clone()]);
 
     let _runtime = DebugNostrRuntime::start(
         client,
-        modes,
+        demand,
         DebugNostrConfiguration {
             read_relays: vec![relay.clone()],
             search_relays: vec![relay],

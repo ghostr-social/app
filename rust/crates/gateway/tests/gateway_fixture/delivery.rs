@@ -6,7 +6,7 @@ use super::{media_client, temp_directory};
 use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_delivery::manager::{
-    start_delivery_manager_with_modes, DeliveryManagerConfig, DeliveryTuning,
+    start_delivery_manager_with_discovery_demand, DeliveryManagerConfig, DeliveryTuning,
 };
 use ghostr_delivery::playback_demand::{demand_channel, DemandSender};
 use ghostr_delivery::progressive_posts::ServablePosts;
@@ -35,7 +35,7 @@ pub fn start_delivery(prefix: &str) -> DeliveryFixture {
     let cache = ServablePosts::new();
     let network = NetworkThrottle::new();
     let (demand, demand_receiver) = demand_channel();
-    let (handle, _modes) = start_delivery_manager_with_modes(
+    let (handle, _discovery_demand) = start_delivery_manager_with_discovery_demand(
         DeliveryManagerConfig {
             store: store.clone(),
             client: media_client(),

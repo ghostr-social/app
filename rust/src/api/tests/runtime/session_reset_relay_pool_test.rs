@@ -1,7 +1,7 @@
 //! Session reset drops account-specific relay routes from the shared client.
 
 use crate::api::runtime::discovery::{DiscoveryBoot, DiscoveryRuntime};
-use crate::engine::inventory_controller::Mode;
+use crate::engine::adaptive::DiscoveryDemand;
 use nostr_sdk::Client;
 use std::sync::Arc;
 use tokio::sync::watch;
@@ -16,10 +16,10 @@ async fn reset_keeps_only_current_configured_relays() {
     for relay in [READ_RELAY, SEARCH_RELAY, DYNAMIC_RELAY] {
         client.add_relay(relay).await.expect("relay");
     }
-    let (_modes, mode_updates) = watch::channel(Mode::Comfort);
+    let (_demand_sender, demand) = watch::channel(DiscoveryDemand::Hold);
     let runtime = DiscoveryRuntime::start(DiscoveryBoot {
         client: client.clone(),
-        modes: mode_updates,
+        demand,
         bootstrap: vec![READ_RELAY.to_owned()],
         search_relays: vec![SEARCH_RELAY.to_owned()],
         candidates: None,

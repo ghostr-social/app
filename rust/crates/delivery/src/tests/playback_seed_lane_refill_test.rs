@@ -1,6 +1,6 @@
 use super::support::{active_hosts, planned_queue, transfer_posts};
 use crate::mutable_priority_queue::ForegroundSlots;
-use ghostr_engine::tiers::Tier;
+use ghostr_engine::adaptive::PreemptionAuthority;
 use std::collections::HashSet;
 
 #[test]
@@ -15,10 +15,10 @@ fn learned_two_slot_base_fills_and_refills_playback_before_seed_lane() {
 fn fresh_base_two_posts() -> [String; 3] {
     let mut queue = planned_queue(
         &[
-            ("playing-a", Tier::T0PlaybackEmergency),
-            ("playing-b", Tier::T0PlaybackEmergency),
-            ("playing-c", Tier::T0PlaybackEmergency),
-            ("next", Tier::T2Startability),
+            ("playing-a", PreemptionAuthority::PlaybackCritical),
+            ("playing-b", PreemptionAuthority::PlaybackCritical),
+            ("playing-c", PreemptionAuthority::PlaybackCritical),
+            ("next", PreemptionAuthority::Transition),
         ],
         "shared.example",
     );
@@ -37,9 +37,9 @@ fn fresh_base_two_posts() -> [String; 3] {
 fn base_two_refill_post() -> String {
     let mut queue = planned_queue(
         &[
-            ("playing-a", Tier::T0PlaybackEmergency),
-            ("playing-b", Tier::T0PlaybackEmergency),
-            ("next", Tier::T2Startability),
+            ("playing-a", PreemptionAuthority::PlaybackCritical),
+            ("playing-b", PreemptionAuthority::PlaybackCritical),
+            ("next", PreemptionAuthority::Transition),
         ],
         "shared.example",
     );

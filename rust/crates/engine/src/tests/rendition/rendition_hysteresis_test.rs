@@ -1,6 +1,6 @@
 use crate::playback::EstimateConfidence;
-use crate::rendition::{DowngradeCause, QualityChange, QualitySelectionPolicy};
-use crate::tests::rendition_support::{ladder, network, playing_input};
+use crate::rendition::QualitySelectionPolicy;
+use crate::tests::rendition_support::{id, ladder, network, playing_input};
 
 #[test]
 fn separate_upgrade_and_downgrade_thresholds_prevent_quality_oscillation() {
@@ -23,11 +23,8 @@ fn separate_upgrade_and_downgrade_thresholds_prevent_quality_oscillation() {
         playing_input(constrained, Some("high"), 20, 1_000),
     );
 
-    assert_eq!(before_upgrade.change(), QualityChange::Maintained);
-    assert_eq!(upgrade.change(), QualityChange::Upgraded);
-    assert_eq!(after_upgrade.change(), QualityChange::Maintained);
-    assert_eq!(
-        downgrade.change(),
-        QualityChange::Downgraded(DowngradeCause::ThroughputRisk),
-    );
+    assert_eq!(before_upgrade.selected().id(), &id("medium"));
+    assert_eq!(upgrade.selected().id(), &id("high"));
+    assert_eq!(after_upgrade.selected().id(), &id("high"));
+    assert_eq!(downgrade.selected().id(), &id("medium"));
 }

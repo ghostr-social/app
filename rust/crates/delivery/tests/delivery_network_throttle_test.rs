@@ -15,6 +15,7 @@ async fn live_network_profile_delays_real_delivery_manager_transfers() {
     harness.network.update(NetworkProfile {
         bandwidth_kbps: 0,
         latency_ms: 250,
+        packet_loss_bps: 0,
         max_connections_per_host: 0,
     });
 

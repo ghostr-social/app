@@ -6,7 +6,7 @@ use crate::query::video_filters::DiscoveryRequest;
 use crate::retrieval_types::{FeedContext, PlanFailure, RetrievalOutcome};
 use crate::scheduler::{start_discovery_scheduler, DiscoveryHandle, DiscoverySchedulerConfig};
 use crate::session_generation::SessionGeneration;
-use ghostr_engine::inventory_controller::Mode;
+use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, Timestamp};
 use std::sync::Arc;
@@ -43,11 +43,11 @@ pub(crate) struct SchedulerHarness {
     pub(crate) started: mpsc::UnboundedReceiver<PlannedRetrieval>,
     pub(crate) gate: Arc<Semaphore>,
     pub(crate) outcomes: mpsc::UnboundedReceiver<RetrievalOutcome>,
-    pub(crate) modes: watch::Sender<Mode>,
+    pub(crate) demand: watch::Sender<DiscoveryDemand>,
 }
 
-/// Boots a scheduler over a gated executor. The mode watch starts in
-/// Comfort so a test-sent Hunger is a real transition.
+/// Boots a scheduler over a gated executor. Demand starts held so a
+/// test-sent expansion is an observable transition.
 pub(crate) fn start_scheduler(level: DataUsageLevel, events: Vec<Event>) -> SchedulerHarness {
     let (starts, started) = mpsc::unbounded_channel();
     let gate = Arc::new(Semaphore::new(0));
@@ -57,11 +57,11 @@ pub(crate) fn start_scheduler(level: DataUsageLevel, events: Vec<Event>) -> Sche
         events,
     });
     let (outcome_sender, outcomes) = mpsc::unbounded_channel();
-    let (modes, mode_updates) = watch::channel(Mode::Comfort);
+    let (demand_sender, demand) = watch::channel(DiscoveryDemand::Hold);
     let handle = start_discovery_scheduler(DiscoverySchedulerConfig {
         executor,
         level,
-        modes: mode_updates,
+        demand,
         outcomes: outcome_sender,
     });
     SchedulerHarness {
@@ -69,7 +69,7 @@ pub(crate) fn start_scheduler(level: DataUsageLevel, events: Vec<Event>) -> Sche
         started,
         gate,
         outcomes,
-        modes,
+        demand: demand_sender,
     }
 }
 

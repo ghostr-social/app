@@ -11,10 +11,10 @@ fn stale_source_facts_cannot_cross_a_representation_generation() {
         .expect("first source identity");
 
     let unchanged = catalog.upsert(post.clone(), meta("https://a.example/video", 8));
-    assert_eq!(unchanged.generation(), first.generation());
+    assert_eq!(unchanged, first);
 
     let second = catalog.upsert(post.clone(), meta("https://b.example/video", 4));
-    assert_ne!(second.generation(), first.generation());
+    assert_ne!(second, first);
     assert!(!catalog.learn_for(&old, learned(99)));
     assert_eq!(catalog.lookup(&post).unwrap().total_bytes(), Some(4));
 
@@ -48,20 +48,15 @@ fn verified_bytes_survive_mirror_rotation_but_not_a_delivery_kind_change() {
         post.clone(),
         verified_meta("https://a.example/video", DeliveryKind::Progressive),
     );
-    let transfer = catalog
-        .transfer_identity(&post, "https://a.example/video")
-        .expect("verified transfer identity");
     let fingerprint = first.representation().fingerprint();
     assert_eq!(first.post(), &post);
-    assert_eq!(transfer.representation().fingerprint(), fingerprint);
-    assert_eq!(transfer.generation(), first.generation());
 
     let mirror = catalog.upsert(
         post.clone(),
         verified_meta("https://b.example/video", DeliveryKind::Progressive),
     );
     assert_eq!(mirror.representation().fingerprint(), fingerprint);
-    assert_ne!(mirror.generation(), first.generation());
+    assert_ne!(mirror, first);
 
     let hls = catalog.upsert(
         post,

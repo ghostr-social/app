@@ -1,6 +1,6 @@
 use crate::playback::EstimateConfidence;
-use crate::rendition::{QualityChange, QualitySelectionPolicy};
-use crate::tests::rendition_support::{ladder, network, playing_input};
+use crate::rendition::QualitySelectionPolicy;
+use crate::tests::rendition_support::{id, ladder, network, playing_input};
 
 #[test]
 fn initial_quality_is_the_highest_rendition_with_sustainable_headroom() {
@@ -9,7 +9,6 @@ fn initial_quality_is_the_highest_rendition_with_sustainable_headroom() {
 
     let decision = policy.select(&ladder(), playing_input(network, None, 20, 1_000));
 
-    assert_eq!(decision.selected().id().as_str(), "high");
+    assert_eq!(decision.selected().id(), &id("high"));
     assert_eq!(decision.selected().bitrate_bits_per_second(), 6_000_000);
-    assert_eq!(decision.change(), QualityChange::Initial);
 }

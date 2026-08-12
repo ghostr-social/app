@@ -10,7 +10,7 @@ use crate::hls::sessions::HlsSessions;
 use crate::progressive::capabilities::ProgressiveCapabilityId;
 use crate::progressive::route::ProgressiveState;
 use ghostr_delivery::delivery_events::DeliveryHandle;
-use ghostr_engine::inventory_controller::Mode;
+use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_media_store::native_cache::prepare_native_cache_directory;
 use ghostr_net::outbound_media_client::{MediaHttpClient, MediaHttpRequests};
 use log::warn;
@@ -33,7 +33,7 @@ pub struct GatewayRuntime {
 
 impl GatewayRuntime {
     /// Starts everything: endpoint, runtime, and the remaining discovery
-    /// boot input (the inventory-mode watch, plan §5.4). The shared Nostr
+    /// boot input (adaptive candidate demand). The shared Nostr
     /// client is supplied by the caller so this crate stays free of
     /// discovery.
     ///
@@ -43,7 +43,7 @@ impl GatewayRuntime {
     pub async fn start(
         configuration: GatewayConfiguration,
         client: Arc<Client>,
-    ) -> anyhow::Result<(String, Self, watch::Receiver<Mode>)> {
+    ) -> anyhow::Result<(String, Self, watch::Receiver<DiscoveryDemand>)> {
         let media = Arc::new(MediaHttpClient::public()?);
         start_with_media(configuration, client, media).await
     }
@@ -56,7 +56,7 @@ impl GatewayRuntime {
     pub async fn start_debug(
         configuration: GatewayConfiguration,
         client: Arc<Client>,
-    ) -> anyhow::Result<(String, Self, watch::Receiver<Mode>)> {
+    ) -> anyhow::Result<(String, Self, watch::Receiver<DiscoveryDemand>)> {
         let media = Arc::new(DebugMediaHttpClient::new()?);
         start_with_media(configuration, client, media).await
     }
@@ -97,14 +97,14 @@ async fn start_with_media(
     configuration: GatewayConfiguration,
     client: Arc<Client>,
     media: Arc<dyn MediaHttpRequests>,
-) -> anyhow::Result<(String, GatewayRuntime, watch::Receiver<Mode>)> {
+) -> anyhow::Result<(String, GatewayRuntime, watch::Receiver<DiscoveryDemand>)> {
     validate(&configuration)?;
     prepare_native_cache_directory(&configuration.cache_directory)?;
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let address = listener.local_addr()?;
     let endpoint = address.to_string();
     let hls_sessions = HlsSessions::production();
-    let (router, delivery, progressive, modes) =
+    let (router, delivery, progressive, discovery_demand) =
         start_progressive_delivery(&configuration, hls_sessions.clone(), client, media).await?;
     spawn_http_server(listener, router);
     let hls = HlsPlaybackGateway::new(address, hls_sessions);
@@ -113,7 +113,7 @@ async fn start_with_media(
         delivery,
         progressive,
     };
-    Ok((endpoint, runtime, modes))
+    Ok((endpoint, runtime, discovery_demand))
 }
 
 fn validate(configuration: &GatewayConfiguration) -> anyhow::Result<()> {

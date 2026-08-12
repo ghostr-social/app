@@ -68,7 +68,6 @@ fn options() -> DeliveryOptions {
     DeliveryOptions {
         params: EngineParams {
             chunk_bytes: 1024 * 1024,
-            head_cap_bytes: 1024 * 1024,
             ..base_params()
         },
         ..DeliveryOptions::default()

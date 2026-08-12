@@ -28,10 +28,10 @@ use ghostr_delivery::debug::feed::DebugFeed;
 use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_delivery::manager::{
-    start_delivery_manager_with_modes, DeliveryManagerConfig, DeliveryTuning,
+    start_delivery_manager_with_discovery_demand, DeliveryManagerConfig, DeliveryTuning,
 };
 use ghostr_delivery::playback_demand::demand_channel;
-use ghostr_engine::inventory_controller::Mode;
+use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_engine::{DataUsageLevel, EngineParams};
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
@@ -45,7 +45,7 @@ pub(crate) type DeliveryParts = (
     axum::Router,
     DeliveryHandle,
     Arc<ProgressiveState>,
-    watch::Receiver<Mode>,
+    watch::Receiver<DiscoveryDemand>,
 );
 
 struct DeliveryResources {
@@ -56,7 +56,7 @@ struct DeliveryResources {
 }
 
 /// Progressive delivery: the router serves `/video.mp4` from the partial
-/// store; the manager's mode watch feeds the discovery control loop.
+/// store; adaptive candidate demand feeds the discovery control loop.
 pub(crate) async fn start_progressive_delivery(
     configuration: &GatewayConfiguration,
     hls_sessions: HlsSessions,
@@ -74,7 +74,7 @@ pub(crate) async fn start_progressive_delivery(
         network: network.clone(),
     };
     let config = delivery_config(configuration, resources);
-    let (delivery, modes) = start_delivery_manager_with_modes(config, demand);
+    let (delivery, discovery_demand) = start_delivery_manager_with_discovery_demand(config, demand);
     let progressive = Arc::new(ProgressiveState {
         store: store.clone(),
         demand: demand_sender,
@@ -113,7 +113,7 @@ pub(crate) async fn start_progressive_delivery(
         not(any(target_os = "android", target_os = "ios"))
     )))]
     let _ = nostr;
-    Ok((router, delivery, progressive, modes))
+    Ok((router, delivery, progressive, discovery_demand))
 }
 
 /// The store as the last run left it. Adopting its contents is what

@@ -3,10 +3,13 @@
 use crate::progressive::route::ProgressiveState;
 use ghostr_delivery::debug::feed::{DebugFeedItem, DebugFeedSnapshot};
 use ghostr_delivery::debug::network::NetworkProfile;
+use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_engine::host_stats::host_of;
 use serde::Serialize;
 
+mod plan;
 mod video;
+use plan::{snapshots as plan_snapshots, AdaptivePlanSnapshot};
 use video::{snapshot as video_snapshot, VideoSnapshot};
 
 #[derive(Debug, Serialize)]
@@ -15,6 +18,7 @@ pub struct DebugSnapshot {
     network: NetworkProfile,
     connections: Vec<ConnectionSnapshot>,
     storage: StorageSnapshot,
+    adaptive_plans: Vec<AdaptivePlanSnapshot>,
     videos: Vec<VideoSnapshot>,
     hls_videos: Vec<HlsVideoSnapshot>,
 }
@@ -47,7 +51,7 @@ pub struct HlsVideoSnapshot {
     status: &'static str,
 }
 
-pub(crate) async fn snapshot(state: &ProgressiveState) -> DebugSnapshot {
+pub(crate) async fn snapshot(state: &ProgressiveState, delivery: &DeliveryHandle) -> DebugSnapshot {
     let mut videos = Vec::new();
     for video in state.cache.videos() {
         videos.push(video_snapshot(state, video).await);
@@ -58,6 +62,7 @@ pub(crate) async fn snapshot(state: &ProgressiveState) -> DebugSnapshot {
         network: state.network.profile(),
         connections: connections(state),
         storage: storage(&videos, used_bytes),
+        adaptive_plans: plan_snapshots(&delivery.plan_history()),
         hls_videos: state
             .debug_feed
             .hls_items()

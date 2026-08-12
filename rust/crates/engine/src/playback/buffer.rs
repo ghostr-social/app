@@ -3,21 +3,14 @@ use std::time::Duration;
 
 const MINIMUM_SECONDS: u64 = 4;
 const MAXIMUM_SECONDS: u64 = 30;
-const STARTUP_MINIMUM_SECONDS: u64 = 2;
-const STARTUP_MAXIMUM_SECONDS: u64 = 6;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct BufferTarget {
-    startup: Duration,
     steady: Duration,
     emergency_horizon: Duration,
 }
 
 impl BufferTarget {
-    pub fn startup(self) -> Duration {
-        self.startup
-    }
-
     pub fn steady(self) -> Duration {
         self.steady
     }
@@ -47,14 +40,9 @@ impl AdaptiveBufferPolicy {
         let risk = Risk::from(network, media);
         let steady = self.steady_target(risk);
         BufferTarget {
-            startup: startup_target(risk, steady),
             steady,
             emergency_horizon: emergency_horizon(risk),
         }
-    }
-
-    pub fn maximum(self) -> Duration {
-        self.maximum
     }
 
     fn steady_target(self, risk: Risk) -> Duration {
@@ -112,18 +100,6 @@ impl Risk {
             EstimateConfidence::High => 0.0,
         }
     }
-}
-
-fn startup_target(risk: Risk, steady: Duration) -> Duration {
-    let sustainability = (!risk.sustainable()) as u8 as f64 * 2.0;
-    let seconds = STARTUP_MINIMUM_SECONDS as f64
-        + risk.latency_s
-        + risk.variability_surcharge() / 4.0
-        + risk.confidence_surcharge() / 2.0
-        + sustainability;
-    let maximum = Duration::from_secs(STARTUP_MAXIMUM_SECONDS)
-        .min(steady.saturating_sub(Duration::from_secs(1)));
-    Duration::from_secs(seconds.ceil() as u64).min(maximum)
 }
 
 fn emergency_horizon(risk: Risk) -> Duration {

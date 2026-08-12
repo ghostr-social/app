@@ -2,7 +2,7 @@
 name = "ghostr-engine"
 version = "0.1.0"
 edition = "2021"
-description = "Pure, deterministic delivery policy: catalog, scoring, tiers, focus, budgets, host stats."
+description = "Pure deterministic adaptive media allocation, focus, budgets, and host evidence."
 
 [dependencies]
 serde = { workspace = true }

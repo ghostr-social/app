@@ -1,4 +1,4 @@
-//! A hunger transition prefetches the active feed's next older page at
+//! Expansion demand prefetches the active feed's next older page at
 //! background priority, cursored one second below the oldest fetched
 //! post (plan §5.4; discovery::pagination::next_page_cursor).
 
@@ -6,12 +6,12 @@ use crate::retrieval_types::RetrievalPriority;
 use crate::tests::scheduler_support::{
     context, next_outcome, next_started, note_at, request, start_scheduler,
 };
-use ghostr_engine::inventory_controller::Mode;
+use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::Timestamp;
 
 #[tokio::test(start_paused = true)]
-async fn hunger_prefetches_the_next_older_page() {
+async fn expansion_prefetches_the_next_older_page() {
     let mut harness = start_scheduler(
         DataUsageLevel::Conservative,
         vec![note_at(100), note_at(90)],
@@ -23,8 +23,8 @@ async fn hunger_prefetches_the_next_older_page() {
     harness.gate.add_permits(1);
     next_outcome(&mut harness.outcomes).await;
     harness
-        .modes
-        .send(Mode::Hunger)
+        .demand
+        .send(DiscoveryDemand::Expand)
         .expect("scheduler subscribed");
 
     let prefetch = next_started(&mut harness.started).await;

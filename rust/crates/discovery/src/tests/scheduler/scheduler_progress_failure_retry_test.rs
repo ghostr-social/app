@@ -4,7 +4,7 @@ use crate::scheduler::{start_discovery_scheduler, DiscoverySchedulerConfig};
 use crate::tests::scheduler_support::{
     context, next_outcome, next_started, no_start, note_at, request,
 };
-use ghostr_engine::{inventory_controller::Mode, DataUsageLevel};
+use ghostr_engine::{adaptive::DiscoveryDemand, DataUsageLevel};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{mpsc, watch, Semaphore};
@@ -38,7 +38,7 @@ impl PlanExecutor for ProgressThenFailure {
 async fn playable_progress_prevents_a_final_error_retry_storm() {
     let (starts, mut started) = mpsc::unbounded_channel();
     let (outcomes, mut reported) = mpsc::unbounded_channel();
-    let (_, modes) = watch::channel(Mode::Comfort);
+    let (_, demand) = watch::channel(DiscoveryDemand::Hold);
     let gate = Arc::new(Semaphore::new(0));
     let handle = start_discovery_scheduler(DiscoverySchedulerConfig {
         executor: Arc::new(ProgressThenFailure {
@@ -46,7 +46,7 @@ async fn playable_progress_prevents_a_final_error_retry_storm() {
             gate: gate.clone(),
         }),
         level: DataUsageLevel::Conservative,
-        modes,
+        demand,
         outcomes,
     });
     handle.open_feed(context("main"), request());

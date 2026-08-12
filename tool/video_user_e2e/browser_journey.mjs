@@ -1,7 +1,11 @@
 import {
   controlPoint, debugSnapshot, dispatchTrustedClick, playerSnapshot,
 } from "./page_runtime.mjs";
+import {compactDebugState} from "./debug_state_evidence.mjs";
 import {poll} from "./wait.mjs";
+
+const PLAYING_POLL_MS = 25;
+const PROGRESS_POLL_MS = 100;
 
 export async function requireUserStartsPlayback(page) {
   const player = await playerSnapshot(page);
@@ -33,25 +37,29 @@ export async function watchProgress(input) {
 }
 
 export function watchUntilPlaying(input) {
-  return collectUntil({...input, accept: isPlaying(input.id), label: "playing"});
+  return collectUntil(
+    {...input, accept: isPlaying(input.id), label: "playing"},
+    PLAYING_POLL_MS,
+  );
 }
 
-function collectUntil(input) {
+function collectUntil(input, intervalMs = PROGRESS_POLL_MS) {
   return poll({
     read: () => captureSample(input),
     accept: input.accept,
     timeoutMs: 15_000,
-    intervalMs: 100,
+    intervalMs,
     label: `${input.id} ${input.label}`,
     signal: input.signal,
   });
 }
 
 async function captureSample(input) {
+  const state = await debugSnapshot(input.page);
   const sample = {
     at_ms: Date.now() - input.started,
     player: await playerSnapshot(input.page),
-    state: await debugSnapshot(input.page),
+    state: compactDebugState(state),
   };
   input.trace.samples.push(sample);
   return sample;

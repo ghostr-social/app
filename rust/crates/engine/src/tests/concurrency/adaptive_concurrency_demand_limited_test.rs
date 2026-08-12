@@ -17,5 +17,4 @@ fn quiet_or_partially_occupied_windows_do_not_change_capacity() {
     }
 
     assert_eq!(policy.limit(), 2);
-    assert_eq!(policy.accepted_limit(), 2);
 }

@@ -5,13 +5,17 @@ use std::time::Duration;
 
 #[test]
 fn a_trial_is_kept_only_when_parallelism_improves_aggregate_throughput() {
-    let mut policy = AdaptiveConcurrency::new(1, 3);
+    let mut policy = AdaptiveConcurrency::new(1, 2);
 
     drive_until_limit(&mut policy, 2, evidence(1, 1_000_000, 100));
-    drive_until_accepted(&mut policy, 2, evidence(2, 1_300_000, 110));
+    for _ in 0..4 {
+        policy.observe(evidence(2, 1_300_000, 110));
+    }
+    for _ in 0..8 {
+        policy.observe(evidence(2, 800_000, 110));
+    }
 
     assert_eq!(policy.limit(), 2);
-    assert_eq!(policy.accepted_limit(), 2);
 }
 
 fn drive_until_limit(
@@ -26,20 +30,6 @@ fn drive_until_limit(
         }
     }
     panic!("concurrency did not reach {expected}");
-}
-
-fn drive_until_accepted(
-    policy: &mut AdaptiveConcurrency,
-    expected: usize,
-    evidence: ConcurrencyEvidence,
-) {
-    for _ in 0..20 {
-        policy.observe(evidence);
-        if policy.accepted_limit() == expected {
-            return;
-        }
-    }
-    panic!("concurrency was not accepted at {expected}");
 }
 
 fn evidence(active: usize, throughput: u64, ttfb_ms: u64) -> ConcurrencyEvidence {

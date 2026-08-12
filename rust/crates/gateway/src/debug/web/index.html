@@ -152,6 +152,7 @@
     <form id="network-form">
       <label>Shared media bandwidth <span><input id="bandwidth" type="number" min="0" max="10000000" step="1"> Kbps</span><small>Aggregate across active transfers; 0 is unlimited</small></label>
       <label>Added request latency <span><input id="latency" type="number" min="0" max="60000" step="10"> ms</span><small>Applied before each range request</small></label>
+      <label>Packet loss <span><input id="packet-loss" type="number" min="0" max="10000" step="100"> bps</span><small>Independent loss evidence; 10,000 bps is 100%</small></label>
       <label>Connections per host <input id="connections-limit" type="number" min="0" max="64" step="1"><small>0 is unlimited</small></label>
       <p id="form-status" class="form-status" role="status"></p>
       <button type="submit">Apply network conditions</button>

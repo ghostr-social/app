@@ -1,5 +1,8 @@
 #![cfg(feature = "video-debug-web")]
 
+mod gateway_fixture;
+
+use gateway_fixture::commands::next_control;
 use ghostr_delivery::delivery_events::{command_channel, DeliveryCommand};
 use ghostr_gateway::debug::videos::{DebugVideoRegistration, DebugVideos};
 
@@ -12,8 +15,7 @@ async fn selecting_a_debug_video_replaces_delivery_focus() {
 
     assert!(videos.select(&second));
 
-    let DeliveryCommand::Focus(focus) = commands.receivers().0.recv().await.expect("focus command")
-    else {
+    let DeliveryCommand::Focus(focus) = next_control(&mut commands).await else {
         panic!("selection must update focus, not only candidate priority");
     };
     assert_eq!(focus.current_index, 1);

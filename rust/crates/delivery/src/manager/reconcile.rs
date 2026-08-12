@@ -2,16 +2,14 @@
 //! store, launch due probes, plan with the pure engine, then bring the
 //! in-flight transfers in line with the freshly ordered plan.
 
-use crate::manager::concurrency::planned_capacity;
-use crate::manager::plan::{planned_work, PlanInputs, PlannedTransfer, PlannedWork};
+use crate::manager::plan::{planned_work, PlanInputs};
+use crate::manager::time::unix_time_ms;
 use crate::manager::transfers::spawn_probe;
 use crate::manager::DeliveryWorker;
-use crate::mutable_priority_queue::ForegroundSlots;
 use crate::playback_demand::DemandSignal;
-use ghostr_engine::tiers::DemandSignals;
+use ghostr_engine::adaptive::StorageSnapshot;
 use ghostr_engine::{ByteRange, PostId};
 use std::collections::HashMap;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 impl DeliveryWorker {
     pub(crate) async fn reconcile(&mut self) {
@@ -24,17 +22,29 @@ impl DeliveryWorker {
         self.hydrate_timelines(&window, &present).await;
         self.ensure_total_lens(&candidates).await;
         self.launch_probes(&probe_posts);
-        let demand = self.demand_signals(&present);
+        self.resolve_gateway_demand(&present);
         let demanded = self.pending_demand.clone();
+        let capacity = self.ctx.store.capacity_snapshot().await;
+        let in_flight = self.downloads.ranges();
+        let connection_ceiling = self.connection_ceiling();
         let inputs = PlanInputs {
             stats: self.keeper.stats(),
             retry: &self.retry,
             present: &present,
-            demand,
+            in_flight: &in_flight,
+            storage: StorageSnapshot::new(capacity.limit_bytes(), capacity.used_bytes()),
+            connection_capacity: self.concurrency_limit().min(connection_ceiling),
+            connection_ceiling,
+            packet_loss_bps: self.ctx.network.profile().packet_loss_bps,
             observed_at_ms,
             demanded,
         };
         let planned = planned_work(&mut self.state, inputs);
+        self.commands
+            .publish_plan(observed_at_ms, planned.plan.clone());
+        self.apply_policy_evictions(&planned.evictions).await;
+        self.state
+            .observe_discovery_demand(planned.discovery_demand);
         self.reconcile_transfers(planned);
         self.refresh_cache_registry().await;
         self.keeper.schedule_save(&self.ctx.events);
@@ -83,13 +93,13 @@ impl DeliveryWorker {
 
     /// Live gateway demand counts while it concerns the playing post
     /// and the demanded bytes are still missing; stale demand drops.
-    fn demand_signals(&mut self, present: &HashMap<PostId, Vec<ByteRange>>) -> DemandSignals {
-        let signals = resolve_demand(
+    fn resolve_gateway_demand(&mut self, present: &HashMap<PostId, Vec<ByteRange>>) {
+        let demanded = resolve_demand(
             &mut self.pending_demand,
             self.state.focus().current(),
             present,
         );
-        if signals.gateway_demand {
+        if demanded {
             let (post, offset) = self
                 .pending_demand
                 .as_ref()
@@ -97,99 +107,22 @@ impl DeliveryWorker {
                 .expect("active demand");
             self.expedite_demand(&post, offset);
         }
-        signals
     }
-
-    /// Reconciles active IO against the fresh locality and priority plan,
-    /// then grants ordered work up to the concurrency limit.
-    fn reconcile_transfers(&mut self, planned: PlannedWork) {
-        let emergency = planned.emergency;
-        let eviction = planned.eviction;
-        let capacity = planned_capacity(
-            self.concurrency_limit(),
-            self.state.concurrency(),
-            &planned.transfers,
-        );
-        let priority: Vec<_> = planned
-            .transfers
-            .iter()
-            .map(|transfer| transfer.request.chunk.clone())
-            .collect();
-        self.downloads.reconcile_with_commitments(
-            &planned.transfers,
-            capacity.total,
-            eviction,
-            &planned.protected_identities,
-        );
-        self.queue.replace(planned.transfers);
-        if let Some(current) = self.state.focus().current() {
-            self.downloads
-                .preempt_for_current(current, &priority, capacity.total, eviction);
-        }
-        while self.downloads.len() < capacity.total {
-            let active_hosts = self.downloads.active_hosts();
-            let foreground =
-                ForegroundSlots::new(self.downloads.foreground_len(), capacity.foreground_goal);
-            let Some(transfer) = self.queue.pop_for_hosts(&active_hosts, foreground) else {
-                return;
-            };
-            self.grant(transfer);
-        }
-        if !emergency {
-            self.grant_origin_exploration();
-        }
-    }
-
-    fn grant_origin_exploration(&mut self) {
-        let exploration_limit = self
-            .concurrency_limit()
-            .saturating_add(1)
-            .min(self.state.concurrency());
-        if self.downloads.len() >= exploration_limit {
-            return;
-        }
-        let active_hosts = self.downloads.active_hosts();
-        if let Some(transfer) = self.queue.pop_for_idle_host(&active_hosts) {
-            self.grant(transfer);
-        }
-    }
-
-    fn grant(&mut self, transfer: PlannedTransfer) {
-        let chunk = &transfer.request.chunk;
-        if self.downloads.contains(chunk)
-            || self.retry.is_cooling(&chunk.post)
-            || self.pressure.is_parked()
-        {
-            return;
-        }
-        self.downloads.start(self.ctx.clone(), transfer);
-    }
-}
-
-fn unix_time_ms() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis()
-        .min(u128::from(u64::MAX)) as u64
 }
 
 pub(crate) fn resolve_demand(
     pending: &mut Option<DemandSignal>,
     playing: Option<&PostId>,
     present: &HashMap<PostId, Vec<ByteRange>>,
-) -> DemandSignals {
+) -> bool {
     let Some(signal) = pending.as_ref() else {
-        return DemandSignals::default();
+        return false;
     };
     if playing != Some(&signal.post) || covered(signal.range, present.get(&signal.post)) {
         *pending = None;
-        return DemandSignals::default();
+        return false;
     }
-    DemandSignals {
-        gateway_demand: true,
-        ..DemandSignals::default()
-    }
+    true
 }
 
 /// Whether the store's (coalesced) ranges fully cover `range`.

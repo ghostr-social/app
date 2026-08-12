@@ -1,3 +1,5 @@
+import {allocation, plan} from "./adaptive_plan_test_support.mjs";
+
 export function successfulRunnerBoundaries() {
   const events = [];
   const ids = Array.from({length: 8}, (_, index) => `video-${index}`);
@@ -39,7 +41,8 @@ export function files() {
 }
 
 function snapshot(ids, downloaded) {
-  return {videos: ids.map((id) => ({
+  const plans = [plan({allocations: [allocation({post_id: ids[0]})]})];
+  return {adaptive_plans: plans, videos: ids.map((id) => ({
     id, downloaded_bytes: downloaded, total_bytes: 370_912,
   }))};
 }

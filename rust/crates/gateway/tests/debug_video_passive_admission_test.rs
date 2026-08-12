@@ -18,7 +18,7 @@ use std::sync::Arc;
 use tower::ServiceExt;
 
 #[tokio::test]
-async fn registrations_wait_for_focus_before_downloading_protected_prefix() {
+async fn registrations_wait_for_focus_before_starting_origin_work() {
     let origin = MediaOrigin::serve().await;
     let delivery = start_delivery("debug-passive-admission");
     let router = debug_router(&delivery);
@@ -29,9 +29,7 @@ async fn registrations_wait_for_focus_before_downloading_protected_prefix() {
 
     origin.assert_no_get().await;
     select(&router, &ids[0]).await;
-    origin
-        .wait_for_gets(&["video-0", "video-1", "video-2", "video-3"])
-        .await;
+    origin.wait_for_gets(&["video-0"]).await;
 
     delivery.handle.clear().await.unwrap();
     std::fs::remove_dir_all(&delivery.root).ok();

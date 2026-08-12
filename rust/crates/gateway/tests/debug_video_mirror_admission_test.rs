@@ -4,6 +4,7 @@ mod gateway_fixture;
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
+use gateway_fixture::commands::next_control;
 use ghostr_delivery::delivery_events::{command_channel, DeliveryCommand};
 use ghostr_discovery::cache::client_with_event_cache;
 use ghostr_gateway::hls::sessions::HlsSessions;
@@ -52,7 +53,7 @@ async fn debug_video_registration_preserves_ordered_mirrors() {
         .await
         .unwrap();
     assert_eq!(selected.status(), StatusCode::NO_CONTENT);
-    let DeliveryCommand::Focus(focus) = commands.receivers().0.recv().await.unwrap() else {
+    let DeliveryCommand::Focus(focus) = next_control(&mut commands).await else {
         panic!("expected focus");
     };
     assert_eq!(

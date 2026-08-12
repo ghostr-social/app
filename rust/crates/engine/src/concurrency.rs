@@ -22,6 +22,7 @@ pub enum NetworkSetback {
     None,
     Stall,
     Failure,
+    SevereLoss,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -67,10 +68,6 @@ impl AdaptiveConcurrency {
         self.limit
     }
 
-    pub fn accepted_limit(self) -> usize {
-        self.accepted
-    }
-
     pub fn set_maximum(&mut self, maximum: usize) {
         self.maximum = maximum.max(1);
         if self.accepted <= self.maximum && self.limit <= self.maximum {
@@ -83,10 +80,13 @@ impl AdaptiveConcurrency {
     }
 
     pub fn observe(&mut self, evidence: ConcurrencyEvidence) -> usize {
-        if evidence.setback != NetworkSetback::None {
-            self.back_off();
-        } else if self.is_capacity_sample(evidence) {
-            self.observe_capacity(evidence);
+        match evidence.setback {
+            NetworkSetback::SevereLoss => self.back_off_to_minimum(),
+            NetworkSetback::Stall | NetworkSetback::Failure => self.back_off(),
+            NetworkSetback::None if self.is_capacity_sample(evidence) => {
+                self.observe_capacity(evidence)
+            }
+            NetworkSetback::None => {}
         }
         self.limit
     }
@@ -155,6 +155,14 @@ impl AdaptiveConcurrency {
     fn back_off(&mut self) {
         self.accepted = self.accepted.saturating_sub(1).max(1);
         self.limit = self.accepted;
+        self.baseline = EvidenceWindow::default();
+        self.trial = None;
+        self.retry_backoff = RETRY_BACKOFF_SAMPLES;
+    }
+
+    fn back_off_to_minimum(&mut self) {
+        self.accepted = 1;
+        self.limit = 1;
         self.baseline = EvidenceWindow::default();
         self.trial = None;
         self.retry_backoff = RETRY_BACKOFF_SAMPLES;

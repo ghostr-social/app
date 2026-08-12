@@ -1,5 +1,6 @@
 use crate::media_timeline::{parse_mp4_segments, MediaSegment, TimelineError};
 use crate::tests::cmaf_timeline_support::{cmaf_sidx, cmaf_sidx_v1};
+use crate::tests::media_timeline_assertions::duration_ms;
 
 #[test]
 fn invalid_sidx_fields_are_rejected() {
@@ -21,7 +22,7 @@ fn version_one_sidx_uses_64_bit_time_and_offset_fields() {
     let sidx = cmaf_sidx_v1(1_000, 4_000, 100, 500);
     let timeline = parse(&sidx).unwrap();
 
-    assert_eq!(timeline.duration_ms(), 4_500);
+    assert_eq!(duration_ms(&timeline), 4_500);
 }
 
 #[test]

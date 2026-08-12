@@ -72,7 +72,17 @@ function requireStoragePressure(trace) {
   const highWater = requireStoragePark(before);
   const resumed = storedBytes(trace, (sample) => sample.at_ms >= released.at_ms)
     .some((bytes) => bytes > highWater);
-  if (!resumed) throw new Error("storage delivery did not resume after budget release");
+  if (!resumed && !originResumed(trace, released)) {
+    throw new Error("storage delivery did not resume after budget release");
+  }
+}
+
+function originResumed(trace, released) {
+  const releasedAt = trace.started_at_epoch_ms + released.at_ms;
+  return (trace.origin_requests ?? []).some((request) => {
+    return request.method !== "HEAD" && request.started_at_ms >= releasedAt
+      && request.bytes_sent > 0 && request.completed === true;
+  });
 }
 
 function requireStorageControls(evidence) {
@@ -126,7 +136,7 @@ function requireNetworkProfile(trace, profile, label) {
 }
 
 function activationSamples(trace) {
-  return [...(trace.warm_prefetch?.samples ?? []), ...(trace.samples ?? [])];
+  return trace.samples ?? [];
 }
 
 function matchesNetwork(actual, expected) {

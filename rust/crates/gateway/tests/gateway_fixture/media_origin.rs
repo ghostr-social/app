@@ -52,7 +52,7 @@ impl MediaOrigin {
             }
         })
         .await
-        .expect("focused prefix body downloads");
+        .expect("focused body downloads");
     }
 
     fn gets(&self) -> Vec<String> {

@@ -14,8 +14,7 @@ pub mod items;
 pub mod media;
 pub mod options;
 pub mod paced_media;
-pub mod partial_failure_origin;
-pub mod probe_gate;
+pub mod playback;
 pub mod probe_origins;
 pub mod protected_capacity;
 pub mod retry;
@@ -25,7 +24,9 @@ pub mod wait;
 
 use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_delivery::delivery_events::DeliveryHandle;
-use ghostr_delivery::manager::{start_delivery_manager_with_modes, DeliveryManagerConfig};
+use ghostr_delivery::manager::{
+    start_delivery_manager_with_discovery_demand, DeliveryManagerConfig,
+};
 use ghostr_delivery::playback_demand::{demand_channel, DemandSender};
 use ghostr_delivery::progressive_posts::ServablePosts;
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
@@ -70,7 +71,7 @@ pub fn start_harness_with_store(
     let posts = ServablePosts::new();
     let network = NetworkThrottle::new();
     let (demand, demand_receiver) = demand_channel();
-    let (handle, _modes) = start_delivery_manager_with_modes(
+    let (handle, _discovery_demand) = start_delivery_manager_with_discovery_demand(
         DeliveryManagerConfig {
             store: store.clone(),
             client: media_client(),

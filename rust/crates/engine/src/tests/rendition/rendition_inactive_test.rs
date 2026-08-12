@@ -1,6 +1,6 @@
 use crate::playback::{EstimateConfidence, PlaybackPhase};
-use crate::rendition::{QualityChange, QualitySelectionPolicy};
-use crate::tests::rendition_support::{ladder, network, phase_input};
+use crate::rendition::QualitySelectionPolicy;
+use crate::tests::rendition_support::{id, ladder, network, phase_input};
 
 #[test]
 fn inactive_playback_holds_quality_instead_of_reacting_to_network_noise() {
@@ -13,7 +13,6 @@ fn inactive_playback_holds_quality_instead_of_reacting_to_network_noise() {
         PlaybackPhase::Inactive,
     ] {
         let decision = policy.select(&ladder(), phase_input(poor, Some("high"), 20, phase));
-        assert_eq!(decision.selected().id().as_str(), "high");
-        assert_eq!(decision.change(), QualityChange::Maintained);
+        assert_eq!(decision.selected().id(), &id("high"));
     }
 }

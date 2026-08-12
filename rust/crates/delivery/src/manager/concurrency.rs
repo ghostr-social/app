@@ -1,9 +1,13 @@
 use crate::manager::plan::PlannedTransfer;
 use crate::manager::traffic::OverallTrafficWindow;
 use crate::manager::DeliveryWorker;
+use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::concurrency::{ConcurrencyEvidence, ConcurrencyOccupancy, NetworkSetback};
-use ghostr_engine::tiers::Tier;
+use ghostr_engine::PostId;
+use std::collections::HashSet;
 use std::time::Duration;
+
+const SEVERE_PACKET_LOSS_BPS: u16 = 5_000;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct PlannedCapacity {
@@ -26,34 +30,40 @@ pub(crate) fn capacity_evidence(
     }
 }
 
-pub(crate) fn effective_capacity(
-    base: usize,
-    ceiling: usize,
-    foreground: bool,
-    protected: bool,
-) -> usize {
-    let extra = usize::from(foreground && protected);
-    base.saturating_add(extra).min(ceiling.max(1))
+pub(crate) fn network_profile_setback(packet_loss_bps: u16) -> NetworkSetback {
+    if packet_loss_bps >= SEVERE_PACKET_LOSS_BPS {
+        return NetworkSetback::SevereLoss;
+    }
+    match packet_loss_bps {
+        0 => NetworkSetback::None,
+        _ => NetworkSetback::Failure,
+    }
+}
+
+pub(crate) fn connection_ceiling(configured: usize, per_host: usize) -> usize {
+    let configured = configured.max(1);
+    match per_host {
+        0 => configured,
+        limit => configured.min(limit.max(1)),
+    }
 }
 
 pub(crate) fn planned_capacity(
     base: usize,
     ceiling: usize,
     transfers: &[PlannedTransfer],
+    retained: &HashSet<PostId>,
 ) -> PlannedCapacity {
     let foreground = transfers
         .iter()
-        .filter(|work| {
-            matches!(
-                work.request.tier,
-                Tier::T0PlaybackEmergency | Tier::T1CurrentTail
-            )
-        })
+        .filter(|work| work.request.authority == PreemptionAuthority::PlaybackCritical)
         .count();
-    let protected = transfers
+    let admitted: HashSet<_> = transfers
         .iter()
-        .any(|work| work.request.tier == Tier::T2Startability);
-    let total = effective_capacity(base, ceiling, foreground > 0, protected);
+        .map(|work| work.request.chunk.post.clone())
+        .chain(retained.iter().cloned())
+        .collect();
+    let total = base.max(admitted.len()).max(1).min(ceiling.max(1));
     PlannedCapacity {
         total,
         foreground_goal: foreground.min(base).min(total),

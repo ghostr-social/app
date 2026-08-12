@@ -4,6 +4,8 @@
 #![allow(dead_code)]
 
 #[cfg(feature = "video-debug-web")]
+pub mod commands;
+#[cfg(feature = "video-debug-web")]
 pub mod debug_clear;
 pub mod delivery;
 pub mod free_space;

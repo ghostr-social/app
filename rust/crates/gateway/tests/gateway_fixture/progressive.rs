@@ -1,6 +1,5 @@
-use axum::Router;
 use ghostr_delivery::debug::network::NetworkThrottle;
-use ghostr_delivery::playback_demand::{demand_channel, DemandReceiver};
+use ghostr_delivery::playback_demand::demand_channel;
 use ghostr_delivery::progressive_posts::ServablePosts;
 #[cfg(feature = "video-debug-web")]
 use ghostr_discovery::cache::client_with_event_cache;
@@ -15,19 +14,8 @@ use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::{path::PathBuf, sync::Arc};
 use tokio::sync::Mutex;
 
-pub struct ProgressiveHarness {
-    pub router: Router,
-    pub store: Arc<PartialRangeStore>,
-    pub posts: ServablePosts,
-    pub network: NetworkThrottle,
-    pub capabilities: ProgressiveCapabilities,
-    pub demand: DemandReceiver,
-    pub root: PathBuf,
-    #[cfg(feature = "video-debug-web")]
-    pub debug_feed: ghostr_delivery::debug::feed::DebugFeed,
-    #[cfg(feature = "video-debug-web")]
-    pub hls_sessions: HlsSessions,
-}
+mod harness;
+pub use harness::ProgressiveHarness;
 
 pub fn progressive_harness(prefix: &str) -> ProgressiveHarness {
     progressive_harness_with_timing(prefix, ProgressiveTiming::default())
@@ -56,7 +44,7 @@ pub fn progressive_harness_with_store(
     let network = NetworkThrottle::new();
     let capabilities = ProgressiveCapabilities::production();
     #[cfg(feature = "video-debug-web")]
-    let (debug_delivery, _) = ghostr_delivery::delivery_events::command_channel();
+    let (debug_delivery, debug_commands) = ghostr_delivery::delivery_events::command_channel();
     #[cfg(feature = "video-debug-web")]
     let debug_feed =
         ghostr_delivery::debug::feed::DebugFeed::new(debug_delivery.clone(), Vec::new());
@@ -95,5 +83,7 @@ pub fn progressive_harness_with_store(
         debug_feed,
         #[cfg(feature = "video-debug-web")]
         hls_sessions,
+        #[cfg(feature = "video-debug-web")]
+        debug_commands,
     }
 }

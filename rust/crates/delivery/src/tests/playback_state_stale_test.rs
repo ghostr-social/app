@@ -9,7 +9,7 @@ use std::time::Duration;
 #[test]
 fn state_accepts_only_current_session_and_increasing_sequence() {
     let mut state = DeliveryState::new(EngineParams::default(), DataUsageLevel::Balanced);
-    state.apply_focus(focus("current"));
+    state.apply_focus(focus("current"), 0);
 
     assert!(state.apply_playback(update("current", 2, 3)));
     assert!(!state.apply_playback(update("other", 3, 1)));
@@ -26,11 +26,11 @@ fn state_accepts_only_current_session_and_increasing_sequence() {
 #[test]
 fn returning_to_a_post_does_not_revive_an_older_playback_session() {
     let mut state = DeliveryState::new(EngineParams::default(), DataUsageLevel::Balanced);
-    state.apply_focus(focus("current"));
+    state.apply_focus(focus("current"), 0);
     assert!(state.apply_playback(update("current", 2, 1)));
 
-    state.apply_focus(focus("other"));
-    state.apply_focus(focus("current"));
+    state.apply_focus(focus("other"), 1);
+    state.apply_focus(focus("current"), 2);
 
     assert!(!state.apply_playback(update("current", 1, 2)));
 }

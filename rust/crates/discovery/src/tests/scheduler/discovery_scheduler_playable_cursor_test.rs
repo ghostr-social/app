@@ -3,7 +3,7 @@
 use crate::tests::scheduler_support::{
     context, next_outcome, next_started, request, start_scheduler,
 };
-use ghostr_engine::{inventory_controller::Mode, DataUsageLevel};
+use ghostr_engine::{adaptive::DiscoveryDemand, DataUsageLevel};
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, Timestamp};
 
 fn note(content: &str, created_at: u64) -> Event {
@@ -26,8 +26,8 @@ async fn non_video_event_does_not_jump_the_prefetch_cursor() {
     next_outcome(&mut harness.outcomes).await;
 
     harness
-        .modes
-        .send(Mode::Hunger)
+        .demand
+        .send(DiscoveryDemand::Expand)
         .expect("scheduler subscribed");
 
     let prefetch = next_started(&mut harness.started).await;

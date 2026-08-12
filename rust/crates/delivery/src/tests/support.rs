@@ -1,9 +1,9 @@
 use crate::manager::plan::PlannedTransfer;
 use crate::mutable_priority_queue::MutablePriorityQueue;
+use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::representation::TransferIdentity;
-use ghostr_engine::scoring::ChunkRequest;
-use ghostr_engine::tiers::Tier;
+use ghostr_engine::scheduling::RangeRequest;
 use ghostr_engine::{ByteRange, ChunkId, DeliveryKind, PostId, VideoMeta};
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -34,39 +34,47 @@ pub(crate) fn transfer_identity(post: &PostId, url: &str) -> TransferIdentity {
     catalog.transfer_identity(post, url).expect("test source")
 }
 
-pub(crate) fn chunk_request(chunk: ChunkId, tier: Tier) -> ChunkRequest {
-    ChunkRequest {
+pub(crate) fn chunk_request(chunk: ChunkId, authority: PreemptionAuthority) -> RangeRequest {
+    RangeRequest {
         chunk,
-        tier,
+        authority,
         score: 1.0,
-        startup_depth_bytes: 0,
+        contiguous_depth_bytes: 0,
     }
 }
 
-pub(crate) fn planned_transfer(name: &str, host: &str, tier: Tier) -> PlannedTransfer {
+pub(crate) fn planned_transfer(
+    name: &str,
+    host: &str,
+    authority: PreemptionAuthority,
+) -> PlannedTransfer {
     let post = PostId::new(name);
     let url = format!("https://{host}/{name}.mp4");
     PlannedTransfer {
         identity: transfer_identity(&post, &url),
-        request: ChunkRequest {
+        request: RangeRequest {
             chunk: ChunkId {
                 post,
                 range: ByteRange::new(0, 4),
             },
-            tier,
+            authority,
             score: 1.0,
-            startup_depth_bytes: 0,
+            contiguous_depth_bytes: 0,
         },
         url,
+        commitment_until_ms: 0,
     }
 }
 
-pub(crate) fn planned_queue(items: &[(&str, Tier)], host: &str) -> MutablePriorityQueue {
+pub(crate) fn planned_queue(
+    items: &[(&str, PreemptionAuthority)],
+    host: &str,
+) -> MutablePriorityQueue {
     let mut queue = MutablePriorityQueue::new();
     queue.replace(
         items
             .iter()
-            .map(|(name, tier)| planned_transfer(name, host, *tier))
+            .map(|(name, authority)| planned_transfer(name, host, *authority))
             .collect(),
     );
     queue

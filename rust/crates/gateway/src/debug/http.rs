@@ -20,6 +20,7 @@ use std::sync::Arc;
 
 const MAX_BANDWIDTH_KBPS: u64 = 10_000_000;
 const MAX_LATENCY_MS: u64 = 60_000;
+const MAX_PACKET_LOSS_BPS: u16 = 10_000;
 const MAX_CONNECTIONS: usize = 64;
 
 #[derive(Clone)]
@@ -82,7 +83,7 @@ pub(crate) fn router(
 }
 
 async fn current_state(State(state): State<DebugHttpState>) -> impl IntoResponse {
-    let snapshot: DebugSnapshot = debug_state::snapshot(&state.progressive).await;
+    let snapshot: DebugSnapshot = debug_state::snapshot(&state.progressive, &state.delivery).await;
     ([(CACHE_CONTROL, "no-store")], Json(snapshot))
 }
 
@@ -92,6 +93,7 @@ async fn update_network(
 ) -> Result<Json<NetworkProfile>, StatusCode> {
     validate_network(profile)?;
     state.progressive.network.update(profile);
+    state.delivery.network_changed();
     Ok(Json(profile))
 }
 
@@ -133,6 +135,7 @@ async fn update_storage(
         .set_storage_budget(request.budget_bytes)
         .await
         .map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)?;
+    state.delivery.storage_changed();
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -151,6 +154,7 @@ async fn clear_data(State(state): State<DebugHttpState>) -> Result<StatusCode, S
 fn validate_network(profile: NetworkProfile) -> Result<(), StatusCode> {
     if profile.bandwidth_kbps > MAX_BANDWIDTH_KBPS
         || profile.latency_ms > MAX_LATENCY_MS
+        || profile.packet_loss_bps > MAX_PACKET_LOSS_BPS
         || profile.max_connections_per_host > MAX_CONNECTIONS
     {
         return Err(StatusCode::UNPROCESSABLE_ENTITY);

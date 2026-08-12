@@ -24,7 +24,18 @@ BEGIN {
   threshold["rust/crates/engine/src/catalog/bitrate.rs"] = 100
   threshold["rust/crates/engine/src/catalog/renditions.rs"] = 100
   threshold["rust/crates/engine/src/catalog/timeline.rs"] = 100
-  threshold["rust/crates/engine/src/chunk_plan.rs"] = 100
+  threshold["rust/crates/engine/src/adaptive/admission.rs"] = 100
+  threshold["rust/crates/engine/src/adaptive/allocation.rs"] = 100
+  threshold["rust/crates/engine/src/adaptive/allocation_evidence.rs"] = 100
+  threshold["rust/crates/engine/src/adaptive/catalog_snapshot.rs"] = 100
+  threshold["rust/crates/engine/src/adaptive/commitments.rs"] = 100
+  threshold["rust/crates/engine/src/adaptive/eviction.rs"] = 100
+  threshold["rust/crates/engine/src/adaptive/navigation.rs"] = 100
+  threshold["rust/crates/engine/src/adaptive/policy.rs"] = 100
+  threshold["rust/crates/engine/src/adaptive/ranges.rs"] = 100
+  threshold["rust/crates/engine/src/adaptive/resources.rs"] = 100
+  threshold["rust/crates/engine/src/adaptive/snapshot.rs"] = 100
+  threshold["rust/crates/engine/src/adaptive/sources.rs"] = 100
   threshold["rust/crates/engine/src/concurrency.rs"] = 100
   threshold["rust/crates/engine/src/concurrency/occupancy.rs"] = 100
   threshold["rust/crates/engine/src/concurrency/window.rs"] = 100
@@ -32,9 +43,6 @@ BEGIN {
   threshold["rust/crates/engine/src/host_stats.rs"] = 100
   threshold["rust/crates/engine/src/host_stats/evidence.rs"] = 100
   threshold["rust/crates/engine/src/host_stats/retention.rs"] = 100
-  threshold["rust/crates/engine/src/inventory_controller.rs"] = 100
-  threshold["rust/crates/engine/src/inventory_controller/startability.rs"] = 100
-  threshold["rust/crates/engine/src/inventory_controller/timeline.rs"] = 100
   threshold["rust/crates/engine/src/media_timeline.rs"] = 100
   threshold["rust/crates/engine/src/media_timeline/boxes.rs"] = 100
   threshold["rust/crates/engine/src/media_timeline/classic.rs"] = 100
@@ -49,11 +57,6 @@ BEGIN {
   threshold["rust/crates/engine/src/rendition/policy.rs"] = 100
   threshold["rust/crates/engine/src/rendition/risk.rs"] = 100
   threshold["rust/crates/engine/src/rendition/types.rs"] = 100
-  threshold["rust/crates/engine/src/scoring.rs"] = 100
-  threshold["rust/crates/engine/src/scoring/fallback.rs"] = 100
-  threshold["rust/crates/engine/src/scoring/frontier.rs"] = 100
-  threshold["rust/crates/engine/src/scoring/timeline.rs"] = 100
-  threshold["rust/crates/engine/src/tiers.rs"] = 100
   threshold["rust/crates/engine/src/video_rendition.rs"] = 100
   threshold["rust/crates/delivery/src/cache_registry.rs"] = 100
   threshold["rust/crates/delivery/src/candidate_priority.rs"] = 100
@@ -78,10 +81,10 @@ BEGIN {
   threshold["rust/crates/delivery/src/manager/inflight.rs"] = 95
   threshold["rust/crates/delivery/src/manager/inflight/reconciliation.rs"] = 100
   threshold["rust/crates/delivery/src/manager/plan.rs"] = 100
-  threshold["rust/crates/delivery/src/manager/plan/playback.rs"] = 100
-  threshold["rust/crates/delivery/src/manager/plan/playback/targets.rs"] = 100
-  threshold["rust/crates/delivery/src/manager/plan/sources.rs"] = 100
-  threshold["rust/crates/delivery/src/manager/plan/startup.rs"] = 100
+  threshold["rust/crates/delivery/src/manager/plan/adaptive.rs"] = 100
+  threshold["rust/crates/delivery/src/manager/plan/adaptive/mapping.rs"] = 100
+  threshold["rust/crates/delivery/src/manager/plan/adaptive/snapshot.rs"] = 100
+  threshold["rust/crates/delivery/src/manager/plan/adaptive/telemetry.rs"] = 100
   threshold["rust/crates/delivery/src/manager/quality.rs"] = 95
   threshold["rust/crates/delivery/src/manager/pressure.rs"] = 95
   threshold["rust/crates/delivery/src/manager/probe_completion.rs"] = 95
@@ -92,6 +95,7 @@ BEGIN {
   threshold["rust/crates/delivery/src/manager/retry/policy.rs"] = 100
   threshold["rust/crates/delivery/src/manager/retry_completion.rs"] = 95
   threshold["rust/crates/delivery/src/manager/state.rs"] = 100
+  threshold["rust/crates/delivery/src/manager/state/evictions.rs"] = 100
   threshold["rust/crates/delivery/src/manager/state/focus.rs"] = 100
   threshold["rust/crates/delivery/src/manager/state/playback.rs"] = 100
   threshold["rust/crates/delivery/src/manager/state/probes.rs"] = 100
@@ -121,8 +125,9 @@ BEGIN {
   threshold["rust/crates/gateway/src/runtime.rs"] = 95
   # The sole excluded line retries a cryptographic 256-bit token collision;
   # malformed, expired, mismatched, released, reused, and evicted tokens are
-  # covered through observable behavior without a test-only RNG seam.
-  threshold["rust/crates/gateway/src/progressive/capabilities.rs"] = 99
+  # covered through observable behavior without a test-only RNG seam. The
+  # 98.9% floor permits exactly that one line in the current 98-line adapter.
+  threshold["rust/crates/gateway/src/progressive/capabilities.rs"] = 98.9
   threshold["rust/crates/gateway/src/progressive/range_header.rs"] = 100
   threshold["rust/crates/gateway/src/progressive/route.rs"] = 95
   threshold["rust/crates/gateway/src/progressive/route/snapshot.rs"] = 95
@@ -182,7 +187,7 @@ function canonical_source(raw, marker) {
 /^end_of_record/ && source in threshold {
   seen[source] = 1
   coverage = total == 0 ? 0 : hit * 100 / total
-  printf("Native line coverage %s: %.2f%% (%d/%d; required %.0f%%)\n",
+  printf("Native line coverage %s: %.2f%% (%d/%d; required %g%%)\n",
          source, coverage, hit, total, threshold[source])
   if (coverage + 0.000001 < threshold[source]) {
     failed = 1

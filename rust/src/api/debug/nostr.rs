@@ -7,7 +7,7 @@ use crate::api::feed_types::{FfiFeedPost, FfiFeedStage};
 use crate::api::runtime::discovery::{lock, DiscoveryBoot, DiscoveryRuntime, SharedFeedState};
 use crate::discovery::feed::spec::FeedSpec;
 use crate::discovery::feed::store::FeedId;
-use crate::engine::inventory_controller::Mode;
+use crate::engine::adaptive::DiscoveryDemand;
 use crate::engine::VideoMeta;
 use ghostr_delivery::debug::feed::{DebugFeed, DebugFeedItem, DebugFeedStage};
 use nostr_sdk::Client;
@@ -67,7 +67,7 @@ pub struct DebugNostrRuntime {
 impl DebugNostrRuntime {
     pub async fn start(
         client: Arc<Client>,
-        modes: watch::Receiver<Mode>,
+        demand: watch::Receiver<DiscoveryDemand>,
         configuration: DebugNostrConfiguration,
         feed: DebugFeed,
     ) -> anyhow::Result<Self> {
@@ -75,7 +75,7 @@ impl DebugNostrRuntime {
         let monitored_relays = configuration.read_relays.clone();
         let discovery = DiscoveryRuntime::start(DiscoveryBoot {
             client,
-            modes,
+            demand,
             bootstrap: configuration.read_relays,
             search_relays: configuration.search_relays,
             candidates: Some(feed.delivery()),
