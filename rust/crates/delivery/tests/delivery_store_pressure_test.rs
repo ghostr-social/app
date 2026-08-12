@@ -31,7 +31,6 @@ async fn delivery_parks_until_real_capacity_change_then_resumes_same_source() {
     seed_range(&fixture.store, &item, 0, &media_body()[..8]).await;
     let root = fixture.root.clone();
     let mut options = DeliveryOptions::default();
-    options.params.head_seconds = 1;
     options.tuning.retry.transient_attempts = 1;
     let harness = start_harness_with_store(Arc::new(fixture.store), root, options);
     harness.handle.update_focus(focus_now(vec![item], 0, 5_000));
@@ -39,17 +38,19 @@ async fn delivery_parks_until_real_capacity_change_then_resumes_same_source() {
     wait_for_refusal(&harness.store).await;
     tokio::time::sleep(Duration::from_millis(100)).await;
 
-    assert_eq!(
-        hits(&log).len(),
-        1,
-        "unchanged capacity must park origin IO"
-    );
+    let get_count = || {
+        hits(&log)
+            .iter()
+            .filter(|hit| hit.contains(":GET:"))
+            .count()
+    };
+    assert_eq!(get_count(), 1, "unchanged capacity must park origin IO");
     assert_eq!(harness.store.refusals(), 1, "one capacity decision");
     assert_range(&harness.store, 0..8).await;
 
     harness.store.set_storage_budget(16).await.unwrap();
     wait_for_complete(&harness.store).await;
-    assert_eq!(hits(&log).len(), 2, "the same source resumes once");
+    assert_eq!(get_count(), 2, "the same source resumes once");
     assert!(harness.posts.contains("aa11"));
     let host = host_of(&origin).unwrap();
     let stats = wait_for(&harness.root.join("host_stats.json"), |stats| {

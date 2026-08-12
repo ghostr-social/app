@@ -4,7 +4,6 @@ use crate::manager::state::DeliveryState;
 use crate::manager::DeliveryWorker;
 use crate::probe::pool::MetadataProbePool;
 use ghostr_engine::host_stats::{host_of, HostStats};
-use ghostr_engine::inventory_controller::Mode;
 use ghostr_engine::playback::{
     AdaptiveBufferPolicy, BufferTarget, MediaConsumption, NetworkConditions, PlaybackObservation,
 };
@@ -79,7 +78,7 @@ fn evidence(
 
 fn active_host(state: &DeliveryState, stats: &HostStats, post: &PostId) -> Option<String> {
     let urls = &state.catalog().lookup(post)?.meta.urls;
-    let source = stats.best_source(urls, Mode::Hunger).into_iter().next()?;
+    let source = stats.best_source(urls).into_iter().next()?;
     host_of(&source)
 }
 

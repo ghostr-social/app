@@ -50,7 +50,7 @@ input and live network simulation controls are kept in modal dialogs.
 
 ## What it shows
 
-- every progressive video in the current prefetch window and every HLS feed row
+- every progressive video in the current adaptive frontier and every HLS feed row
 - live Nostr feed stage, relay connection status, and discovered-video count
 - Nostr event, creator, and title metadata attached to each discovered video
 - source media host and mirror count
@@ -59,6 +59,8 @@ input and live network simulation controls are kept in modal dialogs.
 - observed download rate and estimated remaining time
 - complete, partial, queued, and actively-downloading states
 - current partial-store usage and active connections by media host
+- recent adaptive plans with exact ranges, playable gain, utility, authority,
+  commitment, reason, retained work, eviction evidence, and discovery demand
 - playback through the existing `/video.mp4` progressive route
 - HLS playback through acquired `/hls/{session}/...` gateway routes
 - direct registration of progressive media without Dart or Flutter
@@ -70,6 +72,7 @@ The controls update the running downloader without restarting it:
 - one aggregate bandwidth budget in Kbps, shared fairly by active media transfers
 - latency in milliseconds before each range request
 - maximum simultaneous range connections per media host
+- deterministic packet-loss injection in basis points
 
 Zero disables the corresponding limit. Limits affect progressive media range
 downloads. They do not alter Nostr discovery, HLS proxying, or the loopback
@@ -78,13 +81,16 @@ telemetry requests made by the debug page.
 ## Automated delivery acceptance
 
 `make video-user-e2e-impairments` runs the browser acceptance rows as separate
-processes with separate private caches. Its first `ordered_prefetch` row holds
-focus on video zero and requires videos zero through three to store at least
-`48 KiB` within four seconds, with no origin body start or bytes for video four
-or later, including during a `500 ms` fixed-focus observation after readiness.
-The moving impairment rows then start cold in their own caches and measure
-focus-local transition, rebuffer, cancellation, duplicate, activation, and
-bandwidth-order gates without waiting for that fixed initial warm-up.
+processes with separate private caches. Its `adaptive_plans` row holds focus on
+video zero and requires a healthy policy-selected frontier to expand, without
+asserting a fixed number of videos or bytes per candidate. Every row retains a
+bounded history of production `AllocationPlan` evidence and exact origin
+chronology. Moving impairment rows prove distinct outcomes: network conditions
+change allocation evidence without restarting paid ranges, rapid navigation
+adds explicit coverage, storage pressure emits exact evictions, and a failed
+source reallocates the same range to a viable mirror. QoE gates independently
+cover transition latency, rebuffer, cancellation waste, speculative-byte
+ceiling, and zero duplicate completed origin bytes.
 
 The exact release budgets and evidence rules are documented in
 [VIDEO_QOE_TARGETS.md](../standards/VIDEO_QOE_TARGETS.md).
@@ -108,7 +114,8 @@ The network profile JSON has this shape:
 {
   "bandwidth_kbps": 768,
   "latency_ms": 350,
-  "max_connections_per_host": 1
+  "max_connections_per_host": 1,
+  "packet_loss_bps": 0
 }
 ```
 

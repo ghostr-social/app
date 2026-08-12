@@ -13,8 +13,8 @@ test("the CLI accepts one known impairment and rejects unknown or duplicate inpu
     scenario: "packet_loss",
   });
   assert.equal(
-    parseVideoE2eArguments(["--scenario=ordered_prefetch"]).scenario,
-    "ordered_prefetch",
+    parseVideoE2eArguments(["--scenario=adaptive_plans"]).scenario,
+    "adaptive_plans",
   );
   assert.throws(() => parseVideoE2eArguments(["--scenario=random"]), /unknown scenario/);
   assert.throws(

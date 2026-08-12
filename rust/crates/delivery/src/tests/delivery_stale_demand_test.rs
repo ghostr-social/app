@@ -1,6 +1,5 @@
 use crate::manager::reconcile::resolve_demand;
 use crate::playback_demand::DemandSignal;
-use ghostr_engine::tiers::DemandSignals;
 use ghostr_engine::{ByteRange, PostId};
 use std::collections::HashMap;
 
@@ -11,7 +10,7 @@ fn demand_for_a_non_playing_post_is_consumed_as_stale() {
 
     let demand = resolve_demand(&mut pending, None, &HashMap::new());
 
-    assert_eq!(demand, DemandSignals::default());
+    assert!(!demand);
     assert_eq!(pending, None);
 }
 
@@ -23,7 +22,7 @@ fn demand_for_bytes_already_present_is_consumed_as_stale() {
 
     let demand = resolve_demand(&mut pending, Some(&post), &present);
 
-    assert_eq!(demand, DemandSignals::default());
+    assert!(!demand);
     assert_eq!(pending, None);
 }
 

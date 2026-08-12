@@ -1,23 +1,6 @@
-use crate::delivery_events::{DeliveryCandidate, DeliveryFocus, FocusItem};
+use crate::delivery_events::DeliveryCandidate;
 use crate::manager::state::DeliveryState;
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
-
-#[test]
-fn explicit_candidate_priority_replaces_the_current_focus() {
-    let mut state = DeliveryState::new(EngineParams::default(), DataUsageLevel::Balanced);
-    state.apply_candidate(candidate("first", 20));
-    state.apply_candidate(candidate("second", 10));
-    state.apply_focus(DeliveryFocus::compatibility(
-        vec![focus_item("first")],
-        0,
-        0,
-    ));
-
-    state.prioritize(PostId::new("second"));
-
-    assert_eq!(state.focus().current(), Some(&PostId::new("second")));
-    assert_eq!(state.candidate_posts().len(), 2);
-}
 
 #[test]
 fn hls_candidates_stay_outside_the_progressive_queue() {
@@ -53,13 +36,6 @@ fn candidate(id: &str, discovered_at: u64) -> DeliveryCandidate {
         meta: metadata(id),
         renditions: Vec::new(),
         discovered_at,
-    }
-}
-
-fn focus_item(id: &str) -> FocusItem {
-    FocusItem {
-        post: PostId::new(id),
-        meta: metadata(id),
     }
 }
 

@@ -1,5 +1,5 @@
 //! A gateway demand signal promotes the playing post's missing bytes
-//! to the emergency tier; without it, hunger mode never fetches them.
+//! to playback-critical authority when the adaptive plan otherwise withholds them.
 
 mod delivery_fixture;
 mod range_fixture;
@@ -19,8 +19,8 @@ async fn delivery_manager_promotes_demanded_bytes_to_emergency() {
     let hungry = serve_failing().await;
     let harness = start_harness("ghostr-delivery-demand", short_head_options());
 
-    // The failing second post keeps the startability target unmet, so
-    // the uncommitted current post is owed nothing beyond its head.
+    // The unavailable second post adds no useful allocation. The current
+    // reserve is already covered, so its unrequested tail stays absent.
     harness.handle.update_focus(focus_now(
         vec![
             sized_item("aa11", &origin, 16, 4_000),
@@ -35,7 +35,11 @@ async fn delivery_manager_promotes_demanded_bytes_to_emergency() {
         .missing_within("aa11", 4..16)
         .await
         .expect("gaps");
-    assert_eq!(missing, vec![4..16], "hunger withholds the tail");
+    assert_eq!(
+        missing,
+        vec![4..16],
+        "the plan withholds unrequested tail bytes"
+    );
 
     harness.demand.emit(DemandSignal {
         post: PostId::new("aa11"),
@@ -50,7 +54,6 @@ async fn delivery_manager_promotes_demanded_bytes_to_emergency() {
 fn short_head_options() -> DeliveryOptions {
     DeliveryOptions {
         params: EngineParams {
-            head_seconds: 1,
             chunk_bytes: 4,
             ..base_params()
         },

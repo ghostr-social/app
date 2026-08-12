@@ -1,4 +1,3 @@
-use super::policy::DowngradeCause;
 use crate::playback::{BufferTarget, PlaybackObservation, PlaybackPhase};
 
 pub(super) const FULL_CAPACITY_MILLI: u64 = 1_000;
@@ -29,13 +28,6 @@ impl BufferRisk {
             Self::Frozen | Self::Comfortable => FULL_CAPACITY_MILLI,
             Self::Recovering => RECOVERY_CAPACITY_MILLI,
             Self::Critical => CRITICAL_CAPACITY_MILLI,
-        }
-    }
-
-    pub(super) fn cause(self) -> DowngradeCause {
-        match self {
-            Self::Critical | Self::Recovering => DowngradeCause::BufferRisk,
-            Self::Frozen | Self::Comfortable => DowngradeCause::ThroughputRisk,
         }
     }
 }

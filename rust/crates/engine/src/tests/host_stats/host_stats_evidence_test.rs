@@ -2,7 +2,7 @@ use crate::host_stats::{HostStats, ThroughputSample};
 use std::time::Duration;
 
 #[test]
-fn throughput_evidence_tracks_recency_variability_and_concurrency() {
+fn throughput_evidence_tracks_recency_and_variability() {
     let mut stats = HostStats::new();
     stats.record_host_throughput("cdn.example", sample(1_000, 10, 1));
     stats.record_host_throughput("cdn.example", sample(1_000, 20, 2));
@@ -10,8 +10,6 @@ fn throughput_evidence_tracks_recency_variability_and_concurrency() {
     let stable = stats.host_throughput("cdn.example").unwrap();
     assert_eq!(stable.sample_count(), 2);
     assert_eq!(stable.last_observed_at_ms(), 20);
-    assert_eq!(stable.active_transfers(), 2);
-    assert_eq!(stable.peak_active_transfers(), 2);
     assert_eq!(stable.variability_bytes_per_second(), 0.0);
 
     stats.record_host_throughput("cdn.example", sample(4_000, 30, 1));
@@ -34,7 +32,6 @@ fn invalid_or_stale_samples_do_not_change_evidence() {
     assert_eq!(estimate.bytes_per_second(), 1_000.0);
     assert_eq!(estimate.sample_count(), 1);
     assert_eq!(estimate.last_observed_at_ms(), 20);
-    assert_eq!(estimate.active_transfers(), 1);
 }
 
 #[test]

@@ -1,4 +1,5 @@
-use crate::media_timeline::{parse_mp4_segments, MediaSegment, PlaybackWindow};
+use crate::media_timeline::{parse_mp4_segments, MediaSegment};
+use crate::tests::media_timeline_assertions::required_ranges;
 use crate::tests::media_timeline_support::classic_moov;
 use crate::ByteRange;
 
@@ -11,7 +12,7 @@ fn a_tail_moov_authorizes_early_samples_without_the_middle_of_the_file() {
     tail.extend_from_slice(&moov);
 
     let timeline = parse_mp4_segments(&[MediaSegment::new(segment_start, &tail)]).unwrap();
-    let startup = timeline.required_ranges(PlaybackWindow::try_new(0, 1_000).unwrap());
+    let startup = required_ranges(&timeline, 0, 1_000);
 
     assert_eq!(
         startup,

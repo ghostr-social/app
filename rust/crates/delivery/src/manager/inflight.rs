@@ -3,15 +3,18 @@
 //! would leave its transfer running unsupervised.
 
 use crate::chunk::cancel::CancelHandle;
-use ghostr_engine::representation::TransferIdentity;
-use ghostr_engine::scoring::ChunkRequest;
-use ghostr_engine::tiers::Tier;
+use ghostr_engine::adaptive::PreemptionAuthority;
+use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
+use ghostr_engine::scheduling::RangeRequest;
 use ghostr_engine::ChunkId;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 mod reconciliation;
+mod snapshot;
+
+pub(crate) use snapshot::ActiveRange;
 
 #[derive(Default)]
 pub(crate) struct InFlightChunks {
@@ -44,10 +47,11 @@ impl ChunkAttempt {
 struct ActiveChunk {
     id: u64,
     identity: TransferIdentity,
-    request: ChunkRequest,
-    started_as_seed: bool,
+    request: RangeRequest,
+    policy_retained: bool,
     io_finished: Arc<AtomicBool>,
     host: String,
+    committed_until_ms: u64,
     handle: CancelHandle,
 }
 
@@ -105,21 +109,36 @@ impl InFlightChunks {
     pub fn insert(
         &mut self,
         attempt: &ChunkAttempt,
-        request: ChunkRequest,
+        request: RangeRequest,
         host: String,
+        committed_until_ms: u64,
         handle: CancelHandle,
     ) {
-        let started_as_seed = request.tier == Tier::T2Startability;
         let active = ActiveChunk {
             id: attempt.id,
             identity: attempt.identity.clone(),
             request,
-            started_as_seed,
+            policy_retained: false,
             io_finished: Arc::clone(&attempt.io_finished),
             host,
+            committed_until_ms,
             handle,
         };
         self.transfers.insert(attempt.chunk.clone(), active);
+    }
+
+    pub(crate) fn ranges(&self) -> Vec<ActiveRange> {
+        self.transfers
+            .iter()
+            .filter(|(_, active)| !active.io_finished())
+            .map(|(chunk, active)| {
+                ActiveRange::new(
+                    chunk.clone(),
+                    active.identity.clone(),
+                    active.committed_until_ms,
+                )
+            })
+            .collect()
     }
 
     pub fn active_hosts(&self) -> HashSet<String> {
@@ -136,8 +155,8 @@ impl InFlightChunks {
             .filter(|active| {
                 !active.io_finished()
                     && matches!(
-                        active.request.tier,
-                        Tier::T0PlaybackEmergency | Tier::T1CurrentTail
+                        active.request.authority,
+                        PreemptionAuthority::PlaybackCritical
                     )
             })
             .count()
@@ -159,6 +178,17 @@ impl InFlightChunks {
             active.handle.cancel();
         }
         self.transfers.clear();
+    }
+
+    pub(crate) fn cancel_obsolete(&mut self, binding: &RepresentationBinding) {
+        self.transfers.retain(|chunk, active| {
+            let current = binding.transfer(active.identity.source().as_str());
+            let keep = chunk.post != *binding.post() || current.as_ref() == Some(&active.identity);
+            if !keep {
+                active.handle.cancel();
+            }
+            keep
+        });
     }
 }
 

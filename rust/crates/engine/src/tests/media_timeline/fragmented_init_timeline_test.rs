@@ -1,5 +1,6 @@
-use crate::media_timeline::{parse_mp4_segments, MediaSegment, PlaybackWindow};
+use crate::media_timeline::{parse_mp4_segments, MediaSegment};
 use crate::tests::cmaf_timeline_support::cmaf_sidx;
+use crate::tests::media_timeline_assertions::media_ranges;
 use crate::tests::media_timeline_support::{atom, joined};
 use crate::ByteRange;
 
@@ -27,7 +28,7 @@ fn fragmented_init_tracks_without_sample_tables_defer_to_sidx() {
             .unwrap();
 
     assert_eq!(
-        timeline.media_ranges(PlaybackWindow::try_new(0, 1_000).unwrap()),
+        media_ranges(&timeline, 0, 1_000),
         vec![ByteRange::new(media_start, media_start + 500)]
     );
 }

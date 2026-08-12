@@ -1,13 +1,13 @@
 import {pathToFileURL} from "node:url";
 import {parseVideoE2eArguments} from "./arguments.mjs";
+import {verifyBrowser} from "./prerequisites.mjs";
 import {runVideoUserE2e} from "./runner.mjs";
-import {verifyPinnedBrowser} from "./verified_browser.mjs";
 
 const DEFAULT_INPUT = {
   arguments: process.argv.slice(2),
   environment: process.env,
   root: process.cwd(),
-  verify: verifyPinnedBrowser,
+  verify: verifyBrowser,
   run: runVideoUserE2e,
   log: console.log,
 };
@@ -15,7 +15,7 @@ const DEFAULT_INPUT = {
 export async function runVideoE2eMain(input) {
   const options = parseVideoE2eArguments(input.arguments);
   const browser = await input.verify({environment: input.environment});
-  input.log(`Pinned browser verified: ${browser.version} (${browser.sha256})`);
+  input.log(`Browser executable verified: ${browser.version}`);
   if (options.checkOnly) return;
   const result = await input.run({
     root: input.root,

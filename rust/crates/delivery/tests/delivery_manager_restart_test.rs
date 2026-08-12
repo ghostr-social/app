@@ -30,7 +30,10 @@ async fn delivery_manager_resumes_from_the_persisted_manifest() {
     harness.handle.update_focus(focus_now(vec![item], 0, 5_000));
 
     wait_for_ranges(&harness.store, "aa11", &[(0, 16)]).await;
-    let recorded = hits(&log);
+    let recorded: Vec<_> = hits(&log)
+        .into_iter()
+        .filter(|hit| hit.contains(":GET:"))
+        .collect();
     assert!(
         recorded.iter().all(|hit| hit.starts_with("origin:GET:8-")),
         "only the missing tail may be fetched: {recorded:?}"

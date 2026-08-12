@@ -1,4 +1,4 @@
-//! A data-usage change raises the allowed ceiling, not unproven concurrency.
+//! A data-usage change raises the ceiling for policy-admitted work.
 
 mod delivery_fixture;
 
@@ -11,7 +11,7 @@ use std::time::Duration;
 use tokio::time::timeout;
 
 #[tokio::test]
-async fn higher_data_usage_does_not_add_a_slot_without_network_evidence() {
+async fn higher_data_usage_admits_a_distinct_planned_post() {
     let mut origin = ControlledOrigin::serve(32).await;
     let harness = start_harness("ghostr-delivery-config", capped_options());
 
@@ -30,12 +30,9 @@ async fn higher_data_usage_does_not_add_a_slot_without_network_evidence() {
 
     harness.handle.set_data_usage(DataUsageLevel::Aggressive);
 
-    assert!(
-        timeout(Duration::from_millis(200), origin.next())
-            .await
-            .is_err(),
-        "same-host parallelism must wait for measured aggregate gain"
-    );
+    timeout(Duration::from_secs(1), origin.next())
+        .await
+        .expect("policy-admitted post uses the raised hard ceiling");
     std::fs::remove_dir_all(&harness.root).ok();
 }
 

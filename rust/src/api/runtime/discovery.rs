@@ -12,7 +12,7 @@ use crate::discovery::outbox::bootstrap::OutboxBootstrap;
 use crate::discovery::outbox::directory::SharedOutboxDirectory;
 use crate::discovery::relay::pool::RelayPoolOwner;
 use crate::discovery::scheduler::DiscoveryHandle;
-use crate::engine::inventory_controller::Mode;
+use crate::engine::adaptive::DiscoveryDemand;
 use crate::engine::DataUsageLevel;
 use flutter_rust_bridge::frb;
 use ghostr_delivery::delivery_events::DeliveryHandle;
@@ -30,7 +30,7 @@ pub(crate) type SharedFeedState = Arc<Mutex<FeedState>>;
 #[frb(ignore)]
 pub(crate) struct DiscoveryBoot {
     pub client: Arc<Client>,
-    pub modes: watch::Receiver<Mode>,
+    pub demand: watch::Receiver<DiscoveryDemand>,
     pub bootstrap: Vec<String>,
     pub search_relays: Vec<String>,
     pub candidates: Option<DeliveryHandle>,

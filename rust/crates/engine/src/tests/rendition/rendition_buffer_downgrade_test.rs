@@ -1,6 +1,6 @@
 use crate::playback::{EstimateConfidence, PlaybackPhase};
-use crate::rendition::{DowngradeCause, QualityChange, QualitySelectionPolicy};
-use crate::tests::rendition_support::{ladder, network, phase_input, playing_input};
+use crate::rendition::QualitySelectionPolicy;
+use crate::tests::rendition_support::{id, ladder, network, phase_input, playing_input};
 
 #[test]
 fn critical_buffer_risk_downgrades_immediately_to_create_refill_margin() {
@@ -14,13 +14,8 @@ fn critical_buffer_risk_downgrades_immediately_to_create_refill_margin() {
         phase_input(network, Some("high"), 1, PlaybackPhase::NetworkStalled),
     );
 
-    assert_eq!(comfortable.selected().id().as_str(), "high");
-    assert_eq!(comfortable.change(), QualityChange::Maintained);
+    assert_eq!(comfortable.selected().id(), &id("high"));
     for risky in [nearly_empty, stalled] {
-        assert_eq!(risky.selected().id().as_str(), "medium");
-        assert_eq!(
-            risky.change(),
-            QualityChange::Downgraded(DowngradeCause::BufferRisk),
-        );
+        assert_eq!(risky.selected().id(), &id("medium"));
     }
 }

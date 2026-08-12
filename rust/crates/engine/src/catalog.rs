@@ -102,6 +102,10 @@ impl CatalogEntry {
         self.timeline.as_ref()
     }
 
+    pub fn accepts_byte_ranges(&self) -> Option<bool> {
+        self.facts.accept_ranges
+    }
+
     pub fn needs_tail_probe(&self) -> bool {
         self.timeline.is_none() && self.meta.duration_ms.is_none()
     }

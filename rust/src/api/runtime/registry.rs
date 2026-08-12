@@ -34,7 +34,7 @@ pub(crate) struct StartPermit {
 }
 
 /// Starts the gateway runtime once per process, boots discovery on
-/// its client and inventory modes, and installs both. A second call —
+/// its client and adaptive discovery demand, and installs both. A second call —
 /// from either start path — is rejected.
 pub(crate) async fn start_and_install(
     configuration: GatewayConfiguration,
@@ -45,10 +45,10 @@ pub(crate) async fn start_and_install(
     // Never `Client::default()`: the shared client must retain verified
     // events for session-scoped cache union and deduplication.
     let client = Arc::new(client_with_event_cache());
-    let (endpoint, runtime, modes) = GatewayRuntime::start(configuration, client.clone()).await?;
+    let (endpoint, runtime, demand) = GatewayRuntime::start(configuration, client.clone()).await?;
     let discovery = DiscoveryRuntime::start(DiscoveryBoot {
         client,
-        modes,
+        demand,
         bootstrap,
         search_relays,
         candidates: Some(runtime.delivery()),

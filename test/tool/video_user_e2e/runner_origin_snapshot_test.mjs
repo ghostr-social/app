@@ -6,8 +6,8 @@ import {successfulRunnerBoundaries} from "./runner_test_support.mjs";
 test("the runner freezes origin evidence before measuring and writing artifacts", async () => {
   const fixture = successfulRunnerBoundaries();
   fixture.origin.requests.push({
-    id: "v7", start: 0, end: 1, started_at_ms: 0, start_ordinal: 0,
-    bytes_sent: 1, completed: false,
+    id: "v0", video: "v0", method: "GET", start: 0, end: 65_536,
+    started_at_ms: 150, start_ordinal: 0, bytes_sent: 1, completed: false,
   });
   fixture.boundaries.writeSuccess = async () => {
     fixture.origin.requests[0].bytes_sent = 99;

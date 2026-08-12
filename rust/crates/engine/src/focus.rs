@@ -17,7 +17,6 @@ pub struct FocusUpdate {
 pub struct FocusState {
     window: Vec<PostId>,
     current_index: usize,
-    watch_ms: u64,
 }
 
 impl FocusState {
@@ -30,7 +29,6 @@ impl FocusState {
     pub fn update_focus(&mut self, update: FocusUpdate) {
         self.current_index = clamp_index(update.current_index, update.window.len());
         self.window = update.window;
-        self.watch_ms = update.watch_ms;
     }
 
     pub fn window(&self) -> &[PostId] {
@@ -39,28 +37,6 @@ impl FocusState {
 
     pub fn current(&self) -> Option<&PostId> {
         self.window.get(self.current_index)
-    }
-
-    pub(crate) fn current_index(&self) -> usize {
-        self.current_index
-    }
-
-    #[cfg(test)]
-    pub(crate) fn watch_ms(&self) -> u64 {
-        self.watch_ms
-    }
-
-    /// Signed scroll distance: 0 = current, positive = ahead, negative =
-    /// behind. `None` when the post is outside the window.
-    pub(crate) fn distance_of(&self, post: &PostId) -> Option<i64> {
-        let position = self.window.iter().position(|item| item == post)?;
-        Some(position as i64 - self.current_index as i64)
-    }
-
-    /// Whether the viewer has watched past the commitment threshold;
-    /// scheduling may use this to reserve bounded current-item work.
-    pub(crate) fn is_committed(&self, commitment_ms: u64) -> bool {
-        self.watch_ms >= commitment_ms
     }
 }
 

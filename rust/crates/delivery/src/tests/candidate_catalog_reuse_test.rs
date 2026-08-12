@@ -1,8 +1,7 @@
+use super::candidate_catalog_fixture::{binding, candidate, url};
 use super::support::temp_directory;
-use crate::delivery_events::DeliveryCandidate;
 use crate::manager::state::DeliveryState;
-use ghostr_engine::representation::RepresentationBinding;
-use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
+use ghostr_engine::{DataUsageLevel, EngineParams, PostId};
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
@@ -31,7 +30,7 @@ async fn readmitted_candidate_reuses_sparse_bytes_after_catalog_eviction() {
 
     state.apply_candidate(candidate("reused", 100));
     let readmitted = binding(&mut state, "reused");
-    assert_ne!(readmitted.generation(), first.generation());
+    assert_ne!(readmitted, first);
     store.bind_representation(readmitted).await.unwrap();
     assert!(!store
         .write_range_for_transfer_if_current(&identity, 4, &[9; 4])
@@ -39,33 +38,6 @@ async fn readmitted_candidate_reuses_sparse_bytes_after_catalog_eviction() {
         .unwrap());
     assert_eq!(store.present_ranges("reused").await.unwrap(), vec![0..4]);
     std::fs::remove_dir_all(root).unwrap();
-}
-
-fn binding(state: &mut DeliveryState, post: &str) -> RepresentationBinding {
-    state
-        .take_representation_bindings()
-        .into_iter()
-        .find(|binding| binding.post() == &PostId::new(post))
-        .expect("candidate binding")
-}
-
-fn candidate(id: &str, discovered_at: u64) -> DeliveryCandidate {
-    DeliveryCandidate {
-        post: PostId::new(id),
-        meta: VideoMeta {
-            urls: vec![url(id)],
-            delivery: DeliveryKind::Progressive,
-            sha256: None,
-            size_bytes: Some(16),
-            duration_ms: Some(1_000),
-        },
-        renditions: Vec::new(),
-        discovered_at,
-    }
-}
-
-fn url(id: &str) -> String {
-    format!("https://media.example/{id}.mp4")
 }
 
 fn store() -> (PartialRangeStore, std::path::PathBuf) {

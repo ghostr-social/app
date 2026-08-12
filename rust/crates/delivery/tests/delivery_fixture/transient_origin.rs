@@ -1,4 +1,4 @@
-use axum::http::StatusCode;
+use axum::http::{Method, StatusCode};
 use axum::routing::any;
 use axum::Router;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -12,8 +12,10 @@ pub async fn serve() -> (String, Attempts) {
     let observed = attempts.clone();
     let app = Router::new().route(
         "/video.mp4",
-        any(move || {
-            observed.fetch_add(1, Ordering::SeqCst);
+        any(move |method: Method| {
+            if method == Method::HEAD {
+                observed.fetch_add(1, Ordering::SeqCst);
+            }
             async { StatusCode::INTERNAL_SERVER_ERROR }
         }),
     );

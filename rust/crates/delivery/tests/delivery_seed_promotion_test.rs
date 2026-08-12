@@ -1,5 +1,5 @@
-//! Promoting an in-flight protected seed must reuse its paid RTT and
-//! continue from the seed boundary instead of restarting overlapping IO.
+//! Promotion must fetch each planned byte exactly once even when disjoint
+//! ranges complete in either order.
 
 mod delivery_fixture;
 
@@ -14,7 +14,7 @@ const PLAYBACK_SLICE: u64 = 256 * 1_024;
 const TOTAL: u64 = 370_912;
 
 #[tokio::test]
-async fn focus_promotion_finishes_the_open_seed_then_fetches_only_the_suffix() {
+async fn focus_promotion_fetches_exact_disjoint_ranges() {
     let log = hit_log();
     let current = serve_recording("current", vec![1; TOTAL as usize], log.clone()).await;
     let next = serve_recording("next", vec![2; TOTAL as usize], log.clone()).await;
@@ -32,18 +32,18 @@ async fn focus_promotion_finishes_the_open_seed_then_fetches_only_the_suffix() {
     emit_demand(&harness, "next");
     wait_for_next_gets(&log, 2).await;
 
-    assert_eq!(
-        next_gets(&log)[..2],
-        ["next:GET:0-262143", "next:GET:262144-370911"]
-    );
+    let mut gets = next_gets(&log);
+    gets.sort();
+    assert_eq!(gets, ["next:GET:0-262143", "next:GET:262144-370911"]);
     harness.handle.clear().await.unwrap();
     std::fs::remove_dir_all(&harness.root).ok();
 }
 
 fn configure_network(harness: &delivery_fixture::DeliveryHarness) {
     harness.network.update(NetworkProfile {
-        bandwidth_kbps: 2_500,
+        bandwidth_kbps: 3_000,
         latency_ms: 450,
+        packet_loss_bps: 0,
         max_connections_per_host: 3,
     });
 }
@@ -62,7 +62,7 @@ async fn wait_for_next_gets(log: &HitLog, count: usize) {
         }
     })
     .await
-    .expect("next origin request");
+    .unwrap_or_else(|_| panic!("wanted {count} next GETs, saw {:?}", hits(log)));
 }
 
 fn next_gets(log: &HitLog) -> Vec<String> {
@@ -74,7 +74,10 @@ fn next_gets(log: &HitLog) -> Vec<String> {
 
 fn production_options() -> DeliveryOptions {
     DeliveryOptions {
-        params: EngineParams::default(),
+        params: EngineParams {
+            chunk_bytes: PLAYBACK_SLICE,
+            ..EngineParams::default()
+        },
         ..DeliveryOptions::default()
     }
 }

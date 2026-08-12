@@ -18,6 +18,16 @@ test("storage pressure must park near 2 MiB and resume after the budget release"
   assert.doesNotThrow(() => requireImpairmentActivation(trace));
 
   trace.samples.at(-1).state.storage.used_bytes = 2_039_580;
+  trace.origin_requests = [{
+    method: "GET",
+    started_at_ms: trace.started_at_epoch_ms + 3_100,
+    bytes_sent: 32_768,
+    completed: true,
+  }];
+  assert.doesNotThrow(() => requireImpairmentActivation(trace));
+
+  trace.origin_requests = [];
+  trace.samples.at(-1).state.storage.used_bytes = 2_039_580;
   assert.throws(
     () => requireImpairmentActivation(trace),
     /storage delivery did not resume after budget release/,

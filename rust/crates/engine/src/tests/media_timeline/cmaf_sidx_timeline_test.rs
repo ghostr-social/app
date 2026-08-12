@@ -1,5 +1,6 @@
-use crate::media_timeline::{parse_mp4_segments, MediaSegment, PlaybackWindow};
+use crate::media_timeline::{parse_mp4_segments, MediaSegment};
 use crate::tests::cmaf_timeline_support::cmaf_sidx;
+use crate::tests::media_timeline_assertions::{duration_ms, media_ranges};
 use crate::ByteRange;
 
 #[test]
@@ -9,8 +10,8 @@ fn cmaf_sidx_references_map_time_to_non_overlapping_segments() {
     let media_start = absolute_start + sidx.len() as u64 + 20;
     let timeline = parse_mp4_segments(&[MediaSegment::new(absolute_start, &sidx)]).unwrap();
 
-    let initial = timeline.media_ranges(PlaybackWindow::try_new(0, 1_000).unwrap());
-    let middle = timeline.media_ranges(PlaybackWindow::try_new(1_000, 3_000).unwrap());
+    let initial = media_ranges(&timeline, 0, 1_000);
+    let middle = media_ranges(&timeline, 1_000, 3_000);
 
     assert_eq!(
         initial,
@@ -20,5 +21,5 @@ fn cmaf_sidx_references_map_time_to_non_overlapping_segments() {
         middle,
         vec![ByteRange::new(media_start + 500, media_start + 1_700)]
     );
-    assert_eq!(timeline.duration_ms(), 4_000);
+    assert_eq!(duration_ms(&timeline), 4_000);
 }

@@ -3,7 +3,7 @@
 use crate::api::runtime::discovery::{DiscoveryBoot, DiscoveryRuntime};
 use ghostr_discovery::relay::pool::{RelayPoolConfiguration, RelayPoolOwner};
 use ghostr_discovery::test_support::TestRelayIo;
-use ghostr_engine::inventory_controller::Mode;
+use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::{Client, EventBuilder, Filter, Keys, Kind};
 use std::sync::Arc;
@@ -18,10 +18,10 @@ async fn accepted_broadcast_is_sent_and_immediately_queryable_locally() {
         .sign_with_keys(&keys)
         .expect("signed event");
     let client = Arc::new(Client::default());
-    let (_modes, mode_updates) = watch::channel(Mode::Comfort);
+    let (_demand_sender, demand) = watch::channel(DiscoveryDemand::Hold);
     let mut runtime = DiscoveryRuntime::start(DiscoveryBoot {
         client: client.clone(),
-        modes: mode_updates,
+        demand,
         bootstrap: vec![RELAY.to_owned()],
         search_relays: Vec::new(),
         candidates: None,

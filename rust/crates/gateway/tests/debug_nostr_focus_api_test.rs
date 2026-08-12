@@ -4,6 +4,7 @@ mod gateway_fixture;
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
+use gateway_fixture::commands::next_control;
 use ghostr_delivery::debug::feed::{DebugFeed, DebugFeedItem, DebugFeedStage};
 use ghostr_delivery::delivery_events::{command_channel, DeliveryCommand};
 use ghostr_delivery::playback_demand::demand_channel;
@@ -38,7 +39,7 @@ async fn browser_selection_updates_the_native_delivery_focus() {
     let (delivery, mut commands) = command_channel();
     let feed = DebugFeed::new(delivery.clone(), vec!["wss://relay.example".to_owned()]);
     feed.publish(1, DebugFeedStage::Settled, vec![item("a"), item("b")]);
-    commands.receivers().0.recv().await.expect("initial focus");
+    next_control(&mut commands).await;
     let (demand, _) = demand_channel();
     let state = Arc::new(ProgressiveState {
         store: harness.store,
@@ -62,9 +63,7 @@ async fn browser_selection_updates_the_native_delivery_focus() {
         .expect("request");
 
     let response = router.oneshot(request).await.expect("response");
-    let DeliveryCommand::Focus(focus) =
-        commands.receivers().0.recv().await.expect("selected focus")
-    else {
+    let DeliveryCommand::Focus(focus) = next_control(&mut commands).await else {
         panic!("expected focus");
     };
 

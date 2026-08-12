@@ -4,6 +4,7 @@ mod gateway_fixture;
 
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
+use gateway_fixture::commands::next_control;
 use ghostr_delivery::delivery_events::{command_channel, DeliveryCommand};
 use ghostr_discovery::cache::client_with_event_cache;
 use ghostr_engine::DeliveryKind;
@@ -50,7 +51,7 @@ async fn debug_api_submits_a_registered_video_only_when_focused() {
     let selected = router.oneshot(select).await.expect("focus response");
 
     assert_eq!(selected.status(), StatusCode::NO_CONTENT);
-    let DeliveryCommand::Focus(focus) = commands.receivers().0.recv().await.expect("focus") else {
+    let DeliveryCommand::Focus(focus) = next_control(&mut commands).await else {
         panic!("expected focus command");
     };
     assert_eq!(focus.items[0].meta.urls, ["https://cdn.example/video.mp4"]);

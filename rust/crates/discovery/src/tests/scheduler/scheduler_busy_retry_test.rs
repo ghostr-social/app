@@ -2,7 +2,7 @@ use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::retrieval_types::PlanFailure;
 use crate::scheduler::{start_discovery_scheduler, DiscoverySchedulerConfig};
 use crate::tests::scheduler_support::{context, next_outcome, next_started, note_at, request};
-use ghostr_engine::{inventory_controller::Mode, DataUsageLevel};
+use ghostr_engine::{adaptive::DiscoveryDemand, DataUsageLevel};
 use nostr_sdk::Timestamp;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -37,7 +37,7 @@ impl PlanExecutor for BusyOlderExecutor {
 async fn a_retry_deferred_by_older_work_remains_pending() {
     let (starts, mut started) = mpsc::unbounded_channel();
     let (outcomes, mut reported) = mpsc::unbounded_channel();
-    let (_, modes) = watch::channel(Mode::Comfort);
+    let (_, demand) = watch::channel(DiscoveryDemand::Hold);
     let gate = Arc::new(Semaphore::new(0));
     let handle = start_discovery_scheduler(DiscoverySchedulerConfig {
         executor: Arc::new(BusyOlderExecutor {
@@ -46,7 +46,7 @@ async fn a_retry_deferred_by_older_work_remains_pending() {
             calls: AtomicUsize::new(0),
         }),
         level: DataUsageLevel::Conservative,
-        modes,
+        demand,
         outcomes,
     });
     let feed = context("main");

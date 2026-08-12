@@ -33,8 +33,9 @@ export function impairmentVideoRegistration(name, video, origin) {
 export function impairmentActions(name) {
   const scenario = definition(name);
   if (!scenario) return [];
-  const kind = Object.keys(scenario)[0];
-  return ACTION_BUILDERS[kind]?.(scenario[kind]) ?? [];
+  return Object.entries(scenario)
+    .flatMap(([kind, value]) => ACTION_BUILDERS[kind]?.(value) ?? [])
+    .sort((left, right) => left.at_ms - right.at_ms);
 }
 
 export function bootstrapImpairmentActions(name) {
@@ -62,6 +63,7 @@ function networkStep(step) {
       bandwidth_kbps: step.bandwidth_kbps,
       latency_ms: step.latency_ms ?? 0,
       max_connections_per_host: step.max_connections_per_host ?? 3,
+      ...(step.packet_loss_bps === undefined ? {} : {packet_loss_bps: step.packet_loss_bps}),
     },
   };
 }

@@ -1,5 +1,5 @@
 export const IMPAIRMENT_SCENARIOS = deepFreeze({
-  ordered_prefetch: {},
+  adaptive_plans: {},
   bandwidth_drop: {
     network: {steps: [
       {at_ms: 0, bandwidth_kbps: 2_500},
@@ -8,15 +8,21 @@ export const IMPAIRMENT_SCENARIOS = deepFreeze({
     ]},
   },
   packet_loss: {
+    network: {steps: [
+      {at_ms: 0, bandwidth_kbps: 2_500, packet_loss_bps: 0},
+      {at_ms: 1_500, bandwidth_kbps: 2_500, packet_loss_bps: 6_000},
+      {at_ms: 4_500, bandwidth_kbps: 2_500, packet_loss_bps: 0},
+    ]},
     origin: {
       abort_first_attempts: {video: "v2", count: 2},
-      abort_after_bytes: 128 * 1_024,
+      abort_after_bytes: 64 * 1_024,
     },
   },
   high_rtt: {
     network: {latency_ms: 450, bandwidth_kbps: 2_500},
   },
   rapid_swipes: {
+    network: {bandwidth_kbps: 2_500},
     focus: [
       {at_ms: 0, index: 0},
       {at_ms: 200, index: 1},
@@ -28,6 +34,7 @@ export const IMPAIRMENT_SCENARIOS = deepFreeze({
     storage: {budget_bytes: 2 * 1_024 * 1_024, release_at_ms: 3_000},
   },
   source_failure: {
+    network: {bandwidth_kbps: 2_500},
     origin: {fail_source: "primary", status: 503},
   },
   protected_transitions: {

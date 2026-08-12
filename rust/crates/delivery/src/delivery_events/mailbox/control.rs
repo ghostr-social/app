@@ -12,13 +12,14 @@ pub(super) fn replace(pending: &mut VecDeque<DeliveryCommand>, command: Delivery
 }
 
 fn same_kind(left: &DeliveryCommand, right: &DeliveryCommand) -> bool {
-    use DeliveryCommand::{Config, Focus, Playback, Prioritize};
+    use DeliveryCommand::{Config, Focus, NetworkChanged, Playback, StorageChanged};
     matches!(
         (left, right),
-        (Prioritize(_), Prioritize(_))
-            | (Focus(_), Focus(_))
+        (Focus(_), Focus(_))
             | (Playback(_), Playback(_))
             | (Config(_), Config(_))
+            | (NetworkChanged, NetworkChanged)
+            | (StorageChanged, StorageChanged)
     )
 }
 

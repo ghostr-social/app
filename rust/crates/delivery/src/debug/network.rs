@@ -19,6 +19,9 @@ pub struct NetworkProfile {
     pub bandwidth_kbps: u64,
     /// Delay before each media request. Zero disables added latency.
     pub latency_ms: u64,
+    /// Independently observed or simulated packet loss in basis points.
+    #[serde(default)]
+    pub packet_loss_bps: u16,
     /// Simultaneous requests allowed for one host. Zero is unlimited.
     pub max_connections_per_host: usize,
 }

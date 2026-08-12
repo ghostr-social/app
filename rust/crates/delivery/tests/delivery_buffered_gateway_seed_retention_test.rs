@@ -6,6 +6,7 @@ use delivery_fixture::concurrency_origin::{ActiveRequest, ControlledOrigin};
 use delivery_fixture::items::{focus_now, seed_range, sized_item};
 use delivery_fixture::media::{hit_log, hits, serve_recording};
 use delivery_fixture::options::{base_params, DeliveryOptions};
+use delivery_fixture::playback::playing;
 use delivery_fixture::start_harness;
 use delivery_fixture::wait::wait_for_ranges;
 use ghostr_delivery::playback_demand::DemandSignal;
@@ -25,6 +26,9 @@ async fn buffered_gateway_demand_finishes_the_active_seed_before_using_its_slot(
     harness
         .handle
         .update_focus(focus_now(vec![current_item, ahead_item], 0, 0));
+    harness
+        .handle
+        .report_playback(playing("current", Duration::from_secs(10)));
 
     let seed = next_request(&mut ahead).await;
     assert_eq!(seed.range, 0..32);

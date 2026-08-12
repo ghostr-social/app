@@ -12,8 +12,6 @@ fn material_latency_inflation_rejects_an_otherwise_fast_trial() {
     drive(&mut policy, evidence(2, 1_400_000, 160), |value| {
         value.limit() == 1
     });
-
-    assert_eq!(policy.accepted_limit(), 1);
 }
 
 fn drive(

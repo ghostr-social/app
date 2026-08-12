@@ -1,7 +1,7 @@
 use super::support::{chunk_request, transfer_identity};
 use crate::chunk::cancel::cancel_pair;
 use crate::manager::inflight::{CompletionStatus, InFlightChunks};
-use ghostr_engine::tiers::Tier;
+use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::{ByteRange, ChunkId, PostId};
 
 #[test]
@@ -18,8 +18,9 @@ fn a_cancelled_attempt_cannot_return_as_an_untracked_completion() {
     let (handle, _token) = cancel_pair();
     active.insert(
         &attempt,
-        chunk_request(chunk.clone(), Tier::T4Speculative),
+        chunk_request(chunk.clone(), PreemptionAuthority::Speculative),
         "slow.example".to_owned(),
+        0,
         handle,
     );
 

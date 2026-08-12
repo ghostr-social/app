@@ -86,13 +86,6 @@ impl ProgressiveCapabilities {
         state.prune(now, self.limits.idle_ttl);
         state.authorize(&id, post, now)
     }
-
-    pub async fn release(&self, raw: &str) -> bool {
-        let Some(id) = ProgressiveCapabilityId::parse(raw) else {
-            return false;
-        };
-        self.state.lock().await.entries.remove(&id).is_some()
-    }
 }
 
 #[derive(Default)]

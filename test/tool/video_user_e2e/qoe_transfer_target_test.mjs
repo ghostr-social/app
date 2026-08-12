@@ -3,9 +3,8 @@ import test from "node:test";
 import {measureQoe, requireQoeTargets} from "../../../tool/video_user_e2e/qoe_metrics.mjs";
 import {QOE_TARGETS} from "../../../tool/video_user_e2e/qoe_targets.mjs";
 
-test("cancellation waste and ahead prefetch stay inside explicit byte budgets", () => {
+test("adaptive delivery bounds waste and speculative bytes without forcing a floor", () => {
   const trace = {
-    warm_prefetch: {latency_ms: 1_000},
     clicks: [{id: "a", at_ms: 0}],
     samples: [sample(100, 256_000, 65_536), sample(900, 512_000, 131_072)],
     origin_requests: [
@@ -21,10 +20,11 @@ test("cancellation waste and ahead prefetch stay inside explicit byte budgets", 
   assert.doesNotThrow(() => requireQoeTargets(metrics, QOE_TARGETS));
   assert.doesNotThrow(() => requireQoeTargets({
     ...metrics,
-    ahead_prefetch_bytes: 48 * 1_024,
+    ahead_prefetch_bytes: 0,
   }, QOE_TARGETS));
   assert.throws(
-    () => requireQoeTargets({...metrics, ahead_prefetch_bytes: 48 * 1_024 - 1}, QOE_TARGETS),
+    () => requireQoeTargets({...metrics, ahead_prefetch_bytes: 3 * 1_024 * 1_024 + 1},
+      QOE_TARGETS),
     /ahead prefetch/,
   );
 });

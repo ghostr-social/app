@@ -1,9 +1,6 @@
 use super::{overlaps, ActiveChunk, InFlightChunks};
-use crate::manager::plan::eviction::ProtectedSeedEviction;
-use crate::manager::plan::PlannedTransfer;
-use ghostr_engine::representation::TransferIdentity;
-use ghostr_engine::scoring::{compare, ChunkRequest};
-use ghostr_engine::tiers::Tier;
+use crate::manager::plan::{PlannedTransfer, PlannedTransferId};
+use ghostr_engine::scheduling::{compare, RangeRequest};
 use ghostr_engine::{ChunkId, PostId};
 use std::{cmp::Ordering, collections::HashSet};
 
@@ -11,57 +8,41 @@ impl InFlightChunks {
     /// Retains planned IO, then reserves slots for higher-priority work.
     #[cfg(test)]
     pub fn reconcile(&mut self, planned: &[PlannedTransfer], capacity: usize) {
-        self.reconcile_with_eviction(planned, capacity, ProtectedSeedEviction::Allow);
-    }
-
-    #[cfg(test)]
-    pub fn reconcile_with_eviction(
-        &mut self,
-        planned: &[PlannedTransfer],
-        capacity: usize,
-        eviction: ProtectedSeedEviction,
-    ) {
-        self.reconcile_with_commitments(planned, capacity, eviction, &HashSet::new());
+        self.reconcile_with_commitments(planned, capacity, &HashSet::new());
     }
 
     pub fn reconcile_with_commitments(
         &mut self,
         planned: &[PlannedTransfer],
         capacity: usize,
-        eviction: ProtectedSeedEviction,
-        protected_identities: &HashSet<TransferIdentity>,
+        retained: &HashSet<PlannedTransferId>,
     ) {
-        self.cancel_unplanned(planned, protected_identities);
-        self.reserve_for_missing(planned, capacity.max(1), eviction);
+        self.cancel_unplanned(planned, retained);
+        self.reserve_for_missing(planned, capacity.max(1));
     }
 
     fn cancel_unplanned(
         &mut self,
         planned: &[PlannedTransfer],
-        protected_identities: &HashSet<TransferIdentity>,
+        retained: &HashSet<PlannedTransferId>,
     ) {
         self.transfers.retain(|chunk, active| {
+            active.policy_retained = false;
             let finished = active.io_finished();
             let current = planned.iter().find(|transfer| {
                 transfer.identity == active.identity && overlaps(chunk, &transfer.request.chunk)
             });
             if let Some(transfer) = current {
-                if active.request.tier != transfer.request.tier {
+                if active.request.authority != transfer.request.authority {
                     active.request = transfer.request.clone();
                 }
                 return true;
             }
-            let foreground_replanned = planned.iter().any(|transfer| {
-                transfer.identity == active.identity
-                    && transfer.request.chunk.range.start != chunk.range.end
-                    && matches!(
-                        transfer.request.tier,
-                        Tier::T0PlaybackEmergency | Tier::T1CurrentTail
-                    )
+            let committed = retained.contains(&PlannedTransferId {
+                chunk: chunk.clone(),
+                identity: active.identity.clone(),
             });
-            let committed = active.started_as_seed
-                && !foreground_replanned
-                && protected_identities.contains(&active.identity);
+            active.policy_retained = committed;
             if !finished && !committed {
                 active.handle.cancel();
             }
@@ -69,30 +50,19 @@ impl InFlightChunks {
         });
     }
 
-    fn reserve_for_missing(
-        &mut self,
-        planned: &[PlannedTransfer],
-        capacity: usize,
-        eviction: ProtectedSeedEviction,
-    ) {
+    fn reserve_for_missing(&mut self, planned: &[PlannedTransfer], capacity: usize) {
         let mut reserved = 0;
         for transfer in planned {
             if self.contains(&transfer.request.chunk) {
                 continue;
             }
-            self.reserve_one(&transfer.request, capacity, &mut reserved, eviction);
+            self.reserve_one(&transfer.request, capacity, &mut reserved);
         }
     }
 
-    fn reserve_one(
-        &mut self,
-        request: &ChunkRequest,
-        capacity: usize,
-        reserved: &mut usize,
-        eviction: ProtectedSeedEviction,
-    ) {
+    fn reserve_one(&mut self, request: &RangeRequest, capacity: usize, reserved: &mut usize) {
         while self.len().saturating_add(*reserved) >= capacity {
-            let Some(victim) = self.lowest_victim(request, eviction) else {
+            let Some(victim) = self.lowest_victim(request) else {
                 return;
             };
             self.cancel(&victim);
@@ -100,41 +70,20 @@ impl InFlightChunks {
         *reserved = reserved.saturating_add(1);
     }
 
-    fn lowest_victim(
-        &self,
-        request: &ChunkRequest,
-        eviction: ProtectedSeedEviction,
-    ) -> Option<ChunkId> {
+    fn lowest_victim(&self, request: &RangeRequest) -> Option<ChunkId> {
         self.transfers
             .iter()
-            .filter(|(_, active)| can_yield(active, request, eviction))
+            .filter(|(_, active)| can_yield(active, request))
             .max_by(|left, right| request_order(&left.1.request, &right.1.request))
             .map(|(chunk, _)| chunk.clone())
     }
 
-    #[cfg(test)]
     pub fn preempt_for_current(&mut self, current: &PostId, priority: &[ChunkId], capacity: usize) {
-        self.preempt_for_current_with_eviction(
-            current,
-            priority,
-            capacity,
-            ProtectedSeedEviction::Allow,
-        );
-    }
-
-    pub fn preempt_for_current_with_eviction(
-        &mut self,
-        current: &PostId,
-        priority: &[ChunkId],
-        capacity: usize,
-        eviction: ProtectedSeedEviction,
-    ) {
         let Some(rank) = self.preemption_rank(current, priority, capacity) else {
             return;
         };
         while self.len() >= capacity {
-            let Some(victim) = self.lower_priority_victim(current, &priority[rank + 1..], eviction)
-            else {
+            let Some(victim) = self.lower_priority_victim(current, &priority[rank + 1..]) else {
                 return;
             };
             self.cancel(&victim);
@@ -153,16 +102,11 @@ impl InFlightChunks {
             .position(|chunk| &chunk.post == current && !self.contains(chunk))
     }
 
-    fn lower_priority_victim(
-        &self,
-        current: &PostId,
-        priority: &[ChunkId],
-        eviction: ProtectedSeedEviction,
-    ) -> Option<ChunkId> {
+    fn lower_priority_victim(&self, current: &PostId, priority: &[ChunkId]) -> Option<ChunkId> {
         priority.iter().rev().find_map(|request| {
             self.transfers.iter().find_map(|(chunk, active)| {
                 (!active.io_finished()
-                    && !protected_seed(active, eviction)
+                    && !active.policy_retained
                     && &chunk.post != current
                     && covers(chunk, request))
                 .then(|| chunk.clone())
@@ -171,25 +115,13 @@ impl InFlightChunks {
     }
 }
 
-fn can_yield(
-    active: &ActiveChunk,
-    request: &ChunkRequest,
-    eviction: ProtectedSeedEviction,
-) -> bool {
+fn can_yield(active: &ActiveChunk, request: &RangeRequest) -> bool {
     !active.io_finished()
-        && !protected_seed(active, eviction)
-        && !matches!(
-            (active.request.tier, request.tier),
-            (Tier::T2Startability, Tier::T2Startability)
-        )
+        && !active.policy_retained
         && request_order(&active.request, request).is_gt()
 }
 
-fn protected_seed(active: &ActiveChunk, eviction: ProtectedSeedEviction) -> bool {
-    eviction == ProtectedSeedEviction::Defer && active.request.tier == Tier::T2Startability
-}
-
-fn request_order(left: &ChunkRequest, right: &ChunkRequest) -> Ordering {
+fn request_order(left: &RangeRequest, right: &RangeRequest) -> Ordering {
     compare(left, right)
 }
 

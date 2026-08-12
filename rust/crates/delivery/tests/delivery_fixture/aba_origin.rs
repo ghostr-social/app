@@ -7,6 +7,9 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Semaphore;
 
+mod response;
+use response::{is_head, write_head, write_range_headers};
+
 #[derive(Clone)]
 pub struct AbaOrigin {
     hits: Arc<AtomicUsize>,
@@ -29,21 +32,20 @@ pub async fn serve(bytes: Vec<u8>) -> (String, AbaOrigin) {
     tokio::spawn(async move {
         loop {
             let (socket, _) = listener.accept().await.expect("accept ABA request");
-            let attempt = server_control.hits.fetch_add(1, Ordering::SeqCst) + 1;
-            tokio::spawn(answer(
-                socket,
-                attempt,
-                bytes.clone(),
-                server_control.clone(),
-            ));
+            tokio::spawn(answer(socket, bytes.clone(), server_control.clone()));
         }
     });
     (format!("http://{address}/video.mp4"), control)
 }
 
-async fn answer(mut socket: TcpStream, attempt: usize, bytes: Arc<Vec<u8>>, gate: AbaOrigin) {
+async fn answer(mut socket: TcpStream, bytes: Arc<Vec<u8>>, gate: AbaOrigin) {
     let mut request = [0u8; 4096];
-    let _ = socket.read(&mut request).await;
+    let read = socket.read(&mut request).await.unwrap_or(0);
+    if is_head(&request[..read]) {
+        write_head(&mut socket, bytes.len()).await;
+        return;
+    }
+    let attempt = gate.hits.fetch_add(1, Ordering::SeqCst) + 1;
     if attempt == 1 {
         gate.first_headers
             .acquire()
@@ -51,26 +53,13 @@ async fn answer(mut socket: TcpStream, attempt: usize, bytes: Arc<Vec<u8>>, gate
             .expect("first gate")
             .forget();
     }
-    write_headers(&mut socket, bytes.len()).await;
+    write_range_headers(&mut socket, bytes.len()).await;
     if attempt == 1 {
         std::future::pending::<()>().await;
     }
     gate.bodies.acquire().await.expect("body gate").forget();
     let _ = socket.write_all(&bytes).await;
     let _ = socket.shutdown().await;
-}
-
-async fn write_headers(socket: &mut TcpStream, length: usize) {
-    let head = format!(
-        "HTTP/1.1 206 Partial Content\r\nContent-Range: bytes 0-{}/{length}\r\n\
-         Content-Length: {length}\r\nContent-Type: video/mp4\r\nConnection: close\r\n\r\n",
-        length - 1
-    );
-    socket
-        .write_all(head.as_bytes())
-        .await
-        .expect("write headers");
-    socket.flush().await.expect("flush headers");
 }
 
 impl AbaOrigin {

@@ -43,7 +43,6 @@ async fn failed_finalization_keeps_complete_bytes_partial_and_retires_the_attemp
 fn serial_options() -> DeliveryOptions {
     DeliveryOptions {
         params: EngineParams {
-            head_seconds: 1,
             chunk_bytes: 4,
             conservative_concurrency: 1,
             ..base_params()

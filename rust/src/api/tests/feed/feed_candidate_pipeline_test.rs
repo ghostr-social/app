@@ -4,7 +4,7 @@ use crate::api::tests::feed_fixtures::video_note;
 use crate::api::tests::outbox_runtime_support::test_bootstrap;
 use crate::discovery::feed::spec::FeedSpec;
 use crate::discovery::retrieval_types::RetrievalOutcome;
-use ghostr_delivery::delivery_events::{command_channel, DeliveryCommand};
+use ghostr_delivery::delivery_events::command_channel;
 use nostr_sdk::Keys;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -33,13 +33,16 @@ async fn relay_progress_admits_a_candidate_before_page_completion() {
         })
         .expect("progress receiver");
 
-    let command = tokio::time::timeout(Duration::from_secs(1), commands.receivers().0.recv())
-        .await
-        .expect("candidate should be immediate")
-        .expect("delivery command");
-    let DeliveryCommand::Candidate(candidate) = command else {
-        panic!("expected candidate admission");
-    };
+    let candidate = tokio::time::timeout(Duration::from_secs(1), async {
+        loop {
+            if let Some(candidate) = commands.try_candidate() {
+                break candidate;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .expect("candidate should be immediate");
     assert_eq!(candidate.meta.urls, ["https://cdn.example/early.mp4"]);
     assert_eq!(lock(&state).snapshot(feed).len(), 1);
 

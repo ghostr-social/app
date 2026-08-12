@@ -31,7 +31,6 @@ async fn replacement_source_rejects_delayed_bytes_and_facts() {
         0,
         0,
     ));
-
     wait_for_new_source(&new_hits).await;
     wait_for_ranges(&harness.store, "same", &[(0, 4)]).await;
     old_origin.release_first_headers();

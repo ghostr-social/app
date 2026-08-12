@@ -139,6 +139,7 @@ function loadProfile(profile) {
   if (profileLoaded) return;
   byId("bandwidth").value = profile.bandwidth_kbps;
   byId("latency").value = profile.latency_ms;
+  byId("packet-loss").value = profile.packet_loss_bps;
   byId("connections-limit").value = profile.max_connections_per_host;
   profileLoaded = true;
 }

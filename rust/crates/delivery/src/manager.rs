@@ -1,6 +1,5 @@
 //! Event-driven delivery manager (plan Phase 1 step 7): replaces the
-//! old one-second poll loop. Focus updates, config changes, gateway
-//! demand, and transfer completions arrive over channels; every event
+//! old one-second poll loop. Control and completion updates arrive over channels; every event
 //! triggers one replanning pass — there is no periodic wake-up.
 //!
 //! The parts of that pass live beside this file: `reconcile` decides
@@ -17,15 +16,18 @@ pub mod failure;
 mod focus_lease;
 pub(crate) mod inflight;
 pub(crate) mod plan;
+mod policy_eviction;
 pub(crate) mod pressure;
 mod probe_completion;
 pub(crate) mod quality;
 pub(crate) mod reconcile;
+mod reconcile_transfers;
 mod reset;
 pub mod retry;
 mod retry_completion;
 pub(crate) mod state;
 pub(crate) mod stats;
+pub(crate) mod time;
 pub(crate) mod timeline;
 pub(crate) mod traffic;
 pub(crate) mod transfers;
@@ -49,8 +51,8 @@ use crate::manager::workers::DownloadWorkers;
 use crate::mutable_priority_queue::MutablePriorityQueue;
 use crate::playback_demand::{DemandReceiver, DemandSignal};
 use crate::probe::pool::MetadataProbePool;
+use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_engine::concurrency::AdaptiveConcurrency;
-use ghostr_engine::inventory_controller::Mode;
 use ghostr_engine::{DataUsageLevel, EngineParams};
 use ghostr_net::outbound_media_client::{MediaHttpClient, MediaHttpRequests};
 use ghostr_net::transfer_timeouts::TransferTimeouts;
@@ -102,33 +104,31 @@ pub struct DeliveryManagerConfig<C = MediaHttpClient> {
     pub tuning: DeliveryTuning,
 }
 
-/// Starts the manager task and exposes the inventory mode transitions the
-/// discovery control loop subscribes to. The receiver starts at
-/// [`Mode::Hunger`], matching a fresh controller.
-pub fn start_delivery_manager_with_modes<C>(
+/// Starts the manager task and exposes adaptive candidate-demand changes.
+pub fn start_delivery_manager_with_discovery_demand<C>(
     config: DeliveryManagerConfig<C>,
     demand: DemandReceiver,
-) -> (DeliveryHandle, watch::Receiver<Mode>)
+) -> (DeliveryHandle, watch::Receiver<DiscoveryDemand>)
 where
     C: MediaHttpRequests + 'static,
 {
-    let (modes, mode_updates) = watch::channel(Mode::Hunger);
+    let (discovery_sender, discovery_updates) = watch::channel(DiscoveryDemand::Expand);
     let (handle, commands) = command_channel();
-    tokio::spawn(run(config, commands, demand, Some(modes)));
-    (handle, mode_updates)
+    tokio::spawn(run(config, commands, demand, Some(discovery_sender)));
+    (handle, discovery_updates)
 }
 
 async fn run<C>(
     config: DeliveryManagerConfig<C>,
     commands: CommandReceiver,
     demand: DemandReceiver,
-    modes: Option<watch::Sender<Mode>>,
+    discovery_watch: Option<watch::Sender<DiscoveryDemand>>,
 ) where
     C: MediaHttpRequests + 'static,
 {
     let mut worker = DeliveryWorker::create(config, commands, demand).await;
-    if let Some(sender) = modes {
-        worker.state.publish_modes(sender);
+    if let Some(sender) = discovery_watch {
+        worker.state.publish_discovery_demand(sender);
     }
     while worker.step().await {}
     worker.keeper.save_now().await;

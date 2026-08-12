@@ -90,10 +90,6 @@ impl RepresentationBinding {
         &self.representation
     }
 
-    pub fn generation(&self) -> RepresentationGeneration {
-        self.generation
-    }
-
     pub fn transfer(&self, url: &str) -> Option<TransferIdentity> {
         let source = self.sources.iter().find(|source| source.as_str() == url)?;
         Some(TransferIdentity {
@@ -108,14 +104,6 @@ impl RepresentationBinding {
 impl TransferIdentity {
     pub fn post(&self) -> &PostId {
         &self.post
-    }
-
-    pub fn representation(&self) -> &RepresentationId {
-        &self.representation
-    }
-
-    pub fn generation(&self) -> RepresentationGeneration {
-        self.generation
     }
 
     pub fn source(&self) -> &SourceId {
