@@ -75,7 +75,11 @@ final class _DeferredBlockedSocial implements NostrSocialPort {
   }
 
   @override
-  Future<bool> toggleBlock(ProfileId profileId) async => false;
+  Future<bool> toggleBlock(
+    ProfileId profileId, {
+    Set<ProfileId> knownBlocked = const {},
+  }) async =>
+      false;
 
   @override
   Future<bool> toggleFollow(ProfileId profileId) async {

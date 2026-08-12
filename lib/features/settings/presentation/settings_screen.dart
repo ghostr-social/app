@@ -13,12 +13,14 @@ import 'package:ghostr/shared/widgets/loading_panel.dart';
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({
     this.onOpenWatchHistory,
+    this.onOpenBlockedAccounts,
     this.onCheckForUpdates,
     this.appUpdateCubit,
     super.key,
   });
 
   final VoidCallback? onOpenWatchHistory;
+  final VoidCallback? onOpenBlockedAccounts;
   final VoidCallback? onCheckForUpdates;
   final AppUpdateCubit? appUpdateCubit;
 
@@ -120,6 +122,7 @@ class SettingsScreen extends StatelessWidget {
       ),
       onSave: cubit.save,
       onOpenWatchHistory: onOpenWatchHistory,
+      onOpenBlockedAccounts: onOpenBlockedAccounts,
     );
   }
 

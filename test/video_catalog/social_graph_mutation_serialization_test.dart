@@ -68,7 +68,11 @@ class _DelayedSocial implements NostrSocialPort {
   Future<Set<ProfileId>> loadBlockedProfiles() async => <ProfileId>{};
 
   @override
-  Future<bool> toggleBlock(ProfileId profileId) async => true;
+  Future<bool> toggleBlock(
+    ProfileId profileId, {
+    Set<ProfileId> knownBlocked = const {},
+  }) async =>
+      true;
 }
 
 class _MemoryStore implements SocialGraphStore {
