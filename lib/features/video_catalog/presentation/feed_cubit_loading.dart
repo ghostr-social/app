@@ -17,12 +17,12 @@ extension FeedCubitLoading on FeedCubit {
   }
 
   void _acceptLoad(FeedKind kind, List<VideoPost> fresh) {
-    final roster = _session.loaded(fresh);
+    final roster = _session.loaded(fresh).openedAt(_openAt);
     _backfill.restartFrom(roster.posts);
     if (roster.isEmpty) return _emitEmpty(kind);
     _emitState(FeedLoaded.of(kind, roster, follows: _follows));
     _hunt.filled();
-    _viewer.landedOn(roster.posts, 0);
+    _viewer.landedOn(roster.posts, roster.activeIndex);
     _ensureBuffered();
   }
 

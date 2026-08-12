@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/profile_content.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/profile_refresh_status.dart';
@@ -11,12 +12,14 @@ class ProfileScreen extends StatelessWidget {
     required this.onSignedOut,
     this.onOpenSettings,
     this.onEditProfile,
+    this.onOpenVideo,
     super.key,
   });
 
   final VoidCallback? onOpenSettings;
   final VoidCallback onSignedOut;
   final VoidCallback? onEditProfile;
+  final ValueChanged<VideoPost>? onOpenVideo;
 
   @override
   Widget build(BuildContext context) {
@@ -66,6 +69,7 @@ class ProfileScreen extends StatelessWidget {
                 onBlock: (_) => context.read<ProfileCubit>().toggleBlock(),
                 onSignOut: onSignedOut,
                 onEdit: onEditProfile,
+                onOpenVideo: onOpenVideo,
               ),
             ),
           ),

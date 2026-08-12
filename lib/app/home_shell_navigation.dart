@@ -5,6 +5,8 @@ extension _HomeShellNavigation on _HomeShellState {
 
   void _openHashtag(String hashtag) => _openDiscoveryFeed(hashtag);
 
+  void _openProfileVideo(VideoPost post) => _navigation.openProfileFeed(post);
+
   void _openDiscoveryFeed(String query) => _navigation.openDiscoveryFeed(query);
 
   HomeNavigation get _navigation => HomeNavigation(

@@ -18,6 +18,7 @@ import 'package:ghostr/features/compose/presentation/compose_screen.dart';
 import 'package:ghostr/features/session/domain/user_session.dart';
 import 'package:ghostr/features/session/presentation/session_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
+import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_screen.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_screen.dart';
@@ -96,8 +97,7 @@ class _HomeShellState extends State<HomeShell> {
     final shouldRefresh = _visitedTabs.contains(selected);
     _activateTab(selected);
     if (isReselectedHome) {
-      final reload = _feedCubit?.reload();
-      if (reload != null) unawaited(reload);
+      if (_feedCubit?.reload() case final reload?) unawaited(reload);
     } else if (shouldRefresh) {
       _refreshTab(selected);
     }
@@ -157,6 +157,7 @@ class _HomeShellState extends State<HomeShell> {
       onOpenSettings: _openSettings,
       onEditProfile: _editProfile,
       onSignedOut: _signOut,
+      onOpenVideo: _openProfileVideo,
     ),
   );
   FeedCubit _createFeedCubit() {
