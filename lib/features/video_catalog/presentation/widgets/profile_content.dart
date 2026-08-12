@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_details.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
+import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/profile_video_grid.dart';
 import 'package:ghostr/shared/theme/app_tokens.dart';
 import 'package:ghostr/shared/widgets/profile_avatar.dart';
@@ -11,12 +12,14 @@ class ProfileContentActions {
     required this.onBlock,
     required this.onSignOut,
     this.onEdit,
+    this.onOpenVideo,
   });
 
   final ValueChanged<ProfileId> onFollow;
   final ValueChanged<ProfileId> onBlock;
   final VoidCallback onSignOut;
   final VoidCallback? onEdit;
+  final ValueChanged<VideoPost>? onOpenVideo;
 }
 
 class ProfileContent extends StatelessWidget {
@@ -46,7 +49,10 @@ class ProfileContent extends StatelessWidget {
         const SizedBox(height: AppSpacing.xl),
         Text('Videos', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: AppSpacing.sm),
-        ProfileVideoGrid(posts: details.posts),
+        ProfileVideoGrid(
+          posts: details.posts,
+          onOpenVideo: actions.onOpenVideo,
+        ),
       ],
     );
   }

@@ -3,12 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ghostr/app/app_controller_factory.dart';
 import 'package:ghostr/app/app_update_scope.dart';
 import 'package:ghostr/app/profile_route_request.dart';
+import 'package:ghostr/app/router/feed_route_links.dart';
 import 'package:ghostr/features/session/domain/user_session.dart';
 import 'package:ghostr/features/profile/presentation/profile_edit_screen.dart';
 import 'package:ghostr/features/settings/presentation/settings_screen.dart';
 import 'package:ghostr/features/social/presentation/blocked_accounts_screen.dart';
 import 'package:ghostr/features/video_catalog/presentation/discovery_feed_screen.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_cubit.dart';
+import 'package:ghostr/features/video_catalog/presentation/profile_feed_screen.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_screen.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/watch_history/presentation/watch_history_screen.dart';
@@ -16,49 +18,54 @@ import 'package:ghostr/features/watch_history/presentation/watch_history_screen.
 abstract final class AppRouter {
   /// A swipeable video feed for one search query or `#hashtag`.
   static Route<void> discoveryFeed(DiscoveryFeedRouteRequest request) {
-    final session = request.session;
     final controllers = request.controllers;
     return MaterialPageRoute<void>(
-      builder: (context) => BlocProvider(
-        create: (_) => controllers.discoveryFeed(
-          request.query,
-          viewerId: session.profile.id,
-        )..load(),
-        child: DiscoveryFeedScreen(
-          request: DiscoveryFeedRequest(
-            query: request.query,
-            playbackPort: controllers.videoPlaybackPort,
-            shareWorkflow: controllers.videoShareWorkflow,
-            createComments: controllers.comments,
-            onOpenProfile: (profileId) async {
-              await Navigator.of(context).push(
-                AppRouter.profile(
-                  ProfileRouteRequest(
-                    session: session,
-                    profileId: profileId,
-                    controllers: controllers,
-                    onSignedOut: request.onSignedOut,
-                    onCurrentProfileUpdated: request.onCurrentProfileUpdated,
-                  ),
-                ),
-              );
-            },
-            onOpenHashtag: (hashtag) async {
-              await Navigator.of(context).push(
-                AppRouter.discoveryFeed(
-                  DiscoveryFeedRouteRequest(
-                    session: session,
-                    query: hashtag,
-                    controllers: controllers,
-                    onSignedOut: request.onSignedOut,
-                    onCurrentProfileUpdated: request.onCurrentProfileUpdated,
-                  ),
-                ),
-              );
-            },
+      builder: (context) {
+        final links = FeedRouteLinks(context, request);
+        return BlocProvider(
+          create: (_) => controllers.discoveryFeed(
+            request.query,
+            viewerId: request.session.profile.id,
+          )..load(),
+          child: DiscoveryFeedScreen(
+            request: DiscoveryFeedRequest(
+              query: request.query,
+              playbackPort: controllers.videoPlaybackPort,
+              shareWorkflow: controllers.videoShareWorkflow,
+              createComments: controllers.comments,
+              onOpenProfile: links.openProfile,
+              onOpenHashtag: links.openHashtag,
+            ),
           ),
-        ),
-      ),
+        );
+      },
+    );
+  }
+
+  /// One creator's published videos as a swipeable feed, opened on the
+  /// video the viewer tapped on their profile.
+  static Route<void> profileFeed(ProfileFeedRouteRequest request) {
+    final controllers = request.controllers;
+    return MaterialPageRoute<void>(
+      builder: (context) {
+        final links = FeedRouteLinks(context, request);
+        return BlocProvider(
+          create: (_) => controllers.profileFeed(
+            request.session.profile,
+            request.post,
+          )..load(),
+          child: ProfileFeedScreen(
+            request: ProfileFeedRequest(
+              creator: request.post.creator,
+              playbackPort: controllers.videoPlaybackPort,
+              shareWorkflow: controllers.videoShareWorkflow,
+              createComments: controllers.comments,
+              onOpenProfile: links.openProfile,
+              onOpenHashtag: links.openHashtag,
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -86,6 +93,7 @@ abstract final class AppRouter {
           child: ProfileScreen(
             onSignedOut: request.onSignedOut,
             onEditProfile: isCurrentUser ? () => editor.open(context) : null,
+            onOpenVideo: FeedRouteLinks(context, request).openProfileFeed,
           ),
         );
       },

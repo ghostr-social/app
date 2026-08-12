@@ -8,6 +8,7 @@ import 'package:ghostr/features/compose/presentation/compose_cubit.dart';
 import 'package:ghostr/features/compose/domain/publish_video_workflow.dart';
 import 'package:ghostr/features/settings/presentation/settings_cubit.dart';
 import 'package:ghostr/features/social/presentation/blocked_accounts_cubit.dart';
+import 'package:ghostr/features/video_catalog/domain/profile_video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/query_video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
@@ -79,6 +80,21 @@ class AppControllerFactory {
         ),
         viewerId: viewerId,
       ),
+    );
+  }
+
+  /// A feed cubit playing one creator's shelf, opened on the tapped video.
+  FeedCubit profileFeed(ProfileSummary viewer, VideoPost post) {
+    return FeedCubit(
+      _feedDependencies(
+        ProfileVideoFeedRepository(
+          profile: _dependencies.videoCatalogServices.profile,
+          viewer: viewer,
+          creatorId: post.creator.id,
+        ),
+        viewerId: viewer.id,
+      ),
+      openAt: post.id,
     );
   }
 

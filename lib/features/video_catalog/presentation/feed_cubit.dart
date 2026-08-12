@@ -11,6 +11,7 @@ import 'package:ghostr/features/video_catalog/domain/use_cases/feed_operation_fa
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_session.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
+import 'package:ghostr/features/video_catalog/domain/video_post_id.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_dependencies.dart';
@@ -32,12 +33,20 @@ part 'feed_cubit_updates.dart';
 /// Turns feed intents into feed states. The rules behind a transition — what
 /// survives a refresh, when to dig into the past — live in collaborators.
 class FeedCubit extends DisposalSafeCubit<FeedState> {
-  FeedCubit(this._dependencies, {FeedHunt? hunt, FeedUpdateRetry? updateRetry})
-    : _updates = _FeedUpdateState(updateRetry ?? FeedUpdateRetry()),
-      _hunt = hunt ?? FeedHunt(),
-      super(const FeedLoading(FeedKind.forYou));
+  FeedCubit(
+    this._dependencies, {
+    VideoPostId? openAt,
+    FeedHunt? hunt,
+    FeedUpdateRetry? updateRetry,
+  }) : _openAt = openAt,
+       _updates = _FeedUpdateState(updateRetry ?? FeedUpdateRetry()),
+       _hunt = hunt ?? FeedHunt(),
+       super(const FeedLoading(FeedKind.forYou));
 
   final FeedDependencies _dependencies;
+
+  /// The video every full load opens on, when the feed still carries it.
+  final VideoPostId? _openAt;
   final FeedHunt _hunt;
   final _loads = FeedLoads();
   final _session = FeedSession();
