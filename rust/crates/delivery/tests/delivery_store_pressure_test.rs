@@ -1,6 +1,9 @@
-//! Store pressure parks network work until capacity actually changes.
-//! Already-playable bytes remain useful and a local refusal never spends
-//! the source's retry budget.
+//! A knowably full store plans no origin work at all — no byte is
+//! bought just to be refused — and a real capacity change replans and
+//! resumes the same source. Already-playable bytes remain useful and a
+//! local store limit never spends the source's retry budget. (Actual
+//! filesystem refusals still park via the pressure path; that fallback
+//! covers disk state the configured budget cannot see.)
 
 mod delivery_fixture;
 
@@ -17,7 +20,7 @@ use std::time::Duration;
 use tokio::time::timeout;
 
 #[tokio::test]
-async fn delivery_parks_until_real_capacity_change_then_resumes_same_source() {
+async fn delivery_waits_for_real_capacity_change_then_resumes_same_source() {
     let fixture = paced_store(
         "ghostr-delivery-full",
         limits(8, 0),
@@ -35,8 +38,7 @@ async fn delivery_parks_until_real_capacity_change_then_resumes_same_source() {
     let harness = start_harness_with_store(Arc::new(fixture.store), root, options);
     harness.handle.update_focus(focus_now(vec![item], 0, 5_000));
 
-    wait_for_refusal(&harness.store).await;
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    tokio::time::sleep(Duration::from_millis(150)).await;
 
     let get_count = || {
         hits(&log)
@@ -44,13 +46,13 @@ async fn delivery_parks_until_real_capacity_change_then_resumes_same_source() {
             .filter(|hit| hit.contains(":GET:"))
             .count()
     };
-    assert_eq!(get_count(), 1, "unchanged capacity must park origin IO");
-    assert_eq!(harness.store.refusals(), 1, "one capacity decision");
+    assert_eq!(get_count(), 0, "a knowably full store buys no origin bytes");
+    assert_eq!(harness.store.refusals(), 0, "no write is attempted just to be refused");
     assert_range(&harness.store, 0..8).await;
 
     harness.store.set_storage_budget(16).await.unwrap();
     wait_for_complete(&harness.store).await;
-    assert_eq!(get_count(), 2, "the same source resumes once");
+    assert_eq!(get_count(), 1, "the same source resumes once");
     assert!(harness.posts.contains("aa11"));
     let host = host_of(&origin).unwrap();
     let stats = wait_for(&harness.root.join("host_stats.json"), |stats| {
@@ -63,16 +65,6 @@ async fn delivery_parks_until_real_capacity_change_then_resumes_same_source() {
         "local pressure is not network failure"
     );
     discard(&fixture.root);
-}
-
-async fn wait_for_refusal(store: &PartialRangeStore) {
-    timeout(Duration::from_secs(2), async {
-        while store.refusals() == 0 {
-            tokio::time::sleep(Duration::from_millis(5)).await;
-        }
-    })
-    .await
-    .expect("first store refusal");
 }
 
 async fn wait_for_complete(store: &PartialRangeStore) {

@@ -127,6 +127,7 @@ async fn run<C>(
     C: MediaHttpRequests + 'static,
 {
     let mut worker = DeliveryWorker::create(config, commands, demand).await;
+    worker.spawn_capacity_replans();
     if let Some(sender) = discovery_watch {
         worker.state.publish_discovery_demand(sender);
     }

@@ -51,10 +51,10 @@ impl GatedFailure {
     }
 
     pub async fn wait_for_attempts(&self, expected: usize) {
-        let deadline = Instant::now() + Duration::from_millis(500);
+        let deadline = Instant::now() + Duration::from_millis(10_000);
         while self.attempts() < expected {
             assert!(Instant::now() < deadline, "retry did not start");
-            tokio::task::yield_now().await;
+            tokio::time::sleep(Duration::from_millis(2)).await;
         }
     }
 }

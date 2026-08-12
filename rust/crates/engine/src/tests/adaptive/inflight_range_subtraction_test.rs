@@ -20,5 +20,6 @@ fn new_origin_work_starts_after_a_partly_overlapping_active_transfer() {
         .find(|work| work.post == PostId::new("p1"))
         .expect("remaining candidate work");
 
-    assert_eq!(first.range, ByteRange::new(100_000, 250_000));
+    assert_eq!(first.range.start, 100_000);
+    assert!(first.range.len() <= crate::adaptive::REQUEST_SLICE_BYTES);
 }

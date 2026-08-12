@@ -48,13 +48,16 @@ async fn delivery_manager_publishes_adaptive_discovery_demand() {
 
     let unreachable = "http://127.0.0.1:9/video.mp4";
     handle.update_focus(focus_now(
-        vec![sized_item("aa11", unreachable, 64, 1_000)],
+        vec![
+            sized_item("aa11", unreachable, 64, 1_000),
+            sized_item("bb22", unreachable, 64, 1_000),
+        ],
         0,
         0,
     ));
     timeout(Duration::from_secs(5), discovery_demand.changed())
         .await
-        .expect("emergency demand should publish")
+        .expect("a waiting unserved candidate should publish a hold")
         .expect("manager should stay alive");
     assert_eq!(*discovery_demand.borrow(), DiscoveryDemand::Hold);
 

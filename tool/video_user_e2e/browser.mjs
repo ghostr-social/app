@@ -10,6 +10,7 @@ export function browserArguments({profile, cache}) {
     "--disable-features=ServiceWorker",
     "--no-default-browser-check",
     "--no-first-run",
+    "--use-mock-keychain",
     "--mute-audio",
     "about:blank",
   ];

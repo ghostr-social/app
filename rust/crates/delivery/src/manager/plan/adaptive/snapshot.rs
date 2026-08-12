@@ -15,6 +15,10 @@ pub(super) fn build(state: &DeliveryState, inputs: &PlanInputs<'_>) -> Option<Pl
     Some(PlayabilitySnapshot {
         observed_at_ms: inputs.observed_at_ms,
         commitment_ms: state.params().commitment_ms,
+        request_slice_bytes: state
+            .params()
+            .chunk_bytes
+            .min(ghostr_engine::adaptive::REQUEST_SLICE_BYTES),
         playback,
         network,
         storage: inputs.storage,
@@ -59,6 +63,7 @@ fn candidate(
     let mut candidate = candidate_snapshot(state.catalog(), state.params(), evidence)?;
     if let Some(range) = demanded_range(inputs, &post) {
         prioritize_range(&mut candidate.playable_ranges, range, candidate.bitrate_bps);
+        candidate.demanded = Some(range);
     }
     Some(candidate)
 }
@@ -93,7 +98,7 @@ fn active_range(
 }
 
 fn positioned_posts(state: &DeliveryState, current: &PostId) -> Vec<CandidatePosition> {
-    let posts = state.window_posts();
+    let posts = state.planning_window_posts();
     let current = posts.iter().position(|post| post == current).unwrap_or(0);
     posts
         .into_iter()
