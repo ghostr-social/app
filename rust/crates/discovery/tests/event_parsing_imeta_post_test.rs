@@ -1,6 +1,6 @@
-use nostr_sdk::{EventBuilder, Keys, Kind, Tag};
 use ghostr_discovery::content::parsing::video_post_from_event;
 use ghostr_engine::DeliveryKind;
+use nostr_sdk::{EventBuilder, Keys, Kind, Tag};
 
 #[test]
 fn event_parsing_maps_an_imeta_event_into_a_parsed_post() {

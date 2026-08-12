@@ -2,7 +2,9 @@
 
 use ghostr_delivery::delivery_events::DeliveryCandidate;
 use ghostr_delivery::delivery_events::{DeliveryFocus, FocusItem};
+use ghostr_engine::catalog::Catalog;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 
 pub struct ItemSpec {
     pub id: &'static str,
@@ -39,6 +41,7 @@ pub fn candidate(
     DeliveryCandidate {
         post: item.post,
         meta: item.meta,
+        renditions: Vec::new(),
         discovered_at,
     }
 }
@@ -68,9 +71,18 @@ pub fn unsized_mirrored_item(id: &'static str, first: &str, second: &str) -> Foc
 }
 
 pub fn focus_now(items: Vec<FocusItem>, current_index: usize, watch_ms: u64) -> DeliveryFocus {
-    DeliveryFocus {
-        items,
-        current_index,
-        watch_ms,
-    }
+    DeliveryFocus::compatibility(items, current_index, watch_ms)
+}
+
+pub async fn seed_range(store: &PartialRangeStore, item: &FocusItem, offset: u64, bytes: &[u8]) {
+    let mut catalog = Catalog::new();
+    let binding = catalog.upsert(item.post.clone(), item.meta.clone());
+    let source = item.meta.urls.first().expect("fixture source");
+    let identity = binding.transfer(source).expect("fixture identity");
+    store.bind_representation(binding).await.unwrap();
+    store.select_transfer(identity.clone());
+    assert!(store
+        .write_range_for_transfer_if_current(&identity, offset, bytes)
+        .await
+        .unwrap());
 }

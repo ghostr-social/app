@@ -1,4 +1,4 @@
-use super::support::temp_directory;
+use super::support::{temp_directory, transfer_identity};
 use crate::chunk::downloader::ChunkResult;
 use crate::manager::inflight::InFlightChunks;
 use crate::manager::stats::StatsKeeper;
@@ -14,14 +14,14 @@ async fn unhosted_outcomes_do_not_dirty_or_persist_host_stats() {
     let mut keeper = StatsKeeper::load(path.clone(), Duration::ZERO).await;
     let post = PostId::new("clip");
     let mut inflight = InFlightChunks::new();
-    let attempt = inflight.next_attempt(ChunkId {
+    let chunk = ChunkId {
         post: post.clone(),
         range: ByteRange::new(0, 1),
-    });
+    };
+    let attempt = inflight.next_attempt(chunk, transfer_identity(&post, "not a URL"));
     keeper.note_chunk(&ChunkDone {
         attempt,
         url: "not a URL".to_owned(),
-        elapsed: Duration::from_millis(1),
         outcome: Ok(ChunkResult {
             bytes_written: 1,
             accept_ranges: true,

@@ -1,8 +1,8 @@
 //! An accepted mute list filters the active feed without a relay echo.
 
+use crate::api::feed::state::FeedState;
 use crate::api::runtime::accepted_events::remember_accepted;
 use crate::api::runtime::discovery::{lock, OutcomeSinks, SharedFeedState};
-use crate::api::feed::state::FeedState;
 use crate::api::tests::feed_fixtures::{signed_event, video_note, SignedEventFixture};
 use crate::api::tests::outbox_runtime_support::test_bootstrap;
 use crate::discovery::cache::{session_event_database, EventCache};

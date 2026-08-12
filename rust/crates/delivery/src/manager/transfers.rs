@@ -4,9 +4,13 @@
 //! owned instance, keeping the statistics single-owner and lock-free.
 
 use crate::chunk::cancel::{cancel_pair, CancelHandle};
-use crate::chunk::downloader::{download_chunk_throttled, ChunkResult, ChunkSink, ChunkSpec};
+use crate::chunk::downloader::{download_chunk_observed, ChunkResult, ChunkSpec};
+use crate::chunk::sink::TransferChunkSink;
+use crate::chunk::traffic::ChunkTraffic;
 use crate::debug::network::NetworkThrottle;
 use crate::manager::inflight::ChunkAttempt;
+use crate::manager::retry::CooldownId;
+use crate::manager::traffic::{TrafficPublisher, TransferKey};
 use crate::probe::media::{probe, ProbeResult};
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::PostId;
@@ -19,16 +23,25 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
 pub(crate) enum InternalEvent {
+    Transfer(TransferEvent),
+    Maintenance(MaintenanceEvent),
+    TrafficChanged,
+}
+
+pub(crate) enum TransferEvent {
     ChunkDone(ChunkDone),
     ProbeDone(ProbeDone),
-    CooldownOver(PostId),
+}
+
+pub(crate) enum MaintenanceEvent {
+    CooldownOver(PostId, CooldownId),
     SaveStats,
+    StoreCapacityChanged(u64),
 }
 
 pub(crate) struct ChunkDone {
     pub attempt: ChunkAttempt,
     pub url: String,
-    pub elapsed: Duration,
     pub outcome: anyhow::Result<ChunkResult>,
 }
 
@@ -46,6 +59,7 @@ pub(crate) struct TransferContext {
     pub events: UnboundedSender<InternalEvent>,
     pub timeouts: TransferTimeouts,
     pub network: NetworkThrottle,
+    pub traffic: TrafficPublisher,
 }
 
 /// Starts one granted chunk transfer; the returned handle cancels it.
@@ -56,32 +70,83 @@ pub(crate) fn spawn_chunk(
 ) -> CancelHandle {
     let (handle, token) = cancel_pair();
     tokio::spawn(async move {
-        let started = Instant::now();
         let spec = ChunkSpec {
             client: ctx.client.as_ref(),
             url: &url,
             range: attempt.chunk.range,
             timeouts: ctx.timeouts,
         };
-        let sink = ChunkSink {
-            store: &ctx.store,
-            key: attempt.chunk.post.as_str(),
-        };
+        let sink = TransferChunkSink::new(&ctx.store, attempt.identity().clone());
         let mut scratch = HostStats::new();
-        let outcome =
-            download_chunk_throttled(&spec, &sink, &mut scratch, &token, &ctx.network).await;
+        let mut traffic = TransferTraffic::new(attempt.id(), &url, ctx.traffic.clone());
+        let outcome = download_chunk_observed(
+            &spec,
+            &sink,
+            &mut scratch,
+            &token,
+            &ctx.network,
+            &mut traffic,
+        )
+        .await;
+        attempt.mark_io_finished();
+        drop(traffic);
         if cancelled_before_request(&outcome) {
             return;
         }
         let done = ChunkDone {
             attempt,
             url,
-            elapsed: started.elapsed(),
             outcome,
         };
-        let _ = ctx.events.send(InternalEvent::ChunkDone(done));
+        let _ = ctx
+            .events
+            .send(InternalEvent::Transfer(TransferEvent::ChunkDone(done)));
     });
     handle
+}
+
+struct TransferTraffic {
+    transfer: TransferKey,
+    host: Option<String>,
+    publisher: TrafficPublisher,
+    opened: bool,
+}
+
+impl TransferTraffic {
+    fn new(id: u64, url: &str, publisher: TrafficPublisher) -> Self {
+        Self {
+            transfer: TransferKey::new(id),
+            host: ghostr_engine::host_stats::host_of(url),
+            publisher,
+            opened: false,
+        }
+    }
+}
+
+impl ChunkTraffic for TransferTraffic {
+    fn opened(&mut self, ttfb: Duration) {
+        let Some(host) = self.host.take() else {
+            return;
+        };
+        self.opened = self
+            .publisher
+            .opened(self.transfer, host, ttfb, Instant::now());
+    }
+
+    fn wrote(&mut self, bytes: u64) {
+        if self.opened {
+            self.publisher
+                .progress(self.transfer, bytes, Instant::now());
+        }
+    }
+}
+
+impl Drop for TransferTraffic {
+    fn drop(&mut self) {
+        if self.opened {
+            self.publisher.closed(self.transfer, Instant::now());
+        }
+    }
 }
 
 pub(crate) fn cancelled_before_request(outcome: &anyhow::Result<ChunkResult>) -> bool {
@@ -95,6 +160,8 @@ pub(crate) fn spawn_probe(ctx: TransferContext, post: PostId, url: String) {
         let outcome = probe(ctx.client.as_ref(), &url, ctx.timeouts, &mut scratch).await;
         let _ = ctx
             .events
-            .send(InternalEvent::ProbeDone(ProbeDone { post, url, outcome }));
+            .send(InternalEvent::Transfer(TransferEvent::ProbeDone(
+                ProbeDone { post, url, outcome },
+            )));
     });
 }

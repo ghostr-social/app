@@ -1,10 +1,18 @@
+#[cfg(all(
+    feature = "video-debug-web",
+    debug_assertions,
+    not(any(target_os = "android", target_os = "ios"))
+))]
+use crate::debug::media::DebugMediaHttpClient;
 use crate::delivery::start_progressive_delivery;
 use crate::hls::playback::{HlsPlaybackGateway, NativeHlsPlaybackSession};
 use crate::hls::sessions::HlsSessions;
+use crate::progressive::capabilities::ProgressiveCapabilityId;
 use crate::progressive::route::ProgressiveState;
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_engine::inventory_controller::Mode;
 use ghostr_media_store::native_cache::prepare_native_cache_directory;
+use ghostr_net::outbound_media_client::{MediaHttpClient, MediaHttpRequests};
 use log::warn;
 use nostr_sdk::Client;
 use std::{future::Future, io, path::PathBuf, sync::Arc};
@@ -36,23 +44,21 @@ impl GatewayRuntime {
         configuration: GatewayConfiguration,
         client: Arc<Client>,
     ) -> anyhow::Result<(String, Self, watch::Receiver<Mode>)> {
-        validate(&configuration)?;
-        prepare_native_cache_directory(&configuration.cache_directory)?;
-        let listener = TcpListener::bind("127.0.0.1:0").await?;
-        let address = listener.local_addr()?;
-        let endpoint = address.to_string();
-        let hls_sessions = HlsSessions::production();
-        let (router, delivery, progressive, modes) =
-            start_progressive_delivery(&configuration, hls_sessions.clone(), client.clone())
-                .await?;
-        spawn_http_server(listener, router);
-        let hls = HlsPlaybackGateway::new(address, hls_sessions);
-        let runtime = Self {
-            hls,
-            delivery,
-            progressive,
-        };
-        Ok((endpoint, runtime, modes))
+        let media = Arc::new(MediaHttpClient::public()?);
+        start_with_media(configuration, client, media).await
+    }
+
+    #[cfg(all(
+        feature = "video-debug-web",
+        debug_assertions,
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
+    pub async fn start_debug(
+        configuration: GatewayConfiguration,
+        client: Arc<Client>,
+    ) -> anyhow::Result<(String, Self, watch::Receiver<Mode>)> {
+        let media = Arc::new(DebugMediaHttpClient::new()?);
+        start_with_media(configuration, client, media).await
     }
 
     /// Control surface for focus, demand, and data-usage updates.
@@ -63,6 +69,10 @@ impl GatewayRuntime {
     /// Progressive plumbing (store/demand/posts) for the FFI layer.
     pub fn progressive(&self) -> Arc<ProgressiveState> {
         self.progressive.clone()
+    }
+
+    pub async fn issue_progressive(&self, post: &str) -> ProgressiveCapabilityId {
+        self.progressive.capabilities.issue(post).await
     }
 
     /// Applies the user's progressive-media budget without restarting
@@ -81,6 +91,29 @@ impl GatewayRuntime {
     pub async fn release_hls(&self, session_id: &str) -> bool {
         self.hls.release(session_id).await
     }
+}
+
+async fn start_with_media(
+    configuration: GatewayConfiguration,
+    client: Arc<Client>,
+    media: Arc<dyn MediaHttpRequests>,
+) -> anyhow::Result<(String, GatewayRuntime, watch::Receiver<Mode>)> {
+    validate(&configuration)?;
+    prepare_native_cache_directory(&configuration.cache_directory)?;
+    let listener = TcpListener::bind("127.0.0.1:0").await?;
+    let address = listener.local_addr()?;
+    let endpoint = address.to_string();
+    let hls_sessions = HlsSessions::production();
+    let (router, delivery, progressive, modes) =
+        start_progressive_delivery(&configuration, hls_sessions.clone(), client, media).await?;
+    spawn_http_server(listener, router);
+    let hls = HlsPlaybackGateway::new(address, hls_sessions);
+    let runtime = GatewayRuntime {
+        hls,
+        delivery,
+        progressive,
+    };
+    Ok((endpoint, runtime, modes))
 }
 
 fn validate(configuration: &GatewayConfiguration) -> anyhow::Result<()> {

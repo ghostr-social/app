@@ -21,6 +21,7 @@ async fn debug_api_rejects_a_non_http_video_url() {
         cache: harness.posts,
         network: harness.network,
         timing: Default::default(),
+        capabilities: harness.capabilities,
         debug_feed: ghostr_delivery::debug::feed::DebugFeed::new(delivery.clone(), Vec::new()),
     });
     let router = configured_router_with_progressive_debug(

@@ -17,8 +17,10 @@ void main() {
         home: Scaffold(
           body: FeedCard(
             post: samplePost(),
-            playbackPort: FakeVideoPlaybackPort(),
-            isActive: true,
+            playback: FeedCardPlayback(
+              port: FakeVideoPlaybackPort(),
+              isActive: true,
+            ),
             actions: FeedCardActions(
               onOpenProfile: () {},
               onOpenHashtag: (_) {},

@@ -12,7 +12,7 @@ fn committed() -> DemandSignals {
 }
 
 #[test]
-fn a_committed_current_tail_is_finished_even_in_hunger() {
+fn a_committed_current_reserve_is_eligible_even_in_hunger() {
     let focus = focus_at(&["a", "b"], 0, 5_000);
 
     let tier = classify(&PostId::new("a"), &focus, hunger(true), committed());
@@ -50,7 +50,7 @@ fn commitment_on_a_non_current_post_does_not_make_its_tail_t1() {
     let tier = classify(
         &PostId::new("b"),
         &focus,
-        state(Mode::Comfort, true, true),
+        state(Mode::Comfort, true),
         committed(),
     );
 

@@ -4,8 +4,8 @@
 
 use crate::discovery::outbox::bootstrap::OutboxBootstrap;
 use crate::discovery::outbox::directory::OutboxDirectory;
-use crate::discovery::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::discovery::outbox::directory::SharedOutboxDirectory;
+use crate::discovery::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::discovery::retrieval_types::RetrievalOutcome;
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};

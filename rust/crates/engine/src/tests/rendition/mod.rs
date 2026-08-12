@@ -1,0 +1,11 @@
+mod rendition_buffer_downgrade_test;
+mod rendition_buffer_recovery_test;
+mod rendition_confidence_test;
+mod rendition_floor_test;
+mod rendition_hysteresis_test;
+mod rendition_inactive_test;
+mod rendition_playback_rate_test;
+mod rendition_startup_test;
+mod rendition_throughput_test;
+mod rendition_validation_test;
+mod rendition_variability_test;

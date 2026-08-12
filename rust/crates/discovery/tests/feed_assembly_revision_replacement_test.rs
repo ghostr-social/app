@@ -3,8 +3,8 @@
 mod feed_support;
 
 use feed_support::{addressable_video, parsed};
-use nostr_sdk::Keys;
 use ghostr_discovery::feed::assembly::canonical_posts;
+use nostr_sdk::Keys;
 
 #[test]
 fn newer_revision_replaces_the_existing_coordinate() {

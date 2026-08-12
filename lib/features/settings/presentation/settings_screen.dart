@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:ghostr/features/app_update/presentation/app_update_cubit.dart';
+import 'package:ghostr/features/app_update/presentation/app_update_status_panel.dart';
+import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/settings/presentation/settings_cubit.dart';
 import 'package:ghostr/features/settings/presentation/settings_form.dart';
 import 'package:ghostr/features/settings/presentation/settings_form_actions.dart';
@@ -8,9 +11,16 @@ import 'package:ghostr/shared/widgets/async_state_panel.dart';
 import 'package:ghostr/shared/widgets/loading_panel.dart';
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({this.onOpenWatchHistory, super.key});
+  const SettingsScreen({
+    this.onOpenWatchHistory,
+    this.onCheckForUpdates,
+    this.appUpdateCubit,
+    super.key,
+  });
 
   final VoidCallback? onOpenWatchHistory;
+  final VoidCallback? onCheckForUpdates;
+  final AppUpdateCubit? appUpdateCubit;
 
   @override
   Widget build(BuildContext context) {
@@ -27,14 +37,53 @@ class SettingsScreen extends StatelessWidget {
   Widget _body(BuildContext context, SettingsState state) {
     return switch (state) {
       SettingsLoading() => const LoadingPanel(label: 'Loading settings'),
-      SettingsFailure(:final failureMessage) =>
-        _errorPanel(context, failureMessage),
-      SettingsReady(:final readySettings, :final isSaving) => SettingsForm(
-          settings: readySettings,
-          isSaving: isSaving,
-          actions: _formActions(context),
-        ),
+      SettingsFailure(:final failureMessage) => _errorPanel(
+        context,
+        failureMessage,
+      ),
+      SettingsReady(:final readySettings, :final isSaving) => _ready(
+        context,
+        readySettings,
+        isSaving,
+      ),
     };
+  }
+
+  Widget _ready(BuildContext context, AppSettings settings, bool isSaving) {
+    final updates = appUpdateCubit;
+    if (updates == null) return _form(context, settings, isSaving);
+    return BlocBuilder<AppUpdateCubit, AppUpdateState>(
+      bloc: updates,
+      builder: (_, state) => _form(context, settings, isSaving, state),
+    );
+  }
+
+  Widget _form(
+    BuildContext context,
+    AppSettings settings,
+    bool isSaving, [
+    AppUpdateState? updateState,
+  ]) {
+    return SettingsForm(
+      settings: settings,
+      isSaving: isSaving,
+      actions: _formActions(context),
+      updateState: updateState,
+      updateActions: _updateActions(),
+    );
+  }
+
+  AppUpdateStatusActions? _updateActions() {
+    final updates = appUpdateCubit;
+    if (updates == null) return null;
+    return AppUpdateStatusActions(
+      onDownload: updates.downloadAvailable,
+      onInstall: updates.installReady,
+      onOpenPermissionSettings: updates.openInstallPermissionSettings,
+      onRetryPermission: updates.retryInstall,
+      onRetryConfirmation: updates.retryPendingInstall,
+      onRefreshStatus: updates.refreshInstallStatus,
+    );
   }
 
   Widget _errorPanel(BuildContext context, String message) {
@@ -65,6 +114,10 @@ class SettingsScreen extends StatelessWidget {
       onBudgetChanged: cubit.changeBudget,
       onDataUsageChanged: cubit.changeDataUsage,
       onHideWatchedChanged: cubit.changeHideWatchedVideos,
+      updates: UpdateSettingsActions(
+        onChanged: cubit.changeUpdatePreferences,
+        onCheckNow: onCheckForUpdates,
+      ),
       onSave: cubit.save,
       onOpenWatchHistory: onOpenWatchHistory,
     );
@@ -120,9 +173,9 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _showNotice(BuildContext context, SettingsState state) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(state.notice!)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(state.notice!)));
     context.read<SettingsCubit>().clearNotice();
   }
 }

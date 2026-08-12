@@ -2,9 +2,9 @@
 //! ASCII-case-insensitive, so padding must not cost an otherwise playable
 //! post.
 
-use nostr_sdk::{Event, EventBuilder, Keys, Kind, Tag};
 use ghostr_discovery::content::parsing::video_post_from_event;
 use ghostr_engine::DeliveryKind;
+use nostr_sdk::{Event, EventBuilder, Keys, Kind, Tag};
 
 fn video_event(mime: &str) -> Event {
     EventBuilder::new(Kind::Custom(22), "short clip")

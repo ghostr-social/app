@@ -23,7 +23,8 @@ async fn main() -> anyhow::Result<()> {
         max_storage_bytes: DEBUG_STORAGE_BYTES,
     };
     let client = Arc::new(client_with_event_cache());
-    let (endpoint, runtime, modes) = GatewayRuntime::start(configuration, client.clone()).await?;
+    let (endpoint, runtime, modes) =
+        GatewayRuntime::start_debug(configuration, client.clone()).await?;
     let feed = runtime.progressive().debug_feed.clone();
     let _nostr = DebugNostrRuntime::start(client, modes, nostr, feed).await?;
     println!("Video debug dashboard: http://{endpoint}/debug");

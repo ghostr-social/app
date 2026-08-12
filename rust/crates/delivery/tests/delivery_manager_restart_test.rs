@@ -3,7 +3,7 @@
 
 mod delivery_fixture;
 
-use delivery_fixture::items::{focus_now, sized_item};
+use delivery_fixture::items::{focus_now, seed_range, sized_item};
 use delivery_fixture::media::{hit_log, hits, media_body, serve_recording};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness_at;
@@ -17,24 +17,17 @@ use tokio::sync::Mutex;
 #[tokio::test]
 async fn delivery_manager_resumes_from_the_persisted_manifest() {
     let root = temp_directory("ghostr-delivery-restart");
+    let log = hit_log();
+    let origin = serve_recording("origin", media_body(), log.clone()).await;
+    let item = sized_item("aa11", &origin, 16, 1_000);
     let earlier = PartialRangeStore::with_capacity(
         root.clone(),
         Arc::new(Mutex::new(0)),
         StoreCapacity::system(u64::MAX),
     );
-    earlier
-        .write_range("aa11", 0, &media_body()[..8])
-        .await
-        .expect("seed the first half");
-
-    let log = hit_log();
-    let origin = serve_recording("origin", media_body(), log.clone()).await;
+    seed_range(&earlier, &item, 0, &media_body()[..8]).await;
     let harness = start_harness_at(root, DeliveryOptions::default());
-    harness.handle.update_focus(focus_now(
-        vec![sized_item("aa11", &origin, 16, 1_000)],
-        0,
-        5_000,
-    ));
+    harness.handle.update_focus(focus_now(vec![item], 0, 5_000));
 
     wait_for_ranges(&harness.store, "aa11", &[(0, 16)]).await;
     let recorded = hits(&log);

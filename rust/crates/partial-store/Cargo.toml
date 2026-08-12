@@ -5,6 +5,8 @@ edition = "2021"
 description = "Sparse on-disk store of partially downloaded byte ranges, with free-space-aware capacity and LRU eviction."
 
 [dependencies]
+ghostr-engine = { path = "../engine" }
+
 anyhow = { workspace = true }
 log = { workspace = true }
 sha2 = { workspace = true }

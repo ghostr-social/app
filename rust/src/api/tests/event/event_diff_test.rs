@@ -1,5 +1,5 @@
-use crate::api::delivery_types::FfiDeliveryEventKind;
 use crate::api::delivery::snapshots::{error_event, event_for, DeliverySnapshot};
+use crate::api::delivery_types::FfiDeliveryEventKind;
 
 fn snapshot(startable: bool, bytes: u64) -> DeliverySnapshot {
     DeliverySnapshot {

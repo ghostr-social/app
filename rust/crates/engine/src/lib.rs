@@ -6,11 +6,17 @@
 pub mod budget;
 pub mod catalog;
 pub mod chunk_plan;
+pub mod concurrency;
 pub mod focus;
 pub mod host_stats;
 pub mod inventory_controller;
+pub mod media_timeline;
+pub mod playback;
+pub mod rendition;
+pub mod representation;
 pub mod scoring;
 pub mod tiers;
+pub mod video_rendition;
 
 #[cfg(test)]
 mod tests;

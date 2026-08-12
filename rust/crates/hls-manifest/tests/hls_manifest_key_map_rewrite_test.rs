@@ -1,5 +1,5 @@
-use url::Url;
 use ghostr_hls_manifest::hls_manifest::{rewrite_hls_manifest, HlsResourceKind};
+use url::Url;
 
 #[test]
 fn rewrites_encryption_keys_and_initialization_maps_as_assets() {

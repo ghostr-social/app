@@ -3,7 +3,7 @@ mod gateway_fixture;
 use axum::body::to_bytes;
 use axum::http::header::{ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_TYPE};
 use axum::http::StatusCode;
-use gateway_fixture::progressive::{progressive_harness, video_request};
+use gateway_fixture::progressive::progressive_harness;
 use tower::ServiceExt;
 
 #[tokio::test]
@@ -21,11 +21,8 @@ async fn serves_a_fully_present_video_with_complete_length_headers() {
         .await
         .expect("bytes");
 
-    let response = harness
-        .router
-        .oneshot(video_request("clip", None))
-        .await
-        .expect("response");
+    let request = harness.video_request("clip", None).await;
+    let response = harness.router.oneshot(request).await.expect("response");
 
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(response.headers()[CONTENT_TYPE], "video/mp4");

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/platform/media/video_player_playback_port.dart';
+import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:video_player/video_player.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
@@ -16,9 +17,11 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: const VideoPlayerPlaybackPort().buildSurface(
-          media: VideoMediaSource.local('/cache/video.mp4'),
-          isActive: true,
+        home: VideoPlayerPlaybackPort().buildSurface(
+          VideoPlaybackSurfaceRequest(
+            media: VideoMediaSource.local('/cache/video.mp4'),
+            isActive: true,
+          ),
         ),
       ),
     );
@@ -26,13 +29,22 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.byType(VideoPlayer), findsOneWidget);
 
+    platform.position = const Duration(seconds: 1);
+    await tester.pump(const Duration(milliseconds: 100));
+    platform.emit(
+      VideoEvent(
+        eventType: VideoEventType.isPlayingStateUpdate,
+        isPlaying: true,
+      ),
+    );
+    platform.emit(VideoEvent(eventType: VideoEventType.bufferingStart));
     platform.emit(
       VideoEvent(
         eventType: VideoEventType.isPlayingStateUpdate,
         isPlaying: false,
       ),
     );
-    platform.emit(VideoEvent(eventType: VideoEventType.bufferingStart));
+    await tester.pump();
     await tester.pump();
 
     expect(find.bySemanticsLabel('Buffering video'), findsOneWidget);

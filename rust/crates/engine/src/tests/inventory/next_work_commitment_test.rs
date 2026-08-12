@@ -22,7 +22,7 @@ fn bench(watch_ms: u64) -> WorkBench {
 }
 
 #[test]
-fn watch_time_past_the_threshold_finishes_the_current_tail_first() {
+fn watch_time_past_the_threshold_prioritizes_the_current_reserve() {
     let requests = bench(3_000).run();
 
     let first = &requests[0];
@@ -32,7 +32,7 @@ fn watch_time_past_the_threshold_finishes_the_current_tail_first() {
 }
 
 #[test]
-fn committed_tail_chunks_come_in_file_order_before_startability() {
+fn committed_current_gets_one_reserve_chunk_before_ahead_startability() {
     let requests = bench(3_000).run();
 
     let tail_starts: Vec<u64> = requests
@@ -40,10 +40,26 @@ fn committed_tail_chunks_come_in_file_order_before_startability() {
         .take_while(|request| request.tier == Tier::T1CurrentTail)
         .map(|request| request.chunk.range.start)
         .collect();
-    assert_eq!(tail_starts.len(), 6);
-    assert!(tail_starts.windows(2).all(|pair| pair[0] < pair[1]));
-    assert_eq!(requests[6].tier, Tier::T2Startability);
-    assert_eq!(requests[6].chunk.post, PostId::new("b"));
+    assert_eq!(tail_starts, vec![2_000_000]);
+    assert_eq!(requests[1].tier, Tier::T2Startability);
+    assert_eq!(requests[1].chunk.post, PostId::new("b"));
+}
+
+#[test]
+fn gateway_demand_advances_current_past_its_startup_reserve() {
+    let mut bench = bench(3_000);
+    bench
+        .present
+        .insert(PostId::new("a"), vec![ByteRange::new(0, 3_000_000)]);
+    bench.demand.gateway_demand = true;
+
+    let current = bench
+        .run()
+        .into_iter()
+        .find(|request| request.chunk.post == PostId::new("a"))
+        .expect("decoder demand advances the current item");
+    assert_eq!(current.tier, Tier::T0PlaybackEmergency);
+    assert_eq!(current.chunk.range.start, 3_000_000);
 }
 
 #[test]

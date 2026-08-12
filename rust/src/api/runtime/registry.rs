@@ -3,9 +3,9 @@
 use crate::api::runtime::discovery::{DiscoveryBoot, DiscoveryRuntime};
 use crate::api::runtime::tracked_items::TrackedItems;
 use crate::discovery::cache::client_with_event_cache;
-use ghostr_gateway::runtime::{GatewayConfiguration, GatewayRuntime};
 use anyhow::bail;
 use flutter_rust_bridge::frb;
+use ghostr_gateway::runtime::{GatewayConfiguration, GatewayRuntime};
 use once_cell::sync::{Lazy, OnceCell};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;

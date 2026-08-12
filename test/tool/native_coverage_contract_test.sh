@@ -4,36 +4,35 @@ set -eu
 checker=tool/check_native_coverage.awk
 fixture=$(mktemp -d)
 trap 'rm -rf "$fixture"' EXIT
+failed=0
 
-resolve_path() {
-  case "$1" in
-    rust/src/*|rust/crates/*) printf '%s\n' "$1" ;;
-    *)
-      rg --files rust/src rust/crates |
-        awk -F/ -v name="$1" '$NF == name { print; exit }'
-      ;;
-  esac
-}
-
-complete_lcov=$fixture/complete.lcov
+thresholds=$fixture/thresholds
 sed -n \
   's/^[[:space:]]*threshold\["\([^"]*\)"\][[:space:]]*=.*$/\1/p' \
-  "$checker" |
+  "$checker" >"$thresholds"
+
+while IFS= read -r required; do
+  if ! test -f "$required"; then
+    printf 'Native coverage threshold targets missing source: %s\n' "$required"
+    failed=1
+  fi
+done <"$thresholds"
+[ "$failed" -eq 0 ] || exit "$failed"
+
+complete_lcov=$fixture/complete.lcov
+sed -n '1,$p' "$thresholds" |
   while IFS= read -r required; do
-    source=$(resolve_path "$required")
-    test -n "$source"
-    printf 'SF:%s/%s\nDA:1,1\nend_of_record\n' "$fixture" "$source"
+    printf 'SF:%s/%s\nDA:1,1\nend_of_record\n' "$fixture" "$required"
   done >"$complete_lcov"
 
 collision_lcov=$fixture/collision.lcov
 {
-  printf 'SF:%s/rust/src/synthetic/event_identity.rs\n' "$fixture"
+  printf 'SF:%s/rust/src/synthetic/catalog.rs\n' "$fixture"
   printf 'DA:1,0\nend_of_record\n'
   sed -n '1,$p' "$complete_lcov"
 } >"$collision_lcov"
 
 collision_output=$fixture/collision.out
-failed=0
 
 require_threshold() {
   actual=$(awk -v source="$1" \
@@ -46,11 +45,25 @@ require_threshold() {
 }
 
 require_threshold rust/crates/engine/src/budget.rs 100
-require_threshold rust/crates/engine/src/inventory_controller.rs 100
-require_threshold rust/crates/discovery/src/plan_executor.rs 100
-require_threshold rust/crates/delivery/src/delivery_retry.rs 100
-require_threshold rust/crates/media-store/src/partial_range_manifest.rs 100
-require_threshold rust/crates/delivery/src/cache_registry.rs 100
+require_threshold rust/crates/engine/src/concurrency.rs 100
+require_threshold rust/crates/engine/src/concurrency/occupancy.rs 100
+require_threshold rust/crates/engine/src/catalog/renditions.rs 100
+require_threshold rust/crates/engine/src/media_timeline/sidx.rs 100
+require_threshold rust/crates/engine/src/rendition/policy.rs 100
+require_threshold rust/crates/media-model/src/imeta_extras.rs 100
+require_threshold rust/crates/delivery/src/debug/network.rs 95
+require_threshold rust/crates/delivery/src/debug/network/bandwidth.rs 100
+require_threshold rust/crates/delivery/src/manager/inflight/reconciliation.rs 100
+require_threshold rust/crates/delivery/src/manager/quality.rs 95
+require_threshold rust/crates/delivery/src/manager/cooldown_timers.rs 95
+require_threshold rust/crates/delivery/src/manager/retry.rs 100
+require_threshold rust/crates/delivery/src/manager/retry/cooldowns.rs 100
+require_threshold rust/crates/delivery/src/manager/timeline.rs 95
+require_threshold rust/crates/delivery/src/manager/workers.rs 95
+require_threshold rust/crates/gateway/src/progressive/capabilities.rs 99
+require_threshold rust/crates/gateway/src/progressive/stream/source.rs 95
+require_threshold rust/crates/partial-store/src/partial_range_store/representation.rs 99
+require_threshold rust/src/api/focus_control.rs 95
 
 if ! awk -f "$checker" "$collision_lcov" >"$collision_output" 2>&1; then
   printf '%s\n' 'unrelated same-basename LCOV record changed the contract result'
@@ -59,7 +72,7 @@ if ! awk -f "$checker" "$collision_lcov" >"$collision_output" 2>&1; then
 fi
 
 missing_lcov=$fixture/missing.lcov
-sed 's#rust/crates/media-model/src/event_identity.rs#rust/src/synthetic/event_identity.rs#' \
+sed 's#rust/crates/engine/src/catalog.rs#rust/src/synthetic/catalog.rs#' \
   "$complete_lcov" >"$missing_lcov"
 missing_output=$fixture/missing.out
 if awk -f "$checker" "$missing_lcov" >"$missing_output" 2>&1; then
@@ -67,7 +80,7 @@ if awk -f "$checker" "$missing_lcov" >"$missing_output" 2>&1; then
   failed=1
 fi
 if ! grep -Fq \
-  'Missing native coverage record for rust/crates/media-model/src/event_identity.rs' \
+  'Missing native coverage record for rust/crates/engine/src/catalog.rs' \
   "$missing_output"; then
   printf '%s\n' 'missing canonical path was not reported exactly'
   sed -n '1,$p' "$missing_output"

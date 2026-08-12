@@ -121,9 +121,11 @@ class ComposeForm extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.media),
             child: bindings.playbackPort.buildSurface(
-              media: media,
-              isActive: bindings.isActive,
-              onPlaybackMediaReleased: bindings.onMediaReleased,
+              VideoPlaybackSurfaceRequest(
+                media: media,
+                isActive: bindings.isActive,
+                onPlaybackMediaReleased: bindings.onMediaReleased,
+              ),
             ),
           ),
         ),

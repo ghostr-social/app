@@ -3,11 +3,13 @@
 //! only at startup, and a cap that moved below what the store holds
 //! evicts instead of merely refusing.
 
+use crate::partial_range_store::capacity::CapacityRevision;
 use crate::partial_range_store::{eviction, Entries, PartialRangeStore};
 use anyhow::{Error, Result};
 use log::warn;
 use std::fmt;
 use std::sync::atomic::Ordering;
+use tokio::sync::watch;
 
 /// A write the store could not admit: the effective cap was reached and
 /// nothing unleased was left to give back. Callers above the store read
@@ -17,6 +19,13 @@ use std::sync::atomic::Ordering;
 pub struct OutOfSpace {
     /// Bytes that would still have to be freed for the write to land.
     pub short: u64,
+    revision: CapacityRevision,
+}
+
+impl OutOfSpace {
+    pub fn capacity_revision(&self) -> CapacityRevision {
+        self.revision
+    }
 }
 
 impl fmt::Display for OutOfSpace {
@@ -37,6 +46,21 @@ impl PartialRangeStore {
     /// than refused buffers.
     pub fn refusals(&self) -> u64 {
         self.refusals.load(Ordering::Relaxed)
+    }
+
+    /// Capacity changes are separate from ordinary range writes, so a
+    /// parked downloader wakes only when its refusal may have changed.
+    pub fn capacity_changes(&self) -> watch::Receiver<u64> {
+        self.capacity.events().subscribe()
+    }
+
+    /// One forced free-space measurement for a parked delivery episode.
+    /// An unchanged answer emits no event and is not polled again.
+    pub async fn recheck_capacity(&self) -> u64 {
+        let mut entries = self.entries.lock().await;
+        let used = *self.used_bytes.lock().await;
+        self.capacity.recheck(&self.root, used).await;
+        self.enforce_locked(&mut entries).await
     }
 
     /// Applies a positive user budget to subsequent admissions. The
@@ -83,6 +107,7 @@ impl PartialRangeStore {
         key: &str,
         wanted: u64,
     ) -> Result<()> {
+        let revision = self.capacity.events().revision();
         let short = self.shortfall(wanted).await;
         if short == 0 {
             return Ok(());
@@ -90,7 +115,7 @@ impl PartialRangeStore {
         let freed = self.evict(entries, key, short).await;
         match freed >= short {
             true => Ok(()),
-            false => Err(self.refuse(short - freed).await),
+            false => Err(self.refuse(short - freed, revision).await),
         }
     }
 
@@ -109,14 +134,14 @@ impl PartialRangeStore {
     /// decision. Eviction still runs on every attempt: a lease dropped
     /// meanwhile may have made room, and refusing then would cost the
     /// user a video the store could have served.
-    async fn refuse(&self, short: u64) -> Error {
+    async fn refuse(&self, short: u64, revision: CapacityRevision) -> Error {
         let mut refused = self.refused.lock().await;
         let generation = self.capacity.generation();
         if *refused != Some(generation) {
             *refused = Some(generation);
             self.refusals.fetch_add(1, Ordering::Relaxed);
         }
-        OutOfSpace { short }.into()
+        OutOfSpace { short, revision }.into()
     }
 
     /// Discards least recently used videos until `wanted` bytes are

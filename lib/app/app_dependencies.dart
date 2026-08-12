@@ -2,6 +2,7 @@ import 'package:ghostr/core/media/media_picker_port.dart';
 import 'package:ghostr/core/media/incoming_video_share.dart';
 import 'package:ghostr/core/errors/failure_reporter.dart';
 import 'package:ghostr/app/video_catalog_services.dart';
+import 'package:ghostr/app/production_app_update.dart';
 import 'package:ghostr/features/activity/domain/activity_repository.dart';
 import 'package:ghostr/features/session/domain/session_repository.dart';
 import 'package:ghostr/features/settings/domain/app_settings_repository.dart';
@@ -21,6 +22,7 @@ class AppDependencies {
     required this.videoPlaybackPort,
     required this.videoShareWorkflow,
     required this.failureReporter,
+    this.appUpdateRuntime,
   });
 
   final SessionRepository sessionRepository;
@@ -33,6 +35,13 @@ class AppDependencies {
   final VideoPlaybackPort videoPlaybackPort;
   final VideoShareWorkflow videoShareWorkflow;
   final FailureReporter failureReporter;
+  final AppUpdateRuntime? appUpdateRuntime;
 
-  Future<void> close() => incomingVideoSharePort.close();
+  Future<void> close() {
+    final updateRuntime = appUpdateRuntime;
+    return Future.wait([
+      Future<void>.sync(incomingVideoSharePort.close),
+      if (updateRuntime != null) Future<void>.sync(updateRuntime.dispose),
+    ]);
+  }
 }

@@ -9,7 +9,8 @@ use delivery_fixture::media::{hit_log, media_body, serve_recording};
 use delivery_fixture::options::{base_params, DeliveryOptions};
 use delivery_fixture::start_harness;
 use delivery_fixture::wait::{wait_for_file, wait_for_ranges};
-use ghostr_engine::EngineParams;
+use ghostr_delivery::playback_demand::DemandSignal;
+use ghostr_engine::{ByteRange, EngineParams, PostId};
 use range_fixture::reject::serve_failing;
 
 #[tokio::test]
@@ -26,6 +27,11 @@ async fn delivery_manager_finalizes_posts_without_an_advertised_digest() {
         5_000,
     ));
 
+    wait_for_ranges(&harness.store, "aa11", &[(0, 8)]).await;
+    harness.demand.emit(DemandSignal {
+        post: PostId::new("aa11"),
+        range: ByteRange::new(8, 16),
+    });
     wait_for_ranges(&harness.store, "aa11", &[(0, 16)]).await;
     wait_for_file(&harness.root.join("aa11.video")).await;
     std::fs::remove_dir_all(&harness.root).ok();

@@ -7,18 +7,21 @@
 use crate::chunk::cancel::CancelToken;
 use crate::chunk::network::{prepare_network, NetworkPreparation};
 use crate::chunk::response::{classify, RangeReply};
-use crate::chunk::stream::{stream_into, Streamed};
+use crate::chunk::sink::ChunkWrite;
+use crate::chunk::stream::{stream_into, StreamInput, Streamed};
+use crate::chunk::traffic::{ChunkTraffic, NoopTraffic};
 use crate::debug::network::NetworkThrottle;
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Result};
 use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_engine::ByteRange;
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
-use reqwest::header::RANGE;
-use reqwest::Response;
 use std::time::Duration;
 use tokio::time::Instant;
+
+mod opened;
+pub use crate::chunk::sink::ChunkSink;
+use opened::send_ranged;
 
 /// One granted transfer: which range of which URL to fetch.
 pub struct ChunkSpec<'a> {
@@ -26,12 +29,6 @@ pub struct ChunkSpec<'a> {
     pub url: &'a str,
     pub range: ByteRange,
     pub timeouts: TransferTimeouts,
-}
-
-/// Where fetched bytes land.
-pub struct ChunkSink<'a> {
-    pub store: &'a PartialRangeStore,
-    pub key: &'a str,
 }
 
 /// What one chunk transfer accomplished.
@@ -58,15 +55,27 @@ pub async fn download_chunk_throttled(
     cancel: &CancelToken,
     network: &NetworkThrottle,
 ) -> Result<ChunkResult> {
-    run_download(spec, sink, stats, cancel, Some(network)).await
+    run_download(spec, sink, stats, cancel, Some(network), &mut NoopTraffic).await
 }
 
-async fn run_download(
+pub(crate) async fn download_chunk_observed<W: ChunkWrite + ?Sized>(
     spec: &ChunkSpec<'_>,
-    sink: &ChunkSink<'_>,
+    sink: &W,
+    stats: &mut HostStats,
+    cancel: &CancelToken,
+    network: &NetworkThrottle,
+    traffic: &mut dyn ChunkTraffic,
+) -> Result<ChunkResult> {
+    run_download(spec, sink, stats, cancel, Some(network), traffic).await
+}
+
+async fn run_download<W: ChunkWrite + ?Sized>(
+    spec: &ChunkSpec<'_>,
+    sink: &W,
     stats: &mut HostStats,
     cancel: &CancelToken,
     network: Option<&NetworkThrottle>,
+    traffic: &mut dyn ChunkTraffic,
 ) -> Result<ChunkResult> {
     ensure!(!spec.range.is_empty(), "chunk grant must not be empty");
     let started = Instant::now();
@@ -74,7 +83,7 @@ async fn run_download(
         NetworkPreparation::Ready(permit) => permit,
         NetworkPreparation::Cancelled => return Ok(cancelled_before_request()),
     };
-    match transfer(spec, sink, cancel, network).await {
+    match transfer(spec, sink, cancel, network, traffic).await {
         Ok(result) => {
             note_delivery(stats, spec.url, &result, started.elapsed());
             Ok(result)
@@ -83,39 +92,54 @@ async fn run_download(
     }
 }
 
-async fn transfer(
+async fn transfer<W: ChunkWrite + ?Sized>(
     spec: &ChunkSpec<'_>,
-    sink: &ChunkSink<'_>,
+    sink: &W,
     cancel: &CancelToken,
     network: Option<&NetworkThrottle>,
+    traffic: &mut dyn ChunkTraffic,
 ) -> Result<ChunkResult> {
-    let response = send_ranged(spec).await?;
+    let opened = send_ranged(spec).await?;
+    traffic.opened(opened.ttfb);
+    let response = opened.response;
     let full_length = response.content_length();
     match classify(&response, spec.range)? {
         RangeReply::Ignored => Ok(range_ignored(full_length)),
-        RangeReply::Partial { total } => completed(
-            stream_into(response, spec, sink, cancel, network).await?,
-            true,
-            total,
-        ),
+        RangeReply::Partial { range, total } => {
+            let returned = ChunkSpec {
+                client: spec.client,
+                url: spec.url,
+                range,
+                timeouts: spec.timeouts,
+            };
+            completed(
+                stream_into(StreamInput {
+                    response,
+                    spec: &returned,
+                    sink,
+                    cancel,
+                    network,
+                    traffic,
+                })
+                .await?,
+                true,
+                total,
+            )
+        }
         RangeReply::FullBody => completed(
-            stream_into(response, spec, sink, cancel, network).await?,
+            stream_into(StreamInput {
+                response,
+                spec,
+                sink,
+                cancel,
+                network,
+                traffic,
+            })
+            .await?,
             false,
             full_length,
         ),
     }
-}
-
-async fn send_ranged(spec: &ChunkSpec<'_>) -> Result<Response> {
-    let header = format!("bytes={}-{}", spec.range.start, spec.range.end - 1);
-    let request = spec.client.get(spec.url)?.header(RANGE, header);
-    let response = tokio::time::timeout(spec.timeouts.headers, request.send())
-        .await
-        .context("chunk response headers timed out")?
-        .context("chunk request failed")?;
-    response
-        .error_for_status()
-        .context("chunk request rejected")
 }
 
 fn completed(

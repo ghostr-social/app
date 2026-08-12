@@ -2,18 +2,21 @@
 //! attempt budget that runs out far sooner for permanent-class
 //! failures, and a long retirement cooldown for sources that spend it.
 //!
-//! Without this the manager re-dialled a failing source on every event
-//! after a flat three-second pause, forever — a device pass recorded
-//! 174 identical DNS failures against one host in ten minutes. A
-//! retired source is dropped from its post's candidate list, so the
-//! post falls back to another mirror or becomes terminal instead of
-//! being rescheduled by every reconcile pass.
+//! Retired sources leave the post's candidate list, allowing mirror
+//! fallback or a terminal result instead of endless rescheduling.
 
 use crate::manager::failure::FailureClass;
 use ghostr_engine::PostId;
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 use tokio::time::Instant;
+
+mod cooldowns;
+mod policy;
+
+pub(crate) use cooldowns::CooldownId;
+use cooldowns::Cooldowns;
+pub use policy::{Retry, RetryPolicy};
 
 /// One post's use of one source URL: the unit attempts are counted on.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -28,53 +31,12 @@ impl Source {
     }
 }
 
-/// The backoff ladder and the attempt budgets it is spent from.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct RetryPolicy {
-    /// Pause after the first failed attempt; doubles from there.
-    pub base: Duration,
-    /// Ceiling for the doubling, before jitter.
-    pub max: Duration,
-    /// Fraction of the pause spread randomly around it, in `[0, 1]`.
-    pub jitter: f64,
-    /// Attempts a source gets against transient failures.
-    pub transient_attempts: u32,
-    /// Attempts a source gets against permanent-class failures.
-    pub permanent_attempts: u32,
-    /// How long a source stays retired once its budget ran out. Long
-    /// enough to stop a storm, short enough that a passing outage does
-    /// not silence a host for the rest of the session.
-    pub revive_after: Duration,
-}
-
-impl Default for RetryPolicy {
-    fn default() -> Self {
-        Self {
-            base: Duration::from_secs(3),
-            max: Duration::from_secs(300),
-            jitter: 0.25,
-            transient_attempts: 5,
-            permanent_attempts: 2,
-            revive_after: Duration::from_secs(600),
-        }
-    }
-}
-
-/// What the policy grants after one failed attempt.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Retry {
-    /// Try this source again, but not before the given pause.
-    After(Duration),
-    /// The source spent its budget; stop dialling it.
-    GiveUp,
-}
-
 /// The attempt ledger for every (post, source) pair that has failed.
 pub struct RetryBook {
     policy: RetryPolicy,
     attempts: HashMap<Source, u32>,
     retired: HashMap<Source, Instant>,
-    cooling: HashSet<PostId>,
+    cooldowns: Cooldowns,
 }
 
 impl RetryBook {
@@ -83,7 +45,7 @@ impl RetryBook {
             policy,
             attempts: HashMap::new(),
             retired: HashMap::new(),
-            cooling: HashSet::new(),
+            cooldowns: Cooldowns::default(),
         }
     }
 
@@ -104,6 +66,7 @@ impl RetryBook {
     pub fn note_success(&mut self, source: &Source) {
         self.attempts.remove(source);
         self.retired.remove(source);
+        self.cooldowns.note_success(&source.post);
     }
 
     /// Whether `source` is still inside its retirement cooldown.
@@ -116,10 +79,17 @@ impl RetryBook {
     /// The post's candidate URLs that are still worth dialling, in the
     /// order they were advertised.
     pub fn live_urls(&self, post: &PostId, urls: &[String]) -> Vec<String> {
-        urls.iter()
+        let mut live: Vec<_> = urls
+            .iter()
             .filter(|url| !self.is_retired(&Source::new(post.clone(), (*url).clone())))
             .cloned()
-            .collect()
+            .collect();
+        live.sort_by_key(|url| self.failure_count(post, url));
+        live
+    }
+
+    pub fn has_ready_alternative(&self, post: &PostId, failed: &str, urls: &[String]) -> bool {
+        self.live_urls(post, urls).iter().any(|url| url != failed)
     }
 
     /// Whether every source of the post is retired: nothing can be
@@ -128,30 +98,64 @@ impl RetryBook {
         !urls.is_empty() && self.live_urls(post, urls).is_empty()
     }
 
-    /// Marks the post as pausing between attempts. `false` when a
+    /// Marks the post as pausing between attempts. `None` when a
     /// pause was already running, so timers are not stacked.
-    pub(crate) fn cool_down(&mut self, post: PostId) -> bool {
-        self.cooling.insert(post)
+    pub(crate) fn cool_down(&mut self, post: PostId) -> Option<CooldownId> {
+        self.cooldowns.begin(post)
     }
 
-    pub(crate) fn warm_up(&mut self, post: &PostId) {
-        self.cooling.remove(post);
+    pub(crate) fn representation_changed(&mut self, post: &PostId) {
+        self.cooldowns.representation_changed(post);
+    }
+
+    pub(crate) fn focus_changed(&mut self, previous: Option<&PostId>, current: Option<&PostId>) {
+        self.cooldowns.focus_changed(previous, current);
+    }
+
+    pub(crate) fn warm_up(&mut self, post: &PostId, cooldown: CooldownId) -> bool {
+        self.cooldowns.finish(post, cooldown)
+    }
+
+    pub(crate) fn expedite_demand(&mut self, post: &PostId, offset: u64) -> bool {
+        self.cooldowns.expedite_demand(post, offset)
     }
 
     pub(crate) fn is_cooling(&self, post: &PostId) -> bool {
-        self.cooling.contains(post)
+        self.cooldowns.is_active(post)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn demand_tracking_units(&self) -> usize {
+        self.cooldowns.demand_tracking_units()
     }
 
     pub(crate) fn clear(&mut self) {
         self.attempts.clear();
         self.retired.clear();
-        self.cooling.clear();
+        self.cooldowns.clear();
+    }
+
+    /// Completed attempt/retirement history follows hot scheduling
+    /// retention. Live cooldowns keep their timer ownership until expiry.
+    pub(crate) fn retain_history(&mut self, retained: &HashSet<PostId>) {
+        self.attempts
+            .retain(|source, _| retained.contains(&source.post));
+        self.retired
+            .retain(|source, _| retained.contains(&source.post));
+        self.cooldowns.retain_demand(retained);
     }
 
     fn charge(&mut self, source: &Source) -> u32 {
         let attempts = self.attempts.entry(source.clone()).or_insert(0);
         *attempts += 1;
         *attempts
+    }
+
+    fn failure_count(&self, post: &PostId, url: &str) -> u32 {
+        self.attempts
+            .get(&Source::new(post.clone(), url.to_owned()))
+            .copied()
+            .unwrap_or(0)
     }
 
     fn budget(&self, class: FailureClass) -> u32 {
@@ -168,6 +172,7 @@ impl RetryBook {
         let now = Instant::now();
         self.retired.retain(|_, until| *until > now);
         self.attempts.remove(&source);
+        self.cooldowns.clear_credit(&source.post);
         self.retired.insert(source, now + self.policy.revive_after);
         Retry::GiveUp
     }

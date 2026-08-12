@@ -3,10 +3,14 @@
 //! hysteresis. Pure bookkeeping — no IO, no clocks.
 
 use crate::catalog::Catalog;
-use crate::chunk_plan::{ChunkPlan, PlanInput};
 use crate::focus::FocusState;
 use crate::{ByteRange, EngineParams, PostId};
 use std::collections::HashMap;
+
+mod startability;
+mod timeline;
+pub use startability::is_startable;
+use startability::{count_inventory, InventoryInputs};
 
 /// Control-loop mode: hunger races for startability, comfort deepens.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -41,7 +45,7 @@ pub struct InventoryCounts {
     /// Posts actually considered: current + ahead, capped at
     /// `startable_window`.
     pub(crate) considered: usize,
-    /// How many of those are startable right now.
+    /// How many consecutive posts from current are startable now.
     pub(crate) startable: usize,
     /// Effective target: the configured target, never above
     /// `considered`.
@@ -53,6 +57,12 @@ pub struct InventoryCounts {
 pub struct InventoryState {
     pub(crate) counts: InventoryCounts,
     pub mode: Mode,
+}
+
+impl InventoryState {
+    pub fn current_startable(self) -> bool {
+        self.counts.startable > 0
+    }
 }
 
 /// Remembers the mode across observations so hysteresis has memory.
@@ -85,7 +95,24 @@ impl InventoryController {
         focus: &FocusState,
         present: &PresentRanges,
     ) -> InventoryState {
-        let counts = count_inventory(catalog, focus, present, &self.params);
+        let seconds = self.params.head_seconds;
+        self.inventory_state_with(catalog, focus, present, &|_| seconds)
+    }
+
+    pub fn inventory_state_with(
+        &mut self,
+        catalog: &Catalog,
+        focus: &FocusState,
+        present: &PresentRanges,
+        head_seconds: &dyn Fn(&PostId) -> u64,
+    ) -> InventoryState {
+        let counts = count_inventory(InventoryInputs {
+            catalog,
+            focus,
+            present,
+            params: &self.params,
+            head_seconds,
+        });
         self.mode = next_mode(self.mode, counts.startable, counts.target);
         InventoryState {
             counts,
@@ -105,86 +132,4 @@ pub(crate) fn next_mode(current: Mode, startable: usize, target: usize) -> Mode 
     } else {
         current
     }
-}
-
-/// Plan §3 startability: the whole head is on disk and moov is
-/// reachable — either duration was known up front (moov placement
-/// resolvable from the head), or the tail probe bytes are on disk.
-/// Posts missing from the catalog are never startable.
-pub fn is_startable(
-    catalog: &Catalog,
-    post: &PostId,
-    have: &[ByteRange],
-    params: &EngineParams,
-) -> bool {
-    let Some(entry) = catalog.lookup(post) else {
-        return false;
-    };
-    let input = PlanInput {
-        size_bytes: entry.total_bytes(),
-        duration_ms: entry.meta.duration_ms,
-        bitrate_bps: catalog.estimated_bitrate(post, params),
-    };
-    let plan = ChunkPlan::from_input(input, params);
-    head_complete(&plan, have) && moov_present(&plan, have)
-}
-
-fn count_inventory(
-    catalog: &Catalog,
-    focus: &FocusState,
-    present: &PresentRanges,
-    params: &EngineParams,
-) -> InventoryCounts {
-    let upcoming = upcoming_window(focus, params.startable_window);
-    let startable = upcoming
-        .iter()
-        .filter(|post| is_startable(catalog, post, present.ranges(post), params))
-        .count();
-    InventoryCounts {
-        considered: upcoming.len(),
-        startable,
-        target: params.startable_target.min(upcoming.len()),
-    }
-}
-
-fn upcoming_window(focus: &FocusState, limit: usize) -> &[PostId] {
-    let window = focus.window();
-    let ahead = &window[focus.current_index().min(window.len())..];
-    &ahead[..ahead.len().min(limit)]
-}
-
-fn head_complete(plan: &ChunkPlan, have: &[ByteRange]) -> bool {
-    plan.head_ranges()
-        .into_iter()
-        .all(|range| covers(range, have))
-}
-
-fn moov_present(plan: &ChunkPlan, have: &[ByteRange]) -> bool {
-    if !plan.needs_tail_probe() {
-        return true;
-    }
-    match plan.tail_probe_range() {
-        Some(range) => covers(range, have),
-        None => false,
-    }
-}
-
-/// Whether `range` is fully covered by the union of `have` (unsorted,
-/// possibly overlapping or adjoining).
-fn covers(range: ByteRange, have: &[ByteRange]) -> bool {
-    let mut cursor = range.start;
-    while cursor < range.end {
-        match reach_past(cursor, have) {
-            Some(next) => cursor = next,
-            None => return false,
-        }
-    }
-    true
-}
-
-fn reach_past(cursor: u64, have: &[ByteRange]) -> Option<u64> {
-    have.iter()
-        .filter(|range| range.start <= cursor && range.end > cursor)
-        .map(|range| range.end)
-        .max()
 }

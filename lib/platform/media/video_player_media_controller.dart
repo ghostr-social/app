@@ -30,6 +30,13 @@ void _requireVisibleVideo(VideoPlayerController controller) {
       !size.height.isFinite ||
       size.width <= 0 ||
       size.height <= 0) {
-    throw StateError('Media has no visible video track.');
+    throw const _InvisibleVideoTrack();
   }
+}
+
+final class _InvisibleVideoTrack implements Exception {
+  const _InvisibleVideoTrack();
+
+  @override
+  String toString() => 'Media has no visible video track.';
 }

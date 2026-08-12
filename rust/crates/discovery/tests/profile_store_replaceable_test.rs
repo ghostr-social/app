@@ -5,8 +5,8 @@
 mod feed_support;
 
 use feed_support::profile_event;
-use nostr_sdk::Keys;
 use ghostr_discovery::content::profiles::ProfileStore;
+use nostr_sdk::Keys;
 
 #[test]
 fn profile_store_newest_metadata_wins_regardless_of_arrival_order() {

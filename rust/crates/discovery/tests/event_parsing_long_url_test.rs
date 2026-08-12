@@ -1,8 +1,8 @@
 //! Signed CDN URLs get long. The safety bound must admit realistic links
 //! while still keeping pathological content out of the native cache.
 
-use nostr_sdk::{Event, EventBuilder, Keys};
 use ghostr_discovery::content::parsing::video_post_from_event;
+use nostr_sdk::{Event, EventBuilder, Keys};
 
 fn note_linking(url: &str) -> Event {
     EventBuilder::text_note(format!("watch this {url}"))

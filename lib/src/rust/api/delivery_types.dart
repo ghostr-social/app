@@ -6,7 +6,7 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`
 
 /// One per-post delivery update streamed to Dart.
 class FfiDeliveryEvent {
@@ -58,7 +58,6 @@ enum FfiDeliveryEventKind {
 
   /// The store could not be read for this post; see `detail`.
   error,
-  ;
 }
 
 /// One entry of the ordered focus window, including the current item.
@@ -109,8 +108,4 @@ class FfiFocusItem {
 }
 
 /// How the engine delivers one playable media item.
-enum FfiMediaDelivery {
-  progressive,
-  hls,
-  ;
-}
+enum FfiMediaDelivery { progressive, hls }

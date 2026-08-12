@@ -6,8 +6,8 @@
 mod discovery_support;
 
 use discovery_support::{mute_list, p_tag};
-use nostr_sdk::Keys;
 use ghostr_discovery::content::social_graph::SocialGraph;
+use nostr_sdk::Keys;
 
 #[test]
 fn newer_mute_list_unmutes_removed_creators() {

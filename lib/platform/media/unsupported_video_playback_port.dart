@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:ghostr/core/media/video_media_cache_identity.dart';
-import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:ghostr/shared/widgets/async_state_panel.dart';
 
@@ -8,14 +7,10 @@ final class UnsupportedVideoPlaybackPort implements VideoPlaybackPort {
   const UnsupportedVideoPlaybackPort();
 
   @override
-  Widget buildSurface({
-    required VideoMediaSource media,
-    required bool isActive,
-    void Function()? onPlaybackMediaReleased,
-  }) {
+  Widget buildSurface(VideoPlaybackSurfaceRequest request) {
     return _UnsupportedVideoPlaybackSurface(
-      key: ValueKey(media.inventoryPlaybackIdentity),
-      onPlaybackMediaReleased: onPlaybackMediaReleased,
+      key: ValueKey(request.media.inventoryPlaybackIdentity),
+      onPlaybackMediaReleased: request.onPlaybackMediaReleased,
     );
   }
 }

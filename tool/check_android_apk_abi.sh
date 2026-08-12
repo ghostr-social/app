@@ -5,7 +5,7 @@ apk_path=$1
 target_abi=$2
 
 unzip -Z1 "$apk_path" | awk -F/ -v target="$target_abi" '
-  $1 == "lib" && $2 != target {
+  $1 == "lib" && $2 != "" && $2 != target {
     print "Unexpected packaged ABI: " $2 > "/dev/stderr"
     invalid = 1
   }

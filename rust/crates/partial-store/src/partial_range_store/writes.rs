@@ -16,18 +16,29 @@ struct PlannedWrite {
 
 impl PartialRangeStore {
     pub async fn write_range(&self, key: &str, offset: u64, bytes: &[u8]) -> Result<()> {
+        let mut entries = self.entries.lock().await;
+        self.write_range_locked(&mut entries, key, offset, bytes)
+            .await
+    }
+
+    pub(super) async fn write_range_locked(
+        &self,
+        entries: &mut Entries,
+        key: &str,
+        offset: u64,
+        bytes: &[u8],
+    ) -> Result<()> {
         if bytes.is_empty() {
             return Ok(());
         }
         let end = offset
             .checked_add(bytes.len() as u64)
             .context("partial range end overflows")?;
-        let mut entries = self.entries.lock().await;
-        let plan = self.plan_write(&mut entries, key, offset..end).await?;
-        self.make_room(&mut entries, key, plan.added).await?;
+        let plan = self.plan_write(entries, key, offset..end).await?;
+        self.make_room(entries, key, plan.added).await?;
         disk::write_at(&self.paths.partial(key), offset, bytes).await?;
         disk::save_manifest(&self.paths.manifest(key), &plan.manifest).await?;
-        self.record_write(&mut entries, key, plan).await
+        self.record_write(entries, key, plan).await
     }
 
     pub async fn set_total_len(&self, key: &str, len: u64) -> Result<()> {

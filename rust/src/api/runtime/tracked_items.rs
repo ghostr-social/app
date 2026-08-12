@@ -3,6 +3,7 @@
 
 use crate::engine::{DataUsageLevel, VideoMeta};
 use flutter_rust_bridge::frb;
+use ghostr_delivery::delivery_events::FocusGeneration;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::sync::Notify;
@@ -17,6 +18,7 @@ pub(crate) struct TrackedItems {
 struct Tracked {
     items: HashMap<String, VideoMeta>,
     level: DataUsageLevel,
+    latest_focus_generation: Option<u64>,
 }
 
 impl TrackedItems {
@@ -25,15 +27,33 @@ impl TrackedItems {
             inner: Arc::new(RwLock::new(Tracked {
                 items: HashMap::new(),
                 level: DataUsageLevel::Balanced,
+                latest_focus_generation: None,
             })),
             changed: Arc::new(Notify::new()),
         }
     }
 
-    /// Replaces the watched set, mirroring a focus-window replacement.
-    pub(crate) fn replace(&self, entries: Vec<(String, VideoMeta)>) {
-        self.write().items = entries.into_iter().collect();
+    /// Atomically replaces watched items only for a newer focus.
+    pub(crate) fn replace_focus(
+        &self,
+        generation: FocusGeneration,
+        entries: Vec<(String, VideoMeta)>,
+    ) -> bool {
+        let Some(generation) = generation.value() else {
+            return false;
+        };
+        let mut tracked = self.write();
+        if tracked
+            .latest_focus_generation
+            .is_some_and(|latest| generation <= latest)
+        {
+            return false;
+        }
+        tracked.latest_focus_generation = Some(generation);
+        tracked.items = entries.into_iter().collect();
+        drop(tracked);
         self.changed.notify_waiters();
+        true
     }
 
     /// Adds one post (playback registration). It survives only until

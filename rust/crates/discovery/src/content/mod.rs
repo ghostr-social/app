@@ -6,4 +6,5 @@
 pub mod candidates;
 pub mod parsing;
 pub mod profiles;
+mod renditions;
 pub mod social_graph;

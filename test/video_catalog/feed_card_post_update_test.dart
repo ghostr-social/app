@@ -42,8 +42,10 @@ Widget _app({required VideoPost post, required FeedCardActions actions}) {
     home: Scaffold(
       body: FeedCard(
         post: post,
-        playbackPort: FakeVideoPlaybackPort(),
-        isActive: true,
+        playback: FeedCardPlayback(
+          port: FakeVideoPlaybackPort(),
+          isActive: true,
+        ),
         actions: actions,
       ),
     ),

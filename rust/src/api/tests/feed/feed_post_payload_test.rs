@@ -2,9 +2,9 @@
 //! full FFI row payload, with a gateway-safe post id that is stable
 //! across addressable revisions of the same video.
 
+use crate::api::delivery::focus_mapping::validate_post_id;
 use crate::api::delivery_types::FfiMediaDelivery;
 use crate::api::feed::mapping::{feed_post, post_gateway_id};
-use crate::api::delivery::focus_mapping::validate_post_id;
 use crate::api::tests::support::{creator_profile, parsed_video_post};
 use crate::discovery::content::parsing::ParsedVideoPost;
 use crate::engine::DeliveryKind;

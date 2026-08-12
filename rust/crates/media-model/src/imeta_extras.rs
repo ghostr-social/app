@@ -8,6 +8,8 @@ use crate::video_link_scan::is_bounded_http_url;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ImetaExtras {
+    /// NIP-71 `bitrate`: average bits per second, when positive.
+    pub bitrate_bps: Option<u64>,
     /// imeta `size`: total bytes, when a positive integer.
     pub size_bytes: Option<u64>,
     /// imeta `duration`: seconds (fractional allowed) converted to ms.
@@ -22,6 +24,7 @@ pub struct ImetaExtras {
 
 pub(crate) fn imeta_extras(tag: &[String]) -> ImetaExtras {
     ImetaExtras {
+        bitrate_bps: imeta_field(tag, "bitrate").and_then(positive_integer),
         size_bytes: imeta_field(tag, "size").and_then(size_bytes),
         duration_ms: imeta_field(tag, "duration").and_then(duration_ms),
         dimensions: imeta_field(tag, "dim").and_then(dimensions),
@@ -31,7 +34,11 @@ pub(crate) fn imeta_extras(tag: &[String]) -> ImetaExtras {
 }
 
 fn size_bytes(raw: &str) -> Option<u64> {
-    raw.trim().parse::<u64>().ok().filter(|bytes| *bytes > 0)
+    positive_integer(raw)
+}
+
+fn positive_integer(raw: &str) -> Option<u64> {
+    raw.trim().parse::<u64>().ok().filter(|value| *value > 0)
 }
 
 fn duration_ms(raw: &str) -> Option<u64> {

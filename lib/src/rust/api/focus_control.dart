@@ -7,22 +7,14 @@ import '../frb_generated.dart';
 import 'delivery_types.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `progressive_entries`, `progressive_url`, `register_progressive`
+// These functions are ignored because they are not marked as `pub`: `accept_focus`, `progressive_entries`, `progressive_url`, `register_progressive`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `fmt`
 
 /// Replaces the ordered focus window (items include the current one),
 /// refreshes the catalog, and wakes the delivery manager. `feed_id`
-/// is carried for the phase-2 multi-feed surface; a single feed
-/// exists today, so it is accepted but not yet interpreted.
-Future<void> ffiUpdateFocus(
-        {required String feedId,
-        required List<FfiFocusItem> items,
-        required int currentIndex,
-        required BigInt watchMs}) =>
-    RustLib.instance.api.crateApiFocusControlFfiUpdateFocus(
-        feedId: feedId,
-        items: items,
-        currentIndex: currentIndex,
-        watchMs: watchMs);
+/// is carried for a future multi-feed surface; one feed exists today.
+Future<void> ffiUpdateFocus({required FfiFocusUpdate update}) =>
+    RustLib.instance.api.crateApiFocusControlFfiUpdateFocus(update: update);
 
 /// Loopback playback URL for one item, registering it with the
 /// gateway when unknown. Downloads for a post are still driven by the
@@ -32,3 +24,39 @@ Future<void> ffiUpdateFocus(
 /// kind instead of a half-working progressive URL for HLS.
 Future<String> ffiPlaybackUrl({required FfiFocusItem item}) =>
     RustLib.instance.api.crateApiFocusControlFfiPlaybackUrl(item: item);
+
+/// One atomic, monotonically versioned focus write from Flutter.
+class FfiFocusUpdate {
+  final String feedId;
+  final List<FfiFocusItem> items;
+  final int currentIndex;
+  final BigInt watchMs;
+  final BigInt generation;
+
+  const FfiFocusUpdate({
+    required this.feedId,
+    required this.items,
+    required this.currentIndex,
+    required this.watchMs,
+    required this.generation,
+  });
+
+  @override
+  int get hashCode =>
+      feedId.hashCode ^
+      items.hashCode ^
+      currentIndex.hashCode ^
+      watchMs.hashCode ^
+      generation.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FfiFocusUpdate &&
+          runtimeType == other.runtimeType &&
+          feedId == other.feedId &&
+          items == other.items &&
+          currentIndex == other.currentIndex &&
+          watchMs == other.watchMs &&
+          generation == other.generation;
+}

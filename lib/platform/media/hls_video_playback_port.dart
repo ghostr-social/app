@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/core/media/video_media_cache_identity.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/features/video_inventory/domain/hls_playback_gateway_port.dart';
@@ -18,30 +19,26 @@ final class HlsVideoPlaybackPort implements VideoPlaybackPort {
   const HlsVideoPlaybackPort({
     required VideoPlaybackPort delegate,
     required HlsPlaybackGatewayPort gateway,
-  })  : _delegate = delegate,
-        _gateway = gateway;
+  }) : _delegate = delegate,
+       _gateway = gateway;
 
   final VideoPlaybackPort _delegate;
   final HlsPlaybackGatewayPort _gateway;
 
   @override
-  Widget buildSurface({
-    required VideoMediaSource media,
-    required bool isActive,
-    void Function()? onPlaybackMediaReleased,
-  }) {
+  Widget buildSurface(VideoPlaybackSurfaceRequest request) {
+    final media = request.media;
     if (!_requiresGateway(media)) {
-      return _delegate.buildSurface(
-        media: media,
-        isActive: isActive,
-        onPlaybackMediaReleased: onPlaybackMediaReleased,
-      );
+      return _delegate.buildSurface(request);
     }
     return _HlsVideoPlaybackSurface(
       port: this,
-      media: media,
-      isActive: isActive,
-      onPlaybackMediaReleased: onPlaybackMediaReleased,
+      request: VideoPlaybackSurfaceRequest(
+        media: media,
+        videoId: request.videoId,
+        isActive: request.isActive,
+        onPlaybackMediaReleased: request.onPlaybackMediaReleased,
+      ),
     );
   }
 }

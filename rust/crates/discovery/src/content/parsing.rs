@@ -1,10 +1,11 @@
 //! Converts one accepted Nostr event into one playable video post.
 //! Feed assembly consumes [`video_post_from_event`]; nothing here does IO.
 
-use ghostr_engine::{DeliveryKind, VideoMeta};
+use super::renditions::{progressive_renditions, video_meta};
+use ghostr_engine::video_rendition::VideoRendition;
+use ghostr_engine::VideoMeta;
 use ghostr_media_model::event_identity::VIDEO_KINDS;
 use ghostr_media_model::native_media_metadata::NativeMediaMetadata;
-use ghostr_media_model::native_models::NativeVideoDelivery;
 use ghostr_media_model::nostr_event_media::{event_media, tag_values};
 use ghostr_media_model::post_text::{
     caption_without_urls, content_hashtags, normalized_hashtag, push_unique,
@@ -45,6 +46,7 @@ pub struct ParsedVideoPost {
     pub blurhash: Option<String>,
     pub thumbnail_url: Option<String>,
     pub meta: VideoMeta,
+    pub renditions: Vec<VideoRendition>,
 }
 
 impl ParsedVideoPost {
@@ -71,7 +73,8 @@ pub fn video_post_from_event(event: &Event) -> Option<ParsedVideoPost> {
     }
     let identifier = addressable_identifier(event)?;
     let media = event_media(event)?;
-    Some(parsed_post(event, identifier, media))
+    let renditions = progressive_renditions(event);
+    Some(parsed_post(event, identifier, media, renditions))
 }
 
 fn accepts_kind(event: &Event) -> bool {
@@ -104,8 +107,9 @@ fn parsed_post(
     event: &Event,
     published: Option<String>,
     media: NativeMediaMetadata,
+    renditions: Vec<VideoRendition>,
 ) -> ParsedVideoPost {
-    let urls = media_urls(&media);
+    let meta = video_meta(&media);
     ParsedVideoPost {
         event_id: event.id.to_hex(),
         author_pubkey: event.pubkey.to_hex(),
@@ -113,36 +117,14 @@ fn parsed_post(
         identifier: published.as_deref().map(|raw| raw.trim().to_owned()),
         published_identifier: published,
         created_at: event.created_at.as_u64(),
-        caption: caption_without_urls(&event.content, &urls),
+        caption: caption_without_urls(&event.content, &meta.urls),
         title: media.title.clone(),
         hashtags: post_hashtags(event),
         dimensions: media.extras.dimensions,
         blurhash: media.extras.blurhash.clone(),
         thumbnail_url: media.extras.image_url.clone(),
-        meta: video_meta(media, urls),
-    }
-}
-
-fn media_urls(media: &NativeMediaMetadata) -> Vec<String> {
-    let mut urls = vec![media.url.clone()];
-    urls.extend(media.fallback_urls.iter().cloned());
-    urls
-}
-
-fn video_meta(media: NativeMediaMetadata, urls: Vec<String>) -> VideoMeta {
-    VideoMeta {
-        urls,
-        delivery: delivery_kind(media.delivery),
-        sha256: media.expected_digest,
-        size_bytes: media.extras.size_bytes,
-        duration_ms: media.extras.duration_ms,
-    }
-}
-
-fn delivery_kind(delivery: NativeVideoDelivery) -> DeliveryKind {
-    match delivery {
-        NativeVideoDelivery::Hls => DeliveryKind::Hls,
-        NativeVideoDelivery::Progressive => DeliveryKind::Progressive,
+        meta,
+        renditions,
     }
 }
 

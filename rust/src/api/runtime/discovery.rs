@@ -5,17 +5,17 @@
 
 use crate::api::feed::decisions::LoadMoreAction;
 use crate::api::feed::state::FeedState;
-use crate::discovery::scheduler::DiscoveryHandle;
+use crate::discovery::execution::relay_executor::RelayPlanExecutor;
 use crate::discovery::feed::spec::FeedSpec;
 use crate::discovery::feed::store::FeedId;
 use crate::discovery::outbox::bootstrap::OutboxBootstrap;
-use crate::discovery::execution::relay_executor::RelayPlanExecutor;
 use crate::discovery::outbox::directory::SharedOutboxDirectory;
 use crate::discovery::relay::pool::RelayPoolOwner;
+use crate::discovery::scheduler::DiscoveryHandle;
 use crate::engine::inventory_controller::Mode;
 use crate::engine::DataUsageLevel;
-use ghostr_delivery::delivery_events::DeliveryHandle;
 use flutter_rust_bridge::frb;
+use ghostr_delivery::delivery_events::DeliveryHandle;
 use nostr_sdk::{Client, Timestamp};
 use std::sync::{Arc, Mutex, MutexGuard};
 use tokio::sync::watch;

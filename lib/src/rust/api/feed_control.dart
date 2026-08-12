@@ -12,19 +12,21 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 /// Captures the native account-session token before Dart waits on any
 /// previous feed. A later open must present the same token.
 Future<BigInt> ffiFeedSession({String? expectedAccountHex}) => RustLib
-    .instance.api
+    .instance
+    .api
     .crateApiFeedControlFfiFeedSession(expectedAccountHex: expectedAccountHex);
 
 /// Opens one feed in the Rust feed store, starts its first-page
 /// queries, and returns the feed handle every later call names.
-Future<String> ffiOpenFeed(
-        {required FfiFeedSpec spec,
-        String? expectedAccountHex,
-        required BigInt expectedSessionGeneration}) =>
-    RustLib.instance.api.crateApiFeedControlFfiOpenFeed(
-        spec: spec,
-        expectedAccountHex: expectedAccountHex,
-        expectedSessionGeneration: expectedSessionGeneration);
+Future<String> ffiOpenFeed({
+  required FfiFeedSpec spec,
+  String? expectedAccountHex,
+  required BigInt expectedSessionGeneration,
+}) => RustLib.instance.api.crateApiFeedControlFfiOpenFeed(
+  spec: spec,
+  expectedAccountHex: expectedAccountHex,
+  expectedSessionGeneration: expectedSessionGeneration,
+);
 
 /// Requests one older page. Returns whether more content may exist:
 /// `false` once the feed is exhausted (or unknown), `true` while a
@@ -32,7 +34,9 @@ Future<String> ffiOpenFeed(
 /// the tracked cursor when given.
 Future<bool> ffiLoadMore({required String feedId, BigInt? olderThanSecs}) =>
     RustLib.instance.api.crateApiFeedControlFfiLoadMore(
-        feedId: feedId, olderThanSecs: olderThanSecs);
+      feedId: feedId,
+      olderThanSecs: olderThanSecs,
+    );
 
 /// Closes the feed: its posts drop and its update streams end.
 Future<void> ffiCloseFeed({required String feedId}) =>
