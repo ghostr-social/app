@@ -9,6 +9,7 @@ import 'package:ghostr/core/media/video_media_cache_identity.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_observation.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_recovery_policy.dart';
+import 'package:ghostr/features/video_inventory/domain/playback_screen_awake_port.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_session.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_telemetry_port.dart';
 import 'package:ghostr/platform/media/video_player_playback_observer.dart';
@@ -35,13 +36,16 @@ class VideoPlayerPlaybackPort implements VideoPlaybackPort {
     PlaybackTelemetryPort telemetry = const NoopPlaybackTelemetryPort(),
     PlaybackRecoveryPolicy recoveryPolicy =
         const PlaybackRecoveryPolicy.standard(),
+    PlaybackScreenAwakePort screenAwake = const NoopPlaybackScreenAwakePort(),
   }) : _controllerDisposer = controllerDisposer,
        _telemetry = telemetry,
-       _recoveryPolicy = recoveryPolicy;
+       _recoveryPolicy = recoveryPolicy,
+       _screenAwake = screenAwake;
 
   final VideoPlayerControllerDisposer _controllerDisposer;
   final PlaybackTelemetryPort _telemetry;
   final PlaybackRecoveryPolicy _recoveryPolicy;
+  final PlaybackScreenAwakePort _screenAwake;
 
   @override
   Widget buildSurface(VideoPlaybackSurfaceRequest request) {
@@ -52,6 +56,7 @@ class VideoPlayerPlaybackPort implements VideoPlaybackPort {
         controllerDisposer: _controllerDisposer,
         telemetry: _telemetry,
         recoveryPolicy: _recoveryPolicy,
+        screenAwake: _screenAwake,
       ),
     );
   }
@@ -62,9 +67,11 @@ final class _VideoPlayerSurfaceDependencies {
     required this.controllerDisposer,
     required this.telemetry,
     required this.recoveryPolicy,
+    required this.screenAwake,
   });
 
   final VideoPlayerControllerDisposer controllerDisposer;
   final PlaybackTelemetryPort telemetry;
   final PlaybackRecoveryPolicy recoveryPolicy;
+  final PlaybackScreenAwakePort screenAwake;
 }

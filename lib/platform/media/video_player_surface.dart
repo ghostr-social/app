@@ -20,6 +20,7 @@ class _VideoPlayerSurface extends StatefulWidget {
       dependencies.controllerDisposer;
   PlaybackTelemetryPort get telemetry => dependencies.telemetry;
   PlaybackRecoveryPolicy get recoveryPolicy => dependencies.recoveryPolicy;
+  PlaybackScreenAwakePort get screenAwake => dependencies.screenAwake;
 
   @override
   State<_VideoPlayerSurface> createState() => _VideoPlayerSurfaceState();
