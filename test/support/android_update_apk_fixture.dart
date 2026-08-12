@@ -1,3 +1,14 @@
+/// How `apksigner verify --print-certs` labels the signing certificate line:
+/// build-tools below 35 use `Signer #1 ...`, newer releases `V2 Signer: ...`.
+enum ApksignerCertificateFormat {
+  legacy('Signer #1 certificate SHA-256 digest'),
+  modern('V2 Signer: certificate SHA-256 digest');
+
+  const ApksignerCertificateFormat(this.label);
+
+  final String label;
+}
+
 final class AndroidUpdateApkFixture {
   const AndroidUpdateApkFixture({
     this.packageName = 'app.ghostr',
@@ -6,6 +17,7 @@ final class AndroidUpdateApkFixture {
     this.certificate = stableCertificate,
     this.abi = 'arm64-v8a',
     this.includesIntegrationTest = false,
+    this.apksignerFormat = ApksignerCertificateFormat.legacy,
   });
 
   final String packageName;
@@ -14,6 +26,7 @@ final class AndroidUpdateApkFixture {
   final String certificate;
   final String abi;
   final bool includesIntegrationTest;
+  final ApksignerCertificateFormat apksignerFormat;
 }
 
 const stableCertificate =
