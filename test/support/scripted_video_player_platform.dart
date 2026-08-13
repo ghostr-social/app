@@ -20,6 +20,9 @@ class ScriptedVideoPlayerPlatform extends VideoPlayerPlatform {
 
   void emit(VideoEvent event) => _latestStream.add(event);
 
+  void emitFor(int textureId, VideoEvent event) =>
+      _streams[textureId]!.add(event);
+
   void emitError(String message) {
     _latestStream.addError(
       PlatformException(code: 'video-error', message: message),

@@ -31,6 +31,6 @@ void main() {
       testbed.probe.playingLatency(focus),
       lessThan(deviceManifestRetryStartupTarget),
     );
-    expectNoPlaybackError();
+    expectNoPlaybackError(tester);
   });
 }

@@ -12,9 +12,11 @@ ANDROID_RELEASE_APK := build/app/outputs/flutter-apk/app-release.apk
 ANDROID_AGENT_SDK ?= $(if $(ANDROID_SDK_ROOT),$(ANDROID_SDK_ROOT),$(ANDROID_HOME))
 ANDROID_AGENT_AVD_NAME ?= Ghostr_Agent_API_37.1
 ANDROID_AGENT_AVD_PORT ?= 5580
-ANDROID_AGENT_AVD_PACKAGE := system-images;android-37.1;google_apis_playstore_ps16k;x86_64
+ANDROID_AGENT_HOST_ARCH ?= $(shell uname -m)
+ANDROID_AGENT_SYSTEM_IMAGE_ABI ?= $(if $(filter arm64 aarch64,$(ANDROID_AGENT_HOST_ARCH)),arm64-v8a,x86_64)
+ANDROID_AGENT_AVD_PACKAGE := system-images;android-37.1;google_apis_playstore_ps16k;$(ANDROID_AGENT_SYSTEM_IMAGE_ABI)
 ANDROID_AGENT_AVD_HOME ?= $(if $(ANDROID_AVD_HOME),$(ANDROID_AVD_HOME),$(if $(ANDROID_USER_HOME),$(ANDROID_USER_HOME)/avd,$(HOME)/.android/avd))
-ANDROID_AGENT_IMAGE_DIR := $(ANDROID_AGENT_SDK)/system-images/android-37.1/google_apis_playstore_ps16k/x86_64
+ANDROID_AGENT_IMAGE_DIR := $(ANDROID_AGENT_SDK)/system-images/android-37.1/google_apis_playstore_ps16k/$(ANDROID_AGENT_SYSTEM_IMAGE_ABI)
 ANDROID_GRADLE_JAVA_HOME ?= $(shell if [ -x /usr/libexec/java_home ]; then /usr/libexec/java_home -v 21; fi)
 ANDROID_GRADLE_JAVA_OPTION := $(if $(ANDROID_GRADLE_JAVA_HOME),-Dorg.gradle.java.home=$(ANDROID_GRADLE_JAVA_HOME),)
 VIDEO_ANDROID_EMULATOR_SERIAL ?= emulator-5580
@@ -29,6 +31,13 @@ VIDEO_ANDROID_INTEGRATION_TESTS := \
 	integration_test/rapid_swipes_video_test.dart \
 	integration_test/held_response_video_test.dart \
 	integration_test/manifest_retry_video_test.dart
+VIDEO_PLAYER_CONTRACT_TESTS := \
+	integration_test/video_player_lifecycle_contract_test.dart \
+	integration_test/video_player_error_contract_test.dart \
+	integration_test/video_player_stall_contract_test.dart \
+	integration_test/video_player_preparation_contract_test.dart \
+	integration_test/video_player_prepared_generation_contract_test.dart \
+	integration_test/video_player_adapter_identity_contract_test.dart
 FLAGS ?=
 WEB_DEBUG_CACHE_DIR ?= $(CURDIR)/rust/target/video-debug-cache
 WEB_DEBUG_RUST_DIR ?= $(CURDIR)/rust
@@ -42,7 +51,8 @@ HAWK_REVISION_SHORT := 98efa9f
 	web-contract-test video-user-e2e video-user-e2e-contract-test \
 	video-user-e2e-prerequisite-check video-user-e2e-impairments \
 	video-delivery-target-contract-test video-android-emulator-tests \
-	video-android-physical-tests \
+	video-android-physical-tests video-player-contract-target-test \
+	video-player-contract video-player-contract-android video-player-contract-ios \
 	native-coverage-contract-test rust rust-no-clean gen icons run run-fast \
 	run-fast-profile android-unit-tests android-debug-apk android-debug-apk-check \
 	android-release-apk android-release-apk-check android-agent-avd-create \
@@ -105,6 +115,17 @@ video-delivery-target-contract-test: ## Verify stable browser and Android video 
 
 video-android-emulator-tests: ## Run the device video playback matrix on emulator-5580.
 	$(FLUTTER) test $(VIDEO_ANDROID_INTEGRATION_TESTS) -d "$(VIDEO_ANDROID_EMULATOR_SERIAL)"
+
+video-player-contract-target-test: ## Verify automatic player contract targets.
+	sh test/tool/video_player_contract_target_test.sh
+
+video-player-contract: video-player-contract-android video-player-contract-ios ## Run both locked player contracts.
+
+video-player-contract-android: video-player-contract-target-test ## Run the player contract on the repository AVD.
+	tool/run_video_player_contract_android.sh $(VIDEO_PLAYER_CONTRACT_TESTS)
+
+video-player-contract-ios: video-player-contract-target-test ## Run the player contract on an automatic iOS simulator.
+	tool/run_video_player_contract_ios.sh $(VIDEO_PLAYER_CONTRACT_TESTS)
 
 video-android-physical-tests: ## Run the device video playback matrix on physical Android.
 	@test -n "$(ANDROID_PHYSICAL_SERIAL)" || { echo "Set ANDROID_PHYSICAL_SERIAL to an attached device serial." >&2; exit 1; }
@@ -174,28 +195,10 @@ android-release-apk-check: android-release-apk ## Build and validate the Android
 
 android-agent-avd-create: ## Install and create the dedicated Android agent AVD.
 	@test -n "$(ANDROID_AGENT_SDK)" || { echo "Set ANDROID_SDK_ROOT or ANDROID_HOME." >&2; exit 1; }
-	@test -x "$(ANDROID_AGENT_SDK)/cmdline-tools/latest/bin/sdkmanager" || { echo "Android command-line tools are missing." >&2; exit 1; }
-	@if [ ! -d "$(ANDROID_AGENT_IMAGE_DIR)" ]; then \
-		"$(ANDROID_AGENT_SDK)/cmdline-tools/latest/bin/sdkmanager" --install "$(ANDROID_AGENT_AVD_PACKAGE)"; \
-	fi
-	@if [ ! -f "$(ANDROID_AGENT_AVD_HOME)/$(ANDROID_AGENT_AVD_NAME).ini" ]; then \
-		mkdir -p "$(ANDROID_AGENT_AVD_HOME)"; \
-		printf 'no\n' | ANDROID_AVD_HOME="$(ANDROID_AGENT_AVD_HOME)" "$(ANDROID_AGENT_SDK)/cmdline-tools/latest/bin/avdmanager" create avd \
-			--name "$(ANDROID_AGENT_AVD_NAME)" --package "$(ANDROID_AGENT_AVD_PACKAGE)" \
-			--device medium_phone --sdcard 512M; \
-	fi
-	@avd_path=$$(awk -F= '$$1 == "path" {print $$2; exit}' "$(ANDROID_AGENT_AVD_HOME)/$(ANDROID_AGENT_AVD_NAME).ini"); \
-	config="$$avd_path/config.ini"; \
-	test -f "$$config" || { echo "AVD config not found: $$config" >&2; exit 1; }; \
-	expected_image="system-images/android-37.1/google_apis_playstore_ps16k/x86_64/"; \
-	actual_image=$$(awk -F= '$$1 == "image.sysdir.1" {print $$2; exit}' "$$config"); \
-	test "$$actual_image" = "$$expected_image" || { echo "Existing AVD uses $$actual_image; it was not modified." >&2; exit 1; }; \
-	if grep -q '^disk\.dataPartition\.size=' "$$config"; then \
-		sed -i 's/^disk\.dataPartition\.size=.*/disk.dataPartition.size=16G/' "$$config"; \
-	else \
-		printf 'disk.dataPartition.size=16G\n' >> "$$config"; \
-	fi; \
-	echo "$(ANDROID_AGENT_AVD_NAME) is ready with 16 GB of durable internal storage."
+	@tool/prepare_android_agent_avd.sh \
+		"$(ANDROID_AGENT_SDK)" "$(ANDROID_AGENT_AVD_HOME)" \
+		"$(ANDROID_AGENT_AVD_NAME)" "$(ANDROID_AGENT_AVD_PACKAGE)" \
+		"$(ANDROID_AGENT_IMAGE_DIR)"
 
 android-agent-avd-run: android-agent-avd-create ## Start the dedicated Android agent AVD on emulator-5580.
 	@exec "$(ANDROID_AGENT_SDK)/emulator/emulator" -avd "$(ANDROID_AGENT_AVD_NAME)" \

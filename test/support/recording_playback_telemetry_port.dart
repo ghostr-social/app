@@ -1,3 +1,4 @@
+import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_observation.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_session.dart';
@@ -10,10 +11,16 @@ final class RecordingPlaybackTelemetryPort implements PlaybackTelemetryPort {
   var _nextGeneration = 0;
 
   @override
-  PlaybackSession activate(PlaybackVideoId videoId) {
-    final session = PlaybackSession(videoId, ++_nextGeneration);
+  PlaybackSession openSession(
+    PlaybackVideoId videoId,
+    PlaybackDeliveryId deliveryId,
+  ) {
+    return PlaybackSession(videoId, deliveryId, ++_nextGeneration);
+  }
+
+  @override
+  void activate(PlaybackSession session) {
     activations.add(session);
-    return session;
   }
 
   @override
