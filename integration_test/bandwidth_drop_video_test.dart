@@ -30,6 +30,6 @@ void main() {
       lessThanOrEqualTo(deviceRebufferTarget),
     );
     expect(testbed.server.impairedResponses, greaterThan(0));
-    expectNoPlaybackError();
+    expectNoPlaybackError(tester);
   });
 }

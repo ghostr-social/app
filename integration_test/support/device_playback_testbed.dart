@@ -24,10 +24,12 @@ final class DevicePlaybackTestbed {
 
   final DeviceVideoServer server;
   final DevicePlaybackProbe probe;
-  bool _semanticsEnabled = false;
 
-  Future<PlaybackFocus> show(WidgetTester tester, String rawVideoId) async {
-    _enableSemantics(tester);
+  Future<PlaybackFocus> show(
+    WidgetTester tester,
+    String rawVideoId, {
+    bool isActive = true,
+  }) async {
     final videoId = PlaybackVideoId.parse(rawVideoId);
     final focus = probe.markFocus(videoId);
     final media = ProxiedHlsVideoMediaSource(
@@ -40,7 +42,7 @@ final class DevicePlaybackTestbed {
             VideoPlaybackSurfaceRequest(
               media: media,
               videoId: videoId,
-              isActive: true,
+              isActive: isActive,
             ),
           ),
         ),
@@ -50,11 +52,4 @@ final class DevicePlaybackTestbed {
   }
 
   Future<void> close() => server.close();
-
-  void _enableSemantics(WidgetTester tester) {
-    if (_semanticsEnabled) return;
-    _semanticsEnabled = true;
-    final handle = tester.ensureSemantics();
-    addTearDown(handle.dispose);
-  }
 }

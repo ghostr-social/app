@@ -30,6 +30,7 @@ extension _VideoPlayerSurfaceRecovery on _VideoPlayerSurfaceState {
     _valueWatch.detach();
     _endObservation(controller.value);
     _controller = null;
+    _playbackSession = null;
     _playbackPhase = null;
   }
 
@@ -110,6 +111,15 @@ extension _VideoPlayerSurfaceRecovery on _VideoPlayerSurfaceState {
     if (_recoveryState == _VideoPlayerRecoveryState.deferred &&
         widget.isActive) {
       _resumeDeferredRecovery();
+      return;
+    }
+    if (!widget.isActive) {
+      _coverPlayback();
+      return;
+    }
+    if (_controller == null &&
+        _recoveryState == _VideoPlayerRecoveryState.ready) {
+      _startLoad();
       return;
     }
     _syncPlayback();

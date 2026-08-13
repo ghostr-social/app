@@ -37,7 +37,7 @@ void main() {
         testbed.server.cancellationWasteBytes,
         lessThanOrEqualTo(192 * 1024),
       );
-      expectNoPlaybackError();
+      expectNoPlaybackError(tester);
     },
   );
 }
