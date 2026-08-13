@@ -40,7 +40,7 @@ void main() {
         testbed.probe.latestPosition(focus.videoId),
         greaterThanOrEqualTo(stalledAt),
       );
-      expectNoPlaybackError();
+      expectNoPlaybackError(tester);
     },
   );
 }

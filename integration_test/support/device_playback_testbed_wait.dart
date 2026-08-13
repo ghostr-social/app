@@ -48,10 +48,15 @@ Future<void> _tick(WidgetTester tester) async {
   await Future<void>.delayed(const Duration(milliseconds: 20));
 }
 
-void expectNoPlaybackError() {
-  expect(find.text('Video unavailable'), findsNothing);
-  expect(
-    find.bySemanticsLabel(RegExp('Video unavailable|Retry')),
-    findsNothing,
-  );
+void expectNoPlaybackError(WidgetTester tester) {
+  final semantics = tester.ensureSemantics();
+  try {
+    expect(find.text('Video unavailable'), findsNothing);
+    expect(
+      find.bySemanticsLabel(RegExp('Video unavailable|Retry')),
+      findsNothing,
+    );
+  } finally {
+    semantics.dispose();
+  }
 }

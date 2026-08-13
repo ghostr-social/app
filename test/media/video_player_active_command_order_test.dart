@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
@@ -10,25 +8,27 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 import '../support/scripted_video_player_platform.dart';
 
 void main() {
-  testWidgets('rapid active changes finish with the newest playback intent', (
+  testWidgets('rapid cover and return starts only the replacement player', (
     tester,
   ) async {
     final platform = ScriptedVideoPlayerPlatform();
     VideoPlayerPlatform.instance = platform;
-    const port = VideoPlayerPlaybackPort();
+    final port = VideoPlayerPlaybackPort();
     final media = VideoMediaSource.local('/cache/clip.mp4');
     await pumpSurface(tester, port, media, isActive: true);
     platform.commands.clear();
-    platform.pauseGate = Completer<void>();
 
     await pumpSurface(tester, port, media, isActive: false, settle: false);
     await pumpSurface(tester, port, media, isActive: true, settle: false);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
-    expect(platform.commands, ['pause']);
-    platform.pauseGate!.complete();
-    await tester.pump();
-    await tester.pump();
-    expect(platform.commands, ['pause', 'play']);
+    expect(platform.dataSources, hasLength(2));
+    expect(
+      platform.commands.where((command) => command == 'play'),
+      hasLength(1),
+    );
+    expect(platform.commands, isNot(contains(startsWith('seek:'))));
   });
 }
 

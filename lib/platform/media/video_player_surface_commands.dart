@@ -1,6 +1,20 @@
 part of 'video_player_playback_port.dart';
 
 extension _VideoPlayerSurfaceCommands on _VideoPlayerSurfaceState {
+  void _coverPlayback() {
+    final controller = _controller;
+    if (controller == null) return;
+    _playbackIntent += 1;
+    _rememberPlaybackValue(controller.value);
+    _endObservation(controller.value);
+    _valueWatch.detach();
+    _controller = null;
+    _playbackSession = null;
+    _playbackPhase = null;
+    _refresh(() {});
+    _lifecycle.track(_disposeSafely(controller));
+  }
+
   void _syncPlayback() {
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) return;
@@ -43,11 +57,14 @@ extension _VideoPlayerSurfaceCommands on _VideoPlayerSurfaceState {
     if (!_ownsPlaybackIntent(controller, active, intent)) return;
     if (active) {
       _beginObservation(controller.value);
-      await controller.play();
+      await widget.handoff.activate(
+        controller,
+        () => _ownsPlaybackIntent(controller, active, intent),
+      );
       return;
     }
     _endObservation(controller.value);
-    await controller.pause();
+    await widget.handoff.deactivate(controller);
     if (_ownsPlaybackIntent(controller, active, intent)) {
       await controller.seekTo(Duration.zero);
     }

@@ -8,6 +8,7 @@ import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 import '../support/recording_playback_telemetry_port.dart';
+import '../support/playback_delivery_fixture.dart';
 import '../support/scripted_video_player_platform.dart';
 
 void main() {
@@ -18,7 +19,7 @@ void main() {
     VideoPlayerPlatform.instance = platform;
     final telemetry = RecordingPlaybackTelemetryPort();
     final port = VideoPlayerPlaybackPort(telemetry: telemetry);
-    final media = VideoMediaSource.local('/cache/clip.mp4');
+    final media = ProxiedHlsVideoMediaSource(testHlsPlaybackUrl);
     final id = PlaybackVideoId.parse('clip');
 
     await pumpSurface(tester, port, surfaceRequest(media, id, true));

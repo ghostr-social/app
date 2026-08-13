@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:developer';
 
+import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_observation.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_session.dart';
@@ -20,8 +21,8 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
   static const _pendingSessionLimit = 2;
 
   final RustPlaybackReporter _reportPlayback;
-  final LinkedHashMap<int, FfiPlaybackObservation> _pending =
-      LinkedHashMap<int, FfiPlaybackObservation>();
+  final LinkedHashMap<int, ListQueue<FfiPlaybackObservation>> _pending =
+      LinkedHashMap<int, ListQueue<FfiPlaybackObservation>>();
   PlaybackSession? _active;
   Future<void>? _draining;
   int? _sendingGeneration;
@@ -29,18 +30,24 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
   var _nextSequence = 0;
 
   @override
-  PlaybackSession activate(PlaybackVideoId videoId) {
-    final session = PlaybackSession(videoId, ++_nextGeneration);
+  PlaybackSession openSession(
+    PlaybackVideoId videoId,
+    PlaybackDeliveryId deliveryId,
+  ) {
+    return PlaybackSession(videoId, deliveryId, ++_nextGeneration);
+  }
+
+  @override
+  void activate(PlaybackSession session) {
     _active = session;
     _nextSequence = 0;
-    return session;
   }
 
   @override
   void report(PlaybackObservation observation) {
     if (_active != observation.session) return;
     final input = _mapObservation(observation, ++_nextSequence);
-    _pending[observation.session.generation] = input;
+    _enqueue(observation.session.generation, input);
     _boundPendingSessions();
     _draining ??= _drain();
   }
@@ -50,10 +57,18 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
     if (_active == session) _active = null;
   }
 
+  void _enqueue(int generation, FfiPlaybackObservation input) {
+    final queue = _pending.putIfAbsent(generation, ListQueue.new);
+    if (queue.isNotEmpty && queue.last.phase == input.phase) {
+      queue.removeLast();
+    }
+    queue.add(input);
+  }
+
   Future<void> _drain() async {
     while (_pending.isNotEmpty) {
       final generation = _pending.keys.first;
-      final input = _pending.remove(generation)!;
+      final input = _takeNext(generation);
       _sendingGeneration = _needsInactiveFollowUp(input) ? generation : null;
       try {
         await _reportPlayback(input: input);
@@ -68,6 +83,13 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
       _sendingGeneration = null;
     }
     _draining = null;
+  }
+
+  FfiPlaybackObservation _takeNext(int generation) {
+    final queue = _pending[generation]!;
+    final input = queue.removeFirst();
+    if (queue.isEmpty) _pending.remove(generation);
+    return input;
   }
 
   void _boundPendingSessions() {

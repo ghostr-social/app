@@ -21,6 +21,7 @@ class _VideoPlayerSurface extends StatefulWidget {
   PlaybackTelemetryPort get telemetry => dependencies.telemetry;
   PlaybackRecoveryPolicy get recoveryPolicy => dependencies.recoveryPolicy;
   PlaybackScreenAwakePort get screenAwake => dependencies.screenAwake;
+  _VideoPlayerPlaybackHandoff get handoff => dependencies.handoff;
 
   @override
   State<_VideoPlayerSurface> createState() => _VideoPlayerSurfaceState();
@@ -114,6 +115,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   Future<void>? _disposeCurrentController() {
     final controller = _controller;
     _controller = null;
+    _playbackSession = null;
     return controller == null ? null : _disposeSafely(controller);
   }
 
@@ -122,7 +124,8 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
     released?.call();
   }
 
-  Future<void> _disposeSafely(VideoPlayerController controller) {
-    return _lifecycle.dispose(controller);
+  Future<void> _disposeSafely(VideoPlayerController controller) async {
+    await widget.handoff.release(controller);
+    await _lifecycle.dispose(controller);
   }
 }

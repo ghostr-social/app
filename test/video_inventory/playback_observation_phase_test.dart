@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_observation.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_session.dart';
@@ -6,7 +7,8 @@ import 'package:ghostr/features/video_inventory/domain/playback_session.dart';
 void main() {
   test('playback phases make only measured network stalls emergencies', () {
     final videoId = PlaybackVideoId.parse(' clip ');
-    final session = PlaybackSession(videoId, 7);
+    final deliveryId = PlaybackDeliveryId.parse('delivery');
+    final session = PlaybackSession(videoId, deliveryId, 7);
     final observation = PlaybackObservation(
       session: session,
       phase: PlaybackPhase.networkStalled,
@@ -30,14 +32,17 @@ void main() {
       ].every((phase) => !phase.isNetworkStall),
       isTrue,
     );
-    expect(PlaybackSession(PlaybackVideoId.parse('clip'), 7), session);
     expect(
-      PlaybackSession(PlaybackVideoId.parse('clip'), 7).hashCode,
+      PlaybackSession(PlaybackVideoId.parse('clip'), deliveryId, 7),
+      session,
+    );
+    expect(
+      PlaybackSession(PlaybackVideoId.parse('clip'), deliveryId, 7).hashCode,
       session.hashCode,
     );
     expect(PlaybackVideoId.parse('clip').hashCode, videoId.hashCode);
     expect(() => PlaybackVideoId.parse('  '), throwsFormatException);
-    expect(() => PlaybackSession(videoId, 0), throwsArgumentError);
+    expect(() => PlaybackSession(videoId, deliveryId, 0), throwsArgumentError);
     expect(
       () => PlaybackMetrics(
         position: Duration.zero,
