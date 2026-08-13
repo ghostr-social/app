@@ -7,6 +7,7 @@ import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 import '../support/recording_playback_telemetry_port.dart';
+import '../support/playback_delivery_fixture.dart';
 import '../support/scripted_video_player_platform.dart';
 import '../support/video_player_surface_pump.dart';
 
@@ -22,7 +23,7 @@ void main() {
         tester,
         port,
         VideoPlaybackSurfaceRequest(
-          media: VideoMediaSource.local('/cache/clip.mp4'),
+          media: ProxiedHlsVideoMediaSource(testHlsPlaybackUrl),
           videoId: PlaybackVideoId.parse('clip'),
           isActive: true,
         ),

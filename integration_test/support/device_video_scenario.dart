@@ -1,4 +1,5 @@
 enum DeviceVideoScenario {
+  contract,
   bandwidthDrop,
   packetLoss,
   highRtt,

@@ -6,27 +6,16 @@ import 'package:ghostr/platform/media/video_player_playback_port.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
-import '../support/fake_video_player_platform.dart';
+import '../support/failing_prepared_video_player_platform.dart';
 
 void main() {
   testWidgets('shows a retryable state when reset seek fails', (tester) async {
-    final platform = FakeVideoPlayerPlatform();
+    final platform = SeekFailingPreparedVideoPlayerPlatform();
     VideoPlayerPlatform.instance = platform;
-    const port = VideoPlayerPlaybackPort(
+    final port = VideoPlayerPlaybackPort(
       recoveryPolicy: PlaybackRecoveryPolicy.disabled(),
     );
     final media = VideoMediaSource.local('/cache/video.mp4');
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: port.buildSurface(
-          VideoPlaybackSurfaceRequest(media: media, isActive: true),
-        ),
-      ),
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-    platform.failingCalls.add('seekTo');
 
     await tester.pumpWidget(
       MaterialApp(
@@ -35,6 +24,8 @@ void main() {
         ),
       ),
     );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
     await tester.pump();
 
     expect(find.text('Video unavailable'), findsOneWidget);

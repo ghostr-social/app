@@ -9,12 +9,12 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 import '../support/fake_video_player_platform.dart';
 
 void main() {
-  testWidgets('plays the active source and resets replacement controllers', (
+  testWidgets('plays active, releases covered, and prepares replacement', (
     tester,
   ) async {
     final platform = FakeVideoPlayerPlatform();
     VideoPlayerPlatform.instance = platform;
-    const port = VideoPlayerPlaybackPort();
+    final port = VideoPlayerPlaybackPort();
     final first = VideoMediaSource.local('/cache/first.mp4');
 
     await tester.pumpWidget(
@@ -42,7 +42,8 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(platform.calls, containsAllInOrder(['pause', 'seekTo']));
+    expect(platform.calls, contains('cancel'));
+    expect(platform.calls, isNot(contains('seekTo')));
 
     final local = VideoMediaSource.local('/cache/second.mp4');
     await tester.pumpWidget(

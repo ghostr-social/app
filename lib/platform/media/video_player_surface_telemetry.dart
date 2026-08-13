@@ -5,10 +5,8 @@ extension _VideoPlayerSurfaceTelemetry on _VideoPlayerSurfaceState {
     if (_isObserving) return;
     _isObserving = true;
     _playbackObserver.reset();
-    final videoId = widget.videoId;
-    if (videoId != null) {
-      _playbackSession = widget.telemetry.activate(videoId);
-    }
+    final session = _playbackSession ??= _openPlaybackSession();
+    if (session != null) widget.telemetry.activate(session);
     _captureObservation(value);
   }
 
@@ -30,7 +28,6 @@ extension _VideoPlayerSurfaceTelemetry on _VideoPlayerSurfaceState {
       _reportObservation(value, phase);
     }
     final session = _playbackSession;
-    _playbackSession = null;
     _isObserving = false;
     widget.screenAwake.release(this);
     if (session != null) widget.telemetry.deactivate(session);

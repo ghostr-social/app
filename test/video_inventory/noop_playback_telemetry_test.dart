@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_observation.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_telemetry_port.dart';
@@ -6,7 +7,11 @@ import 'package:ghostr/features/video_inventory/domain/playback_telemetry_port.d
 void main() {
   test('default telemetry accepts a complete playback lifecycle', () {
     const telemetry = NoopPlaybackTelemetryPort();
-    final session = telemetry.activate(PlaybackVideoId.parse('clip'));
+    final session = telemetry.openSession(
+      PlaybackVideoId.parse('clip'),
+      PlaybackDeliveryId.parse('delivery'),
+    );
+    telemetry.activate(session);
 
     telemetry.report(
       PlaybackObservation(

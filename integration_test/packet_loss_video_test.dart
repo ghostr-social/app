@@ -35,6 +35,6 @@ void main() {
       testbed.probe.rebufferRatio,
       lessThanOrEqualTo(deviceRebufferTarget),
     );
-    expectNoPlaybackError();
+    expectNoPlaybackError(tester);
   });
 }

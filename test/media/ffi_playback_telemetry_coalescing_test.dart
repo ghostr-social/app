@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_observation.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_session.dart';
@@ -9,7 +10,7 @@ import 'package:ghostr/src/rust/api/playback_types.dart';
 
 void main() {
   test(
-    'keeps only the newest unsent sample from one playback session',
+    'coalesces samples without dropping stall boundary transitions',
     () async {
       final first = Completer<void>();
       final sent = <FfiPlaybackObservation>[];
@@ -21,11 +22,18 @@ void main() {
           return calls == 1 ? first.future : Future.value();
         },
       );
-      final session = telemetry.activate(PlaybackVideoId.parse('clip'));
+      final session = PlaybackSession(
+        PlaybackVideoId.parse('clip'),
+        PlaybackDeliveryId.parse('delivery'),
+        1,
+      );
+      telemetry.activate(session);
 
       telemetry.report(observation(session, PlaybackPhase.starting));
       telemetry.report(observation(session, PlaybackPhase.playing));
-      telemetry.report(observation(session, PlaybackPhase.paused));
+      telemetry.report(observation(session, PlaybackPhase.networkStalled));
+      telemetry.report(observation(session, PlaybackPhase.networkStalled));
+      telemetry.report(observation(session, PlaybackPhase.playing));
       expect(sent.single.phase, FfiPlaybackPhase.starting);
 
       first.complete();
@@ -33,9 +41,12 @@ void main() {
 
       expect(sent.map((item) => item.phase), [
         FfiPlaybackPhase.starting,
-        FfiPlaybackPhase.paused,
+        FfiPlaybackPhase.playing,
+        FfiPlaybackPhase.networkStalled,
+        FfiPlaybackPhase.playing,
       ]);
-      expect(sent.last.sequence, BigInt.from(3));
+      expect(sent[2].sequence, BigInt.from(4));
+      expect(sent.last.sequence, BigInt.from(5));
     },
   );
 }
