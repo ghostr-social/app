@@ -31,6 +31,7 @@ pub(crate) mod time;
 pub(crate) mod timeline;
 pub(crate) mod traffic;
 pub(crate) mod transfers;
+mod tuning;
 pub(crate) mod wake;
 pub(crate) mod wake_lane;
 pub(crate) mod wake_select;
@@ -39,9 +40,10 @@ pub(crate) mod workers;
 use crate::cache_registry::CacheRegistry;
 use crate::debug::network::NetworkThrottle;
 use crate::delivery_events::{command_channel, CommandReceiver, DeliveryHandle};
+use crate::demand_leases::DemandLeases;
 use crate::manager::cooldown_timers::CooldownTimers;
 use crate::manager::pressure::StorePressure;
-use crate::manager::retry::{RetryBook, RetryPolicy};
+use crate::manager::retry::RetryBook;
 use crate::manager::state::DeliveryState;
 use crate::manager::stats::StatsKeeper;
 use crate::manager::traffic::{channel as traffic_channel, TrafficInbox};
@@ -49,48 +51,22 @@ use crate::manager::transfers::{InternalEvent, TransferContext};
 use crate::manager::wake_lane::WakeCursor;
 use crate::manager::workers::DownloadWorkers;
 use crate::mutable_priority_queue::MutablePriorityQueue;
-use crate::playback_demand::{DemandReceiver, DemandSignal};
+use crate::playback_demand::DemandReceiver;
 use crate::probe::pool::MetadataProbePool;
 use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_engine::concurrency::AdaptiveConcurrency;
 use ghostr_engine::{DataUsageLevel, EngineParams};
 use ghostr_net::outbound_media_client::{MediaHttpClient, MediaHttpRequests};
 use ghostr_net::transfer_timeouts::TransferTimeouts;
-use ghostr_partial_store::partial_range_store::capacity::DEFAULT_RECHECK;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::{mpsc, watch};
 
 pub(crate) use focus_lease::FocusedStoreLease;
+pub use tuning::DeliveryTuning;
 
 const TRAFFIC_MAILBOX_CAPACITY: usize = 64;
-
-/// Operational knobs outside the engine's tuning table.
-#[derive(Clone, Copy, Debug)]
-pub struct DeliveryTuning {
-    /// Concurrent HEAD probes for unknown-size posts.
-    pub probe_concurrency: usize,
-    /// Backoff ladder and give-up budgets for failing sources.
-    pub retry: RetryPolicy,
-    /// Quiet period before persisting the host-stats snapshot.
-    pub stats_debounce: Duration,
-    /// Delay before one free-space recheck after a store refusal. Later
-    /// retries remain parked until a real capacity event.
-    pub store_pressure_pause: Duration,
-}
-
-impl Default for DeliveryTuning {
-    fn default() -> Self {
-        Self {
-            probe_concurrency: 2,
-            retry: RetryPolicy::default(),
-            stats_debounce: Duration::from_secs(2),
-            store_pressure_pause: DEFAULT_RECHECK,
-        }
-    }
-}
 
 /// Everything the manager owns or reaches, as one typed object.
 pub struct DeliveryManagerConfig<C = MediaHttpClient> {
@@ -145,7 +121,7 @@ pub(crate) struct DeliveryWorker {
     cooldown_timers: CooldownTimers,
     pressure: StorePressure,
     focus_lease: FocusedStoreLease,
-    pending_demand: Option<DemandSignal>,
+    demand_leases: DemandLeases,
     ctx: TransferContext,
     cache: CacheRegistry,
     commands: CommandReceiver,
@@ -180,7 +156,7 @@ impl DeliveryWorker {
             cooldown_timers: CooldownTimers::default(),
             pressure: StorePressure::new(config.tuning.store_pressure_pause),
             focus_lease: FocusedStoreLease::default(),
-            pending_demand: None,
+            demand_leases: DemandLeases::default(),
             ctx: TransferContext {
                 client: Arc::new(config.client),
                 store: config.store,

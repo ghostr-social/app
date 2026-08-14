@@ -1,6 +1,7 @@
 mod gateway_fixture;
 
 use gateway_fixture::progressive::progressive_harness;
+use ghostr_delivery::playback_demand::DemandState;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 use std::time::Duration;
@@ -29,10 +30,13 @@ async fn an_open_response_fails_instead_of_mixing_a_new_representation() {
         .unwrap()
         .unwrap();
     assert_eq!(&first[..], b"01234");
-    tokio::time::timeout(Duration::from_secs(1), harness.demand.recv())
+    let demand = tokio::time::timeout(Duration::from_secs(1), harness.demand.recv())
         .await
         .expect("demand timeout")
         .expect("old representation demand");
+    let DemandState::Blocked(lease) = demand else {
+        panic!("first demand state must block");
+    };
 
     let second = catalog.upsert(PostId::new("clip"), meta("new", 10));
     harness.store.bind_representation(second).await.unwrap();
@@ -48,6 +52,8 @@ async fn an_open_response_fails_instead_of_mixing_a_new_representation() {
         .expect("representation switch must terminate promptly")
         .expect("body termination");
     assert!(stopped.is_err());
+    let released = harness.demand.recv().await.expect("released stale demand");
+    assert_eq!(released, DemandState::Released(lease.consumer()));
     std::fs::remove_dir_all(harness.root).expect("remove store");
 }
 

@@ -7,10 +7,12 @@ use axum::http::Request;
 use gateway_fixture::progressive::progressive_harness;
 use ghostr_engine::adaptive::{
     Allocation, AllocationPlan, AllocationReason, CandidateUtility, DiscoveryDemand,
-    PreemptionAuthority, RetainedAllocation,
+    NextReserveEvidence, NextReserveInfeasibility, PreemptionAuthority, RetainedAllocation,
 };
 use ghostr_engine::{ByteRange, PostId};
 use tower::ServiceExt;
+
+const SOURCE: &str = "https://media.example/p1.mp4";
 
 #[tokio::test]
 async fn debug_state_exposes_exact_adaptive_plan_evidence() {
@@ -35,14 +37,19 @@ async fn debug_state_exposes_exact_adaptive_plan_evidence() {
         evidence["allocations"][0]["range"],
         serde_json::json!({"start": 10, "end": 20})
     );
-    assert_eq!(
-        evidence["allocations"][0]["reason"],
-        "likely_next_transition"
-    );
+    assert_eq!(evidence["allocations"][0]["reason"], "media_bootstrap");
     assert_eq!(evidence["allocations"][0]["expected_playable_gain_ms"], 500);
     assert_eq!(
         evidence["retained"][0]["utility"]["expected_delivery_ms"],
         20
+    );
+    assert_eq!(
+        evidence["next_reserve"],
+        serde_json::json!({
+            "status": "infeasible",
+            "post_id": "p2",
+            "reason": "no_transfer_budget"
+        })
     );
 }
 
@@ -51,6 +58,10 @@ fn plan() -> AllocationPlan {
         allocations: vec![allocation()],
         retained: vec![retained()],
         discovery_demand: DiscoveryDemand::Hold,
+        next_reserve: NextReserveEvidence::Infeasible {
+            post: PostId::new("p2"),
+            reason: NextReserveInfeasibility::NoTransferBudget,
+        },
         ..AllocationPlan::default()
     }
 }
@@ -59,12 +70,12 @@ fn allocation() -> Allocation {
     Allocation {
         post: PostId::new("p1"),
         range: ByteRange::new(10, 20),
-        source: source(),
+        source: SOURCE.to_owned(),
         expected_playable_gain_ms: 500,
         utility: utility(),
         authority: PreemptionAuthority::Transition,
         commitment_until_ms: 1_000,
-        reason: AllocationReason::LikelyNextTransition,
+        reason: AllocationReason::MediaBootstrap,
     }
 }
 
@@ -72,7 +83,7 @@ fn retained() -> RetainedAllocation {
     RetainedAllocation {
         post: PostId::new("p0"),
         range: ByteRange::new(0, 10),
-        source: source(),
+        source: SOURCE.to_owned(),
         utility: utility(),
         committed_until_ms: 1_000,
         reason: AllocationReason::UsefulCommitment,
@@ -86,8 +97,4 @@ fn utility() -> CandidateUtility {
         expected_delivery_ms: 20,
         score: 10.0,
     }
-}
-
-fn source() -> String {
-    "https://media.example/p1.mp4".to_owned()
 }

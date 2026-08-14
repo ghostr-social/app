@@ -2,7 +2,7 @@
 //! the watcher feeds it store reads, tests feed it tables.
 
 use crate::api::delivery_types::{FfiDeliveryEvent, FfiDeliveryEventKind};
-use crate::engine::adaptive::{candidate_snapshot, CandidateEvidence, ViewProbability};
+use crate::engine::adaptive::{candidate_snapshot, CandidateEvidence, FeedOffset, ViewProbability};
 use crate::engine::catalog::{Catalog, LearnedFacts};
 use crate::engine::{ByteRange, EngineParams, PostId, VideoMeta};
 
@@ -39,7 +39,7 @@ fn initial_playable_range_is_cached(
 ) -> bool {
     let evidence = CandidateEvidence {
         post: post.clone(),
-        feed_distance: 0,
+        feed_offset: FeedOffset::new(0),
         view_probability: ViewProbability::new(1.0).expect("valid probability"),
         present: input.ranges.to_vec(),
         recently_evicted: Vec::new(),

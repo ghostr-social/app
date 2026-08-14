@@ -5,16 +5,24 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 
-pub type Attempts = Arc<AtomicUsize>;
+#[derive(Default)]
+pub struct AttemptCounts {
+    heads: AtomicUsize,
+    bodies: AtomicUsize,
+}
+
+pub type Attempts = Arc<AttemptCounts>;
 
 pub async fn serve() -> (String, Attempts) {
-    let attempts = Arc::new(AtomicUsize::new(0));
+    let attempts = Arc::new(AttemptCounts::default());
     let observed = attempts.clone();
     let app = Router::new().route(
         "/video.mp4",
         any(move |method: Method| {
             if method == Method::HEAD {
-                observed.fetch_add(1, Ordering::SeqCst);
+                observed.heads.fetch_add(1, Ordering::SeqCst);
+            } else {
+                observed.bodies.fetch_add(1, Ordering::SeqCst);
             }
             async { StatusCode::INTERNAL_SERVER_ERROR }
         }),
@@ -32,5 +40,9 @@ pub async fn serve() -> (String, Attempts) {
 }
 
 pub fn count(attempts: &Attempts) -> usize {
-    attempts.load(Ordering::SeqCst)
+    attempts.heads.load(Ordering::SeqCst)
+}
+
+pub fn body_count(attempts: &Attempts) -> usize {
+    attempts.bodies.load(Ordering::SeqCst)
 }

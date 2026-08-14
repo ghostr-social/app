@@ -22,16 +22,19 @@ final class FfiFeedFocusPort implements FeedFocusPort {
 
   /// One feed exists in phase 1; Rust accepts the id unread.
   static const feedId = 'primary';
+  static var _nextGeneration = BigInt.zero;
 
   final RustFocusUpdater _updateFocus;
   final _scheduler = _FocusWriteScheduler();
-  var _generation = BigInt.zero;
 
   @override
   void focusChanged(FeedFocus focus) {
-    final window = _FfiFocusWindow.of(focus);
-    _generation += BigInt.one;
-    _scheduler.schedule(_FocusWrite(window, focus.watched, _generation), _send);
+    _schedule(_FfiFocusWindow.of(focus), focus.watched);
+  }
+
+  void _schedule(_FfiFocusWindow window, Duration watched) {
+    _nextGeneration += BigInt.one;
+    _scheduler.schedule(_FocusWrite(window, watched, _nextGeneration), _send);
   }
 
   Future<void> _send(_FocusWrite work) async {

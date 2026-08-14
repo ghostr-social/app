@@ -13,6 +13,7 @@ use crate::manager::retry::CooldownId;
 use crate::manager::traffic::{TrafficPublisher, TransferKey};
 use crate::probe::media::{probe, ProbeResult};
 use ghostr_engine::host_stats::HostStats;
+use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::PostId;
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
@@ -30,6 +31,7 @@ pub(crate) enum InternalEvent {
 
 pub(crate) enum TransferEvent {
     ChunkDone(ChunkDone),
+    BodyFinished(TransferIdentity),
     ProbeDone(ProbeDone),
 }
 
@@ -90,17 +92,8 @@ pub(crate) fn spawn_chunk(
         .await;
         attempt.mark_io_finished();
         drop(traffic);
-        if cancelled_before_request(&outcome) {
-            return;
-        }
-        let done = ChunkDone {
-            attempt,
-            url,
-            outcome,
-        };
-        let _ = ctx
-            .events
-            .send(InternalEvent::Transfer(TransferEvent::ChunkDone(done)));
+        let event = chunk_event(attempt, url, outcome);
+        let _ = ctx.events.send(InternalEvent::Transfer(event));
     });
     handle
 }
@@ -149,7 +142,22 @@ impl Drop for TransferTraffic {
     }
 }
 
-pub(crate) fn cancelled_before_request(outcome: &anyhow::Result<ChunkResult>) -> bool {
+pub(crate) fn chunk_event(
+    attempt: ChunkAttempt,
+    url: String,
+    outcome: anyhow::Result<ChunkResult>,
+) -> TransferEvent {
+    if cancelled_before_request(&outcome) {
+        return TransferEvent::BodyFinished(attempt.identity().clone());
+    }
+    TransferEvent::ChunkDone(ChunkDone {
+        attempt,
+        url,
+        outcome,
+    })
+}
+
+fn cancelled_before_request(outcome: &anyhow::Result<ChunkResult>) -> bool {
     outcome.as_ref().is_ok_and(|result| !result.request_started)
 }
 

@@ -23,6 +23,10 @@ impl StreamSource {
     pub(super) fn key(&self) -> &str {
         &self.key
     }
+
+    pub(super) fn binding(&self) -> Option<&RepresentationBinding> {
+        self.binding.as_ref()
+    }
 }
 
 pub(super) async fn next_chunk(

@@ -15,6 +15,7 @@ import 'package:ghostr/features/video_catalog/domain/video_post_id.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_dependencies.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_backfill_retry.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_failure_messages.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_follow_state.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_hunt.dart';
@@ -26,6 +27,7 @@ export 'feed_dependencies.dart';
 export 'feed_state.dart';
 
 part 'feed_cubit_engagement.dart';
+part 'feed_cubit_backfill.dart';
 part 'feed_cubit_follow.dart';
 part 'feed_cubit_loading.dart';
 part 'feed_cubit_updates.dart';
@@ -38,7 +40,9 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     VideoPostId? openAt,
     FeedHunt? hunt,
     FeedUpdateRetry? updateRetry,
+    FeedBackfillRetry? backfillRetry,
   }) : _openAt = openAt,
+       _backfillRetry = backfillRetry ?? FeedBackfillRetry(),
        _updates = _FeedUpdateState(updateRetry ?? FeedUpdateRetry()),
        _hunt = hunt ?? FeedHunt(),
        super(const FeedLoading(FeedKind.forYou));
@@ -48,6 +52,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   /// The video every full load opens on, when the feed still carries it.
   final VideoPostId? _openAt;
   final FeedHunt _hunt;
+  final FeedBackfillRetry _backfillRetry;
   final _loads = FeedLoads();
   final _session = FeedSession();
   final _FeedUpdateState _updates;
@@ -66,6 +71,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   );
   int _followLoadRequest = 0;
   final _followRequests = <ProfileId, int>{};
+  var _isClosing = false;
 
   Future<void> load([FeedKind? selectedKind]) async {
     final follows = _reloadFollows();
@@ -109,9 +115,9 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
               .withFollows(_follows)
               .withNotice(feedLoadFailureMessage(result.failure)),
         );
-      } else if (result case FeedFetched(:final posts)) {
+      } else if (result case FeedFetched(:final posts, :final eligiblePosts)) {
         _acknowledgePendingFeedUpdate();
-        _acceptRefresh(previous, posts);
+        _acceptRefresh(previous, posts, eligiblePosts);
       }
     });
     await follows;
@@ -126,28 +132,8 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     _ensureBuffered();
   }
 
-  void _ensureBuffered() {
-    final current = state;
-    if (current is! FeedLoaded) return;
-    if (_backfill.isStarved(current.roster)) unawaited(loadMore());
-  }
-
-  Future<void> loadMore() async {
-    if (state is! FeedLoaded) return;
-    final dug = await _backfill.dig(state.kind);
-    if (dug case FeedDigFailed(:final failure)) {
-      return _showNotice(feedLoadFailureMessage(failure.failure));
-    }
-    if (dug case FeedDigPage(:final posts)) _appendPage(posts);
-  }
-
-  void _appendPage(List<VideoPost> incoming) {
-    final current = state;
-    if (current is! FeedLoaded) return;
-    final posts = _session.appended(current.roster, incoming);
-    if (posts == null) return;
-    emit(current.withPosts(posts));
-    _ensureBuffered();
+  void surfaceVisibilityChanged(bool isVisible) {
+    _viewer.visibilityChanged(isVisible);
   }
 
   void clearNotice() {
@@ -169,7 +155,12 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
 
   @override
   Future<void> close() async {
+    if (_isClosing || isClosed) return;
+    _isClosing = true;
+    _loads.take();
     _hunt.dispose();
+    _backfillRetry.cancel();
+    _viewer.dispose();
     await _stopFeedUpdates();
     await super.close();
   }

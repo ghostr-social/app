@@ -1,4 +1,6 @@
-use crate::adaptive::{candidate_snapshot, CandidateEvidence, MediaLayout, ViewProbability};
+use crate::adaptive::{
+    candidate_snapshot, CandidateEvidence, FeedOffset, MediaLayout, ViewProbability,
+};
 use crate::catalog::{Catalog, LearnedFacts};
 use crate::tests::support::progressive_meta;
 use crate::{EngineParams, PostId};
@@ -48,7 +50,7 @@ fn range_capable_media_exposes_duration_weighted_chunk_opportunities() {
 fn evidence(post: PostId) -> CandidateEvidence {
     CandidateEvidence {
         post,
-        feed_distance: 1,
+        feed_offset: FeedOffset::new(1),
         view_probability: ViewProbability::new(0.8).unwrap(),
         present: Vec::new(),
         recently_evicted: Vec::new(),

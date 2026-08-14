@@ -38,6 +38,36 @@ VIDEO_PLAYER_CONTRACT_TESTS := \
 	integration_test/video_player_preparation_contract_test.dart \
 	integration_test/video_player_prepared_generation_contract_test.dart \
 	integration_test/video_player_adapter_identity_contract_test.dart
+VIDEO_PROGRESSIVE_ANDROID_TESTS := \
+	integration_test/progressive_delivery_video_test.dart
+VIDEO_PROGRESSIVE_FLUTTER_TESTS := \
+	test/core/media/remote_playback_delivery_id_test.dart \
+	test/media/ffi_playback_telemetry_cross_port_generation_test.dart \
+	test/media/ffi_playback_telemetry_deactivation_collapse_test.dart \
+	test/media/ffi_playback_telemetry_delivery_identity_test.dart \
+	test/media/ffi_playback_telemetry_late_deactivation_test.dart \
+	test/media/ffi_playback_telemetry_terminal_synthesis_test.dart \
+	test/media/ffi_feed_focus_cross_port_generation_test.dart \
+	test/media/ffi_video_gateway_device_integration_scope_test.dart \
+	test/media/progressive_device_fixture_test.dart \
+	test/media/progressive_device_origin_cancellation_accounting_test.dart \
+	test/media/progressive_device_origin_test.dart \
+	test/media/progressive_device_resources_test.dart \
+	test/media/progressive_device_wait_deadline_test.dart \
+	test/video_catalog/feed_load_more_appends_test.dart \
+	test/video_catalog/feed_backfill_dry_cursor_test.dart \
+	test/video_catalog/feed_backfill_retry_rechecks_buffer_test.dart \
+	test/video_catalog/feed_backfill_stationary_cursor_test.dart \
+	test/video_catalog/feed_refresh_focus_republish_test.dart \
+	test/video_catalog/feed_focus_inactive_write_test.dart \
+	test/video_catalog/feed_focus_atomic_reactivation_test.dart \
+	test/video_catalog/feed_focus_lease_disposal_test.dart \
+	test/video_catalog/feed_focus_lease_contract_test.dart \
+	test/video_catalog/feed_focus_sink_contract_test.dart \
+	test/video_catalog/feed_roster_resync_media_dedup_test.dart \
+	test/app/home_feed_focus_route_return_test.dart \
+	test/app/nested_feed_focus_return_test.dart \
+	test/app/home_feed_focus_tab_test.dart
 FLAGS ?=
 WEB_DEBUG_CACHE_DIR ?= $(CURDIR)/rust/target/video-debug-cache
 WEB_DEBUG_RUST_DIR ?= $(CURDIR)/rust
@@ -53,6 +83,8 @@ HAWK_REVISION_SHORT := 98efa9f
 	video-delivery-target-contract-test video-android-emulator-tests \
 	video-android-physical-tests video-player-contract-target-test \
 	video-player-contract video-player-contract-android video-player-contract-ios \
+	video-progressive-suite-contract-test video-progressive-suite \
+	video-progressive-android \
 	native-coverage-contract-test rust rust-no-clean gen icons run run-fast \
 	run-fast-profile android-unit-tests android-debug-apk android-debug-apk-check \
 	android-release-apk android-release-apk-check android-agent-avd-create \
@@ -126,6 +158,21 @@ video-player-contract-android: video-player-contract-target-test ## Run the play
 
 video-player-contract-ios: video-player-contract-target-test ## Run the player contract on an automatic iOS simulator.
 	tool/run_video_player_contract_ios.sh $(VIDEO_PLAYER_CONTRACT_TESTS)
+
+video-progressive-suite-contract-test: ## Verify the progressive suite and QoE contracts.
+	sh test/tool/video_progressive_suite_target_test.sh
+	cd rust && cargo test -p ghostr-delivery \
+		--test delivery_next_reserve_evidence_test --all-features
+
+video-progressive-suite: video-progressive-suite-contract-test ## Run the repaired progressive-path suite.
+	cd rust && cargo test -p ghostr-engine --all-features
+	cd rust && cargo test -p ghostr-delivery --all-features
+	cd rust && cargo test -p ghostr-gateway --all-features
+	cd rust && cargo test -p rust_lib_ghostr --all-features
+	$(FLUTTER) test --no-pub $(VIDEO_PROGRESSIVE_FLUTTER_TESTS)
+
+video-progressive-android: video-progressive-suite-contract-test ## Run progressive playback on the repository AVD.
+	tool/run_video_player_contract_android.sh $(VIDEO_PROGRESSIVE_ANDROID_TESTS)
 
 video-android-physical-tests: ## Run the device video playback matrix on physical Android.
 	@test -n "$(ANDROID_PHYSICAL_SERIAL)" || { echo "Set ANDROID_PHYSICAL_SERIAL to an attached device serial." >&2; exit 1; }

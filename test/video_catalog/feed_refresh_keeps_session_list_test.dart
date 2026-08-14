@@ -8,7 +8,7 @@ import '../support/sample_data.dart';
 
 class _GrowingFeedRepository extends FakeVideoCatalogRepository {
   _GrowingFeedRepository({required this.fresh, required this.refreshed})
-      : super(forYouFeed: fresh);
+    : super(forYouFeed: fresh);
 
   final List<VideoPost> fresh;
   final List<VideoPost> refreshed;
@@ -25,7 +25,7 @@ class _GrowingFeedRepository extends FakeVideoCatalogRepository {
 }
 
 void main() {
-  test('a refresh never inserts posts above the viewer position', () async {
+  test('a refresh appends unseen eligible posts after the held tail', () async {
     final watched = samplePost(id: 'watched-1');
     final current = samplePost(id: 'current-1');
     final next = samplePost(id: 'next-1');
@@ -43,7 +43,11 @@ void main() {
     await cubit.refresh();
 
     final loaded = cubit.state as FeedLoaded;
-    expect(loaded.posts.map((post) => post.id.value), ['current-1', 'next-1']);
+    expect(loaded.posts.map((post) => post.id.value), [
+      'current-1',
+      'next-1',
+      'watched-1',
+    ]);
     expect(loaded.posts[loaded.activeIndex].id.value, 'current-1');
   });
 }

@@ -26,6 +26,30 @@ class FeedScreen extends StatefulWidget {
 
 class _FeedScreenState extends State<FeedScreen> {
   bool _commentsOpen = false;
+  FeedCubit? _cubit;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final cubit = context.read<FeedCubit>();
+    if (identical(_cubit, cubit)) return;
+    _cubit?.surfaceVisibilityChanged(false);
+    _cubit = cubit;
+    cubit.surfaceVisibilityChanged(widget.bindings.isActive);
+  }
+
+  @override
+  void didUpdateWidget(covariant FeedScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.bindings.isActive == widget.bindings.isActive) return;
+    _cubit?.surfaceVisibilityChanged(widget.bindings.isActive);
+  }
+
+  @override
+  void dispose() {
+    _cubit?.surfaceVisibilityChanged(false);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +58,7 @@ class _FeedScreenState extends State<FeedScreen> {
       child: BlocListener<FeedCubit, FeedState>(
         listenWhen: _hasNewNotice,
         listener: _showNotice,
-        child: BlocBuilder<FeedCubit, FeedState>(builder: _buildFeed),
+        child: BlocBuilder<FeedCubit, FeedState>(builder: _feedContent),
       ),
     );
   }
@@ -49,10 +73,6 @@ class _FeedScreenState extends State<FeedScreen> {
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
     context.read<FeedCubit>().clearNotice();
-  }
-
-  Widget _buildFeed(BuildContext context, FeedState state) {
-    return _feedContent(context, state);
   }
 
   Widget _feedContent(BuildContext context, FeedState state) {

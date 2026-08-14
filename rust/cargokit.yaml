@@ -1,0 +1,4 @@
+cargo:
+  debug:
+    extra_flags:
+      - --features=device-integration

@@ -11,11 +11,17 @@ void main() {
 
     final endpoint = await startRustEngine(
       RustEngineStartConfiguration('/cache/native', engine),
-      ffiStart: ({required cacheDirectory, required configuration}) async {
-        receivedDirectory = cacheDirectory;
-        receivedConfiguration = configuration;
-        return '127.0.0.1:3000';
-      },
+      ffiStart:
+          ({
+            required cacheDirectory,
+            required configuration,
+            required deviceIntegrationOrigin,
+          }) async {
+            receivedDirectory = cacheDirectory;
+            receivedConfiguration = configuration;
+            expect(deviceIntegrationOrigin, isNull);
+            return '127.0.0.1:3000';
+          },
     );
 
     expect(endpoint, '127.0.0.1:3000');

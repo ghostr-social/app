@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.7.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1011904049;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 332298869;
 
 // Section: executor
 
@@ -366,6 +366,42 @@ fn wire__crate__api__feed_control__ffi_open_feed_impl(
         },
     )
 }
+fn wire__crate__api__playback_control__ffi_playback_admission_snapshot_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ffi_playback_admission_snapshot",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok =
+                            crate::api::playback_control::ffi_playback_admission_snapshot().await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__focus_control__ffi_playback_url_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -660,6 +696,7 @@ fn wire__crate__api__engine_control__ffi_start_engine_impl(
             let api_cache_directory = <String>::sse_decode(&mut deserializer);
             let api_configuration =
                 <crate::api::engine_control::FfiEngineConfiguration>::sse_decode(&mut deserializer);
+            let api_device_integration_origin = <Option<String>>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
@@ -667,6 +704,7 @@ fn wire__crate__api__engine_control__ffi_start_engine_impl(
                         let output_ok = crate::api::engine_control::ffi_start_engine(
                             api_cache_directory,
                             api_configuration,
+                            api_device_integration_origin,
                         )
                         .await?;
                         Ok(output_ok)
@@ -1124,6 +1162,24 @@ impl SseDecode for crate::api::event_types::FfiNostrTagFilter {
     }
 }
 
+impl SseDecode for crate::api::playback_types::FfiPlaybackAdmissionSnapshot {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_accepted = <u64>::sse_decode(deserializer);
+        let mut var_inactiveDelivery = <u64>::sse_decode(deserializer);
+        let mut var_staleSession = <u64>::sse_decode(deserializer);
+        let mut var_staleSequence = <u64>::sse_decode(deserializer);
+        let mut var_lastAcceptedDeliveryId = <Option<String>>::sse_decode(deserializer);
+        return crate::api::playback_types::FfiPlaybackAdmissionSnapshot {
+            accepted: var_accepted,
+            inactive_delivery: var_inactiveDelivery,
+            stale_session: var_staleSession,
+            stale_sequence: var_staleSequence,
+            last_accepted_delivery_id: var_lastAcceptedDeliveryId,
+        };
+    }
+}
+
 impl SseDecode for crate::api::playback_types::FfiPlaybackObservation {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1407,61 +1463,67 @@ fn pde_ffi_dispatcher_primary_impl(
         ),
         9 => wire__crate__api__feed_control__ffi_load_more_impl(port, ptr, rust_vec_len, data_len),
         10 => wire__crate__api__feed_control__ffi_open_feed_impl(port, ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__focus_control__ffi_playback_url_impl(
+        11 => wire__crate__api__playback_control__ffi_playback_admission_snapshot_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        12 => wire__crate__api__event_control__ffi_query_events_impl(
+        12 => wire__crate__api__focus_control__ffi_playback_url_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        13 => wire__crate__api__event_control__ffi_query_events_batch_impl(
+        13 => wire__crate__api__event_control__ffi_query_events_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        14 => wire__crate__video__native_gateway__ffi_release_hls_playback_impl(
+        14 => wire__crate__api__event_control__ffi_query_events_batch_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        15 => wire__crate__api__playback_control__ffi_report_playback_impl(
+        15 => wire__crate__video__native_gateway__ffi_release_hls_playback_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        16 => wire__crate__api__session_control__ffi_reset_nostr_session_impl(
+        16 => wire__crate__api__playback_control__ffi_report_playback_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        17 => wire__crate__api__engine_control__ffi_set_delivery_config_impl(
+        17 => wire__crate__api__session_control__ffi_reset_nostr_session_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        18 => wire__crate__api__engine_control__ffi_start_engine_impl(
+        18 => wire__crate__api__engine_control__ffi_set_delivery_config_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        19 => wire__crate__api__focus_control__ffi_update_focus_impl(
+        19 => wire__crate__api__engine_control__ffi_start_engine_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        20 => wire__crate__video__native_gateway__init_app_impl(port, ptr, rust_vec_len, data_len),
+        20 => wire__crate__api__focus_control__ffi_update_focus_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        21 => wire__crate__video__native_gateway__init_app_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1927,6 +1989,30 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::event_types::FfiNostrTagFilte
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::playback_types::FfiPlaybackAdmissionSnapshot {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.accepted.into_into_dart().into_dart(),
+            self.inactive_delivery.into_into_dart().into_dart(),
+            self.stale_session.into_into_dart().into_dart(),
+            self.stale_sequence.into_into_dart().into_dart(),
+            self.last_accepted_delivery_id.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::playback_types::FfiPlaybackAdmissionSnapshot
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::playback_types::FfiPlaybackAdmissionSnapshot>
+    for crate::api::playback_types::FfiPlaybackAdmissionSnapshot
+{
+    fn into_into_dart(self) -> crate::api::playback_types::FfiPlaybackAdmissionSnapshot {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::playback_types::FfiPlaybackObservation {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -2280,6 +2366,17 @@ impl SseEncode for crate::api::event_types::FfiNostrTagFilter {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.name, serializer);
         <Vec<String>>::sse_encode(self.values, serializer);
+    }
+}
+
+impl SseEncode for crate::api::playback_types::FfiPlaybackAdmissionSnapshot {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u64>::sse_encode(self.accepted, serializer);
+        <u64>::sse_encode(self.inactive_delivery, serializer);
+        <u64>::sse_encode(self.stale_session, serializer);
+        <u64>::sse_encode(self.stale_sequence, serializer);
+        <Option<String>>::sse_encode(self.last_accepted_delivery_id, serializer);
     }
 }
 

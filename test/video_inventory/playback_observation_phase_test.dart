@@ -20,6 +20,7 @@ void main() {
     );
 
     expect(videoId.value, 'clip');
+    expect(observation.videoId, videoId);
     expect(observation.bufferAhead, const Duration(seconds: 3));
     expect(observation.phase.isNetworkStall, isTrue);
     expect(

@@ -3,7 +3,7 @@ use crate::manager::concurrency::network_profile_setback;
 use crate::manager::time::unix_time_ms;
 use crate::manager::transfers::{InternalEvent, MaintenanceEvent, TransferEvent};
 use crate::manager::DeliveryWorker;
-use crate::playback_demand::DemandSignal;
+use crate::playback_demand::DemandState;
 use ghostr_engine::concurrency::NetworkSetback;
 use ghostr_engine::playback::PlaybackPhase;
 use tokio::sync::oneshot;
@@ -11,7 +11,7 @@ use tokio::sync::oneshot;
 pub(crate) enum Wake {
     Clear(ClearRequest),
     Command(DeliveryCommand),
-    Demand(DemandSignal),
+    Demand(DemandState),
     Internal(InternalEvent),
 }
 
@@ -36,7 +36,7 @@ impl DeliveryWorker {
                 None
             }
             Wake::Demand(signal) => {
-                self.pending_demand = Some(signal);
+                self.demand_leases.apply(signal);
                 None
             }
             Wake::Internal(event) => {
@@ -106,7 +106,10 @@ impl DeliveryWorker {
 
     fn apply_playback(&mut self, playback: crate::delivery_events::DeliveryPlayback) {
         let stalled = playback.observation.phase() == PlaybackPhase::NetworkStalled;
-        if self.state.apply_playback(playback) && stalled {
+        let post = playback.session.post().clone();
+        let admission = self.state.apply_playback(playback);
+        self.commands.record_playback_admission(admission, &post);
+        if admission.is_accepted() && stalled {
             self.note_network_setback(NetworkSetback::Stall);
         }
     }
@@ -122,6 +125,7 @@ impl DeliveryWorker {
     async fn apply_transfer(&mut self, event: TransferEvent) {
         match event {
             TransferEvent::ChunkDone(done) => self.finish_chunk(done).await,
+            TransferEvent::BodyFinished(identity) => self.finish_body(&identity),
             TransferEvent::ProbeDone(done) => self.finish_probe(done).await,
         }
     }

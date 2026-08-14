@@ -148,10 +148,13 @@ extension FeedCubitUpdates on FeedCubit {
       () => loaded ? _fetch.resync(kind) : _fetch.unwatched(kind),
     );
     if (!_acceptsFeedReconciliation(feed, kind) || result == null) return;
-    if (result case FeedFetched(:final posts) when posts.isNotEmpty) {
+    if (result case FeedFetched(
+      :final posts,
+      :final eligiblePosts,
+    ) when posts.isNotEmpty) {
       final current = state;
       current is FeedLoaded
-          ? _acceptRefresh(current, posts)
+          ? _acceptRefresh(current, posts, eligiblePosts)
           : _acceptLoad(kind, posts);
     }
   }

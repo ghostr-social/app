@@ -19,14 +19,15 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
   }) : _reportPlayback = reportPlayback;
 
   static const _pendingSessionLimit = 2;
+  static var _nextGeneration = 0;
 
   final RustPlaybackReporter _reportPlayback;
   final LinkedHashMap<int, ListQueue<FfiPlaybackObservation>> _pending =
       LinkedHashMap<int, ListQueue<FfiPlaybackObservation>>();
+  final _latest = <int, FfiPlaybackObservation>{};
   PlaybackSession? _active;
   Future<void>? _draining;
   int? _sendingGeneration;
-  var _nextGeneration = 0;
   var _nextSequence = 0;
 
   @override
@@ -39,6 +40,10 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
 
   @override
   void activate(PlaybackSession session) {
+    final previous = _active;
+    if (previous != null && previous != session) {
+      _retainTerminalSample(previous.generation);
+    }
     _active = session;
     _nextSequence = 0;
   }
@@ -47,6 +52,7 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
   void report(PlaybackObservation observation) {
     if (_active != observation.session) return;
     final input = _mapObservation(observation, ++_nextSequence);
+    _latest[observation.session.generation] = input;
     _enqueue(observation.session.generation, input);
     _boundPendingSessions();
     _draining ??= _drain();
@@ -55,6 +61,29 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
   @override
   void deactivate(PlaybackSession session) {
     if (_active == session) _active = null;
+    _retainTerminalSample(session.generation);
+  }
+
+  void _retainTerminalSample(int generation) {
+    final queued = _pending[generation]?.where(_isInactive).lastOrNull;
+    if (queued != null) {
+      _replaceQueue(generation, queued);
+      return;
+    }
+    _pending.remove(generation);
+    final latest = _latest[generation];
+    if (latest == null || _isInactive(latest)) return;
+    _queueTerminal(generation, _inactiveAfter(latest));
+  }
+
+  void _replaceQueue(int generation, FfiPlaybackObservation terminal) {
+    _pending[generation] = ListQueue.of([terminal]);
+  }
+
+  void _queueTerminal(int generation, FfiPlaybackObservation terminal) {
+    _latest[generation] = terminal;
+    _replaceQueue(generation, terminal);
+    _draining ??= _drain();
   }
 
   void _enqueue(int generation, FfiPlaybackObservation input) {
@@ -81,6 +110,9 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
         );
       }
       _sendingGeneration = null;
+      if (_isInactive(input) && identical(_latest[generation], input)) {
+        _latest.remove(generation);
+      }
     }
     _draining = null;
   }
@@ -98,6 +130,7 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
         (generation) => generation != _sendingGeneration,
       );
       _pending.remove(discard);
+      _latest.remove(discard);
     }
   }
 }
@@ -106,12 +139,28 @@ bool _needsInactiveFollowUp(FfiPlaybackObservation input) {
   return input.phase != FfiPlaybackPhase.inactive;
 }
 
+bool _isInactive(FfiPlaybackObservation input) {
+  return input.phase == FfiPlaybackPhase.inactive;
+}
+
+FfiPlaybackObservation _inactiveAfter(FfiPlaybackObservation input) {
+  return FfiPlaybackObservation(
+    postId: input.postId,
+    generation: input.generation,
+    sequence: input.sequence + BigInt.one,
+    phase: FfiPlaybackPhase.inactive,
+    positionMs: input.positionMs,
+    bufferedExtentMs: input.bufferedExtentMs,
+    playbackRateMilli: input.playbackRateMilli,
+  );
+}
+
 FfiPlaybackObservation _mapObservation(
   PlaybackObservation observation,
   int sequence,
 ) {
   return FfiPlaybackObservation(
-    postId: observation.videoId.value,
+    postId: observation.session.deliveryId.value,
     generation: BigInt.from(observation.session.generation),
     sequence: BigInt.from(sequence),
     phase: _mapPhase(observation.phase),

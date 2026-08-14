@@ -1,0 +1,65 @@
+mod delivery_fixture;
+
+use delivery_fixture::items::{focus_now, sized_item};
+use delivery_fixture::options::DeliveryOptions;
+use delivery_fixture::pressure_origin::serve;
+use delivery_fixture::pressure_store::movable_store;
+use delivery_fixture::start_harness_with_store;
+use std::time::Duration;
+
+#[tokio::test]
+async fn admitted_body_recovers_when_capacity_disappears_before_its_write() {
+    let mut origin = serve().await;
+    let (store, space, root) = movable_store("ghostr-pressure-race");
+    let mut options = DeliveryOptions::default();
+    options.params.balanced_concurrency = 1;
+    options.tuning.store_pressure_pause = Duration::from_millis(250);
+    let harness = start_harness_with_store(store, root.clone(), options);
+    harness.handle.update_focus(focus_now(
+        vec![sized_item("current", &origin.url, 16, 1_000)],
+        0,
+        0,
+    ));
+    let refused_range = origin.wait_for_body().await;
+
+    space.set(0);
+    origin.release();
+    wait_for_refusal(&harness).await;
+    space.set(16);
+    wait_for_complete(&harness).await;
+
+    let retries = origin
+        .requests()
+        .iter()
+        .filter(|range| **range == refused_range)
+        .count();
+    assert_eq!(retries, 2, "the refused range must retry exactly once");
+    assert_eq!(harness.store.refusals(), 1);
+    harness.handle.clear().await.unwrap();
+    drop(harness);
+    std::fs::remove_dir_all(root).ok();
+}
+
+async fn wait_for_refusal(harness: &delivery_fixture::DeliveryHarness) {
+    tokio::time::timeout(Duration::from_secs(1), async {
+        while harness.store.refusals() == 0 {
+            tokio::time::sleep(Duration::from_millis(1)).await;
+        }
+    })
+    .await
+    .expect("admitted write reaches local pressure");
+}
+
+async fn wait_for_complete(harness: &delivery_fixture::DeliveryHarness) {
+    tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            let ranges = harness.store.present_ranges("current").await.unwrap();
+            if ranges.len() == 1 && ranges[0] == (0..16) {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+    })
+    .await
+    .expect("capacity recheck resumes the same source");
+}

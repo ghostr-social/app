@@ -13,7 +13,11 @@ pub mod free_space;
 pub mod media_origin;
 pub mod progressive;
 mod progressive_capability;
+pub mod progressive_delivery;
 pub mod progressive_hls;
+pub mod progressive_journey_item;
+pub mod progressive_journey_origin;
+pub mod progressive_journey_trace;
 pub mod progressive_request;
 pub mod raw_http;
 

@@ -19,10 +19,11 @@ use log::warn;
 impl DeliveryWorker {
     pub(crate) async fn finish_chunk(&mut self, done: ChunkDone) {
         let status = self.downloads.finish(&done.attempt);
+        let identity = done.attempt.identity().clone();
+        self.finish_body(&identity);
         if !Self::accepts_completion(status) {
             return;
         }
-        let identity = done.attempt.identity().clone();
         if !done.outcome.as_ref().err().is_some_and(is_store_pressure) {
             self.keeper.note_chunk(&done);
         }
@@ -33,6 +34,12 @@ impl DeliveryWorker {
         match done.outcome {
             Ok(result) => self.absorb_chunk(&identity, result).await,
             Err(error) => self.absorb_failure(identity.post(), &done.url, &error),
+        }
+    }
+
+    pub(crate) fn finish_body(&mut self, identity: &TransferIdentity) {
+        if !self.downloads.contains_identity(identity) {
+            self.probes.body_finished(identity.post());
         }
     }
 
@@ -57,7 +64,7 @@ impl DeliveryWorker {
 
     async fn absorb_chunk(&mut self, identity: &TransferIdentity, result: ChunkResult) {
         if !self
-            .learn_transfer(identity, result.total_bytes, result.accept_ranges)
+            .learn_transfer(identity, result.total_bytes, Some(result.accept_ranges))
             .await
         {
             return;
@@ -80,7 +87,7 @@ impl DeliveryWorker {
         &mut self,
         identity: &TransferIdentity,
         total: Option<u64>,
-        ranged: bool,
+        ranged: Option<bool>,
     ) -> bool {
         if !self.ctx.store.transfer_is_current(identity).await {
             return false;
@@ -92,11 +99,11 @@ impl DeliveryWorker {
         &mut self,
         identity: &TransferIdentity,
         total: Option<u64>,
-        ranged: bool,
+        ranged: Option<bool>,
     ) -> bool {
         let facts = LearnedFacts {
             content_length: total,
-            accept_ranges: Some(ranged),
+            accept_ranges: ranged,
             host: host_of(identity.source().as_str()),
         };
         if !self.state.catalog_mut().learn_for(identity, facts) {

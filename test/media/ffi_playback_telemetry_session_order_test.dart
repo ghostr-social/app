@@ -37,7 +37,11 @@ void main() {
       first.complete();
       await drainMicrotasks();
 
-      expect(sent.map((item) => item.postId), ['old', 'old', 'current']);
+      expect(sent.map((item) => item.postId), [
+        'delivery-old',
+        'delivery-old',
+        'delivery-current',
+      ]);
       expect(sent[1].phase, FfiPlaybackPhase.inactive);
       expect(sent[1].generation, lessThan(sent[2].generation));
     },

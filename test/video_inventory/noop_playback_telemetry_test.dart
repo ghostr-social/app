@@ -6,7 +6,8 @@ import 'package:ghostr/features/video_inventory/domain/playback_telemetry_port.d
 
 void main() {
   test('default telemetry accepts a complete playback lifecycle', () {
-    const telemetry = NoopPlaybackTelemetryPort();
+    final createTelemetry = NoopPlaybackTelemetryPort.new;
+    final telemetry = createTelemetry();
     final session = telemetry.openSession(
       PlaybackVideoId.parse('clip'),
       PlaybackDeliveryId.parse('delivery'),

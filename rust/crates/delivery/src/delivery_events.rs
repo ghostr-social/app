@@ -8,9 +8,14 @@ use ghostr_engine::video_rendition::VideoRendition;
 use ghostr_engine::{DataUsageLevel, PostId, VideoMeta};
 use tokio::sync::{mpsc, oneshot};
 
+mod channel;
 mod focus_generation;
 mod mailbox;
 mod plan_evidence;
+use crate::playback_admission::{
+    PlaybackAdmission, PlaybackAdmissionLedger, PlaybackAdmissionSnapshot,
+};
+pub use channel::{command_channel, command_channel_with_candidate_capacity};
 pub(crate) use focus_generation::FocusGenerationGuard;
 pub use focus_generation::{FocusAdmission, FocusGeneration};
 pub use mailbox::MailboxReceiver;
@@ -89,6 +94,7 @@ pub struct DeliveryHandle {
     sender: MailboxSender,
     clears: mpsc::Sender<ClearRequest>,
     plans: PlanEvidenceHistory,
+    playback_admissions: PlaybackAdmissionLedger,
 }
 
 impl DeliveryHandle {
@@ -121,6 +127,10 @@ impl DeliveryHandle {
         self.plans.snapshot()
     }
 
+    pub fn playback_admission_snapshot(&self) -> PlaybackAdmissionSnapshot {
+        self.playback_admissions.snapshot()
+    }
+
     pub async fn clear(&self) -> anyhow::Result<()> {
         let (reply, result) = oneshot::channel();
         self.clears
@@ -139,6 +149,7 @@ pub struct CommandReceiver {
     commands: MailboxReceiver,
     clears: mpsc::Receiver<ClearRequest>,
     plans: PlanEvidenceHistory,
+    playback_admissions: PlaybackAdmissionLedger,
 }
 
 impl CommandReceiver {
@@ -173,28 +184,8 @@ impl CommandReceiver {
     pub fn publish_plan(&mut self, observed_at_ms: u64, plan: AllocationPlan) {
         self.plans.publish(observed_at_ms, plan);
     }
-}
 
-pub fn command_channel() -> (DeliveryHandle, CommandReceiver) {
-    command_channel_with_candidate_capacity(DEFAULT_CANDIDATE_CAPACITY)
-}
-
-pub fn command_channel_with_candidate_capacity(
-    capacity: usize,
-) -> (DeliveryHandle, CommandReceiver) {
-    let (sender, commands) = mailbox::channel(capacity);
-    let (clear_sender, clears) = mpsc::channel(1);
-    let plans = PlanEvidenceHistory::default();
-    (
-        DeliveryHandle {
-            sender,
-            clears: clear_sender,
-            plans: plans.clone(),
-        },
-        CommandReceiver {
-            commands,
-            clears,
-            plans,
-        },
-    )
+    pub(crate) fn record_playback_admission(&self, admission: PlaybackAdmission, post: &PostId) {
+        self.playback_admissions.record(admission, post);
+    }
 }

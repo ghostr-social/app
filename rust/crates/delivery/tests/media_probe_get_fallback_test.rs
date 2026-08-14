@@ -5,18 +5,14 @@ use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 
 #[tokio::test]
-async fn media_probe_falls_back_to_a_one_byte_ranged_get_when_head_is_rejected() {
+async fn rejected_head_does_not_issue_an_unplanned_body_request() {
     let url = range_fixture::reject::serve_head_rejected(range_fixture::body()).await;
     let client = range_fixture::media_client();
     let mut stats = HostStats::new();
 
-    let result = probe(&client, &url, TransferTimeouts::default(), &mut stats)
-        .await
-        .expect("probe fallback");
+    let result = probe(&client, &url, TransferTimeouts::default(), &mut stats).await;
 
-    assert_eq!(result.content_length, Some(16));
-    assert!(result.accept_ranges);
-    assert_eq!(result.content_type.as_deref(), Some("video/mp4"));
+    assert!(result.is_err());
     let host = host_of(&url).expect("fixture host");
-    assert_eq!(stats.failure_ratio(&host), 0.0);
+    assert!(stats.failure_ratio(&host) > 0.0);
 }

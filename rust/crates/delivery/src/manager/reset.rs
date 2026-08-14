@@ -11,7 +11,7 @@ impl DeliveryWorker {
         self.retry.clear();
         self.cooldown_timers.clear();
         self.pressure.clear();
-        self.pending_demand = None;
+        self.demand_leases.clear();
         self.state.clear();
         self.focus_lease.pin(self.ctx.store.as_ref(), None);
         self.cache.replace(Vec::new());

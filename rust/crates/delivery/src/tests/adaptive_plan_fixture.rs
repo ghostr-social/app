@@ -25,10 +25,6 @@ pub(super) fn state() -> DeliveryState {
     state
 }
 
-pub(super) fn playback(buffer_ms: u64) -> DeliveryPlayback {
-    playback_for(PostId::new("p0"), buffer_ms)
-}
-
 pub(super) fn playback_for(post: PostId, buffer_ms: u64) -> DeliveryPlayback {
     DeliveryPlayback {
         session: PlaybackSession::new(post, 1),

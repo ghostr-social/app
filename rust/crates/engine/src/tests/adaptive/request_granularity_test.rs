@@ -33,10 +33,7 @@ fn adjacent_micro_extents_coalesce_into_larger_requests() {
     let mut input = snapshot(1, 20_000_000, 4_500, 2);
     input.candidates[0].playable_ranges = (0..MICRO_EXTENT_COUNT)
         .map(|index| PlayableRange {
-            bytes: ByteRange::new(
-                index * MICRO_EXTENT_BYTES,
-                (index + 1) * MICRO_EXTENT_BYTES,
-            ),
+            bytes: ByteRange::new(index * MICRO_EXTENT_BYTES, (index + 1) * MICRO_EXTENT_BYTES),
             playable_ms: MICRO_EXTENT_MS,
         })
         .collect();
@@ -73,8 +70,10 @@ fn coalescing_does_not_bridge_gaps_between_extents() {
 
     let plan = AdaptivePlayabilityPolicy.plan(&input);
 
-    assert!(plan.allocations.iter().all(|work| {
-        work.range.end <= MICRO_EXTENT_BYTES
-            || work.range.start >= 2 * MICRO_EXTENT_BYTES
-    }), "a request must never pay for bytes outside the wanted extents: {plan:#?}");
+    assert!(
+        plan.allocations.iter().all(|work| {
+            work.range.end <= MICRO_EXTENT_BYTES || work.range.start >= 2 * MICRO_EXTENT_BYTES
+        }),
+        "a request must never pay for bytes outside the wanted extents: {plan:#?}"
+    );
 }

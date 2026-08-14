@@ -15,6 +15,7 @@ use std::time::Duration;
 const TOTAL: u64 = 256 * 1_024;
 const DROP_AFTER: u64 = 160 * 1_024;
 const QUANTUM: u64 = 16 * 1_024;
+const POST_DROP_WATCHDOG: Duration = Duration::from_secs(1);
 
 #[tokio::test]
 async fn bandwidth_drop_paces_only_bytes_not_yet_delivered() {
@@ -56,7 +57,10 @@ async fn verify_post_drop_progress(
     let first = prefix_end(store).await + QUANTUM;
     wait_for_prefix(store, first).await;
     let next = prefix_end(store).await + QUANTUM;
-    tokio::time::timeout(Duration::from_millis(400), wait_for_prefix(store, next)).await
+    // One 16 KiB quantum needs about 188 ms at 700 kbps. A one-second
+    // watchdog tolerates a loaded CI host but still fails well before
+    // charging the already-written 160 KiB again (about 1.9 seconds).
+    tokio::time::timeout(POST_DROP_WATCHDOG, wait_for_prefix(store, next)).await
 }
 
 async fn wait_for_prefix(store: &PartialRangeStore, minimum: u64) {
