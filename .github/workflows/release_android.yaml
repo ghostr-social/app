@@ -475,3 +475,32 @@ jobs:
             "release-assets/ghostr-${RELEASE_TAG}-x86_64.apk" \
             "release-assets/stable.json" \
             "$GITHUB_SHA"
+
+  sync-update-site:
+    name: Sync app-facing update catalog
+    needs: [version, publish]
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RELEASE_TAG: ${{ needs.version.outputs.tag }}
+
+    steps:
+      - name: Check out update-site tooling
+        uses: actions/checkout@v5
+
+      - name: Download released stable metadata
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p release-assets
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern stable.json \
+            --dir release-assets
+
+      - name: Publish and verify app-facing update catalog
+        env:
+          GH_TOKEN: ${{ secrets.UPDATE_SITE_TOKEN }}
+        run: sh tool/sync_android_update_site.sh "$RELEASE_TAG" release-assets/stable.json

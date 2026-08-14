@@ -23,34 +23,43 @@ final class HttpsUpdateResponseLoader {
   final Duration timeout;
   final int maximumRedirects;
 
-  Future<http.StreamedResponse> load(Uri initial) async {
+  Future<http.StreamedResponse> load(
+    Uri initial, {
+    Map<String, String> headers = const {},
+  }) async {
+    if (!_isSafe(initial)) throw _failure();
     var uri = initial;
     var redirects = 0;
     while (true) {
-      final response = await _send(uri);
+      final response = await _send(uri, headers);
       if (!_redirectStatuses.contains(response.statusCode)) return response;
-      if (redirects >= maximumRedirects) throw _failure();
+      if (redirects >= maximumRedirects) {
+        await response.stream.timeout(timeout).drain<void>();
+        throw _failure();
+      }
       redirects += 1;
       uri = await _redirect(response, uri);
     }
   }
 
-  Future<http.StreamedResponse> _send(Uri uri) {
-    final request = http.Request('GET', uri)..followRedirects = false;
+  Future<http.StreamedResponse> _send(Uri uri, Map<String, String> headers) {
+    final request = http.Request('GET', uri)
+      ..followRedirects = false
+      ..headers.addAll(headers);
     return _client.send(request).timeout(timeout);
   }
 
   Future<Uri> _redirect(http.StreamedResponse response, Uri current) async {
     final location = response.headers[HttpHeaders.locationHeader];
-    await response.stream.drain<void>();
+    await response.stream.timeout(timeout).drain<void>();
     if (location == null) throw _failure();
     final target = current.resolve(location);
-    if (target.scheme != 'https' ||
-        target.host.isEmpty ||
-        target.userInfo.isNotEmpty) {
-      throw _failure();
-    }
+    if (!_isSafe(target)) throw _failure();
     return target;
+  }
+
+  bool _isSafe(Uri uri) {
+    return uri.scheme == 'https' && uri.host.isNotEmpty && uri.userInfo.isEmpty;
   }
 
   AppFailure _failure() => const AppFailure('Could not download the update.');
