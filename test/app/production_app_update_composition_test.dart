@@ -5,6 +5,7 @@ import 'package:ghostr/features/app_update/data/http_update_package_downloader.d
 import 'package:http/testing.dart';
 
 import '../support/app_update_cubit_harness.dart';
+import '../support/fake_update_offer_history_repository.dart';
 
 void main() {
   test('composes the HTTP updater with Android ports and settings', () async {
@@ -24,6 +25,7 @@ void main() {
 
     final runtime = buildProductionAppUpdateRuntime(
       harness.settings,
+      FakeUpdateOfferHistoryRepository(),
       environment: environment,
     );
 
@@ -31,6 +33,10 @@ void main() {
     expect(runtime.dependencies.downloader, isA<HttpUpdatePackageDownloader>());
     expect(runtime.dependencies.installedApp, same(harness.installedApp));
     expect(runtime.dependencies.settings, same(harness.settings));
+    expect(
+      runtime.dependencies.offerHistory,
+      isA<FakeUpdateOfferHistoryRepository>(),
+    );
     await runtime.dispose();
     await runtime.dispose();
     expect(disposed, isTrue);

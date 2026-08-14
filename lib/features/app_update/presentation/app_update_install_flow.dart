@@ -47,11 +47,23 @@ extension AppUpdateInstallFlow on AppUpdateCubit {
       case UpdateInstallStatus.awaitingUserAction:
         _emitInstalling(package, session, status);
       case UpdateInstallStatus.succeeded:
-        _emitState(const AppUpdateCurrentState());
+        await _verifyInstalled(package, session);
       case UpdateInstallStatus.failed:
         _emitState(
           const AppUpdateFailureState('Android could not install the update.'),
         );
+    }
+  }
+
+  Future<void> _verifyInstalled(
+    VerifiedUpdatePackage package,
+    UpdateInstallSession session,
+  ) async {
+    final installed = await _dependencies.installedApp.readInstalledApp();
+    if (installed.versionCode.compareTo(package.versionCode) >= 0) {
+      _emitState(const AppUpdateCurrentState());
+    } else {
+      _emitInstalling(package, session, UpdateInstallStatus.succeeded);
     }
   }
 

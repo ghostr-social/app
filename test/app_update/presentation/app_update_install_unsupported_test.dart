@@ -15,9 +15,18 @@ void main() {
       harness.installer.permission = UpdateInstallPermission.unsupported;
     },
     build: () => harness.build(),
-    act: (cubit) => cubit.start(),
+    act: (cubit) async {
+      await cubit.start();
+      await acceptCurrentUpdateOffer(cubit);
+    },
     expect: () => [
       isA<AppUpdateCheckingState>(),
+      isA<AppUpdateOfferedState>(),
+      isA<AppUpdateOfferedState>().having(
+        (state) => state.pendingAction,
+        'pending action',
+        AppUpdateOfferAction.accepting,
+      ),
       isA<AppUpdateDownloadingState>(),
       isA<AppUpdateUnsupportedState>().having(
         (state) => state.message,

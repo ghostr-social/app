@@ -6,7 +6,7 @@ import '../support/fake_app_settings_repository.dart';
 import '../support/settings_screen_harness.dart';
 
 void main() {
-  testWidgets('configures, checks, and saves automatic app updates', (
+  testWidgets('configures, checks, and saves app update choices', (
     tester,
   ) async {
     final repository = FakeAppSettingsRepository(AppSettings.defaults());
@@ -19,11 +19,16 @@ void main() {
     await _show(tester, const Key('automatic-update-checks-field'));
     expect(find.text('App updates'), findsOneWidget);
     expect(
-      find.bySemanticsLabel(RegExp('Check for updates automatically')),
+      find.bySemanticsLabel(RegExp('Offer new app versions automatically')),
       findsOneWidget,
     );
     await tester.tap(find.byKey(const Key('automatic-update-checks-field')));
-    await _chooseAnyNetwork(tester);
+    await _show(tester, const Key('wifi-only-update-downloads-field'));
+    expect(
+      find.bySemanticsLabel(RegExp('Download updates only on Wi-Fi')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('wifi-only-update-downloads-field')));
     await _show(tester, const Key('automatic-update-install-field'));
     await tester.tap(find.byKey(const Key('automatic-update-install-field')));
     await tester.tap(find.byKey(const Key('check-for-updates-button')));
@@ -38,14 +43,6 @@ void main() {
     expect(saved.downloadPolicy, UpdateDownloadPolicy.anyNetwork);
     expect(saved.automaticInstall, isFalse);
   });
-}
-
-Future<void> _chooseAnyNetwork(WidgetTester tester) async {
-  await _show(tester, const Key('update-download-policy-field'));
-  await tester.tap(find.byKey(const Key('update-download-policy-field')));
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('Wi-Fi or mobile data').last);
-  await tester.pumpAndSettle();
 }
 
 Future<void> _show(WidgetTester tester, Key key) async {

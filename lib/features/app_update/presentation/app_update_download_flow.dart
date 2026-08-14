@@ -5,6 +5,8 @@ extension AppUpdateDownloadFlow on AppUpdateCubit {
     return switch (current) {
       AppUpdateAvailableState(:final release, :final artifact) =>
         AppUpdateAvailable(release: release, artifact: artifact),
+      AppUpdateOfferedState(:final release, :final artifact) =>
+        AppUpdateAvailable(release: release, artifact: artifact),
       AppUpdateWaitingForWifiState(:final release, :final artifact) =>
         AppUpdateAvailable(release: release, artifact: artifact),
       _ => null,

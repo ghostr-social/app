@@ -20,8 +20,10 @@ void main() {
       final cubit = harness.build(clock: () => DateTime.utc(2026, 8, 12));
 
       await cubit.start();
+      await acceptCurrentUpdateOffer(cubit);
       expect(cubit.state, isA<AppUpdatePermissionRequiredState>());
       harness.installer.permission = UpdateInstallPermission.granted;
+      harness.reportUpdateInstalled();
       await cubit.onAppResumed();
 
       expect(harness.installer.requests, hasLength(1));

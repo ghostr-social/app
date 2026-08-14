@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ghostr/app/app_controller_factory.dart';
+import 'package:ghostr/app/app_update_scope.dart';
 import 'package:ghostr/app/home_shell.dart';
+import 'package:ghostr/features/app_update/presentation/app_update_offer_overlay.dart';
+import 'package:ghostr/features/session/domain/user_session.dart';
 import 'package:ghostr/features/session/presentation/session_cubit.dart';
 import 'package:ghostr/features/session/presentation/account_access_flow.dart';
 import 'package:ghostr/features/session/domain/secret_backup_port.dart';
@@ -38,11 +41,15 @@ class SessionGate extends StatelessWidget {
         context,
         message,
       ),
-      SessionSignedIn(session: final session) => HomeShell(
-        session: session,
-        controllers: controllers,
-      ),
+      SessionSignedIn(session: final session) => _signedIn(context, session),
     };
+  }
+
+  Widget _signedIn(BuildContext context, UserSession session) {
+    final home = HomeShell(session: session, controllers: controllers);
+    final updater = AppUpdateScope.maybeOf(context);
+    if (updater == null) return home;
+    return AppUpdateOfferOverlay(cubit: updater, child: home);
   }
 
   Widget _accountAccess(

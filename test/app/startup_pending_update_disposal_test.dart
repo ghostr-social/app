@@ -44,6 +44,7 @@ AppUpdateRuntime _runtime(AppUpdateDisposer dispose) {
       network: updates.network,
       downloader: updates.downloader,
       installer: updates.installer,
+      offerHistory: updates.offerHistory,
       settings: updates.settings,
     ),
     dispose: dispose,

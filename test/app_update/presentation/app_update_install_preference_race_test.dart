@@ -18,7 +18,8 @@ void main() {
         (state) => state is AppUpdateDownloadingState,
       );
 
-      final operation = cubit.start();
+      await cubit.start();
+      final operation = acceptCurrentUpdateOffer(cubit);
       await downloading;
       await harness.settings.save(
         harness.settings.settings.copyWith(

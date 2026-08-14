@@ -4,6 +4,8 @@ import 'package:ghostr/app/production_app_update.dart';
 import 'package:ghostr/features/settings/domain/app_settings_repository.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
 
+import '../support/fake_update_offer_history_repository.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -14,7 +16,10 @@ void main() {
       final builder = environment.appUpdateBuilder;
       expect(builder, isNotNull);
 
-      final runtime = builder!(_UnusedSettingsRepository());
+      final runtime = builder!(
+        _UnusedSettingsRepository(),
+        FakeUpdateOfferHistoryRepository(),
+      );
       expect(runtime, isA<AppUpdateRuntime>());
       await runtime.dispose();
     },

@@ -27,6 +27,10 @@ case "$ref" in
       echo "Release tag must produce a positive Android versionCode." >&2
       exit 65
     fi
+    if [ "$code" -gt 2100000000 ]; then
+      echo "Release tag exceeds the Android versionCode maximum." >&2
+      exit 65
+    fi
     ;;
   *)
     version=$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml)

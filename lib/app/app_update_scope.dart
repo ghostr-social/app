@@ -53,6 +53,8 @@ class _AppUpdateScopeState extends State<AppUpdateScope> {
       child: BlocProvider.value(
         value: _cubit,
         child: AppUpdateLifecycle(
+          checkInterval: AppUpdateCubit.foregroundPollInterval,
+          onCheckDue: _cubit.onPeriodicCheck,
           onResumed: _cubit.onAppResumed,
           child: widget.child,
         ),

@@ -5,10 +5,10 @@ import 'package:ghostr/features/app_update/domain/stable_release.dart';
 import 'package:ghostr/features/app_update/domain/update_package_sha256.dart';
 
 StableRelease sampleStableRelease({
+  String versionName = '0.0.2',
   int versionCode = 2,
   List<AndroidAbi> abis = AndroidAbi.values,
 }) {
-  const versionName = '0.0.2';
   return StableRelease(
     versionName: versionName,
     versionCode: AndroidVersionCode(versionCode),

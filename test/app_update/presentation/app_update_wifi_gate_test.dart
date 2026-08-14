@@ -22,9 +22,16 @@ void main() {
       final subscription = cubit.stream.listen(states.add);
 
       await cubit.start();
+      await acceptCurrentUpdateOffer(cubit);
       await Future<void>.delayed(Duration.zero);
       expect(states, [
         isA<AppUpdateCheckingState>(),
+        isA<AppUpdateOfferedState>(),
+        isA<AppUpdateOfferedState>().having(
+          (state) => state.pendingAction,
+          'pending action',
+          AppUpdateOfferAction.accepting,
+        ),
         isA<AppUpdateWaitingForWifiState>(),
       ]);
       expect(harness.catalog.calls, 1);
@@ -33,7 +40,7 @@ void main() {
       harness.network.connection = NetworkConnection.wifi;
       await cubit.retryDownload();
       await Future<void>.delayed(Duration.zero);
-      expect(states.skip(2), [
+      expect(states.skip(4), [
         isA<AppUpdateDownloadingState>().having(
           (state) => state.bytes,
           'bytes',

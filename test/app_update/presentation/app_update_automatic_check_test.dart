@@ -30,7 +30,10 @@ void main() {
         installed: sampleInstalledApp(),
         release: null,
       );
-      harness.catalog.release = sampleStableRelease(versionCode: 1);
+      harness.catalog.release = sampleStableRelease(
+        versionName: '0.0.1',
+        versionCode: 1,
+      );
       final cubit = harness.build();
       final states = <AppUpdateState>[];
       final subscription = cubit.stream.listen(states.add);

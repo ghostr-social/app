@@ -31,7 +31,7 @@ void main() {
     expect(find.text('Session gate'), findsOneWidget);
     await tester.pump();
     expect(harness.catalog.calls, 1);
-    expect(cubit.state, isA<AppUpdateAvailableState>());
+    expect(cubit.state, isA<AppUpdateOfferedState>());
     await tester.pumpWidget(const SizedBox.shrink());
   });
 }

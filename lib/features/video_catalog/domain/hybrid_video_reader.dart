@@ -38,6 +38,8 @@ class HybridVideoReader implements VideoPostReader {
         searchQuery: searchQuery,
         hashtags: hashtags,
       );
+      // Hydration failures remain caller-visible rather than remote fallbacks.
+      // ignore: unawaited_return_in_try_block
       return _hydrate(_merge(localPosts, remotePosts));
     } on AppFailure catch (error, stackTrace) {
       _report('HybridVideoReader.load', error, stackTrace);

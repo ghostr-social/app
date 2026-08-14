@@ -26,6 +26,22 @@ final class AppUpdateAvailableState extends AppUpdateState {
   final ReleaseArtifact artifact;
 }
 
+enum AppUpdateOfferAction { accepting, declining }
+
+final class AppUpdateOfferedState extends AppUpdateState {
+  const AppUpdateOfferedState(
+    this.release,
+    this.artifact, {
+    this.message,
+    this.pendingAction,
+  });
+
+  final StableRelease release;
+  final ReleaseArtifact artifact;
+  final String? message;
+  final AppUpdateOfferAction? pendingAction;
+}
+
 final class AppUpdateWaitingForWifiState extends AppUpdateState {
   const AppUpdateWaitingForWifiState(this.release, this.artifact);
 

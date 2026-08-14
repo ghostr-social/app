@@ -47,7 +47,7 @@ class AppUpdateStatusPanel extends StatelessWidget {
     if (value is AppUpdateIdleState) {
       return const _StatusView(
         icon: Icons.update,
-        message: 'Automatic update checks are ready.',
+        message: 'No update check has run yet.',
       );
     }
     if (value is AppUpdateCheckingState) {
@@ -68,10 +68,13 @@ class AppUpdateStatusPanel extends StatelessWidget {
 
   Widget _downloadStatus(AppUpdateState value) {
     if (value is AppUpdateAvailableState) {
-      return _StatusView(
-        icon: Icons.system_update_alt,
-        message: 'Ghostr ${value.release.versionName} is available.',
-        primary: _PanelAction('Download update', actions.onDownload),
+      return _availableStatus(value.release.versionName);
+    }
+    if (value is AppUpdateOfferedState) {
+      return _availableStatus(
+        value.release.versionName,
+        detail: value.message,
+        pendingAction: value.pendingAction,
       );
     }
     if (value is AppUpdateWaitingForWifiState) {
@@ -91,6 +94,24 @@ class AppUpdateStatusPanel extends StatelessWidget {
       );
     }
     return _installStatus(value);
+  }
+
+  Widget _availableStatus(
+    String versionName, {
+    String? detail,
+    AppUpdateOfferAction? pendingAction,
+  }) {
+    return _StatusView(
+      icon: Icons.system_update_alt,
+      message: 'Ghostr $versionName is available.',
+      detail: detail,
+      detailIsError: detail != null,
+      progressLabel: _offerProgressLabel(pendingAction),
+      primary: _PanelAction(
+        'Download update',
+        pendingAction == null ? actions.onDownload : null,
+      ),
+    );
   }
 
   Widget _installStatus(AppUpdateState value) {
@@ -127,14 +148,17 @@ class AppUpdateStatusPanel extends StatelessWidget {
         icon: Icons.error_outline,
         message: 'Update failed',
         detail: value.message,
+        detailIsError: true,
       );
     }
-    final unsupported = value as AppUpdateUnsupportedState;
-    return _StatusView(
-      icon: Icons.mobile_off,
-      message: 'Updates unavailable',
-      detail: unsupported.message,
-    );
+    if (value is AppUpdateUnsupportedState) {
+      return _StatusView(
+        icon: Icons.mobile_off,
+        message: 'Updates unavailable',
+        detail: value.message,
+      );
+    }
+    throw StateError('Unhandled app update state: $value');
   }
 
   Widget _installingStatus(AppUpdateInstallingState value) {
@@ -154,6 +178,13 @@ class AppUpdateStatusPanel extends StatelessWidget {
 String _installMessage(UpdateInstallStatus status) => switch (status) {
   UpdateInstallStatus.pending => 'Preparing the Android installer…',
   UpdateInstallStatus.awaitingUserAction => 'Confirm the update in Android.',
-  UpdateInstallStatus.succeeded => 'Android installed the update.',
+  UpdateInstallStatus.succeeded =>
+    'Android reported success. Verifying the installed version…',
   UpdateInstallStatus.failed => 'Android could not install the update.',
+};
+
+String? _offerProgressLabel(AppUpdateOfferAction? action) => switch (action) {
+  AppUpdateOfferAction.accepting => 'Starting update',
+  AppUpdateOfferAction.declining => 'Saving skipped version',
+  null => null,
 };
