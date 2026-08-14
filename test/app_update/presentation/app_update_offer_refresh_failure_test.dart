@@ -19,5 +19,14 @@ void main() {
 
     expect(cubit.state, same(offered));
     expect(harness.catalog.calls, 2);
+
+    now = now.add(const Duration(seconds: 59));
+    await cubit.onPeriodicCheck();
+    expect(harness.catalog.calls, 2);
+
+    now = now.add(const Duration(seconds: 1));
+    await cubit.onPeriodicCheck();
+    expect(cubit.state, same(offered));
+    expect(harness.catalog.calls, 3);
   });
 }
