@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/errors/boundary_failure.dart';
+import 'package:ghostr/features/app_update/data/https_update_response_loader.dart';
 import 'package:ghostr/features/app_update/data/stable_release_parser.dart';
 import 'package:ghostr/features/app_update/domain/app_release_catalog.dart';
 import 'package:ghostr/features/app_update/domain/stable_release.dart';
@@ -21,6 +22,10 @@ final class HttpAppReleaseCatalog implements AppReleaseCatalog {
        _endpoint = endpoint;
 
   static final stableEndpoint = Uri.https(
+    'github.com',
+    '/ghostr-social/app/releases/latest/download/stable.json',
+  );
+  static final fallbackEndpoint = Uri.https(
     'ghostr-social.github.io',
     '/stable.json',
   );
@@ -33,12 +38,41 @@ final class HttpAppReleaseCatalog implements AppReleaseCatalog {
 
   @override
   Future<StableRelease> fetchStableRelease() async {
+    final endpoint = _endpoint;
+    if (endpoint != null) return _fetchSafely(endpoint);
+    Uint8List bytes;
     try {
-      final response = await _send();
-      final bytes = await _readBounded(response);
+      bytes = await _load(stableEndpoint);
+    } on Object catch (error, stackTrace) {
+      _logPrimaryFailure(error, stackTrace);
+      return _fetchSafely(fallbackEndpoint);
+    }
+    return _parseSafely(bytes);
+  }
+
+  Future<StableRelease> _fetchSafely(Uri endpoint) async {
+    Uint8List bytes;
+    try {
+      bytes = await _load(endpoint);
+    } on Object catch (error, stackTrace) {
+      throw translatedBoundaryFailure(
+        source: 'ghostr.app-update.catalog',
+        message: 'Could not check for updates.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+    return _parseSafely(bytes);
+  }
+
+  Future<Uint8List> _load(Uri endpoint) async {
+    final response = await _send(endpoint);
+    return _readBounded(response);
+  }
+
+  StableRelease _parseSafely(Uint8List bytes) {
+    try {
       return _parser.parse(utf8.decode(bytes));
-    } on AppFailure {
-      rethrow;
     } on Object catch (error, stackTrace) {
       throw translatedBoundaryFailure(
         source: 'ghostr.app-update.catalog',
@@ -49,10 +83,21 @@ final class HttpAppReleaseCatalog implements AppReleaseCatalog {
     }
   }
 
-  Future<http.StreamedResponse> _send() async {
-    final request = http.Request('GET', _endpoint ?? stableEndpoint)
-      ..followRedirects = false;
-    final response = await _client.send(request).timeout(_timeout);
+  void _logPrimaryFailure(Object error, StackTrace stackTrace) {
+    logBoundaryFailure(
+      source: 'ghostr.app-update.catalog.primary',
+      message: 'The primary update catalog was unavailable.',
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
+
+  Future<http.StreamedResponse> _send(Uri endpoint) async {
+    final response = await HttpsUpdateResponseLoader(_client, timeout: _timeout)
+        .load(
+          endpoint,
+          headers: const {'cache-control': 'no-cache', 'pragma': 'no-cache'},
+        );
     final length = response.contentLength;
     if (response.statusCode != HttpStatus.ok ||
         (length != null && length > maximumMetadataBytes)) {
