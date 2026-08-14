@@ -890,6 +890,7 @@ impl SseDecode for crate::api::feed_types::FfiFeedKind {
             1 => crate::api::feed_types::FfiFeedKind::Hashtag,
             2 => crate::api::feed_types::FfiFeedKind::Search,
             3 => crate::api::feed_types::FfiFeedKind::Profile,
+            4 => crate::api::feed_types::FfiFeedKind::Following,
             _ => unreachable!("Invalid variant for FfiFeedKind: {}", inner),
         };
     }
@@ -927,7 +928,13 @@ impl SseDecode for crate::api::feed_types::FfiFeedPost {
         let mut var_eventId = <String>::sse_decode(deserializer);
         let mut var_eventKind = <u16>::sse_decode(deserializer);
         let mut var_identifier = <Option<String>>::sse_decode(deserializer);
+        let mut var_publishedIdentifier = <Option<String>>::sse_decode(deserializer);
         let mut var_createdAt = <u64>::sse_decode(deserializer);
+        let mut var_feedSortAt = <u64>::sse_decode(deserializer);
+        let mut var_signedEventJson = <Option<String>>::sse_decode(deserializer);
+        let mut var_isProtected = <bool>::sse_decode(deserializer);
+        let mut var_repost =
+            <Option<crate::api::feed_types::FfiFeedRepost>>::sse_decode(deserializer);
         let mut var_caption = <String>::sse_decode(deserializer);
         let mut var_title = <Option<String>>::sse_decode(deserializer);
         let mut var_hashtags = <Vec<String>>::sse_decode(deserializer);
@@ -938,12 +945,48 @@ impl SseDecode for crate::api::feed_types::FfiFeedPost {
             event_id: var_eventId,
             event_kind: var_eventKind,
             identifier: var_identifier,
+            published_identifier: var_publishedIdentifier,
             created_at: var_createdAt,
+            feed_sort_at: var_feedSortAt,
+            signed_event_json: var_signedEventJson,
+            is_protected: var_isProtected,
+            repost: var_repost,
             caption: var_caption,
             title: var_title,
             hashtags: var_hashtags,
             creator: var_creator,
             media: var_media,
+        };
+    }
+}
+
+impl SseDecode for crate::api::feed_types::FfiFeedRepost {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_eventId = <String>::sse_decode(deserializer);
+        let mut var_eventKind = <u16>::sse_decode(deserializer);
+        let mut var_target =
+            <crate::api::feed_types::FfiFeedRepostTarget>::sse_decode(deserializer);
+        let mut var_repostedAt = <u64>::sse_decode(deserializer);
+        let mut var_reposter = <crate::api::feed_types::FfiFeedCreator>::sse_decode(deserializer);
+        return crate::api::feed_types::FfiFeedRepost {
+            event_id: var_eventId,
+            event_kind: var_eventKind,
+            target: var_target,
+            reposted_at: var_repostedAt,
+            reposter: var_reposter,
+        };
+    }
+}
+
+impl SseDecode for crate::api::feed_types::FfiFeedRepostTarget {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::feed_types::FfiFeedRepostTarget::SpecificEvent,
+            1 => crate::api::feed_types::FfiFeedRepostTarget::Coordinate,
+            _ => unreachable!("Invalid variant for FfiFeedRepostTarget: {}", inner),
         };
     }
 }
@@ -1311,6 +1354,19 @@ impl SseDecode for Option<String> {
     }
 }
 
+impl SseDecode for Option<crate::api::feed_types::FfiFeedRepost> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::api::feed_types::FfiFeedRepost>::sse_decode(
+                deserializer,
+            ));
+        } else {
+            return None;
+        }
+    }
+}
+
 impl SseDecode for Option<crate::api::feed_types::FfiMediaDim> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1603,6 +1659,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::feed_types::FfiFeedKind {
             Self::Hashtag => 1.into_dart(),
             Self::Search => 2.into_dart(),
             Self::Profile => 3.into_dart(),
+            Self::Following => 4.into_dart(),
             _ => unreachable!(),
         }
     }
@@ -1653,7 +1710,12 @@ impl flutter_rust_bridge::IntoDart for crate::api::feed_types::FfiFeedPost {
             self.event_id.into_into_dart().into_dart(),
             self.event_kind.into_into_dart().into_dart(),
             self.identifier.into_into_dart().into_dart(),
+            self.published_identifier.into_into_dart().into_dart(),
             self.created_at.into_into_dart().into_dart(),
+            self.feed_sort_at.into_into_dart().into_dart(),
+            self.signed_event_json.into_into_dart().into_dart(),
+            self.is_protected.into_into_dart().into_dart(),
+            self.repost.into_into_dart().into_dart(),
             self.caption.into_into_dart().into_dart(),
             self.title.into_into_dart().into_dart(),
             self.hashtags.into_into_dart().into_dart(),
@@ -1671,6 +1733,51 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::feed_types::FfiFeedPost>
     for crate::api::feed_types::FfiFeedPost
 {
     fn into_into_dart(self) -> crate::api::feed_types::FfiFeedPost {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::feed_types::FfiFeedRepost {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.event_id.into_into_dart().into_dart(),
+            self.event_kind.into_into_dart().into_dart(),
+            self.target.into_into_dart().into_dart(),
+            self.reposted_at.into_into_dart().into_dart(),
+            self.reposter.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::feed_types::FfiFeedRepost
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::feed_types::FfiFeedRepost>
+    for crate::api::feed_types::FfiFeedRepost
+{
+    fn into_into_dart(self) -> crate::api::feed_types::FfiFeedRepost {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::feed_types::FfiFeedRepostTarget {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::SpecificEvent => 0.into_dart(),
+            Self::Coordinate => 1.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::feed_types::FfiFeedRepostTarget
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::feed_types::FfiFeedRepostTarget>
+    for crate::api::feed_types::FfiFeedRepostTarget
+{
+    fn into_into_dart(self) -> crate::api::feed_types::FfiFeedRepostTarget {
         self
     }
 }
@@ -2119,6 +2226,7 @@ impl SseEncode for crate::api::feed_types::FfiFeedKind {
                 crate::api::feed_types::FfiFeedKind::Hashtag => 1,
                 crate::api::feed_types::FfiFeedKind::Search => 2,
                 crate::api::feed_types::FfiFeedKind::Profile => 3,
+                crate::api::feed_types::FfiFeedKind::Following => 4,
                 _ => {
                     unimplemented!("");
                 }
@@ -2149,12 +2257,44 @@ impl SseEncode for crate::api::feed_types::FfiFeedPost {
         <String>::sse_encode(self.event_id, serializer);
         <u16>::sse_encode(self.event_kind, serializer);
         <Option<String>>::sse_encode(self.identifier, serializer);
+        <Option<String>>::sse_encode(self.published_identifier, serializer);
         <u64>::sse_encode(self.created_at, serializer);
+        <u64>::sse_encode(self.feed_sort_at, serializer);
+        <Option<String>>::sse_encode(self.signed_event_json, serializer);
+        <bool>::sse_encode(self.is_protected, serializer);
+        <Option<crate::api::feed_types::FfiFeedRepost>>::sse_encode(self.repost, serializer);
         <String>::sse_encode(self.caption, serializer);
         <Option<String>>::sse_encode(self.title, serializer);
         <Vec<String>>::sse_encode(self.hashtags, serializer);
         <crate::api::feed_types::FfiFeedCreator>::sse_encode(self.creator, serializer);
         <crate::api::feed_types::FfiFeedMedia>::sse_encode(self.media, serializer);
+    }
+}
+
+impl SseEncode for crate::api::feed_types::FfiFeedRepost {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.event_id, serializer);
+        <u16>::sse_encode(self.event_kind, serializer);
+        <crate::api::feed_types::FfiFeedRepostTarget>::sse_encode(self.target, serializer);
+        <u64>::sse_encode(self.reposted_at, serializer);
+        <crate::api::feed_types::FfiFeedCreator>::sse_encode(self.reposter, serializer);
+    }
+}
+
+impl SseEncode for crate::api::feed_types::FfiFeedRepostTarget {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::feed_types::FfiFeedRepostTarget::SpecificEvent => 0,
+                crate::api::feed_types::FfiFeedRepostTarget::Coordinate => 1,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
     }
 }
 
@@ -2435,6 +2575,16 @@ impl SseEncode for Option<String> {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
             <String>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<crate::api::feed_types::FfiFeedRepost> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::api::feed_types::FfiFeedRepost>::sse_encode(value, serializer);
         }
     }
 }

@@ -21,6 +21,7 @@ async fn generic_reads_do_not_wait_for_creator_metadata() {
         ),
         priority: RetrievalPriority::Enrichment,
         plan: plan_event_queries(vec![Filter::new().kind(Kind::Reaction)]),
+        deferred_reposts: Vec::new(),
     };
 
     let events = executor(io.clone())

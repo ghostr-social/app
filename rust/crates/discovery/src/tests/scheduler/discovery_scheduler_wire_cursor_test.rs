@@ -56,6 +56,7 @@ async fn scheduler_uses_the_shallowest_wire_filter_cursor() {
             vec![PlanPage {
                 events,
                 cursor: Some(Timestamp::from(99)),
+                repost_retry: Default::default(),
             }]
             .into(),
         ),
@@ -73,7 +74,14 @@ async fn scheduler_uses_the_shallowest_wire_filter_cursor() {
     handle.open_feed(context("search"), query);
 
     next_started(&mut started).await;
-    next_outcome(&mut reported).await;
+    let outcome = next_outcome(&mut reported).await;
+    assert!(matches!(
+        outcome,
+        crate::retrieval_types::RetrievalOutcome::Completed {
+            cursor: Some(value),
+            ..
+        } if value == Timestamp::from(99)
+    ));
     let older = next_started(&mut started).await;
 
     assert_eq!(

@@ -21,6 +21,7 @@ abstract final class AppSize {
   static const double profileAvatar = 38;
   static const double feedRailAvatar = 24;
   static const double feedRailIcon = 34;
+  static const double feedRailMinHeight = 360;
   static const double feedProfileActionWidth = 52;
   static const double feedProfileActionHeight = 60;
   static const double feedFollowOffset = 36;
@@ -42,4 +43,8 @@ abstract final class AppPalette {
   static const videoLoadingBackground = Color(0xFF111111);
   static const videoScrimTop = Color(0x33000000);
   static const videoScrimBottom = Color(0xA6000000);
+}
+
+abstract final class AppShadow {
+  static const videoOverlay = [Shadow(color: Color(0x99000000), blurRadius: 8)];
 }

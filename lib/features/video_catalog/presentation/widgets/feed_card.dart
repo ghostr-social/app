@@ -9,7 +9,7 @@ import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card_met
 import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:ghostr/shared/theme/app_tokens.dart';
 
-export 'feed_card_action_rail.dart' show FeedCardActions, FeedCardShareStatus;
+export 'feed_card_actions.dart';
 
 final class FeedCardPlayback {
   const FeedCardPlayback({required this.port, required this.isActive});
@@ -56,29 +56,44 @@ class FeedCard extends StatelessWidget {
       showFeedCardMenu(
         context,
         post: post,
-        onBlockCreator: actions.onBlockCreator,
+        onBlockCreator: actions.moderation.onBlockCreator,
       ),
     );
   }
 
   Widget _content() {
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: FeedCardMetadata(
-                post: post,
-                onOpenHashtag: actions.onOpenHashtag,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            FeedCardActionRail(post: post, actions: actions),
-          ],
-        ),
+      child: LayoutBuilder(
+        builder: (_, constraints) => _overlay(constraints.maxHeight),
       ),
+    );
+  }
+
+  Widget _overlay(double height) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: FeedCardMetadata(
+              post: post,
+              onOpenHashtag: actions.navigation.onOpenHashtag,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          _rail(height - AppSpacing.md * 2),
+        ],
+      ),
+    );
+  }
+
+  Widget _rail(double height) {
+    final rail = FeedCardActionRail(post: post, actions: actions);
+    if (height >= AppSize.feedRailMinHeight) return rail;
+    return SizedBox(
+      height: height,
+      child: SingleChildScrollView(reverse: true, child: rail),
     );
   }
 }

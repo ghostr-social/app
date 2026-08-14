@@ -5,7 +5,7 @@ mod support;
 use nostr_sdk::Keys;
 use rust_lib_ghostr::api::feed_control::{ffi_feed_session, ffi_load_more, ffi_open_feed};
 use rust_lib_ghostr::api::session_control::ffi_reset_nostr_session;
-use support::feed_session::{main_feed, search_feed};
+use support::feed_session::{following_feed, main_feed, search_feed};
 use support::fixtures::temp_directory;
 
 #[tokio::test]
@@ -25,6 +25,20 @@ async fn account_mismatches_do_not_allocate_or_rescope_a_feed() {
 
     assert!(ffi_open_feed(
         main_feed(Some(account_a.clone())),
+        Some(account_b.clone()),
+        generation,
+    )
+    .await
+    .is_err());
+    assert!(ffi_open_feed(
+        following_feed(Some(account_a.clone()), account_a.clone()),
+        Some(account_b.clone()),
+        generation,
+    )
+    .await
+    .is_err());
+    assert!(ffi_open_feed(
+        following_feed(None, account_a.clone()),
         Some(account_b.clone()),
         generation,
     )

@@ -14,8 +14,8 @@ class QueryVideoFeedRepository implements VideoFeedRepository {
   const QueryVideoFeedRepository({
     required VideoSearchRepository search,
     required String query,
-  })  : _search = search,
-        _query = query;
+  }) : _search = search,
+       _query = query;
 
   final VideoSearchRepository _search;
   final String _query;
@@ -43,9 +43,9 @@ class QueryVideoFeedRepository implements VideoFeedRepository {
 
   // A final page must still leave the feed a way forward.
   VideoFeedPage _continued(VideoFeedPage page) {
-    var oldest = page.posts.first.publishedAt;
+    var oldest = page.posts.first.feedActivityAt;
     for (final post in page.posts.skip(1)) {
-      if (post.publishedAt.isBefore(oldest)) oldest = post.publishedAt;
+      if (post.feedActivityAt.isBefore(oldest)) oldest = post.feedActivityAt;
     }
     return VideoFeedPage(
       posts: page.posts,

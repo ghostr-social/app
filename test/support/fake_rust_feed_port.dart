@@ -18,6 +18,7 @@ class FakeRustFeedPort implements RustFeedPort {
   RustFeedId feedId = RustFeedId.parse('7');
 
   final List<FfiFeedSpec> openedSpecs = <FfiFeedSpec>[];
+  final List<NostrPublicKeyHex?> capturedAccounts = <NostrPublicKeyHex?>[];
   final List<BigInt?> loadMoreCursors = <BigInt?>[];
   final List<RustFeedId> closedFeedIds = <RustFeedId>[];
 
@@ -25,6 +26,7 @@ class FakeRustFeedPort implements RustFeedPort {
   Future<RustFeedAccountSession> captureSession(
     NostrPublicKeyHex? expectedAccount,
   ) async {
+    capturedAccounts.add(expectedAccount);
     return RustFeedAccountSession(
       account: expectedAccount,
       generation: RustNostrSessionGeneration.fromBridge(BigInt.zero),

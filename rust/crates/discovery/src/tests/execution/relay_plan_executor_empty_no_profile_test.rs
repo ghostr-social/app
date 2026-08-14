@@ -18,6 +18,7 @@ async fn empty_feed_result_skips_profile_enrichment() {
         ),
         priority: RetrievalPriority::Interactive,
         plan: plan_discovery(&DiscoveryRequest::default()),
+        deferred_reposts: Vec::new(),
     };
 
     let events = executor(io.clone())

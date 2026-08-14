@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ghostr/features/comments/presentation/comments_cubit.dart';
+import 'package:ghostr/features/reposts/domain/video_repost_repository.dart';
 import 'package:ghostr/features/social/domain/social_graph_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
@@ -22,6 +23,7 @@ final class FeedScreenHarnessOptions {
     this.shareWorkflow,
     this.viewerId,
     this.social,
+    this.reposts,
   });
 
   final ValueChanged<String>? onOpenProfile;
@@ -30,6 +32,7 @@ final class FeedScreenHarnessOptions {
   final VideoShareWorkflow? shareWorkflow;
   final ProfileId? viewerId;
   final SocialGraphRepository? social;
+  final VideoRepostRepository? reposts;
 }
 
 Widget feedScreenHarness(
@@ -45,7 +48,12 @@ Widget feedScreenHarness(
           feed: repository,
           engagement: repository,
           followProfile: testFollowProfileWorkflow(socialGraph),
-          optional: FeedOptionalDependencies(social: socialGraph),
+          optional: FeedOptionalDependencies(
+            social: socialGraph,
+            delivery: FeedDeliveryDependencies(
+              reposts: options.reposts ?? repository,
+            ),
+          ),
         ),
       )..load(),
       child: Scaffold(
@@ -57,6 +65,7 @@ Widget feedScreenHarness(
             shareWorkflow: options.shareWorkflow ?? FakeVideoShareWorkflow(),
             createComments: (post) => CommentsCubit(repository, post),
             isActive: true,
+            showFeedKindSelector: true,
           ),
         ),
       ),

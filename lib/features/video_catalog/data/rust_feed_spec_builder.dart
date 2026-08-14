@@ -22,6 +22,19 @@ FfiFeedSpec? buildRustFeedSpec({
       _identitySpec(creators, viewerPubkeyHex);
 }
 
+FfiFeedSpec? buildRustFollowingFeedSpec(
+  Set<ProfileId> creatorIds, {
+  String? viewerPubkeyHex,
+}) {
+  final creators = _decodedCreators(creatorIds);
+  if (creators.isEmpty) return null;
+  return FfiFeedSpec(
+    kind: FfiFeedKind.following,
+    creators: creators,
+    viewerPubkey: viewerPubkeyHex,
+  );
+}
+
 FfiFeedSpec? _termSpec(String? searchQuery, Set<String>? hashtags) {
   if (searchQuery != null) {
     return FfiFeedSpec(

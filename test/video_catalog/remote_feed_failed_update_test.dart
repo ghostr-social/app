@@ -6,12 +6,13 @@ import 'package:ghostr/features/video_catalog/domain/remote_video_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
 
 import '../support/discovery_search_fakes.dart';
+import '../support/following_feed_scope_fixture.dart';
 
 void main() {
   test('a failed global feed update keeps its unscoped subscription', () async {
     final updates = RemoteVideoFeedUpdates(
       remote: _FailedRemoteUpdates(),
-      social: FakeSocialGraph(),
+      followingScopes: testFollowingFeedScopes(FakeSocialGraph()),
     );
 
     final update = await updates.watchFeed(FeedKind.forYou).first;

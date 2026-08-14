@@ -17,6 +17,13 @@ pub(crate) struct OutcomeSinks {
     pub(crate) candidates: Option<DeliveryHandle>,
 }
 
+struct CompletedOutcome {
+    context: FeedContext,
+    result: Result<Vec<Event>, PlanFailure>,
+    cursor: Option<nostr_sdk::Timestamp>,
+    purpose: RetrievalPurpose,
+}
+
 pub(crate) async fn pump_outcomes(
     sinks: OutcomeSinks,
     mut outcomes: mpsc::UnboundedReceiver<RetrievalOutcome>,
@@ -38,21 +45,33 @@ async fn apply_outcome(sinks: &OutcomeSinks, outcome: RetrievalOutcome) {
         RetrievalOutcome::Completed {
             context,
             result,
+            cursor,
             purpose,
-        } => apply_completed(sinks, context, result, purpose).await,
+        } => {
+            apply_completed(
+                sinks,
+                CompletedOutcome {
+                    context,
+                    result,
+                    cursor,
+                    purpose,
+                },
+            )
+            .await;
+        }
     }
 }
 
-async fn apply_completed(
-    sinks: &OutcomeSinks,
-    context: FeedContext,
-    result: Result<Vec<Event>, PlanFailure>,
-    purpose: RetrievalPurpose,
-) {
-    if let Ok(events) = &result {
-        file_lists_for(sinks, context.session(), events).await;
+async fn apply_completed(sinks: &OutcomeSinks, completed: CompletedOutcome) {
+    if let Ok(events) = &completed.result {
+        file_lists_for(sinks, completed.context.session(), events).await;
     }
-    let admitted = lock(&sinks.state).apply_retrieval(&context, result, purpose);
+    let admitted = lock(&sinks.state).apply_retrieval(
+        &completed.context,
+        completed.result,
+        completed.cursor,
+        completed.purpose,
+    );
     for candidate in admitted {
         crate::api::delivery::candidates::admit(sinks.candidates.as_ref(), Some(candidate));
     }

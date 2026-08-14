@@ -1,6 +1,5 @@
-import 'package:ghostr/features/social/domain/social_graph_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
-import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
+import 'package:ghostr/features/video_catalog/domain/following_feed_scope.dart';
 import 'package:ghostr/features/video_catalog/domain/remote_video_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
 
@@ -9,25 +8,23 @@ final class RemoteVideoFeedUpdates
     implements VideoFeedUpdates, VideoFeedUpdateRefreshPolicy {
   RemoteVideoFeedUpdates({
     required RemoteVideoUpdates remote,
-    required SocialGraphRepository social,
+    required FollowingFeedScopeReader followingScopes,
   }) : _remote = remote,
-       _social = social;
+       _followingScopes = followingScopes;
 
   final RemoteVideoUpdates _remote;
-  final SocialGraphRepository _social;
-  Set<ProfileId>? _activeCreators;
-  Set<ProfileId>? _preparedCreators;
+  final FollowingFeedScopeReader _followingScopes;
+  FollowingFeedScope? _activeScope;
+  FollowingFeedScope? _preparedScope;
   bool _hasActiveScope = false;
 
   @override
   Stream<VideoFeedUpdate> watchFeed(FeedKind kind) async* {
-    final creators = _preparedCreators ?? await _creators(kind);
-    _preparedCreators = null;
-    _activeCreators = _copy(creators);
+    final scope = _preparedScope ?? await _scope(kind);
+    _preparedScope = null;
+    _activeScope = scope;
     _hasActiveScope = true;
-    await for (final snapshot in _remote.watchRemoteFeed(
-      creatorIds: creators,
-    )) {
+    await for (final snapshot in _watch(kind, scope)) {
       yield VideoFeedUpdate(
         revision: snapshot.revision,
         phase: _phase(snapshot.phase),
@@ -36,28 +33,36 @@ final class RemoteVideoFeedUpdates
     }
   }
 
+  Stream<RemoteVideoSnapshot> _watch(FeedKind kind, FollowingFeedScope? scope) {
+    final remote = _remote;
+    if (kind == FeedKind.following &&
+        scope != null &&
+        remote is FollowingRemoteVideoUpdates) {
+      return (remote as FollowingRemoteVideoUpdates).watchFollowingRemoteFeed(
+        scope,
+      );
+    }
+    return remote.watchRemoteFeed(creatorIds: scope?.creators);
+  }
+
   @override
   Future<bool> shouldRebind(FeedKind kind) async {
-    final creators = await _creators(kind);
-    if (_hasActiveScope && _sameCreators(_activeCreators, creators)) {
+    final scope = await _scope(kind);
+    if (_hasActiveScope && _sameScope(_activeScope, scope)) {
       return false;
     }
-    _preparedCreators = _copy(creators);
+    _preparedScope = scope;
     return true;
   }
 
-  Future<Set<ProfileId>?> _creators(FeedKind kind) {
-    if (kind == FeedKind.following) return _social.loadFollowedProfiles();
+  Future<FollowingFeedScope?> _scope(FeedKind kind) {
+    if (kind == FeedKind.following) return _followingScopes.load();
     return Future.value();
   }
 
-  Set<ProfileId>? _copy(Set<ProfileId>? creators) {
-    return creators == null ? null : Set<ProfileId>.of(creators);
-  }
-
-  bool _sameCreators(Set<ProfileId>? left, Set<ProfileId>? right) {
+  bool _sameScope(FollowingFeedScope? left, FollowingFeedScope? right) {
     if (left == null || right == null) return left == right;
-    return left.length == right.length && left.containsAll(right);
+    return left.sameAs(right);
   }
 
   VideoFeedUpdatePhase _phase(RemoteVideoPhase phase) {

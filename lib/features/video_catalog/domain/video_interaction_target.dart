@@ -3,7 +3,7 @@ import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 final class VideoInteractionTarget {
   factory VideoInteractionTarget.fromPost(VideoPost post) {
     final reference = post.nostrReference;
-    final identifier = reference?.identifier;
+    final identifier = reference?.coordinateIdentifier;
     final kind = reference?.kind.value;
     if (identifier != null && kind != null && kind >= 30000 && kind < 40000) {
       return VideoInteractionTarget._(

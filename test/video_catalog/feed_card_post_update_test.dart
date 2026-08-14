@@ -11,12 +11,14 @@ void main() {
     tester,
   ) async {
     final actions = FeedCardActions(
-      onOpenProfile: () {},
-      onOpenHashtag: (_) {},
-      onToggleLike: (post) async {},
-      onOpenComments: () {},
-      onBlockCreator: () {},
-      onShare: (_, __) async {},
+      navigation: FeedCardNavigationActions(
+        onOpenProfile: () {},
+        onOpenComments: () {},
+        onOpenHashtag: (_) {},
+      ),
+      engagement: FeedCardEngagementActions(onToggleLike: (post) async {}),
+      moderation: FeedCardModerationActions(onBlockCreator: () {}),
+      sharing: FeedCardSharingActions(onShare: (_, __) async {}),
     );
 
     await tester.pumpWidget(

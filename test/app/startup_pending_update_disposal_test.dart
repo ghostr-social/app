@@ -22,7 +22,9 @@ void main() {
     final dependencies = buildFakeDependencies(
       catalogRepository: FakeVideoCatalogRepository(forYouFeed: const []),
       device: FakeDeviceDependencies(incomingVideoShares: incoming),
-      appUpdateRuntime: _runtime(() async => updateCloseCalls += 1),
+      overrides: FakeDependencyOverrides(
+        appUpdateRuntime: _runtime(() async => updateCloseCalls += 1),
+      ),
     );
     await tester.pumpWidget(StartupGate(loadDependencies: () => result.future));
     await tester.pumpWidget(const SizedBox.shrink());

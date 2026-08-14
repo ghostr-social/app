@@ -3,39 +3,103 @@
 use crate::query::search::{plan_discovery, QueryPlan};
 use crate::query::video_filters::DiscoveryRequest;
 use crate::retrieval_types::{FeedContext, RetrievalOutcome, RetrievalPriority, RetrievalRequest};
-use crate::scheduler::{max_concurrent_requests, DiscoveryCommand, SchedulerWorker};
+use crate::scheduler::hunt::HuntToken;
+use crate::scheduler::queries::QueryResult;
+use crate::scheduler::{max_concurrent_requests, SchedulerWorker};
+use ghostr_engine::DataUsageLevel;
 use nostr_sdk::Timestamp;
+use tokio::sync::oneshot;
+
+/// Typed command families keep scheduler dispatch bounded and explicit.
+#[derive(Debug)]
+pub(crate) enum DiscoveryCommand {
+    Feed(FeedCommand),
+    Work(WorkCommand),
+    Control(ControlCommand),
+}
+
+#[derive(Debug)]
+pub(crate) enum FeedCommand {
+    Open {
+        context: FeedContext,
+        request: DiscoveryRequest,
+    },
+    LoadMore {
+        context: FeedContext,
+        older_than: Option<Timestamp>,
+    },
+    #[allow(
+        dead_code,
+        reason = "focus commands are exercised only by scheduler tests"
+    )]
+    Focus(FeedContext),
+    Close(FeedContext),
+}
+
+#[derive(Debug)]
+pub(crate) enum WorkCommand {
+    Continue {
+        context: FeedContext,
+        token: HuntToken,
+    },
+    Retry {
+        context: FeedContext,
+        token: HuntToken,
+    },
+    #[allow(
+        dead_code,
+        reason = "background commands are exercised only by scheduler tests"
+    )]
+    Background {
+        context: FeedContext,
+        request: DiscoveryRequest,
+    },
+    Query {
+        context: FeedContext,
+        plan: QueryPlan,
+        reply: oneshot::Sender<QueryResult>,
+    },
+}
+
+#[derive(Debug)]
+pub(crate) enum ControlCommand {
+    SetDataUsage(DataUsageLevel),
+    ResetSession { reply: oneshot::Sender<()> },
+}
 
 impl SchedulerWorker {
     pub(crate) fn apply_command(&mut self, command: DiscoveryCommand) {
         match command {
-            DiscoveryCommand::Focus(context) => self.queue.focus(context),
-            DiscoveryCommand::SetDataUsage(level) => {
-                self.max_concurrent = max_concurrent_requests(level)
-            }
-            DiscoveryCommand::ResetSession { reply } => self.reset_session(reply),
-            DiscoveryCommand::OpenFeed { context, request } => self.open_feed(context, request),
-            DiscoveryCommand::CloseFeed(context) => self.close_feed(context),
-            DiscoveryCommand::ContinueFeed {
-                context,
-                head,
-                token,
-            } => self.continue_feed(context, head, token),
-            DiscoveryCommand::RetryFeed { context, token } => {
-                self.continue_feed_retry(context, token)
-            }
-            DiscoveryCommand::LoadMore {
+            DiscoveryCommand::Feed(command) => self.apply_feed_command(command),
+            DiscoveryCommand::Work(command) => self.apply_work_command(command),
+            DiscoveryCommand::Control(command) => self.apply_control_command(command),
+        }
+    }
+
+    fn apply_feed_command(&mut self, command: FeedCommand) {
+        match command {
+            FeedCommand::Open { context, request } => self.open_feed(context, request),
+            FeedCommand::LoadMore {
                 context,
                 older_than,
             } => self.load_more(context, older_than),
-            DiscoveryCommand::Background { context, request } => {
+            FeedCommand::Focus(context) => self.queue.focus(context),
+            FeedCommand::Close(context) => self.close_feed(context),
+        }
+    }
+
+    fn apply_work_command(&mut self, command: WorkCommand) {
+        match command {
+            WorkCommand::Continue { context, token } => self.continue_feed(context, token),
+            WorkCommand::Retry { context, token } => self.continue_feed_retry(context, token),
+            WorkCommand::Background { context, request } => {
                 self.enqueue(
                     context,
                     RetrievalPriority::Background,
                     plan_discovery(&request),
                 );
             }
-            DiscoveryCommand::Query {
+            WorkCommand::Query {
                 context,
                 plan,
                 reply,
@@ -43,6 +107,15 @@ impl SchedulerWorker {
                 self.queries.register(context.clone(), reply);
                 self.enqueue(context, RetrievalPriority::Enrichment, plan);
             }
+        }
+    }
+
+    fn apply_control_command(&mut self, command: ControlCommand) {
+        match command {
+            ControlCommand::SetDataUsage(level) => {
+                self.max_concurrent = max_concurrent_requests(level)
+            }
+            ControlCommand::ResetSession { reply } => self.reset_session(reply),
         }
     }
 

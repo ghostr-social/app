@@ -8,11 +8,14 @@ import '../support/fakes.dart';
 import '../support/test_app.dart';
 
 void main() {
-  testWidgets('offers retry when secure session restoration fails',
-      (tester) async {
+  testWidgets('offers retry when secure session restoration fails', (
+    tester,
+  ) async {
     final dependencies = buildFakeDependencies(
-      sessionRepository: _RestoreFailureRepository(),
       catalogRepository: FakeVideoCatalogRepository(forYouFeed: const []),
+      overrides: FakeDependencyOverrides(
+        sessionRepository: _RestoreFailureRepository(),
+      ),
     );
 
     await tester.pumpWidget(buildTestApp(dependencies));

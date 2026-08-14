@@ -2,62 +2,40 @@
 //! event per video coordinate, newest-first, with older unique rows
 //! appended below the existing snapshot.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::content::parsing::ParsedVideoPost;
-use crate::content::social_graph::SocialGraph;
-use crate::feed::spec::FeedSpec;
-
-/// The rows one fetched page contributes to a feed: canonical, ordered,
-/// and only what this feed's spec shows the viewer.
-pub(crate) fn select_posts(
-    spec: &FeedSpec,
-    fetched: Vec<ParsedVideoPost>,
-    graph: &SocialGraph,
-) -> Vec<ParsedVideoPost> {
-    canonical_posts(fetched)
-        .into_iter()
-        .filter(|post| spec.accepts(post, graph))
-        .collect()
-}
-
+use crate::content::reposts::RepostTarget;
 /// One canonical post per coordinate — newest created_at wins, ties keep
 /// the lexicographically smaller event id — ordered newest-first with
 /// ascending-ID tiebreak.
 pub fn canonical_posts(fetched: Vec<ParsedVideoPost>) -> Vec<ParsedVideoPost> {
-    let mut selected: HashMap<String, ParsedVideoPost> = HashMap::new();
-    for post in fetched {
-        match selected.entry(post.coordinate()) {
-            std::collections::hash_map::Entry::Vacant(slot) => {
-                slot.insert(post);
-            }
-            std::collections::hash_map::Entry::Occupied(mut slot) => {
-                if is_newer(&post, slot.get()) {
-                    slot.insert(post);
-                }
-            }
-        }
-    }
-    let mut posts: Vec<ParsedVideoPost> = selected.into_values().collect();
-    posts.sort_by(newest_first);
-    posts
+    canonical_posts_from_axes(fetched.clone(), fetched)
 }
 
-/// Appends the incoming posts whose coordinate is not already present,
-/// below the current list and in their given order; reports whether the
-/// list changed.
-pub(crate) fn append_new(
-    current: &mut Vec<ParsedVideoPost>,
-    incoming: Vec<ParsedVideoPost>,
-) -> bool {
-    let mut seen: HashSet<String> = current.iter().map(ParsedVideoPost::coordinate).collect();
-    let before = current.len();
-    for post in incoming {
-        if seen.insert(post.coordinate()) {
-            current.push(post);
-        }
+pub(crate) fn canonical_posts_from_axes(
+    contents: Vec<ParsedVideoPost>,
+    occurrences: Vec<ParsedVideoPost>,
+) -> Vec<ParsedVideoPost> {
+    let mut selected: HashMap<String, CanonicalPost> = HashMap::new();
+    for post in contents {
+        selected
+            .entry(post.coordinate())
+            .or_default()
+            .consider_content(post);
     }
-    current.len() != before
+    for post in occurrences {
+        selected
+            .entry(post.coordinate())
+            .or_default()
+            .consider_occurrence(post);
+    }
+    let mut posts: Vec<ParsedVideoPost> = selected
+        .into_values()
+        .filter_map(CanonicalPost::combined)
+        .collect();
+    posts.sort_by(newest_first);
+    posts
 }
 
 fn is_newer(incoming: &ParsedVideoPost, current: &ParsedVideoPost) -> bool {
@@ -65,9 +43,70 @@ fn is_newer(incoming: &ParsedVideoPost, current: &ParsedVideoPost) -> bool {
         || (incoming.created_at == current.created_at && incoming.event_id < current.event_id)
 }
 
+fn is_newer_occurrence(incoming: &ParsedVideoPost, current: &ParsedVideoPost) -> bool {
+    incoming.feed_sort_at > current.feed_sort_at
+        || (incoming.feed_sort_at == current.feed_sort_at && occurrence_tiebreak(incoming, current))
+}
+
+fn occurrence_tiebreak(incoming: &ParsedVideoPost, current: &ParsedVideoPost) -> bool {
+    match (incoming.repost.is_none(), current.repost.is_none()) {
+        (true, false) => true,
+        (false, true) => false,
+        _ => incoming.activity_event_id() < current.activity_event_id(),
+    }
+}
+
 fn newest_first(left: &ParsedVideoPost, right: &ParsedVideoPost) -> std::cmp::Ordering {
     right
-        .created_at
-        .cmp(&left.created_at)
-        .then_with(|| left.event_id.cmp(&right.event_id))
+        .feed_sort_at
+        .cmp(&left.feed_sort_at)
+        .then_with(|| left.activity_event_id().cmp(right.activity_event_id()))
+}
+
+#[derive(Clone, Debug, Default)]
+pub(crate) struct CanonicalPost {
+    content: Option<ParsedVideoPost>,
+    occurrence: Option<ParsedVideoPost>,
+}
+
+impl CanonicalPost {
+    pub(crate) fn consider_content(&mut self, post: ParsedVideoPost) {
+        if self
+            .content
+            .as_ref()
+            .is_none_or(|current| is_newer(&post, current))
+        {
+            self.content = Some(post);
+        }
+    }
+
+    pub(crate) fn consider_occurrence(&mut self, post: ParsedVideoPost) {
+        if self
+            .occurrence
+            .as_ref()
+            .is_none_or(|current| is_newer_occurrence(&post, current))
+        {
+            self.occurrence = Some(post);
+        }
+    }
+
+    fn combined(self) -> Option<ParsedVideoPost> {
+        let occurrence = self.occurrence?;
+        let specific = occurrence
+            .repost
+            .as_ref()
+            .is_some_and(|repost| repost.target == RepostTarget::SpecificEvent);
+        let mut content = if specific {
+            occurrence.clone()
+        } else {
+            self.content?
+        };
+        content.feed_sort_at = occurrence.feed_sort_at;
+        content.repost = occurrence.repost;
+        Some(content)
+    }
+
+    pub(crate) fn projected(&self) -> Option<ParsedVideoPost> {
+        self.clone().combined()
+    }
 }

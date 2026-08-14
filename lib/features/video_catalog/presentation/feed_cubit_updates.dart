@@ -1,19 +1,5 @@
 part of 'feed_cubit.dart';
 
-final class _FeedUpdateState {
-  _FeedUpdateState(this.retry);
-
-  final FeedUpdateRetry retry;
-  StreamSubscription<VideoFeedUpdate>? subscription;
-  FeedKind? kind;
-  int feed = 0;
-  int listener = 0;
-  int pulls = 0;
-  BigInt revision = BigInt.from(-1);
-  BigInt? pendingRevision;
-  int? reloadingFeed;
-}
-
 extension FeedCubitUpdates on FeedCubit {
   Future<void> _runFeedPull(Future<void> Function() pull) async {
     _updates.pulls += 1;
@@ -90,8 +76,11 @@ extension FeedCubitUpdates on FeedCubit {
     if (update.revision <= _updates.revision) return;
     _updates.revision = update.revision;
     _updates.retry.succeeded();
-    if (!update.hasPosts) return;
+    if (!update.hasPosts && update.phase != VideoFeedUpdatePhase.settled) {
+      return;
+    }
     _updates.pendingRevision = update.revision;
+    _updates.pendingAllowsEmpty = update.phase == VideoFeedUpdatePhase.settled;
     _startPendingFeedUpdate();
   }
 
@@ -126,8 +115,10 @@ extension FeedCubitUpdates on FeedCubit {
   Future<void> _drainFeedUpdates(int feed, FeedKind kind) async {
     try {
       while (_hasPendingFeedUpdate(feed, kind)) {
+        final allowEmpty = _updates.pendingAllowsEmpty;
         _updates.pendingRevision = null;
-        await _reloadFromFeedUpdate(feed, kind);
+        _updates.pendingAllowsEmpty = false;
+        await _reloadFromFeedUpdate(feed, kind, allowEmpty);
       }
     } finally {
       if (_updates.reloadingFeed == feed) _updates.reloadingFeed = null;
@@ -140,20 +131,6 @@ extension FeedCubitUpdates on FeedCubit {
         _updates.pendingRevision != null &&
         state is! FeedLoading &&
         _acceptsFeedReconciliation(feed, kind);
-  }
-
-  Future<void> _reloadFromFeedUpdate(int feed, FeedKind kind) async {
-    final loaded = state is FeedLoaded;
-    final result = await _loads.newest(
-      () => loaded ? _fetch.resync(kind) : _fetch.unwatched(kind),
-    );
-    if (!_acceptsFeedReconciliation(feed, kind) || result == null) return;
-    if (result case FeedFetched(:final posts) when posts.isNotEmpty) {
-      final current = state;
-      current is FeedLoaded
-          ? _acceptRefresh(current, posts)
-          : _acceptLoad(kind, posts);
-    }
   }
 
   void _feedUpdatesEnded(int listener, FeedKind kind) {
@@ -185,10 +162,12 @@ extension FeedCubitUpdates on FeedCubit {
     _updates.retry.reset();
     _updates.kind = null;
     _updates.pendingRevision = null;
+    _updates.pendingAllowsEmpty = false;
     await _cancelFeedUpdateSubscription();
   }
 
   void _acknowledgePendingFeedUpdate() {
     _updates.pendingRevision = null;
+    _updates.pendingAllowsEmpty = false;
   }
 }

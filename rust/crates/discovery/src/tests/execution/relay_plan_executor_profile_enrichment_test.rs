@@ -43,5 +43,6 @@ fn retrieval() -> PlannedRetrieval {
         ),
         priority: RetrievalPriority::Interactive,
         plan: plan_discovery(&DiscoveryRequest::default()),
+        deferred_reposts: Vec::new(),
     }
 }

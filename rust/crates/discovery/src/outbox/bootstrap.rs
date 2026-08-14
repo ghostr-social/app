@@ -143,18 +143,24 @@ impl OutboxBootstrap {
             context: context.clone(),
             priority: RetrievalPriority::Background,
             plan,
+            deferred_reposts: Vec::new(),
         };
         let executor = self.executor.clone();
         let outcomes = self.outcomes.clone();
         let session = self.session.clone();
         tokio::spawn(async move {
             let result = executor.execute(retrieval).await;
+            let cursor = result
+                .as_ref()
+                .ok()
+                .and_then(|events| crate::feed::cursor::retrieval_cursor(events));
             if result.is_err() {
                 release(&session, generation, &claimed);
             }
             let _ = outcomes.send(RetrievalOutcome::Completed {
                 context,
                 result,
+                cursor,
                 purpose: crate::retrieval_types::RetrievalPurpose::Head,
             });
         });

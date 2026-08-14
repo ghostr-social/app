@@ -40,8 +40,7 @@ async fn cached_matches_arrive_before_the_network_finishes() {
     assert_eq!(updates.recv().await, Some(event.clone()));
     assert!(!fetching.is_finished());
     io.release_query();
-    assert_eq!(
-        fetching.await.expect("fetch task").expect("fetch"),
-        vec![event]
-    );
+    let fetched = fetching.await.expect("fetch task").expect("fetch");
+    assert_eq!(fetched.events, vec![event]);
+    assert_eq!(fetched.fresh_boundary, None);
 }

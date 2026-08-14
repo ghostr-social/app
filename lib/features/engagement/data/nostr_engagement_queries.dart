@@ -1,14 +1,10 @@
 part of 'nostr_engagement_reader.dart';
 
-NostrEventQuery _eventReactionQuery(
-  _ReactionQueryTarget target,
-) {
+NostrEventQuery _eventReactionQuery(_ReactionQueryTarget target) {
   return _eventReactionQueryFor(target.reference);
 }
 
-NostrEventQuery _viewerEventReactionQuery(
-  _ReactionQueryTarget target,
-) {
+NostrEventQuery _viewerEventReactionQuery(_ReactionQueryTarget target) {
   return _eventReactionQueryFor(target.reference, target.viewer);
 }
 
@@ -26,15 +22,11 @@ NostrEventQuery _eventReactionQueryFor(
   );
 }
 
-NostrEventQuery _addressReactionQuery(
-  _ReactionQueryTarget target,
-) {
+NostrEventQuery _addressReactionQuery(_ReactionQueryTarget target) {
   return _addressReactionQueryFor(target.reference);
 }
 
-NostrEventQuery _viewerAddressReactionQuery(
-  _ReactionQueryTarget target,
-) {
+NostrEventQuery _viewerAddressReactionQuery(_ReactionQueryTarget target) {
   return _addressReactionQueryFor(target.reference, target.viewer);
 }
 
@@ -44,14 +36,9 @@ NostrEventQuery _addressReactionQueryFor(
 ]) {
   return NostrEventQuery(
     kinds: const <int>[7],
-    scope: NostrEventQueryScope(
-      authors: viewer == null ? const [] : [viewer],
-    ),
+    scope: NostrEventQueryScope(authors: viewer == null ? const [] : [viewer]),
     tagFilters: [
-      NostrTagFilter(
-        name: 'a',
-        values: [_coordinate(reference)],
-      ),
+      NostrTagFilter(name: 'a', values: [_coordinate(reference)]),
     ],
     limit: 500,
   );
@@ -63,11 +50,13 @@ Future<List<NostrEventRecord>> _loadAllReactions(
   NostrPublicKeyHex viewer,
   NostrQueryBudget budget,
 ) async {
-  final targets = references.map((reference) {
-    return _ReactionQueryTarget(reference, viewer);
-  }).toList(growable: false);
+  final targets = references
+      .map((reference) {
+        return _ReactionQueryTarget(reference, viewer);
+      })
+      .toList(growable: false);
   final addressable = targets.where((target) {
-    return target.reference.identifier != null;
+    return target.reference.coordinateIdentifier != null;
   });
   final batches = <List<NostrEventRecord>>[
     await _loadReactionFamily(
@@ -81,15 +70,17 @@ Future<List<NostrEventRecord>> _loadAllReactions(
     ),
   ];
   if (addressable.isNotEmpty) {
-    batches.add(await _loadReactionFamily(
-      client,
-      addressable.toList(growable: false),
-      const _ReactionQueryFamily(
-        _addressReactionQuery,
-        _viewerAddressReactionQuery,
+    batches.add(
+      await _loadReactionFamily(
+        client,
+        addressable.toList(growable: false),
+        const _ReactionQueryFamily(
+          _addressReactionQuery,
+          _viewerAddressReactionQuery,
+        ),
+        budget,
       ),
-      budget,
-    ));
+    );
   }
   return _uniqueEvents(batches);
 }
@@ -130,15 +121,17 @@ final class _ReactionQueryTarget {
 }
 
 String _coordinate(NostrEventReference reference) {
-  return '${reference.kind}:${reference.authorPublicKeyHex}:${reference.identifier}';
+  return '${reference.kind}:${reference.authorPublicKeyHex}:'
+      '${reference.coordinateIdentifier}';
 }
 
 List<NostrEventRecord> _reactionsFor(
   List<NostrEventRecord> reactions,
   NostrEventReference reference,
 ) {
-  final coordinate =
-      reference.identifier == null ? null : _coordinate(reference);
+  final coordinate = reference.coordinateIdentifier == null
+      ? null
+      : _coordinate(reference);
   return reactions.where((event) {
     return event.tagValues('e').contains(reference.eventId) ||
         coordinate != null && event.tagValues('a').contains(coordinate);

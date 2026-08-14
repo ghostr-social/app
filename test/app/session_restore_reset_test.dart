@@ -13,8 +13,8 @@ void main() {
   ) async {
     final repository = _RestoreFailureRepository();
     final dependencies = buildFakeDependencies(
-      sessionRepository: repository,
       catalogRepository: FakeVideoCatalogRepository(forYouFeed: const []),
+      overrides: FakeDependencyOverrides(sessionRepository: repository),
     );
 
     await tester.pumpWidget(buildTestApp(dependencies));

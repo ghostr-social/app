@@ -21,6 +21,7 @@ async fn outbox_results_do_not_trigger_creator_metadata() {
         ),
         priority: RetrievalPriority::Background,
         plan: plan_event_queries(vec![Filter::new().kind(Kind::RelayList)]),
+        deferred_reposts: Vec::new(),
     };
 
     let events = executor(io.clone())

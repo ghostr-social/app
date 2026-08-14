@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
+import 'package:ghostr/features/video_catalog/domain/following_feed_scope.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 
 enum RemoteVideoPhase { loading, settled, failed }
@@ -24,6 +27,24 @@ final class RemoteVideoSnapshot {
   final List<VideoPost> posts;
 }
 
+/// A valid feed with no possible rows stays settled and open, so callers do
+/// not mistake completion for a disconnected native update source.
+Stream<RemoteVideoSnapshot> settledEmptyRemoteVideoUpdates() {
+  late final StreamController<RemoteVideoSnapshot> controller;
+  controller = StreamController<RemoteVideoSnapshot>(
+    sync: true,
+    onListen: () => controller.add(
+      RemoteVideoSnapshot(
+        revision: BigInt.zero,
+        phase: RemoteVideoPhase.settled,
+        posts: const [],
+      ),
+    ),
+    onCancel: () => controller.close(),
+  );
+  return controller.stream;
+}
+
 /// Passive domain snapshots from a feed Rust already owns.
 abstract interface class RemoteVideoUpdates {
   Stream<RemoteVideoSnapshot> watchRemoteFeed({
@@ -31,4 +52,10 @@ abstract interface class RemoteVideoUpdates {
     String? searchQuery,
     Set<String>? hashtags,
   });
+}
+
+abstract interface class FollowingRemoteVideoUpdates {
+  Stream<RemoteVideoSnapshot> watchFollowingRemoteFeed(
+    FollowingFeedScope scope,
+  );
 }

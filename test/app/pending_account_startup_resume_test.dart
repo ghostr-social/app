@@ -19,7 +19,9 @@ void main() {
     final dependencies = buildFakeDependencies(
       session: sampleSession(),
       catalogRepository: FakeVideoCatalogRepository(forYouFeed: const []),
-      accountProvisioningRepository: provisioning,
+      overrides: FakeDependencyOverrides(
+        accountProvisioningRepository: provisioning,
+      ),
     );
 
     await tester.pumpWidget(buildTestApp(dependencies));

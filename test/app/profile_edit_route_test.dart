@@ -25,7 +25,7 @@ void main() {
     );
     final dependencies = buildFakeDependencies(
       session: session,
-      profileMetadataRepository: profiles,
+      overrides: FakeDependencyOverrides(profileMetadataRepository: profiles),
       catalogRepository: FakeVideoCatalogRepository(
         forYouFeed: const [],
         feed: FakeFeedScenario(profiles: {session.profile.id: details}),

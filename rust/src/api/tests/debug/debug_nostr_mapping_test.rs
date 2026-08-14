@@ -11,7 +11,7 @@ use ghostr_delivery::debug::feed::DebugFeedStage;
 #[test]
 fn progressive_feed_rows_become_debug_delivery_items() {
     let post = parsed_video_post(34_235, Some("clip"));
-    let row = feed_post(&post, creator_profile());
+    let row = feed_post(&post, creator_profile(), None);
 
     let item = debug_item(row).expect("progressive video");
 
@@ -25,7 +25,7 @@ fn progressive_feed_rows_become_debug_delivery_items() {
 fn hls_rows_stay_in_the_shared_debug_feed() {
     let mut post = parsed_video_post(34_235, Some("clip"));
     post.meta.delivery = DeliveryKind::Hls;
-    let row = feed_post(&post, creator_profile());
+    let row = feed_post(&post, creator_profile(), None);
 
     let item = debug_item(row).expect("HLS video");
 
@@ -41,7 +41,7 @@ fn explicit_titles_and_profile_handles_are_preserved() {
         handle: "@fallback".to_owned(),
         avatar_url: None,
     };
-    let item = debug_item(feed_post(&post, profile)).expect("progressive video");
+    let item = debug_item(feed_post(&post, profile, None)).expect("progressive video");
 
     assert_eq!(item.title.as_deref(), Some("Native title"));
     assert_eq!(item.creator, "@fallback");

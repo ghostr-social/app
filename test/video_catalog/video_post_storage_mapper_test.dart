@@ -14,9 +14,9 @@ void main() {
       identity: VideoPostIdentity(
         id: sample.id,
         creator: sample.creator,
-        nostrReference: nostrReference(
+        nostrReference: nostrReferenceForAuthor(
+          testAuthorPublicKey,
           eventId: testEventId,
-          authorPublicKeyHex: testAuthorPublicKey,
           kind: 34236,
           identifier: 'clip-1',
         ),

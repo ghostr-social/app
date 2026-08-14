@@ -1,3 +1,4 @@
+import 'package:ghostr/core/nostr/accepted_nostr_event_journal.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/core/nostr/nostr_event_record.dart';
 import 'package:ghostr/features/engagement/data/nostr_reaction_state.dart';
@@ -9,15 +10,14 @@ import 'package:ghostr/features/engagement/domain/video_engagement.dart';
 /// Relay visibility is not monotonic, so accepted reactions remain known-active
 /// and author-valid deletions remain tombstoned for this runtime session.
 class AcceptedNostrReactionJournal {
-  final Map<NostrLikeMutationKey, _AcceptedMutations> _entries = {};
+  final _events = AcceptedNostrEventJournal<NostrLikeMutationKey>();
 
   NostrViewerReactionState overlay(
     NostrLikeMutationKey key,
     NostrReactionState relayState,
   ) {
-    final accepted = _entries[key] ?? _AcceptedMutations();
     final relayIds = relayState.reactionIdsFor(key.viewer);
-    final activeIds = accepted.overlay(relayIds);
+    final activeIds = _events.overlay(key, relayIds);
     final otherLikes = relayState.byAuthor.keys.where((author) {
       return author != key.viewer;
     }).length;
@@ -31,30 +31,26 @@ class AcceptedNostrReactionJournal {
   }
 
   void recordReaction(NostrLikeMutationKey key, NostrEventId reactionId) {
-    _entry(key).reactionIds.add(reactionId);
+    _events.recordEvent(key, reactionId);
   }
 
   void recordDeletion(
     NostrLikeMutationKey key,
-    NostrEventId deletionId,
     Iterable<NostrEventId> reactionIds,
   ) {
-    _entry(key).deletions[deletionId] = Set<NostrEventId>.of(reactionIds);
+    _events.recordDeletion(key, reactionIds);
   }
 
   List<NostrEventRecord> deletionLookupTargets(
     NostrLikeMutationKey key,
     List<NostrEventRecord> relayTargets,
   ) {
-    final entry = _entries[key];
     final targets = <NostrEventId, NostrEventRecord>{
       for (final target in relayTargets)
-        if (entry?.isConfirmedDeleted(target.id) != true) target.id: target,
+        if (!_events.isConfirmedDeleted(key, target.id)) target.id: target,
     };
-    if (entry != null) {
-      for (final id in entry.pendingIds) {
-        targets[id] = _lookupTarget(id, key.viewer);
-      }
+    for (final id in _events.pendingTargetIds(key)) {
+      targets[id] = _lookupTarget(id, key.viewer);
     }
     return targets.values.toList(growable: false);
   }
@@ -63,20 +59,10 @@ class AcceptedNostrReactionJournal {
     NostrLikeMutationKey key,
     Set<NostrEventId> deletedReactionIds,
   ) {
-    final entry = _entries[key];
-    if (entry == null) return;
-    entry.reconcile(deletedReactionIds);
-    if (entry.isEmpty) _entries.remove(key);
+    _events.reconcile(key, deletedReactionIds);
   }
 
-  _AcceptedMutations _entry(NostrLikeMutationKey key) {
-    return _entries.putIfAbsent(key, _AcceptedMutations.new);
-  }
-
-  NostrEventRecord _lookupTarget(
-    NostrEventId id,
-    NostrPublicKeyHex viewer,
-  ) {
+  NostrEventRecord _lookupTarget(NostrEventId id, NostrPublicKeyHex viewer) {
     return NostrEventRecord(
       identity: NostrEventIdentity.parse(
         id: id,
@@ -98,46 +84,4 @@ class NostrViewerReactionState {
 
   final VideoEngagement engagement;
   final Set<NostrEventId> reactionIds;
-}
-
-class _AcceptedMutations {
-  final Set<NostrEventId> reactionIds = <NostrEventId>{};
-  final Map<NostrEventId, Set<NostrEventId>> deletions = {};
-  final Set<NostrEventId> confirmedDeletedReactionIds = <NostrEventId>{};
-
-  Set<NostrEventId> get pendingIds {
-    return <NostrEventId>{
-      ...reactionIds,
-      ...deletions.values.expand((ids) => ids),
-    };
-  }
-
-  bool get isEmpty {
-    return reactionIds.isEmpty &&
-        deletions.isEmpty &&
-        confirmedDeletedReactionIds.isEmpty;
-  }
-
-  bool isConfirmedDeleted(NostrEventId id) {
-    return confirmedDeletedReactionIds.contains(id);
-  }
-
-  Set<NostrEventId> overlay(Set<NostrEventId> relayIds) {
-    final deletedIds = <NostrEventId>{
-      ...confirmedDeletedReactionIds,
-      ...deletions.values.expand((ids) => ids),
-    };
-    return <NostrEventId>{...relayIds, ...reactionIds}..removeAll(deletedIds);
-  }
-
-  void reconcile(Set<NostrEventId> deletedReactionIds) {
-    confirmedDeletedReactionIds.addAll(
-      pendingIds.intersection(deletedReactionIds),
-    );
-    reactionIds.removeWhere(deletedReactionIds.contains);
-    for (final targets in deletions.values) {
-      targets.removeWhere(deletedReactionIds.contains);
-    }
-    deletions.removeWhere((_, targets) => targets.isEmpty);
-  }
 }

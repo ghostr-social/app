@@ -1,12 +1,17 @@
 //! Admission boundary for raw relay events.
 //!
-//! Events are parsed once, invalid media is rejected at the edge, and
-//! addressable revisions share one stable candidate identity.
+//! Invalid media is rejected at the edge, addressable revisions share one
+//! stable identity, and only compact revision metadata survives inspection.
 
-use crate::content::parsing::{video_post_from_event, ParsedVideoPost};
+use crate::content::parsing::ParsedVideoPost;
+use crate::content::repost_resolution::feed_posts_from_events;
+use crate::content::reposts::feed_post_from_event;
+use crate::feed::assembly::CanonicalPost;
 use nostr_sdk::Event;
 use sha2::{Digest, Sha256};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
+
+const CANDIDATE_COORDINATE_RETENTION: usize = 10_000;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct CandidateId(String);
@@ -55,10 +60,21 @@ pub struct CandidateBatch {
     pub admitted: Vec<VideoCandidate>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct CandidateRegistry {
-    parsed: HashMap<String, Option<ParsedVideoPost>>,
-    canonical: HashMap<String, String>,
+    canonical: HashMap<String, CanonicalPost>,
+    coordinate_order: VecDeque<String>,
+    retention: usize,
+}
+
+impl Default for CandidateRegistry {
+    fn default() -> Self {
+        Self {
+            canonical: HashMap::new(),
+            coordinate_order: VecDeque::new(),
+            retention: CANDIDATE_COORDINATE_RETENTION,
+        }
+    }
 }
 
 impl CandidateRegistry {
@@ -67,72 +83,94 @@ impl CandidateRegistry {
     }
 
     pub fn inspect(&mut self, event: &Event) -> CandidateInspection {
-        let event_id = event.id.to_hex();
-        if let Some(post) = self.parsed.get(&event_id) {
-            return repeated(post);
-        }
-        let post = video_post_from_event(event);
-        self.parsed.insert(event_id.clone(), post.clone());
-        let admission = self.canonical_admission(event_id, post.as_ref());
+        let post = feed_post_from_event(event);
+        let admission = self.canonical_admission(post.as_ref());
         CandidateInspection { post, admission }
     }
 
     pub fn inspect_all(&mut self, events: &[Event]) -> CandidateBatch {
         let mut posts = Vec::new();
         let mut admitted = Vec::new();
-        for event in events {
-            let inspected = self.inspect(event);
-            posts.extend(inspected.post);
-            admitted.extend(admitted_candidate(inspected.admission));
+        for post in feed_posts_from_events(events) {
+            let admission = self.canonical_admission(Some(&post));
+            posts.push(post);
+            admitted.extend(admitted_candidate(admission));
         }
         CandidateBatch { posts, admitted }
     }
 
     pub fn clear(&mut self) {
-        self.parsed.clear();
         self.canonical.clear();
+        self.coordinate_order.clear();
     }
 
-    fn canonical_admission(
-        &mut self,
-        event_id: String,
-        post: Option<&ParsedVideoPost>,
-    ) -> CandidateAdmission {
+    fn canonical_admission(&mut self, post: Option<&ParsedVideoPost>) -> CandidateAdmission {
         let Some(post) = post else {
             return CandidateAdmission::Rejected;
         };
         let coordinate = post.coordinate();
-        let Some(current_id) = self.canonical.get(&coordinate) else {
-            self.canonical.insert(coordinate, event_id);
-            return CandidateAdmission::Accepted(VideoCandidate::new(post.clone()));
-        };
-        if !self.is_newer(post, current_id) {
+        let replacing = self.canonical.contains_key(&coordinate);
+        if !replacing {
+            self.admit_coordinate(coordinate.clone());
+        }
+        let projection = self.canonical.entry(coordinate).or_default();
+        let before = projection.projected();
+        let retained = retained_post(post);
+        projection.consider_content(retained.clone());
+        projection.consider_occurrence(retained);
+        let after = projection
+            .projected()
+            .expect("a considered post always projects a candidate");
+        if before
+            .as_ref()
+            .is_some_and(|before| same_candidate(before, &after))
+        {
             return CandidateAdmission::Duplicate;
         }
-        self.canonical.insert(coordinate, event_id);
-        CandidateAdmission::Replaced(VideoCandidate::new(post.clone()))
+        candidate_admission(VideoCandidate::new(after), replacing)
     }
 
-    fn is_newer(&self, incoming: &ParsedVideoPost, current_id: &str) -> bool {
-        let current = self
-            .parsed
-            .get(current_id)
-            .and_then(Option::as_ref)
-            .expect("canonical candidates always reference parsed posts");
-        incoming.created_at > current.created_at
-            || (incoming.created_at == current.created_at && incoming.event_id < current.event_id)
+    fn admit_coordinate(&mut self, coordinate: String) {
+        if self.canonical.len() >= self.retention {
+            let evicted = self
+                .coordinate_order
+                .pop_front()
+                .expect("canonical coordinates share one admission order");
+            self.canonical.remove(&evicted);
+        }
+        self.coordinate_order.push_back(coordinate);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_retention(retention: usize) -> Self {
+        Self {
+            retention: retention.max(1),
+            ..Self::default()
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn retained_coordinates(&self) -> usize {
+        self.canonical.len()
     }
 }
 
-fn repeated(post: &Option<ParsedVideoPost>) -> CandidateInspection {
-    CandidateInspection {
-        post: post.clone(),
-        admission: if post.is_some() {
-            CandidateAdmission::Duplicate
-        } else {
-            CandidateAdmission::Rejected
-        },
+fn candidate_admission(candidate: VideoCandidate, replacing: bool) -> CandidateAdmission {
+    if replacing {
+        CandidateAdmission::Replaced(candidate)
+    } else {
+        CandidateAdmission::Accepted(candidate)
     }
+}
+
+fn retained_post(post: &ParsedVideoPost) -> ParsedVideoPost {
+    let mut retained = post.clone();
+    retained.signed_event_json = None;
+    retained
+}
+
+fn same_candidate(left: &ParsedVideoPost, right: &ParsedVideoPost) -> bool {
+    left.event_id == right.event_id && left.feed_sort_at == right.feed_sort_at
 }
 
 fn admitted_candidate(admission: CandidateAdmission) -> Option<VideoCandidate> {

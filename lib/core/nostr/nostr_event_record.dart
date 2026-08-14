@@ -2,6 +2,8 @@ import 'dart:collection';
 
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 
+part 'nostr_event_tags.dart';
+
 class NostrEventRecord {
   NostrEventRecord({
     required this.identity,
@@ -33,8 +35,8 @@ class NostrUnsignedEvent {
     required int kind,
     required List<List<String>> tags,
     required this.content,
-  })  : kind = NostrEventKind.parse(kind),
-        tags = NostrEventTags.parse(tags);
+  }) : kind = NostrEventKind.parse(kind),
+       tags = NostrEventTags.parse(tags);
 
   final NostrEventKind kind;
   final NostrEventTags tags;
@@ -66,12 +68,12 @@ class NostrEventQuery {
     this.limit = 500,
     this.until,
     String? search,
-  })  : kinds = List<NostrEventKind>.unmodifiable(
-          kinds.map(NostrEventKind.parse),
-        ),
-        scope = scope ?? NostrEventQueryScope(),
-        tagFilters = List<NostrTagFilter>.unmodifiable(tagFilters),
-        search = _normalizedSearch(search) {
+  }) : kinds = List<NostrEventKind>.unmodifiable(
+         kinds.map(NostrEventKind.parse),
+       ),
+       scope = scope ?? NostrEventQueryScope(),
+       tagFilters = List<NostrTagFilter>.unmodifiable(tagFilters),
+       search = _normalizedSearch(search) {
     if (limit <= 0) {
       throw const FormatException('Query limit must be positive.');
     }
@@ -125,8 +127,8 @@ class NostrEventQueryScope {
   NostrEventQueryScope({
     List<NostrPublicKeyHex> authors = const <NostrPublicKeyHex>[],
     List<NostrEventId> eventTags = const <NostrEventId>[],
-  })  : authors = List<NostrPublicKeyHex>.unmodifiable(authors),
-        eventTags = List<NostrEventId>.unmodifiable(eventTags);
+  }) : authors = List<NostrPublicKeyHex>.unmodifiable(authors),
+       eventTags = List<NostrEventId>.unmodifiable(eventTags);
 
   factory NostrEventQueryScope.parse({
     List<String> authors = const <String>[],
@@ -144,10 +146,12 @@ class NostrEventQueryScope {
 
 class NostrTagFilter {
   NostrTagFilter({required String name, required List<String> values})
-      : name = _required(name, 'Nostr filter tag'),
-        values = List<String>.unmodifiable(values.map((value) {
-          return _required(value, 'Nostr filter value');
-        }));
+    : name = _required(name, 'Nostr filter tag'),
+      values = List<String>.unmodifiable(
+        values.map((value) {
+          return _requiredExact(value, 'Nostr filter value');
+        }),
+      );
 
   final String name;
   final List<String> values;
@@ -155,43 +159,4 @@ class NostrTagFilter {
   bool matches(NostrEventRecord event) {
     return event.tagValues(name).any(values.contains);
   }
-}
-
-class NostrEventTags extends IterableBase<List<String>> {
-  NostrEventTags._(this._values);
-
-  factory NostrEventTags.parse(Iterable<List<String>> rawTags) {
-    final tags = rawTags.map(_validatedTag).toList(growable: false);
-    return NostrEventTags._(List<List<String>>.unmodifiable(tags));
-  }
-
-  final List<List<String>> _values;
-
-  @override
-  Iterator<List<String>> get iterator => _values.iterator;
-
-  Iterable<String> values(String name) sync* {
-    for (final tag in _values) {
-      if (tag.first == name && tag.length > 1) yield tag[1];
-    }
-  }
-
-  List<List<String>> toRaw() {
-    return List<List<String>>.unmodifiable(
-      _values.map(List<String>.unmodifiable),
-    );
-  }
-}
-
-List<String> _validatedTag(List<String> rawTag) {
-  if (rawTag.isEmpty) throw const FormatException('Nostr tag cannot be empty.');
-  final tag = List<String>.of(rawTag);
-  tag[0] = _required(tag[0], 'Nostr tag name');
-  return List<String>.unmodifiable(tag);
-}
-
-String _required(String raw, String label) {
-  final value = raw.trim();
-  if (value.isEmpty) throw FormatException('$label cannot be empty.');
-  return value;
 }

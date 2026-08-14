@@ -1,15 +1,20 @@
 import 'package:ghostr/core/media/video_playback_capabilities.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
+import 'package:ghostr/features/video_catalog/domain/following_feed_scope.dart';
 import 'package:ghostr/features/video_catalog/domain/remote_video_source.dart';
 import 'package:ghostr/features/video_catalog/domain/remote_video_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 
-final class PlayableRemoteVideoSource implements RemoteVideoSource {
+final class PlayableRemoteVideoSource
+    implements
+        RemoteVideoSource,
+        FollowingRemoteVideoSource,
+        FollowingRemoteVideoUpdates {
   const PlayableRemoteVideoSource({
     required RemoteVideoSource source,
     required VideoPlaybackCapabilities capabilities,
-  })  : _source = source,
-        _capabilities = capabilities;
+  }) : _source = source,
+       _capabilities = capabilities;
 
   final RemoteVideoSource _source;
   final VideoPlaybackCapabilities _capabilities;
@@ -45,6 +50,24 @@ final class PlayableRemoteVideoSource implements RemoteVideoSource {
   }
 
   @override
+  Future<List<VideoPost>> loadFollowingRemoteFeed(
+    FollowingFeedScope scope, {
+    DateTime? olderThan,
+  }) async {
+    final source = _source;
+    final posts = source is FollowingRemoteVideoSource
+        ? await (source as FollowingRemoteVideoSource).loadFollowingRemoteFeed(
+            scope,
+            olderThan: olderThan,
+          )
+        : await source.loadRemoteFeed(
+            creatorIds: scope.creators,
+            olderThan: olderThan,
+          );
+    return _playable(posts);
+  }
+
+  @override
   Stream<RemoteVideoSnapshot> watchRemoteFeed({
     Set<ProfileId>? creatorIds,
     String? searchQuery,
@@ -57,6 +80,19 @@ final class PlayableRemoteVideoSource implements RemoteVideoSource {
           hashtags: hashtags,
         )
         .map(_playableSnapshot);
+  }
+
+  @override
+  Stream<RemoteVideoSnapshot> watchFollowingRemoteFeed(
+    FollowingFeedScope scope,
+  ) {
+    final source = _source;
+    final snapshots = source is FollowingRemoteVideoUpdates
+        ? (source as FollowingRemoteVideoUpdates).watchFollowingRemoteFeed(
+            scope,
+          )
+        : source.watchRemoteFeed(creatorIds: scope.creators);
+    return snapshots.map(_playableSnapshot);
   }
 
   List<VideoPost> _playable(List<VideoPost> posts) {

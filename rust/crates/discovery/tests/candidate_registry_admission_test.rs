@@ -5,7 +5,7 @@ use ghostr_discovery::content::candidates::{CandidateAdmission, CandidateRegistr
 use nostr_sdk::{EventBuilder, Keys, Kind};
 
 #[test]
-fn raw_events_are_parsed_validated_and_deduplicated_once() {
+fn raw_events_are_validated_and_deduplicated_at_admission() {
     let keys = Keys::generate();
     let video = video_note(&keys, "clip", 42);
     let invalid = EventBuilder::new(Kind::Metadata, "{}")

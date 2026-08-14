@@ -8,6 +8,7 @@ import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_screen_bindings.dart';
 import 'package:ghostr/features/video_catalog/presentation/video_share_feed_scope.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card.dart';
+import 'package:ghostr/features/video_catalog/presentation/widgets/feed_kind_selector.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_page_view.dart';
 import 'package:ghostr/features/video_sharing/presentation/video_share_cubit.dart';
 import 'package:ghostr/shared/widgets/async_state_panel.dart';
@@ -52,7 +53,12 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Widget _buildFeed(BuildContext context, FeedState state) {
-    return _feedContent(context, state);
+    return FeedKindOverlay(
+      selected: state.kind,
+      visible: widget.bindings.showFeedKindSelector,
+      onSelected: (kind) => unawaited(context.read<FeedCubit>().load(kind)),
+      child: _feedContent(context, state),
+    );
   }
 
   Widget _feedContent(BuildContext context, FeedState state) {
@@ -121,19 +127,28 @@ class _FeedScreenState extends State<FeedScreen> {
     VideoPost post,
     VideoShareState sharing,
   ) {
+    final cubit = context.read<FeedCubit>();
     return FeedCardActions(
-      onOpenProfile: () => widget.bindings.onOpenProfile(post.creator.id),
-      onFollowCreator: state.canFollow(post.creator.id)
-          ? context.read<FeedCubit>().followCreator
-          : null,
-      onOpenHashtag: widget.bindings.onOpenHashtag,
-      onToggleLike: context.read<FeedCubit>().toggleLike,
-      onOpenComments: () => _openComments(context, post),
-      onBlockCreator: () =>
-          unawaited(context.read<FeedCubit>().blockCreator(post)),
-      onShare: (post, origin) =>
-          context.read<VideoShareCubit>().share(post, origin: origin),
-      shareStatus: _shareStatus(context, post, sharing),
+      navigation: FeedCardNavigationActions(
+        onOpenProfile: () => widget.bindings.onOpenProfile(post.creator.id),
+        onOpenComments: () => _openComments(context, post),
+        onOpenHashtag: widget.bindings.onOpenHashtag,
+        onFollowCreator: state.canFollow(post.creator.id)
+            ? cubit.followCreator
+            : null,
+      ),
+      engagement: FeedCardEngagementActions(
+        onToggleLike: cubit.toggleLike,
+        onToggleRepost: cubit.canRepost(post) ? cubit.toggleRepost : null,
+      ),
+      moderation: FeedCardModerationActions(
+        onBlockCreator: () => unawaited(cubit.blockCreator(post)),
+      ),
+      sharing: FeedCardSharingActions(
+        onShare: (post, origin) =>
+            context.read<VideoShareCubit>().share(post, origin: origin),
+        status: _shareStatus(context, post, sharing),
+      ),
     );
   }
 

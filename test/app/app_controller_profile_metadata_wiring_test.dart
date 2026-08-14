@@ -22,7 +22,9 @@ void main() {
       final factory = AppControllerFactory(
         buildFakeDependencies(
           catalogRepository: FakeVideoCatalogRepository(forYouFeed: const []),
-          profileMetadataRepository: metadata,
+          overrides: FakeDependencyOverrides(
+            profileMetadataRepository: metadata,
+          ),
         ),
       );
       ProfileSummary? sessionUpdate;

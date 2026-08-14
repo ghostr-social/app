@@ -1,0 +1,16 @@
+mod deletion_claim_event_bound_test;
+mod deletion_claim_validation_test;
+mod deletion_index_author_fairness_test;
+mod deletion_index_bound_test;
+mod deletion_index_lifecycle_test;
+mod repost_coordinate_metadata_test;
+mod repost_defensive_contract_test;
+mod repost_duplicate_reference_test;
+mod repost_kind_six_kind_tag_test;
+mod repost_missing_hint_parity_test;
+mod repost_oversized_reference_test;
+mod repost_protected_embedded_reference_test;
+mod repost_reference_coordinate_kind_test;
+mod repost_resolution_invalid_target_test;
+mod repost_resolution_tie_test;
+mod repost_specific_replaceable_content_test;

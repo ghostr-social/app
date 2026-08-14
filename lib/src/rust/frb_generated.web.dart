@@ -68,6 +68,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  FfiFeedRepost dco_decode_box_autoadd_ffi_feed_repost(dynamic raw);
+
+  @protected
   FfiFeedSpec dco_decode_box_autoadd_ffi_feed_spec(dynamic raw);
 
   @protected
@@ -118,6 +121,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiFeedPost dco_decode_ffi_feed_post(dynamic raw);
+
+  @protected
+  FfiFeedRepost dco_decode_ffi_feed_repost(dynamic raw);
+
+  @protected
+  FfiFeedRepostTarget dco_decode_ffi_feed_repost_target(dynamic raw);
 
   @protected
   FfiFeedSpec dco_decode_ffi_feed_spec(dynamic raw);
@@ -195,6 +204,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? dco_decode_opt_String(dynamic raw);
 
   @protected
+  FfiFeedRepost? dco_decode_opt_box_autoadd_ffi_feed_repost(dynamic raw);
+
+  @protected
   FfiMediaDim? dco_decode_opt_box_autoadd_ffi_media_dim(dynamic raw);
 
   @protected
@@ -241,6 +253,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiEngineConfiguration sse_decode_box_autoadd_ffi_engine_configuration(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiFeedRepost sse_decode_box_autoadd_ffi_feed_repost(
     SseDeserializer deserializer,
   );
 
@@ -311,6 +328,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiFeedPost sse_decode_ffi_feed_post(SseDeserializer deserializer);
+
+  @protected
+  FfiFeedRepost sse_decode_ffi_feed_repost(SseDeserializer deserializer);
+
+  @protected
+  FfiFeedRepostTarget sse_decode_ffi_feed_repost_target(
+    SseDeserializer deserializer,
+  );
 
   @protected
   FfiFeedSpec sse_decode_ffi_feed_spec(SseDeserializer deserializer);
@@ -406,6 +431,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
+  FfiFeedRepost? sse_decode_opt_box_autoadd_ffi_feed_repost(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   FfiMediaDim? sse_decode_opt_box_autoadd_ffi_media_dim(
     SseDeserializer deserializer,
   );
@@ -461,6 +491,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_ffi_engine_configuration(
     FfiEngineConfiguration self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_ffi_feed_repost(
+    FfiFeedRepost self,
     SseSerializer serializer,
   );
 
@@ -547,6 +583,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_ffi_feed_post(FfiFeedPost self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ffi_feed_repost(FfiFeedRepost self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ffi_feed_repost_target(
+    FfiFeedRepostTarget self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_ffi_feed_spec(FfiFeedSpec self, SseSerializer serializer);
@@ -670,6 +715,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_ffi_feed_repost(
+    FfiFeedRepost? self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_opt_box_autoadd_ffi_media_dim(

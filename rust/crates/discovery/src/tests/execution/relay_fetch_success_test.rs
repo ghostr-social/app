@@ -35,5 +35,6 @@ async fn successful_empty_answer_remains_successful() {
     .await
     .expect("successful empty relay answer");
 
-    assert!(events.is_empty());
+    assert!(events.events.is_empty());
+    assert_eq!(events.fresh_boundary, None);
 }

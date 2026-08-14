@@ -9,56 +9,56 @@ import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 
 import '../support/discovery_search_fakes.dart';
 import '../support/fakes.dart';
+import '../support/following_feed_scope_fixture.dart';
 import '../support/sample_data.dart';
 import '../support/scripted_feed_repository.dart';
 
 void main() {
-  test(
-    'Following refresh rebinds only when its creator scope changes',
-    () async {
-      final first = sampleCreator(id: 'npub1first');
-      final second = sampleCreator(id: 'npub1second');
-      final social = FakeSocialGraph()..followed.add(first.id);
-      final remote = _WarmRemoteUpdates();
-      final updates = RemoteVideoFeedUpdates(remote: remote, social: social);
-      final feed = ScriptedFeedRepository(
-        loads: [
-          [samplePost(id: 'initial', creator: first)],
-          [samplePost(id: 'initial', creator: first)],
-          [samplePost(id: 'initial', creator: first)],
-        ],
-      );
-      final cubit = FeedCubit(
-        FeedDependencies(
-          feed: feed,
-          engagement: FakeVideoCatalogRepository(forYouFeed: []),
-          optional: FeedOptionalDependencies(updates: updates),
+  test('Following refresh rebinds on creator scope changes', () async {
+    final first = sampleCreator(id: 'npub1first');
+    final second = sampleCreator(id: 'npub1second');
+    final social = FakeSocialGraph()..followed.add(first.id);
+    final remote = _WarmRemoteUpdates();
+    final updates = RemoteVideoFeedUpdates(
+      remote: remote,
+      followingScopes: testFollowingFeedScopes(social),
+    );
+    final feed = ScriptedFeedRepository(
+      loads: [
+        [samplePost(id: 'initial', creator: first)],
+        [samplePost(id: 'initial', creator: first)],
+        [samplePost(id: 'initial', creator: first)],
+      ],
+    );
+    final cubit = FeedCubit(
+      FeedDependencies(
+        feed: feed,
+        engagement: FakeVideoCatalogRepository(forYouFeed: []),
+        optional: FeedOptionalDependencies(
+          delivery: FeedDeliveryDependencies(updates: updates),
         ),
-      );
-      addTearDown(cubit.close);
-      addTearDown(remote.close);
-
-      await cubit.load(FeedKind.following);
-      await pumpEventQueue();
-      final unchanged = cubit.refresh();
-      await pumpEventQueue();
-      remote.releaseCancellation();
-      await unchanged;
-      await pumpEventQueue();
-      social.followed.add(second.id);
-      final changed = cubit.refresh();
+      ),
+    );
+    addTearDown(cubit.close);
+    addTearDown(remote.close);
+    await cubit.load(FeedKind.following);
+    Future<void> refresh() async {
+      final pending = cubit.refresh();
       await pumpEventQueue();
       remote.releaseCancellation();
-      await changed;
+      await pending;
       await pumpEventQueue();
+    }
 
-      expect(remote.scopes, [
-        {first.id},
-        {first.id, second.id},
-      ]);
-      expect(remote.cancellations, 1);
-    },
-  );
+    await refresh();
+    social.followed.add(second.id);
+    await refresh();
+    expect(remote.scopes, [
+      {first.id},
+      {first.id, second.id},
+    ]);
+    expect(remote.cancellations, 1);
+  });
 }
 
 final class _WarmRemoteUpdates implements RemoteVideoUpdates {

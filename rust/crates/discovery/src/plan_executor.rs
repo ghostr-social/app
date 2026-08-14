@@ -5,7 +5,7 @@
 use crate::feed::cursor::retrieval_cursor;
 use crate::query::search::QueryPlan;
 use crate::retrieval_types::{EventProgress, FeedContext, PlanFailure, RetrievalPriority};
-use nostr_sdk::{Event, Timestamp};
+use nostr_sdk::{Event, EventId, Timestamp};
 use std::future::Future;
 use std::pin::Pin;
 
@@ -15,6 +15,7 @@ pub struct PlannedRetrieval {
     pub(crate) context: FeedContext,
     pub(crate) priority: RetrievalPriority,
     pub plan: QueryPlan,
+    pub(crate) deferred_reposts: Vec<Event>,
 }
 
 /// Boxed result future so the executor trait stays object-safe.
@@ -25,12 +26,30 @@ pub type PlanFuture = Pin<Box<dyn Future<Output = Result<Vec<Event>, PlanFailure
 pub struct PlanPage {
     pub(crate) events: Vec<Event>,
     pub(crate) cursor: Option<Timestamp>,
+    pub(crate) repost_retry: RepostRetryDelta,
 }
 
 impl PlanPage {
     fn from_events(events: Vec<Event>) -> Self {
         let cursor = retrieval_cursor(&events);
-        Self { events, cursor }
+        Self {
+            events,
+            cursor,
+            repost_retry: RepostRetryDelta::default(),
+        }
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct RepostRetryDelta {
+    pub(crate) considered: Vec<EventId>,
+    pub(crate) deferred: Vec<Event>,
+}
+
+impl RepostRetryDelta {
+    #[cfg(test)]
+    pub(crate) fn is_pending(&self) -> bool {
+        !self.deferred.is_empty()
     }
 }
 
@@ -39,6 +58,11 @@ pub type PlanPageFuture = Pin<Box<dyn Future<Output = Result<PlanPage, PlanFailu
 /// Executes one planned retrieval against relays (or a fake in tests).
 pub trait PlanExecutor: Send + Sync {
     fn execute(&self, retrieval: PlannedRetrieval) -> PlanFuture;
+
+    fn execute_page(&self, retrieval: PlannedRetrieval) -> PlanPageFuture {
+        let execution = self.execute(retrieval);
+        Box::pin(async move { execution.await.map(PlanPage::from_events) })
+    }
 
     fn execute_with_progress(
         &self,

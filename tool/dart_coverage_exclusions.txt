@@ -21,6 +21,7 @@ lib/features/publish/domain/video_publishing_repository.dart
 lib/features/profile/domain/profile_image_picker_port.dart
 lib/features/profile/domain/profile_image_upload_port.dart
 lib/features/profile/domain/profile_metadata_repository.dart
+lib/features/reposts/domain/video_repost_repository.dart
 lib/features/session/domain/account_provisioning_repository.dart
 lib/features/session/domain/nostr_account_generator.dart
 lib/features/session/domain/nostr_identity_deriver.dart
@@ -34,6 +35,7 @@ lib/features/social/domain/nostr_social_port.dart
 lib/features/social/domain/signed_event_broadcast_port.dart
 lib/features/social/domain/social_graph_repository.dart
 lib/features/social/domain/social_graph_store.dart
+lib/features/social/domain/signed_nostr_event_json.dart
 lib/features/video_catalog/data/rust_feed_port.dart
 lib/features/video_catalog/domain/creator_search_source.dart
 lib/features/video_catalog/domain/feed_kind.dart

@@ -54,6 +54,7 @@ async fn old_outcome_is_ignored_after_a_new_session_opens() {
                 contact_list(&viewer, follow.public_key()),
                 relay_list_event(&follow, &["wss://old.example"], 10),
             ]),
+            cursor: None,
             purpose: RetrievalPurpose::Head,
         })
         .expect("pump");

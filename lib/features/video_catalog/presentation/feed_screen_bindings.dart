@@ -13,6 +13,7 @@ class FeedScreenBindings {
     required this.shareWorkflow,
     required this.createComments,
     required this.isActive,
+    this.showFeedKindSelector = false,
   });
 
   final ValueChanged<ProfileId> onOpenProfile;
@@ -21,4 +22,5 @@ class FeedScreenBindings {
   final VideoShareWorkflow shareWorkflow;
   final CommentsCubit Function(VideoPost post) createComments;
   final bool isActive;
+  final bool showFeedKindSelector;
 }

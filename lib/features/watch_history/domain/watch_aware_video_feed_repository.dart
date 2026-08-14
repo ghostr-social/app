@@ -14,10 +14,10 @@ class WatchAwareVideoFeedRepository implements VideoFeedRepository {
     required WatchHistoryRepository history,
     required AppSettingsRepository settings,
     required FailureReporter failureReporter,
-  })  : _feed = feed,
-        _history = history,
-        _settings = settings,
-        _failureReporter = failureReporter;
+  }) : _feed = feed,
+       _history = history,
+       _settings = settings,
+       _failureReporter = failureReporter;
 
   final VideoFeedRepository _feed;
   final WatchHistoryRepository _history;
@@ -32,11 +32,11 @@ class WatchAwareVideoFeedRepository implements VideoFeedRepository {
     bool excludeWatched = false,
   }) async {
     final posts = await _feed.loadFeed(kind);
-    if (!excludeWatched || !await _isEnabled()) return posts;
+    if (!await _filtersWatched(excludeWatched)) return posts;
     final watched = await _watchedIndex();
     if (watched.isEmpty) return posts;
     final fresh = _fresh(posts, watched);
-    if (fresh.isNotEmpty || posts.isEmpty) return fresh;
+    if (_settlesPage(fresh, posts.isEmpty)) return fresh;
     return _digPastWatched(kind, posts, watched);
   }
 
@@ -49,18 +49,26 @@ class WatchAwareVideoFeedRepository implements VideoFeedRepository {
     bool excludeWatched = false,
   }) async {
     var cursor = olderThan;
-    final filtering = excludeWatched && await _isEnabled();
+    final filtering = await _filtersWatched(excludeWatched);
     for (var dig = 0; dig < _maxPageDigs; dig += 1) {
       final page = await _feed.loadOlderFeed(kind, olderThan: cursor);
       if (!filtering) return page;
       final watched = await _watchedIndex();
       final fresh = _fresh(page.posts, watched);
-      if (fresh.isNotEmpty || !page.hasMore) {
+      if (_settlesPage(fresh, !page.hasMore)) {
         return VideoFeedPage(posts: fresh, nextOlderThan: page.nextOlderThan);
       }
       cursor = page.nextOlderThan!;
     }
     return VideoFeedPage(posts: const <VideoPost>[], nextOlderThan: cursor);
+  }
+
+  Future<bool> _filtersWatched(bool requested) async {
+    return requested && await _isEnabled();
+  }
+
+  bool _settlesPage(List<VideoPost> fresh, bool exhausted) {
+    return fresh.isNotEmpty || exhausted;
   }
 
   // A watched video is never served again, so a fully watched snapshot
@@ -71,7 +79,7 @@ class WatchAwareVideoFeedRepository implements VideoFeedRepository {
     List<VideoPost> posts,
     WatchedVideoIndex watched,
   ) async {
-    var cursor = _oldestPublishedAt(posts);
+    var cursor = _oldestActivityAt(posts);
     for (var dig = 0; dig < _maxPageDigs; dig += 1) {
       final page = await _feed.loadOlderFeed(kind, olderThan: cursor);
       final fresh = _fresh(page.posts, watched);
@@ -88,10 +96,10 @@ class WatchAwareVideoFeedRepository implements VideoFeedRepository {
     );
   }
 
-  DateTime _oldestPublishedAt(List<VideoPost> posts) {
-    var oldest = posts.first.publishedAt;
+  DateTime _oldestActivityAt(List<VideoPost> posts) {
+    var oldest = posts.first.feedActivityAt;
     for (final post in posts.skip(1)) {
-      if (post.publishedAt.isBefore(oldest)) oldest = post.publishedAt;
+      if (post.feedActivityAt.isBefore(oldest)) oldest = post.feedActivityAt;
     }
     return oldest.subtract(const Duration(seconds: 1));
   }

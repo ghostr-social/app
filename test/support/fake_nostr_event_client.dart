@@ -1,13 +1,17 @@
+import 'dart:convert';
+
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/nostr/nostr_event_client.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/core/nostr/nostr_event_record.dart';
+import 'package:ghostr/core/nostr/signed_nostr_event_json.dart';
 
 import 'nostr_test_values.dart';
 
-class FakeNostrEventClient implements NostrEventClient {
+class FakeNostrEventClient
+    implements NostrEventClient, SignedNostrEventPublisher {
   FakeNostrEventClient({required String publicKeyHex, this.serverLimit = 500})
-      : publicKeyHex = NostrPublicKeyHex.parse(publicKeyHex);
+    : publicKeyHex = NostrPublicKeyHex.parse(publicKeyHex);
 
   @override
   NostrPublicKeyHex publicKeyHex;
@@ -29,12 +33,36 @@ class FakeNostrEventClient implements NostrEventClient {
     }
     final id = NostrEventId.parse(publishedEventId(events.length + 1));
     publishedAuthors.add(expectedAuthor);
-    events.add(event.toRecord(
-      id: id,
-      authorPublicKeyHex: author,
-      createdAt: 1700000000 + events.length,
-    ));
+    events.add(
+      event.toRecord(
+        id: id,
+        authorPublicKeyHex: author,
+        createdAt: 1700000000 + events.length,
+      ),
+    );
     return id;
+  }
+
+  @override
+  Future<NostrEventPublication> publishSigned(
+    NostrUnsignedEvent event, {
+    required NostrPublicKeyHex expectedAuthor,
+  }) async {
+    final id = await publish(event, expectedAuthor: expectedAuthor);
+    final record = events.last;
+    final source = jsonEncode(<String, Object?>{
+      'id': id.value,
+      'pubkey': expectedAuthor.value,
+      'created_at': record.createdAt,
+      'kind': event.kind.value,
+      'tags': event.tags.toRaw(),
+      'content': event.content,
+      'sig': List<String>.filled(128, '1').join(),
+    });
+    return NostrEventPublication(
+      id: id,
+      signedEvent: SignedNostrEventJson.parse(source),
+    );
   }
 
   @override
@@ -45,9 +73,7 @@ class FakeNostrEventClient implements NostrEventClient {
   }
 
   @override
-  Future<List<NostrEventRecord>> queryBatch(
-    List<NostrEventQuery> batch,
-  ) async {
+  Future<List<NostrEventRecord>> queryBatch(List<NostrEventQuery> batch) async {
     requestCount += 1;
     queryBatches.add(List<NostrEventQuery>.unmodifiable(batch));
     queries.addAll(batch);

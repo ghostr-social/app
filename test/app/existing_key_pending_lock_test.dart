@@ -18,9 +18,11 @@ void main() {
     final sessions = _PendingSessionRepository();
     final generator = FakeNostrAccountGenerator(accountCreationAccount());
     final dependencies = buildFakeDependencies(
-      sessionRepository: sessions,
-      accountGenerator: generator,
       catalogRepository: FakeVideoCatalogRepository(forYouFeed: const []),
+      overrides: FakeDependencyOverrides(
+        sessionRepository: sessions,
+        accountGenerator: generator,
+      ),
     );
     await tester.pumpWidget(buildTestApp(dependencies));
     await tester.pumpAndSettle();

@@ -11,6 +11,52 @@ extension FeedCubitEngagementActions on FeedCubit {
     }
   }
 
+  Future<void> toggleRepost(VideoPost post) async {
+    if (!canRepost(post)) return;
+    final reposts = _reposts!;
+    _applyPosts(
+      _session.projectedRepost(_visiblePosts, reposts.optimistic(post)),
+    );
+    final settled = await reposts.confirm(post);
+    _applyPosts(_repostResult(settled));
+    _showRepostFailure(settled.failure);
+  }
+
+  List<VideoPost> _repostResult(FeedRepost settled) {
+    return settled.failure == null
+        ? _session.acceptedRepost(_visiblePosts, settled.post)
+        : _session.projectedRepost(_visiblePosts, settled.post);
+  }
+
+  void _showRepostFailure(FeedOperationFailure? failure) {
+    if (failure != null) _showNotice(feedRepostFailureMessage(failure));
+  }
+
+  bool canRepost(VideoPost post) {
+    return _dependencies.viewerId != null &&
+        (_reposts?.supports(post) ?? false);
+  }
+
+  Future<void> _settleReposts() async {
+    final reposts = _reposts;
+    final current = state;
+    if (_dependencies.viewerId == null ||
+        reposts == null ||
+        current is! FeedLoaded) {
+      return;
+    }
+    final settled = await reposts.settle(current.posts);
+    if (!_canApplySettledReposts(current.kind, settled)) return;
+    _applyPosts(_session.settledReposts(_visiblePosts, settled));
+  }
+
+  bool _canApplySettledReposts(FeedKind kind, List<VideoPost> settled) {
+    return !isClosed &&
+        settled.isNotEmpty &&
+        state is FeedLoaded &&
+        state.kind == kind;
+  }
+
   Future<void> blockCreator(VideoPost post) async {
     final result = await _engagement.block(post);
     if (result is FeedBlockFailed) {

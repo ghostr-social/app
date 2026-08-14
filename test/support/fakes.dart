@@ -2,6 +2,7 @@ export 'compose_dependencies.dart';
 export 'fake_app_settings_repository.dart';
 export 'fake_activity_repository.dart';
 export 'fake_dependencies.dart';
+export 'fake_device_dependencies.dart';
 export 'fake_incoming_video_share_port.dart';
 export 'fake_media_ports.dart';
 export 'fake_nostr_social_port.dart';

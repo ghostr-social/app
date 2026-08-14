@@ -22,6 +22,7 @@ pub use crate::cache::database::{client_with_event_cache, session_event_database
 use crate::cache::merge::merged;
 use crate::cache::session::EventCacheSession;
 pub use crate::cache::session::ViewerScope;
+use crate::content::parsing::MAX_REPOSTABLE_EVENT_BYTES;
 use crate::session_generation::SessionGeneration;
 
 /// Read side of the client's database, scoped to one viewer.
@@ -72,8 +73,8 @@ impl EventCache {
         }
         let mut stored = self.read(filter).await;
         session.retain_admitted(&mut stored);
-        self.write(&fetched).await;
-        session.admit(&fetched);
+        let admitted = self.write(&fetched).await;
+        session.admit(&admitted);
         Some(merged(fetched, stored))
     }
 
@@ -93,7 +94,7 @@ impl EventCache {
 
     async fn read(&self, filter: &Filter) -> Vec<Event> {
         match self.database.query(vec![filter.clone()]).await {
-            Ok(events) => events.to_vec(),
+            Ok(events) => events.into_iter().filter(cacheable_event).collect(),
             Err(error) => {
                 warn!("The session event pool could not be read: {error}");
                 Vec::new()
@@ -106,17 +107,20 @@ impl EventCache {
         if !session.matches(generation) {
             return false;
         }
-        self.write(events).await;
-        session.admit(events);
+        let admitted = self.write(events).await;
+        session.admit(&admitted);
         true
     }
 
-    async fn write(&self, events: &[Event]) {
-        for event in events {
-            if let Err(error) = self.database.save_event(event).await {
-                warn!("The session event pool could not store an event: {error}");
+    async fn write(&self, events: &[Event]) -> Vec<nostr_sdk::EventId> {
+        let mut admitted = Vec::new();
+        for event in events.iter().filter(|event| cacheable_event(event)) {
+            match self.database.save_event(event).await {
+                Ok(_) => admitted.push(event.id),
+                Err(error) => warn!("The session event pool could not store an event: {error}"),
             }
         }
+        admitted
     }
 
     /// Scopes the pool to one viewer and reports whether it emptied it.
@@ -161,4 +165,8 @@ impl EventCache {
             warn!("The session event pool could not be cleared: {error}");
         }
     }
+}
+
+fn cacheable_event(event: &Event) -> bool {
+    !matches!(event.kind.as_u16(), 6 | 16) || event.content.len() <= MAX_REPOSTABLE_EVENT_BYTES
 }

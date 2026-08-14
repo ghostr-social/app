@@ -20,6 +20,7 @@ fn native_head_refresh_is_loading_and_keeps_chronological_rows() {
     state.apply_retrieval(
         &context,
         Ok(vec![video_note(&keys, "newer.mp4", 80)]),
+        None,
         RetrievalPurpose::Head,
     );
 

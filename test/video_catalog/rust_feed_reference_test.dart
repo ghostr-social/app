@@ -10,11 +10,19 @@ void main() {
   // The kind and `d` tag decide whether a social write addresses the
   // event or its addressable coordinate, so both cross the feed FFI.
   test('mapped rust rows carry the reference social writes address', () async {
-    final port = FakeRustFeedPort(updates: [
-      rustFeedUpdate(revision: 1, posts: [
-        rustFeedPost(eventKind: 34235, identifier: 'clip-1'),
-      ]),
-    ]);
+    final port = FakeRustFeedPort(
+      updates: [
+        rustFeedUpdate(
+          revision: 1,
+          posts: [
+            rustFeedPost(
+              eventKind: 34235,
+              details: const RustFeedPostDetails(identifier: 'clip-1'),
+            ),
+          ],
+        ),
+      ],
+    );
     final source = RustFeedRemoteSource(port: port);
 
     final post = (await source.loadRemoteFeed(searchQuery: 'ghost')).single;
@@ -31,9 +39,11 @@ void main() {
   });
 
   test('plain rust rows address the event itself', () async {
-    final port = FakeRustFeedPort(updates: [
-      rustFeedUpdate(revision: 1, posts: [rustFeedPost(eventKind: 1)]),
-    ]);
+    final port = FakeRustFeedPort(
+      updates: [
+        rustFeedUpdate(revision: 1, posts: [rustFeedPost(eventKind: 1)]),
+      ],
+    );
     final source = RustFeedRemoteSource(port: port);
 
     final post = (await source.loadRemoteFeed(searchQuery: 'ghost')).single;

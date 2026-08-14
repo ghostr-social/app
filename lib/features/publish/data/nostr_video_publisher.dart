@@ -19,9 +19,9 @@ class NostrVideoPublisher implements NostrVideoPublisherPort {
     required NostrEventClient eventClient,
     required VideoMediaUploadPort mediaUploader,
     Clock clock = systemClock,
-  })  : _eventClient = eventClient,
-        _mediaUploader = mediaUploader,
-        _clock = clock;
+  }) : _eventClient = eventClient,
+       _mediaUploader = mediaUploader,
+       _clock = clock;
 
   final NostrEventClient _eventClient;
   final VideoMediaUploadPort _mediaUploader;
@@ -39,15 +39,14 @@ class NostrVideoPublisher implements NostrVideoPublisherPort {
     _verifyIdentity(session);
     final publishedAt = _clock().toUtc();
     final title = caption.trim().isEmpty ? media.label : caption.trim();
-    final eventId = await _eventClient.publish(
+    final publication = await _publish(
       NostrUnsignedEvent(
         kind: 22,
         tags: _videoTags(uploaded, title, publishedAt),
         content: title,
       ),
-      expectedAuthor: authorPublicKeyHex,
+      authorPublicKeyHex,
     );
-    final id = VideoPostId.parse(eventId.value);
     return _toPost(
       session,
       uploaded,
@@ -55,8 +54,8 @@ class NostrVideoPublisher implements NostrVideoPublisherPort {
       _PublishedVideo(
         selected: media,
         caption: title,
-        id: id,
         publishedAt: publishedAt,
+        publication: publication,
       ),
     );
   }
@@ -96,6 +95,9 @@ class NostrVideoPublisher implements NostrVideoPublisherPort {
           eventId: NostrEventId.parse(video.id.value),
           authorPublicKeyHex: authorPublicKeyHex,
           kind: NostrEventKind.parse(22),
+          details: NostrEventReferenceDetails(
+            signedEvent: video.publication.signedEvent,
+          ),
         ),
       ),
       content: VideoPostContent(
@@ -118,16 +120,34 @@ class NostrVideoPublisher implements NostrVideoPublisherPort {
       uploaded.primaryUrl,
       fallbackUrls: uploaded.fallbackUrls,
     );
-    final verified =
-        VideoMediaSource.withExpectedSha256(source, uploaded.sha256);
+    final verified = VideoMediaSource.withExpectedSha256(
+      source,
+      uploaded.sha256,
+    );
     return VideoMediaSource.withCacheScope(verified, eventId);
   }
 
   void _verifyIdentity(UserSession session) {
     if (session.identity.publicKeyHex != _eventClient.publicKeyHex) {
       throw const AppFailure(
-          'The active Nostr signer does not match the session.');
+        'The active Nostr signer does not match the session.',
+      );
     }
+  }
+
+  Future<NostrEventPublication> _publish(
+    NostrUnsignedEvent event,
+    NostrPublicKeyHex author,
+  ) async {
+    final client = _eventClient;
+    if (client is SignedNostrEventPublisher) {
+      return (client as SignedNostrEventPublisher).publishSigned(
+        event,
+        expectedAuthor: author,
+      );
+    }
+    final id = await client.publish(event, expectedAuthor: author);
+    return NostrEventPublication(id: id);
   }
 }
 
@@ -135,12 +155,14 @@ class _PublishedVideo {
   const _PublishedVideo({
     required this.selected,
     required this.caption,
-    required this.id,
     required this.publishedAt,
+    required this.publication,
   });
 
   final SelectedMedia selected;
   final String caption;
-  final VideoPostId id;
   final DateTime publishedAt;
+  final NostrEventPublication publication;
+
+  VideoPostId get id => VideoPostId.parse(publication.id.value);
 }

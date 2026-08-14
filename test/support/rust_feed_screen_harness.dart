@@ -10,6 +10,7 @@ import 'package:ghostr/features/video_catalog/presentation/feed_screen.dart';
 
 import 'discovery_search_fakes.dart';
 import 'fake_media_ports.dart';
+import 'following_feed_scope_fixture.dart';
 import 'hybrid_repository_harness.dart';
 import 'live_rust_feed_port.dart';
 import 'fake_video_sharing.dart';
@@ -66,9 +67,11 @@ final class RustFeedScreenHarness {
         feed: feed,
         engagement: repositories.engagement,
         optional: FeedOptionalDependencies(
-          updates: RemoteVideoFeedUpdates(
-            remote: source,
-            social: FakeSocialGraph(),
+          delivery: FeedDeliveryDependencies(
+            updates: RemoteVideoFeedUpdates(
+              remote: source,
+              followingScopes: testFollowingFeedScopes(FakeSocialGraph()),
+            ),
           ),
         ),
       ),

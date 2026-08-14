@@ -22,12 +22,16 @@ void main() {
               isActive: true,
             ),
             actions: FeedCardActions(
-              onOpenProfile: () {},
-              onOpenHashtag: (_) {},
-              onToggleLike: (_) => result.future,
-              onOpenComments: () {},
-              onBlockCreator: () {},
-              onShare: (_, __) async {},
+              navigation: FeedCardNavigationActions(
+                onOpenProfile: () {},
+                onOpenComments: () {},
+                onOpenHashtag: (_) {},
+              ),
+              engagement: FeedCardEngagementActions(
+                onToggleLike: (_) => result.future,
+              ),
+              moderation: FeedCardModerationActions(onBlockCreator: () {}),
+              sharing: FeedCardSharingActions(onShare: (_, __) async {}),
             ),
           ),
         ),

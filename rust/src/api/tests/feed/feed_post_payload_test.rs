@@ -19,7 +19,7 @@ fn post(delivery: DeliveryKind) -> ParsedVideoPost {
 fn every_row_field_is_carried_over() {
     let mut post = post(DeliveryKind::Progressive);
     post.title = Some("Night skate".to_owned());
-    let row = feed_post(&post, creator_profile());
+    let row = feed_post(&post, creator_profile(), None);
     assert_eq!(row.event_id, "e1");
     assert_eq!(row.created_at, 77);
     assert_eq!(row.caption, "sunset ride");
@@ -52,13 +52,13 @@ fn every_row_field_is_carried_over() {
 
 #[test]
 fn hls_delivery_round_trips_the_v1_focus_vocabulary() {
-    let row = feed_post(&post(DeliveryKind::Hls), creator_profile());
+    let row = feed_post(&post(DeliveryKind::Hls), creator_profile(), None);
     assert_eq!(row.media.delivery, FfiMediaDelivery::Hls);
 }
 
 #[test]
 fn post_ids_are_gateway_safe_and_stable_per_coordinate() {
-    let row = feed_post(&post(DeliveryKind::Progressive), creator_profile());
+    let row = feed_post(&post(DeliveryKind::Progressive), creator_profile(), None);
     validate_post_id(&row.post_id).expect("gateway-safe id");
     let mut revision = post(DeliveryKind::Progressive);
     revision.event_id = "e2".to_owned();

@@ -27,6 +27,7 @@ import 'package:ghostr/app/search_tab.dart';
 import 'package:ghostr/features/video_catalog/presentation/search_cubit.dart';
 
 part 'home_shell_incoming_video.dart';
+part 'home_shell_controllers.dart';
 part 'home_shell_navigation.dart';
 
 class HomeShell extends StatefulWidget {
@@ -125,6 +126,7 @@ class _HomeShellState extends State<HomeShell> {
         shareWorkflow: widget.controllers.videoShareWorkflow,
         createComments: widget.controllers.comments,
         isActive: _currentTab == HomeTab.home && !_isRouteCovered,
+        showFeedKindSelector: true,
       ),
     ),
   );
@@ -160,38 +162,6 @@ class _HomeShellState extends State<HomeShell> {
       onOpenVideo: _openProfileVideo,
     ),
   );
-  FeedCubit _createFeedCubit() {
-    return _feedCubit = widget.controllers.feed(
-      viewerId: widget.session.profile.id,
-    )..load();
-  }
-
-  SearchCubit _createSearchCubit() {
-    return _searchCubit ??= widget.controllers.search();
-  }
-
-  ActivityCubit _createActivityCubit() {
-    return _activityCubit = widget.controllers.activity()..load();
-  }
-
-  ProfileCubit _createProfileCubit() {
-    return _profileCubit = widget.controllers.profile(
-      widget.session.profile,
-      widget.session.profile.id,
-      onCurrentProfileUpdated: context.read<SessionCubit>().updateProfile,
-    )..load();
-  }
-
-  void _refreshTab(HomeTab tab) {
-    final refresh = switch (tab) {
-      HomeTab.home => _feedCubit?.refresh(),
-      HomeTab.activity => _activityCubit?.load(),
-      HomeTab.profile => _profileCubit?.load(),
-      HomeTab.search || HomeTab.create => null,
-    };
-    if (refresh != null) unawaited(refresh);
-  }
-
   @override
   void dispose() {
     _disposeIncomingVideos();

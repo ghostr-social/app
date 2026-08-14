@@ -53,9 +53,9 @@ impl EventCacheSession {
         replaced
     }
 
-    pub(crate) fn admit(&mut self, events: &[Event]) {
+    pub(crate) fn admit(&mut self, event_ids: &[EventId]) {
         if let Some(admitted) = &mut self.admitted {
-            admitted.extend(events.iter().map(|event| event.id));
+            admitted.extend(event_ids.iter().copied());
         }
     }
 

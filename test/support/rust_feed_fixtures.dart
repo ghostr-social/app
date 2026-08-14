@@ -6,6 +6,9 @@ import 'package:ghostr/src/rust/api/feed_types.dart';
 
 import 'fake_rust_feed_port.dart';
 import 'nostr_test_values.dart';
+import 'rust_feed_fixture_options.dart';
+
+export 'rust_feed_fixture_options.dart';
 
 FfiFeedCreator rustFeedCreator({
   String pubkey = testCreatorPublicKey,
@@ -24,42 +27,40 @@ FfiFeedCreator rustFeedCreator({
 FfiFeedMedia rustFeedMedia({
   List<String> urls = const ['https://cdn.example/clip.mp4'],
   FfiMediaDelivery delivery = FfiMediaDelivery.progressive,
-  String? sha256,
-  int? sizeBytes,
-  int? durationMs,
+  RustFeedMediaDetails details = const RustFeedMediaDetails(),
 }) {
   return FfiFeedMedia(
     urls: urls,
     delivery: delivery,
-    sha256: sha256,
-    sizeBytes: sizeBytes == null ? null : BigInt.from(sizeBytes),
-    durationMs: durationMs == null ? null : BigInt.from(durationMs),
+    sha256: details.sha256,
+    sizeBytes: details.sizeBytes == null
+        ? null
+        : BigInt.from(details.sizeBytes!),
+    durationMs: details.durationMs == null
+        ? null
+        : BigInt.from(details.durationMs!),
   );
 }
 
 FfiFeedPost rustFeedPost({
-  String postId = 'a1b2c3',
   String eventId = testEventId,
   int eventKind = 22,
-  String? identifier,
   int createdAt = 1754000000,
-  String caption = 'A relay-side banger',
-  String? title,
-  List<String> hashtags = const <String>[],
-  FfiFeedCreator? creator,
-  FfiFeedMedia? media,
+  RustFeedPostDetails details = const RustFeedPostDetails(),
 }) {
   return FfiFeedPost(
-    postId: postId,
+    postId: details.postId,
     eventId: eventId,
     eventKind: eventKind,
-    identifier: identifier,
+    identifier: details.identifier,
     createdAt: BigInt.from(createdAt),
-    caption: caption,
-    title: title,
-    hashtags: hashtags,
-    creator: creator ?? rustFeedCreator(),
-    media: media ?? rustFeedMedia(),
+    feedSortAt: BigInt.from(createdAt),
+    isProtected: false,
+    caption: details.caption,
+    title: details.title,
+    hashtags: details.hashtags,
+    creator: details.creator ?? rustFeedCreator(),
+    media: details.media ?? rustFeedMedia(),
   );
 }
 

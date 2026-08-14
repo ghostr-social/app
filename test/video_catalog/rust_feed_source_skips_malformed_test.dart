@@ -7,16 +7,23 @@ import '../support/rust_feed_fixtures.dart';
 
 void main() {
   test('skips rows without playable media and keeps the rest', () async {
-    final port = FakeRustFeedPort(updates: [
-      rustFeedBaseline(),
-      rustFeedUpdate(revision: 1, posts: [
-        rustFeedPost(
-          eventId: testEventId,
-          media: rustFeedMedia(urls: const []),
+    final port = FakeRustFeedPort(
+      updates: [
+        rustFeedBaseline(),
+        rustFeedUpdate(
+          revision: 1,
+          posts: [
+            rustFeedPost(
+              eventId: testEventId,
+              details: RustFeedPostDetails(
+                media: rustFeedMedia(urls: const []),
+              ),
+            ),
+            rustFeedPost(eventId: secondTestEventId),
+          ],
         ),
-        rustFeedPost(eventId: secondTestEventId),
-      ]),
-    ]);
+      ],
+    );
     final source = RustFeedRemoteSource(port: port);
 
     final posts = await source.loadRemoteFeed(searchQuery: 'ghost');
@@ -27,12 +34,17 @@ void main() {
   // An addressable row with no `d` tag has no coordinate to like or
   // comment on, so it is dropped rather than mapped onto its event id.
   test('skips addressable rows that name no identifier', () async {
-    final port = FakeRustFeedPort(updates: [
-      rustFeedUpdate(revision: 1, posts: [
-        rustFeedPost(eventId: testEventId, eventKind: 34235),
-        rustFeedPost(eventId: secondTestEventId),
-      ]),
-    ]);
+    final port = FakeRustFeedPort(
+      updates: [
+        rustFeedUpdate(
+          revision: 1,
+          posts: [
+            rustFeedPost(eventId: testEventId, eventKind: 34235),
+            rustFeedPost(eventId: secondTestEventId),
+          ],
+        ),
+      ],
+    );
     final source = RustFeedRemoteSource(port: port);
 
     final posts = await source.loadRemoteFeed(searchQuery: 'ghost');

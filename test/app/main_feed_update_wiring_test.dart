@@ -15,7 +15,10 @@ void main() {
       forYouFeed: [samplePost(id: 'main')],
     );
     final factory = AppControllerFactory(
-      buildFakeDependencies(catalogRepository: catalog, feedUpdates: updates),
+      buildFakeDependencies(
+        catalogRepository: catalog,
+        overrides: FakeDependencyOverrides(feedUpdates: updates),
+      ),
     );
     final main = factory.feed();
     final discovery = factory.discoveryFeed('ghost');

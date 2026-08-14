@@ -35,8 +35,6 @@ struct FeedProgress {
 }
 
 impl FeedBook {
-    /// Opens (or reopens) a feed with a fresh page history and makes
-    /// it the active one.
     pub(crate) fn open(&mut self, context: FeedContext, request: DiscoveryRequest) {
         let continuous = request.is_continuous();
         self.feeds.insert(
@@ -77,8 +75,6 @@ impl FeedBook {
         self.feeds.get(context).map(|feed| &feed.request)
     }
 
-    /// The stored request aimed at the next older page. `None` without
-    /// an explicit or tracked cursor: nothing older is known.
     pub(crate) fn older_page_request(
         &self,
         context: &FeedContext,
@@ -108,19 +104,18 @@ impl FeedBook {
         }
     }
 
-    /// A landed page marks the feed loaded; a `None` cursor after a
-    /// load means the feed looks exhausted.
     pub(crate) fn record_page(
         &mut self,
         context: &FeedContext,
         cursor: Option<Timestamp>,
         head: bool,
+        has_playable: bool,
     ) {
         if let Some(feed) = self.feeds.get_mut(context) {
             let first = !feed.loaded;
             feed.loaded = true;
             feed.failed = false;
-            feed.playable |= cursor.is_some();
+            feed.playable |= has_playable;
             if first || !head {
                 feed.cursor = cursor;
             }
@@ -161,7 +156,8 @@ impl FeedBook {
 
     pub(crate) fn hunt_action(&mut self, context: &FeedContext) -> Option<FeedHuntAction> {
         let feed = self.feeds.get_mut(context)?;
-        if !feed.continuous || self.inflight.get(context).copied().unwrap_or(0) > 0 {
+        let inflight = self.inflight.get(context).copied().unwrap_or(0);
+        if hunt_blocked(feed, inflight) {
             return None;
         }
         if feed.failed || feed.cursor.is_none() {
@@ -197,4 +193,8 @@ impl FeedBook {
             },
         }
     }
+}
+
+fn hunt_blocked(feed: &FeedProgress, inflight: usize) -> bool {
+    !feed.continuous || inflight > 0
 }

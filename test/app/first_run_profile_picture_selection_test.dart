@@ -18,8 +18,10 @@ void main() {
     final uploader = FakeProfileImageUploader();
     final dependencies = buildFakeDependencies(
       catalogRepository: FakeVideoCatalogRepository(forYouFeed: const []),
-      accountGenerator: generator,
-      profileMetadataRepository: profiles,
+      overrides: FakeDependencyOverrides(
+        accountGenerator: generator,
+        profileMetadataRepository: profiles,
+      ),
       device: FakeDeviceDependencies(
         profileImages: fakeProfileImages(picker: picker, uploader: uploader),
       ),

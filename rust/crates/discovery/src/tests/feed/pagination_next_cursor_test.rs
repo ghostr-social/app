@@ -28,8 +28,6 @@ fn empty_page_exhausts_the_feed() {
 }
 
 #[test]
-fn cursor_saturates_at_the_epoch() {
-    // Dart would step to -1s (pre-1970) here; a relay `until` cannot go
-    // below zero, so the Rust cursor floors at the epoch instead.
-    assert_eq!(next_page_cursor([t(0)]), Some(t(0)));
+fn epoch_page_exhausts_the_feed() {
+    assert_eq!(next_page_cursor([t(0)]), None);
 }

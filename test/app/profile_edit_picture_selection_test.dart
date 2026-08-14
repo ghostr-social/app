@@ -28,7 +28,7 @@ void main() {
     );
     final dependencies = buildFakeDependencies(
       session: session,
-      profileMetadataRepository: profiles,
+      overrides: FakeDependencyOverrides(profileMetadataRepository: profiles),
       device: FakeDeviceDependencies(
         profileImages: fakeProfileImages(picker: picker, uploader: uploader),
       ),

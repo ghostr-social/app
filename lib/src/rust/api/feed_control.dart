@@ -7,7 +7,7 @@ import '../frb_generated.dart';
 import 'feed_types.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `parse_expected_account`, `validate_main_account`
+// These functions are ignored because they are not marked as `pub`: `parse_expected_account`, `validate_feed_account`
 
 /// Captures the native account-session token before Dart waits on any
 /// previous feed. A later open must present the same token.

@@ -21,7 +21,9 @@ void main() {
       FeedDependencies(
         feed: feed,
         engagement: FakeVideoCatalogRepository(forYouFeed: []),
-        optional: FeedOptionalDependencies(updates: updates),
+        optional: FeedOptionalDependencies(
+          delivery: FeedDeliveryDependencies(updates: updates),
+        ),
       ),
     );
     addTearDown(cubit.close);

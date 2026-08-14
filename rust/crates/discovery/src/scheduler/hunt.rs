@@ -3,13 +3,16 @@
 use crate::query::search::plan_discovery;
 use crate::retrieval_types::{FeedContext, RetrievalPriority};
 use crate::scheduler::feeds::{FeedHuntAction, FEED_REFRESH_BACKOFF};
-use crate::scheduler::{DiscoveryCommand, SchedulerWorker};
+use crate::scheduler::{DiscoveryCommand, SchedulerWorker, WorkCommand};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct HuntToken(pub(crate) u64);
 
 impl SchedulerWorker {
     pub(crate) fn advance_feed_hunt(&mut self, context: FeedContext) {
+        if self.queue.has_pending(&context) {
+            return;
+        }
         match self.feeds.hunt_action(&context) {
             Some(FeedHuntAction::OlderNow) => self.prefetch(context),
             Some(FeedHuntAction::HeadLater) => self.schedule_head(context),
@@ -17,7 +20,7 @@ impl SchedulerWorker {
         }
     }
 
-    pub(crate) fn continue_feed(&mut self, context: FeedContext, head: bool, token: HuntToken) {
+    pub(crate) fn continue_feed(&mut self, context: FeedContext, token: HuntToken) {
         if self.pending_feed_hunts.get(&context) != Some(&token) {
             return;
         }
@@ -26,17 +29,14 @@ impl SchedulerWorker {
         if !self.feeds.is_continuous(&context) || self.feed_busy(&context) {
             return;
         }
-        if head {
-            self.refresh_head(context);
-        } else {
-            self.prefetch(context);
-        }
+        self.refresh_head(context);
     }
 
     pub(crate) fn close_feed(&mut self, context: FeedContext) {
         self.cancel_hunt(&context);
         self.clear_feed_retry(&context);
         self.cancel_context_work(&context);
+        self.deferred_reposts.remove_context(&context);
         self.feeds.close(&context);
     }
 
@@ -77,11 +77,10 @@ impl SchedulerWorker {
         let task = tokio::spawn(async move {
             tokio::time::sleep(FEED_REFRESH_BACKOFF).await;
             if let Some(sender) = sender.upgrade() {
-                let _ = sender.send(DiscoveryCommand::ContinueFeed {
+                let _ = sender.send(DiscoveryCommand::Work(WorkCommand::Continue {
                     context: scheduled,
-                    head: true,
                     token,
-                });
+                }));
             }
         });
         self.hunts.insert(context, task.abort_handle());

@@ -4,7 +4,8 @@ use crate::feed::cursor::playable_cursor;
 use crate::plan_executor::{PlanExecutor, PlanPage, PlanPageFuture, PlannedRetrieval};
 use crate::query::search::QueryPlan;
 use crate::retrieval_types::{
-    FeedContext, PlanFailure, RetrievalOutcome, RetrievalPurpose, RetrievalRequest,
+    FeedContext, PlanFailure, RetrievalOutcome, RetrievalPriority, RetrievalPurpose,
+    RetrievalRequest,
 };
 use crate::scheduler::FinishedRetrieval;
 use nostr_sdk::Event;
@@ -21,6 +22,7 @@ pub(crate) struct RetrievalTaskInput {
     pub(crate) outcomes: mpsc::UnboundedSender<RetrievalOutcome>,
     pub(crate) request: RetrievalRequest,
     pub(crate) plan: QueryPlan,
+    pub(crate) deferred_reposts: Vec<Event>,
 }
 
 pub(crate) fn spawn_retrieval_task(input: RetrievalTaskInput) -> JoinHandle<()> {
@@ -30,10 +32,11 @@ pub(crate) fn spawn_retrieval_task(input: RetrievalTaskInput) -> JoinHandle<()> 
             context: input.request.context,
             priority: input.request.priority,
             plan: input.plan,
+            deferred_reposts: input.deferred_reposts,
         };
         let purpose = purpose(&retrieval);
         let progress =
-            execute_progressively(input.executor, retrieval, context.clone(), input.outcomes).await;
+            execute_retrieval(input.executor, retrieval, context.clone(), input.outcomes).await;
         let _ = input.finished.send(FinishedRetrieval {
             task_id: input.task_id,
             context,
@@ -42,6 +45,21 @@ pub(crate) fn spawn_retrieval_task(input: RetrievalTaskInput) -> JoinHandle<()> 
             had_playable_progress: progress.had_playable,
         });
     })
+}
+
+async fn execute_retrieval(
+    executor: Arc<dyn PlanExecutor>,
+    retrieval: PlannedRetrieval,
+    context: FeedContext,
+    outcomes: mpsc::UnboundedSender<RetrievalOutcome>,
+) -> ProgressiveResult {
+    if retrieval.priority == RetrievalPriority::Enrichment {
+        return ProgressiveResult {
+            result: executor.execute_page(retrieval).await,
+            had_playable: false,
+        };
+    }
+    execute_progressively(executor, retrieval, context, outcomes).await
 }
 
 fn purpose(retrieval: &PlannedRetrieval) -> RetrievalPurpose {

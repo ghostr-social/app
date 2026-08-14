@@ -18,8 +18,10 @@ void main() {
       ..pending = PendingAccountProfileRecovery(account);
     final dependencies = buildFakeDependencies(
       catalogRepository: FakeVideoCatalogRepository(forYouFeed: const []),
-      accountGenerator: generator,
-      accountProvisioningRepository: provisioning,
+      overrides: FakeDependencyOverrides(
+        accountGenerator: generator,
+        accountProvisioningRepository: provisioning,
+      ),
     );
 
     await tester.pumpWidget(buildTestApp(dependencies));

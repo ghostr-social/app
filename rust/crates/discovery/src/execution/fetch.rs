@@ -2,6 +2,7 @@
 
 use crate::cache::EventCache;
 use crate::execution::cache_fallback::cached_or_failure;
+use crate::feed::cursor::wire_page_boundary;
 use crate::query::search::PlannedQuery;
 use crate::relay::pool::RelayReadRequest;
 use crate::relay::route::RelayPoolRoute;
@@ -19,9 +20,36 @@ pub(crate) struct RelayFetch {
     pub progress: Option<EventProgress>,
 }
 
-pub(crate) async fn fetch(request: RelayFetch) -> Result<Vec<Event>, PlanFailure> {
+pub(crate) struct FetchedEvents {
+    pub events: Vec<Event>,
+    pub fresh_boundary: Option<nostr_sdk::Timestamp>,
+    pub wire_complete: bool,
+}
+
+impl FetchedEvents {
+    #[cfg(test)]
+    pub(crate) fn fresh(events: Vec<Event>) -> Self {
+        let fresh_boundary = wire_page_boundary(&events);
+        Self {
+            events,
+            fresh_boundary,
+            wire_complete: true,
+        }
+    }
+
+    fn cached(events: Vec<Event>) -> Self {
+        Self {
+            events,
+            fresh_boundary: None,
+            wire_complete: false,
+        }
+    }
+}
+
+pub(crate) async fn fetch(request: RelayFetch) -> Result<FetchedEvents, PlanFailure> {
     let filter = request.query.filter.clone();
     publish_cached(&request, &filter).await;
+    let progressive = request.progress.is_some();
     let fetched = request
         .route
         .read(RelayReadRequest {
@@ -34,15 +62,25 @@ pub(crate) async fn fetch(request: RelayFetch) -> Result<Vec<Event>, PlanFailure
     let fetched = match fetched {
         Ok(events) => events,
         Err(error) => {
-            return cached_or_failure(&request.cache, request.session, &filter, error.message)
-                .await;
+            if progressive {
+                return Err(error);
+            }
+            let events =
+                cached_or_failure(&request.cache, request.session, &filter, error.message).await?;
+            return Ok(FetchedEvents::cached(events));
         }
     };
-    request
+    let fresh_boundary = wire_page_boundary(&fetched);
+    let events = request
         .cache
         .union_for(request.session, &filter, fetched)
         .await
-        .ok_or_else(|| PlanFailure::new(SESSION_RESET_MESSAGE))
+        .ok_or_else(|| PlanFailure::new(SESSION_RESET_MESSAGE))?;
+    Ok(FetchedEvents {
+        events,
+        fresh_boundary,
+        wire_complete: true,
+    })
 }
 
 async fn publish_cached(request: &RelayFetch, filter: &nostr_sdk::Filter) {

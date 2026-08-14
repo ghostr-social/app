@@ -16,8 +16,8 @@ void main() {
   ) async {
     final sessions = _RetryingSessionRepository();
     final dependencies = buildFakeDependencies(
-      sessionRepository: sessions,
       catalogRepository: FakeVideoCatalogRepository(forYouFeed: const []),
+      overrides: FakeDependencyOverrides(sessionRepository: sessions),
     );
     await tester.pumpWidget(buildTestApp(dependencies));
     await tester.pumpAndSettle();

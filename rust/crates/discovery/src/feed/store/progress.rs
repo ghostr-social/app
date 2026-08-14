@@ -1,7 +1,6 @@
 use super::{FeedId, FeedStore};
 use crate::content::parsing::ParsedVideoPost;
 use crate::content::social_graph::SocialGraph;
-use crate::feed::assembly::select_posts;
 
 impl FeedStore {
     pub fn begin_background_load(&mut self, feed: FeedId) {
@@ -21,16 +20,7 @@ impl FeedStore {
         let Some(open) = self.feeds.get_mut(&feed) else {
             return false;
         };
-        let before = open.posts.clone();
-        let mut combined = std::mem::take(&mut open.posts);
-        combined.push(fetched);
-        open.posts = select_posts(&open.spec, combined, graph);
-        open.trim();
-        if open.posts == before {
-            return false;
-        }
-        open.notify();
-        true
+        open.add_occurrences(vec![fetched], graph)
     }
 
     /// Reconciles one full head refresh without moving the historical cursor.
@@ -44,15 +34,6 @@ impl FeedStore {
             return false;
         };
         open.in_flight = false;
-        let before = open.posts.clone();
-        let mut combined = std::mem::take(&mut open.posts);
-        combined.extend(fetched);
-        open.posts = select_posts(&open.spec, combined, graph);
-        open.trim();
-        let changed = open.posts != before;
-        if changed {
-            open.notify();
-        }
-        changed
+        open.add_occurrences(fetched, graph)
     }
 }

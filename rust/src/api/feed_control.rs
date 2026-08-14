@@ -33,7 +33,7 @@ pub async fn ffi_open_feed(
 ) -> anyhow::Result<String> {
     let parsed = parse_feed_spec(&spec)?;
     let expected_account = parse_expected_account(expected_account_hex)?;
-    validate_main_account(&parsed, expected_account)?;
+    validate_feed_account(&parsed, expected_account)?;
     let engine = registry::engine()?;
     let expected_session = SessionGeneration::from_value(expected_session_generation);
     engine
@@ -67,14 +67,14 @@ fn parse_expected_account(raw: Option<String>) -> anyhow::Result<Option<PublicKe
     Ok(raw.map(|value| PublicKey::from_hex(&value)).transpose()?)
 }
 
-fn validate_main_account(
+fn validate_feed_account(
     spec: &FeedSpec,
     expected_account: Option<PublicKey>,
 ) -> anyhow::Result<()> {
-    if let FeedSpec::MainFeed { viewer } = spec {
+    if let FeedSpec::MainFeed { viewer } | FeedSpec::Following { viewer, .. } = spec {
         ensure!(
             viewer.as_ref() == expected_account.as_ref(),
-            "the main feed viewer does not match the expected account"
+            "the feed viewer does not match the expected account"
         );
     }
     Ok(())

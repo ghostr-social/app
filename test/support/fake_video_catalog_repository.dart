@@ -3,6 +3,7 @@ import 'package:ghostr/core/media/selected_media.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/features/comments/domain/video_comment.dart';
 import 'package:ghostr/features/publish/domain/video_publication.dart';
+import 'package:ghostr/features/reposts/domain/video_repost_repository.dart';
 import 'package:ghostr/features/session/domain/user_session.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post_id.dart';
@@ -13,17 +14,18 @@ import 'fake_video_catalog_helpers.dart';
 import 'fake_video_catalog_scenarios.dart';
 
 class FakeVideoCatalogRepository extends FakeVideoCatalogBase
-    with FakeVideoCatalogComments {
+    with FakeVideoCatalogComments
+    implements VideoRepostRepository {
   FakeVideoCatalogRepository({
     required super.forYouFeed,
     super.feed = const FakeFeedScenario(),
     FakeCommentsScenario comments = const FakeCommentsScenario(),
     super.writes = const FakeWriteScenario(),
     this.cacheStatus = VideoPublicationCacheStatus.stored,
-  })  : commentsByPost = {...comments.commentsByPost},
-        commentsFailure = comments.failure,
-        commentsResponse = comments.response,
-        commentPublishBarrier = comments.publishBarrier;
+  }) : commentsByPost = {...comments.commentsByPost},
+       commentsFailure = comments.failure,
+       commentsResponse = comments.response,
+       commentPublishBarrier = comments.publishBarrier;
 
   @override
   final Map<String, List<VideoComment>> commentsByPost;
@@ -75,5 +77,16 @@ class FakeVideoCatalogRepository extends FakeVideoCatalogBase
     replacePost(forYouFeed, updated);
     replacePost(followingFeed, updated);
     return updated;
+  }
+
+  @override
+  Future<List<VideoPost>> hydrateAll(
+    List<VideoPost> posts, {
+    VideoRepostHydration mode = VideoRepostHydration.prompt,
+  }) async => posts;
+
+  @override
+  Future<VideoPost> toggleRepost(VideoPost post) async {
+    return post.withRepost(!post.viewerHasReposted);
   }
 }

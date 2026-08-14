@@ -43,12 +43,13 @@ impl FeedState {
 
     /// Re-adopting one viewer preserves lists already ingested for them.
     pub(super) fn adopt_viewer(&mut self, spec: &FeedSpec) {
-        if let FeedSpec::MainFeed {
-            viewer: Some(viewer),
-        } = spec
-        {
-            if !self.graph.belongs_to(viewer) {
-                self.graph = SocialGraph::new(*viewer);
+        let viewer = match spec {
+            FeedSpec::MainFeed { viewer } | FeedSpec::Following { viewer, .. } => *viewer,
+            _ => None,
+        };
+        if let Some(viewer) = viewer {
+            if !self.graph.belongs_to(&viewer) {
+                self.graph = SocialGraph::new(viewer);
             }
         }
     }

@@ -5,6 +5,7 @@ import 'package:ghostr/features/video_catalog/domain/remote_video_feed_updates.d
 
 import '../support/discovery_search_fakes.dart';
 import '../support/fake_remote_video_source.dart';
+import '../support/following_feed_scope_fixture.dart';
 
 void main() {
   test('a creator-scoped feed replaces an active unscoped feed', () async {
@@ -12,7 +13,7 @@ void main() {
       ..followed.add(ProfileId.parse('npub1creator'));
     final updates = RemoteVideoFeedUpdates(
       remote: FakeRemoteVideoSource([]),
-      social: social,
+      followingScopes: testFollowingFeedScopes(social),
     );
     await updates.watchFeed(FeedKind.forYou).first;
 
