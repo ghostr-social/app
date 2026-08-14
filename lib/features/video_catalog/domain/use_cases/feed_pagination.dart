@@ -19,8 +19,8 @@ final class FeedPagination {
   void restartFrom(List<VideoPost> posts) {
     DateTime? oldest;
     for (final post in posts) {
-      if (oldest == null || post.publishedAt.isBefore(oldest)) {
-        oldest = post.publishedAt;
+      if (oldest == null || post.feedActivityAt.isBefore(oldest)) {
+        oldest = post.feedActivityAt;
       }
     }
     _cursor = oldest?.subtract(const Duration(seconds: 1));

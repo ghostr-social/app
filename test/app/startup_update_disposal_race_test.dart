@@ -31,7 +31,7 @@ void main() {
     final dependencies = buildFakeDependencies(
       catalogRepository: FakeVideoCatalogRepository(forYouFeed: const []),
       device: FakeDeviceDependencies(incomingVideoShares: incoming),
-      appUpdateRuntime: runtime,
+      overrides: FakeDependencyOverrides(appUpdateRuntime: runtime),
     );
     await tester.pumpWidget(
       StartupGate(loadDependencies: () async => dependencies),

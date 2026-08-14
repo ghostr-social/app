@@ -9,17 +9,18 @@ use std::collections::HashMap;
 use nostr_sdk::Timestamp;
 use tokio::sync::watch;
 
+use crate::content::deletions::DeletionIndex;
 use crate::content::parsing::ParsedVideoPost;
-use crate::content::social_graph::SocialGraph;
-use crate::feed::assembly::{append_new, select_posts};
 use crate::feed::spec::FeedSpec;
-use crate::feed::store_cursor::{older_cursor, post_cursor};
 
+mod occurrences;
+mod pages;
 mod progress;
 
-/// How many rows a canonical feed keeps. Query feeds preserve their complete
-/// discovered history so native snapshots can expose result 501 and beyond.
+/// How many rows a canonical feed keeps.
 pub(crate) const FEED_POST_RETENTION: usize = 500;
+/// Search and hashtag feeds keep a deeper but still bounded session window.
+pub(crate) const QUERY_POST_RETENTION: usize = FEED_POST_RETENTION * 4;
 
 /// Handle of one open feed.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -29,6 +30,8 @@ pub struct FeedId(pub u64);
 struct OpenFeed {
     spec: FeedSpec,
     posts: Vec<ParsedVideoPost>,
+    occurrences: Vec<ParsedVideoPost>,
+    deletions: DeletionIndex,
     cursor: Option<Timestamp>,
     in_flight: bool,
     revision: watch::Sender<u64>,
@@ -81,23 +84,6 @@ impl FeedStore {
         self.feeds.get(&feed).map(|open| open.revision.subscribe())
     }
 
-    /// Replaces the feed with a fresh first page and restarts pagination.
-    pub fn ingest_first_page(
-        &mut self,
-        feed: FeedId,
-        fetched: Vec<ParsedVideoPost>,
-        graph: &SocialGraph,
-    ) {
-        let Some(open) = self.feeds.get_mut(&feed) else {
-            return;
-        };
-        open.posts = select_posts(&open.spec, fetched, graph);
-        open.cursor = post_cursor(&open.posts);
-        open.in_flight = false;
-        open.trim();
-        open.notify();
-    }
-
     pub fn begin_load_more_at(
         &mut self,
         feed: FeedId,
@@ -110,46 +96,6 @@ impl FeedStore {
         let cursor = explicit.or(open.cursor)?;
         open.in_flight = true;
         Some(cursor)
-    }
-
-    /// Releases the in-flight claim after a failed older request
-    /// (`failLoad`); the cursor stays for the next swipe.
-    pub fn fail_load_more(&mut self, feed: FeedId) {
-        if let Some(open) = self.feeds.get_mut(&feed) {
-            open.in_flight = false;
-        }
-    }
-
-    /// Advances pagination from raw wire events, including matching notes
-    /// that were not playable enough to become rows.
-    pub fn set_retrieval_cursor(&mut self, feed: FeedId, cursor: Option<Timestamp>) {
-        if let (Some(open), Some(cursor)) = (self.feeds.get_mut(&feed), cursor) {
-            open.cursor = Some(cursor);
-        }
-    }
-
-    /// Appends one fetched older page and advances the cursor by what was
-    /// fetched, so pages full of filtered creators cannot stall
-    /// pagination; subscribers hear only when something was appended.
-    /// Reports whether they did.
-    pub fn ingest_older_page(
-        &mut self,
-        feed: FeedId,
-        fetched: Vec<ParsedVideoPost>,
-        graph: &SocialGraph,
-    ) -> bool {
-        let Some(open) = self.feeds.get_mut(&feed) else {
-            return false;
-        };
-        open.in_flight = false;
-        open.cursor = older_cursor(&open.spec, open.cursor, &fetched);
-        let page = select_posts(&open.spec, fetched, graph);
-        if !append_new(&mut open.posts, page) {
-            return false;
-        }
-        open.trim();
-        open.notify();
-        true
     }
 
     /// Publishes a revision without changing the list: the API layer
@@ -168,6 +114,8 @@ impl OpenFeed {
         Self {
             spec,
             posts: Vec::new(),
+            occurrences: Vec::new(),
+            deletions: DeletionIndex::default(),
             cursor: None,
             in_flight: false,
             revision: watch::channel(0).0,
@@ -178,11 +126,14 @@ impl OpenFeed {
         self.revision.send_modify(|revision| *revision += 1);
     }
 
-    /// Bounds canonical feeds while query feeds preserve discovered history.
+    /// Applies the feed's declared visible window without moving its cursor.
     /// Cursors are computed before this runs, so trimming never rewinds them.
     fn trim(&mut self) {
-        if !self.spec.is_query() {
-            self.posts.truncate(FEED_POST_RETENTION);
-        }
+        let retention = if self.spec.is_query() {
+            QUERY_POST_RETENTION
+        } else {
+            FEED_POST_RETENTION
+        };
+        self.posts.truncate(retention);
     }
 }

@@ -1,6 +1,8 @@
 import 'package:ghostr/core/async/parallel_wait.dart';
+import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/features/social/domain/social_graph_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
+import 'package:ghostr/features/video_catalog/domain/following_feed_scope.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_policy.dart';
@@ -13,24 +15,27 @@ class FilteredVideoFeedRepository implements VideoFeedRepository {
     this._reader,
     this._social, {
     VideoFeedPolicy policy = const VideoFeedPolicy(),
-  }) : _policy = policy;
+    FollowingFeedScopeReader? followingScopes,
+  }) : _policy = policy,
+       _followingScopes = followingScopes;
 
   final VideoPostReader _reader;
   final SocialGraphRepository _social;
   final VideoFeedPolicy _policy;
+  final FollowingFeedScopeReader? _followingScopes;
 
   @override
   Future<List<VideoPost>> loadFeed(
     FeedKind kind, {
     bool excludeWatched = false,
   }) async {
-    final followed = await _followedFor(kind);
-    final posts = _reader.load(
-      creatorIds: kind == FeedKind.following ? followed : null,
-    );
+    final scope = await _scopeFor(kind);
+    final followed = scope?.creators ?? const <ProfileId>{};
+    final posts = _load(kind, scope);
     final blocked = _social.loadBlockedProfiles();
     final (loadedPosts, _) = await waitForBoth(posts, blocked);
-    return _selectWithFreshBlocks(kind, loadedPosts, followed);
+    final selected = await _selectWithFreshBlocks(kind, loadedPosts, followed);
+    return selected;
   }
 
   @override
@@ -39,11 +44,9 @@ class FilteredVideoFeedRepository implements VideoFeedRepository {
     required DateTime olderThan,
     bool excludeWatched = false,
   }) async {
-    final followed = await _followedFor(kind);
-    final posts = _reader.loadOlder(
-      olderThan: olderThan,
-      creatorIds: kind == FeedKind.following ? followed : null,
-    );
+    final scope = await _scopeFor(kind);
+    final followed = scope?.creators ?? const <ProfileId>{};
+    final posts = _loadOlder(kind, scope, olderThan);
     final blocked = _social.loadBlockedProfiles();
     final (loadedPosts, _) = await waitForBoth(posts, blocked);
     final selected = await _selectWithFreshBlocks(kind, loadedPosts, followed);
@@ -57,17 +60,42 @@ class FilteredVideoFeedRepository implements VideoFeedRepository {
 
   DateTime? _nextCursor(List<VideoPost> fetched) {
     if (fetched.isEmpty) return null;
-    var oldest = fetched.first.publishedAt;
+    var oldest = fetched.first.feedActivityAt;
     for (final post in fetched.skip(1)) {
-      if (post.publishedAt.isBefore(oldest)) oldest = post.publishedAt;
+      if (post.feedActivityAt.isBefore(oldest)) oldest = post.feedActivityAt;
     }
     return oldest.subtract(const Duration(seconds: 1));
   }
 
-  Future<Set<ProfileId>> _followedFor(FeedKind kind) {
-    return kind == FeedKind.following
-        ? _social.loadFollowedProfiles()
-        : Future.value(const <ProfileId>{});
+  Future<FollowingFeedScope?> _scopeFor(FeedKind kind) async {
+    if (kind != FeedKind.following) return null;
+    final scopes = _followingScopes;
+    if (scopes == null) {
+      throw const AppFailure('Following feed scope is unavailable.');
+    }
+    return scopes.load();
+  }
+
+  Future<List<VideoPost>> _load(FeedKind kind, FollowingFeedScope? scope) {
+    final reader = _reader;
+    if (reader case final FollowingVideoPostReader following
+        when scope != null) {
+      return following.loadFollowing(scope);
+    }
+    return reader.load(creatorIds: scope?.creators);
+  }
+
+  Future<List<VideoPost>> _loadOlder(
+    FeedKind kind,
+    FollowingFeedScope? scope,
+    DateTime olderThan,
+  ) {
+    final reader = _reader;
+    if (reader case final FollowingVideoPostReader following
+        when scope != null) {
+      return following.loadOlderFollowing(olderThan: olderThan, scope: scope);
+    }
+    return reader.loadOlder(olderThan: olderThan, creatorIds: scope?.creators);
   }
 
   Future<List<VideoPost>> _selectWithFreshBlocks(

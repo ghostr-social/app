@@ -12,8 +12,8 @@ List<FfiFeedPost> _posts(int count) {
   return List<FfiFeedPost>.generate(
     count,
     (index) => rustFeedPost(
-      postId: 'post-$index',
       eventId: publishedEventId(index + 1),
+      details: RustFeedPostDetails(postId: 'post-$index'),
     ),
   );
 }

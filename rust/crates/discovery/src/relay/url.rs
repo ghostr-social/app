@@ -4,6 +4,7 @@
 //! ports or trailing slashes.
 
 const LOCAL_HOSTS: [&str; 2] = ["localhost", "127.0.0.1"];
+const PRIVATE_DOMAIN_SUFFIXES: [&str; 4] = [".internal", ".lan", ".local", ".localhost"];
 
 /// The validated, normalized relay URL, or `None` when the raw value
 /// is not an acceptable relay endpoint.
@@ -23,6 +24,28 @@ pub fn normalize_relay_url(raw: &str) -> Option<String> {
         without_default_port(&scheme, port),
         path,
     ))
+}
+
+/// NIP-18 hints are attacker-controlled network targets. They must use
+/// public-domain WSS endpoints; configured relays retain the broader policy.
+pub fn normalize_untrusted_relay_url(raw: &str) -> Option<String> {
+    let normalized = normalize_relay_url(raw)?;
+    let parsed = url::Url::parse(&normalized).ok()?;
+    if parsed.scheme() != "wss" {
+        return None;
+    }
+    match parsed.host()? {
+        url::Host::Domain(host) if public_domain(host) => Some(normalized),
+        _ => None,
+    }
+}
+
+fn public_domain(host: &str) -> bool {
+    host.contains('.')
+        && !host.ends_with('.')
+        && !PRIVATE_DOMAIN_SUFFIXES
+            .iter()
+            .any(|suffix| host.ends_with(suffix))
 }
 
 fn split_scheme(raw: &str) -> Option<(String, &str)> {

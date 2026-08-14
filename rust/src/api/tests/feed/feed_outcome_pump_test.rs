@@ -1,13 +1,14 @@
 //! `pump_outcomes`: retrieval outcomes leaving the scheduler land in
 //! the locked feed state and wake the feed's revision watch.
 
+use crate::api::feed::decisions::LoadMoreAction;
 use crate::api::feed::state::FeedState;
 use crate::api::runtime::discovery::{lock, pump_outcomes, OutcomeSinks, SharedFeedState};
 use crate::api::tests::feed_fixtures::video_note;
 use crate::api::tests::outbox_runtime_support::test_bootstrap;
 use crate::discovery::feed::spec::FeedSpec;
 use crate::discovery::retrieval_types::{RetrievalOutcome, RetrievalPurpose};
-use nostr_sdk::Keys;
+use nostr_sdk::{Keys, Timestamp};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::sync::mpsc;
@@ -38,6 +39,7 @@ async fn pumped_outcomes_reach_the_feed_state() {
         .send(RetrievalOutcome::Completed {
             context: open.context,
             result: Ok(vec![video_note(&keys, "clip", 40)]),
+            cursor: Some(Timestamp::from(99)),
             purpose: RetrievalPurpose::Head,
         })
         .expect("the pump should be listening");
@@ -47,6 +49,12 @@ async fn pumped_outcomes_reach_the_feed_state() {
         .expect("the landed page should tick the revision")
         .expect("the feed should stay open");
     assert_eq!(lock(&state).snapshot(feed).len(), 1);
+    let action = lock(&state).load_more(feed, None).action;
+    assert!(matches!(
+        action,
+        LoadMoreAction::Older { older_than, .. }
+            if older_than == Timestamp::from(99)
+    ));
 
     drop(sender);
     timeout(Duration::from_secs(5), pump)

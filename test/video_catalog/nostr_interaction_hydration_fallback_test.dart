@@ -14,15 +14,11 @@ void main() {
     final comments = FakeNostrCommentsPort()
       ..loadFailure = const AppFailure('comments unavailable');
     final reporter = RecordingFailureReporter();
-    final interactions = NostrVideoInteractions(
-      engagement,
-      comments,
-      reporter,
-    );
+    final interactions = NostrVideoInteractions(engagement, comments, reporter);
     final post = samplePost(
-      nostrReference: nostrReference(
+      nostrReference: nostrReferenceForAuthor(
+        testAuthorPublicKey,
         eventId: testEventId,
-        authorPublicKeyHex: testAuthorPublicKey,
       ),
     );
 
@@ -31,10 +27,7 @@ void main() {
     expect(hydrated.likeCount, post.likeCount);
     expect(hydrated.commentCount, post.commentCount);
     expect(hydrated.viewerHasLiked, post.viewerHasLiked);
-    expect(
-      hydrated.metrics.likeObservation,
-      VideoMetricObservation.unobserved,
-    );
+    expect(hydrated.metrics.likeObservation, VideoMetricObservation.unobserved);
     expect(
       hydrated.metrics.commentObservation,
       VideoMetricObservation.unobserved,

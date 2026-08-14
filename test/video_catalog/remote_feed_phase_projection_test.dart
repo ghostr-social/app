@@ -6,6 +6,7 @@ import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
 
 import '../support/discovery_search_fakes.dart';
 import '../support/fake_remote_video_source.dart';
+import '../support/following_feed_scope_fixture.dart';
 
 void main() {
   test(
@@ -20,7 +21,7 @@ void main() {
           ..snapshotPhase = expectation.key;
         final updates = RemoteVideoFeedUpdates(
           remote: remote,
-          social: FakeSocialGraph(),
+          followingScopes: testFollowingFeedScopes(FakeSocialGraph()),
         );
 
         final actual = await updates.watchFeed(FeedKind.forYou).first;

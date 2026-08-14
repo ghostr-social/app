@@ -5,7 +5,9 @@ use crate::retrieval_types::{PlanFailure, RetrievalPurpose};
 use crate::scheduler::feeds::FeedBook;
 use crate::scheduler::queries::QueryBook;
 use crate::scheduler::queue::RetrievalQueue;
-use crate::scheduler::{ActiveRetrieval, DiscoveryCommand, FinishedRetrieval, SchedulerWorker};
+use crate::scheduler::{
+    ActiveRetrieval, DiscoveryCommand, FeedCommand, FinishedRetrieval, SchedulerWorker,
+};
 use crate::tests::scheduler_support::{context, request};
 use ghostr_engine::adaptive::DiscoveryDemand;
 use std::collections::HashMap;
@@ -29,6 +31,7 @@ async fn queued_completion_is_ignored_after_its_feed_closes() {
     let mut worker = SchedulerWorker {
         queue: RetrievalQueue::new(),
         feeds: FeedBook::default(),
+        deferred_reposts: Default::default(),
         queries: QueryBook::default(),
         executor: Arc::new(NeverExecutor),
         max_concurrent: 2,
@@ -48,10 +51,10 @@ async fn queued_completion_is_ignored_after_its_feed_closes() {
         demand_live: true,
     };
     let feed = context("main");
-    worker.apply_command(DiscoveryCommand::OpenFeed {
+    worker.apply_command(DiscoveryCommand::Feed(FeedCommand::Open {
         context: feed.clone(),
         request: request(),
-    });
+    }));
     let active = tokio::spawn(std::future::pending::<()>());
     worker.tasks.insert(
         0,
@@ -71,7 +74,7 @@ async fn queued_completion_is_ignored_after_its_feed_closes() {
         })
         .expect("queue completion");
 
-    worker.apply_command(DiscoveryCommand::CloseFeed(feed.clone()));
+    worker.apply_command(DiscoveryCommand::Feed(FeedCommand::Close(feed.clone())));
     assert!(worker.step().await);
 
     let stale_outcome = outcomes.try_recv().is_ok();

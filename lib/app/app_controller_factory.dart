@@ -7,9 +7,11 @@ import 'package:ghostr/features/session/domain/nostr_identity.dart';
 import 'package:ghostr/features/compose/presentation/compose_cubit.dart';
 import 'package:ghostr/features/compose/domain/publish_video_workflow.dart';
 import 'package:ghostr/features/settings/presentation/settings_cubit.dart';
+import 'package:ghostr/features/social/domain/social_graph_repository.dart';
 import 'package:ghostr/features/social/presentation/blocked_accounts_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/query_video_feed_repository.dart';
+import 'package:ghostr/features/video_catalog/domain/repost_hydrated_video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
@@ -28,6 +30,8 @@ import 'package:ghostr/features/video_sharing/domain/video_share_workflow.dart';
 import 'package:ghostr/platform/media/delivery_config_syncing_settings_repository.dart';
 import 'package:ghostr/platform/media/ffi_feed_focus_port.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
+
+part 'app_controller_factory_feed.dart';
 
 class AppControllerFactory {
   static final FeedFocusPort _defaultFeedFocus = FfiFeedFocusPort();
@@ -57,74 +61,6 @@ class AppControllerFactory {
 
   TrendingHashtagsCubit trending() {
     return TrendingHashtagsCubit(_dependencies.videoCatalogServices.trending);
-  }
-
-  FeedCubit feed({ProfileId? viewerId}) {
-    final services = _dependencies.videoCatalogServices;
-    return FeedCubit(
-      _feedDependencies(
-        services.feed,
-        viewerId: viewerId,
-        updates: services.feedUpdates,
-      ),
-    );
-  }
-
-  /// A feed cubit bound to one search query or `#hashtag`.
-  FeedCubit discoveryFeed(String query, {ProfileId? viewerId}) {
-    return FeedCubit(
-      _feedDependencies(
-        QueryVideoFeedRepository(
-          search: _dependencies.videoCatalogServices.search,
-          query: query,
-        ),
-        viewerId: viewerId,
-      ),
-    );
-  }
-
-  /// A feed cubit playing one creator's shelf, opened on the tapped video.
-  FeedCubit profileFeed(ProfileSummary viewer, VideoPost post) {
-    return FeedCubit(
-      _feedDependencies(
-        ProfileVideoFeedRepository(
-          profile: _dependencies.videoCatalogServices.profile,
-          viewer: viewer,
-          creatorId: post.creator.id,
-        ),
-        viewerId: viewer.id,
-      ),
-      openAt: post.id,
-    );
-  }
-
-  FeedDependencies _feedDependencies(
-    VideoFeedRepository feed, {
-    ProfileId? viewerId,
-    VideoFeedUpdates? updates,
-  }) {
-    final services = _dependencies.videoCatalogServices;
-    return FeedDependencies(
-      viewerId: viewerId,
-      feed: feed,
-      engagement: services.engagement,
-      followProfile: DefaultFollowProfileWorkflow(
-        social: services.social,
-        activity: _dependencies.activityRepository,
-        clock: DateTime.now,
-        failureReporter: _dependencies.failureReporter,
-      ),
-      optional: FeedOptionalDependencies(
-        social: services.social,
-        focus: _feedFocus,
-        watchTracker: WatchHistoryTracker(
-          history: _dependencies.watchHistoryRepository,
-          settings: _dependencies.appSettingsRepository,
-          failureReporter: _dependencies.failureReporter,
-        ),
-        updates: updates,
-      ),
-    );
   }
 
   WatchHistoryCubit watchHistory() {

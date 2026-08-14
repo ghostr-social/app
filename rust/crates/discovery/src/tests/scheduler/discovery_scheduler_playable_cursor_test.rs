@@ -1,4 +1,4 @@
-//! Auto-prefetch advances from playable rows, not older junk in relay results.
+//! Auto-prefetch honors how far the capped wire filter actually reached.
 
 use crate::tests::scheduler_support::{
     context, next_outcome, next_started, request, start_scheduler,
@@ -14,7 +14,7 @@ fn note(content: &str, created_at: u64) -> Event {
 }
 
 #[tokio::test(start_paused = true)]
-async fn non_video_event_does_not_jump_the_prefetch_cursor() {
+async fn non_video_event_advances_the_complete_note_filter_cursor() {
     let events = vec![
         note("https://cdn.example/clip.mp4", 100),
         note("ordinary old note", 1),
@@ -33,6 +33,6 @@ async fn non_video_event_does_not_jump_the_prefetch_cursor() {
     let prefetch = next_started(&mut harness.started).await;
     assert_eq!(
         prefetch.plan.queries[0].filter.until,
-        Some(Timestamp::from(99)),
+        Some(Timestamp::from(0)),
     );
 }

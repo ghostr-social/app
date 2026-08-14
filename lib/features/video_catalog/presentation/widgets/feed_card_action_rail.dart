@@ -1,33 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
+import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card_actions.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_profile_action.dart';
+import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card_repost_action.dart';
 import 'package:ghostr/features/video_sharing/domain/video_share_origin.dart';
 import 'package:ghostr/shared/theme/app_tokens.dart';
 
-enum FeedCardShareStatus { available, unavailable, downloading, busy }
-
-class FeedCardActions {
-  const FeedCardActions({
-    required this.onOpenProfile,
-    this.onFollowCreator,
-    required this.onToggleLike,
-    required this.onOpenComments,
-    required this.onOpenHashtag,
-    required this.onBlockCreator,
-    required this.onShare,
-    this.shareStatus = FeedCardShareStatus.available,
-  });
-
-  final VoidCallback onOpenProfile;
-  final Future<void> Function(ProfileSummary creator)? onFollowCreator;
-  final Future<void> Function(VideoPost post) onToggleLike;
-  final VoidCallback onOpenComments;
-  final ValueChanged<String> onOpenHashtag;
-  final VoidCallback onBlockCreator;
-  final Future<void> Function(VideoPost post, VideoShareOrigin origin) onShare;
-  final FeedCardShareStatus shareStatus;
-}
+export 'feed_card_actions.dart';
 
 class FeedCardActionRail extends StatefulWidget {
   const FeedCardActionRail({
@@ -44,8 +23,6 @@ class FeedCardActionRail extends StatefulWidget {
 }
 
 class _FeedCardActionRailState extends State<FeedCardActionRail> {
-  static const _shadows = [Shadow(color: Color(0x99000000), blurRadius: 8)];
-
   bool _isTogglingLike = false;
 
   @override
@@ -55,13 +32,20 @@ class _FeedCardActionRailState extends State<FeedCardActionRail> {
       children: [
         FeedProfileAction(
           profile: widget.post.creator,
-          onOpenProfile: widget.actions.onOpenProfile,
-          onFollow: widget.actions.onFollowCreator == null ? null : _follow,
+          onOpenProfile: widget.actions.navigation.onOpenProfile,
+          onFollow: widget.actions.navigation.onFollowCreator == null
+              ? null
+              : _follow,
         ),
         const SizedBox(height: AppSpacing.lg),
         _likeButton(),
         const SizedBox(height: AppSpacing.md),
         _commentButton(),
+        const SizedBox(height: AppSpacing.md),
+        FeedCardRepostAction(
+          post: widget.post,
+          onToggle: widget.actions.engagement.onToggleRepost,
+        ),
         const SizedBox(height: AppSpacing.md),
         _shareButton(),
       ],
@@ -69,14 +53,17 @@ class _FeedCardActionRailState extends State<FeedCardActionRail> {
   }
 
   Future<void> _follow() {
-    return widget.actions.onFollowCreator!(widget.post.creator);
+    return widget.actions.navigation.onFollowCreator!(widget.post.creator);
   }
 
   Widget _likeButton() {
     final liked = widget.post.viewerHasLiked;
     return _countedButton(
-      icon: liked ? Icons.favorite : Icons.favorite_border,
-      color: liked ? AppPalette.accentRed : AppPalette.foreground,
+      icon: Icon(
+        liked ? Icons.favorite : Icons.favorite_border,
+        color: liked ? AppPalette.accentRed : AppPalette.foreground,
+        shadows: AppShadow.videoOverlay,
+      ),
       count: widget.post.likeCount,
       tooltip: liked ? 'Unlike video' : 'Like video',
       onPressed: _isTogglingLike ? null : _toggleLike,
@@ -85,18 +72,21 @@ class _FeedCardActionRailState extends State<FeedCardActionRail> {
 
   Widget _commentButton() {
     return _countedButton(
-      icon: Icons.mode_comment,
-      color: AppPalette.foreground,
+      icon: const Icon(
+        Icons.mode_comment,
+        color: AppPalette.foreground,
+        shadows: AppShadow.videoOverlay,
+      ),
       count: widget.post.commentCount,
       tooltip: 'Open comments',
-      onPressed: widget.actions.onOpenComments,
+      onPressed: widget.actions.navigation.onOpenComments,
     );
   }
 
   Widget _shareButton() {
     return Builder(
       builder: (buttonContext) {
-        final status = widget.actions.shareStatus;
+        final status = widget.actions.sharing.status;
         return IconButton(
           onPressed: status == FeedCardShareStatus.available
               ? () => _share(buttonContext)
@@ -114,7 +104,7 @@ class _FeedCardActionRailState extends State<FeedCardActionRail> {
               : const Icon(
                   Icons.share,
                   color: AppPalette.foreground,
-                  shadows: _shadows,
+                  shadows: AppShadow.videoOverlay,
                 ),
         );
       },
@@ -131,7 +121,7 @@ class _FeedCardActionRailState extends State<FeedCardActionRail> {
   }
 
   Future<void> _share(BuildContext context) {
-    return widget.actions.onShare(widget.post, _shareOrigin(context));
+    return widget.actions.sharing.onShare(widget.post, _shareOrigin(context));
   }
 
   VideoShareOrigin _shareOrigin(BuildContext context) {
@@ -147,8 +137,7 @@ class _FeedCardActionRailState extends State<FeedCardActionRail> {
   }
 
   Widget _countedButton({
-    required IconData icon,
-    required Color color,
+    required Icon icon,
     required int count,
     required String tooltip,
     required VoidCallback? onPressed,
@@ -160,7 +149,7 @@ class _FeedCardActionRailState extends State<FeedCardActionRail> {
           onPressed: onPressed,
           tooltip: tooltip,
           iconSize: AppSize.feedRailIcon,
-          icon: Icon(icon, color: color, shadows: _shadows),
+          icon: icon,
         ),
         Text('$count', style: _countStyle()),
       ],
@@ -170,14 +159,14 @@ class _FeedCardActionRailState extends State<FeedCardActionRail> {
   TextStyle? _countStyle() {
     return Theme.of(context).textTheme.labelMedium?.copyWith(
       fontWeight: FontWeight.w600,
-      shadows: _shadows,
+      shadows: AppShadow.videoOverlay,
     );
   }
 
   Future<void> _toggleLike() async {
     setState(() => _isTogglingLike = true);
     try {
-      await widget.actions.onToggleLike(widget.post);
+      await widget.actions.engagement.onToggleLike(widget.post);
     } finally {
       if (mounted) setState(() => _isTogglingLike = false);
     }

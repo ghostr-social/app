@@ -10,6 +10,7 @@ pub enum FfiFeedKind {
     Hashtag,
     Search,
     Profile,
+    Following,
 }
 
 /// One feed to open, as Dart names it. `Main` reads the signed-in
@@ -33,6 +34,23 @@ pub struct FfiFeedCreator {
     pub display_name: String,
     pub handle: String,
     pub avatar_url: Option<String>,
+}
+
+/// The outer NIP-18 occurrence that lifted an original into the feed.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FfiFeedRepostTarget {
+    SpecificEvent,
+    Coordinate,
+}
+
+/// The outer NIP-18 occurrence that lifted an original into the feed.
+#[derive(Clone, Debug)]
+pub struct FfiFeedRepost {
+    pub event_id: String,
+    pub event_kind: u16,
+    pub target: FfiFeedRepostTarget,
+    pub reposted_at: u64,
+    pub reposter: FfiFeedCreator,
 }
 
 /// Pixel dimensions from the post's imeta, when declared.
@@ -71,8 +89,14 @@ pub struct FfiFeedPost {
     pub event_kind: u16,
     /// The addressable `d` tag, present exactly for kinds 30000-39999.
     pub identifier: Option<String>,
+    /// The exact published `d` tag used in Nostr coordinates.
+    pub published_identifier: Option<String>,
     /// Unix seconds of the post's newest event.
     pub created_at: u64,
+    pub feed_sort_at: u64,
+    pub signed_event_json: Option<String>,
+    pub is_protected: bool,
+    pub repost: Option<FfiFeedRepost>,
     pub caption: String,
     pub title: Option<String>,
     pub hashtags: Vec<String>,

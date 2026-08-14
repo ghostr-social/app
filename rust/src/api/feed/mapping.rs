@@ -3,11 +3,13 @@
 
 use crate::api::delivery_types::FfiMediaDelivery;
 use crate::api::feed_types::{
-    FfiFeedCreator, FfiFeedKind, FfiFeedMedia, FfiFeedPost, FfiFeedSpec, FfiMediaDim,
+    FfiFeedCreator, FfiFeedKind, FfiFeedMedia, FfiFeedPost, FfiFeedRepost, FfiFeedRepostTarget,
+    FfiFeedSpec, FfiMediaDim,
 };
 use crate::discovery::content::candidates::CandidateId;
 use crate::discovery::content::parsing::ParsedVideoPost;
 use crate::discovery::content::profiles::{CreatorProfile, ProfileStore};
+use crate::discovery::content::reposts::RepostTarget;
 use crate::discovery::feed::spec::FeedSpec;
 use crate::discovery::feed::store::FeedId;
 use crate::engine::DeliveryKind;
@@ -20,6 +22,10 @@ pub(crate) fn parse_feed_spec(spec: &FfiFeedSpec) -> Result<FeedSpec> {
             viewer: optional_key(spec.viewer_pubkey.as_deref(), "viewer_pubkey")?,
         }),
         FfiFeedKind::Profile => Ok(FeedSpec::Profile(parsed_keys(&spec.creators)?)),
+        FfiFeedKind::Following => Ok(FeedSpec::Following {
+            viewer: optional_key(spec.viewer_pubkey.as_deref(), "viewer_pubkey")?,
+            follows: parsed_keys(&spec.creators)?,
+        }),
         FfiFeedKind::Hashtag => Ok(FeedSpec::Hashtag(required_value(spec, "hashtag")?)),
         FfiFeedKind::Search => Ok(FeedSpec::Search(required_value(spec, "search")?)),
     }
@@ -76,19 +82,56 @@ pub(crate) fn resolved_creator(profiles: &ProfileStore, post: &ParsedVideoPost) 
     profiles.profile(&author)
 }
 
+pub(crate) fn resolved_reposter(
+    profiles: &ProfileStore,
+    post: &ParsedVideoPost,
+) -> Option<CreatorProfile> {
+    let repost = post.repost.as_ref()?;
+    let author = PublicKey::from_hex(&repost.reposter_pubkey)
+        .expect("parsed reposts carry a valid author key");
+    Some(profiles.profile(&author))
+}
+
 /// One parsed post plus its resolved creator as the full FFI row.
-pub(crate) fn feed_post(post: &ParsedVideoPost, creator: CreatorProfile) -> FfiFeedPost {
+pub(crate) fn feed_post(
+    post: &ParsedVideoPost,
+    creator: CreatorProfile,
+    reposter: Option<CreatorProfile>,
+) -> FfiFeedPost {
     FfiFeedPost {
         post_id: post_gateway_id(post),
         event_id: post.event_id.clone(),
         event_kind: post.kind,
         identifier: post.identifier.clone(),
+        published_identifier: post.published_identifier.clone(),
         created_at: post.created_at,
+        feed_sort_at: post.feed_sort_at,
+        signed_event_json: post.signed_event_json.as_deref().map(str::to_owned),
+        is_protected: post.is_protected,
+        repost: feed_repost(post, reposter),
         caption: post.caption.clone(),
         title: post.title.clone(),
         hashtags: post.hashtags.clone(),
         creator: feed_creator(&post.author_pubkey, creator),
         media: feed_media(post),
+    }
+}
+
+fn feed_repost(post: &ParsedVideoPost, profile: Option<CreatorProfile>) -> Option<FfiFeedRepost> {
+    let repost = post.repost.as_ref()?;
+    Some(FfiFeedRepost {
+        event_id: repost.event_id.clone(),
+        event_kind: repost.kind,
+        target: ffi_repost_target(repost.target),
+        reposted_at: repost.reposted_at,
+        reposter: feed_creator(&repost.reposter_pubkey, profile?),
+    })
+}
+
+fn ffi_repost_target(target: RepostTarget) -> FfiFeedRepostTarget {
+    match target {
+        RepostTarget::SpecificEvent => FfiFeedRepostTarget::SpecificEvent,
+        RepostTarget::Coordinate => FfiFeedRepostTarget::Coordinate,
     }
 }
 

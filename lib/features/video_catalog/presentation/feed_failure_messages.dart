@@ -20,6 +20,14 @@ String feedLikeFailureMessage(FeedOperationFailure failure) {
   );
 }
 
+String feedRepostFailureMessage(FeedOperationFailure failure) {
+  return _message(
+    source: 'FeedCubit.toggleRepost',
+    message: 'Could not update this repost.',
+    failure: failure,
+  );
+}
+
 String feedBlockFailureMessage(FeedOperationFailure failure) {
   return _message(
     source: 'FeedCubit.blockCreator',

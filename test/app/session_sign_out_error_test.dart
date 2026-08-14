@@ -7,14 +7,11 @@ import '../support/sample_data.dart';
 import '../support/test_app.dart';
 
 void main() {
-  testWidgets('keeps the profile open when secure sign out fails',
-      (tester) async {
+  testWidgets('keeps the profile open when secure sign out fails', (
+    tester,
+  ) async {
     final session = sampleSession();
     final dependencies = buildFakeDependencies(
-      sessionRepository: FakeSessionRepository(
-        storedSession: session,
-        signOutFailure: const AppFailure('Could not sign out securely.'),
-      ),
       catalogRepository: FakeVideoCatalogRepository(
         forYouFeed: [samplePost()],
         feed: FakeFeedScenario(
@@ -30,6 +27,12 @@ void main() {
               ),
             ),
           },
+        ),
+      ),
+      overrides: FakeDependencyOverrides(
+        sessionRepository: FakeSessionRepository(
+          storedSession: session,
+          signOutFailure: const AppFailure('Could not sign out securely.'),
         ),
       ),
     );

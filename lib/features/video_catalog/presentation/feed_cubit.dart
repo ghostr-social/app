@@ -8,6 +8,7 @@ import 'package:ghostr/features/video_catalog/domain/use_cases/feed_engagement.d
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_fetcher.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_loads.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_operation_failure.dart';
+import 'package:ghostr/features/video_catalog/domain/use_cases/feed_reposts.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_session.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
@@ -28,6 +29,8 @@ export 'feed_state.dart';
 part 'feed_cubit_engagement.dart';
 part 'feed_cubit_follow.dart';
 part 'feed_cubit_loading.dart';
+part 'feed_cubit_update_loading.dart';
+part 'feed_update_state.dart';
 part 'feed_cubit_updates.dart';
 
 /// Turns feed intents into feed states. The rules behind a transition — what
@@ -57,6 +60,9 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     _dependencies.engagement,
     _dependencies.social,
   );
+  late final _reposts = _dependencies.optional.reposts == null
+      ? null
+      : FeedReposts(_dependencies.optional.reposts!);
   late final _viewer = FeedViewer(
     focus: _dependencies.focus,
     watchTracker: _dependencies.watchTracker,
@@ -68,6 +74,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   final _followRequests = <ProfileId, int>{};
 
   Future<void> load([FeedKind? selectedKind]) async {
+    _reposts?.forget();
     final follows = _reloadFollows();
     await _runFeedPull(() async {
       final kind = selectedKind ?? state.kind;
@@ -84,6 +91,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   Future<void> reload() async {
     final previous = state;
     if (previous is! FeedLoaded) return load();
+    _reposts?.forget();
     final follows = _reloadFollows();
     emit(FeedLoading(previous.kind));
     await _runFeedPull(
@@ -98,6 +106,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   Future<void> refresh() async {
     final previous = state;
     if (previous is! FeedLoaded) return load();
+    _reposts?.forget();
     final follows = _reloadFollows();
     await _runFeedPull(() async {
       await _refreshFeedUpdates(previous.kind);
@@ -147,6 +156,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     final posts = _session.appended(current.roster, incoming);
     if (posts == null) return;
     emit(current.withPosts(posts));
+    unawaited(_settleReposts());
     _ensureBuffered();
   }
 

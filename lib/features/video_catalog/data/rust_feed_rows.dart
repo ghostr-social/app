@@ -14,7 +14,7 @@ final class RustFeedRows {
   List<VideoPost> map(List<FfiFeedPost> rows, BigInt? cursor) {
     final posts = <VideoPost>[];
     for (final row in rows) {
-      if (cursor != null && row.createdAt > cursor) continue;
+      if (cursor != null && row.feedSortAt > cursor) continue;
       _add(posts, row);
     }
     return List<VideoPost>.unmodifiable(posts);

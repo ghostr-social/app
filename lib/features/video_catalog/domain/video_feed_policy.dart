@@ -11,12 +11,20 @@ class VideoFeedPolicy {
     required Set<ProfileId> followed,
     required Set<ProfileId> blocked,
   }) {
-    final visible = posts.where(
-      (post) => !blocked.contains(post.creator.id),
-    );
+    final visible = posts.where((post) => !_blocked(post, blocked));
     final selected = kind == FeedKind.following
-        ? visible.where((post) => followed.contains(post.creator.id))
+        ? visible.where((post) => followed.contains(_feedActor(post)))
         : visible;
     return List<VideoPost>.unmodifiable(selected);
+  }
+
+  bool _blocked(VideoPost post, Set<ProfileId> blocked) {
+    final reposter = post.repost?.reposter.id;
+    return blocked.contains(post.creator.id) ||
+        reposter != null && blocked.contains(reposter);
+  }
+
+  ProfileId _feedActor(VideoPost post) {
+    return post.repost?.reposter.id ?? post.creator.id;
   }
 }

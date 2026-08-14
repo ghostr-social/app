@@ -14,19 +14,21 @@ void main() {
   testWidgets('identifies a pending sign-out operation', (tester) async {
     final repository = _PendingSignOutRepository();
     final dependencies = buildFakeDependencies(
-      sessionRepository: repository,
       catalogRepository: FakeVideoCatalogRepository(forYouFeed: []),
+      overrides: FakeDependencyOverrides(sessionRepository: repository),
     );
     final cubit = SessionCubit(repository);
     await cubit.restore();
     final signOut = cubit.signOut();
 
-    await tester.pumpWidget(MaterialApp(
-      home: BlocProvider.value(
-        value: cubit,
-        child: SessionGate(controllers: AppControllerFactory(dependencies)),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocProvider.value(
+          value: cubit,
+          child: SessionGate(controllers: AppControllerFactory(dependencies)),
+        ),
       ),
-    ));
+    );
 
     expect(find.text('Signing out'), findsOneWidget);
     repository.pending.complete();

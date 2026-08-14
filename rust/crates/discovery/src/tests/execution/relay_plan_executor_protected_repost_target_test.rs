@@ -1,0 +1,66 @@
+use crate::content::candidates::CandidateRegistry;
+use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
+use crate::query::search::plan_discovery;
+use crate::query::video_filters::{DiscoveryRequest, RepostAdmission};
+use crate::retrieval_types::{FeedContext, RetrievalPriority};
+use crate::tests::repost_target_executor_support::target_executor;
+use crate::tests::repost_target_support::{RepostTargetIo, TARGET_RELAY};
+use nostr_sdk::{EventBuilder, Keys, Kind, Tag};
+use std::sync::atomic::Ordering;
+
+#[tokio::test]
+async fn protected_empty_repost_resolves_only_through_its_hinted_relay() {
+    let creator = Keys::generate();
+    let reposter = Keys::generate();
+    let original = EventBuilder::new(Kind::Custom(21), "https://cdn.example/v.mp4")
+        .tags([tag(&["-"])])
+        .sign_with_keys(&creator)
+        .expect("original");
+    let wrapper = EventBuilder::new(Kind::Custom(16), "")
+        .tags([
+            tag(&["e", &original.id.to_hex(), TARGET_RELAY]),
+            tag(&["p", &creator.public_key().to_hex()]),
+            tag(&["k", "21"]),
+        ])
+        .sign_with_keys(&reposter)
+        .expect("wrapper");
+    let io = RepostTargetIo::new(wrapper, original);
+
+    let events = target_executor(io.clone())
+        .execute(retrieval(reposter.public_key()))
+        .await
+        .expect("feed retrieval");
+    let batch = CandidateRegistry::new().inspect_all(&events);
+
+    assert!(io.used_hint.load(Ordering::Relaxed));
+    assert!(batch.posts.iter().any(|post| {
+        post.is_protected && post.repost.is_some() && post.signed_event_json.is_none()
+    }));
+}
+
+fn retrieval(reposter: nostr_sdk::PublicKey) -> PlannedRetrieval {
+    let request = DiscoveryRequest {
+        authors: vec![reposter],
+        reposts: RepostAdmission::Included,
+        ..DiscoveryRequest::default()
+    };
+    PlannedRetrieval {
+        context: FeedContext::for_session(
+            "following",
+            crate::session_generation::SessionGeneration::initial(),
+        ),
+        priority: RetrievalPriority::Interactive,
+        plan: plan_discovery(&request),
+        deferred_reposts: Vec::new(),
+    }
+}
+
+fn tag(values: &[&str]) -> Tag {
+    Tag::parse(
+        values
+            .iter()
+            .map(|value| (*value).to_owned())
+            .collect::<Vec<_>>(),
+    )
+    .expect("valid tag")
+}

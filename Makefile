@@ -117,6 +117,7 @@ video-android-physical-tests: ## Run the device video playback matrix on physica
 
 native-coverage-contract-test: ## Test the per-file native coverage contract.
 	sh test/tool/native_coverage_contract_test.sh
+	sh test/tool/native_repost_coverage_contract_test.sh
 
 native-coverage: native-coverage-contract-test ## Run Rust tests and enforce native coverage.
 	cd rust && cargo llvm-cov --workspace --all-features --ignore-filename-regex 'frb_generated.rs' --lcov --output-path target/native-coverage.lcov --fail-under-lines 95

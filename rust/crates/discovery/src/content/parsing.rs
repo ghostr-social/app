@@ -10,10 +10,12 @@ use ghostr_media_model::nostr_event_media::{event_media, tag_values};
 use ghostr_media_model::post_text::{
     caption_without_urls, content_hashtags, normalized_hashtag, push_unique,
 };
-use nostr_sdk::Event;
+use nostr_sdk::{Event, JsonUtil};
+use std::sync::Arc;
 
 const NOTE_KIND: u16 = 1;
 const FILE_METADATA_KIND: u16 = 1063;
+pub(crate) const MAX_REPOSTABLE_EVENT_BYTES: usize = 32 * 1024;
 
 /// Server-side `#m` values accepted by the kind-1063 discovery query.
 const VIDEO_FILE_MIME_TYPES: [&str; 6] = [
@@ -39,6 +41,14 @@ pub struct ParsedVideoPost {
     /// canonical coordinate comparison.
     pub published_identifier: Option<String>,
     pub created_at: u64,
+    /// Feed occurrence time: the outer timestamp for a repost, otherwise
+    /// the original publication time.
+    pub feed_sort_at: u64,
+    pub repost: Option<super::reposts::RepostProvenance>,
+    /// Exact signed wire JSON. Protected originals deliberately omit it so
+    /// clients cannot embed them in a repost.
+    pub signed_event_json: Option<Arc<str>>,
+    pub is_protected: bool,
     pub caption: String,
     pub title: Option<String>,
     pub hashtags: Vec<String>,
@@ -64,6 +74,12 @@ impl ParsedVideoPost {
             }
             None => self.event_id.clone(),
         }
+    }
+
+    pub fn activity_event_id(&self) -> &str {
+        self.repost
+            .as_ref()
+            .map_or(self.event_id.as_str(), |repost| repost.event_id.as_str())
     }
 }
 
@@ -117,6 +133,10 @@ fn parsed_post(
         identifier: published.as_deref().map(|raw| raw.trim().to_owned()),
         published_identifier: published,
         created_at: event.created_at.as_u64(),
+        feed_sort_at: event.created_at.as_u64(),
+        repost: None,
+        signed_event_json: signed_event_source(event),
+        is_protected: is_protected(event),
         caption: caption_without_urls(&event.content, &meta.urls),
         title: media.title.clone(),
         hashtags: post_hashtags(event),
@@ -126,6 +146,18 @@ fn parsed_post(
         meta,
         renditions,
     }
+}
+
+fn signed_event_source(event: &Event) -> Option<Arc<str>> {
+    if is_protected(event) {
+        return None;
+    }
+    let json = event.as_json();
+    (json.len() <= MAX_REPOSTABLE_EVENT_BYTES).then(|| Arc::from(json))
+}
+
+fn is_protected(event: &Event) -> bool {
+    event.tags.iter().any(|tag| tag.as_slice() == ["-"])
 }
 
 /// t-tags first, then content hashtags, deduplicated in first-seen order.

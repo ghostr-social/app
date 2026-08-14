@@ -12,7 +12,10 @@ void main() {
     final comments = FakeNostrCommentsPort();
     final harness = await buildHybridRepositoryHarness(
       rustFeedSourceServing([
-        rustFeedPost(eventKind: 34235, identifier: 'clip-1'),
+        rustFeedPost(
+          eventKind: 34235,
+          details: const RustFeedPostDetails(identifier: 'clip-1'),
+        ),
       ]),
       ports: HybridHarnessPorts(comments: comments),
     );

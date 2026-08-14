@@ -18,9 +18,9 @@ class NostrCommentsRepository implements NostrCommentsPort {
     Clock clock = systemClock,
     Duration hydrationTimeout = nostrHydrationDeadline,
     NostrElapsedClock? elapsedClock,
-  })  : _clock = clock,
-        _hydrationTimeout = hydrationTimeout,
-        _elapsedClock = elapsedClock;
+  }) : _clock = clock,
+       _hydrationTimeout = hydrationTimeout,
+       _elapsedClock = elapsedClock;
 
   final NostrEventClient _client;
   final Clock _clock;
@@ -41,9 +41,11 @@ class NostrCommentsRepository implements NostrCommentsPort {
     if (unique.isEmpty) return const <NostrEventId, List<VideoComment>>{};
     final budget = _newBudget();
     final events = await loadNostrCommentEvents(_client, unique, budget);
-    final groups = unique.map((reference) {
-      return _commentEventsFor(events, reference);
-    }).toList(growable: false);
+    final groups = unique
+        .map((reference) {
+          return _commentEventsFor(events, reference);
+        })
+        .toList(growable: false);
     final deletedIds = await loadGroupedAuthorValidNostrDeletionIds(
       _client,
       groups,
@@ -82,9 +84,11 @@ class NostrCommentsRepository implements NostrCommentsPort {
   ) {
     final name = nostrCommentRootTagName(reference);
     final value = nostrCommentRootValue(reference);
-    return events.where((event) {
-      return event.tagValues(name).contains(value);
-    }).toList(growable: false);
+    return events
+        .where((event) {
+          return event.tagValues(name).contains(value);
+        })
+        .toList(growable: false);
   }
 
   List<NostrEventReference> _uniqueReferences(
@@ -168,7 +172,8 @@ class NostrCommentsRepository implements NostrCommentsPort {
         nostrCommentRootTagName(reference).toLowerCase(),
         nostrCommentRootValue(reference),
       ],
-      if (reference.identifier != null) <String>['e', reference.eventId],
+      if (reference.coordinateIdentifier != null)
+        <String>['e', reference.eventId],
       <String>['k', '${reference.kind}'],
       <String>['p', reference.authorPublicKeyHex],
     ];

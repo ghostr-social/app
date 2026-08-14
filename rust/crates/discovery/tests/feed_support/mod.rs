@@ -4,11 +4,14 @@
 //! tests: signed video events fed through the real parsing entry point
 //! (`video_post_from_event`) — no relay IO anywhere.
 
+mod repost_fixture;
 mod signed_event_fixture;
 
 use ghostr_discovery::content::parsing::{video_post_from_event, ParsedVideoPost};
 use nostr_sdk::{Event, Keys, Kind};
-use signed_event_fixture::{signed_event, SignedEventFixture};
+#[allow(unused_imports)]
+pub use repost_fixture::{repost, specific_repost};
+pub use signed_event_fixture::{signed_event, SignedEventFixture};
 
 /// A kind-1 note whose content links one direct mp4, the most common
 /// video post shape on Nostr.

@@ -5,7 +5,7 @@
 //! depending on the others.
 
 use crate::session_generation::SessionGeneration;
-use nostr_sdk::Event;
+use nostr_sdk::{Event, Timestamp};
 use tokio::sync::mpsc;
 
 /// Screen-level scope a retrieval serves, e.g. `feed`, `search:ghost`,
@@ -86,6 +86,7 @@ pub enum RetrievalOutcome {
     Completed {
         context: FeedContext,
         result: Result<Vec<Event>, PlanFailure>,
+        cursor: Option<Timestamp>,
         purpose: RetrievalPurpose,
     },
 }

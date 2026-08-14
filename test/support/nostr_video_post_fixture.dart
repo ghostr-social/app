@@ -75,6 +75,8 @@ NostrEventReference _reference(NostrVideoPostFixture fixture) {
     eventId: NostrEventId.parse(fixture.eventId),
     authorPublicKeyHex: NostrPublicKeyHex.parse(testCreatorPublicKey),
     kind: NostrEventKind.parse(34235),
-    identifier: NostrEventIdentifier.parse(fixture.mediaId),
+    details: NostrEventReferenceDetails(
+      identifier: NostrEventIdentifier.parse(fixture.mediaId),
+    ),
   );
 }

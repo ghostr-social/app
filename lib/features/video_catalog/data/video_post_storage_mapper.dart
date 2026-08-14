@@ -1,4 +1,5 @@
 import 'package:ghostr/core/media/video_media_source.dart';
+import 'package:ghostr/core/nostr/signed_nostr_event_json.dart';
 import 'package:ghostr/features/video_catalog/domain/nostr_event_reference.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
@@ -128,7 +129,12 @@ class VideoPostStorageMapper {
         _required<String>(value, 'authorPublicKeyHex'),
       ),
       kind: NostrEventKind.parse(_required<int>(value, 'kind')),
-      identifier: _referenceIdentifier(value),
+      details: NostrEventReferenceDetails(
+        identifier: _referenceIdentifier(value),
+        publishedIdentifier: _publishedIdentifier(value),
+        signedEvent: _referenceSource(value),
+        isProtected: _optional<bool>(value, 'isProtected') ?? false,
+      ),
     );
   }
 
@@ -139,6 +145,11 @@ class VideoPostStorageMapper {
       'authorPublicKeyHex': reference.authorPublicKeyHex.value,
       'kind': reference.kind.value,
       'identifier': reference.identifier?.value,
+      'publishedIdentifier': reference.publishedIdentifier?.value,
+      'signedEvent': reference.isProtected
+          ? null
+          : reference.signedEvent?.value,
+      'isProtected': reference.isProtected,
     };
   }
 
@@ -147,10 +158,17 @@ class VideoPostStorageMapper {
     return value == null ? null : NostrEventIdentifier.parse(value);
   }
 
-  Map<String, dynamic> _requiredMap(
-    Map<String, dynamic> map,
-    String key,
-  ) {
+  NostrEventIdentifier? _publishedIdentifier(Map<String, dynamic> map) {
+    final value = _optional<String>(map, 'publishedIdentifier');
+    return value == null ? null : NostrEventIdentifier.published(value);
+  }
+
+  SignedNostrEventJson? _referenceSource(Map<String, dynamic> map) {
+    final value = _optional<String>(map, 'signedEvent');
+    return value == null ? null : SignedNostrEventJson.parse(value);
+  }
+
+  Map<String, dynamic> _requiredMap(Map<String, dynamic> map, String key) {
     final value = map[key];
     if (value is Map<String, dynamic>) return value;
     throw FormatException('Video post field "$key" must be an object.');

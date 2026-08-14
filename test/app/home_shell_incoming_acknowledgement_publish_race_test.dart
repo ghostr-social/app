@@ -27,12 +27,12 @@ void main() {
     );
     final dependencies = buildFakeDependencies(
       session: sampleSession(),
-      publishing: publishing,
       catalogRepository: FakeVideoCatalogRepository(forYouFeed: [samplePost()]),
       device: FakeDeviceDependencies(
         incomingVideoShares: incoming,
         mediaPicker: FakeMediaPickerPort(galleryMedia: sampleMedia()),
       ),
+      overrides: FakeDependencyOverrides(publishing: publishing),
     );
     await tester.pumpWidget(buildTestApp(dependencies));
     await tester.pumpAndSettle();

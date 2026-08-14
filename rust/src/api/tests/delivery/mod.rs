@@ -8,5 +8,6 @@ mod playback_mapping_test;
 mod playback_url_test;
 mod playback_validation_test;
 mod post_id_validation_test;
+mod repost_candidate_priority_test;
 mod tracked_focus_generation_test;
 mod watcher_stream_test;

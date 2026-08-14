@@ -100,11 +100,12 @@ impl SchedulerWorker {
         );
     }
 
-    fn finish(&mut self, done: FinishedRetrieval) {
+    fn finish(&mut self, mut done: FinishedRetrieval) {
         if self.tasks.remove(&done.task_id).is_none() {
             return;
         }
         self.feeds.record_done(&done.context);
+        let repost_retry = self.apply_repost_retry(&mut done);
         let cursor = done.result.as_ref().ok().and_then(|page| page.cursor);
         let result = done.result.map(|page| page.events);
         let result = match self.queries.finish(&done.context, result) {
@@ -114,19 +115,30 @@ impl SchedulerWorker {
         if done.had_playable_progress {
             self.feeds.record_playable(&done.context);
         }
-        let retry = should_retry_feed(
-            &result,
-            done.purpose,
-            self.feeds.has_playable(&done.context),
-        );
+        let retry = repost_retry
+            || should_retry_feed(
+                &result,
+                done.purpose,
+                self.feeds.has_playable(&done.context),
+            );
         self.record_feed_result(&done.context, &result, cursor, done.purpose);
         let context = done.context;
         let _ = self.outcomes.send(RetrievalOutcome::Completed {
             context: context.clone(),
             result,
+            cursor,
             purpose: done.purpose,
         });
         self.advance_feed(context, retry, done.purpose);
+    }
+
+    fn apply_repost_retry(&mut self, done: &mut FinishedRetrieval) -> bool {
+        if let Ok(page) = &mut done.result {
+            let delta = std::mem::take(&mut page.repost_retry);
+            self.deferred_reposts.apply(&done.context, delta)
+        } else {
+            self.deferred_reposts.has_pending(&done.context)
+        }
     }
 
     fn record_feed_result(
@@ -139,18 +151,18 @@ impl SchedulerWorker {
         let Ok(events) = result else {
             return self.feeds.record_failure(context);
         };
-        let cursor = if self.feeds.is_continuous(context) {
-            query_cursor
-        } else {
-            playable_cursor(events)
-        };
-        self.feeds
-            .record_page(context, cursor, purpose == RetrievalPurpose::Head);
+        self.feeds.record_page(
+            context,
+            query_cursor,
+            purpose == RetrievalPurpose::Head,
+            playable_cursor(events).is_some(),
+        );
     }
 
     fn pump(&mut self) {
         while self.feeds.total_inflight() < self.max_concurrent {
-            let Some((request, plan)) = self.queue.take_next() else {
+            let blocked = self.tasks.values().map(|task| &task.context);
+            let Some((request, plan)) = self.queue.take_next_excluding(blocked) else {
                 return;
             };
             self.feeds.record_start(&request.context);
@@ -162,6 +174,7 @@ impl SchedulerWorker {
         let task_id = self.next_task_id;
         self.next_task_id = self.next_task_id.wrapping_add(1);
         let task_context = request.context.clone();
+        let deferred_reposts = self.deferred_reposts.batch(&task_context);
         let task = spawn_retrieval_task(RetrievalTaskInput {
             task_id,
             executor: self.executor.clone(),
@@ -169,6 +182,7 @@ impl SchedulerWorker {
             outcomes: self.outcomes.clone(),
             request,
             plan,
+            deferred_reposts,
         });
         self.tasks.insert(
             task_id,

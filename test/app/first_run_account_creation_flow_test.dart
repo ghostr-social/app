@@ -25,8 +25,10 @@ void main() {
     final profiles = FakeProfileMetadataRepository();
     final dependencies = buildFakeDependencies(
       catalogRepository: FakeVideoCatalogRepository(forYouFeed: const []),
-      accountGenerator: generator,
-      profileMetadataRepository: profiles,
+      overrides: FakeDependencyOverrides(
+        accountGenerator: generator,
+        profileMetadataRepository: profiles,
+      ),
     );
 
     await tester.pumpWidget(buildTestApp(dependencies));

@@ -7,7 +7,7 @@ import '../frb_generated.dart';
 import 'delivery_types.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 /// The creator identity a feed row renders, including the
 /// shortened-npub fallback when no metadata is known.
@@ -43,7 +43,7 @@ class FfiFeedCreator {
 }
 
 /// The shape of one feed opened by Dart.
-enum FfiFeedKind { main, hashtag, search, profile }
+enum FfiFeedKind { main, hashtag, search, profile, following }
 
 /// Playable media of one post. `delivery` round-trips with
 /// `FfiFocusItem.delivery`.
@@ -111,8 +111,15 @@ class FfiFeedPost {
   /// The addressable `d` tag, present exactly for kinds 30000-39999.
   final String? identifier;
 
+  /// The exact published `d` tag used in Nostr coordinates.
+  final String? publishedIdentifier;
+
   /// Unix seconds of the post's newest event.
   final BigInt createdAt;
+  final BigInt feedSortAt;
+  final String? signedEventJson;
+  final bool isProtected;
+  final FfiFeedRepost? repost;
   final String caption;
   final String? title;
   final List<String> hashtags;
@@ -124,7 +131,12 @@ class FfiFeedPost {
     required this.eventId,
     required this.eventKind,
     this.identifier,
+    this.publishedIdentifier,
     required this.createdAt,
+    required this.feedSortAt,
+    this.signedEventJson,
+    required this.isProtected,
+    this.repost,
     required this.caption,
     this.title,
     required this.hashtags,
@@ -138,7 +150,12 @@ class FfiFeedPost {
       eventId.hashCode ^
       eventKind.hashCode ^
       identifier.hashCode ^
+      publishedIdentifier.hashCode ^
       createdAt.hashCode ^
+      feedSortAt.hashCode ^
+      signedEventJson.hashCode ^
+      isProtected.hashCode ^
+      repost.hashCode ^
       caption.hashCode ^
       title.hashCode ^
       hashtags.hashCode ^
@@ -154,13 +171,57 @@ class FfiFeedPost {
           eventId == other.eventId &&
           eventKind == other.eventKind &&
           identifier == other.identifier &&
+          publishedIdentifier == other.publishedIdentifier &&
           createdAt == other.createdAt &&
+          feedSortAt == other.feedSortAt &&
+          signedEventJson == other.signedEventJson &&
+          isProtected == other.isProtected &&
+          repost == other.repost &&
           caption == other.caption &&
           title == other.title &&
           hashtags == other.hashtags &&
           creator == other.creator &&
           media == other.media;
 }
+
+/// The outer NIP-18 occurrence that lifted an original into the feed.
+class FfiFeedRepost {
+  final String eventId;
+  final int eventKind;
+  final FfiFeedRepostTarget target;
+  final BigInt repostedAt;
+  final FfiFeedCreator reposter;
+
+  const FfiFeedRepost({
+    required this.eventId,
+    required this.eventKind,
+    required this.target,
+    required this.repostedAt,
+    required this.reposter,
+  });
+
+  @override
+  int get hashCode =>
+      eventId.hashCode ^
+      eventKind.hashCode ^
+      target.hashCode ^
+      repostedAt.hashCode ^
+      reposter.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FfiFeedRepost &&
+          runtimeType == other.runtimeType &&
+          eventId == other.eventId &&
+          eventKind == other.eventKind &&
+          target == other.target &&
+          repostedAt == other.repostedAt &&
+          reposter == other.reposter;
+}
+
+/// The outer NIP-18 occurrence that lifted an original into the feed.
+enum FfiFeedRepostTarget { specificEvent, coordinate }
 
 /// One feed to open, as Dart names it. `Main` reads the signed-in
 /// viewer from `viewer_pubkey` (hex or npub); `Hashtag` reads the tag

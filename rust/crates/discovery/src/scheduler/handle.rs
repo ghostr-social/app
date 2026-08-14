@@ -1,6 +1,6 @@
 //! Calls made through the cloneable discovery scheduler handle.
 
-use super::{DiscoveryCommand, DiscoveryHandle};
+use super::{ControlCommand, DiscoveryCommand, DiscoveryHandle, FeedCommand, WorkCommand};
 use crate::query::search::QueryPlan;
 use crate::query::video_filters::DiscoveryRequest;
 use crate::retrieval_types::{FeedContext, PlanFailure};
@@ -15,16 +15,19 @@ use tokio::sync::oneshot;
 
 impl DiscoveryHandle {
     pub fn open_feed(&self, context: FeedContext, request: DiscoveryRequest) {
-        let _ = self
-            .sender
-            .send(DiscoveryCommand::OpenFeed { context, request });
+        let _ = self.sender.send(DiscoveryCommand::Feed(FeedCommand::Open {
+            context,
+            request,
+        }));
     }
 
     pub fn load_more(&self, context: FeedContext, older_than: Option<Timestamp>) {
-        let _ = self.sender.send(DiscoveryCommand::LoadMore {
-            context,
-            older_than,
-        });
+        let _ = self
+            .sender
+            .send(DiscoveryCommand::Feed(FeedCommand::LoadMore {
+                context,
+                older_than,
+            }));
     }
 
     #[allow(
@@ -32,11 +35,15 @@ impl DiscoveryHandle {
         reason = "focus control is exercised only by scheduler tests"
     )]
     pub(crate) fn focus(&self, context: FeedContext) {
-        let _ = self.sender.send(DiscoveryCommand::Focus(context));
+        let _ = self
+            .sender
+            .send(DiscoveryCommand::Feed(FeedCommand::Focus(context)));
     }
 
     pub fn close_feed(&self, context: FeedContext) {
-        let _ = self.sender.send(DiscoveryCommand::CloseFeed(context));
+        let _ = self
+            .sender
+            .send(DiscoveryCommand::Feed(FeedCommand::Close(context)));
     }
 
     #[allow(
@@ -46,7 +53,10 @@ impl DiscoveryHandle {
     pub(crate) fn background(&self, context: FeedContext, request: DiscoveryRequest) {
         let _ = self
             .sender
-            .send(DiscoveryCommand::Background { context, request });
+            .send(DiscoveryCommand::Work(WorkCommand::Background {
+                context,
+                request,
+            }));
     }
 
     pub async fn query(&self, session: SessionGeneration, plan: QueryPlan) -> QueryResult {
@@ -54,11 +64,11 @@ impl DiscoveryHandle {
         let context = FeedContext::for_session(format!("query-{sequence}"), session);
         let (reply, result) = oneshot::channel();
         self.sender
-            .send(DiscoveryCommand::Query {
+            .send(DiscoveryCommand::Work(WorkCommand::Query {
                 context,
                 plan,
                 reply,
-            })
+            }))
             .map_err(|_| stopped())?;
         result.await.map_err(|_| cancelled())?
     }
@@ -66,21 +76,27 @@ impl DiscoveryHandle {
     pub async fn reset_session(&self) -> Result<(), PlanFailure> {
         let (reply, result) = oneshot::channel();
         self.sender
-            .send(DiscoveryCommand::ResetSession { reply })
+            .send(DiscoveryCommand::Control(ControlCommand::ResetSession {
+                reply,
+            }))
             .map_err(|_| stopped())?;
         result.await.map_err(|_| stopped())
     }
 
     pub fn set_data_usage(&self, level: DataUsageLevel) {
-        let _ = self.sender.send(DiscoveryCommand::SetDataUsage(level));
+        let _ = self
+            .sender
+            .send(DiscoveryCommand::Control(ControlCommand::SetDataUsage(
+                level,
+            )));
     }
 
     #[cfg(test)]
     pub(crate) fn inject_retry(&self, context: FeedContext, token: u64) {
-        let _ = self.sender.send(DiscoveryCommand::RetryFeed {
+        let _ = self.sender.send(DiscoveryCommand::Work(WorkCommand::Retry {
             context,
             token: HuntToken(token),
-        });
+        }));
     }
 }
 

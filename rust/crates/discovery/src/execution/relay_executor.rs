@@ -22,9 +22,19 @@ use nostr_sdk::Client;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
+pub(crate) mod deletion_enrichment;
+mod deletion_hints;
+mod deletion_planning;
+mod deletion_targets;
 mod execution;
 mod fetches;
 mod profile_enrichment;
+mod repost_retry;
+mod repost_support;
+mod target_dependencies;
+pub(crate) mod target_enrichment;
+mod target_hints;
+mod target_planning;
 
 #[derive(Clone)]
 pub struct RelayPlanExecutor {
@@ -142,6 +152,10 @@ impl RelayPlanExecutor {
 impl PlanExecutor for RelayPlanExecutor {
     fn execute(&self, retrieval: PlannedRetrieval) -> PlanFuture {
         Box::pin(self.clone().run(retrieval, None))
+    }
+
+    fn execute_page(&self, retrieval: PlannedRetrieval) -> PlanPageFuture {
+        Box::pin(self.clone().run_page(retrieval, None))
     }
 
     fn execute_page_with_progress(

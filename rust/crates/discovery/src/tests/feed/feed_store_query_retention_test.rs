@@ -1,9 +1,9 @@
-//! Search and hashtag snapshots preserve every discovered row so native
-//! pagination can expose history beyond the canonical-feed retention window.
+//! Search and hashtag snapshots expose deeper history than canonical feeds,
+//! while retaining an explicit finite session window.
 
 use crate::content::social_graph::SocialGraph;
 use crate::feed::spec::FeedSpec;
-use crate::feed::store::{FeedStore, FEED_POST_RETENTION};
+use crate::feed::store::{FeedStore, FEED_POST_RETENTION, QUERY_POST_RETENTION};
 use crate::tests::feed_store_support::page;
 use nostr_sdk::Keys;
 
@@ -11,7 +11,7 @@ const PAGE: u64 = 100;
 const NEWEST: u64 = 10_000;
 
 #[test]
-fn query_feeds_keep_rows_beyond_the_canonical_retention_window() {
+fn query_feeds_keep_a_bounded_deep_history_window() {
     for spec in [
         FeedSpec::Search("ghost".to_owned()),
         FeedSpec::Hashtag("ghost".to_owned()),
@@ -21,12 +21,13 @@ fn query_feeds_keep_rows_beyond_the_canonical_retention_window() {
         let feed = store.open_feed(spec);
         store.ingest_first_page(feed, query_page(NEWEST), &graph);
 
-        for index in 1..=FEED_POST_RETENTION as u64 / PAGE {
+        for index in 1..=QUERY_POST_RETENTION as u64 / PAGE {
             store.begin_load_more_at(feed, None);
             store.ingest_older_page(feed, query_page(NEWEST - index * PAGE), &graph);
         }
 
-        assert_eq!(store.posts(feed).len(), FEED_POST_RETENTION + PAGE as usize);
+        assert_eq!(store.posts(feed).len(), QUERY_POST_RETENTION);
+        assert!(store.posts(feed).len() > FEED_POST_RETENTION);
     }
 }
 

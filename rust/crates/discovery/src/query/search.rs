@@ -46,6 +46,8 @@ pub enum RelayTarget {
     OutboxRelays,
     /// Search relays' deep tag indexes merged with the outbox relays.
     SearchAndOutboxRelays,
+    /// Validated NIP-18 relay hints merged with search and author outboxes.
+    HintedRelays(Vec<String>),
 }
 
 /// One query's role in the assembled content page.
@@ -106,6 +108,10 @@ pub(crate) fn resolve_relays(
         RelayTarget::SearchAndOutboxRelays => {
             non_empty(merged(search_relays, outbox_relays.unwrap_or(&[])))
         }
+        RelayTarget::HintedRelays(hints) => non_empty(merged(
+            hints,
+            &merged(search_relays, outbox_relays.unwrap_or(&[])),
+        )),
     }
 }
 

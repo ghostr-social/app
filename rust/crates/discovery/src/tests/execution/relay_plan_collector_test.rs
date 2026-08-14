@@ -6,6 +6,7 @@
 //! the engine merges the union.
 
 use crate::execution::collector::collect_events;
+use crate::execution::fetch::FetchedEvents;
 use crate::query::search::QueryRole;
 use crate::relay::io::drain_events;
 use crate::retrieval_types::PlanFailure;
@@ -53,7 +54,7 @@ async fn additive_failure_keeps_the_page_unsettled() {
     let primary_event = note(&Keys::generate(), 100);
     let primary = tokio::spawn({
         let event = primary_event.clone();
-        async move { Ok(vec![event]) }
+        async move { Ok(FetchedEvents::fresh(vec![event])) }
     });
     let additive = tokio::spawn(async { Err(PlanFailure::new("additive failed")) });
 

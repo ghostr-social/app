@@ -93,6 +93,12 @@ impl DiscoveryRuntime {
                 viewer: Some(viewer),
             } => self.bootstrap.viewer(*viewer),
             FeedSpec::Profile(creators) => self.bootstrap.authors(creators),
+            FeedSpec::Following { viewer, follows } => {
+                if let Some(viewer) = viewer {
+                    self.bootstrap.viewer(*viewer);
+                }
+                self.bootstrap.authors(follows);
+            }
             _ => {}
         }
     }

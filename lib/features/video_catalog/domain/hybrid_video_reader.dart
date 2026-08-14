@@ -1,15 +1,17 @@
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/errors/failure_reporter.dart';
 import 'package:ghostr/features/video_catalog/domain/nostr_video_interactions.dart';
+import 'package:ghostr/features/video_catalog/domain/following_feed_scope.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/published_video_store.dart';
 import 'package:ghostr/features/video_catalog/domain/remote_video_source.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
+import 'package:ghostr/features/video_catalog/domain/video_post_canonicalizer.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post_reader.dart';
 
 const _feedHydrationBudget = Duration(milliseconds: 100);
 
-class HybridVideoReader implements VideoPostReader {
+class HybridVideoReader implements VideoPostReader, FollowingVideoPostReader {
   const HybridVideoReader({
     required RemoteVideoSource remote,
     required PublishedVideoStore local,
@@ -48,6 +50,24 @@ class HybridVideoReader implements VideoPostReader {
     }
   }
 
+  @override
+  Future<List<VideoPost>> loadFollowing(FollowingFeedScope scope) async {
+    final remote = _remote;
+    if (remote is! FollowingRemoteVideoSource) {
+      return load(creatorIds: scope.creators);
+    }
+    final localPosts = await _loadLocal();
+    final following = remote as FollowingRemoteVideoSource;
+    try {
+      final remotePosts = await following.loadFollowingRemoteFeed(scope);
+      return await _hydrate(_merge(localPosts, remotePosts));
+    } on AppFailure catch (error, stackTrace) {
+      _report('HybridVideoReader.loadFollowing', error, stackTrace);
+      if (localPosts.isEmpty) rethrow;
+      return localPosts;
+    }
+  }
+
   // Older pages come from relays alone: locally published posts are already
   // part of the first load, and there is no local fallback for the past.
   @override
@@ -60,6 +80,21 @@ class HybridVideoReader implements VideoPostReader {
       olderThan: olderThan,
     );
     return _hydrate(posts);
+  }
+
+  @override
+  Future<List<VideoPost>> loadOlderFollowing({
+    required DateTime olderThan,
+    required FollowingFeedScope scope,
+  }) {
+    final remote = _remote;
+    if (remote is! FollowingRemoteVideoSource) {
+      return loadOlder(olderThan: olderThan, creatorIds: scope.creators);
+    }
+    final following = remote as FollowingRemoteVideoSource;
+    return following
+        .loadFollowingRemoteFeed(scope, olderThan: olderThan)
+        .then(_hydrate);
   }
 
   Future<List<VideoPost>> _loadLocal() async {
@@ -76,34 +111,7 @@ class HybridVideoReader implements VideoPostReader {
   }
 
   List<VideoPost> _merge(List<VideoPost> local, List<VideoPost> remote) {
-    final merged = <String, VideoPost>{};
-    for (final post in <VideoPost>[...local, ...remote]) {
-      final key = _postCoordinate(post);
-      final current = merged[key];
-      if (current == null || _isNewer(post, current)) merged[key] = post;
-    }
-    final items = merged.values.toList();
-    items.sort((left, right) => right.publishedAt.compareTo(left.publishedAt));
-    return items;
-  }
-
-  String _postCoordinate(VideoPost post) {
-    final reference = post.nostrReference;
-    final identifier = reference?.identifier;
-    final kind = reference?.kind.value;
-    if (reference == null ||
-        identifier == null ||
-        kind! < 30000 ||
-        kind >= 40000) {
-      return post.id.value;
-    }
-    return '$kind:${reference.authorPublicKeyHex.value}:${identifier.value}';
-  }
-
-  bool _isNewer(VideoPost incoming, VideoPost current) {
-    final time = incoming.publishedAt.compareTo(current.publishedAt);
-    return time > 0 ||
-        (time == 0 && incoming.id.value.compareTo(current.id.value) < 0);
+    return canonicalVideoPosts(<VideoPost>[...local, ...remote]);
   }
 
   void _report(String source, Object error, StackTrace stackTrace) {

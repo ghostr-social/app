@@ -9,22 +9,23 @@ import '../support/sample_data.dart';
 import '../support/nostr_test_values.dart';
 
 void main() {
-  test('uploads media then publishes a referenced NIP-71 short video',
-      () async {
+  test('uploads media then publishes a referenced NIP-71 short video', () async {
     final publishedAt = DateTime.utc(2026, 8, 2, 12, 30);
     final client = FakeNostrEventClient(publicKeyHex: testViewerPublicKey);
-    final uploader = FakeVideoMediaUploadPort(UploadedVideoMedia(
-      source: VideoMediaSource.remote(
-        'https://media.example/video.mp4',
-        fallbackUrls: ['https://mirror.example/video.mp4'],
+    final uploader = FakeVideoMediaUploadPort(
+      UploadedVideoMedia(
+        source: VideoMediaSource.remote(
+          'https://media.example/video.mp4',
+          fallbackUrls: ['https://mirror.example/video.mp4'],
+        ),
+        metadata: VideoUploadMetadata(
+          sha256:
+              'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          mimeType: 'video/mp4',
+          sizeBytes: 4096,
+        ),
       ),
-      metadata: VideoUploadMetadata(
-        sha256:
-            'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-        mimeType: 'video/mp4',
-        sizeBytes: 4096,
-      ),
-    ));
+    );
     final publisher = NostrVideoPublisher(
       eventClient: client,
       mediaUploader: uploader,
@@ -41,20 +42,22 @@ void main() {
     expect(client.events.single.kind, 22);
     expect(client.events.single.content, 'Relay dance');
     expect(
-        client.events.single.tags,
-        containsAll(<List<String>>[
-          ['title', 'Relay dance'],
-          ['alt', 'Relay dance'],
-        ]));
+      client.events.single.tags,
+      containsAll(<List<String>>[
+        ['title', 'Relay dance'],
+        ['alt', 'Relay dance'],
+      ]),
+    );
     expect(
-        client.events.single.tags.singleWhere((tag) => tag.first == 'imeta'),
-        containsAll(<String>[
-          'url https://media.example/video.mp4',
-          'fallback https://mirror.example/video.mp4',
-          'm video/mp4',
-          'x aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-          'size 4096',
-        ]));
+      client.events.single.tags.singleWhere((tag) => tag.first == 'imeta'),
+      containsAll(<String>[
+        'url https://media.example/video.mp4',
+        'fallback https://mirror.example/video.mp4',
+        'm video/mp4',
+        'x aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        'size 4096',
+      ]),
+    );
     expect(post.id, publishedEventId(1));
     expect(post.media.remoteUrl, 'https://media.example/video.mp4');
     expect(post.media.remoteUrls, [
@@ -67,6 +70,7 @@ void main() {
     );
     expect(post.media.cacheScope?.value, publishedEventId(1));
     expect(post.nostrReference?.kind, 22);
+    expect(post.nostrReference?.signedEvent, isNotNull);
     expect(post.publishedAt, publishedAt);
     expect(
       client.events.single.tags.singleWhere(

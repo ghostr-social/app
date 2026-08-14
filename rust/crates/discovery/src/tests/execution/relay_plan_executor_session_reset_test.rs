@@ -25,6 +25,7 @@ async fn stale_query_is_rejected_before_it_can_return_events() {
         context: FeedContext::for_session("old-query", stale),
         priority: RetrievalPriority::Enrichment,
         plan: plan_event_queries(vec![Filter::new().kind(Kind::TextNote)]),
+        deferred_reposts: Vec::new(),
     };
 
     let failure = executor.execute(retrieval).await.expect_err("stale query");

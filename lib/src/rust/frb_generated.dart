@@ -821,6 +821,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiFeedRepost dco_decode_box_autoadd_ffi_feed_repost(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_ffi_feed_repost(raw);
+  }
+
+  @protected
   FfiFeedSpec dco_decode_box_autoadd_ffi_feed_spec(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_ffi_feed_spec(raw);
@@ -956,20 +962,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   FfiFeedPost dco_decode_ffi_feed_post(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 10)
-      throw Exception('unexpected arr length: expect 10 but see ${arr.length}');
+    if (arr.length != 15)
+      throw Exception('unexpected arr length: expect 15 but see ${arr.length}');
     return FfiFeedPost(
       postId: dco_decode_String(arr[0]),
       eventId: dco_decode_String(arr[1]),
       eventKind: dco_decode_u_16(arr[2]),
       identifier: dco_decode_opt_String(arr[3]),
-      createdAt: dco_decode_u_64(arr[4]),
-      caption: dco_decode_String(arr[5]),
-      title: dco_decode_opt_String(arr[6]),
-      hashtags: dco_decode_list_String(arr[7]),
-      creator: dco_decode_ffi_feed_creator(arr[8]),
-      media: dco_decode_ffi_feed_media(arr[9]),
+      publishedIdentifier: dco_decode_opt_String(arr[4]),
+      createdAt: dco_decode_u_64(arr[5]),
+      feedSortAt: dco_decode_u_64(arr[6]),
+      signedEventJson: dco_decode_opt_String(arr[7]),
+      isProtected: dco_decode_bool(arr[8]),
+      repost: dco_decode_opt_box_autoadd_ffi_feed_repost(arr[9]),
+      caption: dco_decode_String(arr[10]),
+      title: dco_decode_opt_String(arr[11]),
+      hashtags: dco_decode_list_String(arr[12]),
+      creator: dco_decode_ffi_feed_creator(arr[13]),
+      media: dco_decode_ffi_feed_media(arr[14]),
     );
+  }
+
+  @protected
+  FfiFeedRepost dco_decode_ffi_feed_repost(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return FfiFeedRepost(
+      eventId: dco_decode_String(arr[0]),
+      eventKind: dco_decode_u_16(arr[1]),
+      target: dco_decode_ffi_feed_repost_target(arr[2]),
+      repostedAt: dco_decode_u_64(arr[3]),
+      reposter: dco_decode_ffi_feed_creator(arr[4]),
+    );
+  }
+
+  @protected
+  FfiFeedRepostTarget dco_decode_ffi_feed_repost_target(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FfiFeedRepostTarget.values[raw as int];
   }
 
   @protected
@@ -1212,6 +1244,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiFeedRepost? dco_decode_opt_box_autoadd_ffi_feed_repost(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_ffi_feed_repost(raw);
+  }
+
+  @protected
   FfiMediaDim? dco_decode_opt_box_autoadd_ffi_media_dim(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_ffi_media_dim(raw);
@@ -1303,6 +1341,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_ffi_engine_configuration(deserializer));
+  }
+
+  @protected
+  FfiFeedRepost sse_decode_box_autoadd_ffi_feed_repost(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_ffi_feed_repost(deserializer));
   }
 
   @protected
@@ -1473,7 +1519,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_eventId = sse_decode_String(deserializer);
     var var_eventKind = sse_decode_u_16(deserializer);
     var var_identifier = sse_decode_opt_String(deserializer);
+    var var_publishedIdentifier = sse_decode_opt_String(deserializer);
     var var_createdAt = sse_decode_u_64(deserializer);
+    var var_feedSortAt = sse_decode_u_64(deserializer);
+    var var_signedEventJson = sse_decode_opt_String(deserializer);
+    var var_isProtected = sse_decode_bool(deserializer);
+    var var_repost = sse_decode_opt_box_autoadd_ffi_feed_repost(deserializer);
     var var_caption = sse_decode_String(deserializer);
     var var_title = sse_decode_opt_String(deserializer);
     var var_hashtags = sse_decode_list_String(deserializer);
@@ -1484,13 +1535,44 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       eventId: var_eventId,
       eventKind: var_eventKind,
       identifier: var_identifier,
+      publishedIdentifier: var_publishedIdentifier,
       createdAt: var_createdAt,
+      feedSortAt: var_feedSortAt,
+      signedEventJson: var_signedEventJson,
+      isProtected: var_isProtected,
+      repost: var_repost,
       caption: var_caption,
       title: var_title,
       hashtags: var_hashtags,
       creator: var_creator,
       media: var_media,
     );
+  }
+
+  @protected
+  FfiFeedRepost sse_decode_ffi_feed_repost(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_eventId = sse_decode_String(deserializer);
+    var var_eventKind = sse_decode_u_16(deserializer);
+    var var_target = sse_decode_ffi_feed_repost_target(deserializer);
+    var var_repostedAt = sse_decode_u_64(deserializer);
+    var var_reposter = sse_decode_ffi_feed_creator(deserializer);
+    return FfiFeedRepost(
+      eventId: var_eventId,
+      eventKind: var_eventKind,
+      target: var_target,
+      repostedAt: var_repostedAt,
+      reposter: var_reposter,
+    );
+  }
+
+  @protected
+  FfiFeedRepostTarget sse_decode_ffi_feed_repost_target(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return FfiFeedRepostTarget.values[inner];
   }
 
   @protected
@@ -1811,6 +1893,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiFeedRepost? sse_decode_opt_box_autoadd_ffi_feed_repost(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_ffi_feed_repost(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   FfiMediaDim? sse_decode_opt_box_autoadd_ffi_media_dim(
     SseDeserializer deserializer,
   ) {
@@ -1934,6 +2029,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_ffi_engine_configuration(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_ffi_feed_repost(
+    FfiFeedRepost self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_ffi_feed_repost(self, serializer);
   }
 
   @protected
@@ -2087,12 +2191,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.eventId, serializer);
     sse_encode_u_16(self.eventKind, serializer);
     sse_encode_opt_String(self.identifier, serializer);
+    sse_encode_opt_String(self.publishedIdentifier, serializer);
     sse_encode_u_64(self.createdAt, serializer);
+    sse_encode_u_64(self.feedSortAt, serializer);
+    sse_encode_opt_String(self.signedEventJson, serializer);
+    sse_encode_bool(self.isProtected, serializer);
+    sse_encode_opt_box_autoadd_ffi_feed_repost(self.repost, serializer);
     sse_encode_String(self.caption, serializer);
     sse_encode_opt_String(self.title, serializer);
     sse_encode_list_String(self.hashtags, serializer);
     sse_encode_ffi_feed_creator(self.creator, serializer);
     sse_encode_ffi_feed_media(self.media, serializer);
+  }
+
+  @protected
+  void sse_encode_ffi_feed_repost(
+    FfiFeedRepost self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.eventId, serializer);
+    sse_encode_u_16(self.eventKind, serializer);
+    sse_encode_ffi_feed_repost_target(self.target, serializer);
+    sse_encode_u_64(self.repostedAt, serializer);
+    sse_encode_ffi_feed_creator(self.reposter, serializer);
+  }
+
+  @protected
+  void sse_encode_ffi_feed_repost_target(
+    FfiFeedRepostTarget self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
   }
 
   @protected
@@ -2358,6 +2489,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_String(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_ffi_feed_repost(
+    FfiFeedRepost? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_ffi_feed_repost(self, serializer);
     }
   }
 

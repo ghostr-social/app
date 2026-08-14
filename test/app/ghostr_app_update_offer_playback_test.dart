@@ -35,8 +35,8 @@ void main() {
     final dependencies = buildFakeDependencies(
       session: sampleSession(),
       catalogRepository: FakeVideoCatalogRepository(forYouFeed: [post]),
-      appUpdateRuntime: runtime,
       device: FakeDeviceDependencies(playback: playback),
+      overrides: FakeDependencyOverrides(appUpdateRuntime: runtime),
     );
 
     await tester.pumpWidget(GhostrApp(dependencies: dependencies));

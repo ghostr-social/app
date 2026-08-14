@@ -1,4 +1,5 @@
 import 'package:ghostr/features/engagement/domain/video_engagement_repository.dart';
+import 'package:ghostr/features/reposts/domain/video_repost_repository.dart';
 import 'package:ghostr/features/social/domain/social_graph_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/follow_profile_workflow.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
@@ -37,11 +38,21 @@ final class FeedOptionalDependencies {
     this.social,
     this.focus,
     this.watchTracker,
-    this.updates,
+    this.delivery = const FeedDeliveryDependencies(),
   });
 
   final SocialGraphRepository? social;
   final FeedFocusPort? focus;
   final WatchHistoryTracker? watchTracker;
+  final FeedDeliveryDependencies delivery;
+
+  VideoFeedUpdates? get updates => delivery.updates;
+  VideoRepostRepository? get reposts => delivery.reposts;
+}
+
+final class FeedDeliveryDependencies {
+  const FeedDeliveryDependencies({this.updates, this.reposts});
+
   final VideoFeedUpdates? updates;
+  final VideoRepostRepository? reposts;
 }

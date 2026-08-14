@@ -18,8 +18,10 @@ void main() {
     final account = accountCreationAccount();
     final dependencies = buildFakeDependencies(
       catalogRepository: FakeVideoCatalogRepository(forYouFeed: const []),
-      accountGenerator: FakeNostrAccountGenerator(account),
-      accountProvisioningRepository: provisioning,
+      overrides: FakeDependencyOverrides(
+        accountGenerator: FakeNostrAccountGenerator(account),
+        accountProvisioningRepository: provisioning,
+      ),
     );
     await tester.pumpWidget(buildTestApp(dependencies));
     await tester.pumpAndSettle();

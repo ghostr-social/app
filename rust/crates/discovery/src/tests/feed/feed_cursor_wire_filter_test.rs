@@ -1,6 +1,7 @@
 //! Independent wire filters keep independent pagination boundaries.
 
 use crate::execution::collector::{collect_page, FetchHandle};
+use crate::execution::fetch::FetchedEvents;
 use crate::query::search::QueryRole;
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, Timestamp};
 
@@ -19,7 +20,10 @@ async fn shallow_general_note_bounds_a_deeper_mp4_hunt() {
 }
 
 fn fetch(role: QueryRole, event: Event) -> (QueryRole, FetchHandle) {
-    (role, tokio::spawn(async move { Ok(vec![event]) }))
+    (
+        role,
+        tokio::spawn(async move { Ok(FetchedEvents::fresh(vec![event])) }),
+    )
 }
 
 fn event(kind: Kind, content: &str, created_at: u64) -> Event {

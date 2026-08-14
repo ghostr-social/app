@@ -1,5 +1,6 @@
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
+import 'package:ghostr/features/video_catalog/domain/following_feed_scope.dart';
 import 'package:ghostr/features/video_catalog/domain/remote_video_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 
@@ -16,6 +17,13 @@ abstract interface class RemoteVideoSource implements RemoteVideoUpdates {
     Set<ProfileId>? creatorIds,
     String? searchQuery,
     Set<String>? hashtags,
+  });
+}
+
+abstract interface class FollowingRemoteVideoSource {
+  Future<List<VideoPost>> loadFollowingRemoteFeed(
+    FollowingFeedScope scope, {
+    DateTime? olderThan,
   });
 }
 

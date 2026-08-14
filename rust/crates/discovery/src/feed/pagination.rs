@@ -23,5 +23,6 @@ where
     fetched_created_at
         .into_iter()
         .min()
-        .map(|oldest| Timestamp::from(oldest.as_u64().saturating_sub(NEXT_PAGE_BACKSTEP_SECS)))
+        .and_then(|oldest| oldest.as_u64().checked_sub(NEXT_PAGE_BACKSTEP_SECS))
+        .map(Timestamp::from)
 }

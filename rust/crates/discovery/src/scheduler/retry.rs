@@ -4,7 +4,7 @@ use crate::feed::cursor::playable_cursor;
 use crate::query::search::plan_discovery;
 use crate::retrieval_types::{FeedContext, PlanFailure, RetrievalPriority, RetrievalPurpose};
 use crate::scheduler::hunt::HuntToken;
-use crate::scheduler::{DiscoveryCommand, SchedulerWorker};
+use crate::scheduler::{DiscoveryCommand, SchedulerWorker, WorkCommand};
 use nostr_sdk::Event;
 use std::time::Duration;
 
@@ -50,16 +50,16 @@ impl SchedulerWorker {
         purpose: RetrievalPurpose,
     ) {
         if self.feeds.is_continuous(&context) {
+            self.clear_feed_retry(&context);
             return self.advance_feed_hunt(context);
+        }
+        if retry {
+            return self.schedule_feed_retry(context);
         }
         if purpose != RetrievalPurpose::Head {
             return;
         }
-        if retry {
-            self.schedule_feed_retry(context);
-        } else {
-            self.clear_feed_retry(&context);
-        }
+        self.clear_feed_retry(&context);
     }
 
     pub(crate) fn continue_feed_retry(&mut self, context: FeedContext, token: HuntToken) {
@@ -68,9 +68,6 @@ impl SchedulerWorker {
         }
         self.pending_feed_retries.remove(&context);
         self.hunts.remove(&context);
-        if self.feeds.is_continuous(&context) {
-            return;
-        }
         if self.feed_busy(&context) {
             return self.defer_feed_retry(context);
         }
@@ -109,10 +106,10 @@ impl SchedulerWorker {
         let task = tokio::spawn(async move {
             tokio::time::sleep(delay).await;
             if let Some(sender) = sender.upgrade() {
-                let _ = sender.send(DiscoveryCommand::RetryFeed {
+                let _ = sender.send(DiscoveryCommand::Work(WorkCommand::Retry {
                     context: scheduled,
                     token,
-                });
+                }));
             }
         });
         self.hunts.insert(context, task.abort_handle());

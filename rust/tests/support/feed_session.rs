@@ -17,3 +17,12 @@ pub fn search_feed() -> FfiFeedSpec {
         viewer_pubkey: None,
     }
 }
+
+pub fn following_feed(viewer_pubkey: Option<String>, creator: String) -> FfiFeedSpec {
+    FfiFeedSpec {
+        kind: FfiFeedKind::Following,
+        value: None,
+        creators: vec![creator],
+        viewer_pubkey,
+    }
+}

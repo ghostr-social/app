@@ -4,7 +4,7 @@ use crate::feed::spec::FeedSpec;
 use nostr_sdk::Timestamp;
 
 pub(crate) fn post_cursor(posts: &[ParsedVideoPost]) -> Option<Timestamp> {
-    next_page_cursor(posts.iter().map(|post| Timestamp::from(post.created_at)))
+    next_page_cursor(posts.iter().map(|post| Timestamp::from(post.feed_sort_at)))
 }
 
 pub(crate) fn older_cursor(

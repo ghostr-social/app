@@ -23,6 +23,13 @@ extension type const NostrEventIdentifier._(String value) implements String {
   factory NostrEventIdentifier.parse(String raw) {
     return NostrEventIdentifier._(_requiredText(raw, 'Nostr identifier'));
   }
+
+  factory NostrEventIdentifier.published(String raw) {
+    if (raw.trim().isEmpty) {
+      throw const FormatException('Nostr identifier cannot be empty.');
+    }
+    return NostrEventIdentifier._(raw);
+  }
 }
 
 class NostrEventIdentity {
@@ -38,11 +45,7 @@ class NostrEventIdentity {
     );
   }
 
-  const NostrEventIdentity._(
-    this.id,
-    this.authorPublicKeyHex,
-    this.kind,
-  );
+  const NostrEventIdentity._(this.id, this.authorPublicKeyHex, this.kind);
 
   final NostrEventId id;
   final NostrPublicKeyHex authorPublicKeyHex;

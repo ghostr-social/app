@@ -7,9 +7,11 @@ use crate::relay::pool::{
 use crate::relay::roles::RelayRole;
 use crate::retrieval_types::PlanFailure;
 use std::sync::Arc;
-use tokio::sync::{watch, OwnedRwLockReadGuard};
+use tokio::sync::{oneshot, watch, OwnedRwLockReadGuard};
 
 const NO_RELAYS_MESSAGE: &str = "no Nostr relays are configured";
+const CANCELLED_READ_MESSAGE: &str = "relay read was cancelled";
+const CANCELLED_BROADCAST_MESSAGE: &str = "relay broadcast was cancelled";
 
 pub struct RelayPoolRoute {
     owner: RelayPoolOwner,
@@ -40,8 +42,23 @@ impl RelayPoolOwner {
 
 impl RelayPoolRoute {
     pub(crate) async fn read(
+        self: &Arc<Self>,
+        request: RelayReadRequest,
+    ) -> Result<Vec<nostr_sdk::Event>, PlanFailure> {
+        let (lifetime, cancelled) = oneshot::channel();
+        let route = self.clone();
+        let task = tokio::spawn(async move { route.read_owned(request, cancelled).await });
+        let result = task
+            .await
+            .unwrap_or_else(|error| Err(PlanFailure::new(error.to_string())));
+        drop(lifetime);
+        result
+    }
+
+    async fn read_owned(
         &self,
         request: RelayReadRequest,
+        mut cancelled: oneshot::Receiver<()>,
     ) -> Result<Vec<nostr_sdk::Event>, PlanFailure> {
         self.ensure_request(request.session)?;
         let relays = self.read_targets(request.relays.clone()).await;
@@ -49,13 +66,29 @@ impl RelayPoolRoute {
             return Err(PlanFailure::new(NO_RELAYS_MESSAGE));
         }
         let leased = self.owner.roles.acquire(&relays, RelayRole::Read).await;
-        let result = self.read_io(leased.clone(), request).await;
+        let result = tokio::select! {
+            result = self.read_io(leased.clone(), request) => result,
+            _ = &mut cancelled => Err(PlanFailure::new(CANCELLED_READ_MESSAGE)),
+        };
         self.owner.roles.release(&leased, RelayRole::Read).await;
         self.ensure_current()?;
         result
     }
 
-    pub async fn broadcast(&self, request: RelayBroadcastRequest) -> anyhow::Result<()> {
+    pub async fn broadcast(self: &Arc<Self>, request: RelayBroadcastRequest) -> anyhow::Result<()> {
+        let (lifetime, cancelled) = oneshot::channel();
+        let route = self.clone();
+        let task = tokio::spawn(async move { route.broadcast_owned(request, cancelled).await });
+        let result = task.await.unwrap_or_else(|error| Err(error.into()));
+        drop(lifetime);
+        result
+    }
+
+    async fn broadcast_owned(
+        &self,
+        request: RelayBroadcastRequest,
+        mut cancelled: oneshot::Receiver<()>,
+    ) -> anyhow::Result<()> {
         self.ensure_request(request.session)
             .map_err(|failure| anyhow::anyhow!(failure.message))?;
         self.owner.ensure_author(&request.event.pubkey)?;
@@ -65,14 +98,14 @@ impl RelayPoolRoute {
             .roles
             .acquire(&request.relays, RelayRole::Write)
             .await;
-        let result = self
-            .owner
-            .io
-            .broadcast(RelayBroadcastIo {
-                relays: leased.clone(),
-                event: request.event,
-            })
-            .await;
+        let broadcast = self.owner.io.broadcast(RelayBroadcastIo {
+            relays: leased.clone(),
+            event: request.event,
+        });
+        let result = tokio::select! {
+            result = broadcast => result,
+            _ = &mut cancelled => Err(anyhow::anyhow!(CANCELLED_BROADCAST_MESSAGE)),
+        };
         self.owner.roles.release(&leased, RelayRole::Write).await;
         self.ensure_current()
             .map_err(|failure| anyhow::anyhow!(failure.message))?;

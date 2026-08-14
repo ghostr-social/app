@@ -26,7 +26,9 @@ void main() {
           ],
         ),
         engagement: FakeVideoCatalogRepository(forYouFeed: []),
-        optional: FeedOptionalDependencies(updates: updates),
+        optional: FeedOptionalDependencies(
+          delivery: FeedDeliveryDependencies(updates: updates),
+        ),
       ),
       updateRetry: FeedUpdateRetry(delays: const [Duration.zero]),
     );

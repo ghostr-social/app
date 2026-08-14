@@ -6,10 +6,14 @@ pub(crate) fn admit(handle: Option<&DeliveryHandle>, candidate: Option<VideoCand
     let (Some(handle), Some(candidate)) = (handle, candidate) else {
         return;
     };
-    handle.admit_candidate(DeliveryCandidate {
+    handle.admit_candidate(delivery_candidate(candidate));
+}
+
+pub(crate) fn delivery_candidate(candidate: VideoCandidate) -> DeliveryCandidate {
+    DeliveryCandidate {
         post: PostId::new(candidate.id.as_str()),
         meta: candidate.post.meta,
         renditions: candidate.post.renditions,
-        discovered_at: candidate.post.created_at,
-    });
+        discovered_at: candidate.post.feed_sort_at,
+    }
 }

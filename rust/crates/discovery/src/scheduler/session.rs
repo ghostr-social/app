@@ -13,6 +13,7 @@ impl SchedulerWorker {
         }
         self.queue.reset_session();
         self.feeds.reset_session();
+        self.deferred_reposts.reset();
         self.queries.reset_session();
         self.retry_attempts.clear();
         self.pending_feed_retries.clear();

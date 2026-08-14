@@ -113,7 +113,7 @@ class DiscoveryVideoSearchRepository
       return tag == null || post.hashtags.contains(tag);
     }).toList();
     selected.sort(
-      (left, right) => right.publishedAt.compareTo(left.publishedAt),
+      (left, right) => right.feedActivityAt.compareTo(left.feedActivityAt),
     );
     return List<VideoPost>.unmodifiable(selected);
   }
@@ -164,9 +164,9 @@ class DiscoveryVideoSearchRepository
   // so pages full of blocked creators cannot stall pagination.
   DateTime? _nextCursor(List<VideoPost> fetched) {
     if (fetched.isEmpty) return null;
-    var oldest = fetched.first.publishedAt;
+    var oldest = fetched.first.feedActivityAt;
     for (final post in fetched.skip(1)) {
-      if (post.publishedAt.isBefore(oldest)) oldest = post.publishedAt;
+      if (post.feedActivityAt.isBefore(oldest)) oldest = post.feedActivityAt;
     }
     return oldest.subtract(const Duration(seconds: 1));
   }

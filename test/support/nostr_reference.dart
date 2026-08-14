@@ -7,7 +7,28 @@ export 'nostr_test_values.dart';
 
 NostrEventReference nostrReference({
   String eventId = testEventId,
-  String authorPublicKeyHex = testCreatorPublicKey,
+  int kind = 22,
+  String? identifier,
+  String? publishedIdentifier,
+}) {
+  return NostrEventReference(
+    eventId: NostrEventId.parse(eventId),
+    authorPublicKeyHex: NostrPublicKeyHex.parse(testCreatorPublicKey),
+    kind: NostrEventKind.parse(kind),
+    details: NostrEventReferenceDetails(
+      identifier: identifier == null
+          ? null
+          : NostrEventIdentifier.parse(identifier),
+      publishedIdentifier: publishedIdentifier == null
+          ? null
+          : NostrEventIdentifier.published(publishedIdentifier),
+    ),
+  );
+}
+
+NostrEventReference nostrReferenceForAuthor(
+  String authorPublicKeyHex, {
+  String eventId = testEventId,
   int kind = 22,
   String? identifier,
 }) {
@@ -15,7 +36,10 @@ NostrEventReference nostrReference({
     eventId: NostrEventId.parse(eventId),
     authorPublicKeyHex: NostrPublicKeyHex.parse(authorPublicKeyHex),
     kind: NostrEventKind.parse(kind),
-    identifier:
-        identifier == null ? null : NostrEventIdentifier.parse(identifier),
+    details: NostrEventReferenceDetails(
+      identifier: identifier == null
+          ? null
+          : NostrEventIdentifier.parse(identifier),
+    ),
   );
 }

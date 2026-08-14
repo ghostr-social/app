@@ -8,3 +8,4 @@ pub(crate) mod pagination;
 pub mod spec;
 pub mod store;
 pub(crate) mod store_cursor;
+mod visibility;

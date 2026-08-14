@@ -4,7 +4,7 @@
 //! forwards the returned dispatches to the discovery scheduler.
 
 use crate::api::feed::decisions::{LoadMoreAction, LoadMoreDecision, OpenDispatch};
-use crate::api::feed::mapping::{feed_post, resolved_creator};
+use crate::api::feed::mapping::{feed_post, resolved_creator, resolved_reposter};
 use crate::api::feed::progress::FeedProgress;
 use crate::api::feed_types::{FfiFeedPost, FfiFeedStage};
 use crate::discovery::content::candidates::CandidateRegistry;
@@ -107,7 +107,8 @@ impl FeedState {
         };
         match result {
             Ok(events) => {
-                self.ingest_page(feed, &events);
+                let cursor = crate::discovery::feed::cursor::retrieval_cursor(&events);
+                self.ingest_page(feed, &events, cursor);
             }
             Err(_) => self.record_failure(feed),
         }
@@ -126,7 +127,13 @@ impl FeedState {
         self.store
             .posts(feed)
             .iter()
-            .map(|post| feed_post(post, resolved_creator(&self.profiles, post)))
+            .map(|post| {
+                feed_post(
+                    post,
+                    resolved_creator(&self.profiles, post),
+                    resolved_reposter(&self.profiles, post),
+                )
+            })
             .collect()
     }
 

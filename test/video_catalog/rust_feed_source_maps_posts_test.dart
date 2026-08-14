@@ -10,25 +10,32 @@ void main() {
   // Rust rows preserve the Nostr event ID as the post ID and expose
   // creator public keys as the npub identities used by profile routes.
   test('maps rust feed rows onto domain posts in feed order', () async {
-    final port = FakeRustFeedPort(updates: [
-      rustFeedBaseline(),
-      rustFeedUpdate(revision: 1, posts: [
-        rustFeedPost(
-          eventId: testEventId,
-          createdAt: 1754000000,
-          caption: 'Ghost tape #9',
-          title: 'Night skate',
-          hashtags: const ['ghostr'],
-          creator: rustFeedCreator(
-            pubkey: testCreatorPublicKey,
-            displayName: 'Nora Relay',
-            handle: '@norarelay',
-            avatarUrl: 'https://cdn.example/nora.png',
-          ),
+    final port = FakeRustFeedPort(
+      updates: [
+        rustFeedBaseline(),
+        rustFeedUpdate(
+          revision: 1,
+          posts: [
+            rustFeedPost(
+              eventId: testEventId,
+              createdAt: 1754000000,
+              details: RustFeedPostDetails(
+                caption: 'Ghost tape #9',
+                title: 'Night skate',
+                hashtags: const ['ghostr'],
+                creator: rustFeedCreator(
+                  pubkey: testCreatorPublicKey,
+                  displayName: 'Nora Relay',
+                  handle: '@norarelay',
+                  avatarUrl: 'https://cdn.example/nora.png',
+                ),
+              ),
+            ),
+            rustFeedPost(eventId: secondTestEventId, createdAt: 1753990000),
+          ],
         ),
-        rustFeedPost(eventId: secondTestEventId, createdAt: 1753990000),
-      ]),
-    ]);
+      ],
+    );
     final source = RustFeedRemoteSource(port: port);
 
     final posts = await source.loadRemoteFeed(searchQuery: 'ghost');

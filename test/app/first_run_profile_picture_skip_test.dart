@@ -24,9 +24,11 @@ void main() {
       ..failure = const AppFailure('Blossom unavailable.');
     final dependencies = buildFakeDependencies(
       catalogRepository: FakeVideoCatalogRepository(forYouFeed: const []),
-      accountGenerator: generator,
-      accountProvisioningRepository: provisioning,
-      profileMetadataRepository: profiles,
+      overrides: FakeDependencyOverrides(
+        accountGenerator: generator,
+        accountProvisioningRepository: provisioning,
+        profileMetadataRepository: profiles,
+      ),
       device: FakeDeviceDependencies(
         profileImages: fakeProfileImages(picker: picker, uploader: uploader),
       ),

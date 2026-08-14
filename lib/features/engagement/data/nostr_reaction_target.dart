@@ -3,7 +3,7 @@ import 'package:ghostr/features/video_catalog/domain/nostr_event_reference.dart'
 
 extension type const NostrReactionTarget._(String value) implements String {
   factory NostrReactionTarget.fromReference(NostrEventReference reference) {
-    final identifier = reference.identifier;
+    final identifier = reference.coordinateIdentifier;
     if (identifier == null) {
       return NostrReactionTarget._('e:${reference.eventId}');
     }

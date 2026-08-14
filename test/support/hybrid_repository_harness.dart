@@ -19,6 +19,7 @@ import 'package:ghostr/features/video_catalog/domain/video_profile_repository.da
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fakes.dart';
+import 'following_feed_scope_fixture.dart';
 
 class HybridHarnessPorts {
   const HybridHarnessPorts({this.social, this.engagement, this.comments});
@@ -75,7 +76,11 @@ Future<HybridRepositoryHarness> buildHybridRepositoryHarness(
     failureReporter: reporter,
   );
   return HybridRepositoryHarness(
-    feed: FilteredVideoFeedRepository(reader, social),
+    feed: FilteredVideoFeedRepository(
+      reader,
+      social,
+      followingScopes: testFollowingFeedScopes(social),
+    ),
     profile: AggregatingVideoProfileRepository(reader, social),
     publishing: HybridVideoPublishingRepository(
       local,

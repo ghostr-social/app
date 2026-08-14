@@ -28,6 +28,7 @@ fn retrieval() -> PlannedRetrieval {
         context: FeedContext::for_session("offline-query", SessionGeneration::initial()),
         priority: RetrievalPriority::Enrichment,
         plan: plan_event_queries(vec![Filter::new().kind(Kind::TextNote)]),
+        deferred_reposts: Vec::new(),
     }
 }
 

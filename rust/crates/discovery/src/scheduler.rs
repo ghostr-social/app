@@ -2,6 +2,7 @@
 
 pub(crate) mod commands;
 pub mod control;
+pub(crate) mod deferred_reposts;
 pub(crate) mod event_loop;
 pub(crate) mod feeds;
 pub mod hunt;
@@ -14,23 +15,23 @@ pub(crate) mod session;
 
 use crate::plan_executor::{PlanExecutor, PlanPage};
 use crate::query::search::QueryPlan;
-use crate::query::video_filters::DiscoveryRequest;
 use crate::retrieval_types::{FeedContext, PlanFailure, RetrievalOutcome, RetrievalPurpose};
 use crate::scheduler::feeds::FeedBook;
 use crate::scheduler::hunt::HuntToken;
-use crate::scheduler::queries::{QueryBook, QueryResult};
+use crate::scheduler::queries::QueryBook;
 use crate::scheduler::queue::RetrievalQueue;
 use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_engine::DataUsageLevel;
-use nostr_sdk::Timestamp;
 use std::collections::HashMap;
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 use tokio::sync::mpsc::WeakUnboundedSender;
-use tokio::sync::{mpsc, oneshot, watch};
+use tokio::sync::{mpsc, watch};
 use tokio::task::AbortHandle;
 
 mod handle;
+
+pub(crate) use commands::{ControlCommand, DiscoveryCommand, FeedCommand, WorkCommand};
 
 /// Mirrors Dart's `maxConcurrentRequests` worker-pool cap.
 pub(crate) fn max_concurrent_requests(level: DataUsageLevel) -> usize {
@@ -39,60 +40,6 @@ pub(crate) fn max_concurrent_requests(level: DataUsageLevel) -> usize {
         DataUsageLevel::Balanced => 4,
         DataUsageLevel::Aggressive => 6,
     }
-}
-
-/// Control events the scheduler reacts to.
-#[derive(Debug)]
-pub(crate) enum DiscoveryCommand {
-    /// Interactive feed/search/tag load; focuses its context.
-    OpenFeed {
-        context: FeedContext,
-        request: DiscoveryRequest,
-    },
-    /// Interactive older-page load for an open feed; an explicit
-    /// cursor (plan §2 `ffi_load_more`) wins over the tracked one.
-    LoadMore {
-        context: FeedContext,
-        older_than: Option<Timestamp>,
-    },
-    /// Reorders queued work in the viewer's favor without loading.
-    #[allow(
-        dead_code,
-        reason = "focus commands are exercised only by scheduler tests"
-    )]
-    Focus(FeedContext),
-    /// Background work (trending, backfill); never steals focus.
-    #[allow(
-        dead_code,
-        reason = "background commands are exercised only by scheduler tests"
-    )]
-    Background {
-        context: FeedContext,
-        request: DiscoveryRequest,
-    },
-    /// Ends queued, running, and delayed work for a closed feed.
-    CloseFeed(FeedContext),
-    /// Rust-owned continuation of a continuous feed.
-    ContinueFeed {
-        context: FeedContext,
-        head: bool,
-        token: HuntToken,
-    },
-    /// Rust-owned retry of a canonical feed after relay failure.
-    RetryFeed {
-        context: FeedContext,
-        token: HuntToken,
-    },
-    /// A generic read shares the queue but answers only its caller.
-    Query {
-        context: FeedContext,
-        plan: QueryPlan,
-        reply: oneshot::Sender<QueryResult>,
-    },
-    /// Live data-usage knob change.
-    SetDataUsage(DataUsageLevel),
-    /// Drops queued session work and every pending generic reply.
-    ResetSession { reply: oneshot::Sender<()> },
 }
 
 /// Cloneable control handle; sends never block. The scheduler task
@@ -146,6 +93,7 @@ pub(crate) struct ActiveRetrieval {
 pub(crate) struct SchedulerWorker {
     pub(crate) queue: RetrievalQueue<QueryPlan>,
     pub(crate) feeds: FeedBook,
+    pub(crate) deferred_reposts: deferred_reposts::DeferredRepostBook,
     pub(crate) queries: QueryBook,
     pub(crate) executor: Arc<dyn PlanExecutor>,
     pub(crate) max_concurrent: usize,
@@ -175,6 +123,7 @@ impl SchedulerWorker {
         Self {
             queue: RetrievalQueue::new(),
             feeds: FeedBook::default(),
+            deferred_reposts: deferred_reposts::DeferredRepostBook::default(),
             queries: QueryBook::default(),
             executor: config.executor,
             max_concurrent: max_concurrent_requests(config.level),

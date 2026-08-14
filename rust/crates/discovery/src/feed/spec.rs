@@ -4,10 +4,10 @@
 use nostr_sdk::{PublicKey, Timestamp};
 
 use crate::cache::ViewerScope;
-use crate::content::parsing::ParsedVideoPost;
 use crate::content::social_graph::SocialGraph;
+use crate::feed::visibility;
 use crate::query::hashtags::normalize_hashtag;
-use crate::query::video_filters::{DiscoveryFlow, DiscoveryRequest};
+use crate::query::video_filters::{DiscoveryFlow, DiscoveryRequest, RepostAdmission};
 
 /// One open feed's identity and query recipe.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -22,6 +22,11 @@ pub enum FeedSpec {
     /// The posts of a named set of creators: one creator for a profile
     /// grid, or every followed creator for the Following feed.
     Profile(Vec<PublicKey>),
+    /// Direct posts and repost occurrences authored by the followed set.
+    Following {
+        viewer: Option<PublicKey>,
+        follows: Vec<PublicKey>,
+    },
     /// A viewer search query, as typed.
     Search(String),
 }
@@ -49,6 +54,13 @@ impl FeedSpec {
                 authors: creators.clone(),
                 ..request(older_than)
             }),
+            Self::Following { viewer, follows } => Some(DiscoveryRequest {
+                authors: follows.clone(),
+                viewer: viewer_scope(viewer),
+                flow: DiscoveryFlow::Continuous,
+                reposts: RepostAdmission::Included,
+                ..request(older_than)
+            }),
             Self::Hashtag(raw) => hashtag_request(raw, older_than),
             Self::Search(raw) => search_request(raw, older_than),
         }
@@ -60,13 +72,22 @@ impl FeedSpec {
     /// signed-out main feed has no viewer whose mutes could apply, and
     /// a profile grid shows exactly its creators, muted or not
     /// (`ProfileDetailsPolicy.build` filters only by creator id).
-    pub(crate) fn accepts(&self, post: &ParsedVideoPost, graph: &SocialGraph) -> bool {
-        match self {
-            Self::MainFeed { viewer } => accepts_main_feed(viewer, post, graph),
-            Self::Profile(creators) => written_by(post, creators),
-            Self::Hashtag(raw) => accepts_query(post, graph, carries_tag(post, raw)),
-            Self::Search(raw) => accepts_query(post, graph, matches_search(post, raw)),
-        }
+    pub(crate) fn accepts(
+        &self,
+        post: &crate::content::parsing::ParsedVideoPost,
+        graph: &SocialGraph,
+    ) -> bool {
+        visibility::accepts(self, post, graph)
+    }
+
+    /// Following may use an unfollowed original as content for an already
+    /// visible followed-reposter occurrence; other feeds recheck each donor.
+    pub(crate) fn accepts_content(
+        &self,
+        post: &crate::content::parsing::ParsedVideoPost,
+        graph: &SocialGraph,
+    ) -> bool {
+        matches!(self, Self::Following { .. }) || self.accepts(post, graph)
     }
 
     /// Whether an empty older page ends pagination. Canonical feeds
@@ -144,40 +165,6 @@ fn leading_hashtag(query: &str) -> Option<String> {
     normalize_hashtag(query)
 }
 
-fn written_by(post: &ParsedVideoPost, creators: &[PublicKey]) -> bool {
-    creators
-        .iter()
-        .any(|creator| post.author_pubkey == creator.to_hex())
-}
-
-fn accepts_main_feed(
-    viewer: &Option<PublicKey>,
-    post: &ParsedVideoPost,
-    graph: &SocialGraph,
-) -> bool {
-    viewer.is_none() || !author_muted(post, graph)
-}
-
-fn accepts_query(post: &ParsedVideoPost, graph: &SocialGraph, matches: bool) -> bool {
-    !author_muted(post, graph) && matches
-}
-
-fn author_muted(post: &ParsedVideoPost, graph: &SocialGraph) -> bool {
-    PublicKey::from_hex(&post.author_pubkey)
-        .map(|author| graph.is_muted(&author))
-        .unwrap_or(false)
-}
-
-/// Relay tag matching is rechecked locally; NIP-50 text matching is the
-/// relay's judgement (`_selectPosts` in
-/// discovery_video_search_repository.dart).
-fn carries_tag(post: &ParsedVideoPost, raw: &str) -> bool {
-    normalize_hashtag(raw).is_some_and(|tag| post.hashtags.contains(&tag))
-}
-
-fn matches_search(post: &ParsedVideoPost, raw: &str) -> bool {
-    match leading_hashtag(&raw.trim().to_lowercase()) {
-        Some(tag) => post.hashtags.contains(&tag),
-        None => true,
-    }
+pub(crate) fn normalized_leading_hashtag(query: &str) -> Option<String> {
+    leading_hashtag(query)
 }

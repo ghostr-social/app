@@ -3,11 +3,13 @@ import 'package:ghostr/core/errors/boundary_failure.dart';
 import 'package:ghostr/core/media/video_media_metadata.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
+import 'package:ghostr/core/nostr/signed_nostr_event_json.dart';
 import 'package:ghostr/features/video_catalog/domain/nostr_event_reference.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post_id.dart';
+import 'package:ghostr/features/video_catalog/domain/video_repost_attribution.dart';
 import 'package:ghostr/src/rust/api/delivery_types.dart';
 import 'package:ghostr/src/rust/api/feed_types.dart';
 import 'package:ndk/ndk.dart';
@@ -38,6 +40,7 @@ class RustFeedPostMapper {
         id: VideoPostId.parse(post.eventId),
         creator: _creator(post.creator),
         nostrReference: _reference(post),
+        repost: _repost(post.repost),
       ),
       content: VideoPostContent(
         caption: post.caption,
@@ -61,7 +64,29 @@ class RustFeedPostMapper {
       eventId: NostrEventId.parse(post.eventId),
       authorPublicKeyHex: NostrPublicKeyHex.parse(post.creator.pubkey),
       kind: NostrEventKind.parse(post.eventKind),
-      identifier: _identifier(post),
+      details: NostrEventReferenceDetails(
+        identifier: _identifier(post),
+        publishedIdentifier: _publishedIdentifier(post),
+        signedEvent: _signedEvent(post.signedEventJson),
+        isProtected: post.isProtected,
+      ),
+    );
+  }
+
+  SignedNostrEventJson? _signedEvent(String? raw) {
+    return raw == null ? null : SignedNostrEventJson.parse(raw);
+  }
+
+  VideoRepostAttribution? _repost(FfiFeedRepost? repost) {
+    if (repost == null) return null;
+    return VideoRepostAttribution(
+      eventId: NostrEventId.parse(repost.eventId),
+      reposter: _creator(repost.reposter),
+      repostedAt: _publishedAt(repost.repostedAt),
+      target: switch (repost.target) {
+        FfiFeedRepostTarget.specificEvent => VideoRepostTarget.specificEvent,
+        FfiFeedRepostTarget.coordinate => VideoRepostTarget.coordinate,
+      },
     );
   }
 
@@ -74,6 +99,11 @@ class RustFeedPostMapper {
       throw const AppFailure('Addressable Nostr video has no identifier.');
     }
     return NostrEventIdentifier.parse(value);
+  }
+
+  NostrEventIdentifier? _publishedIdentifier(FfiFeedPost post) {
+    final value = post.publishedIdentifier;
+    return value == null ? null : NostrEventIdentifier.published(value);
   }
 
   /// Display fields come from the Rust profile store; the id remains the

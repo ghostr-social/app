@@ -24,7 +24,9 @@ void main() {
         posts: [
           rustFeedPost(
             eventId: testEventId,
-            caption: 'Found without another hunt',
+            details: const RustFeedPostDetails(
+              caption: 'Found without another hunt',
+            ),
           ),
         ],
       ),

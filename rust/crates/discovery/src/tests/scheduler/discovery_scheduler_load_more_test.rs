@@ -3,7 +3,9 @@
 //! (plan §2 `ffi_load_more`).
 
 use crate::retrieval_types::RetrievalPriority;
-use crate::tests::scheduler_support::{context, next_started, no_start, request, start_scheduler};
+use crate::tests::scheduler_support::{
+    context, next_outcome, next_started, no_start, request, start_scheduler,
+};
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::Timestamp;
 
@@ -12,6 +14,8 @@ async fn explicit_cursor_drives_the_older_page() {
     let mut harness = start_scheduler(DataUsageLevel::Conservative, Vec::new());
     harness.handle.open_feed(context("feed"), request());
     next_started(&mut harness.started).await;
+    harness.gate.add_permits(1);
+    next_outcome(&mut harness.outcomes).await;
 
     harness
         .handle
@@ -40,6 +44,8 @@ async fn load_more_replaces_a_query_hunt_with_the_requested_page() {
     query.search_query = Some("ghost".to_owned());
     harness.handle.open_feed(context("search"), query);
     next_started(&mut harness.started).await;
+    harness.gate.add_permits(1);
+    next_outcome(&mut harness.outcomes).await;
 
     harness
         .handle

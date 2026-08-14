@@ -86,11 +86,11 @@ class NostrLikeMutationService {
     NostrViewerReactionState current,
   ) async {
     if (current.reactionIds.isEmpty) return current.engagement;
-    final deletionId = await _client.publish(
+    await _client.publish(
       _deletion(current.reactionIds),
       expectedAuthor: key.viewer,
     );
-    _journal.recordDeletion(key, deletionId, current.reactionIds);
+    _journal.recordDeletion(key, current.reactionIds);
     return VideoEngagement(
       likeCount: current.engagement.likeCount - 1,
       viewerHasLiked: false,
@@ -105,7 +105,7 @@ NostrUnsignedEvent _reaction(NostrEventReference reference) {
       <String>['e', reference.eventId],
       <String>['p', reference.authorPublicKeyHex],
       <String>['k', '${reference.kind}'],
-      if (reference.identifier case final identifier?)
+      if (reference.coordinateIdentifier case final identifier?)
         <String>[
           'a',
           '${reference.kind}:${reference.authorPublicKeyHex}:$identifier',

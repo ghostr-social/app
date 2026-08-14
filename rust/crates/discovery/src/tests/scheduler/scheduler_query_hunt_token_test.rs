@@ -28,6 +28,7 @@ async fn stale_query_continuation_preserves_the_newer_hunt() {
     let mut worker = SchedulerWorker {
         queue: RetrievalQueue::new(),
         feeds: FeedBook::default(),
+        deferred_reposts: Default::default(),
         queries: QueryBook::default(),
         executor: Arc::new(NeverExecutor),
         max_concurrent: 2,

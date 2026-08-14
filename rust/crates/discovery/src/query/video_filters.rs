@@ -15,6 +15,10 @@ pub(crate) const VIDEO_NOTE_KIND: u16 = 1;
 /// NIP-94 file-metadata events, filtered server-side to video mimes.
 pub(crate) const FILE_EVENT_KIND: u16 = 1063;
 
+pub(crate) const REPOST_KIND: u16 = 6;
+pub(crate) const GENERIC_REPOST_KIND: u16 = 16;
+pub(crate) const DELETION_KIND: u16 = 5;
+
 /// Mime values worth asking NIP-94 file events for, via the `#m` filter.
 pub(crate) const VIDEO_FILE_MIME_TYPES: [&str; 6] = [
     "video/mp4",
@@ -44,6 +48,13 @@ pub enum DiscoveryFlow {
     Continuous,
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum RepostAdmission {
+    #[default]
+    Excluded,
+    Included,
+}
+
 /// One video-discovery request accepted by the Rust engine.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DiscoveryRequest {
@@ -65,6 +76,7 @@ pub struct DiscoveryRequest {
     /// so every other feed leaves the scope alone.
     pub viewer: ViewerScope,
     pub flow: DiscoveryFlow,
+    pub reposts: RepostAdmission,
 }
 
 impl DiscoveryRequest {
@@ -106,7 +118,18 @@ pub(crate) fn discovery_filters(request: &DiscoveryRequest) -> Vec<Filter> {
         filters.push(note_hunt_filter(request));
     }
     filters.push(file_event_filter(request));
+    if request.reposts == RepostAdmission::Included {
+        filters.extend(repost_filters(request));
+    }
     filters
+}
+
+fn repost_filters(request: &DiscoveryRequest) -> [Filter; 3] {
+    [
+        scoped(request, &[REPOST_KIND], WIDE_QUERY_LIMIT),
+        scoped(request, &[GENERIC_REPOST_KIND], WIDE_QUERY_LIMIT),
+        scoped(request, &[DELETION_KIND], WIDE_QUERY_LIMIT),
+    ]
 }
 
 /// Dedicated NIP-71 video kinds; narrow limit unless the request widened.

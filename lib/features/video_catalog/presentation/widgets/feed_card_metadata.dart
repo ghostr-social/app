@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/caption_text.dart';
+import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card_repost_byline.dart';
 import 'package:ghostr/shared/theme/app_tokens.dart';
 
 class FeedCardMetadata extends StatefulWidget {
@@ -18,8 +19,6 @@ class FeedCardMetadata extends StatefulWidget {
 }
 
 class _FeedCardMetadataState extends State<FeedCardMetadata> {
-  static const _shadows = [Shadow(color: Color(0x99000000), blurRadius: 8)];
-
   bool _isCaptionExpanded = false;
 
   @override
@@ -27,12 +26,16 @@ class _FeedCardMetadataState extends State<FeedCardMetadata> {
     final theme = Theme.of(context).textTheme;
     final muted = theme.bodySmall?.copyWith(
       color: AppPalette.mutedForeground,
-      shadows: _shadows,
+      shadows: AppShadow.videoOverlay,
     );
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (widget.post.repost case final repost?) ...[
+          FeedCardRepostByline(repost: repost),
+          const SizedBox(height: AppSpacing.xs),
+        ],
         _creatorName(theme),
         const SizedBox(height: AppSpacing.xxs),
         _creatorHandle(muted),
@@ -51,7 +54,7 @@ class _FeedCardMetadataState extends State<FeedCardMetadata> {
       widget.post.creator.displayName,
       style: theme.titleMedium?.copyWith(
         fontWeight: FontWeight.w700,
-        shadows: _shadows,
+        shadows: AppShadow.videoOverlay,
       ),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
@@ -100,7 +103,9 @@ class _FeedCardMetadataState extends State<FeedCardMetadata> {
   }
 
   TextStyle? _captionStyle() {
-    return Theme.of(context).textTheme.bodyMedium?.copyWith(shadows: _shadows);
+    return Theme.of(
+      context,
+    ).textTheme.bodyMedium?.copyWith(shadows: AppShadow.videoOverlay);
   }
 
   void _toggleCaption() {
@@ -115,7 +120,7 @@ class _FeedCardMetadataState extends State<FeedCardMetadata> {
           Icons.music_note,
           size: AppSize.feedSongIcon,
           color: AppPalette.mutedForeground,
-          shadows: _shadows,
+          shadows: AppShadow.videoOverlay,
         ),
         const SizedBox(width: AppSpacing.xxs),
         Flexible(

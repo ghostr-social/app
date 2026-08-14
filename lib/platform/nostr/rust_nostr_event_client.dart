@@ -11,13 +11,13 @@ import 'package:ghostr/src/rust/api/event_control.dart' as engine;
 import 'package:ghostr/src/rust/api/event_types.dart';
 import 'package:ndk/ndk.dart';
 
-typedef RustEventQuery = Future<List<FfiNostrEvent>> Function({
-  required FfiNostrEventFilter filter,
-});
+typedef RustEventQuery =
+    Future<List<FfiNostrEvent>> Function({required FfiNostrEventFilter filter});
 
-typedef RustEventBatchQuery = Future<List<FfiNostrEvent>> Function({
-  required List<FfiNostrEventFilter> filters,
-});
+typedef RustEventBatchQuery =
+    Future<List<FfiNostrEvent>> Function({
+      required List<FfiNostrEventFilter> filters,
+    });
 
 const _readFailureMessage = 'Could not read from Nostr relays.';
 
@@ -32,16 +32,17 @@ final class RustNostrEventQueries {
   final RustEventBatchQuery batch;
 }
 
-class RustNostrEventClient implements NostrEventClient {
+class RustNostrEventClient
+    implements NostrEventClient, SignedNostrEventPublisher {
   RustNostrEventClient({
     required Ndk ndk,
     required SignedEventBroadcastPort broadcast,
     RustNostrEventQueries queries = const RustNostrEventQueries(),
     RustNostrEventMapper mapper = const RustNostrEventMapper(),
-  })  : _ndk = ndk,
-        _broadcast = broadcast,
-        _queries = queries,
-        _mapper = mapper;
+  }) : _ndk = ndk,
+       _broadcast = broadcast,
+       _queries = queries,
+       _mapper = mapper;
 
   final Ndk _ndk;
   final SignedEventBroadcastPort _broadcast;
@@ -114,8 +115,16 @@ class RustNostrEventClient implements NostrEventClient {
     NostrUnsignedEvent event, {
     required NostrPublicKeyHex expectedAuthor,
   }) async {
+    return (await publishSigned(event, expectedAuthor: expectedAuthor)).id;
+  }
+
+  @override
+  Future<NostrEventPublication> publishSigned(
+    NostrUnsignedEvent event, {
+    required NostrPublicKeyHex expectedAuthor,
+  }) async {
     try {
-      return await _publish(event, expectedAuthor);
+      return await _publishSigned(event, expectedAuthor);
     } on AppFailure {
       rethrow;
     } on Object catch (error, stackTrace) {
@@ -128,7 +137,7 @@ class RustNostrEventClient implements NostrEventClient {
     }
   }
 
-  Future<NostrEventId> _publish(
+  Future<NostrEventPublication> _publishSigned(
     NostrUnsignedEvent event,
     NostrPublicKeyHex expectedAuthor,
   ) async {
@@ -141,8 +150,12 @@ class RustNostrEventClient implements NostrEventClient {
       NostrPublicKeyHex.parse(signed.pubKey),
       expectedAuthor,
     );
-    await _broadcast.broadcast(encodeSignedNostrEvent(signed));
-    return NostrEventId.parse(signed.id);
+    final json = encodeSignedNostrEvent(signed);
+    await _broadcast.broadcast(json);
+    return NostrEventPublication(
+      id: NostrEventId.parse(signed.id),
+      signedEvent: json,
+    );
   }
 
   EventSigner _requireSigner() {

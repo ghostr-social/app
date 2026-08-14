@@ -1,6 +1,8 @@
 mod relay_io_progress_test;
 mod relay_io_sdk_test;
 mod relay_io_timeout_test;
+mod relay_pool_cancelled_broadcast_test;
+mod relay_pool_cancelled_query_test;
 mod relay_pool_owner_broadcast_reset_test;
 mod relay_pool_owner_configuration_test;
 mod relay_pool_owner_empty_target_test;
@@ -12,3 +14,4 @@ mod relay_pool_roles_removal_failure_test;
 mod relay_pool_startup_retry_test;
 mod relay_registration_existing_test;
 mod relay_registration_gossip_existing_test;
+mod relay_untrusted_url_test;

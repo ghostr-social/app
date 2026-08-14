@@ -3,6 +3,7 @@
 //! submission order.
 
 use std::cmp::Ordering;
+use std::collections::HashSet;
 
 use crate::retrieval_types::{FeedContext, RetrievalRequest};
 
@@ -65,15 +66,27 @@ impl<T> RetrievalQueue<T> {
     }
 
     /// Removes and returns the most urgent pending retrieval.
+    #[cfg(test)]
     pub(crate) fn take_next(&mut self) -> Option<(RetrievalRequest, T)> {
-        let best = self.best_index()?;
+        self.take_next_excluding(std::iter::empty())
+    }
+
+    pub(crate) fn take_next_excluding<'a>(
+        &mut self,
+        blocked: impl IntoIterator<Item = &'a FeedContext>,
+    ) -> Option<(RetrievalRequest, T)> {
+        let blocked: HashSet<_> = blocked.into_iter().cloned().collect();
+        let best = self.best_index(&blocked)?;
         let entry = self.pending.remove(best);
         Some((entry.request, entry.payload))
     }
 
-    fn best_index(&self) -> Option<usize> {
+    fn best_index(&self, blocked: &HashSet<FeedContext>) -> Option<usize> {
         let mut best: Option<usize> = None;
         for (index, entry) in self.pending.iter().enumerate() {
+            if blocked.contains(&entry.request.context) {
+                continue;
+            }
             let beats = match best {
                 None => true,
                 Some(current) => self.orders_before(entry, &self.pending[current]),

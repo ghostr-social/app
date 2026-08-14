@@ -1,6 +1,7 @@
 //! Primary failure still joins additive work so its relay lease can clean up.
 
 use crate::execution::collector::collect_events;
+use crate::execution::fetch::FetchedEvents;
 use crate::query::search::QueryRole;
 use crate::retrieval_types::PlanFailure;
 use std::time::Duration;
@@ -18,9 +19,7 @@ impl Drop for DropNotice {
     }
 }
 
-fn pending_fetch(
-    dropped: oneshot::Sender<()>,
-) -> JoinHandle<Result<Vec<nostr_sdk::Event>, PlanFailure>> {
+fn pending_fetch(dropped: oneshot::Sender<()>) -> JoinHandle<Result<FetchedEvents, PlanFailure>> {
     tokio::spawn(async move {
         let _notice = DropNotice(Some(dropped));
         std::future::pending().await
@@ -33,7 +32,7 @@ async fn primary_failure_waits_for_additive_fetch_completion() {
     let (release, wait) = oneshot::channel();
     let additive = tokio::spawn(async move {
         let _ = wait.await;
-        Ok(Vec::new())
+        Ok(FetchedEvents::fresh(Vec::new()))
     });
     let mut collection = tokio::spawn(collect_events(vec![
         (QueryRole::Primary, primary),
