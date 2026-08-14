@@ -1,8 +1,8 @@
-use super::support::temp_directory;
+use super::support::{pressure::fill_and_refuse, temp_directory};
 use crate::manager::pressure::capacity_changed;
 use ghostr_partial_store::partial_range_store::capacity::{Limits, StoreCapacity};
 use ghostr_partial_store::partial_range_store::free_space::FreeSpace;
-use ghostr_partial_store::partial_range_store::{OutOfSpace, PartialRangeStore};
+use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
@@ -49,14 +49,4 @@ fn bounded_store() -> (PartialRangeStore, std::path::PathBuf) {
     let capacity = StoreCapacity::new(limits, Arc::new(PlentyOfSpace), Duration::from_secs(60));
     let store = PartialRangeStore::with_capacity(root.clone(), Arc::new(Mutex::new(0)), capacity);
     (store, root)
-}
-
-async fn fill_and_refuse(store: &PartialRangeStore) -> OutOfSpace {
-    store.write_range("aa11", 0, &[1; 8]).await.unwrap();
-    store
-        .write_range("aa11", 8, &[2; 8])
-        .await
-        .unwrap_err()
-        .downcast::<OutOfSpace>()
-        .unwrap()
 }

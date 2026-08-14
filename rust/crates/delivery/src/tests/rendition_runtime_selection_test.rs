@@ -22,7 +22,7 @@ fn measured_throughput_and_buffer_risk_switch_the_playing_catalog_representation
         discovered_at: 1,
     });
     state.take_representation_bindings();
-    assert!(state.apply_playback(playback(post.clone())));
+    assert!(state.apply_playback(playback(post.clone())).is_accepted());
     let stats = slow_stats();
 
     let binding = select_rendition(&mut state, &stats, 8_000).expect("quality switch");

@@ -23,7 +23,7 @@ fn selected_rendition_resets_representation_fenced_delivery_state() {
         discovered_at: 1,
     });
     state.take_representation_bindings();
-    assert!(state.apply_playback(playback(post.clone())));
+    assert!(state.apply_playback(playback(post.clone())).is_accepted());
     let binding = select_rendition(&mut state, &slow_stats(), 8_000).unwrap();
     let mut probes = MetadataProbePool::new(1);
     probes.learned(&post);

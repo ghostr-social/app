@@ -12,7 +12,7 @@ const SAMPLE_WINDOW: Duration = Duration::from_millis(520);
 #[tokio::test]
 async fn protected_override_windows_admit_a_third_same_host_request() {
     let mut origin = ControlledOrigin::serve(32).await;
-    let harness = start(&origin.url);
+    let (harness, _demand) = start(&origin.url).await;
 
     let active = [
         next_request(&mut origin).await,

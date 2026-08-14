@@ -10,7 +10,7 @@ import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart'
 /// and watch history remembers the video on screen so it is not served
 /// again. Both are optional: a feed can run without either.
 final class FeedViewer {
-  const FeedViewer({this.focus, this.watchTracker});
+  FeedViewer({this.focus, this.watchTracker});
 
   final FeedFocusPort? focus;
   final WatchHistoryTracker? watchTracker;
@@ -18,16 +18,30 @@ final class FeedViewer {
   /// The viewer landed on `posts[index]` — a load, a swipe, a jump.
   void landedOn(List<VideoPost> posts, int index) {
     _watched(posts[index]);
-    // Watch time stays zero: Dart has no playback watch timer yet, so the
-    // engine cannot receive real per-post watch milliseconds.
-    focus?.focusChanged(
-      FeedFocus.around(posts: posts, activeIndex: index),
-    );
+    rosterChanged(posts, index);
   }
 
-  /// The viewer stayed on [post] while the list around it changed. The
-  /// delivery window is already pointed at it.
-  void stayedOn(VideoPost post) => _watched(post);
+  /// The visible roster changed while the viewer remained in place.
+  void rosterChanged(List<VideoPost> posts, int index) {
+    _publish(posts, index);
+  }
+
+  void visibilityChanged(bool isVisible) {
+    final lease = focus;
+    if (lease is! FeedFocusLease) return;
+    if (!isVisible) return lease.deactivate();
+    lease.activate();
+  }
+
+  void dispose() {
+    final lease = focus;
+    if (lease is FeedFocusLease) lease.release();
+  }
+
+  void _publish(List<VideoPost> posts, int index) {
+    // Reactivation carries no invented watch time.
+    focus?.focusChanged(FeedFocus.around(posts: posts, activeIndex: index));
+  }
 
   void _watched(VideoPost post) {
     final tracker = watchTracker;

@@ -1,14 +1,25 @@
 use crate::chunk::downloader::ChunkResult;
-use crate::manager::transfers::cancelled_before_request;
+use crate::manager::inflight::InFlightChunks;
+use crate::manager::transfers::{chunk_event, TransferEvent};
+use crate::tests::support::planned_transfer;
+use ghostr_engine::adaptive::PreemptionAuthority;
 
 #[test]
-fn only_pre_request_cancellation_suppresses_the_manager_event() {
-    let before_request = result(false);
-    let after_request = result(true);
+fn pre_request_cancellation_reports_body_completion_to_the_manager() {
+    let event = event(false);
 
-    assert!(cancelled_before_request(&Ok(before_request)));
-    assert!(!cancelled_before_request(&Ok(after_request)));
-    assert!(!cancelled_before_request(&Err(anyhow::anyhow!("failure"))));
+    assert!(matches!(event, TransferEvent::BodyFinished(_)));
+}
+
+fn event(request_started: bool) -> TransferEvent {
+    let transfer = planned_transfer(
+        "cancelled",
+        "media.example",
+        PreemptionAuthority::Speculative,
+    );
+    let mut active = InFlightChunks::new();
+    let attempt = active.next_attempt(transfer.request.chunk, transfer.identity);
+    chunk_event(attempt, transfer.url, Ok(result(request_started)))
 }
 
 fn result(request_started: bool) -> ChunkResult {

@@ -8,12 +8,12 @@ use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_delivery::manager::{
     start_delivery_manager_with_discovery_demand, DeliveryManagerConfig, DeliveryTuning,
 };
-use ghostr_delivery::playback_demand::{demand_channel, DemandSender};
+use ghostr_delivery::playback_demand::{demand_channel, DemandReceiver, DemandSender, DemandState};
 use ghostr_delivery::progressive_posts::ServablePosts;
 use ghostr_engine::{DataUsageLevel, EngineParams};
 use ghostr_partial_store::partial_range_store::{capacity::StoreCapacity, PartialRangeStore};
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex as StdMutex};
 use tokio::sync::Mutex;
 
 pub struct DeliveryFixture {
@@ -23,9 +23,20 @@ pub struct DeliveryFixture {
     pub cache: ServablePosts,
     pub network: NetworkThrottle,
     pub root: PathBuf,
+    demands: Arc<StdMutex<Vec<DemandState>>>,
+}
+
+impl DeliveryFixture {
+    pub fn demands(&self) -> Vec<DemandState> {
+        self.demands.lock().expect("demand trace").clone()
+    }
 }
 
 pub fn start_delivery(prefix: &str) -> DeliveryFixture {
+    start_delivery_with_tuning(prefix, DeliveryTuning::default())
+}
+
+pub fn start_delivery_with_tuning(prefix: &str, tuning: DeliveryTuning) -> DeliveryFixture {
     let root = temp_directory(prefix);
     let store = Arc::new(PartialRangeStore::with_capacity(
         root.clone(),
@@ -35,6 +46,8 @@ pub fn start_delivery(prefix: &str) -> DeliveryFixture {
     let cache = ServablePosts::new();
     let network = NetworkThrottle::new();
     let (demand, demand_receiver) = demand_channel();
+    let demands = Arc::new(StdMutex::new(Vec::new()));
+    let demand_receiver = trace_demands(demand_receiver, demands.clone());
     let (handle, _discovery_demand) = start_delivery_manager_with_discovery_demand(
         DeliveryManagerConfig {
             store: store.clone(),
@@ -44,7 +57,7 @@ pub fn start_delivery(prefix: &str) -> DeliveryFixture {
             stats_path: root.join("host_stats.json"),
             params: EngineParams::default(),
             level: DataUsageLevel::Balanced,
-            tuning: DeliveryTuning::default(),
+            tuning,
         },
         demand_receiver,
     );
@@ -55,5 +68,20 @@ pub fn start_delivery(prefix: &str) -> DeliveryFixture {
         cache,
         network,
         root,
+        demands,
     }
+}
+
+fn trace_demands(
+    mut source: DemandReceiver,
+    trace: Arc<StdMutex<Vec<DemandState>>>,
+) -> DemandReceiver {
+    let (forward, receiver) = demand_channel();
+    tokio::spawn(async move {
+        while let Some(signal) = source.recv().await {
+            trace.lock().expect("demand trace").push(signal.clone());
+            forward.emit(signal);
+        }
+    });
+    receiver
 }

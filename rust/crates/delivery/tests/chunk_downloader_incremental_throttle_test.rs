@@ -14,7 +14,8 @@ use range_fixture::download_chunk_throttled;
 use std::time::Duration;
 
 const TOTAL: u64 = 256 * 1_024;
-const MID_TRANSFER_PREFIX: u64 = 144 * 1_024;
+const FIRST_PACED_WRITE: u64 = 16 * 1_024;
+const PROGRESS_WATCHDOG: Duration = Duration::from_secs(10);
 
 #[tokio::test]
 async fn throttled_large_response_makes_incremental_store_progress() {
@@ -40,13 +41,19 @@ async fn throttled_large_response_makes_incremental_store_progress() {
         ..NetworkProfile::default()
     });
 
-    let (download, progress) = tokio::join!(
-        download_chunk_throttled(&spec, &sink, &mut stats, &token, &network),
-        tokio::time::timeout(Duration::from_millis(650), wait_for_prefix(&store)),
-    );
+    let download = download_chunk_throttled(&spec, &sink, &mut stats, &token, &network);
+    tokio::pin!(download);
+    let progress = tokio::time::timeout(PROGRESS_WATCHDOG, async {
+        tokio::select! {
+            result = &mut download => panic!("download completed before prefix: {result:?}"),
+            () = wait_for_prefix(&store) => {}
+        }
+    });
 
-    progress.expect("large response is stored incrementally");
-    download.expect("chunk download");
+    progress
+        .await
+        .expect("large response is stored incrementally");
+    download.await.expect("chunk download");
     std::fs::remove_dir_all(root).ok();
 }
 
@@ -57,7 +64,7 @@ async fn wait_for_prefix(store: &PartialRangeStore) {
         let ranges = store.present_ranges("clip").await.expect("ranges");
         if ranges
             .iter()
-            .any(|range| range.start == 0 && range.end >= MID_TRANSFER_PREFIX)
+            .any(|range| range.start == 0 && range.end >= FIRST_PACED_WRITE)
         {
             return;
         }

@@ -13,3 +13,7 @@ final class TimedPlaybackObservation {
   final Duration elapsed;
   final PlaybackObservation observation;
 }
+
+bool _isPlaying(TimedPlaybackObservation event) {
+  return event.observation.phase == PlaybackPhase.playing;
+}

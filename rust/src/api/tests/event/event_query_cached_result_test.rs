@@ -20,6 +20,7 @@ async fn generic_query_returns_an_accepted_event_from_the_session_pool() {
             data_usage: FfiDataUsageLevel::Balanced,
             max_storage_bytes: 1024,
         },
+        None,
     )
     .await
     .expect("engine start");

@@ -1,3 +1,4 @@
+import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_observation.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_session.dart';
@@ -7,19 +8,24 @@ part 'device_playback_probe_models.dart';
 
 final class DevicePlaybackProbe implements PlaybackTelemetryPort {
   final _watch = Stopwatch()..start();
+  final activations = <PlaybackSession>[];
+  final deactivations = <PlaybackSession>[];
   final observations = <TimedPlaybackObservation>[];
-  var _generation = 0;
+  var _nextGeneration = 0;
 
   Duration get elapsed => _watch.elapsed;
 
-  PlaybackFocus markFocus(PlaybackVideoId videoId) {
-    return PlaybackFocus(videoId, elapsed);
-  }
+  PlaybackFocus markFocus(PlaybackVideoId videoId) =>
+      PlaybackFocus(videoId, elapsed);
 
   @override
-  PlaybackSession activate(PlaybackVideoId videoId) {
-    return PlaybackSession(videoId, ++_generation);
-  }
+  PlaybackSession openSession(
+    PlaybackVideoId videoId,
+    PlaybackDeliveryId deliveryId,
+  ) => PlaybackSession(videoId, deliveryId, ++_nextGeneration);
+
+  @override
+  void activate(PlaybackSession session) => activations.add(session);
 
   @override
   void report(PlaybackObservation observation) {
@@ -27,7 +33,7 @@ final class DevicePlaybackProbe implements PlaybackTelemetryPort {
   }
 
   @override
-  void deactivate(PlaybackSession session) {}
+  void deactivate(PlaybackSession session) => deactivations.add(session);
 
   Duration? playingLatency(PlaybackFocus focus) {
     final event = _firstPhaseAfter(
@@ -91,8 +97,4 @@ final class DevicePlaybackProbe implements PlaybackTelemetryPort {
     }
     return null;
   }
-}
-
-bool _isPlaying(TimedPlaybackObservation event) {
-  return event.observation.phase == PlaybackPhase.playing;
 }

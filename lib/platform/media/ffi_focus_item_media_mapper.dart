@@ -1,6 +1,4 @@
-import 'dart:convert';
-
-import 'package:crypto/crypto.dart';
+import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/src/rust/api/delivery_types.dart';
 
@@ -31,25 +29,12 @@ FfiMediaDelivery _delivery(VideoMediaDelivery delivery) {
   };
 }
 
-/// Stable gateway id for one post: the nostr event scope when it is
-/// store-safe, the expected digest otherwise, and a digest of the
-/// primary URL as the last resort so ids survive restarts.
 String ffiPostIdForMedia(VideoMediaSource media) {
-  final scope = media.cacheScope?.value;
-  if (scope != null && _storeSafeIdPattern.hasMatch(scope)) return scope;
-  final digest = media.expectedSha256?.value;
-  if (digest != null) return digest;
-  return _urlDigest(media);
-}
-
-final _storeSafeIdPattern = RegExp(r'^[A-Za-z0-9_-]+$');
-
-String _urlDigest(VideoMediaSource media) {
-  final url = media.remoteUrl;
-  if (url == null) {
+  final deliveryId = media.playbackDeliveryId;
+  if (deliveryId == null) {
     throw ArgumentError.value(media, 'media', 'Remote media is required.');
   }
-  return 'url-${sha256.convert(utf8.encode(url))}';
+  return deliveryId.value;
 }
 
 BigInt? _bigInt(int? value) => value == null ? null : BigInt.from(value);

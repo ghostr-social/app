@@ -8,10 +8,9 @@ use ghostr_net::transfer_timeouts::TransferTimeouts;
 use raw_http::spawn_response_sequence;
 
 #[tokio::test]
-async fn media_probe_accepts_a_full_get_when_head_is_rejected() {
+async fn media_probe_stops_after_a_rejected_head() {
     let head = b"HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 0\r\n\r\n";
-    let get = b"HTTP/1.1 200 OK\r\nContent-Type: video/mp4\r\nContent-Length: 5\r\n\r\nvideo";
-    let (url, requests) = spawn_response_sequence(vec![head, get]).await;
+    let (url, requests) = spawn_response_sequence(vec![head]).await;
     let mut stats = HostStats::new();
 
     let result = probe(
@@ -20,11 +19,8 @@ async fn media_probe_accepts_a_full_get_when_head_is_rejected() {
         TransferTimeouts::default(),
         &mut stats,
     )
-    .await
-    .expect("fallback probe");
+    .await;
 
-    assert_eq!(result.content_length, Some(5));
-    assert!(!result.accept_ranges);
-    assert_eq!(result.content_type.as_deref(), Some("video/mp4"));
+    assert!(result.is_err());
     requests.await.expect("upstream requests");
 }

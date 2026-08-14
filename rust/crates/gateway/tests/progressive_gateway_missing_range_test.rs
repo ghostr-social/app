@@ -3,6 +3,7 @@ mod gateway_fixture;
 use axum::body::to_bytes;
 use axum::http::StatusCode;
 use gateway_fixture::progressive::progressive_harness;
+use ghostr_delivery::playback_demand::DemandState;
 use ghostr_engine::ByteRange;
 use tower::ServiceExt;
 
@@ -25,9 +26,11 @@ async fn missing_bytes_emit_demand_and_stream_once_they_arrive() {
     let response = harness.router.oneshot(request).await.expect("response");
     assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
 
-    let signal = harness.demand.recv().await.expect("demand signal");
-    assert_eq!(signal.post.as_str(), "clip");
-    assert_eq!(signal.range, ByteRange::new(5, 10));
+    let DemandState::Blocked(signal) = harness.demand.recv().await.expect("demand signal") else {
+        panic!("first demand state must block");
+    };
+    assert_eq!(signal.post().as_str(), "clip");
+    assert_eq!(signal.range(), ByteRange::new(5, 10));
 
     harness
         .store

@@ -9,7 +9,7 @@ extension FeedCubitUpdateLoading on FeedCubit {
     final result = await _loadFeedUpdate(kind);
     final accepted = _acceptedFeedUpdate(feed, kind, allowEmpty, result);
     if (accepted == null) return;
-    _applyFeedUpdate(kind, accepted.posts);
+    _applyFeedUpdate(kind, accepted);
   }
 
   Future<FeedFetch?> _loadFeedUpdate(FeedKind kind) {
@@ -30,9 +30,12 @@ extension FeedCubitUpdateLoading on FeedCubit {
     return result.posts.isNotEmpty || allowEmpty ? result : null;
   }
 
-  void _applyFeedUpdate(FeedKind kind, List<VideoPost> posts) {
+  void _applyFeedUpdate(FeedKind kind, FeedFetched accepted) {
+    final FeedFetched(:posts, :eligiblePosts) = accepted;
     final current = state;
-    if (current is FeedLoaded) return _acceptRefresh(current, posts);
+    if (current is FeedLoaded) {
+      return _acceptRefresh(current, posts, eligiblePosts);
+    }
     _acceptLoad(kind, posts);
   }
 }

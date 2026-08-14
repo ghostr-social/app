@@ -16,6 +16,8 @@ import 'package:ghostr/shared/widgets/loading_panel.dart';
 
 export 'feed_screen_bindings.dart';
 
+part 'feed_screen_actions.dart';
+
 class FeedScreen extends StatefulWidget {
   const FeedScreen({required this.bindings, super.key});
 
@@ -27,6 +29,30 @@ class FeedScreen extends StatefulWidget {
 
 class _FeedScreenState extends State<FeedScreen> {
   bool _commentsOpen = false;
+  FeedCubit? _cubit;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final cubit = context.read<FeedCubit>();
+    if (identical(_cubit, cubit)) return;
+    _cubit?.surfaceVisibilityChanged(false);
+    _cubit = cubit;
+    cubit.surfaceVisibilityChanged(widget.bindings.isActive);
+  }
+
+  @override
+  void didUpdateWidget(covariant FeedScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.bindings.isActive == widget.bindings.isActive) return;
+    _cubit?.surfaceVisibilityChanged(widget.bindings.isActive);
+  }
+
+  @override
+  void dispose() {
+    _cubit?.surfaceVisibilityChanged(false);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,52 +145,6 @@ class _FeedScreenState extends State<FeedScreen> {
         actions: _actions(context, state, post, sharing),
       ),
     );
-  }
-
-  FeedCardActions _actions(
-    BuildContext context,
-    FeedLoaded state,
-    VideoPost post,
-    VideoShareState sharing,
-  ) {
-    final cubit = context.read<FeedCubit>();
-    return FeedCardActions(
-      navigation: FeedCardNavigationActions(
-        onOpenProfile: () => widget.bindings.onOpenProfile(post.creator.id),
-        onOpenComments: () => _openComments(context, post),
-        onOpenHashtag: widget.bindings.onOpenHashtag,
-        onFollowCreator: state.canFollow(post.creator.id)
-            ? cubit.followCreator
-            : null,
-      ),
-      engagement: FeedCardEngagementActions(
-        onToggleLike: cubit.toggleLike,
-        onToggleRepost: cubit.canRepost(post) ? cubit.toggleRepost : null,
-      ),
-      moderation: FeedCardModerationActions(
-        onBlockCreator: () => unawaited(cubit.blockCreator(post)),
-      ),
-      sharing: FeedCardSharingActions(
-        onShare: (post, origin) =>
-            context.read<VideoShareCubit>().share(post, origin: origin),
-        status: _shareStatus(context, post, sharing),
-      ),
-    );
-  }
-
-  FeedCardShareStatus _shareStatus(
-    BuildContext context,
-    VideoPost post,
-    VideoShareState state,
-  ) {
-    final sharing = context.read<VideoShareCubit>();
-    if (!sharing.supports(post)) return FeedCardShareStatus.unavailable;
-    if (state case VideoShareInProgress(:final postId)) {
-      return postId == post.id
-          ? FeedCardShareStatus.downloading
-          : FeedCardShareStatus.busy;
-    }
-    return FeedCardShareStatus.available;
   }
 
   Future<void> _openComments(BuildContext context, VideoPost post) async {

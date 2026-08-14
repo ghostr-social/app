@@ -1,3 +1,4 @@
+use super::InFlightChunks;
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::ChunkId;
 
@@ -27,5 +28,27 @@ impl ActiveRange {
 
     pub(crate) fn committed_until_ms(&self) -> u64 {
         self.committed_until_ms
+    }
+}
+
+impl InFlightChunks {
+    pub(crate) fn ranges(&self) -> Vec<ActiveRange> {
+        self.transfers
+            .iter()
+            .filter(|(_, active)| !active.io_finished())
+            .map(|(chunk, active)| {
+                ActiveRange::new(
+                    chunk.clone(),
+                    active.identity.clone(),
+                    active.committed_until_ms,
+                )
+            })
+            .collect()
+    }
+
+    pub(crate) fn contains_identity(&self, identity: &TransferIdentity) -> bool {
+        self.transfers
+            .values()
+            .any(|active| &active.identity == identity)
     }
 }

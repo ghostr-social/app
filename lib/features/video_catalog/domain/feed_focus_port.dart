@@ -40,3 +40,12 @@ abstract interface class FeedFocusPort {
   /// throw into the caller — delivery trouble is theirs to absorb.
   void focusChanged(FeedFocus focus);
 }
+
+/// Exclusive ownership of the shared delivery focus for one feed surface.
+abstract interface class FeedFocusLease implements FeedFocusPort {
+  void activate();
+
+  void deactivate();
+
+  void release();
+}

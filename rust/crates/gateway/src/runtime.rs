@@ -5,6 +5,8 @@
 ))]
 use crate::debug::media::DebugMediaHttpClient;
 use crate::delivery::start_progressive_delivery;
+#[cfg(all(feature = "device-integration", debug_assertions))]
+use crate::device_integration::DeviceIntegrationMediaHttpClient;
 use crate::hls::playback::{HlsPlaybackGateway, NativeHlsPlaybackSession};
 use crate::hls::sessions::HlsSessions;
 use crate::progressive::capabilities::ProgressiveCapabilityId;
@@ -12,7 +14,8 @@ use crate::progressive::route::ProgressiveState;
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_media_store::native_cache::prepare_native_cache_directory;
-use ghostr_net::outbound_media_client::{MediaHttpClient, MediaHttpRequests};
+use ghostr_net::outbound_media_client::MediaHttpClient;
+use ghostr_net::outbound_media_client::MediaHttpRequests;
 use log::warn;
 use nostr_sdk::Client;
 use std::{future::Future, io, path::PathBuf, sync::Arc};
@@ -23,6 +26,7 @@ pub struct GatewayConfiguration {
     pub relays: Vec<String>,
     pub max_parallel_downloads: usize,
     pub max_storage_bytes: u64,
+    pub device_integration_origin: Option<String>,
 }
 
 pub struct GatewayRuntime {
@@ -44,7 +48,7 @@ impl GatewayRuntime {
         configuration: GatewayConfiguration,
         client: Arc<Client>,
     ) -> anyhow::Result<(String, Self, watch::Receiver<DiscoveryDemand>)> {
-        let media = Arc::new(MediaHttpClient::public()?);
+        let media = media_client(&configuration)?;
         start_with_media(configuration, client, media).await
     }
 
@@ -91,6 +95,20 @@ impl GatewayRuntime {
     pub async fn release_hls(&self, session_id: &str) -> bool {
         self.hls.release(session_id).await
     }
+}
+
+fn media_client(
+    configuration: &GatewayConfiguration,
+) -> anyhow::Result<Arc<dyn MediaHttpRequests>> {
+    #[cfg(all(feature = "device-integration", debug_assertions))]
+    if let Some(origin) = configuration.device_integration_origin.as_deref() {
+        return Ok(Arc::new(DeviceIntegrationMediaHttpClient::new(origin)?));
+    }
+    anyhow::ensure!(
+        configuration.device_integration_origin.is_none(),
+        "device integration media is unavailable"
+    );
+    Ok(Arc::new(MediaHttpClient::public()?))
 }
 
 async fn start_with_media(

@@ -10,6 +10,7 @@ pub(crate) struct MetadataProbePool {
     limit: usize,
     probing: HashMap<PostId, TransferIdentity>,
     probed: HashSet<PostId>,
+    deferred: HashSet<PostId>,
 }
 
 impl MetadataProbePool {
@@ -18,6 +19,7 @@ impl MetadataProbePool {
             limit: limit.max(1),
             probing: HashMap::new(),
             probed: HashSet::new(),
+            deferred: HashSet::new(),
         }
     }
 
@@ -48,6 +50,7 @@ impl MetadataProbePool {
 
     pub fn learned(&mut self, post: &PostId) {
         self.probing.remove(post);
+        self.deferred.remove(post);
         self.probed.insert(post.clone());
     }
 
@@ -55,20 +58,36 @@ impl MetadataProbePool {
         self.probing.remove(post);
     }
 
+    pub fn defer_to_body(&mut self, post: &PostId) {
+        self.probing.remove(post);
+        self.deferred.insert(post.clone());
+    }
+
+    pub fn body_finished(&mut self, post: &PostId) {
+        self.deferred.remove(post);
+    }
+
+    pub(crate) fn reconcile_bodies(&mut self, active: &HashSet<PostId>) {
+        self.deferred.retain(|post| active.contains(post));
+    }
+
     pub fn clear(&mut self) {
         self.probing.clear();
         self.probed.clear();
+        self.deferred.clear();
     }
 
     pub(crate) fn representation_changed(&mut self, post: &PostId) {
         self.probing.remove(post);
         self.probed.remove(post);
+        self.deferred.remove(post);
     }
 
     /// Active probes remain counted until completion; only completed
     /// probe-once history follows hot scheduling retention.
     pub(crate) fn retain_history(&mut self, retained: &HashSet<PostId>) {
         self.probed.retain(|post| retained.contains(post));
+        self.deferred.retain(|post| retained.contains(post));
     }
 
     pub(crate) fn current_identity(
@@ -83,7 +102,11 @@ impl MetadataProbePool {
     }
 
     fn needed_probe(&self, catalog: &Catalog, retry: &RetryBook, post: &PostId) -> Option<String> {
-        if self.probing.contains_key(post) || self.probed.contains(post) || retry.is_cooling(post) {
+        if self.probing.contains_key(post)
+            || self.probed.contains(post)
+            || self.deferred.contains(post)
+            || retry.is_cooling(post)
+        {
             return None;
         }
         let entry = catalog.lookup(post)?;

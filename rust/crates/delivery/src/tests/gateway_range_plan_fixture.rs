@@ -2,7 +2,6 @@ use crate::delivery_events::{DeliveryFocus, FocusItem};
 use crate::manager::plan::{planned_work, PlanInputs, PlannedWork};
 use crate::manager::retry::{RetryBook, RetryPolicy};
 use crate::manager::state::DeliveryState;
-use crate::playback_demand::DemandSignal;
 use crate::tests::adaptive_plan_fixture::playback_for;
 use crate::tests::media_timeline_fixture::classic_moov;
 use ghostr_engine::adaptive::StorageSnapshot;
@@ -29,6 +28,7 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
     }
     let stats = stats(buffered);
     let retry = RetryBook::new(RetryPolicy::default());
+    let demanded = HashMap::from([(post.clone(), demanded)]);
     planned_work(
         &mut state,
         PlanInputs {
@@ -41,10 +41,7 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
             connection_ceiling: 1,
             packet_loss_bps: 0,
             observed_at_ms: 1,
-            demanded: Some(DemandSignal {
-                post,
-                range: demanded,
-            }),
+            demanded: &demanded,
         },
     )
 }

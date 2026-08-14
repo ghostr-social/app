@@ -2,13 +2,15 @@ import 'package:ghostr/core/errors/failure_reporter.dart';
 import 'package:ghostr/features/settings/domain/app_settings_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
+import 'package:ghostr/features/video_catalog/domain/video_feed_refresh_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_entry.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_repository.dart';
 import 'package:ghostr/features/watch_history/domain/watched_video_index.dart';
 
-class WatchAwareVideoFeedRepository implements VideoFeedRepository {
+class WatchAwareVideoFeedRepository
+    implements VideoFeedRepository, VideoFeedRefreshRepository {
   const WatchAwareVideoFeedRepository({
     required VideoFeedRepository feed,
     required WatchHistoryRepository history,
@@ -25,6 +27,19 @@ class WatchAwareVideoFeedRepository implements VideoFeedRepository {
   final FailureReporter _failureReporter;
 
   static const _maxPageDigs = 3;
+
+  @override
+  Future<VideoFeedRefreshSnapshot> loadRefresh(FeedKind kind) async {
+    final all = await _feed.loadFeed(kind);
+    if (!await _isEnabled()) {
+      return VideoFeedRefreshSnapshot(allPosts: all, eligiblePosts: all);
+    }
+    final watched = await _watchedIndex();
+    return VideoFeedRefreshSnapshot(
+      allPosts: all,
+      eligiblePosts: _fresh(all, watched),
+    );
+  }
 
   @override
   Future<List<VideoPost>> loadFeed(

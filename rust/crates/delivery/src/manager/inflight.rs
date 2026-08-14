@@ -6,7 +6,7 @@ use crate::chunk::cancel::CancelHandle;
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
 use ghostr_engine::scheduling::RangeRequest;
-use ghostr_engine::ChunkId;
+use ghostr_engine::{ChunkId, PostId};
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -127,17 +127,10 @@ impl InFlightChunks {
         self.transfers.insert(attempt.chunk.clone(), active);
     }
 
-    pub(crate) fn ranges(&self) -> Vec<ActiveRange> {
+    pub(crate) fn body_posts(&self) -> HashSet<PostId> {
         self.transfers
-            .iter()
-            .filter(|(_, active)| !active.io_finished())
-            .map(|(chunk, active)| {
-                ActiveRange::new(
-                    chunk.clone(),
-                    active.identity.clone(),
-                    active.committed_until_ms,
-                )
-            })
+            .keys()
+            .map(|chunk| chunk.post.clone())
             .collect()
     }
 

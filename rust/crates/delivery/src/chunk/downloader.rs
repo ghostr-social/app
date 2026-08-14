@@ -110,19 +110,34 @@ async fn transfer<W: ChunkWrite + ?Sized>(
                 total,
             )
         }
-        RangeReply::FullBody => completed(
-            stream_into(StreamInput {
-                response,
-                spec,
-                sink,
-                cancel,
-                network,
-                traffic,
-            })
-            .await?,
-            false,
-            full_length,
-        ),
+        RangeReply::FullBody => {
+            let returned = full_body_spec(spec, full_length);
+            completed(
+                stream_into(StreamInput {
+                    response,
+                    spec: &returned,
+                    sink,
+                    cancel,
+                    network,
+                    traffic,
+                })
+                .await?,
+                false,
+                full_length,
+            )
+        }
+    }
+}
+
+fn full_body_spec<'a>(spec: &ChunkSpec<'a>, full_length: Option<u64>) -> ChunkSpec<'a> {
+    let end = full_length
+        .filter(|length| *length > 0)
+        .map_or(spec.range.end, |length| length.min(spec.range.end));
+    ChunkSpec {
+        client: spec.client,
+        url: spec.url,
+        range: ByteRange::new(spec.range.start, end),
+        timeouts: spec.timeouts,
     }
 }
 

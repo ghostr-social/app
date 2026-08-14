@@ -6,7 +6,43 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `from`
+
+/// Delivery manager decisions and latest accepted identity in this process.
+class FfiPlaybackAdmissionSnapshot {
+  final BigInt accepted;
+  final BigInt inactiveDelivery;
+  final BigInt staleSession;
+  final BigInt staleSequence;
+  final String? lastAcceptedDeliveryId;
+
+  const FfiPlaybackAdmissionSnapshot({
+    required this.accepted,
+    required this.inactiveDelivery,
+    required this.staleSession,
+    required this.staleSequence,
+    this.lastAcceptedDeliveryId,
+  });
+
+  @override
+  int get hashCode =>
+      accepted.hashCode ^
+      inactiveDelivery.hashCode ^
+      staleSession.hashCode ^
+      staleSequence.hashCode ^
+      lastAcceptedDeliveryId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FfiPlaybackAdmissionSnapshot &&
+          runtimeType == other.runtimeType &&
+          accepted == other.accepted &&
+          inactiveDelivery == other.inactiveDelivery &&
+          staleSession == other.staleSession &&
+          staleSequence == other.staleSequence &&
+          lastAcceptedDeliveryId == other.lastAcceptedDeliveryId;
+}
 
 /// One self-contained, ordered playback sample.
 class FfiPlaybackObservation {

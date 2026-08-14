@@ -6,11 +6,15 @@ use ghostr_engine::adaptive::{
 use ghostr_engine::ByteRange;
 use serde::Serialize;
 
+mod next_reserve;
+use next_reserve::{snapshot as next_reserve, NextReserveSnapshot};
+
 #[derive(Debug, Serialize)]
 pub(super) struct AdaptivePlanSnapshot {
     revision: u64,
     observed_at_ms: u64,
     discovery_demand: &'static str,
+    next_reserve: NextReserveSnapshot,
     allocations: Vec<AllocationSnapshot>,
     retained: Vec<RetainedSnapshot>,
     evictions: Vec<EvictionSnapshot>,
@@ -55,7 +59,7 @@ struct EvictionSnapshot {
 }
 
 #[derive(Debug, Serialize)]
-struct RangeSnapshot {
+pub(super) struct RangeSnapshot {
     start: u64,
     end: u64,
 }
@@ -69,6 +73,7 @@ fn snapshot(evidence: &PlanEvidence) -> AdaptivePlanSnapshot {
         revision: evidence.revision,
         observed_at_ms: evidence.observed_at_ms,
         discovery_demand: demand(evidence.plan.discovery_demand),
+        next_reserve: next_reserve(&evidence.plan.next_reserve),
         allocations: evidence.plan.allocations.iter().map(allocation).collect(),
         retained: evidence.plan.retained.iter().map(retained).collect(),
         evictions: evidence.plan.evictions.iter().map(eviction).collect(),
@@ -117,7 +122,7 @@ fn eviction(value: &Eviction) -> EvictionSnapshot {
     }
 }
 
-fn range(value: ByteRange) -> RangeSnapshot {
+pub(super) fn range(value: ByteRange) -> RangeSnapshot {
     RangeSnapshot {
         start: value.start,
         end: value.end,
@@ -145,7 +150,9 @@ fn allocation_reason(value: AllocationReason) -> &'static str {
         AllocationReason::CurrentBufferReserve => "current_buffer_reserve",
         AllocationReason::LikelyNextTransition => "likely_next_transition",
         AllocationReason::RapidNavigationCoverage => "rapid_navigation_coverage",
+        AllocationReason::MediaBootstrap => "media_bootstrap",
         AllocationReason::MediaLayoutDiscovery => "media_layout_discovery",
+        AllocationReason::NextStartability => "next_startability",
         AllocationReason::UsefulCommitment => "useful_commitment",
     }
 }

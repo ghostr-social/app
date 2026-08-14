@@ -1,4 +1,4 @@
-use crate::adaptive::{candidate_snapshot, CandidateEvidence, ViewProbability};
+use crate::adaptive::{candidate_snapshot, CandidateEvidence, FeedOffset, ViewProbability};
 use crate::catalog::{Catalog, LearnedFacts};
 use crate::media_timeline::{parse_mp4_segments, MediaSegment};
 use crate::tests::media_timeline_support::classic_moov;
@@ -38,7 +38,7 @@ fn parsed_timing_exposes_exact_sparse_media_ranges_to_the_policy() {
 fn evidence(post: PostId) -> CandidateEvidence {
     CandidateEvidence {
         post,
-        feed_distance: 1,
+        feed_offset: FeedOffset::new(1),
         view_probability: ViewProbability::new(0.8).unwrap(),
         present: Vec::new(),
         recently_evicted: Vec::new(),

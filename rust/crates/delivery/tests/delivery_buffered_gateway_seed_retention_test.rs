@@ -3,14 +3,14 @@
 mod delivery_fixture;
 
 use delivery_fixture::concurrency_origin::{ActiveRequest, ControlledOrigin};
+use delivery_fixture::demand;
 use delivery_fixture::items::{focus_now, seed_range, sized_item};
 use delivery_fixture::media::{hit_log, hits, serve_recording};
 use delivery_fixture::options::{base_params, DeliveryOptions};
 use delivery_fixture::playback::playing;
 use delivery_fixture::start_harness;
 use delivery_fixture::wait::wait_for_ranges;
-use ghostr_delivery::playback_demand::DemandSignal;
-use ghostr_engine::{ByteRange, EngineParams, PostId};
+use ghostr_engine::{ByteRange, EngineParams};
 use std::time::Duration;
 
 #[tokio::test]
@@ -35,10 +35,7 @@ async fn buffered_gateway_demand_finishes_the_active_seed_before_using_its_slot(
     assert!(seed.send_byte().await);
     wait_for_ranges(&harness.store, "ahead", &[(0, 1)]).await;
     let initial_current_requests = current_requests(&log);
-    harness.demand.emit(DemandSignal {
-        post: PostId::new("current"),
-        range: ByteRange::new(80, 112),
-    });
+    let _demand = demand::blocked(&harness, "current", ByteRange::new(80, 112)).await;
 
     tokio::time::sleep(Duration::from_millis(150)).await;
     assert_eq!(current_requests(&log), initial_current_requests);

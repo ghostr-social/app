@@ -1,7 +1,7 @@
 use crate::progressive::route::ProgressiveState;
 use axum::body::Body;
 use bytes::Bytes;
-use ghostr_delivery::playback_demand::DemandSignal;
+use ghostr_delivery::playback_demand::DemandConsumer;
 use ghostr_engine::playback::PLAYBACK_SLICE_BYTES;
 use ghostr_engine::{ByteRange, PostId};
 use std::future::Future;
@@ -42,7 +42,9 @@ async fn pump(
     sender: ChunkSender,
 ) {
     let mut progress = PumpProgress::new(span.start, state.timing.idle_timeout);
-    let mut demanded = None;
+    let mut demand = state
+        .demand
+        .consumer(PostId::new(source.key()), source.binding().cloned());
     while progress.cursor < span.end {
         let step = advance(
             PumpIteration {
@@ -52,7 +54,7 @@ async fn pump(
                 deadline: progress.deadline,
             },
             &sender,
-            &mut demanded,
+            &mut demand,
         )
         .await;
         if apply_step(step, &mut progress, &sender, state.timing.idle_timeout).await {
@@ -122,7 +124,7 @@ enum PumpStep {
 async fn advance(
     iteration: PumpIteration<'_>,
     sender: &ChunkSender,
-    demanded: &mut Option<u64>,
+    demand: &mut DemandConsumer,
 ) -> PumpStep {
     let notify = iteration.state.store.change_notifier();
     let changed = notify.notified();
@@ -135,7 +137,7 @@ async fn advance(
     {
         Err(_) => PumpStep::Stop,
         Ok(ChunkRead::Present(bytes)) => send_bytes(sender, iteration.remaining.start, bytes).await,
-        Ok(ChunkRead::Missing) => wait_for_bytes(iteration, changed, sender, demanded).await,
+        Ok(ChunkRead::Missing) => wait_for_bytes(iteration, changed, sender, demand).await,
         Ok(ChunkRead::Superseded) => PumpStep::Superseded,
     }
 }
@@ -152,14 +154,9 @@ async fn wait_for_bytes(
     iteration: PumpIteration<'_>,
     changed: impl Future<Output = ()>,
     sender: &ChunkSender,
-    demanded: &mut Option<u64>,
+    demand: &mut DemandConsumer,
 ) -> PumpStep {
-    emit_demand(
-        iteration.state,
-        iteration.source.key(),
-        iteration.remaining,
-        demanded,
-    );
+    emit_demand(demand, iteration.remaining);
     tokio::select! {
         biased;
         _ = sender.closed() => PumpStep::Stop,
@@ -170,22 +167,10 @@ async fn wait_for_bytes(
     }
 }
 
-fn emit_demand(
-    state: &ProgressiveState,
-    key: &str,
-    missing: Range<u64>,
-    demanded: &mut Option<u64>,
-) {
-    if *demanded == Some(missing.start) {
-        return;
-    }
-    *demanded = Some(missing.start);
+fn emit_demand(demand: &mut DemandConsumer, missing: Range<u64>) {
     let end = missing
         .start
         .saturating_add(PLAYBACK_SLICE_BYTES)
         .min(missing.end);
-    state.demand.emit(DemandSignal {
-        post: PostId::new(key),
-        range: ByteRange::new(missing.start, end),
-    });
+    demand.demand(ByteRange::new(missing.start, end));
 }

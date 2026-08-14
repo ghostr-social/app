@@ -30,11 +30,10 @@ void main() {
         optional: FeedOptionalDependencies(social: repository),
       ),
     );
-    addTearDown(cubit.close);
     await tester.pumpWidget(
       MaterialApp(
-        home: BlocProvider.value(
-          value: cubit..load(),
+        home: BlocProvider(
+          create: (_) => cubit..load(),
           child: DiscoveryFeedScreen(
             request: DiscoveryFeedRequest(
               query: '#music',

@@ -54,6 +54,13 @@ extension _VideoPlayerSurfaceLoading on _VideoPlayerSurfaceState {
 
   void _startLoad() => _lifecycle.track(_loadController());
 
+  PlaybackSession? _openPlaybackSession() {
+    final videoId = widget.videoId;
+    final deliveryId = _playbackMedia.playbackDeliveryId;
+    if (videoId == null || deliveryId == null) return null;
+    return widget.telemetry.openSession(videoId, deliveryId);
+  }
+
   void _logInitializationFailure(Object error, StackTrace stackTrace) {
     log(
       'Video player initialization failed.',

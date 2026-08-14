@@ -1,3 +1,4 @@
+import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_observation.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_session.dart';
@@ -8,7 +9,12 @@ import 'package:ghostr/features/video_inventory/domain/playback_session.dart';
 /// from the same session. Activation and deactivation must remain ordered, and
 /// no implementation may throw into playback.
 abstract interface class PlaybackTelemetryPort {
-  PlaybackSession activate(PlaybackVideoId videoId);
+  PlaybackSession openSession(
+    PlaybackVideoId videoId,
+    PlaybackDeliveryId deliveryId,
+  );
+
+  void activate(PlaybackSession session);
 
   void report(PlaybackObservation observation);
 
@@ -19,9 +25,15 @@ final class NoopPlaybackTelemetryPort implements PlaybackTelemetryPort {
   const NoopPlaybackTelemetryPort();
 
   @override
-  PlaybackSession activate(PlaybackVideoId videoId) {
-    return PlaybackSession(videoId, 1);
+  PlaybackSession openSession(
+    PlaybackVideoId videoId,
+    PlaybackDeliveryId deliveryId,
+  ) {
+    return PlaybackSession(videoId, deliveryId, 1);
   }
+
+  @override
+  void activate(PlaybackSession session) {}
 
   @override
   void report(PlaybackObservation observation) {}

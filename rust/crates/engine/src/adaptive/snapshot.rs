@@ -1,3 +1,4 @@
+use super::FeedOffset;
 use crate::playback::{EstimateConfidence, PlaybackPhase};
 use crate::{ByteRange, PostId};
 
@@ -25,8 +26,15 @@ pub enum SnapshotError {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PlaybackSnapshot {
     pub current: PostId,
+    pub authority: CurrentAuthority,
     pub phase: PlaybackPhase,
     pub buffer_ahead_ms: u64,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CurrentAuthority {
+    Provisional,
+    Canonical,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -98,8 +106,9 @@ pub struct OriginHealth {
 #[derive(Clone, Debug, PartialEq)]
 pub struct CandidateSnapshot {
     pub post: PostId,
-    pub feed_distance: usize,
+    pub feed_offset: FeedOffset,
     pub view_probability: ViewProbability,
+    pub total_bytes: Option<u64>,
     pub bitrate_bps: u64,
     pub duration_ms: u64,
     pub layout: MediaLayout,
@@ -113,6 +122,12 @@ pub struct CandidateSnapshot {
     pub recently_evicted: Vec<ByteRange>,
     pub in_flight: Vec<InFlightRange>,
     pub origins: Vec<OriginHealth>,
+}
+
+impl CandidateSnapshot {
+    pub fn needs_bootstrap(&self) -> bool {
+        self.total_bytes.is_none() || self.layout == MediaLayout::Unknown
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

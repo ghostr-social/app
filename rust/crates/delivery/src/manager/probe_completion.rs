@@ -5,7 +5,6 @@ use crate::manager::transfers::ProbeDone;
 use crate::manager::DeliveryWorker;
 use crate::probe::media::ProbeResult;
 use ghostr_engine::representation::TransferIdentity;
-use ghostr_engine::PostId;
 use log::warn;
 
 impl DeliveryWorker {
@@ -20,7 +19,7 @@ impl DeliveryWorker {
         self.keeper.note_probe(&done);
         match done.outcome {
             Ok(result) => self.finish_probe_result(&identity, result).await,
-            Err(error) => self.finish_probe_error(&done.post, &done.url, error),
+            Err(error) => self.finish_probe_error(&identity, error),
         }
     }
 
@@ -30,16 +29,34 @@ impl DeliveryWorker {
             self.absorb_probe(identity, result).await;
             return;
         }
+        if self.defer_probe_to_body(identity) {
+            return;
+        }
         self.probes.release(identity.post());
         let source = identity.source().as_str();
         warn!("Probe did not reveal a usable content length for {source}");
         self.note_failed_attempt(identity.post(), source, FailureClass::Transient);
     }
 
-    fn finish_probe_error(&mut self, post: &PostId, url: &str, error: anyhow::Error) {
-        self.probes.release(post);
+    fn finish_probe_error(&mut self, identity: &TransferIdentity, error: anyhow::Error) {
         warn!("Probe failed: {error:#}");
-        self.note_failed_attempt(post, url, classify(&error));
+        if self.defer_probe_to_body(identity) {
+            return;
+        }
+        self.probes.release(identity.post());
+        self.note_failed_attempt(
+            identity.post(),
+            identity.source().as_str(),
+            classify(&error),
+        );
+    }
+
+    fn defer_probe_to_body(&mut self, identity: &TransferIdentity) -> bool {
+        if !self.downloads.contains_identity(identity) {
+            return false;
+        }
+        self.probes.defer_to_body(identity.post());
+        true
     }
 
     async fn absorb_probe(&mut self, identity: &TransferIdentity, result: ProbeResult) {

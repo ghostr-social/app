@@ -11,6 +11,9 @@ pub mod runtime;
 pub mod hls;
 pub mod progressive;
 
+#[cfg(all(feature = "device-integration", debug_assertions))]
+pub mod device_integration;
+
 #[cfg(all(
     feature = "video-debug-web",
     debug_assertions,

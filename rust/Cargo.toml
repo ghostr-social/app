@@ -38,6 +38,7 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 
 [features]
 default = []
+device-integration = ["ghostr-gateway/device-integration"]
 video-debug-web = [
     "ghostr-delivery/video-debug-web",
     "ghostr-gateway/video-debug-web",

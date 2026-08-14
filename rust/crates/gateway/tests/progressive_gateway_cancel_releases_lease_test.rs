@@ -2,6 +2,7 @@ mod gateway_fixture;
 
 use gateway_fixture::free_space::{discard, limits, spaced_store};
 use gateway_fixture::progressive::progressive_harness_with_store;
+use ghostr_delivery::playback_demand::DemandState;
 use ghostr_gateway::progressive::route::ProgressiveTiming;
 use std::sync::Arc;
 use std::time::Duration;
@@ -26,10 +27,18 @@ async fn canceled_waiting_response_releases_its_store_lease_immediately() {
     let response = harness.router.oneshot(request).await.expect("response");
     let mut body = response.into_body().into_data_stream();
     assert_eq!(body.next().await.unwrap().unwrap().len(), 400);
-    harness.demand.recv().await.expect("missing-byte demand");
+    let DemandState::Blocked(lease) = harness.demand.recv().await.expect("missing-byte demand")
+    else {
+        panic!("first demand state must block");
+    };
     let mut capacity = store.capacity_changes();
 
     drop(body);
+    let released = tokio::time::timeout(Duration::from_millis(100), harness.demand.recv())
+        .await
+        .expect("cancellation releases demand without idle timeout")
+        .expect("released demand state");
+    assert_eq!(released, DemandState::Released(lease.consumer()));
     tokio::time::timeout(Duration::from_millis(100), capacity.changed())
         .await
         .expect("cancellation releases lease without idle timeout")

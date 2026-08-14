@@ -2,7 +2,7 @@ use crate::manager::inflight::ActiveRange;
 use crate::manager::plan::{planned_work, PlanInputs, PlannedWork};
 use crate::manager::retry::{RetryBook, RetryPolicy};
 use crate::manager::state::DeliveryState;
-use crate::tests::adaptive_plan_fixture::playback;
+use crate::tests::adaptive_plan_fixture::playback_for;
 use ghostr_engine::adaptive::StorageSnapshot;
 use ghostr_engine::host_stats::{HostStats, ThroughputSample};
 use std::collections::HashMap;
@@ -20,13 +20,22 @@ pub(super) struct PlanScenario<'a> {
 }
 
 pub(super) fn run(mut scenario: PlanScenario<'_>) -> PlannedWork {
-    scenario.state.apply_playback(playback(scenario.buffer_ms));
+    let current = scenario
+        .state
+        .focus()
+        .current()
+        .cloned()
+        .expect("plan scenario focus");
+    scenario
+        .state
+        .apply_playback(playback_for(current, scenario.buffer_ms));
     let mut stats = HostStats::new();
     let sample = sample(&scenario);
     stats.record_overall_throughput(sample);
     stats.record_host_throughput("media.example", sample);
     let retry = RetryBook::new(RetryPolicy::default());
     let connection_ceiling = scenario.state.concurrency();
+    let demanded = HashMap::new();
     planned_work(
         &mut scenario.state,
         PlanInputs {
@@ -39,7 +48,7 @@ pub(super) fn run(mut scenario: PlanScenario<'_>) -> PlannedWork {
             connection_ceiling,
             packet_loss_bps: scenario.packet_loss_bps,
             observed_at_ms: 1_000,
-            demanded: None,
+            demanded: &demanded,
         },
     )
 }

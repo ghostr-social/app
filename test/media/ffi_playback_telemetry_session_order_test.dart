@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_observation.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_session.dart';
@@ -19,24 +20,39 @@ void main() {
           return sent.length == 1 ? first.future : Future.value();
         },
       );
-      final old = telemetry.activate(PlaybackVideoId.parse('old'));
+      final old = session('old', 1);
+      telemetry.activate(old);
       telemetry.report(observation(old, PlaybackPhase.playing));
       telemetry.report(observation(old, PlaybackPhase.inactive));
       telemetry.deactivate(old);
-      final skipped = telemetry.activate(PlaybackVideoId.parse('skipped'));
+      final skipped = session('skipped', 2);
+      telemetry.activate(skipped);
       telemetry.report(observation(skipped, PlaybackPhase.starting));
       telemetry.report(observation(skipped, PlaybackPhase.inactive));
       telemetry.deactivate(skipped);
-      final current = telemetry.activate(PlaybackVideoId.parse('current'));
+      final current = session('current', 3);
+      telemetry.activate(current);
       telemetry.report(observation(current, PlaybackPhase.starting));
 
       first.complete();
       await drainMicrotasks();
 
-      expect(sent.map((item) => item.postId), ['old', 'old', 'current']);
+      expect(sent.map((item) => item.postId), [
+        'delivery-old',
+        'delivery-old',
+        'delivery-current',
+      ]);
       expect(sent[1].phase, FfiPlaybackPhase.inactive);
       expect(sent[1].generation, lessThan(sent[2].generation));
     },
+  );
+}
+
+PlaybackSession session(String videoId, int generation) {
+  return PlaybackSession(
+    PlaybackVideoId.parse(videoId),
+    PlaybackDeliveryId.parse('delivery-$videoId'),
+    generation,
   );
 }
 

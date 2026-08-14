@@ -51,6 +51,8 @@ async fn delivery_manager_publishes_adaptive_discovery_demand() {
         vec![
             sized_item("aa11", unreachable, 64, 1_000),
             sized_item("bb22", unreachable, 64, 1_000),
+            sized_item("cc33", unreachable, 64, 1_000),
+            sized_item("dd44", unreachable, 64, 1_000),
         ],
         0,
         0,
