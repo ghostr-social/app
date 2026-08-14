@@ -13,7 +13,9 @@ pub mod probe;
 
 pub mod cache_registry;
 mod candidate_priority;
+mod demand_leases;
 pub(crate) mod mutable_priority_queue;
+pub mod playback_admission;
 pub mod playback_demand;
 pub mod progressive_posts;
 

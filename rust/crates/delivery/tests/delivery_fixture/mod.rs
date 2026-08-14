@@ -6,6 +6,7 @@
 pub mod aba_origin;
 pub mod concurrency_origin;
 pub mod cooling_plan_origin;
+pub mod demand;
 mod environment;
 pub mod full_disk;
 pub mod gated_failure;
@@ -15,6 +16,8 @@ pub mod media;
 pub mod options;
 pub mod paced_media;
 pub mod playback;
+pub mod pressure_origin;
+pub mod pressure_store;
 pub mod probe_origins;
 pub mod protected_capacity;
 pub mod retry;

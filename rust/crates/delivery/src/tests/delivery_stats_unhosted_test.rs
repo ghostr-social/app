@@ -35,7 +35,7 @@ async fn unhosted_outcomes_do_not_dirty_or_persist_host_stats() {
         url: "still not a URL".to_owned(),
         outcome: Ok(ProbeResult {
             content_length: Some(1),
-            accept_ranges: true,
+            accept_ranges: Some(true),
             content_type: Some("video/mp4".to_owned()),
             ttfb: Duration::from_millis(1),
         }),

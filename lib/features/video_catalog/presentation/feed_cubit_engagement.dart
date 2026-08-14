@@ -75,6 +75,7 @@ extension FeedCubitEngagementActions on FeedCubit {
     _emitState(
       FeedLoaded.of(current.kind, roster, notice: blocked, follows: _follows),
     );
+    _viewer.rosterChanged(roster.posts, roster.activeIndex);
   }
 
   void commentsPublished(VideoPost post, int publishedCount) {

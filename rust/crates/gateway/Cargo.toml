@@ -6,6 +6,7 @@ description = "Local HTTP gateway serving progressive and HLS playback, plus the
 
 [features]
 video-debug-web = ["ghostr-delivery/video-debug-web"]
+device-integration = []
 
 [dependencies]
 ghostr-delivery = { path = "../delivery" }

@@ -1,20 +1,17 @@
 use super::items::{focus_now, sized_item};
 use super::options::{base_params, DeliveryOptions};
 use super::{start_harness, DeliveryHarness};
-use ghostr_delivery::playback_demand::DemandSignal;
-use ghostr_engine::{ByteRange, EngineParams, PostId};
+use ghostr_delivery::playback_demand::DemandConsumer;
+use ghostr_engine::{ByteRange, EngineParams};
 use std::time::Duration;
 
 pub const POSTS: [&str; 4] = ["current", "next-1", "next-2", "next-3"];
 
-pub fn start(url: &str) -> DeliveryHarness {
+pub async fn start(url: &str) -> (DeliveryHarness, DemandConsumer) {
     let harness = start_harness("ghostr-protected-capacity-trial", options());
     harness.handle.update_focus(focus_now(items(url), 0, 0));
-    harness.demand.emit(DemandSignal {
-        post: PostId::new("current"),
-        range: ByteRange::new(0, 8),
-    });
-    harness
+    let demand = super::demand::blocked(&harness, "current", ByteRange::new(0, 8)).await;
+    (harness, demand)
 }
 
 pub async fn wait_for_bytes(harness: &DeliveryHarness, expected: u64) {

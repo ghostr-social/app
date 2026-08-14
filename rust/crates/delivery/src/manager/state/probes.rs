@@ -15,9 +15,11 @@ impl DeliveryState {
             .position(|post| std::ptr::eq(post, current))
             .unwrap_or_default();
         let upcoming = &self.focus.window()[start..];
-        match self.projection_focus {
-            true => upcoming.first().cloned().into_iter().collect(),
-            false => upcoming.to_vec(),
+        match self.current_authority {
+            ghostr_engine::adaptive::CurrentAuthority::Provisional => {
+                upcoming.first().cloned().into_iter().collect()
+            }
+            ghostr_engine::adaptive::CurrentAuthority::Canonical => upcoming.to_vec(),
         }
     }
 }

@@ -39,6 +39,7 @@ async fn starts_the_engine_and_serves_the_delivery_surface() {
     let endpoint = ffi_start_engine(
         directory.to_string_lossy().to_string(),
         configuration(FfiDataUsageLevel::Conservative, 1024),
+        None,
     )
     .await
     .expect("engine endpoint");

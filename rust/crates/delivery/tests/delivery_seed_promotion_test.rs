@@ -3,11 +3,12 @@
 
 mod delivery_fixture;
 
+use delivery_fixture::demand;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::media::{hit_log, hits, serve_recording, HitLog};
 use delivery_fixture::{options::DeliveryOptions, start_harness};
-use ghostr_delivery::{debug::network::NetworkProfile, playback_demand::DemandSignal};
-use ghostr_engine::{ByteRange, EngineParams, PostId};
+use ghostr_delivery::debug::network::NetworkProfile;
+use ghostr_engine::{ByteRange, EngineParams};
 use std::time::Duration;
 
 const PLAYBACK_SLICE: u64 = 256 * 1_024;
@@ -25,11 +26,12 @@ async fn focus_promotion_fetches_exact_disjoint_ranges() {
         sized_item("next", &next, TOTAL, 3_000),
     ];
     harness.handle.update_focus(focus_now(items.clone(), 0, 0));
-    emit_demand(&harness, "current");
+    let _current_demand =
+        demand::blocked(&harness, "current", ByteRange::new(0, PLAYBACK_SLICE)).await;
     wait_for_next_gets(&log, 1).await;
 
     harness.handle.update_focus(focus_now(items, 1, 0));
-    emit_demand(&harness, "next");
+    let _next_demand = demand::blocked(&harness, "next", ByteRange::new(0, PLAYBACK_SLICE)).await;
     wait_for_next_gets(&log, 2).await;
 
     let mut gets = next_gets(&log);
@@ -45,13 +47,6 @@ fn configure_network(harness: &delivery_fixture::DeliveryHarness) {
         latency_ms: 450,
         packet_loss_bps: 0,
         max_connections_per_host: 3,
-    });
-}
-
-fn emit_demand(harness: &delivery_fixture::DeliveryHarness, post: &str) {
-    harness.demand.emit(DemandSignal {
-        post: PostId::new(post),
-        range: ByteRange::new(0, PLAYBACK_SLICE),
     });
 }
 

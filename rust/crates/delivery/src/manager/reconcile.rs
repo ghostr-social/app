@@ -6,7 +6,6 @@ use crate::manager::plan::{planned_work, PlanInputs};
 use crate::manager::time::unix_time_ms;
 use crate::manager::transfers::spawn_probe;
 use crate::manager::DeliveryWorker;
-use crate::playback_demand::DemandSignal;
 use ghostr_engine::adaptive::StorageSnapshot;
 use ghostr_engine::{ByteRange, PostId};
 use std::collections::HashMap;
@@ -21,10 +20,9 @@ impl DeliveryWorker {
         let present = self.collect_present(&window).await;
         self.hydrate_timelines(&window, &present).await;
         self.ensure_total_lens(&window).await;
-        self.launch_probes(&probe_posts);
-        self.resolve_gateway_demand(&present);
-        let demanded = self.pending_demand.clone();
+        self.reconcile_probes(&probe_posts);
         let in_flight = self.downloads.ranges();
+        let demanded = self.resolve_gateway_demands(&present);
         let connection_ceiling = self.connection_ceiling();
         let inputs = PlanInputs {
             stats: self.keeper.stats(),
@@ -36,7 +34,7 @@ impl DeliveryWorker {
             connection_ceiling,
             packet_loss_bps: self.ctx.network.profile().packet_loss_bps,
             observed_at_ms,
-            demanded,
+            demanded: &demanded,
         };
         let planned = planned_work(&mut self.state, inputs);
         self.commands
@@ -103,43 +101,23 @@ impl DeliveryWorker {
         }
     }
 
-    /// Live gateway demand counts while it concerns the playing post
-    /// and the demanded bytes are still missing; stale demand drops.
-    fn resolve_gateway_demand(&mut self, present: &HashMap<PostId, Vec<ByteRange>>) {
-        let demanded = resolve_demand(
-            &mut self.pending_demand,
-            self.state.focus().current(),
-            present,
-        );
-        if demanded {
-            let (post, offset) = self
-                .pending_demand
-                .as_ref()
-                .map(|signal| (signal.post.clone(), signal.range.start))
-                .expect("active demand");
-            self.expedite_demand(&post, offset);
+    fn reconcile_probes(&mut self, window: &[PostId]) {
+        let active = self.downloads.body_posts();
+        self.probes.reconcile_bodies(&active);
+        self.launch_probes(window);
+    }
+
+    fn resolve_gateway_demands(
+        &mut self,
+        present: &HashMap<PostId, Vec<ByteRange>>,
+    ) -> HashMap<PostId, ByteRange> {
+        let foreground = self.state.demand_posts();
+        let demanded = self
+            .demand_leases
+            .reconcile(&foreground, self.state.catalog(), present);
+        for (post, range) in &demanded {
+            self.expedite_demand(post, range.start);
         }
+        demanded
     }
-}
-
-pub(crate) fn resolve_demand(
-    pending: &mut Option<DemandSignal>,
-    playing: Option<&PostId>,
-    present: &HashMap<PostId, Vec<ByteRange>>,
-) -> bool {
-    let Some(signal) = pending.as_ref() else {
-        return false;
-    };
-    if playing != Some(&signal.post) || covered(signal.range, present.get(&signal.post)) {
-        *pending = None;
-        return false;
-    }
-    true
-}
-
-/// Whether the store's (coalesced) ranges fully cover `range`.
-fn covered(range: ByteRange, have: Option<&Vec<ByteRange>>) -> bool {
-    let Some(have) = have else { return false };
-    have.iter()
-        .any(|span| span.start <= range.start && span.end >= range.end)
 }

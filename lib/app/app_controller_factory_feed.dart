@@ -51,7 +51,7 @@ extension AppControllerFeedFactories on AppControllerFactory {
       followProfile: _followWorkflow(services.social),
       optional: FeedOptionalDependencies(
         social: services.social,
-        focus: _feedFocus,
+        focus: _feedFocus.openLease(),
         watchTracker: _watchTracker(),
         delivery: FeedDeliveryDependencies(
           updates: updates,

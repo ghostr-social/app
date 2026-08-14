@@ -45,6 +45,12 @@ final class DeviceVideoServer {
     );
   }
 
+  Uri get missingUri => Uri.parse(
+    'http://${_server.address.address}:${_server.port}/missing/index.m3u8',
+  );
+
+  String deliveryIdFor(String videoId) => _sessionId(videoId);
+
   int requestsFor(String asset) => _requests[asset] ?? 0;
 
   void releaseHeldResponse() {

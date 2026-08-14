@@ -10,7 +10,8 @@ use delivery_fixture::wait::wait_for_ranges;
 #[tokio::test]
 async fn corrupt_store_entry_does_not_block_another_posts_delivery() {
     let root = temp_directory("ghostr-manager-corrupt-entry");
-    std::fs::create_dir_all(root.join("bad.ranges.json")).expect("corrupt manifest");
+    let corrupt_manifest = root.join("bad.ranges.json");
+    std::fs::create_dir_all(&corrupt_manifest).expect("corrupt manifest");
     let broken_origin = serve_recording("broken", media_body(), hit_log()).await;
     let live_origin = serve_recording("live", media_body(), hit_log()).await;
     let harness = start_harness_at(root, DeliveryOptions::default());
@@ -26,5 +27,10 @@ async fn corrupt_store_entry_does_not_block_another_posts_delivery() {
 
     wait_for_ranges(&harness.store, "good", &[(0, 16)]).await;
     assert!(harness.posts.contains("good"));
-    std::fs::remove_dir_all(&harness.root).expect("remove store");
+    let root = harness.root.clone();
+    // Store clear cannot remove the deliberately directory-shaped manifest.
+    std::fs::remove_dir_all(corrupt_manifest).expect("remove corrupt manifest");
+    harness.handle.clear().await.expect("clear delivery");
+    drop(harness);
+    std::fs::remove_dir_all(root).ok();
 }

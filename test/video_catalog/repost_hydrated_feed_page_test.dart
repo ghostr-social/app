@@ -18,6 +18,7 @@ void main() {
       final hydrated = RepostHydratedVideoFeedRepository(source, source);
       final feed = ensureRepostHydratedVideoFeed(hydrated, source);
       final cursor = DateTime.utc(2026, 1, 1);
+      final nextCursor = cursor.subtract(const Duration(seconds: 1));
 
       final initial = await feed.loadFeed(FeedKind.forYou);
       final older = await feed.loadOlderFeed(
@@ -27,7 +28,7 @@ void main() {
 
       expect(initial.single.viewerHasReposted, isTrue);
       expect(older.posts.single.viewerHasReposted, isTrue);
-      expect(older.nextOlderThan, cursor);
+      expect(older.nextOlderThan, nextCursor);
       expect(source.hydratedBatches, 2);
     },
   );

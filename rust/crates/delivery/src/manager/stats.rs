@@ -146,7 +146,25 @@ pub(crate) async fn load_host_stats(path: &Path) -> HostStats {
     }
 }
 
-/// Writes the current snapshot; callers decide the cadence.
+/// Stages then renames the current snapshot so readers never observe a
+/// truncated JSON document; callers decide the cadence.
 pub(crate) async fn save_host_stats(path: &Path, stats: &HostStats) -> io::Result<()> {
-    tokio::fs::write(path, stats.to_json()).await
+    let staging = path.with_extension("json.tmp");
+    if let Err(error) = tokio::fs::write(&staging, stats.to_json()).await {
+        remove_staging(&staging).await;
+        return Err(error);
+    }
+    if let Err(error) = tokio::fs::rename(&staging, path).await {
+        remove_staging(&staging).await;
+        return Err(error);
+    }
+    Ok(())
+}
+
+async fn remove_staging(path: &Path) {
+    match tokio::fs::remove_file(path).await {
+        Ok(()) => {}
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) => warn!("Host stats staging cleanup failed: {error}"),
+    }
 }

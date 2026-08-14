@@ -4,7 +4,6 @@
 use crate::manager::inflight::ActiveRange;
 use crate::manager::retry::RetryBook;
 use crate::manager::state::DeliveryState;
-use crate::playback_demand::DemandSignal;
 use ghostr_engine::adaptive::{DiscoveryDemand, Eviction, StorageSnapshot};
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::representation::TransferIdentity;
@@ -25,7 +24,7 @@ pub(crate) struct PlanInputs<'a> {
     pub connection_ceiling: usize,
     pub packet_loss_bps: u16,
     pub observed_at_ms: u64,
-    pub demanded: Option<DemandSignal>,
+    pub demanded: &'a HashMap<PostId, ByteRange>,
 }
 
 pub(crate) struct PlannedWork {

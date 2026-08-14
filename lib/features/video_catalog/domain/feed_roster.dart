@@ -1,5 +1,6 @@
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_interaction_target.dart';
+import 'package:ghostr/features/video_catalog/domain/video_media_identity.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post_id.dart';
 
@@ -31,10 +32,9 @@ final class FeedRoster {
     return index < 0 ? this : FeedRoster(posts, activeIndex: index);
   }
 
-  /// Replaces every held post with its [refreshed] revision and drops the
-  /// ones the relays stopped returning. Posts the viewer has not reached
-  /// are never inserted above them.
-  FeedRoster resynced(List<VideoPost> refreshed) {
+  /// Replaces held revisions in place, drops vanished posts, and appends
+  /// newly eligible rows after the held tail.
+  FeedRoster resynced(List<VideoPost> refreshed, {List<VideoPost>? eligible}) {
     final byTarget = <VideoInteractionTarget, VideoPost>{
       for (final post in refreshed) _targetOf(post): post,
     };
@@ -42,7 +42,13 @@ final class FeedRoster {
       for (final post in posts)
         if (byTarget[_targetOf(post)] case final revision?) revision,
     ];
-    return FeedRoster(kept, activeIndex: _preserved(kept));
+    final seen = SeenVideoIdentities(kept);
+    final merged = <VideoPost>[
+      ...kept,
+      for (final post in eligible ?? refreshed)
+        if (seen.add(post)) post,
+    ];
+    return FeedRoster(merged, activeIndex: _preserved(merged));
   }
 
   /// Drops every post published by [creator].

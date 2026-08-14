@@ -45,7 +45,7 @@ fn coverage_before(snapshot: &PlayabilitySnapshot, candidate: &CandidateSnapshot
     let cached = snapshot
         .candidates
         .iter()
-        .filter(|other| other.feed_distance < candidate.feed_distance)
+        .filter(|other| other.feed_offset.magnitude() < candidate.feed_offset.magnitude())
         .filter(|other| other.post != snapshot.playback.current)
         .map(cached_playable_ms)
         .sum::<u64>();

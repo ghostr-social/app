@@ -28,7 +28,6 @@ void main() {
         optional: FeedOptionalDependencies(social: repository),
       ),
     );
-    addTearDown(cubit.close);
     final request = DiscoveryFeedRequest(
       query: '#dance',
       playbackPort: FakeVideoPlaybackPort(),
@@ -41,8 +40,8 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
-        home: BlocProvider.value(
-          value: cubit..load(),
+        home: BlocProvider(
+          create: (_) => cubit..load(),
           child: DiscoveryFeedScreen(request: request),
         ),
       ),

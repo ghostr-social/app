@@ -58,10 +58,15 @@ fn authority(
     snapshot: &PlayabilitySnapshot,
     emergency: bool,
 ) -> PreemptionAuthority {
+    if candidate.post == snapshot.playback.current
+        && snapshot.playback.authority == super::CurrentAuthority::Provisional
+    {
+        return PreemptionAuthority::Speculative;
+    }
     if candidate.post == snapshot.playback.current && emergency {
         return PreemptionAuthority::PlaybackCritical;
     }
-    match candidate.feed_distance <= 1 {
+    match candidate.feed_offset.magnitude() <= 1 {
         true => PreemptionAuthority::Transition,
         false => PreemptionAuthority::Speculative,
     }

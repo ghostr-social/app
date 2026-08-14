@@ -25,5 +25,9 @@ fn a_comfortably_buffered_current_video_plans_no_further_depth() {
 
     let plan = AdaptivePlayabilityPolicy.plan(&input);
 
-    assert_eq!(planned_playable_ms(&plan, &PostId::new("p0")), 0, "{plan:#?}");
+    assert_eq!(
+        planned_playable_ms(&plan, &PostId::new("p0")),
+        0,
+        "{plan:#?}"
+    );
 }

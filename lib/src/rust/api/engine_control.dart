@@ -16,9 +16,11 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 Future<String> ffiStartEngine({
   required String cacheDirectory,
   required FfiEngineConfiguration configuration,
+  String? deviceIntegrationOrigin,
 }) => RustLib.instance.api.crateApiEngineControlFfiStartEngine(
   cacheDirectory: cacheDirectory,
   configuration: configuration,
+  deviceIntegrationOrigin: deviceIntegrationOrigin,
 );
 
 /// Applies relay, data-usage, and progressive-storage settings without

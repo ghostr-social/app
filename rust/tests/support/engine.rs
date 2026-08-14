@@ -16,6 +16,7 @@ pub async fn start(directory: &Path, max_storage_bytes: u64) -> anyhow::Result<S
     ffi_start_engine(
         directory.to_string_lossy().to_string(),
         configuration(max_storage_bytes),
+        None,
     )
     .await
 }
