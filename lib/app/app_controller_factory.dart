@@ -22,6 +22,7 @@ import 'package:ghostr/features/video_catalog/presentation/profile_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/toggle_profile_follow_workflow.dart';
 import 'package:ghostr/features/video_catalog/domain/follow_profile_workflow.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
+import 'package:ghostr/features/video_catalog/domain/feed_focus_arbiter.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
 import 'package:ghostr/features/watch_history/presentation/watch_history_cubit.dart';
 import 'package:ghostr/features/video_sharing/domain/video_share_workflow.dart';
@@ -30,25 +31,21 @@ import 'package:ghostr/platform/media/ffi_feed_focus_port.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 
 class AppControllerFactory {
-  static final FeedFocusPort _defaultFeedFocus = FfiFeedFocusPort();
-
   AppControllerFactory(
     this._dependencies, {
     FeedFocusPort? feedFocus,
     RustDeliveryConfigUpdater deliveryConfigUpdater =
         updateRustEngineConfiguration,
-  }) : _feedFocus = feedFocus ?? _defaultFeedFocus,
+  }) : _feedFocus = FeedFocusArbiter(feedFocus ?? FfiFeedFocusPort()),
        _deliveryConfigUpdater = deliveryConfigUpdater;
 
   final AppDependencies _dependencies;
-  final FeedFocusPort _feedFocus;
+  final FeedFocusArbiter _feedFocus;
   final RustDeliveryConfigUpdater _deliveryConfigUpdater;
 
-  ActivityCubit activity() {
-    return ActivityCubit(
-      _dependencies.activityRepository.snapshotForActiveAccount(),
-    );
-  }
+  ActivityCubit activity() => ActivityCubit(
+    _dependencies.activityRepository.snapshotForActiveAccount(),
+  );
 
   SearchCubit search() {
     final services = _dependencies.videoCatalogServices;
@@ -70,7 +67,6 @@ class AppControllerFactory {
     );
   }
 
-  /// A feed cubit bound to one search query or `#hashtag`.
   FeedCubit discoveryFeed(String query, {ProfileId? viewerId}) {
     return FeedCubit(
       _feedDependencies(
@@ -83,7 +79,6 @@ class AppControllerFactory {
     );
   }
 
-  /// A feed cubit playing one creator's shelf, opened on the tapped video.
   FeedCubit profileFeed(ProfileSummary viewer, VideoPost post) {
     return FeedCubit(
       _feedDependencies(
@@ -116,7 +111,7 @@ class AppControllerFactory {
       ),
       optional: FeedOptionalDependencies(
         social: services.social,
-        focus: _feedFocus,
+        focus: _feedFocus.openLease(),
         watchTracker: WatchHistoryTracker(
           history: _dependencies.watchHistoryRepository,
           settings: _dependencies.appSettingsRepository,

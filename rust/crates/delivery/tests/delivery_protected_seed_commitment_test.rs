@@ -4,13 +4,13 @@
 mod delivery_fixture;
 
 use delivery_fixture::concurrency_origin::{ActiveRequest, ControlledOrigin};
+use delivery_fixture::demand;
 use delivery_fixture::items::{focus_now, seed_range, sized_item};
 use delivery_fixture::media::{hit_log, serve_recording};
 use delivery_fixture::options::{base_params, DeliveryOptions};
 use delivery_fixture::start_harness;
 use delivery_fixture::wait::wait_for_ranges;
-use ghostr_delivery::playback_demand::DemandSignal;
-use ghostr_engine::{ByteRange, DataUsageLevel, PostId};
+use ghostr_engine::{ByteRange, DataUsageLevel};
 use std::time::Duration;
 
 #[tokio::test]
@@ -31,10 +31,7 @@ async fn promotion_never_restarts_bytes_owned_by_an_open_request() {
     wait_for_ranges(&harness.store, "ahead", &[(0, 32)]).await;
 
     harness.handle.update_focus(focus_now(items, 1, 0));
-    harness.demand.emit(DemandSignal {
-        post: PostId::new("ahead"),
-        range: ByteRange::new(0, 96),
-    });
+    let _demand = demand::blocked(&harness, "ahead", ByteRange::new(0, 96)).await;
     expect_no_request(&mut ahead).await;
     send(&seed, 32).await;
     drop(seed);

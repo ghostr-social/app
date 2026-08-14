@@ -1,13 +1,13 @@
 mod delivery_fixture;
 
+use delivery_fixture::demand;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::media::{hit_log, media_body, serve_recording};
 use delivery_fixture::options::{base_params, DeliveryOptions};
 use delivery_fixture::start_harness_at;
 use delivery_fixture::temp_directory;
 use delivery_fixture::wait::{wait_for_ranges, wait_not_servable};
-use ghostr_delivery::playback_demand::DemandSignal;
-use ghostr_engine::{ByteRange, DataUsageLevel, EngineParams, PostId};
+use ghostr_engine::{ByteRange, DataUsageLevel, EngineParams};
 
 #[tokio::test]
 async fn failed_finalization_keeps_complete_bytes_partial_and_retires_the_attempt() {
@@ -24,10 +24,7 @@ async fn failed_finalization_keeps_complete_bytes_partial_and_retires_the_attemp
     ));
     wait_for_ranges(&harness.store, "aa11", &[(0, 8)]).await;
     std::fs::create_dir_all(harness.root.join("aa11.video")).expect("blocking completed path");
-    harness.demand.emit(DemandSignal {
-        post: PostId::new("aa11"),
-        range: ByteRange::new(8, 16),
-    });
+    let _demand = demand::blocked(&harness, "aa11", ByteRange::new(8, 16)).await;
     wait_for_ranges(&harness.store, "aa11", &[(0, 16)]).await;
     wait_not_servable(&harness.posts, "aa11").await;
 

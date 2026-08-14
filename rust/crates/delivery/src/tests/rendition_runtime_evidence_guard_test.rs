@@ -23,7 +23,7 @@ fn runtime_quality_waits_for_both_playback_and_measured_network_evidence() {
     let empty = HostStats::new();
 
     assert!(select_rendition(&mut state, &empty, 1_000).is_none());
-    assert!(state.apply_playback(playback(post)));
+    assert!(state.apply_playback(playback(post)).is_accepted());
     assert!(select_rendition(&mut state, &empty, 1_000).is_none());
 }
 

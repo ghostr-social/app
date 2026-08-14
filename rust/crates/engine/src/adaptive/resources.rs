@@ -18,7 +18,7 @@ pub(super) fn endangered(snapshot: &PlayabilitySnapshot, current: &CandidateSnap
         || effective_network_bps(snapshot) < current.bitrate_bps
 }
 
-fn fully_stored(candidate: &CandidateSnapshot) -> bool {
+pub(super) fn fully_stored(candidate: &CandidateSnapshot) -> bool {
     candidate
         .playable_ranges
         .iter()

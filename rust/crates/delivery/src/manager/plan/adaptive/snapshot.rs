@@ -53,7 +53,7 @@ fn candidate(
     let post = position.post;
     let evidence = CandidateEvidence {
         post: post.clone(),
-        feed_distance: position.offset.magnitude() as usize,
+        feed_offset: position.offset,
         view_probability: navigation.view_probability(position.offset),
         present: inputs.present.get(&post).cloned().unwrap_or_default(),
         recently_evicted: state.recently_evicted(&post),
@@ -119,6 +119,7 @@ fn playback_snapshot(state: &DeliveryState, current: PostId) -> PlaybackSnapshot
     let observation = state.playback().observation();
     PlaybackSnapshot {
         current,
+        authority: state.current_authority(),
         phase: observation.map_or(ghostr_engine::playback::PlaybackPhase::Starting, |value| {
             value.phase()
         }),
@@ -127,11 +128,7 @@ fn playback_snapshot(state: &DeliveryState, current: PostId) -> PlaybackSnapshot
 }
 
 fn demanded_range(inputs: &PlanInputs<'_>, post: &PostId) -> Option<ByteRange> {
-    inputs
-        .demanded
-        .as_ref()
-        .filter(|signal| &signal.post == post)
-        .map(|signal| signal.range)
+    inputs.demanded.get(post).copied()
 }
 
 fn prioritize_range(ranges: &mut Vec<PlayableRange>, wanted: ByteRange, bitrate_bps: u64) {

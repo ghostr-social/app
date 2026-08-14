@@ -10,3 +10,7 @@ import 'playback_types.dart';
 /// Reports one ordered playback snapshot to the single delivery manager.
 Future<void> ffiReportPlayback({required FfiPlaybackObservation input}) =>
     RustLib.instance.api.crateApiPlaybackControlFfiReportPlayback(input: input);
+
+/// Returns process-lifetime playback decisions and latest accepted identity.
+Future<FfiPlaybackAdmissionSnapshot> ffiPlaybackAdmissionSnapshot() =>
+    RustLib.instance.api.crateApiPlaybackControlFfiPlaybackAdmissionSnapshot();

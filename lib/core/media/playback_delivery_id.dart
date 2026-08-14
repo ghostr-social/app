@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 
 final class PlaybackDeliveryId {
@@ -29,6 +32,19 @@ extension VideoMediaPlaybackDelivery on VideoMediaSource {
     ),
     ProxiedProgressiveVideoMediaSource(:final playbackUri) =>
       PlaybackDeliveryId.parse(playbackUri.queryParameters['id']!),
+    _ when remoteUrl != null => PlaybackDeliveryId.parse(
+      _remoteDeliveryId(this),
+    ),
     _ => null,
   };
 }
+
+String _remoteDeliveryId(VideoMediaSource media) {
+  final scope = media.cacheScope?.value;
+  if (scope != null && _storeSafeIdPattern.hasMatch(scope)) return scope;
+  final digest = media.expectedSha256?.value;
+  if (digest != null) return digest;
+  return 'url-${sha256.convert(utf8.encode(media.remoteUrl!))}';
+}
+
+final _storeSafeIdPattern = RegExp(r'^[A-Za-z0-9_-]+$');

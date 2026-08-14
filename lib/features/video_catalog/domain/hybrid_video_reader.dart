@@ -38,7 +38,7 @@ class HybridVideoReader implements VideoPostReader {
         searchQuery: searchQuery,
         hashtags: hashtags,
       );
-      return _hydrate(_merge(localPosts, remotePosts));
+      return await _hydrate(_merge(localPosts, remotePosts));
     } on AppFailure catch (error, stackTrace) {
       _report('HybridVideoReader.load', error, stackTrace);
       if (localPosts.isEmpty) rethrow;

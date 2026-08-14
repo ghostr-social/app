@@ -5,9 +5,7 @@ use delivery_fixture::media::{hit_log, media_body, serve_recording};
 use delivery_fixture::options::serial_long_retry_options;
 use delivery_fixture::start_harness;
 use delivery_fixture::transient_origin::{count, serve, Attempts};
-use delivery_fixture::wait::wait_for_ranges;
 use std::time::Duration;
-use tokio::time::Instant;
 
 #[tokio::test]
 async fn newly_focused_post_retries_without_reviving_other_retry_state() {
@@ -19,7 +17,9 @@ async fn newly_focused_post_retries_without_reviving_other_retry_state() {
     harness
         .handle
         .update_focus(window(&healthy, &target, &unrelated));
-    wait_for_ranges(&harness.store, "barrier", &[(0, 16)]).await;
+    wait_for_attempts(&target_attempts, 1).await;
+    wait_for_attempts(&unrelated_attempts, 1).await;
+    tokio::time::sleep(Duration::from_millis(50)).await;
     harness
         .handle
         .update_focus(focused(&healthy, &target, &unrelated));
@@ -65,12 +65,11 @@ fn focused(
 }
 
 async fn wait_for_attempts(attempts: &Attempts, expected: usize) {
-    let deadline = Instant::now() + Duration::from_millis(500);
-    while count(attempts) < expected {
-        assert!(
-            Instant::now() < deadline,
-            "timed out waiting for attempt {expected}"
-        );
-        tokio::task::yield_now().await;
-    }
+    tokio::time::timeout(Duration::from_millis(500), async {
+        while count(attempts) < expected {
+            tokio::time::sleep(Duration::from_millis(1)).await;
+        }
+    })
+    .await
+    .unwrap_or_else(|_| panic!("timed out waiting for attempt {expected}"));
 }

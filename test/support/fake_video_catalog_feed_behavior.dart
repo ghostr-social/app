@@ -38,7 +38,9 @@ mixin FakeVideoCatalogFeedBehavior implements VideoFeedRepository {
         : olderFeedPages.removeAt(0);
     return VideoFeedPage(
       posts: _visible(posts),
-      nextOlderThan: olderFeedPages.isEmpty ? null : olderThan,
+      nextOlderThan: olderFeedPages.isEmpty
+          ? null
+          : olderThan.subtract(const Duration(seconds: 1)),
     );
   }
 

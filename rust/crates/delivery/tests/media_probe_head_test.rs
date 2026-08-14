@@ -15,6 +15,6 @@ async fn media_probe_head_learns_length_range_support_and_content_type() {
         .expect("probe");
 
     assert_eq!(result.content_length, Some(16));
-    assert!(result.accept_ranges);
+    assert_eq!(result.accept_ranges, Some(true));
     assert_eq!(result.content_type.as_deref(), Some("video/mp4"));
 }

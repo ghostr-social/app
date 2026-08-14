@@ -26,8 +26,18 @@ final class FeedSession {
   }
 
   /// A refresh: [visible] keeps its order and the viewer keeps their place.
-  FeedRoster resynced(FeedRoster visible, List<VideoPost> refreshed) {
-    return _holding(visible.resynced(_reconciled(refreshed, visible.posts)));
+  FeedRoster resynced(
+    FeedRoster visible,
+    List<VideoPost> refreshed, {
+    required List<VideoPost> eligible,
+  }) {
+    final current = visible.posts;
+    return _holding(
+      visible.resynced(
+        _reconciled(refreshed, current),
+        eligible: _reconciled(eligible, current),
+      ),
+    );
   }
 
   /// An older page: the posts it adds beyond what the viewer already has,

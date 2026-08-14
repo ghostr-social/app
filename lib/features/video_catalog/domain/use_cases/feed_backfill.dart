@@ -12,9 +12,15 @@ sealed class FeedDig {
 
 /// Older posts to append.
 final class FeedDigPage extends FeedDig {
-  const FeedDigPage(this.posts);
+  const FeedDigPage(
+    this.posts, {
+    required this.hasMore,
+    required this.cursorAdvanced,
+  });
 
   final List<VideoPost> posts;
+  final bool hasMore;
+  final bool cursorAdvanced;
 }
 
 /// The past could not be read; presentation decides how to describe it.
@@ -36,7 +42,12 @@ final class FeedDigSkipped extends FeedDig {
 /// whenever the buffer runs short the backfill goes one page older — one dig
 /// at a time — until the buffer refills or the past runs dry.
 final class FeedBackfill {
-  FeedBackfill(this._fetch, this._loads, {this.bufferTarget = 10});
+  FeedBackfill(
+    this._fetch,
+    this._loads, {
+    this.bufferTarget = 10,
+    this.dryPageLimit = 3,
+  }) : assert(dryPageLimit > 0);
 
   final FeedFetcher _fetch;
   final FeedLoads _loads;
@@ -44,6 +55,9 @@ final class FeedBackfill {
 
   /// How many unwatched videos should stay queued ahead of the viewer.
   final int bufferTarget;
+
+  /// Maximum cursor-advancing pages one drain may inspect without a new row.
+  final int dryPageLimit;
 
   /// Rebases on a freshly loaded feed.
   void restartFrom(List<VideoPost> posts) => _pagination.restartFrom(posts);
@@ -66,7 +80,13 @@ final class FeedBackfill {
       return const FeedDigSkipped();
     }
     final page = (result as FeedFetched).page;
+    final nextCursor = page.nextOlderThan;
+    final cursorAdvanced = nextCursor?.isBefore(lease.cursor) ?? false;
     _pagination.completeLoad(lease, page);
-    return FeedDigPage(page.posts);
+    return FeedDigPage(
+      page.posts,
+      hasMore: page.hasMore,
+      cursorAdvanced: cursorAdvanced,
+    );
   }
 }

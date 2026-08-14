@@ -3,6 +3,7 @@ use ghostr_engine::playback::PLAYBACK_SLICE_BYTES;
 mod gateway_fixture;
 
 use gateway_fixture::progressive::progressive_harness;
+use ghostr_delivery::playback_demand::DemandState;
 use tower::ServiceExt;
 
 const LARGE_VIDEO_BYTES: u64 = 8 * 1024 * 1024;
@@ -20,10 +21,12 @@ async fn an_open_ended_player_request_demands_only_the_next_bounded_window() {
 
     let request = harness.video_request("clip", Some("bytes=0-")).await;
     let response = harness.router.oneshot(request).await.unwrap();
-    let signal = harness.demand.recv().await.expect("demand signal");
+    let DemandState::Blocked(signal) = harness.demand.recv().await.expect("demand signal") else {
+        panic!("first demand state must block");
+    };
 
-    assert_eq!(signal.range.start, 1);
-    assert_eq!(signal.range.end - signal.range.start, PLAYBACK_SLICE_BYTES);
+    assert_eq!(signal.range().start, 1);
+    assert_eq!(signal.range().len(), PLAYBACK_SLICE_BYTES);
     drop(response);
     std::fs::remove_dir_all(harness.root).ok();
 }

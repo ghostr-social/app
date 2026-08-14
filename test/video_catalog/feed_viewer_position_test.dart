@@ -8,8 +8,7 @@ import '../support/fakes.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('landing on a video refocuses delivery, staying on it does not',
-      () async {
+  test('a changed roster republishes focus without another watch', () async {
     final focus = FakeFeedFocusPort();
     final history = FakeWatchHistoryRepository();
     final viewer = FeedViewer(
@@ -28,10 +27,11 @@ void main() {
     expect(focus.focuses.single.current.id.value, 'two');
     expect(history.entries.map((entry) => entry.videoId), ['e:two']);
 
-    viewer.stayedOn(posts.first);
+    viewer.rosterChanged(posts, 0);
     await pumpEventQueue();
 
-    expect(focus.focuses, hasLength(1));
-    expect(history.entries.first.videoId, 'e:one');
+    expect(focus.focuses, hasLength(2));
+    expect(focus.focuses.last.current.id.value, 'one');
+    expect(history.entries.map((entry) => entry.videoId), ['e:two']);
   });
 }

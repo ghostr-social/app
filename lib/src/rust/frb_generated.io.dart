@@ -151,6 +151,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FfiNostrTagFilter dco_decode_ffi_nostr_tag_filter(dynamic raw);
 
   @protected
+  FfiPlaybackAdmissionSnapshot dco_decode_ffi_playback_admission_snapshot(
+    dynamic raw,
+  );
+
+  @protected
   FfiPlaybackObservation dco_decode_ffi_playback_observation(dynamic raw);
 
   @protected
@@ -346,6 +351,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiNostrTagFilter sse_decode_ffi_nostr_tag_filter(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiPlaybackAdmissionSnapshot sse_decode_ffi_playback_admission_snapshot(
     SseDeserializer deserializer,
   );
 
@@ -591,6 +601,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_ffi_nostr_tag_filter(
     FfiNostrTagFilter self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_playback_admission_snapshot(
+    FfiPlaybackAdmissionSnapshot self,
     SseSerializer serializer,
   );
 

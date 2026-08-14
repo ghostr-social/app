@@ -21,8 +21,39 @@ pub enum AllocationReason {
     CurrentBufferReserve,
     LikelyNextTransition,
     RapidNavigationCoverage,
+    MediaBootstrap,
     MediaLayoutDiscovery,
+    NextStartability,
     UsefulCommitment,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum NextReserveInfeasibility {
+    CurrentUnprotected,
+    NoLiveOrigin,
+    PolicyDenied,
+    NoTransferBudget,
+    NoStorageCapacity,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub enum NextReserveEvidence {
+    #[default]
+    NotApplicable,
+    Ready {
+        post: PostId,
+    },
+    InFlight {
+        post: PostId,
+    },
+    Granted {
+        post: PostId,
+        range: ByteRange,
+    },
+    Infeasible {
+        post: PostId,
+        reason: NextReserveInfeasibility,
+    },
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -73,4 +104,5 @@ pub struct AllocationPlan {
     pub retained: Vec<RetainedAllocation>,
     pub evictions: Vec<Eviction>,
     pub discovery_demand: DiscoveryDemand,
+    pub next_reserve: NextReserveEvidence,
 }

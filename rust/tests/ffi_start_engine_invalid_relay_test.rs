@@ -15,7 +15,8 @@ async fn rejects_invalid_relay_urls_before_starting() {
         max_storage_bytes: 1024,
     };
 
-    let result = ffi_start_engine(directory.to_string_lossy().to_string(), configuration).await;
+    let result =
+        ffi_start_engine(directory.to_string_lossy().to_string(), configuration, None).await;
 
     assert!(result.is_err());
     assert!(!directory.exists());

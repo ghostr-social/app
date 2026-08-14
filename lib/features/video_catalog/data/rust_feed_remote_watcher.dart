@@ -26,12 +26,15 @@ final class RustFeedRemoteWatcher {
       _session = session;
       _source._sessions.pin(session);
       _pinned = true;
-      if (_stopped) return _release(session);
+      if (_stopped) {
+        await _release(session);
+        return;
+      }
       _updates = session.watchPages().listen(
-            _publish,
-            onError: _failed,
-            onDone: _ended,
-          );
+        _publish,
+        onError: _failed,
+        onDone: _ended,
+      );
     } on Object catch (error, stackTrace) {
       _failed(error, stackTrace);
     }
@@ -39,11 +42,13 @@ final class RustFeedRemoteWatcher {
 
   void _publish(RustFeedPage page) {
     if (_stopped) return;
-    _controller.add(RemoteVideoSnapshot(
-      revision: page.revision,
-      phase: _source._phase(page.stage),
-      posts: _source._mapped(page.posts, null),
-    ));
+    _controller.add(
+      RemoteVideoSnapshot(
+        revision: page.revision,
+        phase: _source._phase(page.stage),
+        posts: _source._mapped(page.posts, null),
+      ),
+    );
   }
 
   void _failed(Object error, StackTrace stackTrace) {

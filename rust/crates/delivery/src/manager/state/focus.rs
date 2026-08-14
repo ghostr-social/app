@@ -18,7 +18,7 @@ impl DeliveryState {
                 self.upsert_progressive(item.post.clone(), item.meta);
             }
         }
-        self.projection_focus = false;
+        self.current_authority = ghostr_engine::adaptive::CurrentAuthority::Canonical;
         self.focus.update_focus(FocusUpdate {
             window,
             current_index: update.current_index,

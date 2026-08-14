@@ -1,12 +1,13 @@
 use super::{
-    CandidateSnapshot, InFlightRange, MediaLayout, OriginHealth, PlayableRange, ViewProbability,
+    CandidateSnapshot, FeedOffset, InFlightRange, MediaLayout, OriginHealth, PlayableRange,
+    ViewProbability,
 };
 use crate::catalog::{Catalog, CatalogEntry};
 use crate::{ByteRange, EngineParams, PostId};
 
 pub struct CandidateEvidence {
     pub post: PostId,
-    pub feed_distance: usize,
+    pub feed_offset: FeedOffset,
     pub view_probability: ViewProbability,
     pub present: Vec<ByteRange>,
     pub recently_evicted: Vec<ByteRange>,
@@ -20,15 +21,25 @@ pub fn candidate_snapshot(
     evidence: CandidateEvidence,
 ) -> Option<CandidateSnapshot> {
     let entry = catalog.lookup(&evidence.post)?;
-    let total = entry.total_bytes().filter(|total| *total > 0)?;
+    let total = entry.total_bytes().filter(|total| *total > 0);
     let bitrate = catalog.estimated_bitrate(&evidence.post, params).max(1);
     let duration = duration_ms(entry, total, bitrate);
     let layout = layout(entry);
-    let playable_ranges = playable_ranges(entry, layout, total, duration, params.chunk_bytes);
+    let playable_ranges = playable_ranges(
+        layout,
+        PlayableInputs {
+            entry,
+            total,
+            duration_ms: duration,
+            chunk_bytes: params.chunk_bytes,
+            present: &evidence.present,
+        },
+    );
     Some(CandidateSnapshot {
         post: evidence.post,
-        feed_distance: evidence.feed_distance,
+        feed_offset: evidence.feed_offset,
         view_probability: evidence.view_probability,
+        total_bytes: total,
         bitrate_bps: bitrate,
         duration_ms: duration,
         layout,
@@ -60,21 +71,46 @@ fn layout(entry: &CatalogEntry) -> MediaLayout {
     }
 }
 
-fn duration_ms(entry: &CatalogEntry, total: u64, bitrate: u64) -> u64 {
+fn duration_ms(entry: &CatalogEntry, total: Option<u64>, bitrate: u64) -> u64 {
     entry
         .meta
         .duration_ms
         .filter(|duration| *duration > 0)
-        .unwrap_or_else(|| total.saturating_mul(8_000).div_ceil(bitrate))
+        .unwrap_or_else(|| {
+            total
+                .unwrap_or(super::allocation::REQUEST_SLICE_BYTES)
+                .saturating_mul(8_000)
+                .div_ceil(bitrate)
+        })
 }
 
-fn playable_ranges(
-    entry: &CatalogEntry,
-    layout: MediaLayout,
-    total: u64,
+struct PlayableInputs<'a> {
+    entry: &'a CatalogEntry,
+    total: Option<u64>,
     duration_ms: u64,
     chunk_bytes: u64,
-) -> Vec<PlayableRange> {
+    present: &'a [ByteRange],
+}
+
+fn playable_ranges(layout: MediaLayout, inputs: PlayableInputs<'_>) -> Vec<PlayableRange> {
+    let PlayableInputs {
+        entry,
+        total,
+        duration_ms,
+        chunk_bytes,
+        present,
+    } = inputs;
+    let Some(total) = total else {
+        return vec![bootstrap_range(None, duration_ms, chunk_bytes, present)];
+    };
+    if layout == MediaLayout::Unknown {
+        return vec![bootstrap_range(
+            Some(total),
+            duration_ms,
+            chunk_bytes,
+            present,
+        )];
+    }
     if layout == MediaLayout::RequiresCompleteFile {
         return vec![PlayableRange {
             bytes: ByteRange::new(0, total),
@@ -98,6 +134,33 @@ fn playable_ranges(
             bytes,
         })
         .collect()
+}
+
+fn bootstrap_range(
+    total: Option<u64>,
+    duration_ms: u64,
+    chunk_bytes: u64,
+    present: &[ByteRange],
+) -> PlayableRange {
+    let bound = chunk_bytes.clamp(1, super::allocation::REQUEST_SLICE_BYTES);
+    let start = bootstrap_start(present).min(total.unwrap_or(u64::MAX));
+    let next_end = start.saturating_add(bound);
+    let end = total.map_or(next_end, |known| known.min(next_end));
+    let bytes = match start < end {
+        true => ByteRange::new(start, end),
+        false => ByteRange::new(0, end),
+    };
+    PlayableRange {
+        bytes,
+        playable_ms: total.map_or(1, |known| range_duration(bytes, known, duration_ms)),
+    }
+}
+
+fn bootstrap_start(present: &[ByteRange]) -> u64 {
+    crate::media_timeline::normalize(present.to_vec())
+        .first()
+        .filter(|range| range.start == 0)
+        .map_or(0, |range| range.end)
 }
 
 fn split(total: u64, chunk_bytes: u64) -> Vec<ByteRange> {

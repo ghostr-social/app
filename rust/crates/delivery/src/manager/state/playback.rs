@@ -1,17 +1,27 @@
 use super::DeliveryState;
 use crate::delivery_events::DeliveryPlayback;
-use ghostr_engine::playback::PlaybackStatus;
+use crate::playback_admission::{PlaybackAdmission, PlaybackRejection};
+use ghostr_engine::playback::{PlaybackPhase, PlaybackStatus};
 
 impl DeliveryState {
-    pub(crate) fn apply_playback(&mut self, update: DeliveryPlayback) -> bool {
+    pub(crate) fn apply_playback(&mut self, update: DeliveryPlayback) -> PlaybackAdmission {
         if self.focus.current() != Some(update.session.post()) {
-            return false;
+            if update.observation.phase() == PlaybackPhase::Inactive {
+                return PlaybackAdmission::IgnoredInactive;
+            }
+            return PlaybackAdmission::Rejected(PlaybackRejection::InactiveDelivery);
         }
         if !self.playback.activate(update.session.clone()) {
-            return false;
+            return PlaybackAdmission::Rejected(PlaybackRejection::StaleSession);
         }
-        self.playback
+        if self
+            .playback
             .report(&update.session, update.sequence, update.observation)
+        {
+            PlaybackAdmission::Accepted
+        } else {
+            PlaybackAdmission::Rejected(PlaybackRejection::StaleSequence)
+        }
     }
 
     pub(crate) fn playback(&self) -> &PlaybackStatus {

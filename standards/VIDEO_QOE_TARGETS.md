@@ -16,7 +16,7 @@ device.
 | Focus-switch latency | `<= 1,500 ms` | Each non-superseded focus intent to `playing` for its destination. |
 | Rebuffer ratio | `<= 1%` | Time in `buffering` or network-stalled phases after first play, divided by observed playback time. |
 | Cancellation waste | `<= 192 KiB` | Origin body bytes sent after focus left a request that was then canceled. |
-| Ahead prefetch | `<= 3 MiB` | Maximum stored sibling bytes gained while the current video is active and incomplete. Zero is valid when current safety or constrained capacity consumes the budget. |
+| Ahead prefetch | `<= 3 MiB` | Maximum stored sibling bytes gained while the current video is active and incomplete. Zero immediate-next work is valid only when the plan records `NextReserveEvidence::Infeasible`; constrained capacity alone cannot silently consume a servable candidate's reserve. |
 | Duplicate completed origin bytes | `0 B` | Successful completed body-range overlap previously fetched from the same exact source. |
 | Protected transition latency | `<= 500 ms` | Tagged current-to-next transitions from click intent to the first `playing` observation. |
 | Held-response recovery | `<= 2,000 ms` | Device fixture response release to resumed `playing`. |
@@ -92,10 +92,14 @@ player-visible fault substitutes are deliberately narrower:
 - the device-side same-URL manifest-retry proxy returns one HTTP 503 and then
   succeeds at the same HLS URL; it does not exercise delivery mirror rotation.
 
-No mobile loopback bypass or production test hook is used to turn these proxies
-into false end-to-end claims. Actual mirror rotation and store capacity remain
-covered by the browser/Rust paths, while device execution proves how the real
-player surfaces and recovers from their representative playback effects.
+The HLS proxy tests do not turn those substitutes into mirror-rotation or
+capacity claims. The progressive Android journey does compile the Rust gateway
+with the debug-only `device-integration` adapter: it permits literal loopback
+fixture origins while retaining the production outbound policy for every other
+address. Release builds do not enable that adapter. The journey therefore
+proves the real FFI, manager, sparse store, gateway, and player path, but not the
+production SSRF rejection path. Actual mirror rotation and forced capacity
+exhaustion remain covered by the browser/Rust paths.
 
 ## Stable commands
 

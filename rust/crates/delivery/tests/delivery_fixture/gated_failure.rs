@@ -82,12 +82,15 @@ async fn answer(
     let mut request = [0; 4096];
     let read = socket.read(&mut request).await.unwrap_or(0);
     if request[..read].starts_with(b"HEAD ") {
-        attempts.fetch_add(1, Ordering::SeqCst);
-        let signal = started.lock().expect("started").take();
-        if let Some(signal) = signal {
-            signal.send(()).ok();
-            release.notified().await;
-        }
+        let response = b"HTTP/1.1 200 OK\r\nContent-Type: video/mp4\r\nContent-Length: 16\r\nAccept-Ranges: bytes\r\n\r\n";
+        socket.write_all(response).await.ok();
+        return;
+    }
+    attempts.fetch_add(1, Ordering::SeqCst);
+    let signal = started.lock().expect("started").take();
+    if let Some(signal) = signal {
+        signal.send(()).ok();
+        release.notified().await;
     }
     let response = b"HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n";
     socket.write_all(response).await.ok();

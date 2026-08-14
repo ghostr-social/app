@@ -1,7 +1,7 @@
 use crate::adaptive::{
-    AllocationPlan, CandidateSnapshot, MediaLayout, NavigationSnapshot, NetworkSnapshot,
-    OriginHealth, PlayabilitySnapshot, PlayableRange, PlaybackSnapshot, StorageSnapshot,
-    ViewProbability,
+    AllocationPlan, CandidateSnapshot, FeedOffset, MediaLayout, NavigationSnapshot,
+    NetworkSnapshot, OriginHealth, PlayabilitySnapshot, PlayableRange, PlaybackSnapshot,
+    StorageSnapshot, ViewProbability,
 };
 use crate::playback::{EstimateConfidence, PlaybackPhase};
 use crate::{ByteRange, PostId};
@@ -21,6 +21,7 @@ pub(super) fn snapshot(
         request_slice_bytes: crate::adaptive::REQUEST_SLICE_BYTES,
         playback: PlaybackSnapshot {
             current: PostId::new("p0"),
+            authority: crate::adaptive::CurrentAuthority::Canonical,
             phase: PlaybackPhase::Playing,
             buffer_ahead_ms: buffer_ms,
         },
@@ -44,8 +45,9 @@ pub(super) fn snapshot(
 fn candidate(distance: usize) -> CandidateSnapshot {
     CandidateSnapshot {
         post: PostId::new(format!("p{distance}")),
-        feed_distance: distance,
+        feed_offset: FeedOffset::new(distance as i32),
         view_probability: ViewProbability::new(0.88_f64.powi(distance as i32)).unwrap(),
+        total_bytes: Some(3_750_000),
         bitrate_bps: 1_000_000,
         duration_ms: 60_000,
         layout: MediaLayout::Streamable,

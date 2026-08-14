@@ -47,7 +47,11 @@ async fn delivery_waits_for_real_capacity_change_then_resumes_same_source() {
             .count()
     };
     assert_eq!(get_count(), 0, "a knowably full store buys no origin bytes");
-    assert_eq!(harness.store.refusals(), 0, "no write is attempted just to be refused");
+    assert_eq!(
+        harness.store.refusals(),
+        0,
+        "no write is attempted just to be refused"
+    );
     assert_range(&harness.store, 0..8).await;
 
     harness.store.set_storage_budget(16).await.unwrap();

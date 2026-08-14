@@ -8,7 +8,6 @@
 use crate::manager::failure::FailureClass;
 use ghostr_engine::PostId;
 use std::collections::{HashMap, HashSet};
-use std::time::Duration;
 use tokio::time::Instant;
 
 mod cooldowns;
@@ -35,8 +34,13 @@ impl Source {
 pub struct RetryBook {
     policy: RetryPolicy,
     attempts: HashMap<Source, u32>,
-    retired: HashMap<Source, Instant>,
+    retired: HashMap<Source, Retirement>,
     cooldowns: Cooldowns,
+}
+
+struct Retirement {
+    until: Instant,
+    class: FailureClass,
 }
 
 impl RetryBook {
@@ -57,8 +61,8 @@ impl RetryBook {
         }
         let attempts = self.charge(&source);
         match attempts >= self.budget(class) {
-            true => self.retire(source),
-            false => Retry::After(self.backoff(attempts)),
+            true => self.retire(source, class),
+            false => Retry::After(self.policy.backoff(attempts)),
         }
     }
 
@@ -73,7 +77,7 @@ impl RetryBook {
     pub fn is_retired(&self, source: &Source) -> bool {
         self.retired
             .get(source)
-            .is_some_and(|until| *until > Instant::now())
+            .is_some_and(|retirement| retirement.until > Instant::now())
     }
 
     /// The post's candidate URLs that are still worth dialling, in the
@@ -109,6 +113,13 @@ impl RetryBook {
     }
 
     pub(crate) fn focus_changed(&mut self, previous: Option<&PostId>, current: Option<&PostId>) {
+        if previous != current {
+            if let Some(current) = current {
+                self.retired.retain(|source, retirement| {
+                    &source.post != current || retirement.class == FailureClass::Permanent
+                });
+            }
+        }
         self.cooldowns.focus_changed(previous, current);
     }
 
@@ -168,28 +179,18 @@ impl RetryBook {
 
     /// Retiring also sweeps every revived entry, keeping the ledger
     /// bounded by the failures of the last revival window.
-    fn retire(&mut self, source: Source) -> Retry {
+    fn retire(&mut self, source: Source, class: FailureClass) -> Retry {
         let now = Instant::now();
-        self.retired.retain(|_, until| *until > now);
+        self.retired.retain(|_, retirement| retirement.until > now);
         self.attempts.remove(&source);
         self.cooldowns.clear_credit(&source.post);
-        self.retired.insert(source, now + self.policy.revive_after);
+        self.retired.insert(
+            source,
+            Retirement {
+                until: now + self.policy.revive_after,
+                class,
+            },
+        );
         Retry::GiveUp
     }
-
-    /// Doubling ladder capped at `max`, then spread by jitter so a feed
-    /// full of posts on one broken host does not retry in lockstep.
-    fn backoff(&self, attempts: u32) -> Duration {
-        let steps = attempts.saturating_sub(1).min(16);
-        let grown = self.policy.base.saturating_mul(1u32 << steps);
-        jittered(grown.min(self.policy.max), self.policy.jitter)
-    }
-}
-
-fn jittered(wait: Duration, jitter: f64) -> Duration {
-    let spread = jitter.clamp(0.0, 1.0);
-    if spread == 0.0 {
-        return wait;
-    }
-    wait.mul_f64(1.0 + spread * (rand::random::<f64>() * 2.0 - 1.0))
 }

@@ -13,7 +13,9 @@ fn planning_window_is_bounded_around_the_current_post() {
     let mut state = DeliveryState::new(EngineParams::default(), DataUsageLevel::Balanced);
     state.apply_focus(
         DeliveryFocus::compatibility(
-            (0..ROSTER).map(|index| focus_item(&format!("post-{index}"))).collect(),
+            (0..ROSTER)
+                .map(|index| focus_item(&format!("post-{index}")))
+                .collect(),
             CURRENT,
             0,
         ),

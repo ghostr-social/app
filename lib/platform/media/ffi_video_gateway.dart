@@ -8,13 +8,14 @@ import 'package:ghostr/src/rust/frb_generated.dart';
 export 'rust_engine_configuration.dart';
 
 typedef RustGatewayInitializer = Future<void> Function();
-typedef RustEngineStarter = Future<String> Function(
-  RustEngineStartConfiguration configuration,
-);
-typedef RustFfiEngineStarter = Future<String> Function({
-  required String cacheDirectory,
-  required FfiEngineConfiguration configuration,
-});
+typedef RustEngineStarter =
+    Future<String> Function(RustEngineStartConfiguration configuration);
+typedef RustFfiEngineStarter =
+    Future<String> Function({
+      required String cacheDirectory,
+      required FfiEngineConfiguration configuration,
+      required String? deviceIntegrationOrigin,
+    });
 
 /// Boots the Rust media engine with the FULL inventory budget — the
 /// engine owns the one cache; no byte split with Dart remains.
@@ -22,19 +23,24 @@ class FfiVideoGateway {
   FfiVideoGateway({
     RustGatewayInitializer initialize = RustLib.init,
     RustEngineStarter startEngine = startRustEngine,
-  })  : _initialize = initialize,
-        _startEngine = startEngine;
+  }) : _initialize = initialize,
+       _startEngine = startEngine;
 
   final RustGatewayInitializer _initialize;
   final RustEngineStarter _startEngine;
 
   Future<VideoGatewayStartResult> start(
     AppSettings settings,
-    String cacheDirectory,
-  ) async {
+    String cacheDirectory, {
+    Uri? deviceIntegrationOrigin,
+  }) async {
     try {
       await _initialize();
-      final endpoint = await _start(settings, cacheDirectory);
+      final endpoint = await _start(
+        settings,
+        cacheDirectory,
+        deviceIntegrationOrigin,
+      );
       return _endpointResult(endpoint);
     } on Object catch (error, stackTrace) {
       final failure = translatedBoundaryFailure(
@@ -47,10 +53,15 @@ class FfiVideoGateway {
     }
   }
 
-  Future<String> _start(AppSettings settings, String cacheDirectory) {
+  Future<String> _start(
+    AppSettings settings,
+    String cacheDirectory,
+    Uri? deviceIntegrationOrigin,
+  ) {
     final configuration = RustEngineStartConfiguration(
       cacheDirectory,
       RustEngineConfiguration.fromSettings(settings),
+      deviceIntegrationOrigin: deviceIntegrationOrigin?.origin,
     );
     return _startEngine(configuration);
   }
@@ -73,6 +84,7 @@ Future<String> startRustEngine(
   return ffiStart(
     cacheDirectory: configuration.cacheDirectory,
     configuration: ffiEngineConfiguration(configuration.engine),
+    deviceIntegrationOrigin: configuration.deviceIntegrationOrigin,
   );
 }
 

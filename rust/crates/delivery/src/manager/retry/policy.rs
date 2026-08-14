@@ -32,6 +32,23 @@ impl Default for RetryPolicy {
     }
 }
 
+impl RetryPolicy {
+    /// Answers the capped doubling ladder with bounded jitter.
+    pub(super) fn backoff(&self, attempts: u32) -> Duration {
+        let steps = attempts.saturating_sub(1).min(16);
+        let grown = self.base.saturating_mul(1u32 << steps);
+        jittered(grown.min(self.max), self.jitter)
+    }
+}
+
+fn jittered(wait: Duration, jitter: f64) -> Duration {
+    let spread = jitter.clamp(0.0, 1.0);
+    if spread == 0.0 {
+        return wait;
+    }
+    wait.mul_f64(1.0 + spread * (rand::random::<f64>() * 2.0 - 1.0))
+}
+
 /// What the policy grants after one failed attempt.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Retry {

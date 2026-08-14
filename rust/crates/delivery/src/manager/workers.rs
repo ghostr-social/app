@@ -4,7 +4,7 @@ use crate::manager::admission::origin_key;
 use crate::manager::inflight::{ActiveRange, ChunkAttempt, CompletionStatus, InFlightChunks};
 use crate::manager::plan::PlannedTransfer;
 use crate::manager::transfers::{spawn_chunk, TransferContext};
-use ghostr_engine::representation::RepresentationBinding;
+use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
 use ghostr_engine::{ChunkId, PostId};
 use std::collections::HashSet;
 
@@ -32,6 +32,14 @@ impl DownloadWorkers {
 
     pub(crate) fn ranges(&self) -> Vec<ActiveRange> {
         self.active.ranges()
+    }
+
+    pub(crate) fn body_posts(&self) -> HashSet<PostId> {
+        self.active.body_posts()
+    }
+
+    pub(crate) fn contains_identity(&self, identity: &TransferIdentity) -> bool {
+        self.active.contains_identity(identity)
     }
 
     pub fn preempt_for_current(&mut self, current: &PostId, priority: &[ChunkId], capacity: usize) {
