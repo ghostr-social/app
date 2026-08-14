@@ -4,7 +4,7 @@ enum _AppUpdateCheckTrigger { automatic, manual }
 
 extension AppUpdateCheckFlow on AppUpdateCubit {
   Future<void> _check(_AppUpdateCheckTrigger trigger) async {
-    _lastCheckAt = _clock();
+    _scheduleAutomaticCheck(AppUpdateCubit.foregroundPollInterval);
     final retainedOffer = _retainedOffer(trigger);
     if (retainedOffer != null) {
       await _refreshOfferSafely(retainedOffer);
@@ -12,6 +12,7 @@ extension AppUpdateCheckFlow on AppUpdateCubit {
     }
     _emitState(const AppUpdateCheckingState());
     final availability = await _readAvailability();
+    _scheduleAutomaticCheck(AppUpdateCubit.foregroundCheckInterval);
     await _acceptAvailability(availability, trigger);
   }
 
@@ -23,7 +24,9 @@ extension AppUpdateCheckFlow on AppUpdateCubit {
 
   Future<void> _refreshOfferSafely(AppUpdateOfferedState retained) async {
     try {
-      await _refreshOffer(retained, await _readAvailability());
+      final availability = await _readAvailability();
+      _scheduleAutomaticCheck(AppUpdateCubit.foregroundCheckInterval);
+      await _refreshOffer(retained, availability);
     } on Object catch (error, stackTrace) {
       logBoundaryFailure(
         source: 'ghostr.update.refresh',

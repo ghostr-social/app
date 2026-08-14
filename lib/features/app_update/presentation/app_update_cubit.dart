@@ -44,7 +44,7 @@ final class AppUpdateCubit extends DisposalSafeCubit<AppUpdateState> {
   final UpdateOfferPolicy _offerPolicy;
   final Clock _clock;
   bool _operationActive = false;
-  DateTime? _lastCheckAt;
+  DateTime? _nextAutomaticCheckAt;
   AndroidVersionCode? _lastDeclinedVersion;
   bool _offerHistoryLoaded = false;
   bool _preferenceSyncPending = false;
@@ -153,9 +153,12 @@ final class AppUpdateCubit extends DisposalSafeCubit<AppUpdateState> {
   void _emitState(AppUpdateState next) => emit(next);
 
   bool _foregroundCheckDue() {
-    final lastCheckAt = _lastCheckAt;
-    return lastCheckAt == null ||
-        _clock().difference(lastCheckAt) >= foregroundCheckInterval;
+    final nextCheckAt = _nextAutomaticCheckAt;
+    return nextCheckAt == null || !_clock().isBefore(nextCheckAt);
+  }
+
+  void _scheduleAutomaticCheck(Duration delay) {
+    _nextAutomaticCheckAt = _clock().add(delay);
   }
 
   Future<void> _checkAutomatically(AppUpdatePreferences preferences) async {
