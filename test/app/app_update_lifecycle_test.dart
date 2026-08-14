@@ -8,6 +8,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: AppUpdateLifecycle(
+          onCheckDue: () async {},
           onResumed: () async => resumes += 1,
           child: const Text('Ghostr'),
         ),

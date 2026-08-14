@@ -23,6 +23,7 @@ void main() {
         network: updates.network,
         downloader: updates.downloader,
         installer: updates.installer,
+        offerHistory: updates.offerHistory,
         settings: updates.settings,
       ),
       dispose: () async => updateCloseCalls += 1,

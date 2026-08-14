@@ -19,7 +19,10 @@ void main() {
     act: (cubit) async {
       await cubit.start();
       harness.catalog.failure = null;
-      harness.catalog.release = sampleStableRelease(versionCode: 1);
+      harness.catalog.release = sampleStableRelease(
+        versionName: '0.0.1',
+        versionCode: 1,
+      );
       await cubit.checkNow();
     },
     expect: () => [

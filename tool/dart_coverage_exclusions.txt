@@ -10,6 +10,7 @@ lib/features/activity/domain/activity_type.dart
 lib/features/app_update/domain/app_release_catalog.dart
 lib/features/app_update/domain/installed_app_port.dart
 lib/features/app_update/domain/network_connection_port.dart
+lib/features/app_update/domain/update_offer_history_repository.dart
 lib/features/comments/domain/nostr_comments_port.dart
 lib/features/comments/domain/video_comments_repository.dart
 lib/features/engagement/domain/nostr_engagement_port.dart

@@ -10,7 +10,7 @@ typedef RetiredCacheRemover = Future<void> Function(Directory directory);
 
 /// Prepares the Rust engine's sole media inventory and starts its gateway.
 Future<VideoGatewayStartResult>
-    initializeProductionVideoDeliveryInfrastructure({
+initializeProductionVideoDeliveryInfrastructure({
   required AppSettings settings,
   required CacheDirectoryProvider directoryProvider,
   required FfiVideoGateway gateway,
@@ -28,6 +28,8 @@ Future<VideoGatewayStartResult> _startNativeDelivery(
 ) async {
   try {
     await NativeVideoCacheDirectory(directory).initialize();
+    // Only synchronous startup failures belong to this local fallback.
+    // ignore: unawaited_return_in_try_block
     return gateway.start(settings, directory.path);
   } on AppFailure catch (failure) {
     return VideoGatewayFailed(failure.message);
@@ -57,8 +59,8 @@ Future<void> _removeRetiredDartCache(Directory directory) async {
 
 final class _VideoDeliveryDirectories {
   _VideoDeliveryDirectories(Directory root)
-      : dartCache = Directory(_child(root, 'video_inventory')),
-        nativeCache = Directory(_child(root, 'native_video_inventory'));
+    : dartCache = Directory(_child(root, 'video_inventory')),
+      nativeCache = Directory(_child(root, 'native_video_inventory'));
 
   final Directory dartCache;
   final Directory nativeCache;

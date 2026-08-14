@@ -13,7 +13,8 @@ void main() {
     const messages = <UpdateInstallStatus, String>{
       UpdateInstallStatus.pending: 'Preparing the Android installer…',
       UpdateInstallStatus.awaitingUserAction: 'Confirm the update in Android.',
-      UpdateInstallStatus.succeeded: 'Android installed the update.',
+      UpdateInstallStatus.succeeded:
+          'Android reported success. Verifying the installed version…',
       UpdateInstallStatus.failed: 'Android could not install the update.',
     };
 

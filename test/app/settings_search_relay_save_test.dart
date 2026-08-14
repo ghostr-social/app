@@ -24,12 +24,15 @@ void main() {
     );
     await tester.tap(find.widgetWithText(FilledButton, 'Add'));
     await tester.pumpAndSettle();
+    final save = find.byKey(const Key('save-settings-button'));
     await tester.scrollUntilVisible(
-      find.text('Save settings'),
+      save,
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text('Save settings'));
+    await Scrollable.ensureVisible(tester.element(save), alignment: 0.5);
+    await tester.pumpAndSettle();
+    await tester.tap(save);
     await tester.pumpAndSettle();
 
     expect(

@@ -59,10 +59,9 @@ void main() {
     final checks = tester.widget<SwitchListTile>(
       find.byKey(const Key('automatic-update-checks-field')),
     );
-    final downloads = tester
-        .widget<DropdownButtonFormField<UpdateDownloadPolicy>>(
-          find.byKey(const Key('update-download-policy-field')),
-        );
+    final downloads = tester.widget<SwitchListTile>(
+      find.byKey(const Key('wifi-only-update-downloads-field')),
+    );
     final install = tester.widget<SwitchListTile>(
       find.byKey(const Key('automatic-update-install-field')),
     );

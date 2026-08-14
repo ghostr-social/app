@@ -1,9 +1,11 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/features/app_update/domain/android_version_code.dart';
 import 'package:ghostr/features/app_update/presentation/app_update_cubit.dart';
 import 'package:ghostr/features/settings/domain/app_update_preferences.dart';
 
 import '../../support/app_update_cubit_harness.dart';
+import '../../support/fake_update_offer_history_repository.dart';
 
 void main() {
   late AppUpdateCubitHarness harness;
@@ -11,7 +13,10 @@ void main() {
   blocTest<AppUpdateCubit, AppUpdateState>(
     'manual check bypasses disabled automatic checks without downloading',
     setUp: () {
+      final history = FakeUpdateOfferHistoryRepository()
+        ..lastDeclined = AndroidVersionCode(2);
       harness = AppUpdateCubitHarness(
+        offerHistory: history,
         preferences: const AppUpdatePreferences(
           automaticChecks: false,
           downloadPolicy: UpdateDownloadPolicy.manual,

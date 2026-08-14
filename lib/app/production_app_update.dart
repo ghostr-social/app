@@ -5,6 +5,7 @@ import 'package:ghostr/features/app_update/data/http_update_package_downloader.d
 import 'package:ghostr/features/app_update/domain/installed_app_port.dart';
 import 'package:ghostr/features/app_update/domain/network_connection_port.dart';
 import 'package:ghostr/features/app_update/domain/update_installer_port.dart';
+import 'package:ghostr/features/app_update/domain/update_offer_history_repository.dart';
 import 'package:ghostr/features/app_update/presentation/app_update_dependencies.dart';
 import 'package:ghostr/features/settings/domain/app_settings_repository.dart';
 import 'package:ghostr/platform/app_update/android_app_update_adapter.dart';
@@ -98,7 +99,8 @@ final class ProductionAppUpdateEnvironment {
 }
 
 AppUpdateRuntime buildProductionAppUpdateRuntime(
-  AppSettingsRepository settings, {
+  AppSettingsRepository settings,
+  UpdateOfferHistoryRepository offerHistory, {
   ProductionAppUpdateEnvironment? environment,
 }) {
   final edge = environment ?? ProductionAppUpdateEnvironment.android();
@@ -112,6 +114,7 @@ AppUpdateRuntime buildProductionAppUpdateRuntime(
         directoryPath: edge.directoryPath,
       ),
       installer: edge.platform.installer,
+      offerHistory: offerHistory,
       settings: settings,
     ),
     dispose: edge.dispose,

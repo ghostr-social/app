@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ghostr/features/app_update/presentation/app_update_cubit.dart';
@@ -71,15 +73,18 @@ class SettingsScreen extends StatelessWidget {
       isSaving: isSaving,
       actions: _formActions(context),
       updateState: updateState,
-      updateActions: _updateActions(),
+      updateActions: _updateActions(updateState),
     );
   }
 
-  AppUpdateStatusActions? _updateActions() {
+  AppUpdateStatusActions? _updateActions(AppUpdateState? updateState) {
     final updates = appUpdateCubit;
     if (updates == null) return null;
+    final onDownload = updateState is AppUpdateOfferedState
+        ? () => unawaited(updates.acceptOffer(updateState.release.versionCode))
+        : () => unawaited(updates.downloadAvailable());
     return AppUpdateStatusActions(
-      onDownload: updates.downloadAvailable,
+      onDownload: onDownload,
       onInstall: updates.installReady,
       onOpenPermissionSettings: updates.openInstallPermissionSettings,
       onRetryPermission: updates.retryInstall,
@@ -120,10 +125,15 @@ class SettingsScreen extends StatelessWidget {
         onChanged: cubit.changeUpdatePreferences,
         onCheckNow: onCheckForUpdates,
       ),
-      onSave: cubit.save,
+      onSave: () => _save(context),
       onOpenWatchHistory: onOpenWatchHistory,
       onOpenBlockedAccounts: onOpenBlockedAccounts,
     );
+  }
+
+  Future<void> _save(BuildContext context) async {
+    await context.read<SettingsCubit>().save();
+    await appUpdateCubit?.onUpdatePreferencesChanged();
   }
 
   Future<void> _addSearchRelay(BuildContext context) async {

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/features/app_update/presentation/app_update_cubit.dart';
 import 'package:ghostr/features/settings/domain/app_update_preferences.dart';
 
 import '../../support/app_update_cubit_harness.dart';
@@ -17,6 +18,7 @@ void main() {
 
     await cubit.start();
     expect(harness.catalog.calls, 1);
+    await cubit.declineOffer(harness.catalog.release.versionCode);
     now = now.add(const Duration(hours: 5, minutes: 59));
     await cubit.onAppResumed();
     expect(harness.catalog.calls, 1);

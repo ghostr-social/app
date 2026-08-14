@@ -4,6 +4,7 @@ import 'package:ghostr/features/app_update/domain/installed_app.dart';
 import 'package:ghostr/features/app_update/domain/network_connection_port.dart';
 import 'package:ghostr/features/app_update/domain/stable_release.dart';
 import 'package:ghostr/features/app_update/domain/update_package_downloader.dart';
+import 'package:ghostr/features/app_update/domain/update_offer_history_repository.dart';
 import 'package:ghostr/features/app_update/domain/verified_update_package.dart';
 import 'package:ghostr/features/app_update/presentation/app_update_cubit.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
@@ -13,6 +14,7 @@ import '../app_update/support/update_domain_fixture.dart';
 import 'app_update_installer_fake.dart';
 import 'app_update_port_fakes.dart';
 import 'fake_app_settings_repository.dart';
+import 'fake_update_offer_history_repository.dart';
 
 final class AppUpdateCubitHarness {
   AppUpdateCubitHarness({
@@ -20,10 +22,12 @@ final class AppUpdateCubitHarness {
     InstalledApp? installed,
     StableRelease? release,
     NetworkConnection connection = NetworkConnection.wifi,
+    UpdateOfferHistoryRepository? offerHistory,
   }) : catalog = FakeAppReleaseCatalog(release ?? sampleStableRelease()),
        installedApp = FakeInstalledAppPort(installed ?? sampleInstalledApp()),
        network = FakeNetworkConnectionPort(connection),
-       settings = FakeAppSettingsRepository(_settingsWith(preferences)) {
+       settings = FakeAppSettingsRepository(_settingsWith(preferences)),
+       offerHistory = offerHistory ?? FakeUpdateOfferHistoryRepository() {
     final artifact = catalog.release.artifacts.values.first;
     package = VerifiedUpdatePackage(
       path: '/tmp/ghostr.apk',
@@ -41,6 +45,7 @@ final class AppUpdateCubitHarness {
   final FakeInstalledAppPort installedApp;
   final FakeNetworkConnectionPort network;
   final FakeAppSettingsRepository settings;
+  final UpdateOfferHistoryRepository offerHistory;
   final installer = FakeUpdateInstallerPort();
   late final VerifiedUpdatePackage package;
   late final FakeUpdatePackageDownloader downloader;
@@ -52,10 +57,26 @@ final class AppUpdateCubitHarness {
       network: network,
       downloader: downloader,
       installer: installer,
+      offerHistory: offerHistory,
       settings: settings,
     ),
     clock: clock,
   );
+
+  void reportUpdateInstalled() {
+    final current = installedApp.installed;
+    installedApp.installed = InstalledApp(
+      packageName: current.packageName,
+      versionName: catalog.release.versionName,
+      versionCode: package.versionCode,
+      supportedAbis: current.supportedAbis,
+    );
+  }
+}
+
+Future<void> acceptCurrentUpdateOffer(AppUpdateCubit cubit) async {
+  final offered = cubit.state as AppUpdateOfferedState;
+  await cubit.acceptOffer(offered.release.versionCode);
 }
 
 InstalledApp sampleInstalledApp({List<AndroidAbi>? abis}) {

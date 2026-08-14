@@ -17,6 +17,7 @@ void main() {
       final cubit = harness.build();
 
       await cubit.start();
+      await acceptCurrentUpdateOffer(cubit);
       expect(
         cubit.state,
         isA<AppUpdateInstallingState>().having(

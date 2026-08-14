@@ -12,9 +12,19 @@ void main() {
     'automatically submits and completes a permitted verified update',
     setUp: () => harness = AppUpdateCubitHarness(),
     build: () => harness.build(),
-    act: (cubit) => cubit.start(),
+    act: (cubit) async {
+      await cubit.start();
+      harness.reportUpdateInstalled();
+      await acceptCurrentUpdateOffer(cubit);
+    },
     expect: () => [
       isA<AppUpdateCheckingState>(),
+      isA<AppUpdateOfferedState>(),
+      isA<AppUpdateOfferedState>().having(
+        (state) => state.pendingAction,
+        'pending action',
+        AppUpdateOfferAction.accepting,
+      ),
       isA<AppUpdateDownloadingState>(),
       isA<AppUpdateInstallingState>().having(
         (state) => state.status,

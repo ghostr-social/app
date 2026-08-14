@@ -1,6 +1,15 @@
 part of 'app_update_cubit.dart';
 
 extension AppUpdateResumeFlow on AppUpdateCubit {
+  Future<void> _synchronizePreferences(AppUpdatePreferences preferences) async {
+    final current = state;
+    if (current is AppUpdateWaitingForWifiState) {
+      await _resumeWaitingDownload(current, preferences);
+      return;
+    }
+    _synchronizeOffer(preferences);
+  }
+
   Future<bool> _continueOnResume(AppUpdatePreferences preferences) async {
     final current = state;
     if (current is AppUpdateWaitingForWifiState) {

@@ -1,52 +1,101 @@
 part of 'app_update_cubit.dart';
 
+enum _AppUpdateCheckTrigger { automatic, manual }
+
 extension AppUpdateCheckFlow on AppUpdateCubit {
-  Future<void> _check(AppUpdatePreferences preferences) async {
+  Future<void> _check(_AppUpdateCheckTrigger trigger) async {
+    _lastCheckAt = _clock();
+    final retainedOffer = _retainedOffer(trigger);
+    if (retainedOffer != null) {
+      await _refreshOfferSafely(retainedOffer);
+      return;
+    }
     _emitState(const AppUpdateCheckingState());
+    final availability = await _readAvailability();
+    await _acceptAvailability(availability, trigger);
+  }
+
+  Future<AppUpdateAvailability> _readAvailability() async {
     final installed = await _dependencies.installedApp.readInstalledApp();
     final release = await _dependencies.catalog.fetchStableRelease();
-    final availability = _policy.evaluate(
-      installed: installed,
-      release: release,
-    );
-    await _acceptAvailability(availability, preferences);
-    _lastCheckAt = _clock();
+    return _policy.evaluate(installed: installed, release: release);
+  }
+
+  Future<void> _refreshOfferSafely(AppUpdateOfferedState retained) async {
+    try {
+      await _refreshOffer(retained, await _readAvailability());
+    } on Object catch (error, stackTrace) {
+      logBoundaryFailure(
+        source: 'ghostr.update.refresh',
+        message: 'Could not refresh an outstanding update offer.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  AppUpdateOfferedState? _retainedOffer(_AppUpdateCheckTrigger trigger) {
+    final current = state;
+    return trigger == _AppUpdateCheckTrigger.automatic &&
+            current is AppUpdateOfferedState
+        ? current
+        : null;
+  }
+
+  Future<void> _refreshOffer(
+    AppUpdateOfferedState retained,
+    AppUpdateAvailability availability,
+  ) async {
+    switch (availability) {
+      case AppUpdateCurrent():
+        _emitState(const AppUpdateCurrentState());
+      case AppUpdateAvailable()
+          when availability.release.versionCode.compareTo(
+                retained.release.versionCode,
+              ) >
+              0:
+        await _offerAvailable(availability);
+      case AppUpdateAvailable() || AppUpdateUnsupported():
+        return;
+    }
   }
 
   Future<void> _acceptAvailability(
     AppUpdateAvailability availability,
-    AppUpdatePreferences preferences,
+    _AppUpdateCheckTrigger trigger,
   ) async {
     switch (availability) {
       case AppUpdateCurrent():
         _emitState(const AppUpdateCurrentState());
       case AppUpdateUnsupported():
-        _emitUnsupportedDevice();
+        _emitUnsupported(availability.reason);
       case AppUpdateAvailable():
-        await _acceptAvailable(availability, preferences);
+        await _acceptAvailable(availability, trigger);
     }
   }
 
   Future<void> _acceptAvailable(
     AppUpdateAvailable available,
-    AppUpdatePreferences preferences,
+    _AppUpdateCheckTrigger trigger,
   ) async {
-    if (preferences.downloadPolicy == UpdateDownloadPolicy.manual) {
+    if (trigger == _AppUpdateCheckTrigger.manual) {
       _emitAvailable(available);
-      return;
+    } else {
+      await _offerAvailable(available);
     }
-    await _downloadWhenConnected(available, preferences);
   }
 
   void _emitAvailable(AppUpdateAvailable available) {
     _emitState(AppUpdateAvailableState(available.release, available.artifact));
   }
 
-  void _emitUnsupportedDevice() {
-    _emitState(
-      const AppUpdateUnsupportedState(
+  void _emitUnsupported(AppUpdateUnsupportedReason reason) {
+    final message = switch (reason) {
+      AppUpdateUnsupportedReason.noCompatibleArtifact =>
         'This update is not available for this device.',
-      ),
-    );
+      AppUpdateUnsupportedReason.nonIncreasingReleaseCode =>
+        'A newer version cannot replace this installed build.',
+    };
+    _emitState(AppUpdateUnsupportedState(message));
   }
 }

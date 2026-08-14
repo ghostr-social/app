@@ -4,7 +4,7 @@ final class _PanelAction {
   const _PanelAction(this.label, this.onPressed);
 
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 }
 
 class _StatusView extends StatelessWidget {
@@ -12,6 +12,7 @@ class _StatusView extends StatelessWidget {
     required this.icon,
     required this.message,
     this.detail,
+    this.detailIsError = false,
     this.progressLabel,
     this.progress,
     this.primary,
@@ -22,6 +23,7 @@ class _StatusView extends StatelessWidget {
   final IconData icon;
   final String message;
   final String? detail;
+  final bool detailIsError;
   final String? progressLabel;
   final double? progress;
   final _PanelAction? primary;
@@ -51,7 +53,7 @@ class _StatusView extends StatelessWidget {
       ),
       if (detail != null) ...[
         const SizedBox(height: AppSpacing.xs),
-        Text(detail!),
+        _detail(context),
       ],
       if (progressLabel != null) ..._progressWidgets(),
       if (primary != null || secondary != null || outlined != null)
@@ -62,6 +64,22 @@ class _StatusView extends StatelessWidget {
   Widget _title(BuildContext context) {
     return Expanded(
       child: Text(message, style: Theme.of(context).textTheme.titleMedium),
+    );
+  }
+
+  Widget _detail(BuildContext context) {
+    final text = Text(
+      detail!,
+      style: detailIsError
+          ? TextStyle(color: Theme.of(context).colorScheme.error)
+          : null,
+    );
+    if (!detailIsError) return text;
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label: detail,
+      child: ExcludeSemantics(child: text),
     );
   }
 

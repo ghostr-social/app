@@ -40,16 +40,19 @@ void main() {
     );
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
+    final checkNow = find.byKey(const Key('check-for-updates-button'));
     await tester.scrollUntilVisible(
-      find.text('Check now'),
+      checkNow,
       400,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text('Check now'));
+    await Scrollable.ensureVisible(tester.element(checkNow), alignment: 0.5);
+    await tester.pumpAndSettle();
+    await tester.tap(checkNow);
     await tester.pumpAndSettle();
 
     expect(update.catalog.calls, 1);
-    expect(find.text('Ghostr is up to date.'), findsOneWidget);
+    expect(find.text('Ghostr 0.0.2 is available.'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 }

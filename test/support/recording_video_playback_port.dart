@@ -3,12 +3,16 @@ import 'package:ghostr/shared/media/video_playback_port.dart';
 
 class RecordingVideoPlaybackPort implements VideoPlaybackPort {
   final Map<String, List<bool>> activity = {};
+  int surfaceDisposals = 0;
 
   @override
   Widget buildSurface(VideoPlaybackSurfaceRequest request) {
     (activity[request.media.debugLabel] ??= []).add(request.isActive);
     return _ReleaseOnDispose(
-      onReleased: request.onPlaybackMediaReleased,
+      onReleased: () {
+        surfaceDisposals += 1;
+        request.onPlaybackMediaReleased?.call();
+      },
       child: const SizedBox.expand(),
     );
   }

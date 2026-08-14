@@ -17,10 +17,19 @@ void main() {
         automaticInstall: false,
       ),
     ).build(),
-    act: (cubit) => cubit.start(),
+    act: (cubit) async {
+      await cubit.start();
+      await acceptCurrentUpdateOffer(cubit);
+    },
     expect: () => [
       isA<AppUpdateCheckingState>(),
-      isA<AppUpdateFailureState>().having(
+      isA<AppUpdateOfferedState>(),
+      isA<AppUpdateOfferedState>().having(
+        (state) => state.pendingAction,
+        'pending action',
+        AppUpdateOfferAction.accepting,
+      ),
+      isA<AppUpdateOfferedState>().having(
         (state) => state.message,
         'message',
         'Connect to the internet to download the update.',

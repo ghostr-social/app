@@ -14,7 +14,7 @@ void main() {
       for (final installedCode in [2, 3]) {
         final installed = InstalledApp(
           packageName: 'app.ghostr',
-          versionName: 'installed',
+          versionName: '0.0.$installedCode',
           versionCode: AndroidVersionCode(installedCode),
           supportedAbis: const [AndroidAbi.arm64V8a],
         );

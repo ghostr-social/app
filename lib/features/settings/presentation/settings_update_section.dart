@@ -33,16 +33,21 @@ class SettingsUpdateSection extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         SwitchListTile(
           key: const Key('automatic-update-checks-field'),
-          title: const Text('Check for updates automatically'),
+          title: const Text('Offer new app versions automatically'),
+          subtitle: const Text(
+            'Checks quietly; skipped versions are not offered again.',
+          ),
           value: preferences.automaticChecks,
           onChanged: isSaving ? null : _changeAutomaticChecks,
         ),
-        DropdownButtonFormField<UpdateDownloadPolicy>(
-          key: const Key('update-download-policy-field'),
-          initialValue: preferences.downloadPolicy,
-          decoration: const InputDecoration(labelText: 'Automatic downloads'),
-          items: UpdateDownloadPolicy.values.map(_downloadItem).toList(),
-          onChanged: isSaving ? null : _changeDownloadPolicy,
+        SwitchListTile(
+          key: const Key('wifi-only-update-downloads-field'),
+          title: const Text('Download updates only on Wi-Fi'),
+          subtitle: const Text(
+            'When off, downloads can use mobile data after you tap Update.',
+          ),
+          value: preferences.downloadPolicy == UpdateDownloadPolicy.wifiOnly,
+          onChanged: isSaving ? null : _changeWifiOnly,
         ),
         SwitchListTile(
           key: const Key('automatic-update-install-field'),
@@ -69,17 +74,17 @@ class SettingsUpdateSection extends StatelessWidget {
     onChanged(preferences.copyWith(automaticChecks: value));
   }
 
-  void _changeDownloadPolicy(UpdateDownloadPolicy? value) {
-    if (value != null) onChanged(preferences.copyWith(downloadPolicy: value));
+  void _changeWifiOnly(bool value) {
+    onChanged(
+      preferences.copyWith(
+        downloadPolicy: value
+            ? UpdateDownloadPolicy.wifiOnly
+            : UpdateDownloadPolicy.anyNetwork,
+      ),
+    );
   }
 
   void _changeAutomaticInstall(bool value) {
     onChanged(preferences.copyWith(automaticInstall: value));
-  }
-
-  DropdownMenuItem<UpdateDownloadPolicy> _downloadItem(
-    UpdateDownloadPolicy policy,
-  ) {
-    return DropdownMenuItem(value: policy, child: Text(policy.label));
   }
 }

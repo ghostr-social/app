@@ -6,7 +6,8 @@ import 'package:ghostr/features/settings/domain/app_update_preferences.dart';
 import '../../support/app_update_cubit_harness.dart';
 
 void main() {
-  test('a failed automatic check retries on the next resume', () async {
+  test('a failed automatic check waits for the next six-hour window', () async {
+    var now = DateTime.utc(2026, 8, 14, 12);
     final harness = AppUpdateCubitHarness(
       preferences: const AppUpdatePreferences(
         automaticChecks: true,
@@ -15,16 +16,21 @@ void main() {
       ),
     );
     harness.catalog.failure = const AppFailure('Catalog unavailable.');
-    final cubit = harness.build();
+    final cubit = harness.build(clock: () => now);
+    addTearDown(cubit.close);
 
     await cubit.start();
     expect(harness.catalog.calls, 1);
     expect(cubit.state, isA<AppUpdateFailureState>());
 
+    now = now.add(const Duration(minutes: 1));
+    await cubit.onPeriodicCheck();
+    expect(harness.catalog.calls, 1);
+
     harness.catalog.failure = null;
-    await cubit.onAppResumed();
+    now = now.add(const Duration(hours: 5, minutes: 59));
+    await cubit.onPeriodicCheck();
     expect(harness.catalog.calls, 2);
-    expect(cubit.state, isA<AppUpdateAvailableState>());
-    await cubit.close();
+    expect(cubit.state, isA<AppUpdateOfferedState>());
   });
 }

@@ -13,11 +13,13 @@ void main() {
     final subscription = cubit.stream.listen(states.add);
 
     await cubit.start();
+    await acceptCurrentUpdateOffer(cubit);
     expect(states.last, isA<AppUpdatePermissionRequiredState>());
     await cubit.openInstallPermissionSettings();
     expect(harness.installer.openCalls, 1);
 
     harness.installer.permission = UpdateInstallPermission.granted;
+    harness.reportUpdateInstalled();
     await cubit.retryInstall();
     await Future<void>.delayed(Duration.zero);
     expect(states.takeLast(2), [

@@ -16,7 +16,10 @@ final class AppUpdateAvailable extends AppUpdateAvailability {
   final ReleaseArtifact artifact;
 }
 
-enum AppUpdateUnsupportedReason { noCompatibleArtifact }
+enum AppUpdateUnsupportedReason {
+  noCompatibleArtifact,
+  nonIncreasingReleaseCode,
+}
 
 final class AppUpdateUnsupported extends AppUpdateAvailability {
   const AppUpdateUnsupported(this.reason);

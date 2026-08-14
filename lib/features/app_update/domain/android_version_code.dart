@@ -14,4 +14,12 @@ final class AndroidVersionCode implements Comparable<AndroidVersionCode> {
 
   @override
   int compareTo(AndroidVersionCode other) => value.compareTo(other.value);
+
+  @override
+  bool operator ==(Object other) {
+    return other is AndroidVersionCode && value == other.value;
+  }
+
+  @override
+  int get hashCode => value.hashCode;
 }

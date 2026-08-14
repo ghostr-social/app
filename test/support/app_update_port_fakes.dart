@@ -10,12 +10,14 @@ final class FakeAppReleaseCatalog implements AppReleaseCatalog {
   FakeAppReleaseCatalog(this.release);
 
   StableRelease release;
+  Future<void>? beforeResult;
   Object? failure;
   int calls = 0;
 
   @override
   Future<StableRelease> fetchStableRelease() async {
     calls += 1;
+    await beforeResult;
     if (failure != null) throw failure!;
     return release;
   }

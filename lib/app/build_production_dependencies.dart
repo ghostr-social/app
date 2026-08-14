@@ -13,6 +13,8 @@ import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/nostr/nostr_event_client.dart';
 import 'package:ghostr/features/activity/data/local_activity_repository.dart';
 import 'package:ghostr/features/activity/data/nostr_activity_repository.dart';
+import 'package:ghostr/features/app_update/data/local_update_offer_history_repository.dart';
+import 'package:ghostr/features/app_update/domain/update_offer_history_repository.dart';
 import 'package:ghostr/features/session/data/ndk_nostr_account_generator.dart';
 import 'package:ghostr/features/settings/data/local_app_settings_repository.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
@@ -38,7 +40,10 @@ typedef ProductionVideoDeliveryBuilder =
 typedef ProductionVideoEnvironmentBuilder =
     ProductionVideoDeliveryEnvironment Function(RustFeedViewer viewer);
 typedef ProductionAppUpdateBuilder =
-    AppUpdateRuntime Function(AppSettingsRepository repository);
+    AppUpdateRuntime Function(
+      AppSettingsRepository repository,
+      UpdateOfferHistoryRepository offerHistory,
+    );
 
 /// Reads the signed-in account on demand. A missing account is a null viewer.
 RustFeedViewer signedInViewer(NostrEventClient client) {
@@ -112,7 +117,10 @@ Future<AppDependencies> buildProductionDependencies([
       settingsRepository: settingsRepository,
       nostr: nostr,
       delivery: delivery,
-      appUpdateRuntime: bootstrap.appUpdateBuilder?.call(settingsRepository),
+      appUpdateRuntime: bootstrap.appUpdateBuilder?.call(
+        settingsRepository,
+        LocalUpdateOfferHistoryRepository(preferences),
+      ),
     ),
   );
 }
