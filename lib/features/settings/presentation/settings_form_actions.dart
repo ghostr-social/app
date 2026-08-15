@@ -12,7 +12,6 @@ class SettingsFormActions {
     required this.blossom,
     required this.onBudgetChanged,
     required this.onDataUsageChanged,
-    required this.onHideWatchedChanged,
     required this.updates,
     required this.onSave,
     this.onOpenWatchHistory,
@@ -24,7 +23,6 @@ class SettingsFormActions {
   final BlossomSettingsActions blossom;
   final ValueChanged<VideoInventoryBudget> onBudgetChanged;
   final ValueChanged<DataUsageLevel> onDataUsageChanged;
-  final ValueChanged<bool> onHideWatchedChanged;
   final UpdateSettingsActions updates;
   final VoidCallback onSave;
   final VoidCallback? onOpenWatchHistory;

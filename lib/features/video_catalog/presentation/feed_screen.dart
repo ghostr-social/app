@@ -27,9 +27,19 @@ class FeedScreen extends StatefulWidget {
   State<FeedScreen> createState() => _FeedScreenState();
 }
 
-class _FeedScreenState extends State<FeedScreen> {
+class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   bool _commentsOpen = false;
+  bool _appIsResumed = true;
   FeedCubit? _cubit;
+
+  @override
+  void initState() {
+    super.initState();
+    final binding = WidgetsBinding.instance;
+    binding.addObserver(this);
+    final lifecycle = binding.lifecycleState;
+    _appIsResumed = lifecycle == null || lifecycle == AppLifecycleState.resumed;
+  }
 
   @override
   void didChangeDependencies() {
@@ -38,20 +48,33 @@ class _FeedScreenState extends State<FeedScreen> {
     if (identical(_cubit, cubit)) return;
     _cubit?.surfaceVisibilityChanged(false);
     _cubit = cubit;
-    cubit.surfaceVisibilityChanged(widget.bindings.isActive);
+    cubit.surfaceVisibilityChanged(_isVisible);
   }
 
   @override
   void didUpdateWidget(covariant FeedScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.bindings.isActive == widget.bindings.isActive) return;
-    _cubit?.surfaceVisibilityChanged(widget.bindings.isActive);
+    _cubit?.surfaceVisibilityChanged(_isVisible);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final resumed = state == AppLifecycleState.resumed;
+    if (_appIsResumed == resumed) return;
+    _appIsResumed = resumed;
+    _cubit?.surfaceVisibilityChanged(_isVisible);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _cubit?.surfaceVisibilityChanged(false);
     super.dispose();
+  }
+
+  bool get _isVisible {
+    return widget.bindings.isActive && _appIsResumed && !_commentsOpen;
   }
 
   @override
@@ -88,6 +111,15 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Widget _feedContent(BuildContext context, FeedState state) {
+    if (_hidesLoading(state)) return const SizedBox.shrink();
+    return _visibleFeedContent(context, state);
+  }
+
+  bool _hidesLoading(FeedState state) {
+    return !_isVisible && state is FeedLoading;
+  }
+
+  Widget _visibleFeedContent(BuildContext context, FeedState state) {
     return switch (state) {
       FeedLoading() => const LoadingPanel(label: 'Loading video feed'),
       FeedEmpty() => _emptyFeed(context),
@@ -122,10 +154,13 @@ class _FeedScreenState extends State<FeedScreen> {
 
   Widget _feedPages(BuildContext context, FeedLoaded state) {
     return FeedPageView(
+      key: ValueKey(state.posts.first.id.value),
       itemCount: state.posts.length,
       initialPage: state.activeIndex,
       onPageChanged: context.read<FeedCubit>().pageChanged,
-      itemBuilder: (_, index) => _feedCard(context, state, index),
+      itemBuilder: (_, index) => index == state.activeIndex
+          ? _feedCard(context, state, index)
+          : const ColoredBox(color: Colors.black),
     );
   }
 
@@ -137,36 +172,15 @@ class _FeedScreenState extends State<FeedScreen> {
         post: post,
         playback: FeedCardPlayback(
           port: widget.bindings.playbackPort,
-          isActive:
-              widget.bindings.isActive &&
-              !_commentsOpen &&
-              index == state.activeIndex,
+          isActive: _isVisible && index == state.activeIndex,
         ),
         actions: _actions(context, state, post, sharing),
       ),
     );
   }
 
-  Future<void> _openComments(BuildContext context, VideoPost post) async {
-    setState(() => _commentsOpen = true);
-    try {
-      await showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        builder: (_) => BlocProvider(
-          create: (_) => widget.bindings.createComments(post)..load(),
-          child: CommentsSheet(
-            onCommentPublished: () => _commentPublished(context, post),
-          ),
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _commentsOpen = false);
-    }
-  }
-
-  void _commentPublished(BuildContext context, VideoPost post) {
-    if (!context.mounted) return;
-    context.read<FeedCubit>().commentsPublished(post, 1);
+  void _setCommentsOpen(bool value) {
+    setState(() => _commentsOpen = value);
+    _cubit?.surfaceVisibilityChanged(_isVisible);
   }
 }

@@ -26,7 +26,10 @@ import 'package:ghostr/features/video_catalog/domain/toggle_profile_follow_workf
 import 'package:ghostr/features/video_catalog/domain/follow_profile_workflow.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_arbiter.dart';
+import 'package:ghostr/features/video_catalog/domain/feed_replay_policy.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
+import 'package:ghostr/features/watch_history/domain/watch_aware_video_feed_repository.dart';
+import 'package:ghostr/features/watch_history/domain/watch_aware_video_search_repository.dart';
 import 'package:ghostr/features/watch_history/presentation/watch_history_cubit.dart';
 import 'package:ghostr/features/video_sharing/domain/video_share_workflow.dart';
 import 'package:ghostr/platform/media/delivery_config_syncing_settings_repository.dart';
@@ -57,7 +60,13 @@ class AppControllerFactory {
   );
   SearchCubit search() {
     final services = _dependencies.videoCatalogServices;
-    return SearchCubit(services.search, updates: services.searchUpdates);
+    final search = WatchAwareVideoSearchRepository(
+      search: services.search,
+      updates: services.searchUpdates,
+      history: _dependencies.watchHistoryRepository,
+      failureReporter: _dependencies.failureReporter,
+    );
+    return SearchCubit(search, updates: search);
   }
 
   TrendingHashtagsCubit trending() {

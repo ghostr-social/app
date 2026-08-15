@@ -6,6 +6,7 @@ import 'package:ghostr/features/watch_history/domain/watch_history_entry.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/nostr_test_values.dart';
+import '../support/test_watch_history_database.dart';
 
 void main() {
   test('isolates watch history when the active account changes', () async {
@@ -13,6 +14,7 @@ void main() {
     var account = NostrPublicKeyHex.parse(testViewerPublicKey);
     final repository = LocalWatchHistoryRepository(
       await SharedPreferences.getInstance(),
+      database: await openTestWatchHistoryDatabase(),
       accountScope: AccountStorageScope(() => account),
     );
 

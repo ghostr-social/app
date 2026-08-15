@@ -13,7 +13,6 @@ class AppSettings {
     required List<RelayUrl> relays,
     required VideoInventoryBudget inventoryBudget,
     required List<BlossomServerUrl> blossomServers,
-    required bool hideWatchedVideos,
     List<RelayUrl>? searchRelays,
     DataUsageLevel dataUsage = DataUsageLevel.balanced,
     AppUpdatePreferences updatePreferences = AppUpdatePreferences.defaults,
@@ -22,7 +21,6 @@ class AppSettings {
       List<RelayUrl>.unmodifiable(relays),
       inventoryBudget,
       List<BlossomServerUrl>.unmodifiable(blossomServers),
-      hideWatchedVideos,
       List<RelayUrl>.unmodifiable(searchRelays ?? defaultSearchRelays),
       dataUsage,
       updatePreferences,
@@ -33,7 +31,6 @@ class AppSettings {
     this.relays,
     this.inventoryBudget,
     this.blossomServers,
-    this.hideWatchedVideos,
     this.searchRelays,
     this.dataUsage,
     this.updatePreferences,
@@ -48,7 +45,6 @@ class AppSettings {
       ],
       inventoryBudget: VideoInventoryBudget.twoGigabytes,
       blossomServers: [BlossomServerUrl.parse('https://blossom.primal.net')],
-      hideWatchedVideos: true,
     );
   }
 
@@ -66,28 +62,63 @@ class AppSettings {
   final List<RelayUrl> relays;
   final VideoInventoryBudget inventoryBudget;
   final List<BlossomServerUrl> blossomServers;
-  final bool hideWatchedVideos;
   final List<RelayUrl> searchRelays;
   final DataUsageLevel dataUsage;
   final AppUpdatePreferences updatePreferences;
 
-  AppSettings copyWith({
-    List<RelayUrl>? relays,
-    VideoInventoryBudget? inventoryBudget,
-    List<BlossomServerUrl>? blossomServers,
-    bool? hideWatchedVideos,
-    List<RelayUrl>? searchRelays,
-    DataUsageLevel? dataUsage,
-    AppUpdatePreferences? updatePreferences,
-  }) {
+  AppSettings withRelays(List<RelayUrl> value) {
     return AppSettings(
-      relays: relays ?? this.relays,
-      inventoryBudget: inventoryBudget ?? this.inventoryBudget,
-      blossomServers: blossomServers ?? this.blossomServers,
-      hideWatchedVideos: hideWatchedVideos ?? this.hideWatchedVideos,
-      searchRelays: searchRelays ?? this.searchRelays,
-      dataUsage: dataUsage ?? this.dataUsage,
-      updatePreferences: updatePreferences ?? this.updatePreferences,
+      relays: value,
+      inventoryBudget: inventoryBudget,
+      blossomServers: blossomServers,
+      searchRelays: searchRelays,
+      dataUsage: dataUsage,
+      updatePreferences: updatePreferences,
     );
   }
+
+  AppSettings withInventoryBudget(VideoInventoryBudget value) => AppSettings(
+    relays: relays,
+    inventoryBudget: value,
+    blossomServers: blossomServers,
+    searchRelays: searchRelays,
+    dataUsage: dataUsage,
+    updatePreferences: updatePreferences,
+  );
+
+  AppSettings withBlossomServers(List<BlossomServerUrl> value) => AppSettings(
+    relays: relays,
+    inventoryBudget: inventoryBudget,
+    blossomServers: value,
+    searchRelays: searchRelays,
+    dataUsage: dataUsage,
+    updatePreferences: updatePreferences,
+  );
+
+  AppSettings withSearchRelays(List<RelayUrl> value) => AppSettings(
+    relays: relays,
+    inventoryBudget: inventoryBudget,
+    blossomServers: blossomServers,
+    searchRelays: value,
+    dataUsage: dataUsage,
+    updatePreferences: updatePreferences,
+  );
+
+  AppSettings withDataUsage(DataUsageLevel value) => AppSettings(
+    relays: relays,
+    inventoryBudget: inventoryBudget,
+    blossomServers: blossomServers,
+    searchRelays: searchRelays,
+    dataUsage: value,
+    updatePreferences: updatePreferences,
+  );
+
+  AppSettings withUpdatePreferences(AppUpdatePreferences value) => AppSettings(
+    relays: relays,
+    inventoryBudget: inventoryBudget,
+    blossomServers: blossomServers,
+    searchRelays: searchRelays,
+    dataUsage: dataUsage,
+    updatePreferences: value,
+  );
 }

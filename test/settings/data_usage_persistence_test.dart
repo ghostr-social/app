@@ -12,9 +12,7 @@ void main() {
     final loaded = await repository.load();
     expect(loaded.dataUsage, DataUsageLevel.balanced);
 
-    await repository.save(
-      loaded.copyWith(dataUsage: DataUsageLevel.aggressive),
-    );
+    await repository.save(loaded.withDataUsage(DataUsageLevel.aggressive));
     expect((await repository.load()).dataUsage, DataUsageLevel.aggressive);
 
     await preferences.setString('ghostr.settings.dataUsage', 'garbage');

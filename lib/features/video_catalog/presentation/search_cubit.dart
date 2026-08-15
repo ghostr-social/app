@@ -33,6 +33,7 @@ class SearchCubit extends DisposalSafeCubit<SearchState> {
   BigInt _liveRevision = BigInt.from(-1);
   String? _activeQuery;
   int? _activeSearchRequest;
+  String? _inactiveQuery;
 
   void queryChanged(String rawQuery) {
     _debounce?.cancel();
@@ -50,6 +51,7 @@ class SearchCubit extends DisposalSafeCubit<SearchState> {
   Future<void> _search(String rawQuery, {bool force = false}) async {
     _debounce?.cancel();
     final query = rawQuery.trim();
+    _inactiveQuery = null;
     if (!force && _isActiveSearch(query)) return;
     final request = ++_request;
     _liveRevision = BigInt.from(-1);
@@ -81,6 +83,25 @@ class SearchCubit extends DisposalSafeCubit<SearchState> {
   }
 
   Future<void> retry() => _search(state.query, force: true);
+
+  Future<void> refresh() {
+    final query = _inactiveQuery ?? state.query;
+    _inactiveQuery = null;
+    return query.isEmpty ? Future<void>.value() : _search(query, force: true);
+  }
+
+  void deactivate() {
+    _debounce?.cancel();
+    _request += 1;
+    _activeQuery = null;
+    _activeSearchRequest = null;
+    unawaited(_stopUpdates());
+    final query = state.query;
+    if (query.isNotEmpty) {
+      _inactiveQuery = query;
+      emit(const SearchIdle());
+    }
+  }
 
   Future<void> loadMore() async {
     final current = state;

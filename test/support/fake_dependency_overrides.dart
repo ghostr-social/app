@@ -4,12 +4,14 @@ import 'package:ghostr/features/publish/domain/video_publishing_repository.dart'
 import 'package:ghostr/features/session/domain/account_provisioning_repository.dart';
 import 'package:ghostr/features/session/domain/nostr_account_generator.dart';
 import 'package:ghostr/features/session/domain/session_repository.dart';
+import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_repository.dart';
 
 final class FakeDependencyOverrides {
   const FakeDependencyOverrides({
     this.sessionRepository,
+    this.feed,
     this.feedUpdates,
     this.watchHistory,
     this.publishing,
@@ -20,6 +22,7 @@ final class FakeDependencyOverrides {
   });
 
   final SessionRepository? sessionRepository;
+  final VideoFeedRepository? feed;
   final VideoFeedUpdates? feedUpdates;
   final WatchHistoryRepository? watchHistory;
   final VideoPublishingRepository? publishing;

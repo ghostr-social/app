@@ -24,12 +24,35 @@ extension _HomeShellControllers on _HomeShellState {
   }
 
   void _refreshTab(HomeTab tab) {
-    final refresh = switch (tab) {
-      HomeTab.home => _feedCubit?.refresh(),
-      HomeTab.activity => _activityCubit?.load(),
-      HomeTab.profile => _profileCubit?.load(),
-      HomeTab.search || HomeTab.create => null,
-    };
+    switch (tab) {
+      case HomeTab.home:
+        return _runRefresh(_feedCubit?.refresh());
+      case HomeTab.search:
+        return _runRefresh(_searchCubit?.refresh());
+      case HomeTab.activity:
+        return _runRefresh(_activityCubit?.load());
+      case HomeTab.profile:
+        return _runRefresh(_profileCubit?.load());
+      case HomeTab.create:
+        return;
+    }
+  }
+
+  void _deactivateSearchWhenLeaving(HomeTab selected) {
+    if (selected == _currentTab) return;
+    if (_currentTab == HomeTab.search) _searchCubit?.deactivate();
+  }
+
+  void _refreshActivatedTab(
+    HomeTab selected,
+    bool isReselectedHome,
+    bool shouldRefresh,
+  ) {
+    if (isReselectedHome) return _runRefresh(_feedCubit?.reload());
+    if (shouldRefresh) _refreshTab(selected);
+  }
+
+  void _runRefresh(Future<void>? refresh) {
     if (refresh != null) unawaited(refresh);
   }
 }

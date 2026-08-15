@@ -7,13 +7,14 @@ class WatchHistoryEntry {
     required String title,
     required String creatorName,
     required this.watchedAt,
+    List<String> mediaUrls = const <String>[],
     String? mediaUrl,
     String? mediaSha256,
-  })  : videoId = _requireVideoId(videoId),
-        title = title.trim(),
-        creatorName = creatorName.trim(),
-        mediaUrl = _optional(mediaUrl),
-        mediaSha256 = _optional(mediaSha256);
+  }) : videoId = _requireVideoId(videoId),
+       title = title.trim(),
+       creatorName = creatorName.trim(),
+       mediaUrls = _mediaUrls(mediaUrls, mediaUrl),
+       mediaSha256 = _optional(mediaSha256);
 
   factory WatchHistoryEntry.fromPost(VideoPost post, DateTime watchedAt) {
     final caption = post.caption.trim();
@@ -22,7 +23,7 @@ class WatchHistoryEntry {
       title: caption.isEmpty ? post.songName : caption,
       creatorName: post.creator.displayName,
       watchedAt: watchedAt,
-      mediaUrl: post.media.remoteUrl,
+      mediaUrls: post.media.remoteUrls,
       mediaSha256: post.media.expectedSha256?.value,
     );
   }
@@ -34,7 +35,9 @@ class WatchHistoryEntry {
 
   /// Where the video file was streamed from, so republishes of the same
   /// URL under a new event id still count as watched.
-  final String? mediaUrl;
+  final List<String> mediaUrls;
+
+  String? get mediaUrl => mediaUrls.firstOrNull;
 
   /// The file digest when the event declared one, so the same file on a
   /// different host still counts as watched.
@@ -51,5 +54,14 @@ class WatchHistoryEntry {
   static String? _optional(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+
+  static List<String> _mediaUrls(List<String> urls, String? legacyUrl) {
+    final values = <String>{
+      for (final url in urls)
+        if (_optional(url) case final value?) value,
+      if (_optional(legacyUrl) case final value?) value,
+    };
+    return List<String>.unmodifiable(values);
   }
 }

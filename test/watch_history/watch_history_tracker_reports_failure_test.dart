@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
-import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_entry.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
 
@@ -15,15 +14,17 @@ class _RejectingWatchHistoryRepository extends FakeWatchHistoryRepository {
 }
 
 void main() {
-  test('reports a failed watch recording instead of throwing', () async {
+  test('reports and exposes a failed watch recording', () async {
     final reporter = RecordingFailureReporter();
     final tracker = WatchHistoryTracker(
       history: _RejectingWatchHistoryRepository(),
-      settings: FakeAppSettingsRepository(AppSettings.defaults()),
       failureReporter: reporter,
     );
 
-    await tracker.videoWatched(samplePost());
+    await expectLater(
+      tracker.videoWatched(samplePost()),
+      throwsA(isA<AppFailure>()),
+    );
 
     expect(reporter.sources, ['WatchHistoryTracker.videoWatched']);
   });

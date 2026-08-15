@@ -14,12 +14,11 @@ void main() {
     };
 
     for (final usage in usages.entries) {
-      final settings = AppSettings.defaults().copyWith(
-        relays: [RelayUrl.parse('wss://read.example')],
-        searchRelays: [RelayUrl.parse('wss://search.example')],
-        dataUsage: usage.key,
-        inventoryBudget: VideoInventoryBudget.fourGigabytes,
-      );
+      final settings = AppSettings.defaults()
+          .withRelays([RelayUrl.parse('wss://read.example')])
+          .withSearchRelays([RelayUrl.parse('wss://search.example')])
+          .withDataUsage(usage.key)
+          .withInventoryBudget(VideoInventoryBudget.fourGigabytes);
       final mapped = ffiEngineConfiguration(
         RustEngineConfiguration.fromSettings(settings),
       );

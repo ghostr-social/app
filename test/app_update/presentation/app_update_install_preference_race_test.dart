@@ -22,8 +22,8 @@ void main() {
       final operation = acceptCurrentUpdateOffer(cubit);
       await downloading;
       await harness.settings.save(
-        harness.settings.settings.copyWith(
-          updatePreferences: const AppUpdatePreferences(
+        harness.settings.settings.withUpdatePreferences(
+          const AppUpdatePreferences(
             automaticChecks: true,
             downloadPolicy: UpdateDownloadPolicy.wifiOnly,
             automaticInstall: false,

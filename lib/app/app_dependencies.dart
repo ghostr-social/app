@@ -15,6 +15,8 @@ import 'package:ghostr/features/watch_history/domain/watch_history_repository.da
 import 'package:ghostr/features/video_sharing/domain/video_share_workflow.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 
+typedef AsyncDisposer = Future<void> Function();
+
 class AppDependencies {
   const AppDependencies({
     required this.sessionRepository,
@@ -33,6 +35,7 @@ class AppDependencies {
     required this.videoShareWorkflow,
     required this.failureReporter,
     this.appUpdateRuntime,
+    this.watchHistoryStorageDisposer,
   });
 
   final SessionRepository sessionRepository;
@@ -51,12 +54,15 @@ class AppDependencies {
   final VideoShareWorkflow videoShareWorkflow;
   final FailureReporter failureReporter;
   final AppUpdateRuntime? appUpdateRuntime;
+  final AsyncDisposer? watchHistoryStorageDisposer;
 
   Future<void> close() {
     final updateRuntime = appUpdateRuntime;
+    final historyDisposer = watchHistoryStorageDisposer;
     return Future.wait([
       Future<void>.sync(incomingVideoSharePort.close),
       if (updateRuntime != null) Future<void>.sync(updateRuntime.dispose),
+      if (historyDisposer != null) Future<void>.sync(historyDisposer),
     ]);
   }
 }

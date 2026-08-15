@@ -15,14 +15,11 @@ void main() {
       inner: inner,
       updateConfig: updater.call,
     );
-    final settings = AppSettings.defaults().copyWith(
-      dataUsage: DataUsageLevel.conservative,
+    final settings = AppSettings.defaults().withDataUsage(
+      DataUsageLevel.conservative,
     );
 
-    await expectLater(
-      repository.save(settings),
-      throwsA(isA<StateError>()),
-    );
+    await expectLater(repository.save(settings), throwsA(isA<StateError>()));
 
     expect(inner.settings, same(previous));
     expect(updater.pushes, isEmpty);

@@ -14,6 +14,7 @@ import '../support/fake_nostr_video_publisher_port.dart';
 import '../support/fake_remote_video_source.dart';
 import '../support/nostr_test_values.dart';
 import '../support/test_video_delivery.dart';
+import '../support/test_watch_history_database.dart';
 
 void main() {
   test('production graph persists update offer history locally', () async {
@@ -31,6 +32,7 @@ void main() {
       nostrServicesBuilder: (_) => nostr,
       videoDeliveryBuilder: (_, __) async =>
           testVideoDelivery(remoteSource: FakeRemoteVideoSource([])),
+      watchHistoryDatabaseLoader: openTestWatchHistoryDatabase,
       appUpdateBuilder: (settings, history) {
         capturedHistory = history;
         return AppUpdateRuntime(

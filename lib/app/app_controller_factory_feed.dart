@@ -15,9 +15,13 @@ extension AppControllerFeedFactories on AppControllerFactory {
   FeedCubit discoveryFeed(String query, {ProfileId? viewerId}) {
     return FeedCubit(
       _feedDependencies(
-        QueryVideoFeedRepository(
-          search: _dependencies.videoCatalogServices.search,
-          query: query,
+        WatchAwareVideoFeedRepository(
+          feed: QueryVideoFeedRepository(
+            search: _dependencies.videoCatalogServices.search,
+            query: query,
+          ),
+          history: _dependencies.watchHistoryRepository,
+          failureReporter: _dependencies.failureReporter,
         ),
         viewerId: viewerId,
       ),
@@ -33,6 +37,7 @@ extension AppControllerFeedFactories on AppControllerFactory {
           creatorId: post.creator.id,
         ),
         viewerId: viewer.id,
+        replayPolicy: FeedReplayPolicy.explicitSurface,
       ),
       openAt: post.id,
     );
@@ -42,6 +47,7 @@ extension AppControllerFeedFactories on AppControllerFactory {
     VideoFeedRepository feed, {
     ProfileId? viewerId,
     VideoFeedUpdates? updates,
+    FeedReplayPolicy replayPolicy = FeedReplayPolicy.prevent,
   }) {
     final services = _dependencies.videoCatalogServices;
     return FeedDependencies(
@@ -52,7 +58,10 @@ extension AppControllerFeedFactories on AppControllerFactory {
       optional: FeedOptionalDependencies(
         social: services.social,
         focus: _feedFocus.openLease(),
-        watchTracker: _watchTracker(),
+        watch: FeedWatchDependencies(
+          tracker: _watchTracker(),
+          replayPolicy: replayPolicy,
+        ),
         delivery: FeedDeliveryDependencies(
           updates: updates,
           reposts: services.reposts,
@@ -74,7 +83,6 @@ extension AppControllerFeedFactories on AppControllerFactory {
   WatchHistoryTracker _watchTracker() {
     return WatchHistoryTracker(
       history: _dependencies.watchHistoryRepository,
-      settings: _dependencies.appSettingsRepository,
       failureReporter: _dependencies.failureReporter,
     );
   }

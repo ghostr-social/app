@@ -18,9 +18,7 @@ void main() {
 
     await expectLater(
       repository.save(
-        AppSettings.defaults().copyWith(
-          dataUsage: DataUsageLevel.conservative,
-        ),
+        AppSettings.defaults().withDataUsage(DataUsageLevel.conservative),
       ),
       throwsA(
         isA<AppFailure>().having(

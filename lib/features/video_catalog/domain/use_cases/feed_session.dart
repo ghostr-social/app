@@ -32,14 +32,24 @@ final class FeedSession {
     FeedRoster visible,
     List<VideoPost> refreshed, {
     required List<VideoPost> eligible,
+    required bool retainWatched,
   }) {
     final current = visible.posts;
     return _holding(
       visible.resynced(
         _reconciled(refreshed, current),
         eligible: _reconciled(eligible, current),
+        retainWatched: retainWatched,
       ),
     );
+  }
+
+  FeedRoster movedTo(
+    FeedRoster visible,
+    int index, {
+    required bool forgetPrevious,
+  }) {
+    return _holding(visible.movedTo(index, forgetPrevious: forgetPrevious));
   }
 
   /// An older page: the posts it adds beyond what the viewer already has,

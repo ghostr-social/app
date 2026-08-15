@@ -29,7 +29,6 @@ class _FeedPageViewState extends State<FeedPageView> {
   @override
   void didUpdateWidget(covariant FeedPageView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.initialPage == widget.initialPage) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _reposition();
     });

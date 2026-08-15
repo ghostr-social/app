@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_entry.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_repository.dart';
+import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/watch_history/presentation/watch_history_cubit.dart';
 
 void main() {
@@ -46,4 +47,7 @@ class _GatedWatchHistoryRepository implements WatchHistoryRepository {
 
   @override
   Future<void> clear() async {}
+
+  @override
+  Future<List<VideoPost>> filterUnwatched(List<VideoPost> posts) async => posts;
 }

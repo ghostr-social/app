@@ -1,4 +1,5 @@
 import 'package:ghostr/core/media/video_media_source.dart';
+import 'package:ghostr/core/media/video_identity_url.dart';
 import 'package:ghostr/core/media/video_url_sha256.dart';
 import 'package:ghostr/features/video_catalog/domain/video_interaction_target.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
@@ -18,9 +19,12 @@ final class SeenVideoIdentities {
   /// Claims every identity of [post]; false when one was already claimed.
   bool add(VideoPost post) {
     final target = VideoInteractionTarget.fromPost(post);
-    final urls = post.media.remoteUrls;
+    final urls = post.media.remoteUrls
+        .map(canonicalVideoIdentityUrl)
+        .where((url) => url.isNotEmpty);
     final digest = _digestOf(post.media);
-    final duplicate = _targets.contains(target) ||
+    final duplicate =
+        _targets.contains(target) ||
         urls.any(_urls.contains) ||
         (digest != null && _digests.contains(digest));
     _targets.add(target);

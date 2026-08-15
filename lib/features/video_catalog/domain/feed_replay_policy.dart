@@ -1,0 +1,1 @@
+enum FeedReplayPolicy { prevent, explicitSurface }

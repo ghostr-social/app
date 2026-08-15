@@ -5,6 +5,7 @@ import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/presentation/disposal_safe_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
+import 'package:ghostr/features/video_catalog/domain/feed_replay_policy.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_backfill.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_engagement.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_fetcher.dart';
@@ -35,10 +36,17 @@ part 'feed_cubit_engagement.dart';
 part 'feed_cubit_backfill.dart';
 part 'feed_cubit_follow.dart';
 part 'feed_cubit_loading.dart';
+part 'feed_cubit_navigation.dart';
 part 'feed_cubit_update_loading.dart';
 part 'feed_update_state.dart';
 part 'feed_cubit_updates.dart';
 part 'feed_cubit_delivery.dart';
+
+typedef _PendingTransportRescue = ({
+  int fromIndex,
+  int intendedIndex,
+  bool graceExpired,
+});
 
 /// Turns feed intents into feed states. The rules behind a transition — what
 /// survives a refresh, when to dig into the past — live in collaborators.
@@ -68,13 +76,17 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   final _FeedUpdateState _updates;
   final _readySelector = const FeedReadySelector();
   final _delivery = <PlaybackDeliveryId, VideoDeliverySnapshot>{};
+  int _pageTransition = 0;
+  var _reloadWhenSurfaceVisible = false;
   StreamSubscription<VideoDeliverySnapshot>? _deliverySubscription;
-  ({int fromIndex, int intendedIndex, bool graceExpired})?
-  _awaitingTransportRescue;
+  _PendingTransportRescue? _awaitingTransportRescue;
   Timer? _rescueTimer;
   int? _pendingTransportJump;
   late final _fetch = FeedFetcher(_dependencies.feed);
   late final _backfill = FeedBackfill(_fetch, _loads);
+
+  void surfaceVisibilityChanged(bool isVisible) =>
+      _surfaceVisibilityChanged(isVisible);
   late final _engagement = FeedEngagement(
     _dependencies.engagement,
     _dependencies.social,
@@ -85,6 +97,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   late final _viewer = FeedViewer(
     focus: _dependencies.focus,
     watchTracker: _dependencies.watchTracker,
+    onWatchFailure: _watchPersistenceFailed,
   );
   late FeedFollowState _follows = FeedFollowState.unavailable(
     viewerId: _dependencies.viewerId,
@@ -94,6 +107,8 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   var _isClosing = false;
 
   Future<void> load([FeedKind? selectedKind]) async {
+    _reloadWhenSurfaceVisible = false;
+    _loads.take();
     _reposts?.forget();
     final follows = _reloadFollows();
     await _runFeedPull(() async {
@@ -123,54 +138,6 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     await follows;
   }
 
-  Future<void> refresh() async {
-    final previous = state;
-    if (previous is! FeedLoaded) return load();
-    _reposts?.forget();
-    final follows = _reloadFollows();
-    await _runFeedPull(() async {
-      await _refreshFeedUpdates(previous.kind);
-      final result = await _loads.newest(() => _fetch.resync(previous.kind));
-      if (isClosed || result == null) return;
-      if (result case FeedUnavailable()) {
-        emit(
-          previous
-              .withFollows(_follows)
-              .withNotice(feedLoadFailureMessage(result.failure)),
-        );
-      } else if (result case FeedFetched(:final posts, :final eligiblePosts)) {
-        _acknowledgePendingFeedUpdate();
-        _acceptRefresh(previous, posts, eligiblePosts);
-      }
-    });
-    await follows;
-  }
-
-  void pageChanged(int index) {
-    final current = state;
-    if (current is! FeedLoaded) return;
-    if (index < 0 || index >= current.posts.length) return;
-    if (_consumeTransportJump(index)) return;
-    final decision = _readyDecision(current, index);
-    if (decision.action == FeedReadyAction.rescue) {
-      return _rescueTo(current, decision);
-    }
-    _rememberPendingRescue(current, decision);
-    emit(current.withPage(index));
-    _viewer.landedOn(current.posts, index);
-    _ensureBuffered();
-  }
-
-  void surfaceVisibilityChanged(bool isVisible) {
-    _viewer.visibilityChanged(isVisible);
-  }
-
-  void clearNotice() {
-    final current = state;
-    if (current is! FeedLoaded || current.notice == null) return;
-    emit(current.withoutNotice());
-  }
-
   void _showNotice(String message) {
     final current = state;
     if (current is FeedLoaded) emit(current.withNotice(message));
@@ -182,6 +149,18 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     addError(error, stackTrace);
   }
 
+  void _watchPersistenceFailed(Object error, StackTrace stackTrace) {
+    if (_isClosing || isClosed) return;
+    _loads.take();
+    _pageTransition += 1;
+    _emitState(
+      FeedFailure(
+        state.kind,
+        'Watch history is unavailable. Clear it in Settings to continue.',
+      ),
+    );
+  }
+
   @override
   Future<void> close() async {
     if (_isClosing || isClosed) return;
@@ -189,7 +168,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     _loads.take();
     _hunt.dispose();
     _backfillRetry.cancel();
-    _viewer.dispose();
+    await _viewer.dispose();
     await _stopDeliveryUpdates();
     await _stopFeedUpdates();
     await super.close();

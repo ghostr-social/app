@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/watch_history/domain/watch_aware_video_feed_repository.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_entry.dart';
@@ -8,8 +7,7 @@ import '../support/fakes.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('a fully watched first page digs deeper instead of replaying',
-      () async {
+  test('a fully watched first page digs deeper instead of replaying', () async {
     final watched = samplePost(id: 'watched-1');
     final fresh = samplePost(id: 'fresh-1');
     final history = FakeWatchHistoryRepository();
@@ -21,7 +19,6 @@ void main() {
     final feed = WatchAwareVideoFeedRepository(
       feed: inner,
       history: history,
-      settings: FakeAppSettingsRepository(AppSettings.defaults()),
       failureReporter: RecordingFailureReporter(),
     );
 

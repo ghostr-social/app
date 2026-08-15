@@ -16,4 +16,10 @@ class KeyedSerialTaskQueue {
       if (identical(_tails[key], tail)) _tails.remove(key);
     }
   }
+
+  Future<void> drain() async {
+    while (_tails.isNotEmpty) {
+      await Future.wait(List<Future<void>>.of(_tails.values));
+    }
+  }
 }

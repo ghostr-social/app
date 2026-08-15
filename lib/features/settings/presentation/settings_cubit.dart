@@ -40,7 +40,7 @@ class SettingsCubit extends DisposalSafeCubit<SettingsState> {
       return;
     }
     final relays = <RelayUrl>{...settings.relays, relay}.toList();
-    emit(SettingsState.ready(settings.copyWith(relays: relays)));
+    emit(SettingsState.ready(settings.withRelays(relays)));
   }
 
   void addBlossomServer(String raw) {
@@ -55,14 +55,14 @@ class SettingsCubit extends DisposalSafeCubit<SettingsState> {
       ...settings.blossomServers,
       server,
     }.toList();
-    emit(SettingsState.ready(settings.copyWith(blossomServers: servers)));
+    emit(SettingsState.ready(settings.withBlossomServers(servers)));
   }
 
   void removeRelay(RelayUrl relay) {
     final settings = _editableSettings;
     if (settings == null) return;
     final relays = settings.relays.where((item) => item != relay).toList();
-    emit(SettingsState.ready(settings.copyWith(relays: relays)));
+    emit(SettingsState.ready(settings.withRelays(relays)));
   }
 
   void addSearchRelay(String raw) {
@@ -74,7 +74,7 @@ class SettingsCubit extends DisposalSafeCubit<SettingsState> {
       return;
     }
     final relays = <RelayUrl>{...settings.searchRelays, relay}.toList();
-    emit(SettingsState.ready(settings.copyWith(searchRelays: relays)));
+    emit(SettingsState.ready(settings.withSearchRelays(relays)));
   }
 
   void removeSearchRelay(RelayUrl relay) {
@@ -83,21 +83,19 @@ class SettingsCubit extends DisposalSafeCubit<SettingsState> {
     final relays = settings.searchRelays
         .where((item) => item != relay)
         .toList();
-    emit(SettingsState.ready(settings.copyWith(searchRelays: relays)));
+    emit(SettingsState.ready(settings.withSearchRelays(relays)));
   }
 
   void changeDataUsage(DataUsageLevel dataUsage) {
     final settings = _editableSettings;
     if (settings == null) return;
-    emit(SettingsState.ready(settings.copyWith(dataUsage: dataUsage)));
+    emit(SettingsState.ready(settings.withDataUsage(dataUsage)));
   }
 
   void changeUpdatePreferences(AppUpdatePreferences preferences) {
     final settings = _editableSettings;
     if (settings == null) return;
-    emit(
-      SettingsState.ready(settings.copyWith(updatePreferences: preferences)),
-    );
+    emit(SettingsState.ready(settings.withUpdatePreferences(preferences)));
   }
 
   void removeBlossomServer(BlossomServerUrl server) {
@@ -106,23 +104,13 @@ class SettingsCubit extends DisposalSafeCubit<SettingsState> {
     final servers = settings.blossomServers
         .where((item) => item != server)
         .toList();
-    emit(SettingsState.ready(settings.copyWith(blossomServers: servers)));
+    emit(SettingsState.ready(settings.withBlossomServers(servers)));
   }
 
   void changeBudget(VideoInventoryBudget budget) {
     final settings = _editableSettings;
     if (settings == null) return;
-    emit(SettingsState.ready(settings.copyWith(inventoryBudget: budget)));
-  }
-
-  void changeHideWatchedVideos(bool hideWatchedVideos) {
-    final settings = _editableSettings;
-    if (settings == null) return;
-    emit(
-      SettingsState.ready(
-        settings.copyWith(hideWatchedVideos: hideWatchedVideos),
-      ),
-    );
+    emit(SettingsState.ready(settings.withInventoryBudget(budget)));
   }
 
   Future<void> save() async {

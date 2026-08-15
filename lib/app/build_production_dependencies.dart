@@ -5,6 +5,7 @@ import 'package:ghostr/app/production_account_services.dart';
 import 'package:ghostr/app/production_nostr_services.dart';
 import 'package:ghostr/app/production_incoming_video_sharing.dart';
 import 'package:ghostr/app/production_app_update.dart';
+import 'package:ghostr/app/production_dependency_inputs.dart';
 import 'package:ghostr/app/production_video_catalog.dart';
 import 'package:ghostr/app/production_video_delivery.dart';
 import 'package:ghostr/app/production_video_playback.dart';
@@ -20,6 +21,7 @@ import 'package:ghostr/features/settings/data/local_app_settings_repository.dart
 import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/settings/domain/app_settings_repository.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_remote_source.dart';
+import 'package:ghostr/features/watch_history/data/watch_history_database.dart';
 import 'package:ghostr/platform/session/system_secret_clipboard.dart';
 import 'package:ghostr/platform/logging/developer_failure_reporter.dart';
 import 'package:ghostr/platform/media/image_picker_capabilities.dart';
@@ -27,6 +29,7 @@ import 'package:ghostr/platform/media/image_picker_media_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+export 'production_dependency_inputs.dart';
 export 'production_nostr_services.dart';
 
 typedef PreferencesLoader = Future<SharedPreferences> Function();
@@ -61,6 +64,7 @@ class ProductionDependenciesEnvironment {
     required this.preferencesLoader,
     required this.nostrServicesBuilder,
     required this.videoDeliveryBuilder,
+    required this.watchHistoryDatabaseLoader,
     this.appUpdateBuilder,
   });
 
@@ -77,6 +81,7 @@ class ProductionDependenciesEnvironment {
           videoEnvironmentBuilder(signedInViewer(nostr.eventClient)),
         );
       },
+      watchHistoryDatabaseLoader: openWatchHistoryDatabase,
       appUpdateBuilder:
           supportsDirectAppUpdates(
             isWeb: kIsWeb,
@@ -90,6 +95,7 @@ class ProductionDependenciesEnvironment {
   final PreferencesLoader preferencesLoader;
   final ProductionNostrServicesBuilder nostrServicesBuilder;
   final ProductionVideoDeliveryBuilder videoDeliveryBuilder;
+  final WatchHistoryDatabaseLoader watchHistoryDatabaseLoader;
   final ProductionAppUpdateBuilder? appUpdateBuilder;
 }
 
@@ -110,35 +116,26 @@ Future<AppDependencies> buildProductionDependencies([
   final settingsRepository = LocalAppSettingsRepository(preferences);
   final settings = await settingsRepository.load();
   final nostr = bootstrap.nostrServicesBuilder(settings);
-  final delivery = await bootstrap.videoDeliveryBuilder(settings, nostr);
-  return composeProductionDependencies(
-    ProductionDependencyInputs(
-      preferences: preferences,
-      settingsRepository: settingsRepository,
-      nostr: nostr,
-      delivery: delivery,
-      appUpdateRuntime: bootstrap.appUpdateBuilder?.call(
-        settingsRepository,
-        LocalUpdateOfferHistoryRepository(preferences),
+  final historyDatabase = await bootstrap.watchHistoryDatabaseLoader();
+  try {
+    final delivery = await bootstrap.videoDeliveryBuilder(settings, nostr);
+    return composeProductionDependencies(
+      ProductionDependencyInputs(
+        preferences: preferences,
+        settingsRepository: settingsRepository,
+        watchHistoryDatabase: historyDatabase,
+        nostr: nostr,
+        delivery: delivery,
+        appUpdateRuntime: bootstrap.appUpdateBuilder?.call(
+          settingsRepository,
+          LocalUpdateOfferHistoryRepository(preferences),
+        ),
       ),
-    ),
-  );
-}
-
-final class ProductionDependencyInputs {
-  const ProductionDependencyInputs({
-    required this.preferences,
-    required this.settingsRepository,
-    required this.nostr,
-    required this.delivery,
-    required this.appUpdateRuntime,
-  });
-
-  final SharedPreferences preferences;
-  final LocalAppSettingsRepository settingsRepository;
-  final ProductionNostrServices nostr;
-  final ProductionVideoDelivery delivery;
-  final AppUpdateRuntime? appUpdateRuntime;
+    );
+  } on Object {
+    await historyDatabase.close();
+    rethrow;
+  }
 }
 
 AppDependencies composeProductionDependencies(
@@ -149,7 +146,11 @@ AppDependencies composeProductionDependencies(
   final nostr = input.nostr;
   final delivery = input.delivery;
   final account = buildProductionAccountServices(
-    ProductionAccountServicesInputs(preferences: preferences, nostr: nostr),
+    ProductionAccountServicesInputs(
+      preferences: preferences,
+      watchHistoryDatabase: input.watchHistoryDatabase,
+      nostr: nostr,
+    ),
   );
   return AppDependencies(
     sessionRepository: account.sessionRepository,
@@ -161,7 +162,6 @@ AppDependencies composeProductionDependencies(
         nostr: nostr,
         accountScope: account.accountScope,
         watchHistory: account.watchHistory,
-        settingsRepository: settingsRepository,
       ),
     ),
     watchHistoryRepository: account.watchHistory,
@@ -187,5 +187,6 @@ AppDependencies composeProductionDependencies(
     videoShareWorkflow: buildProductionVideoSharing(),
     failureReporter: const DeveloperFailureReporter(),
     appUpdateRuntime: input.appUpdateRuntime,
+    watchHistoryStorageDisposer: account.watchHistory.close,
   );
 }

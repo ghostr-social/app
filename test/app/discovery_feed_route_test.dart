@@ -49,17 +49,21 @@ void main() {
         .widget<DiscoveryFeedScreen>(find.byType(DiscoveryFeedScreen))
         .request;
     final hashtagRoute = request.onOpenHashtag('#music');
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
     expect(find.widgetWithText(AppBar, '#music'), findsOneWidget);
     tester.state<NavigatorState>(find.byType(Navigator)).pop();
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
     await hashtagRoute;
 
     final profileRoute = request.onOpenProfile(sampleCreator().id);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
     expect(find.byType(ProfileScreen), findsOneWidget);
     tester.state<NavigatorState>(find.byType(Navigator)).pop();
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
     await profileRoute;
   });
 }

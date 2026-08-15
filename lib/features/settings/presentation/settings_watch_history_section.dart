@@ -3,16 +3,10 @@ import 'package:ghostr/shared/theme/app_tokens.dart';
 
 class SettingsWatchHistorySection extends StatelessWidget {
   const SettingsWatchHistorySection({
-    required this.hideWatchedVideos,
-    required this.isSaving,
-    required this.onHideWatchedChanged,
     required this.onOpenWatchHistory,
     super.key,
   });
 
-  final bool hideWatchedVideos;
-  final bool isSaving;
-  final ValueChanged<bool> onHideWatchedChanged;
   final VoidCallback? onOpenWatchHistory;
 
   @override
@@ -22,14 +16,12 @@ class SettingsWatchHistorySection extends StatelessWidget {
       children: [
         Text('Watch history', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: AppSpacing.xs),
-        const Text('Skip videos you already watched when the feed reloads.'),
-        const SizedBox(height: AppSpacing.sm),
-        SwitchListTile(
-          key: const Key('hide-watched-field'),
-          title: const Text('Hide watched videos'),
-          value: hideWatchedVideos,
-          onChanged: isSaving ? null : onHideWatchedChanged,
+        const Text(
+          'Watched videos stay out of For You and search until you clear '
+          'your watch history.',
+          key: Key('watched-video-policy'),
         ),
+        const SizedBox(height: AppSpacing.sm),
         ListTile(
           key: const Key('watch-history-entry'),
           title: const Text('View watch history'),

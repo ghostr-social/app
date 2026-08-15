@@ -5,18 +5,17 @@ import '../support/fakes.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('excludes watched videos on load but not on refresh', () async {
+  test('requests watched-video exclusion on load and refresh', () async {
     final repository = FakeVideoCatalogRepository(forYouFeed: [samplePost()]);
-    final cubit = FeedCubit(FeedDependencies(
-      feed: repository,
-      engagement: repository,
-    ));
+    final cubit = FeedCubit(
+      FeedDependencies(feed: repository, engagement: repository),
+    );
     addTearDown(cubit.close);
 
     await cubit.load();
     expect(repository.loadFeedExclusions, [true]);
 
     await cubit.refresh();
-    expect(repository.loadFeedExclusions, [true, false]);
+    expect(repository.loadFeedExclusions, [true, true]);
   });
 }

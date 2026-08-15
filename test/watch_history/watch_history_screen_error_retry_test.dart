@@ -4,12 +4,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_entry.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_repository.dart';
+import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/watch_history/presentation/watch_history_cubit.dart';
 import 'package:ghostr/features/watch_history/presentation/watch_history_screen.dart';
 
 void main() {
-  testWidgets('retries a failed watch history load successfully',
-      (tester) async {
+  testWidgets('retries a failed watch history load successfully', (
+    tester,
+  ) async {
     final repository = _FailingOnceWatchHistoryRepository();
 
     await tester.pumpWidget(
@@ -60,4 +62,7 @@ class _FailingOnceWatchHistoryRepository implements WatchHistoryRepository {
 
   @override
   Future<void> clear() async {}
+
+  @override
+  Future<List<VideoPost>> filterUnwatched(List<VideoPost> posts) async => posts;
 }

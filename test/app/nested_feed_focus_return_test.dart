@@ -12,10 +12,14 @@ import '../support/fake_feed_focus_port.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  testWidgets('popping a nested feed restores its parent feed focus', (
+  testWidgets('popping a nested feed never restores exited parent videos', (
     tester,
   ) async {
-    final posts = [samplePost(id: 'first'), samplePost(id: 'second')];
+    final posts = [
+      samplePost(id: 'first', caption: 'First watched'),
+      samplePost(id: 'second', caption: 'Second watched'),
+      samplePost(id: 'nested-only', caption: 'Nested watched'),
+    ];
     final focus = FakeFeedFocusPort();
     final controllers = AppControllerFactory(
       buildFakeDependencies(
@@ -48,6 +52,8 @@ void main() {
     await tester.pumpAndSettle();
     final parent = find.byType(DiscoveryFeedScreen);
     tester.element(parent).read<FeedCubit>().pageChanged(1);
+    await tester.pump();
+    await tester.pump();
     final returned = tester
         .widget<DiscoveryFeedScreen>(parent)
         .request
@@ -55,11 +61,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(focus.focuses.last.currentIndex, 0);
-    await tester.pageBack();
-    await tester.pumpAndSettle();
+    tester.state<NavigatorState>(find.byType(Navigator)).pop();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
     await returned;
 
-    expect(focus.focuses.last.currentIndex, 1);
-    expect(focus.focuses.last.current.id.value, 'second');
+    expect(find.byType(DiscoveryFeedScreen), findsOneWidget);
+    expect(find.text('First watched'), findsNothing);
+    expect(find.text('Second watched'), findsNothing);
+    expect(find.text('Nested watched'), findsNothing);
   });
 }

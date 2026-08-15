@@ -6,15 +6,17 @@ import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
 import 'package:ghostr/features/video_catalog/domain/video_delivery_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
+import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
 
 import '../support/fake_feed_focus_port.dart';
 import '../support/fakes.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('a newly ready neighbor rescues an already stalled swipe', () async {
+  test('a ready neighbor rescues a stalled no-replay swipe', () async {
     final updates = _DeliveryUpdates();
     final focus = FakeFeedFocusPort();
+    final history = FakeWatchHistoryRepository();
     final posts = List.generate(3, (index) => samplePost(id: 'p$index'));
     final repository = FakeVideoCatalogRepository(forYouFeed: posts);
     final cubit = FeedCubit(
@@ -24,6 +26,12 @@ void main() {
         optional: FeedOptionalDependencies(
           focus: focus,
           delivery: FeedDeliveryDependencies(deliveryUpdates: updates),
+          watch: FeedWatchDependencies(
+            tracker: WatchHistoryTracker(
+              history: history,
+              failureReporter: RecordingFailureReporter(),
+            ),
+          ),
         ),
       ),
     );
@@ -32,13 +40,19 @@ void main() {
     await cubit.load();
 
     cubit.pageChanged(1);
-    expect((cubit.state as FeedLoaded).activeIndex, 1);
+    await pumpEventQueue();
+    expect((cubit.state as FeedLoaded).posts.first.id.value, 'p1');
     updates.publish(posts[1], startable: false);
     updates.publish(posts[2], startable: true);
     await pumpEventQueue();
 
-    expect((cubit.state as FeedLoaded).activeIndex, 2);
+    expect((cubit.state as FeedLoaded).posts.first.id.value, 'p2');
     expect(focus.focuses.last.cause, FeedFocusCause.transportRescue);
+    expect(history.entries.map((entry) => entry.videoId), [
+      'e:p2',
+      'e:p1',
+      'e:p0',
+    ]);
   });
 }
 

@@ -6,9 +6,8 @@ import 'package:ghostr/features/video_catalog/domain/video_search_repository.dar
 
 /// A feed bound to one search query or `#hashtag`.
 ///
-/// Feed kind and watch exclusion do not apply: the viewer asked for exactly
-/// this content, so every match plays — watched or not. The search never
-/// reports itself finished either; as long as the viewer keeps swiping, the
+/// This raw query source delegates watch policy to its outer feed decorator.
+/// It never reports itself finished; as long as the viewer keeps swiping, the
 /// feed keeps hunting for more matches.
 class QueryVideoFeedRepository implements VideoFeedRepository {
   const QueryVideoFeedRepository({

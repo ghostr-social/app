@@ -17,19 +17,17 @@ void main() {
     final repository = LocalAppSettingsRepository(preferences);
 
     final loaded = await repository.load();
-    expect(
-      loaded.searchRelays.map((relay) => relay.value),
-      ['wss://search.example'],
-    );
+    expect(loaded.searchRelays.map((relay) => relay.value), [
+      'wss://search.example',
+    ]);
 
     await repository.save(
-      loaded.copyWith(searchRelays: [RelayUrl.parse('wss://other.example')]),
+      loaded.withSearchRelays([RelayUrl.parse('wss://other.example')]),
     );
     final restored = await repository.load();
-    expect(
-      restored.searchRelays.map((relay) => relay.value),
-      ['wss://other.example'],
-    );
+    expect(restored.searchRelays.map((relay) => relay.value), [
+      'wss://other.example',
+    ]);
 
     await preferences.remove('ghostr.settings.searchRelays');
     final fresh = await repository.load();

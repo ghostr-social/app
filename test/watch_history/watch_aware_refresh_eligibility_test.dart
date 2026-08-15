@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_fetcher.dart';
 import 'package:ghostr/features/watch_history/domain/watch_aware_video_feed_repository.dart';
@@ -21,7 +20,6 @@ void main() {
             WatchHistoryEntry.fromPost(watched, DateTime.utc(2026, 3, 12)),
           ],
         ),
-        settings: FakeAppSettingsRepository(AppSettings.defaults()),
         failureReporter: RecordingFailureReporter(),
       );
 

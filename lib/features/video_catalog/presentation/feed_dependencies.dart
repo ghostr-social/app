@@ -3,6 +3,7 @@ import 'package:ghostr/features/reposts/domain/video_repost_repository.dart';
 import 'package:ghostr/features/social/domain/social_graph_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/follow_profile_workflow.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
+import 'package:ghostr/features/video_catalog/domain/feed_replay_policy.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
@@ -29,7 +30,8 @@ class FeedDependencies {
 
   SocialGraphRepository? get social => optional.social;
   FeedFocusPort? get focus => optional.focus;
-  WatchHistoryTracker? get watchTracker => optional.watchTracker;
+  WatchHistoryTracker? get watchTracker => optional.watch.tracker;
+  FeedReplayPolicy get replayPolicy => optional.watch.replayPolicy;
   VideoFeedUpdates? get updates => optional.updates;
   VideoDeliveryUpdates? get deliveryUpdates => optional.deliveryUpdates;
 }
@@ -39,18 +41,28 @@ final class FeedOptionalDependencies {
   const FeedOptionalDependencies({
     this.social,
     this.focus,
-    this.watchTracker,
+    this.watch = const FeedWatchDependencies(),
     this.delivery = const FeedDeliveryDependencies(),
   });
 
   final SocialGraphRepository? social;
   final FeedFocusPort? focus;
-  final WatchHistoryTracker? watchTracker;
+  final FeedWatchDependencies watch;
   final FeedDeliveryDependencies delivery;
 
   VideoFeedUpdates? get updates => delivery.updates;
   VideoRepostRepository? get reposts => delivery.reposts;
   VideoDeliveryUpdates? get deliveryUpdates => delivery.deliveryUpdates;
+}
+
+final class FeedWatchDependencies {
+  const FeedWatchDependencies({
+    this.tracker,
+    this.replayPolicy = FeedReplayPolicy.prevent,
+  });
+
+  final WatchHistoryTracker? tracker;
+  final FeedReplayPolicy replayPolicy;
 }
 
 final class FeedDeliveryDependencies {
