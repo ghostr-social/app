@@ -45,6 +45,7 @@ fn reply(status: StatusCode, start: usize, end: usize, body: Body) -> Response {
         .status(status)
         .header(header::CONTENT_TYPE, "video/mp4")
         .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::ETAG, "\"fixture-pressure\"")
         .header(header::CONTENT_LENGTH, end - start + 1);
     if status == StatusCode::PARTIAL_CONTENT {
         builder = builder.header(header::CONTENT_RANGE, format!("bytes {start}-{end}/16"));

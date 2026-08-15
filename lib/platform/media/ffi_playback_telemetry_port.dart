@@ -27,7 +27,7 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
   final _latest = <int, FfiPlaybackObservation>{};
   PlaybackSession? _active;
   Future<void>? _draining;
-  int? _sendingGeneration;
+  FfiPlaybackObservation? _sendingInput;
   var _nextSequence = 0;
 
   @override
@@ -65,24 +65,26 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
   }
 
   void _retainTerminalSample(int generation) {
-    final queued = _pending[generation]?.where(_isInactive).lastOrNull;
-    if (queued != null) {
-      _replaceQueue(generation, queued);
+    final queued = _pending[generation];
+    final failure =
+        queued?.where(_isFailed).lastOrNull ??
+        (_latest[generation]?.phase == FfiPlaybackPhase.failed
+            ? _latest[generation]
+            : null);
+    final terminal =
+        queued?.where(_isInactive).lastOrNull ??
+        _terminalAfter(_latest[generation]);
+    if (terminal == null) {
+      _pending.remove(generation);
       return;
     }
-    _pending.remove(generation);
-    final latest = _latest[generation];
-    if (latest == null || _isInactive(latest)) return;
-    _queueTerminal(generation, _inactiveAfter(latest));
-  }
-
-  void _replaceQueue(int generation, FfiPlaybackObservation terminal) {
-    _pending[generation] = ListQueue.of([terminal]);
-  }
-
-  void _queueTerminal(int generation, FfiPlaybackObservation terminal) {
+    final retained = <FfiPlaybackObservation>[];
+    if (failure != null && !identical(failure, _sendingInput)) {
+      retained.add(failure);
+    }
+    retained.add(terminal);
     _latest[generation] = terminal;
-    _replaceQueue(generation, terminal);
+    _pending[generation] = ListQueue.of(retained);
     _draining ??= _drain();
   }
 
@@ -98,7 +100,7 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
     while (_pending.isNotEmpty) {
       final generation = _pending.keys.first;
       final input = _takeNext(generation);
-      _sendingGeneration = _needsInactiveFollowUp(input) ? generation : null;
+      _sendingInput = input;
       try {
         await _reportPlayback(input: input);
       } on Object catch (error, stackTrace) {
@@ -109,7 +111,7 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
           stackTrace: stackTrace,
         );
       }
-      _sendingGeneration = null;
+      _sendingInput = null;
       if (_isInactive(input) && identical(_latest[generation], input)) {
         _latest.remove(generation);
       }
@@ -127,7 +129,7 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
   void _boundPendingSessions() {
     while (_pending.length > _pendingSessionLimit) {
       final discard = _pending.keys.firstWhere(
-        (generation) => generation != _sendingGeneration,
+        (generation) => _sendingInput?.generation != BigInt.from(generation),
       );
       _pending.remove(discard);
       _latest.remove(discard);
@@ -135,12 +137,17 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
   }
 }
 
-bool _needsInactiveFollowUp(FfiPlaybackObservation input) {
-  return input.phase != FfiPlaybackPhase.inactive;
-}
-
 bool _isInactive(FfiPlaybackObservation input) {
   return input.phase == FfiPlaybackPhase.inactive;
+}
+
+bool _isFailed(FfiPlaybackObservation input) {
+  return input.phase == FfiPlaybackPhase.failed;
+}
+
+FfiPlaybackObservation? _terminalAfter(FfiPlaybackObservation? input) {
+  if (input == null) return null;
+  return _isInactive(input) ? input : _inactiveAfter(input);
 }
 
 FfiPlaybackObservation _inactiveAfter(FfiPlaybackObservation input) {
@@ -177,6 +184,7 @@ FfiPlaybackPhase _mapPhase(PlaybackPhase phase) {
     PlaybackPhase.networkStalled => FfiPlaybackPhase.networkStalled,
     PlaybackPhase.paused => FfiPlaybackPhase.paused,
     PlaybackPhase.ended => FfiPlaybackPhase.ended,
+    PlaybackPhase.failed => FfiPlaybackPhase.failed,
     PlaybackPhase.inactive => FfiPlaybackPhase.inactive,
   };
 }

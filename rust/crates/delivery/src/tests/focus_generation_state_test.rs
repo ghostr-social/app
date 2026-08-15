@@ -39,5 +39,6 @@ fn focus(post: &str, generation: u64) -> DeliveryFocus {
         watch_ms: 0,
         generation: FocusGeneration::try_new(generation).expect("positive generation"),
         transition: FocusTransition::UserNavigation,
+        rescue: None,
     }
 }

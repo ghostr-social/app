@@ -1,6 +1,7 @@
 use super::candidate_catalog_fixture::{binding, candidate, url};
 use super::support::temp_directory;
 use crate::manager::state::DeliveryState;
+use ghostr_engine::representation::SourceGeneration;
 use ghostr_engine::{DataUsageLevel, EngineParams, PostId};
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
@@ -15,9 +16,14 @@ async fn readmitted_candidate_reuses_sparse_bytes_after_catalog_eviction() {
     let first = binding(&mut state, "reused");
     store.bind_representation(first.clone()).await.unwrap();
     let identity = first.transfer(&url("reused")).unwrap();
-    store.select_transfer(identity.clone());
+    store.select_transfer(identity.clone()).await.unwrap();
+    let generation = SourceGeneration::try_new(url("reused"), "\"stable\"", 8).unwrap();
+    store
+        .accept_generation(&identity, generation.clone())
+        .await
+        .unwrap();
     assert!(store
-        .write_range_for_transfer_if_current(&identity, 0, &[1; 4])
+        .write_range_for_generation_if_current(&identity, &generation, 0, &[1; 4])
         .await
         .unwrap());
 

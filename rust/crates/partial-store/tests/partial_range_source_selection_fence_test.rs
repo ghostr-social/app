@@ -15,25 +15,26 @@ async fn selected_mirror_rejects_a_delayed_write_from_the_previous_source() {
     let old = binding.transfer("https://a.example/video").unwrap();
     let current = binding.transfer("https://b.example/video").unwrap();
     store.bind_representation(binding).await.unwrap();
-    store.select_transfer(old.clone());
+    store.select_transfer(old.clone()).await.unwrap();
     assert!(store
         .write_range_for_transfer_if_current(&old, 0, b"kept")
         .await
         .unwrap());
 
-    store.select_transfer(current.clone());
+    store.select_transfer(current.clone()).await.unwrap();
 
     assert!(!store
         .write_range_for_transfer_if_current(&old, 4, b"late")
         .await
         .unwrap());
     assert!(store
-        .write_range_for_transfer_if_current(&current, 4, b"-new")
+        .write_range_for_transfer_if_current(&current, 4, b"new!")
         .await
         .unwrap());
+    assert_eq!(store.read_range("same", 0..4).await.unwrap(), None);
     assert_eq!(
-        store.read_range("same", 0..8).await.unwrap(),
-        Some(b"kept-new".to_vec())
+        store.read_range("same", 4..8).await.unwrap(),
+        Some(b"new!".to_vec())
     );
     store_fixture::discard(&root);
 }

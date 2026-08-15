@@ -18,6 +18,8 @@ pub(crate) mod mutable_priority_queue;
 pub mod playback_admission;
 pub mod playback_demand;
 pub mod progressive_posts;
+pub mod qoe;
+pub mod segmented;
 
 pub mod debug;
 

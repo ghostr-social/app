@@ -96,6 +96,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  FfiTransportRescue dco_decode_box_autoadd_ffi_transport_rescue(dynamic raw);
+
+  @protected
   BigInt dco_decode_box_autoadd_u_64(dynamic raw);
 
   @protected
@@ -176,6 +179,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FfiPlaybackPhase dco_decode_ffi_playback_phase(dynamic raw);
 
   @protected
+  FfiTransportRescue dco_decode_ffi_transport_rescue(dynamic raw);
+
+  @protected
+  FfiTransportRescueReason dco_decode_ffi_transport_rescue_reason(dynamic raw);
+
+  @protected
   int dco_decode_i_32(dynamic raw);
 
   @protected
@@ -216,6 +225,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiMediaDim? dco_decode_opt_box_autoadd_ffi_media_dim(dynamic raw);
+
+  @protected
+  FfiTransportRescue? dco_decode_opt_box_autoadd_ffi_transport_rescue(
+    dynamic raw,
+  );
 
   @protected
   BigInt? dco_decode_opt_box_autoadd_u_64(dynamic raw);
@@ -301,6 +315,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiPlaybackObservation sse_decode_box_autoadd_ffi_playback_observation(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiTransportRescue sse_decode_box_autoadd_ffi_transport_rescue(
     SseDeserializer deserializer,
   );
 
@@ -403,6 +422,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FfiPlaybackPhase sse_decode_ffi_playback_phase(SseDeserializer deserializer);
 
   @protected
+  FfiTransportRescue sse_decode_ffi_transport_rescue(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiTransportRescueReason sse_decode_ffi_transport_rescue_reason(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
@@ -455,6 +484,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiMediaDim? sse_decode_opt_box_autoadd_ffi_media_dim(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiTransportRescue? sse_decode_opt_box_autoadd_ffi_transport_rescue(
     SseDeserializer deserializer,
   );
 
@@ -557,6 +591,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_ffi_playback_observation(
     FfiPlaybackObservation self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_ffi_transport_rescue(
+    FfiTransportRescue self,
     SseSerializer serializer,
   );
 
@@ -684,6 +724,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_ffi_transport_rescue(
+    FfiTransportRescue self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_transport_rescue_reason(
+    FfiTransportRescueReason self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
@@ -755,6 +807,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_opt_box_autoadd_ffi_media_dim(
     FfiMediaDim? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_ffi_transport_rescue(
+    FfiTransportRescue? self,
     SseSerializer serializer,
   );
 

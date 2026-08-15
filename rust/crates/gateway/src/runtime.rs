@@ -12,6 +12,7 @@ use crate::hls::sessions::HlsSessions;
 use crate::progressive::capabilities::ProgressiveCapabilityId;
 use crate::progressive::route::ProgressiveState;
 use ghostr_delivery::delivery_events::DeliveryHandle;
+use ghostr_delivery::segmented::SegmentedCache;
 use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_media_store::native_cache::prepare_native_cache_directory;
 use ghostr_net::outbound_media_client::MediaHttpClient;
@@ -33,6 +34,7 @@ pub struct GatewayRuntime {
     hls: HlsPlaybackGateway,
     delivery: DeliveryHandle,
     progressive: Arc<ProgressiveState>,
+    segmented: SegmentedCache,
 }
 
 impl GatewayRuntime {
@@ -73,6 +75,10 @@ impl GatewayRuntime {
     /// Progressive plumbing (store/demand/posts) for the FFI layer.
     pub fn progressive(&self) -> Arc<ProgressiveState> {
         self.progressive.clone()
+    }
+
+    pub fn segmented(&self) -> SegmentedCache {
+        self.segmented.clone()
     }
 
     pub async fn issue_progressive(&self, post: &str) -> ProgressiveCapabilityId {
@@ -122,7 +128,7 @@ async fn start_with_media(
     let address = listener.local_addr()?;
     let endpoint = address.to_string();
     let hls_sessions = HlsSessions::production();
-    let (router, delivery, progressive, discovery_demand) =
+    let (router, delivery, progressive, segmented, discovery_demand) =
         start_progressive_delivery(&configuration, hls_sessions.clone(), client, media).await?;
     spawn_http_server(listener, router);
     let hls = HlsPlaybackGateway::new(address, hls_sessions);
@@ -130,6 +136,7 @@ async fn start_with_media(
         hls,
         delivery,
         progressive,
+        segmented,
     };
     Ok((endpoint, runtime, discovery_demand))
 }

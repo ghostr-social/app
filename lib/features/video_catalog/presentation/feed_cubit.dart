@@ -4,6 +4,7 @@ import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/presentation/disposal_safe_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
+import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_backfill.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_engagement.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_fetcher.dart';
@@ -68,7 +69,9 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   final _readySelector = const FeedReadySelector();
   final _delivery = <PlaybackDeliveryId, VideoDeliverySnapshot>{};
   StreamSubscription<VideoDeliverySnapshot>? _deliverySubscription;
-  ({int fromIndex, int intendedIndex})? _awaitingTransportRescue;
+  ({int fromIndex, int intendedIndex, bool graceExpired})?
+  _awaitingTransportRescue;
+  Timer? _rescueTimer;
   int? _pendingTransportJump;
   late final _fetch = FeedFetcher(_dependencies.feed);
   late final _backfill = FeedBackfill(_fetch, _loads);
@@ -148,9 +151,11 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     if (current is! FeedLoaded) return;
     if (index < 0 || index >= current.posts.length) return;
     if (_consumeTransportJump(index)) return;
-    final selected = _selectedPage(current, index);
-    if (selected != index) return _rescueTo(current, selected);
-    _rememberPendingRescue(current, index);
+    final decision = _readyDecision(current, index);
+    if (decision.action == FeedReadyAction.rescue) {
+      return _rescueTo(current, decision);
+    }
+    _rememberPendingRescue(current, decision);
     emit(current.withPage(index));
     _viewer.landedOn(current.posts, index);
     _ensureBuffered();

@@ -33,6 +33,7 @@ async fn chunk_downloader_rejects_partial_content_without_a_content_range() {
         client: &media_client(),
         url: &url,
         range: ByteRange::new(0, 5),
+        continuation: None,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {

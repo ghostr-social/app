@@ -9,6 +9,7 @@ final class VideoDeliverySnapshot {
     required this.phase,
     required this.bytesPresent,
     this.totalBytes,
+    this.eta,
     this.detail,
   });
 
@@ -16,6 +17,7 @@ final class VideoDeliverySnapshot {
   final VideoDeliveryPhase phase;
   final BigInt bytesPresent;
   final BigInt? totalBytes;
+  final Duration? eta;
   final String? detail;
 }
 

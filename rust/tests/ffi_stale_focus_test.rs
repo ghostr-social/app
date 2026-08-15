@@ -32,6 +32,7 @@ fn update(generation: u64, post_id: &str) -> FfiFocusUpdate {
         watch_ms: 0,
         generation,
         transition: FfiFocusTransition::UserNavigation,
+        rescue: None,
     }
 }
 

@@ -76,6 +76,7 @@ fn reply(status: StatusCode, length: u64, range: Option<String>, body: Body) -> 
         .status(status)
         .header(header::CONTENT_TYPE, "video/mp4")
         .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::ETAG, "\"fixture-concurrency\"")
         .header(header::CONTENT_LENGTH, length);
     if let Some(range) = range {
         builder = builder.header(header::CONTENT_RANGE, range);

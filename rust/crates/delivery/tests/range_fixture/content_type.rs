@@ -63,7 +63,8 @@ fn partial(media: &TypedMedia, start: u64, end: u64) -> Response {
 fn build(media: &TypedMedia, status: StatusCode, length: usize) -> Builder {
     let builder = Response::builder()
         .status(status)
-        .header(header::CONTENT_LENGTH, length);
+        .header(header::CONTENT_LENGTH, length)
+        .header(header::ETAG, "\"fixture-content-type\"");
     match &media.content_type {
         Some(value) => builder.header(header::CONTENT_TYPE, value),
         None => builder,

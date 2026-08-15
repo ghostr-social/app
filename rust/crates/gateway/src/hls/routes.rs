@@ -1,3 +1,4 @@
+use crate::hls::cached;
 use crate::hls::sessions::{HlsResourceId, HlsSessionId};
 use crate::router::{proxy_response, upstream_request, GatewayHttpState};
 use anyhow::{bail, Context, Result};
@@ -61,6 +62,9 @@ pub(crate) async fn asset(
         .await
         .filter(|item| item.kind == HlsResourceKind::Asset)
         .ok_or(StatusCode::NOT_FOUND)?;
+    if let Some(object) = state.segmented.object(resource.url.as_str()) {
+        return cached::response(object, &headers);
+    }
     let upstream = upstream_request(state.client.as_ref(), resource.url.to_string(), &headers)?
         .send()
         .await
@@ -86,6 +90,12 @@ async fn fetch_manifest_inner(
     session: &HlsSessionId,
     source: Url,
 ) -> Result<String> {
+    if let Some(object) = state.segmented.object(source.as_str()) {
+        return state
+            .hls_sessions
+            .rewrite_manifest(session, &object.body, &object.final_url)
+            .await;
+    }
     let mut response = state
         .client
         .get(source.as_str())?

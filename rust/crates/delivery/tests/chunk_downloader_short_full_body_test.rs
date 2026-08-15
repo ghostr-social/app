@@ -20,6 +20,7 @@ async fn short_200_body_completes_a_larger_speculative_grant() {
         client: &client,
         url: &url,
         range: ByteRange::new(0, 256 * 1024),
+        continuation: None,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {

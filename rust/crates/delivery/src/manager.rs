@@ -19,6 +19,7 @@ pub(crate) mod plan;
 mod policy_eviction;
 pub(crate) mod pressure;
 mod probe_completion;
+pub(crate) mod qoe;
 pub(crate) mod quality;
 pub(crate) mod reconcile;
 mod reconcile_transfers;
@@ -43,6 +44,7 @@ use crate::delivery_events::{command_channel, CommandReceiver, DeliveryHandle};
 use crate::demand_leases::DemandLeases;
 use crate::manager::cooldown_timers::CooldownTimers;
 use crate::manager::pressure::StorePressure;
+use crate::manager::qoe::QoeKeeper;
 use crate::manager::retry::RetryBook;
 use crate::manager::state::DeliveryState;
 use crate::manager::stats::StatsKeeper;
@@ -53,6 +55,8 @@ use crate::manager::workers::DownloadWorkers;
 use crate::mutable_priority_queue::MutablePriorityQueue;
 use crate::playback_demand::DemandReceiver;
 use crate::probe::pool::MetadataProbePool;
+use crate::segmented::scheduler::SegmentedDelivery;
+use crate::segmented::SegmentedCache;
 use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_engine::concurrency::AdaptiveConcurrency;
 use ghostr_engine::{DataUsageLevel, EngineParams};
@@ -73,6 +77,7 @@ pub struct DeliveryManagerConfig<C = MediaHttpClient> {
     pub store: Arc<PartialRangeStore>,
     pub client: C,
     pub cache: CacheRegistry,
+    pub segmented: SegmentedCache,
     pub network: NetworkThrottle,
     pub stats_path: PathBuf,
     pub params: EngineParams,
@@ -109,11 +114,13 @@ async fn run<C>(
     }
     while worker.step().await {}
     worker.keeper.save_now().await;
+    worker.qoe.save_now().await;
 }
 
 pub(crate) struct DeliveryWorker {
     state: DeliveryState,
     keeper: StatsKeeper,
+    qoe: QoeKeeper,
     downloads: DownloadWorkers,
     queue: MutablePriorityQueue,
     probes: MetadataProbePool,
@@ -130,6 +137,7 @@ pub(crate) struct DeliveryWorker {
     traffic: TrafficInbox,
     wake_cursor: WakeCursor,
     concurrency: AdaptiveConcurrency,
+    segmented: SegmentedDelivery,
 }
 
 impl DeliveryWorker {
@@ -146,9 +154,13 @@ impl DeliveryWorker {
             traffic_channel(events_sender.clone(), TRAFFIC_MAILBOX_CAPACITY);
         let state = DeliveryState::new(config.params, config.level);
         let concurrency = AdaptiveConcurrency::new(1, state.concurrency());
+        let segmented = SegmentedDelivery::new(config.segmented);
+        let qoe_path = config.stats_path.with_file_name("qoe_stats.json");
+        let qoe = QoeKeeper::load(qoe_path, config.tuning.stats_debounce).await;
         Self {
             state,
             keeper: StatsKeeper::load(config.stats_path, config.tuning.stats_debounce).await,
+            qoe,
             downloads: DownloadWorkers::new(),
             queue: MutablePriorityQueue::new(),
             probes: MetadataProbePool::new(config.tuning.probe_concurrency),
@@ -172,6 +184,7 @@ impl DeliveryWorker {
             traffic,
             wake_cursor: WakeCursor::default(),
             concurrency,
+            segmented,
         }
     }
 }

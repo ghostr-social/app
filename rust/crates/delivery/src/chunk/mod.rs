@@ -4,6 +4,7 @@
 
 pub mod cancel;
 pub mod downloader;
+pub mod generation;
 pub(crate) mod network;
 mod response;
 pub(crate) mod sink;

@@ -58,6 +58,7 @@ async fn starts_the_engine_and_serves_the_delivery_surface() {
         watch_ms: 0,
         generation: 1,
         transition: FfiFocusTransition::UserNavigation,
+        rescue: None,
     })
     .await
     .expect("focus update");

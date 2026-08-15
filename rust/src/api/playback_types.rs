@@ -8,6 +8,7 @@ pub enum FfiPlaybackPhase {
     NetworkStalled,
     Paused,
     Ended,
+    Failed,
     Inactive,
 }
 

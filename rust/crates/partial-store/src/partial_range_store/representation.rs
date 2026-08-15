@@ -51,11 +51,6 @@ impl PartialRangeStore {
         Ok(false)
     }
 
-    pub fn select_transfer(&self, identity: TransferIdentity) {
-        self.selected()
-            .insert(identity.post().as_str().to_owned(), identity);
-    }
-
     pub async fn representation_binding(&self, key: &str) -> Option<RepresentationBinding> {
         self.representations.lock().await.get(key).cloned()
     }
@@ -87,6 +82,7 @@ impl PartialRangeStore {
 
     pub(super) async fn clear_representation_bindings(&self) {
         self.representations.lock().await.clear();
+        self.source_generations.lock().await.clear();
         self.selected().clear();
     }
 
@@ -95,8 +91,9 @@ impl PartialRangeStore {
         let path = self.paths.representation(key);
         let stored = identity_disk::load(&path).await?;
         if stored.as_deref() == Some(binding.representation().fingerprint()) {
-            return Ok(());
+            return self.restore_generation(binding).await;
         }
+        self.source_generations.lock().await.remove(key);
         let mut entries = self.entries.lock().await;
         self.discard(&mut entries, key).await?;
         identity_disk::save(&path, binding.representation().fingerprint()).await
@@ -142,7 +139,9 @@ impl PartialRangeStore {
         bound && self.selected().get(identity.post().as_str()) == Some(identity)
     }
 
-    fn selected(&self) -> MutexGuard<'_, std::collections::HashMap<String, TransferIdentity>> {
+    pub(super) fn selected(
+        &self,
+    ) -> MutexGuard<'_, std::collections::HashMap<String, TransferIdentity>> {
         self.selected_transfers
             .lock()
             .unwrap_or_else(|error| error.into_inner())

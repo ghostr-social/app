@@ -21,15 +21,19 @@ async fn source_switch_fences_persisting_and_waiting_writers() {
     let store = fixture.store.clone();
     let (binding, old, current) = identities();
     store.bind_representation(binding.clone()).await.unwrap();
-    store.select_transfer(old.clone());
+    store.select_transfer(old.clone()).await.unwrap();
     let persisting = persisting_write(store.clone(), old.clone());
     fixture.wait_until_admission().await;
     let (ready, waiting_ready) = oneshot::channel();
     let waiting = waiting_write(store.clone(), old, ready);
     waiting_ready.await.unwrap();
 
-    store.select_transfer(current);
+    let switching = tokio::spawn({
+        let store = store.clone();
+        async move { store.select_transfer(current).await }
+    });
     fixture.resume();
+    switching.await.unwrap().unwrap();
 
     assert_rejected(persisting, waiting).await;
     assert_discarded(&store, &fixture.root, &binding).await;

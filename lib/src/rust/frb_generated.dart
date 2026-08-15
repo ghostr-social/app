@@ -916,6 +916,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiTransportRescue dco_decode_box_autoadd_ffi_transport_rescue(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_ffi_transport_rescue(raw);
+  }
+
+  @protected
   BigInt dco_decode_box_autoadd_u_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_u_64(raw);
@@ -931,15 +937,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   FfiDeliveryEvent dco_decode_ffi_delivery_event(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
     return FfiDeliveryEvent(
       postId: dco_decode_String(arr[0]),
       kind: dco_decode_ffi_delivery_event_kind(arr[1]),
       startable: dco_decode_bool(arr[2]),
       bytesPresent: dco_decode_u_64(arr[3]),
       totalBytes: dco_decode_opt_box_autoadd_u_64(arr[4]),
-      detail: dco_decode_opt_String(arr[5]),
+      etaMs: dco_decode_opt_box_autoadd_u_64(arr[5]),
+      detail: dco_decode_opt_String(arr[6]),
     );
   }
 
@@ -1107,8 +1114,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   FfiFocusUpdate dco_decode_ffi_focus_update(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
     return FfiFocusUpdate(
       feedId: dco_decode_String(arr[0]),
       items: dco_decode_list_ffi_focus_item(arr[1]),
@@ -1116,6 +1123,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       watchMs: dco_decode_u_64(arr[3]),
       generation: dco_decode_u_64(arr[4]),
       transition: dco_decode_ffi_focus_transition(arr[5]),
+      rescue: dco_decode_opt_box_autoadd_ffi_transport_rescue(arr[6]),
     );
   }
 
@@ -1235,6 +1243,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiTransportRescue dco_decode_ffi_transport_rescue(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return FfiTransportRescue(
+      reason: dco_decode_ffi_transport_rescue_reason(arr[0]),
+      rankDisplacement: dco_decode_u_32(arr[1]),
+      waitMs: dco_decode_u_64(arr[2]),
+    );
+  }
+
+  @protected
+  FfiTransportRescueReason dco_decode_ffi_transport_rescue_reason(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FfiTransportRescueReason.values[raw as int];
+  }
+
+  @protected
   int dco_decode_i_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
@@ -1320,6 +1347,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   FfiMediaDim? dco_decode_opt_box_autoadd_ffi_media_dim(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_ffi_media_dim(raw);
+  }
+
+  @protected
+  FfiTransportRescue? dco_decode_opt_box_autoadd_ffi_transport_rescue(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null
+        ? null
+        : dco_decode_box_autoadd_ffi_transport_rescue(raw);
   }
 
   @protected
@@ -1475,6 +1512,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiTransportRescue sse_decode_box_autoadd_ffi_transport_rescue(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_ffi_transport_rescue(deserializer));
+  }
+
+  @protected
   BigInt sse_decode_box_autoadd_u_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_u_64(deserializer));
@@ -1497,6 +1542,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_startable = sse_decode_bool(deserializer);
     var var_bytesPresent = sse_decode_u_64(deserializer);
     var var_totalBytes = sse_decode_opt_box_autoadd_u_64(deserializer);
+    var var_etaMs = sse_decode_opt_box_autoadd_u_64(deserializer);
     var var_detail = sse_decode_opt_String(deserializer);
     return FfiDeliveryEvent(
       postId: var_postId,
@@ -1504,6 +1550,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       startable: var_startable,
       bytesPresent: var_bytesPresent,
       totalBytes: var_totalBytes,
+      etaMs: var_etaMs,
       detail: var_detail,
     );
   }
@@ -1716,6 +1763,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_watchMs = sse_decode_u_64(deserializer);
     var var_generation = sse_decode_u_64(deserializer);
     var var_transition = sse_decode_ffi_focus_transition(deserializer);
+    var var_rescue = sse_decode_opt_box_autoadd_ffi_transport_rescue(
+      deserializer,
+    );
     return FfiFocusUpdate(
       feedId: var_feedId,
       items: var_items,
@@ -1723,6 +1773,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       watchMs: var_watchMs,
       generation: var_generation,
       transition: var_transition,
+      rescue: var_rescue,
     );
   }
 
@@ -1853,6 +1904,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_i_32(deserializer);
     return FfiPlaybackPhase.values[inner];
+  }
+
+  @protected
+  FfiTransportRescue sse_decode_ffi_transport_rescue(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_reason = sse_decode_ffi_transport_rescue_reason(deserializer);
+    var var_rankDisplacement = sse_decode_u_32(deserializer);
+    var var_waitMs = sse_decode_u_64(deserializer);
+    return FfiTransportRescue(
+      reason: var_reason,
+      rankDisplacement: var_rankDisplacement,
+      waitMs: var_waitMs,
+    );
+  }
+
+  @protected
+  FfiTransportRescueReason sse_decode_ffi_transport_rescue_reason(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return FfiTransportRescueReason.values[inner];
   }
 
   @protected
@@ -2010,6 +2085,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
     if (sse_decode_bool(deserializer)) {
       return (sse_decode_box_autoadd_ffi_media_dim(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  FfiTransportRescue? sse_decode_opt_box_autoadd_ffi_transport_rescue(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_ffi_transport_rescue(deserializer));
     } else {
       return null;
     }
@@ -2201,6 +2289,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_ffi_transport_rescue(
+    FfiTransportRescue self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_ffi_transport_rescue(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_u_64(BigInt self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_u_64(self, serializer);
@@ -2226,6 +2323,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self.startable, serializer);
     sse_encode_u_64(self.bytesPresent, serializer);
     sse_encode_opt_box_autoadd_u_64(self.totalBytes, serializer);
+    sse_encode_opt_box_autoadd_u_64(self.etaMs, serializer);
     sse_encode_opt_String(self.detail, serializer);
   }
 
@@ -2382,6 +2480,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_u_64(self.watchMs, serializer);
     sse_encode_u_64(self.generation, serializer);
     sse_encode_ffi_focus_transition(self.transition, serializer);
+    sse_encode_opt_box_autoadd_ffi_transport_rescue(self.rescue, serializer);
   }
 
   @protected
@@ -2480,6 +2579,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_encode_ffi_playback_phase(
     FfiPlaybackPhase self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_ffi_transport_rescue(
+    FfiTransportRescue self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_ffi_transport_rescue_reason(self.reason, serializer);
+    sse_encode_u_32(self.rankDisplacement, serializer);
+    sse_encode_u_64(self.waitMs, serializer);
+  }
+
+  @protected
+  void sse_encode_ffi_transport_rescue_reason(
+    FfiTransportRescueReason self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -2635,6 +2754,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_box_autoadd_ffi_media_dim(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_ffi_transport_rescue(
+    FfiTransportRescue? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_ffi_transport_rescue(self, serializer);
     }
   }
 

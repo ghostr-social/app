@@ -17,7 +17,10 @@ pub(super) enum BufferRisk {
 impl BufferRisk {
     pub(super) fn from(observation: PlaybackObservation, target: BufferTarget) -> Self {
         match observation.phase() {
-            PlaybackPhase::Paused | PlaybackPhase::Ended | PlaybackPhase::Inactive => Self::Frozen,
+            PlaybackPhase::Paused
+            | PlaybackPhase::Ended
+            | PlaybackPhase::Failed
+            | PlaybackPhase::Inactive => Self::Frozen,
             PlaybackPhase::Starting | PlaybackPhase::NetworkStalled => Self::Critical,
             PlaybackPhase::Playing => playing_risk(observation, target),
         }

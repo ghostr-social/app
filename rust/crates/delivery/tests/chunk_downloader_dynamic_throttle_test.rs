@@ -31,6 +31,7 @@ async fn bandwidth_drop_paces_only_bytes_not_yet_delivered() {
         client: &client,
         url: &url,
         range: ByteRange::new(0, TOTAL),
+        continuation: None,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {

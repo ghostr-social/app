@@ -73,6 +73,7 @@ fn builder(status: StatusCode, length: usize) -> Builder {
         .status(status)
         .header(header::CONTENT_TYPE, "video/mp4")
         .header(header::CONTENT_LENGTH, length)
+        .header(header::ETAG, "\"fixture-ranged\"")
 }
 
 fn requested_range(headers: &HeaderMap, len: u64) -> Option<(u64, u64)> {

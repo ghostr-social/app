@@ -13,6 +13,7 @@ final class VideoPlayerPlaybackObserver {
 
   PlaybackPhase classify(VideoPlayerValue value, {required bool isActive}) {
     if (!isActive) return PlaybackPhase.inactive;
+    if (value.hasError) return PlaybackPhase.failed;
     if (value.isCompleted) return PlaybackPhase.ended;
     _recordProgress(value.position);
     if (value.isPlaying) return _movingPhase;

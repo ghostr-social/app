@@ -7,8 +7,8 @@ import '../frb_generated.dart';
 import 'delivery_types.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `accept_focus`, `progressive_entries`, `progressive_url`, `register_progressive`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `fmt`, `fmt`
+// These functions are ignored because they are not marked as `pub`: `accept_focus`, `progressive_url`, `register_progressive`, `tracked_entries`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`
 
 /// Replaces the ordered focus window (items include the current one),
 /// refreshes the catalog, and wakes the delivery manager. `feed_id`
@@ -35,6 +35,7 @@ class FfiFocusUpdate {
   final BigInt watchMs;
   final BigInt generation;
   final FfiFocusTransition transition;
+  final FfiTransportRescue? rescue;
 
   const FfiFocusUpdate({
     required this.feedId,
@@ -43,6 +44,7 @@ class FfiFocusUpdate {
     required this.watchMs,
     required this.generation,
     required this.transition,
+    this.rescue,
   });
 
   @override
@@ -52,7 +54,8 @@ class FfiFocusUpdate {
       currentIndex.hashCode ^
       watchMs.hashCode ^
       generation.hashCode ^
-      transition.hashCode;
+      transition.hashCode ^
+      rescue.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -64,5 +67,38 @@ class FfiFocusUpdate {
           currentIndex == other.currentIndex &&
           watchMs == other.watchMs &&
           generation == other.generation &&
-          transition == other.transition;
+          transition == other.transition &&
+          rescue == other.rescue;
+}
+
+class FfiTransportRescue {
+  final FfiTransportRescueReason reason;
+  final int rankDisplacement;
+  final BigInt waitMs;
+
+  const FfiTransportRescue({
+    required this.reason,
+    required this.rankDisplacement,
+    required this.waitMs,
+  });
+
+  @override
+  int get hashCode =>
+      reason.hashCode ^ rankDisplacement.hashCode ^ waitMs.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FfiTransportRescue &&
+          runtimeType == other.runtimeType &&
+          reason == other.reason &&
+          rankDisplacement == other.rankDisplacement &&
+          waitMs == other.waitMs;
+}
+
+enum FfiTransportRescueReason {
+  etaUnavailable,
+  etaTooLong,
+  deliveryFailed,
+  graceExpired,
 }

@@ -7,6 +7,7 @@ pub(super) fn head_response() -> Response {
         .header(header::CONTENT_LENGTH, 64)
         .header(header::CONTENT_TYPE, "video/mp4")
         .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::ETAG, "\"fixture-host-hol\"")
         .body(Body::empty())
         .unwrap()
 }
@@ -17,6 +18,7 @@ pub(super) fn range_response(headers: &HeaderMap) -> Response {
         .status(StatusCode::PARTIAL_CONTENT)
         .header(header::CONTENT_TYPE, "video/mp4")
         .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::ETAG, "\"fixture-host-hol\"")
         .header(
             header::CONTENT_RANGE,
             format!("bytes {start}-{}/64", end - 1),

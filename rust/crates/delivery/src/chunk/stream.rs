@@ -2,6 +2,7 @@
 
 use crate::chunk::cancel::CancelToken;
 use crate::chunk::downloader::ChunkSpec;
+use crate::chunk::generation::OriginGeneration;
 use crate::chunk::sink::ChunkWrite;
 use crate::chunk::traffic::ChunkTraffic;
 use crate::debug::network::NetworkThrottle;
@@ -19,6 +20,7 @@ pub(crate) struct Streamed {
 pub(crate) struct StreamInput<'a, 'spec, W: ChunkWrite + ?Sized> {
     pub response: Response,
     pub spec: &'a ChunkSpec<'spec>,
+    pub generation: &'a OriginGeneration,
     pub sink: &'a W,
     pub cancel: &'a CancelToken,
     pub network: Option<&'a NetworkThrottle>,
@@ -41,7 +43,9 @@ pub(crate) async fn stream_into<W: ChunkWrite + ?Sized>(
             if pace_or_cancel(input.network, part.len() as u64, input.cancel).await {
                 return Ok(stopped(written, true));
             }
-            let Some(stored) = write_capped(input.spec, input.sink, written, part).await? else {
+            let Some(stored) =
+                write_capped(input.spec, input.generation, input.sink, written, part).await?
+            else {
                 return Ok(stopped(written, true));
             };
             written += stored;
@@ -99,13 +103,14 @@ async fn next_chunk(response: &mut Response, idle: Duration) -> Result<Option<by
 
 async fn write_capped<W: ChunkWrite + ?Sized>(
     spec: &ChunkSpec<'_>,
+    generation: &OriginGeneration,
     sink: &W,
     written: u64,
     chunk: &[u8],
 ) -> Result<Option<u64>> {
     let take = capped_len(spec, written, chunk) as usize;
     let offset = spec.range.start + written;
-    match sink.write(offset, &chunk[..take]).await? {
+    match sink.write(generation, offset, &chunk[..take]).await? {
         true => Ok(Some(take as u64)),
         false => Ok(None),
     }

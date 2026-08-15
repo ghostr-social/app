@@ -6,6 +6,9 @@ fn snapshot(startable: bool, bytes: u64) -> DeliverySnapshot {
         startable,
         bytes_present: bytes,
         total_bytes: Some(16),
+        eta_ms: None,
+        failed: false,
+        detail: None,
     }
 }
 
@@ -14,6 +17,7 @@ fn the_first_observation_reports_readiness() {
     let event = event_for("clip", None, snapshot(false, 0)).expect("first event");
 
     assert_eq!(event.kind, FfiDeliveryEventKind::Readiness);
+    assert_eq!(event.eta_ms, None);
     assert_eq!(event.post_id, "clip");
     assert!(!event.startable);
 }
