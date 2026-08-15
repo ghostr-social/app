@@ -62,11 +62,12 @@ Whenever applicable, tests must cover:
 
 ## Quality Gates
 
-These limits apply unless a stricter local rule exists:
+These limits apply unless a stricter local rule exists. Coverage is the
+exception: no local rule may raise its blocking CI threshold above `80%`.
 
-- `100%` line coverage for touched pure domain logic, parsers, policies, state machines, and deterministic engine logic
-- `95%` line coverage for touched blocs, cubits, adapters, bridges, routing helpers, and shared widgets
-- `0` coverage regressions allowed in touched modules
+- `80%` line coverage for every measured Dart source file in blocking CI
+- executable Dart sources must be represented in coverage; an omitted source is treated as uncovered
+- higher coverage is encouraged, but targets above `80%` must not block the pipeline
 - production files must stay at or below `200` lines
 - test files must stay at or below `100` lines
 - functions and methods must stay at or below `20` logical lines

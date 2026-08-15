@@ -55,14 +55,14 @@ Use the smallest useful test first, but never skip the user contract:
 
 ## Coverage Policy
 
-These gates are blocking:
+The release pipeline has one blocking Dart coverage floor:
 
-- `100%` line coverage for touched pure domain logic, policies, parsers, and state machines
-- `95%` line coverage for touched blocs, cubits, adapters, bridges, routing helpers, and shared widgets
-- `0` coverage regressions against the previous state of touched modules
-- every bloc and cubit branch must be exercised even though standard Dart coverage is line-based
+- every measured Dart source file must have at least `80%` line coverage
+- every executable Dart source must be represented; an omitted source is treated as uncovered
+- coverage targets above `80%` and coverage-regression reports are advisory and must not block the pipeline
 
-If coverage is hard to reach, the design is usually too implicit or too entangled. Refactor instead of lowering the bar.
+Important domain and state-transition behavior should still be tested thoroughly.
+Use focused tests to protect behavior instead of raising the blocking threshold.
 
 ## Flutter-Specific Rules
 

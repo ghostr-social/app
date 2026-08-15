@@ -65,7 +65,7 @@ jobs:
       - name: Test with coverage
         run: make test-coverage
 
-      - name: Enforce coverage
+      - name: Enforce 80% coverage floor
         run: make coverage-summary
 
   # ─────────────────────────────────────────────────────────────────
