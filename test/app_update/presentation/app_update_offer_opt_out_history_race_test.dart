@@ -20,13 +20,14 @@ void main() {
 
       final check = cubit.start();
       await Future<void>.delayed(Duration.zero);
-      harness.settings.settings = harness.settings.settings.copyWith(
-        updatePreferences: const AppUpdatePreferences(
-          automaticChecks: false,
-          downloadPolicy: UpdateDownloadPolicy.wifiOnly,
-          automaticInstall: true,
-        ),
-      );
+      harness.settings.settings = harness.settings.settings
+          .withUpdatePreferences(
+            const AppUpdatePreferences(
+              automaticChecks: false,
+              downloadPolicy: UpdateDownloadPolicy.wifiOnly,
+              automaticInstall: true,
+            ),
+          );
       await cubit.onUpdatePreferencesChanged();
       gate.complete();
       await check;

@@ -50,7 +50,9 @@ final class FeedFetcher {
           eligiblePosts: snapshot.eligiblePosts,
         );
       }
-      return FeedFetched(VideoFeedPage(posts: await _feed.loadFeed(kind)));
+      return FeedFetched(
+        VideoFeedPage(posts: await _feed.loadFeed(kind, excludeWatched: true)),
+      );
     } on Object catch (error, stackTrace) {
       return FeedUnavailable(FeedOperationFailure(error, stackTrace));
     }

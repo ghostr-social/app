@@ -12,15 +12,21 @@ extension FeedCubitLoading on FeedCubit {
         _emitState(unavailable(feedLoadFailureMessage(result.failure)));
       case FeedFetched(:final posts):
         if (posts.isNotEmpty) _acknowledgePendingFeedUpdate();
-        _acceptLoad(kind, posts);
+        await _acceptLoad(kind, posts);
     }
   }
 
-  void _acceptLoad(FeedKind kind, List<VideoPost> fresh) {
+  Future<void> _acceptLoad(FeedKind kind, List<VideoPost> fresh) async {
+    final request = _loads.pending;
     final roster = _session.loaded(fresh).openedAt(_openAt);
     _backfillRetry.reset();
     _backfill.restartFrom(roster.posts);
-    if (roster.isEmpty) return _emitEmpty(kind);
+    if (roster.isEmpty) {
+      _emitEmpty(kind);
+      return;
+    }
+    if (!await _viewer.prepareToShow(roster.active)) return;
+    if (!_acceptsLoadedFeed(kind, request)) return;
     _emitState(FeedLoaded.of(kind, roster, follows: _follows));
     unawaited(_settleReposts());
     _hunt.filled();
@@ -28,18 +34,29 @@ extension FeedCubitLoading on FeedCubit {
     _ensureBuffered();
   }
 
-  void _acceptRefresh(
+  bool _acceptsLoadedFeed(FeedKind kind, int request) {
+    return !isClosed && state.kind == kind && _loads.accepts(request);
+  }
+
+  Future<void> _acceptRefresh(
     FeedLoaded initial,
     List<VideoPost> refreshed,
     List<VideoPost> eligible,
-  ) {
+  ) async {
     final current = state is FeedLoaded ? state as FeedLoaded : initial;
     final roster = _session.resynced(
       current.roster,
       refreshed,
       eligible: eligible,
+      retainWatched: !_forgetsViewed(current),
     );
-    if (roster.isEmpty) return _emitEmpty(current.kind);
+    if (roster.isEmpty) {
+      _emitEmpty(current.kind);
+      return;
+    }
+    final transition = ++_pageTransition;
+    if (!await _viewer.prepareToShow(roster.active)) return;
+    if (!_acceptsPageTransition(transition, current)) return;
     _emitState(FeedLoaded.of(current.kind, roster, follows: _follows));
     unawaited(_settleReposts());
     _viewer.rosterChanged(roster.posts, roster.activeIndex);

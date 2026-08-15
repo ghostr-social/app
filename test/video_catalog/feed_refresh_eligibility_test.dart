@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/features/watch_history/domain/watch_aware_video_feed_repository.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_entry.dart';
@@ -22,7 +21,6 @@ void main() {
             WatchHistoryEntry.fromPost(watched, DateTime.utc(2026, 3, 12)),
           ],
         ),
-        settings: FakeAppSettingsRepository(AppSettings.defaults()),
         failureReporter: RecordingFailureReporter(),
       );
       final cubit = FeedCubit(FeedDependencies(feed: feed, engagement: inner));

@@ -1,44 +1,33 @@
 import 'package:ghostr/core/errors/failure_reporter.dart';
-import 'package:ghostr/features/settings/domain/app_settings_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_refresh_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
-import 'package:ghostr/features/watch_history/domain/watch_history_entry.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_repository.dart';
-import 'package:ghostr/features/watch_history/domain/watched_video_index.dart';
 
-class WatchAwareVideoFeedRepository
+final class WatchAwareVideoFeedRepository
     implements VideoFeedRepository, VideoFeedRefreshRepository {
   const WatchAwareVideoFeedRepository({
     required VideoFeedRepository feed,
     required WatchHistoryRepository history,
-    required AppSettingsRepository settings,
     required FailureReporter failureReporter,
   }) : _feed = feed,
        _history = history,
-       _settings = settings,
        _failureReporter = failureReporter;
-
-  final VideoFeedRepository _feed;
-  final WatchHistoryRepository _history;
-  final AppSettingsRepository _settings;
-  final FailureReporter _failureReporter;
 
   static const _maxPageDigs = 3;
 
+  final VideoFeedRepository _feed;
+  final WatchHistoryRepository _history;
+  final FailureReporter _failureReporter;
+
   @override
   Future<VideoFeedRefreshSnapshot> loadRefresh(FeedKind kind) async {
+    final history = _historyFor(kind);
     final all = await _feed.loadFeed(kind);
-    if (!await _isEnabled()) {
-      return VideoFeedRefreshSnapshot(allPosts: all, eligiblePosts: all);
-    }
-    final watched = await _watchedIndex();
-    return VideoFeedRefreshSnapshot(
-      allPosts: all,
-      eligiblePosts: _fresh(all, watched),
-    );
+    final eligible = history == null ? all : await _fresh(all, history);
+    return VideoFeedRefreshSnapshot(allPosts: all, eligiblePosts: eligible);
   }
 
   @override
@@ -46,30 +35,26 @@ class WatchAwareVideoFeedRepository
     FeedKind kind, {
     bool excludeWatched = false,
   }) async {
+    final history = _historyFor(kind);
     final posts = await _feed.loadFeed(kind);
-    if (!await _filtersWatched(excludeWatched)) return posts;
-    final watched = await _watchedIndex();
-    if (watched.isEmpty) return posts;
-    final fresh = _fresh(posts, watched);
+    if (history == null) return posts;
+    final fresh = await _fresh(posts, history);
     if (_settlesPage(fresh, posts.isEmpty)) return fresh;
-    return _digPastWatched(kind, posts, watched);
+    return _digPastWatched(kind, posts, history);
   }
 
-  // Fully-watched pages are skipped by digging further into the past; a
-  // page that yields nothing simply leaves the feed as it was.
   @override
   Future<VideoFeedPage> loadOlderFeed(
     FeedKind kind, {
     required DateTime olderThan,
     bool excludeWatched = false,
   }) async {
+    final history = _historyFor(kind);
     var cursor = olderThan;
-    final filtering = await _filtersWatched(excludeWatched);
     for (var dig = 0; dig < _maxPageDigs; dig += 1) {
       final page = await _feed.loadOlderFeed(kind, olderThan: cursor);
-      if (!filtering) return page;
-      final watched = await _watchedIndex();
-      final fresh = _fresh(page.posts, watched);
+      if (history == null) return page;
+      final fresh = await _fresh(page.posts, history);
       if (_settlesPage(fresh, !page.hasMore)) {
         return VideoFeedPage(posts: fresh, nextOlderThan: page.nextOlderThan);
       }
@@ -78,26 +63,15 @@ class WatchAwareVideoFeedRepository
     return VideoFeedPage(posts: const <VideoPost>[], nextOlderThan: cursor);
   }
 
-  Future<bool> _filtersWatched(bool requested) async {
-    return requested && await _isEnabled();
-  }
-
-  bool _settlesPage(List<VideoPost> fresh, bool exhausted) {
-    return fresh.isNotEmpty || exhausted;
-  }
-
-  // A watched video is never served again, so a fully watched snapshot
-  // digs into the past for unseen ones and an exhausted feed simply comes
-  // back empty for the empty-feed hunt to refill.
   Future<List<VideoPost>> _digPastWatched(
     FeedKind kind,
     List<VideoPost> posts,
-    WatchedVideoIndex watched,
+    WatchHistoryRepository history,
   ) async {
     var cursor = _oldestActivityAt(posts);
     for (var dig = 0; dig < _maxPageDigs; dig += 1) {
       final page = await _feed.loadOlderFeed(kind, olderThan: cursor);
-      final fresh = _fresh(page.posts, watched);
+      final fresh = await _fresh(page.posts, history);
       if (fresh.isNotEmpty) return fresh;
       if (!page.hasMore) break;
       cursor = page.nextOlderThan!;
@@ -105,10 +79,38 @@ class WatchAwareVideoFeedRepository
     return const <VideoPost>[];
   }
 
-  List<VideoPost> _fresh(List<VideoPost> posts, WatchedVideoIndex watched) {
-    return List<VideoPost>.unmodifiable(
-      posts.where((post) => !watched.contains(post)),
-    );
+  Future<List<VideoPost>> _fresh(
+    List<VideoPost> posts,
+    WatchHistoryRepository history,
+  ) async {
+    try {
+      return await history.filterUnwatched(posts);
+    } on Object catch (error, stackTrace) {
+      _failureReporter.report(
+        source: 'WatchAwareVideoFeedRepository.history',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      rethrow;
+    }
+  }
+
+  WatchHistoryRepository? _historyFor(FeedKind kind) {
+    if (kind == FeedKind.following) return null;
+    try {
+      return _history.snapshotForActiveAccount();
+    } on Object catch (error, stackTrace) {
+      _failureReporter.report(
+        source: 'WatchAwareVideoFeedRepository.history',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      rethrow;
+    }
+  }
+
+  bool _settlesPage(List<VideoPost> fresh, bool exhausted) {
+    return fresh.isNotEmpty || exhausted;
   }
 
   DateTime _oldestActivityAt(List<VideoPost> posts) {
@@ -117,33 +119,5 @@ class WatchAwareVideoFeedRepository
       if (post.feedActivityAt.isBefore(oldest)) oldest = post.feedActivityAt;
     }
     return oldest.subtract(const Duration(seconds: 1));
-  }
-
-  Future<bool> _isEnabled() async {
-    try {
-      return (await _settings.load()).hideWatchedVideos;
-    } on Object catch (error, stackTrace) {
-      _report('WatchAwareVideoFeedRepository.settings', error, stackTrace);
-      return false;
-    }
-  }
-
-  Future<WatchedVideoIndex> _watchedIndex() async {
-    try {
-      return WatchedVideoIndex(
-        await _history.snapshotForActiveAccount().load(),
-      );
-    } on Object catch (error, stackTrace) {
-      _report('WatchAwareVideoFeedRepository.history', error, stackTrace);
-      return WatchedVideoIndex(const <WatchHistoryEntry>[]);
-    }
-  }
-
-  void _report(String source, Object error, StackTrace stackTrace) {
-    _failureReporter.report(
-      source: source,
-      error: error,
-      stackTrace: stackTrace,
-    );
   }
 }

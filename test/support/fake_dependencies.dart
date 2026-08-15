@@ -41,7 +41,7 @@ AppDependencies buildFakeDependencies({
     appSettingsRepository: FakeAppSettingsRepository(AppSettings.defaults()),
     videoCatalogServices: VideoCatalogServices(
       feed: VideoFeedBinding(
-        repository: catalogRepository,
+        repository: overrides.feed ?? catalogRepository,
         updates: overrides.feedUpdates,
       ),
       discovery: VideoCatalogDiscoveryServices(

@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
-import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/watch_history/domain/watch_aware_video_feed_repository.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_entry.dart';
@@ -22,7 +21,6 @@ void main() {
     final feed = WatchAwareVideoFeedRepository(
       feed: FakeVideoCatalogRepository(forYouFeed: [republished, fresh]),
       history: history,
-      settings: FakeAppSettingsRepository(AppSettings.defaults()),
       failureReporter: RecordingFailureReporter(),
     );
 

@@ -23,13 +23,14 @@ void main() {
 
       final decline = cubit.declineOffer(offered.release.versionCode);
       await Future<void>.delayed(Duration.zero);
-      harness.settings.settings = harness.settings.settings.copyWith(
-        updatePreferences: const AppUpdatePreferences(
-          automaticChecks: false,
-          downloadPolicy: UpdateDownloadPolicy.wifiOnly,
-          automaticInstall: true,
-        ),
-      );
+      harness.settings.settings = harness.settings.settings
+          .withUpdatePreferences(
+            const AppUpdatePreferences(
+              automaticChecks: false,
+              downloadPolicy: UpdateDownloadPolicy.wifiOnly,
+              automaticInstall: true,
+            ),
+          );
       final synchronization = cubit.onUpdatePreferencesChanged();
       gate.complete();
       await decline;

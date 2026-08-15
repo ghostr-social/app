@@ -93,15 +93,12 @@ class _HomeShellState extends State<HomeShell> {
 
   void _selectTab(int index) {
     final selected = HomeTab.values[index];
+    _deactivateSearchWhenLeaving(selected);
     final isReselectedHome =
         selected == HomeTab.home && selected == _currentTab;
     final shouldRefresh = _visitedTabs.contains(selected);
     _activateTab(selected);
-    if (isReselectedHome) {
-      if (_feedCubit?.reload() case final reload?) unawaited(reload);
-    } else if (shouldRefresh) {
-      _refreshTab(selected);
-    }
+    _refreshActivatedTab(selected, isReselectedHome, shouldRefresh);
   }
 
   void _activateTab(HomeTab selected) {
@@ -112,6 +109,9 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   void _setRouteCovered(bool isCovered) {
+    if (isCovered && _currentTab == HomeTab.search) {
+      _searchCubit?.deactivate();
+    }
     setState(() => _isRouteCovered = isCovered);
     if (!isCovered) _refreshTab(_currentTab);
   }

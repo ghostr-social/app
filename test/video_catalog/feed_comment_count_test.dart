@@ -6,8 +6,9 @@ import '../support/feed_screen_harness.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  testWidgets('published comments update the visible feed count',
-      (tester) async {
+  testWidgets('published comments update the visible feed count', (
+    tester,
+  ) async {
     final repository = FakeVideoCatalogRepository(forYouFeed: [samplePost()]);
     await tester.pumpWidget(feedScreenHarness(repository));
     await tester.pumpAndSettle();

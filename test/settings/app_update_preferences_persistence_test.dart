@@ -13,8 +13,8 @@ void main() {
     expect(defaults.updatePreferences, AppUpdatePreferences.defaults);
 
     await repository.save(
-      defaults.copyWith(
-        updatePreferences: const AppUpdatePreferences(
+      defaults.withUpdatePreferences(
+        const AppUpdatePreferences(
           automaticChecks: false,
           downloadPolicy: UpdateDownloadPolicy.anyNetwork,
           automaticInstall: false,

@@ -6,8 +6,7 @@ import '../support/fakes.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('watched videos are skipped when hunting but kept when resyncing',
-      () async {
+  test('watched videos stay excluded while hunting and resyncing', () async {
     final repository = FakeVideoCatalogRepository(
       forYouFeed: [samplePost(id: 'post-0')],
     );
@@ -16,7 +15,7 @@ void main() {
     final fresh = await fetcher.unwatched(FeedKind.forYou);
     await fetcher.resync(FeedKind.forYou);
 
-    expect(repository.loadFeedExclusions, [true, false]);
+    expect(repository.loadFeedExclusions, [true, true]);
     expect((fresh as FeedFetched).posts.single.id.value, 'post-0');
   });
 }

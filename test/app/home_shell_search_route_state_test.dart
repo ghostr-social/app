@@ -6,15 +6,20 @@ import '../support/sample_data.dart';
 import '../support/test_app.dart';
 
 void main() {
-  testWidgets('search state survives opening and closing a profile',
-      (tester) async {
-    final post = samplePost();
+  testWidgets('search query survives while the opened video stays excluded', (
+    tester,
+  ) async {
+    final post = samplePost(id: 'search-post');
+    final fresh = samplePost(
+      id: 'fresh-search-post',
+      creator: sampleCreator(id: 'fresh', displayName: 'Fresh Relay'),
+    );
     final dependencies = buildFakeDependencies(
       session: sampleSession(),
       catalogRepository: FakeVideoCatalogRepository(
-        forYouFeed: [post],
+        forYouFeed: [samplePost(id: 'home-post')],
         feed: FakeFeedScenario(
-          searchResults: [post],
+          searchResults: [post, fresh],
           profiles: {post.creator.id: sampleProfileDetails()},
         ),
       ),
@@ -33,6 +38,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('relay query'), findsOneWidget);
-    expect(find.text(post.creator.displayName), findsOneWidget);
+    expect(find.text(post.creator.displayName), findsNothing);
+    expect(find.text(fresh.creator.displayName), findsOneWidget);
   });
 }

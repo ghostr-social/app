@@ -14,12 +14,11 @@ void main() {
       inner: inner,
       updateConfig: updater.call,
     );
-    final settings = AppSettings.defaults().copyWith(
-      relays: [RelayUrl.parse('wss://read.example')],
-      searchRelays: [RelayUrl.parse('wss://search.example')],
-      dataUsage: DataUsageLevel.aggressive,
-      inventoryBudget: VideoInventoryBudget.fourGigabytes,
-    );
+    final settings = AppSettings.defaults()
+        .withRelays([RelayUrl.parse('wss://read.example')])
+        .withSearchRelays([RelayUrl.parse('wss://search.example')])
+        .withDataUsage(DataUsageLevel.aggressive)
+        .withInventoryBudget(VideoInventoryBudget.fourGigabytes);
 
     await repository.save(settings);
 
@@ -27,9 +26,7 @@ void main() {
     expect((await repository.load()).dataUsage, DataUsageLevel.aggressive);
     final update = updater.pushes.single;
     expect(update.relayUrls, [RelayUrl.parse('wss://read.example')]);
-    expect(update.searchRelayUrls, [
-      RelayUrl.parse('wss://search.example'),
-    ]);
+    expect(update.searchRelayUrls, [RelayUrl.parse('wss://search.example')]);
     expect(update.dataUsage, DataUsageLevel.aggressive);
     expect(update.inventoryBudget, VideoInventoryBudget.fourGigabytes);
   });

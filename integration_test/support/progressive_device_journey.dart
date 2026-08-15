@@ -39,10 +39,9 @@ final class ProgressiveDeviceJourney {
   static Future<ProgressiveDeviceJourney> start() async {
     final resources = await ProgressiveDeviceResources.start();
     try {
-      final settings = AppSettings.defaults().copyWith(
-        relays: const [],
-        searchRelays: const [],
-      );
+      final settings = AppSettings.defaults()
+          .withRelays(const [])
+          .withSearchRelays(const []);
       final started = await FfiVideoGateway().start(
         settings,
         resources.cachePath,

@@ -1,6 +1,7 @@
 import 'package:ghostr/features/reposts/domain/video_repost_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
+import 'package:ghostr/features/video_catalog/domain/video_feed_refresh_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 
@@ -17,7 +18,10 @@ abstract interface class RepostHydrationStatus {
 }
 
 final class RepostHydratedVideoFeedRepository
-    implements VideoFeedRepository, RepostHydrationStatus {
+    implements
+        VideoFeedRepository,
+        VideoFeedRefreshRepository,
+        RepostHydrationStatus {
   const RepostHydratedVideoFeedRepository(this._feed, this._reposts);
 
   final VideoFeedRepository _feed;
@@ -33,6 +37,26 @@ final class RepostHydratedVideoFeedRepository
   }) async {
     final posts = await _feed.loadFeed(kind, excludeWatched: excludeWatched);
     return _reposts.hydrateAll(posts);
+  }
+
+  @override
+  Future<VideoFeedRefreshSnapshot> loadRefresh(FeedKind kind) async {
+    final snapshot = await _refreshSnapshot(kind);
+    final eligible = snapshot.eligiblePosts.map((post) => post.id).toSet();
+    final all = await _reposts.hydrateAll(snapshot.allPosts);
+    return VideoFeedRefreshSnapshot(
+      allPosts: all,
+      eligiblePosts: all.where((post) => eligible.contains(post.id)).toList(),
+    );
+  }
+
+  Future<VideoFeedRefreshSnapshot> _refreshSnapshot(FeedKind kind) async {
+    final feed = _feed;
+    if (feed case final VideoFeedRefreshRepository refresh) {
+      return refresh.loadRefresh(kind);
+    }
+    final posts = await feed.loadFeed(kind, excludeWatched: true);
+    return VideoFeedRefreshSnapshot(allPosts: posts, eligiblePosts: posts);
   }
 
   @override

@@ -19,8 +19,8 @@ void main() {
 
     await cubit.start();
     await acceptCurrentUpdateOffer(cubit);
-    harness.settings.settings = harness.settings.settings.copyWith(
-      updatePreferences: const AppUpdatePreferences(
+    harness.settings.settings = harness.settings.settings.withUpdatePreferences(
+      const AppUpdatePreferences(
         automaticChecks: true,
         downloadPolicy: UpdateDownloadPolicy.manual,
         automaticInstall: false,

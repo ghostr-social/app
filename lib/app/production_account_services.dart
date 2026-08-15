@@ -16,15 +16,18 @@ import 'package:ghostr/features/watch_history/data/local_watch_history_repositor
 import 'package:ghostr/platform/media/image_picker_profile_image_picker.dart';
 import 'package:ghostr/platform/storage/secure_secret_store.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:sembast/sembast.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final class ProductionAccountServicesInputs {
   const ProductionAccountServicesInputs({
     required this.preferences,
+    required this.watchHistoryDatabase,
     required this.nostr,
   });
 
   final SharedPreferences preferences;
+  final Database watchHistoryDatabase;
   final ProductionNostrServices nostr;
 }
 
@@ -62,7 +65,11 @@ _ProductionScopedAccountServices _buildScopedAccountServices(
   );
   return _ProductionScopedAccountServices(
     accountScope,
-    LocalWatchHistoryRepository(inputs.preferences, accountScope: accountScope),
+    LocalWatchHistoryRepository(
+      inputs.preferences,
+      database: inputs.watchHistoryDatabase,
+      accountScope: accountScope,
+    ),
   );
 }
 

@@ -12,6 +12,7 @@ import '../support/fake_profile_image_services.dart';
 import '../support/fake_remote_video_source.dart';
 import '../support/nostr_test_values.dart';
 import '../support/test_video_delivery.dart';
+import '../support/test_watch_history_database.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -32,6 +33,7 @@ void main() {
         ProductionDependencyInputs(
           preferences: preferences,
           settingsRepository: LocalAppSettingsRepository(preferences),
+          watchHistoryDatabase: await openTestWatchHistoryDatabase(),
           nostr: nostr,
           delivery: testVideoDelivery(remoteSource: FakeRemoteVideoSource([])),
           appUpdateRuntime: null,

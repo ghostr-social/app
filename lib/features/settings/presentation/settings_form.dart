@@ -48,9 +48,6 @@ class SettingsForm extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.xxl),
         SettingsWatchHistorySection(
-          hideWatchedVideos: settings.hideWatchedVideos,
-          isSaving: isSaving,
-          onHideWatchedChanged: actions.onHideWatchedChanged,
           onOpenWatchHistory: actions.onOpenWatchHistory,
         ),
         const SizedBox(height: AppSpacing.xxl),

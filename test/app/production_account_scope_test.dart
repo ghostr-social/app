@@ -12,28 +12,27 @@ import '../support/fake_remote_video_source.dart';
 import '../support/test_video_delivery.dart';
 import '../support/nostr_test_values.dart';
 import '../support/sample_data.dart';
+import '../support/test_watch_history_database.dart';
 
 void main() {
   test('production stores follow active account switches', () async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
     final client = FakeNostrEventClient(publicKeyHex: testViewerPublicKey);
-    final social =
-        FakeNostrSocialPort(activeAccount: () => client.publicKeyHex);
+    final social = FakeNostrSocialPort(
+      activeAccount: () => client.publicKeyHex,
+    );
     final nostr = ProductionNostrServices(
-      ProductionNostrAdapters(
-        FakeNostrSessionPort(),
-        social,
-      ),
+      ProductionNostrAdapters(FakeNostrSessionPort(), social),
       client,
       FakeNostrVideoPublisherPort(),
     );
     final environment = ProductionDependenciesEnvironment(
       preferencesLoader: () async => preferences,
       nostrServicesBuilder: (_) => nostr,
-      videoDeliveryBuilder: (_, __) async => testVideoDelivery(
-        remoteSource: FakeRemoteVideoSource([]),
-      ),
+      videoDeliveryBuilder: (_, __) async =>
+          testVideoDelivery(remoteSource: FakeRemoteVideoSource([])),
+      watchHistoryDatabaseLoader: openTestWatchHistoryDatabase,
     );
     final dependencies = await buildProductionDependencies(environment);
     final activity = sampleActivity();
@@ -52,10 +51,13 @@ void main() {
     expect(await dependencies.activityRepository.load(), isEmpty);
 
     client.publicKeyHex = NostrPublicKeyHex.parse(testViewerPublicKey);
-    final restoredPosts =
-        await dependencies.videoCatalogServices.feed.loadFeed(FeedKind.forYou);
+    final restoredPosts = await dependencies.videoCatalogServices.feed.loadFeed(
+      FeedKind.forYou,
+    );
     expect(restoredPosts.single.id, post.post.id);
     expect(
-        (await dependencies.activityRepository.load()).single.id, activity.id);
+      (await dependencies.activityRepository.load()).single.id,
+      activity.id,
+    );
   });
 }

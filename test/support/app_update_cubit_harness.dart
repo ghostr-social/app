@@ -89,5 +89,5 @@ InstalledApp sampleInstalledApp({List<AndroidAbi>? abis}) {
 }
 
 AppSettings _settingsWith(AppUpdatePreferences preferences) {
-  return AppSettings.defaults().copyWith(updatePreferences: preferences);
+  return AppSettings.defaults().withUpdatePreferences(preferences);
 }

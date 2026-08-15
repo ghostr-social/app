@@ -4,6 +4,7 @@ import 'package:ghostr/features/comments/presentation/comments_cubit.dart';
 import 'package:ghostr/features/reposts/domain/video_repost_repository.dart';
 import 'package:ghostr/features/social/domain/social_graph_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
+import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_screen.dart';
 import 'package:ghostr/features/video_sharing/domain/video_share_workflow.dart';
@@ -24,6 +25,8 @@ final class FeedScreenHarnessOptions {
     this.viewerId,
     this.social,
     this.reposts,
+    this.feed,
+    this.watch = const FeedWatchDependencies(),
   });
 
   final ValueChanged<String>? onOpenProfile;
@@ -33,6 +36,8 @@ final class FeedScreenHarnessOptions {
   final ProfileId? viewerId;
   final SocialGraphRepository? social;
   final VideoRepostRepository? reposts;
+  final VideoFeedRepository? feed;
+  final FeedWatchDependencies watch;
 }
 
 Widget feedScreenHarness(
@@ -45,11 +50,12 @@ Widget feedScreenHarness(
       create: (_) => FeedCubit(
         FeedDependencies(
           viewerId: options.viewerId ?? sampleSession().profile.id,
-          feed: repository,
+          feed: options.feed ?? repository,
           engagement: repository,
           followProfile: testFollowProfileWorkflow(socialGraph),
           optional: FeedOptionalDependencies(
             social: socialGraph,
+            watch: options.watch,
             delivery: FeedDeliveryDependencies(
               reposts: options.reposts ?? repository,
             ),

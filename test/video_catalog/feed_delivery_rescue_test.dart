@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
-import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
 import 'package:ghostr/features/video_catalog/domain/video_delivery_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
@@ -14,49 +13,49 @@ import '../support/fakes.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test(
-    'a delivery rescue changes focus without recording a user watch',
-    () async {
-      final updates = _DeliveryUpdates();
-      final focus = FakeFeedFocusPort();
-      final history = FakeWatchHistoryRepository();
-      final posts = List.generate(3, (index) => samplePost(id: 'p$index'));
-      final repository = FakeVideoCatalogRepository(forYouFeed: posts);
-      final cubit = FeedCubit(
-        FeedDependencies(
-          feed: repository,
-          engagement: repository,
-          optional: FeedOptionalDependencies(
-            focus: focus,
-            delivery: FeedDeliveryDependencies(deliveryUpdates: updates),
-            watchTracker: WatchHistoryTracker(
+  test('a delivery rescue records the video it makes visible', () async {
+    final updates = _DeliveryUpdates();
+    final focus = FakeFeedFocusPort();
+    final history = FakeWatchHistoryRepository();
+    final posts = List.generate(3, (index) => samplePost(id: 'p$index'));
+    final repository = FakeVideoCatalogRepository(forYouFeed: posts);
+    final cubit = FeedCubit(
+      FeedDependencies(
+        feed: repository,
+        engagement: repository,
+        optional: FeedOptionalDependencies(
+          focus: focus,
+          delivery: FeedDeliveryDependencies(deliveryUpdates: updates),
+          watch: FeedWatchDependencies(
+            tracker: WatchHistoryTracker(
               history: history,
-              settings: FakeAppSettingsRepository(AppSettings.defaults()),
               failureReporter: RecordingFailureReporter(),
             ),
           ),
         ),
-      );
-      addTearDown(cubit.close);
-      addTearDown(updates.close);
-      await cubit.load();
-      updates.publish(posts[1], startable: false);
-      updates.publish(posts[2], startable: true);
+      ),
+    );
+    addTearDown(cubit.close);
+    addTearDown(updates.close);
+    await cubit.load();
+    updates.publish(posts[1], startable: false);
+    updates.publish(posts[2], startable: true);
 
-      cubit.pageChanged(1);
-      await pumpEventQueue();
+    cubit.pageChanged(1);
+    await pumpEventQueue();
 
-      expect((cubit.state as FeedLoaded).activeIndex, 2);
-      expect(focus.focuses.last.cause, FeedFocusCause.transportRescue);
-      expect(
-        focus.focuses.last.rescue?.reason,
-        FeedTransportRescueReason.etaUnavailable,
-      );
-      expect(focus.focuses.last.rescue?.rankDisplacement, 1);
-      expect(focus.focuses.last.rescue?.wait, Duration.zero);
-      expect(history.entries.map((entry) => entry.videoId), ['e:p0']);
-    },
-  );
+    final loaded = cubit.state as FeedLoaded;
+    expect(loaded.activeIndex, 0);
+    expect(loaded.posts.map((post) => post.id.value), ['p2']);
+    expect(focus.focuses.last.cause, FeedFocusCause.transportRescue);
+    expect(
+      focus.focuses.last.rescue?.reason,
+      FeedTransportRescueReason.etaUnavailable,
+    );
+    expect(focus.focuses.last.rescue?.rankDisplacement, 1);
+    expect(focus.focuses.last.rescue?.wait, Duration.zero);
+    expect(history.entries.map((entry) => entry.videoId), ['e:p2', 'e:p0']);
+  });
 }
 
 final class _DeliveryUpdates implements VideoDeliveryUpdates {

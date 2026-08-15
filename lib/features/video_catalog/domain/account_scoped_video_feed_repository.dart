@@ -3,11 +3,15 @@ import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/following_feed_scope.dart';
 import 'package:ghostr/features/video_catalog/domain/repost_hydrated_video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
+import 'package:ghostr/features/video_catalog/domain/video_feed_refresh_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 
 final class AccountScopedVideoFeedRepository
-    implements VideoFeedRepository, RepostHydrationStatus {
+    implements
+        VideoFeedRepository,
+        VideoFeedRefreshRepository,
+        RepostHydrationStatus {
   const AccountScopedVideoFeedRepository(this._feed, this._viewer);
 
   final VideoFeedRepository _feed;
@@ -28,6 +32,18 @@ final class AccountScopedVideoFeedRepository
     bool excludeWatched = false,
   }) {
     return _guard(() => _feed.loadFeed(kind, excludeWatched: excludeWatched));
+  }
+
+  @override
+  Future<VideoFeedRefreshSnapshot> loadRefresh(FeedKind kind) {
+    return _guard(() async {
+      final feed = _feed;
+      if (feed case final VideoFeedRefreshRepository refresh) {
+        return refresh.loadRefresh(kind);
+      }
+      final posts = await feed.loadFeed(kind, excludeWatched: true);
+      return VideoFeedRefreshSnapshot(allPosts: posts, eligiblePosts: posts);
+    });
   }
 
   @override

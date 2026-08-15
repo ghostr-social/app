@@ -120,7 +120,6 @@ class SettingsScreen extends StatelessWidget {
       ),
       onBudgetChanged: cubit.changeBudget,
       onDataUsageChanged: cubit.changeDataUsage,
-      onHideWatchedChanged: cubit.changeHideWatchedVideos,
       updates: UpdateSettingsActions(
         onChanged: cubit.changeUpdatePreferences,
         onCheckNow: onCheckForUpdates,

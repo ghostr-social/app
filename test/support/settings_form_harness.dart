@@ -39,7 +39,6 @@ class SettingsFormHarness {
             blossom: BlossomSettingsActions(onAdd: () {}, onRemove: (_) {}),
             onBudgetChanged: (_) {},
             onDataUsageChanged: dataUsageChanges.add,
-            onHideWatchedChanged: (_) {},
             updates: UpdateSettingsActions(
               onChanged: updateChanges.add,
               onCheckNow: null,

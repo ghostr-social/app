@@ -11,7 +11,6 @@ class LocalAppSettingsRepository implements AppSettingsRepository {
   static const _relaysKey = 'ghostr.settings.relays';
   static const _inventoryBudgetKey = 'ghostr.settings.inventoryBudget';
   static const _blossomServersKey = 'ghostr.settings.blossomServers';
-  static const _hideWatchedKey = 'ghostr.settings.hideWatchedVideos';
   static const _searchRelaysKey = 'ghostr.settings.searchRelays';
   static const _dataUsageKey = 'ghostr.settings.dataUsage';
   static const _automaticUpdateChecksKey =
@@ -34,8 +33,6 @@ class LocalAppSettingsRepository implements AppSettingsRepository {
       relays: _loadRelayList(_relaysKey, defaults.relays),
       inventoryBudget: _loadBudget(defaults.inventoryBudget),
       blossomServers: _loadBlossomServers(defaults.blossomServers),
-      hideWatchedVideos:
-          _preferences.getBool(_hideWatchedKey) ?? defaults.hideWatchedVideos,
       searchRelays: _loadRelayList(_searchRelaysKey, defaults.searchRelays),
       dataUsage: _loadDataUsage(defaults.dataUsage),
       updatePreferences: _loadUpdatePreferences(defaults.updatePreferences),
@@ -85,10 +82,6 @@ class LocalAppSettingsRepository implements AppSettingsRepository {
   }
 
   Future<void> _saveBehavior(AppSettings settings) async {
-    await requirePreferenceWrite(
-      'Could not save app settings.',
-      () => _preferences.setBool(_hideWatchedKey, settings.hideWatchedVideos),
-    );
     await requirePreferenceWrite(
       'Could not save app settings.',
       () => _preferences.setString(_dataUsageKey, settings.dataUsage.name),

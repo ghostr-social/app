@@ -22,7 +22,8 @@ void main() {
     expect(playback.activity[post.media.debugLabel]!.last, isTrue);
 
     await tester.tap(find.byTooltip('Open comments'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
     expect(playback.activity[post.media.debugLabel]!.last, isFalse);
 
     await tester.binding.handlePopRoute();

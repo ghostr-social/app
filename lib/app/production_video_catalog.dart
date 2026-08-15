@@ -9,7 +9,6 @@ import 'package:ghostr/features/comments/data/nostr_comments_repository.dart';
 import 'package:ghostr/features/engagement/data/nostr_engagement_repository.dart';
 import 'package:ghostr/features/reposts/data/nostr_video_repost_repository.dart';
 import 'package:ghostr/features/reposts/data/nostr_author_write_relay_lookup.dart';
-import 'package:ghostr/features/settings/data/local_app_settings_repository.dart';
 import 'package:ghostr/features/social/data/social_graph_cache.dart';
 import 'package:ghostr/features/video_catalog/data/hybrid_video_comments_repository.dart';
 import 'package:ghostr/features/video_catalog/data/hybrid_video_engagement_repository.dart';
@@ -38,7 +37,6 @@ class ProductionVideoCatalogInputs {
     required this.nostr,
     required this.accountScope,
     required this.watchHistory,
-    required this.settingsRepository,
   });
 
   final SharedPreferences preferences;
@@ -46,7 +44,6 @@ class ProductionVideoCatalogInputs {
   final ProductionNostrServices nostr;
   final AccountStorageScope accountScope;
   final LocalWatchHistoryRepository watchHistory;
-  final LocalAppSettingsRepository settingsRepository;
 }
 
 VideoCatalogServices buildProductionVideoCatalog(
@@ -100,7 +97,6 @@ final class _ProductionVideoCatalog {
           followingScopes: _followingScopes,
         ),
         history: inputs.watchHistory,
-        settings: inputs.settingsRepository,
         failureReporter: _reporter,
       ),
       _reposts,

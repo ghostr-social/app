@@ -4,12 +4,14 @@ import 'package:ghostr/features/watch_history/domain/watch_history_entry.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/test_account_storage_scope.dart';
+import '../support/test_watch_history_database.dart';
 
 void main() {
   test('persists watch history and returns the newest entry first', () async {
     SharedPreferences.setMockInitialValues({});
     final repository = LocalWatchHistoryRepository(
       await SharedPreferences.getInstance(),
+      database: await openTestWatchHistoryDatabase(),
       accountScope: testAccountStorageScope(),
     );
     final older = WatchHistoryEntry(

@@ -27,7 +27,9 @@ class WatchHistoryScreen extends StatelessWidget {
   }
 
   Widget _clearAction(BuildContext context, WatchHistoryState state) {
-    if (state is! WatchHistoryLoaded) return const SizedBox.shrink();
+    if (state is! WatchHistoryLoaded && state is! WatchHistoryFailure) {
+      return const SizedBox.shrink();
+    }
     return IconButton(
       tooltip: 'Clear watch history',
       onPressed: context.read<WatchHistoryCubit>().clear,
@@ -38,17 +40,17 @@ class WatchHistoryScreen extends StatelessWidget {
   Widget _buildHistory(BuildContext context, WatchHistoryState state) {
     return switch (state) {
       WatchHistoryLoading() => const LoadingPanel(
-          label: 'Loading watch history',
-        ),
+        label: 'Loading watch history',
+      ),
       WatchHistoryEmpty() => _emptyHistory(),
       WatchHistoryLoaded(entries: final entries) => _historyList(
-          context,
-          entries,
-        ),
+        context,
+        entries,
+      ),
       WatchHistoryFailure(message: final message) => _errorHistory(
-          context,
-          message,
-        ),
+        context,
+        message,
+      ),
     };
   }
 
@@ -56,7 +58,8 @@ class WatchHistoryScreen extends StatelessWidget {
     return const AsyncStatePanel(
       icon: Icons.history,
       title: 'No watched videos yet',
-      message: 'Videos you watch in the feed are remembered here so the '
+      message:
+          'Videos you watch in the feed are remembered here so the '
           'feed can skip them next time.',
     );
   }

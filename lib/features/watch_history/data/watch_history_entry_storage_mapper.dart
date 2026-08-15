@@ -9,7 +9,7 @@ class WatchHistoryEntryStorageMapper {
       title: _required<String>(map, 'title'),
       creatorName: _required<String>(map, 'creatorName'),
       watchedAt: _watchedAt(map),
-      mediaUrl: _optionalString(map, 'mediaUrl'),
+      mediaUrls: _mediaUrls(map),
       mediaSha256: _optionalString(map, 'mediaSha256'),
     );
   }
@@ -20,9 +20,25 @@ class WatchHistoryEntryStorageMapper {
       'title': entry.title,
       'creatorName': entry.creatorName,
       'watchedAt': entry.watchedAt.toIso8601String(),
+      if (entry.mediaUrls.isNotEmpty) 'mediaUrls': entry.mediaUrls,
       if (entry.mediaUrl case final String url) 'mediaUrl': url,
       if (entry.mediaSha256 case final String digest) 'mediaSha256': digest,
     };
+  }
+
+  List<String> _mediaUrls(Map<String, dynamic> map) {
+    final saved = map['mediaUrls'];
+    if (saved == null) {
+      final legacy = _optionalString(map, 'mediaUrl');
+      return legacy == null ? const <String>[] : <String>[legacy];
+    }
+    if (saved is! List) {
+      throw const FormatException('Watch history media URLs are invalid.');
+    }
+    return saved.map((value) {
+      if (value is String) return value;
+      throw const FormatException('Watch history media URL is invalid.');
+    }).toList();
   }
 
   // Entries recorded before media tracking simply lack these keys.

@@ -46,4 +46,27 @@ extension _FeedScreenActions on _FeedScreenState {
     }
     return FeedCardShareStatus.available;
   }
+
+  Future<void> _openComments(BuildContext context, VideoPost post) async {
+    _setCommentsOpen(true);
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => BlocProvider(
+          create: (_) => widget.bindings.createComments(post)..load(),
+          child: CommentsSheet(
+            onCommentPublished: () => _commentPublished(context, post),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) _setCommentsOpen(false);
+    }
+  }
+
+  void _commentPublished(BuildContext context, VideoPost post) {
+    if (!context.mounted) return;
+    context.read<FeedCubit>().commentsPublished(post, 1);
+  }
 }
