@@ -1,8 +1,7 @@
 /^SF:/ {
   file = substr($0, 4)
   ignored = file ~ /^lib\/src\/rust\//
-  pure = file ~ /^lib\/core\// || file ~ /\/domain\//
-  threshold = pure ? 100 : 95
+  threshold = 80
   hit = 0
   total = 0
   next

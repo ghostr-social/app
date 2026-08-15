@@ -95,7 +95,7 @@ test-coverage: ## Run Flutter tests and collect Dart coverage.
 	@ulimit -n "$(FLUTTER_TEST_OPEN_FILES)"; \
 	exec $(FLUTTER) test --coverage --concurrency="$(FLUTTER_TEST_CONCURRENCY)"
 
-coverage-summary: ## Report and enforce Dart coverage requirements.
+coverage-summary: ## Report coverage and enforce the 80% Dart per-file floor.
 	@awk 'BEGIN{FS=":"; include=1} /^SF:/{include=($$0 !~ /lib\/src\/rust\//)} include && /^DA:/{split($$2,a,","); if (a[2] > 0) hit++; total++} END {if (total == 0) {print "No coverage data"; exit 1} printf("Line coverage: %.2f%% (%d/%d)\n", (hit/total)*100, hit, total)}' coverage/lcov.info
 	@sh tool/check_dart_coverage_sources.sh coverage/lcov.info lib tool/dart_coverage_exclusions.txt
 	@awk -f tool/check_dart_coverage.awk coverage/lcov.info
