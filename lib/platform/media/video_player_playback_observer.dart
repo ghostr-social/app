@@ -11,11 +11,16 @@ final class VideoPlayerPlaybackObserver {
     _furthestPosition = Duration.zero;
   }
 
-  PlaybackPhase classify(VideoPlayerValue value, {required bool isActive}) {
+  PlaybackPhase classify(
+    VideoPlayerValue value, {
+    required bool isActive,
+    bool isUserPaused = false,
+  }) {
     if (!isActive) return PlaybackPhase.inactive;
     if (value.hasError) return PlaybackPhase.failed;
     if (value.isCompleted) return PlaybackPhase.ended;
     _recordProgress(value.position);
+    if (isUserPaused) return PlaybackPhase.paused;
     if (value.isPlaying) return _movingPhase;
     return _stoppedPhase(value.isBuffering);
   }

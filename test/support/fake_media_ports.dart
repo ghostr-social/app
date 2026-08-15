@@ -47,8 +47,11 @@ class FakeMediaPickerPort implements MediaPickerPort {
 }
 
 class FakeVideoPlaybackPort implements VideoPlaybackPort {
+  final requests = <VideoPlaybackSurfaceRequest>[];
+
   @override
   Widget buildSurface(VideoPlaybackSurfaceRequest request) {
+    requests.add(request);
     return _ReleaseOnDispose(
       key: ValueKey(request.media.debugLabel),
       onReleased: request.onPlaybackMediaReleased,

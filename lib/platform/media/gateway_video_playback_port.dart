@@ -45,6 +45,7 @@ final class GatewayVideoPlaybackPort implements VideoPlaybackPort {
         media: media,
         videoId: request.videoId,
         isActive: request.isActive,
+        mode: request.mode,
         onPlaybackMediaReleased: request.onPlaybackMediaReleased,
       ),
     );

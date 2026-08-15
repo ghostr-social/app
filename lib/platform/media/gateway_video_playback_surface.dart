@@ -16,6 +16,7 @@ final class _GatewayVideoPlaybackSurface extends StatefulWidget {
   VideoMediaSource get media => request.media;
   PlaybackVideoId? get videoId => request.videoId;
   bool get isActive => request.isActive;
+  VideoPlaybackMode get mode => request.mode;
   VoidCallback? get onPlaybackMediaReleased => request.onPlaybackMediaReleased;
 
   @override
@@ -72,6 +73,7 @@ final class _GatewayVideoPlaybackSurfaceState
         media: media,
         videoId: widget.videoId,
         isActive: widget.isActive,
+        mode: widget.mode,
         progressiveRefresh: _GatewayProgressivePlaybackRefresh(
           widget.gateway,
           widget.media,

@@ -14,7 +14,11 @@ extension _VideoPlayerSurfaceTelemetry on _VideoPlayerSurfaceState {
     if (!_isObserving || !widget.isActive) return false;
     if (!value.isInitialized && !value.hasError) return false;
     final previous = _playbackPhase;
-    final phase = _playbackObserver.classify(value, isActive: true);
+    final phase = _playbackObserver.classify(
+      value,
+      isActive: true,
+      isUserPaused: widget.mode == VideoPlaybackMode.paused,
+    );
     _playbackPhase = phase;
     widget.screenAwake.observePhase(this, phase);
     _reportObservation(value, phase);

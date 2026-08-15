@@ -10,6 +10,7 @@ Future<void> showFeedCardMenu(
   return showModalBottomSheet<void>(
     context: context,
     backgroundColor: AppPalette.surface,
+    barrierColor: AppPalette.videoSheetBarrier,
     builder: (sheet) => _FeedCardMenu(post: post, onBlock: onBlockCreator),
   );
 }
