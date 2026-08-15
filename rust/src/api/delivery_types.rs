@@ -42,5 +42,8 @@ pub struct FfiDeliveryEvent {
     pub startable: bool,
     pub bytes_present: u64,
     pub total_bytes: Option<u64>,
+    /// Best current completion estimate; absent when the engine cannot
+    /// make a defensible estimate.
+    pub eta_ms: Option<u64>,
     pub detail: Option<String>,
 }

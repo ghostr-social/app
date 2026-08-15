@@ -9,6 +9,7 @@ pub(super) fn metadata() -> Response {
         .header(header::CONTENT_TYPE, "video/mp4")
         .header(header::CONTENT_LENGTH, MEDIA_LEN)
         .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::ETAG, "\"fixture-gateway-media\"")
         .body(Body::empty())
         .unwrap()
 }
@@ -23,6 +24,7 @@ pub(super) fn partial(headers: &HeaderMap) -> Response {
         )
         .header(header::CONTENT_LENGTH, end - start + 1)
         .header(header::CONTENT_TYPE, "video/mp4")
+        .header(header::ETAG, "\"fixture-gateway-media\"")
         .body(Body::from(vec![1; (end - start + 1) as usize]))
         .unwrap()
 }

@@ -3,7 +3,6 @@
 //! instead of polling.
 
 use ghostr_engine::adaptive::AllocationPlan;
-use ghostr_engine::playback::{PlaybackObservation, PlaybackObservationSequence, PlaybackSession};
 use ghostr_engine::video_rendition::VideoRendition;
 use ghostr_engine::{DataUsageLevel, PostId, VideoMeta};
 use tokio::sync::{mpsc, oneshot};
@@ -12,6 +11,7 @@ mod channel;
 mod focus_generation;
 mod mailbox;
 mod plan_evidence;
+mod transport;
 use crate::playback_admission::{
     PlaybackAdmission, PlaybackAdmissionLedger, PlaybackAdmissionSnapshot,
 };
@@ -22,6 +22,7 @@ pub use mailbox::MailboxReceiver;
 use mailbox::MailboxSender;
 pub use plan_evidence::PlanEvidence;
 use plan_evidence::PlanEvidenceHistory;
+pub use transport::{DeliveryPlayback, TransportRescue, TransportRescueReason};
 
 const DEFAULT_CANDIDATE_CAPACITY: usize = 32;
 
@@ -57,6 +58,7 @@ pub struct DeliveryFocus {
     pub watch_ms: u64,
     pub generation: FocusGeneration,
     pub transition: FocusTransition,
+    pub rescue: Option<TransportRescue>,
 }
 
 impl DeliveryFocus {
@@ -67,15 +69,9 @@ impl DeliveryFocus {
             watch_ms,
             generation: FocusGeneration::compatibility(),
             transition: FocusTransition::UserNavigation,
+            rescue: None,
         }
     }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct DeliveryPlayback {
-    pub session: PlaybackSession,
-    pub sequence: PlaybackObservationSequence,
-    pub observation: PlaybackObservation,
 }
 
 /// Control events the manager reacts to.

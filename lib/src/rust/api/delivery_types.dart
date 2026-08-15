@@ -15,6 +15,10 @@ class FfiDeliveryEvent {
   final bool startable;
   final BigInt bytesPresent;
   final BigInt? totalBytes;
+
+  /// Best current completion estimate; absent when the engine cannot
+  /// make a defensible estimate.
+  final BigInt? etaMs;
   final String? detail;
 
   const FfiDeliveryEvent({
@@ -23,6 +27,7 @@ class FfiDeliveryEvent {
     required this.startable,
     required this.bytesPresent,
     this.totalBytes,
+    this.etaMs,
     this.detail,
   });
 
@@ -33,6 +38,7 @@ class FfiDeliveryEvent {
       startable.hashCode ^
       bytesPresent.hashCode ^
       totalBytes.hashCode ^
+      etaMs.hashCode ^
       detail.hashCode;
 
   @override
@@ -45,6 +51,7 @@ class FfiDeliveryEvent {
           startable == other.startable &&
           bytesPresent == other.bytesPresent &&
           totalBytes == other.totalBytes &&
+          etaMs == other.etaMs &&
           detail == other.detail;
 }
 

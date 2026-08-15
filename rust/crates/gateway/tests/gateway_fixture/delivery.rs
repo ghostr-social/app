@@ -10,6 +10,7 @@ use ghostr_delivery::manager::{
 };
 use ghostr_delivery::playback_demand::{demand_channel, DemandReceiver, DemandSender, DemandState};
 use ghostr_delivery::progressive_posts::ServablePosts;
+use ghostr_delivery::segmented::SegmentedCache;
 use ghostr_engine::{DataUsageLevel, EngineParams};
 use ghostr_partial_store::partial_range_store::{capacity::StoreCapacity, PartialRangeStore};
 use std::path::PathBuf;
@@ -21,6 +22,7 @@ pub struct DeliveryFixture {
     pub demand: DemandSender,
     pub store: Arc<PartialRangeStore>,
     pub cache: ServablePosts,
+    pub segmented: SegmentedCache,
     pub network: NetworkThrottle,
     pub root: PathBuf,
     demands: Arc<StdMutex<Vec<DemandState>>>,
@@ -45,6 +47,7 @@ pub fn start_delivery_with_tuning(prefix: &str, tuning: DeliveryTuning) -> Deliv
     ));
     let cache = ServablePosts::new();
     let network = NetworkThrottle::new();
+    let segmented = SegmentedCache::new();
     let (demand, demand_receiver) = demand_channel();
     let demands = Arc::new(StdMutex::new(Vec::new()));
     let demand_receiver = trace_demands(demand_receiver, demands.clone());
@@ -53,6 +56,7 @@ pub fn start_delivery_with_tuning(prefix: &str, tuning: DeliveryTuning) -> Deliv
             store: store.clone(),
             client: media_client(),
             cache: cache.clone(),
+            segmented: segmented.clone(),
             network: network.clone(),
             stats_path: root.join("host_stats.json"),
             params: EngineParams::default(),
@@ -66,6 +70,7 @@ pub fn start_delivery_with_tuning(prefix: &str, tuning: DeliveryTuning) -> Deliv
         demand,
         store,
         cache,
+        segmented,
         network,
         root,
         demands,

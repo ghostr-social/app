@@ -22,6 +22,7 @@ pub enum PlaybackPhase {
     NetworkStalled,
     Paused,
     Ended,
+    Failed,
     Inactive,
 }
 

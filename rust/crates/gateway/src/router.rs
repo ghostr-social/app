@@ -18,6 +18,7 @@ use axum::Router;
     not(any(target_os = "android", target_os = "ios"))
 ))]
 use ghostr_delivery::delivery_events::DeliveryHandle;
+use ghostr_delivery::segmented::SegmentedCache;
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 #[cfg(all(
     feature = "video-debug-web",
@@ -32,6 +33,7 @@ use std::sync::Arc;
 pub(crate) struct GatewayHttpState {
     pub client: Arc<dyn MediaHttpRequests>,
     pub hls_sessions: HlsSessions,
+    pub segmented: SegmentedCache,
 }
 
 /// The gateway with `/video.mp4` served from the partial store instead of
@@ -41,7 +43,20 @@ pub fn configured_router_with_progressive(
     client: Arc<dyn MediaHttpRequests>,
     progressive: Arc<ProgressiveState>,
 ) -> Router {
-    progressive_route::router(progressive).merge(shared_router(shared_state(hls_sessions, client)))
+    configured_router_with_segmented(hls_sessions, client, progressive, SegmentedCache::new())
+}
+
+pub fn configured_router_with_segmented(
+    hls_sessions: HlsSessions,
+    client: Arc<dyn MediaHttpRequests>,
+    progressive: Arc<ProgressiveState>,
+    segmented: SegmentedCache,
+) -> Router {
+    progressive_route::router(progressive).merge(shared_router(shared_state(
+        hls_sessions,
+        client,
+        segmented,
+    )))
 }
 
 #[cfg(all(
@@ -56,6 +71,29 @@ pub fn configured_router_with_progressive_debug(
     delivery: DeliveryHandle,
     nostr: Arc<Client>,
 ) -> Router {
+    configured_router_with_segmented_debug(
+        hls_sessions,
+        client,
+        progressive,
+        delivery,
+        nostr,
+        SegmentedCache::new(),
+    )
+}
+
+#[cfg(all(
+    feature = "video-debug-web",
+    debug_assertions,
+    not(any(target_os = "android", target_os = "ios"))
+))]
+pub fn configured_router_with_segmented_debug(
+    hls_sessions: HlsSessions,
+    client: Arc<dyn MediaHttpRequests>,
+    progressive: Arc<ProgressiveState>,
+    delivery: DeliveryHandle,
+    nostr: Arc<Client>,
+    segmented: SegmentedCache,
+) -> Router {
     progressive_route::router(progressive.clone())
         .merge(debug_http::router(
             progressive,
@@ -63,16 +101,18 @@ pub fn configured_router_with_progressive_debug(
             hls_sessions.clone(),
             nostr,
         ))
-        .merge(shared_router(shared_state(hls_sessions, client)))
+        .merge(shared_router(shared_state(hls_sessions, client, segmented)))
 }
 
 fn shared_state(
     hls_sessions: HlsSessions,
     client: Arc<dyn MediaHttpRequests>,
+    segmented: SegmentedCache,
 ) -> Arc<GatewayHttpState> {
     Arc::new(GatewayHttpState {
         client,
         hls_sessions,
+        segmented,
     })
 }
 

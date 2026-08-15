@@ -25,8 +25,14 @@ use tokio::time::Instant;
 
 pub(crate) enum InternalEvent {
     Transfer(TransferEvent),
+    Segmented(SegmentedDone),
     Maintenance(MaintenanceEvent),
     TrafficChanged,
+}
+
+pub(crate) struct SegmentedDone {
+    pub post: PostId,
+    pub generation: u64,
 }
 
 pub(crate) enum TransferEvent {
@@ -38,6 +44,7 @@ pub(crate) enum TransferEvent {
 pub(crate) enum MaintenanceEvent {
     CooldownOver(PostId, CooldownId),
     SaveStats,
+    SaveQoe,
     StoreCapacityChanged(u64),
 }
 
@@ -72,23 +79,31 @@ pub(crate) fn spawn_chunk(
 ) -> CancelHandle {
     let (handle, token) = cancel_pair();
     tokio::spawn(async move {
-        let spec = ChunkSpec {
-            client: ctx.client.as_ref(),
-            url: &url,
-            range: attempt.chunk.range,
-            timeouts: ctx.timeouts,
-        };
         let sink = TransferChunkSink::new(&ctx.store, attempt.identity().clone());
         let mut scratch = HostStats::new();
         let mut traffic = TransferTraffic::new(attempt.id(), &url, ctx.traffic.clone());
-        let outcome = download_chunk_observed(
-            &spec,
-            &sink,
-            &mut scratch,
-            &token,
-            &ctx.network,
-            &mut traffic,
-        )
+        let outcome = async {
+            let continuation = ctx
+                .store
+                .select_transfer(attempt.identity().clone())
+                .await?;
+            let spec = ChunkSpec {
+                client: ctx.client.as_ref(),
+                url: &url,
+                range: attempt.chunk.range,
+                continuation: continuation.as_ref(),
+                timeouts: ctx.timeouts,
+            };
+            download_chunk_observed(
+                &spec,
+                &sink,
+                &mut scratch,
+                &token,
+                &ctx.network,
+                &mut traffic,
+            )
+            .await
+        }
         .await;
         attempt.mark_io_finished();
         drop(traffic);

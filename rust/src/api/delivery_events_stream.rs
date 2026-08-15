@@ -4,15 +4,16 @@
 //! every manager state change surfaces without polling.
 
 use crate::api::delivery::snapshots::{
-    compute_snapshot, error_event, event_for, DeliverySnapshot, SnapshotInput,
+    compute_snapshot, error_event, event_for, hls_snapshot, DeliverySnapshot, SnapshotInput,
 };
 use crate::api::delivery_types::FfiDeliveryEvent;
 use crate::api::runtime::registry;
 use crate::api::runtime::tracked_items::TrackedItems;
 use crate::engine::budget::params_for;
-use crate::engine::{ByteRange, EngineParams, PostId, VideoMeta};
+use crate::engine::{ByteRange, DeliveryKind, EngineParams, PostId, VideoMeta};
 use crate::frb_generated::StreamSink;
 use flutter_rust_bridge::frb;
+use ghostr_delivery::segmented::SegmentedCache;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -36,34 +37,49 @@ impl EventOut for StreamSink<FfiDeliveryEvent> {
 pub async fn ffi_delivery_events(sink: StreamSink<FfiDeliveryEvent>) -> anyhow::Result<()> {
     let engine = registry::engine()?;
     let store = engine.gateway.progressive().store.clone();
-    tokio::spawn(watch_delivery(sink, store, engine.tracked.clone()));
+    let segmented = engine.gateway.segmented();
+    tokio::spawn(watch_delivery(
+        sink,
+        store,
+        segmented,
+        engine.tracked.clone(),
+    ));
     Ok(())
 }
 
 pub(crate) async fn watch_delivery(
     out: impl EventOut,
     store: Arc<PartialRangeStore>,
+    segmented: SegmentedCache,
     tracked: TrackedItems,
 ) {
     let store_changed = store.change_notifier();
     let items_changed = tracked.notifier();
+    let segmented_changed = segmented.notifier();
     let mut emitted: HashMap<String, DeliverySnapshot> = HashMap::new();
     loop {
         let store_wake = store_changed.notified();
         let items_wake = items_changed.notified();
-        tokio::pin!(store_wake, items_wake);
+        let segmented_wake = segmented_changed.notified();
+        tokio::pin!(store_wake, items_wake, segmented_wake);
         store_wake.as_mut().enable();
         items_wake.as_mut().enable();
-        if !emit_pass(&out, &store, &tracked, &mut emitted).await {
+        segmented_wake.as_mut().enable();
+        if !emit_pass(&out, &store, &segmented, &tracked, &mut emitted).await {
             return;
         }
-        tokio::select! { _ = store_wake => {}, _ = items_wake => {} }
+        tokio::select! {
+            _ = store_wake => {},
+            _ = items_wake => {},
+            _ = segmented_wake => {},
+        }
     }
 }
 
 async fn emit_pass(
     out: &impl EventOut,
     store: &PartialRangeStore,
+    segmented: &SegmentedCache,
     tracked: &TrackedItems,
     emitted: &mut HashMap<String, DeliverySnapshot>,
 ) -> bool {
@@ -73,6 +89,7 @@ async fn emit_pass(
     for (id, meta) in &entries {
         let mut pass = Pass {
             store,
+            segmented,
             params: &params,
             emitted,
         };
@@ -85,11 +102,15 @@ async fn emit_pass(
 
 struct Pass<'a> {
     store: &'a PartialRangeStore,
+    segmented: &'a SegmentedCache,
     params: &'a EngineParams,
     emitted: &'a mut HashMap<String, DeliverySnapshot>,
 }
 
 async fn emit_post(out: &impl EventOut, pass: &mut Pass<'_>, id: &str, meta: &VideoMeta) -> bool {
+    if meta.delivery == DeliveryKind::Hls {
+        return emit_hls(out, pass, id);
+    }
     let (ranges, stored_total) = match store_view(pass.store, id).await {
         Ok(view) => view,
         Err(error) => return out.send(error_event(id, error.to_string())),
@@ -102,12 +123,19 @@ async fn emit_post(out: &impl EventOut, pass: &mut Pass<'_>, id: &str, meta: &Vi
         params: pass.params,
     };
     let current = compute_snapshot(&post, input);
-    let event = event_for(id, pass.emitted.get(id), current);
+    let event = event_for(id, pass.emitted.get(id), current.clone());
     pass.emitted.insert(id.to_owned(), current);
     match event {
         Some(event) => out.send(event),
         None => true,
     }
+}
+
+fn emit_hls(out: &impl EventOut, pass: &mut Pass<'_>, id: &str) -> bool {
+    let current = hls_snapshot(pass.segmented.snapshot(id));
+    let event = event_for(id, pass.emitted.get(id), current.clone());
+    pass.emitted.insert(id.to_owned(), current);
+    event.is_none_or(|event| out.send(event))
 }
 
 async fn store_view(

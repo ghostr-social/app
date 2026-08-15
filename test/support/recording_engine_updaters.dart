@@ -19,6 +19,7 @@ final class RecordingRustFocusUpdater {
         update.watchMs,
         update.generation,
         update.transition,
+        update.rescue,
       ),
     );
   }
@@ -32,6 +33,7 @@ final class RecordedFocusUpdate {
     this.watchMs,
     this.generation,
     this.transition,
+    this.rescue,
   );
 
   final String feedId;
@@ -40,6 +42,7 @@ final class RecordedFocusUpdate {
   final BigInt watchMs;
   final BigInt generation;
   final FfiFocusTransition transition;
+  final FfiTransportRescue? rescue;
 }
 
 /// Records `ffi_set_delivery_config` pushes to the Rust engine; set

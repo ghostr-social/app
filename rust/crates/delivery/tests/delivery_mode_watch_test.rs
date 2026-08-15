@@ -10,6 +10,7 @@ use ghostr_delivery::manager::{
 };
 use ghostr_delivery::playback_demand::demand_channel;
 use ghostr_delivery::progressive_posts::ServablePosts;
+use ghostr_delivery::segmented::SegmentedCache;
 use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_engine::{DataUsageLevel, EngineParams};
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
@@ -32,6 +33,7 @@ async fn delivery_manager_publishes_adaptive_discovery_demand() {
         store,
         client: media_client(),
         cache: ServablePosts::new(),
+        segmented: SegmentedCache::new(),
         network: NetworkThrottle::new(),
         stats_path: root.join("host_stats.json"),
         params: EngineParams::default(),

@@ -47,6 +47,7 @@ final class FfiFeedFocusPort implements FeedFocusPort {
           watchMs: BigInt.from(work.watched.inMilliseconds),
           generation: work.generation,
           transition: _transition(work.window.cause),
+          rescue: _rescue(work.window.rescue),
         ),
       );
     } on Object catch (error, stackTrace) {
@@ -64,7 +65,7 @@ final class FfiFeedFocusPort implements FeedFocusPort {
 /// out, and the current index shifts left past removed items so it
 /// keeps addressing the viewer's post.
 final class _FfiFocusWindow {
-  const _FfiFocusWindow(this.items, this.currentIndex, this.cause);
+  const _FfiFocusWindow(this.items, this.currentIndex, this.cause, this.rescue);
 
   factory _FfiFocusWindow.of(FeedFocus focus) {
     final items = <FfiFocusItem>[];
@@ -77,17 +78,37 @@ final class _FfiFocusWindow {
         currentIndex -= 1;
       }
     }
-    if (items.isEmpty) return _FfiFocusWindow([], 0, focus.cause);
+    if (items.isEmpty) return _FfiFocusWindow([], 0, focus.cause, focus.rescue);
     return _FfiFocusWindow(
       items,
       math.min(currentIndex, items.length - 1),
       focus.cause,
+      focus.rescue,
     );
   }
 
   final List<FfiFocusItem> items;
   final int currentIndex;
   final FeedFocusCause cause;
+  final FeedTransportRescue? rescue;
+}
+
+FfiTransportRescue? _rescue(FeedTransportRescue? rescue) {
+  if (rescue == null) return null;
+  return FfiTransportRescue(
+    reason: switch (rescue.reason) {
+      FeedTransportRescueReason.etaUnavailable =>
+        FfiTransportRescueReason.etaUnavailable,
+      FeedTransportRescueReason.etaTooLong =>
+        FfiTransportRescueReason.etaTooLong,
+      FeedTransportRescueReason.deliveryFailed =>
+        FfiTransportRescueReason.deliveryFailed,
+      FeedTransportRescueReason.graceExpired =>
+        FfiTransportRescueReason.graceExpired,
+    },
+    rankDisplacement: rescue.rankDisplacement,
+    waitMs: BigInt.from(rescue.wait.inMilliseconds),
+  );
 }
 
 FfiFocusTransition _transition(FeedFocusCause cause) {

@@ -9,6 +9,7 @@ pub mod commands;
 pub mod debug_clear;
 pub mod delivery;
 pub mod free_space;
+pub mod hls_origin;
 #[cfg(feature = "video-debug-web")]
 pub mod media_origin;
 pub mod progressive;

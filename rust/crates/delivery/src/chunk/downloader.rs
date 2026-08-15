@@ -5,6 +5,7 @@
 //! keeping the bytes already fetched.
 
 use crate::chunk::cancel::CancelToken;
+use crate::chunk::generation::OriginGeneration;
 use crate::chunk::network::{prepare_network, NetworkPreparation};
 use crate::chunk::response::{classify, RangeReply};
 use crate::chunk::stream::{stream_into, StreamInput, Streamed};
@@ -12,6 +13,7 @@ use crate::chunk::traffic::ChunkTraffic;
 use crate::debug::network::NetworkThrottle;
 use anyhow::{ensure, Result};
 use ghostr_engine::host_stats::{host_of, HostStats};
+use ghostr_engine::representation::SourceGeneration;
 use ghostr_engine::ByteRange;
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
@@ -19,6 +21,7 @@ use std::time::Duration;
 use tokio::time::Instant;
 
 mod opened;
+mod reply;
 pub use crate::chunk::sink::{ChunkSink, ChunkWrite};
 pub use crate::chunk::traffic::ChunkTraffic as DownloadTraffic;
 use opened::send_ranged;
@@ -28,6 +31,7 @@ pub struct ChunkSpec<'a> {
     pub client: &'a dyn MediaHttpRequests,
     pub url: &'a str,
     pub range: ByteRange,
+    pub continuation: Option<&'a SourceGeneration>,
     pub timeouts: TransferTimeouts,
 }
 
@@ -87,19 +91,25 @@ async fn transfer<W: ChunkWrite + ?Sized>(
     traffic.opened(opened.ttfb);
     let response = opened.response;
     let full_length = response.content_length();
-    match classify(&response, spec.range)? {
+    let reply = classify(&response, spec.range)?;
+    let total = reply::total(&reply, full_length);
+    let generation = OriginGeneration::from_response(&response, total)?;
+    sink.accept(&generation).await?;
+    match reply {
         RangeReply::Ignored => Ok(range_ignored(full_length)),
         RangeReply::Partial { range, total } => {
             let returned = ChunkSpec {
                 client: spec.client,
                 url: spec.url,
                 range,
+                continuation: spec.continuation,
                 timeouts: spec.timeouts,
             };
             completed(
                 stream_into(StreamInput {
                     response,
                     spec: &returned,
+                    generation: &generation,
                     sink,
                     cancel,
                     network,
@@ -111,11 +121,12 @@ async fn transfer<W: ChunkWrite + ?Sized>(
             )
         }
         RangeReply::FullBody => {
-            let returned = full_body_spec(spec, full_length);
+            let returned = reply::full_body_spec(spec, full_length);
             completed(
                 stream_into(StreamInput {
                     response,
                     spec: &returned,
+                    generation: &generation,
                     sink,
                     cancel,
                     network,
@@ -126,18 +137,6 @@ async fn transfer<W: ChunkWrite + ?Sized>(
                 full_length,
             )
         }
-    }
-}
-
-fn full_body_spec<'a>(spec: &ChunkSpec<'a>, full_length: Option<u64>) -> ChunkSpec<'a> {
-    let end = full_length
-        .filter(|length| *length > 0)
-        .map_or(spec.range.end, |length| length.min(spec.range.end));
-    ChunkSpec {
-        client: spec.client,
-        url: spec.url,
-        range: ByteRange::new(spec.range.start, end),
-        timeouts: spec.timeouts,
     }
 }
 

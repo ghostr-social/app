@@ -18,6 +18,11 @@ void main() {
           posts: [samplePost()],
           activeIndex: 0,
           cause: FeedFocusCause.transportRescue,
+          rescue: const FeedTransportRescue(
+            reason: FeedTransportRescueReason.graceExpired,
+            rankDisplacement: 2,
+            wait: Duration(milliseconds: 250),
+          ),
         ),
       );
       await pumpEventQueue();
@@ -26,6 +31,12 @@ void main() {
         updater.updates.single.transition,
         FfiFocusTransition.transportRescue,
       );
+      expect(
+        updater.updates.single.rescue?.reason,
+        FfiTransportRescueReason.graceExpired,
+      );
+      expect(updater.updates.single.rescue?.rankDisplacement, 2);
+      expect(updater.updates.single.rescue?.waitMs, BigInt.from(250));
     },
   );
 }

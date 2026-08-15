@@ -13,7 +13,8 @@ pub async fn serve_short_partial() -> String {
         let response = b"HTTP/1.1 206 Partial Content\r\n\
 Content-Range: bytes 4-11/16\r\n\
 Content-Length: 4\r\n\
-Content-Type: video/mp4\r\n\r\n4567";
+Content-Type: video/mp4\r\n\
+ETag: \"fixture-short\"\r\n\r\n4567";
         socket.write_all(response).await.expect("write response");
     });
     format!("http://{address}/video.mp4")

@@ -20,6 +20,7 @@ async fn chunk_downloader_rejects_an_explicit_image_before_writing_bytes() {
         client: &client,
         url: &url,
         range: ByteRange::new(0, 16),
+        continuation: None,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {

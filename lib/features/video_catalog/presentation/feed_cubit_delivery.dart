@@ -26,7 +26,7 @@ extension FeedCubitDelivery on FeedCubit {
     return pending == index;
   }
 
-  int _selectedPage(FeedLoaded current, int intended) {
+  FeedReadyDecision _readyDecision(FeedLoaded current, int intended) {
     return _readySelector.select(
       current.posts,
       fromIndex: current.activeIndex,
@@ -35,27 +35,36 @@ extension FeedCubitDelivery on FeedCubit {
     );
   }
 
-  void _rescueTo(FeedLoaded current, int selected) {
-    _awaitingTransportRescue = null;
+  void _rescueTo(FeedLoaded current, FeedReadyDecision decision) {
+    _clearPendingRescue();
+    final selected = decision.selectedIndex;
     _pendingTransportJump = selected;
     emit(current.withPage(selected));
-    _viewer.rescuedTo(current.posts, selected);
+    _viewer.rescuedTo(current.posts, selected, _transportRescue(decision));
     _ensureBuffered();
   }
 
   Future<void> _stopDeliveryUpdates() async {
-    _awaitingTransportRescue = null;
+    _clearPendingRescue();
     final subscription = _deliverySubscription;
     _deliverySubscription = null;
     await subscription?.cancel();
   }
 
-  void _rememberPendingRescue(FeedLoaded current, int intended) {
+  void _rememberPendingRescue(FeedLoaded current, FeedReadyDecision decision) {
+    final intended = decision.intendedIndex;
     final snapshot = _snapshotFor(current.posts[intended]);
-    _awaitingTransportRescue = intended == current.activeIndex ||
+    _clearPendingRescue();
+    _awaitingTransportRescue =
+        intended == current.activeIndex ||
             snapshot?.phase == VideoDeliveryPhase.startable
         ? null
-        : (fromIndex: current.activeIndex, intendedIndex: intended);
+        : (
+            fromIndex: current.activeIndex,
+            intendedIndex: intended,
+            graceExpired: false,
+          );
+    if (decision.action == FeedReadyAction.wait) _ensureRescueTimer();
   }
 
   void _rescueAfterDeliveryUpdate() {
@@ -63,12 +72,12 @@ extension FeedCubitDelivery on FeedCubit {
     final current = state;
     if (pending == null || current is! FeedLoaded) return;
     if (current.activeIndex != pending.intendedIndex) {
-      _awaitingTransportRescue = null;
+      _clearPendingRescue();
       return;
     }
     final intended = _snapshotFor(current.posts[pending.intendedIndex]);
     if (intended?.phase == VideoDeliveryPhase.startable) {
-      _awaitingTransportRescue = null;
+      _clearPendingRescue();
       return;
     }
     final selected = _readySelector.select(
@@ -76,12 +85,58 @@ extension FeedCubitDelivery on FeedCubit {
       fromIndex: pending.fromIndex,
       intendedIndex: pending.intendedIndex,
       delivery: _delivery,
+      graceExpired: pending.graceExpired,
     );
-    if (selected != pending.intendedIndex) _rescueTo(current, selected);
+    if (selected.action == FeedReadyAction.rescue) {
+      _rescueTo(current, selected);
+    } else if (selected.action == FeedReadyAction.wait) {
+      _ensureRescueTimer();
+    }
+  }
+
+  void _ensureRescueTimer() {
+    _rescueTimer ??= Timer(_readySelector.grace, _expireRescueGrace);
+  }
+
+  void _expireRescueGrace() {
+    _rescueTimer = null;
+    final pending = _awaitingTransportRescue;
+    if (pending == null) return;
+    _awaitingTransportRescue = (
+      fromIndex: pending.fromIndex,
+      intendedIndex: pending.intendedIndex,
+      graceExpired: true,
+    );
+    _rescueAfterDeliveryUpdate();
+  }
+
+  void _clearPendingRescue() {
+    _awaitingTransportRescue = null;
+    _rescueTimer?.cancel();
+    _rescueTimer = null;
   }
 
   VideoDeliverySnapshot? _snapshotFor(VideoPost post) {
     final id = post.media.playbackDeliveryId;
     return id == null ? null : _delivery[id];
+  }
+
+  FeedTransportRescue _transportRescue(FeedReadyDecision decision) {
+    final reason = switch (decision.reason) {
+      FeedReadyReason.etaUnavailable =>
+        FeedTransportRescueReason.etaUnavailable,
+      FeedReadyReason.etaTooLong => FeedTransportRescueReason.etaTooLong,
+      FeedReadyReason.deliveryFailed =>
+        FeedTransportRescueReason.deliveryFailed,
+      FeedReadyReason.graceExpired => FeedTransportRescueReason.graceExpired,
+      _ => throw StateError('Non-rescue decision reached rescue telemetry.'),
+    };
+    return FeedTransportRescue(
+      reason: reason,
+      rankDisplacement: decision.displacement,
+      wait: decision.reason == FeedReadyReason.graceExpired
+          ? _readySelector.grace
+          : Duration.zero,
+    );
   }
 }

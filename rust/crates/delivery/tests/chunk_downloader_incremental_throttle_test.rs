@@ -29,6 +29,7 @@ async fn throttled_large_response_makes_incremental_store_progress() {
         client: &client,
         url: &url,
         range: ByteRange::new(0, TOTAL),
+        continuation: None,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {

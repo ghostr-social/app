@@ -21,19 +21,17 @@ impl DeliveryWorker {
             &planned.transfers,
             &retained_posts,
         );
+        let total = capacity.total.min(self.progressive_capacity());
         let priority: Vec<_> = planned
             .transfers
             .iter()
             .map(|transfer| transfer.request.chunk.clone())
             .collect();
-        self.downloads.reconcile_with_commitments(
-            &planned.transfers,
-            capacity.total,
-            &planned.retained,
-        );
+        self.downloads
+            .reconcile_with_commitments(&planned.transfers, total, &planned.retained);
         self.queue.replace(planned.transfers);
-        self.preempt_for_current(&priority, capacity.total);
-        self.grant_planned(capacity.total, capacity.foreground_goal);
+        self.preempt_for_current(&priority, total);
+        self.grant_planned(total, capacity.foreground_goal.min(total));
         if !emergency {
             self.grant_origin_exploration();
         }
@@ -61,7 +59,8 @@ impl DeliveryWorker {
         let exploration_limit = self
             .concurrency_limit()
             .saturating_add(1)
-            .min(self.state.concurrency());
+            .min(self.state.concurrency())
+            .min(self.progressive_capacity());
         if self.downloads.len() >= exploration_limit {
             return;
         }
@@ -87,5 +86,10 @@ impl DeliveryWorker {
             self.state.concurrency(),
             self.ctx.network.profile().max_connections_per_host,
         )
+    }
+
+    pub(super) fn progressive_capacity(&self) -> usize {
+        self.connection_ceiling()
+            .saturating_sub(self.segmented.active_len())
     }
 }

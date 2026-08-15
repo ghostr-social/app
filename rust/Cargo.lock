@@ -777,14 +777,17 @@ dependencies = [
  "axum",
  "bytes",
  "ghostr-engine",
+ "ghostr-hls-manifest",
  "ghostr-net",
  "ghostr-partial-store",
  "log",
  "rand 0.8.7",
  "reqwest",
  "serde",
+ "serde_json",
  "tokio",
  "tokio-stream",
+ "url",
 ]
 
 [[package]]
@@ -883,6 +886,8 @@ dependencies = [
  "ghostr-engine",
  "libc",
  "log",
+ "serde",
+ "serde_json",
  "sha2",
  "tokio",
 ]

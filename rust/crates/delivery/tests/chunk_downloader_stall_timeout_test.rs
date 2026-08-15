@@ -19,6 +19,7 @@ async fn chunk_downloader_times_out_on_a_stalled_transfer_and_records_a_failure(
         client: &client,
         url: &url,
         range: ByteRange::new(0, 8),
+        continuation: None,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {

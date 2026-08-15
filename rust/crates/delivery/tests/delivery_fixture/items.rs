@@ -3,6 +3,7 @@
 use ghostr_delivery::delivery_events::DeliveryCandidate;
 use ghostr_delivery::delivery_events::{DeliveryFocus, FocusItem};
 use ghostr_engine::catalog::Catalog;
+use ghostr_engine::representation::SourceGeneration;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 
@@ -80,9 +81,19 @@ pub async fn seed_range(store: &PartialRangeStore, item: &FocusItem, offset: u64
     let source = item.meta.urls.first().expect("fixture source");
     let identity = binding.transfer(source).expect("fixture identity");
     store.bind_representation(binding).await.unwrap();
-    store.select_transfer(identity.clone());
+    store.select_transfer(identity.clone()).await.unwrap();
+    let generation = SourceGeneration::try_new(
+        source,
+        "\"fixture-media\"",
+        item.meta.size_bytes.unwrap_or(offset + bytes.len() as u64),
+    )
+    .unwrap();
+    store
+        .accept_generation(&identity, generation.clone())
+        .await
+        .unwrap();
     assert!(store
-        .write_range_for_transfer_if_current(&identity, offset, bytes)
+        .write_range_for_generation_if_current(&identity, &generation, offset, bytes)
         .await
         .unwrap());
 }

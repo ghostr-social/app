@@ -37,6 +37,7 @@ fn focus(value: u64) -> DeliveryFocus {
         watch_ms: 0,
         generation: generation(value),
         transition: FocusTransition::UserNavigation,
+        rescue: None,
     }
 }
 

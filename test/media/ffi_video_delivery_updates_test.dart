@@ -42,6 +42,7 @@ void main() {
       final snapshots = await received;
       expect(snapshots.first.deliveryId, PlaybackDeliveryId.parse('media-one'));
       expect(snapshots.first.phase, VideoDeliveryPhase.startable);
+      expect(snapshots.first.eta, const Duration(milliseconds: 120));
       expect(snapshots.last.phase, VideoDeliveryPhase.failed);
       expect(snapshots.last.detail, 'store failure');
     },
@@ -58,6 +59,7 @@ FfiDeliveryEvent event({
     startable: startable,
     bytesPresent: BigInt.from(64),
     totalBytes: BigInt.from(128),
+    etaMs: BigInt.from(120),
     detail: kind == FfiDeliveryEventKind.error ? 'store failure' : null,
   );
 }

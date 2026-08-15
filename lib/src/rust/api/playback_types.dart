@@ -95,5 +95,6 @@ enum FfiPlaybackPhase {
   networkStalled,
   paused,
   ended,
+  failed,
   inactive,
 }

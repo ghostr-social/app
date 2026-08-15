@@ -19,6 +19,7 @@ async fn chunk_downloader_streams_partial_content_into_the_store() {
         client: &client,
         url: &url,
         range: ByteRange::new(4, 12),
+        continuation: None,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {
