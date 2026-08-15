@@ -36,6 +36,49 @@ pub enum NextReserveInfeasibility {
     NoStorageCapacity,
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum ControlMode {
+    Emergency,
+    Safety,
+    #[default]
+    Normal,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub enum ReserveCandidateState {
+    #[default]
+    Unprepared,
+    Ready,
+    InFlight,
+    Probing,
+    Preparing {
+        ranges: Vec<ByteRange>,
+    },
+    Planned {
+        ranges: Vec<ByteRange>,
+    },
+    Infeasible {
+        reason: NextReserveInfeasibility,
+    },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReserveCandidateEvidence {
+    pub post: PostId,
+    pub state: ReserveCandidateState,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct ReadyReserveEvidence {
+    pub target: usize,
+    pub ready: usize,
+    pub protected: usize,
+    pub recovery_horizon_ms: u64,
+    pub underflow_risk_bps: u16,
+    pub ready_coverage_ms: u64,
+    pub candidates: Vec<ReserveCandidateEvidence>,
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum NextReserveEvidence {
     #[default]
@@ -104,5 +147,7 @@ pub struct AllocationPlan {
     pub retained: Vec<RetainedAllocation>,
     pub evictions: Vec<Eviction>,
     pub discovery_demand: DiscoveryDemand,
+    pub mode: ControlMode,
+    pub ready_reserve: ReadyReserveEvidence,
     pub next_reserve: NextReserveEvidence,
 }

@@ -56,6 +56,7 @@ extension AppControllerFeedFactories on AppControllerFactory {
         delivery: FeedDeliveryDependencies(
           updates: updates,
           reposts: services.reposts,
+          deliveryUpdates: _deliveryUpdates,
         ),
       ),
     );

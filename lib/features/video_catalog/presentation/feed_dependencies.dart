@@ -6,6 +6,7 @@ import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
+import 'package:ghostr/features/video_catalog/domain/video_delivery_updates.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
 
 /// Everything a feed needs from the outside world. The optional ports stay
@@ -30,6 +31,7 @@ class FeedDependencies {
   FeedFocusPort? get focus => optional.focus;
   WatchHistoryTracker? get watchTracker => optional.watchTracker;
   VideoFeedUpdates? get updates => optional.updates;
+  VideoDeliveryUpdates? get deliveryUpdates => optional.deliveryUpdates;
 }
 
 /// Capabilities a feed can omit without changing its retrieval contract.
@@ -48,11 +50,17 @@ final class FeedOptionalDependencies {
 
   VideoFeedUpdates? get updates => delivery.updates;
   VideoRepostRepository? get reposts => delivery.reposts;
+  VideoDeliveryUpdates? get deliveryUpdates => delivery.deliveryUpdates;
 }
 
 final class FeedDeliveryDependencies {
-  const FeedDeliveryDependencies({this.updates, this.reposts});
+  const FeedDeliveryDependencies({
+    this.updates,
+    this.reposts,
+    this.deliveryUpdates,
+  });
 
   final VideoFeedUpdates? updates;
   final VideoRepostRepository? reposts;
+  final VideoDeliveryUpdates? deliveryUpdates;
 }

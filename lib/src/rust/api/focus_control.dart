@@ -8,7 +8,7 @@ import 'delivery_types.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `accept_focus`, `progressive_entries`, `progressive_url`, `register_progressive`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `fmt`, `fmt`
 
 /// Replaces the ordered focus window (items include the current one),
 /// refreshes the catalog, and wakes the delivery manager. `feed_id`
@@ -25,6 +25,8 @@ Future<void> ffiUpdateFocus({required FfiFocusUpdate update}) =>
 Future<String> ffiPlaybackUrl({required FfiFocusItem item}) =>
     RustLib.instance.api.crateApiFocusControlFfiPlaybackUrl(item: item);
 
+enum FfiFocusTransition { userNavigation, rosterChange, transportRescue }
+
 /// One atomic, monotonically versioned focus write from Flutter.
 class FfiFocusUpdate {
   final String feedId;
@@ -32,6 +34,7 @@ class FfiFocusUpdate {
   final int currentIndex;
   final BigInt watchMs;
   final BigInt generation;
+  final FfiFocusTransition transition;
 
   const FfiFocusUpdate({
     required this.feedId,
@@ -39,6 +42,7 @@ class FfiFocusUpdate {
     required this.currentIndex,
     required this.watchMs,
     required this.generation,
+    required this.transition,
   });
 
   @override
@@ -47,7 +51,8 @@ class FfiFocusUpdate {
       items.hashCode ^
       currentIndex.hashCode ^
       watchMs.hashCode ^
-      generation.hashCode;
+      generation.hashCode ^
+      transition.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -58,5 +63,6 @@ class FfiFocusUpdate {
           items == other.items &&
           currentIndex == other.currentIndex &&
           watchMs == other.watchMs &&
-          generation == other.generation;
+          generation == other.generation &&
+          transition == other.transition;
 }

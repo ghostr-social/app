@@ -1098,17 +1098,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiFocusTransition dco_decode_ffi_focus_transition(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FfiFocusTransition.values[raw as int];
+  }
+
+  @protected
   FfiFocusUpdate dco_decode_ffi_focus_update(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return FfiFocusUpdate(
       feedId: dco_decode_String(arr[0]),
       items: dco_decode_list_ffi_focus_item(arr[1]),
       currentIndex: dco_decode_u_32(arr[2]),
       watchMs: dco_decode_u_64(arr[3]),
       generation: dco_decode_u_64(arr[4]),
+      transition: dco_decode_ffi_focus_transition(arr[5]),
     );
   }
 
@@ -1692,6 +1699,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiFocusTransition sse_decode_ffi_focus_transition(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return FfiFocusTransition.values[inner];
+  }
+
+  @protected
   FfiFocusUpdate sse_decode_ffi_focus_update(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_feedId = sse_decode_String(deserializer);
@@ -1699,12 +1715,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_currentIndex = sse_decode_u_32(deserializer);
     var var_watchMs = sse_decode_u_64(deserializer);
     var var_generation = sse_decode_u_64(deserializer);
+    var var_transition = sse_decode_ffi_focus_transition(deserializer);
     return FfiFocusUpdate(
       feedId: var_feedId,
       items: var_items,
       currentIndex: var_currentIndex,
       watchMs: var_watchMs,
       generation: var_generation,
+      transition: var_transition,
     );
   }
 
@@ -2344,6 +2362,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_ffi_focus_transition(
+    FfiFocusTransition self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
   void sse_encode_ffi_focus_update(
     FfiFocusUpdate self,
     SseSerializer serializer,
@@ -2354,6 +2381,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_u_32(self.currentIndex, serializer);
     sse_encode_u_64(self.watchMs, serializer);
     sse_encode_u_64(self.generation, serializer);
+    sse_encode_ffi_focus_transition(self.transition, serializer);
   }
 
   @protected

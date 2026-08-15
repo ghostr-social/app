@@ -99,6 +99,31 @@
         <article><span>Active hosts</span><strong id="relay-count">—</strong><small id="connection-count">—</small></article>
       </div>
 
+      <section id="parallel-retrieval" class="inspector-section parallel-panel" aria-labelledby="parallel-heading">
+        <div class="subheading"><h3 id="parallel-heading">Parallel retrieval</h3><span id="parallel-count">Idle</span></div>
+        <p class="parallel-copy">Independent readiness lanes for the ranked window.</p>
+        <div id="delivery-lanes" class="delivery-lanes" aria-live="polite">
+          <p class="empty">Waiting for focused videos</p>
+        </div>
+      </section>
+
+      <section id="ready-reserve" class="inspector-section reserve-panel"
+               aria-labelledby="ready-reserve-heading">
+        <div class="subheading">
+          <h3 id="ready-reserve-heading">WARP ready reserve</h3>
+          <span id="reserve-mode">Waiting</span>
+        </div>
+        <div class="reserve-summary">
+          <article><span>Ready / target</span><strong id="reserve-count">—</strong></article>
+          <article><span>Weighted coverage</span><strong id="reserve-coverage">—</strong></article>
+          <article><span>Underflow risk</span><strong id="reserve-risk">—</strong></article>
+        </div>
+        <p class="reserve-horizon">Recovery horizon <b id="reserve-horizon">—</b></p>
+        <div id="reserve-candidates" class="reserve-candidates" aria-live="polite">
+          <p class="empty">Waiting for a delivery plan</p>
+        </div>
+      </section>
+
       <section class="inspector-section" aria-labelledby="nostr-heading">
         <div class="subheading"><h3 id="nostr-heading">Nostr discovery</h3><span id="nostr-stage">Loading</span></div>
         <div class="nostr-summary"><strong id="nostr-count">0</strong><span>videos discovered</span></div>
@@ -161,6 +186,8 @@
 
   <script src="/debug/hls.min.js" defer></script>
   <script src="/debug/hls_player.js" defer></script>
+  <script src="/debug/ready_reserve.js" defer></script>
+  <script src="/debug/delivery_lanes.js" defer></script>
   <script src="/debug/app.js" defer></script>
   <script src="/debug/player_events.js" defer></script>
   <script src="/debug/navigation.js" defer></script>

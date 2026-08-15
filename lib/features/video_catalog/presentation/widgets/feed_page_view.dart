@@ -27,6 +27,15 @@ class _FeedPageViewState extends State<FeedPageView> {
   int? _activePointer;
 
   @override
+  void didUpdateWidget(covariant FeedPageView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialPage == widget.initialPage) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _reposition();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Listener(
       onPointerDown: _beginGesture,
@@ -65,6 +74,18 @@ class _FeedPageViewState extends State<FeedPageView> {
     if (_activePointer != event.pointer) return;
     _activePointer = null;
     _gesture.reset();
+  }
+
+  void _reposition() {
+    if (widget.itemCount == 0) return;
+    if (!_controller.hasClients) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _reposition();
+      });
+      return;
+    }
+    final target = widget.initialPage.clamp(0, widget.itemCount - 1);
+    if (_controller.page?.round() != target) _controller.jumpToPage(target);
   }
 
   @override
