@@ -8,6 +8,7 @@ pub(super) fn full(bytes: &[u8]) -> Response {
         .header(header::CONTENT_TYPE, "video/mp4")
         .header(header::CONTENT_LENGTH, bytes.len())
         .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::ETAG, "\"fixture-media\"")
         .body(Body::from(bytes.to_vec()))
         .expect("full response")
 }
@@ -21,6 +22,7 @@ pub(super) fn partial(bytes: &[u8], start: u64, end: u64) -> Response {
         .status(StatusCode::PARTIAL_CONTENT)
         .header(header::CONTENT_TYPE, "video/mp4")
         .header(header::CONTENT_LENGTH, slice.len())
+        .header(header::ETAG, "\"fixture-media\"")
         .header(
             header::CONTENT_RANGE,
             format!("bytes {start}-{end}/{}", bytes.len()),

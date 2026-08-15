@@ -7,6 +7,7 @@ enum PlaybackPhase {
   networkStalled,
   paused,
   ended,
+  failed,
   inactive;
 
   bool get isNetworkStall => this == PlaybackPhase.networkStalled;
@@ -19,6 +20,7 @@ enum PlaybackPhase {
     PlaybackPhase.networkStalled => true,
     PlaybackPhase.paused ||
     PlaybackPhase.ended ||
+    PlaybackPhase.failed ||
     PlaybackPhase.inactive => false,
   };
 }

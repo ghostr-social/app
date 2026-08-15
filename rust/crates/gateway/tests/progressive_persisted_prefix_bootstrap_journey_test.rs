@@ -51,7 +51,12 @@ async fn seed_prefix(harness: &ProgressiveDeliveryHarness, item: &FocusItem) {
         .bind_representation(binding)
         .await
         .unwrap();
-    harness.delivery.store.select_transfer(identity.clone());
+    harness
+        .delivery
+        .store
+        .select_transfer(identity.clone())
+        .await
+        .unwrap();
     assert!(harness
         .delivery
         .store

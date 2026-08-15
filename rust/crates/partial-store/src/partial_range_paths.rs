@@ -43,8 +43,12 @@ impl StorePaths {
         self.named(key, "representation")
     }
 
+    pub fn generation(&self, key: &str) -> PathBuf {
+        self.named(key, "generation.json")
+    }
+
     /// Every file of the key, partial and completed alike.
-    pub fn all(&self, key: &str) -> [PathBuf; 8] {
+    pub fn all(&self, key: &str) -> [PathBuf; 10] {
         [
             self.partial(key),
             self.partial_staging(key),
@@ -55,6 +59,8 @@ impl StorePaths {
             self.representation(key),
             self.representation(key)
                 .with_extension("representation.tmp"),
+            self.generation(key),
+            self.generation(key).with_extension("json.tmp"),
         ]
     }
 

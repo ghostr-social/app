@@ -21,6 +21,7 @@ async fn chunk_downloader_cancellation_mid_stream_keeps_the_partial_bytes() {
         client: &client,
         url: &url,
         range: ByteRange::new(0, 8),
+        continuation: None,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {

@@ -1,6 +1,6 @@
 use super::ChunkSpec;
 use anyhow::{Context, Result};
-use reqwest::header::RANGE;
+use reqwest::header::{ACCEPT_ENCODING, IF_RANGE, RANGE};
 use reqwest::Response;
 use std::time::Duration;
 use tokio::time::Instant;
@@ -12,7 +12,14 @@ pub(super) struct OpenedResponse {
 
 pub(super) async fn send_ranged(spec: &ChunkSpec<'_>) -> Result<OpenedResponse> {
     let header = format!("bytes={}-{}", spec.range.start, spec.range.end - 1);
-    let request = spec.client.get(spec.url)?.header(RANGE, header);
+    let mut request = spec
+        .client
+        .get(spec.url)?
+        .header(RANGE, header)
+        .header(ACCEPT_ENCODING, "identity");
+    if let Some(generation) = spec.continuation {
+        request = request.header(IF_RANGE, generation.strong_etag());
+    }
     let started = Instant::now();
     let response = tokio::time::timeout(spec.timeouts.headers, request.send())
         .await

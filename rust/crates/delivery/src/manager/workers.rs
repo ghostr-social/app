@@ -80,7 +80,6 @@ impl DownloadWorkers {
         let commitment_until_ms = transfer.commitment_until_ms;
         let request = transfer.request;
         let chunk = request.chunk.clone();
-        ctx.store.select_transfer(transfer.identity.clone());
         let attempt = self.active.next_attempt(chunk, transfer.identity);
         let handle = spawn_chunk(ctx, attempt.clone(), transfer.url);
         self.active

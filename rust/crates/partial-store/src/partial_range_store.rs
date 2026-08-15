@@ -4,7 +4,7 @@ use crate::partial_range_paths::{validate_key, StorePaths};
 use crate::partial_range_store::capacity::StoreCapacity;
 use crate::partial_range_store::leases::{StoreLease, StoreLeases};
 use anyhow::{Context, Result};
-use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
+use ghostr_engine::representation::{RepresentationBinding, SourceGeneration, TransferIdentity};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -17,6 +17,7 @@ mod clear;
 mod eviction;
 mod finalize;
 pub mod free_space;
+mod generation;
 pub mod leases;
 mod policy_eviction;
 mod queries;
@@ -48,6 +49,7 @@ pub struct PartialRangeStore {
     representations: Mutex<HashMap<String, RepresentationBinding>>,
     representation_updates: Mutex<()>,
     selected_transfers: StdMutex<HashMap<String, TransferIdentity>>,
+    source_generations: Mutex<HashMap<String, (String, SourceGeneration)>>,
 }
 
 impl PartialRangeStore {
@@ -71,6 +73,7 @@ impl PartialRangeStore {
             representations: Mutex::new(HashMap::new()),
             representation_updates: Mutex::new(()),
             selected_transfers: StdMutex::new(HashMap::new()),
+            source_generations: Mutex::new(HashMap::new()),
         }
     }
 

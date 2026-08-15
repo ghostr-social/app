@@ -15,14 +15,16 @@ void main() {
       posts[4].media.playbackDeliveryId!: snapshot(posts, 4, startable: true),
     };
 
-    final selected = const FeedReadySelector().select(
+    final decision = const FeedReadySelector().select(
       posts,
       fromIndex: 0,
       intendedIndex: 1,
       delivery: delivery,
     );
 
-    expect(selected, 2);
+    expect(decision.action, FeedReadyAction.rescue);
+    expect(decision.selectedIndex, 2);
+    expect(decision.displacement, 1);
   });
 }
 

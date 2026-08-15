@@ -1,6 +1,7 @@
 mod store_fixture;
 
 use ghostr_engine::catalog::Catalog;
+use ghostr_engine::representation::SourceGeneration;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -18,7 +19,7 @@ async fn stale_writer_cannot_mix_bytes_after_representation_replacement() {
         .transfer_identity(&post, "https://a.example/video")
         .unwrap();
     store.bind_representation(first).await.unwrap();
-    store.select_transfer(stale.clone());
+    store.select_transfer(stale.clone()).await.unwrap();
     assert!(store
         .write_range_for_transfer_if_current(&stale, 0, b"old")
         .await
@@ -29,13 +30,19 @@ async fn stale_writer_cannot_mix_bytes_after_representation_replacement() {
         .transfer_identity(&post, "https://b.example/video")
         .unwrap();
     store.bind_representation(second).await.unwrap();
-    store.select_transfer(current.clone());
+    store.select_transfer(current.clone()).await.unwrap();
+    let generation =
+        SourceGeneration::try_new("https://b.example/video", "\"current\"", 4).unwrap();
+    store
+        .accept_generation(&current, generation.clone())
+        .await
+        .unwrap();
     assert!(!store
         .write_range_for_transfer_if_current(&stale, 0, b"late")
         .await
         .unwrap());
     assert!(store
-        .write_range_for_transfer_if_current(&current, 0, b"new!")
+        .write_range_for_generation_if_current(&current, &generation, 0, b"new!")
         .await
         .unwrap());
     assert_eq!(

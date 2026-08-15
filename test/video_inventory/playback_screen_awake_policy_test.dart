@@ -11,6 +11,7 @@ void main() {
     const resting = [
       PlaybackPhase.paused,
       PlaybackPhase.ended,
+      PlaybackPhase.failed,
       PlaybackPhase.inactive,
     ];
 

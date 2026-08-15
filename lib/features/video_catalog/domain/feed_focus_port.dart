@@ -2,10 +2,35 @@ import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 
 enum FeedFocusCause { userNavigation, rosterChange, transportRescue }
 
+enum FeedTransportRescueReason {
+  etaUnavailable,
+  etaTooLong,
+  deliveryFailed,
+  graceExpired,
+}
+
+final class FeedTransportRescue {
+  const FeedTransportRescue({
+    required this.reason,
+    required this.rankDisplacement,
+    required this.wait,
+  });
+
+  final FeedTransportRescueReason reason;
+  final int rankDisplacement;
+  final Duration wait;
+}
+
 /// The viewer's position in a feed as the delivery engine sees it: an
 /// ordered window of posts around — and including — the current item.
 final class FeedFocus {
-  FeedFocus._(this.window, this.currentIndex, this.watched, this.cause);
+  FeedFocus._(
+    this.window,
+    this.currentIndex,
+    this.watched,
+    this.cause,
+    this.rescue,
+  );
 
   /// Preserves the complete feed order so the delivery policy can derive
   /// its own adaptive frontier around [activeIndex].
@@ -14,13 +39,18 @@ final class FeedFocus {
     required int activeIndex,
     Duration watched = Duration.zero,
     FeedFocusCause cause = FeedFocusCause.userNavigation,
+    FeedTransportRescue? rescue,
   }) {
     RangeError.checkValidIndex(activeIndex, posts, 'activeIndex');
+    if ((cause == FeedFocusCause.transportRescue) != (rescue != null)) {
+      throw ArgumentError('Transport rescue focus requires rescue context.');
+    }
     return FeedFocus._(
       List<VideoPost>.unmodifiable(posts),
       activeIndex,
       watched,
       cause,
+      rescue,
     );
   }
 
@@ -36,6 +66,9 @@ final class FeedFocus {
 
   /// Why the visible position changed; transport rescue is not engagement.
   final FeedFocusCause cause;
+
+  /// Present only when delivery substituted a bounded semantic neighbor.
+  final FeedTransportRescue? rescue;
 
   VideoPost get current => window[currentIndex];
 }

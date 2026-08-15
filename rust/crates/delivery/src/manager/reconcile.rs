@@ -14,6 +14,13 @@ impl DeliveryWorker {
     pub(crate) async fn reconcile(&mut self) {
         let observed_at_ms = unix_time_ms();
         self.select_playback_rendition(observed_at_ms).await;
+        let segmented_limit = self.connection_ceiling();
+        self.segmented.reconcile(
+            self.ctx.client.clone(),
+            self.ctx.events.clone(),
+            segmented_limit,
+            self.downloads.len(),
+        );
         let capacity = self.ctx.store.capacity_snapshot().await;
         let window = self.collection_window(&capacity);
         let probe_posts = self.state.probe_posts();
@@ -30,7 +37,10 @@ impl DeliveryWorker {
             present: &present,
             in_flight: &in_flight,
             storage: StorageSnapshot::new(capacity.limit_bytes(), capacity.used_bytes()),
-            connection_capacity: self.concurrency_limit().min(connection_ceiling),
+            connection_capacity: self
+                .concurrency_limit()
+                .min(self.progressive_capacity())
+                .max(1),
             connection_ceiling,
             packet_loss_bps: self.ctx.network.profile().packet_loss_bps,
             observed_at_ms,

@@ -19,7 +19,7 @@ async fn corrupt_representation_identity_fails_closed() {
         .bind_representation(binding)
         .await
         .expect_err("corrupt sidecar must be rejected");
-    store.select_transfer(identity.clone());
+    let _ = store.select_transfer(identity.clone()).await;
 
     assert!(error.to_string().contains("identity is invalid"));
     assert!(!store.transfer_is_current(&identity).await);

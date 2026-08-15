@@ -80,7 +80,8 @@ async fn accept_range_request(listener: &TcpListener, total: u64) -> (TcpStream,
 async fn write_head(socket: &mut TcpStream, range: &Range<u64>, total: u64) {
     let head = format!(
         "HTTP/1.1 206 Partial Content\r\nContent-Range: bytes {}-{}/{total}\r\n\
-         Content-Length: {}\r\nContent-Type: video/mp4\r\nAccept-Ranges: bytes\r\n\r\n",
+         Content-Length: {}\r\nContent-Type: video/mp4\r\nAccept-Ranges: bytes\r\n\
+         ETag: \"fixture-cancellable\"\r\n\r\n",
         range.start,
         range.end - 1,
         range.end - range.start

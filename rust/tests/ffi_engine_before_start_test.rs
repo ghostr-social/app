@@ -29,6 +29,7 @@ async fn refuses_delivery_control_before_the_engine_starts() {
         watch_ms: 0,
         generation: 1,
         transition: FfiFocusTransition::UserNavigation,
+        rescue: None,
     })
     .await;
     let url = ffi_playback_url(progressive_item("clip")).await;

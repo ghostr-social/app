@@ -861,6 +861,7 @@ impl SseDecode for crate::api::delivery_types::FfiDeliveryEvent {
         let mut var_startable = <bool>::sse_decode(deserializer);
         let mut var_bytesPresent = <u64>::sse_decode(deserializer);
         let mut var_totalBytes = <Option<u64>>::sse_decode(deserializer);
+        let mut var_etaMs = <Option<u64>>::sse_decode(deserializer);
         let mut var_detail = <Option<String>>::sse_decode(deserializer);
         return crate::api::delivery_types::FfiDeliveryEvent {
             post_id: var_postId,
@@ -868,6 +869,7 @@ impl SseDecode for crate::api::delivery_types::FfiDeliveryEvent {
             startable: var_startable,
             bytes_present: var_bytesPresent,
             total_bytes: var_totalBytes,
+            eta_ms: var_etaMs,
             detail: var_detail,
         };
     }
@@ -1119,6 +1121,8 @@ impl SseDecode for crate::api::focus_control::FfiFocusUpdate {
         let mut var_generation = <u64>::sse_decode(deserializer);
         let mut var_transition =
             <crate::api::focus_control::FfiFocusTransition>::sse_decode(deserializer);
+        let mut var_rescue =
+            <Option<crate::api::focus_control::FfiTransportRescue>>::sse_decode(deserializer);
         return crate::api::focus_control::FfiFocusUpdate {
             feed_id: var_feedId,
             items: var_items,
@@ -1126,6 +1130,7 @@ impl SseDecode for crate::api::focus_control::FfiFocusUpdate {
             watch_ms: var_watchMs,
             generation: var_generation,
             transition: var_transition,
+            rescue: var_rescue,
         };
     }
 }
@@ -1272,8 +1277,38 @@ impl SseDecode for crate::api::playback_types::FfiPlaybackPhase {
             2 => crate::api::playback_types::FfiPlaybackPhase::NetworkStalled,
             3 => crate::api::playback_types::FfiPlaybackPhase::Paused,
             4 => crate::api::playback_types::FfiPlaybackPhase::Ended,
-            5 => crate::api::playback_types::FfiPlaybackPhase::Inactive,
+            5 => crate::api::playback_types::FfiPlaybackPhase::Failed,
+            6 => crate::api::playback_types::FfiPlaybackPhase::Inactive,
             _ => unreachable!("Invalid variant for FfiPlaybackPhase: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::focus_control::FfiTransportRescue {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_reason =
+            <crate::api::focus_control::FfiTransportRescueReason>::sse_decode(deserializer);
+        let mut var_rankDisplacement = <u32>::sse_decode(deserializer);
+        let mut var_waitMs = <u64>::sse_decode(deserializer);
+        return crate::api::focus_control::FfiTransportRescue {
+            reason: var_reason,
+            rank_displacement: var_rankDisplacement,
+            wait_ms: var_waitMs,
+        };
+    }
+}
+
+impl SseDecode for crate::api::focus_control::FfiTransportRescueReason {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::focus_control::FfiTransportRescueReason::EtaUnavailable,
+            1 => crate::api::focus_control::FfiTransportRescueReason::EtaTooLong,
+            2 => crate::api::focus_control::FfiTransportRescueReason::DeliveryFailed,
+            3 => crate::api::focus_control::FfiTransportRescueReason::GraceExpired,
+            _ => unreachable!("Invalid variant for FfiTransportRescueReason: {}", inner),
         };
     }
 }
@@ -1444,6 +1479,19 @@ impl SseDecode for Option<crate::api::feed_types::FfiMediaDim> {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
             return Some(<crate::api::feed_types::FfiMediaDim>::sse_decode(
+                deserializer,
+            ));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<crate::api::focus_control::FfiTransportRescue> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::api::focus_control::FfiTransportRescue>::sse_decode(
                 deserializer,
             ));
         } else {
@@ -1645,6 +1693,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::delivery_types::FfiDeliveryEv
             self.startable.into_into_dart().into_dart(),
             self.bytes_present.into_into_dart().into_dart(),
             self.total_bytes.into_into_dart().into_dart(),
+            self.eta_ms.into_into_dart().into_dart(),
             self.detail.into_into_dart().into_dart(),
         ]
         .into_dart()
@@ -1984,6 +2033,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::focus_control::FfiFocusUpdate
             self.watch_ms.into_into_dart().into_dart(),
             self.generation.into_into_dart().into_dart(),
             self.transition.into_into_dart().into_dart(),
+            self.rescue.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2193,7 +2243,8 @@ impl flutter_rust_bridge::IntoDart for crate::api::playback_types::FfiPlaybackPh
             Self::NetworkStalled => 2.into_dart(),
             Self::Paused => 3.into_dart(),
             Self::Ended => 4.into_dart(),
-            Self::Inactive => 5.into_dart(),
+            Self::Failed => 5.into_dart(),
+            Self::Inactive => 6.into_dart(),
             _ => unreachable!(),
         }
     }
@@ -2206,6 +2257,51 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::playback_types::FfiPlaybackPh
     for crate::api::playback_types::FfiPlaybackPhase
 {
     fn into_into_dart(self) -> crate::api::playback_types::FfiPlaybackPhase {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::focus_control::FfiTransportRescue {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.reason.into_into_dart().into_dart(),
+            self.rank_displacement.into_into_dart().into_dart(),
+            self.wait_ms.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::focus_control::FfiTransportRescue
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::focus_control::FfiTransportRescue>
+    for crate::api::focus_control::FfiTransportRescue
+{
+    fn into_into_dart(self) -> crate::api::focus_control::FfiTransportRescue {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::focus_control::FfiTransportRescueReason {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::EtaUnavailable => 0.into_dart(),
+            Self::EtaTooLong => 1.into_dart(),
+            Self::DeliveryFailed => 2.into_dart(),
+            Self::GraceExpired => 3.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::focus_control::FfiTransportRescueReason
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::focus_control::FfiTransportRescueReason>
+    for crate::api::focus_control::FfiTransportRescueReason
+{
+    fn into_into_dart(self) -> crate::api::focus_control::FfiTransportRescueReason {
         self
     }
 }
@@ -2301,6 +2397,7 @@ impl SseEncode for crate::api::delivery_types::FfiDeliveryEvent {
         <bool>::sse_encode(self.startable, serializer);
         <u64>::sse_encode(self.bytes_present, serializer);
         <Option<u64>>::sse_encode(self.total_bytes, serializer);
+        <Option<u64>>::sse_encode(self.eta_ms, serializer);
         <Option<String>>::sse_encode(self.detail, serializer);
     }
 }
@@ -2498,6 +2595,10 @@ impl SseEncode for crate::api::focus_control::FfiFocusUpdate {
         <u64>::sse_encode(self.watch_ms, serializer);
         <u64>::sse_encode(self.generation, serializer);
         <crate::api::focus_control::FfiFocusTransition>::sse_encode(self.transition, serializer);
+        <Option<crate::api::focus_control::FfiTransportRescue>>::sse_encode(
+            self.rescue,
+            serializer,
+        );
     }
 }
 
@@ -2600,7 +2701,35 @@ impl SseEncode for crate::api::playback_types::FfiPlaybackPhase {
                 crate::api::playback_types::FfiPlaybackPhase::NetworkStalled => 2,
                 crate::api::playback_types::FfiPlaybackPhase::Paused => 3,
                 crate::api::playback_types::FfiPlaybackPhase::Ended => 4,
-                crate::api::playback_types::FfiPlaybackPhase::Inactive => 5,
+                crate::api::playback_types::FfiPlaybackPhase::Failed => 5,
+                crate::api::playback_types::FfiPlaybackPhase::Inactive => 6,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::focus_control::FfiTransportRescue {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <crate::api::focus_control::FfiTransportRescueReason>::sse_encode(self.reason, serializer);
+        <u32>::sse_encode(self.rank_displacement, serializer);
+        <u64>::sse_encode(self.wait_ms, serializer);
+    }
+}
+
+impl SseEncode for crate::api::focus_control::FfiTransportRescueReason {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::focus_control::FfiTransportRescueReason::EtaUnavailable => 0,
+                crate::api::focus_control::FfiTransportRescueReason::EtaTooLong => 1,
+                crate::api::focus_control::FfiTransportRescueReason::DeliveryFailed => 2,
+                crate::api::focus_control::FfiTransportRescueReason::GraceExpired => 3,
                 _ => {
                     unimplemented!("");
                 }
@@ -2749,6 +2878,16 @@ impl SseEncode for Option<crate::api::feed_types::FfiMediaDim> {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
             <crate::api::feed_types::FfiMediaDim>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<crate::api::focus_control::FfiTransportRescue> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::api::focus_control::FfiTransportRescue>::sse_encode(value, serializer);
         }
     }
 }

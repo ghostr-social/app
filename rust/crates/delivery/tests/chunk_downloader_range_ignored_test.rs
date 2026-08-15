@@ -19,6 +19,7 @@ async fn chunk_downloader_writes_nothing_when_the_server_ignores_a_nonzero_range
         client: &client,
         url: &url,
         range: ByteRange::new(8, 16),
+        continuation: None,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {

@@ -89,6 +89,7 @@ fn ranged_response(headers: &HeaderMap) -> Response {
     Response::builder()
         .status(StatusCode::PARTIAL_CONTENT)
         .header(header::CONTENT_TYPE, "video/mp4")
+        .header(header::ETAG, "\"fixture-cooling\"")
         .header(header::CONTENT_RANGE, format!("bytes {start}-{end}/64"))
         .body(Body::from(vec![7; (end - start + 1) as usize]))
         .unwrap()

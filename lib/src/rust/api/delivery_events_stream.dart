@@ -7,7 +7,7 @@ import '../frb_generated.dart';
 import 'delivery_types.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `emit_pass`, `emit_post`, `store_view`, `watch_delivery`
+// These functions are ignored because they are not marked as `pub`: `emit_hls`, `emit_pass`, `emit_post`, `store_view`, `watch_delivery`
 // These types are ignored because they are not used by any `pub` functions: `Pass`
 // These functions are ignored (category: IgnoreBecauseNotAllowedOwner): `send`
 

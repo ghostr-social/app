@@ -11,7 +11,8 @@ extension _VideoPlayerSurfaceTelemetry on _VideoPlayerSurfaceState {
   }
 
   bool _captureObservation(VideoPlayerValue value) {
-    if (!_isObserving || !widget.isActive || !value.isInitialized) return false;
+    if (!_isObserving || !widget.isActive) return false;
+    if (!value.isInitialized && !value.hasError) return false;
     final previous = _playbackPhase;
     final phase = _playbackObserver.classify(value, isActive: true);
     _playbackPhase = phase;

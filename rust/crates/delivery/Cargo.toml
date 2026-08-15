@@ -9,6 +9,7 @@ video-debug-web = []
 
 [dependencies]
 ghostr-engine = { path = "../engine" }
+ghostr-hls-manifest = { path = "../hls-manifest" }
 ghostr-net = { path = "../net" }
 ghostr-partial-store = { path = "../partial-store" }
 
@@ -18,7 +19,9 @@ log = { workspace = true }
 rand = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 tokio = { workspace = true }
+url = { workspace = true }
 
 # `range_fixture` serves real ranged responses over a loopback listener, so the
 # chunk downloader and probes are exercised against an actual HTTP origin.

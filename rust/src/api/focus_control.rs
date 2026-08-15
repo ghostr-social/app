@@ -17,6 +17,22 @@ pub struct FfiFocusUpdate {
     pub watch_ms: u64,
     pub generation: u64,
     pub transition: FfiFocusTransition,
+    pub rescue: Option<FfiTransportRescue>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct FfiTransportRescue {
+    pub reason: FfiTransportRescueReason,
+    pub rank_displacement: u32,
+    pub wait_ms: u64,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum FfiTransportRescueReason {
+    EtaUnavailable,
+    EtaTooLong,
+    DeliveryFailed,
+    GraceExpired,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -38,6 +54,7 @@ pub async fn ffi_update_focus(update: FfiFocusUpdate) -> anyhow::Result<()> {
         update.watch_ms,
         update.generation,
         update.transition,
+        update.rescue,
     )?;
     let engine = registry::engine()?;
     accept_focus(&engine, focus)
@@ -45,7 +62,7 @@ pub async fn ffi_update_focus(update: FfiFocusUpdate) -> anyhow::Result<()> {
 
 fn accept_focus(engine: &EngineHandles, focus: DeliveryFocus) -> anyhow::Result<()> {
     let generation = focus.generation;
-    let entries = progressive_entries(&focus);
+    let entries = tracked_entries(&focus);
     match engine.gateway.delivery().update_focus(focus) {
         FocusAdmission::Accepted if engine.tracked.replace_focus(generation, entries) => Ok(()),
         FocusAdmission::Accepted | FocusAdmission::Stale => {
@@ -77,13 +94,12 @@ pub async fn ffi_playback_url(item: FfiFocusItem) -> anyhow::Result<String> {
     ))
 }
 
-/// Only progressive posts are catalogued, downloaded, and watched;
-/// HLS posts ride in the window for scroll distances alone.
-fn progressive_entries(focus: &DeliveryFocus) -> Vec<(String, VideoMeta)> {
+/// Every focused media item is watched for delivery readiness. The
+/// delivery manager still routes each kind to its own retrieval path.
+fn tracked_entries(focus: &DeliveryFocus) -> Vec<(String, VideoMeta)> {
     focus
         .items
         .iter()
-        .filter(|item| item.meta.delivery == DeliveryKind::Progressive)
         .map(|item| (item.post.as_str().to_owned(), item.meta.clone()))
         .collect()
 }
