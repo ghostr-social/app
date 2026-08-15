@@ -1,5 +1,5 @@
 use super::DeliveryState;
-use crate::delivery_events::DeliveryFocus;
+use crate::delivery_events::{DeliveryFocus, FocusTransition};
 use ghostr_engine::adaptive::NavigationDirection;
 use ghostr_engine::focus::FocusUpdate;
 use ghostr_engine::DeliveryKind;
@@ -24,8 +24,10 @@ impl DeliveryState {
             current_index: update.current_index,
             watch_ms: update.watch_ms,
         });
-        if let Some(direction) = direction {
-            self.navigation.record(direction, observed_at_ms);
+        if update.transition == FocusTransition::UserNavigation {
+            if let Some(direction) = direction {
+                self.navigation.record(direction, observed_at_ms);
+            }
         }
         self.discard_inactive_playback();
         self.prune_scheduling_state();

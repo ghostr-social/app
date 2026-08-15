@@ -13,6 +13,7 @@ async fn debug_page_serves_every_local_runtime_asset_with_its_media_type() {
         ("/debug", "text/html"),
         ("/debug/", "text/html"),
         ("/debug/app.js", "text/javascript"),
+        ("/debug/ready_reserve.js", "text/javascript"),
         ("/debug/player_events.js", "text/javascript"),
         ("/debug/network_modal.js", "text/javascript"),
         ("/debug/nostr_feed.js", "text/javascript"),

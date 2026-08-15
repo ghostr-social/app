@@ -95,3 +95,4 @@ mod store_pressure_timeout_recheck_test;
 mod support;
 mod timeline_installation_test;
 mod traffic_tests;
+mod transport_rescue_navigation_test;

@@ -1,5 +1,6 @@
 use crate::delivery_events::{
     command_channel, DeliveryCommand, DeliveryFocus, FocusAdmission, FocusGeneration,
+    FocusTransition,
 };
 
 #[test]
@@ -35,6 +36,7 @@ fn focus(value: u64) -> DeliveryFocus {
         current_index: 0,
         watch_ms: 0,
         generation: generation(value),
+        transition: FocusTransition::UserNavigation,
     }
 }
 

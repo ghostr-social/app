@@ -5,7 +5,9 @@ use rust_lib_ghostr::api::delivery_types::{FfiFocusItem, FfiMediaDelivery};
 use rust_lib_ghostr::api::engine_control::{
     ffi_set_delivery_config, FfiDataUsageLevel, FfiEngineConfiguration,
 };
-use rust_lib_ghostr::api::focus_control::{ffi_playback_url, ffi_update_focus, FfiFocusUpdate};
+use rust_lib_ghostr::api::focus_control::{
+    ffi_playback_url, ffi_update_focus, FfiFocusTransition, FfiFocusUpdate,
+};
 
 fn progressive_item(id: &str) -> FfiFocusItem {
     FfiFocusItem {
@@ -26,6 +28,7 @@ async fn refuses_delivery_control_before_the_engine_starts() {
         current_index: 0,
         watch_ms: 0,
         generation: 1,
+        transition: FfiFocusTransition::UserNavigation,
     })
     .await;
     let url = ffi_playback_url(progressive_item("clip")).await;

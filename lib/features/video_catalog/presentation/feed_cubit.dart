@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:ghostr/core/errors/app_failure.dart';
+import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/presentation/disposal_safe_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_backfill.dart';
@@ -11,6 +12,7 @@ import 'package:ghostr/features/video_catalog/domain/use_cases/feed_operation_fa
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_reposts.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_session.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
+import 'package:ghostr/features/video_catalog/domain/video_delivery_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post_id.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
@@ -20,6 +22,7 @@ import 'package:ghostr/features/video_catalog/presentation/feed_backfill_retry.d
 import 'package:ghostr/features/video_catalog/presentation/feed_failure_messages.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_follow_state.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_hunt.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_ready_selector.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_state.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_update_retry.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_viewer.dart';
@@ -34,6 +37,7 @@ part 'feed_cubit_loading.dart';
 part 'feed_cubit_update_loading.dart';
 part 'feed_update_state.dart';
 part 'feed_cubit_updates.dart';
+part 'feed_cubit_delivery.dart';
 
 /// Turns feed intents into feed states. The rules behind a transition — what
 /// survives a refresh, when to dig into the past — live in collaborators.
@@ -48,7 +52,9 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
        _backfillRetry = backfillRetry ?? FeedBackfillRetry(),
        _updates = _FeedUpdateState(updateRetry ?? FeedUpdateRetry()),
        _hunt = hunt ?? FeedHunt(),
-       super(const FeedLoading(FeedKind.forYou));
+       super(const FeedLoading(FeedKind.forYou)) {
+    _startDeliveryUpdates();
+  }
 
   final FeedDependencies _dependencies;
 
@@ -59,6 +65,11 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   final _loads = FeedLoads();
   final _session = FeedSession();
   final _FeedUpdateState _updates;
+  final _readySelector = const FeedReadySelector();
+  final _delivery = <PlaybackDeliveryId, VideoDeliverySnapshot>{};
+  StreamSubscription<VideoDeliverySnapshot>? _deliverySubscription;
+  ({int fromIndex, int intendedIndex})? _awaitingTransportRescue;
+  int? _pendingTransportJump;
   late final _fetch = FeedFetcher(_dependencies.feed);
   late final _backfill = FeedBackfill(_fetch, _loads);
   late final _engagement = FeedEngagement(
@@ -136,6 +147,10 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     final current = state;
     if (current is! FeedLoaded) return;
     if (index < 0 || index >= current.posts.length) return;
+    if (_consumeTransportJump(index)) return;
+    final selected = _selectedPage(current, index);
+    if (selected != index) return _rescueTo(current, selected);
+    _rememberPendingRescue(current, index);
     emit(current.withPage(index));
     _viewer.landedOn(current.posts, index);
     _ensureBuffered();
@@ -170,6 +185,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     _hunt.dispose();
     _backfillRetry.cancel();
     _viewer.dispose();
+    await _stopDeliveryUpdates();
     await _stopFeedUpdates();
     await super.close();
   }

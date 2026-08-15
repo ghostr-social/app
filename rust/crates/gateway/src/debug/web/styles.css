@@ -87,6 +87,28 @@ progress::-webkit-progress-value { background: var(--accent); }
 .inspector-section { margin-top: 18px; }
 .subheading { margin-bottom: 8px; }
 .subheading span { color: var(--muted); font-size: .63rem; text-transform: uppercase; }
+.reserve-panel { padding: 12px; border: 1px solid #285647; border-radius: 12px; background: #0d1b17; }
+.reserve-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.reserve-summary article { display: grid; gap: 3px; padding: 8px; border-radius: 8px; background: #15241f; }
+.reserve-summary span, .reserve-horizon { color: var(--muted); font-size: .61rem; }
+.reserve-summary strong { color: var(--accent); font-size: .8rem; }
+.reserve-horizon { margin: 9px 0 7px; }
+.reserve-horizon b { color: var(--text); }
+.reserve-candidates { display: grid; gap: 5px; }
+.reserve-candidate { display: grid; grid-template-columns: 1fr auto; gap: 7px; padding: 7px 8px; border-radius: 7px; background: var(--raised); font-size: .64rem; }
+.reserve-candidate span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reserve-candidate b { color: var(--warm); text-transform: uppercase; }
+.reserve-candidate[data-status="ready"] b, .reserve-candidate[data-status="planned"] b { color: var(--accent); }
+.parallel-copy { margin: 0 0 9px; color: var(--muted); font-size: .67rem; }
+.delivery-lanes { display: grid; gap: 7px; }
+.delivery-lane { display: grid; gap: 5px; padding: 8px 9px; border: 1px solid var(--line); border-radius: 9px; background: var(--raised); }
+.delivery-lane header, .delivery-lane small { display: flex; justify-content: space-between; gap: 8px; }
+.delivery-lane header { color: var(--muted); font-size: .67rem; }
+.delivery-lane header span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.delivery-lane header b { flex: none; color: var(--warm); text-transform: capitalize; }
+.delivery-lane[data-status="receiving"] { border-color: #71e6b766; box-shadow: inset 3px 0 var(--accent); }
+.delivery-lane[data-status="receiving"] header b, .delivery-lane[data-status="ready"] header b { color: var(--accent); }
+.delivery-lane small { color: var(--muted); font-size: .61rem; }
 .download-activity, .connection-list { display: grid; gap: 6px; }
 .nostr-summary { display: flex; align-items: baseline; gap: 7px; margin-bottom: 8px; color: var(--muted); font-size: .68rem; }
 .nostr-summary strong { color: var(--text); font-size: 1.25rem; }

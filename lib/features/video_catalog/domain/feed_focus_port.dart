@@ -1,9 +1,11 @@
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 
+enum FeedFocusCause { userNavigation, rosterChange, transportRescue }
+
 /// The viewer's position in a feed as the delivery engine sees it: an
 /// ordered window of posts around — and including — the current item.
 final class FeedFocus {
-  FeedFocus._(this.window, this.currentIndex, this.watched);
+  FeedFocus._(this.window, this.currentIndex, this.watched, this.cause);
 
   /// Preserves the complete feed order so the delivery policy can derive
   /// its own adaptive frontier around [activeIndex].
@@ -11,12 +13,14 @@ final class FeedFocus {
     required List<VideoPost> posts,
     required int activeIndex,
     Duration watched = Duration.zero,
+    FeedFocusCause cause = FeedFocusCause.userNavigation,
   }) {
     RangeError.checkValidIndex(activeIndex, posts, 'activeIndex');
     return FeedFocus._(
       List<VideoPost>.unmodifiable(posts),
       activeIndex,
       watched,
+      cause,
     );
   }
 
@@ -29,6 +33,9 @@ final class FeedFocus {
   /// Time spent watching the current post. Dart has no playback watch
   /// timer yet, so callers pass zero until playback stats exist.
   final Duration watched;
+
+  /// Why the visible position changed; transport rescue is not engagement.
+  final FeedFocusCause cause;
 
   VideoPost get current => window[currentIndex];
 }

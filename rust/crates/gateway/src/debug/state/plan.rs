@@ -8,12 +8,16 @@ use serde::Serialize;
 
 mod next_reserve;
 use next_reserve::{snapshot as next_reserve, NextReserveSnapshot};
+mod ready_reserve;
+use ready_reserve::{snapshot as ready_reserve, ReadyReserveSnapshot};
 
 #[derive(Debug, Serialize)]
 pub(super) struct AdaptivePlanSnapshot {
     revision: u64,
     observed_at_ms: u64,
     discovery_demand: &'static str,
+    mode: &'static str,
+    ready_reserve: ReadyReserveSnapshot,
     next_reserve: NextReserveSnapshot,
     allocations: Vec<AllocationSnapshot>,
     retained: Vec<RetainedSnapshot>,
@@ -73,10 +77,20 @@ fn snapshot(evidence: &PlanEvidence) -> AdaptivePlanSnapshot {
         revision: evidence.revision,
         observed_at_ms: evidence.observed_at_ms,
         discovery_demand: demand(evidence.plan.discovery_demand),
+        mode: mode(evidence.plan.mode),
+        ready_reserve: ready_reserve(&evidence.plan.ready_reserve),
         next_reserve: next_reserve(&evidence.plan.next_reserve),
         allocations: evidence.plan.allocations.iter().map(allocation).collect(),
         retained: evidence.plan.retained.iter().map(retained).collect(),
         evictions: evidence.plan.evictions.iter().map(eviction).collect(),
+    }
+}
+
+fn mode(value: ghostr_engine::adaptive::ControlMode) -> &'static str {
+    match value {
+        ghostr_engine::adaptive::ControlMode::Emergency => "emergency",
+        ghostr_engine::adaptive::ControlMode::Safety => "safety",
+        ghostr_engine::adaptive::ControlMode::Normal => "normal",
     }
 }
 

@@ -14,6 +14,7 @@ import 'package:ghostr/features/video_catalog/domain/query_video_feed_repository
 import 'package:ghostr/features/video_catalog/domain/repost_hydrated_video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
+import 'package:ghostr/features/video_catalog/domain/video_delivery_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/search_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
@@ -30,27 +31,30 @@ import 'package:ghostr/features/watch_history/presentation/watch_history_cubit.d
 import 'package:ghostr/features/video_sharing/domain/video_share_workflow.dart';
 import 'package:ghostr/platform/media/delivery_config_syncing_settings_repository.dart';
 import 'package:ghostr/platform/media/ffi_feed_focus_port.dart';
+import 'package:ghostr/platform/media/ffi_video_delivery_updates.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 
 part 'app_controller_factory_feed.dart';
+part 'app_controller_factory_media.dart';
 
 class AppControllerFactory {
   AppControllerFactory(
     this._dependencies, {
     FeedFocusPort? feedFocus,
+    VideoDeliveryUpdates? deliveryUpdates,
     RustDeliveryConfigUpdater deliveryConfigUpdater =
         updateRustEngineConfiguration,
   }) : _feedFocus = FeedFocusArbiter(feedFocus ?? FfiFeedFocusPort()),
+       _deliveryUpdates = deliveryUpdates ?? FfiVideoDeliveryUpdates(),
        _deliveryConfigUpdater = deliveryConfigUpdater;
 
   final AppDependencies _dependencies;
   final FeedFocusArbiter _feedFocus;
+  final VideoDeliveryUpdates _deliveryUpdates;
   final RustDeliveryConfigUpdater _deliveryConfigUpdater;
-
   ActivityCubit activity() => ActivityCubit(
     _dependencies.activityRepository.snapshotForActiveAccount(),
   );
-
   SearchCubit search() {
     final services = _dependencies.videoCatalogServices;
     return SearchCubit(services.search, updates: services.searchUpdates);
@@ -128,11 +132,4 @@ class AppControllerFactory {
       ),
     );
   }
-
-  VideoPlaybackPort get videoPlaybackPort => _dependencies.videoPlaybackPort;
-
-  IncomingVideoSharePort get incomingVideoSharePort =>
-      _dependencies.incomingVideoSharePort;
-
-  VideoShareWorkflow get videoShareWorkflow => _dependencies.videoShareWorkflow;
 }

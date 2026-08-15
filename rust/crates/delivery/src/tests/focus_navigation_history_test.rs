@@ -15,7 +15,7 @@ fn accepted_focus_changes_record_recent_forward_and_backward_navigation() {
     assert_eq!(navigation.backward_swipes_per_minute, 6);
 }
 
-fn focus(current_index: usize) -> DeliveryFocus {
+pub(super) fn focus(current_index: usize) -> DeliveryFocus {
     DeliveryFocus::compatibility((0..4).map(item).collect(), current_index, 0)
 }
 

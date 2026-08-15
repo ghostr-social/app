@@ -16,6 +16,7 @@ const DEBUG_PARALLEL_DOWNLOADS: usize = 4;
 async fn main() -> anyhow::Result<()> {
     let nostr = DebugNostrConfiguration::from_environment()?;
     let relay_summary = nostr.read_relays.join(", ");
+    let nostr_enabled = !nostr.read_relays.is_empty() || !nostr.search_relays.is_empty();
     let configuration = GatewayConfiguration {
         cache_directory: cache_directory(),
         relays: nostr.read_relays.clone(),
@@ -27,7 +28,11 @@ async fn main() -> anyhow::Result<()> {
     let (endpoint, runtime, discovery_demand) =
         GatewayRuntime::start_debug(configuration, client.clone()).await?;
     let feed = runtime.progressive().debug_feed.clone();
-    let _nostr = DebugNostrRuntime::start(client, discovery_demand, nostr, feed).await?;
+    let _nostr = if nostr_enabled {
+        Some(DebugNostrRuntime::start(client, discovery_demand, nostr, feed).await?)
+    } else {
+        None
+    };
     println!("Video debug dashboard: http://{endpoint}/debug");
     println!("Nostr discovery relays: {relay_summary}");
     io::stdout().flush().context("flush dashboard URL")?;
