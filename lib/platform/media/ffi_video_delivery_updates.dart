@@ -29,6 +29,9 @@ VideoDeliverySnapshot _snapshot(FfiDeliveryEvent event) {
     phase: _phase(event),
     bytesPresent: event.bytesPresent,
     totalBytes: event.totalBytes,
+    eta: event.etaMs == null
+        ? null
+        : Duration(milliseconds: event.etaMs!.toInt()),
     detail: event.detail,
   );
 }

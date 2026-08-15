@@ -27,8 +27,8 @@ final class FeedViewer {
   }
 
   /// Delivery selected a playable neighbor; this is not a user preference.
-  void rescuedTo(List<VideoPost> posts, int index) {
-    _publish(posts, index, FeedFocusCause.transportRescue);
+  void rescuedTo(List<VideoPost> posts, int index, FeedTransportRescue rescue) {
+    _publish(posts, index, FeedFocusCause.transportRescue, rescue: rescue);
   }
 
   void visibilityChanged(bool isVisible) {
@@ -43,10 +43,20 @@ final class FeedViewer {
     if (lease is FeedFocusLease) lease.release();
   }
 
-  void _publish(List<VideoPost> posts, int index, FeedFocusCause cause) {
+  void _publish(
+    List<VideoPost> posts,
+    int index,
+    FeedFocusCause cause, {
+    FeedTransportRescue? rescue,
+  }) {
     // Reactivation carries no invented watch time.
     focus?.focusChanged(
-      FeedFocus.around(posts: posts, activeIndex: index, cause: cause),
+      FeedFocus.around(
+        posts: posts,
+        activeIndex: index,
+        cause: cause,
+        rescue: rescue,
+      ),
     );
   }
 

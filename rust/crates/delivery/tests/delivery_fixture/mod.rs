@@ -10,6 +10,7 @@ pub mod demand;
 mod environment;
 pub mod full_disk;
 pub mod gated_failure;
+pub mod hls;
 pub mod host_hol;
 pub mod items;
 pub mod media;
@@ -32,6 +33,7 @@ use ghostr_delivery::manager::{
 };
 use ghostr_delivery::playback_demand::{demand_channel, DemandSender};
 use ghostr_delivery::progressive_posts::ServablePosts;
+use ghostr_delivery::segmented::SegmentedCache;
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::PathBuf;
@@ -48,6 +50,7 @@ pub struct DeliveryHarness {
     pub posts: ServablePosts,
     pub cache: ServablePosts,
     pub network: NetworkThrottle,
+    pub segmented: SegmentedCache,
     pub root: PathBuf,
 }
 
@@ -73,12 +76,14 @@ pub fn start_harness_with_store(
 ) -> DeliveryHarness {
     let posts = ServablePosts::new();
     let network = NetworkThrottle::new();
+    let segmented = SegmentedCache::new();
     let (demand, demand_receiver) = demand_channel();
     let (handle, _discovery_demand) = start_delivery_manager_with_discovery_demand(
         DeliveryManagerConfig {
             store: store.clone(),
             client: media_client(),
             cache: posts.clone(),
+            segmented: segmented.clone(),
             network: network.clone(),
             stats_path: root.join("host_stats.json"),
             params: options.params,
@@ -95,6 +100,7 @@ pub fn start_harness_with_store(
         posts,
         cache,
         network,
+        segmented,
         root,
     }
 }

@@ -13,6 +13,7 @@ pub(super) fn lengthless_head() -> Response {
     Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "video/mp4")
+        .header(header::ETAG, "\"fixture-progressive-journey\"")
         .body(Body::empty())
         .expect("lengthless HEAD")
 }
@@ -29,6 +30,7 @@ pub(super) fn range_opaque_head(total: usize) -> Response {
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "video/mp4")
         .header(header::CONTENT_LENGTH, total)
+        .header(header::ETAG, "\"fixture-progressive-journey\"")
         .body(Body::empty())
         .expect("range-opaque HEAD")
 }
@@ -39,6 +41,7 @@ pub(super) fn partial(bytes: &[u8], headers: &HeaderMap) -> Response {
         .status(StatusCode::PARTIAL_CONTENT)
         .header(header::CONTENT_TYPE, "video/mp4")
         .header(header::CONTENT_LENGTH, end - start)
+        .header(header::ETAG, "\"fixture-progressive-journey\"")
         .header(
             header::CONTENT_RANGE,
             format!("bytes {}-{}/{}", start, end - 1, bytes.len()),

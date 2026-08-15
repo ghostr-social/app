@@ -63,13 +63,19 @@ impl DeliveryWorker {
         }
         self.prune_scheduling_history();
         self.bind_representations().await;
+        self.qoe.schedule_save(&self.ctx.events);
     }
 
     fn apply_focus_command(&mut self, focus: crate::delivery_events::DeliveryFocus) {
         let previous = self.state.focus().current().cloned();
-        if !self.state.apply_focus(focus, unix_time_ms()) {
+        let segmented_focus = focus.clone();
+        let observed_at_ms = unix_time_ms();
+        if !self.state.apply_focus(focus, observed_at_ms) {
             return;
         }
+        self.qoe.note_focus(&segmented_focus, observed_at_ms);
+        self.segmented.set_startup_eta_ms(self.qoe.startup_eta_ms());
+        self.segmented.apply_focus(&segmented_focus);
         let current = self.state.focus().current().cloned();
         for post in self.state.take_changed_representations() {
             self.cooldown_timers.cancel(&post);
@@ -107,8 +113,12 @@ impl DeliveryWorker {
     fn apply_playback(&mut self, playback: crate::delivery_events::DeliveryPlayback) {
         let stalled = playback.observation.phase() == PlaybackPhase::NetworkStalled;
         let post = playback.session.post().clone();
+        let evidence = playback.clone();
         let admission = self.state.apply_playback(playback);
         self.commands.record_playback_admission(admission, &post);
+        if admission.is_accepted() {
+            self.qoe.note_playback(&evidence, unix_time_ms());
+        }
         if admission.is_accepted() && stalled {
             self.note_network_setback(NetworkSetback::Stall);
         }
@@ -117,6 +127,7 @@ impl DeliveryWorker {
     async fn apply_internal(&mut self, event: InternalEvent) {
         match event {
             InternalEvent::Transfer(transfer) => self.apply_transfer(transfer).await,
+            InternalEvent::Segmented(done) => self.segmented.finish(done),
             InternalEvent::Maintenance(maintenance) => self.apply_maintenance(maintenance).await,
             InternalEvent::TrafficChanged => self.absorb_traffic(),
         }
@@ -137,6 +148,7 @@ impl DeliveryWorker {
                 self.retry.warm_up(&post, cooldown);
             }
             MaintenanceEvent::SaveStats => self.keeper.save_now().await,
+            MaintenanceEvent::SaveQoe => self.qoe.save_now().await,
             MaintenanceEvent::StoreCapacityChanged(generation) => {
                 self.resume_store_capacity(generation);
             }

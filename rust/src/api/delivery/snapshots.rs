@@ -5,13 +5,17 @@ use crate::api::delivery_types::{FfiDeliveryEvent, FfiDeliveryEventKind};
 use crate::engine::adaptive::{candidate_snapshot, CandidateEvidence, FeedOffset, ViewProbability};
 use crate::engine::catalog::{Catalog, LearnedFacts};
 use crate::engine::{ByteRange, EngineParams, PostId, VideoMeta};
+use ghostr_delivery::segmented::{SegmentedPhase, SegmentedSnapshot};
 
 /// What one tracked post looks like right now.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct DeliverySnapshot {
     pub startable: bool,
     pub bytes_present: u64,
     pub total_bytes: Option<u64>,
+    pub eta_ms: Option<u64>,
+    pub failed: bool,
+    pub detail: Option<String>,
 }
 
 /// Everything a snapshot is computed from.
@@ -29,6 +33,20 @@ pub(crate) fn compute_snapshot(post: &PostId, input: SnapshotInput<'_>) -> Deliv
         startable: initial_playable_range_is_cached(&catalog, post, &input),
         bytes_present: input.ranges.iter().map(ByteRange::len).sum(),
         total_bytes: input.stored_total.or(input.meta.size_bytes),
+        eta_ms: None,
+        failed: false,
+        detail: None,
+    }
+}
+
+pub(crate) fn hls_snapshot(snapshot: SegmentedSnapshot) -> DeliverySnapshot {
+    DeliverySnapshot {
+        startable: snapshot.phase == SegmentedPhase::Ready,
+        bytes_present: snapshot.bytes_present,
+        total_bytes: None,
+        eta_ms: snapshot.eta_ms,
+        failed: snapshot.phase == SegmentedPhase::Failed,
+        detail: snapshot.detail,
     }
 }
 
@@ -84,7 +102,8 @@ pub(crate) fn event_for(
         startable: current.startable,
         bytes_present: current.bytes_present,
         total_bytes: current.total_bytes,
-        detail: None,
+        eta_ms: current.eta_ms,
+        detail: current.detail.clone(),
     })
 }
 
@@ -92,6 +111,9 @@ fn change_kind(
     previous: Option<&DeliverySnapshot>,
     current: &DeliverySnapshot,
 ) -> Option<FfiDeliveryEventKind> {
+    if current.failed {
+        return Some(FfiDeliveryEventKind::Error);
+    }
     match previous {
         None => Some(FfiDeliveryEventKind::Readiness),
         Some(previous) => changed_snapshot(previous, current),
@@ -104,6 +126,9 @@ fn changed_snapshot(
 ) -> Option<FfiDeliveryEventKind> {
     if previous == current {
         return None;
+    }
+    if current.failed {
+        return Some(FfiDeliveryEventKind::Error);
     }
     if previous.startable != current.startable {
         return Some(FfiDeliveryEventKind::Readiness);
@@ -118,6 +143,7 @@ pub(crate) fn error_event(post_id: &str, detail: String) -> FfiDeliveryEvent {
         startable: false,
         bytes_present: 0,
         total_bytes: None,
+        eta_ms: None,
         detail: Some(detail),
     }
 }

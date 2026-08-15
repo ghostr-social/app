@@ -37,6 +37,7 @@ impl From<FfiPlaybackPhase> for PlaybackPhase {
             FfiPlaybackPhase::NetworkStalled => Self::NetworkStalled,
             FfiPlaybackPhase::Paused => Self::Paused,
             FfiPlaybackPhase::Ended => Self::Ended,
+            FfiPlaybackPhase::Failed => Self::Failed,
             FfiPlaybackPhase::Inactive => Self::Inactive,
         }
     }

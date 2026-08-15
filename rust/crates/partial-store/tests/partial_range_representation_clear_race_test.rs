@@ -17,7 +17,7 @@ async fn clearing_during_a_write_discards_bytes_without_restoring_a_binding() {
         .transfer_identity(&post, "https://video.example/clip.mp4")
         .unwrap();
     store.bind_representation(binding).await.unwrap();
-    store.select_transfer(transfer.clone());
+    store.select_transfer(transfer.clone()).await.unwrap();
 
     let writer = tokio::spawn({
         let store = store.clone();

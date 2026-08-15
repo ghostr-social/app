@@ -29,6 +29,7 @@ void main() {
         PlaybackPhase.playing,
         PlaybackPhase.paused,
         PlaybackPhase.ended,
+        PlaybackPhase.failed,
         PlaybackPhase.inactive,
       ].every((phase) => !phase.isNetworkStall),
       isTrue,

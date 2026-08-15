@@ -1,4 +1,4 @@
-//! API-side registry of the progressive posts the event stream
+//! API-side registry of the focused posts the event stream
 //! watches, plus the current data-usage level for startability math.
 
 use crate::engine::{DataUsageLevel, VideoMeta};

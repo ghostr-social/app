@@ -10,13 +10,13 @@ use crate::progressive::route::{ProgressiveState, ProgressiveTiming};
     debug_assertions,
     not(any(target_os = "android", target_os = "ios"))
 )))]
-use crate::router::configured_router_with_progressive;
+use crate::router::configured_router_with_segmented;
 #[cfg(all(
     feature = "video-debug-web",
     debug_assertions,
     not(any(target_os = "android", target_os = "ios"))
 ))]
-use crate::router::configured_router_with_progressive_debug;
+use crate::router::configured_router_with_segmented_debug;
 use crate::runtime::GatewayConfiguration;
 use ghostr_delivery::cache_registry::CacheRegistry;
 #[cfg(all(
@@ -31,6 +31,7 @@ use ghostr_delivery::manager::{
     start_delivery_manager_with_discovery_demand, DeliveryManagerConfig, DeliveryTuning,
 };
 use ghostr_delivery::playback_demand::demand_channel;
+use ghostr_delivery::segmented::SegmentedCache;
 use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_engine::{DataUsageLevel, EngineParams};
 use ghostr_net::outbound_media_client::MediaHttpRequests;
@@ -45,6 +46,7 @@ pub(crate) type DeliveryParts = (
     axum::Router,
     DeliveryHandle,
     Arc<ProgressiveState>,
+    SegmentedCache,
     watch::Receiver<DiscoveryDemand>,
 );
 
@@ -53,6 +55,7 @@ struct DeliveryResources {
     client: Arc<dyn MediaHttpRequests>,
     cache: CacheRegistry,
     network: NetworkThrottle,
+    segmented: SegmentedCache,
 }
 
 /// Progressive delivery: the router serves `/video.mp4` from the partial
@@ -67,11 +70,13 @@ pub(crate) async fn start_progressive_delivery(
     let cache = CacheRegistry::new();
     let (demand_sender, demand) = demand_channel();
     let network = NetworkThrottle::new();
+    let segmented = SegmentedCache::new();
     let resources = DeliveryResources {
         store: store.clone(),
         client: client.clone(),
         cache: cache.clone(),
         network: network.clone(),
+        segmented: segmented.clone(),
     };
     let config = delivery_config(configuration, resources);
     let (delivery, discovery_demand) = start_delivery_manager_with_discovery_demand(config, demand);
@@ -94,26 +99,32 @@ pub(crate) async fn start_progressive_delivery(
         debug_assertions,
         not(any(target_os = "android", target_os = "ios"))
     ))]
-    let router = configured_router_with_progressive_debug(
+    let router = configured_router_with_segmented_debug(
         hls_sessions,
         client,
         progressive.clone(),
         delivery.clone(),
         nostr,
+        segmented.clone(),
     );
     #[cfg(not(all(
         feature = "video-debug-web",
         debug_assertions,
         not(any(target_os = "android", target_os = "ios"))
     )))]
-    let router = configured_router_with_progressive(hls_sessions, client, progressive.clone());
+    let router = configured_router_with_segmented(
+        hls_sessions,
+        client,
+        progressive.clone(),
+        segmented.clone(),
+    );
     #[cfg(not(all(
         feature = "video-debug-web",
         debug_assertions,
         not(any(target_os = "android", target_os = "ios"))
     )))]
     let _ = nostr;
-    Ok((router, delivery, progressive, discovery_demand))
+    Ok((router, delivery, progressive, segmented, discovery_demand))
 }
 
 /// The store as the last run left it. Adopting its contents is what
@@ -143,6 +154,7 @@ fn delivery_config(
         store: resources.store,
         client: resources.client,
         cache: resources.cache,
+        segmented: resources.segmented,
         network: resources.network,
         stats_path: configuration.cache_directory.join("host_stats.json"),
         params,

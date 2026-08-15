@@ -19,6 +19,7 @@ async fn cancellation_before_admission_finishes_without_an_http_request() {
         client: &client,
         url: "not an http URL",
         range: ByteRange::new(0, 8),
+        continuation: None,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {

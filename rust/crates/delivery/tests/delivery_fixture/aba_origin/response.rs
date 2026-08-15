@@ -16,7 +16,8 @@ pub(super) async fn write_head(socket: &mut TcpStream, length: usize) {
 pub(super) async fn write_range_headers(socket: &mut TcpStream, length: usize) {
     let head = format!(
         "HTTP/1.1 206 Partial Content\r\nContent-Range: bytes 0-{}/{length}\r\n\
-         Content-Length: {length}\r\nContent-Type: video/mp4\r\nConnection: close\r\n\r\n",
+         Content-Length: {length}\r\nContent-Type: video/mp4\r\nETag: \"fixture-aba\"\r\n\
+         Connection: close\r\n\r\n",
         length - 1
     );
     write(socket, &head).await;

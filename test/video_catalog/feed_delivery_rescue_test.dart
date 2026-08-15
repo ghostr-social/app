@@ -48,6 +48,12 @@ void main() {
 
       expect((cubit.state as FeedLoaded).activeIndex, 2);
       expect(focus.focuses.last.cause, FeedFocusCause.transportRescue);
+      expect(
+        focus.focuses.last.rescue?.reason,
+        FeedTransportRescueReason.etaUnavailable,
+      );
+      expect(focus.focuses.last.rescue?.rankDisplacement, 1);
+      expect(focus.focuses.last.rescue?.wait, Duration.zero);
       expect(history.entries.map((entry) => entry.videoId), ['e:p0']);
     },
   );

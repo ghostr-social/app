@@ -2,11 +2,12 @@
 //! fully covered by the unit tests in `crate::api::tests`.
 
 use crate::api::delivery_types::{FfiFocusItem, FfiMediaDelivery};
-use crate::api::focus_control::FfiFocusTransition;
+use crate::api::focus_control::{FfiFocusTransition, FfiTransportRescue, FfiTransportRescueReason};
 use crate::engine::{DeliveryKind, PostId, VideoMeta};
 use anyhow::{bail, Result};
 use ghostr_delivery::delivery_events::{
-    DeliveryFocus, FocusGeneration, FocusItem, FocusTransition,
+    DeliveryFocus, FocusGeneration, FocusItem, FocusTransition, TransportRescue,
+    TransportRescueReason,
 };
 
 impl From<FfiFocusTransition> for FocusTransition {
@@ -24,6 +25,17 @@ impl From<FfiMediaDelivery> for DeliveryKind {
         match delivery {
             FfiMediaDelivery::Progressive => Self::Progressive,
             FfiMediaDelivery::Hls => Self::Hls,
+        }
+    }
+}
+
+impl From<FfiTransportRescueReason> for TransportRescueReason {
+    fn from(reason: FfiTransportRescueReason) -> Self {
+        match reason {
+            FfiTransportRescueReason::EtaUnavailable => Self::EtaUnavailable,
+            FfiTransportRescueReason::EtaTooLong => Self::EtaTooLong,
+            FfiTransportRescueReason::DeliveryFailed => Self::DeliveryFailed,
+            FfiTransportRescueReason::GraceExpired => Self::GraceExpired,
         }
     }
 }
@@ -63,16 +75,26 @@ pub(crate) fn delivery_focus(
     watch_ms: u64,
     generation: u64,
     transition: FfiFocusTransition,
+    rescue: Option<FfiTransportRescue>,
 ) -> Result<DeliveryFocus> {
     let Some(generation) = FocusGeneration::try_new(generation) else {
         bail!("focus generation must be positive");
     };
     let items = items.iter().map(focus_item).collect::<Result<Vec<_>>>()?;
+    let transition: FocusTransition = transition.into();
+    if (transition == FocusTransition::TransportRescue) != rescue.is_some() {
+        bail!("transport rescue transition requires rescue context");
+    }
     Ok(DeliveryFocus {
         items,
         current_index: current_index as usize,
         watch_ms,
         generation,
-        transition: transition.into(),
+        transition,
+        rescue: rescue.map(|rescue| TransportRescue {
+            reason: rescue.reason.into(),
+            rank_displacement: rescue.rank_displacement,
+            wait_ms: rescue.wait_ms,
+        }),
     })
 }

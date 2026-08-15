@@ -19,6 +19,7 @@ async fn a_body_shorter_than_its_advertised_range_is_rejected() {
         client: &client,
         url: &url,
         range: ByteRange::new(4, 12),
+        continuation: None,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {

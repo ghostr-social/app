@@ -39,7 +39,8 @@ pub async fn serve_stalling_signaled(
 async fn stall(socket: &mut TcpStream, prefix: &[u8], total: u64) {
     let head = format!(
         "HTTP/1.1 206 Partial Content\r\nContent-Range: bytes 0-{}/{total}\r\n\
-         Content-Length: {total}\r\nContent-Type: video/mp4\r\n\r\n",
+         Content-Length: {total}\r\nContent-Type: video/mp4\r\n\
+         ETag: \"fixture-stall\"\r\n\r\n",
         total - 1
     );
     let _ = socket.write_all(head.as_bytes()).await;
@@ -51,7 +52,8 @@ async fn stall(socket: &mut TcpStream, prefix: &[u8], total: u64) {
 async fn write_head(socket: &mut TcpStream, total: u64) {
     let head = format!(
         "HTTP/1.1 200 OK\r\nContent-Length: {total}\r\n\
-         Accept-Ranges: bytes\r\nContent-Type: video/mp4\r\n\r\n"
+         Accept-Ranges: bytes\r\nContent-Type: video/mp4\r\n\
+         ETag: \"fixture-stall\"\r\n\r\n"
     );
     socket.write_all(head.as_bytes()).await.ok();
 }

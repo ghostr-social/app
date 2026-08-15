@@ -33,6 +33,7 @@ fn maps_every_explicit_player_phase_without_boolean_inference() {
         (FfiPlaybackPhase::Playing, PlaybackPhase::Playing),
         (FfiPlaybackPhase::Paused, PlaybackPhase::Paused),
         (FfiPlaybackPhase::Ended, PlaybackPhase::Ended),
+        (FfiPlaybackPhase::Failed, PlaybackPhase::Failed),
         (FfiPlaybackPhase::Inactive, PlaybackPhase::Inactive),
     ];
 
