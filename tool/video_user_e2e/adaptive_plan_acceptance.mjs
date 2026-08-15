@@ -1,4 +1,8 @@
 import {duplicateCompletedOriginBytes} from "./duplicate_origin_metrics.mjs";
+import {peakParallelOriginVideos} from "./parallel_origin_metrics.mjs";
+import {
+  measureReadyReserve, requireReadyReserve,
+} from "./ready_reserve_acceptance.mjs";
 
 const AUTHORITIES = new Set(["playback_critical", "transition", "speculative"]);
 const ALLOCATION_REASONS = new Set([
@@ -6,7 +10,9 @@ const ALLOCATION_REASONS = new Set([
   "current_buffer_reserve",
   "likely_next_transition",
   "rapid_navigation_coverage",
+  "media_bootstrap",
   "media_layout_discovery",
+  "next_startability",
   "useful_commitment",
 ]);
 const DEMANDS = new Set(["expand", "hold"]);
@@ -31,7 +37,13 @@ export function requireAdaptiveBaseline(trace) {
   if (admitted.size < 2) throw new Error("healthy adaptive coverage did not expand");
   const duplicate = duplicateCompletedOriginBytes(trace.origin_requests);
   if (duplicate !== 0) throw new Error(`duplicate completed origin bytes ${duplicate}`);
-  return {...metrics, duplicate_completed_origin_bytes: duplicate};
+  const parallel = peakParallelOriginVideos(trace.origin_requests);
+  if (parallel < 2) throw new Error("adaptive baseline did not retrieve videos in parallel");
+  return {
+    ...metrics,
+    duplicate_completed_origin_bytes: duplicate,
+    peak_parallel_origin_videos: parallel,
+  };
 }
 
 function measurePlans(plans) {
@@ -41,6 +53,7 @@ function measurePlans(plans) {
     frontier_sizes: frontierSizes,
     minimum_frontier_size: Math.min(...frontierSizes),
     maximum_frontier_size: Math.max(...frontierSizes),
+    ready_reserve: measureReadyReserve(plans),
   };
 }
 
@@ -70,6 +83,7 @@ function requireOrderedRevisions(plans) {
 
 function requirePlan(plan) {
   requireEnum(plan.discovery_demand, DEMANDS, "discovery demand");
+  requireReadyReserve(plan);
   requireArray(plan.allocations, "plan allocations");
   requireArray(plan.retained, "retained allocations");
   requireArray(plan.evictions, "plan evictions");

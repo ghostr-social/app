@@ -3,7 +3,7 @@
 mod support;
 
 use rust_lib_ghostr::api::delivery_types::{FfiFocusItem, FfiMediaDelivery};
-use rust_lib_ghostr::api::focus_control::{ffi_update_focus, FfiFocusUpdate};
+use rust_lib_ghostr::api::focus_control::{ffi_update_focus, FfiFocusTransition, FfiFocusUpdate};
 use support::fixtures::temp_directory;
 
 #[tokio::test]
@@ -31,6 +31,7 @@ fn update(generation: u64, post_id: &str) -> FfiFocusUpdate {
         current_index: 0,
         watch_ms: 0,
         generation,
+        transition: FfiFocusTransition::UserNavigation,
     }
 }
 

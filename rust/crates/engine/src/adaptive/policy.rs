@@ -2,13 +2,11 @@ use super::allocation::{append_candidate, AppendInputs};
 use super::commitments::retained;
 use super::current_lane::{inflight_need_bytes, CurrentLane};
 use super::eviction::evictions;
-use super::frontier::{discovery_demand, upcoming_candidates};
+use super::frontier::{admitted_posts, discovery_demand, upcoming_candidates};
 use super::plan::{AllocationPlan, DiscoveryDemand, NextReserveEvidence};
 use super::ranges::missing;
-use super::reserves::{
-    critical_slots, planned_bytes, planned_gain, reject_unprotected_next, reserve_immediate_next,
-    sibling_planned_bytes,
-};
+use super::reserve_window::{build as build_ready_reserve, ReserveInputs};
+use super::reserves::{critical_slots, planned_bytes, planned_gain, sibling_planned_bytes};
 use super::resources::{endangered, speculative_budget, upcoming_depth_ms};
 use super::{CandidateSnapshot, PlayabilitySnapshot};
 
@@ -29,21 +27,26 @@ impl AdaptivePlayabilityPolicy {
         lane.append_start(&mut plan, snapshot);
         reserve_next(&mut plan, snapshot, &lane);
         lane.append_depth(&mut plan, snapshot);
-        plan.retained = retained(snapshot, emergency, critical_slots(&plan));
         append_followup(&mut plan, snapshot, &lane);
+        let admitted = admitted_posts(&plan, snapshot.network.connection_ceiling);
+        plan.retained = retained(snapshot, emergency, critical_slots(&plan), &admitted);
         finalize(&mut plan, snapshot);
         plan
     }
 }
 
 fn reserve_next(plan: &mut AllocationPlan, snapshot: &PlayabilitySnapshot, lane: &CurrentLane<'_>) {
-    if lane.emergency && !lane.protected(plan) {
-        return reject_unprotected_next(plan, snapshot);
-    }
-    let transfer =
-        speculative_budget(snapshot).saturating_sub(sibling_planned_bytes(plan, snapshot));
-    let storage = lane.storage_room.saturating_sub(planned_bytes(plan));
-    reserve_immediate_next(plan, snapshot, transfer, storage);
+    let protected = !lane.emergency || lane.protected(plan);
+    build_ready_reserve(
+        plan,
+        snapshot,
+        ReserveInputs {
+            transfer_budget: speculative_budget(snapshot),
+            storage_room: lane.storage_room,
+            current_emergency: lane.emergency,
+            current_protected: protected,
+        },
+    );
 }
 
 fn append_followup(

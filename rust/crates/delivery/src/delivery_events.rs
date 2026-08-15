@@ -41,6 +41,14 @@ pub struct DeliveryCandidate {
     pub discovered_at: u64,
 }
 
+/// Whether a focus movement represents user navigation or system control.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FocusTransition {
+    UserNavigation,
+    RosterChange,
+    TransportRescue,
+}
+
 /// A full replacement of the focus window (plan §2 `ffi_update_focus`).
 #[derive(Clone, Debug)]
 pub struct DeliveryFocus {
@@ -48,6 +56,7 @@ pub struct DeliveryFocus {
     pub current_index: usize,
     pub watch_ms: u64,
     pub generation: FocusGeneration,
+    pub transition: FocusTransition,
 }
 
 impl DeliveryFocus {
@@ -57,6 +66,7 @@ impl DeliveryFocus {
             current_index,
             watch_ms,
             generation: FocusGeneration::compatibility(),
+            transition: FocusTransition::UserNavigation,
         }
     }
 }

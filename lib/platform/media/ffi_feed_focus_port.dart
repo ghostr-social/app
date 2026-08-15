@@ -46,6 +46,7 @@ final class FfiFeedFocusPort implements FeedFocusPort {
           currentIndex: work.window.currentIndex,
           watchMs: BigInt.from(work.watched.inMilliseconds),
           generation: work.generation,
+          transition: _transition(work.window.cause),
         ),
       );
     } on Object catch (error, stackTrace) {
@@ -63,7 +64,7 @@ final class FfiFeedFocusPort implements FeedFocusPort {
 /// out, and the current index shifts left past removed items so it
 /// keeps addressing the viewer's post.
 final class _FfiFocusWindow {
-  const _FfiFocusWindow(this.items, this.currentIndex);
+  const _FfiFocusWindow(this.items, this.currentIndex, this.cause);
 
   factory _FfiFocusWindow.of(FeedFocus focus) {
     final items = <FfiFocusItem>[];
@@ -76,12 +77,25 @@ final class _FfiFocusWindow {
         currentIndex -= 1;
       }
     }
-    if (items.isEmpty) return const _FfiFocusWindow([], 0);
-    return _FfiFocusWindow(items, math.min(currentIndex, items.length - 1));
+    if (items.isEmpty) return _FfiFocusWindow([], 0, focus.cause);
+    return _FfiFocusWindow(
+      items,
+      math.min(currentIndex, items.length - 1),
+      focus.cause,
+    );
   }
 
   final List<FfiFocusItem> items;
   final int currentIndex;
+  final FeedFocusCause cause;
+}
+
+FfiFocusTransition _transition(FeedFocusCause cause) {
+  return switch (cause) {
+    FeedFocusCause.userNavigation => FfiFocusTransition.userNavigation,
+    FeedFocusCause.rosterChange => FfiFocusTransition.rosterChange,
+    FeedFocusCause.transportRescue => FfiFocusTransition.transportRescue,
+  };
 }
 
 FfiFocusItem? _mapped(VideoMediaSource media) {

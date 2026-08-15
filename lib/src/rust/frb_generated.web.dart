@@ -132,6 +132,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FfiFocusItem dco_decode_ffi_focus_item(dynamic raw);
 
   @protected
+  FfiFocusTransition dco_decode_ffi_focus_transition(dynamic raw);
+
+  @protected
   FfiFocusUpdate dco_decode_ffi_focus_update(dynamic raw);
 
   @protected
@@ -328,6 +331,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiFocusItem sse_decode_ffi_focus_item(SseDeserializer deserializer);
+
+  @protected
+  FfiFocusTransition sse_decode_ffi_focus_transition(
+    SseDeserializer deserializer,
+  );
 
   @protected
   FfiFocusUpdate sse_decode_ffi_focus_update(SseDeserializer deserializer);
@@ -569,6 +577,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_ffi_focus_item(FfiFocusItem self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ffi_focus_transition(
+    FfiFocusTransition self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_ffi_focus_update(

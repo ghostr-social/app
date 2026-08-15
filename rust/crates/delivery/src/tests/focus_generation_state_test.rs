@@ -1,4 +1,4 @@
-use crate::delivery_events::{DeliveryFocus, FocusGeneration, FocusItem};
+use crate::delivery_events::{DeliveryFocus, FocusGeneration, FocusItem, FocusTransition};
 use crate::manager::state::DeliveryState;
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
 
@@ -38,5 +38,6 @@ fn focus(post: &str, generation: u64) -> DeliveryFocus {
         current_index: 0,
         watch_ms: 0,
         generation: FocusGeneration::try_new(generation).expect("positive generation"),
+        transition: FocusTransition::UserNavigation,
     }
 }

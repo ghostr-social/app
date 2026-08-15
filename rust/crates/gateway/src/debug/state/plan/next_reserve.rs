@@ -42,7 +42,7 @@ pub(super) fn snapshot(value: &NextReserveEvidence) -> NextReserveSnapshot {
     }
 }
 
-fn infeasibility(value: NextReserveInfeasibility) -> &'static str {
+pub(super) fn infeasibility(value: NextReserveInfeasibility) -> &'static str {
     match value {
         NextReserveInfeasibility::CurrentUnprotected => "current_unprotected",
         NextReserveInfeasibility::NoLiveOrigin => "no_live_origin",

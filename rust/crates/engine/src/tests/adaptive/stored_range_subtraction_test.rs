@@ -17,7 +17,7 @@ fn replanning_requests_only_the_missing_suffix_of_a_partly_stored_playable_range
 
     assert_eq!(first.range.start, 100_000);
     assert!(first.range.len() <= crate::adaptive::REQUEST_SLICE_BYTES);
-    assert!(first.expected_playable_gain_ms >= 1_200);
+    assert!(first.expected_playable_gain_ms >= 1_200, "{plan:#?}");
 }
 
 #[test]

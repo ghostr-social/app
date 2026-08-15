@@ -1052,6 +1052,19 @@ impl SseDecode for crate::api::delivery_types::FfiFocusItem {
     }
 }
 
+impl SseDecode for crate::api::focus_control::FfiFocusTransition {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::focus_control::FfiFocusTransition::UserNavigation,
+            1 => crate::api::focus_control::FfiFocusTransition::RosterChange,
+            2 => crate::api::focus_control::FfiFocusTransition::TransportRescue,
+            _ => unreachable!("Invalid variant for FfiFocusTransition: {}", inner),
+        };
+    }
+}
+
 impl SseDecode for crate::api::focus_control::FfiFocusUpdate {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1061,12 +1074,15 @@ impl SseDecode for crate::api::focus_control::FfiFocusUpdate {
         let mut var_currentIndex = <u32>::sse_decode(deserializer);
         let mut var_watchMs = <u64>::sse_decode(deserializer);
         let mut var_generation = <u64>::sse_decode(deserializer);
+        let mut var_transition =
+            <crate::api::focus_control::FfiFocusTransition>::sse_decode(deserializer);
         return crate::api::focus_control::FfiFocusUpdate {
             feed_id: var_feedId,
             items: var_items,
             current_index: var_currentIndex,
             watch_ms: var_watchMs,
             generation: var_generation,
+            transition: var_transition,
         };
     }
 }
@@ -1830,6 +1846,28 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::delivery_types::FfiFocusItem>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::focus_control::FfiFocusTransition {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::UserNavigation => 0.into_dart(),
+            Self::RosterChange => 1.into_dart(),
+            Self::TransportRescue => 2.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::focus_control::FfiFocusTransition
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::focus_control::FfiFocusTransition>
+    for crate::api::focus_control::FfiFocusTransition
+{
+    fn into_into_dart(self) -> crate::api::focus_control::FfiFocusTransition {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::focus_control::FfiFocusUpdate {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -1838,6 +1876,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::focus_control::FfiFocusUpdate
             self.current_index.into_into_dart().into_dart(),
             self.watch_ms.into_into_dart().into_dart(),
             self.generation.into_into_dart().into_dart(),
+            self.transition.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2293,6 +2332,23 @@ impl SseEncode for crate::api::delivery_types::FfiFocusItem {
     }
 }
 
+impl SseEncode for crate::api::focus_control::FfiFocusTransition {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::focus_control::FfiFocusTransition::UserNavigation => 0,
+                crate::api::focus_control::FfiFocusTransition::RosterChange => 1,
+                crate::api::focus_control::FfiFocusTransition::TransportRescue => 2,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
 impl SseEncode for crate::api::focus_control::FfiFocusUpdate {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2301,6 +2357,7 @@ impl SseEncode for crate::api::focus_control::FfiFocusUpdate {
         <u32>::sse_encode(self.current_index, serializer);
         <u64>::sse_encode(self.watch_ms, serializer);
         <u64>::sse_encode(self.generation, serializer);
+        <crate::api::focus_control::FfiFocusTransition>::sse_encode(self.transition, serializer);
     }
 }
 
