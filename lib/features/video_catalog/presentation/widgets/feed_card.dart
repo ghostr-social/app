@@ -6,6 +6,7 @@ import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card_action_rail.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card_menu.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card_metadata.dart';
+import 'package:ghostr/features/video_catalog/presentation/widgets/feed_video_interaction.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:ghostr/shared/theme/app_tokens.dart';
 
@@ -32,21 +33,21 @@ class FeedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onLongPress: () => _openMenu(context),
-      child: Stack(
+    return FeedVideoInteraction(
+      key: ValueKey(post.id.value),
+      isActive: playback.isActive,
+      onOpenMenu: () => _openMenu(context),
+      surfaceBuilder: (mode) => playback.port.buildSurface(
+        VideoPlaybackSurfaceRequest(
+          media: post.media,
+          videoId: PlaybackVideoId.parse(post.id),
+          isActive: playback.isActive,
+          mode: mode,
+        ),
+      ),
+      overlay: Stack(
         fit: StackFit.expand,
-        children: [
-          playback.port.buildSurface(
-            VideoPlaybackSurfaceRequest(
-              media: post.media,
-              videoId: PlaybackVideoId.parse(post.id),
-              isActive: playback.isActive,
-            ),
-          ),
-          const _FeedScrim(),
-          _content(),
-        ],
+        children: [const _FeedScrim(), _content()],
       ),
     );
   }

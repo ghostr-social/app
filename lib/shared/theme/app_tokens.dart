@@ -28,6 +28,8 @@ abstract final class AppSize {
   static const double feedFollowButton = 24;
   static const double feedFollowIcon = 18;
   static const double feedSongIcon = 14;
+  static const double feedGestureEdge = 72;
+  static const double feedPlaybackIcon = 44;
 }
 
 abstract final class AppPalette {
@@ -43,6 +45,10 @@ abstract final class AppPalette {
   static const videoLoadingBackground = Color(0xFF111111);
   static const videoScrimTop = Color(0x33000000);
   static const videoScrimBottom = Color(0xA6000000);
+  static const videoSheetBarrier = Color(0x33000000);
+  static const videoControlBackground = Color(0x66000000);
+  static const feedSelectorBackground = Color(0x0D000000);
+  static const feedSelectorSelectedBackground = Color(0x14FFFFFF);
 }
 
 abstract final class AppShadow {

@@ -9,11 +9,14 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
 
   final bool autoInitialize;
   final List<String> calls = [];
+  final List<double> playbackSpeeds = [];
   final List<DataSource> dataSources = [];
+  final Set<double> failingPlaybackSpeeds = {};
   final Map<int, StreamController<VideoEvent>> _streams = {};
   final Set<String> failingCalls = {};
   final Completer<void> disposeStarted = Completer<void>();
   Completer<void>? disposeBarrier;
+  Completer<void>? playBarrier;
   bool failNextInitialization = false;
   int _nextTextureId = 0;
 
@@ -64,7 +67,10 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   }
 
   @override
-  Future<void> play(int textureId) async => _recordPlaybackCall('play');
+  Future<void> play(int textureId) async {
+    _recordPlaybackCall('play');
+    await playBarrier?.future;
+  }
 
   @override
   Future<void> pause(int textureId) async => _recordPlaybackCall('pause');
@@ -83,10 +89,17 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   }
 
   @override
-  Future<void> setVolume(int textureId, double volume) async {}
+  Future<void> setVolume(int textureId, double volume) async {
+    calls.add('setVolume:$volume');
+  }
 
   @override
-  Future<void> setPlaybackSpeed(int textureId, double speed) async {}
+  Future<void> setPlaybackSpeed(int textureId, double speed) async {
+    playbackSpeeds.add(speed);
+    if (failingPlaybackSpeeds.contains(speed)) {
+      throw PlatformException(code: 'set-playback-speed-failed');
+    }
+  }
 
   @override
   Widget buildView(int textureId) => Texture(textureId: textureId);

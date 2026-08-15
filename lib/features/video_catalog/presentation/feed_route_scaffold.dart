@@ -31,8 +31,7 @@ abstract base class RoutedFeedRequest {
   final Future<void> Function(String) onOpenHashtag;
 }
 
-/// Scaffolds a routed feed: a titled app bar with the back button, playback
-/// that pauses while covered, and a refresh when a chained route returns.
+/// Scaffolds a routed feed and pauses it only behind opaque destinations.
 class FeedRouteScaffold extends StatelessWidget {
   const FeedRouteScaffold({required this.request, super.key});
 
@@ -49,8 +48,7 @@ class FeedRouteScaffold extends StatelessWidget {
           playbackPort: request.playbackPort,
           shareWorkflow: request.shareWorkflow,
           createComments: request.createComments,
-          // Playback pauses whenever another route covers this feed.
-          isActive: ModalRoute.of(context)?.isCurrent ?? true,
+          isActive: TickerMode.valuesOf(context).enabled,
         ),
       ),
     );

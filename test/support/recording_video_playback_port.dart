@@ -3,11 +3,13 @@ import 'package:ghostr/shared/media/video_playback_port.dart';
 
 class RecordingVideoPlaybackPort implements VideoPlaybackPort {
   final Map<String, List<bool>> activity = {};
+  final Map<String, List<VideoPlaybackMode>> modes = {};
   int surfaceDisposals = 0;
 
   @override
   Widget buildSurface(VideoPlaybackSurfaceRequest request) {
     (activity[request.media.debugLabel] ??= []).add(request.isActive);
+    (modes[request.media.debugLabel] ??= []).add(request.mode);
     return _ReleaseOnDispose(
       onReleased: () {
         surfaceDisposals += 1;

@@ -47,14 +47,18 @@ class FeedKindSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppPalette.surface,
+      color: AppPalette.feedSelectorBackground,
       borderRadius: BorderRadius.circular(AppRadius.control),
       child: SegmentedButton<FeedKind>(
         segments: [
           for (final kind in FeedKind.values)
-            ButtonSegment(value: kind, label: Text(kind.label)),
+            ButtonSegment(
+              value: kind,
+              label: Text(kind.label, style: _labelStyle(kind)),
+            ),
         ],
         selected: {selected},
+        style: _selectorStyle,
         showSelectedIcon: false,
         onSelectionChanged: _select,
       ),
@@ -65,4 +69,21 @@ class FeedKindSelector extends StatelessWidget {
     final next = values.single;
     if (next != selected) onSelected(next);
   }
+
+  TextStyle _labelStyle(FeedKind kind) {
+    return TextStyle(
+      shadows: AppShadow.videoOverlay,
+      decoration: kind == selected ? TextDecoration.underline : null,
+      decorationColor: AppPalette.foreground,
+      decorationThickness: 2,
+    );
+  }
 }
+
+final _selectorStyle = SegmentedButton.styleFrom(
+  foregroundColor: AppPalette.mutedForeground,
+  selectedForegroundColor: AppPalette.foreground,
+  backgroundColor: Colors.transparent,
+  selectedBackgroundColor: AppPalette.feedSelectorSelectedBackground,
+  side: BorderSide.none,
+);

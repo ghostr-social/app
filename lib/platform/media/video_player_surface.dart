@@ -13,6 +13,7 @@ class _VideoPlayerSurface extends StatefulWidget {
   VideoMediaSource get media => request.media;
   PlaybackVideoId? get videoId => request.videoId;
   bool get isActive => request.isActive;
+  VideoPlaybackMode get mode => request.mode;
   ProgressivePlaybackRefreshPort? get progressiveRefresh =>
       request.progressiveRefresh;
   VoidCallback? get onPlaybackMediaReleased => request.onPlaybackMediaReleased;
@@ -63,7 +64,11 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   @override
   void didUpdateWidget(covariant _VideoPlayerSurface oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.isActive != widget.isActive) _handleActivityChange();
+    if (oldWidget.isActive != widget.isActive) {
+      _handleActivityChange();
+    } else if (oldWidget.mode != widget.mode) {
+      _syncPlayback();
+    }
   }
 
   @override
