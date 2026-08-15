@@ -12,9 +12,24 @@ export function plan(overrides = {}) {
     revision: 1,
     observed_at_ms: 100,
     discovery_demand: "hold",
+    mode: "normal",
+    ready_reserve: readyReserve(),
     allocations: [allocation()],
     retained: [],
     evictions: [],
+    ...overrides,
+  };
+}
+
+export function readyReserve(overrides = {}) {
+  return {
+    target: 1,
+    ready: 1,
+    protected: 1,
+    recovery_horizon_ms: 250,
+    underflow_risk_bps: 10,
+    ready_coverage_ms: 1_000,
+    candidates: [{post_id: "post-1", status: "ready"}],
     ...overrides,
   };
 }

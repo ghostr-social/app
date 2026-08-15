@@ -11,12 +11,7 @@ pub(super) fn discovery_demand(
     if speculative_budget <= sibling_planned_bytes(plan, snapshot) {
         return DiscoveryDemand::Hold;
     }
-    let admitted: HashSet<_> = plan
-        .allocations
-        .iter()
-        .map(|work| &work.post)
-        .chain(plan.retained.iter().map(|work| &work.post))
-        .collect();
+    let admitted = admitted_posts(plan, snapshot.network.connection_ceiling);
     match has_waiting_candidate(snapshot, &admitted) {
         true => DiscoveryDemand::Hold,
         false => DiscoveryDemand::Expand,
@@ -25,13 +20,29 @@ pub(super) fn discovery_demand(
 
 fn has_waiting_candidate(
     snapshot: &PlayabilitySnapshot,
-    admitted: &HashSet<&crate::PostId>,
+    admitted: &HashSet<crate::PostId>,
 ) -> bool {
     snapshot.candidates.iter().any(|candidate| {
         candidate.post != snapshot.playback.current
             && !super::ranges::missing(candidate).is_empty()
             && !admitted.contains(&candidate.post)
     })
+}
+
+pub(super) fn admitted_posts(plan: &AllocationPlan, ceiling: usize) -> HashSet<crate::PostId> {
+    let mut admitted = HashSet::new();
+    for post in plan
+        .allocations
+        .iter()
+        .map(|work| &work.post)
+        .chain(plan.retained.iter().map(|work| &work.post))
+    {
+        if admitted.len() >= ceiling.max(1) {
+            break;
+        }
+        admitted.insert(post.clone());
+    }
+    admitted
 }
 
 pub(super) fn upcoming_candidates(snapshot: &PlayabilitySnapshot) -> Vec<&CandidateSnapshot> {

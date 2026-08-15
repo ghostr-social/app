@@ -79,6 +79,7 @@ HAWK_REVISION_SHORT := 98efa9f
 .PHONY: test-coverage coverage-summary native-check native-test native-coverage web \
 	native-dead-code-install native-dead-code native-dead-code-contract-test \
 	web-contract-test video-user-e2e video-user-e2e-contract-test \
+	video-demo \
 	video-user-e2e-prerequisite-check video-user-e2e-impairments \
 	video-delivery-target-contract-test video-android-emulator-tests \
 	video-android-physical-tests video-player-contract-target-test \
@@ -134,6 +135,9 @@ video-user-e2e-prerequisite-check: ## Verify the configured browser executable w
 
 video-user-e2e: video-user-e2e-contract-test ## Run the deterministic local browser journey.
 	node tool/video_user_e2e/main.mjs
+
+video-demo: video-user-e2e-contract-test ## Run an observable eight-video WARP retrieval demo.
+	node tool/video_user_e2e/demo_main.mjs
 
 video-user-e2e-impairments: video-user-e2e-contract-test ## Run every deterministic browser impairment.
 	@set -e; for scenario in $(VIDEO_BROWSER_SCENARIOS); do \

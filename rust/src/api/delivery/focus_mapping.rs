@@ -2,9 +2,22 @@
 //! fully covered by the unit tests in `crate::api::tests`.
 
 use crate::api::delivery_types::{FfiFocusItem, FfiMediaDelivery};
+use crate::api::focus_control::FfiFocusTransition;
 use crate::engine::{DeliveryKind, PostId, VideoMeta};
 use anyhow::{bail, Result};
-use ghostr_delivery::delivery_events::{DeliveryFocus, FocusGeneration, FocusItem};
+use ghostr_delivery::delivery_events::{
+    DeliveryFocus, FocusGeneration, FocusItem, FocusTransition,
+};
+
+impl From<FfiFocusTransition> for FocusTransition {
+    fn from(value: FfiFocusTransition) -> Self {
+        match value {
+            FfiFocusTransition::UserNavigation => Self::UserNavigation,
+            FfiFocusTransition::RosterChange => Self::RosterChange,
+            FfiFocusTransition::TransportRescue => Self::TransportRescue,
+        }
+    }
+}
 
 impl From<FfiMediaDelivery> for DeliveryKind {
     fn from(delivery: FfiMediaDelivery) -> Self {
@@ -49,6 +62,7 @@ pub(crate) fn delivery_focus(
     current_index: u32,
     watch_ms: u64,
     generation: u64,
+    transition: FfiFocusTransition,
 ) -> Result<DeliveryFocus> {
     let Some(generation) = FocusGeneration::try_new(generation) else {
         bail!("focus generation must be positive");
@@ -59,5 +73,6 @@ pub(crate) fn delivery_focus(
         current_index: current_index as usize,
         watch_ms,
         generation,
+        transition: transition.into(),
     })
 }

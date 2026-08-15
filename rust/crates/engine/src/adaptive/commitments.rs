@@ -5,17 +5,20 @@ use super::{
     AllocationReason, CandidateSnapshot, InFlightRange, OriginHealth, PlayabilitySnapshot,
     PlayableRange, RetainedAllocation,
 };
+use crate::PostId;
+use std::collections::HashSet;
 
 pub(super) fn retained(
     snapshot: &PlayabilitySnapshot,
     playback_endangered: bool,
     critical_slots: usize,
+    admitted: &HashSet<PostId>,
 ) -> Vec<RetainedAllocation> {
     let mut work = current_commitments(snapshot);
     if storage_displaces_speculation(snapshot) {
         return work;
     }
-    let future = future_commitments(snapshot);
+    let future = future_commitments(snapshot, admitted);
     let limit = future_limit(snapshot, playback_endangered, critical_slots, work.len());
     work.extend(future.into_iter().take(limit));
     work
@@ -30,13 +33,17 @@ fn current_commitments(snapshot: &PlayabilitySnapshot) -> Vec<RetainedAllocation
         .collect()
 }
 
-fn future_commitments(snapshot: &PlayabilitySnapshot) -> Vec<RetainedAllocation> {
+fn future_commitments(
+    snapshot: &PlayabilitySnapshot,
+    admitted: &HashSet<PostId>,
+) -> Vec<RetainedAllocation> {
     let mut candidates: Vec<_> = snapshot
         .candidates
         .iter()
         .filter(|candidate| {
             candidate.post != snapshot.playback.current
                 && candidate.view_probability.value() >= 0.05
+                && (candidate.feed_offset.value() > 0 || admitted.contains(&candidate.post))
         })
         .collect();
     candidates.sort_by(|left, right| {

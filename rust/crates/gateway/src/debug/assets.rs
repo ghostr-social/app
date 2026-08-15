@@ -7,6 +7,8 @@ use axum::Router;
 
 const INDEX: &str = include_str!("web/index.html");
 const APP: &str = include_str!("web/app.js");
+const READY_RESERVE: &str = include_str!("web/ready_reserve.js");
+const DELIVERY_LANES: &str = include_str!("web/delivery_lanes.js");
 const PLAYER_EVENTS: &str = include_str!("web/player_events.js");
 const NAVIGATION: &str = include_str!("web/navigation.js");
 const NETWORK_MODAL: &str = include_str!("web/network_modal.js");
@@ -23,6 +25,8 @@ pub(crate) fn router() -> Router {
         .route("/debug", get(index))
         .route("/debug/", get(index))
         .route("/debug/app.js", get(|| script(APP)))
+        .route("/debug/ready_reserve.js", get(|| script(READY_RESERVE)))
+        .route("/debug/delivery_lanes.js", get(|| script(DELIVERY_LANES)))
         .route("/debug/player_events.js", get(|| script(PLAYER_EVENTS)))
         .route("/debug/navigation.js", get(|| script(NAVIGATION)))
         .route("/debug/network_modal.js", get(|| script(NETWORK_MODAL)))

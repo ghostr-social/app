@@ -16,6 +16,14 @@ pub struct FfiFocusUpdate {
     pub current_index: u32,
     pub watch_ms: u64,
     pub generation: u64,
+    pub transition: FfiFocusTransition,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum FfiFocusTransition {
+    UserNavigation,
+    RosterChange,
+    TransportRescue,
 }
 
 /// Replaces the ordered focus window (items include the current one),
@@ -29,6 +37,7 @@ pub async fn ffi_update_focus(update: FfiFocusUpdate) -> anyhow::Result<()> {
         update.current_index,
         update.watch_ms,
         update.generation,
+        update.transition,
     )?;
     let engine = registry::engine()?;
     accept_focus(&engine, focus)

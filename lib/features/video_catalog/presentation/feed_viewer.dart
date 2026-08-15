@@ -18,12 +18,17 @@ final class FeedViewer {
   /// The viewer landed on `posts[index]` — a load, a swipe, a jump.
   void landedOn(List<VideoPost> posts, int index) {
     _watched(posts[index]);
-    rosterChanged(posts, index);
+    _publish(posts, index, FeedFocusCause.userNavigation);
   }
 
   /// The visible roster changed while the viewer remained in place.
   void rosterChanged(List<VideoPost> posts, int index) {
-    _publish(posts, index);
+    _publish(posts, index, FeedFocusCause.rosterChange);
+  }
+
+  /// Delivery selected a playable neighbor; this is not a user preference.
+  void rescuedTo(List<VideoPost> posts, int index) {
+    _publish(posts, index, FeedFocusCause.transportRescue);
   }
 
   void visibilityChanged(bool isVisible) {
@@ -38,9 +43,11 @@ final class FeedViewer {
     if (lease is FeedFocusLease) lease.release();
   }
 
-  void _publish(List<VideoPost> posts, int index) {
+  void _publish(List<VideoPost> posts, int index, FeedFocusCause cause) {
     // Reactivation carries no invented watch time.
-    focus?.focusChanged(FeedFocus.around(posts: posts, activeIndex: index));
+    focus?.focusChanged(
+      FeedFocus.around(posts: posts, activeIndex: index, cause: cause),
+    );
   }
 
   void _watched(VideoPost post) {

@@ -7,7 +7,9 @@ use rust_lib_ghostr::api::delivery_types::{FfiFocusItem, FfiMediaDelivery};
 use rust_lib_ghostr::api::engine_control::{
     ffi_set_delivery_config, ffi_start_engine, FfiDataUsageLevel, FfiEngineConfiguration,
 };
-use rust_lib_ghostr::api::focus_control::{ffi_playback_url, ffi_update_focus, FfiFocusUpdate};
+use rust_lib_ghostr::api::focus_control::{
+    ffi_playback_url, ffi_update_focus, FfiFocusTransition, FfiFocusUpdate,
+};
 use rust_lib_ghostr::api::playback_control::ffi_report_playback;
 use rust_lib_ghostr::api::playback_types::{FfiPlaybackObservation, FfiPlaybackPhase};
 use std::collections::HashMap;
@@ -55,6 +57,7 @@ async fn starts_the_engine_and_serves_the_delivery_surface() {
         current_index: 0,
         watch_ms: 0,
         generation: 1,
+        transition: FfiFocusTransition::UserNavigation,
     })
     .await
     .expect("focus update");

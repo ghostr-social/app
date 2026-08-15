@@ -158,9 +158,10 @@ function render(state) {
   renderQueue(videos);
   renderSelected(selected);
   renderPhone(videos.find((video) => video.id === currentId));
-  renderActivity(state.videos);
+  renderDeliveryActivity(state);
   renderConnections(state.connections);
   renderMetrics(state, totalRate);
+  renderReadyReserve(state.adaptive_plans);
   renderNostr(state.nostr);
   loadProfile(state.network);
   byId("updated").textContent = `Updated ${new Date().toLocaleTimeString()}`;

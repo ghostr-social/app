@@ -27,7 +27,7 @@ async function registerVideo(input, name) {
     headers: {"content-type": "application/json"},
     body: JSON.stringify({
       ...source,
-      size_bytes: playableMedia.bytes.length,
+      size_bytes: input.sizeBytes ?? playableMedia.bytes.length,
       duration_ms: playableMedia.durationMs,
     }),
   });
