@@ -37,8 +37,8 @@ void main() {
     expect(state.posts.last.id.value, 'older-0');
     expect(state.activeIndex, 7);
     expect(focus.focuses, hasLength(3));
-    expect(focus.focuses.last.window, state.posts);
-    expect(focus.focuses.last.currentIndex, 7);
+    expect(focus.focuses.last.window, state.posts.sublist(4));
+    expect(focus.focuses.last.currentIndex, 3);
     expect(
       repository.olderFeedRequests.single,
       samplePost().publishedAt.subtract(const Duration(seconds: 1)),

@@ -3,12 +3,12 @@ part of 'feed_cubit.dart';
 extension FeedCubitBackfill on FeedCubit {
   void _ensureBuffered() {
     final current = state;
-    if (current is! FeedLoaded) return;
+    if (!_isSurfaceVisible || current is! FeedLoaded) return;
     if (_backfill.isStarved(current.roster)) unawaited(loadMore());
   }
 
   Future<void> loadMore() async {
-    if (_isClosing || state is! FeedLoaded) return;
+    if (_isClosing || !_isSurfaceVisible || state is! FeedLoaded) return;
     for (var dry = 0; dry < _backfill.dryPageLimit; dry += 1) {
       if (!await _digOnce()) return;
     }
@@ -19,10 +19,17 @@ extension FeedCubitBackfill on FeedCubit {
     final dug = await _backfill.dig(state.kind);
     return switch (dug) {
       FeedDigFailed(:final failure) => _failedDig(failure),
-      FeedDigSkipped() => false,
+      FeedDigSkipped(:final retryable) => _skippedDig(retryable),
       FeedDigPage(:final posts, :final hasMore, :final cursorAdvanced) =>
         _acceptedDig(posts, hasMore && cursorAdvanced),
     };
+  }
+
+  bool _skippedDig(bool retryable) {
+    if (retryable && _isSurfaceVisible) {
+      _backfillRetry.schedule(_ensureBuffered);
+    }
+    return false;
   }
 
   bool _failedDig(FeedUnavailable failure) {

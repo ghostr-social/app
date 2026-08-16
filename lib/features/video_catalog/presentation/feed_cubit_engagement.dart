@@ -70,15 +70,19 @@ extension FeedCubitEngagementActions on FeedCubit {
     _session.dropCreator(post.creator.id);
     if (current is! FeedLoaded) return;
     final roster = current.roster.withoutCreator(post.creator.id);
-    if (roster.isEmpty) return load();
+    if (roster.isEmpty) return _reloadAfterBlock(current.kind);
     final blocked = 'Blocked ${post.creator.handle}';
-    final transition = ++_pageTransition;
-    if (!await _viewer.prepareToShow(roster.active)) return;
-    if (!_acceptsPageTransition(transition, current)) return;
     _emitState(
       FeedLoaded.of(current.kind, roster, notice: blocked, follows: _follows),
     );
     _viewer.rosterChanged(roster.posts, roster.activeIndex);
+  }
+
+  Future<void> _reloadAfterBlock(FeedKind kind) {
+    if (_isSurfaceVisible) return load();
+    _reloadWhenSurfaceVisible = true;
+    _emitState(FeedLoading(kind));
+    return Future.value();
   }
 
   void commentsPublished(VideoPost post, int publishedCount) {

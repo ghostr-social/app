@@ -55,7 +55,7 @@ final class RepostHydratedVideoFeedRepository
     if (feed case final VideoFeedRefreshRepository refresh) {
       return refresh.loadRefresh(kind);
     }
-    final posts = await feed.loadFeed(kind, excludeWatched: true);
+    final posts = await feed.loadFeed(kind);
     return VideoFeedRefreshSnapshot(allPosts: posts, eligiblePosts: posts);
   }
 

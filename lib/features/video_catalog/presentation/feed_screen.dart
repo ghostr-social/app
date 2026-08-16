@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ghostr/features/comments/presentation/comments_sheet.dart';
+import 'package:ghostr/features/video_catalog/domain/video_interaction_target.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_screen_bindings.dart';
@@ -154,13 +155,10 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
 
   Widget _feedPages(BuildContext context, FeedLoaded state) {
     return FeedPageView(
-      key: ValueKey(state.posts.first.id.value),
       itemCount: state.posts.length,
       initialPage: state.activeIndex,
       onPageChanged: context.read<FeedCubit>().pageChanged,
-      itemBuilder: (_, index) => index == state.activeIndex
-          ? _feedCard(context, state, index)
-          : const ColoredBox(color: Colors.black),
+      itemBuilder: (_, index) => _feedCard(context, state, index),
     );
   }
 
@@ -168,7 +166,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
     final post = state.posts[index];
     return BlocBuilder<VideoShareCubit, VideoShareState>(
       builder: (context, sharing) => FeedCard(
-        key: ValueKey(post.id.value),
+        key: ValueKey(VideoInteractionTarget.fromPost(post).value),
         post: post,
         playback: FeedCardPlayback(
           port: widget.bindings.playbackPort,

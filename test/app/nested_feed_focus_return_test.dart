@@ -12,7 +12,7 @@ import '../support/fake_feed_focus_port.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  testWidgets('popping a nested feed never restores exited parent videos', (
+  testWidgets('popping a nested feed restores its parent feed position', (
     tester,
   ) async {
     final posts = [
@@ -67,8 +67,16 @@ void main() {
     await returned;
 
     expect(find.byType(DiscoveryFeedScreen), findsOneWidget);
-    expect(find.text('First watched'), findsNothing);
-    expect(find.text('Second watched'), findsNothing);
-    expect(find.text('Nested watched'), findsNothing);
+    expect(focus.focuses.last.currentIndex, 1);
+    expect(focus.focuses.last.current.id.value, 'second');
+    final cubit = tester
+        .element(find.byType(DiscoveryFeedScreen))
+        .read<FeedCubit>();
+    final loaded = cubit.state as FeedLoaded;
+    expect(loaded.posts.map((post) => post.id.value), [
+      'first',
+      'second',
+      'nested-only',
+    ]);
   });
 }

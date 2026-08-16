@@ -5,7 +5,6 @@ import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/presentation/disposal_safe_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
-import 'package:ghostr/features/video_catalog/domain/feed_replay_policy.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_backfill.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_engagement.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_fetcher.dart';
@@ -17,6 +16,7 @@ import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_delivery_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post_id.dart';
+import 'package:ghostr/features/video_catalog/domain/video_interaction_target.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_summary.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_dependencies.dart';
@@ -45,6 +45,7 @@ part 'feed_cubit_delivery.dart';
 typedef _PendingTransportRescue = ({
   int fromIndex,
   int intendedIndex,
+  VideoInteractionTarget intendedTarget,
   bool graceExpired,
 });
 
@@ -77,12 +78,18 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   final _readySelector = const FeedReadySelector();
   final _delivery = <PlaybackDeliveryId, VideoDeliverySnapshot>{};
   int _pageTransition = 0;
+  var _isSurfaceVisible = true;
   var _reloadWhenSurfaceVisible = false;
+  var _refreshWhenSurfaceVisible = false;
+  var _isPreparingLoad = false;
   StreamSubscription<VideoDeliverySnapshot>? _deliverySubscription;
   _PendingTransportRescue? _awaitingTransportRescue;
   Timer? _rescueTimer;
   int? _pendingTransportJump;
-  late final _fetch = FeedFetcher(_dependencies.feed);
+  late final _fetch = FeedFetcher(
+    _dependencies.feed,
+    loadBlockedProfiles: _dependencies.social?.loadBlockedProfiles,
+  );
   late final _backfill = FeedBackfill(_fetch, _loads);
 
   void surfaceVisibilityChanged(bool isVisible) =>
@@ -108,7 +115,10 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
 
   Future<void> load([FeedKind? selectedKind]) async {
     _reloadWhenSurfaceVisible = false;
+    _refreshWhenSurfaceVisible = false;
     _loads.take();
+    _clearPendingRescue();
+    _pendingTransportJump = null;
     _reposts?.forget();
     final follows = _reloadFollows();
     await _runFeedPull(() async {
@@ -124,8 +134,11 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   Future<void> retry() => load();
 
   Future<void> reload() async {
+    _refreshWhenSurfaceVisible = false;
     final previous = state;
     if (previous is! FeedLoaded) return load();
+    _clearPendingRescue();
+    _pendingTransportJump = null;
     _reposts?.forget();
     final follows = _reloadFollows();
     emit(FeedLoading(previous.kind));

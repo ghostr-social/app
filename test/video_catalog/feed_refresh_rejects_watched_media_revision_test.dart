@@ -13,7 +13,7 @@ import '../support/scripted_feed_repository.dart';
 
 void main() {
   test(
-    'an active revision cannot switch to previously watched media',
+    'a session refresh cannot switch current content to watched media',
     () async {
       final watched = samplePost(id: 'watched-media');
       final initial = samplePost(

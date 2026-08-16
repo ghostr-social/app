@@ -8,7 +8,7 @@ import '../support/feed_screen_harness.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  testWidgets('closing comments cannot restore an exited ordinary video', (
+  testWidgets('closing comments restores the same current feed video', (
     tester,
   ) async {
     final history = FakeWatchHistoryRepository();
@@ -47,8 +47,8 @@ void main() {
     await tester.tapAt(const Offset(10, 10));
     await tester.pump();
 
-    expect(find.text('First watched video'), findsNothing);
     await tester.pumpAndSettle();
-    expect(find.text('Second unseen video'), findsOneWidget);
+    expect(find.text('First watched video'), findsOneWidget);
+    expect(find.text('Second unseen video'), findsNothing);
   });
 }

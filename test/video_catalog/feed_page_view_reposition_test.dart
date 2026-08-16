@@ -16,7 +16,10 @@ void main() {
           builder: (_, index, __) => FeedPageView(
             itemCount: 3,
             initialPage: index,
-            onPageChanged: changes.add,
+            onPageChanged: (changed) {
+              changes.add(changed);
+              return true;
+            },
             itemBuilder: (_, item) => Text('Page $item'),
           ),
         ),

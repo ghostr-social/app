@@ -8,7 +8,7 @@ import '../support/fakes.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('refresh drops a held-ahead video watched on another surface', () async {
+  test('refresh keeps every video admitted to the current feed', () async {
     final active = samplePost(id: 'active');
     final watchedAhead = samplePost(id: 'watched-ahead');
     final fresh = samplePost(id: 'fresh');
@@ -44,7 +44,11 @@ void main() {
     await cubit.refresh();
 
     final loaded = cubit.state as FeedLoaded;
-    expect(loaded.posts.map((post) => post.id.value), ['active', 'fresh']);
+    expect(loaded.posts.map((post) => post.id.value), [
+      'active',
+      'watched-ahead',
+      'fresh',
+    ]);
     expect(loaded.activeIndex, 0);
   });
 }

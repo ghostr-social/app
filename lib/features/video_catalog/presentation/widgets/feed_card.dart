@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
+import 'package:ghostr/features/video_catalog/domain/video_interaction_target.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card_action_rail.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card_menu.dart';
@@ -33,14 +34,15 @@ class FeedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final target = VideoInteractionTarget.fromPost(post).value;
     return FeedVideoInteraction(
-      key: ValueKey(post.id.value),
+      key: ValueKey(target),
       isActive: playback.isActive,
       onOpenMenu: () => _openMenu(context),
       surfaceBuilder: (mode) => playback.port.buildSurface(
         VideoPlaybackSurfaceRequest(
           media: post.media,
-          videoId: PlaybackVideoId.parse(post.id),
+          videoId: PlaybackVideoId.parse(target),
           isActive: playback.isActive,
           mode: mode,
         ),

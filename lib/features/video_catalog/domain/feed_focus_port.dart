@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 
 enum FeedFocusCause { userNavigation, rosterChange, transportRescue }
@@ -24,6 +26,9 @@ final class FeedTransportRescue {
 /// The viewer's position in a feed as the delivery engine sees it: an
 /// ordered window of posts around — and including — the current item.
 final class FeedFocus {
+  static const _behind = 3;
+  static const _ahead = 24;
+
   FeedFocus._(
     this.window,
     this.currentIndex,
@@ -32,8 +37,8 @@ final class FeedFocus {
     this.rescue,
   );
 
-  /// Preserves the complete feed order so the delivery policy can derive
-  /// its own adaptive frontier around [activeIndex].
+  /// Preserves the nearby feed order without sending an unbounded session
+  /// roster through the delivery bridge on every navigation.
   factory FeedFocus.around({
     required List<VideoPost> posts,
     required int activeIndex,
@@ -45,16 +50,18 @@ final class FeedFocus {
     if ((cause == FeedFocusCause.transportRescue) != (rescue != null)) {
       throw ArgumentError('Transport rescue focus requires rescue context.');
     }
+    final start = math.max(0, activeIndex - _behind);
+    final end = math.min(posts.length, activeIndex + _ahead + 1);
     return FeedFocus._(
-      List<VideoPost>.unmodifiable(posts),
-      activeIndex,
+      List<VideoPost>.unmodifiable(posts.sublist(start, end)),
+      activeIndex - start,
       watched,
       cause,
       rescue,
     );
   }
 
-  /// Complete feed-ordered roster; always contains [current].
+  /// Bounded feed-ordered delivery window; always contains [current].
   final List<VideoPost> window;
 
   /// Index of the current post within [window].

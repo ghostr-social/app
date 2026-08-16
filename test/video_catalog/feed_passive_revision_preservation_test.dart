@@ -46,7 +46,7 @@ void main() {
     final loaded = cubit.state as FeedLoaded;
     expect(loaded.posts[loaded.activeIndex].id.value, 'b');
     expect(loaded.posts[loaded.activeIndex].caption, 'fresh b');
-    expect(feed.loadExclusions, [true, true]);
+    expect(feed.loadExclusions, [true, false]);
     expect(states.whereType<FeedLoading>(), hasLength(1));
     await subscription.cancel();
     await cubit.close();

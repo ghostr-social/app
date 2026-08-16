@@ -9,7 +9,7 @@ import '../support/feed_screen_harness.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  testWidgets('resuming an ordinary feed cannot render its exited video', (
+  testWidgets('resuming the app restores the same current feed video', (
     tester,
   ) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
@@ -51,11 +51,9 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     await tester.pump();
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-    await tester.pump();
-    expect(find.text('First watched video'), findsNothing);
     await tester.pumpAndSettle();
 
-    expect(find.text('First watched video'), findsNothing);
-    expect(find.text('Second unseen video'), findsOneWidget);
+    expect(find.text('First watched video'), findsOneWidget);
+    expect(find.text('Second unseen video'), findsNothing);
   });
 }

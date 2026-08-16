@@ -1,4 +1,5 @@
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
+import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_refresh_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
@@ -12,11 +13,18 @@ sealed class FeedFetch {
 
 /// A slice of the feed, with the cursor for the slice after it.
 final class FeedFetched extends FeedFetch {
-  FeedFetched(this.page, {List<VideoPost>? eligiblePosts})
-    : eligiblePosts = List<VideoPost>.unmodifiable(eligiblePosts ?? page.posts);
+  FeedFetched(
+    this.page, {
+    List<VideoPost>? eligiblePosts,
+    Set<ProfileId> blockedProfiles = const {},
+  }) : eligiblePosts = List<VideoPost>.unmodifiable(
+         eligiblePosts ?? page.posts,
+       ),
+       blockedProfiles = Set<ProfileId>.unmodifiable(blockedProfiles);
 
   final VideoFeedPage page;
   final List<VideoPost> eligiblePosts;
+  final Set<ProfileId> blockedProfiles;
 
   List<VideoPost> get posts => page.posts;
 }
@@ -29,10 +37,14 @@ final class FeedUnavailable extends FeedFetch {
 }
 
 /// Reads the feed and captures every failure as an explicit outcome.
+typedef LoadBlockedProfiles = Future<Set<ProfileId>> Function();
+
 final class FeedFetcher {
-  const FeedFetcher(this._feed);
+  const FeedFetcher(this._feed, {LoadBlockedProfiles? loadBlockedProfiles})
+    : _loadBlockedProfiles = loadBlockedProfiles;
 
   final VideoFeedRepository _feed;
+  final LoadBlockedProfiles? _loadBlockedProfiles;
 
   /// The newest posts the viewer has not watched yet.
   Future<FeedFetch> unwatched(FeedKind kind) {
@@ -43,19 +55,28 @@ final class FeedFetcher {
   /// the viewer is on can still be found.
   Future<FeedFetch> resync(FeedKind kind) async {
     try {
-      if (_feed case final VideoFeedRefreshRepository refresh) {
-        final snapshot = await refresh.loadRefresh(kind);
-        return FeedFetched(
-          VideoFeedPage(posts: snapshot.allPosts),
-          eligiblePosts: snapshot.eligiblePosts,
-        );
-      }
+      final snapshot = await _refresh(kind);
+      final blocked = await _blockedProfiles();
       return FeedFetched(
-        VideoFeedPage(posts: await _feed.loadFeed(kind, excludeWatched: true)),
+        VideoFeedPage(posts: snapshot.allPosts),
+        eligiblePosts: snapshot.eligiblePosts,
+        blockedProfiles: blocked,
       );
     } on Object catch (error, stackTrace) {
       return FeedUnavailable(FeedOperationFailure(error, stackTrace));
     }
+  }
+
+  Future<VideoFeedRefreshSnapshot> _refresh(FeedKind kind) async {
+    if (_feed case final VideoFeedRefreshRepository refresh) {
+      return refresh.loadRefresh(kind);
+    }
+    final posts = await _feed.loadFeed(kind);
+    return VideoFeedRefreshSnapshot(allPosts: posts, eligiblePosts: posts);
+  }
+
+  Future<Set<ProfileId>> _blockedProfiles() {
+    return _loadBlockedProfiles?.call() ?? Future.value(const <ProfileId>{});
   }
 
   /// One page further into the past.

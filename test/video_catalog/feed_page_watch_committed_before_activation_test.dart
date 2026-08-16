@@ -9,7 +9,7 @@ import '../support/fakes.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('a swiped video is not activated before its watch commits', () async {
+  test('a swiped video activates while its watch commits', () async {
     final history = _SecondWatchGatedHistory();
     final posts = [samplePost(id: 'first'), samplePost(id: 'second')];
     final source = FakeVideoCatalogRepository(forYouFeed: posts);
@@ -36,10 +36,12 @@ void main() {
     cubit.pageChanged(1);
     await history.secondStarted.future;
 
-    expect((cubit.state as FeedLoaded).posts.first.id.value, 'first');
+    expect((cubit.state as FeedLoaded).roster.active.id.value, 'second');
     history.release.complete();
     await pumpEventQueue();
-    expect((cubit.state as FeedLoaded).posts.first.id.value, 'second');
+    final loaded = cubit.state as FeedLoaded;
+    expect(loaded.roster.active.id.value, 'second');
+    expect(loaded.posts, posts);
   });
 }
 

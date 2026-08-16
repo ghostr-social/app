@@ -32,24 +32,21 @@ final class FeedSession {
     FeedRoster visible,
     List<VideoPost> refreshed, {
     required List<VideoPost> eligible,
-    required bool retainWatched,
+    required Set<ProfileId> blocked,
   }) {
     final current = visible.posts;
     return _holding(
-      visible.resynced(
-        _reconciled(refreshed, current),
-        eligible: _reconciled(eligible, current),
-        retainWatched: retainWatched,
-      ),
+      visible
+          .resynced(
+            _reconciled(refreshed, current),
+            eligible: _reconciled(eligible, current),
+          )
+          .withoutBlocked(blocked),
     );
   }
 
-  FeedRoster movedTo(
-    FeedRoster visible,
-    int index, {
-    required bool forgetPrevious,
-  }) {
-    return _holding(visible.movedTo(index, forgetPrevious: forgetPrevious));
+  FeedRoster movedTo(FeedRoster visible, int index) {
+    return _holding(visible.movedTo(index));
   }
 
   /// An older page: the posts it adds beyond what the viewer already has,
@@ -101,7 +98,7 @@ final class FeedSession {
     return _held;
   }
 
-  /// Forgets every post published by a blocked creator.
+  /// Forgets every post published or reposted by a blocked profile.
   void dropCreator(ProfileId creator) {
     _held = FeedRoster(_held).withoutCreator(creator).posts;
   }

@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
-import 'package:ghostr/features/watch_history/domain/watch_aware_video_feed_repository.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
 
 import '../support/fakes.dart';
@@ -8,23 +7,14 @@ import '../support/sample_data.dart';
 
 void main() {
   test(
-    'returning to an ordinary feed cannot restore its exited video',
+    'temporary explicit-feed invisibility preserves the current session',
     () async {
       final history = FakeWatchHistoryRepository();
-      final source = FakeVideoCatalogRepository(
-        forYouFeed: [
-          samplePost(id: 'first'),
-          samplePost(id: 'second'),
-        ],
-      );
-      final feed = WatchAwareVideoFeedRepository(
-        feed: source,
-        history: history,
-        failureReporter: RecordingFailureReporter(),
-      );
+      final post = samplePost(id: 'profile-video');
+      final source = FakeVideoCatalogRepository(forYouFeed: [post]);
       final cubit = FeedCubit(
         FeedDependencies(
-          feed: feed,
+          feed: source,
           engagement: source,
           optional: FeedOptionalDependencies(
             watch: FeedWatchDependencies(
@@ -38,13 +28,16 @@ void main() {
       );
       addTearDown(cubit.close);
       await cubit.load();
+      expect(history.entries, hasLength(1));
 
       cubit.surfaceVisibilityChanged(false);
-      expect(cubit.state, isA<FeedLoading>());
-      await cubit.refresh();
+      expect(cubit.state, isA<FeedLoaded>());
+      cubit.surfaceVisibilityChanged(true);
+      await pumpEventQueue();
 
-      final returned = cubit.state as FeedLoaded;
-      expect(returned.posts.first.id.value, 'second');
+      expect(cubit.state, isA<FeedLoaded>());
+      expect(history.entries, hasLength(1));
+      expect(history.entries.single.videoId, 'e:profile-video');
     },
   );
 }

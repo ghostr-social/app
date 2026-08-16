@@ -13,7 +13,7 @@ class FeedPageView extends StatefulWidget {
 
   final int itemCount;
   final int initialPage;
-  final ValueChanged<int> onPageChanged;
+  final bool Function(int index) onPageChanged;
   final IndexedWidgetBuilder itemBuilder;
 
   @override
@@ -25,13 +25,12 @@ class _FeedPageViewState extends State<FeedPageView> {
   final _gesture = FeedSwipeGesture();
   late final _physics = FeedSwipePhysics(gesture: _gesture);
   int? _activePointer;
+  var _repositionPending = false;
 
   @override
   void didUpdateWidget(covariant FeedPageView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _reposition();
-    });
+    if (oldWidget.initialPage != widget.initialPage) _requestReposition();
   }
 
   @override
@@ -48,7 +47,7 @@ class _FeedPageViewState extends State<FeedPageView> {
         pageSnapping: false,
         allowImplicitScrolling: true,
         itemCount: widget.itemCount,
-        onPageChanged: widget.onPageChanged,
+        onPageChanged: _pageChanged,
         itemBuilder: widget.itemBuilder,
       ),
     );
@@ -67,16 +66,39 @@ class _FeedPageViewState extends State<FeedPageView> {
     if (target != null && _controller.hasClients) {
       _controller.jumpToPage(target);
     }
+    if (_repositionPending) _requestReposition();
   }
 
   void _cancelGesture(PointerCancelEvent event) {
     if (_activePointer != event.pointer) return;
     _activePointer = null;
     _gesture.reset();
+    if (_repositionPending) _requestReposition();
+  }
+
+  void _pageChanged(int index) {
+    if (!widget.onPageChanged(index)) _rejectPageChange();
+  }
+
+  void _rejectPageChange() {
+    if (!mounted) return;
+    _requestReposition();
+  }
+
+  void _requestReposition() {
+    _repositionPending = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _reposition();
+    });
   }
 
   void _reposition() {
-    if (widget.itemCount == 0) return;
+    if (!_repositionPending) return;
+    if (_activePointer != null) return;
+    if (widget.itemCount == 0) {
+      _repositionPending = false;
+      return;
+    }
     if (!_controller.hasClients) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _reposition();
@@ -84,6 +106,7 @@ class _FeedPageViewState extends State<FeedPageView> {
       return;
     }
     final target = widget.initialPage.clamp(0, widget.itemCount - 1);
+    _repositionPending = false;
     if (_controller.page?.round() != target) _controller.jumpToPage(target);
   }
 

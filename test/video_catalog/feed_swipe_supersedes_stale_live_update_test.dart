@@ -13,9 +13,10 @@ import '../support/fakes.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('a swipe supersedes eligibility from a pending live update', () async {
-    final posts = List.generate(3, (index) => samplePost(id: 'p$index'));
-    final source = _GatedLiveRefreshSource(posts);
+  test('a swipe retries a superseded pending live update', () async {
+    final initial = List.generate(2, (index) => samplePost(id: 'p$index'));
+    final fresh = samplePost(id: 'p2');
+    final source = _GatedLiveRefreshSource(initial, fresh);
     final updates = ControllableVideoFeedUpdates();
     final cubit = FeedCubit(
       FeedDependencies(
@@ -49,30 +50,36 @@ void main() {
 
     cubit.pageChanged(1);
     await pumpEventQueue();
-    cubit.pageChanged(1);
-    await pumpEventQueue();
     source.releaseRefresh.complete();
     await pumpEventQueue();
 
     final loaded = cubit.state as FeedLoaded;
-    expect(loaded.posts.map((post) => post.id.value), ['p2']);
+    expect(loaded.posts.map((post) => post.id.value), ['p0', 'p1', 'p2']);
+    expect(loaded.activeIndex, 1);
   });
 }
 
 final class _GatedLiveRefreshSource extends FakeVideoCatalogRepository
     implements VideoFeedRefreshRepository {
-  _GatedLiveRefreshSource(List<VideoPost> posts) : super(forYouFeed: posts);
+  _GatedLiveRefreshSource(List<VideoPost> posts, this.fresh)
+    : super(forYouFeed: posts);
 
+  final VideoPost fresh;
   final refreshStarted = Completer<void>();
   final releaseRefresh = Completer<void>();
+  var refreshes = 0;
 
   @override
   Future<VideoFeedRefreshSnapshot> loadRefresh(FeedKind kind) async {
-    refreshStarted.complete();
-    await releaseRefresh.future;
+    refreshes += 1;
+    if (refreshes == 1) {
+      refreshStarted.complete();
+      await releaseRefresh.future;
+    }
+    final posts = [...forYouFeed, fresh];
     return VideoFeedRefreshSnapshot(
-      allPosts: forYouFeed,
-      eligiblePosts: forYouFeed.skip(1).toList(),
+      allPosts: posts,
+      eligiblePosts: posts.skip(1).toList(),
     );
   }
 }

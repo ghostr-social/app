@@ -14,24 +14,27 @@ import '../support/fakes.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('a new load supersedes an in-flight raw resync immediately', () async {
+  test('an update arriving during refresh is reconciled afterward', () async {
     final updates = ControllableVideoFeedUpdates();
     final feed = _GatedRefreshFeed();
     final cubit = FeedCubit(
       FeedDependencies(
         feed: feed,
-        engagement: FakeVideoCatalogRepository(forYouFeed: []),
+        engagement: FakeVideoCatalogRepository(forYouFeed: const []),
         optional: FeedOptionalDependencies(
           delivery: FeedDeliveryDependencies(updates: updates),
         ),
       ),
     );
+    addTearDown(updates.close);
     addTearDown(() async {
-      if (!feed.reload.isCompleted) feed.reload.complete([feed.fresh]);
+      if (!feed.release.isCompleted) feed.release.complete();
       await cubit.close();
-      await updates.close();
     });
     await cubit.load();
+
+    final refresh = cubit.refresh();
+    await feed.firstStarted.future;
     updates.add(
       VideoFeedUpdate(
         revision: BigInt.one,
@@ -39,56 +42,40 @@ void main() {
         hasPosts: true,
       ),
     );
-    await feed.refreshStarted.future;
-    final admitted = <String>[];
-    var loadingStarted = false;
-    final subscription = cubit.stream.listen((state) {
-      if (loadingStarted && state is FeedLoaded) {
-        admitted.addAll(state.posts.map((post) => post.id.value));
-      }
-      if (state is FeedLoading && !feed.refresh.isCompleted) {
-        loadingStarted = true;
-        feed.refresh.complete(
-          VideoFeedRefreshSnapshot(
-            allPosts: [feed.watched],
-            eligiblePosts: [feed.fresh],
-          ),
-        );
-      }
-    });
-    addTearDown(subscription.cancel);
-    final loading = cubit.load();
+    await pumpEventQueue();
+    feed.release.complete();
+    await refresh;
     await pumpEventQueue();
 
-    expect(cubit.state, isA<FeedLoading>());
-    expect(admitted, isNot(contains('watched')));
-    feed.reload.complete([feed.fresh]);
-    await loading;
+    final loaded = cubit.state as FeedLoaded;
+    expect(feed.refreshCalls, 2);
+    expect(loaded.posts.map((post) => post.id.value), ['initial', 'fresh']);
   });
 }
 
 final class _GatedRefreshFeed
     implements VideoFeedRepository, VideoFeedRefreshRepository {
-  final watched = samplePost(id: 'watched');
+  final initial = samplePost(id: 'initial');
   final fresh = samplePost(id: 'fresh');
-  final refreshStarted = Completer<void>();
-  final refresh = Completer<VideoFeedRefreshSnapshot>();
-  final reload = Completer<List<VideoPost>>();
-  var loads = 0;
+  final firstStarted = Completer<void>();
+  final release = Completer<void>();
+  var refreshCalls = 0;
 
   @override
   Future<List<VideoPost>> loadFeed(
     FeedKind kind, {
     bool excludeWatched = false,
-  }) {
-    loads += 1;
-    return loads == 1 ? Future.value([watched]) : reload.future;
-  }
+  }) async => [initial];
 
   @override
-  Future<VideoFeedRefreshSnapshot> loadRefresh(FeedKind kind) {
-    refreshStarted.complete();
-    return refresh.future;
+  Future<VideoFeedRefreshSnapshot> loadRefresh(FeedKind kind) async {
+    refreshCalls += 1;
+    if (refreshCalls == 1) {
+      firstStarted.complete();
+      await release.future;
+    }
+    final posts = refreshCalls == 1 ? [initial] : [initial, fresh];
+    return VideoFeedRefreshSnapshot(allPosts: posts, eligiblePosts: posts);
   }
 
   @override

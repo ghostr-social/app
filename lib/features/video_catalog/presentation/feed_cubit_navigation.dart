@@ -1,27 +1,29 @@
 part of 'feed_cubit.dart';
 
-typedef _PageTransitionCommit = ({
+typedef _NavigationCommit = ({
   int transition,
   FeedLoaded current,
-  FeedLoaded moved,
+  int index,
+  VideoInteractionTarget target,
   FeedReadyDecision decision,
 });
 
 extension FeedCubitNavigation on FeedCubit {
-  void pageChanged(int index) {
+  bool pageChanged(int index) {
     final current = state;
-    if (current is! FeedLoaded) return;
-    if (!_containsPage(current, index)) return;
-    if (_consumeTransportJump(index)) return;
+    if (current is! FeedLoaded) return false;
+    if (!_containsPage(current, index)) return false;
+    if (_consumeTransportJump(index)) return true;
+    if (!_isSurfaceVisible) return index == current.activeIndex;
     final transition = ++_pageTransition;
     final decision = _readyDecision(current, index);
     if (decision.action == FeedReadyAction.rescue) {
       return _rescueTo(current, decision, transition);
     }
-    _preparePageTransition(current, index, transition, decision);
+    return _preparePageTransition(current, index, transition, decision);
   }
 
-  void _preparePageTransition(
+  bool _preparePageTransition(
     FeedLoaded current,
     int index,
     int transition,
@@ -32,48 +34,42 @@ extension FeedCubitNavigation on FeedCubit {
     final commit = (
       transition: transition,
       current: current,
-      moved: moved,
+      index: index,
+      target: VideoInteractionTarget.fromPost(moved.roster.active),
       decision: decision,
     );
-    final preparation = _viewer.prepareToShow(moved.roster.active);
-    if (preparation is Future<bool>) {
-      return unawaited(_finishPageTransition(preparation, commit));
-    }
-    if (!preparation) return;
-    _finishPageTransitionNow(commit);
+    return _finishPageTransitionNow(commit);
   }
 
   bool _containsPage(FeedLoaded current, int index) {
     return index >= 0 && index < current.posts.length;
   }
 
-  Future<void> _finishPageTransition(
-    Future<bool> preparation,
-    _PageTransitionCommit commit,
-  ) async {
-    if (!await preparation) return;
-    _finishPageTransitionNow(commit);
-  }
-
-  void _finishPageTransitionNow(_PageTransitionCommit commit) {
-    if (!_acceptsPageTransition(commit.transition, commit.current)) return;
-    emit(commit.moved);
-    _viewer.landedOn(commit.moved.posts, commit.moved.activeIndex);
-    _rememberPendingRescue(commit.current, commit.moved, commit.decision);
+  bool _finishPageTransitionNow(_NavigationCommit commit) {
+    final current = _acceptedNavigation(commit);
+    if (current == null) return false;
+    final moved = _movedTo(current, commit.index);
+    emit(moved);
+    _viewer.landedOn(moved.posts, moved.activeIndex);
+    _rememberPendingRescue(current, moved, commit.decision);
     _rescueAfterDeliveryUpdate();
     _ensureBuffered();
+    return true;
   }
 
-  bool _acceptsPageTransition(int transition, FeedLoaded from) {
-    return !isClosed && transition == _pageTransition && identical(state, from);
+  FeedLoaded? _acceptedNavigation(_NavigationCommit commit) {
+    if (isClosed || commit.transition != _pageTransition) return null;
+    final current = state;
+    if (current is! FeedLoaded || current.kind != commit.current.kind) {
+      return null;
+    }
+    if (!_containsPage(current, commit.index)) return null;
+    final target = VideoInteractionTarget.fromPost(current.posts[commit.index]);
+    return target == commit.target ? current : null;
   }
 
   FeedLoaded _movedTo(FeedLoaded current, int index) {
-    final roster = _session.movedTo(
-      current.roster,
-      index,
-      forgetPrevious: _forgetsViewed(current),
-    );
+    final roster = _session.movedTo(current.roster, index);
     return FeedLoaded.of(
       current.kind,
       roster,
@@ -82,26 +78,51 @@ extension FeedCubitNavigation on FeedCubit {
     );
   }
 
-  bool _forgetsViewed(FeedLoaded current) {
-    return _dependencies.watchTracker != null &&
-        _dependencies.replayPolicy == FeedReplayPolicy.prevent &&
-        current.kind != FeedKind.following;
-  }
-
   void _surfaceVisibilityChanged(bool isVisible) {
+    _isSurfaceVisible = isVisible;
     _viewer.visibilityChanged(isVisible);
-    if (!isVisible) return _forgetExitedSurface();
-    if (_reloadWhenSurfaceVisible) unawaited(load());
+    if (!isVisible) return _suspendHiddenWork();
+    _resumeVisibleViewer();
+    _rescueAfterDeliveryUpdate();
+    if (_reloadWhenSurfaceVisible) {
+      _refreshWhenSurfaceVisible = false;
+      unawaited(load());
+      return;
+    }
+    if (_refreshWhenSurfaceVisible) {
+      _refreshWhenSurfaceVisible = false;
+      unawaited(refresh());
+      return;
+    }
+    _startPendingFeedUpdate();
+    if (state is FeedEmpty) _hunt.emptied(_startHuntAttempt);
+    if (state is FeedLoaded) _ensureBuffered();
   }
 
-  void _forgetExitedSurface() {
-    if (_dependencies.watchTracker == null) return;
-    _reloadWhenSurfaceVisible = true;
-    _loads.take();
+  void _resumeVisibleViewer() {
+    final current = state;
+    if (current is! FeedLoaded) return;
+    _viewer.rosterChanged(current.posts, current.activeIndex);
+  }
+
+  void _suspendHiddenWork() {
     _pageTransition += 1;
-    _clearPendingRescue();
+    _pausePendingRescue();
+    _backfillRetry.cancel();
     _hunt.filled();
-    if (state is! FeedLoading) emit(FeedLoading(state.kind));
+    if (state is FeedLoaded && _updates.pulls > 0) {
+      _refreshWhenSurfaceVisible = true;
+    }
+    if (state is FeedLoading && _isPreparingLoad) return;
+    _loads.take();
+    if (state is FeedLoading || state is FeedFailure) {
+      _reloadWhenSurfaceVisible = true;
+    }
+  }
+
+  void _pausePendingRescue() {
+    _rescueTimer?.cancel();
+    _rescueTimer = null;
   }
 
   void clearNotice() {

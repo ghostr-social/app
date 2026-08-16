@@ -33,7 +33,9 @@ final class FeedDigFailed extends FeedDig {
 /// Nothing to do: the past ran dry, a dig is already in flight, or a newer
 /// feed took over while this one was travelling.
 final class FeedDigSkipped extends FeedDig {
-  const FeedDigSkipped();
+  const FeedDigSkipped({required this.retryable});
+
+  final bool retryable;
 }
 
 /// Decides when the feed must dig into the past.
@@ -68,7 +70,9 @@ final class FeedBackfill {
   /// Digs one page further into the past.
   Future<FeedDig> dig(FeedKind kind) async {
     final lease = _pagination.beginLoad();
-    if (lease == null) return const FeedDigSkipped();
+    if (lease == null) {
+      return FeedDigSkipped(retryable: !_pagination.isExhausted);
+    }
     final request = _loads.pending;
     final result = await _fetch.older(kind, lease.cursor);
     if (result is FeedUnavailable) {
@@ -77,7 +81,7 @@ final class FeedBackfill {
     }
     if (!_loads.accepts(request)) {
       _pagination.failLoad(lease);
-      return const FeedDigSkipped();
+      return const FeedDigSkipped(retryable: true);
     }
     final page = (result as FeedFetched).page;
     final nextCursor = page.nextOlderThan;

@@ -1,17 +1,14 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/features/watch_history/domain/watch_aware_video_feed_repository.dart';
-import 'package:ghostr/features/watch_history/domain/watch_history_entry.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
 
 import '../support/fakes.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('refresh commits a replacement watch before activating it', () async {
-    final history = _SecondWatchGatedHistory();
+  test('a missing passive row keeps its original watch and position', () async {
+    final history = FakeWatchHistoryRepository();
     final first = samplePost(id: 'first');
     final second = samplePost(id: 'second');
     final source = FakeVideoCatalogRepository(forYouFeed: [first, second]);
@@ -34,35 +31,16 @@ void main() {
         ),
       ),
     );
-    addTearDown(() async {
-      if (!history.release.isCompleted) history.release.complete();
-      await cubit.close();
-    });
+    addTearDown(cubit.close);
     await cubit.load();
     source.forYouFeed.remove(first);
 
-    final refresh = cubit.refresh();
-    await history.secondStarted.future;
+    await cubit.refresh();
 
-    expect((cubit.state as FeedLoaded).posts.first.id.value, 'first');
-    history.release.complete();
-    await refresh;
-    expect((cubit.state as FeedLoaded).posts.first.id.value, 'second');
+    final loaded = cubit.state as FeedLoaded;
+    expect(loaded.posts.map((post) => post.id.value), ['first', 'second']);
+    expect(loaded.activeIndex, 0);
+    expect(history.entries, hasLength(1));
+    expect(history.entries.single.videoId, 'e:first');
   });
-}
-
-final class _SecondWatchGatedHistory extends FakeWatchHistoryRepository {
-  final secondStarted = Completer<void>();
-  final release = Completer<void>();
-  var writes = 0;
-
-  @override
-  Future<void> record(WatchHistoryEntry entry) async {
-    writes += 1;
-    if (writes == 2) {
-      secondStarted.complete();
-      await release.future;
-    }
-    await super.record(entry);
-  }
 }

@@ -9,7 +9,7 @@ import '../support/fakes.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('duplicate page changes wait for the same durable watch', () async {
+  test('duplicate page changes reuse the same durable watch', () async {
     final history = _SecondWatchGatedHistory();
     final posts = [samplePost(id: 'first'), samplePost(id: 'second')];
     final source = FakeVideoCatalogRepository(forYouFeed: posts);
@@ -37,10 +37,13 @@ void main() {
     await history.secondStarted.future;
     cubit.pageChanged(1);
 
-    expect((cubit.state as FeedLoaded).posts.first.id.value, 'first');
+    expect((cubit.state as FeedLoaded).roster.active.id.value, 'second');
     history.release.complete();
     await pumpEventQueue();
-    expect((cubit.state as FeedLoaded).posts.first.id.value, 'second');
+    final loaded = cubit.state as FeedLoaded;
+    expect(loaded.roster.active.id.value, 'second');
+    expect(loaded.posts, posts);
+    expect(history.writes, 2);
   });
 }
 
