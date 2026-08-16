@@ -10,7 +10,7 @@ void main() {
     final focusPort = FakeFeedFocusPort();
     final repository = FakeVideoCatalogRepository(
       forYouFeed: [
-        for (var index = 0; index < 12; index += 1)
+        for (var index = 0; index < 50; index += 1)
           samplePost(id: 'post-$index'),
       ],
     );
@@ -24,18 +24,19 @@ void main() {
     addTearDown(cubit.close);
     await cubit.load();
 
-    cubit.pageChanged(6);
+    cubit.pageChanged(25);
     await pumpEventQueue();
 
     final focus = focusPort.focuses.last;
+    expect((cubit.state as FeedLoaded).posts, hasLength(50));
     expect(focus.window.map((post) => post.media.remoteUrl), [
-      for (var index = 0; index < 12; index += 1)
+      for (var index = 22; index < 50; index += 1)
         'https://example.com/video/post-$index.mp4',
     ]);
-    expect(focus.currentIndex, 6);
+    expect(focus.currentIndex, 3);
     expect(
       focus.current.media.remoteUrl,
-      'https://example.com/video/post-6.mp4',
+      'https://example.com/video/post-25.mp4',
     );
   });
 }

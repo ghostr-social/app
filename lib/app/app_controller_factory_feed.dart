@@ -37,7 +37,6 @@ extension AppControllerFeedFactories on AppControllerFactory {
           creatorId: post.creator.id,
         ),
         viewerId: viewer.id,
-        replayPolicy: FeedReplayPolicy.explicitSurface,
       ),
       openAt: post.id,
     );
@@ -47,7 +46,6 @@ extension AppControllerFeedFactories on AppControllerFactory {
     VideoFeedRepository feed, {
     ProfileId? viewerId,
     VideoFeedUpdates? updates,
-    FeedReplayPolicy replayPolicy = FeedReplayPolicy.prevent,
   }) {
     final services = _dependencies.videoCatalogServices;
     return FeedDependencies(
@@ -58,10 +56,7 @@ extension AppControllerFeedFactories on AppControllerFactory {
       optional: FeedOptionalDependencies(
         social: services.social,
         focus: _feedFocus.openLease(),
-        watch: FeedWatchDependencies(
-          tracker: _watchTracker(),
-          replayPolicy: replayPolicy,
-        ),
+        watch: FeedWatchDependencies(tracker: _watchTracker()),
         delivery: FeedDeliveryDependencies(
           updates: updates,
           reposts: services.reposts,

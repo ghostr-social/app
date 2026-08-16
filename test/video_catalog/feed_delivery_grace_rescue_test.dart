@@ -13,7 +13,7 @@ import '../support/fakes.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('grace rescue starts after a no-replay watch commits', () {
+  test('grace rescue stays responsive while its watch commits', () {
     fakeAsync((clock) {
       final updates = _DeliveryUpdates();
       final history = _GatedHistory();
@@ -41,15 +41,14 @@ void main() {
       updates.publish(posts[2], ready: true, etaMs: 0);
       cubit.pageChanged(1);
       clock.flushMicrotasks();
-      expect((cubit.state as FeedLoaded).posts.first.id.value, 'p0');
+      expect((cubit.state as FeedLoaded).roster.active.id.value, 'p1');
 
       clock.elapse(const Duration(milliseconds: 250));
+      final loaded = cubit.state as FeedLoaded;
+      expect(loaded.roster.active.id.value, 'p2');
+      expect(loaded.posts.map((post) => post.id.value), ['p0', 'p1', 'p2']);
       history.release.complete();
       clock.flushMicrotasks();
-      expect((cubit.state as FeedLoaded).posts.first.id.value, 'p1');
-      clock.elapse(const Duration(milliseconds: 250));
-
-      expect((cubit.state as FeedLoaded).posts.first.id.value, 'p2');
       cubit.close();
       updates.close();
       clock.flushMicrotasks();

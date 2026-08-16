@@ -35,6 +35,8 @@ final class FeedPagination {
     return _active = FeedPageLease(cursor);
   }
 
+  bool get isExhausted => _cursor == null;
+
   void completeLoad(FeedPageLease lease, VideoFeedPage page) {
     if (!identical(_active, lease)) return;
     _cursor = page.nextOlderThan;

@@ -6,6 +6,7 @@ import 'package:ghostr/features/video_catalog/domain/video_feed_page.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_backfill_retry.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 
 import '../support/controllable_video_feed_updates.dart';
@@ -25,6 +26,7 @@ void main() {
           delivery: FeedDeliveryDependencies(updates: updates),
         ),
       ),
+      backfillRetry: FeedBackfillRetry(delays: const [Duration.zero]),
     );
     addTearDown(cubit.close);
 
@@ -46,7 +48,7 @@ void main() {
 
     final loaded = cubit.state as FeedLoaded;
     expect(loaded.posts.map((post) => post.id.value), ['initial', 'older']);
-    expect(feed.loadCalls, 1);
+    expect(feed.loadCalls, 2);
   });
 }
 

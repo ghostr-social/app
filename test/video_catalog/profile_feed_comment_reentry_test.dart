@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/features/comments/presentation/comments_cubit.dart';
-import 'package:ghostr/features/video_catalog/domain/feed_replay_policy.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/profile_feed_screen.dart';
@@ -13,7 +12,7 @@ import '../support/fake_video_sharing.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  testWidgets('profile feed reloads and records after comments close', (
+  testWidgets('profile comments preserve the current feed session', (
     tester,
   ) async {
     final creator = sampleCreator();
@@ -44,7 +43,6 @@ void main() {
                     history: history,
                     failureReporter: RecordingFailureReporter(),
                   ),
-                  replayPolicy: FeedReplayPolicy.explicitSurface,
                 ),
               ),
             ),
@@ -67,12 +65,12 @@ void main() {
 
     await tester.tap(find.byTooltip('Open comments'));
     await tester.pumpAndSettle();
-    await history.clear();
     await tester.tapAt(const Offset(10, 10));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('Profile clip'), findsOneWidget);
+    expect(history.entries, hasLength(1));
     expect(history.entries.single.videoId, 'e:post-1');
   });
 }

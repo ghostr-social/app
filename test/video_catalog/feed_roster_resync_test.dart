@@ -17,8 +17,13 @@ void main() {
       samplePost(id: 'a'),
     ]);
 
-    expect(resynced.posts.map((post) => post.id.value), ['a', 'c', 'unseen']);
+    expect(resynced.posts.map((post) => post.id.value), [
+      'a',
+      'b',
+      'c',
+      'unseen',
+    ]);
     expect(resynced.active.caption, 'fresh c');
-    expect(resynced.activeIndex, 1);
+    expect(resynced.activeIndex, 2);
   });
 }

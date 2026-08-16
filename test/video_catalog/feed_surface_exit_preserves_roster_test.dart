@@ -1,22 +1,28 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
+import 'package:ghostr/features/watch_history/domain/watch_aware_video_feed_repository.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
 
 import '../support/fakes.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('leaving a video removes it from the ordinary feed roster', () async {
-    final posts = [
-      samplePost(id: 'first'),
-      samplePost(id: 'second'),
-      samplePost(id: 'third'),
-    ];
+  test('temporary surface exit keeps the current feed roster', () async {
     final history = FakeWatchHistoryRepository();
-    final source = FakeVideoCatalogRepository(forYouFeed: posts);
+    final source = FakeVideoCatalogRepository(
+      forYouFeed: [
+        samplePost(id: 'first'),
+        samplePost(id: 'second'),
+      ],
+    );
+    final feed = WatchAwareVideoFeedRepository(
+      feed: source,
+      history: history,
+      failureReporter: RecordingFailureReporter(),
+    );
     final cubit = FeedCubit(
       FeedDependencies(
-        feed: source,
+        feed: feed,
         engagement: source,
         optional: FeedOptionalDependencies(
           watch: FeedWatchDependencies(
@@ -31,15 +37,12 @@ void main() {
     addTearDown(cubit.close);
     await cubit.load();
 
-    cubit.pageChanged(1);
+    cubit.surfaceVisibilityChanged(false);
+    cubit.surfaceVisibilityChanged(true);
     await pumpEventQueue();
 
-    final loaded = cubit.state as FeedLoaded;
-    expect(loaded.posts.map((post) => post.id.value), ['second', 'third']);
-    expect(loaded.activeIndex, 0);
-    expect(history.entries.map((entry) => entry.videoId), [
-      'e:second',
-      'e:first',
-    ]);
+    final returned = cubit.state as FeedLoaded;
+    expect(returned.posts.map((post) => post.id.value), ['first', 'second']);
+    expect(returned.activeIndex, 0);
   });
 }

@@ -18,9 +18,9 @@ class ProfileVideoFeedRepository implements VideoFeedRepository {
     required VideoProfileRepository profile,
     required ProfileSummary viewer,
     required ProfileId creatorId,
-  })  : _profile = profile,
-        _viewer = viewer,
-        _creatorId = creatorId;
+  }) : _profile = profile,
+       _viewer = viewer,
+       _creatorId = creatorId;
 
   final VideoProfileRepository _profile;
   final ProfileSummary _viewer;
@@ -32,6 +32,7 @@ class ProfileVideoFeedRepository implements VideoFeedRepository {
     bool excludeWatched = false,
   }) async {
     final details = await _profile.loadProfile(_viewer, _creatorId);
+    if (details.isBlocked) return const <VideoPost>[];
     return details.posts;
   }
 

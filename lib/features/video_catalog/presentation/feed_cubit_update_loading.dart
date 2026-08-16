@@ -2,6 +2,11 @@ part of 'feed_cubit.dart';
 
 extension FeedCubitUpdateLoading on FeedCubit {
   Future<void> refresh() async {
+    if (!_isSurfaceVisible) {
+      _refreshWhenSurfaceVisible = true;
+      return;
+    }
+    _refreshWhenSurfaceVisible = false;
     final previous = state;
     if (previous is! FeedLoaded) return load();
     final transition = _pageTransition;
@@ -13,10 +18,11 @@ extension FeedCubitUpdateLoading on FeedCubit {
 
   Future<void> _refreshLoaded(FeedLoaded previous, int transition) async {
     await _refreshFeedUpdates(previous.kind);
+    final through = _updates.revision;
     final result = await _loads.newest(() => _fetch.resync(previous.kind));
     final accepted = _currentRefresh(transition, result);
     if (accepted == null) return;
-    await _applyManualRefresh(previous, accepted);
+    _applyManualRefresh(previous, accepted, through);
   }
 
   FeedFetch? _currentRefresh(int transition, FeedFetch? result) {
@@ -26,34 +32,47 @@ extension FeedCubitUpdateLoading on FeedCubit {
     return result;
   }
 
-  Future<void> _applyManualRefresh(
+  void _applyManualRefresh(
     FeedLoaded previous,
     FeedFetch result,
-  ) async {
+    BigInt through,
+  ) {
     switch (result) {
       case FeedUnavailable():
-        emit(
-          previous
-              .withFollows(_follows)
-              .withNotice(feedLoadFailureMessage(result.failure)),
+        final current = state;
+        if (current is FeedLoaded) {
+          emit(
+            current
+                .withFollows(_follows)
+                .withNotice(feedLoadFailureMessage(result.failure)),
+          );
+        }
+      case FeedFetched(
+        :final posts,
+        :final eligiblePosts,
+        :final blockedProfiles,
+      ):
+        final applied = _acceptRefresh(
+          previous,
+          posts,
+          eligiblePosts,
+          blockedProfiles,
         );
-      case FeedFetched(:final posts, :final eligiblePosts):
-        _acknowledgePendingFeedUpdate();
-        await _acceptRefresh(previous, posts, eligiblePosts);
+        if (applied) _acknowledgePendingFeedUpdate(through);
     }
   }
 
-  Future<void> _reloadFromFeedUpdate(
+  Future<bool> _reloadFromFeedUpdate(
     int feed,
     FeedKind kind,
     bool allowEmpty,
   ) async {
     final transition = _pageTransition;
     final result = await _loadFeedUpdate(kind);
-    if (transition != _pageTransition) return;
+    if (transition != _pageTransition || result == null) return false;
     final accepted = _acceptedFeedUpdate(feed, kind, allowEmpty, result);
-    if (accepted == null) return;
-    await _applyFeedUpdate(kind, accepted);
+    if (accepted == null) return true;
+    return _applyFeedUpdate(kind, accepted);
   }
 
   Future<FeedFetch?> _loadFeedUpdate(FeedKind kind) {
@@ -74,12 +93,13 @@ extension FeedCubitUpdateLoading on FeedCubit {
     return result.posts.isNotEmpty || allowEmpty ? result : null;
   }
 
-  Future<void> _applyFeedUpdate(FeedKind kind, FeedFetched accepted) async {
-    final FeedFetched(:posts, :eligiblePosts) = accepted;
+  Future<bool> _applyFeedUpdate(FeedKind kind, FeedFetched accepted) async {
+    final FeedFetched(:posts, :eligiblePosts, :blockedProfiles) = accepted;
     final current = state;
     if (current is FeedLoaded) {
-      return _acceptRefresh(current, posts, eligiblePosts);
+      return _acceptRefresh(current, posts, eligiblePosts, blockedProfiles);
     }
     await _acceptLoad(kind, posts);
+    return state is FeedLoaded || state is FeedEmpty;
   }
 }

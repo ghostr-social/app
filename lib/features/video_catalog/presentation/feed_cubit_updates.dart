@@ -107,18 +107,24 @@ extension FeedCubitUpdates on FeedCubit {
   bool _canDrainFeedUpdates(FeedKind kind) {
     return _updates.reloadingFeed != _updates.feed &&
         _updates.pulls == 0 &&
+        _isSurfaceVisible &&
         _updates.pendingRevision != null &&
-        state is! FeedLoading &&
+        _hasReconciliableFeed &&
         _acceptsFeedReconciliation(_updates.feed, kind);
   }
 
   Future<void> _drainFeedUpdates(int feed, FeedKind kind) async {
     try {
       while (_hasPendingFeedUpdate(feed, kind)) {
+        final revision = _updates.pendingRevision!;
         final allowEmpty = _updates.pendingAllowsEmpty;
         _updates.pendingRevision = null;
         _updates.pendingAllowsEmpty = false;
-        await _reloadFromFeedUpdate(feed, kind, allowEmpty);
+        final applied = await _reloadFromFeedUpdate(feed, kind, allowEmpty);
+        if (!applied) {
+          _deferFeedUpdate(revision, allowEmpty);
+          break;
+        }
       }
     } finally {
       if (_updates.reloadingFeed == feed) _updates.reloadingFeed = null;
@@ -128,9 +134,20 @@ extension FeedCubitUpdates on FeedCubit {
 
   bool _hasPendingFeedUpdate(int feed, FeedKind kind) {
     return _updates.pulls == 0 &&
+        _isSurfaceVisible &&
         _updates.pendingRevision != null &&
-        state is! FeedLoading &&
+        _hasReconciliableFeed &&
         _acceptsFeedReconciliation(feed, kind);
+  }
+
+  bool get _hasReconciliableFeed => state is FeedLoaded || state is FeedEmpty;
+
+  void _deferFeedUpdate(BigInt revision, bool allowEmpty) {
+    final pending = _updates.pendingRevision;
+    if (pending == null || revision > pending) {
+      _updates.pendingRevision = revision;
+    }
+    _updates.pendingAllowsEmpty |= allowEmpty;
   }
 
   void _feedUpdatesEnded(int listener, FeedKind kind) {
@@ -166,7 +183,9 @@ extension FeedCubitUpdates on FeedCubit {
     await _cancelFeedUpdateSubscription();
   }
 
-  void _acknowledgePendingFeedUpdate() {
+  void _acknowledgePendingFeedUpdate(BigInt through) {
+    final pending = _updates.pendingRevision;
+    if (pending != null && pending > through) return;
     _updates.pendingRevision = null;
     _updates.pendingAllowsEmpty = false;
   }

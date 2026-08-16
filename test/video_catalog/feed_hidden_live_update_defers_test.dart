@@ -8,18 +8,20 @@ import '../support/sample_data.dart';
 import '../support/scripted_feed_repository.dart';
 
 void main() {
-  test('a settled empty snapshot retracts the last visible post', () async {
+  test('a hidden feed defers live reconciliation until it returns', () async {
+    final initial = samplePost(id: 'initial');
+    final fresh = samplePost(id: 'fresh');
     final updates = ControllableVideoFeedUpdates();
     final feed = ScriptedFeedRepository(
       loads: [
-        [samplePost()],
-        const [],
+        [initial],
+        [initial, fresh],
       ],
     );
     final cubit = FeedCubit(
       FeedDependencies(
         feed: feed,
-        engagement: FakeVideoCatalogRepository(forYouFeed: []),
+        engagement: FakeVideoCatalogRepository(forYouFeed: const []),
         optional: FeedOptionalDependencies(
           delivery: FeedDeliveryDependencies(updates: updates),
         ),
@@ -29,15 +31,23 @@ void main() {
     addTearDown(updates.close);
     await cubit.load();
 
+    cubit.surfaceVisibilityChanged(false);
     updates.add(
       VideoFeedUpdate(
         revision: BigInt.one,
         phase: VideoFeedUpdatePhase.settled,
-        hasPosts: false,
+        hasPosts: true,
       ),
     );
     await pumpEventQueue();
+    expect(feed.loadCalls, 1);
 
-    expect(cubit.state, isA<FeedEmpty>());
+    cubit.surfaceVisibilityChanged(true);
+    await pumpEventQueue();
+
+    final loaded = cubit.state as FeedLoaded;
+    expect(feed.loadCalls, 2);
+    expect(feed.loadExclusions, [true, false]);
+    expect(loaded.posts.map((post) => post.id.value), ['initial', 'fresh']);
   });
 }

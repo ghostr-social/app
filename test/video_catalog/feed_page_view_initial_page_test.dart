@@ -10,7 +10,10 @@ void main() {
         home: FeedPageView(
           itemCount: 3,
           initialPage: 2,
-          onPageChanged: changes.add,
+          onPageChanged: (changed) {
+            changes.add(changed);
+            return true;
+          },
           itemBuilder: (_, index) => Text('Page $index'),
         ),
       ),

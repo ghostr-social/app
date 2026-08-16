@@ -12,11 +12,9 @@ void main() {
       caption: 'Rejected revision',
     ).withMedia(samplePost(id: 'watched-media').media);
 
-    final refreshed = FeedRoster([held]).resynced(
-      [eligible, rejected],
-      eligible: [eligible],
-      retainWatched: false,
-    );
+    final refreshed = FeedRoster([
+      held,
+    ]).resynced([eligible, rejected], eligible: [eligible]);
 
     expect(refreshed.active.caption, 'Eligible revision');
     expect(refreshed.active.media.remoteUrl, eligible.media.remoteUrl);

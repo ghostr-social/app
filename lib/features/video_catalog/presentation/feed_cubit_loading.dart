@@ -5,13 +5,15 @@ extension FeedCubitLoading on FeedCubit {
     FeedKind kind,
     FeedState Function(String reason) unavailable,
   ) async {
+    if (!await _viewer.settlePendingWatches()) return;
+    final through = _updates.revision;
     final result = await _loads.newest(() => _fetch.unwatched(kind));
     if (isClosed || result == null) return;
     switch (result) {
       case FeedUnavailable():
         _emitState(unavailable(feedLoadFailureMessage(result.failure)));
       case FeedFetched(:final posts):
-        if (posts.isNotEmpty) _acknowledgePendingFeedUpdate();
+        if (posts.isNotEmpty) _acknowledgePendingFeedUpdate(through);
         await _acceptLoad(kind, posts);
     }
   }
@@ -25,7 +27,8 @@ extension FeedCubitLoading on FeedCubit {
       _emitEmpty(kind);
       return;
     }
-    if (!await _viewer.prepareToShow(roster.active)) return;
+    _viewer.startedNewFeed();
+    if (!await _prepareLoadedPost(roster.active)) return;
     if (!_acceptsLoadedFeed(kind, request)) return;
     _emitState(FeedLoaded.of(kind, roster, follows: _follows));
     unawaited(_settleReposts());
@@ -34,33 +37,41 @@ extension FeedCubitLoading on FeedCubit {
     _ensureBuffered();
   }
 
+  Future<bool> _prepareLoadedPost(VideoPost post) async {
+    _isPreparingLoad = true;
+    try {
+      return await _viewer.prepareToShow(post);
+    } finally {
+      _isPreparingLoad = false;
+    }
+  }
+
   bool _acceptsLoadedFeed(FeedKind kind, int request) {
     return !isClosed && state.kind == kind && _loads.accepts(request);
   }
 
-  Future<void> _acceptRefresh(
+  bool _acceptRefresh(
     FeedLoaded initial,
     List<VideoPost> refreshed,
     List<VideoPost> eligible,
-  ) async {
+    Set<ProfileId> blocked,
+  ) {
     final current = state is FeedLoaded ? state as FeedLoaded : initial;
     final roster = _session.resynced(
       current.roster,
       refreshed,
       eligible: eligible,
-      retainWatched: !_forgetsViewed(current),
+      blocked: blocked,
     );
     if (roster.isEmpty) {
       _emitEmpty(current.kind);
-      return;
+      return true;
     }
-    final transition = ++_pageTransition;
-    if (!await _viewer.prepareToShow(roster.active)) return;
-    if (!_acceptsPageTransition(transition, current)) return;
     _emitState(FeedLoaded.of(current.kind, roster, follows: _follows));
     unawaited(_settleReposts());
     _viewer.rosterChanged(roster.posts, roster.activeIndex);
     _ensureBuffered();
+    return true;
   }
 
   void _emitEmpty(FeedKind kind) {
@@ -73,10 +84,11 @@ extension FeedCubitLoading on FeedCubit {
     if (current is! FeedEmpty) return;
     await _runFeedPull(() async {
       await _ensureFeedUpdates(current.kind);
+      final through = _updates.revision;
       final result = await _loads.newest(() => _fetch.unwatched(current.kind));
       if (isClosed || result == null) return;
       if (result case FeedFetched(:final posts) when posts.isNotEmpty) {
-        _acknowledgePendingFeedUpdate();
+        _acknowledgePendingFeedUpdate(through);
         return _acceptLoad(current.kind, posts);
       }
       _hunt.emptied(_startHuntAttempt);

@@ -40,9 +40,11 @@ void main() {
     final stale = cubit.load();
     await history.started.future;
     final newest = cubit.load();
-    await feed.started.future;
+    await pumpEventQueue();
+    expect(feed.started.isCompleted, isFalse);
     history.release.complete();
     await stale;
+    await feed.started.future;
 
     expect(cubit.state, isA<FeedLoading>());
     feed.release.complete();

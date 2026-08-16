@@ -11,7 +11,7 @@ import '../support/sample_data.dart';
 import '../support/test_app.dart';
 
 void main() {
-  testWidgets('returning from a routed feed focuses only an unseen video', (
+  testWidgets('returning from a routed feed restores the home feed', (
     tester,
   ) async {
     final home = [
@@ -61,7 +61,12 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(focus.focuses.last.current.id.value, 'home-3');
-    expect(focus.focuses.last.window.map((post) => post.id.value), ['home-3']);
+    expect(focus.focuses.last.currentIndex, 1);
+    expect(focus.focuses.last.current.id.value, 'home-2');
+    expect(focus.focuses.last.window.map((post) => post.id.value), [
+      'home-1',
+      'home-2',
+      'home-3',
+    ]);
   });
 }

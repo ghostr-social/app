@@ -18,8 +18,10 @@ final class FeedViewer {
   final void Function(Object error, StackTrace stackTrace)? onWatchFailure;
   final Set<Future<bool>> _pendingWrites = <Future<bool>>{};
   final Map<String, Future<bool>> _preparations = {};
+  final Set<String> _committedIdentities = {};
   String? _visibleIdentity;
   String? _requestedIdentity;
+  var _isVisible = true;
   var _isDisposed = false;
 
   /// The viewer landed on `posts[index]` — a load, a swipe, a jump.
@@ -41,6 +43,7 @@ final class FeedViewer {
   }
 
   void visibilityChanged(bool isVisible) {
+    _isVisible = isVisible;
     final lease = focus;
     if (!isVisible) {
       _visibleIdentity = null;
@@ -51,12 +54,29 @@ final class FeedViewer {
     if (lease is FeedFocusLease) lease.activate();
   }
 
+  /// Starts a replacement roster with its own watch-write deduplication.
+  void startedNewFeed() {
+    _committedIdentities.clear();
+    _visibleIdentity = null;
+    _requestedIdentity = null;
+  }
+
+  /// Waits until every video already shown is durable in watch history.
+  Future<bool> settlePendingWatches() async {
+    final results = await Future.wait(List<Future<bool>>.of(_pendingWrites));
+    return results.every((accepted) => accepted);
+  }
+
   /// Persists [post] before a feed is allowed to render it.
   FutureOr<bool> prepareToShow(VideoPost post) {
-    if (_isDisposed) return false;
+    if (_isDisposed || !_isVisible) return false;
     final identity = _identityOf(post);
-    if (_visibleIdentity == identity) return true;
     _requestedIdentity = identity;
+    if (_visibleIdentity == identity) return true;
+    if (_committedIdentities.contains(identity)) {
+      _visibleIdentity = identity;
+      return true;
+    }
     if (_preparations[identity] case final pending?) return pending;
     final tracker = watchTracker;
     if (tracker == null) {
@@ -70,7 +90,7 @@ final class FeedViewer {
     _isDisposed = true;
     final lease = focus;
     if (lease is FeedFocusLease) lease.release();
-    await Future.wait(List<Future<bool>>.of(_pendingWrites));
+    await settlePendingWatches();
   }
 
   void _publish(
@@ -118,6 +138,7 @@ final class FeedViewer {
   ) async {
     try {
       await tracker.videoWatched(post);
+      _committedIdentities.add(identity);
       if (_requestedIdentity == identity) _visibleIdentity = identity;
       return true;
     } on Object catch (error, stackTrace) {
