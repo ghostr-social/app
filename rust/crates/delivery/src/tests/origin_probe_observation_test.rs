@@ -24,7 +24,7 @@ async fn completed_head_probe_updates_the_head_context_only() {
     });
     let now = crate::manager::time::unix_time_ms();
     let query = OriginQuery::new(
-        url,
+        url.clone(),
         OriginContext::new(RequestMethod::Head, 900_000, MediaClass::Unknown)
             .with_network(NetworkClass::Unavailable)
             .with_observed_at_ms(now),
@@ -35,7 +35,21 @@ async fn completed_head_probe_updates_the_head_context_only() {
         .origin_model()
         .estimate(&query, now, DecisionMode::Normal);
     assert!(estimate.effective_samples > 0.0);
-    assert_eq!(estimate.ttfb_ms.p50, 35);
+    assert!(estimate.ttfb_ms.p50 > 35);
+    assert!(estimate.ttfb_ms.p50 < 250);
     assert!(estimate.range_compliance.is_none());
+
+    let range_query = OriginQuery::new(
+        url,
+        OriginContext::new(RequestMethod::RangeGet, 900_000, MediaClass::Unknown)
+            .with_network(NetworkClass::Unavailable)
+            .with_observed_at_ms(now),
+    );
+    let range = keeper
+        .stats()
+        .origin_model()
+        .estimate(&range_query, now, DecisionMode::Normal);
+    assert_eq!(range.effective_samples, 0.0);
+    assert_eq!(range.ttfb_ms.p50, 300);
     std::fs::remove_dir_all(root).expect("remove fixture");
 }
