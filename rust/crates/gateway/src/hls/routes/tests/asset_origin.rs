@@ -56,7 +56,7 @@ pub(super) async fn serve_stalled_asset() -> (String, JoinHandle<()>) {
     (source, task)
 }
 
-async fn accept(listener: &TcpListener) -> (TcpStream, String) {
+pub(super) async fn accept(listener: &TcpListener) -> (TcpStream, String) {
     let (mut socket, _) = listener.accept().await.expect("request");
     let mut request = Vec::new();
     loop {
@@ -71,7 +71,7 @@ async fn accept(listener: &TcpListener) -> (TcpStream, String) {
     (socket, String::from_utf8(request).expect("HTTP request"))
 }
 
-async fn write_manifest(socket: &mut TcpStream) {
+pub(super) async fn write_manifest(socket: &mut TcpStream) {
     let response = format!(
         "HTTP/1.1 200 OK\r\nContent-Type: application/vnd.apple.mpegurl\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
         MANIFEST.len(),

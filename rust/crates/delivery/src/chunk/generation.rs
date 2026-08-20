@@ -2,7 +2,8 @@ use crate::chunk::downloader::HttpResponseEvidence;
 use anyhow::{Context, Result};
 use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_engine::representation::SourceGeneration;
-use reqwest::header::{CONTENT_TYPE, ETAG, LAST_MODIFIED};
+use ghostr_net::strong_etag::single_strong_etag;
+use reqwest::header::{CONTENT_TYPE, LAST_MODIFIED};
 use reqwest::Response;
 
 /// Response identity inspected before any sparse bytes are exposed.
@@ -15,7 +16,11 @@ pub struct OriginGeneration {
 impl HttpResponseEvidence {
     pub(crate) fn from_response(response: &Response) -> Self {
         let headers = response.headers();
-        let etag = header(headers, &ETAG).and_then(EvidenceValidator::strong_etag);
+        let etag = single_strong_etag(headers)
+            .ok()
+            .flatten()
+            .and_then(|etag| etag.to_ascii().map(str::to_owned))
+            .and_then(EvidenceValidator::strong_etag);
         let modified =
             || header(headers, &LAST_MODIFIED).and_then(EvidenceValidator::last_modified);
         Self {
@@ -28,13 +33,10 @@ impl HttpResponseEvidence {
 
 impl OriginGeneration {
     pub(crate) fn from_response(response: &Response, total_bytes: Option<u64>) -> Result<Self> {
-        let strong_etag = response
-            .headers()
-            .get(ETAG)
-            .map(|value| value.to_str().context("origin ETag is not text"))
-            .transpose()?
-            .filter(|value| is_strong_etag(value))
-            .map(str::to_owned);
+        let strong_etag = single_strong_etag(response.headers())
+            .ok()
+            .flatten()
+            .and_then(|etag| etag.to_ascii().map(str::to_owned));
         Ok(Self {
             final_url: response.url().to_string(),
             strong_etag,
@@ -61,13 +63,6 @@ impl OriginGeneration {
     pub(crate) fn resumable(&self) -> Option<SourceGeneration> {
         self.strict().ok()
     }
-}
-
-fn is_strong_etag(value: &str) -> bool {
-    value.starts_with('"')
-        && value.ends_with('"')
-        && value.len() >= 2
-        && !value.bytes().any(|byte| byte.is_ascii_control())
 }
 
 fn header(

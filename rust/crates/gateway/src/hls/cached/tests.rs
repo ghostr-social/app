@@ -25,9 +25,9 @@ async fn cached_assets_apply_typed_ranges_and_normalize_empty_416() {
 }
 
 fn object() -> CachedHlsObject {
-    CachedHlsObject {
-        body: Arc::from(&b"abcdefgh"[..]),
-        final_url: Url::parse("https://media.example/segment.m4s").unwrap(),
-        content_type: Some("video/mp4".to_owned()),
-    }
+    CachedHlsObject::new(
+        Arc::from(&b"abcdefgh"[..]),
+        Url::parse("https://media.example/segment.m4s").unwrap(),
+        Some("video/mp4".to_owned()),
+    )
 }

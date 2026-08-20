@@ -5,12 +5,8 @@ use axum::http::Request;
 use gateway_fixture::delivery::start_delivery;
 use gateway_fixture::hls_origin::HlsOrigin;
 use gateway_fixture::media_client;
-use gateway_fixture::progressive_hls::router_with_segmented_hls;
-use ghostr_delivery::delivery_events::{
-    DeliveryFocus, FocusGeneration, FocusItem, FocusTransition,
-};
+use gateway_fixture::progressive_hls::{hls_focus, router_with_segmented_hls};
 use ghostr_delivery::segmented::SegmentedPhase;
-use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 use ghostr_gateway::hls::sessions::{HlsSessionLimits, HlsSessions};
 use std::time::Duration;
 use tower::ServiceExt;
@@ -19,7 +15,7 @@ use tower::ServiceExt;
 async fn serves_prefetched_manifest_and_segment_without_origin_refetch() {
     let (origin, source) = HlsOrigin::start().await;
     let delivery = start_delivery("hls-prefetched-cache");
-    delivery.handle.update_focus(focus(&source));
+    delivery.handle.update_focus(hls_focus(&source));
     wait_ready(&delivery.segmented).await;
     let prefetched_hits = origin.hits();
     let sessions = sessions();
@@ -44,32 +40,17 @@ async fn serves_prefetched_manifest_and_segment_without_origin_refetch() {
     assert_eq!(origin.hits(), prefetched_hits);
 }
 
-fn focus(source: &str) -> DeliveryFocus {
-    let meta = VideoMeta {
-        urls: vec![source.to_owned()],
-        delivery: DeliveryKind::Hls,
-        sha256: None,
-        size_bytes: None,
-        duration_ms: Some(4_000),
-    };
-    DeliveryFocus {
-        items: vec![FocusItem {
-            post: PostId::new("stream"),
-            meta,
-        }],
-        current_index: 0,
-        watch_ms: 0,
-        generation: FocusGeneration::try_new(1).unwrap(),
-        transition: FocusTransition::UserNavigation,
-        rescue: None,
-    }
-}
-
 async fn wait_ready(cache: &ghostr_delivery::segmented::SegmentedCache) {
     let changed = cache.notifier();
     tokio::time::timeout(Duration::from_secs(2), async {
-        while cache.snapshot("stream").phase != SegmentedPhase::Ready {
-            changed.notified().await;
+        loop {
+            let notified = changed.notified();
+            tokio::pin!(notified);
+            notified.as_mut().enable();
+            if cache.snapshot("stream").phase == SegmentedPhase::Ready {
+                return;
+            }
+            notified.await;
         }
     })
     .await
@@ -77,7 +58,7 @@ async fn wait_ready(cache: &ghostr_delivery::segmented::SegmentedCache) {
 }
 
 fn sessions() -> HlsSessions {
-    HlsSessions::new(HlsSessionLimits::new(2, Duration::from_secs(60)).unwrap())
+    HlsSessions::new(HlsSessionLimits::new(2, Duration::from_secs(60), 8).unwrap())
 }
 
 fn request(uri: &str) -> Request<Body> {

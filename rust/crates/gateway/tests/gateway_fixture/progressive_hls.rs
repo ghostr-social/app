@@ -1,8 +1,10 @@
 use axum::Router;
 use ghostr_delivery::debug::network::NetworkThrottle;
+use ghostr_delivery::delivery_events::{DeliveryFocus, FocusItem};
 use ghostr_delivery::playback_demand::demand_channel;
 use ghostr_delivery::progressive_posts::ServablePosts;
 use ghostr_delivery::segmented::SegmentedCache;
+use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 use ghostr_gateway::hls::sessions::HlsSessions;
 use ghostr_gateway::progressive::capabilities::ProgressiveCapabilities;
 use ghostr_gateway::progressive::route::{ProgressiveState, ProgressiveTiming};
@@ -39,6 +41,23 @@ pub fn router_with_segmented_hls(
         debug_feed: test_debug_feed(),
     });
     configured_router_with_segmented(hls_sessions, client, state, segmented)
+}
+
+pub fn hls_focus(source: &str) -> DeliveryFocus {
+    DeliveryFocus::compatibility(
+        vec![FocusItem {
+            post: PostId::new("stream"),
+            meta: VideoMeta {
+                urls: vec![source.to_owned()],
+                delivery: DeliveryKind::Hls,
+                sha256: None,
+                size_bytes: None,
+                duration_ms: Some(4_000),
+            },
+        }],
+        0,
+        0,
+    )
 }
 
 #[cfg(feature = "video-debug-web")]

@@ -1,6 +1,3 @@
-use crate::hls::asset_request::AssetRangeRequest;
-use crate::hls::asset_response::{self, validate};
-use crate::hls::cached;
 use crate::hls::sessions::{HlsResourceId, HlsSessionId};
 use crate::hls::transfer::HlsTransfer;
 use crate::router::GatewayHttpState;
@@ -13,6 +10,8 @@ use ghostr_hls_manifest::hls_manifest::HlsResourceKind;
 use ghostr_hls_manifest::hls_manifest::MAX_HLS_MANIFEST_BYTES;
 use reqwest::Url;
 use std::sync::Arc;
+
+pub(crate) use crate::hls::asset_delivery::asset;
 
 #[cfg(test)]
 mod tests;
@@ -52,38 +51,6 @@ pub(crate) async fn nested_manifest(
         .await
         .map_err(|_| StatusCode::BAD_GATEWAY)?;
     manifest_response(manifest)
-}
-
-pub(crate) async fn asset(
-    State(state): State<Arc<GatewayHttpState>>,
-    Path((raw_session, raw_resource)): Path<(String, String)>,
-    headers: HeaderMap,
-) -> Result<Response<Body>, StatusCode> {
-    let (session, resource) = parsed_resource(&raw_session, &raw_resource)?;
-    let resource = state
-        .hls_sessions
-        .resource(&session, resource)
-        .await
-        .filter(|item| item.kind == HlsResourceKind::Asset)
-        .ok_or(StatusCode::NOT_FOUND)?;
-    let range = AssetRangeRequest::collect(&headers);
-    if let Some(object) = state.segmented.object(resource.url.as_str()) {
-        return cached::response(object, range);
-    }
-    if range.locally_unsatisfiable() {
-        return asset_response::local_unsatisfiable();
-    }
-    let request = state
-        .client
-        .get(resource.url.as_str())
-        .map_err(|_| StatusCode::BAD_GATEWAY)?
-        .header(ACCEPT_ENCODING, "identity");
-    let request = range.apply(request);
-    let transfer = HlsTransfer::open(request, state.hls_timeouts)
-        .await
-        .map_err(|_| StatusCode::BAD_GATEWAY)?;
-    let envelope = validate(range, transfer.response()).map_err(|_| StatusCode::BAD_GATEWAY)?;
-    transfer.into_proxy(envelope)
 }
 
 async fn fetch_manifest(
@@ -135,7 +102,7 @@ fn require_hls_mime(headers: &HeaderMap) -> Result<()> {
     Ok(())
 }
 
-fn parsed_resource(
+pub(super) fn parsed_resource(
     raw_session: &str,
     raw_resource: &str,
 ) -> Result<(HlsSessionId, HlsResourceId), StatusCode> {

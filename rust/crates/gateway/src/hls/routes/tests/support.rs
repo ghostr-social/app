@@ -32,6 +32,14 @@ pub(super) async fn state_with_timeouts(
     timeouts: HlsTransferTimeouts,
 ) -> (Arc<GatewayHttpState>, HlsSessionId) {
     let sessions = HlsSessions::production();
+    state_with_sessions(source, timeouts, sessions).await
+}
+
+pub(super) async fn state_with_sessions(
+    source: String,
+    timeouts: HlsTransferTimeouts,
+    sessions: HlsSessions,
+) -> (Arc<GatewayHttpState>, HlsSessionId) {
     let id = sessions.acquire(vec![source]).await.expect("session");
     let client = Client::builder().no_proxy().build().expect("client");
     let state = GatewayHttpState {
@@ -47,6 +55,13 @@ pub(super) async fn asset_resource(
     state: &Arc<GatewayHttpState>,
     session: &HlsSessionId,
 ) -> String {
+    asset_resources(state, session).await.remove(0)
+}
+
+pub(super) async fn asset_resources(
+    state: &Arc<GatewayHttpState>,
+    session: &HlsSessionId,
+) -> Vec<String> {
     let response = root_manifest(State(state.clone()), Path(session.as_str().to_owned()))
         .await
         .expect("root manifest");
@@ -55,9 +70,10 @@ pub(super) async fn asset_resource(
         .expect("manifest body");
     String::from_utf8(body.to_vec())
         .expect("manifest")
-        .split("/assets/")
-        .nth(1)
-        .and_then(|suffix| suffix.lines().next())
-        .expect("asset capability")
-        .to_owned()
+        .lines()
+        .filter_map(|line| {
+            line.split_once("/assets/")
+                .map(|(_, token)| token.to_owned())
+        })
+        .collect()
 }

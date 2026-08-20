@@ -1,3 +1,4 @@
+use crate::hls::asset_generation::{AssetFence, AssetRegistry};
 use crate::hls::types::{random_id, random_secret, HlsSessionId};
 use reqwest::Url;
 use std::collections::HashMap;
@@ -41,6 +42,7 @@ pub(crate) struct HlsSession {
     pub sources: Vec<Url>,
     pub last_used: Instant,
     pub secret: [u8; 32],
+    assets: AssetRegistry,
 }
 
 impl HlsSession {
@@ -49,6 +51,19 @@ impl HlsSession {
             sources,
             last_used: now,
             secret: random_secret(),
+            assets: AssetRegistry::new(),
         }
+    }
+
+    pub(in crate::hls) fn asset_fence(
+        &mut self,
+        url: &reqwest::Url,
+        maximum: usize,
+    ) -> anyhow::Result<AssetFence> {
+        self.assets.fence(url, maximum)
+    }
+
+    pub(in crate::hls) fn owns(&self, fence: &AssetFence) -> bool {
+        self.assets.owns(fence)
     }
 }

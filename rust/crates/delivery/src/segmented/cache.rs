@@ -3,11 +3,12 @@ use ghostr_engine::PostId;
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex, MutexGuard};
 use tokio::sync::Notify;
-use url::Url;
 
+mod generation;
 mod objects;
 #[cfg(test)]
 mod tests;
+pub use generation::{CachedHlsGeneration, CachedHlsObject};
 use objects::{commit, failed};
 
 const MAX_CACHE_BYTES: usize = 32 * 1024 * 1024;
@@ -37,13 +38,6 @@ impl Default for SegmentedSnapshot {
             detail: None,
         }
     }
-}
-
-#[derive(Clone)]
-pub struct CachedHlsObject {
-    pub body: Arc<[u8]>,
-    pub final_url: Url,
-    pub content_type: Option<String>,
 }
 
 #[derive(Clone, Default)]
@@ -142,8 +136,16 @@ impl SegmentedCache {
 
     pub fn object(&self, url: &str) -> Option<CachedHlsObject> {
         let state = self.lock();
-        let key = state.aliases.get(url).map_or(url, String::as_str);
-        state.objects.get(key).cloned()
+        state
+            .objects
+            .get(url)
+            .or_else(|| {
+                state
+                    .aliases
+                    .get(url)
+                    .and_then(|key| state.objects.get(key))
+            })
+            .cloned()
     }
 
     pub fn notifier(&self) -> Arc<Notify> {

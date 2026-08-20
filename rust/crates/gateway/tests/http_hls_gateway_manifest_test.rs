@@ -34,7 +34,7 @@ Content-Length: 72\r\nConnection: close\r\n\r\n\
 }
 
 fn sessions() -> HlsSessions {
-    let limits = HlsSessionLimits::new(2, Duration::from_secs(60)).expect("limits");
+    let limits = HlsSessionLimits::new(2, Duration::from_secs(60), 8).expect("limits");
     HlsSessions::new(limits)
 }
 

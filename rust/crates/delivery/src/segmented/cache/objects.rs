@@ -2,8 +2,6 @@ use super::{
     CacheState, CachedHlsObject, FocusRecord, SegmentedPhase, SegmentedSnapshot, MAX_CACHE_BYTES,
 };
 use crate::segmented::PreparedHls;
-use std::sync::Arc;
-use url::Url;
 
 pub(super) struct CacheCommit {
     pub snapshot: SegmentedSnapshot,
@@ -18,13 +16,8 @@ pub(super) fn commit(state: &mut CacheState, prepared: PreparedHls) -> CacheComm
         .map(|object| object.request_url.clone())
         .collect();
     for object in prepared.objects {
-        insert(
-            state,
-            object.request_url,
-            object.final_url,
-            object.body,
-            object.content_type,
-        );
+        let cached = CachedHlsObject::new(object.body, object.final_url, object.content_type);
+        insert(state, object.request_url, cached);
     }
     CacheCommit {
         snapshot: SegmentedSnapshot {
@@ -49,29 +42,19 @@ pub(super) fn failed(detail: String) -> CacheCommit {
     }
 }
 
-fn insert(
-    state: &mut CacheState,
-    key: String,
-    final_url: Url,
-    body: Arc<[u8]>,
-    content_type: Option<String>,
-) {
+fn insert(state: &mut CacheState, key: String, object: CachedHlsObject) {
     if let Some(replaced) = state.objects.remove(&key) {
         state.bytes = state.bytes.saturating_sub(replaced.body.len());
     }
-    make_room(state, body.len());
-    state.aliases.insert(final_url.to_string(), key.clone());
-    state.bytes = state.bytes.saturating_add(body.len());
+    make_room(state, object.body.len());
+    state.aliases.retain(|_, canonical| canonical != &key);
+    state
+        .aliases
+        .insert(object.final_url.to_string(), key.clone());
+    state.bytes = state.bytes.saturating_add(object.body.len());
     state.order.retain(|known| known != &key);
     state.order.push_back(key.clone());
-    state.objects.insert(
-        key,
-        CachedHlsObject {
-            body,
-            final_url,
-            content_type,
-        },
-    );
+    state.objects.insert(key, object);
 }
 
 fn make_room(state: &mut CacheState, incoming: usize) {

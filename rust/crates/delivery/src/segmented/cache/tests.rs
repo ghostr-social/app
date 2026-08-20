@@ -5,6 +5,9 @@ use ghostr_engine::PostId;
 use std::sync::Arc;
 use url::Url;
 
+mod alias_replacement_test;
+mod generation_test;
+
 #[test]
 fn evicting_bootstrap_bytes_revokes_stale_readiness() {
     let cache = SegmentedCache::new();

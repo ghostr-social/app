@@ -32,7 +32,15 @@ impl HlsTransfer {
         request: RequestBuilder,
         timeouts: HlsTransferTimeouts,
     ) -> Result<Self> {
-        let total_deadline = Instant::now() + timeouts.total;
+        let deadline = Instant::now() + timeouts.total;
+        Self::open_at(request, timeouts, deadline).await
+    }
+
+    pub(super) async fn open_at(
+        request: RequestBuilder,
+        timeouts: HlsTransferTimeouts,
+        total_deadline: Instant,
+    ) -> Result<Self> {
         let header_deadline = total_deadline.min(Instant::now() + timeouts.headers);
         let response = timeout_at(header_deadline, request.send())
             .await
