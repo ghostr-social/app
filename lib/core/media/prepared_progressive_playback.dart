@@ -55,9 +55,8 @@ void _validateProxy(
   ProxiedProgressiveVideoMediaSource media,
   PlaybackAssetAuthority authority,
 ) {
-  final query = media.playbackUri.queryParameters;
-  if (query['id'] != authority.deliveryId.value ||
-      query['cap'] != authority.assetId.value) {
+  if (media.playbackDeliveryId != authority.deliveryId ||
+      media.playbackAssetId != authority.assetId) {
     throw ArgumentError.value(media, 'media', 'Must match the authority.');
   }
 }

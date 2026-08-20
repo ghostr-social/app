@@ -133,18 +133,28 @@ extension _VideoPlayerSurfacePreparationFeedback on _VideoPlayerSurfaceState {
   }
 
   void _acceptRefreshedAuthority(ProxiedProgressiveVideoMediaSource refreshed) {
-    final authority = _playbackAuthority;
-    if (authority == null || !_proxyMatches(refreshed, authority)) {
-      _playbackAuthority = null;
-    }
+    _playbackAuthority = _renewedAuthority(_playbackAuthority, refreshed);
   }
+}
+
+PlaybackAssetAuthority? _renewedAuthority(
+  PlaybackAssetAuthority? previous,
+  ProxiedProgressiveVideoMediaSource media,
+) {
+  if (previous == null || media.playbackDeliveryId != previous.deliveryId) {
+    return null;
+  }
+  return PlaybackAssetAuthority(
+    deliveryId: previous.deliveryId,
+    representationId: previous.representationId,
+    assetId: media.playbackAssetId,
+  );
 }
 
 bool _proxyMatches(
   ProxiedProgressiveVideoMediaSource media,
   PlaybackAssetAuthority authority,
 ) {
-  final query = media.playbackUri.queryParameters;
-  return query['id'] == authority.deliveryId.value &&
-      query['cap'] == authority.assetId.value;
+  return media.playbackDeliveryId == authority.deliveryId &&
+      media.playbackAssetId == authority.assetId;
 }

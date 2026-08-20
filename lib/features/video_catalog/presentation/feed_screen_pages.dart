@@ -81,7 +81,7 @@ extension _FeedScreenPages on _FeedScreenState {
   PreparedProgressivePlayback? _preparedPlayback(FeedLoaded state, int index) {
     if (index == state.activeIndex) return state.preparation.current;
     if (_isVisible && index == state.activeIndex + 1) {
-      return state.preparation.next;
+      return state.preparation.forMedia(state.posts[index].media);
     }
     return null;
   }

@@ -1,4 +1,5 @@
 import 'package:ghostr/core/media/playback_delivery_id.dart';
+import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/media/video_representation_id.dart';
 
 final class PlaybackAssetId {
@@ -43,6 +44,17 @@ final class PlaybackAssetAuthority {
 
   @override
   int get hashCode => Object.hash(deliveryId, representationId, assetId);
+}
+
+extension ProxiedProgressivePlaybackAsset
+    on ProxiedProgressiveVideoMediaSource {
+  PlaybackAssetId get playbackAssetId {
+    final capability = playbackUri.queryParameters['cap'];
+    if (capability == null) {
+      throw StateError('Trusted progressive playback lost its capability.');
+    }
+    return PlaybackAssetId.parse(capability);
+  }
 }
 
 final _assetPattern = RegExp(r'^[A-Za-z0-9_-]{43}$');

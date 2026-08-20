@@ -69,6 +69,7 @@ extension _VideoPlayerSurfaceRecovery on _VideoPlayerSurfaceState {
       final refresh = widget.progressiveRefresh;
       if (refresh != null) {
         final media = await refresh.refresh();
+        if (!_acceptsRecovery(version)) return;
         _acceptRefreshedAuthority(media);
         _playbackMedia = media;
       }

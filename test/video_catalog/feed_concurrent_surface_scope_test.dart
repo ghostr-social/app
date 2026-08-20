@@ -69,6 +69,10 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(platform.createdCount, 3);
     expect(platform.playerCount, 2);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(platform.playerCount, 0);
   });
 }
 

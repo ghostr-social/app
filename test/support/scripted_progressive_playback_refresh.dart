@@ -20,6 +20,10 @@ final class ScriptedProgressivePlaybackRefresh
     _next.complete(ProxiedProgressiveVideoMediaSource(playbackUrl));
   }
 
+  void completeAt(int index, String playbackUrl) {
+    _pending[index].complete(ProxiedProgressiveVideoMediaSource(playbackUrl));
+  }
+
   void failNext() {
     _next.completeError(StateError('Capability refresh failed'));
   }

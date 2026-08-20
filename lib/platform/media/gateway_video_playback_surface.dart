@@ -153,12 +153,10 @@ PlaybackAssetAuthority? _parseResolvedAuthority(
 ) {
   try {
     final deliveryId = media.playbackDeliveryId;
-    final capability = media.playbackUri.queryParameters['cap'];
-    if (capability == null) return null;
     return PlaybackAssetAuthority(
       deliveryId: deliveryId!,
       representationId: VideoRepresentationId.forMedia(origin),
-      assetId: PlaybackAssetId.parse(capability),
+      assetId: media.playbackAssetId,
     );
   } on ArgumentError {
     return null;
