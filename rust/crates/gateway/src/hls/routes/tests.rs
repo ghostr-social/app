@@ -5,4 +5,5 @@ mod manifest_body_timeout_test;
 mod manifest_header_limit_test;
 mod manifest_header_timeout_test;
 mod origin;
+mod partial_manifest_test;
 mod support;

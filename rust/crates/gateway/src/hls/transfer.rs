@@ -41,13 +41,6 @@ impl HlsTransfer {
         &self.response
     }
 
-    pub(super) fn require_success(&self) -> Result<()> {
-        self.response
-            .error_for_status_ref()
-            .context("HLS upstream request failed")?;
-        Ok(())
-    }
-
     pub(super) async fn read_bounded(&mut self, limit: usize) -> Result<Vec<u8>> {
         let mut body = Vec::new();
         while let Some(chunk) = self.next_chunk().await? {

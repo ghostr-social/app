@@ -40,6 +40,26 @@ pub(super) async fn oversized_manifest_headers() -> (String, JoinHandle<()>) {
     (url, task)
 }
 
+pub(super) async fn partial_manifest() -> (String, JoinHandle<()>) {
+    let (listener, url) = listener().await;
+    let task = tokio::spawn(async move {
+        let mut socket = accept(&listener).await;
+        let manifest = b"#EXTM3U\n#EXTINF:4,\nsegment.m4s\n#EXT-X-ENDLIST\n";
+        let response = format!(
+            "HTTP/1.1 206 Partial Content\r\nContent-Type: application/vnd.apple.mpegurl\r\nContent-Length: {}\r\nContent-Range: bytes 0-{}/{}\r\nConnection: close\r\n\r\n",
+            manifest.len(),
+            manifest.len() - 1,
+            manifest.len()
+        );
+        socket
+            .write_all(response.as_bytes())
+            .await
+            .expect("headers");
+        socket.write_all(manifest).await.expect("manifest");
+    });
+    (url, task)
+}
+
 pub(super) async fn manifest_then_stalled_asset() -> (String, JoinHandle<()>) {
     let (listener, url) = listener().await;
     let task = tokio::spawn(async move {

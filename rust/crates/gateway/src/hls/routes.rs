@@ -90,7 +90,9 @@ async fn fetch_manifest(
         .get(source.as_str())?
         .header(ACCEPT_ENCODING, "identity");
     let mut transfer = HlsTransfer::open(request, state.hls_timeouts).await?;
-    transfer.require_success()?;
+    if transfer.response().status() != StatusCode::OK {
+        bail!("full HLS manifest response is not 200");
+    }
     require_hls_mime(transfer.response().headers())?;
     let final_url = transfer.response().url().clone();
     let body = transfer.read_bounded(MAX_HLS_MANIFEST_BYTES).await?;
