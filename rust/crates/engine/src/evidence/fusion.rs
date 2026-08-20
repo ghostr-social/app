@@ -1,4 +1,4 @@
-use super::{Confidence, Evidence, EvidenceField, EvidenceScope, EvidenceValue};
+use super::{Confidence, Evidence, EvidenceField, EvidenceScope, EvidenceSource, EvidenceValue};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -116,6 +116,10 @@ pub(super) fn matching<'a>(
         .iter()
         .copied()
         .filter(|item| item.value.field() == field)
+        .filter(|item| {
+            field != EvidenceField::RangeSupport
+                || matches!(item.source, EvidenceSource::Response { .. })
+        })
         .collect()
 }
 
