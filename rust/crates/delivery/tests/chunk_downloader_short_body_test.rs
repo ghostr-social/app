@@ -3,9 +3,13 @@ mod range_fixture;
 use ghostr_delivery::chunk::cancel::cancel_pair;
 use ghostr_delivery::chunk::downloader::{ChunkSink, ChunkSpec};
 use ghostr_engine::host_stats::HostStats;
+use ghostr_engine::origin_model::{
+    DecisionMode, MediaClass, OriginContext, OriginQuery, RequestMethod,
+};
 use ghostr_engine::ByteRange;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use range_fixture::download_chunk_throttled;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[tokio::test]
 async fn a_body_shorter_than_its_advertised_range_is_rejected() {
@@ -31,5 +35,22 @@ async fn a_body_shorter_than_its_advertised_range_is_rejected() {
         download_chunk_throttled(&spec, &sink, &mut stats, &token, &range_fixture::network()).await;
 
     assert!(result.is_err(), "short 206 must not count as success");
+    assert!(store.present_ranges("clip").await.unwrap().is_empty());
+    assert_range_failure(&stats, &url);
     std::fs::remove_dir_all(root).ok();
+}
+
+fn assert_range_failure(stats: &HostStats, url: &str) {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
+    let context = OriginContext::new(RequestMethod::RangeGet, 8, MediaClass::ProgressiveMp4)
+        .with_observed_at_ms(now);
+    let range = stats
+        .origin_model()
+        .estimate(&OriginQuery::new(url, context), now, DecisionMode::Normal)
+        .range_compliance
+        .expect("range posterior");
+    assert!(range.mean < 0.6, "short 206 must lower range compliance");
 }

@@ -1,6 +1,6 @@
 //! Validation and semantic classification for origin responses.
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{ensure, Context, Result};
 use ghostr_engine::adaptive::{
     PromotionGrant, RetrievalRequest, WholeBodyContract, WholeFetchReason,
 };
@@ -157,21 +157,31 @@ fn whole_contract(length: Option<u64>, maximum: u64) -> WholeBodyContract {
 }
 
 fn verified_range(response: &Response, expected: ByteRange) -> Result<(ByteRange, Option<u64>)> {
-    let header = response.headers().get(CONTENT_RANGE);
-    let Some(value) = header.and_then(|value| value.to_str().ok()) else {
-        bail!("partial content response is missing Content-Range");
-    };
-    let parsed = content_range::parse(value).context("unparseable Content-Range")?;
+    let parsed = verified_content_range(response)?;
+    let returned = ByteRange::new(parsed.range.start, parsed.range.end);
     ensure!(
-        parsed.range.start == expected.start,
+        returned.start == expected.start,
         "server answered a different range offset"
     );
     ensure!(
-        parsed.range.end <= expected.end,
+        returned.end <= expected.end,
         "server answered beyond the requested range"
     );
-    Ok((
-        ByteRange::new(parsed.range.start, parsed.range.end),
-        parsed.total,
-    ))
+    if let Some(length) = response.content_length() {
+        ensure!(
+            length == returned.len(),
+            "partial response Content-Range length differs from Content-Length"
+        );
+    }
+    Ok((returned, parsed.total))
+}
+
+fn verified_content_range(response: &Response) -> Result<content_range::ParsedContentRange> {
+    let mut values = response.headers().get_all(CONTENT_RANGE).iter();
+    let value = values
+        .next()
+        .context("partial content response is missing Content-Range")?;
+    ensure!(values.next().is_none(), "duplicate Content-Range");
+    let text = value.to_str().context("invalid Content-Range text")?;
+    content_range::parse(text).context("unparseable Content-Range")
 }
