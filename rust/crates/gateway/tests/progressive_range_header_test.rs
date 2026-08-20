@@ -15,6 +15,7 @@ fn resolves_range_headers_against_the_total_length() {
     let cases = [
         (None, 10, ResolvedRange::Full),
         (Some("bytes=2-5"), 10, partial(2, 6)),
+        (Some("BYTES=2-5"), 10, partial(2, 6)),
         (Some("bytes=2-"), 10, partial(2, 10)),
         (Some("bytes=0-9"), 10, partial(0, 10)),
         (Some("bytes=0-99"), 10, partial(0, 10)),

@@ -3,9 +3,7 @@ use crate::progressive::range_header::{self, ResolvedRange};
 use crate::progressive::stream::body_for_span;
 use axum::body::Body;
 use axum::extract::{Query, State};
-use axum::http::header::{
-    ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, RANGE, RETRY_AFTER,
-};
+use axum::http::header::{ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, RETRY_AFTER};
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::Response;
 use axum::routing::get;
@@ -92,7 +90,7 @@ async fn serve(
     };
     require_current_asset(&state, &query, &stored).await?;
     let snapshot = VideoSnapshot::from_stored(query.id, stored);
-    let mut response = match range_header::resolve(headers.get(RANGE), snapshot.total) {
+    let mut response = match range_header::resolve_all(&headers, snapshot.total) {
         ResolvedRange::Full => full_response(state, snapshot),
         ResolvedRange::Partial { start, end } => partial_response(state, snapshot, start..end),
         ResolvedRange::Unsatisfiable => unsatisfiable_response(snapshot.total),
