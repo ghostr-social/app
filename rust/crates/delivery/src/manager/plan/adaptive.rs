@@ -33,7 +33,7 @@ pub(super) fn planned_work(
     let transfers = mapping::transfers(state, inputs.present, &allocation);
     let selected_transfers = mapping::selected_transfers(state, inputs.present, &warp);
     let retained = mapping::retained_actions(&warp);
-    let evictions = Vec::new();
+    let evictions = allocation.evictions.clone();
     let discovery_demand = allocation.discovery_demand;
     PlannedWork {
         plan: allocation,
