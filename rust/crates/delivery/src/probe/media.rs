@@ -7,6 +7,7 @@ use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_net::origin_content_type;
 use ghostr_net::outbound_media_client::MediaHttpRequests;
+use ghostr_net::response_limits::validate_response_headers;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use reqwest::header::{
     HeaderName, ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_TYPE, ETAG, LAST_MODIFIED,
@@ -48,6 +49,7 @@ struct ProbeFacts {
 
 async fn describe(client: &dyn MediaHttpRequests, url: &str, wait: Duration) -> Result<ProbeFacts> {
     let head = send_head(client, url, wait).await?;
+    validate_response_headers(head.headers())?;
     let head = head.error_for_status().context("HEAD probe rejected")?;
     origin_content_type::require_admissible(head.headers())?;
     Ok(facts_from_head(&head))
