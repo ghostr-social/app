@@ -5,6 +5,7 @@ use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_net::response_limits::validate_response_headers;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
 use reqwest::header::{ACCEPT_ENCODING, CONTENT_TYPE};
+use reqwest::StatusCode;
 use std::sync::Arc;
 use url::Url;
 
@@ -93,6 +94,10 @@ async fn open(client: &dyn MediaHttpRequests, spec: FetchSpec<'_>) -> Result<req
     let response = response
         .error_for_status()
         .context("HLS object request failed")?;
+    ensure!(
+        response.status() == StatusCode::OK,
+        "full HLS object response is not 200"
+    );
     require_identity_encoding(response.headers()).context("encoded HLS object is not cacheable")?;
     if spec.require_manifest {
         require_manifest_type(&response)?;
