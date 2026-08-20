@@ -1,5 +1,6 @@
 use crate::adaptive::AdaptivePlayabilityPolicy;
-use crate::tests::adaptive_support::{planned_playable_ms, snapshot};
+use crate::tests::adaptive_support::snapshot;
+use crate::tests::support::planned_playable_ms;
 use crate::PostId;
 
 /// Safe-mode refills must aim well above the emergency threshold, or

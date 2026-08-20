@@ -9,6 +9,7 @@ fn provisional_current_bootstrap_is_bounded_and_never_playback_critical() {
     let mut input = snapshot(1, 20_000_000, 0, 0);
     input.playback.authority = CurrentAuthority::Provisional;
     input.candidates[0].total_bytes = None;
+    input.candidates[0].evidence = Default::default();
     input.candidates[0].layout = MediaLayout::Unknown;
 
     let plan = AdaptivePlayabilityPolicy.plan(&input);

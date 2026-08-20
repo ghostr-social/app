@@ -1,11 +1,12 @@
 use crate::adaptive::{
     AllocationPlan, CandidateSnapshot, FeedOffset, MediaLayout, NavigationSnapshot,
-    NetworkSnapshot, OriginHealth, PlayabilitySnapshot, PlayableRange, PlaybackSnapshot,
-    StorageSnapshot, ViewProbability,
+    NetworkSnapshot, OriginHealth, PlayabilitySnapshot, PlaybackSnapshot, StorageSnapshot,
+    ViewProbability,
 };
 use crate::media_timeline::{StartupFootprint, StartupProvenance};
 use crate::playback::{EstimateConfidence, PlaybackPhase};
-use crate::{ByteRange, PostId};
+use crate::tests::support::{playable_range, set_reliable_total_bytes};
+use crate::PostId;
 use std::collections::HashSet;
 
 const MIB: u64 = 1024 * 1024;
@@ -45,12 +46,12 @@ pub(super) fn snapshot(
 
 fn candidate(distance: usize) -> CandidateSnapshot {
     let playable_ranges: Vec<_> = (0..15).map(playable_range).collect();
-    CandidateSnapshot {
+    let mut candidate = CandidateSnapshot {
         post: PostId::new(format!("p{distance}")),
         feed_offset: FeedOffset::new(distance as i32),
         view_probability: ViewProbability::new(0.88_f64.powi(distance as i32)).unwrap(),
         retrieval_eligible: true,
-        total_bytes: Some(3_750_000),
+        total_bytes: None,
         bitrate_bps: 1_000_000,
         duration_ms: 60_000,
         layout: MediaLayout::Streamable,
@@ -70,7 +71,9 @@ fn candidate(distance: usize) -> CandidateSnapshot {
         in_flight: Vec::new(),
         origins: vec![healthy_origin("origin", 20_000_000, 50)],
         evidence: Default::default(),
-    }
+    };
+    set_reliable_total_bytes(&mut candidate, 3_750_000, 10_000);
+    candidate
 }
 
 pub(super) fn healthy_origin(source: &str, throughput_bps: u64, rtt_ms: u64) -> OriginHealth {
@@ -92,19 +95,4 @@ pub(super) fn frontier(plan: &AllocationPlan) -> Vec<PostId> {
         .chain(plan.retained.iter().map(|work| work.post.clone()))
         .filter(|post| seen.insert(post.clone()))
         .collect()
-}
-
-pub(super) fn planned_playable_ms(plan: &AllocationPlan, post: &PostId) -> u64 {
-    plan.allocations
-        .iter()
-        .filter(|work| &work.post == post)
-        .map(|work| work.expected_playable_gain_ms)
-        .sum()
-}
-
-fn playable_range(index: u64) -> PlayableRange {
-    PlayableRange {
-        bytes: ByteRange::new(index * 250_000, (index + 1) * 250_000),
-        playable_ms: 2_000,
-    }
 }

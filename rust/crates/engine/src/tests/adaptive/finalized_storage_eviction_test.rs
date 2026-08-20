@@ -2,6 +2,7 @@ use crate::adaptive::{
     AdaptivePlayabilityPolicy, CandidateSnapshot, PlayableRange, StorageSnapshot,
 };
 use crate::tests::adaptive_support::snapshot;
+use crate::tests::support::set_reliable_total_bytes;
 use crate::ByteRange;
 
 #[test]
@@ -49,7 +50,7 @@ fn lower_density_whole_wins_even_when_its_total_loss_is_higher() {
 fn stored_candidate(candidate: &mut CandidateSnapshot, bytes: u64, ms: u64, finalized: bool) {
     let range = ByteRange::new(0, bytes);
     candidate.startup = None;
-    candidate.total_bytes = Some(bytes);
+    set_reliable_total_bytes(candidate, bytes, 10_000);
     candidate.duration_ms = ms;
     candidate.playable_ranges = vec![PlayableRange {
         bytes: range,

@@ -13,7 +13,7 @@ fn planner_never_executes_an_ordinary_action_outside_semantic_admission() {
     let allowed_start = input.candidates[1].playable_ranges[0].bytes;
     input.candidates[1].present.push(allowed_start);
     input.candidates[0].retrieval_eligible = false;
-    input.candidates[1].view_probability = crate::adaptive::ViewProbability::new(0.01).unwrap();
+    input.candidates[1].view_probability = crate::adaptive::ViewProbability::new(0.75).unwrap();
     input.candidates[2].view_probability = crate::adaptive::ViewProbability::new(1.0).unwrap();
     let base = AdaptivePlayabilityPolicy.plan(&input);
     assert_eq!(base.mode, crate::adaptive::ControlMode::Normal);

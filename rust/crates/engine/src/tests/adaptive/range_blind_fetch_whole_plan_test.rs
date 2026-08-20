@@ -3,6 +3,7 @@ use crate::adaptive::{
     WholeBodyContract, WholeFetchReason,
 };
 use crate::tests::adaptive_support::snapshot;
+use crate::tests::support::set_reliable_total_bytes;
 use crate::{ByteRange, PostId};
 
 const TOTAL: u64 = 800_000;
@@ -49,7 +50,7 @@ fn complete_file_is_deferred_when_side_by_side_storage_cannot_hold_the_full_resp
 }
 
 fn make_complete(candidate: &mut crate::adaptive::CandidateSnapshot) {
-    candidate.total_bytes = Some(TOTAL);
+    set_reliable_total_bytes(candidate, TOTAL, 10_000);
     candidate.layout = MediaLayout::RequiresCompleteFile;
     candidate.playable_ranges = vec![PlayableRange {
         bytes: ByteRange::new(0, TOTAL),

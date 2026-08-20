@@ -1,19 +1,56 @@
 use crate::adaptive::{
-    ActionKind, ActivePlannerContext, AdaptivePlayabilityPolicy, HedgeInput, IdentityProof,
-    InFlightAction, PlannerCapability, PlannerContext, PromotionGrant, RetrievalRequest,
-    TransformCapability, TransformKind, WarpActionGenerator,
+    ActionKind, ActivePlannerContext, AdaptivePlayabilityPolicy, GeneratedActions, HedgeInput,
+    IdentityProof, InFlightAction, PlannerCapability, PlannerContext, PromotionGrant,
+    RetrievalRequest, TransformCapability, TransformKind, WarpActionGenerator,
 };
 use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::{healthy_origin, snapshot};
+use crate::tests::support::set_reliable_total_bytes;
 use crate::{ActionId, ByteRange};
 
 #[test]
 fn adaptive_dag_generates_every_paper_action_from_explicit_evidence() {
+    let generated = generated_actions();
+    let kinds: Vec<_> = generated
+        .actions
+        .iter()
+        .map(|item| &item.node.kind)
+        .collect();
+    assert!(kinds.iter().any(|kind| matches!(kind, ActionKind::Head)));
+    assert!(kinds
+        .iter()
+        .any(|kind| matches!(kind, ActionKind::Prefix(_))));
+    assert!(kinds.iter().any(|kind| matches!(kind, ActionKind::Tail(_))));
+    assert!(kinds
+        .iter()
+        .any(|kind| matches!(kind, ActionKind::FetchRange(_))));
+    assert!(kinds
+        .iter()
+        .any(|kind| matches!(kind, ActionKind::FetchWhole { .. })));
+    assert!(kinds
+        .iter()
+        .any(|kind| matches!(kind, ActionKind::Promote { .. })));
+    assert!(kinds
+        .iter()
+        .any(|kind| matches!(kind, ActionKind::Transform(_))));
+    assert!(kinds
+        .iter()
+        .any(|kind| matches!(kind, ActionKind::CacheUpgrade(_))));
+    assert!(kinds
+        .iter()
+        .any(|kind| matches!(kind, ActionKind::Hedge { .. })));
+    assert!(kinds
+        .iter()
+        .any(|kind| matches!(kind, ActionKind::Cancel(_))));
+}
+
+fn generated_actions() -> GeneratedActions {
     let mut input = snapshot(1, 8_000_000, 1_000, 20);
+    let observed_at_ms = input.observed_at_ms;
     let post = {
         let candidate = &mut input.candidates[0];
         candidate.layout = crate::adaptive::MediaLayout::Unknown;
-        candidate.total_bytes = Some(800_000);
+        set_reliable_total_bytes(candidate, 800_000, observed_at_ms);
         candidate.timeline_probe = Some(crate::adaptive::PlayableRange {
             bytes: ByteRange::new(736_000, 800_000),
             playable_ms: 0,
@@ -53,36 +90,5 @@ fn adaptive_dag_generates_every_paper_action_from_explicit_evidence() {
         )
         .with_active(active);
 
-    let generated = WarpActionGenerator::generate(&input, &base, &OriginModel::default(), &context);
-    let kinds: Vec<_> = generated
-        .actions
-        .iter()
-        .map(|item| &item.node.kind)
-        .collect();
-    assert!(kinds.iter().any(|kind| matches!(kind, ActionKind::Head)));
-    assert!(kinds
-        .iter()
-        .any(|kind| matches!(kind, ActionKind::Prefix(_))));
-    assert!(kinds.iter().any(|kind| matches!(kind, ActionKind::Tail(_))));
-    assert!(kinds
-        .iter()
-        .any(|kind| matches!(kind, ActionKind::FetchRange(_))));
-    assert!(kinds
-        .iter()
-        .any(|kind| matches!(kind, ActionKind::FetchWhole { .. })));
-    assert!(kinds
-        .iter()
-        .any(|kind| matches!(kind, ActionKind::Promote { .. })));
-    assert!(kinds
-        .iter()
-        .any(|kind| matches!(kind, ActionKind::Transform(_))));
-    assert!(kinds
-        .iter()
-        .any(|kind| matches!(kind, ActionKind::CacheUpgrade(_))));
-    assert!(kinds
-        .iter()
-        .any(|kind| matches!(kind, ActionKind::Hedge { .. })));
-    assert!(kinds
-        .iter()
-        .any(|kind| matches!(kind, ActionKind::Cancel(_))));
+    WarpActionGenerator::generate(&input, &base, &OriginModel::default(), &context)
 }

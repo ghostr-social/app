@@ -2,6 +2,7 @@ use crate::adaptive::{
     AdaptivePlayabilityPolicy, PlayableRange, RetrievalRequest, StorageSnapshot,
 };
 use crate::tests::adaptive_support::snapshot;
+use crate::tests::support::set_reliable_total_bytes;
 use crate::ByteRange;
 
 const TOTAL: u64 = 600_000;
@@ -10,8 +11,9 @@ const TOTAL: u64 = 600_000;
 fn contingent_promotions_share_one_hard_storage_budget() {
     let mut input = snapshot(4, 40_000_000, 30_000, 60);
     input.storage = StorageSnapshot::new(1_000_000, 100_000);
+    let observed_at_ms = input.observed_at_ms;
     for candidate in &mut input.candidates[1..=2] {
-        candidate.total_bytes = Some(TOTAL);
+        set_reliable_total_bytes(candidate, TOTAL, observed_at_ms);
         candidate.playable_ranges = vec![PlayableRange {
             bytes: ByteRange::new(0, TOTAL),
             playable_ms: 8_000,
@@ -39,8 +41,9 @@ fn contingent_promotions_share_one_hard_storage_budget() {
 fn timeline_promotion_consumes_its_full_reservation_before_later_posts() {
     let mut input = snapshot(4, 40_000_000, 30_000, 60);
     input.storage = StorageSnapshot::new(1_000_000, 100_000);
+    let observed_at_ms = input.observed_at_ms;
     for candidate in &mut input.candidates[1..=2] {
-        candidate.total_bytes = Some(TOTAL);
+        set_reliable_total_bytes(candidate, TOTAL, observed_at_ms);
         candidate.playable_ranges = (0..3)
             .map(|index| PlayableRange {
                 bytes: ByteRange::new(index * 200_000, (index + 1) * 200_000),

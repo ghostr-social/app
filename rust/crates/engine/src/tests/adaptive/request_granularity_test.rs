@@ -1,5 +1,6 @@
 use crate::adaptive::{AdaptivePlayabilityPolicy, PlayableRange, REQUEST_SLICE_BYTES};
 use crate::tests::adaptive_support::snapshot;
+use crate::tests::support::set_reliable_total_bytes;
 use crate::ByteRange;
 
 const WHOLE_FILE_BYTES: u64 = 2 * 1024 * 1024;
@@ -11,7 +12,9 @@ const MICRO_EXTENT_MS: u64 = 30;
 #[test]
 fn an_unparsed_whole_file_is_requested_in_bounded_slices() {
     let mut input = snapshot(1, 20_000_000, 500, 2);
+    let observed_at_ms = input.observed_at_ms;
     input.candidates[0].startup = None;
+    set_reliable_total_bytes(&mut input.candidates[0], WHOLE_FILE_BYTES, observed_at_ms);
     input.candidates[0].playable_ranges = vec![PlayableRange {
         bytes: ByteRange::new(0, WHOLE_FILE_BYTES),
         playable_ms: WHOLE_FILE_MS,

@@ -1,5 +1,6 @@
 use crate::adaptive::AdaptivePlayabilityPolicy;
-use crate::tests::adaptive_support::{frontier, planned_playable_ms, snapshot};
+use crate::tests::adaptive_support::{frontier, snapshot};
+use crate::tests::support::planned_playable_ms;
 use crate::PostId;
 
 #[test]
