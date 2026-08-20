@@ -8,18 +8,16 @@ import '../support/fake_progressive_playback_gateway.dart';
 import '../support/recording_video_playback_port.dart';
 
 void main() {
-  testWidgets('gateway rejects authority for a different delivery', (
+  testWidgets('gateway rejects a proxy for a different delivery', (
     tester,
   ) async {
     final delegate = RecordingVideoPlaybackPort();
-    final port = GatewayVideoPlaybackPort(
-      delegate: delegate,
-      gateway: FakeProgressivePlaybackGateway(
-        immediatePlaybackUrl:
-            'http://127.0.0.1:4040/video.mp4?id=post-2&cap='
-            'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-      ),
+    final gateway = FakeProgressivePlaybackGateway(
+      immediatePlaybackUrl:
+          'http://127.0.0.1:4040/video.mp4?id=post-2&cap='
+          'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     );
+    final port = GatewayVideoPlaybackPort(delegate: delegate, gateway: gateway);
     final origin = VideoMediaSource.withCacheScope(
       VideoMediaSource.remote('https://media.test/clip.mp4'),
       'post-1',
@@ -34,6 +32,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(delegate.requests.single.authority, isNull);
+    expect(delegate.requests, isEmpty);
+    expect(find.bySemanticsLabel('Video unavailable'), findsOneWidget);
+    expect(find.bySemanticsLabel('Retry'), findsOneWidget);
+
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.requests, hasLength(2));
+    expect(delegate.requests, isEmpty);
   });
 }

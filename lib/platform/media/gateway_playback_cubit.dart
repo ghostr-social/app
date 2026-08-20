@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/prepared_progressive_playback.dart';
 import 'package:ghostr/core/media/video_media_cache_identity.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
@@ -84,7 +85,9 @@ final class GatewayPlaybackCubit extends Cubit<GatewayPlaybackState> {
   Future<void> _resolve(VideoMediaSource origin, int version) async {
     try {
       final resolved = await _gateway.resolve(origin);
-      if (_accepts(version)) emit(GatewayPlaybackReady(origin, resolved));
+      if (!_accepts(version)) return;
+      _validateResolvedDelivery(origin, resolved);
+      emit(GatewayPlaybackReady(origin, resolved));
     } on Object catch (error, stackTrace) {
       _logGatewayFailure(error, stackTrace);
       if (_accepts(version)) emit(const GatewayPlaybackFailed());
@@ -112,6 +115,15 @@ final class GatewayPlaybackCubit extends Cubit<GatewayPlaybackState> {
   Future<void> close() {
     _requestVersion += 1;
     return super.close();
+  }
+}
+
+void _validateResolvedDelivery(
+  VideoMediaSource origin,
+  ProxiedProgressiveVideoMediaSource resolved,
+) {
+  if (origin.playbackDeliveryId != resolved.playbackDeliveryId) {
+    throw StateError('Gateway changed playback delivery.');
   }
 }
 

@@ -131,10 +131,6 @@ extension _VideoPlayerSurfacePreparationFeedback on _VideoPlayerSurfaceState {
     }
     _playbackAuthority = authority;
   }
-
-  void _acceptRefreshedAuthority(ProxiedProgressiveVideoMediaSource refreshed) {
-    _playbackAuthority = _renewedAuthority(_playbackAuthority, refreshed);
-  }
 }
 
 PlaybackAssetAuthority? _renewedAuthority(

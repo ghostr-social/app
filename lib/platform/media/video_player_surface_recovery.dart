@@ -66,20 +66,31 @@ extension _VideoPlayerSurfaceRecovery on _VideoPlayerSurfaceState {
 
   Future<void> _refreshPlaybackMedia(int version) async {
     try {
-      final refresh = widget.progressiveRefresh;
-      if (refresh != null) {
-        final media = await refresh.refresh();
-        if (!_acceptsRecovery(version)) return;
-        _acceptRefreshedAuthority(media);
-        _playbackMedia = media;
-      }
+      if (!await _refreshPlaybackCapability(version)) return;
       if (!_acceptsRecovery(version)) return;
       _refresh(() => _recoveryState = _VideoPlayerRecoveryState.ready);
       _startLoad();
     } on Object catch (error, stackTrace) {
-      _logRefreshFailure(error, stackTrace);
-      if (_acceptsRecovery(version)) _continueAfterRefreshFailure();
+      _handleRefreshFailure(error, stackTrace, version);
     }
+  }
+
+  Future<bool> _refreshPlaybackCapability(int version) async {
+    final refresh = widget.progressiveRefresh;
+    if (refresh == null) return true;
+    final media = await refresh.refresh();
+    if (!_acceptsRecovery(version)) return false;
+    if (media.playbackDeliveryId != _playbackMedia.playbackDeliveryId) {
+      throw StateError('Capability refresh changed playback delivery.');
+    }
+    _playbackAuthority = _renewedAuthority(_playbackAuthority, media);
+    _playbackMedia = media;
+    return true;
+  }
+
+  void _handleRefreshFailure(Object error, StackTrace stackTrace, int version) {
+    _logRefreshFailure(error, stackTrace);
+    if (_acceptsRecovery(version)) _continueAfterRefreshFailure();
   }
 
   void _continueAfterRefreshFailure() {

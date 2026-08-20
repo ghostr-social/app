@@ -7,8 +7,14 @@ import '../support/fake_progressive_playback_gateway.dart';
 void main() {
   test('a superseded gateway answer cannot replace newer media', () async {
     final gateway = FakeProgressivePlaybackGateway();
-    final first = VideoMediaSource.remote('https://media.test/first.mp4');
-    final second = VideoMediaSource.remote('https://media.test/second.mp4');
+    final first = VideoMediaSource.withCacheScope(
+      VideoMediaSource.remote('https://media.test/first.mp4'),
+      'post-1',
+    );
+    final second = VideoMediaSource.withCacheScope(
+      VideoMediaSource.remote('https://media.test/second.mp4'),
+      'post-2',
+    );
     final cubit = GatewayPlaybackCubit(gateway);
 
     final firstLoad = cubit.load(first);

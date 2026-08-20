@@ -35,8 +35,8 @@ const VIDEO_MIME: &str = "video/mp4";
 /// How long progressive serving waits on the store before giving up.
 #[derive(Clone, Copy, Debug)]
 pub struct ProgressiveTiming {
-    /// Wait for the total length to be learned before answering 503.
-    unknown_length_wait: Duration,
+    /// Wait for binding or total-length readiness before giving up.
+    pub(crate) unknown_length_wait: Duration,
     /// Abort a stalled stream once no byte lands for this long.
     pub(crate) idle_timeout: Duration,
 }

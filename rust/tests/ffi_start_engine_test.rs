@@ -15,6 +15,8 @@ use rust_lib_ghostr::api::playback_types::{FfiPlaybackObservation, FfiPlaybackPh
 use std::collections::HashMap;
 use support::fixtures::temp_directory;
 
+const FALLBACK_ID: &str = "url-9749fdddd453caaca021690db04c6aeaa579386dd6e8fb127cd82c47a3d52f55";
+
 fn progressive_item(id: &str) -> FfiFocusItem {
     FfiFocusItem {
         post_id: id.to_owned(),
@@ -53,7 +55,7 @@ async fn starts_the_engine_and_serves_the_delivery_surface() {
 
     ffi_update_focus(FfiFocusUpdate {
         feed_id: "feed".to_owned(),
-        items: vec![progressive_item("clip")],
+        items: vec![progressive_item(FALLBACK_ID)],
         current_index: 0,
         watch_ms: 0,
         generation: 1,
@@ -63,7 +65,7 @@ async fn starts_the_engine_and_serves_the_delivery_surface() {
     .await
     .expect("focus update");
     ffi_report_playback(FfiPlaybackObservation {
-        post_id: "clip".to_owned(),
+        post_id: FALLBACK_ID.to_owned(),
         generation: 1,
         sequence: 1,
         phase: FfiPlaybackPhase::Playing,
@@ -77,7 +79,7 @@ async fn starts_the_engine_and_serves_the_delivery_surface() {
         .await
         .expect("config update");
 
-    let url = ffi_playback_url(progressive_item("clip"))
+    let url = ffi_playback_url(progressive_item(FALLBACK_ID))
         .await
         .expect("playback url");
     let playback = reqwest::Url::parse(&url).expect("valid playback URL");
@@ -87,7 +89,7 @@ async fn starts_the_engine_and_serves_the_delivery_surface() {
         format!("http://{endpoint}")
     );
     assert_eq!(playback.path(), "/video.mp4");
-    assert_eq!(query.get("id").map(String::as_str), Some("clip"));
+    assert_eq!(query.get("id").map(String::as_str), Some(FALLBACK_ID));
     assert!(query.get("cap").is_some_and(|cap| !cap.is_empty()));
 
     let rejected = ffi_set_delivery_config(configuration(FfiDataUsageLevel::Balanced, 0)).await;

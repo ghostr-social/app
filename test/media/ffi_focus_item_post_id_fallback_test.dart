@@ -24,6 +24,10 @@ void main() {
 
     final id = ffiPostIdForMedia(bare);
 
+    expect(
+      id,
+      'url-9749fdddd453caaca021690db04c6aeaa579386dd6e8fb127cd82c47a3d52f55',
+    );
     expect(storeSafe.hasMatch(id), isTrue);
     expect(ffiPostIdForMedia(again), id);
     expect(ffiPostIdForMedia(other), isNot(id));
