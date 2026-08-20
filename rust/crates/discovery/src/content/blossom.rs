@@ -94,7 +94,8 @@ fn enrich_evidence(post: &mut ParsedVideoPost, servers: &[String]) {
             .sha256
             .clone()
             .or_else(|| evidence.urls.iter().find_map(|url| terminal_sha256(url)));
-        let Some(digest) = digest.filter(|digest| url_claims(&evidence.urls, digest)) else {
+        let Some(digest) = digest.filter(|digest| urls_match_identity(&evidence.urls, digest))
+        else {
             continue;
         };
         evidence.sha256 = Some(digest.clone());
@@ -109,12 +110,13 @@ fn enrich_evidence(post: &mut ParsedVideoPost, servers: &[String]) {
 
 fn exact_identity(meta: &VideoMeta) -> Option<String> {
     let digest = meta.sha256.as_ref()?;
-    url_claims(&meta.urls, digest).then(|| digest.clone())
+    urls_match_identity(&meta.urls, digest).then(|| digest.clone())
 }
 
-fn url_claims(urls: &[String], digest: &str) -> bool {
+fn urls_match_identity(urls: &[String], digest: &str) -> bool {
     urls.iter()
-        .any(|url| terminal_sha256(url).is_some_and(|found| found.eq_ignore_ascii_case(digest)))
+        .filter_map(|url| terminal_sha256(url))
+        .all(|found| found.eq_ignore_ascii_case(digest))
 }
 
 fn server_list(event: &Event) -> Option<ServerList> {
