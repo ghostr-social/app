@@ -85,6 +85,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   @override
   void didUpdateWidget(covariant _VideoPlayerSurface oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _adoptRequestAuthority();
     if (oldWidget.isActive != widget.isActive) {
       _handleActivityChange();
     } else if (oldWidget.mode != widget.mode) {
@@ -102,7 +103,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
     final released = widget.onPlaybackMediaReleased;
     final disposal = _disposeCurrentController();
     if (disposal != null) _lifecycle.track(disposal);
-    widget.dependencies.releaseSurfaceKey(widget.request.authority, widget.key);
+    widget.dependencies.releaseSurfaceKey(widget.request, widget.key);
     unawaited(_releaseWhenClosed(released));
     super.dispose();
   }

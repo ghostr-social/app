@@ -2,26 +2,39 @@ part of 'video_player_playback_port.dart';
 
 extension _VideoPlayerSurfaceKeys on _VideoPlayerSurfaceDependencies {
   Key surfaceKey(VideoPlaybackSurfaceRequest request) {
-    final authority = request.authority;
-    if (authority == null) {
+    final slot = _exactProgressiveSurfaceSlot(request);
+    if (slot == null) {
       return ValueKey((
         this,
         request.media.inventoryPlaybackIdentity,
         request.videoId,
       ));
     }
-    return _preparedSurfaceKeys.putIfAbsent(
-      authority,
+    return _exactSurfaceKeys.putIfAbsent(
+      slot,
       () => GlobalKey<_VideoPlayerSurfaceState>(
-        debugLabel: 'warp-${authority.deliveryId.value}',
+        debugLabel: 'warp-${request.videoId?.value ?? 'progressive'}',
       ),
     );
   }
 
-  void releaseSurfaceKey(PlaybackAssetAuthority? authority, Key? key) {
-    if (authority == null) return;
-    if (identical(_preparedSurfaceKeys[authority], key)) {
-      _preparedSurfaceKeys.remove(authority);
+  void releaseSurfaceKey(VideoPlaybackSurfaceRequest request, Key? key) {
+    final slot = _exactProgressiveSurfaceSlot(request);
+    if (slot == null) return;
+    if (identical(_exactSurfaceKeys[slot], key)) {
+      _exactSurfaceKeys.remove(slot);
     }
   }
+}
+
+typedef _ExactProgressiveSurfaceSlot = (
+  VideoMediaCacheIdentity,
+  PlaybackVideoId?,
+);
+
+_ExactProgressiveSurfaceSlot? _exactProgressiveSurfaceSlot(
+  VideoPlaybackSurfaceRequest request,
+) {
+  if (request.media is! ProxiedProgressiveVideoMediaSource) return null;
+  return (request.media.inventoryPlaybackIdentity, request.videoId);
 }

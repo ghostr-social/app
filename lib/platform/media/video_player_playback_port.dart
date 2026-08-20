@@ -105,6 +105,6 @@ final class _VideoPlayerSurfaceDependencies {
   final RenderedFirstFramePort renderedFirstFrames;
   final _VideoPlayerControllerBudget controllerBudget;
   final _VideoPlayerPlaybackHandoff handoff;
-  final Map<PlaybackAssetAuthority, GlobalKey<_VideoPlayerSurfaceState>>
-  _preparedSurfaceKeys = {};
+  final Map<_ExactProgressiveSurfaceSlot, GlobalKey<_VideoPlayerSurfaceState>>
+  _exactSurfaceKeys = {};
 }

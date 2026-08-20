@@ -121,6 +121,17 @@ extension _VideoPlayerSurfacePreparationFeedback on _VideoPlayerSurfaceState {
     _presentationReported = false;
   }
 
+  void _adoptRequestAuthority() {
+    final authority = widget.request.authority;
+    final media = _playbackMedia;
+    if (authority == null ||
+        media is! ProxiedProgressiveVideoMediaSource ||
+        !_proxyMatches(media, authority)) {
+      return;
+    }
+    _playbackAuthority = authority;
+  }
+
   void _acceptRefreshedAuthority(ProxiedProgressiveVideoMediaSource refreshed) {
     final authority = _playbackAuthority;
     if (authority == null || !_proxyMatches(refreshed, authority)) {
