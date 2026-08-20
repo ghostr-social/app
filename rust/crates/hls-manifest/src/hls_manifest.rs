@@ -8,6 +8,7 @@ use crate::hls_manifest_tags::{action, HlsTagAction};
 pub use crate::hls_bootstrap::{inspect_hls_bootstrap, HlsBootstrap};
 
 pub const MAX_HLS_MANIFEST_BYTES: usize = 1024 * 1024;
+pub const MAX_HLS_ASSET_BYTES: usize = 8 * 1024 * 1024;
 const MAX_REWRITTEN_HLS_MANIFEST_BYTES: usize = 16 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

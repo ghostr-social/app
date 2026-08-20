@@ -1,7 +1,9 @@
+use crate::hls::asset_request::AssetRangeRequest;
+use crate::hls::asset_response::{self, validate};
 use crate::hls::cached;
 use crate::hls::sessions::{HlsResourceId, HlsSessionId};
 use crate::hls::transfer::HlsTransfer;
-use crate::router::{upstream_request, GatewayHttpState};
+use crate::router::GatewayHttpState;
 use anyhow::{bail, Result};
 use axum::body::Body;
 use axum::extract::{Path, State};
@@ -64,14 +66,24 @@ pub(crate) async fn asset(
         .await
         .filter(|item| item.kind == HlsResourceKind::Asset)
         .ok_or(StatusCode::NOT_FOUND)?;
+    let range = AssetRangeRequest::collect(&headers);
     if let Some(object) = state.segmented.object(resource.url.as_str()) {
-        return cached::response(object, &headers);
+        return cached::response(object, range);
     }
-    let request = upstream_request(state.client.as_ref(), resource.url.to_string(), &headers)?;
+    if range.locally_unsatisfiable() {
+        return asset_response::local_unsatisfiable();
+    }
+    let request = state
+        .client
+        .get(resource.url.as_str())
+        .map_err(|_| StatusCode::BAD_GATEWAY)?
+        .header(ACCEPT_ENCODING, "identity");
+    let request = range.apply(request);
     let transfer = HlsTransfer::open(request, state.hls_timeouts)
         .await
         .map_err(|_| StatusCode::BAD_GATEWAY)?;
-    transfer.into_proxy()
+    let envelope = validate(range, transfer.response()).map_err(|_| StatusCode::BAD_GATEWAY)?;
+    transfer.into_proxy(envelope)
 }
 
 async fn fetch_manifest(

@@ -1,4 +1,13 @@
+mod asset_body_cancel_test;
+mod asset_body_extent_test;
+mod asset_body_limit_test;
 mod asset_body_timeout_test;
+mod asset_fixture;
+mod asset_origin;
+mod asset_range_geometry_test;
+mod asset_range_request_test;
+mod asset_range_zero_suffix_test;
+mod asset_response_semantics_test;
 mod identity_encoding_test;
 mod identity_origin;
 mod manifest_body_timeout_test;

@@ -6,8 +6,7 @@
 use crate::debug::http as debug_http;
 use crate::progressive::route::{self as progressive_route, ProgressiveState};
 use crate::{hls::routes as hls_routes, hls::sessions::HlsSessions};
-use axum::http::header::{ACCEPT_ENCODING, RANGE};
-use axum::http::{HeaderMap, StatusCode};
+use axum::http::StatusCode;
 use axum::routing::get;
 use axum::Router;
 #[cfg(all(
@@ -25,11 +24,7 @@ use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
     not(any(target_os = "android", target_os = "ios"))
 ))]
 use nostr_sdk::Client;
-use reqwest::RequestBuilder;
 use std::sync::Arc;
-
-#[cfg(test)]
-mod tests;
 
 #[derive(Clone)]
 pub(crate) struct GatewayHttpState {
@@ -134,19 +129,4 @@ fn shared_router(state: Arc<GatewayHttpState>) -> Router {
 
 async fn gateway_status() -> StatusCode {
     StatusCode::NO_CONTENT
-}
-
-pub(crate) fn upstream_request(
-    client: &dyn MediaHttpRequests,
-    url: String,
-    headers: &HeaderMap,
-) -> Result<RequestBuilder, StatusCode> {
-    let request = client
-        .get(&url)
-        .map_err(|_| StatusCode::BAD_GATEWAY)?
-        .header(ACCEPT_ENCODING, "identity");
-    Ok(match headers.get(RANGE) {
-        Some(value) => request.header(RANGE, value),
-        None => request,
-    })
 }

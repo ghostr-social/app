@@ -1,5 +1,5 @@
 use anyhow::{bail, ensure, Context, Result};
-use ghostr_hls_manifest::hls_manifest::MAX_HLS_MANIFEST_BYTES;
+use ghostr_hls_manifest::hls_manifest::{MAX_HLS_ASSET_BYTES, MAX_HLS_MANIFEST_BYTES};
 use ghostr_net::identity_encoding::require_identity_encoding;
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_net::response_limits::validate_response_headers;
@@ -11,8 +11,6 @@ use url::Url;
 
 #[cfg(test)]
 mod tests;
-
-pub(super) const MAX_HLS_ASSET_BYTES: usize = 8 * 1024 * 1024;
 
 pub(super) struct FetchedObject {
     pub request_url: String,
