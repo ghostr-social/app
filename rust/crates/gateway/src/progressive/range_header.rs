@@ -1,4 +1,5 @@
 use axum::http::HeaderValue;
+use ghostr_net::content_range::parse_range_decimal;
 
 /// A `Range` request header resolved against the total video length.
 /// `Partial` bounds are half-open `[start, end)` with `end <= total`.
@@ -38,9 +39,12 @@ fn parsed_spec(value: &HeaderValue) -> Option<Spec> {
 fn parsed_bounds(from: &str, to: &str) -> Option<Spec> {
     match (from.is_empty(), to.is_empty()) {
         (true, true) => None,
-        (true, false) => Some(Spec::Suffix(to.parse().ok()?)),
-        (false, true) => Some(Spec::From(from.parse().ok()?)),
-        (false, false) => Some(Spec::FromTo(from.parse().ok()?, to.parse().ok()?)),
+        (true, false) => Some(Spec::Suffix(parse_range_decimal(to)?)),
+        (false, true) => Some(Spec::From(parse_range_decimal(from)?)),
+        (false, false) => Some(Spec::FromTo(
+            parse_range_decimal(from)?,
+            parse_range_decimal(to)?,
+        )),
     }
 }
 
