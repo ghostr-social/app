@@ -15,7 +15,8 @@ import 'package:ghostr/shared/widgets/loading_panel.dart';
 part 'hls_video_playback_surface.dart';
 part 'hls_video_playback_lease_surface.dart';
 
-final class HlsVideoPlaybackPort implements VideoPlaybackPort {
+final class HlsVideoPlaybackPort
+    implements VideoPlaybackPort, VideoPlaybackMemoryPressurePort {
   const HlsVideoPlaybackPort({
     required VideoPlaybackPort delegate,
     required HlsPlaybackGatewayPort gateway,
@@ -41,6 +42,14 @@ final class HlsVideoPlaybackPort implements VideoPlaybackPort {
         onPlaybackMediaReleased: request.onPlaybackMediaReleased,
       ),
     );
+  }
+
+  @override
+  void reportMemoryPressure() {
+    final delegate = _delegate;
+    if (delegate is VideoPlaybackMemoryPressurePort) {
+      (delegate as VideoPlaybackMemoryPressurePort).reportMemoryPressure();
+    }
   }
 }
 

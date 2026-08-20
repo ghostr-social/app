@@ -39,7 +39,7 @@ test("does not classify focus startup buffering as a playback stall", () => {
 function sample(id, phase, at_ms, current_time) {
   return {
     at_ms,
-    player: {id, phase, current_time},
+    player: {id, phase, presented: phase === "playing", current_time},
     state: {videos: [
       {id, downloaded_bytes: 1_000, total_bytes: 4_000},
       {id: id === "a" ? "b" : "a", downloaded_bytes: 500, total_bytes: 4_000},

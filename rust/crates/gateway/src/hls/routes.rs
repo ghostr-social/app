@@ -1,7 +1,8 @@
 use crate::hls::cached;
 use crate::hls::sessions::{HlsResourceId, HlsSessionId};
-use crate::router::{proxy_response, upstream_request, GatewayHttpState};
-use anyhow::{bail, Context, Result};
+use crate::hls::transfer::HlsTransfer;
+use crate::router::{upstream_request, GatewayHttpState};
+use anyhow::{bail, Result};
 use axum::body::Body;
 use axum::extract::{Path, State};
 use axum::http::header::{CONTENT_LENGTH, CONTENT_TYPE};
@@ -10,9 +11,10 @@ use ghostr_hls_manifest::hls_manifest::HlsResourceKind;
 use ghostr_hls_manifest::hls_manifest::MAX_HLS_MANIFEST_BYTES;
 use reqwest::Url;
 use std::sync::Arc;
-use std::time::Duration;
 
-const HLS_MANIFEST_TIMEOUT: Duration = Duration::from_secs(30);
+#[cfg(test)]
+mod tests;
+
 const HLS_CONTENT_TYPE: &str = "application/vnd.apple.mpegurl";
 
 pub(crate) async fn root_manifest(
@@ -65,27 +67,14 @@ pub(crate) async fn asset(
     if let Some(object) = state.segmented.object(resource.url.as_str()) {
         return cached::response(object, &headers);
     }
-    let upstream = upstream_request(state.client.as_ref(), resource.url.to_string(), &headers)?
-        .send()
+    let request = upstream_request(state.client.as_ref(), resource.url.to_string(), &headers)?;
+    let transfer = HlsTransfer::open(request, state.hls_timeouts)
         .await
         .map_err(|_| StatusCode::BAD_GATEWAY)?;
-    proxy_response(upstream)
+    transfer.into_proxy()
 }
 
 async fn fetch_manifest(
-    state: &GatewayHttpState,
-    session: &HlsSessionId,
-    source: Url,
-) -> Result<String> {
-    tokio::time::timeout(
-        HLS_MANIFEST_TIMEOUT,
-        fetch_manifest_inner(state, session, source),
-    )
-    .await
-    .context("HLS manifest timed out")?
-}
-
-async fn fetch_manifest_inner(
     state: &GatewayHttpState,
     session: &HlsSessionId,
     source: Url,
@@ -96,30 +85,16 @@ async fn fetch_manifest_inner(
             .rewrite_manifest(session, &object.body, &object.final_url)
             .await;
     }
-    let mut response = state
-        .client
-        .get(source.as_str())?
-        .send()
-        .await?
-        .error_for_status()?;
-    require_hls_mime(response.headers())?;
-    let final_url = response.url().clone();
-    let body = bounded_manifest(&mut response).await?;
+    let request = state.client.get(source.as_str())?;
+    let mut transfer = HlsTransfer::open(request, state.hls_timeouts).await?;
+    transfer.require_success()?;
+    require_hls_mime(transfer.response().headers())?;
+    let final_url = transfer.response().url().clone();
+    let body = transfer.read_bounded(MAX_HLS_MANIFEST_BYTES).await?;
     state
         .hls_sessions
         .rewrite_manifest(session, &body, &final_url)
         .await
-}
-
-async fn bounded_manifest(response: &mut reqwest::Response) -> Result<Vec<u8>> {
-    let mut body = Vec::new();
-    while let Some(chunk) = response.chunk().await? {
-        if body.len().saturating_add(chunk.len()) > MAX_HLS_MANIFEST_BYTES {
-            bail!("HLS manifest exceeds its byte limit");
-        }
-        body.extend_from_slice(&chunk);
-    }
-    Ok(body)
 }
 
 fn require_hls_mime(headers: &HeaderMap) -> Result<()> {

@@ -18,7 +18,7 @@ async fn chunk_downloader_records_throughput_and_success_for_the_host() {
     let spec = ChunkSpec {
         client: &client,
         url: &url,
-        range: ByteRange::new(0, 16),
+        request: range_fixture::range_request(ByteRange::new(0, 16)),
         continuation: None,
         timeouts: TransferTimeouts::default(),
     };

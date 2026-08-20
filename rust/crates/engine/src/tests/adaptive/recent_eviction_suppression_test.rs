@@ -22,8 +22,7 @@ fn low_probability_evicted_ranges_wait_while_a_likely_transition_can_reacquire()
 
 fn allocated(plan: &crate::adaptive::AllocationPlan, post: &str, range: ByteRange) -> bool {
     plan.allocations.iter().any(|work| {
-        work.post == PostId::new(post)
-            && work.range.start < range.end
-            && range.start < work.range.end
+        let requested = work.request.requested_bytes();
+        work.post == PostId::new(post) && requested.start < range.end && range.start < requested.end
     })
 }

@@ -74,12 +74,13 @@ extension FeedCubitNavigation on FeedCubit {
       index,
       forgetPrevious: _forgetsViewed(current),
     );
-    return FeedLoaded.of(
+    final moved = FeedLoaded.of(
       current.kind,
       roster,
       notice: current.notice,
       follows: current.follows,
     );
+    return _realignPreparation(current, moved);
   }
 
   bool _forgetsViewed(FeedLoaded current) {

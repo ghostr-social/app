@@ -11,6 +11,7 @@ const MICRO_EXTENT_MS: u64 = 30;
 #[test]
 fn an_unparsed_whole_file_is_requested_in_bounded_slices() {
     let mut input = snapshot(1, 20_000_000, 500, 2);
+    input.candidates[0].startup = None;
     input.candidates[0].playable_ranges = vec![PlayableRange {
         bytes: ByteRange::new(0, WHOLE_FILE_BYTES),
         playable_ms: WHOLE_FILE_MS,
@@ -22,7 +23,7 @@ fn an_unparsed_whole_file_is_requested_in_bounded_slices() {
     assert!(
         plan.allocations
             .iter()
-            .all(|work| work.range.len() <= REQUEST_SLICE_BYTES),
+            .all(|work| work.request.requested_bytes().len() <= REQUEST_SLICE_BYTES),
         "an interrupted oversized request loses all its undelivered paid bytes: {plan:#?}"
     );
     assert!(plan.allocations.len() > 1, "{plan:#?}");
@@ -31,6 +32,7 @@ fn an_unparsed_whole_file_is_requested_in_bounded_slices() {
 #[test]
 fn adjacent_micro_extents_coalesce_into_larger_requests() {
     let mut input = snapshot(1, 20_000_000, 4_500, 2);
+    input.candidates[0].startup = None;
     input.candidates[0].playable_ranges = (0..MICRO_EXTENT_COUNT)
         .map(|index| PlayableRange {
             bytes: ByteRange::new(index * MICRO_EXTENT_BYTES, (index + 1) * MICRO_EXTENT_BYTES),
@@ -51,12 +53,13 @@ fn adjacent_micro_extents_coalesce_into_larger_requests() {
     assert!(plan
         .allocations
         .iter()
-        .all(|work| work.range.len() <= REQUEST_SLICE_BYTES));
+        .all(|work| work.request.requested_bytes().len() <= REQUEST_SLICE_BYTES));
 }
 
 #[test]
 fn coalescing_does_not_bridge_gaps_between_extents() {
     let mut input = snapshot(1, 20_000_000, 500, 2);
+    input.candidates[0].startup = None;
     input.candidates[0].playable_ranges = vec![
         PlayableRange {
             bytes: ByteRange::new(0, MICRO_EXTENT_BYTES),
@@ -72,7 +75,8 @@ fn coalescing_does_not_bridge_gaps_between_extents() {
 
     assert!(
         plan.allocations.iter().all(|work| {
-            work.range.end <= MICRO_EXTENT_BYTES || work.range.start >= 2 * MICRO_EXTENT_BYTES
+            let requested = work.request.requested_bytes();
+            requested.end <= MICRO_EXTENT_BYTES || requested.start >= 2 * MICRO_EXTENT_BYTES
         }),
         "a request must never pay for bytes outside the wanted extents: {plan:#?}"
     );

@@ -7,4 +7,5 @@ description = "Guarded outbound media HTTP: public-address checks, DNS resolutio
 [dependencies]
 anyhow = { workspace = true }
 reqwest = { workspace = true }
+sha2 = { workspace = true }
 tokio = { workspace = true }

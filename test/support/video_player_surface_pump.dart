@@ -12,3 +12,10 @@ Future<void> pumpVideoPlayerSurface(
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 100));
 }
+
+Future<void> settleVideoPlayerTasks(WidgetTester tester) async {
+  for (var turn = 0; turn < 2; turn += 1) {
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump(const Duration(milliseconds: 1));
+  }
+}

@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/features/comments/presentation/comments_sheet.dart';
+import 'package:ghostr/core/media/prepared_progressive_playback.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_screen_bindings.dart';
@@ -11,12 +13,14 @@ import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card.dar
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_kind_selector.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_page_view.dart';
 import 'package:ghostr/features/video_sharing/presentation/video_share_cubit.dart';
+import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:ghostr/shared/widgets/async_state_panel.dart';
 import 'package:ghostr/shared/widgets/loading_panel.dart';
 
 export 'feed_screen_bindings.dart';
 
 part 'feed_screen_actions.dart';
+part 'feed_screen_pages.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({required this.bindings, super.key});
@@ -30,6 +34,7 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   bool _commentsOpen = false;
   bool _appIsResumed = true;
+  bool _memoryConstrained = false;
   FeedCubit? _cubit;
 
   @override
@@ -64,6 +69,16 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
     if (_appIsResumed == resumed) return;
     _appIsResumed = resumed;
     _cubit?.surfaceVisibilityChanged(_isVisible);
+  }
+
+  @override
+  void didHaveMemoryPressure() {
+    if (_memoryConstrained) return;
+    final playback = widget.bindings.playbackPort;
+    if (playback is VideoPlaybackMemoryPressurePort) {
+      (playback as VideoPlaybackMemoryPressurePort).reportMemoryPressure();
+    }
+    setState(() => _memoryConstrained = true);
   }
 
   @override
@@ -149,33 +164,6 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
           'relay hands them over. Following creators fills this feed faster.',
       actionLabel: 'Search again',
       onAction: context.read<FeedCubit>().retry,
-    );
-  }
-
-  Widget _feedPages(BuildContext context, FeedLoaded state) {
-    return FeedPageView(
-      key: ValueKey(state.posts.first.id.value),
-      itemCount: state.posts.length,
-      initialPage: state.activeIndex,
-      onPageChanged: context.read<FeedCubit>().pageChanged,
-      itemBuilder: (_, index) => index == state.activeIndex
-          ? _feedCard(context, state, index)
-          : const ColoredBox(color: Colors.black),
-    );
-  }
-
-  Widget _feedCard(BuildContext context, FeedLoaded state, int index) {
-    final post = state.posts[index];
-    return BlocBuilder<VideoShareCubit, VideoShareState>(
-      builder: (context, sharing) => FeedCard(
-        key: ValueKey(post.id.value),
-        post: post,
-        playback: FeedCardPlayback(
-          port: widget.bindings.playbackPort,
-          isActive: _isVisible && index == state.activeIndex,
-        ),
-        actions: _actions(context, state, post, sharing),
-      ),
     );
   }
 

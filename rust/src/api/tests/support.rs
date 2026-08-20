@@ -3,7 +3,8 @@
 use crate::api::delivery_types::{FfiFocusItem, FfiMediaDelivery};
 use crate::discovery::content::parsing::ParsedVideoPost;
 use crate::discovery::content::profiles::CreatorProfile;
-use crate::engine::{DeliveryKind, VideoMeta};
+use crate::engine::catalog::Catalog;
+use crate::engine::{DeliveryKind, PostId, VideoMeta};
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
@@ -37,6 +38,7 @@ pub(crate) fn parsed_video_post(kind: u16, identifier: Option<&str>) -> ParsedVi
             size_bytes: Some(9),
             duration_ms: Some(2_000),
         },
+        metadata_evidence: Vec::new(),
         renditions: Vec::new(),
     }
 }
@@ -83,4 +85,10 @@ pub(crate) fn temp_store(prefix: &str) -> Arc<PartialRangeStore> {
         Arc::new(Mutex::new(0)),
         StoreCapacity::system(u64::MAX),
     ))
+}
+
+pub(crate) async fn bind_store(store: &PartialRangeStore, id: &str, meta: &VideoMeta) {
+    let mut catalog = Catalog::new();
+    let binding = catalog.upsert(PostId::new(id), meta.clone());
+    store.bind_representation(binding).await.unwrap();
 }

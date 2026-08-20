@@ -26,7 +26,9 @@ pub mod feed_types;
 pub mod feed_updates_stream;
 pub mod focus_control;
 pub mod playback_control;
+pub mod playback_preparation_stream;
 pub mod playback_types;
+pub mod player_preparation_control;
 pub mod session_control;
 
 pub(crate) mod delivery;

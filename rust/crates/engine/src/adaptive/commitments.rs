@@ -2,7 +2,7 @@ use super::allocation_evidence::candidate_utility;
 use super::ranges::playable_gain;
 use super::resources::storage_displaces_speculation;
 use super::{
-    AllocationReason, CandidateSnapshot, InFlightRange, OriginHealth, PlayabilitySnapshot,
+    AllocationReason, CandidateSnapshot, InFlightAction, OriginHealth, PlayabilitySnapshot,
     PlayableRange, RetainedAllocation,
 };
 use crate::PostId;
@@ -41,7 +41,8 @@ fn future_commitments(
         .candidates
         .iter()
         .filter(|candidate| {
-            candidate.post != snapshot.playback.current
+            candidate.retrieval_eligible
+                && candidate.post != snapshot.playback.current
                 && candidate.view_probability.value() >= 0.05
                 && (candidate.feed_offset.value() > 0 || admitted.contains(&candidate.post))
         })
@@ -65,30 +66,35 @@ fn candidate_commitments(
     let mut commitments: Vec<_> = candidate
         .in_flight
         .iter()
+        .filter(|active| !active.cancelling)
         .filter_map(|active| retained_allocation(snapshot, candidate, active))
         .collect();
-    commitments.sort_by_key(|work| (work.committed_until_ms, work.range.start, work.range.end));
+    commitments.sort_by_key(|work| {
+        let bytes = work.request.requested_bytes();
+        (work.committed_until_ms, bytes.start, bytes.end)
+    });
     commitments
 }
 
 fn retained_allocation(
     snapshot: &PlayabilitySnapshot,
     candidate: &CandidateSnapshot,
-    active: &InFlightRange,
+    active: &InFlightAction,
 ) -> Option<RetainedAllocation> {
     let current = candidate.post == snapshot.playback.current;
     let origin = useful_origin(snapshot, candidate, active, current)?;
-    let gain = playable_gain(candidate, active.bytes);
+    let gain = playable_gain(candidate, active.effective_bytes);
     Some(RetainedAllocation {
+        action_id: active.action_id,
         post: candidate.post.clone(),
-        range: active.bytes,
+        request: active.request,
         source: active.source.clone(),
         utility: candidate_utility(
             snapshot,
             candidate,
             origin,
             PlayableRange {
-                bytes: active.bytes,
+                bytes: active.effective_bytes,
                 playable_ms: gain,
             },
         ),
@@ -115,7 +121,7 @@ fn future_limit(
 fn useful_origin<'a>(
     snapshot: &PlayabilitySnapshot,
     candidate: &'a CandidateSnapshot,
-    active: &InFlightRange,
+    active: &InFlightAction,
     current: bool,
 ) -> Option<&'a OriginHealth> {
     let expired = active.committed_until_ms <= snapshot.observed_at_ms;

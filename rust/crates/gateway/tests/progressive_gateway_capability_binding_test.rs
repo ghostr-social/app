@@ -14,7 +14,10 @@ async fn capability_for_another_post_fails_closed() {
         .set_total_len("clip", 1)
         .await
         .expect("total length");
-    let capability = harness.capabilities.issue("other").await;
+    harness
+        .bind_video("other", "https://cdn.example/other.mp4", Some(1))
+        .await;
+    let capability = harness.issue_video_asset("other").await;
     let request = capability_request("clip", capability.as_str(), None);
 
     let response = harness.router.oneshot(request).await.expect("response");

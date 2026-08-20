@@ -1,12 +1,13 @@
 mod gateway_fixture;
 
+use axum::http::header::RETRY_AFTER;
 use axum::http::StatusCode;
 use gateway_fixture::progressive::progressive_harness;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 use tower::ServiceExt;
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn retries_when_the_representation_disappears_while_length_is_learned() {
     let harness = progressive_harness("ghostr-snapshot-binding-disappears");
     harness.posts.insert("clip");
@@ -17,14 +18,12 @@ async fn retries_when_the_representation_disappears_while_length_is_learned() {
     let response = tokio::spawn(harness.router.clone().oneshot(request));
 
     tokio::task::yield_now().await;
-    harness.store.present_ranges("clip").await.unwrap();
     harness.store.clear().await.unwrap();
     harness.store.set_total_len("clip", 8).await.unwrap();
+    let response = response.await.unwrap().unwrap();
 
-    assert_eq!(
-        response.await.unwrap().unwrap().status(),
-        StatusCode::SERVICE_UNAVAILABLE
-    );
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(response.headers()[RETRY_AFTER], "1");
     std::fs::remove_dir_all(harness.root).unwrap();
 }
 

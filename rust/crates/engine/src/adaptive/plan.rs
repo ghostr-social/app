@@ -1,4 +1,6 @@
-use crate::{ByteRange, PostId};
+use super::RetrievalRequest;
+use crate::media_timeline::StartupFootprint;
+use crate::{ActionId, ByteRange, PostId};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CandidateUtility {
@@ -48,7 +50,12 @@ pub enum ControlMode {
 pub enum ReserveCandidateState {
     #[default]
     Unprepared,
-    Ready,
+    Ready {
+        startup: StartupFootprint,
+    },
+    Structural {
+        startup: StartupFootprint,
+    },
     InFlight,
     Probing,
     Preparing {
@@ -72,6 +79,7 @@ pub struct ReserveCandidateEvidence {
 pub struct ReadyReserveEvidence {
     pub target: usize,
     pub ready: usize,
+    pub structural: usize,
     pub protected: usize,
     pub recovery_horizon_ms: u64,
     pub underflow_risk_bps: u16,
@@ -85,6 +93,11 @@ pub enum NextReserveEvidence {
     NotApplicable,
     Ready {
         post: PostId,
+        startup: StartupFootprint,
+    },
+    Structural {
+        post: PostId,
+        startup: StartupFootprint,
     },
     InFlight {
         post: PostId,
@@ -109,7 +122,7 @@ pub enum DiscoveryDemand {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Allocation {
     pub post: PostId,
-    pub range: ByteRange,
+    pub request: RetrievalRequest,
     pub source: String,
     pub expected_playable_gain_ms: u64,
     pub utility: CandidateUtility,
@@ -120,8 +133,9 @@ pub struct Allocation {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RetainedAllocation {
+    pub action_id: ActionId,
     pub post: PostId,
-    pub range: ByteRange,
+    pub request: RetrievalRequest,
     pub source: String,
     pub utility: CandidateUtility,
     pub committed_until_ms: u64,

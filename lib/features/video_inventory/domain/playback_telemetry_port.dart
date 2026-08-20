@@ -7,7 +7,8 @@ import 'package:ghostr/features/video_inventory/domain/playback_session.dart';
 ///
 /// Implementations may replace an unsent observation with a newer observation
 /// from the same session. Activation and deactivation must remain ordered, and
-/// no implementation may throw into playback.
+/// a presented frame must stay separate from observation coalescing. No
+/// implementation may throw into playback.
 abstract interface class PlaybackTelemetryPort {
   PlaybackSession openSession(
     PlaybackVideoId videoId,
@@ -17,6 +18,8 @@ abstract interface class PlaybackTelemetryPort {
   void activate(PlaybackSession session);
 
   void report(PlaybackObservation observation);
+
+  void presented(PlaybackSession session);
 
   void deactivate(PlaybackSession session);
 }
@@ -37,6 +40,9 @@ final class NoopPlaybackTelemetryPort implements PlaybackTelemetryPort {
 
   @override
   void report(PlaybackObservation observation) {}
+
+  @override
+  void presented(PlaybackSession session) {}
 
   @override
   void deactivate(PlaybackSession session) {}

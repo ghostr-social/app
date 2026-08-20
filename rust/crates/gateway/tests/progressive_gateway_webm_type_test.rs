@@ -12,6 +12,13 @@ async fn does_not_claim_unsupported_webm_playback() {
     let harness = progressive_harness("ghostr-progressive-webm-type");
     harness.posts.insert("clip");
     harness
+        .bind_video(
+            "clip",
+            "https://cdn.example/clip.webm",
+            Some(WEBM_HEADER.len() as u64),
+        )
+        .await;
+    harness
         .store
         .set_total_len("clip", WEBM_HEADER.len() as u64)
         .await

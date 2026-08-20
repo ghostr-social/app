@@ -47,3 +47,55 @@ pub struct FfiDeliveryEvent {
     pub eta_ms: Option<u64>,
     pub detail: Option<String>,
 }
+
+/// What the native cache has proved for one exact playback asset.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FfiPlaybackPreparationReadiness {
+    Preparing,
+    StructuralStartable,
+}
+
+/// One exact loopback asset selected for current or adjacent-next use.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FfiPlaybackPreparationAsset {
+    pub delivery_id: String,
+    pub representation_id: String,
+    pub asset_id: String,
+    pub playback_url: String,
+    pub readiness: FfiPlaybackPreparationReadiness,
+}
+
+/// Atomic two-player preparation window from one manager plan.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FfiPlaybackPreparationPlan {
+    pub revision: u64,
+    /// The focused delivery even while no exact progressive asset exists.
+    pub current_delivery_id: Option<String>,
+    pub current: Option<FfiPlaybackPreparationAsset>,
+    pub next: Option<FfiPlaybackPreparationAsset>,
+}
+
+/// Native-player evidence for one exact progressive playback attempt.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FfiPlayerPreparationState {
+    Initializing,
+    Initialized,
+    FirstFrameRendered,
+    Failed,
+    Released,
+}
+
+/// Authority and monotonic ordering for a player-preparation update.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FfiPlayerPreparationReport {
+    pub post_id: String,
+    pub representation_id: String,
+    pub asset_id: String,
+    pub player_capability_generation: u64,
+    pub client_epoch: u64,
+    pub attempt_generation: u64,
+    pub sequence: u64,
+    pub state: FfiPlayerPreparationState,
+    pub failure_kind: Option<String>,
+    pub observed_monotonic_us: u64,
+}

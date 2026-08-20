@@ -24,6 +24,15 @@ pub struct FfiPlaybackObservation {
     pub playback_rate_milli: u32,
 }
 
+/// One user-visible Flutter frame for an exact playback session.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FfiPlaybackPresentation {
+    pub post_id: String,
+    pub generation: u64,
+    pub sequence: u64,
+    pub observed_at_ms: u64,
+}
+
 /// Delivery manager decisions and latest accepted identity in this process.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FfiPlaybackAdmissionSnapshot {

@@ -6,10 +6,8 @@
 use crate::debug::http as debug_http;
 use crate::progressive::route::{self as progressive_route, ProgressiveState};
 use crate::{hls::routes as hls_routes, hls::sessions::HlsSessions};
-use axum::body::Body;
-use axum::http::header::{ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, RANGE};
+use axum::http::header::{ACCEPT_ENCODING, RANGE};
 use axum::http::{HeaderMap, StatusCode};
-use axum::response::Response;
 use axum::routing::get;
 use axum::Router;
 #[cfg(all(
@@ -20,6 +18,7 @@ use axum::Router;
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_delivery::segmented::SegmentedCache;
 use ghostr_net::outbound_media_client::MediaHttpRequests;
+use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
 #[cfg(all(
     feature = "video-debug-web",
     debug_assertions,
@@ -29,11 +28,15 @@ use nostr_sdk::Client;
 use reqwest::RequestBuilder;
 use std::sync::Arc;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Clone)]
 pub(crate) struct GatewayHttpState {
     pub client: Arc<dyn MediaHttpRequests>,
     pub hls_sessions: HlsSessions,
     pub segmented: SegmentedCache,
+    pub hls_timeouts: HlsTransferTimeouts,
 }
 
 /// The gateway with `/video.mp4` served from the partial store instead of
@@ -113,6 +116,7 @@ fn shared_state(
         client,
         hls_sessions,
         segmented,
+        hls_timeouts: HlsTransferTimeouts::default(),
     })
 }
 
@@ -137,23 +141,12 @@ pub(crate) fn upstream_request(
     url: String,
     headers: &HeaderMap,
 ) -> Result<RequestBuilder, StatusCode> {
-    let request = client.get(&url).map_err(|_| StatusCode::BAD_GATEWAY)?;
+    let request = client
+        .get(&url)
+        .map_err(|_| StatusCode::BAD_GATEWAY)?
+        .header(ACCEPT_ENCODING, "identity");
     Ok(match headers.get(RANGE) {
         Some(value) => request.header(RANGE, value),
         None => request,
     })
-}
-
-pub(crate) fn proxy_response(upstream: reqwest::Response) -> Result<Response, StatusCode> {
-    let status = upstream.status();
-    let headers = upstream.headers().clone();
-    let mut response = Response::builder().status(status);
-    for name in [CONTENT_TYPE, CONTENT_LENGTH, CONTENT_RANGE, ACCEPT_RANGES] {
-        if let Some(value) = headers.get(&name) {
-            response = response.header(name, value);
-        }
-    }
-    response
-        .body(Body::from_stream(upstream.bytes_stream()))
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }

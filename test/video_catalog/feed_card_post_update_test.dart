@@ -46,6 +46,7 @@ Widget _app({required VideoPost post, required FeedCardActions actions}) {
         post: post,
         playback: FeedCardPlayback(
           port: FakeVideoPlaybackPort(),
+          source: FeedCardPlaybackSource.direct(post.media),
           isActive: true,
         ),
         actions: actions,

@@ -7,18 +7,22 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
+#[cfg(test)]
+mod tests;
+
 const MAX_HLS_READY_WINDOW: usize = 5;
 
 pub(crate) struct SegmentedDelivery {
     cache: SegmentedCache,
+    tracked: Vec<(PostId, Vec<String>)>,
     targets: Vec<Target>,
     active: HashMap<PostId, Active>,
     next_generation: u64,
-    current_progressive: bool,
+    current_delivery: Option<DeliveryKind>,
     startup_eta_ms: u64,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 struct Target {
     post: PostId,
     sources: Vec<String>,
@@ -33,25 +37,19 @@ impl SegmentedDelivery {
     pub fn new(cache: SegmentedCache) -> Self {
         Self {
             cache,
+            tracked: Vec::new(),
             targets: Vec::new(),
             active: HashMap::new(),
             next_generation: 0,
-            current_progressive: false,
+            current_delivery: None,
             startup_eta_ms: crate::qoe::QoeTracker::DEFAULT_STARTUP_ETA_MS,
         }
     }
 
     pub fn apply_focus(&mut self, focus: &DeliveryFocus) {
-        let generation = self.generation(focus);
-        self.abort_all();
         let current = focus.current_index.min(focus.items.len().saturating_sub(1));
-        self.current_progressive = focus
-            .items
-            .get(current)
-            .is_some_and(|item| item.meta.delivery == DeliveryKind::Progressive);
         let tracked = hls_items(&focus.items);
-        self.cache.replace_focus(generation, tracked);
-        self.targets = focus.items[current..]
+        let targets: Vec<Target> = focus.items[current..]
             .iter()
             .take(MAX_HLS_READY_WINDOW + 1)
             .filter(|item| item.meta.delivery == DeliveryKind::Hls)
@@ -60,6 +58,16 @@ impl SegmentedDelivery {
                 sources: item.meta.urls.clone(),
             })
             .collect();
+        let current_delivery = focus.items.get(current).map(|item| item.meta.delivery);
+        if self.equivalent(&tracked, &targets, current_delivery) {
+            return;
+        }
+        let generation = self.generation(focus);
+        self.abort_all();
+        self.cache.replace_focus(generation, tracked.clone());
+        self.tracked = tracked;
+        self.targets = targets;
+        self.current_delivery = current_delivery;
     }
 
     pub fn reconcile(
@@ -69,7 +77,9 @@ impl SegmentedDelivery {
         connection_limit: usize,
         progressive_active: usize,
     ) {
-        let reserve = usize::from(self.current_progressive && progressive_active == 0);
+        let reserve = usize::from(
+            self.current_delivery == Some(DeliveryKind::Progressive) && progressive_active == 0,
+        );
         let capacity = connection_limit
             .saturating_sub(progressive_active)
             .saturating_sub(reserve);
@@ -105,8 +115,21 @@ impl SegmentedDelivery {
 
     pub fn clear(&mut self) {
         self.abort_all();
+        self.tracked.clear();
         self.targets.clear();
+        self.current_delivery = None;
         self.cache.clear();
+    }
+
+    fn equivalent(
+        &self,
+        tracked: &[(PostId, Vec<String>)],
+        targets: &[Target],
+        current_delivery: Option<DeliveryKind>,
+    ) -> bool {
+        self.current_delivery == current_delivery
+            && self.tracked == tracked
+            && self.targets == targets
     }
 
     fn generation(&mut self, focus: &DeliveryFocus) -> u64 {

@@ -7,4 +7,5 @@ pub mod playback;
 pub(crate) mod routes;
 pub mod sessions;
 pub mod state;
+mod transfer;
 pub mod types;

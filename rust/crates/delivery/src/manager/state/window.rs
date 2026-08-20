@@ -22,14 +22,17 @@ impl DeliveryState {
         let Some(current) = self.focus.current() else {
             return posts;
         };
-        posts.insert(current.clone());
-        let next = self
-            .focus
-            .window()
-            .iter()
-            .position(|post| post == current)
-            .and_then(|index| self.focus.window().get(index + 1));
-        posts.extend(next.cloned());
+        let Some(index) = self.focus.window().iter().position(|post| post == current) else {
+            return posts;
+        };
+        posts.extend(
+            self.focus
+                .window()
+                .iter()
+                .skip(index)
+                .take(self.ready_target.saturating_add(1))
+                .cloned(),
+        );
         posts
     }
 
@@ -47,6 +50,21 @@ impl DeliveryState {
             .saturating_add(PLANNING_WINDOW_AHEAD + 1)
             .min(posts.len());
         posts[start..end].to_vec()
+    }
+
+    pub(crate) fn timeline_window_posts(&self) -> Vec<PostId> {
+        let posts = self.planning_window_posts();
+        let Some(current) = self.focus.current() else {
+            return posts;
+        };
+        let Some(index) = posts.iter().position(|post| post == current) else {
+            return posts;
+        };
+        posts[index..]
+            .iter()
+            .chain(posts[..index].iter().rev())
+            .cloned()
+            .collect()
     }
 
     pub(crate) fn candidate_posts(&self) -> Vec<PostId> {

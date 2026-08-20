@@ -2,26 +2,38 @@
 //! network updates arrive over a channel so the manager reacts to events
 //! instead of polling.
 
-use ghostr_engine::adaptive::AllocationPlan;
+use ghostr_engine::evidence::NostrMetadataEvidence;
 use ghostr_engine::video_rendition::VideoRendition;
 use ghostr_engine::{DataUsageLevel, PostId, VideoMeta};
 use tokio::sync::{mpsc, oneshot};
 
 mod channel;
+mod decision_log;
 mod focus_generation;
 mod mailbox;
 mod plan_evidence;
+mod playback_presentation;
+mod player_preparation;
 mod transport;
+use crate::evaluation::{EvaluationLedger, EvaluationSnapshot};
 use crate::playback_admission::{
     PlaybackAdmission, PlaybackAdmissionLedger, PlaybackAdmissionSnapshot,
 };
 pub use channel::{command_channel, command_channel_with_candidate_capacity};
+pub use decision_log::DecisionHistorySnapshot;
+use decision_log::DecisionLog;
+pub(crate) use decision_log::DecisionResolution;
 pub(crate) use focus_generation::FocusGenerationGuard;
 pub use focus_generation::{FocusAdmission, FocusGeneration};
 pub use mailbox::MailboxReceiver;
 use mailbox::MailboxSender;
 pub use plan_evidence::PlanEvidence;
 use plan_evidence::PlanEvidenceHistory;
+pub use playback_presentation::{PlaybackPresentation, PlaybackPresentationIngress};
+pub use player_preparation::{
+    PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationIngress,
+    PlayerPreparationObservation, PlayerPreparationReport, PlayerPreparationState,
+};
 pub use transport::{DeliveryPlayback, TransportRescue, TransportRescueReason};
 
 const DEFAULT_CANDIDATE_CAPACITY: usize = 32;
@@ -38,6 +50,7 @@ pub struct FocusItem {
 pub struct DeliveryCandidate {
     pub post: PostId,
     pub meta: VideoMeta,
+    pub metadata_evidence: Vec<NostrMetadataEvidence>,
     pub renditions: Vec<VideoRendition>,
     pub discovered_at: u64,
 }
@@ -101,6 +114,8 @@ pub struct DeliveryHandle {
     clears: mpsc::Sender<ClearRequest>,
     plans: PlanEvidenceHistory,
     playback_admissions: PlaybackAdmissionLedger,
+    evaluation: EvaluationLedger,
+    decisions: DecisionLog,
 }
 
 impl DeliveryHandle {
@@ -129,12 +144,16 @@ impl DeliveryHandle {
         self.sender.send_control(DeliveryCommand::StorageChanged);
     }
 
-    pub fn plan_history(&self) -> Vec<PlanEvidence> {
-        self.plans.snapshot()
-    }
-
     pub fn playback_admission_snapshot(&self) -> PlaybackAdmissionSnapshot {
         self.playback_admissions.snapshot()
+    }
+
+    pub fn evaluation_snapshot(&self) -> EvaluationSnapshot {
+        self.evaluation.snapshot()
+    }
+
+    pub fn decision_history(&self) -> DecisionHistorySnapshot {
+        self.decisions.snapshot()
     }
 
     pub async fn clear(&self) -> anyhow::Result<()> {
@@ -150,15 +169,19 @@ impl DeliveryHandle {
 }
 
 pub type ClearRequest = oneshot::Sender<anyhow::Result<()>>;
-
 pub struct CommandReceiver {
     commands: MailboxReceiver,
     clears: mpsc::Receiver<ClearRequest>,
     plans: PlanEvidenceHistory,
     playback_admissions: PlaybackAdmissionLedger,
+    evaluation: EvaluationLedger,
+    decisions: DecisionLog,
 }
 
 impl CommandReceiver {
+    pub(crate) fn evaluation(&self) -> EvaluationLedger {
+        self.evaluation.clone()
+    }
     pub fn receivers(&mut self) -> (&mut MailboxReceiver, &mut mpsc::Receiver<ClearRequest>) {
         (&mut self.commands, &mut self.clears)
     }
@@ -183,12 +206,12 @@ impl CommandReceiver {
         self.commands.try_control()
     }
 
-    pub fn try_candidate(&mut self) -> Option<DeliveryCandidate> {
-        self.commands.try_candidate()
+    pub(crate) fn try_controls_through_focus(&mut self) -> Option<Vec<DeliveryCommand>> {
+        self.commands.try_controls_through_focus()
     }
 
-    pub fn publish_plan(&mut self, observed_at_ms: u64, plan: AllocationPlan) {
-        self.plans.publish(observed_at_ms, plan);
+    pub fn try_candidate(&mut self) -> Option<DeliveryCandidate> {
+        self.commands.try_candidate()
     }
 
     pub(crate) fn record_playback_admission(&self, admission: PlaybackAdmission, post: &PostId) {

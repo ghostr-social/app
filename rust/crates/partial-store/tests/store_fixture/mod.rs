@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 //! Test stores use either a temp root or controllable free space.
 
+use ghostr_engine::adaptive::WholeBodyContract;
 use ghostr_partial_store::partial_range_store::capacity::{Limits, StoreCapacity};
 use ghostr_partial_store::partial_range_store::free_space::FreeSpace;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
@@ -96,4 +97,8 @@ pub fn limits(budget: u64, reserve: u64) -> Limits {
 
 pub fn plain_store(root: PathBuf, used_bytes: Arc<Mutex<u64>>) -> PartialRangeStore {
     PartialRangeStore::with_capacity(root, used_bytes, StoreCapacity::system(u64::MAX))
+}
+
+pub fn exact_response(expected_bytes: u64) -> WholeBodyContract {
+    WholeBodyContract::Exact { expected_bytes }
 }

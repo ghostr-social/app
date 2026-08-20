@@ -11,6 +11,8 @@ use ghostr_gateway::progressive::route::{ProgressiveState, ProgressiveTiming};
 use ghostr_gateway::router::configured_router_with_progressive;
 use std::sync::Arc;
 
+mod request;
+
 pub struct ProgressiveDeliveryHarness {
     pub delivery: DeliveryFixture,
     pub router: axum::Router,
@@ -79,16 +81,6 @@ impl ProgressiveDeliveryHarness {
         })
         .await
         .expect("progressive cache registration");
-    }
-
-    pub async fn request(&self, post: &str, range: &str) -> axum::http::Request<axum::body::Body> {
-        let capability = self.capabilities.issue(post).await;
-        let uri = format!("/video.mp4?id={post}&cap={}", capability.as_str());
-        axum::http::Request::builder()
-            .uri(uri)
-            .header(axum::http::header::RANGE, range)
-            .body(axum::body::Body::empty())
-            .expect("progressive request")
     }
 }
 

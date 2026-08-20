@@ -9,7 +9,7 @@ use ghostr_engine::catalog::LearnedFacts;
 use ghostr_engine::host_stats::{HostStats, ThroughputSample};
 use ghostr_engine::media_timeline::{parse_mp4_segments, MediaSegment};
 use ghostr_engine::{ByteRange, DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
 pub(super) fn demand_plan(demanded: ByteRange) -> PlannedWork {
@@ -29,12 +29,22 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
     let stats = stats(buffered);
     let retry = RetryBook::new(RetryPolicy::default());
     let demanded = HashMap::from([(post.clone(), demanded)]);
+    let stored_totals = HashMap::new();
+    let continuation_sources = HashMap::new();
+    let independent_sources = HashMap::new();
+    let revisions = HashMap::new();
+    let finalized = HashSet::new();
     planned_work(
         &mut state,
         PlanInputs {
             stats: &stats,
             retry: &retry,
             present: &HashMap::new(),
+            finalized: &finalized,
+            stored_totals: &stored_totals,
+            continuation_sources: &continuation_sources,
+            revisions: &revisions,
+            independent_sources: &independent_sources,
             in_flight: &[],
             storage: StorageSnapshot::new(2_000_000_000, 0),
             connection_capacity: 1,

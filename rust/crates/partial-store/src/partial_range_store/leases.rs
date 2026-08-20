@@ -27,6 +27,18 @@ impl StoreLeases {
         }
     }
 
+    pub(crate) fn try_acquire_unheld(self: &Arc<Self>, key: &str) -> Option<StoreLease> {
+        let mut counts = self.counts();
+        if counts.contains_key(key) {
+            return None;
+        }
+        counts.insert(key.to_owned(), 1);
+        Some(StoreLease {
+            leases: self.clone(),
+            key: key.to_owned(),
+        })
+    }
+
     /// True while at least one lease on `key` is alive.
     pub(crate) fn held(&self, key: &str) -> bool {
         self.counts().get(key).is_some_and(|count| *count > 0)
@@ -56,6 +68,15 @@ impl StoreLeases {
 pub struct StoreLease {
     leases: Arc<StoreLeases>,
     key: String,
+}
+
+impl StoreLease {
+    pub(crate) fn is_exclusive(&self) -> bool {
+        self.leases
+            .counts()
+            .get(&self.key)
+            .is_some_and(|count| *count == 1)
+    }
 }
 
 impl Drop for StoreLease {

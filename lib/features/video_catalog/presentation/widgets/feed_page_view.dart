@@ -2,17 +2,31 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_swipe_physics.dart';
 
+final class FeedPageModel {
+  FeedPageModel({required Iterable<Key> keys, this.activePage = 0})
+    : keys = List<Key>.unmodifiable(keys) {
+    if (this.keys.isEmpty && activePage == 0) return;
+    RangeError.checkValidIndex(activePage, this.keys, 'activePage');
+    if (this.keys.toSet().length != this.keys.length) {
+      throw ArgumentError.value(this.keys, 'keys', 'must be unique');
+    }
+  }
+
+  final List<Key> keys;
+  final int activePage;
+
+  Key? get activeKey => keys.isEmpty ? null : keys[activePage];
+}
+
 class FeedPageView extends StatefulWidget {
   const FeedPageView({
-    required this.itemCount,
+    required this.model,
     required this.onPageChanged,
     required this.itemBuilder,
-    this.initialPage = 0,
     super.key,
   });
 
-  final int itemCount;
-  final int initialPage;
+  final FeedPageModel model;
   final ValueChanged<int> onPageChanged;
   final IndexedWidgetBuilder itemBuilder;
 
@@ -21,10 +35,19 @@ class FeedPageView extends StatefulWidget {
 }
 
 class _FeedPageViewState extends State<FeedPageView> {
-  late final _controller = PageController(initialPage: widget.initialPage);
+  late final _controller = PageController(initialPage: widget.model.activePage);
   final _gesture = FeedSwipeGesture();
   late final _physics = FeedSwipePhysics(gesture: _gesture);
+  late Key? _reportedKey;
+  List<Key>? _gestureKeys;
+  Key? _candidateKey;
   int? _activePointer;
+
+  @override
+  void initState() {
+    super.initState();
+    _reportedKey = widget.model.activeKey;
+  }
 
   @override
   void didUpdateWidget(covariant FeedPageView oldWidget) {
@@ -40,51 +63,110 @@ class _FeedPageViewState extends State<FeedPageView> {
       onPointerDown: _beginGesture,
       onPointerUp: _endGesture,
       onPointerCancel: _cancelGesture,
-      child: PageView.builder(
-        controller: _controller,
-        scrollDirection: Axis.vertical,
-        dragStartBehavior: DragStartBehavior.down,
-        physics: _physics,
-        pageSnapping: false,
-        allowImplicitScrolling: true,
-        itemCount: widget.itemCount,
-        onPageChanged: widget.onPageChanged,
-        itemBuilder: widget.itemBuilder,
+      child: NotificationListener<ScrollEndNotification>(
+        onNotification: _scrollEnded,
+        child: PageView.builder(
+          controller: _controller,
+          scrollDirection: Axis.vertical,
+          dragStartBehavior: DragStartBehavior.down,
+          physics: _physics,
+          pageSnapping: false,
+          allowImplicitScrolling: true,
+          itemCount: widget.model.keys.length,
+          onPageChanged: _pageChanged,
+          itemBuilder: _buildPage,
+          findChildIndexCallback: _pageForKey,
+        ),
       ),
     );
+  }
+
+  Widget _buildPage(BuildContext context, int index) {
+    return KeyedSubtree(
+      key: widget.model.keys[index],
+      child: widget.itemBuilder(context, index),
+    );
+  }
+
+  int? _pageForKey(Key key) {
+    final index = widget.model.keys.indexOf(key);
+    return index < 0 ? null : index;
+  }
+
+  void _pageChanged(int index) {
+    _candidateKey = widget.model.keys[index];
+  }
+
+  bool _scrollEnded(ScrollEndNotification notification) {
+    if (_activePointer != null) return false;
+    final candidate = _candidateKey;
+    _candidateKey = null;
+    _commit(candidate);
+    return false;
   }
 
   void _beginGesture(PointerDownEvent event) {
     if (_activePointer != null) return;
     _activePointer = event.pointer;
+    _gestureKeys = List<Key>.of(widget.model.keys);
+    _candidateKey = null;
     _gesture.begin();
   }
 
   void _endGesture(PointerUpEvent event) {
     if (_activePointer != event.pointer) return;
-    _activePointer = null;
-    final target = _gesture.end();
-    if (target != null && _controller.hasClients) {
-      _controller.jumpToPage(target);
+    final target = _gesture.targetPage;
+    final targetKey = target == null ? null : _gestureKey(target);
+    final currentTarget = targetKey == null ? null : _pageForKey(targetKey);
+    if (target != null && currentTarget == null) {
+      _gesture.targetPage = widget.model.activePage;
     }
+    _gesture.end();
+    if (currentTarget != null && _controller.hasClients) {
+      _controller.jumpToPage(currentTarget);
+    }
+    _activePointer = null;
+    _gestureKeys = null;
+    _candidateKey = null;
+    if (currentTarget != null) _commit(targetKey);
+  }
+
+  Key? _gestureKey(int index) {
+    final keys = _gestureKeys;
+    if (keys == null || index < 0 || index >= keys.length) return null;
+    return keys[index];
+  }
+
+  void _commit(Key? key) {
+    if (key == null || key == _reportedKey) return;
+    final index = _pageForKey(key);
+    if (index == null) return;
+    _reportedKey = key;
+    widget.onPageChanged(index);
   }
 
   void _cancelGesture(PointerCancelEvent event) {
     if (_activePointer != event.pointer) return;
     _activePointer = null;
+    _gestureKeys = null;
+    _candidateKey = null;
     _gesture.reset();
   }
 
   void _reposition() {
-    if (widget.itemCount == 0) return;
+    if (widget.model.keys.isEmpty) return;
     if (!_controller.hasClients) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _reposition();
       });
       return;
     }
-    final target = widget.initialPage.clamp(0, widget.itemCount - 1);
+    final target = widget.model.activePage.clamp(
+      0,
+      widget.model.keys.length - 1,
+    );
     if (_controller.page?.round() != target) _controller.jumpToPage(target);
+    _commit(widget.model.keys[target]);
   }
 
   @override

@@ -31,9 +31,6 @@ async fn partial_range_finalize_promotes_a_complete_file_when_the_digest_matches
     );
     assert_eq!(*used_bytes.lock().await, 8);
     assert!(!root.join("clip.part").exists(), "the partial is gone");
-    assert!(
-        !root.join("clip.ranges.json").exists(),
-        "the manifest is gone"
-    );
+    assert!(root.join("clip.ranges.json").exists(), "checksums remain");
     std::fs::remove_dir_all(root).expect("remove store");
 }

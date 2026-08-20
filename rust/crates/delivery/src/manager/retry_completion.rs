@@ -4,6 +4,7 @@ use crate::manager::failure::FailureClass;
 use crate::manager::retry::{Retry, Source};
 use crate::manager::DeliveryWorker;
 use ghostr_engine::PostId;
+use ghostr_net::media_log_identity::MediaLogIdentity;
 use log::warn;
 use std::time::Duration;
 
@@ -29,12 +30,12 @@ impl DeliveryWorker {
     }
 
     fn retire_source(&mut self, post: &PostId, url: &str) {
-        let id = post.as_str();
+        let id = MediaLogIdentity::from_url(url);
         if self.is_servable(post) {
-            warn!("Giving up on {url} for {id}; another source remains");
+            warn!("Giving up on {id}; another source remains");
             return;
         }
-        warn!("No working source left for {id}; reporting it unplayable");
+        warn!("No working source left for {id}; reporting item unplayable");
     }
 
     pub(crate) fn start_cooldown(&mut self, post: PostId, wait: Duration) {

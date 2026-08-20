@@ -18,7 +18,7 @@ async fn cancellation_before_admission_finishes_without_an_http_request() {
     let spec = ChunkSpec {
         client: &client,
         url: "not an http URL",
-        range: ByteRange::new(0, 8),
+        request: range_fixture::range_request(ByteRange::new(0, 8)),
         continuation: None,
         timeouts: TransferTimeouts::default(),
     };
@@ -34,7 +34,7 @@ async fn cancellation_before_admission_finishes_without_an_http_request() {
 
     assert!(result.cancelled);
     assert_eq!(result.bytes_written, 0);
-    assert!(!result.accept_ranges);
+    assert_eq!(result.range_support, None);
     assert_eq!(result.total_bytes, None);
     assert!(store.present_ranges("clip").await.unwrap().is_empty());
     std::fs::remove_dir_all(root).ok();

@@ -10,6 +10,7 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 import '../support/recording_playback_telemetry_port.dart';
 import '../support/playback_delivery_fixture.dart';
 import '../support/scripted_video_player_platform.dart';
+import '../support/video_player_surface_pump.dart';
 
 void main() {
   testWidgets('inactive surfaces end their session and ignore later values', (
@@ -47,6 +48,7 @@ Future<void> pumpSurface(
   await tester.pumpWidget(MaterialApp(home: port.buildSurface(request)));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 100));
+  await settleVideoPlayerTasks(tester);
 }
 
 VideoPlaybackSurfaceRequest surfaceRequest(

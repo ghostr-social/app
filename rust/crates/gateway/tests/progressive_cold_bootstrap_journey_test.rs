@@ -48,9 +48,10 @@ async fn cold_focus_starts_admitted_body_bytes_without_waiting_for_head() {
         assert!(
             harness.delivery.handle.plan_history().iter().any(|entry| {
                 entry.plan.allocations.iter().any(|allocation| {
+                    let requested = allocation.request.requested_bytes();
                     allocation.post.as_str() == "delivery-current"
-                        && allocation.range.start == range.start
-                        && allocation.range.end == range.end
+                        && requested.start == range.start
+                        && requested.end == range.end
                 })
             }),
             "origin range {range:?} must exactly match prior plan evidence"

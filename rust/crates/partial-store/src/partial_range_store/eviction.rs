@@ -4,6 +4,7 @@
 
 use crate::partial_range_disk::Entry;
 use crate::partial_range_store::Entries;
+use std::collections::HashMap;
 
 struct Candidate<'a> {
     touched: u64,
@@ -16,6 +17,7 @@ struct Candidate<'a> {
 /// caller short — refusing a write is better than breaking playback.
 pub(crate) fn victims(
     entries: &Entries,
+    staged: &HashMap<String, u64>,
     wanted: u64,
     protected: &str,
     leased: &dyn Fn(&str) -> bool,
@@ -23,17 +25,17 @@ pub(crate) fn victims(
     let mut candidates: Vec<Candidate<'_>> = entries
         .iter()
         .filter(|(key, _)| key.as_str() != protected && !leased(key))
-        .map(|(key, entry)| candidate(key, entry))
+        .map(|(key, entry)| candidate(key, entry, staged.get(key).copied().unwrap_or_default()))
         .collect();
     candidates.sort_by_key(|candidate| candidate.touched);
     take_until(candidates, wanted)
 }
 
-fn candidate<'a>(key: &'a str, entry: &Entry) -> Candidate<'a> {
+fn candidate<'a>(key: &'a str, entry: &Entry, staged: u64) -> Candidate<'a> {
     Candidate {
         touched: entry.touched,
         key,
-        bytes: entry.accounted,
+        bytes: entry.accounted.saturating_add(staged),
     }
 }
 

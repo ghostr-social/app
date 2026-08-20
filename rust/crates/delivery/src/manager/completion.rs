@@ -4,7 +4,7 @@
 //! finalized.
 
 use crate::chunk::downloader::ChunkResult;
-use crate::manager::failure::{classify, FailureClass};
+use crate::manager::failure::classify;
 use crate::manager::inflight::CompletionStatus;
 use crate::manager::pressure::is_store_pressure;
 use crate::manager::transfers::ChunkDone;
@@ -14,11 +14,16 @@ use ghostr_engine::concurrency::NetworkSetback;
 use ghostr_engine::host_stats::host_of;
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::PostId;
+use ghostr_net::media_log_identity::MediaLogIdentity;
 use log::warn;
 
 impl DeliveryWorker {
     pub(crate) async fn finish_chunk(&mut self, done: ChunkDone) {
+        if successful_required_bytes(&done) {
+            self.downloads.complete_hedge_winner(done.attempt.id());
+        }
         let status = self.downloads.finish(&done.attempt);
+        self.observe_chunk_completion(&done, status);
         let identity = done.attempt.identity().clone();
         self.finish_body(&identity);
         if !Self::accepts_completion(status) {
@@ -46,7 +51,7 @@ impl DeliveryWorker {
     fn accepts_completion(status: CompletionStatus) -> bool {
         match status {
             CompletionStatus::Current => true,
-            CompletionStatus::Superseded => false,
+            CompletionStatus::Cancelled | CompletionStatus::Superseded => false,
         }
     }
 
@@ -58,29 +63,30 @@ impl DeliveryWorker {
             return;
         }
         self.note_network_setback(NetworkSetback::Failure);
-        warn!("Chunk transfer failed: {error:#}");
-        self.note_failed_attempt(post, url, classify(error));
+        let class = classify(error);
+        warn!(
+            "Chunk transfer failed for {} ({class:?})",
+            MediaLogIdentity::from_url(url)
+        );
+        self.note_failed_attempt(post, url, class);
     }
 
     async fn absorb_chunk(&mut self, identity: &TransferIdentity, result: ChunkResult) {
         if !self
-            .learn_transfer(identity, result.total_bytes, Some(result.accept_ranges))
+            .learn_transfer(identity, result.total_bytes, result.range_support)
             .await
         {
             return;
         }
-        if result.bytes_written == 0 && !result.cancelled {
-            // The server ignored the range: no progress is possible
-            // right now, so it counts as a failed attempt.
-            return self.note_failed_attempt(
-                identity.post(),
-                identity.source().as_str(),
-                FailureClass::Transient,
-            );
+        if result.cancelled {
+            return;
         }
         let source = identity.source().as_str();
         self.note_successful_attempt(identity.post(), source);
-        self.try_finalize(identity.post(), source).await;
+        if result.range_ignored {
+            return;
+        }
+        self.try_finalize(identity, result.total_bytes).await;
     }
 
     pub(crate) async fn learn_transfer(
@@ -92,10 +98,13 @@ impl DeliveryWorker {
         if !self.ctx.store.transfer_is_current(identity).await {
             return false;
         }
-        self.learn_identity(identity, total, ranged).await
+        if !self.learn_response_evidence(identity, total, ranged) {
+            return false;
+        }
+        true
     }
 
-    pub(crate) async fn learn_identity(
+    pub(crate) fn learn_response_evidence(
         &mut self,
         identity: &TransferIdentity,
         total: Option<u64>,
@@ -106,29 +115,10 @@ impl DeliveryWorker {
             accept_ranges: ranged,
             host: host_of(identity.source().as_str()),
         };
-        if !self.state.catalog_mut().learn_for(identity, facts) {
+        if !self.state.catalog_mut().learn_response_for(identity, facts) {
             return false;
         }
-        if let Some(total) = total {
-            self.set_store_total(identity.post(), total).await;
-        }
         true
-    }
-
-    /// Declares the store total once; a conflicting later fact only
-    /// warns — the stored length stays authoritative for serving.
-    pub(crate) async fn set_store_total(&self, post: &PostId, total: u64) {
-        let key = post.as_str();
-        match self.ctx.store.total_len(key).await {
-            Ok(Some(_)) => {}
-            Ok(None) => self
-                .ctx
-                .store
-                .set_total_len(key, total)
-                .await
-                .unwrap_or_else(|error| warn!("Total length rejected for {key}: {error:#}")),
-            Err(error) => warn!("Store lookup failed for {key}: {error:#}"),
-        }
     }
 
     /// Byte-complete files leave the partial pool whether or not the
@@ -136,7 +126,8 @@ impl DeliveryWorker {
     /// whether the bytes are kept (see `partial_range_completion`).
     /// Bytes that fail that check came from the source, so a failed
     /// finalize is charged to it like any other failed attempt.
-    async fn try_finalize(&mut self, post: &PostId, url: &str) {
+    async fn try_finalize(&mut self, identity: &TransferIdentity, total: Option<u64>) {
+        let post = identity.post();
         if !self
             .ctx
             .store
@@ -156,9 +147,26 @@ impl DeliveryWorker {
             .store
             .finalize(post.as_str(), advertised.as_deref())
             .await;
-        if let Err(error) = outcome {
-            warn!("Finalize failed for {}: {error:#}", post.as_str());
-            self.note_failed_attempt(post, url, FailureClass::Transient);
+        match outcome {
+            Ok(_) => {
+                if let Some(total) = total {
+                    self.state.catalog_mut().learn_complete_bytes_for(
+                        identity,
+                        total,
+                        crate::manager::time::unix_time_ms(),
+                    );
+                }
+            }
+            Err(error) => {
+                self.finish_finalize_error(identity, advertised.as_deref(), error)
+                    .await
+            }
         }
     }
+}
+
+fn successful_required_bytes(done: &ChunkDone) -> bool {
+    done.outcome
+        .as_ref()
+        .is_ok_and(|result| !result.cancelled && !result.range_ignored && result.bytes_written > 0)
 }

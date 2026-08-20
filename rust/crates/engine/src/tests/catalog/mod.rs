@@ -1,7 +1,11 @@
 mod catalog_bitrate_test;
+mod catalog_evidence_precedence_test;
 mod catalog_facts_merge_test;
 mod catalog_rendition_selection_test;
+mod catalog_source_evidence_test;
 mod catalog_timeline_identity_fence_test;
+mod catalog_timeline_invalidation_test;
 mod catalog_upsert_lookup_test;
 mod post_identity_test;
 mod representation_identity_fence_test;
+mod representation_identity_vector_test;

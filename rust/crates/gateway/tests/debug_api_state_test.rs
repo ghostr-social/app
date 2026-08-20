@@ -63,6 +63,11 @@ async fn debug_state_reports_downloaded_bytes_duration_and_source() {
     assert_eq!(state["videos"][0]["downloaded_bytes"], 250);
     assert_eq!(state["videos"][0]["duration_ms"], 120_000);
     assert_eq!(state["videos"][0]["downloaded_duration_ms"], 30_000);
+    assert_eq!(state["decisions"]["records"], json!([]));
+    assert_eq!(
+        state["evaluation"]["user_visible"]["swipe_to_first_frame"]["samples"],
+        0
+    );
     let playback_url = state["videos"][0]["playback_url"]
         .as_str()
         .expect("playback URL");

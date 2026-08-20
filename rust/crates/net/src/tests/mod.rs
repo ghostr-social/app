@@ -1,2 +1,3 @@
 mod content_range_test;
+mod outbound_media_redirect_credentials_test;
 mod outbound_media_redirect_policy_test;

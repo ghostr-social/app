@@ -52,13 +52,16 @@ class FakeVideoPlaybackPort implements VideoPlaybackPort {
   @override
   Widget buildSurface(VideoPlaybackSurfaceRequest request) {
     requests.add(request);
+    final media = request is PreparedProgressiveVideoPlaybackRequest
+        ? request.prepared.media
+        : request.media;
     return _ReleaseOnDispose(
-      key: ValueKey(request.media.debugLabel),
+      key: ValueKey(media.debugLabel),
       onReleased: request.onPlaybackMediaReleased,
       child: ColoredBox(
         color: request.isActive ? Colors.black : Colors.black54,
         child: Center(
-          child: Text(request.media.debugLabel, textAlign: TextAlign.center),
+          child: Text(media.debugLabel, textAlign: TextAlign.center),
         ),
       ),
     );

@@ -7,14 +7,17 @@ pub mod adaptive;
 pub mod budget;
 pub mod catalog;
 pub mod concurrency;
+pub mod evidence;
 pub mod focus;
 pub mod host_stats;
 pub mod media_timeline;
+pub mod origin_model;
 pub mod playback;
 pub mod rendition;
 pub mod representation;
 pub mod scheduling;
 pub mod video_rendition;
+pub mod watch_model;
 
 #[cfg(test)]
 mod tests;
@@ -30,6 +33,21 @@ impl PostId {
 
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+}
+
+/// One runtime retrieval action. It is unique for the process lifetime
+/// and fences response, store, cancellation, and terminal accounting.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ActionId(u64);
+
+impl ActionId {
+    pub fn new(value: u64) -> Self {
+        Self(value)
+    }
+
+    pub fn value(self) -> u64 {
+        self.0
     }
 }
 

@@ -16,6 +16,28 @@ fn replaceable_controls_coalesce_to_the_latest_pending_intent() {
     assert!(commands.iter().any(latest_config));
 }
 
+#[test]
+fn focus_batch_preserves_earlier_controls_and_leaves_the_suffix() {
+    let (handle, mut receiver) = command_channel();
+    handle.set_data_usage(DataUsageLevel::Conservative);
+    handle.update_focus(focus(1));
+    handle.network_changed();
+
+    let commands = receiver.try_controls_through_focus().unwrap();
+
+    assert!(matches!(
+        commands.as_slice(),
+        [
+            DeliveryCommand::Config(DataUsageLevel::Conservative),
+            DeliveryCommand::Focus(_)
+        ]
+    ));
+    assert!(matches!(
+        receiver.try_control(),
+        Some(DeliveryCommand::NetworkChanged)
+    ));
+}
+
 fn focus(watch_ms: u64) -> DeliveryFocus {
     DeliveryFocus::compatibility(Vec::new(), 0, watch_ms)
 }

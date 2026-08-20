@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
+import 'package:ghostr/core/media/playback_asset_authority.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
+import 'package:ghostr/core/media/prepared_progressive_playback.dart';
 import 'package:ghostr/core/media/progressive_playback_refresh_port.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 
@@ -20,6 +22,7 @@ final class VideoPlaybackSurfaceRequest {
     this.videoId,
     required this.isActive,
     this.mode = VideoPlaybackMode.normal,
+    this.authority,
     this.progressiveRefresh,
     this.onPlaybackMediaReleased,
   });
@@ -28,10 +31,45 @@ final class VideoPlaybackSurfaceRequest {
   final PlaybackVideoId? videoId;
   final bool isActive;
   final VideoPlaybackMode mode;
+  final PlaybackAssetAuthority? authority;
   final ProgressivePlaybackRefreshPort? progressiveRefresh;
   final VoidCallback? onPlaybackMediaReleased;
 }
 
+final class PreparedProgressiveVideoPlaybackRequest
+    extends VideoPlaybackSurfaceRequest {
+  factory PreparedProgressiveVideoPlaybackRequest({
+    required VideoPlaybackSurfaceRequest request,
+    required PreparedProgressivePlayback prepared,
+  }) {
+    if (request is PreparedProgressiveVideoPlaybackRequest ||
+        request.authority != null ||
+        request.progressiveRefresh != null ||
+        !prepared.matches(request.media)) {
+      throw ArgumentError.value(request, 'request', 'Conflicting playback.');
+    }
+    return PreparedProgressiveVideoPlaybackRequest._(request, prepared);
+  }
+
+  PreparedProgressiveVideoPlaybackRequest._(
+    VideoPlaybackSurfaceRequest request,
+    this.prepared,
+  ) : super(
+        media: request.media,
+        videoId: request.videoId,
+        isActive: request.isActive,
+        mode: request.mode,
+        authority: prepared.authority,
+        onPlaybackMediaReleased: request.onPlaybackMediaReleased,
+      );
+
+  final PreparedProgressivePlayback prepared;
+}
+
 abstract interface class VideoPlaybackPort {
   Widget buildSurface(VideoPlaybackSurfaceRequest request);
+}
+
+abstract interface class VideoPlaybackMemoryPressurePort {
+  void reportMemoryPressure();
 }

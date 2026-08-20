@@ -10,6 +10,7 @@ impl HostStats {
 
     pub(super) fn normalize_loaded(&mut self) {
         self.overall.normalize_loaded();
+        self.origin_model.normalize_loaded();
         for record in self.hosts.values_mut() {
             record.normalize_loaded();
         }

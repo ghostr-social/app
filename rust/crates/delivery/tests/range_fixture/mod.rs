@@ -12,7 +12,9 @@ use ghostr_delivery::chunk::downloader::{
     download_chunk_observed, ChunkResult, ChunkSink, ChunkSpec, DownloadTraffic,
 };
 use ghostr_delivery::debug::network::NetworkThrottle;
+use ghostr_engine::adaptive::RetrievalRequest;
 use ghostr_engine::host_stats::HostStats;
+use ghostr_engine::ByteRange;
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
@@ -40,6 +42,13 @@ pub fn media_client() -> LocalMediaClient {
 
 pub fn network() -> NetworkThrottle {
     NetworkThrottle::new()
+}
+
+pub fn range_request(bytes: ByteRange) -> RetrievalRequest {
+    RetrievalRequest::FetchRange {
+        bytes,
+        promotion: None,
+    }
 }
 
 pub async fn download_chunk_throttled(

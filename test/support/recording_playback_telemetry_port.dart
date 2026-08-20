@@ -7,6 +7,7 @@ import 'package:ghostr/features/video_inventory/domain/playback_telemetry_port.d
 final class RecordingPlaybackTelemetryPort implements PlaybackTelemetryPort {
   final activations = <PlaybackSession>[];
   final observations = <PlaybackObservation>[];
+  final presentations = <PlaybackSession>[];
   final deactivations = <PlaybackSession>[];
   var _nextGeneration = 0;
 
@@ -26,6 +27,11 @@ final class RecordingPlaybackTelemetryPort implements PlaybackTelemetryPort {
   @override
   void report(PlaybackObservation observation) {
     observations.add(observation);
+  }
+
+  @override
+  void presented(PlaybackSession session) {
+    presentations.add(session);
   }
 
   @override

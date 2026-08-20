@@ -1,6 +1,7 @@
 //! Shared fixtures sit here; each folder holds the tests
 //! for the matching folder of the crate.
 
+mod blossom_enrichment_support;
 mod candidate_registry_bound_test;
 mod deletion_enrichment_support;
 mod deletion_failure_support;

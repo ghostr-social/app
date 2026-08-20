@@ -14,7 +14,9 @@ import 'api/feed_types.dart';
 import 'api/feed_updates_stream.dart';
 import 'api/focus_control.dart';
 import 'api/playback_control.dart';
+import 'api/playback_preparation_stream.dart';
 import 'api/playback_types.dart';
+import 'api/player_preparation_control.dart';
 import 'api/session_control.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -78,7 +80,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.7.0';
 
   @override
-  int get rustContentHash => 332298869;
+  int get rustContentHash => 1994761233;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -123,6 +125,9 @@ abstract class RustLibApi extends BaseApi {
   Future<FfiPlaybackAdmissionSnapshot>
   crateApiPlaybackControlFfiPlaybackAdmissionSnapshot();
 
+  Stream<FfiPlaybackPreparationPlan>
+  crateApiPlaybackPreparationStreamFfiPlaybackPreparationEvents();
+
   Future<String> crateApiFocusControlFfiPlaybackUrl({
     required FfiFocusItem item,
   });
@@ -141,6 +146,14 @@ abstract class RustLibApi extends BaseApi {
 
   Future<void> crateApiPlaybackControlFfiReportPlayback({
     required FfiPlaybackObservation input,
+  });
+
+  Future<void> crateApiPlaybackControlFfiReportPlaybackPresentation({
+    required FfiPlaybackPresentation input,
+  });
+
+  Future<void> crateApiPlayerPreparationControlFfiReportPlayerPreparation({
+    required FfiPlayerPreparationReport input,
   });
 
   Future<void> crateApiSessionControlFfiResetNostrSession({
@@ -184,7 +197,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 4,
             port: port_,
           );
         },
@@ -217,7 +230,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 5,
             port: port_,
           );
         },
@@ -248,7 +261,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 6,
             port: port_,
           );
         },
@@ -278,7 +291,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 6,
+              funcId: 7,
               port: port_,
             );
           },
@@ -310,7 +323,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 8,
             port: port_,
           );
         },
@@ -346,7 +359,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 8,
+              funcId: 9,
               port: port_,
             );
           },
@@ -383,7 +396,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 10,
             port: port_,
           );
         },
@@ -420,7 +433,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 11,
             port: port_,
           );
         },
@@ -451,7 +464,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 12,
             port: port_,
           );
         },
@@ -475,6 +488,47 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Stream<FfiPlaybackPreparationPlan>
+  crateApiPlaybackPreparationStreamFfiPlaybackPreparationEvents() {
+    final sink = RustStreamSink<FfiPlaybackPreparationPlan>();
+    unawaited(
+      handler.executeNormal(
+        NormalTask(
+          callFfi: (port_) {
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            sse_encode_StreamSink_ffi_playback_preparation_plan_Sse(
+              sink,
+              serializer,
+            );
+            pdeCallFfi(
+              generalizedFrbRustBinding,
+              serializer,
+              funcId: 13,
+              port: port_,
+            );
+          },
+          codec: SseCodec(
+            decodeSuccessData: sse_decode_unit,
+            decodeErrorData: sse_decode_AnyhowException,
+          ),
+          constMeta:
+              kCrateApiPlaybackPreparationStreamFfiPlaybackPreparationEventsConstMeta,
+          argValues: [sink],
+          apiImpl: this,
+        ),
+      ),
+    );
+    return sink.stream;
+  }
+
+  TaskConstMeta
+  get kCrateApiPlaybackPreparationStreamFfiPlaybackPreparationEventsConstMeta =>
+      const TaskConstMeta(
+        debugName: "ffi_playback_preparation_events",
+        argNames: ["sink"],
+      );
+
+  @override
   Future<String> crateApiFocusControlFfiPlaybackUrl({
     required FfiFocusItem item,
   }) {
@@ -486,7 +540,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 14,
             port: port_,
           );
         },
@@ -516,7 +570,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 15,
             port: port_,
           );
         },
@@ -546,7 +600,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 16,
             port: port_,
           );
         },
@@ -579,7 +633,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 17,
             port: port_,
           );
         },
@@ -612,7 +666,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 18,
             port: port_,
           );
         },
@@ -634,6 +688,79 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiPlaybackControlFfiReportPlaybackPresentation({
+    required FfiPlaybackPresentation input,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_ffi_playback_presentation(input, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 19,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta:
+            kCrateApiPlaybackControlFfiReportPlaybackPresentationConstMeta,
+        argValues: [input],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiPlaybackControlFfiReportPlaybackPresentationConstMeta =>
+      const TaskConstMeta(
+        debugName: "ffi_report_playback_presentation",
+        argNames: ["input"],
+      );
+
+  @override
+  Future<void> crateApiPlayerPreparationControlFfiReportPlayerPreparation({
+    required FfiPlayerPreparationReport input,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_ffi_player_preparation_report(
+            input,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 20,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta:
+            kCrateApiPlayerPreparationControlFfiReportPlayerPreparationConstMeta,
+        argValues: [input],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiPlayerPreparationControlFfiReportPlayerPreparationConstMeta =>
+      const TaskConstMeta(
+        debugName: "ffi_report_player_preparation",
+        argNames: ["input"],
+      );
+
+  @override
   Future<void> crateApiSessionControlFfiResetNostrSession({
     String? expectedPublicKeyHex,
   }) {
@@ -645,7 +772,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 21,
             port: port_,
           );
         },
@@ -681,7 +808,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 22,
             port: port_,
           );
         },
@@ -721,7 +848,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 23,
             port: port_,
           );
         },
@@ -758,7 +885,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 24,
             port: port_,
           );
         },
@@ -785,7 +912,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 25,
             port: port_,
           );
         },
@@ -826,6 +953,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RustStreamSink<FfiPlaybackPreparationPlan>
+  dco_decode_StreamSink_ffi_playback_preparation_plan_Sse(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    throw UnimplementedError();
+  }
+
+  @protected
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as String;
@@ -839,6 +973,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   FeedOut dco_decode_TraitDef_FeedOut(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    throw UnimplementedError();
+  }
+
+  @protected
+  PreparationOut dco_decode_TraitDef_PreparationOut(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     throw UnimplementedError();
   }
@@ -913,6 +1053,35 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_ffi_playback_observation(raw);
+  }
+
+  @protected
+  FfiPlaybackPreparationAsset
+  dco_decode_box_autoadd_ffi_playback_preparation_asset(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_ffi_playback_preparation_asset(raw);
+  }
+
+  @protected
+  FfiPlaybackPreparationPlan
+  dco_decode_box_autoadd_ffi_playback_preparation_plan(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_ffi_playback_preparation_plan(raw);
+  }
+
+  @protected
+  FfiPlaybackPresentation dco_decode_box_autoadd_ffi_playback_presentation(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_ffi_playback_presentation(raw);
+  }
+
+  @protected
+  FfiPlayerPreparationReport
+  dco_decode_box_autoadd_ffi_player_preparation_report(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_ffi_player_preparation_report(raw);
   }
 
   @protected
@@ -1243,6 +1412,93 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiPlaybackPreparationAsset dco_decode_ffi_playback_preparation_asset(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return FfiPlaybackPreparationAsset(
+      deliveryId: dco_decode_String(arr[0]),
+      representationId: dco_decode_String(arr[1]),
+      assetId: dco_decode_String(arr[2]),
+      playbackUrl: dco_decode_String(arr[3]),
+      readiness: dco_decode_ffi_playback_preparation_readiness(arr[4]),
+    );
+  }
+
+  @protected
+  FfiPlaybackPreparationPlan dco_decode_ffi_playback_preparation_plan(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return FfiPlaybackPreparationPlan(
+      revision: dco_decode_u_64(arr[0]),
+      currentDeliveryId: dco_decode_opt_String(arr[1]),
+      current: dco_decode_opt_box_autoadd_ffi_playback_preparation_asset(
+        arr[2],
+      ),
+      next: dco_decode_opt_box_autoadd_ffi_playback_preparation_asset(arr[3]),
+    );
+  }
+
+  @protected
+  FfiPlaybackPreparationReadiness dco_decode_ffi_playback_preparation_readiness(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FfiPlaybackPreparationReadiness.values[raw as int];
+  }
+
+  @protected
+  FfiPlaybackPresentation dco_decode_ffi_playback_presentation(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return FfiPlaybackPresentation(
+      postId: dco_decode_String(arr[0]),
+      generation: dco_decode_u_64(arr[1]),
+      sequence: dco_decode_u_64(arr[2]),
+      observedAtMs: dco_decode_u_64(arr[3]),
+    );
+  }
+
+  @protected
+  FfiPlayerPreparationReport dco_decode_ffi_player_preparation_report(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 10)
+      throw Exception('unexpected arr length: expect 10 but see ${arr.length}');
+    return FfiPlayerPreparationReport(
+      postId: dco_decode_String(arr[0]),
+      representationId: dco_decode_String(arr[1]),
+      assetId: dco_decode_String(arr[2]),
+      playerCapabilityGeneration: dco_decode_u_64(arr[3]),
+      clientEpoch: dco_decode_u_64(arr[4]),
+      attemptGeneration: dco_decode_u_64(arr[5]),
+      sequence: dco_decode_u_64(arr[6]),
+      state: dco_decode_ffi_player_preparation_state(arr[7]),
+      failureKind: dco_decode_opt_String(arr[8]),
+      observedMonotonicUs: dco_decode_u_64(arr[9]),
+    );
+  }
+
+  @protected
+  FfiPlayerPreparationState dco_decode_ffi_player_preparation_state(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FfiPlayerPreparationState.values[raw as int];
+  }
+
+  @protected
   FfiTransportRescue dco_decode_ffi_transport_rescue(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -1350,6 +1606,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiPlaybackPreparationAsset?
+  dco_decode_opt_box_autoadd_ffi_playback_preparation_asset(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null
+        ? null
+        : dco_decode_box_autoadd_ffi_playback_preparation_asset(raw);
+  }
+
+  @protected
   FfiTransportRescue? dco_decode_opt_box_autoadd_ffi_transport_rescue(
     dynamic raw,
   ) {
@@ -1412,6 +1677,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   RustStreamSink<FfiFeedUpdate> sse_decode_StreamSink_ffi_feed_update_Sse(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    throw UnimplementedError('Unreachable ()');
+  }
+
+  @protected
+  RustStreamSink<FfiPlaybackPreparationPlan>
+  sse_decode_StreamSink_ffi_playback_preparation_plan_Sse(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -1509,6 +1783,41 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_ffi_playback_observation(deserializer));
+  }
+
+  @protected
+  FfiPlaybackPreparationAsset
+  sse_decode_box_autoadd_ffi_playback_preparation_asset(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_ffi_playback_preparation_asset(deserializer));
+  }
+
+  @protected
+  FfiPlaybackPreparationPlan
+  sse_decode_box_autoadd_ffi_playback_preparation_plan(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_ffi_playback_preparation_plan(deserializer));
+  }
+
+  @protected
+  FfiPlaybackPresentation sse_decode_box_autoadd_ffi_playback_presentation(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_ffi_playback_presentation(deserializer));
+  }
+
+  @protected
+  FfiPlayerPreparationReport
+  sse_decode_box_autoadd_ffi_player_preparation_report(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_ffi_player_preparation_report(deserializer));
   }
 
   @protected
@@ -1907,6 +2216,112 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiPlaybackPreparationAsset sse_decode_ffi_playback_preparation_asset(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_deliveryId = sse_decode_String(deserializer);
+    var var_representationId = sse_decode_String(deserializer);
+    var var_assetId = sse_decode_String(deserializer);
+    var var_playbackUrl = sse_decode_String(deserializer);
+    var var_readiness = sse_decode_ffi_playback_preparation_readiness(
+      deserializer,
+    );
+    return FfiPlaybackPreparationAsset(
+      deliveryId: var_deliveryId,
+      representationId: var_representationId,
+      assetId: var_assetId,
+      playbackUrl: var_playbackUrl,
+      readiness: var_readiness,
+    );
+  }
+
+  @protected
+  FfiPlaybackPreparationPlan sse_decode_ffi_playback_preparation_plan(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_revision = sse_decode_u_64(deserializer);
+    var var_currentDeliveryId = sse_decode_opt_String(deserializer);
+    var var_current = sse_decode_opt_box_autoadd_ffi_playback_preparation_asset(
+      deserializer,
+    );
+    var var_next = sse_decode_opt_box_autoadd_ffi_playback_preparation_asset(
+      deserializer,
+    );
+    return FfiPlaybackPreparationPlan(
+      revision: var_revision,
+      currentDeliveryId: var_currentDeliveryId,
+      current: var_current,
+      next: var_next,
+    );
+  }
+
+  @protected
+  FfiPlaybackPreparationReadiness sse_decode_ffi_playback_preparation_readiness(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return FfiPlaybackPreparationReadiness.values[inner];
+  }
+
+  @protected
+  FfiPlaybackPresentation sse_decode_ffi_playback_presentation(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_postId = sse_decode_String(deserializer);
+    var var_generation = sse_decode_u_64(deserializer);
+    var var_sequence = sse_decode_u_64(deserializer);
+    var var_observedAtMs = sse_decode_u_64(deserializer);
+    return FfiPlaybackPresentation(
+      postId: var_postId,
+      generation: var_generation,
+      sequence: var_sequence,
+      observedAtMs: var_observedAtMs,
+    );
+  }
+
+  @protected
+  FfiPlayerPreparationReport sse_decode_ffi_player_preparation_report(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_postId = sse_decode_String(deserializer);
+    var var_representationId = sse_decode_String(deserializer);
+    var var_assetId = sse_decode_String(deserializer);
+    var var_playerCapabilityGeneration = sse_decode_u_64(deserializer);
+    var var_clientEpoch = sse_decode_u_64(deserializer);
+    var var_attemptGeneration = sse_decode_u_64(deserializer);
+    var var_sequence = sse_decode_u_64(deserializer);
+    var var_state = sse_decode_ffi_player_preparation_state(deserializer);
+    var var_failureKind = sse_decode_opt_String(deserializer);
+    var var_observedMonotonicUs = sse_decode_u_64(deserializer);
+    return FfiPlayerPreparationReport(
+      postId: var_postId,
+      representationId: var_representationId,
+      assetId: var_assetId,
+      playerCapabilityGeneration: var_playerCapabilityGeneration,
+      clientEpoch: var_clientEpoch,
+      attemptGeneration: var_attemptGeneration,
+      sequence: var_sequence,
+      state: var_state,
+      failureKind: var_failureKind,
+      observedMonotonicUs: var_observedMonotonicUs,
+    );
+  }
+
+  @protected
+  FfiPlayerPreparationState sse_decode_ffi_player_preparation_state(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return FfiPlayerPreparationState.values[inner];
+  }
+
+  @protected
   FfiTransportRescue sse_decode_ffi_transport_rescue(
     SseDeserializer deserializer,
   ) {
@@ -2091,6 +2506,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiPlaybackPreparationAsset?
+  sse_decode_opt_box_autoadd_ffi_playback_preparation_asset(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_ffi_playback_preparation_asset(
+        deserializer,
+      ));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   FfiTransportRescue? sse_decode_opt_box_autoadd_ffi_transport_rescue(
     SseDeserializer deserializer,
   ) {
@@ -2179,6 +2610,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       self.setupAndSerialize(
         codec: SseCodec(
           decodeSuccessData: sse_decode_ffi_feed_update,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+      ),
+      serializer,
+    );
+  }
+
+  @protected
+  void sse_encode_StreamSink_ffi_playback_preparation_plan_Sse(
+    RustStreamSink<FfiPlaybackPreparationPlan> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(
+      self.setupAndSerialize(
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_ffi_playback_preparation_plan,
           decodeErrorData: sse_decode_AnyhowException,
         ),
       ),
@@ -2286,6 +2734,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_ffi_playback_observation(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_ffi_playback_preparation_asset(
+    FfiPlaybackPreparationAsset self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_ffi_playback_preparation_asset(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_ffi_playback_preparation_plan(
+    FfiPlaybackPreparationPlan self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_ffi_playback_preparation_plan(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_ffi_playback_presentation(
+    FfiPlaybackPresentation self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_ffi_playback_presentation(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_ffi_player_preparation_report(
+    FfiPlayerPreparationReport self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_ffi_player_preparation_report(self, serializer);
   }
 
   @protected
@@ -2586,6 +3070,85 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_ffi_playback_preparation_asset(
+    FfiPlaybackPreparationAsset self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.deliveryId, serializer);
+    sse_encode_String(self.representationId, serializer);
+    sse_encode_String(self.assetId, serializer);
+    sse_encode_String(self.playbackUrl, serializer);
+    sse_encode_ffi_playback_preparation_readiness(self.readiness, serializer);
+  }
+
+  @protected
+  void sse_encode_ffi_playback_preparation_plan(
+    FfiPlaybackPreparationPlan self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_64(self.revision, serializer);
+    sse_encode_opt_String(self.currentDeliveryId, serializer);
+    sse_encode_opt_box_autoadd_ffi_playback_preparation_asset(
+      self.current,
+      serializer,
+    );
+    sse_encode_opt_box_autoadd_ffi_playback_preparation_asset(
+      self.next,
+      serializer,
+    );
+  }
+
+  @protected
+  void sse_encode_ffi_playback_preparation_readiness(
+    FfiPlaybackPreparationReadiness self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_ffi_playback_presentation(
+    FfiPlaybackPresentation self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.postId, serializer);
+    sse_encode_u_64(self.generation, serializer);
+    sse_encode_u_64(self.sequence, serializer);
+    sse_encode_u_64(self.observedAtMs, serializer);
+  }
+
+  @protected
+  void sse_encode_ffi_player_preparation_report(
+    FfiPlayerPreparationReport self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.postId, serializer);
+    sse_encode_String(self.representationId, serializer);
+    sse_encode_String(self.assetId, serializer);
+    sse_encode_u_64(self.playerCapabilityGeneration, serializer);
+    sse_encode_u_64(self.clientEpoch, serializer);
+    sse_encode_u_64(self.attemptGeneration, serializer);
+    sse_encode_u_64(self.sequence, serializer);
+    sse_encode_ffi_player_preparation_state(self.state, serializer);
+    sse_encode_opt_String(self.failureKind, serializer);
+    sse_encode_u_64(self.observedMonotonicUs, serializer);
+  }
+
+  @protected
+  void sse_encode_ffi_player_preparation_state(
+    FfiPlayerPreparationState self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
   void sse_encode_ffi_transport_rescue(
     FfiTransportRescue self,
     SseSerializer serializer,
@@ -2754,6 +3317,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_box_autoadd_ffi_media_dim(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_ffi_playback_preparation_asset(
+    FfiPlaybackPreparationAsset? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_ffi_playback_preparation_asset(self, serializer);
     }
   }
 

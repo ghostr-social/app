@@ -33,8 +33,8 @@ async fn partial_range_finalize_promotes_a_complete_file_without_an_advertised_d
     assert_eq!(*used_bytes.lock().await, 8);
     assert_eq!(
         std::fs::read_dir(&root).expect("store contents").count(),
-        1,
-        "the partial file and its manifest must be gone"
+        2,
+        "the completed file keeps its local checksum manifest"
     );
     std::fs::remove_dir_all(root).expect("remove store");
 }

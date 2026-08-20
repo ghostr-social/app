@@ -13,6 +13,7 @@ pub(crate) fn delivery_candidate(candidate: VideoCandidate) -> DeliveryCandidate
     DeliveryCandidate {
         post: PostId::new(candidate.id.as_str()),
         meta: candidate.post.meta,
+        metadata_evidence: candidate.post.metadata_evidence,
         renditions: candidate.post.renditions,
         discovered_at: candidate.post.feed_sort_at,
     }

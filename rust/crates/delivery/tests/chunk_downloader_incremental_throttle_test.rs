@@ -28,7 +28,7 @@ async fn throttled_large_response_makes_incremental_store_progress() {
     let spec = ChunkSpec {
         client: &client,
         url: &url,
-        range: ByteRange::new(0, TOTAL),
+        request: range_fixture::range_request(ByteRange::new(0, TOTAL)),
         continuation: None,
         timeouts: TransferTimeouts::default(),
     };

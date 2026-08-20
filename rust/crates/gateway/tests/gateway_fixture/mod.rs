@@ -4,6 +4,8 @@
 #![allow(dead_code)]
 
 #[cfg(feature = "video-debug-web")]
+pub mod adaptive_plan;
+#[cfg(feature = "video-debug-web")]
 pub mod commands;
 #[cfg(feature = "video-debug-web")]
 pub mod debug_clear;
@@ -21,6 +23,8 @@ pub mod progressive_journey_origin;
 pub mod progressive_journey_trace;
 pub mod progressive_request;
 pub mod raw_http;
+#[cfg(feature = "video-debug-web")]
+pub mod ready_reserve;
 
 use ghostr_delivery::cache_registry::{CacheStatus, CacheVideo};
 use ghostr_engine::VideoMeta;
@@ -69,4 +73,14 @@ pub fn cache_video(id: impl Into<String>, meta: VideoMeta) -> CacheVideo {
         meta,
         status: CacheStatus::Ready,
     }
+}
+
+pub fn progressive_startup() -> ghostr_engine::media_timeline::StartupFootprint {
+    let bytes = progressive_journey_origin::fixture::progressive_mp4();
+    ghostr_engine::media_timeline::parse_mp4_segments(&[
+        ghostr_engine::media_timeline::MediaSegment::new(0, &bytes),
+    ])
+    .expect("progressive fixture timeline")
+    .startup_footprint()
+    .expect("progressive fixture startup")
 }

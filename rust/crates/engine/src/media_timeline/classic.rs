@@ -1,4 +1,5 @@
-use super::boxes::{child, children, Atom};
+use super::boxes::{children, Atom};
+use super::limits::ParserBudget;
 use super::{TimedRange, TimelineError};
 
 pub(super) mod samples;
@@ -6,32 +7,62 @@ mod tables;
 use samples::map_samples;
 use tables::TrackTables;
 
-pub(crate) fn parse(moov: &Atom<'_>) -> Result<Vec<TimedRange>, TimelineError> {
-    let mut media = Vec::new();
-    for trak in children(moov)?
+pub(crate) fn parse(
+    moov: &Atom<'_>,
+    budget: &mut ParserBudget<'_>,
+    media: &mut Vec<TimedRange>,
+) -> Result<bool, TimelineError> {
+    let mut video = false;
+    for trak in children(moov, budget, 2)?
         .into_iter()
         .filter(|atom| &atom.kind == b"trak")
     {
-        let Some(tables) = track_tables(&trak)? else {
+        budget.track()?;
+        let Some(track) = track_tables(&trak, budget)? else {
             continue;
         };
-        media.extend(map_samples(tables)?);
+        video |= track.video;
+        map_samples(track.tables, budget, media)?;
     }
-    Ok(media)
+    Ok(video)
 }
 
-fn track_tables(trak: &Atom<'_>) -> Result<Option<TrackTables>, TimelineError> {
-    let Some(mdia) = child(trak, b"mdia")? else {
+struct TrackEvidence {
+    tables: TrackTables,
+    video: bool,
+}
+
+fn track_tables(
+    trak: &Atom<'_>,
+    budget: &mut ParserBudget<'_>,
+) -> Result<Option<TrackEvidence>, TimelineError> {
+    let trak_children = children(trak, budget, 3)?;
+    let Some(mdia) = find(&trak_children, b"mdia") else {
         return Ok(None);
     };
-    let Some(mdhd) = child(&mdia, b"mdhd")? else {
+    let mdia_children = children(&mdia, budget, 4)?;
+    let Some(mdhd) = find(&mdia_children, b"mdhd") else {
         return Ok(None);
     };
-    let Some(minf) = child(&mdia, b"minf")? else {
+    let Some(minf) = find(&mdia_children, b"minf") else {
         return Ok(None);
     };
-    let Some(stbl) = child(&minf, b"stbl")? else {
+    let minf_children = children(&minf, budget, 5)?;
+    let Some(stbl) = find(&minf_children, b"stbl") else {
         return Ok(None);
     };
-    TrackTables::parse(&mdhd, &stbl).map(Some)
+    let stbl_children = children(&stbl, budget, 6)?;
+    let tables = TrackTables::parse(&mdhd, &stbl_children, budget)?;
+    Ok(Some(TrackEvidence {
+        tables,
+        video: find(&mdia_children, b"hdlr").is_some_and(handler_is_video),
+    }))
+}
+
+fn handler_is_video(atom: Atom<'_>) -> bool {
+    atom.payload().get(8..12) == Some(b"vide")
+}
+
+fn find<'a>(atoms: &[Atom<'a>], kind: &[u8; 4]) -> Option<Atom<'a>> {
+    atoms.iter().copied().find(|atom| &atom.kind == kind)
 }

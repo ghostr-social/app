@@ -30,7 +30,7 @@ async fn bandwidth_drop_paces_only_bytes_not_yet_delivered() {
     let spec = ChunkSpec {
         client: &client,
         url: &url,
-        range: ByteRange::new(0, TOTAL),
+        request: range_fixture::range_request(ByteRange::new(0, TOTAL)),
         continuation: None,
         timeouts: TransferTimeouts::default(),
     };

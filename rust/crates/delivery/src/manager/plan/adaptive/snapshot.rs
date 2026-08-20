@@ -1,10 +1,13 @@
 use super::super::PlanInputs;
 use crate::manager::state::DeliveryState;
 use ghostr_engine::adaptive::{
-    candidate_snapshot, CandidateEvidence, FeedOffset, NavigationSnapshot, PlayabilitySnapshot,
-    PlayableRange, PlaybackSnapshot,
+    candidate_snapshot_at, CandidateEvidence, FeedOffset, NavigationSnapshot, PlayabilitySnapshot,
+    PlaybackSnapshot,
 };
 use ghostr_engine::{ByteRange, PostId};
+use std::collections::HashSet;
+
+mod demand;
 
 pub(super) fn build(state: &DeliveryState, inputs: &PlanInputs<'_>) -> Option<PlayabilitySnapshot> {
     let current = state.focus().current()?.clone();
@@ -33,7 +36,7 @@ fn candidates(
     navigation: NavigationSnapshot,
     current: &PostId,
 ) -> Vec<ghostr_engine::adaptive::CandidateSnapshot> {
-    positioned_posts(state, current)
+    positioned_posts(state, inputs, current)
         .into_iter()
         .filter_map(|position| candidate(state, inputs, position, navigation))
         .collect()
@@ -42,6 +45,7 @@ fn candidates(
 struct CandidatePosition {
     post: PostId,
     offset: FeedOffset,
+    retrieval_eligible: bool,
 }
 
 fn candidate(
@@ -50,64 +54,107 @@ fn candidate(
     position: CandidatePosition,
     navigation: NavigationSnapshot,
 ) -> Option<ghostr_engine::adaptive::CandidateSnapshot> {
+    let evidence = candidate_evidence(state, inputs, &position, navigation);
     let post = position.post;
-    let evidence = CandidateEvidence {
-        post: post.clone(),
-        feed_offset: position.offset,
-        view_probability: navigation.view_probability(position.offset),
-        present: inputs.present.get(&post).cloned().unwrap_or_default(),
-        recently_evicted: state.recently_evicted(&post),
-        in_flight: in_flight(state, inputs, &post),
-        origins: super::telemetry::origins(state, inputs, &post),
-    };
-    let mut candidate = candidate_snapshot(state.catalog(), state.params(), evidence)?;
+    let mut candidate = candidate_snapshot_at(
+        state.catalog(),
+        state.params(),
+        evidence,
+        inputs.observed_at_ms,
+    )?;
+    candidate.player_preparation =
+        state.player_preparation(&post, inputs.revisions.get(&post).copied());
+    candidate.retrieval_eligible = position.retrieval_eligible;
+    candidate.finalized = inputs.finalized.contains(&post);
     if let Some(range) = demanded_range(inputs, &post) {
-        prioritize_range(&mut candidate.playable_ranges, range, candidate.bitrate_bps);
+        demand::prioritize(&mut candidate, range);
         candidate.demanded = Some(range);
     }
     Some(candidate)
+}
+
+fn candidate_evidence(
+    state: &DeliveryState,
+    inputs: &PlanInputs<'_>,
+    position: &CandidatePosition,
+    navigation: NavigationSnapshot,
+) -> CandidateEvidence {
+    let post = &position.post;
+    CandidateEvidence {
+        post: post.clone(),
+        feed_offset: position.offset,
+        view_probability: navigation.view_probability(position.offset),
+        present: inputs.present.get(post).cloned().unwrap_or_default(),
+        stored_total: inputs.stored_totals.get(post).copied(),
+        continuation_source: inputs.continuation_sources.get(post).cloned(),
+        independent_object_sources: inputs
+            .independent_sources
+            .get(post)
+            .cloned()
+            .unwrap_or_default(),
+        recently_evicted: state.recently_evicted(post),
+        in_flight: in_flight(state, inputs, post),
+        origins: super::telemetry::origins(state, inputs, post),
+    }
 }
 
 fn in_flight(
     state: &DeliveryState,
     inputs: &PlanInputs<'_>,
     post: &PostId,
-) -> Vec<ghostr_engine::adaptive::InFlightRange> {
+) -> Vec<ghostr_engine::adaptive::InFlightAction> {
     inputs
         .in_flight
         .iter()
-        .filter(|active| &active.chunk().post == post)
+        .filter(|active| active.post() == post)
         .map(|active| active_range(state, active))
         .collect()
 }
 
 fn active_range(
     state: &DeliveryState,
-    active: &crate::manager::inflight::ActiveRange,
-) -> ghostr_engine::adaptive::InFlightRange {
+    active: &crate::manager::inflight::ActiveAction,
+) -> ghostr_engine::adaptive::InFlightAction {
     let source = active.identity().source().as_str();
-    let current = state
-        .catalog()
-        .transfer_identity(&active.chunk().post, source);
-    ghostr_engine::adaptive::InFlightRange {
-        bytes: active.chunk().range,
+    let current = state.catalog().transfer_identity(active.post(), source);
+    ghostr_engine::adaptive::InFlightAction {
+        action_id: active.action_id(),
+        request: active.request(),
+        effective_bytes: active.effective_bytes(),
+        reserved_storage_bytes: active.reserved_storage_bytes(),
         source: source.to_owned(),
         committed_until_ms: active.committed_until_ms(),
         identity_current: current.as_ref() == Some(active.identity()),
+        cancelling: active.cancelling(),
     }
 }
 
-fn positioned_posts(state: &DeliveryState, current: &PostId) -> Vec<CandidatePosition> {
-    let posts = state.planning_window_posts();
+fn positioned_posts(
+    state: &DeliveryState,
+    inputs: &PlanInputs<'_>,
+    current: &PostId,
+) -> Vec<CandidatePosition> {
+    let planning: HashSet<_> = state.planning_window_posts().into_iter().collect();
+    let posts = state.window_posts();
     let current = posts.iter().position(|post| post == current).unwrap_or(0);
     posts
         .into_iter()
         .enumerate()
+        .filter(|(_, post)| planning.contains(post) || stored_for_eviction(inputs, post))
         .map(|(index, post)| CandidatePosition {
+            retrieval_eligible: planning.contains(&post),
             post,
             offset: feed_offset(index, current),
         })
         .collect()
+}
+
+fn stored_for_eviction(inputs: &PlanInputs<'_>, post: &PostId) -> bool {
+    inputs
+        .present
+        .get(post)
+        .is_some_and(|ranges| !ranges.is_empty())
+        || inputs.finalized.contains(post)
 }
 
 fn feed_offset(index: usize, current: usize) -> FeedOffset {
@@ -129,66 +176,4 @@ fn playback_snapshot(state: &DeliveryState, current: PostId) -> PlaybackSnapshot
 
 fn demanded_range(inputs: &PlanInputs<'_>, post: &PostId) -> Option<ByteRange> {
     inputs.demanded.get(post).copied()
-}
-
-fn prioritize_range(ranges: &mut Vec<PlayableRange>, wanted: ByteRange, bitrate_bps: u64) {
-    let mut surrounding = Vec::new();
-    let mut overlap_gain = 0_u64;
-    for playable in std::mem::take(ranges) {
-        let (pieces, gain) = split_around(playable, wanted);
-        surrounding.extend(pieces);
-        overlap_gain = overlap_gain.saturating_add(gain);
-    }
-    ranges.push(PlayableRange {
-        bytes: wanted,
-        playable_ms: demanded_gain(wanted, bitrate_bps, overlap_gain),
-    });
-    ranges.extend(surrounding);
-}
-
-fn overlaps(left: ByteRange, right: ByteRange) -> bool {
-    left.start < right.end && right.start < left.end
-}
-
-fn split_around(playable: PlayableRange, wanted: ByteRange) -> (Vec<PlayableRange>, u64) {
-    if !overlaps(playable.bytes, wanted) {
-        return (vec![playable], 0);
-    }
-    let overlap = ByteRange::new(
-        playable.bytes.start.max(wanted.start),
-        playable.bytes.end.min(wanted.end),
-    );
-    let pieces = [
-        piece(playable, playable.bytes.start, overlap.start),
-        piece(playable, overlap.end, playable.bytes.end),
-    ]
-    .into_iter()
-    .flatten()
-    .collect();
-    (pieces, proportional_gain(playable, overlap.len()))
-}
-
-fn piece(playable: PlayableRange, start: u64, end: u64) -> Option<PlayableRange> {
-    (start < end).then(|| PlayableRange {
-        bytes: ByteRange::new(start, end),
-        playable_ms: proportional_gain(playable, end - start),
-    })
-}
-
-fn proportional_gain(playable: PlayableRange, bytes: u64) -> u64 {
-    let gain = u128::from(playable.playable_ms).saturating_mul(u128::from(bytes));
-    (gain / u128::from(playable.bytes.len().max(1)))
-        .max(1)
-        .min(u128::from(u64::MAX)) as u64
-}
-
-fn demanded_gain(wanted: ByteRange, bitrate_bps: u64, overlap_gain: u64) -> u64 {
-    if overlap_gain > 0 {
-        return overlap_gain;
-    }
-    wanted
-        .len()
-        .saturating_mul(8_000)
-        .div_ceil(bitrate_bps.max(1))
-        .max(1)
 }

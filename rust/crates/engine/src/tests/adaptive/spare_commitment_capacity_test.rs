@@ -1,4 +1,4 @@
-use crate::adaptive::{AdaptivePlayabilityPolicy, InFlightRange};
+use crate::adaptive::{AdaptivePlayabilityPolicy, InFlightAction};
 use crate::tests::adaptive_support::snapshot;
 use crate::ByteRange;
 
@@ -21,10 +21,13 @@ fn paid_future_work_uses_capacity_left_beside_one_current_lane() {
     let mut input = snapshot(3, 20_000_000, 1_000, 2);
     input.network.connection_capacity = 1;
     input.network.connection_ceiling = 3;
-    input.candidates[0].in_flight.push(InFlightRange {
-        bytes: ByteRange::new(0, 3_750_000),
-        ..active()
-    });
+    input.candidates[0].in_flight.push(InFlightAction::range(
+        crate::ActionId::new(1),
+        ByteRange::new(0, 3_750_000),
+        "origin",
+        12_000,
+        true,
+    ));
     input.candidates[1].in_flight.push(active());
     input.candidates[2].in_flight.push(active());
 
@@ -33,11 +36,12 @@ fn paid_future_work_uses_capacity_left_beside_one_current_lane() {
     assert_eq!(plan.retained.len(), 3, "{plan:#?}");
 }
 
-fn active() -> InFlightRange {
-    InFlightRange {
-        bytes: ByteRange::new(0, 250_000),
-        source: "origin".to_owned(),
-        committed_until_ms: 12_000,
-        identity_current: true,
-    }
+fn active() -> InFlightAction {
+    InFlightAction::range(
+        crate::ActionId::new(1),
+        ByteRange::new(0, 250_000),
+        "origin",
+        12_000,
+        true,
+    )
 }

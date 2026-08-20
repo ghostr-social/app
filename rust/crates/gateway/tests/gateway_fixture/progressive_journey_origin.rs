@@ -1,6 +1,6 @@
 use sha2::{Digest, Sha256};
 
-mod fixture;
+pub(super) mod fixture;
 mod fixture_expansion;
 mod fixture_tail;
 mod fixture_timing;
@@ -34,6 +34,10 @@ impl ProgressiveJourneyOrigin {
         Self::start(fixture::progressive_mp4(), HeadBehavior::RangeOpaque).await
     }
 
+    pub async fn with_range_blind_split() -> Self {
+        Self::start(fixture::progressive_mp4(), HeadBehavior::RangeBlindSplit).await
+    }
+
     pub async fn with_deferred_probe_and_failed_body() -> Self {
         Self::start(fixture::progressive_mp4(), HeadBehavior::DeferredFailure).await
     }
@@ -65,6 +69,23 @@ impl ProgressiveJourneyOrigin {
 
     pub fn get_ranges(&self) -> Vec<std::ops::Range<u64>> {
         self.state.requests.get_ranges()
+    }
+
+    pub async fn wait_for_prefix(&self) {
+        self.state
+            .prefix_ready
+            .acquire()
+            .await
+            .expect("range-blind origin is alive")
+            .forget();
+    }
+
+    pub fn prefix(&self) -> &[u8] {
+        &self.state.bytes[..4]
+    }
+
+    pub fn release(&self) {
+        self.state.release.add_permits(1);
     }
 }
 

@@ -8,6 +8,7 @@ import 'package:video_player/video_player.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 import '../support/fake_video_player_platform.dart';
+import '../support/video_player_surface_pump.dart';
 
 void main() {
   testWidgets('shows a retryable state when video initialization fails', (
@@ -36,6 +37,7 @@ void main() {
     await tester.tap(find.text('Retry'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
+    await settleVideoPlayerTasks(tester);
 
     expect(find.byType(VideoPlayer), findsOneWidget);
     expect(platform.dataSources, hasLength(2));

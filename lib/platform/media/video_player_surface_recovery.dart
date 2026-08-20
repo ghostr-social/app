@@ -29,7 +29,7 @@ extension _VideoPlayerSurfaceRecovery on _VideoPlayerSurfaceState {
     _rememberPlaybackValue(controller.value);
     _valueWatch.detach();
     _endObservation(controller.value);
-    _controller = null;
+    _relinquishController(controller);
     _playbackSession = null;
     _playbackPhase = null;
   }
@@ -67,7 +67,11 @@ extension _VideoPlayerSurfaceRecovery on _VideoPlayerSurfaceState {
   Future<void> _refreshPlaybackMedia(int version) async {
     try {
       final refresh = widget.progressiveRefresh;
-      if (refresh != null) _playbackMedia = await refresh.refresh();
+      if (refresh != null) {
+        final media = await refresh.refresh();
+        _acceptRefreshedAuthority(media);
+        _playbackMedia = media;
+      }
       if (!_acceptsRecovery(version)) return;
       _refresh(() => _recoveryState = _VideoPlayerRecoveryState.ready);
       _startLoad();

@@ -9,7 +9,7 @@ void main() {
     final gateway = FakeProgressivePlaybackGateway();
     final first = VideoMediaSource.remote('https://media.test/first.mp4');
     final second = VideoMediaSource.remote('https://media.test/second.mp4');
-    final cubit = GatewayPlaybackCubit(gateway, first);
+    final cubit = GatewayPlaybackCubit(gateway);
 
     final firstLoad = cubit.load(first);
     final secondLoad = cubit.load(second);

@@ -4,56 +4,121 @@ typedef _PlaybackOwnership = bool Function();
 
 final class _VideoPlayerPlaybackHandoff {
   Future<void> _tail = Future<void>.value();
+  final Expando<_HandoffControllerState> _controllers = Expando();
   VideoPlayerController? _audible;
   bool _audibleIsReady = false;
 
   Future<void> activate(
     VideoPlayerController controller,
     _PlaybackOwnership ownsPlayback,
+    _UnsafePlaybackAbandon onUnsafeAbandon,
   ) {
-    return _schedule(() => _activate(controller, ownsPlayback));
+    final activation = _state(
+      controller,
+    ).beginActivation(ownsPlayback, onUnsafeAbandon);
+    _demandAudibleTeardown(activation);
+    return _schedule(() => _activate(controller, activation));
   }
 
   Future<void> deactivate(VideoPlayerController controller) {
+    _state(controller).cancelActivation();
     return _schedule(() => _deactivate(controller));
   }
 
-  Future<void> release(VideoPlayerController controller) {
-    return _schedule(() => _release(controller));
+  void supersede(VideoPlayerController controller) {
+    _state(controller).cancelActivation();
+  }
+
+  void retire(
+    VideoPlayerController controller,
+    _ControllerSettlement settlement,
+  ) {
+    _state(controller).retire(settlement);
+  }
+
+  void markTeardown(
+    VideoPlayerController controller,
+    _ControllerTeardownOutcome outcome,
+  ) {
+    final state = _state(controller)..retiring = true;
+    if (outcome == _ControllerTeardownOutcome.proven &&
+        _audible == controller) {
+      _clearAudible();
+    }
+    state.cancelActivation();
+  }
+
+  Future<void> waitUnsafeCommands(VideoPlayerController controller) {
+    return _state(controller).waitUnsafeCommands();
   }
 
   Future<void> _activate(
     VideoPlayerController controller,
-    _PlaybackOwnership ownsPlayback,
+    _HandoffActivation activation,
   ) async {
-    if (!ownsPlayback()) return;
-    final previous = _audible;
+    if (!activation.isLive) return;
     if (_canKeepPlaying(controller)) return;
     if (_needsVolumeRestore(controller)) {
-      await _restoreVolume(controller, ownsPlayback);
+      await _restoreVolume(controller, activation);
       return;
     }
+    if (!await _prepareMutedTarget(controller, activation)) return;
+    await _playMutedTarget(controller, activation);
+  }
+
+  Future<bool> _prepareMutedTarget(
+    VideoPlayerController controller,
+    _HandoffActivation activation,
+  ) async {
+    if (!await _mutePrevious(controller, activation)) return false;
+    if (!_canActivate(controller, activation)) return false;
+    final outcome = await _command(
+      controller,
+      () => controller.setVolume(0),
+      effect: _HandoffCommandEffect.mute,
+      activation: activation,
+    );
+    if (outcome != _HandoffCommandOutcome.completed) return false;
+    if (!_canActivate(controller, activation)) return false;
     _audible = controller;
     _audibleIsReady = false;
-    if (previous != null && previous != controller) {
-      await previous.setVolume(0);
-    }
-    await controller.setVolume(0);
-    if (!ownsPlayback()) return;
-    await controller.play();
-    await _restoreVolume(controller, ownsPlayback);
+    return true;
+  }
+
+  Future<void> _playMutedTarget(
+    VideoPlayerController controller,
+    _HandoffActivation activation,
+  ) async {
+    final outcome = await _command(
+      controller,
+      controller.play,
+      effect: _HandoffCommandEffect.play,
+      activation: activation,
+    );
+    if (outcome != _HandoffCommandOutcome.completed) return;
+    await _restoreVolume(controller, activation);
   }
 
   Future<void> _deactivate(VideoPlayerController controller) async {
+    final mute = await _command(
+      controller,
+      () => controller.setVolume(0),
+      effect: _HandoffCommandEffect.mute,
+    );
+    if (mute != _HandoffCommandOutcome.completed) return;
     if (_audible == controller) _clearAudible();
-    await controller.setVolume(0);
-    await controller.pause();
+    await _command(
+      controller,
+      controller.pause,
+      effect: _HandoffCommandEffect.pause,
+    );
   }
 
-  Future<void> _release(VideoPlayerController controller) async {
-    if (_audible != controller) return;
-    _clearAudible();
-    await controller.setVolume(0);
+  bool _canActivate(
+    VideoPlayerController controller,
+    _HandoffActivation activation,
+  ) {
+    return activation.isLive && !_state(controller).retiring;
   }
 
   bool _canKeepPlaying(VideoPlayerController controller) {
@@ -68,11 +133,24 @@ final class _VideoPlayerPlaybackHandoff {
 
   Future<void> _restoreVolume(
     VideoPlayerController controller,
-    _PlaybackOwnership ownsPlayback,
+    _HandoffActivation activation,
   ) async {
-    if (!ownsPlayback()) return;
-    await controller.setVolume(1);
-    if (_audible == controller && ownsPlayback()) _audibleIsReady = true;
+    if (!activation.isLive) return;
+    final outcome = await _command(
+      controller,
+      () => controller.setVolume(1),
+      effect: _HandoffCommandEffect.unmute,
+      activation: activation,
+    );
+    if (outcome != _HandoffCommandOutcome.completed) return;
+    if (_canRestore(controller, activation)) _audibleIsReady = true;
+  }
+
+  bool _canRestore(
+    VideoPlayerController controller,
+    _HandoffActivation activation,
+  ) {
+    return _audible == controller && _canActivate(controller, activation);
   }
 
   void _clearAudible() {
@@ -80,9 +158,7 @@ final class _VideoPlayerPlaybackHandoff {
     _audibleIsReady = false;
   }
 
-  Future<void> _schedule(Future<void> Function() operation) {
-    final scheduled = _tail.then((_) => operation());
-    _tail = scheduled.then<void>((_) {}, onError: (_, __) {});
-    return scheduled;
+  _HandoffControllerState _state(VideoPlayerController controller) {
+    return _controllers[controller] ??= _HandoffControllerState();
   }
 }

@@ -1,4 +1,7 @@
-use crate::delivery_events::{DeliveryFocus, DeliveryPlayback};
+use crate::delivery_events::{DeliveryFocus, DeliveryPlayback, PlaybackPresentation};
+use crate::evaluation::{
+    EvaluationLedger, PlaybackMetricEvent, PresentationMetricEvent, SemanticMetricEvent,
+};
 use crate::manager::transfers::{InternalEvent, MaintenanceEvent};
 use crate::qoe::{load_qoe_stats, save_qoe_stats, QoeTracker};
 use log::warn;
@@ -12,10 +15,11 @@ pub(crate) struct QoeKeeper {
     debounce: Duration,
     dirty: bool,
     save_pending: bool,
+    evaluation: EvaluationLedger,
 }
 
 impl QoeKeeper {
-    pub async fn load(path: PathBuf, debounce: Duration) -> Self {
+    pub async fn load(path: PathBuf, debounce: Duration, evaluation: EvaluationLedger) -> Self {
         let stats = load_qoe_stats(&path).await;
         Self {
             tracker: QoeTracker::from_stats(stats),
@@ -23,6 +27,7 @@ impl QoeKeeper {
             debounce,
             dirty: false,
             save_pending: false,
+            evaluation,
         }
     }
 
@@ -33,10 +38,24 @@ impl QoeKeeper {
             .map(|item| item.post.clone());
         self.tracker
             .focus(current, focus.transition, focus.rescue.as_ref(), now_ms);
+        self.evaluation.focus(
+            focus
+                .items
+                .get(focus.current_index.min(focus.items.len().saturating_sub(1)))
+                .map(|item| item.post.clone()),
+            now_ms,
+        );
+        if let Some(rescue) = focus.rescue.as_ref() {
+            self.evaluation.semantic(SemanticMetricEvent {
+                rank_displacement: rescue.rank_displacement,
+                semantic_regret_micros: u64::from(rescue.rank_displacement) * 1_000_000,
+                transport_substitution: true,
+            });
+        }
         self.dirty = true;
     }
 
-    pub fn note_playback(&mut self, playback: &DeliveryPlayback, now_ms: u64) {
+    pub fn note_playback(&mut self, playback: &DeliveryPlayback, bitrate_bps: u64, now_ms: u64) {
         let buffer_ms = playback
             .observation
             .buffer_ahead()
@@ -48,6 +67,24 @@ impl QoeKeeper {
             buffer_ms,
             now_ms,
         );
+        self.evaluation.playback(PlaybackMetricEvent {
+            post: playback.session.post().clone(),
+            phase: playback.observation.phase(),
+            bitrate_bps,
+            observed_at_ms: now_ms,
+        });
+        self.dirty = true;
+    }
+
+    pub fn note_presentation(&mut self, event: &PlaybackPresentation, bitrate: u64, origin: &str) {
+        self.tracker
+            .present(event.session().post(), event.observed_at_ms());
+        self.evaluation.present(PresentationMetricEvent {
+            post: event.session().post().clone(),
+            bitrate_bps: bitrate,
+            origin: origin.to_owned(),
+            observed_at_ms: event.observed_at_ms(),
+        });
         self.dirty = true;
     }
 

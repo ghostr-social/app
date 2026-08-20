@@ -7,7 +7,7 @@ pub(super) fn admitted(
     candidate: &CandidateSnapshot,
     origin: &OriginHealth,
 ) -> bool {
-    if candidate.layout == MediaLayout::Unknown {
+    if !candidate.retrieval_eligible || candidate.layout == MediaLayout::Unknown {
         return false;
     }
     if candidate.post == snapshot.playback.current || candidate.layout == MediaLayout::Streamable {
@@ -45,6 +45,7 @@ fn coverage_before(snapshot: &PlayabilitySnapshot, candidate: &CandidateSnapshot
     let cached = snapshot
         .candidates
         .iter()
+        .filter(|other| other.retrieval_eligible)
         .filter(|other| other.feed_offset.magnitude() < candidate.feed_offset.magnitude())
         .filter(|other| other.post != snapshot.playback.current)
         .map(cached_playable_ms)
@@ -53,6 +54,9 @@ fn coverage_before(snapshot: &PlayabilitySnapshot, candidate: &CandidateSnapshot
 }
 
 fn cached_playable_ms(candidate: &CandidateSnapshot) -> u64 {
+    if !super::reserve_model::is_structural(candidate) {
+        return 0;
+    }
     candidate
         .playable_ranges
         .iter()

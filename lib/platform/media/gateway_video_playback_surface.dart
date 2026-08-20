@@ -10,7 +10,7 @@ final class _GatewayVideoPlaybackSurface extends StatefulWidget {
 
   final VideoPlaybackPort delegate;
   final ProgressivePlaybackGatewayPort gateway;
-  final GatewayPlaybackCubit Function(VideoMediaSource) createCubit;
+  final GatewayPlaybackCubit Function() createCubit;
   final VideoPlaybackSurfaceRequest request;
 
   VideoMediaSource get media => request.media;
@@ -18,6 +18,12 @@ final class _GatewayVideoPlaybackSurface extends StatefulWidget {
   bool get isActive => request.isActive;
   VideoPlaybackMode get mode => request.mode;
   VoidCallback? get onPlaybackMediaReleased => request.onPlaybackMediaReleased;
+  PreparedProgressivePlayback? get prepared {
+    final request = this.request;
+    return request is PreparedProgressiveVideoPlaybackRequest
+        ? request.prepared
+        : null;
+  }
 
   @override
   State<_GatewayVideoPlaybackSurface> createState() =>
@@ -31,17 +37,14 @@ final class _GatewayVideoPlaybackSurfaceState
   @override
   void initState() {
     super.initState();
-    _cubit = widget.createCubit(widget.media);
-    unawaited(_cubit.load(widget.media));
+    _cubit = widget.createCubit();
+    unawaited(_load());
   }
 
   @override
   void didUpdateWidget(covariant _GatewayVideoPlaybackSurface oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.media.inventoryPlaybackIdentity !=
-        widget.media.inventoryPlaybackIdentity) {
-      unawaited(_cubit.load(widget.media));
-    }
+    unawaited(_load());
   }
 
   @override
@@ -62,25 +65,47 @@ final class _GatewayVideoPlaybackSurfaceState
   Widget _buildState(BuildContext context, GatewayPlaybackState state) {
     return switch (state) {
       GatewayPlaybackFailed() => _buildError(),
-      GatewayPlaybackReady(:final media) => _buildPlayback(media),
+      GatewayPlaybackReady(:final origin, :final media) => _buildPlayback(
+        origin,
+        media,
+      ),
       GatewayPlaybackPreparing() => _buildLoading(),
     };
   }
 
-  Widget _buildPlayback(ProxiedProgressiveVideoMediaSource media) {
+  Widget _buildPlayback(
+    VideoMediaSource origin,
+    ProxiedProgressiveVideoMediaSource media,
+  ) {
     return widget.delegate.buildSurface(
       VideoPlaybackSurfaceRequest(
         media: media,
         videoId: widget.videoId,
         isActive: widget.isActive,
         mode: widget.mode,
+        authority: _readyAuthority(origin, media),
         progressiveRefresh: _GatewayProgressivePlaybackRefresh(
           widget.gateway,
-          widget.media,
+          origin,
         ),
         onPlaybackMediaReleased: widget.onPlaybackMediaReleased,
       ),
     );
+  }
+
+  PlaybackAssetAuthority? _readyAuthority(
+    VideoMediaSource origin,
+    ProxiedProgressiveVideoMediaSource media,
+  ) {
+    final prepared = widget.prepared;
+    if (prepared == null || !prepared.matches(origin)) return null;
+    return prepared.media.playbackUri == media.playbackUri
+        ? prepared.authority
+        : null;
+  }
+
+  Future<void> _load() {
+    return _cubit.load(widget.media, prepared: widget.prepared);
   }
 
   Widget _buildLoading() {

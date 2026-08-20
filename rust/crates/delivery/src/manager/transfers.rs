@@ -3,23 +3,29 @@
 //! scratch `HostStats`; the manager re-records outcomes into the one
 //! owned instance, keeping the statistics single-owner and lock-free.
 
-use crate::chunk::cancel::{cancel_pair, CancelHandle};
-use crate::chunk::downloader::{download_chunk_observed, ChunkResult, ChunkSpec};
+use crate::chunk::cancel::CancelToken;
+use crate::chunk::downloader::{
+    download_chunk_captured, ChunkResult, ChunkSpec, ObservedChunk, OpenedResponse,
+    ResponseAdmission, ResponseObservation,
+};
 use crate::chunk::sink::TransferChunkSink;
 use crate::chunk::traffic::ChunkTraffic;
 use crate::debug::network::NetworkThrottle;
 use crate::manager::inflight::ChunkAttempt;
+use crate::manager::response_open::ResponseOpener;
 use crate::manager::retry::CooldownId;
 use crate::manager::traffic::{TrafficPublisher, TransferKey};
 use crate::probe::media::{probe, ProbeResult};
+use ghostr_engine::adaptive::RetrievalRequest;
 use ghostr_engine::host_stats::HostStats;
-use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::PostId;
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
+use ghostr_partial_store::partial_range_store::StoreAction;
 use std::sync::Arc;
 use std::time::Duration;
+use std::{future::Future, pin::Pin};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
@@ -37,8 +43,13 @@ pub(crate) struct SegmentedDone {
 
 pub(crate) enum TransferEvent {
     ChunkDone(ChunkDone),
-    BodyFinished(TransferIdentity),
     ProbeDone(ProbeDone),
+    ResponseObserved(ObservedResponse),
+}
+
+pub(crate) struct ObservedResponse {
+    pub attempt: ChunkAttempt,
+    pub response: ResponseObservation,
 }
 
 pub(crate) enum MaintenanceEvent {
@@ -52,6 +63,7 @@ pub(crate) struct ChunkDone {
     pub attempt: ChunkAttempt,
     pub url: String,
     pub outcome: anyhow::Result<ChunkResult>,
+    pub origin: Option<Box<ghostr_engine::origin_model::OriginObservation>>,
 }
 
 pub(crate) struct ProbeDone {
@@ -66,66 +78,102 @@ pub(crate) struct TransferContext {
     pub client: Arc<dyn MediaHttpRequests>,
     pub store: Arc<PartialRangeStore>,
     pub events: UnboundedSender<InternalEvent>,
+    pub responses: ResponseOpener,
     pub timeouts: TransferTimeouts,
     pub network: NetworkThrottle,
     pub traffic: TrafficPublisher,
 }
 
-/// Starts one granted chunk transfer; the returned handle cancels it.
-pub(crate) fn spawn_chunk(
-    ctx: TransferContext,
-    attempt: ChunkAttempt,
-    url: String,
-) -> CancelHandle {
-    let (handle, token) = cancel_pair();
+pub(crate) struct ChunkLaunch {
+    pub context: TransferContext,
+    pub attempt: ChunkAttempt,
+    pub url: String,
+    pub retrieval: RetrievalRequest,
+    pub token: CancelToken,
+    pub action: StoreAction,
+}
+
+/// Starts one granted transfer under a supervisor that always releases it.
+pub(crate) fn spawn_chunk(launch: ChunkLaunch) {
     tokio::spawn(async move {
-        let sink = TransferChunkSink::new(&ctx.store, attempt.identity().clone());
-        let mut scratch = HostStats::new();
-        let mut traffic = TransferTraffic::new(attempt.id(), &url, ctx.traffic.clone());
-        let outcome = async {
-            let continuation = ctx
-                .store
-                .select_transfer(attempt.identity().clone())
-                .await?;
-            let spec = ChunkSpec {
-                client: ctx.client.as_ref(),
-                url: &url,
-                range: attempt.chunk.range,
-                continuation: continuation.as_ref(),
-                timeouts: ctx.timeouts,
-            };
-            download_chunk_observed(
-                &spec,
-                &sink,
-                &mut scratch,
-                &token,
-                &ctx.network,
-                &mut traffic,
-            )
-            .await
-        }
-        .await;
+        let attempt = launch.attempt.clone();
+        let url = launch.url.clone();
+        let action = launch.action.clone();
+        let context = launch.context.clone();
+        let worker = tokio::spawn(run_chunk(launch));
+        let observed = worker.await;
         attempt.mark_io_finished();
-        drop(traffic);
-        let event = chunk_event(attempt, url, outcome);
-        let _ = ctx.events.send(InternalEvent::Transfer(event));
+        context.store.release_action(&action).await;
+        let event = match observed {
+            Ok(Ok(observed)) => observed_chunk_event(attempt, url, observed),
+            Ok(Err(error)) => chunk_event(attempt, url, Err(error)),
+            Err(error) => chunk_event(
+                attempt,
+                url,
+                Err(anyhow::anyhow!("video transfer task failed: {error}")),
+            ),
+        };
+        let _ = context.events.send(InternalEvent::Transfer(event));
     });
-    handle
+}
+
+async fn run_chunk(launch: ChunkLaunch) -> anyhow::Result<ObservedChunk> {
+    let ChunkLaunch {
+        context,
+        attempt,
+        url,
+        retrieval,
+        token,
+        action,
+    } = launch;
+    let sink = TransferChunkSink::new(&context.store, attempt.identity().clone(), action.clone());
+    let mut scratch = HostStats::new();
+    let mut traffic = TransferTraffic::new(&attempt, &context, &url, action);
+    let continuation = context.store.continuation_for(attempt.identity()).await?;
+    let spec = ChunkSpec {
+        client: context.client.as_ref(),
+        url: &url,
+        request: retrieval,
+        continuation: continuation.as_ref(),
+        timeouts: context.timeouts,
+    };
+    Ok(download_chunk_captured(
+        &spec,
+        &sink,
+        &mut scratch,
+        &token,
+        &context.network,
+        &mut traffic,
+    )
+    .await)
 }
 
 struct TransferTraffic {
+    attempt: ChunkAttempt,
     transfer: TransferKey,
     host: Option<String>,
     publisher: TrafficPublisher,
+    events: UnboundedSender<InternalEvent>,
+    responses: ResponseOpener,
+    store_action: StoreAction,
     opened: bool,
 }
 
 impl TransferTraffic {
-    fn new(id: u64, url: &str, publisher: TrafficPublisher) -> Self {
+    fn new(
+        attempt: &ChunkAttempt,
+        ctx: &TransferContext,
+        url: &str,
+        store_action: StoreAction,
+    ) -> Self {
         Self {
-            transfer: TransferKey::new(id),
+            attempt: attempt.clone(),
+            transfer: TransferKey::new(attempt.id().value()),
             host: ghostr_engine::host_stats::host_of(url),
-            publisher,
+            publisher: ctx.traffic.clone(),
+            events: ctx.events.clone(),
+            responses: ctx.responses.clone(),
+            store_action,
             opened: false,
         }
     }
@@ -147,6 +195,24 @@ impl ChunkTraffic for TransferTraffic {
                 .progress(self.transfer, bytes, Instant::now());
         }
     }
+
+    fn response_observed(&mut self, response: ResponseObservation) {
+        let event = TransferEvent::ResponseObserved(ObservedResponse {
+            attempt: self.attempt.clone(),
+            response,
+        });
+        let _ = self.events.send(InternalEvent::Transfer(event));
+    }
+
+    fn authorize_response<'a>(
+        &'a mut self,
+        response: OpenedResponse,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<ResponseAdmission>> + Send + 'a>> {
+        let attempt = self.attempt.clone();
+        let action = self.store_action.clone();
+        let responses = self.responses.clone();
+        Box::pin(async move { Ok(responses.authorize(attempt, action, response).await) })
+    }
 }
 
 impl Drop for TransferTraffic {
@@ -162,18 +228,25 @@ pub(crate) fn chunk_event(
     url: String,
     outcome: anyhow::Result<ChunkResult>,
 ) -> TransferEvent {
-    if cancelled_before_request(&outcome) {
-        return TransferEvent::BodyFinished(attempt.identity().clone());
-    }
     TransferEvent::ChunkDone(ChunkDone {
         attempt,
         url,
         outcome,
+        origin: None,
     })
 }
 
-fn cancelled_before_request(outcome: &anyhow::Result<ChunkResult>) -> bool {
-    outcome.as_ref().is_ok_and(|result| !result.request_started)
+fn observed_chunk_event(
+    attempt: ChunkAttempt,
+    url: String,
+    observed: ObservedChunk,
+) -> TransferEvent {
+    TransferEvent::ChunkDone(ChunkDone {
+        attempt,
+        url,
+        outcome: observed.result,
+        origin: Some(Box::new(observed.origin)),
+    })
 }
 
 /// Starts one HEAD probe for a post whose size is still unknown.

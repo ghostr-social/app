@@ -18,6 +18,7 @@ fn measured_throughput_and_buffer_risk_switch_the_playing_catalog_representation
     state.apply_candidate(DeliveryCandidate {
         post: post.clone(),
         meta: high.meta().clone(),
+        metadata_evidence: Vec::new(),
         renditions: vec![high, low],
         discovered_at: 1,
     });

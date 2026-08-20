@@ -32,7 +32,7 @@ fn unknown_layout_plan_advances_past_the_persisted_prefix() {
 
     let plan = AdaptivePlayabilityPolicy.plan(&input);
 
-    assert_eq!(plan.allocations[0].range.start, PREFIX);
+    assert_eq!(plan.allocations[0].request.requested_bytes().start, PREFIX);
 }
 
 fn candidate(present: Vec<ByteRange>) -> crate::adaptive::CandidateSnapshot {
@@ -47,6 +47,9 @@ fn candidate(present: Vec<ByteRange>) -> crate::adaptive::CandidateSnapshot {
             feed_offset: FeedOffset::new(0),
             view_probability: crate::adaptive::ViewProbability::new(1.0).unwrap(),
             present,
+            stored_total: None,
+            continuation_source: None,
+            independent_object_sources: Default::default(),
             recently_evicted: Vec::new(),
             in_flight: Vec::new(),
             origins: vec![healthy_origin("origin", 1_000_000, 100)],

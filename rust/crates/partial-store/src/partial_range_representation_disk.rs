@@ -1,3 +1,4 @@
+use crate::partial_range_disk as disk;
 use anyhow::{bail, Context, Result};
 use std::path::Path;
 
@@ -11,12 +12,8 @@ pub async fn load(path: &Path) -> Result<Option<String>> {
 
 pub async fn save(path: &Path, identity: &str) -> Result<()> {
     validate(identity)?;
-    if let Some(parent) = path.parent() {
-        tokio::fs::create_dir_all(parent).await?;
-    }
     let staging = path.with_extension("representation.tmp");
-    tokio::fs::write(&staging, identity).await?;
-    tokio::fs::rename(staging, path)
+    disk::save_durable(path, &staging, identity.as_bytes())
         .await
         .context("commit stored representation identity")
 }

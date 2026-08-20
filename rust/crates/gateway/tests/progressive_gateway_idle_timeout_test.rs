@@ -11,6 +11,9 @@ async fn fails_a_promised_range_after_the_idle_timeout() {
     let harness = progressive_harness("ghostr-progressive-idle");
     harness.posts.insert("clip");
     harness
+        .bind_video("clip", "https://cdn.example/clip.mp4", Some(10))
+        .await;
+    harness
         .store
         .set_total_len("clip", 10)
         .await

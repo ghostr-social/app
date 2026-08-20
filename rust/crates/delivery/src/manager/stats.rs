@@ -13,6 +13,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
+mod origin;
+
 pub(crate) struct StatsKeeper {
     stats: HostStats,
     path: PathBuf,
@@ -39,6 +41,10 @@ impl StatsKeeper {
         &self.stats
     }
 
+    pub fn stats_mut(&mut self) -> &mut HostStats {
+        &mut self.stats
+    }
+
     /// Mirrors the downloader's recording rules on the owned stats.
     pub fn note_chunk(&mut self, done: &ChunkDone) {
         let Some(host) = host_of(&done.url) else {
@@ -49,6 +55,11 @@ impl StatsKeeper {
                 self.stats.record_success(&host);
             }
             Err(_) => self.stats.record_failure(&host),
+        }
+        if let Some(observation) = &done.origin {
+            self.stats
+                .origin_model_mut()
+                .observe((**observation).clone());
         }
         self.dirty = true;
     }
@@ -75,6 +86,8 @@ impl StatsKeeper {
             }
             Err(_) => self.stats.record_failure(&host),
         }
+        let observation = origin::probe(done, unix_time_ms());
+        self.stats.origin_model_mut().observe(observation);
         self.dirty = true;
     }
 

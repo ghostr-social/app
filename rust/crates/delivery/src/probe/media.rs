@@ -3,11 +3,14 @@
 //! client. Body requests remain exclusively owned by policy grants.
 
 use anyhow::{Context, Result};
+use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_net::origin_content_type;
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
-use reqwest::header::{HeaderName, ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_TYPE};
+use reqwest::header::{
+    HeaderName, ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_TYPE, ETAG, LAST_MODIFIED,
+};
 use reqwest::{Method, Response};
 use std::future::Future;
 use std::time::Duration;
@@ -19,6 +22,7 @@ pub struct ProbeResult {
     pub content_length: Option<u64>,
     pub accept_ranges: Option<bool>,
     pub content_type: Option<String>,
+    pub validator: Option<EvidenceValidator>,
     pub(crate) ttfb: Duration,
 }
 
@@ -39,6 +43,7 @@ struct ProbeFacts {
     content_length: Option<u64>,
     accept_ranges: Option<bool>,
     content_type: Option<String>,
+    validator: Option<EvidenceValidator>,
 }
 
 async fn describe(client: &dyn MediaHttpRequests, url: &str, wait: Duration) -> Result<ProbeFacts> {
@@ -70,6 +75,7 @@ fn facts_from_head(response: &Response) -> ProbeFacts {
         content_length: header_u64(response, &CONTENT_LENGTH),
         accept_ranges: accepts_byte_ranges(response),
         content_type: header_text(response, &CONTENT_TYPE),
+        validator: response_validator(response),
     }
 }
 
@@ -102,6 +108,7 @@ fn result_from(facts: ProbeFacts, ttfb: Duration) -> ProbeResult {
         content_length: facts.content_length,
         accept_ranges: facts.accept_ranges,
         content_type: facts.content_type,
+        validator: facts.validator,
         ttfb,
     }
 }
@@ -117,4 +124,12 @@ fn header_u64(response: &Response, name: &HeaderName) -> Option<u64> {
 
 fn accepts_byte_ranges(response: &Response) -> Option<bool> {
     header_text(response, &ACCEPT_RANGES).map(|value| value.trim().eq_ignore_ascii_case("bytes"))
+}
+
+fn response_validator(response: &Response) -> Option<EvidenceValidator> {
+    header_text(response, &ETAG)
+        .and_then(EvidenceValidator::strong_etag)
+        .or_else(|| {
+            header_text(response, &LAST_MODIFIED).and_then(EvidenceValidator::last_modified)
+        })
 }

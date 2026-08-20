@@ -10,6 +10,9 @@ async fn waiting_response_advances_its_existing_consumer_lease() {
     let mut harness = progressive_harness("ghostr-progressive-demand-advance");
     let total = PLAYBACK_SLICE_BYTES * 2 + 1;
     harness.posts.insert("clip");
+    harness
+        .bind_video("clip", "https://cdn.example/clip.mp4", Some(total))
+        .await;
     harness.store.set_total_len("clip", total).await.unwrap();
     harness.store.write_range("clip", 0, &[7]).await.unwrap();
     let request = harness.video_request("clip", Some("bytes=0-")).await;

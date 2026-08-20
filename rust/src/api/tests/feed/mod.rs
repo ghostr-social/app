@@ -1,3 +1,4 @@
+mod feed_blossom_candidate_pipeline_test;
 mod feed_candidate_pipeline_test;
 mod feed_coordinate_repost_snapshot_test;
 mod feed_following_progress_deferred_test;

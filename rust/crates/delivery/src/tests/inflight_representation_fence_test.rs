@@ -1,4 +1,4 @@
-use super::support::chunk_request;
+use super::support::{chunk_request, range_retrieval};
 use crate::chunk::cancel::cancel_pair;
 use crate::manager::inflight::{CompletionStatus, InFlightChunks};
 use crate::manager::plan::PlannedTransfer;
@@ -35,7 +35,7 @@ fn same_range_from_a_replacement_representation_cancels_the_old_attempt() {
     active.reconcile(&[replacement], 1);
 
     assert!(token.is_cancelled());
-    assert_eq!(active.finish(&old), CompletionStatus::Superseded);
+    assert_eq!(active.finish(&old), CompletionStatus::Cancelled);
 }
 
 #[test]
@@ -65,10 +65,13 @@ fn binding_change_cancels_obsolete_committed_work_before_replanning() {
     active.cancel_obsolete(&replacement);
 
     assert!(token.is_cancelled());
+    assert_eq!(active.len(), 1, "obsolete work remains fenced until ack");
+    assert_eq!(active.finish(&old), CompletionStatus::Cancelled);
     assert_eq!(active.len(), 0);
 }
 
 fn transfer(catalog: &Catalog, chunk: ChunkId, url: &str) -> PlannedTransfer {
+    let retrieval = range_retrieval(chunk.range);
     PlannedTransfer {
         identity: catalog.transfer_identity(&chunk.post, url).unwrap(),
         request: RangeRequest {
@@ -78,6 +81,7 @@ fn transfer(catalog: &Catalog, chunk: ChunkId, url: &str) -> PlannedTransfer {
             contiguous_depth_bytes: 0,
         },
         url: url.to_owned(),
+        retrieval,
         commitment_until_ms: 0,
     }
 }

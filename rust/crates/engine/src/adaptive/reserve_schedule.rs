@@ -24,11 +24,15 @@ pub(super) fn fill(
     evidence: &mut [ReserveCandidateEvidence],
     inputs: ScheduleInputs<'_>,
 ) {
-    let mut protected = super::reserve_evidence::count_protected(evidence);
+    let mut protected = 0;
     let mut origins = OriginSlots::new(candidates, inputs.origin_candidate_limit);
     for (candidate, item) in candidates.iter().zip(evidence) {
         if protected >= inputs.required {
             return;
+        }
+        if super::reserve_evidence::is_protected_state(&item.state) {
+            protected += 1;
+            continue;
         }
         if item.state != ReserveCandidateState::Unprepared || !origins.available(candidate) {
             continue;
@@ -116,7 +120,7 @@ fn planned_outcome(plan: &AllocationPlan, candidate: &CandidateSnapshot) -> Sche
         .allocations
         .iter()
         .filter(|work| work.post == candidate.post)
-        .map(|work| work.range)
+        .map(|work| work.request.requested_bytes())
         .collect();
     if ranges.is_empty() {
         return unavailable(NextReserveInfeasibility::NoTransferBudget);
@@ -130,7 +134,7 @@ fn planned_outcome(plan: &AllocationPlan, candidate: &CandidateSnapshot) -> Sche
 }
 
 fn planned_covers(candidate: &CandidateSnapshot, planned: &[crate::ByteRange]) -> bool {
-    if candidate.layout == MediaLayout::Unknown {
+    if candidate.startup.is_none() {
         return false;
     }
     readiness_ranges(candidate)
@@ -156,7 +160,7 @@ fn uncovered(
             .in_flight
             .iter()
             .filter(|active| active.identity_current)
-            .map(|active| active.bytes),
+            .map(|active| active.effective_bytes),
     );
     covered.extend_from_slice(planned);
     super::ranges::uncovered_bytes(range, &covered)

@@ -8,7 +8,7 @@ void main() {
   test('resolves progressive media into an explicit ready state', () async {
     final gateway = FakeProgressivePlaybackGateway();
     final media = VideoMediaSource.remote('https://media.test/clip.mp4');
-    final cubit = GatewayPlaybackCubit(gateway, media);
+    final cubit = GatewayPlaybackCubit(gateway);
 
     expect(cubit.state, isA<GatewayPlaybackPreparing>());
 

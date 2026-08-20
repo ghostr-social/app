@@ -3,6 +3,7 @@
 //! ranking and best-URL choice among imeta fallbacks. Pure and
 //! deterministic — persistence lives in `host_stats_persistence`.
 
+use crate::origin_model::OriginModel;
 use evidence::HostRecord;
 pub use evidence::{ThroughputEstimate, ThroughputSample};
 use serde::{Deserialize, Serialize};
@@ -28,11 +29,21 @@ pub struct HostStats {
     hosts: BTreeMap<String, HostRecord>,
     #[serde(default)]
     observation_sequence: u64,
+    #[serde(default)]
+    origin_model: OriginModel,
 }
 
 impl HostStats {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn origin_model(&self) -> &OriginModel {
+        &self.origin_model
+    }
+
+    pub fn origin_model_mut(&mut self) -> &mut OriginModel {
+        &mut self.origin_model
     }
 
     pub fn record_overall_throughput(&mut self, sample: ThroughputSample) -> bool {

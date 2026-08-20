@@ -2,38 +2,39 @@
 
 use crate::manager::concurrency::{connection_ceiling, planned_capacity};
 use crate::manager::plan::{PlannedTransfer, PlannedWork};
+use crate::manager::reconcile_warp::{self, WarpDirective};
 use crate::manager::DeliveryWorker;
+use crate::manager::{origin_admission, time};
 use crate::mutable_priority_queue::ForegroundSlots;
-use std::collections::HashSet;
 
 impl DeliveryWorker {
-    pub(super) fn reconcile_transfers(&mut self, planned: PlannedWork) {
-        let emergency = planned.emergency;
-        let retained_posts: HashSet<_> = planned
-            .plan
-            .retained
-            .iter()
-            .map(|work| work.post.clone())
-            .collect();
+    pub(super) async fn reconcile_transfers(&mut self, planned: PlannedWork) {
+        let execution = reconcile_warp::execution(planned);
+        self.apply_warp_directive(&execution.directive);
         let capacity = planned_capacity(
             self.concurrency_limit(),
             self.connection_ceiling(),
-            &planned.transfers,
-            &retained_posts,
+            &execution.transfers,
+            &execution.retained_posts,
         );
         let total = capacity.total.min(self.progressive_capacity());
-        let priority: Vec<_> = planned
+        let priority: Vec<_> = execution
             .transfers
             .iter()
             .map(|transfer| transfer.request.chunk.clone())
             .collect();
         self.downloads
-            .reconcile_with_commitments(&planned.transfers, total, &planned.retained);
-        self.queue.replace(planned.transfers);
+            .reconcile_with_commitments(&execution.transfers, total, &execution.retained);
+        self.queue.replace(execution.transfers);
         self.preempt_for_current(&priority, total);
-        self.grant_planned(total, capacity.foreground_goal.min(total));
-        if !emergency {
-            self.grant_origin_exploration();
+        self.grant_planned(
+            total,
+            capacity.foreground_goal.min(total),
+            &execution.directive,
+        )
+        .await;
+        if !execution.emergency {
+            self.grant_origin_exploration().await;
         }
     }
 
@@ -44,18 +45,26 @@ impl DeliveryWorker {
         }
     }
 
-    fn grant_planned(&mut self, capacity: usize, foreground_goal: usize) {
+    async fn grant_planned(
+        &mut self,
+        capacity: usize,
+        foreground_goal: usize,
+        directive: &WarpDirective,
+    ) {
         while self.downloads.len() < capacity {
             let active_hosts = self.downloads.active_hosts();
             let foreground = ForegroundSlots::new(self.downloads.foreground_len(), foreground_goal);
             let Some(transfer) = self.queue.pop_for_hosts(&active_hosts, foreground) else {
                 return;
             };
-            self.grant(transfer);
+            let alternate = transfer.id();
+            if let Some(action) = self.grant(transfer).await {
+                self.link_selected_hedge(directive, &alternate, action);
+            }
         }
     }
 
-    fn grant_origin_exploration(&mut self) {
+    async fn grant_origin_exploration(&mut self) {
         let exploration_limit = self
             .concurrency_limit()
             .saturating_add(1)
@@ -66,19 +75,54 @@ impl DeliveryWorker {
         }
         let active_hosts = self.downloads.active_hosts();
         if let Some(transfer) = self.queue.pop_for_idle_host(&active_hosts) {
-            self.grant(transfer);
+            let _ = self.grant(transfer).await;
         }
     }
 
-    fn grant(&mut self, transfer: PlannedTransfer) {
-        let chunk = &transfer.request.chunk;
-        if self.downloads.contains(chunk)
-            || self.retry.is_cooling(&chunk.post)
+    async fn grant(&mut self, transfer: PlannedTransfer) -> Option<ghostr_engine::ActionId> {
+        let post = &transfer.request.chunk.post;
+        if self.downloads.contains_transfer(&transfer)
+            || self.retry.is_cooling(post)
             || self.pressure.is_parked()
         {
-            return;
+            return None;
         }
-        self.downloads.start(self.ctx.clone(), transfer);
+        let (transfer, observed_at_ms) = self.admit_origin(transfer)?;
+        let post = transfer.request.chunk.post.clone();
+        match self.downloads.start(self.ctx.clone(), transfer).await {
+            Ok(action) => {
+                self.commands.bind_latest_decision(action, observed_at_ms);
+                Some(action)
+            }
+            Err(error) => {
+                self.reject_grant(&post, &error);
+                None
+            }
+        }
+    }
+
+    fn admit_origin(&mut self, transfer: PlannedTransfer) -> Option<(PlannedTransfer, u64)> {
+        let observed_at_ms = time::unix_time_ms();
+        let concurrency = origin_concurrency(&self.ctx.network, &transfer.url);
+        let query = origin_admission::query(&transfer, observed_at_ms, concurrency);
+        let mode = origin_admission::mode(&transfer);
+        let admission =
+            self.keeper
+                .stats_mut()
+                .origin_model_mut()
+                .claim(&query, observed_at_ms, mode);
+        origin_admission::apply(transfer, admission).map(|value| (value, observed_at_ms))
+    }
+
+    fn reject_grant(&mut self, post: &ghostr_engine::PostId, error: &anyhow::Error) {
+        self.commands
+            .resolve_latest_decision(ghostr_engine::adaptive::DecisionOutcome::Failed {
+                class: format!("{:?}", crate::manager::failure::classify(error)),
+                elapsed_ms: 0,
+            });
+        if !self.absorb_store_pressure(post, error) {
+            log::warn!("Could not reserve a video action: {error:#}");
+        }
     }
 
     pub(super) fn connection_ceiling(&self) -> usize {
@@ -92,4 +136,13 @@ impl DeliveryWorker {
         self.connection_ceiling()
             .saturating_sub(self.segmented.active_len())
     }
+}
+
+fn origin_concurrency(network: &crate::debug::network::NetworkThrottle, url: &str) -> usize {
+    let host = ghostr_engine::host_stats::host_of(url);
+    network
+        .active_connections()
+        .into_iter()
+        .find(|(active, _)| Some(active) == host.as_ref())
+        .map_or(1, |(_, count)| count.saturating_add(1))
 }

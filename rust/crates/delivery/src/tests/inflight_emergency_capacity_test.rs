@@ -1,6 +1,6 @@
 use super::support::{chunk_request, transfer_identity};
 use crate::chunk::cancel::cancel_pair;
-use crate::manager::inflight::InFlightChunks;
+use crate::manager::inflight::{ChunkAttempt, CompletionStatus, InFlightChunks};
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::{ByteRange, ChunkId, PostId};
 
@@ -15,10 +15,10 @@ fn disjoint_current_demand_fully_preempts_lower_priority_work() {
         chunk("ahead-c", 16),
     ];
     let mut active = InFlightChunks::new();
-    let current_token = insert(&mut active, &current_head);
-    let mut ahead_tokens = Vec::new();
+    let (_, current_token) = insert(&mut active, &current_head);
+    let mut ahead_transfers = Vec::new();
     for chunk in &ahead {
-        ahead_tokens.push(insert(&mut active, chunk));
+        ahead_transfers.push(insert(&mut active, chunk));
     }
     let priority = [
         demanded.clone(),
@@ -30,11 +30,16 @@ fn disjoint_current_demand_fully_preempts_lower_priority_work() {
 
     active.preempt_for_current(&current, &priority, 2);
 
-    assert_eq!(active.len(), 1, "one slot must be free for demand");
+    assert_eq!(active.len(), 4, "cancelled work stays reserved until ack");
     assert!(active.contains(&current_head));
     assert!(!current_token.is_cancelled());
-    assert!(ahead_tokens.iter().all(|token| token.is_cancelled()));
-    let demand_token = insert(&mut active, &demanded);
+    assert!(ahead_transfers
+        .iter()
+        .all(|(_, token)| token.is_cancelled()));
+    for (attempt, _) in ahead_transfers {
+        assert_eq!(active.finish(&attempt), CompletionStatus::Cancelled);
+    }
+    let (_, demand_token) = insert(&mut active, &demanded);
     assert_eq!(active.len(), 2, "demand is admitted at capacity");
     assert!(active.contains(&demanded));
     assert!(!demand_token.is_cancelled());
@@ -45,7 +50,7 @@ fn satisfied_current_demand_does_not_preempt_work() {
     let current = PostId::new("current");
     let demanded = chunk("current", 0);
     let mut active = InFlightChunks::new();
-    let token = insert(&mut active, &demanded);
+    let (_, token) = insert(&mut active, &demanded);
 
     active.preempt_for_current(&current, std::slice::from_ref(&demanded), 1);
 
@@ -58,7 +63,7 @@ fn current_demand_without_a_lower_priority_candidate_does_not_preempt() {
     let demanded = chunk("current", 0);
     let ahead = chunk("ahead", 0);
     let mut active = InFlightChunks::new();
-    let token = insert(&mut active, &ahead);
+    let (_, token) = insert(&mut active, &ahead);
 
     active.preempt_for_current(&current, &[demanded], 1);
 
@@ -72,7 +77,10 @@ fn chunk(post: &str, start: u64) -> ChunkId {
     }
 }
 
-fn insert(active: &mut InFlightChunks, chunk: &ChunkId) -> crate::chunk::cancel::CancelToken {
+fn insert(
+    active: &mut InFlightChunks,
+    chunk: &ChunkId,
+) -> (ChunkAttempt, crate::chunk::cancel::CancelToken) {
     let identity = transfer_identity(&chunk.post, "https://slow.example/video");
     let attempt = active.next_attempt(chunk.clone(), identity);
     let (handle, token) = cancel_pair();
@@ -83,5 +91,5 @@ fn insert(active: &mut InFlightChunks, chunk: &ChunkId) -> crate::chunk::cancel:
         0,
         handle,
     );
-    token
+    (attempt, token)
 }

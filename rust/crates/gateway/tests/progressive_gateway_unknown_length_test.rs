@@ -9,6 +9,9 @@ use tower::ServiceExt;
 async fn answers_retry_later_while_the_total_length_is_still_unknown() {
     let harness = progressive_harness("ghostr-progressive-unsized");
     harness.posts.insert("clip");
+    harness
+        .bind_video("clip", "https://cdn.example/clip.mp4", None)
+        .await;
 
     let request = harness.video_request("clip", None).await;
     let response = harness.router.oneshot(request).await.expect("response");

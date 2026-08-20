@@ -18,7 +18,7 @@ async fn chunk_downloader_streams_partial_content_into_the_store() {
     let spec = ChunkSpec {
         client: &client,
         url: &url,
-        range: ByteRange::new(4, 12),
+        request: range_fixture::range_request(ByteRange::new(4, 12)),
         continuation: None,
         timeouts: TransferTimeouts::default(),
     };
@@ -33,7 +33,7 @@ async fn chunk_downloader_streams_partial_content_into_the_store() {
             .expect("chunk download");
 
     assert_eq!(result.bytes_written, 8);
-    assert!(result.accept_ranges);
+    assert_eq!(result.range_support, Some(true));
     assert!(!result.cancelled);
     assert_eq!(result.total_bytes, Some(16));
     assert_eq!(

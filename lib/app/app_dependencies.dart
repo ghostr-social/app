@@ -12,6 +12,7 @@ import 'package:ghostr/features/session/domain/session_repository.dart';
 import 'package:ghostr/features/session/domain/secret_backup_port.dart';
 import 'package:ghostr/features/settings/domain/app_settings_repository.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_repository.dart';
+import 'package:ghostr/features/video_inventory/domain/playback_preparation_updates.dart';
 import 'package:ghostr/features/video_sharing/domain/video_share_workflow.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 
@@ -34,6 +35,7 @@ class AppDependencies {
     required this.videoPlaybackPort,
     required this.videoShareWorkflow,
     required this.failureReporter,
+    this.playbackPreparationUpdates,
     this.appUpdateRuntime,
     this.watchHistoryStorageDisposer,
   });
@@ -53,6 +55,7 @@ class AppDependencies {
   final VideoPlaybackPort videoPlaybackPort;
   final VideoShareWorkflow videoShareWorkflow;
   final FailureReporter failureReporter;
+  final PlaybackPreparationUpdates? playbackPreparationUpdates;
   final AppUpdateRuntime? appUpdateRuntime;
   final AsyncDisposer? watchHistoryStorageDisposer;
 

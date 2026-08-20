@@ -13,6 +13,8 @@ use ghostr_engine::ByteRange;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use std::sync::{Arc, Mutex};
 
+type SeenHeaders = Arc<Mutex<Option<(String, String)>>>;
+
 #[tokio::test]
 async fn continuation_requests_identity_bytes_with_if_range() {
     let seen = Arc::new(Mutex::new(None));
@@ -28,7 +30,7 @@ async fn continuation_requests_identity_bytes_with_if_range() {
     let spec = ChunkSpec {
         client: &client,
         url: &url,
-        range: ByteRange::new(4, 8),
+        request: range_fixture::range_request(ByteRange::new(4, 8)),
         continuation: Some(&generation),
         timeouts: TransferTimeouts::default(),
     };
@@ -54,10 +56,7 @@ async fn continuation_requests_identity_bytes_with_if_range() {
     let _ = std::fs::remove_dir_all(root);
 }
 
-async fn reply(
-    State(seen): State<Arc<Mutex<Option<(String, String)>>>>,
-    headers: HeaderMap,
-) -> Response<Body> {
+async fn reply(State(seen): State<SeenHeaders>, headers: HeaderMap) -> Response<Body> {
     let encoding = header_value(&headers, header::ACCEPT_ENCODING);
     let if_range = header_value(&headers, header::IF_RANGE);
     *seen.lock().unwrap() = Some((encoding, if_range));

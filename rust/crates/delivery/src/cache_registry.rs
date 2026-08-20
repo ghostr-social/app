@@ -1,8 +1,10 @@
 //! Authoritative registry of progressive videos exposed by the cache.
 
+use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::VideoMeta;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use tokio::sync::Notify;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CacheStatus {
@@ -21,6 +23,7 @@ pub struct CacheVideo {
 #[derive(Clone, Debug, Default)]
 pub struct CacheRegistry {
     inner: Arc<RwLock<CacheEntries>>,
+    changed: Arc<Notify>,
 }
 
 #[derive(Debug, Default)]
@@ -39,10 +42,13 @@ impl CacheRegistry {
     pub fn insert(&self, id: impl Into<String>) {
         let id = id.into();
         let mut entries = self.write();
-        if !entries.by_id.contains_key(&id) {
-            entries.order.push(id.clone());
+        if entries.by_id.contains_key(&id) {
+            return;
         }
+        entries.order.push(id.clone());
         entries.by_id.insert(id, None);
+        drop(entries);
+        self.changed.notify_waiters();
     }
 
     pub fn replace(&self, videos: impl IntoIterator<Item = CacheVideo>) {
@@ -52,10 +58,37 @@ impl CacheRegistry {
         for video in videos {
             remember(&mut entries, video);
         }
+        drop(entries);
+        self.changed.notify_waiters();
     }
 
     pub fn contains(&self, id: &str) -> bool {
         self.read().by_id.contains_key(id)
+    }
+
+    pub fn matches_binding(&self, id: &str, binding: &RepresentationBinding) -> bool {
+        binding.post().as_str() == id
+            && self
+                .read()
+                .by_id
+                .get(id)
+                .and_then(Option::as_ref)
+                .is_some_and(|video| binding.matches_meta(&video.meta))
+    }
+
+    pub fn allows_binding(&self, id: &str, binding: &RepresentationBinding) -> bool {
+        if binding.post().as_str() != id {
+            return false;
+        }
+        match self.read().by_id.get(id) {
+            Some(None) => true,
+            Some(Some(video)) => binding.matches_meta(&video.meta),
+            None => false,
+        }
+    }
+
+    pub fn notifier(&self) -> Arc<Notify> {
+        self.changed.clone()
     }
 
     pub fn videos(&self) -> Vec<CacheVideo> {

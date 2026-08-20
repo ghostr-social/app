@@ -26,6 +26,8 @@ final class VideoPlaybackCapabilities {
   final Set<VideoMediaDelivery> _remoteDeliveries;
 
   bool get supportsAny => supportsLocalFiles || _remoteDeliveries.isNotEmpty;
+  bool get supportsProgressive =>
+      _remoteDeliveries.contains(VideoMediaDelivery.progressive);
   bool get supportsHls => _remoteDeliveries.contains(VideoMediaDelivery.hls);
 
   bool supports(VideoMediaSource media) {

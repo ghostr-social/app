@@ -2,7 +2,10 @@
 //! and the inventory control loop. Pure bookkeeping — no IO.
 
 use crate::candidate_priority::CandidatePriority;
-use crate::delivery_events::{DeliveryCandidate, FocusGenerationGuard};
+use crate::client_capability::ClientCapabilityModel;
+use crate::delivery_events::{
+    DeliveryCandidate, FocusGenerationGuard, PlaybackPresentation, PlayerPreparationReport,
+};
 use ghostr_engine::adaptive::{
     CurrentAuthority, DiscoveryDemand, NavigationHistory, NavigationSnapshot,
 };
@@ -25,16 +28,25 @@ pub(crate) struct DeliveryState {
     candidates: CandidatePriority,
     current_authority: CurrentAuthority,
     playback: PlaybackStatus,
+    latest_presentation_sequence: u64,
+    pending_presentation: Option<PlaybackPresentation>,
     focus_generations: FocusGenerationGuard,
     pending_representations: Vec<RepresentationBinding>,
     changed_representations: Vec<PostId>,
     navigation: NavigationHistory,
     recent_evictions: HashMap<PostId, Vec<ghostr_engine::ByteRange>>,
+    player_preparations: HashMap<PostId, PlayerPreparationReport>,
+    client_capabilities: ClientCapabilityModel,
+    ready_target: usize,
 }
 
 mod evictions;
 mod focus;
 mod playback;
+mod playback_evidence;
+mod player_preparation;
+mod presentation;
+pub(crate) use presentation::PresentationAdmission;
 mod probes;
 mod representation;
 mod window;
@@ -52,11 +64,16 @@ impl DeliveryState {
             candidates: CandidatePriority::default(),
             current_authority: CurrentAuthority::Provisional,
             playback: PlaybackStatus::default(),
+            latest_presentation_sequence: 0,
+            pending_presentation: None,
             focus_generations: FocusGenerationGuard::default(),
             pending_representations: Vec::new(),
             changed_representations: Vec::new(),
             navigation: NavigationHistory::default(),
             recent_evictions: HashMap::new(),
+            player_preparations: HashMap::new(),
+            client_capabilities: ClientCapabilityModel::default(),
+            ready_target: 1,
         }
     }
 
@@ -71,13 +88,10 @@ impl DeliveryState {
         if candidate.meta.delivery != DeliveryKind::Progressive {
             return;
         }
-        self.upsert_progressive_renditions(
-            candidate.post.clone(),
-            candidate.meta,
-            candidate.renditions,
-        );
-        self.candidates
-            .rank(candidate.post, candidate.discovered_at);
+        let post = candidate.post.clone();
+        let discovered_at = candidate.discovered_at;
+        self.upsert_progressive_candidate(candidate);
+        self.candidates.rank(post, discovered_at);
         if self.current_authority == CurrentAuthority::Provisional {
             let window = self.candidates.ranked();
             let current_index = self
@@ -106,15 +120,20 @@ impl DeliveryState {
     }
 
     pub(crate) fn clear(&mut self) {
+        let evidence = self.catalog.evidence_state();
         self.catalog = Catalog::new();
+        self.catalog.replace_evidence_state(evidence, 0);
         self.focus = FocusState::new();
         self.candidates = CandidatePriority::default();
         self.current_authority = CurrentAuthority::Provisional;
         self.playback.discard_session();
+        self.pending_presentation = None;
         self.pending_representations.clear();
         self.changed_representations.clear();
         self.navigation = NavigationHistory::default();
         self.recent_evictions.clear();
+        self.player_preparations.clear();
+        self.ready_target = 1;
     }
 
     pub(crate) fn observe_discovery_demand(&self, demand: DiscoveryDemand) {
@@ -140,6 +159,10 @@ impl DeliveryState {
 
     pub(crate) fn focus(&self) -> &FocusState {
         &self.focus
+    }
+
+    pub(crate) fn current_post(&self) -> Option<PostId> {
+        self.focus.current().cloned()
     }
 
     pub(crate) fn current_authority(&self) -> CurrentAuthority {

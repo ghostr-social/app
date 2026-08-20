@@ -14,6 +14,7 @@ use crate::progressive::route::ProgressiveState;
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_delivery::segmented::SegmentedCache;
 use ghostr_engine::adaptive::DiscoveryDemand;
+use ghostr_engine::VideoMeta;
 use ghostr_media_store::native_cache::prepare_native_cache_directory;
 use ghostr_net::outbound_media_client::MediaHttpClient;
 use ghostr_net::outbound_media_client::MediaHttpRequests;
@@ -81,8 +82,19 @@ impl GatewayRuntime {
         self.segmented.clone()
     }
 
-    pub async fn issue_progressive(&self, post: &str) -> ProgressiveCapabilityId {
-        self.progressive.capabilities.issue(post).await
+    pub async fn issue_progressive(
+        &self,
+        post: &str,
+        expected: &VideoMeta,
+    ) -> anyhow::Result<ProgressiveCapabilityId> {
+        let snapshot = self.progressive.store.media_snapshot(post).await?;
+        anyhow::ensure!(
+            snapshot
+                .binding()
+                .is_some_and(|binding| binding.matches_meta(expected)),
+            "progressive representation is not current"
+        );
+        self.progressive.capabilities.issue(&snapshot).await
     }
 
     /// Applies the user's progressive-media budget without restarting

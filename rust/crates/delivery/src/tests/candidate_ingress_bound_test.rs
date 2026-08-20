@@ -35,6 +35,7 @@ fn candidate(id: &str) -> DeliveryCandidate {
             size_bytes: None,
             duration_ms: None,
         },
+        metadata_evidence: Vec::new(),
         renditions: Vec::new(),
         discovered_at: 1,
     }

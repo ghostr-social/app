@@ -2,11 +2,29 @@ use super::ranges::missing;
 use super::{CandidateSnapshot, OriginHealth, PlayabilitySnapshot};
 
 pub(super) fn best_origin(candidate: &CandidateSnapshot) -> Option<&OriginHealth> {
-    candidate
-        .origins
+    if let Some(preferred) = candidate.preferred_source.as_deref() {
+        if let Some(origin) = candidate
+            .origins
+            .iter()
+            .find(|origin| origin.available && origin.source == preferred)
+        {
+            return Some(origin);
+        }
+    }
+    best_available(&candidate.origins)
+}
+
+pub(super) fn best_available(origins: &[OriginHealth]) -> Option<&OriginHealth> {
+    origins
         .iter()
         .filter(|origin| origin.available)
-        .max_by_key(|origin| effective_throughput(origin))
+        .reduce(|best, candidate| {
+            if effective_throughput(candidate) > effective_throughput(best) {
+                candidate
+            } else {
+                best
+            }
+        })
 }
 
 pub(super) fn candidate_score(

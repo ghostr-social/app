@@ -1,4 +1,4 @@
-use super::support::transfer_identity;
+use super::support::{range_retrieval, transfer_identity};
 use crate::chunk::cancel::{cancel_pair, CancelToken};
 use crate::manager::inflight::{ChunkAttempt, CompletionStatus, InFlightChunks};
 use crate::manager::plan::PlannedTransfer;
@@ -32,16 +32,16 @@ fn finished_fence_does_not_evict_live_protected_work() {
 }
 
 #[test]
-fn finished_fence_is_excluded_from_live_accounting() {
+fn finished_fence_keeps_capacity_reserved_until_terminal_ack() {
     let current = transfer("current", 0, PreemptionAuthority::PlaybackCritical, 0);
     let unrelated = transfer("other", 0, PreemptionAuthority::Transition, 0);
     let mut active = InFlightChunks::new();
     let (attempt, _) = insert(&mut active, &current);
     attempt.mark_io_finished();
 
-    assert_eq!(active.len(), 0);
+    assert_eq!(active.len(), 1);
     assert_eq!(active.foreground_len(), 0);
-    assert!(active.active_hosts().is_empty());
+    assert!(!active.active_hosts().is_empty());
     assert!(!active.contains(&unrelated.request.chunk));
     assert_eq!(active.finish(&attempt), CompletionStatus::Current);
 }
@@ -87,6 +87,7 @@ fn transfer(post: &str, start: u64, authority: PreemptionAuthority, depth: u64) 
             contiguous_depth_bytes: depth,
         },
         url,
+        retrieval: range_retrieval(ByteRange::new(start, start + 64)),
         commitment_until_ms: 0,
     }
 }

@@ -2,13 +2,49 @@
 //! store, launch due probes, plan with the pure engine, then bring the
 //! in-flight transfers in line with the freshly ordered plan.
 
-use crate::manager::plan::{planned_work, PlanInputs};
+use crate::manager::plan::{planned_work_with_planner, PlanInputs, PlannedWork};
 use crate::manager::time::unix_time_ms;
-use crate::manager::transfers::spawn_probe;
 use crate::manager::DeliveryWorker;
 use ghostr_engine::adaptive::StorageSnapshot;
 use ghostr_engine::{ByteRange, PostId};
-use std::collections::HashMap;
+use ghostr_partial_store::partial_range_store::ContentRevision;
+use ghostr_partial_store::partial_range_store::StoredMediaSnapshot;
+use std::collections::{HashMap, HashSet};
+
+#[derive(Default)]
+struct PlanningStoreState {
+    present: HashMap<PostId, Vec<ByteRange>>,
+    finalized: HashSet<PostId>,
+    totals: HashMap<PostId, u64>,
+    continuation_sources: HashMap<PostId, String>,
+    revisions: HashMap<PostId, ContentRevision>,
+    snapshots: HashMap<PostId, StoredMediaSnapshot>,
+}
+
+impl PlanningStoreState {
+    fn insert(&mut self, post: PostId, snapshot: StoredMediaSnapshot, retain_snapshot: bool) {
+        let ranges = snapshot
+            .planning_ranges()
+            .iter()
+            .map(|span| ByteRange::new(span.start, span.end))
+            .collect();
+        self.present.insert(post.clone(), ranges);
+        if snapshot.is_finalized() {
+            self.finalized.insert(post.clone());
+        }
+        self.revisions.insert(post.clone(), snapshot.revision());
+        if let Some(total) = snapshot.total_len() {
+            self.totals.insert(post.clone(), total);
+        }
+        if let Some(source) = snapshot.continuation_source() {
+            self.continuation_sources
+                .insert(post.clone(), source.to_owned());
+        }
+        if retain_snapshot {
+            self.snapshots.insert(post, snapshot);
+        }
+    }
+}
 
 impl DeliveryWorker {
     pub(crate) async fn reconcile(&mut self) {
@@ -23,18 +59,25 @@ impl DeliveryWorker {
         );
         let capacity = self.ctx.store.capacity_snapshot().await;
         let window = self.collection_window(&capacity);
-        let probe_posts = self.state.probe_posts();
-        let present = self.collect_present(&window).await;
-        self.hydrate_timelines(&window, &present).await;
-        self.ensure_total_lens(&window).await;
-        self.reconcile_probes(&probe_posts);
-        let in_flight = self.downloads.ranges();
-        let demanded = self.resolve_gateway_demands(&present);
+        let timeline_window = self.state.timeline_window_posts();
+        let timeline_posts: HashSet<_> = timeline_window.iter().cloned().collect();
+        let stored = self.collect_stored(&window, &timeline_posts).await;
+        self.state.prune_player_preparations(&stored.revisions);
+        let independent_sources = self.independent_objects.current(&stored.revisions);
+        self.reconcile_timelines(&timeline_window, &stored.snapshots);
+        self.reconcile_probe_bodies();
+        let in_flight = self.downloads.actions();
+        let demanded = self.resolve_gateway_demands(&stored.present);
         let connection_ceiling = self.connection_ceiling();
         let inputs = PlanInputs {
             stats: self.keeper.stats(),
             retry: &self.retry,
-            present: &present,
+            present: &stored.present,
+            finalized: &stored.finalized,
+            stored_totals: &stored.totals,
+            continuation_sources: &stored.continuation_sources,
+            revisions: &stored.revisions,
+            independent_sources: &independent_sources,
             in_flight: &in_flight,
             storage: StorageSnapshot::new(capacity.limit_bytes(), capacity.used_bytes()),
             connection_capacity: self
@@ -46,15 +89,42 @@ impl DeliveryWorker {
             observed_at_ms,
             demanded: &demanded,
         };
-        let planned = planned_work(&mut self.state, inputs);
-        self.commands
-            .publish_plan(observed_at_ms, planned.plan.clone());
-        self.apply_policy_evictions(&planned.evictions).await;
+        let planned = planned_work_with_planner(&mut self.state, inputs, &mut self.warp_planner);
+        self.observe_plan(&planned, observed_at_ms);
+        self.execute_planned_work(observed_at_ms, planned, &stored.revisions)
+            .await;
+        self.keeper.schedule_save(&self.ctx.events);
+        self.reliability.observe(
+            self.state.catalog().reliability_revision(),
+            &self.ctx.events,
+        );
+    }
+
+    async fn execute_planned_work(
+        &mut self,
+        observed_at_ms: u64,
+        planned: PlannedWork,
+        revisions: &HashMap<PostId, ContentRevision>,
+    ) {
+        if !self
+            .apply_policy_evictions(&planned.evictions, revisions)
+            .await
+        {
+            return;
+        }
+        self.state
+            .update_ready_target(planned.plan.ready_reserve.target);
         self.state
             .observe_discovery_demand(planned.discovery_demand);
-        self.reconcile_transfers(planned);
         self.refresh_cache_registry().await;
-        self.keeper.schedule_save(&self.ctx.events);
+        let startups = self.startup_certificates(&planned.plan).await;
+        self.commands.publish_focused_plan_with_startups(
+            observed_at_ms,
+            self.state.current_post(),
+            planned.plan.clone(),
+            startups,
+        );
+        self.reconcile_transfers(planned).await;
     }
 
     /// The planning slice of the window, widened to the full roster
@@ -70,51 +140,28 @@ impl DeliveryWorker {
         self.state.planning_window_posts()
     }
 
-    async fn collect_present(&self, window: &[PostId]) -> HashMap<PostId, Vec<ByteRange>> {
-        let mut present = HashMap::new();
+    async fn collect_stored(
+        &self,
+        window: &[PostId],
+        timeline_posts: &HashSet<PostId>,
+    ) -> PlanningStoreState {
+        let mut stored = PlanningStoreState::default();
         for post in window {
-            if self.state.catalog().lookup(post).is_none() {
+            let Some(binding) = self.state.catalog().binding(post) else {
                 continue;
+            };
+            if let Ok(snapshot) = self.ctx.store.media_snapshot(post.as_str()).await {
+                if snapshot.binding() == Some(&binding) {
+                    stored.insert(post.clone(), snapshot, timeline_posts.contains(post));
+                }
             }
-            let spans = self
-                .ctx
-                .store
-                .present_ranges(post.as_str())
-                .await
-                .unwrap_or_default();
-            let ranges = spans
-                .into_iter()
-                .map(|span| ByteRange::new(span.start, span.end))
-                .collect();
-            present.insert(post.clone(), ranges);
         }
-        present
+        stored
     }
 
-    /// The store must know the total before the gateway's first serve;
-    /// declare it as soon as the catalog knows (imeta or probe).
-    async fn ensure_total_lens(&mut self, window: &[PostId]) {
-        for post in window {
-            let known = self
-                .state
-                .catalog()
-                .lookup(post)
-                .and_then(|e| e.total_bytes());
-            let Some(total) = known else { continue };
-            self.set_store_total(post, total).await;
-        }
-    }
-
-    fn launch_probes(&mut self, window: &[PostId]) {
-        for (post, url) in self.probes.claim(self.state.catalog(), window, &self.retry) {
-            spawn_probe(self.ctx.clone(), post, url);
-        }
-    }
-
-    fn reconcile_probes(&mut self, window: &[PostId]) {
+    fn reconcile_probe_bodies(&mut self) {
         let active = self.downloads.body_posts();
         self.probes.reconcile_bodies(&active);
-        self.launch_probes(window);
     }
 
     fn resolve_gateway_demands(

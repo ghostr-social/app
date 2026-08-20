@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:ghostr/core/media/playback_asset_authority.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/core/media/progressive_playback_refresh_port.dart';
@@ -13,6 +14,8 @@ import 'package:ghostr/features/video_inventory/domain/playback_recovery_policy.
 import 'package:ghostr/features/video_inventory/domain/playback_screen_awake_port.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_session.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_telemetry_port.dart';
+import 'package:ghostr/features/video_inventory/domain/player_preparation_feedback_port.dart';
+import 'package:ghostr/features/video_inventory/domain/rendered_first_frame_port.dart';
 import 'package:ghostr/platform/media/video_player_playback_observer.dart';
 import 'package:ghostr/platform/media/video_player_surface_view.dart';
 import 'package:ghostr/platform/media/video_player_value_listener.dart';
@@ -22,16 +25,29 @@ import 'package:ghostr/shared/widgets/loading_panel.dart';
 import 'package:video_player/video_player.dart';
 
 part 'video_player_controller_lifecycle.dart';
+part 'video_player_controller_budget.dart';
+part 'video_player_controller_budget_pressure.dart';
+part 'video_player_controller_settlement.dart';
 part 'video_player_buffering_overlay.dart';
+part 'video_player_initialization_deadline.dart';
 part 'video_player_media_controller.dart';
 part 'video_player_playback_handoff.dart';
+part 'video_player_playback_handoff_command.dart';
+part 'video_player_playback_handoff_reconciliation.dart';
+part 'video_player_playback_handoff_state.dart';
+part 'video_player_playback_handoff_teardown.dart';
 part 'video_player_surface.dart';
+part 'video_player_surface_controller_acceptance.dart';
 part 'video_player_surface_commands.dart';
 part 'video_player_surface_loading.dart';
+part 'video_player_surface_preparation_feedback.dart';
 part 'video_player_surface_recovery.dart';
+part 'video_player_surface_keys.dart';
 part 'video_player_surface_telemetry.dart';
+part 'video_player_teardown_gate.dart';
 
-class VideoPlayerPlaybackPort implements VideoPlaybackPort {
+class VideoPlayerPlaybackPort
+    implements VideoPlaybackPort, VideoPlaybackMemoryPressurePort {
   VideoPlayerPlaybackPort({
     VideoPlayerControllerDisposer controllerDisposer =
         disposeVideoPlayerController,
@@ -39,46 +55,56 @@ class VideoPlayerPlaybackPort implements VideoPlaybackPort {
     PlaybackRecoveryPolicy recoveryPolicy =
         const PlaybackRecoveryPolicy.standard(),
     PlaybackScreenAwakePort screenAwake = const NoopPlaybackScreenAwakePort(),
-  }) : _controllerDisposer = controllerDisposer,
-       _telemetry = telemetry,
-       _recoveryPolicy = recoveryPolicy,
-       _screenAwake = screenAwake,
-       _handoff = _VideoPlayerPlaybackHandoff();
+    PlayerPreparationFeedbackPort preparationFeedback =
+        const NoopPlayerPreparationFeedbackPort(),
+    RenderedFirstFramePort renderedFirstFrames =
+        const NoopRenderedFirstFramePort(),
+  }) : _dependencies = _VideoPlayerSurfaceDependencies(
+         controllerDisposer: controllerDisposer,
+         telemetry: telemetry,
+         recoveryPolicy: recoveryPolicy,
+         screenAwake: screenAwake,
+         preparationFeedback: preparationFeedback,
+         renderedFirstFrames: renderedFirstFrames,
+       );
 
-  final VideoPlayerControllerDisposer _controllerDisposer;
-  final PlaybackTelemetryPort _telemetry;
-  final PlaybackRecoveryPolicy _recoveryPolicy;
-  final PlaybackScreenAwakePort _screenAwake;
-  final _VideoPlayerPlaybackHandoff _handoff;
+  final _VideoPlayerSurfaceDependencies _dependencies;
 
   @override
   Widget buildSurface(VideoPlaybackSurfaceRequest request) {
+    if (request.authority != null) {
+      _dependencies.controllerBudget.enablePreparedReserve();
+    }
     return _VideoPlayerSurface(
-      key: ValueKey((request.media.inventoryPlaybackIdentity, request.videoId)),
+      key: _dependencies.surfaceKey(request),
       request: request,
-      dependencies: _VideoPlayerSurfaceDependencies(
-        controllerDisposer: _controllerDisposer,
-        telemetry: _telemetry,
-        recoveryPolicy: _recoveryPolicy,
-        screenAwake: _screenAwake,
-        handoff: _handoff,
-      ),
+      dependencies: _dependencies,
     );
   }
+
+  @override
+  void reportMemoryPressure() => _dependencies.controllerBudget.constrainTo(2);
 }
 
 final class _VideoPlayerSurfaceDependencies {
-  const _VideoPlayerSurfaceDependencies({
+  _VideoPlayerSurfaceDependencies({
     required this.controllerDisposer,
     required this.telemetry,
     required this.recoveryPolicy,
     required this.screenAwake,
-    required this.handoff,
-  });
+    required this.preparationFeedback,
+    required this.renderedFirstFrames,
+  }) : controllerBudget = _VideoPlayerControllerBudget(6, initialLimit: 2),
+       handoff = _VideoPlayerPlaybackHandoff();
 
   final VideoPlayerControllerDisposer controllerDisposer;
   final PlaybackTelemetryPort telemetry;
   final PlaybackRecoveryPolicy recoveryPolicy;
   final PlaybackScreenAwakePort screenAwake;
+  final PlayerPreparationFeedbackPort preparationFeedback;
+  final RenderedFirstFramePort renderedFirstFrames;
+  final _VideoPlayerControllerBudget controllerBudget;
   final _VideoPlayerPlaybackHandoff handoff;
+  final Map<PlaybackAssetAuthority, GlobalKey<_VideoPlayerSurfaceState>>
+  _preparedSurfaceKeys = {};
 }

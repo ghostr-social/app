@@ -8,17 +8,19 @@ use std::sync::atomic::Ordering;
 
 impl PartialRangeStore {
     pub async fn clear(&self) -> Result<()> {
-        let _update = self.representation_updates.lock().await;
+        let _update = self.representation_updates.write().await;
+        self.revoke_all_actions().await;
         self.clear_representation_bindings().await;
-        let mut keys = stored_keys(&self.root).await;
+        let mut keys = stored_keys(&self.root).await?;
         let mut entries = self.entries.lock().await;
         keys.extend(entries.keys().cloned());
-        self.discard_keys(&mut entries, keys).await?;
+        let result = self.discard_keys(&mut entries, keys).await;
+        self.sparse_response_actions.lock().await.clear();
         *self.refused.lock().await = None;
         self.refusals.store(0, Ordering::Relaxed);
         self.capacity.events().signal();
         self.changed.notify_waiters();
-        Ok(())
+        result
     }
 
     async fn discard_keys(
@@ -26,9 +28,12 @@ impl PartialRangeStore {
         entries: &mut super::Entries,
         keys: BTreeSet<String>,
     ) -> Result<()> {
+        let mut failure = None;
         for key in keys {
-            self.discard(entries, &key).await?;
+            if let Err(error) = self.discard(entries, &key).await {
+                failure.get_or_insert(error);
+            }
         }
-        Ok(())
+        failure.map_or(Ok(()), Err)
     }
 }

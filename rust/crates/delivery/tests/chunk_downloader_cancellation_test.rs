@@ -20,7 +20,7 @@ async fn chunk_downloader_cancellation_mid_stream_keeps_the_partial_bytes() {
     let spec = ChunkSpec {
         client: &client,
         url: &url,
-        range: ByteRange::new(0, 8),
+        request: range_fixture::range_request(ByteRange::new(0, 8)),
         continuation: None,
         timeouts: TransferTimeouts::default(),
     };

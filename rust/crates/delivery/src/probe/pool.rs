@@ -26,6 +26,7 @@ impl MetadataProbePool {
     /// Window posts with unresolved size or range support, bounded by the limit.
     /// Returned posts are marked as probing until released or learned.
     /// Sources the retry policy retired are never probed again.
+    #[cfg(test)]
     pub fn claim(
         &mut self,
         catalog: &Catalog,
@@ -46,6 +47,23 @@ impl MetadataProbePool {
             }
         }
         claimed
+    }
+
+    pub(crate) fn claim_selected(
+        &mut self,
+        catalog: &Catalog,
+        retry: &RetryBook,
+        post: &PostId,
+        source: &str,
+    ) -> bool {
+        if self.probing.len() >= self.limit || !self.can_probe(catalog, retry, post, source) {
+            return false;
+        }
+        let Some(identity) = catalog.transfer_identity(post, source) else {
+            return false;
+        };
+        self.probing.insert(post.clone(), identity);
+        true
     }
 
     pub fn learned(&mut self, post: &PostId) {
@@ -101,6 +119,7 @@ impl MetadataProbePool {
         (claimed == &current).then_some(current)
     }
 
+    #[cfg(test)]
     fn needed_probe(&self, catalog: &Catalog, retry: &RetryBook, post: &PostId) -> Option<String> {
         if self.probing.contains_key(post)
             || self.probed.contains(post)
@@ -110,9 +129,31 @@ impl MetadataProbePool {
             return None;
         }
         let entry = catalog.lookup(post)?;
-        if entry.total_bytes().is_some() && entry.accepts_byte_ranges().is_some() {
+        let url = retry.live_urls(post, &entry.meta.urls).into_iter().next()?;
+        if entry.planning_total_for(&url).is_some()
+            && entry.observed_range_support_for(&url).is_some()
+        {
             return None;
         }
-        retry.live_urls(post, &entry.meta.urls).into_iter().next()
+        Some(url)
+    }
+
+    fn can_probe(&self, catalog: &Catalog, retry: &RetryBook, post: &PostId, source: &str) -> bool {
+        if self.probing.contains_key(post)
+            || self.probed.contains(post)
+            || self.deferred.contains(post)
+            || retry.is_cooling(post)
+        {
+            return false;
+        }
+        let Some(entry) = catalog.lookup(post) else {
+            return false;
+        };
+        retry
+            .live_urls(post, &entry.meta.urls)
+            .iter()
+            .any(|url| url == source)
+            && (entry.planning_total_for(source).is_none()
+                || entry.observed_range_support_for(source).is_none())
     }
 }

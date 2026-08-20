@@ -57,6 +57,7 @@ impl PartialRangeStore {
     /// One forced free-space measurement for a parked delivery episode.
     /// An unchanged answer emits no event and is not polled again.
     pub async fn recheck_capacity(&self) -> u64 {
+        let _capacity = self.capacity_updates.lock().await;
         let mut entries = self.entries.lock().await;
         let used = *self.used_bytes.lock().await;
         self.capacity.recheck(&self.root, used).await;
@@ -67,6 +68,7 @@ impl PartialRangeStore {
     /// entry lock makes a shrink wait for any already-admitted write,
     /// then evicts immediately against the final accounted usage.
     pub async fn set_storage_budget(&self, budget: u64) -> Result<()> {
+        let _capacity = self.capacity_updates.lock().await;
         self.capacity.set_budget(budget)?;
         let mut entries = self.entries.lock().await;
         self.enforce_locked(&mut entries).await;
@@ -78,6 +80,7 @@ impl PartialRangeStore {
     /// given back. Safe to call on a timer: other apps consume the same
     /// file system, so the cap shrinks without the store doing anything.
     pub async fn enforce_capacity(&self) -> u64 {
+        let _capacity = self.capacity_updates.lock().await;
         let mut entries = self.entries.lock().await;
         self.enforce_locked(&mut entries).await
     }
@@ -119,11 +122,26 @@ impl PartialRangeStore {
         }
     }
 
+    /// Admits transaction scratch only from existing headroom. Policy
+    /// eviction must never choose an unrelated LRU victim behind the
+    /// planner's back merely to construct the selected replacement.
+    pub(crate) async fn require_headroom(&self, wanted: u64) -> Result<()> {
+        let revision = self.capacity.events().revision();
+        let short = self.shortfall(wanted).await;
+        match short {
+            0 => Ok(()),
+            short => Err(self.refuse(short, revision).await),
+        }
+    }
+
     /// Bytes the store must give back before `wanted` more may land.
-    async fn shortfall(&self, wanted: u64) -> u64 {
+    pub(super) async fn shortfall(&self, wanted: u64) -> u64 {
         let used = *self.used_bytes.lock().await;
+        let reserved = self.reserved_bytes().await;
         let cap = self.capacity.cap(&self.root, used).await;
-        used.saturating_add(wanted).saturating_sub(cap)
+        used.saturating_add(reserved)
+            .saturating_add(wanted)
+            .saturating_sub(cap)
     }
 
     /// One refusal decision per capacity measurement. A player pulling
@@ -149,11 +167,19 @@ impl PartialRangeStore {
     /// the capacity model is told about as the files go, so the caller
     /// can compare the result against the shortfall directly.
     async fn evict(&self, entries: &mut Entries, protected: &str, wanted: u64) -> u64 {
-        let leased = |key: &str| self.leases.held(key);
-        let victims = eviction::victims(entries, wanted, protected, &leased);
+        let reserved = self.reserved_keys().await;
+        let leased = |key: &str| self.leases.held(key) || reserved.contains(key);
+        let mut staged = self.staged_response_bytes().await;
+        for (key, bytes) in self.cleanup_debt_bytes().await {
+            *staged.entry(key).or_default() += bytes;
+        }
+        let victims = eviction::victims(entries, &staged, wanted, protected, &leased);
         let mut freed = 0_u64;
         for key in victims {
-            let bytes = entries.get(&key).map_or(0, |entry| entry.accounted);
+            let bytes = entries
+                .get(&key)
+                .map_or(0, |entry| entry.accounted)
+                .saturating_add(staged.get(&key).copied().unwrap_or_default());
             match self.discard(entries, &key).await {
                 Ok(()) => freed = freed.saturating_add(bytes),
                 Err(error) => warn!("Video store could not evict {key}: {error:#}"),

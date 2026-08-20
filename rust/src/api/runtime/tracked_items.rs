@@ -72,6 +72,10 @@ impl TrackedItems {
         self.read().level
     }
 
+    pub(crate) fn meta(&self, id: &str) -> Option<VideoMeta> {
+        self.read().items.get(id).cloned()
+    }
+
     /// Entries in stable id order so event emission is deterministic.
     pub(crate) fn snapshot(&self) -> Vec<(String, VideoMeta)> {
         let mut entries: Vec<_> = self.read().items.clone().into_iter().collect();

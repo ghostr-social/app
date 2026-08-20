@@ -2,6 +2,9 @@ use super::super::PlanInputs;
 use crate::manager::state::DeliveryState;
 use ghostr_engine::adaptive::{NetworkSnapshot, OriginHealth};
 use ghostr_engine::host_stats::{host_of, OPTIMISTIC_THROUGHPUT_BPS};
+use ghostr_engine::origin_model::{
+    Admission, DecisionMode, MediaClass, NetworkClass, OriginContext, OriginQuery, RequestMethod,
+};
 use ghostr_engine::playback::EstimateConfidence;
 use ghostr_engine::PostId;
 
@@ -17,24 +20,82 @@ pub(super) fn origins(
         .retry
         .live_urls(post, &entry.meta.urls)
         .into_iter()
-        .filter_map(|url| origin(inputs, url))
+        .filter_map(|url| origin(inputs, entry, url))
         .collect()
 }
 
-fn origin(inputs: &PlanInputs<'_>, url: String) -> Option<OriginHealth> {
+fn origin(
+    inputs: &PlanInputs<'_>,
+    entry: &ghostr_engine::catalog::CatalogEntry,
+    url: String,
+) -> Option<OriginHealth> {
     let host = host_of(&url)?;
-    let failure = (inputs.stats.failure_ratio(&host) * 10_000.0).round() as u16;
+    let query = origin_query(inputs, entry, &url, &host);
+    let estimate =
+        inputs
+            .stats
+            .origin_model()
+            .estimate(&query, inputs.observed_at_ms, DecisionMode::Safety);
+    let reliability = estimate.success.selected
+        * estimate
+            .range_compliance
+            .map_or(1.0, |range| range.selected);
+    let failure = ((1.0 - reliability) * 10_000.0).round() as u16;
+    let admission = inputs
+        .stats
+        .origin_model()
+        .circuit_admission(&query, inputs.observed_at_ms);
     Some(OriginHealth {
         source: url,
-        available: true,
-        throughput_bps: finite_bits(inputs.stats.expected_throughput(&host)),
-        rtt_ms: inputs
-            .stats
-            .expected_ttfb(&host)
-            .map_or(250, |value| value.as_millis() as u64),
+        available: admission != Admission::Blocked,
+        throughput_bps: finite_bits(estimate.throughput_bps.selected as f64),
+        rtt_ms: estimate.ttfb_ms.selected,
         packet_loss_bps: 0,
         failure_bps: failure,
     })
+}
+
+fn origin_query(
+    inputs: &PlanInputs<'_>,
+    entry: &ghostr_engine::catalog::CatalogEntry,
+    url: &str,
+    host: &str,
+) -> OriginQuery {
+    let (method, media, bytes) = request_context(entry, url);
+    let concurrency = inputs
+        .in_flight
+        .iter()
+        .filter(|active| host_of(active.identity().source().as_str()).as_deref() == Some(host))
+        .count()
+        .saturating_add(1);
+    OriginQuery::new(
+        url,
+        OriginContext::new(method, bytes, media)
+            .with_network(NetworkClass::Unavailable)
+            .with_concurrency(concurrency)
+            .with_observed_at_ms(inputs.observed_at_ms),
+    )
+}
+
+fn request_context(
+    entry: &ghostr_engine::catalog::CatalogEntry,
+    url: &str,
+) -> (RequestMethod, MediaClass, u64) {
+    if entry.meta.delivery == ghostr_engine::DeliveryKind::Hls {
+        return (RequestMethod::SegmentGet, MediaClass::Segmented, 256 * 1024);
+    }
+    match entry.observed_range_support_for(url) {
+        Some(false) => (
+            RequestMethod::FullGet,
+            MediaClass::WholeObject,
+            entry.planning_total_for(url).unwrap_or(256 * 1024),
+        ),
+        _ => (
+            RequestMethod::RangeGet,
+            MediaClass::ProgressiveMp4,
+            256 * 1024,
+        ),
+    }
 }
 
 pub(super) fn network(inputs: &PlanInputs<'_>) -> NetworkSnapshot {

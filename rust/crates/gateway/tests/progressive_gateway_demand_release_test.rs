@@ -9,6 +9,9 @@ use tower::ServiceExt;
 async fn completed_response_releases_its_demand_lease() {
     let mut harness = progressive_harness("ghostr-progressive-demand-release");
     harness.posts.insert("clip");
+    harness
+        .bind_video("clip", "https://cdn.example/clip.mp4", Some(10))
+        .await;
     harness.store.set_total_len("clip", 10).await.unwrap();
     harness
         .store

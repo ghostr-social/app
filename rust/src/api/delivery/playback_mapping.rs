@@ -1,11 +1,13 @@
 use crate::api::delivery::focus_mapping::validate_post_id;
-use crate::api::playback_types::{FfiPlaybackObservation, FfiPlaybackPhase};
+use crate::api::playback_types::{
+    FfiPlaybackObservation, FfiPlaybackPhase, FfiPlaybackPresentation,
+};
 use crate::engine::playback::{
     PlaybackObservation, PlaybackObservationSequence, PlaybackPhase, PlaybackSession,
 };
 use crate::engine::PostId;
 use anyhow::{bail, Context, Result};
-use ghostr_delivery::delivery_events::DeliveryPlayback;
+use ghostr_delivery::delivery_events::{DeliveryPlayback, PlaybackPresentation};
 use std::time::Duration;
 
 pub(crate) fn playback_update(input: FfiPlaybackObservation) -> Result<DeliveryPlayback> {
@@ -27,6 +29,18 @@ pub(crate) fn playback_update(input: FfiPlaybackObservation) -> Result<DeliveryP
         sequence: PlaybackObservationSequence::new(input.sequence),
         observation,
     })
+}
+
+pub(crate) fn playback_presentation(
+    input: FfiPlaybackPresentation,
+) -> Result<PlaybackPresentation> {
+    validate_post_id(&input.post_id)?;
+    if input.generation == 0 || input.sequence == 0 {
+        bail!("playback presentation generation and sequence must be positive");
+    }
+    let session = PlaybackSession::new(PostId::new(input.post_id), input.generation);
+    PlaybackPresentation::try_new(session, input.sequence, input.observed_at_ms)
+        .context("playback presentation sequence must be positive")
 }
 
 impl From<FfiPlaybackPhase> for PlaybackPhase {

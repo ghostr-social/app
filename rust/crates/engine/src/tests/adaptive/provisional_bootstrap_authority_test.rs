@@ -21,5 +21,5 @@ fn provisional_current_bootstrap_is_bounded_and_never_playback_critical() {
     assert_eq!(current.len(), 1, "{plan:#?}");
     assert_eq!(current[0].reason, AllocationReason::MediaBootstrap);
     assert_eq!(current[0].authority, PreemptionAuthority::Speculative);
-    assert!(current[0].range.len() <= input.request_slice_bytes);
+    assert!(current[0].request.requested_bytes().len() <= input.request_slice_bytes);
 }

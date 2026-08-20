@@ -18,7 +18,7 @@ async fn chunk_downloader_writes_nothing_when_the_server_ignores_a_nonzero_range
     let spec = ChunkSpec {
         client: &client,
         url: &url,
-        range: ByteRange::new(8, 16),
+        request: range_fixture::range_request(ByteRange::new(8, 16)),
         continuation: None,
         timeouts: TransferTimeouts::default(),
     };
@@ -33,7 +33,8 @@ async fn chunk_downloader_writes_nothing_when_the_server_ignores_a_nonzero_range
             .expect("chunk download");
 
     assert_eq!(result.bytes_written, 0);
-    assert!(!result.accept_ranges);
+    assert_eq!(result.range_support, Some(false));
+    assert!(result.range_ignored);
     assert!(!result.cancelled);
     assert_eq!(result.total_bytes, Some(16));
     assert!(store

@@ -1,7 +1,7 @@
 use crate::api::delivery_events_stream::{watch_delivery, EventOut};
 use crate::api::delivery_types::{FfiDeliveryEvent, FfiDeliveryEventKind};
 use crate::api::runtime::tracked_items::TrackedItems;
-use crate::api::tests::support::{sized_meta, temp_store};
+use crate::api::tests::support::{bind_store, sized_meta, temp_store};
 use crate::engine::{DeliveryKind, VideoMeta};
 use ghostr_delivery::segmented::SegmentedCache;
 use std::time::Duration;
@@ -19,7 +19,9 @@ impl EventOut for ChannelOut {
 async fn streams_readiness_once_the_head_bytes_land() {
     let store = temp_store("ghostr-api-watch");
     let tracked = TrackedItems::new();
-    tracked.insert("clip".to_owned(), sized_meta(16, 2_000));
+    let meta = sized_meta(16, 2_000);
+    bind_store(&store, "clip", &meta).await;
+    tracked.insert("clip".to_owned(), meta);
     let (sender, mut events) = mpsc::unbounded_channel();
     tokio::spawn(watch_delivery(
         ChannelOut(sender),

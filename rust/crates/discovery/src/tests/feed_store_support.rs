@@ -36,6 +36,7 @@ fn post(created_at: u64) -> ParsedVideoPost {
             size_bytes: None,
             duration_ms: None,
         },
+        metadata_evidence: Vec::new(),
         renditions: Vec::new(),
     }
 }

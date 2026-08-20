@@ -24,11 +24,14 @@ async fn unhosted_outcomes_do_not_dirty_or_persist_host_stats() {
         url: "not a URL".to_owned(),
         outcome: Ok(ChunkResult {
             bytes_written: 1,
-            accept_ranges: true,
+            range_support: Some(true),
+            range_ignored: false,
             cancelled: false,
             total_bytes: Some(1),
+            promoted: false,
             request_started: true,
         }),
+        origin: None,
     });
     keeper.note_probe(&ProbeDone {
         post,
@@ -37,6 +40,7 @@ async fn unhosted_outcomes_do_not_dirty_or_persist_host_stats() {
             content_length: Some(1),
             accept_ranges: Some(true),
             content_type: Some("video/mp4".to_owned()),
+            validator: None,
             ttfb: Duration::from_millis(1),
         }),
     });

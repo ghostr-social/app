@@ -8,12 +8,19 @@ const fakeProgressivePlaybackUrl =
     'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
 class FakeProgressivePlaybackGateway implements ProgressivePlaybackGatewayPort {
+  FakeProgressivePlaybackGateway({this.immediatePlaybackUrl});
+
+  String? immediatePlaybackUrl;
   final requests = <VideoMediaSource>[];
   final _pending = <Completer<ProxiedProgressiveVideoMediaSource>>[];
 
   @override
   Future<ProxiedProgressiveVideoMediaSource> resolve(VideoMediaSource media) {
     requests.add(media);
+    final immediate = immediatePlaybackUrl;
+    if (immediate != null) {
+      return Future.value(ProxiedProgressiveVideoMediaSource(immediate));
+    }
     final pending = Completer<ProxiedProgressiveVideoMediaSource>();
     _pending.add(pending);
     return pending.future;
@@ -21,6 +28,10 @@ class FakeProgressivePlaybackGateway implements ProgressivePlaybackGatewayPort {
 
   void completeNext({String playbackUrl = fakeProgressivePlaybackUrl}) {
     _nextPending.complete(ProxiedProgressiveVideoMediaSource(playbackUrl));
+  }
+
+  void resolveImmediatelyWith(String playbackUrl) {
+    immediatePlaybackUrl = playbackUrl;
   }
 
   void failNext() {

@@ -9,8 +9,10 @@ import 'package:ghostr/features/video_catalog/data/playable_remote_video_source.
 import 'package:ghostr/features/video_catalog/data/rust_feed_remote_source.dart';
 import 'package:ghostr/features/video_catalog/domain/remote_video_source.dart';
 import 'package:ghostr/features/video_inventory/domain/hls_playback_gateway_port.dart';
+import 'package:ghostr/features/video_inventory/domain/playback_preparation_updates.dart';
 import 'package:ghostr/platform/media/cache_directory_provider.dart';
 import 'package:ghostr/platform/media/ffi_hls_playback_gateway.dart';
+import 'package:ghostr/platform/media/ffi_playback_preparation_updates.dart';
 import 'package:ghostr/platform/media/ffi_video_gateway.dart';
 import 'package:ghostr/platform/media/video_player_playback_capabilities.dart';
 import 'package:path_provider/path_provider.dart';
@@ -19,6 +21,7 @@ class ProductionVideoDelivery {
   const ProductionVideoDelivery(
     this.sources, {
     this.hlsPlaybackGateway,
+    this.preparationUpdates,
     this.playbackCapabilities = VideoPlaybackCapabilities.progressiveOnly,
   });
 
@@ -43,14 +46,15 @@ class ProductionVideoDelivery {
   RemoteVideoSource get discoverySource => sources.discovery;
 
   final HlsPlaybackGatewayPort? hlsPlaybackGateway;
+  final PlaybackPreparationUpdates? preparationUpdates;
   final VideoPlaybackCapabilities playbackCapabilities;
 }
 
 final class ProductionVideoDeliverySources {
   const ProductionVideoDeliverySources.shared(RemoteVideoSource source)
-      : primary = source,
-        search = source,
-        discovery = source;
+    : primary = source,
+      search = source,
+      discovery = source;
 
   final RemoteVideoSource primary;
   final RemoteVideoSource search;
@@ -64,9 +68,7 @@ class ProductionVideoDeliveryEnvironment {
     this.playbackCapabilities = VideoPlaybackCapabilities.progressiveOnly,
   });
 
-  factory ProductionVideoDeliveryEnvironment.production(
-    RustFeedViewer viewer,
-  ) {
+  factory ProductionVideoDeliveryEnvironment.production(RustFeedViewer viewer) {
     return ProductionVideoDeliveryEnvironment(
       source: buildRustFeedSource(viewer),
       adapters: ProductionVideoDeliveryAdapters(
@@ -87,11 +89,13 @@ final class ProductionVideoDeliveryAdapters {
     required this.supportDirectoryProvider,
     required this.gateway,
     this.hlsPlaybackGateway = const FfiHlsPlaybackGateway(),
+    this.preparationUpdates = const FfiPlaybackPreparationUpdates(),
   });
 
   final CacheDirectoryProvider supportDirectoryProvider;
   final FfiVideoGateway gateway;
   final HlsPlaybackGatewayPort hlsPlaybackGateway;
+  final PlaybackPreparationUpdates preparationUpdates;
 }
 
 /// The Rust discovery pipeline over the generated feed FFI.
@@ -126,6 +130,9 @@ Future<ProductionVideoDelivery> buildProductionVideoDelivery(
   return ProductionVideoDelivery(
     ProductionVideoDeliverySources.shared(source),
     hlsPlaybackGateway: hlsGateway,
+    preparationUpdates: capabilities.supportsProgressive
+        ? environment.adapters.preparationUpdates
+        : null,
     playbackCapabilities: capabilities,
   );
 }
@@ -133,5 +140,4 @@ Future<ProductionVideoDelivery> buildProductionVideoDelivery(
 PlayableRemoteVideoSource _playable(
   RemoteVideoSource source,
   VideoPlaybackCapabilities capabilities,
-) =>
-    PlayableRemoteVideoSource(source: source, capabilities: capabilities);
+) => PlayableRemoteVideoSource(source: source, capabilities: capabilities);

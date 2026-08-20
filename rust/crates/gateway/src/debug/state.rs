@@ -3,7 +3,9 @@
 use crate::progressive::route::ProgressiveState;
 use ghostr_delivery::debug::feed::{DebugFeedItem, DebugFeedSnapshot};
 use ghostr_delivery::debug::network::NetworkProfile;
+use ghostr_delivery::delivery_events::DecisionHistorySnapshot;
 use ghostr_delivery::delivery_events::DeliveryHandle;
+use ghostr_delivery::evaluation::EvaluationSnapshot;
 use ghostr_engine::host_stats::host_of;
 use serde::Serialize;
 
@@ -19,6 +21,8 @@ pub struct DebugSnapshot {
     connections: Vec<ConnectionSnapshot>,
     storage: StorageSnapshot,
     adaptive_plans: Vec<AdaptivePlanSnapshot>,
+    decisions: DecisionHistorySnapshot,
+    evaluation: EvaluationSnapshot,
     videos: Vec<VideoSnapshot>,
     hls_videos: Vec<HlsVideoSnapshot>,
 }
@@ -63,6 +67,8 @@ pub(crate) async fn snapshot(state: &ProgressiveState, delivery: &DeliveryHandle
         connections: connections(state),
         storage: storage(&videos, used_bytes),
         adaptive_plans: plan_snapshots(&delivery.plan_history()),
+        decisions: delivery.decision_history(),
+        evaluation: delivery.evaluation_snapshot(),
         hls_videos: state
             .debug_feed
             .hls_items()

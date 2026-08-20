@@ -1,6 +1,11 @@
 use super::plan::{Allocation, AllocationReason, CandidateUtility, PreemptionAuthority};
 use super::sources::delivery_ms;
-use super::{CandidateSnapshot, OriginHealth, PlayabilitySnapshot, PlayableRange};
+use super::{
+    CandidateSnapshot, OriginHealth, PlayabilitySnapshot, PlayableRange, PromotionGrant,
+    RetrievalRequest, WholeBodyContract, WholeFetchReason,
+};
+
+const COLD_DIRECT_FETCH_CAP_BYTES: u64 = 1024 * 1024;
 
 pub(super) struct AllocationInputs<'a> {
     pub(super) candidate: &'a CandidateSnapshot,
@@ -8,6 +13,7 @@ pub(super) struct AllocationInputs<'a> {
     pub(super) playable: PlayableRange,
     pub(super) emergency: bool,
     pub(super) reason: Option<AllocationReason>,
+    pub(super) reservation_budget: u64,
 }
 
 pub(super) fn allocation(
@@ -15,18 +21,70 @@ pub(super) fn allocation(
     inputs: AllocationInputs<'_>,
 ) -> Allocation {
     let utility = candidate_utility(snapshot, inputs.candidate, inputs.origin, inputs.playable);
+    let promotion = promotion_grant(snapshot, &inputs);
+    let request = RetrievalRequest::FetchRange {
+        bytes: inputs.playable.bytes,
+        promotion,
+    };
+    let delivery = delivery_ms(snapshot, inputs.origin, request.reserved_network_bytes());
     Allocation {
         post: inputs.candidate.post.clone(),
-        range: inputs.playable.bytes,
+        request,
         source: inputs.origin.source.clone(),
         expected_playable_gain_ms: inputs.playable.playable_ms,
         utility,
         authority: authority(inputs.candidate, snapshot, inputs.emergency),
-        commitment_until_ms: commitment_until(snapshot, utility.expected_delivery_ms),
+        commitment_until_ms: commitment_until(snapshot, delivery),
         reason: inputs
             .reason
             .unwrap_or_else(|| reason(inputs.candidate, snapshot, inputs.emergency)),
     }
+}
+
+pub(super) fn whole_allocation(
+    snapshot: &PlayabilitySnapshot,
+    inputs: AllocationInputs<'_>,
+) -> Allocation {
+    let utility = candidate_utility(snapshot, inputs.candidate, inputs.origin, inputs.playable);
+    let request = RetrievalRequest::FetchWhole {
+        contract: WholeBodyContract::Capped {
+            maximum_bytes: inputs.playable.bytes.len(),
+        },
+        reason: WholeFetchReason::PlannedCompletion,
+    };
+    Allocation {
+        post: inputs.candidate.post.clone(),
+        request,
+        source: inputs.origin.source.clone(),
+        expected_playable_gain_ms: inputs.playable.playable_ms,
+        utility,
+        authority: authority(inputs.candidate, snapshot, inputs.emergency),
+        commitment_until_ms: commitment_until(
+            snapshot,
+            delivery_ms(snapshot, inputs.origin, request.reserved_network_bytes()),
+        ),
+        reason: inputs
+            .reason
+            .unwrap_or_else(|| reason(inputs.candidate, snapshot, inputs.emergency)),
+    }
+}
+
+fn promotion_grant(
+    snapshot: &PlayabilitySnapshot,
+    inputs: &AllocationInputs<'_>,
+) -> Option<PromotionGrant> {
+    let total = inputs.candidate.total_bytes?;
+    let delivery = delivery_ms(snapshot, inputs.origin, total);
+    let on_time = delivery <= snapshot.commitment_ms;
+    let fits = total <= inputs.reservation_budget;
+    (inputs.candidate.evidence.size.reliable
+        && total <= COLD_DIRECT_FETCH_CAP_BYTES
+        && on_time
+        && fits)
+        .then(|| PromotionGrant {
+            maximum_bytes: total,
+            valid_until_ms: commitment_until(snapshot, delivery),
+        })
 }
 
 fn commitment_until(snapshot: &PlayabilitySnapshot, delivery_ms: u64) -> u64 {

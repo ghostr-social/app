@@ -24,6 +24,13 @@ async fn failed_partial_range_eviction_reports_no_freed_bytes() {
     assert_eq!(freed, 0);
     assert_eq!(*fixture.used_bytes.lock().await, 400);
     assert!(fixture.root.join("clip.part").exists());
+    assert!(fixture
+        .store
+        .media_snapshot("clip")
+        .await
+        .unwrap()
+        .ranges()
+        .is_empty());
     assert_eq!(fixture.store.enforce_capacity().await, 400);
     discard(&fixture.root);
 }

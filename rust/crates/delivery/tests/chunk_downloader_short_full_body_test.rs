@@ -19,7 +19,7 @@ async fn short_200_body_completes_a_larger_speculative_grant() {
     let spec = ChunkSpec {
         client: &client,
         url: &url,
-        range: ByteRange::new(0, 256 * 1024),
+        request: range_fixture::range_request(ByteRange::new(0, 256 * 1024)),
         continuation: None,
         timeouts: TransferTimeouts::default(),
     };

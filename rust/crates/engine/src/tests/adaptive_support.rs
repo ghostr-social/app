@@ -3,6 +3,7 @@ use crate::adaptive::{
     NetworkSnapshot, OriginHealth, PlayabilitySnapshot, PlayableRange, PlaybackSnapshot,
     StorageSnapshot, ViewProbability,
 };
+use crate::media_timeline::{StartupFootprint, StartupProvenance};
 use crate::playback::{EstimateConfidence, PlaybackPhase};
 use crate::{ByteRange, PostId};
 use std::collections::HashSet;
@@ -43,21 +44,32 @@ pub(super) fn snapshot(
 }
 
 fn candidate(distance: usize) -> CandidateSnapshot {
+    let playable_ranges: Vec<_> = (0..15).map(playable_range).collect();
     CandidateSnapshot {
         post: PostId::new(format!("p{distance}")),
         feed_offset: FeedOffset::new(distance as i32),
         view_probability: ViewProbability::new(0.88_f64.powi(distance as i32)).unwrap(),
+        retrieval_eligible: true,
         total_bytes: Some(3_750_000),
         bitrate_bps: 1_000_000,
         duration_ms: 60_000,
         layout: MediaLayout::Streamable,
+        preferred_source: None,
+        startup: StartupFootprint::new(
+            vec![playable_ranges[0].bytes],
+            playable_ranges[0].playable_ms,
+            StartupProvenance::ClassicMp4V1,
+        ),
+        player_preparation: crate::adaptive::PlayerPreparation::FirstFrameRendered,
         timeline_probe: None,
-        playable_ranges: (0..15).map(playable_range).collect(),
+        playable_ranges,
         demanded: None,
         present: Vec::new(),
+        finalized: false,
         recently_evicted: Vec::new(),
         in_flight: Vec::new(),
         origins: vec![healthy_origin("origin", 20_000_000, 50)],
+        evidence: Default::default(),
     }
 }
 

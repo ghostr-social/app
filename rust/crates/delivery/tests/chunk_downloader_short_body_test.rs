@@ -18,7 +18,7 @@ async fn a_body_shorter_than_its_advertised_range_is_rejected() {
     let spec = ChunkSpec {
         client: &client,
         url: &url,
-        range: ByteRange::new(4, 12),
+        request: range_fixture::range_request(ByteRange::new(4, 12)),
         continuation: None,
         timeouts: TransferTimeouts::default(),
     };

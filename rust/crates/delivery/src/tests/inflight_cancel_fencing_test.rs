@@ -5,7 +5,7 @@ use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::{ByteRange, ChunkId, PostId};
 
 #[test]
-fn a_cancelled_attempt_cannot_return_as_an_untracked_completion() {
+fn a_cancelled_attempt_retains_identity_until_its_terminal_ack() {
     let mut active = InFlightChunks::new();
     let chunk = ChunkId {
         post: PostId::new("old"),
@@ -26,5 +26,5 @@ fn a_cancelled_attempt_cannot_return_as_an_untracked_completion() {
 
     assert!(active.cancel(&chunk));
 
-    assert_eq!(active.finish(&attempt), CompletionStatus::Superseded);
+    assert_eq!(active.finish(&attempt), CompletionStatus::Cancelled);
 }

@@ -9,25 +9,41 @@
 
 pub(crate) mod admission;
 mod cache;
+mod capability;
 mod completion;
+mod completion_observability;
 pub(crate) mod concurrency;
 pub(crate) mod cooldown_timers;
+mod create;
 pub mod failure;
 mod focus_lease;
+mod independent_objects;
 pub(crate) mod inflight;
+mod integrity;
+mod observability;
+pub(crate) mod origin_admission;
 pub(crate) mod plan;
+mod playback;
 mod policy_eviction;
+mod presentation;
 pub(crate) mod pressure;
 mod probe_completion;
 pub(crate) mod qoe;
 pub(crate) mod quality;
 pub(crate) mod reconcile;
 mod reconcile_transfers;
+pub(crate) mod reconcile_warp;
+pub(crate) mod reliability;
 mod reset;
+mod response_observation;
+pub(crate) mod response_open;
 pub mod retry;
 mod retry_completion;
+mod startup;
 pub(crate) mod state;
 pub(crate) mod stats;
+#[cfg(test)]
+mod testing;
 pub(crate) mod time;
 pub(crate) mod timeline;
 pub(crate) mod traffic;
@@ -42,13 +58,18 @@ use crate::cache_registry::CacheRegistry;
 use crate::debug::network::NetworkThrottle;
 use crate::delivery_events::{command_channel, CommandReceiver, DeliveryHandle};
 use crate::demand_leases::DemandLeases;
+use crate::manager::capability::CapabilityKeeper;
 use crate::manager::cooldown_timers::CooldownTimers;
+use crate::manager::independent_objects::IndependentObjects;
 use crate::manager::pressure::StorePressure;
 use crate::manager::qoe::QoeKeeper;
+use crate::manager::reliability::ReliabilityKeeper;
+use crate::manager::response_open::ResponseOpenReceiver;
 use crate::manager::retry::RetryBook;
 use crate::manager::state::DeliveryState;
 use crate::manager::stats::StatsKeeper;
-use crate::manager::traffic::{channel as traffic_channel, TrafficInbox};
+use crate::manager::timeline::TimelineCoordinator;
+use crate::manager::traffic::TrafficInbox;
 use crate::manager::transfers::{InternalEvent, TransferContext};
 use crate::manager::wake_lane::WakeCursor;
 use crate::manager::workers::DownloadWorkers;
@@ -61,7 +82,6 @@ use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_engine::concurrency::AdaptiveConcurrency;
 use ghostr_engine::{DataUsageLevel, EngineParams};
 use ghostr_net::outbound_media_client::{MediaHttpClient, MediaHttpRequests};
-use ghostr_net::transfer_timeouts::TransferTimeouts;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -114,12 +134,17 @@ async fn run<C>(
     }
     while worker.step().await {}
     worker.keeper.save_now().await;
+    let evidence = worker.state.catalog().evidence_state();
+    worker.reliability.save_now(&evidence).await;
+    worker.save_capability().await;
     worker.qoe.save_now().await;
 }
 
 pub(crate) struct DeliveryWorker {
     state: DeliveryState,
     keeper: StatsKeeper,
+    reliability: ReliabilityKeeper,
+    capability: CapabilityKeeper,
     qoe: QoeKeeper,
     downloads: DownloadWorkers,
     queue: MutablePriorityQueue,
@@ -134,57 +159,12 @@ pub(crate) struct DeliveryWorker {
     commands: CommandReceiver,
     demand: DemandReceiver,
     events: mpsc::UnboundedReceiver<InternalEvent>,
+    responses: ResponseOpenReceiver,
     traffic: TrafficInbox,
     wake_cursor: WakeCursor,
     concurrency: AdaptiveConcurrency,
     segmented: SegmentedDelivery,
-}
-
-impl DeliveryWorker {
-    async fn create<C>(
-        config: DeliveryManagerConfig<C>,
-        commands: CommandReceiver,
-        demand: DemandReceiver,
-    ) -> Self
-    where
-        C: MediaHttpRequests + 'static,
-    {
-        let (events_sender, events) = mpsc::unbounded_channel();
-        let (traffic_publisher, traffic) =
-            traffic_channel(events_sender.clone(), TRAFFIC_MAILBOX_CAPACITY);
-        let state = DeliveryState::new(config.params, config.level);
-        let concurrency = AdaptiveConcurrency::new(1, state.concurrency());
-        let segmented = SegmentedDelivery::new(config.segmented);
-        let qoe_path = config.stats_path.with_file_name("qoe_stats.json");
-        let qoe = QoeKeeper::load(qoe_path, config.tuning.stats_debounce).await;
-        Self {
-            state,
-            keeper: StatsKeeper::load(config.stats_path, config.tuning.stats_debounce).await,
-            qoe,
-            downloads: DownloadWorkers::new(),
-            queue: MutablePriorityQueue::new(),
-            probes: MetadataProbePool::new(config.tuning.probe_concurrency),
-            retry: RetryBook::new(config.tuning.retry),
-            cooldown_timers: CooldownTimers::default(),
-            pressure: StorePressure::new(config.tuning.store_pressure_pause),
-            focus_lease: FocusedStoreLease::default(),
-            demand_leases: DemandLeases::default(),
-            ctx: TransferContext {
-                client: Arc::new(config.client),
-                store: config.store,
-                events: events_sender,
-                timeouts: TransferTimeouts::default(),
-                network: config.network,
-                traffic: traffic_publisher,
-            },
-            cache: config.cache,
-            commands,
-            demand,
-            events,
-            traffic,
-            wake_cursor: WakeCursor::default(),
-            concurrency,
-            segmented,
-        }
-    }
+    timelines: TimelineCoordinator,
+    independent_objects: IndependentObjects,
+    warp_planner: ghostr_engine::adaptive::WarpPlanner,
 }

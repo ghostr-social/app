@@ -1,4 +1,4 @@
-use crate::adaptive::{AdaptivePlayabilityPolicy, FeedOffset, InFlightRange};
+use crate::adaptive::{AdaptivePlayabilityPolicy, FeedOffset, InFlightAction};
 use crate::tests::adaptive_support::snapshot;
 use crate::{ByteRange, PostId};
 use std::collections::HashSet;
@@ -32,11 +32,12 @@ fn a_forward_swipe_keeps_only_commitments_that_fit_beside_the_new_edge() {
     assert_eq!(plan.retained[0].post, PostId::new("p2"));
 }
 
-fn committed() -> InFlightRange {
-    InFlightRange {
-        bytes: ByteRange::new(0, 250_000),
-        source: "origin".to_owned(),
-        committed_until_ms: 20_000,
-        identity_current: true,
-    }
+fn committed() -> InFlightAction {
+    InFlightAction::range(
+        crate::ActionId::new(1),
+        ByteRange::new(0, 250_000),
+        "origin",
+        20_000,
+        true,
+    )
 }

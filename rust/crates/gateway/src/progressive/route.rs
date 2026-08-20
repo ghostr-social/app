@@ -25,8 +25,10 @@ use std::ops::Range;
 use std::sync::Arc;
 use std::time::Duration;
 
+mod authority;
 mod snapshot;
-use snapshot::{awaited_snapshot, VideoSnapshot};
+use authority::{refresh_current_asset, require_current_asset, require_servable};
+use snapshot::{awaited_media_snapshot, VideoSnapshot};
 
 const VIDEO_MIME: &str = "video/mp4";
 
@@ -82,9 +84,14 @@ async fn serve(
     headers: HeaderMap,
 ) -> Result<Response, StatusCode> {
     require_servable(&state, &query).await?;
-    let Some(snapshot) = awaited_snapshot(&state, query.id).await? else {
+    if !refresh_current_asset(&state, &query).await? {
+        return retry_later();
+    }
+    let Some(stored) = awaited_media_snapshot(&state, &query.id).await? else {
         return retry_later();
     };
+    require_current_asset(&state, &query, &stored).await?;
+    let snapshot = VideoSnapshot::from_stored(query.id, stored);
     let mut response = match range_header::resolve(headers.get(RANGE), snapshot.total) {
         ResolvedRange::Full => full_response(state, snapshot),
         ResolvedRange::Partial { start, end } => partial_response(state, snapshot, start..end),
@@ -94,20 +101,6 @@ async fn serve(
         .headers_mut()
         .insert(CONTENT_TYPE, HeaderValue::from_static(VIDEO_MIME));
     Ok(response)
-}
-
-async fn require_servable(state: &ProgressiveState, query: &VideoQuery) -> Result<(), StatusCode> {
-    if authorized(state, query).await && state.cache.contains(&query.id) {
-        return Ok(());
-    }
-    Err(StatusCode::NOT_FOUND)
-}
-
-async fn authorized(state: &ProgressiveState, query: &VideoQuery) -> bool {
-    match query.cap.as_deref() {
-        Some(capability) => state.capabilities.authorizes(capability, &query.id).await,
-        None => false,
-    }
 }
 
 fn retry_later() -> Result<Response, StatusCode> {

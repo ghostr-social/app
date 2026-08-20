@@ -1,11 +1,36 @@
 use anyhow::{bail, Result};
 use std::ops::Range;
 
-/// Normalized set of present byte ranges for one partially downloaded video.
+mod checksums;
+mod format;
+
+#[cfg(test)]
+mod tests;
+
+/// Normalized coverage plus a local checksum for every committed interval.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct RangeManifest {
     total_len: Option<u64>,
     ranges: Vec<(u64, u64)>,
+    checksums: Vec<IntervalChecksum>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct IntervalChecksum {
+    pub(super) start: u64,
+    pub(super) end: u64,
+    pub(super) sha256: String,
+}
+
+impl IntervalChecksum {
+    pub(crate) fn span(&self) -> Range<u64> {
+        self.start..self.end
+    }
+
+    pub(crate) fn digest(&self) -> &str {
+        &self.sha256
+    }
 }
 
 impl RangeManifest {
@@ -47,6 +72,7 @@ impl RangeManifest {
             retain_outside(&mut remaining, start..end, span);
         }
         self.ranges = remaining;
+        self.checksums.clear();
         before.saturating_sub(self.covered_bytes())
     }
 
@@ -89,44 +115,30 @@ impl RangeManifest {
         }
     }
 
-    pub(crate) fn to_json(&self) -> String {
-        let total = self
-            .total_len
-            .map_or_else(|| "null".to_owned(), |len| len.to_string());
-        let ranges = self
-            .ranges
-            .iter()
-            .map(|(start, end)| format!("[{start},{end}]"))
-            .collect::<Vec<_>>()
-            .join(",");
-        format!("{{\"total_len\":{total},\"ranges\":[{ranges}]}}")
+    pub(crate) fn to_json(&self) -> Result<String> {
+        format::encode(self.total_len, &self.ranges, &self.checksums)
     }
 
-    pub(crate) fn from_json(text: &str) -> Option<Self> {
-        let compact: String = text.chars().filter(|c| !c.is_whitespace()).collect();
-        let total_len = parse_total(field(&compact, "\"total_len\":")?)?;
-        let pairs = parse_pairs(field(&compact, "\"ranges\":")?)?;
-        let mut manifest = Self::default();
-        for (start, end) in pairs {
-            manifest.insert(start..end).ok()?;
-        }
-        if let Some(len) = total_len {
-            manifest.set_total_len(len).ok()?;
-        }
-        Some(manifest)
+    pub(crate) fn from_json(text: &str) -> Result<Self> {
+        let disk = format::decode(text)?;
+        Ok(Self {
+            total_len: disk.total_len,
+            ranges: format::checksum_ranges(&disk.intervals),
+            checksums: disk.intervals,
+        })
     }
 }
 
 fn retain_outside(remaining: &mut Vec<(u64, u64)>, stored: Range<u64>, removed: &Range<u64>) {
     if removed.end <= stored.start || removed.start >= stored.end {
         remaining.push((stored.start, stored.end));
-        return;
-    }
-    if stored.start < removed.start {
-        remaining.push((stored.start, removed.start.min(stored.end)));
-    }
-    if removed.end < stored.end {
-        remaining.push((removed.end.max(stored.start), stored.end));
+    } else {
+        if stored.start < removed.start {
+            remaining.push((stored.start, removed.start.min(stored.end)));
+        }
+        if removed.end < stored.end {
+            remaining.push((removed.end.max(stored.start), stored.end));
+        }
     }
 }
 
@@ -139,40 +151,4 @@ fn coalesce(sorted: &[(u64, u64)]) -> Vec<(u64, u64)> {
         }
     }
     merged
-}
-
-fn field<'a>(text: &'a str, key: &str) -> Option<&'a str> {
-    let index = text.find(key)?;
-    Some(&text[index + key.len()..])
-}
-
-fn parse_total(text: &str) -> Option<Option<u64>> {
-    if text.starts_with("null") {
-        return Some(None);
-    }
-    Some(Some(leading_number(text)?.0))
-}
-
-fn leading_number(text: &str) -> Option<(u64, &str)> {
-    let digits = text.len() - text.trim_start_matches(|c: char| c.is_ascii_digit()).len();
-    let value = text.get(..digits)?.parse().ok()?;
-    Some((value, &text[digits..]))
-}
-
-fn parse_pair(text: &str) -> Option<((u64, u64), &str)> {
-    let (start, rest) = leading_number(text.strip_prefix('[')?)?;
-    let (end, rest) = leading_number(rest.strip_prefix(',')?)?;
-    Some(((start, end), rest.strip_prefix(']')?))
-}
-
-fn parse_pairs(text: &str) -> Option<Vec<(u64, u64)>> {
-    let mut rest = text.strip_prefix('[')?;
-    let mut pairs = Vec::new();
-    while rest.starts_with('[') {
-        let (pair, remaining) = parse_pair(rest)?;
-        pairs.push(pair);
-        rest = remaining.trim_start_matches(',');
-    }
-    rest.strip_prefix(']')?;
-    Some(pairs)
 }

@@ -12,13 +12,15 @@ void main() {
     tester,
   ) async {
     final result = Completer<void>();
+    final post = samplePost();
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: FeedCard(
-            post: samplePost(),
+            post: post,
             playback: FeedCardPlayback(
               port: FakeVideoPlaybackPort(),
+              source: FeedCardPlaybackSource.direct(post.media),
               isActive: true,
             ),
             actions: FeedCardActions(

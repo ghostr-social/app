@@ -57,7 +57,10 @@ fn append_followup(
     if !lane.emergency {
         return append_upcoming(plan, snapshot, lane.storage_room);
     }
-    let next_ready = matches!(plan.next_reserve, NextReserveEvidence::Ready { .. });
+    let next_ready = matches!(
+        plan.next_reserve,
+        NextReserveEvidence::Ready { .. } | NextReserveEvidence::Structural { .. }
+    );
     if lane.protected(plan) && next_ready {
         append_emergency_transition(plan, snapshot, lane.storage_room);
     }

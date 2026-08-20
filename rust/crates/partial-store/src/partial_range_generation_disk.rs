@@ -1,3 +1,4 @@
+use crate::partial_range_disk as range_disk;
 use anyhow::{Context, Result};
 use ghostr_engine::representation::SourceGeneration;
 use serde::{Deserialize, Serialize};
@@ -16,19 +17,28 @@ pub async fn load(path: &Path) -> Result<Option<StoredGeneration>> {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(error).context("read sparse generation"),
     };
-    serde_json::from_str(&text)
-        .map(Some)
-        .context("parse sparse generation")
+    let stored = match serde_json::from_str(&text) {
+        Ok(stored) => stored,
+        Err(_) => return Ok(None),
+    };
+    Ok(validated(stored))
 }
 
 pub async fn save(path: &Path, stored: &StoredGeneration) -> Result<()> {
-    if let Some(parent) = path.parent() {
-        tokio::fs::create_dir_all(parent).await?;
-    }
     let staging = path.with_extension("json.tmp");
     let json = serde_json::to_vec(stored).context("encode sparse generation")?;
-    tokio::fs::write(&staging, json).await?;
-    tokio::fs::rename(staging, path)
+    range_disk::save_durable(path, &staging, &json)
         .await
         .context("commit sparse generation")
+}
+
+fn validated(mut stored: StoredGeneration) -> Option<StoredGeneration> {
+    let generation = SourceGeneration::try_new(
+        stored.generation.final_url(),
+        stored.generation.strong_etag(),
+        stored.generation.total_bytes(),
+    )
+    .ok()?;
+    stored.generation = generation;
+    Some(stored)
 }

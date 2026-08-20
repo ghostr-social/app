@@ -1,6 +1,7 @@
 use super::fetch::{asset, manifest, FetchedObject};
 use anyhow::{bail, Result};
 use ghostr_hls_manifest::hls_manifest::{inspect_hls_bootstrap, HlsBootstrap};
+use ghostr_net::media_log_identity::MediaLogIdentity;
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use std::sync::Arc;
 use url::Url;
@@ -33,7 +34,11 @@ pub(crate) async fn prepare_hls(
     for source in sources {
         match prepare_source(client, source).await {
             Ok(prepared) => return Ok(prepared),
-            Err(error) => last = Some(error.context(format!("HLS source {source}"))),
+            Err(error) => {
+                last = Some(
+                    error.context(format!("HLS source {}", MediaLogIdentity::from_url(source))),
+                )
+            }
         }
     }
     Err(last.unwrap_or_else(|| anyhow::anyhow!("HLS item has no source")))
