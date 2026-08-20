@@ -78,6 +78,7 @@ impl DeliveryWorker {
             continuation_sources: &stored.continuation_sources,
             revisions: &stored.revisions,
             independent_sources: &independent_sources,
+            completed_head_probes: self.probes.completed_posts(),
             in_flight: &in_flight,
             storage: StorageSnapshot::new(capacity.limit_bytes(), capacity.used_bytes()),
             connection_capacity: self

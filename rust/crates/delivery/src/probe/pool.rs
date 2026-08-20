@@ -108,6 +108,11 @@ impl MetadataProbePool {
         self.deferred.retain(|post| retained.contains(post));
     }
 
+    /// Successful HEAD history only; transient probe availability stays a launch-time check.
+    pub(crate) fn completed_posts(&self) -> &HashSet<PostId> {
+        &self.probed
+    }
+
     pub(crate) fn current_identity(
         &self,
         catalog: &Catalog,

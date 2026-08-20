@@ -3,11 +3,10 @@ use crate::manager::plan::{planned_work, PlanInputs, PlannedWork};
 use crate::manager::retry::{RetryBook, RetryPolicy};
 use crate::manager::state::DeliveryState;
 use crate::tests::adaptive_plan_fixture::playback_for;
-use crate::tests::media_timeline_fixture::classic_moov;
+use crate::tests::media_timeline_fixture::install_classic_timeline;
 use ghostr_engine::adaptive::StorageSnapshot;
 use ghostr_engine::catalog::LearnedFacts;
 use ghostr_engine::host_stats::{HostStats, ThroughputSample};
-use ghostr_engine::media_timeline::{parse_mp4_segments, MediaSegment};
 use ghostr_engine::{ByteRange, DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
@@ -32,6 +31,7 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
     let stored_totals = HashMap::new();
     let continuation_sources = HashMap::new();
     let independent_sources = HashMap::new();
+    let completed_head_probes = HashSet::new();
     let revisions = HashMap::new();
     let finalized = HashSet::new();
     planned_work(
@@ -45,6 +45,7 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
             continuation_sources: &continuation_sources,
             revisions: &revisions,
             independent_sources: &independent_sources,
+            completed_head_probes: &completed_head_probes,
             in_flight: &[],
             storage: StorageSnapshot::new(2_000_000_000, 0),
             connection_capacity: 1,
@@ -93,13 +94,6 @@ fn state(post: PostId) -> DeliveryState {
             ..LearnedFacts::default()
         },
     );
-    install_timeline(&mut state, &post);
+    install_classic_timeline(&mut state, &post, 100, 100);
     state
-}
-
-fn install_timeline(state: &mut DeliveryState, post: &PostId) {
-    let moov = classic_moov(100, 100);
-    let timeline = parse_mp4_segments(&[MediaSegment::new(10_000, &moov)]).unwrap();
-    let binding = state.catalog().binding(post).unwrap();
-    assert!(state.catalog_mut().learn_timeline_for(&binding, timeline));
 }

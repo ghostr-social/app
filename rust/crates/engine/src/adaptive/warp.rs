@@ -27,8 +27,9 @@ pub use planner::{
     WarpPlanningDecision,
 };
 pub use planner_context::{
-    ActivePlannerContext, PlannerCandidateContext, PlannerCapability, PlannerContext,
-    PlannerLimits, PlannerQuality, PreviewAvailability, ResourceFeedback, TransformCapability,
+    ActivePlannerContext, HeadProbeHistory, PlannerCandidateContext, PlannerCapability,
+    PlannerContext, PlannerLimits, PlannerQuality, PreviewAvailability, ResourceFeedback,
+    TransformCapability,
 };
 pub use search::{
     BeamConfig, PrunedSearchPlan, RetainedSearchPlan, SearchDecision, SearchPruneReason,

@@ -27,6 +27,7 @@ fn stored_mirror_generation_controls_continuation_source_and_extent() {
     let stored_totals = HashMap::from([(post.clone(), 16)]);
     let continuation_sources = HashMap::from([(post.clone(), mirror.to_owned())]);
     let independent_sources = HashMap::new();
+    let completed_head_probes = HashSet::new();
     let revisions = HashMap::new();
     let finalized = HashSet::new();
     let stats = stats();
@@ -43,6 +44,7 @@ fn stored_mirror_generation_controls_continuation_source_and_extent() {
             continuation_sources: &continuation_sources,
             revisions: &revisions,
             independent_sources: &independent_sources,
+            completed_head_probes: &completed_head_probes,
             in_flight: &[],
             storage: StorageSnapshot::new(1_000_000, 8),
             connection_capacity: 1,

@@ -39,6 +39,7 @@ pub(super) fn run(mut scenario: PlanScenario<'_>) -> PlannedWork {
     let stored_totals = HashMap::new();
     let continuation_sources = HashMap::new();
     let independent_sources = HashMap::new();
+    let completed_head_probes = HashSet::new();
     let revisions = HashMap::new();
     let finalized = HashSet::new();
     planned_work(
@@ -52,6 +53,7 @@ pub(super) fn run(mut scenario: PlanScenario<'_>) -> PlannedWork {
             continuation_sources: &continuation_sources,
             revisions: &revisions,
             independent_sources: &independent_sources,
+            completed_head_probes: &completed_head_probes,
             in_flight: scenario.in_flight,
             storage: scenario.storage,
             connection_capacity: scenario.connection_capacity,

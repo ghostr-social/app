@@ -1,8 +1,8 @@
 use super::super::PlanInputs;
 use crate::manager::state::DeliveryState;
 use ghostr_engine::adaptive::{
-    ActivePlannerContext, AllocationPlan, PlannerContext, PlannerLimits, ResourceFeedback,
-    ResourceObservation, TwinEpochs,
+    ActivePlannerContext, AllocationPlan, HeadProbeHistory, PlannerContext, PlannerLimits,
+    ResourceFeedback, ResourceObservation, TwinEpochs,
 };
 
 pub(super) fn build(
@@ -19,10 +19,15 @@ pub(super) fn build(
         .candidates
         .iter()
         .fold(context, |context, candidate| {
-            context.with_capability(
+            let context = context.with_capability(
                 candidate.post.clone(),
                 state.planner_capability(&candidate.post, inputs.observed_at_ms),
-            )
+            );
+            match inputs.completed_head_probes.contains(&candidate.post) {
+                true => context
+                    .with_head_probe_history(candidate.post.clone(), HeadProbeHistory::Completed),
+                false => context,
+            }
         });
     inputs.in_flight.iter().fold(context, |context, active| {
         let advantage = continuation_advantage(base, active.action_id());

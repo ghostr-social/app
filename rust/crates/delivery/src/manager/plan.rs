@@ -25,6 +25,7 @@ pub(crate) struct PlanInputs<'a> {
     pub continuation_sources: &'a HashMap<PostId, String>,
     pub revisions: &'a HashMap<PostId, ContentRevision>,
     pub independent_sources: &'a HashMap<PostId, HashSet<String>>,
+    pub completed_head_probes: &'a HashSet<PostId>,
     pub in_flight: &'a [ActiveAction],
     pub storage: StorageSnapshot,
     pub connection_capacity: usize,

@@ -1,3 +1,7 @@
+use crate::manager::state::DeliveryState;
+use ghostr_engine::media_timeline::{parse_mp4_segments, MediaSegment};
+use ghostr_engine::PostId;
+
 pub(super) fn classic_moov(offset: u32, size: u32) -> Vec<u8> {
     let stts = full_box(b"stts", values(&[1, 1, 1_000]));
     let stsc = full_box(b"stsc", values(&[1, 1, 1, 1]));
@@ -11,6 +15,18 @@ pub(super) fn classic_moov(offset: u32, size: u32) -> Vec<u8> {
     let mdhd = full_box(b"mdhd", mdhd_body);
     let mdia = atom(b"mdia", joined(&[mdhd, minf]));
     atom(b"moov", atom(b"trak", mdia))
+}
+
+pub(super) fn install_classic_timeline(
+    state: &mut DeliveryState,
+    post: &PostId,
+    offset: u32,
+    size: u32,
+) {
+    let timeline = parse_mp4_segments(&[MediaSegment::new(10_000, &classic_moov(offset, size))])
+        .expect("classic fixture timeline");
+    let binding = state.catalog().binding(post).expect("fixture binding");
+    assert!(state.catalog_mut().learn_timeline_for(&binding, timeline));
 }
 
 fn full_box(kind: &[u8; 4], body: Vec<u8>) -> Vec<u8> {
