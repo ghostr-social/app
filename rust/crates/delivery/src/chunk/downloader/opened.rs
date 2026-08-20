@@ -2,6 +2,7 @@ use super::ChunkSpec;
 use crate::chunk::cancel::CancelToken;
 use anyhow::{Context, Result};
 use ghostr_engine::adaptive::RetrievalRequest;
+use ghostr_net::identity_encoding::require_identity_encoding;
 use ghostr_net::response_limits::validate_response_headers;
 use reqwest::header::{ACCEPT_ENCODING, IF_RANGE, RANGE};
 use reqwest::Response;
@@ -42,6 +43,8 @@ pub(super) async fn send(spec: &ChunkSpec<'_>, cancel: &CancelToken) -> Result<O
     let response = response
         .error_for_status()
         .context("chunk request rejected")?;
+    require_identity_encoding(response.headers())
+        .context("encoded response cannot be assembled into media bytes")?;
     Ok(Opened::Response(OpenedResponse {
         response,
         ttfb: started.elapsed(),

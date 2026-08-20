@@ -3,6 +3,7 @@ use axum::body::Body;
 use axum::http::header::{ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE};
 use axum::http::{Response, StatusCode};
 use bytes::Bytes;
+use ghostr_net::identity_encoding::require_identity_encoding;
 use ghostr_net::response_limits::validate_response_headers;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
 use reqwest::RequestBuilder;
@@ -28,6 +29,7 @@ impl HlsTransfer {
             .await
             .context("HLS response headers timed out")??;
         validate_response_headers(response.headers())?;
+        require_identity_encoding(response.headers()).context("encoded HLS upstream response")?;
         Ok(Self {
             response,
             idle: timeouts.idle,

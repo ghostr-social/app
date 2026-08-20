@@ -1,6 +1,7 @@
 //! `ghostr-net` — extracted from `rust_lib_ghostr::video`.
 
 pub mod content_range;
+pub mod identity_encoding;
 pub mod media_log_identity;
 pub mod native_cache_failure;
 pub mod origin_content_type;

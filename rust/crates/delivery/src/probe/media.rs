@@ -2,16 +2,17 @@
 //! range support, and content type through the SSRF-safe outbound
 //! client. Body requests remain exclusively owned by policy grants.
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result};
 use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_engine::host_stats::{host_of, HostStats};
+use ghostr_net::identity_encoding::require_identity_encoding;
 use ghostr_net::origin_content_type;
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_net::response_limits::validate_response_headers;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use reqwest::header::{
-    HeaderName, HeaderValue, ACCEPT_ENCODING, ACCEPT_RANGES, CONTENT_ENCODING, CONTENT_LENGTH,
-    CONTENT_TYPE, ETAG, LAST_MODIFIED,
+    HeaderName, HeaderValue, ACCEPT_ENCODING, ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_TYPE, ETAG,
+    LAST_MODIFIED,
 };
 use reqwest::{Method, Response};
 use std::future::Future;
@@ -52,7 +53,7 @@ async fn describe(client: &dyn MediaHttpRequests, url: &str, wait: Duration) -> 
     let head = send_head(client, url, wait).await?;
     validate_response_headers(head.headers())?;
     let head = head.error_for_status().context("HEAD probe rejected")?;
-    require_identity_encoding(&head)?;
+    require_identity_encoding(head.headers()).context("HEAD response is encoded")?;
     origin_content_type::require_admissible(head.headers())?;
     Ok(facts_from_head(&head))
 }
@@ -65,21 +66,6 @@ async fn send_head(client: &dyn MediaHttpRequests, url: &str, wait: Duration) ->
         .headers_mut()
         .insert(ACCEPT_ENCODING, HeaderValue::from_static("identity"));
     await_headers(inner.execute(request), wait).await
-}
-
-fn require_identity_encoding(response: &Response) -> Result<()> {
-    for value in response.headers().get_all(CONTENT_ENCODING) {
-        let codings = value
-            .to_str()
-            .context("HEAD Content-Encoding is not text")?;
-        ensure!(
-            codings
-                .split(',')
-                .all(|coding| coding.trim().eq_ignore_ascii_case("identity")),
-            "HEAD response is encoded"
-        );
-    }
-    Ok(())
 }
 
 async fn await_headers(

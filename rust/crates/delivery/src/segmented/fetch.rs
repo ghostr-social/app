@@ -1,9 +1,10 @@
 use anyhow::{bail, ensure, Context, Result};
 use ghostr_hls_manifest::hls_manifest::MAX_HLS_MANIFEST_BYTES;
+use ghostr_net::identity_encoding::require_identity_encoding;
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_net::response_limits::validate_response_headers;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
-use reqwest::header::{ACCEPT_ENCODING, CONTENT_ENCODING, CONTENT_TYPE};
+use reqwest::header::{ACCEPT_ENCODING, CONTENT_TYPE};
 use std::sync::Arc;
 use url::Url;
 
@@ -92,7 +93,7 @@ async fn open(client: &dyn MediaHttpRequests, spec: FetchSpec<'_>) -> Result<req
     let response = response
         .error_for_status()
         .context("HLS object request failed")?;
-    require_identity_encoding(&response)?;
+    require_identity_encoding(response.headers()).context("encoded HLS object is not cacheable")?;
     if spec.require_manifest {
         require_manifest_type(&response)?;
     }
@@ -131,20 +132,6 @@ fn content_type(response: &reqwest::Response) -> Option<String> {
         .get(CONTENT_TYPE)
         .and_then(|value| value.to_str().ok())
         .map(str::to_owned)
-}
-
-fn require_identity_encoding(response: &reqwest::Response) -> Result<()> {
-    let Some(value) = response.headers().get(CONTENT_ENCODING) else {
-        return Ok(());
-    };
-    if value
-        .to_str()
-        .ok()
-        .is_some_and(|value| value.eq_ignore_ascii_case("identity"))
-    {
-        return Ok(());
-    }
-    bail!("encoded HLS object is not cacheable")
 }
 
 fn require_manifest_type(response: &reqwest::Response) -> Result<()> {

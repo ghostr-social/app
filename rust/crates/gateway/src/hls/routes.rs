@@ -5,7 +5,7 @@ use crate::router::{upstream_request, GatewayHttpState};
 use anyhow::{bail, Result};
 use axum::body::Body;
 use axum::extract::{Path, State};
-use axum::http::header::{CONTENT_LENGTH, CONTENT_TYPE};
+use axum::http::header::{ACCEPT_ENCODING, CONTENT_LENGTH, CONTENT_TYPE};
 use axum::http::{HeaderMap, Response, StatusCode};
 use ghostr_hls_manifest::hls_manifest::HlsResourceKind;
 use ghostr_hls_manifest::hls_manifest::MAX_HLS_MANIFEST_BYTES;
@@ -85,7 +85,10 @@ async fn fetch_manifest(
             .rewrite_manifest(session, &object.body, &object.final_url)
             .await;
     }
-    let request = state.client.get(source.as_str())?;
+    let request = state
+        .client
+        .get(source.as_str())?
+        .header(ACCEPT_ENCODING, "identity");
     let mut transfer = HlsTransfer::open(request, state.hls_timeouts).await?;
     transfer.require_success()?;
     require_hls_mime(transfer.response().headers())?;

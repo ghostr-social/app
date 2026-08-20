@@ -1,8 +1,8 @@
 use crate::chunk::downloader::HttpResponseEvidence;
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_engine::representation::SourceGeneration;
-use reqwest::header::{CONTENT_ENCODING, CONTENT_TYPE, ETAG, LAST_MODIFIED};
+use reqwest::header::{CONTENT_TYPE, ETAG, LAST_MODIFIED};
 use reqwest::Response;
 
 /// Response identity inspected before any sparse bytes are exposed.
@@ -28,7 +28,6 @@ impl HttpResponseEvidence {
 
 impl OriginGeneration {
     pub(crate) fn from_response(response: &Response, total_bytes: Option<u64>) -> Result<Self> {
-        require_identity_encoding(response)?;
         let strong_etag = response
             .headers()
             .get(ETAG)
@@ -62,20 +61,6 @@ impl OriginGeneration {
     pub(crate) fn resumable(&self) -> Option<SourceGeneration> {
         self.strict().ok()
     }
-}
-
-fn require_identity_encoding(response: &Response) -> Result<()> {
-    let Some(value) = response.headers().get(CONTENT_ENCODING) else {
-        return Ok(());
-    };
-    if value
-        .to_str()
-        .ok()
-        .is_some_and(|value| value.eq_ignore_ascii_case("identity"))
-    {
-        return Ok(());
-    }
-    bail!("encoded response cannot be assembled into sparse bytes")
 }
 
 fn is_strong_etag(value: &str) -> bool {
