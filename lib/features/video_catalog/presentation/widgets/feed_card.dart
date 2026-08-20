@@ -19,12 +19,14 @@ final class FeedCardPlayback {
     required this.port,
     required this.source,
     required this.isActive,
+    this.surfaceScope,
     this.preparedOnly = false,
   });
 
   final VideoPlaybackPort port;
   final FeedCardPlaybackSource source;
   final bool isActive;
+  final VideoPlaybackSurfaceScope? surfaceScope;
   final bool preparedOnly;
 }
 
@@ -78,6 +80,7 @@ class FeedCard extends StatelessWidget {
                 videoId: PlaybackVideoId.parse(post.id),
                 isActive: playback.isActive,
                 mode: mode,
+                surfaceScope: playback.surfaceScope,
               ),
             ),
           ),

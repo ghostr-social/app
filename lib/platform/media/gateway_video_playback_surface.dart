@@ -83,6 +83,8 @@ final class _GatewayVideoPlaybackSurfaceState
         videoId: widget.videoId,
         isActive: widget.isActive,
         mode: widget.mode,
+        surfaceScope: widget.request.surfaceScope,
+        reservesPreparedDecoder: widget.request.reservesPreparedDecoder,
         authority: _readyAuthority(origin, media),
         progressiveRefresh: _GatewayProgressivePlaybackRefresh(
           widget.gateway,
@@ -98,10 +100,12 @@ final class _GatewayVideoPlaybackSurfaceState
     ProxiedProgressiveVideoMediaSource media,
   ) {
     final prepared = widget.prepared;
-    if (prepared == null || !prepared.matches(origin)) return null;
-    return prepared.media.playbackUri == media.playbackUri
-        ? prepared.authority
-        : null;
+    if (prepared != null &&
+        prepared.matches(origin) &&
+        prepared.media.playbackUri == media.playbackUri) {
+      return prepared.authority;
+    }
+    return _resolvedAuthority(origin, media);
   }
 
   Future<void> _load() {
@@ -124,6 +128,42 @@ final class _GatewayVideoPlaybackSurfaceState
       actionLabel: 'Retry',
       onAction: () => unawaited(_cubit.retry()),
     );
+  }
+}
+
+PlaybackAssetAuthority? _resolvedAuthority(
+  VideoMediaSource origin,
+  ProxiedProgressiveVideoMediaSource media,
+) {
+  if (!_sameResolvedDelivery(origin, media)) return null;
+  return _parseResolvedAuthority(origin, media);
+}
+
+bool _sameResolvedDelivery(
+  VideoMediaSource origin,
+  ProxiedProgressiveVideoMediaSource media,
+) {
+  final originId = origin.playbackDeliveryId;
+  return originId != null && originId == media.playbackDeliveryId;
+}
+
+PlaybackAssetAuthority? _parseResolvedAuthority(
+  VideoMediaSource origin,
+  ProxiedProgressiveVideoMediaSource media,
+) {
+  try {
+    final deliveryId = media.playbackDeliveryId;
+    final capability = media.playbackUri.queryParameters['cap'];
+    if (capability == null) return null;
+    return PlaybackAssetAuthority(
+      deliveryId: deliveryId!,
+      representationId: VideoRepresentationId.forMedia(origin),
+      assetId: PlaybackAssetId.parse(capability),
+    );
+  } on ArgumentError {
+    return null;
+  } on FormatException {
+    return null;
   }
 }
 

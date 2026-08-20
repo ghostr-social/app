@@ -32,6 +32,7 @@ class FeedScreen extends StatefulWidget {
 }
 
 class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
+  final _playbackSurfaceScope = VideoPlaybackSurfaceScope();
   bool _commentsOpen = false;
   bool _appIsResumed = true;
   bool _memoryConstrained = false;

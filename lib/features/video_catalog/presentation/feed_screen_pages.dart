@@ -43,6 +43,7 @@ extension _FeedScreenPages on _FeedScreenState {
           media: post.media,
           videoId: PlaybackVideoId.parse(post.id),
           isActive: false,
+          surfaceScope: _playbackSurfaceScope,
         ),
         prepared: prepared,
       ),
@@ -110,6 +111,7 @@ extension _FeedScreenPages on _FeedScreenState {
       source: source,
       isActive: _isVisible && isCurrent,
       preparedOnly: !isCurrent,
+      surfaceScope: _playbackSurfaceScope,
     );
   }
 }

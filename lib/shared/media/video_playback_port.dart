@@ -16,12 +16,17 @@ enum VideoPlaybackMode {
   final double speed;
 }
 
+/// Identity of one mounted feed's movable playback surfaces.
+final class VideoPlaybackSurfaceScope {}
+
 final class VideoPlaybackSurfaceRequest {
   const VideoPlaybackSurfaceRequest({
     required this.media,
     this.videoId,
     required this.isActive,
     this.mode = VideoPlaybackMode.normal,
+    this.surfaceScope,
+    this.reservesPreparedDecoder = false,
     this.authority,
     this.progressiveRefresh,
     this.onPlaybackMediaReleased,
@@ -31,6 +36,8 @@ final class VideoPlaybackSurfaceRequest {
   final PlaybackVideoId? videoId;
   final bool isActive;
   final VideoPlaybackMode mode;
+  final VideoPlaybackSurfaceScope? surfaceScope;
+  final bool reservesPreparedDecoder;
   final PlaybackAssetAuthority? authority;
   final ProgressivePlaybackRefreshPort? progressiveRefresh;
   final VoidCallback? onPlaybackMediaReleased;
@@ -59,6 +66,8 @@ final class PreparedProgressiveVideoPlaybackRequest
         videoId: request.videoId,
         isActive: request.isActive,
         mode: request.mode,
+        surfaceScope: request.surfaceScope,
+        reservesPreparedDecoder: true,
         authority: prepared.authority,
         onPlaybackMediaReleased: request.onPlaybackMediaReleased,
       );

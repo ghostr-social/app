@@ -12,6 +12,27 @@ import '../support/fake_progressive_playback_gateway.dart';
 import '../support/recording_video_playback_port.dart';
 
 void main() {
+  testWidgets('resolved gateway playback derives exact asset authority', (
+    tester,
+  ) async {
+    final delegate = RecordingVideoPlaybackPort();
+    final gateway = FakeProgressivePlaybackGateway();
+    final origin = _origin();
+    final port = GatewayVideoPlaybackPort(delegate: delegate, gateway: gateway);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: port.buildSurface(
+          VideoPlaybackSurfaceRequest(media: origin, isActive: true),
+        ),
+      ),
+    );
+    gateway.completeNext();
+    await tester.pump();
+
+    expect(delegate.requests.single.authority, _authority(origin));
+  });
+
   testWidgets('prepared gateway playback preserves exact asset authority', (
     tester,
   ) async {
@@ -37,26 +58,33 @@ void main() {
     );
     await tester.pump();
 
-    expect(delegate.requests.single.authority, prepared.authority);
+    expect(delegate.requests.single.authority, same(prepared.authority));
   });
 }
 
 PreparedProgressivePlayback _prepared() {
-  const cap = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-  final origin = VideoMediaSource.withCacheScope(
+  final origin = _origin();
+  final authority = _authority(origin);
+  return PreparedProgressivePlayback.bind(
+    origin: origin,
+    media: ProxiedProgressiveVideoMediaSource(fakeProgressivePlaybackUrl),
+    authority: authority,
+  );
+}
+
+VideoMediaSource _origin() {
+  return VideoMediaSource.withCacheScope(
     VideoMediaSource.remote('https://media.test/clip.mp4'),
     'post-1',
   );
-  final authority = PlaybackAssetAuthority(
+}
+
+PlaybackAssetAuthority _authority(VideoMediaSource origin) {
+  return PlaybackAssetAuthority(
     deliveryId: PlaybackDeliveryId.parse('post-1'),
     representationId: VideoRepresentationId.forMedia(origin),
-    assetId: PlaybackAssetId.parse(cap),
-  );
-  return PreparedProgressivePlayback.bind(
-    origin: origin,
-    media: ProxiedProgressiveVideoMediaSource(
-      'http://127.0.0.1:4040/video.mp4?id=post-1&cap=$cap',
+    assetId: PlaybackAssetId.parse(
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     ),
-    authority: authority,
   );
 }

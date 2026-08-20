@@ -72,7 +72,7 @@ class VideoPlayerPlaybackPort
 
   @override
   Widget buildSurface(VideoPlaybackSurfaceRequest request) {
-    if (request.authority != null) {
+    if (request.reservesPreparedDecoder) {
       _dependencies.controllerBudget.enablePreparedReserve();
     }
     return _VideoPlayerSurface(
