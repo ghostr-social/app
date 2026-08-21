@@ -15,7 +15,7 @@ async fn growth_dispatches_waiters_and_shrink_drains_without_revocation() {
     let active_b = tokio::spawn(open(requests.clone(), b.url.clone()));
     b.expect_quiet().await;
 
-    requests.update_limits(MediaRequestLimits::try_new(2, 1).unwrap());
+    requests.update_limits(MediaRequestLimits::try_new(3, 1).unwrap());
     b.expect_hit().await;
     requests.update_limits(MediaRequestLimits::try_new(1, 1).unwrap());
     let waiting_c = tokio::spawn(open(requests, c.url.clone()));

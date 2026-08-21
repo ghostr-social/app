@@ -9,7 +9,7 @@ async fn saturated_authority_cannot_hoard_independent_global_capacity() {
     let mut a = HeldOrigin::serve().await;
     let mut b = HeldOrigin::serve().await;
     let mut c = HeldOrigin::serve().await;
-    let requests = executor(2, 1);
+    let requests = executor(3, 1);
 
     let first_a = open(requests.clone(), a.url.clone()).await;
     a.expect_hit().await;

@@ -27,7 +27,7 @@ async fn redirect_gate_expiry_is_a_typed_local_admission_timeout() {
         .unwrap();
     let _ = target.hit().await;
     let admitted = executor
-        .get(&start, PreemptionAuthority::Transition)
+        .get(&start, PreemptionAuthority::PlaybackCritical)
         .unwrap()
         .admit()
         .await

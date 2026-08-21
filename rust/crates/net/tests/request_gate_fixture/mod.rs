@@ -8,6 +8,8 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{mpsc, Semaphore};
 
+pub mod request;
+
 pub struct LocalMediaClient(Client);
 
 impl LocalMediaClient {

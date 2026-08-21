@@ -25,7 +25,7 @@ async fn successful_redirect_reports_only_its_local_gate_wait() {
         .unwrap();
     let _ = target.hit().await;
     let admitted = executor
-        .get(&start, PreemptionAuthority::Transition)
+        .get(&start, PreemptionAuthority::PlaybackCritical)
         .unwrap()
         .admit()
         .await

@@ -20,7 +20,13 @@ struct GateInner {
 pub(super) struct RequestLease {
     gate: MediaRequestGate,
     authority: RequestAuthority,
+    priority: PreemptionAuthority,
     armed: bool,
+}
+
+struct ReleasedRequest {
+    authority: RequestAuthority,
+    priority: PreemptionAuthority,
 }
 
 struct QueuedRequest {
@@ -84,8 +90,8 @@ impl MediaRequestGate {
         self.dispatch();
     }
 
-    fn release(&self, authority: &RequestAuthority) {
-        self.with_state(|state| state.release(authority));
+    fn release(&self, authority: &RequestAuthority, priority: PreemptionAuthority) {
+        self.with_state(|state| state.release(authority, priority));
         self.dispatch();
     }
 
@@ -99,17 +105,17 @@ impl MediaRequestGate {
         }
     }
 
-    fn dispatch_once(&self) -> Vec<RequestAuthority> {
+    fn dispatch_once(&self) -> Vec<ReleasedRequest> {
         self.with_state(|state| state.take_grants(self))
             .into_iter()
-            .filter_map(|(sender, lease)| returned_authority(sender.send(lease)))
+            .filter_map(|(sender, lease)| returned_request(sender.send(lease)))
             .collect()
     }
 
-    fn release_failed(&self, authorities: &[RequestAuthority]) {
+    fn release_failed(&self, requests: &[ReleasedRequest]) {
         self.with_state(|state| {
-            for authority in authorities {
-                state.release(authority);
+            for request in requests {
+                state.release(&request.authority, request.priority);
             }
         });
     }
@@ -124,18 +130,26 @@ impl MediaRequestGate {
     }
 }
 
-fn returned_authority(result: Result<(), RequestLease>) -> Option<RequestAuthority> {
+fn returned_request(result: Result<(), RequestLease>) -> Option<ReleasedRequest> {
     result.err().map(|mut lease| {
         lease.armed = false;
-        lease.authority.clone()
+        ReleasedRequest {
+            authority: lease.authority.clone(),
+            priority: lease.priority,
+        }
     })
 }
 
 impl RequestLease {
-    fn new(gate: MediaRequestGate, authority: RequestAuthority) -> Self {
+    fn new(
+        gate: MediaRequestGate,
+        authority: RequestAuthority,
+        priority: PreemptionAuthority,
+    ) -> Self {
         Self {
             gate,
             authority,
+            priority,
             armed: true,
         }
     }
@@ -144,7 +158,7 @@ impl RequestLease {
 impl Drop for RequestLease {
     fn drop(&mut self) {
         if self.armed {
-            self.gate.release(&self.authority);
+            self.gate.release(&self.authority, self.priority);
         }
     }
 }
