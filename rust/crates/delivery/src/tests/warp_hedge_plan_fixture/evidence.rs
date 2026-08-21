@@ -58,6 +58,8 @@ impl PlanEvidence {
                 connection_ceiling: 3,
                 per_authority_request_limit: 2,
                 packet_loss_bps: 0,
+                measured_network_bytes_per_second: 0,
+                capacity_revision: 0,
                 observed_at_ms: OBSERVED_AT_MS,
                 demanded: &self.demanded,
             },

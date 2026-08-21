@@ -75,7 +75,8 @@ impl PartialRangeStore {
         let _entries = self.entries.lock().await;
         let used = *self.used_bytes.lock().await;
         let limit = self.capacity.cap(&self.root, used).await;
-        CapacitySnapshot::new(limit, used)
+        let revision = self.capacity.events().revision();
+        CapacitySnapshot::new(limit, used, revision)
     }
 
     pub async fn used_bytes(&self) -> u64 {

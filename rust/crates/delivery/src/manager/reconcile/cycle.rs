@@ -87,6 +87,10 @@ impl DeliveryWorker {
             connection_ceiling: cycle.limits.global(),
             per_authority_request_limit: cycle.limits.per_authority(),
             packet_loss_bps: self.ctx.network.profile().packet_loss_bps,
+            measured_network_bytes_per_second: self
+                .keeper
+                .network_load_bytes_per_second(cycle.observed_at_ms),
+            capacity_revision: cycle.capacity.revision().value(),
             observed_at_ms: cycle.observed_at_ms,
             demanded: &cycle.demanded,
         };

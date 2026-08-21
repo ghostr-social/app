@@ -7,7 +7,7 @@ use crate::manager::transfers::{ChunkDone, InternalEvent, ProbeObservation};
 use crate::manager::DeliveryWorker;
 use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_net::media_request_executor::MediaRequestAdmissionTimeout;
-use log::{trace, warn};
+use log::warn;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -18,6 +18,9 @@ use tokio::time::Instant;
 #[path = "stats/admission_timeout_test.rs"]
 mod admission_timeout_test;
 mod origin;
+mod traffic_load;
+
+use traffic_load::TrafficLoad;
 
 pub(crate) struct StatsKeeper {
     stats: HostStats,
@@ -26,6 +29,7 @@ pub(crate) struct StatsKeeper {
     dirty: bool,
     save_pending: bool,
     traffic: TrafficMeter,
+    traffic_load: TrafficLoad,
 }
 
 impl StatsKeeper {
@@ -38,6 +42,7 @@ impl StatsKeeper {
             dirty: false,
             save_pending: false,
             traffic: TrafficMeter::new(Instant::now(), unix_time_ms()),
+            traffic_load: TrafficLoad::default(),
         }
     }
 
@@ -75,9 +80,13 @@ impl StatsKeeper {
         self.dirty = true;
         let window = self.traffic.apply(batch, &mut self.stats);
         if let Some(window) = window {
-            trace_window(window);
+            self.traffic_load.observe(window);
         }
         window
+    }
+
+    pub fn network_load_bytes_per_second(&self, observed_at_ms: u64) -> u64 {
+        self.traffic_load.bytes_per_second_at(observed_at_ms)
     }
 
     /// Mirrors the probe service's recording rules on the owned stats.
@@ -152,18 +161,6 @@ fn unix_time_ms() -> u64 {
         .unwrap_or_default()
         .as_millis()
         .min(u128::from(u64::MAX)) as u64
-}
-
-fn trace_window(window: OverallTrafficWindow) {
-    trace!(
-        "traffic window: bytes={}, elapsed={:?}, rate={}, peak={}, at={}, ttfb={:?}",
-        window.bytes(),
-        window.elapsed(),
-        window.bytes_per_second(),
-        window.peak_active_transfers(),
-        window.observed_at_ms(),
-        window.latest_ttfb(),
-    );
 }
 
 /// Loads persisted host stats. A missing or corrupt file yields fresh

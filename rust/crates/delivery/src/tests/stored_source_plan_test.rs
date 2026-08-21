@@ -52,6 +52,8 @@ fn stored_mirror_generation_controls_continuation_source_and_extent() {
             connection_ceiling: 1,
             per_authority_request_limit: 1,
             packet_loss_bps: 0,
+            measured_network_bytes_per_second: 0,
+            capacity_revision: 0,
             observed_at_ms: 1,
             demanded: &demanded,
         },

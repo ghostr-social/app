@@ -33,6 +33,8 @@ pub(crate) struct PlanInputs<'a> {
     pub connection_ceiling: usize,
     pub per_authority_request_limit: usize,
     pub packet_loss_bps: u16,
+    pub measured_network_bytes_per_second: u64,
+    pub capacity_revision: u64,
     pub observed_at_ms: u64,
     pub demanded: &'a HashMap<PostId, ByteRange>,
 }

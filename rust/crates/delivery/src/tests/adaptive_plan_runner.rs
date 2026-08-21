@@ -3,6 +3,7 @@ use crate::manager::plan::{planned_work, PlanInputs, PlannedWork};
 use crate::manager::retry::{RetryBook, RetryPolicy};
 use crate::manager::state::DeliveryState;
 use crate::tests::adaptive_plan_fixture::playback_for;
+use crate::tests::adaptive_plan_measurements::PlanMeasurements;
 use ghostr_engine::adaptive::StorageSnapshot;
 use ghostr_engine::host_stats::{HostStats, ThroughputSample};
 use std::collections::{HashMap, HashSet};
@@ -21,16 +22,27 @@ pub(super) struct PlanScenario<'a> {
 
 pub(super) fn run(scenario: PlanScenario<'_>) -> PlannedWork {
     let retry = RetryBook::new(RetryPolicy::default());
-    run_with_retry(scenario, &retry)
+    run_with_retry_and_measurements(scenario, &retry, PlanMeasurements::default())
 }
 
-pub(super) fn run_with_retry(mut scenario: PlanScenario<'_>, retry: &RetryBook) -> PlannedWork {
-    let current = scenario
-        .state
-        .focus()
-        .current()
-        .cloned()
-        .expect("plan scenario focus");
+pub(super) fn run_with_retry(scenario: PlanScenario<'_>, retry: &RetryBook) -> PlannedWork {
+    run_with_retry_and_measurements(scenario, retry, PlanMeasurements::default())
+}
+
+pub(super) fn run_with_measurements(
+    scenario: PlanScenario<'_>,
+    measurements: PlanMeasurements,
+) -> PlannedWork {
+    let retry = RetryBook::new(RetryPolicy::default());
+    run_with_retry_and_measurements(scenario, &retry, measurements)
+}
+
+fn run_with_retry_and_measurements(
+    mut scenario: PlanScenario<'_>,
+    retry: &RetryBook,
+    measurements: PlanMeasurements,
+) -> PlannedWork {
+    let current = scenario.state.focus().current().cloned().expect("focus");
     scenario
         .state
         .apply_playback(playback_for(current, scenario.buffer_ms));
@@ -65,6 +77,8 @@ pub(super) fn run_with_retry(mut scenario: PlanScenario<'_>, retry: &RetryBook) 
             connection_ceiling,
             per_authority_request_limit: connection_ceiling,
             packet_loss_bps: scenario.packet_loss_bps,
+            measured_network_bytes_per_second: measurements.network_bytes_per_second,
+            capacity_revision: measurements.capacity_revision,
             observed_at_ms: 1_000,
             demanded: &demanded,
         },

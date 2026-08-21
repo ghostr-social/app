@@ -52,12 +52,18 @@ pub(super) fn build(
         occupancy: &occupancy,
         hedge_soft: &hedge_soft,
     });
+    let limits = limits(state, snapshot, request_capacity.tokens);
     let context = context
-        .with_limits(limits(state, snapshot, request_capacity.tokens))
+        .with_limits(limits)
         .with_soft_request_capacity(request_capacity.ordinary_tokens, request_capacity.soft)
-        .with_feedback(feedback(snapshot, &occupancy, !inputs.in_flight.is_empty()))
+        .with_feedback(feedback(
+            snapshot,
+            &occupancy,
+            inputs.measured_network_bytes_per_second,
+            limits.cpu_ms,
+        ))
         .with_request_occupancy(occupancy.clone())
-        .with_epochs(epochs(state, snapshot));
+        .with_epochs(epochs(state, inputs));
     (context, occupancy, tails)
 }
 
@@ -106,12 +112,13 @@ fn limits(
 fn feedback(
     snapshot: &ghostr_engine::adaptive::PlayabilitySnapshot,
     occupancy: &RequestOccupancy,
-    body_active: bool,
+    measured_network_bytes_per_second: u64,
+    cpu_target_ms: u64,
 ) -> ResourceFeedback {
     let rate = snapshot.network.throughput_bps.saturating_div(8);
     ResourceFeedback {
         actual: ResourceObservation::new(
-            if body_active { rate } else { 0 },
+            measured_network_bytes_per_second,
             snapshot.storage.used_bytes,
             0,
             occupancy.total() as u64,
@@ -119,7 +126,7 @@ fn feedback(
         target: ResourceObservation::new(
             rate,
             snapshot.storage.budget_bytes.saturating_mul(9) / 10,
-            1,
+            cpu_target_ms,
             snapshot.network.connection_capacity.max(1) as u64,
         ),
     }
@@ -137,19 +144,13 @@ fn request_occupancy(inputs: &PlanInputs<'_>) -> RequestOccupancy {
     RequestOccupancy::from_sources(bodies.chain(probes))
 }
 
-fn epochs(
-    state: &DeliveryState,
-    snapshot: &ghostr_engine::adaptive::PlayabilitySnapshot,
-) -> TwinEpochs {
+fn epochs(state: &DeliveryState, inputs: &PlanInputs<'_>) -> TwinEpochs {
     TwinEpochs::new(
         state
             .catalog()
             .reliability_revision()
             .saturating_add(state.client_capability_revision()),
         0,
-        snapshot
-            .storage
-            .used_bytes
-            .saturating_add(snapshot.storage.budget_bytes),
+        inputs.capacity_revision,
     )
 }

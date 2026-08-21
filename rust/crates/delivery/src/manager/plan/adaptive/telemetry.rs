@@ -50,7 +50,7 @@ fn origin(
         available: admission != Admission::Blocked,
         throughput_bps: finite_bits(estimate.throughput_bps.selected as f64),
         rtt_ms: estimate.ttfb_ms.selected,
-        packet_loss_bps: 0,
+        packet_loss_bps: inputs.packet_loss_bps,
         failure_bps: failure,
     })
 }

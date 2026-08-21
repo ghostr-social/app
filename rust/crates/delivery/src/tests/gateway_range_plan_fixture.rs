@@ -28,8 +28,6 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
     let stats = stats(buffered);
     let retry = RetryBook::new(RetryPolicy::default());
     let demanded = HashMap::from([(post.clone(), demanded)]);
-    let stored_totals = HashMap::new();
-    let continuation_sources = HashMap::new();
     let independent_sources = HashMap::new();
     let completed_head_probes = HashSet::new();
     let revisions = HashMap::new();
@@ -40,8 +38,8 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
             retry: &retry,
             present: &HashMap::new(),
             finalized: &HashSet::new(),
-            stored_totals: &stored_totals,
-            continuation_sources: &continuation_sources,
+            stored_totals: &HashMap::new(),
+            continuation_sources: &HashMap::new(),
             revisions: &revisions,
             independent_sources: &independent_sources,
             completed_head_probes: &completed_head_probes,
@@ -52,6 +50,8 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
             connection_ceiling: 1,
             per_authority_request_limit: 1,
             packet_loss_bps: 0,
+            measured_network_bytes_per_second: 0,
+            capacity_revision: 0,
             observed_at_ms: 1,
             demanded: &demanded,
         },
