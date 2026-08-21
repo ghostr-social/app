@@ -1,7 +1,7 @@
 use super::least_risk;
 use crate::adaptive::{
-    ActionNode, BeamConfig, HardBudget, ResourcePrices, SearchDecision, SearchPruneReason,
-    WarpSearch,
+    ActionNode, BeamConfig, HardBudget, ReserveConstraint, ReserveDegradedReason, ResourcePrices,
+    SearchDecision, SearchPruneReason, WarpSearch,
 };
 
 use super::super::search::ScoredSearchPlan;
@@ -32,6 +32,9 @@ impl SearchReplayMode {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct SearchReplayInput {
     pub(crate) mode: SearchReplayMode,
+    pub(crate) reserve: ReserveConstraint,
+    pub(crate) reserve_threshold_bps: Option<u16>,
+    pub(crate) reserve_degraded_reason: Option<ReserveDegradedReason>,
     pub(crate) nodes: Vec<ActionNode>,
     pub(crate) budget: HardBudget,
     pub(crate) beam: BeamConfig,
@@ -42,6 +45,18 @@ pub(crate) struct SearchReplayInput {
 impl SearchReplayInput {
     pub(crate) const fn mode(&self) -> SearchReplayMode {
         self.mode
+    }
+
+    pub(crate) const fn reserve(&self) -> &ReserveConstraint {
+        &self.reserve
+    }
+
+    pub(crate) const fn reserve_threshold_bps(&self) -> Option<u16> {
+        self.reserve_threshold_bps
+    }
+
+    pub(crate) const fn reserve_degraded_reason(&self) -> Option<ReserveDegradedReason> {
+        self.reserve_degraded_reason
     }
 
     pub(crate) fn nodes(&self) -> &[ActionNode] {

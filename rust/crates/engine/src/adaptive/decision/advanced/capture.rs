@@ -1,7 +1,7 @@
 use super::super::privacy::DecisionPrivacy;
 use super::RecordedWarpAction;
 use super::{command, kind, RecordedResourceCost, RecordedResourcePrices, RecordedTwinEvaluation};
-use super::{search, RecordedWarpDecision, RecordedWarpReserve};
+use super::{reserve, search, RecordedWarpDecision};
 use crate::adaptive::{DecisionAction, WarpPlanningDecision};
 
 const RECORD_LIMIT: usize = 64;
@@ -41,7 +41,7 @@ pub(in crate::adaptive::decision) fn capture(
             search: search::capture(value, privacy),
             prices: prices(value.prices),
             evaluation,
-            reserve: RecordedWarpReserve::from(value.reserve),
+            reserve: reserve::capture(&value.reserve, privacy),
             additional_request_slot_demanded: value.additional_request_slot_demanded,
             retry_availability: retry_availability(value, privacy),
             search_replay_input: super::search_replay::capture(value, privacy),
@@ -169,16 +169,6 @@ impl From<crate::adaptive::TwinEvaluation> for RecordedTwinEvaluation {
             expected_ready_coverage_ms: value.expected_ready_coverage_ms,
             expected_cache_bytes: value.expected_cache_bytes,
             common_random_seed: value.common_random_seed,
-        }
-    }
-}
-
-impl From<crate::adaptive::ReserveConstraint> for RecordedWarpReserve {
-    fn from(value: crate::adaptive::ReserveConstraint) -> Self {
-        Self {
-            reserved_request_slots: value.reserved_request_slots,
-            reserved_network_bytes: value.reserved_network_bytes,
-            degraded: value.degraded,
         }
     }
 }

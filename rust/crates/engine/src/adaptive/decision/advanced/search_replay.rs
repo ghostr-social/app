@@ -1,11 +1,16 @@
-use super::{RecordedResourceCost, RecordedResourcePrices, RecordedWarpActionKind};
+use super::{
+    RecordedReserveDegradedReason, RecordedResourceCost, RecordedResourcePrices,
+    RecordedWarpActionKind, RecordedWarpReserve,
+};
 use serde::{Deserialize, Serialize};
 
 mod action;
 mod capture;
+mod reserve;
 mod run;
 
 pub(super) use capture::capture;
+pub(in crate::adaptive::decision) use reserve::verify as verify_reserve;
 pub(in crate::adaptive::decision) use run::verify;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -16,6 +21,12 @@ pub struct RecordedWarpSearchInput {
     budget: RecordedSearchBudget,
     actions: Vec<RecordedSearchAction>,
     scores: Vec<RecordedSearchScore>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    reserve: Option<RecordedWarpReserve>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    reserve_threshold_bps: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    reserve_degraded_reason: Option<RecordedReserveDegradedReason>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -38,6 +49,8 @@ struct RecordedBeamConfig {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 struct RecordedSearchBudget {
     remaining: RecordedResourceCost,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    global_request_width: Option<u16>,
     per_origin_requests: u64,
     origins: Vec<RecordedAuthorityOccupancy>,
     pending_rescue_action_ids: Vec<u16>,

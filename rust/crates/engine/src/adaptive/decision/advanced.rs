@@ -3,6 +3,7 @@
 mod capture;
 mod command;
 mod kind;
+mod reserve;
 mod search;
 mod search_replay;
 
@@ -12,8 +13,14 @@ pub use command::{
     RecordedWarpCommand, RecordedWholeBodyContract, RecordedWholeFetchReason,
 };
 pub use kind::RecordedWarpActionKind;
-pub(in crate::adaptive::decision) use search_replay::verify as verify_search_replay;
+pub use reserve::{
+    RecordedRescueChanceEvidence, RecordedRescueTimingQuantile, RecordedReserveAuthorityOccupancy,
+    RecordedReserveDegradedReason, RecordedWarpReserve,
+};
 pub use search_replay::RecordedWarpSearchInput;
+pub(in crate::adaptive::decision) use search_replay::{
+    verify as verify_search_replay, verify_reserve as verify_search_reserve,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -114,13 +121,6 @@ pub struct RecordedResourcePrices {
     pub storage_micros: u64,
     pub cpu_micros: u64,
     pub request_micros: u64,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct RecordedWarpReserve {
-    pub reserved_request_slots: u16,
-    pub reserved_network_bytes: u64,
-    pub degraded: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]

@@ -10,6 +10,14 @@ mod incomplete_replay_test;
 mod replay_coherence_test;
 #[path = "decision_record_warp_replay_test.rs"]
 mod replay_test;
+#[path = "decision_record_warp_reserve_compatibility_test.rs"]
+mod reserve_compatibility_test;
+#[path = "decision_record_warp_reserve_evidence_test.rs"]
+mod reserve_evidence_test;
+#[path = "decision_record_warp_reserve_mutation_test.rs"]
+mod reserve_mutation_test;
+#[path = "decision_record_warp_reserve_support.rs"]
+mod reserve_support;
 #[path = "decision_record_warp_search_trace_test.rs"]
 mod search_trace_test;
 

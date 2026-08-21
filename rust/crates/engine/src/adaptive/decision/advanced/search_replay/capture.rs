@@ -29,6 +29,9 @@ pub(crate) fn capture(
             .map(|node| action(node, privacy))
             .collect(),
         scores: scores(input),
+        reserve: Some(super::super::reserve::capture(input.reserve(), privacy)),
+        reserve_threshold_bps: input.reserve_threshold_bps(),
+        reserve_degraded_reason: input.reserve_degraded_reason().map(Into::into),
     })
 }
 
@@ -64,6 +67,7 @@ fn budget(input: &SearchReplayInput, privacy: &DecisionPrivacy) -> Option<Record
     let value = input.budget();
     Some(RecordedSearchBudget {
         remaining: value.replay_remaining().into(),
+        global_request_width: Some(value.replay_request_width()),
         per_origin_requests: u64::try_from(value.replay_per_origin_requests()).ok()?,
         origins: value
             .replay_origins()

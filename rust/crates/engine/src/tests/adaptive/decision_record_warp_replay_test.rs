@@ -54,7 +54,10 @@ fn a_complete_production_warp_trace_replays_as_a_typed_verified_result() {
         replay.prices().network_micros,
         decision.prices.network_micros
     );
-    assert_eq!(replay.reserve(), decision.reserve.into());
+    assert_eq!(
+        replay.reserve(),
+        exported.warp_decision.as_ref().unwrap().reserve.clone()
+    );
     assert_eq!(replay.integrity().state_hash(), exported.state_hash);
     assert!(replay
         .integrity()

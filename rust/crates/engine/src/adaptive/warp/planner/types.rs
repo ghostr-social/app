@@ -2,6 +2,7 @@ use super::super::{
     BeamConfig, GeneratedAction, GeneratedActions, PlannerContext, PlannerRetryEvidence,
     ResourcePrices, SearchDecision, SemanticAdmission, TwinConfig, TwinEvaluation,
 };
+use super::reserve::ReserveConstraint;
 use super::SearchReplayInput;
 use crate::adaptive::{AllocationPlan, PlayabilitySnapshot};
 use crate::origin_model::OriginModel;
@@ -59,13 +60,6 @@ impl<'a> WarpPlannerInput<'a> {
             context,
         }
     }
-}
-
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub struct ReserveConstraint {
-    pub reserved_request_slots: u16,
-    pub reserved_network_bytes: u64,
-    pub degraded: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

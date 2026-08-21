@@ -2,6 +2,7 @@ mod action;
 mod coherence;
 mod completeness;
 mod fresh_search;
+mod reserve;
 
 use super::super::DecisionRecord;
 use crate::adaptive::{DecisionReplayStatus, VerifiedWarpReplay};
@@ -14,6 +15,7 @@ pub(super) fn reconstruct(
         .as_ref()
         .ok_or(DecisionReplayStatus::UnsupportedSchema)?;
     completeness::verify(decision)?;
+    reserve::verify(record, decision)?;
     coherence::verify(record, decision)?;
     Ok(VerifiedWarpReplay::new(
         record.sequence,

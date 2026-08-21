@@ -1,5 +1,7 @@
 use super::super::types::{SemanticDecision, WarpPlannerConfig, WarpPlannerInput};
-use crate::adaptive::{ActionNode, ControlMode, HardBudget, ResourceCost};
+use crate::adaptive::{
+    ActionNode, ControlMode, HardBudget, RescueChanceEvidence, RescueTimingQuantile, ResourceCost,
+};
 use std::collections::BTreeSet;
 
 const P95_FAILURE_BPS: u32 = 500;
@@ -20,6 +22,7 @@ pub(super) struct RescueInputs<'a> {
 pub(super) struct RescuePlan {
     pub steps: Vec<ActionNode>,
     pub cost: ResourceCost,
+    pub chance: RescueChanceEvidence,
 }
 
 pub(super) fn select(_inputs: RescueInputs<'_>) -> Option<RescuePlan> {
@@ -45,12 +48,14 @@ fn candidate(inputs: &RescueInputs<'_>, terminal: &ActionNode) -> Option<RescueP
     {
         return None;
     }
-    if !chance_feasible(inputs, &steps) {
-        return None;
-    }
+    let chance = chance_evidence(inputs, &steps)?;
     let cost = HardBudget::path_cost(&steps)?;
     inputs.budget.clone().protect(&steps)?;
-    Some(RescuePlan { steps, cost })
+    Some(RescuePlan {
+        steps,
+        cost,
+        chance,
+    })
 }
 
 fn dependency_path(frontier: &[ActionNode], terminal: u16) -> Option<Vec<ActionNode>> {
@@ -80,29 +85,40 @@ fn append_dependencies(
     Some(())
 }
 
-fn chance_feasible(inputs: &RescueInputs<'_>, steps: &[ActionNode]) -> bool {
+fn chance_evidence(
+    inputs: &RescueInputs<'_>,
+    steps: &[ActionNode],
+) -> Option<RescueChanceEvidence> {
     // Union-bound transport and quantile failures without assuming independence.
-    let required = threshold(inputs.input.base.mode, inputs.config);
-    let allowed_failure = 10_000_u32.saturating_sub(u32::from(required));
-    let Some(timing_allowance) = allowed_failure.checked_sub(transport_failure(steps)) else {
-        return false;
-    };
-    timing_completion(steps, timing_allowance)
-        .is_some_and(|completion| completion <= inputs.input.snapshot.commitment_ms)
+    let threshold_bps = threshold(inputs.input.base.mode, inputs.config);
+    let transport_failure = transport_failure(steps);
+    let allowed = 10_000_u32.saturating_sub(u32::from(threshold_bps));
+    let timing = timing_evidence(steps, allowed.checked_sub(transport_failure)?)?;
+    let deadline_ms = inputs.input.snapshot.commitment_ms;
+    (timing.completion_ms <= deadline_ms).then_some(RescueChanceEvidence {
+        deadline_ms,
+        threshold_bps,
+        achieved_success_bps: success_bps(transport_failure + timing.failure_bps),
+        transport_success_bps: success_bps(transport_failure),
+        timing_quantile: timing.quantile,
+        timing_completion_ms: timing.completion_ms,
+    })
 }
 
-fn timing_completion(steps: &[ActionNode], allowed_failure: u32) -> Option<u64> {
+fn timing_evidence(steps: &[ActionNode], allowed_failure: u32) -> Option<TimingEvidence> {
     let count = u32::try_from(steps.len()).ok()?;
-    let quantile = if count.saturating_mul(P95_FAILURE_BPS) <= allowed_failure {
-        TimingQuantile::P95
+    let (quantile, failure_per_step) = if count.saturating_mul(P95_FAILURE_BPS) <= allowed_failure {
+        (RescueTimingQuantile::P95, P95_FAILURE_BPS)
     } else if count.saturating_mul(P99_FAILURE_BPS) <= allowed_failure {
-        TimingQuantile::P99
+        (RescueTimingQuantile::P99, P99_FAILURE_BPS)
     } else {
         return None;
     };
-    Some(steps.iter().fold(0_u64, |total, node| {
-        total.saturating_add(quantile.completion(node))
-    }))
+    Some(TimingEvidence {
+        quantile,
+        failure_bps: count.saturating_mul(failure_per_step),
+        completion_ms: timing_completion(steps, quantile),
+    })
 }
 
 fn transport_failure(steps: &[ActionNode]) -> u32 {
@@ -113,19 +129,24 @@ fn transport_failure(steps: &[ActionNode]) -> u32 {
     })
 }
 
-#[derive(Clone, Copy)]
-enum TimingQuantile {
-    P95,
-    P99,
+fn timing_completion(steps: &[ActionNode], quantile: RescueTimingQuantile) -> u64 {
+    steps.iter().fold(0_u64, |total, node| {
+        total.saturating_add(match quantile {
+            RescueTimingQuantile::P95 => node.forecast.completion.p95_ms,
+            RescueTimingQuantile::P99 => node.forecast.completion.p99_ms,
+        })
+    })
 }
 
-impl TimingQuantile {
-    fn completion(self, node: &ActionNode) -> u64 {
-        match self {
-            Self::P95 => node.forecast.completion.p95_ms,
-            Self::P99 => node.forecast.completion.p99_ms,
-        }
-    }
+fn success_bps(failure_bps: u32) -> u16 {
+    10_000_u32.saturating_sub(failure_bps).min(10_000) as u16
+}
+
+#[derive(Clone, Copy)]
+struct TimingEvidence {
+    quantile: RescueTimingQuantile,
+    failure_bps: u32,
+    completion_ms: u64,
 }
 
 fn threshold(mode: ControlMode, config: &WarpPlannerConfig) -> u16 {

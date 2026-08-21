@@ -1,15 +1,18 @@
 mod capacity_demand;
 mod feasibility;
 mod least_risk;
+mod reserve;
 mod search_replay;
 mod search_run;
 mod simulation;
 mod types;
 
-pub(crate) use search_replay::{SearchReplayInput, SearchReplayMode};
-pub use types::{
-    ReserveConstraint, SemanticDecision, WarpPlannerConfig, WarpPlannerInput, WarpPlanningDecision,
+pub use reserve::{
+    RescueChanceEvidence, RescueTimingQuantile, ReserveAuthorityOccupancy, ReserveConstraint,
+    ReserveDegradedReason,
 };
+pub(crate) use search_replay::{SearchReplayInput, SearchReplayMode};
+pub use types::{SemanticDecision, WarpPlannerConfig, WarpPlannerInput, WarpPlanningDecision};
 
 use super::{
     ActionFrontier, DigitalTwin, GeneratedAction, NetworkTokenBucket, ResourceCost,

@@ -1,12 +1,13 @@
-use super::types::{ReserveConstraint, SemanticDecision, WarpPlannerConfig, WarpPlannerInput};
+use super::types::{SemanticDecision, WarpPlannerConfig, WarpPlannerInput};
 use crate::adaptive::{
-    ActionKind, ActionNode, ControlMode, HardBudget, PlannerCapability, PlayerPreparation,
-    ResourceCost, SemanticCandidate, SemanticGuardrail,
+    ActionKind, ActionNode, HardBudget, PlannerCapability, PlayerPreparation, ReserveConstraint,
+    SemanticCandidate, SemanticGuardrail,
 };
 use std::collections::BTreeSet;
 
 mod hard_budget;
 mod rescue;
+mod reserve;
 
 #[cfg(test)]
 #[path = "feasibility/tests/mod.rs"]
@@ -34,7 +35,7 @@ pub(super) fn apply(
         config,
         budget: &budget,
     });
-    let (budget, reserve) = protect_rescue(input.base.mode, budget, rescue.as_ref());
+    let (budget, reserve) = reserve::protect(input, budget, rescue.as_ref());
     let nodes = frontier
         .iter()
         .filter(|node| semantically_admissible(node, &semantic))
@@ -117,38 +118,6 @@ fn semantically_admissible(node: &ActionNode, semantic: &[SemanticDecision]) -> 
         node.kind,
         ActionKind::Cancel(_) | ActionKind::Promote { .. }
     ) || admissible(&node.post, semantic)
-}
-
-fn protect_rescue(
-    mode: ControlMode,
-    budget: HardBudget,
-    rescue: Option<&rescue::RescuePlan>,
-) -> (HardBudget, ReserveConstraint) {
-    if mode == ControlMode::Normal {
-        return (budget, ReserveConstraint::default());
-    }
-    let Some(plan) = rescue else {
-        return (budget, degraded_reserve());
-    };
-    match budget.clone().protect(&plan.steps) {
-        Some(protected) => (protected, reserved(plan.cost)),
-        None => (budget, degraded_reserve()),
-    }
-}
-
-fn reserved(cost: ResourceCost) -> ReserveConstraint {
-    ReserveConstraint {
-        reserved_request_slots: cost.requests,
-        reserved_network_bytes: cost.network_bytes,
-        degraded: false,
-    }
-}
-
-fn degraded_reserve() -> ReserveConstraint {
-    ReserveConstraint {
-        degraded: true,
-        ..ReserveConstraint::default()
-    }
 }
 
 fn with_satisfied_dependencies(mut nodes: Vec<ActionNode>) -> Vec<ActionNode> {

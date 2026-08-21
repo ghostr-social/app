@@ -15,5 +15,5 @@ pub(super) fn verify(record: &DecisionRecord) -> Result<(), DecisionReplayStatus
         .selected
         .as_ref()
         .map(|action| action.planner_action_id);
-    verify_search_replay(input, &decision.search, selected)
+    verify_search_replay(input, &decision.search, selected, &decision.reserve)
 }

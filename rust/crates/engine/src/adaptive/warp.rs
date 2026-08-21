@@ -24,7 +24,8 @@ pub use generation::{
     WarpActionGenerator,
 };
 pub use planner::{
-    ReserveConstraint, SemanticDecision, WarpPlanner, WarpPlannerConfig, WarpPlannerInput,
+    RescueChanceEvidence, RescueTimingQuantile, ReserveAuthorityOccupancy, ReserveConstraint,
+    ReserveDegradedReason, SemanticDecision, WarpPlanner, WarpPlannerConfig, WarpPlannerInput,
     WarpPlanningDecision,
 };
 pub(crate) use planner::{SearchReplayInput, SearchReplayMode};

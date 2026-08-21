@@ -38,6 +38,7 @@ impl ResourceCost {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HardBudget {
     remaining: ResourceCost,
+    request_width: u16,
     per_origin_requests: usize,
     origins: BTreeMap<RequestAuthority, usize>,
     pending_rescue: Vec<ActionNode>,
@@ -53,6 +54,7 @@ impl HardBudget {
     pub fn new(limits: ResourceCost, per_origin_requests: u16) -> Self {
         Self {
             remaining: limits,
+            request_width: limits.requests,
             per_origin_requests: usize::from(per_origin_requests),
             origins: BTreeMap::new(),
             pending_rescue: Vec::new(),
@@ -107,6 +109,10 @@ impl HardBudget {
         self.per_origin_requests
     }
 
+    pub(crate) const fn replay_request_width(&self) -> u16 {
+        self.request_width
+    }
+
     pub(crate) fn replay_origins(&self) -> &BTreeMap<RequestAuthority, usize> {
         &self.origins
     }
@@ -117,12 +123,14 @@ impl HardBudget {
 
     pub(crate) fn from_replay(
         remaining: ResourceCost,
+        request_width: u16,
         per_origin_requests: usize,
         origins: BTreeMap<RequestAuthority, usize>,
         pending_rescue: Vec<ActionNode>,
     ) -> Option<Self> {
         let budget = Self {
             remaining,
+            request_width,
             per_origin_requests,
             origins,
             pending_rescue: Vec::new(),

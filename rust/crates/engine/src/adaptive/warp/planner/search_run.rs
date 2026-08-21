@@ -54,6 +54,9 @@ impl WarpPlanner {
         let mode = SearchReplayMode::capture(search, feasible.reserve.degraded);
         SearchReplayInput {
             mode,
+            reserve: feasible.reserve.clone(),
+            reserve_threshold_bps: feasible.reserve.chance.map(|chance| chance.threshold_bps),
+            reserve_degraded_reason: feasible.reserve.degraded_reason,
             nodes: feasible.nodes.clone(),
             budget: feasible.budget.clone(),
             beam: self.config.beam,

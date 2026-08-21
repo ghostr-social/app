@@ -3,7 +3,7 @@ mod compare;
 use super::super::RecordedWarpSearch;
 use super::{
     RecordedBeamConfig, RecordedSearchBudget, RecordedSearchReplayMode, RecordedSearchScore,
-    RecordedWarpSearchInput,
+    RecordedWarpReserve, RecordedWarpSearchInput,
 };
 use crate::adaptive::warp::{ScoredSearchPlan, SearchReplayInput, SearchReplayMode};
 use crate::adaptive::{ActionNode, BeamConfig, DecisionReplayStatus, HardBudget, ResourcePrices};
@@ -14,7 +14,9 @@ pub(in crate::adaptive::decision) fn verify(
     input: &RecordedWarpSearchInput,
     expected: &RecordedWarpSearch,
     selected: Option<u16>,
+    reserve: &RecordedWarpReserve,
 ) -> Result<(), DecisionReplayStatus> {
+    super::reserve::verify(input, reserve)?;
     let replay = input.restore().ok_or(DecisionReplayStatus::PlanMismatch)?;
     let actual = replay.run().ok_or(DecisionReplayStatus::PlanMismatch)?;
     require(actual.action.as_ref().map(|action| action.id) == selected)?;
@@ -30,6 +32,9 @@ impl RecordedWarpSearchInput {
         }
         Some(SearchReplayInput {
             mode,
+            reserve: restore_reserve(self.reserve.as_ref())?,
+            reserve_threshold_bps: self.reserve_threshold_bps,
+            reserve_degraded_reason: self.reserve_degraded_reason.map(Into::into),
             budget: self.budget.restore(&nodes)?,
             beam: self.beam.restore()?,
             prices: restore_prices(self.prices),
@@ -75,11 +80,31 @@ impl RecordedSearchBudget {
             .collect::<Option<Vec<_>>>()?;
         HardBudget::from_replay(
             self.remaining.restore(),
+            self.global_request_width
+                .unwrap_or_else(|| legacy_request_width(self)),
             usize::try_from(self.per_origin_requests).ok()?,
             origins,
             pending,
         )
     }
+}
+
+fn restore_reserve(
+    value: Option<&RecordedWarpReserve>,
+) -> Option<crate::adaptive::ReserveConstraint> {
+    match value {
+        Some(value) => super::super::reserve::restore(value),
+        None => Some(Default::default()),
+    }
+}
+
+fn legacy_request_width(value: &RecordedSearchBudget) -> u16 {
+    value
+        .origins
+        .iter()
+        .fold(value.remaining.requests, |total, item| {
+            total.saturating_add(u16::try_from(item.requests).unwrap_or(u16::MAX))
+        })
 }
 
 impl RecordedSearchScore {

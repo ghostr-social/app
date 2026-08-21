@@ -12,11 +12,12 @@ mod types;
 pub use advanced::{
     RecordedAllocationReason, RecordedCandidateUtility, RecordedPlannerRetryAvailability,
     RecordedPlannerRetryEvidence, RecordedPreemptionAuthority, RecordedPromotionGrant,
-    RecordedPrunedSearchPlan, RecordedResourceCost, RecordedResourcePrices,
-    RecordedRetainedSearchPlan, RecordedRetrievalRequest, RecordedSearchPruneReason,
-    RecordedTransfer, RecordedTransformKind, RecordedTwinEvaluation, RecordedWarpAction,
-    RecordedWarpActionKind, RecordedWarpCommand, RecordedWarpDecision, RecordedWarpReserve,
-    RecordedWarpSearch, RecordedWarpSearchInput, RecordedWholeBodyContract,
+    RecordedPrunedSearchPlan, RecordedRescueChanceEvidence, RecordedRescueTimingQuantile,
+    RecordedReserveAuthorityOccupancy, RecordedReserveDegradedReason, RecordedResourceCost,
+    RecordedResourcePrices, RecordedRetainedSearchPlan, RecordedRetrievalRequest,
+    RecordedSearchPruneReason, RecordedTransfer, RecordedTransformKind, RecordedTwinEvaluation,
+    RecordedWarpAction, RecordedWarpActionKind, RecordedWarpCommand, RecordedWarpDecision,
+    RecordedWarpReserve, RecordedWarpSearch, RecordedWarpSearchInput, RecordedWholeBodyContract,
     RecordedWholeFetchReason,
 };
 pub use privacy::DecisionPrivacy;

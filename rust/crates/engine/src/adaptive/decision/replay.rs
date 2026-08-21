@@ -58,8 +58,8 @@ impl VerifiedWarpReplay {
         self.decision.prices
     }
 
-    pub const fn reserve(&self) -> RecordedWarpReserve {
-        self.decision.reserve
+    pub fn reserve(&self) -> RecordedWarpReserve {
+        self.decision.reserve.clone()
     }
 }
 
