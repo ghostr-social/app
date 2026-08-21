@@ -34,7 +34,7 @@ mod single_response;
 mod sparse_intent;
 mod writes;
 
-pub use action::StoreAction;
+pub use action::{ActionReservationExtension, StoreAction};
 pub use admission::OutOfSpace;
 pub use policy_eviction::EvictionOutcome;
 pub use queries::{StoredEvidenceId, StoredMediaSnapshot};

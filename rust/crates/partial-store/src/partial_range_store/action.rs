@@ -1,9 +1,13 @@
 use super::PartialRangeStore;
 use anyhow::{ensure, Result};
 use ghostr_engine::representation::TransferIdentity;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+
+mod accounting;
+mod extension;
+pub use extension::ActionReservationExtension;
 
 #[derive(Clone, Debug)]
 pub struct StoreAction {
@@ -124,25 +128,6 @@ impl PartialRangeStore {
         self.capacity.released_reservation(released);
     }
 
-    pub async fn resize_action(&self, action: &StoreAction, maximum_bytes: u64) -> Result<()> {
-        ensure!(action.is_active(), "action reservation was revoked");
-        let _capacity = self.capacity_updates.lock().await;
-        let mut reservations = self.action_reservations.lock().await;
-        let reservation = reservations
-            .get_mut(&action.id)
-            .filter(|reservation| same_authority(reservation, action))
-            .ok_or_else(|| anyhow::anyhow!("action reservation is missing"))?;
-        ensure!(
-            maximum_bytes <= reservation.remaining,
-            "response exceeds its launch reservation"
-        );
-        let released = reservation.remaining - maximum_bytes;
-        reservation.remaining = maximum_bytes;
-        drop(reservations);
-        self.capacity.released_reservation(released);
-        Ok(())
-    }
-
     pub(super) async fn consume_action(&self, action: &StoreAction, bytes: u64) -> Result<u64> {
         let mut reservations = self.action_reservations.lock().await;
         let reservation = reservations
@@ -182,34 +167,6 @@ impl PartialRangeStore {
         drop(used);
         self.capacity.spent(bytes).await;
         Ok(())
-    }
-
-    pub(super) async fn restore_action(&self, action: &StoreAction, bytes: u64) {
-        let mut reservations = self.action_reservations.lock().await;
-        if let Some(reservation) = reservations
-            .get_mut(&action.id)
-            .filter(|reservation| same_authority(reservation, action))
-        {
-            reservation.remaining = reservation.remaining.saturating_add(bytes);
-        }
-    }
-
-    pub(super) async fn reserved_bytes(&self) -> u64 {
-        self.action_reservations
-            .lock()
-            .await
-            .values()
-            .map(|reservation| reservation.remaining)
-            .sum()
-    }
-
-    pub(super) async fn reserved_keys(&self) -> HashSet<String> {
-        self.action_reservations
-            .lock()
-            .await
-            .values()
-            .map(|reservation| reservation.key.clone())
-            .collect()
     }
 }
 
