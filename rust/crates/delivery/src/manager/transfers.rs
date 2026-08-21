@@ -5,16 +5,14 @@
 
 use crate::chunk::cancel::CancelToken;
 use crate::chunk::downloader::{
-    download_chunk_captured, ChunkResult, ChunkSpec, ObservedChunk, OpenedResponse,
-    ResponseAdmission, ResponseObservation,
+    download_chunk_captured, ChunkResult, ChunkSpec, ObservedChunk, ResponseObservation,
 };
 use crate::chunk::sink::TransferChunkSink;
-use crate::chunk::traffic::ChunkTraffic;
 use crate::debug::network::NetworkThrottle;
 use crate::manager::inflight::ChunkAttempt;
 use crate::manager::response_open::ResponseOpener;
 use crate::manager::retry::CooldownId;
-use crate::manager::traffic::{TrafficPublisher, TransferKey};
+use crate::manager::traffic::TrafficPublisher;
 use crate::probe::media::{probe, ProbeResult};
 use ghostr_engine::adaptive::RetrievalRequest;
 use ghostr_engine::host_stats::HostStats;
@@ -24,10 +22,10 @@ use ghostr_net::transfer_timeouts::TransferTimeouts;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use ghostr_partial_store::partial_range_store::StoreAction;
 use std::sync::Arc;
-use std::time::Duration;
-use std::{future::Future, pin::Pin};
 use tokio::sync::mpsc::UnboundedSender;
-use tokio::time::Instant;
+
+mod traffic;
+use traffic::TransferTraffic;
 
 pub(crate) enum InternalEvent {
     Transfer(TransferEvent),
@@ -148,81 +146,6 @@ async fn run_chunk(launch: ChunkLaunch) -> anyhow::Result<ObservedChunk> {
     .await)
 }
 
-struct TransferTraffic {
-    attempt: ChunkAttempt,
-    transfer: TransferKey,
-    host: Option<String>,
-    publisher: TrafficPublisher,
-    events: UnboundedSender<InternalEvent>,
-    responses: ResponseOpener,
-    store_action: StoreAction,
-    opened: bool,
-}
-
-impl TransferTraffic {
-    fn new(
-        attempt: &ChunkAttempt,
-        ctx: &TransferContext,
-        url: &str,
-        store_action: StoreAction,
-    ) -> Self {
-        Self {
-            attempt: attempt.clone(),
-            transfer: TransferKey::new(attempt.id().value()),
-            host: ghostr_engine::host_stats::host_of(url),
-            publisher: ctx.traffic.clone(),
-            events: ctx.events.clone(),
-            responses: ctx.responses.clone(),
-            store_action,
-            opened: false,
-        }
-    }
-}
-
-impl ChunkTraffic for TransferTraffic {
-    fn opened(&mut self, ttfb: Duration) {
-        let Some(host) = self.host.take() else {
-            return;
-        };
-        self.opened = self
-            .publisher
-            .opened(self.transfer, host, ttfb, Instant::now());
-    }
-
-    fn wrote(&mut self, bytes: u64) {
-        if self.opened {
-            self.publisher
-                .progress(self.transfer, bytes, Instant::now());
-        }
-    }
-
-    fn response_observed(&mut self, response: ResponseObservation) {
-        let event = TransferEvent::ResponseObserved(ObservedResponse {
-            attempt: self.attempt.clone(),
-            response,
-        });
-        let _ = self.events.send(InternalEvent::Transfer(event));
-    }
-
-    fn authorize_response<'a>(
-        &'a mut self,
-        response: OpenedResponse,
-    ) -> Pin<Box<dyn Future<Output = anyhow::Result<ResponseAdmission>> + Send + 'a>> {
-        let attempt = self.attempt.clone();
-        let action = self.store_action.clone();
-        let responses = self.responses.clone();
-        Box::pin(async move { Ok(responses.authorize(attempt, action, response).await) })
-    }
-}
-
-impl Drop for TransferTraffic {
-    fn drop(&mut self) {
-        if self.opened {
-            self.publisher.closed(self.transfer, Instant::now());
-        }
-    }
-}
-
 pub(crate) fn chunk_event(
     attempt: ChunkAttempt,
     url: String,
@@ -252,12 +175,18 @@ fn observed_chunk_event(
 /// Starts one HEAD probe for a post whose size is still unknown.
 pub(crate) fn spawn_probe(ctx: TransferContext, post: PostId, url: String) {
     tokio::spawn(async move {
-        let mut scratch = HostStats::new();
-        let outcome = probe(ctx.client.as_ref(), &url, ctx.timeouts, &mut scratch).await;
-        let _ = ctx
-            .events
-            .send(InternalEvent::Transfer(TransferEvent::ProbeDone(
-                ProbeDone { post, url, outcome },
-            )));
+        let events = ctx.events.clone();
+        let worker = tokio::spawn(run_probe(ctx, url.clone()));
+        let outcome = match worker.await {
+            Ok(outcome) => outcome,
+            Err(error) => Err(anyhow::anyhow!("video probe task failed: {error}")),
+        };
+        let event = TransferEvent::ProbeDone(ProbeDone { post, url, outcome });
+        let _ = events.send(InternalEvent::Transfer(event));
     });
+}
+
+async fn run_probe(ctx: TransferContext, url: String) -> anyhow::Result<ProbeResult> {
+    let mut scratch = HostStats::new();
+    probe(ctx.client.as_ref(), &url, ctx.timeouts, &mut scratch).await
 }

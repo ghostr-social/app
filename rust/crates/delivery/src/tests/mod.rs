@@ -89,6 +89,7 @@ mod mirror_rotation_retry_test;
 mod mutable_priority_queue_test;
 mod origin_exploration_cap_test;
 mod origin_probe_observation_test;
+mod panicking_probe_reports_terminal_test;
 mod panicking_transfer_releases_action_test;
 mod plan_evidence_bound_test;
 mod plan_evidence_history_test;
