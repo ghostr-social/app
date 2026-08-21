@@ -2,6 +2,7 @@ use super::super::{
     BeamConfig, GeneratedAction, GeneratedActions, PlannerContext, PlannerRetryEvidence,
     ResourcePrices, SearchDecision, SemanticAdmission, TwinConfig, TwinEvaluation,
 };
+use super::SearchReplayInput;
 use crate::adaptive::{AllocationPlan, PlayabilitySnapshot};
 use crate::origin_model::OriginModel;
 use crate::PostId;
@@ -88,6 +89,7 @@ pub struct WarpPlanningDecision {
     pub prices: ResourcePrices,
     pub common_random_seed: u64,
     pub retry_availability: Vec<PlannerRetryEvidence>,
+    pub(crate) search_replay: Option<SearchReplayInput>,
 }
 
 const fn clamp_bps(value: u16) -> u16 {

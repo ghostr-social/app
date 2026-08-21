@@ -81,6 +81,11 @@ impl DecisionRecord {
         replay::warp(self)
     }
 
+    /// Re-executes the captured privacy-safe WARP search and verifies its exact output.
+    pub fn replay_warp_search(&self) -> Result<VerifiedWarpReplay, DecisionReplayStatus> {
+        replay::warp_search(self)
+    }
+
     pub fn resolve(&mut self, outcome: DecisionOutcome) -> bool {
         if self.eventual_outcome != DecisionOutcome::Pending {
             return false;

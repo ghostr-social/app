@@ -1,3 +1,9 @@
+#[path = "decision_record_warp_fresh_search_mismatch_test.rs"]
+mod fresh_search_mismatch_test;
+#[path = "decision_record_warp_fresh_search_privacy_test.rs"]
+mod fresh_search_privacy_test;
+#[path = "decision_record_warp_fresh_search_support.rs"]
+mod fresh_search_support;
 #[path = "decision_record_warp_incomplete_replay_test.rs"]
 mod incomplete_replay_test;
 #[path = "decision_record_warp_replay_coherence_test.rs"]

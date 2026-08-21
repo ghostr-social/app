@@ -1,6 +1,7 @@
 mod action;
 mod coherence;
 mod completeness;
+mod fresh_search;
 
 use super::super::DecisionRecord;
 use crate::adaptive::{DecisionReplayStatus, VerifiedWarpReplay};
@@ -20,4 +21,8 @@ pub(super) fn reconstruct(
         record.replay_plan_hash.clone(),
         decision.clone(),
     ))
+}
+
+pub(super) fn verify_fresh_search(record: &DecisionRecord) -> Result<(), DecisionReplayStatus> {
+    fresh_search::verify(record)
 }

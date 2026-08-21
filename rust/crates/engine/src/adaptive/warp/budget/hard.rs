@@ -99,6 +99,37 @@ impl HardBudget {
         copy.consume(cost, authority)
     }
 
+    pub(crate) const fn replay_remaining(&self) -> ResourceCost {
+        self.remaining
+    }
+
+    pub(crate) const fn replay_per_origin_requests(&self) -> usize {
+        self.per_origin_requests
+    }
+
+    pub(crate) fn replay_origins(&self) -> &BTreeMap<RequestAuthority, usize> {
+        &self.origins
+    }
+
+    pub(crate) fn replay_pending(&self) -> &[ActionNode] {
+        &self.pending_rescue
+    }
+
+    pub(crate) fn from_replay(
+        remaining: ResourceCost,
+        per_origin_requests: usize,
+        origins: BTreeMap<RequestAuthority, usize>,
+        pending_rescue: Vec<ActionNode>,
+    ) -> Option<Self> {
+        let budget = Self {
+            remaining,
+            per_origin_requests,
+            origins,
+            pending_rescue: Vec::new(),
+        };
+        budget.protect(&pending_rescue)
+    }
+
     pub(in crate::adaptive::warp) fn with_occupancy(
         mut self,
         occupancy: &RequestOccupancy,

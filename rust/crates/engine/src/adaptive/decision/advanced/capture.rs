@@ -44,6 +44,7 @@ pub(in crate::adaptive::decision) fn capture(
             reserve: RecordedWarpReserve::from(value.reserve),
             additional_request_slot_demanded: value.additional_request_slot_demanded,
             retry_availability: retry_availability(value, privacy),
+            search_replay_input: super::search_replay::capture(value, privacy),
         },
     }
 }

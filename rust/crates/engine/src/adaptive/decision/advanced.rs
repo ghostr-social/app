@@ -4,6 +4,7 @@ mod capture;
 mod command;
 mod kind;
 mod search;
+mod search_replay;
 
 pub use command::{
     RecordedAllocationReason, RecordedCandidateUtility, RecordedPreemptionAuthority,
@@ -11,6 +12,8 @@ pub use command::{
     RecordedWarpCommand, RecordedWholeBodyContract, RecordedWholeFetchReason,
 };
 pub use kind::RecordedWarpActionKind;
+pub(in crate::adaptive::decision) use search_replay::verify as verify_search_replay;
+pub use search_replay::RecordedWarpSearchInput;
 
 use serde::{Deserialize, Serialize};
 
@@ -28,6 +31,8 @@ pub struct RecordedWarpDecision {
     pub additional_request_slot_demanded: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub retry_availability: Vec<RecordedPlannerRetryEvidence>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub search_replay_input: Option<RecordedWarpSearchInput>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

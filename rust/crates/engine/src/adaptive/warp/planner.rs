@@ -1,16 +1,19 @@
 mod capacity_demand;
 mod feasibility;
 mod least_risk;
+mod search_replay;
+mod search_run;
 mod simulation;
 mod types;
 
+pub(crate) use search_replay::{SearchReplayInput, SearchReplayMode};
 pub use types::{
     ReserveConstraint, SemanticDecision, WarpPlannerConfig, WarpPlannerInput, WarpPlanningDecision,
 };
 
 use super::{
     ActionFrontier, DigitalTwin, GeneratedAction, NetworkTokenBucket, ResourceCost,
-    ShadowPriceController, TwinSearchContext, WarpActionGenerator, WarpSearch,
+    ShadowPriceController, WarpActionGenerator,
 };
 
 pub struct WarpPlanner {
@@ -47,7 +50,7 @@ impl WarpPlanner {
         );
         let network_bytes = self.network_tokens(input.snapshot.observed_at_ms);
         let feasible = feasibility::apply(&input, &frontier.retained, &self.config, network_bytes);
-        let search = self.search(&input, &feasible);
+        let (search, search_replay) = self.search(&input, &feasible);
         let additional_request_slot_demanded =
             self.additional_request_slot_demanded(&input, &frontier.retained, network_bytes);
         let selected = selected_action(&generated.actions, &search);
@@ -71,6 +74,7 @@ impl WarpPlanner {
             additional_request_slot_demanded,
             common_random_seed,
             retry_availability: input.context.retry_evidence(),
+            search_replay: Some(search_replay),
             generated,
         }
     }
@@ -128,32 +132,6 @@ impl WarpPlanner {
                 ));
             }
         }
-    }
-
-    fn search(
-        &mut self,
-        input: &WarpPlannerInput<'_>,
-        feasible: &feasibility::FeasibleActions,
-    ) -> super::SearchDecision {
-        if feasible.reserve.degraded {
-            return least_risk::choose(&feasible.nodes);
-        }
-        self.search_priced(input, feasible)
-    }
-
-    fn search_priced(
-        &mut self,
-        input: &WarpPlannerInput<'_>,
-        feasible: &feasibility::FeasibleActions,
-    ) -> super::SearchDecision {
-        let mut simulation = TwinSearchContext::new(
-            &mut self.twin,
-            simulation::state(input),
-            simulation::epochs(input, self.price_epoch),
-        );
-        WarpSearch::new(self.config.beam)
-            .with_prices(self.prices.prices())
-            .choose_first_simulated(&feasible.nodes, feasible.budget.clone(), &mut simulation)
     }
 }
 

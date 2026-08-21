@@ -26,7 +26,7 @@ impl WarpPlanner {
             context.limits.request_tokens.saturating_add(1).min(ceiling);
         let expanded = WarpPlannerInput::new(input.snapshot, input.base, input.origins, &context);
         let feasible = feasibility::apply(&expanded, frontier, &self.config, network_bytes);
-        let search = self.search(&expanded, &feasible);
+        let (search, _) = self.search(&expanded, &feasible);
         has_marginal_demand(&search, &feasible.nodes, available)
     }
 }

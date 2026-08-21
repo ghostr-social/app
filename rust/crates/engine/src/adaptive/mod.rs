@@ -38,8 +38,9 @@ pub use decision::{
     RecordedRetainedSearchPlan, RecordedRetrievalRequest, RecordedSearchPruneReason,
     RecordedTransfer, RecordedTransformKind, RecordedTwinEvaluation, RecordedWarpAction,
     RecordedWarpActionKind, RecordedWarpCommand, RecordedWarpDecision, RecordedWarpReserve,
-    RecordedWarpSearch, RecordedWholeBodyContract, RecordedWholeFetchReason, ShadowPrices,
-    VerifiedWarpReplay, WarpDecisionRecordInput, WarpReplayIntegrity,
+    RecordedWarpSearch, RecordedWarpSearchInput, RecordedWholeBodyContract,
+    RecordedWholeFetchReason, ShadowPrices, VerifiedWarpReplay, WarpDecisionRecordInput,
+    WarpReplayIntegrity,
 };
 pub use navigation::{FeedOffset, NavigationDirection, NavigationHistory};
 pub use plan::{

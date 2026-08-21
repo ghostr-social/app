@@ -1,14 +1,17 @@
 mod greedy;
 mod output;
 mod progress;
+mod scoring;
 mod state;
 
 pub use output::{PrunedSearchPlan, RetainedSearchPlan, SearchDecision, SearchPruneReason};
+pub(crate) use scoring::ScoredSearchPlan;
+pub use scoring::TwinSearchContext;
 
 use self::output::{decision, pruned_plan};
 use self::progress::SearchProgress;
 use self::state::{compare, State};
-use super::{ActionNode, DigitalTwin, HardBudget, ResourcePrices, TwinEpochs, TwinState};
+use super::{ActionNode, HardBudget, ResourcePrices};
 use std::time::Instant;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -33,27 +36,19 @@ impl BeamConfig {
             max_latency_us,
         }
     }
-}
 
-pub struct TwinSearchContext<'a> {
-    twin: &'a mut DigitalTwin,
-    state: TwinState,
-    epochs: TwinEpochs,
-}
-
-impl<'a> TwinSearchContext<'a> {
-    pub fn new(twin: &'a mut DigitalTwin, state: TwinState, epochs: TwinEpochs) -> Self {
-        Self {
-            twin,
-            state,
-            epochs,
-        }
+    pub(crate) const fn replay_parts(self) -> (usize, usize, usize, u64) {
+        (
+            self.depth,
+            self.width,
+            self.max_expansions,
+            self.max_latency_us,
+        )
     }
 
-    fn score(&mut self, actions: &[ActionNode]) -> i64 {
-        self.twin
-            .evaluate(&self.state, actions, self.epochs)
-            .expected_score_micros
+    pub(crate) const fn without_latency_limit(mut self) -> Self {
+        self.max_latency_us = u64::MAX;
+        self
     }
 }
 
@@ -93,6 +88,27 @@ impl WarpSearch {
     ) -> SearchDecision {
         let mut scorer = |actions: &[ActionNode]| context.score(actions);
         self.choose(nodes, budget, &mut scorer)
+    }
+
+    pub(crate) fn choose_first_recorded<F>(
+        &self,
+        nodes: &[ActionNode],
+        budget: HardBudget,
+        scorer: &mut F,
+    ) -> SearchDecision
+    where
+        F: FnMut(&[ActionNode]) -> i64,
+    {
+        self.choose(nodes, budget, scorer)
+    }
+
+    pub(crate) fn choose_first_greedy(
+        &self,
+        nodes: &[ActionNode],
+        budget: HardBudget,
+        reason: SearchPruneReason,
+    ) -> SearchDecision {
+        self.greedy(nodes, budget, reason)
     }
 
     fn choose<F>(&self, nodes: &[ActionNode], budget: HardBudget, scorer: &mut F) -> SearchDecision

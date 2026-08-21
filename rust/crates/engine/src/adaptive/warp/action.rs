@@ -171,6 +171,10 @@ impl ActionNode {
         self.request_authority.as_ref()
     }
 
+    pub(crate) fn replay_origin(&self) -> &str {
+        &self.origin
+    }
+
     pub(in crate::adaptive::warp) const fn request(&self) -> Option<RetrievalRequest> {
         self.request
     }

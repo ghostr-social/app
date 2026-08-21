@@ -27,12 +27,14 @@ pub use planner::{
     ReserveConstraint, SemanticDecision, WarpPlanner, WarpPlannerConfig, WarpPlannerInput,
     WarpPlanningDecision,
 };
+pub(crate) use planner::{SearchReplayInput, SearchReplayMode};
 pub use planner_context::{
     ActivePlannerContext, HeadProbeHistory, PlannerCandidateContext, PlannerCapability,
     PlannerContext, PlannerLimits, PlannerQuality, PlannerRetryAvailability, PlannerRetryEvidence,
     PreviewAvailability, ResourceFeedback, SoftRequestCommitment, TransformCapability,
 };
 pub use request_occupancy::RequestOccupancy;
+pub(crate) use search::ScoredSearchPlan;
 pub use search::{
     BeamConfig, PrunedSearchPlan, RetainedSearchPlan, SearchDecision, SearchPruneReason,
     TwinSearchContext, WarpSearch,

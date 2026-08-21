@@ -32,8 +32,12 @@ fn a_complete_production_warp_trace_replays_as_a_typed_verified_result() {
     let exported: DecisionRecord = serde_json::from_str(&serde_json::to_string(&captured).unwrap())
         .expect("serialized production decision record");
     let replay = exported.replay_warp().expect("complete WARP replay");
+    let fresh = exported
+        .replay_warp_search()
+        .expect("deterministic WARP search replay");
 
     assert_eq!(exported.replay(), DecisionReplayStatus::Verified);
+    assert_eq!(fresh, replay);
     assert_eq!(replay.sequence(), 41);
     assert_eq!(replay.decision(), exported.warp_decision.as_ref().unwrap());
     assert!(decision.selected.is_some(), "fixture requires a commitment");

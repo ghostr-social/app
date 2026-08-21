@@ -16,7 +16,8 @@ pub use advanced::{
     RecordedRetainedSearchPlan, RecordedRetrievalRequest, RecordedSearchPruneReason,
     RecordedTransfer, RecordedTransformKind, RecordedTwinEvaluation, RecordedWarpAction,
     RecordedWarpActionKind, RecordedWarpCommand, RecordedWarpDecision, RecordedWarpReserve,
-    RecordedWarpSearch, RecordedWholeBodyContract, RecordedWholeFetchReason,
+    RecordedWarpSearch, RecordedWarpSearchInput, RecordedWholeBodyContract,
+    RecordedWholeFetchReason,
 };
 pub use privacy::DecisionPrivacy;
 pub use record::{DecisionRecord, DecisionRecordInput, WarpDecisionRecordInput};

@@ -31,6 +31,14 @@ pub(super) fn warp(record: &DecisionRecord) -> Result<VerifiedWarpReplay, Decisi
     trace::reconstruct(record)
 }
 
+pub(super) fn warp_search(
+    record: &DecisionRecord,
+) -> Result<VerifiedWarpReplay, DecisionReplayStatus> {
+    let verified = warp(record)?;
+    trace::verify_fresh_search(record)?;
+    Ok(verified)
+}
+
 pub(super) fn state_identity(state: &ReplayState) -> (String, u64) {
     let encoded = serde_json::to_vec(state).expect("replay state is serializable");
     identity(Sha256::digest(encoded))
