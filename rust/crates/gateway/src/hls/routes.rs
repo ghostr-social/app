@@ -6,8 +6,10 @@ use axum::body::Body;
 use axum::extract::{Path, State};
 use axum::http::header::{ACCEPT_ENCODING, CONTENT_LENGTH, CONTENT_TYPE};
 use axum::http::{HeaderMap, Response, StatusCode};
+use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_hls_manifest::hls_manifest::HlsResourceKind;
 use ghostr_hls_manifest::hls_manifest::MAX_HLS_MANIFEST_BYTES;
+use reqwest::header::HeaderValue;
 use reqwest::Url;
 use std::sync::Arc;
 
@@ -65,9 +67,9 @@ async fn fetch_manifest(
             .await;
     }
     let request = state
-        .client
-        .get(source.as_str())?
-        .header(ACCEPT_ENCODING, "identity");
+        .requests
+        .get(source.as_str(), PreemptionAuthority::PlaybackCritical)?
+        .header(ACCEPT_ENCODING, HeaderValue::from_static("identity"));
     let mut transfer = HlsTransfer::open(request, state.hls_timeouts).await?;
     if transfer.response().status() != StatusCode::OK {
         bail!("full HLS manifest response is not 200");

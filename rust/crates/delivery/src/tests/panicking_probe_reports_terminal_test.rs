@@ -38,6 +38,7 @@ async fn receive_panic(
         ProbeLaunch {
             post: identity.post().clone(),
             url: identity.source().as_str().to_owned(),
+            authority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
             decision: claim,
         },
     );

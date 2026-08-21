@@ -19,6 +19,7 @@ fn every_planner_command_has_a_typed_authoritative_record() {
             PlannerCommand::ProbeHead {
                 post: PostId::new("secret-post"),
                 source: source.into(),
+                authority: crate::adaptive::PreemptionAuthority::Transition,
             },
             ActionKind::Head,
             "probe_head",
@@ -69,6 +70,9 @@ fn every_planner_command_has_a_typed_authoritative_record() {
         let value = serde_json::to_value(record(&decision("secret-post", command, kind))).unwrap();
         let selected = &value["warp_decision"]["selected"];
         assert_eq!(selected["command"]["command"], command_tag);
+        if command_tag == "probe_head" {
+            assert_eq!(selected["command"]["authority"], "transition");
+        }
         assert!(!value["chosen_action"].is_null());
     }
 }

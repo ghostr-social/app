@@ -19,13 +19,14 @@ async fn whole_fetch_omits_range_headers_and_accepts_exact_200() {
     let (_handle, token) = cancel_pair();
     let mut stats = HostStats::new();
     let spec = ChunkSpec {
-        client: &client,
+        requests: &client,
         url: &url,
         request: RetrievalRequest::FetchWhole {
             contract: WholeBodyContract::Exact { expected_bytes: 16 },
             reason: WholeFetchReason::DirectCrossover,
         },
         continuation: None,
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {
@@ -33,10 +34,13 @@ async fn whole_fetch_omits_range_headers_and_accepts_exact_200() {
         key: "clip",
     };
 
-    let result =
-        download_chunk_throttled(&spec, &sink, &mut stats, &token, &range_fixture::network())
-            .await
-            .expect("whole download");
+    let result = download_chunk_throttled(
+        &spec,
+        &sink,
+        range_fixture::context(&mut stats, &token, &range_fixture::network()),
+    )
+    .await
+    .expect("whole download");
     let request =
         String::from_utf8(request.await.expect("captured request")).expect("request text");
 

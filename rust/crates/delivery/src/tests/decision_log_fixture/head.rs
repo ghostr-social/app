@@ -66,6 +66,7 @@ fn action() -> GeneratedAction {
         command: PlannerCommand::ProbeHead {
             post,
             source: SOURCE.into(),
+            authority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         },
     }
 }

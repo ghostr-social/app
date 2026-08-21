@@ -21,6 +21,7 @@ pub struct DeliveryHarness {
     pub posts: ServablePosts,
     pub cache: ServablePosts,
     pub network: NetworkThrottle,
+    pub requests: ghostr_net::media_request_executor::MediaRequestExecutor,
     pub segmented: SegmentedCache,
     pub root: PathBuf,
 }
@@ -47,12 +48,13 @@ pub fn start_harness_with_store(
 ) -> DeliveryHarness {
     let posts = ServablePosts::new();
     let network = NetworkThrottle::new();
+    let requests = media_client();
     let segmented = SegmentedCache::new();
     let (demand, demand_receiver) = demand_channel();
     let (handle, _discovery_demand) = start_delivery_manager_with_discovery_demand(
         DeliveryManagerConfig {
             store: store.clone(),
-            client: media_client(),
+            requests: requests.clone(),
             cache: posts.clone(),
             segmented: segmented.clone(),
             network: network.clone(),
@@ -71,6 +73,7 @@ pub fn start_harness_with_store(
         posts,
         cache,
         network,
+        requests,
         segmented,
         root,
     }

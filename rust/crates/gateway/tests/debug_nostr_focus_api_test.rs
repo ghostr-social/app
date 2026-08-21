@@ -12,7 +12,7 @@ use ghostr_discovery::cache::client_with_event_cache;
 use ghostr_engine::{DeliveryKind, VideoMeta};
 use ghostr_gateway::hls::sessions::HlsSessions;
 use ghostr_gateway::progressive::route::ProgressiveState;
-use ghostr_gateway::router::configured_router_with_progressive_debug;
+use ghostr_gateway::router::{configured_router_with_progressive_debug, GatewayRouterResources};
 use std::sync::Arc;
 use tower::ServiceExt;
 
@@ -51,8 +51,7 @@ async fn browser_selection_updates_the_native_delivery_focus() {
         debug_feed: feed,
     });
     let router = configured_router_with_progressive_debug(
-        HlsSessions::production(),
-        gateway_fixture::media_client(),
+        GatewayRouterResources::new(HlsSessions::production(), gateway_fixture::media_client()),
         state,
         delivery,
         Arc::new(client_with_event_cache()),

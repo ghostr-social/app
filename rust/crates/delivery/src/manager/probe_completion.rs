@@ -1,7 +1,7 @@
 //! Completion policy for media-size probes.
 
 use crate::delivery_events::DecisionClaim;
-use crate::manager::failure::{classify, FailureClass};
+use crate::manager::failure::{origin_failure_class, FailureClass};
 use crate::manager::transfers::ProbeDone;
 use crate::manager::DeliveryWorker;
 use crate::probe::media::ProbeResult;
@@ -78,7 +78,13 @@ impl DeliveryWorker {
         identity: &TransferIdentity,
         error: anyhow::Error,
     ) -> DecisionOutcome {
-        let class = classify(&error);
+        let Some(class) = origin_failure_class(&error) else {
+            self.probes.release(identity.post());
+            return DecisionOutcome::Failed {
+                class: "warp_head_probe_admission_exhausted".into(),
+                elapsed_ms: 0,
+            };
+        };
         warn!(
             "Probe failed for {} ({class:?})",
             MediaLogIdentity::from_url(identity.source().as_str())

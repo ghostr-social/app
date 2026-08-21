@@ -10,40 +10,59 @@ use crate::chunk::traffic::ChunkTraffic;
 use crate::debug::network::NetworkThrottle;
 use ghostr_engine::adaptive::RetrievalRequest;
 
-pub async fn run<W: ChunkWrite + ?Sized>(
-    spec: &ChunkSpec<'_>,
-    sink: &W,
-    cancel: &CancelToken,
-    network: Option<&NetworkThrottle>,
-    traffic: &mut dyn ChunkTraffic,
+#[cfg(test)]
+#[path = "transfer/queued_cancellation_test.rs"]
+mod queued_cancellation_test;
+
+pub(super) struct TransferExecution<'a, W: ChunkWrite + ?Sized> {
+    pub sink: &'a W,
+    pub cancel: &'a CancelToken,
+    pub network: Option<&'a NetworkThrottle>,
+    pub traffic: &'a mut dyn ChunkTraffic,
+}
+
+pub async fn run<'a, 'spec, W: ChunkWrite + ?Sized>(
+    spec: &'a ChunkSpec<'spec>,
+    execution: TransferExecution<'a, W>,
 ) -> anyhow::Result<ChunkResult> {
-    let opened = match opened::send(spec, cancel).await? {
+    let opened = match opened::send(spec, execution.cancel, execution.traffic).await? {
         opened::Opened::Response(opened) => opened,
-        opened::Opened::Cancelled => return Ok(outcome::cancelled_after_request()),
+        opened::Opened::CancelledBeforeRequest => return Ok(outcome::cancelled_before_request()),
+        opened::Opened::CancelledAfterRequest => return Ok(outcome::cancelled_after_request()),
     };
-    traffic.opened(opened.ttfb);
-    let response = opened.response;
+    execution.traffic.opened(opened.ttfb);
+    let (input, reply) = prepare(spec, execution, opened.response)?;
+    dispatch(input, reply).await
+}
+
+fn prepare<'a, 'spec, W: ChunkWrite + ?Sized>(
+    spec: &'a ChunkSpec<'spec>,
+    execution: TransferExecution<'a, W>,
+    response: ghostr_net::media_request_executor::MediaResponse,
+) -> anyhow::Result<(TransferInput<'a, 'spec, W>, ResponseReply)> {
     let length = response.content_length();
     let reply = classify(&response, spec.request, spec.continuation.is_some())?;
     let total = reply::total(&reply, length);
     let evidence = HttpResponseEvidence::from_response(&response);
     let generation = OriginGeneration::from_response(&response, total)?;
-    let input = TransferInput {
-        response,
-        spec,
-        sink,
-        cancel,
-        network,
-        traffic,
-        generation,
-        length,
-        evidence,
-    };
-    dispatch(input, reply).await
+    Ok((
+        TransferInput {
+            response,
+            spec,
+            sink: execution.sink,
+            cancel: execution.cancel,
+            network: execution.network,
+            traffic: execution.traffic,
+            generation,
+            length,
+            evidence,
+        },
+        reply,
+    ))
 }
 
 struct TransferInput<'a, 'spec, W: ChunkWrite + ?Sized> {
-    response: reqwest::Response,
+    response: ghostr_net::media_request_executor::MediaResponse,
     spec: &'a ChunkSpec<'spec>,
     sink: &'a W,
     cancel: &'a CancelToken,
@@ -87,7 +106,7 @@ async fn partial<W: ChunkWrite + ?Sized>(
     range: ghostr_engine::ByteRange,
     total: Option<u64>,
 ) -> anyhow::Result<ChunkResult> {
-    let returned = range_spec(input.spec, range);
+    let returned = reply::range_spec(input.spec, range);
     receive(ReceiveArgs {
         input,
         returned,
@@ -107,7 +126,7 @@ async fn body<W: ChunkWrite + ?Sized>(
     promoted: bool,
 ) -> anyhow::Result<ChunkResult> {
     let returned = reply::body_spec(input.spec, request);
-    let mode = response_mode(request);
+    let mode = reply::response_mode(request);
     if mode == ResponseWriteMode::Sparse && !input.generation.is_resumable() {
         return ignored(input, range_support);
     }
@@ -143,52 +162,29 @@ struct ReceiveArgs<'a, 'spec, W: ChunkWrite + ?Sized> {
 async fn receive<W: ChunkWrite + ?Sized>(
     args: ReceiveArgs<'_, '_, W>,
 ) -> anyhow::Result<ChunkResult> {
-    let ReceiveArgs {
-        input,
-        returned,
-        range_support,
-        promoted,
-        mode,
-        observation,
-        total,
-    } = args;
-    streamed::receive(streamed::ReceiveInput {
-        response: input.response,
-        spec: &returned,
-        generation: &input.generation,
-        sink: input.sink,
-        cancel: input.cancel,
-        network: input.network,
-        traffic: input.traffic,
-        total,
-        range_support,
-        range_ignored: false,
-        promoted,
-        mode,
-        observation,
-        evidence: input.evidence,
-    })
-    .await
+    args.execute().await
 }
 
-fn range_spec<'a>(spec: &ChunkSpec<'a>, range: ghostr_engine::ByteRange) -> ChunkSpec<'a> {
-    ChunkSpec {
-        client: spec.client,
-        url: spec.url,
-        request: RetrievalRequest::FetchRange {
-            bytes: range,
-            promotion: None,
-        },
-        continuation: spec.continuation,
-        timeouts: spec.timeouts,
-    }
-}
-
-fn response_mode(request: RetrievalRequest) -> ResponseWriteMode {
-    match request {
-        RetrievalRequest::FetchWhole { contract, .. } => {
-            ResponseWriteMode::SingleResponse(contract)
-        }
-        RetrievalRequest::FetchRange { .. } => ResponseWriteMode::Sparse,
+impl<'a, 'spec, W: ChunkWrite + ?Sized> ReceiveArgs<'a, 'spec, W> {
+    async fn execute(self) -> anyhow::Result<ChunkResult> {
+        let input = self.input;
+        let returned = self.returned;
+        streamed::receive(streamed::ReceiveInput {
+            response: input.response,
+            spec: &returned,
+            generation: &input.generation,
+            sink: input.sink,
+            cancel: input.cancel,
+            network: input.network,
+            traffic: input.traffic,
+            total: self.total,
+            range_support: self.range_support,
+            range_ignored: false,
+            promoted: self.promoted,
+            mode: self.mode,
+            observation: self.observation,
+            evidence: input.evidence,
+        })
+        .await
     }
 }

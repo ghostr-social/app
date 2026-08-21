@@ -17,7 +17,7 @@ use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use gate::MediaRequestGate;
-pub use request::{AdmittedMediaRequest, MediaRequest};
+pub use request::{AdmittedMediaRequest, MediaRequest, MediaRequestAdmissionTimeout};
 pub use response::MediaResponse;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -82,5 +82,13 @@ impl MediaRequestExecutor {
 
     pub fn limits(&self) -> MediaRequestLimits {
         self.gate.limits()
+    }
+
+    pub fn active_for(&self, authority: &RequestAuthority) -> usize {
+        self.gate.active_for(authority)
+    }
+
+    pub fn active_connections(&self) -> Vec<(String, usize)> {
+        self.gate.active_connections()
     }
 }

@@ -16,10 +16,11 @@ async fn chunk_downloader_records_throughput_and_success_for_the_host() {
     let (_handle, token) = cancel_pair();
     let mut stats = HostStats::new();
     let spec = ChunkSpec {
-        client: &client,
+        requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(0, 16)),
         continuation: None,
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {
@@ -27,9 +28,13 @@ async fn chunk_downloader_records_throughput_and_success_for_the_host() {
         key: "clip",
     };
 
-    download_chunk_throttled(&spec, &sink, &mut stats, &token, &range_fixture::network())
-        .await
-        .expect("chunk download");
+    download_chunk_throttled(
+        &spec,
+        &sink,
+        range_fixture::context(&mut stats, &token, &range_fixture::network()),
+    )
+    .await
+    .expect("chunk download");
 
     let host = host_of(&url).expect("fixture host");
     let throughput = stats.expected_throughput(&host);

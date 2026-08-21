@@ -1,8 +1,9 @@
 use super::fetch::{asset, manifest, FetchedObject};
 use anyhow::{bail, Result};
+use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_hls_manifest::hls_manifest::{inspect_hls_bootstrap, HlsBootstrap};
 use ghostr_net::media_log_identity::MediaLogIdentity;
-use ghostr_net::outbound_media_client::MediaHttpRequests;
+use ghostr_net::media_request_executor::MediaRequestExecutor;
 use std::sync::Arc;
 use url::Url;
 
@@ -27,12 +28,13 @@ impl PreparedHls {
 }
 
 pub(crate) async fn prepare_hls(
-    client: &dyn MediaHttpRequests,
+    requests: &MediaRequestExecutor,
     sources: &[String],
+    priority: PreemptionAuthority,
 ) -> Result<PreparedHls> {
     let mut last = None;
     for source in sources {
-        match prepare_source(client, source).await {
+        match prepare_source(requests, source, priority).await {
             Ok(prepared) => return Ok(prepared),
             Err(error) => {
                 last = Some(
@@ -44,14 +46,18 @@ pub(crate) async fn prepare_hls(
     Err(last.unwrap_or_else(|| anyhow::anyhow!("HLS item has no source")))
 }
 
-async fn prepare_source(client: &dyn MediaHttpRequests, source: &str) -> Result<PreparedHls> {
-    let root = manifest(client, source).await?;
+async fn prepare_source(
+    requests: &MediaRequestExecutor,
+    source: &str,
+    priority: PreemptionAuthority,
+) -> Result<PreparedHls> {
+    let root = manifest(requests, source, priority).await?;
     let inspected = inspect_hls_bootstrap(&root.body, &root.final_url)?;
     let mut objects = vec![root.into()];
     let media = match inspected {
         HlsBootstrap::Media { init, segment } => (init, segment),
         HlsBootstrap::Master { variant } => {
-            let child = manifest(client, variant.as_str()).await?;
+            let child = manifest(requests, variant.as_str(), priority).await?;
             let inspected = inspect_hls_bootstrap(&child.body, &child.final_url)?;
             objects.push(child.into());
             match inspected {
@@ -61,9 +67,9 @@ async fn prepare_source(client: &dyn MediaHttpRequests, source: &str) -> Result<
         }
     };
     if let Some(init) = media.0 {
-        objects.push(asset(client, &init).await?.into());
+        objects.push(asset(requests, &init, priority).await?.into());
     }
-    objects.push(asset(client, &media.1).await?.into());
+    objects.push(asset(requests, &media.1, priority).await?.into());
     Ok(PreparedHls { objects })
 }
 

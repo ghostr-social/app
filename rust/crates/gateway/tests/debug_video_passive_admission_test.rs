@@ -12,7 +12,7 @@ use ghostr_discovery::cache::client_with_event_cache;
 use ghostr_gateway::hls::sessions::HlsSessions;
 use ghostr_gateway::progressive::capabilities::ProgressiveCapabilities;
 use ghostr_gateway::progressive::route::ProgressiveState;
-use ghostr_gateway::router::configured_router_with_progressive_debug;
+use ghostr_gateway::router::{configured_router_with_progressive_debug, GatewayRouterResources};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -46,8 +46,7 @@ fn debug_router(delivery: &DeliveryFixture) -> Router {
         debug_feed: DebugFeed::new(delivery.handle.clone(), Vec::new()),
     });
     configured_router_with_progressive_debug(
-        HlsSessions::production(),
-        gateway_fixture::media_client(),
+        GatewayRouterResources::new(HlsSessions::production(), gateway_fixture::media_client()),
         progressive,
         delivery.handle.clone(),
         Arc::new(client_with_event_cache()),

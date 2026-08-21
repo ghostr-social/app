@@ -60,6 +60,14 @@ impl MediaRequestGate {
         self.with_state(|state| state.limits)
     }
 
+    pub(super) fn active_for(&self, authority: &RequestAuthority) -> usize {
+        self.with_state(|state| state.active_for(authority))
+    }
+
+    pub(super) fn active_connections(&self) -> Vec<(String, usize)> {
+        self.with_state(|state| state.active_connections())
+    }
+
     fn enqueue(
         &self,
         authority: RequestAuthority,
@@ -83,23 +91,27 @@ impl MediaRequestGate {
 
     fn dispatch(&self) {
         loop {
-            let grants = self.with_state(|state| state.take_grants(self));
-            let mut failed = Vec::new();
-            for (sender, lease) in grants {
-                if let Err(mut lease) = sender.send(lease) {
-                    lease.armed = false;
-                    failed.push(lease.authority.clone());
-                }
-            }
+            let failed = self.dispatch_once();
             if failed.is_empty() {
                 break;
             }
-            self.with_state(|state| {
-                for authority in &failed {
-                    state.release(authority);
-                }
-            });
+            self.release_failed(&failed);
         }
+    }
+
+    fn dispatch_once(&self) -> Vec<RequestAuthority> {
+        self.with_state(|state| state.take_grants(self))
+            .into_iter()
+            .filter_map(|(sender, lease)| returned_authority(sender.send(lease)))
+            .collect()
+    }
+
+    fn release_failed(&self, authorities: &[RequestAuthority]) {
+        self.with_state(|state| {
+            for authority in authorities {
+                state.release(authority);
+            }
+        });
     }
 
     fn with_state<T>(&self, operation: impl FnOnce(&mut GateState) -> T) -> T {
@@ -110,6 +122,13 @@ impl MediaRequestGate {
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         operation(&mut state)
     }
+}
+
+fn returned_authority(result: Result<(), RequestLease>) -> Option<RequestAuthority> {
+    result.err().map(|mut lease| {
+        lease.armed = false;
+        lease.authority.clone()
+    })
 }
 
 impl RequestLease {

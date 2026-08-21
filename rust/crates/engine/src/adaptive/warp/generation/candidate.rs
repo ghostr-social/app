@@ -1,8 +1,8 @@
 use super::allocation::{classify, resources, source, AllocationSpec};
 use super::builder::Builder;
-use super::prediction::Prediction;
+use super::prediction::transform_prediction;
 use super::{GeneratedAction, PlannerCommand};
-use crate::adaptive::{ActionForecast, ActionKind, CandidateSnapshot, CompletionTimes};
+use crate::adaptive::{ActionKind, CandidateSnapshot};
 
 impl Builder<'_> {
     pub(super) fn add_candidate(&mut self, candidate: &CandidateSnapshot) {
@@ -38,6 +38,7 @@ impl Builder<'_> {
             command: PlannerCommand::ProbeHead {
                 post: candidate.post.clone(),
                 source: source.to_owned(),
+                authority: super::allocation::authority(candidate, self.snapshot, self.base.mode),
             },
         });
     }
@@ -185,15 +186,4 @@ fn bounded_range(range: crate::ByteRange, maximum: u64) -> crate::ByteRange {
         range.start,
         range.start.saturating_add(maximum).min(range.end),
     )
-}
-
-fn transform_prediction(candidate: &CandidateSnapshot, cpu_ms: u64) -> Prediction {
-    Prediction {
-        forecast: ActionForecast::new(
-            CompletionTimes::new(cpu_ms, cpu_ms, cpu_ms, cpu_ms),
-            10_000,
-            candidate.duration_ms,
-        ),
-        uncertainty_bps: 0,
-    }
 }

@@ -26,10 +26,11 @@ async fn throttled_large_response_makes_incremental_store_progress() {
     let (_handle, token) = cancel_pair();
     let mut stats = HostStats::new();
     let spec = ChunkSpec {
-        client: &client,
+        requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(0, TOTAL)),
         continuation: None,
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {
@@ -42,7 +43,11 @@ async fn throttled_large_response_makes_incremental_store_progress() {
         ..NetworkProfile::default()
     });
 
-    let download = download_chunk_throttled(&spec, &sink, &mut stats, &token, &network);
+    let download = download_chunk_throttled(
+        &spec,
+        &sink,
+        range_fixture::context(&mut stats, &token, &network),
+    );
     tokio::pin!(download);
     let progress = tokio::time::timeout(PROGRESS_WATCHDOG, async {
         tokio::select! {

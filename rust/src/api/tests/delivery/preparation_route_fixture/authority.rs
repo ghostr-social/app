@@ -12,15 +12,14 @@ use ghostr_delivery::debug::feed::DebugFeed;
 use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_delivery::delivery_events::{command_channel, DeliveryHandle};
 use ghostr_delivery::playback_demand::demand_channel;
-use ghostr_gateway::hls::sessions::HlsSessions;
 use ghostr_gateway::progressive::capabilities::ProgressiveCapabilities;
 use ghostr_gateway::progressive::route::{ProgressiveState, ProgressiveTiming};
 use ghostr_gateway::router::configured_router_with_progressive;
-use ghostr_net::outbound_media_client::MediaHttpClient;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
 
 mod plan;
+mod requests;
 
 pub(super) struct RouteAuthority {
     store: Arc<PartialRangeStore>,
@@ -76,11 +75,7 @@ impl RouteAuthority {
             ))]
             debug_feed: DebugFeed::new(self.delivery.clone(), Vec::new()),
         });
-        configured_router_with_progressive(
-            HlsSessions::production(),
-            Arc::new(MediaHttpClient::public().unwrap()),
-            state,
-        )
+        configured_router_with_progressive(requests::router_resources(), state)
     }
 }
 

@@ -7,7 +7,7 @@ use axum::http::{Request, StatusCode};
 use ghostr_delivery::delivery_events::command_channel;
 use ghostr_discovery::cache::client_with_event_cache;
 use ghostr_gateway::hls::sessions::HlsSessions;
-use ghostr_gateway::router::configured_router_with_progressive_debug;
+use ghostr_gateway::router::{configured_router_with_progressive_debug, GatewayRouterResources};
 use tower::ServiceExt;
 
 #[tokio::test]
@@ -25,8 +25,7 @@ async fn debug_api_rejects_a_non_http_video_url() {
         debug_feed: ghostr_delivery::debug::feed::DebugFeed::new(delivery.clone(), Vec::new()),
     });
     let router = configured_router_with_progressive_debug(
-        HlsSessions::production(),
-        gateway_fixture::media_client(),
+        GatewayRouterResources::new(HlsSessions::production(), gateway_fixture::media_client()),
         state,
         delivery,
         std::sync::Arc::new(client_with_event_cache()),

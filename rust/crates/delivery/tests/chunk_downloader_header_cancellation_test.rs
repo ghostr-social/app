@@ -17,11 +17,13 @@ async fn cancellation_while_waiting_for_headers_ends_the_request_promptly() {
     let (handle, token) = cancel_pair();
     let mut stats = HostStats::new();
     let spec = ChunkSpec {
-        client: &client,
+        requests: &client,
         url: &stalled.url,
         request: range_fixture::range_request(ByteRange::new(0, 8)),
         continuation: None,
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts {
+            admission: Duration::from_secs(30),
             headers: Duration::from_secs(30),
             idle: Duration::from_secs(30),
         },
@@ -38,7 +40,11 @@ async fn cancellation_while_waiting_for_headers_ends_the_request_promptly() {
 
     let (result, ()) = tokio::time::timeout(Duration::from_secs(1), async {
         tokio::join!(
-            range_fixture::download_chunk_throttled(&spec, &sink, &mut stats, &token, &network),
+            range_fixture::download_chunk_throttled(
+                &spec,
+                &sink,
+                range_fixture::context(&mut stats, &token, &network)
+            ),
             cancel,
         )
     })

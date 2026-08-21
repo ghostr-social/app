@@ -1,10 +1,11 @@
 mod delivery_fixture;
+mod probe_fixture;
 mod raw_http;
 
 use delivery_fixture::media_client;
-use ghostr_delivery::probe::media::probe;
 use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_net::transfer_timeouts::TransferTimeouts;
+use probe_fixture::probe;
 use raw_http::spawn_raw_server;
 
 const CODED_HEAD: &[u8] = b"HTTP/1.1 200 OK\r\n\
@@ -19,13 +20,8 @@ async fn media_probe_requires_one_identity_encoded_representation() {
     let (url, request) = spawn_raw_server(CODED_HEAD).await;
     let mut stats = HostStats::new();
 
-    let outcome = probe(
-        &media_client(),
-        &url,
-        TransferTimeouts::default(),
-        &mut stats,
-    )
-    .await;
+    let requests = media_client();
+    let outcome = probe(&requests, &url, TransferTimeouts::default(), &mut stats).await;
     let request = String::from_utf8(request.await.expect("origin request")).expect("HTTP request");
 
     assert_eq!(accept_encodings(&request), ["identity"]);

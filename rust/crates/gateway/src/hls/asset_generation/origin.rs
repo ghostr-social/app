@@ -1,7 +1,8 @@
 use crate::hls::asset_response::AssetResponseEnvelope;
+use ghostr_net::media_request_executor::MediaResponse;
 use ghostr_net::strong_etag::{single_strong_etag, StrongEtag};
 use reqwest::header::HeaderValue;
-use reqwest::{Response, Url};
+use reqwest::Url;
 use sha2::{Digest, Sha256};
 
 const URL_DOMAIN: &[u8] = b"ghostr:hls-final-url:v1";
@@ -19,7 +20,7 @@ impl OriginGeneration {
         self.strong_etag.as_header_value().clone()
     }
 
-    pub(super) fn observed(response: &Response, total: Option<u64>) -> Option<Self> {
+    pub(super) fn observed(response: &MediaResponse, total: Option<u64>) -> Option<Self> {
         let strong_etag = single_strong_etag(response.headers()).ok().flatten()?;
         if strong_etag.as_bytes().len() > MAX_ETAG_BYTES {
             return None;
@@ -39,7 +40,11 @@ impl OriginGeneration {
         }
     }
 
-    pub(super) fn matches(&self, envelope: AssetResponseEnvelope, response: &Response) -> bool {
+    pub(super) fn matches(
+        &self,
+        envelope: AssetResponseEnvelope,
+        response: &MediaResponse,
+    ) -> bool {
         if self.final_url != fingerprint(response.url()) {
             return false;
         }
@@ -52,7 +57,7 @@ impl OriginGeneration {
         }
     }
 
-    fn etag_matches(&self, response: &Response) -> bool {
+    fn etag_matches(&self, response: &MediaResponse) -> bool {
         matches!(
             single_strong_etag(response.headers()),
             Ok(Some(found)) if found == self.strong_etag

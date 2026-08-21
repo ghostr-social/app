@@ -31,7 +31,7 @@ async fn delivery_manager_publishes_adaptive_discovery_demand() {
     let (_demand, demand_receiver) = demand_channel();
     let config = DeliveryManagerConfig {
         store,
-        client: media_client(),
+        requests: media_client(),
         cache: ServablePosts::new(),
         segmented: SegmentedCache::new(),
         network: NetworkThrottle::new(),

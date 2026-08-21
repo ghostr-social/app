@@ -6,6 +6,9 @@
 
 use std::time::Duration;
 
+/// Longest wait for local request-capacity admission.
+const ADMISSION_TIMEOUT: Duration = Duration::from_secs(15);
+
 /// Longest wait for response headers after sending a request.
 const HEADERS_TIMEOUT: Duration = Duration::from_secs(15);
 
@@ -18,19 +21,24 @@ const HLS_TOTAL_TIMEOUT: Duration = Duration::from_secs(30);
 /// Timeout pair applied by the probe and the chunk downloader.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct TransferTimeouts {
+    pub admission: Duration,
     pub headers: Duration,
     pub idle: Duration,
 }
 
 impl TransferTimeouts {
-    fn new(headers: Duration, idle: Duration) -> Self {
-        Self { headers, idle }
+    fn new(admission: Duration, headers: Duration, idle: Duration) -> Self {
+        Self {
+            admission,
+            headers,
+            idle,
+        }
     }
 }
 
 impl Default for TransferTimeouts {
     fn default() -> Self {
-        Self::new(HEADERS_TIMEOUT, IDLE_TIMEOUT)
+        Self::new(ADMISSION_TIMEOUT, HEADERS_TIMEOUT, IDLE_TIMEOUT)
     }
 }
 

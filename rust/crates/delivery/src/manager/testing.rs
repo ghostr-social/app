@@ -4,19 +4,15 @@ use crate::manager::timeline::{TimelineCoordinator, TimelineParser};
 use crate::playback_demand::DemandReceiver;
 use ghostr_engine::media_timeline::MediaTimeline;
 use ghostr_engine::{EngineParams, PostId};
-use ghostr_net::outbound_media_client::MediaHttpRequests;
 use std::sync::Arc;
 
 impl DeliveryWorker {
-    pub(crate) async fn create_with_timeline_parser<C>(
-        config: DeliveryManagerConfig<C>,
+    pub(crate) async fn create_with_timeline_parser(
+        config: DeliveryManagerConfig,
         commands: CommandReceiver,
         demand: DemandReceiver,
         parser: Arc<dyn TimelineParser>,
-    ) -> Self
-    where
-        C: MediaHttpRequests + 'static,
-    {
+    ) -> Self {
         let store = config.store.clone();
         let mut worker = Self::create(config, commands, demand).await;
         worker.timelines = TimelineCoordinator::with_parser(store, parser, 2);

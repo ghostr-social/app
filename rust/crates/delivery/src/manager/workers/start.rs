@@ -64,6 +64,7 @@ impl DownloadWorkers {
 
     pub(crate) fn launch(&mut self, ctx: TransferContext, prepared: PreparedTransfer) -> ActionId {
         let action = prepared.action();
+        let priority = prepared.priority.authority;
         let (handle, token) = cancel_pair();
         self.active.insert_action(ActionRegistration {
             attempt: &prepared.attempt,
@@ -79,6 +80,7 @@ impl DownloadWorkers {
             attempt: prepared.attempt,
             url: prepared.url,
             retrieval: prepared.retrieval,
+            priority,
             token,
             action: prepared.store_action,
         });

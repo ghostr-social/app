@@ -24,10 +24,11 @@ async fn chunk_downloader_rejects_coded_bytes_hidden_after_identity() {
     let client = range_fixture::media_client();
     let (_handle, token) = cancel_pair();
     let spec = ChunkSpec {
-        client: &client,
+        requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(0, 5)),
         continuation: None,
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {
@@ -38,9 +39,7 @@ async fn chunk_downloader_rejects_coded_bytes_hidden_after_identity() {
     range_fixture::download_chunk_throttled(
         &spec,
         &sink,
-        &mut HostStats::new(),
-        &token,
-        &range_fixture::network(),
+        range_fixture::context(&mut HostStats::new(), &token, &range_fixture::network()),
     )
     .await
     .expect_err("coded bytes must not enter the sparse store");

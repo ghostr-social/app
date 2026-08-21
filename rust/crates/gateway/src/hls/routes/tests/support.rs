@@ -4,6 +4,7 @@ use crate::router::GatewayHttpState;
 use axum::body::to_bytes;
 use axum::extract::{Path, State};
 use ghostr_delivery::segmented::SegmentedCache;
+use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
 use reqwest::{Client, RequestBuilder};
@@ -43,7 +44,10 @@ pub(super) async fn state_with_sessions(
     let id = sessions.acquire(vec![source]).await.expect("session");
     let client = Client::builder().no_proxy().build().expect("client");
     let state = GatewayHttpState {
-        client: Arc::new(LocalClient(client)),
+        requests: MediaRequestExecutor::new(
+            Arc::new(LocalClient(client)),
+            MediaRequestLimits::try_new(4, 4).unwrap(),
+        ),
         hls_sessions: sessions,
         segmented: SegmentedCache::new(),
         hls_timeouts: timeouts,

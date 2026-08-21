@@ -1,0 +1,31 @@
+use super::super::{open, FetchSpec};
+use super::support::{client, stalled_headers};
+use ghostr_engine::adaptive::PreemptionAuthority;
+use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
+use std::time::Duration;
+
+#[tokio::test]
+async fn total_deadline_wins_while_waiting_for_hls_headers() {
+    let (url, server) = stalled_headers().await;
+    let timing = HlsTransferTimeouts::new(
+        Duration::from_secs(1),
+        Duration::from_secs(1),
+        Duration::from_millis(20),
+    );
+    let deadline = tokio::time::Instant::now() + timing.total;
+    let spec = FetchSpec {
+        url: &url,
+        limit: 1,
+        require_manifest: false,
+        timeouts: timing,
+        priority: PreemptionAuthority::Transition,
+    };
+    let result = open(&client(), spec, deadline).await;
+    let error = match result {
+        Ok(_) => panic!("transfer must hit its total deadline"),
+        Err(error) => error,
+    };
+    assert!(error.to_string().contains("transfer timed out"));
+    assert!(!error.to_string().contains("response headers timed out"));
+    server.abort();
+}

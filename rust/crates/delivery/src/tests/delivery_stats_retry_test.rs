@@ -15,6 +15,7 @@ async fn failed_host_stats_save_stays_dirty_for_the_next_attempt() {
         post: PostId::new("clip"),
         url: "https://media.example/clip.mp4".to_owned(),
         outcome: Err(anyhow!("origin failed")),
+        concurrency: 1,
     });
 
     keeper.save_now().await;

@@ -19,6 +19,7 @@ fn every_source_bearing_warp_command_is_privacy_transformed_field_by_field() {
             PlannerCommand::ProbeHead {
                 post: PostId::new("secret-post"),
                 source: source.into(),
+                authority: crate::adaptive::PreemptionAuthority::Transition,
             },
             ActionKind::Head,
         ),

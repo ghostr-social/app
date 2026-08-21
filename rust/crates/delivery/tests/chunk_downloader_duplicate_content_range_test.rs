@@ -27,10 +27,11 @@ async fn duplicate_content_range_cannot_extend_a_sparse_generation() {
     let generation = SourceGeneration::try_new(&url, "\"fixture-media\"", 16).unwrap();
     let (_handle, token) = cancel_pair();
     let spec = ChunkSpec {
-        client: &client,
+        requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(8, 16)),
         continuation: Some(&generation),
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {
@@ -41,9 +42,7 @@ async fn duplicate_content_range_cannot_extend_a_sparse_generation() {
     let result = range_fixture::download_chunk_throttled(
         &spec,
         &sink,
-        &mut HostStats::new(),
-        &token,
-        &range_fixture::network(),
+        range_fixture::context(&mut HostStats::new(), &token, &range_fixture::network()),
     )
     .await;
 

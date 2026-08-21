@@ -1,7 +1,7 @@
 use axum::http::header::RANGE;
 use axum::http::{HeaderMap, HeaderValue};
 use ghostr_net::content_range::{parse_range_decimal, ParsedContentRange};
-use reqwest::RequestBuilder;
+use ghostr_net::media_request_executor::MediaRequest;
 
 #[cfg(test)]
 mod tests;
@@ -33,10 +33,10 @@ impl AssetRangeRequest {
         parsed(value).unwrap_or(Self::Full)
     }
 
-    pub(super) fn apply(self, request: RequestBuilder) -> RequestBuilder {
+    pub(super) fn apply(self, request: MediaRequest) -> anyhow::Result<MediaRequest> {
         match self.header_value() {
-            Some(value) => request.header(RANGE, value),
-            None => request,
+            Some(value) => Ok(request.header(RANGE, value.parse()?)),
+            None => Ok(request),
         }
     }
 

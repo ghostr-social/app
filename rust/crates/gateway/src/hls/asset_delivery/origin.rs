@@ -1,45 +1,63 @@
 use super::{bad_gateway, AssetCall};
-use crate::hls::asset_generation::{AssetFence, FirstAdmission, OriginGeneration};
+use crate::hls::asset_generation::{
+    AssetFence, FirstAdmission, OriginConfirmation, OriginGeneration,
+};
 use crate::hls::asset_request::AssetRangeRequest;
 use crate::hls::asset_response::validate;
 use crate::hls::transfer::HlsTransfer;
 use axum::body::Body;
 use axum::http::header::{ACCEPT_ENCODING, IF_RANGE};
 use axum::http::{HeaderValue, Response, StatusCode};
-use reqwest::{RequestBuilder, Url};
+use ghostr_engine::adaptive::PreemptionAuthority;
+use ghostr_net::media_request_executor::MediaRequest;
+use reqwest::Url;
+
+pub(super) struct OriginRequest {
+    pub url: Url,
+    pub range: AssetRangeRequest,
+    pub fence: AssetFence,
+}
 
 impl AssetCall {
     pub(super) async fn first(
         &self,
-        url: Url,
-        range: AssetRangeRequest,
-        fence: AssetFence,
+        request: OriginRequest,
         admission: FirstAdmission,
     ) -> Result<Response<Body>, StatusCode> {
-        let transfer = self.open(&url, range, None).await?;
-        let envelope = validate(range, transfer.response()).map_err(bad_gateway)?;
-        self.ensure_owner(&fence).await?;
+        let transfer = self.open(&request.url, request.range, None).await?;
+        let envelope = validate(request.range, transfer.response()).map_err(bad_gateway)?;
+        self.ensure_owner(&request.fence).await?;
         admission.admit(envelope, transfer.response());
         transfer.into_proxy(envelope)
     }
 
     pub(super) async fn continue_origin(
         &self,
-        url: Url,
-        range: AssetRangeRequest,
-        fence: AssetFence,
+        request: OriginRequest,
         generation: OriginGeneration,
     ) -> Result<Response<Body>, StatusCode> {
-        let transfer = self.open(&url, range, Some(generation.if_range())).await?;
-        let envelope = match validate(range, transfer.response()) {
+        let transfer = self
+            .open(&request.url, request.range, Some(generation.if_range()))
+            .await?;
+        let envelope = match validate(request.range, transfer.response()) {
             Ok(envelope) => envelope,
-            Err(_) => return self.reject_envelope(fence, generation, transfer).await,
+            Err(_) => {
+                return self
+                    .reject_envelope(request.fence, generation, transfer)
+                    .await
+            }
         };
-        fence
-            .confirm_origin(&generation, envelope, transfer.response(), self.deadline)
+        request
+            .fence
+            .confirm_origin(OriginConfirmation {
+                expected: &generation,
+                envelope,
+                response: transfer.response(),
+                deadline: self.deadline,
+            })
             .await
             .map_err(bad_gateway)?;
-        self.ensure_owner(&fence).await?;
+        self.ensure_owner(&request.fence).await?;
         transfer.into_proxy(envelope)
     }
 
@@ -73,13 +91,13 @@ impl AssetCall {
             .map_err(bad_gateway)
     }
 
-    fn request(&self, url: &Url, range: AssetRangeRequest) -> Result<RequestBuilder, StatusCode> {
+    fn request(&self, url: &Url, range: AssetRangeRequest) -> Result<MediaRequest, StatusCode> {
         let request = self
             .state
-            .client
-            .get(url.as_str())
+            .requests
+            .get(url.as_str(), PreemptionAuthority::PlaybackCritical)
             .map_err(bad_gateway)?
-            .header(ACCEPT_ENCODING, "identity");
-        Ok(range.apply(request))
+            .header(ACCEPT_ENCODING, HeaderValue::from_static("identity"));
+        range.apply(request).map_err(bad_gateway)
     }
 }

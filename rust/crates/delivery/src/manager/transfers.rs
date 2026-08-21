@@ -3,11 +3,7 @@
 //! scratch `HostStats`; the manager re-records outcomes into the one
 //! owned instance, keeping the statistics single-owner and lock-free.
 
-use crate::chunk::cancel::CancelToken;
-use crate::chunk::downloader::{
-    download_chunk_captured, ChunkResult, ChunkSpec, ObservedChunk, ResponseObservation,
-};
-use crate::chunk::sink::TransferChunkSink;
+use crate::chunk::downloader::{ChunkResult, ResponseObservation};
 use crate::debug::network::NetworkThrottle;
 use crate::delivery_events::DecisionClaim;
 use crate::manager::inflight::ChunkAttempt;
@@ -15,20 +11,20 @@ use crate::manager::response_open::ResponseOpener;
 use crate::manager::retry::CooldownId;
 use crate::manager::traffic::TrafficPublisher;
 use crate::probe::media::ProbeResult;
-use ghostr_engine::adaptive::RetrievalRequest;
-use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::PostId;
-use ghostr_net::outbound_media_client::MediaHttpRequests;
+use ghostr_net::media_request_executor::MediaRequestExecutor;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
-use ghostr_partial_store::partial_range_store::StoreAction;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
+mod chunk;
 mod probe;
 mod traffic;
+#[cfg(test)]
+pub(crate) use chunk::chunk_event;
+pub(crate) use chunk::{spawn_chunk, ChunkLaunch};
 pub(crate) use probe::{spawn_probe, ProbeLaunch};
-use traffic::TransferTraffic;
 
 pub(crate) enum InternalEvent {
     Transfer(TransferEvent),
@@ -65,6 +61,7 @@ pub(crate) struct ChunkDone {
     pub url: String,
     pub outcome: anyhow::Result<ChunkResult>,
     pub origin: Option<Box<ghostr_engine::origin_model::OriginObservation>>,
+    pub request_started: bool,
 }
 
 pub(crate) struct ProbeDone {
@@ -76,106 +73,17 @@ pub(crate) struct ProbeObservation {
     pub post: PostId,
     pub url: String,
     pub outcome: anyhow::Result<ProbeResult>,
+    pub concurrency: usize,
 }
 
 /// Everything a spawned transfer needs; cheap to clone per task.
 #[derive(Clone)]
 pub(crate) struct TransferContext {
-    pub client: Arc<dyn MediaHttpRequests>,
+    pub requests: MediaRequestExecutor,
     pub store: Arc<PartialRangeStore>,
     pub events: UnboundedSender<InternalEvent>,
     pub responses: ResponseOpener,
     pub timeouts: TransferTimeouts,
     pub network: NetworkThrottle,
     pub traffic: TrafficPublisher,
-}
-
-pub(crate) struct ChunkLaunch {
-    pub context: TransferContext,
-    pub attempt: ChunkAttempt,
-    pub url: String,
-    pub retrieval: RetrievalRequest,
-    pub token: CancelToken,
-    pub action: StoreAction,
-}
-
-/// Starts one granted transfer under a supervisor that always releases it.
-pub(crate) fn spawn_chunk(launch: ChunkLaunch) {
-    tokio::spawn(async move {
-        let attempt = launch.attempt.clone();
-        let url = launch.url.clone();
-        let action = launch.action.clone();
-        let context = launch.context.clone();
-        let worker = tokio::spawn(run_chunk(launch));
-        let observed = worker.await;
-        attempt.mark_io_finished();
-        context.store.release_action(&action).await;
-        let event = match observed {
-            Ok(Ok(observed)) => observed_chunk_event(attempt, url, observed),
-            Ok(Err(error)) => chunk_event(attempt, url, Err(error)),
-            Err(error) => chunk_event(
-                attempt,
-                url,
-                Err(anyhow::anyhow!("video transfer task failed: {error}")),
-            ),
-        };
-        let _ = context.events.send(InternalEvent::Transfer(event));
-    });
-}
-
-async fn run_chunk(launch: ChunkLaunch) -> anyhow::Result<ObservedChunk> {
-    let ChunkLaunch {
-        context,
-        attempt,
-        url,
-        retrieval,
-        token,
-        action,
-    } = launch;
-    let sink = TransferChunkSink::new(&context.store, attempt.identity().clone(), action.clone());
-    let mut scratch = HostStats::new();
-    let mut traffic = TransferTraffic::new(&attempt, &context, &url, action);
-    let continuation = context.store.continuation_for(attempt.identity()).await?;
-    let spec = ChunkSpec {
-        client: context.client.as_ref(),
-        url: &url,
-        request: retrieval,
-        continuation: continuation.as_ref(),
-        timeouts: context.timeouts,
-    };
-    Ok(download_chunk_captured(
-        &spec,
-        &sink,
-        &mut scratch,
-        &token,
-        &context.network,
-        &mut traffic,
-    )
-    .await)
-}
-
-pub(crate) fn chunk_event(
-    attempt: ChunkAttempt,
-    url: String,
-    outcome: anyhow::Result<ChunkResult>,
-) -> TransferEvent {
-    TransferEvent::ChunkDone(ChunkDone {
-        attempt,
-        url,
-        outcome,
-        origin: None,
-    })
-}
-
-fn observed_chunk_event(
-    attempt: ChunkAttempt,
-    url: String,
-    observed: ObservedChunk,
-) -> TransferEvent {
-    TransferEvent::ChunkDone(ChunkDone {
-        attempt,
-        url,
-        outcome: observed.result,
-        origin: Some(Box::new(observed.origin)),
-    })
 }

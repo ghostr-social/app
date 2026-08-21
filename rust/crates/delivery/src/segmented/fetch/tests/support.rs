@@ -1,3 +1,4 @@
+use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use reqwest::{Client, RequestBuilder};
 use std::sync::Arc;
@@ -14,14 +15,25 @@ impl MediaHttpRequests for LocalClient {
     }
 }
 
-pub(super) fn client() -> Arc<LocalClient> {
-    Arc::new(LocalClient(
-        Client::builder().no_proxy().build().expect("client"),
-    ))
+pub(super) fn client() -> MediaRequestExecutor {
+    let client = LocalClient(Client::builder().no_proxy().build().expect("client"));
+    MediaRequestExecutor::new(Arc::new(client), MediaRequestLimits::try_new(1, 1).unwrap())
 }
 
 pub(super) async fn stalled_body() -> (String, JoinHandle<()>) {
     serve_body(None).await
+}
+
+pub(super) async fn stalled_headers() -> (String, JoinHandle<()>) {
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("listener");
+    let address = listener.local_addr().expect("address");
+    let task = tokio::spawn(async move {
+        let (mut socket, _) = listener.accept().await.expect("request");
+        let mut request = [0; 1024];
+        assert!(socket.read(&mut request).await.expect("read request") > 0);
+        std::future::pending::<()>().await;
+    });
+    (format!("http://{address}/segment.m4s"), task)
 }
 
 pub(super) async fn trickled_body(period: Duration) -> (String, JoinHandle<()>) {

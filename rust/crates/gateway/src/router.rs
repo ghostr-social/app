@@ -16,7 +16,7 @@ use axum::Router;
 ))]
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_delivery::segmented::SegmentedCache;
-use ghostr_net::outbound_media_client::MediaHttpRequests;
+use ghostr_net::media_request_executor::MediaRequestExecutor;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
 #[cfg(all(
     feature = "video-debug-web",
@@ -28,33 +28,48 @@ use std::sync::Arc;
 
 #[derive(Clone)]
 pub(crate) struct GatewayHttpState {
-    pub client: Arc<dyn MediaHttpRequests>,
+    pub requests: MediaRequestExecutor,
     pub hls_sessions: HlsSessions,
     pub segmented: SegmentedCache,
     pub hls_timeouts: HlsTransferTimeouts,
 }
 
+#[derive(Clone)]
+pub struct GatewayRouterResources {
+    hls_sessions: HlsSessions,
+    requests: MediaRequestExecutor,
+    segmented: SegmentedCache,
+}
+
+impl GatewayRouterResources {
+    pub fn new(hls_sessions: HlsSessions, requests: MediaRequestExecutor) -> Self {
+        Self {
+            hls_sessions,
+            requests,
+            segmented: SegmentedCache::new(),
+        }
+    }
+
+    pub fn with_segmented(mut self, segmented: SegmentedCache) -> Self {
+        self.segmented = segmented;
+        self
+    }
+}
+
 /// The gateway with `/video.mp4` served from the partial store instead of
 /// proxied upstream; HLS routes and `/status` are wired unchanged.
 pub fn configured_router_with_progressive(
-    hls_sessions: HlsSessions,
-    client: Arc<dyn MediaHttpRequests>,
+    resources: GatewayRouterResources,
     progressive: Arc<ProgressiveState>,
 ) -> Router {
-    configured_router_with_segmented(hls_sessions, client, progressive, SegmentedCache::new())
+    configured_router_with_segmented(resources, progressive)
 }
 
 pub fn configured_router_with_segmented(
-    hls_sessions: HlsSessions,
-    client: Arc<dyn MediaHttpRequests>,
+    resources: GatewayRouterResources,
     progressive: Arc<ProgressiveState>,
-    segmented: SegmentedCache,
 ) -> Router {
-    progressive_route::router(progressive).merge(shared_router(shared_state(
-        hls_sessions,
-        client,
-        segmented,
-    )))
+    progressive_route::router(progressive).merge(shared_router(shared_state(resources)))
 }
 
 #[cfg(all(
@@ -63,20 +78,12 @@ pub fn configured_router_with_segmented(
     not(any(target_os = "android", target_os = "ios"))
 ))]
 pub fn configured_router_with_progressive_debug(
-    hls_sessions: HlsSessions,
-    client: Arc<dyn MediaHttpRequests>,
+    resources: GatewayRouterResources,
     progressive: Arc<ProgressiveState>,
     delivery: DeliveryHandle,
     nostr: Arc<Client>,
 ) -> Router {
-    configured_router_with_segmented_debug(
-        hls_sessions,
-        client,
-        progressive,
-        delivery,
-        nostr,
-        SegmentedCache::new(),
-    )
+    configured_router_with_segmented_debug(resources, progressive, delivery, nostr)
 }
 
 #[cfg(all(
@@ -85,32 +92,28 @@ pub fn configured_router_with_progressive_debug(
     not(any(target_os = "android", target_os = "ios"))
 ))]
 pub fn configured_router_with_segmented_debug(
-    hls_sessions: HlsSessions,
-    client: Arc<dyn MediaHttpRequests>,
+    resources: GatewayRouterResources,
     progressive: Arc<ProgressiveState>,
     delivery: DeliveryHandle,
     nostr: Arc<Client>,
-    segmented: SegmentedCache,
 ) -> Router {
+    let debug = debug_http::DebugHttpResources {
+        progressive: progressive.clone(),
+        requests: resources.requests.clone(),
+        delivery,
+        hls: resources.hls_sessions.clone(),
+        client: nostr,
+    };
     progressive_route::router(progressive.clone())
-        .merge(debug_http::router(
-            progressive,
-            delivery,
-            hls_sessions.clone(),
-            nostr,
-        ))
-        .merge(shared_router(shared_state(hls_sessions, client, segmented)))
+        .merge(debug_http::router(debug))
+        .merge(shared_router(shared_state(resources)))
 }
 
-fn shared_state(
-    hls_sessions: HlsSessions,
-    client: Arc<dyn MediaHttpRequests>,
-    segmented: SegmentedCache,
-) -> Arc<GatewayHttpState> {
+fn shared_state(resources: GatewayRouterResources) -> Arc<GatewayHttpState> {
     Arc::new(GatewayHttpState {
-        client,
-        hls_sessions,
-        segmented,
+        requests: resources.requests,
+        hls_sessions: resources.hls_sessions,
+        segmented: resources.segmented,
         hls_timeouts: HlsTransferTimeouts::default(),
     })
 }

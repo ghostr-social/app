@@ -4,6 +4,10 @@ use crate::manager::workers::PreparedTransfer;
 use crate::manager::{origin_admission, time, DeliveryWorker};
 use ghostr_engine::adaptive::DecisionOutcome;
 
+#[cfg(test)]
+#[path = "grant/origin_concurrency_test.rs"]
+mod origin_concurrency_test;
+
 struct AdmittedGrant {
     transfer: PlannedTransfer,
     observed_at_ms: u64,
@@ -77,7 +81,7 @@ impl DeliveryWorker {
     fn admit_origin(&mut self, transfer: PlannedTransfer) -> Option<AdmittedGrant> {
         let observed_at_ms = time::unix_time_ms();
         let authority = ghostr_engine::RequestAuthority::from_url(&transfer.url)?;
-        let concurrency = origin_concurrency(&self.ctx.network, &authority);
+        let concurrency = origin_concurrency(&self.ctx.requests, &authority);
         let query = origin_admission::query(&transfer, observed_at_ms, concurrency);
         let mode = origin_admission::mode(&transfer);
         let admission =
@@ -113,12 +117,11 @@ impl DeliveryWorker {
 }
 
 fn origin_concurrency(
-    network: &crate::debug::network::NetworkThrottle,
+    requests: &ghostr_net::media_request_executor::MediaRequestExecutor,
     authority: &ghostr_engine::RequestAuthority,
 ) -> usize {
-    network
-        .active_connections()
-        .into_iter()
-        .find(|(active, _)| active == authority.as_str())
-        .map_or(1, |(_, count)| count.saturating_add(1))
+    requests
+        .active_for(authority)
+        .saturating_add(1)
+        .min(requests.limits().per_authority())
 }

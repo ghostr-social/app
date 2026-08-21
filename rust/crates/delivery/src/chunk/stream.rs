@@ -9,7 +9,7 @@ use crate::debug::network::NetworkThrottle;
 use anyhow::{bail, ensure, Context, Result};
 use ghostr_engine::adaptive::{RetrievalRequest, WholeBodyContract};
 use ghostr_engine::ByteRange;
-use reqwest::Response;
+use ghostr_net::media_request_executor::MediaResponse;
 use std::time::Duration;
 
 mod progress;
@@ -19,7 +19,7 @@ pub(crate) use progress::Streamed;
 const PACED_WRITE_BYTES: usize = 16 * 1024;
 
 pub(crate) struct StreamInput<'a, 'spec, W: ChunkWrite + ?Sized> {
-    pub response: Response,
+    pub response: MediaResponse,
     pub spec: &'a ChunkSpec<'spec>,
     pub generation: &'a OriginGeneration,
     pub sink: &'a W,
@@ -111,7 +111,7 @@ async fn next_input<W: ChunkWrite + ?Sized>(
     }
 }
 
-async fn next_chunk(response: &mut Response, idle: Duration) -> Result<Option<bytes::Bytes>> {
+async fn next_chunk(response: &mut MediaResponse, idle: Duration) -> Result<Option<bytes::Bytes>> {
     tokio::time::timeout(idle, response.chunk())
         .await
         .context("chunk body read timed out")?

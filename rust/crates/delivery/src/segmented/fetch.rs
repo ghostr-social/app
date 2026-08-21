@@ -1,14 +1,16 @@
 use anyhow::{bail, ensure, Context, Result};
+use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_hls_manifest::hls_manifest::{MAX_HLS_ASSET_BYTES, MAX_HLS_MANIFEST_BYTES};
 use ghostr_net::identity_encoding::require_identity_encoding;
-use ghostr_net::outbound_media_client::MediaHttpRequests;
+use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaResponse};
 use ghostr_net::response_limits::validate_response_headers;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
-use reqwest::header::{ACCEPT_ENCODING, CONTENT_TYPE};
+use reqwest::header::{HeaderValue, ACCEPT_ENCODING, CONTENT_TYPE};
 use reqwest::StatusCode;
 use std::sync::Arc;
 use url::Url;
 
+mod deadline;
 #[cfg(test)]
 mod tests;
 
@@ -25,53 +27,73 @@ struct FetchSpec<'a> {
     limit: usize,
     require_manifest: bool,
     timeouts: HlsTransferTimeouts,
+    priority: PreemptionAuthority,
 }
 
-pub(super) async fn manifest(client: &dyn MediaHttpRequests, url: &str) -> Result<FetchedObject> {
+pub(super) async fn manifest(
+    requests: &MediaRequestExecutor,
+    url: &str,
+    priority: PreemptionAuthority,
+) -> Result<FetchedObject> {
     fetch(
-        client,
+        requests,
         FetchSpec {
             url,
             limit: MAX_HLS_MANIFEST_BYTES,
             require_manifest: true,
             timeouts: HlsTransferTimeouts::default(),
+            priority,
         },
     )
     .await
 }
 
-pub(super) async fn asset(client: &dyn MediaHttpRequests, url: &Url) -> Result<FetchedObject> {
-    asset_with_timeouts(client, url.as_str(), HlsTransferTimeouts::default()).await
+pub(super) async fn asset(
+    requests: &MediaRequestExecutor,
+    url: &Url,
+    priority: PreemptionAuthority,
+) -> Result<FetchedObject> {
+    asset_with_timeouts(
+        requests,
+        url.as_str(),
+        HlsTransferTimeouts::default(),
+        priority,
+    )
+    .await
 }
 
 async fn asset_with_timeouts(
-    client: &dyn MediaHttpRequests,
+    requests: &MediaRequestExecutor,
     url: &str,
     timeouts: HlsTransferTimeouts,
+    priority: PreemptionAuthority,
 ) -> Result<FetchedObject> {
     fetch(
-        client,
+        requests,
         FetchSpec {
             url,
             limit: MAX_HLS_ASSET_BYTES,
             require_manifest: false,
             timeouts,
+            priority,
         },
     )
     .await
 }
 
-async fn fetch(client: &dyn MediaHttpRequests, spec: FetchSpec<'_>) -> Result<FetchedObject> {
-    tokio::time::timeout(spec.timeouts.total, fetch_before_total(client, spec))
+async fn fetch(requests: &MediaRequestExecutor, spec: FetchSpec<'_>) -> Result<FetchedObject> {
+    let deadline = tokio::time::Instant::now() + spec.timeouts.total;
+    tokio::time::timeout_at(deadline, fetch_before_total(requests, spec, deadline))
         .await
         .context("HLS object transfer timed out")?
 }
 
 async fn fetch_before_total(
-    client: &dyn MediaHttpRequests,
+    requests: &MediaRequestExecutor,
     spec: FetchSpec<'_>,
+    deadline: tokio::time::Instant,
 ) -> Result<FetchedObject> {
-    let mut response = open(client, spec).await?;
+    let mut response = open(requests, spec, deadline).await?;
     let final_url = response.url().clone();
     let content_type = content_type(&response);
     let body = read_body(&mut response, spec.limit, spec.timeouts.idle).await?;
@@ -83,11 +105,29 @@ async fn fetch_before_total(
     })
 }
 
-async fn open(client: &dyn MediaHttpRequests, spec: FetchSpec<'_>) -> Result<reqwest::Response> {
-    let request = client.get(spec.url)?.header(ACCEPT_ENCODING, "identity");
-    let response = tokio::time::timeout(spec.timeouts.headers, request.send())
+async fn open(
+    requests: &MediaRequestExecutor,
+    spec: FetchSpec<'_>,
+    deadline: tokio::time::Instant,
+) -> Result<MediaResponse> {
+    let request = requests
+        .get(spec.url, spec.priority)?
+        .header(ACCEPT_ENCODING, HeaderValue::from_static("identity"));
+    let admitted = tokio::time::timeout_at(deadline, request.admit())
         .await
-        .context("HLS response headers timed out")??;
+        .context("HLS object transfer timed out")??;
+    let header_deadline = deadline.min(tokio::time::Instant::now() + spec.timeouts.headers);
+    let timeout_context = deadline::header_context(header_deadline, deadline);
+    let response = tokio::time::timeout_at(header_deadline, admitted.send())
+        .await
+        .context(timeout_context)??;
+    validate_open_response(response, spec.require_manifest)
+}
+
+fn validate_open_response(
+    response: MediaResponse,
+    require_manifest: bool,
+) -> Result<MediaResponse> {
     validate_response_headers(response.headers())?;
     let response = response
         .error_for_status()
@@ -97,14 +137,14 @@ async fn open(client: &dyn MediaHttpRequests, spec: FetchSpec<'_>) -> Result<req
         "full HLS object response is not 200"
     );
     require_identity_encoding(response.headers()).context("encoded HLS object is not cacheable")?;
-    if spec.require_manifest {
+    if require_manifest {
         require_manifest_type(&response)?;
     }
     Ok(response)
 }
 
 async fn read_body(
-    response: &mut reqwest::Response,
+    response: &mut MediaResponse,
     limit: usize,
     idle: std::time::Duration,
 ) -> Result<Vec<u8>> {
@@ -120,7 +160,7 @@ async fn read_body(
 }
 
 async fn next_chunk(
-    response: &mut reqwest::Response,
+    response: &mut MediaResponse,
     idle: std::time::Duration,
 ) -> Result<Option<bytes::Bytes>> {
     tokio::time::timeout(idle, response.chunk())
@@ -129,7 +169,7 @@ async fn next_chunk(
         .context("read HLS object")
 }
 
-fn content_type(response: &reqwest::Response) -> Option<String> {
+fn content_type(response: &MediaResponse) -> Option<String> {
     response
         .headers()
         .get(CONTENT_TYPE)
@@ -137,7 +177,7 @@ fn content_type(response: &reqwest::Response) -> Option<String> {
         .map(str::to_owned)
 }
 
-fn require_manifest_type(response: &reqwest::Response) -> Result<()> {
+fn require_manifest_type(response: &MediaResponse) -> Result<()> {
     let media_type = response
         .headers()
         .get(CONTENT_TYPE)

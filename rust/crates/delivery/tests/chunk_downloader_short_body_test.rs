@@ -20,10 +20,11 @@ async fn a_body_shorter_than_its_advertised_range_is_rejected() {
     let (_handle, token) = cancel_pair();
     let mut stats = HostStats::new();
     let spec = ChunkSpec {
-        client: &client,
+        requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(4, 12)),
         continuation: None,
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {
@@ -31,8 +32,12 @@ async fn a_body_shorter_than_its_advertised_range_is_rejected() {
         key: "clip",
     };
 
-    let result =
-        download_chunk_throttled(&spec, &sink, &mut stats, &token, &range_fixture::network()).await;
+    let result = download_chunk_throttled(
+        &spec,
+        &sink,
+        range_fixture::context(&mut stats, &token, &range_fixture::network()),
+    )
+    .await;
 
     assert!(result.is_err(), "short 206 must not count as success");
     assert!(store.present_ranges("clip").await.unwrap().is_empty());

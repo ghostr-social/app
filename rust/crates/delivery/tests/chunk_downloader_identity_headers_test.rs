@@ -28,10 +28,11 @@ async fn continuation_requests_identity_bytes_with_if_range() {
     let store = range_fixture::store(root.clone());
     let (_handle, token) = cancel_pair();
     let spec = ChunkSpec {
-        client: &client,
+        requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(4, 8)),
         continuation: Some(&generation),
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {
@@ -41,9 +42,7 @@ async fn continuation_requests_identity_bytes_with_if_range() {
     range_fixture::download_chunk_throttled(
         &spec,
         &sink,
-        &mut HostStats::new(),
-        &token,
-        &range_fixture::network(),
+        range_fixture::context(&mut HostStats::new(), &token, &range_fixture::network()),
     )
     .await
     .unwrap();

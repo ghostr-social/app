@@ -10,12 +10,12 @@ pub use crate::chunk::sink::ResponseWriteMode;
 use crate::chunk::traffic::ChunkTraffic;
 use crate::debug::network::NetworkThrottle;
 use anyhow::Result;
-use ghostr_engine::adaptive::RetrievalRequest;
+use ghostr_engine::adaptive::{PreemptionAuthority, RetrievalRequest};
 use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::representation::SourceGeneration;
 use ghostr_engine::ByteRange;
-use ghostr_net::outbound_media_client::MediaHttpRequests;
+use ghostr_net::media_request_executor::MediaRequestExecutor;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 
 mod captured;
@@ -30,11 +30,20 @@ pub use crate::chunk::traffic::ChunkTraffic as DownloadTraffic;
 
 /// One granted retrieval action for one URL.
 pub struct ChunkSpec<'a> {
-    pub client: &'a dyn MediaHttpRequests,
+    pub requests: &'a MediaRequestExecutor,
     pub url: &'a str,
     pub request: RetrievalRequest,
+    pub priority: PreemptionAuthority,
     pub continuation: Option<&'a SourceGeneration>,
     pub timeouts: TransferTimeouts,
+}
+
+pub struct ChunkExecution<'a, W: ChunkWrite + ?Sized> {
+    pub sink: &'a W,
+    pub stats: &'a mut HostStats,
+    pub cancel: &'a CancelToken,
+    pub network: &'a NetworkThrottle,
+    pub traffic: &'a mut dyn ChunkTraffic,
 }
 
 /// What one chunk transfer accomplished.
@@ -125,24 +134,14 @@ pub(crate) use captured::ObservedChunk;
 /// Executes an admitted range and emits transfer observations.
 pub async fn download_chunk_observed<W: ChunkWrite + ?Sized>(
     spec: &ChunkSpec<'_>,
-    sink: &W,
-    stats: &mut HostStats,
-    cancel: &CancelToken,
-    network: &NetworkThrottle,
-    traffic: &mut dyn ChunkTraffic,
+    execution: ChunkExecution<'_, W>,
 ) -> Result<ChunkResult> {
-    download_chunk_captured(spec, sink, stats, cancel, network, traffic)
-        .await
-        .result
+    download_chunk_captured(spec, execution).await.result
 }
 
 pub(crate) async fn download_chunk_captured<W: ChunkWrite + ?Sized>(
     spec: &ChunkSpec<'_>,
-    sink: &W,
-    stats: &mut HostStats,
-    cancel: &CancelToken,
-    network: &NetworkThrottle,
-    traffic: &mut dyn ChunkTraffic,
+    execution: ChunkExecution<'_, W>,
 ) -> ObservedChunk {
-    captured::download(spec, sink, stats, cancel, network, traffic).await
+    captured::download(spec, execution).await
 }

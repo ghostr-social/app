@@ -2,8 +2,8 @@ mod range_fixture;
 
 use ghostr_delivery::chunk::cancel::cancel_pair;
 use ghostr_delivery::chunk::downloader::{
-    download_chunk_observed, ChunkSpec, ChunkWrite, DownloadTraffic, OriginGeneration,
-    ResponseObservation, ResponseWriteMode,
+    download_chunk_observed, ChunkExecution, ChunkSpec, ChunkWrite, DownloadTraffic,
+    OriginGeneration, ResponseObservation, ResponseWriteMode,
 };
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::ByteRange;
@@ -22,20 +22,24 @@ async fn response_semantics_are_authorized_before_store_admission() {
     let (_, token) = cancel_pair();
     let mut stats = HostStats::new();
     let spec = ChunkSpec {
-        client: &client,
+        requests: &client,
         url: &origin,
         request: range_fixture::range_request(ByteRange::new(0, 8)),
         continuation: None,
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: Default::default(),
     };
 
+    let network = range_fixture::network();
     download_chunk_observed(
         &spec,
-        &sink,
-        &mut stats,
-        &token,
-        &range_fixture::network(),
-        &mut traffic,
+        ChunkExecution {
+            sink: &sink,
+            stats: &mut stats,
+            cancel: &token,
+            network: &network,
+            traffic: &mut traffic,
+        },
     )
     .await
     .unwrap();

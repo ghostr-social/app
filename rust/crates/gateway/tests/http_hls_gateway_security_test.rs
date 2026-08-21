@@ -6,6 +6,7 @@ use gateway_fixture::media_client;
 use gateway_fixture::progressive_hls::router_with_hls;
 use gateway_fixture::raw_http::spawn_raw_server;
 use ghostr_gateway::hls::sessions::HlsSessions;
+use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::MediaHttpClient;
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -16,10 +17,11 @@ async fn rejects_private_root_manifest_without_contacting_it() {
     let (origin, upstream) = spawn_raw_server(valid).await;
     let sessions = HlsSessions::production();
     let id = sessions.acquire(vec![origin]).await.expect("session");
-    let app = router_with_hls(
-        sessions,
+    let requests = MediaRequestExecutor::new(
         Arc::new(MediaHttpClient::public().expect("public client")),
+        MediaRequestLimits::try_new(4, 4).unwrap(),
     );
+    let app = router_with_hls(sessions, requests);
 
     let response = app.oneshot(request(&id)).await.expect("gateway response");
 

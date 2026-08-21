@@ -1,6 +1,6 @@
 use super::whole_sink_fixture::{fixture, split, whole_spec, AuthorizedTraffic};
 use crate::chunk::cancel::cancel_pair;
-use crate::chunk::downloader::download_chunk_observed;
+use crate::chunk::downloader::{download_chunk_observed, ChunkExecution};
 use crate::chunk::sink::TransferChunkSink;
 use crate::debug::network::NetworkThrottle;
 use ghostr_engine::adaptive::WholeBodyContract;
@@ -29,8 +29,16 @@ async fn chunked_whole_keeps_seed_readable_until_atomic_eof_commit() {
         &origin.url,
         WholeBodyContract::Capped { maximum_bytes: 16 },
     );
-    let download =
-        download_chunk_observed(&spec, &sink, &mut stats, &cancel, &network, &mut traffic);
+    let download = download_chunk_observed(
+        &spec,
+        ChunkExecution {
+            sink: &sink,
+            stats: &mut stats,
+            cancel: &cancel,
+            network: &network,
+            traffic: &mut traffic,
+        },
+    );
     tokio::pin!(download);
 
     let mut prefix_sent = origin.prefix_sent;

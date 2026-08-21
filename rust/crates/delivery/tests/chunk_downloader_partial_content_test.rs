@@ -16,10 +16,11 @@ async fn chunk_downloader_streams_partial_content_into_the_store() {
     let (_handle, token) = cancel_pair();
     let mut stats = HostStats::new();
     let spec = ChunkSpec {
-        client: &client,
+        requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(4, 12)),
         continuation: None,
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {
@@ -27,10 +28,13 @@ async fn chunk_downloader_streams_partial_content_into_the_store() {
         key: "clip",
     };
 
-    let result =
-        download_chunk_throttled(&spec, &sink, &mut stats, &token, &range_fixture::network())
-            .await
-            .expect("chunk download");
+    let result = download_chunk_throttled(
+        &spec,
+        &sink,
+        range_fixture::context(&mut stats, &token, &range_fixture::network()),
+    )
+    .await
+    .expect("chunk download");
 
     assert_eq!(result.bytes_written, 8);
     assert_eq!(result.range_support, Some(true));

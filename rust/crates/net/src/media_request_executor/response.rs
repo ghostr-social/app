@@ -16,10 +16,6 @@ impl MediaResponse {
         }
     }
 
-    pub fn as_response(&self) -> &Response {
-        &self.inner
-    }
-
     pub fn status(&self) -> StatusCode {
         self.inner.status()
     }

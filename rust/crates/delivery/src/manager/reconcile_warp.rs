@@ -14,6 +14,12 @@ use crate::probe::pool::ProbeClaimQuery;
 use ghostr_engine::adaptive::DecisionOutcome;
 use ghostr_engine::{ActionId, PostId};
 
+struct SelectedProbe<'a> {
+    post: &'a PostId,
+    source: &'a str,
+    authority: ghostr_engine::adaptive::PreemptionAuthority,
+}
+
 impl DeliveryWorker {
     pub(super) fn apply_warp_directive(
         &mut self,
@@ -21,8 +27,17 @@ impl DeliveryWorker {
         decision: &mut Option<DecisionToken>,
     ) {
         match directive {
-            WarpDirective::ProbeHead { post, source } => {
-                self.launch_selected_probe(post, source, decision.take());
+            WarpDirective::ProbeHead {
+                post,
+                source,
+                authority,
+            } => {
+                let selected = SelectedProbe {
+                    post,
+                    source,
+                    authority: *authority,
+                };
+                self.launch_selected_probe(selected, decision.take());
             }
             WarpDirective::Cancel(action) => self.cancel_selected(*action, decision.take()),
             WarpDirective::Unsupported { class, cancel } => {
@@ -37,16 +52,20 @@ impl DeliveryWorker {
 
     fn launch_selected_probe(
         &mut self,
-        post: &PostId,
-        source: &str,
+        selected: SelectedProbe<'_>,
         decision: Option<DecisionToken>,
     ) {
         let Some(token) = decision else {
             return;
         };
-        let query = ProbeClaimQuery::new(self.state.catalog(), &self.retry, post, source);
+        let query = ProbeClaimQuery::new(
+            self.state.catalog(),
+            &self.retry,
+            selected.post,
+            selected.source,
+        );
         match self.probes.claim_selected(query) {
-            Ok(identity) => self.claim_and_spawn_probe(token, identity),
+            Ok(identity) => self.claim_and_spawn_probe(token, identity, selected.authority),
             Err(reason) => {
                 self.commands
                     .resolve_decision_token(&token, DecisionOutcome::ClaimRefused { reason });
@@ -58,6 +77,7 @@ impl DeliveryWorker {
         &mut self,
         token: DecisionToken,
         identity: ghostr_engine::representation::TransferIdentity,
+        authority: ghostr_engine::adaptive::PreemptionAuthority,
     ) {
         let started_at_ms = time::unix_time_ms();
         match self
@@ -69,6 +89,7 @@ impl DeliveryWorker {
                 ProbeLaunch {
                     post: identity.post().clone(),
                     url: identity.source().as_str().to_owned(),
+                    authority,
                     decision,
                 },
             ),

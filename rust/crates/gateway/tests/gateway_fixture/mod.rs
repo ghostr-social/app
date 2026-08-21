@@ -25,9 +25,11 @@ pub mod progressive_request;
 pub mod raw_http;
 #[cfg(feature = "video-debug-web")]
 pub mod ready_reserve;
+pub mod request_gate_origin;
 
 use ghostr_delivery::cache_registry::{CacheStatus, CacheVideo};
 use ghostr_engine::VideoMeta;
+use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use reqwest::{Client, RequestBuilder};
 use std::path::PathBuf;
@@ -59,12 +61,15 @@ impl MediaHttpRequests for LocalMediaHttpClient {
     }
 }
 
-pub fn media_client() -> Arc<dyn MediaHttpRequests> {
+pub fn media_client() -> MediaRequestExecutor {
     let client = Client::builder()
         .no_proxy()
         .build()
         .expect("local media client");
-    Arc::new(LocalMediaHttpClient(client))
+    MediaRequestExecutor::new(
+        Arc::new(LocalMediaHttpClient(client)),
+        MediaRequestLimits::try_new(4, 4).unwrap(),
+    )
 }
 
 pub fn cache_video(id: impl Into<String>, meta: VideoMeta) -> CacheVideo {

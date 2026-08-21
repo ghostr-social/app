@@ -11,6 +11,7 @@ pub(crate) enum WarpDirective {
     ProbeHead {
         post: PostId,
         source: String,
+        authority: ghostr_engine::adaptive::PreemptionAuthority,
     },
     Cancel(ActionId),
     Hedge {
@@ -82,9 +83,14 @@ pub(crate) fn directive_for(
 ) -> WarpDirective {
     match command {
         None => WarpDirective::None,
-        Some(PlannerCommand::ProbeHead { post, source }) => WarpDirective::ProbeHead {
+        Some(PlannerCommand::ProbeHead {
+            post,
+            source,
+            authority,
+        }) => WarpDirective::ProbeHead {
             post: post.clone(),
             source: source.clone(),
+            authority: *authority,
         },
         Some(PlannerCommand::Cancel(action)) => WarpDirective::Cancel(*action),
         Some(command) => work_directive(command, selected),

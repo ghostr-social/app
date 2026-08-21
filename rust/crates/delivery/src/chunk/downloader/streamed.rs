@@ -10,10 +10,10 @@ use crate::chunk::stream::{stream_into, StreamInput, Streamed};
 use crate::chunk::traffic::ChunkTraffic;
 use crate::debug::network::NetworkThrottle;
 use anyhow::Result;
-use reqwest::Response;
+use ghostr_net::media_request_executor::MediaResponse;
 
 pub(super) struct ReceiveInput<'a, 'spec, W: ChunkWrite + ?Sized> {
-    pub response: Response,
+    pub response: MediaResponse,
     pub spec: &'a ChunkSpec<'spec>,
     pub generation: &'a OriginGeneration,
     pub sink: &'a W,
@@ -41,67 +41,61 @@ struct Completion<'a, 'spec, W: ChunkWrite + ?Sized> {
 }
 
 pub(super) async fn receive<W: ChunkWrite + ?Sized>(
-    input: ReceiveInput<'_, '_, W>,
+    mut input: ReceiveInput<'_, '_, W>,
 ) -> Result<ChunkResult> {
-    let ReceiveInput {
-        response,
-        spec,
-        generation,
-        sink,
-        mode,
-        cancel,
-        network,
-        traffic,
-        total,
-        range_support,
-        range_ignored,
-        promoted,
-        observation,
-        evidence,
-    } = input;
-    let opened = OpenedResponse::new(observation, generation.resumable(), mode, evidence);
-    let admission = tokio::select! {
-        biased;
-        _ = cancel.cancelled() => ResponseAdmission::Reject,
-        result = traffic.authorize_response(opened) => result?,
-    };
-    if admission == ResponseAdmission::Reject {
-        return Ok(rejected(&Completion {
-            spec,
-            generation,
-            sink,
-            total,
-            range_support,
-            range_ignored,
-            promoted,
-            mode,
-        }));
+    if !authorize(&mut input).await? {
+        return Ok(rejected(&input.completion()));
     }
-    sink.accept(generation, mode).await?;
-    let streamed = stream_into(StreamInput {
-        response,
-        spec,
-        generation,
-        sink,
-        mode,
-        cancel,
-        network,
-        traffic,
-    })
-    .await;
-    let completion = Completion {
-        spec,
-        generation,
-        sink,
-        total,
-        range_support,
-        range_ignored,
-        promoted,
-        mode,
-    };
+    input.sink.accept(input.generation, input.mode).await?;
+    let completion = input.completion();
+    let streamed = stream(input).await;
     match streamed {
         Ok(streamed) => finish(&completion, streamed).await,
         Err(error) => abort(&completion, error).await,
+    }
+}
+
+async fn authorize<W: ChunkWrite + ?Sized>(input: &mut ReceiveInput<'_, '_, W>) -> Result<bool> {
+    let opened = OpenedResponse::new(
+        input.observation,
+        input.generation.resumable(),
+        input.mode,
+        input.evidence.clone(),
+    );
+    let admission = tokio::select! {
+        biased;
+        _ = input.cancel.cancelled() => ResponseAdmission::Reject,
+        result = input.traffic.authorize_response(opened) => result?,
+    };
+    Ok(admission == ResponseAdmission::Proceed)
+}
+
+async fn stream<W: ChunkWrite + ?Sized>(input: ReceiveInput<'_, '_, W>) -> Result<Streamed> {
+    stream_into(StreamInput {
+        response: input.response,
+        spec: input.spec,
+        generation: input.generation,
+        sink: input.sink,
+        mode: input.mode,
+        cancel: input.cancel,
+        network: input.network,
+        traffic: input.traffic,
+    })
+    .await
+}
+
+impl<'a, 'spec, W: ChunkWrite + ?Sized> ReceiveInput<'a, 'spec, W> {
+    fn completion(&self) -> Completion<'a, 'spec, W> {
+        Completion {
+            spec: self.spec,
+            generation: self.generation,
+            sink: self.sink,
+            total: self.total,
+            range_support: self.range_support,
+            range_ignored: self.range_ignored,
+            promoted: self.promoted,
+            mode: self.mode,
+        }
     }
 }
 

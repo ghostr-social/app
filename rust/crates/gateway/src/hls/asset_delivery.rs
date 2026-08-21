@@ -15,6 +15,7 @@ use std::sync::Arc;
 use tokio::time::Instant;
 
 mod origin;
+use origin::OriginRequest;
 
 struct AssetCall {
     state: Arc<GatewayHttpState>,
@@ -101,9 +102,13 @@ impl AssetCall {
         self.ensure_owner(&fence).await?;
         match plan {
             AssetPlan::Cache(generation) => self.cached(object, generation, range),
-            AssetPlan::First(admission) => self.first(url, range, fence, admission).await,
+            AssetPlan::First(admission) => {
+                self.first(OriginRequest { url, range, fence }, admission)
+                    .await
+            }
             AssetPlan::Origin(generation) => {
-                self.continue_origin(url, range, fence, generation).await
+                self.continue_origin(OriginRequest { url, range, fence }, generation)
+                    .await
             }
         }
     }

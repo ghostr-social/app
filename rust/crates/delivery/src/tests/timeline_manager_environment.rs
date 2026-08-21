@@ -3,18 +3,19 @@ use crate::debug::network::NetworkThrottle;
 use crate::manager::{DeliveryManagerConfig, DeliveryTuning};
 use crate::segmented::SegmentedCache;
 use ghostr_engine::{DataUsageLevel, EngineParams};
+use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-pub(crate) fn config(
-    store: Arc<PartialRangeStore>,
-    root: PathBuf,
-) -> DeliveryManagerConfig<NoRequest> {
+pub(crate) fn config(store: Arc<PartialRangeStore>, root: PathBuf) -> DeliveryManagerConfig {
     DeliveryManagerConfig {
         store,
-        client: NoRequest,
+        requests: MediaRequestExecutor::new(
+            Arc::new(NoRequest),
+            MediaRequestLimits::try_new(1, 1).unwrap(),
+        ),
         cache: CacheRegistry::new(),
         segmented: SegmentedCache::new(),
         network: NetworkThrottle::new(),

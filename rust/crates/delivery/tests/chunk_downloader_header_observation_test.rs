@@ -2,8 +2,8 @@ mod range_fixture;
 
 use ghostr_delivery::chunk::cancel::cancel_pair;
 use ghostr_delivery::chunk::downloader::{
-    download_chunk_observed, ChunkSink, ChunkSpec, DownloadTraffic, HttpResponseEvidence,
-    OpenedResponse, ResponseAdmission, ResponseObservation,
+    download_chunk_observed, ChunkExecution, ChunkSink, ChunkSpec, DownloadTraffic,
+    HttpResponseEvidence, OpenedResponse, ResponseAdmission, ResponseObservation,
 };
 use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_engine::host_stats::HostStats;
@@ -25,10 +25,11 @@ async fn coherent_response_semantics_are_reported_before_body_completion() {
     let (sender, observed) = oneshot::channel();
     let mut traffic = HeaderTraffic(Some(sender));
     let spec = ChunkSpec {
-        client: &client,
+        requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(0, 8)),
         continuation: None,
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {
@@ -36,8 +37,16 @@ async fn coherent_response_semantics_are_reported_before_body_completion() {
         key: "clip",
     };
     let network = range_fixture::network();
-    let download =
-        download_chunk_observed(&spec, &sink, &mut stats, &token, &network, &mut traffic);
+    let download = download_chunk_observed(
+        &spec,
+        ChunkExecution {
+            sink: &sink,
+            stats: &mut stats,
+            cancel: &token,
+            network: &network,
+            traffic: &mut traffic,
+        },
+    );
     tokio::pin!(download);
 
     let (response, headers) = tokio::select! {

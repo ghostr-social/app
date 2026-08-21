@@ -118,7 +118,10 @@ fn matches_probe(
     identity: &TransferIdentity,
     privacy: &DecisionPrivacy,
 ) -> bool {
-    let RecordedWarpCommand::ProbeHead { post_id, source_id } = command else {
+    let RecordedWarpCommand::ProbeHead {
+        post_id, source_id, ..
+    } = command
+    else {
         return false;
     };
     post_id == &privacy.post(identity.post().as_str())
@@ -157,13 +160,7 @@ fn warp_record(
     state_hash: String,
     captured: advanced::WarpCapture,
 ) -> DecisionRecord {
-    let outcome = match captured.decision.selected.is_some() {
-        true => DecisionOutcome::Pending,
-        false => DecisionOutcome::Succeeded {
-            bytes: 0,
-            elapsed_ms: 0,
-        },
-    };
+    let outcome = initial_warp_outcome(captured.decision.selected.is_some());
     DecisionRecord {
         schema_version: WARP_SCHEMA_VERSION,
         sequence: input.sequence,
@@ -180,5 +177,15 @@ fn warp_record(
         warp_decision: Some(captured.decision),
         replay_state,
         replay_plan_hash: String::new(),
+    }
+}
+
+fn initial_warp_outcome(selected: bool) -> DecisionOutcome {
+    match selected {
+        true => DecisionOutcome::Pending,
+        false => DecisionOutcome::Succeeded {
+            bytes: 0,
+            elapsed_ms: 0,
+        },
     }
 }

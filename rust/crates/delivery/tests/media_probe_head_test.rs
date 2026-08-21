@@ -1,9 +1,10 @@
+mod probe_fixture;
 mod range_fixture;
 
-use ghostr_delivery::probe::media::probe;
 use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_engine::host_stats::HostStats;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
+use probe_fixture::probe;
 
 #[tokio::test]
 async fn media_probe_head_learns_length_range_support_and_content_type() {

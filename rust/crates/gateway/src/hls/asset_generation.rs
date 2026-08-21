@@ -1,7 +1,8 @@
 use crate::hls::asset_response::AssetResponseEnvelope;
 use anyhow::{bail, Context, Result};
 use ghostr_delivery::segmented::CachedHlsGeneration;
-use reqwest::{Response, Url};
+use ghostr_net::media_request_executor::MediaResponse;
+use reqwest::Url;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -51,6 +52,13 @@ pub(super) enum AssetPlan {
 
 pub(super) struct FirstAdmission(OwnedMutexGuard<AssetBinding>);
 
+pub(in crate::hls) struct OriginConfirmation<'a> {
+    pub expected: &'a OriginGeneration,
+    pub envelope: AssetResponseEnvelope,
+    pub response: &'a MediaResponse,
+    pub deadline: Instant,
+}
+
 impl AssetRegistry {
     pub fn new() -> Self {
         Self {
@@ -94,18 +102,15 @@ impl AssetFence {
         }
     }
 
-    pub async fn confirm_origin(
-        &self,
-        expected: &OriginGeneration,
-        envelope: AssetResponseEnvelope,
-        response: &Response,
-        deadline: Instant,
-    ) -> Result<()> {
-        let mut binding = self.lock(deadline).await?;
-        if !matches!(&*binding, AssetBinding::Origin(found) if found == expected) {
+    pub async fn confirm_origin(&self, confirmation: OriginConfirmation<'_>) -> Result<()> {
+        let mut binding = self.lock(confirmation.deadline).await?;
+        if !matches!(&*binding, AssetBinding::Origin(found) if found == confirmation.expected) {
             bail!("HLS asset generation changed concurrently");
         }
-        if !expected.matches(envelope, response) {
+        if !confirmation
+            .expected
+            .matches(confirmation.envelope, confirmation.response)
+        {
             *binding = AssetBinding::Retired;
             bail!("HLS asset response changed generation");
         }
@@ -163,7 +168,7 @@ impl AssetBinding {
 }
 
 impl FirstAdmission {
-    pub fn admit(mut self, envelope: AssetResponseEnvelope, response: &Response) {
+    pub fn admit(mut self, envelope: AssetResponseEnvelope, response: &MediaResponse) {
         if let AssetResponseEnvelope::Partial { total, .. } = envelope {
             *self.0 = OriginGeneration::observed(response, total)
                 .map_or(AssetBinding::Retired, AssetBinding::Origin);

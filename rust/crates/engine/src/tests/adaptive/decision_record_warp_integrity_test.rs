@@ -13,6 +13,7 @@ fn schema_two_detects_state_and_decision_tampering_before_replay_unavailable() {
         PlannerCommand::ProbeHead {
             post: PostId::new("secret-post"),
             source: "https://origin.example/raw?token=secret".into(),
+            authority: crate::adaptive::PreemptionAuthority::Transition,
         },
         ActionKind::Head,
     );
@@ -79,6 +80,7 @@ fn head_decision() -> crate::adaptive::WarpPlanningDecision {
         PlannerCommand::ProbeHead {
             post: PostId::new("secret-post"),
             source: "https://origin.example/media".into(),
+            authority: crate::adaptive::PreemptionAuthority::Transition,
         },
         ActionKind::Head,
     )

@@ -4,47 +4,55 @@ use axum::body::Body;
 use axum::http::header::{ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE};
 use axum::http::{Response, StatusCode};
 use bytes::Bytes;
-use futures_util::stream;
 use ghostr_net::identity_encoding::require_identity_encoding;
+use ghostr_net::media_request_executor::{MediaRequest, MediaResponse};
 use ghostr_net::response_limits::validate_response_headers;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
-use reqwest::RequestBuilder;
-use std::io;
 use tokio::time::{timeout_at, Instant};
 
+mod proxy;
+
+#[cfg(test)]
+#[path = "transfer/header_timeout_test.rs"]
+mod header_timeout_test;
+#[cfg(test)]
+#[path = "transfer/paused_body_total_timeout_test.rs"]
+mod paused_body_total_timeout_test;
+#[cfg(test)]
+#[path = "transfer/test_fixture.rs"]
+mod test_fixture;
+#[cfg(test)]
+#[path = "transfer/total_admission_timeout_test.rs"]
+mod total_admission_timeout_test;
+#[cfg(test)]
+#[path = "transfer/total_header_timeout_test.rs"]
+mod total_header_timeout_test;
+
 pub(super) struct HlsTransfer {
-    response: reqwest::Response,
+    response: MediaResponse,
     idle: std::time::Duration,
     total_deadline: Instant,
 }
 
-struct AssetBodyState {
-    transfer: HlsTransfer,
-    contract: AssetBodyContract,
-    sent: u64,
-}
-
-type BodyResult = Result<Bytes, io::Error>;
-type BodyStreamState = Option<AssetBodyState>;
-
 impl HlsTransfer {
-    pub(super) async fn open(
-        request: RequestBuilder,
-        timeouts: HlsTransferTimeouts,
-    ) -> Result<Self> {
+    pub(super) async fn open(request: MediaRequest, timeouts: HlsTransferTimeouts) -> Result<Self> {
         let deadline = Instant::now() + timeouts.total;
         Self::open_at(request, timeouts, deadline).await
     }
 
     pub(super) async fn open_at(
-        request: RequestBuilder,
+        request: MediaRequest,
         timeouts: HlsTransferTimeouts,
         total_deadline: Instant,
     ) -> Result<Self> {
-        let header_deadline = total_deadline.min(Instant::now() + timeouts.headers);
-        let response = timeout_at(header_deadline, request.send())
+        let admitted = timeout_at(total_deadline, request.admit())
             .await
-            .context("HLS response headers timed out")??;
+            .context("HLS object transfer timed out")??;
+        let header_deadline = total_deadline.min(Instant::now() + timeouts.headers);
+        let timeout_context = header_timeout_context(header_deadline, total_deadline);
+        let response = timeout_at(header_deadline, admitted.send())
+            .await
+            .context(timeout_context)??;
         validate_response_headers(response.headers())?;
         require_identity_encoding(response.headers()).context("encoded HLS upstream response")?;
         Ok(Self {
@@ -54,7 +62,7 @@ impl HlsTransfer {
         })
     }
 
-    pub(super) fn response(&self) -> &reqwest::Response {
+    pub(super) fn response(&self) -> &MediaResponse {
         &self.response
     }
 
@@ -97,7 +105,7 @@ impl HlsTransfer {
     fn proxy_body(self, contract: AssetBodyContract) -> Body {
         match contract {
             AssetBodyContract::Empty => Body::empty(),
-            _ => timed_body(self, contract),
+            _ => proxy::body(self, contract),
         }
     }
 
@@ -116,46 +124,10 @@ impl HlsTransfer {
     }
 }
 
-fn timed_body(transfer: HlsTransfer, contract: AssetBodyContract) -> Body {
-    let state = AssetBodyState {
-        transfer,
-        contract,
-        sent: 0,
-    };
-    Body::from_stream(stream::unfold(Some(state), next_body_item))
-}
-
-async fn next_body_item(state: BodyStreamState) -> Option<(BodyResult, BodyStreamState)> {
-    let mut state = state?;
-    match state.transfer.next_chunk().await {
-        Ok(Some(chunk)) => Some(state.forward(chunk)),
-        Ok(None) => state.finish(),
-        Err(error) => Some(failed(io::ErrorKind::TimedOut, error.to_string())),
+fn header_timeout_context(header_deadline: Instant, total_deadline: Instant) -> &'static str {
+    if header_deadline == total_deadline {
+        "HLS object transfer timed out"
+    } else {
+        "HLS response headers timed out"
     }
-}
-
-impl AssetBodyState {
-    fn forward(mut self, chunk: Bytes) -> (BodyResult, BodyStreamState) {
-        let Some(total) = self.contract.checked_total(self.sent, chunk.len()) else {
-            return failed(
-                io::ErrorKind::InvalidData,
-                "HLS body exceeds its extent".to_owned(),
-            );
-        };
-        self.sent = total;
-        (Ok(chunk), Some(self))
-    }
-
-    fn finish(self) -> Option<(BodyResult, BodyStreamState)> {
-        (!self.contract.complete(self.sent)).then(|| {
-            failed(
-                io::ErrorKind::UnexpectedEof,
-                "HLS body ended early".to_owned(),
-            )
-        })
-    }
-}
-
-fn failed(kind: io::ErrorKind, message: String) -> (BodyResult, BodyStreamState) {
-    (Err(io::Error::new(kind, message)), None)
 }

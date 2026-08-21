@@ -20,7 +20,7 @@ pub(super) fn probe(done: &ProbeObservation, observed_at_ms: u64) -> OriginObser
         });
     let context = OriginContext::new(RequestMethod::Head, bytes, media)
         .with_network(NetworkClass::Unavailable)
-        .with_concurrency(1)
+        .with_concurrency(done.concurrency)
         .with_observed_at_ms(observed_at_ms);
     let query = OriginQuery::new(done.url.clone(), context);
     match &done.outcome {

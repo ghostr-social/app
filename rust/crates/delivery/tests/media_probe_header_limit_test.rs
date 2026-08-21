@@ -1,10 +1,11 @@
 mod delivery_fixture;
+mod probe_fixture;
 
 use delivery_fixture::media_client;
-use ghostr_delivery::probe::media::probe;
 use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_net::response_limits::MAX_MEDIA_RESPONSE_HEADER_BYTES;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
+use probe_fixture::probe;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
@@ -14,14 +15,10 @@ async fn media_probe_rejects_response_headers_above_the_media_limit() {
     let (url, request) = oversized_head_origin().await;
     let mut stats = HostStats::new();
 
-    let error = probe(
-        &media_client(),
-        &url,
-        TransferTimeouts::default(),
-        &mut stats,
-    )
-    .await
-    .expect_err("oversized HEAD headers must be rejected");
+    let requests = media_client();
+    let error = probe(&requests, &url, TransferTimeouts::default(), &mut stats)
+        .await
+        .expect_err("oversized HEAD headers must be rejected");
     let request = String::from_utf8(request.await.expect("origin request")).expect("HTTP request");
 
     assert!(error.to_string().contains("headers exceed byte limit"));

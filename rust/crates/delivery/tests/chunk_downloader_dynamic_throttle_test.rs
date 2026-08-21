@@ -28,10 +28,11 @@ async fn bandwidth_drop_paces_only_bytes_not_yet_delivered() {
     let (_handle, token) = cancel_pair();
     let mut stats = HostStats::new();
     let spec = ChunkSpec {
-        client: &client,
+        requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(0, TOTAL)),
         continuation: None,
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {
@@ -40,7 +41,11 @@ async fn bandwidth_drop_paces_only_bytes_not_yet_delivered() {
     };
 
     let (download, progress) = tokio::join!(
-        download_chunk_throttled(&spec, &sink, &mut stats, &token, &network),
+        download_chunk_throttled(
+            &spec,
+            &sink,
+            range_fixture::context(&mut stats, &token, &network)
+        ),
         verify_post_drop_progress(&store, &network),
     );
 

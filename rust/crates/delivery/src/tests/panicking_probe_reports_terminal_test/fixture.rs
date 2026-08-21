@@ -5,6 +5,7 @@ use crate::manager::traffic;
 use crate::manager::transfers::TransferContext;
 use crate::tests::decision_log_fixture::{head_identity, selected_head};
 use crate::tests::support::temp_directory;
+use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
@@ -57,7 +58,10 @@ pub(super) fn context() -> (TransferContext, PathBuf) {
     let (traffic, _) = traffic::channel(events.clone(), 4);
     let (responses, _) = response_open::channel(Duration::from_secs(1));
     let context = TransferContext {
-        client: Arc::new(PanicClient),
+        requests: MediaRequestExecutor::new(
+            Arc::new(PanicClient),
+            MediaRequestLimits::try_new(1, 1).unwrap(),
+        ),
         store,
         events,
         responses,

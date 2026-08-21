@@ -18,6 +18,7 @@ fn search_trace() -> crate::adaptive::WarpPlanningDecision {
         PlannerCommand::ProbeHead {
             post: PostId::new("secret-post"),
             source: "https://selected.example/media?cap=selected".into(),
+            authority: crate::adaptive::PreemptionAuthority::Transition,
         },
         ActionKind::Head,
     );

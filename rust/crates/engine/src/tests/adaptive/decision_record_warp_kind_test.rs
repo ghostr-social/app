@@ -54,6 +54,7 @@ fn every_action_kind_has_a_typed_authoritative_record() {
         let command = PlannerCommand::ProbeHead {
             post: PostId::new("secret-post"),
             source: "https://origin.example/media".into(),
+            authority: crate::adaptive::PreemptionAuthority::Transition,
         };
         let value = serde_json::to_value(record(&decision("secret-post", command, kind))).unwrap();
         let kind = &value["warp_decision"]["selected"]["kind"];

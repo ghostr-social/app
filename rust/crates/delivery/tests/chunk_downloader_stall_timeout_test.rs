@@ -16,10 +16,11 @@ async fn chunk_downloader_times_out_on_a_stalled_transfer_and_records_a_failure(
     let (_handle, token) = cancel_pair();
     let mut stats = HostStats::new();
     let spec = ChunkSpec {
-        client: &client,
+        requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(0, 8)),
         continuation: None,
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {
@@ -27,8 +28,12 @@ async fn chunk_downloader_times_out_on_a_stalled_transfer_and_records_a_failure(
         key: "clip",
     };
 
-    let result =
-        download_chunk_throttled(&spec, &sink, &mut stats, &token, &range_fixture::network()).await;
+    let result = download_chunk_throttled(
+        &spec,
+        &sink,
+        range_fixture::context(&mut stats, &token, &range_fixture::network()),
+    )
+    .await;
 
     assert!(result.is_err());
     let host = host_of(&url).expect("fixture host");

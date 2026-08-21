@@ -79,6 +79,20 @@ impl GateState {
         self.authorities.retain(|_, active| *active > 0);
     }
 
+    pub(super) fn active_for(&self, authority: &RequestAuthority) -> usize {
+        self.authorities.get(authority).copied().unwrap_or(0)
+    }
+
+    pub(super) fn active_connections(&self) -> Vec<(String, usize)> {
+        let mut active: Vec<_> = self
+            .authorities
+            .iter()
+            .map(|(authority, count)| (authority.as_str().to_owned(), *count))
+            .collect();
+        active.sort_by(|left, right| left.0.cmp(&right.0));
+        active
+    }
+
     fn next_admissible(&self) -> Option<usize> {
         self.waiters
             .iter()

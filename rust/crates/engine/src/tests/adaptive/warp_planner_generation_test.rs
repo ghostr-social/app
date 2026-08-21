@@ -47,7 +47,7 @@ fn adaptive_dag_generates_every_paper_action_from_explicit_evidence() {
         .any(|kind| matches!(kind, ActionKind::Cancel(_))));
 }
 
-fn generated_actions() -> GeneratedActions {
+pub(super) fn generated_actions() -> GeneratedActions {
     let mut input = snapshot(1, 8_000_000, 1_000, 20);
     let observed_at_ms = input.observed_at_ms;
     let post = {

@@ -8,20 +8,20 @@ use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 use ghostr_gateway::hls::sessions::HlsSessions;
 use ghostr_gateway::progressive::capabilities::ProgressiveCapabilities;
 use ghostr_gateway::progressive::route::{ProgressiveState, ProgressiveTiming};
-use ghostr_gateway::router::configured_router_with_segmented;
-use ghostr_net::outbound_media_client::MediaHttpRequests;
+use ghostr_gateway::router::{configured_router_with_segmented, GatewayRouterResources};
+use ghostr_net::media_request_executor::MediaRequestExecutor;
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-pub fn router_with_hls(hls_sessions: HlsSessions, client: Arc<dyn MediaHttpRequests>) -> Router {
-    router_with_segmented_hls(hls_sessions, client, SegmentedCache::new())
+pub fn router_with_hls(hls_sessions: HlsSessions, requests: MediaRequestExecutor) -> Router {
+    router_with_segmented_hls(hls_sessions, requests, SegmentedCache::new())
 }
 
 pub fn router_with_segmented_hls(
     hls_sessions: HlsSessions,
-    client: Arc<dyn MediaHttpRequests>,
+    requests: MediaRequestExecutor,
     segmented: SegmentedCache,
 ) -> Router {
     let store = Arc::new(PartialRangeStore::with_capacity(
@@ -40,7 +40,8 @@ pub fn router_with_segmented_hls(
         #[cfg(feature = "video-debug-web")]
         debug_feed: test_debug_feed(),
     });
-    configured_router_with_segmented(hls_sessions, client, state, segmented)
+    let resources = GatewayRouterResources::new(hls_sessions, requests).with_segmented(segmented);
+    configured_router_with_segmented(resources, state)
 }
 
 pub fn hls_focus(source: &str) -> DeliveryFocus {

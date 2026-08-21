@@ -4,7 +4,7 @@
 //! finalized.
 
 use crate::chunk::downloader::ChunkResult;
-use crate::manager::failure::classify;
+use crate::manager::failure::origin_failure_class;
 use crate::manager::inflight::CompletionStatus;
 use crate::manager::pressure::is_store_pressure;
 use crate::manager::transfers::ChunkDone;
@@ -62,8 +62,10 @@ impl DeliveryWorker {
         if self.absorb_store_pressure(post, error) {
             return;
         }
+        let Some(class) = origin_failure_class(error) else {
+            return;
+        };
         self.note_network_setback(NetworkSetback::Failure);
-        let class = classify(error);
         warn!(
             "Chunk transfer failed for {} ({class:?})",
             MediaLogIdentity::from_url(url)
@@ -128,39 +130,46 @@ impl DeliveryWorker {
     /// finalize is charged to it like any other failed attempt.
     async fn try_finalize(&mut self, identity: &TransferIdentity, total: Option<u64>) {
         let post = identity.post();
-        if !self
-            .ctx
-            .store
-            .is_complete(post.as_str())
-            .await
-            .unwrap_or(false)
-        {
+        if !self.transfer_complete(post).await {
             return;
         }
-        let advertised = self
-            .state
-            .catalog()
-            .lookup(post)
-            .and_then(|entry| entry.meta.sha256.clone());
+        let advertised = self.advertised_digest(post);
         let outcome = self
             .ctx
             .store
             .finalize(post.as_str(), advertised.as_deref())
             .await;
         match outcome {
-            Ok(_) => {
-                if let Some(total) = total {
-                    self.state.catalog_mut().learn_complete_bytes_for(
-                        identity,
-                        total,
-                        crate::manager::time::unix_time_ms(),
-                    );
-                }
-            }
+            Ok(_) => self.learn_finalized(identity, total),
             Err(error) => {
                 self.finish_finalize_error(identity, advertised.as_deref(), error)
                     .await
             }
+        }
+    }
+
+    async fn transfer_complete(&self, post: &PostId) -> bool {
+        self.ctx
+            .store
+            .is_complete(post.as_str())
+            .await
+            .unwrap_or(false)
+    }
+
+    fn advertised_digest(&self, post: &PostId) -> Option<String> {
+        self.state
+            .catalog()
+            .lookup(post)
+            .and_then(|entry| entry.meta.sha256.clone())
+    }
+
+    fn learn_finalized(&mut self, identity: &TransferIdentity, total: Option<u64>) {
+        if let Some(total) = total {
+            self.state.catalog_mut().learn_complete_bytes_for(
+                identity,
+                total,
+                crate::manager::time::unix_time_ms(),
+            );
         }
     }
 }

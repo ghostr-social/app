@@ -35,6 +35,7 @@ pub(crate) mod reconcile;
 mod reconcile_transfers;
 pub(crate) mod reconcile_warp;
 pub(crate) mod reliability;
+mod request_gate;
 mod reset;
 mod response_observation;
 pub(crate) mod response_open;
@@ -82,7 +83,7 @@ use crate::segmented::SegmentedCache;
 use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_engine::concurrency::AdaptiveConcurrency;
 use ghostr_engine::{DataUsageLevel, EngineParams};
-use ghostr_net::outbound_media_client::{MediaHttpClient, MediaHttpRequests};
+use ghostr_net::media_request_executor::MediaRequestExecutor;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
@@ -95,9 +96,9 @@ pub use tuning::DeliveryTuning;
 const TRAFFIC_MAILBOX_CAPACITY: usize = 64;
 
 /// Everything the manager owns or reaches, as one typed object.
-pub struct DeliveryManagerConfig<C = MediaHttpClient> {
+pub struct DeliveryManagerConfig {
     pub store: Arc<PartialRangeStore>,
-    pub client: C,
+    pub requests: MediaRequestExecutor,
     pub cache: CacheRegistry,
     pub segmented: SegmentedCache,
     pub network: NetworkThrottle,
@@ -108,27 +109,22 @@ pub struct DeliveryManagerConfig<C = MediaHttpClient> {
 }
 
 /// Starts the manager task and exposes adaptive candidate-demand changes.
-pub fn start_delivery_manager_with_discovery_demand<C>(
-    config: DeliveryManagerConfig<C>,
+pub fn start_delivery_manager_with_discovery_demand(
+    config: DeliveryManagerConfig,
     demand: DemandReceiver,
-) -> (DeliveryHandle, watch::Receiver<DiscoveryDemand>)
-where
-    C: MediaHttpRequests + 'static,
-{
+) -> (DeliveryHandle, watch::Receiver<DiscoveryDemand>) {
     let (discovery_sender, discovery_updates) = watch::channel(DiscoveryDemand::Expand);
     let (handle, commands) = command_channel();
     tokio::spawn(run(config, commands, demand, Some(discovery_sender)));
     (handle, discovery_updates)
 }
 
-async fn run<C>(
-    config: DeliveryManagerConfig<C>,
+async fn run(
+    config: DeliveryManagerConfig,
     commands: CommandReceiver,
     demand: DemandReceiver,
     discovery_watch: Option<watch::Sender<DiscoveryDemand>>,
-) where
-    C: MediaHttpRequests + 'static,
-{
+) {
     let mut worker = DeliveryWorker::create(config, commands, demand).await;
     worker.spawn_capacity_replans();
     if let Some(sender) = discovery_watch {

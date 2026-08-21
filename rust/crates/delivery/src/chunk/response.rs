@@ -5,9 +5,10 @@ use ghostr_engine::adaptive::{
     PromotionGrant, RetrievalRequest, WholeBodyContract, WholeFetchReason,
 };
 use ghostr_engine::ByteRange;
+use ghostr_net::media_request_executor::MediaResponse;
 use ghostr_net::{content_range, origin_content_type};
 use reqwest::header::CONTENT_RANGE;
-use reqwest::{Response, StatusCode};
+use reqwest::StatusCode;
 
 pub(crate) enum ResponseReply {
     Partial {
@@ -25,7 +26,7 @@ pub(crate) enum ResponseReply {
 }
 
 pub(crate) fn classify(
-    response: &Response,
+    response: &MediaResponse,
     request: RetrievalRequest,
     conditional: bool,
 ) -> Result<ResponseReply> {
@@ -41,7 +42,7 @@ pub(crate) fn classify(
 }
 
 fn classify_range(
-    response: &Response,
+    response: &MediaResponse,
     expected: ByteRange,
     promotion: Option<PromotionGrant>,
     conditional: bool,
@@ -70,7 +71,7 @@ fn classify_range(
 }
 
 fn classify_whole(
-    response: &Response,
+    response: &MediaResponse,
     contract: WholeBodyContract,
     reason: WholeFetchReason,
 ) -> Result<ResponseReply> {
@@ -97,7 +98,7 @@ fn effective_contract(length: Option<u64>, contract: WholeBodyContract) -> Whole
 }
 
 fn bounded_or_ignored(
-    response: &Response,
+    response: &MediaResponse,
     expected: ByteRange,
     range_support: Option<bool>,
 ) -> Result<ResponseReply> {
@@ -156,7 +157,10 @@ fn whole_contract(length: Option<u64>, maximum: u64) -> WholeBodyContract {
     }
 }
 
-fn verified_range(response: &Response, expected: ByteRange) -> Result<(ByteRange, Option<u64>)> {
+fn verified_range(
+    response: &MediaResponse,
+    expected: ByteRange,
+) -> Result<(ByteRange, Option<u64>)> {
     let parsed = verified_content_range(response)?;
     let returned = ByteRange::new(parsed.range.start, parsed.range.end);
     ensure!(
@@ -176,7 +180,7 @@ fn verified_range(response: &Response, expected: ByteRange) -> Result<(ByteRange
     Ok((returned, parsed.total))
 }
 
-fn verified_content_range(response: &Response) -> Result<content_range::ParsedContentRange> {
+fn verified_content_range(response: &MediaResponse) -> Result<content_range::ParsedContentRange> {
     let mut values = response.headers().get_all(CONTENT_RANGE).iter();
     let value = values
         .next()

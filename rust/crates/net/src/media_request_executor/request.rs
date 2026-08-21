@@ -5,6 +5,19 @@ use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::RequestAuthority;
 use reqwest::header::{HeaderName, HeaderValue, HOST};
 use reqwest::{Client, Method, Request, RequestBuilder};
+use std::fmt;
+use std::time::Duration;
+
+#[derive(Debug)]
+pub struct MediaRequestAdmissionTimeout;
+
+impl fmt::Display for MediaRequestAdmissionTimeout {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("media request admission timed out")
+    }
+}
+
+impl std::error::Error for MediaRequestAdmissionTimeout {}
 
 pub struct MediaRequest {
     builder: RequestBuilder,
@@ -57,6 +70,13 @@ impl MediaRequest {
             request,
             lease,
         })
+    }
+
+    pub async fn admit_for(self, wait: Duration) -> Result<AdmittedMediaRequest> {
+        match tokio::time::timeout(wait, self.admit()).await {
+            Ok(result) => result,
+            Err(_) => Err(MediaRequestAdmissionTimeout.into()),
+        }
     }
 }
 

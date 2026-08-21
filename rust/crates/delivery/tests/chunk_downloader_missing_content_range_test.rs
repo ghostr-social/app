@@ -34,10 +34,11 @@ async fn chunk_downloader_rejects_partial_content_without_a_content_range() {
     let (_handle, token) = cancel_pair();
     let mut stats = HostStats::new();
     let spec = ChunkSpec {
-        client: &media_client(),
+        requests: &media_client(),
         url: &url,
         request: range_fixture::range_request(ByteRange::new(0, 5)),
         continuation: None,
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {
@@ -45,9 +46,13 @@ async fn chunk_downloader_rejects_partial_content_without_a_content_range() {
         key: "clip",
     };
 
-    let error = download_chunk_throttled(&spec, &sink, &mut stats, &token, &NetworkThrottle::new())
-        .await
-        .expect_err("malformed partial response must fail");
+    let error = download_chunk_throttled(
+        &spec,
+        &sink,
+        range_fixture::context(&mut stats, &token, &NetworkThrottle::new()),
+    )
+    .await
+    .expect_err("malformed partial response must fail");
 
     assert!(error.to_string().contains("missing Content-Range"));
     assert!(store

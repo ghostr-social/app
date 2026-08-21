@@ -16,6 +16,7 @@ pub enum PlannerCommand {
     ProbeHead {
         post: PostId,
         source: String,
+        authority: crate::adaptive::PreemptionAuthority,
     },
     Transfer(Allocation),
     Promote {

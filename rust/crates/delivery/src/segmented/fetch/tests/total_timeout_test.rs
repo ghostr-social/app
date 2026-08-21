@@ -1,5 +1,6 @@
 use super::super::asset_with_timeouts;
 use super::support::{client, trickled_body};
+use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
 use std::time::Duration;
 
@@ -12,10 +13,12 @@ async fn trickled_hls_chunks_cannot_extend_total_deadline() {
         Duration::from_millis(30),
     );
 
-    let error = match asset_with_timeouts(client().as_ref(), &url, timing).await {
-        Ok(_) => panic!("transfer must hit its total deadline"),
-        Err(error) => error,
-    };
+    let requests = client();
+    let error =
+        match asset_with_timeouts(&requests, &url, timing, PreemptionAuthority::Transition).await {
+            Ok(_) => panic!("transfer must hit its total deadline"),
+            Err(error) => error,
+        };
 
     assert!(error.to_string().contains("transfer timed out"));
     server.abort();

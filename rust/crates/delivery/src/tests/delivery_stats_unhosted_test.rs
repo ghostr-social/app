@@ -32,6 +32,7 @@ async fn unhosted_outcomes_do_not_dirty_or_persist_host_stats() {
             request_started: true,
         }),
         origin: None,
+        request_started: true,
     });
     keeper.note_probe(&ProbeObservation {
         post,
@@ -43,6 +44,7 @@ async fn unhosted_outcomes_do_not_dirty_or_persist_host_stats() {
             validator: None,
             ttfb: Duration::from_millis(1),
         }),
+        concurrency: 1,
     });
 
     keeper.save_now().await;

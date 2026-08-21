@@ -16,6 +16,7 @@ fn schema_two_records_the_authoritative_warp_selection_and_noop() {
         PlannerCommand::ProbeHead {
             post: PostId::new("secret-post"),
             source: source.into(),
+            authority: crate::adaptive::PreemptionAuthority::Transition,
         },
         ActionKind::Head,
     );

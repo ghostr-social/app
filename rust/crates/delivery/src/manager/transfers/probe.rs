@@ -1,12 +1,13 @@
 use super::{InternalEvent, ProbeDone, ProbeObservation, TransferContext, TransferEvent};
 use crate::delivery_events::DecisionClaim;
-use crate::probe::media::{probe, ProbeResult};
+use crate::probe::media::{probe_observed, ObservedProbe, ProbeSpec};
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::PostId;
 
 pub(crate) struct ProbeLaunch {
     pub post: PostId,
     pub url: String,
+    pub authority: ghostr_engine::adaptive::PreemptionAuthority,
     pub decision: DecisionClaim,
 }
 
@@ -14,16 +15,20 @@ pub(crate) struct ProbeLaunch {
 pub(crate) fn spawn_probe(ctx: TransferContext, launch: ProbeLaunch) {
     tokio::spawn(async move {
         let events = ctx.events.clone();
-        let worker = tokio::spawn(run_probe(ctx, launch.url.clone()));
-        let outcome = match worker.await {
-            Ok(outcome) => outcome,
-            Err(error) => Err(anyhow::anyhow!("video probe task failed: {error}")),
+        let worker = tokio::spawn(run_probe(ctx, launch.url.clone(), launch.authority));
+        let observed = match worker.await {
+            Ok(observed) => observed,
+            Err(error) => ObservedProbe {
+                outcome: Err(anyhow::anyhow!("video probe task failed: {error}")),
+                concurrency: 1,
+            },
         };
         let event = TransferEvent::ProbeDone(ProbeDone {
             observation: ProbeObservation {
                 post: launch.post,
                 url: launch.url,
-                outcome,
+                outcome: observed.outcome,
+                concurrency: observed.concurrency,
             },
             decision: launch.decision,
         });
@@ -31,7 +36,17 @@ pub(crate) fn spawn_probe(ctx: TransferContext, launch: ProbeLaunch) {
     });
 }
 
-async fn run_probe(ctx: TransferContext, url: String) -> anyhow::Result<ProbeResult> {
+async fn run_probe(
+    ctx: TransferContext,
+    url: String,
+    priority: ghostr_engine::adaptive::PreemptionAuthority,
+) -> ObservedProbe {
     let mut scratch = HostStats::new();
-    probe(ctx.client.as_ref(), &url, ctx.timeouts, &mut scratch).await
+    let spec = ProbeSpec {
+        requests: &ctx.requests,
+        url: &url,
+        priority,
+        timeouts: ctx.timeouts,
+    };
+    probe_observed(spec, &mut scratch).await
 }

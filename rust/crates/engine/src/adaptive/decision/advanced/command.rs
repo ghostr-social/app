@@ -19,6 +19,7 @@ pub enum RecordedWarpCommand {
     ProbeHead {
         post_id: String,
         source_id: String,
+        authority: RecordedPreemptionAuthority,
     },
     Transfer {
         transfer: RecordedTransfer,
@@ -61,9 +62,14 @@ pub(super) fn capture(command: &PlannerCommand, privacy: &DecisionPrivacy) -> Re
 
 fn external(command: &PlannerCommand, privacy: &DecisionPrivacy) -> RecordedWarpCommand {
     match command {
-        PlannerCommand::ProbeHead { post, source } => RecordedWarpCommand::ProbeHead {
+        PlannerCommand::ProbeHead {
+            post,
+            source,
+            authority,
+        } => RecordedWarpCommand::ProbeHead {
             post_id: privacy.post(post.as_str()),
             source_id: privacy.source(source),
+            authority: (*authority).into(),
         },
         PlannerCommand::Transfer(value) => RecordedWarpCommand::Transfer {
             transfer: allocation::capture(value, privacy),

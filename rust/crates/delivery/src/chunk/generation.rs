@@ -2,9 +2,9 @@ use crate::chunk::downloader::HttpResponseEvidence;
 use anyhow::{Context, Result};
 use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_engine::representation::SourceGeneration;
+use ghostr_net::media_request_executor::MediaResponse;
 use ghostr_net::strong_etag::single_strong_etag;
 use reqwest::header::{CONTENT_TYPE, LAST_MODIFIED};
-use reqwest::Response;
 
 /// Response identity inspected before any sparse bytes are exposed.
 pub struct OriginGeneration {
@@ -14,7 +14,7 @@ pub struct OriginGeneration {
 }
 
 impl HttpResponseEvidence {
-    pub(crate) fn from_response(response: &Response) -> Self {
+    pub(crate) fn from_response(response: &MediaResponse) -> Self {
         let headers = response.headers();
         let etag = single_strong_etag(headers)
             .ok()
@@ -32,7 +32,10 @@ impl HttpResponseEvidence {
 }
 
 impl OriginGeneration {
-    pub(crate) fn from_response(response: &Response, total_bytes: Option<u64>) -> Result<Self> {
+    pub(crate) fn from_response(
+        response: &MediaResponse,
+        total_bytes: Option<u64>,
+    ) -> Result<Self> {
         let strong_etag = single_strong_etag(response.headers())
             .ok()
             .flatten()

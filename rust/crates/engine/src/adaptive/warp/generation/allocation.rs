@@ -107,17 +107,17 @@ pub(super) fn classify(allocation: &Allocation) -> super::super::ActionKind {
         RetrievalRequest::FetchWhole { contract, .. } => super::super::ActionKind::FetchWhole {
             maximum_bytes: contract.maximum_bytes(),
         },
-        RetrievalRequest::FetchRange { bytes, .. }
-            if allocation.reason == AllocationReason::MediaBootstrap =>
-        {
-            super::super::ActionKind::Prefix(bytes)
-        }
-        RetrievalRequest::FetchRange { bytes, .. }
-            if allocation.reason == AllocationReason::MediaLayoutDiscovery && bytes.start > 0 =>
-        {
+        RetrievalRequest::FetchRange { bytes, .. } => classify_range(allocation.reason, bytes),
+    }
+}
+
+fn classify_range(reason: AllocationReason, bytes: crate::ByteRange) -> super::super::ActionKind {
+    match reason {
+        AllocationReason::MediaBootstrap => super::super::ActionKind::Prefix(bytes),
+        AllocationReason::MediaLayoutDiscovery if bytes.start > 0 => {
             super::super::ActionKind::Tail(bytes)
         }
-        RetrievalRequest::FetchRange { bytes, .. } => super::super::ActionKind::FetchRange(bytes),
+        _ => super::super::ActionKind::FetchRange(bytes),
     }
 }
 
@@ -160,7 +160,7 @@ fn network_request(kind: &super::super::ActionKind) -> bool {
     )
 }
 
-fn authority(
+pub(super) fn authority(
     candidate: &CandidateSnapshot,
     snapshot: &PlayabilitySnapshot,
     mode: ControlMode,

@@ -4,6 +4,8 @@ use std::pin::Pin;
 use std::time::Duration;
 
 pub trait ChunkTraffic: Send {
+    fn concurrency(&mut self, _active: usize) {}
+    fn request_started(&mut self) {}
     fn opened(&mut self, ttfb: Duration);
     fn wrote(&mut self, bytes: u64);
     fn response_observed(&mut self, _response: ResponseObservation) {}

@@ -1,60 +1,14 @@
-use super::{ChunkResult, ChunkSpec, OpenedResponse, ResponseAdmission, ResponseObservation};
-use crate::chunk::traffic::ChunkTraffic;
+use super::{ChunkResult, ChunkSpec};
 use ghostr_engine::adaptive::RetrievalRequest;
 use ghostr_engine::origin_model::{
     ErrorReason, MediaClass, NetworkClass, OriginContext, OriginObservation, OriginQuery,
     RequestMethod,
 };
-use std::future::Future;
-use std::pin::Pin;
 use std::time::Duration;
 
-#[derive(Clone, Copy, Debug, Default)]
-pub(super) struct TrafficMeasurements {
-    ttfb: Option<Duration>,
-    bytes: u64,
-}
+mod measurements;
 
-pub(super) struct MeasuredTraffic<'a> {
-    inner: &'a mut dyn ChunkTraffic,
-    measured: TrafficMeasurements,
-}
-
-impl<'a> MeasuredTraffic<'a> {
-    pub fn new(inner: &'a mut dyn ChunkTraffic) -> Self {
-        Self {
-            inner,
-            measured: TrafficMeasurements::default(),
-        }
-    }
-
-    pub fn measurements(&self) -> TrafficMeasurements {
-        self.measured
-    }
-}
-
-impl ChunkTraffic for MeasuredTraffic<'_> {
-    fn opened(&mut self, ttfb: Duration) {
-        self.measured.ttfb = Some(ttfb);
-        self.inner.opened(ttfb);
-    }
-
-    fn wrote(&mut self, bytes: u64) {
-        self.measured.bytes = self.measured.bytes.saturating_add(bytes);
-        self.inner.wrote(bytes);
-    }
-
-    fn response_observed(&mut self, response: ResponseObservation) {
-        self.inner.response_observed(response);
-    }
-
-    fn authorize_response<'a>(
-        &'a mut self,
-        response: OpenedResponse,
-    ) -> Pin<Box<dyn Future<Output = anyhow::Result<ResponseAdmission>> + Send + 'a>> {
-        self.inner.authorize_response(response)
-    }
-}
+pub(super) use measurements::{MeasuredTraffic, TrafficMeasurements};
 
 pub(super) fn observation(
     spec: &ChunkSpec<'_>,

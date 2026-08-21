@@ -1,12 +1,4 @@
-#[cfg(all(
-    feature = "video-debug-web",
-    debug_assertions,
-    not(any(target_os = "android", target_os = "ios"))
-))]
-use crate::debug::media::DebugMediaHttpClient;
 use crate::delivery::start_progressive_delivery;
-#[cfg(all(feature = "device-integration", debug_assertions))]
-use crate::device_integration::DeviceIntegrationMediaHttpClient;
 use crate::hls::playback::{HlsPlaybackGateway, NativeHlsPlaybackSession};
 use crate::hls::sessions::HlsSessions;
 use crate::progressive::capabilities::ProgressiveCapabilityId;
@@ -17,7 +9,6 @@ use ghostr_delivery::segmented::SegmentedCache;
 use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_engine::VideoMeta;
 use ghostr_media_store::native_cache::prepare_native_cache_directory;
-use ghostr_net::outbound_media_client::MediaHttpClient;
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use log::warn;
 use nostr_sdk::Client;
@@ -27,6 +18,8 @@ use tokio::{
     sync::watch,
     time::{timeout_at, Instant},
 };
+
+mod media;
 
 pub struct GatewayConfiguration {
     pub cache_directory: PathBuf,
@@ -56,7 +49,7 @@ impl GatewayRuntime {
         configuration: GatewayConfiguration,
         client: Arc<Client>,
     ) -> anyhow::Result<(String, Self, watch::Receiver<DiscoveryDemand>)> {
-        let media = media_client(&configuration)?;
+        let media = media::client(&configuration)?;
         start_with_media(configuration, client, media).await
     }
 
@@ -69,7 +62,7 @@ impl GatewayRuntime {
         configuration: GatewayConfiguration,
         client: Arc<Client>,
     ) -> anyhow::Result<(String, Self, watch::Receiver<DiscoveryDemand>)> {
-        let media = Arc::new(DebugMediaHttpClient::new()?);
+        let media = media::debug_client()?;
         start_with_media(configuration, client, media).await
     }
 
@@ -129,33 +122,20 @@ impl GatewayRuntime {
     }
 }
 
-fn media_client(
-    configuration: &GatewayConfiguration,
-) -> anyhow::Result<Arc<dyn MediaHttpRequests>> {
-    #[cfg(all(feature = "device-integration", debug_assertions))]
-    if let Some(origin) = configuration.device_integration_origin.as_deref() {
-        return Ok(Arc::new(DeviceIntegrationMediaHttpClient::new(origin)?));
-    }
-    anyhow::ensure!(
-        configuration.device_integration_origin.is_none(),
-        "device integration media is unavailable"
-    );
-    Ok(Arc::new(MediaHttpClient::public()?))
-}
-
 async fn start_with_media(
     configuration: GatewayConfiguration,
     client: Arc<Client>,
     media: Arc<dyn MediaHttpRequests>,
 ) -> anyhow::Result<(String, GatewayRuntime, watch::Receiver<DiscoveryDemand>)> {
     validate(&configuration)?;
+    let requests = media::executor(media, configuration.max_parallel_downloads)?;
     prepare_native_cache_directory(&configuration.cache_directory)?;
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let address = listener.local_addr()?;
     let endpoint = address.to_string();
     let hls_sessions = HlsSessions::production();
     let (router, delivery, progressive, segmented, discovery_demand) =
-        start_progressive_delivery(&configuration, hls_sessions.clone(), client, media).await?;
+        start_progressive_delivery(&configuration, hls_sessions.clone(), client, requests).await?;
     spawn_http_server(listener, router);
     let hls = HlsPlaybackGateway::new(address, hls_sessions);
     let runtime = GatewayRuntime {

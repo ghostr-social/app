@@ -9,6 +9,10 @@ use ghostr_engine::adaptive::DecisionOutcome;
 use ghostr_engine::host_stats::host_of;
 use ghostr_engine::origin_model::{AdaptationState, DecisionMode, OriginOutcome};
 
+#[cfg(test)]
+#[path = "completion_observability/request_started_test.rs"]
+mod request_started_test;
+
 impl DeliveryWorker {
     pub(super) fn observe_chunk_completion(&self, done: &ChunkDone, status: CompletionStatus) {
         let observed_at_ms = done
@@ -118,7 +122,7 @@ fn transfer_event(
     let cancelled = status == CompletionStatus::Cancelled
         || done.outcome.as_ref().is_ok_and(|result| result.cancelled);
     let result = done.outcome.as_ref().ok();
-    let request_started = result.is_some_and(|item| item.request_started);
+    let request_started = done.request_started;
     TransferMetricEvent {
         post: Some(done.attempt.chunk.post.clone()),
         total_bytes: bytes,

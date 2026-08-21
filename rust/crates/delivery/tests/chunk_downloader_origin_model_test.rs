@@ -20,10 +20,11 @@ async fn real_range_outcome_updates_contextual_origin_model() {
     let (_handle, token) = cancel_pair();
     let mut stats = HostStats::new();
     let spec = ChunkSpec {
-        client: &client,
+        requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(0, 16)),
         continuation: None,
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {
@@ -31,9 +32,13 @@ async fn real_range_outcome_updates_contextual_origin_model() {
         key: "clip",
     };
 
-    download_chunk_throttled(&spec, &sink, &mut stats, &token, &range_fixture::network())
-        .await
-        .expect("range delivery");
+    download_chunk_throttled(
+        &spec,
+        &sink,
+        range_fixture::context(&mut stats, &token, &range_fixture::network()),
+    )
+    .await
+    .expect("range delivery");
 
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)

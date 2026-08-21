@@ -1,5 +1,4 @@
 use super::delivery::{start_delivery, start_delivery_with_tuning, DeliveryFixture};
-use super::media_client;
 use super::progressive_journey_trace::ProgressiveJourneyTrace;
 #[cfg(feature = "video-debug-web")]
 use ghostr_delivery::debug::feed::DebugFeed;
@@ -8,7 +7,7 @@ use ghostr_delivery::manager::DeliveryTuning;
 use ghostr_gateway::hls::sessions::HlsSessions;
 use ghostr_gateway::progressive::capabilities::ProgressiveCapabilities;
 use ghostr_gateway::progressive::route::{ProgressiveState, ProgressiveTiming};
-use ghostr_gateway::router::configured_router_with_progressive;
+use ghostr_gateway::router::{configured_router_with_progressive, GatewayRouterResources};
 use std::sync::Arc;
 
 mod request;
@@ -42,8 +41,9 @@ impl ProgressiveDeliveryHarness {
             #[cfg(feature = "video-debug-web")]
             debug_feed: DebugFeed::new(delivery.handle.clone(), Vec::new()),
         });
-        let router =
-            configured_router_with_progressive(HlsSessions::production(), media_client(), state);
+        let resources =
+            GatewayRouterResources::new(HlsSessions::production(), delivery.requests.clone());
+        let router = configured_router_with_progressive(resources, state);
         Self {
             delivery,
             router,

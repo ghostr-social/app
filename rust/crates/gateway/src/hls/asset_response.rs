@@ -5,6 +5,7 @@ use axum::http::header::{CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE};
 use axum::http::{HeaderMap, Response, StatusCode};
 use ghostr_hls_manifest::hls_manifest::MAX_HLS_ASSET_BYTES;
 use ghostr_net::content_range;
+use ghostr_net::media_request_executor::MediaResponse;
 
 #[cfg(test)]
 mod tests;
@@ -33,7 +34,7 @@ pub(super) enum AssetResponseEnvelope {
 
 pub(super) fn validate(
     request: AssetRangeRequest,
-    response: &reqwest::Response,
+    response: &MediaResponse,
 ) -> Result<AssetResponseEnvelope> {
     match (request.is_ranged(), response.status()) {
         (false, StatusCode::OK) => full(response),
@@ -123,7 +124,7 @@ impl AssetBodyContract {
     }
 }
 
-fn full(response: &reqwest::Response) -> Result<AssetResponseEnvelope> {
+fn full(response: &MediaResponse) -> Result<AssetResponseEnvelope> {
     ensure!(
         response
             .headers()
@@ -141,10 +142,7 @@ fn full(response: &reqwest::Response) -> Result<AssetResponseEnvelope> {
     Ok(AssetResponseEnvelope::Full { length })
 }
 
-fn partial(
-    request: AssetRangeRequest,
-    response: &reqwest::Response,
-) -> Result<AssetResponseEnvelope> {
+fn partial(request: AssetRangeRequest, response: &MediaResponse) -> Result<AssetResponseEnvelope> {
     ensure!(
         !is_multipart(response.headers()),
         "multipart HLS range response"

@@ -18,13 +18,14 @@ async fn capped_chunked_whole_discovers_its_exact_length_at_eof() {
     let (_handle, token) = cancel_pair();
     let mut stats = HostStats::new();
     let spec = ChunkSpec {
-        client: &client,
+        requests: &client,
         url: &url,
         request: RetrievalRequest::FetchWhole {
             contract: WholeBodyContract::Capped { maximum_bytes: 32 },
             reason: WholeFetchReason::DirectCrossover,
         },
         continuation: None,
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {
@@ -32,10 +33,13 @@ async fn capped_chunked_whole_discovers_its_exact_length_at_eof() {
         key: "clip",
     };
 
-    let result =
-        download_chunk_throttled(&spec, &sink, &mut stats, &token, &range_fixture::network())
-            .await
-            .expect("chunked whole download");
+    let result = download_chunk_throttled(
+        &spec,
+        &sink,
+        range_fixture::context(&mut stats, &token, &range_fixture::network()),
+    )
+    .await
+    .expect("chunked whole download");
     request.await.expect("captured request");
 
     assert_eq!(result.bytes_written, 16);

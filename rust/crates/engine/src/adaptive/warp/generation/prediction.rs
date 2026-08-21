@@ -50,6 +50,17 @@ pub(super) fn predict(input: PredictionInput<'_>) -> Prediction {
     }
 }
 
+pub(super) fn transform_prediction(candidate: &CandidateSnapshot, cpu_ms: u64) -> Prediction {
+    Prediction {
+        forecast: ActionForecast::new(
+            CompletionTimes::new(cpu_ms, cpu_ms, cpu_ms, cpu_ms),
+            10_000,
+            candidate.duration_ms,
+        ),
+        uncertainty_bps: 0,
+    }
+}
+
 fn completion(bytes: u64, estimate: &crate::origin_model::OriginEstimate) -> CompletionTimes {
     let expected = estimate
         .ttfb_ms
@@ -125,11 +136,12 @@ fn method(action: &ActionKind) -> RequestMethod {
         ActionKind::Head => RequestMethod::Head,
         ActionKind::Prefix(_) => RequestMethod::PrefixGet,
         ActionKind::Tail(_) => RequestMethod::TailGet,
-        ActionKind::FetchRange(_) | ActionKind::CacheUpgrade(_) | ActionKind::Hedge { .. } => {
-            RequestMethod::RangeGet
-        }
+        ActionKind::FetchRange(_)
+        | ActionKind::CacheUpgrade(_)
+        | ActionKind::Hedge { .. }
+        | ActionKind::Transform(_)
+        | ActionKind::Cancel(_) => RequestMethod::RangeGet,
         ActionKind::FetchWhole { .. } | ActionKind::Promote { .. } => RequestMethod::FullGet,
-        ActionKind::Transform(_) | ActionKind::Cancel(_) => RequestMethod::RangeGet,
     }
 }
 

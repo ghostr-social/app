@@ -38,7 +38,6 @@ struct ThrottleInner {
     profile: RwLock<NetworkProfile>,
     active: Mutex<HashMap<String, usize>>,
     bandwidth: SharedBandwidth,
-    connections_changed: Notify,
     profile_changed: Notify,
 }
 
@@ -69,7 +68,6 @@ impl NetworkThrottle {
             .profile
             .write()
             .unwrap_or_else(|poisoned| poisoned.into_inner()) = profile;
-        self.inner.connections_changed.notify_waiters();
         self.inner.profile_changed.notify_waiters();
     }
 
@@ -89,17 +87,10 @@ impl NetworkThrottle {
 
     pub async fn acquire(&self, url: &str) -> ConnectionPermit {
         let host = connection_key(url);
-        loop {
-            let changed = self.inner.connections_changed.notified();
-            tokio::pin!(changed);
-            changed.as_mut().enable();
-            if self.try_claim(&host) {
-                return ConnectionPermit {
-                    throttle: self.clone(),
-                    host,
-                };
-            }
-            changed.await;
+        self.claim(&host);
+        ConnectionPermit {
+            throttle: self.clone(),
+            host,
         }
     }
 
@@ -117,19 +108,13 @@ impl NetworkThrottle {
             .await;
     }
 
-    fn try_claim(&self, host: &str) -> bool {
-        let limit = self.profile().max_connections_per_host;
+    fn claim(&self, host: &str) {
         let mut active = self
             .inner
             .active
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let count = active.entry(host.to_owned()).or_default();
-        if limit > 0 && *count >= limit {
-            return false;
-        }
-        *count += 1;
-        true
+        *active.entry(host.to_owned()).or_default() += 1;
     }
 
     fn release(&self, host: &str) {
@@ -142,8 +127,6 @@ impl NetworkThrottle {
             *count = count.saturating_sub(1);
         }
         active.retain(|_, count| *count > 0);
-        drop(active);
-        self.inner.connections_changed.notify_waiters();
     }
 }
 

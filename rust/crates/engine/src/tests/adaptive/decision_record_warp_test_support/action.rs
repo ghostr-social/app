@@ -10,6 +10,7 @@ pub(crate) fn add_generated_action(decision: &mut WarpPlanningDecision, id: u16,
     action.command = PlannerCommand::ProbeHead {
         post,
         source: source.into(),
+        authority: crate::adaptive::PreemptionAuthority::Transition,
     };
     decision.generated.actions.push(action);
 }

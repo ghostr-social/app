@@ -2,15 +2,19 @@ use super::{prepare_hls, SegmentedCache, SegmentedPhase};
 use crate::delivery_events::DeliveryFocus;
 use crate::manager::transfers::{InternalEvent, SegmentedDone};
 use ghostr_engine::{DeliveryKind, PostId};
-use ghostr_net::outbound_media_client::MediaHttpRequests;
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
-use tokio::sync::mpsc::UnboundedSender;
 
+#[cfg(test)]
+#[path = "scheduler/priority_test.rs"]
+mod priority_test;
 #[cfg(test)]
 mod tests;
 
 const MAX_HLS_READY_WINDOW: usize = 5;
+
+mod target;
+pub(crate) use target::ReconcileInput;
+use target::{targets, Target};
 
 pub(crate) struct SegmentedDelivery {
     cache: SegmentedCache,
@@ -20,12 +24,6 @@ pub(crate) struct SegmentedDelivery {
     next_generation: u64,
     current_delivery: Option<DeliveryKind>,
     startup_eta_ms: u64,
-}
-
-#[derive(Clone, Eq, PartialEq)]
-struct Target {
-    post: PostId,
-    sources: Vec<String>,
 }
 
 struct Active {
@@ -49,15 +47,7 @@ impl SegmentedDelivery {
     pub fn apply_focus(&mut self, focus: &DeliveryFocus) {
         let current = focus.current_index.min(focus.items.len().saturating_sub(1));
         let tracked = hls_items(&focus.items);
-        let targets: Vec<Target> = focus.items[current..]
-            .iter()
-            .take(MAX_HLS_READY_WINDOW + 1)
-            .filter(|item| item.meta.delivery == DeliveryKind::Hls)
-            .map(|item| Target {
-                post: item.post.clone(),
-                sources: item.meta.urls.clone(),
-            })
-            .collect();
+        let targets = targets(&focus.items, current, MAX_HLS_READY_WINDOW + 1);
         let current_delivery = focus.items.get(current).map(|item| item.meta.delivery);
         if self.equivalent(&tracked, &targets, current_delivery) {
             return;
@@ -70,29 +60,35 @@ impl SegmentedDelivery {
         self.current_delivery = current_delivery;
     }
 
-    pub fn reconcile(
-        &mut self,
-        client: Arc<dyn MediaHttpRequests>,
-        events: UnboundedSender<InternalEvent>,
-        connection_limit: usize,
-        progressive_active: usize,
-    ) {
-        let reserve = usize::from(
-            self.current_delivery == Some(DeliveryKind::Progressive) && progressive_active == 0,
-        );
-        let capacity = connection_limit
-            .saturating_sub(progressive_active)
-            .saturating_sub(reserve);
+    pub fn reconcile(&mut self, input: ReconcileInput) {
+        let capacity = self.available_capacity(&input);
+        let available = capacity.saturating_sub(self.active.len());
+        let targets: Vec<_> = self
+            .targets
+            .iter()
+            .filter(|target| self.is_startable(target))
+            .take(available)
+            .cloned()
+            .collect();
         let generation = self.next_generation;
-        for target in self.targets.clone() {
-            if self.active.len() >= capacity {
-                break;
-            }
-            if self.active.contains_key(&target.post) || !self.should_start(&target.post) {
-                continue;
-            }
-            self.start(target, generation, client.clone(), events.clone());
+        for target in targets {
+            self.start(target, generation, &input);
         }
+    }
+
+    fn available_capacity(&self, input: &ReconcileInput) -> usize {
+        let reserve = usize::from(
+            self.current_delivery == Some(DeliveryKind::Progressive)
+                && input.progressive_active == 0,
+        );
+        input
+            .connection_limit
+            .saturating_sub(input.progressive_active)
+            .saturating_sub(reserve)
+    }
+
+    fn is_startable(&self, target: &Target) -> bool {
+        !self.active.contains_key(&target.post) && self.should_start(&target.post)
     }
 
     pub fn finish(&mut self, done: SegmentedDone) {
@@ -147,13 +143,7 @@ impl SegmentedDelivery {
         )
     }
 
-    fn start(
-        &mut self,
-        target: Target,
-        generation: u64,
-        client: Arc<dyn MediaHttpRequests>,
-        events: UnboundedSender<InternalEvent>,
-    ) {
+    fn start(&mut self, target: Target, generation: u64, input: &ReconcileInput) {
         if !self
             .cache
             .mark_preparing(&target.post, generation, self.startup_eta_ms)
@@ -163,8 +153,10 @@ impl SegmentedDelivery {
         let cache = self.cache.clone();
         let post = target.post.clone();
         let task_post = post.clone();
+        let requests = input.requests.clone();
+        let events = input.events.clone();
         let task = tokio::spawn(async move {
-            let result = prepare_hls(client.as_ref(), &target.sources).await;
+            let result = prepare_hls(&requests, &target.sources, target.priority).await;
             cache.complete(&task_post, generation, result);
             let _ = events.send(InternalEvent::Segmented(SegmentedDone {
                 post: task_post,

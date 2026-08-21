@@ -10,6 +10,7 @@ use crate::tests::support::temp_directory;
 use ghostr_engine::adaptive::RetrievalRequest;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::{ActionId, ByteRange, ChunkId, DeliveryKind, PostId, VideoMeta};
+use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
@@ -42,7 +43,10 @@ async fn panicking_transfer_reports_terminal_and_releases_its_reservation() {
     let (publisher, _traffic) = traffic::channel(events_sender.clone(), 4);
     let (responses, _response_receiver) = response_open::channel(std::time::Duration::from_secs(1));
     let ctx = TransferContext {
-        client: Arc::new(PanicClient),
+        requests: MediaRequestExecutor::new(
+            Arc::new(PanicClient),
+            MediaRequestLimits::try_new(1, 1).unwrap(),
+        ),
         store: store.clone(),
         events: events_sender,
         responses,
@@ -64,6 +68,7 @@ async fn panicking_transfer_reports_terminal_and_releases_its_reservation() {
         attempt,
         url: identity.source().as_str().to_owned(),
         retrieval: request(),
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         token,
         action,
     });

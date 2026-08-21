@@ -16,10 +16,11 @@ async fn cancellation_before_admission_finishes_without_an_http_request() {
     handle.cancel();
     let mut stats = HostStats::new();
     let spec = ChunkSpec {
-        client: &client,
+        requests: &client,
         url: "not an http URL",
         request: range_fixture::range_request(ByteRange::new(0, 8)),
         continuation: None,
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {
@@ -27,10 +28,13 @@ async fn cancellation_before_admission_finishes_without_an_http_request() {
         key: "clip",
     };
 
-    let result =
-        download_chunk_throttled(&spec, &sink, &mut stats, &token, &range_fixture::network())
-            .await
-            .expect("pre-cancelled download");
+    let result = download_chunk_throttled(
+        &spec,
+        &sink,
+        range_fixture::context(&mut stats, &token, &range_fixture::network()),
+    )
+    .await
+    .expect("pre-cancelled download");
 
     assert!(result.cancelled);
     assert_eq!(result.bytes_written, 0);

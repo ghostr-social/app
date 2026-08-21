@@ -12,6 +12,7 @@ use ghostr_delivery::playback_demand::{demand_channel, DemandReceiver, DemandSen
 use ghostr_delivery::progressive_posts::ServablePosts;
 use ghostr_delivery::segmented::SegmentedCache;
 use ghostr_engine::{DataUsageLevel, EngineParams};
+use ghostr_net::media_request_executor::MediaRequestExecutor;
 use ghostr_partial_store::partial_range_store::{capacity::StoreCapacity, PartialRangeStore};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex as StdMutex};
@@ -24,6 +25,7 @@ pub struct DeliveryFixture {
     pub cache: ServablePosts,
     pub segmented: SegmentedCache,
     pub network: NetworkThrottle,
+    pub requests: MediaRequestExecutor,
     pub root: PathBuf,
     demands: Arc<StdMutex<Vec<DemandState>>>,
 }
@@ -47,6 +49,7 @@ pub fn start_delivery_with_tuning(prefix: &str, tuning: DeliveryTuning) -> Deliv
     ));
     let cache = ServablePosts::new();
     let network = NetworkThrottle::new();
+    let requests = media_client();
     let segmented = SegmentedCache::new();
     let (demand, demand_receiver) = demand_channel();
     let demands = Arc::new(StdMutex::new(Vec::new()));
@@ -54,7 +57,7 @@ pub fn start_delivery_with_tuning(prefix: &str, tuning: DeliveryTuning) -> Deliv
     let (handle, _discovery_demand) = start_delivery_manager_with_discovery_demand(
         DeliveryManagerConfig {
             store: store.clone(),
-            client: media_client(),
+            requests: requests.clone(),
             cache: cache.clone(),
             segmented: segmented.clone(),
             network: network.clone(),
@@ -72,6 +75,7 @@ pub fn start_delivery_with_tuning(prefix: &str, tuning: DeliveryTuning) -> Deliv
         cache,
         segmented,
         network,
+        requests,
         root,
         demands,
     }

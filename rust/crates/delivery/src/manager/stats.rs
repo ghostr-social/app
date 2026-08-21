@@ -6,6 +6,7 @@ use crate::manager::traffic::{OverallTrafficWindow, TrafficBatch, TrafficMeter};
 use crate::manager::transfers::{ChunkDone, InternalEvent, ProbeObservation};
 use crate::manager::DeliveryWorker;
 use ghostr_engine::host_stats::{host_of, HostStats};
+use ghostr_net::media_request_executor::MediaRequestAdmissionTimeout;
 use log::{trace, warn};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -13,6 +14,9 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
+#[cfg(test)]
+#[path = "stats/admission_timeout_test.rs"]
+mod admission_timeout_test;
 mod origin;
 
 pub(crate) struct StatsKeeper {
@@ -47,6 +51,9 @@ impl StatsKeeper {
 
     /// Mirrors the downloader's recording rules on the owned stats.
     pub fn note_chunk(&mut self, done: &ChunkDone) {
+        if is_admission_timeout(&done.outcome) {
+            return;
+        }
         let Some(host) = host_of(&done.url) else {
             return;
         };
@@ -75,6 +82,9 @@ impl StatsKeeper {
 
     /// Mirrors the probe service's recording rules on the owned stats.
     pub fn note_probe(&mut self, done: &ProbeObservation) {
+        if is_admission_timeout(&done.outcome) {
+            return;
+        }
         let Some(host) = host_of(&done.url) else {
             return;
         };
@@ -119,6 +129,12 @@ impl StatsKeeper {
             Err(error) => warn!("Host stats snapshot failed: {error}"),
         }
     }
+}
+
+fn is_admission_timeout<T>(outcome: &anyhow::Result<T>) -> bool {
+    outcome
+        .as_ref()
+        .is_err_and(|error| error.is::<MediaRequestAdmissionTimeout>())
 }
 
 impl DeliveryWorker {
