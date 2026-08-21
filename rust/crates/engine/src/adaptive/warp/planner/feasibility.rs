@@ -5,6 +5,8 @@ use crate::adaptive::{
 };
 use std::collections::BTreeSet;
 
+mod hard_budget;
+
 pub(super) struct FeasibleActions {
     pub nodes: Vec<ActionNode>,
     pub budget: HardBudget,
@@ -18,7 +20,7 @@ pub(super) fn apply(
     config: &WarpPlannerConfig,
     network_bytes: u64,
 ) -> FeasibleActions {
-    let budget = hard_budget(input, network_bytes);
+    let budget = hard_budget::build(input, network_bytes);
     let semantic = semantic_decisions(input, config);
     let rescue_ids = rescue_actions(input, frontier, &semantic, config);
     let reserve = reserve_constraint(input.base.mode, frontier, &rescue_ids);
@@ -40,32 +42,6 @@ pub(super) fn apply(
         reserve,
         semantic,
     }
-}
-
-fn hard_budget(input: &WarpPlannerInput<'_>, network_bytes: u64) -> HardBudget {
-    let active = input
-        .snapshot
-        .candidates
-        .iter()
-        .flat_map(|item| &item.in_flight)
-        .filter(|item| !item.cancelling)
-        .count();
-    let requests = input
-        .context
-        .limits
-        .request_tokens
-        .saturating_sub(active.min(u16::MAX as usize) as u16);
-    let storage = input.snapshot.storage.budget_bytes.saturating_mul(99) / 100;
-    let storage = storage.saturating_sub(input.snapshot.storage.used_bytes);
-    HardBudget::new(
-        ResourceCost::new(
-            network_bytes,
-            storage,
-            input.context.limits.cpu_ms,
-            requests,
-        ),
-        input.context.limits.per_origin_requests,
-    )
 }
 
 fn semantic_decisions(
