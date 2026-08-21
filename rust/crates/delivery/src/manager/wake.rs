@@ -1,7 +1,6 @@
 use crate::delivery_events::{
     ClearRequest, DeliveryCommand, PlaybackPresentation, PlayerPreparationReport,
 };
-use crate::manager::concurrency::network_profile_setback;
 use crate::manager::response_open::ResponseOpenRequest;
 use crate::manager::time::unix_time_ms;
 use crate::manager::timeline::TimelineResult;
@@ -100,10 +99,7 @@ impl DeliveryWorker {
                 self.state.apply_level(level);
                 self.update_concurrency_ceiling();
             }
-            DeliveryCommand::NetworkChanged => {
-                let loss = self.ctx.network.profile().packet_loss_bps;
-                self.note_network_setback(network_profile_setback(loss));
-            }
+            DeliveryCommand::NetworkChanged => self.note_network_profile_change(),
             DeliveryCommand::StorageChanged => {}
         }
         self.prune_scheduling_history();

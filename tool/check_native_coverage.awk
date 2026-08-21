@@ -44,6 +44,7 @@ BEGIN {
   threshold["rust/crates/engine/src/adaptive/sources.rs"] = 100
   threshold["rust/crates/engine/src/concurrency.rs"] = 100
   threshold["rust/crates/engine/src/concurrency/occupancy.rs"] = 100
+  threshold["rust/crates/engine/src/concurrency/trial.rs"] = 100
   threshold["rust/crates/engine/src/concurrency/window.rs"] = 100
   threshold["rust/crates/engine/src/focus.rs"] = 100
   threshold["rust/crates/engine/src/host_stats.rs"] = 100

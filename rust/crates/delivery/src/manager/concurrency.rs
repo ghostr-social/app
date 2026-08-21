@@ -59,24 +59,33 @@ pub(crate) fn capacity_evidence(
     window: OverallTrafficWindow,
     saturated: bool,
     fallback_ttfb: Duration,
-    admitted_capacity: usize,
+    occupancy: ConcurrencyOccupancy,
 ) -> ConcurrencyEvidence {
     ConcurrencyEvidence {
         aggregate_bytes_per_second: finite_rate(window.bytes_per_second()),
-        occupancy: ConcurrencyOccupancy::new(window.peak_active_transfers(), admitted_capacity),
+        occupancy,
         saturated,
         ttfb: window.latest_ttfb().unwrap_or(fallback_ttfb),
         setback: NetworkSetback::None,
     }
 }
 
-pub(crate) fn network_profile_setback(packet_loss_bps: u16) -> NetworkSetback {
+pub(crate) fn request_occupancy(
+    window: OverallTrafficWindow,
+    admitted_capacity: usize,
+    claimed_requests: usize,
+) -> ConcurrencyOccupancy {
+    ConcurrencyOccupancy::new(window.peak_active_transfers(), admitted_capacity)
+        .with_claimed_requests(claimed_requests)
+}
+
+pub(crate) fn network_profile_setback(packet_loss_bps: u16) -> Option<NetworkSetback> {
     if packet_loss_bps >= SEVERE_PACKET_LOSS_BPS {
-        return NetworkSetback::SevereLoss;
+        return Some(NetworkSetback::SevereLoss);
     }
     match packet_loss_bps {
-        0 => NetworkSetback::None,
-        _ => NetworkSetback::Failure,
+        0 => None,
+        _ => Some(NetworkSetback::Failure),
     }
 }
 
@@ -103,14 +112,22 @@ pub(crate) fn planned_capacity(
 }
 
 impl DeliveryWorker {
+    pub(crate) fn note_network_profile_change(&mut self) {
+        let loss = self.ctx.network.profile().packet_loss_bps;
+        if let Some(setback) = network_profile_setback(loss) {
+            self.note_network_setback(setback);
+        }
+    }
+
     pub(crate) fn observe_capacity(&mut self, window: OverallTrafficWindow) {
         let saturated = self
             .additional_request_slot_demand
             .unwrap_or_else(|| self.queue.wanted_len() > self.downloads.len());
         let fallback = self.keeper.stats().overall_ttfb().unwrap_or(Duration::ZERO);
         let admitted = self.downloads.admitted_capacity();
+        let occupancy = request_occupancy(window, admitted, self.downloads.len());
         self.concurrency
-            .observe(capacity_evidence(window, saturated, fallback, admitted));
+            .observe(capacity_evidence(window, saturated, fallback, occupancy));
     }
 
     pub(crate) fn note_network_setback(&mut self, setback: NetworkSetback) {

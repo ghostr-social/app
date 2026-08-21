@@ -47,6 +47,7 @@ require_threshold() {
 require_threshold rust/crates/engine/src/budget.rs 100
 require_threshold rust/crates/engine/src/concurrency.rs 100
 require_threshold rust/crates/engine/src/concurrency/occupancy.rs 100
+require_threshold rust/crates/engine/src/concurrency/trial.rs 100
 require_threshold rust/crates/engine/src/catalog/renditions.rs 100
 require_threshold rust/crates/engine/src/adaptive/policy.rs 100
 require_threshold rust/crates/engine/src/adaptive/resources.rs 100
