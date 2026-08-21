@@ -1,3 +1,4 @@
+use super::advanced::{self, RecordedWarpDecision};
 use super::model;
 use super::plan;
 use super::privacy::DecisionPrivacy;
@@ -6,18 +7,29 @@ use super::types::{
     DecisionAction, DecisionModelInput, DecisionOutcome, DecisionReplayStatus, ModelQuantiles,
     PrunedCandidate, ShadowPrices,
 };
-use crate::adaptive::{AdaptivePlayabilityPolicy, AllocationPlan, PlayabilitySnapshot};
+use crate::adaptive::{AllocationPlan, PlayabilitySnapshot, WarpPlanningDecision};
 use crate::ActionId;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 
-const SCHEMA_VERSION: u16 = 1;
+mod replay;
+
+pub(super) const LEGACY_SCHEMA_VERSION: u16 = 1;
+pub(super) const WARP_SCHEMA_VERSION: u16 = 2;
 
 pub struct DecisionRecordInput<'a> {
     pub sequence: u64,
     pub snapshot: &'a PlayabilitySnapshot,
     pub allocation: &'a AllocationPlan,
     pub shadow_prices: ShadowPrices,
+    pub models: &'a [DecisionModelInput],
+    pub privacy: &'a DecisionPrivacy,
+}
+
+pub struct WarpDecisionRecordInput<'a> {
+    pub sequence: u64,
+    pub snapshot: &'a PlayabilitySnapshot,
+    pub decision: &'a WarpPlanningDecision,
+    pub legacy_shadow_prices: ShadowPrices,
     pub models: &'a [DecisionModelInput],
     pub privacy: &'a DecisionPrivacy,
 }
@@ -36,51 +48,32 @@ pub struct DecisionRecord {
     pub chosen_action_id: Option<u64>,
     pub random_seed: u64,
     pub eventual_outcome: DecisionOutcome,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub warp_decision: Option<RecordedWarpDecision>,
     replay_state: ReplayState,
     replay_plan_hash: String,
 }
 
 impl DecisionRecord {
     pub fn capture(input: DecisionRecordInput<'_>) -> Self {
-        let DecisionRecordInput {
-            sequence,
-            snapshot,
-            allocation,
-            shadow_prices,
-            models,
-            privacy,
-        } = input;
-        let replay_state = ReplayState::capture(snapshot, privacy);
-        let (state_hash, random_seed) = state_identity(&replay_state);
-        let retained_plans = plan::actions(allocation, privacy);
-        Self {
-            schema_version: SCHEMA_VERSION,
-            sequence,
-            state_hash,
-            admissible_candidates: plan::admissible(snapshot, privacy),
-            chosen_action: retained_plans.iter().find(|item| !item.retained).cloned(),
-            chosen_action_id: None,
-            retained_plans,
-            pruned: plan::pruned(snapshot, allocation, privacy),
-            model_quantiles: model::capture(models, privacy),
-            shadow_prices,
-            random_seed,
-            eventual_outcome: DecisionOutcome::Pending,
-            replay_state,
-            replay_plan_hash: plan::capture_hash(allocation, privacy),
-        }
+        let replay_state = ReplayState::capture(input.snapshot, input.privacy);
+        let (state_hash, random_seed) = replay::state_identity(&replay_state);
+        legacy_record(input, replay_state, state_hash, random_seed)
+    }
+
+    /// Captures the selected WARP command. A selected record must later be bound or resolved.
+    #[must_use]
+    pub fn capture_warp(input: WarpDecisionRecordInput<'_>) -> Self {
+        let replay_state = ReplayState::capture(input.snapshot, input.privacy);
+        let state_hash = replay::warp_state_identity(&replay_state).0;
+        let captured = advanced::capture(input.decision, input.privacy);
+        let mut record = warp_record(input, replay_state, state_hash, captured);
+        record.replay_plan_hash = replay::warp_identity(&record);
+        record
     }
 
     pub fn replay(&self) -> DecisionReplayStatus {
-        if state_identity(&self.replay_state).0 != self.state_hash {
-            return DecisionReplayStatus::StateHashMismatch;
-        }
-        let snapshot = self.replay_state.snapshot();
-        let replayed = AdaptivePlayabilityPolicy.plan(&snapshot);
-        match plan::replay_hash(&replayed) == self.replay_plan_hash {
-            true => DecisionReplayStatus::Verified,
-            false => DecisionReplayStatus::PlanMismatch,
-        }
+        replay::status(self)
     }
 
     pub fn resolve(&mut self, outcome: DecisionOutcome) -> bool {
@@ -100,15 +93,60 @@ impl DecisionRecord {
     }
 }
 
-fn state_identity(state: &ReplayState) -> (String, u64) {
-    let encoded = serde_json::to_vec(state).expect("replay state is serializable");
-    let digest = Sha256::digest(encoded);
-    let mut seed = [0; 8];
-    seed.copy_from_slice(&digest[..8]);
-    let seed = u64::from_be_bytes(seed).max(1);
-    (hex(&digest), seed)
+fn legacy_record(
+    input: DecisionRecordInput<'_>,
+    replay_state: ReplayState,
+    state_hash: String,
+    random_seed: u64,
+) -> DecisionRecord {
+    let retained_plans = plan::actions(input.allocation, input.privacy);
+    DecisionRecord {
+        schema_version: LEGACY_SCHEMA_VERSION,
+        sequence: input.sequence,
+        state_hash,
+        admissible_candidates: plan::admissible(input.snapshot, input.privacy),
+        chosen_action: retained_plans.iter().find(|item| !item.retained).cloned(),
+        chosen_action_id: None,
+        retained_plans,
+        pruned: plan::pruned(input.snapshot, input.allocation, input.privacy),
+        model_quantiles: model::capture(input.models, input.privacy),
+        shadow_prices: input.shadow_prices,
+        random_seed,
+        eventual_outcome: DecisionOutcome::Pending,
+        warp_decision: None,
+        replay_state,
+        replay_plan_hash: plan::capture_hash(input.allocation, input.privacy),
+    }
 }
 
-fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+fn warp_record(
+    input: WarpDecisionRecordInput<'_>,
+    replay_state: ReplayState,
+    state_hash: String,
+    captured: advanced::WarpCapture,
+) -> DecisionRecord {
+    let outcome = match captured.decision.selected.is_some() {
+        true => DecisionOutcome::Pending,
+        false => DecisionOutcome::Succeeded {
+            bytes: 0,
+            elapsed_ms: 0,
+        },
+    };
+    DecisionRecord {
+        schema_version: WARP_SCHEMA_VERSION,
+        sequence: input.sequence,
+        state_hash,
+        admissible_candidates: captured.admissible_candidates,
+        retained_plans: Vec::new(),
+        pruned: Vec::new(),
+        model_quantiles: model::capture(input.models, input.privacy),
+        shadow_prices: input.legacy_shadow_prices,
+        chosen_action: captured.chosen_action,
+        chosen_action_id: None,
+        random_seed: captured.random_seed,
+        eventual_outcome: outcome,
+        warp_decision: Some(captured.decision),
+        replay_state,
+        replay_plan_hash: String::new(),
+    }
 }

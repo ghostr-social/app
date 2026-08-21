@@ -108,6 +108,8 @@ pub enum DecisionOutcome {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DecisionReplayStatus {
     Verified,
+    UnsupportedSchema,
     StateHashMismatch,
     PlanMismatch,
+    AdvancedReplayUnavailable,
 }

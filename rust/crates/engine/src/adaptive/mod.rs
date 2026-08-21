@@ -32,7 +32,11 @@ pub use catalog_snapshot::{candidate_snapshot, candidate_snapshot_at, CandidateE
 pub use decision::{
     DecisionAction, DecisionModelInput, DecisionOutcome, DecisionPrivacy, DecisionRecord,
     DecisionRecordInput, DecisionReplayStatus, ModelQuantiles, PrunedCandidate, PrunedReason,
-    ShadowPrices,
+    RecordedAllocationReason, RecordedCandidateUtility, RecordedPreemptionAuthority,
+    RecordedPromotionGrant, RecordedResourceCost, RecordedResourcePrices, RecordedRetrievalRequest,
+    RecordedTransfer, RecordedTransformKind, RecordedTwinEvaluation, RecordedWarpAction,
+    RecordedWarpActionKind, RecordedWarpCommand, RecordedWarpDecision, RecordedWarpReserve,
+    RecordedWholeBodyContract, RecordedWholeFetchReason, ShadowPrices, WarpDecisionRecordInput,
 };
 pub use navigation::{FeedOffset, NavigationDirection, NavigationHistory};
 pub use plan::{
