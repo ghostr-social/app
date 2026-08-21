@@ -1,16 +1,27 @@
 //! Reconciles the pure policy's ordered work with live transfer workers.
 
+mod grant;
+
+use crate::delivery_events::DecisionToken;
 use crate::manager::concurrency::{planned_capacity, RequestConcurrencyLimits};
-use crate::manager::plan::{PlannedTransfer, PlannedWork};
+use crate::manager::plan::PlannedWork;
 use crate::manager::reconcile_warp::{self, WarpDirective};
 use crate::manager::DeliveryWorker;
-use crate::manager::{origin_admission, time};
 use crate::mutable_priority_queue::ForegroundSlots;
 
+struct SelectedGrant<'a> {
+    directive: &'a WarpDirective,
+    decision: &'a mut Option<DecisionToken>,
+}
+
 impl DeliveryWorker {
-    pub(super) async fn reconcile_transfers(&mut self, planned: PlannedWork) {
+    pub(super) async fn reconcile_transfers(
+        &mut self,
+        planned: PlannedWork,
+        mut decision: Option<DecisionToken>,
+    ) {
         let execution = reconcile_warp::execution(planned);
-        self.apply_warp_directive(&execution.directive);
+        self.apply_warp_directive(&execution.directive, &mut decision);
         let capacity = planned_capacity(
             self.concurrency_limit(),
             self.connection_ceiling(),
@@ -27,12 +38,12 @@ impl DeliveryWorker {
             .reconcile_with_commitments(&execution.transfers, total, &execution.retained);
         self.queue.replace(execution.transfers);
         self.preempt_for_current(&priority, total);
-        self.grant_planned(
-            total,
-            capacity.foreground_goal.min(total),
-            &execution.directive,
-        )
-        .await;
+        let selected = SelectedGrant {
+            directive: &execution.directive,
+            decision: &mut decision,
+        };
+        self.grant_planned(total, capacity.foreground_goal.min(total), selected)
+            .await;
         if !execution.emergency {
             self.grant_origin_exploration().await;
         }
@@ -49,7 +60,7 @@ impl DeliveryWorker {
         &mut self,
         capacity: usize,
         foreground_goal: usize,
-        directive: &WarpDirective,
+        selected: SelectedGrant<'_>,
     ) {
         while self.downloads.len() < capacity {
             let active_hosts = self.downloads.active_hosts();
@@ -58,8 +69,8 @@ impl DeliveryWorker {
                 return;
             };
             let alternate = transfer.id();
-            if let Some(action) = self.grant(transfer).await {
-                self.link_selected_hedge(directive, &alternate, action);
+            if let Some(action) = self.grant(transfer, selected.decision).await {
+                self.link_selected_hedge(selected.directive, &alternate, action);
             }
         }
     }
@@ -75,54 +86,7 @@ impl DeliveryWorker {
         }
         let active_hosts = self.downloads.active_hosts();
         if let Some(transfer) = self.queue.pop_for_idle_host(&active_hosts) {
-            let _ = self.grant(transfer).await;
-        }
-    }
-
-    async fn grant(&mut self, transfer: PlannedTransfer) -> Option<ghostr_engine::ActionId> {
-        let post = &transfer.request.chunk.post;
-        if self.downloads.contains_transfer(&transfer)
-            || self.retry.is_cooling(post)
-            || self.pressure.is_parked()
-        {
-            return None;
-        }
-        let (transfer, observed_at_ms) = self.admit_origin(transfer)?;
-        let post = transfer.request.chunk.post.clone();
-        match self.downloads.start(self.ctx.clone(), transfer).await {
-            Ok(action) => {
-                self.commands.bind_latest_decision(action, observed_at_ms);
-                Some(action)
-            }
-            Err(error) => {
-                self.reject_grant(&post, &error);
-                None
-            }
-        }
-    }
-
-    fn admit_origin(&mut self, transfer: PlannedTransfer) -> Option<(PlannedTransfer, u64)> {
-        let observed_at_ms = time::unix_time_ms();
-        let authority = ghostr_engine::RequestAuthority::from_url(&transfer.url)?;
-        let concurrency = origin_concurrency(&self.ctx.network, &authority);
-        let query = origin_admission::query(&transfer, observed_at_ms, concurrency);
-        let mode = origin_admission::mode(&transfer);
-        let admission =
-            self.keeper
-                .stats_mut()
-                .origin_model_mut()
-                .claim(&query, observed_at_ms, mode);
-        origin_admission::apply(transfer, admission).map(|value| (value, observed_at_ms))
-    }
-
-    fn reject_grant(&mut self, post: &ghostr_engine::PostId, error: &anyhow::Error) {
-        self.commands
-            .resolve_latest_decision(ghostr_engine::adaptive::DecisionOutcome::Failed {
-                class: format!("{:?}", crate::manager::failure::classify(error)),
-                elapsed_ms: 0,
-            });
-        if !self.absorb_store_pressure(post, error) {
-            log::warn!("Could not reserve a video action: {error:#}");
+            let _ = self.grant(transfer, &mut None).await;
         }
     }
 
@@ -142,15 +106,4 @@ impl DeliveryWorker {
         self.connection_ceiling()
             .saturating_sub(self.segmented.active_len())
     }
-}
-
-fn origin_concurrency(
-    network: &crate::debug::network::NetworkThrottle,
-    authority: &ghostr_engine::RequestAuthority,
-) -> usize {
-    network
-        .active_connections()
-        .into_iter()
-        .find(|(active, _)| active == authority.as_str())
-        .map_or(1, |(_, count)| count.saturating_add(1))
 }

@@ -21,6 +21,11 @@ struct PlanningStoreState {
     snapshots: HashMap<PostId, StoredMediaSnapshot>,
 }
 
+struct PlannedExecution {
+    planned: PlannedWork,
+    decision: Option<crate::delivery_events::DecisionToken>,
+}
+
 impl PlanningStoreState {
     fn insert(&mut self, post: PostId, snapshot: StoredMediaSnapshot, retain_snapshot: bool) {
         let ranges = snapshot
@@ -94,8 +99,9 @@ impl DeliveryWorker {
             demanded: &demanded,
         };
         let planned = planned_work_with_planner(&mut self.state, inputs, &mut self.warp_planner);
-        self.observe_plan(&planned, observed_at_ms);
-        self.execute_planned_work(observed_at_ms, planned, &stored.revisions)
+        let decision = self.observe_plan(&planned, observed_at_ms);
+        let execution = PlannedExecution { planned, decision };
+        self.execute_planned_work(observed_at_ms, execution, &stored.revisions)
             .await;
         self.keeper.schedule_save(&self.ctx.events);
         self.reliability.observe(
@@ -107,9 +113,10 @@ impl DeliveryWorker {
     async fn execute_planned_work(
         &mut self,
         observed_at_ms: u64,
-        planned: PlannedWork,
+        execution: PlannedExecution,
         revisions: &HashMap<PostId, ContentRevision>,
     ) {
+        let PlannedExecution { planned, decision } = execution;
         self.additional_request_slot_demand = planned
             .warp
             .as_ref()
@@ -132,7 +139,7 @@ impl DeliveryWorker {
             planned.plan.clone(),
             startups,
         );
-        self.reconcile_transfers(planned).await;
+        self.reconcile_transfers(planned, decision).await;
     }
 
     /// The planning slice of the window, widened to the full roster

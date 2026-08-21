@@ -1,18 +1,21 @@
+use crate::delivery_events::{DecisionToken, LegacyDecisionPublication};
 use crate::evaluation::{BudgetMetricEvent, ReadinessMetricEvent, TransferMetricEvent};
 use crate::manager::plan::PlannedWork;
 use crate::manager::DeliveryWorker;
 
 impl DeliveryWorker {
-    pub(super) fn observe_plan(&self, planned: &PlannedWork, observed_at_ms: u64) {
-        let Some(snapshot) = planned.snapshot.as_ref() else {
-            return;
-        };
-        self.commands.publish_decision(
+    pub(super) fn observe_plan(
+        &self,
+        planned: &PlannedWork,
+        observed_at_ms: u64,
+    ) -> Option<DecisionToken> {
+        let snapshot = planned.snapshot.as_ref()?;
+        let decision = self.commands.publish_decision(LegacyDecisionPublication {
             snapshot,
-            &planned.plan,
-            planned.shadow_prices,
-            &planned.decision_models,
-        );
+            plan: &planned.plan,
+            prices: planned.shadow_prices,
+            models: &planned.decision_models,
+        });
         let evaluation = self.commands.evaluation();
         evaluation.transfer(TransferMetricEvent {
             cpu_micros: planned.planner_cpu_micros,
@@ -20,6 +23,7 @@ impl DeliveryWorker {
         });
         evaluation.budget(budget_event(planned, snapshot));
         evaluation.readiness(readiness_event(planned, observed_at_ms));
+        decision
     }
 }
 

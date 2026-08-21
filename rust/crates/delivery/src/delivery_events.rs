@@ -14,15 +14,14 @@ mod mailbox;
 mod plan_evidence;
 mod playback_presentation;
 mod player_preparation;
+mod receiver;
 mod transport;
 use crate::evaluation::{EvaluationLedger, EvaluationSnapshot};
-use crate::playback_admission::{
-    PlaybackAdmission, PlaybackAdmissionLedger, PlaybackAdmissionSnapshot,
-};
+use crate::playback_admission::{PlaybackAdmissionLedger, PlaybackAdmissionSnapshot};
 pub use channel::{command_channel, command_channel_with_candidate_capacity};
 pub use decision_log::DecisionHistorySnapshot;
 use decision_log::DecisionLog;
-pub(crate) use decision_log::DecisionResolution;
+pub(crate) use decision_log::{DecisionResolution, DecisionToken, LegacyDecisionPublication};
 pub(crate) use focus_generation::FocusGenerationGuard;
 pub use focus_generation::{FocusAdmission, FocusGeneration};
 pub use mailbox::MailboxReceiver;
@@ -176,45 +175,4 @@ pub struct CommandReceiver {
     playback_admissions: PlaybackAdmissionLedger,
     evaluation: EvaluationLedger,
     decisions: DecisionLog,
-}
-
-impl CommandReceiver {
-    pub(crate) fn evaluation(&self) -> EvaluationLedger {
-        self.evaluation.clone()
-    }
-    pub fn receivers(&mut self) -> (&mut MailboxReceiver, &mut mpsc::Receiver<ClearRequest>) {
-        (&mut self.commands, &mut self.clears)
-    }
-
-    pub(crate) fn discard_pending(&mut self) {
-        self.commands.clear();
-    }
-
-    pub(crate) fn try_clear(&mut self) -> Option<ClearRequest> {
-        self.clears.try_recv().ok()
-    }
-
-    pub(crate) fn has_control(&self) -> bool {
-        self.commands.has_control()
-    }
-
-    pub(crate) fn has_candidate(&self) -> bool {
-        self.commands.has_candidate()
-    }
-
-    pub fn try_control(&mut self) -> Option<DeliveryCommand> {
-        self.commands.try_control()
-    }
-
-    pub(crate) fn try_controls_through_focus(&mut self) -> Option<Vec<DeliveryCommand>> {
-        self.commands.try_controls_through_focus()
-    }
-
-    pub fn try_candidate(&mut self) -> Option<DeliveryCandidate> {
-        self.commands.try_candidate()
-    }
-
-    pub(crate) fn record_playback_admission(&self, admission: PlaybackAdmission, post: &PostId) {
-        self.playback_admissions.record(admission, post);
-    }
 }

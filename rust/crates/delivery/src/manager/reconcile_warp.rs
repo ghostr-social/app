@@ -6,6 +6,7 @@ mod directive;
 pub(crate) use directive::directive_for;
 pub(crate) use directive::{execution, WarpDirective};
 
+use crate::delivery_events::DecisionToken;
 use crate::manager::plan::PlannedTransferId;
 use crate::manager::transfers::spawn_probe;
 use crate::manager::{time, DeliveryWorker};
@@ -13,15 +14,19 @@ use ghostr_engine::adaptive::DecisionOutcome;
 use ghostr_engine::{ActionId, PostId};
 
 impl DeliveryWorker {
-    pub(super) fn apply_warp_directive(&mut self, directive: &WarpDirective) {
+    pub(super) fn apply_warp_directive(
+        &mut self,
+        directive: &WarpDirective,
+        decision: &mut Option<DecisionToken>,
+    ) {
         match directive {
             WarpDirective::ProbeHead { post, source } => self.launch_selected_probe(post, source),
-            WarpDirective::Cancel(action) => self.cancel_selected(*action),
+            WarpDirective::Cancel(action) => self.cancel_selected(*action, decision.take()),
             WarpDirective::Unsupported { class, cancel } => {
                 cancel.iter().for_each(|action| {
                     self.downloads.cancel_action(*action);
                 });
-                self.fail_selected(class);
+                self.fail_selected(class, decision.take());
             }
             WarpDirective::None | WarpDirective::Hedge { .. } => {}
         }
@@ -36,7 +41,7 @@ impl DeliveryWorker {
         }
     }
 
-    fn cancel_selected(&mut self, action: ActionId) {
+    fn cancel_selected(&mut self, action: ActionId, decision: Option<DecisionToken>) {
         let outcome = match self.downloads.cancel_action(action) {
             true => DecisionOutcome::Succeeded {
                 bytes: 0,
@@ -47,15 +52,21 @@ impl DeliveryWorker {
                 elapsed_ms: 0,
             },
         };
-        self.commands.resolve_latest_decision(outcome);
+        if let Some(token) = decision {
+            self.commands.resolve_decision_token(&token, outcome);
+        }
     }
 
-    fn fail_selected(&self, class: &str) {
-        self.commands
-            .resolve_latest_decision(DecisionOutcome::Failed {
-                class: class.to_owned(),
-                elapsed_ms: 0,
-            });
+    fn fail_selected(&self, class: &str, decision: Option<DecisionToken>) {
+        if let Some(token) = decision {
+            self.commands.resolve_decision_token(
+                &token,
+                DecisionOutcome::Failed {
+                    class: class.to_owned(),
+                    elapsed_ms: 0,
+                },
+            );
+        }
     }
 
     pub(super) fn link_selected_hedge(

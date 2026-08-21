@@ -35,6 +35,8 @@ mod debug_network_latency_cancel_test;
 mod debug_network_optional_test;
 mod debug_network_preparation_test;
 mod decision_history_pending_retention_test;
+mod decision_log_fixture;
+mod decision_token_binding_test;
 mod delivery_concurrency_evidence_test;
 mod delivery_pressure_test;
 mod delivery_probe_limit_test;

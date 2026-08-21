@@ -37,12 +37,15 @@ pub(super) fn resolve(
     record.resolve(outcome).then_some(action)
 }
 
-pub(super) fn resolve_latest(
+pub(super) fn resolve_unbound(
     records: &mut VecDeque<DecisionRecord>,
+    sequence: u64,
     outcome: DecisionOutcome,
 ) -> Option<u64> {
-    let record = records.iter_mut().rev().find(|record| {
-        record.eventual_outcome == DecisionOutcome::Pending && record.chosen_action_id.is_none()
+    let record = records.iter_mut().find(|record| {
+        record.sequence == sequence
+            && record.eventual_outcome == DecisionOutcome::Pending
+            && record.chosen_action_id.is_none()
     })?;
-    record.resolve(outcome).then_some(record.sequence)
+    record.resolve(outcome).then_some(sequence)
 }

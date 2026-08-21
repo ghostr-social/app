@@ -52,6 +52,7 @@ async fn reliable_tiny_object_is_fetched_directly_without_head() {
         requests.iter().all(|hit| !hit.starts_with("tiny:HEAD:")),
         "direct acquisition must not be preceded by HEAD: {requests:?}"
     );
+    delivery_fixture::decision::wait_for_completed_bytes(&harness.handle, body.len() as u64).await;
     std::fs::remove_dir_all(&harness.root).ok();
 }
 

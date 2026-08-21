@@ -1,23 +1,23 @@
-use super::DecisionResolution;
+use super::{DecisionResolution, DecisionToken, LegacyDecisionPublication};
 use crate::delivery_events::CommandReceiver;
-use ghostr_engine::adaptive::{
-    AllocationPlan, DecisionModelInput, DecisionOutcome, PlayabilitySnapshot, ShadowPrices,
-};
+use ghostr_engine::adaptive::DecisionOutcome;
 use ghostr_engine::ActionId;
 
 impl CommandReceiver {
     pub(crate) fn publish_decision(
         &self,
-        snapshot: &PlayabilitySnapshot,
-        plan: &AllocationPlan,
-        prices: ShadowPrices,
-        models: &[DecisionModelInput],
-    ) -> u64 {
-        self.decisions.publish(snapshot, plan, prices, models)
+        publication: LegacyDecisionPublication<'_>,
+    ) -> Option<DecisionToken> {
+        self.decisions.publish(publication)
     }
 
-    pub(crate) fn bind_latest_decision(&self, action: ActionId, observed_at_ms: u64) -> bool {
-        self.decisions.bind_latest(action, observed_at_ms)
+    pub(crate) fn bind_decision(
+        &self,
+        token: &DecisionToken,
+        action: ActionId,
+        observed_at_ms: u64,
+    ) -> bool {
+        self.decisions.bind(token, action, observed_at_ms)
     }
 
     pub(crate) fn resolve_decision(
@@ -29,7 +29,11 @@ impl CommandReceiver {
         self.decisions.resolve(action, outcome, observed_at_ms)
     }
 
-    pub(crate) fn resolve_latest_decision(&self, outcome: DecisionOutcome) -> bool {
-        self.decisions.resolve_latest(outcome)
+    pub(crate) fn resolve_decision_token(
+        &self,
+        token: &DecisionToken,
+        outcome: DecisionOutcome,
+    ) -> bool {
+        self.decisions.resolve_token(token, outcome)
     }
 }

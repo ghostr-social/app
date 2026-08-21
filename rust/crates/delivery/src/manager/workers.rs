@@ -1,15 +1,13 @@
 //! Bounded owners of active range-download tasks.
 
-use crate::chunk::cancel::cancel_pair;
-use crate::manager::admission::origin_key;
-use crate::manager::inflight::{
-    ActionRegistration, ActiveAction, ChunkAttempt, CompletionStatus, InFlightChunks,
-};
+use crate::manager::inflight::{ActiveAction, ChunkAttempt, CompletionStatus, InFlightChunks};
 use crate::manager::plan::PlannedTransfer;
-use crate::manager::transfers::{spawn_chunk, TransferContext};
 use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
 use ghostr_engine::{ChunkId, PostId};
 use std::collections::HashSet;
+
+mod start;
+pub(crate) use start::PreparedTransfer;
 
 #[derive(Default)]
 pub(crate) struct DownloadWorkers {
@@ -76,47 +74,6 @@ impl DownloadWorkers {
 
     pub(crate) fn cancel_obsolete(&mut self, binding: &RepresentationBinding) {
         self.active.cancel_obsolete(binding);
-    }
-
-    pub async fn start(
-        &mut self,
-        ctx: TransferContext,
-        transfer: PlannedTransfer,
-    ) -> anyhow::Result<ghostr_engine::ActionId> {
-        let host = origin_key(&transfer.url);
-        let commitment_until_ms = transfer.commitment_until_ms;
-        let retrieval = transfer.retrieval;
-        let request = transfer.request;
-        let chunk = request.chunk.clone();
-        let attempt = self.active.next_attempt(chunk, transfer.identity);
-        let action_id = attempt.id();
-        let store_action = ctx
-            .store
-            .reserve_action(
-                attempt.identity(),
-                attempt.id().value(),
-                retrieval.reserved_network_bytes(),
-            )
-            .await?;
-        let (handle, token) = cancel_pair();
-        self.active.insert_action(ActionRegistration {
-            attempt: &attempt,
-            priority: request,
-            retrieval,
-            host,
-            committed_until_ms: commitment_until_ms,
-            handle,
-            store_action: Some(store_action.clone()),
-        });
-        spawn_chunk(super::transfers::ChunkLaunch {
-            context: ctx,
-            attempt,
-            url: transfer.url,
-            retrieval,
-            token,
-            action: store_action,
-        });
-        Ok(action_id)
     }
 
     pub fn active_hosts(&self) -> HashSet<String> {

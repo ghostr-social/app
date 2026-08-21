@@ -1,0 +1,26 @@
+use ghostr_delivery::delivery_events::DeliveryHandle;
+use ghostr_engine::adaptive::DecisionOutcome;
+use std::time::Duration;
+
+pub async fn wait_for_completed_bytes(handle: &DeliveryHandle, expected: u64) {
+    let notifier = handle.plan_notifier();
+    tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            let changed = notifier.notified();
+            tokio::pin!(changed);
+            changed.as_mut().enable();
+            if handle.decision_history().records.iter().any(|record| {
+                record.chosen_action_id.is_some()
+                    && matches!(
+                        record.eventual_outcome,
+                        DecisionOutcome::Succeeded { bytes, .. } if bytes == expected
+                    )
+            }) {
+                return;
+            }
+            changed.await;
+        }
+    })
+    .await
+    .expect("completed bytes were not bound to the selected decision");
+}
