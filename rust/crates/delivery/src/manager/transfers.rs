@@ -27,6 +27,7 @@ pub(crate) use chunk::{spawn_chunk, ChunkLaunch};
 pub(crate) use probe::{spawn_probe, ProbeLaunch};
 
 pub(crate) enum InternalEvent {
+    ImmediateReplan,
     Transfer(TransferEvent),
     Segmented(SegmentedDone),
     Maintenance(MaintenanceEvent),

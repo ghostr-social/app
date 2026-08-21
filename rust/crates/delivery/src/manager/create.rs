@@ -151,6 +151,7 @@ impl DeliveryWorker {
             segmented,
             timelines,
             independent_objects: IndependentObjects::default(),
+            immediate_replan: Default::default(),
             warp_planner: ghostr_engine::adaptive::WarpPlanner::default(),
         }
     }

@@ -20,7 +20,6 @@ pub(crate) enum WarpDirective {
     },
     Unsupported {
         class: &'static str,
-        cancel: Option<ActionId>,
     },
 }
 
@@ -30,15 +29,17 @@ pub(crate) struct WarpExecution {
     pub(crate) retained_posts: HashSet<PostId>,
     pub(crate) emergency: bool,
     pub(crate) directive: WarpDirective,
+    pub(crate) selected: Option<ghostr_engine::adaptive::GeneratedAction>,
 }
 
 pub(crate) fn execution(mut planned: PlannedWork) -> WarpExecution {
     let advanced = planned.warp.is_some();
-    let command = planned
+    let selected = planned
         .warp
         .as_ref()
         .and_then(|decision| decision.selected.as_ref())
-        .map(|selected| &selected.command);
+        .cloned();
+    let command = selected.as_ref().map(|action| &action.command);
     let directive = directive_for(command, &planned.selected_transfers);
     let retained_posts = retained_posts(&planned, advanced);
     let transfers = match advanced {
@@ -51,6 +52,7 @@ pub(crate) fn execution(mut planned: PlannedWork) -> WarpExecution {
         retained_posts,
         emergency: planned.emergency,
         directive,
+        selected,
     }
 }
 
@@ -109,13 +111,11 @@ fn work_directive(command: &PlannerCommand, selected: &[PlannedTransfer]) -> War
 
 fn unsupported(command: &PlannerCommand) -> WarpDirective {
     match command {
-        PlannerCommand::Promote { action, .. } => WarpDirective::Unsupported {
+        PlannerCommand::Promote { .. } => WarpDirective::Unsupported {
             class: "warp_live_promotion_backend_unavailable",
-            cancel: Some(*action),
         },
         PlannerCommand::Transform { .. } => WarpDirective::Unsupported {
             class: "warp_transform_backend_unavailable",
-            cancel: None,
         },
         PlannerCommand::ProbeHead { .. }
         | PlannerCommand::Cancel(_)
@@ -130,7 +130,6 @@ fn hedge(primary: ActionId, selected: &[PlannedTransfer]) -> WarpDirective {
     selected.first().map_or(
         WarpDirective::Unsupported {
             class: "warp_hedge_transfer_unavailable",
-            cancel: None,
         },
         |transfer| WarpDirective::Hedge {
             primary,
@@ -144,7 +143,6 @@ fn transfer(selected: &[PlannedTransfer]) -> WarpDirective {
         false => WarpDirective::None,
         true => WarpDirective::Unsupported {
             class: "warp_transfer_unavailable",
-            cancel: None,
         },
     }
 }

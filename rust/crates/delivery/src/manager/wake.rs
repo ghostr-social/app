@@ -154,6 +154,7 @@ impl DeliveryWorker {
 
     async fn apply_internal(&mut self, event: InternalEvent) {
         match event {
+            InternalEvent::ImmediateReplan => self.consume_immediate_replan(),
             InternalEvent::Transfer(transfer) => self.apply_transfer(transfer).await,
             InternalEvent::Segmented(done) => self.segmented.finish(done),
             InternalEvent::Maintenance(maintenance) => self.apply_maintenance(maintenance).await,

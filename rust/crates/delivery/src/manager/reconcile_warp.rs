@@ -1,23 +1,24 @@
 //! Converts one planner result into the exact work the manager may execute.
 
 mod directive;
+mod probe;
 
 #[cfg(test)]
 pub(crate) use directive::directive_for;
 pub(crate) use directive::{execution, WarpDirective};
+use probe::SelectedProbe;
 
 use crate::delivery_events::DecisionToken;
 use crate::manager::plan::PlannedTransferId;
-use crate::manager::transfers::{spawn_probe, ProbeLaunch};
+use crate::manager::selected_commit::{CommitResult, SelectedCommit};
 use crate::manager::{time, DeliveryWorker};
-use crate::probe::pool::ProbeClaimQuery;
-use ghostr_engine::adaptive::DecisionOutcome;
-use ghostr_engine::{ActionId, PostId};
+use ghostr_engine::adaptive::{DecisionOutcome, ResourceCost};
+use ghostr_engine::ActionId;
 
-struct SelectedProbe<'a> {
-    post: &'a PostId,
-    source: &'a str,
-    authority: ghostr_engine::adaptive::PreemptionAuthority,
+enum CancelCommit {
+    Cancelled,
+    Missing,
+    ResourceRejected,
 }
 
 impl DeliveryWorker {
@@ -25,6 +26,7 @@ impl DeliveryWorker {
         &mut self,
         directive: &WarpDirective,
         decision: &mut Option<DecisionToken>,
+        commit: &mut Option<SelectedCommit>,
     ) {
         match directive {
             WarpDirective::ProbeHead {
@@ -37,83 +39,57 @@ impl DeliveryWorker {
                     source,
                     authority: *authority,
                 };
-                self.launch_selected_probe(selected, decision.take());
+                self.launch_selected_probe(selected, decision.take(), commit);
             }
-            WarpDirective::Cancel(action) => self.cancel_selected(*action, decision.take()),
-            WarpDirective::Unsupported { class, cancel } => {
-                cancel.iter().for_each(|action| {
-                    self.downloads.cancel_action(*action);
-                });
-                self.fail_selected(class, decision.take());
-            }
+            WarpDirective::Cancel(action) => self.cancel_selected(*action, decision.take(), commit),
+            WarpDirective::Unsupported { class } => self.fail_selected(class, decision.take()),
             WarpDirective::None | WarpDirective::Hedge { .. } => {}
         }
     }
 
-    fn launch_selected_probe(
+    fn cancel_selected(
         &mut self,
-        selected: SelectedProbe<'_>,
+        action: ActionId,
         decision: Option<DecisionToken>,
+        commit: &mut Option<SelectedCommit>,
     ) {
-        let Some(token) = decision else {
-            return;
-        };
-        let query = ProbeClaimQuery::new(
-            self.state.catalog(),
-            &self.retry,
-            selected.post,
-            selected.source,
-        );
-        match self.probes.claim_selected(query) {
-            Ok(identity) => self.claim_and_spawn_probe(token, identity, selected.authority),
-            Err(reason) => {
-                self.commands
-                    .resolve_decision_token(&token, DecisionOutcome::ClaimRefused { reason });
-            }
-        }
-    }
-
-    fn claim_and_spawn_probe(
-        &mut self,
-        token: DecisionToken,
-        identity: ghostr_engine::representation::TransferIdentity,
-        authority: ghostr_engine::adaptive::PreemptionAuthority,
-    ) {
-        let started_at_ms = time::unix_time_ms();
-        match self
-            .commands
-            .claim_decision(token, &identity, started_at_ms)
-        {
-            Ok(decision) => spawn_probe(
-                self.ctx.clone(),
-                ProbeLaunch {
-                    post: identity.post().clone(),
-                    url: identity.source().as_str().to_owned(),
-                    authority,
-                    decision,
-                },
-            ),
-            Err(token) => {
-                self.probes.release(identity.post());
-                self.fail_selected("warp_head_probe_claim_rejected", Some(token));
-            }
-        }
-    }
-
-    fn cancel_selected(&mut self, action: ActionId, decision: Option<DecisionToken>) {
-        let outcome = match self.downloads.cancel_action(action) {
-            true => DecisionOutcome::Succeeded {
+        let outcome = match self.commit_cancel(action, commit) {
+            CancelCommit::Cancelled => DecisionOutcome::Succeeded {
                 bytes: 0,
                 elapsed_ms: 0,
             },
-            false => DecisionOutcome::Failed {
+            CancelCommit::Missing => DecisionOutcome::Failed {
                 class: "warp_cancel_action_missing".into(),
+                elapsed_ms: 0,
+            },
+            CancelCommit::ResourceRejected => DecisionOutcome::Failed {
+                class: "warp_resource_commit_rejected".into(),
                 elapsed_ms: 0,
             },
         };
         if let Some(token) = decision {
             self.commands.resolve_decision_token(&token, outcome);
         }
+    }
+
+    fn commit_cancel(
+        &mut self,
+        action: ActionId,
+        commit: &mut Option<SelectedCommit>,
+    ) -> CancelCommit {
+        if !self.downloads.can_cancel_action(action) {
+            return CancelCommit::Missing;
+        }
+        let resources = ResourceCost::new(0, 0, 0, 0);
+        if self.commit_selected(commit, resources, time::unix_time_ms()) == CommitResult::Rejected {
+            return CancelCommit::ResourceRejected;
+        }
+        let cancelled = self.downloads.cancel_action(action);
+        if cancelled {
+            self.request_immediate_replan();
+            return CancelCommit::Cancelled;
+        }
+        CancelCommit::Missing
     }
 
     fn fail_selected(&self, class: &str, decision: Option<DecisionToken>) {

@@ -1,4 +1,5 @@
 use super::super::PlannedTransfer;
+use crate::manager::inflight::ActiveAction;
 use crate::manager::state::DeliveryState;
 use ghostr_engine::adaptive::{Allocation, AllocationPlan, PlannerCommand, WarpPlanningDecision};
 use ghostr_engine::scheduling::RangeRequest;
@@ -33,23 +34,14 @@ pub(super) fn selected_transfers(
 }
 
 pub(super) fn retained_actions(
+    in_flight: &[ActiveAction],
     decision: &WarpPlanningDecision,
 ) -> HashSet<ghostr_engine::ActionId> {
-    let mut retained: HashSet<_> = decision
-        .generated
-        .active_controls
-        .iter()
-        .filter(|item| item.decision != ghostr_engine::adaptive::ContinuationDecision::Abort)
-        .map(|item| item.action)
-        .collect();
-    match decision.selected.as_ref().map(|item| &item.command) {
-        Some(PlannerCommand::Promote { action, .. }) => {
-            retained.insert(*action);
-        }
-        Some(PlannerCommand::Hedge { primary, .. }) => {
-            retained.insert(*primary);
-        }
-        _ => {}
+    let mut retained: HashSet<_> = in_flight.iter().map(ActiveAction::action_id).collect();
+    if let Some(PlannerCommand::Cancel(action)) =
+        decision.selected.as_ref().map(|item| &item.command)
+    {
+        retained.remove(action);
     }
     retained
 }

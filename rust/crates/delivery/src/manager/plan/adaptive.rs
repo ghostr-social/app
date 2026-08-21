@@ -32,7 +32,7 @@ pub(super) fn planned_work(
         .any(|work| work.authority == PreemptionAuthority::PlaybackCritical);
     let transfers = mapping::transfers(state, inputs.present, &allocation);
     let selected_transfers = mapping::selected_transfers(state, inputs.present, &warp);
-    let retained = mapping::retained_actions(&warp);
+    let retained = mapping::retained_actions(inputs.in_flight, &warp);
     let evictions = allocation.evictions.clone();
     let discovery_demand = allocation.discovery_demand;
     PlannedWork {

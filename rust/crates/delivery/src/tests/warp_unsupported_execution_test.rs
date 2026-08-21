@@ -18,14 +18,12 @@ fn unavailable_transform_and_live_promotion_fail_closed() {
         directive_for(Some(&transform), &[]),
         WarpDirective::Unsupported {
             class: "warp_transform_backend_unavailable",
-            cancel: None,
         }
     );
     assert_eq!(
         directive_for(Some(&promote), &[]),
         WarpDirective::Unsupported {
             class: "warp_live_promotion_backend_unavailable",
-            cancel: Some(ActionId::new(9)),
         }
     );
 }

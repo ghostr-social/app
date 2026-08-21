@@ -1,64 +1,15 @@
-use super::{
-    HedgeInput, IdentityProof, RequestOccupancy, ResourceObservation, SemanticScore, TwinEpochs,
-};
+use super::{RequestOccupancy, ResourceObservation, SemanticScore, TwinEpochs};
 use crate::adaptive::{EpsilonBuckets, PlayabilitySnapshot};
 use crate::{ActionId, PostId};
 use std::collections::BTreeMap;
 
+mod active;
 mod candidate;
+pub use active::ActivePlannerContext;
 pub use candidate::{
     HeadProbeHistory, PlannerCandidateContext, PlannerCapability, PlannerQuality,
     PreviewAvailability, TransformCapability,
 };
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct HedgeContext {
-    input: HedgeInput,
-    identity: IdentityProof,
-    alternate: String,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ActivePlannerContext {
-    pub action: ActionId,
-    pub continuation_advantage_micros: Option<i64>,
-    hedge: Option<HedgeContext>,
-}
-
-impl ActivePlannerContext {
-    pub const fn new(action: ActionId) -> Self {
-        Self {
-            action,
-            continuation_advantage_micros: None,
-            hedge: None,
-        }
-    }
-
-    pub const fn with_continuation_advantage(mut self, value_micros: i64) -> Self {
-        self.continuation_advantage_micros = Some(value_micros);
-        self
-    }
-
-    pub fn with_hedge(
-        mut self,
-        input: HedgeInput,
-        identity: IdentityProof,
-        alternate: impl Into<String>,
-    ) -> Self {
-        self.hedge = Some(HedgeContext {
-            input,
-            identity,
-            alternate: alternate.into(),
-        });
-        self
-    }
-
-    pub(super) fn hedge(&self) -> Option<(&HedgeInput, IdentityProof, &str)> {
-        self.hedge
-            .as_ref()
-            .map(|item| (&item.input, item.identity.clone(), item.alternate.as_str()))
-    }
-}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PlannerLimits {
@@ -158,6 +109,10 @@ impl PlannerContext {
 
     pub(super) fn active(&self, action: ActionId) -> Option<&ActivePlannerContext> {
         self.active.get(&action)
+    }
+
+    pub(super) fn active_contexts(&self) -> impl Iterator<Item = &ActivePlannerContext> {
+        self.active.values()
     }
 
     pub(super) fn request_occupancy(&self) -> &RequestOccupancy {

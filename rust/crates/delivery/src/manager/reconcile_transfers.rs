@@ -6,12 +6,14 @@ use crate::delivery_events::DecisionToken;
 use crate::manager::concurrency::{planned_capacity, RequestConcurrencyLimits};
 use crate::manager::plan::PlannedWork;
 use crate::manager::reconcile_warp::{self, WarpDirective};
+use crate::manager::selected_commit::SelectedCommit;
 use crate::manager::DeliveryWorker;
 use crate::mutable_priority_queue::ForegroundSlots;
 
 struct SelectedGrant<'a> {
     directive: &'a WarpDirective,
     decision: &'a mut Option<DecisionToken>,
+    commit: &'a mut Option<SelectedCommit>,
 }
 
 impl DeliveryWorker {
@@ -21,7 +23,8 @@ impl DeliveryWorker {
         mut decision: Option<DecisionToken>,
     ) {
         let execution = reconcile_warp::execution(planned);
-        self.apply_warp_directive(&execution.directive, &mut decision);
+        let mut commit = SelectedCommit::optional(execution.selected);
+        self.apply_warp_directive(&execution.directive, &mut decision, &mut commit);
         let capacity = planned_capacity(
             self.concurrency_limit(),
             self.connection_ceiling(),
@@ -41,6 +44,7 @@ impl DeliveryWorker {
         let selected = SelectedGrant {
             directive: &execution.directive,
             decision: &mut decision,
+            commit: &mut commit,
         };
         self.grant_planned(total, capacity.foreground_goal.min(total), selected)
             .await;
@@ -69,7 +73,10 @@ impl DeliveryWorker {
                 return;
             };
             let alternate = transfer.id();
-            if let Some(action) = self.grant(transfer, selected.decision).await {
+            if let Some(action) = self
+                .grant(transfer, selected.decision, selected.commit)
+                .await
+            {
                 self.link_selected_hedge(selected.directive, &alternate, action);
             }
         }
@@ -86,7 +93,7 @@ impl DeliveryWorker {
         }
         let active_hosts = self.downloads.active_hosts();
         if let Some(transfer) = self.queue.pop_for_idle_host(&active_hosts) {
-            let _ = self.grant(transfer, &mut None).await;
+            let _ = self.grant(transfer, &mut None, &mut None).await;
         }
     }
 

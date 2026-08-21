@@ -92,6 +92,10 @@ impl DownloadWorkers {
         self.active.cancel_action(action)
     }
 
+    pub(crate) fn can_cancel_action(&self, action: ghostr_engine::ActionId) -> bool {
+        self.active.can_cancel_action(action)
+    }
+
     pub(crate) fn link_hedge(
         &mut self,
         primary: ghostr_engine::ActionId,

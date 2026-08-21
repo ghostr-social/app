@@ -32,12 +32,22 @@ pub(super) fn build(
                 )
         });
     let context = inputs.in_flight.iter().fold(context, |context, active| {
-        let advantage = continuation_advantage(base, active.action_id());
-        context.with_active(
-            ActivePlannerContext::new(active.action_id()).with_continuation_advantage(advantage),
-        )
+        context.with_active(active_context(base, active))
     });
     (context, occupancy)
+}
+
+fn active_context(
+    base: &AllocationPlan,
+    active: &crate::manager::inflight::ActiveAction,
+) -> ActivePlannerContext {
+    let advantage = continuation_advantage(base, active.action_id());
+    let context = ActivePlannerContext::new(active.action_id(), active.post().clone())
+        .with_continuation_advantage(advantage);
+    match active.cancelling() {
+        true => context.mark_cancelling(),
+        false => context,
+    }
 }
 
 fn head_probe_history(

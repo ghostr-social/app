@@ -22,12 +22,22 @@ impl ActiveAction {
         identity: TransferIdentity,
         committed_until_ms: u64,
     ) -> Self {
+        Self::range_with_action(ActionId::new(1), chunk, identity, committed_until_ms)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn range_with_action(
+        action_id: ActionId,
+        chunk: ghostr_engine::ChunkId,
+        identity: TransferIdentity,
+        committed_until_ms: u64,
+    ) -> Self {
         let request = RetrievalRequest::FetchRange {
             bytes: chunk.range,
             promotion: None,
         };
         Self {
-            action_id: ActionId::new(1),
+            action_id,
             post: chunk.post,
             identity,
             request,

@@ -19,6 +19,7 @@ pub(super) fn build(
     {
         builder.add_candidate(candidate);
     }
+    builder.add_detached_active();
     builder.finish()
 }
 
@@ -97,12 +98,9 @@ impl<'a> Builder<'a> {
         candidate: &CandidateSnapshot,
         input: NodeInput<'_>,
     ) -> super::super::ActionNode {
-        self.next_id = self
-            .next_id
-            .checked_add(1)
-            .expect("planner action id exhausted");
+        let id = self.next_action_id();
         super::super::ActionNode::new(
-            self.next_id,
+            id,
             candidate.post.clone(),
             input.kind.clone(),
             value::score(candidate, &input.kind, input.prediction, self.base.mode),
@@ -110,6 +108,23 @@ impl<'a> Builder<'a> {
         .with_origin(input.source)
         .with_forecast(input.prediction.forecast)
         .requiring(input.requires)
+    }
+
+    pub(super) fn local_node(
+        &mut self,
+        post: &crate::PostId,
+        kind: super::super::ActionKind,
+        value: super::super::ActionValue,
+    ) -> super::super::ActionNode {
+        super::super::ActionNode::new(self.next_action_id(), post.clone(), kind, value)
+    }
+
+    fn next_action_id(&mut self) -> u16 {
+        self.next_id = self
+            .next_id
+            .checked_add(1)
+            .expect("planner action id exhausted");
+        self.next_id
     }
 
     pub(super) fn prediction(

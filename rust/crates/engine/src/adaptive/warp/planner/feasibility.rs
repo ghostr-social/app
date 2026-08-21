@@ -1,7 +1,7 @@
 use super::types::{ReserveConstraint, SemanticDecision, WarpPlannerConfig, WarpPlannerInput};
 use crate::adaptive::{
-    ActionNode, ControlMode, HardBudget, PlannerCapability, PlayerPreparation, ResourceCost,
-    SemanticCandidate, SemanticGuardrail,
+    ActionKind, ActionNode, ControlMode, HardBudget, PlannerCapability, PlayerPreparation,
+    ResourceCost, SemanticCandidate, SemanticGuardrail,
 };
 use std::collections::BTreeSet;
 
@@ -37,7 +37,7 @@ pub(super) fn apply(
     let (budget, reserve) = protect_rescue(input.base.mode, budget, rescue.as_ref());
     let nodes = frontier
         .iter()
-        .filter(|node| admissible(&node.post, &semantic))
+        .filter(|node| semantically_admissible(node, &semantic))
         .filter(|node| budget.allows(&node.resources, node.request_authority()))
         .filter(|node| reserve.degraded || budget.allows_action(node))
         .cloned()
@@ -105,6 +105,10 @@ fn admissible(post: &crate::PostId, semantic: &[SemanticDecision]) -> bool {
         .iter()
         .find(|item| &item.post == post)
         .is_some_and(|item| item.admission.admissible)
+}
+
+fn semantically_admissible(node: &ActionNode, semantic: &[SemanticDecision]) -> bool {
+    matches!(node.kind, ActionKind::Cancel(_)) || admissible(&node.post, semantic)
 }
 
 fn protect_rescue(

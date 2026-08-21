@@ -1,6 +1,5 @@
 use super::allocation::{request_resources, AllocationSpec};
 use super::builder::{Builder, NodeInput};
-use super::prediction::Prediction;
 use super::{ActiveControl, GeneratedAction, PlannerCommand};
 use crate::adaptive::{
     ActionKind, ActionValue, ActivePlannerContext, CandidateSnapshot, ContinuationDecision,
@@ -10,31 +9,53 @@ use crate::adaptive::{
 impl Builder<'_> {
     pub(super) fn add_active(&mut self, candidate: &CandidateSnapshot) {
         for active in &candidate.in_flight {
+            if active.cancelling {
+                continue;
+            }
             let Some(context) = self.context.active(active.action_id) else {
                 continue;
             };
-            self.add_control(candidate, active, context);
+            self.add_control(&candidate.post, active.action_id, context);
             self.add_promotion(candidate, active);
             self.add_hedge(candidate, active, context);
         }
     }
 
+    pub(super) fn add_detached_active(&mut self) {
+        let detached: Vec<_> = self
+            .context
+            .active_contexts()
+            .filter(|context| !context.cancelling() && !self.represents(context.action))
+            .cloned()
+            .collect();
+        for context in detached {
+            self.add_control(context.post(), context.action, &context);
+        }
+    }
+
+    fn represents(&self, action: crate::ActionId) -> bool {
+        self.snapshot
+            .candidates
+            .iter()
+            .filter(|candidate| candidate.retrieval_eligible)
+            .flat_map(|candidate| &candidate.in_flight)
+            .any(|active| active.action_id == action)
+    }
+
     fn add_control(
         &mut self,
-        candidate: &CandidateSnapshot,
-        active: &InFlightAction,
+        post: &crate::PostId,
+        action: crate::ActionId,
         context: &ActivePlannerContext,
     ) {
         let Some(advantage) = context.continuation_advantage_micros else {
             return;
         };
         let decision = ContinuationPolicy::new(50_000, 50_000).decide(advantage);
-        self.active_controls.push(ActiveControl {
-            action: active.action_id,
-            decision,
-        });
+        self.active_controls
+            .push(ActiveControl { action, decision });
         if decision == ContinuationDecision::Abort {
-            self.push_cancel(candidate, active.action_id, advantage);
+            self.push_cancel(post, action, advantage);
         }
     }
 
@@ -98,19 +119,9 @@ impl Builder<'_> {
         });
     }
 
-    fn push_cancel(
-        &mut self,
-        candidate: &CandidateSnapshot,
-        action: crate::ActionId,
-        advantage: i64,
-    ) {
-        let prediction = Prediction {
-            forecast: Default::default(),
-            uncertainty_bps: 0,
-        };
-        let input = NodeInput::new(ActionKind::Cancel(action), "local", prediction, &[]);
-        let mut node = self.node(candidate, input);
-        node.value = ActionValue::from_net_micros(advantage.saturating_neg());
+    fn push_cancel(&mut self, post: &crate::PostId, action: crate::ActionId, advantage: i64) {
+        let value = ActionValue::from_net_micros(advantage.saturating_neg());
+        let node = self.local_node(post, ActionKind::Cancel(action), value);
         self.actions.push(GeneratedAction {
             node,
             command: PlannerCommand::Cancel(action),

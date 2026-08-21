@@ -79,7 +79,7 @@ pub(super) fn generated_actions() -> GeneratedActions {
     let hedge = HedgeInput::new(active_id, ActionKind::FetchRange(ByteRange::new(0, 64_000)))
         .with_timing(1_000, 900)
         .with_value(5_000, 1_000);
-    let active = ActivePlannerContext::new(active_id)
+    let active = ActivePlannerContext::new(active_id, post.clone())
         .with_continuation_advantage(-100_000)
         .with_hedge(hedge, IdentityProof::VerifiedHash([3; 32]), MIRROR);
     let context = PlannerContext::explicitly_unavailable(&input)

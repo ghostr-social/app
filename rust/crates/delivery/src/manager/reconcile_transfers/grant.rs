@@ -1,8 +1,9 @@
 use crate::delivery_events::DecisionToken;
 use crate::manager::plan::PlannedTransfer;
+use crate::manager::selected_commit::{CommitResult, SelectedCommit};
 use crate::manager::workers::PreparedTransfer;
 use crate::manager::{origin_admission, time, DeliveryWorker};
-use ghostr_engine::adaptive::DecisionOutcome;
+use ghostr_engine::adaptive::{DecisionOutcome, ResourceCost, RetrievalRequest};
 
 #[cfg(test)]
 #[path = "grant/origin_concurrency_test.rs"]
@@ -10,6 +11,13 @@ mod origin_concurrency_test;
 
 struct AdmittedGrant {
     transfer: PlannedTransfer,
+    resources: ResourceCost,
+    observed_at_ms: u64,
+}
+
+struct PreparedGrant {
+    transfer: PreparedTransfer,
+    resources: ResourceCost,
     observed_at_ms: u64,
 }
 
@@ -18,12 +26,13 @@ impl DeliveryWorker {
         &mut self,
         transfer: PlannedTransfer,
         decision: &mut Option<DecisionToken>,
+        selected: &mut Option<SelectedCommit>,
     ) -> Option<ghostr_engine::ActionId> {
         if !self.grant_eligible(&transfer) {
             return None;
         }
         let admitted = self.admit_origin(transfer)?;
-        self.prepare_grant(admitted, decision).await
+        self.prepare_grant(admitted, decision, selected).await
     }
 
     fn grant_eligible(&self, transfer: &PlannedTransfer) -> bool {
@@ -37,12 +46,21 @@ impl DeliveryWorker {
         &mut self,
         admitted: AdmittedGrant,
         decision: &mut Option<DecisionToken>,
+        selected: &mut Option<SelectedCommit>,
     ) -> Option<ghostr_engine::ActionId> {
         let post = admitted.transfer.request.chunk.post.clone();
         match self.downloads.prepare(&self.ctx, admitted.transfer).await {
-            Ok(prepared) => {
-                self.bind_and_launch(prepared, admitted.observed_at_ms, decision)
-                    .await
+            Ok(transfer) => {
+                self.bind_and_launch(
+                    PreparedGrant {
+                        transfer,
+                        resources: admitted.resources,
+                        observed_at_ms: admitted.observed_at_ms,
+                    },
+                    decision,
+                    selected,
+                )
+                .await
             }
             Err(error) => {
                 self.reject_grant(&post, &error, decision.take());
@@ -53,18 +71,50 @@ impl DeliveryWorker {
 
     async fn bind_and_launch(
         &mut self,
-        prepared: PreparedTransfer,
-        observed_at_ms: u64,
+        prepared: PreparedGrant,
         decision: &mut Option<DecisionToken>,
+        selected: &mut Option<SelectedCommit>,
     ) -> Option<ghostr_engine::ActionId> {
-        let action = prepared.action();
+        let action = prepared.transfer.action();
+        let bound = decision.is_some();
         if let Some(token) = decision.take() {
-            if !self.commands.bind_decision(&token, action, observed_at_ms) {
-                self.reject_binding(prepared, token).await;
+            if !self
+                .commands
+                .bind_decision(&token, action, prepared.observed_at_ms)
+            {
+                self.reject_binding(prepared.transfer, token).await;
                 return None;
             }
         }
-        Some(self.downloads.launch(self.ctx.clone(), prepared))
+        let result = self.commit_selected(selected, prepared.resources, prepared.observed_at_ms);
+        if result == CommitResult::Rejected {
+            self.reject_commit(prepared.transfer, action, bound).await;
+            return None;
+        }
+        let action = self.downloads.launch(self.ctx.clone(), prepared.transfer);
+        if result == CommitResult::Committed {
+            self.request_immediate_replan();
+        }
+        Some(action)
+    }
+
+    async fn reject_commit(
+        &mut self,
+        prepared: PreparedTransfer,
+        action: ghostr_engine::ActionId,
+        bound: bool,
+    ) {
+        if bound {
+            self.commands.resolve_decision(
+                action,
+                DecisionOutcome::Failed {
+                    class: "warp_resource_commit_rejected".into(),
+                    elapsed_ms: 0,
+                },
+                time::unix_time_ms(),
+            );
+        }
+        prepared.release(&self.ctx.store).await;
     }
 
     async fn reject_binding(&mut self, prepared: PreparedTransfer, token: DecisionToken) {
@@ -90,6 +140,7 @@ impl DeliveryWorker {
                 .origin_model_mut()
                 .claim(&query, observed_at_ms, mode);
         origin_admission::apply(transfer, admission).map(|transfer| AdmittedGrant {
+            resources: request_resources(transfer.retrieval),
             transfer,
             observed_at_ms,
         })
@@ -114,6 +165,11 @@ impl DeliveryWorker {
             log::warn!("Could not reserve a video action: {error:#}");
         }
     }
+}
+
+fn request_resources(request: RetrievalRequest) -> ResourceCost {
+    let bytes = request.reserved_network_bytes();
+    ResourceCost::new(bytes, bytes, 0, 1)
 }
 
 fn origin_concurrency(

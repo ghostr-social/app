@@ -24,7 +24,10 @@ fn a_cancelled_attempt_retains_identity_until_its_terminal_ack() {
         handle,
     );
 
-    assert!(active.cancel(&chunk));
+    assert!(active.can_cancel_action(attempt.id()));
+    assert!(active.cancel_action(attempt.id()));
+    assert!(!active.can_cancel_action(attempt.id()));
+    assert!(!active.cancel_action(attempt.id()));
 
     assert_eq!(active.finish(&attempt), CompletionStatus::Cancelled);
 }

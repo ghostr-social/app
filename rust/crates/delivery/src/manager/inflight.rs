@@ -3,11 +3,12 @@
 //! would leave its transfer running unsupervised.
 
 use ghostr_engine::adaptive::PreemptionAuthority;
-use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
+use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::{ActionId, ChunkId, PostId};
 use std::collections::{HashMap, HashSet};
 
 mod action;
+mod cancellation;
 mod reconciliation;
 mod response;
 mod snapshot;
@@ -37,27 +38,6 @@ impl InFlightChunks {
             overlaps(&active.chunk, chunk)
                 || (active.io_finished() && active.chunk.post == chunk.post)
         })
-    }
-
-    #[cfg(test)]
-    pub fn cancel(&mut self, chunk: &ChunkId) -> bool {
-        let Some(active) = self
-            .transfers
-            .values_mut()
-            .find(|active| overlaps(&active.chunk, chunk) && !active.cancelling)
-        else {
-            return false;
-        };
-        active.cancel();
-        true
-    }
-
-    pub(crate) fn cancel_action(&mut self, action: ActionId) -> bool {
-        let Some(active) = self.transfers.get_mut(&action) else {
-            return false;
-        };
-        active.cancel();
-        true
     }
 
     pub(crate) fn link_hedge(&mut self, primary: ActionId, alternate: ActionId) -> bool {
@@ -166,17 +146,6 @@ impl InFlightChunks {
         }
         self.transfers.clear();
         self.hedges.clear();
-    }
-
-    pub(crate) fn cancel_obsolete(&mut self, binding: &RepresentationBinding) {
-        for active in self.transfers.values_mut() {
-            let current = binding.transfer(active.identity.source().as_str());
-            let obsolete =
-                active.chunk.post == *binding.post() && current.as_ref() != Some(&active.identity);
-            if obsolete {
-                active.cancel();
-            }
-        }
     }
 
     fn unlink_hedge(&mut self, action: ActionId) {

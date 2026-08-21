@@ -36,7 +36,8 @@ fn hedge_uses_the_command_request_reservation_envelope() {
     let hedge = HedgeInput::new(active_id, ActionKind::FetchRange(range))
         .with_timing(1_000, 900)
         .with_value(5_000, 1_000);
-    let active = ActivePlannerContext::new(active_id).with_hedge(
+    let post = input.candidates[0].post.clone();
+    let active = ActivePlannerContext::new(active_id, post).with_hedge(
         hedge,
         IdentityProof::VerifiedHash([3; 32]),
         MIRROR,
