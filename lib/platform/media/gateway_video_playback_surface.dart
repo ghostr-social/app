@@ -91,6 +91,7 @@ final class _GatewayVideoPlaybackSurfaceState
           origin,
         ),
         onPlaybackMediaReleased: widget.onPlaybackMediaReleased,
+        preview: widget.request.preview,
       ),
     );
   }
@@ -114,10 +115,7 @@ final class _GatewayVideoPlaybackSurfaceState
 
   Widget _buildLoading() {
     final label = widget.isActive ? 'Loading video' : 'Preparing next video';
-    return ColoredBox(
-      color: AppPalette.videoLoadingBackground,
-      child: LoadingPanel(label: label),
-    );
+    return VideoLoadingSurface(label: label, preview: widget.request.preview);
   }
 
   Widget _buildError() {

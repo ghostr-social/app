@@ -114,6 +114,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
       controller: _controller,
       hasError: _hasError,
       onRetry: _retry,
+      preview: widget.request.preview,
     );
     if (_playbackPhase != PlaybackPhase.networkStalled) return surface;
     return Stack(

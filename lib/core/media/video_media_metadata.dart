@@ -1,3 +1,5 @@
+import 'package:ghostr/core/media/inline_blurhash.dart';
+
 /// Free metadata published alongside a remote video (NIP-92 `imeta` `size`
 /// bytes and `duration` seconds) so delivery can plan before any probe.
 class VideoMediaMetadata {
@@ -12,7 +14,7 @@ class VideoMediaMetadata {
     return VideoMediaMetadata(
       sizeBytes: _sizeBytes(size),
       durationMs: _durationMs(duration),
-      blurhash: blurhash,
+      blurhash: InlineBlurHash.tryParse(blurhash),
     );
   }
 
@@ -20,7 +22,7 @@ class VideoMediaMetadata {
 
   final int? sizeBytes;
   final int? durationMs;
-  final String? blurhash;
+  final InlineBlurHash? blurhash;
 
   static int? _sizeBytes(String? raw) {
     final bytes = raw == null ? null : int.tryParse(raw.trim());

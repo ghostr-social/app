@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:ghostr/core/media/inline_blurhash.dart';
 import 'package:ghostr/core/media/playback_asset_authority.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/core/media/prepared_progressive_playback.dart';
@@ -30,7 +31,8 @@ final class VideoPlaybackSurfaceRequest {
     this.authority,
     this.progressiveRefresh,
     this.onPlaybackMediaReleased,
-  });
+    InlineBlurHash? preview,
+  }) : _preview = preview;
 
   final VideoMediaSource media;
   final PlaybackVideoId? videoId;
@@ -41,6 +43,9 @@ final class VideoPlaybackSurfaceRequest {
   final PlaybackAssetAuthority? authority;
   final ProgressivePlaybackRefreshPort? progressiveRefresh;
   final VoidCallback? onPlaybackMediaReleased;
+  final InlineBlurHash? _preview;
+
+  InlineBlurHash? get preview => _preview ?? media.mediaMetadata.blurhash;
 }
 
 final class PreparedProgressiveVideoPlaybackRequest
@@ -70,6 +75,7 @@ final class PreparedProgressiveVideoPlaybackRequest
         reservesPreparedDecoder: true,
         authority: prepared.authority,
         onPlaybackMediaReleased: request.onPlaybackMediaReleased,
+        preview: request.preview,
       );
 
   final PreparedProgressivePlayback prepared;

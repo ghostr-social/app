@@ -13,9 +13,8 @@ import 'package:ghostr/core/media/video_representation_id.dart';
 import 'package:ghostr/features/video_inventory/domain/progressive_playback_gateway_port.dart';
 import 'package:ghostr/platform/media/gateway_playback_cubit.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
-import 'package:ghostr/shared/theme/app_tokens.dart';
 import 'package:ghostr/shared/widgets/async_state_panel.dart';
-import 'package:ghostr/shared/widgets/loading_panel.dart';
+import 'package:ghostr/shared/widgets/video_loading_surface.dart';
 
 part 'gateway_video_playback_surface.dart';
 
