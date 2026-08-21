@@ -47,6 +47,7 @@ impl DeliveryWorker {
         self.state.prune_player_preparations(&stored.revisions);
         let independent_sources = self.independent_objects.current(&stored.revisions);
         self.reconcile_timelines(&timeline_window, &stored.snapshots);
+        self.state.reconcile_fast_start_evidence(&stored.snapshots);
         self.reconcile_probe_bodies();
         let in_flight = self.downloads.actions();
         let active_head_probes = self.probes.active_identities();

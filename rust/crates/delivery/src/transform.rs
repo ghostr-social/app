@@ -73,6 +73,7 @@ pub struct TransformProfile {
 pub enum TransformTrigger {
     Never,
     InvalidVideoTrack,
+    FastStartInvalidVideoTrack,
 }
 
 impl TransformProfile {
@@ -100,7 +101,14 @@ impl TransformProfile {
 
 impl TransformTrigger {
     pub(crate) fn allows_failure(self, failure: Option<&str>) -> bool {
-        matches!(self, Self::InvalidVideoTrack) && failure == Some("invalidVideoTrack")
+        matches!(
+            self,
+            Self::InvalidVideoTrack | Self::FastStartInvalidVideoTrack
+        ) && failure == Some("invalidVideoTrack")
+    }
+
+    pub(crate) const fn requires_fast_start(self) -> bool {
+        matches!(self, Self::FastStartInvalidVideoTrack)
     }
 }
 

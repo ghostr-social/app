@@ -1,6 +1,6 @@
 use super::{
     TransformBackend, TransformControl, TransformInput, TransformLimits, TransformOutput,
-    TransformProfile,
+    TransformProfile, TransformTrigger,
 };
 use anyhow::{ensure, Result};
 use ghostr_engine::adaptive::TransformKind;
@@ -16,7 +16,8 @@ impl FastStartRemuxBackend {
         let limits = TransformLimits::try_new(64 << 20, 64 << 20, 250, 1_000)
             .expect("production transform limits");
         Self {
-            profile: TransformProfile::new(TransformKind::Remux, limits),
+            profile: TransformProfile::new(TransformKind::Remux, limits)
+                .with_trigger(TransformTrigger::FastStartInvalidVideoTrack),
         }
     }
 }

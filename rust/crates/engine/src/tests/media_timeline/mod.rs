@@ -1,5 +1,6 @@
 mod cmaf_sidx_timeline_test;
 mod cmaf_sidx_validation_test;
+mod fast_start_remux_evidence_test;
 mod fragmented_init_timeline_test;
 mod malformed_timeline_test;
 mod mp4_cancellation_cadence_test;

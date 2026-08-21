@@ -42,10 +42,14 @@ pub enum TimelineError {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MediaTimeline {
+    pub(crate) inspected: Vec<ByteRange>,
     pub(crate) metadata: Vec<ByteRange>,
     pub(crate) file_types: Vec<ByteRange>,
     pub(crate) movie: Option<ByteRange>,
     pub(crate) movie_top_level: bool,
+    pub(crate) top_level_file_types: usize,
+    pub(crate) top_level_movies: usize,
+    pub(crate) fragmented_indexes: usize,
     pub(crate) media_data: Vec<boxes::MediaData>,
     pub(crate) classic_video: bool,
     pub(crate) media: Vec<TimedRange>,
@@ -105,6 +109,28 @@ impl MediaTimeline {
     pub fn startup_footprint(&self) -> Option<StartupFootprint> {
         StartupFootprint::from_timeline(self)
     }
+
+    pub fn fast_start_remuxable(&self, total: u64) -> bool {
+        let Some(movie) = self.movie else {
+            return false;
+        };
+        let [media] = self.media_data.as_slice() else {
+            return false;
+        };
+        self.inspected_whole(total)
+            && self.top_level_file_types == 1
+            && self.top_level_movies == 1
+            && self.fragmented_indexes == 0
+            && self.startup_footprint().is_some()
+            && media.payload.end <= movie.start
+            && movie.end == total
+    }
+
+    fn inspected_whole(&self, total: u64) -> bool {
+        normalize(self.inspected.clone())
+            .first()
+            .is_some_and(|range| range.start == 0 && range.end == total)
+    }
 }
 
 /// Parses complete metadata boxes found in the supplied absolute segments.
@@ -120,12 +146,18 @@ pub fn parse_mp4_segments_with_control(
 ) -> Result<MediaTimeline, TimelineError> {
     let mut budget = limits::ParserBudget::new(segments, control)?;
     let segments = segments::canonical(segments, &mut budget)?;
+    let inspected = segments
+        .iter()
+        .map(|segment| ByteRange::new(segment.start, segment.start + segment.bytes.len() as u64))
+        .collect();
     let scan = boxes::scan(&segments, &mut budget)?;
     let selected = selection::parse(&scan.atoms, scan.truncated, &mut budget)?;
     startup::assemble(
         startup::AssemblyInput {
             atoms: &scan.atoms,
+            inspected,
             media_data: scan.media_data,
+            fragmented_markers: scan.fragmented_markers,
             media: selected.ranges,
             movie: selected.classic_movie,
             movie_top_level: selected.classic_movie_top_level,

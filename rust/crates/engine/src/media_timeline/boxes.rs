@@ -44,6 +44,7 @@ pub(crate) struct MediaData {
 pub(crate) struct Scan<'a> {
     pub(crate) atoms: Vec<Atom<'a>>,
     pub(crate) media_data: Vec<MediaData>,
+    pub(crate) fragmented_markers: usize,
     pub(crate) truncated: bool,
 }
 

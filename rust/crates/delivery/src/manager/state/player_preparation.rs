@@ -147,8 +147,14 @@ impl DeliveryState {
 
     fn recoverable_transform(&self, post: &PostId) -> Option<crate::transform::TransformProfile> {
         let profile = self.transform_available_for(post)?;
-        let failure = self.player_preparations.get(post)?.failure_kind();
-        profile.trigger().allows_failure(failure).then_some(profile)
+        let report = self.player_preparations.get(post)?;
+        if !profile.trigger().allows_failure(report.failure_kind()) {
+            return None;
+        }
+        if profile.trigger().requires_fast_start() && !self.current_fast_start_failure(post) {
+            return None;
+        }
+        Some(profile)
     }
 
     fn capability_observation(

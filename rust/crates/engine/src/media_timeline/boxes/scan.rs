@@ -11,6 +11,7 @@ pub(crate) fn scan<'a>(
     let mut scan = Scan {
         atoms: Vec::new(),
         media_data: Vec::new(),
+        fragmented_markers: 0,
         truncated: false,
     };
     let mut boundary = Some(0);
@@ -86,6 +87,10 @@ fn record_non_metadata(
         return Ok(());
     }
     budget.box_header(1)?;
+    if matches!(&parsed.kind, b"moof" | b"mfra") {
+        scan.fragmented_markers = scan.fragmented_markers.saturating_add(1);
+        return Ok(());
+    }
     if &parsed.kind != b"mdat" {
         return Ok(());
     }

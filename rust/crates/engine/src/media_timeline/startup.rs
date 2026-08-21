@@ -101,7 +101,9 @@ fn contains(outer: ByteRange, inner: ByteRange) -> bool {
 
 pub(super) struct AssemblyInput<'atoms, 'bytes> {
     pub(super) atoms: &'atoms [Atom<'bytes>],
+    pub(super) inspected: Vec<ByteRange>,
     pub(super) media_data: Vec<super::boxes::MediaData>,
+    pub(super) fragmented_markers: usize,
     pub(super) media: Vec<TimedRange>,
     pub(super) movie: Option<ByteRange>,
     pub(super) movie_top_level: bool,
@@ -124,14 +126,26 @@ pub(super) fn assemble(
         }
     }
     Ok(MediaTimeline {
+        inspected: normalize(input.inspected),
         metadata: normalize(metadata),
         file_types: normalize(file_types),
         movie: input.movie,
         movie_top_level: input.movie_top_level,
+        top_level_file_types: top_level_count(input.atoms, b"ftyp"),
+        top_level_movies: top_level_count(input.atoms, b"moov"),
+        fragmented_indexes: top_level_count(input.atoms, b"sidx")
+            .saturating_add(input.fragmented_markers),
         media_data: input.media_data,
         classic_video: input.classic_video,
         media: input.media,
     })
+}
+
+fn top_level_count(atoms: &[Atom<'_>], kind: &[u8; 4]) -> usize {
+    atoms
+        .iter()
+        .filter(|atom| atom.is_top_level() && &atom.kind == kind)
+        .count()
 }
 
 fn valid_file_type(atom: &Atom<'_>) -> bool {

@@ -38,12 +38,14 @@ pub(crate) struct DeliveryState {
     player_preparations: HashMap<PostId, PlayerPreparationReport>,
     client_capabilities: ClientCapabilityModel,
     transform_profile: Option<crate::transform::TransformProfile>,
+    fast_start_evidence: HashMap<PostId, fast_start::FastStartEvidence>,
     active_transforms: std::collections::HashSet<PostId>,
     transformed_posts: HashMap<PostId, RepresentationBinding>,
     ready_target: usize,
 }
 
 mod evictions;
+mod fast_start;
 mod focus;
 mod playback;
 mod playback_evidence;
@@ -78,6 +80,7 @@ impl DeliveryState {
             player_preparations: HashMap::new(),
             client_capabilities: ClientCapabilityModel::default(),
             transform_profile: None,
+            fast_start_evidence: Default::default(),
             active_transforms: Default::default(),
             transformed_posts: Default::default(),
             ready_target: 1,
@@ -140,6 +143,7 @@ impl DeliveryState {
         self.navigation = NavigationHistory::default();
         self.recent_evictions.clear();
         self.player_preparations.clear();
+        self.fast_start_evidence.clear();
         self.active_transforms.clear();
         self.transformed_posts.clear();
         self.ready_target = 1;
