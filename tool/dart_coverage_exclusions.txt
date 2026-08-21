@@ -51,6 +51,7 @@ lib/features/video_sharing/domain/video_share_workflow.dart
 lib/features/watch_history/domain/watch_history_repository.dart
 # Conditional web adapter cannot execute in the VM coverage runner.
 lib/features/watch_history/data/watch_history_database_web.dart
+lib/features/video_inventory/domain/playback_preparation_updates.dart
 lib/features/video_inventory/domain/progressive_playback_gateway_port.dart
 lib/features/video_inventory/domain/screen_awake_port.dart
 lib/platform/media/cache_directory_provider.dart
