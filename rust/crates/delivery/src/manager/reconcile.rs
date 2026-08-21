@@ -67,6 +67,7 @@ impl DeliveryWorker {
         self.reconcile_timelines(&timeline_window, &stored.snapshots);
         self.reconcile_probe_bodies();
         let in_flight = self.downloads.actions();
+        let active_head_probes = self.probes.active_identities();
         let demanded = self.resolve_gateway_demands(&stored.present);
         let connection_ceiling = self.connection_ceiling();
         let inputs = PlanInputs {
@@ -80,6 +81,7 @@ impl DeliveryWorker {
             independent_sources: &independent_sources,
             completed_head_probes: self.probes.completed_posts(),
             in_flight: &in_flight,
+            active_head_probes: &active_head_probes,
             storage: StorageSnapshot::new(capacity.limit_bytes(), capacity.used_bytes()),
             connection_capacity: self
                 .concurrency_limit()

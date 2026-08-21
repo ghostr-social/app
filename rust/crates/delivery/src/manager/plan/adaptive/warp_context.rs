@@ -2,7 +2,7 @@ use super::super::PlanInputs;
 use crate::manager::state::DeliveryState;
 use ghostr_engine::adaptive::{
     ActivePlannerContext, AllocationPlan, HeadProbeHistory, PlannerContext, PlannerLimits,
-    ResourceFeedback, ResourceObservation, TwinEpochs,
+    RequestOccupancy, ResourceFeedback, ResourceObservation, TwinEpochs,
 };
 
 pub(super) fn build(
@@ -10,10 +10,12 @@ pub(super) fn build(
     snapshot: &ghostr_engine::adaptive::PlayabilitySnapshot,
     base: &AllocationPlan,
     inputs: &PlanInputs<'_>,
-) -> PlannerContext {
+) -> (PlannerContext, RequestOccupancy) {
+    let occupancy = request_occupancy(inputs);
     let context = PlannerContext::explicitly_unavailable(snapshot)
         .with_limits(limits(snapshot))
-        .with_feedback(feedback(snapshot))
+        .with_feedback(feedback(snapshot, &occupancy, !inputs.in_flight.is_empty()))
+        .with_request_occupancy(occupancy.clone())
         .with_epochs(epochs(state, snapshot));
     let context = snapshot
         .candidates
@@ -29,12 +31,13 @@ pub(super) fn build(
                 false => context,
             }
         });
-    inputs.in_flight.iter().fold(context, |context, active| {
+    let context = inputs.in_flight.iter().fold(context, |context, active| {
         let advantage = continuation_advantage(base, active.action_id());
         context.with_active(
             ActivePlannerContext::new(active.action_id()).with_continuation_advantage(advantage),
         )
-    })
+    });
+    (context, occupancy)
 }
 
 fn limits(snapshot: &ghostr_engine::adaptive::PlayabilitySnapshot) -> PlannerLimits {
@@ -48,19 +51,18 @@ fn limits(snapshot: &ghostr_engine::adaptive::PlayabilitySnapshot) -> PlannerLim
     }
 }
 
-fn feedback(snapshot: &ghostr_engine::adaptive::PlayabilitySnapshot) -> ResourceFeedback {
-    let active = snapshot
-        .candidates
-        .iter()
-        .map(|candidate| candidate.in_flight.len() as u64)
-        .sum::<u64>();
+fn feedback(
+    snapshot: &ghostr_engine::adaptive::PlayabilitySnapshot,
+    occupancy: &RequestOccupancy,
+    body_active: bool,
+) -> ResourceFeedback {
     let rate = snapshot.network.throughput_bps.saturating_div(8);
     ResourceFeedback {
         actual: ResourceObservation::new(
-            if active == 0 { 0 } else { rate },
+            if body_active { rate } else { 0 },
             snapshot.storage.used_bytes,
             0,
-            active,
+            occupancy.total() as u64,
         ),
         target: ResourceObservation::new(
             rate,
@@ -69,6 +71,18 @@ fn feedback(snapshot: &ghostr_engine::adaptive::PlayabilitySnapshot) -> Resource
             snapshot.network.connection_capacity.max(1) as u64,
         ),
     }
+}
+
+fn request_occupancy(inputs: &PlanInputs<'_>) -> RequestOccupancy {
+    let bodies = inputs
+        .in_flight
+        .iter()
+        .map(|active| active.identity().source().as_str());
+    let probes = inputs
+        .active_head_probes
+        .iter()
+        .map(|identity| identity.source().as_str());
+    RequestOccupancy::from_sources(bodies.chain(probes))
 }
 
 fn epochs(

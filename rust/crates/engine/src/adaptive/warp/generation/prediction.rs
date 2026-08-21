@@ -18,6 +18,7 @@ pub(super) struct PredictionInput<'a> {
     pub candidate: &'a CandidateSnapshot,
     pub action: &'a ActionKind,
     pub source: &'a str,
+    pub concurrency: usize,
     pub mode: ControlMode,
 }
 
@@ -30,7 +31,7 @@ pub(super) fn predict(input: PredictionInput<'_>) -> Prediction {
             bytes,
             media(input.candidate, input.action),
         )
-        .with_concurrency(active_connections(input.snapshot, input.source))
+        .with_concurrency(input.concurrency)
         .with_observed_at_ms(input.snapshot.observed_at_ms),
     );
     let estimate = input.model.estimate(
@@ -141,16 +142,6 @@ fn media(candidate: &CandidateSnapshot, action: &ActionKind) -> MediaClass {
         MediaLayout::Streamable => MediaClass::ProgressiveMp4,
         MediaLayout::RequiresCompleteFile => MediaClass::WholeObject,
     }
-}
-
-fn active_connections(snapshot: &PlayabilitySnapshot, source: &str) -> usize {
-    snapshot
-        .candidates
-        .iter()
-        .flat_map(|item| &item.in_flight)
-        .filter(|item| item.source == source && !item.cancelling)
-        .count()
-        .saturating_add(1)
 }
 
 fn decision_mode(mode: ControlMode) -> DecisionMode {

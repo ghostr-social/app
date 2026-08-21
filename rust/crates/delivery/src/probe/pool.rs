@@ -8,9 +8,23 @@ use std::collections::{HashMap, HashSet};
 
 pub(crate) struct MetadataProbePool {
     limit: usize,
-    probing: HashMap<PostId, TransferIdentity>,
+    probing: HashMap<PostId, ActiveProbe>,
     probed: HashSet<PostId>,
     deferred: HashSet<PostId>,
+}
+
+struct ActiveProbe {
+    identity: TransferIdentity,
+    result_current: bool,
+}
+
+impl ActiveProbe {
+    const fn new(identity: TransferIdentity) -> Self {
+        Self {
+            identity,
+            result_current: true,
+        }
+    }
 }
 
 impl MetadataProbePool {
@@ -42,7 +56,8 @@ impl MetadataProbePool {
                 let identity = catalog
                     .transfer_identity(post, &url)
                     .expect("probe source came from the catalog");
-                self.probing.insert(post.clone(), identity);
+                self.probing
+                    .insert(post.clone(), ActiveProbe::new(identity));
                 claimed.push((post.clone(), url));
             }
         }
@@ -62,7 +77,8 @@ impl MetadataProbePool {
         let Some(identity) = catalog.transfer_identity(post, source) else {
             return false;
         };
-        self.probing.insert(post.clone(), identity);
+        self.probing
+            .insert(post.clone(), ActiveProbe::new(identity));
         true
     }
 
@@ -90,13 +106,17 @@ impl MetadataProbePool {
     }
 
     pub fn clear(&mut self) {
-        self.probing.clear();
+        self.probing
+            .values_mut()
+            .for_each(|probe| probe.result_current = false);
         self.probed.clear();
         self.deferred.clear();
     }
 
     pub(crate) fn representation_changed(&mut self, post: &PostId) {
-        self.probing.remove(post);
+        if let Some(probe) = self.probing.get_mut(post) {
+            probe.result_current = false;
+        }
         self.probed.remove(post);
         self.deferred.remove(post);
     }
@@ -113,6 +133,13 @@ impl MetadataProbePool {
         &self.probed
     }
 
+    pub(crate) fn active_identities(&self) -> Vec<TransferIdentity> {
+        self.probing
+            .values()
+            .map(|probe| probe.identity.clone())
+            .collect()
+    }
+
     pub(crate) fn current_identity(
         &self,
         catalog: &Catalog,
@@ -120,8 +147,11 @@ impl MetadataProbePool {
         url: &str,
     ) -> Option<TransferIdentity> {
         let claimed = self.probing.get(post)?;
+        if !claimed.result_current {
+            return None;
+        }
         let current = catalog.transfer_identity(post, url)?;
-        (claimed == &current).then_some(current)
+        (claimed.identity == current).then_some(current)
     }
 
     #[cfg(test)]

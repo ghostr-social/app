@@ -1,4 +1,5 @@
 mod feasibility;
+mod simulation;
 mod types;
 
 pub use types::{
@@ -7,7 +8,7 @@ pub use types::{
 
 use super::{
     ActionFrontier, DigitalTwin, GeneratedAction, NetworkTokenBucket, ShadowPriceController,
-    TwinEpochs, TwinSearchContext, TwinState, WarpActionGenerator, WarpSearch,
+    TwinSearchContext, WarpActionGenerator, WarpSearch,
 };
 
 pub struct WarpPlanner {
@@ -48,9 +49,9 @@ impl WarpPlanner {
         let selected = selected_action(&generated.actions, &search);
         let evaluation = selected.as_ref().map(|item| {
             self.twin.evaluate(
-                &twin_state(&input),
+                &simulation::state(&input),
                 std::slice::from_ref(&item.node),
-                epochs(&input, self.price_epoch),
+                simulation::epochs(&input, self.price_epoch),
             )
         });
         WarpPlanningDecision {
@@ -117,8 +118,8 @@ impl WarpPlanner {
         }
         let mut simulation = TwinSearchContext::new(
             &mut self.twin,
-            twin_state(input),
-            epochs(input, self.price_epoch),
+            simulation::state(input),
+            simulation::epochs(input, self.price_epoch),
         );
         WarpSearch::new(self.config.beam)
             .with_prices(self.prices.prices())
@@ -130,26 +131,6 @@ impl Default for WarpPlanner {
     fn default() -> Self {
         Self::new(WarpPlannerConfig::default())
     }
-}
-
-fn twin_state(input: &WarpPlannerInput<'_>) -> TwinState {
-    TwinState::new(
-        input.snapshot.playback.buffer_ahead_ms,
-        input.snapshot.network.throughput_bps,
-        input.snapshot.network.rtt_ms,
-        input.context.limits.request_tokens,
-    )
-    .with_ready_coverage(input.base.ready_reserve.ready_coverage_ms)
-    .with_cache_bytes(input.snapshot.storage.used_bytes)
-    .with_swipe_rate(input.snapshot.navigation.forward_swipes_per_minute)
-}
-
-fn epochs(input: &WarpPlannerInput<'_>, price_epoch: u64) -> TwinEpochs {
-    TwinEpochs::new(
-        input.context.epochs.evidence,
-        input.context.epochs.model,
-        input.context.epochs.budget.saturating_add(price_epoch),
-    )
 }
 
 fn least_risk(nodes: &[super::ActionNode]) -> super::SearchDecision {

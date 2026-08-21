@@ -110,6 +110,7 @@ mod player_preparation_representation_test;
 mod player_preparation_revision_test;
 mod player_preparation_state_test;
 mod policy_eviction_history_test;
+mod probe_active_occupancy_test;
 mod probe_body_deferral_test;
 mod probe_cancelled_body_rearm_test;
 mod probe_deferred_history_retention_test;

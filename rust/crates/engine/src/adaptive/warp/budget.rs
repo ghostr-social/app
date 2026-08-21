@@ -1,4 +1,5 @@
-use std::collections::BTreeMap;
+mod hard;
+pub use hard::{HardBudget, ResourceCost};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NetworkTokenBucket {
@@ -44,83 +45,6 @@ impl NetworkTokenBucket {
         let added = self.refill_per_second.saturating_mul(elapsed) / 1_000;
         self.tokens = self.tokens.saturating_add(added).min(self.capacity);
         self.updated_at_ms = self.updated_at_ms.max(now_ms);
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub struct ResourceCost {
-    pub network_bytes: u64,
-    pub storage_bytes: u64,
-    pub cpu_ms: u64,
-    pub requests: u16,
-}
-
-impl ResourceCost {
-    pub const fn new(network_bytes: u64, storage_bytes: u64, cpu_ms: u64, requests: u16) -> Self {
-        Self {
-            network_bytes,
-            storage_bytes,
-            cpu_ms,
-            requests,
-        }
-    }
-
-    pub fn no_more_than(self, other: Self) -> bool {
-        self.network_bytes <= other.network_bytes
-            && self.storage_bytes <= other.storage_bytes
-            && self.cpu_ms <= other.cpu_ms
-            && self.requests <= other.requests
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct HardBudget {
-    remaining: ResourceCost,
-    per_origin_requests: u16,
-    origins: BTreeMap<String, u16>,
-}
-
-impl HardBudget {
-    pub fn new(limits: ResourceCost, per_origin_requests: u16) -> Self {
-        Self {
-            remaining: limits,
-            per_origin_requests,
-            origins: BTreeMap::new(),
-        }
-    }
-
-    pub fn unlimited() -> Self {
-        Self::new(
-            ResourceCost::new(u64::MAX, u64::MAX, u64::MAX, u16::MAX),
-            u16::MAX,
-        )
-    }
-
-    pub fn consume(&mut self, cost: &ResourceCost, origin: &str) -> bool {
-        if !cost.no_more_than(self.remaining) || !self.origin_available(cost.requests, origin) {
-            return false;
-        }
-        self.remaining.network_bytes -= cost.network_bytes;
-        self.remaining.storage_bytes -= cost.storage_bytes;
-        self.remaining.cpu_ms -= cost.cpu_ms;
-        self.remaining.requests -= cost.requests;
-        let used = self.origins.entry(origin.to_owned()).or_default();
-        *used = used.saturating_add(cost.requests);
-        true
-    }
-
-    pub fn allows(&self, cost: &ResourceCost, origin: &str) -> bool {
-        let mut copy = self.clone();
-        copy.consume(cost, origin)
-    }
-
-    fn origin_available(&self, requests: u16, origin: &str) -> bool {
-        self.origins
-            .get(origin)
-            .copied()
-            .unwrap_or_default()
-            .saturating_add(requests)
-            <= self.per_origin_requests
     }
 }
 

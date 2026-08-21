@@ -40,15 +40,10 @@ pub(super) fn models(
         .collect()
 }
 
-pub(super) fn shadow_prices(snapshot: &PlayabilitySnapshot) -> ShadowPrices {
+pub(super) fn shadow_prices(snapshot: &PlayabilitySnapshot, active_requests: u64) -> ShadowPrices {
     let storage = fraction(snapshot.storage.used_bytes, snapshot.storage.budget_bytes);
-    let active = snapshot
-        .candidates
-        .iter()
-        .map(|candidate| candidate.in_flight.len() as u64)
-        .sum();
-    let connections = snapshot.network.connection_ceiling.max(1) as u64;
-    let requests = fraction(active, connections);
+    let connections = snapshot.network.connection_capacity.max(1) as u64;
+    let requests = fraction(active_requests, connections);
     let network = requests.saturating_add(u64::from(snapshot.network.packet_loss_bps) * 100);
     ShadowPrices::new(network, storage, 0, requests)
 }

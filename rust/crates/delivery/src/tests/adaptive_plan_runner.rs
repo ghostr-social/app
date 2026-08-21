@@ -55,6 +55,7 @@ pub(super) fn run(mut scenario: PlanScenario<'_>) -> PlannedWork {
             independent_sources: &independent_sources,
             completed_head_probes: &completed_head_probes,
             in_flight: scenario.in_flight,
+            active_head_probes: &[],
             storage: scenario.storage,
             connection_capacity: scenario.connection_capacity,
             connection_ceiling,

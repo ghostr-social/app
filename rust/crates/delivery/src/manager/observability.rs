@@ -33,18 +33,14 @@ fn budget_event(
         .iter()
         .map(|item| item.request.reserved_network_bytes())
         .sum::<u64>();
-    let active = snapshot
-        .candidates
-        .iter()
-        .map(|item| item.in_flight.len() as u64)
-        .sum::<u64>();
+    let active = planned.active_requests;
     BudgetMetricEvent {
         observed_at_ms: snapshot.observed_at_ms,
         stored_bytes: snapshot.storage.used_bytes,
         instantaneous_violation: bytes > snapshot.storage.available_bytes()
             || active + planned.plan.allocations.len() as u64
-                > snapshot.network.connection_ceiling as u64,
-        network_target_error_bps: utilization(active, snapshot.network.connection_ceiling as u64)
+                > snapshot.network.connection_capacity as u64,
+        network_target_error_bps: utilization(active, snapshot.network.connection_capacity as u64)
             - 10_000,
         storage_target_error_bps: utilization(
             snapshot.storage.used_bytes,

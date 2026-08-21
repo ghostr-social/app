@@ -47,6 +47,7 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
             independent_sources: &independent_sources,
             completed_head_probes: &completed_head_probes,
             in_flight: &[],
+            active_head_probes: &[],
             storage: StorageSnapshot::new(2_000_000_000, 0),
             connection_capacity: 1,
             connection_ceiling: 1,

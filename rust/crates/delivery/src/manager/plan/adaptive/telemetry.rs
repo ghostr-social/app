@@ -62,12 +62,7 @@ fn origin_query(
     host: &str,
 ) -> OriginQuery {
     let (method, media, bytes) = request_context(entry, url);
-    let concurrency = inputs
-        .in_flight
-        .iter()
-        .filter(|active| host_of(active.identity().source().as_str()).as_deref() == Some(host))
-        .count()
-        .saturating_add(1);
+    let concurrency = active_on_host(inputs, host).saturating_add(1);
     OriginQuery::new(
         url,
         OriginContext::new(method, bytes, media)
@@ -75,6 +70,21 @@ fn origin_query(
             .with_concurrency(concurrency)
             .with_observed_at_ms(inputs.observed_at_ms),
     )
+}
+
+fn active_on_host(inputs: &PlanInputs<'_>, host: &str) -> usize {
+    let bodies = inputs
+        .in_flight
+        .iter()
+        .map(|active| active.identity().source().as_str());
+    let probes = inputs
+        .active_head_probes
+        .iter()
+        .map(|identity| identity.source().as_str());
+    bodies
+        .chain(probes)
+        .filter(|source| host_of(source).as_deref() == Some(host))
+        .count()
 }
 
 fn request_context(

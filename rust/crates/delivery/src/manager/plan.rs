@@ -27,6 +27,7 @@ pub(crate) struct PlanInputs<'a> {
     pub independent_sources: &'a HashMap<PostId, HashSet<String>>,
     pub completed_head_probes: &'a HashSet<PostId>,
     pub in_flight: &'a [ActiveAction],
+    pub active_head_probes: &'a [TransferIdentity],
     pub storage: StorageSnapshot,
     pub connection_capacity: usize,
     pub connection_ceiling: usize,
@@ -46,6 +47,7 @@ pub(crate) struct PlannedWork {
     pub snapshot: Option<ghostr_engine::adaptive::PlayabilitySnapshot>,
     pub decision_models: Vec<ghostr_engine::adaptive::DecisionModelInput>,
     pub shadow_prices: ghostr_engine::adaptive::ShadowPrices,
+    pub active_requests: u64,
     pub planner_cpu_micros: u64,
     pub warp: Option<ghostr_engine::adaptive::WarpPlanningDecision>,
 }

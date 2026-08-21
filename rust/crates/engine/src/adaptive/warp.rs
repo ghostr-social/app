@@ -5,6 +5,7 @@ mod control;
 mod generation;
 mod planner;
 mod planner_context;
+mod request_occupancy;
 mod search;
 mod semantic;
 mod twin;
@@ -31,6 +32,7 @@ pub use planner_context::{
     PlannerContext, PlannerLimits, PlannerQuality, PreviewAvailability, ResourceFeedback,
     TransformCapability,
 };
+pub use request_occupancy::RequestOccupancy;
 pub use search::{
     BeamConfig, PrunedSearchPlan, RetainedSearchPlan, SearchDecision, SearchPruneReason,
     TwinSearchContext, WarpSearch,

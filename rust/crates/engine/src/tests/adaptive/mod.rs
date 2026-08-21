@@ -80,6 +80,7 @@ mod warp_planner_digital_twin_test;
 mod warp_planner_generation_test;
 mod warp_planner_orchestration_test;
 mod warp_planner_probe_history_test;
+mod warp_planner_request_occupancy_test;
 mod warp_planner_semantic_enforcement_test;
 mod zero_storage_capacity_test;
 mod zero_storage_plan_test;

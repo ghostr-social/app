@@ -1,4 +1,6 @@
-use super::{HedgeInput, IdentityProof, ResourceObservation, SemanticScore, TwinEpochs};
+use super::{
+    HedgeInput, IdentityProof, RequestOccupancy, ResourceObservation, SemanticScore, TwinEpochs,
+};
 use crate::adaptive::{EpsilonBuckets, PlayabilitySnapshot};
 use crate::{ActionId, PostId};
 use std::collections::BTreeMap;
@@ -78,6 +80,7 @@ pub struct PlannerContext {
     candidates: BTreeMap<PostId, PlannerCandidateContext>,
     active: BTreeMap<ActionId, ActivePlannerContext>,
     pub limits: PlannerLimits,
+    request_occupancy: RequestOccupancy,
     pub feedback: Option<ResourceFeedback>,
     pub epochs: TwinEpochs,
     pub epsilon: EpsilonBuckets,
@@ -106,6 +109,13 @@ impl PlannerContext {
             candidates,
             active: BTreeMap::new(),
             limits: default_limits(snapshot),
+            request_occupancy: RequestOccupancy::from_sources(
+                snapshot
+                    .candidates
+                    .iter()
+                    .flat_map(|candidate| &candidate.in_flight)
+                    .map(|active| active.source.as_str()),
+            ),
             feedback: None,
             epochs: TwinEpochs::new(0, 0, 0),
             epsilon: EpsilonBuckets::new(20, snapshot.request_slice_bytes, 100, 100),
@@ -127,6 +137,11 @@ impl PlannerContext {
         self
     }
 
+    pub fn with_request_occupancy(mut self, occupancy: RequestOccupancy) -> Self {
+        self.request_occupancy = occupancy;
+        self
+    }
+
     pub fn with_epochs(mut self, epochs: TwinEpochs) -> Self {
         self.epochs = epochs;
         self
@@ -143,6 +158,16 @@ impl PlannerContext {
 
     pub(super) fn active(&self, action: ActionId) -> Option<&ActivePlannerContext> {
         self.active.get(&action)
+    }
+
+    pub(super) fn request_occupancy(&self) -> &RequestOccupancy {
+        &self.request_occupancy
+    }
+
+    pub(super) fn remaining_request_slots(&self) -> u16 {
+        self.limits
+            .request_tokens
+            .saturating_sub(self.request_occupancy.total().min(u16::MAX as usize) as u16)
     }
 }
 

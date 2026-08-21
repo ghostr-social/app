@@ -109,6 +109,11 @@ impl<'a> Builder<'a> {
             candidate,
             action: kind,
             source,
+            concurrency: self
+                .context
+                .request_occupancy()
+                .authority_count(source)
+                .saturating_add(1),
             mode: self.base.mode,
         })
     }

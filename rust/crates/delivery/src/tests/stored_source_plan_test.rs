@@ -46,6 +46,7 @@ fn stored_mirror_generation_controls_continuation_source_and_extent() {
             independent_sources: &independent_sources,
             completed_head_probes: &completed_head_probes,
             in_flight: &[],
+            active_head_probes: &[],
             storage: StorageSnapshot::new(1_000_000, 8),
             connection_capacity: 1,
             connection_ceiling: 1,
