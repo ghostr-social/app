@@ -1,4 +1,4 @@
-use super::allocation::resources;
+use super::allocation::request_resources;
 use super::prediction::{predict, Prediction};
 use super::value;
 use super::{ActiveControl, GeneratedAction, GeneratedActions, PlannerCommand, PlannerContext};
@@ -83,7 +83,7 @@ impl<'a> Builder<'a> {
         let prediction = self.prediction(candidate, &kind, &allocation.source);
         let input = NodeInput::new(kind.clone(), &allocation.source, prediction, requires);
         let mut node = self.node(candidate, input);
-        node.resources = resources(&kind);
+        node.resources = request_resources(allocation.request);
         let id = node.id;
         self.actions.push(GeneratedAction {
             node,

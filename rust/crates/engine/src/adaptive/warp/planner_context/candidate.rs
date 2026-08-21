@@ -2,10 +2,11 @@ use super::super::{SemanticScore, TransformKind};
 use super::PlannerContext;
 use crate::PostId;
 
-/// Durable HEAD history for one representation, excluding transient pool occupancy.
+/// HEAD scheduling state for one media representation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum HeadProbeHistory {
     Unobserved,
+    Active,
     Completed,
 }
 

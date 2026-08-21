@@ -162,6 +162,7 @@ mod timeline_retry_backoff_test;
 mod timeline_window_priority_test;
 mod traffic_tests;
 mod transport_rescue_navigation_test;
+mod warp_active_head_probe_context_test;
 mod warp_cancel_execution_test;
 mod warp_execution_selection_test;
 mod warp_hedge_execution_test;

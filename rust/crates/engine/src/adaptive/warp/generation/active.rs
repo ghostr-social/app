@@ -1,4 +1,4 @@
-use super::allocation::{resources, AllocationSpec};
+use super::allocation::{request_resources, AllocationSpec};
 use super::builder::{Builder, NodeInput};
 use super::prediction::Prediction;
 use super::{ActiveControl, GeneratedAction, PlannerCommand};
@@ -87,7 +87,7 @@ impl Builder<'_> {
         let prediction = self.prediction(candidate, &input.action, alternate);
         let node_input = NodeInput::new(kind, alternate, prediction, &[]);
         let mut node = self.node(candidate, node_input);
-        node.resources = resources(&input.action);
+        node.resources = request_resources(allocation.request);
         node.value = ActionValue::from_net_micros(net_hedge_value(input));
         self.actions.push(GeneratedAction {
             node,

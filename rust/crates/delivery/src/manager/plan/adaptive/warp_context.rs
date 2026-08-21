@@ -21,15 +21,15 @@ pub(super) fn build(
         .candidates
         .iter()
         .fold(context, |context, candidate| {
-            let context = context.with_capability(
-                candidate.post.clone(),
-                state.planner_capability(&candidate.post, inputs.observed_at_ms),
-            );
-            match inputs.completed_head_probes.contains(&candidate.post) {
-                true => context
-                    .with_head_probe_history(candidate.post.clone(), HeadProbeHistory::Completed),
-                false => context,
-            }
+            context
+                .with_capability(
+                    candidate.post.clone(),
+                    state.planner_capability(&candidate.post, inputs.observed_at_ms),
+                )
+                .with_head_probe_history(
+                    candidate.post.clone(),
+                    head_probe_history(state, &candidate.post, inputs),
+                )
         });
     let context = inputs.in_flight.iter().fold(context, |context, active| {
         let advantage = continuation_advantage(base, active.action_id());
@@ -38,6 +38,28 @@ pub(super) fn build(
         )
     });
     (context, occupancy)
+}
+
+fn head_probe_history(
+    state: &DeliveryState,
+    post: &ghostr_engine::PostId,
+    inputs: &PlanInputs<'_>,
+) -> HeadProbeHistory {
+    if inputs.completed_head_probes.contains(post) {
+        return HeadProbeHistory::Completed;
+    }
+    let active = inputs.active_head_probes.iter().any(|identity| {
+        identity.post() == post
+            && state
+                .catalog()
+                .transfer_identity(post, identity.source().as_str())
+                .as_ref()
+                == Some(identity)
+    });
+    match active {
+        true => HeadProbeHistory::Active,
+        false => HeadProbeHistory::Unobserved,
+    }
 }
 
 fn limits(snapshot: &ghostr_engine::adaptive::PlayabilitySnapshot) -> PlannerLimits {

@@ -150,6 +150,11 @@ pub(super) fn resources(kind: &super::super::ActionKind) -> super::super::Resour
     super::super::ResourceCost::new(bytes, bytes, 0, requests)
 }
 
+pub(super) fn request_resources(request: RetrievalRequest) -> super::super::ResourceCost {
+    let bytes = request.reserved_network_bytes();
+    super::super::ResourceCost::new(bytes, bytes, 0, 1)
+}
+
 fn action_bytes(kind: &super::super::ActionKind) -> u64 {
     match kind {
         super::super::ActionKind::Prefix(range)

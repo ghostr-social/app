@@ -9,8 +9,8 @@ pub use types::{
 };
 
 use super::{
-    ActionFrontier, DigitalTwin, GeneratedAction, NetworkTokenBucket, ShadowPriceController,
-    TwinSearchContext, WarpActionGenerator, WarpSearch,
+    ActionFrontier, DigitalTwin, GeneratedAction, NetworkTokenBucket, ResourceCost,
+    ShadowPriceController, TwinSearchContext, WarpActionGenerator, WarpSearch,
 };
 
 pub struct WarpPlanner {
@@ -74,10 +74,24 @@ impl WarpPlanner {
         }
     }
 
-    pub fn commit(&mut self, action: &GeneratedAction, observed_at_ms: u64) -> bool {
-        self.network.as_mut().is_none_or(|bucket| {
-            bucket.consume(action.node.resources.network_bytes, observed_at_ms)
-        })
+    pub fn commit(
+        &mut self,
+        action: &GeneratedAction,
+        committed: ResourceCost,
+        observed_at_ms: u64,
+    ) -> bool {
+        if !committed.no_more_than(action.node.resources) {
+            return false;
+        }
+        let Some(bucket) = self.network.as_mut() else {
+            return true;
+        };
+        let mut updated = bucket.clone();
+        if !updated.consume(committed.network_bytes, observed_at_ms) {
+            return false;
+        }
+        *bucket = updated;
+        true
     }
 
     pub fn network_tokens(&mut self, observed_at_ms: u64) -> u64 {

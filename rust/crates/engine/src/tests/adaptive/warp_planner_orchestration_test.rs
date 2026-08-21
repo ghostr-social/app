@@ -38,7 +38,7 @@ fn planner_reserves_rescue_capacity_updates_prices_and_commits_one_action() {
     assert!(!decision.admissible_action_ids.is_empty());
     if let Some(selected) = &decision.selected {
         let before = planner.network_tokens(input.observed_at_ms);
-        assert!(planner.commit(selected, input.observed_at_ms));
+        assert!(planner.commit(selected, selected.node.resources, input.observed_at_ms,));
         assert!(planner.network_tokens(input.observed_at_ms) <= before);
     }
 }

@@ -22,11 +22,11 @@ impl Builder<'_> {
         let Some(source) = source(candidate) else {
             return;
         };
-        let head_complete = self
+        let head_suppressed = self
             .context
             .candidate(&candidate.post)
-            .is_some_and(|item| item.head_probe == super::super::HeadProbeHistory::Completed);
-        if !candidate.needs_bootstrap() || head_complete {
+            .is_some_and(|item| item.head_probe != super::super::HeadProbeHistory::Unobserved);
+        if !candidate.needs_bootstrap() || head_suppressed {
             return;
         }
         let kind = ActionKind::Head;
