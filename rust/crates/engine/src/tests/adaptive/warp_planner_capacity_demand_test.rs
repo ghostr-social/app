@@ -6,6 +6,9 @@ use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::snapshot;
 use crate::{ActionId, ByteRange};
 
+#[path = "warp_planner_available_capacity_demand_test.rs"]
+mod available_capacity_demand_test;
+
 #[test]
 fn one_more_slot_is_demanded_only_when_warp_would_use_it() {
     let demanded = decision(Scenario::viable());

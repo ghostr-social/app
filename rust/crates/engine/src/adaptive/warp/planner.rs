@@ -48,8 +48,8 @@ impl WarpPlanner {
         let network_bytes = self.network_tokens(input.snapshot.observed_at_ms);
         let feasible = feasibility::apply(&input, &frontier.retained, &self.config, network_bytes);
         let search = self.search(&input, &feasible);
-        let additional_request_slot_demanded = search.action.is_none()
-            && self.additional_request_slot_demanded(&input, &frontier.retained, network_bytes);
+        let additional_request_slot_demanded =
+            self.additional_request_slot_demanded(&input, &frontier.retained, network_bytes);
         let selected = selected_action(&generated.actions, &search);
         let common_random_seed = simulation::common_seed(&input, self.price_epoch);
         let evaluation = selected.as_ref().map(|item| {

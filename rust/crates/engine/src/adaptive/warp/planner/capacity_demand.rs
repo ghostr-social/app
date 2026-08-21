@@ -1,5 +1,9 @@
 use super::{feasibility, WarpPlanner, WarpPlannerInput};
-use crate::adaptive::ActionNode;
+use crate::adaptive::{ActionNode, SearchDecision};
+
+#[cfg(test)]
+#[path = "capacity_demand/dependency_test.rs"]
+mod dependency_test;
 
 impl WarpPlanner {
     pub(super) fn additional_request_slot_demanded(
@@ -13,19 +17,32 @@ impl WarpPlanner {
             .network
             .connection_ceiling
             .min(usize::from(u16::MAX)) as u16;
-        if input.context.remaining_request_slots() != 0
-            || input.context.limits.request_tokens >= ceiling
-        {
+        if input.context.limits.request_tokens >= ceiling {
             return false;
         }
+        let available = input.context.remaining_request_slots();
         let mut context = input.context.clone();
         context.limits.request_tokens =
             context.limits.request_tokens.saturating_add(1).min(ceiling);
         let expanded = WarpPlannerInput::new(input.snapshot, input.base, input.origins, &context);
         let feasible = feasibility::apply(&expanded, frontier, &self.config, network_bytes);
-        // Mirror degraded least-risk selection as well as ordinary priced search.
-        self.search(&expanded, &feasible)
-            .action
-            .is_some_and(|node| node.resources.requests > 0)
+        let search = self.search(&expanded, &feasible);
+        has_marginal_demand(&search, &feasible.nodes, available)
     }
+}
+
+fn has_marginal_demand(search: &SearchDecision, nodes: &[ActionNode], available: u16) -> bool {
+    independent_requests(search, nodes) > available
+}
+
+fn independent_requests(search: &SearchDecision, nodes: &[ActionNode]) -> u16 {
+    search
+        .chosen_plan
+        .iter()
+        .flat_map(|plan| &plan.action_ids)
+        .filter_map(|id| nodes.iter().find(|node| node.id == *id))
+        .filter(|node| node.requires.is_empty())
+        .fold(0_u16, |total, node| {
+            total.saturating_add(node.resources.requests)
+        })
 }
