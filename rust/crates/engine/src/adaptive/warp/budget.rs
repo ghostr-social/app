@@ -1,4 +1,5 @@
 mod hard;
+pub(in crate::adaptive::warp) use hard::BudgetDenial;
 pub use hard::{HardBudget, ResourceCost};
 
 #[derive(Clone, Debug, Eq, PartialEq)]

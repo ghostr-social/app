@@ -20,6 +20,7 @@ pub(super) struct PredictionInput<'a> {
     pub source: &'a str,
     pub concurrency: usize,
     pub mode: ControlMode,
+    pub direct_playback_blocked: bool,
 }
 
 pub(super) fn predict(input: PredictionInput<'_>) -> Prediction {
@@ -44,7 +45,7 @@ pub(super) fn predict(input: PredictionInput<'_>) -> Prediction {
         forecast: ActionForecast::new(
             completion(bytes, &estimate),
             basis_points(success),
-            ready_gain(input.candidate, input.action),
+            ready_gain(input.candidate, input.action, input.direct_playback_blocked),
         ),
         uncertainty_bps: basis_points(estimate.uncertainty),
     }
@@ -114,7 +115,14 @@ fn action_bytes(action: &ActionKind) -> u64 {
     }
 }
 
-fn ready_gain(candidate: &CandidateSnapshot, action: &ActionKind) -> u64 {
+fn ready_gain(
+    candidate: &CandidateSnapshot,
+    action: &ActionKind,
+    direct_playback_blocked: bool,
+) -> u64 {
+    if direct_playback_blocked {
+        return 0;
+    }
     match action {
         ActionKind::FetchWhole { .. } => candidate.duration_ms,
         ActionKind::Prefix(range) | ActionKind::FetchRange(range) => candidate

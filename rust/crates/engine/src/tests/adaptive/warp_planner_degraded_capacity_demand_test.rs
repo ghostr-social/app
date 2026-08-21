@@ -8,11 +8,11 @@ use crate::tests::support::set_reliable_total_bytes;
 use crate::{ActionId, ByteRange};
 
 #[test]
-fn degraded_demand_follows_the_actual_first_commitment() {
+fn degraded_dependency_root_request_demands_the_slot() {
     let decision = decision(true, false);
     assert!(decision.reserve.degraded);
     assert!(decision.selected.is_none());
-    assert!(!decision.additional_request_slot_demanded);
+    assert!(decision.additional_request_slot_demanded);
 }
 
 #[test]

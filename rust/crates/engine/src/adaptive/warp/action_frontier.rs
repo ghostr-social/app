@@ -16,7 +16,7 @@ impl ActionFrontier {
             .filter(|action| !actions.iter().any(|other| dominates(other, action)))
             .cloned()
             .collect();
-        let retained = epsilon_merge(exact, epsilon);
+        let retained = with_dependencies(&actions, epsilon_merge(exact, epsilon));
         let ids: BTreeSet<_> = retained.iter().map(|action| action.id).collect();
         let pruned_ids = actions
             .iter()
@@ -27,6 +27,26 @@ impl ActionFrontier {
             retained,
             pruned_ids,
         }
+    }
+}
+
+fn with_dependencies(actions: &[ActionNode], mut retained: Vec<ActionNode>) -> Vec<ActionNode> {
+    loop {
+        let required: BTreeSet<_> = retained
+            .iter()
+            .flat_map(|action| action.requires.iter().copied())
+            .collect();
+        let missing: Vec<_> = actions
+            .iter()
+            .filter(|action| required.contains(&action.id))
+            .filter(|action| !retained.iter().any(|item| item.id == action.id))
+            .cloned()
+            .collect();
+        if missing.is_empty() {
+            retained.sort_by_key(|action| action.id);
+            return retained;
+        }
+        retained.extend(missing);
     }
 }
 

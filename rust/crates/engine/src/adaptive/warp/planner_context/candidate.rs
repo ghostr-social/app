@@ -42,6 +42,16 @@ impl PlannerCapability {
             _ => None,
         }
     }
+
+    pub const fn blocks_direct_playback(self) -> bool {
+        matches!(
+            self,
+            Self::Reported {
+                playback_supported: false,
+                ..
+            }
+        )
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

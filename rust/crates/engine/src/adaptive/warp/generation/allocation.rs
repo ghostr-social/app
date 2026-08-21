@@ -68,7 +68,7 @@ impl Builder<'_> {
             .forecast
             .completion
             .expected_ms;
-        Allocation {
+        let allocation = Allocation {
             post: candidate.post.clone(),
             request: spec.request,
             source: spec.source.to_owned(),
@@ -80,7 +80,21 @@ impl Builder<'_> {
                 .observed_at_ms
                 .saturating_add(self.snapshot.commitment_ms),
             reason: spec.reason,
+        };
+        self.normalize_playability(candidate, allocation)
+    }
+
+    pub(super) fn normalize_playability(
+        &self,
+        candidate: &CandidateSnapshot,
+        mut allocation: Allocation,
+    ) -> Allocation {
+        if self.direct_playback_blocked(candidate) {
+            allocation.expected_playable_gain_ms = 0;
+            allocation.utility.additional_playable_ms = 0;
+            allocation.utility.score = 0.0;
         }
+        allocation
     }
 }
 

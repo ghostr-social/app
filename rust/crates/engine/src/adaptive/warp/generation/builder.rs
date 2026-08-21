@@ -32,6 +32,29 @@ pub(super) struct Builder<'a> {
     next_id: u16,
 }
 
+pub(super) struct NodeInput<'a> {
+    pub kind: super::super::ActionKind,
+    pub source: &'a str,
+    pub prediction: Prediction,
+    pub requires: &'a [u16],
+}
+
+impl<'a> NodeInput<'a> {
+    pub(super) const fn new(
+        kind: super::super::ActionKind,
+        source: &'a str,
+        prediction: Prediction,
+        requires: &'a [u16],
+    ) -> Self {
+        Self {
+            kind,
+            source,
+            prediction,
+            requires,
+        }
+    }
+}
+
 impl<'a> Builder<'a> {
     fn new(
         snapshot: &'a PlayabilitySnapshot,
@@ -58,13 +81,8 @@ impl<'a> Builder<'a> {
         requires: &[u16],
     ) -> u16 {
         let prediction = self.prediction(candidate, &kind, &allocation.source);
-        let mut node = self.node(
-            candidate,
-            kind.clone(),
-            &allocation.source,
-            prediction,
-            requires,
-        );
+        let input = NodeInput::new(kind.clone(), &allocation.source, prediction, requires);
+        let mut node = self.node(candidate, input);
         node.resources = resources(&kind);
         let id = node.id;
         self.actions.push(GeneratedAction {
@@ -77,10 +95,7 @@ impl<'a> Builder<'a> {
     pub(super) fn node(
         &mut self,
         candidate: &CandidateSnapshot,
-        kind: super::super::ActionKind,
-        source: &str,
-        prediction: Prediction,
-        requires: &[u16],
+        input: NodeInput<'_>,
     ) -> super::super::ActionNode {
         self.next_id = self
             .next_id
@@ -89,12 +104,12 @@ impl<'a> Builder<'a> {
         super::super::ActionNode::new(
             self.next_id,
             candidate.post.clone(),
-            kind.clone(),
-            value::score(candidate, &kind, prediction, self.base.mode),
+            input.kind.clone(),
+            value::score(candidate, &input.kind, input.prediction, self.base.mode),
         )
-        .with_origin(source)
-        .with_forecast(prediction.forecast)
-        .requiring(requires)
+        .with_origin(input.source)
+        .with_forecast(input.prediction.forecast)
+        .requiring(input.requires)
     }
 
     pub(super) fn prediction(
@@ -115,7 +130,14 @@ impl<'a> Builder<'a> {
                 .authority_count(source)
                 .saturating_add(1),
             mode: self.base.mode,
+            direct_playback_blocked: self.direct_playback_blocked(candidate),
         })
+    }
+
+    pub(super) fn direct_playback_blocked(&self, candidate: &CandidateSnapshot) -> bool {
+        self.context
+            .candidate(&candidate.post)
+            .is_some_and(|item| item.capability.blocks_direct_playback())
     }
 
     pub(super) fn action_id(

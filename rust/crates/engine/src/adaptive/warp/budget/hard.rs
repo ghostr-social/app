@@ -1,6 +1,13 @@
 use super::super::request_occupancy::RequestOccupancy;
+use crate::adaptive::ActionNode;
 use crate::RequestAuthority;
 use std::collections::BTreeMap;
+
+mod reservation;
+
+#[cfg(test)]
+#[path = "hard/tests/mod.rs"]
+mod tests;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct ResourceCost {
@@ -33,6 +40,13 @@ pub struct HardBudget {
     remaining: ResourceCost,
     per_origin_requests: usize,
     origins: BTreeMap<RequestAuthority, usize>,
+    pending_rescue: Vec<ActionNode>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(in crate::adaptive::warp) enum BudgetDenial {
+    HardLimit,
+    RescueReserve,
 }
 
 impl HardBudget {
@@ -41,6 +55,7 @@ impl HardBudget {
             remaining: limits,
             per_origin_requests: usize::from(per_origin_requests),
             origins: BTreeMap::new(),
+            pending_rescue: Vec::new(),
         }
     }
 
@@ -52,6 +67,14 @@ impl HardBudget {
     }
 
     pub fn consume(&mut self, cost: &ResourceCost, authority: Option<&RequestAuthority>) -> bool {
+        self.consume_raw(cost, authority)
+    }
+
+    pub(super) fn consume_raw(
+        &mut self,
+        cost: &ResourceCost,
+        authority: Option<&RequestAuthority>,
+    ) -> bool {
         if !cost.no_more_than(self.remaining) {
             return false;
         }
@@ -74,14 +97,6 @@ impl HardBudget {
     pub fn allows(&self, cost: &ResourceCost, authority: Option<&RequestAuthority>) -> bool {
         let mut copy = self.clone();
         copy.consume(cost, authority)
-    }
-
-    pub(in crate::adaptive::warp) fn reserve(&mut self, cost: &ResourceCost) -> bool {
-        if !cost.no_more_than(self.remaining) {
-            return false;
-        }
-        self.consume_resources(cost);
-        true
     }
 
     pub(in crate::adaptive::warp) fn with_occupancy(

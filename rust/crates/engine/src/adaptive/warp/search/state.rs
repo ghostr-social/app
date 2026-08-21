@@ -1,6 +1,15 @@
+use super::super::budget::BudgetDenial;
 use super::SearchPruneReason;
-use crate::adaptive::{ActionKind, ActionNode, HardBudget};
+use crate::adaptive::{ActionNode, HardBudget};
 use std::collections::BTreeSet;
+
+#[cfg(test)]
+#[path = "state/dependency_conflict_test.rs"]
+mod dependency_conflict_test;
+
+#[cfg(test)]
+#[path = "state/rescue_reserve_test.rs"]
+mod rescue_reserve_test;
 
 #[derive(Clone)]
 pub(super) struct State {
@@ -31,15 +40,14 @@ impl State {
         if !self.dependencies_met(node) {
             return Ok(None);
         }
-        if self.sequence.iter().any(|chosen| conflicts(chosen, node)) {
+        if node.conflicts_with(&self.sequence) {
             return Err(SearchPruneReason::MutuallyExclusive);
         }
         let mut child = self.clone();
-        if !child
-            .budget
-            .consume(&node.resources, node.request_authority())
-        {
-            return Err(SearchPruneReason::HardBudget);
+        match child.budget.consume_action(node) {
+            Ok(()) => {}
+            Err(BudgetDenial::HardLimit) => return Err(SearchPruneReason::HardBudget),
+            Err(BudgetDenial::RescueReserve) => return Err(SearchPruneReason::ReserveUnderflow),
         }
         child.selected.insert(node.id);
         child.sequence.push(node.clone());
@@ -60,25 +68,4 @@ pub(super) fn compare(left: &State, right: &State) -> std::cmp::Ordering {
             .map(|node| node.id)
             .cmp(right.sequence.iter().map(|node| node.id))
     })
-}
-
-fn conflicts(left: &ActionNode, right: &ActionNode) -> bool {
-    left.post == right.post
-        && (whole_fetch(&left.kind)
-            || whole_fetch(&right.kind)
-            || same_transfer_target(&left.kind, &right.kind))
-}
-
-fn whole_fetch(kind: &ActionKind) -> bool {
-    matches!(kind, ActionKind::FetchWhole { .. })
-}
-
-fn same_transfer_target(left: &ActionKind, right: &ActionKind) -> bool {
-    match (left, right) {
-        (ActionKind::Prefix(left), ActionKind::Prefix(right))
-        | (ActionKind::Tail(left), ActionKind::Tail(right))
-        | (ActionKind::FetchRange(left), ActionKind::FetchRange(right))
-        | (ActionKind::CacheUpgrade(left), ActionKind::CacheUpgrade(right)) => left == right,
-        _ => false,
-    }
 }

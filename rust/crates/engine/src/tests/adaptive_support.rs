@@ -12,7 +12,7 @@ use std::collections::HashSet;
 const MIB: u64 = 1024 * 1024;
 const DEFAULT_ORIGIN: &str = "https://origin.example/media";
 
-pub(super) fn snapshot(
+pub(crate) fn snapshot(
     candidate_count: usize,
     throughput_bps: u64,
     buffer_ms: u64,

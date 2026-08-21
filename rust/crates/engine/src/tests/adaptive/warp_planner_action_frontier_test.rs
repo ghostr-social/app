@@ -4,6 +4,9 @@ use crate::adaptive::{
 };
 use crate::{ByteRange, PostId};
 
+#[path = "warp_planner_action_frontier_test/dependency_test.rs"]
+mod dependency_test;
+
 fn action(id: u16, bytes: u64, p95: u64, gain: u64) -> ActionNode {
     ActionNode::new(
         id,

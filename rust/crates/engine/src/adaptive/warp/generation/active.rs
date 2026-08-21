@@ -1,5 +1,5 @@
 use super::allocation::{resources, AllocationSpec};
-use super::builder::Builder;
+use super::builder::{Builder, NodeInput};
 use super::prediction::Prediction;
 use super::{ActiveControl, GeneratedAction, PlannerCommand};
 use crate::adaptive::{
@@ -53,7 +53,8 @@ impl Builder<'_> {
             active: active.action_id,
             maximum_bytes: grant.maximum_bytes,
         };
-        let mut node = self.node(candidate, kind, &active.source, prediction, &[]);
+        let input = NodeInput::new(kind, &active.source, prediction, &[]);
+        let mut node = self.node(candidate, input);
         node.resources =
             super::super::ResourceCost::new(grant.maximum_bytes, grant.maximum_bytes, 0, 0);
         self.actions.push(GeneratedAction {
@@ -84,7 +85,8 @@ impl Builder<'_> {
             alternate: alternate.to_owned(),
         };
         let prediction = self.prediction(candidate, &input.action, alternate);
-        let mut node = self.node(candidate, kind, alternate, prediction, &[]);
+        let node_input = NodeInput::new(kind, alternate, prediction, &[]);
+        let mut node = self.node(candidate, node_input);
         node.resources = resources(&input.action);
         node.value = ActionValue::from_net_micros(net_hedge_value(input));
         self.actions.push(GeneratedAction {
@@ -106,13 +108,8 @@ impl Builder<'_> {
             forecast: Default::default(),
             uncertainty_bps: 0,
         };
-        let mut node = self.node(
-            candidate,
-            ActionKind::Cancel(action),
-            "local",
-            prediction,
-            &[],
-        );
+        let input = NodeInput::new(ActionKind::Cancel(action), "local", prediction, &[]);
+        let mut node = self.node(candidate, input);
         node.value = ActionValue::from_net_micros(advantage.saturating_neg());
         self.actions.push(GeneratedAction {
             node,

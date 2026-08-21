@@ -1,5 +1,5 @@
 use super::allocation::{classify, resources, source, AllocationSpec};
-use super::builder::Builder;
+use super::builder::{Builder, NodeInput};
 use super::prediction::transform_prediction;
 use super::{GeneratedAction, PlannerCommand};
 use crate::adaptive::{ActionKind, CandidateSnapshot};
@@ -31,7 +31,8 @@ impl Builder<'_> {
         }
         let kind = ActionKind::Head;
         let prediction = self.prediction(candidate, &kind, source);
-        let mut node = self.node(candidate, kind.clone(), source, prediction, &[]);
+        let input = NodeInput::new(kind.clone(), source, prediction, &[]);
+        let mut node = self.node(candidate, input);
         node.resources = resources(&kind);
         self.actions.push(GeneratedAction {
             node,
@@ -52,6 +53,7 @@ impl Builder<'_> {
             .cloned()
             .collect();
         for allocation in allocations {
+            let allocation = self.normalize_playability(candidate, allocation);
             self.push_transfer(candidate, classify(&allocation), allocation, &[]);
         }
     }
@@ -164,7 +166,8 @@ impl Builder<'_> {
         let kind = ActionKind::Transform(transform.kind);
         let requires: Vec<_> = whole.into_iter().collect();
         let prediction = transform_prediction(candidate, transform.estimated_cpu_ms);
-        let mut node = self.node(candidate, kind, "local-transform", prediction, &requires);
+        let input = NodeInput::new(kind, "local-transform", prediction, &requires);
+        let mut node = self.node(candidate, input);
         node.resources = super::super::ResourceCost::new(
             0,
             transform.output_upper_bytes,

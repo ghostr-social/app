@@ -1,6 +1,10 @@
 use crate::adaptive::{ActionNode, PrunedSearchPlan, RetainedSearchPlan};
 use crate::adaptive::{ResourcePrices, SearchDecision, SearchPruneReason};
 
+#[cfg(test)]
+#[path = "least_risk/dependency_test.rs"]
+mod dependency_test;
+
 pub(super) fn choose(nodes: &[ActionNode]) -> SearchDecision {
     let action = select(nodes);
     let chosen_plan = action.as_ref().map(plan);
@@ -22,6 +26,7 @@ pub(super) fn choose(nodes: &[ActionNode]) -> SearchDecision {
 fn select(nodes: &[ActionNode]) -> Option<ActionNode> {
     nodes
         .iter()
+        .filter(|node| node.requires.is_empty())
         .min_by_key(|node| {
             (
                 node.forecast.completion.p99_ms,

@@ -2,6 +2,8 @@ use super::{ResourceCost, ResourcePrices};
 use crate::adaptive::CompletionTimes;
 use crate::{ActionId, ByteRange, PostId, RequestAuthority};
 
+mod conflict;
+
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum TransformKind {
     Remux,
