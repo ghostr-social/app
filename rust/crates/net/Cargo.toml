@@ -5,7 +5,10 @@ edition = "2021"
 description = "Guarded outbound media HTTP: public-address checks, DNS resolution, range and content-type handling."
 
 [dependencies]
+ghostr-engine = { path = "../engine" }
+
 anyhow = { workspace = true }
+bytes = { workspace = true }
 reqwest = { workspace = true }
 sha2 = { workspace = true }
 tokio = { workspace = true }

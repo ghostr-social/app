@@ -877,6 +877,8 @@ name = "ghostr-net"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytes",
+ "ghostr-engine",
  "reqwest",
  "sha2",
  "tokio",
