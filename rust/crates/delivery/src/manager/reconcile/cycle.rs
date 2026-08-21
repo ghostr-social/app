@@ -42,6 +42,8 @@ impl DeliveryWorker {
         let timeline_window = self.state.timeline_window_posts();
         let timeline_posts: HashSet<_> = timeline_window.iter().cloned().collect();
         let stored = self.collect_stored(&window, &timeline_posts).await;
+        self.state
+            .replace_transformed_posts(stored.transformed.clone());
         self.state.prune_player_preparations(&stored.revisions);
         let independent_sources = self.independent_objects.current(&stored.revisions);
         self.reconcile_timelines(&timeline_window, &stored.snapshots);

@@ -30,6 +30,7 @@ pub(crate) enum InternalEvent {
     ImmediateReplan,
     Transfer(TransferEvent),
     Segmented(SegmentedDone),
+    Transform(crate::manager::transforms::TransformDone),
     Maintenance(MaintenanceEvent),
     TrafficChanged,
 }

@@ -1,5 +1,7 @@
 use super::decision_record_warp_test_support::{allocation, decision, record};
-use crate::adaptive::{ActionKind, PlannerCommand, RetrievalRequest, TransformKind};
+use crate::adaptive::{
+    ActionKind, PlannerCommand, PromotionGrant, RetrievalRequest, TransformKind,
+};
 use crate::{ActionId, ByteRange, PostId};
 
 #[test]
@@ -33,6 +35,11 @@ fn every_planner_command_has_a_typed_authoritative_record() {
             PlannerCommand::Promote {
                 post: PostId::new("secret-post"),
                 action: ActionId::new(2),
+                source: source.into(),
+                grant: PromotionGrant {
+                    maximum_bytes: 128,
+                    valid_until_ms: 500,
+                },
             },
             ActionKind::Promote {
                 active: ActionId::new(2),
@@ -72,6 +79,11 @@ fn every_planner_command_has_a_typed_authoritative_record() {
         assert_eq!(selected["command"]["command"], command_tag);
         if command_tag == "probe_head" {
             assert_eq!(selected["command"]["authority"], "transition");
+        }
+        if command_tag == "promote" {
+            assert_eq!(selected["command"]["grant"]["maximum_bytes"], 128);
+            assert_eq!(selected["command"]["grant"]["valid_until_ms"], 500);
+            assert_ne!(selected["command"]["source_id"], source);
         }
         assert!(!value["chosen_action"].is_null());
     }

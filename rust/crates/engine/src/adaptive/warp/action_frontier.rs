@@ -109,7 +109,7 @@ fn epsilon_merge(actions: Vec<ActionNode>, epsilon: EpsilonBuckets) -> Vec<Actio
 }
 
 fn near(left: &ActionNode, right: &ActionNode, epsilon: EpsilonBuckets) -> bool {
-    unlock(&left.kind) == unlock(&right.kind)
+    epsilon_compatible(&left.kind, &right.kind)
         && left.post == right.post
         && left
             .forecast
@@ -127,4 +127,11 @@ fn near(left: &ActionNode, right: &ActionNode, epsilon: EpsilonBuckets) -> bool 
             .ready_playback_ms
             .abs_diff(right.forecast.ready_playback_ms)
             <= epsilon.coverage_ms()
+}
+
+fn epsilon_compatible(left: &ActionKind, right: &ActionKind) -> bool {
+    if matches!(left, ActionKind::Promote { .. }) || matches!(right, ActionKind::Promote { .. }) {
+        return left == right;
+    }
+    unlock(left) == unlock(right)
 }

@@ -48,7 +48,7 @@ impl DownloadWorkers {
             .reserve_action(
                 attempt.identity(),
                 attempt.id().value(),
-                transfer.retrieval.reserved_network_bytes(),
+                transfer.retrieval.immediate_network_bytes(),
             )
             .await?;
         Ok(PreparedTransfer {

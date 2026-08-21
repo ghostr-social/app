@@ -65,6 +65,7 @@ pub fn start_delivery_with_tuning(prefix: &str, tuning: DeliveryTuning) -> Deliv
             params: EngineParams::default(),
             level: DataUsageLevel::Balanced,
             tuning,
+            transform: None,
         },
         demand_receiver,
     );

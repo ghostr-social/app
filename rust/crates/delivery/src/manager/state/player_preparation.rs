@@ -1,15 +1,17 @@
 use super::DeliveryState;
 use crate::client_capability::{
-    CapabilityAttempt, CapabilityEvent, CapabilityObservation, CapabilitySignal,
-    ClientCapabilityModel, ClientCapabilityProfile, ClientCapabilityStatus,
+    CapabilityAttempt, CapabilityEvent, CapabilityObservation, ClientCapabilityModel,
+    ClientCapabilityProfile, ClientCapabilityStatus,
 };
-use crate::delivery_events::{PlayerPreparationReport, PlayerPreparationState};
-use ghostr_engine::adaptive::{PlannerCapability, PlayerPreparation};
-use ghostr_engine::evidence::{EvidenceField, EvidenceValue};
+use crate::delivery_events::PlayerPreparationReport;
+use ghostr_engine::adaptive::{PlannerCapability, PlayerPreparation, TransformCapability};
 use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::PostId;
 use ghostr_partial_store::partial_range_store::ContentRevision;
 use std::collections::HashMap;
+
+mod evidence;
+use evidence::{capability_signal, codec, dimensions};
 
 impl DeliveryState {
     pub(crate) fn update_ready_target(&mut self, target: usize) {
@@ -55,7 +57,7 @@ impl DeliveryState {
         generation: u64,
         now_ms: u64,
     ) -> ClientCapabilityStatus {
-        let Some(binding) = self.catalog.binding(post) else {
+        let Some(binding) = self.playback_binding(post) else {
             return ClientCapabilityStatus::Unknown;
         };
         let Some(profile) = self.capability_profile(post, &binding, now_ms) else {
@@ -74,7 +76,17 @@ impl DeliveryState {
             ClientCapabilityStatus::Unsupported => false,
             _ => return PlannerCapability::Unavailable,
         };
-        PlannerCapability::reported(supported, None, self.client_capabilities.revision())
+        let transform = (!supported)
+            .then(|| self.recoverable_transform(post))
+            .flatten()
+            .map(|profile| {
+                TransformCapability::new(
+                    profile.kind(),
+                    profile.limits().cpu_ms(),
+                    profile.limits().output_bytes(),
+                )
+            });
+        PlannerCapability::reported(supported, transform, self.client_capabilities.revision())
     }
 
     pub(crate) const fn client_capability_revision(&self) -> u64 {
@@ -118,14 +130,25 @@ impl DeliveryState {
     pub(super) fn prune_player_preparation_scope(&mut self) {
         let allowed = self.demand_posts();
         let catalog = &self.catalog;
+        let transformed = &self.transformed_posts;
         self.player_preparations.retain(|post, report| {
-            allowed.contains(post) && catalog.binding(post).as_ref() == Some(report.binding())
+            let binding = transformed
+                .get(post)
+                .cloned()
+                .or_else(|| catalog.binding(post));
+            allowed.contains(post) && binding.as_ref() == Some(report.binding())
         });
     }
 
     fn player_authority_is_current(&self, report: &PlayerPreparationReport) -> bool {
         self.demand_posts().contains(report.post())
-            && self.catalog.binding(report.post()).as_ref() == Some(report.binding())
+            && self.playback_binding(report.post()).as_ref() == Some(report.binding())
+    }
+
+    fn recoverable_transform(&self, post: &PostId) -> Option<crate::transform::TransformProfile> {
+        let profile = self.transform_available_for(post)?;
+        let failure = self.player_preparations.get(post)?.failure_kind();
+        profile.trigger().allows_failure(failure).then_some(profile)
     }
 
     fn capability_observation(
@@ -159,32 +182,5 @@ impl DeliveryState {
         let dimensions = assessment.as_ref().and_then(dimensions);
         ClientCapabilityProfile::try_new(binding.representation().fingerprint(), codec, dimensions)
             .ok()
-    }
-}
-
-fn capability_signal(report: &PlayerPreparationReport) -> Option<CapabilitySignal> {
-    match report.state() {
-        PlayerPreparationState::Initializing => Some(CapabilitySignal::Initializing),
-        PlayerPreparationState::FirstFrameRendered => Some(CapabilitySignal::FirstFrameRendered),
-        PlayerPreparationState::Released => Some(CapabilitySignal::Released),
-        PlayerPreparationState::Failed if report.failure_kind() == Some("invalidVideoTrack") => {
-            Some(CapabilitySignal::UnsupportedFailure)
-        }
-        PlayerPreparationState::Failed => Some(CapabilitySignal::InconclusiveFailure),
-        PlayerPreparationState::Initialized => None,
-    }
-}
-
-fn codec(assessment: &ghostr_engine::evidence::EvidenceAssessment) -> Option<&str> {
-    match assessment.value(EvidenceField::Codec) {
-        Some(EvidenceValue::Codec(value)) => Some(value),
-        _ => None,
-    }
-}
-
-fn dimensions(assessment: &ghostr_engine::evidence::EvidenceAssessment) -> Option<(u32, u32)> {
-    match assessment.value(EvidenceField::Dimensions) {
-        Some(EvidenceValue::Dimensions { width, height }) => Some((*width, *height)),
-        _ => None,
     }
 }

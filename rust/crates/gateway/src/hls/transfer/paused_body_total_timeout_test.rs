@@ -55,7 +55,11 @@ async fn fixture() -> (
     let url = format!("http://{}/asset.ts", listener.local_addr().unwrap());
     let (second_hit, observed) = oneshot::channel();
     let server = tokio::spawn(serve(listener, second_hit));
-    let client = Client::builder().no_proxy().build().expect("client");
+    let client = Client::builder()
+        .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .expect("client");
     let limits = MediaRequestLimits::try_new(1, 1).unwrap();
     let executor = MediaRequestExecutor::new(Arc::new(LocalClient(client)), limits);
     (executor, url, observed, server)

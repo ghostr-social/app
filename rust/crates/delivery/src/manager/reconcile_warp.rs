@@ -2,6 +2,8 @@
 
 mod directive;
 mod probe;
+mod promotion;
+mod transform;
 
 #[cfg(test)]
 pub(crate) use directive::directive_for;
@@ -22,7 +24,7 @@ enum CancelCommit {
 }
 
 impl DeliveryWorker {
-    pub(super) fn apply_warp_directive(
+    pub(super) async fn apply_warp_directive(
         &mut self,
         directive: &WarpDirective,
         decision: &mut Option<DecisionToken>,
@@ -42,6 +44,14 @@ impl DeliveryWorker {
                 self.launch_selected_probe(selected, decision.take(), commit);
             }
             WarpDirective::Cancel(action) => self.cancel_selected(*action, decision.take(), commit),
+            WarpDirective::Promote { .. } => {
+                self.promote_selected(directive, decision.take(), commit)
+                    .await;
+            }
+            WarpDirective::Transform { .. } => {
+                self.transform_selected(directive, decision.take(), commit)
+                    .await;
+            }
             WarpDirective::Unsupported { class } => self.fail_selected(class, decision.take()),
             WarpDirective::None | WarpDirective::Hedge { .. } => {}
         }

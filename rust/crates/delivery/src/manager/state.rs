@@ -37,6 +37,9 @@ pub(crate) struct DeliveryState {
     recent_evictions: HashMap<PostId, Vec<ghostr_engine::ByteRange>>,
     player_preparations: HashMap<PostId, PlayerPreparationReport>,
     client_capabilities: ClientCapabilityModel,
+    transform_profile: Option<crate::transform::TransformProfile>,
+    active_transforms: std::collections::HashSet<PostId>,
+    transformed_posts: HashMap<PostId, RepresentationBinding>,
     ready_target: usize,
 }
 
@@ -49,6 +52,7 @@ mod presentation;
 pub(crate) use presentation::PresentationAdmission;
 mod probes;
 mod representation;
+mod transform;
 mod window;
 
 impl DeliveryState {
@@ -73,6 +77,9 @@ impl DeliveryState {
             recent_evictions: HashMap::new(),
             player_preparations: HashMap::new(),
             client_capabilities: ClientCapabilityModel::default(),
+            transform_profile: None,
+            active_transforms: Default::default(),
+            transformed_posts: Default::default(),
             ready_target: 1,
         }
     }
@@ -133,6 +140,8 @@ impl DeliveryState {
         self.navigation = NavigationHistory::default();
         self.recent_evictions.clear();
         self.player_preparations.clear();
+        self.active_transforms.clear();
+        self.transformed_posts.clear();
         self.ready_target = 1;
     }
 

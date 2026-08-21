@@ -11,6 +11,22 @@ pub(super) fn fingerprint(meta: &VideoMeta) -> String {
     format!("{:x}", digest.finalize())
 }
 
+pub(super) fn transformed(
+    input: &str,
+    kind: crate::adaptive::TransformKind,
+    output_digest: &str,
+) -> Option<String> {
+    if output_digest.len() != 64 || !output_digest.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return None;
+    }
+    let mut digest = Sha256::new();
+    digest.update(b"ghostr-transform-v1\0");
+    field(&mut digest, input.as_bytes());
+    digest.update([transform_tag(kind)]);
+    field(&mut digest, output_digest.as_bytes());
+    Some(format!("{:x}", digest.finalize()))
+}
+
 fn hash_unverified(digest: &mut Sha256, meta: &VideoMeta) {
     let mut urls = meta.urls.clone();
     urls.sort();
@@ -36,5 +52,13 @@ fn delivery_tag(delivery: DeliveryKind) -> u8 {
     match delivery {
         DeliveryKind::Progressive => 0,
         DeliveryKind::Hls => 1,
+    }
+}
+
+fn transform_tag(kind: crate::adaptive::TransformKind) -> u8 {
+    match kind {
+        crate::adaptive::TransformKind::Remux => 0,
+        crate::adaptive::TransformKind::Segment => 1,
+        crate::adaptive::TransformKind::Transcode => 2,
     }
 }

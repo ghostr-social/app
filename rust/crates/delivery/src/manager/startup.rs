@@ -28,7 +28,10 @@ impl DeliveryWorker {
         let post = &candidate.post;
         let binding = self.state.catalog().binding(post)?;
         let snapshot = self.ctx.store.media_snapshot(post.as_str()).await.ok()?;
-        if snapshot.binding() != Some(&binding) {
+        if !snapshot
+            .binding()
+            .is_some_and(|stored| stored == &binding || stored.derives_from(&binding))
+        {
             return None;
         }
         StartupCertificate::issue(startup.clone(), &snapshot)

@@ -73,7 +73,7 @@ async fn load_candidate(
         .binding()
         .context("player preparation has no stored representation")?;
     ensure!(
-        binding.matches_meta(&meta),
+        binding.matches_or_derives_from(&meta),
         "tracked representation is stale"
     );
     ensure!(

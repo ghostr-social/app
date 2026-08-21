@@ -7,7 +7,9 @@ mod prediction;
 mod value;
 
 use super::{ActionNode, ContinuationDecision, PlannerContext, TransformKind};
-use crate::adaptive::{Allocation, AllocationPlan, PlayabilitySnapshot, RetrievalLadder};
+use crate::adaptive::{
+    Allocation, AllocationPlan, PlayabilitySnapshot, PromotionGrant, RetrievalLadder,
+};
 use crate::origin_model::OriginModel;
 use crate::{ActionId, PostId};
 
@@ -22,6 +24,8 @@ pub enum PlannerCommand {
     Promote {
         post: PostId,
         action: ActionId,
+        source: String,
+        grant: PromotionGrant,
     },
     Transform {
         post: PostId,

@@ -9,12 +9,14 @@ use std::collections::{HashMap, HashSet};
 
 mod action;
 mod cancellation;
+mod promotion;
 mod reconciliation;
 mod response;
 mod snapshot;
 
 use action::ActiveChunk;
 pub(crate) use action::{ActionRegistration, ChunkAttempt, CompletionStatus};
+pub(crate) use promotion::{PromotionPreflight, PromotionRejection, PromotionTarget};
 pub(crate) use snapshot::ActiveAction;
 
 #[derive(Default)]
@@ -60,11 +62,15 @@ impl InFlightChunks {
     }
 
     pub fn next_attempt(&mut self, chunk: ChunkId, identity: TransferIdentity) -> ChunkAttempt {
+        ChunkAttempt::new(chunk, identity, self.next_action_id())
+    }
+
+    pub(crate) fn next_action_id(&mut self) -> ActionId {
         self.next_id = self
             .next_id
             .checked_add(1)
             .expect("chunk attempt id exhausted");
-        ChunkAttempt::new(chunk, identity, ActionId::new(self.next_id))
+        ActionId::new(self.next_id)
     }
 
     #[cfg(test)]

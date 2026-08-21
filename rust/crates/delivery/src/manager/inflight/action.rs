@@ -65,13 +65,15 @@ pub(super) struct ActiveChunk {
     pub(super) launched_at_ms: u64,
     pub(super) handle: CancelHandle,
     pub(super) store_action: Option<StoreAction>,
+    pub(super) promotion_authorization: Option<ghostr_engine::adaptive::PromotionGrant>,
+    pub(super) response_opened: bool,
     pub(super) cancelling: bool,
 }
 
 impl ActiveChunk {
     pub(super) fn from_registration(registration: ActionRegistration<'_>) -> Self {
         let effective_bytes = registration.retrieval.requested_bytes();
-        let reserved_storage_bytes = registration.retrieval.reserved_network_bytes();
+        let reserved_storage_bytes = registration.retrieval.immediate_network_bytes();
         Self {
             action_id: registration.attempt.id,
             chunk: registration.attempt.chunk.clone(),
@@ -88,6 +90,8 @@ impl ActiveChunk {
             launched_at_ms: registration.launched_at_ms,
             handle: registration.handle,
             store_action: registration.store_action,
+            promotion_authorization: None,
+            response_opened: false,
             cancelling: false,
         }
     }

@@ -20,6 +20,7 @@ struct PlanningStoreState {
     continuation_sources: HashMap<PostId, String>,
     revisions: HashMap<PostId, ContentRevision>,
     snapshots: HashMap<PostId, StoredMediaSnapshot>,
+    transformed: HashMap<PostId, ghostr_engine::representation::RepresentationBinding>,
 }
 
 struct PlannedExecution {
@@ -125,7 +126,16 @@ impl DeliveryWorker {
                 continue;
             };
             if let Ok(snapshot) = self.ctx.store.media_snapshot(post.as_str()).await {
-                if snapshot.binding() == Some(&binding) {
+                if snapshot
+                    .binding()
+                    .is_some_and(|stored| stored == &binding || stored.derives_from(&binding))
+                {
+                    if let Some(transformed) = snapshot
+                        .binding()
+                        .filter(|stored| stored.derives_from(&binding))
+                    {
+                        stored.transformed.insert(post.clone(), transformed.clone());
+                    }
                     stored.insert(post.clone(), snapshot, timeline_posts.contains(post));
                 }
             }

@@ -3,6 +3,9 @@
 use anyhow::{bail, Result};
 use std::path::PathBuf;
 
+mod transform;
+pub(crate) use transform::TransformPaths;
+
 /// Names every file a key can own. Keeping them in one place is what
 /// makes eviction total: `all` is the removal list, so a new file kind
 /// cannot be forgotten there.
@@ -118,8 +121,8 @@ impl StorePaths {
 
     /// Every payload file of the key. Policy intent is deliberately
     /// excluded: destructive cleanup removes that authority last.
-    pub fn all(&self, key: &str) -> [PathBuf; 24] {
-        [
+    pub fn all(&self, key: &str) -> Vec<PathBuf> {
+        let mut paths = vec![
             self.partial(key),
             self.partial_staging(key),
             self.policy_staging(key),
@@ -146,7 +149,13 @@ impl StorePaths {
             self.generation(key).with_extension("json.tmp"),
             self.generation_backup(key),
             self.single_response_commit(key),
-        ]
+        ];
+        paths.extend(self.transform(key).all());
+        paths
+    }
+
+    pub(crate) fn transform<'a>(&'a self, key: &'a str) -> TransformPaths<'a> {
+        TransformPaths::new(self, key)
     }
 
     fn named(&self, key: &str, extension: &str) -> PathBuf {

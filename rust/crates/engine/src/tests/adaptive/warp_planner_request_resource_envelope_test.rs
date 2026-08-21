@@ -11,7 +11,7 @@ const SOURCE: &str = "https://origin.example/media";
 const MIRROR: &str = "https://mirror.example/media";
 const RESERVED_BYTES: u64 = 800_000;
 #[test]
-fn transfer_uses_the_command_request_reservation_envelope() {
+fn transfer_charges_only_the_immediate_range_before_promotion() {
     let input = snapshot(1, 8_000_000, 1_000, 20);
     let allocation = allocation(input.candidates[0].post.clone());
     let base = AllocationPlan {
@@ -23,10 +23,10 @@ fn transfer_uses_the_command_request_reservation_envelope() {
     let action = generated.actions.iter().find(|action| {
         matches!(&action.command, PlannerCommand::Transfer(work) if work.request == request())
     });
-    assert_envelope(action.expect("promotable transfer"));
+    assert_immediate(action.expect("promotable transfer"));
 }
 #[test]
-fn hedge_uses_the_command_request_reservation_envelope() {
+fn hedge_charges_only_its_immediate_duplicate_range() {
     let mut input = snapshot(1, 8_000_000, 1_000, 20);
     let active_id = ActionId::new(17);
     let range = ByteRange::new(0, 64_000);
@@ -54,19 +54,19 @@ fn hedge_uses_the_command_request_reservation_envelope() {
         .actions
         .iter()
         .find(|action| matches!(&action.command, PlannerCommand::Hedge { transfer, .. } if transfer.request == request()));
-    assert_envelope(action.expect("promotable hedge"));
+    assert_immediate(action.expect("promotable hedge"));
 }
-fn assert_envelope(action: &GeneratedAction) {
+fn assert_immediate(action: &GeneratedAction) {
     let request = match &action.command {
         PlannerCommand::Transfer(work) | PlannerCommand::Hedge { transfer: work, .. } => {
             work.request
         }
         _ => panic!("expected request command"),
     };
-    let reserved = request.reserved_network_bytes();
-    assert_ne!(reserved, request.requested_bytes().len());
-    assert_eq!(action.node.resources.network_bytes, reserved);
-    assert_eq!(action.node.resources.storage_bytes, reserved);
+    let immediate = request.immediate_network_bytes();
+    assert_ne!(request.reserved_network_bytes(), immediate);
+    assert_eq!(action.node.resources.network_bytes, immediate);
+    assert_eq!(action.node.resources.storage_bytes, immediate);
     assert_eq!(action.node.resources.cpu_ms, 0);
     assert_eq!(action.node.resources.requests, 1);
 }

@@ -39,6 +39,7 @@ async fn delivery_manager_publishes_adaptive_discovery_demand() {
         params: EngineParams::default(),
         level: DataUsageLevel::Balanced,
         tuning: DeliveryTuning::default(),
+        transform: None,
     };
     let (handle, mut discovery_demand) =
         start_delivery_manager_with_discovery_demand(config, demand_receiver);

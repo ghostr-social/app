@@ -72,6 +72,10 @@ impl RetrievalRequest {
         }
     }
 
+    pub fn immediate_network_bytes(self) -> u64 {
+        self.requested_bytes().len()
+    }
+
     pub fn promotion(self) -> Option<PromotionGrant> {
         match self {
             Self::FetchRange { promotion, .. } => promotion,

@@ -7,22 +7,31 @@ use ghostr_partial_store::partial_range_store::StoreAction;
 
 impl InFlightChunks {
     pub(crate) fn authorizes_response(
-        &self,
+        &mut self,
         attempt: &ChunkAttempt,
         action: &StoreAction,
         response: &OpenedResponse,
         opened_at_ms: u64,
     ) -> bool {
-        let Some(active) = self.transfers.get(&attempt.id()) else {
+        let Some(active) = self.transfers.get_mut(&attempt.id()) else {
             return false;
         };
-        !active.cancelling
-            && active.identity == *attempt.identity()
-            && active
+        if active.cancelling
+            || active.identity != *attempt.identity()
+            || !active
                 .store_action
                 .as_ref()
                 .is_some_and(|known| known.same_authority(action))
-            && transition_allowed(active.launched_request, response, opened_at_ms)
+        {
+            return false;
+        }
+        active.response_opened = true;
+        transition_allowed(
+            active.launched_request,
+            active.promotion_authorization,
+            response,
+            opened_at_ms,
+        )
     }
 
     pub(crate) fn reject_response(&mut self, attempt: &ChunkAttempt) {
@@ -42,6 +51,7 @@ impl InFlightChunks {
         if active.cancelling || active.identity != *attempt.identity() {
             return false;
         }
+        active.response_opened = true;
         match response {
             ResponseObservation::Partial { range, .. } => {
                 active.effective_request = RetrievalRequest::FetchRange {
@@ -68,6 +78,7 @@ impl InFlightChunks {
 
 fn transition_allowed(
     launched: RetrievalRequest,
+    promotion_authorization: Option<ghostr_engine::adaptive::PromotionGrant>,
     response: &OpenedResponse,
     opened_at_ms: u64,
 ) -> bool {
@@ -88,8 +99,8 @@ fn transition_allowed(
             },
             ResponseWriteMode::Sparse,
         ) => contains(bytes, returned),
-        (RetrievalRequest::FetchRange { promotion, .. }, observation, mode) => {
-            promoted_allowed(promotion, observation, mode, opened_at_ms)
+        (RetrievalRequest::FetchRange { .. }, observation, mode) => {
+            promoted_allowed(promotion_authorization, observation, mode, opened_at_ms)
         }
         (RetrievalRequest::FetchWhole { contract, reason }, observation, mode) => {
             whole_allowed(contract, reason, observation, mode)

@@ -23,6 +23,7 @@ pub mod progressive_posts;
 pub mod qoe;
 pub mod segmented;
 pub mod startup_certificate;
+pub mod transform;
 
 pub mod debug;
 

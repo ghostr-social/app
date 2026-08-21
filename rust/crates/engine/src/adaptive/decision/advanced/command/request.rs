@@ -41,7 +41,7 @@ pub(super) fn capture(value: RetrievalRequest) -> RecordedRetrievalRequest {
         RetrievalRequest::FetchRange { bytes, promotion } => RecordedRetrievalRequest::FetchRange {
             bytes_start: bytes.start,
             bytes_end: bytes.end,
-            promotion: promotion.map(recorded_grant),
+            promotion: promotion.map(RecordedPromotionGrant::from),
         },
         RetrievalRequest::FetchWhole { contract, reason } => RecordedRetrievalRequest::FetchWhole {
             contract: recorded_contract(contract),
@@ -72,10 +72,12 @@ impl RecordedWholeBodyContract {
     }
 }
 
-fn recorded_grant(value: PromotionGrant) -> RecordedPromotionGrant {
-    RecordedPromotionGrant {
-        maximum_bytes: value.maximum_bytes,
-        valid_until_ms: value.valid_until_ms,
+impl From<PromotionGrant> for RecordedPromotionGrant {
+    fn from(value: PromotionGrant) -> Self {
+        Self {
+            maximum_bytes: value.maximum_bytes,
+            valid_until_ms: value.valid_until_ms,
+        }
     }
 }
 

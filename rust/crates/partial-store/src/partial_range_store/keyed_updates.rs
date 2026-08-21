@@ -42,6 +42,7 @@ impl super::PartialRangeStore {
     pub(super) async fn observe_key(&self, key: &str) -> anyhow::Result<UpdateGuard<'_>> {
         let guard = self.update_key_raw(key).await;
         Box::pin(self.recover_policy_transaction_locked(key)).await?;
+        self.recover_transform_locked(key).await?;
         Ok(guard)
     }
 

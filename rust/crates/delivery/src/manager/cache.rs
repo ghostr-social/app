@@ -29,7 +29,10 @@ impl DeliveryWorker {
         }
         let entry = self.state.catalog().lookup(&post)?;
         let snapshot = self.ctx.store.media_snapshot(post.as_str()).await.ok()?;
-        if snapshot.binding() != Some(&entry.binding()) {
+        if !snapshot
+            .binding()
+            .is_some_and(|binding| binding.matches_or_derives_from(&entry.meta))
+        {
             return None;
         }
         Some(cached(

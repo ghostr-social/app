@@ -1,29 +1,41 @@
 use crate::manager::reconcile_warp::{directive_for, WarpDirective};
-use ghostr_engine::adaptive::{PlannerCommand, TransformKind};
+use ghostr_engine::adaptive::{PlannerCommand, PromotionGrant, TransformKind};
 use ghostr_engine::{ActionId, PostId};
 
 #[test]
-fn unavailable_transform_and_live_promotion_fail_closed() {
+fn transform_and_promotion_map_their_exact_targets() {
     let post = PostId::new("video");
     let transform = PlannerCommand::Transform {
         post: post.clone(),
         kind: TransformKind::Remux,
     };
     let promote = PlannerCommand::Promote {
-        post,
+        post: post.clone(),
         action: ActionId::new(9),
+        source: "https://origin.test/video".into(),
+        grant: PromotionGrant {
+            maximum_bytes: 16,
+            valid_until_ms: 99,
+        },
     };
 
     assert_eq!(
         directive_for(Some(&transform), &[]),
-        WarpDirective::Unsupported {
-            class: "warp_transform_backend_unavailable",
+        WarpDirective::Transform {
+            post: post.clone(),
+            kind: TransformKind::Remux,
         }
     );
     assert_eq!(
         directive_for(Some(&promote), &[]),
-        WarpDirective::Unsupported {
-            class: "warp_live_promotion_backend_unavailable",
+        WarpDirective::Promote {
+            post,
+            action: ActionId::new(9),
+            source: "https://origin.test/video".into(),
+            grant: PromotionGrant {
+                maximum_bytes: 16,
+                valid_until_ms: 99,
+            },
         }
     );
 }

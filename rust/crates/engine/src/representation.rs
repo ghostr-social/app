@@ -3,6 +3,7 @@ use crate::{PostId, VideoMeta};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+mod derived;
 mod identity;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -29,6 +30,7 @@ pub struct InvalidSourceGeneration;
 pub struct RepresentationBinding {
     post: PostId,
     representation: RepresentationId,
+    derived_from: Option<RepresentationId>,
     generation: RepresentationGeneration,
     sources: Vec<SourceId>,
 }
@@ -132,6 +134,7 @@ impl RepresentationBinding {
         Self {
             post,
             representation: RepresentationId::from_meta(meta),
+            derived_from: None,
             generation,
             sources: meta.urls.iter().cloned().map(SourceId::new).collect(),
         }

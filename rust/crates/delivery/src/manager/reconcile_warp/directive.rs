@@ -1,7 +1,7 @@
 //! Pure mapping from one planner result to executable WARP work.
 
 use crate::manager::plan::{PlannedTransfer, PlannedTransferId, PlannedWork};
-use ghostr_engine::adaptive::PlannerCommand;
+use ghostr_engine::adaptive::{PlannerCommand, PromotionGrant, TransformKind};
 use ghostr_engine::{ActionId, PostId};
 use std::collections::HashSet;
 
@@ -17,6 +17,16 @@ pub(crate) enum WarpDirective {
     Hedge {
         primary: ActionId,
         alternate: PlannedTransferId,
+    },
+    Promote {
+        post: PostId,
+        action: ActionId,
+        source: String,
+        grant: PromotionGrant,
+    },
+    Transform {
+        post: PostId,
+        kind: TransformKind,
     },
     Unsupported {
         class: &'static str,
@@ -106,20 +116,36 @@ fn work_directive(command: &PlannerCommand, selected: &[PlannedTransfer]) -> War
     if matches!(command, PlannerCommand::Transfer(_)) {
         return transfer(selected);
     }
+    if let PlannerCommand::Promote {
+        post,
+        action,
+        source,
+        grant,
+    } = command
+    {
+        return WarpDirective::Promote {
+            post: post.clone(),
+            action: *action,
+            source: source.clone(),
+            grant: *grant,
+        };
+    }
+    if let PlannerCommand::Transform { post, kind } = command {
+        return WarpDirective::Transform {
+            post: post.clone(),
+            kind: *kind,
+        };
+    }
     unsupported(command)
 }
 
 fn unsupported(command: &PlannerCommand) -> WarpDirective {
     match command {
-        PlannerCommand::Promote { .. } => WarpDirective::Unsupported {
-            class: "warp_live_promotion_backend_unavailable",
-        },
-        PlannerCommand::Transform { .. } => WarpDirective::Unsupported {
-            class: "warp_transform_backend_unavailable",
-        },
         PlannerCommand::ProbeHead { .. }
         | PlannerCommand::Cancel(_)
         | PlannerCommand::Hedge { .. }
+        | PlannerCommand::Promote { .. }
+        | PlannerCommand::Transform { .. }
         | PlannerCommand::Transfer(_) => {
             unreachable!("probe, cancel, and transfer commands are handled above")
         }

@@ -5,6 +5,32 @@ use crate::adaptive::{
 };
 use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::snapshot;
+use crate::PostId;
+
+#[test]
+fn exact_live_promotion_is_control_work_not_new_semantic_admission() {
+    let post = PostId::new("p0");
+    let node = crate::adaptive::ActionNode::new(
+        1,
+        post.clone(),
+        crate::adaptive::ActionKind::Promote {
+            active: crate::ActionId::new(7),
+            maximum_bytes: 16,
+        },
+        crate::adaptive::ActionValue::default(),
+    );
+    let semantic = [crate::adaptive::SemanticDecision {
+        post,
+        admission: crate::adaptive::SemanticAdmission {
+            admissible: false,
+            rescue: false,
+            rank_displacement: 0,
+            censor: None,
+        },
+    }];
+
+    assert!(super::super::semantically_admissible(&node, &semantic));
+}
 
 #[test]
 fn unsupported_cached_media_cannot_block_a_playable_rescue() {

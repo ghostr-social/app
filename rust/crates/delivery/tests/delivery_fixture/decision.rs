@@ -44,3 +44,22 @@ pub async fn wait_for_history(
     .await
     .expect("decision history transition");
 }
+
+pub async fn wait_for_promotion(handle: &DeliveryHandle) {
+    wait_for_history(handle, |history| {
+        history.records.iter().any(|record| {
+            matches!(
+                record.eventual_outcome,
+                DecisionOutcome::Succeeded { bytes: 0, .. }
+            ) && matches!(
+                record
+                    .warp_decision
+                    .as_ref()
+                    .and_then(|decision| decision.selected.as_ref())
+                    .map(|selected| &selected.command),
+                Some(ghostr_engine::adaptive::RecordedWarpCommand::Promote { .. })
+            )
+        })
+    })
+    .await;
+}

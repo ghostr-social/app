@@ -6,6 +6,8 @@ use crate::{ByteRange, PostId};
 
 #[path = "warp_planner_action_frontier_test/dependency_test.rs"]
 mod dependency_test;
+#[path = "warp_planner_action_frontier_test/promotion_identity_test.rs"]
+mod promotion_identity_test;
 
 fn action(id: u16, bytes: u64, p95: u64, gain: u64) -> ActionNode {
     ActionNode::new(

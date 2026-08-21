@@ -17,6 +17,8 @@ mod playback_url_test;
 mod playback_validation_test;
 mod player_preparation_authority_fixture;
 mod player_preparation_authority_test;
+mod player_preparation_derived_fixture;
+mod player_preparation_derived_test;
 mod post_id_validation_test;
 mod preparation_route_fixture;
 mod repost_candidate_priority_test;

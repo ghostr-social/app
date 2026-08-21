@@ -40,6 +40,7 @@ impl PartialRangeStore {
             if entries.contains_key(&key) {
                 continue;
             }
+            self.recover_transform_locked(&key).await?;
             match reusable(&self.paths, &key).await {
                 Ok(RecoveredEntry {
                     entry: Some(entry),

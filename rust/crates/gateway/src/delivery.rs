@@ -28,13 +28,10 @@ use ghostr_delivery::cache_registry::CacheRegistry;
 use ghostr_delivery::debug::feed::DebugFeed;
 use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_delivery::delivery_events::DeliveryHandle;
-use ghostr_delivery::manager::{
-    start_delivery_manager_with_discovery_demand, DeliveryManagerConfig, DeliveryTuning,
-};
+use ghostr_delivery::manager::start_delivery_manager_with_discovery_demand;
 use ghostr_delivery::playback_demand::demand_channel;
 use ghostr_delivery::segmented::SegmentedCache;
 use ghostr_engine::adaptive::DiscoveryDemand;
-use ghostr_engine::{DataUsageLevel, EngineParams};
 use ghostr_net::media_request_executor::MediaRequestExecutor;
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
@@ -42,6 +39,8 @@ use log::warn;
 use nostr_sdk::Client;
 use std::sync::Arc;
 use tokio::sync::{watch, Mutex};
+
+mod config;
 
 pub(crate) type DeliveryParts = (
     axum::Router,
@@ -90,8 +89,9 @@ pub(crate) async fn start_progressive_delivery(
 ) -> anyhow::Result<DeliveryParts> {
     let resources = DeliveryResources::open(configuration, requests).await;
     let (demand_sender, demand) = demand_channel();
-    let config = delivery_config(configuration, &resources);
-    let (delivery, discovery_demand) = start_delivery_manager_with_discovery_demand(config, demand);
+    let manager_config = config::build(configuration, &resources);
+    let (delivery, discovery_demand) =
+        start_delivery_manager_with_discovery_demand(manager_config, demand);
     let progressive = progressive_state(configuration, &resources, &delivery, demand_sender);
     let router = delivery_router(RouterInput {
         hls_sessions,
@@ -111,9 +111,9 @@ pub(crate) async fn start_progressive_delivery(
 }
 
 fn progressive_state(
-    configuration: &GatewayConfiguration,
+    _configuration: &GatewayConfiguration,
     resources: &DeliveryResources,
-    delivery: &DeliveryHandle,
+    _delivery: &DeliveryHandle,
     demand: ghostr_delivery::playback_demand::DemandSender,
 ) -> Arc<ProgressiveState> {
     Arc::new(ProgressiveState {
@@ -128,7 +128,7 @@ fn progressive_state(
             debug_assertions,
             not(any(target_os = "android", target_os = "ios"))
         ))]
-        debug_feed: DebugFeed::new(delivery.clone(), configuration.relays.clone()),
+        debug_feed: DebugFeed::new(_delivery.clone(), _configuration.relays.clone()),
     })
 }
 
@@ -174,25 +174,4 @@ async fn opened_store(configuration: &GatewayConfiguration) -> PartialRangeStore
         warn!("Video store could not reload its contents: {error:#}");
     }
     store
-}
-
-fn delivery_config(
-    configuration: &GatewayConfiguration,
-    resources: &DeliveryResources,
-) -> DeliveryManagerConfig {
-    let params = EngineParams {
-        balanced_concurrency: configuration.max_parallel_downloads,
-        ..EngineParams::default()
-    };
-    DeliveryManagerConfig {
-        store: resources.store.clone(),
-        requests: resources.requests.clone(),
-        cache: resources.cache.clone(),
-        segmented: resources.segmented.clone(),
-        network: resources.network.clone(),
-        stats_path: configuration.cache_directory.join("host_stats.json"),
-        params,
-        level: DataUsageLevel::Balanced,
-        tuning: DeliveryTuning::default(),
-    }
 }

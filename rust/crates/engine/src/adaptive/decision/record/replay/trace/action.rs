@@ -80,10 +80,11 @@ fn control_matches(action: &RecordedWarpAction) -> bool {
     match (&action.kind, &action.command) {
         (
             RecordedWarpActionKind::Promote {
-                active_action_id, ..
+                active_action_id,
+                maximum_bytes,
             },
             command,
-        ) => promote_matches(command, *active_action_id),
+        ) => promote_matches(command, *active_action_id, *maximum_bytes),
         (RecordedWarpActionKind::Transform { transform }, command) => {
             matches!(command, RecordedWarpCommand::Transform { transform: other, .. } if other == transform)
         }
@@ -130,8 +131,12 @@ fn whole_bytes(request: RecordedRetrievalRequest) -> Option<u64> {
     })
 }
 
-fn promote_matches(command: &RecordedWarpCommand, active: u64) -> bool {
-    matches!(command, RecordedWarpCommand::Promote { action_id, .. } if *action_id == active)
+fn promote_matches(command: &RecordedWarpCommand, active: u64, maximum: u64) -> bool {
+    matches!(
+        command,
+        RecordedWarpCommand::Promote { action_id, grant, .. }
+            if *action_id == active && grant.maximum_bytes == maximum
+    )
 }
 
 fn hedge_matches(command: &RecordedWarpCommand, primary: u64, alternate: &str) -> bool {

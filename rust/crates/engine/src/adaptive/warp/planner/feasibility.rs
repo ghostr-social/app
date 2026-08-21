@@ -113,7 +113,10 @@ fn admissible(post: &crate::PostId, semantic: &[SemanticDecision]) -> bool {
 }
 
 fn semantically_admissible(node: &ActionNode, semantic: &[SemanticDecision]) -> bool {
-    matches!(node.kind, ActionKind::Cancel(_)) || admissible(&node.post, semantic)
+    matches!(
+        node.kind,
+        ActionKind::Cancel(_) | ActionKind::Promote { .. }
+    ) || admissible(&node.post, semantic)
 }
 
 fn protect_rescue(

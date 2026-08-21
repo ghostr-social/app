@@ -6,6 +6,9 @@ use crate::manager::{origin_admission, time, DeliveryWorker};
 use ghostr_engine::adaptive::{DecisionOutcome, ResourceCost, RetrievalRequest};
 
 #[cfg(test)]
+#[path = "grant/immediate_resources_test.rs"]
+mod immediate_resources_test;
+#[cfg(test)]
 #[path = "grant/origin_concurrency_test.rs"]
 mod origin_concurrency_test;
 
@@ -171,7 +174,7 @@ impl DeliveryWorker {
 }
 
 fn request_resources(request: RetrievalRequest) -> ResourceCost {
-    let bytes = request.reserved_network_bytes();
+    let bytes = request.immediate_network_bytes();
     ResourceCost::new(bytes, bytes, 0, 1)
 }
 

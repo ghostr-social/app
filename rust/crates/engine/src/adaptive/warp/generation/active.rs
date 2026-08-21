@@ -63,9 +63,10 @@ impl Builder<'_> {
         let Some(grant) = active.request.promotion() else {
             return;
         };
-        if active.cancelling || grant.valid_until_ms < self.snapshot.observed_at_ms {
+        let Some(additional_bytes) = promotion_delta(active, grant, self.snapshot.observed_at_ms)
+        else {
             return;
-        }
+        };
         let forecast_kind = ActionKind::FetchWhole {
             maximum_bytes: grant.maximum_bytes,
         };
@@ -76,13 +77,14 @@ impl Builder<'_> {
         };
         let input = NodeInput::new(kind, &active.source, prediction, &[]);
         let mut node = self.node(candidate, input);
-        node.resources =
-            super::super::ResourceCost::new(grant.maximum_bytes, grant.maximum_bytes, 0, 0);
+        node.resources = super::super::ResourceCost::new(additional_bytes, additional_bytes, 0, 0);
         self.actions.push(GeneratedAction {
             node,
             command: PlannerCommand::Promote {
                 post: candidate.post.clone(),
                 action: active.action_id,
+                source: active.source.clone(),
+                grant,
             },
         });
     }
@@ -134,6 +136,20 @@ impl Builder<'_> {
             command: PlannerCommand::Cancel(action),
         });
     }
+}
+
+fn promotion_delta(
+    active: &InFlightAction,
+    grant: crate::adaptive::PromotionGrant,
+    observed_at_ms: u64,
+) -> Option<u64> {
+    if active.cancelling || !active.identity_current || grant.valid_until_ms < observed_at_ms {
+        return None;
+    }
+    grant
+        .maximum_bytes
+        .checked_sub(active.reserved_storage_bytes)
+        .filter(|bytes| *bytes > 0)
 }
 
 fn net_hedge_value(input: &crate::adaptive::HedgeInput) -> i64 {

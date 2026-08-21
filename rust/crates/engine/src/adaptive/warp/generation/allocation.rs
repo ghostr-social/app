@@ -151,7 +151,7 @@ pub(super) fn resources(kind: &super::super::ActionKind) -> super::super::Resour
 }
 
 pub(super) fn request_resources(request: RetrievalRequest) -> super::super::ResourceCost {
-    let bytes = request.reserved_network_bytes();
+    let bytes = request.immediate_network_bytes();
     super::super::ResourceCost::new(bytes, bytes, 0, 1)
 }
 

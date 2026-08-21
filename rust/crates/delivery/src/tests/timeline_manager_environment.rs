@@ -23,6 +23,7 @@ pub(crate) fn config(store: Arc<PartialRangeStore>, root: PathBuf) -> DeliveryMa
         params: EngineParams::default(),
         level: DataUsageLevel::Balanced,
         tuning: DeliveryTuning::default(),
+        transform: None,
     }
 }
 

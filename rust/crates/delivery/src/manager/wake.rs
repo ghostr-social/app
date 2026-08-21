@@ -137,6 +137,7 @@ impl DeliveryWorker {
 
     fn prune_scheduling_history(&mut self) {
         let retained = self.state.retained_posts();
+        self.retain_transform_jobs(&retained);
         self.probes.retain_history(&retained);
         self.retry.retain_history(&retained);
         self.cooldown_timers.retain(&retained);
@@ -145,6 +146,7 @@ impl DeliveryWorker {
 
     pub(crate) async fn bind_representations(&mut self) {
         for binding in self.state.take_representation_bindings() {
+            self.cancel_obsolete_transform(&binding);
             self.downloads.cancel_obsolete(&binding);
             if let Err(error) = self.ctx.store.bind_representation(binding).await {
                 log::warn!("Video representation binding failed: {error:#}");
@@ -157,6 +159,7 @@ impl DeliveryWorker {
             InternalEvent::ImmediateReplan => self.consume_immediate_replan(),
             InternalEvent::Transfer(transfer) => self.apply_transfer(transfer).await,
             InternalEvent::Segmented(done) => self.segmented.finish(done),
+            InternalEvent::Transform(done) => self.finish_transform_job(done),
             InternalEvent::Maintenance(maintenance) => self.apply_maintenance(maintenance).await,
             InternalEvent::TrafficChanged => self.absorb_traffic(),
         }

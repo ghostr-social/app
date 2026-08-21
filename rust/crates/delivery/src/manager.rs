@@ -52,6 +52,7 @@ pub(crate) mod time;
 pub(crate) mod timeline;
 pub(crate) mod traffic;
 pub(crate) mod transfers;
+mod transforms;
 mod tuning;
 pub(crate) mod wake;
 pub(crate) mod wake_lane;
@@ -109,6 +110,7 @@ pub struct DeliveryManagerConfig {
     pub params: EngineParams,
     pub level: DataUsageLevel,
     pub tuning: DeliveryTuning,
+    pub transform: Option<Arc<dyn crate::transform::TransformBackend>>,
 }
 
 /// Starts the manager task and exposes adaptive candidate-demand changes.
@@ -169,6 +171,7 @@ pub(crate) struct DeliveryWorker {
     segmented: SegmentedDelivery,
     timelines: TimelineCoordinator,
     independent_objects: IndependentObjects,
+    transforms: transforms::TransformJobs,
     immediate_replan: ImmediateReplan,
     warp_planner: ghostr_engine::adaptive::WarpPlanner,
 }

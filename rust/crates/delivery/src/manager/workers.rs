@@ -27,6 +27,10 @@ impl DownloadWorkers {
         self.active.len()
     }
 
+    pub(crate) fn next_action_id(&mut self) -> ghostr_engine::ActionId {
+        self.active.next_action_id()
+    }
+
     pub(crate) fn contains_transfer(&self, transfer: &PlannedTransfer) -> bool {
         self.active.contains_transfer(transfer)
     }
@@ -117,7 +121,7 @@ impl DownloadWorkers {
     }
 
     pub(crate) fn authorizes_response(
-        &self,
+        &mut self,
         attempt: &ChunkAttempt,
         action: &ghostr_partial_store::partial_range_store::StoreAction,
         response: &crate::chunk::downloader::OpenedResponse,
@@ -129,5 +133,31 @@ impl DownloadWorkers {
 
     pub(crate) fn reject_response(&mut self, attempt: &ChunkAttempt) {
         self.active.reject_response(attempt);
+    }
+
+    pub(crate) fn preflight_promotion(
+        &self,
+        target: &crate::manager::inflight::PromotionTarget,
+        now_ms: u64,
+    ) -> Result<
+        crate::manager::inflight::PromotionPreflight,
+        crate::manager::inflight::PromotionRejection,
+    > {
+        self.active.preflight_promotion(target, now_ms)
+    }
+
+    pub(crate) fn activate_promotion(
+        &mut self,
+        preflight: &crate::manager::inflight::PromotionPreflight,
+        now_ms: u64,
+    ) -> bool {
+        self.active.activate_promotion(preflight, now_ms)
+    }
+
+    pub(crate) fn rollback_promotion(
+        &mut self,
+        preflight: &crate::manager::inflight::PromotionPreflight,
+    ) -> bool {
+        self.active.rollback_promotion(preflight)
     }
 }

@@ -54,6 +54,7 @@ impl InitialPolicy {
         let (reliability, evidence) =
             ReliabilityKeeper::load(reliability_path, config.tuning.stats_debounce).await;
         let mut state = DeliveryState::new(config.params, config.level);
+        state.configure_transform(config.transform.as_ref().map(|backend| backend.profile()));
         let limits = RequestConcurrencyLimits::resolve(
             state.concurrency(),
             config.tuning.max_requests_per_authority,
@@ -115,6 +116,10 @@ impl DeliveryWorker {
         let policy = InitialPolicy::load(&config, &commands).await;
         let segmented = SegmentedDelivery::new(config.segmented);
         let timelines = TimelineCoordinator::new(config.store.clone());
+        let transforms = crate::manager::transforms::TransformJobs::new(
+            config.transform.clone(),
+            channels.events_sender.clone(),
+        );
         Self {
             state: policy.state,
             keeper: policy.keeper,
@@ -151,6 +156,7 @@ impl DeliveryWorker {
             segmented,
             timelines,
             independent_objects: IndependentObjects::default(),
+            transforms,
             immediate_replan: Default::default(),
             warp_planner: ghostr_engine::adaptive::WarpPlanner::default(),
         }

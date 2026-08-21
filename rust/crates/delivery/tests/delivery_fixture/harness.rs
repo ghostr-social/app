@@ -62,6 +62,7 @@ pub fn start_harness_with_store(
             params: options.params,
             level: options.level,
             tuning: options.tuning,
+            transform: options.transform,
         },
         demand_receiver,
     );

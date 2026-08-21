@@ -33,7 +33,7 @@ pub(super) fn build(
         occupancy: &occupancy,
     });
     let context = PlannerContext::explicitly_unavailable(snapshot)
-        .with_limits(limits(snapshot, request_capacity.tokens))
+        .with_limits(limits(state, snapshot, request_capacity.tokens))
         .with_soft_request_capacity(request_capacity.ordinary_tokens, request_capacity.soft)
         .with_feedback(feedback(snapshot, &occupancy, !inputs.in_flight.is_empty()))
         .with_request_occupancy(occupancy.clone())
@@ -101,6 +101,7 @@ fn head_probe_history(
 }
 
 fn limits(
+    state: &DeliveryState,
     snapshot: &ghostr_engine::adaptive::PlayabilitySnapshot,
     request_tokens: u16,
 ) -> PlannerLimits {
@@ -108,7 +109,9 @@ fn limits(
     PlannerLimits {
         network_burst_bytes: rate.saturating_mul(2).max(snapshot.request_slice_bytes),
         network_rate_bytes_per_second: rate,
-        cpu_ms: 0,
+        cpu_ms: state
+            .transform_profile()
+            .map_or(0, |profile| profile.limits().cpu_ms()),
         request_tokens,
         per_origin_requests: snapshot
             .network

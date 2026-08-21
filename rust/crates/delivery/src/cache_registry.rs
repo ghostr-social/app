@@ -73,7 +73,7 @@ impl CacheRegistry {
                 .by_id
                 .get(id)
                 .and_then(Option::as_ref)
-                .is_some_and(|video| binding.matches_meta(&video.meta))
+                .is_some_and(|video| binding.matches_or_derives_from(&video.meta))
     }
 
     pub fn allows_binding(&self, id: &str, binding: &RepresentationBinding) -> bool {
@@ -82,7 +82,7 @@ impl CacheRegistry {
         }
         match self.read().by_id.get(id) {
             Some(None) => true,
-            Some(Some(video)) => binding.matches_meta(&video.meta),
+            Some(Some(video)) => binding.matches_or_derives_from(&video.meta),
             None => false,
         }
     }

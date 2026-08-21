@@ -9,3 +9,4 @@ mod catalog_upsert_lookup_test;
 mod post_identity_test;
 mod representation_identity_fence_test;
 mod representation_identity_vector_test;
+mod transformed_representation_identity_test;

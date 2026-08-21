@@ -27,6 +27,8 @@ pub enum RecordedWarpCommand {
     Promote {
         post_id: String,
         action_id: u64,
+        source_id: String,
+        grant: RecordedPromotionGrant,
     },
     Transform {
         post_id: String,
@@ -87,9 +89,16 @@ fn external(command: &PlannerCommand, privacy: &DecisionPrivacy) -> RecordedWarp
 
 fn control(command: &PlannerCommand, privacy: &DecisionPrivacy) -> RecordedWarpCommand {
     match command {
-        PlannerCommand::Promote { post, action } => RecordedWarpCommand::Promote {
+        PlannerCommand::Promote {
+            post,
+            action,
+            source,
+            grant,
+        } => RecordedWarpCommand::Promote {
             post_id: privacy.post(post.as_str()),
             action_id: action.value(),
+            source_id: privacy.source(source),
+            grant: (*grant).into(),
         },
         PlannerCommand::Transform { post, kind } => RecordedWarpCommand::Transform {
             post_id: privacy.post(post.as_str()),
@@ -125,7 +134,9 @@ impl RecordedWarpCommand {
 
     fn control_projection(&self) -> (&str, &str, u64, u64) {
         match self {
-            Self::Promote { .. } => ("promote", "", 0, 0),
+            Self::Promote {
+                source_id, grant, ..
+            } => ("promote", source_id, 0, grant.maximum_bytes),
             Self::Transform { .. } => ("transform", "", 0, 0),
             Self::Cancel { .. } => ("cancel", "", 0, 0),
             _ => unreachable!("only local control commands are routed here"),

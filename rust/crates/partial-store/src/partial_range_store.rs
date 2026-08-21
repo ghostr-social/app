@@ -32,6 +32,7 @@ mod representation;
 mod response;
 mod single_response;
 mod sparse_intent;
+mod transform;
 mod writes;
 
 pub use action::{ActionReservationExtension, StoreAction};
@@ -40,6 +41,7 @@ pub use policy_eviction::EvictionOutcome;
 pub use queries::{StoredEvidenceId, StoredMediaSnapshot};
 pub use representation::{ContentRevision, RepresentationRead};
 pub use response::ResponseOpenResult;
+pub use transform::{TransformFence, TransformPublication};
 
 pub(crate) type Entries = HashMap<String, Entry>;
 

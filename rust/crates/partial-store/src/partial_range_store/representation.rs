@@ -14,7 +14,7 @@ impl PartialRangeStore {
         let key = binding.post().as_str();
         validate_key(key)?;
         let _update = self.observe_key(key).await?;
-        if self.representation_is_current(&binding).await {
+        if self.representation_accepts_authority(&binding).await {
             return Ok(());
         }
         if self.policy_transaction_debt(key).await.is_some() {
@@ -66,6 +66,14 @@ impl PartialRangeStore {
             == Some(binding)
     }
 
+    async fn representation_accepts_authority(&self, binding: &RepresentationBinding) -> bool {
+        self.representations
+            .lock()
+            .await
+            .get(binding.post().as_str())
+            .is_some_and(|current| current == binding || current.derives_from(binding))
+    }
+
     pub(super) async fn clear_representation_bindings(&self) {
         self.representations.lock().await.clear();
         self.source_generations.lock().await.clear();
@@ -78,6 +86,17 @@ impl PartialRangeStore {
         let stored = identity_disk::load(&path).await?;
         if stored.as_deref() == Some(binding.representation().fingerprint()) {
             return self.restore_generation(binding).await;
+        }
+        if let Some(derived) = self
+            .restored_transform_binding(binding, stored.as_deref())
+            .await?
+        {
+            self.representations
+                .lock()
+                .await
+                .insert(key.to_owned(), derived);
+            self.source_generations.lock().await.remove(key);
+            return Ok(());
         }
         self.source_generations.lock().await.remove(key);
         let mut entries = self.entries.lock().await;
