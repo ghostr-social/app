@@ -1,12 +1,13 @@
 use super::ranges::missing;
 use super::{CandidateSnapshot, OriginHealth, PlayabilitySnapshot};
+use crate::RequestAuthority;
 
 pub(super) fn best_origin(candidate: &CandidateSnapshot) -> Option<&OriginHealth> {
     if let Some(preferred) = candidate.preferred_source.as_deref() {
         if let Some(origin) = candidate
             .origins
             .iter()
-            .find(|origin| origin.available && origin.source == preferred)
+            .find(|origin| retrievable(origin) && origin.source == preferred)
         {
             return Some(origin);
         }
@@ -17,7 +18,7 @@ pub(super) fn best_origin(candidate: &CandidateSnapshot) -> Option<&OriginHealth
 pub(super) fn best_available(origins: &[OriginHealth]) -> Option<&OriginHealth> {
     origins
         .iter()
-        .filter(|origin| origin.available)
+        .filter(|origin| retrievable(origin))
         .reduce(|best, candidate| {
             if effective_throughput(candidate) > effective_throughput(best) {
                 candidate
@@ -25,6 +26,10 @@ pub(super) fn best_available(origins: &[OriginHealth]) -> Option<&OriginHealth> 
                 best
             }
         })
+}
+
+pub(in crate::adaptive) fn retrievable(origin: &OriginHealth) -> bool {
+    origin.available && RequestAuthority::from_url(&origin.source).is_some()
 }
 
 pub(super) fn candidate_score(

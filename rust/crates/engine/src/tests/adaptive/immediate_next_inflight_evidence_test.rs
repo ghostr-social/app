@@ -8,7 +8,7 @@ fn immediate_next_covered_only_by_a_transfer_is_not_reported_ready() {
     input.candidates[1].in_flight = vec![InFlightAction::range(
         crate::ActionId::new(1),
         ByteRange::new(0, 3_750_000),
-        "origin",
+        "https://origin.example/media",
         20_000,
         true,
     )];

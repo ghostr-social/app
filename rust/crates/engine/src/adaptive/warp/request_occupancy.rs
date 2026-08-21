@@ -1,10 +1,11 @@
-use crate::host_stats::host_of;
+use crate::RequestAuthority;
 use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct RequestOccupancy {
     total: usize,
-    authorities: BTreeMap<String, usize>,
+    authorities: BTreeMap<RequestAuthority, usize>,
+    invalid: usize,
 }
 
 impl RequestOccupancy {
@@ -21,26 +22,27 @@ impl RequestOccupancy {
     }
 
     pub(super) fn authority_count(&self, source: &str) -> usize {
+        let Some(authority) = RequestAuthority::from_url(source) else {
+            return self.invalid;
+        };
         self.authorities
-            .get(&request_authority(source))
+            .get(&authority)
             .copied()
             .unwrap_or_default()
     }
 
-    pub(super) fn authorities(&self) -> &BTreeMap<String, usize> {
+    pub(super) fn authorities(&self) -> &BTreeMap<RequestAuthority, usize> {
         &self.authorities
     }
 
     fn occupy(&mut self, source: &str) {
         self.total = self.total.saturating_add(1);
-        let used = self
-            .authorities
-            .entry(request_authority(source))
-            .or_default();
-        *used = used.saturating_add(1);
+        match RequestAuthority::from_url(source) {
+            Some(authority) => {
+                let used = self.authorities.entry(authority).or_default();
+                *used = used.saturating_add(1);
+            }
+            None => self.invalid = self.invalid.saturating_add(1),
+        }
     }
-}
-
-pub(super) fn request_authority(source: &str) -> String {
-    host_of(source).unwrap_or_else(|| source.to_owned())
 }

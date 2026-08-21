@@ -9,7 +9,7 @@ fn new_origin_work_starts_after_a_partly_overlapping_active_transfer() {
     input.candidates[1].in_flight.push(InFlightAction::range(
         crate::ActionId::new(1),
         ByteRange::new(0, 100_000),
-        "origin",
+        "https://origin.example/media",
         12_000,
         true,
     ));

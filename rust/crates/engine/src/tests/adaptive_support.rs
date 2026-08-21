@@ -10,6 +10,7 @@ use crate::PostId;
 use std::collections::HashSet;
 
 const MIB: u64 = 1024 * 1024;
+const DEFAULT_ORIGIN: &str = "https://origin.example/media";
 
 pub(super) fn snapshot(
     candidate_count: usize,
@@ -69,7 +70,7 @@ fn candidate(distance: usize) -> CandidateSnapshot {
         finalized: false,
         recently_evicted: Vec::new(),
         in_flight: Vec::new(),
-        origins: vec![healthy_origin("origin", 20_000_000, 50)],
+        origins: vec![healthy_origin(DEFAULT_ORIGIN, 20_000_000, 50)],
         evidence: Default::default(),
     };
     set_reliable_total_bytes(&mut candidate, 3_750_000, 10_000);

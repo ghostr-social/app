@@ -1,4 +1,5 @@
-use super::super::request_occupancy::{request_authority, RequestOccupancy};
+use super::super::request_occupancy::RequestOccupancy;
+use crate::RequestAuthority;
 use std::collections::BTreeMap;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
@@ -31,7 +32,7 @@ impl ResourceCost {
 pub struct HardBudget {
     remaining: ResourceCost,
     per_origin_requests: usize,
-    origins: BTreeMap<String, usize>,
+    origins: BTreeMap<RequestAuthority, usize>,
 }
 
 impl HardBudget {
@@ -50,20 +51,37 @@ impl HardBudget {
         )
     }
 
-    pub fn consume(&mut self, cost: &ResourceCost, origin: &str) -> bool {
-        let authority = request_authority(origin);
-        if !cost.no_more_than(self.remaining) || !self.origin_available(cost.requests, &authority) {
+    pub fn consume(&mut self, cost: &ResourceCost, authority: Option<&RequestAuthority>) -> bool {
+        if !cost.no_more_than(self.remaining) {
+            return false;
+        }
+        if cost.requests == 0 {
+            self.consume_resources(cost);
+            return true;
+        }
+        let Some(authority) = authority else {
+            return false;
+        };
+        if !self.origin_available(cost.requests, authority) {
             return false;
         }
         self.consume_resources(cost);
-        let used = self.origins.entry(authority).or_default();
+        let used = self.origins.entry(authority.clone()).or_default();
         *used = used.saturating_add(usize::from(cost.requests));
         true
     }
 
-    pub fn allows(&self, cost: &ResourceCost, origin: &str) -> bool {
+    pub fn allows(&self, cost: &ResourceCost, authority: Option<&RequestAuthority>) -> bool {
         let mut copy = self.clone();
-        copy.consume(cost, origin)
+        copy.consume(cost, authority)
+    }
+
+    pub(in crate::adaptive::warp) fn reserve(&mut self, cost: &ResourceCost) -> bool {
+        if !cost.no_more_than(self.remaining) {
+            return false;
+        }
+        self.consume_resources(cost);
+        true
     }
 
     pub(in crate::adaptive::warp) fn with_occupancy(
@@ -83,7 +101,7 @@ impl HardBudget {
         self.remaining.requests -= cost.requests;
     }
 
-    fn origin_available(&self, requests: u16, authority: &str) -> bool {
+    fn origin_available(&self, requests: u16, authority: &RequestAuthority) -> bool {
         self.origins
             .get(authority)
             .copied()

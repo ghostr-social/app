@@ -10,7 +10,7 @@ fn a_useful_transfer_that_reserves_the_last_storage_bytes_stays_committed() {
     input.candidates[1].in_flight.push(InFlightAction::range(
         crate::ActionId::new(1),
         ByteRange::new(0, 250_000),
-        "origin",
+        "https://origin.example/media",
         12_000,
         true,
     ));

@@ -45,5 +45,11 @@ fn emergency_preserves_one_paid_transition_when_the_hard_ceiling_allows_it() {
 
 fn active(bytes: ByteRange, committed_until_ms: u64) -> InFlightAction {
     let action = crate::ActionId::new(bytes.start.saturating_add(1));
-    InFlightAction::range(action, bytes, "origin", committed_until_ms, true)
+    InFlightAction::range(
+        action,
+        bytes,
+        "https://origin.example/media",
+        committed_until_ms,
+        true,
+    )
 }

@@ -1,12 +1,12 @@
 use super::super::PlanInputs;
 use crate::manager::state::DeliveryState;
 use ghostr_engine::adaptive::{NetworkSnapshot, OriginHealth};
-use ghostr_engine::host_stats::{host_of, OPTIMISTIC_THROUGHPUT_BPS};
+use ghostr_engine::host_stats::OPTIMISTIC_THROUGHPUT_BPS;
 use ghostr_engine::origin_model::{
     Admission, DecisionMode, MediaClass, NetworkClass, OriginContext, OriginQuery, RequestMethod,
 };
 use ghostr_engine::playback::EstimateConfidence;
-use ghostr_engine::PostId;
+use ghostr_engine::{PostId, RequestAuthority};
 
 pub(super) fn origins(
     state: &DeliveryState,
@@ -29,8 +29,8 @@ fn origin(
     entry: &ghostr_engine::catalog::CatalogEntry,
     url: String,
 ) -> Option<OriginHealth> {
-    let host = host_of(&url)?;
-    let query = origin_query(inputs, entry, &url, &host);
+    let authority = RequestAuthority::from_url(&url)?;
+    let query = origin_query(inputs, entry, &url, &authority);
     let estimate =
         inputs
             .stats
@@ -59,10 +59,10 @@ fn origin_query(
     inputs: &PlanInputs<'_>,
     entry: &ghostr_engine::catalog::CatalogEntry,
     url: &str,
-    host: &str,
+    authority: &RequestAuthority,
 ) -> OriginQuery {
     let (method, media, bytes) = request_context(entry, url);
-    let concurrency = active_on_host(inputs, host).saturating_add(1);
+    let concurrency = active_on_authority(inputs, authority).saturating_add(1);
     OriginQuery::new(
         url,
         OriginContext::new(method, bytes, media)
@@ -72,7 +72,7 @@ fn origin_query(
     )
 }
 
-fn active_on_host(inputs: &PlanInputs<'_>, host: &str) -> usize {
+fn active_on_authority(inputs: &PlanInputs<'_>, authority: &RequestAuthority) -> usize {
     let bodies = inputs
         .in_flight
         .iter()
@@ -83,7 +83,7 @@ fn active_on_host(inputs: &PlanInputs<'_>, host: &str) -> usize {
         .map(|identity| identity.source().as_str());
     bodies
         .chain(probes)
-        .filter(|source| host_of(source).as_deref() == Some(host))
+        .filter(|source| RequestAuthority::from_url(source).as_ref() == Some(authority))
         .count()
 }
 

@@ -1,6 +1,6 @@
 use super::{ResourceCost, ResourcePrices};
 use crate::adaptive::CompletionTimes;
-use crate::{ActionId, ByteRange, PostId};
+use crate::{ActionId, ByteRange, PostId, RequestAuthority};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum TransformKind {
@@ -121,7 +121,8 @@ pub struct ActionNode {
     pub value: ActionValue,
     pub resources: ResourceCost,
     pub forecast: ActionForecast,
-    pub origin: String,
+    pub(super) origin: String,
+    request_authority: Option<RequestAuthority>,
     pub requires: Vec<u16>,
 }
 
@@ -135,6 +136,7 @@ impl ActionNode {
             resources: ResourceCost::default(),
             forecast: ActionForecast::default(),
             origin: String::new(),
+            request_authority: None,
             requires: Vec::new(),
         }
     }
@@ -150,8 +152,14 @@ impl ActionNode {
     }
 
     pub fn with_origin(mut self, origin: impl Into<String>) -> Self {
-        self.origin = origin.into();
+        let origin = origin.into();
+        self.request_authority = RequestAuthority::from_url(&origin);
+        self.origin = origin;
         self
+    }
+
+    pub fn request_authority(&self) -> Option<&RequestAuthority> {
+        self.request_authority.as_ref()
     }
 
     pub fn requiring(mut self, requirements: &[u16]) -> Self {

@@ -103,7 +103,8 @@ impl DeliveryWorker {
 
     fn admit_origin(&mut self, transfer: PlannedTransfer) -> Option<(PlannedTransfer, u64)> {
         let observed_at_ms = time::unix_time_ms();
-        let concurrency = origin_concurrency(&self.ctx.network, &transfer.url);
+        let authority = ghostr_engine::RequestAuthority::from_url(&transfer.url)?;
+        let concurrency = origin_concurrency(&self.ctx.network, &authority);
         let query = origin_admission::query(&transfer, observed_at_ms, concurrency);
         let mode = origin_admission::mode(&transfer);
         let admission =
@@ -138,11 +139,13 @@ impl DeliveryWorker {
     }
 }
 
-fn origin_concurrency(network: &crate::debug::network::NetworkThrottle, url: &str) -> usize {
-    let host = ghostr_engine::host_stats::host_of(url);
+fn origin_concurrency(
+    network: &crate::debug::network::NetworkThrottle,
+    authority: &ghostr_engine::RequestAuthority,
+) -> usize {
     network
         .active_connections()
         .into_iter()
-        .find(|(active, _)| Some(active) == host.as_ref())
+        .find(|(active, _)| active == authority.as_str())
         .map_or(1, |(_, count)| count.saturating_add(1))
 }

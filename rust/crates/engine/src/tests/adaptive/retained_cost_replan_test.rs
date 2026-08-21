@@ -25,7 +25,7 @@ fn add_commitment(input: &mut PlayabilitySnapshot) {
     input.candidates[0].in_flight.push(InFlightAction::range(
         crate::ActionId::new(1),
         ByteRange::new(0, 250_000),
-        "origin",
+        "https://origin.example/media",
         12_000,
         true,
     ));

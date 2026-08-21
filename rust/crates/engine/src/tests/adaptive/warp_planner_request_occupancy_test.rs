@@ -3,17 +3,20 @@ use crate::adaptive::{
     WarpPlanner, WarpPlannerInput,
 };
 use crate::origin_model::OriginModel;
+use crate::tests::adaptive::warp_planner_test_assertions::{assert_origin_admission, set_source};
 use crate::tests::adaptive_support::snapshot;
-use crate::{ActionId, ByteRange, PostId};
+use crate::{ActionId, ByteRange, PostId, RequestAuthority};
 
 #[test]
 fn same_authority_paths_share_the_hard_request_budget() {
     let request = ResourceCost::new(0, 0, 0, 1);
     let mut budget = HardBudget::new(ResourceCost::new(0, 0, 0, 2), 1);
 
-    assert!(budget.consume(&request, "https://a.example/first"));
-    assert!(!budget.allows(&request, "https://a.example/second"));
-    assert!(budget.allows(&request, "https://b.example/second"));
+    let a = RequestAuthority::from_url("https://a.example/first").unwrap();
+    let b = RequestAuthority::from_url("https://b.example/second").unwrap();
+    assert!(budget.consume(&request, Some(&a)));
+    assert!(!budget.allows(&request, Some(&a)));
+    assert!(budget.allows(&request, Some(&b)));
 }
 
 #[test]
@@ -43,32 +46,4 @@ fn a_cancelling_body_holds_its_authority_until_terminal_ack() {
 
     assert_origin_admission(&decision, &PostId::new("p1"), false);
     assert_origin_admission(&decision, &PostId::new("p2"), true);
-}
-
-fn set_source(input: &mut crate::adaptive::PlayabilitySnapshot, index: usize, source: &str) {
-    input.candidates[index].origins[0].source = source.to_owned();
-}
-
-fn assert_origin_admission(
-    decision: &crate::adaptive::WarpPlanningDecision,
-    post: &PostId,
-    expected: bool,
-) {
-    let ids: Vec<_> = decision
-        .generated
-        .actions
-        .iter()
-        .filter(|action| &action.node.post == post && action.node.resources.requests > 0)
-        .map(|action| action.node.id)
-        .collect();
-    assert!(
-        !ids.is_empty(),
-        "fixture must generate network work for {post:?}"
-    );
-    assert_eq!(
-        ids.iter()
-            .any(|id| decision.admissible_action_ids.contains(id)),
-        expected,
-        "unexpected admission for {post:?}: {decision:#?}"
-    );
 }

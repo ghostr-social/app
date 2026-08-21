@@ -8,6 +8,7 @@ mod host_stats_support;
 mod media_timeline_assertions;
 mod media_timeline_support;
 mod rendition_support;
+mod request_authority_test;
 mod support;
 
 mod adaptive;

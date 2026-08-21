@@ -2,7 +2,7 @@ use crate::adaptive::{
     ActionKind, ActionNode, ActionValue, BeamConfig, HardBudget, NetworkTokenBucket, ResourceCost,
     ResourceObservation, SearchPruneReason, ShadowPriceController, WarpSearch,
 };
-use crate::{ByteRange, PostId};
+use crate::{ByteRange, PostId, RequestAuthority};
 
 fn node(id: u16, kind: ActionKind, score: i64, requires: &[u16]) -> ActionNode {
     ActionNode::new(
@@ -12,7 +12,7 @@ fn node(id: u16, kind: ActionKind, score: i64, requires: &[u16]) -> ActionNode {
         ActionValue::from_net_micros(score),
     )
     .with_resources(ResourceCost::new(64_000, 64_000, 0, 1))
-    .with_origin("origin")
+    .with_origin("https://origin.example/media")
     .requiring(requires)
 }
 
@@ -80,8 +80,9 @@ fn planner_latency_budget_uses_greedy_positive_fallback() {
 #[test]
 fn hard_tokens_reject_over_budget_work_and_shadow_prices_follow_pressure() {
     let mut budget = HardBudget::new(ResourceCost::new(100, 100, 10, 2), 1);
-    assert!(budget.consume(&ResourceCost::new(80, 50, 5, 1), "a"));
-    assert!(!budget.consume(&ResourceCost::new(30, 10, 1, 1), "a"));
+    let authority = RequestAuthority::from_url("https://a.example/media").unwrap();
+    assert!(budget.consume(&ResourceCost::new(80, 50, 5, 1), Some(&authority)));
+    assert!(!budget.consume(&ResourceCost::new(30, 10, 1, 1), Some(&authority)));
     let mut prices = ShadowPriceController::default();
     prices.observe(
         ResourceObservation::new(200, 80, 8, 4),

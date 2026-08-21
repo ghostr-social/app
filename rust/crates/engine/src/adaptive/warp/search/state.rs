@@ -35,7 +35,10 @@ impl State {
             return Err(SearchPruneReason::MutuallyExclusive);
         }
         let mut child = self.clone();
-        if !child.budget.consume(&node.resources, &node.origin) {
+        if !child
+            .budget
+            .consume(&node.resources, node.request_authority())
+        {
             return Err(SearchPruneReason::HardBudget);
         }
         child.selected.insert(node.id);

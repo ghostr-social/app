@@ -96,11 +96,11 @@ fn finish(
 }
 
 fn active_concurrency(network: &NetworkThrottle, url: &str) -> usize {
-    let host = ghostr_engine::host_stats::host_of(url);
+    let authority = ghostr_engine::RequestAuthority::from_url(url);
     network
         .active_connections()
         .into_iter()
-        .find(|(active, _)| Some(active) == host.as_ref())
+        .find(|(active, _)| authority.as_ref().is_some_and(|key| active == key.as_str()))
         .map_or(1, |(_, count)| count.max(1))
 }
 

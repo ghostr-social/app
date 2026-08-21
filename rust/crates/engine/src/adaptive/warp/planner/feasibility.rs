@@ -28,11 +28,11 @@ pub(super) fn apply(
     let nodes = frontier
         .iter()
         .filter(|node| admissible(&node.post, &semantic))
-        .filter(|node| budget.allows(&node.resources, &node.origin))
+        .filter(|node| budget.allows(&node.resources, node.request_authority()))
         .filter(|node| {
             reserve.degraded
                 || rescue_ids.contains(&node.id)
-                || ordinary.allows(&node.resources, &node.origin)
+                || ordinary.allows(&node.resources, node.request_authority())
         })
         .cloned()
         .collect();
@@ -169,7 +169,7 @@ fn ordinary_budget(budget: &HardBudget, reserve: ReserveConstraint) -> HardBudge
         0,
         reserve.reserved_request_slots,
     );
-    ordinary.consume(&reserved, "reserved-rescue");
+    let _ = ordinary.reserve(&reserved);
     ordinary
 }
 

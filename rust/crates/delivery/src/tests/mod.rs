@@ -131,6 +131,7 @@ mod qoe_transport_rescue_test;
 mod rendition_runtime_evidence_guard_test;
 mod rendition_runtime_selection_test;
 mod rendition_switch_state_reset_test;
+mod request_authority_queue_test;
 mod retained_post_capacity_test;
 mod retired_focus_override_test;
 mod retry_history_retention_test;

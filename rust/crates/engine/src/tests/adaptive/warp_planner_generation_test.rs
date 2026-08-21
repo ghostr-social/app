@@ -8,6 +8,9 @@ use crate::tests::adaptive_support::{healthy_origin, snapshot};
 use crate::tests::support::set_reliable_total_bytes;
 use crate::{ActionId, ByteRange};
 
+const ORIGIN: &str = "https://origin.example/media";
+const MIRROR: &str = "https://mirror.example/media";
+
 #[test]
 fn adaptive_dag_generates_every_paper_action_from_explicit_evidence() {
     let generated = generated_actions();
@@ -58,12 +61,12 @@ fn generated_actions() -> GeneratedActions {
         candidate.present = vec![ByteRange::new(0, 32_000)];
         candidate
             .origins
-            .push(healthy_origin("mirror", 7_000_000, 60));
+            .push(healthy_origin(MIRROR, 7_000_000, 60));
         candidate.post.clone()
     };
     let active_id = ActionId::new(17);
     let mut active =
-        InFlightAction::range(active_id, ByteRange::new(0, 64_000), "origin", 20_000, true);
+        InFlightAction::range(active_id, ByteRange::new(0, 64_000), ORIGIN, 20_000, true);
     active.request = RetrievalRequest::FetchRange {
         bytes: ByteRange::new(0, 64_000),
         promotion: Some(PromotionGrant {
@@ -78,7 +81,7 @@ fn generated_actions() -> GeneratedActions {
         .with_value(5_000, 1_000);
     let active = ActivePlannerContext::new(active_id)
         .with_continuation_advantage(-100_000)
-        .with_hedge(hedge, IdentityProof::VerifiedHash([3; 32]), "mirror");
+        .with_hedge(hedge, IdentityProof::VerifiedHash([3; 32]), MIRROR);
     let context = PlannerContext::explicitly_unavailable(&input)
         .with_capability(
             post,

@@ -9,7 +9,7 @@ fn speculative_storage_budget_reserves_bytes_already_in_flight() {
     input.candidates[3].in_flight.push(InFlightAction::range(
         crate::ActionId::new(1),
         ByteRange::new(0, 250_000),
-        "origin",
+        "https://origin.example/media",
         12_000,
         true,
     ));

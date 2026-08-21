@@ -1,6 +1,6 @@
 use crate::adaptive::{
     AdaptivePlayabilityPolicy, DecisionModelInput, DecisionPrivacy, DecisionRecord,
-    DecisionRecordInput, DecisionReplayStatus, ShadowPrices,
+    DecisionRecordInput, DecisionReplayStatus, PrunedReason, ShadowPrices,
 };
 use crate::tests::adaptive_support::snapshot;
 
@@ -48,6 +48,26 @@ fn a_private_decision_record_replays_the_exact_deterministic_plan() {
         elapsed_ms: 20,
     }));
     assert!(!record.resolve(crate::adaptive::DecisionOutcome::Superseded));
+}
+
+#[test]
+fn an_invalid_request_origin_is_recorded_as_unavailable() {
+    let mut state = snapshot(1, 20_000_000, 8_000, 18);
+    state.candidates[0].origins[0].source = "not a URL".into();
+    let plan = AdaptivePlayabilityPolicy.plan(&state);
+    let privacy = DecisionPrivacy::from_key([7; 32]);
+
+    let record = DecisionRecord::capture(DecisionRecordInput {
+        sequence: 1,
+        snapshot: &state,
+        allocation: &plan,
+        shadow_prices: ShadowPrices::default(),
+        models: &[],
+        privacy: &privacy,
+    });
+
+    assert!(record.admissible_candidates.is_empty(), "{record:#?}");
+    assert_eq!(record.pruned[0].reasons, [PrunedReason::NoAvailableOrigin]);
 }
 
 fn model(source: &str) -> DecisionModelInput {

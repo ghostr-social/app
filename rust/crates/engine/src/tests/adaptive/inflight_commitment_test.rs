@@ -9,7 +9,7 @@ fn a_useful_live_commitment_survives_small_network_replanning_without_duplicatio
     input.candidates[3].in_flight.push(InFlightAction::range(
         crate::ActionId::new(1),
         ByteRange::new(0, 250_000),
-        "origin",
+        "https://origin.example/media",
         12_000,
         true,
     ));

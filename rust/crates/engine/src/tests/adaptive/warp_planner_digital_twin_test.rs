@@ -13,6 +13,7 @@ fn action(id: u16, completion: CompletionTimes) -> ActionNode {
     )
     .with_resources(ResourceCost::new(64_000, 64_000, 0, 1))
     .with_forecast(ActionForecast::new(completion, 9_500, 2_000))
+    .with_origin("https://origin.example/media")
 }
 
 #[test]

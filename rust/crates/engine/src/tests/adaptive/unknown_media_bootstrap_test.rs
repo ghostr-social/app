@@ -53,7 +53,11 @@ fn candidate(
             independent_object_sources: Default::default(),
             recently_evicted: Vec::new(),
             in_flight: Vec::new(),
-            origins: vec![healthy_origin("origin", 700_000, 450)],
+            origins: vec![healthy_origin(
+                &format!("https://{post}.example/video.mp4"),
+                700_000,
+                450,
+            )],
         },
     )
     .expect("unknown media remains a bootstrap candidate")

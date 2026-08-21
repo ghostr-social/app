@@ -18,7 +18,7 @@ fn present_startup_bytes_survive_while_the_rest_of_the_closure_is_in_flight() {
     input.candidates[1].in_flight = vec![InFlightAction::range(
         crate::ActionId::new(1),
         arriving,
-        "origin",
+        "https://origin.example/media",
         20_000,
         true,
     )];

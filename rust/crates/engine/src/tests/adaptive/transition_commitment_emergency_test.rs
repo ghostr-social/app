@@ -63,7 +63,7 @@ fn active(end: u64) -> InFlightAction {
     InFlightAction::range(
         crate::ActionId::new(end),
         ByteRange::new(0, end),
-        "origin",
+        "https://origin.example/media",
         12_000,
         true,
     )

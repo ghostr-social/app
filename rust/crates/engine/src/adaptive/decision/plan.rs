@@ -1,3 +1,4 @@
+use super::super::sources::retrievable;
 use super::privacy::DecisionPrivacy;
 use super::types::{DecisionAction, PrunedCandidate, PrunedReason};
 use crate::adaptive::{AllocationPlan, CandidateSnapshot, NextReserveEvidence, RetrievalRequest};
@@ -34,7 +35,7 @@ pub(super) fn admissible(
         .candidates
         .iter()
         .filter(|item| item.retrieval_eligible)
-        .filter(|item| item.origins.iter().any(|origin| origin.available))
+        .filter(|item| item.origins.iter().any(retrievable))
         .take(RECORD_LIMIT)
         .map(|item| privacy.post(item.post.as_str()))
         .collect()
@@ -118,7 +119,7 @@ fn prune_reasons(
     if !candidate.retrieval_eligible {
         reasons.push(PrunedReason::RetrievalIneligible);
     }
-    if !candidate.origins.iter().any(|origin| origin.available) {
+    if !candidate.origins.iter().any(retrievable) {
         reasons.push(PrunedReason::NoAvailableOrigin);
     }
     if candidate.finalized || startup_present(candidate) {

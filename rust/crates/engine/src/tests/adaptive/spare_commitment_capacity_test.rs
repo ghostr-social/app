@@ -24,7 +24,7 @@ fn paid_future_work_uses_capacity_left_beside_one_current_lane() {
     input.candidates[0].in_flight.push(InFlightAction::range(
         crate::ActionId::new(1),
         ByteRange::new(0, 3_750_000),
-        "origin",
+        "https://origin.example/media",
         12_000,
         true,
     ));
@@ -40,7 +40,7 @@ fn active() -> InFlightAction {
     InFlightAction::range(
         crate::ActionId::new(1),
         ByteRange::new(0, 250_000),
-        "origin",
+        "https://origin.example/media",
         12_000,
         true,
     )

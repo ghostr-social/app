@@ -8,7 +8,7 @@ fn current_useful_inflight_work_survives_an_emergency_replan() {
     input.candidates[0].in_flight.push(InFlightAction::range(
         crate::ActionId::new(1),
         ByteRange::new(0, 250_000),
-        "origin",
+        "https://origin.example/media",
         12_000,
         true,
     ));
@@ -27,7 +27,7 @@ fn useful_current_work_survives_after_its_minimum_commitment() {
     input.candidates[0].in_flight.push(InFlightAction::range(
         crate::ActionId::new(2),
         ByteRange::new(0, 250_000),
-        "origin",
+        "https://origin.example/media",
         input.observed_at_ms,
         true,
     ));

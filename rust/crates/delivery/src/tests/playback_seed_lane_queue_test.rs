@@ -21,7 +21,7 @@ fn playback_frontier_opens_one_protected_startup_lane() {
             .pop_for_hosts(&HashSet::new(), slots(0, 1))
             .expect("playing");
         let protected = queue
-            .pop_for_hosts(&active_hosts("shared.example"), slots(1, 1))
+            .pop_for_hosts(&active_hosts("https://shared.example"), slots(1, 1))
             .expect("seed");
         assert_eq!(
             transfer_posts(&[playing, protected]),
@@ -42,7 +42,7 @@ fn seed_only_replan_restores_missing_playback_before_another_seed() {
     );
 
     let selected = queue
-        .pop_for_hosts(&active_hosts("shared.example"), slots(0, 1))
+        .pop_for_hosts(&active_hosts("https://shared.example"), slots(0, 1))
         .expect("missing playback");
 
     assert_eq!(selected.request.chunk.post.as_str(), "playing");
@@ -61,7 +61,7 @@ fn a_missing_playback_slot_is_not_loaned_to_another_transition() {
     let _cooling = queue.pop_for_hosts(&HashSet::new(), slots(0, 1));
 
     assert!(queue
-        .pop_for_hosts(&active_hosts("shared.example"), slots(0, 1))
+        .pop_for_hosts(&active_hosts("https://shared.example"), slots(0, 1))
         .is_none());
 }
 

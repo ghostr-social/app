@@ -2,7 +2,7 @@
 //! Defaults are inert, so production delivery is unchanged until a
 //! developer explicitly enables simulation.
 
-use ghostr_engine::host_stats::host_of;
+use ghostr_engine::RequestAuthority;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
@@ -11,6 +11,8 @@ use tokio::sync::Notify;
 
 mod bandwidth;
 use bandwidth::SharedBandwidth;
+
+const INVALID_AUTHORITY: &str = "invalid-request-authority";
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct NetworkProfile {
@@ -86,7 +88,7 @@ impl NetworkThrottle {
     }
 
     pub async fn acquire(&self, url: &str) -> ConnectionPermit {
-        let host = host_of(url).unwrap_or_else(|| url.to_owned());
+        let host = connection_key(url);
         loop {
             let changed = self.inner.connections_changed.notified();
             tokio::pin!(changed);
@@ -143,6 +145,12 @@ impl NetworkThrottle {
         drop(active);
         self.inner.connections_changed.notify_waiters();
     }
+}
+
+fn connection_key(url: &str) -> String {
+    RequestAuthority::from_url(url)
+        .map(|authority| authority.as_str().to_owned())
+        .unwrap_or_else(|| INVALID_AUTHORITY.to_owned())
 }
 
 pub struct ConnectionPermit {

@@ -15,9 +15,12 @@ pub mod origin_model;
 pub mod playback;
 pub mod rendition;
 pub mod representation;
+mod request_authority;
 pub mod scheduling;
 pub mod video_rendition;
 pub mod watch_model;
+
+pub use request_authority::RequestAuthority;
 
 #[cfg(test)]
 mod tests;

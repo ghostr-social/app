@@ -1,5 +1,7 @@
 use sha2::{Digest, Sha256};
 
+use crate::RequestAuthority;
+
 #[derive(Clone)]
 pub struct DecisionPrivacy {
     key: [u8; 32],
@@ -15,7 +17,12 @@ impl DecisionPrivacy {
     }
 
     pub(super) fn source(&self, value: &str) -> String {
-        self.digest(b"source", value)
+        let Some(authority) = RequestAuthority::from_url(value) else {
+            return self.digest(b"invalid-source", value);
+        };
+        let authority = self.digest(b"authority", authority.as_str());
+        let source = self.digest(b"source", value);
+        format!("https://{authority}.invalid/{source}")
     }
 
     fn digest(&self, domain: &[u8], value: &str) -> String {
