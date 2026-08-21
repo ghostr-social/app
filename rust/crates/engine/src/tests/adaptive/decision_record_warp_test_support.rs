@@ -1,12 +1,16 @@
 use crate::adaptive::{
-    ActionForecast, ActionKind, ActionNode, ActionValue, Allocation, AllocationReason,
-    CandidateUtility, DecisionPrivacy, DecisionRecord, GeneratedAction, GeneratedActions,
-    PlannerCommand, PlayabilitySnapshot, ReserveConstraint, ResourceCost, ResourcePrices,
-    RetrievalRequest, SearchDecision, ShadowPrices, TwinEvaluation, WarpDecisionRecordInput,
-    WarpPlanningDecision,
+    ActionForecast, ActionKind, ActionNode, ActionValue, DecisionPrivacy, DecisionRecord,
+    GeneratedAction, GeneratedActions, PlannerCommand, PlayabilitySnapshot, ReserveConstraint,
+    ResourceCost, ResourcePrices, RetainedSearchPlan, SearchDecision, ShadowPrices, TwinEvaluation,
+    WarpDecisionRecordInput, WarpPlanningDecision,
 };
 use crate::tests::adaptive_support::snapshot;
 use crate::PostId;
+
+mod action;
+mod allocation;
+pub(super) use action::add_generated_action;
+pub(super) use allocation::allocation;
 
 pub(super) fn decision(
     post: &str,
@@ -28,9 +32,21 @@ pub(super) fn decision(
             ladders: Vec::new(),
             active_controls: Vec::new(),
         },
-        selected: Some(selected),
+        selected: Some(selected.clone()),
         additional_request_slot_demanded: false,
-        search: SearchDecision::default(),
+        search: SearchDecision {
+            action: Some(selected.node.clone()),
+            chosen_plan: Some(RetainedSearchPlan {
+                action_ids: vec![7],
+                score_micros: 7_000,
+            }),
+            committed_actions: 1,
+            retained_plans: vec![RetainedSearchPlan {
+                action_ids: vec![7],
+                score_micros: 7_000,
+            }],
+            ..SearchDecision::default()
+        },
         evaluation: Some(TwinEvaluation {
             expected_score_micros: 7_000,
             expected_visible_delay_ms: 10,
@@ -52,6 +68,7 @@ pub(super) fn decision(
             cpu_micros: 3,
             request_micros: 4,
         },
+        common_random_seed: 99,
     }
 }
 
@@ -72,22 +89,4 @@ pub(super) fn record_for(
         models: &[],
         privacy: &DecisionPrivacy::from_key([5; 32]),
     })
-}
-
-pub(super) fn allocation(source: &str, request: RetrievalRequest) -> Allocation {
-    Allocation {
-        post: PostId::new("secret-post"),
-        request,
-        source: source.into(),
-        expected_playable_gain_ms: 1_000,
-        utility: CandidateUtility {
-            view_probability: 1.0,
-            additional_playable_ms: 1_000,
-            expected_delivery_ms: 10,
-            score: 1.0,
-        },
-        authority: crate::adaptive::PreemptionAuthority::PlaybackCritical,
-        commitment_until_ms: 1_000,
-        reason: AllocationReason::MediaBootstrap,
-    }
 }

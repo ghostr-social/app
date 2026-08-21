@@ -10,6 +10,7 @@ use crate::{ActionId, ByteRange};
 fn one_more_slot_is_demanded_only_when_warp_would_use_it() {
     let demanded = decision(Scenario::viable());
     assert!(demanded.selected.is_none(), "demand must not dispatch work");
+    assert_ne!(demanded.common_random_seed, 0);
     assert!(!demanded.reserve.degraded, "the viable path has a reserve");
     assert!(demanded.additional_request_slot_demanded);
 

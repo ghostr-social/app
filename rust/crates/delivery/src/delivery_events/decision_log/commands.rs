@@ -1,4 +1,6 @@
-use super::{DecisionResolution, DecisionToken, LegacyDecisionPublication};
+use super::{
+    DecisionResolution, DecisionToken, LegacyDecisionPublication, WarpDecisionPublication,
+};
 use crate::delivery_events::CommandReceiver;
 use ghostr_engine::adaptive::DecisionOutcome;
 use ghostr_engine::ActionId;
@@ -8,7 +10,14 @@ impl CommandReceiver {
         &self,
         publication: LegacyDecisionPublication<'_>,
     ) -> Option<DecisionToken> {
-        self.decisions.publish(publication)
+        self.decisions.publish(publication.into())
+    }
+
+    pub(crate) fn publish_warp_decision(
+        &self,
+        publication: WarpDecisionPublication<'_>,
+    ) -> Option<DecisionToken> {
+        self.decisions.publish(publication.into())
     }
 
     pub(crate) fn bind_decision(

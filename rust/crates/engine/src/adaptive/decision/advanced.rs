@@ -3,6 +3,7 @@
 mod capture;
 mod command;
 mod kind;
+mod search;
 
 pub use command::{
     RecordedAllocationReason, RecordedCandidateUtility, RecordedPreemptionAuthority,
@@ -16,11 +17,55 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RecordedWarpDecision {
     pub selected: Option<RecordedWarpAction>,
-    pub admissible_action_ids: Vec<u16>,
+    pub admissible_actions: Vec<RecordedWarpAction>,
+    pub admissible_actions_total: u64,
+    pub unattributed_pre_search_pruned_actions: Vec<RecordedWarpAction>,
+    pub unattributed_pre_search_pruned_actions_total: u64,
+    pub search: RecordedWarpSearch,
     pub prices: RecordedResourcePrices,
     pub evaluation: Option<RecordedTwinEvaluation>,
     pub reserve: RecordedWarpReserve,
     pub additional_request_slot_demanded: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct RecordedWarpSearch {
+    pub committed_actions: u8,
+    pub used_greedy_fallback: bool,
+    pub chosen_plan: Option<RecordedRetainedSearchPlan>,
+    pub retained_plans: Vec<RecordedRetainedSearchPlan>,
+    pub retained_plans_total: u64,
+    /// Search already keeps only a bounded audit sample; these are those recorded prunes.
+    pub recorded_pruned_plans: Vec<RecordedPrunedSearchPlan>,
+    pub pruned_plan_events_total: u64,
+    pub pruned_plan_sample_truncated: bool,
+    pub recorder_truncated_pruned_plans: bool,
+    pub common_random_seed: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct RecordedRetainedSearchPlan {
+    pub actions: Vec<RecordedWarpAction>,
+    pub actions_total: u64,
+    pub score_micros: i64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct RecordedPrunedSearchPlan {
+    pub actions: Vec<RecordedWarpAction>,
+    pub actions_total: u64,
+    pub reason: RecordedSearchPruneReason,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RecordedSearchPruneReason {
+    HardBudget,
+    MutuallyExclusive,
+    BeamWidth,
+    ExpansionLimit,
+    PlannerLatency,
+    ReserveUnderflow,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

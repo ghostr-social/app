@@ -1,4 +1,4 @@
-use crate::delivery_events::{DecisionToken, LegacyDecisionPublication};
+use crate::delivery_events::{DecisionToken, LegacyDecisionPublication, WarpDecisionPublication};
 use crate::evaluation::{BudgetMetricEvent, ReadinessMetricEvent, TransferMetricEvent};
 use crate::manager::plan::PlannedWork;
 use crate::manager::DeliveryWorker;
@@ -10,12 +10,7 @@ impl DeliveryWorker {
         observed_at_ms: u64,
     ) -> Option<DecisionToken> {
         let snapshot = planned.snapshot.as_ref()?;
-        let decision = self.commands.publish_decision(LegacyDecisionPublication {
-            snapshot,
-            plan: &planned.plan,
-            prices: planned.shadow_prices,
-            models: &planned.decision_models,
-        });
+        let decision = self.publish_planning_decision(planned, snapshot);
         let evaluation = self.commands.evaluation();
         evaluation.transfer(TransferMetricEvent {
             cpu_micros: planned.planner_cpu_micros,
@@ -24,6 +19,31 @@ impl DeliveryWorker {
         evaluation.budget(budget_event(planned, snapshot));
         evaluation.readiness(readiness_event(planned, observed_at_ms));
         decision
+    }
+}
+
+impl DeliveryWorker {
+    fn publish_planning_decision(
+        &self,
+        planned: &PlannedWork,
+        snapshot: &ghostr_engine::adaptive::PlayabilitySnapshot,
+    ) -> Option<DecisionToken> {
+        match &planned.warp {
+            Some(warp) => self
+                .commands
+                .publish_warp_decision(WarpDecisionPublication {
+                    snapshot,
+                    decision: warp,
+                    legacy_prices: planned.shadow_prices,
+                    models: &planned.decision_models,
+                }),
+            None => self.commands.publish_decision(LegacyDecisionPublication {
+                snapshot,
+                plan: &planned.plan,
+                prices: planned.shadow_prices,
+                models: &planned.decision_models,
+            }),
+        }
     }
 }
 

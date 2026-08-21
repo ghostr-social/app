@@ -1,5 +1,6 @@
 mod capacity_demand;
 mod feasibility;
+mod least_risk;
 mod simulation;
 mod types;
 
@@ -50,6 +51,7 @@ impl WarpPlanner {
         let additional_request_slot_demanded = search.action.is_none()
             && self.additional_request_slot_demanded(&input, &frontier.retained, network_bytes);
         let selected = selected_action(&generated.actions, &search);
+        let common_random_seed = simulation::common_seed(&input, self.price_epoch);
         let evaluation = selected.as_ref().map(|item| {
             self.twin.evaluate(
                 &simulation::state(&input),
@@ -67,6 +69,7 @@ impl WarpPlanner {
             semantic: feasible.semantic,
             prices: self.prices.prices(),
             additional_request_slot_demanded,
+            common_random_seed,
             generated,
         }
     }
@@ -118,7 +121,7 @@ impl WarpPlanner {
         feasible: &feasibility::FeasibleActions,
     ) -> super::SearchDecision {
         if feasible.reserve.degraded {
-            return least_risk(&feasible.nodes);
+            return least_risk::choose(&feasible.nodes);
         }
         self.search_priced(input, feasible)
     }
@@ -142,39 +145,6 @@ impl WarpPlanner {
 impl Default for WarpPlanner {
     fn default() -> Self {
         Self::new(WarpPlannerConfig::default())
-    }
-}
-
-fn least_risk(nodes: &[super::ActionNode]) -> super::SearchDecision {
-    let action = nodes
-        .iter()
-        .min_by_key(|node| {
-            (
-                node.forecast.completion.p99_ms,
-                std::cmp::Reverse(node.forecast.success_bps),
-                node.id,
-            )
-        })
-        .cloned();
-    let retained_plans = action
-        .as_ref()
-        .map(|node| super::RetainedSearchPlan {
-            action_ids: vec![node.id],
-            score_micros: node
-                .value
-                .total(node.resources, super::ResourcePrices::default()),
-        })
-        .into_iter()
-        .collect();
-    super::SearchDecision {
-        committed_actions: u8::from(action.is_some()),
-        action,
-        used_greedy_fallback: true,
-        retained_plans,
-        pruned_plans: vec![super::PrunedSearchPlan {
-            action_ids: Vec::new(),
-            reason: super::SearchPruneReason::ReserveUnderflow,
-        }],
     }
 }
 

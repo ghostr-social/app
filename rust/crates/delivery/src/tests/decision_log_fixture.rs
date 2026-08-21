@@ -6,6 +6,10 @@ use crate::manager::plan::PlannedWork;
 use crate::tests::adaptive_plan_support::plan;
 use ghostr_engine::adaptive::{AllocationPlan, DecisionOutcome, StorageSnapshot};
 
+#[cfg(test)]
+#[path = "decision_history_warp_noop_retention_test.rs"]
+mod warp_noop_retention_test;
+
 pub(crate) fn work() -> PlannedWork {
     plan(20_000, 4_000_000, StorageSnapshot::new(2_000_000_000, 0))
 }

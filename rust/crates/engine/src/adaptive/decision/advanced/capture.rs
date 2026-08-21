@@ -1,7 +1,7 @@
 use super::super::privacy::DecisionPrivacy;
 use super::RecordedWarpAction;
 use super::{command, kind, RecordedResourceCost, RecordedResourcePrices, RecordedTwinEvaluation};
-use super::{RecordedWarpDecision, RecordedWarpReserve};
+use super::{search, RecordedWarpDecision, RecordedWarpReserve};
 use crate::adaptive::{DecisionAction, WarpPlanningDecision};
 
 const RECORD_LIMIT: usize = 64;
@@ -23,14 +23,22 @@ pub(in crate::adaptive::decision) fn capture(
         .map(|item| action(item, value.prices, privacy));
     let chosen_action = selected.as_ref().map(project);
     let evaluation = value.evaluation.map(RecordedTwinEvaluation::from);
-    let random_seed = evaluation.map_or(0, |item| item.common_random_seed);
+    let random_seed = value.common_random_seed;
     WarpCapture {
         admissible_candidates: admissible(value, privacy),
         chosen_action,
         random_seed,
         decision: RecordedWarpDecision {
             selected,
-            admissible_action_ids: value.admissible_action_ids.clone(),
+            admissible_actions: recorded_actions(value, &value.admissible_action_ids, privacy),
+            admissible_actions_total: value.admissible_action_ids.len() as u64,
+            unattributed_pre_search_pruned_actions: recorded_actions(
+                value,
+                &value.pruned_action_ids,
+                privacy,
+            ),
+            unattributed_pre_search_pruned_actions_total: value.pruned_action_ids.len() as u64,
+            search: search::capture(value, privacy),
             prices: prices(value.prices),
             evaluation,
             reserve: RecordedWarpReserve::from(value.reserve),
@@ -39,7 +47,7 @@ pub(in crate::adaptive::decision) fn capture(
     }
 }
 
-fn action(
+pub(super) fn action(
     value: &crate::adaptive::GeneratedAction,
     prices: crate::adaptive::ResourcePrices,
     privacy: &DecisionPrivacy,
@@ -55,6 +63,27 @@ fn action(
         ready_playback_ms: value.node.forecast.ready_playback_ms,
         static_score_micros: value.node.value.total(resources, prices),
     }
+}
+
+fn recorded_actions(
+    value: &WarpPlanningDecision,
+    ids: &[u16],
+    privacy: &DecisionPrivacy,
+) -> Vec<RecordedWarpAction> {
+    ids.iter()
+        .take(RECORD_LIMIT)
+        .map(|id| generated_action(value, *id))
+        .map(|item| action(item, value.prices, privacy))
+        .collect()
+}
+
+fn generated_action(value: &WarpPlanningDecision, id: u16) -> &crate::adaptive::GeneratedAction {
+    value
+        .generated
+        .actions
+        .iter()
+        .find(|item| item.node.id == id)
+        .expect("recorded WARP action must be generated")
 }
 
 fn admissible(value: &WarpPlanningDecision, privacy: &DecisionPrivacy) -> Vec<String> {

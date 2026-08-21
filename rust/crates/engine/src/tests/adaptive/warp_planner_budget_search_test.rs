@@ -4,6 +4,9 @@ use crate::adaptive::{
 };
 use crate::{ByteRange, PostId, RequestAuthority};
 
+#[path = "warp_search_audit_test.rs"]
+mod search_audit_test;
+
 fn node(id: u16, kind: ActionKind, score: i64, requires: &[u16]) -> ActionNode {
     ActionNode::new(
         id,
@@ -50,10 +53,7 @@ fn beam_search_values_probe_then_fetch_and_commits_only_its_first_action() {
     assert_eq!(selected.action, Some(prefix));
     assert_eq!(selected.committed_actions, 1);
     assert!(!selected.used_greedy_fallback);
-    assert!(selected
-        .retained_plans
-        .iter()
-        .any(|plan| plan.action_ids == vec![1, 2]));
+    assert_eq!(selected.chosen_plan.unwrap().action_ids, vec![1, 2]);
     assert!(selected
         .pruned_plans
         .iter()

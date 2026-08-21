@@ -1,11 +1,9 @@
 mod commands;
 mod lifecycle;
+mod publication;
 mod retention;
 
-use ghostr_engine::adaptive::{
-    AllocationPlan, DecisionAction, DecisionModelInput, DecisionOutcome, DecisionPrivacy,
-    DecisionRecord, DecisionRecordInput, PlayabilitySnapshot, ShadowPrices,
-};
+use ghostr_engine::adaptive::{DecisionAction, DecisionOutcome, DecisionPrivacy, DecisionRecord};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex, MutexGuard, Weak};
@@ -14,15 +12,12 @@ const HISTORY_CAPACITY: usize = 64;
 
 pub(crate) struct DecisionResolution {
     pub action: DecisionAction,
+    pub warp_action: Option<ghostr_engine::adaptive::RecordedWarpAction>,
     pub elapsed_ms: u64,
 }
 
-pub(crate) struct LegacyDecisionPublication<'a> {
-    pub snapshot: &'a PlayabilitySnapshot,
-    pub plan: &'a AllocationPlan,
-    pub prices: ShadowPrices,
-    pub models: &'a [DecisionModelInput],
-}
+use publication::DecisionPublication;
+pub(crate) use publication::{LegacyDecisionPublication, WarpDecisionPublication};
 
 /// Exact correlation for one decision published by this log instance.
 #[must_use = "a selected decision must be bound or resolved"]
@@ -78,35 +73,27 @@ impl std::fmt::Debug for DecisionLog {
 }
 
 impl DecisionLog {
-    fn publish(&self, publication: LegacyDecisionPublication<'_>) -> Option<DecisionToken> {
+    fn publish(&self, publication: DecisionPublication<'_>) -> Option<DecisionToken> {
         let mut store = self.lock();
         if let Some(sequence) = retention::supersede_unbound(&mut store.records) {
             store.completed.push_back(sequence);
         }
-        store.next_sequence = store
-            .next_sequence
-            .checked_add(1)
-            .expect("decision sequence exhausted");
-        let sequence = store.next_sequence;
-        let mut record = DecisionRecord::capture(DecisionRecordInput {
-            sequence,
-            snapshot: publication.snapshot,
-            allocation: publication.plan,
-            shadow_prices: publication.prices,
-            models: publication.models,
-            privacy: &self.privacy,
-        });
-        let completed = record.chosen_action.is_none()
+        let sequence = next_sequence(&mut store);
+        let mut record = publication.capture(sequence, &self.privacy);
+        let legacy_noop = record.warp_decision.is_none()
+            && record.chosen_action.is_none()
             && record.resolve(DecisionOutcome::Succeeded {
                 bytes: 0,
                 elapsed_ms: 0,
             });
+        let pending = record.eventual_outcome == DecisionOutcome::Pending;
         store.records.push_back(record);
-        if completed {
+        if !pending {
             store.completed.push_back(sequence);
         }
         trim(&mut store);
-        (!completed).then(|| DecisionToken::new(sequence, &self.store))
+        debug_assert!(!legacy_noop || !pending);
+        pending.then(|| DecisionToken::new(sequence, &self.store))
     }
 
     pub(super) fn snapshot(&self) -> DecisionHistorySnapshot {
@@ -120,6 +107,14 @@ impl DecisionLog {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
+}
+
+fn next_sequence(store: &mut DecisionStore) -> u64 {
+    store.next_sequence = store
+        .next_sequence
+        .checked_add(1)
+        .expect("decision sequence exhausted");
+    store.next_sequence
 }
 
 fn trim(store: &mut DecisionStore) {

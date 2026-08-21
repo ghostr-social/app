@@ -7,6 +7,7 @@ use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::media::{hit_log, hits, media_body, serve_recording};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::{start_harness_at, temp_directory};
+use ghostr_engine::adaptive::RecordedWarpCommand;
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::origin_model::{
     MediaClass, OriginContext, OriginObservation, OriginQuery, RequestMethod,
@@ -52,7 +53,22 @@ async fn reliable_tiny_object_is_fetched_directly_without_head() {
         requests.iter().all(|hit| !hit.starts_with("tiny:HEAD:")),
         "direct acquisition must not be preceded by HEAD: {requests:?}"
     );
-    delivery_fixture::decision::wait_for_completed_bytes(&harness.handle, body.len() as u64).await;
+    let decision =
+        delivery_fixture::decision::wait_for_completed_bytes(&harness.handle, body.len() as u64)
+            .await;
+    assert_eq!(decision.schema_version, 2);
+    assert!(matches!(
+        decision.warp_decision.unwrap().selected.unwrap().command,
+        RecordedWarpCommand::Transfer { .. }
+    ));
+    assert_eq!(
+        harness
+            .handle
+            .evaluation_snapshot()
+            .efficiency
+            .full_downloads_never_useful,
+        1
+    );
     std::fs::remove_dir_all(&harness.root).ok();
 }
 

@@ -26,25 +26,34 @@ pub struct PrunedSearchPlan {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct SearchDecision {
     pub action: Option<ActionNode>,
+    pub chosen_plan: Option<RetainedSearchPlan>,
     pub committed_actions: u8,
     pub used_greedy_fallback: bool,
     pub retained_plans: Vec<RetainedSearchPlan>,
     pub pruned_plans: Vec<PrunedSearchPlan>,
+    pub pruned_plan_events_total: u64,
+    pub pruned_plan_sample_truncated: bool,
 }
 
-pub(super) fn decision(
-    best: Option<State>,
-    retained: Vec<State>,
-    pruned: Vec<PrunedSearchPlan>,
-    fallback: bool,
-) -> SearchDecision {
+pub(super) struct SearchAudit {
+    pub retained: Vec<State>,
+    pub pruned: Vec<PrunedSearchPlan>,
+    pub prune_events_total: u64,
+    pub pruned_sample_truncated: bool,
+}
+
+pub(super) fn decision(best: Option<State>, audit: SearchAudit, fallback: bool) -> SearchDecision {
+    let chosen_plan = best.clone().map(retained_plan);
     let action = best.and_then(|value| value.sequence.into_iter().next());
     SearchDecision {
         committed_actions: u8::from(action.is_some()),
         action,
+        chosen_plan,
         used_greedy_fallback: fallback,
-        retained_plans: retained.into_iter().map(retained_plan).collect(),
-        pruned_plans: pruned,
+        retained_plans: audit.retained.into_iter().map(retained_plan).collect(),
+        pruned_plans: audit.pruned,
+        pruned_plan_events_total: audit.prune_events_total,
+        pruned_plan_sample_truncated: audit.pruned_sample_truncated,
     }
 }
 

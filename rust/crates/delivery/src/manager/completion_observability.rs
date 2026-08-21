@@ -1,5 +1,6 @@
 use crate::delivery_events::DecisionResolution;
 use crate::evaluation::{AdaptationMetricEvent, IntegrityMetricEvent, TransferMetricEvent};
+use crate::manager::completion_decision;
 use crate::manager::failure::classify;
 use crate::manager::inflight::CompletionStatus;
 use crate::manager::transfers::ChunkDone;
@@ -122,14 +123,14 @@ fn transfer_event(
         post: Some(done.attempt.chunk.post.clone()),
         total_bytes: bytes,
         aborted_bytes: if cancelled { bytes } else { 0 },
-        duplicate_hedge_bytes: if resolution.is_some_and(|item| item.action.request == "hedge") {
+        duplicate_hedge_bytes: if resolution.is_some_and(completion_decision::is_hedge) {
             bytes
         } else {
             0
         },
         completable_probe_bytes: completable_probe_bytes(done, resolution, bytes),
         full_download_started: request_started
-            && resolution.is_some_and(|item| item.action.request == "whole"),
+            && resolution.is_some_and(completion_decision::is_whole),
         request_started,
         promotion_avoided_restart: result.is_some_and(|item| item.promoted),
         storage_byte_ms: byte_millis(bytes, resolution.map_or(0, |item| item.elapsed_ms)),
@@ -143,13 +144,10 @@ fn completable_probe_bytes(
     bytes: u64,
 ) -> u64 {
     const LIMIT: u64 = 1_048_576;
-    let Some(action) = resolution.map(|item| &item.action) else {
+    let Some(resolution) = resolution else {
         return 0;
     };
-    let probe = matches!(
-        action.reason.as_str(),
-        "MediaBootstrap" | "MediaLayoutDiscovery"
-    );
+    let probe = completion_decision::is_probe(resolution);
     let small = done
         .outcome
         .as_ref()

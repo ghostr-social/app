@@ -43,12 +43,14 @@ impl DecisionLog {
         let binding = store.actions.get(&action).copied()?;
         let elapsed_ms = observed_at_ms.saturating_sub(binding.started_at_ms);
         let outcome = with_elapsed(outcome, elapsed_ms);
-        let decision = retention::resolve(&mut store.records, binding.sequence, outcome)?;
+        let (decision_action, warp_action) =
+            retention::resolve(&mut store.records, binding.sequence, outcome)?;
         store.actions.remove(&action);
         store.completed.push_back(binding.sequence);
         trim(&mut store);
         Some(DecisionResolution {
-            action: decision,
+            action: decision_action,
+            warp_action,
             elapsed_ms,
         })
     }

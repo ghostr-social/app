@@ -11,6 +11,7 @@ pub(crate) mod admission;
 mod cache;
 mod capability;
 mod completion;
+mod completion_decision;
 mod completion_observability;
 pub(crate) mod concurrency;
 pub(crate) mod cooldown_timers;

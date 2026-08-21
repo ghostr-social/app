@@ -33,10 +33,12 @@ pub use decision::{
     DecisionAction, DecisionModelInput, DecisionOutcome, DecisionPrivacy, DecisionRecord,
     DecisionRecordInput, DecisionReplayStatus, ModelQuantiles, PrunedCandidate, PrunedReason,
     RecordedAllocationReason, RecordedCandidateUtility, RecordedPreemptionAuthority,
-    RecordedPromotionGrant, RecordedResourceCost, RecordedResourcePrices, RecordedRetrievalRequest,
+    RecordedPromotionGrant, RecordedPrunedSearchPlan, RecordedResourceCost, RecordedResourcePrices,
+    RecordedRetainedSearchPlan, RecordedRetrievalRequest, RecordedSearchPruneReason,
     RecordedTransfer, RecordedTransformKind, RecordedTwinEvaluation, RecordedWarpAction,
     RecordedWarpActionKind, RecordedWarpCommand, RecordedWarpDecision, RecordedWarpReserve,
-    RecordedWholeBodyContract, RecordedWholeFetchReason, ShadowPrices, WarpDecisionRecordInput,
+    RecordedWarpSearch, RecordedWholeBodyContract, RecordedWholeFetchReason, ShadowPrices,
+    WarpDecisionRecordInput,
 };
 pub use navigation::{FeedOffset, NavigationDirection, NavigationHistory};
 pub use plan::{

@@ -1,5 +1,5 @@
 use super::types::WarpPlannerInput;
-use crate::adaptive::{TwinEpochs, TwinState};
+use crate::adaptive::{DigitalTwin, TwinEpochs, TwinState};
 
 pub(super) fn state(input: &WarpPlannerInput<'_>) -> TwinState {
     TwinState::new(
@@ -19,4 +19,8 @@ pub(super) fn epochs(input: &WarpPlannerInput<'_>, price_epoch: u64) -> TwinEpoc
         input.context.epochs.model,
         input.context.epochs.budget.saturating_add(price_epoch),
     )
+}
+
+pub(super) fn common_seed(input: &WarpPlannerInput<'_>, price_epoch: u64) -> u64 {
+    DigitalTwin::common_random_seed(&state(input), epochs(input, price_epoch))
 }

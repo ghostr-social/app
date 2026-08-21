@@ -1,3 +1,4 @@
+mod run;
 mod simulation;
 mod summary;
 mod types;

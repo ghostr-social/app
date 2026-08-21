@@ -1,7 +1,9 @@
 //! Completion-ordered retention for bounded, eventually observable decisions.
 
 use super::HISTORY_CAPACITY;
-use ghostr_engine::adaptive::{DecisionAction, DecisionOutcome, DecisionRecord};
+use ghostr_engine::adaptive::{
+    DecisionAction, DecisionOutcome, DecisionRecord, RecordedWarpAction,
+};
 use std::collections::VecDeque;
 
 pub(super) fn trim(records: &mut VecDeque<DecisionRecord>, completed: &mut VecDeque<u64>) {
@@ -29,12 +31,16 @@ pub(super) fn resolve(
     records: &mut VecDeque<DecisionRecord>,
     sequence: u64,
     outcome: DecisionOutcome,
-) -> Option<DecisionAction> {
+) -> Option<(DecisionAction, Option<RecordedWarpAction>)> {
     let record = records
         .iter_mut()
         .find(|record| record.sequence == sequence)?;
     let action = record.chosen_action.clone()?;
-    record.resolve(outcome).then_some(action)
+    let warp_action = record
+        .warp_decision
+        .as_ref()
+        .and_then(|decision| decision.selected.clone());
+    record.resolve(outcome).then_some((action, warp_action))
 }
 
 pub(super) fn resolve_unbound(

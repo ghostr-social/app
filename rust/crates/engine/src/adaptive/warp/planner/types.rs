@@ -86,6 +86,7 @@ pub struct WarpPlanningDecision {
     pub reserve: ReserveConstraint,
     pub semantic: Vec<SemanticDecision>,
     pub prices: ResourcePrices,
+    pub common_random_seed: u64,
 }
 
 const fn clamp_bps(value: u16) -> u16 {

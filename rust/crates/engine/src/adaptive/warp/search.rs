@@ -1,14 +1,15 @@
+mod greedy;
 mod output;
+mod progress;
 mod state;
 
 pub use output::{PrunedSearchPlan, RetainedSearchPlan, SearchDecision, SearchPruneReason};
 
 use self::output::{decision, pruned_plan};
+use self::progress::SearchProgress;
 use self::state::{compare, State};
 use super::{ActionNode, DigitalTwin, HardBudget, ResourcePrices, TwinEpochs, TwinState};
 use std::time::Instant;
-
-const MAX_AUDIT_PLANS: usize = 64;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct BeamConfig {
@@ -128,12 +129,9 @@ impl WarpSearch {
             }
             progress.retained = states.clone();
         }
-        Ok(decision(
-            progress.best,
-            progress.retained,
-            progress.pruned,
-            false,
-        ))
+        let best = progress.best.take();
+        let audit = progress.audit();
+        Ok(decision(best, audit, false))
     }
 
     fn expand<F>(
@@ -171,76 +169,6 @@ impl WarpSearch {
             Some(SearchPruneReason::PlannerLatency)
         } else {
             None
-        }
-    }
-
-    fn greedy(
-        &self,
-        nodes: &[ActionNode],
-        budget: HardBudget,
-        reason: SearchPruneReason,
-    ) -> SearchDecision {
-        let mut scorer = |actions: &[ActionNode]| static_score(actions, self.prices);
-        let best = nodes
-            .iter()
-            .filter_map(|node| {
-                State::new(budget.clone())
-                    .append(node, &mut scorer)
-                    .ok()
-                    .flatten()
-            })
-            .filter(|state| state.score > 0)
-            .min_by(compare);
-        let retained = best.clone().into_iter().collect();
-        let pruned = vec![PrunedSearchPlan {
-            action_ids: Vec::new(),
-            reason,
-        }];
-        decision(best, retained, pruned, true)
-    }
-}
-
-struct SearchProgress<'a, F> {
-    scorer: &'a mut F,
-    expansions: usize,
-    best: Option<State>,
-    retained: Vec<State>,
-    pruned: Vec<PrunedSearchPlan>,
-}
-
-impl<'a, F> SearchProgress<'a, F> {
-    fn new(scorer: &'a mut F) -> Self {
-        Self {
-            scorer,
-            expansions: 0,
-            best: None,
-            retained: Vec::new(),
-            pruned: Vec::new(),
-        }
-    }
-
-    fn retain_best(&mut self, child: &State) {
-        self.expansions += 1;
-        if child.score > 0
-            && self
-                .best
-                .as_ref()
-                .is_none_or(|old| compare(child, old).is_lt())
-        {
-            self.best = Some(child.clone());
-        }
-    }
-
-    fn prune_state(&mut self, state: State, reason: SearchPruneReason) {
-        self.prune(PrunedSearchPlan {
-            action_ids: state.sequence.iter().map(|node| node.id).collect(),
-            reason,
-        });
-    }
-
-    fn prune(&mut self, plan: PrunedSearchPlan) {
-        if self.pruned.len() < MAX_AUDIT_PLANS && !self.pruned.contains(&plan) {
-            self.pruned.push(plan);
         }
     }
 }

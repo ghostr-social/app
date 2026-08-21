@@ -31,6 +31,10 @@ fn planner_reserves_rescue_capacity_updates_prices_and_commits_one_action() {
         u8::from(decision.selected.is_some())
     );
     assert!(decision.search.committed_actions <= 1);
+    assert_eq!(
+        decision.common_random_seed,
+        decision.evaluation.unwrap().common_random_seed
+    );
     assert!(!decision.admissible_action_ids.is_empty());
     if let Some(selected) = &decision.selected {
         let before = planner.network_tokens(input.observed_at_ms);
