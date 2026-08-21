@@ -5,6 +5,7 @@ use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimit
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use reqwest::{Client, RequestBuilder};
 use std::sync::Arc;
+use std::time::Duration;
 
 const URL: &str = "https://media.example/video.mp4";
 
@@ -21,20 +22,21 @@ async fn predicted_origin_concurrency_is_the_next_slot_capped_by_authority_limit
     let requests = executor();
     let authority = RequestAuthority::from_url(URL).unwrap();
     assert_eq!(origin_concurrency(&requests, &authority), 1);
-    let first = admit(&requests).await;
+    let first = admit(&requests, PreemptionAuthority::Transition).await;
     assert_eq!(origin_concurrency(&requests, &authority), 2);
-    let second = admit(&requests).await;
+    let second = admit(&requests, PreemptionAuthority::PlaybackCritical).await;
     assert_eq!(origin_concurrency(&requests, &authority), 2);
     drop((first, second));
 }
 
 async fn admit(
     requests: &MediaRequestExecutor,
+    priority: PreemptionAuthority,
 ) -> ghostr_net::media_request_executor::AdmittedMediaRequest {
     requests
-        .get(URL, PreemptionAuthority::Transition)
+        .get(URL, priority)
         .unwrap()
-        .admit()
+        .admit_for(Duration::from_secs(1))
         .await
         .unwrap()
 }

@@ -6,6 +6,8 @@ use crate::{ByteRange, PostId, RequestAuthority};
 
 #[path = "warp_search_audit_test.rs"]
 mod search_audit_test;
+#[path = "warp_search_hard_limits.rs"]
+mod search_hard_limits;
 
 fn node(id: u16, kind: ActionKind, score: i64, requires: &[u16]) -> ActionNode {
     ActionNode::new(

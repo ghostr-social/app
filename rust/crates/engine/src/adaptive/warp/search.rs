@@ -136,10 +136,7 @@ impl WarpSearch {
         let mut states = vec![State::new(budget)];
         let mut progress = SearchProgress::new(scorer);
         for _ in 0..self.config.depth {
-            states = self.expand(nodes, states, &mut progress);
-            if let Some(reason) = self.expired(started, progress.expansions) {
-                return Err(reason);
-            }
+            states = self.expand(nodes, states, &mut progress, started)?;
             if states.is_empty() {
                 break;
             }
@@ -155,13 +152,17 @@ impl WarpSearch {
         nodes: &[ActionNode],
         states: Vec<State>,
         progress: &mut SearchProgress<'_, F>,
-    ) -> Vec<State>
+        started: Instant,
+    ) -> Result<Vec<State>, SearchPruneReason>
     where
         F: FnMut(&[ActionNode]) -> i64,
     {
         let mut next = Vec::new();
         for state in states {
             for node in nodes {
+                if let Some(reason) = self.expired(started, progress.expansions) {
+                    return Err(reason);
+                }
                 match state.append(node, &mut *progress.scorer) {
                     Ok(Some(child)) => {
                         progress.retain_best(&child);
@@ -175,13 +176,13 @@ impl WarpSearch {
         next.sort_by(compare);
         next.drain(self.config.width.min(next.len())..)
             .for_each(|state| progress.prune_state(state, SearchPruneReason::BeamWidth));
-        next
+        Ok(next)
     }
 
     fn expired(&self, started: Instant, expansions: usize) -> Option<SearchPruneReason> {
-        if expansions > self.config.max_expansions {
+        if expansions >= self.config.max_expansions {
             Some(SearchPruneReason::ExpansionLimit)
-        } else if started.elapsed().as_micros() > u128::from(self.config.max_latency_us) {
+        } else if started.elapsed().as_micros() >= u128::from(self.config.max_latency_us) {
             Some(SearchPruneReason::PlannerLatency)
         } else {
             None
