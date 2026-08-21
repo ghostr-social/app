@@ -104,7 +104,9 @@ pub(crate) fn planned_capacity(
 
 impl DeliveryWorker {
     pub(crate) fn observe_capacity(&mut self, window: OverallTrafficWindow) {
-        let saturated = self.queue.wanted_len() > self.downloads.len();
+        let saturated = self
+            .additional_request_slot_demand
+            .unwrap_or_else(|| self.queue.wanted_len() > self.downloads.len());
         let fallback = self.keeper.stats().overall_ttfb().unwrap_or(Duration::ZERO);
         let admitted = self.downloads.admitted_capacity();
         self.concurrency

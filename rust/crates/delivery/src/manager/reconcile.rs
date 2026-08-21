@@ -110,6 +110,10 @@ impl DeliveryWorker {
         planned: PlannedWork,
         revisions: &HashMap<PostId, ContentRevision>,
     ) {
+        self.additional_request_slot_demand = planned
+            .warp
+            .as_ref()
+            .map(|decision| decision.additional_request_slot_demanded);
         if !self
             .apply_policy_evictions(&planned.evictions, revisions)
             .await

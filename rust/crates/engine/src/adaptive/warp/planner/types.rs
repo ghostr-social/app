@@ -77,6 +77,8 @@ pub struct SemanticDecision {
 pub struct WarpPlanningDecision {
     pub generated: GeneratedActions,
     pub selected: Option<GeneratedAction>,
+    /// With one extra global slot, the planner selects a request-consuming commitment.
+    pub additional_request_slot_demanded: bool,
     pub search: SearchDecision,
     pub evaluation: Option<TwinEvaluation>,
     pub admissible_action_ids: Vec<u16>,

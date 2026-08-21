@@ -1,3 +1,4 @@
+mod capacity_demand;
 mod feasibility;
 mod simulation;
 mod types;
@@ -46,6 +47,8 @@ impl WarpPlanner {
         let network_bytes = self.network_tokens(input.snapshot.observed_at_ms);
         let feasible = feasibility::apply(&input, &frontier.retained, &self.config, network_bytes);
         let search = self.search(&input, &feasible);
+        let additional_request_slot_demanded = search.action.is_none()
+            && self.additional_request_slot_demanded(&input, &frontier.retained, network_bytes);
         let selected = selected_action(&generated.actions, &search);
         let evaluation = selected.as_ref().map(|item| {
             self.twin.evaluate(
@@ -63,6 +66,7 @@ impl WarpPlanner {
             reserve: feasible.reserve,
             semantic: feasible.semantic,
             prices: self.prices.prices(),
+            additional_request_slot_demanded,
             generated,
         }
     }
@@ -116,6 +120,14 @@ impl WarpPlanner {
         if feasible.reserve.degraded {
             return least_risk(&feasible.nodes);
         }
+        self.search_priced(input, feasible)
+    }
+
+    fn search_priced(
+        &mut self,
+        input: &WarpPlannerInput<'_>,
+        feasible: &feasibility::FeasibleActions,
+    ) -> super::SearchDecision {
         let mut simulation = TwinSearchContext::new(
             &mut self.twin,
             simulation::state(input),

@@ -7,6 +7,7 @@ impl DeliveryWorker {
         self.commands.discard_pending();
         self.downloads.clear();
         self.queue.clear();
+        self.additional_request_slot_demand = None;
         self.probes.clear();
         self.retry.clear();
         self.cooldown_timers.clear();

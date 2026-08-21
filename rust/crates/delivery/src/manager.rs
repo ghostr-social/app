@@ -164,6 +164,7 @@ pub(crate) struct DeliveryWorker {
     traffic: TrafficInbox,
     wake_cursor: WakeCursor,
     concurrency: AdaptiveConcurrency,
+    additional_request_slot_demand: Option<bool>,
     max_requests_per_authority: Option<NonZeroUsize>,
     segmented: SegmentedDelivery,
     timelines: TimelineCoordinator,
