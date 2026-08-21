@@ -3,7 +3,7 @@ use crate::adaptive::{PlannerCommand, TransformKind};
 use serde::{Deserialize, Serialize};
 
 mod allocation;
-mod request;
+pub(super) mod request;
 pub use allocation::{
     RecordedAllocationReason, RecordedCandidateUtility, RecordedPreemptionAuthority,
     RecordedTransfer,

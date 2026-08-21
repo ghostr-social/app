@@ -45,6 +45,32 @@ pub async fn wait_for_history(
     .expect("decision history transition");
 }
 
+pub async fn wait_for_terminal_transfer(handle: &DeliveryHandle) -> DecisionRecord {
+    wait_for_history(handle, |history| {
+        history.records.iter().any(terminal_transfer)
+    })
+    .await;
+    handle
+        .decision_history()
+        .records
+        .into_iter()
+        .rev()
+        .find(terminal_transfer)
+        .expect("terminal transfer decision")
+}
+
+fn terminal_transfer(record: &DecisionRecord) -> bool {
+    record.eventual_outcome != DecisionOutcome::Pending
+        && matches!(
+            record
+                .warp_decision
+                .as_ref()
+                .and_then(|decision| decision.selected.as_ref())
+                .map(|selected| &selected.command),
+            Some(ghostr_engine::adaptive::RecordedWarpCommand::Transfer { .. })
+        )
+}
+
 pub async fn wait_for_promotion(handle: &DeliveryHandle) {
     wait_for_history(handle, |history| {
         history.records.iter().any(|record| {

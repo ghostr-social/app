@@ -23,7 +23,7 @@ pub use decision_log::DecisionHistorySnapshot;
 use decision_log::DecisionLog;
 pub(crate) use decision_log::{
     DecisionClaim, DecisionResolution, DecisionToken, LegacyDecisionPublication,
-    WarpDecisionPublication,
+    RequestDecisionBinding, WarpDecisionPublication,
 };
 pub(crate) use focus_generation::FocusGenerationGuard;
 pub use focus_generation::{FocusAdmission, FocusGeneration};

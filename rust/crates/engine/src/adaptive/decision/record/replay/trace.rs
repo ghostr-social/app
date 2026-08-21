@@ -1,6 +1,7 @@
 mod action;
 mod coherence;
 mod completeness;
+mod executed;
 mod fresh_search;
 mod reserve;
 
@@ -17,6 +18,7 @@ pub(super) fn reconstruct(
     completeness::verify(decision)?;
     reserve::verify(record, decision)?;
     coherence::verify(record, decision)?;
+    executed::verify(record, decision)?;
     Ok(VerifiedWarpReplay::new(
         record.sequence,
         record.state_hash.clone(),

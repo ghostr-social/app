@@ -28,6 +28,26 @@ pub(crate) struct DecisionToken {
     armed: bool,
 }
 
+pub(crate) struct RequestDecisionBinding<'a> {
+    action: ghostr_engine::ActionId,
+    request: &'a ghostr_engine::adaptive::ExecutedRequest,
+    observed_at_ms: u64,
+}
+
+impl<'a> RequestDecisionBinding<'a> {
+    pub(crate) const fn new(
+        action: ghostr_engine::ActionId,
+        request: &'a ghostr_engine::adaptive::ExecutedRequest,
+        observed_at_ms: u64,
+    ) -> Self {
+        Self {
+            action,
+            request,
+            observed_at_ms,
+        }
+    }
+}
+
 /// One admitted asynchronous decision that cannot be superseded while live.
 #[must_use = "a claimed decision must reach a terminal outcome"]
 pub(crate) struct DecisionClaim {

@@ -2,6 +2,7 @@
 
 mod capture;
 mod command;
+mod executed;
 mod kind;
 mod reserve;
 mod search;
@@ -11,6 +12,10 @@ pub use command::{
     RecordedAllocationReason, RecordedCandidateUtility, RecordedPreemptionAuthority,
     RecordedPromotionGrant, RecordedRetrievalRequest, RecordedTransfer, RecordedTransformKind,
     RecordedWarpCommand, RecordedWholeBodyContract, RecordedWholeFetchReason,
+};
+pub use executed::RecordedExecutedRequest;
+pub(in crate::adaptive::decision) use executed::{
+    capture as capture_executed, coherent as executed_coherent,
 };
 pub use kind::RecordedWarpActionKind;
 pub use reserve::{

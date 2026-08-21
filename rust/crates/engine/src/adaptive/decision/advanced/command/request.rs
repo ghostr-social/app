@@ -36,7 +36,7 @@ pub enum RecordedWholeFetchReason {
     PlannedCompletion,
 }
 
-pub(super) fn capture(value: RetrievalRequest) -> RecordedRetrievalRequest {
+pub(in crate::adaptive::decision) fn capture(value: RetrievalRequest) -> RecordedRetrievalRequest {
     match value {
         RetrievalRequest::FetchRange { bytes, promotion } => RecordedRetrievalRequest::FetchRange {
             bytes_start: bytes.start,
@@ -51,7 +51,7 @@ pub(super) fn capture(value: RetrievalRequest) -> RecordedRetrievalRequest {
 }
 
 impl RecordedRetrievalRequest {
-    pub(super) fn bytes(self) -> (u64, u64) {
+    pub(in crate::adaptive::decision) fn bytes(self) -> (u64, u64) {
         match self {
             Self::FetchRange {
                 bytes_start,

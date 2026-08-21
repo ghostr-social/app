@@ -1,9 +1,12 @@
-use crate::delivery_events::DecisionToken;
+use crate::delivery_events::{DecisionToken, RequestDecisionBinding};
 use crate::manager::plan::PlannedTransfer;
 use crate::manager::selected_commit::{CommitResult, SelectedCommit};
 use crate::manager::workers::PreparedTransfer;
 use crate::manager::{origin_admission, time, DeliveryWorker};
-use ghostr_engine::adaptive::{DecisionOutcome, ResourceCost, RetrievalRequest};
+use ghostr_engine::adaptive::{DecisionOutcome, ExecutedRequest, ResourceCost, RetrievalRequest};
+
+mod admitted;
+use admitted::AdmittedGrant;
 
 #[cfg(test)]
 #[path = "grant/immediate_resources_test.rs"]
@@ -12,14 +15,9 @@ mod immediate_resources_test;
 #[path = "grant/origin_concurrency_test.rs"]
 mod origin_concurrency_test;
 
-struct AdmittedGrant {
-    transfer: PlannedTransfer,
-    resources: ResourceCost,
-    observed_at_ms: u64,
-}
-
 struct PreparedGrant {
     transfer: PreparedTransfer,
+    executed: ExecutedRequest,
     resources: ResourceCost,
     observed_at_ms: u64,
 }
@@ -57,6 +55,7 @@ impl DeliveryWorker {
                 self.bind_and_launch(
                     PreparedGrant {
                         transfer,
+                        executed: admitted.executed,
                         resources: admitted.resources,
                         observed_at_ms: admitted.observed_at_ms,
                     },
@@ -81,10 +80,9 @@ impl DeliveryWorker {
         let action = prepared.transfer.action();
         let bound = decision.is_some();
         if let Some(token) = decision.take() {
-            if !self
-                .commands
-                .bind_decision(&token, action, prepared.observed_at_ms)
-            {
+            let binding =
+                RequestDecisionBinding::new(action, &prepared.executed, prepared.observed_at_ms);
+            if !self.commands.bind_request_decision(&token, binding) {
                 self.reject_binding(prepared.transfer, token).await;
                 return None;
             }
@@ -145,11 +143,8 @@ impl DeliveryWorker {
                 .stats_mut()
                 .origin_model_mut()
                 .claim(&query, observed_at_ms, mode);
-        origin_admission::apply(transfer, admission).map(|transfer| AdmittedGrant {
-            resources: request_resources(transfer.retrieval),
-            transfer,
-            observed_at_ms,
-        })
+        let transfer = origin_admission::apply(transfer, admission)?;
+        Some(AdmittedGrant::new(transfer, observed_at_ms))
     }
 
     fn reject_grant(

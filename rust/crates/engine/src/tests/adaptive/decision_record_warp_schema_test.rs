@@ -1,3 +1,5 @@
+#[path = "decision_record_warp_executed_request_tests.rs"]
+mod executed_request_tests;
 #[path = "decision_record_warp_fresh_search_mismatch_test.rs"]
 mod fresh_search_mismatch_test;
 #[path = "decision_record_warp_fresh_search_privacy_test.rs"]

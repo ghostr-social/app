@@ -1,6 +1,6 @@
 use super::{
     DecisionClaim, DecisionResolution, DecisionToken, LegacyDecisionPublication,
-    WarpDecisionPublication,
+    RequestDecisionBinding, WarpDecisionPublication,
 };
 use crate::delivery_events::CommandReceiver;
 use ghostr_engine::adaptive::DecisionOutcome;
@@ -47,6 +47,14 @@ impl CommandReceiver {
         observed_at_ms: u64,
     ) -> bool {
         self.decisions.bind(token, action, observed_at_ms)
+    }
+
+    pub(crate) fn bind_request_decision(
+        &self,
+        token: &DecisionToken,
+        binding: RequestDecisionBinding<'_>,
+    ) -> bool {
+        self.decisions.bind_request(token, binding)
     }
 
     pub(crate) fn resolve_decision(

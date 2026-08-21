@@ -1,4 +1,7 @@
-use super::{retention, trim, ActionBinding, DecisionLog, DecisionResolution, DecisionToken};
+use super::{
+    retention, trim, ActionBinding, DecisionLog, DecisionResolution, DecisionToken,
+    RequestDecisionBinding,
+};
 use ghostr_engine::adaptive::{DecisionOutcome, DecisionRecord};
 use ghostr_engine::ActionId;
 use std::sync::Arc;
@@ -55,6 +58,17 @@ impl DecisionLog {
         })
     }
 
+    pub(super) fn bind_request(
+        &self,
+        token: &DecisionToken,
+        binding: RequestDecisionBinding<'_>,
+    ) -> bool {
+        if !token.belongs_to(&self.store) {
+            return false;
+        }
+        bind_request_record(&mut self.lock(), token.sequence, binding, &self.privacy)
+    }
+
     pub(super) fn resolve_token(&self, token: &DecisionToken, outcome: DecisionOutcome) -> bool {
         if outcome == DecisionOutcome::Pending || !token.belongs_to(&self.store) {
             return false;
@@ -70,6 +84,31 @@ impl DecisionLog {
         trim(&mut store);
         true
     }
+}
+
+fn bind_request_record(
+    store: &mut super::DecisionStore,
+    sequence: u64,
+    binding: RequestDecisionBinding<'_>,
+    privacy: &ghostr_engine::adaptive::DecisionPrivacy,
+) -> bool {
+    if store.actions.contains_key(&binding.action) {
+        return false;
+    }
+    let Some(record) = record_mut(&mut store.records, sequence) else {
+        return false;
+    };
+    if !record.bind_executed_action(binding.action, binding.request, privacy) {
+        return false;
+    }
+    store.actions.insert(
+        binding.action,
+        ActionBinding {
+            sequence,
+            started_at_ms: binding.observed_at_ms,
+        },
+    );
+    true
 }
 
 impl DecisionToken {

@@ -7,11 +7,12 @@ use super::types::{
     DecisionAction, DecisionModelInput, DecisionOutcome, DecisionReplayStatus, ModelQuantiles,
     PrunedCandidate, ShadowPrices,
 };
+use crate::adaptive::VerifiedWarpReplay;
 use crate::adaptive::{AllocationPlan, PlayabilitySnapshot, WarpPlanningDecision};
 use crate::representation::TransferIdentity;
-use crate::{adaptive::VerifiedWarpReplay, ActionId};
 use serde::{Deserialize, Serialize};
 
+mod binding;
 mod replay;
 
 pub(super) const LEGACY_SCHEMA_VERSION: u16 = 1;
@@ -51,6 +52,8 @@ pub struct DecisionRecord {
     pub eventual_outcome: DecisionOutcome,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub warp_decision: Option<RecordedWarpDecision>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub executed_request: Option<advanced::RecordedExecutedRequest>,
     replay_state: ReplayState,
     replay_plan_hash: String,
 }
@@ -91,14 +94,6 @@ impl DecisionRecord {
             return false;
         }
         self.eventual_outcome = outcome;
-        true
-    }
-
-    pub fn bind_action(&mut self, action: ActionId) -> bool {
-        if self.chosen_action.is_none() || self.chosen_action_id.is_some() {
-            return false;
-        }
-        self.chosen_action_id = Some(action.value());
         true
     }
 
@@ -158,6 +153,7 @@ fn legacy_record(
         random_seed,
         eventual_outcome: DecisionOutcome::Pending,
         warp_decision: None,
+        executed_request: None,
         replay_state,
         replay_plan_hash: plan::capture_hash(input.allocation, input.privacy),
     }
@@ -184,6 +180,7 @@ fn warp_record(
         random_seed: captured.random_seed,
         eventual_outcome: outcome,
         warp_decision: Some(captured.decision),
+        executed_request: None,
         replay_state,
         replay_plan_hash: String::new(),
     }
