@@ -33,7 +33,7 @@ pub(crate) struct PreparationContext {
     pub(crate) cache: CacheRegistry,
 }
 
-/// Streams one atomic two-player window; cancellation drops the watcher.
+/// Streams one atomic current-plus-upcoming window; cancellation drops the watcher.
 #[frb]
 pub async fn ffi_playback_preparation_events(
     sink: StreamSink<FfiPlaybackPreparationPlan>,

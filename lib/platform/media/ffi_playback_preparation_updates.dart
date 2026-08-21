@@ -24,18 +24,22 @@ final class FfiPlaybackPreparationUpdates
 
 PlaybackPreparationPlan _plan(FfiPlaybackPreparationPlan native) {
   final currentId = native.currentDeliveryId;
+  final upcoming = native.upcoming.map(_asset).toList(growable: false);
   return PlaybackPreparationPlan(
     revision: native.revision,
     currentDeliveryId: currentId == null
         ? null
         : PlaybackDeliveryId.parse(currentId),
-    current: _asset(native.current),
-    next: _asset(native.next),
+    current: _optionalAsset(native.current),
+    next: upcoming.isEmpty ? _optionalAsset(native.next) : null,
+    upcoming: upcoming,
   );
 }
 
-PlaybackPreparationAsset? _asset(FfiPlaybackPreparationAsset? native) {
-  if (native == null) return null;
+PlaybackPreparationAsset? _optionalAsset(FfiPlaybackPreparationAsset? native) =>
+    native == null ? null : _asset(native);
+
+PlaybackPreparationAsset _asset(FfiPlaybackPreparationAsset native) {
   final media = ProxiedProgressiveVideoMediaSource(native.playbackUrl);
   return PlaybackPreparationAsset(
     authority: PlaybackAssetAuthority(

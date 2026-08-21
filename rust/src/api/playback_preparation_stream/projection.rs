@@ -9,16 +9,14 @@ use ghostr_engine::PostId;
 
 mod asset;
 
-pub(super) async fn project(context: &PreparationContext) -> Option<FfiPlaybackPreparationPlan> {
+pub(crate) async fn project(context: &PreparationContext) -> Option<FfiPlaybackPreparationPlan> {
     let evidence = context.delivery.latest_plan()?;
     let current = match evidence.current.as_ref() {
         Some(post) => asset::project(context, post, None).await,
         None => None,
     };
-    let next = project_evidence_upcoming(context, &evidence)
-        .await
-        .into_iter()
-        .next();
+    let upcoming = project_evidence_upcoming(context, &evidence).await;
+    let next = upcoming.first().cloned();
     Some(FfiPlaybackPreparationPlan {
         revision: evidence.revision,
         current_delivery_id: evidence
@@ -26,18 +24,9 @@ pub(super) async fn project(context: &PreparationContext) -> Option<FfiPlaybackP
             .as_ref()
             .map(|post| post.as_str().to_owned()),
         current,
+        upcoming,
         next,
     })
-}
-
-#[cfg(test)]
-pub(crate) async fn project_upcoming(
-    context: &PreparationContext,
-) -> Vec<crate::api::delivery_types::FfiPlaybackPreparationAsset> {
-    match context.delivery.latest_plan() {
-        Some(evidence) => project_evidence_upcoming(context, &evidence).await,
-        None => Vec::new(),
-    }
 }
 
 async fn project_evidence_upcoming(

@@ -65,13 +65,16 @@ pub struct FfiPlaybackPreparationAsset {
     pub readiness: FfiPlaybackPreparationReadiness,
 }
 
-/// Atomic two-player preparation window from one manager plan.
+/// Atomic playback preparation window from one manager plan.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FfiPlaybackPreparationPlan {
     pub revision: u64,
     /// The focused delivery even while no exact progressive asset exists.
     pub current_delivery_id: Option<String>,
     pub current: Option<FfiPlaybackPreparationAsset>,
+    /// Every certified upcoming asset, in feed order.
+    pub upcoming: Vec<FfiPlaybackPreparationAsset>,
+    /// Compatibility projection of the first upcoming asset.
     pub next: Option<FfiPlaybackPreparationAsset>,
 }
 

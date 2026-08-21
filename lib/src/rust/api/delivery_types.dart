@@ -153,19 +153,25 @@ class FfiPlaybackPreparationAsset {
           readiness == other.readiness;
 }
 
-/// Atomic two-player preparation window from one manager plan.
+/// Atomic playback preparation window from one manager plan.
 class FfiPlaybackPreparationPlan {
   final BigInt revision;
 
   /// The focused delivery even while no exact progressive asset exists.
   final String? currentDeliveryId;
   final FfiPlaybackPreparationAsset? current;
+
+  /// Every certified upcoming asset, in feed order.
+  final List<FfiPlaybackPreparationAsset> upcoming;
+
+  /// Compatibility projection of the first upcoming asset.
   final FfiPlaybackPreparationAsset? next;
 
   const FfiPlaybackPreparationPlan({
     required this.revision,
     this.currentDeliveryId,
     this.current,
+    required this.upcoming,
     this.next,
   });
 
@@ -174,6 +180,7 @@ class FfiPlaybackPreparationPlan {
       revision.hashCode ^
       currentDeliveryId.hashCode ^
       current.hashCode ^
+      upcoming.hashCode ^
       next.hashCode;
 
   @override
@@ -184,6 +191,7 @@ class FfiPlaybackPreparationPlan {
           revision == other.revision &&
           currentDeliveryId == other.currentDeliveryId &&
           current == other.current &&
+          upcoming == other.upcoming &&
           next == other.next;
 }
 

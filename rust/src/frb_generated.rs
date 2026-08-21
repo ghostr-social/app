@@ -1424,6 +1424,10 @@ impl SseDecode for crate::api::delivery_types::FfiPlaybackPreparationPlan {
             <Option<crate::api::delivery_types::FfiPlaybackPreparationAsset>>::sse_decode(
                 deserializer,
             );
+        let mut var_upcoming =
+            <Vec<crate::api::delivery_types::FfiPlaybackPreparationAsset>>::sse_decode(
+                deserializer,
+            );
         let mut var_next =
             <Option<crate::api::delivery_types::FfiPlaybackPreparationAsset>>::sse_decode(
                 deserializer,
@@ -1432,6 +1436,7 @@ impl SseDecode for crate::api::delivery_types::FfiPlaybackPreparationPlan {
             revision: var_revision,
             current_delivery_id: var_currentDeliveryId,
             current: var_current,
+            upcoming: var_upcoming,
             next: var_next,
         };
     }
@@ -1625,6 +1630,20 @@ impl SseDecode for Vec<crate::api::event_types::FfiNostrTagFilter> {
             ans_.push(<crate::api::event_types::FfiNostrTagFilter>::sse_decode(
                 deserializer,
             ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::delivery_types::FfiPlaybackPreparationAsset> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(
+                <crate::api::delivery_types::FfiPlaybackPreparationAsset>::sse_decode(deserializer),
+            );
         }
         return ans_;
     }
@@ -2550,6 +2569,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::delivery_types::FfiPlaybackPr
             self.revision.into_into_dart().into_dart(),
             self.current_delivery_id.into_into_dart().into_dart(),
             self.current.into_into_dart().into_dart(),
+            self.upcoming.into_into_dart().into_dart(),
             self.next.into_into_dart().into_dart(),
         ]
         .into_dart()
@@ -3152,6 +3172,10 @@ impl SseEncode for crate::api::delivery_types::FfiPlaybackPreparationPlan {
             self.current,
             serializer,
         );
+        <Vec<crate::api::delivery_types::FfiPlaybackPreparationAsset>>::sse_encode(
+            self.upcoming,
+            serializer,
+        );
         <Option<crate::api::delivery_types::FfiPlaybackPreparationAsset>>::sse_encode(
             self.next, serializer,
         );
@@ -3302,6 +3326,16 @@ impl SseEncode for Vec<crate::api::event_types::FfiNostrTagFilter> {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <crate::api::event_types::FfiNostrTagFilter>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::delivery_types::FfiPlaybackPreparationAsset> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::delivery_types::FfiPlaybackPreparationAsset>::sse_encode(item, serializer);
         }
     }
 }

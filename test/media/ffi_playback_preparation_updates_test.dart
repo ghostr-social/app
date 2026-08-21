@@ -25,6 +25,10 @@ void main() {
       plan.next?.readiness,
       PlaybackPreparationReadiness.structuralStartable,
     );
+    expect(plan.upcoming.map((asset) => asset.deliveryId.value), [
+      'next',
+      'next-2',
+    ]);
   });
 }
 
@@ -38,6 +42,20 @@ FfiPlaybackPreparationPlan _plan() {
       digest: 'a',
       startable: false,
     )),
+    upcoming: [
+      _asset((
+        id: 'next',
+        capability: _nextCapability,
+        digest: 'b',
+        startable: true,
+      )),
+      _asset((
+        id: 'next-2',
+        capability: _laterCapability,
+        digest: 'c',
+        startable: true,
+      )),
+    ],
     next: _asset((
       id: 'next',
       capability: _nextCapability,
@@ -70,3 +88,4 @@ typedef _NativeAsset = ({
 
 const _currentCapability = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 const _nextCapability = 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB';
+const _laterCapability = 'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC';

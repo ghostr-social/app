@@ -1434,15 +1434,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
     return FfiPlaybackPreparationPlan(
       revision: dco_decode_u_64(arr[0]),
       currentDeliveryId: dco_decode_opt_String(arr[1]),
       current: dco_decode_opt_box_autoadd_ffi_playback_preparation_asset(
         arr[2],
       ),
-      next: dco_decode_opt_box_autoadd_ffi_playback_preparation_asset(arr[3]),
+      upcoming: dco_decode_list_ffi_playback_preparation_asset(arr[3]),
+      next: dco_decode_opt_box_autoadd_ffi_playback_preparation_asset(arr[4]),
     );
   }
 
@@ -1561,6 +1562,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<FfiNostrTagFilter> dco_decode_list_ffi_nostr_tag_filter(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_ffi_nostr_tag_filter).toList();
+  }
+
+  @protected
+  List<FfiPlaybackPreparationAsset>
+  dco_decode_list_ffi_playback_preparation_asset(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_ffi_playback_preparation_asset)
+        .toList();
   }
 
   @protected
@@ -2246,6 +2256,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_current = sse_decode_opt_box_autoadd_ffi_playback_preparation_asset(
       deserializer,
     );
+    var var_upcoming = sse_decode_list_ffi_playback_preparation_asset(
+      deserializer,
+    );
     var var_next = sse_decode_opt_box_autoadd_ffi_playback_preparation_asset(
       deserializer,
     );
@@ -2253,6 +2266,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       revision: var_revision,
       currentDeliveryId: var_currentDeliveryId,
       current: var_current,
+      upcoming: var_upcoming,
       next: var_next,
     );
   }
@@ -2429,6 +2443,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <FfiNostrTagFilter>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_ffi_nostr_tag_filter(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<FfiPlaybackPreparationAsset>
+  sse_decode_list_ffi_playback_preparation_asset(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <FfiPlaybackPreparationAsset>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_ffi_playback_preparation_asset(deserializer));
     }
     return ans_;
   }
@@ -3094,6 +3121,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       self.current,
       serializer,
     );
+    sse_encode_list_ffi_playback_preparation_asset(self.upcoming, serializer);
     sse_encode_opt_box_autoadd_ffi_playback_preparation_asset(
       self.next,
       serializer,
@@ -3240,6 +3268,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_ffi_nostr_tag_filter(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_ffi_playback_preparation_asset(
+    List<FfiPlaybackPreparationAsset> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_ffi_playback_preparation_asset(item, serializer);
     }
   }
 

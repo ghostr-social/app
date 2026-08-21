@@ -52,12 +52,16 @@ async fn projects_every_certified_upcoming_asset_in_feed_order() {
         cache,
     };
 
-    let projected = projection::project_upcoming(&context).await;
+    let projected = projection::project(&context)
+        .await
+        .expect("preparation plan");
     let ids: Vec<_> = projected
+        .upcoming
         .iter()
         .map(|asset| asset.delivery_id.as_str())
         .collect();
     assert_eq!(ids, ["next-1", "next-2", "next-3"]);
+    assert_eq!(projected.next.as_ref().unwrap().delivery_id, "next-1");
 }
 
 async fn prepare(
