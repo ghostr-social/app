@@ -40,7 +40,11 @@ async fn admit(
 }
 
 fn executor() -> MediaRequestExecutor {
-    let client = Client::builder().no_proxy().build().unwrap();
+    let client = Client::builder()
+        .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .unwrap();
     MediaRequestExecutor::new(
         Arc::new(LocalClient(client)),
         MediaRequestLimits::try_new(2, 2).unwrap(),

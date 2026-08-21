@@ -118,7 +118,8 @@ async fn open(
         .context("HLS object transfer timed out")??;
     let header_deadline = deadline.min(tokio::time::Instant::now() + spec.timeouts.headers);
     let timeout_context = deadline::header_context(header_deadline, deadline);
-    let response = tokio::time::timeout_at(header_deadline, admitted.send())
+    let sending = admitted.send_with_redirect_deadline(header_deadline);
+    let response = tokio::time::timeout_at(header_deadline, sending)
         .await
         .context(timeout_context)??;
     validate_open_response(response, spec.require_manifest)

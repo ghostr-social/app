@@ -1,11 +1,12 @@
 //! Always-on admission for outbound media requests.
 //!
-//! The low-level client remains a request-builder port; this executor is the
-//! guarded surface production media consumers will migrate to. Admission and
-//! sending are split so queue delay is never misreported as origin response
-//! time.
+//! The low-level client is a one-hop request-builder port; this executor is the
+//! guarded production surface. Admission and sending are split so queue delay
+//! is never misreported as origin response time, and redirects reacquire the
+//! exact authority before the next network hop.
 
 mod gate;
+mod redirect;
 mod request;
 mod response;
 
@@ -17,6 +18,7 @@ use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use gate::MediaRequestGate;
+use request::RequestRoute;
 pub use request::{AdmittedMediaRequest, MediaRequest, MediaRequestAdmissionTimeout};
 pub use response::MediaResponse;
 
@@ -65,15 +67,14 @@ impl MediaRequestExecutor {
     }
 
     pub fn get(&self, raw_url: &str, priority: PreemptionAuthority) -> Result<MediaRequest> {
-        let authority =
-            RequestAuthority::from_url(raw_url).context("media request authority is invalid")?;
-        let builder = self.client.get(raw_url)?;
-        Ok(MediaRequest::new(
-            builder,
-            authority,
-            priority,
+        let route = RequestRoute::new(
+            Arc::clone(&self.client),
             self.gate.clone(),
-        ))
+            raw_url,
+            priority,
+        )?;
+        let builder = self.client.get(raw_url)?;
+        Ok(MediaRequest::new(builder, route))
     }
 
     pub fn update_limits(&self, limits: MediaRequestLimits) {

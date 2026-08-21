@@ -58,7 +58,11 @@ pub(super) async fn fixture(prefix: &str, url: &str, seed: Option<&[u8]>) -> Sin
         action,
         client: MediaRequestExecutor::new(
             Arc::new(LocalClient(
-                reqwest::Client::builder().no_proxy().build().unwrap(),
+                reqwest::Client::builder()
+                    .no_proxy()
+                    .redirect(reqwest::redirect::Policy::none())
+                    .build()
+                    .unwrap(),
             )),
             MediaRequestLimits::try_new(1, 1).unwrap(),
         ),

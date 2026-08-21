@@ -22,7 +22,11 @@ pub(super) async fn fixture() -> (MediaRequestExecutor, String, tokio::task::Joi
         assert!(socket.read(&mut request).await.expect("read") > 0);
         std::future::pending::<()>().await;
     });
-    let client = Client::builder().no_proxy().build().expect("client");
+    let client = Client::builder()
+        .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .expect("client");
     let limits = MediaRequestLimits::try_new(1, 1).unwrap();
     let executor = MediaRequestExecutor::new(Arc::new(LocalClient(client)), limits);
     (executor, url, server)

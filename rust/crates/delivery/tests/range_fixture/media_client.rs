@@ -21,6 +21,7 @@ pub fn media_client() -> MediaRequestExecutor {
 pub fn raw_media_client() -> Arc<dyn MediaHttpRequests> {
     let client = Client::builder()
         .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .expect("local media client");
     Arc::new(LocalMediaClient(client))

@@ -64,6 +64,7 @@ impl MediaHttpRequests for LocalMediaHttpClient {
 pub fn media_client() -> MediaRequestExecutor {
     let client = Client::builder()
         .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .expect("local media client");
     MediaRequestExecutor::new(

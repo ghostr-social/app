@@ -50,7 +50,8 @@ impl HlsTransfer {
             .context("HLS object transfer timed out")??;
         let header_deadline = total_deadline.min(Instant::now() + timeouts.headers);
         let timeout_context = header_timeout_context(header_deadline, total_deadline);
-        let response = timeout_at(header_deadline, admitted.send())
+        let sending = admitted.send_with_redirect_deadline(header_deadline);
+        let response = timeout_at(header_deadline, sending)
             .await
             .context(timeout_context)??;
         validate_response_headers(response.headers())?;

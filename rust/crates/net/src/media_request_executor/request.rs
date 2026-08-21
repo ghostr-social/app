@@ -1,12 +1,17 @@
-use super::gate::{MediaRequestGate, RequestLease};
+use super::gate::MediaRequestGate;
+use super::redirect::{self, AdmittedHop, RedirectContext};
 use super::response::MediaResponse;
+use crate::outbound_media_client::MediaHttpRequests;
+use crate::public_media_address::validate_url;
 use anyhow::{ensure, Context, Result};
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::RequestAuthority;
 use reqwest::header::{HeaderName, HeaderValue, HOST};
-use reqwest::{Client, Method, Request, RequestBuilder};
+use reqwest::{Method, Request, RequestBuilder, Url};
 use std::fmt;
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::time::Instant;
 
 #[derive(Debug)]
 pub struct MediaRequestAdmissionTimeout;
@@ -21,31 +26,49 @@ impl std::error::Error for MediaRequestAdmissionTimeout {}
 
 pub struct MediaRequest {
     builder: RequestBuilder,
-    authority: RequestAuthority,
-    priority: PreemptionAuthority,
+    route: RequestRoute,
     method: Option<Method>,
-    gate: MediaRequestGate,
 }
 
 pub struct AdmittedMediaRequest {
-    client: Client,
-    request: Request,
-    lease: RequestLease,
+    hop: AdmittedHop,
+    redirects: RedirectContext,
+}
+
+pub(super) struct RequestRoute {
+    client: Arc<dyn MediaHttpRequests>,
+    gate: MediaRequestGate,
+    authority: RequestAuthority,
+    priority: PreemptionAuthority,
+    public_redirects_only: bool,
+}
+
+impl RequestRoute {
+    pub(super) fn new(
+        client: Arc<dyn MediaHttpRequests>,
+        gate: MediaRequestGate,
+        raw_url: &str,
+        priority: PreemptionAuthority,
+    ) -> Result<Self> {
+        let url = Url::parse(raw_url).context("media request URL is invalid")?;
+        let authority =
+            RequestAuthority::from_url(raw_url).context("media request authority is invalid")?;
+        Ok(Self {
+            client,
+            gate,
+            authority,
+            priority,
+            public_redirects_only: validate_url(&url).is_ok(),
+        })
+    }
 }
 
 impl MediaRequest {
-    pub(super) fn new(
-        builder: RequestBuilder,
-        authority: RequestAuthority,
-        priority: PreemptionAuthority,
-        gate: MediaRequestGate,
-    ) -> Self {
+    pub(super) fn new(builder: RequestBuilder, route: RequestRoute) -> Self {
         Self {
             builder,
-            authority,
-            priority,
+            route,
             method: None,
-            gate,
         }
     }
 
@@ -62,13 +85,21 @@ impl MediaRequest {
     pub async fn admit(self) -> Result<AdmittedMediaRequest> {
         let (client, request) = self.builder.build_split();
         let mut request = request.context("build media request")?;
-        validate_request(&request, &self.authority)?;
+        validate_request(&request, &self.route.authority)?;
         *request.method_mut() = self.method.unwrap_or(Method::GET);
-        let lease = self.gate.acquire(self.authority, self.priority).await?;
+        let lease = self
+            .route
+            .gate
+            .acquire(self.route.authority, self.route.priority)
+            .await?;
         Ok(AdmittedMediaRequest {
-            client,
-            request,
-            lease,
+            hop: AdmittedHop::new(client, request, lease),
+            redirects: RedirectContext::new(
+                self.route.client,
+                self.route.gate,
+                self.route.priority,
+                self.route.public_redirects_only,
+            ),
         })
     }
 
@@ -80,7 +111,7 @@ impl MediaRequest {
     }
 }
 
-fn validate_request(request: &Request, expected: &RequestAuthority) -> Result<()> {
+pub(super) fn validate_request(request: &Request, expected: &RequestAuthority) -> Result<()> {
     let actual = RequestAuthority::from_url(request.url().as_str())
         .context("built media request authority is invalid")?;
     ensure!(actual == *expected, "media request authority was rewritten");
@@ -94,11 +125,12 @@ fn validate_request(request: &Request, expected: &RequestAuthority) -> Result<()
 
 impl AdmittedMediaRequest {
     pub async fn send(self) -> Result<MediaResponse> {
-        let response = self
-            .client
-            .execute(self.request)
-            .await
-            .context("send media request")?;
-        Ok(MediaResponse::new(response, self.lease))
+        redirect::send(self.hop, self.redirects, None).await
+    }
+
+    /// Sends while giving every redirect admission the caller's absolute deadline.
+    /// The caller remains responsible for applying the same deadline to origin IO.
+    pub async fn send_with_redirect_deadline(self, deadline: Instant) -> Result<MediaResponse> {
+        redirect::send(self.hop, self.redirects, Some(deadline)).await
     }
 }

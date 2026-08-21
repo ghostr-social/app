@@ -42,7 +42,11 @@ pub(super) async fn state_with_sessions(
     sessions: HlsSessions,
 ) -> (Arc<GatewayHttpState>, HlsSessionId) {
     let id = sessions.acquire(vec![source]).await.expect("session");
-    let client = Client::builder().no_proxy().build().expect("client");
+    let client = Client::builder()
+        .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .expect("client");
     let state = GatewayHttpState {
         requests: MediaRequestExecutor::new(
             Arc::new(LocalClient(client)),

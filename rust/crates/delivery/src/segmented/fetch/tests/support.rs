@@ -16,7 +16,13 @@ impl MediaHttpRequests for LocalClient {
 }
 
 pub(super) fn client() -> MediaRequestExecutor {
-    let client = LocalClient(Client::builder().no_proxy().build().expect("client"));
+    let client = LocalClient(
+        Client::builder()
+            .no_proxy()
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .expect("client"),
+    );
     MediaRequestExecutor::new(Arc::new(client), MediaRequestLimits::try_new(1, 1).unwrap())
 }
 

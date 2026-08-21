@@ -90,15 +90,17 @@ async fn send_head(
         .unwrap_or(1)
         .max(1);
     let started = Instant::now();
-    let response = await_headers(admitted.send(), spec.timeouts.headers).await?;
-    Ok((response, started.elapsed()))
+    let deadline = started + spec.timeouts.headers;
+    let response = await_headers(admitted.send_with_redirect_deadline(deadline), deadline).await?;
+    let ttfb = response.origin_elapsed(started.elapsed());
+    Ok((response, ttfb))
 }
 
 async fn await_headers(
     sending: impl Future<Output = Result<MediaResponse>>,
-    wait: Duration,
+    deadline: Instant,
 ) -> Result<MediaResponse> {
-    tokio::time::timeout(wait, sending)
+    tokio::time::timeout_at(deadline, sending)
         .await
         .context("probe response headers timed out")?
         .context("probe request failed")

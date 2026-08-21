@@ -81,8 +81,9 @@ async fn open(
     traffic: &mut dyn ChunkTraffic,
 ) -> Result<Opened> {
     let started = Instant::now();
+    let deadline = started + headers;
     let request_started = AtomicBool::new(false);
-    let sending = admitted.send();
+    let sending = admitted.send_with_redirect_deadline(deadline);
     tokio::pin!(sending);
     let tracked = poll_fn(|context| {
         if !request_started.swap(true, Ordering::Relaxed) {
@@ -95,7 +96,7 @@ async fn open(
         _ = cancel.cancelled() => {
             return Ok(cancelled(request_started.load(Ordering::Relaxed)));
         },
-        response = tokio::time::timeout(headers, tracked) => response,
+        response = tokio::time::timeout_at(deadline, tracked) => response,
     }
     .context("chunk response headers timed out")?
     .context("chunk request failed")?;
@@ -105,10 +106,8 @@ async fn open(
         .context("chunk request rejected")?;
     require_identity_encoding(response.headers())
         .context("encoded response cannot be assembled into media bytes")?;
-    Ok(Opened::Response(OpenedResponse {
-        response,
-        ttfb: started.elapsed(),
-    }))
+    let ttfb = response.origin_elapsed(started.elapsed());
+    Ok(Opened::Response(OpenedResponse { response, ttfb }))
 }
 
 fn cancelled(request_started: bool) -> Opened {
