@@ -1,6 +1,9 @@
-use crate::manager::concurrency::{capacity_evidence, connection_ceiling, network_profile_setback};
+use crate::manager::concurrency::{
+    capacity_evidence, network_profile_setback, RequestConcurrencyLimits,
+};
 use crate::manager::traffic::OverallTrafficWindow;
 use ghostr_engine::concurrency::{ConcurrencyOccupancy, NetworkSetback};
+use std::num::NonZeroUsize;
 use std::time::Duration;
 
 #[test]
@@ -29,7 +32,15 @@ fn observed_packet_loss_is_an_immediate_concurrency_setback() {
 }
 
 #[test]
-fn hard_host_connection_limit_caps_the_configured_ceiling() {
-    assert_eq!(connection_ceiling(3, 0), 3);
-    assert_eq!(connection_ceiling(3, 1), 1);
+fn per_host_limit_does_not_collapse_the_global_ceiling() {
+    let inherited = RequestConcurrencyLimits::resolve(3, None, 0);
+    let debug_limited = RequestConcurrencyLimits::resolve(3, None, 1);
+    let configured = RequestConcurrencyLimits::resolve(3, NonZeroUsize::new(2), 0);
+
+    assert_eq!(inherited.global(), 3);
+    assert_eq!(inherited.per_authority(), 3);
+    assert_eq!(debug_limited.global(), 3);
+    assert_eq!(debug_limited.per_authority(), 1);
+    assert_eq!(debug_limited.segmented_compatibility(), 1);
+    assert_eq!(configured.per_authority(), 2);
 }

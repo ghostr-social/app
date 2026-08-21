@@ -1,6 +1,6 @@
 //! Reconciles the pure policy's ordered work with live transfer workers.
 
-use crate::manager::concurrency::{connection_ceiling, planned_capacity};
+use crate::manager::concurrency::{planned_capacity, RequestConcurrencyLimits};
 use crate::manager::plan::{PlannedTransfer, PlannedWork};
 use crate::manager::reconcile_warp::{self, WarpDirective};
 use crate::manager::DeliveryWorker;
@@ -127,8 +127,13 @@ impl DeliveryWorker {
     }
 
     pub(super) fn connection_ceiling(&self) -> usize {
-        connection_ceiling(
+        self.request_limits().global()
+    }
+
+    pub(super) fn request_limits(&self) -> RequestConcurrencyLimits {
+        RequestConcurrencyLimits::resolve(
             self.state.concurrency(),
+            self.max_requests_per_authority,
             self.ctx.network.profile().max_connections_per_host,
         )
     }

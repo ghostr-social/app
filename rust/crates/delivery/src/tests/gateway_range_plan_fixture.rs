@@ -33,14 +33,13 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
     let independent_sources = HashMap::new();
     let completed_head_probes = HashSet::new();
     let revisions = HashMap::new();
-    let finalized = HashSet::new();
     planned_work(
         &mut state,
         PlanInputs {
             stats: &stats,
             retry: &retry,
             present: &HashMap::new(),
-            finalized: &finalized,
+            finalized: &HashSet::new(),
             stored_totals: &stored_totals,
             continuation_sources: &continuation_sources,
             revisions: &revisions,
@@ -51,6 +50,7 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
             storage: StorageSnapshot::new(2_000_000_000, 0),
             connection_capacity: 1,
             connection_ceiling: 1,
+            per_authority_request_limit: 1,
             packet_loss_bps: 0,
             observed_at_ms: 1,
             demanded: &demanded,

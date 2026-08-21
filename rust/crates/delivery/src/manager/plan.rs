@@ -31,6 +31,7 @@ pub(crate) struct PlanInputs<'a> {
     pub storage: StorageSnapshot,
     pub connection_capacity: usize,
     pub connection_ceiling: usize,
+    pub per_authority_request_limit: usize,
     pub packet_loss_bps: u16,
     pub observed_at_ms: u64,
     pub demanded: &'a HashMap<PostId, ByteRange>,

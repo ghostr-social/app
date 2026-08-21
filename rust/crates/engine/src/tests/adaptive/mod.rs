@@ -12,6 +12,7 @@ mod current_inflight_emergency_test;
 mod current_metadata_gate_test;
 mod current_room_eviction_test;
 mod decision_record_replay_test;
+mod decision_replay_authority_limit_test;
 mod discovery_emergency_hold_test;
 mod discovery_empty_expand_test;
 mod discovery_safe_expand_test;

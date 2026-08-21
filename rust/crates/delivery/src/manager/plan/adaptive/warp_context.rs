@@ -47,7 +47,10 @@ fn limits(snapshot: &ghostr_engine::adaptive::PlayabilitySnapshot) -> PlannerLim
         network_rate_bytes_per_second: rate,
         cpu_ms: 0,
         request_tokens: snapshot.network.connection_capacity.min(u16::MAX as usize) as u16,
-        per_origin_requests: snapshot.network.connection_ceiling.min(u16::MAX as usize) as u16,
+        per_origin_requests: snapshot
+            .network
+            .per_authority_request_limit
+            .min(u16::MAX as usize) as u16,
     }
 }
 

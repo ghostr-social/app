@@ -50,7 +50,8 @@ impl DeliveryWorker {
     pub(crate) async fn reconcile(&mut self) {
         let observed_at_ms = unix_time_ms();
         self.select_playback_rendition(observed_at_ms).await;
-        let segmented_limit = self.connection_ceiling();
+        let request_limits = self.request_limits();
+        let segmented_limit = request_limits.segmented_compatibility();
         self.segmented.reconcile(
             self.ctx.client.clone(),
             self.ctx.events.clone(),
@@ -69,7 +70,6 @@ impl DeliveryWorker {
         let in_flight = self.downloads.actions();
         let active_head_probes = self.probes.active_identities();
         let demanded = self.resolve_gateway_demands(&stored.present);
-        let connection_ceiling = self.connection_ceiling();
         let inputs = PlanInputs {
             stats: self.keeper.stats(),
             retry: &self.retry,
@@ -87,7 +87,8 @@ impl DeliveryWorker {
                 .concurrency_limit()
                 .min(self.progressive_capacity())
                 .max(1),
-            connection_ceiling,
+            connection_ceiling: request_limits.global(),
+            per_authority_request_limit: request_limits.per_authority(),
             packet_loss_bps: self.ctx.network.profile().packet_loss_bps,
             observed_at_ms,
             demanded: &demanded,

@@ -51,7 +51,8 @@ fn zero_request_local_work_does_not_require_an_authority() {
 fn candidate_admitted(active: &str, candidate: &str) -> bool {
     let mut input = snapshot(2, 20_000_000, 20_000, 0);
     input.network.connection_capacity = 2;
-    input.network.connection_ceiling = 1;
+    input.network.connection_ceiling = 2;
+    input.network.per_authority_request_limit = 1;
     set_source(&mut input, 0, active);
     set_source(&mut input, 1, candidate);
     input.candidates[0].in_flight.push(InFlightAction::range(

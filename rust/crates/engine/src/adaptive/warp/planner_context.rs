@@ -178,6 +178,9 @@ fn default_limits(snapshot: &PlayabilitySnapshot) -> PlannerLimits {
         network_rate_bytes_per_second: rate.max(1),
         cpu_ms: 0,
         request_tokens: snapshot.network.connection_capacity.min(u16::MAX as usize) as u16,
-        per_origin_requests: snapshot.network.connection_ceiling.min(u16::MAX as usize) as u16,
+        per_origin_requests: snapshot
+            .network
+            .per_authority_request_limit
+            .min(u16::MAX as usize) as u16,
     }
 }

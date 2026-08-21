@@ -50,6 +50,7 @@ fn stored_mirror_generation_controls_continuation_source_and_extent() {
             storage: StorageSnapshot::new(1_000_000, 8),
             connection_capacity: 1,
             connection_ceiling: 1,
+            per_authority_request_limit: 1,
             packet_loss_bps: 0,
             observed_at_ms: 1,
             demanded: &demanded,

@@ -120,6 +120,7 @@ pub(super) fn network(inputs: &PlanInputs<'_>) -> NetworkSnapshot {
         packet_loss_bps: inputs.packet_loss_bps,
         connection_capacity: inputs.connection_capacity.max(1),
         connection_ceiling: inputs.connection_ceiling.max(1),
+        per_authority_request_limit: inputs.per_authority_request_limit.max(1),
         confidence: estimate.map_or(EstimateConfidence::Low, |value| {
             EstimateConfidence::from_evidence(
                 value.sample_count(),

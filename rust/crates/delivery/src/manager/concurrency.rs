@@ -5,6 +5,7 @@ use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::concurrency::{ConcurrencyEvidence, ConcurrencyOccupancy, NetworkSetback};
 use ghostr_engine::PostId;
 use std::collections::HashSet;
+use std::num::NonZeroUsize;
 use std::time::Duration;
 
 const SEVERE_PACKET_LOSS_BPS: u16 = 5_000;
@@ -13,6 +14,45 @@ const SEVERE_PACKET_LOSS_BPS: u16 = 5_000;
 pub(crate) struct PlannedCapacity {
     pub(crate) total: usize,
     pub(crate) foreground_goal: usize,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct RequestConcurrencyLimits {
+    global: usize,
+    per_authority: usize,
+    segmented_compatibility: usize,
+}
+
+impl RequestConcurrencyLimits {
+    pub(crate) fn resolve(
+        configured_global: usize,
+        configured_per_authority: Option<NonZeroUsize>,
+        debug_per_authority: usize,
+    ) -> Self {
+        let global = configured_global.max(1);
+        let configured = configured_per_authority.map_or(global, NonZeroUsize::get);
+        let debug = match debug_per_authority {
+            0 => global,
+            value => value,
+        };
+        Self {
+            global,
+            per_authority: global.min(configured).min(debug),
+            segmented_compatibility: global.min(debug),
+        }
+    }
+
+    pub(crate) const fn global(self) -> usize {
+        self.global
+    }
+
+    pub(crate) const fn per_authority(self) -> usize {
+        self.per_authority
+    }
+
+    pub(crate) const fn segmented_compatibility(self) -> usize {
+        self.segmented_compatibility
+    }
 }
 
 pub(crate) fn capacity_evidence(
@@ -37,14 +77,6 @@ pub(crate) fn network_profile_setback(packet_loss_bps: u16) -> NetworkSetback {
     match packet_loss_bps {
         0 => NetworkSetback::None,
         _ => NetworkSetback::Failure,
-    }
-}
-
-pub(crate) fn connection_ceiling(configured: usize, per_host: usize) -> usize {
-    let configured = configured.max(1);
-    match per_host {
-        0 => configured,
-        limit => configured.min(limit.max(1)),
     }
 }
 

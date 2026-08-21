@@ -95,6 +95,8 @@ struct NetworkState {
     packet_loss_bps: u16,
     connection_capacity: usize,
     connection_ceiling: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    per_authority_request_limit: Option<usize>,
     confidence: u8,
 }
 
@@ -106,6 +108,9 @@ impl NetworkState {
             packet_loss_bps: value.packet_loss_bps,
             connection_capacity: value.connection_capacity,
             connection_ceiling: value.connection_ceiling,
+            per_authority_request_limit: (value.per_authority_request_limit
+                != value.connection_ceiling)
+                .then_some(value.per_authority_request_limit),
             confidence: confidence_code(value.confidence),
         }
     }
@@ -117,6 +122,9 @@ impl NetworkState {
             packet_loss_bps: self.packet_loss_bps,
             connection_capacity: self.connection_capacity,
             connection_ceiling: self.connection_ceiling,
+            per_authority_request_limit: self
+                .per_authority_request_limit
+                .unwrap_or(self.connection_ceiling),
             confidence: confidence(self.confidence),
         }
     }

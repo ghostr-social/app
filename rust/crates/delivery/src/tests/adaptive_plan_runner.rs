@@ -59,6 +59,7 @@ pub(super) fn run(mut scenario: PlanScenario<'_>) -> PlannedWork {
             storage: scenario.storage,
             connection_capacity: scenario.connection_capacity,
             connection_ceiling,
+            per_authority_request_limit: connection_ceiling,
             packet_loss_bps: scenario.packet_loss_bps,
             observed_at_ms: 1_000,
             demanded: &demanded,

@@ -83,6 +83,7 @@ use ghostr_engine::concurrency::AdaptiveConcurrency;
 use ghostr_engine::{DataUsageLevel, EngineParams};
 use ghostr_net::outbound_media_client::{MediaHttpClient, MediaHttpRequests};
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::{mpsc, watch};
@@ -163,6 +164,7 @@ pub(crate) struct DeliveryWorker {
     traffic: TrafficInbox,
     wake_cursor: WakeCursor,
     concurrency: AdaptiveConcurrency,
+    max_requests_per_authority: Option<NonZeroUsize>,
     segmented: SegmentedDelivery,
     timelines: TimelineCoordinator,
     independent_objects: IndependentObjects,

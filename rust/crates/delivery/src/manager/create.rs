@@ -89,6 +89,7 @@ impl DeliveryWorker {
             traffic,
             wake_cursor: WakeCursor::default(),
             concurrency,
+            max_requests_per_authority: config.tuning.max_requests_per_authority,
             segmented,
             timelines,
             independent_objects: IndependentObjects::default(),

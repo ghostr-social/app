@@ -45,6 +45,7 @@ pub struct NetworkSnapshot {
     pub packet_loss_bps: u16,
     pub connection_capacity: usize,
     pub connection_ceiling: usize,
+    pub per_authority_request_limit: usize,
     pub confidence: EstimateConfidence,
 }
 

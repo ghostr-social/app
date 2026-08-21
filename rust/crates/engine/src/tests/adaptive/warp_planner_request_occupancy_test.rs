@@ -23,7 +23,8 @@ fn same_authority_paths_share_the_hard_request_budget() {
 fn a_cancelling_body_holds_its_authority_until_terminal_ack() {
     let mut input = snapshot(3, 20_000_000, 20_000, 0);
     input.network.connection_capacity = 2;
-    input.network.connection_ceiling = 1;
+    input.network.connection_ceiling = 2;
+    input.network.per_authority_request_limit = 1;
     set_source(&mut input, 0, "https://a.example/active.mp4");
     set_source(&mut input, 1, "https://a.example/next.mp4");
     set_source(&mut input, 2, "https://b.example/next.mp4");

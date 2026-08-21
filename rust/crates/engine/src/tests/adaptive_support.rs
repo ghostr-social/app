@@ -34,6 +34,7 @@ pub(super) fn snapshot(
             packet_loss_bps: 0,
             connection_capacity: 6,
             connection_ceiling: 6,
+            per_authority_request_limit: 6,
             confidence: EstimateConfidence::High,
         },
         storage: StorageSnapshot::new(2 * 1024 * MIB, 0),

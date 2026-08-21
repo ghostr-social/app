@@ -15,6 +15,7 @@ fn constrained_startup_reserves_useful_immediate_next_work_before_deep_current()
         packet_loss_bps: 0,
         connection_capacity: 1,
         connection_ceiling: 1,
+        per_authority_request_limit: 1,
         confidence: EstimateConfidence::High,
     };
 

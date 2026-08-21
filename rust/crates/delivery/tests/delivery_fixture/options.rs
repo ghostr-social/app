@@ -45,6 +45,7 @@ pub fn serial_long_retry_options(transient_attempts: u32) -> DeliveryOptions {
 fn test_tuning() -> DeliveryTuning {
     DeliveryTuning {
         probe_concurrency: 2,
+        max_requests_per_authority: None,
         retry: RetryPolicy {
             base: Duration::from_millis(50),
             max: Duration::from_millis(400),
