@@ -30,6 +30,7 @@ fn coherent_206_releases_the_unused_promotion_reservation() {
         retrieval: request,
         host: "origin.test".into(),
         committed_until_ms: 10_000,
+        launched_at_ms: 0,
         handle,
         store_action: None,
     });

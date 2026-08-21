@@ -93,10 +93,16 @@ impl Builder<'_> {
         active: &InFlightAction,
         context: &ActivePlannerContext,
     ) {
+        if !self.permits_request(candidate) {
+            return;
+        }
         let Some((input, proof, alternate)) = context.hedge() else {
             return;
         };
-        if !HedgePolicy::eligible(input, proof) || alternate == active.source {
+        if !exact_hedge(input, active)
+            || !HedgePolicy::eligible(input, proof)
+            || alternate == active.source
+        {
             return;
         }
         let allocation =
@@ -109,6 +115,7 @@ impl Builder<'_> {
         let node_input = NodeInput::new(kind, alternate, prediction, &[]);
         let mut node = self.node(candidate, node_input);
         node.resources = request_resources(allocation.request);
+        node = node.with_request(allocation.request);
         node.value = ActionValue::from_net_micros(net_hedge_value(input));
         self.actions.push(GeneratedAction {
             node,
@@ -134,4 +141,24 @@ fn net_hedge_value(input: &crate::adaptive::HedgeInput) -> i64 {
         .loss_reduction_micros
         .saturating_sub(input.duplicate_cost_micros)
         .min(i64::MAX as u64) as i64
+}
+
+fn exact_hedge(input: &crate::adaptive::HedgeInput, active: &InFlightAction) -> bool {
+    input.primary == active.action_id
+        && input.maximum_network_bytes == active.request.reserved_network_bytes()
+        && request_matches(&input.action, active.request)
+}
+
+fn request_matches(action: &ActionKind, request: crate::adaptive::RetrievalRequest) -> bool {
+    match (action, request) {
+        (
+            ActionKind::Prefix(action) | ActionKind::Tail(action) | ActionKind::FetchRange(action),
+            crate::adaptive::RetrievalRequest::FetchRange { bytes, .. },
+        ) => *action == bytes,
+        (
+            ActionKind::FetchWhole { maximum_bytes },
+            crate::adaptive::RetrievalRequest::FetchWhole { contract, .. },
+        ) => *maximum_bytes == contract.maximum_bytes(),
+        _ => false,
+    }
 }

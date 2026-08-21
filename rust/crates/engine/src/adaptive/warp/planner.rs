@@ -70,6 +70,7 @@ impl WarpPlanner {
             prices: self.prices.prices(),
             additional_request_slot_demanded,
             common_random_seed,
+            retry_availability: input.context.retry_evidence(),
             generated,
         }
     }

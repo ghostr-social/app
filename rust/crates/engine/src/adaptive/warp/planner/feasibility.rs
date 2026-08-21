@@ -38,6 +38,7 @@ pub(super) fn apply(
     let nodes = frontier
         .iter()
         .filter(|node| semantically_admissible(node, &semantic))
+        .filter(|node| request_admitted(input, node))
         .filter(|node| budget.allows(&node.resources, node.request_authority()))
         .filter(|node| reserve.degraded || budget.allows_action(node))
         .cloned()
@@ -48,6 +49,10 @@ pub(super) fn apply(
         reserve,
         semantic,
     }
+}
+
+fn request_admitted(input: &WarpPlannerInput<'_>, node: &ActionNode) -> bool {
+    node.resources.requests == 0 || input.context.request_admits(node)
 }
 
 fn semantic_decisions(

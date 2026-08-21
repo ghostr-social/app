@@ -39,7 +39,9 @@ impl DeliveryWorker {
     }
 
     pub(crate) fn start_cooldown(&mut self, post: PostId, wait: Duration) {
-        let Some(cooldown) = self.retry.cool_down(post.clone()) else {
+        let observed_at_ms = crate::manager::time::unix_time_ms();
+        let eligible_at_ms = observed_at_ms.saturating_add(duration_ms(wait));
+        let Some(cooldown) = self.retry.cool_down_until(post.clone(), eligible_at_ms) else {
             return;
         };
         self.cooldown_timers
@@ -59,4 +61,8 @@ impl DeliveryWorker {
         self.retry
             .note_success(&Source::new(post.clone(), url.to_owned()));
     }
+}
+
+fn duration_ms(duration: Duration) -> u64 {
+    duration.as_millis().min(u128::from(u64::MAX)) as u64
 }

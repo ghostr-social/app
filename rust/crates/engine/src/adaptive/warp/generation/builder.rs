@@ -85,6 +85,7 @@ impl<'a> Builder<'a> {
         let input = NodeInput::new(kind.clone(), &allocation.source, prediction, requires);
         let mut node = self.node(candidate, input);
         node.resources = request_resources(allocation.request);
+        node = node.with_request(allocation.request);
         let id = node.id;
         self.actions.push(GeneratedAction {
             node,
@@ -153,6 +154,16 @@ impl<'a> Builder<'a> {
         self.context
             .candidate(&candidate.post)
             .is_some_and(|item| item.capability.blocks_direct_playback())
+    }
+
+    pub(super) fn permits_request(&self, candidate: &CandidateSnapshot) -> bool {
+        self.context.permits_request(&candidate.post)
+    }
+
+    pub(super) fn request_source<'b>(&self, candidate: &'b CandidateSnapshot) -> Option<&'b str> {
+        self.permits_request(candidate)
+            .then(|| super::allocation::source(candidate))
+            .flatten()
     }
 
     pub(super) fn action_id(

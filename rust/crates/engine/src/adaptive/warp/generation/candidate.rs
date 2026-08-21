@@ -1,4 +1,4 @@
-use super::allocation::{classify, resources, source, AllocationSpec};
+use super::allocation::{classify, resources, AllocationSpec};
 use super::builder::{Builder, NodeInput};
 use super::prediction::transform_prediction;
 use super::{GeneratedAction, PlannerCommand};
@@ -19,7 +19,7 @@ impl Builder<'_> {
     }
 
     fn add_head(&mut self, candidate: &CandidateSnapshot) {
-        let Some(source) = source(candidate) else {
+        let Some(source) = self.request_source(candidate) else {
             return;
         };
         let head_suppressed = self
@@ -45,6 +45,9 @@ impl Builder<'_> {
     }
 
     fn add_base(&mut self, candidate: &CandidateSnapshot) {
+        if !self.permits_request(candidate) {
+            return;
+        }
         let allocations: Vec<_> = self
             .base
             .allocations
@@ -59,7 +62,7 @@ impl Builder<'_> {
     }
 
     fn add_prefix(&mut self, candidate: &CandidateSnapshot) {
-        let Some(source) = source(candidate) else {
+        let Some(source) = self.request_source(candidate) else {
             return;
         };
         if !candidate.needs_bootstrap() {
@@ -81,7 +84,9 @@ impl Builder<'_> {
     }
 
     fn add_tail(&mut self, candidate: &CandidateSnapshot, prefix: Option<u16>) {
-        let (Some(probe), Some(source)) = (candidate.timeline_probe, source(candidate)) else {
+        let (Some(probe), Some(source)) =
+            (candidate.timeline_probe, self.request_source(candidate))
+        else {
             return;
         };
         let kind = ActionKind::Tail(probe.bytes);
@@ -94,7 +99,7 @@ impl Builder<'_> {
     }
 
     fn add_continuation(&mut self, candidate: &CandidateSnapshot) {
-        let Some(source) = source(candidate) else {
+        let Some(source) = self.request_source(candidate) else {
             return;
         };
         let Some(playable) = super::super::super::ranges::missing(candidate)
@@ -116,7 +121,8 @@ impl Builder<'_> {
     }
 
     fn add_whole(&mut self, candidate: &CandidateSnapshot) -> Option<u16> {
-        let (Some(total), Some(source)) = (candidate.total_bytes, source(candidate)) else {
+        let (Some(total), Some(source)) = (candidate.total_bytes, self.request_source(candidate))
+        else {
             return None;
         };
         if candidate.finalized {
@@ -142,7 +148,7 @@ impl Builder<'_> {
             return;
         }
         let (Some(source), Some(missing)) = (
-            source(candidate),
+            self.request_source(candidate),
             super::super::super::ranges::missing(candidate)
                 .into_iter()
                 .next(),

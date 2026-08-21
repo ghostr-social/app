@@ -11,6 +11,18 @@ pub enum HeadProbeHistory {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PlannerRetryAvailability {
+    Ready,
+    Cooling { eligible_at_ms: u64 },
+}
+
+impl PlannerRetryAvailability {
+    pub const fn permits_request(self) -> bool {
+        matches!(self, Self::Ready)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PlannerCapability {
     Unavailable,
     Reported {
@@ -95,6 +107,7 @@ pub struct PlannerCandidateContext {
     pub quality: PlannerQuality,
     pub preview: PreviewAvailability,
     pub head_probe: HeadProbeHistory,
+    pub retry: PlannerRetryAvailability,
 }
 
 impl PlannerContext {
@@ -129,6 +142,17 @@ impl PlannerContext {
     pub fn with_head_probe_history(mut self, post: PostId, history: HeadProbeHistory) -> Self {
         if let Some(candidate) = self.candidates.get_mut(&post) {
             candidate.head_probe = history;
+        }
+        self
+    }
+
+    pub fn with_retry_availability(
+        mut self,
+        post: PostId,
+        availability: PlannerRetryAvailability,
+    ) -> Self {
+        if let Some(candidate) = self.candidates.get_mut(&post) {
+            candidate.retry = availability;
         }
         self
     }

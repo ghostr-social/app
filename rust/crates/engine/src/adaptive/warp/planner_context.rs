@@ -5,11 +5,25 @@ use std::collections::BTreeMap;
 
 mod active;
 mod candidate;
+mod request_scope;
 pub use active::ActivePlannerContext;
 pub use candidate::{
     HeadProbeHistory, PlannerCandidateContext, PlannerCapability, PlannerQuality,
-    PreviewAvailability, TransformCapability,
+    PlannerRetryAvailability, PreviewAvailability, TransformCapability,
 };
+pub use request_scope::SoftRequestCommitment;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PlannerRetryEvidence {
+    pub post: PostId,
+    pub availability: PlannerRetryAvailability,
+}
+
+impl PlannerRetryEvidence {
+    pub const fn new(post: PostId, availability: PlannerRetryAvailability) -> Self {
+        Self { post, availability }
+    }
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PlannerLimits {
@@ -32,6 +46,7 @@ pub struct PlannerContext {
     active: BTreeMap<ActionId, ActivePlannerContext>,
     pub limits: PlannerLimits,
     request_occupancy: RequestOccupancy,
+    request_scope: Option<request_scope::RequestScope>,
     pub feedback: Option<ResourceFeedback>,
     pub epochs: TwinEpochs,
     pub epsilon: EpsilonBuckets,
@@ -52,6 +67,7 @@ impl PlannerContext {
                         quality: PlannerQuality::Unavailable,
                         preview: PreviewAvailability::Unavailable,
                         head_probe: HeadProbeHistory::Unobserved,
+                        retry: PlannerRetryAvailability::Ready,
                     },
                 )
             })
@@ -67,6 +83,7 @@ impl PlannerContext {
                     .flat_map(|candidate| &candidate.in_flight)
                     .map(|active| active.source.as_str()),
             ),
+            request_scope: None,
             feedback: None,
             epochs: TwinEpochs::new(0, 0, 0),
             epsilon: EpsilonBuckets::new(20, snapshot.request_slice_bytes, 100, 100),
@@ -90,6 +107,15 @@ impl PlannerContext {
 
     pub fn with_request_occupancy(mut self, occupancy: RequestOccupancy) -> Self {
         self.request_occupancy = occupancy;
+        self
+    }
+
+    pub fn with_soft_request_capacity(
+        mut self,
+        ordinary_tokens: u16,
+        soft: Vec<SoftRequestCommitment>,
+    ) -> Self {
+        self.request_scope = Some(request_scope::RequestScope::new(ordinary_tokens, soft));
         self
     }
 
@@ -119,10 +145,29 @@ impl PlannerContext {
         &self.request_occupancy
     }
 
+    pub(super) fn permits_request(&self, post: &PostId) -> bool {
+        self.candidate(post)
+            .is_some_and(|candidate| candidate.retry.permits_request())
+    }
+
+    pub(super) fn retry_evidence(&self) -> Vec<PlannerRetryEvidence> {
+        self.candidates
+            .iter()
+            .filter(|(_, candidate)| candidate.retry != PlannerRetryAvailability::Ready)
+            .map(|(post, candidate)| PlannerRetryEvidence::new(post.clone(), candidate.retry))
+            .collect()
+    }
+
     pub(super) fn remaining_request_slots(&self) -> u16 {
         self.limits
             .request_tokens
             .saturating_sub(self.request_occupancy.total().min(u16::MAX as usize) as u16)
+    }
+
+    pub(super) fn request_admits(&self, action: &crate::adaptive::ActionNode) -> bool {
+        self.request_scope
+            .as_ref()
+            .is_none_or(|scope| scope.admits(action, self.request_occupancy.total()))
     }
 }
 

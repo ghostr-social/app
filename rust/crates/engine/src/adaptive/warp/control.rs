@@ -48,11 +48,13 @@ pub struct HedgeInput {
     pub tail_trigger_ms: u64,
     pub loss_reduction_micros: u64,
     pub duplicate_cost_micros: u64,
+    pub maximum_network_bytes: u64,
     pub urgent: bool,
 }
 
 impl HedgeInput {
     pub fn new(primary: ActionId, action: ActionKind) -> Self {
+        let maximum_network_bytes = action_network_bytes(&action);
         Self {
             primary,
             action,
@@ -60,6 +62,7 @@ impl HedgeInput {
             tail_trigger_ms: u64::MAX,
             loss_reduction_micros: 0,
             duplicate_cost_micros: u64::MAX,
+            maximum_network_bytes,
             urgent: true,
         }
     }
@@ -75,6 +78,16 @@ impl HedgeInput {
         self.duplicate_cost_micros = duplicate_cost_micros;
         self
     }
+
+    pub const fn with_network_envelope(mut self, maximum_bytes: u64) -> Self {
+        self.maximum_network_bytes = maximum_bytes;
+        self
+    }
+
+    pub const fn with_urgency(mut self, urgent: bool) -> Self {
+        self.urgent = urgent;
+        self
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -82,21 +95,23 @@ pub struct HedgePolicy;
 
 impl HedgePolicy {
     pub fn eligible(input: &HedgeInput, identity: IdentityProof) -> bool {
+        let action_bytes = action_network_bytes(&input.action);
         input.urgent
             && input.elapsed_ms >= input.tail_trigger_ms
             && input.loss_reduction_micros > input.duplicate_cost_micros
-            && small_action(&input.action)
+            && action_bytes <= input.maximum_network_bytes
+            && input.maximum_network_bytes <= 1024 * 1024
             && identity_allows(&input.action, identity)
     }
 }
 
-fn small_action(action: &ActionKind) -> bool {
+fn action_network_bytes(action: &ActionKind) -> u64 {
     match action {
         ActionKind::Prefix(bytes) | ActionKind::Tail(bytes) | ActionKind::FetchRange(bytes) => {
-            bytes.len() <= 1024 * 1024
+            bytes.len()
         }
-        ActionKind::FetchWhole { maximum_bytes } => *maximum_bytes <= 1024 * 1024,
-        _ => false,
+        ActionKind::FetchWhole { maximum_bytes } => *maximum_bytes,
+        _ => u64::MAX,
     }
 }
 

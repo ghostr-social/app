@@ -39,6 +39,12 @@ fn candidate(inputs: &RescueInputs<'_>, terminal: &ActionNode) -> Option<RescueP
     if !steps.iter().all(|node| admitted(node, inputs.semantic)) {
         return None;
     }
+    if !steps
+        .iter()
+        .all(|node| super::request_admitted(inputs.input, node))
+    {
+        return None;
+    }
     if !chance_feasible(inputs, &steps) {
         return None;
     }

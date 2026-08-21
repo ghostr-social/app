@@ -1,6 +1,10 @@
-use super::{overlaps, InFlightChunks};
+#[cfg(test)]
+use super::overlaps;
+use super::InFlightChunks;
 use ghostr_engine::representation::RepresentationBinding;
-use ghostr_engine::{ActionId, ChunkId};
+use ghostr_engine::ActionId;
+#[cfg(test)]
+use ghostr_engine::ChunkId;
 
 impl InFlightChunks {
     #[cfg(test)]

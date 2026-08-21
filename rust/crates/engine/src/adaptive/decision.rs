@@ -10,8 +10,9 @@ mod state;
 mod types;
 
 pub use advanced::{
-    RecordedAllocationReason, RecordedCandidateUtility, RecordedPreemptionAuthority,
-    RecordedPromotionGrant, RecordedPrunedSearchPlan, RecordedResourceCost, RecordedResourcePrices,
+    RecordedAllocationReason, RecordedCandidateUtility, RecordedPlannerRetryAvailability,
+    RecordedPlannerRetryEvidence, RecordedPreemptionAuthority, RecordedPromotionGrant,
+    RecordedPrunedSearchPlan, RecordedResourceCost, RecordedResourcePrices,
     RecordedRetainedSearchPlan, RecordedRetrievalRequest, RecordedSearchPruneReason,
     RecordedTransfer, RecordedTransformKind, RecordedTwinEvaluation, RecordedWarpAction,
     RecordedWarpActionKind, RecordedWarpCommand, RecordedWarpDecision, RecordedWarpReserve,

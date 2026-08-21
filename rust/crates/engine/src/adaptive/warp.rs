@@ -29,8 +29,8 @@ pub use planner::{
 };
 pub use planner_context::{
     ActivePlannerContext, HeadProbeHistory, PlannerCandidateContext, PlannerCapability,
-    PlannerContext, PlannerLimits, PlannerQuality, PreviewAvailability, ResourceFeedback,
-    TransformCapability,
+    PlannerContext, PlannerLimits, PlannerQuality, PlannerRetryAvailability, PlannerRetryEvidence,
+    PreviewAvailability, ResourceFeedback, SoftRequestCommitment, TransformCapability,
 };
 pub use request_occupancy::RequestOccupancy;
 pub use search::{

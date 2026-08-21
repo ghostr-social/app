@@ -6,16 +6,22 @@ const DEMAND_MEMORY_LIMIT: usize = 32;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct CooldownId(u64);
 
+#[derive(Clone, Copy)]
+struct ActiveCooldown {
+    id: CooldownId,
+    eligible_at_ms: u64,
+}
+
 #[derive(Default)]
 pub(super) struct Cooldowns {
-    active: HashMap<PostId, CooldownId>,
+    active: HashMap<PostId, ActiveCooldown>,
     demanded_offsets: HashMap<PostId, VecDeque<u64>>,
     credits: HashSet<PostId>,
     sequence: u64,
 }
 
 impl Cooldowns {
-    pub(super) fn begin(&mut self, post: PostId) -> Option<CooldownId> {
+    pub(super) fn begin(&mut self, post: PostId, eligible_at_ms: u64) -> Option<CooldownId> {
         if self.active.contains_key(&post) {
             return None;
         }
@@ -24,7 +30,13 @@ impl Cooldowns {
         }
         let cooldown = CooldownId(self.sequence);
         self.sequence = self.sequence.wrapping_add(1);
-        self.active.insert(post, cooldown);
+        self.active.insert(
+            post,
+            ActiveCooldown {
+                id: cooldown,
+                eligible_at_ms,
+            },
+        );
         Some(cooldown)
     }
 
@@ -42,7 +54,7 @@ impl Cooldowns {
     }
 
     pub(super) fn finish(&mut self, post: &PostId, cooldown: CooldownId) -> bool {
-        if self.active.get(post) != Some(&cooldown) {
+        if self.active.get(post).map(|active| active.id) != Some(cooldown) {
             return false;
         }
         self.active.remove(post);
@@ -74,6 +86,10 @@ impl Cooldowns {
 
     pub(super) fn is_active(&self, post: &PostId) -> bool {
         self.active.contains_key(post)
+    }
+
+    pub(super) fn eligible_at_ms(&self, post: &PostId) -> Option<u64> {
+        self.active.get(post).map(|active| active.eligible_at_ms)
     }
 
     pub(super) fn clear(&mut self) {

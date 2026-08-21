@@ -86,6 +86,7 @@ impl InFlightChunks {
             retrieval,
             host,
             committed_until_ms,
+            launched_at_ms: 0,
             handle,
             store_action: None,
         });

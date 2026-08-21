@@ -1,8 +1,8 @@
 use super::action;
 use crate::adaptive::decision::record::DecisionRecord;
 use crate::adaptive::{
-    DecisionAction, DecisionReplayStatus, RecordedRetainedSearchPlan, RecordedWarpAction,
-    RecordedWarpDecision,
+    DecisionAction, DecisionReplayStatus, RecordedPlannerRetryAvailability,
+    RecordedRetainedSearchPlan, RecordedWarpAction, RecordedWarpDecision,
 };
 
 pub(super) fn verify(
@@ -12,9 +12,25 @@ pub(super) fn verify(
     require(record.retained_plans.is_empty() && record.pruned.is_empty())?;
     verify_candidates(record, decision)?;
     verify_seed(record, decision)?;
+    verify_retry_evidence(decision)?;
     verify_actions(decision)?;
     verify_search(decision)?;
     verify_selection(record, decision)
+}
+
+fn verify_retry_evidence(decision: &RecordedWarpDecision) -> Result<(), DecisionReplayStatus> {
+    let evidence = &decision.retry_availability;
+    require(evidence.iter().all(|item| {
+        matches!(
+            item.availability,
+            RecordedPlannerRetryAvailability::Cooling { .. }
+        )
+    }))?;
+    require(evidence.iter().enumerate().all(|(index, item)| {
+        evidence[..index]
+            .iter()
+            .all(|prior| prior.post_id != item.post_id)
+    }))
 }
 
 fn verify_candidates(

@@ -69,6 +69,7 @@ pub(super) fn decision(
             request_micros: 4,
         },
         common_random_seed: 99,
+        retry_availability: Vec::new(),
     }
 }
 

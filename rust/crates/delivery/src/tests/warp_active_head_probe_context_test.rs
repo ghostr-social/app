@@ -17,12 +17,35 @@ fn only_the_current_active_probe_identity_suppresses_head() {
     let current = state.catalog().transfer_identity(&post, source).unwrap();
     let stale = transfer_identity(&post, source);
 
-    assert!(!generates_head(&mut state, std::slice::from_ref(&current)));
-    assert!(generates_head(&mut state, std::slice::from_ref(&stale)));
+    assert!(!generates_head(plan(&mut state, &[current], 2)));
+    assert!(generates_head(plan(&mut state, &[stale], 2)));
 }
 
-fn generates_head(state: &mut DeliveryState, active: &[TransferIdentity]) -> bool {
-    let work = planned_work(
+#[test]
+fn active_current_head_leaves_one_scoped_body_companion_slot() {
+    let post = PostId::new("post");
+    let source = "https://media.example/video.mp4";
+    let mut state = state(post.clone(), source);
+    let current = state.catalog().transfer_identity(&post, source).unwrap();
+    let work = plan(&mut state, &[current], 1);
+    let selected = work.warp.unwrap().selected.expect("body companion action");
+
+    assert!(matches!(selected.command, PlannerCommand::Transfer(_)));
+    assert_eq!(selected.node.post, post);
+}
+
+fn generates_head(work: crate::manager::plan::PlannedWork) -> bool {
+    work.warp.unwrap().generated.actions.iter().any(|action| {
+        matches!(&action.command, PlannerCommand::ProbeHead { post, .. } if post.as_str() == "post")
+    })
+}
+
+fn plan(
+    state: &mut DeliveryState,
+    active: &[TransferIdentity],
+    capacity: usize,
+) -> crate::manager::plan::PlannedWork {
+    planned_work(
         state,
         PlanInputs {
             stats: &HostStats::new(),
@@ -37,17 +60,14 @@ fn generates_head(state: &mut DeliveryState, active: &[TransferIdentity]) -> boo
             in_flight: &[],
             active_head_probes: active,
             storage: StorageSnapshot::new(1_000_000, 0),
-            connection_capacity: 2,
-            connection_ceiling: 2,
-            per_authority_request_limit: 2,
+            connection_capacity: capacity,
+            connection_ceiling: 3,
+            per_authority_request_limit: 3,
             packet_loss_bps: 0,
             observed_at_ms: 1,
             demanded: &HashMap::new(),
         },
-    );
-    work.warp.unwrap().generated.actions.iter().any(|action| {
-        matches!(&action.command, PlannerCommand::ProbeHead { post, .. } if post.as_str() == "post")
-    })
+    )
 }
 
 fn state(post: PostId, source: &str) -> DeliveryState {

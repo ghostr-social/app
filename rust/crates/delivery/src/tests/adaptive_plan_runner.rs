@@ -19,7 +19,12 @@ pub(super) struct PlanScenario<'a> {
     pub(super) connection_capacity: usize,
 }
 
-pub(super) fn run(mut scenario: PlanScenario<'_>) -> PlannedWork {
+pub(super) fn run(scenario: PlanScenario<'_>) -> PlannedWork {
+    let retry = RetryBook::new(RetryPolicy::default());
+    run_with_retry(scenario, &retry)
+}
+
+pub(super) fn run_with_retry(mut scenario: PlanScenario<'_>, retry: &RetryBook) -> PlannedWork {
     let current = scenario
         .state
         .focus()
@@ -33,7 +38,6 @@ pub(super) fn run(mut scenario: PlanScenario<'_>) -> PlannedWork {
     let sample = sample(&scenario);
     stats.record_overall_throughput(sample);
     stats.record_host_throughput("media.example", sample);
-    let retry = RetryBook::new(RetryPolicy::default());
     let connection_ceiling = scenario.state.concurrency();
     let demanded = HashMap::new();
     let stored_totals = HashMap::new();
@@ -46,7 +50,7 @@ pub(super) fn run(mut scenario: PlanScenario<'_>) -> PlannedWork {
         &mut scenario.state,
         PlanInputs {
             stats: &stats,
-            retry: &retry,
+            retry,
             present: &scenario.present,
             finalized: &finalized,
             stored_totals: &stored_totals,

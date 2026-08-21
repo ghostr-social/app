@@ -43,8 +43,30 @@ pub(in crate::adaptive::decision) fn capture(
             evaluation,
             reserve: RecordedWarpReserve::from(value.reserve),
             additional_request_slot_demanded: value.additional_request_slot_demanded,
+            retry_availability: retry_availability(value, privacy),
         },
     }
+}
+
+fn retry_availability(
+    value: &WarpPlanningDecision,
+    privacy: &DecisionPrivacy,
+) -> Vec<super::RecordedPlannerRetryEvidence> {
+    value
+        .retry_availability
+        .iter()
+        .map(|evidence| super::RecordedPlannerRetryEvidence {
+            post_id: privacy.post(evidence.post.as_str()),
+            availability: match evidence.availability {
+                crate::adaptive::PlannerRetryAvailability::Ready => {
+                    super::RecordedPlannerRetryAvailability::Ready
+                }
+                crate::adaptive::PlannerRetryAvailability::Cooling { eligible_at_ms } => {
+                    super::RecordedPlannerRetryAvailability::Cooling { eligible_at_ms }
+                }
+            },
+        })
+        .collect()
 }
 
 pub(super) fn action(

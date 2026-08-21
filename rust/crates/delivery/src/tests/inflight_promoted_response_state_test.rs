@@ -36,6 +36,7 @@ fn promoted_200_expands_effective_inflight_coverage_at_headers() {
         retrieval: launched,
         host: "origin.test".into(),
         committed_until_ms: 10_000,
+        launched_at_ms: 0,
         handle,
         store_action: None,
     });

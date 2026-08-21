@@ -1,5 +1,5 @@
 use super::{ResourceCost, ResourcePrices};
-use crate::adaptive::CompletionTimes;
+use crate::adaptive::{CompletionTimes, RetrievalRequest};
 use crate::{ActionId, ByteRange, PostId, RequestAuthority};
 
 mod conflict;
@@ -126,6 +126,7 @@ pub struct ActionNode {
     pub(super) origin: String,
     request_authority: Option<RequestAuthority>,
     pub requires: Vec<u16>,
+    request: Option<RetrievalRequest>,
 }
 
 impl ActionNode {
@@ -140,6 +141,7 @@ impl ActionNode {
             origin: String::new(),
             request_authority: None,
             requires: Vec::new(),
+            request: None,
         }
     }
 
@@ -160,8 +162,17 @@ impl ActionNode {
         self
     }
 
+    pub fn with_request(mut self, request: RetrievalRequest) -> Self {
+        self.request = Some(request);
+        self
+    }
+
     pub fn request_authority(&self) -> Option<&RequestAuthority> {
         self.request_authority.as_ref()
+    }
+
+    pub(in crate::adaptive::warp) const fn request(&self) -> Option<RetrievalRequest> {
+        self.request
     }
 
     pub fn requiring(mut self, requirements: &[u16]) -> Self {

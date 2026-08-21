@@ -62,7 +62,12 @@ impl DownloadWorkers {
         })
     }
 
-    pub(crate) fn launch(&mut self, ctx: TransferContext, prepared: PreparedTransfer) -> ActionId {
+    pub(crate) fn launch(
+        &mut self,
+        ctx: TransferContext,
+        prepared: PreparedTransfer,
+        launched_at_ms: u64,
+    ) -> ActionId {
         let action = prepared.action();
         let priority = prepared.priority.authority;
         let (handle, token) = cancel_pair();
@@ -72,6 +77,7 @@ impl DownloadWorkers {
             retrieval: prepared.retrieval,
             host: prepared.host,
             committed_until_ms: prepared.committed_until_ms,
+            launched_at_ms,
             handle,
             store_action: Some(prepared.store_action.clone()),
         });

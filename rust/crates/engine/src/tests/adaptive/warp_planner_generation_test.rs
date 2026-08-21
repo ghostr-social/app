@@ -78,7 +78,8 @@ pub(super) fn generated_actions() -> GeneratedActions {
     let base = AdaptivePlayabilityPolicy.plan(&input);
     let hedge = HedgeInput::new(active_id, ActionKind::FetchRange(ByteRange::new(0, 64_000)))
         .with_timing(1_000, 900)
-        .with_value(5_000, 1_000);
+        .with_value(5_000, 1_000)
+        .with_network_envelope(800_000);
     let active = ActivePlannerContext::new(active_id, post.clone())
         .with_continuation_advantage(-100_000)
         .with_hedge(hedge, IdentityProof::VerifiedHash([3; 32]), MIRROR);

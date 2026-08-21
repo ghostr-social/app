@@ -31,6 +31,22 @@ fn delayed_range_hedge_requires_tail_delay_value_and_verified_identity() {
 }
 
 #[test]
+fn hedge_envelope_cannot_understate_the_selected_request() {
+    let input = HedgeInput::new(
+        ActionId::new(7),
+        ActionKind::FetchRange(ByteRange::new(0, 65_536)),
+    )
+    .with_timing(1_000, 900)
+    .with_value(5_000, 1_000)
+    .with_network_envelope(1);
+
+    assert!(!HedgePolicy::eligible(
+        &input,
+        IdentityProof::VerifiedHash([9; 32])
+    ));
+}
+
+#[test]
 fn semantic_guardrail_uses_scores_when_present_and_labels_only_true_rescue() {
     let intended = SemanticCandidate::new(PostId::new("a"), SemanticScore::Known(1_000_000), false);
     let near = SemanticCandidate::new(PostId::new("b"), SemanticScore::Known(980_000), true);

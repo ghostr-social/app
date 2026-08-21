@@ -48,6 +48,7 @@ async fn promotion_expired_at_headers_is_rejected_before_store_open() {
         retrieval: launched,
         host: "origin.test".into(),
         committed_until_ms: 0,
+        launched_at_ms: 0,
         handle,
         store_action: Some(action.clone()),
     });

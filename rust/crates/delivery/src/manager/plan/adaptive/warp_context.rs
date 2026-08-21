@@ -5,6 +5,19 @@ use ghostr_engine::adaptive::{
     RequestOccupancy, ResourceFeedback, ResourceObservation, TwinEpochs,
 };
 
+mod cooling;
+mod hedge;
+
+struct ActiveContextInput<'a> {
+    state: &'a DeliveryState,
+    snapshot: &'a ghostr_engine::adaptive::PlayabilitySnapshot,
+    base: &'a AllocationPlan,
+    inputs: &'a PlanInputs<'a>,
+    active: &'a crate::manager::inflight::ActiveAction,
+}
+
+mod request_capacity;
+
 pub(super) fn build(
     state: &DeliveryState,
     snapshot: &ghostr_engine::adaptive::PlayabilitySnapshot,
@@ -12,8 +25,16 @@ pub(super) fn build(
     inputs: &PlanInputs<'_>,
 ) -> (PlannerContext, RequestOccupancy) {
     let occupancy = request_occupancy(inputs);
+    let request_capacity = request_capacity::resolve(request_capacity::Query {
+        state,
+        snapshot,
+        base,
+        inputs,
+        occupancy: &occupancy,
+    });
     let context = PlannerContext::explicitly_unavailable(snapshot)
-        .with_limits(limits(snapshot))
+        .with_limits(limits(snapshot, request_capacity.tokens))
+        .with_soft_request_capacity(request_capacity.ordinary_tokens, request_capacity.soft)
         .with_feedback(feedback(snapshot, &occupancy, !inputs.in_flight.is_empty()))
         .with_request_occupancy(occupancy.clone())
         .with_epochs(epochs(state, snapshot));
@@ -31,19 +52,26 @@ pub(super) fn build(
                     head_probe_history(state, &candidate.post, inputs),
                 )
         });
+    let context = cooling::apply(context, snapshot, inputs);
     let context = inputs.in_flight.iter().fold(context, |context, active| {
-        context.with_active(active_context(base, active))
+        let evidence = ActiveContextInput {
+            state,
+            snapshot,
+            base,
+            inputs,
+            active,
+        };
+        context.with_active(active_context(evidence))
     });
     (context, occupancy)
 }
 
-fn active_context(
-    base: &AllocationPlan,
-    active: &crate::manager::inflight::ActiveAction,
-) -> ActivePlannerContext {
-    let advantage = continuation_advantage(base, active.action_id());
+fn active_context(input: ActiveContextInput<'_>) -> ActivePlannerContext {
+    let active = input.active;
+    let advantage = continuation_advantage(input.base, active.action_id());
     let context = ActivePlannerContext::new(active.action_id(), active.post().clone())
         .with_continuation_advantage(advantage);
+    let context = hedge::apply(context, &input);
     match active.cancelling() {
         true => context.mark_cancelling(),
         false => context,
@@ -72,13 +100,16 @@ fn head_probe_history(
     }
 }
 
-fn limits(snapshot: &ghostr_engine::adaptive::PlayabilitySnapshot) -> PlannerLimits {
+fn limits(
+    snapshot: &ghostr_engine::adaptive::PlayabilitySnapshot,
+    request_tokens: u16,
+) -> PlannerLimits {
     let rate = snapshot.network.throughput_bps.saturating_div(8).max(1);
     PlannerLimits {
         network_burst_bytes: rate.saturating_mul(2).max(snapshot.request_slice_bytes),
         network_rate_bytes_per_second: rate,
         cpu_ms: 0,
-        request_tokens: snapshot.network.connection_capacity.min(u16::MAX as usize) as u16,
+        request_tokens,
         per_origin_requests: snapshot
             .network
             .per_authority_request_limit

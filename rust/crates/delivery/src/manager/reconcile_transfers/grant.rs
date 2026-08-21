@@ -91,7 +91,10 @@ impl DeliveryWorker {
             self.reject_commit(prepared.transfer, action, bound).await;
             return None;
         }
-        let action = self.downloads.launch(self.ctx.clone(), prepared.transfer);
+        let launched_at_ms = time::unix_time_ms();
+        let action = self
+            .downloads
+            .launch(self.ctx.clone(), prepared.transfer, launched_at_ms);
         if result == CommitResult::Committed {
             self.request_immediate_replan();
         }

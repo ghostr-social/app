@@ -21,6 +21,7 @@ pub(crate) struct ActionRegistration<'a> {
     pub(crate) retrieval: RetrievalRequest,
     pub(crate) host: String,
     pub(crate) committed_until_ms: u64,
+    pub(crate) launched_at_ms: u64,
     pub(crate) handle: CancelHandle,
     pub(crate) store_action: Option<StoreAction>,
 }
@@ -61,6 +62,7 @@ pub(super) struct ActiveChunk {
     pub(super) io_finished: Arc<AtomicBool>,
     pub(super) host: String,
     pub(super) committed_until_ms: u64,
+    pub(super) launched_at_ms: u64,
     pub(super) handle: CancelHandle,
     pub(super) store_action: Option<StoreAction>,
     pub(super) cancelling: bool,
@@ -83,6 +85,7 @@ impl ActiveChunk {
             io_finished: Arc::clone(&registration.attempt.io_finished),
             host: registration.host,
             committed_until_ms: registration.committed_until_ms,
+            launched_at_ms: registration.launched_at_ms,
             handle: registration.handle,
             store_action: registration.store_action,
             cancelling: false,

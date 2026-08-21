@@ -12,7 +12,9 @@ pub(crate) struct ActiveAction {
     effective_bytes: ByteRange,
     reserved_storage_bytes: u64,
     committed_until_ms: u64,
+    launched_at_ms: u64,
     cancelling: bool,
+    hedged: bool,
 }
 
 impl ActiveAction {
@@ -44,7 +46,9 @@ impl ActiveAction {
             effective_bytes: chunk.range,
             reserved_storage_bytes: chunk.range.len(),
             committed_until_ms,
+            launched_at_ms: 0,
             cancelling: false,
+            hedged: false,
         }
     }
 
@@ -79,6 +83,14 @@ impl ActiveAction {
     pub(crate) fn committed_until_ms(&self) -> u64 {
         self.committed_until_ms
     }
+
+    pub(crate) fn launched_at_ms(&self) -> u64 {
+        self.launched_at_ms
+    }
+
+    pub(crate) fn hedged(&self) -> bool {
+        self.hedged
+    }
 }
 
 impl InFlightChunks {
@@ -93,7 +105,9 @@ impl InFlightChunks {
                 effective_bytes: active.effective_bytes,
                 reserved_storage_bytes: active.reserved_storage_bytes,
                 committed_until_ms: active.committed_until_ms,
+                launched_at_ms: active.launched_at_ms,
                 cancelling: active.cancelling,
+                hedged: self.hedges.contains_key(&active.action_id),
             })
             .collect()
     }

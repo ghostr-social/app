@@ -35,7 +35,8 @@ fn hedge_uses_the_command_request_reservation_envelope() {
     input.candidates[0].in_flight.push(active);
     let hedge = HedgeInput::new(active_id, ActionKind::FetchRange(range))
         .with_timing(1_000, 900)
-        .with_value(5_000, 1_000);
+        .with_value(5_000, 1_000)
+        .with_network_envelope(RESERVED_BYTES);
     let post = input.candidates[0].post.clone();
     let active = ActivePlannerContext::new(active_id, post).with_hedge(
         hedge,
@@ -55,7 +56,6 @@ fn hedge_uses_the_command_request_reservation_envelope() {
         .find(|action| matches!(&action.command, PlannerCommand::Hedge { transfer, .. } if transfer.request == request()));
     assert_envelope(action.expect("promotable hedge"));
 }
-
 fn assert_envelope(action: &GeneratedAction) {
     let request = match &action.command {
         PlannerCommand::Transfer(work) | PlannerCommand::Hedge { transfer: work, .. } => {

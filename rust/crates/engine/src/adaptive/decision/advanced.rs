@@ -26,6 +26,21 @@ pub struct RecordedWarpDecision {
     pub evaluation: Option<RecordedTwinEvaluation>,
     pub reserve: RecordedWarpReserve,
     pub additional_request_slot_demanded: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub retry_availability: Vec<RecordedPlannerRetryEvidence>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct RecordedPlannerRetryEvidence {
+    pub post_id: String,
+    pub availability: RecordedPlannerRetryAvailability,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RecordedPlannerRetryAvailability {
+    Ready,
+    Cooling { eligible_at_ms: u64 },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

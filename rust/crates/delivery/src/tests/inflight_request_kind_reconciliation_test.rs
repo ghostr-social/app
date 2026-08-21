@@ -41,6 +41,7 @@ fn planned_whole_cancels_an_overlapping_range_until_terminal_ack() {
         retrieval: range,
         host: "origin.test".into(),
         committed_until_ms: 0,
+        launched_at_ms: 0,
         handle,
         store_action: None,
     });
