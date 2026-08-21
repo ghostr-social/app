@@ -31,8 +31,8 @@ pub use allocation::REQUEST_SLICE_BYTES;
 pub use catalog_snapshot::{candidate_snapshot, candidate_snapshot_at, CandidateEvidence};
 pub use decision::{
     DecisionAction, DecisionModelInput, DecisionOutcome, DecisionPrivacy, DecisionRecord,
-    DecisionRecordInput, DecisionReplayStatus, ModelQuantiles, PrunedCandidate, PrunedReason,
-    RecordedAllocationReason, RecordedCandidateUtility, RecordedPreemptionAuthority,
+    DecisionRecordInput, DecisionReplayStatus, ModelQuantiles, ProbeClaimRefusal, PrunedCandidate,
+    PrunedReason, RecordedAllocationReason, RecordedCandidateUtility, RecordedPreemptionAuthority,
     RecordedPromotionGrant, RecordedPrunedSearchPlan, RecordedResourceCost, RecordedResourcePrices,
     RecordedRetainedSearchPlan, RecordedRetrievalRequest, RecordedSearchPruneReason,
     RecordedTransfer, RecordedTransformKind, RecordedTwinEvaluation, RecordedWarpAction,

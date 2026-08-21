@@ -22,7 +22,8 @@ pub use channel::{command_channel, command_channel_with_candidate_capacity};
 pub use decision_log::DecisionHistorySnapshot;
 use decision_log::DecisionLog;
 pub(crate) use decision_log::{
-    DecisionResolution, DecisionToken, LegacyDecisionPublication, WarpDecisionPublication,
+    DecisionClaim, DecisionResolution, DecisionToken, LegacyDecisionPublication,
+    WarpDecisionPublication,
 };
 pub(crate) use focus_generation::FocusGenerationGuard;
 pub use focus_generation::{FocusAdmission, FocusGeneration};

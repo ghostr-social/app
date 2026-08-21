@@ -9,11 +9,12 @@ use crate::chunk::downloader::{
 };
 use crate::chunk::sink::TransferChunkSink;
 use crate::debug::network::NetworkThrottle;
+use crate::delivery_events::DecisionClaim;
 use crate::manager::inflight::ChunkAttempt;
 use crate::manager::response_open::ResponseOpener;
 use crate::manager::retry::CooldownId;
 use crate::manager::traffic::TrafficPublisher;
-use crate::probe::media::{probe, ProbeResult};
+use crate::probe::media::ProbeResult;
 use ghostr_engine::adaptive::RetrievalRequest;
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::PostId;
@@ -24,7 +25,9 @@ use ghostr_partial_store::partial_range_store::StoreAction;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
+mod probe;
 mod traffic;
+pub(crate) use probe::{spawn_probe, ProbeLaunch};
 use traffic::TransferTraffic;
 
 pub(crate) enum InternalEvent {
@@ -65,6 +68,11 @@ pub(crate) struct ChunkDone {
 }
 
 pub(crate) struct ProbeDone {
+    pub observation: ProbeObservation,
+    pub decision: DecisionClaim,
+}
+
+pub(crate) struct ProbeObservation {
     pub post: PostId,
     pub url: String,
     pub outcome: anyhow::Result<ProbeResult>,
@@ -170,23 +178,4 @@ fn observed_chunk_event(
         outcome: observed.result,
         origin: Some(Box::new(observed.origin)),
     })
-}
-
-/// Starts one HEAD probe for a post whose size is still unknown.
-pub(crate) fn spawn_probe(ctx: TransferContext, post: PostId, url: String) {
-    tokio::spawn(async move {
-        let events = ctx.events.clone();
-        let worker = tokio::spawn(run_probe(ctx, url.clone()));
-        let outcome = match worker.await {
-            Ok(outcome) => outcome,
-            Err(error) => Err(anyhow::anyhow!("video probe task failed: {error}")),
-        };
-        let event = TransferEvent::ProbeDone(ProbeDone { post, url, outcome });
-        let _ = events.send(InternalEvent::Transfer(event));
-    });
-}
-
-async fn run_probe(ctx: TransferContext, url: String) -> anyhow::Result<ProbeResult> {
-    let mut scratch = HostStats::new();
-    probe(ctx.client.as_ref(), &url, ctx.timeouts, &mut scratch).await
 }

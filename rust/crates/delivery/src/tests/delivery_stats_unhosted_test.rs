@@ -2,7 +2,7 @@ use super::support::{temp_directory, transfer_identity};
 use crate::chunk::downloader::ChunkResult;
 use crate::manager::inflight::InFlightChunks;
 use crate::manager::stats::StatsKeeper;
-use crate::manager::transfers::{ChunkDone, ProbeDone};
+use crate::manager::transfers::{ChunkDone, ProbeObservation};
 use crate::probe::media::ProbeResult;
 use ghostr_engine::{ByteRange, ChunkId, PostId};
 use std::time::Duration;
@@ -33,7 +33,7 @@ async fn unhosted_outcomes_do_not_dirty_or_persist_host_stats() {
         }),
         origin: None,
     });
-    keeper.note_probe(&ProbeDone {
+    keeper.note_probe(&ProbeObservation {
         post,
         url: "still not a URL".to_owned(),
         outcome: Ok(ProbeResult {

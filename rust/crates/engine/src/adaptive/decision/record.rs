@@ -1,4 +1,4 @@
-use super::advanced::{self, RecordedWarpDecision};
+use super::advanced::{self, RecordedWarpCommand, RecordedWarpDecision};
 use super::model;
 use super::plan;
 use super::privacy::DecisionPrivacy;
@@ -8,6 +8,7 @@ use super::types::{
     PrunedCandidate, ShadowPrices,
 };
 use crate::adaptive::{AllocationPlan, PlayabilitySnapshot, WarpPlanningDecision};
+use crate::representation::TransferIdentity;
 use crate::ActionId;
 use serde::{Deserialize, Serialize};
 
@@ -91,6 +92,37 @@ impl DecisionRecord {
         self.chosen_action_id = Some(action.value());
         true
     }
+
+    pub fn authorizes_probe_claim(
+        &self,
+        identity: &TransferIdentity,
+        privacy: &DecisionPrivacy,
+    ) -> bool {
+        if self.schema_version != WARP_SCHEMA_VERSION || self.chosen_action.is_none() {
+            return false;
+        }
+        let Some(command) = self
+            .warp_decision
+            .as_ref()
+            .and_then(|decision| decision.selected.as_ref())
+            .map(|action| &action.command)
+        else {
+            return false;
+        };
+        matches_probe(command, identity, privacy)
+    }
+}
+
+fn matches_probe(
+    command: &RecordedWarpCommand,
+    identity: &TransferIdentity,
+    privacy: &DecisionPrivacy,
+) -> bool {
+    let RecordedWarpCommand::ProbeHead { post_id, source_id } = command else {
+        return false;
+    };
+    post_id == &privacy.post(identity.post().as_str())
+        && source_id == &privacy.source(identity.source().as_str())
 }
 
 fn legacy_record(

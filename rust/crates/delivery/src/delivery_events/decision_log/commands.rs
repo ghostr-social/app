@@ -1,11 +1,31 @@
 use super::{
-    DecisionResolution, DecisionToken, LegacyDecisionPublication, WarpDecisionPublication,
+    DecisionClaim, DecisionResolution, DecisionToken, LegacyDecisionPublication,
+    WarpDecisionPublication,
 };
 use crate::delivery_events::CommandReceiver;
 use ghostr_engine::adaptive::DecisionOutcome;
+use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::ActionId;
 
 impl CommandReceiver {
+    pub(crate) fn claim_decision(
+        &self,
+        token: DecisionToken,
+        identity: &TransferIdentity,
+        started_at_ms: u64,
+    ) -> Result<DecisionClaim, DecisionToken> {
+        self.decisions.claim(token, identity, started_at_ms)
+    }
+
+    pub(crate) fn resolve_decision_claim(
+        &self,
+        claim: DecisionClaim,
+        outcome: DecisionOutcome,
+        observed_at_ms: u64,
+    ) -> Option<DecisionResolution> {
+        self.decisions.resolve_claim(claim, outcome, observed_at_ms)
+    }
+
     pub(crate) fn publish_decision(
         &self,
         publication: LegacyDecisionPublication<'_>,

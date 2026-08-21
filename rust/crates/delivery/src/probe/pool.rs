@@ -1,12 +1,36 @@
 //! Probe-pipeline bookkeeping for unresolved HTTP media capabilities.
 
 use crate::manager::retry::RetryBook;
+use ghostr_engine::adaptive::ProbeClaimRefusal;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::PostId;
 use std::collections::{HashMap, HashSet};
 
 mod availability;
+
+pub(crate) struct ProbeClaimQuery<'a> {
+    catalog: &'a Catalog,
+    retry: &'a RetryBook,
+    post: &'a PostId,
+    source: &'a str,
+}
+
+impl<'a> ProbeClaimQuery<'a> {
+    pub(crate) const fn new(
+        catalog: &'a Catalog,
+        retry: &'a RetryBook,
+        post: &'a PostId,
+        source: &'a str,
+    ) -> Self {
+        Self {
+            catalog,
+            retry,
+            post,
+            source,
+        }
+    }
+}
 
 pub(crate) struct MetadataProbePool {
     limit: usize,
@@ -68,20 +92,15 @@ impl MetadataProbePool {
 
     pub(crate) fn claim_selected(
         &mut self,
-        catalog: &Catalog,
-        retry: &RetryBook,
-        post: &PostId,
-        source: &str,
-    ) -> bool {
-        if self.probing.len() >= self.limit || !self.can_probe(catalog, retry, post, source) {
-            return false;
+        query: ProbeClaimQuery<'_>,
+    ) -> Result<TransferIdentity, ProbeClaimRefusal> {
+        let identity = self.probe_identity(&query)?;
+        if self.probing.len() >= self.limit {
+            return Err(ProbeClaimRefusal::PoolAtCapacity);
         }
-        let Some(identity) = catalog.transfer_identity(post, source) else {
-            return false;
-        };
         self.probing
-            .insert(post.clone(), ActiveProbe::new(identity));
-        true
+            .insert(query.post.clone(), ActiveProbe::new(identity.clone()));
+        Ok(identity)
     }
 
     pub fn learned(&mut self, post: &PostId) {

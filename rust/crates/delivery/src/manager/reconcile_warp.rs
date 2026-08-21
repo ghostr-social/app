@@ -8,8 +8,9 @@ pub(crate) use directive::{execution, WarpDirective};
 
 use crate::delivery_events::DecisionToken;
 use crate::manager::plan::PlannedTransferId;
-use crate::manager::transfers::spawn_probe;
+use crate::manager::transfers::{spawn_probe, ProbeLaunch};
 use crate::manager::{time, DeliveryWorker};
+use crate::probe::pool::ProbeClaimQuery;
 use ghostr_engine::adaptive::DecisionOutcome;
 use ghostr_engine::{ActionId, PostId};
 
@@ -20,7 +21,9 @@ impl DeliveryWorker {
         decision: &mut Option<DecisionToken>,
     ) {
         match directive {
-            WarpDirective::ProbeHead { post, source } => self.launch_selected_probe(post, source),
+            WarpDirective::ProbeHead { post, source } => {
+                self.launch_selected_probe(post, source, decision.take());
+            }
             WarpDirective::Cancel(action) => self.cancel_selected(*action, decision.take()),
             WarpDirective::Unsupported { class, cancel } => {
                 cancel.iter().for_each(|action| {
@@ -32,12 +35,47 @@ impl DeliveryWorker {
         }
     }
 
-    fn launch_selected_probe(&mut self, post: &PostId, source: &str) {
-        if self
-            .probes
-            .claim_selected(self.state.catalog(), &self.retry, post, source)
+    fn launch_selected_probe(
+        &mut self,
+        post: &PostId,
+        source: &str,
+        decision: Option<DecisionToken>,
+    ) {
+        let Some(token) = decision else {
+            return;
+        };
+        let query = ProbeClaimQuery::new(self.state.catalog(), &self.retry, post, source);
+        match self.probes.claim_selected(query) {
+            Ok(identity) => self.claim_and_spawn_probe(token, identity),
+            Err(reason) => {
+                self.commands
+                    .resolve_decision_token(&token, DecisionOutcome::ClaimRefused { reason });
+            }
+        }
+    }
+
+    fn claim_and_spawn_probe(
+        &mut self,
+        token: DecisionToken,
+        identity: ghostr_engine::representation::TransferIdentity,
+    ) {
+        let started_at_ms = time::unix_time_ms();
+        match self
+            .commands
+            .claim_decision(token, &identity, started_at_ms)
         {
-            spawn_probe(self.ctx.clone(), post.clone(), source.to_owned());
+            Ok(decision) => spawn_probe(
+                self.ctx.clone(),
+                ProbeLaunch {
+                    post: identity.post().clone(),
+                    url: identity.source().as_str().to_owned(),
+                    decision,
+                },
+            ),
+            Err(token) => {
+                self.probes.release(identity.post());
+                self.fail_selected("warp_head_probe_claim_rejected", Some(token));
+            }
         }
     }
 

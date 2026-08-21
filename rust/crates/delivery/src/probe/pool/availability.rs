@@ -1,6 +1,12 @@
-use super::MetadataProbePool;
+use super::{MetadataProbePool, ProbeClaimQuery};
+#[cfg(test)]
 use crate::manager::retry::RetryBook;
+use crate::manager::retry::Source;
+use ghostr_engine::adaptive::ProbeClaimRefusal;
+#[cfg(test)]
 use ghostr_engine::catalog::Catalog;
+use ghostr_engine::representation::TransferIdentity;
+#[cfg(test)]
 use ghostr_engine::PostId;
 
 impl MetadataProbePool {
@@ -28,28 +34,53 @@ impl MetadataProbePool {
         Some(url)
     }
 
-    pub(super) fn can_probe(
+    pub(super) fn probe_identity(
         &self,
-        catalog: &Catalog,
-        retry: &RetryBook,
-        post: &PostId,
-        source: &str,
-    ) -> bool {
-        if self.probing.contains_key(post)
-            || self.probed.contains(post)
-            || self.deferred.contains(post)
-            || retry.is_cooling(post)
+        query: &ProbeClaimQuery<'_>,
+    ) -> Result<TransferIdentity, ProbeClaimRefusal> {
+        self.transient_refusal(query)?;
+        let entry = query
+            .catalog
+            .lookup(query.post)
+            .ok_or(ProbeClaimRefusal::CandidateMissing)?;
+        source_available(query, &entry.meta.urls)?;
+        if entry.planning_total_for(query.source).is_some()
+            && entry.observed_range_support_for(query.source).is_some()
         {
-            return false;
+            return Err(ProbeClaimRefusal::EvidenceComplete);
         }
-        let Some(entry) = catalog.lookup(post) else {
-            return false;
+        query
+            .catalog
+            .transfer_identity(query.post, query.source)
+            .ok_or(ProbeClaimRefusal::IdentityMissing)
+    }
+
+    fn transient_refusal(&self, query: &ProbeClaimQuery<'_>) -> Result<(), ProbeClaimRefusal> {
+        let reason = if self.probing.contains_key(query.post) {
+            Some(ProbeClaimRefusal::AlreadyProbing)
+        } else if self.probed.contains(query.post) {
+            Some(ProbeClaimRefusal::AlreadyProbed)
+        } else if self.deferred.contains(query.post) {
+            Some(ProbeClaimRefusal::DeferredToBody)
+        } else if query.retry.is_cooling(query.post) {
+            Some(ProbeClaimRefusal::RetryCooling)
+        } else {
+            None
         };
-        retry
-            .live_urls(post, &entry.meta.urls)
-            .iter()
-            .any(|url| url == source)
-            && (entry.planning_total_for(source).is_none()
-                || entry.observed_range_support_for(source).is_none())
+        reason.map_or(Ok(()), Err)
+    }
+}
+
+fn source_available(
+    query: &ProbeClaimQuery<'_>,
+    offered: &[String],
+) -> Result<(), ProbeClaimRefusal> {
+    if !offered.iter().any(|source| source == query.source) {
+        return Err(ProbeClaimRefusal::SourceNotOffered);
+    }
+    let source = Source::new(query.post.clone(), query.source.to_owned());
+    match query.retry.is_retired(&source) {
+        true => Err(ProbeClaimRefusal::SourceRetired),
+        false => Ok(()),
     }
 }

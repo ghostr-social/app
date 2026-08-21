@@ -1,7 +1,10 @@
 use crate::manager::retry::{RetryBook, RetryPolicy};
-use crate::probe::pool::MetadataProbePool;
+use crate::probe::pool::{MetadataProbePool, ProbeClaimQuery};
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
+
+#[path = "probe_claim_refusal_test.rs"]
+mod refusal_test;
 
 #[test]
 fn probe_claims_respect_the_configured_concurrency_limit() {
@@ -48,7 +51,9 @@ fn planner_can_claim_only_the_selected_head_probe() {
     let mut probes = MetadataProbePool::new(2);
     let source = "https://media.example/second.mp4";
 
-    assert!(probes.claim_selected(&catalog, &retry, &posts[1], source));
+    assert!(probes
+        .claim_selected(ProbeClaimQuery::new(&catalog, &retry, &posts[1], source))
+        .is_ok());
     assert_eq!(
         probes.claim(&catalog, &posts, &retry),
         vec![(posts[0].clone(), "https://media.example/first.mp4".into())]

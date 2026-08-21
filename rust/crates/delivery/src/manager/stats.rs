@@ -3,7 +3,7 @@
 //! persisted to the cache directory on a debounce.
 
 use crate::manager::traffic::{OverallTrafficWindow, TrafficBatch, TrafficMeter};
-use crate::manager::transfers::{ChunkDone, InternalEvent, ProbeDone};
+use crate::manager::transfers::{ChunkDone, InternalEvent, ProbeObservation};
 use crate::manager::DeliveryWorker;
 use ghostr_engine::host_stats::{host_of, HostStats};
 use log::{trace, warn};
@@ -74,7 +74,7 @@ impl StatsKeeper {
     }
 
     /// Mirrors the probe service's recording rules on the owned stats.
-    pub fn note_probe(&mut self, done: &ProbeDone) {
+    pub fn note_probe(&mut self, done: &ProbeObservation) {
         let Some(host) = host_of(&done.url) else {
             return;
         };

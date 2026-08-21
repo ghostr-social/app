@@ -1,10 +1,10 @@
-use crate::manager::transfers::ProbeDone;
+use crate::manager::transfers::ProbeObservation;
 use ghostr_engine::origin_model::{
     ErrorReason, MediaClass, NetworkClass, OriginContext, OriginObservation, OriginQuery,
     RequestMethod,
 };
 
-pub(super) fn probe(done: &ProbeDone, observed_at_ms: u64) -> OriginObservation {
+pub(super) fn probe(done: &ProbeObservation, observed_at_ms: u64) -> OriginObservation {
     let bytes = done
         .outcome
         .as_ref()

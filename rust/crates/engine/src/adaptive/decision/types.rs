@@ -99,10 +99,42 @@ pub struct PrunedCandidate {
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum DecisionOutcome {
     Pending,
-    Succeeded { bytes: u64, elapsed_ms: u64 },
-    Failed { class: String, elapsed_ms: u64 },
-    Cancelled { bytes: u64, elapsed_ms: u64 },
+    Succeeded {
+        bytes: u64,
+        elapsed_ms: u64,
+    },
+    HeadObserved {
+        content_length: u64,
+        accept_ranges: Option<bool>,
+        elapsed_ms: u64,
+    },
+    ClaimRefused {
+        reason: ProbeClaimRefusal,
+    },
+    Failed {
+        class: String,
+        elapsed_ms: u64,
+    },
+    Cancelled {
+        bytes: u64,
+        elapsed_ms: u64,
+    },
     Superseded,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProbeClaimRefusal {
+    PoolAtCapacity,
+    AlreadyProbing,
+    AlreadyProbed,
+    DeferredToBody,
+    RetryCooling,
+    CandidateMissing,
+    SourceNotOffered,
+    SourceRetired,
+    EvidenceComplete,
+    IdentityMissing,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

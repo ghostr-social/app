@@ -1,5 +1,5 @@
 use crate::manager::stats::StatsKeeper;
-use crate::manager::transfers::ProbeDone;
+use crate::manager::transfers::ProbeObservation;
 use crate::probe::media::ProbeResult;
 use ghostr_engine::origin_model::{
     DecisionMode, MediaClass, NetworkClass, OriginContext, OriginQuery, RequestMethod,
@@ -11,7 +11,7 @@ async fn completed_head_probe_updates_the_head_context_only() {
     let root = super::support::temp_directory("ghostr-origin-head");
     let mut keeper = StatsKeeper::load(root.join("stats.json"), Duration::ZERO).await;
     let url = "https://head.example/video.mp4".to_owned();
-    keeper.note_probe(&ProbeDone {
+    keeper.note_probe(&ProbeObservation {
         post: ghostr_engine::PostId::new("clip"),
         url: url.clone(),
         outcome: Ok(ProbeResult {

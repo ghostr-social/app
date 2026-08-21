@@ -1,3 +1,4 @@
+mod claim;
 mod commands;
 mod lifecycle;
 mod publication;
@@ -5,7 +6,7 @@ mod retention;
 
 use ghostr_engine::adaptive::{DecisionAction, DecisionOutcome, DecisionPrivacy, DecisionRecord};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, MutexGuard, Weak};
 
 const HISTORY_CAPACITY: usize = 64;
@@ -24,6 +25,16 @@ pub(crate) use publication::{LegacyDecisionPublication, WarpDecisionPublication}
 pub(crate) struct DecisionToken {
     sequence: u64,
     owner: Weak<Mutex<DecisionStore>>,
+    armed: bool,
+}
+
+/// One admitted asynchronous decision that cannot be superseded while live.
+#[must_use = "a claimed decision must reach a terminal outcome"]
+pub(crate) struct DecisionClaim {
+    sequence: u64,
+    owner: Weak<Mutex<DecisionStore>>,
+    started_at_ms: u64,
+    armed: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -41,6 +52,7 @@ struct DecisionStore {
     next_sequence: u64,
     records: VecDeque<DecisionRecord>,
     actions: HashMap<ghostr_engine::ActionId, ActionBinding>,
+    claimed: HashSet<u64>,
     completed: VecDeque<u64>,
 }
 
@@ -57,6 +69,7 @@ impl Default for DecisionLog {
                 next_sequence: 0,
                 records: VecDeque::new(),
                 actions: HashMap::new(),
+                claimed: HashSet::new(),
                 completed: VecDeque::new(),
             })),
             privacy: Arc::new(DecisionPrivacy::from_key(rand::random())),
@@ -75,7 +88,11 @@ impl std::fmt::Debug for DecisionLog {
 impl DecisionLog {
     fn publish(&self, publication: DecisionPublication<'_>) -> Option<DecisionToken> {
         let mut store = self.lock();
-        if let Some(sequence) = retention::supersede_unbound(&mut store.records) {
+        let superseded = {
+            let store = &mut *store;
+            retention::supersede_unbound(&mut store.records, &store.claimed)
+        };
+        if let Some(sequence) = superseded {
             store.completed.push_back(sequence);
         }
         let sequence = next_sequence(&mut store);

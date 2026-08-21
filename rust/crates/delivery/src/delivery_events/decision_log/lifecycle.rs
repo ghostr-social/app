@@ -60,8 +60,9 @@ impl DecisionLog {
             return false;
         }
         let mut store = self.lock();
+        let claimed = store.claimed.contains(&token.sequence);
         let Some(sequence) =
-            retention::resolve_unbound(&mut store.records, token.sequence, outcome)
+            retention::resolve_unbound(&mut store.records, claimed, token.sequence, outcome)
         else {
             return false;
         };
@@ -76,10 +77,11 @@ impl DecisionToken {
         Self {
             sequence,
             owner: Arc::downgrade(owner),
+            armed: true,
         }
     }
 
-    fn belongs_to(&self, store: &Arc<std::sync::Mutex<super::DecisionStore>>) -> bool {
+    pub(super) fn belongs_to(&self, store: &Arc<std::sync::Mutex<super::DecisionStore>>) -> bool {
         std::sync::Weak::ptr_eq(&self.owner, &Arc::downgrade(store))
     }
 }
@@ -107,15 +109,32 @@ fn bind_record(
     record.bind_action(action)
 }
 
-fn with_elapsed(outcome: DecisionOutcome, elapsed_ms: u64) -> DecisionOutcome {
+pub(super) fn with_elapsed(outcome: DecisionOutcome, elapsed_ms: u64) -> DecisionOutcome {
     match outcome {
         DecisionOutcome::Succeeded { bytes, .. } => {
             DecisionOutcome::Succeeded { bytes, elapsed_ms }
         }
+        DecisionOutcome::HeadObserved {
+            content_length,
+            accept_ranges,
+            ..
+        } => DecisionOutcome::HeadObserved {
+            content_length,
+            accept_ranges,
+            elapsed_ms,
+        },
         DecisionOutcome::Failed { class, .. } => DecisionOutcome::Failed { class, elapsed_ms },
         DecisionOutcome::Cancelled { bytes, .. } => {
             DecisionOutcome::Cancelled { bytes, elapsed_ms }
         }
         other => other,
     }
+}
+
+pub(super) fn unix_time_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .min(u128::from(u64::MAX)) as u64
 }

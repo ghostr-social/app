@@ -20,5 +20,5 @@ pub use privacy::DecisionPrivacy;
 pub use record::{DecisionRecord, DecisionRecordInput, WarpDecisionRecordInput};
 pub use types::{
     DecisionAction, DecisionModelInput, DecisionOutcome, DecisionReplayStatus, ModelQuantiles,
-    PrunedCandidate, PrunedReason, ShadowPrices,
+    ProbeClaimRefusal, PrunedCandidate, PrunedReason, ShadowPrices,
 };

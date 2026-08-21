@@ -1,6 +1,6 @@
 use crate::delivery_events::{
     CommandReceiver, DecisionHistorySnapshot, DecisionToken, DeliveryHandle,
-    LegacyDecisionPublication,
+    LegacyDecisionPublication, WarpDecisionPublication,
 };
 use crate::manager::plan::PlannedWork;
 use crate::tests::adaptive_plan_support::plan;
@@ -9,6 +9,16 @@ use ghostr_engine::adaptive::{AllocationPlan, DecisionOutcome, StorageSnapshot};
 #[cfg(test)]
 #[path = "decision_history_warp_noop_retention_test.rs"]
 mod warp_noop_retention_test;
+
+#[cfg(test)]
+#[path = "decision_claim_lifecycle_test.rs"]
+mod claim_lifecycle_test;
+
+#[cfg(test)]
+#[path = "decision_probe_claim_eligibility_test.rs"]
+mod claim_eligibility_test;
+
+mod head;
 
 pub(crate) fn work() -> PlannedWork {
     plan(20_000, 4_000_000, StorageSnapshot::new(2_000_000_000, 0))
@@ -21,6 +31,40 @@ pub(crate) fn selected(
 ) -> (u64, DecisionToken) {
     let (sequence, token) = publish(handle, commands, work, &work.plan);
     (sequence, token.expect("selected decision token"))
+}
+
+pub(crate) fn selected_head(
+    handle: &DeliveryHandle,
+    commands: &CommandReceiver,
+) -> (u64, DecisionToken) {
+    let work = head::work();
+    let token = commands.publish_warp_decision(WarpDecisionPublication {
+        snapshot: work.snapshot.as_ref().expect("planning snapshot"),
+        decision: work.warp.as_ref().expect("WARP decision"),
+        legacy_prices: work.shadow_prices,
+        models: &work.decision_models,
+    });
+    let sequence = handle.decision_history().records.last().unwrap().sequence;
+    (sequence, token.expect("selected HEAD decision token"))
+}
+
+pub(crate) use head::{
+    identity as head_identity, work as head_work, wrong_post_identity, wrong_source_identity,
+};
+
+pub(crate) fn selected_warp(
+    handle: &DeliveryHandle,
+    commands: &CommandReceiver,
+    work: &PlannedWork,
+) -> (u64, DecisionToken) {
+    let token = commands.publish_warp_decision(WarpDecisionPublication {
+        snapshot: work.snapshot.as_ref().expect("planning snapshot"),
+        decision: work.warp.as_ref().expect("WARP decision"),
+        legacy_prices: work.shadow_prices,
+        models: &work.decision_models,
+    });
+    let sequence = handle.decision_history().records.last().unwrap().sequence;
+    (sequence, token.expect("selected WARP decision token"))
 }
 
 pub(crate) fn publish(
