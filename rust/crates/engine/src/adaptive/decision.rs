@@ -5,6 +5,7 @@ mod model;
 mod plan;
 mod privacy;
 mod record;
+mod replay;
 mod state;
 mod types;
 
@@ -18,6 +19,7 @@ pub use advanced::{
 };
 pub use privacy::DecisionPrivacy;
 pub use record::{DecisionRecord, DecisionRecordInput, WarpDecisionRecordInput};
+pub use replay::{VerifiedWarpReplay, WarpReplayIntegrity};
 pub use types::{
     DecisionAction, DecisionModelInput, DecisionOutcome, DecisionReplayStatus, ModelQuantiles,
     ProbeClaimRefusal, PrunedCandidate, PrunedReason, ShadowPrices,

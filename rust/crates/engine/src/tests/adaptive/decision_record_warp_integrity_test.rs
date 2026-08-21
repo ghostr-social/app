@@ -7,7 +7,7 @@ use crate::tests::adaptive_support::snapshot;
 use crate::PostId;
 
 #[test]
-fn schema_two_detects_state_and_decision_tampering_before_replay_unavailable() {
+fn schema_two_detects_state_and_decision_tampering_before_trace_reconstruction() {
     let decision = decision(
         "secret-post",
         PlannerCommand::ProbeHead {

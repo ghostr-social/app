@@ -1,3 +1,9 @@
+#[path = "decision_record_warp_incomplete_replay_test.rs"]
+mod incomplete_replay_test;
+#[path = "decision_record_warp_replay_coherence_test.rs"]
+mod replay_coherence_test;
+#[path = "decision_record_warp_replay_test.rs"]
+mod replay_test;
 #[path = "decision_record_warp_search_trace_test.rs"]
 mod search_trace_test;
 
@@ -46,10 +52,7 @@ fn assert_selected(captured: &DecisionRecord) {
     assert!(captured.pruned.is_empty());
     assert_eq!(captured.shadow_prices.storage_time_micros, 20);
     assert_eq!(captured.random_seed, 99);
-    assert_eq!(
-        captured.replay(),
-        DecisionReplayStatus::AdvancedReplayUnavailable
-    );
+    assert_eq!(captured.replay(), DecisionReplayStatus::Verified);
 }
 
 fn noop(mut noop: WarpPlanningDecision) -> WarpPlanningDecision {

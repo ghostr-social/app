@@ -103,7 +103,7 @@ fn control(command: &PlannerCommand, privacy: &DecisionPrivacy) -> RecordedWarpC
 }
 
 impl RecordedWarpCommand {
-    pub(super) fn projection(&self) -> (&str, &str, u64, u64) {
+    pub(in crate::adaptive::decision) fn projection(&self) -> (&str, &str, u64, u64) {
         match self {
             Self::ProbeHead { .. } | Self::Transfer { .. } | Self::Hedge { .. } => {
                 self.external_projection()

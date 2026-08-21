@@ -9,7 +9,7 @@ use super::types::{
 };
 use crate::adaptive::{AllocationPlan, PlayabilitySnapshot, WarpPlanningDecision};
 use crate::representation::TransferIdentity;
-use crate::ActionId;
+use crate::{adaptive::VerifiedWarpReplay, ActionId};
 use serde::{Deserialize, Serialize};
 
 mod replay;
@@ -75,6 +75,10 @@ impl DecisionRecord {
 
     pub fn replay(&self) -> DecisionReplayStatus {
         replay::status(self)
+    }
+
+    pub fn replay_warp(&self) -> Result<VerifiedWarpReplay, DecisionReplayStatus> {
+        replay::warp(self)
     }
 
     pub fn resolve(&mut self, outcome: DecisionOutcome) -> bool {
