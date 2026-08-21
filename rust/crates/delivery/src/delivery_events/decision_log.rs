@@ -1,4 +1,5 @@
 mod commands;
+mod retention;
 
 use ghostr_engine::adaptive::{
     AllocationPlan, DecisionAction, DecisionModelInput, DecisionOutcome, DecisionPrivacy,
@@ -31,6 +32,7 @@ struct DecisionStore {
     next_sequence: u64,
     records: VecDeque<DecisionRecord>,
     actions: HashMap<u64, (u64, u64)>,
+    completed: VecDeque<u64>,
 }
 
 impl Default for DecisionLog {
@@ -40,6 +42,7 @@ impl Default for DecisionLog {
                 next_sequence: 0,
                 records: VecDeque::new(),
                 actions: HashMap::new(),
+                completed: VecDeque::new(),
             })),
             privacy: Arc::new(DecisionPrivacy::from_key(rand::random())),
         }
@@ -63,7 +66,9 @@ impl DecisionLog {
         models: &[DecisionModelInput],
     ) -> u64 {
         let mut store = self.lock();
-        supersede_unbound(&mut store.records);
+        if let Some(sequence) = retention::supersede_unbound(&mut store.records) {
+            store.completed.push_back(sequence);
+        }
         store.next_sequence = store.next_sequence.saturating_add(1);
         let sequence = store.next_sequence;
         let mut record = DecisionRecord::capture(DecisionRecordInput {
@@ -74,13 +79,15 @@ impl DecisionLog {
             models,
             privacy: &self.privacy,
         });
-        if record.chosen_action.is_none() {
-            record.resolve(DecisionOutcome::Succeeded {
+        let completed = record.chosen_action.is_none()
+            && record.resolve(DecisionOutcome::Succeeded {
                 bytes: 0,
                 elapsed_ms: 0,
             });
-        }
         store.records.push_back(record);
+        if completed {
+            store.completed.push_back(sequence);
+        }
         trim(&mut store);
         sequence
     }
@@ -109,30 +116,27 @@ impl DecisionLog {
         observed_at_ms: u64,
     ) -> Option<DecisionResolution> {
         let mut store = self.lock();
-        let (sequence, started_at_ms) = store.actions.remove(&action.value())?;
+        let (sequence, started_at_ms) = store.actions.get(&action.value()).copied()?;
         let elapsed_ms = observed_at_ms.saturating_sub(started_at_ms);
         let outcome = with_elapsed(outcome, elapsed_ms);
-        let record = store
-            .records
-            .iter_mut()
-            .find(|record| record.sequence == sequence)?;
-        let action = record.chosen_action.clone()?;
-        record
-            .resolve(outcome)
-            .then_some(DecisionResolution { action, elapsed_ms })
+        let decision = retention::resolve(&mut store.records, sequence, outcome)?;
+        store.actions.remove(&action.value());
+        store.completed.push_back(sequence);
+        trim(&mut store);
+        Some(DecisionResolution {
+            action: decision,
+            elapsed_ms,
+        })
     }
 
     fn resolve_latest(&self, outcome: DecisionOutcome) -> bool {
         let mut store = self.lock();
-        store
-            .records
-            .iter_mut()
-            .rev()
-            .find(|record| {
-                record.eventual_outcome == DecisionOutcome::Pending
-                    && record.chosen_action_id.is_none()
-            })
-            .is_some_and(|record| record.resolve(outcome))
+        let Some(sequence) = retention::resolve_latest(&mut store.records, outcome) else {
+            return false;
+        };
+        store.completed.push_back(sequence);
+        trim(&mut store);
+        true
     }
 
     pub(super) fn snapshot(&self) -> DecisionHistorySnapshot {
@@ -148,22 +152,8 @@ impl DecisionLog {
     }
 }
 
-fn supersede_unbound(records: &mut VecDeque<DecisionRecord>) {
-    if let Some(record) = records.iter_mut().rev().find(|record| {
-        record.eventual_outcome == DecisionOutcome::Pending && record.chosen_action_id.is_none()
-    }) {
-        record.resolve(DecisionOutcome::Superseded);
-    }
-}
-
 fn trim(store: &mut DecisionStore) {
-    while store.records.len() > HISTORY_CAPACITY {
-        if let Some(removed) = store.records.pop_front() {
-            store
-                .actions
-                .retain(|_, (sequence, _)| *sequence != removed.sequence);
-        }
-    }
+    retention::trim(&mut store.records, &mut store.completed);
 }
 
 fn with_elapsed(outcome: DecisionOutcome, elapsed_ms: u64) -> DecisionOutcome {
