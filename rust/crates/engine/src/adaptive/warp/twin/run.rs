@@ -127,8 +127,7 @@ struct Sample {
 }
 
 fn sample(seed: u64, particle: u64, action: &ActionNode, swipe_rate: u16) -> Sample {
-    let origin = text_hash(&action.origin);
-    let value = mix(seed ^ mix(particle) ^ origin);
+    let value = mix(seed ^ mix(particle));
     Sample {
         quantile_bps: (value % 10_000) as u16,
         success: ((value >> 16) % 10_000) < u64::from(action.forecast.success_bps),
@@ -177,12 +176,6 @@ fn interpolate(expected: u64, p95: u64, p99: u64, quantile: u16) -> u64 {
         5_000..=9_499 => expected + (p95 - expected) * u64::from(quantile - 5_000) / 4_500,
         _ => p95 + (p99 - p95) * u64::from(quantile - 9_500) / 500,
     }
-}
-
-fn text_hash(value: &str) -> u64 {
-    value.bytes().fold(0xcbf29ce484222325, |hash, byte| {
-        (hash ^ u64::from(byte)).wrapping_mul(0x100000001b3)
-    })
 }
 
 fn mix(mut value: u64) -> u64 {

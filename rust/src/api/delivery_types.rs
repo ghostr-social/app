@@ -21,6 +21,8 @@ pub struct FfiFocusItem {
     pub sha256: Option<String>,
     pub size_bytes: Option<u64>,
     pub duration_ms: Option<u64>,
+    /// Inline-only preview payload; remote thumbnails are not readiness.
+    pub blurhash: Option<String>,
 }
 
 /// What a delivery event reports about one post.

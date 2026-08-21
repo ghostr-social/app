@@ -7,18 +7,22 @@ mod observability;
 mod snapshot;
 mod telemetry;
 mod warp_context;
+mod watch;
 
 pub(super) fn planned_work(
     state: &DeliveryState,
     inputs: PlanInputs<'_>,
     planner: &mut ghostr_engine::adaptive::WarpPlanner,
+    model: &ghostr_engine::watch_model::WatchModel,
 ) -> PlannedWork {
-    let Some(snapshot) = snapshot::build(state, &inputs) else {
+    let Some(mut snapshot) = snapshot::build(state, &inputs) else {
         return empty_work();
     };
+    let watch = watch::WatchPlanningWindow::predict(&mut snapshot, model);
     let allocation = AdaptivePlayabilityPolicy.plan(&snapshot);
     let (context, occupancy, hedge_tails) =
         warp_context::build(state, &snapshot, &allocation, &inputs);
+    let context = watch.apply_context(context);
     let warp = planner.plan(ghostr_engine::adaptive::WarpPlannerInput::new(
         &snapshot,
         &allocation,

@@ -1,25 +1,26 @@
 use crate::ByteRange;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct PromotionGrant {
     pub maximum_bytes: u64,
     pub valid_until_ms: u64,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum WholeBodyContract {
     Exact { expected_bytes: u64 },
     Capped { maximum_bytes: u64 },
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum WholeFetchReason {
     DirectCrossover,
     PromotedResponse,
     PlannedCompletion,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum RetrievalRequest {
     FetchRange {
         bytes: ByteRange,

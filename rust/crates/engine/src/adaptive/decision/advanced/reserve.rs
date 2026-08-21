@@ -3,8 +3,9 @@ use crate::adaptive::{
     RescueChanceEvidence, RescueTimingQuantile, ReserveAuthorityOccupancy, ReserveConstraint,
     ReserveDegradedReason,
 };
-use crate::RequestAuthority;
 use serde::{Deserialize, Serialize};
+
+mod authority;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RecordedWarpReserve {
@@ -69,28 +70,18 @@ pub(in crate::adaptive::decision) fn capture(
         reserved_storage_bytes: value.reserved_storage_bytes,
         reserved_cpu_ms: value.reserved_cpu_ms,
         global_request_width: value.global_request_width,
-        authority_occupancy: value
-            .authority_occupancy
-            .iter()
-            .map(|item| capture_occupancy(item, privacy))
-            .collect(),
+        authority_occupancy: authority::sorted(
+            value
+                .authority_occupancy
+                .iter()
+                .map(|item| authority::capture(item, privacy))
+                .collect(),
+        ),
         protected_action_ids: value.protected_action_ids.clone(),
         chance: value.chance.map(RecordedRescueChanceEvidence::from),
         degraded_reason: value
             .degraded_reason
             .map(RecordedReserveDegradedReason::from),
-    }
-}
-
-fn capture_occupancy(
-    value: &ReserveAuthorityOccupancy,
-    privacy: &DecisionPrivacy,
-) -> RecordedReserveAuthorityOccupancy {
-    RecordedReserveAuthorityOccupancy {
-        authority_id: privacy.source(value.authority.as_str()),
-        occupied_request_slots: u64::try_from(value.occupied_request_slots)
-            .expect("request occupancy fits the schema-v2 counter"),
-        request_width: value.request_width,
     }
 }
 
@@ -106,22 +97,12 @@ pub(in crate::adaptive::decision) fn restore(
         authority_occupancy: value
             .authority_occupancy
             .iter()
-            .map(restore_occupancy)
+            .map(authority::restore)
             .collect::<Option<Vec<_>>>()?,
         protected_action_ids: value.protected_action_ids.clone(),
         chance: value.chance.map(RescueChanceEvidence::from),
         degraded: value.degraded,
         degraded_reason: value.degraded_reason.map(ReserveDegradedReason::from),
-    })
-}
-
-fn restore_occupancy(
-    value: &RecordedReserveAuthorityOccupancy,
-) -> Option<ReserveAuthorityOccupancy> {
-    Some(ReserveAuthorityOccupancy {
-        authority: RequestAuthority::from_url(&value.authority_id)?,
-        occupied_request_slots: usize::try_from(value.occupied_request_slots).ok()?,
-        request_width: value.request_width,
     })
 }
 

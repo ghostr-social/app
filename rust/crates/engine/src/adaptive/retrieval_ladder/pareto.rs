@@ -1,6 +1,7 @@
 use super::{PlanMetrics, RetrievalPlan};
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct EpsilonBuckets {
     readiness_time_ms: u64,
     readiness_bytes: u64,

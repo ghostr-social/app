@@ -19,6 +19,7 @@ FfiFocusItem ffiFocusItemForMedia(VideoMediaSource media) {
     sha256: media.expectedSha256?.value,
     sizeBytes: _bigInt(metadata.sizeBytes),
     durationMs: _bigInt(metadata.durationMs),
+    blurhash: metadata.blurhash,
   );
 }
 

@@ -4,12 +4,26 @@ use crate::RequestAuthority;
 
 #[derive(Clone)]
 pub struct DecisionPrivacy {
-    key: [u8; 32],
+    mode: PrivacyMode,
+}
+
+#[derive(Clone)]
+enum PrivacyMode {
+    Key([u8; 32]),
+    Passthrough,
 }
 
 impl DecisionPrivacy {
     pub const fn from_key(key: [u8; 32]) -> Self {
-        Self { key }
+        Self {
+            mode: PrivacyMode::Key(key),
+        }
+    }
+
+    pub(super) const fn passthrough() -> Self {
+        Self {
+            mode: PrivacyMode::Passthrough,
+        }
     }
 
     pub(super) fn post(&self, value: &str) -> String {
@@ -17,17 +31,44 @@ impl DecisionPrivacy {
     }
 
     pub(super) fn source(&self, value: &str) -> String {
+        if matches!(self.mode, PrivacyMode::Passthrough) {
+            return value.to_owned();
+        }
         let Some(authority) = RequestAuthority::from_url(value) else {
             return self.digest(b"invalid-source", value);
         };
-        let authority = self.digest(b"authority", authority.as_str());
+        let authority = self.authority(authority.as_str());
         let source = self.digest(b"source", value);
-        format!("https://{authority}.invalid/{source}")
+        format!("{authority}/{source}")
+    }
+
+    pub(super) fn authority(&self, value: &str) -> String {
+        if matches!(self.mode, PrivacyMode::Passthrough) {
+            return RequestAuthority::from_url(value)
+                .map_or_else(|| value.to_owned(), |item| item.as_str().to_owned());
+        }
+        let Some(authority) = RequestAuthority::from_url(value) else {
+            return format!(
+                "https://{}.invalid",
+                self.digest(b"invalid-authority", value)
+            );
+        };
+        format!(
+            "https://{}.invalid",
+            self.digest(b"authority", authority.as_str())
+        )
+    }
+
+    pub(super) fn model_key(&self, value: &str) -> String {
+        self.digest(b"model", value)
     }
 
     fn digest(&self, domain: &[u8], value: &str) -> String {
+        let PrivacyMode::Key(key) = self.mode else {
+            return value.to_owned();
+        };
         let mut digest = Sha256::new();
-        digest.update(self.key);
+        digest.update(key);
         digest.update(domain);
         digest.update(value.as_bytes());
         hex(&digest.finalize()[..16])

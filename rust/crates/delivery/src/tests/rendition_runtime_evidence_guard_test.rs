@@ -17,6 +17,7 @@ fn runtime_quality_waits_for_both_playback_and_measured_network_evidence() {
     state.apply_candidate(DeliveryCandidate {
         post: post.clone(),
         meta: high.meta().clone(),
+        preview: None,
         metadata_evidence: Vec::new(),
         renditions: vec![high, rendition("low", 1_000_000)],
         discovered_at: 1,

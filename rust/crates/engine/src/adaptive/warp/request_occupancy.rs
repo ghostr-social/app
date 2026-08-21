@@ -1,7 +1,8 @@
 use crate::RequestAuthority;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct RequestOccupancy {
     total: usize,
     authorities: BTreeMap<RequestAuthority, usize>,
@@ -44,5 +45,25 @@ impl RequestOccupancy {
             }
             None => self.invalid = self.invalid.saturating_add(1),
         }
+    }
+
+    pub(crate) fn replay_project(&self, source: &impl Fn(&str) -> String) -> Self {
+        let authorities = self
+            .authorities
+            .iter()
+            .filter_map(|(authority, count)| {
+                RequestAuthority::from_url(&source(authority.as_str()))
+                    .map(|projected| (projected, *count))
+            })
+            .collect();
+        Self {
+            total: self.total,
+            authorities,
+            invalid: self.invalid,
+        }
+    }
+
+    pub(crate) fn replay_bounded(&self, limit: usize) -> bool {
+        self.authorities.len() <= limit
     }
 }

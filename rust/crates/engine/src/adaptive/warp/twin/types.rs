@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct TwinConfig {
     pub particles: u16,
     pub tail_bps: u16,
@@ -21,7 +22,7 @@ impl Default for TwinConfig {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct TwinEpochs {
     pub evidence: u64,
     pub model: u64,

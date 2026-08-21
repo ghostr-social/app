@@ -4,6 +4,7 @@ mod builder;
 mod candidate;
 mod ladders;
 mod prediction;
+mod quality;
 mod value;
 
 use super::{ActionNode, ContinuationDecision, PlannerContext, TransformKind};

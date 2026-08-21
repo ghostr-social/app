@@ -3,7 +3,7 @@ use crate::evaluation::{
     EvaluationLedger, PlaybackMetricEvent, PresentationMetricEvent, SemanticMetricEvent,
 };
 use crate::manager::transfers::{InternalEvent, MaintenanceEvent};
-use crate::qoe::{load_qoe_stats, save_qoe_stats, QoeTracker};
+use crate::qoe::{load_playback_learning, save_playback_learning, QoeTracker, WatchLearner};
 use log::warn;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -11,6 +11,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 pub(crate) struct QoeKeeper {
     tracker: QoeTracker,
+    watch: WatchLearner,
     path: PathBuf,
     debounce: Duration,
     dirty: bool,
@@ -20,9 +21,10 @@ pub(crate) struct QoeKeeper {
 
 impl QoeKeeper {
     pub async fn load(path: PathBuf, debounce: Duration, evaluation: EvaluationLedger) -> Self {
-        let stats = load_qoe_stats(&path).await;
+        let learned = load_playback_learning(&path).await;
         Self {
-            tracker: QoeTracker::from_stats(stats),
+            tracker: QoeTracker::from_stats(learned.qoe),
+            watch: WatchLearner::from_model(learned.watch),
             path,
             debounce,
             dirty: false,
@@ -32,6 +34,7 @@ impl QoeKeeper {
     }
 
     pub fn note_focus(&mut self, focus: &DeliveryFocus, now_ms: u64) {
+        self.watch.focus(focus, now_ms);
         let current = focus
             .items
             .get(focus.current_index.min(focus.items.len().saturating_sub(1)))
@@ -56,6 +59,7 @@ impl QoeKeeper {
     }
 
     pub fn note_playback(&mut self, playback: &DeliveryPlayback, bitrate_bps: u64, now_ms: u64) {
+        self.watch.playback(playback, now_ms);
         let buffer_ms = playback
             .observation
             .buffer_ahead()
@@ -92,6 +96,10 @@ impl QoeKeeper {
         self.tracker.stats().startup_eta_ms()
     }
 
+    pub fn watch_model(&self) -> &ghostr_engine::watch_model::WatchModel {
+        self.watch.model()
+    }
+
     pub fn schedule_save(&mut self, events: &UnboundedSender<InternalEvent>) {
         if !self.dirty || self.save_pending {
             return;
@@ -110,7 +118,7 @@ impl QoeKeeper {
         if !self.dirty {
             return;
         }
-        match save_qoe_stats(&self.path, self.tracker.stats()).await {
+        match save_playback_learning(&self.path, self.tracker.stats(), self.watch.model()).await {
             Ok(()) => self.dirty = false,
             Err(error) => warn!("QoE aggregate snapshot failed: {error}"),
         }

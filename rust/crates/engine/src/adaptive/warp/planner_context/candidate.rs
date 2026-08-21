@@ -1,6 +1,9 @@
 use super::super::{SemanticScore, TransformKind};
-use super::PlannerContext;
-use crate::PostId;
+use super::{PlannerContext, PlannerWatchEvidence};
+use crate::{PostId, PreviewDescriptor};
+
+/// A blurhash is a useful low-fidelity placeholder, never playable media.
+pub const INLINE_BLURHASH_PREVIEW_QUALITY_MICROS: u64 = 50_000;
 
 /// HEAD scheduling state for one media representation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -100,12 +103,22 @@ pub enum PreviewAvailability {
     Ready { bytes: u64, quality_micros: u64 },
 }
 
+impl PreviewAvailability {
+    pub const fn inline_blurhash(descriptor: PreviewDescriptor) -> Self {
+        Self::Ready {
+            bytes: descriptor.encoded_bytes(),
+            quality_micros: INLINE_BLURHASH_PREVIEW_QUALITY_MICROS,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PlannerCandidateContext {
     pub semantic: SemanticScore,
     pub capability: PlannerCapability,
     pub quality: PlannerQuality,
     pub preview: PreviewAvailability,
+    pub watch: PlannerWatchEvidence,
     pub head_probe: HeadProbeHistory,
     pub retry: PlannerRetryAvailability,
 }
@@ -135,6 +148,13 @@ impl PlannerContext {
     pub fn with_preview(mut self, post: PostId, preview: PreviewAvailability) -> Self {
         if let Some(candidate) = self.candidates.get_mut(&post) {
             candidate.preview = preview;
+        }
+        self
+    }
+
+    pub fn with_watch(mut self, post: PostId, watch: PlannerWatchEvidence) -> Self {
+        if let Some(candidate) = self.candidates.get_mut(&post) {
+            candidate.watch = watch;
         }
         self
     }

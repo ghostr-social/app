@@ -88,16 +88,28 @@ impl PlannedTransfer {
 #[cfg(test)]
 pub(crate) fn planned_work(state: &mut DeliveryState, inputs: PlanInputs<'_>) -> PlannedWork {
     let mut planner = ghostr_engine::adaptive::WarpPlanner::default();
-    planned_work_with_planner(state, inputs, &mut planner)
+    let watch = ghostr_engine::watch_model::WatchModel::default();
+    planned_work_with_planner(state, inputs, &mut planner, &watch)
+}
+
+#[cfg(test)]
+pub(crate) fn planned_work_with_watch(
+    state: &mut DeliveryState,
+    inputs: PlanInputs<'_>,
+    watch: &ghostr_engine::watch_model::WatchModel,
+) -> PlannedWork {
+    let mut planner = ghostr_engine::adaptive::WarpPlanner::default();
+    planned_work_with_planner(state, inputs, &mut planner, watch)
 }
 
 pub(crate) fn planned_work_with_planner(
     state: &mut DeliveryState,
     inputs: PlanInputs<'_>,
     planner: &mut ghostr_engine::adaptive::WarpPlanner,
+    watch: &ghostr_engine::watch_model::WatchModel,
 ) -> PlannedWork {
     let started = Instant::now();
-    let mut planned = adaptive::planned_work(state, inputs, planner);
+    let mut planned = adaptive::planned_work(state, inputs, planner, watch);
     planned.planner_cpu_micros =
         started.elapsed().as_micros().clamp(1, u128::from(u64::MAX)) as u64;
     planned

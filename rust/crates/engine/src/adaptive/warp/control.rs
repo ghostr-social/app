@@ -1,5 +1,6 @@
 use super::ActionKind;
 use crate::ActionId;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ContinuationDecision {
@@ -33,14 +34,14 @@ impl ContinuationPolicy {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum IdentityProof {
     VerifiedHash([u8; 32]),
     IndependentWhole,
     Unverified,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct HedgeInput {
     pub primary: ActionId,
     pub action: ActionKind,

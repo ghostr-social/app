@@ -3,6 +3,8 @@ use crate::media_timeline::StartupFootprint;
 use crate::playback::{EstimateConfidence, PlaybackPhase};
 use crate::{ActionId, ByteRange, PostId};
 
+mod replay;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ViewProbability(f64);
 

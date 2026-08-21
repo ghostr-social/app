@@ -89,6 +89,7 @@ mod inflight_representation_fence_test;
 mod inflight_request_kind_reconciliation_test;
 mod inflight_retained_capacity_test;
 mod inflight_seed_grant_replan_test;
+mod preview_tests;
 mod promotion_fixture;
 mod transform_capability_evidence_test;
 mod transform_singleflight_capability_test;

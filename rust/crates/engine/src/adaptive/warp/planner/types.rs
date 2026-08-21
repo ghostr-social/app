@@ -1,9 +1,10 @@
 use super::super::{
-    BeamConfig, GeneratedAction, GeneratedActions, PlannerContext, PlannerRetryEvidence,
-    ResourcePrices, SearchDecision, SemanticAdmission, TwinConfig, TwinEvaluation,
+    BeamConfig, GeneratedAction, GeneratedActions, PlannerCandidateContext, PlannerContext,
+    PlannerRetryEvidence, ResourcePrices, SearchDecision, SemanticAdmission, TwinConfig,
+    TwinEpochs, TwinEvaluation,
 };
 use super::reserve::ReserveConstraint;
-use super::SearchReplayInput;
+use super::{PlannerReplayCapsule, SearchReplayInput};
 use crate::adaptive::{AllocationPlan, PlayabilitySnapshot};
 use crate::origin_model::OriginModel;
 use crate::PostId;
@@ -84,6 +85,17 @@ pub struct WarpPlanningDecision {
     pub common_random_seed: u64,
     pub retry_availability: Vec<PlannerRetryEvidence>,
     pub(crate) search_replay: Option<SearchReplayInput>,
+    pub(crate) planner_replay: Option<PlannerReplayCapsule>,
+}
+
+impl WarpPlanningDecision {
+    pub fn planner_candidate_evidence(&self, post: &PostId) -> Option<PlannerCandidateContext> {
+        self.planner_replay.as_ref()?.context().candidate(post)
+    }
+
+    pub fn planner_epochs(&self) -> Option<TwinEpochs> {
+        Some(self.planner_replay.as_ref()?.context().epochs)
+    }
 }
 
 const fn clamp_bps(value: u16) -> u16 {

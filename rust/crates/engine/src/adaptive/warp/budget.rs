@@ -1,8 +1,9 @@
 mod hard;
 pub(in crate::adaptive::warp) use hard::BudgetDenial;
 pub use hard::{HardBudget, ResourceCost};
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct NetworkTokenBucket {
     capacity: u64,
     refill_per_second: u64,
@@ -47,9 +48,27 @@ impl NetworkTokenBucket {
         self.tokens = self.tokens.saturating_add(added).min(self.capacity);
         self.updated_at_ms = self.updated_at_ms.max(now_ms);
     }
+
+    pub(crate) const fn replay_parts(&self) -> (u64, u64, u64, u64) {
+        (
+            self.capacity,
+            self.refill_per_second,
+            self.tokens,
+            self.updated_at_ms,
+        )
+    }
+
+    pub(crate) const fn from_replay(parts: (u64, u64, u64, u64)) -> Self {
+        Self {
+            capacity: parts.0,
+            refill_per_second: parts.1,
+            tokens: parts.2,
+            updated_at_ms: parts.3,
+        }
+    }
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ResourceObservation {
     pub network: u64,
     pub storage: u64,
@@ -68,7 +87,7 @@ impl ResourceObservation {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ResourcePrices {
     pub network_micros: u64,
     pub storage_micros: u64,
@@ -92,6 +111,10 @@ pub struct ShadowPriceController {
 }
 
 impl ShadowPriceController {
+    pub(crate) const fn from_prices(prices: ResourcePrices) -> Self {
+        Self { prices }
+    }
+
     pub fn observe(&mut self, actual: ResourceObservation, target: ResourceObservation) {
         self.prices.network_micros =
             adjust(self.prices.network_micros, actual.network, target.network);

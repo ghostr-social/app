@@ -9,7 +9,6 @@ use crate::origin_model::{
     OriginQuery, RequestMethod,
 };
 use crate::tests::adaptive_support::snapshot;
-
 pub(super) fn planned() -> (crate::adaptive::PlayabilitySnapshot, WarpPlanningDecision) {
     let state = rescue_state();
     let base = safety_plan();
@@ -19,21 +18,18 @@ pub(super) fn planned() -> (crate::adaptive::PlayabilitySnapshot, WarpPlanningDe
         .plan(WarpPlannerInput::new(&state, &base, &origins, &context));
     (state, decision)
 }
-
-fn rescue_state() -> crate::adaptive::PlayabilitySnapshot {
+pub(super) fn rescue_state() -> crate::adaptive::PlayabilitySnapshot {
     let mut state = snapshot(1, 20_000_000, 1_000, 20);
     state.commitment_ms = 1_000_000_000;
     state
 }
-
-fn safety_plan() -> AllocationPlan {
+pub(super) fn safety_plan() -> AllocationPlan {
     AllocationPlan {
         mode: ControlMode::Safety,
         ..AllocationPlan::default()
     }
 }
-
-fn rescue_context(state: &crate::adaptive::PlayabilitySnapshot) -> PlannerContext {
+pub(super) fn rescue_context(state: &crate::adaptive::PlayabilitySnapshot) -> PlannerContext {
     let mut context = PlannerContext::explicitly_unavailable(state)
         .with_capability(
             state.candidates[0].post.clone(),
@@ -52,14 +48,14 @@ fn rescue_context(state: &crate::adaptive::PlayabilitySnapshot) -> PlannerContex
     context
 }
 
-fn replay_config() -> WarpPlannerConfig {
+pub(super) fn replay_config() -> WarpPlannerConfig {
     WarpPlannerConfig {
         beam: BeamConfig::new(2, 8, 64, u64::MAX),
         ..WarpPlannerConfig::default()
     }
 }
 
-fn reliable_origin() -> OriginModel {
+pub(super) fn reliable_origin() -> OriginModel {
     let mut model = OriginModel::default();
     model.register_cold_start(
         ColdStartSelector::default().with_method(RequestMethod::FullGet),

@@ -1,25 +1,37 @@
 use super::DeliveryState;
 use crate::delivery_events::DeliveryCandidate;
 use ghostr_engine::representation::RepresentationBinding;
-use ghostr_engine::{PostId, VideoMeta};
+use ghostr_engine::{PostId, PreviewDescriptor, VideoMeta};
 use std::collections::HashSet;
 
 impl DeliveryState {
-    pub(super) fn upsert_progressive(&mut self, post: PostId, meta: VideoMeta) {
+    pub(super) fn upsert_progressive(
+        &mut self,
+        post: PostId,
+        meta: VideoMeta,
+        preview: Option<PreviewDescriptor>,
+    ) {
         let previous = self.catalog.binding(&post);
-        let binding = self.catalog.upsert(post, meta);
+        let binding = self.catalog.upsert(post.clone(), meta);
+        if let Some(preview) = preview {
+            self.catalog.set_preview(&post, Some(preview));
+        }
         self.accept_binding(previous, binding);
     }
 
     pub(super) fn upsert_progressive_candidate(&mut self, candidate: DeliveryCandidate) {
         let post = candidate.post;
+        let preview = candidate.preview;
         let previous = self.catalog.binding(&post);
         let binding = self.catalog.upsert_with_evidence(
-            post,
+            post.clone(),
             candidate.meta,
             candidate.renditions,
             candidate.metadata_evidence,
         );
+        if let Some(preview) = preview {
+            self.catalog.set_preview(&post, Some(preview));
+        }
         self.accept_binding(previous, binding);
     }
 

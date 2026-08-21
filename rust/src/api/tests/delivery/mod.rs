@@ -3,6 +3,7 @@ mod delivery_kind_mapping_test;
 mod delivery_watcher_cancellation_test;
 mod focus_generation_mapping_test;
 mod focus_item_mapping_test;
+mod focus_preview_mapping_test;
 mod focus_window_mapping_test;
 mod playback_admission_snapshot_mapping_test;
 mod playback_mapping_test;

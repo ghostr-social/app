@@ -69,6 +69,37 @@ fn cache_key(state: TwinStateSignature, actions: &[ActionNode], epochs: TwinEpoc
 
 fn plan_hash(actions: &[ActionNode]) -> u64 {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    actions.iter().for_each(|action| action.hash(&mut hasher));
+    actions
+        .iter()
+        .for_each(|action| stable_hash(action, &mut hasher));
     hasher.finish()
+}
+
+fn stable_hash(action: &ActionNode, state: &mut impl Hasher) {
+    action.id.hash(state);
+    stable_kind(&action.kind, state);
+    action.value.hash(state);
+    action.resources.hash(state);
+    action.forecast.hash(state);
+    action.requires.hash(state);
+    action.request().hash(state);
+}
+
+fn stable_kind(kind: &crate::adaptive::ActionKind, state: &mut impl Hasher) {
+    use crate::adaptive::ActionKind;
+    std::mem::discriminant(kind).hash(state);
+    match kind {
+        ActionKind::Prefix(range)
+        | ActionKind::Tail(range)
+        | ActionKind::FetchRange(range)
+        | ActionKind::CacheUpgrade(range) => range.hash(state),
+        ActionKind::FetchWhole { maximum_bytes } => maximum_bytes.hash(state),
+        ActionKind::Promote {
+            active,
+            maximum_bytes,
+        } => (active, maximum_bytes).hash(state),
+        ActionKind::Transform(value) => value.hash(state),
+        ActionKind::Hedge { primary, .. } | ActionKind::Cancel(primary) => primary.hash(state),
+        ActionKind::Head => {}
+    }
 }

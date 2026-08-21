@@ -59,6 +59,7 @@ pub(crate) fn ffi_item(id: &str, delivery: FfiMediaDelivery) -> FfiFocusItem {
         sha256: Some("ab".repeat(32)),
         size_bytes: Some(16),
         duration_ms: Some(2_000),
+        blurhash: None,
     }
 }
 

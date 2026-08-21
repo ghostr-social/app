@@ -45,6 +45,7 @@ pub(in crate::adaptive::decision) fn capture(
             additional_request_slot_demanded: value.additional_request_slot_demanded,
             retry_availability: retry_availability(value, privacy),
             search_replay_input: super::search_replay::capture(value, privacy),
+            planner_replay_capsule: super::planner_replay::capture(value, privacy),
         },
     }
 }

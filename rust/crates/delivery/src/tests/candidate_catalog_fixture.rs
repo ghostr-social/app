@@ -21,6 +21,7 @@ pub(super) fn candidate(id: &str, discovered_at: u64) -> DeliveryCandidate {
             size_bytes: Some(16),
             duration_ms: Some(1_000),
         },
+        preview: None,
         metadata_evidence: Vec::new(),
         renditions: Vec::new(),
         discovered_at,

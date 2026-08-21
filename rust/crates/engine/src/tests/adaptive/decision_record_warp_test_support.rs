@@ -71,6 +71,7 @@ pub(super) fn decision(
         common_random_seed: 99,
         retry_availability: Vec::new(),
         search_replay: None,
+        planner_replay: None,
     }
 }
 

@@ -1261,8 +1261,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   FfiFocusItem dco_decode_ffi_focus_item(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
     return FfiFocusItem(
       postId: dco_decode_String(arr[0]),
       urls: dco_decode_list_String(arr[1]),
@@ -1270,6 +1270,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       sha256: dco_decode_opt_String(arr[3]),
       sizeBytes: dco_decode_opt_box_autoadd_u_64(arr[4]),
       durationMs: dco_decode_opt_box_autoadd_u_64(arr[5]),
+      blurhash: dco_decode_opt_String(arr[6]),
     );
   }
 
@@ -2054,6 +2055,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_sha256 = sse_decode_opt_String(deserializer);
     var var_sizeBytes = sse_decode_opt_box_autoadd_u_64(deserializer);
     var var_durationMs = sse_decode_opt_box_autoadd_u_64(deserializer);
+    var var_blurhash = sse_decode_opt_String(deserializer);
     return FfiFocusItem(
       postId: var_postId,
       urls: var_urls,
@@ -2061,6 +2063,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       sha256: var_sha256,
       sizeBytes: var_sizeBytes,
       durationMs: var_durationMs,
+      blurhash: var_blurhash,
     );
   }
 
@@ -2968,6 +2971,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_String(self.sha256, serializer);
     sse_encode_opt_box_autoadd_u_64(self.sizeBytes, serializer);
     sse_encode_opt_box_autoadd_u_64(self.durationMs, serializer);
+    sse_encode_opt_String(self.blurhash, serializer);
   }
 
   @protected

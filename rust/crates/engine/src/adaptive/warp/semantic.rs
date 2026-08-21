@@ -1,6 +1,7 @@
 use crate::PostId;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum SemanticScore {
     Known(u64),
     Unavailable { rank: usize },

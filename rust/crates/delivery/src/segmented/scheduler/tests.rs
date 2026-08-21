@@ -65,6 +65,7 @@ fn focus(generation: u64, source: &str) -> DeliveryFocus {
                 duration_ms: Some(4_000),
             },
         }],
+        previews: Vec::new(),
         current_index: 0,
         watch_ms: 0,
         generation: FocusGeneration::try_new(generation).unwrap(),

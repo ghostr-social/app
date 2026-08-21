@@ -24,7 +24,13 @@ mod warp_planner_commit_test_support;
 mod warp_planner_detached_cancel_test;
 #[path = "warp_planner_origin_cooling_test.rs"]
 mod warp_planner_origin_cooling_test;
+#[path = "warp_planner_preview_selection_test.rs"]
+mod warp_planner_preview_selection_test;
 #[path = "warp_planner_promotion_contract_test.rs"]
 mod warp_planner_promotion_contract_test;
 #[path = "warp_planner_request_resource_envelope_test.rs"]
 mod warp_planner_request_resource_envelope_test;
+#[path = "warp_planner_twin_cache_identity_test.rs"]
+mod warp_planner_twin_cache_identity_test;
+#[path = "warp_planner_watch_deadline_test.rs"]
+mod warp_planner_watch_deadline_test;

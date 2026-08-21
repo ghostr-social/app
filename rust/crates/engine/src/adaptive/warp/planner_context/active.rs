@@ -1,14 +1,15 @@
 use super::super::{HedgeInput, IdentityProof};
 use crate::{ActionId, PostId};
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 struct HedgeContext {
     input: HedgeInput,
     identity: IdentityProof,
     alternate: String,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ActivePlannerContext {
     pub action: ActionId,
     pub continuation_advantage_micros: Option<i64>,
@@ -64,5 +65,29 @@ impl ActivePlannerContext {
         self.hedge
             .as_ref()
             .map(|item| (&item.input, item.identity.clone(), item.alternate.as_str()))
+    }
+
+    pub(super) fn replay_source(&self) -> Option<String> {
+        self.hedge.as_ref().map(|hedge| hedge.alternate.clone())
+    }
+
+    pub(super) fn replay_project(
+        &self,
+        post: &impl Fn(&str) -> String,
+        source: &impl Fn(&str) -> String,
+    ) -> Self {
+        let mut value = self.clone();
+        value.post = PostId::new(post(value.post.as_str()));
+        if let Some(hedge) = &mut value.hedge {
+            hedge.alternate = source(&hedge.alternate);
+            project_kind(&mut hedge.input.action, source);
+        }
+        value
+    }
+}
+
+fn project_kind(kind: &mut super::super::ActionKind, source: &impl Fn(&str) -> String) {
+    if let super::super::ActionKind::Hedge { alternate, .. } = kind {
+        *alternate = source(alternate);
     }
 }

@@ -1198,6 +1198,7 @@ impl SseDecode for crate::api::delivery_types::FfiFocusItem {
         let mut var_sha256 = <Option<String>>::sse_decode(deserializer);
         let mut var_sizeBytes = <Option<u64>>::sse_decode(deserializer);
         let mut var_durationMs = <Option<u64>>::sse_decode(deserializer);
+        let mut var_blurhash = <Option<String>>::sse_decode(deserializer);
         return crate::api::delivery_types::FfiFocusItem {
             post_id: var_postId,
             urls: var_urls,
@@ -1205,6 +1206,7 @@ impl SseDecode for crate::api::delivery_types::FfiFocusItem {
             sha256: var_sha256,
             size_bytes: var_sizeBytes,
             duration_ms: var_durationMs,
+            blurhash: var_blurhash,
         };
     }
 }
@@ -2264,6 +2266,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::delivery_types::FfiFocusItem 
             self.sha256.into_into_dart().into_dart(),
             self.size_bytes.into_into_dart().into_dart(),
             self.duration_ms.into_into_dart().into_dart(),
+            self.blurhash.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -3003,6 +3006,7 @@ impl SseEncode for crate::api::delivery_types::FfiFocusItem {
         <Option<String>>::sse_encode(self.sha256, serializer);
         <Option<u64>>::sse_encode(self.size_bytes, serializer);
         <Option<u64>>::sse_encode(self.duration_ms, serializer);
+        <Option<String>>::sse_encode(self.blurhash, serializer);
     }
 }
 

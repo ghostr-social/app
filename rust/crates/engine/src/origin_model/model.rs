@@ -12,6 +12,8 @@ use super::{
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+mod replay;
+
 const GLOBAL_CAP: usize = 128;
 const ORIGIN_CAP: usize = 384;
 const URL_CAP: usize = 768;

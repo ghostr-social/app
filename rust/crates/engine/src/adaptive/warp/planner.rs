@@ -1,12 +1,14 @@
 mod capacity_demand;
 mod feasibility;
 mod least_risk;
+mod replay;
 mod reserve;
 mod search_replay;
 mod search_run;
 mod simulation;
 mod types;
 
+pub(crate) use replay::{PlannerReplayCapsule, PlannerReplayState};
 pub use reserve::{
     RescueChanceEvidence, RescueTimingQuantile, ReserveAuthorityOccupancy, ReserveConstraint,
     ReserveDegradedReason,
@@ -39,6 +41,7 @@ impl WarpPlanner {
     }
 
     pub fn plan(&mut self, input: WarpPlannerInput<'_>) -> WarpPlanningDecision {
+        let planner_replay = PlannerReplayCapsule::capture(&input, self);
         self.observe_prices(&input);
         self.prepare_network(&input);
         let generated =
@@ -76,8 +79,9 @@ impl WarpPlanner {
             prices: self.prices.prices(),
             additional_request_slot_demanded,
             common_random_seed,
-            retry_availability: input.context.retry_evidence(),
+            retry_availability: input.context.retry_evidence(input.snapshot),
             search_replay: Some(search_replay),
+            planner_replay: Some(planner_replay),
             generated,
         }
     }

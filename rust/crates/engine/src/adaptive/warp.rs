@@ -23,16 +23,19 @@ pub use generation::{
     ActiveControl, CandidateRetrievalLadder, GeneratedAction, GeneratedActions, PlannerCommand,
     WarpActionGenerator,
 };
+pub(crate) use planner::{
+    PlannerReplayCapsule, PlannerReplayState, SearchReplayInput, SearchReplayMode,
+};
 pub use planner::{
     RescueChanceEvidence, RescueTimingQuantile, ReserveAuthorityOccupancy, ReserveConstraint,
     ReserveDegradedReason, SemanticDecision, WarpPlanner, WarpPlannerConfig, WarpPlannerInput,
     WarpPlanningDecision,
 };
-pub(crate) use planner::{SearchReplayInput, SearchReplayMode};
 pub use planner_context::{
     ActivePlannerContext, HeadProbeHistory, PlannerCandidateContext, PlannerCapability,
     PlannerContext, PlannerLimits, PlannerQuality, PlannerRetryAvailability, PlannerRetryEvidence,
-    PreviewAvailability, ResourceFeedback, SoftRequestCommitment, TransformCapability,
+    PlannerWatchEvidence, PreviewAvailability, ResourceFeedback, SoftRequestCommitment,
+    TransformCapability, INLINE_BLURHASH_PREVIEW_QUALITY_MICROS,
 };
 pub use request_occupancy::RequestOccupancy;
 pub(crate) use search::ScoredSearchPlan;

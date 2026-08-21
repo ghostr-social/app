@@ -1,7 +1,8 @@
+use serde::{Deserialize, Serialize};
 use url::Url;
 
 /// Canonical connection-pool identity for one credential-free HTTP origin.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct RequestAuthority(String);
 
 impl RequestAuthority {

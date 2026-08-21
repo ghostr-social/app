@@ -100,6 +100,7 @@ impl<'a> Builder<'a> {
         input: NodeInput<'_>,
     ) -> super::super::ActionNode {
         let id = self.next_action_id();
+        let forecast = super::quality::incremental(candidate, self.context, input.prediction);
         super::super::ActionNode::new(
             id,
             candidate.post.clone(),
@@ -107,7 +108,7 @@ impl<'a> Builder<'a> {
             value::score(candidate, &input.kind, input.prediction, self.base.mode),
         )
         .with_origin(input.source)
-        .with_forecast(input.prediction.forecast)
+        .with_forecast(forecast)
         .requiring(input.requires)
     }
 

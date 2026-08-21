@@ -4,7 +4,7 @@
 
 use ghostr_engine::evidence::NostrMetadataEvidence;
 use ghostr_engine::video_rendition::VideoRendition;
-use ghostr_engine::{DataUsageLevel, PostId, VideoMeta};
+use ghostr_engine::{DataUsageLevel, PostId, PreviewDescriptor, VideoMeta};
 use tokio::sync::{mpsc, oneshot};
 
 mod channel;
@@ -52,9 +52,17 @@ pub struct FocusItem {
 pub struct DeliveryCandidate {
     pub post: PostId,
     pub meta: VideoMeta,
+    pub preview: Option<PreviewDescriptor>,
     pub metadata_evidence: Vec<NostrMetadataEvidence>,
     pub renditions: Vec<VideoRendition>,
     pub discovered_at: u64,
+}
+
+/// Validated inline preview evidence associated with one focused post.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FocusPreview {
+    pub post: PostId,
+    pub descriptor: PreviewDescriptor,
 }
 
 /// Whether a focus movement represents user navigation or system control.
@@ -69,6 +77,7 @@ pub enum FocusTransition {
 #[derive(Clone, Debug)]
 pub struct DeliveryFocus {
     pub items: Vec<FocusItem>,
+    pub previews: Vec<FocusPreview>,
     pub current_index: usize,
     pub watch_ms: u64,
     pub generation: FocusGeneration,
@@ -80,6 +89,7 @@ impl DeliveryFocus {
     pub fn compatibility(items: Vec<FocusItem>, current_index: usize, watch_ms: u64) -> Self {
         Self {
             items,
+            previews: Vec::new(),
             current_index,
             watch_ms,
             generation: FocusGeneration::compatibility(),

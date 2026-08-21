@@ -8,6 +8,8 @@ mod fresh_search_privacy_test;
 mod fresh_search_support;
 #[path = "decision_record_warp_incomplete_replay_test.rs"]
 mod incomplete_replay_test;
+#[path = "decision_record_warp_planner_replay_tests.rs"]
+mod planner_replay_tests;
 #[path = "decision_record_warp_replay_coherence_test.rs"]
 mod replay_coherence_test;
 #[path = "decision_record_warp_replay_test.rs"]

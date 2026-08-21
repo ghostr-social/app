@@ -132,6 +132,7 @@ class RustFeedPostMapper {
       metadata: VideoMediaMetadata(
         sizeBytes: media.sizeBytes?.toInt(),
         durationMs: media.durationMs?.toInt(),
+        blurhash: media.blurhash,
       ),
     );
     final digest = media.sha256;

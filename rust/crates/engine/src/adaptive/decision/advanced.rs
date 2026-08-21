@@ -4,6 +4,7 @@ mod capture;
 mod command;
 mod executed;
 mod kind;
+mod planner_replay;
 mod reserve;
 mod search;
 mod search_replay;
@@ -18,6 +19,8 @@ pub(in crate::adaptive::decision) use executed::{
     capture as capture_executed, coherent as executed_coherent,
 };
 pub use kind::RecordedWarpActionKind;
+pub(in crate::adaptive::decision) use planner_replay::verify as verify_planner_replay;
+pub use planner_replay::RecordedPlannerReplayCapsule;
 pub use reserve::{
     RecordedRescueChanceEvidence, RecordedRescueTimingQuantile, RecordedReserveAuthorityOccupancy,
     RecordedReserveDegradedReason, RecordedWarpReserve,
@@ -29,7 +32,7 @@ pub(in crate::adaptive::decision) use search_replay::{
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RecordedWarpDecision {
     pub selected: Option<RecordedWarpAction>,
     pub admissible_actions: Vec<RecordedWarpAction>,
@@ -45,6 +48,8 @@ pub struct RecordedWarpDecision {
     pub retry_availability: Vec<RecordedPlannerRetryEvidence>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub search_replay_input: Option<RecordedWarpSearchInput>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub planner_replay_capsule: Option<RecordedPlannerReplayCapsule>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

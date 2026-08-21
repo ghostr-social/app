@@ -83,6 +83,9 @@ class FfiFocusItem {
   final BigInt? sizeBytes;
   final BigInt? durationMs;
 
+  /// Inline-only preview payload; remote thumbnails are not readiness.
+  final String? blurhash;
+
   const FfiFocusItem({
     required this.postId,
     required this.urls,
@@ -90,6 +93,7 @@ class FfiFocusItem {
     this.sha256,
     this.sizeBytes,
     this.durationMs,
+    this.blurhash,
   });
 
   @override
@@ -99,7 +103,8 @@ class FfiFocusItem {
       delivery.hashCode ^
       sha256.hashCode ^
       sizeBytes.hashCode ^
-      durationMs.hashCode;
+      durationMs.hashCode ^
+      blurhash.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -111,7 +116,8 @@ class FfiFocusItem {
           delivery == other.delivery &&
           sha256 == other.sha256 &&
           sizeBytes == other.sizeBytes &&
-          durationMs == other.durationMs;
+          durationMs == other.durationMs &&
+          blurhash == other.blurhash;
 }
 
 /// How the engine delivers one playable media item.

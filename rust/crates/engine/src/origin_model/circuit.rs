@@ -112,4 +112,27 @@ impl CircuitBook {
             .min_by_key(|(key, value)| (value.last_at_ms, *key))
             .map(|(key, _)| key.clone())
     }
+
+    pub(super) fn replay_project(&self, aliases: impl Fn(&str) -> Vec<String>) -> Self {
+        let breakers = self
+            .breakers
+            .iter()
+            .flat_map(|(key, value)| {
+                aliases(&key.origin).into_iter().map(|origin| {
+                    (
+                        OriginMethodKey {
+                            origin,
+                            method: key.method,
+                        },
+                        *value,
+                    )
+                })
+            })
+            .collect();
+        Self { breakers }
+    }
+
+    pub(super) fn replay_bounded(&self) -> bool {
+        self.breakers.len() <= CIRCUIT_CAPACITY
+    }
 }

@@ -25,6 +25,7 @@ fn progressive_item(id: &str) -> FfiFocusItem {
         sha256: None,
         size_bytes: Some(16),
         duration_ms: Some(2_000),
+        blurhash: None,
     }
 }
 

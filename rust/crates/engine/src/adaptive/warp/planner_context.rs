@@ -1,17 +1,22 @@
 use super::{RequestOccupancy, ResourceObservation, SemanticScore, TwinEpochs};
 use crate::adaptive::{EpsilonBuckets, PlayabilitySnapshot};
 use crate::{ActionId, PostId};
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 mod active;
 mod candidate;
+mod replay;
 mod request_scope;
+mod watch;
 pub use active::ActivePlannerContext;
 pub use candidate::{
     HeadProbeHistory, PlannerCandidateContext, PlannerCapability, PlannerQuality,
     PlannerRetryAvailability, PreviewAvailability, TransformCapability,
+    INLINE_BLURHASH_PREVIEW_QUALITY_MICROS,
 };
 pub use request_scope::SoftRequestCommitment;
+pub use watch::PlannerWatchEvidence;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PlannerRetryEvidence {
@@ -25,7 +30,7 @@ impl PlannerRetryEvidence {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct PlannerLimits {
     pub network_burst_bytes: u64,
     pub network_rate_bytes_per_second: u64,
@@ -34,13 +39,13 @@ pub struct PlannerLimits {
     pub per_origin_requests: u16,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ResourceFeedback {
     pub actual: ResourceObservation,
     pub target: ResourceObservation,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct PlannerContext {
     candidates: BTreeMap<PostId, PlannerCandidateContext>,
     active: BTreeMap<ActionId, ActivePlannerContext>,
@@ -66,6 +71,7 @@ impl PlannerContext {
                         capability: PlannerCapability::Unavailable,
                         quality: PlannerQuality::Unavailable,
                         preview: PreviewAvailability::Unavailable,
+                        watch: PlannerWatchEvidence::Unavailable,
                         head_probe: HeadProbeHistory::Unobserved,
                         retry: PlannerRetryAvailability::Ready,
                     },
@@ -150,11 +156,18 @@ impl PlannerContext {
             .is_some_and(|candidate| candidate.retry.permits_request())
     }
 
-    pub(super) fn retry_evidence(&self) -> Vec<PlannerRetryEvidence> {
-        self.candidates
+    pub(super) fn retry_evidence(
+        &self,
+        snapshot: &PlayabilitySnapshot,
+    ) -> Vec<PlannerRetryEvidence> {
+        snapshot
+            .candidates
             .iter()
-            .filter(|(_, candidate)| candidate.retry != PlannerRetryAvailability::Ready)
-            .map(|(post, candidate)| PlannerRetryEvidence::new(post.clone(), candidate.retry))
+            .filter_map(|item| {
+                let candidate = self.candidates.get(&item.post)?;
+                (candidate.retry != PlannerRetryAvailability::Ready)
+                    .then(|| PlannerRetryEvidence::new(item.post.clone(), candidate.retry))
+            })
             .collect()
     }
 

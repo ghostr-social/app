@@ -69,11 +69,13 @@ fn budget(input: &SearchReplayInput, privacy: &DecisionPrivacy) -> Option<Record
         remaining: value.replay_remaining().into(),
         global_request_width: Some(value.replay_request_width()),
         per_origin_requests: u64::try_from(value.replay_per_origin_requests()).ok()?,
-        origins: value
-            .replay_origins()
-            .iter()
-            .map(|(origin, count)| occupancy(origin.as_str(), *count, privacy))
-            .collect::<Option<Vec<_>>>()?,
+        origins: sorted_occupancy(
+            value
+                .replay_origins()
+                .iter()
+                .map(|(origin, count)| occupancy(origin.as_str(), *count, privacy))
+                .collect::<Option<Vec<_>>>()?,
+        ),
         pending_rescue_action_ids: value.replay_pending().iter().map(|node| node.id).collect(),
     })
 }
@@ -84,9 +86,16 @@ fn occupancy(
     privacy: &DecisionPrivacy,
 ) -> Option<RecordedAuthorityOccupancy> {
     Some(RecordedAuthorityOccupancy {
-        source_id: privacy.source(source),
+        source_id: privacy.authority(source),
         requests: u64::try_from(requests).ok()?,
     })
+}
+
+fn sorted_occupancy(
+    mut values: Vec<RecordedAuthorityOccupancy>,
+) -> Vec<RecordedAuthorityOccupancy> {
+    values.sort_by(|left, right| left.source_id.cmp(&right.source_id));
+    values
 }
 
 fn action(node: &ActionNode, privacy: &DecisionPrivacy) -> RecordedSearchAction {

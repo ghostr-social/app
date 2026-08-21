@@ -6,7 +6,7 @@ use super::{
 /// A privacy-safe WARP trace whose state, envelope, and internal links were verified.
 ///
 /// This reconstructs the recorded authoritative trace. It does not rerun action generation.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct VerifiedWarpReplay {
     sequence: u64,
     integrity: WarpReplayIntegrity,

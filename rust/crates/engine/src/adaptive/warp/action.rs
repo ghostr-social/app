@@ -1,17 +1,18 @@
 use super::{ResourceCost, ResourcePrices};
 use crate::adaptive::{CompletionTimes, RetrievalRequest};
 use crate::{ActionId, ByteRange, PostId, RequestAuthority};
+use serde::{Deserialize, Serialize};
 
 mod conflict;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum TransformKind {
     Remux,
     Segment,
     Transcode,
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum ActionKind {
     Head,
     Prefix(ByteRange),

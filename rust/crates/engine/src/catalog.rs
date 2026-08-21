@@ -5,7 +5,7 @@ use crate::media_timeline::MediaTimeline;
 use crate::playback::{BufferTarget, NetworkConditions, PlaybackObservation};
 use crate::representation::{RepresentationBinding, RepresentationGeneration, TransferIdentity};
 use crate::video_rendition::VideoRendition;
-use crate::{PostId, VideoMeta};
+use crate::{PostId, PreviewDescriptor, VideoMeta};
 use std::collections::{BTreeSet, HashMap};
 
 mod evidence;
@@ -32,6 +32,7 @@ pub struct CatalogEntry {
     binding: RepresentationBinding,
     timeline: Option<MediaTimeline>,
     tail_timeline_needed: bool,
+    preview: Option<PreviewDescriptor>,
     renditions: renditions::RenditionState,
 }
 
@@ -53,6 +54,7 @@ impl CatalogEntry {
             quarantined: false,
             timeline: None,
             tail_timeline_needed: false,
+            preview: None,
         };
         entry.seed_declared_evidence();
         entry
@@ -77,6 +79,7 @@ impl CatalogEntry {
         self.quarantined = false;
         self.timeline = None;
         self.tail_timeline_needed = false;
+        self.preview = None;
         self.seed_declared_evidence();
     }
 
@@ -104,6 +107,10 @@ impl CatalogEntry {
 
     pub fn timeline(&self) -> Option<&MediaTimeline> {
         self.timeline.as_ref()
+    }
+
+    pub const fn preview(&self) -> Option<PreviewDescriptor> {
+        self.preview
     }
 
     pub fn needs_tail_probe(&self) -> bool {
@@ -162,6 +169,12 @@ impl Catalog {
 
     pub fn lookup(&self, post: &PostId) -> Option<&CatalogEntry> {
         self.entries.get(post)
+    }
+
+    pub fn set_preview(&mut self, post: &PostId, preview: Option<PreviewDescriptor>) {
+        if let Some(entry) = self.entries.get_mut(post) {
+            entry.preview = preview;
+        }
     }
 
     #[cfg(test)]

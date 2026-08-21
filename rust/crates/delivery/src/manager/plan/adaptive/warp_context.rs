@@ -1,8 +1,8 @@
 use super::super::PlanInputs;
 use crate::manager::state::DeliveryState;
 use ghostr_engine::adaptive::{
-    AllocationPlan, HeadProbeHistory, PlannerContext, PlannerLimits, RequestOccupancy,
-    ResourceFeedback, ResourceObservation, TwinEpochs,
+    AllocationPlan, HeadProbeHistory, PlannerContext, PlannerLimits, PreviewAvailability,
+    RequestOccupancy, ResourceFeedback, ResourceObservation, TwinEpochs,
 };
 
 mod active;
@@ -24,17 +24,7 @@ pub(super) fn build(
     let occupancy = request_occupancy(inputs);
     let context = snapshot.candidates.iter().fold(
         PlannerContext::explicitly_unavailable(snapshot),
-        |context, candidate| {
-            context
-                .with_capability(
-                    candidate.post.clone(),
-                    state.planner_capability(&candidate.post, inputs.observed_at_ms),
-                )
-                .with_head_probe_history(
-                    candidate.post.clone(),
-                    head_probe_history(state, &candidate.post, inputs),
-                )
-        },
+        |context, candidate| candidate_context(context, state, candidate, inputs),
     );
     let context = cooling::apply(context, snapshot, inputs);
     let active = active::BuildInput {
@@ -65,6 +55,34 @@ pub(super) fn build(
         .with_request_occupancy(occupancy.clone())
         .with_epochs(epochs(state, inputs));
     (context, occupancy, tails)
+}
+
+fn candidate_context(
+    context: PlannerContext,
+    state: &DeliveryState,
+    candidate: &ghostr_engine::adaptive::CandidateSnapshot,
+    inputs: &PlanInputs<'_>,
+) -> PlannerContext {
+    let context = context
+        .with_capability(
+            candidate.post.clone(),
+            state.planner_capability(&candidate.post, inputs.observed_at_ms),
+        )
+        .with_head_probe_history(
+            candidate.post.clone(),
+            head_probe_history(state, &candidate.post, inputs),
+        );
+    let Some(preview) = state
+        .catalog()
+        .lookup(&candidate.post)
+        .and_then(|entry| entry.preview())
+    else {
+        return context;
+    };
+    context.with_preview(
+        candidate.post.clone(),
+        PreviewAvailability::inline_blurhash(preview),
+    )
 }
 
 fn head_probe_history(

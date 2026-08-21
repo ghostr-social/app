@@ -36,4 +36,25 @@ impl ExplorationBudget {
         self.global_claims = 0;
         self.per_origin.clear();
     }
+
+    pub(super) fn replay_project(&self, aliases: impl Fn(&str) -> Vec<String>) -> Self {
+        let per_origin = self
+            .per_origin
+            .iter()
+            .flat_map(|(origin, claims)| {
+                aliases(origin)
+                    .into_iter()
+                    .map(|projected| (projected, *claims))
+            })
+            .collect();
+        Self {
+            window_started_ms: self.window_started_ms,
+            global_claims: self.global_claims,
+            per_origin,
+        }
+    }
+
+    pub(super) fn replay_bounded(&self) -> bool {
+        self.per_origin.len() <= usize::from(GLOBAL_LIMIT)
+    }
 }

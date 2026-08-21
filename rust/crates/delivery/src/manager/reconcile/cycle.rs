@@ -95,7 +95,12 @@ impl DeliveryWorker {
             observed_at_ms: cycle.observed_at_ms,
             demanded: &cycle.demanded,
         };
-        planned_work_with_planner(&mut self.state, inputs, &mut self.warp_planner)
+        planned_work_with_planner(
+            &mut self.state,
+            inputs,
+            &mut self.warp_planner,
+            self.qoe.watch_model(),
+        )
     }
 
     pub(super) fn finish_reconcile(&mut self) {
