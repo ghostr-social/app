@@ -1,20 +1,13 @@
 use super::super::PlanInputs;
 use crate::manager::state::DeliveryState;
 use ghostr_engine::adaptive::{
-    ActivePlannerContext, AllocationPlan, HeadProbeHistory, PlannerContext, PlannerLimits,
-    RequestOccupancy, ResourceFeedback, ResourceObservation, TwinEpochs,
+    AllocationPlan, HeadProbeHistory, PlannerContext, PlannerLimits, RequestOccupancy,
+    ResourceFeedback, ResourceObservation, TwinEpochs,
 };
 
+mod active;
 mod cooling;
 mod hedge;
-
-struct ActiveContextInput<'a> {
-    state: &'a DeliveryState,
-    snapshot: &'a ghostr_engine::adaptive::PlayabilitySnapshot,
-    base: &'a AllocationPlan,
-    inputs: &'a PlanInputs<'a>,
-    active: &'a crate::manager::inflight::ActiveAction,
-}
 
 mod request_capacity;
 
@@ -23,25 +16,15 @@ pub(super) fn build(
     snapshot: &ghostr_engine::adaptive::PlayabilitySnapshot,
     base: &AllocationPlan,
     inputs: &PlanInputs<'_>,
-) -> (PlannerContext, RequestOccupancy) {
+) -> (
+    PlannerContext,
+    RequestOccupancy,
+    Vec<crate::manager::hedge_tail::HedgeTailWake>,
+) {
     let occupancy = request_occupancy(inputs);
-    let request_capacity = request_capacity::resolve(request_capacity::Query {
-        state,
-        snapshot,
-        base,
-        inputs,
-        occupancy: &occupancy,
-    });
-    let context = PlannerContext::explicitly_unavailable(snapshot)
-        .with_limits(limits(state, snapshot, request_capacity.tokens))
-        .with_soft_request_capacity(request_capacity.ordinary_tokens, request_capacity.soft)
-        .with_feedback(feedback(snapshot, &occupancy, !inputs.in_flight.is_empty()))
-        .with_request_occupancy(occupancy.clone())
-        .with_epochs(epochs(state, snapshot));
-    let context = snapshot
-        .candidates
-        .iter()
-        .fold(context, |context, candidate| {
+    let context = snapshot.candidates.iter().fold(
+        PlannerContext::explicitly_unavailable(snapshot),
+        |context, candidate| {
             context
                 .with_capability(
                     candidate.post.clone(),
@@ -51,31 +34,31 @@ pub(super) fn build(
                     candidate.post.clone(),
                     head_probe_history(state, &candidate.post, inputs),
                 )
-        });
+        },
+    );
     let context = cooling::apply(context, snapshot, inputs);
-    let context = inputs.in_flight.iter().fold(context, |context, active| {
-        let evidence = ActiveContextInput {
-            state,
-            snapshot,
-            base,
-            inputs,
-            active,
-        };
-        context.with_active(active_context(evidence))
+    let active = active::BuildInput {
+        state,
+        snapshot,
+        base,
+        inputs,
+    };
+    let (context, tails, hedge_soft) = active::apply(context, active);
+    let request_capacity = request_capacity::resolve(request_capacity::Query {
+        state,
+        snapshot,
+        base,
+        inputs,
+        occupancy: &occupancy,
+        hedge_soft: &hedge_soft,
     });
-    (context, occupancy)
-}
-
-fn active_context(input: ActiveContextInput<'_>) -> ActivePlannerContext {
-    let active = input.active;
-    let advantage = continuation_advantage(input.base, active.action_id());
-    let context = ActivePlannerContext::new(active.action_id(), active.post().clone())
-        .with_continuation_advantage(advantage);
-    let context = hedge::apply(context, &input);
-    match active.cancelling() {
-        true => context.mark_cancelling(),
-        false => context,
-    }
+    let context = context
+        .with_limits(limits(state, snapshot, request_capacity.tokens))
+        .with_soft_request_capacity(request_capacity.ordinary_tokens, request_capacity.soft)
+        .with_feedback(feedback(snapshot, &occupancy, !inputs.in_flight.is_empty()))
+        .with_request_occupancy(occupancy.clone())
+        .with_epochs(epochs(state, snapshot));
+    (context, occupancy, tails)
 }
 
 fn head_probe_history(
@@ -169,11 +152,4 @@ fn epochs(
             .used_bytes
             .saturating_add(snapshot.storage.budget_bytes),
     )
-}
-
-fn continuation_advantage(base: &AllocationPlan, action: ghostr_engine::ActionId) -> i64 {
-    match base.retained.iter().any(|item| item.action_id == action) {
-        true => 100_000,
-        false => -100_000,
-    }
 }

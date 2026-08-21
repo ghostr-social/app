@@ -1,4 +1,4 @@
-use super::super::ActiveContextInput;
+use super::super::active::ActiveContextInput;
 use ghostr_engine::adaptive::{CandidateSnapshot, OriginHealth, RetrievalRequest};
 use ghostr_engine::origin_model::{
     DecisionMode, MediaClass, NetworkClass, OriginContext, OriginEstimate, OriginQuery,

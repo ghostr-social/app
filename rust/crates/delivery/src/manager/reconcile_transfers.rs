@@ -31,6 +31,11 @@ impl DeliveryWorker {
             self.connection_ceiling(),
             &execution.transfers,
             &execution.retained_posts,
+        )
+        .with_selected_hedge(
+            self.downloads.len(),
+            self.connection_ceiling(),
+            matches!(execution.directive, WarpDirective::Hedge { .. }),
         );
         let total = capacity.total.min(self.progressive_capacity());
         let priority: Vec<_> = execution

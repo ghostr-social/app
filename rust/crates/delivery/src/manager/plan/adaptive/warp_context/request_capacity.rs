@@ -12,6 +12,7 @@ pub(super) struct Query<'a> {
     pub(super) base: &'a AllocationPlan,
     pub(super) inputs: &'a PlanInputs<'a>,
     pub(super) occupancy: &'a RequestOccupancy,
+    pub(super) hedge_soft: &'a [SoftRequestCommitment],
 }
 
 pub(super) struct RequestCapacity {
@@ -27,7 +28,7 @@ struct SoftCapacity {
 
 pub(super) fn resolve(query: Query<'_>) -> RequestCapacity {
     let ordinary = query.snapshot.network.connection_capacity;
-    let soft = soft_capacity(&query);
+    let soft = with_hedge_capacity(soft_capacity(&query), query.hedge_soft);
     let requested = query
         .occupancy
         .total()
@@ -41,6 +42,19 @@ pub(super) fn resolve(query: Query<'_>) -> RequestCapacity {
         ordinary_tokens: ordinary.min(u16::MAX as usize) as u16,
         soft: soft.commitments,
     }
+}
+
+fn with_hedge_capacity(
+    mut capacity: SoftCapacity,
+    hedges: &[SoftRequestCommitment],
+) -> SoftCapacity {
+    for hedge in hedges {
+        if !capacity.commitments.contains(hedge) {
+            capacity.commitments.push(hedge.clone());
+            capacity.posts = capacity.posts.saturating_add(1);
+        }
+    }
+    capacity
 }
 
 fn soft_capacity(query: &Query<'_>) -> SoftCapacity {

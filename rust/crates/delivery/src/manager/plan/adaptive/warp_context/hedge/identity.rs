@@ -1,4 +1,4 @@
-use super::super::ActiveContextInput;
+use super::super::active::ActiveContextInput;
 use ghostr_engine::adaptive::{CandidateSnapshot, IdentityProof, RetrievalRequest};
 use ghostr_engine::evidence::{EvidenceField, EvidenceValue};
 

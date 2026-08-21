@@ -10,8 +10,7 @@ use ghostr_engine::host_stats::host_of;
 use ghostr_engine::origin_model::{AdaptationState, DecisionMode, OriginOutcome};
 
 #[cfg(test)]
-#[path = "completion_observability/request_started_test.rs"]
-mod request_started_test;
+pub(crate) mod tests;
 
 impl DeliveryWorker {
     pub(super) fn observe_chunk_completion(&self, done: &ChunkDone, status: CompletionStatus) {
@@ -127,7 +126,7 @@ fn transfer_event(
         post: Some(done.attempt.chunk.post.clone()),
         total_bytes: bytes,
         aborted_bytes: if cancelled { bytes } else { 0 },
-        duplicate_hedge_bytes: if resolution.is_some_and(completion_decision::is_hedge) {
+        duplicate_hedge_bytes: if status == CompletionStatus::HedgeLoser {
             bytes
         } else {
             0

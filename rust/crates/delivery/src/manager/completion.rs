@@ -5,7 +5,6 @@
 
 use crate::chunk::downloader::ChunkResult;
 use crate::manager::failure::origin_failure_class;
-use crate::manager::inflight::CompletionStatus;
 use crate::manager::pressure::is_store_pressure;
 use crate::manager::transfers::ChunkDone;
 use crate::manager::DeliveryWorker;
@@ -17,6 +16,8 @@ use ghostr_engine::PostId;
 use ghostr_net::media_log_identity::MediaLogIdentity;
 use log::warn;
 
+mod hedge;
+
 impl DeliveryWorker {
     pub(crate) async fn finish_chunk(&mut self, done: ChunkDone) {
         if successful_required_bytes(&done) {
@@ -26,8 +27,13 @@ impl DeliveryWorker {
         self.observe_chunk_completion(&done, status);
         let identity = done.attempt.identity().clone();
         self.finish_body(&identity);
-        if !Self::accepts_completion(status) {
-            return;
+        match hedge::completion_use(status, &done) {
+            hedge::CompletionUse::Useful => {}
+            hedge::CompletionUse::OriginEvidence => {
+                hedge::record_origin_only(self, &done, &identity);
+                return;
+            }
+            hedge::CompletionUse::Discarded => return,
         }
         if !done.outcome.as_ref().err().is_some_and(is_store_pressure) {
             self.keeper.note_chunk(&done);
@@ -45,13 +51,6 @@ impl DeliveryWorker {
     pub(crate) fn finish_body(&mut self, identity: &TransferIdentity) {
         if !self.downloads.contains_identity(identity) {
             self.probes.body_finished(identity.post());
-        }
-    }
-
-    fn accepts_completion(status: CompletionStatus) -> bool {
-        match status {
-            CompletionStatus::Current => true,
-            CompletionStatus::Cancelled | CompletionStatus::Superseded => false,
         }
     }
 

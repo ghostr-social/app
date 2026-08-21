@@ -3,13 +3,6 @@ use ghostr_engine::adaptive::{
     RecordedAllocationReason, RecordedRetrievalRequest, RecordedTransfer, RecordedWarpCommand,
 };
 
-pub(super) fn is_hedge(value: &DecisionResolution) -> bool {
-    match &value.warp_action {
-        Some(action) => matches!(action.command, RecordedWarpCommand::Hedge { .. }),
-        None => value.action.request == "hedge",
-    }
-}
-
 pub(super) fn is_whole(value: &DecisionResolution) -> bool {
     match transfer(value) {
         Some(transfer) => matches!(

@@ -112,6 +112,10 @@ impl DownloadWorkers {
         self.active.complete_hedge_winner(action)
     }
 
+    pub(crate) fn cancel_hedge_loser(&mut self, action: ghostr_engine::ActionId) -> bool {
+        self.active.cancel_hedge_loser(action)
+    }
+
     pub(crate) fn observe_response(
         &mut self,
         attempt: &ChunkAttempt,

@@ -17,7 +17,8 @@ pub(super) fn planned_work(
         return empty_work();
     };
     let allocation = AdaptivePlayabilityPolicy.plan(&snapshot);
-    let (context, occupancy) = warp_context::build(state, &snapshot, &allocation, &inputs);
+    let (context, occupancy, hedge_tails) =
+        warp_context::build(state, &snapshot, &allocation, &inputs);
     let warp = planner.plan(ghostr_engine::adaptive::WarpPlannerInput::new(
         &snapshot,
         &allocation,
@@ -47,6 +48,7 @@ pub(super) fn planned_work(
         decision_models,
         shadow_prices,
         active_requests: occupancy.total() as u64,
+        hedge_tails,
         planner_cpu_micros: 0,
         warp: Some(warp),
     }
@@ -65,6 +67,7 @@ fn empty_work() -> PlannedWork {
         decision_models: Vec::new(),
         shadow_prices: Default::default(),
         active_requests: 0,
+        hedge_tails: Vec::new(),
         planner_cpu_micros: 0,
         warp: None,
     }

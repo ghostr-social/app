@@ -67,7 +67,14 @@ pub(super) struct ActiveChunk {
     pub(super) store_action: Option<StoreAction>,
     pub(super) promotion_authorization: Option<ghostr_engine::adaptive::PromotionGrant>,
     pub(super) response_opened: bool,
+    pub(super) hedge_disposition: Option<HedgeDisposition>,
     pub(super) cancelling: bool,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum HedgeDisposition {
+    Winner,
+    Loser,
 }
 
 impl ActiveChunk {
@@ -92,6 +99,7 @@ impl ActiveChunk {
             store_action: registration.store_action,
             promotion_authorization: None,
             response_opened: false,
+            hedge_disposition: None,
             cancelling: false,
         }
     }
@@ -115,5 +123,7 @@ impl ActiveChunk {
 pub(crate) enum CompletionStatus {
     Current,
     Cancelled,
+    HedgeWinner,
+    HedgeLoser,
     Superseded,
 }

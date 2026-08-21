@@ -9,6 +9,7 @@ use std::collections::{HashMap, HashSet};
 
 mod action;
 mod cancellation;
+mod hedge;
 mod promotion;
 mod reconciliation;
 mod response;
@@ -40,25 +41,6 @@ impl InFlightChunks {
             overlaps(&active.chunk, chunk)
                 || (active.io_finished() && active.chunk.post == chunk.post)
         })
-    }
-
-    pub(crate) fn link_hedge(&mut self, primary: ActionId, alternate: ActionId) -> bool {
-        if primary == alternate
-            || !self.transfers.contains_key(&primary)
-            || !self.transfers.contains_key(&alternate)
-        {
-            return false;
-        }
-        self.hedges.insert(primary, alternate);
-        self.hedges.insert(alternate, primary);
-        true
-    }
-
-    pub(crate) fn complete_hedge_winner(&mut self, winner: ActionId) -> bool {
-        let Some(loser) = self.hedges.get(&winner).copied() else {
-            return false;
-        };
-        self.cancel_action(loser)
     }
 
     pub fn next_attempt(&mut self, chunk: ChunkId, identity: TransferIdentity) -> ChunkAttempt {
@@ -138,13 +120,10 @@ impl InFlightChunks {
         if active.identity != *attempt.identity() || active.chunk != attempt.chunk {
             return CompletionStatus::Superseded;
         }
-        let cancelled = active.cancelling;
+        let status = hedge::completion_status(active, self.hedges.contains_key(&attempt.id()));
         self.transfers.remove(&attempt.id());
-        self.unlink_hedge(attempt.id());
-        match cancelled {
-            true => CompletionStatus::Cancelled,
-            false => CompletionStatus::Current,
-        }
+        self.hedges.remove(&attempt.id());
+        status
     }
 
     pub fn clear(&mut self) {
@@ -153,12 +132,6 @@ impl InFlightChunks {
         }
         self.transfers.clear();
         self.hedges.clear();
-    }
-
-    fn unlink_hedge(&mut self, action: ActionId) {
-        if let Some(peer) = self.hedges.remove(&action) {
-            self.hedges.remove(&peer);
-        }
     }
 }
 

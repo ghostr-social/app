@@ -16,6 +16,20 @@ pub(crate) struct PlannedCapacity {
     pub(crate) foreground_goal: usize,
 }
 
+impl PlannedCapacity {
+    pub(crate) fn with_selected_hedge(
+        mut self,
+        active: usize,
+        ceiling: usize,
+        selected: bool,
+    ) -> Self {
+        if selected {
+            self.total = self.total.max(active.saturating_add(1)).min(ceiling.max(1));
+        }
+        self
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct RequestConcurrencyLimits {
     global: usize,

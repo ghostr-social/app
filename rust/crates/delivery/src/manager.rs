@@ -18,6 +18,7 @@ pub(crate) mod cooldown_timers;
 mod create;
 pub mod failure;
 mod focus_lease;
+pub(crate) mod hedge_tail;
 pub(crate) mod immediate_replan;
 mod independent_objects;
 pub(crate) mod inflight;
@@ -65,6 +66,7 @@ use crate::delivery_events::{command_channel, CommandReceiver, DeliveryHandle};
 use crate::demand_leases::DemandLeases;
 use crate::manager::capability::CapabilityKeeper;
 use crate::manager::cooldown_timers::CooldownTimers;
+use crate::manager::hedge_tail::HedgeTailTimers;
 use crate::manager::immediate_replan::ImmediateReplan;
 use crate::manager::independent_objects::IndependentObjects;
 use crate::manager::pressure::StorePressure;
@@ -156,6 +158,7 @@ pub(crate) struct DeliveryWorker {
     cooldown_timers: CooldownTimers,
     pressure: StorePressure,
     focus_lease: FocusedStoreLease,
+    hedge_tail_timers: HedgeTailTimers,
     demand_leases: DemandLeases,
     ctx: TransferContext,
     cache: CacheRegistry,

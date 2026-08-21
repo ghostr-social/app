@@ -20,7 +20,6 @@ pub(crate) enum Wake {
     Internal(InternalEvent),
     Timeline(TimelineResult),
 }
-
 type ClearCompletion = (oneshot::Sender<anyhow::Result<()>>, anyhow::Result<()>);
 
 impl DeliveryWorker {
@@ -160,6 +159,7 @@ impl DeliveryWorker {
             InternalEvent::Transfer(transfer) => self.apply_transfer(transfer).await,
             InternalEvent::Segmented(done) => self.segmented.finish(done),
             InternalEvent::Transform(done) => self.finish_transform_job(done),
+            InternalEvent::HedgeTail(wake) => self.consume_hedge_tail_wake(wake),
             InternalEvent::Maintenance(maintenance) => self.apply_maintenance(maintenance).await,
             InternalEvent::TrafficChanged => self.absorb_traffic(),
         }

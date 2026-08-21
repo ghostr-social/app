@@ -31,6 +31,7 @@ pub(crate) enum InternalEvent {
     Transfer(TransferEvent),
     Segmented(SegmentedDone),
     Transform(crate::manager::transforms::TransformDone),
+    HedgeTail(crate::manager::hedge_tail::HedgeTailWake),
     Maintenance(MaintenanceEvent),
     TrafficChanged,
 }

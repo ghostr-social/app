@@ -1,27 +1,81 @@
-use super::ActiveContextInput;
+use super::active::ActiveContextInput;
+use crate::manager::hedge_tail::HedgeTailWake;
 use ghostr_engine::adaptive::{
-    ActionKind, ActivePlannerContext, ControlMode, HedgeInput, OriginHealth, RetrievalRequest,
+    ActionKind, ActivePlannerContext, ControlMode, HedgeInput, HedgePolicy, IdentityProof,
+    OriginHealth, RetrievalRequest, SoftRequestCommitment,
 };
 
 mod forecast;
 mod identity;
 
+pub(super) struct Application {
+    pub(super) context: ActivePlannerContext,
+    pub(super) wake: Option<HedgeTailWake>,
+    pub(super) soft: Option<SoftRequestCommitment>,
+}
+
 pub(super) fn apply(
     context: ActivePlannerContext,
     evidence: &ActiveContextInput<'_>,
-) -> ActivePlannerContext {
+) -> Application {
     let Some(candidate) = evidence
         .snapshot
         .candidates
         .iter()
         .find(|item| item.post == *evidence.active.post())
     else {
-        return context;
+        return unavailable(context);
     };
     let Some((input, proof, alternate)) = hedge(evidence, candidate) else {
-        return context;
+        return unavailable(context);
     };
-    context.with_hedge(input, proof, alternate)
+    let eligible = eligible_at_tail(&input, proof.clone());
+    let wake = tail_wake(evidence, &input, eligible);
+    let soft = eligible.then(|| hedge_commitment(evidence, alternate.clone()));
+    Application {
+        context: context.with_hedge(input, proof, alternate),
+        wake,
+        soft,
+    }
+}
+
+fn tail_wake(
+    evidence: &ActiveContextInput<'_>,
+    input: &HedgeInput,
+    eligible: bool,
+) -> Option<HedgeTailWake> {
+    if input.elapsed_ms >= input.tail_trigger_ms || !eligible {
+        return None;
+    }
+    Some({
+        let deadline = evidence
+            .active
+            .launched_at_ms()
+            .saturating_add(input.tail_trigger_ms);
+        HedgeTailWake::new(input.primary, deadline)
+    })
+}
+
+fn eligible_at_tail(input: &HedgeInput, proof: IdentityProof) -> bool {
+    let mut at_tail = input.clone();
+    at_tail.elapsed_ms = at_tail.elapsed_ms.max(input.tail_trigger_ms);
+    HedgePolicy::eligible(&at_tail, proof)
+}
+
+fn hedge_commitment(evidence: &ActiveContextInput<'_>, alternate: String) -> SoftRequestCommitment {
+    SoftRequestCommitment::new(
+        evidence.active.post().clone(),
+        alternate,
+        evidence.active.request(),
+    )
+}
+
+fn unavailable(context: ActivePlannerContext) -> Application {
+    Application {
+        context,
+        wake: None,
+        soft: None,
+    }
 }
 
 fn hedge(

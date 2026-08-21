@@ -77,6 +77,7 @@ impl DeliveryWorker {
         revisions: &HashMap<PostId, ContentRevision>,
     ) {
         let PlannedExecution { planned, decision } = execution;
+        self.schedule_hedge_tail_wakes(&planned.hedge_tails, observed_at_ms);
         self.additional_request_slot_demand = planned
             .warp
             .as_ref()

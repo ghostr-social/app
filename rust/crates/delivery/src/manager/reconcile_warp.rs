@@ -130,7 +130,7 @@ impl DeliveryWorker {
         if selected != alternate || self.downloads.link_hedge(*primary, action) {
             return;
         }
-        self.downloads.cancel_action(action);
+        self.downloads.cancel_hedge_loser(action);
         self.commands.resolve_decision(
             action,
             DecisionOutcome::Failed {

@@ -133,6 +133,7 @@ impl DeliveryWorker {
             cooldown_timers: CooldownTimers::default(),
             pressure: StorePressure::new(config.tuning.store_pressure_pause),
             focus_lease: FocusedStoreLease::default(),
+            hedge_tail_timers: Default::default(),
             demand_leases: DemandLeases::default(),
             ctx: TransferContext {
                 requests: config.requests,

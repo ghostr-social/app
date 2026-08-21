@@ -13,6 +13,7 @@ impl DeliveryWorker {
         self.retry.clear();
         self.cooldown_timers.clear();
         self.pressure.clear();
+        self.hedge_tail_timers.clear();
         self.demand_leases.clear();
         self.segmented.clear();
         self.timelines.clear();

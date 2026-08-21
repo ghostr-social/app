@@ -49,6 +49,7 @@ pub(crate) struct PlannedWork {
     pub decision_models: Vec<ghostr_engine::adaptive::DecisionModelInput>,
     pub shadow_prices: ghostr_engine::adaptive::ShadowPrices,
     pub active_requests: u64,
+    pub hedge_tails: Vec<crate::manager::hedge_tail::HedgeTailWake>,
     pub planner_cpu_micros: u64,
     pub warp: Option<ghostr_engine::adaptive::WarpPlanningDecision>,
 }
