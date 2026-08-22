@@ -1,7 +1,7 @@
 use super::ProgressiveState;
 use crate::progressive::stream::StreamSource;
 use axum::http::StatusCode;
-use ghostr_engine::representation::RepresentationBinding;
+use ghostr_partial_store::partial_range_store::StoredMediaSnapshot;
 use std::sync::Arc;
 use tokio::time::{timeout_at, Instant};
 
@@ -10,50 +10,36 @@ pub(super) struct VideoSnapshot {
     pub(super) total: u64,
 }
 
-pub(super) async fn awaited_snapshot(
-    state: &Arc<ProgressiveState>,
-    id: String,
-) -> Result<Option<VideoSnapshot>, StatusCode> {
-    let before = state.store.representation_binding(&id).await;
-    let Some(total) = awaited_total_len(state, &id).await? else {
-        return Ok(None);
-    };
-    let after = state.store.representation_binding(&id).await;
-    let Some(binding) = stable_binding(before, after) else {
-        return Ok(None);
-    };
-    Ok(Some(VideoSnapshot {
-        source: StreamSource::new(id, binding),
-        total,
-    }))
-}
-
-fn stable_binding(
-    before: Option<RepresentationBinding>,
-    after: Option<RepresentationBinding>,
-) -> Option<Option<RepresentationBinding>> {
-    match (&before, &after) {
-        (Some(left), Some(right)) if left != right => None,
-        (Some(_), None) => None,
-        _ => Some(after.or(before)),
+impl VideoSnapshot {
+    pub(super) fn from_stored(id: String, snapshot: StoredMediaSnapshot) -> Self {
+        let total = snapshot.total_len().expect("awaited snapshot has a total");
+        Self {
+            source: StreamSource::new(id, snapshot.binding().cloned(), snapshot.revision()),
+            total,
+        }
     }
 }
 
-async fn awaited_total_len(
+pub(super) async fn awaited_media_snapshot(
     state: &Arc<ProgressiveState>,
     id: &str,
-) -> Result<Option<u64>, StatusCode> {
+) -> Result<Option<StoredMediaSnapshot>, StatusCode> {
     let deadline = Instant::now() + state.timing.unknown_length_wait;
     let notify = state.store.change_notifier();
     loop {
         let changed = notify.notified();
-        let known = state
+        tokio::pin!(changed);
+        changed.as_mut().enable();
+        let snapshot = state
             .store
-            .total_len(id)
+            .media_snapshot(id)
             .await
             .map_err(|_| StatusCode::NOT_FOUND)?;
-        if known.is_some() {
-            return Ok(known);
+        if snapshot.binding().is_none() {
+            return Ok(None);
+        }
+        if snapshot.total_len().is_some() {
+            return Ok(Some(snapshot));
         }
         if timeout_at(deadline, changed).await.is_err() {
             return Ok(None);

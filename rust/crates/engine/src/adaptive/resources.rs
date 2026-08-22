@@ -1,4 +1,4 @@
-use super::ranges::uncovered_bytes;
+use super::ranges::{required_ranges, uncovered_bytes};
 use super::{CandidateSnapshot, PlayabilitySnapshot, PlaybackSnapshot};
 use crate::playback::{EstimateConfidence, PlaybackPhase};
 
@@ -19,10 +19,9 @@ pub(super) fn endangered(snapshot: &PlayabilitySnapshot, current: &CandidateSnap
 }
 
 pub(super) fn fully_stored(candidate: &CandidateSnapshot) -> bool {
-    candidate
-        .playable_ranges
+    required_ranges(candidate)
         .iter()
-        .all(|playable| uncovered_bytes(playable.bytes, &candidate.present) == 0)
+        .all(|range| uncovered_bytes(*range, &candidate.present) == 0)
 }
 
 pub(super) fn speculative_budget(snapshot: &PlayabilitySnapshot) -> u64 {
@@ -82,7 +81,7 @@ fn reserved_storage_bytes(snapshot: &PlayabilitySnapshot) -> u64 {
                 .in_flight
                 .iter()
                 .filter(|active| active.identity_current)
-                .map(|active| uncovered_bytes(active.bytes, &candidate.present))
+                .map(|active| active.reserved_storage_bytes)
         })
         .sum()
 }

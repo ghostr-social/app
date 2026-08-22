@@ -10,6 +10,7 @@ use ghostr_engine::PostId;
 use std::collections::{HashMap, HashSet};
 use tokio::time::Instant;
 
+mod availability;
 mod cooldowns;
 mod policy;
 
@@ -102,12 +103,6 @@ impl RetryBook {
         !urls.is_empty() && self.live_urls(post, urls).is_empty()
     }
 
-    /// Marks the post as pausing between attempts. `None` when a
-    /// pause was already running, so timers are not stacked.
-    pub(crate) fn cool_down(&mut self, post: PostId) -> Option<CooldownId> {
-        self.cooldowns.begin(post)
-    }
-
     pub(crate) fn representation_changed(&mut self, post: &PostId) {
         self.cooldowns.representation_changed(post);
     }
@@ -121,18 +116,6 @@ impl RetryBook {
             }
         }
         self.cooldowns.focus_changed(previous, current);
-    }
-
-    pub(crate) fn warm_up(&mut self, post: &PostId, cooldown: CooldownId) -> bool {
-        self.cooldowns.finish(post, cooldown)
-    }
-
-    pub(crate) fn expedite_demand(&mut self, post: &PostId, offset: u64) -> bool {
-        self.cooldowns.expedite_demand(post, offset)
-    }
-
-    pub(crate) fn is_cooling(&self, post: &PostId) -> bool {
-        self.cooldowns.is_active(post)
     }
 
     #[cfg(test)]

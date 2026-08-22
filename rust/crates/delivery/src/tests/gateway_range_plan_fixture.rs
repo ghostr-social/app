@@ -3,23 +3,20 @@ use crate::manager::plan::{planned_work, PlanInputs, PlannedWork};
 use crate::manager::retry::{RetryBook, RetryPolicy};
 use crate::manager::state::DeliveryState;
 use crate::tests::adaptive_plan_fixture::playback_for;
-use crate::tests::media_timeline_fixture::classic_moov;
+use crate::tests::media_timeline_fixture::install_classic_timeline;
 use ghostr_engine::adaptive::StorageSnapshot;
 use ghostr_engine::catalog::LearnedFacts;
 use ghostr_engine::host_stats::{HostStats, ThroughputSample};
-use ghostr_engine::media_timeline::{parse_mp4_segments, MediaSegment};
 use ghostr_engine::{ByteRange, DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
 pub(super) fn demand_plan(demanded: ByteRange) -> PlannedWork {
     build_demand_plan(demanded, false)
 }
-
 pub(super) fn buffered_demand_plan(demanded: ByteRange) -> PlannedWork {
     build_demand_plan(demanded, true)
 }
-
 fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
     let post = PostId::new("current");
     let mut state = state(post.clone());
@@ -29,17 +26,34 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
     let stats = stats(buffered);
     let retry = RetryBook::new(RetryPolicy::default());
     let demanded = HashMap::from([(post.clone(), demanded)]);
+    let independent_sources = HashMap::new();
+    let completed_head_probes = HashSet::new();
+    let revisions = HashMap::new();
     planned_work(
         &mut state,
         PlanInputs {
             stats: &stats,
             retry: &retry,
             present: &HashMap::new(),
+            finalized: &HashSet::new(),
+            stored_totals: &HashMap::new(),
+            continuation_sources: &HashMap::new(),
+            revisions: &revisions,
+            independent_sources: &independent_sources,
+            completed_head_probes: &completed_head_probes,
             in_flight: &[],
+            active_head_probes: &[],
+            hls_candidates: &[],
+            active_hls_sources: &[],
+            segmented_storage_available_bytes: u64::MAX,
             storage: StorageSnapshot::new(2_000_000_000, 0),
             connection_capacity: 1,
             connection_ceiling: 1,
+            per_authority_request_limit: 1,
             packet_loss_bps: 0,
+            measured_network_bytes_per_second: 0,
+            measured_transform_cpu_ms: None,
+            capacity_revision: 0,
             observed_at_ms: 1,
             demanded: &demanded,
         },
@@ -65,17 +79,11 @@ fn state(post: PostId) -> DeliveryState {
         duration_ms: Some(1_000),
     };
     let mut state = DeliveryState::new(EngineParams::default(), DataUsageLevel::Balanced);
-    state.apply_focus(
-        DeliveryFocus::compatibility(
-            vec![FocusItem {
-                post: post.clone(),
-                meta,
-            }],
-            0,
-            0,
-        ),
-        0,
-    );
+    let item = FocusItem {
+        post: post.clone(),
+        meta,
+    };
+    state.apply_focus(DeliveryFocus::compatibility(vec![item], 0, 0), 0);
     state.catalog_mut().learn(
         &post,
         LearnedFacts {
@@ -83,13 +91,6 @@ fn state(post: PostId) -> DeliveryState {
             ..LearnedFacts::default()
         },
     );
-    install_timeline(&mut state, &post);
+    install_classic_timeline(&mut state, &post, 100, 100);
     state
-}
-
-fn install_timeline(state: &mut DeliveryState, post: &PostId) {
-    let moov = classic_moov(100, 100);
-    let timeline = parse_mp4_segments(&[MediaSegment::new(10_000, &moov)]).unwrap();
-    let binding = state.catalog().binding(post).unwrap();
-    assert!(state.catalog_mut().learn_timeline_for(&binding, timeline));
 }

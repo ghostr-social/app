@@ -1,5 +1,9 @@
-use ghostr_engine::host_stats::host_of;
+use ghostr_engine::RequestAuthority;
+
+const INVALID_AUTHORITY: &str = "invalid-request-authority";
 
 pub(crate) fn origin_key(url: &str) -> String {
-    host_of(url).unwrap_or_else(|| url.to_owned())
+    RequestAuthority::from_url(url)
+        .map(|authority| authority.as_str().to_owned())
+        .unwrap_or_else(|| INVALID_AUTHORITY.to_owned())
 }

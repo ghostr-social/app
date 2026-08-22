@@ -87,6 +87,10 @@ impl PlaybackObservation {
         self.buffered_extent - self.position
     }
 
+    pub fn position(self) -> Duration {
+        self.position
+    }
+
     pub fn playback_rate_milli(self) -> u16 {
         self.playback_rate_milli
     }

@@ -1,21 +1,20 @@
 //! Conservative, evidence-driven transfer concurrency.
 //!
-//! The policy only learns from saturated windows. A higher limit is a
-//! temporary one-step trial until aggregate throughput proves a useful
-//! gain without materially inflating request latency.
+//! The policy opens trials only from demand-saturated windows. A higher
+//! limit stays temporary until filled traffic proves a useful gain without
+//! materially inflating request latency; an unclaimed trial is abandoned.
 
 use std::time::Duration;
 
-mod window;
-use window::EvidenceWindow;
 mod occupancy;
 pub use occupancy::ConcurrencyOccupancy;
+mod trial;
+use trial::{Trial, TrialProgress};
+mod window;
+use window::EvidenceWindow;
 
 const LEARNING_SAMPLES: usize = 4;
-const TRIAL_SAMPLES: usize = 4;
 const RETRY_BACKOFF_SAMPLES: usize = 8;
-const MINIMUM_GAIN_PERCENT: u64 = 15;
-const MAXIMUM_TTFB_INFLATION_PERCENT: u64 = 40;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NetworkSetback {
@@ -32,12 +31,6 @@ pub struct ConcurrencyEvidence {
     pub saturated: bool,
     pub ttfb: Duration,
     pub setback: NetworkSetback,
-}
-
-#[derive(Clone, Copy, Debug)]
-struct Trial {
-    baseline: EvidenceWindow,
-    evidence: EvidenceWindow,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -83,12 +76,17 @@ impl AdaptiveConcurrency {
         match evidence.setback {
             NetworkSetback::SevereLoss => self.back_off_to_minimum(),
             NetworkSetback::Stall | NetworkSetback::Failure => self.back_off(),
-            NetworkSetback::None if self.is_capacity_sample(evidence) => {
-                self.observe_capacity(evidence)
-            }
-            NetworkSetback::None => {}
+            NetworkSetback::None => self.observe_healthy(evidence),
         }
         self.limit
+    }
+
+    fn observe_healthy(&mut self, evidence: ConcurrencyEvidence) {
+        match self.trial.take() {
+            Some(trial) => self.observe_trial_window(trial, evidence),
+            None if self.is_capacity_sample(evidence) => self.observe_baseline(evidence),
+            None => {}
+        }
     }
 
     fn is_capacity_sample(&self, evidence: ConcurrencyEvidence) -> bool {
@@ -97,11 +95,17 @@ impl AdaptiveConcurrency {
             && evidence.aggregate_bytes_per_second > 0
     }
 
-    fn observe_capacity(&mut self, evidence: ConcurrencyEvidence) {
-        match self.trial.take() {
-            Some(trial) => self.observe_trial(trial, evidence),
-            None => self.observe_baseline(evidence),
-        }
+    fn observe_trial_window(&mut self, trial: Trial, evidence: ConcurrencyEvidence) {
+        let progress = if evidence.aggregate_bytes_per_second > 0
+            && evidence.occupancy.fills_trial(self.limit)
+        {
+            trial.observe(evidence)
+        } else if evidence.occupancy.claims(self.limit) {
+            TrialProgress::Pending(trial)
+        } else {
+            trial.miss()
+        };
+        self.apply_trial(progress);
     }
 
     fn observe_baseline(&mut self, evidence: ConcurrencyEvidence) {
@@ -120,22 +124,15 @@ impl AdaptiveConcurrency {
 
     fn start_trial(&mut self) {
         self.limit = self.accepted + 1;
-        self.trial = Some(Trial {
-            baseline: self.baseline,
-            evidence: EvidenceWindow::default(),
-        });
+        self.trial = Some(Trial::new(self.baseline));
     }
 
-    fn observe_trial(&mut self, mut trial: Trial, evidence: ConcurrencyEvidence) {
-        trial.evidence.push(evidence);
-        if trial.evidence.len() < TRIAL_SAMPLES {
-            self.trial = Some(trial);
-            return;
-        }
-        if trial_improved(trial) {
-            self.accept_trial(trial.evidence);
-        } else {
-            self.reject_trial();
+    fn apply_trial(&mut self, progress: TrialProgress) {
+        match progress {
+            TrialProgress::Pending(trial) => self.trial = Some(trial),
+            TrialProgress::Accepted(evidence) => self.accept_trial(evidence),
+            TrialProgress::Rejected => self.reject_trial(),
+            TrialProgress::Abandoned => self.abandon_trial(),
         }
     }
 
@@ -146,10 +143,14 @@ impl AdaptiveConcurrency {
     }
 
     fn reject_trial(&mut self) {
+        self.abandon_trial();
+        self.retry_backoff = RETRY_BACKOFF_SAMPLES;
+    }
+
+    fn abandon_trial(&mut self) {
         self.limit = self.accepted;
         self.baseline = EvidenceWindow::default();
         self.trial = None;
-        self.retry_backoff = RETRY_BACKOFF_SAMPLES;
     }
 
     fn back_off(&mut self) {
@@ -167,20 +168,4 @@ impl AdaptiveConcurrency {
         self.trial = None;
         self.retry_backoff = RETRY_BACKOFF_SAMPLES;
     }
-}
-
-fn trial_improved(trial: Trial) -> bool {
-    let throughput = trial.evidence.throughput();
-    let baseline = trial.baseline.throughput();
-    let useful_gain =
-        throughput.saturating_mul(100) >= baseline.saturating_mul(100 + MINIMUM_GAIN_PERCENT);
-    useful_gain && latency_is_bounded(trial)
-}
-
-fn latency_is_bounded(trial: Trial) -> bool {
-    let latency = trial.evidence.ttfb_micros();
-    let baseline = trial.baseline.ttfb_micros();
-    baseline == 0
-        || latency.saturating_mul(100)
-            <= baseline.saturating_mul(100 + MAXIMUM_TTFB_INFLATION_PERCENT)
 }

@@ -7,6 +7,7 @@ use crate::{ByteRange, DeliveryKind, EngineParams, PostId, VideoMeta};
 
 const PREFIX: u64 = 262_144;
 const TOTAL: u64 = 600_000;
+const URL: &str = "https://media.example/video.mp4";
 
 #[test]
 fn unknown_layout_bootstrap_starts_after_the_contiguous_prefix() {
@@ -32,7 +33,7 @@ fn unknown_layout_plan_advances_past_the_persisted_prefix() {
 
     let plan = AdaptivePlayabilityPolicy.plan(&input);
 
-    assert_eq!(plan.allocations[0].range.start, PREFIX);
+    assert_eq!(plan.allocations[0].request.requested_bytes().start, PREFIX);
 }
 
 fn candidate(present: Vec<ByteRange>) -> crate::adaptive::CandidateSnapshot {
@@ -47,9 +48,12 @@ fn candidate(present: Vec<ByteRange>) -> crate::adaptive::CandidateSnapshot {
             feed_offset: FeedOffset::new(0),
             view_probability: crate::adaptive::ViewProbability::new(1.0).unwrap(),
             present,
+            stored_total: None,
+            continuation_source: None,
+            independent_object_sources: Default::default(),
             recently_evicted: Vec::new(),
             in_flight: Vec::new(),
-            origins: vec![healthy_origin("origin", 1_000_000, 100)],
+            origins: vec![healthy_origin(URL, 1_000_000, 100)],
         },
     )
     .expect("candidate")
@@ -57,7 +61,7 @@ fn candidate(present: Vec<ByteRange>) -> crate::adaptive::CandidateSnapshot {
 
 fn metadata() -> VideoMeta {
     VideoMeta {
-        urls: vec!["https://media.example/video.mp4".into()],
+        urls: vec![URL.into()],
         delivery: DeliveryKind::Progressive,
         sha256: None,
         size_bytes: Some(TOTAL),

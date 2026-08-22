@@ -1,4 +1,4 @@
-use crate::manager::inflight::ActiveRange;
+use crate::manager::inflight::ActiveAction;
 use crate::manager::plan::PlannedWork;
 use crate::tests::adaptive_plan_fixture::{source, state};
 use crate::tests::adaptive_plan_runner::{run, PlanScenario};
@@ -44,7 +44,7 @@ pub(super) fn plan_with_active(range: ByteRange, committed_until_ms: u64) -> Pla
         .catalog()
         .transfer_identity(&post, &source(1))
         .unwrap();
-    let active = ActiveRange::new(ChunkId { post, range }, identity, committed_until_ms);
+    let active = ActiveAction::range(ChunkId { post, range }, identity, committed_until_ms);
     run(PlanScenario {
         state,
         buffer_ms: 20_000,

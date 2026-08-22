@@ -1,39 +1,61 @@
 //! Reconciles the pure policy's ordered work with live transfer workers.
 
-use crate::manager::concurrency::{connection_ceiling, planned_capacity};
-use crate::manager::plan::{PlannedTransfer, PlannedWork};
+mod grant;
+
+use crate::delivery_events::DecisionToken;
+use crate::manager::concurrency::{planned_capacity, RequestConcurrencyLimits};
+use crate::manager::plan::PlannedWork;
+use crate::manager::reconcile_warp::{self, WarpDirective};
+use crate::manager::selected_commit::SelectedCommit;
 use crate::manager::DeliveryWorker;
 use crate::mutable_priority_queue::ForegroundSlots;
-use std::collections::HashSet;
+
+struct SelectedGrant<'a> {
+    directive: &'a WarpDirective,
+    decision: &'a mut Option<DecisionToken>,
+    commit: &'a mut Option<SelectedCommit>,
+}
 
 impl DeliveryWorker {
-    pub(super) fn reconcile_transfers(&mut self, planned: PlannedWork) {
-        let emergency = planned.emergency;
-        let retained_posts: HashSet<_> = planned
-            .plan
-            .retained
-            .iter()
-            .map(|work| work.post.clone())
-            .collect();
+    pub(super) async fn reconcile_transfers(
+        &mut self,
+        planned: PlannedWork,
+        mut decision: Option<DecisionToken>,
+    ) {
+        let execution = reconcile_warp::execution(planned);
+        let mut commit = SelectedCommit::optional(execution.selected);
+        self.apply_warp_directive(&execution.directive, &mut decision, &mut commit)
+            .await;
         let capacity = planned_capacity(
             self.concurrency_limit(),
             self.connection_ceiling(),
-            &planned.transfers,
-            &retained_posts,
+            &execution.transfers,
+            &execution.retained_posts,
+        )
+        .with_selected_transfer(
+            self.downloads.len(),
+            self.connection_ceiling(),
+            !execution.transfers.is_empty(),
         );
         let total = capacity.total.min(self.progressive_capacity());
-        let priority: Vec<_> = planned
+        let priority: Vec<_> = execution
             .transfers
             .iter()
             .map(|transfer| transfer.request.chunk.clone())
             .collect();
         self.downloads
-            .reconcile_with_commitments(&planned.transfers, total, &planned.retained);
-        self.queue.replace(planned.transfers);
+            .reconcile_with_commitments(&execution.transfers, total, &execution.retained);
+        self.queue.replace(execution.transfers);
         self.preempt_for_current(&priority, total);
-        self.grant_planned(total, capacity.foreground_goal.min(total));
-        if !emergency {
-            self.grant_origin_exploration();
+        let selected = SelectedGrant {
+            directive: &execution.directive,
+            decision: &mut decision,
+            commit: &mut commit,
+        };
+        self.grant_planned(total, capacity.foreground_goal.min(total), selected)
+            .await;
+        if !execution.emergency {
+            self.grant_origin_exploration().await;
         }
     }
 
@@ -44,18 +66,29 @@ impl DeliveryWorker {
         }
     }
 
-    fn grant_planned(&mut self, capacity: usize, foreground_goal: usize) {
+    async fn grant_planned(
+        &mut self,
+        capacity: usize,
+        foreground_goal: usize,
+        selected: SelectedGrant<'_>,
+    ) {
         while self.downloads.len() < capacity {
             let active_hosts = self.downloads.active_hosts();
             let foreground = ForegroundSlots::new(self.downloads.foreground_len(), foreground_goal);
             let Some(transfer) = self.queue.pop_for_hosts(&active_hosts, foreground) else {
                 return;
             };
-            self.grant(transfer);
+            let alternate = transfer.id();
+            if let Some(action) = self
+                .grant(transfer, selected.decision, selected.commit)
+                .await
+            {
+                self.link_selected_hedge(selected.directive, &alternate, action);
+            }
         }
     }
 
-    fn grant_origin_exploration(&mut self) {
+    async fn grant_origin_exploration(&mut self) {
         let exploration_limit = self
             .concurrency_limit()
             .saturating_add(1)
@@ -66,24 +99,18 @@ impl DeliveryWorker {
         }
         let active_hosts = self.downloads.active_hosts();
         if let Some(transfer) = self.queue.pop_for_idle_host(&active_hosts) {
-            self.grant(transfer);
+            let _ = self.grant(transfer, &mut None, &mut None).await;
         }
-    }
-
-    fn grant(&mut self, transfer: PlannedTransfer) {
-        let chunk = &transfer.request.chunk;
-        if self.downloads.contains(chunk)
-            || self.retry.is_cooling(&chunk.post)
-            || self.pressure.is_parked()
-        {
-            return;
-        }
-        self.downloads.start(self.ctx.clone(), transfer);
     }
 
     pub(super) fn connection_ceiling(&self) -> usize {
-        connection_ceiling(
+        self.request_limits().global()
+    }
+
+    pub(super) fn request_limits(&self) -> RequestConcurrencyLimits {
+        RequestConcurrencyLimits::resolve(
             self.state.concurrency(),
+            self.max_requests_per_authority,
             self.ctx.network.profile().max_connections_per_host,
         )
     }

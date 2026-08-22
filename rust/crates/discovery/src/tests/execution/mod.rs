@@ -9,6 +9,7 @@ mod relay_plan_collector_epoch_cursor_test;
 mod relay_plan_collector_test;
 mod relay_plan_collector_wait_test;
 mod relay_plan_executor_batch_routing_test;
+mod relay_plan_executor_blossom_enrichment_test;
 mod relay_plan_executor_cache_test;
 mod relay_plan_executor_cached_exact_target_test;
 mod relay_plan_executor_cap_test;

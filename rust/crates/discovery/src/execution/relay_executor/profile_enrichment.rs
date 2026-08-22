@@ -1,6 +1,7 @@
 //! Additive kind-0 lookup for the creators returned by a feed query.
 
 use super::RelayPlanExecutor;
+use crate::content::blossom::supports_blossom;
 use crate::content::parsing::ParsedVideoPost;
 use crate::content::repost_resolution::feed_posts_from_events;
 use crate::execution::collector::collect_best_effort_events;
@@ -40,8 +41,20 @@ fn profile_plan(events: &[Event]) -> Option<QueryPlan> {
     if authors.is_empty() {
         return None;
     }
-    let filter = Filter::new().kind(Kind::Metadata).authors(authors);
-    Some(plan_event_queries(vec![filter]))
+    let media_authors: BTreeSet<_> = posts
+        .iter()
+        .filter(|post| supports_blossom(post))
+        .filter_map(|post| nostr_sdk::PublicKey::from_hex(&post.author_pubkey).ok())
+        .collect();
+    let mut filters = vec![Filter::new().kind(Kind::Metadata).authors(authors)];
+    if !media_authors.is_empty() {
+        filters.push(
+            Filter::new()
+                .kind(Kind::Custom(10063))
+                .authors(media_authors),
+        );
+    }
+    Some(plan_event_queries(filters))
 }
 
 fn profile_authors(post: &ParsedVideoPost) -> Vec<nostr_sdk::PublicKey> {

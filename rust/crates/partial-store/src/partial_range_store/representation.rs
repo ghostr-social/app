@@ -1,24 +1,24 @@
 use super::PartialRangeStore;
 use crate::partial_range_paths::validate_key;
 use crate::partial_range_representation_disk as identity_disk;
-use anyhow::Result;
+use anyhow::{ensure, Result};
 use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
-use std::ops::Range;
 use std::sync::MutexGuard;
 
-pub enum RepresentationRead {
-    Present(Vec<u8>),
-    Missing,
-    Superseded,
-}
+mod read;
+
+pub use read::{ContentRevision, RepresentationRead};
 
 impl PartialRangeStore {
     pub async fn bind_representation(&self, binding: RepresentationBinding) -> Result<()> {
         let key = binding.post().as_str();
         validate_key(key)?;
-        let _update = self.representation_updates.lock().await;
-        if self.representation_is_current(&binding).await {
+        let _update = self.observe_key(key).await?;
+        if self.representation_accepts_authority(&binding).await {
             return Ok(());
+        }
+        if self.policy_transaction_debt(key).await.is_some() {
+            return self.bind_policy_representation(binding).await;
         }
         self.install_binding(binding.clone()).await;
         if let Err(error) = self.bind_stored_bytes(&binding).await {
@@ -34,20 +34,23 @@ impl PartialRangeStore {
         offset: u64,
         bytes: &[u8],
     ) -> Result<bool> {
+        let key = identity.post().as_str();
+        self.retry_cleanup_debt(key).await?;
         if !self.transfer_is_current(identity).await {
             return Ok(false);
         }
         let mut entries = self.entries.lock().await;
-        if !self.transfer_is_current(identity).await {
+        if !self.transfer_is_current(identity).await
+            || self.policy_transaction_debt(key).await.is_some()
+        {
             return Ok(false);
         }
-        self.write_range_locked(&mut entries, identity.post().as_str(), offset, bytes)
+        self.write_range_locked(&mut entries, key, offset, bytes)
             .await?;
         if self.transfer_is_current(identity).await {
             return Ok(true);
         }
-        self.discard_stale_write(&mut entries, identity.post().as_str())
-            .await?;
+        self.discard_stale_write(&mut entries, key).await?;
         Ok(false)
     }
 
@@ -63,21 +66,12 @@ impl PartialRangeStore {
             == Some(binding)
     }
 
-    pub async fn read_for_representation(
-        &self,
-        binding: &RepresentationBinding,
-        span: Range<u64>,
-    ) -> Result<RepresentationRead> {
-        let _update = self.representation_updates.lock().await;
-        if !self.representation_is_current(binding).await {
-            return Ok(RepresentationRead::Superseded);
-        }
-        Ok(
-            match self.read_range(binding.post().as_str(), span).await? {
-                Some(bytes) => RepresentationRead::Present(bytes),
-                None => RepresentationRead::Missing,
-            },
-        )
+    async fn representation_accepts_authority(&self, binding: &RepresentationBinding) -> bool {
+        self.representations
+            .lock()
+            .await
+            .get(binding.post().as_str())
+            .is_some_and(|current| current == binding || current.derives_from(binding))
     }
 
     pub(super) async fn clear_representation_bindings(&self) {
@@ -93,14 +87,40 @@ impl PartialRangeStore {
         if stored.as_deref() == Some(binding.representation().fingerprint()) {
             return self.restore_generation(binding).await;
         }
+        if let Some(derived) = self
+            .restored_transform_binding(binding, stored.as_deref())
+            .await?
+        {
+            self.representations
+                .lock()
+                .await
+                .insert(key.to_owned(), derived);
+            self.source_generations.lock().await.remove(key);
+            return Ok(());
+        }
         self.source_generations.lock().await.remove(key);
         let mut entries = self.entries.lock().await;
-        self.discard(&mut entries, key).await?;
+        self.discard_before_authority(&mut entries, key).await?;
         identity_disk::save(&path, binding.representation().fingerprint()).await
     }
 
+    async fn bind_policy_representation(&self, binding: RepresentationBinding) -> Result<()> {
+        let key = binding.post().as_str();
+        let stored = identity_disk::load(&self.paths.representation(key)).await?;
+        ensure!(
+            stored.as_deref() == Some(binding.representation().fingerprint()),
+            "policy transaction belongs to another representation"
+        );
+        self.install_binding(binding.clone()).await;
+        if let Err(error) = self.restore_compatible_generation(&binding).await {
+            self.remove_binding_if(&binding).await;
+            return Err(error);
+        }
+        Ok(())
+    }
+
     async fn discard_stale_write(&self, entries: &mut super::Entries, key: &str) -> Result<()> {
-        self.discard(entries, key).await?;
+        self.discard_before_authority(entries, key).await?;
         let binding = self.representations.lock().await.get(key).cloned();
         if let Some(binding) = binding {
             identity_disk::save(
@@ -113,11 +133,11 @@ impl PartialRangeStore {
     }
 
     async fn install_binding(&self, binding: RepresentationBinding) {
-        self.selected().remove(binding.post().as_str());
-        self.representations
-            .lock()
-            .await
-            .insert(binding.post().as_str().to_owned(), binding);
+        let key = binding.post().as_str().to_owned();
+        self.advance_content_revision(&key).await;
+        self.selected().remove(&key);
+        self.representations.lock().await.insert(key, binding);
+        self.changed.notify_waiters();
     }
 
     async fn remove_binding_if(&self, binding: &RepresentationBinding) {
@@ -145,5 +165,22 @@ impl PartialRangeStore {
         self.selected_transfers
             .lock()
             .unwrap_or_else(|error| error.into_inner())
+    }
+
+    pub(super) async fn advance_content_revision(&self, key: &str) {
+        let mut revisions = self.content_revisions.lock().await;
+        let revision = revisions.entry(key.to_owned()).or_default();
+        *revision = revision.checked_add(1).expect("content revision exhausted");
+    }
+
+    pub(super) async fn current_content_revision(&self, key: &str) -> ContentRevision {
+        ContentRevision(
+            self.content_revisions
+                .lock()
+                .await
+                .get(key)
+                .copied()
+                .unwrap_or_default(),
+        )
     }
 }

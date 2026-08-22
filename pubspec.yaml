@@ -56,6 +56,10 @@ dependencies:
   wakelock_plus: ^1.5.2
 
 dependency_overrides:
+  video_player_android:
+    path: vendor/video_player_android
+  video_player_avfoundation:
+    path: vendor/video_player_avfoundation
   web: ^1.0.0
 
 dev_dependencies:

@@ -1,9 +1,14 @@
 use super::boxes::Atom;
 use super::classic::samples::{scale_ceil, scale_floor};
+use super::limits::ParserBudget;
 use super::{TimedRange, TimelineError};
 use crate::ByteRange;
 
-pub(crate) fn parse(atom: &Atom<'_>) -> Result<Vec<TimedRange>, TimelineError> {
+pub(crate) fn parse(
+    atom: &Atom<'_>,
+    budget: &mut ParserBudget<'_>,
+    ranges: &mut Vec<TimedRange>,
+) -> Result<(), TimelineError> {
     let data = atom.payload();
     let version = byte(data, 0)?;
     let timescale = u32_at(data, 8)?;
@@ -12,13 +17,16 @@ pub(crate) fn parse(atom: &Atom<'_>) -> Result<Vec<TimedRange>, TimelineError> {
     }
     let (mut media_time, first_offset, tail) = version_fields(data, version)?;
     let count = u16_at(data, tail + 2)? as usize;
+    budget.samples(count)?;
+    budget.table_work(count)?;
+    budget.reserve(ranges, count)?;
     let mut media_start = atom
         .range()?
         .end
         .checked_add(first_offset)
         .ok_or(TimelineError::Malformed)?;
-    let mut ranges = Vec::with_capacity(count);
     for index in 0..count {
+        budget.work(1)?;
         let offset = tail + 4 + index * 12;
         let reference = u32_at(data, offset)?;
         if reference >> 31 != 0 {
@@ -40,7 +48,7 @@ pub(crate) fn parse(atom: &Atom<'_>) -> Result<Vec<TimedRange>, TimelineError> {
             .checked_add(duration)
             .ok_or(TimelineError::Malformed)?;
     }
-    Ok(ranges)
+    Ok(())
 }
 
 fn version_fields(data: &[u8], version: u8) -> Result<(u64, u64, usize), TimelineError> {

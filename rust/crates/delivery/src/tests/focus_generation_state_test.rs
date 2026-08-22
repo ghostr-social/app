@@ -35,6 +35,7 @@ fn focus(post: &str, generation: u64) -> DeliveryFocus {
                 duration_ms: Some(1_000),
             },
         }],
+        previews: Vec::new(),
         current_index: 0,
         watch_ms: 0,
         generation: FocusGeneration::try_new(generation).expect("positive generation"),

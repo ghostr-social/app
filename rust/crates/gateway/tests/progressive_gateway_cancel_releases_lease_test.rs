@@ -18,6 +18,9 @@ async fn canceled_waiting_response_releases_its_store_lease_immediately() {
     let mut harness =
         progressive_harness_with_store(root.clone(), store.clone(), ProgressiveTiming::default());
     harness.posts.insert("clip");
+    harness
+        .bind_video("clip", "https://cdn.example/clip.mp4", Some(800))
+        .await;
     store.set_total_len("clip", 800).await.expect("total");
     store
         .write_range("clip", 0, &[7; 400])

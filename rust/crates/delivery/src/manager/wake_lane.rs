@@ -1,15 +1,28 @@
-pub(crate) const WAKE_LANES: usize = 4;
+pub(crate) const WAKE_LANES: usize = 8;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum WakeLane {
     Control = 0,
-    Candidate = 1,
-    Demand = 2,
-    Internal = 3,
+    PlayerPreparation = 1,
+    PlaybackPresentation = 2,
+    Candidate = 3,
+    Demand = 4,
+    Response = 5,
+    Internal = 6,
+    Timeline = 7,
 }
 
 impl WakeLane {
-    const ALL: [Self; WAKE_LANES] = [Self::Control, Self::Candidate, Self::Demand, Self::Internal];
+    const ALL: [Self; WAKE_LANES] = [
+        Self::Control,
+        Self::PlayerPreparation,
+        Self::PlaybackPresentation,
+        Self::Candidate,
+        Self::Demand,
+        Self::Response,
+        Self::Internal,
+        Self::Timeline,
+    ];
 }
 
 #[derive(Default)]

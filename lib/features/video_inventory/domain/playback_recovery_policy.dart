@@ -1,4 +1,6 @@
 const maxAutomaticPlaybackRecoveryAttempts = 4;
+const playbackInitializationTimeout = Duration(seconds: 2);
+const playbackControllerTeardownTimeout = Duration(seconds: 5);
 
 enum PlaybackSurfaceActivity { active, inactive }
 
@@ -79,6 +81,10 @@ final class PlaybackRecoveryPolicy {
   const PlaybackRecoveryPolicy._(this._retryDelays);
 
   final List<Duration> _retryDelays;
+
+  Duration get initializationTimeout => playbackInitializationTimeout;
+
+  Duration get teardownTimeout => playbackControllerTeardownTimeout;
 
   PlaybackRecoveryDecision decide(
     PlaybackRecoveryAttempt attempt,

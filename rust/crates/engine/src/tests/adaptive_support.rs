@@ -1,15 +1,17 @@
 use crate::adaptive::{
     AllocationPlan, CandidateSnapshot, FeedOffset, MediaLayout, NavigationSnapshot,
-    NetworkSnapshot, OriginHealth, PlayabilitySnapshot, PlayableRange, PlaybackSnapshot,
-    StorageSnapshot, ViewProbability,
+    NetworkSnapshot, OriginHealth, PlayabilitySnapshot, PlaybackSnapshot, StorageSnapshot,
+    ViewProbability,
 };
+use crate::media_timeline::{StartupFootprint, StartupProvenance};
 use crate::playback::{EstimateConfidence, PlaybackPhase};
-use crate::{ByteRange, PostId};
+use crate::tests::support::{playable_range, set_reliable_total_bytes};
+use crate::PostId;
 use std::collections::HashSet;
 
 const MIB: u64 = 1024 * 1024;
-
-pub(super) fn snapshot(
+const DEFAULT_ORIGIN: &str = "https://origin.example/media";
+pub(crate) fn snapshot(
     candidate_count: usize,
     throughput_bps: u64,
     buffer_ms: u64,
@@ -31,6 +33,7 @@ pub(super) fn snapshot(
             packet_loss_bps: 0,
             connection_capacity: 6,
             connection_ceiling: 6,
+            per_authority_request_limit: 6,
             confidence: EstimateConfidence::High,
         },
         storage: StorageSnapshot::new(2 * 1024 * MIB, 0),
@@ -39,26 +42,40 @@ pub(super) fn snapshot(
             backward_swipes_per_minute: 0,
         },
         candidates: (0..candidate_count).map(candidate).collect(),
+        hls_candidates: Vec::new(),
     }
 }
 
 fn candidate(distance: usize) -> CandidateSnapshot {
-    CandidateSnapshot {
+    let playable_ranges: Vec<_> = (0..15).map(playable_range).collect();
+    let mut candidate = CandidateSnapshot {
         post: PostId::new(format!("p{distance}")),
         feed_offset: FeedOffset::new(distance as i32),
         view_probability: ViewProbability::new(0.88_f64.powi(distance as i32)).unwrap(),
-        total_bytes: Some(3_750_000),
+        retrieval_eligible: true,
+        total_bytes: None,
         bitrate_bps: 1_000_000,
         duration_ms: 60_000,
         layout: MediaLayout::Streamable,
+        preferred_source: None,
+        startup: StartupFootprint::new(
+            vec![playable_ranges[0].bytes],
+            playable_ranges[0].playable_ms,
+            StartupProvenance::ClassicMp4V1,
+        ),
+        player_preparation: crate::adaptive::PlayerPreparation::FirstFrameRendered,
         timeline_probe: None,
-        playable_ranges: (0..15).map(playable_range).collect(),
+        playable_ranges,
         demanded: None,
         present: Vec::new(),
+        finalized: false,
         recently_evicted: Vec::new(),
         in_flight: Vec::new(),
-        origins: vec![healthy_origin("origin", 20_000_000, 50)],
-    }
+        origins: vec![healthy_origin(DEFAULT_ORIGIN, 20_000_000, 50)],
+        evidence: Default::default(),
+    };
+    set_reliable_total_bytes(&mut candidate, 3_750_000, 10_000);
+    candidate
 }
 
 pub(super) fn healthy_origin(source: &str, throughput_bps: u64, rtt_ms: u64) -> OriginHealth {
@@ -80,19 +97,4 @@ pub(super) fn frontier(plan: &AllocationPlan) -> Vec<PostId> {
         .chain(plan.retained.iter().map(|work| work.post.clone()))
         .filter(|post| seen.insert(post.clone()))
         .collect()
-}
-
-pub(super) fn planned_playable_ms(plan: &AllocationPlan, post: &PostId) -> u64 {
-    plan.allocations
-        .iter()
-        .filter(|work| &work.post == post)
-        .map(|work| work.expected_playable_gain_ms)
-        .sum()
-}
-
-fn playable_range(index: u64) -> PlayableRange {
-    PlayableRange {
-        bytes: ByteRange::new(index * 250_000, (index + 1) * 250_000),
-        playable_ms: 2_000,
-    }
 }

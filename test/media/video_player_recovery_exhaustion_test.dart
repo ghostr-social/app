@@ -32,7 +32,7 @@ void main() {
     expect(find.bySemanticsLabel('Retry'), findsOneWidget);
     expect(platform.dataSources, hasLength(2));
     await _retryManually(tester);
-    expect(platform.dataSources, hasLength(3));
+    expect(platform.dataSources, hasLength(3), reason: '${platform.commands}');
     expect(platform.commands, containsAllInOrder(['seek:2:4000', 'play:2']));
   });
 }
@@ -47,15 +47,18 @@ Future<void> _exhaustRecovery(
   await tester.pump(const Duration(milliseconds: 100));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 100));
+  await settleVideoPlayerTasks(tester);
   platform.failLatest('second interruption');
   await tester.pump();
   await tester.pump();
   await tester.pump();
+  await settleVideoPlayerTasks(tester);
 }
 
 Future<void> _retryManually(WidgetTester tester) async {
   await tester.tap(find.text('Retry'));
   await tester.pump();
+  await settleVideoPlayerTasks(tester);
   await tester.pump(const Duration(milliseconds: 100));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 100));

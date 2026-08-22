@@ -1,4 +1,4 @@
-use super::support::{chunk_request, transfer_identity};
+use super::support::{chunk_request, range_retrieval, transfer_identity};
 use crate::chunk::cancel::{cancel_pair, CancelToken};
 use crate::manager::inflight::InFlightChunks;
 use crate::manager::plan::PlannedTransfer;
@@ -74,6 +74,7 @@ fn transfer(post: &str, start: u64, authority: PreemptionAuthority) -> PlannedTr
             authority,
         ),
         url,
+        retrieval: range_retrieval(ByteRange::new(start, start + 8)),
         commitment_until_ms: 0,
     }
 }

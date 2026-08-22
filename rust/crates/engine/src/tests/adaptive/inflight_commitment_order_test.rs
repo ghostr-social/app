@@ -1,4 +1,4 @@
-use crate::adaptive::{AdaptivePlayabilityPolicy, InFlightRange};
+use crate::adaptive::{AdaptivePlayabilityPolicy, InFlightAction};
 use crate::tests::adaptive_support::snapshot;
 use crate::{ByteRange, PostId};
 
@@ -20,7 +20,10 @@ fn an_older_paid_transition_survives_a_one_transition_setback() {
         .collect();
 
     assert_eq!(transitions.len(), 1, "{plan:#?}");
-    assert_eq!(transitions[0].range, ByteRange::new(0, 250_000));
+    assert_eq!(
+        transitions[0].request.requested_bytes(),
+        ByteRange::new(0, 250_000)
+    );
 }
 
 #[test]
@@ -40,11 +43,13 @@ fn emergency_preserves_one_paid_transition_when_the_hard_ceiling_allows_it() {
     );
 }
 
-fn active(bytes: ByteRange, committed_until_ms: u64) -> InFlightRange {
-    InFlightRange {
+fn active(bytes: ByteRange, committed_until_ms: u64) -> InFlightAction {
+    let action = crate::ActionId::new(bytes.start.saturating_add(1));
+    InFlightAction::range(
+        action,
         bytes,
-        source: "origin".to_owned(),
+        "https://origin.example/media",
         committed_until_ms,
-        identity_current: true,
-    }
+        true,
+    )
 }

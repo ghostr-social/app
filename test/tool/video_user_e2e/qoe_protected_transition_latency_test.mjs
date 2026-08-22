@@ -26,7 +26,8 @@ function click(at_ms) {
 }
 
 function sample(at_ms, current_time) {
-  return {at_ms, player: {id: "v0", phase: "playing", current_time}, state: {videos: []}};
+  return {at_ms, player: {id: "v0", phase: "playing", presented: true, current_time},
+    state: {videos: []}};
 }
 
 function smooth(metrics) {

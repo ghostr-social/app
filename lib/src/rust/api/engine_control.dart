@@ -4,6 +4,7 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import '../frb_generated.dart';
+import 'network_control.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `apply_level`, `engine_configuration`, `validated_relay_urls`
@@ -17,10 +18,12 @@ Future<String> ffiStartEngine({
   required String cacheDirectory,
   required FfiEngineConfiguration configuration,
   String? deviceIntegrationOrigin,
+  required FfiDeliveryNetworkStatus initialNetwork,
 }) => RustLib.instance.api.crateApiEngineControlFfiStartEngine(
   cacheDirectory: cacheDirectory,
   configuration: configuration,
   deviceIntegrationOrigin: deviceIntegrationOrigin,
+  initialNetwork: initialNetwork,
 );
 
 /// Applies relay, data-usage, and progressive-storage settings without

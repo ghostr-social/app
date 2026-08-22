@@ -7,12 +7,16 @@ use ghostr_engine::{ByteRange, PostId};
 use std::future::Future;
 use std::io;
 use std::ops::Range;
+use std::pin::Pin;
 use std::sync::Arc;
-use tokio::sync::mpsc;
-use tokio::time::{timeout_at, Instant};
+use tokio::sync::futures::Notified;
+use tokio::sync::{mpsc, Notify};
+use tokio::time::Instant;
 use tokio_stream::wrappers::ReceiverStream;
 
 mod source;
+#[cfg(test)]
+mod tests;
 pub(crate) use source::StreamSource;
 use source::{next_chunk, ChunkRead};
 
@@ -127,19 +131,27 @@ async fn advance(
     demand: &mut DemandConsumer,
 ) -> PumpStep {
     let notify = iteration.state.store.change_notifier();
-    let changed = notify.notified();
-    match next_chunk(
+    let read = next_chunk(
         iteration.state,
         iteration.source,
         iteration.remaining.clone(),
-    )
-    .await
-    {
+    );
+    let (chunk, changed) = read_with_armed_change(&notify, read).await;
+    match chunk {
         Err(_) => PumpStep::Stop,
         Ok(ChunkRead::Present(bytes)) => send_bytes(sender, iteration.remaining.start, bytes).await,
         Ok(ChunkRead::Missing) => wait_for_bytes(iteration, changed, sender, demand).await,
         Ok(ChunkRead::Superseded) => PumpStep::Superseded,
     }
+}
+
+async fn read_with_armed_change<'a, T>(
+    notify: &'a Notify,
+    read: impl Future<Output = T>,
+) -> (T, Pin<Box<Notified<'a>>>) {
+    let mut changed = Box::pin(notify.notified());
+    changed.as_mut().enable();
+    (read.await, changed)
 }
 
 async fn send_bytes(sender: &ChunkSender, cursor: u64, bytes: Vec<u8>) -> PumpStep {
@@ -157,13 +169,19 @@ async fn wait_for_bytes(
     demand: &mut DemandConsumer,
 ) -> PumpStep {
     emit_demand(demand, iteration.remaining);
+    wait_for_store_change(iteration.deadline, changed, sender.closed()).await
+}
+
+async fn wait_for_store_change(
+    deadline: Instant,
+    changed: impl Future<Output = ()>,
+    closed: impl Future<Output = ()>,
+) -> PumpStep {
     tokio::select! {
         biased;
-        _ = sender.closed() => PumpStep::Stop,
-        result = timeout_at(iteration.deadline, changed) => match result {
-            Ok(()) => PumpStep::Retry,
-            Err(_) => PumpStep::TimedOut,
-        }
+        _ = closed => PumpStep::Stop,
+        _ = tokio::time::sleep_until(deadline) => PumpStep::TimedOut,
+        _ = changed => PumpStep::Retry,
     }
 }
 

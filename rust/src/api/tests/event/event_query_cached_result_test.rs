@@ -3,6 +3,7 @@
 use crate::api::engine_control::{ffi_start_engine, FfiDataUsageLevel, FfiEngineConfiguration};
 use crate::api::event_control::ffi_query_events;
 use crate::api::event_types::FfiNostrEventFilter;
+use crate::api::network_control::FfiDeliveryNetworkStatus;
 use crate::api::runtime::registry;
 use nostr_sdk::{EventBuilder, Keys, Kind};
 
@@ -21,6 +22,7 @@ async fn generic_query_returns_an_accepted_event_from_the_session_pool() {
             max_storage_bytes: 1024,
         },
         None,
+        FfiDeliveryNetworkStatus::unavailable(),
     )
     .await
     .expect("engine start");

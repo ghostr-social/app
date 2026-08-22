@@ -22,21 +22,34 @@ export function measureQoe(trace) {
 }
 
 function measureLatencies(clicks, samples) {
-  const values = clicks.map((click) => playingLatency(click, samples));
+  const allValues = clicks.map((click) => presentationLatency(click, samples));
+  const values = allValues.filter(Number.isFinite);
   return {
-    startup_latency_ms: values[0] ?? Number.POSITIVE_INFINITY,
-    focus_switch_latency_ms: values.length < 2 ? 0 : Math.max(...values.slice(1)),
-    focus_switch_latencies_ms: values.slice(1),
+    swipe_to_first_frame_ms: values,
+    swipe_to_first_frame_p50_ms: percentile(values, 0.50),
+    swipe_to_first_frame_p95_ms: percentile(values, 0.95),
+    swipe_to_first_frame_p99_ms: percentile(values, 0.99),
+    startup_failure_rate: clicks.length === 0 ? 0 : 1 - values.length / clicks.length,
+    startup_latency_ms: allValues[0] ?? Number.POSITIVE_INFINITY,
+    focus_switch_latency_ms: allValues.length < 2 ? 0 : Math.max(...allValues.slice(1)),
+    focus_switch_latencies_ms: allValues.slice(1),
   };
 }
 
-function playingLatency(click, samples) {
+function presentationLatency(click, samples) {
   const sample = samples.find((entry) => {
     return entry.at_ms >= click.at_ms
       && entry.player?.id === click.id
-      && entry.player?.phase === PLAYING;
+      && entry.player?.presented === true;
   });
   return sample ? sample.at_ms - click.at_ms : Number.POSITIVE_INFINITY;
+}
+
+function percentile(values, quantile) {
+  if (values.length === 0) return Number.POSITIVE_INFINITY;
+  const sorted = [...values].sort((left, right) => left - right);
+  const rank = Math.max(0, Math.ceil(quantile * sorted.length) - 1);
+  return sorted[rank];
 }
 
 function measureRebuffer(clicks, samples) {

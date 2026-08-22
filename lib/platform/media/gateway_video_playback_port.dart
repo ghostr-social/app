@@ -2,33 +2,37 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:ghostr/core/media/playback_asset_authority.dart';
+import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
+import 'package:ghostr/core/media/prepared_progressive_playback.dart';
 import 'package:ghostr/core/media/progressive_playback_refresh_port.dart';
 import 'package:ghostr/core/media/video_media_cache_identity.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
+import 'package:ghostr/core/media/video_representation_id.dart';
 import 'package:ghostr/features/video_inventory/domain/progressive_playback_gateway_port.dart';
 import 'package:ghostr/platform/media/gateway_playback_cubit.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
-import 'package:ghostr/shared/theme/app_tokens.dart';
 import 'package:ghostr/shared/widgets/async_state_panel.dart';
-import 'package:ghostr/shared/widgets/loading_panel.dart';
+import 'package:ghostr/shared/widgets/video_loading_surface.dart';
 
 part 'gateway_video_playback_surface.dart';
 
 /// Routes remote progressive media through the embedded loopback
 /// gateway so playback starts on partial bytes; local files and
 /// already-proxied streams stay on the delegate chain.
-final class GatewayVideoPlaybackPort implements VideoPlaybackPort {
+final class GatewayVideoPlaybackPort
+    implements VideoPlaybackPort, VideoPlaybackMemoryPressurePort {
   GatewayVideoPlaybackPort({
     required VideoPlaybackPort delegate,
     required ProgressivePlaybackGatewayPort gateway,
   }) : _delegate = delegate,
        _gateway = gateway,
-       _createCubit = ((media) => GatewayPlaybackCubit(gateway, media));
+       _createCubit = (() => GatewayPlaybackCubit(gateway));
 
   final VideoPlaybackPort _delegate;
   final ProgressivePlaybackGatewayPort _gateway;
-  final GatewayPlaybackCubit Function(VideoMediaSource) _createCubit;
+  final GatewayPlaybackCubit Function() _createCubit;
 
   @override
   Widget buildSurface(VideoPlaybackSurfaceRequest request) {
@@ -41,14 +45,16 @@ final class GatewayVideoPlaybackPort implements VideoPlaybackPort {
       delegate: _delegate,
       gateway: _gateway,
       createCubit: _createCubit,
-      request: VideoPlaybackSurfaceRequest(
-        media: media,
-        videoId: request.videoId,
-        isActive: request.isActive,
-        mode: request.mode,
-        onPlaybackMediaReleased: request.onPlaybackMediaReleased,
-      ),
+      request: request,
     );
+  }
+
+  @override
+  void reportMemoryPressure() {
+    final delegate = _delegate;
+    if (delegate is VideoPlaybackMemoryPressurePort) {
+      (delegate as VideoPlaybackMemoryPressurePort).reportMemoryPressure();
+    }
   }
 }
 

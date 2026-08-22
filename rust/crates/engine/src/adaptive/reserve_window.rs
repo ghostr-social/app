@@ -1,6 +1,7 @@
 use super::plan::{AllocationPlan, ControlMode, ReadyReserveEvidence};
 use super::reserve_evidence::{
-    count_protected, count_ready, immediate_next, initial, reject_first_unprepared,
+    count_protected, count_ready, count_structural, immediate_next, initial,
+    reject_first_unprepared,
 };
 use super::reserve_model::{candidates, ready_coverage_ms, target};
 use super::reserve_schedule::{fill, ScheduleInputs};
@@ -22,6 +23,7 @@ pub(super) fn build(
     let target = target(snapshot, &candidates);
     let mut evidence = initial(&candidates);
     let ready = count_ready(&evidence);
+    let structural = count_structural(&evidence);
     let required = target.count;
     if inputs.current_protected {
         fill(
@@ -39,11 +41,12 @@ pub(super) fn build(
     } else {
         reject_first_unprepared(&mut evidence);
     }
-    plan.mode = mode(inputs.current_emergency, ready, target.count);
+    plan.mode = mode(inputs.current_emergency, ready, structural, target.count);
     plan.next_reserve = immediate_next(&evidence);
     plan.ready_reserve = ReadyReserveEvidence {
         target: target.count,
         ready,
+        structural,
         protected: count_protected(&evidence),
         recovery_horizon_ms: target.recovery_horizon_ms,
         underflow_risk_bps: target.underflow_risk_bps,
@@ -56,8 +59,8 @@ fn origin_limit(snapshot: &PlayabilitySnapshot, emergency: bool) -> Option<usize
     emergency.then_some(snapshot.network.connection_capacity.max(1))
 }
 
-fn mode(current_emergency: bool, ready: usize, target: usize) -> ControlMode {
-    if current_emergency || (target > 0 && ready == 0) {
+fn mode(current_emergency: bool, ready: usize, structural: usize, target: usize) -> ControlMode {
+    if current_emergency || (target > 0 && ready + structural == 0) {
         ControlMode::Emergency
     } else if ready < target {
         ControlMode::Safety

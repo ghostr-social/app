@@ -1,6 +1,11 @@
-use super::FeedOffset;
+use super::{FeedOffset, RetrievalRequest};
+use crate::media_timeline::StartupFootprint;
 use crate::playback::{EstimateConfidence, PlaybackPhase};
-use crate::{ByteRange, PostId};
+use crate::{ActionId, ByteRange, PostId};
+
+mod hls;
+mod replay;
+pub use hls::{HlsBootstrapStage, HlsBootstrapState, HlsCandidateSnapshot};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ViewProbability(f64);
@@ -44,6 +49,7 @@ pub struct NetworkSnapshot {
     pub packet_loss_bps: u16,
     pub connection_capacity: usize,
     pub connection_ceiling: usize,
+    pub per_authority_request_limit: usize,
     pub confidence: EstimateConfidence,
 }
 
@@ -79,6 +85,16 @@ pub enum MediaLayout {
     RequiresCompleteFile,
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum PlayerPreparation {
+    #[default]
+    Unverified,
+    Initializing,
+    PluginReady,
+    FirstFrameRendered,
+    Failed,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PlayableRange {
     pub bytes: ByteRange,
@@ -86,11 +102,39 @@ pub struct PlayableRange {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct InFlightRange {
-    pub bytes: ByteRange,
+pub struct InFlightAction {
+    pub action_id: ActionId,
+    pub request: RetrievalRequest,
+    pub effective_bytes: ByteRange,
+    pub reserved_storage_bytes: u64,
     pub source: String,
     pub committed_until_ms: u64,
     pub identity_current: bool,
+    pub cancelling: bool,
+}
+
+impl InFlightAction {
+    pub fn range(
+        action_id: ActionId,
+        bytes: ByteRange,
+        source: impl Into<String>,
+        committed_until_ms: u64,
+        identity_current: bool,
+    ) -> Self {
+        Self {
+            action_id,
+            request: RetrievalRequest::FetchRange {
+                bytes,
+                promotion: None,
+            },
+            effective_bytes: bytes,
+            reserved_storage_bytes: bytes.len(),
+            source: source.into(),
+            committed_until_ms,
+            identity_current,
+            cancelling: false,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -108,10 +152,15 @@ pub struct CandidateSnapshot {
     pub post: PostId,
     pub feed_offset: FeedOffset,
     pub view_probability: ViewProbability,
+    /// False for cache-only inventory outside the bounded retrieval window.
+    pub retrieval_eligible: bool,
     pub total_bytes: Option<u64>,
     pub bitrate_bps: u64,
     pub duration_ms: u64,
     pub layout: MediaLayout,
+    pub preferred_source: Option<String>,
+    pub startup: Option<StartupFootprint>,
+    pub player_preparation: PlayerPreparation,
     pub timeline_probe: Option<PlayableRange>,
     pub playable_ranges: Vec<PlayableRange>,
     /// Bytes a live consumer is blocked on right now (a gateway read
@@ -119,14 +168,18 @@ pub struct CandidateSnapshot {
     /// how comfortable the playback reserve currently is.
     pub demanded: Option<ByteRange>,
     pub present: Vec<ByteRange>,
+    pub finalized: bool,
     pub recently_evicted: Vec<ByteRange>,
-    pub in_flight: Vec<InFlightRange>,
+    pub in_flight: Vec<InFlightAction>,
     pub origins: Vec<OriginHealth>,
+    pub evidence: crate::evidence::EvidenceAssessment,
 }
 
 impl CandidateSnapshot {
     pub fn needs_bootstrap(&self) -> bool {
-        self.total_bytes.is_none() || self.layout == MediaLayout::Unknown
+        !self.evidence.size.reliable
+            || self.total_bytes.is_none()
+            || self.layout == MediaLayout::Unknown
     }
 }
 
@@ -142,4 +195,5 @@ pub struct PlayabilitySnapshot {
     pub storage: StorageSnapshot,
     pub navigation: NavigationSnapshot,
     pub candidates: Vec<CandidateSnapshot>,
+    pub hls_candidates: Vec<HlsCandidateSnapshot>,
 }

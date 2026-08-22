@@ -121,6 +121,14 @@ impl StoreCapacity {
         self.events.signal();
     }
 
+    pub(crate) fn released_reservation(&self, bytes: u64) {
+        if bytes == 0 {
+            return;
+        }
+        self.next_generation();
+        self.events.signal();
+    }
+
     /// The store spent `bytes`: the same measurement, that much less of
     /// it left. Keeps the reserve exact between measurements.
     pub async fn spent(&self, bytes: u64) {

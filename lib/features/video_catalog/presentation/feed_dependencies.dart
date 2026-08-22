@@ -8,6 +8,7 @@ import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart'
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_delivery_updates.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
+import 'package:ghostr/features/video_inventory/domain/playback_preparation_updates.dart';
 
 /// Everything a feed needs from the outside world. The optional ports stay
 /// optional: a feed without a social graph cannot block, and a feed without
@@ -32,6 +33,8 @@ class FeedDependencies {
   WatchHistoryTracker? get watchTracker => optional.watch.tracker;
   VideoFeedUpdates? get updates => optional.updates;
   VideoDeliveryUpdates? get deliveryUpdates => optional.deliveryUpdates;
+  PlaybackPreparationUpdates? get preparationUpdates =>
+      optional.delivery.preparationUpdates;
 }
 
 /// Capabilities a feed can omit without changing its retrieval contract.
@@ -64,9 +67,11 @@ final class FeedDeliveryDependencies {
     this.updates,
     this.reposts,
     this.deliveryUpdates,
+    this.preparationUpdates,
   });
 
   final VideoFeedUpdates? updates;
   final VideoRepostRepository? reposts;
   final VideoDeliveryUpdates? deliveryUpdates;
+  final PlaybackPreparationUpdates? preparationUpdates;
 }

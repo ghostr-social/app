@@ -6,6 +6,7 @@ import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 import '../support/scripted_video_player_platform.dart';
+import '../support/video_player_surface_pump.dart';
 
 void main() {
   testWidgets('rapid cover and return starts only the replacement player', (
@@ -22,6 +23,7 @@ void main() {
     await pumpSurface(tester, port, media, isActive: true, settle: false);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
+    await settleVideoPlayerTasks(tester);
 
     expect(platform.dataSources, hasLength(2));
     expect(

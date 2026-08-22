@@ -1,6 +1,7 @@
 //! Range-capable fixture server that records every request as
 //! `tag:METHOD:start-end` (or `tag:METHOD:full`) for order assertions.
 
+mod request;
 mod response;
 
 use axum::body::Body;
@@ -72,7 +73,7 @@ pub async fn serve_rejecting(tag: &str, log: HitLog) -> String {
 }
 
 async fn reject(State(state): State<Recorder>, method: Method, headers: HeaderMap) -> Response {
-    note(&state, method, &headers);
+    request::note(&state, method, &headers);
     Response::builder()
         .status(StatusCode::NOT_FOUND)
         .body(Body::empty())
@@ -80,20 +81,8 @@ async fn reject(State(state): State<Recorder>, method: Method, headers: HeaderMa
 }
 
 async fn record(State(state): State<Recorder>, method: Method, headers: HeaderMap) -> Response {
-    match note(&state, method, &headers) {
+    match request::note(&state, method, &headers) {
         Some((start, end)) => response::partial(&state.bytes, start, end),
         None => response::full(&state.bytes),
     }
-}
-
-/// Logs one attempt as `tag:METHOD:start-end` (or `tag:METHOD:full`)
-/// and reports the requested range.
-fn note(state: &Recorder, method: Method, headers: &HeaderMap) -> Option<(u64, u64)> {
-    let range = response::requested(headers, state.bytes.len() as u64);
-    let label = match range {
-        Some((start, end)) => format!("{}:{method}:{start}-{end}", state.tag),
-        None => format!("{}:{method}:full", state.tag),
-    };
-    state.log.lock().expect("hit log").push(label);
-    range
 }

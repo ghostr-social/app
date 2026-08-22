@@ -3,6 +3,7 @@ lib/app/home_tab.dart
 lib/core/errors/failure_reporter.dart
 lib/core/media/media_picker_port.dart
 lib/core/media/progressive_playback_refresh_port.dart
+lib/core/network/delivery_network_status_port.dart
 lib/core/nostr/nostr_event_client.dart
 lib/core/storage/secret_store.dart
 lib/features/activity/domain/activity_repository.dart
@@ -51,6 +52,7 @@ lib/features/video_sharing/domain/video_share_workflow.dart
 lib/features/watch_history/domain/watch_history_repository.dart
 # Conditional web adapter cannot execute in the VM coverage runner.
 lib/features/watch_history/data/watch_history_database_web.dart
+lib/features/video_inventory/domain/playback_preparation_updates.dart
 lib/features/video_inventory/domain/progressive_playback_gateway_port.dart
 lib/features/video_inventory/domain/screen_awake_port.dart
 lib/platform/media/cache_directory_provider.dart

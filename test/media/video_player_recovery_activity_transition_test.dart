@@ -7,6 +7,7 @@ import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 import '../support/recovering_video_player_platform.dart';
+import '../support/video_player_surface_pump.dart';
 
 void main() {
   testWidgets('offscreen time defers but does not spend a scheduled attempt', (
@@ -32,6 +33,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
+    await settleVideoPlayerTasks(tester);
 
     expect(platform.dataSources, hasLength(2));
     expect(find.text('Video unavailable'), findsNothing);

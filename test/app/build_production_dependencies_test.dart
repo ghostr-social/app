@@ -12,6 +12,7 @@ import '../support/fake_nostr_session_port.dart';
 import '../support/fake_nostr_social_port.dart';
 import '../support/fake_nostr_video_publisher_port.dart';
 import '../support/fake_remote_video_source.dart';
+import '../support/feed_preparation_updates.dart';
 import '../support/test_video_delivery.dart';
 import '../support/nostr_test_values.dart';
 import '../support/test_watch_history_database.dart';
@@ -25,11 +26,15 @@ void main() {
       FakeNostrEventClient(publicKeyHex: testViewerPublicKey),
       FakeNostrVideoPublisherPort(),
     );
+    final preparation = ControlledPlaybackPreparationUpdates();
+    addTearDown(preparation.close);
     final environment = ProductionDependenciesEnvironment(
       preferencesLoader: () async => preferences,
       nostrServicesBuilder: (_) => nostr,
-      videoDeliveryBuilder: (_, __) async =>
-          testVideoDelivery(remoteSource: FakeRemoteVideoSource([])),
+      videoDeliveryBuilder: (_, __) async => testVideoDelivery(
+        remoteSource: FakeRemoteVideoSource([]),
+        preparationUpdates: preparation,
+      ),
       watchHistoryDatabaseLoader: openTestWatchHistoryDatabase,
     );
 
@@ -45,6 +50,7 @@ void main() {
       isA<LocalAppSettingsRepository>(),
     );
     expect(dependencies.videoCatalogServices.feed, isNotNull);
+    expect(dependencies.playbackPreparationUpdates, same(preparation));
     expect(dependencies.activityRepository, isNotNull);
     expect(dependencies.mediaPickerPort, isA<ImagePickerMediaPicker>());
     expect(

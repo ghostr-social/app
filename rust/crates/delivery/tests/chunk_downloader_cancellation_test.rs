@@ -18,10 +18,11 @@ async fn chunk_downloader_cancellation_mid_stream_keeps_the_partial_bytes() {
     let (handle, token) = cancel_pair();
     let mut stats = HostStats::new();
     let spec = ChunkSpec {
-        client: &client,
+        requests: &client,
         url: &url,
-        range: ByteRange::new(0, 8),
+        request: range_fixture::range_request(ByteRange::new(0, 8)),
         continuation: None,
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {
@@ -31,7 +32,11 @@ async fn chunk_downloader_cancellation_mid_stream_keeps_the_partial_bytes() {
     let network = range_fixture::network();
 
     let (result, ()) = tokio::join!(
-        download_chunk_throttled(&spec, &sink, &mut stats, &token, &network),
+        download_chunk_throttled(
+            &spec,
+            &sink,
+            range_fixture::context(&mut stats, &token, &network)
+        ),
         cancel_once_partial(&store, &handle),
     );
 

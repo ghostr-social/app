@@ -22,6 +22,12 @@ class _VideoPlayerSurface extends StatefulWidget {
   PlaybackTelemetryPort get telemetry => dependencies.telemetry;
   PlaybackRecoveryPolicy get recoveryPolicy => dependencies.recoveryPolicy;
   PlaybackScreenAwakePort get screenAwake => dependencies.screenAwake;
+  PlayerPreparationFeedbackPort get preparationFeedback =>
+      dependencies.preparationFeedback;
+  RenderedFirstFramePort get renderedFirstFrames =>
+      dependencies.renderedFirstFrames;
+  _VideoPlayerControllerBudget get controllerBudget =>
+      dependencies.controllerBudget;
   _VideoPlayerPlaybackHandoff get handoff => dependencies.handoff;
 
   @override
@@ -30,9 +36,13 @@ class _VideoPlayerSurface extends StatefulWidget {
 
 class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   VideoPlayerController? _controller;
+  Completer<void>? _controllerSuperseded;
   late VideoMediaSource _playbackMedia = widget.media;
   late final _lifecycle = _VideoPlayerControllerLifecycle(
-    widget.controllerDisposer,
+    _disposeAfterUnsafeCommands,
+    widget.handoff.retire,
+    widget.handoff.markTeardown,
+    widget.recoveryPolicy.teardownTimeout,
   );
   late final _valueWatch = VideoPlayerValueListener(
     onValueChanged: _handleValueChange,
@@ -40,6 +50,9 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   final _playbackObserver = VideoPlayerPlaybackObserver();
   final Completer<void> _closing = Completer<void>();
   PlaybackSession? _playbackSession;
+  PlayerPreparationAttempt? _preparationAttempt;
+  RenderedFirstFrameRegistration? _firstFrameRegistration;
+  late PlaybackAssetAuthority? _playbackAuthority = widget.request.authority;
   PlaybackPhase? _playbackPhase;
   Future<void> _playbackTail = Future<void>.value();
   int _playbackIntent = 0;
@@ -51,9 +64,17 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   PlaybackResumePoint _recoveryBaseline = PlaybackResumePoint.start;
   Timer? _recoveryTimer;
   int _recoveryVersion = 0;
+  int _presentationVersion = 0;
   bool _isRecoveryWindowOpen = false;
   bool _isObserving = false;
+  bool _nativeFrameObserved = false;
+  bool _controllerPresented = false;
+  bool _presentationScheduled = false;
+  bool _presentationReported = false;
   bool _isClosing = false;
+  bool _isLoading = false;
+  bool _loadRequested = false;
+  Completer<void>? _pendingLoadCancellation;
 
   @override
   void initState() {
@@ -64,6 +85,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   @override
   void didUpdateWidget(covariant _VideoPlayerSurface oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _adoptRequestAuthority();
     if (oldWidget.isActive != widget.isActive) {
       _handleActivityChange();
     } else if (oldWidget.mode != widget.mode) {
@@ -81,6 +103,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
     final released = widget.onPlaybackMediaReleased;
     final disposal = _disposeCurrentController();
     if (disposal != null) _lifecycle.track(disposal);
+    widget.dependencies.releaseSurfaceKey(widget.request, widget.key);
     unawaited(_releaseWhenClosed(released));
     super.dispose();
   }
@@ -91,6 +114,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
       controller: _controller,
       hasError: _hasError,
       onRetry: _retry,
+      preview: widget.request.preview,
     );
     if (_playbackPhase != PlaybackPhase.networkStalled) return surface;
     return Stack(
@@ -105,6 +129,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
     final phaseChanged = _captureObservation(value);
     final controller = _controller;
     if (controller != null && value.hasError) {
+      _failPreparation(PlayerPreparationFailureKind.runtimePlayback);
       _lifecycle.track(_rejectController(controller));
       return;
     }
@@ -119,18 +144,24 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
 
   Future<void>? _disposeCurrentController() {
     final controller = _controller;
-    _controller = null;
+    if (controller != null) _relinquishController(controller);
     _playbackSession = null;
     return controller == null ? null : _disposeSafely(controller);
   }
 
   Future<void> _releaseWhenClosed(void Function()? released) async {
-    await _lifecycle.close();
-    released?.call();
+    final teardownProven = await _lifecycle.waitControllers();
+    if (teardownProven) released?.call();
   }
 
   Future<void> _disposeSafely(VideoPlayerController controller) async {
-    await widget.handoff.release(controller);
     await _lifecycle.dispose(controller);
+  }
+
+  Future<void> _disposeAfterUnsafeCommands(
+    VideoPlayerController controller,
+  ) async {
+    await widget.handoff.waitUnsafeCommands(controller);
+    await widget.controllerDisposer(controller);
   }
 }

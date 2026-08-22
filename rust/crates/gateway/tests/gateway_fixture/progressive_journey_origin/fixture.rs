@@ -6,7 +6,7 @@ use super::fixture_timing::scale_avc_timing;
 const EXPANDED_SAMPLE_BYTES: usize = 9_446;
 const TIMING_MULTIPLIER: u32 = 2;
 
-pub(super) fn progressive_mp4() -> Vec<u8> {
+pub(crate) fn progressive_mp4() -> Vec<u8> {
     scale_avc_timing(
         expand_avc_samples(source_mp4(), EXPANDED_SAMPLE_BYTES),
         TIMING_MULTIPLIER,

@@ -1,13 +1,20 @@
+import 'package:ghostr/core/media/inline_blurhash.dart';
+
 /// Free metadata published alongside a remote video (NIP-92 `imeta` `size`
 /// bytes and `duration` seconds) so delivery can plan before any probe.
 class VideoMediaMetadata {
-  const VideoMediaMetadata({this.sizeBytes, this.durationMs});
+  const VideoMediaMetadata({this.sizeBytes, this.durationMs, this.blurhash});
 
   /// Lenient parse of raw imeta values: malformed entries become null.
-  factory VideoMediaMetadata.fromImeta({String? size, String? duration}) {
+  factory VideoMediaMetadata.fromImeta({
+    String? size,
+    String? duration,
+    String? blurhash,
+  }) {
     return VideoMediaMetadata(
       sizeBytes: _sizeBytes(size),
       durationMs: _durationMs(duration),
+      blurhash: InlineBlurHash.tryParse(blurhash),
     );
   }
 
@@ -15,6 +22,7 @@ class VideoMediaMetadata {
 
   final int? sizeBytes;
   final int? durationMs;
+  final InlineBlurHash? blurhash;
 
   static int? _sizeBytes(String? raw) {
     final bytes = raw == null ? null : int.tryParse(raw.trim());
@@ -31,9 +39,10 @@ class VideoMediaMetadata {
   bool operator ==(Object other) {
     return other is VideoMediaMetadata &&
         other.sizeBytes == sizeBytes &&
-        other.durationMs == durationMs;
+        other.durationMs == durationMs &&
+        other.blurhash == blurhash;
   }
 
   @override
-  int get hashCode => Object.hash(sizeBytes, durationMs);
+  int get hashCode => Object.hash(sizeBytes, durationMs, blurhash);
 }

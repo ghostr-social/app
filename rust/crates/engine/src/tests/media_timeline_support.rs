@@ -15,7 +15,7 @@ pub(super) fn classic_moov(offsets: &[u32], sizes: &[u32]) -> Vec<u8> {
     mdhd_body.extend(values(&[1_000, count * 1_000]));
     mdhd_body.extend([0_u8; 4]);
     let mdhd = full_box(b"mdhd", mdhd_body);
-    let mdia = atom(b"mdia", joined(&[mdhd, minf]));
+    let mdia = atom(b"mdia", joined(&[mdhd, video_handler(), minf]));
     atom(b"moov", atom(b"trak", mdia))
 }
 
@@ -33,7 +33,7 @@ pub(super) fn advanced_moov(offset: u64, sample_count: u32, sample_size: u32) ->
     mdhd_body.extend(u64::from(sample_count).saturating_mul(1_000).to_be_bytes());
     mdhd_body.extend([0_u8; 4]);
     let mdhd = full_box_version(b"mdhd", 1, mdhd_body);
-    let mdia = atom(b"mdia", joined(&[mdhd, minf]));
+    let mdia = atom(b"mdia", joined(&[mdhd, video_handler(), minf]));
     atom(b"moov", atom(b"trak", mdia))
 }
 
@@ -57,7 +57,7 @@ pub(super) fn classic_from_tables(
     mdhd_body.extend(values(&[1_000, 2_000]));
     mdhd_body.extend([0_u8; 4]);
     let mdhd = full_box(b"mdhd", mdhd_body);
-    let mdia = atom(b"mdia", joined(&[mdhd, minf]));
+    let mdia = atom(b"mdia", joined(&[mdhd, video_handler(), minf]));
     atom(b"moov", atom(b"trak", mdia))
 }
 
@@ -87,4 +87,30 @@ pub(super) fn values(values: &[u32]) -> Vec<u8> {
 
 pub(super) fn joined(parts: &[Vec<u8>]) -> Vec<u8> {
     parts.iter().flatten().copied().collect()
+}
+
+pub(super) fn valid_ftyp() -> Vec<u8> {
+    atom(
+        b"ftyp",
+        joined(&[b"isom".to_vec(), 0_u32.to_be_bytes().to_vec()]),
+    )
+}
+
+pub(super) fn classic_mdat_prefix(
+    file_type: &[u8],
+    movie_start: u32,
+    present_end: usize,
+) -> Vec<u8> {
+    let mut prefix = file_type.to_vec();
+    let mdat_size = movie_start - prefix.len() as u32;
+    prefix.extend(mdat_size.to_be_bytes());
+    prefix.extend(b"mdat");
+    prefix.resize(present_end.max(prefix.len()), 7);
+    prefix
+}
+
+fn video_handler() -> Vec<u8> {
+    let mut body = vec![0; 4];
+    body.extend(b"vide");
+    full_box(b"hdlr", body)
 }

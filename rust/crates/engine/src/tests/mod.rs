@@ -1,13 +1,14 @@
 //! Shared fixtures sit here; each folder holds the tests
 //! for the matching folder of the crate.
 
-mod adaptive_support;
+pub(crate) mod adaptive_support;
 mod byte_range_test;
 mod cmaf_timeline_support;
 mod host_stats_support;
 mod media_timeline_assertions;
 mod media_timeline_support;
 mod rendition_support;
+mod request_authority_test;
 mod support;
 
 mod adaptive;

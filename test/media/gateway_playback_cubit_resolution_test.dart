@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/platform/media/gateway_playback_cubit.dart';
 
@@ -8,7 +9,7 @@ void main() {
   test('resolves progressive media into an explicit ready state', () async {
     final gateway = FakeProgressivePlaybackGateway();
     final media = VideoMediaSource.remote('https://media.test/clip.mp4');
-    final cubit = GatewayPlaybackCubit(gateway, media);
+    final cubit = GatewayPlaybackCubit(gateway);
 
     expect(cubit.state, isA<GatewayPlaybackPreparing>());
 
@@ -18,7 +19,7 @@ void main() {
     await resolving;
 
     final ready = cubit.state as GatewayPlaybackReady;
-    expect(ready.media.remoteUrl, fakeProgressivePlaybackUrl);
+    expect(ready.media.playbackDeliveryId, media.playbackDeliveryId);
 
     await cubit.close();
   });

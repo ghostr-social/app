@@ -9,23 +9,25 @@ use delivery_fixture::media::{hit_log, hits, serve_recording};
 use delivery_fixture::options::{base_params, DeliveryOptions};
 use delivery_fixture::playback::playing;
 use delivery_fixture::start_harness;
-use delivery_fixture::wait::wait_for_ranges;
+use delivery_fixture::wait::{wait_for_ranges, wait_until};
 use ghostr_engine::{ByteRange, EngineParams};
 use std::time::Duration;
 
 #[tokio::test]
 async fn buffered_gateway_demand_finishes_the_active_seed_before_using_its_slot() {
     let log = hit_log();
+    let warmup = serve_recording("warmup", vec![1; 160], log.clone()).await;
     let current = serve_recording("current", vec![1; 160], log.clone()).await;
     let mut ahead = ControlledOrigin::serve(32).await;
     let harness = start_harness("ghostr-buffered-demand-retention", options());
+    let warmup_item = sized_item("current", &warmup, 160, 20_000);
     let current_item = sized_item("current", &current, 160, 20_000);
     let ahead_item = sized_item("ahead", &ahead.url, 32, 4_000);
-    seed_range(&harness.store, &current_item, 0, &[1; 80]).await;
+    seed_range(&harness.store, &warmup_item, 0, &[1; 80]).await;
     wait_for_ranges(&harness.store, "current", &[(0, 80)]).await;
     harness
         .handle
-        .update_focus(focus_now(vec![current_item, ahead_item], 0, 0));
+        .update_focus(focus_now(vec![warmup_item, ahead_item.clone()], 0, 0));
     harness
         .handle
         .report_playback(playing("current", Duration::from_secs(10)));
@@ -34,8 +36,12 @@ async fn buffered_gateway_demand_finishes_the_active_seed_before_using_its_slot(
     assert_eq!(seed.range, 0..32);
     assert!(seed.send_byte().await);
     wait_for_ranges(&harness.store, "ahead", &[(0, 1)]).await;
+    harness
+        .handle
+        .update_focus(focus_now(vec![current_item, ahead_item], 0, 0));
+    wait_until(&harness.store, "current", |ranges| ranges.is_empty()).await;
     let initial_current_requests = current_requests(&log);
-    let _demand = demand::blocked(&harness, "current", ByteRange::new(80, 112)).await;
+    let _demand = demand::blocked(&harness, "current", ByteRange::new(0, 32)).await;
 
     tokio::time::sleep(Duration::from_millis(150)).await;
     assert_eq!(current_requests(&log), initial_current_requests);

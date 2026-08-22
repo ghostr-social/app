@@ -31,7 +31,7 @@ async fn class_of(client: &dyn MediaHttpRequests, url: &str) -> FailureClass {
 
 #[tokio::test]
 async fn delivery_failure_classes_follow_the_error_kind() {
-    let trusted = range_fixture::media_client();
+    let trusted = range_fixture::raw_media_client();
     let missing = range_fixture::ranged::serve_ranged(range_fixture::body())
         .await
         .replace("/video.mp4", "/gone.mp4");
@@ -44,7 +44,7 @@ async fn delivery_failure_classes_follow_the_error_kind() {
     ];
 
     for (url, expected) in cases {
-        assert_eq!(class_of(&trusted, &url).await, expected, "{url}");
+        assert_eq!(class_of(trusted.as_ref(), &url).await, expected, "{url}");
     }
 }
 

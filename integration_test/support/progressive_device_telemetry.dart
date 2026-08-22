@@ -34,6 +34,12 @@ final class ProgressiveDeviceTelemetry implements PlaybackTelemetryPort {
   }
 
   @override
+  void presented(PlaybackSession session) {
+    rust.presented(session);
+    probe.presented(session);
+  }
+
+  @override
   void deactivate(PlaybackSession session) {
     rust.deactivate(session);
     probe.deactivate(session);

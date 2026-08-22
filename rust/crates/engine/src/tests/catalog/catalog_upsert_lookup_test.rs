@@ -11,7 +11,9 @@ fn lookup_returns_inserted_meta_with_blank_facts() {
 
     let entry = catalog.lookup(&post).expect("entry");
     assert_eq!(entry.meta, progressive_meta(Some(100), None));
-    assert_eq!(entry.facts, LearnedFacts::default());
+    assert!(entry
+        .observed_facts_for("https://host.example/video.mp4")
+        .is_none());
     assert_eq!(catalog.len(), 1);
     assert!(!catalog.is_empty());
 }
@@ -40,7 +42,9 @@ fn representation_change_discards_learned_facts() {
 
     let entry = catalog.lookup(&post).expect("entry");
     assert_eq!(entry.meta, progressive_meta(Some(7), Some(1_000)));
-    assert_eq!(entry.facts, LearnedFacts::default());
+    assert!(entry
+        .observed_facts_for("https://host.example/video.mp4")
+        .is_none());
     assert_eq!(catalog.len(), 1);
 }
 

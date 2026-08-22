@@ -1,12 +1,13 @@
 //! Bounded owners of active range-download tasks.
 
-use crate::manager::admission::origin_key;
-use crate::manager::inflight::{ActiveRange, ChunkAttempt, CompletionStatus, InFlightChunks};
+use crate::manager::inflight::{ActiveAction, ChunkAttempt, CompletionStatus, InFlightChunks};
 use crate::manager::plan::PlannedTransfer;
-use crate::manager::transfers::{spawn_chunk, TransferContext};
 use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
 use ghostr_engine::{ChunkId, PostId};
 use std::collections::HashSet;
+
+mod start;
+pub(crate) use start::PreparedTransfer;
 
 #[derive(Default)]
 pub(crate) struct DownloadWorkers {
@@ -26,12 +27,16 @@ impl DownloadWorkers {
         self.active.len()
     }
 
-    pub fn contains(&self, chunk: &ChunkId) -> bool {
-        self.active.contains(chunk)
+    pub(crate) fn next_action_id(&mut self) -> ghostr_engine::ActionId {
+        self.active.next_action_id()
     }
 
-    pub(crate) fn ranges(&self) -> Vec<ActiveRange> {
-        self.active.ranges()
+    pub(crate) fn contains_transfer(&self, transfer: &PlannedTransfer) -> bool {
+        self.active.contains_transfer(transfer)
+    }
+
+    pub(crate) fn actions(&self) -> Vec<ActiveAction> {
+        self.active.actions()
     }
 
     pub(crate) fn body_posts(&self) -> HashSet<PostId> {
@@ -55,7 +60,7 @@ impl DownloadWorkers {
         &mut self,
         planned: &[PlannedTransfer],
         capacity: usize,
-        retained: &HashSet<crate::manager::plan::PlannedTransferId>,
+        retained: &HashSet<ghostr_engine::ActionId>,
     ) {
         self.admitted_capacity = capacity.max(1);
         self.active
@@ -75,17 +80,6 @@ impl DownloadWorkers {
         self.active.cancel_obsolete(binding);
     }
 
-    pub fn start(&mut self, ctx: TransferContext, transfer: PlannedTransfer) {
-        let host = origin_key(&transfer.url);
-        let commitment_until_ms = transfer.commitment_until_ms;
-        let request = transfer.request;
-        let chunk = request.chunk.clone();
-        let attempt = self.active.next_attempt(chunk, transfer.identity);
-        let handle = spawn_chunk(ctx, attempt.clone(), transfer.url);
-        self.active
-            .insert(&attempt, request, host, commitment_until_ms, handle);
-    }
-
     pub fn active_hosts(&self) -> HashSet<String> {
         self.active.active_hosts()
     }
@@ -96,5 +90,78 @@ impl DownloadWorkers {
 
     pub fn finish(&mut self, attempt: &ChunkAttempt) -> CompletionStatus {
         self.active.finish(attempt)
+    }
+
+    pub(crate) fn cancel_action(&mut self, action: ghostr_engine::ActionId) -> bool {
+        self.active.cancel_action(action)
+    }
+
+    pub(crate) fn can_cancel_action(&self, action: ghostr_engine::ActionId) -> bool {
+        self.active.can_cancel_action(action)
+    }
+
+    pub(crate) fn link_hedge(
+        &mut self,
+        primary: ghostr_engine::ActionId,
+        alternate: ghostr_engine::ActionId,
+    ) -> bool {
+        self.active.link_hedge(primary, alternate)
+    }
+
+    pub(crate) fn complete_hedge_winner(&mut self, action: ghostr_engine::ActionId) -> bool {
+        self.active.complete_hedge_winner(action)
+    }
+
+    pub(crate) fn cancel_hedge_loser(&mut self, action: ghostr_engine::ActionId) -> bool {
+        self.active.cancel_hedge_loser(action)
+    }
+
+    pub(crate) fn observe_response(
+        &mut self,
+        attempt: &ChunkAttempt,
+        response: crate::chunk::downloader::ResponseObservation,
+    ) -> bool {
+        self.active.observe_response(attempt, response)
+    }
+
+    pub(crate) fn authorizes_response(
+        &mut self,
+        attempt: &ChunkAttempt,
+        action: &ghostr_partial_store::partial_range_store::StoreAction,
+        response: &crate::chunk::downloader::OpenedResponse,
+        opened_at_ms: u64,
+    ) -> bool {
+        self.active
+            .authorizes_response(attempt, action, response, opened_at_ms)
+    }
+
+    pub(crate) fn reject_response(&mut self, attempt: &ChunkAttempt) {
+        self.active.reject_response(attempt);
+    }
+
+    pub(crate) fn preflight_promotion(
+        &self,
+        target: &crate::manager::inflight::PromotionTarget,
+        now_ms: u64,
+    ) -> Result<
+        crate::manager::inflight::PromotionPreflight,
+        crate::manager::inflight::PromotionRejection,
+    > {
+        self.active.preflight_promotion(target, now_ms)
+    }
+
+    pub(crate) fn activate_promotion(
+        &mut self,
+        preflight: &crate::manager::inflight::PromotionPreflight,
+        now_ms: u64,
+    ) -> bool {
+        self.active.activate_promotion(preflight, now_ms)
+    }
+
+    pub(crate) fn rollback_promotion(
+        &mut self,
+        preflight: &crate::manager::inflight::PromotionPreflight,
+    ) -> bool {
+        self.active.rollback_promotion(preflight)
     }
 }

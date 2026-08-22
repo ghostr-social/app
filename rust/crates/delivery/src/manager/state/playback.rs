@@ -4,7 +4,26 @@ use crate::playback_admission::{PlaybackAdmission, PlaybackRejection};
 use ghostr_engine::playback::{PlaybackPhase, PlaybackStatus};
 
 impl DeliveryState {
+    #[cfg(test)]
     pub(crate) fn apply_playback(&mut self, update: DeliveryPlayback) -> PlaybackAdmission {
+        self.apply_playback_at(update, 0)
+    }
+
+    pub(crate) fn apply_playback_at(
+        &mut self,
+        update: DeliveryPlayback,
+        observed_at_ms: u64,
+    ) -> PlaybackAdmission {
+        let post = update.session.post().clone();
+        let failed = update.observation.phase() == PlaybackPhase::Failed;
+        let admission = self.admit_playback(update);
+        if admission.is_accepted() && failed {
+            self.learn_playback_readiness(&post, false, observed_at_ms);
+        }
+        admission
+    }
+
+    fn admit_playback(&mut self, update: DeliveryPlayback) -> PlaybackAdmission {
         if self.focus.current() != Some(update.session.post()) {
             if update.observation.phase() == PlaybackPhase::Inactive {
                 return PlaybackAdmission::IgnoredInactive;

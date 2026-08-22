@@ -17,6 +17,7 @@ use crate::router::configured_router_with_segmented;
     not(any(target_os = "android", target_os = "ios"))
 ))]
 use crate::router::configured_router_with_segmented_debug;
+use crate::router::GatewayRouterResources;
 use crate::runtime::GatewayConfiguration;
 use ghostr_delivery::cache_registry::CacheRegistry;
 #[cfg(all(
@@ -27,20 +28,19 @@ use ghostr_delivery::cache_registry::CacheRegistry;
 use ghostr_delivery::debug::feed::DebugFeed;
 use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_delivery::delivery_events::DeliveryHandle;
-use ghostr_delivery::manager::{
-    start_delivery_manager_with_discovery_demand, DeliveryManagerConfig, DeliveryTuning,
-};
+use ghostr_delivery::manager::start_delivery_manager_with_discovery_demand;
 use ghostr_delivery::playback_demand::demand_channel;
 use ghostr_delivery::segmented::SegmentedCache;
 use ghostr_engine::adaptive::DiscoveryDemand;
-use ghostr_engine::{DataUsageLevel, EngineParams};
-use ghostr_net::outbound_media_client::MediaHttpRequests;
+use ghostr_net::media_request_executor::MediaRequestExecutor;
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use log::warn;
 use nostr_sdk::Client;
 use std::sync::Arc;
 use tokio::sync::{watch, Mutex};
+
+mod config;
 
 pub(crate) type DeliveryParts = (
     axum::Router,
@@ -52,10 +52,31 @@ pub(crate) type DeliveryParts = (
 
 struct DeliveryResources {
     store: Arc<PartialRangeStore>,
-    client: Arc<dyn MediaHttpRequests>,
+    requests: MediaRequestExecutor,
     cache: CacheRegistry,
     network: NetworkThrottle,
     segmented: SegmentedCache,
+}
+
+struct RouterInput {
+    hls_sessions: HlsSessions,
+    requests: MediaRequestExecutor,
+    segmented: SegmentedCache,
+    progressive: Arc<ProgressiveState>,
+    delivery: DeliveryHandle,
+    nostr: Arc<Client>,
+}
+
+impl DeliveryResources {
+    async fn open(configuration: &GatewayConfiguration, requests: MediaRequestExecutor) -> Self {
+        Self {
+            store: Arc::new(opened_store(configuration).await),
+            requests,
+            cache: CacheRegistry::new(),
+            network: NetworkThrottle::new(),
+            segmented: SegmentedCache::new(),
+        }
+    }
 }
 
 /// Progressive delivery: the router serves `/video.mp4` from the partial
@@ -64,27 +85,42 @@ pub(crate) async fn start_progressive_delivery(
     configuration: &GatewayConfiguration,
     hls_sessions: HlsSessions,
     nostr: Arc<Client>,
-    client: Arc<dyn MediaHttpRequests>,
+    requests: MediaRequestExecutor,
 ) -> anyhow::Result<DeliveryParts> {
-    let store = Arc::new(opened_store(configuration).await);
-    let cache = CacheRegistry::new();
+    let resources = DeliveryResources::open(configuration, requests).await;
     let (demand_sender, demand) = demand_channel();
-    let network = NetworkThrottle::new();
-    let segmented = SegmentedCache::new();
-    let resources = DeliveryResources {
-        store: store.clone(),
-        client: client.clone(),
-        cache: cache.clone(),
-        network: network.clone(),
-        segmented: segmented.clone(),
-    };
-    let config = delivery_config(configuration, resources);
-    let (delivery, discovery_demand) = start_delivery_manager_with_discovery_demand(config, demand);
-    let progressive = Arc::new(ProgressiveState {
-        store: store.clone(),
-        demand: demand_sender,
-        cache,
-        network,
+    let manager_config = config::build(configuration, &resources);
+    let (delivery, discovery_demand) =
+        start_delivery_manager_with_discovery_demand(manager_config, demand);
+    let progressive = progressive_state(configuration, &resources, &delivery, demand_sender);
+    let router = delivery_router(RouterInput {
+        hls_sessions,
+        requests: resources.requests.clone(),
+        segmented: resources.segmented.clone(),
+        progressive: progressive.clone(),
+        delivery: delivery.clone(),
+        nostr,
+    });
+    Ok((
+        router,
+        delivery,
+        progressive,
+        resources.segmented,
+        discovery_demand,
+    ))
+}
+
+fn progressive_state(
+    _configuration: &GatewayConfiguration,
+    resources: &DeliveryResources,
+    _delivery: &DeliveryHandle,
+    demand: ghostr_delivery::playback_demand::DemandSender,
+) -> Arc<ProgressiveState> {
+    Arc::new(ProgressiveState {
+        store: resources.store.clone(),
+        demand,
+        cache: resources.cache.clone(),
+        network: resources.network.clone(),
         timing: ProgressiveTiming::default(),
         capabilities: ProgressiveCapabilities::production(),
         #[cfg(all(
@@ -92,39 +128,37 @@ pub(crate) async fn start_progressive_delivery(
             debug_assertions,
             not(any(target_os = "android", target_os = "ios"))
         ))]
-        debug_feed: DebugFeed::new(delivery.clone(), configuration.relays.clone()),
-    });
+        debug_feed: DebugFeed::new(_delivery.clone(), _configuration.relays.clone()),
+    })
+}
+
+fn delivery_router(input: RouterInput) -> axum::Router {
+    let router_resources = GatewayRouterResources::new(input.hls_sessions, input.requests)
+        .with_segmented(input.segmented);
     #[cfg(all(
         feature = "video-debug-web",
         debug_assertions,
         not(any(target_os = "android", target_os = "ios"))
     ))]
     let router = configured_router_with_segmented_debug(
-        hls_sessions,
-        client,
-        progressive.clone(),
-        delivery.clone(),
-        nostr,
-        segmented.clone(),
+        router_resources,
+        input.progressive,
+        input.delivery,
+        input.nostr,
     );
     #[cfg(not(all(
         feature = "video-debug-web",
         debug_assertions,
         not(any(target_os = "android", target_os = "ios"))
     )))]
-    let router = configured_router_with_segmented(
-        hls_sessions,
-        client,
-        progressive.clone(),
-        segmented.clone(),
-    );
+    let router = configured_router_with_segmented(router_resources, input.progressive);
     #[cfg(not(all(
         feature = "video-debug-web",
         debug_assertions,
         not(any(target_os = "android", target_os = "ios"))
     )))]
-    let _ = nostr;
-    Ok((router, delivery, progressive, segmented, discovery_demand))
+    let _ = (input.delivery, input.nostr);
+    router
 }
 
 /// The store as the last run left it. Adopting its contents is what
@@ -140,25 +174,4 @@ async fn opened_store(configuration: &GatewayConfiguration) -> PartialRangeStore
         warn!("Video store could not reload its contents: {error:#}");
     }
     store
-}
-
-fn delivery_config(
-    configuration: &GatewayConfiguration,
-    resources: DeliveryResources,
-) -> DeliveryManagerConfig<Arc<dyn MediaHttpRequests>> {
-    let params = EngineParams {
-        balanced_concurrency: configuration.max_parallel_downloads,
-        ..EngineParams::default()
-    };
-    DeliveryManagerConfig {
-        store: resources.store,
-        client: resources.client,
-        cache: resources.cache,
-        segmented: resources.segmented,
-        network: resources.network,
-        stats_path: configuration.cache_directory.join("host_stats.json"),
-        params,
-        level: DataUsageLevel::Balanced,
-        tuning: DeliveryTuning::default(),
-    }
 }

@@ -6,6 +6,7 @@
 //! callers drive all of it through.
 
 pub mod delivery_events;
+pub mod evaluation;
 pub mod manager;
 
 pub mod chunk;
@@ -13,6 +14,7 @@ pub mod probe;
 
 pub mod cache_registry;
 mod candidate_priority;
+pub(crate) mod client_capability;
 mod demand_leases;
 pub(crate) mod mutable_priority_queue;
 pub mod playback_admission;
@@ -20,6 +22,8 @@ pub mod playback_demand;
 pub mod progressive_posts;
 pub mod qoe;
 pub mod segmented;
+pub mod startup_certificate;
+pub mod transform;
 
 pub mod debug;
 

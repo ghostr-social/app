@@ -6,7 +6,6 @@ use delivery_fixture::full_disk::{discard, limits, spaced_store};
 use delivery_fixture::items::{focus_now, seed_range, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness_with_store;
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::timeout;
@@ -36,7 +35,7 @@ async fn storage_pressure_evicts_only_the_far_exact_tail() {
     );
 
     harness.handle.update_focus(focus_now(items, 0, 0));
-    wait_until_used(&harness.store, 99).await;
+    wait_until_used(&harness, 99).await;
 
     assert_eq!(
         harness.store.present_ranges("p1").await.unwrap(),
@@ -49,15 +48,25 @@ async fn storage_pressure_evicts_only_the_far_exact_tail() {
     discard(&root);
 }
 
-async fn wait_until_used(store: &PartialRangeStore, expected: u64) {
-    timeout(Duration::from_secs(2), async {
+async fn wait_until_used(harness: &delivery_fixture::DeliveryHarness, expected: u64) {
+    let result = timeout(Duration::from_secs(2), async {
         loop {
-            if store.used_bytes().await == expected {
+            if harness.store.used_bytes().await == expected {
                 return;
             }
             tokio::time::sleep(Duration::from_millis(5)).await;
         }
     })
-    .await
-    .expect("adaptive eviction");
+    .await;
+    assert!(
+        result.is_ok(),
+        "adaptive eviction: used={}, evictions={:?}",
+        harness.store.used_bytes().await,
+        harness
+            .handle
+            .plan_history()
+            .into_iter()
+            .filter(|evidence| !evidence.plan.evictions.is_empty())
+            .collect::<Vec<_>>()
+    );
 }

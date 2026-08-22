@@ -9,7 +9,7 @@ impl CapacityRevision {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct CapacityEvents {
     changes: watch::Sender<u64>,
 }

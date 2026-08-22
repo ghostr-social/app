@@ -1,9 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
-final class AuditedVideoPlayerPlatform extends VideoPlayerPlatform {
+part 'audited_video_player_platform_state.dart';
+
+class AuditedVideoPlayerPlatform extends VideoPlayerPlatform {
+  AuditedVideoPlayerPlatform({this.autoInitialize = true});
+
+  final bool autoInitialize;
   final Map<int, StreamController<VideoEvent>> _streams = {};
   final Map<int, _PlayerState> _states = {};
   final List<String> commands = [];
@@ -11,7 +17,17 @@ final class AuditedVideoPlayerPlatform extends VideoPlayerPlatform {
   var _nextId = 0;
   var audibleOverlap = false;
 
+  int get createdCount => _nextId;
   int get playerCount => _states.length;
+
+  bool isPlaying(int textureId) => _states[textureId]?.isPlaying ?? false;
+  double volumeFor(int textureId) => _states[textureId]?.volume ?? 0;
+
+  void initialize(int textureId) => _streams[textureId]?.add(_initialized);
+
+  void fail(int textureId) => _streams[textureId]?.addError(
+    PlatformException(code: 'player-failed', message: 'Player failed'),
+  );
 
   @override
   Future<int?> create(DataSource dataSource) async {
@@ -19,7 +35,7 @@ final class AuditedVideoPlayerPlatform extends VideoPlayerPlatform {
     final stream = StreamController<VideoEvent>.broadcast();
     _streams[id] = stream;
     _states[id] = _PlayerState();
-    Timer.run(() => stream.add(_initialized));
+    if (autoInitialize) Timer.run(() => stream.add(_initialized));
     return id;
   }
 
@@ -80,14 +96,3 @@ final class AuditedVideoPlayerPlatform extends VideoPlayerPlatform {
     if (audible.length > 1) audibleOverlap = true;
   }
 }
-
-final class _PlayerState {
-  var isPlaying = false;
-  var volume = 1.0;
-}
-
-final _initialized = VideoEvent(
-  eventType: VideoEventType.initialized,
-  size: const Size(180, 320),
-  duration: const Duration(seconds: 10),
-);

@@ -10,6 +10,9 @@ async fn rejects_a_range_that_starts_past_the_end_of_the_video() {
     let harness = progressive_harness("ghostr-progressive-unsat");
     harness.posts.insert("clip");
     harness
+        .bind_video("clip", "https://cdn.example/clip.mp4", Some(10))
+        .await;
+    harness
         .store
         .set_total_len("clip", 10)
         .await

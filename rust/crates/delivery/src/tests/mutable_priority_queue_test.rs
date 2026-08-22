@@ -1,4 +1,4 @@
-use super::support::transfer_identity;
+use super::support::{range_retrieval, transfer_identity};
 use crate::manager::plan::PlannedTransfer;
 use crate::mutable_priority_queue::{ForegroundSlots, MutablePriorityQueue};
 use ghostr_engine::adaptive::PreemptionAuthority;
@@ -46,6 +46,7 @@ fn transfer(id: &str, score: f64) -> PlannedTransfer {
             contiguous_depth_bytes: 0,
         },
         url,
+        retrieval: range_retrieval(ByteRange::new(0, 4)),
         commitment_until_ms: 0,
     }
 }

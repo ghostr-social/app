@@ -5,7 +5,7 @@ use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::{ByteRange, ChunkId, PostId};
 
 #[test]
-fn live_range_snapshot_carries_exact_identity_and_commitment_until_io_finishes() {
+fn live_action_snapshot_holds_its_reservation_until_terminal_ack() {
     let post = PostId::new("ahead");
     let url = "https://a.example/video";
     let identity = transfer_identity(&post, url);
@@ -24,10 +24,13 @@ fn live_range_snapshot_carries_exact_identity_and_commitment_until_io_finishes()
         handle,
     );
 
-    let snapshot = active.ranges();
-    assert_eq!(snapshot[0].chunk(), &chunk);
+    let snapshot = active.actions();
+    assert_eq!(snapshot[0].post(), &chunk.post);
+    assert_eq!(snapshot[0].effective_bytes(), chunk.range);
     assert_eq!(snapshot[0].identity(), &identity);
     assert_eq!(snapshot[0].committed_until_ms(), 5_000);
     attempt.mark_io_finished();
-    assert!(active.ranges().is_empty());
+    assert_eq!(active.actions().len(), 1);
+    active.finish(&attempt);
+    assert!(active.actions().is_empty());
 }

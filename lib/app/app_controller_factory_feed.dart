@@ -61,6 +61,7 @@ extension AppControllerFeedFactories on AppControllerFactory {
           updates: updates,
           reposts: services.reposts,
           deliveryUpdates: _deliveryUpdates,
+          preparationUpdates: _dependencies.playbackPreparationUpdates,
         ),
       ),
     );

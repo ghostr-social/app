@@ -3,24 +3,34 @@
 //! No IO, no async, no clocks: everything here is deterministic and
 //! table-testable.
 
+use serde::{Deserialize, Serialize};
+
 pub mod adaptive;
 pub mod budget;
 pub mod catalog;
 pub mod concurrency;
+pub mod evidence;
 pub mod focus;
 pub mod host_stats;
 pub mod media_timeline;
+pub mod origin_model;
 pub mod playback;
+mod preview;
 pub mod rendition;
 pub mod representation;
+mod request_authority;
 pub mod scheduling;
 pub mod video_rendition;
+pub mod watch_model;
+
+pub use preview::PreviewDescriptor;
+pub use request_authority::RequestAuthority;
 
 #[cfg(test)]
 mod tests;
 
 /// Identity of a post whose video the engine may deliver.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct PostId(pub String);
 
 impl PostId {
@@ -30,6 +40,21 @@ impl PostId {
 
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+}
+
+/// One runtime retrieval action. It is unique for the process lifetime
+/// and fences response, store, cancellation, and terminal accounting.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub struct ActionId(u64);
+
+impl ActionId {
+    pub fn new(value: u64) -> Self {
+        Self(value)
+    }
+
+    pub fn value(self) -> u64 {
+        self.0
     }
 }
 
@@ -51,7 +76,7 @@ pub struct VideoMeta {
 }
 
 /// Half-open byte span `[start, end)` within a video file.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct ByteRange {
     pub start: u64,
     pub end: u64,

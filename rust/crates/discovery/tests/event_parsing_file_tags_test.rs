@@ -16,14 +16,32 @@ fn event_parsing_maps_nip94_top_level_file_tags() {
         Tag::parse(["url", "https://file.example/clip.mp4"]).expect("url tag"),
         Tag::parse(["m", "video/mp4"]).expect("m tag"),
         Tag::parse(["x", &"C".repeat(64)]).expect("x tag"),
+        Tag::parse(["ox", &"D".repeat(64)]).expect("ox tag"),
+        Tag::parse(["size", "4096"]).expect("size tag"),
+        Tag::parse(["duration", "2.5"]).expect("duration tag"),
+        Tag::parse(["dim", "720x1280"]).expect("dim tag"),
+        Tag::parse(["bitrate", "1500000"]).expect("bitrate tag"),
+        Tag::parse(["fallback", "https://mirror.example/clip.mp4"]).expect("fallback tag"),
     ]))
     .expect("parsed post");
 
-    assert_eq!(post.meta.urls, ["https://file.example/clip.mp4"]);
+    assert_eq!(
+        post.meta.urls,
+        [
+            "https://file.example/clip.mp4",
+            "https://mirror.example/clip.mp4"
+        ]
+    );
     assert_eq!(post.meta.delivery, DeliveryKind::Progressive);
     assert_eq!(post.meta.sha256, Some("c".repeat(64)));
-    assert_eq!(post.meta.size_bytes, None);
-    assert_eq!(post.meta.duration_ms, None);
+    assert_eq!(post.meta.size_bytes, Some(4096));
+    assert_eq!(post.meta.duration_ms, Some(2_500));
+    assert_eq!(post.dimensions, Some((720, 1280)));
+    assert_eq!(post.metadata_evidence[0].bitrate_bps, Some(1_500_000));
+    assert_eq!(
+        post.metadata_evidence[0].original_sha256,
+        Some("d".repeat(64))
+    );
     assert_eq!(post.caption, "file description");
     assert_eq!(post.kind, 1063);
 }

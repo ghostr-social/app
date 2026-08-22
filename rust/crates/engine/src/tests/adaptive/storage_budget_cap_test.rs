@@ -10,7 +10,7 @@ fn available_storage_caps_total_safe_plan_bytes() {
     let allocated: u64 = plan
         .allocations
         .iter()
-        .map(|allocation| allocation.range.len())
+        .map(|allocation| allocation.request.reserved_network_bytes())
         .sum();
 
     assert!(allocated <= input.storage.available_bytes(), "{allocated}");

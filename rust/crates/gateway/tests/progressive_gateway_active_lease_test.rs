@@ -18,6 +18,13 @@ async fn active_gateway_stream_keeps_its_cached_file_alive() {
     let harness =
         progressive_harness_with_store(root.clone(), store.clone(), ProgressiveTiming::default());
     harness.posts.insert("clip");
+    harness
+        .bind_video(
+            "clip",
+            "https://cdn.example/clip.mp4",
+            Some(VIDEO_BYTES as u64),
+        )
+        .await;
     store
         .set_total_len("clip", VIDEO_BYTES as u64)
         .await

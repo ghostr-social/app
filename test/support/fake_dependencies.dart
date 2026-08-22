@@ -75,6 +75,7 @@ AppDependencies buildFakeDependencies({
     videoPlaybackPort: device.playback ?? FakeVideoPlaybackPort(),
     videoShareWorkflow: device.sharing ?? FakeVideoShareWorkflow(),
     failureReporter: RecordingFailureReporter(),
+    playbackPreparationUpdates: overrides.preparationUpdates,
     appUpdateRuntime: overrides.appUpdateRuntime,
   );
 }

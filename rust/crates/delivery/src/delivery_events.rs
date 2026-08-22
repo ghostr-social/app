@@ -2,26 +2,43 @@
 //! network updates arrive over a channel so the manager reacts to events
 //! instead of polling.
 
-use ghostr_engine::adaptive::AllocationPlan;
+use ghostr_engine::evidence::NostrMetadataEvidence;
 use ghostr_engine::video_rendition::VideoRendition;
-use ghostr_engine::{DataUsageLevel, PostId, VideoMeta};
+use ghostr_engine::{DataUsageLevel, PostId, PreviewDescriptor, VideoMeta};
 use tokio::sync::{mpsc, oneshot};
 
 mod channel;
+mod decision_log;
 mod focus_generation;
 mod mailbox;
+mod network;
 mod plan_evidence;
+mod playback_presentation;
+mod player_preparation;
+mod receiver;
 mod transport;
-use crate::playback_admission::{
-    PlaybackAdmission, PlaybackAdmissionLedger, PlaybackAdmissionSnapshot,
-};
+use crate::evaluation::{EvaluationLedger, EvaluationSnapshot};
+use crate::playback_admission::{PlaybackAdmissionLedger, PlaybackAdmissionSnapshot};
 pub use channel::{command_channel, command_channel_with_candidate_capacity};
+pub use decision_log::DecisionHistorySnapshot;
+use decision_log::DecisionLog;
+pub(crate) use decision_log::{
+    DecisionClaim, DecisionResolution, DecisionToken, LegacyDecisionPublication,
+    RequestDecisionBinding, WarpDecisionPublication,
+};
 pub(crate) use focus_generation::FocusGenerationGuard;
 pub use focus_generation::{FocusAdmission, FocusGeneration};
 pub use mailbox::MailboxReceiver;
 use mailbox::MailboxSender;
+pub use network::DeliveryNetworkStatus;
+pub(crate) use network::DeliveryNetworkStatusReader;
 pub use plan_evidence::PlanEvidence;
 use plan_evidence::PlanEvidenceHistory;
+pub use playback_presentation::{PlaybackPresentation, PlaybackPresentationIngress};
+pub use player_preparation::{
+    PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationIngress,
+    PlayerPreparationObservation, PlayerPreparationReport, PlayerPreparationState,
+};
 pub use transport::{DeliveryPlayback, TransportRescue, TransportRescueReason};
 
 const DEFAULT_CANDIDATE_CAPACITY: usize = 32;
@@ -38,8 +55,17 @@ pub struct FocusItem {
 pub struct DeliveryCandidate {
     pub post: PostId,
     pub meta: VideoMeta,
+    pub preview: Option<PreviewDescriptor>,
+    pub metadata_evidence: Vec<NostrMetadataEvidence>,
     pub renditions: Vec<VideoRendition>,
     pub discovered_at: u64,
+}
+
+/// Validated inline preview evidence associated with one focused post.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FocusPreview {
+    pub post: PostId,
+    pub descriptor: PreviewDescriptor,
 }
 
 /// Whether a focus movement represents user navigation or system control.
@@ -54,6 +80,7 @@ pub enum FocusTransition {
 #[derive(Clone, Debug)]
 pub struct DeliveryFocus {
     pub items: Vec<FocusItem>,
+    pub previews: Vec<FocusPreview>,
     pub current_index: usize,
     pub watch_ms: u64,
     pub generation: FocusGeneration,
@@ -65,6 +92,7 @@ impl DeliveryFocus {
     pub fn compatibility(items: Vec<FocusItem>, current_index: usize, watch_ms: u64) -> Self {
         Self {
             items,
+            previews: Vec::new(),
             current_index,
             watch_ms,
             generation: FocusGeneration::compatibility(),
@@ -81,6 +109,7 @@ pub enum DeliveryCommand {
     Focus(DeliveryFocus),
     Playback(DeliveryPlayback),
     Config(DataUsageLevel),
+    NetworkStatus(DeliveryNetworkStatus),
     NetworkChanged,
     StorageChanged,
 }
@@ -101,6 +130,8 @@ pub struct DeliveryHandle {
     clears: mpsc::Sender<ClearRequest>,
     plans: PlanEvidenceHistory,
     playback_admissions: PlaybackAdmissionLedger,
+    evaluation: EvaluationLedger,
+    decisions: DecisionLog,
 }
 
 impl DeliveryHandle {
@@ -125,16 +156,25 @@ impl DeliveryHandle {
         self.sender.send_control(DeliveryCommand::NetworkChanged);
     }
 
+    pub fn update_network_status(&self, status: DeliveryNetworkStatus) -> bool {
+        self.sender
+            .send_control(DeliveryCommand::NetworkStatus(status))
+    }
+
     pub fn storage_changed(&self) {
         self.sender.send_control(DeliveryCommand::StorageChanged);
     }
 
-    pub fn plan_history(&self) -> Vec<PlanEvidence> {
-        self.plans.snapshot()
-    }
-
     pub fn playback_admission_snapshot(&self) -> PlaybackAdmissionSnapshot {
         self.playback_admissions.snapshot()
+    }
+
+    pub fn evaluation_snapshot(&self) -> EvaluationSnapshot {
+        self.evaluation.snapshot()
+    }
+
+    pub fn decision_history(&self) -> DecisionHistorySnapshot {
+        self.decisions.snapshot()
     }
 
     pub async fn clear(&self) -> anyhow::Result<()> {
@@ -150,48 +190,11 @@ impl DeliveryHandle {
 }
 
 pub type ClearRequest = oneshot::Sender<anyhow::Result<()>>;
-
 pub struct CommandReceiver {
     commands: MailboxReceiver,
     clears: mpsc::Receiver<ClearRequest>,
     plans: PlanEvidenceHistory,
     playback_admissions: PlaybackAdmissionLedger,
-}
-
-impl CommandReceiver {
-    pub fn receivers(&mut self) -> (&mut MailboxReceiver, &mut mpsc::Receiver<ClearRequest>) {
-        (&mut self.commands, &mut self.clears)
-    }
-
-    pub(crate) fn discard_pending(&mut self) {
-        self.commands.clear();
-    }
-
-    pub(crate) fn try_clear(&mut self) -> Option<ClearRequest> {
-        self.clears.try_recv().ok()
-    }
-
-    pub(crate) fn has_control(&self) -> bool {
-        self.commands.has_control()
-    }
-
-    pub(crate) fn has_candidate(&self) -> bool {
-        self.commands.has_candidate()
-    }
-
-    pub fn try_control(&mut self) -> Option<DeliveryCommand> {
-        self.commands.try_control()
-    }
-
-    pub fn try_candidate(&mut self) -> Option<DeliveryCandidate> {
-        self.commands.try_candidate()
-    }
-
-    pub fn publish_plan(&mut self, observed_at_ms: u64, plan: AllocationPlan) {
-        self.plans.publish(observed_at_ms, plan);
-    }
-
-    pub(crate) fn record_playback_admission(&self, admission: PlaybackAdmission, post: &PostId) {
-        self.playback_admissions.record(admission, post);
-    }
+    evaluation: EvaluationLedger,
+    decisions: DecisionLog,
 }

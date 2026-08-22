@@ -28,28 +28,33 @@ impl DeliveryWorker {
             return None;
         }
         let entry = self.state.catalog().lookup(&post)?;
-        let total = entry.total_bytes();
-        let ranges = self
-            .ctx
-            .store
-            .present_ranges(post.as_str())
-            .await
-            .unwrap_or_default();
-        Some(cached(post, entry.meta.clone(), total, &ranges))
+        let snapshot = self.ctx.store.media_snapshot(post.as_str()).await.ok()?;
+        if !snapshot
+            .binding()
+            .is_some_and(|binding| binding.matches_or_derives_from(&entry.meta))
+        {
+            return None;
+        }
+        Some(cached(
+            post,
+            entry.meta.clone(),
+            snapshot.is_complete(),
+            snapshot.ranges(),
+        ))
     }
 }
 
-fn cached(post: PostId, meta: VideoMeta, total: Option<u64>, ranges: &[Range<u64>]) -> CacheVideo {
+fn cached(post: PostId, meta: VideoMeta, complete: bool, ranges: &[Range<u64>]) -> CacheVideo {
     let downloaded: u64 = ranges.iter().map(range_len).sum();
     CacheVideo {
         id: post.0,
         meta,
-        status: cache_status(downloaded, total),
+        status: cache_status(downloaded, complete),
     }
 }
 
-fn cache_status(downloaded: u64, total: Option<u64>) -> CacheStatus {
-    if total.is_some_and(|total| downloaded >= total) {
+fn cache_status(downloaded: u64, complete: bool) -> CacheStatus {
+    if complete {
         CacheStatus::Complete
     } else if downloaded > 0 {
         CacheStatus::Partial

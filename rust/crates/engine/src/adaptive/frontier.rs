@@ -23,7 +23,8 @@ fn has_waiting_candidate(
     admitted: &HashSet<crate::PostId>,
 ) -> bool {
     snapshot.candidates.iter().any(|candidate| {
-        candidate.post != snapshot.playback.current
+        candidate.retrieval_eligible
+            && candidate.post != snapshot.playback.current
             && !super::ranges::missing(candidate).is_empty()
             && !admitted.contains(&candidate.post)
     })
@@ -49,7 +50,9 @@ pub(super) fn upcoming_candidates(snapshot: &PlayabilitySnapshot) -> Vec<&Candid
     let mut candidates: Vec<_> = snapshot
         .candidates
         .iter()
-        .filter(|candidate| candidate.post != snapshot.playback.current)
+        .filter(|candidate| {
+            candidate.retrieval_eligible && candidate.post != snapshot.playback.current
+        })
         .collect();
     candidates.sort_by(|left, right| {
         candidate_score(snapshot, right)

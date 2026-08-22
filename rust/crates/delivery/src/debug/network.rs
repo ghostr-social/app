@@ -2,7 +2,7 @@
 //! Defaults are inert, so production delivery is unchanged until a
 //! developer explicitly enables simulation.
 
-use ghostr_engine::host_stats::host_of;
+use ghostr_engine::RequestAuthority;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
@@ -11,6 +11,8 @@ use tokio::sync::Notify;
 
 mod bandwidth;
 use bandwidth::SharedBandwidth;
+
+const INVALID_AUTHORITY: &str = "invalid-request-authority";
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct NetworkProfile {
@@ -36,7 +38,6 @@ struct ThrottleInner {
     profile: RwLock<NetworkProfile>,
     active: Mutex<HashMap<String, usize>>,
     bandwidth: SharedBandwidth,
-    connections_changed: Notify,
     profile_changed: Notify,
 }
 
@@ -67,7 +68,6 @@ impl NetworkThrottle {
             .profile
             .write()
             .unwrap_or_else(|poisoned| poisoned.into_inner()) = profile;
-        self.inner.connections_changed.notify_waiters();
         self.inner.profile_changed.notify_waiters();
     }
 
@@ -86,18 +86,11 @@ impl NetworkThrottle {
     }
 
     pub async fn acquire(&self, url: &str) -> ConnectionPermit {
-        let host = host_of(url).unwrap_or_else(|| url.to_owned());
-        loop {
-            let changed = self.inner.connections_changed.notified();
-            tokio::pin!(changed);
-            changed.as_mut().enable();
-            if self.try_claim(&host) {
-                return ConnectionPermit {
-                    throttle: self.clone(),
-                    host,
-                };
-            }
-            changed.await;
+        let host = connection_key(url);
+        self.claim(&host);
+        ConnectionPermit {
+            throttle: self.clone(),
+            host,
         }
     }
 
@@ -115,19 +108,13 @@ impl NetworkThrottle {
             .await;
     }
 
-    fn try_claim(&self, host: &str) -> bool {
-        let limit = self.profile().max_connections_per_host;
+    fn claim(&self, host: &str) {
         let mut active = self
             .inner
             .active
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let count = active.entry(host.to_owned()).or_default();
-        if limit > 0 && *count >= limit {
-            return false;
-        }
-        *count += 1;
-        true
+        *active.entry(host.to_owned()).or_default() += 1;
     }
 
     fn release(&self, host: &str) {
@@ -140,9 +127,13 @@ impl NetworkThrottle {
             *count = count.saturating_sub(1);
         }
         active.retain(|_, count| *count > 0);
-        drop(active);
-        self.inner.connections_changed.notify_waiters();
     }
+}
+
+fn connection_key(url: &str) -> String {
+    RequestAuthority::from_url(url)
+        .map(|authority| authority.as_str().to_owned())
+        .unwrap_or_else(|| INVALID_AUTHORITY.to_owned())
 }
 
 pub struct ConnectionPermit {

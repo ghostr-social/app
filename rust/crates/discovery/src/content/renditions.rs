@@ -2,6 +2,7 @@
 
 use ghostr_engine::video_rendition::VideoRendition;
 use ghostr_engine::{DeliveryKind, VideoMeta};
+use ghostr_media_model::blossom::terminal_sha256;
 use ghostr_media_model::event_identity::VIDEO_KINDS;
 use ghostr_media_model::native_media_metadata::NativeMediaMetadata;
 use ghostr_media_model::native_models::NativeVideoDelivery;
@@ -24,7 +25,10 @@ pub(crate) fn video_meta(media: &NativeMediaMetadata) -> VideoMeta {
     VideoMeta {
         urls,
         delivery: delivery_kind(media.delivery),
-        sha256: media.expected_digest.clone(),
+        sha256: media
+            .expected_digest
+            .clone()
+            .or_else(|| terminal_sha256(&media.url)),
         size_bytes: media.extras.size_bytes,
         duration_ms: media.extras.duration_ms,
     }

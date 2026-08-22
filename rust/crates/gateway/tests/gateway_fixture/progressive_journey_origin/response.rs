@@ -2,6 +2,20 @@ use axum::body::Body;
 use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::Response;
 
+mod range_blind;
+
+pub(super) fn range_blind_head(total: usize) -> Response {
+    range_blind::head(total)
+}
+
+pub(super) fn range_blind_split(
+    bytes: std::sync::Arc<Vec<u8>>,
+    prefix_ready: std::sync::Arc<tokio::sync::Semaphore>,
+    release: std::sync::Arc<tokio::sync::Semaphore>,
+) -> Response {
+    range_blind::split(bytes, prefix_ready, release)
+}
+
 pub(super) fn rejected_head() -> Response {
     Response::builder()
         .status(StatusCode::METHOD_NOT_ALLOWED)

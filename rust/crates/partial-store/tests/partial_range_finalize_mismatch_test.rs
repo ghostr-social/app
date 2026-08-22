@@ -1,5 +1,6 @@
 mod store_fixture;
 
+use ghostr_partial_store::partial_range_completion::IntegrityMismatch;
 use std::sync::Arc;
 use store_fixture::{plain_store, temp_root};
 use tokio::sync::Mutex;
@@ -21,7 +22,7 @@ async fn partial_range_finalize_rejects_and_discards_a_mismatched_digest() {
         .await
         .expect_err("digest mismatch");
 
-    assert!(error.to_string().contains("digest"), "unhelpful: {error}");
+    assert!(error.downcast_ref::<IntegrityMismatch>().is_some());
     assert_eq!(*used_bytes.lock().await, 0);
     assert_eq!(
         store.present_ranges("clip").await.expect("ranges"),

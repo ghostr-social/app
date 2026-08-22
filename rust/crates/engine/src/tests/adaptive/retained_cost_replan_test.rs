@@ -1,4 +1,4 @@
-use crate::adaptive::{AdaptivePlayabilityPolicy, InFlightRange, PlayabilitySnapshot};
+use crate::adaptive::{AdaptivePlayabilityPolicy, InFlightAction, PlayabilitySnapshot};
 use crate::tests::adaptive_support::snapshot;
 use crate::ByteRange;
 
@@ -13,7 +13,7 @@ fn packet_loss_updates_cost_evidence_for_the_same_retained_range() {
     let lossy = policy.plan(&input).retained.remove(0);
 
     assert_eq!(lossy.post, healthy.post);
-    assert_eq!(lossy.range, healthy.range);
+    assert_eq!(lossy.request, healthy.request);
     assert_eq!(lossy.source, healthy.source);
     assert!(
         lossy.utility.expected_delivery_ms > healthy.utility.expected_delivery_ms,
@@ -22,10 +22,11 @@ fn packet_loss_updates_cost_evidence_for_the_same_retained_range() {
 }
 
 fn add_commitment(input: &mut PlayabilitySnapshot) {
-    input.candidates[0].in_flight.push(InFlightRange {
-        bytes: ByteRange::new(0, 250_000),
-        source: "origin".to_owned(),
-        committed_until_ms: 12_000,
-        identity_current: true,
-    });
+    input.candidates[0].in_flight.push(InFlightAction::range(
+        crate::ActionId::new(1),
+        ByteRange::new(0, 250_000),
+        "https://origin.example/media",
+        12_000,
+        true,
+    ));
 }

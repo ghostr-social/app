@@ -1,7 +1,9 @@
-use super::super::boxes::{child, Atom};
+use super::super::boxes::Atom;
+use super::super::limits::ParserBudget;
 use super::super::TimelineError;
 
-const MAX_SAMPLES: usize = 1_000_000;
+mod read;
+use read::{byte, count_at, require_table_extent, required, u32_at, u64_at, validate_count};
 
 pub(super) struct TrackTables {
     pub(super) timescale: u32,
@@ -18,18 +20,22 @@ pub(super) struct ChunkSamples {
 }
 
 impl TrackTables {
-    pub(super) fn parse(mdhd: &Atom<'_>, stbl: &Atom<'_>) -> Result<Self, TimelineError> {
+    pub(super) fn parse(
+        mdhd: &Atom<'_>,
+        stbl: &[Atom<'_>],
+        budget: &mut ParserBudget<'_>,
+    ) -> Result<Self, TimelineError> {
         let timescale = parse_timescale(mdhd)?;
-        let durations = parse_durations(&required(stbl, b"stts")?)?;
-        let sizes = parse_sizes(&required(stbl, b"stsz")?)?;
-        if durations.len() != sizes.len() || sizes.is_empty() {
-            return Err(TimelineError::Malformed);
-        }
-        let offsets = match child(stbl, b"stco")? {
-            Some(atom) => parse_offsets(&atom, 4)?,
-            None => parse_offsets(&required(stbl, b"co64")?, 8)?,
+        let stsz = required(stbl, b"stsz")?;
+        let sample_count = count_at(stsz.payload(), 8)?;
+        budget.samples(sample_count)?;
+        let durations = parse_durations(&required(stbl, b"stts")?, sample_count, budget)?;
+        let sizes = parse_sizes(&stsz, sample_count, budget)?;
+        let offsets = match find(stbl, b"stco") {
+            Some(atom) => parse_offsets(&atom, 4, sample_count, budget)?,
+            None => parse_offsets(&required(stbl, b"co64")?, 8, sample_count, budget)?,
         };
-        let chunk_samples = parse_chunks(&required(stbl, b"stsc")?)?;
+        let chunk_samples = parse_chunks(&required(stbl, b"stsc")?, offsets.len(), budget)?;
         Ok(Self {
             timescale,
             durations,
@@ -54,50 +60,93 @@ fn parse_timescale(atom: &Atom<'_>) -> Result<u32, TimelineError> {
     Ok(value)
 }
 
-fn parse_durations(atom: &Atom<'_>) -> Result<Vec<u32>, TimelineError> {
+fn parse_durations(
+    atom: &Atom<'_>,
+    expected: usize,
+    budget: &mut ParserBudget<'_>,
+) -> Result<Vec<u32>, TimelineError> {
     let data = atom.payload();
     let count = count_at(data, 4)?;
-    let mut durations = Vec::new();
+    budget.table_work(count)?;
+    let mut durations = budget.vector(expected)?;
     for index in 0..count {
+        budget.work(1)?;
         let offset = 8 + index * 8;
         let samples = u32_at(data, offset)? as usize;
         let delta = u32_at(data, offset + 4)?;
-        if delta == 0 || durations.len().saturating_add(samples) > MAX_SAMPLES {
+        let Some(next) = durations.len().checked_add(samples) else {
+            return Err(TimelineError::Malformed);
+        };
+        if delta == 0 || next > expected {
             return Err(TimelineError::Malformed);
         }
-        durations.resize(durations.len() + samples, delta);
+        budget.resize(&mut durations, next, delta)?;
     }
-    Ok(durations)
+    (durations.len() == expected)
+        .then_some(durations)
+        .ok_or(TimelineError::Malformed)
 }
 
-fn parse_sizes(atom: &Atom<'_>) -> Result<Vec<u32>, TimelineError> {
+fn parse_sizes(
+    atom: &Atom<'_>,
+    expected: usize,
+    budget: &mut ParserBudget<'_>,
+) -> Result<Vec<u32>, TimelineError> {
     let data = atom.payload();
     let fixed = u32_at(data, 4)?;
     let count = count_at(data, 8)?;
-    if fixed > 0 {
-        return Ok(vec![fixed; count]);
+    if count != expected || count == 0 {
+        return Err(TimelineError::Malformed);
     }
-    (0..count)
-        .map(|index| u32_at(data, 12 + index * 4))
-        .collect()
+    budget.table_work(if fixed > 0 { 1 } else { count })?;
+    let mut sizes = budget.vector(count)?;
+    if fixed > 0 {
+        budget.resize(&mut sizes, count, fixed)?;
+        return Ok(sizes);
+    }
+    for index in 0..count {
+        budget.work(1)?;
+        sizes.push(u32_at(data, 12 + index * 4)?);
+    }
+    Ok(sizes)
 }
 
-fn parse_offsets(atom: &Atom<'_>, width: usize) -> Result<Vec<u64>, TimelineError> {
+fn parse_offsets(
+    atom: &Atom<'_>,
+    width: usize,
+    maximum: usize,
+    budget: &mut ParserBudget<'_>,
+) -> Result<Vec<u64>, TimelineError> {
     let data = atom.payload();
     let count = count_at(data, 4)?;
-    (0..count)
-        .map(|index| match width {
+    budget.table_work(count)?;
+    require_table_extent(data, count, width)?;
+    validate_count(count, maximum)?;
+    let mut offsets = budget.vector(count)?;
+    for index in 0..count {
+        budget.work(1)?;
+        let offset = match width {
             4 => u32_at(data, 8 + index * width).map(u64::from),
             _ => u64_at(data, 8 + index * width),
-        })
-        .collect()
+        }?;
+        offsets.push(offset);
+    }
+    Ok(offsets)
 }
 
-fn parse_chunks(atom: &Atom<'_>) -> Result<Vec<ChunkSamples>, TimelineError> {
+fn parse_chunks(
+    atom: &Atom<'_>,
+    maximum: usize,
+    budget: &mut ParserBudget<'_>,
+) -> Result<Vec<ChunkSamples>, TimelineError> {
     let data = atom.payload();
     let count = count_at(data, 4)?;
-    let mut entries = Vec::with_capacity(count);
+    budget.table_work(count)?;
+    require_table_extent(data, count, 12)?;
+    validate_count(count, maximum)?;
+    let mut entries = budget.vector(count)?;
     for index in 0..count {
+        budget.work(1)?;
         let offset = 8 + index * 12;
         entries.push(ChunkSamples {
             first_chunk: u32_at(data, offset)?,
@@ -110,32 +159,6 @@ fn parse_chunks(atom: &Atom<'_>) -> Result<Vec<ChunkSamples>, TimelineError> {
     Ok(entries)
 }
 
-fn required<'a>(parent: &Atom<'a>, kind: &[u8; 4]) -> Result<Atom<'a>, TimelineError> {
-    child(parent, kind)?.ok_or(TimelineError::Malformed)
-}
-
-fn count_at(data: &[u8], offset: usize) -> Result<usize, TimelineError> {
-    let count = u32_at(data, offset)? as usize;
-    if count > MAX_SAMPLES {
-        return Err(TimelineError::Malformed);
-    }
-    Ok(count)
-}
-
-fn byte(data: &[u8], offset: usize) -> Result<u8, TimelineError> {
-    data.get(offset).copied().ok_or(TimelineError::Truncated)
-}
-
-fn u32_at(data: &[u8], offset: usize) -> Result<u32, TimelineError> {
-    let bytes = data
-        .get(offset..offset + 4)
-        .ok_or(TimelineError::Truncated)?;
-    Ok(u32::from_be_bytes(bytes.try_into().unwrap()))
-}
-
-fn u64_at(data: &[u8], offset: usize) -> Result<u64, TimelineError> {
-    let bytes = data
-        .get(offset..offset + 8)
-        .ok_or(TimelineError::Truncated)?;
-    Ok(u64::from_be_bytes(bytes.try_into().unwrap()))
+fn find<'a>(parent: &[Atom<'a>], kind: &[u8; 4]) -> Option<Atom<'a>> {
+    parent.iter().copied().find(|atom| &atom.kind == kind)
 }

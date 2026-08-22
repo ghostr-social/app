@@ -9,24 +9,39 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex as StdMutex};
-use tokio::sync::{Mutex, Notify};
+use tokio::sync::{Mutex, Notify, RwLock};
 
+mod action;
 mod admission;
 pub mod capacity;
+mod cleanup_debt;
 mod clear;
+mod discard;
 mod eviction;
 mod finalize;
 pub mod free_space;
 mod generation;
+mod keyed_updates;
 pub mod leases;
 mod policy_eviction;
+mod policy_intent;
 mod queries;
 mod reload;
+mod replacement_cleanup;
 mod representation;
+mod response;
+mod single_response;
+mod sparse_intent;
+mod transform;
 mod writes;
 
+pub use action::{ActionReservationExtension, StoreAction};
 pub use admission::OutOfSpace;
-pub use representation::RepresentationRead;
+pub use policy_eviction::EvictionOutcome;
+pub use queries::{StoredEvidenceId, StoredMediaSnapshot};
+pub use representation::{ContentRevision, RepresentationRead};
+pub use response::ResponseOpenResult;
+pub use transform::{TransformFence, TransformPublication, TransformPublicationOutcome};
 
 pub(crate) type Entries = HashMap<String, Entry>;
 
@@ -47,9 +62,16 @@ pub struct PartialRangeStore {
     refused: Mutex<Option<u64>>,
     refusals: AtomicU64,
     representations: Mutex<HashMap<String, RepresentationBinding>>,
-    representation_updates: Mutex<()>,
+    representation_updates: RwLock<()>,
+    keyed_updates: keyed_updates::KeyedUpdates,
+    capacity_updates: Mutex<()>,
     selected_transfers: StdMutex<HashMap<String, TransferIdentity>>,
     source_generations: Mutex<HashMap<String, (String, SourceGeneration)>>,
+    sparse_response_actions: Mutex<HashMap<u64, generation::SparseResponseState>>,
+    single_response_actions: Mutex<HashMap<String, single_response::SingleResponseState>>,
+    action_reservations: Mutex<action::ActionReservations>,
+    cleanup_debts: Mutex<cleanup_debt::CleanupDebts>,
+    content_revisions: Mutex<HashMap<String, u64>>,
 }
 
 impl PartialRangeStore {
@@ -71,15 +93,21 @@ impl PartialRangeStore {
             refused: Mutex::new(None),
             refusals: AtomicU64::new(0),
             representations: Mutex::new(HashMap::new()),
-            representation_updates: Mutex::new(()),
+            representation_updates: RwLock::new(()),
+            keyed_updates: keyed_updates::KeyedUpdates::default(),
+            capacity_updates: Mutex::new(()),
             selected_transfers: StdMutex::new(HashMap::new()),
             source_generations: Mutex::new(HashMap::new()),
+            sparse_response_actions: Mutex::new(HashMap::new()),
+            single_response_actions: Mutex::new(HashMap::new()),
+            action_reservations: Mutex::new(HashMap::new()),
+            cleanup_debts: Mutex::new(HashMap::new()),
+            content_revisions: Mutex::new(HashMap::new()),
         }
     }
 
-    /// Woken (`notify_waiters`) after every range write, every total
-    /// length declaration and every promotion out of the partial pool;
-    /// readers register before re-checking the store.
+    /// Woken (`notify_waiters`) after stored-byte or binding-authority
+    /// changes; readers register before re-checking the store.
     pub fn change_notifier(&self) -> Arc<Notify> {
         self.changed.clone()
     }
@@ -88,16 +116,6 @@ impl PartialRangeStore {
     /// evicts some other video instead of one that is in use.
     pub fn lease(&self, key: &str) -> StoreLease {
         self.leases.acquire(key)
-    }
-
-    async fn discard(&self, entries: &mut Entries, key: &str) -> Result<()> {
-        for path in self.paths.all(key) {
-            disk::remove_if_present(&path).await?;
-        }
-        if let Some(entry) = entries.remove(key) {
-            self.release(entry.accounted).await;
-        }
-        Ok(())
     }
 
     async fn entry<'a>(&self, entries: &'a mut Entries, key: &str) -> Result<&'a mut Entry> {

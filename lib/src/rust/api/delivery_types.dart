@@ -6,7 +6,7 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 /// One per-post delivery update streamed to Dart.
 class FfiDeliveryEvent {
@@ -83,6 +83,9 @@ class FfiFocusItem {
   final BigInt? sizeBytes;
   final BigInt? durationMs;
 
+  /// Inline-only preview payload; remote thumbnails are not readiness.
+  final String? blurhash;
+
   const FfiFocusItem({
     required this.postId,
     required this.urls,
@@ -90,6 +93,7 @@ class FfiFocusItem {
     this.sha256,
     this.sizeBytes,
     this.durationMs,
+    this.blurhash,
   });
 
   @override
@@ -99,7 +103,8 @@ class FfiFocusItem {
       delivery.hashCode ^
       sha256.hashCode ^
       sizeBytes.hashCode ^
-      durationMs.hashCode;
+      durationMs.hashCode ^
+      blurhash.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -111,8 +116,155 @@ class FfiFocusItem {
           delivery == other.delivery &&
           sha256 == other.sha256 &&
           sizeBytes == other.sizeBytes &&
-          durationMs == other.durationMs;
+          durationMs == other.durationMs &&
+          blurhash == other.blurhash;
 }
 
 /// How the engine delivers one playable media item.
 enum FfiMediaDelivery { progressive, hls }
+
+/// One exact loopback asset selected for current or adjacent-next use.
+class FfiPlaybackPreparationAsset {
+  final String deliveryId;
+  final String representationId;
+  final String assetId;
+  final String playbackUrl;
+  final FfiPlaybackPreparationReadiness readiness;
+
+  const FfiPlaybackPreparationAsset({
+    required this.deliveryId,
+    required this.representationId,
+    required this.assetId,
+    required this.playbackUrl,
+    required this.readiness,
+  });
+
+  @override
+  int get hashCode =>
+      deliveryId.hashCode ^
+      representationId.hashCode ^
+      assetId.hashCode ^
+      playbackUrl.hashCode ^
+      readiness.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FfiPlaybackPreparationAsset &&
+          runtimeType == other.runtimeType &&
+          deliveryId == other.deliveryId &&
+          representationId == other.representationId &&
+          assetId == other.assetId &&
+          playbackUrl == other.playbackUrl &&
+          readiness == other.readiness;
+}
+
+/// Atomic playback preparation window from one manager plan.
+class FfiPlaybackPreparationPlan {
+  final BigInt revision;
+
+  /// The focused delivery even while no exact progressive asset exists.
+  final String? currentDeliveryId;
+  final FfiPlaybackPreparationAsset? current;
+
+  /// Every certified upcoming asset, in feed order.
+  final List<FfiPlaybackPreparationAsset> upcoming;
+
+  /// Compatibility projection of the first upcoming asset.
+  final FfiPlaybackPreparationAsset? next;
+
+  const FfiPlaybackPreparationPlan({
+    required this.revision,
+    this.currentDeliveryId,
+    this.current,
+    required this.upcoming,
+    this.next,
+  });
+
+  @override
+  int get hashCode =>
+      revision.hashCode ^
+      currentDeliveryId.hashCode ^
+      current.hashCode ^
+      upcoming.hashCode ^
+      next.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FfiPlaybackPreparationPlan &&
+          runtimeType == other.runtimeType &&
+          revision == other.revision &&
+          currentDeliveryId == other.currentDeliveryId &&
+          current == other.current &&
+          upcoming == other.upcoming &&
+          next == other.next;
+}
+
+/// What the native cache has proved for one exact playback asset.
+enum FfiPlaybackPreparationReadiness { preparing, structuralStartable }
+
+/// Authority and monotonic ordering for a player-preparation update.
+class FfiPlayerPreparationReport {
+  final String postId;
+  final String representationId;
+  final String assetId;
+  final BigInt playerCapabilityGeneration;
+  final BigInt clientEpoch;
+  final BigInt attemptGeneration;
+  final BigInt sequence;
+  final FfiPlayerPreparationState state;
+  final String? failureKind;
+  final BigInt observedMonotonicUs;
+
+  const FfiPlayerPreparationReport({
+    required this.postId,
+    required this.representationId,
+    required this.assetId,
+    required this.playerCapabilityGeneration,
+    required this.clientEpoch,
+    required this.attemptGeneration,
+    required this.sequence,
+    required this.state,
+    this.failureKind,
+    required this.observedMonotonicUs,
+  });
+
+  @override
+  int get hashCode =>
+      postId.hashCode ^
+      representationId.hashCode ^
+      assetId.hashCode ^
+      playerCapabilityGeneration.hashCode ^
+      clientEpoch.hashCode ^
+      attemptGeneration.hashCode ^
+      sequence.hashCode ^
+      state.hashCode ^
+      failureKind.hashCode ^
+      observedMonotonicUs.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FfiPlayerPreparationReport &&
+          runtimeType == other.runtimeType &&
+          postId == other.postId &&
+          representationId == other.representationId &&
+          assetId == other.assetId &&
+          playerCapabilityGeneration == other.playerCapabilityGeneration &&
+          clientEpoch == other.clientEpoch &&
+          attemptGeneration == other.attemptGeneration &&
+          sequence == other.sequence &&
+          state == other.state &&
+          failureKind == other.failureKind &&
+          observedMonotonicUs == other.observedMonotonicUs;
+}
+
+/// Native-player evidence for one exact progressive playback attempt.
+enum FfiPlayerPreparationState {
+  initializing,
+  initialized,
+  firstFrameRendered,
+  failed,
+  released,
+}

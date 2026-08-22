@@ -8,6 +8,7 @@ extension _VideoPlayerSurfaceTelemetry on _VideoPlayerSurfaceState {
     final session = _playbackSession ??= _openPlaybackSession();
     if (session != null) widget.telemetry.activate(session);
     _captureObservation(value);
+    _schedulePresentedFrame();
   }
 
   bool _captureObservation(VideoPlayerValue value) {

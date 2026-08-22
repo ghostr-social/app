@@ -1,24 +1,37 @@
 use super::DeliveryState;
+use crate::delivery_events::DeliveryCandidate;
 use ghostr_engine::representation::RepresentationBinding;
-use ghostr_engine::video_rendition::VideoRendition;
-use ghostr_engine::{PostId, VideoMeta};
+use ghostr_engine::{PostId, PreviewDescriptor, VideoMeta};
 use std::collections::HashSet;
 
 impl DeliveryState {
-    pub(super) fn upsert_progressive(&mut self, post: PostId, meta: VideoMeta) {
-        let previous = self.catalog.binding(&post);
-        let binding = self.catalog.upsert(post, meta);
-        self.accept_binding(previous, binding);
-    }
-
-    pub(super) fn upsert_progressive_renditions(
+    pub(super) fn upsert_progressive(
         &mut self,
         post: PostId,
         meta: VideoMeta,
-        renditions: Vec<VideoRendition>,
+        preview: Option<PreviewDescriptor>,
     ) {
         let previous = self.catalog.binding(&post);
-        let binding = self.catalog.upsert_with_renditions(post, meta, renditions);
+        let binding = self.catalog.upsert(post.clone(), meta);
+        if let Some(preview) = preview {
+            self.catalog.set_preview(&post, Some(preview));
+        }
+        self.accept_binding(previous, binding);
+    }
+
+    pub(super) fn upsert_progressive_candidate(&mut self, candidate: DeliveryCandidate) {
+        let post = candidate.post;
+        let preview = candidate.preview;
+        let previous = self.catalog.binding(&post);
+        let binding = self.catalog.upsert_with_evidence(
+            post.clone(),
+            candidate.meta,
+            candidate.renditions,
+            candidate.metadata_evidence,
+        );
+        if let Some(preview) = preview {
+            self.catalog.set_preview(&post, Some(preview));
+        }
         self.accept_binding(previous, binding);
     }
 
@@ -70,5 +83,6 @@ impl DeliveryState {
             .retain(|binding| retained.contains(binding.post()));
         self.changed_representations
             .retain(|post| retained.contains(post));
+        self.prune_player_preparation_scope();
     }
 }

@@ -28,12 +28,13 @@ async fn admitted_body_recovers_when_capacity_disappears_before_its_write() {
     space.set(16);
     wait_for_complete(&harness).await;
 
-    let retries = origin
-        .requests()
-        .iter()
-        .filter(|range| **range == refused_range)
-        .count();
-    assert_eq!(retries, 2, "the refused range must retry exactly once");
+    let requests = origin.requests();
+    assert_eq!(requests.first(), Some(&refused_range));
+    assert_eq!(
+        requests.len(),
+        2,
+        "the refused body must retry exactly once"
+    );
     assert_eq!(harness.store.refusals(), 1);
     harness.handle.clear().await.unwrap();
     drop(harness);

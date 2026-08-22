@@ -13,6 +13,7 @@ pub(super) enum HeadBehavior {
     Rejected,
     Lengthless,
     RangeOpaque,
+    RangeBlindSplit,
     DeferredFailure,
 }
 
@@ -20,6 +21,8 @@ pub(super) enum HeadBehavior {
 pub(super) struct OriginState {
     pub(super) bytes: Arc<Vec<u8>>,
     pub(super) requests: RequestLedger,
+    pub(super) prefix_ready: Arc<tokio::sync::Semaphore>,
+    pub(super) release: Arc<tokio::sync::Semaphore>,
     head: HeadBehavior,
 }
 
@@ -37,6 +40,8 @@ pub(super) async fn start(bytes: Vec<u8>, head: HeadBehavior) -> RunningOrigin {
     let state = OriginState {
         bytes: Arc::new(bytes),
         requests: RequestLedger::default(),
+        prefix_ready: Arc::new(tokio::sync::Semaphore::new(0)),
+        release: Arc::new(tokio::sync::Semaphore::new(0)),
         head,
     };
     let app = Router::new()
@@ -68,6 +73,7 @@ async fn serve(State(state): State<OriginState>, method: Method, headers: Header
                 response::lengthless_head()
             }
             HeadBehavior::RangeOpaque => response::range_opaque_head(state.bytes.len()),
+            HeadBehavior::RangeBlindSplit => response::range_blind_head(state.bytes.len()),
             HeadBehavior::DeferredFailure => {
                 tokio::time::sleep(std::time::Duration::from_millis(20)).await;
                 response::lengthless_head()
@@ -83,6 +89,9 @@ async fn serve(State(state): State<OriginState>, method: Method, headers: Header
     if matches!(state.head, HeadBehavior::DeferredFailure) {
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         return response::failed_body();
+    }
+    if matches!(state.head, HeadBehavior::RangeBlindSplit) {
+        return response::range_blind_split(state.bytes, state.prefix_ready, state.release);
     }
     response::partial(&state.bytes, &headers)
 }

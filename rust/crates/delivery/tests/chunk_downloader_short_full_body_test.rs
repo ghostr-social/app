@@ -17,10 +17,11 @@ async fn short_200_body_completes_a_larger_speculative_grant() {
     let (_handle, token) = cancel_pair();
     let mut stats = HostStats::new();
     let spec = ChunkSpec {
-        client: &client,
+        requests: &client,
         url: &url,
-        range: ByteRange::new(0, 256 * 1024),
+        request: range_fixture::range_request(ByteRange::new(0, 256 * 1024)),
         continuation: None,
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {
@@ -28,10 +29,13 @@ async fn short_200_body_completes_a_larger_speculative_grant() {
         key: "clip",
     };
 
-    let result =
-        download_chunk_throttled(&spec, &sink, &mut stats, &token, &range_fixture::network())
-            .await
-            .expect("short full-body download");
+    let result = download_chunk_throttled(
+        &spec,
+        &sink,
+        range_fixture::context(&mut stats, &token, &range_fixture::network()),
+    )
+    .await
+    .expect("short full-body download");
 
     assert_eq!(result.bytes_written, bytes.len() as u64);
     assert_eq!(result.total_bytes, Some(bytes.len() as u64));

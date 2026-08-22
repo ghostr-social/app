@@ -7,6 +7,7 @@ use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::{base_params, DeliveryOptions};
 use delivery_fixture::start_harness;
 use ghostr_engine::{DataUsageLevel, EngineParams};
+use std::num::NonZeroUsize;
 use std::time::Duration;
 use tokio::time::timeout;
 
@@ -38,7 +39,7 @@ async fn higher_data_usage_admits_a_distinct_planned_post() {
 
 /// Whole-file chunks; one slot when conservative, two when aggressive.
 fn capped_options() -> DeliveryOptions {
-    DeliveryOptions {
+    let mut options = DeliveryOptions {
         params: EngineParams {
             chunk_bytes: 16,
             conservative_concurrency: 1,
@@ -47,5 +48,7 @@ fn capped_options() -> DeliveryOptions {
         },
         level: DataUsageLevel::Conservative,
         ..DeliveryOptions::default()
-    }
+    };
+    options.tuning.max_requests_per_authority = NonZeroUsize::new(2);
+    options
 }

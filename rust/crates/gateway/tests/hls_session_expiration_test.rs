@@ -5,7 +5,7 @@ use std::time::Duration;
 #[tokio::test(start_paused = true)]
 async fn expired_sessions_cannot_be_used_and_release_capacity() {
     let ttl = Duration::from_secs(10);
-    let limits = HlsSessionLimits::new(1, ttl).expect("limits");
+    let limits = HlsSessionLimits::new(1, ttl, 8).expect("limits");
     let sessions = HlsSessions::new(limits);
     let id = sessions
         .acquire(vec!["https://media.example/live.m3u8".to_owned()])

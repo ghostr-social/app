@@ -3,10 +3,10 @@
 
 use crate::api::delivery_types::{FfiFocusItem, FfiMediaDelivery};
 use crate::api::focus_control::{FfiFocusTransition, FfiTransportRescue, FfiTransportRescueReason};
-use crate::engine::{DeliveryKind, PostId, VideoMeta};
+use crate::engine::{DeliveryKind, PostId, PreviewDescriptor, VideoMeta};
 use anyhow::{bail, Result};
 use ghostr_delivery::delivery_events::{
-    DeliveryFocus, FocusGeneration, FocusItem, FocusTransition, TransportRescue,
+    DeliveryFocus, FocusGeneration, FocusItem, FocusPreview, FocusTransition, TransportRescue,
     TransportRescueReason,
 };
 
@@ -80,6 +80,7 @@ pub(crate) fn delivery_focus(
     let Some(generation) = FocusGeneration::try_new(generation) else {
         bail!("focus generation must be positive");
     };
+    let previews = items.iter().filter_map(focus_preview).collect::<Vec<_>>();
     let items = items.iter().map(focus_item).collect::<Result<Vec<_>>>()?;
     let transition: FocusTransition = transition.into();
     if (transition == FocusTransition::TransportRescue) != rescue.is_some() {
@@ -87,6 +88,7 @@ pub(crate) fn delivery_focus(
     }
     Ok(DeliveryFocus {
         items,
+        previews,
         current_index: current_index as usize,
         watch_ms,
         generation,
@@ -96,5 +98,12 @@ pub(crate) fn delivery_focus(
             rank_displacement: rescue.rank_displacement,
             wait_ms: rescue.wait_ms,
         }),
+    })
+}
+
+fn focus_preview(item: &FfiFocusItem) -> Option<FocusPreview> {
+    Some(FocusPreview {
+        post: PostId::new(item.post_id.clone()),
+        descriptor: PreviewDescriptor::inline_blurhash(item.blurhash.as_deref()?)?,
     })
 }

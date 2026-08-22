@@ -34,10 +34,10 @@ async fn delivery_manager_resumes_from_the_persisted_manifest() {
         .into_iter()
         .filter(|hit| hit.contains(":GET:"))
         .collect();
-    assert!(
-        recorded.iter().all(|hit| hit.starts_with("origin:GET:8-")),
-        "only the missing tail may be fetched: {recorded:?}"
+    assert_eq!(
+        recorded,
+        vec!["origin:GET:8-15:if-range=\"fixture-media\""],
+        "the missing tail must resume its persisted generation"
     );
-    assert!(!recorded.is_empty());
     std::fs::remove_dir_all(&harness.root).ok();
 }

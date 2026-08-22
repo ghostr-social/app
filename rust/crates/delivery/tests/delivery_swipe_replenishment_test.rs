@@ -8,7 +8,7 @@ use delivery_fixture::start_harness;
 use std::time::Duration;
 
 #[tokio::test]
-async fn swipe_cancels_stale_work_and_starts_the_new_forward_edge() {
+async fn swipe_cancels_speculation_and_fills_the_reserved_playback_slot() {
     let mut origins = Origins::serve().await;
     let mut options = DeliveryOptions::default();
     options.params.balanced_concurrency = 4;
@@ -30,9 +30,9 @@ async fn swipe_cancels_stale_work_and_starts_the_new_forward_edge() {
         .handle
         .report_playback(playing("p3", Duration::from_secs(20)));
 
-    let edge = next_request("p5", &mut origins.posts[5]).await;
+    let current = next_request("p3 critical", &mut origins.posts[3]).await;
     wait_cancelled(&active[0]).await;
-    assert!(edge.send_byte().await, "new forward edge is live");
+    assert!(current.send_byte().await, "new current request is live");
     harness.handle.clear().await.unwrap();
     std::fs::remove_dir_all(&harness.root).ok();
 }
@@ -69,7 +69,7 @@ impl Origins {
 
     async fn first_window(&mut self) -> Vec<ActiveRequest> {
         let mut requests = Vec::new();
-        for index in 1..=4 {
+        for index in 2..=4 {
             requests.push(next_request(id(index), &mut self.posts[index]).await);
         }
         requests

@@ -13,6 +13,13 @@ async fn an_open_ended_player_request_demands_only_the_next_bounded_window() {
     let mut harness = progressive_harness("ghostr-progressive-demand-bound");
     harness.posts.insert("clip");
     harness
+        .bind_video(
+            "clip",
+            "https://cdn.example/clip.mp4",
+            Some(LARGE_VIDEO_BYTES),
+        )
+        .await;
+    harness
         .store
         .set_total_len("clip", LARGE_VIDEO_BYTES)
         .await

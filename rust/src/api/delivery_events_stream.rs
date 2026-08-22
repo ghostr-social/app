@@ -111,7 +111,7 @@ async fn emit_post(out: &impl EventOut, pass: &mut Pass<'_>, id: &str, meta: &Vi
     if meta.delivery == DeliveryKind::Hls {
         return emit_hls(out, pass, id);
     }
-    let (ranges, stored_total) = match store_view(pass.store, id).await {
+    let (ranges, stored_total) = match store_view(pass.store, id, meta).await {
         Ok(view) => view,
         Err(error) => return out.send(error_event(id, error.to_string())),
     };
@@ -141,11 +141,19 @@ fn emit_hls(out: &impl EventOut, pass: &mut Pass<'_>, id: &str) -> bool {
 async fn store_view(
     store: &PartialRangeStore,
     id: &str,
+    meta: &VideoMeta,
 ) -> anyhow::Result<(Vec<ByteRange>, Option<u64>)> {
-    let spans = store.present_ranges(id).await?;
-    let ranges = spans
-        .into_iter()
+    let snapshot = store.media_snapshot(id).await?;
+    if !snapshot
+        .binding()
+        .is_some_and(|binding| binding.matches_meta(meta))
+    {
+        return Ok((Vec::new(), None));
+    }
+    let ranges = snapshot
+        .ranges()
+        .iter()
         .map(|span| ByteRange::new(span.start, span.end))
         .collect();
-    Ok((ranges, store.total_len(id).await?))
+    Ok((ranges, snapshot.total_len()))
 }

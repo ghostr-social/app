@@ -47,15 +47,21 @@ impl Display for HlsResourceId {
 pub struct HlsSessionLimits {
     pub(crate) max_sessions: usize,
     pub(crate) idle_ttl: Duration,
+    pub(crate) max_ranged_assets: usize,
 }
 
 impl HlsSessionLimits {
-    pub fn new(max_sessions: usize, idle_ttl: Duration) -> Result<Self> {
+    pub fn new(max_sessions: usize, idle_ttl: Duration, max_ranged_assets: usize) -> Result<Self> {
         ensure!(max_sessions > 0, "HLS session capacity must be positive");
         ensure!(!idle_ttl.is_zero(), "HLS session TTL must be positive");
+        ensure!(
+            max_ranged_assets > 0,
+            "HLS ranged asset capacity must be positive"
+        );
         Ok(Self {
             max_sessions,
             idle_ttl,
+            max_ranged_assets,
         })
     }
 }

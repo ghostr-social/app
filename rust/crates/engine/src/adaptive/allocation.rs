@@ -1,5 +1,5 @@
 use super::admission::admitted;
-use super::allocation_evidence::{allocation, AllocationInputs};
+use super::allocation_evidence::{allocation, whole_allocation, AllocationInputs};
 use super::allocation_geometry::{fit_to_budget, overlaps_planned, request_slices};
 use super::plan::{AllocationPlan, AllocationReason};
 use super::ranges::{missing, missing_playable};
@@ -27,17 +27,37 @@ pub(super) fn append_candidate(
     snapshot: &PlayabilitySnapshot,
     inputs: AppendInputs<'_>,
 ) -> u64 {
+    if has_exclusive_action(inputs.candidate) {
+        return inputs.budget;
+    }
     let Some(origin) = best_origin(inputs.candidate) else {
         return inputs.budget;
     };
     if !admitted_for_reason(snapshot, &inputs, origin) {
         return inputs.budget;
     }
+    if inputs.candidate.layout == MediaLayout::RequiresCompleteFile {
+        return append_whole(plan, snapshot, origin, inputs);
+    }
     if inputs.reason == Some(AllocationReason::MediaBootstrap) {
         return append_bootstrap(plan, snapshot, origin, inputs);
     }
     let budget = append_timeline_probe(plan, snapshot, origin, &inputs);
     append_ranges(plan, snapshot, origin, AppendInputs { budget, ..inputs })
+}
+
+fn has_exclusive_action(candidate: &CandidateSnapshot) -> bool {
+    candidate.in_flight.iter().any(|active| {
+        active.identity_current
+            && matches!(
+                active.request,
+                super::RetrievalRequest::FetchWhole { .. }
+                    | super::RetrievalRequest::FetchRange {
+                        promotion: Some(_),
+                        ..
+                    }
+            )
+    })
 }
 
 fn append_bootstrap(
@@ -52,7 +72,7 @@ fn append_bootstrap(
     if playable.bytes.is_empty() || overlaps_planned(plan, inputs.candidate, playable.bytes) {
         return inputs.budget;
     }
-    plan.allocations.push(allocation(
+    let work = allocation(
         snapshot,
         AllocationInputs {
             candidate: inputs.candidate,
@@ -60,9 +80,45 @@ fn append_bootstrap(
             playable,
             emergency: inputs.emergency,
             reason: inputs.reason,
+            reservation_budget: inputs.budget,
+        },
+    );
+    let reserved = work.request.reserved_network_bytes();
+    plan.allocations.push(work);
+    inputs.budget.saturating_sub(reserved)
+}
+
+fn append_whole(
+    plan: &mut AllocationPlan,
+    snapshot: &PlayabilitySnapshot,
+    origin: &OriginHealth,
+    inputs: AppendInputs<'_>,
+) -> u64 {
+    let Some(total) = inputs.candidate.total_bytes else {
+        return inputs.budget;
+    };
+    let bytes = crate::ByteRange::new(0, total);
+    if total > inputs.budget || missing(inputs.candidate).is_empty() {
+        return inputs.budget;
+    }
+    if overlaps_planned(plan, inputs.candidate, bytes) {
+        return inputs.budget;
+    }
+    plan.allocations.push(whole_allocation(
+        snapshot,
+        AllocationInputs {
+            candidate: inputs.candidate,
+            origin,
+            playable: PlayableRange {
+                bytes,
+                playable_ms: inputs.candidate.duration_ms,
+            },
+            emergency: inputs.emergency,
+            reason: inputs.reason,
+            reservation_budget: inputs.budget,
         },
     ));
-    inputs.budget.saturating_sub(playable.bytes.len())
+    inputs.budget.saturating_sub(total)
 }
 
 fn bootstrap_missing(
@@ -106,7 +162,7 @@ fn append_timeline_probe(
         if overlaps_planned(plan, inputs.candidate, playable.bytes) {
             continue;
         }
-        plan.allocations.push(allocation(
+        let work = allocation(
             snapshot,
             AllocationInputs {
                 candidate: inputs.candidate,
@@ -114,9 +170,16 @@ fn append_timeline_probe(
                 playable,
                 emergency: inputs.emergency,
                 reason: Some(AllocationReason::MediaLayoutDiscovery),
+                reservation_budget: budget,
             },
-        ));
-        budget = budget.saturating_sub(playable.bytes.len());
+        );
+        let reserved = work.request.reserved_network_bytes();
+        let promoted = work.request.promotion().is_some();
+        plan.allocations.push(work);
+        budget = budget.saturating_sub(reserved);
+        if promoted {
+            break;
+        }
     }
     budget
 }
@@ -140,7 +203,7 @@ fn append_ranges(
         if overlaps_planned(plan, inputs.candidate, playable.bytes) {
             continue;
         }
-        plan.allocations.push(allocation(
+        let work = allocation(
             snapshot,
             AllocationInputs {
                 candidate: inputs.candidate,
@@ -148,10 +211,17 @@ fn append_ranges(
                 playable,
                 emergency: inputs.emergency,
                 reason: inputs.reason,
+                reservation_budget: budget,
             },
-        ));
+        );
+        let reserved = work.request.reserved_network_bytes();
+        let promoted = work.request.promotion().is_some();
+        plan.allocations.push(work);
         gained = gained.saturating_add(playable.playable_ms);
-        budget = budget.saturating_sub(playable.bytes.len());
+        budget = budget.saturating_sub(reserved);
+        if promoted {
+            break;
+        }
     }
     budget
 }

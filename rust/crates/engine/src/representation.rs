@@ -1,8 +1,10 @@
 //! Stable media identity plus a runtime generation for same-post refreshes.
-use crate::{DeliveryKind, PostId, VideoMeta};
+use crate::{PostId, VideoMeta};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::fmt;
+
+mod derived;
+mod identity;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct RepresentationId(String);
@@ -28,6 +30,7 @@ pub struct InvalidSourceGeneration;
 pub struct RepresentationBinding {
     post: PostId,
     representation: RepresentationId,
+    derived_from: Option<RepresentationId>,
     generation: RepresentationGeneration,
     sources: Vec<SourceId>,
 }
@@ -42,13 +45,7 @@ pub struct TransferIdentity {
 
 impl RepresentationId {
     pub(crate) fn from_meta(meta: &VideoMeta) -> Self {
-        let mut digest = Sha256::new();
-        digest.update([delivery_tag(meta.delivery)]);
-        match &meta.sha256 {
-            Some(advertised) => field(&mut digest, advertised.as_bytes()),
-            None => hash_unverified(&mut digest, meta),
-        }
-        Self(format!("{:x}", digest.finalize()))
+        Self(identity::fingerprint(meta))
     }
 
     pub fn fingerprint(&self) -> &str {
@@ -137,6 +134,7 @@ impl RepresentationBinding {
         Self {
             post,
             representation: RepresentationId::from_meta(meta),
+            derived_from: None,
             generation,
             sources: meta.urls.iter().cloned().map(SourceId::new).collect(),
         }
@@ -148,6 +146,10 @@ impl RepresentationBinding {
 
     pub fn representation(&self) -> &RepresentationId {
         &self.representation
+    }
+
+    pub fn matches_meta(&self, meta: &VideoMeta) -> bool {
+        self.representation == RepresentationId::from_meta(meta)
     }
 
     pub fn transfer(&self, url: &str) -> Option<TransferIdentity> {
@@ -168,33 +170,5 @@ impl TransferIdentity {
 
     pub fn source(&self) -> &SourceId {
         &self.source
-    }
-}
-
-fn hash_unverified(digest: &mut Sha256, meta: &VideoMeta) {
-    let mut urls = meta.urls.clone();
-    urls.sort();
-    urls.dedup();
-    for url in urls {
-        field(digest, url.as_bytes());
-    }
-    optional_number(digest, meta.size_bytes);
-    optional_number(digest, meta.duration_ms);
-}
-
-fn field(digest: &mut Sha256, value: &[u8]) {
-    digest.update((value.len() as u64).to_be_bytes());
-    digest.update(value);
-}
-
-fn optional_number(digest: &mut Sha256, value: Option<u64>) {
-    digest.update([u8::from(value.is_some())]);
-    digest.update(value.unwrap_or_default().to_be_bytes());
-}
-
-fn delivery_tag(delivery: DeliveryKind) -> u8 {
-    match delivery {
-        DeliveryKind::Progressive => 0,
-        DeliveryKind::Hls => 1,
     }
 }

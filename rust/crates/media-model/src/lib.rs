@@ -1,5 +1,6 @@
 //! `ghostr-media-model` — extracted from `rust_lib_ghostr::video`.
 
+pub mod blossom;
 pub mod event_identity;
 pub mod imeta_extras;
 pub mod native_media_metadata;

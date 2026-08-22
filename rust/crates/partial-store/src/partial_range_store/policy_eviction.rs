@@ -1,127 +1,114 @@
-//! Exact policy-selected sparse eviction, serialized with writes.
+//! Exact policy-selected sparse eviction with crash-safe pair publication.
 
-use super::{Entries, PartialRangeStore};
-use crate::partial_range_disk::{self as disk, Entry};
-use crate::partial_range_manifest::RangeManifest;
-use anyhow::{ensure, Context, Result};
+use super::PartialRangeStore;
+use crate::partial_range_store::ContentRevision;
+use anyhow::{ensure, Result};
 use std::ops::Range;
-use std::path::Path;
-use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 
-const COPY_BUFFER_BYTES: usize = 64 * 1024;
+mod integrity;
+mod outcome;
+mod plan;
+mod preparation;
+pub(super) mod recovery;
+mod tail;
+mod transaction;
 
-struct EvictionPlan {
-    manifest: RangeManifest,
-    freed: u64,
-    accounted: u64,
-    completed: bool,
-}
+pub use outcome::EvictionOutcome;
 
 impl PartialRangeStore {
-    pub async fn evict_ranges(&self, key: &str, ranges: &[Range<u64>]) -> Result<u64> {
-        if ranges.is_empty() || self.leases.held(key) {
-            return Ok(0);
-        }
-        let mut entries = self.entries.lock().await;
-        let plan = plan(self.entry(&mut entries, key).await?, ranges);
-        if plan.freed == 0 {
-            return Ok(0);
-        }
-        if plan.completed {
-            return self.evict_complete(&mut entries, key, plan).await;
-        }
-        self.rewrite_partial(key, &plan.manifest).await?;
-        self.record_eviction(&mut entries, key, plan).await
+    pub async fn evict_ranges(&self, key: &str, ranges: &[Range<u64>]) -> Result<EvictionOutcome> {
+        self.evict_ranges_at_revision(key, ranges, None).await
     }
 
-    async fn evict_complete(
+    pub async fn evict_ranges_if_current(
         &self,
-        entries: &mut Entries,
         key: &str,
-        plan: EvictionPlan,
-    ) -> Result<u64> {
+        ranges: &[Range<u64>],
+        revision: ContentRevision,
+    ) -> Result<EvictionOutcome> {
+        self.evict_ranges_at_revision(key, ranges, Some(revision))
+            .await
+    }
+
+    async fn evict_ranges_at_revision(
+        &self,
+        key: &str,
+        ranges: &[Range<u64>],
+        revision: Option<ContentRevision>,
+    ) -> Result<EvictionOutcome> {
+        if ranges.is_empty() {
+            return Ok(EvictionOutcome::default());
+        }
+        let _update = self.update_key_raw(key).await;
+        self.retry_cleanup_debt_locked(key).await?;
+        let Some(lease) = self.leases.try_acquire_unheld(key) else {
+            return Ok(EvictionOutcome::default());
+        };
+        if self.reserved_keys().await.contains(key) {
+            return Ok(EvictionOutcome::default());
+        }
+        let Some(plan) = self.policy_plan(key, ranges, revision).await? else {
+            return Ok(EvictionOutcome::default());
+        };
+        Box::pin(self.apply_policy_plan(key, plan, &lease)).await
+    }
+
+    async fn policy_plan(
+        &self,
+        key: &str,
+        ranges: &[Range<u64>],
+        revision: Option<ContentRevision>,
+    ) -> Result<Option<plan::EvictionPlan>> {
+        let mut entries = self.entries.lock().await;
+        if let Some(expected) = revision {
+            if expected != self.current_content_revision(key).await {
+                return Ok(None);
+            }
+        }
+        let entry = self.entry(&mut entries, key).await?;
+        Ok(Some(plan::build(entry, ranges)))
+    }
+
+    async fn apply_policy_plan(
+        &self,
+        key: &str,
+        plan: plan::EvictionPlan,
+        lease: &super::leases::StoreLease,
+    ) -> Result<EvictionOutcome> {
+        if plan.outcome.freed_bytes() == 0 {
+            return Ok(plan.outcome);
+        }
+        if plan.completed || plan.retained.covered_bytes() == 0 {
+            return self.evict_entire(key, &plan, lease).await;
+        }
+        if let Err(error) = Box::pin(self.prepare_and_publish(key, &plan, lease)).await {
+            self.recover_after_policy_error(key, &error).await;
+            return Err(error);
+        }
+        Box::pin(self.recover_policy_transaction_locked(key)).await?;
+        Ok(plan.outcome)
+    }
+
+    async fn evict_entire(
+        &self,
+        key: &str,
+        plan: &plan::EvictionPlan,
+        lease: &super::leases::StoreLease,
+    ) -> Result<EvictionOutcome> {
         ensure!(
-            plan.freed == plan.accounted,
+            plan.outcome.freed_bytes() == plan.accounted,
             "cannot split a finalized video"
         );
-        self.discard(entries, key).await?;
+        ensure!(lease.is_exclusive(), "policy eviction acquired by a reader");
+        let mut entries = self.entries.lock().await;
+        self.discard(&mut entries, key).await?;
         self.changed.notify_waiters();
-        Ok(plan.freed)
+        Ok(plan.outcome.clone())
     }
 
-    async fn rewrite_partial(&self, key: &str, manifest: &RangeManifest) -> Result<()> {
-        let source = self.paths.partial(key);
-        let staging = self.paths.partial_staging(key);
-        let ranges = manifest.ranges();
-        rewrite_sparse(&source, &staging, &ranges).await?;
-        disk::save_manifest(&self.paths.manifest(key), manifest).await?;
-        match ranges.is_empty() {
-            true => disk::remove_if_present(&source).await?,
-            false => tokio::fs::rename(staging, source)
-                .await
-                .context("commit policy-evicted partial video")?,
+    async fn recover_after_policy_error(&self, key: &str, cause: &anyhow::Error) {
+        if let Err(error) = self.recover_policy_transaction_locked(key).await {
+            log::warn!("Policy transaction recovery failed after {cause:#}: {error:#}");
         }
-        Ok(())
     }
-
-    async fn record_eviction(
-        &self,
-        entries: &mut Entries,
-        key: &str,
-        plan: EvictionPlan,
-    ) -> Result<u64> {
-        let entry = entries.get_mut(key).context("evicted entry present")?;
-        entry.manifest = plan.manifest;
-        entry.accounted = entry.accounted.saturating_sub(plan.freed);
-        entry.touched = self.tick();
-        self.release(plan.freed).await;
-        self.changed.notify_waiters();
-        Ok(plan.freed)
-    }
-}
-
-fn plan(entry: &Entry, ranges: &[Range<u64>]) -> EvictionPlan {
-    let mut manifest = entry.manifest.clone();
-    let freed = ranges.iter().map(|range| manifest.remove(range)).sum();
-    EvictionPlan {
-        manifest,
-        freed,
-        accounted: entry.accounted,
-        completed: entry.completion.is_some(),
-    }
-}
-
-async fn rewrite_sparse(source: &Path, staging: &Path, ranges: &[Range<u64>]) -> Result<()> {
-    disk::remove_if_present(staging).await?;
-    if ranges.is_empty() {
-        return Ok(());
-    }
-    let mut input = tokio::fs::File::open(source)
-        .await
-        .context("open policy-evicted partial video")?;
-    let mut output = tokio::fs::File::create(staging)
-        .await
-        .context("create policy-evicted staging video")?;
-    for range in ranges {
-        copy_range(&mut input, &mut output, range).await?;
-    }
-    output.flush().await.context("flush policy-evicted video")
-}
-
-async fn copy_range(
-    input: &mut tokio::fs::File,
-    output: &mut tokio::fs::File,
-    range: &Range<u64>,
-) -> Result<()> {
-    input.seek(std::io::SeekFrom::Start(range.start)).await?;
-    output.seek(std::io::SeekFrom::Start(range.start)).await?;
-    let mut left = range.end.saturating_sub(range.start);
-    let mut buffer = vec![0; COPY_BUFFER_BYTES];
-    while left > 0 {
-        let length = left.min(buffer.len() as u64) as usize;
-        input.read_exact(&mut buffer[..length]).await?;
-        output.write_all(&buffer[..length]).await?;
-        left -= length as u64;
-    }
-    Ok(())
 }

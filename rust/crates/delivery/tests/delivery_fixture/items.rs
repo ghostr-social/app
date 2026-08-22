@@ -1,5 +1,4 @@
 //! Builders for focus updates fed to the delivery manager.
-
 use ghostr_delivery::delivery_events::DeliveryCandidate;
 use ghostr_delivery::delivery_events::{DeliveryFocus, FocusItem};
 use ghostr_engine::catalog::Catalog;
@@ -42,6 +41,8 @@ pub fn candidate(
     DeliveryCandidate {
         post: item.post,
         meta: item.meta,
+        preview: None,
+        metadata_evidence: Vec::new(),
         renditions: Vec::new(),
         discovered_at,
     }

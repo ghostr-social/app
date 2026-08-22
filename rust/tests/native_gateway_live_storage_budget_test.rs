@@ -14,6 +14,7 @@ async fn gateway_runtime_applies_live_storage_budget_to_progressive_media() {
             relays: Vec::new(),
             max_parallel_downloads: 1,
             max_storage_bytes: 800,
+            network_status: ghostr_delivery::delivery_events::DeliveryNetworkStatus::unavailable(),
             device_integration_origin: None,
         },
         Arc::new(client_with_event_cache()),

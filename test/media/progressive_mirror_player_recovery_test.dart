@@ -11,6 +11,7 @@ import 'package:video_player/video_player.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 import '../support/recovering_video_player_platform.dart';
+import '../support/video_player_surface_pump.dart';
 
 void main() {
   testWidgets(
@@ -53,6 +54,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
       await tester.pump();
+      await settleVideoPlayerTasks(tester);
 
       expect(requests, hasLength(2));
       expect(requests.first.urls, [

@@ -3,6 +3,7 @@ import 'package:ghostr/features/video_catalog/domain/feed_roster.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_follow_state.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_preparation_reducer.dart';
 
 sealed class FeedState {
   const FeedState(this.kind);
@@ -38,8 +39,11 @@ class FeedLoaded extends FeedState {
       kind,
       List<VideoPost>.unmodifiable(posts),
       activeIndex,
-      notice,
-      follows ?? FeedFollowState.unavailable(),
+      _FeedLoadedPresentation(
+        notice,
+        follows ?? FeedFollowState.unavailable(),
+        FeedPlaybackPreparation.unmanaged(),
+      ),
     );
   }
 
@@ -64,14 +68,16 @@ class FeedLoaded extends FeedState {
     super.kind,
     this.posts,
     this.activeIndex,
-    this.notice,
-    this.follows,
+    this._presentation,
   );
 
   final List<VideoPost> posts;
   final int activeIndex;
-  final String? notice;
-  final FeedFollowState follows;
+  final _FeedLoadedPresentation _presentation;
+
+  String? get notice => _presentation.notice;
+  FeedFollowState get follows => _presentation.follows;
+  FeedPlaybackPreparation get preparation => _presentation.preparation;
 
   bool canFollow(ProfileId profileId) => follows.canFollow(profileId);
 
@@ -79,45 +85,66 @@ class FeedLoaded extends FeedState {
   FeedRoster get roster => FeedRoster(posts, activeIndex: activeIndex);
 
   FeedLoaded withPage(int index) {
-    return FeedLoaded(
-      kind,
-      posts,
-      activeIndex: index,
-      notice: notice,
-      follows: follows,
-    );
+    return FeedLoaded._(kind, posts, index, _presentation);
   }
 
   FeedLoaded withPosts(List<VideoPost> updated) {
-    return FeedLoaded(
-      kind,
-      updated,
-      activeIndex: activeIndex,
-      follows: follows,
-    );
+    return FeedLoaded._(kind, updated, activeIndex, _presentation);
   }
 
   FeedLoaded withNotice(String message) {
-    return FeedLoaded(
+    return FeedLoaded._(
       kind,
       posts,
-      activeIndex: activeIndex,
-      notice: message,
-      follows: follows,
+      activeIndex,
+      _presentation.withNotice(message),
     );
   }
 
   FeedLoaded withoutNotice() {
-    return FeedLoaded(kind, posts, activeIndex: activeIndex, follows: follows);
+    return FeedLoaded._(
+      kind,
+      posts,
+      activeIndex,
+      _presentation.withNotice(null),
+    );
   }
 
   FeedLoaded withFollows(FeedFollowState updated) {
-    return FeedLoaded(
+    return FeedLoaded._(
       kind,
       posts,
-      activeIndex: activeIndex,
-      notice: notice,
-      follows: updated,
+      activeIndex,
+      _presentation.withFollows(updated),
     );
+  }
+
+  FeedLoaded withPreparation(FeedPlaybackPreparation updated) {
+    return FeedLoaded._(
+      kind,
+      posts,
+      activeIndex,
+      _presentation.withPreparation(updated),
+    );
+  }
+}
+
+final class _FeedLoadedPresentation {
+  const _FeedLoadedPresentation(this.notice, this.follows, this.preparation);
+
+  final String? notice;
+  final FeedFollowState follows;
+  final FeedPlaybackPreparation preparation;
+
+  _FeedLoadedPresentation withNotice(String? updated) {
+    return _FeedLoadedPresentation(updated, follows, preparation);
+  }
+
+  _FeedLoadedPresentation withFollows(FeedFollowState updated) {
+    return _FeedLoadedPresentation(notice, updated, preparation);
+  }
+
+  _FeedLoadedPresentation withPreparation(FeedPlaybackPreparation updated) {
+    return _FeedLoadedPresentation(notice, follows, updated);
   }
 }

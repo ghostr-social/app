@@ -11,6 +11,7 @@ final class DevicePlaybackProbe implements PlaybackTelemetryPort {
   final activations = <PlaybackSession>[];
   final deactivations = <PlaybackSession>[];
   final observations = <TimedPlaybackObservation>[];
+  final presentations = <PlaybackSession>[];
   var _nextGeneration = 0;
 
   Duration get elapsed => _watch.elapsed;
@@ -31,6 +32,9 @@ final class DevicePlaybackProbe implements PlaybackTelemetryPort {
   void report(PlaybackObservation observation) {
     observations.add(TimedPlaybackObservation(elapsed, observation));
   }
+
+  @override
+  void presented(PlaybackSession session) => presentations.add(session);
 
   @override
   void deactivate(PlaybackSession session) => deactivations.add(session);

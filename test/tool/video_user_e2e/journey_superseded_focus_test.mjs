@@ -29,7 +29,7 @@ test("rapidly superseded focus intents judge only the final visible destination"
 function sample(at_ms, current_time) {
   return {
     at_ms,
-    player: {id: "b", phase: "playing", current_time},
+    player: {id: "b", phase: "playing", presented: true, current_time},
     state: {videos: [
       {id: "b", downloaded_bytes: 500_000, total_bytes: 4_000_000},
       {id: "a", downloaded_bytes: 200_000, total_bytes: 4_000_000},

@@ -25,6 +25,9 @@ pub fn validate_url(url: &Url) -> Result<()> {
     if !matches!(url.scheme(), "http" | "https") {
         return Err(permanent("media URL scheme is not allowed"));
     }
+    if !url.username().is_empty() || url.password().is_some() {
+        return Err(permanent("media URL credentials are forbidden"));
+    }
     let host = url
         .host_str()
         .ok_or_else(|| permanent("media URL host is missing"))?;

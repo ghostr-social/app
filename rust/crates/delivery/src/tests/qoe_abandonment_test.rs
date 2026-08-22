@@ -23,6 +23,7 @@ fn inactive_before_end_is_abandonment_but_completion_is_not() {
         30,
     );
     tracker.observe(&second, PlaybackPhase::Playing, 1_000, 40);
+    tracker.present(&second, 40);
     tracker.observe(&second, PlaybackPhase::Ended, 0, 50);
     tracker.observe(&second, PlaybackPhase::Inactive, 0, 60);
 

@@ -3,6 +3,9 @@
 use anyhow::{bail, Result};
 use std::path::PathBuf;
 
+mod transform;
+pub(crate) use transform::TransformPaths;
+
 /// Names every file a key can own. Keeping them in one place is what
 /// makes eviction total: `all` is the removal list, so a new file kind
 /// cannot be forgotten there.
@@ -29,6 +32,75 @@ impl StorePaths {
         self.named(key, "part.tmp")
     }
 
+    pub fn policy_staging(&self, key: &str) -> PathBuf {
+        self.named(key, "part.evict")
+    }
+
+    pub fn policy_manifest_staging(&self, key: &str) -> PathBuf {
+        self.named(key, "ranges.evict")
+    }
+
+    pub fn policy_manifest_staging_temp(&self, key: &str) -> PathBuf {
+        self.named(key, "ranges.evict.tmp")
+    }
+
+    pub fn policy_data_backup(&self, key: &str) -> PathBuf {
+        self.named(key, "part.evict.old")
+    }
+
+    pub fn policy_manifest_backup(&self, key: &str) -> PathBuf {
+        self.named(key, "ranges.evict.old")
+    }
+
+    pub fn policy_intent(&self, key: &str) -> PathBuf {
+        self.named(key, "evict.intent")
+    }
+
+    pub fn policy_intent_staging(&self, key: &str) -> PathBuf {
+        self.named(key, "evict.intent.tmp")
+    }
+
+    pub fn sparse_intent(&self, key: &str) -> PathBuf {
+        self.named(key, "sparse.intent")
+    }
+
+    pub fn sparse_intent_staging(&self, key: &str) -> PathBuf {
+        self.named(key, "sparse.intent.tmp")
+    }
+
+    pub fn single_response(&self, key: &str) -> PathBuf {
+        self.named(key, "response.part")
+    }
+
+    pub fn single_response_manifest(&self, key: &str) -> PathBuf {
+        self.named(key, "response.ranges")
+    }
+
+    pub fn manifest_backup(&self, key: &str) -> PathBuf {
+        self.named(key, "ranges.prev")
+    }
+
+    pub fn generation_backup(&self, key: &str) -> PathBuf {
+        self.named(key, "generation.prev")
+    }
+
+    pub fn single_response_commit(&self, key: &str) -> PathBuf {
+        self.named(key, "response.commit")
+    }
+
+    pub fn single_response_artifacts(&self, key: &str) -> [PathBuf; 7] {
+        [
+            self.single_response(key),
+            self.single_response_manifest(key),
+            self.single_response_manifest(key)
+                .with_extension("json.tmp"),
+            self.partial_staging(key),
+            self.manifest_backup(key),
+            self.generation_backup(key),
+            self.single_response_commit(key),
+        ]
+    }
+
     /// The persisted set of present ranges of the partial file.
     pub fn manifest(&self, key: &str) -> PathBuf {
         self.named(key, "ranges.json")
@@ -47,13 +119,27 @@ impl StorePaths {
         self.named(key, "generation.json")
     }
 
-    /// Every file of the key, partial and completed alike.
-    pub fn all(&self, key: &str) -> [PathBuf; 10] {
-        [
+    /// Every payload file of the key. Policy intent is deliberately
+    /// excluded: destructive cleanup removes that authority last.
+    pub fn all(&self, key: &str) -> Vec<PathBuf> {
+        let mut paths = vec![
             self.partial(key),
             self.partial_staging(key),
+            self.policy_staging(key),
+            self.policy_manifest_staging(key),
+            self.policy_manifest_staging_temp(key),
+            self.policy_data_backup(key),
+            self.policy_manifest_backup(key),
+            self.policy_intent_staging(key),
+            self.sparse_intent(key),
+            self.sparse_intent_staging(key),
+            self.single_response(key),
+            self.single_response_manifest(key),
+            self.single_response_manifest(key)
+                .with_extension("json.tmp"),
             self.manifest(key),
             self.manifest(key).with_extension("json.tmp"),
+            self.manifest_backup(key),
             self.completed(key),
             self.verified(key),
             self.representation(key),
@@ -61,7 +147,15 @@ impl StorePaths {
                 .with_extension("representation.tmp"),
             self.generation(key),
             self.generation(key).with_extension("json.tmp"),
-        ]
+            self.generation_backup(key),
+            self.single_response_commit(key),
+        ];
+        paths.extend(self.transform(key).all());
+        paths
+    }
+
+    pub(crate) fn transform<'a>(&'a self, key: &'a str) -> TransformPaths<'a> {
+        TransformPaths::new(self, key)
     }
 
     fn named(&self, key: &str, extension: &str) -> PathBuf {

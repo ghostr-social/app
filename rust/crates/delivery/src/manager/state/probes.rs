@@ -1,9 +1,11 @@
 use super::DeliveryState;
+#[cfg(test)]
 use ghostr_engine::PostId;
 
 impl DeliveryState {
     /// Exposes every upcoming post to adaptive probe admission. Before
     /// explicit product focus, only the newest projected candidate is local.
+    #[cfg(test)]
     pub(crate) fn probe_posts(&self) -> Vec<PostId> {
         let Some(current) = self.focus.current() else {
             return Vec::new();

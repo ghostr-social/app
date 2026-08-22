@@ -19,7 +19,7 @@ fn capacity_reservation_does_not_cancel_a_policy_retained_range() {
         handle,
     );
 
-    inflight.reconcile_with_commitments(&[urgent], 1, &HashSet::from([retained.id()]));
+    inflight.reconcile_with_commitments(&[urgent], 1, &HashSet::from([attempt.id()]));
 
     assert!(!token.is_cancelled());
     assert_eq!(inflight.len(), 1);

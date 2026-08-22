@@ -8,6 +8,7 @@ import 'package:video_player/video_player.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 import '../support/recovering_video_player_platform.dart';
+import '../support/video_player_surface_pump.dart';
 
 void main() {
   testWidgets('reconstructs an active player at its last playhead', (
@@ -43,6 +44,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
+    await settleVideoPlayerTasks(tester);
 
     expect(
       platform.dataSources,

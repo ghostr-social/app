@@ -3,9 +3,11 @@
 //! This is the layer everything above reads; it depends on nothing but
 //! the shared retrieval vocabulary.
 
+pub(crate) mod blossom;
 pub mod candidates;
 mod deletion_index;
 pub mod deletions;
+mod evidence;
 pub mod parsing;
 mod pending_deletions;
 pub mod profiles;

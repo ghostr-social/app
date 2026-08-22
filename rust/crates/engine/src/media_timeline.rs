@@ -5,7 +5,17 @@ use crate::ByteRange;
 
 mod boxes;
 mod classic;
+mod control;
+mod limits;
+mod ranges;
+mod segments;
+mod selection;
 mod sidx;
+mod startup;
+
+pub use control::TimelineParseControl;
+pub use ranges::normalize;
+pub use startup::{StartupFootprint, StartupProvenance};
 
 /// A contiguous piece of the remote representation already held locally.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -22,15 +32,26 @@ impl<'a> MediaSegment<'a> {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TimelineError {
+    Cancelled,
     Unavailable,
     Truncated,
     Malformed,
+    ResourceLimit,
     Unsupported,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MediaTimeline {
+    pub(crate) inspected: Vec<ByteRange>,
     pub(crate) metadata: Vec<ByteRange>,
+    pub(crate) file_types: Vec<ByteRange>,
+    pub(crate) movie: Option<ByteRange>,
+    pub(crate) movie_top_level: bool,
+    pub(crate) top_level_file_types: usize,
+    pub(crate) top_level_movies: usize,
+    pub(crate) fragmented_indexes: usize,
+    pub(crate) media_data: Vec<boxes::MediaData>,
+    pub(crate) classic_video: bool,
     pub(crate) media: Vec<TimedRange>,
 }
 
@@ -48,104 +69,100 @@ pub(crate) struct TimedRange {
 }
 
 impl MediaTimeline {
+    pub fn front_moov(&self) -> bool {
+        let Some(movie) = self.movie else {
+            return false;
+        };
+        let first_media = self
+            .media
+            .iter()
+            .map(|range| range.bytes.start)
+            .min()
+            .unwrap_or(u64::MAX);
+        self.movie_top_level && movie.end <= first_media
+    }
+
+    pub fn duration_ms(&self) -> Option<u64> {
+        let start = self.media.iter().map(|range| range.start_ms).min()?;
+        let end = self.media.iter().map(|range| range.end_ms).max()?;
+        (end > start).then_some(end - start)
+    }
+
     pub fn fits_within(&self, total_bytes: u64) -> bool {
         self.metadata
             .iter()
+            .chain(self.media_data.iter().map(|data| &data.payload))
             .chain(self.media.iter().map(|range| &range.bytes))
             .all(|range| range.end <= total_bytes)
     }
 
     pub(crate) fn playable_extents(&self) -> Vec<PlayableExtent> {
-        let mut extents: Vec<_> = self
-            .metadata
+        self.media
             .iter()
-            .copied()
-            .map(|bytes| PlayableExtent {
-                bytes,
-                playable_ms: 1,
+            .map(|range| PlayableExtent {
+                bytes: range.bytes,
+                playable_ms: range.end_ms.saturating_sub(range.start_ms).max(1),
             })
-            .collect();
-        extents.extend(self.media.iter().map(|range| PlayableExtent {
-            bytes: range.bytes,
-            playable_ms: range.end_ms.saturating_sub(range.start_ms).max(1),
-        }));
-        extents
+            .collect()
     }
 
-    pub(crate) fn from_parts(metadata: Vec<ByteRange>, media: Vec<TimedRange>) -> Self {
-        Self {
-            metadata: normalize(metadata),
-            media,
-        }
+    pub fn startup_footprint(&self) -> Option<StartupFootprint> {
+        StartupFootprint::from_timeline(self)
+    }
+
+    pub fn fast_start_remuxable(&self, total: u64) -> bool {
+        let Some(movie) = self.movie else {
+            return false;
+        };
+        let [media] = self.media_data.as_slice() else {
+            return false;
+        };
+        self.inspected_whole(total)
+            && self.top_level_file_types == 1
+            && self.top_level_movies == 1
+            && self.fragmented_indexes == 0
+            && self.startup_footprint().is_some()
+            && media.payload.end <= movie.start
+            && movie.end == total
+    }
+
+    fn inspected_whole(&self, total: u64) -> bool {
+        normalize(self.inspected.clone())
+            .first()
+            .is_some_and(|range| range.start == 0 && range.end == total)
     }
 }
 
-/// Parses complete metadata boxes found in any of the supplied absolute
-/// segments. Segments may be disjoint, which is essential for tail `moov`.
+/// Parses complete metadata boxes found in the supplied absolute segments.
+/// Segments may be disjoint or adjacent, but their non-empty ranges must not
+/// overlap. Input order does not affect the result.
 pub fn parse_mp4_segments(segments: &[MediaSegment<'_>]) -> Result<MediaTimeline, TimelineError> {
-    let scan = boxes::scan(segments)?;
-    let parsed = parse_atoms(&scan.atoms)?;
-    let media = select_media(parsed, scan.truncated)?;
-    Ok(MediaTimeline::from_parts(
-        scan_metadata(&scan.atoms)?,
-        media,
-    ))
+    parse_mp4_segments_with_control(segments, &control::NeverCancelled)
 }
 
-struct ParsedMedia {
-    classic: Vec<TimedRange>,
-    fragmented: Vec<TimedRange>,
-}
-
-fn parse_atoms(atoms: &[boxes::Atom<'_>]) -> Result<ParsedMedia, TimelineError> {
-    let mut classic = Vec::new();
-    let mut fragmented = Vec::new();
-    for atom in atoms {
-        match &atom.kind {
-            b"moov" => classic.extend(classic::parse(atom)?),
-            _ => fragmented.extend(sidx::parse(atom)?),
-        }
-    }
-    Ok(ParsedMedia {
-        classic,
-        fragmented,
-    })
-}
-
-fn scan_metadata(atoms: &[boxes::Atom<'_>]) -> Result<Vec<ByteRange>, TimelineError> {
-    let mut metadata = Vec::new();
-    for atom in atoms {
-        metadata.push(atom.range()?);
-    }
-    Ok(metadata)
-}
-
-fn select_media(parsed: ParsedMedia, truncated: bool) -> Result<Vec<TimedRange>, TimelineError> {
-    let media = match parsed.classic.is_empty() {
-        false => parsed.classic,
-        true => parsed.fragmented,
-    };
-    if media.is_empty() {
-        return Err(if truncated {
-            TimelineError::Truncated
-        } else {
-            TimelineError::Unavailable
-        });
-    }
-    Ok(media)
-}
-
-pub fn normalize(mut ranges: Vec<ByteRange>) -> Vec<ByteRange> {
-    ranges.retain(|range| !range.is_empty());
-    ranges.sort_by_key(|range| (range.start, range.end));
-    ranges.into_iter().fold(Vec::new(), merge_range)
-}
-
-fn merge_range(mut merged: Vec<ByteRange>, next: ByteRange) -> Vec<ByteRange> {
-    if let Some(last) = merged.last_mut().filter(|last| next.start <= last.end) {
-        last.end = last.end.max(next.end);
-    } else {
-        merged.push(next);
-    }
-    merged
+pub fn parse_mp4_segments_with_control(
+    segments: &[MediaSegment<'_>],
+    control: &dyn TimelineParseControl,
+) -> Result<MediaTimeline, TimelineError> {
+    let mut budget = limits::ParserBudget::new(segments, control)?;
+    let segments = segments::canonical(segments, &mut budget)?;
+    let inspected = segments
+        .iter()
+        .map(|segment| ByteRange::new(segment.start, segment.start + segment.bytes.len() as u64))
+        .collect();
+    let scan = boxes::scan(&segments, &mut budget)?;
+    let selected = selection::parse(&scan.atoms, scan.truncated, &mut budget)?;
+    startup::assemble(
+        startup::AssemblyInput {
+            atoms: &scan.atoms,
+            inspected,
+            media_data: scan.media_data,
+            fragmented_markers: scan.fragmented_markers,
+            media: selected.ranges,
+            movie: selected.classic_movie,
+            movie_top_level: selected.classic_movie_top_level,
+            classic_video: selected.classic_video,
+        },
+        &mut budget,
+    )
 }

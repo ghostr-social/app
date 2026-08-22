@@ -1,6 +1,6 @@
 use super::allocation::{append_candidate, AppendInputs};
 use super::plan::AllocationPlan;
-use super::ranges::{missing, playable_gain, uncovered_bytes};
+use super::ranges::{missing, playable_gain};
 use super::reserves::{planned_bytes, planned_gain};
 use super::{CandidateSnapshot, CurrentAuthority, PlayabilitySnapshot};
 
@@ -35,11 +35,7 @@ impl<'a> CurrentLane<'a> {
         if self.target_ms == 0 || !self.start_allowed() {
             return;
         }
-        append_candidate(
-            plan,
-            snapshot,
-            self.inputs(1, self.storage_room.min(snapshot.request_slice_bytes)),
-        );
+        append_candidate(plan, snapshot, self.inputs(1, self.storage_room));
     }
 
     pub(super) fn append_depth(&self, plan: &mut AllocationPlan, snapshot: &PlayabilitySnapshot) {
@@ -89,7 +85,7 @@ pub(super) fn inflight_need_bytes(candidate: &CandidateSnapshot) -> u64 {
         .in_flight
         .iter()
         .filter(|active| active.identity_current)
-        .map(|active| uncovered_bytes(active.bytes, &candidate.present))
+        .map(|active| active.reserved_storage_bytes)
         .sum()
 }
 
@@ -115,7 +111,8 @@ fn inflight_playable_ms(candidate: &CandidateSnapshot) -> u64 {
         .in_flight
         .iter()
         .filter(|active| active.identity_current)
-        .map(|active| playable_gain(candidate, active.bytes))
+        .filter(|active| !active.cancelling)
+        .map(|active| playable_gain(candidate, active.effective_bytes))
         .sum()
 }
 

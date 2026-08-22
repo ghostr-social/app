@@ -10,4 +10,5 @@ test("the player snapshot reads visible playback facts", async () => {
   assert.equal(await playerSnapshot(page), player);
   assert.match(calls[0].params.expression, /player\.currentTime/);
   assert.match(calls[0].params.expression, /player\.error/);
+  assert.match(calls[0].params.expression, /presentedFrame === true/);
 });

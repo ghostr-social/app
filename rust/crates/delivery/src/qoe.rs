@@ -2,12 +2,20 @@
 //! persisted. Media URLs, post ids, and raw event traces never enter the file.
 
 mod persistence;
+mod presentation;
+mod watch;
 
 use crate::delivery_events::{FocusTransition, TransportRescue, TransportRescueReason};
 use ghostr_engine::playback::PlaybackPhase;
 use ghostr_engine::PostId;
-pub use persistence::{load_qoe_stats, save_qoe_stats};
+pub use persistence::{
+    load_playback_learning, load_qoe_stats, save_playback_learning, save_qoe_stats,
+    PlaybackLearningState,
+};
 use serde::{Deserialize, Serialize};
+pub(crate) use watch::WatchLearner;
+#[cfg(test)]
+pub(crate) use watch::WatchOutcome;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -50,6 +58,7 @@ impl QoeStats {
 pub struct QoeTracker {
     stats: QoeStats,
     active: Option<ActivePlayback>,
+    recent: Option<presentation::FinishedPlayback>,
 }
 
 struct ActivePlayback {
@@ -67,6 +76,7 @@ impl QoeTracker {
         Self {
             stats,
             active: None,
+            recent: None,
         }
     }
 
@@ -141,6 +151,7 @@ impl QoeTracker {
         close_stall(&mut self.stats, &mut active, now_ms);
         self.stats.startup_failures += u64::from(!active.first_frame);
         self.stats.abandonments += u64::from(!active.ended);
+        self.recent = Some(presentation::FinishedPlayback::from_active(&active));
     }
 }
 
@@ -162,14 +173,6 @@ fn record_buffer(stats: &mut QoeStats, phase: PlaybackPhase, buffer_ms: u64) {
 
 fn playing(stats: &mut QoeStats, active: &mut ActivePlayback, now_ms: u64) {
     close_stall(stats, active, now_ms);
-    if active.first_frame {
-        return;
-    }
-    active.first_frame = true;
-    let startup = now_ms.saturating_sub(active.focused_at_ms);
-    stats.first_frames += 1;
-    stats.startup_total_ms = stats.startup_total_ms.saturating_add(startup);
-    stats.startup_max_ms = stats.startup_max_ms.max(startup);
 }
 
 fn stalled(stats: &mut QoeStats, active: &mut ActivePlayback, now_ms: u64) {
