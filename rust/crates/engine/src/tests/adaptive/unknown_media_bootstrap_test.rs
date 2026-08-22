@@ -31,7 +31,7 @@ fn cold_current_and_next_receive_typed_bounded_bootstrap_allocations() {
         .find(|work| work.post == PostId::new("p1"))
         .expect("immediate-next bootstrap");
     assert_eq!(next.reason, AllocationReason::MediaBootstrap);
-    assert!(next.range.len() <= input.request_slice_bytes);
+    assert!(next.request.requested_bytes().len() <= input.request_slice_bytes);
 }
 
 fn candidate(
@@ -48,9 +48,16 @@ fn candidate(
             feed_offset: FeedOffset::new(distance as i32),
             view_probability: ViewProbability::new(1.0).unwrap(),
             present: Vec::new(),
+            stored_total: None,
+            continuation_source: None,
+            independent_object_sources: Default::default(),
             recently_evicted: Vec::new(),
             in_flight: Vec::new(),
-            origins: vec![healthy_origin("origin", 700_000, 450)],
+            origins: vec![healthy_origin(
+                &format!("https://{post}.example/video.mp4"),
+                700_000,
+                450,
+            )],
         },
     )
     .expect("unknown media remains a bootstrap candidate")

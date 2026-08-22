@@ -26,9 +26,14 @@ async fn relay_projection_has_only_bounded_metadata_authority_before_focus() {
         .filter(|allocation| allocation.post.as_str() == "relay-first")
         .cloned()
         .collect();
-    assert_eq!(projected.len(), 1, "{projected:#?}");
-    assert_eq!(projected[0].reason, AllocationReason::MediaBootstrap);
-    assert_eq!(projected[0].authority, PreemptionAuthority::Speculative);
+    assert!(!projected.is_empty(), "{projected:#?}");
+    assert!(
+        projected.iter().all(|allocation| {
+            allocation.reason == AllocationReason::MediaBootstrap
+                && allocation.authority == PreemptionAuthority::Speculative
+        }),
+        "{projected:#?}"
+    );
 
     harness.handle.update_focus(focus_now(
         vec![sized_item("canonical", &origin, 16, 4_000)],

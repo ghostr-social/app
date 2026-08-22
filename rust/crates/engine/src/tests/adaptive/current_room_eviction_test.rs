@@ -29,7 +29,7 @@ fn a_full_store_evicts_speculation_to_make_room_for_current_work() {
         .allocations
         .iter()
         .filter(|work| work.post == PostId::new("p0"))
-        .map(|work| work.range.len())
+        .map(|work| work.request.reserved_network_bytes())
         .sum();
     let released: u64 = plan
         .evictions

@@ -14,8 +14,10 @@ void main() {
         home: ValueListenableBuilder<int>(
           valueListenable: page,
           builder: (_, index, __) => FeedPageView(
-            itemCount: 3,
-            initialPage: index,
+            model: FeedPageModel(
+              keys: List.generate(3, (page) => ValueKey('page-$page')),
+              activePage: index,
+            ),
             onPageChanged: (changed) {
               changes.add(changed);
               return true;

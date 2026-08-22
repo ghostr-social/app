@@ -8,3 +8,4 @@ description = "Pure deterministic adaptive media allocation, focus, budgets, and
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
+url = { workspace = true }

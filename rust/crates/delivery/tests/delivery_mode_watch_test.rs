@@ -31,14 +31,16 @@ async fn delivery_manager_publishes_adaptive_discovery_demand() {
     let (_demand, demand_receiver) = demand_channel();
     let config = DeliveryManagerConfig {
         store,
-        client: media_client(),
+        requests: media_client(),
         cache: ServablePosts::new(),
         segmented: SegmentedCache::new(),
         network: NetworkThrottle::new(),
+        network_status: ghostr_delivery::delivery_events::DeliveryNetworkStatus::unavailable(),
         stats_path: root.join("host_stats.json"),
         params: EngineParams::default(),
         level: DataUsageLevel::Balanced,
         tuning: DeliveryTuning::default(),
+        transform: None,
     };
     let (handle, mut discovery_demand) =
         start_delivery_manager_with_discovery_demand(config, demand_receiver);

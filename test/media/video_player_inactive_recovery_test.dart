@@ -7,6 +7,7 @@ import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
 import '../support/recovering_video_player_platform.dart';
+import '../support/video_player_surface_pump.dart';
 
 void main() {
   testWidgets('defers failed inactive playback until the surface is active', (
@@ -28,6 +29,7 @@ void main() {
     expect(find.text('Video unavailable'), findsNothing);
 
     await pumpSurface(tester, port, media, isActive: true);
+    await settleVideoPlayerTasks(tester);
 
     expect(platform.dataSources, hasLength(2));
     expect(platform.commands.last, 'play:1');

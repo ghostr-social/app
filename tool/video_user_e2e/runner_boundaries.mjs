@@ -1,5 +1,6 @@
 import {
   clickVideo, requireUserStartsPlayback, watchProgress, watchUntilPlaying,
+  watchUntilPresented,
 } from "./browser_journey.mjs";
 import {startBrowser} from "./browser_process.mjs";
 import {sendControlAction} from "./impairment_executor.mjs";
@@ -26,6 +27,7 @@ const DEFAULT_BOUNDARIES = Object.freeze({
   startServer,
   watchProgress,
   watchUntilPlaying,
+  watchUntilPresented,
   writeFailure,
   writeSuccess,
 });

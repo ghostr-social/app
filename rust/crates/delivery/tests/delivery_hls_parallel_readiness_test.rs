@@ -45,11 +45,15 @@ async fn focused_hls_videos_prepare_in_parallel_and_require_bootstrap_assets() {
 
 async fn wait_ready(harness: &delivery_fixture::DeliveryHarness, post: &str) {
     let changed = harness.segmented.notifier();
-    tokio::time::timeout(Duration::from_secs(2), async {
+    let result = tokio::time::timeout(Duration::from_secs(2), async {
         while harness.segmented.snapshot(post).phase != SegmentedPhase::Ready {
             changed.notified().await;
         }
     })
-    .await
-    .unwrap();
+    .await;
+    assert!(
+        result.is_ok(),
+        "{post} did not become ready: {:?}",
+        harness.segmented.snapshot(post)
+    );
 }

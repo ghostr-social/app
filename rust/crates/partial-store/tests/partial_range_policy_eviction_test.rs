@@ -21,7 +21,9 @@ async fn policy_eviction_removes_only_the_selected_sparse_range() {
         .await
         .expect("evict range");
 
-    assert_eq!(freed, 4);
+    assert_eq!(freed.freed_bytes(), 4);
+    assert_eq!(freed.ranges().len(), 1);
+    assert_eq!(freed.ranges()[0], 4..8);
     assert_eq!(*used.lock().await, 8);
     assert_eq!(
         store.present_ranges("clip").await.unwrap(),

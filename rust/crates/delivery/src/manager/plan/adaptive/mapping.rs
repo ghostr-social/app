@@ -1,6 +1,7 @@
 use super::super::PlannedTransfer;
+use crate::manager::inflight::ActiveAction;
 use crate::manager::state::DeliveryState;
-use ghostr_engine::adaptive::AllocationPlan;
+use ghostr_engine::adaptive::{Allocation, AllocationPlan, PlannerCommand, WarpPlanningDecision};
 use ghostr_engine::scheduling::RangeRequest;
 use ghostr_engine::{ByteRange, ChunkId, PostId};
 use std::collections::{HashMap, HashSet};
@@ -12,52 +13,37 @@ pub(super) fn transfers(
 ) -> Vec<PlannedTransfer> {
     plan.allocations
         .iter()
-        .filter_map(|allocation| {
-            let identity = state
-                .catalog()
-                .transfer_identity(&allocation.post, &allocation.source)?;
-            Some(PlannedTransfer {
-                request: RangeRequest {
-                    chunk: ChunkId {
-                        post: allocation.post.clone(),
-                        range: allocation.range,
-                    },
-                    authority: allocation.authority,
-                    score: allocation.utility.score,
-                    contiguous_depth_bytes: contiguous_end(
-                        present
-                            .get(&allocation.post)
-                            .map(Vec::as_slice)
-                            .unwrap_or_default(),
-                    ),
-                },
-                url: allocation.source.clone(),
-                identity,
-                commitment_until_ms: allocation.commitment_until_ms,
-            })
-        })
+        .filter_map(|allocation| transfer(state, present, allocation))
         .collect()
 }
 
-pub(super) fn retained_transfers(
+pub(super) fn selected_transfers(
     state: &DeliveryState,
-    plan: &AllocationPlan,
-) -> HashSet<super::super::PlannedTransferId> {
-    plan.retained
-        .iter()
-        .filter_map(|work| {
-            let identity = state
-                .catalog()
-                .transfer_identity(&work.post, &work.source)?;
-            Some(super::super::PlannedTransferId {
-                chunk: ChunkId {
-                    post: work.post.clone(),
-                    range: work.range,
-                },
-                identity,
-            })
-        })
+    present: &HashMap<PostId, Vec<ByteRange>>,
+    decision: &WarpPlanningDecision,
+) -> Vec<PlannedTransfer> {
+    let allocation = match decision.selected.as_ref().map(|item| &item.command) {
+        Some(PlannerCommand::Transfer(allocation)) => Some(allocation),
+        Some(PlannerCommand::Hedge { transfer, .. }) => Some(transfer),
+        _ => None,
+    };
+    allocation
+        .and_then(|item| transfer(state, present, item))
+        .into_iter()
         .collect()
+}
+
+pub(super) fn retained_actions(
+    in_flight: &[ActiveAction],
+    decision: &WarpPlanningDecision,
+) -> HashSet<ghostr_engine::ActionId> {
+    let mut retained: HashSet<_> = in_flight.iter().map(ActiveAction::action_id).collect();
+    if let Some(PlannerCommand::Cancel(action)) =
+        decision.selected.as_ref().map(|item| &item.command)
+    {
+        retained.remove(action);
+    }
+    retained
 }
 
 fn contiguous_end(ranges: &[ByteRange]) -> u64 {
@@ -69,4 +55,34 @@ fn contiguous_end(ranges: &[ByteRange]) -> u64 {
         end = end.max(range.end);
     }
     end
+}
+
+fn transfer(
+    state: &DeliveryState,
+    present: &HashMap<PostId, Vec<ByteRange>>,
+    allocation: &Allocation,
+) -> Option<PlannedTransfer> {
+    let identity = state
+        .catalog()
+        .transfer_identity(&allocation.post, &allocation.source)?;
+    Some(PlannedTransfer {
+        request: RangeRequest {
+            chunk: ChunkId {
+                post: allocation.post.clone(),
+                range: allocation.request.requested_bytes(),
+            },
+            authority: allocation.authority,
+            score: allocation.utility.score,
+            contiguous_depth_bytes: contiguous_end(
+                present
+                    .get(&allocation.post)
+                    .map(Vec::as_slice)
+                    .unwrap_or_default(),
+            ),
+        },
+        url: allocation.source.clone(),
+        identity,
+        retrieval: allocation.request,
+        commitment_until_ms: allocation.commitment_until_ms,
+    })
 }

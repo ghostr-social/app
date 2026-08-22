@@ -11,6 +11,9 @@ async fn serves_a_fully_present_video_with_complete_length_headers() {
     let harness = progressive_harness("ghostr-progressive-full");
     harness.posts.insert("clip");
     harness
+        .bind_video("clip", "https://cdn.example/clip.mp4", Some(10))
+        .await;
+    harness
         .store
         .set_total_len("clip", 10)
         .await

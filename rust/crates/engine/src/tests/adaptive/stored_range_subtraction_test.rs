@@ -15,8 +15,8 @@ fn replanning_requests_only_the_missing_suffix_of_a_partly_stored_playable_range
         .find(|work| work.post == PostId::new("p1"))
         .expect("upcoming allocation");
 
-    assert_eq!(first.range.start, 100_000);
-    assert!(first.range.len() <= crate::adaptive::REQUEST_SLICE_BYTES);
+    assert_eq!(first.request.requested_bytes().start, 100_000);
+    assert!(first.request.requested_bytes().len() <= crate::adaptive::REQUEST_SLICE_BYTES);
     assert!(first.expected_playable_gain_ms >= 1_200, "{plan:#?}");
 }
 
@@ -32,6 +32,6 @@ fn a_nonempty_missing_suffix_always_has_positive_playable_gain() {
         .find(|work| work.post == PostId::new("p1"))
         .expect("one-byte suffix");
 
-    assert_eq!(suffix.range.start, 249_999);
+    assert_eq!(suffix.request.requested_bytes().start, 249_999);
     assert!(suffix.expected_playable_gain_ms >= 1);
 }

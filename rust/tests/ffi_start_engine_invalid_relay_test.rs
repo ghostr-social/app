@@ -3,6 +3,7 @@ mod support;
 use rust_lib_ghostr::api::engine_control::{
     ffi_start_engine, FfiDataUsageLevel, FfiEngineConfiguration,
 };
+use rust_lib_ghostr::api::network_control::FfiDeliveryNetworkStatus;
 use support::fixtures::temp_directory;
 
 #[tokio::test]
@@ -15,8 +16,13 @@ async fn rejects_invalid_relay_urls_before_starting() {
         max_storage_bytes: 1024,
     };
 
-    let result =
-        ffi_start_engine(directory.to_string_lossy().to_string(), configuration, None).await;
+    let result = ffi_start_engine(
+        directory.to_string_lossy().to_string(),
+        configuration,
+        None,
+        FfiDeliveryNetworkStatus::unavailable(),
+    )
+    .await;
 
     assert!(result.is_err());
     assert!(!directory.exists());

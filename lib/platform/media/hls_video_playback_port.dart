@@ -8,14 +8,14 @@ import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/features/video_inventory/domain/hls_playback_gateway_port.dart';
 import 'package:ghostr/features/video_inventory/domain/hls_playback_lease.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
-import 'package:ghostr/shared/theme/app_tokens.dart';
 import 'package:ghostr/shared/widgets/async_state_panel.dart';
-import 'package:ghostr/shared/widgets/loading_panel.dart';
+import 'package:ghostr/shared/widgets/video_loading_surface.dart';
 
 part 'hls_video_playback_surface.dart';
 part 'hls_video_playback_lease_surface.dart';
 
-final class HlsVideoPlaybackPort implements VideoPlaybackPort {
+final class HlsVideoPlaybackPort
+    implements VideoPlaybackPort, VideoPlaybackMemoryPressurePort {
   const HlsVideoPlaybackPort({
     required VideoPlaybackPort delegate,
     required HlsPlaybackGatewayPort gateway,
@@ -39,8 +39,17 @@ final class HlsVideoPlaybackPort implements VideoPlaybackPort {
         isActive: request.isActive,
         mode: request.mode,
         onPlaybackMediaReleased: request.onPlaybackMediaReleased,
+        preview: request.preview,
       ),
     );
+  }
+
+  @override
+  void reportMemoryPressure() {
+    final delegate = _delegate;
+    if (delegate is VideoPlaybackMemoryPressurePort) {
+      (delegate as VideoPlaybackMemoryPressurePort).reportMemoryPressure();
+    }
   }
 }
 

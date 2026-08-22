@@ -64,7 +64,8 @@ async fn next_request(label: &str, origin: &mut ControlledOrigin) -> ActiveReque
 fn options() -> DeliveryOptions {
     DeliveryOptions {
         params: EngineParams {
-            balanced_concurrency: 4,
+            balanced_concurrency: 5,
+            chunk_bytes: 128,
             ..base_params()
         },
         ..DeliveryOptions::default()

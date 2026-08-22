@@ -10,8 +10,8 @@ async fn active_connections_reports_sorted_counts_and_releases() {
     assert_eq!(
         throttle.active_connections(),
         vec![
-            ("alpha.example".to_owned(), 1),
-            ("beta.example".to_owned(), 2),
+            ("https://alpha.example".to_owned(), 1),
+            ("https://beta.example".to_owned(), 2),
         ]
     );
 

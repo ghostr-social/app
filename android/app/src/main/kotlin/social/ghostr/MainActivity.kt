@@ -7,6 +7,7 @@ import io.flutter.embedding.engine.FlutterEngine
 
 class MainActivity : FlutterActivity() {
     private var appUpdateBridge: AndroidAppUpdateBridge? = null
+    private var deliveryNetworkBridge: AndroidDeliveryNetworkBridge? = null
     private var incomingVideoShareBridge: IncomingVideoShareBridge? = null
     private lateinit var shareLifecycle: IncomingVideoShareActivityLifecycle
 
@@ -22,6 +23,11 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         appUpdateBridge?.dispose()
         appUpdateBridge = AndroidAppUpdateBridge(
+            activity = this,
+            messenger = flutterEngine.dartExecutor.binaryMessenger,
+        )
+        deliveryNetworkBridge?.dispose()
+        deliveryNetworkBridge = AndroidDeliveryNetworkBridge(
             activity = this,
             messenger = flutterEngine.dartExecutor.binaryMessenger,
         )
@@ -52,6 +58,8 @@ class MainActivity : FlutterActivity() {
     override fun onDestroy() {
         appUpdateBridge?.dispose()
         appUpdateBridge = null
+        deliveryNetworkBridge?.dispose()
+        deliveryNetworkBridge = null
         incomingVideoShareBridge?.dispose()
         incomingVideoShareBridge = null
         super.onDestroy()

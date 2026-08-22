@@ -2,6 +2,7 @@
 //! Feed assembly consumes [`video_post_from_event`]; nothing here does IO.
 
 use super::renditions::{progressive_renditions, video_meta};
+use ghostr_engine::evidence::NostrMetadataEvidence;
 use ghostr_engine::video_rendition::VideoRendition;
 use ghostr_engine::VideoMeta;
 use ghostr_media_model::event_identity::VIDEO_KINDS;
@@ -56,6 +57,7 @@ pub struct ParsedVideoPost {
     pub blurhash: Option<String>,
     pub thumbnail_url: Option<String>,
     pub meta: VideoMeta,
+    pub metadata_evidence: Vec<NostrMetadataEvidence>,
     pub renditions: Vec<VideoRendition>,
 }
 
@@ -126,6 +128,7 @@ fn parsed_post(
     renditions: Vec<VideoRendition>,
 ) -> ParsedVideoPost {
     let meta = video_meta(&media);
+    let metadata_evidence = super::evidence::metadata(event, &media);
     ParsedVideoPost {
         event_id: event.id.to_hex(),
         author_pubkey: event.pubkey.to_hex(),
@@ -144,6 +147,7 @@ fn parsed_post(
         blurhash: media.extras.blurhash.clone(),
         thumbnail_url: media.extras.image_url.clone(),
         meta,
+        metadata_evidence,
         renditions,
     }
 }

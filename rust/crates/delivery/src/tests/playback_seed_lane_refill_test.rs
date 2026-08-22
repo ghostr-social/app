@@ -55,7 +55,7 @@ fn base_two_refill_post() -> String {
 }
 
 fn shared_host() -> HashSet<String> {
-    active_hosts("shared.example")
+    active_hosts("https://shared.example")
 }
 
 fn slots(active: usize, goal: usize) -> ForegroundSlots {

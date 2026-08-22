@@ -1,8 +1,9 @@
+mod probe_fixture;
 mod range_fixture;
 
-use ghostr_delivery::probe::media::probe;
 use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_net::transfer_timeouts::TransferTimeouts;
+use probe_fixture::probe;
 
 #[tokio::test]
 async fn rejected_head_does_not_issue_an_unplanned_body_request() {

@@ -1,82 +1,168 @@
-use anyhow::{bail, ensure, Context, Result};
-use ghostr_hls_manifest::hls_manifest::MAX_HLS_MANIFEST_BYTES;
-use ghostr_net::outbound_media_client::MediaHttpRequests;
-use reqwest::header::{ACCEPT_ENCODING, CONTENT_ENCODING, CONTENT_TYPE};
+use anyhow::{bail, Result};
+use ghostr_engine::adaptive::PreemptionAuthority;
+#[cfg(test)]
+use ghostr_hls_manifest::hls_manifest::MAX_HLS_ASSET_BYTES;
+use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaResponse};
+use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
+use reqwest::header::CONTENT_TYPE;
 use std::sync::Arc;
-use std::time::Duration;
+use tokio::time::Instant;
 use url::Url;
 
-pub(super) const MAX_HLS_ASSET_BYTES: usize = 8 * 1024 * 1024;
-const HLS_HEADERS_TIMEOUT: Duration = Duration::from_secs(30);
+mod body;
+mod deadline;
+mod open;
+mod staged;
+mod telemetry;
+use body::fetch_before_total;
+#[cfg(test)]
+use open::open;
+pub(super) use staged::{fetch_stage, StagedFetch};
+pub(super) use telemetry::{FetchFailure, OriginTelemetry, SegmentedTraffic};
+use telemetry::{FetchProblem, FetchProgress};
+#[cfg(test)]
+mod tests;
 
 pub(super) struct FetchedObject {
     pub request_url: String,
     pub final_url: Url,
     pub body: Arc<[u8]>,
     pub content_type: Option<String>,
+    pub telemetry: OriginTelemetry,
 }
 
-pub(super) async fn manifest(client: &dyn MediaHttpRequests, url: &str) -> Result<FetchedObject> {
-    fetch(client, url, MAX_HLS_MANIFEST_BYTES, true).await
+#[derive(Clone, Copy)]
+pub(super) struct FetchSpec<'a> {
+    url: &'a str,
+    limit: usize,
+    require_manifest: bool,
+    timeouts: HlsTransferTimeouts,
+    priority: PreemptionAuthority,
+    admission_fence: Option<Instant>,
 }
 
-pub(super) async fn asset(client: &dyn MediaHttpRequests, url: &Url) -> Result<FetchedObject> {
-    fetch(client, url.as_str(), MAX_HLS_ASSET_BYTES, false).await
+struct FetchInput<'a> {
+    spec: FetchSpec<'a>,
+    traffic: Option<SegmentedTraffic>,
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct FetchRuntime<'a> {
+    requests: &'a MediaRequestExecutor,
+    deadline: Instant,
+    network: &'a crate::delivery_events::DeliveryNetworkStatusReader,
+    progress: &'a FetchProgress,
+}
+
+impl<'a> FetchRuntime<'a> {
+    pub(super) const fn new(
+        requests: &'a MediaRequestExecutor,
+        deadline: Instant,
+        network: &'a crate::delivery_events::DeliveryNetworkStatusReader,
+        progress: &'a FetchProgress,
+    ) -> Self {
+        Self {
+            requests,
+            deadline,
+            network,
+            progress,
+        }
+    }
+}
+
+#[cfg(test)]
+async fn asset(
+    requests: &MediaRequestExecutor,
+    url: &Url,
+    priority: PreemptionAuthority,
+) -> std::result::Result<FetchedObject, FetchFailure> {
+    asset_with_timeouts(
+        requests,
+        url.as_str(),
+        HlsTransferTimeouts::default(),
+        priority,
+    )
+    .await
+}
+
+#[cfg(test)]
+async fn asset_with_timeouts(
+    requests: &MediaRequestExecutor,
+    url: &str,
+    timeouts: HlsTransferTimeouts,
+    priority: PreemptionAuthority,
+) -> std::result::Result<FetchedObject, FetchFailure> {
+    let network = crate::delivery_events::DeliveryNetworkStatusReader::new(
+        crate::delivery_events::DeliveryNetworkStatus::unavailable(),
+    );
+    fetch(
+        requests,
+        FetchInput {
+            spec: FetchSpec {
+                url,
+                limit: MAX_HLS_ASSET_BYTES,
+                require_manifest: false,
+                timeouts,
+                priority,
+                admission_fence: None,
+            },
+            traffic: None,
+        },
+        &network,
+        None,
+    )
+    .await
 }
 
 async fn fetch(
-    client: &dyn MediaHttpRequests,
-    url: &str,
-    limit: usize,
-    require_manifest: bool,
-) -> Result<FetchedObject> {
-    let request = client.get(url)?.header(ACCEPT_ENCODING, "identity");
-    let mut response = tokio::time::timeout(HLS_HEADERS_TIMEOUT, request.send())
-        .await
-        .context("HLS response headers timed out")??
-        .error_for_status()
-        .context("HLS object request failed")?;
-    require_identity_encoding(&response)?;
-    if require_manifest {
-        require_manifest_type(&response)?;
+    requests: &MediaRequestExecutor,
+    input: FetchInput<'_>,
+    network: &crate::delivery_events::DeliveryNetworkStatusReader,
+    mut cancellation: Option<tokio::sync::oneshot::Receiver<()>>,
+) -> std::result::Result<FetchedObject, FetchFailure> {
+    let spec = input.spec;
+    let deadline = Instant::now() + spec.timeouts.total;
+    let progress = FetchProgress::new(input.traffic);
+    let runtime = FetchRuntime::new(requests, deadline, network, &progress);
+    let future = fetch_before_total(runtime, spec);
+    let transfer = tokio::time::timeout_at(deadline, future);
+    tokio::pin!(transfer);
+    let result = match cancellation.as_mut() {
+        Some(cancel) => tokio::select! {
+            biased;
+            _ = cancel => None,
+            result = &mut transfer => Some(result),
+        },
+        None => Some(transfer.await),
+    };
+    let Some(result) = result else {
+        return Err(FetchFailure::cancelled(
+            progress.origin(),
+            progress.network_bytes(),
+        ));
+    };
+    match result {
+        Ok(Ok(object)) => Ok(object),
+        Ok(Err(problem)) => Err(FetchFailure::new(problem, &progress)),
+        Err(error) => Err(FetchFailure::new(
+            FetchProblem::new(
+                anyhow::Error::new(error).context("HLS object transfer timed out"),
+                ghostr_engine::origin_model::ErrorReason::Timeout,
+            ),
+            &progress,
+        )),
     }
-    let final_url = response.url().clone();
-    let content_type = response
+}
+
+fn content_type(response: &MediaResponse) -> Option<String> {
+    response
         .headers()
         .get(CONTENT_TYPE)
         .and_then(|value| value.to_str().ok())
-        .map(str::to_owned);
-    let mut body = Vec::new();
-    while let Some(chunk) = response.chunk().await.context("read HLS object")? {
-        ensure!(
-            body.len().saturating_add(chunk.len()) <= limit,
-            "HLS object exceeds its byte limit"
-        );
-        body.extend_from_slice(&chunk);
-    }
-    Ok(FetchedObject {
-        request_url: url.to_owned(),
-        final_url,
-        body: Arc::from(body),
-        content_type,
-    })
+        .map(str::to_owned)
 }
 
-fn require_identity_encoding(response: &reqwest::Response) -> Result<()> {
-    let Some(value) = response.headers().get(CONTENT_ENCODING) else {
-        return Ok(());
-    };
-    if value
-        .to_str()
-        .ok()
-        .is_some_and(|value| value.eq_ignore_ascii_case("identity"))
-    {
-        return Ok(());
-    }
-    bail!("encoded HLS object is not cacheable")
-}
-
-fn require_manifest_type(response: &reqwest::Response) -> Result<()> {
+fn require_manifest_type(response: &MediaResponse) -> Result<()> {
     let media_type = response
         .headers()
         .get(CONTENT_TYPE)

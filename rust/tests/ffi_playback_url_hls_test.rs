@@ -13,6 +13,7 @@ async fn refuses_a_progressive_url_for_hls_items() {
         sha256: None,
         size_bytes: None,
         duration_ms: None,
+        blurhash: None,
     };
 
     let error = ffi_playback_url(item).await.expect_err("hls rejection");

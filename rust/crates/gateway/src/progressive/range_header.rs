@@ -1,4 +1,6 @@
-use axum::http::HeaderValue;
+use axum::http::header::RANGE;
+use axum::http::{HeaderMap, HeaderValue};
+use ghostr_net::content_range::parse_range_decimal;
 
 /// A `Range` request header resolved against the total video length.
 /// `Partial` bounds are half-open `[start, end)` with `end <= total`.
@@ -9,14 +11,24 @@ pub enum ResolvedRange {
     Unsatisfiable,
 }
 
-/// Resolves an optional `Range` header. Malformed or multi-part headers are
-/// ignored (full response), as RFC 9110 permits; a syntactically valid range
-/// that lies entirely past the end is `Unsatisfiable`.
+/// Resolves one optional `Range` field value against a known total length.
 pub fn resolve(header: Option<&HeaderValue>, total: u64) -> ResolvedRange {
     match header.and_then(parsed_spec) {
         Some(spec) => resolved_spec(spec, total),
         None => ResolvedRange::Full,
     }
+}
+
+/// Resolves exactly one `Range` field; absent or duplicate fields are ignored.
+pub(crate) fn resolve_all(headers: &HeaderMap, total: u64) -> ResolvedRange {
+    let mut values = headers.get_all(RANGE).iter();
+    let Some(value) = values.next() else {
+        return ResolvedRange::Full;
+    };
+    if values.next().is_some() {
+        return ResolvedRange::Full;
+    }
+    resolve(Some(value), total)
 }
 
 enum Spec {
@@ -27,7 +39,11 @@ enum Spec {
 
 fn parsed_spec(value: &HeaderValue) -> Option<Spec> {
     let text = value.to_str().ok()?;
-    let spec = text.strip_prefix("bytes=")?.trim();
+    let (unit, spec) = text.split_once('=')?;
+    if !unit.trim().eq_ignore_ascii_case("bytes") {
+        return None;
+    }
+    let spec = spec.trim();
     if spec.contains(',') {
         return None;
     }
@@ -38,9 +54,12 @@ fn parsed_spec(value: &HeaderValue) -> Option<Spec> {
 fn parsed_bounds(from: &str, to: &str) -> Option<Spec> {
     match (from.is_empty(), to.is_empty()) {
         (true, true) => None,
-        (true, false) => Some(Spec::Suffix(to.parse().ok()?)),
-        (false, true) => Some(Spec::From(from.parse().ok()?)),
-        (false, false) => Some(Spec::FromTo(from.parse().ok()?, to.parse().ok()?)),
+        (true, false) => Some(Spec::Suffix(parse_range_decimal(to)?)),
+        (false, true) => Some(Spec::From(parse_range_decimal(from)?)),
+        (false, false) => Some(Spec::FromTo(
+            parse_range_decimal(from)?,
+            parse_range_decimal(to)?,
+        )),
     }
 }
 

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:ghostr/core/errors/app_failure.dart';
+import 'package:ghostr/core/network/delivery_network_status.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/platform/media/cache_directory_provider.dart';
 import 'package:ghostr/platform/media/ffi_video_gateway.dart';
@@ -14,23 +15,34 @@ initializeProductionVideoDeliveryInfrastructure({
   required AppSettings settings,
   required CacheDirectoryProvider directoryProvider,
   required FfiVideoGateway gateway,
+  DeliveryNetworkStatus initialNetwork = DeliveryNetworkStatus.unavailable,
   RetiredCacheRemover removeRetiredCache = _removeRetiredDartCache,
 }) async {
   final directories = _VideoDeliveryDirectories(await directoryProvider());
   await _tryRemoveRetiredCache(directories.dartCache, removeRetiredCache);
-  return _startNativeDelivery(settings, directories.nativeCache, gateway);
+  return _startNativeDelivery(
+    settings,
+    directories.nativeCache,
+    gateway,
+    initialNetwork,
+  );
 }
 
 Future<VideoGatewayStartResult> _startNativeDelivery(
   AppSettings settings,
   Directory directory,
   FfiVideoGateway gateway,
+  DeliveryNetworkStatus initialNetwork,
 ) async {
   try {
     await NativeVideoCacheDirectory(directory).initialize();
     // Only synchronous startup failures belong to this local fallback.
     // ignore: unawaited_return_in_try_block
-    return gateway.start(settings, directory.path);
+    return gateway.start(
+      settings,
+      directory.path,
+      initialNetwork: initialNetwork,
+    );
   } on AppFailure catch (failure) {
     return VideoGatewayFailed(failure.message);
   }

@@ -1,4 +1,4 @@
-use super::support::transfer_identity;
+use super::support::{range_retrieval, transfer_identity};
 use crate::chunk::cancel::cancel_pair;
 use crate::manager::inflight::InFlightChunks;
 use crate::manager::plan::PlannedTransfer;
@@ -42,6 +42,7 @@ fn transfer(post: &str, start: u64, depth: u64, score: f64) -> PlannedTransfer {
             contiguous_depth_bytes: depth,
         },
         url,
+        retrieval: range_retrieval(ByteRange::new(start, start + 64)),
         commitment_until_ms: 0,
     }
 }

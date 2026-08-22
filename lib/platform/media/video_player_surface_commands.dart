@@ -2,13 +2,15 @@ part of 'video_player_playback_port.dart';
 
 extension _VideoPlayerSurfaceCommands on _VideoPlayerSurfaceState {
   void _coverPlayback() {
+    _loadRequested = false;
+    _cancelPendingLoad();
     final controller = _controller;
     if (controller == null) return;
     _playbackIntent += 1;
     _rememberPlaybackValue(controller.value);
     _endObservation(controller.value);
     _valueWatch.detach();
-    _controller = null;
+    _relinquishController(controller);
     _playbackSession = null;
     _playbackPhase = null;
     _refresh(() {});
@@ -22,9 +24,10 @@ extension _VideoPlayerSurfaceCommands on _VideoPlayerSurfaceState {
   }
 
   Future<void> _schedulePlayback(VideoPlayerController controller) {
-    final intent = ++_playbackIntent;
     final active = widget.isActive;
     final mode = widget.mode;
+    if (!active || !mode.shouldPlay) widget.handoff.supersede(controller);
+    final intent = ++_playbackIntent;
     final operation = _playbackTail.then(
       (_) => _guardPlayback(controller, active, mode, intent),
     );
@@ -47,6 +50,7 @@ extension _VideoPlayerSurfaceCommands on _VideoPlayerSurfaceState {
         error: error,
         stackTrace: stackTrace,
       );
+      _failPreparation(PlayerPreparationFailureKind.playbackCommand);
       await _rejectController(controller);
     }
   }
@@ -83,11 +87,17 @@ extension _VideoPlayerSurfaceCommands on _VideoPlayerSurfaceState {
     await widget.handoff.activate(
       controller,
       () => _ownsPlaybackIntent(controller, active, mode, intent),
+      () => _abandonUnsafeController(controller),
     );
     if (mode == VideoPlaybackMode.accelerated &&
         _ownsPlaybackIntent(controller, active, mode, intent)) {
       await _setPlaybackSpeedSafely(controller, mode.speed);
     }
+  }
+
+  void _abandonUnsafeController(VideoPlayerController controller) {
+    _failPreparation(PlayerPreparationFailureKind.playbackCommand);
+    _lifecycle.track(_rejectController(controller));
   }
 
   Future<void> _pausePlayback(

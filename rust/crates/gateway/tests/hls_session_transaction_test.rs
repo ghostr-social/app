@@ -57,7 +57,7 @@ async fn rejects_structurally_invalid_resource_capabilities() {
 }
 
 fn sessions() -> HlsSessions {
-    let limits = HlsSessionLimits::new(1, Duration::from_secs(60)).expect("limits");
+    let limits = HlsSessionLimits::new(1, Duration::from_secs(60), 8).expect("limits");
     HlsSessions::new(limits)
 }
 

@@ -9,7 +9,7 @@ use ghostr_delivery::progressive_posts::ServablePosts;
 use ghostr_gateway::hls::sessions::HlsSessions;
 use ghostr_gateway::progressive::capabilities::ProgressiveCapabilities;
 use ghostr_gateway::progressive::route::{ProgressiveState, ProgressiveTiming};
-use ghostr_gateway::router::configured_router_with_progressive;
+use ghostr_gateway::router::{configured_router_with_progressive, GatewayRouterResources};
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::PathBuf;
@@ -38,8 +38,7 @@ fn standard_router() -> (Router, PathBuf) {
     });
     (
         configured_router_with_progressive(
-            HlsSessions::production(),
-            gateway_fixture::media_client(),
+            GatewayRouterResources::new(HlsSessions::production(), gateway_fixture::media_client()),
             progressive,
         ),
         root,

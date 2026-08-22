@@ -3,7 +3,7 @@ use std::time::Duration;
 use tokio::time::{timeout, Instant};
 
 #[tokio::test]
-async fn per_host_cap_blocks_only_matching_host_connections() {
+async fn per_host_setting_does_not_create_a_second_admission_queue() {
     let throttle = NetworkThrottle::new();
     throttle.update(NetworkProfile {
         bandwidth_kbps: 0,
@@ -12,15 +12,20 @@ async fn per_host_cap_blocks_only_matching_host_connections() {
         max_connections_per_host: 1,
     });
     let first = throttle.acquire("https://relay.example/a").await;
-    let same_host = throttle.acquire("https://relay.example/b");
+    let second = timeout(
+        Duration::from_millis(100),
+        throttle.acquire("https://relay.example/b"),
+    )
+    .await
+    .expect("the shared request executor owns connection admission");
 
-    assert!(timeout(Duration::from_millis(10), same_host).await.is_err());
-    let other_host = throttle.acquire("https://mirror.example/a").await;
-    drop(other_host);
+    assert_eq!(
+        throttle.active_connections(),
+        vec![("https://relay.example".to_owned(), 2)]
+    );
+    drop(second);
     drop(first);
-
-    let released = throttle.acquire("https://relay.example/c");
-    assert!(timeout(Duration::from_millis(100), released).await.is_ok());
+    assert!(throttle.active_connections().is_empty());
 }
 
 #[tokio::test(start_paused = true)]

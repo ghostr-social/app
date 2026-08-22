@@ -1,12 +1,13 @@
 use super::PLAYBACK_SLICE_BYTES;
 use crate::progressive::route::ProgressiveState;
 use ghostr_engine::representation::RepresentationBinding;
-use ghostr_partial_store::partial_range_store::RepresentationRead;
+use ghostr_partial_store::partial_range_store::{ContentRevision, RepresentationRead};
 use std::ops::Range;
 
 pub(crate) struct StreamSource {
     key: String,
     binding: Option<RepresentationBinding>,
+    revision: ContentRevision,
 }
 
 pub(super) enum ChunkRead {
@@ -16,8 +17,16 @@ pub(super) enum ChunkRead {
 }
 
 impl StreamSource {
-    pub(crate) fn new(key: String, binding: Option<RepresentationBinding>) -> Self {
-        Self { key, binding }
+    pub(crate) fn new(
+        key: String,
+        binding: Option<RepresentationBinding>,
+        revision: ContentRevision,
+    ) -> Self {
+        Self {
+            key,
+            binding,
+            revision,
+        }
     }
 
     pub(super) fn key(&self) -> &str {
@@ -35,29 +44,27 @@ pub(super) async fn next_chunk(
     remaining: Range<u64>,
 ) -> anyhow::Result<ChunkRead> {
     let Some(span) = available_prefix(state, source.key(), remaining).await? else {
-        return Ok(ChunkRead::Missing);
-    };
-    let Some(binding) = &source.binding else {
-        return unbound_read(state, source.key(), span).await;
+        let current = state
+            .store
+            .stream_is_current(source.key(), source.binding.as_ref(), source.revision)
+            .await;
+        return Ok(if current {
+            ChunkRead::Missing
+        } else {
+            ChunkRead::Superseded
+        });
     };
     Ok(
-        match state.store.read_for_representation(binding, span).await? {
+        match state
+            .store
+            .read_for_stream(source.key(), source.binding.as_ref(), source.revision, span)
+            .await?
+        {
             RepresentationRead::Present(bytes) => ChunkRead::Present(bytes),
             RepresentationRead::Missing => ChunkRead::Missing,
             RepresentationRead::Superseded => ChunkRead::Superseded,
         },
     )
-}
-
-async fn unbound_read(
-    state: &ProgressiveState,
-    key: &str,
-    span: Range<u64>,
-) -> anyhow::Result<ChunkRead> {
-    Ok(match state.store.read_range(key, span).await? {
-        Some(bytes) => ChunkRead::Present(bytes),
-        None => ChunkRead::Missing,
-    })
 }
 
 async fn available_prefix(

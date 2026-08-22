@@ -5,10 +5,10 @@ use crate::tests::support::planned_transfer;
 use ghostr_engine::adaptive::PreemptionAuthority;
 
 #[test]
-fn pre_request_cancellation_reports_body_completion_to_the_manager() {
+fn pre_request_cancellation_reports_the_action_terminal_ack() {
     let event = event(false);
 
-    assert!(matches!(event, TransferEvent::BodyFinished(_)));
+    assert!(matches!(event, TransferEvent::ChunkDone(_)));
 }
 
 fn event(request_started: bool) -> TransferEvent {
@@ -25,9 +25,11 @@ fn event(request_started: bool) -> TransferEvent {
 fn result(request_started: bool) -> ChunkResult {
     ChunkResult {
         bytes_written: 0,
-        accept_ranges: false,
+        range_support: None,
+        range_ignored: false,
         cancelled: true,
         total_bytes: None,
+        promoted: false,
         request_started,
     }
 }

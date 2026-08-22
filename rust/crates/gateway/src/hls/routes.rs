@@ -1,18 +1,23 @@
-use crate::hls::cached;
 use crate::hls::sessions::{HlsResourceId, HlsSessionId};
-use crate::router::{proxy_response, upstream_request, GatewayHttpState};
-use anyhow::{bail, Context, Result};
+use crate::hls::transfer::HlsTransfer;
+use crate::router::GatewayHttpState;
+use anyhow::{bail, Result};
 use axum::body::Body;
 use axum::extract::{Path, State};
-use axum::http::header::{CONTENT_LENGTH, CONTENT_TYPE};
+use axum::http::header::{ACCEPT_ENCODING, CONTENT_LENGTH, CONTENT_TYPE};
 use axum::http::{HeaderMap, Response, StatusCode};
+use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_hls_manifest::hls_manifest::HlsResourceKind;
 use ghostr_hls_manifest::hls_manifest::MAX_HLS_MANIFEST_BYTES;
+use reqwest::header::HeaderValue;
 use reqwest::Url;
 use std::sync::Arc;
-use std::time::Duration;
 
-const HLS_MANIFEST_TIMEOUT: Duration = Duration::from_secs(30);
+pub(crate) use crate::hls::asset_delivery::asset;
+
+#[cfg(test)]
+mod tests;
+
 const HLS_CONTENT_TYPE: &str = "application/vnd.apple.mpegurl";
 
 pub(crate) async fn root_manifest(
@@ -50,42 +55,7 @@ pub(crate) async fn nested_manifest(
     manifest_response(manifest)
 }
 
-pub(crate) async fn asset(
-    State(state): State<Arc<GatewayHttpState>>,
-    Path((raw_session, raw_resource)): Path<(String, String)>,
-    headers: HeaderMap,
-) -> Result<Response<Body>, StatusCode> {
-    let (session, resource) = parsed_resource(&raw_session, &raw_resource)?;
-    let resource = state
-        .hls_sessions
-        .resource(&session, resource)
-        .await
-        .filter(|item| item.kind == HlsResourceKind::Asset)
-        .ok_or(StatusCode::NOT_FOUND)?;
-    if let Some(object) = state.segmented.object(resource.url.as_str()) {
-        return cached::response(object, &headers);
-    }
-    let upstream = upstream_request(state.client.as_ref(), resource.url.to_string(), &headers)?
-        .send()
-        .await
-        .map_err(|_| StatusCode::BAD_GATEWAY)?;
-    proxy_response(upstream)
-}
-
 async fn fetch_manifest(
-    state: &GatewayHttpState,
-    session: &HlsSessionId,
-    source: Url,
-) -> Result<String> {
-    tokio::time::timeout(
-        HLS_MANIFEST_TIMEOUT,
-        fetch_manifest_inner(state, session, source),
-    )
-    .await
-    .context("HLS manifest timed out")?
-}
-
-async fn fetch_manifest_inner(
     state: &GatewayHttpState,
     session: &HlsSessionId,
     source: Url,
@@ -96,30 +66,21 @@ async fn fetch_manifest_inner(
             .rewrite_manifest(session, &object.body, &object.final_url)
             .await;
     }
-    let mut response = state
-        .client
-        .get(source.as_str())?
-        .send()
-        .await?
-        .error_for_status()?;
-    require_hls_mime(response.headers())?;
-    let final_url = response.url().clone();
-    let body = bounded_manifest(&mut response).await?;
+    let request = state
+        .requests
+        .get(source.as_str(), PreemptionAuthority::PlaybackCritical)?
+        .header(ACCEPT_ENCODING, HeaderValue::from_static("identity"));
+    let mut transfer = HlsTransfer::open(request, state.hls_timeouts).await?;
+    if transfer.response().status() != StatusCode::OK {
+        bail!("full HLS manifest response is not 200");
+    }
+    require_hls_mime(transfer.response().headers())?;
+    let final_url = transfer.response().url().clone();
+    let body = transfer.read_bounded(MAX_HLS_MANIFEST_BYTES).await?;
     state
         .hls_sessions
         .rewrite_manifest(session, &body, &final_url)
         .await
-}
-
-async fn bounded_manifest(response: &mut reqwest::Response) -> Result<Vec<u8>> {
-    let mut body = Vec::new();
-    while let Some(chunk) = response.chunk().await? {
-        if body.len().saturating_add(chunk.len()) > MAX_HLS_MANIFEST_BYTES {
-            bail!("HLS manifest exceeds its byte limit");
-        }
-        body.extend_from_slice(&chunk);
-    }
-    Ok(body)
 }
 
 fn require_hls_mime(headers: &HeaderMap) -> Result<()> {
@@ -143,7 +104,7 @@ fn require_hls_mime(headers: &HeaderMap) -> Result<()> {
     Ok(())
 }
 
-fn parsed_resource(
+pub(super) fn parsed_resource(
     raw_session: &str,
     raw_resource: &str,
 ) -> Result<(HlsSessionId, HlsResourceId), StatusCode> {

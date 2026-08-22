@@ -16,7 +16,7 @@ fn unknown_current_receives_only_one_bounded_bootstrap_range() {
         .collect();
     assert_eq!(current.len(), 1, "{plan:#?}");
     assert_eq!(current[0].reason, AllocationReason::MediaBootstrap);
-    assert!(current[0].range.len() <= input.request_slice_bytes);
+    assert!(current[0].request.requested_bytes().len() <= input.request_slice_bytes);
     assert!(plan
         .retained
         .iter()

@@ -16,8 +16,11 @@ import 'api/feed_control.dart';
 import 'api/feed_types.dart';
 import 'api/feed_updates_stream.dart';
 import 'api/focus_control.dart';
+import 'api/network_control.dart';
 import 'api/playback_control.dart';
+import 'api/playback_preparation_stream.dart';
 import 'api/playback_types.dart';
+import 'api/player_preparation_control.dart';
 import 'api/session_control.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -48,6 +51,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  RustStreamSink<FfiPlaybackPreparationPlan>
+  dco_decode_StreamSink_ffi_playback_preparation_plan_Sse(dynamic raw);
+
+  @protected
   String dco_decode_String(dynamic raw);
 
   @protected
@@ -57,10 +64,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FeedOut dco_decode_TraitDef_FeedOut(dynamic raw);
 
   @protected
+  PreparationOut dco_decode_TraitDef_PreparationOut(dynamic raw);
+
+  @protected
   bool dco_decode_bool(dynamic raw);
 
   @protected
   FfiDeliveryEvent dco_decode_box_autoadd_ffi_delivery_event(dynamic raw);
+
+  @protected
+  FfiDeliveryNetworkStatus dco_decode_box_autoadd_ffi_delivery_network_status(
+    dynamic raw,
+  );
 
   @protected
   FfiEngineConfiguration dco_decode_box_autoadd_ffi_engine_configuration(
@@ -96,6 +111,23 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  FfiPlaybackPreparationAsset
+  dco_decode_box_autoadd_ffi_playback_preparation_asset(dynamic raw);
+
+  @protected
+  FfiPlaybackPreparationPlan
+  dco_decode_box_autoadd_ffi_playback_preparation_plan(dynamic raw);
+
+  @protected
+  FfiPlaybackPresentation dco_decode_box_autoadd_ffi_playback_presentation(
+    dynamic raw,
+  );
+
+  @protected
+  FfiPlayerPreparationReport
+  dco_decode_box_autoadd_ffi_player_preparation_report(dynamic raw);
+
+  @protected
   FfiTransportRescue dco_decode_box_autoadd_ffi_transport_rescue(dynamic raw);
 
   @protected
@@ -109,6 +141,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiDeliveryEventKind dco_decode_ffi_delivery_event_kind(dynamic raw);
+
+  @protected
+  FfiDeliveryNetworkClass dco_decode_ffi_delivery_network_class(dynamic raw);
+
+  @protected
+  FfiDeliveryNetworkStatus dco_decode_ffi_delivery_network_status(dynamic raw);
 
   @protected
   FfiEngineConfiguration dco_decode_ffi_engine_configuration(dynamic raw);
@@ -179,6 +217,34 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FfiPlaybackPhase dco_decode_ffi_playback_phase(dynamic raw);
 
   @protected
+  FfiPlaybackPreparationAsset dco_decode_ffi_playback_preparation_asset(
+    dynamic raw,
+  );
+
+  @protected
+  FfiPlaybackPreparationPlan dco_decode_ffi_playback_preparation_plan(
+    dynamic raw,
+  );
+
+  @protected
+  FfiPlaybackPreparationReadiness dco_decode_ffi_playback_preparation_readiness(
+    dynamic raw,
+  );
+
+  @protected
+  FfiPlaybackPresentation dco_decode_ffi_playback_presentation(dynamic raw);
+
+  @protected
+  FfiPlayerPreparationReport dco_decode_ffi_player_preparation_report(
+    dynamic raw,
+  );
+
+  @protected
+  FfiPlayerPreparationState dco_decode_ffi_player_preparation_state(
+    dynamic raw,
+  );
+
+  @protected
   FfiTransportRescue dco_decode_ffi_transport_rescue(dynamic raw);
 
   @protected
@@ -206,6 +272,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<FfiNostrTagFilter> dco_decode_list_ffi_nostr_tag_filter(dynamic raw);
 
   @protected
+  List<FfiPlaybackPreparationAsset>
+  dco_decode_list_ffi_playback_preparation_asset(dynamic raw);
+
+  @protected
   List<List<String>> dco_decode_list_list_String(dynamic raw);
 
   @protected
@@ -225,6 +295,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiMediaDim? dco_decode_opt_box_autoadd_ffi_media_dim(dynamic raw);
+
+  @protected
+  FfiPlaybackPreparationAsset?
+  dco_decode_opt_box_autoadd_ffi_playback_preparation_asset(dynamic raw);
 
   @protected
   FfiTransportRescue? dco_decode_opt_box_autoadd_ffi_transport_rescue(
@@ -263,6 +337,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  RustStreamSink<FfiPlaybackPreparationPlan>
+  sse_decode_StreamSink_ffi_playback_preparation_plan_Sse(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
@@ -270,6 +350,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiDeliveryEvent sse_decode_box_autoadd_ffi_delivery_event(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiDeliveryNetworkStatus sse_decode_box_autoadd_ffi_delivery_network_status(
     SseDeserializer deserializer,
   );
 
@@ -319,6 +404,29 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  FfiPlaybackPreparationAsset
+  sse_decode_box_autoadd_ffi_playback_preparation_asset(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiPlaybackPreparationPlan
+  sse_decode_box_autoadd_ffi_playback_preparation_plan(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiPlaybackPresentation sse_decode_box_autoadd_ffi_playback_presentation(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiPlayerPreparationReport
+  sse_decode_box_autoadd_ffi_player_preparation_report(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   FfiTransportRescue sse_decode_box_autoadd_ffi_transport_rescue(
     SseDeserializer deserializer,
   );
@@ -336,6 +444,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiDeliveryEventKind sse_decode_ffi_delivery_event_kind(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiDeliveryNetworkClass sse_decode_ffi_delivery_network_class(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiDeliveryNetworkStatus sse_decode_ffi_delivery_network_status(
     SseDeserializer deserializer,
   );
 
@@ -422,6 +540,36 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FfiPlaybackPhase sse_decode_ffi_playback_phase(SseDeserializer deserializer);
 
   @protected
+  FfiPlaybackPreparationAsset sse_decode_ffi_playback_preparation_asset(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiPlaybackPreparationPlan sse_decode_ffi_playback_preparation_plan(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiPlaybackPreparationReadiness sse_decode_ffi_playback_preparation_readiness(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiPlaybackPresentation sse_decode_ffi_playback_presentation(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiPlayerPreparationReport sse_decode_ffi_player_preparation_report(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiPlayerPreparationState sse_decode_ffi_player_preparation_state(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   FfiTransportRescue sse_decode_ffi_transport_rescue(
     SseDeserializer deserializer,
   );
@@ -461,6 +609,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<FfiPlaybackPreparationAsset>
+  sse_decode_list_ffi_playback_preparation_asset(SseDeserializer deserializer);
+
+  @protected
   List<List<String>> sse_decode_list_list_String(SseDeserializer deserializer);
 
   @protected
@@ -484,6 +636,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiMediaDim? sse_decode_opt_box_autoadd_ffi_media_dim(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiPlaybackPreparationAsset?
+  sse_decode_opt_box_autoadd_ffi_playback_preparation_asset(
     SseDeserializer deserializer,
   );
 
@@ -529,6 +687,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_StreamSink_ffi_playback_preparation_plan_Sse(
+    RustStreamSink<FfiPlaybackPreparationPlan> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
@@ -537,6 +701,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_ffi_delivery_event(
     FfiDeliveryEvent self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_ffi_delivery_network_status(
+    FfiDeliveryNetworkStatus self,
     SseSerializer serializer,
   );
 
@@ -595,6 +765,30 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_ffi_playback_preparation_asset(
+    FfiPlaybackPreparationAsset self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_ffi_playback_preparation_plan(
+    FfiPlaybackPreparationPlan self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_ffi_playback_presentation(
+    FfiPlaybackPresentation self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_ffi_player_preparation_report(
+    FfiPlayerPreparationReport self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_ffi_transport_rescue(
     FfiTransportRescue self,
     SseSerializer serializer,
@@ -618,6 +812,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_ffi_delivery_event_kind(
     FfiDeliveryEventKind self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_delivery_network_class(
+    FfiDeliveryNetworkClass self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_delivery_network_status(
+    FfiDeliveryNetworkStatus self,
     SseSerializer serializer,
   );
 
@@ -724,6 +930,42 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_ffi_playback_preparation_asset(
+    FfiPlaybackPreparationAsset self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_playback_preparation_plan(
+    FfiPlaybackPreparationPlan self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_playback_preparation_readiness(
+    FfiPlaybackPreparationReadiness self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_playback_presentation(
+    FfiPlaybackPresentation self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_player_preparation_report(
+    FfiPlayerPreparationReport self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_player_preparation_state(
+    FfiPlayerPreparationState self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_ffi_transport_rescue(
     FfiTransportRescue self,
     SseSerializer serializer,
@@ -772,6 +1014,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_ffi_playback_preparation_asset(
+    List<FfiPlaybackPreparationAsset> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_list_String(
     List<List<String>> self,
     SseSerializer serializer,
@@ -807,6 +1055,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_opt_box_autoadd_ffi_media_dim(
     FfiMediaDim? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_ffi_playback_preparation_asset(
+    FfiPlaybackPreparationAsset? self,
     SseSerializer serializer,
   );
 

@@ -5,10 +5,55 @@ const EVICTION_REACQUIRE_PROBABILITY: f64 = 0.75;
 
 pub(super) fn missing(candidate: &CandidateSnapshot) -> Vec<PlayableRange> {
     let blocked = blocked_ranges(candidate);
-    candidate
-        .playable_ranges
+    opportunities(candidate)
+        .into_iter()
+        .flat_map(|playable| subtract(playable, &blocked))
+        .collect()
+}
+
+pub(super) fn required_ranges(candidate: &CandidateSnapshot) -> Vec<ByteRange> {
+    crate::media_timeline::normalize(
+        opportunities(candidate)
+            .into_iter()
+            .map(|playable| playable.bytes)
+            .collect(),
+    )
+}
+
+pub(super) fn body_complete(candidate: &CandidateSnapshot) -> bool {
+    let Some(total) = candidate.total_bytes.filter(|total| *total > 0) else {
+        return false;
+    };
+    uncovered_bytes(ByteRange::new(0, total), &candidate.present) == 0
+}
+
+fn opportunities(candidate: &CandidateSnapshot) -> Vec<PlayableRange> {
+    let mut ranges = startup_opportunities(candidate);
+    for playable in &candidate.playable_ranges {
+        if !ranges.iter().any(|item| item.bytes == playable.bytes) {
+            ranges.push(*playable);
+        }
+    }
+    ranges
+}
+
+fn startup_opportunities(candidate: &CandidateSnapshot) -> Vec<PlayableRange> {
+    let Some(startup) = &candidate.startup else {
+        return Vec::new();
+    };
+    let last = startup.ranges().len().saturating_sub(1);
+    startup
+        .ranges()
         .iter()
-        .flat_map(|playable| subtract(*playable, &blocked))
+        .enumerate()
+        .map(|(index, bytes)| PlayableRange {
+            bytes: *bytes,
+            playable_ms: if index == last {
+                startup.playable_ms()
+            } else {
+                1
+            },
+        })
         .collect()
 }
 
@@ -20,13 +65,12 @@ pub(super) fn missing_playable(
 }
 
 pub(super) fn playable_gain(candidate: &CandidateSnapshot, bytes: ByteRange) -> u64 {
-    candidate
-        .playable_ranges
-        .iter()
+    opportunities(candidate)
+        .into_iter()
         .filter_map(|playable| {
             let start = playable.bytes.start.max(bytes.start);
             let end = playable.bytes.end.min(bytes.end);
-            (start < end).then(|| proportional_gain(*playable, end - start))
+            (start < end).then(|| proportional_gain(playable, end - start))
         })
         .sum()
 }
@@ -53,7 +97,7 @@ fn blocked_ranges(candidate: &CandidateSnapshot) -> Vec<ByteRange> {
             .in_flight
             .iter()
             .filter(|active| active.identity_current)
-            .map(|active| active.bytes),
+            .map(|active| active.effective_bytes),
     );
     crate::media_timeline::normalize(blocked)
 }

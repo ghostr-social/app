@@ -3,12 +3,14 @@
 use ghostr_delivery::manager::retry::RetryPolicy;
 use ghostr_delivery::manager::DeliveryTuning;
 use ghostr_engine::{DataUsageLevel, EngineParams};
+use std::sync::Arc;
 use std::time::Duration;
 
 pub struct DeliveryOptions {
     pub params: EngineParams,
     pub level: DataUsageLevel,
     pub tuning: DeliveryTuning,
+    pub transform: Option<Arc<dyn ghostr_delivery::transform::TransformBackend>>,
 }
 
 impl Default for DeliveryOptions {
@@ -17,6 +19,7 @@ impl Default for DeliveryOptions {
             params: base_params(),
             level: DataUsageLevel::Balanced,
             tuning: test_tuning(),
+            transform: None,
         }
     }
 }
@@ -45,6 +48,7 @@ pub fn serial_long_retry_options(transient_attempts: u32) -> DeliveryOptions {
 fn test_tuning() -> DeliveryTuning {
     DeliveryTuning {
         probe_concurrency: 2,
+        max_requests_per_authority: None,
         retry: RetryPolicy {
             base: Duration::from_millis(50),
             max: Duration::from_millis(400),

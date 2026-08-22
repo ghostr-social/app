@@ -8,8 +8,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: FeedPageView(
-          itemCount: 3,
-          initialPage: 2,
+          model: FeedPageModel(
+            keys: List.generate(3, (index) => ValueKey('page-$index')),
+            activePage: 2,
+          ),
           onPageChanged: (changed) {
             changes.add(changed);
             return true;

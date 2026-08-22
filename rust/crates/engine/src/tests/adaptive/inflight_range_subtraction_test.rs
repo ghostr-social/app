@@ -1,4 +1,4 @@
-use crate::adaptive::{AdaptivePlayabilityPolicy, InFlightRange};
+use crate::adaptive::{AdaptivePlayabilityPolicy, InFlightAction};
 use crate::tests::adaptive_support::snapshot;
 use crate::{ByteRange, PostId};
 
@@ -6,12 +6,13 @@ use crate::{ByteRange, PostId};
 fn new_origin_work_starts_after_a_partly_overlapping_active_transfer() {
     let policy = AdaptivePlayabilityPolicy;
     let mut input = snapshot(2, 20_000_000, 20_000, 2);
-    input.candidates[1].in_flight.push(InFlightRange {
-        bytes: ByteRange::new(0, 100_000),
-        source: "origin".to_owned(),
-        committed_until_ms: 12_000,
-        identity_current: true,
-    });
+    input.candidates[1].in_flight.push(InFlightAction::range(
+        crate::ActionId::new(1),
+        ByteRange::new(0, 100_000),
+        "https://origin.example/media",
+        12_000,
+        true,
+    ));
 
     let plan = policy.plan(&input);
     let first = plan
@@ -20,6 +21,6 @@ fn new_origin_work_starts_after_a_partly_overlapping_active_transfer() {
         .find(|work| work.post == PostId::new("p1"))
         .expect("remaining candidate work");
 
-    assert_eq!(first.range.start, 100_000);
-    assert!(first.range.len() <= crate::adaptive::REQUEST_SLICE_BYTES);
+    assert_eq!(first.request.requested_bytes().start, 100_000);
+    assert!(first.request.requested_bytes().len() <= crate::adaptive::REQUEST_SLICE_BYTES);
 }

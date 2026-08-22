@@ -1,8 +1,9 @@
+mod probe_fixture;
 mod range_fixture;
 
-use ghostr_delivery::probe::media::probe;
 use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_net::transfer_timeouts::TransferTimeouts;
+use probe_fixture::probe;
 
 #[tokio::test]
 async fn media_probe_records_a_host_failure_when_every_attempt_is_rejected() {

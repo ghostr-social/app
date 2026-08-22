@@ -13,18 +13,24 @@ pub fn command_channel_with_candidate_capacity(
     let (clear_sender, clears) = mpsc::channel(1);
     let plans = super::PlanEvidenceHistory::default();
     let playback_admissions = PlaybackAdmissionLedger::default();
+    let evaluation = crate::evaluation::EvaluationLedger::default();
+    let decisions = super::DecisionLog::default();
     (
         DeliveryHandle {
             sender,
             clears: clear_sender,
             plans: plans.clone(),
             playback_admissions: playback_admissions.clone(),
+            evaluation: evaluation.clone(),
+            decisions: decisions.clone(),
         },
         CommandReceiver {
             commands,
             clears,
             plans,
             playback_admissions,
+            evaluation,
+            decisions,
         },
     )
 }

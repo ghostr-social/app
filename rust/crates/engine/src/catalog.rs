@@ -5,41 +5,34 @@ use crate::media_timeline::MediaTimeline;
 use crate::playback::{BufferTarget, NetworkConditions, PlaybackObservation};
 use crate::representation::{RepresentationBinding, RepresentationGeneration, TransferIdentity};
 use crate::video_rendition::VideoRendition;
-use crate::{PostId, VideoMeta};
-use std::collections::HashMap;
+use crate::{PostId, PreviewDescriptor, VideoMeta};
+use std::collections::{BTreeSet, HashMap};
 
-/// Facts the engine learns about a video after discovery (HEAD probes,
-/// observed transfers). Absent fields are simply not yet learned.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct LearnedFacts {
-    pub content_length: Option<u64>,
-    pub accept_ranges: Option<bool>,
-    pub host: Option<String>,
-}
-
-impl LearnedFacts {
-    fn merge(&mut self, update: LearnedFacts) {
-        if update.content_length.is_some() {
-            self.content_length = update.content_length;
-        }
-        if update.accept_ranges.is_some() {
-            self.accept_ranges = update.accept_ranges;
-        }
-        if update.host.is_some() {
-            self.host = update.host;
-        }
-    }
-}
+mod evidence;
+use evidence::SourceEvidence;
+pub use evidence::{HttpObservation, LearnedFacts};
+mod calibration;
+mod compatibility;
+mod ledger;
+mod observation;
+mod persistence;
+mod playback_evidence;
+pub use persistence::CatalogEvidenceState;
+pub use playback_evidence::PlaybackEvidence;
 
 /// One catalogued post: what discovery said plus what probing taught us.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CatalogEntry {
     post: PostId,
     pub meta: VideoMeta,
-    pub(crate) facts: LearnedFacts,
+    evidence: HashMap<String, SourceEvidence>,
+    ledger: crate::evidence::EvidenceLedger,
+    evidence_clock_ms: u64,
+    quarantined: bool,
     binding: RepresentationBinding,
     timeline: Option<MediaTimeline>,
     tail_timeline_needed: bool,
+    preview: Option<PreviewDescriptor>,
     renditions: renditions::RenditionState,
 }
 
@@ -50,15 +43,21 @@ impl CatalogEntry {
         variants: Vec<VideoRendition>,
         generation: RepresentationGeneration,
     ) -> Self {
-        Self {
+        let mut entry = Self {
             binding: RepresentationBinding::new(post.clone(), &meta, generation),
             post,
             renditions: renditions::RenditionState::new(meta.clone(), variants),
             meta,
-            facts: LearnedFacts::default(),
+            evidence: HashMap::new(),
+            ledger: crate::evidence::EvidenceLedger::default(),
+            evidence_clock_ms: 0,
+            quarantined: false,
             timeline: None,
             tail_timeline_needed: false,
-        }
+            preview: None,
+        };
+        entry.seed_declared_evidence();
+        entry
     }
 
     fn refresh(
@@ -74,9 +73,14 @@ impl CatalogEntry {
     fn switch(&mut self, meta: VideoMeta, generation: RepresentationGeneration) {
         self.binding = RepresentationBinding::new(self.post.clone(), &meta, generation);
         self.meta = meta;
-        self.facts = LearnedFacts::default();
+        self.evidence.clear();
+        self.ledger = crate::evidence::EvidenceLedger::default();
+        self.evidence_clock_ms = 0;
+        self.quarantined = false;
         self.timeline = None;
         self.tail_timeline_needed = false;
+        self.preview = None;
+        self.seed_declared_evidence();
     }
 
     fn selected_meta(
@@ -93,17 +97,20 @@ impl CatalogEntry {
         self.binding.clone()
     }
 
-    /// Best-known file size: a probed `Content-Length` beats imeta `size`.
-    pub fn total_bytes(&self) -> Option<u64> {
-        self.facts.content_length.or(self.meta.size_bytes)
+    pub fn evidence(&self) -> &crate::evidence::EvidenceLedger {
+        &self.ledger
+    }
+
+    pub fn is_quarantined(&self) -> bool {
+        self.quarantined
     }
 
     pub fn timeline(&self) -> Option<&MediaTimeline> {
         self.timeline.as_ref()
     }
 
-    pub fn accepts_byte_ranges(&self) -> Option<bool> {
-        self.facts.accept_ranges
+    pub const fn preview(&self) -> Option<PreviewDescriptor> {
+        self.preview
     }
 
     pub fn needs_tail_probe(&self) -> bool {
@@ -118,6 +125,10 @@ impl CatalogEntry {
 #[derive(Debug)]
 pub struct Catalog {
     entries: HashMap<PostId, CatalogEntry>,
+    reliability: crate::evidence::FieldReliabilityModel,
+    reliability_revision: u64,
+    digest_claims: HashMap<String, BTreeSet<PostId>>,
+    quarantined_digests: BTreeSet<String>,
     next_generation: RepresentationGeneration,
 }
 
@@ -125,6 +136,10 @@ impl Default for Catalog {
     fn default() -> Self {
         Self {
             entries: HashMap::new(),
+            reliability: crate::evidence::FieldReliabilityModel::default(),
+            reliability_revision: 0,
+            digest_claims: HashMap::new(),
+            quarantined_digests: BTreeSet::new(),
             next_generation: RepresentationGeneration::first(),
         }
     }
@@ -144,29 +159,6 @@ impl Catalog {
         generation
     }
 
-    /// Merges freshly learned facts into a known post. Returns `false`
-    /// when the post is not catalogued.
-    pub fn learn(&mut self, post: &PostId, facts: LearnedFacts) -> bool {
-        match self.entries.get_mut(post) {
-            Some(entry) => {
-                entry.facts.merge(facts);
-                true
-            }
-            None => false,
-        }
-    }
-
-    pub fn learn_for(&mut self, identity: &TransferIdentity, facts: LearnedFacts) -> bool {
-        let Some(entry) = self.entries.get_mut(identity.post()) else {
-            return false;
-        };
-        if entry.binding.transfer(identity.source().as_str()).as_ref() != Some(identity) {
-            return false;
-        }
-        entry.facts.merge(facts);
-        true
-    }
-
     pub fn binding(&self, post: &PostId) -> Option<RepresentationBinding> {
         self.lookup(post).map(CatalogEntry::binding)
     }
@@ -177,6 +169,12 @@ impl Catalog {
 
     pub fn lookup(&self, post: &PostId) -> Option<&CatalogEntry> {
         self.entries.get(post)
+    }
+
+    pub fn set_preview(&mut self, post: &PostId, preview: Option<PreviewDescriptor>) {
+        if let Some(entry) = self.entries.get_mut(post) {
+            entry.preview = preview;
+        }
     }
 
     #[cfg(test)]
@@ -192,4 +190,5 @@ impl Catalog {
 
 mod bitrate;
 mod renditions;
+pub use renditions::RenditionQualityEvidence;
 mod timeline;

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
+import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/presentation/disposal_safe_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
@@ -23,11 +24,14 @@ import 'package:ghostr/features/video_catalog/presentation/feed_dependencies.dar
 import 'package:ghostr/features/video_catalog/presentation/feed_backfill_retry.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_failure_messages.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_follow_state.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_preparation_reducer.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_hunt.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_ready_selector.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_state.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_update_retry.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_viewer.dart';
+import 'package:ghostr/features/video_inventory/domain/playback_preparation.dart';
+import 'package:ghostr/features/video_inventory/domain/playback_preparation_updates.dart';
 
 export 'feed_dependencies.dart';
 export 'feed_state.dart';
@@ -41,6 +45,7 @@ part 'feed_cubit_update_loading.dart';
 part 'feed_update_state.dart';
 part 'feed_cubit_updates.dart';
 part 'feed_cubit_delivery.dart';
+part 'feed_cubit_preparation.dart';
 
 typedef _PendingTransportRescue = ({
   int fromIndex,
@@ -64,6 +69,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
        _hunt = hunt ?? FeedHunt(),
        super(const FeedLoading(FeedKind.forYou)) {
     _startDeliveryUpdates();
+    _startPreparationUpdates();
   }
 
   final FeedDependencies _dependencies;
@@ -77,12 +83,15 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   final _FeedUpdateState _updates;
   final _readySelector = const FeedReadySelector();
   final _delivery = <PlaybackDeliveryId, VideoDeliverySnapshot>{};
+  final _preparation = FeedPreparationReducer();
   int _pageTransition = 0;
   var _isSurfaceVisible = true;
   var _reloadWhenSurfaceVisible = false;
   var _refreshWhenSurfaceVisible = false;
   var _isPreparingLoad = false;
   StreamSubscription<VideoDeliverySnapshot>? _deliverySubscription;
+  StreamSubscription<PlaybackPreparationPlan>? _preparationSubscription;
+  var _preparationAvailable = false;
   _PendingTransportRescue? _awaitingTransportRescue;
   Timer? _rescueTimer;
   int? _pendingTransportJump;
@@ -183,6 +192,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
     _backfillRetry.cancel();
     await _viewer.dispose();
     await _stopDeliveryUpdates();
+    await _stopPreparationUpdates();
     await _stopFeedUpdates();
     await super.close();
   }

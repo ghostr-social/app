@@ -1,4 +1,5 @@
 use super::{Catalog, CatalogEntry};
+use crate::evidence::NostrMetadataEvidence;
 use crate::playback::{BufferTarget, NetworkConditions, PlaybackObservation};
 use crate::rendition::{
     QualitySelectionInput, QualitySelectionPolicy, Rendition, RenditionId, RenditionSet,
@@ -7,6 +8,10 @@ use crate::representation::{RepresentationBinding, RepresentationId};
 use crate::video_rendition::VideoRendition;
 use crate::{PostId, VideoMeta};
 use std::collections::BTreeSet;
+
+mod integrity;
+mod quality;
+pub use quality::RenditionQualityEvidence;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct RenditionState {
@@ -109,6 +114,26 @@ impl Catalog {
         self.replace(post, meta, variants)
     }
 
+    pub fn upsert_with_evidence(
+        &mut self,
+        post: PostId,
+        meta: VideoMeta,
+        variants: Vec<VideoRendition>,
+        evidence: Vec<NostrMetadataEvidence>,
+    ) -> RepresentationBinding {
+        let observed_at_ms = evidence
+            .iter()
+            .map(|item| item.observed_at_ms)
+            .max()
+            .unwrap_or(0);
+        let binding = self.upsert_with_renditions(post.clone(), meta, variants);
+        if let Some(entry) = self.entries.get_mut(&post) {
+            entry.record_nostr_metadata(evidence);
+        }
+        self.recalibrate(observed_at_ms);
+        binding
+    }
+
     pub fn select_rendition(
         &mut self,
         post: &PostId,
@@ -132,6 +157,11 @@ impl Catalog {
         meta: VideoMeta,
         variants: Vec<VideoRendition>,
     ) -> RepresentationBinding {
+        let previous_digest = self
+            .entries
+            .get(&post)
+            .and_then(|entry| entry.meta.sha256.clone());
+        let next_digest = meta.sha256.clone();
         let generation = self.allocate_generation();
         match self.entries.get_mut(&post) {
             Some(entry) => entry.refresh(meta, variants, generation),
@@ -142,6 +172,8 @@ impl Catalog {
                 );
             }
         }
+        self.update_digest_claim(&post, previous_digest.as_deref(), next_digest.as_deref());
+        self.apply_known_quarantine(&post);
         self.binding(&post).expect("upserted catalog entry")
     }
 }

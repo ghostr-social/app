@@ -6,7 +6,7 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `from`
 
 /// Delivery manager decisions and latest accepted identity in this process.
 class FfiPlaybackAdmissionSnapshot {
@@ -97,4 +97,36 @@ enum FfiPlaybackPhase {
   ended,
   failed,
   inactive,
+}
+
+/// One user-visible Flutter frame for an exact playback session.
+class FfiPlaybackPresentation {
+  final String postId;
+  final BigInt generation;
+  final BigInt sequence;
+  final BigInt observedAtMs;
+
+  const FfiPlaybackPresentation({
+    required this.postId,
+    required this.generation,
+    required this.sequence,
+    required this.observedAtMs,
+  });
+
+  @override
+  int get hashCode =>
+      postId.hashCode ^
+      generation.hashCode ^
+      sequence.hashCode ^
+      observedAtMs.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FfiPlaybackPresentation &&
+          runtimeType == other.runtimeType &&
+          postId == other.postId &&
+          generation == other.generation &&
+          sequence == other.sequence &&
+          observedAtMs == other.observedAtMs;
 }

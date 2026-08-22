@@ -4,6 +4,8 @@
 
 use crate::partial_range_disk as disk;
 use crate::partial_range_manifest::RangeManifest;
+use crate::partial_range_store::cleanup_debt::CleanupScope;
+use crate::partial_range_store::StoreAction;
 use crate::partial_range_store::{Entries, PartialRangeStore};
 use anyhow::{bail, Context, Result};
 use std::ops::Range;
@@ -12,10 +14,12 @@ use std::ops::Range;
 struct PlannedWrite {
     manifest: RangeManifest,
     added: u64,
+    checksum_span: Range<u64>,
 }
 
 impl PartialRangeStore {
     pub async fn write_range(&self, key: &str, offset: u64, bytes: &[u8]) -> Result<()> {
+        let _update = self.update_key(key).await?;
         let mut entries = self.entries.lock().await;
         self.write_range_locked(&mut entries, key, offset, bytes)
             .await
@@ -28,6 +32,30 @@ impl PartialRangeStore {
         offset: u64,
         bytes: &[u8],
     ) -> Result<()> {
+        self.write_range_locked_with_action(entries, key, None, offset, bytes)
+            .await
+    }
+
+    pub(super) async fn write_range_locked_for_action(
+        &self,
+        entries: &mut Entries,
+        key: &str,
+        action: &StoreAction,
+        offset: u64,
+        bytes: &[u8],
+    ) -> Result<()> {
+        self.write_range_locked_with_action(entries, key, Some(action), offset, bytes)
+            .await
+    }
+
+    async fn write_range_locked_with_action(
+        &self,
+        entries: &mut Entries,
+        key: &str,
+        action: Option<&StoreAction>,
+        offset: u64,
+        bytes: &[u8],
+    ) -> Result<()> {
         if bytes.is_empty() {
             return Ok(());
         }
@@ -35,13 +63,53 @@ impl PartialRangeStore {
             .checked_add(bytes.len() as u64)
             .context("partial range end overflows")?;
         let plan = self.plan_write(entries, key, offset..end).await?;
-        self.make_room(entries, key, plan.added).await?;
-        disk::write_at(&self.paths.partial(key), offset, bytes).await?;
+        let debt = plan.added;
+        let reserved = self.consume_if_action(action, plan.added).await?;
+        if let Err(error) = self.make_room(entries, key, plan.added).await {
+            self.restore_if_action(action, reserved).await;
+            return Err(error);
+        }
+        let result = self.persist_write(entries, key, offset, bytes, plan).await;
+        if result.is_err() && self.discard(entries, key).await.is_err() {
+            self.record_cleanup_debt(key, CleanupScope::CanonicalDirty, action.cloned(), debt)
+                .await?;
+        }
+        result
+    }
+
+    async fn persist_write(
+        &self,
+        entries: &mut Entries,
+        key: &str,
+        offset: u64,
+        bytes: &[u8],
+        mut plan: PlannedWrite,
+    ) -> Result<()> {
+        let path = self.paths.partial(key);
+        disk::write_at(&path, offset, bytes).await?;
+        let spans = std::slice::from_ref(&plan.checksum_span);
+        for (span, checksum) in disk::checksum_blocks(&path, spans).await? {
+            plan.manifest.record_checksum(span, checksum)?;
+        }
         disk::save_manifest(&self.paths.manifest(key), &plan.manifest).await?;
         self.record_write(entries, key, plan).await
     }
 
+    async fn consume_if_action(&self, action: Option<&StoreAction>, bytes: u64) -> Result<u64> {
+        match action {
+            Some(action) => self.consume_action(action, bytes).await,
+            None => Ok(0),
+        }
+    }
+
+    async fn restore_if_action(&self, action: Option<&StoreAction>, bytes: u64) {
+        if let Some(action) = action {
+            self.restore_action(action, bytes).await;
+        }
+    }
+
     pub async fn set_total_len(&self, key: &str, len: u64) -> Result<()> {
+        let _update = self.update_key(key).await?;
         let mut entries = self.entries.lock().await;
         let entry = self.entry(&mut entries, key).await?;
         if entry.completion.is_some() {
@@ -67,9 +135,14 @@ impl PartialRangeStore {
             bail!("cannot write into a finalized video");
         }
         let mut manifest = entry.manifest.clone();
+        let checksum_span = manifest.checksum_span_for_write(span.clone());
         manifest.insert(span)?;
         let added = manifest.covered_bytes() - entry.manifest.covered_bytes();
-        Ok(PlannedWrite { manifest, added })
+        Ok(PlannedWrite {
+            manifest,
+            added,
+            checksum_span,
+        })
     }
 
     /// Bookkeeping for bytes that are already on disk. The capacity

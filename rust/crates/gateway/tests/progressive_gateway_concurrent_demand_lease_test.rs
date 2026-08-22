@@ -10,6 +10,9 @@ async fn current_and_prepared_next_responses_own_distinct_demand_leases() {
     let mut harness = progressive_harness("ghostr-progressive-concurrent-demand");
     for post in ["current", "next"] {
         harness.posts.insert(post);
+        harness
+            .bind_video(post, &format!("https://cdn.example/{post}.mp4"), Some(10))
+            .await;
         harness.store.set_total_len(post, 10).await.unwrap();
         harness.store.write_range(post, 0, &[7]).await.unwrap();
     }

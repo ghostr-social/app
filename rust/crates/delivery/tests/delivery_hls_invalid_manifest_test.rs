@@ -12,6 +12,7 @@ use std::time::Duration;
 async fn invalid_hls_manifest_surfaces_a_failed_readiness_state() {
     let response = b"HTTP/1.1 200 OK\r\nContent-Type: application/vnd.apple.mpegurl\r\nContent-Length: 8\r\nConnection: close\r\n\r\n#EXTM3U\n";
     let (source, request) = raw_http::spawn_raw_server(response).await;
+    let source = format!("{source}?token=do-not-project-this-secret");
     let harness = start_harness("hls-invalid-manifest", DeliveryOptions::default());
     let mut item = sized_item("stream", &source, 32, 4_000);
     item.meta.delivery = DeliveryKind::Hls;
@@ -27,6 +28,12 @@ async fn invalid_hls_manifest_surfaces_a_failed_readiness_state() {
     .await
     .unwrap();
 
-    assert!(harness.segmented.snapshot("stream").detail.is_some());
+    let detail = harness
+        .segmented
+        .snapshot("stream")
+        .detail
+        .expect("safe HLS failure detail");
+    assert_eq!(detail, "HLS bootstrap received an invalid response");
+    assert!(!detail.contains("do-not-project-this-secret"));
     std::fs::remove_dir_all(&harness.root).ok();
 }

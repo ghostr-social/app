@@ -86,7 +86,10 @@ pub async fn ffi_playback_url(item: FfiFocusItem) -> anyhow::Result<String> {
     }
     let engine = registry::engine()?;
     register_progressive(&engine, &mapped);
-    let capability = engine.gateway.issue_progressive(mapped.post.as_str()).await;
+    let capability = engine
+        .gateway
+        .issue_progressive(mapped.post.as_str(), &mapped.meta)
+        .await?;
     Ok(progressive_url(
         &engine.endpoint,
         mapped.post.as_str(),

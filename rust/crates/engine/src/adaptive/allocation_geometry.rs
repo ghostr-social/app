@@ -69,6 +69,7 @@ pub(super) fn overlaps_planned(
     range: crate::ByteRange,
 ) -> bool {
     plan.allocations.iter().any(|work| {
-        work.post == candidate.post && work.range.start < range.end && range.start < work.range.end
+        let reserved = work.request.reserved_coverage();
+        work.post == candidate.post && reserved.start < range.end && range.start < reserved.end
     })
 }

@@ -3,6 +3,7 @@
 //! Invalid media is rejected at the edge, addressable revisions share one
 //! stable identity, and only compact revision metadata survives inspection.
 
+use crate::content::blossom::BlossomServerStore;
 use crate::content::parsing::ParsedVideoPost;
 use crate::content::repost_resolution::feed_posts_from_events;
 use crate::content::reposts::feed_post_from_event;
@@ -64,6 +65,7 @@ pub struct CandidateBatch {
 pub struct CandidateRegistry {
     canonical: HashMap<String, CanonicalPost>,
     coordinate_order: VecDeque<String>,
+    blossom: BlossomServerStore,
     retention: usize,
 }
 
@@ -72,6 +74,7 @@ impl Default for CandidateRegistry {
         Self {
             canonical: HashMap::new(),
             coordinate_order: VecDeque::new(),
+            blossom: BlossomServerStore::default(),
             retention: CANDIDATE_COORDINATE_RETENTION,
         }
     }
@@ -83,15 +86,21 @@ impl CandidateRegistry {
     }
 
     pub fn inspect(&mut self, event: &Event) -> CandidateInspection {
-        let post = feed_post_from_event(event);
+        self.blossom.ingest(std::slice::from_ref(event));
+        let mut post = feed_post_from_event(event);
+        if let Some(post) = &mut post {
+            self.blossom.enrich(post);
+        }
         let admission = self.canonical_admission(post.as_ref());
         CandidateInspection { post, admission }
     }
 
     pub fn inspect_all(&mut self, events: &[Event]) -> CandidateBatch {
+        self.blossom.ingest(events);
         let mut posts = Vec::new();
         let mut admitted = Vec::new();
-        for post in feed_posts_from_events(events) {
+        for mut post in feed_posts_from_events(events) {
+            self.blossom.enrich(&mut post);
             let admission = self.canonical_admission(Some(&post));
             posts.push(post);
             admitted.extend(admitted_candidate(admission));
@@ -102,6 +111,7 @@ impl CandidateRegistry {
     pub fn clear(&mut self) {
         self.canonical.clear();
         self.coordinate_order.clear();
+        self.blossom.clear();
     }
 
     fn canonical_admission(&mut self, post: Option<&ParsedVideoPost>) -> CandidateAdmission {
@@ -170,7 +180,11 @@ fn retained_post(post: &ParsedVideoPost) -> ParsedVideoPost {
 }
 
 fn same_candidate(left: &ParsedVideoPost, right: &ParsedVideoPost) -> bool {
-    left.event_id == right.event_id && left.feed_sort_at == right.feed_sort_at
+    left.event_id == right.event_id
+        && left.feed_sort_at == right.feed_sort_at
+        && left.meta == right.meta
+        && left.metadata_evidence == right.metadata_evidence
+        && left.renditions == right.renditions
 }
 
 fn admitted_candidate(admission: CandidateAdmission) -> Option<VideoCandidate> {

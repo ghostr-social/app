@@ -1,12 +1,14 @@
 use crate::partial_range_completion::{self as completion, Completion};
 use crate::partial_range_manifest::RangeManifest;
 use crate::partial_range_paths::StorePaths;
-use anyhow::{Context, Result};
-use sha2::{Digest, Sha256};
+use anyhow::{ensure, Context, Result};
 use std::io::SeekFrom;
 use std::ops::Range;
 use std::path::Path;
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
+
+mod digest;
+mod durable;
 
 /// In-memory bookkeeping for one stored key, rebuilt lazily from disk.
 /// `completion` is `None` while the key is still partial.
@@ -31,10 +33,12 @@ impl Entry {
         }
     }
 
-    fn completed(len: u64, completion: Completion) -> Result<Self> {
-        let mut manifest = RangeManifest::default();
-        manifest.set_total_len(len)?;
-        manifest.insert(0..len)?;
+    fn completed(len: u64, completion: Completion, manifest: RangeManifest) -> Result<Self> {
+        ensure!(
+            manifest.total_len() == Some(len),
+            "completed length mismatch"
+        );
+        ensure!(manifest.is_complete(), "completed manifest is incomplete");
         Ok(Self {
             manifest,
             accounted: len,
@@ -47,12 +51,21 @@ impl Entry {
 pub async fn load_entry(paths: &StorePaths, key: &str) -> Result<Entry> {
     if let Some(len) = file_len(&paths.completed(key)).await? {
         let completion = completion::recorded(&paths.verified(key)).await?;
-        return Entry::completed(len, completion);
+        let manifest = load_manifest(&paths.manifest(key)).await?;
+        return Entry::completed(len, completion, manifest);
     }
     Ok(Entry::partial(load_manifest(&paths.manifest(key)).await?))
 }
 
 pub async fn write_at(path: &Path, offset: u64, bytes: &[u8]) -> Result<()> {
+    write_at_inner(path, offset, bytes, true).await
+}
+
+pub async fn write_at_unsynced(path: &Path, offset: u64, bytes: &[u8]) -> Result<()> {
+    write_at_inner(path, offset, bytes, false).await
+}
+
+async fn write_at_inner(path: &Path, offset: u64, bytes: &[u8], sync: bool) -> Result<()> {
     ensure_parent(path).await?;
     let mut file = tokio::fs::OpenOptions::new()
         .create(true)
@@ -68,17 +81,50 @@ pub async fn write_at(path: &Path, offset: u64, bytes: &[u8]) -> Result<()> {
         .await
         .context("write partial video range")?;
     file.flush().await.context("flush partial video range")?;
+    if sync {
+        file.sync_data().await.context("sync partial video range")?;
+    }
     Ok(())
 }
 
+pub async fn sync_file(path: &Path) -> Result<()> {
+    tokio::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)
+        .await
+        .context("open partial video for sync")?
+        .sync_all()
+        .await
+        .context("sync partial video")
+}
+
+pub async fn save_durable(path: &Path, staging: &Path, bytes: &[u8]) -> Result<()> {
+    durable::replace(staging, path, bytes).await
+}
+
+pub async fn remove_durable(path: &Path) -> Result<()> {
+    remove_if_present(path).await?;
+    sync_parent(path).await
+}
+
 pub async fn read_span(path: &Path, span: &Range<u64>) -> Result<Vec<u8>> {
+    let len = span
+        .end
+        .checked_sub(span.start)
+        .context("partial video range is reversed")?;
+    let len = usize::try_from(len).context("partial video range exceeds memory")?;
     let mut file = tokio::fs::File::open(path)
         .await
         .context("open partial video file")?;
     file.seek(SeekFrom::Start(span.start))
         .await
         .context("seek partial video file")?;
-    let mut buffer = vec![0_u8; (span.end - span.start) as usize];
+    let mut buffer = Vec::new();
+    buffer
+        .try_reserve_exact(len)
+        .context("reserve partial video range")?;
+    buffer.resize(len, 0);
     file.read_exact(&mut buffer)
         .await
         .context("read partial video range")?;
@@ -86,35 +132,49 @@ pub async fn read_span(path: &Path, span: &Range<u64>) -> Result<Vec<u8>> {
 }
 
 pub async fn sha256_file(path: &Path) -> Result<String> {
-    let mut file = tokio::fs::File::open(path)
-        .await
-        .context("open partial video for digest")?;
-    let mut digest = Sha256::new();
-    let mut buffer = [0_u8; 64 * 1024];
-    loop {
-        let bytes = file
-            .read(&mut buffer)
-            .await
-            .context("read partial video for digest")?;
-        if bytes == 0 {
-            break;
+    digest::file(path).await
+}
+
+pub async fn sha256_span(path: &Path, span: &Range<u64>) -> Result<String> {
+    digest::span(path, span).await
+}
+
+pub fn sha256_bytes(bytes: &[u8]) -> String {
+    digest::bytes(bytes)
+}
+
+pub async fn checksum_blocks(
+    path: &Path,
+    ranges: &[Range<u64>],
+) -> Result<Vec<(Range<u64>, String)>> {
+    let block = ghostr_engine::adaptive::REQUEST_SLICE_BYTES;
+    let mut checksums = Vec::new();
+    for range in ranges {
+        let mut start = range.start;
+        while start < range.end {
+            let span = start..range.end.min(start.saturating_add(block));
+            checksums.push((span.clone(), sha256_span(path, &span).await?));
+            start = span.end;
         }
-        digest.update(&buffer[..bytes]);
     }
-    Ok(format!("{:x}", digest.finalize()))
+    Ok(checksums)
 }
 
 /// Writes the zero-byte marker that records a verified completion.
 pub async fn write_marker(path: &Path) -> Result<()> {
     ensure_parent(path).await?;
-    tokio::fs::write(path, [])
+    tokio::fs::File::create(path)
         .await
-        .context("write partial store verification marker")
+        .context("write partial store verification marker")?
+        .sync_all()
+        .await
+        .context("sync partial store verification marker")?;
+    sync_parent(path).await
 }
 
 pub async fn load_manifest(path: &Path) -> Result<RangeManifest> {
     match tokio::fs::read_to_string(path).await {
-        Ok(text) => Ok(RangeManifest::from_json(&text).unwrap_or_default()),
+        Ok(text) => RangeManifest::from_json(&text),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(RangeManifest::default()),
         Err(error) => Err(error).context("read partial range manifest"),
     }
@@ -124,15 +184,13 @@ pub async fn load_manifest(path: &Path) -> Result<RangeManifest> {
 /// write that fails — a full disk is the usual reason — leaves nothing
 /// behind and leaves the committed manifest exactly as it was.
 pub async fn save_manifest(path: &Path, manifest: &RangeManifest) -> Result<()> {
-    ensure_parent(path).await?;
     let staging = path.with_extension("json.tmp");
-    if let Err(error) = tokio::fs::write(&staging, manifest.to_json()).await {
-        remove_if_present(&staging).await?;
-        return Err(error).context("write partial range manifest");
-    }
-    tokio::fs::rename(&staging, path)
-        .await
-        .context("commit partial range manifest")
+    durable::replace(&staging, path, manifest.to_json()?.as_bytes()).await
+}
+
+pub async fn sync_parent(path: &Path) -> Result<()> {
+    let parent = path.parent().context("partial store path has no parent")?;
+    durable::sync_directory(parent).await
 }
 
 pub async fn file_len(path: &Path) -> Result<Option<u64>> {

@@ -170,6 +170,7 @@ function updatePlaybackPhase(phase) { playbackPhase = phase; if (latestState) re
 function play(video) {
   if (currentId && currentId !== video.id) playedIds.add(currentId);
   currentId = video.id;
+  beginPresentationAttempt();
   playbackPhase = "Loading";
   playedIds.delete(video.id);
   const player = byId("player");

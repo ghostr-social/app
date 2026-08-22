@@ -1,8 +1,15 @@
 mod cmaf_sidx_timeline_test;
 mod cmaf_sidx_validation_test;
+mod fast_start_remux_evidence_test;
 mod fragmented_init_timeline_test;
 mod malformed_timeline_test;
+mod mp4_cancellation_cadence_test;
+mod mp4_cancellation_test;
+mod mp4_resource_limit_test;
+mod mp4_segment_geometry_test;
 mod mp4_table_validation_test;
 mod mp4_table_variants_test;
 mod mp4_vbr_timeline_test;
+mod startup_footprint_validation_test;
+mod startup_topology_validation_test;
 mod tail_moov_timeline_test;

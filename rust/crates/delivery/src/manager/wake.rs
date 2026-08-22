@@ -1,31 +1,49 @@
-use crate::delivery_events::{ClearRequest, DeliveryCommand};
-use crate::manager::concurrency::network_profile_setback;
+use crate::delivery_events::{
+    ClearRequest, DeliveryCommand, PlaybackPresentation, PlayerPreparationReport,
+};
+use crate::manager::response_open::ResponseOpenRequest;
 use crate::manager::time::unix_time_ms;
+use crate::manager::timeline::TimelineResult;
 use crate::manager::transfers::{InternalEvent, MaintenanceEvent, TransferEvent};
 use crate::manager::DeliveryWorker;
 use crate::playback_demand::DemandState;
-use ghostr_engine::concurrency::NetworkSetback;
-use ghostr_engine::playback::PlaybackPhase;
-use tokio::sync::oneshot;
+
+mod clear;
+mod network;
+use clear::ClearCompletion;
 
 pub(crate) enum Wake {
     Clear(ClearRequest),
     Command(DeliveryCommand),
+    Commands(Vec<DeliveryCommand>),
+    PlayerPreparation(PlayerPreparationReport),
+    PlaybackPresentation(PlaybackPresentation),
     Demand(DemandState),
+    Response(Box<ResponseOpenRequest>),
     Internal(InternalEvent),
+    Timeline(TimelineResult),
 }
-
-type ClearCompletion = (oneshot::Sender<anyhow::Result<()>>, anyhow::Result<()>);
-
 impl DeliveryWorker {
     pub(crate) async fn step(&mut self) -> bool {
         let Some(wake) = self.next_wake().await else {
             return false;
         };
         let clear = self.apply(wake).await;
+        if clear.is_none() {
+            self.apply_pending_focus().await;
+        }
         self.reconcile().await;
-        complete_clear(clear);
+        clear::complete(clear);
         true
+    }
+
+    async fn apply_pending_focus(&mut self) {
+        let Some(commands) = self.commands.try_controls_through_focus() else {
+            return;
+        };
+        self.wake_cursor
+            .observe(crate::manager::wake_lane::WakeLane::Control);
+        self.apply_commands(commands).await;
     }
 
     async fn apply(&mut self, wake: Wake) -> Option<ClearCompletion> {
@@ -35,14 +53,40 @@ impl DeliveryWorker {
                 self.apply_command(command).await;
                 None
             }
+            Wake::Commands(commands) => {
+                self.apply_commands(commands).await;
+                None
+            }
+            Wake::PlayerPreparation(report) => {
+                self.apply_player_preparation_feedback(report);
+                None
+            }
+            Wake::PlaybackPresentation(event) => {
+                self.apply_presentation(event);
+                None
+            }
             Wake::Demand(signal) => {
                 self.demand_leases.apply(signal);
+                None
+            }
+            Wake::Response(response) => {
+                self.apply_response_open(*response).await;
                 None
             }
             Wake::Internal(event) => {
                 self.apply_internal(event).await;
                 None
             }
+            Wake::Timeline(result) => {
+                self.timelines.stage(result);
+                None
+            }
+        }
+    }
+
+    async fn apply_commands(&mut self, commands: Vec<DeliveryCommand>) {
+        for command in commands {
+            self.apply_command(command).await;
         }
     }
 
@@ -55,10 +99,8 @@ impl DeliveryWorker {
                 self.state.apply_level(level);
                 self.update_concurrency_ceiling();
             }
-            DeliveryCommand::NetworkChanged => {
-                let loss = self.ctx.network.profile().packet_loss_bps;
-                self.note_network_setback(network_profile_setback(loss));
-            }
+            DeliveryCommand::NetworkStatus(status) => self.apply_network_status(status),
+            DeliveryCommand::NetworkChanged => self.note_network_profile_change(),
             DeliveryCommand::StorageChanged => {}
         }
         self.prune_scheduling_history();
@@ -96,13 +138,16 @@ impl DeliveryWorker {
 
     fn prune_scheduling_history(&mut self) {
         let retained = self.state.retained_posts();
+        self.retain_transform_jobs(&retained);
         self.probes.retain_history(&retained);
         self.retry.retain_history(&retained);
         self.cooldown_timers.retain(&retained);
+        self.timelines.retain_history(&retained);
     }
 
     pub(crate) async fn bind_representations(&mut self) {
         for binding in self.state.take_representation_bindings() {
+            self.cancel_obsolete_transform(&binding);
             self.downloads.cancel_obsolete(&binding);
             if let Err(error) = self.ctx.store.bind_representation(binding).await {
                 log::warn!("Video representation binding failed: {error:#}");
@@ -110,24 +155,16 @@ impl DeliveryWorker {
         }
     }
 
-    fn apply_playback(&mut self, playback: crate::delivery_events::DeliveryPlayback) {
-        let stalled = playback.observation.phase() == PlaybackPhase::NetworkStalled;
-        let post = playback.session.post().clone();
-        let evidence = playback.clone();
-        let admission = self.state.apply_playback(playback);
-        self.commands.record_playback_admission(admission, &post);
-        if admission.is_accepted() {
-            self.qoe.note_playback(&evidence, unix_time_ms());
-        }
-        if admission.is_accepted() && stalled {
-            self.note_network_setback(NetworkSetback::Stall);
-        }
-    }
-
     async fn apply_internal(&mut self, event: InternalEvent) {
         match event {
+            InternalEvent::ImmediateReplan => self.consume_immediate_replan(),
+            InternalEvent::NetworkRefill(wake) => {
+                self.network_refill_timer.finish(wake);
+            }
             InternalEvent::Transfer(transfer) => self.apply_transfer(transfer).await,
-            InternalEvent::Segmented(done) => self.segmented.finish(done),
+            InternalEvent::Segmented(done) => self.finish_segmented(done),
+            InternalEvent::Transform(done) => self.finish_transform_job(done),
+            InternalEvent::HedgeTail(wake) => self.consume_hedge_tail_wake(wake),
             InternalEvent::Maintenance(maintenance) => self.apply_maintenance(maintenance).await,
             InternalEvent::TrafficChanged => self.absorb_traffic(),
         }
@@ -136,8 +173,8 @@ impl DeliveryWorker {
     async fn apply_transfer(&mut self, event: TransferEvent) {
         match event {
             TransferEvent::ChunkDone(done) => self.finish_chunk(done).await,
-            TransferEvent::BodyFinished(identity) => self.finish_body(&identity),
             TransferEvent::ProbeDone(done) => self.finish_probe(done).await,
+            TransferEvent::ResponseObserved(observed) => self.observe_response(observed),
         }
     }
 
@@ -147,17 +184,16 @@ impl DeliveryWorker {
                 self.cooldown_timers.finish(&post, cooldown);
                 self.retry.warm_up(&post, cooldown);
             }
-            MaintenanceEvent::SaveStats => self.keeper.save_now().await,
+            MaintenanceEvent::SaveStats => {
+                self.keeper.save_now().await;
+                let evidence = self.state.catalog().evidence_state();
+                self.reliability.save_now(&evidence).await;
+                self.save_capability().await;
+            }
             MaintenanceEvent::SaveQoe => self.qoe.save_now().await,
             MaintenanceEvent::StoreCapacityChanged(generation) => {
                 self.resume_store_capacity(generation);
             }
         }
-    }
-}
-
-fn complete_clear(clear: Option<ClearCompletion>) {
-    if let Some((reply, result)) = clear {
-        let _ = reply.send(result);
     }
 }

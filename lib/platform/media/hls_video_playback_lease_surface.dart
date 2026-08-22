@@ -13,6 +13,7 @@ extension on _HlsVideoPlaybackSurfaceState {
           videoId: widget.videoId,
           isActive: widget.isActive,
           mode: widget.mode,
+          preview: widget.request.preview,
           onPlaybackMediaReleased: () {
             final released = _releaseRenderedLease(lease);
             if (released) upstreamRelease?.call();

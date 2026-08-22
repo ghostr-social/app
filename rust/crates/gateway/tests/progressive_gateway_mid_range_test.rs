@@ -11,6 +11,9 @@ async fn serves_a_mid_file_range_with_a_correct_content_range() {
     let harness = progressive_harness("ghostr-progressive-mid");
     harness.posts.insert("clip");
     harness
+        .bind_video("clip", "https://cdn.example/clip.mp4", Some(10))
+        .await;
+    harness
         .store
         .set_total_len("clip", 10)
         .await

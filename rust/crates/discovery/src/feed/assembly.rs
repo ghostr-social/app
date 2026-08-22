@@ -39,8 +39,17 @@ pub(crate) fn canonical_posts_from_axes(
 }
 
 fn is_newer(incoming: &ParsedVideoPost, current: &ParsedVideoPost) -> bool {
+    if incoming.event_id == current.event_id {
+        return delivery_changed(incoming, current);
+    }
     incoming.created_at > current.created_at
         || (incoming.created_at == current.created_at && incoming.event_id < current.event_id)
+}
+
+fn delivery_changed(incoming: &ParsedVideoPost, current: &ParsedVideoPost) -> bool {
+    incoming.meta != current.meta
+        || incoming.metadata_evidence != current.metadata_evidence
+        || incoming.renditions != current.renditions
 }
 
 fn is_newer_occurrence(incoming: &ParsedVideoPost, current: &ParsedVideoPost) -> bool {

@@ -1,6 +1,6 @@
 use super::ranges::uncovered_bytes;
 use super::sources::{best_origin, delivery_ms};
-use super::{CandidateSnapshot, MediaLayout, PlayabilitySnapshot};
+use super::{CandidateSnapshot, MediaLayout, PlayabilitySnapshot, PlayerPreparation};
 use crate::playback::EstimateConfidence;
 
 const MAX_READY_VIDEOS: usize = 5;
@@ -19,7 +19,7 @@ pub(super) fn candidates(snapshot: &PlayabilitySnapshot) -> Vec<&CandidateSnapsh
     let mut candidates: Vec<_> = snapshot
         .candidates
         .iter()
-        .filter(|candidate| candidate.feed_offset.value() > 0)
+        .filter(|candidate| candidate.retrieval_eligible && candidate.feed_offset.value() > 0)
         .collect();
     candidates.sort_by_key(|candidate| candidate.feed_offset.magnitude());
     candidates.truncate(MAX_READY_VIDEOS);
@@ -41,14 +41,21 @@ pub(super) fn target(
 }
 
 pub(super) fn is_ready(candidate: &CandidateSnapshot) -> bool {
-    candidate.layout != MediaLayout::Unknown
-        && readiness_ranges(candidate)
+    candidate.player_preparation == PlayerPreparation::FirstFrameRendered
+        && is_structural(candidate)
+}
+
+pub(super) fn is_structural(candidate: &CandidateSnapshot) -> bool {
+    candidate.startup.as_ref().is_some_and(|startup| {
+        startup
+            .ranges()
             .iter()
             .all(|range| uncovered_bytes(*range, &candidate.present) == 0)
+    })
 }
 
 pub(super) fn is_in_flight(candidate: &CandidateSnapshot) -> bool {
-    if candidate.layout == MediaLayout::Unknown || is_ready(candidate) {
+    if candidate.startup.is_none() || is_structural(candidate) {
         return false;
     }
     let mut covered = candidate.present.clone();
@@ -57,7 +64,8 @@ pub(super) fn is_in_flight(candidate: &CandidateSnapshot) -> bool {
             .in_flight
             .iter()
             .filter(|active| active.identity_current)
-            .map(|active| active.bytes),
+            .filter(|active| !active.cancelling)
+            .map(|active| active.effective_bytes),
     );
     readiness_ranges(candidate)
         .iter()
@@ -65,6 +73,9 @@ pub(super) fn is_in_flight(candidate: &CandidateSnapshot) -> bool {
 }
 
 pub(super) fn readiness_ranges(candidate: &CandidateSnapshot) -> Vec<crate::ByteRange> {
+    if let Some(startup) = &candidate.startup {
+        return startup.ranges().to_vec();
+    }
     let mut ranges = Vec::new();
     if let Some(probe) = candidate.timeline_probe {
         ranges.push(probe.bytes);
@@ -87,7 +98,7 @@ pub(super) fn ready_coverage_ms(candidates: &[&CandidateSnapshot], horizon_ms: u
 fn recovery_horizon(snapshot: &PlayabilitySnapshot, candidates: &[&CandidateSnapshot]) -> u64 {
     candidates
         .iter()
-        .filter(|candidate| !is_ready(candidate))
+        .filter(|candidate| !is_structural(candidate))
         .filter_map(|candidate| candidate_recovery(snapshot, candidate))
         .min()
         .unwrap_or(MIN_RECOVERY_HORIZON_MS)

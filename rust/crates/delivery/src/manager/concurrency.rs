@@ -5,7 +5,11 @@ use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::concurrency::{ConcurrencyEvidence, ConcurrencyOccupancy, NetworkSetback};
 use ghostr_engine::PostId;
 use std::collections::HashSet;
+use std::num::NonZeroUsize;
 use std::time::Duration;
+
+mod observed;
+pub(crate) use observed::{observed_admitted_capacity, observed_claimed_requests};
 
 const SEVERE_PACKET_LOSS_BPS: u16 = 5_000;
 
@@ -15,37 +19,98 @@ pub(crate) struct PlannedCapacity {
     pub(crate) foreground_goal: usize,
 }
 
+impl PlannedCapacity {
+    pub(crate) fn with_selected_transfer(
+        mut self,
+        active: usize,
+        ceiling: usize,
+        selected: bool,
+    ) -> Self {
+        let committed = active.saturating_add(usize::from(selected));
+        self.total = self.total.max(committed).min(ceiling.max(1));
+        self
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct RequestConcurrencyLimits {
+    global: usize,
+    per_authority: usize,
+}
+
+impl RequestConcurrencyLimits {
+    pub(crate) fn resolve(
+        configured_global: usize,
+        configured_per_authority: Option<NonZeroUsize>,
+        debug_per_authority: usize,
+    ) -> Self {
+        let global = configured_global.max(1);
+        let inherited = global.saturating_sub(1).max(1);
+        let configured = configured_per_authority.map_or(inherited, NonZeroUsize::get);
+        let debug = match debug_per_authority {
+            0 => global,
+            value => value,
+        };
+        Self {
+            global,
+            per_authority: global.min(configured).min(debug),
+        }
+    }
+
+    pub(crate) const fn global(self) -> usize {
+        self.global
+    }
+
+    pub(crate) const fn per_authority(self) -> usize {
+        self.per_authority
+    }
+}
+
 pub(crate) fn capacity_evidence(
     window: OverallTrafficWindow,
     saturated: bool,
     fallback_ttfb: Duration,
-    admitted_capacity: usize,
+    occupancy: ConcurrencyOccupancy,
 ) -> ConcurrencyEvidence {
     ConcurrencyEvidence {
         aggregate_bytes_per_second: finite_rate(window.bytes_per_second()),
-        occupancy: ConcurrencyOccupancy::new(window.peak_active_transfers(), admitted_capacity),
+        occupancy,
         saturated,
         ttfb: window.latest_ttfb().unwrap_or(fallback_ttfb),
         setback: NetworkSetback::None,
     }
 }
 
-pub(crate) fn network_profile_setback(packet_loss_bps: u16) -> NetworkSetback {
+pub(crate) fn request_occupancy(
+    window: OverallTrafficWindow,
+    admitted_capacity: usize,
+    claimed_requests: usize,
+) -> ConcurrencyOccupancy {
+    ConcurrencyOccupancy::new(window.peak_active_transfers(), admitted_capacity)
+        .with_claimed_requests(claimed_requests)
+}
+
+pub(crate) fn network_profile_setback(packet_loss_bps: u16) -> Option<NetworkSetback> {
     if packet_loss_bps >= SEVERE_PACKET_LOSS_BPS {
-        return NetworkSetback::SevereLoss;
+        return Some(NetworkSetback::SevereLoss);
     }
     match packet_loss_bps {
-        0 => NetworkSetback::None,
-        _ => NetworkSetback::Failure,
+        0 => None,
+        _ => Some(NetworkSetback::Failure),
     }
 }
 
-pub(crate) fn connection_ceiling(configured: usize, per_host: usize) -> usize {
-    let configured = configured.max(1);
-    match per_host {
-        0 => configured,
-        limit => configured.min(limit.max(1)),
-    }
+pub(crate) fn planning_connection_capacity(
+    adaptive: usize,
+    hls_demand: usize,
+    ceiling: usize,
+    packet_loss_bps: u16,
+) -> usize {
+    let demanded = match network_profile_setback(packet_loss_bps) {
+        Some(NetworkSetback::SevereLoss) => 1,
+        _ => adaptive.max(hls_demand),
+    };
+    demanded.min(ceiling.max(1)).max(1)
 }
 
 pub(crate) fn planned_capacity(
@@ -71,21 +136,44 @@ pub(crate) fn planned_capacity(
 }
 
 impl DeliveryWorker {
+    pub(crate) fn note_network_class_change(&mut self) {
+        self.note_network_setback(NetworkSetback::Failure);
+        self.warp_planner.reset_adaptation();
+    }
+
+    pub(crate) fn note_network_profile_change(&mut self) {
+        let loss = self.ctx.network.profile().packet_loss_bps;
+        if let Some(setback) = network_profile_setback(loss) {
+            self.note_network_setback(setback);
+        }
+    }
+
     pub(crate) fn observe_capacity(&mut self, window: OverallTrafficWindow) {
-        let saturated = self.queue.wanted_len() > self.downloads.len();
+        let saturated = self
+            .additional_request_slot_demand
+            .unwrap_or_else(|| self.queue.wanted_len() > self.downloads.len());
         let fallback = self.keeper.stats().overall_ttfb().unwrap_or(Duration::ZERO);
-        let admitted = self.downloads.admitted_capacity();
+        let admitted = observed_admitted_capacity(
+            self.downloads.admitted_capacity(),
+            self.concurrency_limit(),
+            self.connection_ceiling(),
+        );
+        let claimed = observed_claimed_requests(self.downloads.len(), self.segmented.active_len());
+        let occupancy = request_occupancy(window, admitted, claimed);
         self.concurrency
-            .observe(capacity_evidence(window, saturated, fallback, admitted));
+            .observe(capacity_evidence(window, saturated, fallback, occupancy));
     }
 
     pub(crate) fn note_network_setback(&mut self, setback: NetworkSetback) {
+        let admitted = observed_admitted_capacity(
+            self.downloads.admitted_capacity(),
+            self.concurrency_limit(),
+            self.connection_ceiling(),
+        );
+        let claimed = observed_claimed_requests(self.downloads.len(), self.segmented.active_len());
         self.concurrency.observe(ConcurrencyEvidence {
             aggregate_bytes_per_second: 0,
-            occupancy: ConcurrencyOccupancy::new(
-                self.downloads.len(),
-                self.downloads.admitted_capacity(),
-            ),
+            occupancy: ConcurrencyOccupancy::new(claimed, admitted),
             saturated: false,
             ttfb: Duration::ZERO,
             setback,

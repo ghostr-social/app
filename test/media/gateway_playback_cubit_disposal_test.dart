@@ -8,7 +8,7 @@ void main() {
   test('a gateway answer cannot emit after playback is disposed', () async {
     final gateway = FakeProgressivePlaybackGateway();
     final media = VideoMediaSource.remote('https://media.test/clip.mp4');
-    final cubit = GatewayPlaybackCubit(gateway, media);
+    final cubit = GatewayPlaybackCubit(gateway);
 
     final loading = cubit.load(media);
     await cubit.close();

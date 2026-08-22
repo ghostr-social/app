@@ -30,7 +30,11 @@ fn later_lessons_overwrite_only_freshly_learned_fields() {
         },
     );
 
-    let facts = &catalog.lookup(&post).expect("entry").facts;
+    let facts = catalog
+        .lookup(&post)
+        .expect("entry")
+        .observed_facts_for("https://host.example/video.mp4")
+        .expect("response facts");
     assert_eq!(facts.content_length, Some(42));
     assert_eq!(facts.accept_ranges, Some(true));
     assert_eq!(facts.host.as_deref(), Some("first.example"));

@@ -13,8 +13,9 @@ void main() {
         home: ValueListenableBuilder<int>(
           valueListenable: rebuild,
           builder: (_, value, __) => FeedPageView(
-            itemCount: 2,
-            initialPage: 0,
+            model: FeedPageModel(
+              keys: const [ValueKey('page-0'), ValueKey('page-1')],
+            ),
             onPageChanged: (_) => true,
             itemBuilder: (_, index) => Text('Page $index rebuild $value'),
           ),

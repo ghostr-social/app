@@ -1,8 +1,11 @@
+#![allow(dead_code)]
+
 use crate::store_fixture::temp_root;
 use ghostr_partial_store::partial_range_store::capacity::{Limits, StoreCapacity};
 use ghostr_partial_store::partial_range_store::free_space::FreeSpace;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{mpsc, Arc, Mutex as StdMutex};
 use std::time::Duration;
 use tokio::sync::{oneshot, Mutex};
@@ -27,11 +30,18 @@ impl PausedStore {
 struct PausedSpace {
     entered: StdMutex<Option<oneshot::Sender<()>>>,
     resume: StdMutex<mpsc::Receiver<()>>,
+    pause_after: usize,
+    calls: AtomicUsize,
 }
 
 impl FreeSpace for PausedSpace {
     fn available_bytes(&self, _path: &Path) -> Option<u64> {
-        if let Some(entered) = self.entered.lock().expect("entered lock").take() {
+        let should_pause = self.calls.fetch_add(1, Ordering::SeqCst) == self.pause_after;
+        if should_pause {
+            let entered = self.entered.lock().expect("entered lock").take();
+            let Some(entered) = entered else {
+                return Some(1_000);
+            };
             let _ = entered.send(());
             self.resume
                 .lock()
@@ -44,14 +54,28 @@ impl FreeSpace for PausedSpace {
 }
 
 pub fn paused_store(prefix: &str) -> PausedStore {
+    build_store(prefix, 0, Duration::from_secs(60), u64::MAX)
+}
+
+pub fn paused_store_after(prefix: &str, pause_after: usize) -> PausedStore {
+    build_store(prefix, pause_after, Duration::ZERO, u64::MAX)
+}
+
+pub fn paused_store_with_budget(prefix: &str, budget: u64) -> PausedStore {
+    build_store(prefix, 0, Duration::from_secs(60), budget)
+}
+
+fn build_store(prefix: &str, pause_after: usize, recheck: Duration, budget: u64) -> PausedStore {
     let root = temp_root(prefix);
     let (entered_sender, entered) = oneshot::channel();
     let (resume, resume_receiver) = mpsc::channel();
     let space = Arc::new(PausedSpace {
         entered: StdMutex::new(Some(entered_sender)),
         resume: StdMutex::new(resume_receiver),
+        pause_after,
+        calls: AtomicUsize::new(0),
     });
-    let capacity = capacity(space);
+    let capacity = capacity(space, recheck, budget);
     let store = PartialRangeStore::with_capacity(root.clone(), Arc::new(Mutex::new(0)), capacity);
     PausedStore {
         store: Arc::new(store),
@@ -61,10 +85,7 @@ pub fn paused_store(prefix: &str) -> PausedStore {
     }
 }
 
-fn capacity(space: Arc<PausedSpace>) -> StoreCapacity {
-    let limits = Limits {
-        budget: u64::MAX,
-        reserve: 0,
-    };
-    StoreCapacity::new(limits, space, Duration::from_secs(60))
+fn capacity(space: Arc<PausedSpace>, recheck: Duration, budget: u64) -> StoreCapacity {
+    let limits = Limits { budget, reserve: 0 };
+    StoreCapacity::new(limits, space, recheck)
 }

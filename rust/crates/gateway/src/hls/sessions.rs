@@ -1,13 +1,14 @@
+use crate::hls::asset_generation::AssetFence;
 use crate::hls::capability::{issue, open};
 use crate::hls::state::{HlsSession, HlsSessionState};
 use crate::hls::types::validated_sources;
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use ghostr_hls_manifest::hls_manifest::{rewrite_hls_manifest, HlsResource, HlsResourceKind};
 use reqwest::Url;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
-use tokio::time::Instant;
+use tokio::time::{timeout_at, Instant};
 
 pub use crate::hls::types::{HlsResourceId, HlsSessionId, HlsSessionLimits};
 
@@ -19,7 +20,7 @@ pub struct HlsSessions {
 
 impl HlsSessions {
     pub fn production() -> Self {
-        let limits = HlsSessionLimits::new(32, Duration::from_secs(30 * 60))
+        let limits = HlsSessionLimits::new(32, Duration::from_secs(30 * 60), 1_024)
             .expect("static HLS session limits");
         Self::new(limits)
     }
@@ -64,6 +65,54 @@ impl HlsSessions {
         let secret = session.secret;
         drop(state);
         open(&secret, resource)
+    }
+
+    pub(in crate::hls) async fn resource_at(
+        &self,
+        session: &HlsSessionId,
+        resource: HlsResourceId,
+        deadline: Instant,
+    ) -> Result<Option<HlsResource>> {
+        let mut state = timeout_at(deadline, self.state.lock())
+            .await
+            .context("HLS session lookup timed out")?;
+        let Some(session) = state.active_session(session, Instant::now(), self.limits.idle_ttl)
+        else {
+            return Ok(None);
+        };
+        Ok(open(&session.secret, resource))
+    }
+
+    pub(in crate::hls) async fn asset_fence_at(
+        &self,
+        session: &HlsSessionId,
+        url: &Url,
+        deadline: Instant,
+    ) -> Result<Option<AssetFence>> {
+        let mut state = timeout_at(deadline, self.state.lock())
+            .await
+            .context("HLS asset fence lookup timed out")?;
+        let Some(session) = state.active_session(session, Instant::now(), self.limits.idle_ttl)
+        else {
+            return Ok(None);
+        };
+        session
+            .asset_fence(url, self.limits.max_ranged_assets)
+            .map(Some)
+    }
+
+    pub(in crate::hls) async fn owns_asset_at(
+        &self,
+        session: &HlsSessionId,
+        fence: &AssetFence,
+        deadline: Instant,
+    ) -> Result<bool> {
+        let mut state = timeout_at(deadline, self.state.lock())
+            .await
+            .context("HLS session ownership check timed out")?;
+        Ok(state
+            .active_session(session, Instant::now(), self.limits.idle_ttl)
+            .is_some_and(|active| active.owns(fence)))
     }
 
     pub async fn rewrite_manifest(

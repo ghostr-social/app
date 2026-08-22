@@ -5,6 +5,7 @@
 use crate::native_media_metadata::imeta_field;
 use crate::native_text::bounded_native_text;
 use crate::video_link_scan::is_bounded_http_url;
+use nostr_sdk::Event;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ImetaExtras {
@@ -31,6 +32,26 @@ pub(crate) fn imeta_extras(tag: &[String]) -> ImetaExtras {
         blurhash: imeta_field(tag, "blurhash").map(bounded_native_text),
         image_url: imeta_field(tag, "image").and_then(image_url),
     }
+}
+
+pub(crate) fn event_extras(event: &Event) -> ImetaExtras {
+    ImetaExtras {
+        bitrate_bps: event_field(event, "bitrate").and_then(positive_integer),
+        size_bytes: event_field(event, "size").and_then(size_bytes),
+        duration_ms: event_field(event, "duration").and_then(duration_ms),
+        dimensions: event_field(event, "dim").and_then(dimensions),
+        blurhash: event_field(event, "blurhash").map(bounded_native_text),
+        image_url: event_field(event, "image").and_then(image_url),
+    }
+}
+
+fn event_field<'a>(event: &'a Event, name: &str) -> Option<&'a str> {
+    event.tags.iter().find_map(|tag| {
+        let values = tag.as_slice();
+        (values.first().map(String::as_str) == Some(name))
+            .then(|| values.get(1).map(String::as_str))
+            .flatten()
+    })
 }
 
 fn size_bytes(raw: &str) -> Option<u64> {

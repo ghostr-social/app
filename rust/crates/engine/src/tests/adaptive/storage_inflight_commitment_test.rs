@@ -1,4 +1,4 @@
-use crate::adaptive::{AdaptivePlayabilityPolicy, InFlightRange, StorageSnapshot};
+use crate::adaptive::{AdaptivePlayabilityPolicy, InFlightAction, StorageSnapshot};
 use crate::tests::adaptive_support::snapshot;
 use crate::{ByteRange, PostId};
 
@@ -7,12 +7,13 @@ fn a_useful_transfer_that_reserves_the_last_storage_bytes_stays_committed() {
     let mut input = snapshot(3, 20_000_000, 20_000, 2);
     input.storage = StorageSnapshot::new(500_000, 245_000);
     input.candidates[0].present = vec![ByteRange::new(0, 250_000)];
-    input.candidates[1].in_flight.push(InFlightRange {
-        bytes: ByteRange::new(0, 250_000),
-        source: "origin".to_owned(),
-        committed_until_ms: 12_000,
-        identity_current: true,
-    });
+    input.candidates[1].in_flight.push(InFlightAction::range(
+        crate::ActionId::new(1),
+        ByteRange::new(0, 250_000),
+        "https://origin.example/media",
+        12_000,
+        true,
+    ));
 
     let plan = AdaptivePlayabilityPolicy.plan(&input);
 

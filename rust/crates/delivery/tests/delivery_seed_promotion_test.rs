@@ -36,7 +36,13 @@ async fn focus_promotion_fetches_exact_disjoint_ranges() {
 
     let mut gets = next_gets(&log);
     gets.sort();
-    assert_eq!(gets, ["next:GET:0-262143", "next:GET:262144-370911"]);
+    assert_eq!(
+        gets,
+        [
+            "next:GET:0-262143",
+            "next:GET:262144-370911:if-range=\"fixture-media\"",
+        ]
+    );
     harness.handle.clear().await.unwrap();
     std::fs::remove_dir_all(&harness.root).ok();
 }

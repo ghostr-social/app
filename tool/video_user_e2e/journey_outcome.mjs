@@ -81,12 +81,12 @@ function requireAheadPrefetch(trace) {
 
 function requireFastJumps(samples = [], clicks = [], maximum) {
   for (const click of clicks.filter((entry) => !entry.superseded)) {
-    const playing = samples.find(
+    const presented = samples.find(
       (sample) => sample.at_ms >= click.at_ms &&
-        sample.player.id === click.id && sample.player.phase === "playing",
+        sample.player.id === click.id && sample.player.presented === true,
     );
-    if (!playing || playing.at_ms - click.at_ms > maximum) {
-      throw new Error(`${click.id} did not play within ${maximum} ms of the visible jump`);
+    if (!presented || presented.at_ms - click.at_ms > maximum) {
+      throw new Error(`${click.id} did not present within ${maximum} ms of the visible jump`);
     }
   }
 }

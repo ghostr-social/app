@@ -1,5 +1,6 @@
 //! Test-only HTTP and filesystem environment for delivery fixtures.
 
+use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -13,12 +14,16 @@ impl MediaHttpRequests for LocalMediaClient {
     }
 }
 
-pub fn media_client() -> LocalMediaClient {
+pub fn media_client() -> MediaRequestExecutor {
     let client = reqwest::Client::builder()
         .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .expect("local media client");
-    LocalMediaClient(client)
+    MediaRequestExecutor::new(
+        std::sync::Arc::new(LocalMediaClient(client)),
+        MediaRequestLimits::try_new(4, 4).unwrap(),
+    )
 }
 
 pub fn temp_directory(prefix: &str) -> PathBuf {

@@ -33,6 +33,7 @@ fn clearing_pending_work_does_not_reopen_an_old_generation() {
 fn focus(value: u64) -> DeliveryFocus {
     DeliveryFocus {
         items: Vec::new(),
+        previews: Vec::new(),
         current_index: 0,
         watch_ms: 0,
         generation: generation(value),

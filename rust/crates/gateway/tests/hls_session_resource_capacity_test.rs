@@ -4,7 +4,7 @@ use std::time::Duration;
 
 #[tokio::test]
 async fn long_and_rotating_playlists_do_not_accumulate_session_resources() {
-    let limits = HlsSessionLimits::new(1, Duration::from_secs(60)).expect("limits");
+    let limits = HlsSessionLimits::new(1, Duration::from_secs(60), 8).expect("limits");
     let sessions = HlsSessions::new(limits);
     let session = sessions
         .acquire(vec!["https://media.example/master.m3u8".to_owned()])

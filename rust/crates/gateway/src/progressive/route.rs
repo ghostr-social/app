@@ -3,9 +3,7 @@ use crate::progressive::range_header::{self, ResolvedRange};
 use crate::progressive::stream::body_for_span;
 use axum::body::Body;
 use axum::extract::{Query, State};
-use axum::http::header::{
-    ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, RANGE, RETRY_AFTER,
-};
+use axum::http::header::{ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, RETRY_AFTER};
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::Response;
 use axum::routing::get;
@@ -25,16 +23,18 @@ use std::ops::Range;
 use std::sync::Arc;
 use std::time::Duration;
 
+mod authority;
 mod snapshot;
-use snapshot::{awaited_snapshot, VideoSnapshot};
+use authority::{refresh_current_asset, require_current_asset, require_servable};
+use snapshot::{awaited_media_snapshot, VideoSnapshot};
 
 const VIDEO_MIME: &str = "video/mp4";
 
 /// How long progressive serving waits on the store before giving up.
 #[derive(Clone, Copy, Debug)]
 pub struct ProgressiveTiming {
-    /// Wait for the total length to be learned before answering 503.
-    unknown_length_wait: Duration,
+    /// Wait for binding or total-length readiness before giving up.
+    pub(crate) unknown_length_wait: Duration,
     /// Abort a stalled stream once no byte lands for this long.
     pub(crate) idle_timeout: Duration,
 }
@@ -82,10 +82,15 @@ async fn serve(
     headers: HeaderMap,
 ) -> Result<Response, StatusCode> {
     require_servable(&state, &query).await?;
-    let Some(snapshot) = awaited_snapshot(&state, query.id).await? else {
+    if !refresh_current_asset(&state, &query).await? {
+        return retry_later();
+    }
+    let Some(stored) = awaited_media_snapshot(&state, &query.id).await? else {
         return retry_later();
     };
-    let mut response = match range_header::resolve(headers.get(RANGE), snapshot.total) {
+    require_current_asset(&state, &query, &stored).await?;
+    let snapshot = VideoSnapshot::from_stored(query.id, stored);
+    let mut response = match range_header::resolve_all(&headers, snapshot.total) {
         ResolvedRange::Full => full_response(state, snapshot),
         ResolvedRange::Partial { start, end } => partial_response(state, snapshot, start..end),
         ResolvedRange::Unsatisfiable => unsatisfiable_response(snapshot.total),
@@ -94,20 +99,6 @@ async fn serve(
         .headers_mut()
         .insert(CONTENT_TYPE, HeaderValue::from_static(VIDEO_MIME));
     Ok(response)
-}
-
-async fn require_servable(state: &ProgressiveState, query: &VideoQuery) -> Result<(), StatusCode> {
-    if authorized(state, query).await && state.cache.contains(&query.id) {
-        return Ok(());
-    }
-    Err(StatusCode::NOT_FOUND)
-}
-
-async fn authorized(state: &ProgressiveState, query: &VideoQuery) -> bool {
-    match query.cap.as_deref() {
-        Some(capability) => state.capabilities.authorizes(capability, &query.id).await,
-        None => false,
-    }
 }
 
 fn retry_later() -> Result<Response, StatusCode> {

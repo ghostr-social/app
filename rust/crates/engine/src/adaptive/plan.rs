@@ -1,6 +1,11 @@
-use crate::{ByteRange, PostId};
+use super::RetrievalRequest;
+use crate::media_timeline::StartupFootprint;
+use crate::{ActionId, ByteRange, PostId};
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+mod replay;
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 pub struct CandidateUtility {
     pub view_probability: f64,
     pub additional_playable_ms: u64,
@@ -8,14 +13,14 @@ pub struct CandidateUtility {
     pub score: f64,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum PreemptionAuthority {
     PlaybackCritical,
     Transition,
     Speculative,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum AllocationReason {
     CurrentStallPrevention,
     CurrentBufferReserve,
@@ -27,7 +32,7 @@ pub enum AllocationReason {
     UsefulCommitment,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum NextReserveInfeasibility {
     CurrentUnprotected,
     NoLiveOrigin,
@@ -36,7 +41,7 @@ pub enum NextReserveInfeasibility {
     NoStorageCapacity,
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub enum ControlMode {
     Emergency,
     Safety,
@@ -44,11 +49,16 @@ pub enum ControlMode {
     Normal,
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub enum ReserveCandidateState {
     #[default]
     Unprepared,
-    Ready,
+    Ready {
+        startup: StartupFootprint,
+    },
+    Structural {
+        startup: StartupFootprint,
+    },
     InFlight,
     Probing,
     Preparing {
@@ -62,16 +72,17 @@ pub enum ReserveCandidateState {
     },
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ReserveCandidateEvidence {
     pub post: PostId,
     pub state: ReserveCandidateState,
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ReadyReserveEvidence {
     pub target: usize,
     pub ready: usize,
+    pub structural: usize,
     pub protected: usize,
     pub recovery_horizon_ms: u64,
     pub underflow_risk_bps: u16,
@@ -79,12 +90,17 @@ pub struct ReadyReserveEvidence {
     pub candidates: Vec<ReserveCandidateEvidence>,
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub enum NextReserveEvidence {
     #[default]
     NotApplicable,
     Ready {
         post: PostId,
+        startup: StartupFootprint,
+    },
+    Structural {
+        post: PostId,
+        startup: StartupFootprint,
     },
     InFlight {
         post: PostId,
@@ -99,17 +115,17 @@ pub enum NextReserveEvidence {
     },
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub enum DiscoveryDemand {
     Expand,
     #[default]
     Hold,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Allocation {
     pub post: PostId,
-    pub range: ByteRange,
+    pub request: RetrievalRequest,
     pub source: String,
     pub expected_playable_gain_ms: u64,
     pub utility: CandidateUtility,
@@ -118,22 +134,23 @@ pub struct Allocation {
     pub reason: AllocationReason,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct RetainedAllocation {
+    pub action_id: ActionId,
     pub post: PostId,
-    pub range: ByteRange,
+    pub request: RetrievalRequest,
     pub source: String,
     pub utility: CandidateUtility,
     pub committed_until_ms: u64,
     pub reason: AllocationReason,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum EvictionReason {
     StoragePressure,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Eviction {
     pub post: PostId,
     pub range: ByteRange,
@@ -141,7 +158,7 @@ pub struct Eviction {
     pub reason: EvictionReason,
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct AllocationPlan {
     pub allocations: Vec<Allocation>,
     pub retained: Vec<RetainedAllocation>,

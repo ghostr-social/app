@@ -1,5 +1,6 @@
 import 'package:ghostr/core/errors/app_failure.dart';
 import 'package:ghostr/core/errors/boundary_failure.dart';
+import 'package:ghostr/core/media/inline_blurhash.dart';
 import 'package:ghostr/core/media/video_media_metadata.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/nostr/nostr_event_identity.dart';
@@ -132,6 +133,7 @@ class RustFeedPostMapper {
       metadata: VideoMediaMetadata(
         sizeBytes: media.sizeBytes?.toInt(),
         durationMs: media.durationMs?.toInt(),
+        blurhash: InlineBlurHash.tryParse(media.blurhash),
       ),
     );
     final digest = media.sha256;

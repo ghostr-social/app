@@ -58,15 +58,18 @@ async fn response(
     if method == Method::HEAD {
         return reply(StatusCode::OK, total, None, Body::empty());
     }
+    let partial = headers.contains_key(header::RANGE);
     let range = requested(&headers, total);
     let length = range.end - range.start;
     let content_range = format!("bytes {}-{}/{}", range.start, range.end - 1, total);
     let (body, stream) = mpsc::channel(8);
     requests.send(ActiveRequest { range, body }).await.ok();
     reply(
-        StatusCode::PARTIAL_CONTENT,
+        partial
+            .then_some(StatusCode::PARTIAL_CONTENT)
+            .unwrap_or(StatusCode::OK),
         length,
-        Some(content_range),
+        partial.then_some(content_range),
         Body::from_stream(ReceiverStream::new(stream)),
     )
 }
@@ -85,7 +88,10 @@ fn reply(status: StatusCode, length: u64, range: Option<String>, body: Body) -> 
 }
 
 fn requested(headers: &HeaderMap, total: u64) -> Range<u64> {
-    let value = headers[header::RANGE].to_str().expect("range header");
+    let Some(value) = headers.get(header::RANGE) else {
+        return 0..total;
+    };
+    let value = value.to_str().expect("range header");
     let (start, end) = value.trim_start_matches("bytes=").split_once('-').unwrap();
     let start = start.parse().unwrap();
     let end = end.parse::<u64>().unwrap_or(total - 1).min(total - 1);

@@ -3,21 +3,29 @@ use crate::manager::wake_lane::{WakeCursor, WakeLane};
 #[test]
 fn continuously_ready_lanes_each_advance_once_per_round() {
     let mut cursor = WakeCursor::default();
-    let ready = [true; 4];
+    let ready = [true; 8];
 
-    let selected: Vec<_> = (0..8).map(|_| cursor.choose(&ready).unwrap()).collect();
+    let selected: Vec<_> = (0..16).map(|_| cursor.choose(&ready).unwrap()).collect();
 
     assert_eq!(
         selected,
         [
             WakeLane::Control,
+            WakeLane::PlayerPreparation,
+            WakeLane::PlaybackPresentation,
             WakeLane::Candidate,
             WakeLane::Demand,
+            WakeLane::Response,
             WakeLane::Internal,
+            WakeLane::Timeline,
             WakeLane::Control,
+            WakeLane::PlayerPreparation,
+            WakeLane::PlaybackPresentation,
             WakeLane::Candidate,
             WakeLane::Demand,
+            WakeLane::Response,
             WakeLane::Internal,
+            WakeLane::Timeline,
         ]
     );
 }
@@ -28,7 +36,7 @@ fn an_awaited_lane_advances_the_same_fairness_cursor() {
     cursor.observe(WakeLane::Demand);
 
     assert_eq!(
-        cursor.choose(&[false, false, true, true]),
+        cursor.choose(&[false, false, false, false, false, false, true, false]),
         Some(WakeLane::Internal)
     );
 }

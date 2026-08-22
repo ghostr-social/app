@@ -17,10 +17,11 @@ async fn chunk_downloader_rejects_an_explicit_image_before_writing_bytes() {
     let (_handle, token) = cancel_pair();
     let mut stats = HostStats::new();
     let spec = ChunkSpec {
-        client: &client,
+        requests: &client,
         url: &url,
-        range: ByteRange::new(0, 16),
+        request: range_fixture::range_request(ByteRange::new(0, 16)),
         continuation: None,
+        priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
     };
     let sink = ChunkSink {
@@ -28,8 +29,12 @@ async fn chunk_downloader_rejects_an_explicit_image_before_writing_bytes() {
         key: "clip",
     };
 
-    let result =
-        download_chunk_throttled(&spec, &sink, &mut stats, &token, &range_fixture::network()).await;
+    let result = download_chunk_throttled(
+        &spec,
+        &sink,
+        range_fixture::context(&mut stats, &token, &range_fixture::network()),
+    )
+    .await;
 
     assert!(result.is_err(), "an image response must not be downloaded");
     assert_eq!(store.present_ranges("clip").await.expect("ranges"), vec![]);

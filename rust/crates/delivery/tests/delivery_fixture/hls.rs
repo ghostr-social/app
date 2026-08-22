@@ -4,6 +4,7 @@ use axum::http::{header, Response};
 use axum::routing::get;
 use axum::Router;
 use std::sync::Arc;
+use std::sync::Mutex;
 use tokio::net::TcpListener;
 use tokio::sync::Semaphore;
 
@@ -11,13 +12,33 @@ use tokio::sync::Semaphore;
 pub struct HlsGate {
     pub started: Arc<Semaphore>,
     pub release: Arc<Semaphore>,
+    hits: Arc<Mutex<Vec<&'static str>>>,
+    blocked: &'static str,
 }
 
 impl HlsGate {
     pub fn new() -> Self {
+        Self::blocking("root")
+    }
+
+    pub fn blocking(blocked: &'static str) -> Self {
         Self {
             started: Arc::new(Semaphore::new(0)),
             release: Arc::new(Semaphore::new(0)),
+            hits: Arc::new(Mutex::new(Vec::new())),
+            blocked,
+        }
+    }
+
+    pub fn hits(&self) -> Vec<&'static str> {
+        self.hits.lock().unwrap().clone()
+    }
+
+    async fn hit(&self, path: &'static str) {
+        self.hits.lock().unwrap().push(path);
+        if path == self.blocked {
+            self.started.add_permits(1);
+            self.release.acquire().await.unwrap().forget();
         }
     }
 }
@@ -27,6 +48,7 @@ pub async fn serve(gate: HlsGate) -> String {
     let address = listener.local_addr().unwrap();
     let app = Router::new()
         .route("/index.m3u8", get(manifest))
+        .route("/child.m3u8", get(child))
         .route("/init.mp4", get(init))
         .route("/segment.m4s", get(segment))
         .with_state(gate);
@@ -35,8 +57,15 @@ pub async fn serve(gate: HlsGate) -> String {
 }
 
 async fn manifest(State(gate): State<HlsGate>) -> Response<Body> {
-    gate.started.add_permits(1);
-    gate.release.acquire().await.unwrap().forget();
+    gate.hit("root").await;
+    response(
+        "application/vnd.apple.mpegurl",
+        b"#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1000000\nchild.m3u8\n",
+    )
+}
+
+async fn child(State(gate): State<HlsGate>) -> Response<Body> {
+    gate.hit("child").await;
     response(
         "application/vnd.apple.mpegurl",
         b"#EXTM3U\n#EXT-X-TARGETDURATION:4\n#EXT-X-MAP:URI=\"init.mp4\"\n\
@@ -44,11 +73,13 @@ async fn manifest(State(gate): State<HlsGate>) -> Response<Body> {
     )
 }
 
-async fn init() -> Response<Body> {
+async fn init(State(gate): State<HlsGate>) -> Response<Body> {
+    gate.hit("init").await;
     response("video/mp4", b"init")
 }
 
-async fn segment() -> Response<Body> {
+async fn segment(State(gate): State<HlsGate>) -> Response<Body> {
+    gate.hit("segment").await;
     response("video/iso.segment", b"segment")
 }
 

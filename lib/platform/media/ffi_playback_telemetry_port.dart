@@ -10,18 +10,29 @@ import 'package:ghostr/features/video_inventory/domain/playback_telemetry_port.d
 import 'package:ghostr/src/rust/api/playback_control.dart';
 import 'package:ghostr/src/rust/api/playback_types.dart';
 
+part 'ffi_playback_observation_mapping.dart';
+part 'ffi_playback_presentation_queue.dart';
+
 typedef RustPlaybackReporter =
     Future<void> Function({required FfiPlaybackObservation input});
 
 final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
   FfiPlaybackTelemetryPort({
     RustPlaybackReporter reportPlayback = ffiReportPlayback,
-  }) : _reportPlayback = reportPlayback;
+    RustPlaybackPresentationReporter reportPresentation =
+        ffiReportPlaybackPresentation,
+    PlaybackPresentationClock presentationClock = _defaultPresentationClock,
+  }) : _reportPlayback = reportPlayback,
+       _presentations = _PlaybackPresentationQueue(
+         reportPresentation,
+         presentationClock,
+       );
 
   static const _pendingSessionLimit = 2;
   static var _nextGeneration = 0;
 
   final RustPlaybackReporter _reportPlayback;
+  final _PlaybackPresentationQueue _presentations;
   final LinkedHashMap<int, ListQueue<FfiPlaybackObservation>> _pending =
       LinkedHashMap<int, ListQueue<FfiPlaybackObservation>>();
   final _latest = <int, FfiPlaybackObservation>{};
@@ -56,6 +67,11 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
     _enqueue(observation.session.generation, input);
     _boundPendingSessions();
     _draining ??= _drain();
+  }
+
+  @override
+  void presented(PlaybackSession session) {
+    if (_active == session) _presentations.send(session);
   }
 
   @override
@@ -135,56 +151,4 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
       _latest.remove(discard);
     }
   }
-}
-
-bool _isInactive(FfiPlaybackObservation input) {
-  return input.phase == FfiPlaybackPhase.inactive;
-}
-
-bool _isFailed(FfiPlaybackObservation input) {
-  return input.phase == FfiPlaybackPhase.failed;
-}
-
-FfiPlaybackObservation? _terminalAfter(FfiPlaybackObservation? input) {
-  if (input == null) return null;
-  return _isInactive(input) ? input : _inactiveAfter(input);
-}
-
-FfiPlaybackObservation _inactiveAfter(FfiPlaybackObservation input) {
-  return FfiPlaybackObservation(
-    postId: input.postId,
-    generation: input.generation,
-    sequence: input.sequence + BigInt.one,
-    phase: FfiPlaybackPhase.inactive,
-    positionMs: input.positionMs,
-    bufferedExtentMs: input.bufferedExtentMs,
-    playbackRateMilli: input.playbackRateMilli,
-  );
-}
-
-FfiPlaybackObservation _mapObservation(
-  PlaybackObservation observation,
-  int sequence,
-) {
-  return FfiPlaybackObservation(
-    postId: observation.session.deliveryId.value,
-    generation: BigInt.from(observation.session.generation),
-    sequence: BigInt.from(sequence),
-    phase: _mapPhase(observation.phase),
-    positionMs: BigInt.from(observation.position.inMilliseconds),
-    bufferedExtentMs: BigInt.from(observation.bufferedExtent.inMilliseconds),
-    playbackRateMilli: (observation.playbackRate * 1000).round(),
-  );
-}
-
-FfiPlaybackPhase _mapPhase(PlaybackPhase phase) {
-  return switch (phase) {
-    PlaybackPhase.starting => FfiPlaybackPhase.starting,
-    PlaybackPhase.playing => FfiPlaybackPhase.playing,
-    PlaybackPhase.networkStalled => FfiPlaybackPhase.networkStalled,
-    PlaybackPhase.paused => FfiPlaybackPhase.paused,
-    PlaybackPhase.ended => FfiPlaybackPhase.ended,
-    PlaybackPhase.failed => FfiPlaybackPhase.failed,
-    PlaybackPhase.inactive => FfiPlaybackPhase.inactive,
-  };
 }

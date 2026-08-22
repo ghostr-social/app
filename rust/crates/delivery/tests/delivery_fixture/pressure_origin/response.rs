@@ -15,7 +15,7 @@ pub(super) async fn response(
     if method == Method::HEAD {
         return reply(StatusCode::OK, 0, MEDIA.len() - 1, Body::empty());
     }
-    let (start, end) = requested(&headers);
+    let (status, start, end) = response_contract(&headers);
     state.requests.lock().expect("requests").push((start, end));
     if state.bodies.fetch_add(1, Ordering::SeqCst) == 0 {
         let signal = state.started.lock().expect("body signal").take();
@@ -24,20 +24,18 @@ pub(super) async fn response(
         }
         state.release.notified().await;
     }
-    reply(
-        StatusCode::PARTIAL_CONTENT,
-        start,
-        end,
-        Body::from(MEDIA[start..=end].to_vec()),
-    )
+    reply(status, start, end, Body::from(MEDIA[start..=end].to_vec()))
 }
 
-fn requested(headers: &HeaderMap) -> (usize, usize) {
-    let range = headers[header::RANGE].to_str().expect("range header");
+fn response_contract(headers: &HeaderMap) -> (StatusCode, usize, usize) {
+    let Some(range) = headers.get(header::RANGE) else {
+        return (StatusCode::OK, 0, MEDIA.len() - 1);
+    };
+    let range = range.to_str().expect("range header");
     let (start, end) = range.trim_start_matches("bytes=").split_once('-').unwrap();
     let start = start.parse().unwrap();
     let end = end.parse().unwrap_or(MEDIA.len() - 1).min(MEDIA.len() - 1);
-    (start, end)
+    (StatusCode::PARTIAL_CONTENT, start, end)
 }
 
 fn reply(status: StatusCode, start: usize, end: usize, body: Body) -> Response {

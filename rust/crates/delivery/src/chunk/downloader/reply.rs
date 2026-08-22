@@ -1,23 +1,43 @@
-use super::ChunkSpec;
-use crate::chunk::response::RangeReply;
-use ghostr_engine::ByteRange;
+use super::{ChunkSpec, ResponseWriteMode};
+use crate::chunk::response::ResponseReply;
+use ghostr_engine::adaptive::RetrievalRequest;
 
-pub(super) fn full_body_spec<'a>(spec: &ChunkSpec<'a>, full_length: Option<u64>) -> ChunkSpec<'a> {
-    let end = full_length
-        .filter(|length| *length > 0)
-        .map_or(spec.range.end, |length| length.min(spec.range.end));
+pub(super) fn body_spec<'a>(spec: &ChunkSpec<'a>, request: RetrievalRequest) -> ChunkSpec<'a> {
     ChunkSpec {
-        client: spec.client,
+        requests: spec.requests,
         url: spec.url,
-        range: ByteRange::new(spec.range.start, end),
+        request,
+        priority: spec.priority,
         continuation: spec.continuation,
         timeouts: spec.timeouts,
     }
 }
 
-pub(super) fn total(reply: &RangeReply, full_length: Option<u64>) -> Option<u64> {
+pub(super) fn range_spec<'a>(
+    spec: &ChunkSpec<'a>,
+    range: ghostr_engine::ByteRange,
+) -> ChunkSpec<'a> {
+    body_spec(
+        spec,
+        RetrievalRequest::FetchRange {
+            bytes: range,
+            promotion: None,
+        },
+    )
+}
+
+pub(super) fn response_mode(request: RetrievalRequest) -> ResponseWriteMode {
+    match request {
+        RetrievalRequest::FetchWhole { contract, .. } => {
+            ResponseWriteMode::SingleResponse(contract)
+        }
+        RetrievalRequest::FetchRange { .. } => ResponseWriteMode::Sparse,
+    }
+}
+
+pub(super) fn total(reply: &ResponseReply, full_length: Option<u64>) -> Option<u64> {
     match reply {
-        RangeReply::Partial { total, .. } => *total,
-        RangeReply::FullBody | RangeReply::Ignored => full_length,
+        ResponseReply::Partial { total, .. } => *total,
+        ResponseReply::Body { .. } | ResponseReply::Ignored { .. } => full_length,
     }
 }

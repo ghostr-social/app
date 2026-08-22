@@ -11,7 +11,7 @@ fn host_breadth_never_crosses_the_highest_authority_class() {
         planned_transfer("peer", "fast.example", PreemptionAuthority::Transition),
         planned_transfer("far", "other.example", PreemptionAuthority::Speculative),
     ]);
-    let active = HashSet::from(["slow.example".to_owned()]);
+    let active = HashSet::from(["https://slow.example".to_owned()]);
 
     let selected = queue.pop_for_idle_host(&active).expect("healthy work");
 

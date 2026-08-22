@@ -11,6 +11,13 @@ import 'playback_types.dart';
 Future<void> ffiReportPlayback({required FfiPlaybackObservation input}) =>
     RustLib.instance.api.crateApiPlaybackControlFfiReportPlayback(input: input);
 
+/// Reports the one user-visible frame separately from coalesced phase samples.
+Future<void> ffiReportPlaybackPresentation({
+  required FfiPlaybackPresentation input,
+}) => RustLib.instance.api.crateApiPlaybackControlFfiReportPlaybackPresentation(
+  input: input,
+);
+
 /// Returns process-lifetime playback decisions and latest accepted identity.
 Future<FfiPlaybackAdmissionSnapshot> ffiPlaybackAdmissionSnapshot() =>
     RustLib.instance.api.crateApiPlaybackControlFfiPlaybackAdmissionSnapshot();

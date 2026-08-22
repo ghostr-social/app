@@ -1,90 +1,111 @@
-//! Reads only bounded metadata-bearing sparse spans and installs parsed
-//! MP4/CMAF timing evidence into the representation-fenced catalog.
+//! Bounded background hydration of representation-fenced MP4 timing evidence.
 
+use crate::manager::state::DeliveryState;
 use crate::manager::DeliveryWorker;
-use ghostr_engine::media_timeline::{parse_mp4_segments, MediaSegment, MediaTimeline};
+use ghostr_engine::media_timeline::{normalize, MediaTimeline};
 use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::{ByteRange, PostId};
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
+use ghostr_partial_store::partial_range_store::StoredMediaSnapshot;
 use std::collections::HashMap;
+
+mod application;
+mod attempts;
+mod coordinator;
+mod evidence;
+mod job;
+#[cfg(test)]
+mod load;
+mod outcome;
+mod parser;
+
+#[cfg(test)]
+pub(crate) use attempts::{TimelineAttemptDisposition, TimelineAttempts};
+pub(crate) use coordinator::TimelineCoordinator;
+pub(crate) use coordinator::TimelineSchedule;
+pub(crate) use evidence::TimelineEvidence;
+#[cfg(test)]
+pub(crate) use load::load_timeline;
+#[cfg(test)]
+pub(crate) use outcome::TimelineIncomplete;
+pub(crate) use outcome::{TimelineJobOutcome, TimelineRejection, TimelineResult, TimelineTerminal};
+#[cfg(test)]
+pub(crate) use parser::{TimelineInput, TimelineParse, TimelineParser};
 
 const MAX_METADATA_SPAN: u64 = 4 * 1024 * 1024;
 
 impl DeliveryWorker {
-    pub(super) async fn hydrate_timelines(
+    pub(super) fn reconcile_timelines(
         &mut self,
         posts: &[PostId],
-        present: &HashMap<PostId, Vec<ByteRange>>,
+        snapshots: &HashMap<PostId, StoredMediaSnapshot>,
+    ) {
+        self.timelines
+            .retain_active(&posts.iter().cloned().collect());
+        self.apply_timeline_results(snapshots);
+        self.schedule_timelines(posts, snapshots);
+    }
+
+    fn schedule_timelines(
+        &mut self,
+        posts: &[PostId],
+        snapshots: &HashMap<PostId, StoredMediaSnapshot>,
     ) {
         for post in posts {
-            self.hydrate_timeline(post, present.get(post).map(Vec::as_slice).unwrap_or(&[]))
-                .await;
+            self.schedule_timeline(post, snapshots.get(post));
+        }
+        self.timelines.dispatch(posts);
+    }
+
+    fn schedule_timeline(&mut self, post: &PostId, snapshot: Option<&StoredMediaSnapshot>) {
+        let binding = self.state.catalog().binding(post);
+        let evidence = binding
+            .as_ref()
+            .zip(snapshot)
+            .and_then(|(binding, snapshot)| TimelineEvidence::from_snapshot(binding, snapshot));
+        let Some(evidence) = evidence else {
+            self.invalidate_timeline(post, binding.as_ref());
+            return;
+        };
+        let has_timeline = self.catalog_has_timeline(post);
+        let preserve = self.timelines.preserves_publication(
+            post,
+            snapshot.expect("evidence has a snapshot"),
+            has_timeline,
+        );
+        if self.timelines.schedule(post.clone(), evidence) != TimelineSchedule::Current && !preserve
+        {
+            self.clear_timeline(
+                post,
+                binding.as_ref().expect("timeline evidence has a binding"),
+            );
         }
     }
 
-    async fn hydrate_timeline(&mut self, post: &PostId, present: &[ByteRange]) {
-        let Some((binding, total)) = timeline_target(&self.state, post) else {
-            return;
-        };
-        let Some(timeline) = load_timeline(&self.ctx.store, post, total, present).await else {
-            require_tail_if_started(&mut self.state, &binding, present);
-            return;
-        };
-        install_timeline(&mut self.state, &binding, timeline);
+    fn invalidate_timeline(&mut self, post: &PostId, binding: Option<&RepresentationBinding>) {
+        self.timelines.invalidate(post);
+        if let Some(binding) = binding {
+            self.state.catalog_mut().clear_timeline_for(binding);
+        }
     }
 }
 
 pub(crate) fn install_timeline(
-    state: &mut crate::manager::state::DeliveryState,
+    state: &mut DeliveryState,
     binding: &RepresentationBinding,
     timeline: MediaTimeline,
 ) -> bool {
-    state.catalog_mut().learn_timeline_for(binding, timeline)
+    state.catalog_mut().learn_timeline_observation_for(
+        binding,
+        timeline,
+        crate::manager::time::unix_time_ms(),
+    )
 }
 
-fn timeline_target(
-    state: &crate::manager::state::DeliveryState,
-    post: &PostId,
-) -> Option<(RepresentationBinding, u64)> {
-    let entry = state.catalog().lookup(post)?;
-    if entry.timeline().is_some() {
-        return None;
-    }
-    Some((entry.binding(), entry.total_bytes()?))
-}
-
-fn require_tail_if_started(
-    state: &mut crate::manager::state::DeliveryState,
-    binding: &RepresentationBinding,
-    present: &[ByteRange],
-) {
-    if present.iter().any(|range| range.start == 0) {
-        state.catalog_mut().require_tail_timeline_for(binding);
-    }
-}
-
-pub(crate) async fn load_timeline(
-    store: &PartialRangeStore,
-    post: &PostId,
-    total: u64,
-    present: &[ByteRange],
-) -> Option<MediaTimeline> {
-    let ranges = metadata_ranges(total, present);
-    let mut owned = Vec::with_capacity(ranges.len());
-    for range in ranges {
-        let bytes = store
-            .read_range(post.as_str(), range.start..range.end)
-            .await
-            .ok()??;
-        owned.push((range.start, bytes));
-    }
-    let segments: Vec<_> = owned
+fn engine_ranges(ranges: &[std::ops::Range<u64>]) -> Vec<ByteRange> {
+    ranges
         .iter()
-        .map(|(start, bytes)| MediaSegment::new(*start, bytes))
-        .collect();
-    parse_mp4_segments(&segments)
-        .ok()
-        .filter(|timeline| timeline.fits_within(total))
+        .map(|range| ByteRange::new(range.start, range.end))
+        .collect()
 }
 
 fn metadata_ranges(total: u64, present: &[ByteRange]) -> Vec<ByteRange> {
@@ -99,5 +120,5 @@ fn metadata_ranges(total: u64, present: &[ByteRange]) -> Vec<ByteRange> {
             ranges.push(candidate);
         }
     }
-    ranges
+    normalize(ranges)
 }

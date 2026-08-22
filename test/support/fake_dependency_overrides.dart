@@ -7,6 +7,7 @@ import 'package:ghostr/features/session/domain/session_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_repository.dart';
+import 'package:ghostr/features/video_inventory/domain/playback_preparation_updates.dart';
 
 final class FakeDependencyOverrides {
   const FakeDependencyOverrides({
@@ -19,6 +20,7 @@ final class FakeDependencyOverrides {
     this.accountGenerator,
     this.accountProvisioningRepository,
     this.profileMetadataRepository,
+    this.preparationUpdates,
   });
 
   final SessionRepository? sessionRepository;
@@ -30,4 +32,5 @@ final class FakeDependencyOverrides {
   final NostrAccountGenerator? accountGenerator;
   final AccountProvisioningRepository? accountProvisioningRepository;
   final ProfileMetadataRepository? profileMetadataRepository;
+  final PlaybackPreparationUpdates? preparationUpdates;
 }

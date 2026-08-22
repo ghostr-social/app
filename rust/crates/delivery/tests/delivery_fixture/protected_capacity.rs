@@ -3,6 +3,7 @@ use super::options::{base_params, DeliveryOptions};
 use super::{start_harness, DeliveryHarness};
 use ghostr_delivery::playback_demand::DemandConsumer;
 use ghostr_engine::{ByteRange, EngineParams};
+use std::num::NonZeroUsize;
 use std::time::Duration;
 
 pub const POSTS: [&str; 4] = ["current", "next-1", "next-2", "next-3"];
@@ -49,11 +50,13 @@ fn items(url: &str) -> Vec<ghostr_delivery::delivery_events::FocusItem> {
 }
 
 fn options() -> DeliveryOptions {
-    DeliveryOptions {
+    let mut options = DeliveryOptions {
         params: EngineParams {
             balanced_concurrency: 3,
             ..base_params()
         },
         ..DeliveryOptions::default()
-    }
+    };
+    options.tuning.max_requests_per_authority = NonZeroUsize::new(3);
+    options
 }

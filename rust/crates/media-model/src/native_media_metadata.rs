@@ -5,10 +5,12 @@ use crate::video_link_scan::{is_bounded_http_url, is_video_url, url_delivery};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NativeMediaMetadata {
+    pub declared_mime: Option<String>,
     pub delivery: NativeVideoDelivery,
     pub expected_digest: Option<String>,
     pub extras: ImetaExtras,
     pub fallback_urls: Vec<String>,
+    pub original_digest: Option<String>,
     pub title: Option<String>,
     pub url: String,
 }
@@ -29,13 +31,19 @@ pub fn lenient_native_media(tag: &[String]) -> Option<NativeMediaMetadata> {
         return None;
     }
     Some(NativeMediaMetadata {
+        declared_mime: mime.map(normalized_mime),
         delivery: mime_or_url_delivery(mime, &primary),
         expected_digest: expected_digest(tag)?,
         extras: imeta_extras(tag),
         fallback_urls: urls,
+        original_digest: imeta_field(tag, "ox").and_then(parse_sha256),
         title: imeta_field(tag, "title").map(bounded_native_text),
         url: primary,
     })
+}
+
+fn normalized_mime(value: &str) -> String {
+    value.trim().to_ascii_lowercase()
 }
 
 /// An ordered, deduplicated set of the primary URL and its fallbacks.

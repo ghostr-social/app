@@ -1,16 +1,24 @@
+use super::super::limits::ParserBudget;
 use super::super::{TimedRange, TimelineError};
 use super::tables::{ChunkSamples, TrackTables};
 use crate::ByteRange;
 
-pub(super) fn map_samples(tables: TrackTables) -> Result<Vec<TimedRange>, TimelineError> {
-    validate_chunks(&tables)?;
-    let mut output = Vec::with_capacity(tables.sizes.len());
+pub(super) fn map_samples(
+    tables: TrackTables,
+    budget: &mut ParserBudget<'_>,
+    output: &mut Vec<TimedRange>,
+) -> Result<(), TimelineError> {
+    validate_chunks(&tables, budget)?;
+    budget.reserve(output, tables.sizes.len())?;
+    let mut rules = ChunkRuleCursor::new(&tables.chunk_samples);
     let mut sample = 0;
     let mut media_time = 0_u64;
     for (chunk_index, chunk_start) in tables.offsets.iter().copied().enumerate() {
-        let count = samples_in_chunk(&tables.chunk_samples, chunk_index + 1)?;
+        budget.work(1)?;
+        let count = rules.count_for(chunk_index + 1)?;
         let mut byte_offset = chunk_start;
         for _ in 0..count {
+            budget.work(1)?;
             let size = *tables.sizes.get(sample).ok_or(TimelineError::Malformed)?;
             let duration = tables.durations[sample];
             output.push(timed(SampleTiming {
@@ -29,10 +37,43 @@ pub(super) fn map_samples(tables: TrackTables) -> Result<Vec<TimedRange>, Timeli
             sample += 1;
         }
     }
-    if sample != tables.sizes.len() {
+    if sample != tables.sizes.len() || !rules.used_all() {
         return Err(TimelineError::Malformed);
     }
-    Ok(output)
+    Ok(())
+}
+
+struct ChunkRuleCursor<'a> {
+    entries: &'a [ChunkSamples],
+    index: usize,
+}
+
+impl<'a> ChunkRuleCursor<'a> {
+    fn new(entries: &'a [ChunkSamples]) -> Self {
+        Self { entries, index: 0 }
+    }
+
+    fn count_for(&mut self, chunk: usize) -> Result<usize, TimelineError> {
+        let chunk = u32::try_from(chunk).map_err(|_| TimelineError::Malformed)?;
+        while self
+            .entries
+            .get(self.index + 1)
+            .is_some_and(|entry| entry.first_chunk <= chunk)
+        {
+            self.index += 1;
+        }
+        let count = self
+            .entries
+            .get(self.index)
+            .filter(|entry| entry.first_chunk <= chunk)
+            .map(|entry| entry.samples_per_chunk)
+            .ok_or(TimelineError::Malformed)?;
+        usize::try_from(count).map_err(|_| TimelineError::Malformed)
+    }
+
+    fn used_all(&self) -> bool {
+        self.index + 1 == self.entries.len()
+    }
 }
 
 struct SampleTiming {
@@ -62,29 +103,23 @@ fn timed(input: SampleTiming) -> Result<TimedRange, TimelineError> {
     })
 }
 
-fn samples_in_chunk(entries: &[ChunkSamples], chunk: usize) -> Result<usize, TimelineError> {
-    let chunk = u32::try_from(chunk).map_err(|_| TimelineError::Malformed)?;
-    let count = entries
-        .iter()
-        .take_while(|entry| entry.first_chunk <= chunk)
-        .last()
-        .map(|entry| entry.samples_per_chunk)
-        .ok_or(TimelineError::Malformed)?;
-    if count == 0 {
-        return Err(TimelineError::Malformed);
+fn validate_chunks(
+    tables: &TrackTables,
+    budget: &mut ParserBudget<'_>,
+) -> Result<(), TimelineError> {
+    for entry in &tables.chunk_samples {
+        budget.work(1)?;
+        if entry.samples_per_chunk == 0 {
+            return Err(TimelineError::Malformed);
+        }
     }
-    Ok(count as usize)
-}
-
-fn validate_chunks(tables: &TrackTables) -> Result<(), TimelineError> {
-    let valid = tables
-        .chunk_samples
-        .windows(2)
-        .all(|pair| pair[0].first_chunk < pair[1].first_chunk);
-    match valid {
-        true => Ok(()),
-        false => Err(TimelineError::Malformed),
+    for pair in tables.chunk_samples.windows(2) {
+        budget.work(1)?;
+        if pair[0].first_chunk >= pair[1].first_chunk {
+            return Err(TimelineError::Malformed);
+        }
     }
+    Ok(())
 }
 
 pub(crate) fn scale_floor(value: u64, timescale: u32) -> u64 {

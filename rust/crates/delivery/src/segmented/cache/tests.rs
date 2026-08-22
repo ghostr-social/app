@@ -1,12 +1,17 @@
 use super::{SegmentedCache, SegmentedPhase};
 use crate::segmented::prepare::PreparedObject;
-use crate::segmented::PreparedHls;
 use ghostr_engine::PostId;
 use std::sync::Arc;
 use url::Url;
 
+mod alias_replacement_test;
+mod focus_reclamation_test;
+mod generation_test;
+mod protected_shared_reclaim_test;
+mod staged_retry_test;
+
 #[test]
-fn evicting_bootstrap_bytes_revokes_stale_readiness() {
+fn protected_bootstraps_are_never_silently_evicted_at_publication() {
     let cache = SegmentedCache::new();
     cache.replace_focus(
         1,
@@ -21,25 +26,38 @@ fn evicting_bootstrap_bytes_revokes_stale_readiness() {
             .collect(),
     );
 
-    for post in ["first", "second", "third"] {
-        cache.complete(&PostId::new(post), 1, Ok(prepared(post)));
+    for post in ["first", "second"] {
+        store_ready(&cache, &PostId::new(post), 1, prepared(post));
     }
 
-    assert_eq!(cache.snapshot("first").phase, SegmentedPhase::Queued);
-    assert_eq!(cache.snapshot("third").phase, SegmentedPhase::Ready);
+    assert!(!cache.mark_stage_preparing(&PostId::new("third"), 1, 500, 8 * 1024 * 1024,));
+    assert_eq!(cache.snapshot("first").phase, SegmentedPhase::Ready);
+    assert_eq!(cache.snapshot("second").phase, SegmentedPhase::Ready);
+    assert_eq!(cache.snapshot("third").phase, SegmentedPhase::Queued);
 }
 
-fn prepared(post: &str) -> PreparedHls {
+fn prepared(post: &str) -> Vec<PreparedObject> {
     let body: Arc<[u8]> = Arc::from(vec![0; 8 * 1024 * 1024]);
-    PreparedHls {
-        objects: ["index.m3u8", "segment.m4s"]
-            .into_iter()
-            .map(|name| PreparedObject {
-                request_url: format!("https://{post}.example/{name}"),
-                final_url: Url::parse(&format!("https://{post}.example/{name}")).unwrap(),
-                body: body.clone(),
-                content_type: None,
-            })
-            .collect(),
+    ["index.m3u8", "segment.m4s"]
+        .into_iter()
+        .map(|name| PreparedObject {
+            request_url: format!("https://{post}.example/{name}"),
+            final_url: Url::parse(&format!("https://{post}.example/{name}")).unwrap(),
+            body: body.clone(),
+            content_type: None,
+        })
+        .collect()
+}
+
+fn store_ready(
+    cache: &SegmentedCache,
+    post: &PostId,
+    generation: u64,
+    objects: Vec<PreparedObject>,
+) {
+    for object in objects {
+        assert!(cache.mark_stage_preparing(post, generation, 500, object.body.len() as u64));
+        assert!(cache.store_stage_object(post, generation, object).is_some());
     }
+    assert!(cache.mark_stage_ready(post, generation));
 }

@@ -2,7 +2,7 @@ use crate::tests::gateway_range_plan_fixture::demand_plan;
 use ghostr_engine::ByteRange;
 
 #[test]
-fn exact_demand_preserves_the_surrounding_playable_extent() {
+fn conditional_promotion_excludes_sibling_ranges_until_response_semantics() {
     let demanded = ByteRange::new(120, 140);
 
     let work = demand_plan(demanded);
@@ -13,6 +13,5 @@ fn exact_demand_preserves_the_surrounding_playable_extent() {
         .collect();
 
     assert_eq!(ranges.first(), Some(&demanded), "{ranges:?}");
-    assert!(ranges.contains(&ByteRange::new(100, 120)), "{ranges:?}");
-    assert!(ranges.contains(&ByteRange::new(140, 200)), "{ranges:?}");
+    assert_eq!(ranges, vec![demanded]);
 }

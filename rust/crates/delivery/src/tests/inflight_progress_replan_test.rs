@@ -1,4 +1,4 @@
-use super::support::{chunk_request, transfer_identity};
+use super::support::{chunk_request, range_retrieval, transfer_identity};
 use crate::chunk::cancel::cancel_pair;
 use crate::manager::inflight::InFlightChunks;
 use crate::manager::plan::PlannedTransfer;
@@ -26,6 +26,7 @@ fn stored_prefix_progress_keeps_the_overlapping_origin_request_in_flight() {
         identity,
         request: chunk_request(wanted_chunk.clone(), PreemptionAuthority::PlaybackCritical),
         url: url.to_owned(),
+        retrieval: range_retrieval(wanted_chunk.range),
         commitment_until_ms: 0,
     };
 
@@ -65,6 +66,7 @@ fn assert_foreground_supersedes_seed(authority: PreemptionAuthority) {
         identity,
         request: chunk_request(foreground.clone(), authority),
         url: url.to_owned(),
+        retrieval: range_retrieval(foreground.range),
         commitment_until_ms: 0,
     };
 

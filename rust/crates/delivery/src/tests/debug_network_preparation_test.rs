@@ -5,7 +5,7 @@ use std::time::Duration;
 use tokio::time::timeout;
 
 #[tokio::test]
-async fn cancelled_transfer_stops_waiting_for_a_host_slot() {
+async fn debug_network_simulation_does_not_add_a_second_connection_queue() {
     let network = NetworkThrottle::new();
     network.update(NetworkProfile {
         bandwidth_kbps: 0,
@@ -14,17 +14,12 @@ async fn cancelled_transfer_stops_waiting_for_a_host_slot() {
         max_connections_per_host: 1,
     });
     let _occupied = network.acquire("https://relay.example/first").await;
-    let (handle, token) = cancel_pair();
+    let (_handle, token) = cancel_pair();
     let waiting = prepare_network(Some(&network), "https://relay.example/second", &token);
-    tokio::pin!(waiting);
-    assert!(timeout(Duration::from_millis(10), waiting.as_mut())
-        .await
-        .is_err());
-
-    handle.cancel();
-
     let prepared = timeout(Duration::from_millis(100), waiting)
         .await
-        .expect("cancelled wait should finish");
-    assert!(matches!(prepared, NetworkPreparation::Cancelled));
+        .expect("the shared request gate owns connection queuing");
+
+    assert!(matches!(prepared, NetworkPreparation::Ready(Some(_))));
+    assert_eq!(network.active_connections()[0].1, 2);
 }

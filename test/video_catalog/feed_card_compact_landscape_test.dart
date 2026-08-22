@@ -11,14 +11,16 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    final post = repostablePost();
 
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: FeedCard(
-            post: repostablePost(),
+            post: post,
             playback: FeedCardPlayback(
               port: FakeVideoPlaybackPort(),
+              source: FeedCardPlaybackSource.direct(post.media),
               isActive: true,
             ),
             actions: FeedCardActions(

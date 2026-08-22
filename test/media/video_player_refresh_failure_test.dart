@@ -64,6 +64,7 @@ Future<void> _retryCapabilityRenewal(
   refresh.completeNext(_secondUrl);
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 100));
+  await settleVideoPlayerTasks(tester);
 }
 
 const _firstUrl =

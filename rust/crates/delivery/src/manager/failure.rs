@@ -6,9 +6,14 @@
 //! spends far fewer attempts on the second kind, because the engine
 //! exists to spend the radio carefully (plan §3).
 
+use ghostr_net::media_request_executor::MediaRequestAdmissionTimeout;
 use ghostr_net::native_cache_failure::PermanentCacheFailure;
 use ghostr_net::origin_content_type::UnsupportedOriginMediaType;
 use reqwest::StatusCode;
+
+#[cfg(test)]
+#[path = "failure/origin_failure_test.rs"]
+mod origin_failure_test;
 
 /// How hopeless one failed attempt against a source looks.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -50,6 +55,11 @@ pub fn classify(error: &anyhow::Error) -> FailureClass {
         true => FailureClass::Permanent,
         false => FailureClass::Transient,
     }
+}
+
+/// Returns remote failure evidence only after a request reached an origin.
+pub(crate) fn origin_failure_class(error: &anyhow::Error) -> Option<FailureClass> {
+    (!error.is::<MediaRequestAdmissionTimeout>()).then(|| classify(error))
 }
 
 /// The HTTP status a rejected request carried, if it got that far.

@@ -3,7 +3,19 @@
 
 use crate::partial_range_disk as disk;
 use anyhow::Result;
+use std::fmt::{Display, Formatter};
 use std::path::Path;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct IntegrityMismatch;
+
+impl Display for IntegrityMismatch {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("partial video digest does not match the expected digest")
+    }
+}
+
+impl std::error::Error for IntegrityMismatch {}
 
 /// How a completed file's bytes were checked.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -34,7 +46,10 @@ pub(crate) async fn judge(partial: &Path, advertised: Option<&str>) -> Result<Op
 pub(crate) async fn record(marker: &Path, completion: Completion) -> Result<()> {
     match completion {
         Completion::Verified => disk::write_marker(marker).await,
-        Completion::Unverified => disk::remove_if_present(marker).await,
+        Completion::Unverified => {
+            disk::remove_if_present(marker).await?;
+            disk::sync_parent(marker).await
+        }
     }
 }
 

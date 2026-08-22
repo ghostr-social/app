@@ -1,3 +1,4 @@
+mod feed_blossom_candidate_pipeline_test;
 mod feed_candidate_pipeline_test;
 mod feed_coordinate_repost_snapshot_test;
 mod feed_following_progress_deferred_test;
@@ -8,6 +9,7 @@ mod feed_outcome_pump_test;
 mod feed_outcome_relay_lists_test;
 mod feed_post_payload_test;
 mod feed_post_reference_test;
+mod feed_preview_candidate_mapping_test;
 mod feed_progressive_update_test;
 mod feed_protected_payload_test;
 mod feed_published_identifier_test;

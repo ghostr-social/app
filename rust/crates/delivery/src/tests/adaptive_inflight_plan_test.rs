@@ -1,5 +1,5 @@
 use crate::tests::adaptive_plan_support::plan_with_active;
-use ghostr_engine::{ByteRange, PostId};
+use ghostr_engine::{ActionId, ByteRange, PostId};
 
 #[test]
 fn manager_plan_subtracts_and_retains_exact_useful_inflight_ranges() {
@@ -11,9 +11,10 @@ fn manager_plan_subtracts_and_retains_exact_useful_inflight_ranges() {
         let range = transfer.request.chunk.range;
         transfer.request.chunk.post != p1 || range.end <= active.start || active.end <= range.start
     }));
-    assert!(work.retained.iter().any(|retained| {
-        retained.chunk.post == p1
-            && retained.chunk.range == active
-            && retained.identity.source().as_str() == "https://media.example/p1.mp4"
+    assert_eq!(work.retained, [ActionId::new(1)].into_iter().collect());
+    assert!(work.plan.retained.iter().any(|retained| {
+        retained.post == p1
+            && retained.request.requested_bytes() == active
+            && retained.source == "https://media.example/p1.mp4"
     }));
 }

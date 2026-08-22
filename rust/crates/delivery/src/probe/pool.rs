@@ -1,16 +1,56 @@
 //! Probe-pipeline bookkeeping for unresolved HTTP media capabilities.
 
 use crate::manager::retry::RetryBook;
+use ghostr_engine::adaptive::ProbeClaimRefusal;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::PostId;
 use std::collections::{HashMap, HashSet};
 
+mod availability;
+
+pub(crate) struct ProbeClaimQuery<'a> {
+    catalog: &'a Catalog,
+    retry: &'a RetryBook,
+    post: &'a PostId,
+    source: &'a str,
+}
+
+impl<'a> ProbeClaimQuery<'a> {
+    pub(crate) const fn new(
+        catalog: &'a Catalog,
+        retry: &'a RetryBook,
+        post: &'a PostId,
+        source: &'a str,
+    ) -> Self {
+        Self {
+            catalog,
+            retry,
+            post,
+            source,
+        }
+    }
+}
+
 pub(crate) struct MetadataProbePool {
     limit: usize,
-    probing: HashMap<PostId, TransferIdentity>,
+    probing: HashMap<PostId, ActiveProbe>,
     probed: HashSet<PostId>,
     deferred: HashSet<PostId>,
+}
+
+struct ActiveProbe {
+    identity: TransferIdentity,
+    result_current: bool,
+}
+
+impl ActiveProbe {
+    const fn new(identity: TransferIdentity) -> Self {
+        Self {
+            identity,
+            result_current: true,
+        }
+    }
 }
 
 impl MetadataProbePool {
@@ -26,6 +66,7 @@ impl MetadataProbePool {
     /// Window posts with unresolved size or range support, bounded by the limit.
     /// Returned posts are marked as probing until released or learned.
     /// Sources the retry policy retired are never probed again.
+    #[cfg(test)]
     pub fn claim(
         &mut self,
         catalog: &Catalog,
@@ -41,11 +82,25 @@ impl MetadataProbePool {
                 let identity = catalog
                     .transfer_identity(post, &url)
                     .expect("probe source came from the catalog");
-                self.probing.insert(post.clone(), identity);
+                self.probing
+                    .insert(post.clone(), ActiveProbe::new(identity));
                 claimed.push((post.clone(), url));
             }
         }
         claimed
+    }
+
+    pub(crate) fn claim_selected(
+        &mut self,
+        query: ProbeClaimQuery<'_>,
+    ) -> Result<TransferIdentity, ProbeClaimRefusal> {
+        let identity = self.probe_identity(&query)?;
+        if self.probing.len() >= self.limit {
+            return Err(ProbeClaimRefusal::PoolAtCapacity);
+        }
+        self.probing
+            .insert(query.post.clone(), ActiveProbe::new(identity.clone()));
+        Ok(identity)
     }
 
     pub fn learned(&mut self, post: &PostId) {
@@ -72,13 +127,17 @@ impl MetadataProbePool {
     }
 
     pub fn clear(&mut self) {
-        self.probing.clear();
+        self.probing
+            .values_mut()
+            .for_each(|probe| probe.result_current = false);
         self.probed.clear();
         self.deferred.clear();
     }
 
     pub(crate) fn representation_changed(&mut self, post: &PostId) {
-        self.probing.remove(post);
+        if let Some(probe) = self.probing.get_mut(post) {
+            probe.result_current = false;
+        }
         self.probed.remove(post);
         self.deferred.remove(post);
     }
@@ -90,6 +149,18 @@ impl MetadataProbePool {
         self.deferred.retain(|post| retained.contains(post));
     }
 
+    /// Successful HEAD history only; transient probe availability stays a launch-time check.
+    pub(crate) fn completed_posts(&self) -> &HashSet<PostId> {
+        &self.probed
+    }
+
+    pub(crate) fn active_identities(&self) -> Vec<TransferIdentity> {
+        self.probing
+            .values()
+            .map(|probe| probe.identity.clone())
+            .collect()
+    }
+
     pub(crate) fn current_identity(
         &self,
         catalog: &Catalog,
@@ -97,22 +168,10 @@ impl MetadataProbePool {
         url: &str,
     ) -> Option<TransferIdentity> {
         let claimed = self.probing.get(post)?;
+        if !claimed.result_current {
+            return None;
+        }
         let current = catalog.transfer_identity(post, url)?;
-        (claimed == &current).then_some(current)
-    }
-
-    fn needed_probe(&self, catalog: &Catalog, retry: &RetryBook, post: &PostId) -> Option<String> {
-        if self.probing.contains_key(post)
-            || self.probed.contains(post)
-            || self.deferred.contains(post)
-            || retry.is_cooling(post)
-        {
-            return None;
-        }
-        let entry = catalog.lookup(post)?;
-        if entry.total_bytes().is_some() && entry.accepts_byte_ranges().is_some() {
-            return None;
-        }
-        retry.live_urls(post, &entry.meta.urls).into_iter().next()
+        (claimed.identity == current).then_some(current)
     }
 }

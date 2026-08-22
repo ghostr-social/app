@@ -186,6 +186,7 @@ AppDependencies composeProductionDependencies(
     videoPlaybackPort: buildProductionVideoPlayback(delivery),
     videoShareWorkflow: buildProductionVideoSharing(),
     failureReporter: const DeveloperFailureReporter(),
+    playbackPreparationUpdates: delivery.preparationUpdates,
     appUpdateRuntime: input.appUpdateRuntime,
     watchHistoryStorageDisposer: account.watchHistory.close,
   );

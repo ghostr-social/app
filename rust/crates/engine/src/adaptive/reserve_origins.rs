@@ -1,10 +1,10 @@
 use super::sources::best_origin;
 use super::CandidateSnapshot;
-use crate::host_stats::host_of;
+use crate::RequestAuthority;
 use std::collections::HashMap;
 
 pub(super) struct OriginSlots {
-    counts: HashMap<String, usize>,
+    counts: HashMap<RequestAuthority, usize>,
     limit: Option<usize>,
 }
 
@@ -23,8 +23,11 @@ impl OriginSlots {
     }
 
     pub(super) fn available(&self, candidate: &CandidateSnapshot) -> bool {
+        let Some(key) = origin(candidate) else {
+            return true;
+        };
         let Some(limit) = self.limit else { return true };
-        origin(candidate).is_none_or(|key| self.counts.get(&key).copied().unwrap_or(0) < limit)
+        self.counts.get(&key).copied().unwrap_or(0) < limit
     }
 
     pub(super) fn occupy(&mut self, candidate: &CandidateSnapshot) {
@@ -41,7 +44,7 @@ fn has_live_body(candidate: &CandidateSnapshot) -> bool {
         .any(|active| active.identity_current)
 }
 
-fn origin(candidate: &CandidateSnapshot) -> Option<String> {
+fn origin(candidate: &CandidateSnapshot) -> Option<RequestAuthority> {
     let source = &best_origin(candidate)?.source;
-    host_of(source).or_else(|| Some(source.clone()))
+    RequestAuthority::from_url(source)
 }

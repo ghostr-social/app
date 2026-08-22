@@ -1,17 +1,19 @@
-use super::DEFAULT_RESERVE_BYTES;
+use super::{CapacityRevision, DEFAULT_RESERVE_BYTES};
 
 /// One live storage-capacity reading used by delivery admission.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CapacitySnapshot {
     limit_bytes: u64,
     used_bytes: u64,
+    revision: CapacityRevision,
 }
 
 impl CapacitySnapshot {
-    pub(crate) fn new(limit_bytes: u64, used_bytes: u64) -> Self {
+    pub(crate) fn new(limit_bytes: u64, used_bytes: u64, revision: CapacityRevision) -> Self {
         Self {
             limit_bytes,
             used_bytes,
+            revision,
         }
     }
 
@@ -21,6 +23,10 @@ impl CapacitySnapshot {
 
     pub fn used_bytes(self) -> u64 {
         self.used_bytes
+    }
+
+    pub fn revision(self) -> CapacityRevision {
+        self.revision
     }
 }
 

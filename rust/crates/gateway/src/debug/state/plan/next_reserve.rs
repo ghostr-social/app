@@ -9,6 +9,9 @@ pub(super) enum NextReserveSnapshot {
     Ready {
         post_id: String,
     },
+    Structural {
+        post_id: String,
+    },
     InFlight {
         post_id: String,
     },
@@ -25,7 +28,10 @@ pub(super) enum NextReserveSnapshot {
 pub(super) fn snapshot(value: &NextReserveEvidence) -> NextReserveSnapshot {
     match value {
         NextReserveEvidence::NotApplicable => NextReserveSnapshot::NotApplicable,
-        NextReserveEvidence::Ready { post } => NextReserveSnapshot::Ready {
+        NextReserveEvidence::Ready { post, .. } => NextReserveSnapshot::Ready {
+            post_id: post.as_str().to_owned(),
+        },
+        NextReserveEvidence::Structural { post, .. } => NextReserveSnapshot::Structural {
             post_id: post.as_str().to_owned(),
         },
         NextReserveEvidence::InFlight { post } => NextReserveSnapshot::InFlight {

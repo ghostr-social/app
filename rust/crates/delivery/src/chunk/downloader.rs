@@ -5,186 +5,144 @@
 //! keeping the bytes already fetched.
 
 use crate::chunk::cancel::CancelToken;
-use crate::chunk::generation::OriginGeneration;
-use crate::chunk::network::{prepare_network, NetworkPreparation};
-use crate::chunk::response::{classify, RangeReply};
-use crate::chunk::stream::{stream_into, StreamInput, Streamed};
+pub use crate::chunk::generation::OriginGeneration;
+pub use crate::chunk::sink::ResponseWriteMode;
 use crate::chunk::traffic::ChunkTraffic;
 use crate::debug::network::NetworkThrottle;
-use anyhow::{ensure, Result};
-use ghostr_engine::host_stats::{host_of, HostStats};
+use anyhow::Result;
+use ghostr_engine::adaptive::{PreemptionAuthority, RetrievalRequest};
+use ghostr_engine::evidence::EvidenceValidator;
+use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::representation::SourceGeneration;
 use ghostr_engine::ByteRange;
-use ghostr_net::outbound_media_client::MediaHttpRequests;
+use ghostr_net::media_request_executor::MediaRequestExecutor;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
-use std::time::Duration;
-use tokio::time::Instant;
 
+mod captured;
 mod opened;
+mod outcome;
 mod reply;
+mod streamed;
+mod telemetry;
+mod transfer;
 pub use crate::chunk::sink::{ChunkSink, ChunkWrite};
 pub use crate::chunk::traffic::ChunkTraffic as DownloadTraffic;
-use opened::send_ranged;
 
-/// One granted transfer: which range of which URL to fetch.
+/// One granted retrieval action for one URL.
 pub struct ChunkSpec<'a> {
-    pub client: &'a dyn MediaHttpRequests,
+    pub requests: &'a MediaRequestExecutor,
     pub url: &'a str,
-    pub range: ByteRange,
+    pub request: RetrievalRequest,
+    pub priority: PreemptionAuthority,
     pub continuation: Option<&'a SourceGeneration>,
     pub timeouts: TransferTimeouts,
+}
+
+pub struct ChunkExecution<'a, W: ChunkWrite + ?Sized> {
+    pub sink: &'a W,
+    pub stats: &'a mut HostStats,
+    pub cancel: &'a CancelToken,
+    pub network: &'a NetworkThrottle,
+    pub traffic: &'a mut dyn ChunkTraffic,
+    pub network_class: ghostr_engine::origin_model::NetworkClass,
 }
 
 /// What one chunk transfer accomplished.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ChunkResult {
     pub bytes_written: u64,
-    pub accept_ranges: bool,
+    pub range_support: Option<bool>,
+    pub range_ignored: bool,
     pub cancelled: bool,
     pub total_bytes: Option<u64>,
+    pub promoted: bool,
     pub(crate) request_started: bool,
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ResponseObservation {
+    Partial {
+        range: ByteRange,
+        total: Option<u64>,
+    },
+    Body {
+        request: RetrievalRequest,
+        total: Option<u64>,
+        range_support: Option<bool>,
+        promoted: bool,
+    },
+    Ignored {
+        total: Option<u64>,
+        range_support: Option<bool>,
+    },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct OpenedResponse {
+    observation: ResponseObservation,
+    generation: Option<SourceGeneration>,
+    mode: ResponseWriteMode,
+    evidence: HttpResponseEvidence,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct HttpResponseEvidence {
+    pub final_url: String,
+    pub content_type: Option<String>,
+    pub validator: Option<EvidenceValidator>,
+}
+
+impl OpenedResponse {
+    pub(crate) fn new(
+        observation: ResponseObservation,
+        generation: Option<SourceGeneration>,
+        mode: ResponseWriteMode,
+        evidence: HttpResponseEvidence,
+    ) -> Self {
+        Self {
+            observation,
+            generation,
+            mode,
+            evidence,
+        }
+    }
+
+    pub fn observation(&self) -> ResponseObservation {
+        self.observation
+    }
+
+    pub fn generation(&self) -> Option<&SourceGeneration> {
+        self.generation.as_ref()
+    }
+
+    pub fn mode(&self) -> ResponseWriteMode {
+        self.mode
+    }
+
+    pub fn evidence(&self) -> &HttpResponseEvidence {
+        &self.evidence
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ResponseAdmission {
+    Proceed,
+    Reject,
+}
+
+pub(crate) use captured::ObservedChunk;
 
 /// Executes an admitted range and emits transfer observations.
 pub async fn download_chunk_observed<W: ChunkWrite + ?Sized>(
     spec: &ChunkSpec<'_>,
-    sink: &W,
-    stats: &mut HostStats,
-    cancel: &CancelToken,
-    network: &NetworkThrottle,
-    traffic: &mut dyn ChunkTraffic,
+    execution: ChunkExecution<'_, W>,
 ) -> Result<ChunkResult> {
-    run_download(spec, sink, stats, cancel, Some(network), traffic).await
+    download_chunk_captured(spec, execution).await.result
 }
 
-async fn run_download<W: ChunkWrite + ?Sized>(
+pub(crate) async fn download_chunk_captured<W: ChunkWrite + ?Sized>(
     spec: &ChunkSpec<'_>,
-    sink: &W,
-    stats: &mut HostStats,
-    cancel: &CancelToken,
-    network: Option<&NetworkThrottle>,
-    traffic: &mut dyn ChunkTraffic,
-) -> Result<ChunkResult> {
-    ensure!(!spec.range.is_empty(), "chunk grant must not be empty");
-    let started = Instant::now();
-    let _permit = match prepare_network(network, spec.url, cancel).await {
-        NetworkPreparation::Ready(permit) => permit,
-        NetworkPreparation::Cancelled => return Ok(cancelled_before_request()),
-    };
-    match transfer(spec, sink, cancel, network, traffic).await {
-        Ok(result) => {
-            note_delivery(stats, spec.url, &result, started.elapsed());
-            Ok(result)
-        }
-        Err(error) => Err(note_failure(stats, spec.url, error)),
-    }
-}
-
-async fn transfer<W: ChunkWrite + ?Sized>(
-    spec: &ChunkSpec<'_>,
-    sink: &W,
-    cancel: &CancelToken,
-    network: Option<&NetworkThrottle>,
-    traffic: &mut dyn ChunkTraffic,
-) -> Result<ChunkResult> {
-    let opened = send_ranged(spec).await?;
-    traffic.opened(opened.ttfb);
-    let response = opened.response;
-    let full_length = response.content_length();
-    let reply = classify(&response, spec.range)?;
-    let total = reply::total(&reply, full_length);
-    let generation = OriginGeneration::from_response(&response, total)?;
-    sink.accept(&generation).await?;
-    match reply {
-        RangeReply::Ignored => Ok(range_ignored(full_length)),
-        RangeReply::Partial { range, total } => {
-            let returned = ChunkSpec {
-                client: spec.client,
-                url: spec.url,
-                range,
-                continuation: spec.continuation,
-                timeouts: spec.timeouts,
-            };
-            completed(
-                stream_into(StreamInput {
-                    response,
-                    spec: &returned,
-                    generation: &generation,
-                    sink,
-                    cancel,
-                    network,
-                    traffic,
-                })
-                .await?,
-                true,
-                total,
-            )
-        }
-        RangeReply::FullBody => {
-            let returned = reply::full_body_spec(spec, full_length);
-            completed(
-                stream_into(StreamInput {
-                    response,
-                    spec: &returned,
-                    generation: &generation,
-                    sink,
-                    cancel,
-                    network,
-                    traffic,
-                })
-                .await?,
-                false,
-                full_length,
-            )
-        }
-    }
-}
-
-fn completed(
-    streamed: Streamed,
-    accept_ranges: bool,
-    total_bytes: Option<u64>,
-) -> Result<ChunkResult> {
-    Ok(ChunkResult {
-        bytes_written: streamed.bytes,
-        accept_ranges,
-        cancelled: streamed.cancelled,
-        total_bytes,
-        request_started: true,
-    })
-}
-
-fn range_ignored(total_bytes: Option<u64>) -> ChunkResult {
-    ChunkResult {
-        bytes_written: 0,
-        accept_ranges: false,
-        cancelled: false,
-        total_bytes,
-        request_started: true,
-    }
-}
-
-fn cancelled_before_request() -> ChunkResult {
-    ChunkResult {
-        bytes_written: 0,
-        accept_ranges: false,
-        cancelled: true,
-        total_bytes: None,
-        request_started: false,
-    }
-}
-
-fn note_delivery(stats: &mut HostStats, url: &str, result: &ChunkResult, elapsed: Duration) {
-    let Some(host) = host_of(url) else { return };
-    if result.bytes_written > 0 {
-        stats.record_transfer(&host, result.bytes_written, elapsed);
-    }
-    stats.record_success(&host);
-}
-
-fn note_failure(stats: &mut HostStats, url: &str, error: anyhow::Error) -> anyhow::Error {
-    if let Some(host) = host_of(url) {
-        stats.record_failure(&host);
-    }
-    error
+    execution: ChunkExecution<'_, W>,
+) -> ObservedChunk {
+    captured::download(spec, execution).await
 }

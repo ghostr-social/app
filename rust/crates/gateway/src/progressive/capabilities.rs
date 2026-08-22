@@ -1,12 +1,15 @@
-use anyhow::{ensure, Result};
+use anyhow::{ensure, Context, Result};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use rand::RngCore;
-use std::collections::HashMap;
+use ghostr_engine::representation::RepresentationBinding;
+use ghostr_partial_store::partial_range_store::{ContentRevision, StoredMediaSnapshot};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
+
+mod state;
+use state::CapabilityState;
 
 const TOKEN_BYTES: usize = 32;
 const PRODUCTION_CAPACITY: usize = 256;
@@ -66,102 +69,58 @@ impl ProgressiveCapabilities {
         }
     }
 
-    pub async fn issue(&self, post: &str) -> ProgressiveCapabilityId {
+    pub async fn issue(&self, snapshot: &StoredMediaSnapshot) -> Result<ProgressiveCapabilityId> {
+        let authority = ProgressiveAssetAuthority::capture(snapshot)
+            .context("progressive asset needs a representation binding")?;
         let now = Instant::now();
         let mut state = self.state.lock().await;
         state.prune(now, self.limits.idle_ttl);
-        if let Some(id) = state.refresh_post(post, now) {
-            return id;
+        if let Some(id) = state.refresh(&authority, now) {
+            return Ok(id);
         }
         state.make_room(self.limits.capacity);
-        state.insert(post, now)
+        Ok(state.insert(authority, now))
     }
 
-    pub async fn authorizes(&self, raw: &str, post: &str) -> bool {
+    pub async fn recognizes(&self, raw: &str, post: &str) -> bool {
         let Some(id) = ProgressiveCapabilityId::parse(raw) else {
             return false;
         };
         let now = Instant::now();
         let mut state = self.state.lock().await;
         state.prune(now, self.limits.idle_ttl);
-        state.authorize(&id, post, now)
-    }
-}
-
-#[derive(Default)]
-struct CapabilityState {
-    entries: HashMap<ProgressiveCapabilityId, CapabilityLease>,
-}
-
-impl CapabilityState {
-    fn prune(&mut self, now: Instant, ttl: Duration) {
-        self.entries
-            .retain(|_, lease| now.duration_since(lease.last_used) < ttl);
+        state.recognizes(&id, post)
     }
 
-    fn refresh_post(&mut self, post: &str, now: Instant) -> Option<ProgressiveCapabilityId> {
-        let id = self
-            .entries
-            .iter()
-            .find_map(|(id, lease)| (lease.post == post).then(|| id.clone()))?;
-        self.entries.get_mut(&id)?.last_used = now;
-        Some(id)
-    }
-
-    fn make_room(&mut self, capacity: usize) {
-        if self.entries.len() < capacity {
-            return;
-        }
-        let oldest = self
-            .entries
-            .iter()
-            .min_by_key(|(_, lease)| lease.last_used)
-            .map(|(id, _)| id.clone());
-        if let Some(id) = oldest {
-            self.entries.remove(&id);
-        }
-    }
-
-    fn insert(&mut self, post: &str, now: Instant) -> ProgressiveCapabilityId {
-        let id = self.unique_id();
-        self.entries.insert(
-            id.clone(),
-            CapabilityLease {
-                post: post.to_owned(),
-                last_used: now,
-            },
-        );
-        id
-    }
-
-    fn unique_id(&self) -> ProgressiveCapabilityId {
-        loop {
-            let candidate = random_id();
-            if !self.entries.contains_key(&candidate) {
-                return candidate;
-            }
-        }
-    }
-
-    fn authorize(&mut self, id: &ProgressiveCapabilityId, post: &str, now: Instant) -> bool {
-        let Some(lease) = self.entries.get_mut(id) else {
+    pub async fn authorizes(&self, raw: &str, post: &str, snapshot: &StoredMediaSnapshot) -> bool {
+        let Some(id) = ProgressiveCapabilityId::parse(raw) else {
             return false;
         };
-        if lease.post != post {
+        let Some(authority) = ProgressiveAssetAuthority::capture(snapshot) else {
             return false;
-        }
-        lease.last_used = now;
-        true
+        };
+        let now = Instant::now();
+        let mut state = self.state.lock().await;
+        state.prune(now, self.limits.idle_ttl);
+        state.authorize(&id, post, &authority, now)
     }
 }
 
-struct CapabilityLease {
-    post: String,
-    last_used: Instant,
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ProgressiveAssetAuthority {
+    binding: RepresentationBinding,
+    revision: ContentRevision,
 }
 
-fn random_id() -> ProgressiveCapabilityId {
-    let mut bytes = [0_u8; TOKEN_BYTES];
-    rand::thread_rng().fill_bytes(&mut bytes);
-    ProgressiveCapabilityId(URL_SAFE_NO_PAD.encode(bytes))
+impl ProgressiveAssetAuthority {
+    fn capture(snapshot: &StoredMediaSnapshot) -> Option<Self> {
+        Some(Self {
+            binding: snapshot.binding()?.clone(),
+            revision: snapshot.revision(),
+        })
+    }
+
+    fn post(&self) -> &str {
+        self.binding.post().as_str()
+    }
 }

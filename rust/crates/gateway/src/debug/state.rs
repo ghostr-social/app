@@ -3,8 +3,11 @@
 use crate::progressive::route::ProgressiveState;
 use ghostr_delivery::debug::feed::{DebugFeedItem, DebugFeedSnapshot};
 use ghostr_delivery::debug::network::NetworkProfile;
+use ghostr_delivery::delivery_events::DecisionHistorySnapshot;
 use ghostr_delivery::delivery_events::DeliveryHandle;
+use ghostr_delivery::evaluation::EvaluationSnapshot;
 use ghostr_engine::host_stats::host_of;
+use ghostr_net::media_request_executor::MediaRequestExecutor;
 use serde::Serialize;
 
 mod plan;
@@ -19,6 +22,8 @@ pub struct DebugSnapshot {
     connections: Vec<ConnectionSnapshot>,
     storage: StorageSnapshot,
     adaptive_plans: Vec<AdaptivePlanSnapshot>,
+    decisions: DecisionHistorySnapshot,
+    evaluation: EvaluationSnapshot,
     videos: Vec<VideoSnapshot>,
     hls_videos: Vec<HlsVideoSnapshot>,
 }
@@ -51,7 +56,11 @@ pub struct HlsVideoSnapshot {
     status: &'static str,
 }
 
-pub(crate) async fn snapshot(state: &ProgressiveState, delivery: &DeliveryHandle) -> DebugSnapshot {
+pub(crate) async fn snapshot(
+    state: &ProgressiveState,
+    delivery: &DeliveryHandle,
+    requests: &MediaRequestExecutor,
+) -> DebugSnapshot {
     let mut videos = Vec::new();
     for video in state.cache.videos() {
         videos.push(video_snapshot(state, video).await);
@@ -60,9 +69,11 @@ pub(crate) async fn snapshot(state: &ProgressiveState, delivery: &DeliveryHandle
     DebugSnapshot {
         nostr: state.debug_feed.snapshot(),
         network: state.network.profile(),
-        connections: connections(state),
+        connections: connections(requests),
         storage: storage(&videos, used_bytes),
         adaptive_plans: plan_snapshots(&delivery.plan_history()),
+        decisions: delivery.decision_history(),
+        evaluation: delivery.evaluation_snapshot(),
         hls_videos: state
             .debug_feed
             .hls_items()
@@ -88,9 +99,8 @@ fn hls_video_snapshot(item: DebugFeedItem) -> HlsVideoSnapshot {
     }
 }
 
-fn connections(state: &ProgressiveState) -> Vec<ConnectionSnapshot> {
-    state
-        .network
+fn connections(requests: &MediaRequestExecutor) -> Vec<ConnectionSnapshot> {
+    requests
         .active_connections()
         .into_iter()
         .map(|(host, active)| ConnectionSnapshot { host, active })

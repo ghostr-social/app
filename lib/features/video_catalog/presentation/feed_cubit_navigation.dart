@@ -70,12 +70,13 @@ extension FeedCubitNavigation on FeedCubit {
 
   FeedLoaded _movedTo(FeedLoaded current, int index) {
     final roster = _session.movedTo(current.roster, index);
-    return FeedLoaded.of(
+    final moved = FeedLoaded.of(
       current.kind,
       roster,
       notice: current.notice,
       follows: current.follows,
     );
+    return _realignPreparation(current, moved);
   }
 
   void _surfaceVisibilityChanged(bool isVisible) {

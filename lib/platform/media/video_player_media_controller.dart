@@ -6,7 +6,10 @@ bool _isPlayableMedia(VideoMediaSource media) {
       media is ProxiedProgressiveVideoMediaSource;
 }
 
-VideoPlayerController _videoPlayerController(VideoMediaSource media) {
+VideoPlayerController _videoPlayerController(
+  VideoMediaSource media,
+  PlayerPreparationAttemptToken? attemptToken,
+) {
   const viewType = VideoViewType.textureView;
   if (media is ProxiedHlsVideoMediaSource) {
     return VideoPlayerController.networkUrl(
@@ -18,10 +21,15 @@ VideoPlayerController _videoPlayerController(VideoMediaSource media) {
   if (media is ProxiedProgressiveVideoMediaSource) {
     return VideoPlayerController.networkUrl(
       media.playbackUri,
+      httpHeaders: _attemptHeaders(attemptToken),
       viewType: viewType,
     );
   }
   return VideoPlayerController.file(File(media.localPath!), viewType: viewType);
+}
+
+Map<String, String> _attemptHeaders(PlayerPreparationAttemptToken? token) {
+  return token == null ? const {} : {warpPlaybackAttemptHeader: token.value};
 }
 
 void _requireVisibleVideo(VideoPlayerController controller) {

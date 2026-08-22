@@ -2,7 +2,7 @@
 //! then NIP-94 top-level file tags, then direct video links in note text.
 
 use crate::event_identity::VIDEO_KINDS;
-use crate::imeta_extras::ImetaExtras;
+use crate::imeta_extras::{event_extras, ImetaExtras};
 use crate::native_media_metadata::{
     lenient_native_media, mime_or_url_delivery, parse_sha256, playable_media, NativeMediaMetadata,
 };
@@ -54,13 +54,25 @@ fn file_tag_media(event: &Event) -> Option<NativeMediaMetadata> {
         return None;
     }
     Some(NativeMediaMetadata {
+        declared_mime: mime.map(|value| value.trim().to_ascii_lowercase()),
         delivery: mime_or_url_delivery(mime, url),
         expected_digest: file_digest(event)?,
-        extras: ImetaExtras::default(),
-        fallback_urls: Vec::new(),
+        extras: event_extras(event),
+        fallback_urls: file_fallbacks(event, url),
+        original_digest: tag_values(event, "ox").next().and_then(parse_sha256),
         title: None,
         url: url.to_owned(),
     })
+}
+
+fn file_fallbacks(event: &Event, primary: &str) -> Vec<String> {
+    let mut fallbacks = Vec::new();
+    for url in tag_values(event, "fallback") {
+        if is_bounded_http_url(url) && url != primary && !fallbacks.iter().any(|item| item == url) {
+            fallbacks.push(url.to_owned());
+        }
+    }
+    fallbacks
 }
 
 /// A present-but-invalid `x` digest rejects the file tags entirely.
@@ -75,10 +87,12 @@ fn file_digest(event: &Event) -> Option<Option<String>> {
 fn text_media(event: &Event) -> Option<NativeMediaMetadata> {
     let url = first_video_link(&event.content)?;
     Some(NativeMediaMetadata {
+        declared_mime: None,
         delivery: url_delivery(&url),
         expected_digest: None,
         extras: ImetaExtras::default(),
         fallback_urls: Vec::new(),
+        original_digest: None,
         title: None,
         url,
     })

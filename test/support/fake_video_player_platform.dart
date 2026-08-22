@@ -16,6 +16,7 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   final Set<String> failingCalls = {};
   final Completer<void> disposeStarted = Completer<void>();
   Completer<void>? disposeBarrier;
+  Completer<void>? pauseBarrier;
   Completer<void>? playBarrier;
   bool failNextInitialization = false;
   int _nextTextureId = 0;
@@ -73,7 +74,10 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   }
 
   @override
-  Future<void> pause(int textureId) async => _recordPlaybackCall('pause');
+  Future<void> pause(int textureId) async {
+    _recordPlaybackCall('pause');
+    await pauseBarrier?.future;
+  }
 
   @override
   Future<void> seekTo(int textureId, Duration position) async {

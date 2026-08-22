@@ -1,5 +1,12 @@
-use super::{MediaSegment, TimelineError};
+use super::limits::ParserBudget;
+use super::TimelineError;
 use crate::ByteRange;
+use header::{absolute, header};
+
+mod header;
+mod scan;
+
+pub(crate) use scan::scan;
 
 #[derive(Clone, Copy)]
 pub(crate) struct Atom<'a> {
@@ -7,6 +14,7 @@ pub(crate) struct Atom<'a> {
     pub(crate) start: u64,
     pub(crate) bytes: &'a [u8],
     header: usize,
+    top_level: bool,
 }
 
 impl<'a> Atom<'a> {
@@ -21,61 +29,35 @@ impl<'a> Atom<'a> {
             .ok_or(TimelineError::Malformed)?;
         Ok(ByteRange::new(self.start, end))
     }
+
+    pub(crate) fn is_top_level(&self) -> bool {
+        self.top_level
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct MediaData {
+    pub(crate) header: ByteRange,
+    pub(crate) payload: ByteRange,
 }
 
 pub(crate) struct Scan<'a> {
     pub(crate) atoms: Vec<Atom<'a>>,
+    pub(crate) media_data: Vec<MediaData>,
+    pub(crate) fragmented_markers: usize,
     pub(crate) truncated: bool,
 }
 
-pub(crate) fn scan<'a>(segments: &[MediaSegment<'a>]) -> Result<Scan<'a>, TimelineError> {
-    let mut atoms = Vec::new();
-    let mut truncated = false;
-    for segment in segments {
-        let found = scan_segment(*segment)?;
-        truncated |= found.truncated;
-        atoms.extend(found.atoms);
-    }
-    Ok(Scan { atoms, truncated })
-}
-
-fn scan_segment(segment: MediaSegment<'_>) -> Result<Scan<'_>, TimelineError> {
-    let mut atoms = Vec::new();
-    let mut cursor: usize = 0;
-    let mut truncated = false;
-    while cursor.saturating_add(8) <= segment.bytes.len() {
-        let Some(header) = header(&segment.bytes[cursor..])? else {
-            cursor += 1;
-            continue;
-        };
-        if !is_metadata(header.kind) {
-            cursor += 1;
-            continue;
-        }
-        let end = cursor
-            .checked_add(header.size)
-            .ok_or(TimelineError::Malformed)?;
-        if end > segment.bytes.len() {
-            truncated = true;
-            cursor += 1;
-            continue;
-        }
-        atoms.push(Atom {
-            kind: header.kind,
-            start: absolute(segment.start, cursor)?,
-            bytes: &segment.bytes[cursor..end],
-            header: header.header,
-        });
-        cursor = end;
-    }
-    Ok(Scan { atoms, truncated })
-}
-
-pub(crate) fn children<'a>(parent: &Atom<'a>) -> Result<Vec<Atom<'a>>, TimelineError> {
+pub(crate) fn children<'a>(
+    parent: &Atom<'a>,
+    budget: &mut ParserBudget<'_>,
+    depth: usize,
+) -> Result<Vec<Atom<'a>>, TimelineError> {
     let mut children = Vec::new();
     let mut cursor = 0;
     let payload = parent.payload();
     while cursor < payload.len() {
+        budget.work(1)?;
         let header = header(&payload[cursor..])?.ok_or(TimelineError::Truncated)?;
         let end = cursor
             .checked_add(header.size)
@@ -83,66 +65,16 @@ pub(crate) fn children<'a>(parent: &Atom<'a>) -> Result<Vec<Atom<'a>>, TimelineE
         if end > payload.len() {
             return Err(TimelineError::Truncated);
         }
-        children.push(Atom {
+        budget.box_at(header.size, depth)?;
+        let child = Atom {
             kind: header.kind,
             start: absolute(parent.start, parent.header + cursor)?,
             bytes: &payload[cursor..end],
             header: header.header,
-        });
+            top_level: false,
+        };
+        budget.push(&mut children, child)?;
         cursor = end;
     }
     Ok(children)
-}
-
-pub(crate) fn child<'a>(
-    parent: &Atom<'a>,
-    kind: &[u8; 4],
-) -> Result<Option<Atom<'a>>, TimelineError> {
-    Ok(children(parent)?
-        .into_iter()
-        .find(|atom| &atom.kind == kind))
-}
-
-struct Header {
-    size: usize,
-    kind: [u8; 4],
-    header: usize,
-}
-
-fn header(bytes: &[u8]) -> Result<Option<Header>, TimelineError> {
-    if bytes.len() < 8 {
-        return Ok(None);
-    }
-    let size32 = u32::from_be_bytes(bytes[0..4].try_into().unwrap());
-    let kind = bytes[4..8].try_into().unwrap();
-    let Some((size, header)) = dimensions(size32, bytes) else {
-        return Ok(None);
-    };
-    if size < header as u64 || size > usize::MAX as u64 {
-        return Ok(None);
-    }
-    Ok(Some(Header {
-        size: size as usize,
-        kind,
-        header,
-    }))
-}
-
-fn dimensions(size32: u32, bytes: &[u8]) -> Option<(u64, usize)> {
-    Some(match size32 {
-        0 => (bytes.len() as u64, 8),
-        1 if bytes.len() >= 16 => (u64::from_be_bytes(bytes[8..16].try_into().unwrap()), 16),
-        1 => return None,
-        value => (u64::from(value), 8),
-    })
-}
-
-fn is_metadata(kind: [u8; 4]) -> bool {
-    matches!(&kind, b"moov" | b"sidx")
-}
-
-fn absolute(start: u64, relative: usize) -> Result<u64, TimelineError> {
-    start
-        .checked_add(relative as u64)
-        .ok_or(TimelineError::Malformed)
 }

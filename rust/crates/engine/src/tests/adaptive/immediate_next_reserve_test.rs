@@ -15,6 +15,7 @@ fn constrained_startup_reserves_useful_immediate_next_work_before_deep_current()
         packet_loss_bps: 0,
         connection_capacity: 1,
         connection_ceiling: 1,
+        per_authority_request_limit: 1,
         confidence: EstimateConfidence::High,
     };
 
@@ -28,7 +29,10 @@ fn constrained_startup_reserves_useful_immediate_next_work_before_deep_current()
         .expect("immediate-next reserve");
 
     assert_eq!(plan.allocations[0].post, current);
-    assert!(!plan.allocations[next_index].range.is_empty());
+    assert!(!plan.allocations[next_index]
+        .request
+        .requested_bytes()
+        .is_empty());
     assert!(plan.allocations[next_index].expected_playable_gain_ms > 0);
     assert_eq!(
         plan.allocations[next_index].reason,

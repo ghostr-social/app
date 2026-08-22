@@ -32,6 +32,7 @@ void main() {
     refresh.completeNext(_renewedUrl);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
+    await settleVideoPlayerTasks(tester);
 
     expect(platform.dataSources, hasLength(2));
     expect(platform.dataSources.last.uri, _renewedUrl);

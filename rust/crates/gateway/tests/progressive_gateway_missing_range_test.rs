@@ -12,6 +12,9 @@ async fn missing_bytes_emit_demand_and_stream_once_they_arrive() {
     let mut harness = progressive_harness("ghostr-progressive-demand");
     harness.posts.insert("clip");
     harness
+        .bind_video("clip", "https://cdn.example/clip.mp4", Some(10))
+        .await;
+    harness
         .store
         .set_total_len("clip", 10)
         .await

@@ -16,8 +16,14 @@ void main() {
       delegate: FakeVideoPlaybackPort(),
       gateway: gateway,
     );
-    final first = VideoMediaSource.remote('https://media.test/first.mp4');
-    final second = VideoMediaSource.remote('https://media.test/second.mp4');
+    final first = VideoMediaSource.withCacheScope(
+      VideoMediaSource.remote('https://media.test/first.mp4'),
+      'post-1',
+    );
+    final second = VideoMediaSource.withCacheScope(
+      VideoMediaSource.remote('https://media.test/second.mp4'),
+      'post-2',
+    );
 
     await tester.pumpWidget(
       MaterialApp(
