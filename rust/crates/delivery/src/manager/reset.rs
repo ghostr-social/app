@@ -12,6 +12,7 @@ impl DeliveryWorker {
         self.probes.clear();
         self.retry.clear();
         self.cooldown_timers.clear();
+        self.network_refill_timer.clear();
         self.pressure.clear();
         self.hedge_tail_timers.clear();
         self.demand_leases.clear();

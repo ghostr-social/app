@@ -1,5 +1,6 @@
 mod candidate;
 mod codes;
+mod hls;
 mod request;
 
 use super::privacy::DecisionPrivacy;
@@ -22,6 +23,8 @@ pub(super) struct ReplayState {
     storage: StorageState,
     navigation: NavigationState,
     candidates: Vec<CandidateState>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    hls_candidates: Vec<hls::HlsCandidateState>,
 }
 
 impl ReplayState {
@@ -39,6 +42,11 @@ impl ReplayState {
                 .iter()
                 .map(|item| CandidateState::capture(item, privacy))
                 .collect(),
+            hls_candidates: value
+                .hls_candidates
+                .iter()
+                .map(|item| hls::HlsCandidateState::capture(item, privacy))
+                .collect(),
         }
     }
 
@@ -55,6 +63,11 @@ impl ReplayState {
                 .candidates
                 .iter()
                 .map(CandidateState::snapshot)
+                .collect(),
+            hls_candidates: self
+                .hls_candidates
+                .iter()
+                .map(hls::HlsCandidateState::snapshot)
                 .collect(),
         }
     }

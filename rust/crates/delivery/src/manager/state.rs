@@ -42,11 +42,13 @@ pub(crate) struct DeliveryState {
     active_transforms: std::collections::HashSet<PostId>,
     transformed_posts: HashMap<PostId, RepresentationBinding>,
     ready_target: usize,
+    network_status: crate::delivery_events::DeliveryNetworkStatus,
 }
 
 mod evictions;
 mod fast_start;
 mod focus;
+pub(crate) mod network;
 mod playback;
 mod playback_evidence;
 mod player_preparation;
@@ -84,6 +86,7 @@ impl DeliveryState {
             active_transforms: Default::default(),
             transformed_posts: Default::default(),
             ready_target: 1,
+            network_status: crate::delivery_events::DeliveryNetworkStatus::unavailable(),
         }
     }
 

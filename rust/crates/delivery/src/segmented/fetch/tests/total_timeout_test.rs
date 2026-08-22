@@ -1,6 +1,7 @@
 use super::super::asset_with_timeouts;
 use super::support::{client, trickled_body};
 use ghostr_engine::adaptive::PreemptionAuthority;
+use ghostr_engine::origin_model::ErrorReason;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
 use std::time::Duration;
 
@@ -21,5 +22,11 @@ async fn trickled_hls_chunks_cannot_extend_total_deadline() {
         };
 
     assert!(error.to_string().contains("transfer timed out"));
+    assert_eq!(error.reason(), ErrorReason::Timeout);
+    let actual = error.actual_resources().expect("admitted request usage");
+    assert!(actual.network_bytes > 0);
+    assert_eq!(actual.network_bytes, error.network_bytes());
+    assert_eq!(actual.storage_bytes, 0);
+    assert_eq!(actual.requests, 1);
     server.abort();
 }

@@ -23,6 +23,7 @@ pub(crate) mod immediate_replan;
 mod independent_objects;
 pub(crate) mod inflight;
 mod integrity;
+pub(crate) mod network_refill_timer;
 mod observability;
 pub(crate) mod origin_admission;
 pub(crate) mod plan;
@@ -43,6 +44,7 @@ mod response_observation;
 pub(crate) mod response_open;
 pub mod retry;
 mod retry_completion;
+mod segmented;
 pub(crate) mod selected_commit;
 mod startup;
 pub(crate) mod state;
@@ -69,6 +71,7 @@ use crate::manager::cooldown_timers::CooldownTimers;
 use crate::manager::hedge_tail::HedgeTailTimers;
 use crate::manager::immediate_replan::ImmediateReplan;
 use crate::manager::independent_objects::IndependentObjects;
+use crate::manager::network_refill_timer::NetworkRefillTimer;
 use crate::manager::pressure::StorePressure;
 use crate::manager::qoe::QoeKeeper;
 use crate::manager::reliability::ReliabilityKeeper;
@@ -108,6 +111,7 @@ pub struct DeliveryManagerConfig {
     pub cache: CacheRegistry,
     pub segmented: SegmentedCache,
     pub network: NetworkThrottle,
+    pub network_status: crate::delivery_events::DeliveryNetworkStatus,
     pub stats_path: PathBuf,
     pub params: EngineParams,
     pub level: DataUsageLevel,
@@ -176,5 +180,6 @@ pub(crate) struct DeliveryWorker {
     independent_objects: IndependentObjects,
     transforms: transforms::TransformJobs,
     immediate_replan: ImmediateReplan,
+    network_refill_timer: NetworkRefillTimer,
     warp_planner: ghostr_engine::adaptive::WarpPlanner,
 }

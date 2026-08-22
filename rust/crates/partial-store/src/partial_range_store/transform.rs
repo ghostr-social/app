@@ -25,6 +25,13 @@ pub struct TransformPublication {
     output: Vec<u8>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TransformPublicationOutcome {
+    Published,
+    Superseded,
+    Cancelled,
+}
+
 impl TransformPublication {
     pub fn try_new(
         fence: TransformFence,
@@ -51,24 +58,66 @@ impl TransformPublication {
 
 impl PartialRangeStore {
     pub async fn publish_transform(&self, publication: TransformPublication) -> Result<bool> {
+        let outcome = self
+            .publish_transform_authorized(publication, || true)
+            .await?;
+        Ok(outcome == TransformPublicationOutcome::Published)
+    }
+
+    pub async fn publish_transform_authorized<F>(
+        &self,
+        publication: TransformPublication,
+        authorize: F,
+    ) -> Result<TransformPublicationOutcome>
+    where
+        F: FnOnce() -> bool + Send,
+    {
         let key = publication.fence.binding.post().as_str().to_owned();
         let _lease = self.lease(&key);
         let _update = self.update_key(&key).await?;
+        self.publish_transform_locked(&key, publication, authorize)
+            .await
+    }
+
+    async fn publish_transform_locked<F>(
+        &self,
+        key: &str,
+        publication: TransformPublication,
+        authorize: F,
+    ) -> Result<TransformPublicationOutcome>
+    where
+        F: FnOnce() -> bool,
+    {
         let Some(old_bytes) = self.transform_input_bytes(&publication).await? else {
-            return Ok(false);
+            return Ok(TransformPublicationOutcome::Superseded);
         };
         let staged = publication.output_bytes();
         self.require_headroom(staged).await?;
-        let prepared = transaction::stage(&self.paths, &key, publication).await?;
+        let prepared = transaction::stage(&self.paths, key, publication).await?;
+        if !authorize() {
+            transaction::discard_staging(&self.paths, key).await?;
+            return Ok(TransformPublicationOutcome::Cancelled);
+        }
+        self.commit_transform(key, old_bytes, prepared).await?;
+        Ok(TransformPublicationOutcome::Published)
+    }
+
+    async fn commit_transform(
+        &self,
+        key: &str,
+        old_bytes: u64,
+        prepared: transaction::Prepared,
+    ) -> Result<()> {
+        let staged = prepared.output_bytes();
         self.credit(staged).await;
         self.capacity.spent(staged).await;
-        if let Err(error) = transaction::commit(&self.paths, &key).await {
-            transaction::rollback(&self.paths, &key).await?;
+        if let Err(error) = transaction::commit(&self.paths, key).await {
+            transaction::rollback(&self.paths, key).await?;
             self.release(staged).await;
             return Err(error);
         }
-        self.install_transform(&key, old_bytes, prepared).await;
-        Ok(true)
+        self.install_transform(key, old_bytes, prepared).await;
+        Ok(())
     }
 
     async fn transform_input_bytes(

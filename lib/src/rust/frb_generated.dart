@@ -13,6 +13,7 @@ import 'api/feed_control.dart';
 import 'api/feed_types.dart';
 import 'api/feed_updates_stream.dart';
 import 'api/focus_control.dart';
+import 'api/network_control.dart';
 import 'api/playback_control.dart';
 import 'api/playback_preparation_stream.dart';
 import 'api/playback_types.dart';
@@ -80,7 +81,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.7.0';
 
   @override
-  int get rustContentHash => 1994761233;
+  int get rustContentHash => -585840162;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -102,6 +103,9 @@ abstract class RustLibApi extends BaseApi {
   Future<void> crateApiFeedControlFfiCloseFeed({required String feedId});
 
   Stream<FfiDeliveryEvent> crateApiDeliveryEventsStreamFfiDeliveryEvents();
+
+  Future<FfiDeliveryNetworkStatus>
+  crateApiNetworkControlFfiDeliveryNetworkStatusUnavailable();
 
   Future<BigInt> crateApiFeedControlFfiFeedSession({
     String? expectedAccountHex,
@@ -164,10 +168,15 @@ abstract class RustLibApi extends BaseApi {
     required FfiEngineConfiguration configuration,
   });
 
+  Future<bool> crateApiNetworkControlFfiSetDeliveryNetwork({
+    required FfiDeliveryNetworkStatus status,
+  });
+
   Future<String> crateApiEngineControlFfiStartEngine({
     required String cacheDirectory,
     required FfiEngineConfiguration configuration,
     String? deviceIntegrationOrigin,
+    required FfiDeliveryNetworkStatus initialNetwork,
   });
 
   Future<void> crateApiFocusControlFfiUpdateFocus({
@@ -312,6 +321,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "ffi_delivery_events", argNames: ["sink"]);
 
   @override
+  Future<FfiDeliveryNetworkStatus>
+  crateApiNetworkControlFfiDeliveryNetworkStatusUnavailable() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 8,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_ffi_delivery_network_status,
+          decodeErrorData: null,
+        ),
+        constMeta:
+            kCrateApiNetworkControlFfiDeliveryNetworkStatusUnavailableConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiNetworkControlFfiDeliveryNetworkStatusUnavailableConstMeta =>
+      const TaskConstMeta(
+        debugName: "ffi_delivery_network_status_unavailable",
+        argNames: [],
+      );
+
+  @override
   Future<BigInt> crateApiFeedControlFfiFeedSession({
     String? expectedAccountHex,
   }) {
@@ -323,7 +365,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 9,
             port: port_,
           );
         },
@@ -359,7 +401,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 9,
+              funcId: 10,
               port: port_,
             );
           },
@@ -396,7 +438,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 11,
             port: port_,
           );
         },
@@ -433,7 +475,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 12,
             port: port_,
           );
         },
@@ -464,7 +506,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 13,
             port: port_,
           );
         },
@@ -503,7 +545,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 13,
+              funcId: 14,
               port: port_,
             );
           },
@@ -540,7 +582,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 15,
             port: port_,
           );
         },
@@ -570,7 +612,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 16,
             port: port_,
           );
         },
@@ -600,7 +642,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 17,
             port: port_,
           );
         },
@@ -633,7 +675,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 18,
             port: port_,
           );
         },
@@ -666,7 +708,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 19,
             port: port_,
           );
         },
@@ -699,7 +741,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 20,
             port: port_,
           );
         },
@@ -737,7 +779,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 21,
             port: port_,
           );
         },
@@ -772,7 +814,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 22,
             port: port_,
           );
         },
@@ -808,7 +850,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 23,
             port: port_,
           );
         },
@@ -830,10 +872,47 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<bool> crateApiNetworkControlFfiSetDeliveryNetwork({
+    required FfiDeliveryNetworkStatus status,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_ffi_delivery_network_status(
+            status,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 24,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiNetworkControlFfiSetDeliveryNetworkConstMeta,
+        argValues: [status],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiNetworkControlFfiSetDeliveryNetworkConstMeta =>
+      const TaskConstMeta(
+        debugName: "ffi_set_delivery_network",
+        argNames: ["status"],
+      );
+
+  @override
   Future<String> crateApiEngineControlFfiStartEngine({
     required String cacheDirectory,
     required FfiEngineConfiguration configuration,
     String? deviceIntegrationOrigin,
+    required FfiDeliveryNetworkStatus initialNetwork,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -845,10 +924,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             serializer,
           );
           sse_encode_opt_String(deviceIntegrationOrigin, serializer);
+          sse_encode_box_autoadd_ffi_delivery_network_status(
+            initialNetwork,
+            serializer,
+          );
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 23,
+            funcId: 25,
             port: port_,
           );
         },
@@ -857,7 +940,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiEngineControlFfiStartEngineConstMeta,
-        argValues: [cacheDirectory, configuration, deviceIntegrationOrigin],
+        argValues: [
+          cacheDirectory,
+          configuration,
+          deviceIntegrationOrigin,
+          initialNetwork,
+        ],
         apiImpl: this,
       ),
     );
@@ -870,6 +958,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           "cacheDirectory",
           "configuration",
           "deviceIntegrationOrigin",
+          "initialNetwork",
         ],
       );
 
@@ -885,7 +974,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 26,
             port: port_,
           );
         },
@@ -912,7 +1001,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 25,
+            funcId: 27,
             port: port_,
           );
         },
@@ -993,6 +1082,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   FfiDeliveryEvent dco_decode_box_autoadd_ffi_delivery_event(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_ffi_delivery_event(raw);
+  }
+
+  @protected
+  FfiDeliveryNetworkStatus dco_decode_box_autoadd_ffi_delivery_network_status(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_ffi_delivery_network_status(raw);
   }
 
   @protected
@@ -1123,6 +1220,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   FfiDeliveryEventKind dco_decode_ffi_delivery_event_kind(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return FfiDeliveryEventKind.values[raw as int];
+  }
+
+  @protected
+  FfiDeliveryNetworkClass dco_decode_ffi_delivery_network_class(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FfiDeliveryNetworkClass.values[raw as int];
+  }
+
+  @protected
+  FfiDeliveryNetworkStatus dco_decode_ffi_delivery_network_status(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return FfiDeliveryNetworkStatus(
+      networkClass: dco_decode_ffi_delivery_network_class(arr[0]),
+      generation: dco_decode_u_64(arr[1]),
+    );
   }
 
   @protected
@@ -1725,6 +1840,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiDeliveryNetworkStatus sse_decode_box_autoadd_ffi_delivery_network_status(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_ffi_delivery_network_status(deserializer));
+  }
+
+  @protected
   FfiEngineConfiguration sse_decode_box_autoadd_ffi_engine_configuration(
     SseDeserializer deserializer,
   ) {
@@ -1882,6 +2005,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_i_32(deserializer);
     return FfiDeliveryEventKind.values[inner];
+  }
+
+  @protected
+  FfiDeliveryNetworkClass sse_decode_ffi_delivery_network_class(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return FfiDeliveryNetworkClass.values[inner];
+  }
+
+  @protected
+  FfiDeliveryNetworkStatus sse_decode_ffi_delivery_network_status(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_networkClass = sse_decode_ffi_delivery_network_class(deserializer);
+    var var_generation = sse_decode_u_64(deserializer);
+    return FfiDeliveryNetworkStatus(
+      networkClass: var_networkClass,
+      generation: var_generation,
+    );
   }
 
   @protected
@@ -2686,6 +2831,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_ffi_delivery_network_status(
+    FfiDeliveryNetworkStatus self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_ffi_delivery_network_status(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_ffi_engine_configuration(
     FfiEngineConfiguration self,
     SseSerializer serializer,
@@ -2848,6 +3002,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_ffi_delivery_network_class(
+    FfiDeliveryNetworkClass self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_ffi_delivery_network_status(
+    FfiDeliveryNetworkStatus self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_ffi_delivery_network_class(self.networkClass, serializer);
+    sse_encode_u_64(self.generation, serializer);
   }
 
   @protected

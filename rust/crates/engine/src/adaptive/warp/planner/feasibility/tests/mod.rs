@@ -1,3 +1,4 @@
+mod actionable_semantic_test;
 mod degraded_reserve_test;
 mod semantic_readiness_test;
 mod transform_rescue_test;

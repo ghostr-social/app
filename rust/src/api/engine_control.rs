@@ -1,5 +1,6 @@
 //! Engine lifecycle and live configuration (plan §2 rows 1–2).
 
+use crate::api::network_control::FfiDeliveryNetworkStatus;
 use crate::api::runtime::configuration;
 use crate::api::runtime::registry;
 use crate::discovery::relay::url::normalize_relay_url;
@@ -68,11 +69,17 @@ pub async fn ffi_start_engine(
     cache_directory: String,
     configuration: FfiEngineConfiguration,
     device_integration_origin: Option<String>,
+    initial_network: FfiDeliveryNetworkStatus,
 ) -> anyhow::Result<String> {
     let configuration = EngineConfiguration::try_from(configuration)?;
     let level = configuration.level;
     let search_relays = configuration.search_relays.clone();
-    let gateway = engine_configuration(cache_directory, &configuration, device_integration_origin);
+    let gateway = engine_configuration(
+        cache_directory,
+        &configuration,
+        device_integration_origin,
+        initial_network,
+    );
     let endpoint = registry::start_and_install(gateway, search_relays).await?;
     apply_level(level)?;
     Ok(endpoint)
@@ -103,12 +110,14 @@ fn engine_configuration(
     cache_directory: String,
     configuration: &EngineConfiguration,
     device_integration_origin: Option<String>,
+    initial_network: FfiDeliveryNetworkStatus,
 ) -> GatewayConfiguration {
     GatewayConfiguration {
         cache_directory: PathBuf::from(cache_directory),
         relays: configuration.read_relays.clone(),
         max_parallel_downloads: EngineParams::default().balanced_concurrency,
         max_storage_bytes: configuration.max_storage_bytes,
+        network_status: initial_network.into(),
         device_integration_origin,
     }
 }

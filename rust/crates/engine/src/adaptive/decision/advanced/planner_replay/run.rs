@@ -78,11 +78,15 @@ impl RecordedNetworkState {
                 refill_per_second,
                 tokens,
                 updated_at_ms,
+                refill_milli_bytes,
+                debt_bytes,
             } => Some(NetworkTokenBucket::from_replay((
                 capacity,
                 refill_per_second,
                 tokens,
                 updated_at_ms,
+                refill_milli_bytes,
+                debt_bytes,
             ))),
         }
     }

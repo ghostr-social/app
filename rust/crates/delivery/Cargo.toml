@@ -24,6 +24,9 @@ sha2 = { workspace = true }
 tokio = { workspace = true }
 url = { workspace = true }
 
+[target.'cfg(unix)'.dependencies]
+libc = { workspace = true }
+
 # `range_fixture` serves real ranged responses over a loopback listener, so the
 # chunk downloader and probes are exercised against an actual HTTP origin.
 [dev-dependencies]

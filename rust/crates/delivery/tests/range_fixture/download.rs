@@ -37,6 +37,7 @@ pub async fn download_chunk_throttled(
             cancel: context.cancel,
             network: context.network,
             traffic: &mut IgnoreTraffic,
+            network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
         },
     )
     .await

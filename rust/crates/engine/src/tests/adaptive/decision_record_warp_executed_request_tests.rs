@@ -10,5 +10,7 @@ mod privacy_test;
 mod support;
 #[path = "decision_record_warp_executed_tamper_test.rs"]
 mod tamper_test;
+#[path = "decision_record_terminal_seal_test.rs"]
+mod terminal_seal_test;
 #[path = "decision_record_warp_executed_transfer_test.rs"]
 mod transfer_test;

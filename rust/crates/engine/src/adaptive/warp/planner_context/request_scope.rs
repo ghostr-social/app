@@ -1,4 +1,4 @@
-use crate::adaptive::{ActionNode, RetrievalRequest};
+use crate::adaptive::{ActionKind, ActionNode, RetrievalRequest};
 use crate::PostId;
 use serde::{Deserialize, Serialize};
 
@@ -28,19 +28,28 @@ impl SoftRequestCommitment {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub(super) struct RequestScope {
     ordinary_tokens: u16,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    hls_tokens: u16,
     soft: Vec<SoftRequestCommitment>,
 }
 
 impl RequestScope {
-    pub(super) fn new(ordinary_tokens: u16, soft: Vec<SoftRequestCommitment>) -> Self {
+    pub(super) fn new(
+        ordinary_tokens: u16,
+        hls_tokens: u16,
+        soft: Vec<SoftRequestCommitment>,
+    ) -> Self {
         Self {
             ordinary_tokens,
+            hls_tokens,
             soft,
         }
     }
 
     pub(super) fn admits(&self, action: &ActionNode, occupied: usize) -> bool {
         occupied < usize::from(self.ordinary_tokens)
+            || (matches!(&action.kind, ActionKind::HlsBootstrap { .. })
+                && occupied < usize::from(self.hls_tokens))
             || self.soft.iter().any(|item| item.admits(action))
     }
 
@@ -62,10 +71,14 @@ impl RequestScope {
                 request: item.request,
             })
             .collect();
-        Self::new(self.ordinary_tokens, soft)
+        Self::new(self.ordinary_tokens, self.hls_tokens, soft)
     }
 
     pub(super) fn replay_bounded(&self, limit: usize) -> bool {
         self.soft.len() <= limit
     }
+}
+
+const fn is_zero(value: &u16) -> bool {
+    *value == 0
 }

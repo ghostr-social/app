@@ -14,11 +14,9 @@ use std::time::Duration;
 pub(super) fn demand_plan(demanded: ByteRange) -> PlannedWork {
     build_demand_plan(demanded, false)
 }
-
 pub(super) fn buffered_demand_plan(demanded: ByteRange) -> PlannedWork {
     build_demand_plan(demanded, true)
 }
-
 fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
     let post = PostId::new("current");
     let mut state = state(post.clone());
@@ -45,12 +43,16 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
             completed_head_probes: &completed_head_probes,
             in_flight: &[],
             active_head_probes: &[],
+            hls_candidates: &[],
+            active_hls_sources: &[],
+            segmented_storage_available_bytes: u64::MAX,
             storage: StorageSnapshot::new(2_000_000_000, 0),
             connection_capacity: 1,
             connection_ceiling: 1,
             per_authority_request_limit: 1,
             packet_loss_bps: 0,
             measured_network_bytes_per_second: 0,
+            measured_transform_cpu_ms: None,
             capacity_revision: 0,
             observed_at_ms: 1,
             demanded: &demanded,
@@ -77,17 +79,11 @@ fn state(post: PostId) -> DeliveryState {
         duration_ms: Some(1_000),
     };
     let mut state = DeliveryState::new(EngineParams::default(), DataUsageLevel::Balanced);
-    state.apply_focus(
-        DeliveryFocus::compatibility(
-            vec![FocusItem {
-                post: post.clone(),
-                meta,
-            }],
-            0,
-            0,
-        ),
-        0,
-    );
+    let item = FocusItem {
+        post: post.clone(),
+        meta,
+    };
+    state.apply_focus(DeliveryFocus::compatibility(vec![item], 0, 0), 0);
     state.catalog_mut().learn(
         &post,
         LearnedFacts {

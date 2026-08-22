@@ -33,6 +33,7 @@ pub(super) struct ObservationTiming {
     pub at_ms: u64,
     pub elapsed: Duration,
     pub concurrency: usize,
+    pub network_class: NetworkClass,
 }
 
 fn context(spec: &ChunkSpec<'_>, timing: ObservationTiming) -> OriginContext {
@@ -41,7 +42,7 @@ fn context(spec: &ChunkSpec<'_>, timing: ObservationTiming) -> OriginContext {
         spec.request.requested_bytes().len(),
         media_class(spec.request),
     )
-    .with_network(NetworkClass::Unavailable)
+    .with_network(timing.network_class)
     .with_concurrency(timing.concurrency)
     .with_observed_at_ms(timing.at_ms)
 }

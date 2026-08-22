@@ -8,4 +8,3 @@ pub(crate) mod scheduler;
 pub use cache::{
     CachedHlsGeneration, CachedHlsObject, SegmentedCache, SegmentedPhase, SegmentedSnapshot,
 };
-pub(crate) use prepare::{prepare_hls, PreparedHls};

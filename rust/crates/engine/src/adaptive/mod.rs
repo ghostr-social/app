@@ -33,16 +33,16 @@ pub use decision::{
     DecisionAction, DecisionModelInput, DecisionOutcome, DecisionPrivacy, DecisionRecord,
     DecisionRecordInput, DecisionReplayStatus, ExecutedRequest, ModelQuantiles, ProbeClaimRefusal,
     PrunedCandidate, PrunedReason, RecordedAllocationReason, RecordedCandidateUtility,
-    RecordedExecutedRequest, RecordedPlannerReplayCapsule, RecordedPlannerRetryAvailability,
-    RecordedPlannerRetryEvidence, RecordedPreemptionAuthority, RecordedPromotionGrant,
-    RecordedPrunedSearchPlan, RecordedRescueChanceEvidence, RecordedRescueTimingQuantile,
-    RecordedReserveAuthorityOccupancy, RecordedReserveDegradedReason, RecordedResourceCost,
-    RecordedResourcePrices, RecordedRetainedSearchPlan, RecordedRetrievalRequest,
-    RecordedSearchPruneReason, RecordedTransfer, RecordedTransformKind, RecordedTwinEvaluation,
-    RecordedWarpAction, RecordedWarpActionKind, RecordedWarpCommand, RecordedWarpDecision,
-    RecordedWarpReserve, RecordedWarpSearch, RecordedWarpSearchInput, RecordedWholeBodyContract,
-    RecordedWholeFetchReason, ShadowPrices, VerifiedWarpReplay, WarpDecisionRecordInput,
-    WarpReplayIntegrity,
+    RecordedExecutedRequest, RecordedHlsBootstrapStage, RecordedPlannerReplayCapsule,
+    RecordedPlannerRetryAvailability, RecordedPlannerRetryEvidence, RecordedPreemptionAuthority,
+    RecordedPromotionGrant, RecordedPrunedSearchPlan, RecordedRescueChanceEvidence,
+    RecordedRescueTimingQuantile, RecordedReserveAuthorityOccupancy, RecordedReserveDegradedReason,
+    RecordedResourceCost, RecordedResourcePrices, RecordedRetainedSearchPlan,
+    RecordedRetrievalRequest, RecordedSearchPruneReason, RecordedTransfer, RecordedTransformKind,
+    RecordedTwinEvaluation, RecordedWarpAction, RecordedWarpActionKind, RecordedWarpCommand,
+    RecordedWarpDecision, RecordedWarpReserve, RecordedWarpSearch, RecordedWarpSearchInput,
+    RecordedWholeBodyContract, RecordedWholeFetchReason, ShadowPrices, VerifiedWarpReplay,
+    WarpDecisionRecordInput, WarpReplayIntegrity,
 };
 pub use navigation::{FeedOffset, NavigationDirection, NavigationHistory};
 pub use plan::{
@@ -57,9 +57,10 @@ pub use retrieval_ladder::{
     RetrievalLadder, RetrievalPlan, RetrievalRung, SizeBounds,
 };
 pub use snapshot::{
-    CandidateSnapshot, CurrentAuthority, InFlightAction, MediaLayout, NavigationSnapshot,
-    NetworkSnapshot, OriginHealth, PlayabilitySnapshot, PlayableRange, PlaybackSnapshot,
-    PlayerPreparation, SnapshotError, StorageSnapshot, ViewProbability,
+    CandidateSnapshot, CurrentAuthority, HlsBootstrapStage, HlsBootstrapState,
+    HlsCandidateSnapshot, InFlightAction, MediaLayout, NavigationSnapshot, NetworkSnapshot,
+    OriginHealth, PlayabilitySnapshot, PlayableRange, PlaybackSnapshot, PlayerPreparation,
+    SnapshotError, StorageSnapshot, ViewProbability,
 };
 pub use warp::{
     ActionForecast, ActionFrontier, ActionKind, ActionNode, ActionValue, ActiveControl,
@@ -71,11 +72,11 @@ pub use warp::{
     PreviewAvailability, PrunedSearchPlan, RequestOccupancy, RescueChanceEvidence,
     RescueTimingQuantile, ReserveAuthorityOccupancy, ReserveConstraint, ReserveDegradedReason,
     ResourceCost, ResourceFeedback, ResourceObservation, ResourcePrices, RetainedSearchPlan,
-    SearchDecision, SearchPruneReason, SemanticAdmission, SemanticCandidate, SemanticDecision,
-    SemanticGuardrail, SemanticScore, ShadowPriceController, SoftRequestCommitment,
-    TransformCapability, TransformKind, TransportCensorReason, TwinConfig, TwinEpochs,
-    TwinEvaluation, TwinSearchContext, TwinState, TwinStateSignature, WarpActionGenerator,
-    WarpPlanner, WarpPlannerConfig, WarpPlannerInput, WarpPlanningDecision, WarpSearch,
-    INLINE_BLURHASH_PREVIEW_QUALITY_MICROS,
+    SearchDecision, SearchPruneReason, SegmentedStorageBudget, SemanticAdmission,
+    SemanticCandidate, SemanticDecision, SemanticGuardrail, SemanticScore, ShadowPriceController,
+    SoftRequestCommitment, TransformCapability, TransformKind, TransportCensorReason, TwinConfig,
+    TwinEpochs, TwinEvaluation, TwinSearchContext, TwinState, TwinStateSignature,
+    WarpActionGenerator, WarpPlanner, WarpPlannerConfig, WarpPlannerInput, WarpPlanningDecision,
+    WarpSearch, INLINE_BLURHASH_PREVIEW_QUALITY_MICROS,
 };
 pub(crate) use warp::{PlannerReplayCapsule, PlannerReplayState};

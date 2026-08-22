@@ -41,6 +41,7 @@ impl Fixture {
                 cancel: &self.token,
                 network: &self.network,
                 traffic: &mut IgnoreTraffic,
+                network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
             },
         )
         .await

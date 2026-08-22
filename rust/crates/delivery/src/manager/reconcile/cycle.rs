@@ -17,19 +17,15 @@ pub(super) struct PlanningCycle {
     independent_sources: HashMap<PostId, HashSet<String>>,
     in_flight: Vec<ActiveAction>,
     active_head_probes: Vec<TransferIdentity>,
+    hls_candidates: Vec<ghostr_engine::adaptive::HlsCandidateSnapshot>,
+    active_hls_sources: Vec<String>,
+    segmented_storage_available_bytes: u64,
     demanded: HashMap<PostId, ByteRange>,
 }
 
 impl DeliveryWorker {
     pub(super) fn reconcile_request_surfaces(&mut self, limits: RequestConcurrencyLimits) {
         self.sync_request_gate(limits);
-        self.segmented
-            .reconcile(crate::segmented::scheduler::ReconcileInput {
-                requests: self.ctx.requests.clone(),
-                events: self.ctx.events.clone(),
-                connection_limit: limits.segmented_compatibility(),
-                progressive_active: self.downloads.len(),
-            });
     }
 
     pub(super) async fn prepare_planning_cycle(
@@ -51,6 +47,15 @@ impl DeliveryWorker {
         self.reconcile_probe_bodies();
         let in_flight = self.downloads.actions();
         let active_head_probes = self.probes.active_identities();
+        let navigation = self.state.navigation(observed_at_ms);
+        let hls_candidates = self.segmented.planning_candidates(navigation);
+        let segmented_storage_available_bytes = self.segmented.available_bytes();
+        let active_hls_sources = self
+            .segmented
+            .active_sources()
+            .into_iter()
+            .map(str::to_owned)
+            .collect();
         let demanded = self.resolve_gateway_demands(&stored.present);
         PlanningCycle {
             observed_at_ms,
@@ -60,6 +65,9 @@ impl DeliveryWorker {
             independent_sources,
             in_flight,
             active_head_probes,
+            hls_candidates,
+            active_hls_sources,
+            segmented_storage_available_bytes,
             demanded,
         }
     }
@@ -77,20 +85,21 @@ impl DeliveryWorker {
             completed_head_probes: self.probes.completed_posts(),
             in_flight: &cycle.in_flight,
             active_head_probes: &cycle.active_head_probes,
+            hls_candidates: &cycle.hls_candidates,
+            active_hls_sources: &cycle.active_hls_sources,
+            segmented_storage_available_bytes: cycle.segmented_storage_available_bytes,
             storage: StorageSnapshot::new(
                 cycle.capacity.limit_bytes(),
                 cycle.capacity.used_bytes(),
             ),
-            connection_capacity: self
-                .concurrency_limit()
-                .min(self.progressive_capacity())
-                .max(1),
+            connection_capacity: self.concurrency_limit().max(1),
             connection_ceiling: cycle.limits.global(),
             per_authority_request_limit: cycle.limits.per_authority(),
             packet_loss_bps: self.ctx.network.profile().packet_loss_bps,
             measured_network_bytes_per_second: self
                 .keeper
                 .network_load_bytes_per_second(cycle.observed_at_ms),
+            measured_transform_cpu_ms: self.transforms.take_cpu_sample_ms(),
             capacity_revision: cycle.capacity.revision().value(),
             observed_at_ms: cycle.observed_at_ms,
             demanded: &cycle.demanded,

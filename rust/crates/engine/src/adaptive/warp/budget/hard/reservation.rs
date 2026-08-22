@@ -19,7 +19,7 @@ impl HardBudget {
             return Err(BudgetDenial::RescueReserve);
         }
         let mut updated = self.clone();
-        if !updated.consume_raw(&node.resources, node.request_authority()) {
+        if !super::segmented_storage::consume_node(&mut updated, node) {
             return Err(BudgetDenial::HardLimit);
         }
         if reserved {
@@ -62,27 +62,31 @@ impl HardBudget {
         copy.consume_action(node).is_ok()
     }
 
+    pub(in crate::adaptive::warp) fn allows_node(&self, node: &ActionNode) -> bool {
+        let mut copy = self.clone();
+        super::segmented_storage::consume_node(&mut copy, node)
+    }
+
     pub(in crate::adaptive::warp) fn path_cost(path: &[ActionNode]) -> Option<ResourceCost> {
         path.iter()
             .try_fold(ResourceCost::default(), |total, node| {
+                let resources = node.authorized_resources();
                 Some(ResourceCost::new(
-                    total
-                        .network_bytes
-                        .checked_add(node.resources.network_bytes)?,
-                    total
-                        .storage_bytes
-                        .checked_add(node.resources.storage_bytes)?,
-                    total.cpu_ms.checked_add(node.resources.cpu_ms)?,
-                    total.requests.max(node.resources.requests),
+                    total.network_bytes.checked_add(resources.network_bytes)?,
+                    total.storage_bytes.checked_add(resources.storage_bytes)?,
+                    total.cpu_ms.checked_add(resources.cpu_ms)?,
+                    total.requests.max(resources.requests),
                 ))
             })
     }
 
     fn can_replay(&self, path: &[ActionNode]) -> bool {
-        Self::path_cost(path).is_some_and(|cost| {
-            cost.no_more_than(self.remaining)
-                && path.iter().all(|node| self.request_available(node))
-        })
+        let Some(mut cost) = Self::path_cost(path) else {
+            return false;
+        };
+        super::segmented_storage::route_path(self, path, &mut cost)
+            && cost.no_more_than(self.remaining)
+            && path.iter().all(|node| self.request_available(node))
     }
 
     fn request_available(&self, node: &ActionNode) -> bool {

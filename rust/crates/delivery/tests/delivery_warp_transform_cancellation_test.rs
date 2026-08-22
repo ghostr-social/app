@@ -4,6 +4,7 @@ mod focus_wait_fixture;
 mod transform_delivery_fixture;
 
 use blocking_transform_fixture::BlockingRemux;
+use delivery_fixture::decision::wait_for_history;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::{start_harness_with_store, temp_directory};
@@ -46,33 +47,42 @@ async fn clear_cancels_selected_transform_without_publishing_output() {
     tokio::time::sleep(Duration::from_millis(2)).await;
 
     harness.handle.clear().await.unwrap();
+    wait_for_history(&harness.handle, |history| {
+        history.records.iter().any(cancelled_transform)
+    })
+    .await;
     let record = harness
         .handle
         .decision_history()
         .records
         .into_iter()
-        .find(|record| {
-            matches!(
-                record.eventual_outcome,
-                DecisionOutcome::Cancelled {
-                    bytes: 0,
-                    elapsed_ms
-                } if elapsed_ms > 0
-            ) && matches!(
-                record
-                    .warp_decision
-                    .as_ref()
-                    .and_then(|warp| warp.selected.as_ref())
-                    .map(|action| &action.command),
-                Some(RecordedWarpCommand::Transform { .. })
-            )
-        })
+        .find(cancelled_transform)
         .expect("cancelled Transform decision");
-    assert_eq!(record.schema_version, 2);
+    assert_eq!(record.schema_version, 3);
+    let actual = record.actual_resources.expect("cancelled CPU evidence");
+    assert!(actual.cpu_ms > 0);
+    assert_eq!(actual.storage_bytes, 0);
     assert!(store
         .read_range("post", 0..INPUT.len() as u64)
         .await
         .unwrap()
         .is_none());
     std::fs::remove_dir_all(&harness.root).ok();
+}
+
+fn cancelled_transform(record: &ghostr_engine::adaptive::DecisionRecord) -> bool {
+    matches!(
+        record.eventual_outcome,
+        DecisionOutcome::Cancelled {
+            bytes: 0,
+            elapsed_ms
+        } if elapsed_ms > 0
+    ) && matches!(
+        record
+            .warp_decision
+            .as_ref()
+            .and_then(|warp| warp.selected.as_ref())
+            .map(|action| &action.command),
+        Some(RecordedWarpCommand::Transform { .. })
+    ) && record.actual_resources.is_some()
 }

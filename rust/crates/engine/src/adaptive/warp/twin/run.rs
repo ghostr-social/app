@@ -1,6 +1,8 @@
 use super::summary::{summarize, ParticleOutcome};
 use super::{TwinConfig, TwinEpochs, TwinEvaluation, TwinState, TwinStateSignature};
 use crate::adaptive::{ActionNode, ResourcePrices};
+use crate::PostId;
+use std::collections::BTreeSet;
 
 #[derive(Clone, Copy)]
 pub(super) struct SimulationRun {
@@ -64,6 +66,7 @@ struct ParticleState {
     coverage_ms: u64,
     cache_bytes: u64,
     score: i64,
+    quality_posts: BTreeSet<PostId>,
 }
 
 impl ParticleState {
@@ -73,6 +76,7 @@ impl ParticleState {
             coverage_ms: state.ready_coverage_ms,
             cache_bytes: state.cache_bytes,
             score: 0,
+            quality_posts: BTreeSet::new(),
         }
     }
 
@@ -95,13 +99,18 @@ impl ParticleState {
                 .ready_playback_ms
                 .min(sample.watch_duration_ms),
         );
-        self.score = self
-            .score
-            .saturating_add(action.forecast.quality_gain_micros as i64);
+        self.credit_quality(action);
         if sample.cache_reused {
             self.cache_bytes = self
                 .cache_bytes
                 .saturating_add(action.resources.storage_bytes);
+        }
+    }
+
+    fn credit_quality(&mut self, action: &ActionNode) {
+        let gain = action.forecast.quality_gain_micros;
+        if gain > 0 && self.quality_posts.insert(action.post.clone()) {
+            self.score = self.score.saturating_add(gain as i64);
         }
     }
 

@@ -6,16 +6,33 @@ use ghostr_engine::adaptive::TransformKind;
 use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::{ActionId, PostId};
 use ghostr_partial_store::partial_range_store::{ContentRevision, PartialRangeStore};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc::UnboundedSender;
 
+mod cancellation;
+#[cfg(test)]
+#[path = "../tests/transform_cancellation_ownership_test.rs"]
+mod cancellation_ownership_test;
+#[cfg(test)]
+#[path = "../tests/transform_cpu_busy_sample_test.rs"]
+mod cpu_busy_sample_test;
+#[cfg(test)]
+#[path = "../tests/transform_cpu_sample_test.rs"]
+mod cpu_sample_test;
+#[cfg(test)]
+#[path = "../tests/transform_deadline_ownership_test.rs"]
+mod deadline_ownership_test;
 mod execution;
 mod lifecycle;
+mod resources;
 #[cfg(test)]
 #[path = "../tests/transform_singleflight_launch_test.rs"]
 mod singleflight_test;
+#[cfg(test)]
+#[path = "../tests/transform_test_fixture.rs"]
+mod test_fixture;
 
 pub(crate) struct TransformRequest {
     pub(crate) action: ActionId,
@@ -25,6 +42,9 @@ pub(crate) struct TransformRequest {
     pub(crate) kind: TransformKind,
 }
 
+pub(crate) use resources::TransformActualResources;
+
+#[derive(Clone, Copy)]
 pub(crate) enum TransformTerminal {
     Succeeded(u64),
     Failed(&'static str),
@@ -33,18 +53,26 @@ pub(crate) enum TransformTerminal {
 pub(crate) struct TransformDone {
     pub(crate) action: ActionId,
     pub(crate) terminal: TransformTerminal,
+    pub(crate) actual_resources: Option<TransformActualResources>,
 }
 
 struct ActiveTransform {
     post: PostId,
     binding: RepresentationBinding,
     control: TransformControl,
+    cancellation_requested: bool,
+}
+
+pub(crate) struct TransformFinish {
+    pub(crate) post: PostId,
+    pub(crate) cancellation_requested: bool,
 }
 
 pub(crate) struct TransformJobs {
     backend: Option<Arc<dyn TransformBackend>>,
     events: UnboundedSender<InternalEvent>,
     active: HashMap<ActionId, ActiveTransform>,
+    cpu_samples: resources::TransformCpuSamples,
 }
 
 impl TransformJobs {
@@ -56,6 +84,7 @@ impl TransformJobs {
             backend,
             events,
             active: HashMap::new(),
+            cpu_samples: resources::TransformCpuSamples::default(),
         }
     }
 
@@ -101,53 +130,22 @@ impl TransformJobs {
                 post: request.binding.post().clone(),
                 binding: request.binding.clone(),
                 control,
+                cancellation_requested: false,
             },
         );
     }
 
-    pub(crate) fn finish(&mut self, action: ActionId) -> Option<PostId> {
-        self.active.remove(&action).map(|job| job.post)
+    pub(crate) fn finish(&mut self, done: &TransformDone) -> Option<TransformFinish> {
+        let job = self.active.remove(&done.action)?;
+        self.cpu_samples.record(done.actual_resources);
+        Some(TransformFinish {
+            post: job.post,
+            cancellation_requested: job.cancellation_requested,
+        })
     }
 
-    pub(crate) fn cancel_obsolete(
-        &mut self,
-        binding: &RepresentationBinding,
-    ) -> Vec<(ActionId, PostId)> {
-        let obsolete = self
-            .active
-            .iter()
-            .filter(|(_, job)| job.post == *binding.post() && job.binding != *binding)
-            .map(|(action, job)| (*action, job.post.clone()))
-            .collect();
-        self.cancel(obsolete)
-    }
-
-    pub(crate) fn retain(&mut self, posts: &HashSet<PostId>) -> Vec<(ActionId, PostId)> {
-        let removed = self
-            .active
-            .iter()
-            .filter(|(_, job)| !posts.contains(&job.post))
-            .map(|(action, job)| (*action, job.post.clone()))
-            .collect();
-        self.cancel(removed)
-    }
-
-    pub(crate) fn clear(&mut self) -> Vec<(ActionId, PostId)> {
-        let removed = self
-            .active
-            .iter()
-            .map(|(action, job)| (*action, job.post.clone()))
-            .collect();
-        self.cancel(removed)
-    }
-
-    fn cancel(&mut self, jobs: Vec<(ActionId, PostId)>) -> Vec<(ActionId, PostId)> {
-        for (action, _) in &jobs {
-            if let Some(job) = self.active.remove(action) {
-                job.control.cancel();
-            }
-        }
-        jobs
+    pub(crate) fn take_cpu_sample_ms(&mut self) -> Option<u64> {
+        self.cpu_samples.take()
     }
 }
 

@@ -1,38 +1,10 @@
 use super::{ResourceCost, ResourcePrices};
 use crate::adaptive::{CompletionTimes, RetrievalRequest};
-use crate::{ActionId, ByteRange, PostId, RequestAuthority};
-use serde::{Deserialize, Serialize};
+use crate::{PostId, RequestAuthority};
 
 mod conflict;
-
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
-pub enum TransformKind {
-    Remux,
-    Segment,
-    Transcode,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
-pub enum ActionKind {
-    Head,
-    Prefix(ByteRange),
-    Tail(ByteRange),
-    FetchRange(ByteRange),
-    FetchWhole {
-        maximum_bytes: u64,
-    },
-    Promote {
-        active: ActionId,
-        maximum_bytes: u64,
-    },
-    Transform(TransformKind),
-    CacheUpgrade(ByteRange),
-    Hedge {
-        primary: ActionId,
-        alternate: String,
-    },
-    Cancel(ActionId),
-}
+mod kind;
+pub use kind::{ActionKind, TransformKind};
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct ActionValue {
@@ -149,6 +121,14 @@ impl ActionNode {
     pub fn with_resources(mut self, resources: ResourceCost) -> Self {
         self.resources = resources;
         self
+    }
+
+    pub fn authorized_resources(&self) -> ResourceCost {
+        let mut authorized = self.resources;
+        if let ActionKind::HlsBootstrap { maximum_bytes, .. } = &self.kind {
+            authorized.network_bytes = *maximum_bytes;
+        }
+        authorized
     }
 
     pub fn with_forecast(mut self, forecast: ActionForecast) -> Self {

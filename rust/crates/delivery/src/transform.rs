@@ -2,12 +2,15 @@
 
 use anyhow::{ensure, Result};
 use ghostr_engine::adaptive::TransformKind;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::time::Instant;
 
+mod control;
 mod fast_start;
+pub use control::TransformControl;
 pub use fast_start::FastStartRemuxBackend;
+
+pub const fn thread_cpu_measurement_available() -> bool {
+    cfg!(unix)
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct TransformLimits {
@@ -143,40 +146,11 @@ impl TransformOutput {
     }
 }
 
-#[derive(Clone)]
-pub struct TransformControl {
-    cancelled: Arc<AtomicBool>,
-    deadline: Instant,
-}
-
-impl TransformControl {
-    pub fn new(deadline: Instant) -> Self {
-        Self {
-            cancelled: Arc::new(AtomicBool::new(false)),
-            deadline,
-        }
-    }
-
-    pub fn checkpoint(&self) -> Result<()> {
-        ensure!(
-            !self.cancelled.load(Ordering::Acquire),
-            "transform cancelled"
-        );
-        ensure!(
-            Instant::now() <= self.deadline,
-            "transform deadline exceeded"
-        );
-        Ok(())
-    }
-
-    pub fn cancel(&self) {
-        self.cancelled.store(true, Ordering::Release);
-    }
-}
-
-/// A backend must enforce its advertised byte bounds and call
+/// A backend must enforce its advertised byte bounds, perform CPU work
+/// synchronously on the calling worker thread, and call
 /// [`TransformControl::checkpoint`] often enough to honor cancellation and
-/// elapsed limits. Production only installs cooperative in-process backends.
+/// elapsed limits. Child-thread CPU cannot be attributed by this contract.
+/// Production only installs cooperative in-process backends.
 pub trait TransformBackend: Send + Sync {
     fn profile(&self) -> TransformProfile;
     fn transform(

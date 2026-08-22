@@ -11,7 +11,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 // These types are ignored because they are not used by any `pub` functions: `PreparationContext`
 // These functions are ignored (category: IgnoreBecauseNotAllowedOwner): `send`
 
-/// Streams one atomic two-player window; cancellation drops the watcher.
+/// Streams one atomic current-plus-upcoming window; cancellation drops the watcher.
 Stream<FfiPlaybackPreparationPlan> ffiPlaybackPreparationEvents() => RustLib
     .instance
     .api

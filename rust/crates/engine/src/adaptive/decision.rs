@@ -12,14 +12,14 @@ mod types;
 
 pub use advanced::{
     RecordedAllocationReason, RecordedCandidateUtility, RecordedExecutedRequest,
-    RecordedPlannerReplayCapsule, RecordedPlannerRetryAvailability, RecordedPlannerRetryEvidence,
-    RecordedPreemptionAuthority, RecordedPromotionGrant, RecordedPrunedSearchPlan,
-    RecordedRescueChanceEvidence, RecordedRescueTimingQuantile, RecordedReserveAuthorityOccupancy,
-    RecordedReserveDegradedReason, RecordedResourceCost, RecordedResourcePrices,
-    RecordedRetainedSearchPlan, RecordedRetrievalRequest, RecordedSearchPruneReason,
-    RecordedTransfer, RecordedTransformKind, RecordedTwinEvaluation, RecordedWarpAction,
-    RecordedWarpActionKind, RecordedWarpCommand, RecordedWarpDecision, RecordedWarpReserve,
-    RecordedWarpSearch, RecordedWarpSearchInput, RecordedWholeBodyContract,
+    RecordedHlsBootstrapStage, RecordedPlannerReplayCapsule, RecordedPlannerRetryAvailability,
+    RecordedPlannerRetryEvidence, RecordedPreemptionAuthority, RecordedPromotionGrant,
+    RecordedPrunedSearchPlan, RecordedRescueChanceEvidence, RecordedRescueTimingQuantile,
+    RecordedReserveAuthorityOccupancy, RecordedReserveDegradedReason, RecordedResourceCost,
+    RecordedResourcePrices, RecordedRetainedSearchPlan, RecordedRetrievalRequest,
+    RecordedSearchPruneReason, RecordedTransfer, RecordedTransformKind, RecordedTwinEvaluation,
+    RecordedWarpAction, RecordedWarpActionKind, RecordedWarpCommand, RecordedWarpDecision,
+    RecordedWarpReserve, RecordedWarpSearch, RecordedWarpSearchInput, RecordedWholeBodyContract,
     RecordedWholeFetchReason,
 };
 pub use executed::ExecutedRequest;

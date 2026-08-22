@@ -35,6 +35,7 @@ async fn delivery_manager_publishes_adaptive_discovery_demand() {
         cache: ServablePosts::new(),
         segmented: SegmentedCache::new(),
         network: NetworkThrottle::new(),
+        network_status: ghostr_delivery::delivery_events::DeliveryNetworkStatus::unavailable(),
         stats_path: root.join("host_stats.json"),
         params: EngineParams::default(),
         level: DataUsageLevel::Balanced,

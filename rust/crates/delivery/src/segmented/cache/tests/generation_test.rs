@@ -1,4 +1,5 @@
-use crate::segmented::prepare::{PreparedHls, PreparedObject};
+use super::store_ready;
+use crate::segmented::prepare::PreparedObject;
 use crate::segmented::SegmentedCache;
 use ghostr_engine::PostId;
 use std::sync::Arc;
@@ -33,17 +34,15 @@ fn generation(final_url: &str, body: &[u8]) -> crate::segmented::CachedHlsGenera
     let cache = SegmentedCache::new();
     let post = PostId::new("post");
     cache.replace_focus(1, vec![(post.clone(), vec!["source".to_owned()])]);
-    cache.complete(&post, 1, Ok(prepared(final_url, body)));
+    store_ready(&cache, &post, 1, vec![prepared(final_url, body)]);
     cache.object("source").expect("cached object").generation()
 }
 
-fn prepared(final_url: &str, body: &[u8]) -> PreparedHls {
-    PreparedHls {
-        objects: vec![PreparedObject {
-            request_url: "source".to_owned(),
-            final_url: Url::parse(final_url).expect("final URL"),
-            body: Arc::from(body),
-            content_type: None,
-        }],
+fn prepared(final_url: &str, body: &[u8]) -> PreparedObject {
+    PreparedObject {
+        request_url: "source".to_owned(),
+        final_url: Url::parse(final_url).expect("final URL"),
+        body: Arc::from(body),
+        content_type: None,
     }
 }

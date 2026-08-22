@@ -69,6 +69,7 @@ mod hedge_tail_timer_exact_test;
 mod hedge_tail_timer_stale_test;
 mod host_breadth_queue_test;
 mod host_stats_persistence_test;
+mod hls_concurrency_evidence_test;
 mod immediate_replan_latch_test;
 mod inflight_cancel_fencing_test;
 mod inflight_emergency_capacity_test;

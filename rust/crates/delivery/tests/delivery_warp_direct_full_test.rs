@@ -56,7 +56,7 @@ async fn reliable_tiny_object_is_fetched_directly_without_head() {
     let decision =
         delivery_fixture::decision::wait_for_completed_bytes(&harness.handle, body.len() as u64)
             .await;
-    assert_eq!(decision.schema_version, 2);
+    assert_eq!(decision.schema_version, 3);
     assert!(matches!(
         decision.warp_decision.unwrap().selected.unwrap().command,
         RecordedWarpCommand::Transfer { .. }

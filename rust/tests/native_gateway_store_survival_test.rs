@@ -26,6 +26,7 @@ async fn starting_the_gateway_keeps_the_progressive_store() {
             relays: Vec::new(),
             max_parallel_downloads: 1,
             max_storage_bytes: 1_048_576,
+            network_status: ghostr_delivery::delivery_events::DeliveryNetworkStatus::unavailable(),
             device_integration_origin: None,
         },
         Arc::new(client_with_event_cache()),

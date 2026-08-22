@@ -10,6 +10,7 @@ use rust_lib_ghostr::api::engine_control::{
 use rust_lib_ghostr::api::focus_control::{
     ffi_playback_url, ffi_update_focus, FfiFocusTransition, FfiFocusUpdate,
 };
+use rust_lib_ghostr::api::network_control::FfiDeliveryNetworkStatus;
 use rust_lib_ghostr::api::playback_control::ffi_report_playback;
 use rust_lib_ghostr::api::playback_types::{FfiPlaybackObservation, FfiPlaybackPhase};
 use std::collections::HashMap;
@@ -37,7 +38,6 @@ fn configuration(data_usage: FfiDataUsageLevel, max_storage_bytes: u64) -> FfiEn
         max_storage_bytes,
     }
 }
-
 #[tokio::test]
 async fn starts_the_engine_and_serves_the_delivery_surface() {
     let directory = temp_directory("ghostr-engine-start");
@@ -45,6 +45,7 @@ async fn starts_the_engine_and_serves_the_delivery_surface() {
         directory.to_string_lossy().to_string(),
         configuration(FfiDataUsageLevel::Conservative, 1024),
         None,
+        FfiDeliveryNetworkStatus::unavailable(),
     )
     .await
     .expect("engine endpoint");

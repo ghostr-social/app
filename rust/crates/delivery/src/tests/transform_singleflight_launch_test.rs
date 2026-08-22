@@ -46,7 +46,7 @@ async fn runtime_rejects_cross_post_transform_while_one_is_linked() {
 
     assert!(jobs.launch(store.clone(), request("first", 1)));
     assert!(!jobs.launch(store, request("second", 2)));
-    assert_eq!(jobs.clear().len(), 1);
+    assert_eq!(jobs.clear(), 1);
 }
 
 fn request(id: &str, action: u64) -> TransformRequest {

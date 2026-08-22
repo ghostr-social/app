@@ -20,7 +20,7 @@ pub(super) fn origins(
         .retry
         .live_urls(post, &entry.meta.urls)
         .into_iter()
-        .filter_map(|url| origin(inputs, entry, url))
+        .filter_map(|url| origin(inputs, entry, url, state.network_class()))
         .collect()
 }
 
@@ -28,9 +28,9 @@ fn origin(
     inputs: &PlanInputs<'_>,
     entry: &ghostr_engine::catalog::CatalogEntry,
     url: String,
+    network_class: NetworkClass,
 ) -> Option<OriginHealth> {
-    let authority = RequestAuthority::from_url(&url)?;
-    let query = origin_query(inputs, entry, &url, &authority);
+    let query = origin_query(inputs, entry, &url, network_class)?;
     let estimate =
         inputs
             .stats
@@ -59,17 +59,18 @@ fn origin_query(
     inputs: &PlanInputs<'_>,
     entry: &ghostr_engine::catalog::CatalogEntry,
     url: &str,
-    authority: &RequestAuthority,
-) -> OriginQuery {
+    network_class: NetworkClass,
+) -> Option<OriginQuery> {
+    let authority = RequestAuthority::from_url(url)?;
     let (method, media, bytes) = request_context(entry, url);
-    let concurrency = active_on_authority(inputs, authority).saturating_add(1);
-    OriginQuery::new(
+    let concurrency = active_on_authority(inputs, &authority).saturating_add(1);
+    Some(OriginQuery::new(
         url,
         OriginContext::new(method, bytes, media)
-            .with_network(NetworkClass::Unavailable)
+            .with_network(network_class)
             .with_concurrency(concurrency)
             .with_observed_at_ms(inputs.observed_at_ms),
-    )
+    ))
 }
 
 fn active_on_authority(inputs: &PlanInputs<'_>, authority: &RequestAuthority) -> usize {

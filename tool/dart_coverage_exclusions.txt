@@ -3,6 +3,7 @@ lib/app/home_tab.dart
 lib/core/errors/failure_reporter.dart
 lib/core/media/media_picker_port.dart
 lib/core/media/progressive_playback_refresh_port.dart
+lib/core/network/delivery_network_status_port.dart
 lib/core/nostr/nostr_event_client.dart
 lib/core/storage/secret_store.dart
 lib/features/activity/domain/activity_repository.dart

@@ -1,5 +1,6 @@
 use super::super::{SemanticScore, TransformKind};
 use super::{PlannerContext, PlannerWatchEvidence};
+use crate::catalog::RenditionQualityEvidence;
 use crate::{PostId, PreviewDescriptor};
 
 /// A blurhash is a useful low-fidelity placeholder, never playable media.
@@ -95,6 +96,17 @@ pub enum PlannerQuality {
         lower_micros: u64,
         uncertainty_bps: u16,
     },
+}
+
+impl PlannerQuality {
+    pub fn from_rendition(evidence: RenditionQualityEvidence) -> Self {
+        let quality_micros = evidence.normalized_micros();
+        Self::Estimated {
+            expected_micros: quality_micros,
+            lower_micros: quality_micros,
+            uncertainty_bps: 0,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

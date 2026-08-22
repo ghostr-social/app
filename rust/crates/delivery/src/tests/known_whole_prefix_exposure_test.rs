@@ -38,6 +38,7 @@ async fn capped_whole_with_a_declared_length_exposes_its_live_prefix() {
             cancel: &cancel,
             network: &network,
             traffic: &mut traffic,
+            network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
         },
     );
     tokio::pin!(download);

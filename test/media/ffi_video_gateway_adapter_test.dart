@@ -16,10 +16,12 @@ void main() {
             required cacheDirectory,
             required configuration,
             required deviceIntegrationOrigin,
+            required initialNetwork,
           }) async {
             receivedDirectory = cacheDirectory;
             receivedConfiguration = configuration;
             expect(deviceIntegrationOrigin, isNull);
+            expect(initialNetwork.generation, BigInt.zero);
             return '127.0.0.1:3000';
           },
     );

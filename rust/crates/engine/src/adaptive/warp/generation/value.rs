@@ -40,7 +40,10 @@ fn information_value(
 ) -> u64 {
     if !matches!(
         action,
-        ActionKind::Head | ActionKind::Prefix(_) | ActionKind::Tail(_)
+        ActionKind::Head
+            | ActionKind::Prefix(_)
+            | ActionKind::Tail(_)
+            | ActionKind::HlsBootstrap { .. }
     ) {
         return 0;
     }
@@ -63,6 +66,7 @@ fn low_cost_probe(action: &ActionKind) -> bool {
     match action {
         ActionKind::Head => true,
         ActionKind::Prefix(range) | ActionKind::Tail(range) => range.len() <= 65_536,
+        ActionKind::HlsBootstrap { stage, .. } => stage.is_manifest(),
         _ => false,
     }
 }
@@ -70,6 +74,7 @@ fn low_cost_probe(action: &ActionKind) -> bool {
 fn cache_gain(candidate: &CandidateSnapshot, action: &ActionKind, reach_bps: u64) -> u64 {
     let bytes = match action {
         ActionKind::FetchWhole { maximum_bytes } => *maximum_bytes,
+        ActionKind::HlsBootstrap { maximum_bytes, .. } => *maximum_bytes,
         ActionKind::CacheUpgrade(range) => range.len(),
         _ => 0,
     };

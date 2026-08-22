@@ -6,7 +6,10 @@ use super::{
     RecordedWarpReserve, RecordedWarpSearchInput,
 };
 use crate::adaptive::warp::{ScoredSearchPlan, SearchReplayInput, SearchReplayMode};
-use crate::adaptive::{ActionNode, BeamConfig, DecisionReplayStatus, HardBudget, ResourcePrices};
+use crate::adaptive::{
+    ActionNode, BeamConfig, DecisionReplayStatus, HardBudget, ResourcePrices,
+    SegmentedStorageBudget,
+};
 use crate::RequestAuthority;
 use std::collections::BTreeMap;
 
@@ -78,14 +81,16 @@ impl RecordedSearchBudget {
             .iter()
             .map(|id| nodes.iter().find(|node| node.id == *id).cloned())
             .collect::<Option<Vec<_>>>()?;
-        HardBudget::from_replay(
+        HardBudget::from_replay((
             self.remaining.restore(),
             self.global_request_width
                 .unwrap_or_else(|| legacy_request_width(self)),
             usize::try_from(self.per_origin_requests).ok()?,
             origins,
             pending,
-        )
+            self.segmented_storage_bytes
+                .map(SegmentedStorageBudget::new),
+        ))
     }
 }
 

@@ -93,9 +93,12 @@ impl DeliveryWorker {
             return None;
         }
         let launched_at_ms = time::unix_time_ms();
-        let action = self
-            .downloads
-            .launch(self.ctx.clone(), prepared.transfer, launched_at_ms);
+        let action = self.downloads.launch(
+            self.ctx.clone(),
+            prepared.transfer,
+            launched_at_ms,
+            self.state.network_class(),
+        );
         if result == CommitResult::Committed {
             self.request_immediate_replan();
         }
@@ -136,7 +139,12 @@ impl DeliveryWorker {
         let observed_at_ms = time::unix_time_ms();
         let authority = ghostr_engine::RequestAuthority::from_url(&transfer.url)?;
         let concurrency = origin_concurrency(&self.ctx.requests, &authority);
-        let query = origin_admission::query(&transfer, observed_at_ms, concurrency);
+        let query = origin_admission::query(
+            &transfer,
+            observed_at_ms,
+            concurrency,
+            self.state.network_class(),
+        );
         let mode = origin_admission::mode(&transfer);
         let admission =
             self.keeper

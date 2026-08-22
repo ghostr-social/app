@@ -1,5 +1,6 @@
 import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/settings/domain/relay_url.dart';
+import 'package:ghostr/core/network/delivery_network_status.dart';
 
 /// Runtime settings shared by Rust discovery, publishing, and delivery.
 class RustEngineConfiguration {
@@ -32,11 +33,13 @@ final class RustEngineStartConfiguration {
     this.cacheDirectory,
     this.engine, {
     this.deviceIntegrationOrigin,
+    this.initialNetwork = DeliveryNetworkStatus.unavailable,
   });
 
   final String cacheDirectory;
   final RustEngineConfiguration engine;
   final String? deviceIntegrationOrigin;
+  final DeliveryNetworkStatus initialNetwork;
 
   List<RelayUrl> get relayUrls => engine.relayUrls;
   List<RelayUrl> get searchRelayUrls => engine.searchRelayUrls;

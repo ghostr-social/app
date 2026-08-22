@@ -16,6 +16,7 @@ async fn failed_host_stats_save_stays_dirty_for_the_next_attempt() {
         url: "https://media.example/clip.mp4".to_owned(),
         outcome: Err(anyhow!("origin failed")),
         concurrency: 1,
+        network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
     });
 
     keeper.save_now().await;

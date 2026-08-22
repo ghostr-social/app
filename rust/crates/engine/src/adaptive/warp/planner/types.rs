@@ -6,7 +6,7 @@ use super::super::{
 use super::reserve::ReserveConstraint;
 use super::{PlannerReplayCapsule, SearchReplayInput};
 use crate::adaptive::{AllocationPlan, PlayabilitySnapshot};
-use crate::origin_model::OriginModel;
+use crate::origin_model::{NetworkClass, OriginModel};
 use crate::PostId;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -95,6 +95,10 @@ impl WarpPlanningDecision {
 
     pub fn planner_epochs(&self) -> Option<TwinEpochs> {
         Some(self.planner_replay.as_ref()?.context().epochs)
+    }
+
+    pub fn planner_network_class(&self) -> Option<NetworkClass> {
+        Some(self.planner_replay.as_ref()?.context().network_class())
     }
 }
 

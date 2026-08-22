@@ -21,6 +21,7 @@ pub(super) struct PredictionInput<'a> {
     pub concurrency: usize,
     pub mode: ControlMode,
     pub direct_playback_blocked: bool,
+    pub network_class: crate::origin_model::NetworkClass,
 }
 
 pub(super) fn predict(input: PredictionInput<'_>) -> Prediction {
@@ -33,6 +34,7 @@ pub(super) fn predict(input: PredictionInput<'_>) -> Prediction {
             media(input.candidate, input.action),
         )
         .with_concurrency(input.concurrency)
+        .with_network(input.network_class)
         .with_observed_at_ms(input.snapshot.observed_at_ms),
     );
     let estimate = input.model.estimate(
@@ -62,7 +64,10 @@ pub(super) fn transform_prediction(candidate: &CandidateSnapshot, cpu_ms: u64) -
     }
 }
 
-fn completion(bytes: u64, estimate: &crate::origin_model::OriginEstimate) -> CompletionTimes {
+pub(super) fn completion(
+    bytes: u64,
+    estimate: &crate::origin_model::OriginEstimate,
+) -> CompletionTimes {
     let expected = estimate
         .ttfb_ms
         .p50
@@ -111,6 +116,7 @@ fn action_bytes(action: &ActionKind) -> u64 {
         | ActionKind::FetchRange(range)
         | ActionKind::CacheUpgrade(range) => range.len(),
         ActionKind::FetchWhole { maximum_bytes } => *maximum_bytes,
+        ActionKind::HlsBootstrap { maximum_bytes, .. } => *maximum_bytes,
         _ => 0,
     }
 }
@@ -150,10 +156,15 @@ fn method(action: &ActionKind) -> RequestMethod {
         | ActionKind::Transform(_)
         | ActionKind::Cancel(_) => RequestMethod::RangeGet,
         ActionKind::FetchWhole { .. } | ActionKind::Promote { .. } => RequestMethod::FullGet,
+        ActionKind::HlsBootstrap { stage, .. } if stage.is_manifest() => RequestMethod::ManifestGet,
+        ActionKind::HlsBootstrap { .. } => RequestMethod::SegmentGet,
     }
 }
 
 fn media(candidate: &CandidateSnapshot, action: &ActionKind) -> MediaClass {
+    if matches!(action, ActionKind::HlsBootstrap { .. }) {
+        return MediaClass::Segmented;
+    }
     if matches!(action, ActionKind::Transform(_)) {
         return MediaClass::TransformRequired;
     }
@@ -164,7 +175,7 @@ fn media(candidate: &CandidateSnapshot, action: &ActionKind) -> MediaClass {
     }
 }
 
-fn decision_mode(mode: ControlMode) -> DecisionMode {
+pub(super) fn decision_mode(mode: ControlMode) -> DecisionMode {
     match mode {
         ControlMode::Emergency => DecisionMode::Emergency,
         ControlMode::Safety => DecisionMode::Safety,
@@ -172,6 +183,6 @@ fn decision_mode(mode: ControlMode) -> DecisionMode {
     }
 }
 
-fn basis_points(value: f64) -> u16 {
+pub(super) fn basis_points(value: f64) -> u16 {
     (value.clamp(0.0, 1.0) * 10_000.0).round() as u16
 }

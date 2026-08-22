@@ -17,6 +17,7 @@ use tokio::time::Instant;
 #[cfg(test)]
 #[path = "stats/admission_timeout_test.rs"]
 mod admission_timeout_test;
+mod hls;
 mod origin;
 mod traffic_load;
 

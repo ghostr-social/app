@@ -8,6 +8,9 @@ use std::collections::HashSet;
 use std::num::NonZeroUsize;
 use std::time::Duration;
 
+mod observed;
+pub(crate) use observed::{observed_admitted_capacity, observed_claimed_requests};
+
 const SEVERE_PACKET_LOSS_BPS: u16 = 5_000;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -34,7 +37,6 @@ impl PlannedCapacity {
 pub(crate) struct RequestConcurrencyLimits {
     global: usize,
     per_authority: usize,
-    segmented_compatibility: usize,
 }
 
 impl RequestConcurrencyLimits {
@@ -44,7 +46,8 @@ impl RequestConcurrencyLimits {
         debug_per_authority: usize,
     ) -> Self {
         let global = configured_global.max(1);
-        let configured = configured_per_authority.map_or(global, NonZeroUsize::get);
+        let inherited = global.saturating_sub(1).max(1);
+        let configured = configured_per_authority.map_or(inherited, NonZeroUsize::get);
         let debug = match debug_per_authority {
             0 => global,
             value => value,
@@ -52,7 +55,6 @@ impl RequestConcurrencyLimits {
         Self {
             global,
             per_authority: global.min(configured).min(debug),
-            segmented_compatibility: global.min(debug),
         }
     }
 
@@ -62,10 +64,6 @@ impl RequestConcurrencyLimits {
 
     pub(crate) const fn per_authority(self) -> usize {
         self.per_authority
-    }
-
-    pub(crate) const fn segmented_compatibility(self) -> usize {
-        self.segmented_compatibility
     }
 }
 
@@ -103,6 +101,19 @@ pub(crate) fn network_profile_setback(packet_loss_bps: u16) -> Option<NetworkSet
     }
 }
 
+pub(crate) fn planning_connection_capacity(
+    adaptive: usize,
+    hls_demand: usize,
+    ceiling: usize,
+    packet_loss_bps: u16,
+) -> usize {
+    let demanded = match network_profile_setback(packet_loss_bps) {
+        Some(NetworkSetback::SevereLoss) => 1,
+        _ => adaptive.max(hls_demand),
+    };
+    demanded.min(ceiling.max(1)).max(1)
+}
+
 pub(crate) fn planned_capacity(
     base: usize,
     ceiling: usize,
@@ -126,6 +137,11 @@ pub(crate) fn planned_capacity(
 }
 
 impl DeliveryWorker {
+    pub(crate) fn note_network_class_change(&mut self) {
+        self.note_network_setback(NetworkSetback::Failure);
+        self.warp_planner.reset_adaptation();
+    }
+
     pub(crate) fn note_network_profile_change(&mut self) {
         let loss = self.ctx.network.profile().packet_loss_bps;
         if let Some(setback) = network_profile_setback(loss) {
@@ -138,19 +154,27 @@ impl DeliveryWorker {
             .additional_request_slot_demand
             .unwrap_or_else(|| self.queue.wanted_len() > self.downloads.len());
         let fallback = self.keeper.stats().overall_ttfb().unwrap_or(Duration::ZERO);
-        let admitted = self.downloads.admitted_capacity();
-        let occupancy = request_occupancy(window, admitted, self.downloads.len());
+        let admitted = observed_admitted_capacity(
+            self.downloads.admitted_capacity(),
+            self.concurrency_limit(),
+            self.connection_ceiling(),
+        );
+        let claimed = observed_claimed_requests(self.downloads.len(), self.segmented.active_len());
+        let occupancy = request_occupancy(window, admitted, claimed);
         self.concurrency
             .observe(capacity_evidence(window, saturated, fallback, occupancy));
     }
 
     pub(crate) fn note_network_setback(&mut self, setback: NetworkSetback) {
+        let admitted = observed_admitted_capacity(
+            self.downloads.admitted_capacity(),
+            self.concurrency_limit(),
+            self.connection_ceiling(),
+        );
+        let claimed = observed_claimed_requests(self.downloads.len(), self.segmented.active_len());
         self.concurrency.observe(ConcurrencyEvidence {
             aggregate_bytes_per_second: 0,
-            occupancy: ConcurrencyOccupancy::new(
-                self.downloads.len(),
-                self.downloads.admitted_capacity(),
-            ),
+            occupancy: ConcurrencyOccupancy::new(claimed, admitted),
             saturated: false,
             ttfb: Duration::ZERO,
             setback,

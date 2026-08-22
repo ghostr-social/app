@@ -1,6 +1,8 @@
 use super::{PlanInputs, PlannedWork};
 use crate::manager::state::DeliveryState;
-use ghostr_engine::adaptive::{AdaptivePlayabilityPolicy, PreemptionAuthority};
+use ghostr_engine::adaptive::{
+    AdaptivePlayabilityPolicy, PreemptionAuthority, WarpPlanningDecision,
+};
 
 mod mapping;
 mod observability;
@@ -29,6 +31,8 @@ pub(super) fn planned_work(
         inputs.stats.origin_model(),
         &context,
     ));
+    let network_refill_deadline_ms =
+        network_refill_deadline(planner, &warp, snapshot.observed_at_ms);
     let decision_models = observability::models(&snapshot, &inputs, allocation.mode);
     let shadow_prices = observability::shadow_prices(&snapshot, occupancy.total() as u64);
     let emergency = allocation
@@ -53,6 +57,7 @@ pub(super) fn planned_work(
         shadow_prices,
         active_requests: occupancy.total() as u64,
         hedge_tails,
+        network_refill_deadline_ms,
         planner_cpu_micros: 0,
         warp: Some(warp),
     }
@@ -72,7 +77,16 @@ fn empty_work() -> PlannedWork {
         shadow_prices: Default::default(),
         active_requests: 0,
         hedge_tails: Vec::new(),
+        network_refill_deadline_ms: None,
         planner_cpu_micros: 0,
         warp: None,
     }
+}
+
+fn network_refill_deadline(
+    planner: &mut ghostr_engine::adaptive::WarpPlanner,
+    decision: &WarpPlanningDecision,
+    observed_at_ms: u64,
+) -> Option<u64> {
+    planner.next_network_refill_deadline_ms(&decision.generated.actions, observed_at_ms)
 }

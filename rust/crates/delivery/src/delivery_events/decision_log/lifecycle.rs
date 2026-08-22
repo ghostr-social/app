@@ -2,7 +2,7 @@ use super::{
     retention, trim, ActionBinding, DecisionLog, DecisionResolution, DecisionToken,
     RequestDecisionBinding,
 };
-use ghostr_engine::adaptive::{DecisionOutcome, DecisionRecord};
+use ghostr_engine::adaptive::{DecisionOutcome, DecisionRecord, ResourceCost};
 use ghostr_engine::ActionId;
 use std::sync::Arc;
 
@@ -39,6 +39,26 @@ impl DecisionLog {
         outcome: DecisionOutcome,
         observed_at_ms: u64,
     ) -> Option<DecisionResolution> {
+        self.resolve_observation(action, outcome, None, observed_at_ms)
+    }
+
+    pub(super) fn resolve_with_resources(
+        &self,
+        action: ActionId,
+        outcome: DecisionOutcome,
+        resources: ResourceCost,
+        observed_at_ms: u64,
+    ) -> Option<DecisionResolution> {
+        self.resolve_observation(action, outcome, Some(resources), observed_at_ms)
+    }
+
+    fn resolve_observation(
+        &self,
+        action: ActionId,
+        outcome: DecisionOutcome,
+        resources: Option<ResourceCost>,
+        observed_at_ms: u64,
+    ) -> Option<DecisionResolution> {
         if outcome == DecisionOutcome::Pending {
             return None;
         }
@@ -47,7 +67,7 @@ impl DecisionLog {
         let elapsed_ms = observed_at_ms.saturating_sub(binding.started_at_ms);
         let outcome = with_elapsed(outcome, elapsed_ms);
         let (decision_action, warp_action) =
-            retention::resolve(&mut store.records, binding.sequence, outcome)?;
+            retention::resolve(&mut store.records, binding.sequence, outcome, resources)?;
         store.actions.remove(&action);
         store.completed.push_back(binding.sequence);
         trim(&mut store);

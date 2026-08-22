@@ -12,6 +12,7 @@ pub(in crate::chunk::downloader) struct TrafficMeasurements {
     concurrency: usize,
     request_started: bool,
     origin_elapsed: Option<Duration>,
+    network_class: ghostr_engine::origin_model::NetworkClass,
 }
 
 pub(in crate::chunk::downloader) struct MeasuredTraffic<'a> {
@@ -28,15 +29,23 @@ impl Default for TrafficMeasurements {
             concurrency: 1,
             request_started: false,
             origin_elapsed: None,
+            network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
         }
     }
 }
 
 impl<'a> MeasuredTraffic<'a> {
-    pub fn new(inner: &'a mut dyn ChunkTraffic) -> Self {
+    pub fn new(
+        inner: &'a mut dyn ChunkTraffic,
+        network_class: ghostr_engine::origin_model::NetworkClass,
+    ) -> Self {
+        let measured = TrafficMeasurements {
+            network_class,
+            ..TrafficMeasurements::default()
+        };
         Self {
             inner,
-            measured: TrafficMeasurements::default(),
+            measured,
             opened_at: None,
         }
     }
@@ -63,6 +72,18 @@ impl TrafficMeasurements {
     pub fn request_started(self) -> bool {
         self.request_started
     }
+
+    pub fn network_class(self) -> ghostr_engine::origin_model::NetworkClass {
+        self.network_class
+    }
+
+    pub fn with_network_class(
+        mut self,
+        network_class: ghostr_engine::origin_model::NetworkClass,
+    ) -> Self {
+        self.network_class = network_class;
+        self
+    }
 }
 
 impl ChunkTraffic for MeasuredTraffic<'_> {
@@ -73,6 +94,9 @@ impl ChunkTraffic for MeasuredTraffic<'_> {
 
     fn request_started(&mut self) {
         self.measured.request_started = true;
+        if let Some(network_class) = self.inner.current_network_class() {
+            self.measured.network_class = network_class;
+        }
         self.inner.request_started();
     }
 

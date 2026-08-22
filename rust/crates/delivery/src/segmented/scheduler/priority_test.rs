@@ -7,7 +7,7 @@ use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 #[test]
 fn hls_preparation_priority_preserves_its_true_feed_offset() {
     let mut delivery = SegmentedDelivery::new(SegmentedCache::new());
-    delivery.apply_focus(&focus());
+    assert!(delivery.apply_focus(&focus()));
 
     assert_eq!(
         delivery.targets[0].priority,

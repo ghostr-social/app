@@ -45,6 +45,7 @@ async fn coherent_response_semantics_are_reported_before_body_completion() {
             cancel: &token,
             network: &network,
             traffic: &mut traffic,
+            network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
         },
     );
     tokio::pin!(download);

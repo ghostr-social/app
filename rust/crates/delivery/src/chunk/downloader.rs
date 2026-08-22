@@ -44,6 +44,7 @@ pub struct ChunkExecution<'a, W: ChunkWrite + ?Sized> {
     pub cancel: &'a CancelToken,
     pub network: &'a NetworkThrottle,
     pub traffic: &'a mut dyn ChunkTraffic,
+    pub network_class: ghostr_engine::origin_model::NetworkClass,
 }
 
 /// What one chunk transfer accomplished.

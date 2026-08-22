@@ -1,6 +1,7 @@
 use rust_lib_ghostr::api::engine_control::{
     ffi_start_engine, FfiDataUsageLevel, FfiEngineConfiguration,
 };
+use rust_lib_ghostr::api::network_control::FfiDeliveryNetworkStatus;
 use std::path::Path;
 
 pub fn configuration(max_storage_bytes: u64) -> FfiEngineConfiguration {
@@ -17,6 +18,7 @@ pub async fn start(directory: &Path, max_storage_bytes: u64) -> anyhow::Result<S
         directory.to_string_lossy().to_string(),
         configuration(max_storage_bytes),
         None,
+        FfiDeliveryNetworkStatus::unavailable(),
     )
     .await
 }

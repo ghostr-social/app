@@ -1,12 +1,20 @@
-use super::{TransformDone, TransformRequest, TransformTerminal};
+use super::{TransformActualResources, TransformDone, TransformRequest, TransformTerminal};
 use crate::manager::transfers::InternalEvent;
-use crate::transform::{TransformBackend, TransformControl, TransformInput, TransformProfile};
+use crate::transform::{TransformBackend, TransformControl, TransformProfile};
 use ghostr_partial_store::partial_range_store::{
     PartialRangeStore, RepresentationRead, TransformFence, TransformPublication,
+    TransformPublicationOutcome,
 };
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 use tokio::sync::mpsc::UnboundedSender;
+
+mod backend;
+#[cfg(test)]
+#[path = "../../tests/transform_cpu_unavailable_test.rs"]
+mod cpu_unavailable_test;
+#[cfg(test)]
+#[path = "../../tests/transform_publication_arbitration_test.rs"]
+mod publication_arbitration_test;
 
 pub(super) struct JobContext {
     pub(super) events: UnboundedSender<InternalEvent>,
@@ -16,45 +24,70 @@ pub(super) struct JobContext {
     pub(super) control: TransformControl,
 }
 
-struct BackendRun {
-    backend: Arc<dyn TransformBackend>,
-    bytes: Vec<u8>,
-    kind: ghostr_engine::adaptive::TransformKind,
-    profile: TransformProfile,
-    control: TransformControl,
+struct TransformCompletion {
+    terminal: TransformTerminal,
+    actual_resources: Option<TransformActualResources>,
 }
 
 pub(super) fn spawn(context: JobContext, request: TransformRequest) {
     tokio::spawn(async move {
         let action = request.action;
-        let terminal = execute(&context, request).await;
-        let _ = context
-            .events
-            .send(InternalEvent::Transform(TransformDone { action, terminal }));
+        let completion = execute(&context, request).await;
+        let done = TransformDone {
+            action,
+            terminal: completion.terminal,
+            actual_resources: completion.actual_resources,
+        };
+        let _ = context.events.send(InternalEvent::Transform(done));
     });
 }
 
-async fn execute(context: &JobContext, request: TransformRequest) -> TransformTerminal {
+async fn execute(context: &JobContext, request: TransformRequest) -> TransformCompletion {
     let input_limit = context.profile.limits().input_bytes();
     let bytes = match read_input(&context.store, &request, input_limit).await {
         Ok(bytes) => bytes,
-        Err(class) => return TransformTerminal::Failed(class),
+        Err(class) => return unmeasured_failure(class),
     };
-    let run = BackendRun {
+    let attempt = backend::execute(backend::Run {
         backend: context.backend.clone(),
         bytes,
         kind: request.kind,
         profile: context.profile,
         control: context.control.clone(),
-    };
-    let output = match run_backend(run).await {
-        Ok(output) => output,
-        Err(class) => return TransformTerminal::Failed(class),
-    };
-    if context.control.checkpoint().is_err() {
-        return TransformTerminal::Failed("warp_transform_cancelled");
+    })
+    .await;
+    complete_attempt(context, request, attempt).await
+}
+
+async fn complete_attempt(
+    context: &JobContext,
+    request: TransformRequest,
+    attempt: backend::Attempt,
+) -> TransformCompletion {
+    match attempt {
+        backend::Attempt::UnmeasuredFailure(class) => unmeasured_failure(class),
+        backend::Attempt::Finished {
+            output: Err(class),
+            cpu_ms,
+        } => measured_failure(class, cpu_ms),
+        backend::Attempt::Finished {
+            output: Ok(output),
+            cpu_ms,
+        } => complete_measured(context, request, output, cpu_ms).await,
     }
-    publish_output(&context.store, request, context.profile, output).await
+}
+
+async fn complete_measured(
+    context: &JobContext,
+    request: TransformRequest,
+    output: Vec<u8>,
+    cpu_ms: u64,
+) -> TransformCompletion {
+    if context.control.checkpoint().is_err() {
+        return measured_failure("warp_transform_cancelled", cpu_ms);
+    }
+    let terminal = publish_output(context, request, output).await;
+    measured_completion(terminal, cpu_ms)
 }
 
 async fn read_input(
@@ -78,48 +111,9 @@ async fn read_input(
     }
 }
 
-async fn run_backend(run: BackendRun) -> Result<Vec<u8>, &'static str> {
-    let profile = run.profile;
-    let control = run.control;
-    let worker_control = control.clone();
-    let backend = run.backend;
-    let bytes = run.bytes;
-    let kind = run.kind;
-    let work = tokio::task::spawn_blocking(move || {
-        let started = Instant::now();
-        let output = backend.transform(TransformInput::new(kind, &bytes), &worker_control)?;
-        Ok::<_, anyhow::Error>((output.into_bytes(), started.elapsed()))
-    });
-    let limit = Duration::from_millis(profile.limits().elapsed_ms());
-    let (output, cpu) = match tokio::time::timeout(limit, work).await {
-        Ok(Ok(Ok(output))) => output,
-        Ok(Ok(Err(_))) | Ok(Err(_)) => return Err("warp_transform_backend_rejected"),
-        Err(_) => {
-            control.cancel();
-            return Err("warp_transform_deadline_exceeded");
-        }
-    };
-    validate_backend_output(output, cpu, profile)
-}
-
-fn validate_backend_output(
-    output: Vec<u8>,
-    cpu: Duration,
-    profile: TransformProfile,
-) -> Result<Vec<u8>, &'static str> {
-    if cpu > Duration::from_millis(profile.limits().cpu_ms()) {
-        return Err("warp_transform_cpu_envelope_exceeded");
-    }
-    if output.len() as u64 > profile.limits().output_bytes() {
-        return Err("warp_transform_output_envelope_rejected");
-    }
-    Ok(output)
-}
-
 async fn publish_output(
-    store: &PartialRangeStore,
+    context: &JobContext,
     request: TransformRequest,
-    profile: TransformProfile,
     output: Vec<u8>,
 ) -> TransformTerminal {
     let bytes = output.len() as u64;
@@ -127,14 +121,50 @@ async fn publish_output(
         TransformFence::new(request.binding, request.revision),
         request.kind,
         output,
-        profile.limits().output_bytes(),
+        context.profile.limits().output_bytes(),
     );
     let Ok(publication) = publication else {
         return TransformTerminal::Failed("warp_transform_output_envelope_rejected");
     };
-    match store.publish_transform(publication).await {
-        Ok(true) => TransformTerminal::Succeeded(bytes),
-        Ok(false) => TransformTerminal::Failed("warp_transform_input_superseded"),
+    let control = context.control.clone();
+    let authorize = move || control.try_begin_commit();
+    match context
+        .store
+        .publish_transform_authorized(publication, authorize)
+        .await
+    {
+        Ok(TransformPublicationOutcome::Published) => TransformTerminal::Succeeded(bytes),
+        Ok(TransformPublicationOutcome::Superseded) => {
+            TransformTerminal::Failed("warp_transform_input_superseded")
+        }
+        Ok(TransformPublicationOutcome::Cancelled) => {
+            TransformTerminal::Failed("warp_transform_cancelled")
+        }
         Err(_) => TransformTerminal::Failed("warp_transform_publication_failed"),
+    }
+}
+
+fn unmeasured_failure(class: &'static str) -> TransformCompletion {
+    TransformCompletion {
+        terminal: TransformTerminal::Failed(class),
+        actual_resources: None,
+    }
+}
+
+fn measured_failure(class: &'static str, cpu_ms: u64) -> TransformCompletion {
+    TransformCompletion {
+        terminal: TransformTerminal::Failed(class),
+        actual_resources: Some(TransformActualResources::new(cpu_ms, 0)),
+    }
+}
+
+fn measured_completion(terminal: TransformTerminal, cpu_ms: u64) -> TransformCompletion {
+    let stored = match terminal {
+        TransformTerminal::Succeeded(bytes) => bytes,
+        TransformTerminal::Failed(_) => 0,
+    };
+    TransformCompletion {
+        terminal,
+        actual_resources: Some(TransformActualResources::new(cpu_ms, stored)),
     }
 }

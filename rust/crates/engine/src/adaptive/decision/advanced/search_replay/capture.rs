@@ -67,6 +67,9 @@ fn budget(input: &SearchReplayInput, privacy: &DecisionPrivacy) -> Option<Record
     let value = input.budget();
     Some(RecordedSearchBudget {
         remaining: value.replay_remaining().into(),
+        segmented_storage_bytes: value
+            .replay_segmented_storage()
+            .map(|storage| storage.available_bytes()),
         global_request_width: Some(value.replay_request_width()),
         per_origin_requests: u64::try_from(value.replay_per_origin_requests()).ok()?,
         origins: sorted_occupancy(

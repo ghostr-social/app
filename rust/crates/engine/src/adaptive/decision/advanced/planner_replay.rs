@@ -49,7 +49,15 @@ enum RecordedNetworkState {
         refill_per_second: u64,
         tokens: u64,
         updated_at_ms: u64,
+        #[serde(default, skip_serializing_if = "is_zero")]
+        refill_milli_bytes: u64,
+        #[serde(default, skip_serializing_if = "is_zero")]
+        debt_bytes: u64,
     },
+}
+
+const fn is_zero(value: &u64) -> bool {
+    *value == 0
 }
 
 pub(in crate::adaptive::decision) use capture::capture;

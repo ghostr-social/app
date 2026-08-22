@@ -1,22 +1,14 @@
 use crate::delivery_events::FocusItem;
-use crate::manager::transfers::InternalEvent;
+use ghostr_engine::adaptive::FeedOffset;
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::{DeliveryKind, PostId};
-use ghostr_net::media_request_executor::MediaRequestExecutor;
-use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Clone, Eq, PartialEq)]
 pub(super) struct Target {
     pub(super) post: PostId,
     pub(super) sources: Vec<String>,
     pub(super) priority: PreemptionAuthority,
-}
-
-pub(crate) struct ReconcileInput {
-    pub requests: MediaRequestExecutor,
-    pub events: UnboundedSender<InternalEvent>,
-    pub connection_limit: usize,
-    pub progressive_active: usize,
+    pub(super) offset: FeedOffset,
 }
 
 pub(super) fn targets(items: &[FocusItem], current: usize, limit: usize) -> Vec<Target> {
@@ -29,6 +21,7 @@ pub(super) fn targets(items: &[FocusItem], current: usize, limit: usize) -> Vec<
             post: item.post.clone(),
             sources: item.meta.urls.clone(),
             priority: priority(offset),
+            offset: FeedOffset::new(offset.min(i32::MAX as usize) as i32),
         })
         .collect()
 }

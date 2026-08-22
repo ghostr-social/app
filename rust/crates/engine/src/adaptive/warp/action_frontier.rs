@@ -60,6 +60,7 @@ fn dominates(left: &ActionNode, right: &ActionNode) -> bool {
 
 fn no_worse(left: &ActionNode, right: &ActionNode) -> bool {
     left.forecast.ready_playback_ms >= right.forecast.ready_playback_ms
+        && left.forecast.quality_gain_micros >= right.forecast.quality_gain_micros
         && left.forecast.success_bps >= right.forecast.success_bps
         && left.forecast.completion.expected_ms <= right.forecast.completion.expected_ms
         && left.forecast.completion.p95_ms <= right.forecast.completion.p95_ms
@@ -88,6 +89,7 @@ fn unlock(action: &ActionKind) -> Option<u8> {
         ActionKind::Prefix(_) | ActionKind::Tail(_) => Some(1),
         ActionKind::FetchRange(_) | ActionKind::Hedge { .. } => Some(2),
         ActionKind::FetchWhole { .. }
+        | ActionKind::HlsBootstrap { .. }
         | ActionKind::Promote { .. }
         | ActionKind::CacheUpgrade(_) => Some(3),
         ActionKind::Transform(_) => Some(4),
@@ -127,6 +129,11 @@ fn near(left: &ActionNode, right: &ActionNode, epsilon: EpsilonBuckets) -> bool 
             .ready_playback_ms
             .abs_diff(right.forecast.ready_playback_ms)
             <= epsilon.coverage_ms()
+        && left
+            .forecast
+            .quality_gain_micros
+            .abs_diff(right.forecast.quality_gain_micros)
+            <= epsilon.quality_micros()
 }
 
 fn epsilon_compatible(left: &ActionKind, right: &ActionKind) -> bool {

@@ -11,6 +11,7 @@ mod channel;
 mod decision_log;
 mod focus_generation;
 mod mailbox;
+mod network;
 mod plan_evidence;
 mod playback_presentation;
 mod player_preparation;
@@ -29,6 +30,8 @@ pub(crate) use focus_generation::FocusGenerationGuard;
 pub use focus_generation::{FocusAdmission, FocusGeneration};
 pub use mailbox::MailboxReceiver;
 use mailbox::MailboxSender;
+pub use network::DeliveryNetworkStatus;
+pub(crate) use network::DeliveryNetworkStatusReader;
 pub use plan_evidence::PlanEvidence;
 use plan_evidence::PlanEvidenceHistory;
 pub use playback_presentation::{PlaybackPresentation, PlaybackPresentationIngress};
@@ -106,6 +109,7 @@ pub enum DeliveryCommand {
     Focus(DeliveryFocus),
     Playback(DeliveryPlayback),
     Config(DataUsageLevel),
+    NetworkStatus(DeliveryNetworkStatus),
     NetworkChanged,
     StorageChanged,
 }
@@ -150,6 +154,11 @@ impl DeliveryHandle {
 
     pub fn network_changed(&self) {
         self.sender.send_control(DeliveryCommand::NetworkChanged);
+    }
+
+    pub fn update_network_status(&self, status: DeliveryNetworkStatus) -> bool {
+        self.sender
+            .send_control(DeliveryCommand::NetworkStatus(status))
     }
 
     pub fn storage_changed(&self) {

@@ -35,8 +35,15 @@ impl HedgeCase {
 }
 
 pub(super) fn mirror_plan(case: HedgeCase) -> PlannedWork {
+    mirror_plan_on_network(case, ghostr_engine::origin_model::NetworkClass::Unavailable)
+}
+
+pub(super) fn mirror_plan_on_network(
+    case: HedgeCase,
+    network_class: ghostr_engine::origin_model::NetworkClass,
+) -> PlannedWork {
     let post = PostId::new("current");
-    let mut state = state(post.clone());
+    let mut state = state(post.clone(), network_class);
     let active = active::actions(&state, post.clone(), case);
     let stats = stats::model(case);
     let evidence = evidence::PlanEvidence::new(post.clone());
@@ -44,7 +51,10 @@ pub(super) fn mirror_plan(case: HedgeCase) -> PlannedWork {
     evidence.plan(&mut state, &stats, &active)
 }
 
-fn state(post: PostId) -> DeliveryState {
+fn state(
+    post: PostId,
+    network_class: ghostr_engine::origin_model::NetworkClass,
+) -> DeliveryState {
     let meta = VideoMeta {
         urls: vec![PRIMARY.into(), ALTERNATE.into()],
         delivery: DeliveryKind::Progressive,
@@ -53,6 +63,10 @@ fn state(post: PostId) -> DeliveryState {
         duration_ms: Some(8_000),
     };
     let mut state = DeliveryState::new(EngineParams::default(), DataUsageLevel::Balanced);
+    state.apply_network_status(crate::delivery_events::DeliveryNetworkStatus::new(
+        network_class,
+        1,
+    ));
     state.apply_focus(
         DeliveryFocus::compatibility(
             vec![FocusItem {

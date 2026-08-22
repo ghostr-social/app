@@ -7,7 +7,10 @@ use crate::manager::timeline::TimelineResult;
 use crate::manager::transfers::{InternalEvent, MaintenanceEvent, TransferEvent};
 use crate::manager::DeliveryWorker;
 use crate::playback_demand::DemandState;
-use tokio::sync::oneshot;
+
+mod clear;
+mod network;
+use clear::ClearCompletion;
 
 pub(crate) enum Wake {
     Clear(ClearRequest),
@@ -20,8 +23,6 @@ pub(crate) enum Wake {
     Internal(InternalEvent),
     Timeline(TimelineResult),
 }
-type ClearCompletion = (oneshot::Sender<anyhow::Result<()>>, anyhow::Result<()>);
-
 impl DeliveryWorker {
     pub(crate) async fn step(&mut self) -> bool {
         let Some(wake) = self.next_wake().await else {
@@ -32,7 +33,7 @@ impl DeliveryWorker {
             self.apply_pending_focus().await;
         }
         self.reconcile().await;
-        complete_clear(clear);
+        clear::complete(clear);
         true
     }
 
@@ -98,6 +99,7 @@ impl DeliveryWorker {
                 self.state.apply_level(level);
                 self.update_concurrency_ceiling();
             }
+            DeliveryCommand::NetworkStatus(status) => self.apply_network_status(status),
             DeliveryCommand::NetworkChanged => self.note_network_profile_change(),
             DeliveryCommand::StorageChanged => {}
         }
@@ -156,8 +158,11 @@ impl DeliveryWorker {
     async fn apply_internal(&mut self, event: InternalEvent) {
         match event {
             InternalEvent::ImmediateReplan => self.consume_immediate_replan(),
+            InternalEvent::NetworkRefill(wake) => {
+                self.network_refill_timer.finish(wake);
+            }
             InternalEvent::Transfer(transfer) => self.apply_transfer(transfer).await,
-            InternalEvent::Segmented(done) => self.segmented.finish(done),
+            InternalEvent::Segmented(done) => self.finish_segmented(done),
             InternalEvent::Transform(done) => self.finish_transform_job(done),
             InternalEvent::HedgeTail(wake) => self.consume_hedge_tail_wake(wake),
             InternalEvent::Maintenance(maintenance) => self.apply_maintenance(maintenance).await,
@@ -190,11 +195,5 @@ impl DeliveryWorker {
                 self.resume_store_capacity(generation);
             }
         }
-    }
-}
-
-fn complete_clear(clear: Option<ClearCompletion>) {
-    if let Some((reply, result)) = clear {
-        let _ = reply.send(result);
     }
 }

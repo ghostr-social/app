@@ -18,7 +18,11 @@ fn a_hedge_that_finishes_without_winning_is_an_explicit_loser() {
     assert_eq!(active.finish(&alternate), CompletionStatus::HedgeLoser);
 }
 
-fn insert(active: &mut InFlightChunks, chunk: &ChunkId, source: &str) -> crate::manager::inflight::ChunkAttempt {
+fn insert(
+    active: &mut InFlightChunks,
+    chunk: &ChunkId,
+    source: &str,
+) -> crate::manager::inflight::ChunkAttempt {
     let attempt = active.next_attempt(chunk.clone(), transfer_identity(&chunk.post, source));
     let (handle, _) = cancel_pair();
     active.insert(

@@ -20,6 +20,7 @@ pub(super) async fn download(
             cancel: &fixture.token,
             network: &fixture.network,
             traffic,
+            network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
         },
     );
     tokio::pin!(download);

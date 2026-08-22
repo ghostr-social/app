@@ -1,6 +1,7 @@
 //! Converts one planner result into the exact work the manager may execute.
 
 mod directive;
+mod hls;
 mod probe;
 mod promotion;
 mod transform;
@@ -51,6 +52,9 @@ impl DeliveryWorker {
             WarpDirective::Transform { .. } => {
                 self.transform_selected(directive, decision.take(), commit)
                     .await;
+            }
+            WarpDirective::HlsBootstrap { .. } => {
+                self.launch_selected_hls(directive, decision.take(), commit);
             }
             WarpDirective::Unsupported { class } => self.fail_selected(class, decision.take()),
             WarpDirective::None | WarpDirective::Hedge { .. } => {}

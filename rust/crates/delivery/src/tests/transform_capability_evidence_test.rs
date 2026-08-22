@@ -43,12 +43,9 @@ fn apply(
         ContentRevision::default(),
     )
     .unwrap();
-    let observation = PlayerPreparationObservation::try_new(
-        status,
-        failure.map(str::to_owned),
-        sequence * 100,
-    )
-    .unwrap();
+    let observation =
+        PlayerPreparationObservation::try_new(status, failure.map(str::to_owned), sequence * 100)
+            .unwrap();
     let report = PlayerPreparationReport::try_new(
         authority,
         PlayerPreparationAttempt::try_new(1, 1, 1).unwrap(),

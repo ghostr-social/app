@@ -40,7 +40,7 @@ pub(super) fn apply(
         .iter()
         .filter(|node| semantically_admissible(node, &semantic))
         .filter(|node| request_admitted(input, node))
-        .filter(|node| budget.allows(&node.resources, node.request_authority()))
+        .filter(|node| budget.allows_node(node))
         .filter(|node| reserve.degraded || budget.allows_action(node))
         .cloned()
         .collect();
@@ -60,19 +60,7 @@ fn semantic_decisions(
     input: &WarpPlannerInput<'_>,
     config: &WarpPlannerConfig,
 ) -> Vec<SemanticDecision> {
-    let window: Vec<_> = input
-        .snapshot
-        .candidates
-        .iter()
-        .filter_map(|candidate| {
-            let context = input.context.candidate(&candidate.post)?;
-            Some(SemanticCandidate::new(
-                candidate.post.clone(),
-                context.semantic,
-                ready(candidate, context.capability),
-            ))
-        })
-        .collect();
+    let window = semantic_window(input);
     let guardrail = SemanticGuardrail::new(config.semantic_top_k, config.semantic_epsilon_micros);
     window
         .iter()
@@ -81,6 +69,63 @@ fn semantic_decisions(
             admission: guardrail.admit(candidate, &window),
         })
         .collect()
+}
+
+fn semantic_window(input: &WarpPlannerInput<'_>) -> Vec<SemanticCandidate> {
+    let progressive = input
+        .snapshot
+        .candidates
+        .iter()
+        .filter_map(|candidate| progressive_semantic(input, candidate));
+    let hls = input
+        .snapshot
+        .hls_candidates
+        .iter()
+        .filter_map(|candidate| hls_semantic(input, candidate));
+    let mut ranked: Vec<_> = progressive.chain(hls).collect();
+    ranked.sort_by_key(|item| item.0);
+    ranked.into_iter().map(|item| item.1).collect()
+}
+
+fn progressive_semantic(
+    input: &WarpPlannerInput<'_>,
+    candidate: &crate::adaptive::CandidateSnapshot,
+) -> Option<(i32, SemanticCandidate)> {
+    let context = input.context.candidate(&candidate.post)?;
+    progressive_actionable(candidate, context).then(|| {
+        (
+            candidate.feed_offset.value(),
+            SemanticCandidate::new(
+                candidate.post.clone(),
+                context.semantic,
+                ready(candidate, context.capability),
+            ),
+        )
+    })
+}
+
+fn hls_semantic(
+    input: &WarpPlannerInput<'_>,
+    candidate: &crate::adaptive::HlsCandidateSnapshot,
+) -> Option<(i32, SemanticCandidate)> {
+    let context = input.context.candidate(&candidate.post)?;
+    (!candidate.ready()).then(|| {
+        (
+            candidate.feed_offset.value(),
+            SemanticCandidate::new(candidate.post.clone(), context.semantic, false),
+        )
+    })
+}
+
+fn progressive_actionable(
+    candidate: &crate::adaptive::CandidateSnapshot,
+    context: crate::adaptive::PlannerCandidateContext,
+) -> bool {
+    candidate.retrieval_eligible
+        && (candidate.needs_bootstrap()
+            || !crate::adaptive::ranges::missing(candidate).is_empty()
+            || !candidate.in_flight.is_empty()
+            || context.capability.required_transform().is_some())
 }
 
 fn ready(candidate: &crate::adaptive::CandidateSnapshot, capability: PlannerCapability) -> bool {

@@ -89,12 +89,15 @@ fn network(value: Option<&crate::adaptive::NetworkTokenBucket>) -> RecordedNetwo
     let Some(value) = value else {
         return RecordedNetworkState::Uninitialized;
     };
-    let (capacity, refill_per_second, tokens, updated_at_ms) = value.replay_parts();
+    let (capacity, refill_per_second, tokens, updated_at_ms, refill_milli_bytes, debt_bytes) =
+        value.replay_parts();
     RecordedNetworkState::Initialized {
         capacity,
         refill_per_second,
         tokens,
         updated_at_ms,
+        refill_milli_bytes,
+        debt_bytes,
     }
 }
 

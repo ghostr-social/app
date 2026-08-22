@@ -1,4 +1,5 @@
 use super::super::privacy::DecisionPrivacy;
+use super::RecordedHlsBootstrapStage;
 use crate::adaptive::{PlannerCommand, TransformKind};
 use serde::{Deserialize, Serialize};
 
@@ -23,6 +24,13 @@ pub enum RecordedWarpCommand {
     },
     Transfer {
         transfer: RecordedTransfer,
+    },
+    FetchHlsBootstrap {
+        post_id: String,
+        stage: RecordedHlsBootstrapStage,
+        source_id: String,
+        maximum_bytes: u64,
+        committed_until_ms: u64,
     },
     Promote {
         post_id: String,
@@ -55,6 +63,7 @@ pub(super) fn capture(command: &PlannerCommand, privacy: &DecisionPrivacy) -> Re
     match command {
         PlannerCommand::ProbeHead { .. }
         | PlannerCommand::Transfer(_)
+        | PlannerCommand::FetchHlsBootstrap { .. }
         | PlannerCommand::Hedge { .. } => external(command, privacy),
         PlannerCommand::Promote { .. }
         | PlannerCommand::Transform { .. }
@@ -75,6 +84,19 @@ fn external(command: &PlannerCommand, privacy: &DecisionPrivacy) -> RecordedWarp
         },
         PlannerCommand::Transfer(value) => RecordedWarpCommand::Transfer {
             transfer: allocation::capture(value, privacy),
+        },
+        PlannerCommand::FetchHlsBootstrap {
+            post,
+            stage,
+            source,
+            maximum_bytes,
+            committed_until_ms,
+        } => RecordedWarpCommand::FetchHlsBootstrap {
+            post_id: privacy.post(post.as_str()),
+            stage: (*stage).into(),
+            source_id: privacy.source(source),
+            maximum_bytes: *maximum_bytes,
+            committed_until_ms: *committed_until_ms,
         },
         PlannerCommand::Hedge {
             primary,
@@ -114,9 +136,10 @@ fn control(command: &PlannerCommand, privacy: &DecisionPrivacy) -> RecordedWarpC
 impl RecordedWarpCommand {
     pub(in crate::adaptive::decision) fn projection(&self) -> (&str, &str, u64, u64) {
         match self {
-            Self::ProbeHead { .. } | Self::Transfer { .. } | Self::Hedge { .. } => {
-                self.external_projection()
-            }
+            Self::ProbeHead { .. }
+            | Self::Transfer { .. }
+            | Self::FetchHlsBootstrap { .. }
+            | Self::Hedge { .. } => self.external_projection(),
             Self::Promote { .. } | Self::Transform { .. } | Self::Cancel { .. } => {
                 self.control_projection()
             }
@@ -127,6 +150,11 @@ impl RecordedWarpCommand {
         match self {
             Self::ProbeHead { source_id, .. } => ("head", source_id, 0, 0),
             Self::Transfer { transfer } => transfer.projection("transfer"),
+            Self::FetchHlsBootstrap {
+                source_id,
+                maximum_bytes,
+                ..
+            } => ("hls_bootstrap", source_id, 0, *maximum_bytes),
             Self::Hedge { transfer, .. } => transfer.projection("hedge"),
             _ => unreachable!("only source-bearing commands are routed here"),
         }

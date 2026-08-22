@@ -11,7 +11,7 @@ pub(super) const BODY_BYTES: u64 = 32 * 1_024;
 pub(super) fn executor() -> MediaRequestExecutor {
     MediaRequestExecutor::new(
         range_fixture::raw_media_client(),
-        MediaRequestLimits::try_new(2, 2).unwrap(),
+        MediaRequestLimits::try_new(3, 3).unwrap(),
     )
 }
 
@@ -22,7 +22,7 @@ pub(super) async fn admit(
     requests
         .get(url, PreemptionAuthority::Transition)
         .unwrap()
-        .admit()
+        .admit_for(Duration::from_secs(1))
         .await
         .unwrap()
 }

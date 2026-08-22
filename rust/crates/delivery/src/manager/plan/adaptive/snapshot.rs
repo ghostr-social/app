@@ -27,6 +27,7 @@ pub(super) fn build(state: &DeliveryState, inputs: &PlanInputs<'_>) -> Option<Pl
         storage: inputs.storage,
         navigation,
         candidates,
+        hls_candidates: inputs.hls_candidates.to_vec(),
     })
 }
 

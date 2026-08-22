@@ -80,6 +80,7 @@ mod timeline_window_priority_test;
 mod traffic_tests;
 mod transport_rescue_navigation_test;
 mod warp_hedge_plan_fixture;
+mod warp_rendition_quality_plan_test;
 mod warp_tests;
 mod watch_model_decode_censor_test;
 mod watch_model_fixture;

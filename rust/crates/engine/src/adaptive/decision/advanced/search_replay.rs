@@ -50,6 +50,8 @@ struct RecordedBeamConfig {
 struct RecordedSearchBudget {
     remaining: RecordedResourceCost,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    segmented_storage_bytes: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     global_request_width: Option<u16>,
     per_origin_requests: u64,
     origins: Vec<RecordedAuthorityOccupancy>,

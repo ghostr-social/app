@@ -1,8 +1,7 @@
 use super::super::active::ActiveContextInput;
 use ghostr_engine::adaptive::{CandidateSnapshot, OriginHealth, RetrievalRequest};
 use ghostr_engine::origin_model::{
-    DecisionMode, MediaClass, NetworkClass, OriginContext, OriginEstimate, OriginQuery,
-    RequestMethod,
+    DecisionMode, MediaClass, OriginContext, OriginEstimate, OriginQuery, RequestMethod,
 };
 use ghostr_engine::RequestAuthority;
 
@@ -71,7 +70,7 @@ fn query(
         request.reserved_network_bytes(),
         media(candidate),
     )
-    .with_network(NetworkClass::Unavailable)
+    .with_network(evidence.state.network_class())
     .with_concurrency(concurrency(evidence, source, existing))
     .with_observed_at_ms(evidence.snapshot.observed_at_ms);
     OriginQuery::new(source, context)

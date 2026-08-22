@@ -78,6 +78,7 @@ impl DeliveryWorker {
     ) {
         let PlannedExecution { planned, decision } = execution;
         self.schedule_hedge_tail_wakes(&planned.hedge_tails, observed_at_ms);
+        self.schedule_network_refill_wake(planned.network_refill_deadline_ms);
         self.additional_request_slot_demand = planned
             .warp
             .as_ref()

@@ -67,6 +67,7 @@ impl DownloadWorkers {
         ctx: TransferContext,
         prepared: PreparedTransfer,
         launched_at_ms: u64,
+        network_class: ghostr_engine::origin_model::NetworkClass,
     ) -> ActionId {
         let action = prepared.action();
         let priority = prepared.priority.authority;
@@ -89,6 +90,7 @@ impl DownloadWorkers {
             priority,
             token,
             action: prepared.store_action,
+            network_class,
         });
         action
     }

@@ -30,7 +30,7 @@ fn terminal_warp_noops_remain_bounded_without_returning_tokens() {
     let history = handle.decision_history();
     assert_eq!(history.records.len(), 64);
     assert!(history.records.iter().all(|record| {
-        record.schema_version == 2
+        record.schema_version == 3
             && record.eventual_outcome
                 == DecisionOutcome::Succeeded {
                     bytes: 0,

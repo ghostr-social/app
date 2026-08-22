@@ -13,6 +13,9 @@ use std::time::Duration;
 use tokio::time::Instant;
 
 #[cfg(test)]
+#[path = "opened/network_admission_test.rs"]
+mod network_admission_test;
+#[cfg(test)]
 #[path = "opened/post_admission_cancellation_test.rs"]
 mod post_admission_cancellation_test;
 

@@ -3,6 +3,7 @@ mod feasibility;
 mod least_risk;
 mod replay;
 mod reserve;
+mod reset;
 mod search_replay;
 mod search_run;
 mod simulation;
@@ -86,13 +87,14 @@ impl WarpPlanner {
         }
     }
 
+    /// Charges the authorized network envelope before execution starts.
     pub fn commit(
         &mut self,
         action: &GeneratedAction,
         committed: ResourceCost,
         observed_at_ms: u64,
     ) -> bool {
-        if !committed.no_more_than(action.node.resources) {
+        if !committed.no_more_than(action.node.authorized_resources()) {
             return false;
         }
         let Some(bucket) = self.network.as_mut() else {
@@ -106,10 +108,44 @@ impl WarpPlanner {
         true
     }
 
+    pub fn reconcile_network_reservation(
+        &mut self,
+        reserved_bytes: u64,
+        actual_bytes: u64,
+        observed_at_ms: u64,
+    ) {
+        if let Some(bucket) = self.network.as_mut() {
+            bucket.reconcile_reservation(reserved_bytes, actual_bytes, observed_at_ms);
+        }
+    }
+
     pub fn network_tokens(&mut self, observed_at_ms: u64) -> u64 {
         self.network
             .as_mut()
             .map_or(0, |bucket| bucket.available(observed_at_ms))
+    }
+
+    pub fn network_refill_deadline_ms(
+        &mut self,
+        required_bytes: u64,
+        observed_at_ms: u64,
+    ) -> Option<u64> {
+        self.network
+            .as_mut()?
+            .refill_deadline_ms(required_bytes, observed_at_ms)
+    }
+
+    pub fn next_network_refill_deadline_ms(
+        &mut self,
+        actions: &[GeneratedAction],
+        observed_at_ms: u64,
+    ) -> Option<u64> {
+        actions
+            .iter()
+            .map(|action| action.node.authorized_resources().network_bytes)
+            .filter(|bytes| *bytes > 0)
+            .filter_map(|bytes| self.network_refill_deadline_ms(bytes, observed_at_ms))
+            .min()
     }
 
     fn observe_prices(&mut self, input: &WarpPlannerInput<'_>) {
@@ -141,7 +177,6 @@ impl WarpPlanner {
         }
     }
 }
-
 impl Default for WarpPlanner {
     fn default() -> Self {
         Self::new(WarpPlannerConfig::default())

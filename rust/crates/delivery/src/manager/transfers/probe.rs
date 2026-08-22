@@ -1,6 +1,6 @@
 use super::{InternalEvent, ProbeDone, ProbeObservation, TransferContext, TransferEvent};
 use crate::delivery_events::DecisionClaim;
-use crate::probe::media::{probe_observed, ObservedProbe, ProbeSpec};
+use crate::probe::media::{probe_observed_on_network, ObservedProbe, ProbeSpec};
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::PostId;
 
@@ -15,12 +15,14 @@ pub(crate) struct ProbeLaunch {
 pub(crate) fn spawn_probe(ctx: TransferContext, launch: ProbeLaunch) {
     tokio::spawn(async move {
         let events = ctx.events.clone();
+        let network_status = ctx.network_status.clone();
         let worker = tokio::spawn(run_probe(ctx, launch.url.clone(), launch.authority));
         let observed = match worker.await {
             Ok(observed) => observed,
             Err(error) => ObservedProbe {
                 outcome: Err(anyhow::anyhow!("video probe task failed: {error}")),
                 concurrency: 1,
+                network_class: network_status.network_class(),
             },
         };
         let event = TransferEvent::ProbeDone(ProbeDone {
@@ -29,6 +31,7 @@ pub(crate) fn spawn_probe(ctx: TransferContext, launch: ProbeLaunch) {
                 url: launch.url,
                 outcome: observed.outcome,
                 concurrency: observed.concurrency,
+                network_class: observed.network_class,
             },
             decision: launch.decision,
         });
@@ -48,5 +51,5 @@ async fn run_probe(
         priority,
         timeouts: ctx.timeouts,
     };
-    probe_observed(spec, &mut scratch).await
+    probe_observed_on_network(spec, &mut scratch, &ctx.network_status).await
 }

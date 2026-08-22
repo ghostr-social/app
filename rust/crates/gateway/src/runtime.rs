@@ -26,6 +26,7 @@ pub struct GatewayConfiguration {
     pub relays: Vec<String>,
     pub max_parallel_downloads: usize,
     pub max_storage_bytes: u64,
+    pub network_status: ghostr_delivery::delivery_events::DeliveryNetworkStatus,
     pub device_integration_origin: Option<String>,
 }
 

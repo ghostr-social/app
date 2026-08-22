@@ -1,7 +1,12 @@
+mod cancellation_test;
+mod content_length_limit_test;
 mod header_limit_test;
 mod header_timeout_test;
 mod idle_timeout_test;
+mod staged_commitment_fence_test;
+mod staged_queue_timing_test;
 mod support;
 mod total_admission_timeout_test;
 mod total_header_timeout_test;
 mod total_timeout_test;
+mod traffic_accounting_test;

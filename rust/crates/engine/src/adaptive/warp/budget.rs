@@ -1,72 +1,15 @@
+#[cfg(test)]
+#[path = "budget/cpu_feedback_test.rs"]
+mod cpu_feedback_test;
 mod hard;
+mod network;
+#[cfg(test)]
+#[path = "budget/network_refill_test.rs"]
+mod network_refill_test;
 pub(in crate::adaptive::warp) use hard::BudgetDenial;
 pub use hard::{HardBudget, ResourceCost};
+pub use network::NetworkTokenBucket;
 use serde::{Deserialize, Serialize};
-
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct NetworkTokenBucket {
-    capacity: u64,
-    refill_per_second: u64,
-    tokens: u64,
-    updated_at_ms: u64,
-}
-
-impl NetworkTokenBucket {
-    pub const fn new(capacity: u64, refill_per_second: u64, now_ms: u64) -> Self {
-        Self {
-            capacity,
-            refill_per_second,
-            tokens: capacity,
-            updated_at_ms: now_ms,
-        }
-    }
-
-    pub fn available(&mut self, now_ms: u64) -> u64 {
-        self.refill(now_ms);
-        self.tokens
-    }
-
-    pub fn consume(&mut self, bytes: u64, now_ms: u64) -> bool {
-        self.refill(now_ms);
-        if bytes > self.tokens {
-            return false;
-        }
-        self.tokens -= bytes;
-        true
-    }
-
-    pub fn reconfigure(&mut self, capacity: u64, refill_per_second: u64, now_ms: u64) {
-        self.refill(now_ms);
-        self.capacity = capacity;
-        self.refill_per_second = refill_per_second;
-        self.tokens = self.tokens.min(capacity);
-    }
-
-    fn refill(&mut self, now_ms: u64) {
-        let elapsed = now_ms.saturating_sub(self.updated_at_ms);
-        let added = self.refill_per_second.saturating_mul(elapsed) / 1_000;
-        self.tokens = self.tokens.saturating_add(added).min(self.capacity);
-        self.updated_at_ms = self.updated_at_ms.max(now_ms);
-    }
-
-    pub(crate) const fn replay_parts(&self) -> (u64, u64, u64, u64) {
-        (
-            self.capacity,
-            self.refill_per_second,
-            self.tokens,
-            self.updated_at_ms,
-        )
-    }
-
-    pub(crate) const fn from_replay(parts: (u64, u64, u64, u64)) -> Self {
-        Self {
-            capacity: parts.0,
-            refill_per_second: parts.1,
-            tokens: parts.2,
-            updated_at_ms: parts.3,
-        }
-    }
-}
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ResourceObservation {
@@ -120,13 +63,28 @@ impl ShadowPriceController {
             adjust(self.prices.network_micros, actual.network, target.network);
         self.prices.storage_micros =
             adjust(self.prices.storage_micros, actual.storage, target.storage);
-        self.prices.cpu_micros = adjust(self.prices.cpu_micros, actual.cpu, target.cpu);
+        self.prices.cpu_micros =
+            adjust_observed_cpu(self.prices.cpu_micros, actual.cpu, target.cpu);
         self.prices.request_micros =
             adjust(self.prices.request_micros, actual.requests, target.requests);
     }
 
     pub const fn prices(&self) -> ResourcePrices {
         self.prices
+    }
+
+    pub const fn cpu_operating_target_ms(hard_limit_ms: u64) -> u64 {
+        if hard_limit_ms <= 1 {
+            return hard_limit_ms;
+        }
+        let whole = hard_limit_ms / 10 * 9;
+        let remainder = hard_limit_ms % 10 * 9 / 10;
+        let target = whole.saturating_add(remainder);
+        if target == 0 {
+            1
+        } else {
+            target
+        }
     }
 }
 
@@ -138,4 +96,11 @@ fn adjust(current: u64, actual: u64, target: u64) -> u64 {
     }
     let decrease = target.saturating_sub(actual).saturating_mul(1_000) / target;
     current.saturating_sub(decrease)
+}
+
+fn adjust_observed_cpu(current: u64, actual: u64, target: u64) -> u64 {
+    match target {
+        0 => current,
+        _ => adjust(current, actual, target),
+    }
 }

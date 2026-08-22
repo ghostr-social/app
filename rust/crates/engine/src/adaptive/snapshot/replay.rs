@@ -2,7 +2,8 @@ use super::PlayabilitySnapshot;
 
 impl PlayabilitySnapshot {
     pub(crate) fn replay_sources(&self) -> Vec<String> {
-        self.candidates
+        let mut sources: Vec<_> = self
+            .candidates
             .iter()
             .flat_map(|candidate| {
                 candidate
@@ -12,6 +13,12 @@ impl PlayabilitySnapshot {
                     .chain(candidate.origins.iter().map(|origin| &origin.source))
             })
             .cloned()
-            .collect()
+            .collect();
+        sources.extend(
+            self.hls_candidates
+                .iter()
+                .filter_map(|candidate| candidate.source().map(str::to_owned)),
+        );
+        sources
     }
 }

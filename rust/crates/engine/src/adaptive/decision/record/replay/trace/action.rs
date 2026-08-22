@@ -10,6 +10,7 @@ pub(super) fn coherent(action: &RecordedWarpAction) -> bool {
 fn post_matches(action: &RecordedWarpAction) -> bool {
     let post = match &action.command {
         RecordedWarpCommand::ProbeHead { post_id, .. }
+        | RecordedWarpCommand::FetchHlsBootstrap { post_id, .. }
         | RecordedWarpCommand::Promote { post_id, .. }
         | RecordedWarpCommand::Transform { post_id, .. } => Some(post_id),
         RecordedWarpCommand::Transfer { transfer }
@@ -25,9 +26,9 @@ fn kind_matches(action: &RecordedWarpAction) -> bool {
         | RecordedWarpActionKind::Prefix { .. }
         | RecordedWarpActionKind::Tail { .. }
         | RecordedWarpActionKind::FetchRange { .. } => retrieval_matches(action),
-        RecordedWarpActionKind::FetchWhole { .. } | RecordedWarpActionKind::CacheUpgrade { .. } => {
-            stored_matches(action)
-        }
+        RecordedWarpActionKind::FetchWhole { .. }
+        | RecordedWarpActionKind::HlsBootstrap { .. }
+        | RecordedWarpActionKind::CacheUpgrade { .. } => stored_matches(action),
         _ => control_matches(action),
     }
 }
@@ -65,6 +66,17 @@ fn stored_matches(action: &RecordedWarpAction) -> bool {
         (RecordedWarpActionKind::FetchWhole { maximum_bytes }, command) => {
             whole_matches(command, *maximum_bytes)
         }
+        (
+            RecordedWarpActionKind::HlsBootstrap {
+                stage,
+                maximum_bytes,
+            },
+            RecordedWarpCommand::FetchHlsBootstrap {
+                stage: command_stage,
+                maximum_bytes: command_maximum,
+                ..
+            },
+        ) => stage == command_stage && maximum_bytes == command_maximum,
         (
             RecordedWarpActionKind::CacheUpgrade {
                 bytes_start,

@@ -12,32 +12,49 @@ use std::time::Duration;
 use tower::ServiceExt;
 
 #[tokio::test]
-async fn serves_prefetched_manifest_and_segment_without_origin_refetch() {
-    let (origin, source) = HlsOrigin::start().await;
+async fn serves_every_prefetched_bootstrap_object_without_origin_refetch() {
+    let (origin, source) = HlsOrigin::start_master().await;
     let delivery = start_delivery("hls-prefetched-cache");
     delivery.handle.update_focus(hls_focus(&source));
     wait_ready(&delivery.segmented).await;
-    let prefetched_hits = origin.hits();
+    let prefetched = vec!["root", "child", "init", "segment"];
+    assert_eq!(origin.paths(), prefetched);
+    assert_eq!(origin.hits(), 4);
     let sessions = sessions();
     let session = sessions.acquire(vec![source]).await.unwrap();
     let router = router_with_segmented_hls(sessions, media_client(), delivery.segmented);
 
-    let root = router
-        .clone()
-        .oneshot(request(&format!("/hls/{}/index.m3u8", session.as_str())))
-        .await
-        .unwrap();
-    let manifest = to_bytes(root.into_body(), 4096).await.unwrap();
-    let segment_path = String::from_utf8(manifest.to_vec())
-        .unwrap()
+    let root = response_text(&router, &format!("/hls/{}/index.m3u8", session.as_str())).await;
+    let child_path = root
         .lines()
-        .find(|line| line.starts_with("/hls/") && line.contains("/assets/"))
+        .find(|line| line.starts_with("/hls/") && line.contains("/manifests/"))
         .unwrap()
         .to_owned();
-    let segment = router.oneshot(request(&segment_path)).await.unwrap();
+    let child = response_text(&router, &child_path).await;
+    let init_path = child
+        .split("URI=\"")
+        .nth(1)
+        .unwrap()
+        .split('"')
+        .next()
+        .unwrap();
+    let segment_path = child
+        .lines()
+        .find(|line| line.starts_with("/hls/") && line.contains("/assets/"))
+        .unwrap();
+    let init = router.clone().oneshot(request(init_path)).await.unwrap();
+    let segment = router.oneshot(request(segment_path)).await.unwrap();
 
+    assert_eq!(to_bytes(init.into_body(), 64).await.unwrap(), "init");
     assert_eq!(to_bytes(segment.into_body(), 64).await.unwrap(), "segment");
-    assert_eq!(origin.hits(), prefetched_hits);
+    assert_eq!(origin.paths(), prefetched);
+    assert_eq!(origin.hits(), 4);
+}
+
+async fn response_text(router: &axum::Router, path: &str) -> String {
+    let response = router.clone().oneshot(request(path)).await.unwrap();
+    let body = to_bytes(response.into_body(), 4096).await.unwrap();
+    String::from_utf8(body.to_vec()).unwrap()
 }
 
 async fn wait_ready(cache: &ghostr_delivery::segmented::SegmentedCache) {

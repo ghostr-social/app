@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.7.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1994761233;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -585840162;
 
 // Section: executor
 
@@ -196,6 +196,40 @@ fn wire__crate__api__delivery_events_stream__ffi_delivery_events_impl(
                     })()
                     .await,
                 )
+            }
+        },
+    )
+}
+fn wire__crate__api__network_control__ffi_delivery_network_status_unavailable_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ffi_delivery_network_status_unavailable",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        crate::api::network_control::FfiDeliveryNetworkStatus::unavailable(),
+                    )?;
+                    Ok(output_ok)
+                })())
             }
         },
     )
@@ -770,6 +804,44 @@ fn wire__crate__api__engine_control__ffi_set_delivery_config_impl(
         },
     )
 }
+fn wire__crate__api__network_control__ffi_set_delivery_network_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ffi_set_delivery_network",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_status = <crate::api::network_control::FfiDeliveryNetworkStatus>::sse_decode(
+                &mut deserializer,
+            );
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let output_ok =
+                            crate::api::network_control::ffi_set_delivery_network(api_status)?;
+                        Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__engine_control__ffi_start_engine_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -796,6 +868,10 @@ fn wire__crate__api__engine_control__ffi_start_engine_impl(
             let api_configuration =
                 <crate::api::engine_control::FfiEngineConfiguration>::sse_decode(&mut deserializer);
             let api_device_integration_origin = <Option<String>>::sse_decode(&mut deserializer);
+            let api_initial_network =
+                <crate::api::network_control::FfiDeliveryNetworkStatus>::sse_decode(
+                    &mut deserializer,
+                );
             deserializer.end();
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
@@ -804,6 +880,7 @@ fn wire__crate__api__engine_control__ffi_start_engine_impl(
                             api_cache_directory,
                             api_configuration,
                             api_device_integration_origin,
+                            api_initial_network,
                         )
                         .await?;
                         Ok(output_ok)
@@ -996,6 +1073,34 @@ impl SseDecode for crate::api::delivery_types::FfiDeliveryEventKind {
             1 => crate::api::delivery_types::FfiDeliveryEventKind::Progress,
             2 => crate::api::delivery_types::FfiDeliveryEventKind::Error,
             _ => unreachable!("Invalid variant for FfiDeliveryEventKind: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::network_control::FfiDeliveryNetworkClass {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::network_control::FfiDeliveryNetworkClass::Unavailable,
+            1 => crate::api::network_control::FfiDeliveryNetworkClass::Wifi,
+            2 => crate::api::network_control::FfiDeliveryNetworkClass::Cellular,
+            3 => crate::api::network_control::FfiDeliveryNetworkClass::Wired,
+            4 => crate::api::network_control::FfiDeliveryNetworkClass::Constrained,
+            _ => unreachable!("Invalid variant for FfiDeliveryNetworkClass: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::network_control::FfiDeliveryNetworkStatus {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_networkClass =
+            <crate::api::network_control::FfiDeliveryNetworkClass>::sse_decode(deserializer);
+        let mut var_generation = <u64>::sse_decode(deserializer);
+        return crate::api::network_control::FfiDeliveryNetworkStatus {
+            network_class: var_networkClass,
+            generation: var_generation,
         };
     }
 }
@@ -1834,96 +1939,108 @@ fn pde_ffi_dispatcher_primary_impl(
             rust_vec_len,
             data_len,
         ),
-        8 => {
+        8 => wire__crate__api__network_control__ffi_delivery_network_status_unavailable_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        9 => {
             wire__crate__api__feed_control__ffi_feed_session_impl(port, ptr, rust_vec_len, data_len)
         }
-        9 => wire__crate__api__feed_updates_stream__ffi_feed_updates_impl(
+        10 => wire__crate__api__feed_updates_stream__ffi_feed_updates_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        10 => wire__crate__api__feed_control__ffi_load_more_impl(port, ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__feed_control__ffi_open_feed_impl(port, ptr, rust_vec_len, data_len),
-        12 => wire__crate__api__playback_control__ffi_playback_admission_snapshot_impl(
+        11 => wire__crate__api__feed_control__ffi_load_more_impl(port, ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__feed_control__ffi_open_feed_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__playback_control__ffi_playback_admission_snapshot_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        13 => wire__crate__api__playback_preparation_stream__ffi_playback_preparation_events_impl(
+        14 => wire__crate__api__playback_preparation_stream__ffi_playback_preparation_events_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        14 => wire__crate__api__focus_control__ffi_playback_url_impl(
+        15 => wire__crate__api__focus_control__ffi_playback_url_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        15 => wire__crate__api__event_control__ffi_query_events_impl(
+        16 => wire__crate__api__event_control__ffi_query_events_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        16 => wire__crate__api__event_control__ffi_query_events_batch_impl(
+        17 => wire__crate__api__event_control__ffi_query_events_batch_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        17 => wire__crate__video__native_gateway__ffi_release_hls_playback_impl(
+        18 => wire__crate__video__native_gateway__ffi_release_hls_playback_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        18 => wire__crate__api__playback_control__ffi_report_playback_impl(
+        19 => wire__crate__api__playback_control__ffi_report_playback_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        19 => wire__crate__api__playback_control__ffi_report_playback_presentation_impl(
+        20 => wire__crate__api__playback_control__ffi_report_playback_presentation_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        20 => wire__crate__api__player_preparation_control__ffi_report_player_preparation_impl(
+        21 => wire__crate__api__player_preparation_control__ffi_report_player_preparation_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        21 => wire__crate__api__session_control__ffi_reset_nostr_session_impl(
+        22 => wire__crate__api__session_control__ffi_reset_nostr_session_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        22 => wire__crate__api__engine_control__ffi_set_delivery_config_impl(
+        23 => wire__crate__api__engine_control__ffi_set_delivery_config_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        23 => wire__crate__api__engine_control__ffi_start_engine_impl(
+        24 => wire__crate__api__network_control__ffi_set_delivery_network_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        24 => wire__crate__api__focus_control__ffi_update_focus_impl(
+        25 => wire__crate__api__engine_control__ffi_start_engine_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        25 => wire__crate__video__native_gateway__init_app_impl(port, ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__focus_control__ffi_update_focus_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        27 => wire__crate__video__native_gateway__init_app_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -2009,6 +2126,51 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::delivery_types::FfiDeliveryEv
     for crate::api::delivery_types::FfiDeliveryEventKind
 {
     fn into_into_dart(self) -> crate::api::delivery_types::FfiDeliveryEventKind {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::network_control::FfiDeliveryNetworkClass {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Unavailable => 0.into_dart(),
+            Self::Wifi => 1.into_dart(),
+            Self::Cellular => 2.into_dart(),
+            Self::Wired => 3.into_dart(),
+            Self::Constrained => 4.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::network_control::FfiDeliveryNetworkClass
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::network_control::FfiDeliveryNetworkClass>
+    for crate::api::network_control::FfiDeliveryNetworkClass
+{
+    fn into_into_dart(self) -> crate::api::network_control::FfiDeliveryNetworkClass {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::network_control::FfiDeliveryNetworkStatus {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.network_class.into_into_dart().into_dart(),
+            self.generation.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::network_control::FfiDeliveryNetworkStatus
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::network_control::FfiDeliveryNetworkStatus>
+    for crate::api::network_control::FfiDeliveryNetworkStatus
+{
+    fn into_into_dart(self) -> crate::api::network_control::FfiDeliveryNetworkStatus {
         self
     }
 }
@@ -2856,6 +3018,36 @@ impl SseEncode for crate::api::delivery_types::FfiDeliveryEventKind {
             },
             serializer,
         );
+    }
+}
+
+impl SseEncode for crate::api::network_control::FfiDeliveryNetworkClass {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::network_control::FfiDeliveryNetworkClass::Unavailable => 0,
+                crate::api::network_control::FfiDeliveryNetworkClass::Wifi => 1,
+                crate::api::network_control::FfiDeliveryNetworkClass::Cellular => 2,
+                crate::api::network_control::FfiDeliveryNetworkClass::Wired => 3,
+                crate::api::network_control::FfiDeliveryNetworkClass::Constrained => 4,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::network_control::FfiDeliveryNetworkStatus {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <crate::api::network_control::FfiDeliveryNetworkClass>::sse_encode(
+            self.network_class,
+            serializer,
+        );
+        <u64>::sse_encode(self.generation, serializer);
     }
 }
 

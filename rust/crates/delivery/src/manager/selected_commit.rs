@@ -25,6 +25,11 @@ impl SelectedCommit {
         action.map(Self::new)
     }
 
+    pub(crate) fn resources(&self) -> Option<(ResourceCost, ResourceCost)> {
+        let action = self.action.as_ref()?;
+        Some((action.node.resources, action.node.authorized_resources()))
+    }
+
     pub(crate) fn commit(
         &mut self,
         planner: &mut WarpPlanner,

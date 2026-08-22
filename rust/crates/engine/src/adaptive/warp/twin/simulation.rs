@@ -69,9 +69,13 @@ fn cache_key(state: TwinStateSignature, actions: &[ActionNode], epochs: TwinEpoc
 
 fn plan_hash(actions: &[ActionNode]) -> u64 {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    actions
-        .iter()
-        .for_each(|action| stable_hash(action, &mut hasher));
+    let mut posts = BTreeMap::new();
+    for action in actions {
+        let next = posts.len().min(usize::from(u16::MAX)) as u16;
+        let post = *posts.entry(action.post.as_str()).or_insert(next);
+        post.hash(&mut hasher);
+        stable_hash(action, &mut hasher);
+    }
     hasher.finish()
 }
 
@@ -94,6 +98,10 @@ fn stable_kind(kind: &crate::adaptive::ActionKind, state: &mut impl Hasher) {
         | ActionKind::FetchRange(range)
         | ActionKind::CacheUpgrade(range) => range.hash(state),
         ActionKind::FetchWhole { maximum_bytes } => maximum_bytes.hash(state),
+        ActionKind::HlsBootstrap {
+            stage,
+            maximum_bytes,
+        } => (stage, maximum_bytes).hash(state),
         ActionKind::Promote {
             active,
             maximum_bytes,

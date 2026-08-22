@@ -1,5 +1,6 @@
-use super::super::{open, FetchSpec};
-use super::support::{client, stalled_headers};
+use super::super::telemetry::FetchProgress;
+use super::super::{open, FetchRuntime, FetchSpec};
+use super::support::{client, network_status, stalled_headers};
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
 use std::time::Duration;
@@ -20,7 +21,10 @@ async fn occupied_gate_expires_as_the_hls_total_deadline() {
         Duration::from_millis(20),
     );
     let deadline = tokio::time::Instant::now() + timing.total;
-    let error = match open(&requests, spec(&url, timing), deadline).await {
+    let network = network_status();
+    let progress = FetchProgress::default();
+    let runtime = FetchRuntime::new(&requests, deadline, &network, &progress);
+    let error = match open(runtime, spec(&url, timing)).await {
         Ok(_) => panic!("transfer must hit its total deadline"),
         Err(error) => error,
     };
@@ -36,5 +40,6 @@ fn spec(url: &str, timeouts: HlsTransferTimeouts) -> FetchSpec<'_> {
         require_manifest: false,
         timeouts,
         priority: PreemptionAuthority::Transition,
+        admission_fence: None,
     }
 }

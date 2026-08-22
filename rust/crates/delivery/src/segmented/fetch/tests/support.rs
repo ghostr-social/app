@@ -7,6 +7,9 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
 
+mod immediate;
+pub(super) use immediate::{delayed_asset, immediate_asset, immediate_failure};
+
 pub(super) struct LocalClient(Client);
 
 impl MediaHttpRequests for LocalClient {
@@ -24,6 +27,13 @@ pub(super) fn client() -> MediaRequestExecutor {
             .expect("client"),
     );
     MediaRequestExecutor::new(Arc::new(client), MediaRequestLimits::try_new(1, 1).unwrap())
+}
+
+pub(super) fn network_status() -> crate::delivery_events::DeliveryNetworkStatusReader {
+    use ghostr_engine::origin_model::NetworkClass;
+    crate::delivery_events::DeliveryNetworkStatusReader::new(
+        crate::delivery_events::DeliveryNetworkStatus::new(NetworkClass::Cellular, 1),
+    )
 }
 
 pub(super) async fn stalled_body() -> (String, JoinHandle<()>) {

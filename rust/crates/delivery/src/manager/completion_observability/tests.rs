@@ -12,5 +12,7 @@ mod hedge_loser_bytes_test;
 pub(crate) mod hedge_metric_fixture;
 #[path = "hedge_winner_bytes_test.rs"]
 mod hedge_winner_bytes_test;
+#[path = "range_noncompliant_outcome_test.rs"]
+mod range_noncompliant_outcome_test;
 #[path = "request_started_test.rs"]
 mod request_started_test;

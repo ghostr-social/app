@@ -9,6 +9,7 @@ pub(super) fn query(
     transfer: &PlannedTransfer,
     observed_at_ms: u64,
     concurrency: usize,
+    network_class: NetworkClass,
 ) -> OriginQuery {
     let request = transfer.retrieval;
     OriginQuery::new(
@@ -18,7 +19,7 @@ pub(super) fn query(
             request.requested_bytes().len(),
             media(request),
         )
-        .with_network(NetworkClass::Unavailable)
+        .with_network(network_class)
         .with_concurrency(concurrency)
         .with_observed_at_ms(observed_at_ms),
     )

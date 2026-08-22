@@ -19,6 +19,7 @@ pub(super) struct TransferTraffic {
     events: UnboundedSender<InternalEvent>,
     responses: ResponseOpener,
     store_action: StoreAction,
+    network_status: crate::delivery_events::DeliveryNetworkStatusReader,
     opened: bool,
 }
 
@@ -37,12 +38,17 @@ impl TransferTraffic {
             events: ctx.events.clone(),
             responses: ctx.responses.clone(),
             store_action,
+            network_status: ctx.network_status.clone(),
             opened: false,
         }
     }
 }
 
 impl ChunkTraffic for TransferTraffic {
+    fn current_network_class(&mut self) -> Option<ghostr_engine::origin_model::NetworkClass> {
+        Some(self.network_status.network_class())
+    }
+
     fn opened(&mut self, ttfb: Duration) {
         let Some(host) = self.host.take() else {
             return;

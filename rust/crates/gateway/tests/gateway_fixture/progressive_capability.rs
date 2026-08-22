@@ -21,7 +21,6 @@ impl ProgressiveHarness {
     }
 
     pub async fn bind_video(&self, id: &str, source: &str, size: Option<u64>) {
-        let mut catalog = Catalog::new();
         let meta = VideoMeta {
             urls: vec![source.to_owned()],
             delivery: DeliveryKind::Progressive,
@@ -29,6 +28,11 @@ impl ProgressiveHarness {
             size_bytes: size,
             duration_ms: Some(1_000),
         };
+        self.bind_video_meta(id, meta).await;
+    }
+
+    pub async fn bind_video_meta(&self, id: &str, meta: VideoMeta) {
+        let mut catalog = Catalog::new();
         let binding = catalog.upsert(PostId::new(id), meta);
         self.store
             .bind_representation(binding)

@@ -13,5 +13,6 @@ pub(super) fn build(input: &WarpPlannerInput<'_>, network_bytes: u64) -> HardBud
         ),
         input.context.limits.per_origin_requests,
     )
+    .with_segmented_storage(input.context.segmented_storage_budget())
     .with_occupancy(input.context.request_occupancy())
 }

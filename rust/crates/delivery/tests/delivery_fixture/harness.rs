@@ -58,6 +58,7 @@ pub fn start_harness_with_store(
             cache: posts.clone(),
             segmented: segmented.clone(),
             network: network.clone(),
+            network_status: ghostr_delivery::delivery_events::DeliveryNetworkStatus::unavailable(),
             stats_path: root.join("host_stats.json"),
             params: options.params,
             level: options.level,

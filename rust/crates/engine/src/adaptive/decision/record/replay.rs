@@ -1,4 +1,6 @@
-use super::{DecisionRecord, LEGACY_SCHEMA_VERSION, WARP_SCHEMA_VERSION};
+use super::{
+    DecisionRecord, LEGACY_SCHEMA_VERSION, UNSEALED_WARP_SCHEMA_VERSION, WARP_SCHEMA_VERSION,
+};
 use crate::adaptive::decision::plan;
 use crate::adaptive::decision::state::ReplayState;
 use crate::adaptive::{AdaptivePlayabilityPolicy, DecisionReplayStatus, VerifiedWarpReplay};
@@ -9,19 +11,21 @@ mod trace;
 
 const WARP_STATE_DOMAIN: &[u8] = b"ghostr-warp-v2-state\0";
 const WARP_DECISION_DOMAIN: &[u8] = b"ghostr-warp-v2-decision\0";
+const TERMINAL_EVIDENCE_DOMAIN: &[u8] = b"ghostr-warp-terminal-evidence\0";
 
 pub(super) fn status(record: &DecisionRecord) -> DecisionReplayStatus {
     match (record.schema_version, record.warp_decision.is_some()) {
         (LEGACY_SCHEMA_VERSION, false) => legacy(record),
-        (WARP_SCHEMA_VERSION, true) => replay_status(warp(record)),
+        (UNSEALED_WARP_SCHEMA_VERSION | WARP_SCHEMA_VERSION, true) => replay_status(warp(record)),
         _ => DecisionReplayStatus::UnsupportedSchema,
     }
 }
 
 pub(super) fn warp(record: &DecisionRecord) -> Result<VerifiedWarpReplay, DecisionReplayStatus> {
-    if record.schema_version != WARP_SCHEMA_VERSION || record.warp_decision.is_none() {
+    if !is_warp_schema(record.schema_version) || record.warp_decision.is_none() {
         return Err(DecisionReplayStatus::UnsupportedSchema);
     }
+    verify_terminal_evidence(record)?;
     if warp_state_identity(&record.replay_state).0 != record.state_hash {
         return Err(DecisionReplayStatus::StateHashMismatch);
     }
@@ -70,7 +74,27 @@ pub(super) fn warp_identity(record: &DecisionRecord) -> String {
     tagged_hash(&immutable)
 }
 
+pub(super) fn terminal_identity(record: &DecisionRecord) -> String {
+    let evidence = (
+        record.schema_version,
+        record.sequence,
+        &record.replay_plan_hash,
+        record.chosen_action_id,
+        &record.executed_request,
+        &record.eventual_outcome,
+        &record.actual_resources,
+    );
+    let encoded = serde_json::to_vec(&evidence).expect("terminal evidence is serializable");
+    let mut digest = Sha256::new();
+    digest.update(TERMINAL_EVIDENCE_DOMAIN);
+    digest.update(encoded);
+    format!("warp-terminal-evidence:{}", hex(&digest.finalize()))
+}
+
 fn legacy(record: &DecisionRecord) -> DecisionReplayStatus {
+    if verify_terminal_evidence(record).is_err() {
+        return DecisionReplayStatus::PlanMismatch;
+    }
     if state_identity(&record.replay_state).0 != record.state_hash {
         return DecisionReplayStatus::StateHashMismatch;
     }
@@ -79,6 +103,22 @@ fn legacy(record: &DecisionRecord) -> DecisionReplayStatus {
         true => DecisionReplayStatus::Verified,
         false => DecisionReplayStatus::PlanMismatch,
     }
+}
+
+fn verify_terminal_evidence(record: &DecisionRecord) -> Result<(), DecisionReplayStatus> {
+    if record.schema_version == WARP_SCHEMA_VERSION && record.terminal_evidence_hash.is_none() {
+        return Err(DecisionReplayStatus::PlanMismatch);
+    }
+    match &record.terminal_evidence_hash {
+        Some(expected) if expected != &terminal_identity(record) => {
+            Err(DecisionReplayStatus::PlanMismatch)
+        }
+        _ => Ok(()),
+    }
+}
+
+fn is_warp_schema(version: u16) -> bool {
+    matches!(version, UNSEALED_WARP_SCHEMA_VERSION | WARP_SCHEMA_VERSION)
 }
 
 fn replay_status(result: Result<VerifiedWarpReplay, DecisionReplayStatus>) -> DecisionReplayStatus {

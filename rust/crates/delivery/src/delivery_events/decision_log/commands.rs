@@ -3,7 +3,7 @@ use super::{
     RequestDecisionBinding, WarpDecisionPublication,
 };
 use crate::delivery_events::CommandReceiver;
-use ghostr_engine::adaptive::DecisionOutcome;
+use ghostr_engine::adaptive::{DecisionOutcome, ResourceCost};
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::ActionId;
 
@@ -64,6 +64,17 @@ impl CommandReceiver {
         observed_at_ms: u64,
     ) -> Option<DecisionResolution> {
         self.decisions.resolve(action, outcome, observed_at_ms)
+    }
+
+    pub(crate) fn resolve_decision_with_resources(
+        &self,
+        action: ActionId,
+        outcome: DecisionOutcome,
+        resources: ResourceCost,
+        observed_at_ms: u64,
+    ) -> Option<DecisionResolution> {
+        self.decisions
+            .resolve_with_resources(action, outcome, resources, observed_at_ms)
     }
 
     pub(crate) fn resolve_decision_token(

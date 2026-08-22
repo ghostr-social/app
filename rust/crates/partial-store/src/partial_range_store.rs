@@ -41,7 +41,7 @@ pub use policy_eviction::EvictionOutcome;
 pub use queries::{StoredEvidenceId, StoredMediaSnapshot};
 pub use representation::{ContentRevision, RepresentationRead};
 pub use response::ResponseOpenResult;
-pub use transform::{TransformFence, TransformPublication};
+pub use transform::{TransformFence, TransformPublication, TransformPublicationOutcome};
 
 pub(crate) type Entries = HashMap<String, Entry>;
 

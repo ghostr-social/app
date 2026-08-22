@@ -40,6 +40,7 @@ pub struct ProbeSpec<'a> {
 pub(crate) struct ObservedProbe {
     pub outcome: Result<ProbeResult>,
     pub concurrency: usize,
+    pub network_class: ghostr_engine::origin_model::NetworkClass,
 }
 
 /// Probes `url` with HEAD. Range support remains unknown when the
@@ -49,11 +50,29 @@ pub async fn probe(spec: ProbeSpec<'_>, stats: &mut HostStats) -> Result<ProbeRe
 }
 
 pub(crate) async fn probe_observed(spec: ProbeSpec<'_>, stats: &mut HostStats) -> ObservedProbe {
+    observe(spec, stats, None).await
+}
+
+pub(crate) async fn probe_observed_on_network(
+    spec: ProbeSpec<'_>,
+    stats: &mut HostStats,
+    network: &crate::delivery_events::DeliveryNetworkStatusReader,
+) -> ObservedProbe {
+    observe(spec, stats, Some(network)).await
+}
+
+async fn observe(
+    spec: ProbeSpec<'_>,
+    stats: &mut HostStats,
+    network: Option<&crate::delivery_events::DeliveryNetworkStatusReader>,
+) -> ObservedProbe {
     let mut concurrency = 0;
-    let outcome = describe(&spec, &mut concurrency).await;
+    let mut network_class = ghostr_engine::origin_model::NetworkClass::Unavailable;
+    let outcome = describe(&spec, &mut concurrency, &mut network_class, network).await;
     ObservedProbe {
         outcome: conclude(stats, spec.url, outcome),
         concurrency,
+        network_class,
     }
 }
 
@@ -65,8 +84,13 @@ struct ProbeFacts {
     ttfb: Duration,
 }
 
-async fn describe(spec: &ProbeSpec<'_>, concurrency: &mut usize) -> Result<ProbeFacts> {
-    let (head, ttfb) = send_head(spec, concurrency).await?;
+async fn describe(
+    spec: &ProbeSpec<'_>,
+    concurrency: &mut usize,
+    network_class: &mut ghostr_engine::origin_model::NetworkClass,
+    network: Option<&crate::delivery_events::DeliveryNetworkStatusReader>,
+) -> Result<ProbeFacts> {
+    let (head, ttfb) = send_head(spec, concurrency, network_class, network).await?;
     validate_response_headers(head.headers())?;
     let head = head.error_for_status().context("HEAD probe rejected")?;
     require_identity_encoding(head.headers()).context("HEAD response is encoded")?;
@@ -77,6 +101,8 @@ async fn describe(spec: &ProbeSpec<'_>, concurrency: &mut usize) -> Result<Probe
 async fn send_head(
     spec: &ProbeSpec<'_>,
     concurrency: &mut usize,
+    network_class: &mut ghostr_engine::origin_model::NetworkClass,
+    network: Option<&crate::delivery_events::DeliveryNetworkStatusReader>,
 ) -> Result<(MediaResponse, Duration)> {
     let admitted = spec
         .requests
@@ -85,6 +111,7 @@ async fn send_head(
         .head()
         .admit_for(spec.timeouts.admission)
         .await?;
+    *network_class = network.map_or(*network_class, |status| status.network_class());
     *concurrency = RequestAuthority::from_url(spec.url)
         .map(|authority| spec.requests.active_for(&authority))
         .unwrap_or(1)

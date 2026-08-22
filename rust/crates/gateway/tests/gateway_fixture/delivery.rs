@@ -61,6 +61,7 @@ pub fn start_delivery_with_tuning(prefix: &str, tuning: DeliveryTuning) -> Deliv
             cache: cache.clone(),
             segmented: segmented.clone(),
             network: network.clone(),
+            network_status: ghostr_delivery::delivery_events::DeliveryNetworkStatus::unavailable(),
             stats_path: root.join("host_stats.json"),
             params: EngineParams::default(),
             level: DataUsageLevel::Balanced,

@@ -1,13 +1,19 @@
 use super::{RequestOccupancy, ResourceObservation, SemanticScore, TwinEpochs};
 use crate::adaptive::{EpsilonBuckets, PlayabilitySnapshot};
+use crate::origin_model::NetworkClass;
 use crate::{ActionId, PostId};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 mod active;
 mod candidate;
+#[cfg(test)]
+#[path = "planner_context/hls_request_scope_test.rs"]
+mod hls_request_scope_test;
 mod replay;
 mod request_scope;
+mod segmented_storage;
+mod unavailable;
 mod watch;
 pub use active::ActivePlannerContext;
 pub use candidate::{
@@ -16,6 +22,7 @@ pub use candidate::{
     INLINE_BLURHASH_PREVIEW_QUALITY_MICROS,
 };
 pub use request_scope::SoftRequestCommitment;
+pub use segmented_storage::SegmentedStorageBudget;
 pub use watch::PlannerWatchEvidence;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -49,6 +56,13 @@ pub struct ResourceFeedback {
 pub struct PlannerContext {
     candidates: BTreeMap<PostId, PlannerCandidateContext>,
     active: BTreeMap<ActionId, ActivePlannerContext>,
+    #[serde(
+        default = "unavailable_network",
+        skip_serializing_if = "network_unavailable"
+    )]
+    network_class: NetworkClass,
+    #[serde(default, skip_serializing_if = "SegmentedStorageBudget::is_empty")]
+    segmented_storage_available_bytes: SegmentedStorageBudget,
     pub limits: PlannerLimits,
     request_occupancy: RequestOccupancy,
     request_scope: Option<request_scope::RequestScope>,
@@ -59,45 +73,16 @@ pub struct PlannerContext {
 
 impl PlannerContext {
     pub fn explicitly_unavailable(snapshot: &PlayabilitySnapshot) -> Self {
-        let candidates = snapshot
-            .candidates
-            .iter()
-            .enumerate()
-            .map(|(rank, item)| {
-                (
-                    item.post.clone(),
-                    PlannerCandidateContext {
-                        semantic: SemanticScore::Unavailable { rank },
-                        capability: PlannerCapability::Unavailable,
-                        quality: PlannerQuality::Unavailable,
-                        preview: PreviewAvailability::Unavailable,
-                        watch: PlannerWatchEvidence::Unavailable,
-                        head_probe: HeadProbeHistory::Unobserved,
-                        retry: PlannerRetryAvailability::Ready,
-                    },
-                )
-            })
-            .collect();
-        Self {
-            candidates,
-            active: BTreeMap::new(),
-            limits: default_limits(snapshot),
-            request_occupancy: RequestOccupancy::from_sources(
-                snapshot
-                    .candidates
-                    .iter()
-                    .flat_map(|candidate| &candidate.in_flight)
-                    .map(|active| active.source.as_str()),
-            ),
-            request_scope: None,
-            feedback: None,
-            epochs: TwinEpochs::new(0, 0, 0),
-            epsilon: EpsilonBuckets::new(20, snapshot.request_slice_bytes, 100, 100),
-        }
+        unavailable::build(snapshot)
     }
 
     pub fn with_active(mut self, active: ActivePlannerContext) -> Self {
         self.active.insert(active.action, active);
+        self
+    }
+
+    pub fn with_network_class(mut self, network_class: NetworkClass) -> Self {
+        self.network_class = network_class;
         self
     }
 
@@ -119,9 +104,14 @@ impl PlannerContext {
     pub fn with_soft_request_capacity(
         mut self,
         ordinary_tokens: u16,
+        hls_tokens: u16,
         soft: Vec<SoftRequestCommitment>,
     ) -> Self {
-        self.request_scope = Some(request_scope::RequestScope::new(ordinary_tokens, soft));
+        self.request_scope = Some(request_scope::RequestScope::new(
+            ordinary_tokens,
+            hls_tokens,
+            soft,
+        ));
         self
     }
 
@@ -137,6 +127,10 @@ impl PlannerContext {
 
     pub(super) fn candidate(&self, post: &PostId) -> Option<PlannerCandidateContext> {
         self.candidates.get(post).copied()
+    }
+
+    pub(super) const fn network_class(&self) -> NetworkClass {
+        self.network_class
     }
 
     pub(super) fn active(&self, action: ActionId) -> Option<&ActivePlannerContext> {
@@ -184,7 +178,15 @@ impl PlannerContext {
     }
 }
 
-fn default_limits(snapshot: &PlayabilitySnapshot) -> PlannerLimits {
+const fn unavailable_network() -> NetworkClass {
+    NetworkClass::Unavailable
+}
+
+fn network_unavailable(value: &NetworkClass) -> bool {
+    *value == NetworkClass::Unavailable
+}
+
+pub(super) fn default_limits(snapshot: &PlayabilitySnapshot) -> PlannerLimits {
     let rate = snapshot.network.throughput_bps / 8;
     PlannerLimits {
         network_burst_bytes: rate.saturating_mul(2).max(snapshot.request_slice_bytes),

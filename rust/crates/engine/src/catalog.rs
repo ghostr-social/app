@@ -190,4 +190,5 @@ impl Catalog {
 
 mod bitrate;
 mod renditions;
+pub use renditions::RenditionQualityEvidence;
 mod timeline;

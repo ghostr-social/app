@@ -1,5 +1,6 @@
-use super::super::{open, FetchSpec};
-use super::support::{client, stalled_headers};
+use super::super::telemetry::FetchProgress;
+use super::super::{open, FetchRuntime, FetchSpec};
+use super::support::{client, network_status, stalled_headers};
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
 use std::time::Duration;
@@ -19,8 +20,13 @@ async fn total_deadline_wins_while_waiting_for_hls_headers() {
         require_manifest: false,
         timeouts: timing,
         priority: PreemptionAuthority::Transition,
+        admission_fence: None,
     };
-    let result = open(&client(), spec, deadline).await;
+    let requests = client();
+    let network = network_status();
+    let progress = FetchProgress::default();
+    let runtime = FetchRuntime::new(&requests, deadline, &network, &progress);
+    let result = open(runtime, spec).await;
     let error = match result {
         Ok(_) => panic!("transfer must hit its total deadline"),
         Err(error) => error,

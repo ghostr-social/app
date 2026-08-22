@@ -2,6 +2,8 @@ mod active;
 mod allocation;
 mod builder;
 mod candidate;
+mod hls;
+mod hls_prediction;
 mod ladders;
 mod prediction;
 mod quality;
@@ -22,6 +24,13 @@ pub enum PlannerCommand {
         authority: crate::adaptive::PreemptionAuthority,
     },
     Transfer(Allocation),
+    FetchHlsBootstrap {
+        post: PostId,
+        stage: crate::adaptive::HlsBootstrapStage,
+        source: String,
+        maximum_bytes: u64,
+        committed_until_ms: u64,
+    },
     Promote {
         post: PostId,
         action: ActionId,

@@ -10,6 +10,8 @@ use crate::{PostId, VideoMeta};
 use std::collections::BTreeSet;
 
 mod integrity;
+mod quality;
+pub use quality::RenditionQualityEvidence;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct RenditionState {

@@ -1,7 +1,6 @@
 use crate::manager::transfers::ProbeObservation;
 use ghostr_engine::origin_model::{
-    ErrorReason, MediaClass, NetworkClass, OriginContext, OriginObservation, OriginQuery,
-    RequestMethod,
+    ErrorReason, MediaClass, OriginContext, OriginObservation, OriginQuery, RequestMethod,
 };
 
 pub(super) fn probe(done: &ProbeObservation, observed_at_ms: u64) -> OriginObservation {
@@ -19,7 +18,7 @@ pub(super) fn probe(done: &ProbeObservation, observed_at_ms: u64) -> OriginObser
             media_class(result.content_type.as_deref())
         });
     let context = OriginContext::new(RequestMethod::Head, bytes, media)
-        .with_network(NetworkClass::Unavailable)
+        .with_network(done.network_class)
         .with_concurrency(done.concurrency)
         .with_observed_at_ms(observed_at_ms);
     let query = OriginQuery::new(done.url.clone(), context);

@@ -1,15 +1,16 @@
-use super::PreparedHls;
+use super::prepare::PreparedObject;
 use ghostr_engine::PostId;
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex, MutexGuard};
 use tokio::sync::Notify;
 
+mod capacity;
 mod generation;
 mod objects;
+mod staged;
 #[cfg(test)]
 mod tests;
 pub use generation::{CachedHlsGeneration, CachedHlsObject};
-use objects::{commit, failed};
 
 const MAX_CACHE_BYTES: usize = 32 * 1024 * 1024;
 
@@ -58,8 +59,11 @@ struct CacheState {
 struct FocusRecord {
     generation: u64,
     sources: Vec<String>,
+    protected: bool,
     snapshot: SegmentedSnapshot,
     objects: Vec<String>,
+    staged: Vec<PreparedObject>,
+    reserved_bytes: u64,
 }
 
 impl SegmentedCache {
@@ -67,61 +71,38 @@ impl SegmentedCache {
         Self::default()
     }
 
+    #[cfg(test)]
     pub(crate) fn replace_focus(&self, generation: u64, items: Vec<(PostId, Vec<String>)>) {
+        let protected = items.iter().map(|(post, _)| post.clone()).collect();
+        self.replace_focus_window(generation, items, &protected);
+    }
+
+    pub(crate) fn replace_focus_window(
+        &self,
+        generation: u64,
+        items: Vec<(PostId, Vec<String>)>,
+        protected: &std::collections::HashSet<PostId>,
+    ) {
         let mut state = self.lock();
         let mut next = HashMap::new();
         for (post, sources) in items {
             let (snapshot, objects) = reusable_state(state.focus.get(&post), &sources);
+            let is_protected = protected.contains(&post);
             next.insert(
                 post,
                 FocusRecord {
                     generation,
                     sources,
+                    protected: is_protected,
                     snapshot,
                     objects,
+                    staged: Vec::new(),
+                    reserved_bytes: 0,
                 },
             );
         }
         state.focus = next;
-        drop(state);
-        self.changed.notify_waiters();
-    }
-
-    pub(crate) fn mark_preparing(&self, post: &PostId, generation: u64, eta_ms: u64) -> bool {
-        self.update(
-            post,
-            generation,
-            SegmentedSnapshot {
-                phase: SegmentedPhase::Preparing,
-                bytes_present: 0,
-                eta_ms: Some(eta_ms),
-                detail: None,
-            },
-        )
-    }
-
-    pub(crate) fn complete(
-        &self,
-        post: &PostId,
-        generation: u64,
-        result: anyhow::Result<PreparedHls>,
-    ) {
-        let mut state = self.lock();
-        let current = state
-            .focus
-            .get(post)
-            .is_some_and(|record| record.generation == generation);
-        if !current {
-            return;
-        }
-        let committed = match result {
-            Ok(prepared) => commit(&mut state, prepared),
-            Err(error) => failed(error.to_string()),
-        };
-        if let Some(record) = state.focus.get_mut(post) {
-            record.snapshot = committed.snapshot;
-            record.objects = committed.objects;
-        }
+        objects::retain_referenced(&mut state);
         drop(state);
         self.changed.notify_waiters();
     }
@@ -155,20 +136,6 @@ impl SegmentedCache {
     pub fn clear(&self) {
         *self.lock() = CacheState::default();
         self.changed.notify_waiters();
-    }
-
-    fn update(&self, post: &PostId, generation: u64, snapshot: SegmentedSnapshot) -> bool {
-        let mut state = self.lock();
-        let Some(record) = state.focus.get_mut(post) else {
-            return false;
-        };
-        if record.generation != generation || record.snapshot.phase == SegmentedPhase::Ready {
-            return false;
-        }
-        record.snapshot = snapshot;
-        drop(state);
-        self.changed.notify_waiters();
-        true
     }
 
     fn lock(&self) -> MutexGuard<'_, CacheState> {

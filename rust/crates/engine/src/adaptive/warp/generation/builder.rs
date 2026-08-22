@@ -3,21 +3,21 @@ use super::prediction::{predict, Prediction};
 use super::value;
 use super::{ActiveControl, GeneratedAction, GeneratedActions, PlannerCommand, PlannerContext};
 use crate::adaptive::{Allocation, AllocationPlan, CandidateSnapshot, PlayabilitySnapshot};
-use crate::origin_model::OriginModel;
 
 pub(super) fn build(
     snapshot: &PlayabilitySnapshot,
     base: &AllocationPlan,
-    origins: &OriginModel,
+    origins: &crate::origin_model::OriginModel,
     context: &PlannerContext,
 ) -> GeneratedActions {
     let mut builder = Builder::new(snapshot, base, origins, context);
-    for candidate in snapshot
-        .candidates
-        .iter()
-        .filter(|item| item.retrieval_eligible)
-    {
-        builder.add_candidate(candidate);
+    for candidate in &snapshot.candidates {
+        if candidate.retrieval_eligible {
+            builder.add_candidate(candidate);
+        }
+    }
+    for candidate in &snapshot.hls_candidates {
+        super::hls::add(&mut builder, candidate);
     }
     builder.add_detached_active();
     builder.finish()
@@ -26,7 +26,7 @@ pub(super) fn build(
 pub(super) struct Builder<'a> {
     pub(super) snapshot: &'a PlayabilitySnapshot,
     pub(super) base: &'a AllocationPlan,
-    pub(super) origins: &'a OriginModel,
+    pub(super) origins: &'a crate::origin_model::OriginModel,
     pub(super) context: &'a PlannerContext,
     pub(super) actions: Vec<GeneratedAction>,
     pub(super) active_controls: Vec<ActiveControl>,
@@ -60,7 +60,7 @@ impl<'a> Builder<'a> {
     fn new(
         snapshot: &'a PlayabilitySnapshot,
         base: &'a AllocationPlan,
-        origins: &'a OriginModel,
+        origins: &'a crate::origin_model::OriginModel,
         context: &'a PlannerContext,
     ) -> Self {
         Self {
@@ -121,7 +121,7 @@ impl<'a> Builder<'a> {
         super::super::ActionNode::new(self.next_action_id(), post.clone(), kind, value)
     }
 
-    fn next_action_id(&mut self) -> u16 {
+    pub(super) fn next_action_id(&mut self) -> u16 {
         self.next_id = self
             .next_id
             .checked_add(1)
@@ -148,6 +148,7 @@ impl<'a> Builder<'a> {
                 .saturating_add(1),
             mode: self.base.mode,
             direct_playback_blocked: self.direct_playback_blocked(candidate),
+            network_class: self.context.network_class(),
         })
     }
 

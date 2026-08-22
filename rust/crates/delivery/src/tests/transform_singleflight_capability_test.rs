@@ -62,10 +62,11 @@ fn apply(
     evidence: (u64, PlayerPreparationState),
 ) {
     let (sequence, status) = evidence;
-    let failure = (status == PlayerPreparationState::Failed)
-        .then(|| "invalidVideoTrack".to_owned());
+    let failure =
+        (status == PlayerPreparationState::Failed).then(|| "invalidVideoTrack".to_owned());
     let observation = PlayerPreparationObservation::try_new(status, failure, sequence).unwrap();
-    let report = PlayerPreparationReport::try_new(authority, attempt, sequence, observation).unwrap();
+    let report =
+        PlayerPreparationReport::try_new(authority, attempt, sequence, observation).unwrap();
     assert!(state.apply_player_preparation(report));
 }
 

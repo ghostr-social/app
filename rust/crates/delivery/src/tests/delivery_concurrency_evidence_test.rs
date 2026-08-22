@@ -1,5 +1,6 @@
 use crate::manager::concurrency::{
-    capacity_evidence, network_profile_setback, request_occupancy, RequestConcurrencyLimits,
+    capacity_evidence, network_profile_setback, planning_connection_capacity, request_occupancy,
+    RequestConcurrencyLimits,
 };
 use crate::manager::traffic::OverallTrafficWindow;
 use ghostr_engine::concurrency::{ConcurrencyOccupancy, NetworkSetback};
@@ -39,15 +40,24 @@ fn observed_packet_loss_is_an_immediate_concurrency_setback() {
 }
 
 #[test]
-fn per_host_limit_does_not_collapse_the_global_ceiling() {
+fn default_origin_limit_preserves_a_cross_origin_request_slot() {
     let inherited = RequestConcurrencyLimits::resolve(3, None, 0);
     let debug_limited = RequestConcurrencyLimits::resolve(3, None, 1);
     let configured = RequestConcurrencyLimits::resolve(3, NonZeroUsize::new(2), 0);
 
     assert_eq!(inherited.global(), 3);
-    assert_eq!(inherited.per_authority(), 3);
+    assert_eq!(inherited.per_authority(), 2);
     assert_eq!(debug_limited.global(), 3);
     assert_eq!(debug_limited.per_authority(), 1);
-    assert_eq!(debug_limited.segmented_compatibility(), 1);
     assert_eq!(configured.per_authority(), 2);
+}
+
+#[test]
+fn hls_demand_uses_healthy_global_capacity_but_respects_severe_loss() {
+    assert_eq!(planning_connection_capacity(1, 3, 3, 0), 3);
+    assert_eq!(planning_connection_capacity(1, 3, 2, 0), 2);
+    assert_eq!(planning_connection_capacity(2, 1, 3, 0), 2);
+    assert_eq!(planning_connection_capacity(2, 0, 3, 0), 2);
+    assert_eq!(planning_connection_capacity(1, 5, 3, 0), 3);
+    assert_eq!(planning_connection_capacity(1, 3, 3, 6_000), 1);
 }

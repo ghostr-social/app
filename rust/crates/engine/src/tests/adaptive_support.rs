@@ -11,7 +11,6 @@ use std::collections::HashSet;
 
 const MIB: u64 = 1024 * 1024;
 const DEFAULT_ORIGIN: &str = "https://origin.example/media";
-
 pub(crate) fn snapshot(
     candidate_count: usize,
     throughput_bps: u64,
@@ -43,6 +42,7 @@ pub(crate) fn snapshot(
             backward_swipes_per_minute: 0,
         },
         candidates: (0..candidate_count).map(candidate).collect(),
+        hls_candidates: Vec::new(),
     }
 }
 

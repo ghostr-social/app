@@ -9,6 +9,8 @@ pub mod adaptive_plan;
 pub mod commands;
 #[cfg(feature = "video-debug-web")]
 pub mod debug_clear;
+#[cfg(feature = "video-debug-web")]
+pub mod debug_response;
 pub mod delivery;
 pub mod free_space;
 pub mod hls_origin;

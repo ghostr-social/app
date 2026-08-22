@@ -2,7 +2,7 @@
 
 use super::HISTORY_CAPACITY;
 use ghostr_engine::adaptive::{
-    DecisionAction, DecisionOutcome, DecisionRecord, RecordedWarpAction,
+    DecisionAction, DecisionOutcome, DecisionRecord, RecordedWarpAction, ResourceCost,
 };
 use std::collections::{HashSet, VecDeque};
 
@@ -36,6 +36,7 @@ pub(super) fn resolve(
     records: &mut VecDeque<DecisionRecord>,
     sequence: u64,
     outcome: DecisionOutcome,
+    resources: Option<ResourceCost>,
 ) -> Option<(DecisionAction, Option<RecordedWarpAction>)> {
     let record = records
         .iter_mut()
@@ -45,7 +46,7 @@ pub(super) fn resolve(
         .warp_decision
         .as_ref()
         .and_then(|decision| decision.selected.clone());
-    record.resolve(outcome).then_some((action, warp_action))
+    resolve_record(record, outcome, resources).then_some((action, warp_action))
 }
 
 pub(super) fn resolve_unbound(
@@ -70,5 +71,16 @@ pub(super) fn resolve_claimed(
     outcome: DecisionOutcome,
 ) -> Option<(DecisionAction, Option<RecordedWarpAction>)> {
     claimed.then_some(())?;
-    resolve(records, sequence, outcome)
+    resolve(records, sequence, outcome, None)
+}
+
+fn resolve_record(
+    record: &mut DecisionRecord,
+    outcome: DecisionOutcome,
+    resources: Option<ResourceCost>,
+) -> bool {
+    match resources {
+        Some(resources) => record.resolve_with_resources(outcome, resources),
+        None => record.resolve(outcome),
+    }
 }

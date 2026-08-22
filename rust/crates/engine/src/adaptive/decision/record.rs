@@ -1,4 +1,4 @@
-use super::advanced::{self, RecordedWarpCommand, RecordedWarpDecision};
+use super::advanced::{self, RecordedResourceCost, RecordedWarpDecision};
 use super::model;
 use super::plan;
 use super::privacy::DecisionPrivacy;
@@ -9,15 +9,16 @@ use super::types::{
 };
 use crate::adaptive::VerifiedWarpReplay;
 use crate::adaptive::{AllocationPlan, PlayabilitySnapshot, WarpPlanningDecision};
-use crate::representation::TransferIdentity;
 use serde::{Deserialize, Serialize};
 
+mod authorization;
 mod binding;
 mod replay;
+mod resolution;
 
 pub(super) const LEGACY_SCHEMA_VERSION: u16 = 1;
-pub(super) const WARP_SCHEMA_VERSION: u16 = 2;
-
+pub(super) const UNSEALED_WARP_SCHEMA_VERSION: u16 = 2;
+pub(super) const WARP_SCHEMA_VERSION: u16 = 3;
 pub struct DecisionRecordInput<'a> {
     pub sequence: u64,
     pub snapshot: &'a PlayabilitySnapshot,
@@ -51,11 +52,15 @@ pub struct DecisionRecord {
     pub random_seed: u64,
     pub eventual_outcome: DecisionOutcome,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub actual_resources: Option<RecordedResourceCost>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub warp_decision: Option<RecordedWarpDecision>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub executed_request: Option<advanced::RecordedExecutedRequest>,
     replay_state: ReplayState,
     replay_plan_hash: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    terminal_evidence_hash: Option<String>,
 }
 
 impl DecisionRecord {
@@ -73,6 +78,7 @@ impl DecisionRecord {
         let captured = advanced::capture(input.decision, input.privacy);
         let mut record = warp_record(input, replay_state, state_hash, captured);
         record.replay_plan_hash = replay::warp_identity(&record);
+        record.terminal_evidence_hash = Some(replay::terminal_identity(&record));
         record
     }
 
@@ -88,48 +94,6 @@ impl DecisionRecord {
     pub fn replay_warp_search(&self) -> Result<VerifiedWarpReplay, DecisionReplayStatus> {
         replay::warp_search(self)
     }
-
-    pub fn resolve(&mut self, outcome: DecisionOutcome) -> bool {
-        if self.eventual_outcome != DecisionOutcome::Pending {
-            return false;
-        }
-        self.eventual_outcome = outcome;
-        true
-    }
-
-    pub fn authorizes_probe_claim(
-        &self,
-        identity: &TransferIdentity,
-        privacy: &DecisionPrivacy,
-    ) -> bool {
-        if self.schema_version != WARP_SCHEMA_VERSION || self.chosen_action.is_none() {
-            return false;
-        }
-        let Some(command) = self
-            .warp_decision
-            .as_ref()
-            .and_then(|decision| decision.selected.as_ref())
-            .map(|action| &action.command)
-        else {
-            return false;
-        };
-        matches_probe(command, identity, privacy)
-    }
-}
-
-fn matches_probe(
-    command: &RecordedWarpCommand,
-    identity: &TransferIdentity,
-    privacy: &DecisionPrivacy,
-) -> bool {
-    let RecordedWarpCommand::ProbeHead {
-        post_id, source_id, ..
-    } = command
-    else {
-        return false;
-    };
-    post_id == &privacy.post(identity.post().as_str())
-        && source_id == &privacy.source(identity.source().as_str())
 }
 
 fn legacy_record(
@@ -152,10 +116,12 @@ fn legacy_record(
         shadow_prices: input.shadow_prices,
         random_seed,
         eventual_outcome: DecisionOutcome::Pending,
+        actual_resources: None,
         warp_decision: None,
         executed_request: None,
         replay_state,
         replay_plan_hash: plan::capture_hash(input.allocation, input.privacy),
+        terminal_evidence_hash: None,
     }
 }
 
@@ -179,10 +145,12 @@ fn warp_record(
         chosen_action_id: None,
         random_seed: captured.random_seed,
         eventual_outcome: outcome,
+        actual_resources: None,
         warp_decision: Some(captured.decision),
         executed_request: None,
         replay_state,
         replay_plan_hash: String::new(),
+        terminal_evidence_hash: None,
     }
 }
 

@@ -19,6 +19,7 @@ pub(crate) fn config(store: Arc<PartialRangeStore>, root: PathBuf) -> DeliveryMa
         cache: CacheRegistry::new(),
         segmented: SegmentedCache::new(),
         network: NetworkThrottle::new(),
+        network_status: crate::delivery_events::DeliveryNetworkStatus::unavailable(),
         stats_path: root.join("stats.json"),
         params: EngineParams::default(),
         level: DataUsageLevel::Balanced,

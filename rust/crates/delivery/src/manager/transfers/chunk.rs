@@ -19,6 +19,7 @@ pub(crate) struct ChunkLaunch {
     pub priority: PreemptionAuthority,
     pub token: CancelToken,
     pub action: StoreAction,
+    pub network_class: ghostr_engine::origin_model::NetworkClass,
 }
 
 pub(crate) fn spawn_chunk(launch: ChunkLaunch) {
@@ -86,6 +87,7 @@ async fn execute_chunk(
             cancel: &launch.token,
             network: &launch.context.network,
             traffic: &mut traffic,
+            network_class: launch.network_class,
         },
     )
     .await

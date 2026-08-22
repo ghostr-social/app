@@ -1,5 +1,6 @@
 use super::super::privacy::DecisionPrivacy;
 use super::command::RecordedTransformKind;
+use super::RecordedHlsBootstrapStage;
 use crate::adaptive::ActionKind;
 use serde::{Deserialize, Serialize};
 
@@ -22,6 +23,10 @@ pub enum RecordedWarpActionKind {
         bytes_end: u64,
     },
     FetchWhole {
+        maximum_bytes: u64,
+    },
+    HlsBootstrap {
+        stage: RecordedHlsBootstrapStage,
         maximum_bytes: u64,
     },
     Promote {
@@ -48,7 +53,9 @@ pub(super) fn capture(kind: &ActionKind, privacy: &DecisionPrivacy) -> RecordedW
     match kind {
         ActionKind::Head => RecordedWarpActionKind::Head,
         ActionKind::Prefix(_) | ActionKind::Tail(_) | ActionKind::FetchRange(_) => ranged(kind),
-        ActionKind::FetchWhole { .. } | ActionKind::CacheUpgrade(_) => stored(kind),
+        ActionKind::FetchWhole { .. }
+        | ActionKind::HlsBootstrap { .. }
+        | ActionKind::CacheUpgrade(_) => stored(kind),
         ActionKind::Promote { .. }
         | ActionKind::Transform(_)
         | ActionKind::Hedge { .. }
@@ -77,6 +84,13 @@ fn ranged(kind: &ActionKind) -> RecordedWarpActionKind {
 fn stored(kind: &ActionKind) -> RecordedWarpActionKind {
     match kind {
         ActionKind::FetchWhole { maximum_bytes } => RecordedWarpActionKind::FetchWhole {
+            maximum_bytes: *maximum_bytes,
+        },
+        ActionKind::HlsBootstrap {
+            stage,
+            maximum_bytes,
+        } => RecordedWarpActionKind::HlsBootstrap {
+            stage: (*stage).into(),
             maximum_bytes: *maximum_bytes,
         },
         ActionKind::CacheUpgrade(bytes) => RecordedWarpActionKind::CacheUpgrade {

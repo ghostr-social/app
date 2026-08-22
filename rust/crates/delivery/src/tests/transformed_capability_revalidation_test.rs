@@ -23,7 +23,12 @@ fn transformed_bytes_are_not_declared_playable_without_fresh_player_evidence() {
         state.planner_capability(&post, 1),
         PlannerCapability::Unavailable
     );
-    apply(&mut state, &derived, 1, PlayerPreparationState::Initializing);
+    apply(
+        &mut state,
+        &derived,
+        1,
+        PlayerPreparationState::Initializing,
+    );
     apply(
         &mut state,
         &derived,

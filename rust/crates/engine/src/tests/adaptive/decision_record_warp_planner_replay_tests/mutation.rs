@@ -30,17 +30,22 @@ fn base_plan_is_mutation_sensitive() {
 
 #[test]
 fn network_tokens_are_mutation_sensitive() {
-    rejects_network(|value| mutate_network(value, (250_000, 125_000, 124_999, 10_000)));
+    rejects_network(|value| mutate_network(value, (250_000, 125_000, 124_999, 10_000, 0, 0)));
 }
 
 #[test]
 fn network_refill_is_mutation_sensitive() {
-    rejects_network(|value| mutate_network(value, (250_000, 124_999, 125_000, 10_000)));
+    rejects_network(|value| mutate_network(value, (250_000, 124_999, 125_000, 10_000, 0, 0)));
 }
 
 #[test]
 fn network_update_epoch_is_mutation_sensitive() {
-    rejects_network(|value| mutate_network(value, (250_000, 125_000, 125_000, 10_001)));
+    rejects_network(|value| mutate_network(value, (250_000, 125_000, 125_000, 10_001, 0, 0)));
+}
+
+#[test]
+fn network_debt_is_mutation_sensitive() {
+    rejects_network(|value| mutate_network(value, (250_000, 125_000, 125_000, 10_000, 0, 1)));
 }
 
 #[test]
@@ -50,10 +55,13 @@ fn price_epoch_is_mutation_sensitive() {
 
 fn mutate_network(
     value: &mut crate::adaptive::PlannerReplayCapsule,
-    replacement: (u64, u64, u64, u64),
+    replacement: (u64, u64, u64, u64, u64, u64),
 ) {
     let network = value.network_mut().expect("warm planner network state");
-    assert_eq!(network.replay_parts(), (250_000, 125_000, 125_000, 10_000));
+    assert_eq!(
+        network.replay_parts(),
+        (250_000, 125_000, 125_000, 10_000, 0, 0)
+    );
     *network = NetworkTokenBucket::from_replay(replacement);
 }
 

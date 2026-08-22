@@ -145,7 +145,7 @@ fn rung(kind: &ActionKind) -> Option<RetrievalRung> {
             Some(RetrievalRung::Transcoded)
         }
         ActionKind::Transform(_) => Some(RetrievalRung::Remuxed),
-        ActionKind::Cancel(_) => None,
+        ActionKind::HlsBootstrap { .. } | ActionKind::Cancel(_) => None,
     }
 }
 

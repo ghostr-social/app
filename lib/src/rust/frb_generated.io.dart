@@ -13,6 +13,7 @@ import 'api/feed_control.dart';
 import 'api/feed_types.dart';
 import 'api/feed_updates_stream.dart';
 import 'api/focus_control.dart';
+import 'api/network_control.dart';
 import 'api/playback_control.dart';
 import 'api/playback_preparation_stream.dart';
 import 'api/playback_types.dart';
@@ -68,6 +69,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiDeliveryEvent dco_decode_box_autoadd_ffi_delivery_event(dynamic raw);
+
+  @protected
+  FfiDeliveryNetworkStatus dco_decode_box_autoadd_ffi_delivery_network_status(
+    dynamic raw,
+  );
 
   @protected
   FfiEngineConfiguration dco_decode_box_autoadd_ffi_engine_configuration(
@@ -133,6 +139,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiDeliveryEventKind dco_decode_ffi_delivery_event_kind(dynamic raw);
+
+  @protected
+  FfiDeliveryNetworkClass dco_decode_ffi_delivery_network_class(dynamic raw);
+
+  @protected
+  FfiDeliveryNetworkStatus dco_decode_ffi_delivery_network_status(dynamic raw);
 
   @protected
   FfiEngineConfiguration dco_decode_ffi_engine_configuration(dynamic raw);
@@ -340,6 +352,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  FfiDeliveryNetworkStatus sse_decode_box_autoadd_ffi_delivery_network_status(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   FfiEngineConfiguration sse_decode_box_autoadd_ffi_engine_configuration(
     SseDeserializer deserializer,
   );
@@ -425,6 +442,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiDeliveryEventKind sse_decode_ffi_delivery_event_kind(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiDeliveryNetworkClass sse_decode_ffi_delivery_network_class(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiDeliveryNetworkStatus sse_decode_ffi_delivery_network_status(
     SseDeserializer deserializer,
   );
 
@@ -676,6 +703,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_ffi_delivery_network_status(
+    FfiDeliveryNetworkStatus self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_ffi_engine_configuration(
     FfiEngineConfiguration self,
     SseSerializer serializer,
@@ -777,6 +810,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_ffi_delivery_event_kind(
     FfiDeliveryEventKind self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_delivery_network_class(
+    FfiDeliveryNetworkClass self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_delivery_network_status(
+    FfiDeliveryNetworkStatus self,
     SseSerializer serializer,
   );
 

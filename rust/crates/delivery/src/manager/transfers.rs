@@ -11,6 +11,7 @@ use crate::manager::response_open::ResponseOpener;
 use crate::manager::retry::CooldownId;
 use crate::manager::traffic::TrafficPublisher;
 use crate::probe::media::ProbeResult;
+use crate::segmented::scheduler::SegmentedDone;
 use ghostr_engine::PostId;
 use ghostr_net::media_request_executor::MediaRequestExecutor;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
@@ -28,17 +29,13 @@ pub(crate) use probe::{spawn_probe, ProbeLaunch};
 
 pub(crate) enum InternalEvent {
     ImmediateReplan,
+    NetworkRefill(crate::manager::network_refill_timer::NetworkRefillWake),
     Transfer(TransferEvent),
     Segmented(SegmentedDone),
     Transform(crate::manager::transforms::TransformDone),
     HedgeTail(crate::manager::hedge_tail::HedgeTailWake),
     Maintenance(MaintenanceEvent),
     TrafficChanged,
-}
-
-pub(crate) struct SegmentedDone {
-    pub post: PostId,
-    pub generation: u64,
 }
 
 pub(crate) enum TransferEvent {
@@ -77,6 +74,7 @@ pub(crate) struct ProbeObservation {
     pub url: String,
     pub outcome: anyhow::Result<ProbeResult>,
     pub concurrency: usize,
+    pub network_class: ghostr_engine::origin_model::NetworkClass,
 }
 
 /// Everything a spawned transfer needs; cheap to clone per task.
@@ -89,4 +87,5 @@ pub(crate) struct TransferContext {
     pub timeouts: TransferTimeouts,
     pub network: NetworkThrottle,
     pub traffic: TrafficPublisher,
+    pub network_status: crate::delivery_events::DeliveryNetworkStatusReader,
 }

@@ -3,7 +3,9 @@ use crate::media_timeline::StartupFootprint;
 use crate::playback::{EstimateConfidence, PlaybackPhase};
 use crate::{ActionId, ByteRange, PostId};
 
+mod hls;
 mod replay;
+pub use hls::{HlsBootstrapStage, HlsBootstrapState, HlsCandidateSnapshot};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ViewProbability(f64);
@@ -193,4 +195,5 @@ pub struct PlayabilitySnapshot {
     pub storage: StorageSnapshot,
     pub navigation: NavigationSnapshot,
     pub candidates: Vec<CandidateSnapshot>,
+    pub hls_candidates: Vec<HlsCandidateSnapshot>,
 }

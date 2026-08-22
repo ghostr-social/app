@@ -3,6 +3,7 @@
 mod capture;
 mod command;
 mod executed;
+mod hls;
 mod kind;
 mod planner_replay;
 mod reserve;
@@ -18,6 +19,7 @@ pub use executed::RecordedExecutedRequest;
 pub(in crate::adaptive::decision) use executed::{
     capture as capture_executed, coherent as executed_coherent,
 };
+pub use hls::RecordedHlsBootstrapStage;
 pub use kind::RecordedWarpActionKind;
 pub(in crate::adaptive::decision) use planner_replay::verify as verify_planner_replay;
 pub use planner_replay::RecordedPlannerReplayCapsule;

@@ -37,6 +37,7 @@ async fn chunked_whole_keeps_seed_readable_until_atomic_eof_commit() {
             cancel: &cancel,
             network: &network,
             traffic: &mut traffic,
+            network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
         },
     );
     tokio::pin!(download);

@@ -1,16 +1,25 @@
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{bail, Result};
 use ghostr_engine::adaptive::PreemptionAuthority;
-use ghostr_hls_manifest::hls_manifest::{MAX_HLS_ASSET_BYTES, MAX_HLS_MANIFEST_BYTES};
-use ghostr_net::identity_encoding::require_identity_encoding;
+#[cfg(test)]
+use ghostr_hls_manifest::hls_manifest::MAX_HLS_ASSET_BYTES;
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaResponse};
-use ghostr_net::response_limits::validate_response_headers;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
-use reqwest::header::{HeaderValue, ACCEPT_ENCODING, CONTENT_TYPE};
-use reqwest::StatusCode;
+use reqwest::header::CONTENT_TYPE;
 use std::sync::Arc;
+use tokio::time::Instant;
 use url::Url;
 
+mod body;
 mod deadline;
+mod open;
+mod staged;
+mod telemetry;
+use body::fetch_before_total;
+#[cfg(test)]
+use open::open;
+pub(super) use staged::{fetch_stage, StagedFetch};
+pub(super) use telemetry::{FetchFailure, OriginTelemetry, SegmentedTraffic};
+use telemetry::{FetchProblem, FetchProgress};
 #[cfg(test)]
 mod tests;
 
@@ -19,40 +28,54 @@ pub(super) struct FetchedObject {
     pub final_url: Url,
     pub body: Arc<[u8]>,
     pub content_type: Option<String>,
+    pub telemetry: OriginTelemetry,
 }
 
 #[derive(Clone, Copy)]
-struct FetchSpec<'a> {
+pub(super) struct FetchSpec<'a> {
     url: &'a str,
     limit: usize,
     require_manifest: bool,
     timeouts: HlsTransferTimeouts,
     priority: PreemptionAuthority,
+    admission_fence: Option<Instant>,
 }
 
-pub(super) async fn manifest(
-    requests: &MediaRequestExecutor,
-    url: &str,
-    priority: PreemptionAuthority,
-) -> Result<FetchedObject> {
-    fetch(
-        requests,
-        FetchSpec {
-            url,
-            limit: MAX_HLS_MANIFEST_BYTES,
-            require_manifest: true,
-            timeouts: HlsTransferTimeouts::default(),
-            priority,
-        },
-    )
-    .await
+struct FetchInput<'a> {
+    spec: FetchSpec<'a>,
+    traffic: Option<SegmentedTraffic>,
 }
 
-pub(super) async fn asset(
+#[derive(Clone, Copy)]
+pub(super) struct FetchRuntime<'a> {
+    requests: &'a MediaRequestExecutor,
+    deadline: Instant,
+    network: &'a crate::delivery_events::DeliveryNetworkStatusReader,
+    progress: &'a FetchProgress,
+}
+
+impl<'a> FetchRuntime<'a> {
+    pub(super) const fn new(
+        requests: &'a MediaRequestExecutor,
+        deadline: Instant,
+        network: &'a crate::delivery_events::DeliveryNetworkStatusReader,
+        progress: &'a FetchProgress,
+    ) -> Self {
+        Self {
+            requests,
+            deadline,
+            network,
+            progress,
+        }
+    }
+}
+
+#[cfg(test)]
+async fn asset(
     requests: &MediaRequestExecutor,
     url: &Url,
     priority: PreemptionAuthority,
-) -> Result<FetchedObject> {
+) -> std::result::Result<FetchedObject, FetchFailure> {
     asset_with_timeouts(
         requests,
         url.as_str(),
@@ -62,112 +85,73 @@ pub(super) async fn asset(
     .await
 }
 
+#[cfg(test)]
 async fn asset_with_timeouts(
     requests: &MediaRequestExecutor,
     url: &str,
     timeouts: HlsTransferTimeouts,
     priority: PreemptionAuthority,
-) -> Result<FetchedObject> {
+) -> std::result::Result<FetchedObject, FetchFailure> {
+    let network = crate::delivery_events::DeliveryNetworkStatusReader::new(
+        crate::delivery_events::DeliveryNetworkStatus::unavailable(),
+    );
     fetch(
         requests,
-        FetchSpec {
-            url,
-            limit: MAX_HLS_ASSET_BYTES,
-            require_manifest: false,
-            timeouts,
-            priority,
+        FetchInput {
+            spec: FetchSpec {
+                url,
+                limit: MAX_HLS_ASSET_BYTES,
+                require_manifest: false,
+                timeouts,
+                priority,
+                admission_fence: None,
+            },
+            traffic: None,
         },
+        &network,
+        None,
     )
     .await
 }
 
-async fn fetch(requests: &MediaRequestExecutor, spec: FetchSpec<'_>) -> Result<FetchedObject> {
-    let deadline = tokio::time::Instant::now() + spec.timeouts.total;
-    tokio::time::timeout_at(deadline, fetch_before_total(requests, spec, deadline))
-        .await
-        .context("HLS object transfer timed out")?
-}
-
-async fn fetch_before_total(
+async fn fetch(
     requests: &MediaRequestExecutor,
-    spec: FetchSpec<'_>,
-    deadline: tokio::time::Instant,
-) -> Result<FetchedObject> {
-    let mut response = open(requests, spec, deadline).await?;
-    let final_url = response.url().clone();
-    let content_type = content_type(&response);
-    let body = read_body(&mut response, spec.limit, spec.timeouts.idle).await?;
-    Ok(FetchedObject {
-        request_url: spec.url.to_owned(),
-        final_url,
-        body: Arc::from(body),
-        content_type,
-    })
-}
-
-async fn open(
-    requests: &MediaRequestExecutor,
-    spec: FetchSpec<'_>,
-    deadline: tokio::time::Instant,
-) -> Result<MediaResponse> {
-    let request = requests
-        .get(spec.url, spec.priority)?
-        .header(ACCEPT_ENCODING, HeaderValue::from_static("identity"));
-    let admitted = tokio::time::timeout_at(deadline, request.admit())
-        .await
-        .context("HLS object transfer timed out")??;
-    let header_deadline = deadline.min(tokio::time::Instant::now() + spec.timeouts.headers);
-    let timeout_context = deadline::header_context(header_deadline, deadline);
-    let sending = admitted.send_with_redirect_deadline(header_deadline);
-    let response = tokio::time::timeout_at(header_deadline, sending)
-        .await
-        .context(timeout_context)??;
-    validate_open_response(response, spec.require_manifest)
-}
-
-fn validate_open_response(
-    response: MediaResponse,
-    require_manifest: bool,
-) -> Result<MediaResponse> {
-    validate_response_headers(response.headers())?;
-    let response = response
-        .error_for_status()
-        .context("HLS object request failed")?;
-    ensure!(
-        response.status() == StatusCode::OK,
-        "full HLS object response is not 200"
-    );
-    require_identity_encoding(response.headers()).context("encoded HLS object is not cacheable")?;
-    if require_manifest {
-        require_manifest_type(&response)?;
+    input: FetchInput<'_>,
+    network: &crate::delivery_events::DeliveryNetworkStatusReader,
+    mut cancellation: Option<tokio::sync::oneshot::Receiver<()>>,
+) -> std::result::Result<FetchedObject, FetchFailure> {
+    let spec = input.spec;
+    let deadline = Instant::now() + spec.timeouts.total;
+    let progress = FetchProgress::new(input.traffic);
+    let runtime = FetchRuntime::new(requests, deadline, network, &progress);
+    let future = fetch_before_total(runtime, spec);
+    let transfer = tokio::time::timeout_at(deadline, future);
+    tokio::pin!(transfer);
+    let result = match cancellation.as_mut() {
+        Some(cancel) => tokio::select! {
+            biased;
+            _ = cancel => None,
+            result = &mut transfer => Some(result),
+        },
+        None => Some(transfer.await),
+    };
+    let Some(result) = result else {
+        return Err(FetchFailure::cancelled(
+            progress.origin(),
+            progress.network_bytes(),
+        ));
+    };
+    match result {
+        Ok(Ok(object)) => Ok(object),
+        Ok(Err(problem)) => Err(FetchFailure::new(problem, &progress)),
+        Err(error) => Err(FetchFailure::new(
+            FetchProblem::new(
+                anyhow::Error::new(error).context("HLS object transfer timed out"),
+                ghostr_engine::origin_model::ErrorReason::Timeout,
+            ),
+            &progress,
+        )),
     }
-    Ok(response)
-}
-
-async fn read_body(
-    response: &mut MediaResponse,
-    limit: usize,
-    idle: std::time::Duration,
-) -> Result<Vec<u8>> {
-    let mut body = Vec::new();
-    while let Some(chunk) = next_chunk(response, idle).await? {
-        ensure!(
-            body.len().saturating_add(chunk.len()) <= limit,
-            "HLS object exceeds its byte limit"
-        );
-        body.extend_from_slice(&chunk);
-    }
-    Ok(body)
-}
-
-async fn next_chunk(
-    response: &mut MediaResponse,
-    idle: std::time::Duration,
-) -> Result<Option<bytes::Bytes>> {
-    tokio::time::timeout(idle, response.chunk())
-        .await
-        .context("HLS object body idle timed out")?
-        .context("read HLS object")
 }
 
 fn content_type(response: &MediaResponse) -> Option<String> {

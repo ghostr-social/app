@@ -12,6 +12,8 @@ mod hedge;
 mod hedge_duplicate;
 #[path = "warp_hedge_tail_trigger_test.rs"]
 mod hedge_tail;
+#[path = "warp_hedge_network_class_test.rs"]
+mod hedge_network_class;
 #[path = "warp_live_hedge_plan_test.rs"]
 mod live_hedge;
 #[path = "warp_origin_cooldown_context_test.rs"]

@@ -4,6 +4,9 @@ use crate::adaptive::{
 };
 use crate::{ByteRange, PostId};
 
+#[path = "warp_planner_digital_twin_test/quality_credit_test.rs"]
+mod quality_credit_test;
+
 fn action(id: u16, completion: CompletionTimes) -> ActionNode {
     ActionNode::new(
         id,

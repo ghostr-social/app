@@ -1,8 +1,7 @@
 use crate::chunk::cancel::cancel_pair;
 use crate::debug::network::NetworkThrottle;
 use crate::manager::inflight::ChunkAttempt;
-use crate::manager::response_open;
-use crate::manager::traffic;
+use crate::manager::{response_open, traffic};
 use crate::manager::transfers::{
     spawn_chunk, ChunkLaunch, InternalEvent, TransferContext, TransferEvent,
 };
@@ -13,19 +12,16 @@ use ghostr_engine::{ActionId, ByteRange, ChunkId, DeliveryKind, PostId, VideoMet
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
-use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
+use ghostr_partial_store::partial_range_store::{capacity::StoreCapacity, PartialRangeStore};
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
 
 struct PanicClient;
-
 impl MediaHttpRequests for PanicClient {
     fn get(&self, _url: &str) -> anyhow::Result<reqwest::RequestBuilder> {
         panic!("fixture transport panic")
     }
 }
-
 #[tokio::test]
 async fn panicking_transfer_reports_terminal_and_releases_its_reservation() {
     let root = temp_directory("panicking-transfer");
@@ -53,6 +49,9 @@ async fn panicking_transfer_reports_terminal_and_releases_its_reservation() {
         timeouts: TransferTimeouts::default(),
         network: NetworkThrottle::new(),
         traffic: publisher,
+        network_status: crate::delivery_events::DeliveryNetworkStatusReader::new(
+            crate::delivery_events::DeliveryNetworkStatus::unavailable(),
+        ),
     };
     let attempt = ChunkAttempt::new(
         ChunkId {
@@ -71,6 +70,7 @@ async fn panicking_transfer_reports_terminal_and_releases_its_reservation() {
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         token,
         action,
+        network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
     });
 
     let InternalEvent::Transfer(TransferEvent::ChunkDone(done)) = events.recv().await.unwrap()

@@ -28,6 +28,13 @@ pub(crate) enum WarpDirective {
         post: PostId,
         kind: TransformKind,
     },
+    HlsBootstrap {
+        post: PostId,
+        stage: ghostr_engine::adaptive::HlsBootstrapStage,
+        source: String,
+        maximum_bytes: u64,
+        committed_until_ms: u64,
+    },
     Unsupported {
         class: &'static str,
     },
@@ -136,6 +143,22 @@ fn work_directive(command: &PlannerCommand, selected: &[PlannedTransfer]) -> War
             kind: *kind,
         };
     }
+    if let PlannerCommand::FetchHlsBootstrap {
+        post,
+        stage,
+        source,
+        maximum_bytes,
+        committed_until_ms,
+    } = command
+    {
+        return WarpDirective::HlsBootstrap {
+            post: post.clone(),
+            stage: *stage,
+            source: source.clone(),
+            maximum_bytes: *maximum_bytes,
+            committed_until_ms: *committed_until_ms,
+        };
+    }
     unsupported(command)
 }
 
@@ -146,6 +169,7 @@ fn unsupported(command: &PlannerCommand) -> WarpDirective {
         | PlannerCommand::Hedge { .. }
         | PlannerCommand::Promote { .. }
         | PlannerCommand::Transform { .. }
+        | PlannerCommand::FetchHlsBootstrap { .. }
         | PlannerCommand::Transfer(_) => {
             unreachable!("probe, cancel, and transfer commands are handled above")
         }

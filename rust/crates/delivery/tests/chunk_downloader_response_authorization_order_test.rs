@@ -39,6 +39,7 @@ async fn response_semantics_are_authorized_before_store_admission() {
             cancel: &token,
             network: &network,
             traffic: &mut traffic,
+            network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
         },
     )
     .await

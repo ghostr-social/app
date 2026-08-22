@@ -1,3 +1,5 @@
+#[path = "decision_record_actual_resource_test.rs"]
+mod actual_resource_test;
 #[path = "decision_record_warp_executed_request_tests.rs"]
 mod executed_request_tests;
 #[path = "decision_record_warp_fresh_search_mismatch_test.rs"]
@@ -6,6 +8,8 @@ mod fresh_search_mismatch_test;
 mod fresh_search_privacy_test;
 #[path = "decision_record_warp_fresh_search_support.rs"]
 mod fresh_search_support;
+#[path = "decision_record_warp_hls_test.rs"]
+mod hls_test;
 #[path = "decision_record_warp_incomplete_replay_test.rs"]
 mod incomplete_replay_test;
 #[path = "decision_record_warp_planner_replay_tests.rs"]
@@ -33,7 +37,7 @@ use crate::adaptive::{
 use crate::PostId;
 
 #[test]
-fn schema_two_records_the_authoritative_warp_selection_and_noop() {
+fn schema_three_records_the_authoritative_warp_selection_and_noop() {
     let source = "https://private.example/media.mp4?cap=raw";
     let selected = decision(
         "secret-post",
@@ -58,7 +62,7 @@ fn assert_selected(captured: &DecisionRecord) {
         .as_ref()
         .unwrap();
 
-    assert_eq!(captured.schema_version, 2);
+    assert_eq!(captured.schema_version, 3);
     assert_eq!(action.planner_action_id, 7);
     assert!(matches!(
         action.command,

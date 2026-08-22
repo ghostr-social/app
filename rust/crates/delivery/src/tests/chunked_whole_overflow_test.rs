@@ -39,6 +39,7 @@ async fn chunked_whole_above_its_cap_rolls_back_without_harming_seed() {
             cancel: &cancel,
             network: &network,
             traffic: &mut traffic,
+            network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
         },
     )
     .await

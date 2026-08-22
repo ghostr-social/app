@@ -5,6 +5,7 @@ use crate::chunk::sink::ChunkWrite;
 use ghostr_engine::host_stats::HostStats;
 use tokio::time::Instant;
 
+mod early;
 mod timing;
 use timing::{is_admission_timeout, unix_time_ms};
 
@@ -14,7 +15,7 @@ pub(crate) struct ObservedChunk {
     pub request_started: bool,
 }
 
-struct CapturedTransfer {
+pub(super) struct CapturedTransfer {
     result: anyhow::Result<ChunkResult>,
     measured: TrafficMeasurements,
     started: Instant,
@@ -25,13 +26,14 @@ pub async fn download<W: ChunkWrite + ?Sized>(
     execution: ChunkExecution<'_, W>,
 ) -> ObservedChunk {
     let started = Instant::now();
+    let network_class = execution.network_class;
     if spec.request.requested_bytes().is_empty() {
-        return invalid(spec, execution.stats, started);
+        return early::invalid(spec, execution.stats, started, network_class);
     }
     let permit = match prepare_network(Some(execution.network), spec.url, execution.cancel).await {
         NetworkPreparation::Ready(permit) => permit,
         NetworkPreparation::Cancelled => {
-            return cancelled(spec, execution.stats, started);
+            return early::cancelled(spec, execution.stats, started, network_class);
         }
     };
     let captured = run_transfer(spec, execution, started).await;
@@ -44,8 +46,9 @@ async fn run_transfer<W: ChunkWrite + ?Sized>(
     execution: ChunkExecution<'_, W>,
     started: Instant,
 ) -> ObservedChunk {
+    let network_class = execution.network_class;
     let (sink, stats, cancel, network, traffic) = execution_parts(execution);
-    let mut measured = MeasuredTraffic::new(traffic);
+    let mut measured = MeasuredTraffic::new(traffic, network_class);
     let result = transfer::run(
         spec,
         transfer::TransferExecution {
@@ -113,41 +116,6 @@ fn execution_parts<W: ChunkWrite + ?Sized>(
     )
 }
 
-fn invalid(spec: &ChunkSpec<'_>, stats: &mut HostStats, started: Instant) -> ObservedChunk {
-    early_result(
-        spec,
-        stats,
-        started,
-        Err(anyhow::anyhow!("retrieval grant must not be empty")),
-    )
-}
-
-fn cancelled(spec: &ChunkSpec<'_>, stats: &mut HostStats, started: Instant) -> ObservedChunk {
-    early_result(
-        spec,
-        stats,
-        started,
-        Ok(outcome::cancelled_before_request()),
-    )
-}
-
-fn early_result(
-    spec: &ChunkSpec<'_>,
-    stats: &mut HostStats,
-    started: Instant,
-    result: anyhow::Result<ChunkResult>,
-) -> ObservedChunk {
-    finish(
-        spec,
-        stats,
-        CapturedTransfer {
-            result,
-            measured: TrafficMeasurements::default(),
-            started,
-        },
-    )
-}
-
 fn record_legacy(
     stats: &mut HostStats,
     url: &str,
@@ -164,7 +132,7 @@ fn record_legacy(
     }
 }
 
-fn finish(
+pub(super) fn finish(
     spec: &ChunkSpec<'_>,
     stats: &mut HostStats,
     captured: CapturedTransfer,
@@ -180,6 +148,7 @@ fn finish(
             .origin_elapsed()
             .unwrap_or_else(|| started.elapsed()),
         concurrency: measured.concurrency(),
+        network_class: measured.network_class(),
     };
     let origin = (!result.as_ref().err().is_some_and(is_admission_timeout)).then(|| {
         let item = telemetry::observation(spec, &result, measured, timing);

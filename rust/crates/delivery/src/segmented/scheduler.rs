@@ -1,25 +1,37 @@
-use super::{prepare_hls, SegmentedCache, SegmentedPhase};
-use crate::delivery_events::DeliveryFocus;
-use crate::manager::transfers::{InternalEvent, SegmentedDone};
-use ghostr_engine::{DeliveryKind, PostId};
+use super::fetch::{FetchFailure, FetchedObject};
+use super::{SegmentedCache, SegmentedPhase};
+use crate::delivery_events::{DeliveryFocus, FocusItem};
+use crate::manager::traffic::TrafficPublisher;
+use crate::manager::transfers::InternalEvent;
+use ghostr_engine::adaptive::HlsBootstrapStage;
+use ghostr_engine::origin_model::OriginObservation;
+use ghostr_engine::{ActionId, DeliveryKind, PostId};
+use ghostr_net::media_request_executor::MediaRequestExecutor;
 use std::collections::{HashMap, HashSet};
+use tokio::sync::mpsc::UnboundedSender;
 
 #[cfg(test)]
-#[path = "scheduler/priority_test.rs"]
-mod priority_test;
-#[cfg(test)]
-mod tests;
+#[path = "scheduler/test_registry.rs"]
+mod test_registry;
+
+mod completion;
+mod launch;
+mod progress;
+mod resources;
+mod snapshot;
+mod target;
+
+use progress::Pending;
+pub(crate) use resources::SegmentedResourceCommitment;
+use target::{targets, Target};
 
 const MAX_HLS_READY_WINDOW: usize = 5;
-
-mod target;
-pub(crate) use target::ReconcileInput;
-use target::{targets, Target};
 
 pub(crate) struct SegmentedDelivery {
     cache: SegmentedCache,
     tracked: Vec<(PostId, Vec<String>)>,
     targets: Vec<Target>,
+    pending: HashMap<PostId, Pending>,
     active: HashMap<PostId, Active>,
     next_generation: u64,
     current_delivery: Option<DeliveryKind>,
@@ -27,8 +39,43 @@ pub(crate) struct SegmentedDelivery {
 }
 
 struct Active {
+    action: ActionId,
+    pending: Pending,
+    committed_until_ms: u64,
+    _task: tokio::task::JoinHandle<()>,
+    cancellation: Option<tokio::sync::oneshot::Sender<()>>,
+    cancelling: bool,
+}
+
+pub(crate) struct SegmentedLaunch {
+    pub post: PostId,
+    pub stage: HlsBootstrapStage,
+    pub source: String,
+    pub maximum_bytes: u64,
+    pub committed_until_ms: u64,
+    pub action: ActionId,
+    pub requests: MediaRequestExecutor,
+    pub events: UnboundedSender<InternalEvent>,
+    pub network_status: crate::delivery_events::DeliveryNetworkStatusReader,
+    pub traffic: TrafficPublisher,
+    pub resources: SegmentedResourceCommitment,
+}
+
+pub(crate) struct SegmentedDone {
+    action: ActionId,
+    post: PostId,
     generation: u64,
-    task: tokio::task::JoinHandle<()>,
+    outcome: Result<FetchedObject, FetchFailure>,
+    observed_at_ms: u64,
+    resources: SegmentedResourceCommitment,
+}
+
+pub(crate) struct SegmentedFinish {
+    pub action: ActionId,
+    pub outcome: ghostr_engine::adaptive::DecisionOutcome,
+    pub observation: Option<OriginObservation>,
+    pub actual_resources: Option<ghostr_engine::adaptive::ResourceCost>,
+    pub resources: SegmentedResourceCommitment,
 }
 
 impl SegmentedDelivery {
@@ -37,6 +84,7 @@ impl SegmentedDelivery {
             cache,
             tracked: Vec::new(),
             targets: Vec::new(),
+            pending: HashMap::new(),
             active: HashMap::new(),
             next_generation: 0,
             current_delivery: None,
@@ -44,61 +92,25 @@ impl SegmentedDelivery {
         }
     }
 
-    pub fn apply_focus(&mut self, focus: &DeliveryFocus) {
+    pub fn apply_focus(&mut self, focus: &DeliveryFocus) -> bool {
         let current = focus.current_index.min(focus.items.len().saturating_sub(1));
         let tracked = hls_items(&focus.items);
         let targets = targets(&focus.items, current, MAX_HLS_READY_WINDOW + 1);
         let current_delivery = focus.items.get(current).map(|item| item.meta.delivery);
         if self.equivalent(&tracked, &targets, current_delivery) {
-            return;
+            return false;
         }
         let generation = self.generation(focus);
-        self.abort_all();
-        self.cache.replace_focus(generation, tracked.clone());
+        self.cancel_all();
+        let protected = targets.iter().map(|target| target.post.clone()).collect();
+        self.cache
+            .replace_focus_window(generation, tracked.clone(), &protected);
         self.tracked = tracked;
         self.targets = targets;
         self.current_delivery = current_delivery;
-    }
-
-    pub fn reconcile(&mut self, input: ReconcileInput) {
-        let capacity = self.available_capacity(&input);
-        let available = capacity.saturating_sub(self.active.len());
-        let targets: Vec<_> = self
-            .targets
-            .iter()
-            .filter(|target| self.is_startable(target))
-            .take(available)
-            .cloned()
-            .collect();
-        let generation = self.next_generation;
-        for target in targets {
-            self.start(target, generation, &input);
-        }
-    }
-
-    fn available_capacity(&self, input: &ReconcileInput) -> usize {
-        let reserve = usize::from(
-            self.current_delivery == Some(DeliveryKind::Progressive)
-                && input.progressive_active == 0,
-        );
-        input
-            .connection_limit
-            .saturating_sub(input.progressive_active)
-            .saturating_sub(reserve)
-    }
-
-    fn is_startable(&self, target: &Target) -> bool {
-        !self.active.contains_key(&target.post) && self.should_start(&target.post)
-    }
-
-    pub fn finish(&mut self, done: SegmentedDone) {
-        let current = self
-            .active
-            .get(&done.post)
-            .is_some_and(|active| active.generation == done.generation);
-        if current {
-            self.active.remove(&done.post);
-        }
+        self.pending.clear();
+        self.seed_pending(generation);
+        true
     }
 
     pub fn active_len(&self) -> usize {
@@ -110,11 +122,32 @@ impl SegmentedDelivery {
     }
 
     pub fn clear(&mut self) {
-        self.abort_all();
+        self.cancel_all();
         self.tracked.clear();
         self.targets.clear();
+        self.pending.clear();
         self.current_delivery = None;
         self.cache.clear();
+    }
+
+    fn seed_pending(&mut self, generation: u64) {
+        for target in &self.targets {
+            if self.cache.snapshot(target.post.as_str()).phase == SegmentedPhase::Ready {
+                continue;
+            }
+            let Some(source) = target.sources.first() else {
+                self.cache.mark_stage_failed(
+                    &target.post,
+                    generation,
+                    "HLS item has no source".to_owned(),
+                );
+                continue;
+            };
+            self.pending.insert(
+                target.post.clone(),
+                Pending::root(generation, 0, source.clone()),
+            );
+        }
     }
 
     fn equivalent(
@@ -136,44 +169,19 @@ impl SegmentedDelivery {
         self.next_generation
     }
 
-    fn should_start(&self, post: &PostId) -> bool {
-        matches!(
-            self.cache.snapshot(post.as_str()).phase,
-            SegmentedPhase::Queued
-        )
-    }
-
-    fn start(&mut self, target: Target, generation: u64, input: &ReconcileInput) {
-        if !self
-            .cache
-            .mark_preparing(&target.post, generation, self.startup_eta_ms)
-        {
-            return;
-        }
-        let cache = self.cache.clone();
-        let post = target.post.clone();
-        let task_post = post.clone();
-        let requests = input.requests.clone();
-        let events = input.events.clone();
-        let task = tokio::spawn(async move {
-            let result = prepare_hls(&requests, &target.sources, target.priority).await;
-            cache.complete(&task_post, generation, result);
-            let _ = events.send(InternalEvent::Segmented(SegmentedDone {
-                post: task_post,
-                generation,
-            }));
-        });
-        self.active.insert(post, Active { generation, task });
-    }
-
-    fn abort_all(&mut self) {
-        for (_, active) in self.active.drain() {
-            active.task.abort();
+    fn cancel_all(&mut self) {
+        for active in self.active.values_mut() {
+            if active.cancelling {
+                continue;
+            }
+            if let Some(cancellation) = active.cancellation.take() {
+                active.cancelling = cancellation.send(()).is_ok();
+            }
         }
     }
 }
 
-fn hls_items(items: &[crate::delivery_events::FocusItem]) -> Vec<(PostId, Vec<String>)> {
+fn hls_items(items: &[FocusItem]) -> Vec<(PostId, Vec<String>)> {
     let mut seen = HashSet::new();
     items
         .iter()

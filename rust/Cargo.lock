@@ -780,6 +780,7 @@ dependencies = [
  "ghostr-hls-manifest",
  "ghostr-net",
  "ghostr-partial-store",
+ "libc",
  "log",
  "rand 0.8.7",
  "reqwest",

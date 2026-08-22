@@ -3,7 +3,8 @@ use crate::adaptive::{DecisionRecord, DecisionReplayStatus};
 
 #[test]
 fn legacy_bound_schema_two_shape_round_trips_without_hash_drift() {
-    let record = transfer_record();
+    let mut record = transfer_record();
+    record.emulate_legacy_warp_v2();
     let hash = record
         .replay_warp()
         .unwrap()

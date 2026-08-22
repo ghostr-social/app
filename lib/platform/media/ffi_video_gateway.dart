@@ -1,8 +1,11 @@
 import 'package:ghostr/core/errors/boundary_failure.dart';
+import 'package:ghostr/core/network/delivery_network_status.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
+import 'package:ghostr/platform/media/delivery_network_status_mapper.dart';
 import 'package:ghostr/platform/media/rust_engine_configuration.dart';
 import 'package:ghostr/platform/media/rust_engine_configuration_mapper.dart';
 import 'package:ghostr/src/rust/api/engine_control.dart';
+import 'package:ghostr/src/rust/api/network_control.dart';
 import 'package:ghostr/src/rust/frb_generated.dart';
 
 export 'rust_engine_configuration.dart';
@@ -15,6 +18,7 @@ typedef RustFfiEngineStarter =
       required String cacheDirectory,
       required FfiEngineConfiguration configuration,
       required String? deviceIntegrationOrigin,
+      required FfiDeliveryNetworkStatus initialNetwork,
     });
 
 /// Boots the Rust media engine with the FULL inventory budget — the
@@ -33,6 +37,7 @@ class FfiVideoGateway {
     AppSettings settings,
     String cacheDirectory, {
     Uri? deviceIntegrationOrigin,
+    DeliveryNetworkStatus initialNetwork = DeliveryNetworkStatus.unavailable,
   }) async {
     try {
       await _initialize();
@@ -40,6 +45,7 @@ class FfiVideoGateway {
         settings,
         cacheDirectory,
         deviceIntegrationOrigin,
+        initialNetwork,
       );
       return _endpointResult(endpoint);
     } on Object catch (error, stackTrace) {
@@ -57,11 +63,13 @@ class FfiVideoGateway {
     AppSettings settings,
     String cacheDirectory,
     Uri? deviceIntegrationOrigin,
+    DeliveryNetworkStatus initialNetwork,
   ) {
     final configuration = RustEngineStartConfiguration(
       cacheDirectory,
       RustEngineConfiguration.fromSettings(settings),
       deviceIntegrationOrigin: deviceIntegrationOrigin?.origin,
+      initialNetwork: initialNetwork,
     );
     return _startEngine(configuration);
   }
@@ -85,6 +93,7 @@ Future<String> startRustEngine(
     cacheDirectory: configuration.cacheDirectory,
     configuration: ffiEngineConfiguration(configuration.engine),
     deviceIntegrationOrigin: configuration.deviceIntegrationOrigin,
+    initialNetwork: ffiDeliveryNetworkStatus(configuration.initialNetwork),
   );
 }
 

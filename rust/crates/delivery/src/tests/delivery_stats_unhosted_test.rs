@@ -45,6 +45,7 @@ async fn unhosted_outcomes_do_not_dirty_or_persist_host_stats() {
             ttfb: Duration::from_millis(1),
         }),
         concurrency: 1,
+        network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
     });
 
     keeper.save_now().await;

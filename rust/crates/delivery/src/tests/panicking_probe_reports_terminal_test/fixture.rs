@@ -68,6 +68,9 @@ pub(super) fn context() -> (TransferContext, PathBuf) {
         timeouts: TransferTimeouts::default(),
         network: NetworkThrottle::new(),
         traffic,
+        network_status: crate::delivery_events::DeliveryNetworkStatusReader::new(
+            crate::delivery_events::DeliveryNetworkStatus::unavailable(),
+        ),
     };
     (context, root)
 }

@@ -1,52 +1,10 @@
-use super::{
-    CacheState, CachedHlsObject, FocusRecord, SegmentedPhase, SegmentedSnapshot, MAX_CACHE_BYTES,
-};
-use crate::segmented::PreparedHls;
+use super::{CacheState, CachedHlsObject, SegmentedPhase, SegmentedSnapshot};
+use std::collections::HashSet;
 
-pub(super) struct CacheCommit {
-    pub snapshot: SegmentedSnapshot,
-    pub objects: Vec<String>,
-}
-
-pub(super) fn commit(state: &mut CacheState, prepared: PreparedHls) -> CacheCommit {
-    let bytes_present = prepared.bytes_present();
-    let objects = prepared
-        .objects
-        .iter()
-        .map(|object| object.request_url.clone())
-        .collect();
-    for object in prepared.objects {
-        let cached = CachedHlsObject::new(object.body, object.final_url, object.content_type);
-        insert(state, object.request_url, cached);
-    }
-    CacheCommit {
-        snapshot: SegmentedSnapshot {
-            phase: SegmentedPhase::Ready,
-            bytes_present,
-            eta_ms: Some(0),
-            detail: None,
-        },
-        objects,
-    }
-}
-
-pub(super) fn failed(detail: String) -> CacheCommit {
-    CacheCommit {
-        snapshot: SegmentedSnapshot {
-            phase: SegmentedPhase::Failed,
-            bytes_present: 0,
-            eta_ms: None,
-            detail: Some(detail),
-        },
-        objects: Vec::new(),
-    }
-}
-
-fn insert(state: &mut CacheState, key: String, object: CachedHlsObject) {
+pub(super) fn insert(state: &mut CacheState, key: String, object: CachedHlsObject) {
     if let Some(replaced) = state.objects.remove(&key) {
         state.bytes = state.bytes.saturating_sub(replaced.body.len());
     }
-    make_room(state, object.body.len());
     state.aliases.retain(|_, canonical| canonical != &key);
     state
         .aliases
@@ -57,24 +15,50 @@ fn insert(state: &mut CacheState, key: String, object: CachedHlsObject) {
     state.objects.insert(key, object);
 }
 
-fn make_room(state: &mut CacheState, incoming: usize) {
-    while state.bytes.saturating_add(incoming) > MAX_CACHE_BYTES {
-        let Some(oldest) = state.order.pop_front() else {
-            break;
-        };
-        if let Some(removed) = state.objects.remove(&oldest) {
-            state.bytes = state.bytes.saturating_sub(removed.body.len());
-            state.aliases.retain(|_, canonical| canonical != &oldest);
-            invalidate(state.focus.values_mut(), &oldest);
-        }
-    }
+pub(super) fn reclaimable_ready_bytes(state: &CacheState) -> u64 {
+    let protected = referenced_keys(state, true);
+    referenced_keys(state, false)
+        .difference(&protected)
+        .filter_map(|key| state.objects.get(key))
+        .map(|object| object.body.len() as u64)
+        .sum()
 }
 
-fn invalidate<'a>(records: impl Iterator<Item = &'a mut FocusRecord>, evicted: &str) {
-    for record in records {
-        if record.objects.iter().any(|key| key == evicted) {
-            record.snapshot = SegmentedSnapshot::default();
-            record.objects.clear();
-        }
+pub(super) fn reclaim_unprotected_ready(state: &mut CacheState) {
+    for record in state
+        .focus
+        .values_mut()
+        .filter(|record| !record.protected && reclaimable(record))
+    {
+        record.snapshot = SegmentedSnapshot::default();
+        record.objects.clear();
     }
+    retain_referenced(state);
+}
+
+pub(super) fn retain_referenced(state: &mut CacheState) {
+    let retained = state
+        .focus
+        .values()
+        .flat_map(|record| record.objects.iter().cloned())
+        .collect::<HashSet<_>>();
+    state.objects.retain(|key, _| retained.contains(key));
+    state.aliases.retain(|_, key| retained.contains(key));
+    state.order.retain(|key| retained.contains(key));
+    state.bytes = state.objects.values().map(|object| object.body.len()).sum();
+}
+
+fn referenced_keys(state: &CacheState, protected: bool) -> HashSet<String> {
+    state
+        .focus
+        .values()
+        .filter(|record| record.protected == protected && reclaimable(record))
+        .flat_map(|record| record.objects.iter().cloned())
+        .collect()
+}
+
+fn reclaimable(record: &super::FocusRecord) -> bool {
+    record.snapshot.phase == SegmentedPhase::Ready
+        && record.staged.is_empty()
+        && record.reserved_bytes == 0
 }

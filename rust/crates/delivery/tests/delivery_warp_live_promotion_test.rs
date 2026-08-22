@@ -38,7 +38,7 @@ async fn selected_promotion_authorizes_the_exact_live_request_before_headers() {
         .into_iter()
         .find(promotion_record)
         .expect("resolved promotion decision");
-    assert_eq!(record.schema_version, 2);
+    assert_eq!(record.schema_version, 3);
     let selected = record.warp_decision.unwrap().selected.unwrap();
     assert_eq!(selected.resources.network_bytes, 12);
     assert_eq!(selected.resources.storage_bytes, 12);

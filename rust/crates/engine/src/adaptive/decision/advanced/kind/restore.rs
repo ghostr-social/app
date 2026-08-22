@@ -9,7 +9,9 @@ impl RecordedWarpActionKind {
             Self::Prefix { .. } | Self::Tail { .. } | Self::FetchRange { .. } => {
                 restore_range(self)
             }
-            Self::FetchWhole { .. } | Self::CacheUpgrade { .. } => Some(restore_stored(self)),
+            Self::FetchWhole { .. } | Self::HlsBootstrap { .. } | Self::CacheUpgrade { .. } => {
+                Some(restore_stored(self))
+            }
             Self::Promote { .. }
             | Self::Transform { .. }
             | Self::Hedge { .. }
@@ -49,6 +51,13 @@ fn restored_range_kind(value: &RecordedWarpActionKind, bytes: ByteRange) -> Acti
 fn restore_stored(value: &RecordedWarpActionKind) -> ActionKind {
     match value {
         RecordedWarpActionKind::FetchWhole { maximum_bytes } => ActionKind::FetchWhole {
+            maximum_bytes: *maximum_bytes,
+        },
+        RecordedWarpActionKind::HlsBootstrap {
+            stage,
+            maximum_bytes,
+        } => ActionKind::HlsBootstrap {
+            stage: (*stage).into(),
             maximum_bytes: *maximum_bytes,
         },
         RecordedWarpActionKind::CacheUpgrade {

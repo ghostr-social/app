@@ -15,6 +15,7 @@ async fn completed_head_probe_updates_the_head_context_only() {
         post: ghostr_engine::PostId::new("clip"),
         url: url.clone(),
         concurrency: 3,
+        network_class: NetworkClass::Wifi,
         outcome: Ok(ProbeResult {
             content_length: Some(900_000),
             accept_ranges: Some(true),
@@ -27,7 +28,7 @@ async fn completed_head_probe_updates_the_head_context_only() {
     let query = OriginQuery::new(
         url.clone(),
         OriginContext::new(RequestMethod::Head, 900_000, MediaClass::Unknown)
-            .with_network(NetworkClass::Unavailable)
+            .with_network(NetworkClass::Wifi)
             .with_concurrency(3)
             .with_observed_at_ms(now),
     );
@@ -44,7 +45,7 @@ async fn completed_head_probe_updates_the_head_context_only() {
     let range_query = OriginQuery::new(
         url,
         OriginContext::new(RequestMethod::RangeGet, 900_000, MediaClass::Unknown)
-            .with_network(NetworkClass::Unavailable)
+            .with_network(NetworkClass::Wifi)
             .with_concurrency(3)
             .with_observed_at_ms(now),
     );

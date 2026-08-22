@@ -1,9 +1,11 @@
 use super::super::request_occupancy::RequestOccupancy;
+use super::super::SegmentedStorageBudget;
 use crate::adaptive::ActionNode;
 use crate::RequestAuthority;
 use std::collections::BTreeMap;
 
 mod reservation;
+mod segmented_storage;
 
 #[cfg(test)]
 #[path = "hard/tests/mod.rs"]
@@ -42,6 +44,7 @@ pub struct HardBudget {
     per_origin_requests: usize,
     origins: BTreeMap<RequestAuthority, usize>,
     pending_rescue: Vec<ActionNode>,
+    segmented_storage: Option<SegmentedStorageBudget>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -58,6 +61,7 @@ impl HardBudget {
             per_origin_requests: usize::from(per_origin_requests),
             origins: BTreeMap::new(),
             pending_rescue: Vec::new(),
+            segmented_storage: None,
         }
     }
 
@@ -121,21 +125,39 @@ impl HardBudget {
         &self.pending_rescue
     }
 
+    pub(crate) const fn replay_segmented_storage(&self) -> Option<SegmentedStorageBudget> {
+        self.segmented_storage
+    }
+
     pub(crate) fn from_replay(
-        remaining: ResourceCost,
-        request_width: u16,
-        per_origin_requests: usize,
-        origins: BTreeMap<RequestAuthority, usize>,
-        pending_rescue: Vec<ActionNode>,
+        state: (
+            ResourceCost,
+            u16,
+            usize,
+            BTreeMap<RequestAuthority, usize>,
+            Vec<ActionNode>,
+            Option<SegmentedStorageBudget>,
+        ),
     ) -> Option<Self> {
+        let (remaining, request_width, per_origin_requests, origins, pending_rescue, segmented) =
+            state;
         let budget = Self {
             remaining,
             request_width,
             per_origin_requests,
             origins,
             pending_rescue: Vec::new(),
+            segmented_storage: segmented,
         };
         budget.protect(&pending_rescue)
+    }
+
+    pub(in crate::adaptive::warp) const fn with_segmented_storage(
+        mut self,
+        budget: SegmentedStorageBudget,
+    ) -> Self {
+        self.segmented_storage = Some(budget);
+        self
     }
 
     pub(in crate::adaptive::warp) fn with_occupancy(
