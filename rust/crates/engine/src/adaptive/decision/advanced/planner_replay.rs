@@ -1,6 +1,7 @@
 mod capture;
 mod run;
 
+use crate::adaptive::HlsGenerationPolicy;
 use crate::adaptive::{AllocationPlan, PlannerContext};
 use crate::origin_model::OriginModel;
 use serde::{Deserialize, Serialize};
@@ -24,6 +25,36 @@ pub struct RecordedPlannerReplayCapsule {
     network: Option<RecordedNetworkState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     price_epoch: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    last_feedback: Option<crate::adaptive::ResourceFeedback>,
+    #[serde(default, skip_serializing_if = "is_legacy_hls_generation")]
+    hls_generation_policy: RecordedHlsGenerationPolicy,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum RecordedHlsGenerationPolicy {
+    #[default]
+    LegacyWholeStage,
+    BoundedObjectCursor,
+}
+
+impl From<HlsGenerationPolicy> for RecordedHlsGenerationPolicy {
+    fn from(value: HlsGenerationPolicy) -> Self {
+        match value {
+            HlsGenerationPolicy::LegacyWholeStage => Self::LegacyWholeStage,
+            HlsGenerationPolicy::BoundedObjectCursor => Self::BoundedObjectCursor,
+        }
+    }
+}
+
+impl RecordedHlsGenerationPolicy {
+    const fn restore(self) -> HlsGenerationPolicy {
+        match self {
+            Self::LegacyWholeStage => HlsGenerationPolicy::LegacyWholeStage,
+            Self::BoundedObjectCursor => HlsGenerationPolicy::BoundedObjectCursor,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -58,6 +89,10 @@ enum RecordedNetworkState {
 
 const fn is_zero(value: &u64) -> bool {
     *value == 0
+}
+
+fn is_legacy_hls_generation(value: &RecordedHlsGenerationPolicy) -> bool {
+    *value == RecordedHlsGenerationPolicy::LegacyWholeStage
 }
 
 pub(in crate::adaptive::decision) use capture::capture;

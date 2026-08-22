@@ -2,8 +2,10 @@ use super::PlanningStoreState;
 use crate::manager::concurrency::RequestConcurrencyLimits;
 use crate::manager::inflight::ActiveAction;
 use crate::manager::plan::{planned_work_with_planner, PlanInputs, PlannedWork};
+use crate::manager::resource_control::ResourceEnvironment;
 use crate::manager::DeliveryWorker;
-use ghostr_engine::adaptive::StorageSnapshot;
+use ghostr_engine::adaptive::{ResourceObservation, ShadowPriceController, StorageSnapshot};
+use ghostr_engine::host_stats::OPTIMISTIC_THROUGHPUT_BPS;
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::{ByteRange, PostId};
 use ghostr_partial_store::partial_range_store::capacity::CapacitySnapshot;
@@ -20,6 +22,8 @@ pub(super) struct PlanningCycle {
     hls_candidates: Vec<ghostr_engine::adaptive::HlsCandidateSnapshot>,
     active_hls_sources: Vec<String>,
     segmented_storage_available_bytes: u64,
+    segmented_storage_used_bytes: u64,
+    segmented_storage_capacity_bytes: u64,
     demanded: HashMap<PostId, ByteRange>,
 }
 
@@ -50,6 +54,8 @@ impl DeliveryWorker {
         let navigation = self.state.navigation(observed_at_ms);
         let hls_candidates = self.segmented.planning_candidates(navigation);
         let segmented_storage_available_bytes = self.segmented.available_bytes();
+        let segmented_storage_used_bytes = self.segmented.used_bytes();
+        let segmented_storage_capacity_bytes = self.segmented.capacity_bytes();
         let active_hls_sources = self
             .segmented
             .active_sources()
@@ -68,11 +74,14 @@ impl DeliveryWorker {
             hls_candidates,
             active_hls_sources,
             segmented_storage_available_bytes,
+            segmented_storage_used_bytes,
+            segmented_storage_capacity_bytes,
             demanded,
         }
     }
 
     pub(super) fn plan_cycle(&mut self, cycle: &PlanningCycle) -> PlannedWork {
+        let environment = self.resource_environment(cycle);
         let inputs = PlanInputs {
             stats: self.keeper.stats(),
             retry: &self.retry,
@@ -93,13 +102,11 @@ impl DeliveryWorker {
                 cycle.capacity.used_bytes(),
             ),
             connection_capacity: self.concurrency_limit().max(1),
+            hls_demand_expansion_allowed: self.concurrency.demand_expansion_allowed(),
             connection_ceiling: cycle.limits.global(),
             per_authority_request_limit: cycle.limits.per_authority(),
             packet_loss_bps: self.ctx.network.profile().packet_loss_bps,
-            measured_network_bytes_per_second: self
-                .keeper
-                .network_load_bytes_per_second(cycle.observed_at_ms),
-            measured_transform_cpu_ms: self.transforms.take_cpu_sample_ms(),
+            resource_feedback: Some(self.resources.feedback(environment)),
             capacity_revision: cycle.capacity.revision().value(),
             observed_at_ms: cycle.observed_at_ms,
             demanded: &cycle.demanded,
@@ -110,6 +117,51 @@ impl DeliveryWorker {
             &mut self.warp_planner,
             self.qoe.watch_model(),
         )
+    }
+
+    fn resource_environment(&self, cycle: &PlanningCycle) -> ResourceEnvironment {
+        let used = cycle
+            .capacity
+            .used_bytes()
+            .saturating_add(cycle.segmented_storage_used_bytes);
+        let limit = cycle
+            .capacity
+            .limit_bytes()
+            .saturating_add(cycle.segmented_storage_capacity_bytes);
+        let target = ResourceObservation::new(
+            self.resource_network_target(),
+            limit.saturating_mul(9) / 10,
+            self.resource_cpu_target(),
+            cycle.limits.global().max(1) as u64,
+        );
+        ResourceEnvironment::new(used, target)
+    }
+
+    fn resource_network_target(&self) -> u64 {
+        let learned = self
+            .keeper
+            .stats()
+            .overall_throughput()
+            .map_or(OPTIMISTIC_THROUGHPUT_BPS as u64, |value| {
+                value.bytes_per_second().min(u64::MAX as f64) as u64
+            });
+        let configured = self
+            .ctx
+            .network
+            .profile()
+            .bandwidth_kbps
+            .saturating_mul(125);
+        match configured {
+            0 => learned.max(1),
+            value => learned.min(value).max(1),
+        }
+    }
+
+    fn resource_cpu_target(&self) -> u64 {
+        self.state.transform_profile().map_or(0, |profile| {
+            let hard = profile.limits().cpu_ms().min(500);
+            ShadowPriceController::cpu_operating_target_ms(hard)
+        })
     }
 
     pub(super) fn finish_reconcile(&mut self) {

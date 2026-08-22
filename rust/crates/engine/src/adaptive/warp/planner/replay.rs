@@ -1,6 +1,7 @@
 use super::{WarpPlanner, WarpPlannerConfig, WarpPlannerInput, WarpPlanningDecision};
 use crate::adaptive::{
-    AllocationPlan, NetworkTokenBucket, PlannerContext, ResourcePrices, ShadowPriceController,
+    AllocationPlan, HlsGenerationPolicy, NetworkTokenBucket, PlannerContext, ResourcePrices,
+    ShadowPriceController,
 };
 use crate::origin_model::OriginModel;
 
@@ -14,11 +15,17 @@ pub(crate) struct PlannerReplayCapsule {
     controller_prices: ResourcePrices,
     network: Option<NetworkTokenBucket>,
     price_epoch: u64,
+    last_feedback: Option<crate::adaptive::ResourceFeedback>,
+    hls_generation_policy: HlsGenerationPolicy,
     sources: Vec<String>,
 }
 
 impl PlannerReplayCapsule {
-    pub(super) fn capture(input: &WarpPlannerInput<'_>, planner: &WarpPlanner) -> Self {
+    pub(super) fn capture(
+        input: &WarpPlannerInput<'_>,
+        planner: &WarpPlanner,
+        hls_generation_policy: HlsGenerationPolicy,
+    ) -> Self {
         Self {
             complete: true,
             base: input.base.clone(),
@@ -28,6 +35,8 @@ impl PlannerReplayCapsule {
             controller_prices: planner.prices.prices(),
             network: planner.network.clone(),
             price_epoch: planner.price_epoch,
+            last_feedback: planner.last_feedback,
+            hls_generation_policy,
             sources: sources(input),
         }
     }
@@ -42,13 +51,12 @@ impl PlannerReplayCapsule {
             prices: ShadowPriceController::from_prices(self.controller_prices),
             network: self.network.clone(),
             price_epoch: self.price_epoch,
+            last_feedback: self.last_feedback,
         };
-        planner.plan(WarpPlannerInput::new(
-            snapshot,
-            &self.base,
-            &self.origins,
-            &self.context,
-        ))
+        planner.plan_with_hls_policy(
+            WarpPlannerInput::new(snapshot, &self.base, &self.origins, &self.context),
+            self.hls_generation_policy,
+        )
     }
 
     pub(crate) const fn complete(&self) -> bool {
@@ -81,6 +89,14 @@ impl PlannerReplayCapsule {
 
     pub(crate) const fn price_epoch(&self) -> u64 {
         self.price_epoch
+    }
+
+    pub(crate) const fn last_feedback(&self) -> Option<crate::adaptive::ResourceFeedback> {
+        self.last_feedback
+    }
+
+    pub(crate) const fn hls_generation_policy(&self) -> HlsGenerationPolicy {
+        self.hls_generation_policy
     }
 
     pub(crate) fn sources(&self) -> &[String] {
@@ -143,6 +159,8 @@ impl PlannerReplayCapsule {
             controller_prices: state.controller_prices,
             network: state.network,
             price_epoch: state.price_epoch,
+            last_feedback: state.last_feedback,
+            hls_generation_policy: state.hls_generation_policy,
             sources,
         }
     }
@@ -153,6 +171,18 @@ pub(crate) struct PlannerReplayState {
     pub controller_prices: ResourcePrices,
     pub network: Option<NetworkTokenBucket>,
     pub price_epoch: u64,
+    pub last_feedback: Option<crate::adaptive::ResourceFeedback>,
+    pub hls_generation_policy: HlsGenerationPolicy,
+}
+
+#[cfg(test)]
+impl WarpPlanner {
+    pub(crate) fn plan_legacy_hls_for_test(
+        &mut self,
+        input: WarpPlannerInput<'_>,
+    ) -> WarpPlanningDecision {
+        self.plan_with_hls_policy(input, HlsGenerationPolicy::LegacyWholeStage)
+    }
 }
 
 fn sources(input: &WarpPlannerInput<'_>) -> Vec<String> {

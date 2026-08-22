@@ -13,6 +13,7 @@ fn current_shift_reclaims_only_unprotected_ready_bootstrap_under_pressure() {
     let cache = SegmentedCache::new();
     let mut delivery = SegmentedDelivery::new(cache.clone());
     delivery.apply_focus(&focus(1, 0));
+    delivery.pending.clear();
     store(&cache, "first", 1, &[MIB, MIB, 8 * MIB, 8 * MIB]);
     assert!(cache.mark_stage_ready(&PostId::new("first"), 1));
     store(&cache, "second", 1, &[MIB, MIB, 8 * MIB]);
@@ -44,12 +45,18 @@ pub(super) fn store(cache: &SegmentedCache, post: &str, generation: u64, sizes: 
 }
 
 fn object(post: &str, index: usize, bytes: usize) -> PreparedObject {
-    let url = format!("https://{post}.example/{index}");
+    let name = if index == 0 {
+        "root.m3u8".to_owned()
+    } else {
+        index.to_string()
+    };
+    let url = format!("https://{post}.example/{name}");
     PreparedObject {
         request_url: url.clone(),
         final_url: url.parse().unwrap(),
         body: Arc::from(vec![0; bytes]),
         content_type: None,
+        cache: Default::default(),
     }
 }
 

@@ -5,7 +5,8 @@ use anyhow::{bail, Result};
 use axum::body::Body;
 use axum::extract::{Path, State};
 use axum::http::header::{ACCEPT_ENCODING, CONTENT_LENGTH, CONTENT_TYPE};
-use axum::http::{HeaderMap, Response, StatusCode};
+use axum::http::{Response, StatusCode};
+use ghostr_delivery::segmented::{CachedHlsGeneration, CachedHlsObject};
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_hls_manifest::hls_manifest::HlsResourceKind;
 use ghostr_hls_manifest::hls_manifest::MAX_HLS_MANIFEST_BYTES;
@@ -20,6 +21,12 @@ mod tests;
 
 const HLS_CONTENT_TYPE: &str = "application/vnd.apple.mpegurl";
 
+#[derive(Clone, Copy)]
+enum CacheUse {
+    Fresh,
+    Existing,
+}
+
 pub(crate) async fn root_manifest(
     State(state): State<Arc<GatewayHttpState>>,
     Path(raw_session): Path<String>,
@@ -31,7 +38,7 @@ pub(crate) async fn root_manifest(
         .await
         .ok_or(StatusCode::NOT_FOUND)?;
     for source in sources {
-        if let Ok(manifest) = fetch_manifest(&state, &session, source).await {
+        if let Ok(manifest) = fetch_manifest(&state, &session, source, CacheUse::Fresh).await {
             return manifest_response(manifest);
         }
     }
@@ -49,7 +56,7 @@ pub(crate) async fn nested_manifest(
         .await
         .filter(|item| item.kind == HlsResourceKind::Manifest)
         .ok_or(StatusCode::NOT_FOUND)?;
-    let manifest = fetch_manifest(&state, &session, resource.url)
+    let manifest = fetch_manifest(&state, &session, resource.url, CacheUse::Existing)
         .await
         .map_err(|_| StatusCode::BAD_GATEWAY)?;
     manifest_response(manifest)
@@ -59,13 +66,12 @@ async fn fetch_manifest(
     state: &GatewayHttpState,
     session: &HlsSessionId,
     source: Url,
+    cache_use: CacheUse,
 ) -> Result<String> {
-    if let Some(object) = state.segmented.object(source.as_str()) {
-        return state
-            .hls_sessions
-            .rewrite_manifest(session, &object.body, &object.final_url)
-            .await;
+    if let Some(manifest) = cached_manifest(state, session, &source, cache_use).await {
+        return manifest;
     }
+    let previous = state.segmented.object(source.as_str());
     let request = state
         .requests
         .get(source.as_str(), PreemptionAuthority::PlaybackCritical)?
@@ -74,34 +80,47 @@ async fn fetch_manifest(
     if transfer.response().status() != StatusCode::OK {
         bail!("full HLS manifest response is not 200");
     }
-    require_hls_mime(transfer.response().headers())?;
     let final_url = transfer.response().url().clone();
     let body = transfer.read_bounded(MAX_HLS_MANIFEST_BYTES).await?;
+    let observed =
+        CachedHlsGeneration::for_response(&final_url, &body, transfer.response().headers());
+    invalidate_changed(state, &source, previous.as_ref(), observed);
     state
         .hls_sessions
         .rewrite_manifest(session, &body, &final_url)
         .await
 }
 
-fn require_hls_mime(headers: &HeaderMap) -> Result<()> {
-    let value = headers
-        .get(CONTENT_TYPE)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.split(';').next())
-        .map(str::trim)
-        .map(str::to_ascii_lowercase);
-    if !matches!(
-        value.as_deref(),
-        Some(
-            "application/vnd.apple.mpegurl"
-                | "application/x-mpegurl"
-                | "audio/mpegurl"
-                | "audio/x-mpegurl"
-        )
-    ) {
-        bail!("upstream response is not an HLS manifest");
-    }
-    Ok(())
+fn invalidate_changed(
+    state: &GatewayHttpState,
+    source: &Url,
+    previous: Option<&CachedHlsObject>,
+    observed: CachedHlsGeneration,
+) {
+    let Some(previous) = previous.filter(|object| object.generation() != observed) else {
+        return;
+    };
+    state
+        .segmented
+        .invalidate_generation(source.as_str(), previous.generation());
+}
+
+async fn cached_manifest(
+    state: &GatewayHttpState,
+    session: &HlsSessionId,
+    source: &Url,
+    cache_use: CacheUse,
+) -> Option<Result<String>> {
+    let object = match cache_use {
+        CacheUse::Fresh => state.segmented.reusable_object(source.as_str()),
+        CacheUse::Existing => state.segmented.object(source.as_str()),
+    }?;
+    Some(
+        state
+            .hls_sessions
+            .rewrite_manifest(session, &object.body, &object.final_url)
+            .await,
+    )
 }
 
 pub(super) fn parsed_resource(

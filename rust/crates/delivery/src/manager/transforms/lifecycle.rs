@@ -39,6 +39,10 @@ impl DeliveryWorker {
         self.transforms.retain(retained);
     }
 
+    pub(crate) fn cancel_transform(&mut self, post: &PostId) {
+        self.transforms.cancel_post(post);
+    }
+
     pub(crate) fn cancel_obsolete_transform(&mut self, binding: &RepresentationBinding) {
         self.transforms.cancel_obsolete(binding);
     }

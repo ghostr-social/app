@@ -52,10 +52,14 @@ fn active(post: &str) -> Active {
 fn pending(post: &str) -> Pending {
     Pending {
         generation: 1,
+        attempt: 1,
+        generation_restarts: 0,
         source_index: 0,
+        root_source: format!("https://{post}.example/root.m3u8"),
         stage: HlsBootstrapStage::Initialization,
         url: format!("https://{post}.example/init.mp4"),
         after_init: Some(format!("https://{post}.example/first.m4s")),
+        continuation: None,
     }
 }
 
@@ -66,6 +70,7 @@ fn object(index: usize, bytes: usize) -> PreparedObject {
         final_url: Url::parse(&url).unwrap(),
         body: Arc::from(vec![0; bytes]),
         content_type: None,
+        cache: Default::default(),
     }
 }
 

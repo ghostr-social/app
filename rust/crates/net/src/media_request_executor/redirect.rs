@@ -107,6 +107,7 @@ impl AdmittedHop {
             return Err(MediaRequestAdmissionTimeout.into());
         }
         let request = ForwardedRequest::capture(&self.request)?;
+        self.lease.record_request();
         let response = self
             .client
             .execute(self.request)
@@ -133,6 +134,8 @@ pub(super) async fn send(
     let mut admission_wait = Duration::ZERO;
     for followed in 0..=MAX_REDIRECTS {
         let result = hop.execute(deadline).await?;
+        crate::response_limits::validate_response_headers(result.response.headers())
+            .context("validate media response headers")?;
         visited.insert(visit_key(result.request.url()));
         let Some(target) = redirect_target(&result.response)? else {
             return Ok(MediaResponse::new(

@@ -16,6 +16,14 @@ impl RetryBook {
         self.cooldowns.begin(post, eligible_at_ms)
     }
 
+    pub(crate) fn cool_down_hls_until(
+        &mut self,
+        post: PostId,
+        eligible_at_ms: u64,
+    ) -> Option<CooldownId> {
+        self.cooldowns.begin_strict(post, eligible_at_ms)
+    }
+
     pub(crate) fn warm_up(&mut self, post: &PostId, cooldown: CooldownId) -> bool {
         self.cooldowns.finish(post, cooldown)
     }
@@ -26,6 +34,10 @@ impl RetryBook {
 
     pub(crate) fn is_cooling(&self, post: &PostId) -> bool {
         self.cooldowns.is_active(post)
+    }
+
+    pub(crate) fn cancel_hls_cooldown(&mut self, post: &PostId) {
+        self.cooldowns.representation_changed(post);
     }
 
     pub(crate) fn cooling_until(&self, post: &PostId) -> Option<u64> {

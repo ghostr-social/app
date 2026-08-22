@@ -4,6 +4,9 @@
 #![allow(dead_code)]
 
 pub mod aba_origin;
+pub mod bounded_hls;
+pub mod bounded_hls_generation;
+pub mod bounded_hls_redirect;
 pub mod concurrency_origin;
 pub mod cooling_plan_origin;
 pub mod decision;
@@ -12,10 +15,12 @@ mod environment;
 pub mod full_disk;
 pub mod gated_failure;
 mod harness;
+mod harness_requests;
 pub mod hedge_tail_assertions;
 pub mod hedge_tail_origin;
 pub mod hedge_tail_stats;
 pub mod hls;
+pub mod hls_recovery;
 pub mod host_hol;
 pub mod items;
 pub mod media;
@@ -51,4 +56,12 @@ pub fn start_harness_with_store(
     options: options::DeliveryOptions,
 ) -> DeliveryHarness {
     harness::start_harness_with_store(store, root, options)
+}
+
+pub fn start_harness_with_requests(
+    prefix: &str,
+    options: options::DeliveryOptions,
+    requests: ghostr_net::media_request_executor::MediaRequestExecutor,
+) -> DeliveryHarness {
+    harness_requests::start_harness_with_requests(prefix, options, requests)
 }

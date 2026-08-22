@@ -1,28 +1,22 @@
 use super::deadline;
-use super::telemetry::{http_reason, FetchProblem};
-use super::{require_manifest_type, FetchRuntime, FetchSpec};
-use anyhow::Context;
+use super::response::{self, ResponseExtent};
+use super::telemetry::FetchProblem;
+use super::{FetchRuntime, FetchSpec};
 use ghostr_engine::origin_model::ErrorReason;
-use ghostr_net::identity_encoding::require_identity_encoding;
-use ghostr_net::media_request_executor::MediaResponse;
-use ghostr_net::response_limits::validate_response_headers;
-use reqwest::header::{HeaderValue, ACCEPT_ENCODING};
-use reqwest::StatusCode;
+use ghostr_net::media_request_executor::{MediaRequest, MediaResponse};
+use reqwest::header::{HeaderValue, ACCEPT_ENCODING, RANGE};
 use tokio::time::Instant;
 
 pub(super) struct OpenedObject {
     pub response: MediaResponse,
+    pub extent: ResponseExtent,
 }
 
 pub(super) async fn open(
     runtime: FetchRuntime<'_>,
     spec: FetchSpec<'_>,
 ) -> Result<OpenedObject, FetchProblem> {
-    let request = runtime
-        .requests
-        .get(spec.url, spec.priority)
-        .map_err(|error| FetchProblem::new(error, ErrorReason::Policy))?
-        .header(ACCEPT_ENCODING, HeaderValue::from_static("identity"));
+    let request = request(runtime, spec)?;
     let admission_deadline = spec
         .admission_fence
         .unwrap_or(runtime.deadline)
@@ -33,7 +27,7 @@ pub(super) async fn open(
     let admitted = tokio::time::timeout_at(admission_deadline, request.admit())
         .await
         .map_err(|error| admission_timeout(error, commitment_limited))?
-        .map_err(|error| FetchProblem::new(error, ErrorReason::Policy))?;
+        .map_err(|error| FetchProblem::neutral(error, ErrorReason::Policy))?;
     if spec
         .admission_fence
         .is_some_and(|fence| Instant::now() >= fence)
@@ -51,42 +45,24 @@ pub(super) async fn open(
         .map_err(|error| timeout(error, timeout_context))?
         .map_err(FetchProblem::transport)?;
     runtime.progress.received(runtime.requests, &response);
-    Ok(OpenedObject {
-        response: validate_open_response(response, spec.require_manifest, spec.limit)?,
-    })
+    let extent = response::validate(&response, spec)?;
+    Ok(OpenedObject { response, extent })
 }
 
-fn validate_open_response(
-    response: MediaResponse,
-    require_manifest: bool,
-    limit: usize,
-) -> Result<MediaResponse, FetchProblem> {
-    validate_response_headers(response.headers())
-        .map_err(|error| FetchProblem::new(error, ErrorReason::InvalidResponse))?;
-    let status = response.status();
-    if status.is_client_error() || status.is_server_error() {
-        let error = anyhow::anyhow!("HLS object request failed with HTTP status {status}");
-        return Err(FetchProblem::new(error, http_reason(status)));
-    }
-    if status != StatusCode::OK {
-        let error = anyhow::anyhow!("full HLS object response is not 200: {status}");
-        return Err(FetchProblem::new(error, ErrorReason::InvalidResponse));
-    }
-    if response
-        .content_length()
-        .is_some_and(|length| length > limit as u64)
-    {
-        let error = anyhow::anyhow!("HLS object declared length exceeds its byte limit");
-        return Err(FetchProblem::new(error, ErrorReason::InvalidResponse));
-    }
-    require_identity_encoding(response.headers())
-        .context("encoded HLS object is not cacheable")
-        .map_err(|error| FetchProblem::new(error, ErrorReason::InvalidResponse))?;
-    if require_manifest {
-        require_manifest_type(&response)
-            .map_err(|error| FetchProblem::new(error, ErrorReason::InvalidResponse))?;
-    }
-    Ok(response)
+fn request(runtime: FetchRuntime<'_>, spec: FetchSpec<'_>) -> Result<MediaRequest, FetchProblem> {
+    let end = spec.request_end();
+    let range = format!("bytes={}-{}", spec.object.offset, end.saturating_sub(1));
+    let request = runtime
+        .requests
+        .get(spec.url, spec.priority)
+        .map_err(|error| FetchProblem::new(error, ErrorReason::Policy))?
+        .header(ACCEPT_ENCODING, HeaderValue::from_static("identity"))
+        .header(RANGE, range.parse().map_err(policy)?);
+    Ok(request)
+}
+
+fn policy(error: reqwest::header::InvalidHeaderValue) -> FetchProblem {
+    FetchProblem::new(anyhow::Error::new(error), ErrorReason::Policy)
 }
 
 fn timeout(error: tokio::time::error::Elapsed, context: &'static str) -> FetchProblem {
@@ -99,12 +75,15 @@ fn timeout(error: tokio::time::error::Elapsed, context: &'static str) -> FetchPr
 fn admission_timeout(error: tokio::time::error::Elapsed, commitment_limited: bool) -> FetchProblem {
     match commitment_limited {
         true => ownership_expired(),
-        false => timeout(error, "HLS object transfer timed out"),
+        false => FetchProblem::neutral(
+            anyhow::Error::new(error).context("HLS request admission timed out"),
+            ErrorReason::Timeout,
+        ),
     }
 }
 
 fn ownership_expired() -> FetchProblem {
-    FetchProblem::new(
+    FetchProblem::neutral(
         anyhow::anyhow!("HLS WARP commitment expired before request admission"),
         ErrorReason::Policy,
     )

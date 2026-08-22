@@ -1,6 +1,7 @@
 use super::super::privacy::DecisionPrivacy;
 use crate::adaptive::{
-    FeedOffset, HlsBootstrapStage, HlsBootstrapState, HlsCandidateSnapshot, ViewProbability,
+    FeedOffset, HlsBootstrapStage, HlsBootstrapState, HlsCandidateSnapshot, HlsObjectCursor,
+    ViewProbability,
 };
 use crate::{ActionId, PostId};
 use serde::{Deserialize, Serialize};
@@ -17,6 +18,8 @@ pub(super) struct HlsCandidateState {
         skip_serializing_if = "is_zero"
     )]
     legacy_segmented_storage_available_bytes: u64,
+    #[serde(default, skip_serializing_if = "HlsObjectCursor::is_default")]
+    cursor: HlsObjectCursor,
     state: HlsState,
 }
 
@@ -46,6 +49,7 @@ impl HlsCandidateState {
             view_probability: value.view_probability.value(),
             startup_value_ms: value.startup_value_ms,
             legacy_segmented_storage_available_bytes: 0,
+            cursor: value.cursor,
             state: HlsState::capture(&value.state, privacy),
         }
     }
@@ -57,6 +61,7 @@ impl HlsCandidateState {
             view_probability: ViewProbability::new(self.view_probability)
                 .expect("captured probability remains valid"),
             startup_value_ms: self.startup_value_ms,
+            cursor: self.cursor,
             state: self.state.snapshot(),
         }
     }

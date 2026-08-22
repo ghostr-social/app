@@ -48,7 +48,8 @@ fn input(url: &url::Url, publisher: TrafficPublisher) -> FetchInput<'_> {
         spec: FetchSpec {
             url: url.as_str(),
             limit: MAX_HLS_ASSET_BYTES,
-            require_manifest: false,
+            object_limit: MAX_HLS_ASSET_BYTES as u64,
+            object: Default::default(),
             timeouts: HlsTransferTimeouts::default(),
             priority: PreemptionAuthority::Transition,
             admission_fence: None,

@@ -31,10 +31,11 @@ impl TransformBackend for SleepingBackend {
 }
 
 #[tokio::test]
-async fn sleeping_transform_records_zero_cpu_and_one_observed_sample() {
+async fn sleeping_transform_records_zero_cpu() {
     let fixture = TransformFixture::seeded("transform-cpu-sleep").await;
     let (events, mut receiver) = mpsc::unbounded_channel::<InternalEvent>();
-    let mut jobs = TransformJobs::new(Some(Arc::new(SleepingBackend)), events);
+    let resources = super::resource_test_fixture::control();
+    let mut jobs = TransformJobs::new(Some(Arc::new(SleepingBackend)), events, resources);
     assert!(jobs.launch(fixture.store.clone(), fixture.request(7)));
 
     let InternalEvent::Transform(done) = receiver.recv().await.unwrap() else {
@@ -48,6 +49,4 @@ async fn sleeping_transform_records_zero_cpu_and_one_observed_sample() {
     assert_eq!(actual.cpu_ms(), 0, "sleep is not CPU consumption");
     assert_eq!(actual.storage_bytes(), 4);
     assert!(jobs.finish(&done).is_some());
-    assert_eq!(jobs.take_cpu_sample_ms(), Some(0));
-    assert_eq!(jobs.take_cpu_sample_ms(), None);
 }

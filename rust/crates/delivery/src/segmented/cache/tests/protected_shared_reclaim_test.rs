@@ -65,5 +65,6 @@ fn object(request_url: &str, bytes: usize) -> PreparedObject {
         final_url: request_url.parse().unwrap(),
         body: Arc::from(vec![0; bytes]),
         content_type: None,
+        cache: Default::default(),
     }
 }

@@ -42,10 +42,12 @@ impl OverallTrafficWindow {
         }
     }
 
+    #[cfg(test)]
     pub(crate) fn bytes(self) -> u64 {
         self.bytes
     }
 
+    #[cfg(test)]
     pub(crate) fn elapsed(self) -> Duration {
         self.elapsed
     }
@@ -54,21 +56,11 @@ impl OverallTrafficWindow {
         self.bytes as f64 / self.elapsed.as_secs_f64()
     }
 
-    pub(crate) fn measured_bytes_per_second(self) -> u64 {
-        let rate =
-            u128::from(self.bytes).saturating_mul(1_000_000_000) / self.elapsed.as_nanos().max(1);
-        rate.min(u128::from(u64::MAX)) as u64
-    }
-
-    pub(crate) fn fresh_at(self, observed_at_ms: u64) -> bool {
-        observed_at_ms.saturating_sub(self.observed_at_ms)
-            <= super::SAMPLE_INTERVAL.as_millis() as u64
-    }
-
     pub(crate) fn peak_active_transfers(self) -> usize {
         self.peak_active_transfers
     }
 
+    #[cfg(test)]
     pub(crate) fn observed_at_ms(self) -> u64 {
         self.observed_at_ms
     }

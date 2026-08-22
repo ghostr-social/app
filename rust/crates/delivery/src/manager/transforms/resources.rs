@@ -20,20 +20,3 @@ impl TransformActualResources {
         self.storage_bytes
     }
 }
-
-#[derive(Default)]
-pub(super) struct TransformCpuSamples {
-    pending_ms: Option<u64>,
-}
-
-impl TransformCpuSamples {
-    pub(super) fn record(&mut self, actual: Option<TransformActualResources>) {
-        if let Some(actual) = actual {
-            self.pending_ms = Some(actual.cpu_ms());
-        }
-    }
-
-    pub(super) fn take(&mut self) -> Option<u64> {
-        self.pending_ms.take()
-    }
-}

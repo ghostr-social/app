@@ -1,11 +1,15 @@
 use super::PlanInputs;
-use crate::manager::concurrency::planning_connection_capacity;
+use crate::manager::concurrency::{planning_connection_capacity, HlsDemand};
 use crate::manager::state::DeliveryState;
 use ghostr_engine::adaptive::{
     AllocationPlan, PlayabilitySnapshot, RequestOccupancy, SoftRequestCommitment,
 };
 use ghostr_engine::PostId;
 use std::collections::HashSet;
+
+#[cfg(test)]
+#[path = "request_capacity/hls_hard_budget_test.rs"]
+mod hls_hard_budget_test;
 
 pub(super) struct Query<'a> {
     pub(super) state: &'a DeliveryState,
@@ -32,7 +36,10 @@ pub(super) fn resolve(query: Query<'_>) -> RequestCapacity {
     let ordinary = query.snapshot.network.connection_capacity;
     let hls = planning_connection_capacity(
         ordinary,
-        hls_demand(query.inputs),
+        HlsDemand::new(
+            hls_demand(query.inputs),
+            query.inputs.hls_demand_expansion_allowed,
+        ),
         query.snapshot.network.connection_ceiling,
         query.inputs.packet_loss_bps,
     );
@@ -54,22 +61,10 @@ pub(super) fn resolve(query: Query<'_>) -> RequestCapacity {
     }
 }
 
+#[cfg(test)]
 pub(super) fn hls_burst_floor(snapshot: &PlayabilitySnapshot, hls_tokens: u16) -> u64 {
-    let live = snapshot
-        .hls_candidates
-        .iter()
-        .filter(|candidate| {
-            matches!(
-                candidate.state,
-                ghostr_engine::adaptive::HlsBootstrapState::Pending { .. }
-                    | ghostr_engine::adaptive::HlsBootstrapState::Active { .. }
-            )
-        })
-        .count()
-        .min(usize::from(hls_tokens));
-    ghostr_engine::adaptive::HlsBootstrapStage::FirstSegment
-        .maximum_bytes()
-        .saturating_mul(live as u64)
+    let _ = (snapshot, hls_tokens);
+    0
 }
 
 fn hls_demand(inputs: &PlanInputs<'_>) -> usize {

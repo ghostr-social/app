@@ -1,4 +1,4 @@
-use crate::adaptive::HlsBootstrapStage;
+use crate::adaptive::{HlsBootstrapStage, HlsObjectCursor};
 use crate::{ActionId, ByteRange};
 use serde::{Deserialize, Serialize};
 
@@ -20,6 +20,7 @@ pub enum ActionKind {
     },
     HlsBootstrap {
         stage: HlsBootstrapStage,
+        cursor: HlsObjectCursor,
         maximum_bytes: u64,
     },
     Promote {

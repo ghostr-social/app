@@ -9,12 +9,19 @@ pub(super) fn apply(
     snapshot
         .candidates
         .iter()
-        .fold(context, |context, candidate| {
-            let Some(eligible_at_ms) = inputs.retry.cooling_until(&candidate.post) else {
+        .map(|candidate| &candidate.post)
+        .chain(
+            snapshot
+                .hls_candidates
+                .iter()
+                .map(|candidate| &candidate.post),
+        )
+        .fold(context, |context, post| {
+            let Some(eligible_at_ms) = inputs.retry.cooling_until(post) else {
                 return context;
             };
             context.with_retry_availability(
-                candidate.post.clone(),
+                post.clone(),
                 PlannerRetryAvailability::Cooling { eligible_at_ms },
             )
         })

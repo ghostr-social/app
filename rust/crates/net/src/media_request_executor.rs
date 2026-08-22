@@ -22,6 +22,11 @@ use request::RequestRoute;
 pub use request::{AdmittedMediaRequest, MediaRequest, MediaRequestAdmissionTimeout};
 pub use response::MediaResponse;
 
+pub trait MediaResourceObserver: Send + Sync {
+    fn record_request(&self);
+    fn record_response_bytes(&self, bytes: u64);
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct MediaRequestLimits {
     global: NonZeroUsize,
@@ -79,6 +84,10 @@ impl MediaRequestExecutor {
 
     pub fn update_limits(&self, limits: MediaRequestLimits) {
         self.gate.update_limits(limits);
+    }
+
+    pub fn install_resource_observer(&self, observer: Arc<dyn MediaResourceObserver>) -> bool {
+        self.gate.install_resource_observer(observer)
     }
 
     pub fn limits(&self) -> MediaRequestLimits {

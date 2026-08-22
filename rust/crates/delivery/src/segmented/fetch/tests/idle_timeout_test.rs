@@ -1,4 +1,4 @@
-use super::super::asset_with_timeouts;
+use super::asset_with_timeouts;
 use super::support::{client, stalled_body};
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;

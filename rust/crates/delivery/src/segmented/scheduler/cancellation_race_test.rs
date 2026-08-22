@@ -18,7 +18,7 @@ async fn queued_physical_terminal_wins_over_a_late_focus_cancellation() {
     delivery.apply_focus(&focus(2, "https://new.example/root.m3u8"));
     assert!(!delivery.active[&post].cancelling);
     let finish = delivery
-        .finish(failed(post))
+        .finish(failed(post.clone()))
         .expect("queued terminal remains owned");
 
     assert!(matches!(
@@ -29,14 +29,19 @@ async fn queued_physical_terminal_wins_over_a_late_focus_cancellation() {
         finish.observation.unwrap().outcome,
         ghostr_engine::origin_model::OriginOutcome::Failure(ErrorReason::Http5xx)
     );
+    assert_eq!(delivery.pending[&post].generation, 2);
+    assert_eq!(
+        delivery.pending[&post].root_source,
+        "https://new.example/root.m3u8"
+    );
 }
 
-fn completed_active() -> Active {
+pub(super) fn completed_active() -> Active {
     let (cancellation, cancelled) = tokio::sync::oneshot::channel();
     drop(cancelled);
     Active {
         action: ActionId::new(7),
-        pending: Pending::root(1, 0, "https://old.example/root.m3u8".to_owned()),
+        pending: Pending::root(1, 1, 0, "https://old.example/root.m3u8".to_owned()),
         committed_until_ms: u64::MAX,
         _task: tokio::spawn(std::future::pending()),
         cancellation: Some(cancellation),
@@ -44,7 +49,7 @@ fn completed_active() -> Active {
     }
 }
 
-fn failed(post: PostId) -> SegmentedDone {
+pub(super) fn failed(post: PostId) -> SegmentedDone {
     SegmentedDone {
         action: ActionId::new(7),
         post,
@@ -69,7 +74,7 @@ fn telemetry() -> OriginTelemetry {
     }
 }
 
-fn focus(generation: u64, source: &str) -> DeliveryFocus {
+pub(super) fn focus(generation: u64, source: &str) -> DeliveryFocus {
     DeliveryFocus {
         items: vec![FocusItem {
             post: PostId::new("stream"),

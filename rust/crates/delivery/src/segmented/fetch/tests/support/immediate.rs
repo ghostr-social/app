@@ -11,6 +11,10 @@ pub(crate) async fn immediate_failure() -> (String, JoinHandle<()>) {
     serve(Duration::ZERO, "500 Internal Server Error").await
 }
 
+pub(crate) async fn immediate_status(status: &'static str) -> (String, JoinHandle<()>) {
+    serve(Duration::ZERO, status).await
+}
+
 pub(crate) async fn delayed_asset(delay: Duration) -> (String, JoinHandle<()>) {
     serve(delay, "200 OK").await
 }
@@ -23,7 +27,8 @@ async fn serve(delay: Duration, status: &'static str) -> (String, JoinHandle<()>
         let mut request = [0; 1024];
         assert!(socket.read(&mut request).await.expect("read request") > 0);
         tokio::time::sleep(delay).await;
-        let response = format!("HTTP/1.1 {status}\r\nContent-Length: 1\r\n\r\nx");
+        let response =
+            format!("HTTP/1.1 {status}\r\nConnection: close\r\nContent-Length: 1\r\n\r\nx");
         socket
             .write_all(response.as_bytes())
             .await

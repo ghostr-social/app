@@ -66,6 +66,8 @@ fn input<'a>(
         requests,
         stage: HlsBootstrapStage::FirstSegment,
         url,
+        maximum_bytes: 256 * 1024,
+        continuation: None,
         priority: PreemptionAuthority::PlaybackCritical,
         committed_until_ms: unix_time_ms() + 1_000,
         network_status,

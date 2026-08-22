@@ -7,12 +7,12 @@ use crate::tests::adaptive_support::snapshot;
 use crate::PostId;
 
 #[test]
-fn global_segmented_headroom_prunes_each_infeasible_hls_stage() {
+fn global_segmented_headroom_prunes_each_infeasible_hls_block() {
     let mut state = snapshot(0, 80_000_000, 0, 0);
     state.hls_candidates = ["first", "second"].into_iter().map(candidate).collect();
     let base = AdaptivePlayabilityPolicy.plan(&state);
     let context = PlannerContext::explicitly_unavailable(&state)
-        .with_segmented_storage_available_bytes(8 * 1024 * 1024 - 1);
+        .with_segmented_storage_available_bytes(256 * 1024 - 1);
 
     let decision = WarpPlanner::default().plan(WarpPlannerInput::new(
         &state,
@@ -37,7 +37,7 @@ fn omitted_segmented_headroom_fails_closed_until_exact_capacity_is_explicit() {
     let omitted: PlannerContext = serde_json::from_value(json).unwrap();
     let blocked = plan(&state, &base, &omitted);
     let exact = PlannerContext::explicitly_unavailable(&state)
-        .with_segmented_storage_available_bytes(8 * 1024 * 1024);
+        .with_segmented_storage_available_bytes(256 * 1024);
     let admitted = plan(&state, &base, &exact);
 
     assert_eq!(blocked.generated.actions.len(), 1);
@@ -64,6 +64,7 @@ fn candidate(post: &str) -> HlsCandidateSnapshot {
         feed_offset: FeedOffset::new(0),
         view_probability: ViewProbability::new(1.0).unwrap(),
         startup_value_ms: 750,
+        cursor: Default::default(),
         state: HlsBootstrapState::Pending {
             stage: HlsBootstrapStage::Initialization,
             source: format!("https://{post}.example/init.mp4"),

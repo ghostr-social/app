@@ -22,6 +22,7 @@ pub(super) struct JobContext {
     pub(super) store: Arc<PartialRangeStore>,
     pub(super) profile: TransformProfile,
     pub(super) control: TransformControl,
+    pub(super) resources: crate::manager::resource_control::ResourceControl,
 }
 
 struct TransformCompletion {
@@ -54,6 +55,7 @@ async fn execute(context: &JobContext, request: TransformRequest) -> TransformCo
         kind: request.kind,
         profile: context.profile,
         control: context.control.clone(),
+        resources: context.resources.clone(),
     })
     .await;
     complete_attempt(context, request, attempt).await

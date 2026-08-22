@@ -6,7 +6,7 @@ use std::sync::Arc;
 use url::Url;
 
 #[test]
-fn replacing_cached_redirect_forgets_the_old_final_url_alias() {
+fn replacing_source_forgets_the_old_final_url_alias() {
     let cache = SegmentedCache::new();
     let post = PostId::new("post");
     cache.replace_focus(1, vec![(post.clone(), vec!["source".to_owned()])]);
@@ -18,15 +18,12 @@ fn replacing_cached_redirect_forgets_the_old_final_url_alias() {
     );
     assert!(cache.object("https://cdn.example/a").is_some());
 
-    cache.replace_focus(
-        2,
-        vec![(post.clone(), vec!["source".to_owned(), "mirror".to_owned()])],
-    );
+    cache.replace_focus(2, vec![(post.clone(), vec!["replacement".to_owned()])]);
     store_ready(
         &cache,
         &post,
         2,
-        vec![prepared("source", "https://cdn.example/b", b"bbbb")],
+        vec![prepared("replacement", "https://cdn.example/b", b"bbbb")],
     );
     assert!(cache.object("https://cdn.example/a").is_none());
     assert_eq!(
@@ -75,5 +72,6 @@ fn prepared(request_url: &str, final_url: &str, body: &[u8]) -> PreparedObject {
         final_url: Url::parse(final_url).unwrap(),
         body: Arc::from(body),
         content_type: None,
+        cache: Default::default(),
     }
 }

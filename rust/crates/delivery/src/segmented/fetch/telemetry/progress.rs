@@ -66,6 +66,10 @@ impl FetchProgress {
         self.network_bytes.load(Ordering::Relaxed)
     }
 
+    pub(in crate::segmented) fn close_traffic(&self) {
+        self.traffic().take();
+    }
+
     fn clock(&self) -> MutexGuard<'_, Option<OriginClock>> {
         self.clock.lock().unwrap_or_else(|error| error.into_inner())
     }

@@ -53,6 +53,7 @@ fn object(request_url: &str, body: &[u8]) -> PreparedObject {
         final_url: Url::parse("https://primary.example/index.m3u8").unwrap(),
         body: Arc::from(body),
         content_type: Some("application/vnd.apple.mpegurl".to_owned()),
+        cache: Default::default(),
     }
 }
 

@@ -83,8 +83,10 @@ fn decision(scenario: Scenario) -> crate::adaptive::WarpPlanningDecision {
     let mut context = PlannerContext::explicitly_unavailable(&input);
     if scenario.priced_out {
         context = context.with_feedback(ResourceFeedback {
+            revision: 1,
             actual: ResourceObservation::new(0, 0, 0, u64::MAX),
             target: ResourceObservation::new(1, 1, 1, 1),
+            price_snapshot: None,
         });
     }
     WarpPlanner::default().plan(WarpPlannerInput::new(

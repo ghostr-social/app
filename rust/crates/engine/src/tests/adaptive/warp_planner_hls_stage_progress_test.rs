@@ -15,6 +15,7 @@ fn current_initialization_stage_remains_worth_selecting_at_the_production_envelo
         feed_offset: FeedOffset::new(0),
         view_probability: ViewProbability::new(1.0).unwrap(),
         startup_value_ms: 750,
+        cursor: Default::default(),
         state: HlsBootstrapState::Pending {
             stage: HlsBootstrapStage::Initialization,
             source: "https://hls.example/init.mp4".to_owned(),
@@ -40,7 +41,8 @@ fn current_initialization_stage_remains_worth_selecting_at_the_production_envelo
             post: PostId::new("p0"),
             stage: HlsBootstrapStage::Initialization,
             source: "https://hls.example/init.mp4".to_owned(),
-            maximum_bytes: 8 * 1024 * 1024,
+            cursor: Default::default(),
+            maximum_bytes: crate::adaptive::REQUEST_SLICE_BYTES,
             committed_until_ms: 13_000,
         })
     );

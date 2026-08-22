@@ -12,10 +12,12 @@ use tokio::time::Instant;
 
 mod availability;
 mod cooldowns;
+mod hls;
 mod policy;
 
 pub(crate) use cooldowns::CooldownId;
 use cooldowns::Cooldowns;
+pub(crate) use hls::HlsRootAvailability;
 pub use policy::{Retry, RetryPolicy};
 
 /// One post's use of one source URL: the unit attempts are counted on.
@@ -27,7 +29,10 @@ pub struct Source {
 
 impl Source {
     pub fn new(post: PostId, url: String) -> Self {
-        Self { post, url }
+        Self {
+            post,
+            url: crate::segmented::source_key::canonical(&url),
+        }
     }
 }
 
@@ -42,6 +47,7 @@ pub struct RetryBook {
 struct Retirement {
     until: Instant,
     class: FailureClass,
+    strict: bool,
 }
 
 impl RetryBook {
@@ -62,7 +68,7 @@ impl RetryBook {
         }
         let attempts = self.charge(&source);
         match attempts >= self.budget(class) {
-            true => self.retire(source, class),
+            true => self.retire(source, class, false),
             false => Retry::After(self.policy.backoff(attempts)),
         }
     }
@@ -94,7 +100,10 @@ impl RetryBook {
     }
 
     pub fn has_ready_alternative(&self, post: &PostId, failed: &str, urls: &[String]) -> bool {
-        self.live_urls(post, urls).iter().any(|url| url != failed)
+        let failed = crate::segmented::source_key::canonical(failed);
+        self.live_urls(post, urls)
+            .iter()
+            .any(|url| crate::segmented::source_key::canonical(url) != failed)
     }
 
     /// Whether every source of the post is retired: nothing can be
@@ -104,6 +113,8 @@ impl RetryBook {
     }
 
     pub(crate) fn representation_changed(&mut self, post: &PostId) {
+        self.attempts.retain(|source, _| &source.post != post);
+        self.retired.retain(|source, _| &source.post != post);
         self.cooldowns.representation_changed(post);
     }
 
@@ -111,7 +122,9 @@ impl RetryBook {
         if previous != current {
             if let Some(current) = current {
                 self.retired.retain(|source, retirement| {
-                    &source.post != current || retirement.class == FailureClass::Permanent
+                    &source.post != current
+                        || retirement.class == FailureClass::Permanent
+                        || retirement.strict
                 });
             }
         }
@@ -162,7 +175,7 @@ impl RetryBook {
 
     /// Retiring also sweeps every revived entry, keeping the ledger
     /// bounded by the failures of the last revival window.
-    fn retire(&mut self, source: Source, class: FailureClass) -> Retry {
+    fn retire(&mut self, source: Source, class: FailureClass, strict: bool) -> Retry {
         let now = Instant::now();
         self.retired.retain(|_, retirement| retirement.until > now);
         self.attempts.remove(&source);
@@ -172,6 +185,7 @@ impl RetryBook {
             Retirement {
                 until: now + self.policy.revive_after,
                 class,
+                strict,
             },
         );
         Retry::GiveUp

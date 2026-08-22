@@ -31,7 +31,7 @@ pub(crate) enum InternalEvent {
     ImmediateReplan,
     NetworkRefill(crate::manager::network_refill_timer::NetworkRefillWake),
     Transfer(TransferEvent),
-    Segmented(SegmentedDone),
+    Segmented(Box<SegmentedDone>),
     Transform(crate::manager::transforms::TransformDone),
     HedgeTail(crate::manager::hedge_tail::HedgeTailWake),
     Maintenance(MaintenanceEvent),

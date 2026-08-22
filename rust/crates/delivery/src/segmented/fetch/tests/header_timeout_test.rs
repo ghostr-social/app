@@ -30,7 +30,8 @@ fn spec(url: &str, timeouts: HlsTransferTimeouts) -> FetchSpec<'_> {
     FetchSpec {
         url,
         limit: 1,
-        require_manifest: false,
+        object_limit: 1,
+        object: Default::default(),
         timeouts,
         priority: PreemptionAuthority::Transition,
         admission_fence: None,

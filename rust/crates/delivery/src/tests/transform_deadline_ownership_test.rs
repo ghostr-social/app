@@ -62,7 +62,8 @@ async fn deadline_joins_worker_before_releasing_global_singleflight() {
     let fixture = TransformFixture::seeded("transform-deadline-owner").await;
     let backend = Arc::new(DeadlineBackend::default());
     let (events, mut receiver) = mpsc::unbounded_channel::<InternalEvent>();
-    let mut jobs = TransformJobs::new(Some(backend.clone()), events);
+    let resources = super::resource_test_fixture::control();
+    let mut jobs = TransformJobs::new(Some(backend.clone()), events, resources);
     assert!(jobs.launch(fixture.store.clone(), fixture.request(10)));
 
     let InternalEvent::Transform(first) = receiver.recv().await.unwrap() else {

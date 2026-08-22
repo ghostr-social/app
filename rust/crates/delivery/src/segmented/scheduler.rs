@@ -1,13 +1,12 @@
 use super::fetch::{FetchFailure, FetchedObject};
-use super::{SegmentedCache, SegmentedPhase};
-use crate::delivery_events::{DeliveryFocus, FocusItem};
+use super::SegmentedCache;
 use crate::manager::traffic::TrafficPublisher;
 use crate::manager::transfers::InternalEvent;
-use ghostr_engine::adaptive::HlsBootstrapStage;
+use ghostr_engine::adaptive::{HlsBootstrapStage, HlsObjectCursor};
 use ghostr_engine::origin_model::OriginObservation;
 use ghostr_engine::{ActionId, DeliveryKind, PostId};
 use ghostr_net::media_request_executor::MediaRequestExecutor;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use tokio::sync::mpsc::UnboundedSender;
 
 #[cfg(test)]
@@ -15,13 +14,20 @@ use tokio::sync::mpsc::UnboundedSender;
 mod test_registry;
 
 mod completion;
+mod focus;
+use focus::hls_items;
+mod focus_changes;
 mod launch;
 mod progress;
+mod recovery;
 mod resources;
+mod root_selection;
 mod snapshot;
 mod target;
 
+pub(crate) use crate::segmented::fetch::FailureDisposition;
 use progress::Pending;
+pub(crate) use recovery::{RecoveryAction, SegmentedRecovery, SegmentedRetry};
 pub(crate) use resources::SegmentedResourceCommitment;
 use target::{targets, Target};
 
@@ -34,6 +40,7 @@ pub(crate) struct SegmentedDelivery {
     pending: HashMap<PostId, Pending>,
     active: HashMap<PostId, Active>,
     next_generation: u64,
+    next_attempt: u64,
     current_delivery: Option<DeliveryKind>,
     startup_eta_ms: u64,
 }
@@ -51,6 +58,7 @@ pub(crate) struct SegmentedLaunch {
     pub post: PostId,
     pub stage: HlsBootstrapStage,
     pub source: String,
+    pub cursor: HlsObjectCursor,
     pub maximum_bytes: u64,
     pub committed_until_ms: u64,
     pub action: ActionId,
@@ -76,6 +84,7 @@ pub(crate) struct SegmentedFinish {
     pub observation: Option<OriginObservation>,
     pub actual_resources: Option<ghostr_engine::adaptive::ResourceCost>,
     pub resources: SegmentedResourceCommitment,
+    pub recovery: SegmentedRecovery,
 }
 
 impl SegmentedDelivery {
@@ -87,30 +96,15 @@ impl SegmentedDelivery {
             pending: HashMap::new(),
             active: HashMap::new(),
             next_generation: 0,
+            next_attempt: 0,
             current_delivery: None,
             startup_eta_ms: crate::qoe::QoeTracker::DEFAULT_STARTUP_ETA_MS,
         }
     }
 
-    pub fn apply_focus(&mut self, focus: &DeliveryFocus) -> bool {
-        let current = focus.current_index.min(focus.items.len().saturating_sub(1));
-        let tracked = hls_items(&focus.items);
-        let targets = targets(&focus.items, current, MAX_HLS_READY_WINDOW + 1);
-        let current_delivery = focus.items.get(current).map(|item| item.meta.delivery);
-        if self.equivalent(&tracked, &targets, current_delivery) {
-            return false;
-        }
-        let generation = self.generation(focus);
-        self.cancel_all();
-        let protected = targets.iter().map(|target| target.post.clone()).collect();
-        self.cache
-            .replace_focus_window(generation, tracked.clone(), &protected);
-        self.tracked = tracked;
-        self.targets = targets;
-        self.current_delivery = current_delivery;
-        self.pending.clear();
-        self.seed_pending(generation);
-        true
+    fn allocate_attempt(&mut self) -> u64 {
+        self.next_attempt = self.next_attempt.wrapping_add(1).max(1);
+        self.next_attempt
     }
 
     pub fn active_len(&self) -> usize {
@@ -130,45 +124,6 @@ impl SegmentedDelivery {
         self.cache.clear();
     }
 
-    fn seed_pending(&mut self, generation: u64) {
-        for target in &self.targets {
-            if self.cache.snapshot(target.post.as_str()).phase == SegmentedPhase::Ready {
-                continue;
-            }
-            let Some(source) = target.sources.first() else {
-                self.cache.mark_stage_failed(
-                    &target.post,
-                    generation,
-                    "HLS item has no source".to_owned(),
-                );
-                continue;
-            };
-            self.pending.insert(
-                target.post.clone(),
-                Pending::root(generation, 0, source.clone()),
-            );
-        }
-    }
-
-    fn equivalent(
-        &self,
-        tracked: &[(PostId, Vec<String>)],
-        targets: &[Target],
-        current_delivery: Option<DeliveryKind>,
-    ) -> bool {
-        self.current_delivery == current_delivery
-            && self.tracked == tracked
-            && self.targets == targets
-    }
-
-    fn generation(&mut self, focus: &DeliveryFocus) -> u64 {
-        self.next_generation = focus
-            .generation
-            .value()
-            .unwrap_or_else(|| self.next_generation.saturating_add(1));
-        self.next_generation
-    }
-
     fn cancel_all(&mut self) {
         for active in self.active.values_mut() {
             if active.cancelling {
@@ -179,14 +134,4 @@ impl SegmentedDelivery {
             }
         }
     }
-}
-
-fn hls_items(items: &[FocusItem]) -> Vec<(PostId, Vec<String>)> {
-    let mut seen = HashSet::new();
-    items
-        .iter()
-        .filter(|item| item.meta.delivery == DeliveryKind::Hls)
-        .filter(|item| seen.insert(item.post.clone()))
-        .map(|item| (item.post.clone(), item.meta.urls.clone()))
-        .collect()
 }

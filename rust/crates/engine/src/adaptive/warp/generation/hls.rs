@@ -1,6 +1,6 @@
 use super::builder::Builder;
 use super::hls_prediction::{predict, HlsPredictionInput};
-use super::{GeneratedAction, PlannerCommand};
+use super::{GeneratedAction, HlsGenerationPolicy, PlannerCommand};
 use crate::adaptive::{
     ActionKind, ActionNode, ActionValue, HlsBootstrapStage, HlsCandidateSnapshot,
 };
@@ -14,33 +14,55 @@ struct HlsValueInput<'a> {
     expected_bytes: u64,
 }
 
-pub(super) fn add(builder: &mut Builder<'_>, candidate: &HlsCandidateSnapshot) {
+#[derive(Clone, Copy)]
+struct HlsCommitment {
+    maximum: u64,
+    expected: u64,
+    storage: u64,
+    requests: u16,
+    completes_object: bool,
+}
+
+impl HlsCommitment {
+    const fn resources(self) -> ResourceCost {
+        ResourceCost::new(self.expected, self.storage, 0, self.requests)
+    }
+}
+
+pub(super) fn add(
+    builder: &mut Builder<'_>,
+    candidate: &HlsCandidateSnapshot,
+    policy: HlsGenerationPolicy,
+) {
     let Some((stage, source)) = candidate.pending() else {
         return;
     };
-    if !builder.context.permits_request(&candidate.post) {
+    let Some(commitment) = commitment(builder, candidate, stage, policy) else {
+        return;
+    };
+    if commitment.requests > 0 && !builder.context.permits_request(&candidate.post) {
         return;
     }
-    let maximum = stage.maximum_bytes();
-    let expected = maximum.min(builder.snapshot.request_slice_bytes);
     let prediction = predict(HlsPredictionInput {
         snapshot: builder.snapshot,
         model: builder.origins,
         stage,
         source,
-        bytes: expected,
+        bytes: commitment.expected,
         concurrency: builder
             .context
             .request_occupancy()
             .authority_count(source)
-            .saturating_add(1),
+            .saturating_add(usize::from(commitment.requests > 0)),
         mode: builder.base.mode,
         startup_value_ms: candidate.startup_value_ms,
         network_class: builder.context.network_class(),
+        completes_object: commitment.completes_object,
     });
     let kind = ActionKind::HlsBootstrap {
         stage,
-        maximum_bytes: maximum,
+        cursor: candidate.cursor,
+        maximum_bytes: commitment.maximum,
     };
     let node = ActionNode::new(
         builder.next_action_id(),
@@ -51,11 +73,11 @@ pub(super) fn add(builder: &mut Builder<'_>, candidate: &HlsCandidateSnapshot) {
             stage,
             prediction,
             mode: builder.base.mode,
-            expected_bytes: expected,
+            expected_bytes: commitment.expected,
         }),
     )
     .with_origin(source)
-    .with_resources(ResourceCost::new(expected, maximum, 0, 1))
+    .with_resources(commitment.resources())
     .with_forecast(prediction.forecast);
     builder.actions.push(GeneratedAction {
         node,
@@ -63,13 +85,42 @@ pub(super) fn add(builder: &mut Builder<'_>, candidate: &HlsCandidateSnapshot) {
             post: candidate.post.clone(),
             stage,
             source: source.to_owned(),
-            maximum_bytes: maximum,
+            cursor: candidate.cursor,
+            maximum_bytes: commitment.maximum,
             committed_until_ms: builder
                 .snapshot
                 .observed_at_ms
                 .saturating_add(builder.snapshot.commitment_ms),
         },
     });
+}
+
+fn commitment(
+    builder: &Builder<'_>,
+    candidate: &HlsCandidateSnapshot,
+    stage: HlsBootstrapStage,
+    policy: HlsGenerationPolicy,
+) -> Option<HlsCommitment> {
+    if policy == HlsGenerationPolicy::LegacyWholeStage {
+        let maximum = stage.maximum_bytes();
+        return Some(HlsCommitment {
+            maximum,
+            expected: maximum.min(builder.snapshot.request_slice_bytes),
+            storage: maximum,
+            requests: 1,
+            completes_object: true,
+        });
+    }
+    let maximum = candidate
+        .cursor
+        .block_bytes(stage, builder.snapshot.request_slice_bytes)?;
+    Some(HlsCommitment {
+        maximum,
+        expected: maximum,
+        storage: maximum,
+        requests: u16::from(candidate.cursor.transport.opens_request()),
+        completes_object: candidate.cursor.completes(maximum),
+    })
 }
 
 fn value(input: HlsValueInput<'_>) -> ActionValue {

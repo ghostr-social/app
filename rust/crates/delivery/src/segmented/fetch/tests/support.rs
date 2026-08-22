@@ -8,8 +8,9 @@ use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
 
 mod immediate;
-pub(super) use immediate::{delayed_asset, immediate_asset, immediate_failure};
-
+mod oversized;
+pub(super) use immediate::{delayed_asset, immediate_asset, immediate_failure, immediate_status};
+pub(super) use oversized::{oversized_headers, oversized_status};
 pub(super) struct LocalClient(Client);
 
 impl MediaHttpRequests for LocalClient {
@@ -17,7 +18,6 @@ impl MediaHttpRequests for LocalClient {
         Ok(self.0.get(url))
     }
 }
-
 pub(super) fn client() -> MediaRequestExecutor {
     let client = LocalClient(
         Client::builder()
@@ -54,24 +54,6 @@ pub(super) async fn stalled_headers() -> (String, JoinHandle<()>) {
 
 pub(super) async fn trickled_body(period: Duration) -> (String, JoinHandle<()>) {
     serve_body(Some(period)).await
-}
-
-pub(super) async fn oversized_headers() -> (String, JoinHandle<()>) {
-    let listener = TcpListener::bind("127.0.0.1:0").await.expect("listener");
-    let address = listener.local_addr().expect("address");
-    let task = tokio::spawn(async move {
-        let (mut socket, _) = listener.accept().await.expect("request");
-        let mut request = [0; 1024];
-        assert!(socket.read(&mut request).await.expect("read request") > 0);
-        let padding = "a".repeat(33 * 1024);
-        let response =
-            format!("HTTP/1.1 200 OK\r\nX-Padding: {padding}\r\nContent-Length: 1\r\n\r\nx");
-        socket
-            .write_all(response.as_bytes())
-            .await
-            .expect("response");
-    });
-    (format!("http://{address}/segment.m4s"), task)
 }
 
 async fn serve_body(period: Option<Duration>) -> (String, JoinHandle<()>) {

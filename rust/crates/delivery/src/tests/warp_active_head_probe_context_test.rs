@@ -16,7 +16,6 @@ fn only_the_current_active_probe_identity_suppresses_head() {
     let mut state = state(post.clone(), source);
     let current = state.catalog().transfer_identity(&post, source).unwrap();
     let stale = transfer_identity(&post, source);
-
     assert!(!generates_head(plan(&mut state, &[current], 2)));
     assert!(generates_head(plan(&mut state, &[stale], 2)));
 }
@@ -64,11 +63,11 @@ fn plan(
             segmented_storage_available_bytes: u64::MAX,
             storage: StorageSnapshot::new(1_000_000, 0),
             connection_capacity: capacity,
+            hls_demand_expansion_allowed: true,
             connection_ceiling: 3,
             per_authority_request_limit: 3,
             packet_loss_bps: 0,
-            measured_network_bytes_per_second: 0,
-            measured_transform_cpu_ms: None,
+            resource_feedback: None,
             capacity_revision: 0,
             observed_at_ms: 1,
             demanded: &HashMap::new(),

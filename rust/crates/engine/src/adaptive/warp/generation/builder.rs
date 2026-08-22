@@ -4,25 +4,6 @@ use super::value;
 use super::{ActiveControl, GeneratedAction, GeneratedActions, PlannerCommand, PlannerContext};
 use crate::adaptive::{Allocation, AllocationPlan, CandidateSnapshot, PlayabilitySnapshot};
 
-pub(super) fn build(
-    snapshot: &PlayabilitySnapshot,
-    base: &AllocationPlan,
-    origins: &crate::origin_model::OriginModel,
-    context: &PlannerContext,
-) -> GeneratedActions {
-    let mut builder = Builder::new(snapshot, base, origins, context);
-    for candidate in &snapshot.candidates {
-        if candidate.retrieval_eligible {
-            builder.add_candidate(candidate);
-        }
-    }
-    for candidate in &snapshot.hls_candidates {
-        super::hls::add(&mut builder, candidate);
-    }
-    builder.add_detached_active();
-    builder.finish()
-}
-
 pub(super) struct Builder<'a> {
     pub(super) snapshot: &'a PlayabilitySnapshot,
     pub(super) base: &'a AllocationPlan,
@@ -57,7 +38,7 @@ impl<'a> NodeInput<'a> {
 }
 
 impl<'a> Builder<'a> {
-    fn new(
+    pub(super) fn new(
         snapshot: &'a PlayabilitySnapshot,
         base: &'a AllocationPlan,
         origins: &'a crate::origin_model::OriginModel,
@@ -189,7 +170,7 @@ impl<'a> Builder<'a> {
             .any(|item| item.node.post == candidate.post && &item.node.kind == kind)
     }
 
-    fn finish(self) -> GeneratedActions {
+    pub(super) fn finish(self) -> GeneratedActions {
         let ladders = super::ladders::build(self.snapshot, &self.actions, self.context);
         GeneratedActions {
             actions: self.actions,

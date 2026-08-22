@@ -16,6 +16,35 @@ use crate::adaptive::{
 use crate::origin_model::OriginModel;
 use crate::{ActionId, PostId};
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum HlsGenerationPolicy {
+    LegacyWholeStage,
+    BoundedObjectCursor,
+}
+
+pub(crate) struct WarpGenerationInput<'a> {
+    snapshot: &'a PlayabilitySnapshot,
+    base: &'a AllocationPlan,
+    origins: &'a OriginModel,
+    context: &'a PlannerContext,
+}
+
+impl<'a> WarpGenerationInput<'a> {
+    pub(crate) const fn new(
+        snapshot: &'a PlayabilitySnapshot,
+        base: &'a AllocationPlan,
+        origins: &'a OriginModel,
+        context: &'a PlannerContext,
+    ) -> Self {
+        Self {
+            snapshot,
+            base,
+            origins,
+            context,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum PlannerCommand {
     ProbeHead {
@@ -28,6 +57,7 @@ pub enum PlannerCommand {
         post: PostId,
         stage: crate::adaptive::HlsBootstrapStage,
         source: String,
+        cursor: crate::adaptive::HlsObjectCursor,
         maximum_bytes: u64,
         committed_until_ms: u64,
     },
@@ -82,6 +112,27 @@ impl WarpActionGenerator {
         origins: &OriginModel,
         context: &PlannerContext,
     ) -> GeneratedActions {
-        builder::build(snapshot, base, origins, context)
+        Self::generate_with_policy(
+            WarpGenerationInput::new(snapshot, base, origins, context),
+            HlsGenerationPolicy::BoundedObjectCursor,
+        )
+    }
+
+    pub(crate) fn generate_with_policy(
+        input: WarpGenerationInput<'_>,
+        hls_policy: HlsGenerationPolicy,
+    ) -> GeneratedActions {
+        let mut builder =
+            builder::Builder::new(input.snapshot, input.base, input.origins, input.context);
+        for candidate in &input.snapshot.candidates {
+            if candidate.retrieval_eligible {
+                builder.add_candidate(candidate);
+            }
+        }
+        for candidate in &input.snapshot.hls_candidates {
+            hls::add(&mut builder, candidate, hls_policy);
+        }
+        builder.add_detached_active();
+        builder.finish()
     }
 }

@@ -4,19 +4,20 @@ use crate::manager::timeline::TimelineCoordinator;
 use crate::manager::transfers::InternalEvent;
 use crate::manager::wake::Wake;
 use crate::manager::wake_lane::{WakeCursor, WakeLane};
-use crate::manager::wake_select::wait_for_channel_wake;
+use crate::manager::wake_select::{wait_for_channel_wake, WakeSources};
 use crate::playback_demand::{demand_channel, ConsumerId, DemandLease, DemandState};
 use ghostr_engine::{ByteRange, PostId};
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, watch};
 
 #[tokio::test(flavor = "current_thread")]
 async fn awaited_demand_is_delivered_and_advances_lane_fairness() {
     let (_handle, mut commands) = command_channel();
     let (demand_sender, mut demand) = demand_channel();
     let (_events_sender, mut events) = mpsc::unbounded_channel::<InternalEvent>();
+    let (_invalidation_sender, mut invalidations) = watch::channel(0_u64);
     let (_responses_sender, mut responses) =
         response_open::channel(std::time::Duration::from_secs(1));
     let mut cursor = WakeCursor::default();
@@ -27,6 +28,7 @@ async fn awaited_demand_is_delivered_and_advances_lane_fairness() {
         StoreCapacity::system(u64::MAX),
     ));
     let mut timelines = TimelineCoordinator::new(store);
+    let mut control_interval = crate::manager::control_interval::new();
     let signal = DemandState::Blocked(DemandLease::new(
         ConsumerId::new(1).unwrap(),
         PostId::new("playing"),
@@ -39,20 +41,21 @@ async fn awaited_demand_is_delivered_and_advances_lane_fairness() {
         demand_sender.emit(delayed);
     });
 
-    let wake = wait_for_channel_wake(
-        &mut commands,
-        &mut demand,
-        &mut responses,
-        &mut events,
-        &mut timelines,
-        &mut cursor,
-    )
+    let mut sources = WakeSources {
+        commands: &mut commands,
+        demand: &mut demand,
+        responses: &mut responses,
+        events: &mut events,
+        invalidations: &mut invalidations,
+        timelines: &mut timelines,
+    };
+    let wake = wait_for_channel_wake(&mut sources, &mut control_interval, &mut cursor)
     .await
     .expect("demand wake");
 
     assert!(matches!(wake, Wake::Demand(actual) if actual == signal));
     assert_eq!(
-        cursor.choose(&[false, false, false, false, false, false, true, false]),
+        cursor.choose(&[false, false, false, false, false, false, true, false, false]),
         Some(WakeLane::Internal)
     );
     tokio::fs::remove_dir_all(root).await.unwrap();

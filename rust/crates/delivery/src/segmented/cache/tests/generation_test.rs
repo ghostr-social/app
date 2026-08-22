@@ -44,5 +44,6 @@ fn prepared(final_url: &str, body: &[u8]) -> PreparedObject {
         final_url: Url::parse(final_url).expect("final URL"),
         body: Arc::from(body),
         content_type: None,
+        cache: Default::default(),
     }
 }

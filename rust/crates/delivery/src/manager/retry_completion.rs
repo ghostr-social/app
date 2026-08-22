@@ -48,9 +48,18 @@ impl DeliveryWorker {
             .start(post, cooldown, wait, self.ctx.events.clone());
     }
 
+    pub(crate) fn start_hls_cooldown(&mut self, post: PostId, wait: Duration) {
+        let eligible_at_ms = crate::manager::time::unix_time_ms().saturating_add(duration_ms(wait));
+        let Some(cooldown) = self.retry.cool_down_hls_until(post.clone(), eligible_at_ms) else {
+            return;
+        };
+        self.cooldown_timers
+            .start(post, cooldown, wait, self.ctx.events.clone());
+    }
+
     pub(crate) fn expedite_demand(&mut self, post: &PostId, offset: u64) -> bool {
         let accepted = self.retry.expedite_demand(post, offset);
-        if accepted {
+        if accepted && !self.retry.is_cooling(post) {
             self.cooldown_timers.cancel(post);
         }
         accepted

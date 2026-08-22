@@ -8,8 +8,8 @@ mod fresh_search_mismatch_test;
 mod fresh_search_privacy_test;
 #[path = "decision_record_warp_fresh_search_support.rs"]
 mod fresh_search_support;
-#[path = "decision_record_warp_hls_test.rs"]
-mod hls_test;
+#[path = "decision_record_warp_hls_tests.rs"]
+mod hls_tests;
 #[path = "decision_record_warp_incomplete_replay_test.rs"]
 mod incomplete_replay_test;
 #[path = "decision_record_warp_planner_replay_tests.rs"]

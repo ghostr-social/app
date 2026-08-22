@@ -69,14 +69,16 @@ fn stored_matches(action: &RecordedWarpAction) -> bool {
         (
             RecordedWarpActionKind::HlsBootstrap {
                 stage,
+                cursor,
                 maximum_bytes,
             },
             RecordedWarpCommand::FetchHlsBootstrap {
                 stage: command_stage,
+                cursor: command_cursor,
                 maximum_bytes: command_maximum,
                 ..
             },
-        ) => stage == command_stage && maximum_bytes == command_maximum,
+        ) => stage == command_stage && cursor == command_cursor && maximum_bytes == command_maximum,
         (
             RecordedWarpActionKind::CacheUpgrade {
                 bytes_start,

@@ -1,7 +1,7 @@
 use super::CompletedObject;
 use crate::segmented::fetch::{FetchFailure, OriginTelemetry};
-use crate::segmented::scheduler::SegmentedFinish;
 use crate::segmented::scheduler::SegmentedResourceCommitment;
+use crate::segmented::scheduler::{SegmentedFinish, SegmentedRecovery};
 use ghostr_engine::adaptive::{DecisionOutcome, HlsBootstrapStage, ResourceCost};
 use ghostr_engine::origin_model::{
     MediaClass, OriginContext, OriginObservation, OriginQuery, RequestMethod,
@@ -81,6 +81,7 @@ pub(super) fn terminal(input: TerminalInput<'_>) -> SegmentedFinish {
         }),
         actual_resources,
         resources: input.resources,
+        recovery: SegmentedRecovery::None,
     }
 }
 
@@ -108,7 +109,10 @@ fn decision_outcome(
         }
         Err(failure) => (
             DecisionOutcome::Failed {
-                class: failure_class(failure.reason()).to_owned(),
+                class: failure
+                    .task_failure_class()
+                    .unwrap_or_else(|| failure_class(failure.reason()))
+                    .to_owned(),
                 elapsed_ms: telemetry.map_or(0, |value| duration_ms(value.elapsed)),
             },
             failure.actual_resources(),
@@ -139,6 +143,7 @@ fn observation(
             failure.network_bytes(),
             timing,
         ),
+        Err(failure) if !failure.records_origin_evidence() => return None,
         Err(failure)
             if failure.is_cancelled()
                 || failure.reason() == ghostr_engine::origin_model::ErrorReason::Policy =>

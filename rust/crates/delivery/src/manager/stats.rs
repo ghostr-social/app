@@ -19,9 +19,6 @@ use tokio::time::Instant;
 mod admission_timeout_test;
 mod hls;
 mod origin;
-mod traffic_load;
-
-use traffic_load::TrafficLoad;
 
 pub(crate) struct StatsKeeper {
     stats: HostStats,
@@ -30,20 +27,20 @@ pub(crate) struct StatsKeeper {
     dirty: bool,
     save_pending: bool,
     traffic: TrafficMeter,
-    traffic_load: TrafficLoad,
 }
 
 impl StatsKeeper {
     pub async fn load(path: PathBuf, debounce: Duration) -> Self {
         let stats = load_host_stats(&path).await;
+        let origin = Instant::now();
+        let origin_unix_ms = unix_time_ms();
         Self {
             stats,
             path,
             debounce,
             dirty: false,
             save_pending: false,
-            traffic: TrafficMeter::new(Instant::now(), unix_time_ms()),
-            traffic_load: TrafficLoad::default(),
+            traffic: TrafficMeter::new(origin, origin_unix_ms),
         }
     }
 
@@ -79,15 +76,7 @@ impl StatsKeeper {
 
     pub fn note_traffic(&mut self, batch: TrafficBatch) -> Option<OverallTrafficWindow> {
         self.dirty = true;
-        let window = self.traffic.apply(batch, &mut self.stats);
-        if let Some(window) = window {
-            self.traffic_load.observe(window);
-        }
-        window
-    }
-
-    pub fn network_load_bytes_per_second(&self, observed_at_ms: u64) -> u64 {
-        self.traffic_load.bytes_per_second_at(observed_at_ms)
+        self.traffic.apply(batch, &mut self.stats)
     }
 
     /// Mirrors the probe service's recording rules on the owned stats.

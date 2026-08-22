@@ -1,6 +1,7 @@
-use super::super::{asset, MAX_HLS_ASSET_BYTES};
+use super::asset;
 use super::support::client;
 use ghostr_engine::adaptive::PreemptionAuthority;
+use ghostr_hls_manifest::hls_manifest::MAX_HLS_ASSET_BYTES;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
@@ -23,6 +24,8 @@ async fn declared_hls_body_above_the_authorized_limit_is_rejected_before_reading
         Err(error) => error,
     };
 
-    assert!(error.to_string().contains("declared length exceeds"));
+    assert!(error
+        .to_string()
+        .contains("full HLS object exceeds its byte grant"));
     server.await.unwrap();
 }

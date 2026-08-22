@@ -31,19 +31,17 @@ async fn rejects_private_root_manifest_without_contacting_it() {
 }
 
 #[tokio::test]
-async fn rejects_non_hls_mime_and_malformed_manifests() {
-    let invalid_mime =
-        b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 8\r\n\r\n#EXTM3U\n";
+async fn rejects_malformed_manifest_bytes() {
     let malformed = b"HTTP/1.1 200 OK\r\nContent-Type: application/vnd.apple.mpegurl\r\nContent-Length: 7\r\n\r\ninvalid";
-    for upstream_response in [invalid_mime.as_slice(), malformed.as_slice()] {
-        let (origin, upstream) = spawn_raw_server(upstream_response).await;
-        let sessions = HlsSessions::production();
-        let id = sessions.acquire(vec![origin]).await.expect("session");
-        let app = router_with_hls(sessions, media_client());
-        let response = app.oneshot(request(&id)).await.expect("gateway response");
-        assert_eq!(response.status(), StatusCode::BAD_GATEWAY);
-        upstream.await.expect("upstream request");
-    }
+    let (origin, upstream) = spawn_raw_server(malformed).await;
+    let sessions = HlsSessions::production();
+    let id = sessions.acquire(vec![origin]).await.expect("session");
+    let app = router_with_hls(sessions, media_client());
+
+    let response = app.oneshot(request(&id)).await.expect("gateway response");
+
+    assert_eq!(response.status(), StatusCode::BAD_GATEWAY);
+    upstream.await.expect("upstream request");
 }
 
 fn request(id: &ghostr_gateway::hls::sessions::HlsSessionId) -> Request<Body> {

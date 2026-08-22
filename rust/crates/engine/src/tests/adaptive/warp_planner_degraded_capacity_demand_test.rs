@@ -60,8 +60,10 @@ fn decision(transform: bool, priced_out: bool) -> crate::adaptive::WarpPlanningD
     }
     if priced_out {
         context = context.with_feedback(ResourceFeedback {
+            revision: 1,
             actual: ResourceObservation::new(0, 0, 0, u64::MAX),
             target: ResourceObservation::new(1, 1, 1, 1),
+            price_snapshot: None,
         });
     }
     context.limits.cpu_ms = 1;

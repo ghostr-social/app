@@ -58,9 +58,9 @@ pub use retrieval_ladder::{
 };
 pub use snapshot::{
     CandidateSnapshot, CurrentAuthority, HlsBootstrapStage, HlsBootstrapState,
-    HlsCandidateSnapshot, InFlightAction, MediaLayout, NavigationSnapshot, NetworkSnapshot,
-    OriginHealth, PlayabilitySnapshot, PlayableRange, PlaybackSnapshot, PlayerPreparation,
-    SnapshotError, StorageSnapshot, ViewProbability,
+    HlsCandidateSnapshot, HlsObjectCursor, HlsTransport, InFlightAction, MediaLayout,
+    NavigationSnapshot, NetworkSnapshot, OriginHealth, PlayabilitySnapshot, PlayableRange,
+    PlaybackSnapshot, PlayerPreparation, SnapshotError, StorageSnapshot, ViewProbability,
 };
 pub use warp::{
     ActionForecast, ActionFrontier, ActionKind, ActionNode, ActionValue, ActiveControl,
@@ -71,12 +71,13 @@ pub use warp::{
     PlannerQuality, PlannerRetryAvailability, PlannerRetryEvidence, PlannerWatchEvidence,
     PreviewAvailability, PrunedSearchPlan, RequestOccupancy, RescueChanceEvidence,
     RescueTimingQuantile, ReserveAuthorityOccupancy, ReserveConstraint, ReserveDegradedReason,
-    ResourceCost, ResourceFeedback, ResourceObservation, ResourcePrices, RetainedSearchPlan,
-    SearchDecision, SearchPruneReason, SegmentedStorageBudget, SemanticAdmission,
-    SemanticCandidate, SemanticDecision, SemanticGuardrail, SemanticScore, ShadowPriceController,
-    SoftRequestCommitment, TransformCapability, TransformKind, TransportCensorReason, TwinConfig,
-    TwinEpochs, TwinEvaluation, TwinSearchContext, TwinState, TwinStateSignature,
-    WarpActionGenerator, WarpPlanner, WarpPlannerConfig, WarpPlannerInput, WarpPlanningDecision,
-    WarpSearch, INLINE_BLURHASH_PREVIEW_QUALITY_MICROS,
+    ResourceCost, ResourceFeedback, ResourceFeedbackCursor, ResourceObservation,
+    ResourcePriceSnapshot, ResourcePrices, RetainedSearchPlan, SearchDecision, SearchPruneReason,
+    SegmentedStorageBudget, SemanticAdmission, SemanticCandidate, SemanticDecision,
+    SemanticGuardrail, SemanticScore, ShadowPriceController, SoftRequestCommitment,
+    TransformCapability, TransformKind, TransportCensorReason, TwinConfig, TwinEpochs,
+    TwinEvaluation, TwinSearchContext, TwinState, TwinStateSignature, WarpActionGenerator,
+    WarpPlanner, WarpPlannerConfig, WarpPlannerInput, WarpPlanningDecision, WarpSearch,
+    INLINE_BLURHASH_PREVIEW_QUALITY_MICROS,
 };
-pub(crate) use warp::{PlannerReplayCapsule, PlannerReplayState};
+pub(crate) use warp::{HlsGenerationPolicy, PlannerReplayCapsule, PlannerReplayState};

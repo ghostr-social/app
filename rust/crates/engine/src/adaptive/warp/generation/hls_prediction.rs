@@ -14,6 +14,7 @@ pub(super) struct HlsPredictionInput<'a> {
     pub mode: ControlMode,
     pub startup_value_ms: u64,
     pub network_class: NetworkClass,
+    pub completes_object: bool,
 }
 
 pub(super) fn predict(input: HlsPredictionInput<'_>) -> Prediction {
@@ -34,7 +35,7 @@ pub(super) fn predict(input: HlsPredictionInput<'_>) -> Prediction {
         decision_mode(input.mode),
     );
     let ready = match input.stage {
-        HlsBootstrapStage::FirstSegment => input.startup_value_ms,
+        HlsBootstrapStage::FirstSegment if input.completes_object => input.startup_value_ms,
         _ => 0,
     };
     Prediction {

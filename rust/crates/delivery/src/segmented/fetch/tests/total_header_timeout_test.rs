@@ -17,7 +17,8 @@ async fn total_deadline_wins_while_waiting_for_hls_headers() {
     let spec = FetchSpec {
         url: &url,
         limit: 1,
-        require_manifest: false,
+        object_limit: 1,
+        object: Default::default(),
         timeouts: timing,
         priority: PreemptionAuthority::Transition,
         admission_fence: None,

@@ -12,6 +12,7 @@ pub(super) struct Run {
     pub(super) kind: TransformKind,
     pub(super) profile: TransformProfile,
     pub(super) control: TransformControl,
+    pub(super) resources: crate::manager::resource_control::ResourceControl,
 }
 
 pub(super) enum Attempt {
@@ -63,6 +64,9 @@ fn run_work(run: Run, clock: CpuClock) -> Work {
         .transform(TransformInput::new(run.kind, &run.bytes), &run.control)
         .map(|output| output.into_bytes());
     let cpu = cpu_clock::elapsed(Some(started), clock.read());
+    if let Some(cpu) = cpu {
+        run.resources.record_cpu_ms(duration_ms(cpu));
+    }
     Work { output, cpu }
 }
 

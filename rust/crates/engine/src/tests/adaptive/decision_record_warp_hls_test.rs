@@ -1,8 +1,8 @@
 use crate::adaptive::{
     AdaptivePlayabilityPolicy, DecisionOutcome, DecisionPrivacy, DecisionRecord,
     DecisionReplayStatus, FeedOffset, HlsBootstrapStage, HlsBootstrapState, HlsCandidateSnapshot,
-    PlannerContext, ShadowPrices, ViewProbability, WarpDecisionRecordInput, WarpPlanner,
-    WarpPlannerInput,
+    HlsObjectCursor, HlsTransport, PlannerContext, ShadowPrices, ViewProbability,
+    WarpDecisionRecordInput, WarpPlanner, WarpPlannerInput,
 };
 use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::snapshot;
@@ -15,16 +15,31 @@ fn hls_bootstrap_commitment_is_private_typed_and_fully_replayable() {
     let record = hls_record();
     let json = serde_json::to_value(&record).unwrap();
     let selected = &json["warp_decision"]["selected"];
+    let cursor = serde_json::to_value(resume_cursor()).unwrap();
 
     assert_eq!(selected["kind"]["kind"], "hls_bootstrap");
     assert_eq!(selected["kind"]["stage"], "root_manifest");
     assert_eq!(selected["command"]["command"], "fetch_hls_bootstrap");
-    assert_eq!(selected["resources"]["network_bytes"], 256 * 1024);
-    assert_eq!(selected["command"]["maximum_bytes"], 1024 * 1024);
+    assert_eq!(selected["resources"]["network_bytes"], 44 * 1024);
+    assert_eq!(selected["command"]["maximum_bytes"], 44 * 1024);
+    assert_eq!(json["replay_state"]["hls_candidates"][0]["cursor"], cursor);
+    assert_eq!(selected["kind"]["cursor"], cursor);
+    assert_eq!(selected["command"]["cursor"], cursor);
+    assert_eq!(
+        json["warp_decision"]["planner_replay_capsule"]["hls_generation_policy"],
+        "bounded_object_cursor"
+    );
     assert_ne!(selected["command"]["source_id"], SOURCE);
     assert!(!serde_json::to_string(&record).unwrap().contains(SOURCE));
-    assert_eq!(record.replay(), DecisionReplayStatus::Verified);
-    assert!(record.replay_warp_search().is_ok());
+    let restored: DecisionRecord = serde_json::from_value(json.clone()).unwrap();
+    assert_eq!(restored.replay(), DecisionReplayStatus::Verified);
+    assert!(restored.replay_warp_search().is_ok());
+    for location in ["kind", "command"] {
+        let mut tampered = json.clone();
+        tampered["warp_decision"]["selected"][location]["cursor"]["attempt"] = serde_json::json!(8);
+        let tampered: DecisionRecord = serde_json::from_value(tampered).unwrap();
+        assert_eq!(tampered.replay(), DecisionReplayStatus::PlanMismatch);
+    }
 }
 
 #[test]
@@ -50,6 +65,7 @@ fn hls_record() -> DecisionRecord {
         feed_offset: FeedOffset::new(0),
         view_probability: ViewProbability::new(1.0).unwrap(),
         startup_value_ms: 2_000,
+        cursor: resume_cursor(),
         state: HlsBootstrapState::Pending {
             stage: HlsBootstrapStage::RootManifest,
             source: SOURCE.into(),
@@ -72,4 +88,8 @@ fn hls_record() -> DecisionRecord {
         models: &[],
         privacy: &DecisionPrivacy::from_key([17; 32]),
     })
+}
+
+fn resume_cursor() -> HlsObjectCursor {
+    HlsObjectCursor::new(7, 256 * 1024, Some(300 * 1024), HlsTransport::ResumeRange)
 }

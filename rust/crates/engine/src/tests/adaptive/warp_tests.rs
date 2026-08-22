@@ -2,16 +2,30 @@
 mod decision_record_warp_retry_compatibility_test;
 #[path = "decision_record_warp_retry_evidence_test.rs"]
 mod decision_record_warp_retry_evidence_test;
+#[path = "warp_planner_feedback_cursor_test.rs"]
+mod feedback_cursor;
+#[path = "warp_planner_feedback_resource_revision_test.rs"]
+mod feedback_resource_revision;
+#[path = "warp_planner_feedback_revision_test.rs"]
+mod feedback_revision;
 #[path = "warp_planner_generation_test.rs"]
 mod generation;
 #[path = "warp_planner_head_authority_test.rs"]
 mod head_authority;
 #[path = "warp_planner_hedge_identity_test.rs"]
 mod hedge_identity;
+#[path = "warp_planner_hls_assembly_capacity_test.rs"]
+mod hls_assembly_capacity;
 #[path = "warp_planner_hls_bootstrap_test.rs"]
 mod hls_bootstrap;
 #[path = "warp_planner_hls_cache_pressure_test.rs"]
 mod hls_cache_pressure;
+#[path = "warp_planner_hls_cooling_evidence_test.rs"]
+mod hls_cooling_evidence;
+#[path = "warp_planner_hls_current_risk_test.rs"]
+mod hls_current_risk;
+#[path = "warp_planner_hls_cursor_test.rs"]
+mod hls_cursor;
 #[path = "warp_planner_hls_network_class_test.rs"]
 mod hls_network_class;
 #[path = "warp_planner_hls_origin_ranking_test.rs"]

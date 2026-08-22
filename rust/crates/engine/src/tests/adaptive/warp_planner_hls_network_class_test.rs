@@ -40,6 +40,7 @@ fn candidate(post: &str) -> HlsCandidateSnapshot {
         feed_offset: FeedOffset::new(0),
         view_probability: ViewProbability::new(1.0).unwrap(),
         startup_value_ms: 750,
+        cursor: Default::default(),
         state: HlsBootstrapState::Pending {
             stage: HlsBootstrapStage::Initialization,
             source: SOURCE.to_owned(),

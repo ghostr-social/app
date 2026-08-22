@@ -7,12 +7,28 @@ pub(super) fn insert(state: &mut CacheState, key: String, object: CachedHlsObjec
     }
     state.aliases.retain(|_, canonical| canonical != &key);
     state
+        .canonical_aliases
+        .retain(|_, canonical| canonical != &key);
+    state
         .aliases
         .insert(object.final_url.to_string(), key.clone());
+    index_canonical(state, &key, &object);
     state.bytes = state.bytes.saturating_add(object.body.len());
     state.order.retain(|known| known != &key);
     state.order.push_back(key.clone());
     state.objects.insert(key, object);
+}
+
+pub(super) fn resolve_key(state: &CacheState, url: &str) -> Option<String> {
+    if state.objects.contains_key(url) {
+        return Some(url.to_owned());
+    }
+    state.aliases.get(url).cloned().or_else(|| {
+        state
+            .canonical_aliases
+            .get(&super::super::source_key::canonical(url))
+            .cloned()
+    })
 }
 
 pub(super) fn reclaimable_ready_bytes(state: &CacheState) -> u64 {
@@ -45,7 +61,35 @@ pub(super) fn retain_referenced(state: &mut CacheState) {
     state.objects.retain(|key, _| retained.contains(key));
     state.aliases.retain(|_, key| retained.contains(key));
     state.order.retain(|key| retained.contains(key));
+    rebuild_canonical_aliases(state);
     state.bytes = state.objects.values().map(|object| object.body.len()).sum();
+}
+
+fn index_canonical(state: &mut CacheState, key: &str, object: &CachedHlsObject) {
+    let canonical = super::super::source_key::canonical;
+    state
+        .canonical_aliases
+        .insert(canonical(key), key.to_owned());
+    state
+        .canonical_aliases
+        .insert(canonical(object.final_url.as_str()), key.to_owned());
+}
+
+fn rebuild_canonical_aliases(state: &mut CacheState) {
+    let indexed = state
+        .order
+        .iter()
+        .filter_map(|key| {
+            state
+                .objects
+                .get(key)
+                .map(|object| (key.clone(), object.clone()))
+        })
+        .collect::<Vec<_>>();
+    state.canonical_aliases.clear();
+    for (key, object) in indexed {
+        index_canonical(state, &key, &object);
+    }
 }
 
 fn referenced_keys(state: &CacheState, protected: bool) -> HashSet<String> {
@@ -61,4 +105,5 @@ fn reclaimable(record: &super::FocusRecord) -> bool {
     record.snapshot.phase == SegmentedPhase::Ready
         && record.staged.is_empty()
         && record.reserved_bytes == 0
+        && record.assembly_bytes == 0
 }

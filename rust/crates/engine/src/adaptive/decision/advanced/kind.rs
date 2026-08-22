@@ -27,6 +27,11 @@ pub enum RecordedWarpActionKind {
     },
     HlsBootstrap {
         stage: RecordedHlsBootstrapStage,
+        #[serde(
+            default,
+            skip_serializing_if = "crate::adaptive::HlsObjectCursor::is_default"
+        )]
+        cursor: crate::adaptive::HlsObjectCursor,
         maximum_bytes: u64,
     },
     Promote {
@@ -88,9 +93,11 @@ fn stored(kind: &ActionKind) -> RecordedWarpActionKind {
         },
         ActionKind::HlsBootstrap {
             stage,
+            cursor,
             maximum_bytes,
         } => RecordedWarpActionKind::HlsBootstrap {
             stage: (*stage).into(),
+            cursor: *cursor,
             maximum_bytes: *maximum_bytes,
         },
         ActionKind::CacheUpgrade(bytes) => RecordedWarpActionKind::CacheUpgrade {

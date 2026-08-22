@@ -7,8 +7,14 @@ use url::Url;
 mod alias_replacement_test;
 mod focus_reclamation_test;
 mod generation_test;
+mod http_freshness_test;
 mod protected_shared_reclaim_test;
+mod source_roster_owner_removal_test;
+mod source_roster_reuse_test;
+mod staged_assembly_capacity_test;
+mod staged_block_storage_test;
 mod staged_retry_test;
+mod staged_same_source_retry_test;
 
 #[test]
 fn protected_bootstraps_are_never_silently_evicted_at_publication() {
@@ -45,6 +51,7 @@ fn prepared(post: &str) -> Vec<PreparedObject> {
             final_url: Url::parse(&format!("https://{post}.example/{name}")).unwrap(),
             body: body.clone(),
             content_type: None,
+            cache: Default::default(),
         })
         .collect()
 }

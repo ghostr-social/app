@@ -10,6 +10,7 @@ pub(crate) struct CooldownId(u64);
 struct ActiveCooldown {
     id: CooldownId,
     eligible_at_ms: u64,
+    strict: bool,
 }
 
 #[derive(Default)]
@@ -22,10 +23,24 @@ pub(super) struct Cooldowns {
 
 impl Cooldowns {
     pub(super) fn begin(&mut self, post: PostId, eligible_at_ms: u64) -> Option<CooldownId> {
+        self.begin_with(post, eligible_at_ms, false)
+    }
+
+    pub(super) fn begin_strict(&mut self, post: PostId, eligible_at_ms: u64) -> Option<CooldownId> {
+        self.begin_with(post, eligible_at_ms, true)
+    }
+
+    fn begin_with(
+        &mut self,
+        post: PostId,
+        eligible_at_ms: u64,
+        strict: bool,
+    ) -> Option<CooldownId> {
         if self.active.contains_key(&post) {
             return None;
         }
-        if self.credits.remove(&post) {
+        let credited = self.credits.remove(&post);
+        if credited && !strict {
             return None;
         }
         let cooldown = CooldownId(self.sequence);
@@ -35,6 +50,7 @@ impl Cooldowns {
             ActiveCooldown {
                 id: cooldown,
                 eligible_at_ms,
+                strict,
             },
         );
         Some(cooldown)
@@ -70,8 +86,7 @@ impl Cooldowns {
             offsets.pop_front();
         }
         offsets.push_back(offset);
-        self.expedite(post);
-        true
+        self.expedite(post)
     }
 
     pub(super) fn representation_changed(&mut self, post: &PostId) {
@@ -92,6 +107,10 @@ impl Cooldowns {
         self.active.get(post).map(|active| active.eligible_at_ms)
     }
 
+    pub(super) fn is_strict(&self, post: &PostId) -> bool {
+        self.active.get(post).is_some_and(|active| active.strict)
+    }
+
     pub(super) fn clear(&mut self) {
         self.active.clear();
         self.demanded_offsets.clear();
@@ -109,10 +128,14 @@ impl Cooldowns {
         self.credits.remove(post);
     }
 
-    fn expedite(&mut self, post: &PostId) {
+    fn expedite(&mut self, post: &PostId) -> bool {
+        if self.is_strict(post) {
+            return false;
+        }
         if self.active.remove(post).is_none() {
             self.credits.insert(post.clone());
         }
+        true
     }
 
     fn reset_demand(&mut self, post: &PostId) {

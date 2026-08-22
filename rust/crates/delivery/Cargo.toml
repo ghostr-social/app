@@ -15,6 +15,7 @@ ghostr-partial-store = { path = "../partial-store" }
 
 anyhow = { workspace = true }
 bytes = { workspace = true }
+httpdate = { workspace = true }
 log = { workspace = true }
 rand = { workspace = true }
 reqwest = { workspace = true }

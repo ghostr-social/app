@@ -11,8 +11,10 @@ fn planner_reserves_rescue_capacity_updates_prices_and_commits_one_action() {
     let base = AdaptivePlayabilityPolicy.plan(&input);
     let mut context =
         PlannerContext::explicitly_unavailable(&input).with_feedback(ResourceFeedback {
+            revision: 1,
             actual: ResourceObservation::new(200, 120, 20, 4),
             target: ResourceObservation::new(100, 100, 10, 2),
+            price_snapshot: None,
         });
     context.limits.request_tokens = 3;
     let config = WarpPlannerConfig::default().with_rescue_thresholds(2_000, 2_000);

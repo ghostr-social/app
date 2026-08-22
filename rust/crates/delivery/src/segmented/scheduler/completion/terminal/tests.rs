@@ -37,6 +37,23 @@ fn local_policy_failure_keeps_resources_without_poisoning_the_origin() {
     );
 }
 
+#[test]
+fn admitted_neutral_timeout_keeps_resources_without_poisoning_the_origin() {
+    let result = Err(FetchFailure::admitted_neutral(
+        anyhow::anyhow!("redirect admission expired"),
+        ErrorReason::Timeout,
+        telemetry(),
+        37,
+    ));
+    let finish = terminal(input(&result));
+
+    assert!(finish.observation.is_none());
+    assert_eq!(
+        finish.actual_resources,
+        Some(ResourceCost::new(37, 0, 0, 1))
+    );
+}
+
 fn assert_failure_reason(expected: ErrorReason) {
     let result = failure(expected, 0);
     let finish = terminal(input(&result));
@@ -62,12 +79,16 @@ fn failure(reason: ErrorReason, bytes: u64) -> Result<CompletedObject, FetchFail
     Err(FetchFailure::admitted(
         anyhow::anyhow!("typed failure fixture"),
         reason,
-        OriginTelemetry {
-            elapsed: Duration::from_millis(25),
-            ttfb: None,
-            concurrency: 1,
-            network_class: NetworkClass::Wifi,
-        },
+        telemetry(),
         bytes,
     ))
+}
+
+fn telemetry() -> OriginTelemetry {
+    OriginTelemetry {
+        elapsed: Duration::from_millis(25),
+        ttfb: None,
+        concurrency: 1,
+        network_class: NetworkClass::Wifi,
+    }
 }

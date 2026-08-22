@@ -1,18 +1,62 @@
-use super::prepare::PreparedObject;
 use ghostr_engine::PostId;
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex, MutexGuard};
-use tokio::sync::Notify;
+use tokio::sync::{watch, Notify};
 
+mod blocks;
 mod capacity;
+pub(in crate::segmented) use blocks::{CompleteStage, StageBlock, StoredStage};
+mod focus;
+pub(crate) use focus::PreservedFocus;
+mod freshness;
 mod generation;
+pub(in crate::segmented) use generation::HlsCacheMetadata;
+mod invalidation;
 mod objects;
 mod staged;
+mod staged_object;
+use staged_object::StagedObject;
 #[cfg(test)]
 mod tests;
 pub use generation::{CachedHlsGeneration, CachedHlsObject};
 
 const MAX_CACHE_BYTES: usize = 32 * 1024 * 1024;
+
+#[derive(Clone, Copy)]
+pub(crate) struct StageReservation {
+    block_bytes: u64,
+    assembly_bytes: u64,
+}
+
+impl StageReservation {
+    pub(crate) const fn block(block_bytes: u64) -> Self {
+        Self {
+            block_bytes,
+            assembly_bytes: 0,
+        }
+    }
+
+    pub(crate) fn final_block(block_bytes: u64, total_bytes: u64) -> Option<Self> {
+        if block_bytes == 0 || total_bytes < block_bytes {
+            return None;
+        }
+        block_bytes.checked_add(total_bytes)?;
+        Some(Self {
+            block_bytes,
+            assembly_bytes: total_bytes,
+        })
+    }
+
+    fn total_bytes(self) -> Option<u64> {
+        self.block_bytes.checked_add(self.assembly_bytes)
+    }
+}
+
+impl From<u64> for StageReservation {
+    fn from(block_bytes: u64) -> Self {
+        Self::block(block_bytes)
+    }
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SegmentedPhase {
@@ -41,10 +85,11 @@ impl Default for SegmentedSnapshot {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct SegmentedCache {
     state: Arc<Mutex<CacheState>>,
     changed: Arc<Notify>,
+    invalidations: watch::Sender<u64>,
 }
 
 #[derive(Default)]
@@ -52,59 +97,38 @@ struct CacheState {
     focus: HashMap<PostId, FocusRecord>,
     objects: HashMap<String, CachedHlsObject>,
     aliases: HashMap<String, String>,
+    canonical_aliases: HashMap<String, String>,
     order: VecDeque<String>,
+    invalidated: Vec<(PostId, u64)>,
     bytes: usize,
 }
 
 struct FocusRecord {
     generation: u64,
     sources: Vec<String>,
+    root_source: Option<String>,
     protected: bool,
     snapshot: SegmentedSnapshot,
     objects: Vec<String>,
-    staged: Vec<PreparedObject>,
+    staged: Vec<StagedObject>,
     reserved_bytes: u64,
+    assembly_bytes: u64,
+}
+
+impl Default for SegmentedCache {
+    fn default() -> Self {
+        let (invalidations, _) = watch::channel(0);
+        Self {
+            state: Arc::default(),
+            changed: Arc::default(),
+            invalidations,
+        }
+    }
 }
 
 impl SegmentedCache {
     pub fn new() -> Self {
         Self::default()
-    }
-
-    #[cfg(test)]
-    pub(crate) fn replace_focus(&self, generation: u64, items: Vec<(PostId, Vec<String>)>) {
-        let protected = items.iter().map(|(post, _)| post.clone()).collect();
-        self.replace_focus_window(generation, items, &protected);
-    }
-
-    pub(crate) fn replace_focus_window(
-        &self,
-        generation: u64,
-        items: Vec<(PostId, Vec<String>)>,
-        protected: &std::collections::HashSet<PostId>,
-    ) {
-        let mut state = self.lock();
-        let mut next = HashMap::new();
-        for (post, sources) in items {
-            let (snapshot, objects) = reusable_state(state.focus.get(&post), &sources);
-            let is_protected = protected.contains(&post);
-            next.insert(
-                post,
-                FocusRecord {
-                    generation,
-                    sources,
-                    protected: is_protected,
-                    snapshot,
-                    objects,
-                    staged: Vec::new(),
-                    reserved_bytes: 0,
-                },
-            );
-        }
-        state.focus = next;
-        objects::retain_referenced(&mut state);
-        drop(state);
-        self.changed.notify_waiters();
     }
 
     pub fn snapshot(&self, post: &str) -> SegmentedSnapshot {
@@ -117,20 +141,20 @@ impl SegmentedCache {
 
     pub fn object(&self, url: &str) -> Option<CachedHlsObject> {
         let state = self.lock();
-        state
-            .objects
-            .get(url)
-            .or_else(|| {
-                state
-                    .aliases
-                    .get(url)
-                    .and_then(|key| state.objects.get(key))
-            })
-            .cloned()
+        let key = objects::resolve_key(&state, url)?;
+        state.objects.get(&key).cloned()
+    }
+
+    pub fn reusable_object(&self, url: &str) -> Option<CachedHlsObject> {
+        self.object(url).filter(CachedHlsObject::is_reusable)
     }
 
     pub fn notifier(&self) -> Arc<Notify> {
         self.changed.clone()
+    }
+
+    pub(crate) fn invalidation_receiver(&self) -> watch::Receiver<u64> {
+        self.invalidations.subscribe()
     }
 
     pub fn clear(&self) {
@@ -140,19 +164,5 @@ impl SegmentedCache {
 
     fn lock(&self) -> MutexGuard<'_, CacheState> {
         self.state.lock().unwrap_or_else(|error| error.into_inner())
-    }
-}
-
-fn reusable_state(
-    previous: Option<&FocusRecord>,
-    sources: &[String],
-) -> (SegmentedSnapshot, Vec<String>) {
-    match previous {
-        Some(record)
-            if record.sources == sources && record.snapshot.phase == SegmentedPhase::Ready =>
-        {
-            (record.snapshot.clone(), record.objects.clone())
-        }
-        _ => (SegmentedSnapshot::default(), Vec::new()),
     }
 }

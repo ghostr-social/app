@@ -1,22 +1,38 @@
 use super::wake::Wake;
 use crate::delivery_events::CommandReceiver;
-use crate::delivery_events::DeliveryCommand;
 use crate::manager::response_open::ResponseOpenReceiver;
 use crate::manager::timeline::TimelineCoordinator;
 use crate::manager::transfers::InternalEvent;
-use crate::manager::wake_lane::WakeLane;
+use crate::manager::wake_lane::WakeCursor;
 use crate::manager::DeliveryWorker;
 use crate::playback_demand::DemandReceiver;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, watch};
+
+mod ready;
+mod waited;
+
+pub(crate) struct WakeSources<'a> {
+    pub(crate) commands: &'a mut CommandReceiver,
+    pub(crate) demand: &'a mut DemandReceiver,
+    pub(crate) responses: &'a mut ResponseOpenReceiver,
+    pub(crate) events: &'a mut mpsc::UnboundedReceiver<InternalEvent>,
+    pub(crate) invalidations: &'a mut watch::Receiver<u64>,
+    pub(crate) timelines: &'a mut TimelineCoordinator,
+}
 
 impl DeliveryWorker {
     pub(super) async fn next_wake(&mut self) -> Option<Wake> {
+        let mut sources = WakeSources {
+            commands: &mut self.commands,
+            demand: &mut self.demand,
+            responses: &mut self.responses,
+            events: &mut self.events,
+            invalidations: &mut self.segmented_invalidations,
+            timelines: &mut self.timelines,
+        };
         wait_for_channel_wake(
-            &mut self.commands,
-            &mut self.demand,
-            &mut self.responses,
-            &mut self.events,
-            &mut self.timelines,
+            &mut sources,
+            &mut self.control_interval,
             &mut self.wake_cursor,
         )
         .await
@@ -24,88 +40,21 @@ impl DeliveryWorker {
 }
 
 pub(crate) async fn wait_for_channel_wake(
-    commands: &mut CommandReceiver,
-    demand: &mut DemandReceiver,
-    responses: &mut ResponseOpenReceiver,
-    events: &mut mpsc::UnboundedReceiver<InternalEvent>,
-    timelines: &mut TimelineCoordinator,
-    cursor: &mut crate::manager::wake_lane::WakeCursor,
+    sources: &mut WakeSources<'_>,
+    control_interval: &mut tokio::time::Interval,
+    cursor: &mut WakeCursor,
 ) -> Option<Wake> {
     loop {
-        if let Some(wake) = ready_wake(commands, demand, responses, events, timelines, cursor) {
+        if let Some(wake) = ready::take(sources, cursor) {
             return Some(wake);
         }
-        let (mailbox, clears) = commands.receivers();
-        tokio::select! {
-            biased;
-            Some(clear) = clears.recv() => return Some(Wake::Clear(clear)),
-            changed = mailbox.changed() => if !changed { return None },
-            Some(signal) = demand.recv() => {
-                cursor.observe(WakeLane::Demand);
-                return Some(Wake::Demand(signal));
-            },
-            Some(response) = responses.recv() => {
-                cursor.observe(WakeLane::Response);
-                return Some(Wake::Response(Box::new(response)));
-            },
-            Some(event) = events.recv() => {
-                cursor.observe(WakeLane::Internal);
-                return Some(Wake::Internal(event));
-            },
-            Some(result) = timelines.recv() => {
-                cursor.observe(WakeLane::Timeline);
-                return Some(Wake::Timeline(result));
-            },
+        match waited::wait(sources, control_interval)
+            .await
+            .resolve(cursor)
+        {
+            waited::Resolution::Wake(wake) => return Some(*wake),
+            waited::Resolution::Retry => {}
+            waited::Resolution::Closed => return None,
         }
     }
-}
-
-fn ready_wake(
-    commands: &mut CommandReceiver,
-    demand: &mut DemandReceiver,
-    responses: &mut ResponseOpenReceiver,
-    events: &mut mpsc::UnboundedReceiver<InternalEvent>,
-    timelines: &mut TimelineCoordinator,
-    cursor: &mut crate::manager::wake_lane::WakeCursor,
-) -> Option<Wake> {
-    if let Some(clear) = commands.try_clear() {
-        return Some(Wake::Clear(clear));
-    }
-    if let Some(commands) = commands.try_controls_through_focus() {
-        cursor.observe(WakeLane::Control);
-        return Some(Wake::Commands(commands));
-    }
-    let ready = [
-        commands.has_control(),
-        commands.has_player_preparation(),
-        commands.has_playback_presentation(),
-        commands.has_candidate(),
-        !demand.is_empty(),
-        !responses.is_empty(),
-        !events.is_empty(),
-        timelines.prepare_wake(),
-    ];
-    match cursor.choose(&ready)? {
-        WakeLane::Control => Wake::Command(commands.try_control().expect("ready control lane")),
-        WakeLane::PlayerPreparation => Wake::PlayerPreparation(
-            commands
-                .try_player_preparation()
-                .expect("ready player-preparation lane"),
-        ),
-        WakeLane::PlaybackPresentation => Wake::PlaybackPresentation(
-            commands
-                .try_playback_presentation()
-                .expect("ready playback-presentation lane"),
-        ),
-        WakeLane::Candidate => Wake::Command(DeliveryCommand::Candidate(
-            commands.try_candidate().expect("ready candidate lane"),
-        )),
-        WakeLane::Demand => Wake::Demand(demand.try_recv().expect("ready demand lane")),
-        WakeLane::Response => {
-            Wake::Response(Box::new(responses.try_recv().expect("ready response lane")))
-        }
-        WakeLane::Internal => Wake::Internal(events.try_recv().expect("ready internal lane")),
-        WakeLane::Timeline => Wake::Timeline(timelines.take_wake().expect("ready timeline lane")),
-    }
-    .into()
 }

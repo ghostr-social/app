@@ -56,6 +56,7 @@ impl DeliveryWorker {
             post,
             stage,
             source,
+            cursor,
             maximum_bytes,
             committed_until_ms,
         } = directive
@@ -66,6 +67,7 @@ impl DeliveryWorker {
             post: post.clone(),
             stage: *stage,
             source: source.clone(),
+            cursor: *cursor,
             maximum_bytes: *maximum_bytes,
             committed_until_ms: *committed_until_ms,
             action: self.downloads.next_action_id(),

@@ -8,7 +8,7 @@ pub(super) fn consume_node(budget: &mut HardBudget, node: &ActionNode) -> bool {
     }
     let Some(remaining) = budget
         .segmented_storage
-        .and_then(|value| value.consume(node.resources.storage_bytes))
+        .and_then(|value| value.consume(segmented_commitment(node)?))
     else {
         return false;
     };
@@ -41,7 +41,7 @@ fn storage_costs(path: &[ActionNode]) -> Option<(u64, u64)> {
             if is_hls(node) {
                 Some((
                     progressive,
-                    segmented.checked_add(node.resources.storage_bytes)?,
+                    segmented.checked_add(segmented_commitment(node)?)?,
                 ))
             } else {
                 Some((
@@ -59,4 +59,15 @@ fn progressive_cost(mut cost: ResourceCost) -> ResourceCost {
 
 fn is_hls(node: &ActionNode) -> bool {
     matches!(&node.kind, ActionKind::HlsBootstrap { .. })
+}
+
+fn segmented_commitment(node: &ActionNode) -> Option<u64> {
+    match &node.kind {
+        ActionKind::HlsBootstrap {
+            cursor,
+            maximum_bytes,
+            ..
+        } => cursor.peak_storage_bytes(*maximum_bytes),
+        _ => None,
+    }
 }

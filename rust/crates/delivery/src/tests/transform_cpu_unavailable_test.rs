@@ -41,6 +41,7 @@ async fn unavailable_cpu_clock_fails_closed_before_output_publication() {
         kind: TransformKind::Remux,
         profile,
         control: TransformControl::new(Instant::now() + Duration::from_millis(100)),
+        resources: super::super::resource_test_fixture::control(),
     };
 
     let attempt = backend::execute_without_clock(run).await;

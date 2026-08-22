@@ -112,16 +112,19 @@ impl DeliveryWorker {
         config: DeliveryManagerConfig,
         commands: crate::delivery_events::CommandReceiver,
         demand: crate::playback_demand::DemandReceiver,
+        resources: crate::manager::resource_control::ResourceControl,
     ) -> Self {
         let channels = initial_channels();
         let policy = InitialPolicy::load(&config, &commands).await;
         let network_status =
             crate::delivery_events::DeliveryNetworkStatusReader::new(config.network_status);
+        let segmented_invalidations = config.segmented.invalidation_receiver();
         let segmented = SegmentedDelivery::new(config.segmented);
         let timelines = TimelineCoordinator::new(config.store.clone());
         let transforms = crate::manager::transforms::TransformJobs::new(
             config.transform.clone(),
             channels.events_sender.clone(),
+            resources.clone(),
         );
         Self {
             state: policy.state,
@@ -154,16 +157,19 @@ impl DeliveryWorker {
             events: channels.events,
             responses: channels.responses,
             traffic: channels.traffic,
+            control_interval: crate::manager::control_interval::new_at(resources.origin()),
             wake_cursor: WakeCursor::default(),
             concurrency: policy.concurrency,
             additional_request_slot_demand: None,
             max_requests_per_authority: config.tuning.max_requests_per_authority,
             segmented,
+            segmented_invalidations,
             timelines,
             independent_objects: IndependentObjects::default(),
             transforms,
             immediate_replan: Default::default(),
             network_refill_timer: Default::default(),
+            resources,
             warp_planner: ghostr_engine::adaptive::WarpPlanner::default(),
         }
     }

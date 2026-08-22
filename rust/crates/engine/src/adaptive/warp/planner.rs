@@ -1,11 +1,13 @@
 mod capacity_demand;
 mod feasibility;
+mod feedback;
 mod least_risk;
 mod replay;
 mod reserve;
 mod reset;
 mod search_replay;
 mod search_run;
+mod selection;
 mod simulation;
 mod types;
 
@@ -18,8 +20,8 @@ pub(crate) use search_replay::{SearchReplayInput, SearchReplayMode};
 pub use types::{SemanticDecision, WarpPlannerConfig, WarpPlannerInput, WarpPlanningDecision};
 
 use super::{
-    ActionFrontier, DigitalTwin, GeneratedAction, NetworkTokenBucket, ResourceCost,
-    ShadowPriceController, WarpActionGenerator,
+    ActionFrontier, DigitalTwin, GeneratedAction, HlsGenerationPolicy, NetworkTokenBucket,
+    ResourceCost, ShadowPriceController, WarpActionGenerator, WarpGenerationInput,
 };
 
 pub struct WarpPlanner {
@@ -28,6 +30,7 @@ pub struct WarpPlanner {
     prices: ShadowPriceController,
     network: Option<NetworkTokenBucket>,
     price_epoch: u64,
+    last_feedback: Option<super::ResourceFeedback>,
 }
 
 impl WarpPlanner {
@@ -38,15 +41,25 @@ impl WarpPlanner {
             prices: ShadowPriceController::default(),
             network: None,
             price_epoch: 0,
+            last_feedback: None,
         }
     }
 
     pub fn plan(&mut self, input: WarpPlannerInput<'_>) -> WarpPlanningDecision {
-        let planner_replay = PlannerReplayCapsule::capture(&input, self);
-        self.observe_prices(&input);
+        self.plan_with_hls_policy(input, HlsGenerationPolicy::BoundedObjectCursor)
+    }
+
+    pub(super) fn plan_with_hls_policy(
+        &mut self,
+        input: WarpPlannerInput<'_>,
+        hls_policy: HlsGenerationPolicy,
+    ) -> WarpPlanningDecision {
+        let planner_replay = PlannerReplayCapsule::capture(&input, self, hls_policy);
+        feedback::observe(self, &input);
         self.prepare_network(&input);
-        let generated =
-            WarpActionGenerator::generate(input.snapshot, input.base, input.origins, input.context);
+        let generation =
+            WarpGenerationInput::new(input.snapshot, input.base, input.origins, input.context);
+        let generated = WarpActionGenerator::generate_with_policy(generation, hls_policy);
         let frontier = ActionFrontier::prune(
             generated
                 .actions
@@ -60,7 +73,7 @@ impl WarpPlanner {
         let (search, search_replay) = self.search(&input, &feasible);
         let additional_request_slot_demanded =
             self.additional_request_slot_demanded(&input, &frontier.retained, network_bytes);
-        let selected = selected_action(&generated.actions, &search);
+        let selected = selection::selected_action(&generated.actions, &search);
         let common_random_seed = simulation::common_seed(&input, self.price_epoch);
         let evaluation = selected.as_ref().map(|item| {
             self.twin.evaluate(
@@ -70,7 +83,7 @@ impl WarpPlanner {
             )
         });
         WarpPlanningDecision {
-            pruned_action_ids: pruned_ids(&generated.actions, &feasible.nodes),
+            pruned_action_ids: selection::pruned_ids(&generated.actions, &feasible.nodes),
             admissible_action_ids: feasible.nodes.iter().map(|node| node.id).collect(),
             selected,
             search,
@@ -148,17 +161,6 @@ impl WarpPlanner {
             .min()
     }
 
-    fn observe_prices(&mut self, input: &WarpPlannerInput<'_>) {
-        let before = self.prices.prices();
-        if let Some(feedback) = input.context.feedback {
-            self.prices.observe(feedback.actual, feedback.target);
-        }
-        if self.prices.prices() != before {
-            self.price_epoch = self.price_epoch.saturating_add(1);
-        }
-        self.twin.set_prices(self.prices.prices());
-    }
-
     fn prepare_network(&mut self, input: &WarpPlannerInput<'_>) {
         let limits = input.context.limits;
         match &mut self.network {
@@ -181,20 +183,4 @@ impl Default for WarpPlanner {
     fn default() -> Self {
         Self::new(WarpPlannerConfig::default())
     }
-}
-
-fn selected_action(
-    generated: &[GeneratedAction],
-    search: &super::SearchDecision,
-) -> Option<GeneratedAction> {
-    let id = search.action.as_ref()?.id;
-    generated.iter().find(|item| item.node.id == id).cloned()
-}
-
-fn pruned_ids(generated: &[GeneratedAction], retained: &[super::ActionNode]) -> Vec<u16> {
-    generated
-        .iter()
-        .filter(|item| !retained.iter().any(|node| node.id == item.node.id))
-        .map(|item| item.node.id)
-        .collect()
 }

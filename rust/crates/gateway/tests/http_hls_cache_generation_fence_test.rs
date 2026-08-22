@@ -11,7 +11,7 @@ use std::time::Duration;
 use tower::ServiceExt;
 #[tokio::test]
 async fn ranged_hls_cache_generation_never_falls_through_to_origin() {
-    let (origin, source) = HlsOrigin::start().await;
+    let (origin, source) = HlsOrigin::start_cacheable().await;
     let delivery = start_delivery("hls-cache-generation-fence");
     delivery.handle.update_focus(hls_focus(&source));
     wait_ready(&delivery.segmented).await;

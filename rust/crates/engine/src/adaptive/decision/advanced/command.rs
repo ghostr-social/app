@@ -29,6 +29,11 @@ pub enum RecordedWarpCommand {
         post_id: String,
         stage: RecordedHlsBootstrapStage,
         source_id: String,
+        #[serde(
+            default,
+            skip_serializing_if = "crate::adaptive::HlsObjectCursor::is_default"
+        )]
+        cursor: crate::adaptive::HlsObjectCursor,
         maximum_bytes: u64,
         committed_until_ms: u64,
     },
@@ -89,12 +94,14 @@ fn external(command: &PlannerCommand, privacy: &DecisionPrivacy) -> RecordedWarp
             post,
             stage,
             source,
+            cursor,
             maximum_bytes,
             committed_until_ms,
         } => RecordedWarpCommand::FetchHlsBootstrap {
             post_id: privacy.post(post.as_str()),
             stage: (*stage).into(),
             source_id: privacy.source(source),
+            cursor: *cursor,
             maximum_bytes: *maximum_bytes,
             committed_until_ms: *committed_until_ms,
         },
@@ -152,9 +159,15 @@ impl RecordedWarpCommand {
             Self::Transfer { transfer } => transfer.projection("transfer"),
             Self::FetchHlsBootstrap {
                 source_id,
+                cursor,
                 maximum_bytes,
                 ..
-            } => ("hls_bootstrap", source_id, 0, *maximum_bytes),
+            } => (
+                "hls_bootstrap",
+                source_id,
+                cursor.next_offset,
+                cursor.next_offset.saturating_add(*maximum_bytes),
+            ),
             Self::Hedge { transfer, .. } => transfer.projection("hedge"),
             _ => unreachable!("only source-bearing commands are routed here"),
         }

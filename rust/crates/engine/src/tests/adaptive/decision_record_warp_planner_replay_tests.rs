@@ -8,6 +8,8 @@ mod mutation;
 mod privacy;
 #[path = "decision_record_warp_planner_replay_tests/quality.rs"]
 mod quality;
+#[path = "decision_record_warp_planner_replay_tests/resource_feedback.rs"]
+mod resource_feedback;
 #[path = "decision_record_warp_planner_replay_tests/segmented_storage.rs"]
 mod segmented_storage;
 #[path = "decision_record_warp_planner_replay_tests/support.rs"]

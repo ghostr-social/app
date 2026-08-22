@@ -5,6 +5,9 @@ use ghostr_engine::adaptive::{PlannerCommand, PromotionGrant, TransformKind};
 use ghostr_engine::{ActionId, PostId};
 use std::collections::HashSet;
 
+mod work;
+use work::work_directive;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum WarpDirective {
     None,
@@ -32,6 +35,7 @@ pub(crate) enum WarpDirective {
         post: PostId,
         stage: ghostr_engine::adaptive::HlsBootstrapStage,
         source: String,
+        cursor: ghostr_engine::adaptive::HlsObjectCursor,
         maximum_bytes: u64,
         committed_until_ms: u64,
     },
@@ -113,86 +117,5 @@ pub(crate) fn directive_for(
         },
         Some(PlannerCommand::Cancel(action)) => WarpDirective::Cancel(*action),
         Some(command) => work_directive(command, selected),
-    }
-}
-
-fn work_directive(command: &PlannerCommand, selected: &[PlannedTransfer]) -> WarpDirective {
-    if let PlannerCommand::Hedge { primary, .. } = command {
-        return hedge(*primary, selected);
-    }
-    if matches!(command, PlannerCommand::Transfer(_)) {
-        return transfer(selected);
-    }
-    if let PlannerCommand::Promote {
-        post,
-        action,
-        source,
-        grant,
-    } = command
-    {
-        return WarpDirective::Promote {
-            post: post.clone(),
-            action: *action,
-            source: source.clone(),
-            grant: *grant,
-        };
-    }
-    if let PlannerCommand::Transform { post, kind } = command {
-        return WarpDirective::Transform {
-            post: post.clone(),
-            kind: *kind,
-        };
-    }
-    if let PlannerCommand::FetchHlsBootstrap {
-        post,
-        stage,
-        source,
-        maximum_bytes,
-        committed_until_ms,
-    } = command
-    {
-        return WarpDirective::HlsBootstrap {
-            post: post.clone(),
-            stage: *stage,
-            source: source.clone(),
-            maximum_bytes: *maximum_bytes,
-            committed_until_ms: *committed_until_ms,
-        };
-    }
-    unsupported(command)
-}
-
-fn unsupported(command: &PlannerCommand) -> WarpDirective {
-    match command {
-        PlannerCommand::ProbeHead { .. }
-        | PlannerCommand::Cancel(_)
-        | PlannerCommand::Hedge { .. }
-        | PlannerCommand::Promote { .. }
-        | PlannerCommand::Transform { .. }
-        | PlannerCommand::FetchHlsBootstrap { .. }
-        | PlannerCommand::Transfer(_) => {
-            unreachable!("probe, cancel, and transfer commands are handled above")
-        }
-    }
-}
-
-fn hedge(primary: ActionId, selected: &[PlannedTransfer]) -> WarpDirective {
-    selected.first().map_or(
-        WarpDirective::Unsupported {
-            class: "warp_hedge_transfer_unavailable",
-        },
-        |transfer| WarpDirective::Hedge {
-            primary,
-            alternate: transfer.id(),
-        },
-    )
-}
-
-fn transfer(selected: &[PlannedTransfer]) -> WarpDirective {
-    match selected.is_empty() {
-        false => WarpDirective::None,
-        true => WarpDirective::Unsupported {
-            class: "warp_transfer_unavailable",
-        },
     }
 }

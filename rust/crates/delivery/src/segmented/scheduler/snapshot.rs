@@ -14,6 +14,7 @@ impl SegmentedDelivery {
                 feed_offset: target.offset,
                 view_probability: navigation.view_probability(target.offset),
                 startup_value_ms: self.startup_eta_ms,
+                cursor: self.planning_cursor(&target.post),
                 state: self.planning_state(&target.post),
             })
             .collect()
@@ -21,6 +22,14 @@ impl SegmentedDelivery {
 
     pub(crate) fn available_bytes(&self) -> u64 {
         self.cache.planning_available_bytes()
+    }
+
+    pub(crate) fn used_bytes(&self) -> u64 {
+        self.cache.physical_used_bytes()
+    }
+
+    pub(crate) fn capacity_bytes(&self) -> u64 {
+        crate::segmented::SegmentedCache::capacity_bytes()
     }
 
     pub(crate) fn active_sources(&self) -> Vec<&str> {
@@ -31,6 +40,10 @@ impl SegmentedDelivery {
     }
 
     fn planning_state(&self, post: &ghostr_engine::PostId) -> HlsBootstrapState {
+        let phase = self.cache.snapshot(post.as_str()).phase;
+        if phase == SegmentedPhase::Failed {
+            return HlsBootstrapState::Failed;
+        }
         if let Some(active) = self.active.get(post) {
             return HlsBootstrapState::Active {
                 action: active.action,
@@ -46,10 +59,21 @@ impl SegmentedDelivery {
                 source: pending.url.clone(),
             };
         }
-        match self.cache.snapshot(post.as_str()).phase {
+        match phase {
             SegmentedPhase::Ready => HlsBootstrapState::Ready,
             SegmentedPhase::Failed => HlsBootstrapState::Failed,
             SegmentedPhase::Queued | SegmentedPhase::Preparing => HlsBootstrapState::Failed,
         }
+    }
+
+    fn planning_cursor(
+        &self,
+        post: &ghostr_engine::PostId,
+    ) -> ghostr_engine::adaptive::HlsObjectCursor {
+        self.active
+            .get(post)
+            .map(|active| active.pending.cursor())
+            .or_else(|| self.pending.get(post).map(super::progress::Pending::cursor))
+            .unwrap_or_default()
     }
 }

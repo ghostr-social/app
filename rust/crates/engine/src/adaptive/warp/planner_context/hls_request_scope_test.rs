@@ -7,6 +7,7 @@ fn hls_demand_capacity_cannot_be_spent_by_progressive_work() {
     let scope = RequestScope::new(1, 2, Vec::new());
     let hls = node(ActionKind::HlsBootstrap {
         stage: HlsBootstrapStage::RootManifest,
+        cursor: Default::default(),
         maximum_bytes: 1024,
     });
     let progressive = node(ActionKind::FetchRange(ByteRange::new(0, 1024)));

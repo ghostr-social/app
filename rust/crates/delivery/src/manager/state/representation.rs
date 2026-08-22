@@ -35,6 +35,21 @@ impl DeliveryState {
         self.accept_binding(previous, binding);
     }
 
+    pub(super) fn remove_progressive(&mut self, post: &PostId) {
+        if self.catalog.lookup(post).is_none() {
+            return;
+        }
+        self.catalog.retain(|known| known != post);
+        self.pending_representations
+            .retain(|binding| binding.post() != post);
+        self.transformed_posts.remove(post);
+        self.fast_start_evidence.remove(post);
+        self.forget_evictions(post);
+        if !self.changed_representations.contains(post) {
+            self.changed_representations.push(post.clone());
+        }
+    }
+
     fn accept_binding(
         &mut self,
         previous: Option<RepresentationBinding>,

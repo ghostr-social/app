@@ -10,6 +10,8 @@ use std::time::Duration;
 
 mod observed;
 pub(crate) use observed::{observed_admitted_capacity, observed_claimed_requests};
+mod demand;
+pub(crate) use demand::HlsDemand;
 
 const SEVERE_PACKET_LOSS_BPS: u16 = 5_000;
 
@@ -103,13 +105,13 @@ pub(crate) fn network_profile_setback(packet_loss_bps: u16) -> Option<NetworkSet
 
 pub(crate) fn planning_connection_capacity(
     adaptive: usize,
-    hls_demand: usize,
+    hls_demand: HlsDemand,
     ceiling: usize,
     packet_loss_bps: u16,
 ) -> usize {
     let demanded = match network_profile_setback(packet_loss_bps) {
         Some(NetworkSetback::SevereLoss) => 1,
-        _ => adaptive.max(hls_demand),
+        _ => adaptive.max(hls_demand.effective()),
     };
     demanded.min(ceiling.max(1)).max(1)
 }

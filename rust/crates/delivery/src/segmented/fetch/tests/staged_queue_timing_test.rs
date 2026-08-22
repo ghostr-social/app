@@ -51,6 +51,8 @@ async fn queued_fetch(url: String) -> (Duration, Result<FetchedObject, FetchFail
             requests: &staged_requests,
             stage: HlsBootstrapStage::FirstSegment,
             url: &url,
+            maximum_bytes: 256 * 1024,
+            continuation: None,
             priority: PreemptionAuthority::PlaybackCritical,
             committed_until_ms: unix_time_ms() + 1_000,
             network_status: &network,

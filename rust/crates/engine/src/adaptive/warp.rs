@@ -23,6 +23,7 @@ pub use generation::{
     ActiveControl, CandidateRetrievalLadder, GeneratedAction, GeneratedActions, PlannerCommand,
     WarpActionGenerator,
 };
+pub(crate) use generation::{HlsGenerationPolicy, WarpGenerationInput};
 pub(crate) use planner::{
     PlannerReplayCapsule, PlannerReplayState, SearchReplayInput, SearchReplayMode,
 };
@@ -34,8 +35,9 @@ pub use planner::{
 pub use planner_context::{
     ActivePlannerContext, HeadProbeHistory, PlannerCandidateContext, PlannerCapability,
     PlannerContext, PlannerLimits, PlannerQuality, PlannerRetryAvailability, PlannerRetryEvidence,
-    PlannerWatchEvidence, PreviewAvailability, ResourceFeedback, SegmentedStorageBudget,
-    SoftRequestCommitment, TransformCapability, INLINE_BLURHASH_PREVIEW_QUALITY_MICROS,
+    PlannerWatchEvidence, PreviewAvailability, ResourceFeedback, ResourceFeedbackCursor,
+    ResourcePriceSnapshot, SegmentedStorageBudget, SoftRequestCommitment, TransformCapability,
+    INLINE_BLURHASH_PREVIEW_QUALITY_MICROS,
 };
 pub use request_occupancy::RequestOccupancy;
 pub(crate) use search::ScoredSearchPlan;

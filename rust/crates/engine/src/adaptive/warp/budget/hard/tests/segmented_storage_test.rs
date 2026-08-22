@@ -61,6 +61,7 @@ fn hls(id: u16, score: i64, requires: &[u16]) -> ActionNode {
         PostId::new(format!("p{id}")),
         ActionKind::HlsBootstrap {
             stage: HlsBootstrapStage::Initialization,
+            cursor: Default::default(),
             maximum_bytes: STAGE_BYTES,
         },
         ActionValue::from_net_micros(score),

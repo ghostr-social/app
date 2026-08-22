@@ -2,11 +2,13 @@ use super::fetch::FetchedObject;
 use std::sync::Arc;
 use url::Url;
 
+#[derive(Clone)]
 pub(super) struct PreparedObject {
     pub request_url: String,
     pub final_url: Url,
     pub body: Arc<[u8]>,
     pub content_type: Option<String>,
+    pub cache: super::cache::HlsCacheMetadata,
 }
 
 impl From<FetchedObject> for PreparedObject {
@@ -16,6 +18,7 @@ impl From<FetchedObject> for PreparedObject {
             final_url: object.final_url,
             body: object.body,
             content_type: object.content_type,
+            cache: object.cache,
         }
     }
 }

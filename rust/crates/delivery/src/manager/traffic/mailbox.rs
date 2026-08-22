@@ -73,9 +73,9 @@ pub(crate) struct TrafficInbox {
 
 impl TrafficInbox {
     pub(crate) fn drain(&mut self, at: Instant) -> TrafficBatch {
-        let (batch, arm_timer) = self.lock().drain(at);
-        if arm_timer {
-            spawn_timer(Arc::clone(&self.state), self.events.clone(), at);
+        let (batch, timer_start) = self.lock().drain(at);
+        if let Some(started) = timer_start {
+            spawn_timer(Arc::clone(&self.state), self.events.clone(), started);
         }
         batch
     }
@@ -142,10 +142,10 @@ impl State {
 
     fn timer_fired(&mut self) -> bool {
         self.timer_armed = false;
-        self.has_active() && self.request_wake()
+        self.request_wake()
     }
 
-    fn drain(&mut self, at: Instant) -> (TrafficBatch, bool) {
+    fn drain(&mut self, at: Instant) -> (TrafficBatch, Option<Instant>) {
         let mut events = Vec::new();
         let mut latest = self.window_started.unwrap_or(at);
         self.transfers.retain(|key, pending| {
@@ -154,33 +154,34 @@ impl State {
             pending.reset();
             pending.closed.is_none()
         });
-        latest = if self.has_active() {
-            latest.max(at)
-        } else {
-            latest
-        };
+        if self.has_active() {
+            latest = latest.max(at);
+        }
         let started = self.window_started.unwrap_or(latest);
         self.window_started = (!self.transfers.is_empty()).then_some(latest);
         self.wake_pending = false;
-        let arm_timer = self.arm_timer();
+        let timer_start = self.timer_start(started, latest, !events.is_empty());
         (
             TrafficBatch::new(TrafficWindow::new(started, latest), events),
-            arm_timer,
+            timer_start,
         )
     }
 
-    fn arm_timer(&mut self) -> bool {
-        if self.timer_armed || !self.has_active() {
-            return false;
+    fn timer_start(
+        &mut self,
+        started: Instant,
+        latest: Instant,
+        had_events: bool,
+    ) -> Option<Instant> {
+        if self.timer_armed || (!self.has_active() && !had_events) {
+            return None;
         }
         self.timer_armed = true;
-        true
+        Some(if self.has_active() { latest } else { started })
     }
 
     fn has_active(&self) -> bool {
-        self.transfers
-            .values()
-            .any(|transfer| transfer.closed.is_none())
+        self.transfers.values().any(|item| item.closed.is_none())
     }
 }
 

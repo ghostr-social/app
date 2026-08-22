@@ -2,7 +2,7 @@ use super::super::PlanInputs;
 use crate::manager::state::DeliveryState;
 use ghostr_engine::adaptive::{
     AllocationPlan, HeadProbeHistory, PlannerContext, PlannerLimits, PreviewAvailability,
-    RequestOccupancy, ResourceFeedback, ResourceObservation, ShadowPriceController, TwinEpochs,
+    RequestOccupancy, TwinEpochs,
 };
 
 mod active;
@@ -46,21 +46,12 @@ pub(super) fn build(
         hedge_soft: &hedge_soft,
     });
     let limits = limits(state, snapshot, &request_capacity);
-    let context = context
-        .with_limits(limits)
-        .with_soft_request_capacity(
-            request_capacity.ordinary_tokens,
-            request_capacity.hls_tokens,
-            request_capacity.soft,
-        )
-        .with_feedback(feedback(FeedbackInput {
-            snapshot,
-            occupancy: &occupancy,
-            measured_network_bytes_per_second: inputs.measured_network_bytes_per_second,
-            measured_transform_cpu_ms: inputs.measured_transform_cpu_ms,
-            cpu_target_ms: limits.cpu_ms,
-            request_target: u64::from(request_capacity.tokens),
-        }))
+    let context = context.with_limits(limits).with_soft_request_capacity(
+        request_capacity.ordinary_tokens,
+        request_capacity.hls_tokens,
+        request_capacity.soft,
+    );
+    let context = apply_feedback(context, inputs.resource_feedback)
         .with_request_occupancy(occupancy.clone())
         .with_epochs(epochs(state, inputs));
     (context, occupancy, tails)
@@ -125,10 +116,7 @@ fn limits(
     let rate = snapshot.network.throughput_bps.saturating_div(8).max(1);
     let baseline_burst = rate.saturating_mul(2).max(snapshot.request_slice_bytes);
     PlannerLimits {
-        network_burst_bytes: baseline_burst.max(request_capacity::hls_burst_floor(
-            snapshot,
-            request_capacity.hls_tokens,
-        )),
+        network_burst_bytes: baseline_burst,
         network_rate_bytes_per_second: rate,
         cpu_ms: state
             .transform_profile()
@@ -141,33 +129,13 @@ fn limits(
     }
 }
 
-struct FeedbackInput<'a> {
-    snapshot: &'a ghostr_engine::adaptive::PlayabilitySnapshot,
-    occupancy: &'a RequestOccupancy,
-    measured_network_bytes_per_second: u64,
-    measured_transform_cpu_ms: Option<u64>,
-    cpu_target_ms: u64,
-    request_target: u64,
-}
-
-fn feedback(input: FeedbackInput<'_>) -> ResourceFeedback {
-    let rate = input.snapshot.network.throughput_bps.saturating_div(8);
-    let cpu_target = input.measured_transform_cpu_ms.map_or(0, |_| {
-        ShadowPriceController::cpu_operating_target_ms(input.cpu_target_ms)
-    });
-    ResourceFeedback {
-        actual: ResourceObservation::new(
-            input.measured_network_bytes_per_second,
-            input.snapshot.storage.used_bytes,
-            input.measured_transform_cpu_ms.unwrap_or_default(),
-            input.occupancy.total() as u64,
-        ),
-        target: ResourceObservation::new(
-            rate,
-            input.snapshot.storage.budget_bytes.saturating_mul(9) / 10,
-            cpu_target,
-            input.request_target.max(1),
-        ),
+fn apply_feedback(
+    context: PlannerContext,
+    feedback: Option<ghostr_engine::adaptive::ResourceFeedback>,
+) -> PlannerContext {
+    match feedback {
+        Some(feedback) => context.with_feedback(feedback),
+        None => context,
     }
 }
 

@@ -7,7 +7,6 @@ use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::snapshot;
 use crate::PostId;
 
-const MIB: u64 = 1024 * 1024;
 const SOURCE: &str = "https://hls.example/root.m3u8";
 
 #[test]
@@ -20,31 +19,35 @@ fn current_hls_bootstrap_is_one_budgeted_receding_horizon_commitment() {
     let context = PlannerContext::explicitly_unavailable(&state)
         .with_segmented_storage_available_bytes(u64::MAX);
     let mut planner = WarpPlanner::default();
-
     let decision = planner.plan(WarpPlannerInput::new(
         &state,
         &base,
         &OriginModel::default(),
         &context,
     ));
-
     let selected = decision.selected.expect("current HLS manifest selected");
     assert_eq!(
         selected.node.kind,
         ActionKind::HlsBootstrap {
             stage: HlsBootstrapStage::RootManifest,
-            maximum_bytes: MIB,
+            cursor: Default::default(),
+            maximum_bytes: crate::adaptive::REQUEST_SLICE_BYTES,
         }
     );
     assert_eq!(
         selected.node.resources,
-        ResourceCost::new(crate::adaptive::REQUEST_SLICE_BYTES, MIB, 0, 1)
+        ResourceCost::new(
+            crate::adaptive::REQUEST_SLICE_BYTES,
+            crate::adaptive::REQUEST_SLICE_BYTES,
+            0,
+            1,
+        )
     );
     assert!(matches!(
         selected.command,
         PlannerCommand::FetchHlsBootstrap {
             stage: HlsBootstrapStage::RootManifest,
-            maximum_bytes: MIB,
+            maximum_bytes: crate::adaptive::REQUEST_SLICE_BYTES,
             committed_until_ms: 13_000,
             ..
         }
@@ -53,14 +56,14 @@ fn current_hls_bootstrap_is_one_budgeted_receding_horizon_commitment() {
 }
 
 #[test]
-fn every_hls_bootstrap_stage_has_its_exact_object_envelope() {
+fn every_hls_stage_commits_one_bounded_network_and_storage_block() {
     let cases = [
-        (HlsBootstrapStage::RootManifest, MIB),
-        (HlsBootstrapStage::ChildPlaylist, MIB),
-        (HlsBootstrapStage::Initialization, 8 * MIB),
-        (HlsBootstrapStage::FirstSegment, 8 * MIB),
+        HlsBootstrapStage::RootManifest,
+        HlsBootstrapStage::ChildPlaylist,
+        HlsBootstrapStage::Initialization,
+        HlsBootstrapStage::FirstSegment,
     ];
-    for (stage, maximum) in cases {
+    for stage in cases {
         let mut state = snapshot(0, 80_000_000, 0, 0);
         state.hls_candidates.push(candidate(stage));
         let generated = crate::adaptive::WarpActionGenerator::generate(
@@ -72,8 +75,8 @@ fn every_hls_bootstrap_stage_has_its_exact_object_envelope() {
         assert_eq!(
             generated.actions[0].node.resources,
             ResourceCost::new(
-                crate::adaptive::REQUEST_SLICE_BYTES.min(maximum),
-                maximum,
+                crate::adaptive::REQUEST_SLICE_BYTES,
+                crate::adaptive::REQUEST_SLICE_BYTES,
                 0,
                 1,
             )
@@ -88,6 +91,7 @@ fn candidate(stage: HlsBootstrapStage) -> HlsCandidateSnapshot {
         feed_offset: FeedOffset::new(0),
         view_probability: ViewProbability::new(1.0).unwrap(),
         startup_value_ms: 2_000,
+        cursor: Default::default(),
         state: HlsBootstrapState::Pending {
             stage,
             source: SOURCE.into(),

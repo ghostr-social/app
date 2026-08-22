@@ -9,7 +9,6 @@ use crate::manager::pressure::is_store_pressure;
 use crate::manager::transfers::ChunkDone;
 use crate::manager::DeliveryWorker;
 use ghostr_engine::catalog::LearnedFacts;
-use ghostr_engine::concurrency::NetworkSetback;
 use ghostr_engine::host_stats::host_of;
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::PostId;
@@ -64,7 +63,6 @@ impl DeliveryWorker {
         let Some(class) = origin_failure_class(error) else {
             return;
         };
-        self.note_network_setback(NetworkSetback::Failure);
         warn!(
             "Chunk transfer failed for {} ({class:?})",
             MediaLogIdentity::from_url(url)

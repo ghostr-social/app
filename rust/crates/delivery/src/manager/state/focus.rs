@@ -4,7 +4,7 @@ use ghostr_engine::adaptive::NavigationDirection;
 use ghostr_engine::focus::FocusUpdate;
 use ghostr_engine::DeliveryKind;
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 impl DeliveryState {
     pub(crate) fn apply_focus(&mut self, update: DeliveryFocus, observed_at_ms: u64) -> bool {
@@ -14,13 +14,21 @@ impl DeliveryState {
         let direction = navigation_direction(self.focus.current(), &update);
         let previews = preview_map(update.previews);
         let mut window = Vec::new();
+        let mut hls_focus = HashSet::new();
         for item in update.items {
             window.push(item.post.clone());
-            if item.meta.delivery == DeliveryKind::Progressive {
-                let preview = previews.get(&item.post).copied();
-                self.upsert_progressive(item.post.clone(), item.meta, preview);
+            match item.meta.delivery {
+                DeliveryKind::Progressive => {
+                    let preview = previews.get(&item.post).copied();
+                    self.upsert_progressive(item.post.clone(), item.meta, preview);
+                }
+                DeliveryKind::Hls => {
+                    hls_focus.insert(item.post.clone());
+                    self.remove_progressive(&item.post);
+                }
             }
         }
+        self.hls_focus = hls_focus;
         self.current_authority = ghostr_engine::adaptive::CurrentAuthority::Canonical;
         self.focus.update_focus(FocusUpdate {
             window,

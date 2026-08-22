@@ -1,6 +1,6 @@
 //! Event-driven delivery manager (plan Phase 1 step 7): replaces the
 //! old one-second poll loop. Control and completion updates arrive over channels; every event
-//! triggers one replanning pass — there is no periodic wake-up.
+//! triggers one replanning pass, with one bounded control-interval wake for sampled feedback.
 //!
 //! The parts of that pass live beside this file: `reconcile` decides
 //! what should be in flight, `transfers` and `workers` run it,
@@ -14,10 +14,13 @@ mod completion;
 mod completion_decision;
 mod completion_observability;
 pub(crate) mod concurrency;
+pub(crate) mod control_interval;
+mod cooldown_completion;
 pub(crate) mod cooldown_timers;
 mod create;
 pub mod failure;
 mod focus_lease;
+mod focus_retry;
 pub(crate) mod hedge_tail;
 pub(crate) mod immediate_replan;
 mod independent_objects;
@@ -40,6 +43,7 @@ pub(crate) mod reconcile_warp;
 pub(crate) mod reliability;
 mod request_gate;
 mod reset;
+pub(crate) mod resource_control;
 mod response_observation;
 pub(crate) mod response_open;
 pub mod retry;
@@ -126,17 +130,18 @@ pub fn start_delivery_manager_with_discovery_demand(
 ) -> (DeliveryHandle, watch::Receiver<DiscoveryDemand>) {
     let (discovery_sender, discovery_updates) = watch::channel(DiscoveryDemand::Expand);
     let (handle, commands) = command_channel();
-    tokio::spawn(run(config, commands, demand, Some(discovery_sender)));
+    let resources =
+        resource_control::ResourceControl::bootstrap(&config, tokio::time::Instant::now());
+    let observer = Arc::new(resources.clone());
+    assert!(config.requests.install_resource_observer(observer));
+    tokio::spawn(async move {
+        let worker = DeliveryWorker::create(config, commands, demand, resources).await;
+        run(worker, Some(discovery_sender)).await;
+    });
     (handle, discovery_updates)
 }
 
-async fn run(
-    config: DeliveryManagerConfig,
-    commands: CommandReceiver,
-    demand: DemandReceiver,
-    discovery_watch: Option<watch::Sender<DiscoveryDemand>>,
-) {
-    let mut worker = DeliveryWorker::create(config, commands, demand).await;
+async fn run(mut worker: DeliveryWorker, discovery_watch: Option<watch::Sender<DiscoveryDemand>>) {
     worker.spawn_capacity_replans();
     if let Some(sender) = discovery_watch {
         worker.state.publish_discovery_demand(sender);
@@ -171,15 +176,18 @@ pub(crate) struct DeliveryWorker {
     events: mpsc::UnboundedReceiver<InternalEvent>,
     responses: ResponseOpenReceiver,
     traffic: TrafficInbox,
+    control_interval: tokio::time::Interval,
     wake_cursor: WakeCursor,
     concurrency: AdaptiveConcurrency,
     additional_request_slot_demand: Option<bool>,
     max_requests_per_authority: Option<NonZeroUsize>,
     segmented: SegmentedDelivery,
+    segmented_invalidations: watch::Receiver<u64>,
     timelines: TimelineCoordinator,
     independent_objects: IndependentObjects,
     transforms: transforms::TransformJobs,
     immediate_replan: ImmediateReplan,
     network_refill_timer: NetworkRefillTimer,
+    resources: resource_control::ResourceControl,
     warp_planner: ghostr_engine::adaptive::WarpPlanner,
 }

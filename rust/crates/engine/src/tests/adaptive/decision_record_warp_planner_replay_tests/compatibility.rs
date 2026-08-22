@@ -1,7 +1,7 @@
 use super::support::{capsule, planned, record};
 use crate::adaptive::{
-    AdaptivePlayabilityPolicy, DecisionRecord, DecisionReplayStatus, PlannerContext, WarpPlanner,
-    WarpPlannerInput,
+    AdaptivePlayabilityPolicy, DecisionRecord, DecisionReplayStatus, PlannerContext,
+    ResourceFeedback, ResourceObservation, WarpPlanner, WarpPlannerInput,
 };
 use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::snapshot;
@@ -56,4 +56,30 @@ fn oversized_real_planner_input_records_unavailable_capsule() {
         captured.replay_warp_search(),
         Err(DecisionReplayStatus::AdvancedReplayUnavailable)
     );
+}
+
+#[test]
+fn pre_revision_feedback_capsule_keeps_its_historical_json_shape() {
+    let state = snapshot(2, 20_000_000, 8_000, 18);
+    let base = AdaptivePlayabilityPolicy.plan(&state);
+    let context = PlannerContext::explicitly_unavailable(&state).with_feedback(ResourceFeedback {
+        revision: 0,
+        actual: ResourceObservation::new(200, 0, 0, 1),
+        target: ResourceObservation::new(100, 0, 0, 1),
+        price_snapshot: None,
+    });
+    let decision = WarpPlanner::default().plan(WarpPlannerInput::new(
+        &state,
+        &base,
+        &OriginModel::default(),
+        &context,
+    ));
+    let captured = record(&state, &decision);
+    let json = serde_json::to_string(&captured).unwrap();
+    let restored: DecisionRecord = serde_json::from_str(&json).unwrap();
+
+    assert!(!json.contains("\"revision\""));
+    assert_eq!(serde_json::to_string(&restored).unwrap(), json);
+    assert_eq!(restored.replay(), DecisionReplayStatus::Verified);
+    assert!(restored.replay_warp_search().is_ok());
 }

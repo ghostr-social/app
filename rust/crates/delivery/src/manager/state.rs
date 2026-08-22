@@ -15,7 +15,7 @@ use ghostr_engine::focus::{FocusState, FocusUpdate};
 use ghostr_engine::playback::PlaybackStatus;
 use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use tokio::sync::watch;
 
 pub(crate) struct DeliveryState {
@@ -31,6 +31,7 @@ pub(crate) struct DeliveryState {
     latest_presentation_sequence: u64,
     pending_presentation: Option<PlaybackPresentation>,
     focus_generations: FocusGenerationGuard,
+    hls_focus: HashSet<PostId>,
     pending_representations: Vec<RepresentationBinding>,
     changed_representations: Vec<PostId>,
     navigation: NavigationHistory,
@@ -75,6 +76,7 @@ impl DeliveryState {
             latest_presentation_sequence: 0,
             pending_presentation: None,
             focus_generations: FocusGenerationGuard::default(),
+            hls_focus: HashSet::new(),
             pending_representations: Vec::new(),
             changed_representations: Vec::new(),
             navigation: NavigationHistory::default(),
@@ -90,15 +92,12 @@ impl DeliveryState {
         }
     }
 
-    /// Admits validated relay output independently of any UI round trip.
-    /// Until a consumer supplies focus, candidates form the initial
-    /// priority window and begin probing/downloading immediately. The
-    /// projected current post stays pinned across arrivals: the feed
-    /// accumulates rows, so its top post is the first one served, and
-    /// re-aiming startup work at every newer discovery restarts the
-    /// first video's delivery over and over.
+    /// Admits relay output before UI focus. The projected current stays pinned
+    /// so newer discoveries cannot repeatedly restart first-video delivery.
     pub(crate) fn apply_candidate(&mut self, candidate: DeliveryCandidate) {
-        if candidate.meta.delivery != DeliveryKind::Progressive {
+        if candidate.meta.delivery != DeliveryKind::Progressive
+            || self.hls_focus.contains(&candidate.post)
+        {
             return;
         }
         let post = candidate.post.clone();
@@ -141,6 +140,7 @@ impl DeliveryState {
         self.current_authority = CurrentAuthority::Provisional;
         self.playback.discard_session();
         self.pending_presentation = None;
+        self.hls_focus.clear();
         self.pending_representations.clear();
         self.changed_representations.clear();
         self.navigation = NavigationHistory::default();

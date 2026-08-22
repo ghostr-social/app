@@ -55,9 +55,11 @@ fn restore_stored(value: &RecordedWarpActionKind) -> ActionKind {
         },
         RecordedWarpActionKind::HlsBootstrap {
             stage,
+            cursor,
             maximum_bytes,
         } => ActionKind::HlsBootstrap {
             stage: (*stage).into(),
+            cursor: *cursor,
             maximum_bytes: *maximum_bytes,
         },
         RecordedWarpActionKind::CacheUpgrade {

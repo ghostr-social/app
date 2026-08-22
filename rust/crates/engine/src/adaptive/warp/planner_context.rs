@@ -1,4 +1,4 @@
-use super::{RequestOccupancy, ResourceObservation, SemanticScore, TwinEpochs};
+use super::{RequestOccupancy, SemanticScore, TwinEpochs};
 use crate::adaptive::{EpsilonBuckets, PlayabilitySnapshot};
 use crate::origin_model::NetworkClass;
 use crate::{ActionId, PostId};
@@ -12,6 +12,8 @@ mod candidate;
 mod hls_request_scope_test;
 mod replay;
 mod request_scope;
+mod resource_feedback;
+mod retry;
 mod segmented_storage;
 mod unavailable;
 mod watch;
@@ -22,6 +24,7 @@ pub use candidate::{
     INLINE_BLURHASH_PREVIEW_QUALITY_MICROS,
 };
 pub use request_scope::SoftRequestCommitment;
+pub use resource_feedback::{ResourceFeedback, ResourceFeedbackCursor, ResourcePriceSnapshot};
 pub use segmented_storage::SegmentedStorageBudget;
 pub use watch::PlannerWatchEvidence;
 
@@ -44,12 +47,6 @@ pub struct PlannerLimits {
     pub cpu_ms: u64,
     pub request_tokens: u16,
     pub per_origin_requests: u16,
-}
-
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct ResourceFeedback {
-    pub actual: ResourceObservation,
-    pub target: ResourceObservation,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -148,21 +145,6 @@ impl PlannerContext {
     pub(super) fn permits_request(&self, post: &PostId) -> bool {
         self.candidate(post)
             .is_some_and(|candidate| candidate.retry.permits_request())
-    }
-
-    pub(super) fn retry_evidence(
-        &self,
-        snapshot: &PlayabilitySnapshot,
-    ) -> Vec<PlannerRetryEvidence> {
-        snapshot
-            .candidates
-            .iter()
-            .filter_map(|item| {
-                let candidate = self.candidates.get(&item.post)?;
-                (candidate.retry != PlannerRetryAvailability::Ready)
-                    .then(|| PlannerRetryEvidence::new(item.post.clone(), candidate.retry))
-            })
-            .collect()
     }
 
     pub(super) fn remaining_request_slots(&self) -> u16 {

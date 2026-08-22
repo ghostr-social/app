@@ -9,6 +9,7 @@ fn focus_shift_retains_old_ready_handoff_when_headroom_is_sufficient() {
     let cache = SegmentedCache::new();
     let mut delivery = SegmentedDelivery::new(cache.clone());
     delivery.apply_focus(&focus(1, 0));
+    delivery.pending.clear();
     store(&cache, "first", 1, &[MIB]);
     assert!(cache.mark_stage_ready(&PostId::new("first"), 1));
 
@@ -22,5 +23,5 @@ fn focus_shift_retains_old_ready_handoff_when_headroom_is_sufficient() {
     ));
 
     assert_eq!(cache.snapshot("first").phase, SegmentedPhase::Ready);
-    assert!(cache.object("https://first.example/0").is_some());
+    assert!(cache.object("https://first.example/root.m3u8").is_some());
 }

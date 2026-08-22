@@ -13,7 +13,7 @@ use tower::ServiceExt;
 
 #[tokio::test]
 async fn serves_every_prefetched_bootstrap_object_without_origin_refetch() {
-    let (origin, source) = HlsOrigin::start_master().await;
+    let (origin, source) = HlsOrigin::start_cacheable_master().await;
     let delivery = start_delivery("hls-prefetched-cache");
     delivery.handle.update_focus(hls_focus(&source));
     wait_ready(&delivery.segmented).await;

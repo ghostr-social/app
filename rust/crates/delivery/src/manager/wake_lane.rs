@@ -1,4 +1,4 @@
-pub(crate) const WAKE_LANES: usize = 8;
+pub(crate) const WAKE_LANES: usize = 9;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum WakeLane {
@@ -9,7 +9,8 @@ pub(crate) enum WakeLane {
     Demand = 4,
     Response = 5,
     Internal = 6,
-    Timeline = 7,
+    SegmentedInvalidation = 7,
+    Timeline = 8,
 }
 
 impl WakeLane {
@@ -21,6 +22,7 @@ impl WakeLane {
         Self::Demand,
         Self::Response,
         Self::Internal,
+        Self::SegmentedInvalidation,
         Self::Timeline,
     ];
 }

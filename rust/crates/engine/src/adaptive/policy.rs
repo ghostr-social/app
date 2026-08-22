@@ -18,7 +18,7 @@ pub struct AdaptivePlayabilityPolicy;
 impl AdaptivePlayabilityPolicy {
     pub fn plan(self, snapshot: &PlayabilitySnapshot) -> AllocationPlan {
         let Some(current) = current_candidate(snapshot) else {
-            return empty_frontier_plan();
+            return hls_frontier_plan(snapshot);
         };
         let emergency = snapshot.playback.authority == super::CurrentAuthority::Canonical
             && endangered(snapshot, current);
@@ -135,6 +135,19 @@ fn empty_frontier_plan() -> AllocationPlan {
         discovery_demand: DiscoveryDemand::Expand,
         ..AllocationPlan::default()
     }
+}
+
+fn hls_frontier_plan(snapshot: &PlayabilitySnapshot) -> AllocationPlan {
+    let mut plan = empty_frontier_plan();
+    let current_at_risk = snapshot.playback.authority == super::CurrentAuthority::Canonical
+        && snapshot
+            .hls_candidates
+            .iter()
+            .any(|item| item.post == snapshot.playback.current && !item.ready());
+    if current_at_risk {
+        plan.mode = super::ControlMode::Emergency;
+    }
+    plan
 }
 
 fn finalize(plan: &mut AllocationPlan, snapshot: &PlayabilitySnapshot) {

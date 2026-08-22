@@ -1,6 +1,6 @@
 use crate::manager::concurrency::{
     capacity_evidence, network_profile_setback, planning_connection_capacity, request_occupancy,
-    RequestConcurrencyLimits,
+    HlsDemand, RequestConcurrencyLimits,
 };
 use crate::manager::traffic::OverallTrafficWindow;
 use ghostr_engine::concurrency::{ConcurrencyOccupancy, NetworkSetback};
@@ -54,10 +54,15 @@ fn default_origin_limit_preserves_a_cross_origin_request_slot() {
 
 #[test]
 fn hls_demand_uses_healthy_global_capacity_but_respects_severe_loss() {
-    assert_eq!(planning_connection_capacity(1, 3, 3, 0), 3);
-    assert_eq!(planning_connection_capacity(1, 3, 2, 0), 2);
-    assert_eq!(planning_connection_capacity(2, 1, 3, 0), 2);
-    assert_eq!(planning_connection_capacity(2, 0, 3, 0), 2);
-    assert_eq!(planning_connection_capacity(1, 5, 3, 0), 3);
-    assert_eq!(planning_connection_capacity(1, 3, 3, 6_000), 1);
+    assert_eq!(capacity(1, HlsDemand::new(3, true), 3, 0), 3);
+    assert_eq!(capacity(1, HlsDemand::new(3, true), 2, 0), 2);
+    assert_eq!(capacity(2, HlsDemand::new(1, true), 3, 0), 2);
+    assert_eq!(capacity(2, HlsDemand::new(0, true), 3, 0), 2);
+    assert_eq!(capacity(1, HlsDemand::new(5, true), 3, 0), 3);
+    assert_eq!(capacity(1, HlsDemand::new(3, false), 3, 0), 1);
+    assert_eq!(capacity(1, HlsDemand::new(3, true), 3, 6_000), 1);
+}
+
+fn capacity(adaptive: usize, hls: HlsDemand, ceiling: usize, loss: u16) -> usize {
+    planning_connection_capacity(adaptive, hls, ceiling, loss)
 }

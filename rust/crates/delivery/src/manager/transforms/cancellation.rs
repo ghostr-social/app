@@ -4,6 +4,16 @@ use ghostr_engine::{ActionId, PostId};
 use std::collections::HashSet;
 
 impl TransformJobs {
+    pub(crate) fn cancel_post(&mut self, post: &PostId) -> usize {
+        let obsolete = self
+            .active
+            .iter()
+            .filter(|(_, job)| &job.post == post)
+            .map(|(action, _)| *action)
+            .collect();
+        self.cancel(obsolete)
+    }
+
     pub(crate) fn cancel_obsolete(&mut self, binding: &RepresentationBinding) -> usize {
         let obsolete = self
             .active

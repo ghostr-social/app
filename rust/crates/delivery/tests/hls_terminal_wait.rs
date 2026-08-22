@@ -19,5 +19,10 @@ pub async fn wait_terminal(cache: &SegmentedCache, post: &str) -> SegmentedSnaps
         }
     })
     .await
-    .expect("terminal HLS readiness")
+    .unwrap_or_else(|error| {
+        panic!(
+            "terminal HLS readiness: {error:?}; snapshot={:?}",
+            cache.snapshot(post)
+        )
+    })
 }

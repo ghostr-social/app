@@ -1,10 +1,12 @@
 use super::test_fixture::TransformFixture;
 use super::TransformJobs;
+use crate::manager::resource_control::{ResourceControl, ResourceEnvironment};
 use crate::manager::transfers::InternalEvent;
 use crate::transform::{
     TransformBackend, TransformControl, TransformInput, TransformLimits, TransformOutput,
     TransformProfile,
 };
+use ghostr_engine::adaptive::ResourceObservation;
 use ghostr_engine::adaptive::TransformKind;
 use std::hint::black_box;
 use std::sync::Arc;
@@ -35,11 +37,14 @@ impl TransformBackend for BusyBackend {
     }
 }
 
-#[tokio::test]
-async fn bounded_busy_transform_records_consumed_cpu() {
+#[tokio::test(start_paused = true)]
+async fn bounded_busy_transform_charges_cpu_before_manager_completion() {
     let fixture = TransformFixture::seeded("transform-cpu-busy").await;
     let (events, mut receiver) = mpsc::unbounded_channel::<InternalEvent>();
-    let mut jobs = TransformJobs::new(Some(Arc::new(BusyBackend)), events);
+    let target = ResourceObservation::new(1, 1, 100, 1);
+    let environment = ResourceEnvironment::new(0, target);
+    let resources = ResourceControl::new(tokio::time::Instant::now(), environment);
+    let mut jobs = TransformJobs::new(Some(Arc::new(BusyBackend)), events, resources.clone());
     assert!(jobs.launch(fixture.store.clone(), fixture.request(8)));
 
     let InternalEvent::Transform(done) = receiver.recv().await.unwrap() else {
@@ -47,6 +52,8 @@ async fn bounded_busy_transform_records_consumed_cpu() {
     };
     let actual = done.actual_resources.expect("measured resources");
     assert!(actual.cpu_ms() > 0, "busy work must consume CPU");
+    tokio::time::advance(Duration::from_millis(500)).await;
+    let feedback = resources.feedback(environment);
+    assert_eq!(feedback.actual.cpu, actual.cpu_ms());
     assert!(jobs.finish(&done).is_some());
-    assert_eq!(jobs.take_cpu_sample_ms(), Some(actual.cpu_ms()));
 }

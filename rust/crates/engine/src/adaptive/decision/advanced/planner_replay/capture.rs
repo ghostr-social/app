@@ -42,6 +42,8 @@ fn projected(
         controller_prices: Some(prices(value.controller_prices())),
         network: Some(network(value.network())),
         price_epoch: Some(value.price_epoch()),
+        last_feedback: value.last_feedback(),
+        hls_generation_policy: value.hls_generation_policy().into(),
     })
 }
 
@@ -112,6 +114,8 @@ impl RecordedPlannerReplayCapsule {
             controller_prices: None,
             network: None,
             price_epoch: None,
+            last_feedback: None,
+            hls_generation_policy: Default::default(),
         }
     }
 }

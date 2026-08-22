@@ -45,6 +45,8 @@ impl RecordedPlannerReplayCapsule {
                 controller_prices,
                 network,
                 price_epoch,
+                last_feedback: self.last_feedback,
+                hls_generation_policy: self.hls_generation_policy.restore(),
             },
             Vec::new(),
         ))

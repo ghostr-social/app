@@ -21,6 +21,8 @@ pub(crate) enum Wake {
     Demand(DemandState),
     Response(Box<ResponseOpenRequest>),
     Internal(InternalEvent),
+    ControlInterval,
+    SegmentedInvalidated,
     Timeline(TimelineResult),
 }
 impl DeliveryWorker {
@@ -77,6 +79,12 @@ impl DeliveryWorker {
                 self.apply_internal(event).await;
                 None
             }
+            Wake::ControlInterval => None,
+            Wake::SegmentedInvalidated => {
+                self.segmented.reseed_invalidated();
+                self.reconcile_segmented_roots();
+                None
+            }
             Wake::Timeline(result) => {
                 self.timelines.stage(result);
                 None
@@ -111,25 +119,23 @@ impl DeliveryWorker {
     fn apply_focus_command(&mut self, focus: crate::delivery_events::DeliveryFocus) {
         let previous = self.state.focus().current().cloned();
         let segmented_focus = focus.clone();
+        let hls_changed = self.segmented.changed_hls_sources(&segmented_focus);
+        let hls_cooldown_resets = self.segmented.hls_cooldown_resets(&segmented_focus);
         let observed_at_ms = unix_time_ms();
         if !self.state.apply_focus(focus, observed_at_ms) {
             return;
         }
         self.qoe.note_focus(&segmented_focus, observed_at_ms);
         self.segmented.set_startup_eta_ms(self.qoe.startup_eta_ms());
-        self.segmented.apply_focus(&segmented_focus);
+        let segmented_changed = self.segmented.apply_focus(&segmented_focus);
         let current = self.state.focus().current().cloned();
-        for post in self.state.take_changed_representations() {
-            self.cooldown_timers.cancel(&post);
-            self.probes.representation_changed(&post);
-            self.retry.representation_changed(&post);
-        }
-        self.retry
-            .focus_changed(previous.as_ref(), current.as_ref());
-        if previous != current {
-            if let Some(current) = current.as_ref() {
-                self.cooldown_timers.cancel(current);
-            }
+        let progressive_changed = self.state.take_changed_representations();
+        let hls_restarts =
+            self.reset_focus_representations(progressive_changed, hls_changed, hls_cooldown_resets);
+        self.apply_retry_focus_change(previous.as_ref(), current.as_ref());
+        if segmented_changed {
+            self.restart_segmented_roots(&hls_restarts);
+            self.reconcile_segmented_roots();
         }
         self.focus_lease
             .pin(self.ctx.store.as_ref(), current.as_ref());
@@ -162,14 +168,13 @@ impl DeliveryWorker {
                 self.network_refill_timer.finish(wake);
             }
             InternalEvent::Transfer(transfer) => self.apply_transfer(transfer).await,
-            InternalEvent::Segmented(done) => self.finish_segmented(done),
+            InternalEvent::Segmented(done) => self.finish_segmented(*done),
             InternalEvent::Transform(done) => self.finish_transform_job(done),
             InternalEvent::HedgeTail(wake) => self.consume_hedge_tail_wake(wake),
             InternalEvent::Maintenance(maintenance) => self.apply_maintenance(maintenance).await,
             InternalEvent::TrafficChanged => self.absorb_traffic(),
         }
     }
-
     async fn apply_transfer(&mut self, event: TransferEvent) {
         match event {
             TransferEvent::ChunkDone(done) => self.finish_chunk(done).await,
@@ -177,13 +182,9 @@ impl DeliveryWorker {
             TransferEvent::ResponseObserved(observed) => self.observe_response(observed),
         }
     }
-
     async fn apply_maintenance(&mut self, event: MaintenanceEvent) {
         match event {
-            MaintenanceEvent::CooldownOver(post, cooldown) => {
-                self.cooldown_timers.finish(&post, cooldown);
-                self.retry.warm_up(&post, cooldown);
-            }
+            MaintenanceEvent::CooldownOver(post, cooldown) => self.finish_cooldown(post, cooldown),
             MaintenanceEvent::SaveStats => {
                 self.keeper.save_now().await;
                 let evidence = self.state.catalog().evidence_state();
@@ -191,9 +192,7 @@ impl DeliveryWorker {
                 self.save_capability().await;
             }
             MaintenanceEvent::SaveQoe => self.qoe.save_now().await,
-            MaintenanceEvent::StoreCapacityChanged(generation) => {
-                self.resume_store_capacity(generation);
-            }
+            MaintenanceEvent::StoreCapacityChanged(value) => self.resume_store_capacity(value),
         }
     }
 }

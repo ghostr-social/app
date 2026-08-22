@@ -61,6 +61,10 @@ impl AdaptiveConcurrency {
         self.limit
     }
 
+    pub fn demand_expansion_allowed(self) -> bool {
+        self.retry_backoff == 0
+    }
+
     pub fn set_maximum(&mut self, maximum: usize) {
         self.maximum = maximum.max(1);
         if self.accepted <= self.maximum && self.limit <= self.maximum {

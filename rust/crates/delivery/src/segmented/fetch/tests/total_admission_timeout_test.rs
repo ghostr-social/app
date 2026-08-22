@@ -28,7 +28,7 @@ async fn occupied_gate_expires_as_the_hls_total_deadline() {
         Ok(_) => panic!("transfer must hit its total deadline"),
         Err(error) => error,
     };
-    assert!(error.to_string().contains("object transfer timed out"));
+    assert!(error.to_string().contains("request admission timed out"));
     drop(held);
     server.abort();
 }
@@ -37,7 +37,8 @@ fn spec(url: &str, timeouts: HlsTransferTimeouts) -> FetchSpec<'_> {
     FetchSpec {
         url,
         limit: 1,
-        require_manifest: false,
+        object_limit: 1,
+        object: Default::default(),
         timeouts,
         priority: PreemptionAuthority::Transition,
         admission_fence: None,

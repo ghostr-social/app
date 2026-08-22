@@ -1,4 +1,4 @@
-use super::MediaRequestLimits;
+use super::{MediaRequestLimits, MediaResourceObserver};
 use anyhow::{Context, Result};
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::RequestAuthority;
@@ -7,6 +7,8 @@ use tokio::sync::oneshot;
 
 mod state;
 use state::GateState;
+mod observer;
+use observer::ResourceObserverSlot;
 
 #[derive(Clone)]
 pub(super) struct MediaRequestGate {
@@ -15,6 +17,7 @@ pub(super) struct MediaRequestGate {
 
 struct GateInner {
     state: Mutex<GateState>,
+    observer: ResourceObserverSlot,
 }
 
 pub(super) struct RequestLease {
@@ -40,8 +43,16 @@ impl MediaRequestGate {
         Self {
             inner: Arc::new(GateInner {
                 state: Mutex::new(GateState::new(limits)),
+                observer: ResourceObserverSlot::default(),
             }),
         }
+    }
+
+    pub(super) fn install_resource_observer(
+        &self,
+        observer: Arc<dyn MediaResourceObserver>,
+    ) -> bool {
+        self.inner.observer.install(observer)
     }
 
     pub(super) async fn acquire(

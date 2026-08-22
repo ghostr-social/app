@@ -1,5 +1,6 @@
 use super::progress::Advance;
 use super::{Active, SegmentedDelivery, SegmentedDone, SegmentedFinish};
+use crate::segmented::cache::{CompleteStage, StageBlock, StoredStage};
 use crate::segmented::fetch::{FetchFailure, FetchedObject, OriginTelemetry};
 use crate::segmented::prepare::PreparedObject;
 use ghostr_engine::origin_model::ErrorReason;
@@ -22,7 +23,6 @@ impl SegmentedDelivery {
         }
         let active = self.active.remove(&done.post)?;
         let stage = active.pending.stage;
-        let source_index = active.pending.source_index;
         let source = active.pending.url.clone();
         let action = done.action;
         let post = done.post;
@@ -35,18 +35,12 @@ impl SegmentedDelivery {
         };
         let result = self.complete_stage(&post, generation, &active, outcome);
         let context = TerminalContext::new(&source, stage, action, observed_at_ms);
-        let finish = terminal(TerminalInput {
+        let mut finish = terminal(TerminalInput {
             context,
             result: &result,
             resources,
         });
-        if let Some(error) = result
-            .as_ref()
-            .err()
-            .filter(|error| !error.is_cancelled() && !error.is_superseded())
-        {
-            self.retry_or_fail(&post, generation, source_index, error.reason());
-        }
+        finish.recovery = self.recovery(&post, &active.pending, &result);
         Some(finish)
     }
 
@@ -72,47 +66,72 @@ impl SegmentedDelivery {
     ) -> Result<CompletedObject, FetchFailure> {
         let bytes = object.body.len() as u64;
         let telemetry = object.telemetry;
-        let advance = active.pending.advance(&object).map_err(|error| {
-            FetchFailure::admitted(error, ErrorReason::InvalidResponse, telemetry, bytes)
-        })?;
-        self.cache
-            .store_stage_object(post, generation, PreparedObject::from(object))
+        let completed = CompletedObject { bytes, telemetry };
+        let offset = object.offset;
+        let continuation = object.continuation.clone();
+        let stored = self
+            .cache
+            .store_stage_block(
+                post,
+                generation,
+                StageBlock::new(offset, PreparedObject::from(object), continuation.is_none()),
+            )
             .ok_or_else(|| FetchFailure::superseded(telemetry, bytes))?;
-        match advance {
-            Advance::Pending(next) => {
-                self.pending.insert(post.clone(), next);
-            }
-            Advance::Ready => {
-                self.cache.mark_stage_ready(post, generation);
+        match stored {
+            StoredStage::Partial => self.continue_stage(post, active, continuation),
+            StoredStage::Complete(object) => {
+                self.advance_stage(post, active, *object, &completed)?;
             }
         }
-        Ok(CompletedObject { bytes, telemetry })
+        Ok(completed)
     }
 
-    fn retry_or_fail(
+    fn continue_stage(
         &mut self,
         post: &ghostr_engine::PostId,
-        generation: u64,
-        source_index: usize,
-        reason: ErrorReason,
+        active: &Active,
+        continuation: Option<crate::segmented::fetch::ObjectContinuation>,
     ) {
-        let next = source_index.saturating_add(1);
-        let source = self
-            .targets
-            .iter()
-            .find(|target| &target.post == post)
-            .and_then(|target| target.sources.get(next))
-            .cloned();
-        if let Some(source) = source {
-            self.cache.reset_stage_retry(post, generation);
-            self.pending.insert(
-                post.clone(),
-                super::progress::Pending::root(generation, next, source),
-            );
-        } else {
-            self.cache
-                .mark_stage_failed(post, generation, failure_detail(reason));
+        let continuation = continuation.expect("partial HLS stage has a continuation");
+        self.pending
+            .insert(post.clone(), active.pending.continued(continuation));
+    }
+
+    fn advance_stage(
+        &mut self,
+        post: &ghostr_engine::PostId,
+        active: &Active,
+        object: CompleteStage,
+        completed: &CompletedObject,
+    ) -> Result<(), FetchFailure> {
+        let advance = active.pending.advance(&object.object).map_err(|error| {
+            FetchFailure::admitted(
+                error,
+                ErrorReason::InvalidResponse,
+                completed.telemetry,
+                completed.bytes,
+            )
+        })?;
+        if !self
+            .cache
+            .commit_stage_complete(post, active.pending.generation, object)
+        {
+            return Err(FetchFailure::superseded(
+                completed.telemetry,
+                completed.bytes,
+            ));
         }
+        match advance {
+            Advance::Pending(next) => {
+                let attempt = self.allocate_attempt();
+                self.pending
+                    .insert(post.clone(), (*next).with_attempt(attempt));
+            }
+            Advance::Ready => {
+                self.cache.mark_stage_ready(post, active.pending.generation);
+            }
+        }
+        Ok(())
     }
 }
 
@@ -124,7 +143,7 @@ fn cancelled(outcome: Result<FetchedObject, FetchFailure>) -> FetchFailure {
     }
 }
 
-fn failure_detail(reason: ErrorReason) -> String {
+pub(super) fn failure_detail(reason: ErrorReason) -> String {
     match reason {
         ErrorReason::Timeout => "HLS bootstrap timed out",
         ErrorReason::Dns => "HLS bootstrap could not resolve the media host",

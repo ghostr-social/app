@@ -34,12 +34,12 @@ async fn queued_success_is_superseded_without_losing_origin_or_resource_truth() 
     assert_eq!(delivery.pending[&post].generation, 2);
 }
 
-fn completed_active() -> Active {
+pub(super) fn completed_active() -> Active {
     let (cancellation, cancelled) = tokio::sync::oneshot::channel();
     drop(cancelled);
     Active {
         action: ActionId::new(7),
-        pending: Pending::root(1, 0, "https://old.example/root.m3u8".to_owned()),
+        pending: Pending::root(1, 1, 0, "https://old.example/root.m3u8".to_owned()),
         committed_until_ms: u64::MAX,
         _task: tokio::spawn(std::future::pending()),
         cancellation: Some(cancellation),
@@ -47,7 +47,7 @@ fn completed_active() -> Active {
     }
 }
 
-fn succeeded(post: PostId) -> SegmentedDone {
+pub(super) fn succeeded(post: PostId) -> SegmentedDone {
     SegmentedDone {
         action: ActionId::new(7),
         post,
@@ -57,7 +57,10 @@ fn succeeded(post: PostId) -> SegmentedDone {
             final_url: "https://old.example/root.m3u8".parse().unwrap(),
             body: Arc::from(MANIFEST.as_bytes()),
             content_type: Some("application/vnd.apple.mpegurl".to_owned()),
+            cache: Default::default(),
             telemetry: telemetry(),
+            offset: 0,
+            continuation: None,
         }),
         observed_at_ms: 10,
         resources: Default::default(),
@@ -73,7 +76,7 @@ fn telemetry() -> OriginTelemetry {
     }
 }
 
-fn focus(generation: u64, source: &str) -> DeliveryFocus {
+pub(super) fn focus(generation: u64, source: &str) -> DeliveryFocus {
     DeliveryFocus {
         items: vec![FocusItem {
             post: PostId::new("stream"),

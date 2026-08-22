@@ -46,9 +46,17 @@ pub fn start_harness_with_store(
     root: PathBuf,
     options: DeliveryOptions,
 ) -> DeliveryHarness {
+    start_harness_config(store, root, options, media_client())
+}
+
+pub(super) fn start_harness_config(
+    store: Arc<PartialRangeStore>,
+    root: PathBuf,
+    options: DeliveryOptions,
+    requests: ghostr_net::media_request_executor::MediaRequestExecutor,
+) -> DeliveryHarness {
     let posts = ServablePosts::new();
     let network = NetworkThrottle::new();
-    let requests = media_client();
     let segmented = SegmentedCache::new();
     let (demand, demand_receiver) = demand_channel();
     let (handle, _discovery_demand) = start_delivery_manager_with_discovery_demand(

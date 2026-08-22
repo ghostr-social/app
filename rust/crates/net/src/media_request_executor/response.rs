@@ -50,7 +50,11 @@ impl MediaResponse {
 
     pub async fn chunk(&mut self) -> reqwest::Result<Option<Bytes>> {
         let chunk = self.inner.chunk().await;
-        if !matches!(chunk, Ok(Some(_))) {
+        if let Ok(Some(bytes)) = &chunk {
+            if let Some(lease) = &self.lease {
+                lease.record_response_bytes(bytes.len() as u64);
+            }
+        } else {
             self.lease = None;
         }
         chunk

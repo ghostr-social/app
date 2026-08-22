@@ -26,6 +26,9 @@ mod cpu_sample_test;
 mod deadline_ownership_test;
 mod execution;
 mod lifecycle;
+#[cfg(test)]
+#[path = "../tests/transform_resource_fixture.rs"]
+mod resource_test_fixture;
 mod resources;
 #[cfg(test)]
 #[path = "../tests/transform_singleflight_launch_test.rs"]
@@ -71,20 +74,21 @@ pub(crate) struct TransformFinish {
 pub(crate) struct TransformJobs {
     backend: Option<Arc<dyn TransformBackend>>,
     events: UnboundedSender<InternalEvent>,
+    resources: crate::manager::resource_control::ResourceControl,
     active: HashMap<ActionId, ActiveTransform>,
-    cpu_samples: resources::TransformCpuSamples,
 }
 
 impl TransformJobs {
     pub(crate) fn new(
         backend: Option<Arc<dyn TransformBackend>>,
         events: UnboundedSender<InternalEvent>,
+        resources: crate::manager::resource_control::ResourceControl,
     ) -> Self {
         Self {
             backend,
             events,
+            resources,
             active: HashMap::new(),
-            cpu_samples: resources::TransformCpuSamples::default(),
         }
     }
 
@@ -117,6 +121,7 @@ impl TransformJobs {
                 store,
                 profile,
                 control,
+                resources: self.resources.clone(),
             },
             request,
         );
@@ -137,15 +142,10 @@ impl TransformJobs {
 
     pub(crate) fn finish(&mut self, done: &TransformDone) -> Option<TransformFinish> {
         let job = self.active.remove(&done.action)?;
-        self.cpu_samples.record(done.actual_resources);
         Some(TransformFinish {
             post: job.post,
             cancellation_requested: job.cancellation_requested,
         })
-    }
-
-    pub(crate) fn take_cpu_sample_ms(&mut self) -> Option<u64> {
-        self.cpu_samples.take()
     }
 }
 

@@ -49,7 +49,7 @@ fn active() -> Active {
     let (cancellation, cancelled) = tokio::sync::oneshot::channel();
     Active {
         action: ActionId::new(1),
-        pending: Pending::root(1, 0, SOURCE.to_owned()),
+        pending: Pending::root(1, 1, 0, SOURCE.to_owned()),
         committed_until_ms: u64::MAX,
         _task: tokio::spawn(async move {
             let _ = cancelled.await;

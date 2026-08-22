@@ -100,8 +100,9 @@ fn stable_kind(kind: &crate::adaptive::ActionKind, state: &mut impl Hasher) {
         ActionKind::FetchWhole { maximum_bytes } => maximum_bytes.hash(state),
         ActionKind::HlsBootstrap {
             stage,
+            cursor,
             maximum_bytes,
-        } => (stage, maximum_bytes).hash(state),
+        } => (stage, cursor, maximum_bytes).hash(state),
         ActionKind::Promote {
             active,
             maximum_bytes,

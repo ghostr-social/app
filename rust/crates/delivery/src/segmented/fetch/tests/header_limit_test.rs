@@ -1,4 +1,4 @@
-use super::super::asset;
+use super::asset;
 use super::support::{client, oversized_headers};
 use ghostr_engine::adaptive::PreemptionAuthority;
 use url::Url;

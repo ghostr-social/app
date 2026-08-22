@@ -1,28 +1,38 @@
+use super::capacity::fits;
 use super::objects::insert;
-use super::{CachedHlsObject, SegmentedCache, SegmentedPhase, SegmentedSnapshot};
-use crate::segmented::prepare::PreparedObject;
+use super::{CachedHlsObject, SegmentedCache, SegmentedPhase, SegmentedSnapshot, StageReservation};
 use ghostr_engine::PostId;
 
 impl SegmentedCache {
-    pub(crate) fn mark_stage_preparing(
+    pub(crate) fn mark_stage_preparing<R: Into<StageReservation>>(
         &self,
         post: &PostId,
         generation: u64,
         eta_ms: u64,
-        maximum_bytes: u64,
+        reservation: R,
     ) -> bool {
+        let reservation = reservation.into();
+        let Some(total_bytes) = reservation.total_bytes() else {
+            return false;
+        };
+        if reservation.block_bytes == 0 {
+            return false;
+        }
         let mut state = self.lock();
         let Some(record) = state.focus.get(post) else {
             return false;
         };
-        if record.generation != generation || record.snapshot.phase == SegmentedPhase::Ready {
+        if record.generation != generation
+            || record.snapshot.phase == SegmentedPhase::Ready
+            || record.assembly_bytes != 0
+        {
             return false;
         }
         let protected = record.protected;
-        if !fits(&state, post, maximum_bytes) && protected {
+        if !fits(&state, post, total_bytes) && protected {
             super::objects::reclaim_unprotected_ready(&mut state);
         }
-        if !fits(&state, post, maximum_bytes) {
+        if !fits(&state, post, total_bytes) {
             return false;
         }
         let record = state
@@ -32,47 +42,11 @@ impl SegmentedCache {
         record.snapshot.phase = SegmentedPhase::Preparing;
         record.snapshot.eta_ms = Some(eta_ms);
         record.snapshot.detail = None;
-        record.reserved_bytes = maximum_bytes;
+        record.reserved_bytes = reservation.block_bytes;
+        record.assembly_bytes = reservation.assembly_bytes;
         drop(state);
         self.changed.notify_waiters();
         true
-    }
-
-    pub(in crate::segmented) fn store_stage_object(
-        &self,
-        post: &PostId,
-        generation: u64,
-        object: PreparedObject,
-    ) -> Option<u64> {
-        let mut state = self.lock();
-        let record = state.focus.get_mut(post)?;
-        if record.generation != generation || record.snapshot.phase == SegmentedPhase::Ready {
-            return None;
-        }
-        if object.body.len() as u64 > record.reserved_bytes {
-            return None;
-        }
-        record.reserved_bytes = 0;
-        match record
-            .staged
-            .iter()
-            .position(|known| known.request_url == object.request_url)
-        {
-            Some(index) => record.staged[index] = object,
-            None => record.staged.push(object),
-        }
-        record.snapshot.bytes_present = record
-            .staged
-            .iter()
-            .map(|known| known.body.len() as u64)
-            .sum();
-        record.snapshot.phase = SegmentedPhase::Queued;
-        record.snapshot.eta_ms = None;
-        record.snapshot.detail = None;
-        let total = record.snapshot.bytes_present;
-        drop(state);
-        self.changed.notify_waiters();
-        Some(total)
     }
 
     pub(crate) fn mark_stage_ready(&self, post: &PostId, generation: u64) -> bool {
@@ -80,17 +54,30 @@ impl SegmentedCache {
         let Some(record) = state.focus.get_mut(post) else {
             return false;
         };
-        if record.generation != generation {
+        if record.generation != generation
+            || record.assembly_bytes != 0
+            || !record.staged.iter().all(|object| object.is_assembled())
+        {
             return false;
         }
         let staged = std::mem::take(&mut record.staged);
         record.reserved_bytes = 0;
+        let staged = staged
+            .into_iter()
+            .map(|object| object.into_prepared())
+            .collect::<Option<Vec<_>>>()
+            .expect("validated complete HLS objects");
         let keys = staged
             .iter()
             .map(|object| object.request_url.clone())
             .collect::<Vec<_>>();
         for object in staged {
-            let cached = CachedHlsObject::new(object.body, object.final_url, object.content_type);
+            let cached = CachedHlsObject::with_metadata(
+                object.body,
+                object.final_url,
+                object.content_type,
+                object.cache,
+            );
             insert(&mut state, object.request_url, cached);
         }
         let Some(record) = state.focus.get_mut(post) else {
@@ -118,8 +105,48 @@ impl SegmentedCache {
             return false;
         }
         record.staged.clear();
+        record.root_source = None;
         record.reserved_bytes = 0;
+        record.assembly_bytes = 0;
         record.snapshot = SegmentedSnapshot::default();
+        drop(state);
+        self.changed.notify_waiters();
+        true
+    }
+
+    pub(crate) fn restart_stage_object(&self, post: &PostId, generation: u64, url: &str) -> bool {
+        let mut state = self.lock();
+        let Some(record) = state.focus.get_mut(post) else {
+            return false;
+        };
+        if record.generation != generation || record.snapshot.phase == SegmentedPhase::Ready {
+            return false;
+        }
+        record.staged.retain(|object| object.request_url() != url);
+        record.reserved_bytes = 0;
+        record.assembly_bytes = 0;
+        record.snapshot.bytes_present = record.staged.iter().map(|object| object.len()).sum();
+        record.snapshot.phase = SegmentedPhase::Queued;
+        record.snapshot.eta_ms = None;
+        record.snapshot.detail = None;
+        drop(state);
+        self.changed.notify_waiters();
+        true
+    }
+
+    pub(crate) fn release_stage_attempt(&self, post: &PostId, generation: u64) -> bool {
+        let mut state = self.lock();
+        let Some(record) = state.focus.get_mut(post) else {
+            return false;
+        };
+        if record.generation != generation || record.snapshot.phase != SegmentedPhase::Preparing {
+            return false;
+        }
+        record.reserved_bytes = 0;
+        record.assembly_bytes = 0;
+        record.snapshot.phase = SegmentedPhase::Queued;
+        record.snapshot.eta_ms = None;
+        record.snapshot.detail = None;
         drop(state);
         self.changed.notify_waiters();
         true
@@ -142,7 +169,9 @@ impl SegmentedCache {
         record.snapshot.phase = phase;
         if phase == SegmentedPhase::Failed {
             record.staged.clear();
+            record.root_source = None;
             record.reserved_bytes = 0;
+            record.assembly_bytes = 0;
             record.snapshot.bytes_present = 0;
         }
         record.snapshot.eta_ms = (phase == SegmentedPhase::Ready).then_some(0);
@@ -151,30 +180,4 @@ impl SegmentedCache {
         self.changed.notify_waiters();
         true
     }
-}
-
-fn fits(state: &super::CacheState, post: &PostId, maximum_bytes: u64) -> bool {
-    let current = state
-        .focus
-        .get(post)
-        .map_or(0, |record| record.reserved_bytes);
-    let used_without_current = physical_used(state).saturating_sub(current);
-    maximum_bytes <= (super::MAX_CACHE_BYTES as u64).saturating_sub(used_without_current)
-}
-
-pub(super) fn physical_used(state: &super::CacheState) -> u64 {
-    let staged = state
-        .focus
-        .values()
-        .flat_map(|record| &record.staged)
-        .map(|object| object.body.len() as u64)
-        .sum::<u64>();
-    let reserved = state
-        .focus
-        .values()
-        .map(|record| record.reserved_bytes)
-        .sum::<u64>();
-    (state.bytes as u64)
-        .saturating_add(staged)
-        .saturating_add(reserved)
 }

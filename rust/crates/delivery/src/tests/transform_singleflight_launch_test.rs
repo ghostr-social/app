@@ -34,7 +34,8 @@ impl TransformBackend for PassBackend {
 #[tokio::test]
 async fn runtime_rejects_cross_post_transform_while_one_is_linked() {
     let (events, _receiver) = mpsc::unbounded_channel::<InternalEvent>();
-    let mut jobs = TransformJobs::new(Some(Arc::new(PassBackend)), events);
+    let resources = super::resource_test_fixture::control();
+    let mut jobs = TransformJobs::new(Some(Arc::new(PassBackend)), events, resources);
     let store = Arc::new(PartialRangeStore::with_capacity(
         std::env::temp_dir().join(format!(
             "ghostr-transform-singleflight-{}",

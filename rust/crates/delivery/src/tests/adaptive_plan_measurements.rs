@@ -11,4 +11,28 @@ impl PlanMeasurements {
             capacity_revision,
         }
     }
+
+    pub(super) const fn feedback(
+        self,
+        storage: ghostr_engine::adaptive::StorageSnapshot,
+        network_target: u64,
+        request_target: u64,
+    ) -> ghostr_engine::adaptive::ResourceFeedback {
+        ghostr_engine::adaptive::ResourceFeedback {
+            revision: 1,
+            actual: ghostr_engine::adaptive::ResourceObservation::new(
+                self.network_bytes_per_second,
+                storage.used_bytes,
+                0,
+                0,
+            ),
+            target: ghostr_engine::adaptive::ResourceObservation::new(
+                network_target,
+                storage.budget_bytes.saturating_mul(9) / 10,
+                0,
+                request_target,
+            ),
+            price_snapshot: None,
+        }
+    }
 }

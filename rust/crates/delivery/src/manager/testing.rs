@@ -14,7 +14,14 @@ impl DeliveryWorker {
         parser: Arc<dyn TimelineParser>,
     ) -> Self {
         let store = config.store.clone();
-        let mut worker = Self::create(config, commands, demand).await;
+        let resources = crate::manager::resource_control::ResourceControl::bootstrap(
+            &config,
+            tokio::time::Instant::now(),
+        );
+        assert!(config
+            .requests
+            .install_resource_observer(Arc::new(resources.clone())));
+        let mut worker = Self::create(config, commands, demand, resources).await;
         worker.timelines = TimelineCoordinator::with_parser(store, parser, 2);
         worker
     }
