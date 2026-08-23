@@ -58,7 +58,7 @@ extension FeedCubitLoading on FeedCubit {
     }
     final transition = ++_pageTransition;
     if (!await _viewer.prepareToShow(roster.active)) return;
-    if (!_acceptsPageTransition(transition, current)) return;
+    if (!_acceptsExactPageTransition(transition, current)) return;
     final loaded = FeedLoaded.of(current.kind, roster, follows: _follows);
     _emitState(_projectPreparation(loaded));
     unawaited(_settleReposts());

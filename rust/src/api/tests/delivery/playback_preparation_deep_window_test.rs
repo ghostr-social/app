@@ -1,3 +1,4 @@
+use crate::api::delivery_types::FfiPlaybackPreparationReadiness as Readiness;
 use crate::api::playback_preparation_stream::{projection, PreparationContext};
 use crate::api::runtime::tracked_items::TrackedItems;
 use crate::api::tests::delivery::playback_preparation_sparse_fixture::complete_startup;
@@ -30,10 +31,16 @@ async fn projects_every_certified_upcoming_asset_in_feed_order() {
         ready_reserve: ReadyReserveEvidence {
             candidates: ["next-1", "next-2", "next-3"]
                 .into_iter()
-                .map(|id| ReserveCandidateEvidence {
+                .enumerate()
+                .map(|(index, id)| ReserveCandidateEvidence {
                     post: PostId::new(id),
-                    state: ReserveCandidateState::Ready {
-                        startup: startup.clone(),
+                    state: match index {
+                        1 => ReserveCandidateState::Structural {
+                            startup: startup.clone(),
+                        },
+                        _ => ReserveCandidateState::Ready {
+                            startup: startup.clone(),
+                        },
                     },
                 })
                 .collect(),
@@ -55,12 +62,19 @@ async fn projects_every_certified_upcoming_asset_in_feed_order() {
     let projected = projection::project(&context)
         .await
         .expect("preparation plan");
-    let ids: Vec<_> = projected
+    let assets: Vec<_> = projected
         .upcoming
         .iter()
-        .map(|asset| asset.delivery_id.as_str())
+        .map(|asset| (asset.delivery_id.as_str(), asset.readiness))
         .collect();
-    assert_eq!(ids, ["next-1", "next-2", "next-3"]);
+    assert_eq!(
+        assets,
+        [
+            ("next-1", Readiness::Ready),
+            ("next-2", Readiness::StructuralStartable),
+            ("next-3", Readiness::Ready),
+        ]
+    );
     assert_eq!(projected.next.as_ref().unwrap().delivery_id, "next-1");
 }
 

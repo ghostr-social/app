@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_state.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_page_view.dart';
 
 void main() {
@@ -14,7 +15,10 @@ void main() {
         home: ValueListenableBuilder<List<String>>(
           valueListenable: pages,
           builder: (_, value, __) => FeedPageView(
-            model: FeedPageModel(keys: value.map((page) => ValueKey(page))),
+            model: FeedPageModel(
+              keys: value.map((page) => ValueKey(page)),
+              rosterRevision: FeedRosterRevision(),
+            ),
             itemBuilder: (_, index) => Text(value[index]),
             onPageChanged: (index) {
               committed.add(value[index]);

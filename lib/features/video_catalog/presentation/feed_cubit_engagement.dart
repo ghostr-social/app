@@ -74,9 +74,11 @@ extension FeedCubitEngagementActions on FeedCubit {
     final blocked = 'Blocked ${post.creator.handle}';
     final transition = ++_pageTransition;
     if (!await _viewer.prepareToShow(roster.active)) return;
-    if (!_acceptsPageTransition(transition, current)) return;
+    if (!_acceptsExactPageTransition(transition, current)) return;
     _emitState(
-      FeedLoaded.of(current.kind, roster, notice: blocked, follows: _follows),
+      _projectPreparation(
+        FeedLoaded.of(current.kind, roster, notice: blocked, follows: _follows),
+      ),
     );
     _viewer.rosterChanged(roster.posts, roster.activeIndex);
   }

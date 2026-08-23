@@ -56,15 +56,10 @@ Future<PlaybackFocus> _rapidSwipes(
   WidgetTester tester,
   WarpFeedPlaybackJourney journey,
 ) async {
-  journey.markFocus(1);
   await journey.swipeUp(tester);
-  journey.markFocus(0);
-  await journey.swipeDown(tester);
-  journey.markFocus(1);
-  await journey.swipeUp(tester);
-  final finalFocus = journey.markFocus(2);
   await journey.swipeUp(tester);
   await journey.waitForCaption(tester, 2);
+  final finalFocus = await journey.waitForPublishedFocus(tester, 2);
   await journey.waitForFirstFrame(tester, finalFocus);
   await journey.waitForPlaying(tester, finalFocus);
   return finalFocus;

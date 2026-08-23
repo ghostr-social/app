@@ -1,31 +1,29 @@
 use super::super::PreparationContext;
+use super::CertifiedReadiness;
 use crate::api::delivery_types::{FfiPlaybackPreparationAsset, FfiPlaybackPreparationReadiness};
 use crate::api::focus_control::progressive_url;
 use crate::engine::{DeliveryKind, PostId, VideoMeta};
-use ghostr_delivery::startup_certificate::StartupCertificate;
 use ghostr_partial_store::partial_range_store::StoredMediaSnapshot;
 
 pub(super) async fn project(
     context: &PreparationContext,
     post: &PostId,
-    certificate: Option<&StartupCertificate>,
+    readiness: Option<CertifiedReadiness<'_>>,
 ) -> Option<FfiPlaybackPreparationAsset> {
     let meta = context.tracked.meta(post.as_str())?;
     let snapshot = validated_snapshot(context, post, &meta).await?;
-    if certificate.is_some_and(|value| !value.still_valid_in(&snapshot)) {
+    if readiness.is_some_and(|value| !value.certificate().still_valid_in(&snapshot)) {
         return None;
     }
     let capability = context.capabilities.issue(&snapshot).await.ok()?;
+    let binding = snapshot.binding()?;
     Some(FfiPlaybackPreparationAsset {
         delivery_id: post.as_str().to_owned(),
-        representation_id: snapshot
-            .binding()?
-            .representation()
-            .fingerprint()
-            .to_owned(),
+        representation_id: binding.representation().fingerprint().to_owned(),
+        source_representation_id: binding.source_representation().fingerprint().to_owned(),
         asset_id: capability.as_str().to_owned(),
         playback_url: progressive_url(&context.endpoint, post.as_str(), capability.as_str()),
-        readiness: readiness(certificate.is_some()),
+        readiness: projected_readiness(readiness),
     })
 }
 
@@ -45,9 +43,14 @@ async fn validated_snapshot(
     .then_some(snapshot)
 }
 
-fn readiness(structural: bool) -> FfiPlaybackPreparationReadiness {
-    match structural {
-        true => FfiPlaybackPreparationReadiness::StructuralStartable,
-        false => FfiPlaybackPreparationReadiness::Preparing,
+fn projected_readiness(
+    readiness: Option<CertifiedReadiness<'_>>,
+) -> FfiPlaybackPreparationReadiness {
+    match readiness {
+        Some(CertifiedReadiness::Ready(_)) => FfiPlaybackPreparationReadiness::Ready,
+        Some(CertifiedReadiness::Structural(_)) => {
+            FfiPlaybackPreparationReadiness::StructuralStartable
+        }
+        None => FfiPlaybackPreparationReadiness::Preparing,
     }
 }

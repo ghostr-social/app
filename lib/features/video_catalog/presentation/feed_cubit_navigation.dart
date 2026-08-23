@@ -3,7 +3,7 @@ part of 'feed_cubit.dart';
 typedef _PageTransitionCommit = ({
   int transition,
   FeedLoaded current,
-  FeedLoaded moved,
+  int index,
   FeedReadyDecision decision,
 });
 
@@ -28,14 +28,13 @@ extension FeedCubitNavigation on FeedCubit {
     FeedReadyDecision decision,
   ) {
     _clearPendingRescue();
-    final moved = _movedTo(current, index);
     final commit = (
       transition: transition,
       current: current,
-      moved: moved,
+      index: index,
       decision: decision,
     );
-    final preparation = _viewer.prepareToShow(moved.roster.active);
+    final preparation = _viewer.prepareToShow(current.posts[index]);
     if (preparation is Future<bool>) {
       return unawaited(_finishPageTransition(preparation, commit));
     }
@@ -56,16 +55,30 @@ extension FeedCubitNavigation on FeedCubit {
   }
 
   void _finishPageTransitionNow(_PageTransitionCommit commit) {
-    if (!_acceptsPageTransition(commit.transition, commit.current)) return;
-    emit(commit.moved);
-    _viewer.landedOn(commit.moved.posts, commit.moved.activeIndex);
-    _rememberPendingRescue(commit.current, commit.moved, commit.decision);
+    final current = _acceptedPageTransition(commit.transition, commit.current);
+    if (current == null) return;
+    final moved = _movedTo(current, commit.index);
+    emit(moved);
+    _viewer.landedOn(moved.posts, moved.activeIndex);
+    _rememberPendingRescue(current, moved, commit.decision);
     _rescueAfterDeliveryUpdate();
     _ensureBuffered();
   }
 
-  bool _acceptsPageTransition(int transition, FeedLoaded from) {
-    return !isClosed && transition == _pageTransition && identical(state, from);
+  FeedLoaded? _acceptedPageTransition(int transition, FeedLoaded from) {
+    final current = state;
+    if (isClosed || transition != _pageTransition || current is! FeedLoaded) {
+      return null;
+    }
+    if (current.activeIndex != from.activeIndex) return null;
+    return identical(current.rosterRevision, from.rosterRevision)
+        ? current
+        : null;
+  }
+
+  bool _acceptsExactPageTransition(int transition, FeedLoaded from) {
+    final current = _acceptedPageTransition(transition, from);
+    return current != null && identical(current.posts, from.posts);
   }
 
   FeedLoaded _movedTo(FeedLoaded current, int index) {

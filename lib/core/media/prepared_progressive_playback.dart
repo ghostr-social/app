@@ -10,42 +10,53 @@ final class PreparedProgressivePlayback {
     required VideoMediaSource origin,
     required ProxiedProgressiveVideoMediaSource media,
     required PlaybackAssetAuthority authority,
+    VideoRepresentationId? sourceRepresentationId,
   }) {
-    _validateOrigin(origin, authority);
+    final sourceId = sourceRepresentationId ?? authority.representationId;
+    _validateOrigin(origin, authority, sourceId);
     _validateProxy(media, authority);
-    return PreparedProgressivePlayback._(origin, media, authority);
+    return PreparedProgressivePlayback._(origin, media, authority, sourceId);
   }
 
-  const PreparedProgressivePlayback._(this.origin, this.media, this.authority);
+  const PreparedProgressivePlayback._(
+    this.origin,
+    this.media,
+    this.authority,
+    this.sourceRepresentationId,
+  );
 
   final VideoMediaSource origin;
   final ProxiedProgressiveVideoMediaSource media;
   final PlaybackAssetAuthority authority;
+  final VideoRepresentationId sourceRepresentationId;
 
   bool matches(VideoMediaSource candidate) {
     return candidate.inventoryPlaybackIdentity ==
             origin.inventoryPlaybackIdentity &&
-        _matchesAuthority(candidate, authority);
+        _matchesSource(candidate, authority.deliveryId, sourceRepresentationId);
   }
 }
 
 void _validateOrigin(
   VideoMediaSource origin,
   PlaybackAssetAuthority authority,
+  VideoRepresentationId sourceRepresentationId,
 ) {
-  if (!origin.canCacheAsSingleFile || !_matchesAuthority(origin, authority)) {
+  if (!origin.canCacheAsSingleFile ||
+      !_matchesSource(origin, authority.deliveryId, sourceRepresentationId)) {
     throw ArgumentError.value(origin, 'origin', 'Must match the authority.');
   }
 }
 
-bool _matchesAuthority(
+bool _matchesSource(
   VideoMediaSource media,
-  PlaybackAssetAuthority authority,
+  PlaybackDeliveryId deliveryId,
+  VideoRepresentationId representationId,
 ) {
   try {
     return media.remoteDelivery == VideoMediaDelivery.progressive &&
-        media.playbackDeliveryId == authority.deliveryId &&
-        VideoRepresentationId.forMedia(media) == authority.representationId;
+        media.playbackDeliveryId == deliveryId &&
+        VideoRepresentationId.forMedia(media) == representationId;
   } on ArgumentError {
     return false;
   }

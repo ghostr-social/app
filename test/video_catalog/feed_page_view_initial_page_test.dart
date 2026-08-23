@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_state.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_page_view.dart';
 
 void main() {
@@ -10,6 +11,7 @@ void main() {
         home: FeedPageView(
           model: FeedPageModel(
             keys: List.generate(3, (index) => ValueKey('page-$index')),
+            rosterRevision: FeedRosterRevision(),
             activePage: 2,
           ),
           onPageChanged: changes.add,

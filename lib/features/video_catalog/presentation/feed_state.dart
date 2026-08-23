@@ -25,6 +25,10 @@ class FeedFailure extends FeedState {
   final String message;
 }
 
+final class FeedRosterRevision {
+  FeedRosterRevision();
+}
+
 class FeedLoaded extends FeedState {
   factory FeedLoaded(
     FeedKind kind,
@@ -39,6 +43,7 @@ class FeedLoaded extends FeedState {
       kind,
       List<VideoPost>.unmodifiable(posts),
       activeIndex,
+      FeedRosterRevision(),
       _FeedLoadedPresentation(
         notice,
         follows ?? FeedFollowState.unavailable(),
@@ -68,11 +73,13 @@ class FeedLoaded extends FeedState {
     super.kind,
     this.posts,
     this.activeIndex,
+    this.rosterRevision,
     this._presentation,
   );
 
   final List<VideoPost> posts;
   final int activeIndex;
+  final FeedRosterRevision rosterRevision;
   final _FeedLoadedPresentation _presentation;
 
   String? get notice => _presentation.notice;
@@ -85,11 +92,17 @@ class FeedLoaded extends FeedState {
   FeedRoster get roster => FeedRoster(posts, activeIndex: activeIndex);
 
   FeedLoaded withPage(int index) {
-    return FeedLoaded._(kind, posts, index, _presentation);
+    return FeedLoaded._(kind, posts, index, rosterRevision, _presentation);
   }
 
   FeedLoaded withPosts(List<VideoPost> updated) {
-    return FeedLoaded._(kind, updated, activeIndex, _presentation);
+    return FeedLoaded._(
+      kind,
+      updated,
+      activeIndex,
+      rosterRevision,
+      _presentation,
+    );
   }
 
   FeedLoaded withNotice(String message) {
@@ -97,6 +110,7 @@ class FeedLoaded extends FeedState {
       kind,
       posts,
       activeIndex,
+      rosterRevision,
       _presentation.withNotice(message),
     );
   }
@@ -106,6 +120,7 @@ class FeedLoaded extends FeedState {
       kind,
       posts,
       activeIndex,
+      rosterRevision,
       _presentation.withNotice(null),
     );
   }
@@ -115,6 +130,7 @@ class FeedLoaded extends FeedState {
       kind,
       posts,
       activeIndex,
+      rosterRevision,
       _presentation.withFollows(updated),
     );
   }
@@ -124,6 +140,7 @@ class FeedLoaded extends FeedState {
       kind,
       posts,
       activeIndex,
+      rosterRevision,
       _presentation.withPreparation(updated),
     );
   }

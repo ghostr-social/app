@@ -19,9 +19,5 @@ extension WarpFeedPlaybackJourneyUi on WarpFeedPlaybackJourney {
     ),
   );
 
-  PlaybackFocus markFocus(int index) {
-    return telemetry.probe.markFocus(PlaybackVideoId.parse(events[index].id));
-  }
-
   void load() => unawaited(cubit.load());
 }

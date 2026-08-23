@@ -1,10 +1,14 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_state.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_swipe_physics.dart';
 
 final class FeedPageModel {
-  FeedPageModel({required Iterable<Key> keys, this.activePage = 0})
-    : keys = List<Key>.unmodifiable(keys) {
+  FeedPageModel({
+    required Iterable<Key> keys,
+    required this.rosterRevision,
+    this.activePage = 0,
+  }) : keys = List<Key>.unmodifiable(keys) {
     if (this.keys.isEmpty && activePage == 0) return;
     RangeError.checkValidIndex(activePage, this.keys, 'activePage');
     if (this.keys.toSet().length != this.keys.length) {
@@ -13,6 +17,7 @@ final class FeedPageModel {
   }
 
   final List<Key> keys;
+  final FeedRosterRevision rosterRevision;
   final int activePage;
 
   Key? get activeKey => keys.isEmpty ? null : keys[activePage];
@@ -52,6 +57,15 @@ class _FeedPageViewState extends State<FeedPageView> {
   @override
   void didUpdateWidget(covariant FeedPageView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final sameRoster = identical(
+      oldWidget.model.rosterRevision,
+      widget.model.rosterRevision,
+    );
+    final sameActive = oldWidget.model.activeKey == widget.model.activeKey;
+    final reported = _reportedKey;
+    final pending = reported != widget.model.activeKey;
+    final retained = reported != null && _pageForKey(reported) != null;
+    if (sameRoster && sameActive && pending && retained) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _reposition();
     });

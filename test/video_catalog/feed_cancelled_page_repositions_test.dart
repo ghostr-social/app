@@ -13,7 +13,7 @@ import '../support/feed_screen_harness.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  testWidgets('a cancelled page transition restores the active video', (
+  testWidgets('a post revision cannot cancel a pending page transition', (
     tester,
   ) async {
     final history = _GatedHistory();
@@ -21,7 +21,7 @@ void main() {
     final source = FakeVideoCatalogRepository(
       forYouFeed: [
         first,
-        samplePost(id: 'second'),
+        samplePost(id: 'second', caption: 'Target video'),
       ],
     );
     await tester.pumpWidget(
@@ -49,7 +49,7 @@ void main() {
     history.release.complete();
     await tester.pumpAndSettle();
 
-    expect(find.text('Active video').hitTestable(), findsOneWidget);
+    expect(find.text('Target video').hitTestable(), findsOneWidget);
   });
 }
 

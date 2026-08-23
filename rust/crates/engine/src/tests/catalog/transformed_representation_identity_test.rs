@@ -24,6 +24,7 @@ fn transformed_identity_is_exactly_derived_and_has_no_remote_source() {
 
     assert!(output.derives_from(&input));
     assert_ne!(output.representation(), input.representation());
+    assert_eq!(output.source_representation(), input.representation());
     assert!(output.transfer(source).is_none());
     assert!(input
         .derive_transform(TransformKind::Remux, "not-a-digest")

@@ -42,9 +42,8 @@ extension FeedCubitDelivery on FeedCubit {
   ) {
     _clearPendingRescue();
     final selected = decision.selectedIndex;
-    final moved = _movedTo(current, selected);
-    final commit = _RescueCommit(transition, current, moved, decision);
-    final preparation = _viewer.prepareToShow(moved.roster.active);
+    final commit = _RescueCommit(transition, current, decision);
+    final preparation = _viewer.prepareToShow(current.posts[selected]);
     if (preparation is Future<bool>) {
       return unawaited(_finishRescue(preparation, commit));
     }
@@ -61,12 +60,14 @@ extension FeedCubitDelivery on FeedCubit {
   }
 
   void _finishRescueNow(_RescueCommit commit) {
-    if (!_acceptsPageTransition(commit.transition, commit.current)) return;
-    _pendingTransportJump = commit.moved.activeIndex;
-    emit(commit.moved);
+    final current = _acceptedPageTransition(commit.transition, commit.current);
+    if (current == null) return;
+    final moved = _movedTo(current, commit.decision.selectedIndex);
+    _pendingTransportJump = moved.activeIndex;
+    emit(moved);
     _viewer.rescuedTo(
-      commit.moved.posts,
-      commit.moved.activeIndex,
+      moved.posts,
+      moved.activeIndex,
       _transportRescue(commit.decision),
     );
     _ensureBuffered();
@@ -191,10 +192,9 @@ extension FeedCubitDelivery on FeedCubit {
 }
 
 final class _RescueCommit {
-  const _RescueCommit(this.transition, this.current, this.moved, this.decision);
+  const _RescueCommit(this.transition, this.current, this.decision);
 
   final int transition;
   final FeedLoaded current;
-  final FeedLoaded moved;
   final FeedReadyDecision decision;
 }

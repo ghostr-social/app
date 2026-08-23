@@ -28,19 +28,19 @@ extension WarpFeedPlaybackJourneyWait on WarpFeedPlaybackJourney {
   }
 
   Future<void> waitForPreparation(WidgetTester tester) {
-    return _wait(tester, () => preparation.maximumStructuralDepth >= 1);
+    return _wait(tester, () => preparation.maximumReadyDepth >= 1);
   }
 
   Future<void> waitForParallelRangedVideos(WidgetTester tester) {
     return _wait(tester, () => resources.origin.hadParallelRangedVideos);
   }
 
-  Future<void> swipeUp(WidgetTester tester) => _swipe(tester, -600);
+  Future<void> swipeUp(WidgetTester tester) => _swipe(tester, -1);
 
-  Future<void> swipeDown(WidgetTester tester) => _swipe(tester, 600);
-
-  Future<void> _swipe(WidgetTester tester, double dy) async {
-    await tester.drag(find.byType(PageView), Offset(0, dy));
+  Future<void> _swipe(WidgetTester tester, double direction) async {
+    final page = find.byType(PageView);
+    final distance = tester.getSize(page).height * 0.23;
+    await tester.drag(page, Offset(0, direction * distance));
     await pumpFor(tester, const Duration(milliseconds: 200));
   }
 
@@ -66,6 +66,7 @@ extension WarpFeedPlaybackJourneyWait on WarpFeedPlaybackJourney {
   String _timeoutEvidence(Duration timeout) {
     return 'WARP feed condition timed out after $timeout; '
         'state=${cubit.state.runtimeType}, '
+        'active=${cubit.state is FeedLoaded ? (cubit.state as FeedLoaded).activeIndex : 'na'}, '
         'relayConnections=${relay.acceptedConnections}, '
         'relayRequests=${relay.requestMessages}, '
         'videoSubscriptions=${relay.videoSubscriptions}, '
@@ -73,6 +74,7 @@ extension WarpFeedPlaybackJourneyWait on WarpFeedPlaybackJourney {
         'rust=${graph.rustProbe.evidence}, '
         'originRequests=${resources.origin.requests.length}, '
         'structuralDepth=${preparation.maximumStructuralDepth}, '
+        'readyDepth=${preparation.maximumReadyDepth}, '
         'filters=${relay.requestedFilters}.';
   }
 }

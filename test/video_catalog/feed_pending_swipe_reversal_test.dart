@@ -1,42 +1,32 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
-import 'package:ghostr/features/video_inventory/domain/playback_preparation.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_entry.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
 
 import '../support/fakes.dart';
-import '../support/feed_preparation_updates.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('blocking commits the replacement watch before activating it', () async {
-    final history = _SecondWatchGatedHistory();
-    final preparation = ControlledPlaybackPreparationUpdates();
-    final blocked = samplePost(
-      id: 'blocked',
-      creator: sampleCreator(id: 'blocked-creator'),
-    );
-    final replacement = samplePost(id: 'replacement');
+  test('a rapid reversal supersedes the pending forward swipe', () async {
+    final history = _GatedHistory();
     final source = FakeVideoCatalogRepository(
-      forYouFeed: [blocked, replacement],
+      forYouFeed: [
+        samplePost(id: 'a'),
+        samplePost(id: 'b'),
+      ],
     );
     final cubit = FeedCubit(
       FeedDependencies(
         feed: source,
         engagement: source,
         optional: FeedOptionalDependencies(
-          social: source,
           watch: FeedWatchDependencies(
             tracker: WatchHistoryTracker(
               history: history,
               failureReporter: RecordingFailureReporter(),
             ),
-          ),
-          delivery: FeedDeliveryDependencies(
-            preparationUpdates: preparation,
           ),
         ),
       ),
@@ -44,37 +34,28 @@ void main() {
     addTearDown(() async {
       if (!history.release.isCompleted) history.release.complete();
       await cubit.close();
-      await preparation.close();
     });
     await cubit.load();
 
-    final blocking = cubit.blockCreator(blocked);
+    cubit.pageChanged(1);
     await history.secondStarted.future;
-    expect((cubit.state as FeedLoaded).posts.first.id.value, 'blocked');
-    preparation.publish(
-      PlaybackPreparationPlan(
-        revision: BigInt.one,
-        currentDeliveryId: PlaybackDeliveryId.parse('blocked'),
-      ),
-    );
-
+    cubit.pageChanged(0);
     history.release.complete();
-    await blocking;
+    await pumpEventQueue();
+
     final loaded = cubit.state as FeedLoaded;
-    expect(loaded.posts.first.id.value, 'replacement');
-    expect(loaded.preparation.isManaged, isTrue);
+    expect(loaded.posts[loaded.activeIndex].id.value, 'a');
   });
 }
 
-final class _SecondWatchGatedHistory extends FakeWatchHistoryRepository {
+final class _GatedHistory extends FakeWatchHistoryRepository {
   final secondStarted = Completer<void>();
   final release = Completer<void>();
   var writes = 0;
 
   @override
   Future<void> record(WatchHistoryEntry entry) async {
-    writes += 1;
-    if (writes == 2) {
+    if (++writes == 2) {
       secondStarted.complete();
       await release.future;
     }

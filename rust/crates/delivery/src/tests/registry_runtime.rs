@@ -52,7 +52,7 @@ mod retry_history_retention_test;
 mod store_pressure_missed_wake_test;
 mod store_pressure_timeout_recheck_test;
 mod stored_source_plan_test;
-mod support;
+pub(crate) mod support;
 mod timeline_additive_evidence_test;
 mod timeline_attempt_memo_test;
 mod timeline_cancellation_parser;

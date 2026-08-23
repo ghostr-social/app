@@ -65,7 +65,7 @@ impl DeliveryWorker {
         let planned = self.plan_cycle(&cycle);
         let decision = self.observe_plan(&planned, observed_at_ms);
         let execution = PlannedExecution { planned, decision };
-        self.execute_planned_work(observed_at_ms, execution, &cycle.stored.revisions)
+        self.execute_planned_work(observed_at_ms, execution, &cycle.stored)
             .await;
         self.finish_reconcile();
     }
@@ -74,7 +74,7 @@ impl DeliveryWorker {
         &mut self,
         observed_at_ms: u64,
         execution: PlannedExecution,
-        revisions: &HashMap<PostId, ContentRevision>,
+        stored: &PlanningStoreState,
     ) {
         let PlannedExecution { planned, decision } = execution;
         self.schedule_hedge_tail_wakes(&planned.hedge_tails, observed_at_ms);
@@ -84,7 +84,7 @@ impl DeliveryWorker {
             .as_ref()
             .map(|decision| decision.additional_request_slot_demanded);
         if !self
-            .apply_policy_evictions(&planned.evictions, revisions)
+            .apply_policy_evictions(&planned.evictions, &stored.revisions)
             .await
         {
             return;
@@ -94,7 +94,7 @@ impl DeliveryWorker {
         self.state
             .observe_discovery_demand(planned.discovery_demand);
         self.refresh_cache_registry().await;
-        let startups = self.startup_certificates(&planned.plan).await;
+        let startups = self.startup_certificates(&planned.plan, &stored.snapshots);
         self.commands.publish_focused_plan_with_startups(
             observed_at_ms,
             self.state.current_post(),

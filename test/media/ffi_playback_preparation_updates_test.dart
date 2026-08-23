@@ -21,10 +21,8 @@ void main() {
     expect(plan.current?.representationId.value, 'a' * 64);
     expect(plan.current?.readiness, PlaybackPreparationReadiness.preparing);
     expect(plan.next?.deliveryId.value, 'next');
-    expect(
-      plan.next?.readiness,
-      PlaybackPreparationReadiness.structuralStartable,
-    );
+    expect(plan.next?.sourceRepresentationId.value, 'd' * 64);
+    expect(plan.next?.readiness, PlaybackPreparationReadiness.ready);
     expect(plan.upcoming.map((asset) => asset.deliveryId.value), [
       'next',
       'next-2',
@@ -40,27 +38,31 @@ FfiPlaybackPreparationPlan _plan() {
       id: 'current',
       capability: _currentCapability,
       digest: 'a',
-      startable: false,
+      sourceDigest: 'a',
+      readiness: FfiPlaybackPreparationReadiness.preparing,
     )),
     upcoming: [
       _asset((
         id: 'next',
         capability: _nextCapability,
         digest: 'b',
-        startable: true,
+        sourceDigest: 'd',
+        readiness: FfiPlaybackPreparationReadiness.ready,
       )),
       _asset((
         id: 'next-2',
         capability: _laterCapability,
         digest: 'c',
-        startable: true,
+        sourceDigest: 'c',
+        readiness: FfiPlaybackPreparationReadiness.structuralStartable,
       )),
     ],
     next: _asset((
       id: 'next',
       capability: _nextCapability,
       digest: 'b',
-      startable: true,
+      sourceDigest: 'd',
+      readiness: FfiPlaybackPreparationReadiness.ready,
     )),
   );
 }
@@ -69,13 +71,12 @@ FfiPlaybackPreparationAsset _asset(_NativeAsset input) {
   return FfiPlaybackPreparationAsset(
     deliveryId: input.id,
     representationId: input.digest * 64,
+    sourceRepresentationId: input.sourceDigest * 64,
     assetId: input.capability,
     playbackUrl:
         'http://127.0.0.1:17654/video.mp4?'
         'id=${input.id}&cap=${input.capability}',
-    readiness: input.startable
-        ? FfiPlaybackPreparationReadiness.structuralStartable
-        : FfiPlaybackPreparationReadiness.preparing,
+    readiness: input.readiness,
   );
 }
 
@@ -83,7 +84,8 @@ typedef _NativeAsset = ({
   String id,
   String capability,
   String digest,
-  bool startable,
+  String sourceDigest,
+  FfiPlaybackPreparationReadiness readiness,
 });
 
 const _currentCapability = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';

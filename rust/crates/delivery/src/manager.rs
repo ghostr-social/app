@@ -52,6 +52,8 @@ mod retry_completion;
 mod segmented;
 pub(crate) mod selected_commit;
 mod startup;
+#[cfg(test)]
+mod startup_snapshot_test;
 pub(crate) mod state;
 pub(crate) mod stats;
 #[cfg(test)]

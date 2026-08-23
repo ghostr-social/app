@@ -1509,6 +1509,7 @@ impl SseDecode for crate::api::delivery_types::FfiPlaybackPreparationAsset {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_deliveryId = <String>::sse_decode(deserializer);
         let mut var_representationId = <String>::sse_decode(deserializer);
+        let mut var_sourceRepresentationId = <String>::sse_decode(deserializer);
         let mut var_assetId = <String>::sse_decode(deserializer);
         let mut var_playbackUrl = <String>::sse_decode(deserializer);
         let mut var_readiness =
@@ -1516,6 +1517,7 @@ impl SseDecode for crate::api::delivery_types::FfiPlaybackPreparationAsset {
         return crate::api::delivery_types::FfiPlaybackPreparationAsset {
             delivery_id: var_deliveryId,
             representation_id: var_representationId,
+            source_representation_id: var_sourceRepresentationId,
             asset_id: var_assetId,
             playback_url: var_playbackUrl,
             readiness: var_readiness,
@@ -1557,6 +1559,7 @@ impl SseDecode for crate::api::delivery_types::FfiPlaybackPreparationReadiness {
         return match inner {
             0 => crate::api::delivery_types::FfiPlaybackPreparationReadiness::Preparing,
             1 => crate::api::delivery_types::FfiPlaybackPreparationReadiness::StructuralStartable,
+            2 => crate::api::delivery_types::FfiPlaybackPreparationReadiness::Ready,
             _ => unreachable!(
                 "Invalid variant for FfiPlaybackPreparationReadiness: {}",
                 inner
@@ -2732,6 +2735,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::delivery_types::FfiPlaybackPr
         [
             self.delivery_id.into_into_dart().into_dart(),
             self.representation_id.into_into_dart().into_dart(),
+            self.source_representation_id.into_into_dart().into_dart(),
             self.asset_id.into_into_dart().into_dart(),
             self.playback_url.into_into_dart().into_dart(),
             self.readiness.into_into_dart().into_dart(),
@@ -2780,6 +2784,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::delivery_types::FfiPlaybackPr
         match self {
             Self::Preparing => 0.into_dart(),
             Self::StructuralStartable => 1.into_dart(),
+            Self::Ready => 2.into_dart(),
             _ => unreachable!(),
         }
     }
@@ -3401,6 +3406,7 @@ impl SseEncode for crate::api::delivery_types::FfiPlaybackPreparationAsset {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.delivery_id, serializer);
         <String>::sse_encode(self.representation_id, serializer);
+        <String>::sse_encode(self.source_representation_id, serializer);
         <String>::sse_encode(self.asset_id, serializer);
         <String>::sse_encode(self.playback_url, serializer);
         <crate::api::delivery_types::FfiPlaybackPreparationReadiness>::sse_encode(
@@ -3434,6 +3440,7 @@ impl SseEncode for crate::api::delivery_types::FfiPlaybackPreparationReadiness {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(match self {crate::api::delivery_types::FfiPlaybackPreparationReadiness::Preparing => { 0 }
 crate::api::delivery_types::FfiPlaybackPreparationReadiness::StructuralStartable => { 1 }
+crate::api::delivery_types::FfiPlaybackPreparationReadiness::Ready => { 2 }
  _ => { unimplemented!(""); }}, serializer);
     }
 }

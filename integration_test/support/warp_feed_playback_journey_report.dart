@@ -27,11 +27,17 @@ extension WarpFeedPlaybackJourneyReport on WarpFeedPlaybackJourney {
       deliveryId,
       noLaterThan: presentation.elapsed,
     );
-    final structural = preparation.firstCurrentAt(
-      deliveryId,
-      PlaybackPreparationReadiness.structuralStartable,
-    );
+    final authority = player?.authority;
+    final structural = authority == null
+        ? null
+        : preparation.firstStructurallyStartableAt(authority);
+    final ready = authority == null
+        ? null
+        : preparation.firstAt(authority, PlaybackPreparationReadiness.ready);
     return 'rust_structural_startable_ms=${_deltaMs(structural, focus)} '
+        'rust_ready_ms=${_deltaMs(ready, focus)} '
+        'structural_depth=${preparation.maximumStructuralDepth} '
+        'ready_depth=${preparation.maximumReadyDepth} '
         'player_prepare_ms=${_deltaMs(player?.preparedAt, focus)} '
         'initialize_start_ms=${_deltaMs(player?.initializingAt, focus)} '
         'initialized_ms=${_deltaMs(player?.initializedAt, focus)} '

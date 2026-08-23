@@ -5,9 +5,24 @@ use ghostr_delivery::startup_certificate::StartupCertificate;
 use ghostr_engine::adaptive::{
     NextReserveEvidence, ReserveCandidateEvidence, ReserveCandidateState,
 };
+use ghostr_engine::media_timeline::StartupFootprint;
 use ghostr_engine::PostId;
 
 mod asset;
+
+#[derive(Clone, Copy)]
+pub(super) enum CertifiedReadiness<'a> {
+    Structural(&'a StartupCertificate),
+    Ready(&'a StartupCertificate),
+}
+
+impl<'a> CertifiedReadiness<'a> {
+    pub(super) fn certificate(self) -> &'a StartupCertificate {
+        match self {
+            Self::Structural(certificate) | Self::Ready(certificate) => certificate,
+        }
+    }
+}
 
 pub(crate) async fn project(context: &PreparationContext) -> Option<FfiPlaybackPreparationPlan> {
     let evidence = context.delivery.latest_plan()?;
@@ -34,15 +49,15 @@ async fn project_evidence_upcoming(
     evidence: &PlanEvidence,
 ) -> Vec<crate::api::delivery_types::FfiPlaybackPreparationAsset> {
     let mut projected = Vec::new();
-    for (post, certificate) in certified_upcoming(evidence) {
-        if let Some(asset) = asset::project(context, post, Some(certificate)).await {
+    for (post, readiness) in certified_upcoming(evidence) {
+        if let Some(asset) = asset::project(context, post, Some(readiness)).await {
             projected.push(asset);
         }
     }
     projected
 }
 
-fn certified_upcoming(evidence: &PlanEvidence) -> Vec<(&PostId, &StartupCertificate)> {
+fn certified_upcoming(evidence: &PlanEvidence) -> Vec<(&PostId, CertifiedReadiness<'_>)> {
     let certified: Vec<_> = evidence
         .plan
         .ready_reserve
@@ -59,27 +74,40 @@ fn certified_upcoming(evidence: &PlanEvidence) -> Vec<(&PostId, &StartupCertific
 fn certified_candidate<'a>(
     candidate: &'a ReserveCandidateEvidence,
     certificates: &'a [StartupCertificate],
-) -> Option<(&'a PostId, &'a StartupCertificate)> {
-    let startup = match &candidate.state {
-        ReserveCandidateState::Ready { startup }
-        | ReserveCandidateState::Structural { startup } => startup,
+) -> Option<(&'a PostId, CertifiedReadiness<'a>)> {
+    let readiness = match &candidate.state {
+        ReserveCandidateState::Ready { startup } => {
+            CertifiedReadiness::Ready(certificate(&candidate.post, startup, certificates)?)
+        }
+        ReserveCandidateState::Structural { startup } => {
+            CertifiedReadiness::Structural(certificate(&candidate.post, startup, certificates)?)
+        }
         _ => return None,
     };
-    certificates
-        .iter()
-        .find(|certificate| certificate.matches(&candidate.post, startup))
-        .map(|certificate| (&candidate.post, certificate))
+    Some((&candidate.post, readiness))
 }
 
-fn certified_next(evidence: &PlanEvidence) -> Option<(&PostId, &StartupCertificate)> {
-    let (post, startup) = match &evidence.plan.next_reserve {
-        NextReserveEvidence::Ready { post, startup }
-        | NextReserveEvidence::Structural { post, startup } => (post, startup),
+fn certified_next(evidence: &PlanEvidence) -> Option<(&PostId, CertifiedReadiness<'_>)> {
+    let (post, readiness) = match &evidence.plan.next_reserve {
+        NextReserveEvidence::Ready { post, startup } => (
+            post,
+            CertifiedReadiness::Ready(certificate(post, startup, &evidence.startups)?),
+        ),
+        NextReserveEvidence::Structural { post, startup } => (
+            post,
+            CertifiedReadiness::Structural(certificate(post, startup, &evidence.startups)?),
+        ),
         _ => return None,
     };
-    evidence
-        .startups
+    Some((post, readiness))
+}
+
+fn certificate<'a>(
+    post: &PostId,
+    startup: &StartupFootprint,
+    certificates: &'a [StartupCertificate],
+) -> Option<&'a StartupCertificate> {
+    certificates
         .iter()
         .find(|certificate| certificate.matches(post, startup))
-        .map(|certificate| (post, certificate))
 }

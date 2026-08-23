@@ -9,24 +9,45 @@ export 'package:ghostr/core/media/playback_asset_authority.dart';
 enum PlaybackPreparationReadiness {
   preparing,
   structuralStartable,
+  ready,
   playerInitializing,
   playerInitialized,
   playerFailed,
 }
 
+extension PlaybackPreparationReadinessEvidence on PlaybackPreparationReadiness {
+  bool get isStructurallyStartable =>
+      this == PlaybackPreparationReadiness.structuralStartable ||
+      this == PlaybackPreparationReadiness.ready;
+
+  bool get isPlayerVerified => this == PlaybackPreparationReadiness.ready;
+}
+
 final class PlaybackPreparationAsset {
   factory PlaybackPreparationAsset({
     required PlaybackAssetAuthority authority,
+    VideoRepresentationId? sourceRepresentationId,
     required ProxiedProgressiveVideoMediaSource media,
     required PlaybackPreparationReadiness readiness,
   }) {
     _validateAuthority(authority, media);
-    return PlaybackPreparationAsset._(authority, media, readiness);
+    return PlaybackPreparationAsset._(
+      authority,
+      sourceRepresentationId ?? authority.representationId,
+      media,
+      readiness,
+    );
   }
 
-  const PlaybackPreparationAsset._(this.authority, this.media, this.readiness);
+  const PlaybackPreparationAsset._(
+    this.authority,
+    this.sourceRepresentationId,
+    this.media,
+    this.readiness,
+  );
 
   final PlaybackAssetAuthority authority;
+  final VideoRepresentationId sourceRepresentationId;
   final ProxiedProgressiveVideoMediaSource media;
   final PlaybackPreparationReadiness readiness;
 
@@ -39,6 +60,7 @@ final class PlaybackPreparationAsset {
       origin: origin,
       media: media,
       authority: authority,
+      sourceRepresentationId: sourceRepresentationId,
     );
   }
 
@@ -46,7 +68,7 @@ final class PlaybackPreparationAsset {
     try {
       return source.canCacheAsSingleFile &&
           source.playbackDeliveryId == deliveryId &&
-          VideoRepresentationId.forMedia(source) == representationId;
+          VideoRepresentationId.forMedia(source) == sourceRepresentationId;
     } on ArgumentError {
       return false;
     }

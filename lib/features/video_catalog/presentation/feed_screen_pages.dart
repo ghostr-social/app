@@ -9,6 +9,7 @@ extension _FeedScreenPages on _FeedScreenState {
           key: ValueKey(state.kind),
           model: FeedPageModel(
             keys: state.posts.map((post) => ValueKey(post.id.value)),
+            rosterRevision: state.rosterRevision,
             activePage: state.activeIndex,
           ),
           onPageChanged: context.read<FeedCubit>().pageChanged,

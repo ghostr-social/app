@@ -12,61 +12,51 @@ import '../support/feed_preparation_updates.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('blocking commits the replacement watch before activating it', () async {
-    final history = _SecondWatchGatedHistory();
-    final preparation = ControlledPlaybackPreparationUpdates();
-    final blocked = samplePost(
-      id: 'blocked',
-      creator: sampleCreator(id: 'blocked-creator'),
-    );
-    final replacement = samplePost(id: 'replacement');
-    final source = FakeVideoCatalogRepository(
-      forYouFeed: [blocked, replacement],
-    );
+  test('preparation update cannot cancel a durable page commit', () async {
+    final history = _GatedHistory();
+    final updates = ControlledPlaybackPreparationUpdates();
+    final posts = [samplePost(id: 'first'), samplePost(id: 'second')];
+    final source = FakeVideoCatalogRepository(forYouFeed: posts);
     final cubit = FeedCubit(
       FeedDependencies(
         feed: source,
         engagement: source,
         optional: FeedOptionalDependencies(
-          social: source,
           watch: FeedWatchDependencies(
             tracker: WatchHistoryTracker(
               history: history,
               failureReporter: RecordingFailureReporter(),
             ),
           ),
-          delivery: FeedDeliveryDependencies(
-            preparationUpdates: preparation,
-          ),
+          delivery: FeedDeliveryDependencies(preparationUpdates: updates),
         ),
       ),
     );
     addTearDown(() async {
       if (!history.release.isCompleted) history.release.complete();
       await cubit.close();
-      await preparation.close();
+      await updates.close();
     });
     await cubit.load();
 
-    final blocking = cubit.blockCreator(blocked);
+    cubit.pageChanged(1);
     await history.secondStarted.future;
-    expect((cubit.state as FeedLoaded).posts.first.id.value, 'blocked');
-    preparation.publish(
+    updates.publish(
       PlaybackPreparationPlan(
         revision: BigInt.one,
-        currentDeliveryId: PlaybackDeliveryId.parse('blocked'),
+        currentDeliveryId: PlaybackDeliveryId.parse('first'),
       ),
     );
-
     history.release.complete();
-    await blocking;
+    await pumpEventQueue();
+
     final loaded = cubit.state as FeedLoaded;
-    expect(loaded.posts.first.id.value, 'replacement');
+    expect(loaded.posts.first.id.value, 'second');
     expect(loaded.preparation.isManaged, isTrue);
   });
 }
 
-final class _SecondWatchGatedHistory extends FakeWatchHistoryRepository {
+final class _GatedHistory extends FakeWatchHistoryRepository {
   final secondStarted = Completer<void>();
   final release = Completer<void>();
   var writes = 0;

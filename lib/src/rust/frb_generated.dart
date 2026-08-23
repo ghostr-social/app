@@ -1535,14 +1535,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return FfiPlaybackPreparationAsset(
       deliveryId: dco_decode_String(arr[0]),
       representationId: dco_decode_String(arr[1]),
-      assetId: dco_decode_String(arr[2]),
-      playbackUrl: dco_decode_String(arr[3]),
-      readiness: dco_decode_ffi_playback_preparation_readiness(arr[4]),
+      sourceRepresentationId: dco_decode_String(arr[2]),
+      assetId: dco_decode_String(arr[3]),
+      playbackUrl: dco_decode_String(arr[4]),
+      readiness: dco_decode_ffi_playback_preparation_readiness(arr[5]),
     );
   }
 
@@ -2390,6 +2391,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_deliveryId = sse_decode_String(deserializer);
     var var_representationId = sse_decode_String(deserializer);
+    var var_sourceRepresentationId = sse_decode_String(deserializer);
     var var_assetId = sse_decode_String(deserializer);
     var var_playbackUrl = sse_decode_String(deserializer);
     var var_readiness = sse_decode_ffi_playback_preparation_readiness(
@@ -2398,6 +2400,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return FfiPlaybackPreparationAsset(
       deliveryId: var_deliveryId,
       representationId: var_representationId,
+      sourceRepresentationId: var_sourceRepresentationId,
       assetId: var_assetId,
       playbackUrl: var_playbackUrl,
       readiness: var_readiness,
@@ -3300,6 +3303,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.deliveryId, serializer);
     sse_encode_String(self.representationId, serializer);
+    sse_encode_String(self.sourceRepresentationId, serializer);
     sse_encode_String(self.assetId, serializer);
     sse_encode_String(self.playbackUrl, serializer);
     sse_encode_ffi_playback_preparation_readiness(self.readiness, serializer);

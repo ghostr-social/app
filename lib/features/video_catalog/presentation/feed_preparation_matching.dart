@@ -22,7 +22,7 @@ PreparedProgressivePlayback? _startableAsset(
   VideoMediaSource media,
 ) {
   final asset = assets.where((value) => value.matches(media)).firstOrNull;
-  if (asset?.readiness != PlaybackPreparationReadiness.structuralStartable) {
+  if (asset?.readiness.isStructurallyStartable != true) {
     return null;
   }
   return asset!.bind(media);

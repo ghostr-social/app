@@ -127,6 +127,7 @@ enum FfiMediaDelivery { progressive, hls }
 class FfiPlaybackPreparationAsset {
   final String deliveryId;
   final String representationId;
+  final String sourceRepresentationId;
   final String assetId;
   final String playbackUrl;
   final FfiPlaybackPreparationReadiness readiness;
@@ -134,6 +135,7 @@ class FfiPlaybackPreparationAsset {
   const FfiPlaybackPreparationAsset({
     required this.deliveryId,
     required this.representationId,
+    required this.sourceRepresentationId,
     required this.assetId,
     required this.playbackUrl,
     required this.readiness,
@@ -143,6 +145,7 @@ class FfiPlaybackPreparationAsset {
   int get hashCode =>
       deliveryId.hashCode ^
       representationId.hashCode ^
+      sourceRepresentationId.hashCode ^
       assetId.hashCode ^
       playbackUrl.hashCode ^
       readiness.hashCode;
@@ -154,6 +157,7 @@ class FfiPlaybackPreparationAsset {
           runtimeType == other.runtimeType &&
           deliveryId == other.deliveryId &&
           representationId == other.representationId &&
+          sourceRepresentationId == other.sourceRepresentationId &&
           assetId == other.assetId &&
           playbackUrl == other.playbackUrl &&
           readiness == other.readiness;
@@ -202,7 +206,7 @@ class FfiPlaybackPreparationPlan {
 }
 
 /// What the native cache has proved for one exact playback asset.
-enum FfiPlaybackPreparationReadiness { preparing, structuralStartable }
+enum FfiPlaybackPreparationReadiness { preparing, structuralStartable, ready }
 
 /// Actor-applied result for one immutable player-preparation report.
 enum FfiPlayerPreparationDisposition {

@@ -6,6 +6,7 @@ use ghostr_engine::PostId;
 #[tokio::test]
 async fn derived_representation_is_projected_and_accepted_as_exact_player_authority() {
     let mut fixture = AuthorityFixture::seeded().await;
+    let source_representation = fixture.representation.clone();
     fixture.publish_derived_representation().await;
     fixture
         .commands
@@ -16,6 +17,8 @@ async fn derived_representation_is_projected_and_accepted_as_exact_player_author
         .expect("derived preparation plan");
     let asset = plan.current.expect("derived current asset");
     assert_eq!(asset.representation_id, fixture.representation);
+    assert_eq!(asset.source_representation_id, source_representation);
+    assert_ne!(asset.source_representation_id, asset.representation_id);
     assert_eq!(asset.asset_id, fixture.asset);
     report_player_preparation(&fixture.context, fixture.input())
         .await

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_state.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_page_view.dart';
 
 void main() {
@@ -8,6 +9,7 @@ void main() {
   ) async {
     final page = ValueNotifier(0);
     final changes = <int>[];
+    final rosterRevision = FeedRosterRevision();
     addTearDown(page.dispose);
     await tester.pumpWidget(
       MaterialApp(
@@ -16,6 +18,7 @@ void main() {
           builder: (_, index, __) => FeedPageView(
             model: FeedPageModel(
               keys: List.generate(3, (page) => ValueKey('page-$page')),
+              rosterRevision: rosterRevision,
               activePage: index,
             ),
             onPageChanged: changes.add,

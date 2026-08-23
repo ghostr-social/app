@@ -1,10 +1,10 @@
+use crate::api::delivery_types::{FfiPlaybackPreparationPlan, FfiPlaybackPreparationReadiness};
 use crate::api::playback_preparation_stream::{
     watch_preparation, PreparationContext, PreparationOut,
 };
 use crate::api::runtime::tracked_items::TrackedItems;
 use crate::api::tests::delivery::playback_preparation_sparse_fixture::complete_startup;
 use crate::api::tests::support::{bind_store, sized_meta, temp_store};
-use crate::api::{delivery_types::FfiPlaybackPreparationPlan, focus_control::progressive_url};
 use ghostr_delivery::cache_registry::{CacheRegistry, CacheStatus, CacheVideo};
 use ghostr_delivery::delivery_events::command_channel;
 use ghostr_delivery::startup_certificate::StartupCertificate;
@@ -76,10 +76,7 @@ async fn projects_exact_current_and_structurally_ready_adjacent_next_assets() {
     assert_eq!(next.representation_id.len(), 64);
     assert_eq!(current.representation_id, next.representation_id);
     assert_ne!(current.asset_id, next.asset_id);
-    assert_eq!(
-        current.playback_url,
-        progressive_url("127.0.0.1:8080", "current", &current.asset_id)
-    );
+    assert_eq!(next.readiness, FfiPlaybackPreparationReadiness::Ready);
 }
 
 fn cached(id: &str) -> CacheVideo {

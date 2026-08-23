@@ -47,12 +47,17 @@ PlaybackPreparationAsset _asset(FfiPlaybackPreparationAsset native) {
       representationId: VideoRepresentationId.parse(native.representationId),
       assetId: PlaybackAssetId.parse(native.assetId),
     ),
+    sourceRepresentationId: VideoRepresentationId.parse(
+      native.sourceRepresentationId,
+    ),
     media: media,
     readiness: switch (native.readiness) {
       FfiPlaybackPreparationReadiness.preparing =>
         PlaybackPreparationReadiness.preparing,
       FfiPlaybackPreparationReadiness.structuralStartable =>
         PlaybackPreparationReadiness.structuralStartable,
+      FfiPlaybackPreparationReadiness.ready =>
+        PlaybackPreparationReadiness.ready,
     },
   );
 }

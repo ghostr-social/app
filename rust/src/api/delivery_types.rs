@@ -55,6 +55,7 @@ pub struct FfiDeliveryEvent {
 pub enum FfiPlaybackPreparationReadiness {
     Preparing,
     StructuralStartable,
+    Ready,
 }
 
 /// One exact loopback asset selected for current or adjacent-next use.
@@ -62,6 +63,7 @@ pub enum FfiPlaybackPreparationReadiness {
 pub struct FfiPlaybackPreparationAsset {
     pub delivery_id: String,
     pub representation_id: String,
+    pub source_representation_id: String,
     pub asset_id: String,
     pub playback_url: String,
     pub readiness: FfiPlaybackPreparationReadiness,
