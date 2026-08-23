@@ -38,7 +38,8 @@ final class FfiPlayerPreparationFeedbackPort
        _monotonicMicros = monotonicMicros,
        _tokenFactory = tokenFactory;
 
-  static const _pendingLimit = 6;
+  static const _activeLimit = warpMaximumConcurrentPlayerPreparations;
+  static const _retainedLimit = _activeLimit * 2;
   static final _clock = Stopwatch()..start();
   static BigInt _lastClientEpoch = BigInt.zero;
   static var _nextAttemptGeneration = 0;
@@ -87,14 +88,24 @@ final class FfiPlayerPreparationFeedbackPort
     _FfiPlayerPreparationAttempt source,
   ) {
     if (report.state != FfiPlayerPreparationState.initializing) return true;
-    while (_attempts.length >= _pendingLimit) {
+    while (_attempts.length >= _retainedLimit) {
       final victim = _oldestEvictableAttempt();
-      if (victim == null) return false;
+      if (victim == null) {
+        _logCapacity(report, 'retained');
+        return false;
+      }
       _discardAttempt(victim);
+    }
+    if (_activeAttemptCount >= _activeLimit) {
+      _logCapacity(report, 'active');
+      return false;
     }
     _attempts[report.attemptGeneration] = source;
     return true;
   }
+
+  int get _activeAttemptCount =>
+      _attempts.values.where((attempt) => !attempt._terminal).length;
 
   BigInt? _oldestEvictableAttempt() {
     for (final key in _attempts.keys) {
@@ -120,6 +131,15 @@ final class FfiPlayerPreparationFeedbackPort
   bool _isTerminal(FfiPlayerPreparationState state) =>
       state == FfiPlayerPreparationState.failed ||
       state == FfiPlayerPreparationState.released;
+
+  void _logCapacity(FfiPlayerPreparationReport report, String capacity) {
+    developer.log(
+      'Player preparation $capacity capacity rejected a new attempt; '
+      'capability=${report.playerCapabilityGeneration}, '
+      'epoch=${report.clientEpoch}, attempt=${report.attemptGeneration}.',
+      name: 'ghostr.video.preparation',
+    );
+  }
 
   FfiPlayerPreparationReport _report(
     PlaybackAssetAuthority authority,

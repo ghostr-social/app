@@ -1,6 +1,7 @@
 import 'package:ghostr/core/media/playback_asset_authority.dart';
 
 const warpPlaybackAttemptHeader = 'X-Ghostr-Playback-Attempt';
+const warpMaximumConcurrentPlayerPreparations = 6;
 
 final class PlayerPreparationAttemptToken {
   factory PlayerPreparationAttemptToken.parse(String raw) {

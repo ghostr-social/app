@@ -95,7 +95,10 @@ final class _VideoPlayerSurfaceDependencies {
     required this.screenAwake,
     required this.preparationFeedback,
     required this.renderedFirstFrames,
-  }) : controllerBudget = _VideoPlayerControllerBudget(6, initialLimit: 2),
+  }) : controllerBudget = _VideoPlayerControllerBudget(
+         warpMaximumConcurrentPlayerPreparations,
+         initialLimit: 2,
+       ),
        handoff = _VideoPlayerPlaybackHandoff();
 
   final VideoPlayerControllerDisposer controllerDisposer;

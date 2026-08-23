@@ -8,7 +8,7 @@ import '../support/drain_test_microtasks.dart';
 import '../support/playback_authority_fixture.dart';
 
 void main() {
-  test('a seventh concurrent attempt stays silent after rejection', () async {
+  test('a released controller cannot silence its replacement', () async {
     final blocked = <Completer<FfiPlayerPreparationDisposition>>[];
     final sent = <FfiPlayerPreparationReport>[];
     final feedback = FfiPlayerPreparationFeedbackPort(
@@ -22,17 +22,31 @@ void main() {
       clientEpoch: BigInt.one,
       monotonicMicros: () => 1,
     );
-    for (var index = 0; index < 6; index += 1) {
+    final retired = feedback.prepare(testPlaybackAuthority(postId: 'retired'))
+      ..begin();
+    for (var index = 1; index < 6; index += 1) {
       feedback.prepare(testPlaybackAuthority(postId: 'active-$index')).begin();
     }
-    final dropped = feedback.prepare(testPlaybackAuthority(postId: 'dropped'));
-    dropped.begin();
-    dropped.release();
+    retired.release();
+    feedback.prepare(testPlaybackAuthority(postId: 'replacement')).begin();
     await drainTestMicrotasks();
 
-    expect(sent, hasLength(6));
-    expect(sent.where((report) => report.postId == 'dropped'), isEmpty);
-    for (final completion in blocked) {
+    expect(
+      sent.where((report) => report.postId == 'replacement'),
+      hasLength(1),
+    );
+    blocked.first.complete(FfiPlayerPreparationDisposition.applied);
+    await drainTestMicrotasks();
+    expect(
+      sent
+          .where((report) => report.postId == 'retired')
+          .map((report) => report.state),
+      [
+        FfiPlayerPreparationState.initializing,
+        FfiPlayerPreparationState.released,
+      ],
+    );
+    for (final completion in blocked.where((value) => !value.isCompleted)) {
       completion.complete(FfiPlayerPreparationDisposition.applied);
     }
     await drainTestMicrotasks();
