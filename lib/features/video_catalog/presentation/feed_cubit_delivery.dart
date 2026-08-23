@@ -17,6 +17,9 @@ extension FeedCubitDelivery on FeedCubit {
 
   void _acceptDeliveryUpdate(VideoDeliverySnapshot snapshot) {
     _delivery[snapshot.deliveryId] = snapshot;
+    if (snapshot.phase == VideoDeliveryPhase.failed) {
+      _rememberActiveFailure(snapshot.deliveryId);
+    }
     _rescueAfterDeliveryUpdate();
   }
 
@@ -47,24 +50,22 @@ extension FeedCubitDelivery on FeedCubit {
     if (preparation is Future<bool>) {
       return unawaited(_finishRescue(preparation, commit));
     }
-    if (!preparation) return;
+    if (!preparation) return _completePageTransition(transition);
     _finishRescueNow(commit);
   }
 
-  Future<void> _finishRescue(
-    Future<bool> preparation,
-    _RescueCommit commit,
-  ) async {
-    if (!await preparation) return;
+  Future<void> _finishRescue(Future<bool> ready, _RescueCommit commit) async {
+    if (!await ready) return _completePageTransition(commit.transition);
     _finishRescueNow(commit);
   }
 
   void _finishRescueNow(_RescueCommit commit) {
     final current = _acceptedPageTransition(commit.transition, commit.current);
-    if (current == null) return;
+    if (current == null) return _completePageTransition(commit.transition);
     final moved = _movedTo(current, commit.decision.selectedIndex);
     _pendingTransportJump = moved.activeIndex;
     emit(moved);
+    _completePageTransition(commit.transition);
     _viewer.rescuedTo(
       moved.posts,
       moved.activeIndex,
@@ -80,55 +81,31 @@ extension FeedCubitDelivery on FeedCubit {
     await subscription?.cancel();
   }
 
-  void _rememberPendingRescue(
-    FeedLoaded current,
-    FeedLoaded moved,
-    FeedReadyDecision decision,
-  ) {
-    final intended = decision.intendedIndex;
-    final snapshot = _snapshotFor(current.posts[intended]);
-    _clearPendingRescue();
-    final remapped = moved.activeIndex != intended;
-    _awaitingTransportRescue =
-        intended == current.activeIndex ||
-            snapshot?.phase == VideoDeliveryPhase.startable
-        ? null
-        : (
-            fromIndex: remapped ? -1 : current.activeIndex,
-            intendedIndex: moved.activeIndex,
-            graceExpired: false,
-          );
-  }
-
   void _rescueAfterDeliveryUpdate() {
     final pending = _awaitingTransportRescue;
     if (pending == null) return;
-    final current = _currentRescueFeed(pending);
-    if (current == null) return;
-    final intended = _snapshotFor(current.posts[pending.intendedIndex]);
+    final active = _currentRescueFeed(pending);
+    if (active == null) return;
+    final intended = _snapshotFor(active.feed.posts[active.intendedIndex]);
     if (intended?.phase == VideoDeliveryPhase.startable) {
       _clearPendingRescue();
       return;
     }
-    _applyRescueDecision(current, _rescueDecision(current, pending));
-  }
-
-  FeedLoaded? _currentRescueFeed(_PendingTransportRescue pending) {
-    final current = state;
-    if (current is! FeedLoaded) return null;
-    if (current.activeIndex == pending.intendedIndex) return current;
-    _clearPendingRescue();
-    return null;
+    _applyRescueDecision(
+      active.feed,
+      _rescueDecision(active.feed, active.intendedIndex, pending),
+    );
   }
 
   FeedReadyDecision _rescueDecision(
     FeedLoaded current,
+    int intendedIndex,
     _PendingTransportRescue pending,
   ) {
     return _readySelector.select(
       current.posts,
-      fromIndex: pending.fromIndex,
-      intendedIndex: pending.intendedIndex,
+      fromIndex: intendedIndex - pending.direction,
+      intendedIndex: intendedIndex,
       delivery: _delivery,
       graceExpired: pending.graceExpired,
     );
@@ -137,6 +114,7 @@ extension FeedCubitDelivery on FeedCubit {
   void _applyRescueDecision(FeedLoaded current, FeedReadyDecision selected) {
     if (selected.action == FeedReadyAction.rescue) {
       final transition = ++_pageTransition;
+      _beginPageTransition(transition);
       _rescueTo(current, selected, transition);
     } else if (selected.action == FeedReadyAction.wait) {
       _ensureRescueTimer();
@@ -152,8 +130,8 @@ extension FeedCubitDelivery on FeedCubit {
     final pending = _awaitingTransportRescue;
     if (pending == null) return;
     _awaitingTransportRescue = (
-      fromIndex: pending.fromIndex,
-      intendedIndex: pending.intendedIndex,
+      deliveryId: pending.deliveryId,
+      direction: pending.direction,
       graceExpired: true,
     );
     _rescueAfterDeliveryUpdate();
@@ -193,7 +171,6 @@ extension FeedCubitDelivery on FeedCubit {
 
 final class _RescueCommit {
   const _RescueCommit(this.transition, this.current, this.decision);
-
   final int transition;
   final FeedLoaded current;
   final FeedReadyDecision decision;

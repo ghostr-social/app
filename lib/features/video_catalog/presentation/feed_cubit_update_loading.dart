@@ -13,33 +13,35 @@ extension FeedCubitUpdateLoading on FeedCubit {
 
   Future<void> _refreshLoaded(FeedLoaded previous, int transition) async {
     await _refreshFeedUpdates(previous.kind);
-    final result = await _loads.newest(() => _fetch.resync(previous.kind));
-    final accepted = _currentRefresh(transition, result);
+    final answer = await _loads.leased(() => _fetch.resync(previous.kind));
+    final accepted = _currentRefresh(transition, answer);
     if (accepted == null) return;
     await _applyManualRefresh(previous, accepted);
   }
 
-  FeedFetch? _currentRefresh(int transition, FeedFetch? result) {
-    if (isClosed || transition != _pageTransition || result == null) {
+  FeedLoad<FeedFetch>? _currentRefresh(
+    int transition,
+    FeedLoad<FeedFetch>? answer,
+  ) {
+    if (isClosed || transition != _pageTransition || answer == null) {
       return null;
     }
-    return result;
+    return answer;
   }
 
   Future<void> _applyManualRefresh(
     FeedLoaded previous,
-    FeedFetch result,
+    FeedLoad<FeedFetch> answer,
   ) async {
-    switch (result) {
-      case FeedUnavailable():
+    switch (answer.value) {
+      case FeedUnavailable(:final failure):
         emit(
           previous
               .withFollows(_follows)
-              .withNotice(feedLoadFailureMessage(result.failure)),
+              .withNotice(feedLoadFailureMessage(failure)),
         );
       case FeedFetched(:final posts, :final eligiblePosts):
-        _acknowledgePendingFeedUpdate();
-        await _acceptRefresh(previous, posts, eligiblePosts);
+        await _acceptRefresh(previous, posts, eligiblePosts, answer.request);
     }
   }
 
@@ -56,30 +58,34 @@ extension FeedCubitUpdateLoading on FeedCubit {
     await _applyFeedUpdate(kind, accepted);
   }
 
-  Future<FeedFetch?> _loadFeedUpdate(FeedKind kind) {
+  Future<FeedLoad<FeedFetch>?> _loadFeedUpdate(FeedKind kind) {
     final loaded = state is FeedLoaded;
-    return _loads.newest(
+    return _loads.leased(
       () => loaded ? _fetch.resync(kind) : _fetch.unwatched(kind),
     );
   }
 
-  FeedFetched? _acceptedFeedUpdate(
+  FeedLoad<FeedFetch>? _acceptedFeedUpdate(
     int feed,
     FeedKind kind,
     bool allowEmpty,
-    FeedFetch? result,
+    FeedLoad<FeedFetch>? answer,
   ) {
     if (!_acceptsFeedReconciliation(feed, kind)) return null;
-    if (result is! FeedFetched) return null;
-    return result.posts.isNotEmpty || allowEmpty ? result : null;
+    final result = answer?.value;
+    if (answer == null || result is! FeedFetched) return null;
+    return result.posts.isNotEmpty || allowEmpty ? answer : null;
   }
 
-  Future<void> _applyFeedUpdate(FeedKind kind, FeedFetched accepted) async {
-    final FeedFetched(:posts, :eligiblePosts) = accepted;
+  Future<void> _applyFeedUpdate(
+    FeedKind kind,
+    FeedLoad<FeedFetch> accepted,
+  ) async {
+    final FeedFetched(:posts, :eligiblePosts) = accepted.value as FeedFetched;
     final current = state;
     if (current is FeedLoaded) {
-      return _acceptRefresh(current, posts, eligiblePosts);
+      return _acceptRefresh(current, posts, eligiblePosts, accepted.request);
     }
-    await _acceptLoad(kind, posts);
+    await _acceptLoad(kind, posts, accepted.request);
   }
 }

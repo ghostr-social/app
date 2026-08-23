@@ -15,6 +15,7 @@ extension FeedCubitNavigation on FeedCubit {
     if (_consumeTransportJump(index)) return;
     final transition = ++_pageTransition;
     final decision = _readyDecision(current, index);
+    _beginPageTransition(transition);
     if (decision.action == FeedReadyAction.rescue) {
       return _rescueTo(current, decision, transition);
     }
@@ -38,7 +39,7 @@ extension FeedCubitNavigation on FeedCubit {
     if (preparation is Future<bool>) {
       return unawaited(_finishPageTransition(preparation, commit));
     }
-    if (!preparation) return;
+    if (!preparation) return _completePageTransition(transition);
     _finishPageTransitionNow(commit);
   }
 
@@ -50,17 +51,18 @@ extension FeedCubitNavigation on FeedCubit {
     Future<bool> preparation,
     _PageTransitionCommit commit,
   ) async {
-    if (!await preparation) return;
+    if (!await preparation) return _completePageTransition(commit.transition);
     _finishPageTransitionNow(commit);
   }
 
   void _finishPageTransitionNow(_PageTransitionCommit commit) {
     final current = _acceptedPageTransition(commit.transition, commit.current);
-    if (current == null) return;
+    if (current == null) return _completePageTransition(commit.transition);
     final moved = _movedTo(current, commit.index);
     emit(moved);
+    _completePageTransition(commit.transition);
     _viewer.landedOn(moved.posts, moved.activeIndex);
-    _rememberPendingRescue(current, moved, commit.decision);
+    _rememberPendingRescue(current, commit.decision);
     _rescueAfterDeliveryUpdate();
     _ensureBuffered();
   }
@@ -74,11 +76,6 @@ extension FeedCubitNavigation on FeedCubit {
     return identical(current.rosterRevision, from.rosterRevision)
         ? current
         : null;
-  }
-
-  bool _acceptsExactPageTransition(int transition, FeedLoaded from) {
-    final current = _acceptedPageTransition(transition, from);
-    return current != null && identical(current.posts, from.posts);
   }
 
   FeedLoaded _movedTo(FeedLoaded current, int index) {
@@ -102,6 +99,43 @@ extension FeedCubitNavigation on FeedCubit {
         current.kind != FeedKind.following;
   }
 
+  int _targetIndex(FeedRoster roster, VideoInteractionTarget target) {
+    return roster.posts.indexWhere(
+      (post) => VideoInteractionTarget.fromPost(post) == target,
+    );
+  }
+
+  void _beginPageTransition(int transition) {
+    _cancelPageTransition();
+    _pendingPageTransition = _PageTransitionBarrier(transition);
+  }
+
+  void _completePageTransition(int transition) {
+    final pending = _pendingPageTransition;
+    if (pending?.transition != transition) return;
+    _pendingPageTransition = null;
+    pending?.complete();
+  }
+
+  void _cancelPageTransition() {
+    final pending = _pendingPageTransition;
+    _pendingPageTransition = null;
+    pending?.complete();
+  }
+
+  Future<void> _awaitPageTransition(int transition) async {
+    final pending = _pendingPageTransition;
+    if (pending?.transition == transition) await pending!.completed;
+  }
+
+  Future<void> _awaitNavigationSettlement() async {
+    while (true) {
+      final pending = _pendingPageTransition;
+      if (pending == null) return;
+      await pending.completed;
+    }
+  }
+
   void _surfaceVisibilityChanged(bool isVisible) {
     _viewer.visibilityChanged(isVisible);
     if (!isVisible) return _forgetExitedSurface();
@@ -113,6 +147,7 @@ extension FeedCubitNavigation on FeedCubit {
     _reloadWhenSurfaceVisible = true;
     _loads.take();
     _pageTransition += 1;
+    _cancelPageTransition();
     _clearPendingRescue();
     _hunt.filled();
     if (state is! FeedLoading) emit(FeedLoading(state.kind));
@@ -122,5 +157,18 @@ extension FeedCubitNavigation on FeedCubit {
     final current = state;
     if (current is! FeedLoaded || current.notice == null) return;
     emit(current.withoutNotice());
+  }
+}
+
+final class _PageTransitionBarrier {
+  _PageTransitionBarrier(this.transition);
+
+  final int transition;
+  final Completer<void> _completion = Completer<void>();
+
+  Future<void> get completed => _completion.future;
+
+  void complete() {
+    if (!_completion.isCompleted) _completion.complete();
   }
 }

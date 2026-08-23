@@ -55,8 +55,8 @@ final class FeedViewer {
   FutureOr<bool> prepareToShow(VideoPost post) {
     if (_isDisposed) return false;
     final identity = _identityOf(post);
-    if (_visibleIdentity == identity) return true;
     _requestedIdentity = identity;
+    if (_visibleIdentity == identity) return true;
     if (_preparations[identity] case final pending?) return pending;
     final tracker = watchTracker;
     if (tracker == null) {
@@ -91,6 +91,7 @@ final class FeedViewer {
   }
 
   void _watchedIfNew(VideoPost post) {
+    if (_visibleIdentity == _identityOf(post)) return;
     final preparation = prepareToShow(post);
     if (preparation is bool) return;
     unawaited(preparation);
@@ -121,8 +122,9 @@ final class FeedViewer {
       if (_requestedIdentity == identity) _visibleIdentity = identity;
       return true;
     } on Object catch (error, stackTrace) {
+      if (_requestedIdentity != identity) return false;
       if (_visibleIdentity == identity) _visibleIdentity = null;
-      if (_requestedIdentity == identity) _requestedIdentity = null;
+      _requestedIdentity = null;
       onWatchFailure?.call(error, stackTrace);
       return false;
     }

@@ -5,6 +5,7 @@ import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/presentation/disposal_safe_cubit.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
+import 'package:ghostr/features/video_catalog/domain/feed_roster.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_replay_policy.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_backfill.dart';
@@ -12,10 +13,12 @@ import 'package:ghostr/features/video_catalog/domain/use_cases/feed_engagement.d
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_fetcher.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_loads.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_operation_failure.dart';
+import 'package:ghostr/features/video_catalog/domain/use_cases/feed_pagination.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_reposts.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_session.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_delivery_updates.dart';
+import 'package:ghostr/features/video_catalog/domain/video_interaction_target.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post_id.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
@@ -45,13 +48,16 @@ part 'feed_cubit_update_loading.dart';
 part 'feed_update_state.dart';
 part 'feed_cubit_updates.dart';
 part 'feed_cubit_delivery.dart';
+part 'feed_cubit_rescue_state.dart';
 part 'feed_cubit_preparation.dart';
 
 typedef _PendingTransportRescue = ({
-  int fromIndex,
-  int intendedIndex,
+  PlaybackDeliveryId deliveryId,
+  int direction,
   bool graceExpired,
 });
+
+typedef _ActiveTransportRescue = ({FeedLoaded feed, int intendedIndex});
 
 /// Turns feed intents into feed states. The rules behind a transition — what
 /// survives a refresh, when to dig into the past — live in collaborators.
@@ -84,6 +90,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   final _delivery = <PlaybackDeliveryId, VideoDeliverySnapshot>{};
   final _preparation = FeedPreparationReducer();
   int _pageTransition = 0;
+  _PageTransitionBarrier? _pendingPageTransition;
   var _reloadWhenSurfaceVisible = false;
   StreamSubscription<VideoDeliverySnapshot>? _deliverySubscription;
   StreamSubscription<PlaybackPreparationPlan>? _preparationSubscription;
@@ -116,6 +123,8 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   var _isClosing = false;
 
   Future<void> load([FeedKind? selectedKind]) async {
+    _pageTransition += 1;
+    _cancelPageTransition();
     _reloadWhenSurfaceVisible = false;
     _loads.take();
     _reposts?.forget();
@@ -135,6 +144,8 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   Future<void> reload() async {
     final previous = state;
     if (previous is! FeedLoaded) return load();
+    _pageTransition += 1;
+    _cancelPageTransition();
     _reposts?.forget();
     final follows = _reloadFollows();
     emit(FeedLoading(previous.kind));
@@ -160,6 +171,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
 
   void _watchPersistenceFailed(Object error, StackTrace stackTrace) {
     if (_isClosing || isClosed) return;
+    _cancelPageTransition();
     _loads.take();
     _pageTransition += 1;
     _emitState(
@@ -174,6 +186,8 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   Future<void> close() async {
     if (_isClosing || isClosed) return;
     _isClosing = true;
+    _pageTransition += 1;
+    _cancelPageTransition();
     _loads.take();
     _hunt.dispose();
     _backfillRetry.cancel();

@@ -66,15 +66,82 @@ extension FeedCubitEngagementActions on FeedCubit {
   }
 
   Future<void> _removeBlockedCreator(VideoPost post) async {
+    await _awaitNavigationSettlement();
+    await _continueBlockedRemoval(post);
+  }
+
+  Future<void> _continueBlockedRemoval(VideoPost post) async {
+    if (_isClosing || isClosed) return;
+    if (_pendingPageTransition != null) return _removeBlockedCreator(post);
     final current = state;
+    if (current is FeedLoaded) return _removeBlockedFrom(current, post);
     _session.dropCreator(post.creator.id);
-    if (current is! FeedLoaded) return;
-    final roster = current.roster.withoutCreator(post.creator.id);
-    if (roster.isEmpty) return load();
-    final blocked = 'Blocked ${post.creator.handle}';
+  }
+
+  Future<void> _removeBlockedFrom(FeedLoaded current, VideoPost post) async {
+    final proposal = _blockedProposal(current, post.creator.id);
+    if (proposal.roster.isEmpty) return _commitEmptyBlock(post.creator.id);
     final transition = ++_pageTransition;
-    if (!await _viewer.prepareToShow(roster.active)) return;
-    if (!_acceptsExactPageTransition(transition, current)) return;
+    if (!await _viewer.prepareToShow(proposal.roster.active)) {
+      return _retryBlockedRemoval(post);
+    }
+    final latest = _acceptedPageTransition(transition, current);
+    if (latest == null) return _retryBlockedRemoval(post);
+    final rebased = _refocusBlocked(latest, post.creator.id, proposal);
+    if (rebased.target != proposal.target) {
+      return _removeBlockedFrom(latest, post);
+    }
+    _commitBlocked(latest, post, rebased);
+  }
+
+  Future<void> _retryBlockedRemoval(VideoPost post) async {
+    await _awaitNavigationSettlement();
+    await _continueBlockedRemoval(post);
+  }
+
+  _RosterProposal _blockedProposal(FeedLoaded current, ProfileId creator) {
+    final roster = current.roster.withoutCreator(creator);
+    return (
+      roster: roster,
+      target: roster.isEmpty
+          ? null
+          : VideoInteractionTarget.fromPost(roster.active),
+    );
+  }
+
+  _RosterProposal _refocusBlocked(
+    FeedLoaded current,
+    ProfileId creator,
+    _RosterProposal previous,
+  ) {
+    final proposal = _blockedProposal(current, creator);
+    final target = previous.target;
+    if (target == null) return proposal;
+    final index = _targetIndex(proposal.roster, target);
+    if (index < 0) return proposal;
+    return (
+      roster: proposal.roster.movedTo(index, forgetPrevious: false),
+      target: target,
+    );
+  }
+
+  Future<void> _commitEmptyBlock(ProfileId creator) async {
+    _session.dropCreator(creator);
+    await load();
+  }
+
+  void _commitBlocked(
+    FeedLoaded current,
+    VideoPost post,
+    _RosterProposal proposal,
+  ) {
+    _session.dropCreator(post.creator.id);
+    var roster = current.roster.withoutCreator(post.creator.id);
+    final target = proposal.target;
+    final index = target == null ? -1 : _targetIndex(roster, target);
+    if (index < 0) return;
+    roster = _session.movedTo(roster, index, forgetPrevious: false);
+    final blocked = 'Blocked ${post.creator.handle}';
     _emitState(
       _projectPreparation(
         FeedLoaded.of(current.kind, roster, notice: blocked, follows: _follows),

@@ -81,6 +81,7 @@ extension FeedCubitUpdates on FeedCubit {
     }
     _updates.pendingRevision = update.revision;
     _updates.pendingAllowsEmpty = update.phase == VideoFeedUpdatePhase.settled;
+    if (state is! FeedLoading) _loads.take();
     _startPendingFeedUpdate();
   }
 

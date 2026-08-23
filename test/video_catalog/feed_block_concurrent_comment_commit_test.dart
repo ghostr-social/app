@@ -9,19 +9,22 @@ import '../support/fakes.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('a rapid reversal supersedes the pending forward swipe', () async {
-    final history = _GatedHistory();
+  test('blocking preserves a comment published before replacement', () async {
+    final history = _SecondWatchGatedHistory();
+    final blocked = samplePost(
+      id: 'blocked',
+      creator: sampleCreator(id: 'blocked-creator'),
+    );
+    final replacement = samplePost(id: 'replacement');
     final source = FakeVideoCatalogRepository(
-      forYouFeed: [
-        samplePost(id: 'a'),
-        samplePost(id: 'b'),
-      ],
+      forYouFeed: [blocked, replacement],
     );
     final cubit = FeedCubit(
       FeedDependencies(
         feed: source,
         engagement: source,
         optional: FeedOptionalDependencies(
+          social: source,
           watch: FeedWatchDependencies(
             tracker: WatchHistoryTracker(
               history: history,
@@ -37,22 +40,19 @@ void main() {
     });
     await cubit.load();
 
-    cubit.pageChanged(1);
+    final blocking = cubit.blockCreator(blocked);
     await history.secondStarted.future;
-    cubit.pageChanged(0);
+    cubit.commentsPublished(replacement, 1);
     history.release.complete();
-    await pumpEventQueue();
+    await blocking;
 
     final loaded = cubit.state as FeedLoaded;
-    expect(loaded.posts[loaded.activeIndex].id.value, 'a');
-
-    cubit.pageChanged(1);
-    await pumpEventQueue();
-    expect(history.writes, 3);
+    expect(loaded.roster.active.id.value, 'replacement');
+    expect(loaded.roster.active.commentCount, replacement.commentCount + 1);
   });
 }
 
-final class _GatedHistory extends FakeWatchHistoryRepository {
+final class _SecondWatchGatedHistory extends FakeWatchHistoryRepository {
   final secondStarted = Completer<void>();
   final release = Completer<void>();
   var writes = 0;

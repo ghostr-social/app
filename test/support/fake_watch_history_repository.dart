@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ghostr/features/watch_history/domain/watch_history_entry.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_repository.dart';
 import 'package:ghostr/features/watch_history/domain/watched_video_index.dart';
@@ -32,5 +34,21 @@ class FakeWatchHistoryRepository implements WatchHistoryRepository {
   @override
   Future<void> clear() async {
     entries.clear();
+  }
+}
+
+final class SecondWriteGatedWatchHistoryRepository
+    extends FakeWatchHistoryRepository {
+  final started = Completer<void>();
+  final release = Completer<void>();
+  var writes = 0;
+
+  @override
+  Future<void> record(WatchHistoryEntry entry) async {
+    if (++writes == 2) {
+      started.complete();
+      await release.future;
+    }
+    await super.record(entry);
   }
 }

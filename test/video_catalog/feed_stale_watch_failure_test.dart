@@ -9,8 +9,8 @@ import '../support/fakes.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('a rapid reversal supersedes the pending forward swipe', () async {
-    final history = _GatedHistory();
+  test('a superseded swipe watch failure keeps the current video', () async {
+    final history = _FailingSecondWatchHistory();
     final source = FakeVideoCatalogRepository(
       forYouFeed: [
         samplePost(id: 'a'),
@@ -44,25 +44,20 @@ void main() {
     await pumpEventQueue();
 
     final loaded = cubit.state as FeedLoaded;
-    expect(loaded.posts[loaded.activeIndex].id.value, 'a');
-
-    cubit.pageChanged(1);
-    await pumpEventQueue();
-    expect(history.writes, 3);
+    expect(loaded.roster.active.id.value, 'a');
   });
 }
 
-final class _GatedHistory extends FakeWatchHistoryRepository {
+final class _FailingSecondWatchHistory extends FakeWatchHistoryRepository {
   final secondStarted = Completer<void>();
   final release = Completer<void>();
   var writes = 0;
 
   @override
   Future<void> record(WatchHistoryEntry entry) async {
-    if (++writes == 2) {
-      secondStarted.complete();
-      await release.future;
-    }
-    await super.record(entry);
+    if (++writes != 2) return super.record(entry);
+    secondStarted.complete();
+    await release.future;
+    throw StateError('stale write failed');
   }
 }
