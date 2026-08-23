@@ -1,6 +1,6 @@
 use super::{
     PlayerPreparationAttempt, PlayerPreparationClaim, PlayerPreparationObservation,
-    PlayerPreparationReport,
+    PlayerPreparationReport, PlayerPreparationState,
 };
 use ghostr_engine::PostId;
 
@@ -29,6 +29,53 @@ impl PlayerPreparationFollowup {
 
     pub(crate) fn post(&self) -> &PostId {
         self.claim.post()
+    }
+
+    pub(crate) fn client_epoch(&self) -> u64 {
+        self.attempt.client_epoch
+    }
+
+    pub(crate) fn player_capability_generation(&self) -> u64 {
+        self.attempt.player_capability_generation
+    }
+
+    pub(crate) fn attempt_generation(&self) -> u64 {
+        self.attempt.attempt_generation
+    }
+
+    pub(crate) fn sequence(&self) -> u64 {
+        self.sequence
+    }
+
+    pub(crate) fn state(&self) -> PlayerPreparationState {
+        self.observation.state
+    }
+
+    pub(crate) fn is_terminal(&self) -> bool {
+        matches!(
+            self.state(),
+            PlayerPreparationState::Failed | PlayerPreparationState::Released
+        )
+    }
+
+    pub(crate) fn same_receipt_key(&self, report: &PlayerPreparationReport) -> bool {
+        self.post() == report.post()
+            && self.player_capability_generation() == report.player_capability_generation()
+            && self.client_epoch() == report.client_epoch()
+            && self.attempt_generation() == report.attempt_generation()
+            && self.sequence() == report.sequence()
+    }
+
+    pub(crate) fn matches_report(&self, report: &PlayerPreparationReport) -> bool {
+        self.same_receipt_key(report)
+            && self.claim == PlayerPreparationClaim::from_authority(&report.authority)
+            && self.observation == report.observation
+    }
+
+    pub(crate) fn same_attempt(&self, report: &PlayerPreparationReport) -> bool {
+        self.player_capability_generation() == report.player_capability_generation()
+            && self.client_epoch() == report.client_epoch()
+            && self.attempt_generation() == report.attempt_generation()
     }
 
     pub(crate) fn from_report(report: PlayerPreparationReport) -> Self {

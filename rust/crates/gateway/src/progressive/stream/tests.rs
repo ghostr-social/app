@@ -1,8 +1,16 @@
-use super::{read_with_armed_change, wait_for_store_change, PumpStep};
+use super::{body_for_span, read_with_armed_change, wait_for_store_change, PumpStep, StreamSource};
+use crate::progressive::capabilities::ProgressiveCapabilities;
+use crate::progressive::route::{ProgressiveState, ProgressiveTiming};
+use axum::body::to_bytes;
+use ghostr_delivery::debug::network::NetworkThrottle;
+use ghostr_delivery::playback_demand::demand_channel;
+use ghostr_delivery::progressive_posts::ServablePosts;
+use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
+use ghostr_partial_store::partial_range_store::{ContentRevision, PartialRangeStore};
 use std::future;
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::sync::Notify;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tokio::sync::{Mutex, Notify};
 
 #[tokio::test]
 async fn store_change_is_armed_before_the_range_read() {
@@ -28,4 +36,45 @@ async fn idle_deadline_wins_over_an_unrelated_store_change() {
     .await;
 
     assert!(matches!(result, PumpStep::TimedOut));
+}
+
+#[tokio::test]
+async fn a_store_failure_fails_the_promised_response_body() {
+    let root = std::env::temp_dir().join(format!(
+        "ghostr-gateway-store-error-{}-{}",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(root.join("clip.transform.video")).unwrap();
+    let (demand, _) = demand_channel();
+    let state = Arc::new(ProgressiveState {
+        store: Arc::new(PartialRangeStore::with_capacity(
+            root.clone(),
+            Arc::new(Mutex::new(0)),
+            StoreCapacity::system(u64::MAX),
+        )),
+        demand,
+        cache: ServablePosts::new(),
+        network: NetworkThrottle::new(),
+        timing: ProgressiveTiming::default(),
+        capabilities: ProgressiveCapabilities::production(),
+        #[cfg(all(
+            feature = "video-debug-web",
+            debug_assertions,
+            not(any(target_os = "android", target_os = "ios"))
+        ))]
+        debug_feed: {
+            let (delivery, _) = ghostr_delivery::delivery_events::command_channel();
+            ghostr_delivery::debug::feed::DebugFeed::new(delivery, Vec::new())
+        },
+    });
+    let source = StreamSource::new("clip".to_owned(), None, ContentRevision::default());
+
+    let result = to_bytes(body_for_span(state, source, 0..1), usize::MAX).await;
+
+    assert!(result.is_err());
+    std::fs::remove_dir_all(root).unwrap();
 }

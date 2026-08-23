@@ -7,11 +7,11 @@ import '../frb_generated.dart';
 import 'delivery_types.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `admit`, `load_candidate`, `map_report`, `report_player_preparation`, `validate_asset`
-// These types are ignored because they are not used by any `pub` functions: `CandidateAsset`, `PlayerPreparationContext`
+// These functions are ignored because they are not marked as `pub`: `confirm_initial`, `confirm_player_preparation`
+// These types are ignored because they are not used by any `pub` functions: `PlayerPreparationContext`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`
 
-Future<void> ffiReportPlayerPreparation({
+Future<FfiPlayerPreparationDisposition> ffiReportPlayerPreparation({
   required FfiPlayerPreparationReport input,
 }) => RustLib.instance.api
     .crateApiPlayerPreparationControlFfiReportPlayerPreparation(input: input);

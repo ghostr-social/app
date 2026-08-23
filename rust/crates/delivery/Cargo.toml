@@ -5,6 +5,7 @@ edition = "2021"
 description = "Delivery scheduling and chunk transfer for the media engine."
 
 [features]
+test-support = []
 video-debug-web = []
 
 [dependencies]

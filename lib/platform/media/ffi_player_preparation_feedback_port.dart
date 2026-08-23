@@ -11,9 +11,12 @@ import 'package:ghostr/src/rust/api/delivery_types.dart';
 import 'package:ghostr/src/rust/api/player_preparation_control.dart';
 
 part 'ffi_player_preparation_attempt.dart';
+part 'ffi_player_preparation_feedback_drain.dart';
 
 typedef RustPlayerPreparationReporter =
-    Future<void> Function({required FfiPlayerPreparationReport input});
+    Future<FfiPlayerPreparationDisposition> Function({
+      required FfiPlayerPreparationReport input,
+    });
 typedef PlayerPreparationClock = int Function();
 typedef PlayerPreparationTokenFactory =
     PlayerPreparationAttemptToken Function();
@@ -48,8 +51,13 @@ final class FfiPlayerPreparationFeedbackPort
   final LinkedHashMap<BigInt, ListQueue<FfiPlayerPreparationReport>> _pending =
       LinkedHashMap();
   final Set<BigInt> _dispatchedAttempts = {};
-  final Map<BigInt, _FfiPlayerPreparationAttempt> _attempts = {};
-  Future<void>? _draining;
+  final LinkedHashMap<BigInt, _FfiPlayerPreparationAttempt> _attempts =
+      LinkedHashMap();
+  final Map<BigInt, List<FfiPlayerPreparationReport>> _history = {};
+  final Map<BigInt, Future<void>> _draining = {};
+  final Set<BigInt> _noAdmissionAttempts = {};
+  final Map<BigInt, Completer<void>> _retryWakes = {};
+  var _closed = false;
 
   @override
   PlayerPreparationAttempt prepare(PlaybackAssetAuthority authority) {
@@ -65,62 +73,49 @@ final class FfiPlayerPreparationFeedbackPort
     FfiPlayerPreparationReport report,
     _FfiPlayerPreparationAttempt source,
   ) {
-    if (report.state == FfiPlayerPreparationState.initializing) {
-      _attempts[report.attemptGeneration] = source;
+    if (_closed || !_trackAttempt(report, source)) {
+      source._discard();
+      return;
     }
-    final queue = _pending.putIfAbsent(report.attemptGeneration, ListQueue.new);
-    queue.add(report);
-    _trimPending();
-    _draining ??= _drain();
+    final attempt = report.attemptGeneration;
+    _pending.putIfAbsent(attempt, ListQueue.new).add(report);
+    _draining[attempt] ??= _drain(attempt);
   }
 
-  void _trimPending() {
-    while (_trackedAttemptCount > _pendingLimit) {
-      final victim = _oldestUndispatchedAttempt();
-      if (victim == null) return;
-      _pending.remove(victim);
-      _attempts.remove(victim)?._discard();
+  bool _trackAttempt(
+    FfiPlayerPreparationReport report,
+    _FfiPlayerPreparationAttempt source,
+  ) {
+    if (report.state != FfiPlayerPreparationState.initializing) return true;
+    while (_attempts.length >= _pendingLimit) {
+      final victim = _oldestEvictableAttempt();
+      if (victim == null) return false;
+      _discardAttempt(victim);
     }
+    _attempts[report.attemptGeneration] = source;
+    return true;
   }
 
-  int get _trackedAttemptCount =>
-      _dispatchedAttempts.length +
-      _pending.keys.where((key) => !_dispatchedAttempts.contains(key)).length;
-
-  BigInt? _oldestUndispatchedAttempt() {
-    for (final key in _pending.keys) {
-      if (!_dispatchedAttempts.contains(key)) return key;
+  BigInt? _oldestEvictableAttempt() {
+    for (final key in _attempts.keys) {
+      if (_isEvictable(key)) return key;
     }
     return null;
   }
 
-  Future<void> _drain() async {
-    while (_pending.isNotEmpty) {
-      final key = _pending.keys.first;
-      final queue = _pending[key]!;
-      final report = queue.removeFirst();
-      if (queue.isEmpty) _pending.remove(key);
-      if (report.state == FfiPlayerPreparationState.initializing) {
-        _dispatchedAttempts.add(key);
-      }
-      try {
-        await _reportPreparation(input: report);
-      } on Object catch (error, stackTrace) {
-        developer.log(
-          'Player preparation evidence did not reach WARP.',
-          name: 'ghostr.video.preparation',
-          error: error,
-          stackTrace: stackTrace,
-        );
-      } finally {
-        if (_isTerminal(report.state)) {
-          _dispatchedAttempts.remove(key);
-          _attempts.remove(key);
-        }
-      }
-    }
-    _draining = null;
+  bool _isEvictable(BigInt attempt) {
+    if (!_dispatchedAttempts.contains(attempt)) return true;
+    if (!_noAdmissionAttempts.contains(attempt)) return false;
+    return _attempts[attempt]?._terminal == true;
   }
+
+  bool _acknowledged(FfiPlayerPreparationDisposition disposition) =>
+      disposition == FfiPlayerPreparationDisposition.applied ||
+      disposition == FfiPlayerPreparationDisposition.duplicate;
+
+  bool _discarded(FfiPlayerPreparationDisposition disposition) =>
+      disposition == FfiPlayerPreparationDisposition.stale ||
+      disposition == FfiPlayerPreparationDisposition.rejected;
 
   bool _isTerminal(FfiPlayerPreparationState state) =>
       state == FfiPlayerPreparationState.failed ||

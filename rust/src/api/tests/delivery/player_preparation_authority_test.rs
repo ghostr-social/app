@@ -1,5 +1,7 @@
-use crate::api::delivery_types::FfiPlayerPreparationState;
-use crate::api::player_preparation_control::report_player_preparation;
+use crate::api::delivery_types::{FfiPlayerPreparationDisposition, FfiPlayerPreparationState};
+use crate::api::player_preparation_control::{
+    confirm_player_preparation, report_player_preparation,
+};
 use crate::api::tests::delivery::player_preparation_authority_fixture::AuthorityFixture;
 use ghostr_delivery::delivery_events::PlayerPreparationState;
 
@@ -18,6 +20,18 @@ async fn feedback_requires_the_exact_live_asset_authority() {
     assert!(report_player_preparation(&fixture.context, fixture.input())
         .await
         .is_err());
+}
+
+#[tokio::test]
+async fn a_closed_manager_is_a_terminal_confirmation() {
+    let fixture = AuthorityFixture::seeded().await;
+    let input = fixture.input();
+    drop(fixture.commands);
+
+    assert_eq!(
+        confirm_player_preparation(&fixture.context, input).await,
+        FfiPlayerPreparationDisposition::Closed,
+    );
 }
 
 async fn assert_mapping(fixture: &mut AuthorityFixture) {

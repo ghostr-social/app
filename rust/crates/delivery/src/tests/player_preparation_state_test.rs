@@ -5,8 +5,10 @@ use ghostr_engine::PostId;
 use ghostr_partial_store::partial_range_store::ContentRevision;
 
 #[test]
-fn state_accepts_only_current_or_next_and_rechecks_all_authority() {
-    let mut state = state(&["p0", "p1", "p2"], 0);
+fn state_accepts_only_the_planning_window_and_rechecks_all_authority() {
+    let owned: Vec<_> = (0..=25).map(|index| format!("p{index}")).collect();
+    let ids: Vec<_> = owned.iter().map(String::as_str).collect();
+    let mut state = state(&ids, 0);
     let revision = ContentRevision::default();
     let next = evidence(
         &state,
@@ -21,7 +23,7 @@ fn state_accepts_only_current_or_next_and_rechecks_all_authority() {
     assert!(!state.apply_player_preparation(evidence(
         &state,
         EvidenceSpec {
-            post: "p2",
+            post: "p25",
             revision,
             sequence: 2,
             state: PlayerPreparationState::FirstFrameRendered,

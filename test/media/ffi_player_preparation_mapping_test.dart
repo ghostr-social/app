@@ -10,7 +10,10 @@ void main() {
     final sent = <FfiPlayerPreparationReport>[];
     var time = 40;
     final feedback = FfiPlayerPreparationFeedbackPort(
-      reportPreparation: ({required input}) async => sent.add(input),
+      reportPreparation: ({required input}) async {
+        sent.add(input);
+        return FfiPlayerPreparationDisposition.applied;
+      },
       playerCapabilityGeneration: BigInt.from(7),
       clientEpoch: BigInt.from(11),
       monotonicMicros: () => ++time,

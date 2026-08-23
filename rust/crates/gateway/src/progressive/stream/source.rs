@@ -47,7 +47,7 @@ pub(super) async fn next_chunk(
         let current = state
             .store
             .stream_is_current(source.key(), source.binding.as_ref(), source.revision)
-            .await;
+            .await?;
         return Ok(if current {
             ChunkRead::Missing
         } else {

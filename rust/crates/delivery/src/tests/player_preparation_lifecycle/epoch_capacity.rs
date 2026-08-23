@@ -35,7 +35,7 @@ fn newer_client_epoch_atomically_retires_a_full_active_generation() {
     assert_eq!(reports[0].state(), PlayerPreparationState::Initializing);
     assert_eq!(
         handle.report_player_preparation(report(0, 7, PlayerPreparationState::Released)),
-        PlayerPreparationIngress::Rejected,
+        PlayerPreparationIngress::Stale,
     );
 }
 

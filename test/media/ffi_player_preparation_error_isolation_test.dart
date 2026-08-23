@@ -6,12 +6,13 @@ import '../support/drain_test_microtasks.dart';
 import '../support/playback_authority_fixture.dart';
 
 void main() {
-  test('one FFI failure cannot poison later player evidence', () async {
+  test('an ambiguous initial retries exactly before its follow-up', () async {
     final sent = <FfiPlayerPreparationReport>[];
     final feedback = FfiPlayerPreparationFeedbackPort(
       reportPreparation: ({required input}) async {
         sent.add(input);
         if (sent.length == 1) throw StateError('Rust unavailable');
+        return FfiPlayerPreparationDisposition.applied;
       },
       playerCapabilityGeneration: BigInt.one,
       clientEpoch: BigInt.one,
@@ -21,10 +22,13 @@ void main() {
     final attempt = feedback.prepare(testPlaybackAuthority())..begin();
     attempt.initialized();
     await drainTestMicrotasks();
+    await Future<void>.delayed(const Duration(milliseconds: 80));
 
     expect(sent.map((item) => item.state), [
       FfiPlayerPreparationState.initializing,
+      FfiPlayerPreparationState.initializing,
       FfiPlayerPreparationState.initialized,
     ]);
+    expect(sent[1], sent.first);
   });
 }

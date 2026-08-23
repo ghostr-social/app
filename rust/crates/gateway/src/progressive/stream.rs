@@ -105,6 +105,10 @@ async fn apply_step(
             let _ = sender.send(Err(error)).await;
             return true;
         }
+        PumpStep::Failed(error) => {
+            let _ = sender.send(Err(error)).await;
+            return true;
+        }
         PumpStep::Stop => return true,
     }
     false
@@ -122,6 +126,7 @@ enum PumpStep {
     Retry,
     TimedOut,
     Superseded,
+    Failed(io::Error),
     Stop,
 }
 
@@ -138,7 +143,7 @@ async fn advance(
     );
     let (chunk, changed) = read_with_armed_change(&notify, read).await;
     match chunk {
-        Err(_) => PumpStep::Stop,
+        Err(error) => PumpStep::Failed(io::Error::other(error.to_string())),
         Ok(ChunkRead::Present(bytes)) => send_bytes(sender, iteration.remaining.start, bytes).await,
         Ok(ChunkRead::Missing) => wait_for_bytes(iteration, changed, sender, demand).await,
         Ok(ChunkRead::Superseded) => PumpStep::Superseded,

@@ -8,31 +8,33 @@ import '../support/drain_test_microtasks.dart';
 import '../support/playback_authority_fixture.dart';
 
 void main() {
-  test('an undispatched attempt stays silent after bounded eviction', () async {
-    final blocked = Completer<void>();
+  test('a seventh concurrent attempt stays silent after rejection', () async {
+    final blocked = <Completer<FfiPlayerPreparationDisposition>>[];
     final sent = <FfiPlayerPreparationReport>[];
     final feedback = FfiPlayerPreparationFeedbackPort(
       reportPreparation: ({required input}) {
         sent.add(input);
-        return sent.length == 1 ? blocked.future : Future.value();
+        final completion = Completer<FfiPlayerPreparationDisposition>();
+        blocked.add(completion);
+        return completion.future;
       },
       playerCapabilityGeneration: BigInt.one,
       clientEpoch: BigInt.one,
       monotonicMicros: () => 1,
     );
-    final active = feedback.prepare(testPlaybackAuthority(postId: 'active'));
-    active.begin();
-    active.release();
+    for (var index = 0; index < 6; index += 1) {
+      feedback.prepare(testPlaybackAuthority(postId: 'active-$index')).begin();
+    }
     final dropped = feedback.prepare(testPlaybackAuthority(postId: 'dropped'));
     dropped.begin();
-    for (var index = 0; index < 5; index += 1) {
-      feedback.prepare(testPlaybackAuthority(postId: 'churn-$index')).begin();
-    }
     dropped.release();
+    await drainTestMicrotasks();
 
-    blocked.complete();
-    await drainTestMicrotasks(20);
-
+    expect(sent, hasLength(6));
     expect(sent.where((report) => report.postId == 'dropped'), isEmpty);
+    for (final completion in blocked) {
+      completion.complete(FfiPlayerPreparationDisposition.applied);
+    }
+    await drainTestMicrotasks();
   });
 }

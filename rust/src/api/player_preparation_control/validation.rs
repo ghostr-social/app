@@ -1,9 +1,15 @@
 use super::{FfiPlayerPreparationReport, PlayerPreparationAuthority, PlayerPreparationContext};
 use crate::api::delivery::focus_mapping::validate_post_id;
-use anyhow::{ensure, Context};
 use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 use ghostr_partial_store::partial_range_store::StoredMediaSnapshot;
+use std::fmt::{Display, Formatter};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum AssetValidationError {
+    Rejected,
+    Unavailable,
+}
 
 struct CandidateAsset {
     post: PostId,
@@ -13,31 +19,32 @@ struct CandidateAsset {
 pub(super) async fn validate_asset(
     context: &PlayerPreparationContext,
     input: &FfiPlayerPreparationReport,
-) -> anyhow::Result<PlayerPreparationAuthority> {
+) -> Result<PlayerPreparationAuthority, AssetValidationError> {
     let candidate = load_candidate(context, input).await?;
     ensure_capability(context, input, &candidate).await?;
     let binding = candidate.binding()?.clone();
     ensure_revision(context, &candidate, &binding).await?;
     let revision = candidate.snapshot.revision();
     PlayerPreparationAuthority::try_new(candidate.post, binding, revision, &input.asset_id)
-        .context("player preparation authority is inconsistent")
+        .ok_or(AssetValidationError::Rejected)
 }
 
 async fn load_candidate(
     context: &PlayerPreparationContext,
     input: &FfiPlayerPreparationReport,
-) -> anyhow::Result<CandidateAsset> {
-    validate_post_id(&input.post_id)?;
+) -> Result<CandidateAsset, AssetValidationError> {
+    validate_post_id(&input.post_id).map_err(|_| AssetValidationError::Rejected)?;
     let post = PostId::new(input.post_id.clone());
     let meta = context
         .tracked
         .meta(post.as_str())
-        .context("player preparation post is not tracked")?;
-    ensure!(
-        meta.delivery == DeliveryKind::Progressive,
-        "player preparation is not progressive"
-    );
-    let snapshot = context.store.media_snapshot(post.as_str()).await?;
+        .ok_or(AssetValidationError::Rejected)?;
+    require(meta.delivery == DeliveryKind::Progressive)?;
+    let snapshot = context
+        .store
+        .media_snapshot(post.as_str())
+        .await
+        .map_err(|_| AssetValidationError::Unavailable)?;
     let candidate = CandidateAsset { post, snapshot };
     validate_binding(context, input, &meta, &candidate)?;
     Ok(candidate)
@@ -48,67 +55,70 @@ fn validate_binding(
     input: &FfiPlayerPreparationReport,
     meta: &VideoMeta,
     candidate: &CandidateAsset,
-) -> anyhow::Result<()> {
+) -> Result<(), AssetValidationError> {
     let binding = candidate.binding()?;
-    ensure!(
-        binding.matches_or_derives_from(meta),
-        "stale representation"
-    );
-    ensure!(
-        binding.representation().fingerprint() == input.representation_id,
-        "player representation is stale"
-    );
-    ensure!(
+    require(binding.matches_or_derives_from(meta))?;
+    require(binding.representation().fingerprint() == input.representation_id)?;
+    require(
         context
             .cache
             .matches_binding(candidate.post.as_str(), binding),
-        "player cache authority is stale"
-    );
-    Ok(())
+    )
 }
 
 async fn ensure_capability(
     context: &PlayerPreparationContext,
     input: &FfiPlayerPreparationReport,
     candidate: &CandidateAsset,
-) -> anyhow::Result<()> {
-    ensure!(
+) -> Result<(), AssetValidationError> {
+    require(
         context
             .capabilities
             .authorizes(
                 &input.asset_id,
                 candidate.post.as_str(),
-                &candidate.snapshot
+                &candidate.snapshot,
             )
             .await,
-        "player asset capability is stale"
-    );
-    Ok(())
+    )
 }
 
 async fn ensure_revision(
     context: &PlayerPreparationContext,
     candidate: &CandidateAsset,
     binding: &RepresentationBinding,
-) -> anyhow::Result<()> {
-    ensure!(
-        context
-            .store
-            .stream_is_current(
-                candidate.post.as_str(),
-                Some(binding),
-                candidate.snapshot.revision()
-            )
-            .await,
-        "player content revision is stale"
-    );
-    Ok(())
+) -> Result<(), AssetValidationError> {
+    let current = context
+        .store
+        .stream_is_current(
+            candidate.post.as_str(),
+            Some(binding),
+            candidate.snapshot.revision(),
+        )
+        .await
+        .map_err(|_| AssetValidationError::Unavailable)?;
+    require(current)
 }
 
 impl CandidateAsset {
-    fn binding(&self) -> anyhow::Result<&RepresentationBinding> {
+    fn binding(&self) -> Result<&RepresentationBinding, AssetValidationError> {
         self.snapshot
             .binding()
-            .context("player preparation has no stored representation")
+            .ok_or(AssetValidationError::Rejected)
     }
 }
+
+fn require(valid: bool) -> Result<(), AssetValidationError> {
+    valid.then_some(()).ok_or(AssetValidationError::Rejected)
+}
+
+impl Display for AssetValidationError {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Rejected => formatter.write_str("player preparation authority was rejected"),
+            Self::Unavailable => formatter.write_str("player preparation authority is unavailable"),
+        }
+    }
+}
+
+impl std::error::Error for AssetValidationError {}

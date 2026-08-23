@@ -50,6 +50,39 @@ pub(super) fn evidence(state: &DeliveryState, spec: EvidenceSpec<'_>) -> PlayerP
     .unwrap()
 }
 
+pub(super) fn report(
+    post: &str,
+    attempt_generation: u64,
+    observed_us: u64,
+) -> PlayerPreparationReport {
+    report_with_epoch(post, 7, attempt_generation, observed_us)
+}
+
+pub(super) fn report_with_epoch(
+    post: &str,
+    client_epoch: u64,
+    attempt_generation: u64,
+    observed_us: u64,
+) -> PlayerPreparationReport {
+    let post = PostId::new(post);
+    let binding = ghostr_engine::catalog::Catalog::new().upsert(post.clone(), meta(post.as_str()));
+    let authority = PlayerPreparationAuthority::try_new(
+        post,
+        binding,
+        ContentRevision::default(),
+        "asset",
+    )
+    .unwrap();
+    let attempt = PlayerPreparationAttempt::try_new(1, client_epoch, attempt_generation).unwrap();
+    let observation = PlayerPreparationObservation::try_new(
+        PlayerPreparationState::Initializing,
+        None,
+        observed_us,
+    )
+    .unwrap();
+    PlayerPreparationReport::try_new(authority, attempt, 1, observation).unwrap()
+}
+
 pub(super) fn meta(id: &str) -> VideoMeta {
     VideoMeta {
         urls: vec![format!("https://media.example/{id}.mp4")],

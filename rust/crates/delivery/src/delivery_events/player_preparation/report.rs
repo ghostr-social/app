@@ -70,8 +70,14 @@ impl PlayerPreparationReport {
     }
 
     pub(crate) fn same_attempt_identity(&self, other: &Self) -> bool {
-        self.client_epoch() == other.client_epoch()
+        self.post() == other.post()
+            && self.player_capability_generation() == other.player_capability_generation()
+            && self.client_epoch() == other.client_epoch()
             && self.attempt_generation() == other.attempt_generation()
+    }
+
+    pub(crate) fn same_receipt_key(&self, other: &Self) -> bool {
+        self.same_attempt_identity(other) && self.sequence() == other.sequence()
     }
 
     pub(crate) fn release_for_replacement(&self, replacement: &Self) -> Option<Self> {

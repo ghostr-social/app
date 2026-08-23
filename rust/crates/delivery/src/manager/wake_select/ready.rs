@@ -50,7 +50,7 @@ fn command_lane(sources: &mut WakeSources<'_>, lane: WakeLane) -> Wake {
         WakeLane::PlayerPreparation => Wake::PlayerPreparation(
             sources
                 .commands
-                .try_player_preparation()
+                .try_player_preparation_envelope()
                 .expect("player-preparation lane"),
         ),
         WakeLane::PlaybackPresentation => Wake::PlaybackPresentation(

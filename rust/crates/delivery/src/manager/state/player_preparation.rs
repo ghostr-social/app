@@ -3,7 +3,7 @@ use crate::client_capability::{
     CapabilityAttempt, CapabilityEvent, CapabilityObservation, ClientCapabilityModel,
     ClientCapabilityStatus,
 };
-use crate::delivery_events::PlayerPreparationReport;
+use crate::delivery_events::{PlayerPreparationActorOutcome, PlayerPreparationReport};
 use ghostr_engine::adaptive::{PlannerCapability, PlayerPreparation, TransformCapability};
 use ghostr_engine::PostId;
 use ghostr_partial_store::partial_range_store::ContentRevision;
@@ -26,29 +26,29 @@ impl DeliveryState {
 
     #[cfg(test)]
     pub(crate) fn apply_player_preparation(&mut self, report: PlayerPreparationReport) -> bool {
-        self.apply_player_preparation_at(report, 0)
+        self.apply_player_preparation_at(report, 0) == PlayerPreparationActorOutcome::Applied
     }
 
     pub(crate) fn apply_player_preparation_at(
         &mut self,
         report: PlayerPreparationReport,
         now_ms: u64,
-    ) -> bool {
+    ) -> PlayerPreparationActorOutcome {
         if !epoch::admit(self, &report) {
-            return false;
+            return PlayerPreparationActorOutcome::Stale;
         }
         if !self.player_authority_is_current(&report) {
             if report.is_terminal() {
                 abandon(&mut self.client_capabilities, &report);
             }
-            return false;
+            return PlayerPreparationActorOutcome::Rejected;
         }
         if self
             .player_preparations
             .get(report.post())
             .is_some_and(|older| !report.supersedes(older))
         {
-            return false;
+            return PlayerPreparationActorOutcome::Stale;
         }
         let observation = self.capability_observation(&report, now_ms);
         self.player_preparations
@@ -56,7 +56,7 @@ impl DeliveryState {
         if let Some(observation) = observation {
             self.client_capabilities.observe(observation);
         }
-        true
+        PlayerPreparationActorOutcome::Applied
     }
 
     pub(crate) fn client_capability_status(
@@ -141,7 +141,7 @@ impl DeliveryState {
     }
 
     pub(super) fn prune_player_preparation_scope(&mut self) {
-        let allowed = self.demand_posts();
+        let allowed = self.preparation_posts();
         let catalog = &self.catalog;
         let transformed = &self.transformed_posts;
         retain_preparations(
@@ -158,7 +158,7 @@ impl DeliveryState {
     }
 
     fn player_authority_is_current(&self, report: &PlayerPreparationReport) -> bool {
-        self.demand_posts().contains(report.post())
+        self.preparation_posts().contains(report.post())
             && self.playback_binding(report.post()).as_ref() == Some(report.binding())
     }
 

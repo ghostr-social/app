@@ -54,7 +54,7 @@ fn mailbox_preserves_an_exact_attempt_lifecycle_and_reset_fence() {
             4,
             PlayerPreparationState::Released,
         )),
-        PlayerPreparationIngress::Rejected,
+        PlayerPreparationIngress::Stale,
     );
     let stale_ticket = handle.player_preparation_admission();
     receiver.discard_pending();
@@ -63,7 +63,7 @@ fn mailbox_preserves_an_exact_attempt_lifecycle_and_reset_fence() {
             stale_ticket,
             report(2, 2, 1, PlayerPreparationState::Initializing),
         ),
-        PlayerPreparationIngress::Rejected,
+        PlayerPreparationIngress::InvalidAdmission,
     );
 }
 

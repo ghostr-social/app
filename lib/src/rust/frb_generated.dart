@@ -156,7 +156,8 @@ abstract class RustLibApi extends BaseApi {
     required FfiPlaybackPresentation input,
   });
 
-  Future<void> crateApiPlayerPreparationControlFfiReportPlayerPreparation({
+  Future<FfiPlayerPreparationDisposition>
+  crateApiPlayerPreparationControlFfiReportPlayerPreparation({
     required FfiPlayerPreparationReport input,
   });
 
@@ -765,7 +766,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<void> crateApiPlayerPreparationControlFfiReportPlayerPreparation({
+  Future<FfiPlayerPreparationDisposition>
+  crateApiPlayerPreparationControlFfiReportPlayerPreparation({
     required FfiPlayerPreparationReport input,
   }) {
     return handler.executeNormal(
@@ -784,8 +786,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
+          decodeSuccessData: sse_decode_ffi_player_preparation_disposition,
+          decodeErrorData: null,
         ),
         constMeta:
             kCrateApiPlayerPreparationControlFfiReportPlayerPreparationConstMeta,
@@ -1583,6 +1585,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       sequence: dco_decode_u_64(arr[2]),
       observedAtMs: dco_decode_u_64(arr[3]),
     );
+  }
+
+  @protected
+  FfiPlayerPreparationDisposition dco_decode_ffi_player_preparation_disposition(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FfiPlayerPreparationDisposition.values[raw as int];
   }
 
   @protected
@@ -2443,6 +2453,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       sequence: var_sequence,
       observedAtMs: var_observedAtMs,
     );
+  }
+
+  @protected
+  FfiPlayerPreparationDisposition sse_decode_ffi_player_preparation_disposition(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return FfiPlayerPreparationDisposition.values[inner];
   }
 
   @protected
@@ -3324,6 +3343,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_u_64(self.generation, serializer);
     sse_encode_u_64(self.sequence, serializer);
     sse_encode_u_64(self.observedAtMs, serializer);
+  }
+
+  @protected
+  void sse_encode_ffi_player_preparation_disposition(
+    FfiPlayerPreparationDisposition self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
   }
 
   @protected

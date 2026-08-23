@@ -1,7 +1,7 @@
 use crate::client_capability::{
     load_client_capabilities, save_client_capabilities, ClientCapabilityModel,
 };
-use crate::delivery_events::PlayerPreparationReport;
+use crate::delivery_events::{PlayerPreparationActorOutcome, PlayerPreparationEnvelope};
 use crate::manager::time::unix_time_ms;
 use crate::manager::transfers::{InternalEvent, MaintenanceEvent};
 use crate::manager::DeliveryWorker;
@@ -66,15 +66,18 @@ impl CapabilityKeeper {
 }
 
 impl DeliveryWorker {
-    pub(super) fn apply_player_preparation_feedback(&mut self, report: PlayerPreparationReport) {
-        if !self
+    pub(super) fn apply_player_preparation_feedback(
+        &mut self,
+        envelope: PlayerPreparationEnvelope,
+    ) {
+        let outcome = self
             .state
-            .apply_player_preparation_at(report, unix_time_ms())
-        {
-            return;
+            .apply_player_preparation_at(envelope.report().clone(), unix_time_ms());
+        if outcome == PlayerPreparationActorOutcome::Applied {
+            self.capability
+                .observe(self.state.client_capability_revision(), &self.ctx.events);
         }
-        self.capability
-            .observe(self.state.client_capability_revision(), &self.ctx.events);
+        self.commands.complete_player_preparation(envelope, outcome);
     }
 
     pub(super) async fn save_capability(&mut self) {

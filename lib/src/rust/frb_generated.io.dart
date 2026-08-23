@@ -233,6 +233,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FfiPlaybackPresentation dco_decode_ffi_playback_presentation(dynamic raw);
 
   @protected
+  FfiPlayerPreparationDisposition dco_decode_ffi_player_preparation_disposition(
+    dynamic raw,
+  );
+
+  @protected
   FfiPlayerPreparationReport dco_decode_ffi_player_preparation_report(
     dynamic raw,
   );
@@ -554,6 +559,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiPlaybackPresentation sse_decode_ffi_playback_presentation(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiPlayerPreparationDisposition sse_decode_ffi_player_preparation_disposition(
     SseDeserializer deserializer,
   );
 
@@ -948,6 +958,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_ffi_playback_presentation(
     FfiPlaybackPresentation self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_player_preparation_disposition(
+    FfiPlayerPreparationDisposition self,
     SseSerializer serializer,
   );
 

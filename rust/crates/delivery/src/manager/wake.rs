@@ -1,5 +1,5 @@
 use crate::delivery_events::{
-    ClearRequest, DeliveryCommand, PlaybackPresentation, PlayerPreparationReport,
+    ClearRequest, DeliveryCommand, PlaybackPresentation, PlayerPreparationEnvelope,
 };
 use crate::manager::response_open::ResponseOpenRequest;
 use crate::manager::time::unix_time_ms;
@@ -17,7 +17,7 @@ pub(crate) enum Wake {
     Clear(ClearRequest),
     Command(DeliveryCommand),
     Commands(Vec<DeliveryCommand>),
-    PlayerPreparation(PlayerPreparationReport),
+    PlayerPreparation(PlayerPreparationEnvelope),
     PlaybackPresentation(PlaybackPresentation),
     Demand(DemandState),
     Response(Box<ResponseOpenRequest>),
@@ -60,8 +60,8 @@ impl DeliveryWorker {
                 self.apply_commands(commands).await;
                 None
             }
-            Wake::PlayerPreparation(report) => {
-                self.apply_player_preparation_feedback(report);
+            Wake::PlayerPreparation(envelope) => {
+                self.apply_player_preparation_feedback(envelope);
                 None
             }
             Wake::PlaybackPresentation(event) => {

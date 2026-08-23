@@ -29,15 +29,18 @@ pub(crate) use focus_generation::FocusGenerationGuard;
 pub use focus_generation::{FocusAdmission, FocusGeneration};
 pub use mailbox::MailboxReceiver;
 use mailbox::MailboxSender;
+pub(crate) use mailbox::PlayerPreparationEnvelope;
 pub use network::DeliveryNetworkStatus;
 pub(crate) use network::DeliveryNetworkStatusReader;
 pub use plan_evidence::PlanEvidence;
 use plan_evidence::PlanEvidenceHistory;
 pub use playback_presentation::{PlaybackPresentation, PlaybackPresentationIngress};
+pub(crate) use player_preparation::PlayerPreparationActorOutcome;
 pub use player_preparation::{
     PlayerPreparationAdmission, PlayerPreparationAttempt, PlayerPreparationAuthority,
-    PlayerPreparationClaim, PlayerPreparationFollowup, PlayerPreparationIngress,
-    PlayerPreparationObservation, PlayerPreparationReport, PlayerPreparationState,
+    PlayerPreparationClaim, PlayerPreparationDisposition, PlayerPreparationFollowup,
+    PlayerPreparationIngress, PlayerPreparationObservation, PlayerPreparationReport,
+    PlayerPreparationState,
 };
 pub use transport::{DeliveryPlayback, TransportRescue, TransportRescueReason};
 
@@ -175,17 +178,6 @@ impl DeliveryHandle {
 
     pub fn decision_history(&self) -> DecisionHistorySnapshot {
         self.decisions.snapshot()
-    }
-
-    pub async fn clear(&self) -> anyhow::Result<()> {
-        let (reply, result) = oneshot::channel();
-        self.clears
-            .send(reply)
-            .await
-            .map_err(|_| anyhow::anyhow!("delivery manager is unavailable"))?;
-        result
-            .await
-            .map_err(|_| anyhow::anyhow!("delivery reset was interrupted"))?
     }
 }
 

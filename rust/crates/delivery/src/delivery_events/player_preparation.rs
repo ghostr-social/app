@@ -86,10 +86,34 @@ impl PlayerPreparationAdmission {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PlayerPreparationIngress {
     Accepted,
+    Duplicate,
+    Pending,
     Stale,
+    MissingInitial,
+    InvalidAdmission,
     Rejected,
     Saturated,
     Closed,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PlayerPreparationDisposition {
+    Applied,
+    Duplicate,
+    Stale,
+    MissingInitial,
+    Rejected,
+    Saturated,
+    Unavailable,
+    Closed,
+    NotAdmitted,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum PlayerPreparationActorOutcome {
+    Applied,
+    Stale,
+    Rejected,
 }
 
 fn valid_failure(state: PlayerPreparationState, failure: Option<&str>) -> bool {

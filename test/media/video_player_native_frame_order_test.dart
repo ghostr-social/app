@@ -27,7 +27,10 @@ void main() {
     final sent = <FfiPlayerPreparationReport>[];
     final token = PlayerPreparationAttemptToken.parse(_token);
     final feedback = FfiPlayerPreparationFeedbackPort(
-      reportPreparation: ({required input}) async => sent.add(input),
+      reportPreparation: ({required input}) async {
+        sent.add(input);
+        return FfiPlayerPreparationDisposition.applied;
+      },
       playerCapabilityGeneration: BigInt.one,
       clientEpoch: BigInt.one,
       monotonicMicros: () => 1,

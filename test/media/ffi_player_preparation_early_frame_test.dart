@@ -9,7 +9,10 @@ void main() {
   test('an early native frame waits for plugin settlement', () async {
     final sent = <FfiPlayerPreparationReport>[];
     final feedback = FfiPlayerPreparationFeedbackPort(
-      reportPreparation: ({required input}) async => sent.add(input),
+      reportPreparation: ({required input}) async {
+        sent.add(input);
+        return FfiPlayerPreparationDisposition.applied;
+      },
       playerCapabilityGeneration: BigInt.one,
       clientEpoch: BigInt.one,
       monotonicMicros: () => 1,

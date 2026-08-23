@@ -711,13 +711,14 @@ fn wire__crate__api__player_preparation_control__ffi_report_player_preparation_i
             );
             deserializer.end();
             move |context| async move {
-                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                transform_result_sse::<_, ()>(
                     (move || async move {
-                        let output_ok =
+                        let output_ok = Result::<_, ()>::Ok(
                             crate::api::player_preparation_control::ffi_report_player_preparation(
                                 api_input,
                             )
-                            .await?;
+                            .await,
+                        )?;
                         Ok(output_ok)
                     })()
                     .await,
@@ -1576,6 +1577,28 @@ impl SseDecode for crate::api::playback_types::FfiPlaybackPresentation {
             generation: var_generation,
             sequence: var_sequence,
             observed_at_ms: var_observedAtMs,
+        };
+    }
+}
+
+impl SseDecode for crate::api::delivery_types::FfiPlayerPreparationDisposition {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::delivery_types::FfiPlayerPreparationDisposition::Applied,
+            1 => crate::api::delivery_types::FfiPlayerPreparationDisposition::Duplicate,
+            2 => crate::api::delivery_types::FfiPlayerPreparationDisposition::Stale,
+            3 => crate::api::delivery_types::FfiPlayerPreparationDisposition::MissingInitial,
+            4 => crate::api::delivery_types::FfiPlayerPreparationDisposition::Rejected,
+            5 => crate::api::delivery_types::FfiPlayerPreparationDisposition::Saturated,
+            6 => crate::api::delivery_types::FfiPlayerPreparationDisposition::Unavailable,
+            7 => crate::api::delivery_types::FfiPlayerPreparationDisposition::Closed,
+            8 => crate::api::delivery_types::FfiPlayerPreparationDisposition::NotAdmitted,
+            _ => unreachable!(
+                "Invalid variant for FfiPlayerPreparationDisposition: {}",
+                inner
+            ),
         };
     }
 }
@@ -2796,6 +2819,34 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::playback_types::FfiPlaybackPr
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::delivery_types::FfiPlayerPreparationDisposition {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Applied => 0.into_dart(),
+            Self::Duplicate => 1.into_dart(),
+            Self::Stale => 2.into_dart(),
+            Self::MissingInitial => 3.into_dart(),
+            Self::Rejected => 4.into_dart(),
+            Self::Saturated => 5.into_dart(),
+            Self::Unavailable => 6.into_dart(),
+            Self::Closed => 7.into_dart(),
+            Self::NotAdmitted => 8.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::delivery_types::FfiPlayerPreparationDisposition
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::delivery_types::FfiPlayerPreparationDisposition>
+    for crate::api::delivery_types::FfiPlayerPreparationDisposition
+{
+    fn into_into_dart(self) -> crate::api::delivery_types::FfiPlayerPreparationDisposition {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::delivery_types::FfiPlayerPreparationReport {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -3394,6 +3445,29 @@ impl SseEncode for crate::api::playback_types::FfiPlaybackPresentation {
         <u64>::sse_encode(self.generation, serializer);
         <u64>::sse_encode(self.sequence, serializer);
         <u64>::sse_encode(self.observed_at_ms, serializer);
+    }
+}
+
+impl SseEncode for crate::api::delivery_types::FfiPlayerPreparationDisposition {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::delivery_types::FfiPlayerPreparationDisposition::Applied => 0,
+                crate::api::delivery_types::FfiPlayerPreparationDisposition::Duplicate => 1,
+                crate::api::delivery_types::FfiPlayerPreparationDisposition::Stale => 2,
+                crate::api::delivery_types::FfiPlayerPreparationDisposition::MissingInitial => 3,
+                crate::api::delivery_types::FfiPlayerPreparationDisposition::Rejected => 4,
+                crate::api::delivery_types::FfiPlayerPreparationDisposition::Saturated => 5,
+                crate::api::delivery_types::FfiPlayerPreparationDisposition::Unavailable => 6,
+                crate::api::delivery_types::FfiPlayerPreparationDisposition::Closed => 7,
+                crate::api::delivery_types::FfiPlayerPreparationDisposition::NotAdmitted => 8,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
     }
 }
 

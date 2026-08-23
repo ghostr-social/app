@@ -1,8 +1,24 @@
-use super::{ClearRequest, CommandReceiver, DeliveryCandidate, DeliveryCommand, MailboxReceiver};
+use super::{
+    ClearRequest, CommandReceiver, DeliveryCandidate, DeliveryCommand, DeliveryHandle,
+    MailboxReceiver,
+};
 use crate::evaluation::EvaluationLedger;
 use crate::playback_admission::PlaybackAdmission;
 use ghostr_engine::PostId;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
+
+impl DeliveryHandle {
+    pub async fn clear(&self) -> anyhow::Result<()> {
+        let (reply, result) = oneshot::channel();
+        self.clears
+            .send(reply)
+            .await
+            .map_err(|_| anyhow::anyhow!("delivery manager is unavailable"))?;
+        result
+            .await
+            .map_err(|_| anyhow::anyhow!("delivery reset was interrupted"))?
+    }
+}
 
 impl CommandReceiver {
     pub(crate) fn evaluation(&self) -> EvaluationLedger {

@@ -9,12 +9,14 @@ import '../support/playback_authority_fixture.dart';
 
 void main() {
   test('all six controller attempts survive a blocked reporter', () async {
-    final first = Completer<void>();
+    final first = Completer<FfiPlayerPreparationDisposition>();
     final sent = <FfiPlayerPreparationReport>[];
     final feedback = FfiPlayerPreparationFeedbackPort(
       reportPreparation: ({required input}) {
         sent.add(input);
-        return sent.length == 1 ? first.future : Future.value();
+        return sent.length == 1
+            ? first.future
+            : Future.value(FfiPlayerPreparationDisposition.applied);
       },
       playerCapabilityGeneration: BigInt.one,
       clientEpoch: BigInt.one,
@@ -24,8 +26,9 @@ void main() {
     for (var index = 0; index < 6; index += 1) {
       feedback.prepare(testPlaybackAuthority(postId: 'post-$index')).begin();
     }
-    expect(sent, hasLength(1));
-    first.complete();
+    await drainTestMicrotasks();
+    expect(sent, hasLength(6));
+    first.complete(FfiPlayerPreparationDisposition.applied);
     await drainTestMicrotasks(12);
 
     expect(sent, hasLength(6));
@@ -33,12 +36,14 @@ void main() {
   });
 
   test('a dispatched initial keeps its queued terminal under churn', () async {
-    final first = Completer<void>();
+    final first = Completer<FfiPlayerPreparationDisposition>();
     final sent = <FfiPlayerPreparationReport>[];
     final feedback = FfiPlayerPreparationFeedbackPort(
       reportPreparation: ({required input}) {
         sent.add(input);
-        return sent.length == 1 ? first.future : Future.value();
+        return sent.length == 1
+            ? first.future
+            : Future.value(FfiPlayerPreparationDisposition.applied);
       },
       playerCapabilityGeneration: BigInt.one,
       clientEpoch: BigInt.one,
@@ -51,7 +56,7 @@ void main() {
       feedback.prepare(testPlaybackAuthority(postId: 'churn-$index')).begin();
     }
 
-    first.complete();
+    first.complete(FfiPlayerPreparationDisposition.applied);
     await drainTestMicrotasks(16);
 
     expect(
@@ -63,5 +68,28 @@ void main() {
         FfiPlayerPreparationState.released,
       ],
     );
+  });
+
+  test('six in-flight reporters bound controller tracking', () async {
+    final blocked = <Completer<FfiPlayerPreparationDisposition>>[];
+    final feedback = FfiPlayerPreparationFeedbackPort(
+      reportPreparation: ({required input}) {
+        final completion = Completer<FfiPlayerPreparationDisposition>();
+        blocked.add(completion);
+        return completion.future;
+      },
+      playerCapabilityGeneration: BigInt.one,
+      clientEpoch: BigInt.one,
+      monotonicMicros: () => 1,
+    );
+
+    for (var index = 0; index < 7; index += 1) {
+      feedback.prepare(testPlaybackAuthority(postId: 'post-$index')).begin();
+    }
+    expect(blocked, hasLength(6));
+    for (final completion in blocked) {
+      completion.complete(FfiPlayerPreparationDisposition.applied);
+    }
+    await drainTestMicrotasks(12);
   });
 }

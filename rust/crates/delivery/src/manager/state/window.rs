@@ -52,6 +52,10 @@ impl DeliveryState {
         posts[start..end].to_vec()
     }
 
+    pub(crate) fn preparation_posts(&self) -> HashSet<PostId> {
+        self.planning_window_posts().into_iter().collect()
+    }
+
     pub(crate) fn timeline_window_posts(&self) -> Vec<PostId> {
         let posts = self.planning_window_posts();
         let Some(current) = self.focus.current() else {

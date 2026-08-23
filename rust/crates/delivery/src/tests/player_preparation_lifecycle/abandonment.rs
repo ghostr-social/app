@@ -6,7 +6,8 @@ use ghostr_partial_store::partial_range_store::ContentRevision;
 
 #[test]
 fn scope_and_reset_abandon_active_capability_tests() {
-    let mut state = state(&["p0", "p1", "p2"], 0);
+    let ids = ["p0", "p1", "p2", "p3", "p4", "p5"];
+    let mut state = state(&ids, 0);
     let post = PostId::new("p1");
     initialize(&mut state);
     assert_eq!(
@@ -14,16 +15,16 @@ fn scope_and_reset_abandon_active_capability_tests() {
         ClientCapabilityStatus::Testing,
     );
 
-    state.apply_focus(focus(&["p0", "p1", "p2"], 2), 2);
+    state.apply_focus(focus(&ids, 5), 2);
     assert_eq!(
         state.client_capability_status(&post, 1, 1),
         ClientCapabilityStatus::Unknown,
     );
 
-    state.apply_focus(focus(&["p0", "p1", "p2"], 0), 3);
+    state.apply_focus(focus(&ids, 0), 3);
     initialize(&mut state);
     state.clear();
-    state.apply_focus(focus(&["p0", "p1", "p2"], 0), 4);
+    state.apply_focus(focus(&ids, 0), 4);
     assert_eq!(
         state.client_capability_status(&post, 1, 1),
         ClientCapabilityStatus::Unknown,

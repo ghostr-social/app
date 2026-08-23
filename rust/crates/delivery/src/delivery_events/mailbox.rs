@@ -9,6 +9,7 @@ use tokio::sync::mpsc;
 mod control;
 mod preparation;
 mod presentation;
+pub(crate) use preparation::PlayerPreparationEnvelope;
 
 #[derive(Clone, Debug)]
 pub(super) struct MailboxSender {
@@ -167,6 +168,13 @@ impl MailboxReceiver {
 
     fn lock(&self) -> MutexGuard<'_, MailboxState> {
         lock(&self.state)
+    }
+}
+
+impl Drop for MailboxReceiver {
+    fn drop(&mut self) {
+        self.preparation_wake.close();
+        self.lock().preparations.clear();
     }
 }
 

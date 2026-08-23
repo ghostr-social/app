@@ -90,6 +90,20 @@ pub enum FfiPlayerPreparationState {
     Released,
 }
 
+/// Actor-applied result for one immutable player-preparation report.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FfiPlayerPreparationDisposition {
+    Applied,
+    Duplicate,
+    Stale,
+    MissingInitial,
+    Rejected,
+    Saturated,
+    Unavailable,
+    Closed,
+    NotAdmitted,
+}
+
 /// Authority and monotonic ordering for a player-preparation update.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FfiPlayerPreparationReport {

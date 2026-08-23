@@ -20,7 +20,7 @@ impl PartialRangeStore {
         binding: &RepresentationBinding,
         span: Range<u64>,
     ) -> anyhow::Result<RepresentationRead> {
-        let Some(revision) = self.revision_for_binding(binding).await else {
+        let Some(revision) = self.revision_for_binding(binding).await? else {
             return Ok(RepresentationRead::Superseded);
         };
         let read = self.read_range(binding.post().as_str(), span).await;
@@ -34,7 +34,7 @@ impl PartialRangeStore {
         revision: ContentRevision,
         read: anyhow::Result<Option<Vec<u8>>>,
     ) -> anyhow::Result<RepresentationRead> {
-        if self.revision_for_binding(binding).await != Some(revision) {
+        if self.revision_for_binding(binding).await? != Some(revision) {
             return Ok(RepresentationRead::Superseded);
         }
         let read = read?;
@@ -60,7 +60,7 @@ impl PartialRangeStore {
         revision: ContentRevision,
         span: Range<u64>,
     ) -> anyhow::Result<RepresentationRead> {
-        if !self.stream_is_current(key, binding, revision).await {
+        if !self.stream_is_current(key, binding, revision).await? {
             return Ok(RepresentationRead::Superseded);
         }
         let read = self.read_range(key, span).await;
@@ -74,7 +74,7 @@ impl PartialRangeStore {
         revision: ContentRevision,
         read: anyhow::Result<Option<Vec<u8>>>,
     ) -> anyhow::Result<RepresentationRead> {
-        if !self.stream_is_current(key, binding, revision).await {
+        if !self.stream_is_current(key, binding, revision).await? {
             return Ok(RepresentationRead::Superseded);
         }
         let read = read?;
@@ -84,12 +84,14 @@ impl PartialRangeStore {
     async fn revision_for_binding(
         &self,
         binding: &RepresentationBinding,
-    ) -> Option<ContentRevision> {
-        let _update = self.observe_key(binding.post().as_str()).await.ok()?;
+    ) -> anyhow::Result<Option<ContentRevision>> {
+        let _update = self.observe_key(binding.post().as_str()).await?;
         if !self.representation_is_current(binding).await {
-            return None;
+            return Ok(None);
         }
-        Some(self.current_content_revision(binding.post().as_str()).await)
+        Ok(Some(
+            self.current_content_revision(binding.post().as_str()).await,
+        ))
     }
 
     /// Instantaneous authority check. A caller that waits after `true` must
@@ -99,11 +101,9 @@ impl PartialRangeStore {
         key: &str,
         binding: Option<&RepresentationBinding>,
         revision: ContentRevision,
-    ) -> bool {
-        let Ok(_update) = self.observe_key(key).await else {
-            return false;
-        };
+    ) -> anyhow::Result<bool> {
+        let _update = self.observe_key(key).await?;
         let current = self.representations.lock().await.get(key).cloned();
-        current.as_ref() == binding && self.current_content_revision(key).await == revision
+        Ok(current.as_ref() == binding && self.current_content_revision(key).await == revision)
     }
 }

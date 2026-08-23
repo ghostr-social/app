@@ -79,6 +79,7 @@ serde_json = { workspace = true }
 sha2 = { workspace = true }
 
 [dev-dependencies]
+ghostr-delivery = { path = "crates/delivery", features = ["test-support"] }
 ghostr-discovery = { path = "crates/discovery", features = ["test-support"] }
 futures-util = { workspace = true }
 tokio = { version = "1.43.0", features = ["test-util"] }
