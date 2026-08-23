@@ -5,8 +5,12 @@ import 'progressive_device_origin.dart';
 final class ProgressiveDeviceResources {
   ProgressiveDeviceResources._(this.origin, this._cache);
 
-  static Future<ProgressiveDeviceResources> start() async {
-    final origin = await ProgressiveDeviceOrigin.start();
+  static Future<ProgressiveDeviceResources> start({
+    Duration responseChunkDelay = Duration.zero,
+  }) async {
+    final origin = await ProgressiveDeviceOrigin.start(
+      responseChunkDelay: responseChunkDelay,
+    );
     try {
       final cache = await Directory.systemTemp.createTemp(
         'ghostr-progressive-',

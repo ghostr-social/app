@@ -6,6 +6,7 @@ extension _ProgressiveDeviceOriginResponse on ProgressiveDeviceOrigin {
     ({int start, int end})? range,
     String path,
   ) async {
+    _concurrency.started(path, range);
     try {
       final bytes = ProgressiveMp4Fixture.bytes;
       final span = range ?? (start: 0, end: bytes.length);
@@ -24,6 +25,8 @@ extension _ProgressiveDeviceOriginResponse on ProgressiveDeviceOrigin {
       return true;
     } on Object {
       return false;
+    } finally {
+      _concurrency.finished(path, range);
     }
   }
 

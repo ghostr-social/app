@@ -7,6 +7,7 @@ import 'progressive_mp4_fixture.dart';
 
 part 'progressive_device_origin_response.dart';
 part 'progressive_device_origin_request.dart';
+part 'progressive_device_origin_concurrency.dart';
 
 final class ProgressiveDeviceOrigin {
   ProgressiveDeviceOrigin._(
@@ -38,6 +39,7 @@ final class ProgressiveDeviceOrigin {
   final _heldHeads = <HttpResponse>[];
   final _servedBytes = <String, int>{};
   late final StreamSubscription<HttpRequest> _subscription;
+  final _concurrency = _ProgressiveOriginConcurrency();
 
   Uri get origin =>
       Uri(scheme: 'http', host: _server.address.address, port: _server.port);
@@ -52,8 +54,6 @@ final class ProgressiveDeviceOrigin {
       .map((request) => request.range)
       .whereType<({int start, int end})>()
       .toList();
-
-  bool get headsRemainBlocked => _heldHeads.isNotEmpty;
 
   void _dispatch(HttpRequest request) => unawaited(_serve(request));
 

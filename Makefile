@@ -39,7 +39,8 @@ VIDEO_PLAYER_CONTRACT_TESTS := \
 	integration_test/video_player_prepared_generation_contract_test.dart \
 	integration_test/video_player_adapter_identity_contract_test.dart
 VIDEO_PROGRESSIVE_ANDROID_TESTS := \
-	integration_test/progressive_delivery_video_test.dart
+	integration_test/progressive_delivery_video_test.dart \
+	integration_test/warp_feed_playback_video_test.dart
 VIDEO_PROGRESSIVE_FLUTTER_TESTS := \
 	test/core/media/remote_playback_delivery_id_test.dart \
 	test/media/ffi_playback_telemetry_cross_port_generation_test.dart \
