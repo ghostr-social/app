@@ -29,7 +29,8 @@ extension _VideoPlayerSurfaceKeys on _VideoPlayerSurfaceDependencies {
 
 typedef _ExactProgressiveSurfaceSlot = (
   VideoPlaybackSurfaceScope,
-  VideoMediaCacheIdentity,
+  PlaybackDeliveryId,
+  VideoRepresentationId,
   PlaybackVideoId?,
 );
 
@@ -37,8 +38,18 @@ _ExactProgressiveSurfaceSlot? _exactProgressiveSurfaceSlot(
   VideoPlaybackSurfaceRequest request,
 ) {
   final scope = request.surfaceScope;
-  if (scope == null || request.media is! ProxiedProgressiveVideoMediaSource) {
+  final media = request.media;
+  final authority = request.authority;
+  if (scope == null ||
+      media is! ProxiedProgressiveVideoMediaSource ||
+      authority == null ||
+      !_proxyMatches(media, authority)) {
     return null;
   }
-  return (scope, request.media.inventoryPlaybackIdentity, request.videoId);
+  return (
+    scope,
+    authority.deliveryId,
+    authority.representationId,
+    request.videoId,
+  );
 }

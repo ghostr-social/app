@@ -1,17 +1,19 @@
 use super::DeliveryState;
 use crate::client_capability::{
     CapabilityAttempt, CapabilityEvent, CapabilityObservation, ClientCapabilityModel,
-    ClientCapabilityProfile, ClientCapabilityStatus,
+    ClientCapabilityStatus,
 };
 use crate::delivery_events::PlayerPreparationReport;
 use ghostr_engine::adaptive::{PlannerCapability, PlayerPreparation, TransformCapability};
-use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::PostId;
 use ghostr_partial_store::partial_range_store::ContentRevision;
 use std::collections::HashMap;
 
+mod epoch;
 mod evidence;
-use evidence::{capability_signal, codec, dimensions};
+mod retention;
+use evidence::{capability_profile, capability_signal};
+use retention::{abandon, retain_preparations};
 
 impl DeliveryState {
     pub(crate) fn update_ready_target(&mut self, target: usize) {
@@ -32,7 +34,13 @@ impl DeliveryState {
         report: PlayerPreparationReport,
         now_ms: u64,
     ) -> bool {
+        if !epoch::admit(self, &report) {
+            return false;
+        }
         if !self.player_authority_is_current(&report) {
+            if report.is_terminal() {
+                abandon(&mut self.client_capabilities, &report);
+            }
             return false;
         }
         if self
@@ -60,7 +68,7 @@ impl DeliveryState {
         let Some(binding) = self.playback_binding(post) else {
             return ClientCapabilityStatus::Unknown;
         };
-        let Some(profile) = self.capability_profile(post, &binding, now_ms) else {
+        let Some(profile) = capability_profile(&self.catalog, post, &binding, now_ms) else {
             return ClientCapabilityStatus::Unknown;
         };
         self.client_capabilities.status(generation, &profile)
@@ -120,24 +128,33 @@ impl DeliveryState {
         revisions: &HashMap<PostId, ContentRevision>,
     ) {
         self.prune_player_preparation_scope();
-        self.player_preparations.retain(|post, report| {
-            revisions
-                .get(post)
-                .is_some_and(|revision| *revision == report.revision())
-        });
+        retain_preparations(
+            &mut self.player_preparations,
+            &mut self.client_capabilities,
+            |post, report| {
+                !report.is_terminal()
+                    || revisions
+                        .get(post)
+                        .is_some_and(|revision| *revision == report.revision())
+            },
+        );
     }
 
     pub(super) fn prune_player_preparation_scope(&mut self) {
         let allowed = self.demand_posts();
         let catalog = &self.catalog;
         let transformed = &self.transformed_posts;
-        self.player_preparations.retain(|post, report| {
-            let binding = transformed
-                .get(post)
-                .cloned()
-                .or_else(|| catalog.binding(post));
-            allowed.contains(post) && binding.as_ref() == Some(report.binding())
-        });
+        retain_preparations(
+            &mut self.player_preparations,
+            &mut self.client_capabilities,
+            |post, report| {
+                let binding = transformed
+                    .get(post)
+                    .cloned()
+                    .or_else(|| catalog.binding(post));
+                allowed.contains(post) && binding.as_ref() == Some(report.binding())
+            },
+        );
     }
 
     fn player_authority_is_current(&self, report: &PlayerPreparationReport) -> bool {
@@ -162,7 +179,7 @@ impl DeliveryState {
         report: &PlayerPreparationReport,
         now_ms: u64,
     ) -> Option<CapabilityObservation> {
-        let profile = self.capability_profile(report.post(), report.binding(), now_ms)?;
+        let profile = capability_profile(&self.catalog, report.post(), report.binding(), now_ms)?;
         let signal = capability_signal(report)?;
         Some(CapabilityObservation::new(
             report.player_capability_generation(),
@@ -170,23 +187,5 @@ impl DeliveryState {
             profile,
             CapabilityEvent::new(report.observed_monotonic_us(), signal),
         ))
-    }
-
-    fn capability_profile(
-        &self,
-        post: &PostId,
-        binding: &RepresentationBinding,
-        now_ms: u64,
-    ) -> Option<ClientCapabilityProfile> {
-        let entry = self.catalog.lookup(post)?;
-        let assessment = entry
-            .meta
-            .urls
-            .first()
-            .map(|url| entry.evidence_assessment_for(url, now_ms));
-        let codec = assessment.as_ref().and_then(codec);
-        let dimensions = assessment.as_ref().and_then(dimensions);
-        ClientCapabilityProfile::try_new(binding.representation().fingerprint(), codec, dimensions)
-            .ok()
     }
 }

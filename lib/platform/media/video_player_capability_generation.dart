@@ -3,11 +3,14 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 
+const videoPlayerAndroidCapabilityVersion = '2.12.0';
+const videoPlayerAvfoundationCapabilityVersion = '2.11.0';
+
 BigInt currentVideoPlayerCapabilityGeneration() {
   final snapshot = [
     'video_player=2.13.0',
-    'video_player_android=2.12.0',
-    'video_player_avfoundation=2.11.0',
+    'video_player_android=$videoPlayerAndroidCapabilityVersion',
+    'video_player_avfoundation=$videoPlayerAvfoundationCapabilityVersion',
     'os=${Platform.operatingSystem}',
     'os_version=${Platform.operatingSystemVersion}',
     'dart=${Platform.version}',

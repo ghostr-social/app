@@ -1,6 +1,5 @@
-//! Inbound control surface of the delivery manager: focus, config, and
-//! network updates arrive over a channel so the manager reacts to events
-//! instead of polling.
+//! Inbound delivery controls arrive over a channel so the manager reacts to
+//! focus, config, and network events instead of polling.
 
 use ghostr_engine::evidence::NostrMetadataEvidence;
 use ghostr_engine::video_rendition::VideoRendition;
@@ -36,7 +35,8 @@ pub use plan_evidence::PlanEvidence;
 use plan_evidence::PlanEvidenceHistory;
 pub use playback_presentation::{PlaybackPresentation, PlaybackPresentationIngress};
 pub use player_preparation::{
-    PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationIngress,
+    PlayerPreparationAdmission, PlayerPreparationAttempt, PlayerPreparationAuthority,
+    PlayerPreparationClaim, PlayerPreparationFollowup, PlayerPreparationIngress,
     PlayerPreparationObservation, PlayerPreparationReport, PlayerPreparationState,
 };
 pub use transport::{DeliveryPlayback, TransportRescue, TransportRescueReason};

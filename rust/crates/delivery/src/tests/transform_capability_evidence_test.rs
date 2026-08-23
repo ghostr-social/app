@@ -41,6 +41,7 @@ fn apply(
         post.clone(),
         state.catalog().binding(&post).unwrap(),
         ContentRevision::default(),
+        "asset-next",
     )
     .unwrap();
     let observation =

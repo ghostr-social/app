@@ -40,6 +40,7 @@ pub(super) fn evidence(state: &DeliveryState, spec: EvidenceSpec<'_>) -> PlayerP
             post.clone(),
             state.catalog().binding(&post).unwrap(),
             spec.revision,
+            format!("asset-{}", spec.post),
         )
         .unwrap(),
         PlayerPreparationAttempt::try_new(1, 9, 4).unwrap(),

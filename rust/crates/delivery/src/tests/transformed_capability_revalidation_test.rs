@@ -55,6 +55,7 @@ fn apply(
         binding.post().clone(),
         binding.clone(),
         ContentRevision::default(),
+        "asset",
     )
     .unwrap();
     let observation = PlayerPreparationObservation::try_new(status, None, sequence * 100).unwrap();

@@ -1,11 +1,15 @@
 //! One-shot callers waiting on generic scheduler work.
 
+use crate::plan_executor::PlanPage;
 use crate::retrieval_types::{FeedContext, PlanFailure};
 use nostr_sdk::Event;
 use std::collections::HashMap;
 use tokio::sync::oneshot;
 
 pub(crate) type QueryResult = Result<Vec<Event>, PlanFailure>;
+type PageResult = Result<PlanPage, PlanFailure>;
+
+const INCOMPLETE_QUERY_MESSAGE: &str = "relay query did not complete authoritatively";
 
 #[derive(Default)]
 pub(crate) struct QueryBook {
@@ -24,12 +28,20 @@ impl QueryBook {
     pub(crate) fn finish(
         &mut self,
         context: &FeedContext,
-        result: QueryResult,
-    ) -> Result<(), QueryResult> {
+        result: PageResult,
+    ) -> Result<(), PageResult> {
         let Some(reply) = self.pending.remove(context) else {
             return Err(result);
         };
-        let _ = reply.send(result);
+        let _ = reply.send(complete(result));
         Ok(())
     }
+}
+
+fn complete(result: PageResult) -> QueryResult {
+    result.and_then(|page| {
+        page.complete
+            .then_some(page.events)
+            .ok_or_else(|| PlanFailure::new(INCOMPLETE_QUERY_MESSAGE))
+    })
 }

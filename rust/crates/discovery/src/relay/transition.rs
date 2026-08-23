@@ -42,6 +42,7 @@ impl RelayPoolTransition {
     pub async fn replace_configuration(&mut self, configuration: RelayPoolConfiguration) {
         debug_assert!(!self.reset);
         self.owner.roles.replace_configuration(configuration).await;
+        self.owner.health.clear();
     }
 
     pub async fn reset_session(
@@ -51,6 +52,7 @@ impl RelayPoolTransition {
     ) {
         debug_assert!(self.reset);
         self.owner.roles.reset_session().await;
+        self.owner.health.clear();
         let mut lifecycle = locked(&self.owner.lifecycle);
         lifecycle.session = session;
         lifecycle.expected_account = expected_account;

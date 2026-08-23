@@ -1,11 +1,13 @@
 use ghostr_engine::adaptive::PlayerPreparation;
-use ghostr_engine::representation::RepresentationBinding;
-use ghostr_engine::PostId;
-use ghostr_partial_store::partial_range_store::ContentRevision;
 
 const MAX_FAILURE_KIND_BYTES: usize = 128;
 
+mod authority;
+mod followup;
 mod ingress;
+mod report;
+pub use authority::{PlayerPreparationAuthority, PlayerPreparationClaim};
+pub use followup::PlayerPreparationFollowup;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PlayerPreparationState {
@@ -14,27 +16,6 @@ pub enum PlayerPreparationState {
     FirstFrameRendered,
     Failed,
     Released,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct PlayerPreparationAuthority {
-    post: PostId,
-    binding: RepresentationBinding,
-    revision: ContentRevision,
-}
-
-impl PlayerPreparationAuthority {
-    pub fn try_new(
-        post: PostId,
-        binding: RepresentationBinding,
-        revision: ContentRevision,
-    ) -> Option<Self> {
-        (binding.post() == &post).then_some(Self {
-            post,
-            binding,
-            revision,
-        })
-    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -89,91 +70,16 @@ pub struct PlayerPreparationReport {
     observation: PlayerPreparationObservation,
 }
 
-impl PlayerPreparationReport {
-    pub fn try_new(
-        authority: PlayerPreparationAuthority,
-        attempt: PlayerPreparationAttempt,
-        sequence: u64,
-        observation: PlayerPreparationObservation,
-    ) -> Option<Self> {
-        (sequence > 0).then_some(Self {
-            authority,
-            attempt,
-            sequence,
-            observation,
-        })
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PlayerPreparationAdmission(u64);
+
+impl PlayerPreparationAdmission {
+    pub(crate) const fn new(epoch: u64) -> Self {
+        Self(epoch)
     }
 
-    pub fn post(&self) -> &PostId {
-        &self.authority.post
-    }
-
-    pub fn binding(&self) -> &RepresentationBinding {
-        &self.authority.binding
-    }
-
-    pub fn revision(&self) -> ContentRevision {
-        self.authority.revision
-    }
-
-    pub fn sequence(&self) -> u64 {
-        self.sequence
-    }
-
-    pub fn state(&self) -> PlayerPreparationState {
-        self.observation.state
-    }
-
-    pub fn player_capability_generation(&self) -> u64 {
-        self.attempt.player_capability_generation
-    }
-
-    pub fn client_epoch(&self) -> u64 {
-        self.attempt.client_epoch
-    }
-
-    pub fn attempt_generation(&self) -> u64 {
-        self.attempt.attempt_generation
-    }
-
-    pub fn failure_kind(&self) -> Option<&str> {
-        self.observation.failure_kind.as_deref()
-    }
-
-    pub fn observed_monotonic_us(&self) -> u64 {
-        self.observation.observed_monotonic_us
-    }
-
-    pub(crate) fn supersedes(&self, older: &Self) -> bool {
-        if self.same_attempt_generation(older)
-            && self.player_capability_generation() != older.player_capability_generation()
-        {
-            return false;
-        }
-        self.ordering_key() > older.ordering_key()
-    }
-
-    pub(crate) fn engine_state(&self) -> PlayerPreparation {
-        match self.state() {
-            PlayerPreparationState::Initializing => PlayerPreparation::Initializing,
-            PlayerPreparationState::Initialized => PlayerPreparation::PluginReady,
-            PlayerPreparationState::FirstFrameRendered => PlayerPreparation::FirstFrameRendered,
-            PlayerPreparationState::Failed => PlayerPreparation::Failed,
-            PlayerPreparationState::Released => PlayerPreparation::Unverified,
-        }
-    }
-
-    fn ordering_key(&self) -> (u64, u64, u64) {
-        (
-            self.client_epoch(),
-            self.attempt_generation(),
-            self.sequence,
-        )
-    }
-
-    fn same_attempt_generation(&self, other: &Self) -> bool {
-        self.client_epoch() == other.client_epoch()
-            && self.attempt_generation() == other.attempt_generation()
+    pub(crate) const fn epoch(self) -> u64 {
+        self.0
     }
 }
 
@@ -181,6 +87,7 @@ impl PlayerPreparationReport {
 pub enum PlayerPreparationIngress {
     Accepted,
     Stale,
+    Rejected,
     Saturated,
     Closed,
 }

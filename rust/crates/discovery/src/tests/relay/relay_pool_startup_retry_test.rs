@@ -6,6 +6,7 @@ use crate::relay::registration::{
 use crate::relay::removal::RelayRoleIo;
 use crate::relay::roles::{RelayPoolConfiguration, RelayPoolRoles};
 use nostr_sdk::{Client, RelayServiceFlags};
+use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -40,23 +41,38 @@ impl RelayRegistration for RecordingRegistration {
 }
 
 #[tokio::test]
-async fn configured_relays_connect_eagerly_with_a_four_second_base() {
+async fn configured_relay_replacement_and_reset_keep_one_bounded_eager_union() {
     let registration = Arc::new(RecordingRegistration::default());
     let io = RelayRoleIo::with_registration(Arc::new(Client::default()), registration.clone());
-    let roles = RelayPoolRoles::new(
-        io,
-        RelayPoolConfiguration {
-            read_relays: vec!["wss://read.example".to_owned()],
-            search_relays: vec!["wss://search.example".to_owned()],
-        },
-    );
+    let roles = RelayPoolRoles::new(io, RelayPoolConfiguration::default());
+    roles.replace_configuration(configuration()).await;
+    let first = take_calls(&registration);
+    assert_bounded_policy(&first);
 
     roles.reset_session().await;
+    let reset = take_calls(&registration);
+    assert_bounded_policy(&reset);
+    assert_eq!(urls(&first), urls(&reset));
+}
 
-    let calls = registration.calls.lock().expect("registration calls");
-    assert_eq!(calls.len(), 2);
-    for call in calls.iter() {
-        assert!(call.url.ends_with(".example"));
+fn configuration() -> RelayPoolConfiguration {
+    let mut search_relays = relay_urls("read", 4);
+    search_relays.extend(relay_urls("search", 16));
+    RelayPoolConfiguration {
+        read_relays: relay_urls("read", 20),
+        search_relays,
+    }
+}
+
+fn take_calls(registration: &RecordingRegistration) -> Vec<RecordedRegistration> {
+    std::mem::take(&mut *registration.calls.lock().expect("registration calls"))
+}
+
+fn assert_bounded_policy(calls: &[RecordedRegistration]) {
+    assert_eq!(calls.len(), 32);
+    assert!(urls(calls).contains("wss://search-11.example"));
+    assert!(!urls(calls).contains("wss://search-12.example"));
+    for call in calls {
         assert_eq!(call.policy.retry_interval, Duration::from_secs(4));
         assert!(call.policy.eager_connect);
         assert_eq!(
@@ -64,4 +80,14 @@ async fn configured_relays_connect_eagerly_with_a_four_second_base() {
             RelayServiceFlags::PING | RelayServiceFlags::READ
         );
     }
+}
+
+fn urls(calls: &[RecordedRegistration]) -> BTreeSet<String> {
+    calls.iter().map(|call| call.url.clone()).collect()
+}
+
+fn relay_urls(kind: &str, count: usize) -> Vec<String> {
+    (0..count)
+        .map(|index| format!("wss://{kind}-{index}.example"))
+        .collect()
 }

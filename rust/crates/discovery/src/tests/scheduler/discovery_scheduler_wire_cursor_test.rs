@@ -56,6 +56,7 @@ async fn scheduler_uses_the_shallowest_wire_filter_cursor() {
             vec![PlanPage {
                 events,
                 cursor: Some(Timestamp::from(99)),
+                complete: true,
                 repost_retry: Default::default(),
             }]
             .into(),

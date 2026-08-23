@@ -8,6 +8,8 @@ use nostr_sdk::{Client, RelayServiceFlags};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+pub(crate) const MAX_RELAY_READ_FANOUT: usize = 32;
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct RelayPoolConfiguration {
     pub read_relays: Vec<String>,
@@ -33,7 +35,7 @@ impl RelayPoolRoles {
             client: io.client,
             removal: io.removal,
             registration: io.registration,
-            book: Mutex::new(RoleBook::new(configuration)),
+            book: Mutex::new(RoleBook::new(configuration.bounded())),
         }
     }
 
@@ -62,7 +64,7 @@ impl RelayPoolRoles {
     pub(crate) async fn replace_configuration(&self, configuration: RelayPoolConfiguration) {
         let mut book = self.book.lock().await;
         book.clear();
-        book.configuration = configuration;
+        book.configuration = configuration.bounded();
         self.reconcile(&book).await;
     }
 
@@ -120,4 +122,27 @@ impl RelayPoolRoles {
             self.registration.forget(url);
         }
     }
+}
+
+impl RelayPoolConfiguration {
+    fn bounded(self) -> Self {
+        let read_relays = bounded_relay_targets(self.read_relays);
+        let remaining = MAX_RELAY_READ_FANOUT.saturating_sub(read_relays.len());
+        let search_relays = unique(&self.search_relays)
+            .into_iter()
+            .filter(|relay| !read_relays.contains(relay))
+            .take(remaining)
+            .collect();
+        Self {
+            read_relays,
+            search_relays,
+        }
+    }
+}
+
+pub(crate) fn bounded_relay_targets(relays: Vec<String>) -> Vec<String> {
+    unique(&relays)
+        .into_iter()
+        .take(MAX_RELAY_READ_FANOUT)
+        .collect()
 }

@@ -5,12 +5,11 @@
 
 #[cfg(test)]
 use crate::query::search::{OutboxRoute, PlannedQuery, QueryRole, RelayTarget};
-use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo};
+use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo, RelayReadResult};
 #[cfg(test)]
 use crate::relay::pool::RelayReadRequest;
 #[cfg(test)]
 use crate::session_generation::SessionGeneration;
-use nostr_sdk::Event;
 #[cfg(test)]
 use nostr_sdk::Filter;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -64,12 +63,12 @@ impl TestRelayIo {
 }
 
 impl RelayIo for TestRelayIo {
-    fn read(&self, _request: RelayReadIo) -> RelayIoFuture<'_, Vec<Event>> {
+    fn read(&self, _request: RelayReadIo) -> RelayIoFuture<'_, RelayReadResult> {
         Box::pin(async move {
             self.reads.fetch_add(1, Ordering::SeqCst);
             self.query_started.notify_one();
             Self::pass(&self.query_gate).await?;
-            Ok(Vec::new())
+            Ok(RelayReadResult::complete(Vec::new()))
         })
     }
 

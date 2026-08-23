@@ -12,6 +12,7 @@ extension _VideoPlayerSurfaceLoading on _VideoPlayerSurfaceState {
     _clearPendingCancellation(cancellation);
     if (permit == null) return;
     final preparation = _preparePreparation();
+    preparation?.begin();
     final controller = _claimController(permit, preparation);
     if (controller == null) return;
     final superseded = _ownController(controller);

@@ -1,5 +1,6 @@
 //! Linearized session-safe access to the process-wide Nostr relay pool.
 
+use crate::relay::health::RelayHealth;
 use crate::relay::io::{RelayIo, SdkRelayIo};
 use crate::relay::removal::RelayRoleIo;
 use crate::relay::roles::RelayPoolRoles;
@@ -25,6 +26,7 @@ pub struct RelayPoolOwner {
     pub(super) lifecycle: Arc<StdMutex<Lifecycle>>,
     pub(super) cancellations: watch::Sender<u64>,
     pub(super) io: Arc<dyn RelayIo>,
+    pub(super) health: Arc<RelayHealth>,
 }
 
 pub(crate) struct RelayReadRequest {
@@ -49,8 +51,9 @@ pub(super) struct Lifecycle {
 
 impl RelayPoolOwner {
     pub fn new(client: Arc<Client>, configuration: RelayPoolConfiguration) -> Self {
+        let health = Arc::new(RelayHealth::new());
         let io = Arc::new(SdkRelayIo::new(client.clone()));
-        Self::with_io(client, configuration, io)
+        Self::with_components(configuration, io, RelayRoleIo::sdk(client), health)
     }
 
     pub fn with_io(
@@ -58,9 +61,32 @@ impl RelayPoolOwner {
         configuration: RelayPoolConfiguration,
         io: Arc<dyn RelayIo>,
     ) -> Self {
+        Self::with_components(
+            configuration,
+            io,
+            RelayRoleIo::sdk(client),
+            Arc::new(RelayHealth::new()),
+        )
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_role_io(
+        configuration: RelayPoolConfiguration,
+        io: Arc<dyn RelayIo>,
+        roles: RelayRoleIo,
+    ) -> Self {
+        Self::with_components(configuration, io, roles, Arc::new(RelayHealth::new()))
+    }
+
+    fn with_components(
+        configuration: RelayPoolConfiguration,
+        io: Arc<dyn RelayIo>,
+        roles: RelayRoleIo,
+        health: Arc<RelayHealth>,
+    ) -> Self {
         let (cancellations, _) = watch::channel(0);
         Self {
-            roles: Arc::new(RelayPoolRoles::new(RelayRoleIo::sdk(client), configuration)),
+            roles: Arc::new(RelayPoolRoles::new(roles, configuration)),
             barrier: Arc::new(RwLock::new(())),
             transition_serial: Arc::new(Mutex::new(())),
             lifecycle: Arc::new(StdMutex::new(Lifecycle {
@@ -71,11 +97,15 @@ impl RelayPoolOwner {
             })),
             cancellations,
             io,
+            health,
         }
     }
 
     #[cfg(test)]
-    pub(crate) async fn read(&self, request: RelayReadRequest) -> Result<Vec<Event>, PlanFailure> {
+    pub(crate) async fn read(
+        &self,
+        request: RelayReadRequest,
+    ) -> Result<crate::relay::io::RelayReadResult, PlanFailure> {
         self.begin_route(request.session).await?.read(request).await
     }
 

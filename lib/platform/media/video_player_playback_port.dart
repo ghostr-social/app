@@ -9,6 +9,7 @@ import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/core/media/progressive_playback_refresh_port.dart';
 import 'package:ghostr/core/media/video_media_cache_identity.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
+import 'package:ghostr/core/media/video_representation_id.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_observation.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_recovery_policy.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_screen_awake_port.dart';

@@ -15,7 +15,7 @@ fn empty_head_hunt_settles_and_notifies_without_dropping_rows() {
     state.apply_started(&context);
     let revisions = state.subscribe(feed).expect("feed subscription");
 
-    state.apply_retrieval(&context, Ok(Vec::new()), None, RetrievalPurpose::Head);
+    state.apply_retrieval(&context, Ok(Vec::new()), None, RetrievalPurpose::Head, true);
 
     assert!(revisions.has_changed().expect("revision sender alive"));
     assert_eq!(state.stage(feed), FfiFeedStage::Settled);

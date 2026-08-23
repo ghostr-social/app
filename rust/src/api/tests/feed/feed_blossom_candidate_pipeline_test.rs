@@ -52,6 +52,7 @@ async fn completed_blossom_enrichment_replaces_the_progress_candidate() {
             context,
             result: Ok(vec![video, servers]),
             cursor: None,
+            complete: true,
             purpose: RetrievalPurpose::Head,
         })
         .expect("completion");

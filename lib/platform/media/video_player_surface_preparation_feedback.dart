@@ -21,7 +21,6 @@ extension _VideoPlayerSurfacePreparationFeedback on _VideoPlayerSurfaceState {
         () => _handleNativeFrame(controller, attempt),
       );
     }
-    attempt?.begin();
   }
 
   void _handleNativeFrame(
@@ -123,13 +122,37 @@ extension _VideoPlayerSurfacePreparationFeedback on _VideoPlayerSurfaceState {
 
   void _adoptRequestAuthority() {
     final authority = widget.request.authority;
-    final media = _playbackMedia;
+    final media = widget.media;
     if (authority == null ||
         media is! ProxiedProgressiveVideoMediaSource ||
         !_proxyMatches(media, authority)) {
       return;
     }
+    final previous = _playbackAuthority;
+    if (previous == null ||
+        previous.deliveryId != authority.deliveryId ||
+        previous.representationId != authority.representationId) {
+      return;
+    }
     _playbackAuthority = authority;
+    if (previous.assetId == authority.assetId) return;
+    _playbackMedia = media;
+    _restartUninitializedPlayback();
+  }
+
+  void _restartUninitializedPlayback() {
+    final controller = _controller;
+    if (controller?.value.isInitialized == true && _isObserving) return;
+    _cancelRecovery();
+    _resetRecoveryBudget();
+    if (_recoveryState != _VideoPlayerRecoveryState.ready) {
+      _refresh(() => _recoveryState = _VideoPlayerRecoveryState.ready);
+    }
+    if (controller != null) {
+      _relinquishController(controller);
+      _lifecycle.track(_disposeSafely(controller));
+    }
+    _startLoad();
   }
 }
 

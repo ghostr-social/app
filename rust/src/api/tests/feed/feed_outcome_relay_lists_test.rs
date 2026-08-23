@@ -60,6 +60,7 @@ async fn a_landed_follow_list_routes_the_feed_to_the_follows_relays() {
                 relay_list_event(&follow, &["wss://follow.write"], 10),
             ]),
             cursor: None,
+            complete: true,
             purpose: RetrievalPurpose::Head,
         })
         .expect("the pump should be listening");

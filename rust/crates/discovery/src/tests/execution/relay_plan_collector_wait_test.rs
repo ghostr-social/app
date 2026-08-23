@@ -27,7 +27,7 @@ fn pending_fetch(dropped: oneshot::Sender<()>) -> JoinHandle<Result<FetchedEvent
 }
 
 #[tokio::test]
-async fn primary_failure_waits_for_additive_fetch_completion() {
+async fn primary_failure_waits_for_additive_safe_completion() {
     let primary = tokio::spawn(async { Err(PlanFailure::new("primary failed")) });
     let (release, wait) = oneshot::channel();
     let additive = tokio::spawn(async move {
@@ -43,11 +43,11 @@ async fn primary_failure_waits_for_additive_fetch_completion() {
         .await
         .is_err());
     let _ = release.send(());
-    let failure = collection
+    let events = collection
         .await
         .expect("collector task")
-        .expect_err("primary");
-    assert_eq!(failure.message, "primary failed");
+        .expect("safe additive result");
+    assert!(events.is_empty());
 }
 
 #[tokio::test]

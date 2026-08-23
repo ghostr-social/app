@@ -3,10 +3,10 @@
 //! free worker slots — never a periodic wake-up.
 
 use crate::feed::cursor::playable_cursor;
+use crate::plan_executor::PlanPage;
 use crate::query::search::{plan_discovery, QueryPlan};
 use crate::retrieval_types::{
-    FeedContext, PlanFailure, RetrievalOutcome, RetrievalPriority, RetrievalPurpose,
-    RetrievalRequest,
+    FeedContext, RetrievalOutcome, RetrievalPriority, RetrievalPurpose, RetrievalRequest,
 };
 use crate::scheduler::control::{discovery_action, DiscoveryAction};
 use crate::scheduler::plans::widened_plan;
@@ -14,7 +14,6 @@ use crate::scheduler::progress::{spawn_retrieval_task, RetrievalTaskInput};
 use crate::scheduler::retry::should_retry_feed;
 use crate::scheduler::{ActiveRetrieval, DiscoveryCommand, FinishedRetrieval, SchedulerWorker};
 use ghostr_engine::adaptive::DiscoveryDemand;
-use nostr_sdk::{Event, Timestamp};
 
 enum Wake {
     Command(DiscoveryCommand),
@@ -106,12 +105,14 @@ impl SchedulerWorker {
         }
         self.feeds.record_done(&done.context);
         let repost_retry = self.apply_repost_retry(&mut done);
-        let cursor = done.result.as_ref().ok().and_then(|page| page.cursor);
-        let result = done.result.map(|page| page.events);
-        let result = match self.queries.finish(&done.context, result) {
+        let page = match self.queries.finish(&done.context, done.result) {
             Ok(()) => return,
             Err(result) => result,
         };
+        let cursor = page.as_ref().ok().and_then(|result| result.cursor);
+        let complete = page.as_ref().is_ok_and(|result| result.complete);
+        self.record_feed_result(&done.context, &page, done.purpose);
+        let result = page.map(|result| result.events);
         if done.had_playable_progress {
             self.feeds.record_playable(&done.context);
         }
@@ -120,13 +121,14 @@ impl SchedulerWorker {
                 &result,
                 done.purpose,
                 self.feeds.has_playable(&done.context),
+                complete,
             );
-        self.record_feed_result(&done.context, &result, cursor, done.purpose);
         let context = done.context;
         let _ = self.outcomes.send(RetrievalOutcome::Completed {
             context: context.clone(),
             result,
             cursor,
+            complete,
             purpose: done.purpose,
         });
         self.advance_feed(context, retry, done.purpose);
@@ -144,18 +146,20 @@ impl SchedulerWorker {
     fn record_feed_result(
         &mut self,
         context: &FeedContext,
-        result: &Result<Vec<Event>, PlanFailure>,
-        query_cursor: Option<Timestamp>,
+        result: &Result<PlanPage, crate::retrieval_types::PlanFailure>,
         purpose: RetrievalPurpose,
     ) {
-        let Ok(events) = result else {
+        let Ok(page) = result else {
             return self.feeds.record_failure(context);
         };
+        if !page.complete {
+            return self.feeds.record_failure(context);
+        }
         self.feeds.record_page(
             context,
-            query_cursor,
+            page.cursor,
             purpose == RetrievalPurpose::Head,
-            playable_cursor(events).is_some(),
+            playable_cursor(&page.events).is_some(),
         );
     }
 

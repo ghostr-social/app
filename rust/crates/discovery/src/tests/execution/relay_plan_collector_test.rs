@@ -5,11 +5,7 @@
 //! Draining the pool's stream preserves each relay's contribution before
 //! the engine merges the union.
 
-use crate::execution::collector::collect_events;
-use crate::execution::fetch::FetchedEvents;
-use crate::query::search::QueryRole;
 use crate::relay::io::drain_events;
-use crate::retrieval_types::PlanFailure;
 use nostr_sdk::prelude::*;
 
 fn note(keys: &Keys, created_at: u64) -> Event {
@@ -47,23 +43,4 @@ async fn the_capped_collection_would_have_dropped_the_oldest() {
 
     assert_eq!(capped.len(), 2, "the union, not the per-relay answer");
     assert!(!capped.iter().any(|event| event.created_at.as_u64() == 100));
-}
-
-#[tokio::test]
-async fn additive_failure_keeps_the_page_unsettled() {
-    let primary_event = note(&Keys::generate(), 100);
-    let primary = tokio::spawn({
-        let event = primary_event.clone();
-        async move { Ok(FetchedEvents::fresh(vec![event])) }
-    });
-    let additive = tokio::spawn(async { Err(PlanFailure::new("additive failed")) });
-
-    let failure = collect_events(vec![
-        (QueryRole::Primary, primary),
-        (QueryRole::Additive, additive),
-    ])
-    .await
-    .expect_err("a lossy page cannot commit its cursor");
-
-    assert_eq!(failure.message, "additive failed");
 }

@@ -14,6 +14,7 @@ use crate::content::parsing::ParsedVideoPost;
 use crate::feed::spec::FeedSpec;
 
 mod occurrences;
+pub(crate) use occurrences::compact_occurrences;
 mod pages;
 mod progress;
 

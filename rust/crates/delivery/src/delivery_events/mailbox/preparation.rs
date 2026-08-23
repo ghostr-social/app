@@ -1,58 +1,138 @@
 use super::{signal, MailboxReceiver, MailboxSender};
-use crate::delivery_events::{PlayerPreparationIngress, PlayerPreparationReport};
-use ghostr_engine::PostId;
-use std::collections::{HashMap, VecDeque};
+use crate::delivery_events::{
+    PlayerPreparationAdmission, PlayerPreparationFollowup, PlayerPreparationIngress,
+    PlayerPreparationReport,
+};
+use std::collections::VecDeque;
 
-const PLAYER_PREPARATION_CAPACITY: usize = 4;
+mod ledger;
+use ledger::PreparationLedger;
 
-#[derive(Debug, Default)]
+const PLAYER_PREPARATION_PENDING_CAPACITY: usize = 32;
+
+#[derive(Debug)]
 pub(super) struct PreparationMailbox {
-    order: VecDeque<PostId>,
-    reports: HashMap<PostId, PlayerPreparationReport>,
+    pending: VecDeque<PlayerPreparationReport>,
+    ledger: PreparationLedger,
+    admission_epoch: u64,
+}
+
+impl Default for PreparationMailbox {
+    fn default() -> Self {
+        Self {
+            pending: VecDeque::new(),
+            ledger: PreparationLedger::default(),
+            admission_epoch: 1,
+        }
+    }
 }
 
 impl PreparationMailbox {
-    fn insert(&mut self, report: PlayerPreparationReport) -> PlayerPreparationIngress {
-        let post = report.post().clone();
-        if let Some(previous) = self.reports.get(&post) {
-            if !report.supersedes(previous) {
-                return PlayerPreparationIngress::Stale;
-            }
-            self.reports.insert(post, report);
-            return PlayerPreparationIngress::Accepted;
+    fn admission(&self) -> PlayerPreparationAdmission {
+        PlayerPreparationAdmission::new(self.admission_epoch)
+    }
+
+    fn insert_initial(
+        &mut self,
+        admission: PlayerPreparationAdmission,
+        report: PlayerPreparationReport,
+    ) -> PlayerPreparationIngress {
+        if admission.epoch() != self.admission_epoch || !report.is_initial() {
+            return PlayerPreparationIngress::Rejected;
         }
-        if self.reports.len() >= PLAYER_PREPARATION_CAPACITY {
+        let cutover = report.client_epoch() > self.ledger.latest_client_epoch();
+        let mut ledger = self.ledger.clone();
+        let released = match ledger.admit_initial(&report) {
+            Ok(released) => released,
+            Err(denied) => return denied,
+        };
+        let pending = if cutover { 0 } else { self.pending.len() };
+        let added = usize::from(released.is_some()) + 1;
+        if !Self::has_capacity(pending, ledger.active_len(), added) {
             return PlayerPreparationIngress::Saturated;
         }
-        self.order.push_back(post.clone());
-        self.reports.insert(post, report);
+        self.commit_initial(ledger, released, report, cutover);
         PlayerPreparationIngress::Accepted
     }
 
+    fn commit_initial(
+        &mut self,
+        ledger: PreparationLedger,
+        released: Option<PlayerPreparationReport>,
+        report: PlayerPreparationReport,
+        cutover: bool,
+    ) {
+        if cutover {
+            self.pending.clear();
+        }
+        self.ledger = ledger;
+        if let Some(released) = released {
+            self.pending.push_back(released);
+        }
+        self.pending.push_back(report);
+    }
+
+    fn insert_followup(&mut self, report: PlayerPreparationFollowup) -> PlayerPreparationIngress {
+        let mut ledger = self.ledger.clone();
+        let report = match ledger.admit_followup(report) {
+            Ok(report) => report,
+            Err(denied) => return denied,
+        };
+        if !Self::has_capacity(self.pending.len(), ledger.active_len(), 1) {
+            return PlayerPreparationIngress::Saturated;
+        }
+        self.ledger = ledger;
+        self.pending.push_back(report);
+        PlayerPreparationIngress::Accepted
+    }
+
+    fn has_capacity(pending: usize, active: usize, added: usize) -> bool {
+        pending + active + added <= PLAYER_PREPARATION_PENDING_CAPACITY
+    }
+
     fn pop(&mut self) -> Option<PlayerPreparationReport> {
-        let post = self.order.pop_front()?;
-        self.reports.remove(&post)
+        self.pending.pop_front()
     }
 
     pub(super) fn clear(&mut self) {
-        self.order.clear();
-        self.reports.clear();
+        self.pending.clear();
+        self.ledger.clear();
+        self.admission_epoch = self.admission_epoch.saturating_add(1);
     }
 
     fn is_empty(&self) -> bool {
-        self.reports.is_empty()
+        self.pending.is_empty()
     }
 }
 
 impl MailboxSender {
-    pub(crate) fn send_player_preparation(
+    pub(crate) fn player_preparation_admission(&self) -> PlayerPreparationAdmission {
+        self.lock().preparations.admission()
+    }
+
+    pub(crate) fn send_player_preparation_initial(
         &self,
+        admission: PlayerPreparationAdmission,
         report: PlayerPreparationReport,
+    ) -> PlayerPreparationIngress {
+        self.send_preparation(|mailbox| mailbox.insert_initial(admission, report))
+    }
+
+    pub(crate) fn send_player_preparation_followup(
+        &self,
+        report: PlayerPreparationFollowup,
+    ) -> PlayerPreparationIngress {
+        self.send_preparation(|mailbox| mailbox.insert_followup(report))
+    }
+
+    fn send_preparation(
+        &self,
+        insert: impl FnOnce(&mut PreparationMailbox) -> PlayerPreparationIngress,
     ) -> PlayerPreparationIngress {
         if self.preparation_wake.is_closed() {
             return PlayerPreparationIngress::Closed;
         }
-        let admission = self.lock().preparations.insert(report);
+        let admission = insert(&mut self.lock().preparations);
         if admission != PlayerPreparationIngress::Accepted {
             return admission;
         }

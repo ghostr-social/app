@@ -1,4 +1,4 @@
-//! Generic FFI reads return locally admitted rows while relays are unavailable.
+//! Generic FFI reads never present cache-only rows as an authoritative result.
 
 use crate::api::engine_control::{ffi_start_engine, FfiDataUsageLevel, FfiEngineConfiguration};
 use crate::api::event_control::ffi_query_events;
@@ -8,7 +8,7 @@ use crate::api::runtime::registry;
 use nostr_sdk::{EventBuilder, Keys, Kind};
 
 #[tokio::test]
-async fn generic_query_returns_an_accepted_event_from_the_session_pool() {
+async fn generic_query_rejects_a_cache_only_partial_result() {
     let event = EventBuilder::new(Kind::Reaction, "+")
         .sign_with_keys(&Keys::generate())
         .expect("signed event");
@@ -30,7 +30,7 @@ async fn generic_query_returns_an_accepted_event_from_the_session_pool() {
     let session = engine.discovery.session_generation();
     engine.discovery.remember_accepted(session, &event).await;
 
-    let found = ffi_query_events(FfiNostrEventFilter {
+    let error = ffi_query_events(FfiNostrEventFilter {
         kinds: vec![Kind::Reaction.as_u16()],
         authors: Vec::new(),
         event_tags: Vec::new(),
@@ -40,9 +40,10 @@ async fn generic_query_returns_an_accepted_event_from_the_session_pool() {
         search: None,
     })
     .await
-    .expect("warm query");
+    .expect_err("cache fallback is not an authoritative relay answer");
 
-    assert_eq!(found.len(), 1);
-    assert_eq!(found[0].id, event.id.to_hex());
+    assert!(error
+        .to_string()
+        .contains("did not complete authoritatively"));
     std::fs::remove_dir_all(directory).expect("remove cache");
 }

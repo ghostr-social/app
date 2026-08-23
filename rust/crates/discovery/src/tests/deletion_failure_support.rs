@@ -1,6 +1,6 @@
 use crate::cache::client_with_event_cache;
 use crate::execution::relay_executor::RelayPlanExecutor;
-use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo};
+use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo, RelayReadResult};
 use crate::relay::pool::{RelayPoolConfiguration, RelayPoolOwner};
 use crate::tests::outbox_support::{empty_directory, BOOTSTRAP_RELAY};
 use ghostr_engine::DataUsageLevel;
@@ -27,8 +27,8 @@ impl DeletionFailureIo {
 }
 
 impl RelayIo for DeletionFailureIo {
-    fn read(&self, request: RelayReadIo) -> RelayIoFuture<'_, Vec<Event>> {
-        Box::pin(async move { self.events_for(&request) })
+    fn read(&self, request: RelayReadIo) -> RelayIoFuture<'_, RelayReadResult> {
+        Box::pin(async move { self.events_for(&request).map(RelayReadResult::complete) })
     }
 
     fn broadcast(&self, _: RelayBroadcastIo) -> RelayIoFuture<'_, ()> {

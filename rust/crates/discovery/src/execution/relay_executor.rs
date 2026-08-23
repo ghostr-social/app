@@ -28,7 +28,7 @@ mod deletion_planning;
 mod deletion_targets;
 mod execution;
 mod fetches;
-mod profile_enrichment;
+pub(crate) mod profile_enrichment;
 mod repost_retry;
 mod repost_support;
 mod target_dependencies;

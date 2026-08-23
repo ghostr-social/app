@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:ghostr/core/media/playback_asset_authority.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/prepared_progressive_playback.dart';
 import 'package:ghostr/core/media/video_media_cache_identity.dart';
@@ -58,7 +59,15 @@ final class GatewayPlaybackCubit extends Cubit<GatewayPlaybackState> {
     VideoMediaSource origin,
     PreparedProgressivePlayback? prepared,
   ) {
-    if (prepared == null || state is GatewayPlaybackReady) {
+    if (prepared == null) {
+      return Future<void>.value();
+    }
+    if (!prepared.matches(origin)) {
+      throw ArgumentError.value(prepared, 'prepared', 'Origin mismatch.');
+    }
+    final current = state;
+    if (current is GatewayPlaybackReady &&
+        current.media.playbackAssetId == prepared.authority.assetId) {
       return Future<void>.value();
     }
     return _publishPrepared(origin, prepared);

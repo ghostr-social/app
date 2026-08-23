@@ -32,8 +32,15 @@ pub(crate) fn should_retry_feed(
     result: &Result<Vec<Event>, PlanFailure>,
     purpose: RetrievalPurpose,
     has_playable: bool,
+    complete: bool,
 ) -> bool {
-    if purpose != RetrievalPurpose::Head || has_playable {
+    if purpose != RetrievalPurpose::Head {
+        return false;
+    }
+    if !complete && result.is_ok() {
+        return true;
+    }
+    if has_playable {
         return false;
     }
     match result {

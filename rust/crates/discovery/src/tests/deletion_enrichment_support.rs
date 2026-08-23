@@ -1,6 +1,6 @@
 use crate::cache::client_with_event_cache;
 use crate::execution::relay_executor::RelayPlanExecutor;
-use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo};
+use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo, RelayReadResult};
 use crate::relay::pool::{RelayPoolConfiguration, RelayPoolOwner};
 use crate::tests::outbox_support::{empty_directory, BOOTSTRAP_RELAY};
 use ghostr_engine::DataUsageLevel;
@@ -24,19 +24,19 @@ impl DeletionIo {
 }
 
 impl RelayIo for DeletionIo {
-    fn read(&self, request: RelayReadIo) -> RelayIoFuture<'_, Vec<Event>> {
+    fn read(&self, request: RelayReadIo) -> RelayIoFuture<'_, RelayReadResult> {
         Box::pin(async move {
             self.filters
                 .lock()
                 .expect("filters")
                 .push(request.filter.clone());
             if request.filter.match_event(&self.wrapper) {
-                return Ok(vec![self.wrapper.clone()]);
+                return Ok(RelayReadResult::complete(vec![self.wrapper.clone()]));
             }
             if request.filter.match_event(&self.deletion) {
-                return Ok(vec![self.deletion.clone()]);
+                return Ok(RelayReadResult::complete(vec![self.deletion.clone()]));
             }
-            Ok(Vec::new())
+            Ok(RelayReadResult::complete(Vec::new()))
         })
     }
 

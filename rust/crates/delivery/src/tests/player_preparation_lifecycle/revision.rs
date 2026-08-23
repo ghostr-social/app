@@ -6,7 +6,7 @@ use ghostr_partial_store::partial_range_store::ContentRevision;
 use std::collections::HashMap;
 
 #[test]
-fn missing_content_revision_removes_player_evidence() {
+fn missing_content_revision_retains_live_player_evidence_until_terminal() {
     let revision = ContentRevision::default();
     let mut state = state(&["p0", "p1"], 0);
     let report = evidence(
@@ -24,6 +24,6 @@ fn missing_content_revision_removes_player_evidence() {
 
     assert_eq!(
         state.player_preparation(&PostId::new("p1"), Some(revision)),
-        PlayerPreparation::Unverified,
+        PlayerPreparation::FirstFrameRendered,
     );
 }

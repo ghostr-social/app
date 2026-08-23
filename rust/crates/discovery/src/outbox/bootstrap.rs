@@ -149,18 +149,19 @@ impl OutboxBootstrap {
         let outcomes = self.outcomes.clone();
         let session = self.session.clone();
         tokio::spawn(async move {
-            let result = executor.execute(retrieval).await;
-            let cursor = result
-                .as_ref()
-                .ok()
-                .and_then(|events| crate::feed::cursor::retrieval_cursor(events));
-            if result.is_err() {
+            let page = executor.execute_page(retrieval).await;
+            let (result, cursor, complete) = match page {
+                Ok(page) => (Ok(page.events), page.cursor, page.complete),
+                Err(failure) => (Err(failure), None, false),
+            };
+            if !complete {
                 release(&session, generation, &claimed);
             }
             let _ = outcomes.send(RetrievalOutcome::Completed {
                 context,
                 result,
                 cursor,
+                complete,
                 purpose: crate::retrieval_types::RetrievalPurpose::Head,
             });
         });

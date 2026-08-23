@@ -1,6 +1,6 @@
 use crate::cache::client_with_event_cache;
 use crate::execution::relay_executor::RelayPlanExecutor;
-use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo};
+use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo, RelayReadResult};
 use crate::relay::pool::{RelayPoolConfiguration, RelayPoolOwner};
 use crate::tests::outbox_support::{empty_directory, BOOTSTRAP_RELAY};
 use ghostr_engine::DataUsageLevel;
@@ -22,7 +22,7 @@ impl SelectiveDeletionIo {
 }
 
 impl RelayIo for SelectiveDeletionIo {
-    fn read(&self, request: RelayReadIo) -> RelayIoFuture<'_, Vec<Event>> {
+    fn read(&self, request: RelayReadIo) -> RelayIoFuture<'_, RelayReadResult> {
         Box::pin(async move {
             let deletion = request
                 .filter
@@ -32,12 +32,13 @@ impl RelayIo for SelectiveDeletionIo {
             if deletion && request.relays.contains(&self.failing_relay) {
                 return Err(anyhow::anyhow!("selected deletion relay offline"));
             }
-            Ok(self
+            let events = self
                 .wrappers
                 .iter()
                 .filter(|event| request.filter.match_event(event))
                 .cloned()
-                .collect())
+                .collect();
+            Ok(RelayReadResult::complete(events))
         })
     }
 

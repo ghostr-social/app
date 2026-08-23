@@ -51,17 +51,7 @@ impl OpenFeed {
     }
 
     pub(super) fn compact_occurrences(&mut self) {
-        self.occurrences.sort_by(|left, right| {
-            right
-                .feed_sort_at
-                .cmp(&left.feed_sort_at)
-                .then_with(|| left.activity_event_id().cmp(right.activity_event_id()))
-        });
-        let mut seen = HashSet::new();
-        self.occurrences
-            .retain(|post| seen.insert(post.activity_event_id().to_owned()));
-        retain_fair_occurrences(&mut self.occurrences);
-        self.occurrences.truncate(QUERY_POST_RETENTION);
+        compact_occurrences(&mut self.occurrences, QUERY_POST_RETENTION);
     }
 
     pub(super) fn reproject(&mut self, graph: &SocialGraph) {
@@ -91,6 +81,19 @@ impl OpenFeed {
     fn deletes_occurrence(&self, post: &ParsedVideoPost) -> bool {
         self.deletions.deletes_occurrence(post)
     }
+}
+
+pub(crate) fn compact_occurrences(posts: &mut Vec<ParsedVideoPost>, limit: usize) {
+    posts.sort_by(|left, right| {
+        right
+            .feed_sort_at
+            .cmp(&left.feed_sort_at)
+            .then_with(|| left.activity_event_id().cmp(right.activity_event_id()))
+    });
+    let mut seen = HashSet::new();
+    posts.retain(|post| seen.insert(post.activity_event_id().to_owned()));
+    retain_fair_occurrences(posts);
+    posts.truncate(limit);
 }
 
 fn retain_fair_occurrences(posts: &mut Vec<ParsedVideoPost>) {

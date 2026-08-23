@@ -1,5 +1,4 @@
-//! The delivery manager's owned engine state: catalog, focus, budget,
-//! and the inventory control loop. Pure bookkeeping — no IO.
+//! Manager-owned catalog, focus, budget, and inventory state. Pure bookkeeping — no IO.
 
 use crate::candidate_priority::CandidatePriority;
 use crate::client_capability::ClientCapabilityModel;
@@ -37,6 +36,7 @@ pub(crate) struct DeliveryState {
     navigation: NavigationHistory,
     recent_evictions: HashMap<PostId, Vec<ghostr_engine::ByteRange>>,
     player_preparations: HashMap<PostId, PlayerPreparationReport>,
+    latest_player_client_epoch: u64,
     client_capabilities: ClientCapabilityModel,
     transform_profile: Option<crate::transform::TransformProfile>,
     fast_start_evidence: HashMap<PostId, fast_start::FastStartEvidence>,
@@ -83,6 +83,7 @@ impl DeliveryState {
             navigation: NavigationHistory::default(),
             recent_evictions: HashMap::new(),
             player_preparations: HashMap::new(),
+            latest_player_client_epoch: 0,
             client_capabilities: ClientCapabilityModel::default(),
             transform_profile: None,
             fast_start_evidence: Default::default(),
@@ -94,8 +95,7 @@ impl DeliveryState {
         }
     }
 
-    /// Admits relay output before UI focus. The projected current stays pinned
-    /// so newer discoveries cannot repeatedly restart first-video delivery.
+    /// Admits relay output while keeping the projected current pinned.
     pub(crate) fn apply_candidate(&mut self, candidate: DeliveryCandidate) {
         if candidate.meta.delivery != DeliveryKind::Progressive
             || self.hls_focus.contains(&candidate.post)
@@ -147,7 +147,8 @@ impl DeliveryState {
         self.changed_representations.clear();
         self.navigation = NavigationHistory::default();
         self.recent_evictions.clear();
-        self.player_preparations.clear();
+        self.prune_player_preparations(&HashMap::new());
+        self.latest_player_client_epoch = 0;
         self.fast_start_evidence.clear();
         self.active_transforms.clear();
         self.transformed_posts.clear();

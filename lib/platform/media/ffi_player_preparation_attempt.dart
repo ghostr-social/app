@@ -66,8 +66,11 @@ final class _FfiPlayerPreparationAttempt implements PlayerPreparationAttempt {
         state,
         failureKind: failureKind,
       ),
+      this,
     );
   }
+
+  void _discard() => _terminal = true;
 
   void _reportLatchedFrame() {
     if (!_pluginReady || !_nativeFrameSeen || _frameReported) return;

@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:ghostr/platform/nostr/signed_nostr_event_json.dart';
 import 'package:ndk/ndk.dart';
 
+part 'warp_feed_relay_query.dart';
+
 final class WarpFeedRelay {
   WarpFeedRelay._(this._server, this._events);
 
@@ -22,6 +24,8 @@ final class WarpFeedRelay {
   var acceptedConnections = 0;
   var requestMessages = 0;
   var videoSubscriptions = 0;
+  var eventsSent = 0;
+  final requestedFilters = <Map<String, Object?>>[];
 
   Uri get uri => Uri.parse('ws://${_server.address.address}:${_server.port}');
 
@@ -46,40 +50,6 @@ final class WarpFeedRelay {
     } finally {
       _sockets.remove(socket);
     }
-  }
-
-  Future<void> _handle(WebSocket socket, Object? raw) async {
-    if (raw is! String) return;
-    final message = jsonDecode(raw);
-    if (message is! List || message.length < 2 || message.first != 'REQ') {
-      return;
-    }
-    requestMessages += 1;
-    final subscription = message[1];
-    if (subscription is! String) return;
-    final filters = message
-        .skip(2)
-        .whereType<Map>()
-        .map((filter) => filter.cast<String, Object?>());
-    if (_requestsKind(filters, 22)) {
-      videoSubscriptions += 1;
-      for (final event in _events) {
-        socket.add(jsonEncode(['EVENT', subscription, _payload(event)]));
-      }
-      await Future<void>.delayed(Duration.zero);
-    }
-    socket.add(jsonEncode(['EOSE', subscription]));
-  }
-
-  bool _requestsKind(Iterable<Map<String, Object?>> filters, int kind) {
-    return filters.any((filter) {
-      final kinds = filter['kinds'];
-      return kinds is List && kinds.contains(kind);
-    });
-  }
-
-  Object? _payload(Nip01Event event) {
-    return jsonDecode(encodeSignedNostrEvent(event).value);
   }
 
   Future<void> close() async {

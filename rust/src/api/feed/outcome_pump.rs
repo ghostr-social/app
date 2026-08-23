@@ -21,6 +21,7 @@ struct CompletedOutcome {
     context: FeedContext,
     result: Result<Vec<Event>, PlanFailure>,
     cursor: Option<nostr_sdk::Timestamp>,
+    complete: bool,
     purpose: RetrievalPurpose,
 }
 
@@ -46,6 +47,7 @@ async fn apply_outcome(sinks: &OutcomeSinks, outcome: RetrievalOutcome) {
             context,
             result,
             cursor,
+            complete,
             purpose,
         } => {
             apply_completed(
@@ -54,6 +56,7 @@ async fn apply_outcome(sinks: &OutcomeSinks, outcome: RetrievalOutcome) {
                     context,
                     result,
                     cursor,
+                    complete,
                     purpose,
                 },
             )
@@ -71,6 +74,7 @@ async fn apply_completed(sinks: &OutcomeSinks, completed: CompletedOutcome) {
         completed.result,
         completed.cursor,
         completed.purpose,
+        completed.complete,
     );
     for candidate in admitted {
         crate::api::delivery::candidates::admit(sinks.candidates.as_ref(), Some(candidate));

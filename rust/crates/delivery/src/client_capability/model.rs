@@ -76,6 +76,12 @@ impl ClientCapabilityModel {
         self.generation
     }
 
+    pub(crate) fn abandon(&mut self, generation: u64, attempt: CapabilityAttempt) {
+        if self.generation == Some(generation) {
+            self.release(attempt);
+        }
+    }
+
     pub(crate) fn from_state(state: ClientCapabilityState) -> Self {
         let ClientCapabilityState {
             generation,

@@ -1,5 +1,6 @@
 mod event_queries_batch_test;
 mod event_queries_hints_test;
+mod search_queries_fanout_bound_test;
 mod search_queries_feed_targets_test;
 mod search_queries_hashtag_targets_test;
 mod search_queries_hinted_resolution_test;

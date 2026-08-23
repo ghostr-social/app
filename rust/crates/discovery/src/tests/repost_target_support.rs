@@ -1,4 +1,4 @@
-use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo};
+use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo, RelayReadResult};
 use nostr_sdk::Event;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -52,8 +52,8 @@ impl RepostTargetIo {
 }
 
 impl RelayIo for RepostTargetIo {
-    fn read(&self, request: RelayReadIo) -> RelayIoFuture<'_, Vec<Event>> {
-        Box::pin(async move { self.events_for(&request) })
+    fn read(&self, request: RelayReadIo) -> RelayIoFuture<'_, RelayReadResult> {
+        Box::pin(async move { self.events_for(&request).map(RelayReadResult::complete) })
     }
 
     fn broadcast(&self, _: RelayBroadcastIo) -> RelayIoFuture<'_, ()> {

@@ -8,6 +8,7 @@ use nostr_sdk::{Filter, PublicKey};
 
 use crate::cache::ViewerScope;
 use crate::query::video_filters::{discovery_filters, DiscoveryRequest};
+use crate::relay::roles::bounded_relay_targets;
 
 /// Canonical feed queries give up quickly; the feed must stay fluid.
 pub(crate) const FEED_QUERY_TIMEOUT: Duration = Duration::from_secs(5);
@@ -53,7 +54,7 @@ pub enum RelayTarget {
 /// One query's role in the assembled content page.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum QueryRole {
-    /// The video-kind query: its failure fails the whole request.
+    /// The video-kind query. Its failure keeps safe sibling results unsettled.
     Primary,
     /// Note and file results widen the pool. Their failure leaves the page
     /// unsettled so its pagination boundary remains retryable.
@@ -102,17 +103,18 @@ pub(crate) fn resolve_relays(
     search_relays: &[String],
     outbox_relays: Option<&[String]>,
 ) -> Option<Vec<String>> {
-    match target {
-        RelayTarget::SearchRelays => non_empty(search_relays.to_vec()),
+    let resolved = match target {
+        RelayTarget::SearchRelays => Some(search_relays.to_vec()),
         RelayTarget::OutboxRelays => outbox_relays.map(<[String]>::to_vec),
         RelayTarget::SearchAndOutboxRelays => {
-            non_empty(merged(search_relays, outbox_relays.unwrap_or(&[])))
+            Some(merged(search_relays, outbox_relays.unwrap_or(&[])))
         }
-        RelayTarget::HintedRelays(hints) => non_empty(merged(
+        RelayTarget::HintedRelays(hints) => Some(merged(
             hints,
             &merged(search_relays, outbox_relays.unwrap_or(&[])),
         )),
-    }
+    };
+    resolved.and_then(|relays| non_empty(bounded_relay_targets(relays)))
 }
 
 fn planned(filter: Filter, primary: bool) -> PlannedQuery {

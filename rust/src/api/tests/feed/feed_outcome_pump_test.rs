@@ -40,6 +40,7 @@ async fn pumped_outcomes_reach_the_feed_state() {
             context: open.context,
             result: Ok(vec![video_note(&keys, "clip", 40)]),
             cursor: Some(Timestamp::from(99)),
+            complete: true,
             purpose: RetrievalPurpose::Head,
         })
         .expect("the pump should be listening");

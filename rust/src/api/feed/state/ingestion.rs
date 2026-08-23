@@ -24,17 +24,30 @@ impl FeedState {
         result: Result<Vec<Event>, PlanFailure>,
         cursor: Option<nostr_sdk::Timestamp>,
         purpose: RetrievalPurpose,
+        complete: bool,
     ) -> Vec<VideoCandidate> {
         let Some(feed) = self.feed_for(context) else {
             return Vec::new();
         };
         match result {
-            Ok(events) => self.apply_events(feed, &events, cursor, purpose),
+            Ok(events) if complete => self.apply_events(feed, &events, cursor, purpose),
+            Ok(events) => self.apply_partial_events(feed, &events),
             Err(_) => {
                 self.record_failure(feed);
                 Vec::new()
             }
         }
+    }
+
+    fn apply_partial_events(&mut self, feed: FeedId, events: &[Event]) -> Vec<VideoCandidate> {
+        for event in events {
+            self.profiles.ingest(event);
+        }
+        let batch = self.candidates.inspect_all(events);
+        self.store.ingest_head_page(feed, batch.posts, &self.graph);
+        self.ingest_deletion_events(feed, events);
+        self.record_failure(feed);
+        batch.admitted
     }
 
     pub(crate) fn apply_progress(

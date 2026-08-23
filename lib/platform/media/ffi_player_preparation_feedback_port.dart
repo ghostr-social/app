@@ -35,7 +35,7 @@ final class FfiPlayerPreparationFeedbackPort
        _monotonicMicros = monotonicMicros,
        _tokenFactory = tokenFactory;
 
-  static const _pendingLimit = 3;
+  static const _pendingLimit = 6;
   static final _clock = Stopwatch()..start();
   static BigInt _lastClientEpoch = BigInt.zero;
   static var _nextAttemptGeneration = 0;
@@ -47,6 +47,8 @@ final class FfiPlayerPreparationFeedbackPort
   final PlayerPreparationTokenFactory _tokenFactory;
   final LinkedHashMap<BigInt, ListQueue<FfiPlayerPreparationReport>> _pending =
       LinkedHashMap();
+  final Set<BigInt> _dispatchedAttempts = {};
+  final Map<BigInt, _FfiPlayerPreparationAttempt> _attempts = {};
   Future<void>? _draining;
 
   @override
@@ -59,13 +61,37 @@ final class FfiPlayerPreparationFeedbackPort
     );
   }
 
-  void _send(FfiPlayerPreparationReport report) {
+  void _send(
+    FfiPlayerPreparationReport report,
+    _FfiPlayerPreparationAttempt source,
+  ) {
+    if (report.state == FfiPlayerPreparationState.initializing) {
+      _attempts[report.attemptGeneration] = source;
+    }
     final queue = _pending.putIfAbsent(report.attemptGeneration, ListQueue.new);
     queue.add(report);
-    while (_pending.length > _pendingLimit) {
-      _pending.remove(_pending.keys.first);
-    }
+    _trimPending();
     _draining ??= _drain();
+  }
+
+  void _trimPending() {
+    while (_trackedAttemptCount > _pendingLimit) {
+      final victim = _oldestUndispatchedAttempt();
+      if (victim == null) return;
+      _pending.remove(victim);
+      _attempts.remove(victim)?._discard();
+    }
+  }
+
+  int get _trackedAttemptCount =>
+      _dispatchedAttempts.length +
+      _pending.keys.where((key) => !_dispatchedAttempts.contains(key)).length;
+
+  BigInt? _oldestUndispatchedAttempt() {
+    for (final key in _pending.keys) {
+      if (!_dispatchedAttempts.contains(key)) return key;
+    }
+    return null;
   }
 
   Future<void> _drain() async {
@@ -74,6 +100,9 @@ final class FfiPlayerPreparationFeedbackPort
       final queue = _pending[key]!;
       final report = queue.removeFirst();
       if (queue.isEmpty) _pending.remove(key);
+      if (report.state == FfiPlayerPreparationState.initializing) {
+        _dispatchedAttempts.add(key);
+      }
       try {
         await _reportPreparation(input: report);
       } on Object catch (error, stackTrace) {
@@ -83,10 +112,19 @@ final class FfiPlayerPreparationFeedbackPort
           error: error,
           stackTrace: stackTrace,
         );
+      } finally {
+        if (_isTerminal(report.state)) {
+          _dispatchedAttempts.remove(key);
+          _attempts.remove(key);
+        }
       }
     }
     _draining = null;
   }
+
+  bool _isTerminal(FfiPlayerPreparationState state) =>
+      state == FfiPlayerPreparationState.failed ||
+      state == FfiPlayerPreparationState.released;
 
   FfiPlayerPreparationReport _report(
     PlaybackAssetAuthority authority,

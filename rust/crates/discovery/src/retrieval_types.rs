@@ -87,6 +87,7 @@ pub enum RetrievalOutcome {
         context: FeedContext,
         result: Result<Vec<Event>, PlanFailure>,
         cursor: Option<Timestamp>,
+        complete: bool,
         purpose: RetrievalPurpose,
     },
 }

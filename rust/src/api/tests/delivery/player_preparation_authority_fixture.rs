@@ -15,6 +15,10 @@ pub(super) struct AuthorityFixture {
 
 impl AuthorityFixture {
     pub(super) async fn seeded() -> Self {
+        Self::seeded_with(ProgressiveCapabilities::production()).await
+    }
+
+    pub(super) async fn seeded_with(capabilities: ProgressiveCapabilities) -> Self {
         let store = temp_store("ghostr-player-preparation-authority");
         let tracked = TrackedItems::new();
         let meta = sized_meta(16, 2_000);
@@ -29,7 +33,6 @@ impl AuthorityFixture {
             .representation()
             .fingerprint()
             .to_owned();
-        let capabilities = ProgressiveCapabilities::production();
         let asset = capabilities
             .issue(&snapshot)
             .await
@@ -66,10 +69,26 @@ impl AuthorityFixture {
             player_capability_generation: 1,
             client_epoch: 2,
             attempt_generation: 3,
-            sequence: 4,
-            state: FfiPlayerPreparationState::Initialized,
+            sequence: 1,
+            state: FfiPlayerPreparationState::Initializing,
             failure_kind: None,
             observed_monotonic_us: 5,
         }
+    }
+
+    pub(super) async fn renew_content_revision(&self) -> String {
+        self.context
+            .store
+            .evict_ranges("clip", &[8..16])
+            .await
+            .unwrap();
+        let snapshot = self.context.store.media_snapshot("clip").await.unwrap();
+        self.context
+            .capabilities
+            .issue(&snapshot)
+            .await
+            .unwrap()
+            .as_str()
+            .to_owned()
     }
 }

@@ -10,6 +10,8 @@ import 'device_playback_probe.dart';
 import 'device_video_scenario.dart';
 import 'device_video_server.dart';
 
+export 'device_playback_probe.dart';
+
 part 'device_playback_testbed_wait.dart';
 
 final class DevicePlaybackTestbed {

@@ -8,13 +8,12 @@ use crate::scheduler::{start_discovery_scheduler, DiscoverySchedulerConfig};
 use crate::tests::scheduler_support::{context, next_outcome, next_started};
 use ghostr_engine::{adaptive::DiscoveryDemand, DataUsageLevel};
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, Timestamp};
-use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{mpsc, watch};
 
 struct PageExecutor {
     starts: mpsc::UnboundedSender<PlannedRetrieval>,
-    pages: Mutex<VecDeque<PlanPage>>,
+    page: Mutex<Option<PlanPage>>,
 }
 
 impl PlanExecutor for PageExecutor {
@@ -28,12 +27,12 @@ impl PlanExecutor for PageExecutor {
         _: EventProgress,
     ) -> PlanPageFuture {
         let _ = self.starts.send(retrieval);
-        let page = self.pages.lock().expect("pages").pop_front();
+        let page = self.page.lock().expect("page").take();
         Box::pin(async move {
-            match page {
-                Some(page) => Ok(page),
-                None => std::future::pending().await,
-            }
+            let Some(page) = page else {
+                return std::future::pending().await;
+            };
+            Ok(page)
         })
     }
 }
@@ -67,7 +66,7 @@ fn executor(page: PlanPage) -> (Arc<PageExecutor>, mpsc::UnboundedReceiver<Plann
     let (starts, started) = mpsc::unbounded_channel();
     let executor = PageExecutor {
         starts,
-        pages: Mutex::new(vec![page].into()),
+        page: Mutex::new(Some(page)),
     };
     (Arc::new(executor), started)
 }
@@ -76,6 +75,7 @@ fn page_with_retry(wrapper: Event) -> PlanPage {
     PlanPage {
         events: Vec::new(),
         cursor: Some(Timestamp::from(99)),
+        complete: true,
         repost_retry: RepostRetryDelta {
             considered: Vec::new(),
             deferred: vec![wrapper],
@@ -96,5 +96,5 @@ fn following_request() -> crate::query::video_filters::DiscoveryRequest {
 fn signed_wrapper() -> Event {
     EventBuilder::new(Kind::Custom(16), "")
         .sign_with_keys(&Keys::generate())
-        .expect("wrapper")
+        .unwrap()
 }

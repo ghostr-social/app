@@ -27,9 +27,13 @@ pub async fn report_unsupported(
 ) {
     use ghostr_delivery::delivery_events::*;
     let revision = store.media_snapshot("post").await.unwrap().revision();
-    let authority =
-        PlayerPreparationAuthority::try_new(ghostr_engine::PostId::new("post"), binding, revision)
-            .unwrap();
+    let authority = PlayerPreparationAuthority::try_new(
+        ghostr_engine::PostId::new("post"),
+        binding,
+        revision,
+        "asset".to_owned(),
+    )
+    .unwrap();
     let attempt = PlayerPreparationAttempt::try_new(1, 1, 1).unwrap();
     send(
         handle,

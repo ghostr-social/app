@@ -1,6 +1,6 @@
 use crate::cache::client_with_event_cache;
 use crate::execution::relay_executor::RelayPlanExecutor;
-use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo};
+use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo, RelayReadResult};
 use crate::relay::pool::{RelayPoolConfiguration, RelayPoolOwner};
 use crate::tests::outbox_support::{empty_directory, BOOTSTRAP_RELAY};
 use ghostr_engine::DataUsageLevel;
@@ -38,19 +38,19 @@ impl ProfileIo {
 }
 
 impl RelayIo for ProfileIo {
-    fn read(&self, request: RelayReadIo) -> RelayIoFuture<'_, Vec<Event>> {
+    fn read(&self, request: RelayReadIo) -> RelayIoFuture<'_, RelayReadResult> {
         Box::pin(async move {
             self.filters
                 .lock()
                 .expect("filters")
                 .push(request.filter.clone());
             if has_kind(&request.filter, Kind::Metadata) {
-                return Ok(vec![self.profile.clone()]);
+                return Ok(RelayReadResult::complete(vec![self.profile.clone()]));
             }
             if self.answers_primary(&request.filter) {
-                return Ok(vec![self.primary.clone()]);
+                return Ok(RelayReadResult::complete(vec![self.primary.clone()]));
             }
-            Ok(Vec::new())
+            Ok(RelayReadResult::complete(Vec::new()))
         })
     }
 

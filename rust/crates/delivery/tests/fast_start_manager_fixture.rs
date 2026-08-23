@@ -21,5 +21,11 @@ pub fn authority(
     binding: RepresentationBinding,
     revision: ContentRevision,
 ) -> PlayerPreparationAuthority {
-    PlayerPreparationAuthority::try_new(binding.post().clone(), binding, revision).unwrap()
+    PlayerPreparationAuthority::try_new(
+        binding.post().clone(),
+        binding,
+        revision,
+        "asset".to_owned(),
+    )
+    .unwrap()
 }

@@ -22,11 +22,12 @@ async fn cold_disconnected_read_is_not_authoritative_empty() {
             filter: Filter::new(),
             timeout: Duration::ZERO,
             progress: None,
+            admissions: None,
         })
         .await
         .expect_err("a cold relay cannot prove that the query is empty");
 
-    assert!(error.to_string().contains("no target relay connected"));
+    assert!(format!("{error:#}").contains("did not connect"));
 }
 
 #[tokio::test]
@@ -60,14 +61,19 @@ async fn connected_relay_requests_complete_through_the_adapter() {
         .expect("mock relay should be accepted");
     let io = SdkRelayIo::with_readiness_timeout(client, Duration::from_secs(2));
 
-    io.read(RelayReadIo {
-        relays: vec![relay],
-        filter: Filter::new(),
-        timeout: Duration::from_secs(1),
-        progress: None,
-    })
-    .await
-    .expect("connected relay read");
+    let result = io
+        .read(RelayReadIo {
+            relays: vec![relay],
+            filter: Filter::new(),
+            timeout: Duration::from_secs(1),
+            progress: None,
+            admissions: None,
+        })
+        .await
+        .expect("connected relay read");
+
+    assert_eq!(result.events, vec![event.clone()]);
+    assert!(result.complete);
 
     let broadcast_relay = relay_serving(event.clone()).await;
     let broadcast_client = Arc::new(Client::default());

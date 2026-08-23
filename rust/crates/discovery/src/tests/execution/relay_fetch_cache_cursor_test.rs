@@ -3,7 +3,7 @@ use crate::execution::collector::collect_page;
 use crate::execution::fetch::{fetch, RelayFetch};
 use crate::query::events::plan_event_queries;
 use crate::query::search::QueryRole;
-use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo};
+use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo, RelayReadResult};
 use crate::relay::pool::{RelayPoolConfiguration, RelayPoolOwner};
 use crate::session_generation::SessionGeneration;
 use nostr_sdk::{Client, Event, EventBuilder, Filter, Keys, Kind, Timestamp};
@@ -53,8 +53,8 @@ fn note(created_at: u64) -> Event {
 struct ReturningIo(Vec<Event>);
 
 impl RelayIo for ReturningIo {
-    fn read(&self, _: RelayReadIo) -> RelayIoFuture<'_, Vec<Event>> {
-        Box::pin(async { Ok(self.0.clone()) })
+    fn read(&self, _: RelayReadIo) -> RelayIoFuture<'_, RelayReadResult> {
+        Box::pin(async { Ok(RelayReadResult::complete(self.0.clone())) })
     }
 
     fn broadcast(&self, _: RelayBroadcastIo) -> RelayIoFuture<'_, ()> {

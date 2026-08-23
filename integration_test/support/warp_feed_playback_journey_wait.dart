@@ -20,8 +20,15 @@ extension WarpFeedPlaybackJourneyWait on WarpFeedPlaybackJourney {
     return _wait(tester, () => telemetry.probe.playingLatency(focus) != null);
   }
 
+  Future<void> waitForFirstFrame(WidgetTester tester, PlaybackFocus focus) {
+    return _wait(
+      tester,
+      () => telemetry.probe.firstFrameLatency(focus) != null,
+    );
+  }
+
   Future<void> waitForPreparation(WidgetTester tester) {
-    return _wait(tester, () => preparation.maximumReadyDepth >= 1);
+    return _wait(tester, () => preparation.maximumStructuralDepth >= 1);
   }
 
   Future<void> waitForParallelRangedVideos(WidgetTester tester) {
@@ -44,20 +51,6 @@ extension WarpFeedPlaybackJourneyWait on WarpFeedPlaybackJourney {
     }
   }
 
-  void reportStartup(PlaybackFocus focus) {
-    final latency = telemetry.probe.playingLatency(focus)?.inMilliseconds;
-    debugPrint('WARP_QOE startup_ms=$latency');
-  }
-
-  void reportFinal(PlaybackFocus focus) {
-    final latency = telemetry.probe.playingLatency(focus)?.inMilliseconds;
-    debugPrint(
-      'WARP_QOE focus_switch_ms=$latency '
-      'ready_depth=${preparation.maximumReadyDepth} '
-      'rebuffer_ratio=${telemetry.probe.rebufferRatio}',
-    );
-  }
-
   Future<void> _wait(
     WidgetTester tester,
     bool Function() condition, {
@@ -76,8 +69,11 @@ extension WarpFeedPlaybackJourneyWait on WarpFeedPlaybackJourney {
         'relayConnections=${relay.acceptedConnections}, '
         'relayRequests=${relay.requestMessages}, '
         'videoSubscriptions=${relay.videoSubscriptions}, '
+        'eventsSent=${relay.eventsSent}, '
+        'rust=${graph.rustProbe.evidence}, '
         'originRequests=${resources.origin.requests.length}, '
-        'readyDepth=${preparation.maximumReadyDepth}.';
+        'structuralDepth=${preparation.maximumStructuralDepth}, '
+        'filters=${relay.requestedFilters}.';
   }
 }
 

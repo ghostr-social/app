@@ -1,10 +1,11 @@
 //! A stable configuration route held through its relay network operations.
 
-use crate::relay::io::{RelayBroadcastIo, RelayReadIo};
+use crate::relay::io::{RelayBroadcastIo, RelayReadIo, RelayReadResult};
 use crate::relay::pool::{
     session_failure, RelayBroadcastRequest, RelayPoolOwner, RelayReadRequest,
 };
-use crate::relay::roles::RelayRole;
+use crate::relay::role_book::unique;
+use crate::relay::roles::{bounded_relay_targets, RelayRole, MAX_RELAY_READ_FANOUT};
 use crate::retrieval_types::PlanFailure;
 use std::sync::Arc;
 use tokio::sync::{oneshot, watch, OwnedRwLockReadGuard};
@@ -44,7 +45,7 @@ impl RelayPoolRoute {
     pub(crate) async fn read(
         self: &Arc<Self>,
         request: RelayReadRequest,
-    ) -> Result<Vec<nostr_sdk::Event>, PlanFailure> {
+    ) -> Result<RelayReadResult, PlanFailure> {
         let (lifetime, cancelled) = oneshot::channel();
         let route = self.clone();
         let task = tokio::spawn(async move { route.read_owned(request, cancelled).await });
@@ -59,17 +60,28 @@ impl RelayPoolRoute {
         &self,
         request: RelayReadRequest,
         mut cancelled: oneshot::Receiver<()>,
-    ) -> Result<Vec<nostr_sdk::Event>, PlanFailure> {
+    ) -> Result<RelayReadResult, PlanFailure> {
         self.ensure_request(request.session)?;
-        let relays = self.read_targets(request.relays.clone()).await;
+        let relays = self.read_targets(request.relays.clone()).await?;
         if relays.is_empty() {
             return Err(PlanFailure::new(NO_RELAYS_MESSAGE));
         }
+        let admissions = self.owner.health.batch(&relays);
+        if admissions.is_empty() {
+            return Ok(RelayReadResult::incomplete(Vec::new()));
+        }
+        let relays = admissions.urls();
         let leased = self.owner.roles.acquire(&relays, RelayRole::Read).await;
-        let result = tokio::select! {
-            result = self.read_io(leased.clone(), request) => result,
+        let covers_request = admissions.covers(&leased);
+        let mut result = tokio::select! {
+            result = self.read_io(leased.clone(), request, admissions) => result,
             _ = &mut cancelled => Err(PlanFailure::new(CANCELLED_READ_MESSAGE)),
         };
+        if !covers_request {
+            if let Ok(outcome) = &mut result {
+                outcome.complete = false;
+            }
+        }
         self.owner.roles.release(&leased, RelayRole::Read).await;
         self.ensure_current()?;
         result
@@ -116,10 +128,12 @@ impl RelayPoolRoute {
         self.owner.ensure_session(self.session, self.epoch)
     }
 
-    async fn read_targets(&self, relays: Option<Vec<String>>) -> Vec<String> {
+    async fn read_targets(&self, relays: Option<Vec<String>>) -> Result<Vec<String>, PlanFailure> {
         match relays {
-            Some(relays) => relays,
-            None => self.owner.roles.fallback_read_relays().await,
+            Some(relays) => exact_read_targets(relays),
+            None => Ok(bounded_relay_targets(
+                self.owner.roles.fallback_read_relays().await,
+            )),
         }
     }
 
@@ -127,13 +141,15 @@ impl RelayPoolRoute {
         &self,
         relays: Vec<String>,
         request: RelayReadRequest,
-    ) -> Result<Vec<nostr_sdk::Event>, PlanFailure> {
+        admissions: crate::relay::health::RelayAdmissionBatch,
+    ) -> Result<RelayReadResult, PlanFailure> {
         let mut cancellation = self.cancellation.clone();
         let io = RelayReadIo {
             relays,
             filter: request.query.filter,
             timeout: request.query.timeout,
             progress: request.progress,
+            admissions: Some(admissions),
         };
         tokio::select! {
             biased;
@@ -153,4 +169,14 @@ impl RelayPoolRoute {
         }
         self.ensure_current()
     }
+}
+
+fn exact_read_targets(relays: Vec<String>) -> Result<Vec<String>, PlanFailure> {
+    let relays = unique(&relays);
+    if relays.len() > MAX_RELAY_READ_FANOUT {
+        return Err(PlanFailure::new(format!(
+            "relay fanout exceeds {MAX_RELAY_READ_FANOUT}"
+        )));
+    }
+    Ok(relays)
 }

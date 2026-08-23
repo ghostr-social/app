@@ -61,6 +61,7 @@ impl RelayPlanExecutor {
         Ok(PlanPage {
             events,
             cursor: page.cursor,
+            complete: page.complete,
             repost_retry,
         })
     }

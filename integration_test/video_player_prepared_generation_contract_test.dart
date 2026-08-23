@@ -6,7 +6,6 @@ import 'package:ghostr/platform/media/video_player_playback_port.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:integration_test/integration_test.dart';
 
-import 'support/device_playback_probe.dart';
 import 'support/device_playback_testbed.dart';
 import 'support/device_video_scenario.dart';
 

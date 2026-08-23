@@ -60,7 +60,7 @@ pub(crate) async fn fetch(request: RelayFetch) -> Result<FetchedEvents, PlanFail
         })
         .await;
     let fetched = match fetched {
-        Ok(events) => events,
+        Ok(result) => result,
         Err(error) => {
             if progressive {
                 return Err(error);
@@ -70,16 +70,19 @@ pub(crate) async fn fetch(request: RelayFetch) -> Result<FetchedEvents, PlanFail
             return Ok(FetchedEvents::cached(events));
         }
     };
-    let fresh_boundary = wire_page_boundary(&fetched);
+    let fresh_boundary = fetched
+        .complete
+        .then(|| wire_page_boundary(&fetched.events))
+        .flatten();
     let events = request
         .cache
-        .union_for(request.session, &filter, fetched)
+        .union_for(request.session, &filter, fetched.events)
         .await
         .ok_or_else(|| PlanFailure::new(SESSION_RESET_MESSAGE))?;
     Ok(FetchedEvents {
         events,
         fresh_boundary,
-        wire_complete: true,
+        wire_complete: fetched.complete,
     })
 }
 

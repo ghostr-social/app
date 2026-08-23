@@ -35,6 +35,8 @@ mod scheduler_continuous_repost_retry_test;
 mod scheduler_feed_hunt_guard_test;
 mod scheduler_feed_reopen_generation_test;
 mod scheduler_feeds_unknown_test;
+mod scheduler_incomplete_page_retry_test;
+mod scheduler_incomplete_query_test;
 mod scheduler_older_failure_retry_test;
 mod scheduler_progress_bound_test;
 mod scheduler_progress_failure_retry_test;

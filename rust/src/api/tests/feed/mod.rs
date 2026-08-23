@@ -7,6 +7,7 @@ mod feed_native_empty_hunt_stage_test;
 mod feed_native_hunt_stage_test;
 mod feed_outcome_pump_test;
 mod feed_outcome_relay_lists_test;
+mod feed_partial_page_position_test;
 mod feed_post_payload_test;
 mod feed_post_reference_test;
 mod feed_preview_candidate_mapping_test;

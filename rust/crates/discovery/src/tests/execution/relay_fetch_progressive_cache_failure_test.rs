@@ -1,11 +1,11 @@
 use crate::cache::EventCache;
 use crate::execution::fetch::{fetch, RelayFetch};
 use crate::query::events::plan_event_queries;
-use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo};
+use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo, RelayReadResult};
 use crate::relay::pool::{RelayPoolConfiguration, RelayPoolOwner};
 use crate::session_generation::SessionGeneration;
 use crate::tests::event_cache_support::{note, notes};
-use nostr_sdk::{Client, Event};
+use nostr_sdk::Client;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
@@ -42,7 +42,7 @@ async fn progressive_cache_fallback_keeps_the_page_retryable() {
 struct FailingIo;
 
 impl RelayIo for FailingIo {
-    fn read(&self, _: RelayReadIo) -> RelayIoFuture<'_, Vec<Event>> {
+    fn read(&self, _: RelayReadIo) -> RelayIoFuture<'_, RelayReadResult> {
         Box::pin(async { anyhow::bail!("offline") })
     }
 

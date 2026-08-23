@@ -23,6 +23,9 @@ Future<List<Nip01Event>> signedWarpFeedEvents(
       if (!await Bip340EventVerifier().verify(signed)) {
         throw StateError('WARP fixture event signature is invalid.');
       }
+      if (!await RustEventVerifier().verify(signed)) {
+        throw StateError('WARP fixture event fails native verification.');
+      }
       events.add(signed);
     }
     return events;

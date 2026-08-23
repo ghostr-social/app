@@ -26,6 +26,7 @@ pub type PlanFuture = Pin<Box<dyn Future<Output = Result<Vec<Event>, PlanFailure
 pub struct PlanPage {
     pub(crate) events: Vec<Event>,
     pub(crate) cursor: Option<Timestamp>,
+    pub(crate) complete: bool,
     pub(crate) repost_retry: RepostRetryDelta,
 }
 
@@ -35,6 +36,7 @@ impl PlanPage {
         Self {
             events,
             cursor,
+            complete: true,
             repost_retry: RepostRetryDelta::default(),
         }
     }

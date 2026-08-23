@@ -38,6 +38,7 @@ fn report_unsupported(state: &mut crate::manager::state::DeliveryState, id: &str
         post.clone(),
         state.catalog().binding(&post).unwrap(),
         ContentRevision::default(),
+        format!("asset-{id}"),
     )
     .unwrap();
     let attempt = PlayerPreparationAttempt::try_new(1, 1, 1).unwrap();

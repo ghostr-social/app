@@ -41,9 +41,13 @@ fn report(
     revision: ContentRevision,
     generation: u64,
 ) -> PlayerPreparationReport {
-    let authority =
-        PlayerPreparationAuthority::try_new(binding.post().clone(), binding.clone(), revision)
-            .unwrap();
+    let authority = PlayerPreparationAuthority::try_new(
+        binding.post().clone(),
+        binding.clone(),
+        revision,
+        "asset",
+    )
+    .unwrap();
     let observation = PlayerPreparationObservation::try_new(
         PlayerPreparationState::Failed,
         Some("invalidVideoTrack".into()),
