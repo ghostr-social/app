@@ -22,6 +22,17 @@ impl Catalog {
             })
             .unwrap_or(params.assumed_bitrate_bps)
     }
+
+    pub(crate) fn estimated_bitrate_for_total(
+        &self,
+        post: &PostId,
+        total: Option<u64>,
+        params: &EngineParams,
+    ) -> u64 {
+        self.lookup(post)
+            .and_then(|entry| active_or_measured(entry, total))
+            .unwrap_or(params.assumed_bitrate_bps)
+    }
 }
 
 fn active_or_measured(entry: &CatalogEntry, total: Option<u64>) -> Option<u64> {

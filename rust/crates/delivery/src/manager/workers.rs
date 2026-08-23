@@ -1,11 +1,12 @@
 //! Bounded owners of active range-download tasks.
 
-use crate::manager::inflight::{ActiveAction, ChunkAttempt, CompletionStatus, InFlightChunks};
+use crate::manager::inflight::{ActiveAction, ChunkAttempt, FinishedAction, InFlightChunks};
 use crate::manager::plan::PlannedTransfer;
 use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
 use ghostr_engine::{ChunkId, PostId};
 use std::collections::HashSet;
 
+mod http_generation;
 mod start;
 pub(crate) use start::PreparedTransfer;
 
@@ -41,6 +42,19 @@ impl DownloadWorkers {
 
     pub(crate) fn body_posts(&self) -> HashSet<PostId> {
         self.active.body_posts()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn insert_test_attempt(&mut self, attempt: &ChunkAttempt) {
+        let request = ghostr_engine::scheduling::RangeRequest {
+            chunk: attempt.chunk.clone(),
+            authority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
+            score: 1.0,
+            contiguous_depth_bytes: 0,
+        };
+        let (handle, _token) = crate::chunk::cancel::cancel_pair();
+        self.active
+            .insert(attempt, request, "fixture.example".into(), 0, handle);
     }
 
     pub(crate) fn contains_identity(&self, identity: &TransferIdentity) -> bool {
@@ -88,8 +102,8 @@ impl DownloadWorkers {
         self.active.foreground_len()
     }
 
-    pub fn finish(&mut self, attempt: &ChunkAttempt) -> CompletionStatus {
-        self.active.finish(attempt)
+    pub fn finish(&mut self, attempt: &ChunkAttempt) -> FinishedAction {
+        self.active.finish_with_resources(attempt)
     }
 
     pub(crate) fn cancel_action(&mut self, action: ghostr_engine::ActionId) -> bool {
@@ -122,6 +136,14 @@ impl DownloadWorkers {
         response: crate::chunk::downloader::ResponseObservation,
     ) -> bool {
         self.active.observe_response(attempt, response)
+    }
+
+    pub(crate) fn observe_headers(
+        &mut self,
+        attempt: &ChunkAttempt,
+        response: crate::chunk::downloader::ResponseObservation,
+    ) -> bool {
+        self.active.observe_headers(attempt, response)
     }
 
     pub(crate) fn authorizes_response(
@@ -163,5 +185,12 @@ impl DownloadWorkers {
         preflight: &crate::manager::inflight::PromotionPreflight,
     ) -> bool {
         self.active.rollback_promotion(preflight)
+    }
+
+    pub(crate) fn commit_promotion_network(
+        &mut self,
+        preflight: &crate::manager::inflight::PromotionPreflight,
+    ) -> bool {
+        self.active.commit_promotion_network(preflight)
     }
 }

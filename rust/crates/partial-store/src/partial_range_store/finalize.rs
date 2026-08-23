@@ -5,19 +5,26 @@ use crate::partial_range_completion::{self as completion, Completion, IntegrityM
 use crate::partial_range_disk as disk;
 use crate::partial_range_store::{Entries, PartialRangeStore};
 use anyhow::{bail, Context, Result};
-use std::path::PathBuf;
+
+mod session;
 
 impl PartialRangeStore {
     /// Moves a byte-complete file out of the partial pool. `advertised`
     /// is the note's `imeta x` when it has one: absent, the bytes are
     /// kept unverified; present, they must hash to it or they are lost.
-    pub async fn finalize(&self, key: &str, advertised: Option<&str>) -> Result<PathBuf> {
+    pub async fn finalize(&self, key: &str, advertised: Option<&str>) -> Result<Completion> {
         let _update = self.update_key(key).await?;
         let mut entries = self.entries.lock().await;
+        if let Some(response) = self.session_response(key).await {
+            return session::finalize(self, &mut entries, key, advertised, &response).await;
+        }
         let entry = self.entry(&mut entries, key).await?;
-        if entry.completion.is_some() {
+        if let Some(completion) = entry.completion {
             self.retire_generation(key).await;
-            return Ok(self.paths.completed(key));
+            if completion == Completion::Verified {
+                self.retire_http_generation(key).await;
+            }
+            return Ok(completion);
         }
         if !entry.manifest.is_complete() {
             bail!("cannot finalize a video with missing ranges");
@@ -36,7 +43,7 @@ impl PartialRangeStore {
         entries: &mut Entries,
         key: &str,
         verdict: Completion,
-    ) -> Result<PathBuf> {
+    ) -> Result<Completion> {
         let completed = self.paths.completed(key);
         completion::record(&self.paths.verified(key), verdict).await?;
         tokio::fs::rename(&self.paths.partial(key), &completed)
@@ -46,7 +53,10 @@ impl PartialRangeStore {
         let entry = entries.get_mut(key).context("promoted entry present")?;
         entry.completion = Some(verdict);
         self.retire_generation(key).await;
+        if verdict == Completion::Verified {
+            self.retire_http_generation(key).await;
+        }
         self.changed.notify_waiters();
-        Ok(completed)
+        Ok(verdict)
     }
 }

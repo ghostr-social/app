@@ -58,7 +58,7 @@ pub fn candidate_snapshot_at(
         Vec::new()
     };
     let bitrate = catalog
-        .estimated_bitrate_for(&evidence.post, source, params)
+        .estimated_bitrate_for_total(&evidence.post, total, params)
         .max(1);
     let duration = duration_ms(entry, total, bitrate);
     let layout = layout(&assessment, source, &evidence.independent_object_sources);

@@ -61,6 +61,7 @@ pub struct ChunkResult {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ResponseObservation {
+    Rejected(ResponseRejection),
     Partial {
         range: ByteRange,
         total: Option<u64>,
@@ -77,6 +78,31 @@ pub enum ResponseObservation {
     },
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ResponseRejection {
+    Status,
+    ContentEncoding,
+    MediaType,
+    Semantics,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum ResponseFailure {
+    RangeNoncompliant,
+    InvalidResponse,
+}
+
+impl std::fmt::Display for ResponseFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::RangeNoncompliant => formatter.write_str("range response is noncompliant"),
+            Self::InvalidResponse => formatter.write_str("origin response is invalid"),
+        }
+    }
+}
+
+impl std::error::Error for ResponseFailure {}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct OpenedResponse {
     observation: ResponseObservation,
@@ -88,8 +114,23 @@ pub struct OpenedResponse {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HttpResponseEvidence {
     pub final_url: String,
+    pub status: u16,
     pub content_type: Option<String>,
     pub validator: Option<EvidenceValidator>,
+    pub observed: ghostr_engine::evidence::EvidenceTime,
+}
+
+impl HttpResponseEvidence {
+    pub(crate) fn provenance_only(mut self) -> Self {
+        self.content_type = None;
+        self.validator = None;
+        self
+    }
+
+    pub(crate) fn authority_only(mut self) -> Self {
+        self.content_type = None;
+        self
+    }
 }
 
 impl OpenedResponse {

@@ -1,5 +1,5 @@
 use super::progress::Pending;
-use super::{Active, SegmentedDelivery};
+use super::{active_network, test_fence, Active, SegmentedDelivery};
 use crate::delivery_events::{DeliveryFocus, FocusGeneration, FocusItem, FocusTransition};
 use crate::segmented::{SegmentedCache, SegmentedPhase};
 use ghostr_engine::{ActionId, DeliveryKind, PostId, VideoMeta};
@@ -49,8 +49,10 @@ fn active() -> Active {
     let (cancellation, cancelled) = tokio::sync::oneshot::channel();
     Active {
         action: ActionId::new(1),
+        fence: test_fence(1, 1, SOURCE, root_maximum()),
         pending: Pending::root(1, 1, 0, SOURCE.to_owned()),
         committed_until_ms: u64::MAX,
+        network: active_network(),
         _task: tokio::spawn(async move {
             let _ = cancelled.await;
         }),

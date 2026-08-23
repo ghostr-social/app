@@ -21,11 +21,17 @@ impl DeliveryWorker {
         &mut self,
         planned: PlannedWork,
         mut decision: Option<DecisionToken>,
+        observed_at_ms: u64,
     ) {
         let execution = reconcile_warp::execution(planned);
         let mut commit = SelectedCommit::optional(execution.selected);
-        self.apply_warp_directive(&execution.directive, &mut decision, &mut commit)
-            .await;
+        self.apply_warp_directive(
+            &execution.directive,
+            &mut decision,
+            &mut commit,
+            observed_at_ms,
+        )
+        .await;
         let capacity = planned_capacity(
             self.concurrency_limit(),
             self.connection_ceiling(),

@@ -1,7 +1,8 @@
 use super::cancellation_race_test::{
     completed_active as failed_active, failed, focus as failed_focus,
 };
-use super::cancellation_success_race_test::{completed_active, focus, succeeded};
+use super::cancellation_race_test::{completed_active, focus};
+use super::cancellation_success_fixture::succeeded;
 use super::SegmentedDelivery;
 use crate::segmented::scheduler::SegmentedRecovery;
 use crate::segmented::SegmentedCache;
@@ -13,9 +14,11 @@ const B: &str = "https://new.example/root.m3u8";
 
 #[tokio::test]
 async fn focus_round_trip_keeps_fresh_root_while_old_terminal_is_queued() {
-    let mut delivery = SegmentedDelivery::new(SegmentedCache::new());
+    let cache = SegmentedCache::new();
+    let mut delivery = SegmentedDelivery::new(cache.clone());
     delivery.apply_focus(&focus(1, A));
     let post = PostId::new("stream");
+    let done = succeeded(&cache, post.clone()).await;
     delivery.active.insert(post.clone(), completed_active());
 
     delivery.apply_focus(&focus(2, B));
@@ -23,7 +26,7 @@ async fn focus_round_trip_keeps_fresh_root_while_old_terminal_is_queued() {
     delivery.apply_focus(&focus(3, A));
     assert_eq!(delivery.pending[&post].generation, 3);
 
-    let finish = delivery.finish(succeeded(post.clone())).unwrap();
+    let finish = delivery.finish(done).unwrap();
     assert_eq!(finish.outcome, DecisionOutcome::Superseded);
     assert_eq!(delivery.pending[&post].generation, 3);
     assert_eq!(delivery.pending[&post].root_source, A);

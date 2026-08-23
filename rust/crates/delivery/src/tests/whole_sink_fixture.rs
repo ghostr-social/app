@@ -12,8 +12,10 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 mod authorization;
+mod failing_finish;
 mod origin;
 pub(super) use authorization::AuthorizedTraffic;
+pub(super) use failing_finish::FailingFinishSink;
 pub(super) use origin::split;
 
 pub(super) struct SinkFixture {

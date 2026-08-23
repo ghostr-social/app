@@ -2,6 +2,9 @@ use super::fetch::FetchedObject;
 use std::sync::Arc;
 use url::Url;
 
+mod completion;
+pub(in crate::segmented) use completion::{prepare_complete, PreparedComplete};
+
 #[derive(Clone)]
 pub(super) struct PreparedObject {
     pub request_url: String,

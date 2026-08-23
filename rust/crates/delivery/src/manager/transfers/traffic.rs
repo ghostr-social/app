@@ -1,5 +1,5 @@
 use super::{InternalEvent, ObservedResponse, TransferContext, TransferEvent};
-use crate::chunk::downloader::{OpenedResponse, ResponseAdmission, ResponseObservation};
+use crate::chunk::downloader::{OpenedResponse, ResponseAdmission};
 use crate::chunk::traffic::ChunkTraffic;
 use crate::manager::inflight::ChunkAttempt;
 use crate::manager::response_open::ResponseOpener;
@@ -65,11 +65,9 @@ impl ChunkTraffic for TransferTraffic {
         }
     }
 
-    fn response_observed(&mut self, response: ResponseObservation) {
-        let event = TransferEvent::ResponseObserved(ObservedResponse {
-            attempt: self.attempt.clone(),
-            response,
-        });
+    fn response_observed(&mut self, response: OpenedResponse) {
+        let observed = ObservedResponse::at_network_boundary(self.attempt.clone(), response);
+        let event = TransferEvent::ResponseObserved(Box::new(observed));
         let _ = self.events.send(InternalEvent::Transfer(event));
     }
 

@@ -6,15 +6,11 @@ use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::snapshot;
 
 #[test]
-fn completed_current_cannot_semantically_starve_the_only_actionable_ahead_post() {
+fn startup_ready_incomplete_current_cannot_starve_parallel_ahead_preparation() {
     let mut input = snapshot(2, 20_000_000, 20_000, 0);
     let current = input.candidates[0].post.clone();
-    input.candidates[0].present = input.candidates[0]
-        .playable_ranges
-        .iter()
-        .map(|range| range.bytes)
-        .collect();
-    input.candidates[0].finalized = true;
+    let startup = input.candidates[0].playable_ranges[0].bytes;
+    input.candidates[0].present.push(startup);
     let ahead = input.candidates[1].post.clone();
     let base = AdaptivePlayabilityPolicy.plan(&input);
     let context = PlannerContext::explicitly_unavailable(&input)

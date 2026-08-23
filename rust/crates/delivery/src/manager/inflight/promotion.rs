@@ -129,6 +129,23 @@ impl InFlightChunks {
         active.reserved_storage_bytes = preflight.previous_reservation;
         true
     }
+
+    pub(crate) fn commit_promotion_network(&mut self, preflight: &PromotionPreflight) -> bool {
+        let Some(active) = self.transfers.get_mut(&preflight.target.action) else {
+            return false;
+        };
+        if !validation::activated(active, preflight) {
+            return false;
+        }
+        let Some(committed) = active
+            .committed_network_bytes
+            .checked_add(preflight.additional_bytes())
+        else {
+            return false;
+        };
+        active.committed_network_bytes = committed;
+        true
+    }
 }
 
 pub(super) fn promoted_request(maximum_bytes: u64) -> RetrievalRequest {

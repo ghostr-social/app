@@ -16,7 +16,7 @@ fn selected_probe_refusals_preserve_the_specific_pool_state() {
     let first_url = meta("first").urls[0].clone();
     let second_url = meta("second").urls[0].clone();
 
-    probes
+    let identity = probes
         .claim_selected(query(&catalog, &retry, &first, &first_url))
         .unwrap();
     assert_eq!(
@@ -35,7 +35,7 @@ fn selected_probe_refusals_preserve_the_specific_pool_state() {
         serde_json::json!({"status": "claim_refused", "reason": "pool_at_capacity"})
     );
 
-    probes.learned(&first);
+    probes.learned(&identity, None);
     assert_eq!(
         probes.claim_selected(query(&catalog, &retry, &first, &first_url)),
         Err(ProbeClaimRefusal::AlreadyProbed)
@@ -74,7 +74,13 @@ fn query<'a>(
     post: &'a PostId,
     source: &'a str,
 ) -> ProbeClaimQuery<'a> {
-    ProbeClaimQuery::new(catalog, retry, post, source)
+    ProbeClaimQuery {
+        catalog,
+        retry,
+        post,
+        source,
+        observed_at_ms: 0,
+    }
 }
 
 fn meta(id: &str) -> VideoMeta {

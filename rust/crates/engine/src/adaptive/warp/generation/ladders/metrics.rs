@@ -10,6 +10,7 @@ pub(super) fn build(
     path: &[&GeneratedAction],
     evidence: PlannerCandidateContext,
 ) -> PlanMetrics {
+    let (size_lower, size_upper) = super::size_bounds(candidate, evidence);
     let resources = resources(path);
     let timing = completion(path);
     let success = success(path);
@@ -18,7 +19,12 @@ pub(super) fn build(
     let mut metrics = PlanMetrics::new(
         resources.network_bytes,
         timing,
-        super::deadline::readiness(snapshot.commitment_ms, timing, success, evidence.watch),
+        super::deadline::readiness(
+            snapshot.commitment_ms,
+            timing,
+            if ready == 0 { 0 } else { success },
+            evidence.watch,
+        ),
         ready,
     )
     .with_resources(resources)
@@ -32,10 +38,11 @@ pub(super) fn build(
         candidate.evidence.confidence.readiness.basis_points(),
         candidate.evidence.confidence.integrity.basis_points(),
     )
-    .with_size_bounds(candidate.evidence.size.lower, candidate.evidence.size.upper)
-    .with_cache_value(cache_value(path));
+    .with_size_bounds(size_lower, size_upper)
+    .with_cache_value(cache_value(path))
+    .with_information_value(information_value(path));
     metrics.ready_coverage_ms = ready.saturating_mul(u64::from(success)) / 10_000;
-    apply_quality(metrics, evidence.quality)
+    apply_quality(metrics, evidence.quality, ready)
 }
 
 fn resources(path: &[&GeneratedAction]) -> ResourceCost {
@@ -63,7 +70,10 @@ fn ready_ms(path: &[&GeneratedAction]) -> u64 {
         .sum()
 }
 
-fn apply_quality(metrics: PlanMetrics, quality: PlannerQuality) -> PlanMetrics {
+fn apply_quality(metrics: PlanMetrics, quality: PlannerQuality, ready: u64) -> PlanMetrics {
+    if ready == 0 {
+        return metrics.with_quality(0, 0, 10_000);
+    }
     match quality {
         PlannerQuality::Unavailable => metrics.with_quality(0, 0, 10_000),
         PlannerQuality::Estimated {
@@ -95,5 +105,11 @@ fn add_times(left: CompletionTimes, right: CompletionTimes) -> CompletionTimes {
 fn cache_value(path: &[&GeneratedAction]) -> u64 {
     path.iter()
         .map(|item| item.node.value.cache_gain_micros.max(0) as u64)
+        .sum()
+}
+
+fn information_value(path: &[&GeneratedAction]) -> u64 {
+    path.iter()
+        .map(|item| item.node.value.information_value_micros.max(0) as u64)
         .sum()
 }

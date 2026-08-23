@@ -3,7 +3,7 @@
 //! persisted to the cache directory on a debounce.
 
 use crate::manager::traffic::{OverallTrafficWindow, TrafficBatch, TrafficMeter};
-use crate::manager::transfers::{ChunkDone, InternalEvent, ProbeObservation};
+use crate::manager::transfers::{InternalEvent, ProbeObservation};
 use crate::manager::DeliveryWorker;
 use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_net::media_request_executor::MediaRequestAdmissionTimeout;
@@ -17,6 +17,7 @@ use tokio::time::Instant;
 #[cfg(test)]
 #[path = "stats/admission_timeout_test.rs"]
 mod admission_timeout_test;
+mod chunk;
 mod hls;
 mod origin;
 
@@ -52,28 +53,6 @@ impl StatsKeeper {
         &mut self.stats
     }
 
-    /// Mirrors the downloader's recording rules on the owned stats.
-    pub fn note_chunk(&mut self, done: &ChunkDone) {
-        if is_admission_timeout(&done.outcome) {
-            return;
-        }
-        let Some(host) = host_of(&done.url) else {
-            return;
-        };
-        match &done.outcome {
-            Ok(_) => {
-                self.stats.record_success(&host);
-            }
-            Err(_) => self.stats.record_failure(&host),
-        }
-        if let Some(observation) = &done.origin {
-            self.stats
-                .origin_model_mut()
-                .observe((**observation).clone());
-        }
-        self.dirty = true;
-    }
-
     pub fn note_traffic(&mut self, batch: TrafficBatch) -> Option<OverallTrafficWindow> {
         self.dirty = true;
         self.traffic.apply(batch, &mut self.stats)
@@ -95,7 +74,11 @@ impl StatsKeeper {
             }
             Err(_) => self.stats.record_failure(&host),
         }
-        let observation = origin::probe(done, unix_time_ms());
+        let observed_at_ms = done
+            .outcome
+            .as_ref()
+            .map_or_else(|_| unix_time_ms(), |result| result.observed.observed_at_ms);
+        let observation = origin::probe(done, observed_at_ms);
         self.stats.origin_model_mut().observe(observation);
         self.dirty = true;
     }

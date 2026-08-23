@@ -77,6 +77,7 @@ impl PartialRangeStore {
     pub(super) async fn clear_representation_bindings(&self) {
         self.representations.lock().await.clear();
         self.source_generations.lock().await.clear();
+        self.http_generations.lock().await.clear();
         self.selected().clear();
     }
 
@@ -85,7 +86,7 @@ impl PartialRangeStore {
         let path = self.paths.representation(key);
         let stored = identity_disk::load(&path).await?;
         if stored.as_deref() == Some(binding.representation().fingerprint()) {
-            return self.restore_generation(binding).await;
+            return self.restore_http_generation(binding).await;
         }
         if let Some(derived) = self
             .restored_transform_binding(binding, stored.as_deref())
@@ -96,9 +97,11 @@ impl PartialRangeStore {
                 .await
                 .insert(key.to_owned(), derived);
             self.source_generations.lock().await.remove(key);
+            self.http_generations.lock().await.remove(key);
             return Ok(());
         }
         self.source_generations.lock().await.remove(key);
+        self.http_generations.lock().await.remove(key);
         let mut entries = self.entries.lock().await;
         self.discard_before_authority(&mut entries, key).await?;
         identity_disk::save(&path, binding.representation().fingerprint()).await
@@ -112,7 +115,7 @@ impl PartialRangeStore {
             "policy transaction belongs to another representation"
         );
         self.install_binding(binding.clone()).await;
-        if let Err(error) = self.restore_compatible_generation(&binding).await {
+        if let Err(error) = self.restore_http_generation(&binding).await {
             self.remove_binding_if(&binding).await;
             return Err(error);
         }

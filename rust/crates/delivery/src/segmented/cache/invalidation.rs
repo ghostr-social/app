@@ -52,6 +52,7 @@ fn invalidate(record: &mut FocusRecord) {
     record.root_source = None;
     record.objects.clear();
     record.staged.clear();
+    record.preparing = None;
     record.reserved_bytes = 0;
     record.assembly_bytes = 0;
     record.snapshot = SegmentedSnapshot::default();

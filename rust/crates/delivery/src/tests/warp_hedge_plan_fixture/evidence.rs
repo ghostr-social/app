@@ -3,7 +3,8 @@ use crate::manager::inflight::ActiveAction;
 use crate::manager::plan::{planned_work, PlanInputs, PlannedWork};
 use crate::manager::retry::{RetryBook, RetryPolicy};
 use crate::manager::state::DeliveryState;
-use ghostr_engine::adaptive::StorageSnapshot;
+use ghostr_engine::adaptive::{StorageSnapshot, WholeBodyExhaustion};
+use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::{ByteRange, PostId};
 use std::collections::{HashMap, HashSet};
 
@@ -14,7 +15,8 @@ pub(super) struct PlanEvidence {
     totals: HashMap<PostId, u64>,
     strings: HashMap<PostId, String>,
     string_sets: HashMap<PostId, HashSet<String>>,
-    completed_probes: HashSet<PostId>,
+    completed_probes: HashSet<TransferIdentity>,
+    exhausted_caps: HashMap<TransferIdentity, WholeBodyExhaustion>,
     demanded: HashMap<PostId, ByteRange>,
 }
 
@@ -28,6 +30,7 @@ impl PlanEvidence {
             strings: HashMap::new(),
             string_sets: HashMap::new(),
             completed_probes: HashSet::new(),
+            exhausted_caps: HashMap::new(),
             demanded: HashMap::new(),
         }
     }
@@ -50,6 +53,7 @@ impl PlanEvidence {
                 continuation_sources: &self.strings,
                 revisions: &revisions,
                 independent_sources: &self.string_sets,
+                whole_body_exhaustions: &self.exhausted_caps,
                 completed_head_probes: &self.completed_probes,
                 in_flight: active,
                 active_head_probes: &[],

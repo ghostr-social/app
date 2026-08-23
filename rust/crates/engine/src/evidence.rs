@@ -14,6 +14,6 @@ pub use fusion::{ConfidenceAxes, EvidenceAssessment, SizeAssessment};
 pub use ledger::{EvidenceInvalidation, EvidenceLedger};
 pub use metadata::NostrMetadataEvidence;
 pub use types::{
-    Confidence, Evidence, EvidenceField, EvidenceScope, EvidenceSource, EvidenceValidator,
-    EvidenceValue,
+    Confidence, Evidence, EvidenceField, EvidenceScope, EvidenceSource, EvidenceTime,
+    EvidenceValidator, EvidenceValue,
 };

@@ -3,6 +3,9 @@ use super::{PlannerContext, PlannerWatchEvidence};
 use crate::catalog::RenditionQualityEvidence;
 use crate::{PostId, PreviewDescriptor};
 
+mod whole_body;
+pub use whole_body::WholeBodyExhaustion;
+
 /// A blurhash is a useful low-fidelity placeholder, never playable media.
 pub const INLINE_BLURHASH_PREVIEW_QUALITY_MICROS: u64 = 50_000;
 
@@ -133,6 +136,7 @@ pub struct PlannerCandidateContext {
     pub watch: PlannerWatchEvidence,
     pub head_probe: HeadProbeHistory,
     pub retry: PlannerRetryAvailability,
+    pub whole_body_exhaustion: Option<WholeBodyExhaustion>,
 }
 
 impl PlannerContext {

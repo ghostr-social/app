@@ -9,6 +9,10 @@ pub(super) async fn before_publish(paths: &StorePaths, key: &str) -> Result<()> 
         paths.partial_staging(key),
         paths.manifest_backup(key),
         paths.generation_backup(key),
+        paths.http_generation_backup(key),
+        paths.completed_backup(key),
+        paths.verified_backup(key),
+        paths.single_response_commit_staging(key),
     ])
     .await;
     cleanup?;

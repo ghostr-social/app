@@ -42,6 +42,7 @@ pub(crate) struct DeliveryState {
     fast_start_evidence: HashMap<PostId, fast_start::FastStartEvidence>,
     active_transforms: std::collections::HashSet<PostId>,
     transformed_posts: HashMap<PostId, RepresentationBinding>,
+    observation_posts: HashSet<PostId>,
     ready_target: usize,
     network_status: crate::delivery_events::DeliveryNetworkStatus,
 }
@@ -87,6 +88,7 @@ impl DeliveryState {
             fast_start_evidence: Default::default(),
             active_transforms: Default::default(),
             transformed_posts: Default::default(),
+            observation_posts: Default::default(),
             ready_target: 1,
             network_status: crate::delivery_events::DeliveryNetworkStatus::unavailable(),
         }
@@ -149,6 +151,7 @@ impl DeliveryState {
         self.fast_start_evidence.clear();
         self.active_transforms.clear();
         self.transformed_posts.clear();
+        self.observation_posts.clear();
         self.ready_target = 1;
     }
 
@@ -179,10 +182,6 @@ impl DeliveryState {
 
     pub(crate) fn current_post(&self) -> Option<PostId> {
         self.focus.current().cloned()
-    }
-
-    pub(crate) fn current_authority(&self) -> CurrentAuthority {
-        self.current_authority
     }
 
     pub(crate) fn params(&self) -> &EngineParams {

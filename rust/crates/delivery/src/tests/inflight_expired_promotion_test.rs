@@ -51,6 +51,7 @@ async fn promotion_expired_at_headers_is_rejected_before_store_open() {
         launched_at_ms: 0,
         handle,
         store_action: Some(action.clone()),
+        committed_network_bytes: None,
     });
     let whole = RetrievalRequest::FetchWhole {
         contract: WholeBodyContract::Exact { expected_bytes: 16 },
@@ -67,8 +68,10 @@ async fn promotion_expired_at_headers_is_rejected_before_store_open() {
         ResponseWriteMode::SingleResponse(WholeBodyContract::Exact { expected_bytes: 16 }),
         HttpResponseEvidence {
             final_url: "https://origin.test/video".into(),
+            status: 200,
             content_type: Some("video/mp4".into()),
             validator: None,
+            observed: 0.into(),
         },
     );
 

@@ -12,8 +12,14 @@ fn evicted_probe_history_is_dropped_without_reprobing_retained_posts() {
     catalog.upsert(old.clone(), unknown_meta("old"));
     catalog.upsert(kept.clone(), unknown_meta("kept"));
     let mut probes = MetadataProbePool::new(2);
-    probes.learned(&old);
-    probes.learned(&kept);
+    probes.learned(
+        &catalog.transfer_identity(&old, &unknown_meta("old").urls[0]).unwrap(),
+        None,
+    );
+    probes.learned(
+        &catalog.transfer_identity(&kept, &unknown_meta("kept").urls[0]).unwrap(),
+        None,
+    );
 
     probes.retain_history(&HashSet::from([kept.clone()]));
     let retry = RetryBook::new(RetryPolicy::default());

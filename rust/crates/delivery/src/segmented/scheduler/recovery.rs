@@ -7,6 +7,10 @@ use crate::segmented::scheduler::FailureDisposition;
 use crate::segmented::SegmentedPhase;
 use ghostr_engine::PostId;
 
+#[cfg(test)]
+#[path = "recovery/same_stage_attempt_test.rs"]
+mod same_stage_attempt_test;
+
 pub(crate) enum SegmentedRecovery {
     Succeeded { post: PostId, root: String },
     Retry(Box<SegmentedRetry>),
@@ -127,7 +131,9 @@ impl SegmentedDelivery {
         {
             return false;
         }
-        self.pending.insert(retry.post, retry.pending);
+        let attempt = self.allocate_attempt();
+        let pending = retry.pending.retry_attempt(attempt);
+        self.pending.insert(retry.post, pending);
         true
     }
 

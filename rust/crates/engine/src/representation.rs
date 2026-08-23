@@ -4,7 +4,12 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 mod derived;
+mod http_generation;
 mod identity;
+pub use http_generation::{
+    HttpGenerationAuthority, HttpGenerationEpoch, HttpGenerationKey, HttpGenerationLease,
+    HttpGenerationStamp, InvalidHttpGeneration,
+};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct RepresentationId(String);

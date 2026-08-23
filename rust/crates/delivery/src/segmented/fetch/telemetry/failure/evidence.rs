@@ -27,6 +27,10 @@ impl FetchFailure {
         self.superseded
     }
 
+    pub(in crate::segmented) const fn response_completed(&self) -> bool {
+        self.response_completed
+    }
+
     #[cfg(test)]
     pub(in crate::segmented) const fn status(&self) -> Option<StatusCode> {
         self.status

@@ -3,8 +3,11 @@ use super::{
 };
 use crate::adaptive::{
     HeadProbeHistory, PlannerCandidateContext, PlannerCapability, PlannerQuality,
-    PlannerRetryAvailability, PreviewAvailability, TransformCapability,
+    PlannerRetryAvailability, PreviewAvailability, TransformCapability, WholeBodyExhaustion,
 };
+
+mod whole_body;
+use whole_body::whole_body_exhaustion;
 
 impl From<PlannerCandidateContext> for CandidateSerde {
     fn from(value: PlannerCandidateContext) -> Self {
@@ -16,6 +19,12 @@ impl From<PlannerCandidateContext> for CandidateSerde {
             watch: value.watch,
             head_probe: head_code(value.head_probe),
             retry: value.retry.into(),
+            exhausted_whole_body_cap: value
+                .whole_body_exhaustion
+                .map(WholeBodyExhaustion::maximum_bytes),
+            observed_whole_body_bytes: value
+                .whole_body_exhaustion
+                .map(WholeBodyExhaustion::observed_bytes),
         }
     }
 }
@@ -30,6 +39,10 @@ impl From<CandidateSerde> for PlannerCandidateContext {
             watch: value.watch,
             head_probe: head(value.head_probe),
             retry: value.retry.into(),
+            whole_body_exhaustion: whole_body_exhaustion(
+                value.exhausted_whole_body_cap,
+                value.observed_whole_body_bytes,
+            ),
         }
     }
 }

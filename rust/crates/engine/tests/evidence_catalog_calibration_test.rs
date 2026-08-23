@@ -1,8 +1,9 @@
-use ghostr_engine::catalog::{Catalog, LearnedFacts};
+use ghostr_engine::catalog::{Catalog, CompleteBytesObservation, LearnedFacts};
 use ghostr_engine::evidence::{
     CalibrationContext, CalibrationDimensions, EvidenceField, NostrMetadataEvidence,
 };
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
+use std::num::NonZeroU64;
 
 #[test]
 fn complete_bytes_label_the_exact_issuer_origin_url_and_size_context() {
@@ -27,7 +28,10 @@ fn complete_bytes_label_the_exact_issuer_origin_url_and_size_context() {
     let binding = catalog.upsert_with_evidence(post, meta, Vec::new(), vec![declared]);
     let identity = binding.transfer(url).unwrap();
 
-    assert!(catalog.learn_complete_bytes_for(&identity, 20, 10));
+    assert!(catalog.learn_complete_bytes_for(
+        &identity,
+        CompleteBytesObservation::new(NonZeroU64::new(20).unwrap(), url, 10, None)
+    ));
 
     let dimensions = CalibrationDimensions::new(
         Some("issuer".into()),

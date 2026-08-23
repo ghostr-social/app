@@ -52,7 +52,13 @@ fn planner_can_claim_only_the_selected_head_probe() {
     let source = "https://media.example/second.mp4";
 
     assert!(probes
-        .claim_selected(ProbeClaimQuery::new(&catalog, &retry, &posts[1], source))
+        .claim_selected(ProbeClaimQuery {
+            catalog: &catalog,
+            retry: &retry,
+            post: &posts[1],
+            source,
+            observed_at_ms: 0,
+        })
         .is_ok());
     assert_eq!(
         probes.claim(&catalog, &posts, &retry),

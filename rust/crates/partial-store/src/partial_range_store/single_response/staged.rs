@@ -3,12 +3,12 @@ use crate::partial_range_disk as disk;
 use crate::partial_range_manifest::RangeManifest;
 use crate::partial_range_store::cleanup_debt::CleanupScope;
 use crate::partial_range_store::replacement_cleanup;
+use crate::partial_range_store::single_response::{transaction, ResponseCommit};
 use crate::partial_range_store::StoreAction;
 use anyhow::{ensure, Context, Result};
 use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
-use std::path::Path;
 
-mod manifest;
+pub(super) mod manifest;
 
 impl PartialRangeStore {
     pub(super) async fn write_staged_single_response(
@@ -97,6 +97,7 @@ impl PartialRangeStore {
         &self,
         binding: &RepresentationBinding,
         total: u64,
+        retire_http: bool,
     ) -> Result<()> {
         let key = binding.post().as_str();
         ensure!(
@@ -107,49 +108,31 @@ impl PartialRangeStore {
         disk::save_manifest(&self.paths.single_response_manifest(key), &manifest).await?;
         let mut entries = self.entries.lock().await;
         let old_accounted = self.entry(&mut entries, key).await?.accounted;
-        if let Err(error) = self.publish_staged_response(key).await {
-            self.rollback_staged_response(key).await;
-            return Err(error);
-        }
-        self.record_staged_commit(&mut entries, key, manifest).await;
+        self.publish_staged_response(key, total, retire_http)
+            .await?;
+        self.record_staged_commit(&mut entries, key, manifest, retire_http)
+            .await;
         let pending = self.take_sparse_response_bytes(key).await;
         self.finish_replacement_cleanup(key, old_accounted.saturating_add(pending))
             .await?;
         Ok(())
     }
 
-    async fn publish_staged_response(&self, key: &str) -> Result<()> {
-        replacement_cleanup::before_publish(&self.paths, key).await?;
-        rename_if_present(&self.paths.partial(key), &self.paths.partial_staging(key)).await?;
-        rename_if_present(&self.paths.manifest(key), &self.paths.manifest_backup(key)).await?;
-        rename_if_present(
-            &self.paths.generation(key),
-            &self.paths.generation_backup(key),
-        )
-        .await?;
-        tokio::fs::rename(self.paths.single_response(key), self.paths.partial(key))
-            .await
-            .context("publish complete single response")?;
-        tokio::fs::rename(
-            self.paths.single_response_manifest(key),
-            self.paths.manifest(key),
-        )
-        .await
-        .context("publish single response manifest")?;
-        disk::write_marker(&self.paths.single_response_commit(key))
-            .await
-            .context("mark single response commit")
-    }
-
-    async fn rollback_staged_response(&self, key: &str) {
-        let _ = disk::remove_if_present(&self.paths.single_response_commit(key)).await;
-        restore(&self.paths.partial_staging(key), &self.paths.partial(key)).await;
-        restore(&self.paths.manifest_backup(key), &self.paths.manifest(key)).await;
-        restore(
-            &self.paths.generation_backup(key),
-            &self.paths.generation(key),
-        )
-        .await;
+    async fn publish_staged_response(
+        &self,
+        key: &str,
+        total: u64,
+        retire_http: bool,
+    ) -> Result<()> {
+        let digest = disk::sha256_file(&self.paths.single_response(key)).await?;
+        let mut record = ResponseCommit::partial(total, digest, retire_http);
+        if let Err(error) = transaction::publish(&self.paths, key, &mut record).await {
+            transaction::rollback_commit(&self.paths, key, &record, true)
+                .await
+                .with_context(|| format!("rollback staged response after: {error:#}"))?;
+            return Err(error);
+        }
+        Ok(())
     }
 
     async fn record_staged_commit(
@@ -157,9 +140,13 @@ impl PartialRangeStore {
         entries: &mut crate::partial_range_store::Entries,
         key: &str,
         manifest: RangeManifest,
+        retire_http: bool,
     ) {
         self.advance_content_revision(key).await;
         self.source_generations.lock().await.remove(key);
+        if retire_http {
+            self.http_generations.lock().await.remove(key);
+        }
         let entry = entries.get_mut(key).expect("staged response entry");
         entry.manifest = manifest;
         entry.accounted = entry.manifest.covered_bytes();
@@ -178,19 +165,4 @@ impl PartialRangeStore {
         self.release(charged).await;
         Ok(())
     }
-}
-
-async fn rename_if_present(source: &Path, target: &Path) -> Result<()> {
-    if disk::file_len(source).await?.is_some() {
-        tokio::fs::rename(source, target).await?;
-    }
-    Ok(())
-}
-
-async fn restore(backup: &Path, canonical: &Path) {
-    if disk::file_len(backup).await.ok().flatten().is_none() {
-        return;
-    }
-    let _ = disk::remove_if_present(canonical).await;
-    let _ = tokio::fs::rename(backup, canonical).await;
 }

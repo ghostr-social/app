@@ -44,8 +44,11 @@ fn note_chunk_timeout(keeper: &mut StatsKeeper) {
         attempt,
         url: url.to_owned(),
         outcome: Err(MediaRequestAdmissionTimeout.into()),
+        received_bytes: 0,
         origin: None,
         request_started: false,
+        whole_body_completion: None,
+        response_evidence: None,
     });
 }
 

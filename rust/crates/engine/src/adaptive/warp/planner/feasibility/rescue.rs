@@ -39,7 +39,7 @@ pub(super) fn select(_inputs: RescueInputs<'_>) -> Option<RescuePlan> {
 
 fn candidate(inputs: &RescueInputs<'_>, terminal: &ActionNode) -> Option<RescuePlan> {
     let steps = dependency_path(inputs.frontier, terminal.id)?;
-    if !steps.iter().all(|node| admitted(node, inputs.semantic)) {
+    if !steps.iter().all(|node| admitted_for_rescue(inputs, node)) {
         return None;
     }
     if !steps
@@ -162,6 +162,10 @@ fn admitted(node: &ActionNode, semantic: &[SemanticDecision]) -> bool {
         .iter()
         .find(|item| item.post == node.post)
         .is_some_and(|item| item.admission.admissible)
+}
+
+fn admitted_for_rescue(inputs: &RescueInputs<'_>, node: &ActionNode) -> bool {
+    node.post == inputs.input.snapshot.playback.current || admitted(node, inputs.semantic)
 }
 
 fn plan_key(plan: &RescuePlan) -> (u16, u64, u64, u64, u16) {

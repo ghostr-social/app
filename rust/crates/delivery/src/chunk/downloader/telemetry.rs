@@ -7,19 +7,27 @@ use ghostr_engine::origin_model::{
 use std::time::Duration;
 
 mod measurements;
+#[cfg(test)]
+mod rejection_reason_test;
 
 pub(super) use measurements::{MeasuredTraffic, TrafficMeasurements};
 
 pub(super) fn observation(
     spec: &ChunkSpec<'_>,
     result: &anyhow::Result<ChunkResult>,
-    measured: TrafficMeasurements,
+    measured: &TrafficMeasurements,
     timing: ObservationTiming,
 ) -> OriginObservation {
     let query = OriginQuery::new(spec.url, context(spec, timing));
     let mut item = match result {
         Ok(result) if result.cancelled => OriginObservation::cancelled(query, timing.at_ms),
         Ok(_) => OriginObservation::success(query, timing.at_ms),
+        Err(error) if crate::chunk::sink::is_local_store_failure(error) => {
+            OriginObservation::success(query, timing.at_ms)
+        }
+        Err(error) if crate::chunk::whole_body_policy::is(error) => {
+            OriginObservation::success(query, timing.at_ms)
+        }
         Err(error) => OriginObservation::failure(query, timing.at_ms, error_reason(error)),
     };
     item.range_compliant = range_compliance(spec.request, result);
@@ -91,6 +99,12 @@ fn duration_ms(value: Duration) -> u64 {
 }
 
 fn error_reason(error: &anyhow::Error) -> ErrorReason {
+    if let Some(reason) = error.downcast_ref::<super::ResponseFailure>() {
+        return match reason {
+            super::ResponseFailure::RangeNoncompliant => ErrorReason::RangeNoncompliant,
+            super::ResponseFailure::InvalidResponse => ErrorReason::InvalidResponse,
+        };
+    }
     if let Some(status) = error.chain().find_map(reqwest_status) {
         return match status.is_server_error() {
             true => ErrorReason::Http5xx,

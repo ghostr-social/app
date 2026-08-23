@@ -2,16 +2,25 @@ use super::allocation::{classify, resources, AllocationSpec};
 use super::builder::{Builder, NodeInput};
 use super::prediction::transform_prediction;
 use super::{GeneratedAction, PlannerCommand};
-use crate::adaptive::{ActionKind, CandidateSnapshot};
+use crate::adaptive::{ActionKind, CandidateSnapshot, MediaLayout};
+use crate::ByteRange;
+
+mod whole;
 
 impl Builder<'_> {
     pub(super) fn add_candidate(&mut self, candidate: &CandidateSnapshot) {
         self.add_head(candidate);
+        if has_active_whole(candidate) {
+            self.add_active(candidate);
+            return;
+        }
         self.add_base(candidate);
-        self.add_prefix(candidate);
-        let prefix = self.action_id(candidate, |kind| matches!(kind, ActionKind::Prefix(_)));
-        self.add_tail(candidate, prefix);
-        self.add_continuation(candidate);
+        if candidate.layout != MediaLayout::RequiresCompleteFile {
+            self.add_prefix(candidate);
+            let prefix = self.action_id(candidate, |kind| matches!(kind, ActionKind::Prefix(_)));
+            self.add_tail(candidate, prefix);
+            self.add_continuation(candidate);
+        }
         let whole = self.add_whole(candidate);
         self.add_cache_upgrade(candidate);
         self.add_transform(candidate, whole);
@@ -120,31 +129,8 @@ impl Builder<'_> {
         self.push_transfer(candidate, kind, allocation, &[]);
     }
 
-    fn add_whole(&mut self, candidate: &CandidateSnapshot) -> Option<u16> {
-        let (Some(total), Some(source)) = (candidate.total_bytes, self.request_source(candidate))
-        else {
-            return None;
-        };
-        if candidate.finalized {
-            return None;
-        }
-        let kind = ActionKind::FetchWhole {
-            maximum_bytes: total,
-        };
-        if self.contains(candidate, &kind) {
-            return self.action_id(candidate, |item| {
-                matches!(item, ActionKind::FetchWhole { .. })
-            });
-        }
-        let allocation = self.allocation(
-            candidate,
-            AllocationSpec::whole(total, source, candidate.duration_ms),
-        );
-        Some(self.push_transfer(candidate, kind, allocation, &[]))
-    }
-
     fn add_cache_upgrade(&mut self, candidate: &CandidateSnapshot) {
-        if candidate.present.is_empty() {
+        if candidate.layout == MediaLayout::RequiresCompleteFile || candidate.present.is_empty() {
             return;
         }
         let (Some(source), Some(missing)) = (
@@ -190,9 +176,17 @@ impl Builder<'_> {
     }
 }
 
-fn bounded_range(range: crate::ByteRange, maximum: u64) -> crate::ByteRange {
-    crate::ByteRange::new(
-        range.start,
-        range.start.saturating_add(maximum).min(range.end),
-    )
+fn bounded_range(range: ByteRange, maximum: u64) -> ByteRange {
+    let end = range.start.saturating_add(maximum).min(range.end);
+    ByteRange::new(range.start, end)
+}
+
+fn has_active_whole(candidate: &CandidateSnapshot) -> bool {
+    candidate.in_flight.iter().any(|active| {
+        active.identity_current
+            && matches!(
+                active.request,
+                crate::adaptive::RetrievalRequest::FetchWhole { .. }
+            )
+    })
 }

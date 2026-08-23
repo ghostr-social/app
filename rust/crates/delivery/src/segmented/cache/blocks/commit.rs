@@ -1,6 +1,7 @@
 use super::super::{FocusRecord, SegmentedPhase, StagedObject};
-use crate::segmented::prepare::PreparedObject;
+use crate::segmented::prepare::{PreparedComplete, PreparedObject};
 
+#[cfg(test)]
 pub(super) struct CompleteValidation<'a> {
     generation: u64,
     offset: u64,
@@ -8,6 +9,7 @@ pub(super) struct CompleteValidation<'a> {
     object: &'a PreparedObject,
 }
 
+#[cfg(test)]
 impl<'a> CompleteValidation<'a> {
     pub(super) const fn new(
         generation: u64,
@@ -24,6 +26,7 @@ impl<'a> CompleteValidation<'a> {
     }
 }
 
+#[cfg(test)]
 pub(super) fn accepts_complete(record: &FocusRecord, input: CompleteValidation<'_>) -> bool {
     if invalid(record, input.generation, input.block_bytes) {
         return false;
@@ -40,7 +43,7 @@ pub(super) fn accepts_complete(record: &FocusRecord, input: CompleteValidation<'
             .any(|known| known.matches_identity(input.object, input.offset))
 }
 
-pub(super) fn commit_partial(
+pub(in crate::segmented::cache) fn commit_partial(
     record: &mut FocusRecord,
     offset: u64,
     object: PreparedObject,
@@ -57,18 +60,21 @@ pub(super) fn commit_partial(
     Some(())
 }
 
-pub(super) fn commit_complete(record: &mut FocusRecord, offset: u64, object: PreparedObject) {
-    set_root(record, &object);
-    match (offset, find(record, &object.request_url)) {
-        (0, Some(index)) | (_, Some(index)) => {
-            record.staged[index] = StagedObject::complete(object);
-        }
-        (_, None) => record.staged.push(StagedObject::complete(object)),
+pub(in crate::segmented::cache) fn commit_prepared(
+    record: &mut FocusRecord,
+    prepared: PreparedComplete,
+) {
+    set_root(record, &prepared.object);
+    let staged = StagedObject::complete_prepared(prepared);
+    match find(record, staged.request_url()) {
+        Some(index) => record.staged[index] = staged,
+        None => record.staged.push(staged),
     }
     record.assembly_bytes = 0;
     finish(record);
 }
 
+#[cfg(test)]
 fn invalid(record: &FocusRecord, generation: u64, block_bytes: u64) -> bool {
     record.generation != generation
         || record.snapshot.phase == SegmentedPhase::Ready

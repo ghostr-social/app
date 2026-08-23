@@ -43,6 +43,7 @@ async fn safe_policy_binding_preserves_the_resumable_generation() {
     let reopened = store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
     reopened.load_existing().await.unwrap();
     reopened.bind_representation(binding).await.unwrap();
+    assert!(root.join("clip.http-generation.json").exists());
     tokio::fs::remove_dir(root.join("clip.part.evict"))
         .await
         .unwrap();

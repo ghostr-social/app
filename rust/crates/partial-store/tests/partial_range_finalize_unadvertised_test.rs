@@ -3,6 +3,7 @@
 
 mod store_fixture;
 
+use ghostr_partial_store::partial_range_completion::Completion;
 use std::sync::Arc;
 use store_fixture::{plain_store, temp_root};
 use tokio::sync::Mutex;
@@ -18,9 +19,10 @@ async fn partial_range_finalize_promotes_a_complete_file_without_an_advertised_d
         .expect("bytes");
     store.set_total_len("clip", 8).await.expect("total length");
 
-    let completed = store.finalize("clip", None).await.expect("finalize");
+    let completion = store.finalize("clip", None).await.expect("finalize");
+    let completed = root.join("clip.video");
 
-    assert_eq!(completed, root.join("clip.video"));
+    assert_eq!(completion, Completion::Unverified);
     assert_eq!(
         tokio::fs::read(&completed).await.expect("completed bytes"),
         b"headtail"

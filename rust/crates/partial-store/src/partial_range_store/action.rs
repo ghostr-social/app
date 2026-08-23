@@ -2,19 +2,19 @@ use super::PartialRangeStore;
 use anyhow::{ensure, Result};
 use ghostr_engine::representation::TransferIdentity;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 
 mod accounting;
 mod extension;
+mod state;
 pub use extension::ActionReservationExtension;
+use state::ActionState;
 
 #[derive(Clone, Debug)]
 pub struct StoreAction {
     id: u64,
     key: String,
     identity: TransferIdentity,
-    active: Arc<AtomicBool>,
+    state: ActionState,
     events: super::capacity::CapacityEvents,
 }
 
@@ -22,7 +22,7 @@ pub(super) struct ActionReservation {
     key: String,
     identity: TransferIdentity,
     remaining: u64,
-    active: Arc<AtomicBool>,
+    state: ActionState,
 }
 
 impl StoreAction {
@@ -31,7 +31,7 @@ impl StoreAction {
     }
 
     pub fn is_active(&self) -> bool {
-        self.active.load(Ordering::Acquire)
+        self.state.is_active()
     }
 
     pub fn identity(&self) -> &TransferIdentity {
@@ -39,16 +39,20 @@ impl StoreAction {
     }
 
     pub fn revoke(&self) {
-        if self.active.swap(false, Ordering::AcqRel) {
+        if self.state.revoke() {
             self.events.signal();
         }
+    }
+
+    pub(super) fn claim_publication(&self) -> bool {
+        self.state.claim_publication()
     }
 
     pub fn same_authority(&self, other: &Self) -> bool {
         self.id == other.id
             && self.key == other.key
             && self.identity == other.identity
-            && Arc::ptr_eq(&self.active, &other.active)
+            && self.state.same(&other.state)
     }
 }
 
@@ -73,12 +77,12 @@ impl PartialRangeStore {
         );
         let mut entries = self.entries.lock().await;
         self.make_room(&mut entries, &key, maximum_bytes).await?;
-        let active = Arc::new(AtomicBool::new(true));
+        let state = ActionState::new();
         let reservation = ActionReservation {
             key: key.clone(),
             identity: identity.clone(),
             remaining: maximum_bytes,
-            active: active.clone(),
+            state: state.clone(),
         };
         self.action_reservations
             .lock()
@@ -88,7 +92,7 @@ impl PartialRangeStore {
             id,
             key,
             identity: identity.clone(),
-            active,
+            state,
             events: self.capacity.events(),
         })
     }
@@ -120,7 +124,7 @@ impl PartialRangeStore {
         let released = reservations
             .drain()
             .map(|(_, reservation)| {
-                reservation.active.store(false, Ordering::Release);
+                reservation.state.revoke();
                 reservation.remaining
             })
             .sum();
@@ -135,7 +139,7 @@ impl PartialRangeStore {
             .filter(|reservation| same_authority(reservation, action))
             .ok_or_else(|| anyhow::anyhow!("action reservation is missing"))?;
         ensure!(
-            reservation.active.load(Ordering::Acquire),
+            reservation.state.is_active(),
             "action reservation was revoked"
         );
         ensure!(
@@ -153,10 +157,7 @@ impl PartialRangeStore {
             .get_mut(&action.id)
             .filter(|reservation| same_authority(reservation, action))
             .ok_or_else(|| anyhow::anyhow!("action reservation is missing"))?;
-        ensure!(
-            reservation.active.load(Ordering::Acquire),
-            "action was revoked"
-        );
+        ensure!(reservation.state.is_active(), "action was revoked");
         ensure!(
             reservation.remaining >= bytes,
             "action exceeded its reservation"
@@ -175,5 +176,5 @@ pub(super) type ActionReservations = HashMap<u64, ActionReservation>;
 fn same_authority(reservation: &ActionReservation, action: &StoreAction) -> bool {
     reservation.key == action.key
         && reservation.identity == action.identity
-        && Arc::ptr_eq(&reservation.active, &action.active)
+        && reservation.state.same(&action.state)
 }

@@ -1,10 +1,10 @@
 use super::{
-    save_binding, PartialRangeStore, ResponseOwnerRef, SingleResponseState, SingleResponseStorage,
+    accepted_total, save_binding, PartialRangeStore, ResponseOwnerRef, SingleResponseState,
+    SingleResponseStorage,
 };
 use crate::partial_range_disk as disk;
 use crate::partial_range_store::StoreAction;
 use anyhow::{bail, Context, Result};
-use ghostr_engine::adaptive::WholeBodyContract;
 use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
 
 impl PartialRangeStore {
@@ -19,7 +19,7 @@ impl PartialRangeStore {
             identity,
             ResponseOwnerRef::Granted(action),
             total,
-            complete && action.is_active(),
+            complete,
         )
         .await
     }
@@ -48,7 +48,7 @@ impl PartialRangeStore {
         complete: bool,
     ) -> Result<bool> {
         let _update = self.update_key(identity.post().as_str()).await?;
-        let Some(state) = self.current_single_response(identity, owner).await else {
+        let Some(state) = self.single_response_for_finish(identity, owner).await else {
             return Ok(false);
         };
         let binding = self.current_binding(identity).await?;
@@ -73,6 +73,9 @@ impl PartialRangeStore {
         let Some(total) = accepted_total(state.contract, total, complete) else {
             return self.abort_single_response(binding, state).await;
         };
+        if !state.owner.claim_publication() {
+            return self.abort_single_response(binding, state).await;
+        }
         let identity = state.identity.clone();
         let result = match state.storage {
             SingleResponseStorage::Live { started } => {
@@ -162,14 +165,17 @@ impl PartialRangeStore {
         exact: bool,
     ) -> Result<bool> {
         if exact && received == total {
-            if let Err(error) = self.commit_staged_single_response(binding, total).await {
-                self.remove_staged_single_response(state)
-                    .await
-                    .with_context(|| format!("clean up failed staged commit: {error:#}"))?;
-                self.remove_single_response_owner(&state.identity, state.owner.as_ref())
-                    .await;
-                return Err(error);
+            if matches!(
+                &state.authority,
+                super::SingleResponseAuthority::ActionScoped
+            ) {
+                self.commit_session_response(binding, state, total).await?;
+                return Ok(true);
             }
+            let retire_http = state.authority.retires_http_generation();
+            self.commit_staged_single_response(binding, total, retire_http)
+                .await
+                .context("commit complete staged response")?;
             return Ok(true);
         }
         self.remove_staged_single_response(state).await?;
@@ -188,14 +194,5 @@ impl PartialRangeStore {
         {
             actions.remove(identity.post().as_str());
         }
-    }
-}
-
-fn accepted_total(contract: WholeBodyContract, total: Option<u64>, complete: bool) -> Option<u64> {
-    let total = total.filter(|total| complete && *total > 0)?;
-    match contract {
-        WholeBodyContract::Exact { expected_bytes } if total == expected_bytes => Some(total),
-        WholeBodyContract::Capped { maximum_bytes } if total <= maximum_bytes => Some(total),
-        _ => None,
     }
 }

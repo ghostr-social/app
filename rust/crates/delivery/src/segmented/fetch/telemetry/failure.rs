@@ -15,6 +15,7 @@ pub(in crate::segmented) struct FetchFailure {
     network_bytes: u64,
     cancelled: bool,
     superseded: bool,
+    response_completed: bool,
     status: Option<StatusCode>,
     policy: FailurePolicy,
     task_failure: Option<TaskFailure>,
@@ -38,6 +39,7 @@ impl FetchFailure {
             network_bytes: progress.network_bytes(),
             cancelled: false,
             superseded: false,
+            response_completed: false,
             status: problem.status,
             policy: problem.policy,
             task_failure: None,
@@ -108,6 +110,21 @@ impl FetchFailure {
         failure
     }
 
+    pub(in crate::segmented) fn cancelled_after_response(
+        origin: OriginTelemetry,
+        network_bytes: u64,
+    ) -> Self {
+        let mut failure = Self::cancelled(Some(origin), network_bytes);
+        failure.response_completed = true;
+        failure
+    }
+
+    pub(in crate::segmented) fn into_cancelled(self) -> Self {
+        let mut failure = Self::cancelled(self.origin, self.network_bytes);
+        failure.response_completed = self.response_completed;
+        failure
+    }
+
     pub(in crate::segmented) fn superseded(origin: OriginTelemetry, network_bytes: u64) -> Self {
         let mut failure = Self::failure(
             anyhow::anyhow!("HLS bootstrap publication superseded"),
@@ -119,6 +136,7 @@ impl FetchFailure {
             FailurePolicy::neutral(),
         );
         failure.superseded = true;
+        failure.response_completed = true;
         failure
     }
 
@@ -136,6 +154,7 @@ impl FetchFailure {
             network_bytes: evidence.network_bytes,
             cancelled: false,
             superseded: false,
+            response_completed: false,
             status: None,
             policy,
             task_failure: None,

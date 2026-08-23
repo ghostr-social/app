@@ -166,6 +166,7 @@ impl DeliveryWorker {
             segmented_invalidations,
             timelines,
             independent_objects: IndependentObjects::default(),
+            whole_body_limits: Default::default(),
             transforms,
             immediate_replan: Default::default(),
             network_refill_timer: Default::default(),

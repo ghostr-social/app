@@ -1,23 +1,34 @@
+use super::prepared::{PreparedStage, PreparedTransfer};
 use super::progress::Advance;
 use super::{Active, SegmentedDelivery, SegmentedDone, SegmentedFinish};
-use crate::segmented::cache::{CompleteStage, StageBlock, StoredStage};
-use crate::segmented::fetch::{FetchFailure, FetchedObject, OriginTelemetry};
-use crate::segmented::prepare::PreparedObject;
+use crate::segmented::cache::StageLease;
+use crate::segmented::fetch::{FetchFailure, OriginTelemetry};
+use crate::segmented::prepare::PreparedComplete;
 use ghostr_engine::origin_model::ErrorReason;
 
 mod terminal;
 use terminal::{terminal, TerminalContext, TerminalInput};
+
+#[cfg(test)]
+#[path = "completion/cancellation_conversion_test.rs"]
+mod cancellation_conversion_test;
 
 pub(super) struct CompletedObject {
     pub(super) bytes: u64,
     pub(super) telemetry: OriginTelemetry,
 }
 
+struct LeasedComplete {
+    object: PreparedComplete,
+    lease: StageLease,
+}
+
 impl SegmentedDelivery {
     pub(crate) fn finish(&mut self, done: SegmentedDone) -> Option<SegmentedFinish> {
-        let current = self.active.get(&done.post).is_some_and(|active| {
-            active.action == done.action && active.pending.generation == done.generation
-        });
+        let current = self
+            .active
+            .get(&done.post)
+            .is_some_and(|active| active.action == done.action && active.fence == done.fence);
         if !current {
             return None;
         }
@@ -26,14 +37,13 @@ impl SegmentedDelivery {
         let source = active.pending.url.clone();
         let action = done.action;
         let post = done.post;
-        let generation = done.generation;
         let observed_at_ms = done.observed_at_ms;
         let resources = done.resources;
         let outcome = match active.cancelling {
             true => Err(cancelled(done.outcome)),
             false => done.outcome,
         };
-        let result = self.complete_stage(&post, generation, &active, outcome);
+        let result = self.complete_stage(&post, &active, outcome);
         let context = TerminalContext::new(&source, stage, action, observed_at_ms);
         let mut finish = terminal(TerminalInput {
             context,
@@ -47,40 +57,38 @@ impl SegmentedDelivery {
     fn complete_stage(
         &mut self,
         post: &ghostr_engine::PostId,
-        generation: u64,
         active: &Active,
-        outcome: Result<FetchedObject, FetchFailure>,
+        outcome: Result<PreparedTransfer, FetchFailure>,
     ) -> Result<CompletedObject, FetchFailure> {
         match outcome {
             Err(failure) => Err(failure),
-            Ok(object) => self.store_completed(post, generation, active, object),
+            Ok(object) => self.store_completed(post, active, object),
         }
     }
 
     fn store_completed(
         &mut self,
         post: &ghostr_engine::PostId,
-        generation: u64,
         active: &Active,
-        object: FetchedObject,
+        transfer: PreparedTransfer,
     ) -> Result<CompletedObject, FetchFailure> {
-        let bytes = object.body.len() as u64;
-        let telemetry = object.telemetry;
+        let PreparedTransfer {
+            received_bytes: bytes,
+            telemetry,
+            continuation,
+            stage,
+            lease,
+        } = transfer;
         let completed = CompletedObject { bytes, telemetry };
-        let offset = object.offset;
-        let continuation = object.continuation.clone();
-        let stored = self
-            .cache
-            .store_stage_block(
-                post,
-                generation,
-                StageBlock::new(offset, PreparedObject::from(object), continuation.is_none()),
-            )
-            .ok_or_else(|| FetchFailure::superseded(telemetry, bytes))?;
-        match stored {
-            StoredStage::Partial => self.continue_stage(post, active, continuation),
-            StoredStage::Complete(object) => {
-                self.advance_stage(post, active, *object, &completed)?;
+        match stage {
+            PreparedStage::Partial(object) => {
+                if !lease.commit_partial(object) {
+                    return Err(FetchFailure::superseded(telemetry, bytes));
+                }
+                self.continue_stage(post, active, continuation);
+            }
+            PreparedStage::Complete(object) => {
+                self.advance_stage(post, active, LeasedComplete { object, lease }, &completed)?
             }
         }
         Ok(completed)
@@ -101,21 +109,21 @@ impl SegmentedDelivery {
         &mut self,
         post: &ghostr_engine::PostId,
         active: &Active,
-        object: CompleteStage,
+        stage: LeasedComplete,
         completed: &CompletedObject,
     ) -> Result<(), FetchFailure> {
-        let advance = active.pending.advance(&object.object).map_err(|error| {
-            FetchFailure::admitted(
-                error,
-                ErrorReason::InvalidResponse,
-                completed.telemetry,
-                completed.bytes,
-            )
-        })?;
-        if !self
-            .cache
-            .commit_stage_complete(post, active.pending.generation, object)
-        {
+        let advance = active
+            .pending
+            .advance(&stage.object.object)
+            .map_err(|error| {
+                FetchFailure::admitted(
+                    error,
+                    ErrorReason::InvalidResponse,
+                    completed.telemetry,
+                    completed.bytes,
+                )
+            })?;
+        if !stage.lease.commit_complete(stage.object) {
             return Err(FetchFailure::superseded(
                 completed.telemetry,
                 completed.bytes,
@@ -135,11 +143,11 @@ impl SegmentedDelivery {
     }
 }
 
-fn cancelled(outcome: Result<FetchedObject, FetchFailure>) -> FetchFailure {
+fn cancelled(outcome: Result<PreparedTransfer, FetchFailure>) -> FetchFailure {
     match outcome {
-        Ok(object) => FetchFailure::cancelled(Some(object.telemetry), object.body.len() as u64),
+        Ok(transfer) => transfer.cancelled_failure(),
         Err(failure) if failure.is_cancelled() => failure,
-        Err(failure) => FetchFailure::cancelled(failure.origin(), failure.network_bytes()),
+        Err(failure) => failure.into_cancelled(),
     }
 }
 

@@ -38,7 +38,9 @@ pub(super) fn apply(
     let (budget, reserve) = reserve::protect(input, budget, rescue.as_ref());
     let nodes = frontier
         .iter()
-        .filter(|node| semantically_admissible(node, &semantic))
+        .filter(|node| {
+            node.post == input.snapshot.playback.current || semantically_admissible(node, &semantic)
+        })
         .filter(|node| request_admitted(input, node))
         .filter(|node| budget.allows_node(node))
         .filter(|node| reserve.degraded || budget.allows_action(node))
@@ -92,6 +94,11 @@ fn progressive_semantic(
     candidate: &crate::adaptive::CandidateSnapshot,
 ) -> Option<(i32, SemanticCandidate)> {
     let context = input.context.candidate(&candidate.post)?;
+    if candidate.feed_offset.value() < 0
+        || (candidate.feed_offset.value() == 0 && ready(candidate, context.capability))
+    {
+        return None;
+    }
     progressive_actionable(candidate, context).then(|| {
         (
             candidate.feed_offset.value(),
@@ -109,6 +116,11 @@ fn hls_semantic(
     candidate: &crate::adaptive::HlsCandidateSnapshot,
 ) -> Option<(i32, SemanticCandidate)> {
     let context = input.context.candidate(&candidate.post)?;
+    if candidate.feed_offset.value() < 0
+        || (candidate.feed_offset.value() == 0 && candidate.ready())
+    {
+        return None;
+    }
     (!candidate.ready()).then(|| {
         (
             candidate.feed_offset.value(),

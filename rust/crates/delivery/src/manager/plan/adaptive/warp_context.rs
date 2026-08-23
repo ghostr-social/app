@@ -1,16 +1,21 @@
 use super::super::PlanInputs;
 use crate::manager::state::DeliveryState;
 use ghostr_engine::adaptive::{
-    AllocationPlan, HeadProbeHistory, PlannerContext, PlannerLimits, PreviewAvailability,
-    RequestOccupancy, TwinEpochs,
+    AllocationPlan, HeadProbeHistory, PlannerContext, PreviewAvailability, RequestOccupancy,
+    TwinEpochs,
 };
 
 mod active;
 mod cooling;
 mod hedge;
+mod limits;
+#[cfg(test)]
+#[path = "warp_context/limits_test.rs"]
+mod limits_test;
 mod quality;
 
 mod request_capacity;
+mod whole_body;
 
 pub(super) fn build(
     state: &DeliveryState,
@@ -45,7 +50,7 @@ pub(super) fn build(
         occupancy: &occupancy,
         hedge_soft: &hedge_soft,
     });
-    let limits = limits(state, snapshot, &request_capacity);
+    let limits = limits::resolve(state, snapshot, &request_capacity);
     let context = context.with_limits(limits).with_soft_request_capacity(
         request_capacity.ordinary_tokens,
         request_capacity.hls_tokens,
@@ -64,6 +69,7 @@ fn candidate_context(
     inputs: &PlanInputs<'_>,
 ) -> PlannerContext {
     let context = quality::apply(context, state, &candidate.post);
+    let context = whole_body::apply(context, state, candidate, inputs);
     let context = context
         .with_capability(
             candidate.post.clone(),
@@ -71,7 +77,7 @@ fn candidate_context(
         )
         .with_head_probe_history(
             candidate.post.clone(),
-            head_probe_history(state, &candidate.post, inputs),
+            head_probe_history(state, candidate, inputs),
         );
     let Some(preview) = state
         .catalog()
@@ -88,10 +94,16 @@ fn candidate_context(
 
 fn head_probe_history(
     state: &DeliveryState,
-    post: &ghostr_engine::PostId,
+    candidate: &ghostr_engine::adaptive::CandidateSnapshot,
     inputs: &PlanInputs<'_>,
 ) -> HeadProbeHistory {
-    if inputs.completed_head_probes.contains(post) {
+    let post = &candidate.post;
+    if completed_head_is_current(state, candidate, inputs)
+        && !crate::probe::pool::evidence_needs_head_refresh(
+            &candidate.evidence,
+            historical_size(state, candidate),
+        )
+    {
         return HeadProbeHistory::Completed;
     }
     let active = inputs.active_head_probes.iter().any(|identity| {
@@ -108,25 +120,32 @@ fn head_probe_history(
     }
 }
 
-fn limits(
+fn historical_size(
     state: &DeliveryState,
-    snapshot: &ghostr_engine::adaptive::PlayabilitySnapshot,
-    request_capacity: &request_capacity::RequestCapacity,
-) -> PlannerLimits {
-    let rate = snapshot.network.throughput_bps.saturating_div(8).max(1);
-    let baseline_burst = rate.saturating_mul(2).max(snapshot.request_slice_bytes);
-    PlannerLimits {
-        network_burst_bytes: baseline_burst,
-        network_rate_bytes_per_second: rate,
-        cpu_ms: state
-            .transform_profile()
-            .map_or(0, |profile| profile.limits().cpu_ms()),
-        request_tokens: request_capacity.tokens,
-        per_origin_requests: snapshot
-            .network
-            .per_authority_request_limit
-            .min(u16::MAX as usize) as u16,
-    }
+    candidate: &ghostr_engine::adaptive::CandidateSnapshot,
+) -> bool {
+    candidate.preferred_source.as_deref().is_some_and(|source| {
+        state
+            .catalog()
+            .lookup(&candidate.post)
+            .and_then(|entry| entry.planning_total_for(source))
+            .is_some()
+    })
+}
+
+fn completed_head_is_current(
+    state: &DeliveryState,
+    candidate: &ghostr_engine::adaptive::CandidateSnapshot,
+    inputs: &PlanInputs<'_>,
+) -> bool {
+    let Some(source) = candidate.preferred_source.as_deref() else {
+        return false;
+    };
+    state
+        .catalog()
+        .transfer_identity(&candidate.post, source)
+        .as_ref()
+        .is_some_and(|identity| inputs.completed_head_probes.contains(identity))
 }
 
 fn apply_feedback(

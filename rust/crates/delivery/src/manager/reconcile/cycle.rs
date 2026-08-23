@@ -4,7 +4,9 @@ use crate::manager::inflight::ActiveAction;
 use crate::manager::plan::{planned_work_with_planner, PlanInputs, PlannedWork};
 use crate::manager::resource_control::ResourceEnvironment;
 use crate::manager::DeliveryWorker;
-use ghostr_engine::adaptive::{ResourceObservation, ShadowPriceController, StorageSnapshot};
+use ghostr_engine::adaptive::{
+    ResourceObservation, ShadowPriceController, StorageSnapshot, WholeBodyExhaustion,
+};
 use ghostr_engine::host_stats::OPTIMISTIC_THROUGHPUT_BPS;
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::{ByteRange, PostId};
@@ -17,6 +19,7 @@ pub(super) struct PlanningCycle {
     capacity: CapacitySnapshot,
     pub(super) stored: PlanningStoreState,
     independent_sources: HashMap<PostId, HashSet<String>>,
+    whole_body_exhaustions: HashMap<TransferIdentity, WholeBodyExhaustion>,
     in_flight: Vec<ActiveAction>,
     active_head_probes: Vec<TransferIdentity>,
     hls_candidates: Vec<ghostr_engine::adaptive::HlsCandidateSnapshot>,
@@ -45,7 +48,8 @@ impl DeliveryWorker {
         self.state
             .replace_transformed_posts(stored.transformed.clone());
         self.state.prune_player_preparations(&stored.revisions);
-        let independent_sources = self.independent_objects.current(&stored.revisions);
+        let independent_sources = self.independent_objects.current(self.state.catalog());
+        let whole_body_exhaustions = self.whole_body_limits.current(self.state.catalog());
         self.reconcile_timelines(&timeline_window, &stored.snapshots);
         self.state.reconcile_fast_start_evidence(&stored.snapshots);
         self.reconcile_probe_bodies();
@@ -69,6 +73,7 @@ impl DeliveryWorker {
             capacity,
             stored,
             independent_sources,
+            whole_body_exhaustions,
             in_flight,
             active_head_probes,
             hls_candidates,
@@ -82,6 +87,9 @@ impl DeliveryWorker {
 
     pub(super) fn plan_cycle(&mut self, cycle: &PlanningCycle) -> PlannedWork {
         let environment = self.resource_environment(cycle);
+        let completed_head_probes = self
+            .probes
+            .current_completed_identities(self.state.catalog());
         let inputs = PlanInputs {
             stats: self.keeper.stats(),
             retry: &self.retry,
@@ -91,7 +99,8 @@ impl DeliveryWorker {
             continuation_sources: &cycle.stored.continuation_sources,
             revisions: &cycle.stored.revisions,
             independent_sources: &cycle.independent_sources,
-            completed_head_probes: self.probes.completed_posts(),
+            whole_body_exhaustions: &cycle.whole_body_exhaustions,
+            completed_head_probes: &completed_head_probes,
             in_flight: &cycle.in_flight,
             active_head_probes: &cycle.active_head_probes,
             hls_candidates: &cycle.hls_candidates,

@@ -64,6 +64,15 @@ impl ReadPlan {
         }))
     }
 
+    pub(super) fn capture_session(
+        paths: &StorePaths,
+        key: &str,
+        manifest: &RangeManifest,
+        requested: Range<u64>,
+    ) -> Result<Option<Self>> {
+        capture(paths.single_response(key), manifest, requested)
+    }
+
     pub(super) async fn execute(&self) -> Result<ReadOutcome> {
         let envelope = disk::read_span(&self.path, &self.envelope).await?;
         let valid = self.checksums.iter().try_fold(true, |valid, checksum| {
@@ -88,6 +97,25 @@ impl ReadPlan {
         let interval = slice(bytes, &self.envelope, &checksum.span())?;
         Ok(disk::sha256_bytes(interval) == checksum.digest())
     }
+}
+
+fn capture(
+    path: PathBuf,
+    manifest: &RangeManifest,
+    requested: Range<u64>,
+) -> Result<Option<ReadPlan>> {
+    if requested.start >= requested.end || !manifest.contains(&requested) {
+        return Ok(None);
+    }
+    let checksums = manifest.checksums_for(&requested)?;
+    let envelope = checksum_envelope(&checksums).unwrap_or_else(|| requested.clone());
+    Ok(Some(ReadPlan {
+        path,
+        requested,
+        envelope,
+        checksums,
+        stable_manifest: manifest.clone(),
+    }))
 }
 
 fn checksum_envelope(checksums: &[IntervalChecksum]) -> Option<Range<u64>> {

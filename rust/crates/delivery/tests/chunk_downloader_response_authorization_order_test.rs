@@ -3,7 +3,7 @@ mod range_fixture;
 use ghostr_delivery::chunk::cancel::cancel_pair;
 use ghostr_delivery::chunk::downloader::{
     download_chunk_observed, ChunkExecution, ChunkSpec, ChunkWrite, DownloadTraffic,
-    OriginGeneration, ResponseObservation, ResponseWriteMode,
+    OpenedResponse, OriginGeneration, ResponseWriteMode,
 };
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::ByteRange;
@@ -87,7 +87,7 @@ impl DownloadTraffic for OrderingTraffic {
     fn opened(&mut self, _: Duration) {}
     fn wrote(&mut self, _: u64) {}
 
-    fn response_observed(&mut self, _: ResponseObservation) {
+    fn response_observed(&mut self, _: OpenedResponse) {
         self.1
             .store(!self.0.load(Ordering::Acquire), Ordering::Release);
     }

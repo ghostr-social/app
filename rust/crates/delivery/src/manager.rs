@@ -44,6 +44,7 @@ pub(crate) mod reliability;
 mod request_gate;
 mod reset;
 pub(crate) mod resource_control;
+mod response_generation;
 mod response_observation;
 pub(crate) mod response_open;
 pub mod retry;
@@ -64,6 +65,7 @@ mod tuning;
 pub(crate) mod wake;
 pub(crate) mod wake_lane;
 pub(crate) mod wake_select;
+mod whole_body_limits;
 pub(crate) mod workers;
 
 use crate::cache_registry::CacheRegistry;
@@ -87,6 +89,7 @@ use crate::manager::timeline::TimelineCoordinator;
 use crate::manager::traffic::TrafficInbox;
 use crate::manager::transfers::{InternalEvent, TransferContext};
 use crate::manager::wake_lane::WakeCursor;
+use crate::manager::whole_body_limits::WholeBodyLimits;
 use crate::manager::workers::DownloadWorkers;
 use crate::mutable_priority_queue::MutablePriorityQueue;
 use crate::playback_demand::DemandReceiver;
@@ -185,6 +188,7 @@ pub(crate) struct DeliveryWorker {
     segmented_invalidations: watch::Receiver<u64>,
     timelines: TimelineCoordinator,
     independent_objects: IndependentObjects,
+    whole_body_limits: WholeBodyLimits,
     transforms: transforms::TransformJobs,
     immediate_replan: ImmediateReplan,
     network_refill_timer: NetworkRefillTimer,

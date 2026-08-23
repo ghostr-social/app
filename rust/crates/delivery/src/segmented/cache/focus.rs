@@ -97,6 +97,7 @@ fn empty_record(generation: u64) -> FocusRecord {
         snapshot: SegmentedSnapshot::default(),
         objects: Vec::new(),
         staged: Vec::new(),
+        preparing: None,
         reserved_bytes: 0,
         assembly_bytes: 0,
     }

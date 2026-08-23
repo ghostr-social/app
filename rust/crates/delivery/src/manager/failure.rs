@@ -14,6 +14,9 @@ use reqwest::StatusCode;
 #[cfg(test)]
 #[path = "failure/origin_failure_test.rs"]
 mod origin_failure_test;
+#[cfg(test)]
+#[path = "failure/whole_body_limit_test.rs"]
+mod whole_body_limit_test;
 
 /// How hopeless one failed attempt against a source looks.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -59,7 +62,10 @@ pub fn classify(error: &anyhow::Error) -> FailureClass {
 
 /// Returns remote failure evidence only after a request reached an origin.
 pub(crate) fn origin_failure_class(error: &anyhow::Error) -> Option<FailureClass> {
-    (!error.is::<MediaRequestAdmissionTimeout>()).then(|| classify(error))
+    (!error.is::<MediaRequestAdmissionTimeout>()
+        && !crate::chunk::sink::is_local_store_failure(error)
+        && !crate::chunk::whole_body_policy::is(error))
+    .then(|| classify(error))
 }
 
 /// The HTTP status a rejected request carried, if it got that far.

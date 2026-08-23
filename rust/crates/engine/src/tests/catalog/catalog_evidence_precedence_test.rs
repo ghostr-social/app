@@ -1,4 +1,5 @@
-use crate::catalog::{Catalog, LearnedFacts};
+use crate::catalog::{Catalog, HttpObservation, LearnedFacts};
+use crate::evidence::EvidenceValidator;
 use crate::tests::support::progressive_meta;
 use crate::PostId;
 
@@ -9,26 +10,24 @@ fn observed_response_dominates_later_advisory_head_fields() {
     let binding = catalog.upsert(post.clone(), progressive_meta(None, None));
     let source = "https://host.example/video.mp4";
     let identity = binding.transfer(source).unwrap();
-    assert!(catalog.learn_response_for(
-        &identity,
-        LearnedFacts {
-            content_length: Some(16),
-            accept_ranges: Some(true),
-            host: None,
-        },
-    ));
-
-    assert!(catalog.learn_head_for(
-        &identity,
-        LearnedFacts {
-            content_length: Some(8),
-            accept_ranges: Some(false),
-            host: None,
-        },
-    ));
+    assert!(catalog.learn_response_observation_for(&identity, observation(16, true, 1)));
+    assert!(catalog.learn_head_observation_for(&identity, observation(8, false, 2)));
 
     let entry = catalog.lookup(&post).unwrap();
     assert_eq!(entry.planning_total_for(source), Some(16));
     assert_eq!(entry.authoritative_total_for(source), Some(16));
     assert_eq!(entry.observed_range_support_for(source), Some(true));
+}
+
+fn observation(content_length: u64, accept_ranges: bool, observed_at_ms: u64) -> HttpObservation {
+    HttpObservation::new(
+        LearnedFacts {
+            content_length: Some(content_length),
+            accept_ranges: Some(accept_ranges),
+            host: None,
+        },
+        None,
+        observed_at_ms,
+        EvidenceValidator::strong_etag("\"generation-1\""),
+    )
 }

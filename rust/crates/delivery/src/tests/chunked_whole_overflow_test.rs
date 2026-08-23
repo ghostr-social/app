@@ -1,6 +1,6 @@
 use super::whole_sink_fixture::{fixture, split, whole_spec, AuthorizedTraffic};
 use crate::chunk::cancel::cancel_pair;
-use crate::chunk::downloader::{download_chunk_observed, ChunkExecution};
+use crate::chunk::downloader::{download_chunk_captured, ChunkExecution};
 use crate::chunk::sink::TransferChunkSink;
 use crate::debug::network::NetworkThrottle;
 use ghostr_engine::adaptive::WholeBodyContract;
@@ -31,7 +31,7 @@ async fn chunked_whole_above_its_cap_rolls_back_without_harming_seed() {
         WholeBodyContract::Capped { maximum_bytes: 8 },
     );
 
-    let error = download_chunk_observed(
+    let observed = download_chunk_captured(
         &spec,
         ChunkExecution {
             sink: &sink,
@@ -42,10 +42,15 @@ async fn chunked_whole_above_its_cap_rolls_back_without_harming_seed() {
             network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
         },
     )
-    .await
+    .await;
+    assert_eq!(observed.received_bytes, 9);
+    let error = observed
+        .result
     .expect_err("cap+1 must fail");
 
-    assert!(format!("{error:#}").contains("hard cap"));
+    let limit = crate::chunk::whole_body_limit::from_error(&error).unwrap();
+    assert_eq!(limit.maximum_bytes(), 8);
+    assert_eq!(limit.received_bytes(), 9);
     assert_eq!(
         fixture.store.read_range("post", 0..4).await.unwrap(),
         Some(b"old!".to_vec())

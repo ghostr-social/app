@@ -8,34 +8,22 @@ use ghostr_engine::PostId;
 use std::collections::{HashMap, HashSet};
 
 mod availability;
+mod history;
+pub(crate) use availability::evidence_needs_head_refresh;
+use history::CompletedHeadProbe;
 
 pub(crate) struct ProbeClaimQuery<'a> {
-    catalog: &'a Catalog,
-    retry: &'a RetryBook,
-    post: &'a PostId,
-    source: &'a str,
-}
-
-impl<'a> ProbeClaimQuery<'a> {
-    pub(crate) const fn new(
-        catalog: &'a Catalog,
-        retry: &'a RetryBook,
-        post: &'a PostId,
-        source: &'a str,
-    ) -> Self {
-        Self {
-            catalog,
-            retry,
-            post,
-            source,
-        }
-    }
+    pub(crate) catalog: &'a Catalog,
+    pub(crate) retry: &'a RetryBook,
+    pub(crate) post: &'a PostId,
+    pub(crate) source: &'a str,
+    pub(crate) observed_at_ms: u64,
 }
 
 pub(crate) struct MetadataProbePool {
     limit: usize,
     probing: HashMap<PostId, ActiveProbe>,
-    probed: HashSet<PostId>,
+    probed: HashMap<TransferIdentity, CompletedHeadProbe>,
     deferred: HashSet<PostId>,
 }
 
@@ -58,7 +46,7 @@ impl MetadataProbePool {
         Self {
             limit: limit.max(1),
             probing: HashMap::new(),
-            probed: HashSet::new(),
+            probed: HashMap::new(),
             deferred: HashSet::new(),
         }
     }
@@ -94,19 +82,41 @@ impl MetadataProbePool {
         &mut self,
         query: ProbeClaimQuery<'_>,
     ) -> Result<TransferIdentity, ProbeClaimRefusal> {
-        let identity = self.probe_identity(&query)?;
+        let (identity, rearm) = self.probe_identity(&query)?;
         if self.probing.len() >= self.limit {
             return Err(ProbeClaimRefusal::PoolAtCapacity);
+        }
+        if rearm {
+            self.probed.remove(&identity);
         }
         self.probing
             .insert(query.post.clone(), ActiveProbe::new(identity.clone()));
         Ok(identity)
     }
+    #[cfg(test)]
+    pub fn learned(
+        &mut self,
+        identity: &TransferIdentity,
+        generation: Option<ghostr_engine::representation::HttpGenerationLease>,
+    ) {
+        self.probing.remove(identity.post());
+        self.deferred.remove(identity.post());
+        self.probed
+            .insert(identity.clone(), CompletedHeadProbe::for_test(generation));
+    }
 
-    pub fn learned(&mut self, post: &PostId) {
-        self.probing.remove(post);
-        self.deferred.remove(post);
-        self.probed.insert(post.clone());
+    pub(crate) fn learned_probe(
+        &mut self,
+        identity: &TransferIdentity,
+        stamp: ghostr_engine::representation::HttpGenerationStamp,
+        observed_size: bool,
+    ) {
+        self.probing.remove(identity.post());
+        self.deferred.remove(identity.post());
+        self.probed.insert(
+            identity.clone(),
+            CompletedHeadProbe::new(stamp, observed_size),
+        );
     }
 
     pub fn release(&mut self, post: &PostId) {
@@ -138,20 +148,33 @@ impl MetadataProbePool {
         if let Some(probe) = self.probing.get_mut(post) {
             probe.result_current = false;
         }
-        self.probed.remove(post);
+        self.probed.retain(|identity, _| identity.post() != post);
         self.deferred.remove(post);
     }
 
     /// Active probes remain counted until completion; only completed
     /// probe-once history follows hot scheduling retention.
     pub(crate) fn retain_history(&mut self, retained: &HashSet<PostId>) {
-        self.probed.retain(|post| retained.contains(post));
+        self.probed
+            .retain(|identity, _| retained.contains(identity.post()));
         self.deferred.retain(|post| retained.contains(post));
     }
 
     /// Successful HEAD history only; transient probe availability stays a launch-time check.
-    pub(crate) fn completed_posts(&self) -> &HashSet<PostId> {
-        &self.probed
+    pub(crate) fn current_completed_identities(
+        &self,
+        catalog: &Catalog,
+    ) -> HashSet<TransferIdentity> {
+        self.probed
+            .iter()
+            .filter(|(identity, history)| history.current(catalog, identity))
+            .map(|(identity, _)| identity.clone())
+            .collect()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn has_completed_identity(&self, identity: &TransferIdentity) -> bool {
+        self.probed.contains_key(identity)
     }
 
     pub(crate) fn active_identities(&self) -> Vec<TransferIdentity> {

@@ -1,4 +1,4 @@
-use super::fetch::{FetchFailure, FetchedObject};
+use super::fetch::FetchFailure;
 use super::SegmentedCache;
 use crate::manager::traffic::TrafficPublisher;
 use crate::manager::transfers::InternalEvent;
@@ -7,6 +7,7 @@ use ghostr_engine::origin_model::OriginObservation;
 use ghostr_engine::{ActionId, DeliveryKind, PostId};
 use ghostr_net::media_request_executor::MediaRequestExecutor;
 use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
 #[cfg(test)]
@@ -18,6 +19,7 @@ mod focus;
 use focus::hls_items;
 mod focus_changes;
 mod launch;
+mod prepared;
 mod progress;
 mod recovery;
 mod resources;
@@ -47,8 +49,10 @@ pub(crate) struct SegmentedDelivery {
 
 struct Active {
     action: ActionId,
+    fence: crate::segmented::cache::StageFence,
     pending: Pending,
     committed_until_ms: u64,
+    network: Arc<crate::segmented::fetch::FetchProgress>,
     _task: tokio::task::JoinHandle<()>,
     cancellation: Option<tokio::sync::oneshot::Sender<()>>,
     cancelling: bool,
@@ -72,8 +76,8 @@ pub(crate) struct SegmentedLaunch {
 pub(crate) struct SegmentedDone {
     action: ActionId,
     post: PostId,
-    generation: u64,
-    outcome: Result<FetchedObject, FetchFailure>,
+    fence: crate::segmented::cache::StageFence,
+    outcome: Result<prepared::PreparedTransfer, FetchFailure>,
     observed_at_ms: u64,
     resources: SegmentedResourceCommitment,
 }
@@ -108,7 +112,10 @@ impl SegmentedDelivery {
     }
 
     pub fn active_len(&self) -> usize {
-        self.active.len()
+        self.active
+            .values()
+            .filter(|active| active.network.network_active())
+            .count()
     }
 
     pub fn set_startup_eta_ms(&mut self, eta_ms: u64) {

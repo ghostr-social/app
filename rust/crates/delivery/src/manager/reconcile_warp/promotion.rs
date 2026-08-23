@@ -78,17 +78,30 @@ impl DeliveryWorker {
         let delta = prepared.preflight.additional_bytes();
         let resources = ResourceCost::new(delta, delta, 0, 0);
         match self.commit_selected(commit, resources, time::unix_time_ms()) {
-            CommitResult::Committed => {
-                prepared.extension.commit();
-                self.request_immediate_replan();
-                Ok(())
-            }
+            CommitResult::Committed => self.finish_promotion_commit(prepared, delta).await,
             CommitResult::Rejected | CommitResult::Untracked => {
                 self.downloads.rollback_promotion(&prepared.preflight);
                 rollback_store(&self.ctx.store, prepared.extension).await;
                 Err("warp_resource_commit_rejected")
             }
         }
+    }
+
+    async fn finish_promotion_commit(
+        &mut self,
+        prepared: PreparedPromotion,
+        delta: u64,
+    ) -> Result<(), &'static str> {
+        if self.downloads.commit_promotion_network(&prepared.preflight) {
+            prepared.extension.commit();
+            self.request_immediate_replan();
+            return Ok(());
+        }
+        self.warp_planner
+            .reconcile_network_reservation(delta, 0, time::unix_time_ms());
+        self.downloads.rollback_promotion(&prepared.preflight);
+        rollback_store(&self.ctx.store, prepared.extension).await;
+        Err("warp_promotion_reservation_lost")
     }
 
     fn promotion_target(&self, directive: &WarpDirective) -> Option<PromotionTarget> {

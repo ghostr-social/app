@@ -1,3 +1,4 @@
+use crate::segmented::prepare::PreparedComplete;
 use ghostr_engine::evidence::EvidenceValidator;
 use reqwest::header::HeaderMap;
 use sha2::{Digest, Sha256};
@@ -10,10 +11,28 @@ const DOMAIN: &[u8] = b"ghostr:hls-cache-generation:v1";
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct CachedHlsGeneration([u8; 32]);
 
+pub(in crate::segmented) struct CachedHlsGenerationHasher {
+    digest: Sha256,
+    validator: Option<EvidenceValidator>,
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(in crate::segmented) struct HlsCacheMetadata {
     pub(super) validator: Option<EvidenceValidator>,
     pub(super) fresh_until: Option<Instant>,
+}
+
+impl HlsCacheMetadata {
+    pub(in crate::segmented) fn combined_with(&self, block: &Self) -> Self {
+        let fresh_until = match (self.fresh_until, block.fresh_until) {
+            (Some(left), Some(right)) => Some(left.min(right)),
+            _ => None,
+        };
+        Self {
+            validator: self.validator.clone(),
+            fresh_until,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -49,6 +68,18 @@ impl CachedHlsObject {
         }
     }
 
+    pub(in crate::segmented) fn from_prepared(prepared: PreparedComplete) -> Self {
+        let PreparedComplete { object, generation } = prepared;
+        Self {
+            body: object.body,
+            final_url: object.final_url,
+            content_type: object.content_type,
+            validator: object.cache.validator,
+            fresh_until: object.cache.fresh_until,
+            generation,
+        }
+    }
+
     pub fn generation(&self) -> CachedHlsGeneration {
         self.generation
     }
@@ -64,14 +95,13 @@ impl CachedHlsObject {
 
 impl CachedHlsGeneration {
     fn for_object(final_url: &Url, body: &[u8], validator: Option<&EvidenceValidator>) -> Self {
-        let mut digest = Sha256::new();
-        digest.update(DOMAIN);
-        digest.update((final_url.as_str().len() as u64).to_be_bytes());
-        digest.update(final_url.as_str().as_bytes());
-        digest.update((body.len() as u64).to_be_bytes());
-        digest.update(body);
-        hash_validator(&mut digest, validator);
-        Self(digest.finalize().into())
+        let mut hasher = CachedHlsGenerationHasher::with_validator(
+            final_url,
+            body.len() as u64,
+            validator.cloned(),
+        );
+        hasher.update(body);
+        hasher.finish()
     }
 
     pub fn for_response(final_url: &Url, body: &[u8], headers: &HeaderMap) -> Self {
@@ -80,6 +110,38 @@ impl CachedHlsGeneration {
             body,
             super::freshness::response_validator(headers).as_ref(),
         )
+    }
+}
+
+impl CachedHlsGenerationHasher {
+    pub(in crate::segmented) fn new(
+        final_url: &Url,
+        body_bytes: u64,
+        metadata: &HlsCacheMetadata,
+    ) -> Self {
+        Self::with_validator(final_url, body_bytes, metadata.validator.clone())
+    }
+
+    fn with_validator(
+        final_url: &Url,
+        body_bytes: u64,
+        validator: Option<EvidenceValidator>,
+    ) -> Self {
+        let mut digest = Sha256::new();
+        digest.update(DOMAIN);
+        digest.update((final_url.as_str().len() as u64).to_be_bytes());
+        digest.update(final_url.as_str().as_bytes());
+        digest.update(body_bytes.to_be_bytes());
+        Self { digest, validator }
+    }
+
+    pub(in crate::segmented) fn update(&mut self, bytes: &[u8]) {
+        self.digest.update(bytes);
+    }
+
+    pub(in crate::segmented) fn finish(mut self) -> CachedHlsGeneration {
+        hash_validator(&mut self.digest, self.validator.as_ref());
+        CachedHlsGeneration(self.digest.finalize().into())
     }
 }
 

@@ -13,6 +13,10 @@ struct CandidateSerde {
     watch: PlannerWatchEvidence,
     head_probe: u8,
     retry: RetrySerde,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    exhausted_whole_body_cap: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    observed_whole_body_bytes: Option<u64>,
 }
 
 #[derive(Deserialize, Serialize)]

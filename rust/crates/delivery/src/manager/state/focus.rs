@@ -7,6 +7,10 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
 impl DeliveryState {
+    pub(crate) fn current_authority(&self) -> ghostr_engine::adaptive::CurrentAuthority {
+        self.current_authority
+    }
+
     pub(crate) fn apply_focus(&mut self, update: DeliveryFocus, observed_at_ms: u64) -> bool {
         if !self.focus_generations.accept(update.generation) {
             return false;

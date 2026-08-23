@@ -11,8 +11,11 @@ use timing::{is_admission_timeout, unix_time_ms};
 
 pub(crate) struct ObservedChunk {
     pub result: anyhow::Result<ChunkResult>,
+    pub received_bytes: u64,
     pub origin: Option<ghostr_engine::origin_model::OriginObservation>,
     pub request_started: bool,
+    pub whole_body_completion: Option<crate::chunk::traffic::WholeBodyCompletion>,
+    pub response_evidence: Option<super::HttpResponseEvidence>,
 }
 
 pub(super) struct CapturedTransfer {
@@ -81,10 +84,7 @@ fn complete_transfer(
         measured,
         started,
     } = captured;
-    let origin_elapsed = measured
-        .origin_elapsed()
-        .unwrap_or_else(|| started.elapsed());
-    let result = record_legacy(stats, spec.url, result, origin_elapsed);
+    let result = record_legacy(stats, spec.url, result, &measured);
     finish(
         spec,
         stats,
@@ -120,14 +120,25 @@ fn record_legacy(
     stats: &mut HostStats,
     url: &str,
     result: anyhow::Result<ChunkResult>,
-    elapsed: std::time::Duration,
+    measured: &TrafficMeasurements,
 ) -> anyhow::Result<ChunkResult> {
+    let elapsed = measured.origin_elapsed().unwrap_or_default();
     match result {
         Ok(result) => {
             outcome::note_delivery(stats, url, &result, elapsed);
             Ok(result)
         }
         Err(error) if is_admission_timeout(&error) => Err(error),
+        Err(error) if crate::chunk::whole_body_policy::is(&error) => {
+            outcome::note_network_completion(stats, url, measured.bytes(), elapsed);
+            Err(error)
+        }
+        Err(error) if crate::chunk::sink::is_local_store_failure(&error) => {
+            if measured.whole_body_completion().is_some() {
+                outcome::note_network_completion(stats, url, measured.bytes(), elapsed);
+            }
+            Err(error)
+        }
         Err(error) => Err(outcome::note_failure(stats, url, error)),
     }
 }
@@ -150,14 +161,30 @@ pub(super) fn finish(
         concurrency: measured.concurrency(),
         network_class: measured.network_class(),
     };
-    let origin = (!result.as_ref().err().is_some_and(is_admission_timeout)).then(|| {
-        let item = telemetry::observation(spec, &result, measured, timing);
+    let ignored = result.as_ref().err().is_some_and(is_admission_timeout)
+        || local_before_network_completion(&result, &measured);
+    let origin = (!ignored).then(|| {
+        let item = telemetry::observation(spec, &result, &measured, timing);
         stats.origin_model_mut().observe(item.clone());
         item
     });
     ObservedChunk {
         result,
+        received_bytes: measured.bytes(),
         origin,
         request_started: measured.request_started(),
+        whole_body_completion: measured.whole_body_completion().cloned(),
+        response_evidence: measured.response_evidence().cloned(),
     }
+}
+
+fn local_before_network_completion(
+    result: &anyhow::Result<ChunkResult>,
+    measured: &TrafficMeasurements,
+) -> bool {
+    result
+        .as_ref()
+        .err()
+        .is_some_and(crate::chunk::sink::is_local_store_failure)
+        && measured.whole_body_completion().is_none()
 }

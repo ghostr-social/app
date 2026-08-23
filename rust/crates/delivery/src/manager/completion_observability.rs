@@ -1,29 +1,37 @@
 use crate::delivery_events::DecisionResolution;
 use crate::evaluation::{AdaptationMetricEvent, IntegrityMetricEvent, TransferMetricEvent};
 use crate::manager::completion_decision;
-use crate::manager::failure::classify;
-use crate::manager::inflight::CompletionStatus;
+use crate::manager::inflight::{CompletionStatus, FinishedAction};
 use crate::manager::transfers::ChunkDone;
 use crate::manager::DeliveryWorker;
-use ghostr_engine::adaptive::DecisionOutcome;
+use ghostr_engine::adaptive::ResourceCost;
 use ghostr_engine::host_stats::host_of;
 use ghostr_engine::origin_model::{AdaptationState, DecisionMode, OriginOutcome};
 
+mod outcome;
+mod policy_limit;
 #[cfg(test)]
 pub(crate) mod tests;
+use outcome::{decision_outcome, result_bytes};
 
 impl DeliveryWorker {
-    pub(super) fn observe_chunk_completion(&self, done: &ChunkDone, status: CompletionStatus) {
-        let observed_at_ms = done
-            .origin
-            .as_ref()
-            .map_or_else(crate::manager::time::unix_time_ms, |item| {
-                item.observed_at_ms
-            });
+    pub(super) fn observe_chunk_completion(&mut self, done: &ChunkDone, finished: FinishedAction) {
+        let observed_at_ms = completion_time(done);
+        let status = finished.status();
+        if let Some(reservation) = finished.network_reservation() {
+            self.warp_planner.reconcile_network_reservation(
+                reservation.committed_bytes(),
+                reservation.actual_bytes(done.received_bytes),
+                observed_at_ms,
+            );
+        }
         let outcome = decision_outcome(status, done);
-        let resolution = self
-            .commands
-            .resolve_decision(done.attempt.id(), outcome, observed_at_ms);
+        let resolution = self.commands.resolve_decision_with_resources(
+            done.attempt.id(),
+            outcome,
+            actual_resources(done),
+            observed_at_ms,
+        );
         let evaluation = self.commands.evaluation();
         evaluation.transfer(transfer_event(done, status, resolution.as_ref()));
         if let Some(event) = self.adaptation_event(done) {
@@ -67,6 +75,23 @@ impl DeliveryWorker {
     }
 }
 
+fn completion_time(done: &ChunkDone) -> u64 {
+    done.origin
+        .as_ref()
+        .map_or_else(crate::manager::time::unix_time_ms, |item| {
+            item.observed_at_ms
+        })
+}
+
+fn actual_resources(done: &ChunkDone) -> ResourceCost {
+    ResourceCost::new(
+        done.received_bytes,
+        policy_limit::stored_bytes(&done.outcome),
+        0,
+        u16::from(done.request_started),
+    )
+}
+
 fn success_observation(outcome: OriginOutcome) -> Option<bool> {
     match outcome {
         OriginOutcome::Success => Some(true),
@@ -79,47 +104,21 @@ fn probability_bps(value: f64) -> u16 {
     (value.clamp(0.0, 1.0) * 10_000.0).round() as u16
 }
 
-fn decision_outcome(status: CompletionStatus, done: &ChunkDone) -> DecisionOutcome {
-    if status == CompletionStatus::Superseded {
-        return DecisionOutcome::Superseded;
-    }
-    if status == CompletionStatus::Cancelled {
-        return cancelled(done);
-    }
-    match &done.outcome {
-        Ok(result) if result.cancelled => cancelled(done),
-        Ok(result) => DecisionOutcome::Succeeded {
-            bytes: result.bytes_written,
-            elapsed_ms: 0,
-        },
-        Err(error) => DecisionOutcome::Failed {
-            class: format!("{:?}", classify(error)),
-            elapsed_ms: 0,
-        },
-    }
-}
-
-fn cancelled(done: &ChunkDone) -> DecisionOutcome {
-    DecisionOutcome::Cancelled {
-        bytes: result_bytes(done),
-        elapsed_ms: 0,
-    }
-}
-
-fn result_bytes(done: &ChunkDone) -> u64 {
-    done.outcome
-        .as_ref()
-        .map_or(0, |result| result.bytes_written)
-}
-
 fn transfer_event(
     done: &ChunkDone,
     status: CompletionStatus,
     resolution: Option<&DecisionResolution>,
 ) -> TransferMetricEvent {
     let bytes = result_bytes(done);
+    let stored_bytes = policy_limit::stored_bytes(&done.outcome);
+    let policy_limit = done
+        .outcome
+        .as_ref()
+        .err()
+        .is_some_and(|error| crate::chunk::whole_body_limit::from_error(error).is_some());
     let cancelled = status == CompletionStatus::Cancelled
-        || done.outcome.as_ref().is_ok_and(|result| result.cancelled);
+        || done.outcome.as_ref().is_ok_and(|result| result.cancelled)
+        || policy_limit;
     let result = done.outcome.as_ref().ok();
     let request_started = done.request_started;
     TransferMetricEvent {
@@ -136,7 +135,7 @@ fn transfer_event(
             && resolution.is_some_and(completion_decision::is_whole),
         request_started,
         promotion_avoided_restart: result.is_some_and(|item| item.promoted),
-        storage_byte_ms: byte_millis(bytes, resolution.map_or(0, |item| item.elapsed_ms)),
+        storage_byte_ms: byte_millis(stored_bytes, resolution.map_or(0, |item| item.elapsed_ms)),
         ..TransferMetricEvent::default()
     }
 }

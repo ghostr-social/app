@@ -10,7 +10,7 @@ use std::collections::{BTreeSet, HashMap};
 
 mod evidence;
 use evidence::SourceEvidence;
-pub use evidence::{HttpObservation, LearnedFacts};
+pub use evidence::{CompleteBytesObservation, HttpObservation, LearnedFacts};
 mod calibration;
 mod compatibility;
 mod ledger;
@@ -28,6 +28,9 @@ pub struct CatalogEntry {
     evidence: HashMap<String, SourceEvidence>,
     ledger: crate::evidence::EvidenceLedger,
     evidence_clock_ms: u64,
+    http_clocks: HashMap<(String, observation::HttpAuthority), crate::evidence::EvidenceTime>,
+    http_generations: HashMap<String, observation::HttpGenerationRecord>,
+    next_http_generation: u64,
     quarantined: bool,
     binding: RepresentationBinding,
     timeline: Option<MediaTimeline>,
@@ -51,6 +54,9 @@ impl CatalogEntry {
             evidence: HashMap::new(),
             ledger: crate::evidence::EvidenceLedger::default(),
             evidence_clock_ms: 0,
+            http_clocks: HashMap::new(),
+            http_generations: HashMap::new(),
+            next_http_generation: 1,
             quarantined: false,
             timeline: None,
             tail_timeline_needed: false,
@@ -76,6 +82,9 @@ impl CatalogEntry {
         self.evidence.clear();
         self.ledger = crate::evidence::EvidenceLedger::default();
         self.evidence_clock_ms = 0;
+        self.http_clocks.clear();
+        self.http_generations.clear();
+        self.next_http_generation = 1;
         self.quarantined = false;
         self.timeline = None;
         self.tail_timeline_needed = false;
@@ -132,18 +141,7 @@ pub struct Catalog {
     next_generation: RepresentationGeneration,
 }
 
-impl Default for Catalog {
-    fn default() -> Self {
-        Self {
-            entries: HashMap::new(),
-            reliability: crate::evidence::FieldReliabilityModel::default(),
-            reliability_revision: 0,
-            digest_claims: HashMap::new(),
-            quarantined_digests: BTreeSet::new(),
-            next_generation: RepresentationGeneration::first(),
-        }
-    }
-}
+mod defaults;
 impl Catalog {
     pub fn new() -> Self {
         Self::default()

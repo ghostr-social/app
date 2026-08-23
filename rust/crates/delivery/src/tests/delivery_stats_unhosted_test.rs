@@ -31,13 +31,18 @@ async fn unhosted_outcomes_do_not_dirty_or_persist_host_stats() {
             promoted: false,
             request_started: true,
         }),
+        received_bytes: 1,
         origin: None,
+        whole_body_completion: None,
+        response_evidence: None,
         request_started: true,
     });
     keeper.note_probe(&ProbeObservation {
         post,
         url: "still not a URL".to_owned(),
         outcome: Ok(ProbeResult {
+            final_url: "still not a URL".to_owned(),
+            observed: 1.into(),
             content_length: Some(1),
             accept_ranges: Some(true),
             content_type: Some("video/mp4".to_owned()),

@@ -1,4 +1,4 @@
-use super::warp_planner_test_assertions::{assert_origin_admission, set_source};
+use super::warp_planner_test_assertions::set_source;
 use crate::adaptive::{
     AdaptivePlayabilityPolicy, HardBudget, InFlightAction, PlannerContext, ResourceCost,
     WarpPlanner, WarpPlannerInput,
@@ -38,7 +38,9 @@ fn malformed_or_credentialed_request_origins_are_not_admissible() {
         let mut input = snapshot(1, 20_000_000, 20_000, 0);
         set_source(&mut input, 0, source);
         let decision = decision(&input);
-        assert_origin_admission(&decision, &PostId::new("p0"), false);
+        assert!(decision.generated.actions.iter().all(|action| {
+            action.node.post != PostId::new("p0") || action.node.resources.requests == 0
+        }));
     }
 }
 

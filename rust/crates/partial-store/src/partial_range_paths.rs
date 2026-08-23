@@ -1,9 +1,10 @@
 //! The on-disk file family one stored key owns under the store root.
 
-use anyhow::{bail, Result};
 use std::path::PathBuf;
 
+mod key;
 mod transform;
+pub use key::validate_key;
 pub(crate) use transform::TransformPaths;
 
 /// Names every file a key can own. Keeping them in one place is what
@@ -84,11 +85,27 @@ impl StorePaths {
         self.named(key, "generation.prev")
     }
 
+    pub fn completed_backup(&self, key: &str) -> PathBuf {
+        self.named(key, "video.prev")
+    }
+
+    pub fn verified_backup(&self, key: &str) -> PathBuf {
+        self.named(key, "verified.prev")
+    }
+
+    pub fn http_generation_backup(&self, key: &str) -> PathBuf {
+        self.named(key, "http-generation.prev")
+    }
+
     pub fn single_response_commit(&self, key: &str) -> PathBuf {
         self.named(key, "response.commit")
     }
 
-    pub fn single_response_artifacts(&self, key: &str) -> [PathBuf; 7] {
+    pub fn single_response_commit_staging(&self, key: &str) -> PathBuf {
+        self.named(key, "response.commit.tmp")
+    }
+
+    pub fn single_response_artifacts(&self, key: &str) -> [PathBuf; 11] {
         [
             self.single_response(key),
             self.single_response_manifest(key),
@@ -97,7 +114,11 @@ impl StorePaths {
             self.partial_staging(key),
             self.manifest_backup(key),
             self.generation_backup(key),
+            self.http_generation_backup(key),
+            self.completed_backup(key),
+            self.verified_backup(key),
             self.single_response_commit(key),
+            self.single_response_commit_staging(key),
         ]
     }
 
@@ -117,6 +138,10 @@ impl StorePaths {
 
     pub fn generation(&self, key: &str) -> PathBuf {
         self.named(key, "generation.json")
+    }
+
+    pub fn http_generation(&self, key: &str) -> PathBuf {
+        self.named(key, "http-generation.json")
     }
 
     /// Every payload file of the key. Policy intent is deliberately
@@ -148,7 +173,13 @@ impl StorePaths {
             self.generation(key),
             self.generation(key).with_extension("json.tmp"),
             self.generation_backup(key),
+            self.completed_backup(key),
+            self.http_generation(key),
+            self.http_generation(key).with_extension("json.tmp"),
+            self.http_generation_backup(key),
+            self.verified_backup(key),
             self.single_response_commit(key),
+            self.single_response_commit_staging(key),
         ];
         paths.extend(self.transform(key).all());
         paths
@@ -161,13 +192,4 @@ impl StorePaths {
     fn named(&self, key: &str, extension: &str) -> PathBuf {
         self.root.join(format!("{key}.{extension}"))
     }
-}
-
-/// Keys become file names, so they may not carry separators or dots.
-pub fn validate_key(key: &str) -> Result<()> {
-    let allowed = |c: char| c.is_ascii_alphanumeric() || matches!(c, '-' | '_');
-    if !key.is_empty() && key.chars().all(allowed) {
-        return Ok(());
-    }
-    bail!("partial store keys must be alphanumeric with dashes or underscores")
 }

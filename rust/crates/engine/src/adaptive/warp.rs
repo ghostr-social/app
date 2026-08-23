@@ -37,7 +37,7 @@ pub use planner_context::{
     PlannerContext, PlannerLimits, PlannerQuality, PlannerRetryAvailability, PlannerRetryEvidence,
     PlannerWatchEvidence, PreviewAvailability, ResourceFeedback, ResourceFeedbackCursor,
     ResourcePriceSnapshot, SegmentedStorageBudget, SoftRequestCommitment, TransformCapability,
-    INLINE_BLURHASH_PREVIEW_QUALITY_MICROS,
+    WholeBodyExhaustion, INLINE_BLURHASH_PREVIEW_QUALITY_MICROS,
 };
 pub use request_occupancy::RequestOccupancy;
 pub(crate) use search::ScoredSearchPlan;

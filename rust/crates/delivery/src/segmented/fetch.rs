@@ -109,19 +109,19 @@ async fn fetch(
     requests: &MediaRequestExecutor,
     input: FetchInput<'_>,
     network: &crate::delivery_events::DeliveryNetworkStatusReader,
-    cancellation: Option<tokio::sync::oneshot::Receiver<()>>,
+    mut cancellation: Option<tokio::sync::oneshot::Receiver<()>>,
 ) -> std::result::Result<FetchedObject, FetchFailure> {
     let spec = input.spec;
     let deadline = Instant::now() + spec.timeouts.total;
     let progress = FetchProgress::new(input.traffic);
     let runtime = FetchRuntime::new(requests, deadline, network, &progress);
-    fetch_tracked(runtime, spec, cancellation).await
+    fetch_tracked(runtime, spec, &mut cancellation).await
 }
 
 pub(super) async fn fetch_tracked(
     runtime: FetchRuntime<'_>,
     spec: FetchSpec<'_>,
-    cancellation: Option<tokio::sync::oneshot::Receiver<()>>,
+    cancellation: &mut Option<tokio::sync::oneshot::Receiver<()>>,
 ) -> std::result::Result<FetchedObject, FetchFailure> {
     let result = await_transfer(runtime, spec, cancellation).await;
     let Some(result) = result else {
@@ -141,7 +141,7 @@ type TimedFetch = std::result::Result<
 async fn await_transfer(
     runtime: FetchRuntime<'_>,
     spec: FetchSpec<'_>,
-    mut cancellation: Option<tokio::sync::oneshot::Receiver<()>>,
+    cancellation: &mut Option<tokio::sync::oneshot::Receiver<()>>,
 ) -> Option<TimedFetch> {
     let future = fetch_before_total(runtime, spec);
     let transfer = tokio::time::timeout_at(runtime.deadline, future);

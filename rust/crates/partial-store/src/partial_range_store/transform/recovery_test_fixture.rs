@@ -6,17 +6,23 @@ use crate::partial_range_store::capacity::StoreCapacity;
 use crate::partial_range_store::PartialRangeStore;
 use ghostr_engine::adaptive::TransformKind;
 use ghostr_engine::catalog::Catalog;
-use ghostr_engine::representation::RepresentationBinding;
+use ghostr_engine::evidence::EvidenceValidator;
+use ghostr_engine::representation::{
+    HttpGenerationAuthority, HttpGenerationKey, HttpGenerationLease, RepresentationBinding,
+};
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::Mutex;
+
+const URL: &str = "https://origin.example/input.mp4";
 
 pub(super) async fn interrupted_transaction() -> (PathBuf, RepresentationBinding) {
     let root = temp_root();
     let input = input_binding();
     let store = store(root.clone());
     store.bind_representation(input.clone()).await.unwrap();
+    authorize_input(&store, &input).await;
     store.write_range("post", 0, b"input").await.unwrap();
     store.set_total_len("post", 5).await.unwrap();
     store.finalize("post", None).await.unwrap();
@@ -33,6 +39,18 @@ pub(super) async fn interrupted_transaction() -> (PathBuf, RepresentationBinding
         .unwrap();
     interrupt_commit(&store.paths).await;
     (root, input)
+}
+
+async fn authorize_input(store: &PartialRangeStore, binding: &RepresentationBinding) {
+    let identity = binding.transfer(URL).unwrap();
+    let validator = EvidenceValidator::strong_etag("\"generation-1\"");
+    let key = HttpGenerationKey::try_new(URL, validator).unwrap();
+    let lease = HttpGenerationLease::try_new(key, 1).unwrap();
+    let authority = HttpGenerationAuthority::Trusted(lease);
+    assert!(store
+        .apply_http_generation(&identity, authority)
+        .await
+        .unwrap());
 }
 
 pub(super) async fn assert_rolled_back(root: &Path, input: &RepresentationBinding) {
@@ -82,7 +100,7 @@ fn input_binding() -> RepresentationBinding {
     Catalog::new().upsert(
         PostId::new("post"),
         VideoMeta {
-            urls: vec!["https://origin.example/input.mp4".into()],
+            urls: vec![URL.into()],
             delivery: DeliveryKind::Progressive,
             sha256: None,
             size_bytes: Some(5),

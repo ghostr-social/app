@@ -32,6 +32,7 @@ async fn strong_generation_survives_restart_for_if_range_continuation() {
     reopened.bind_representation(binding).await.unwrap();
     let restored = reopened.select_transfer(transfer).await.unwrap();
 
+    assert!(root.join("same.http-generation.json").exists());
     assert_eq!(restored, Some(generation));
     assert_eq!(
         reopened.read_range("same", 0..4).await.unwrap(),

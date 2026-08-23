@@ -38,6 +38,9 @@ async fn resumed_unsatisfied_range_still_enforces_the_header_limit_first() {
     };
 
     assert_eq!(failure.reason(), ErrorReason::InvalidResponse);
-    assert!(failure.to_string().contains("headers exceed byte limit"));
+    assert!(
+        format!("{failure:#}").contains("headers exceed byte limit"),
+        "{failure:#}"
+    );
     server.await.unwrap();
 }

@@ -66,6 +66,7 @@ pub struct PlanMetrics {
     pub integrity_bps: u16,
     pub size: SizeBounds,
     pub cache_value_micros: u64,
+    pub information_value_micros: u64,
 }
 
 impl PlanMetrics {
@@ -89,6 +90,7 @@ impl PlanMetrics {
             integrity_bps: 0,
             size: SizeBounds::default(),
             cache_value_micros: 0,
+            information_value_micros: 0,
         }
     }
 
@@ -129,6 +131,11 @@ impl PlanMetrics {
 
     pub fn with_cache_value(mut self, value: u64) -> Self {
         self.cache_value_micros = value;
+        self
+    }
+
+    pub fn with_information_value(mut self, value: u64) -> Self {
+        self.information_value_micros = value;
         self
     }
 }

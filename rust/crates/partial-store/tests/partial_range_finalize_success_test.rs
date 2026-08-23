@@ -1,5 +1,6 @@
 mod store_fixture;
 
+use ghostr_partial_store::partial_range_completion::Completion;
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use store_fixture::{plain_store, temp_root};
@@ -15,13 +16,16 @@ async fn partial_range_finalize_promotes_a_complete_file_when_the_digest_matches
     store.set_total_len("clip", 8).await.expect("total length");
     let expected = format!("{:x}", Sha256::digest(b"headtail"));
 
-    let completed = store
+    let completion = store
         .finalize("clip", Some(expected.as_str()))
         .await
         .expect("finalize");
 
+    assert_eq!(completion, Completion::Verified);
     assert_eq!(
-        tokio::fs::read(&completed).await.expect("completed bytes"),
+        tokio::fs::read(root.join("clip.video"))
+            .await
+            .expect("completed bytes"),
         b"headtail"
     );
     assert!(store.is_complete("clip").await.expect("completeness"));

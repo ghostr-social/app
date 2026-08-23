@@ -57,6 +57,11 @@ impl Pending {
         self
     }
 
+    pub(super) fn retry_attempt(mut self, attempt: u64) -> Self {
+        self.attempt = attempt;
+        self
+    }
+
     pub(super) fn restart_object(mut self, attempt: u64) -> Self {
         self.attempt = attempt;
         self.generation_restarts = self.generation_restarts.saturating_add(1);

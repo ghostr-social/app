@@ -54,6 +54,26 @@ pub async fn spawn_raw_server(response: &'static [u8]) -> (String, JoinHandle<Ve
     (format!("http://{address}/video.mp4"), request)
 }
 
+pub async fn spawn_redirect(target: &str) -> (String, JoinHandle<Vec<u8>>) {
+    let response = format!(
+        "HTTP/1.1 302 Found\r\nLocation: {target}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+    );
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("listener");
+    let address = listener.local_addr().expect("address");
+    let request = tokio::spawn(async move {
+        let (mut socket, _) = listener.accept().await.expect("request");
+        let mut buffer = vec![0; 4096];
+        let bytes = socket.read(&mut buffer).await.expect("read request");
+        socket
+            .write_all(response.as_bytes())
+            .await
+            .expect("write redirect");
+        buffer.truncate(bytes);
+        buffer
+    });
+    (format!("http://{address}/video.mp4"), request)
+}
+
 pub async fn spawn_response_sequence(responses: Vec<&'static [u8]>) -> (String, JoinHandle<()>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("listener");
     let address = listener.local_addr().expect("address");

@@ -1,10 +1,12 @@
-use super::{Catalog, CatalogEntry, HttpObservation};
+use super::{Catalog, CatalogEntry, CompleteBytesObservation, HttpObservation};
 use crate::representation::TransferIdentity;
 use crate::PostId;
 
 mod http;
+mod http_api;
+pub(in crate::catalog) use http::HttpGenerationRecord;
 
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(super) enum HttpAuthority {
     Head,
     Response,
@@ -17,47 +19,41 @@ pub(super) struct HttpLearning {
 }
 
 impl Catalog {
-    pub fn learn_head_observation_for(
-        &mut self,
-        identity: &TransferIdentity,
-        observation: HttpObservation,
-    ) -> bool {
-        self.learn_http_identity(identity, observation, HttpAuthority::Head)
-    }
-
-    pub fn learn_response_observation_for(
-        &mut self,
-        identity: &TransferIdentity,
-        observation: HttpObservation,
-    ) -> bool {
-        self.learn_http_identity(identity, observation, HttpAuthority::Response)
-    }
-
     pub fn learn_complete_bytes_for(
         &mut self,
         identity: &TransferIdentity,
-        total_bytes: u64,
-        observed_at_ms: u64,
+        complete: CompleteBytesObservation,
     ) -> bool {
-        let observation = HttpObservation::new(
+        let final_url = complete.final_url.clone();
+        let generation = complete.generation.clone();
+        let mut observation = HttpObservation::new(
             super::LearnedFacts {
-                content_length: Some(total_bytes),
+                content_length: Some(complete.total_bytes.get()),
+                host: crate::host_stats::host_of(&complete.final_url),
                 ..super::LearnedFacts::default()
             },
             None,
-            observed_at_ms,
-            None,
-        );
-        if !self.learn_http_identity(identity, observation, HttpAuthority::CompleteBytes) {
+            complete.observed,
+            complete.validator,
+        )
+        .with_final_url(final_url);
+        if let Some(generation) = generation {
+            observation = observation.with_generation(generation);
+        }
+        self.learn_http_identity(identity, observation, HttpAuthority::CompleteBytes)
+    }
+
+    pub fn record_verified_hash_for(
+        &mut self,
+        identity: &TransferIdentity,
+        digest: &str,
+        origin: &str,
+        observed: impl Into<crate::evidence::EvidenceTime>,
+    ) -> bool {
+        if !self.identity_claims_digest(identity, digest) {
             return false;
         }
-        if let Some(digest) = self
-            .entries
-            .get(identity.post())
-            .and_then(|entry| entry.meta.sha256.clone())
-        {
-            self.record_hash_match(identity, &digest, observed_at_ms);
-        }
+        self.record_hash_match(identity, digest, origin, observed.into());
         true
     }
 
@@ -109,7 +105,29 @@ impl Catalog {
         if entry.binding.transfer(identity.source().as_str()).as_ref() != Some(identity) {
             return false;
         }
-        let learning = entry.learn_http(identity.source().as_str(), observation, authority);
+        let Some(learning) = entry.learn_http(identity.source().as_str(), observation, authority)
+        else {
+            return false;
+        };
+        self.observe_labels(learning.labels, learning.observed_at_ms);
+        true
+    }
+
+    fn learn_action_http_identity(
+        &mut self,
+        identity: &TransferIdentity,
+        observation: HttpObservation,
+    ) -> bool {
+        let Some(entry) = self.entries.get_mut(identity.post()) else {
+            return false;
+        };
+        if entry.binding.transfer(identity.source().as_str()).as_ref() != Some(identity) {
+            return false;
+        }
+        let Some(learning) = entry.learn_action_http(identity.source().as_str(), observation)
+        else {
+            return false;
+        };
         self.observe_labels(learning.labels, learning.observed_at_ms);
         true
     }
@@ -125,14 +143,15 @@ impl Catalog {
         &mut self,
         identity: &TransferIdentity,
         digest: &str,
-        observed_at_ms: u64,
+        origin: &str,
+        observed: crate::evidence::EvidenceTime,
     ) {
         let Some(entry) = self.entries.get_mut(identity.post()) else {
             return;
         };
-        let labels = entry.hash_labels(digest, true, observed_at_ms);
-        entry.record_integrity(digest, identity.source().as_str(), observed_at_ms);
-        self.observe_labels(labels, observed_at_ms);
+        let labels = entry.hash_labels(digest, true, observed.observed_at_ms);
+        entry.record_integrity(digest, origin, observed);
+        self.observe_labels(labels, observed.observed_at_ms);
     }
 }
 

@@ -1,6 +1,6 @@
 use super::{open, Opened};
 use crate::chunk::cancel::cancel_pair;
-use crate::chunk::downloader::{OpenedResponse, ResponseAdmission, ResponseObservation};
+use crate::chunk::downloader::{OpenedResponse, ResponseAdmission};
 use crate::chunk::traffic::ChunkTraffic;
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
@@ -13,7 +13,7 @@ struct IgnoreTraffic;
 impl ChunkTraffic for IgnoreTraffic {
     fn opened(&mut self, _ttfb: Duration) {}
     fn wrote(&mut self, _bytes: u64) {}
-    fn response_observed(&mut self, _response: ResponseObservation) {}
+    fn response_observed(&mut self, _response: OpenedResponse) {}
     fn authorize_response<'a>(
         &'a mut self,
         _response: OpenedResponse,

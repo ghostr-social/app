@@ -59,6 +59,7 @@ pub(super) fn registered(
         launched_at_ms: 0,
         handle,
         store_action: Some(action.clone()),
+        committed_network_bytes: Some(4),
     });
     (active, attempt, token)
 }

@@ -25,6 +25,11 @@ pub(in crate::segmented) struct StagedFetch<'a> {
     pub traffic: Option<SegmentedTraffic>,
 }
 
+pub(in crate::segmented) struct TrackedStageFetch {
+    pub result: std::result::Result<FetchedObject, FetchFailure>,
+    pub cancellation: Option<tokio::sync::oneshot::Receiver<()>>,
+}
+
 #[cfg(test)]
 pub(in crate::segmented) async fn fetch_stage(
     mut input: StagedFetch<'_>,
@@ -41,13 +46,31 @@ pub(in crate::segmented) async fn fetch_stage(
 }
 
 pub(in crate::segmented) async fn fetch_stage_tracked(
-    input: StagedFetch<'_>,
+    mut input: StagedFetch<'_>,
     progress: &FetchProgress,
-) -> std::result::Result<FetchedObject, FetchFailure> {
-    let spec = stage_spec(&input)?;
+) -> TrackedStageFetch {
+    let spec = match stage_spec(&input) {
+        Ok(spec) => spec,
+        Err(error) => {
+            progress.finish_network();
+            return TrackedStageFetch {
+                result: Err(error),
+                cancellation: input.cancellation,
+            };
+        }
+    };
     let deadline = Instant::now() + spec.timeouts.total;
     let runtime = FetchRuntime::new(input.requests, deadline, input.network_status, progress);
-    fetch_tracked(runtime, spec, input.cancellation).await
+    let result = fetch_tracked(runtime, spec, &mut input.cancellation).await;
+    if result.is_ok() {
+        progress.finish_response();
+    } else {
+        progress.finish_network();
+    }
+    TrackedStageFetch {
+        result,
+        cancellation: input.cancellation,
+    }
 }
 
 fn stage_spec<'a>(input: &StagedFetch<'a>) -> std::result::Result<FetchSpec<'a>, FetchFailure> {

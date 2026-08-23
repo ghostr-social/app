@@ -4,11 +4,12 @@ use crate::delivery_events::{
 use crate::manager::response_open::ResponseOpenRequest;
 use crate::manager::time::unix_time_ms;
 use crate::manager::timeline::TimelineResult;
-use crate::manager::transfers::{InternalEvent, MaintenanceEvent, TransferEvent};
+use crate::manager::transfers::InternalEvent;
 use crate::manager::DeliveryWorker;
 use crate::playback_demand::DemandState;
 
 mod clear;
+mod internal;
 mod network;
 use clear::ClearCompletion;
 
@@ -99,6 +100,7 @@ impl DeliveryWorker {
     }
 
     async fn apply_command(&mut self, command: DeliveryCommand) {
+        self.refresh_observation_posts();
         match command {
             DeliveryCommand::Candidate(candidate) => self.state.apply_candidate(candidate),
             DeliveryCommand::Focus(focus) => self.apply_focus_command(focus),
@@ -158,41 +160,6 @@ impl DeliveryWorker {
             if let Err(error) = self.ctx.store.bind_representation(binding).await {
                 log::warn!("Video representation binding failed: {error:#}");
             }
-        }
-    }
-
-    async fn apply_internal(&mut self, event: InternalEvent) {
-        match event {
-            InternalEvent::ImmediateReplan => self.consume_immediate_replan(),
-            InternalEvent::NetworkRefill(wake) => {
-                self.network_refill_timer.finish(wake);
-            }
-            InternalEvent::Transfer(transfer) => self.apply_transfer(transfer).await,
-            InternalEvent::Segmented(done) => self.finish_segmented(*done),
-            InternalEvent::Transform(done) => self.finish_transform_job(done),
-            InternalEvent::HedgeTail(wake) => self.consume_hedge_tail_wake(wake),
-            InternalEvent::Maintenance(maintenance) => self.apply_maintenance(maintenance).await,
-            InternalEvent::TrafficChanged => self.absorb_traffic(),
-        }
-    }
-    async fn apply_transfer(&mut self, event: TransferEvent) {
-        match event {
-            TransferEvent::ChunkDone(done) => self.finish_chunk(done).await,
-            TransferEvent::ProbeDone(done) => self.finish_probe(done).await,
-            TransferEvent::ResponseObserved(observed) => self.observe_response(observed),
-        }
-    }
-    async fn apply_maintenance(&mut self, event: MaintenanceEvent) {
-        match event {
-            MaintenanceEvent::CooldownOver(post, cooldown) => self.finish_cooldown(post, cooldown),
-            MaintenanceEvent::SaveStats => {
-                self.keeper.save_now().await;
-                let evidence = self.state.catalog().evidence_state();
-                self.reliability.save_now(&evidence).await;
-                self.save_capability().await;
-            }
-            MaintenanceEvent::SaveQoe => self.qoe.save_now().await,
-            MaintenanceEvent::StoreCapacityChanged(value) => self.resume_store_capacity(value),
         }
     }
 }

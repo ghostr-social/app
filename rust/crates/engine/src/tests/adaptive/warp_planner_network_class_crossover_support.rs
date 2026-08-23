@@ -1,5 +1,5 @@
 use super::network_class_support::{evidence, record, NetworkClassFixture};
-use crate::adaptive::{AdaptivePlayabilityPolicy, FeedOffset, PlannerContext, ViewProbability};
+use crate::adaptive::{AdaptivePlayabilityPolicy, PlannerContext, ViewProbability};
 use crate::origin_model::{NetworkClass, OriginModel};
 use crate::tests::adaptive_support::snapshot;
 
@@ -9,7 +9,6 @@ const CELLULAR_SOURCE: &str = "https://cellular-fast.example/video.mp4";
 pub(super) fn fixture(network_class: NetworkClass) -> NetworkClassFixture {
     let mut snapshot = snapshot(2, 80_000_000, 20_000, 0);
     for (candidate, source) in snapshot.candidates.iter_mut().zip(sources()) {
-        candidate.feed_offset = FeedOffset::new(0);
         candidate.view_probability = ViewProbability::new(1.0).unwrap();
         candidate.origins[0].source = source.to_owned();
     }

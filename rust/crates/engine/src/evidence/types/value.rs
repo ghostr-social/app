@@ -1,4 +1,4 @@
-use super::{Confidence, EvidenceScope, EvidenceSource, EvidenceValidator};
+use super::{Confidence, EvidenceScope, EvidenceSource, EvidenceTime, EvidenceValidator};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -81,6 +81,8 @@ pub struct Evidence<T> {
     pub value: T,
     pub source: EvidenceSource,
     pub observed_at_ms: u64,
+    #[serde(default)]
+    pub observed_order: u64,
     pub confidence: Confidence,
     pub validator: Option<EvidenceValidator>,
     pub scope: EvidenceScope,
@@ -100,11 +102,24 @@ impl<T> Evidence<T> {
             value,
             source,
             observed_at_ms,
+            observed_order: 0,
             confidence,
             validator,
             scope,
             invalidated_at_ms: None,
         }
+    }
+
+    pub(crate) fn new_at(
+        value: T,
+        source: EvidenceSource,
+        observed: EvidenceTime,
+        confidence: Confidence,
+        scope: EvidenceScope,
+    ) -> Self {
+        let mut evidence = Self::new(value, source, observed.observed_at_ms, confidence, scope);
+        evidence.observed_order = observed.order;
+        evidence
     }
 
     pub fn invalidated_at_ms(&self) -> Option<u64> {

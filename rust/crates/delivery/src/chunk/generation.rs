@@ -14,7 +14,10 @@ pub struct OriginGeneration {
 }
 
 impl HttpResponseEvidence {
-    pub(crate) fn from_response(response: &MediaResponse) -> Self {
+    pub(crate) fn from_response(
+        response: &MediaResponse,
+        observed: ghostr_engine::evidence::EvidenceTime,
+    ) -> Self {
         let headers = response.headers();
         let etag = single_strong_etag(headers)
             .ok()
@@ -25,8 +28,10 @@ impl HttpResponseEvidence {
             || header(headers, &LAST_MODIFIED).and_then(EvidenceValidator::last_modified);
         Self {
             final_url: response.url().to_string(),
+            status: response.status().as_u16(),
             content_type: header(headers, &CONTENT_TYPE),
             validator: etag.or_else(modified),
+            observed,
         }
     }
 }

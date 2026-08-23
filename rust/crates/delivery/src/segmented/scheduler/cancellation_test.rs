@@ -1,12 +1,11 @@
 use super::progress::Pending;
-use super::{Active, SegmentedDelivery, SegmentedDone};
+use super::{active_network, old_root_fence, Active, SegmentedDelivery, SegmentedDone};
 use crate::delivery_events::{DeliveryFocus, FocusGeneration, FocusItem, FocusTransition};
 use crate::segmented::fetch::{FetchFailure, OriginTelemetry};
 use crate::segmented::SegmentedCache;
 use ghostr_engine::adaptive::{DecisionOutcome, ResourceCost};
 use ghostr_engine::origin_model::NetworkClass;
 use ghostr_engine::{ActionId, DeliveryKind, PostId, VideoMeta};
-use std::time::Duration;
 
 #[tokio::test]
 async fn same_post_focus_replacement_drains_old_resources_before_new_generation_can_run() {
@@ -46,8 +45,10 @@ fn active() -> Active {
     let (cancellation, cancelled) = tokio::sync::oneshot::channel();
     Active {
         action: ActionId::new(7),
+        fence: old_root_fence(),
         pending: Pending::root(1, 1, 0, "https://old.example/root.m3u8".to_owned()),
         committed_until_ms: u64::MAX,
+        network: active_network(),
         _task: tokio::spawn(async move {
             let _ = cancelled.await;
             std::future::pending::<()>().await;
@@ -61,7 +62,7 @@ fn done(post: PostId) -> SegmentedDone {
     SegmentedDone {
         action: ActionId::new(7),
         post,
-        generation: 1,
+        fence: old_root_fence(),
         outcome: Err(FetchFailure::cancelled(Some(telemetry()), 37)),
         observed_at_ms: 10,
         resources: Default::default(),
@@ -70,7 +71,7 @@ fn done(post: PostId) -> SegmentedDone {
 
 fn telemetry() -> OriginTelemetry {
     OriginTelemetry {
-        elapsed: Duration::from_millis(25),
+        elapsed: std::time::Duration::from_millis(25),
         ttfb: None,
         concurrency: 1,
         network_class: NetworkClass::Wifi,

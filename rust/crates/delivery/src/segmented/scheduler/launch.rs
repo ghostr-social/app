@@ -1,17 +1,31 @@
 use super::{Active, SegmentedDelivery, SegmentedDone, SegmentedLaunch};
 use crate::manager::time::unix_time_ms;
 use crate::manager::transfers::InternalEvent;
-use crate::segmented::cache::StageReservation;
-use crate::segmented::fetch::{
-    fetch_stage_tracked, FetchFailure, FetchProgress, FetchedObject, SegmentedTraffic, StagedFetch,
+use crate::segmented::cache::{
+    StageAdmission, StageFence, StageLease, StageRequest, StageReservation,
 };
+use crate::segmented::fetch::{
+    fetch_stage_tracked, FetchFailure, FetchProgress, SegmentedTraffic, StagedFetch,
+};
+use crate::segmented::scheduler::prepared::{prepare_transfer, PreparedTransfer};
 use std::sync::Arc;
+
+#[cfg(test)]
+#[path = "launch/final_assembly_reservation_test.rs"]
+mod final_assembly_reservation_test;
 
 struct FetchTask {
     launch: SegmentedLaunch,
     pending: super::progress::Pending,
     priority: ghostr_engine::adaptive::PreemptionAuthority,
     cancelled: tokio::sync::oneshot::Receiver<()>,
+    fence: StageFence,
+    lease: StageLease,
+}
+
+struct FetchAdmission {
+    fence: StageFence,
+    lease: StageLease,
 }
 
 impl SegmentedDelivery {
@@ -36,26 +50,13 @@ impl SegmentedDelivery {
         if !self.can_start(&launch) {
             return false;
         }
-        let reservation = self
-            .pending
-            .get(&launch.post)
-            .and_then(|pending| stage_reservation(pending, launch.maximum_bytes));
-        let Some(reservation) = reservation else {
+        let Some(admission) = self.admit(&launch) else {
             return false;
         };
         let pending = self
             .pending
             .remove(&launch.post)
             .expect("validated pending HLS stage");
-        if !self.cache.mark_stage_preparing(
-            &launch.post,
-            pending.generation,
-            self.startup_eta_ms,
-            reservation,
-        ) {
-            self.pending.insert(launch.post, pending);
-            return false;
-        }
         let priority = self
             .targets
             .iter()
@@ -63,10 +64,33 @@ impl SegmentedDelivery {
             .map(|target| target.priority)
             .expect("pending HLS stage has a focus target");
         let post = launch.post.clone();
-        let active = spawn(launch, pending.clone(), priority);
+        let active = spawn(launch, pending.clone(), priority, admission);
         self.active.insert(post, active);
         true
     }
+
+    fn admit(&self, launch: &SegmentedLaunch) -> Option<FetchAdmission> {
+        let pending = self.pending.get(&launch.post)?;
+        let reservation = stage_reservation(pending, launch.maximum_bytes)?;
+        let fence = stage_fence(pending, launch.maximum_bytes);
+        let request = StageAdmission::new(
+            launch.post.clone(),
+            fence.clone(),
+            self.startup_eta_ms,
+            reservation,
+        );
+        let lease = self.cache.admit_stage(request)?;
+        Some(FetchAdmission { fence, lease })
+    }
+}
+
+fn stage_fence(pending: &super::progress::Pending, block_bytes: u64) -> StageFence {
+    let request = StageRequest::new(
+        pending.url.clone(),
+        pending.cursor().next_offset,
+        block_bytes,
+    );
+    StageFence::new(pending.generation, pending.attempt, request)
 }
 
 fn stage_reservation(
@@ -86,41 +110,49 @@ fn spawn(
     launch: SegmentedLaunch,
     pending: super::progress::Pending,
     priority: ghostr_engine::adaptive::PreemptionAuthority,
+    admission: FetchAdmission,
 ) -> Active {
     let action = launch.action;
     let committed_until_ms = launch.committed_until_ms;
+    let traffic = SegmentedTraffic::new(action, launch.traffic.clone());
+    let progress = Arc::new(FetchProgress::new(Some(traffic)));
     let (cancellation, cancelled) = tokio::sync::oneshot::channel();
-    let task = tokio::spawn(supervise(FetchTask {
-        launch,
-        pending: pending.clone(),
-        priority,
-        cancelled,
-    }));
+    let task = tokio::spawn(supervise(
+        FetchTask {
+            launch,
+            pending: pending.clone(),
+            priority,
+            cancelled,
+            fence: admission.fence.clone(),
+            lease: admission.lease,
+        },
+        Arc::clone(&progress),
+    ));
     Active {
         action,
+        fence: admission.fence,
         pending,
         committed_until_ms,
+        network: progress,
         _task: task,
         cancellation: Some(cancellation),
         cancelling: false,
     }
 }
 
-async fn supervise(task: FetchTask) {
+async fn supervise(task: FetchTask, progress: Arc<FetchProgress>) {
     let action = task.launch.action;
     let post = task.launch.post.clone();
-    let generation = task.pending.generation;
+    let fence = task.fence.clone();
     let resources = task.launch.resources;
     let events = task.launch.events.clone();
-    let traffic = SegmentedTraffic::new(action, task.launch.traffic.clone());
-    let progress = Arc::new(FetchProgress::new(Some(traffic)));
     let worker = tokio::spawn(run_fetch(task, Arc::clone(&progress)));
     let outcome = joined_outcome(worker.await, &progress);
-    progress.close_traffic();
+    progress.finish_network();
     let _ = events.send(InternalEvent::Segmented(Box::new(SegmentedDone {
         action,
         post,
-        generation,
+        fence,
         outcome,
         observed_at_ms: unix_time_ms(),
         resources,
@@ -128,7 +160,7 @@ async fn supervise(task: FetchTask) {
 }
 
 async fn run_fetch(task: FetchTask, progress: Arc<FetchProgress>) -> FetchOutcome {
-    fetch_stage_tracked(
+    let fetched = fetch_stage_tracked(
         StagedFetch {
             requests: &task.launch.requests,
             stage: task.pending.stage,
@@ -144,10 +176,15 @@ async fn run_fetch(task: FetchTask, progress: Arc<FetchProgress>) -> FetchOutcom
         },
         &progress,
     )
-    .await
+    .await;
+    let object = fetched.result?;
+    let cancelled = fetched
+        .cancellation
+        .expect("supervised HLS fetch retains cancellation");
+    prepare_transfer(task.lease, object, cancelled).await
 }
 
-type FetchOutcome = Result<FetchedObject, FetchFailure>;
+type FetchOutcome = Result<PreparedTransfer, FetchFailure>;
 
 fn joined_outcome(
     observed: Result<FetchOutcome, tokio::task::JoinError>,

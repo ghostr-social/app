@@ -73,7 +73,7 @@ impl DeliveryWorker {
 
     async fn bind_and_launch(
         &mut self,
-        prepared: PreparedGrant,
+        mut prepared: PreparedGrant,
         decision: &mut Option<DecisionToken>,
         selected: &mut Option<SelectedCommit>,
     ) -> Option<ghostr_engine::ActionId> {
@@ -91,6 +91,11 @@ impl DeliveryWorker {
         if result == CommitResult::Rejected {
             self.reject_commit(prepared.transfer, action, bound).await;
             return None;
+        }
+        if result == CommitResult::Committed {
+            prepared
+                .transfer
+                .record_network_commit(prepared.resources.network_bytes);
         }
         let launched_at_ms = time::unix_time_ms();
         let action = self.downloads.launch(

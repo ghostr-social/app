@@ -1,7 +1,9 @@
+use crate::chunk::traffic::WholeBodyCompletion;
+
 pub(crate) struct Streamed {
     pub bytes: u64,
     pub cancelled: bool,
-    pub discovered_total: Option<u64>,
+    pub whole_body_completion: Option<WholeBodyCompletion>,
 }
 
 pub(super) struct StoreProgress {

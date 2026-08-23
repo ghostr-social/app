@@ -1,4 +1,5 @@
 use super::store_ready;
+use crate::segmented::cache::{StageAdmission, StageFence, StageRequest, StageReservation};
 use crate::segmented::prepare::PreparedObject;
 use crate::segmented::{SegmentedCache, SegmentedPhase};
 use ghostr_engine::adaptive::HlsBootstrapStage;
@@ -36,12 +37,17 @@ fn pressure_reclaim_keeps_keys_shared_with_a_protected_ready_bootstrap() {
 
     assert_eq!(cache.physical_available_bytes(), 4 * MIB as u64);
     assert_eq!(cache.planning_available_bytes(), 21 * MIB as u64);
-    assert!(cache.mark_stage_preparing(
-        &current,
-        1,
+    let bytes = HlsBootstrapStage::FirstSegment.maximum_bytes();
+    let request = StageRequest::new("https://current.example/final".to_owned(), 0, bytes);
+    let admission = StageAdmission::new(
+        current,
+        StageFence::new(1, 99, request),
         500,
-        HlsBootstrapStage::FirstSegment.maximum_bytes(),
-    ));
+        StageReservation::block(bytes),
+    );
+    let _lease = cache
+        .admit_stage(admission)
+        .expect("current stage reclaimed space");
 
     assert_eq!(cache.snapshot("old").phase, SegmentedPhase::Queued);
     assert_eq!(cache.snapshot("protected").phase, SegmentedPhase::Ready);

@@ -2,15 +2,15 @@
 
 use crate::delivery_events::DecisionClaim;
 use crate::manager::failure::{origin_failure_class, FailureClass};
-use crate::manager::transfers::ProbeDone;
+use crate::manager::transfers::{ProbeDone, ProbeObservation};
 use crate::manager::DeliveryWorker;
 use crate::probe::media::ProbeResult;
 use ghostr_engine::adaptive::DecisionOutcome;
-use ghostr_engine::catalog::{HttpObservation, LearnedFacts};
-use ghostr_engine::host_stats::host_of;
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_net::media_log_identity::MediaLogIdentity;
 use log::warn;
+
+mod generation;
 
 impl DeliveryWorker {
     pub(crate) async fn finish_probe(&mut self, done: ProbeDone) {
@@ -18,38 +18,63 @@ impl DeliveryWorker {
             observation,
             decision,
         } = done;
+        let observed_at_ms = probe_observed_at(&observation);
         let identity =
             self.probes
                 .current_identity(self.state.catalog(), &observation.post, &observation.url);
         let Some(identity) = identity else {
             self.probes.release(&observation.post);
-            self.resolve_probe_claim(decision, DecisionOutcome::Superseded);
+            self.resolve_probe_claim(decision, DecisionOutcome::Superseded, observed_at_ms);
             return;
         };
         self.keeper.note_probe(&observation);
         let outcome = match observation.outcome {
-            Ok(result) => self.finish_probe_result(&identity, result),
+            Ok(result) => self.finish_probe_result(&identity, result).await,
             Err(error) => self.finish_probe_error(&identity, error),
         };
-        self.resolve_probe_claim(decision, outcome);
+        self.resolve_probe_claim(decision, outcome, observed_at_ms);
     }
 
-    fn finish_probe_result(
+    pub(in crate::manager) async fn finish_probe_result(
         &mut self,
         identity: &TransferIdentity,
         result: ProbeResult,
     ) -> DecisionOutcome {
+        let stamp = match self.absorb_probe(identity, &result).await {
+            Ok(Some(stamp)) => stamp,
+            Ok(None) => {
+                self.probes.release(identity.post());
+                return DecisionOutcome::Superseded;
+            }
+            Err(error) => return self.failed_probe_store(identity, &error),
+        };
+        let observed_size = result.content_length.is_some_and(|length| length > 0);
+        self.probes.learned_probe(identity, stamp, observed_size);
         if result.content_length.is_some_and(|length| length > 0) {
-            let outcome = DecisionOutcome::HeadObserved {
-                content_length: result.content_length.unwrap_or_default(),
-                accept_ranges: result.accept_ranges,
-                elapsed_ms: 0,
-            };
-            self.probes.learned(identity.post());
-            self.absorb_probe(identity, result);
-            return outcome;
+            return self.finish_sized_probe(&result);
         }
         self.finish_missing_length(identity)
+    }
+
+    fn failed_probe_store(
+        &mut self,
+        identity: &TransferIdentity,
+        error: &anyhow::Error,
+    ) -> DecisionOutcome {
+        self.probes.release(identity.post());
+        log::warn!("Could not apply HEAD generation: {error:#}");
+        DecisionOutcome::Failed {
+            class: "warp_head_generation_store_failure".into(),
+            elapsed_ms: 0,
+        }
+    }
+
+    fn finish_sized_probe(&self, result: &ProbeResult) -> DecisionOutcome {
+        DecisionOutcome::HeadObserved {
+            content_length: result.content_length.unwrap_or_default(),
+            accept_ranges: result.accept_ranges,
+            elapsed_ms: 0,
+        }
     }
 
     fn finish_missing_length(&mut self, identity: &TransferIdentity) -> DecisionOutcome {
@@ -99,9 +124,14 @@ impl DeliveryWorker {
         }
     }
 
-    fn resolve_probe_claim(&self, claim: DecisionClaim, outcome: DecisionOutcome) {
+    fn resolve_probe_claim(
+        &self,
+        claim: DecisionClaim,
+        outcome: DecisionOutcome,
+        observed_at_ms: u64,
+    ) {
         self.commands
-            .resolve_decision_claim(claim, outcome, crate::manager::time::unix_time_ms());
+            .resolve_decision_claim(claim, outcome, observed_at_ms);
     }
 
     fn defer_probe_to_body(&mut self, identity: &TransferIdentity) -> bool {
@@ -111,25 +141,13 @@ impl DeliveryWorker {
         self.probes.defer_to_body(identity.post());
         true
     }
+}
 
-    fn absorb_probe(&mut self, identity: &TransferIdentity, result: ProbeResult) {
-        let source = identity.source().as_str();
-        self.note_successful_attempt(identity.post(), source);
-        let facts = LearnedFacts {
-            content_length: result.content_length,
-            accept_ranges: result.accept_ranges,
-            host: host_of(source),
-        };
-        let observation = HttpObservation::new(
-            facts,
-            result.content_type,
-            crate::manager::time::unix_time_ms(),
-            result.validator,
-        );
-        self.state
-            .catalog_mut()
-            .learn_head_observation_for(identity, observation);
-    }
+fn probe_observed_at(observation: &ProbeObservation) -> u64 {
+    observation.outcome.as_ref().map_or_else(
+        |_| crate::manager::time::unix_time_ms(),
+        |result| result.observed.observed_at_ms,
+    )
 }
 
 fn failure_name(class: FailureClass) -> &'static str {

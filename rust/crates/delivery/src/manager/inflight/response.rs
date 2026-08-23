@@ -6,6 +6,21 @@ use ghostr_engine::ByteRange;
 use ghostr_partial_store::partial_range_store::StoreAction;
 
 impl InFlightChunks {
+    pub(crate) fn observe_headers(
+        &mut self,
+        attempt: &ChunkAttempt,
+        response: ResponseObservation,
+    ) -> bool {
+        let Some(active) = matching(self.transfers.get_mut(&attempt.id()), attempt) else {
+            return false;
+        };
+        active.response_opened = true;
+        if matches!(response, ResponseObservation::Ignored { .. }) {
+            apply_response(active, response);
+        }
+        true
+    }
+
     pub(crate) fn authorizes_response(
         &mut self,
         attempt: &ChunkAttempt,
@@ -45,34 +60,50 @@ impl InFlightChunks {
         attempt: &ChunkAttempt,
         response: ResponseObservation,
     ) -> bool {
-        let Some(active) = self.transfers.get_mut(&attempt.id()) else {
+        let Some(active) = current(self.transfers.get_mut(&attempt.id()), attempt) else {
             return false;
         };
-        if active.cancelling || active.identity != *attempt.identity() {
-            return false;
-        }
         active.response_opened = true;
-        match response {
-            ResponseObservation::Partial { range, .. } => {
-                active.effective_request = RetrievalRequest::FetchRange {
-                    bytes: range,
-                    promotion: None,
-                };
-                active.effective_bytes = range;
-                active.reserved_storage_bytes = range.len();
-            }
-            ResponseObservation::Body { request, .. } => {
-                active.effective_request = request;
-                active.effective_bytes = request.requested_bytes();
-                active.reserved_storage_bytes = request.reserved_network_bytes();
-            }
-            ResponseObservation::Ignored { .. } => {
-                let start = active.launched_request.requested_bytes().start;
-                active.effective_bytes = ByteRange::new(start, start);
-                active.reserved_storage_bytes = 0;
-            }
-        }
+        apply_response(active, response);
         true
+    }
+}
+
+fn matching<'a>(
+    active: Option<&'a mut super::action::ActiveChunk>,
+    attempt: &ChunkAttempt,
+) -> Option<&'a mut super::action::ActiveChunk> {
+    active.filter(|active| active.identity == *attempt.identity())
+}
+
+fn current<'a>(
+    active: Option<&'a mut super::action::ActiveChunk>,
+    attempt: &ChunkAttempt,
+) -> Option<&'a mut super::action::ActiveChunk> {
+    matching(active, attempt).filter(|active| !active.cancelling)
+}
+
+fn apply_response(active: &mut super::action::ActiveChunk, response: ResponseObservation) {
+    match response {
+        ResponseObservation::Rejected(_) => {}
+        ResponseObservation::Partial { range, .. } => {
+            active.effective_request = RetrievalRequest::FetchRange {
+                bytes: range,
+                promotion: None,
+            };
+            active.effective_bytes = range;
+            active.reserved_storage_bytes = range.len();
+        }
+        ResponseObservation::Body { request, .. } => {
+            active.effective_request = request;
+            active.effective_bytes = request.requested_bytes();
+            active.reserved_storage_bytes = request.reserved_network_bytes();
+        }
+        ResponseObservation::Ignored { .. } => {
+            let start = active.launched_request.requested_bytes().start;
+            active.effective_bytes = ByteRange::new(start, start);
+            active.reserved_storage_bytes = 0;
+        }
     }
 }
 

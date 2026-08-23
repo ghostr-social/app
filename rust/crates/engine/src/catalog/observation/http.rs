@@ -2,16 +2,47 @@ use super::{HttpAuthority, HttpLearning};
 use crate::catalog::{CatalogEntry, HttpObservation};
 use crate::evidence::{Confidence, Evidence, EvidenceScope, EvidenceSource, EvidenceValue};
 
+mod generation;
+mod validator;
+pub(in crate::catalog) use generation::HttpGenerationRecord;
+
 impl CatalogEntry {
+    pub(in crate::catalog) fn learn_action_http(
+        &mut self,
+        url: &str,
+        observation: HttpObservation,
+    ) -> Option<HttpLearning> {
+        let observation =
+            self.normalize_http_observation(url, HttpAuthority::Response, observation)?;
+        let observed = observation.observed;
+        let source = http_source(url, &observation, HttpAuthority::Response);
+        let labels = self.calibration_labels(
+            url,
+            &http_truths(&observation),
+            &source,
+            observed.observed_at_ms,
+        );
+        self.retain_response(url, observation.facts.clone());
+        self.record_http_fields(url, observation, HttpAuthority::Response);
+        Some(HttpLearning {
+            observed_at_ms: observed.observed_at_ms,
+            labels,
+        })
+    }
+
     pub(in crate::catalog) fn learn_http(
         &mut self,
         url: &str,
-        mut observation: HttpObservation,
+        observation: HttpObservation,
         authority: HttpAuthority,
-    ) -> HttpLearning {
-        let observed_at_ms = self.next_observation_time(observation.observed_at_ms);
-        observation.observed_at_ms = observed_at_ms;
-        self.apply_validator(url, observation.validator.as_ref(), observed_at_ms);
+    ) -> Option<HttpLearning> {
+        if authority == HttpAuthority::Response && observation.validator.is_none() {
+            return None;
+        }
+        let observation = self.normalize_http_observation(url, authority, observation)?;
+        let observed = observation.observed;
+        self.accept_http_generation(url, &observation, authority, observed)?;
+        let observed_at_ms = observed.observed_at_ms;
         let source = http_source(url, &observation, authority);
         let labels =
             self.calibration_labels(url, &http_truths(&observation), &source, observed_at_ms);
@@ -22,44 +53,28 @@ impl CatalogEntry {
             }
         }
         self.record_http_fields(url, observation, authority);
-        HttpLearning {
+        Some(HttpLearning {
             observed_at_ms,
             labels,
-        }
+        })
     }
 
     pub(in crate::catalog) fn record_integrity(
         &mut self,
         digest: &str,
         origin: &str,
-        observed_at_ms: u64,
+        observed: crate::evidence::EvidenceTime,
     ) {
-        self.ledger.record(Evidence::new(
+        self.ledger.record(Evidence::new_at(
             EvidenceValue::IntegrityMatch {
                 digest: digest.to_ascii_lowercase(),
                 matches: true,
             },
             EvidenceSource::hash(origin),
-            observed_at_ms,
+            observed,
             Confidence::certain(),
             EvidenceScope::ImmutableBytes(digest.to_ascii_lowercase()),
         ));
-    }
-
-    fn apply_validator(
-        &mut self,
-        url: &str,
-        validator: Option<&crate::evidence::EvidenceValidator>,
-        observed_at_ms: u64,
-    ) {
-        let Some(validator) = validator else { return };
-        let invalidation = self
-            .ledger
-            .observe_validator(url, validator.clone(), observed_at_ms);
-        if invalidation.structural_evidence {
-            self.timeline = None;
-            self.tail_timeline_needed = false;
-        }
     }
 
     fn record_http_fields(
@@ -75,20 +90,47 @@ impl CatalogEntry {
         );
         let confidence = http_confidence(authority);
         for value in http_truths(&observation) {
-            self.ledger.record(Evidence::new(
+            self.ledger.record(Evidence::new_at(
                 value,
                 source.clone(),
-                observation.observed_at_ms,
+                observation.observed,
                 confidence,
                 scope.clone(),
             ));
         }
     }
 
-    fn next_observation_time(&mut self, requested: u64) -> u64 {
-        let observed = requested.max(self.evidence_clock_ms.saturating_add(1));
-        self.evidence_clock_ms = observed;
-        observed
+    fn accept_http_time(
+        &mut self,
+        url: &str,
+        authority: HttpAuthority,
+        requested: crate::evidence::EvidenceTime,
+    ) -> Option<crate::evidence::EvidenceTime> {
+        let observed = match requested.observed_at_ms {
+            0 => crate::evidence::EvidenceTime::from(self.evidence_clock_ms.saturating_add(1)),
+            _ => requested,
+        };
+        if self
+            .http_clocks
+            .get(&(url.to_owned(), authority))
+            .is_some_and(|current| !observed.is_after(*current))
+        {
+            return None;
+        }
+        self.http_clocks
+            .insert((url.to_owned(), authority), observed);
+        self.evidence_clock_ms = self.evidence_clock_ms.max(observed.observed_at_ms);
+        Some(observed)
+    }
+
+    fn normalize_http_observation(
+        &mut self,
+        url: &str,
+        authority: HttpAuthority,
+        mut observation: HttpObservation,
+    ) -> Option<HttpObservation> {
+        observation.observed = self.accept_http_time(url, authority, observation.observed)?;
+        Some(observation)
     }
 }
 

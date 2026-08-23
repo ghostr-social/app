@@ -1,5 +1,6 @@
 use super::CatalogEntry;
-use crate::evidence::EvidenceValidator;
+use crate::evidence::{EvidenceTime, EvidenceValidator};
+use std::num::NonZeroU64;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct LearnedFacts {
@@ -12,27 +13,78 @@ pub struct LearnedFacts {
 pub struct HttpObservation {
     pub facts: LearnedFacts,
     pub content_type: Option<String>,
-    pub observed_at_ms: u64,
+    pub observed: EvidenceTime,
     pub validator: Option<EvidenceValidator>,
+    pub final_url: Option<String>,
+    pub generation: Option<crate::representation::HttpGenerationLease>,
 }
 
 impl HttpObservation {
     pub fn new(
         facts: LearnedFacts,
         content_type: Option<String>,
-        observed_at_ms: u64,
+        observed: impl Into<EvidenceTime>,
         validator: Option<EvidenceValidator>,
     ) -> Self {
         Self {
             facts,
             content_type,
-            observed_at_ms,
+            observed: observed.into(),
             validator,
+            final_url: None,
+            generation: None,
         }
+    }
+
+    pub fn with_final_url(mut self, final_url: impl Into<String>) -> Self {
+        self.final_url = Some(final_url.into());
+        self
+    }
+
+    pub fn with_generation(
+        mut self,
+        generation: crate::representation::HttpGenerationLease,
+    ) -> Self {
+        self.generation = Some(generation);
+        self
     }
 
     pub(super) fn legacy(facts: LearnedFacts) -> Self {
         Self::new(facts, None, 0, None)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompleteBytesObservation {
+    pub total_bytes: NonZeroU64,
+    pub final_url: String,
+    pub observed: EvidenceTime,
+    pub validator: Option<EvidenceValidator>,
+    pub generation: Option<crate::representation::HttpGenerationLease>,
+}
+
+impl CompleteBytesObservation {
+    pub fn new(
+        total_bytes: NonZeroU64,
+        final_url: impl Into<String>,
+        observed: impl Into<EvidenceTime>,
+        validator: Option<EvidenceValidator>,
+    ) -> Self {
+        Self {
+            total_bytes,
+            final_url: final_url.into(),
+            observed: observed.into(),
+            validator,
+            generation: None,
+        }
+    }
+
+    pub fn with_generation(
+        mut self,
+        generation: crate::representation::HttpGenerationLease,
+    ) -> Self {
+        self.generation = Some(generation);
+        self
     }
 }
 

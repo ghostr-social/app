@@ -1,6 +1,8 @@
 mod catalog_bitrate_test;
 mod catalog_evidence_precedence_test;
 mod catalog_facts_merge_test;
+mod catalog_legacy_evidence_decay_test;
+mod catalog_range_support_decay_test;
 mod catalog_rendition_quality_test;
 mod catalog_rendition_selection_test;
 mod catalog_source_evidence_test;

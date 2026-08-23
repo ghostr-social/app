@@ -2,11 +2,16 @@ mod range_fixture;
 mod raw_http;
 
 use ghostr_delivery::chunk::cancel::cancel_pair;
-use ghostr_delivery::chunk::downloader::{ChunkSink, ChunkSpec};
+use ghostr_delivery::chunk::downloader::{
+    download_chunk_observed, ChunkExecution, ChunkSink, ChunkSpec, DownloadTraffic, OpenedResponse,
+    ResponseObservation, ResponseRejection,
+};
+use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::representation::SourceGeneration;
 use ghostr_engine::ByteRange;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
+use std::time::Duration;
 
 const DUPLICATE_RANGE: &[u8] = b"HTTP/1.1 206 Partial Content\r\n\
 Content-Type: video/mp4\r\n\
@@ -39,17 +44,48 @@ async fn duplicate_content_range_cannot_extend_a_sparse_generation() {
         key: "clip",
     };
 
-    let result = range_fixture::download_chunk_throttled(
+    let mut stats = HostStats::new();
+    let network = range_fixture::network();
+    let mut traffic = HeaderTraffic::default();
+    let result = download_chunk_observed(
         &spec,
-        &sink,
-        range_fixture::context(&mut HostStats::new(), &token, &range_fixture::network()),
+        ChunkExecution {
+            sink: &sink,
+            stats: &mut stats,
+            cancel: &token,
+            network: &network,
+            traffic: &mut traffic,
+            network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
+        },
     )
     .await;
 
     assert!(result.is_err(), "ambiguous 206 must fail before storage");
+    let headers = traffic.observed.expect("arrived headers");
+    assert_eq!(
+        headers.observation(),
+        ResponseObservation::Rejected(ResponseRejection::Semantics)
+    );
+    assert_eq!(
+        headers.evidence().validator,
+        EvidenceValidator::strong_etag("\"fixture-media\"")
+    );
     assert_eq!(store.present_ranges("clip").await.unwrap(), vec![0..8]);
     let request = String::from_utf8(request.await.unwrap()).unwrap();
     assert!(request.contains("range: bytes=8-15"));
     assert!(request.contains("if-range: \"fixture-media\""));
     std::fs::remove_dir_all(root).ok();
+}
+
+#[derive(Default)]
+struct HeaderTraffic {
+    observed: Option<OpenedResponse>,
+}
+
+impl DownloadTraffic for HeaderTraffic {
+    fn opened(&mut self, _: Duration) {}
+    fn wrote(&mut self, _: u64) {}
+    fn response_observed(&mut self, response: OpenedResponse) {
+        self.observed = Some(response);
+    }
 }

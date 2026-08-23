@@ -1,11 +1,11 @@
 use super::{PartialRangeStore, StoreAction};
 use anyhow::Result;
-use ghostr_engine::adaptive::WholeBodyContract;
 use ghostr_engine::representation::{SourceGeneration, TransferIdentity};
 use ghostr_engine::ByteRange;
 use sha2::{Digest, Sha256};
 
 mod sparse;
+mod whole;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ResponseOpenResult {
@@ -54,28 +54,6 @@ impl PartialRangeStore {
             .insert(identity.post().as_str().to_owned(), identity.clone());
         self.register_sparse_response(identity, action, generation, range)
             .await
-    }
-
-    pub async fn open_single_response_for_action(
-        &self,
-        identity: &TransferIdentity,
-        action: &StoreAction,
-        contract: WholeBodyContract,
-    ) -> Result<ResponseOpenResult> {
-        if !action.is_active() || action.identity() != identity {
-            return Ok(ResponseOpenResult::Stale);
-        }
-        let _update = self.update_key(identity.post().as_str()).await?;
-        if !action.is_active() {
-            return Ok(ResponseOpenResult::Stale);
-        }
-        self.current_binding(identity).await?;
-        self.open_single_response_action_locked(
-            identity,
-            super::single_response::ResponseOwner::Granted(action.clone()),
-            contract,
-        )
-        .await
     }
 
     pub(super) async fn abort_response_for_action(&self, action: &StoreAction) -> Result<()> {

@@ -3,10 +3,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 mod axes;
+mod freshness;
 mod size;
-
-const NETWORK_HALF_LIFE_MS: u64 = 6 * 60 * 60 * 1_000;
-const STALE_BPS: u16 = 1_000;
+pub(super) use freshness::{effective_confidence, fresh, is_fresh};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ConfidenceAxes {
@@ -135,7 +134,11 @@ pub(super) fn winner<'a>(
             (
                 item.source.priority(),
                 effective_confidence(item, now_ms),
-                item.observed_at_ms,
+                item.observed_order > 0,
+                match item.observed_order {
+                    0 => item.observed_at_ms,
+                    order => order,
+                },
             )
         })
 }
@@ -150,37 +153,6 @@ pub(super) fn agreement(
         .filter(|item| item.value == winner.value && is_fresh(item, now_ms))
         .count();
     effective_confidence(winner, now_ms).with_agreement(count)
-}
-
-pub(super) fn effective_confidence(item: &Evidence<EvidenceValue>, now_ms: u64) -> Confidence {
-    let stable = item.observed_at_ms == 0
-        || item.source.structural() && matches!(item.scope, EvidenceScope::ImmutableBytes(_))
-        || item
-            .validator
-            .as_ref()
-            .is_some_and(|value| value.is_strong());
-    match stable {
-        true => item.confidence,
-        false => item.confidence.decayed(
-            now_ms.saturating_sub(item.observed_at_ms),
-            NETWORK_HALF_LIFE_MS,
-        ),
-    }
-}
-
-pub(super) fn fresh<'a>(
-    records: &[&'a Evidence<EvidenceValue>],
-    now_ms: u64,
-) -> Vec<&'a Evidence<EvidenceValue>> {
-    records
-        .iter()
-        .copied()
-        .filter(|item| is_fresh(item, now_ms))
-        .collect()
-}
-
-fn is_fresh(item: &Evidence<EvidenceValue>, now_ms: u64) -> bool {
-    effective_confidence(item, now_ms).basis_points() >= STALE_BPS
 }
 
 fn has_conflict(records: &[&Evidence<EvidenceValue>]) -> bool {

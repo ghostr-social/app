@@ -38,13 +38,17 @@ fn information_value(
     action: &ActionKind,
     uncertainty_bps: u16,
 ) -> u64 {
-    if !matches!(
-        action,
-        ActionKind::Head
-            | ActionKind::Prefix(_)
-            | ActionKind::Tail(_)
-            | ActionKind::HlsBootstrap { .. }
-    ) {
+    let explicit_probe =
+        candidate.total_bytes.is_none() && matches!(action, ActionKind::FetchWhole { .. });
+    if !explicit_probe
+        && !matches!(
+            action,
+            ActionKind::Head
+                | ActionKind::Prefix(_)
+                | ActionKind::Tail(_)
+                | ActionKind::HlsBootstrap { .. }
+        )
+    {
         return 0;
     }
     let unresolved =
@@ -72,6 +76,9 @@ fn low_cost_probe(action: &ActionKind) -> bool {
 }
 
 fn cache_gain(candidate: &CandidateSnapshot, action: &ActionKind, reach_bps: u64) -> u64 {
+    if candidate.total_bytes.is_none() && matches!(action, ActionKind::FetchWhole { .. }) {
+        return 0;
+    }
     let bytes = match action {
         ActionKind::FetchWhole { maximum_bytes } => *maximum_bytes,
         ActionKind::HlsBootstrap { maximum_bytes, .. } => *maximum_bytes,

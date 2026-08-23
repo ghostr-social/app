@@ -12,17 +12,18 @@ use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaResponse};
 use ghostr_net::origin_content_type;
 use ghostr_net::response_limits::validate_response_headers;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
-use reqwest::header::{
-    HeaderName, HeaderValue, ACCEPT_ENCODING, ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_TYPE, ETAG,
-    LAST_MODIFIED,
-};
+use reqwest::header::{HeaderValue, ACCEPT_ENCODING};
 use std::future::Future;
 use std::time::Duration;
 use tokio::time::Instant;
 
+mod response_headers;
+
 /// What one probe learned about a media URL.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProbeResult {
+    pub final_url: String,
+    pub observed: ghostr_engine::evidence::EvidenceTime,
     pub content_length: Option<u64>,
     pub accept_ranges: Option<bool>,
     pub content_type: Option<String>,
@@ -77,6 +78,8 @@ async fn observe(
 }
 
 struct ProbeFacts {
+    final_url: String,
+    observed: ghostr_engine::evidence::EvidenceTime,
     content_length: Option<u64>,
     accept_ranges: Option<bool>,
     content_type: Option<String>,
@@ -90,12 +93,12 @@ async fn describe(
     network_class: &mut ghostr_engine::origin_model::NetworkClass,
     network: Option<&crate::delivery_events::DeliveryNetworkStatusReader>,
 ) -> Result<ProbeFacts> {
-    let (head, ttfb) = send_head(spec, concurrency, network_class, network).await?;
+    let (head, ttfb, observed) = send_head(spec, concurrency, network_class, network).await?;
     validate_response_headers(head.headers())?;
     let head = head.error_for_status().context("HEAD probe rejected")?;
     require_identity_encoding(head.headers()).context("HEAD response is encoded")?;
     origin_content_type::require_admissible(head.headers())?;
-    Ok(facts_from_head(&head, ttfb))
+    Ok(facts_from_head(&head, ttfb, observed))
 }
 
 async fn send_head(
@@ -103,7 +106,11 @@ async fn send_head(
     concurrency: &mut usize,
     network_class: &mut ghostr_engine::origin_model::NetworkClass,
     network: Option<&crate::delivery_events::DeliveryNetworkStatusReader>,
-) -> Result<(MediaResponse, Duration)> {
+) -> Result<(
+    MediaResponse,
+    Duration,
+    ghostr_engine::evidence::EvidenceTime,
+)> {
     let admitted = spec
         .requests
         .get(spec.url, spec.priority)?
@@ -119,8 +126,9 @@ async fn send_head(
     let started = Instant::now();
     let deadline = started + spec.timeouts.headers;
     let response = await_headers(admitted.send_with_redirect_deadline(deadline), deadline).await?;
+    let observed = crate::manager::time::evidence_time();
     let ttfb = response.origin_elapsed(started.elapsed());
-    Ok((response, ttfb))
+    Ok((response, ttfb, observed))
 }
 
 async fn await_headers(
@@ -133,20 +141,26 @@ async fn await_headers(
         .context("probe request failed")
 }
 
-fn facts_from_head(response: &MediaResponse, ttfb: Duration) -> ProbeFacts {
+fn facts_from_head(
+    response: &MediaResponse,
+    ttfb: Duration,
+    observed: ghostr_engine::evidence::EvidenceTime,
+) -> ProbeFacts {
     ProbeFacts {
-        content_length: header_u64(response, &CONTENT_LENGTH),
-        accept_ranges: accepts_byte_ranges(response),
-        content_type: header_text(response, &CONTENT_TYPE),
-        validator: response_validator(response),
+        final_url: response.url().to_string(),
+        observed,
+        content_length: response_headers::content_length(response),
+        accept_ranges: response_headers::accepts_byte_ranges(response),
+        content_type: response_headers::content_type(response),
+        validator: response_headers::validator(response),
         ttfb,
     }
 }
 
 fn conclude(stats: &mut HostStats, url: &str, outcome: Result<ProbeFacts>) -> Result<ProbeResult> {
-    let host = host_of(url);
     match outcome {
         Ok(facts) => {
+            let host = host_of(&facts.final_url);
             if let Some(host) = &host {
                 stats.record_ttfb(host, facts.ttfb.as_millis() as u64);
                 stats.record_success(host);
@@ -154,6 +168,7 @@ fn conclude(stats: &mut HostStats, url: &str, outcome: Result<ProbeFacts>) -> Re
             Ok(result_from(facts))
         }
         Err(error) => {
+            let host = host_of(url);
             if let Some(host) = &host.filter(|_| !is_admission_timeout(&error)) {
                 stats.record_failure(host);
             }
@@ -164,33 +179,14 @@ fn conclude(stats: &mut HostStats, url: &str, outcome: Result<ProbeFacts>) -> Re
 
 fn result_from(facts: ProbeFacts) -> ProbeResult {
     ProbeResult {
+        final_url: facts.final_url,
+        observed: facts.observed,
         content_length: facts.content_length,
         accept_ranges: facts.accept_ranges,
         content_type: facts.content_type,
         validator: facts.validator,
         ttfb: facts.ttfb,
     }
-}
-
-fn header_text(response: &MediaResponse, name: &HeaderName) -> Option<String> {
-    let value = response.headers().get(name)?;
-    value.to_str().ok().map(str::to_owned)
-}
-
-fn header_u64(response: &MediaResponse, name: &HeaderName) -> Option<u64> {
-    header_text(response, name)?.trim().parse().ok()
-}
-
-fn accepts_byte_ranges(response: &MediaResponse) -> Option<bool> {
-    header_text(response, &ACCEPT_RANGES).map(|value| value.trim().eq_ignore_ascii_case("bytes"))
-}
-
-fn response_validator(response: &MediaResponse) -> Option<EvidenceValidator> {
-    header_text(response, &ETAG)
-        .and_then(EvidenceValidator::strong_etag)
-        .or_else(|| {
-            header_text(response, &LAST_MODIFIED).and_then(EvidenceValidator::last_modified)
-        })
 }
 
 fn is_admission_timeout(error: &anyhow::Error) -> bool {

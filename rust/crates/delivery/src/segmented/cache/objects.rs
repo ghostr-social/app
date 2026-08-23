@@ -104,6 +104,7 @@ fn referenced_keys(state: &CacheState, protected: bool) -> HashSet<String> {
 fn reclaimable(record: &super::FocusRecord) -> bool {
     record.snapshot.phase == SegmentedPhase::Ready
         && record.staged.is_empty()
+        && record.preparing.is_none()
         && record.reserved_bytes == 0
         && record.assembly_bytes == 0
 }

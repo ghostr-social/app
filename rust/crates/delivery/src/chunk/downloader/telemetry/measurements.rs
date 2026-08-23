@@ -1,11 +1,11 @@
-use super::super::{OpenedResponse, ResponseAdmission, ResponseObservation};
-use crate::chunk::traffic::ChunkTraffic;
+use super::super::{HttpResponseEvidence, OpenedResponse, ResponseAdmission};
+use crate::chunk::traffic::{ChunkTraffic, WholeBodyCompletion};
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
 use tokio::time::Instant;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub(in crate::chunk::downloader) struct TrafficMeasurements {
     pub(super) ttfb: Option<Duration>,
     pub(super) bytes: u64,
@@ -13,6 +13,8 @@ pub(in crate::chunk::downloader) struct TrafficMeasurements {
     request_started: bool,
     origin_elapsed: Option<Duration>,
     network_class: ghostr_engine::origin_model::NetworkClass,
+    whole_body_completion: Option<WholeBodyCompletion>,
+    response_evidence: Option<HttpResponseEvidence>,
 }
 
 pub(in crate::chunk::downloader) struct MeasuredTraffic<'a> {
@@ -30,6 +32,8 @@ impl Default for TrafficMeasurements {
             request_started: false,
             origin_elapsed: None,
             network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
+            whole_body_completion: None,
+            response_evidence: None,
         }
     }
 }
@@ -51,29 +55,34 @@ impl<'a> MeasuredTraffic<'a> {
     }
 
     pub fn measurements(&self) -> TrafficMeasurements {
-        let mut measured = self.measured;
-        measured.origin_elapsed = self
-            .opened_at
-            .zip(measured.ttfb)
-            .map(|(opened_at, ttfb)| ttfb + opened_at.elapsed());
+        let mut measured = self.measured.clone();
+        measured.origin_elapsed = measured.origin_elapsed.or_else(|| {
+            self.opened_at
+                .zip(measured.ttfb)
+                .map(|(opened_at, ttfb)| ttfb + opened_at.elapsed())
+        });
         measured
     }
 }
 
 impl TrafficMeasurements {
-    pub fn concurrency(self) -> usize {
+    pub fn concurrency(&self) -> usize {
         self.concurrency
     }
 
-    pub fn origin_elapsed(self) -> Option<Duration> {
+    pub fn bytes(&self) -> u64 {
+        self.bytes
+    }
+
+    pub fn origin_elapsed(&self) -> Option<Duration> {
         self.origin_elapsed
     }
 
-    pub fn request_started(self) -> bool {
+    pub fn request_started(&self) -> bool {
         self.request_started
     }
 
-    pub fn network_class(self) -> ghostr_engine::origin_model::NetworkClass {
+    pub fn network_class(&self) -> ghostr_engine::origin_model::NetworkClass {
         self.network_class
     }
 
@@ -83,6 +92,14 @@ impl TrafficMeasurements {
     ) -> Self {
         self.network_class = network_class;
         self
+    }
+
+    pub fn whole_body_completion(&self) -> Option<&WholeBodyCompletion> {
+        self.whole_body_completion.as_ref()
+    }
+
+    pub fn response_evidence(&self) -> Option<&HttpResponseEvidence> {
+        self.response_evidence.as_ref()
     }
 }
 
@@ -111,8 +128,18 @@ impl ChunkTraffic for MeasuredTraffic<'_> {
         self.inner.wrote(bytes);
     }
 
-    fn response_observed(&mut self, response: ResponseObservation) {
+    fn response_observed(&mut self, response: OpenedResponse) {
+        self.measured.response_evidence = Some(response.evidence().clone());
         self.inner.response_observed(response);
+    }
+
+    fn whole_body_completed(&mut self, completion: WholeBodyCompletion) {
+        self.measured.origin_elapsed = self
+            .opened_at
+            .zip(self.measured.ttfb)
+            .map(|(opened_at, ttfb)| ttfb + opened_at.elapsed());
+        self.measured.whole_body_completion = Some(completion.clone());
+        self.inner.whole_body_completed(completion);
     }
 
     fn authorize_response<'a>(

@@ -5,16 +5,20 @@ use tokio::sync::{watch, Notify};
 
 mod blocks;
 mod capacity;
-pub(in crate::segmented) use blocks::{CompleteStage, StageBlock, StoredStage};
+#[cfg(test)]
+pub(in crate::segmented) use blocks::{StageBlock, StoredStage};
+mod admission;
+pub(crate) use admission::{StageAdmission, StageFence, StageLease, StageRequest};
 mod focus;
 pub(crate) use focus::PreservedFocus;
 mod freshness;
 mod generation;
-pub(in crate::segmented) use generation::HlsCacheMetadata;
+pub(in crate::segmented) use generation::{CachedHlsGenerationHasher, HlsCacheMetadata};
 mod invalidation;
 mod objects;
 mod staged;
 mod staged_object;
+pub(in crate::segmented) use staged_object::AssemblySeed;
 use staged_object::StagedObject;
 #[cfg(test)]
 mod tests;
@@ -100,6 +104,7 @@ struct CacheState {
     canonical_aliases: HashMap<String, String>,
     order: VecDeque<String>,
     invalidated: Vec<(PostId, u64)>,
+    inflight: HashMap<admission::InflightKey, admission::InflightStage>,
     bytes: usize,
 }
 
@@ -111,6 +116,7 @@ struct FocusRecord {
     snapshot: SegmentedSnapshot,
     objects: Vec<String>,
     staged: Vec<StagedObject>,
+    preparing: Option<StageFence>,
     reserved_bytes: u64,
     assembly_bytes: u64,
 }
@@ -158,7 +164,13 @@ impl SegmentedCache {
     }
 
     pub fn clear(&self) {
-        *self.lock() = CacheState::default();
+        let mut state = self.lock();
+        let inflight = std::mem::take(&mut state.inflight);
+        *state = CacheState {
+            inflight,
+            ..CacheState::default()
+        };
+        drop(state);
         self.changed.notify_waiters();
     }
 

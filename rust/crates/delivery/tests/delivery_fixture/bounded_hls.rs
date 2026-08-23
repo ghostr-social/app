@@ -6,7 +6,7 @@ use axum::Router;
 use std::sync::{Arc, Mutex};
 use tokio::net::TcpListener;
 
-pub const INIT_BYTES: usize = 300 * 1024;
+pub const INIT_BYTES: usize = 700 * 1024;
 pub type Requests = Arc<Mutex<Vec<(String, Option<String>, Option<String>)>>>;
 
 pub async fn serve() -> (String, Requests) {
@@ -62,8 +62,16 @@ fn ranged(start: usize, requested_end: usize) -> Response<Body> {
         )
         .header(header::CONTENT_LENGTH, end - start + 1)
         .header(header::ETAG, "\"init-v1\"")
-        .body(Body::from(vec![7; end - start + 1]))
+        .body(Body::from(init_range(start, end)))
         .unwrap()
+}
+
+pub fn init_body() -> Vec<u8> {
+    init_range(0, INIT_BYTES - 1)
+}
+
+fn init_range(start: usize, end: usize) -> Vec<u8> {
+    (start..=end).map(|index| (index % 251) as u8).collect()
 }
 
 fn full(body: &'static [u8], etag: &'static str) -> Response<Body> {

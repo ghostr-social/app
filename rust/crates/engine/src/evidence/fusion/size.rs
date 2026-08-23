@@ -4,14 +4,15 @@ use crate::evidence::{Confidence, Evidence, EvidenceField, EvidenceValue};
 const RELIABLE_BPS: u16 = 7_000;
 
 pub(super) fn assess(records: &[&Evidence<EvidenceValue>], now_ms: u64) -> SizeAssessment {
-    let sizes = fresh(&matching(records, EvidenceField::Size), now_ms);
-    let values: Vec<u64> = sizes
+    let observed = matching(records, EvidenceField::Size);
+    let sizes = fresh(&observed, now_ms);
+    let values: Vec<u64> = observed
         .iter()
         .filter_map(|item| size_value(&item.value))
         .collect();
     let selected = winner(&sizes, now_ms);
     let confidence = selected.map_or(Confidence::none(), |item| agreement(item, &sizes, now_ms));
-    let conflict = distinct_count(&sizes) > 1;
+    let conflict = distinct_count(&observed) > 1;
     let direct = selected.is_some_and(|item| item.source.direct_bytes());
     let reliable = confidence.basis_points() >= RELIABLE_BPS && (!conflict || direct);
     let chosen = selected.and_then(|item| size_value(&item.value));

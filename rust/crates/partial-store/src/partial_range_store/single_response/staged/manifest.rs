@@ -3,7 +3,10 @@ use crate::partial_range_manifest::RangeManifest;
 use anyhow::Result;
 use std::path::Path;
 
-pub(super) async fn complete(path: &Path, total: u64) -> Result<RangeManifest> {
+pub(in crate::partial_range_store) async fn complete(
+    path: &Path,
+    total: u64,
+) -> Result<RangeManifest> {
     let mut manifest = RangeManifest::default();
     manifest.set_total_len(total)?;
     manifest.insert(0..total)?;

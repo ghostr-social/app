@@ -8,32 +8,59 @@ use crate::manager::failure::origin_failure_class;
 use crate::manager::pressure::is_store_pressure;
 use crate::manager::transfers::ChunkDone;
 use crate::manager::DeliveryWorker;
-use ghostr_engine::catalog::LearnedFacts;
-use ghostr_engine::host_stats::host_of;
-use ghostr_engine::representation::TransferIdentity;
+use ghostr_engine::representation::{HttpGenerationLease, TransferIdentity};
 use ghostr_engine::PostId;
 use ghostr_net::media_log_identity::MediaLogIdentity;
 use log::warn;
 
+mod evidence;
+mod finalize;
 mod hedge;
+mod policy_limit;
 
 impl DeliveryWorker {
     pub(crate) async fn finish_chunk(&mut self, done: ChunkDone) {
+        self.record_whole_body_limit(&done);
+        let generation = self.downloads.http_generation(&done.attempt);
+        let whole_body_completed = self.learn_network_completion(&done, generation.as_ref());
         if successful_required_bytes(&done) {
             self.downloads.complete_hedge_winner(done.attempt.id());
         }
-        let status = self.downloads.finish(&done.attempt);
-        self.observe_chunk_completion(&done, status);
+        let finished = self.downloads.finish(&done.attempt);
+        let status = finished.status();
+        self.observe_chunk_completion(&done, finished);
         let identity = done.attempt.identity().clone();
         self.finish_body(&identity);
+        if !self.retain_completion(status, &done, &identity) {
+            return;
+        }
+        self.finish_useful_chunk(done, &identity, whole_body_completed, generation)
+            .await;
+    }
+
+    fn retain_completion(
+        &mut self,
+        status: crate::manager::inflight::CompletionStatus,
+        done: &ChunkDone,
+        identity: &TransferIdentity,
+    ) -> bool {
         match hedge::completion_use(status, &done) {
-            hedge::CompletionUse::Useful => {}
+            hedge::CompletionUse::Useful => true,
             hedge::CompletionUse::OriginEvidence => {
                 hedge::record_origin_only(self, &done, &identity);
-                return;
+                false
             }
-            hedge::CompletionUse::Discarded => return,
+            hedge::CompletionUse::Discarded => false,
         }
+    }
+
+    async fn finish_useful_chunk(
+        &mut self,
+        done: ChunkDone,
+        identity: &TransferIdentity,
+        whole_body_completed: bool,
+        generation: Option<HttpGenerationLease>,
+    ) {
         if !done.outcome.as_ref().err().is_some_and(is_store_pressure) {
             self.keeper.note_chunk(&done);
         }
@@ -41,8 +68,20 @@ impl DeliveryWorker {
         // to the same volume — so every finished chunk re-measures it and
         // evicts down to the cap instead of waiting for the next write.
         self.ctx.store.enforce_capacity().await;
+        let response = done.response_evidence.clone();
         match done.outcome {
-            Ok(result) => self.absorb_chunk(&identity, result).await,
+            Ok(result) => {
+                self.absorb_chunk(
+                    identity,
+                    result,
+                    AbsorbEvidence {
+                        size_already_learned: whole_body_completed,
+                        response: response.as_ref(),
+                        generation: generation.as_ref(),
+                    },
+                )
+                .await
+            }
             Err(error) => self.absorb_failure(identity.post(), &done.url, &error),
         }
     }
@@ -60,6 +99,11 @@ impl DeliveryWorker {
         if self.absorb_store_pressure(post, error) {
             return;
         }
+        if crate::chunk::sink::is_local_store_failure(error) {
+            warn!("Local media publication failed; pausing before retry");
+            self.start_cooldown(post.clone(), self.pressure.retry_delay());
+            return;
+        }
         let Some(class) = origin_failure_class(error) else {
             return;
         };
@@ -70,11 +114,13 @@ impl DeliveryWorker {
         self.note_failed_attempt(post, url, class);
     }
 
-    async fn absorb_chunk(&mut self, identity: &TransferIdentity, result: ChunkResult) {
-        if !self
-            .learn_transfer(identity, result.total_bytes, result.range_support)
-            .await
-        {
+    async fn absorb_chunk(
+        &mut self,
+        identity: &TransferIdentity,
+        result: ChunkResult,
+        evidence: AbsorbEvidence<'_>,
+    ) {
+        if !self.transfer_is_current(identity).await {
             return;
         }
         if result.cancelled {
@@ -85,90 +131,18 @@ impl DeliveryWorker {
         if result.range_ignored {
             return;
         }
-        self.try_finalize(identity, result.total_bytes).await;
-    }
-
-    pub(crate) async fn learn_transfer(
-        &mut self,
-        identity: &TransferIdentity,
-        total: Option<u64>,
-        ranged: Option<bool>,
-    ) -> bool {
-        if !self.ctx.store.transfer_is_current(identity).await {
-            return false;
-        }
-        if !self.learn_response_evidence(identity, total, ranged) {
-            return false;
-        }
-        true
-    }
-
-    pub(crate) fn learn_response_evidence(
-        &mut self,
-        identity: &TransferIdentity,
-        total: Option<u64>,
-        ranged: Option<bool>,
-    ) -> bool {
-        let facts = LearnedFacts {
-            content_length: total,
-            accept_ranges: ranged,
-            host: host_of(identity.source().as_str()),
-        };
-        if !self.state.catalog_mut().learn_response_for(identity, facts) {
-            return false;
-        }
-        true
-    }
-
-    /// Byte-complete files leave the partial pool whether or not the
-    /// note advertised an `imeta x`; an advertised digest still decides
-    /// whether the bytes are kept (see `partial_range_completion`).
-    /// Bytes that fail that check came from the source, so a failed
-    /// finalize is charged to it like any other failed attempt.
-    async fn try_finalize(&mut self, identity: &TransferIdentity, total: Option<u64>) {
-        let post = identity.post();
-        if !self.transfer_complete(post).await {
-            return;
-        }
-        let advertised = self.advertised_digest(post);
-        let outcome = self
-            .ctx
-            .store
-            .finalize(post.as_str(), advertised.as_deref())
+        let total = (!evidence.size_already_learned)
+            .then_some(result.total_bytes)
+            .flatten();
+        self.try_finalize(identity, total, evidence.response, evidence.generation)
             .await;
-        match outcome {
-            Ok(_) => self.learn_finalized(identity, total),
-            Err(error) => {
-                self.finish_finalize_error(identity, advertised.as_deref(), error)
-                    .await
-            }
-        }
     }
+}
 
-    async fn transfer_complete(&self, post: &PostId) -> bool {
-        self.ctx
-            .store
-            .is_complete(post.as_str())
-            .await
-            .unwrap_or(false)
-    }
-
-    fn advertised_digest(&self, post: &PostId) -> Option<String> {
-        self.state
-            .catalog()
-            .lookup(post)
-            .and_then(|entry| entry.meta.sha256.clone())
-    }
-
-    fn learn_finalized(&mut self, identity: &TransferIdentity, total: Option<u64>) {
-        if let Some(total) = total {
-            self.state.catalog_mut().learn_complete_bytes_for(
-                identity,
-                total,
-                crate::manager::time::unix_time_ms(),
-            );
-        }
-    }
+struct AbsorbEvidence<'a> {
+    size_already_learned: bool,
+    response: Option<&'a crate::chunk::downloader::HttpResponseEvidence>,
+    generation: Option<&'a HttpGenerationLease>,
 }
 
 fn successful_required_bytes(done: &ChunkDone) -> bool {

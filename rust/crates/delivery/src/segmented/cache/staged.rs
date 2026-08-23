@@ -1,9 +1,13 @@
+#[cfg(test)]
 use super::capacity::fits;
 use super::objects::insert;
-use super::{CachedHlsObject, SegmentedCache, SegmentedPhase, SegmentedSnapshot, StageReservation};
+#[cfg(test)]
+use super::StageReservation;
+use super::{CachedHlsObject, SegmentedCache, SegmentedPhase, SegmentedSnapshot};
 use ghostr_engine::PostId;
 
 impl SegmentedCache {
+    #[cfg(test)]
     pub(crate) fn mark_stage_preparing<R: Into<StageReservation>>(
         &self,
         post: &PostId,
@@ -24,6 +28,7 @@ impl SegmentedCache {
         };
         if record.generation != generation
             || record.snapshot.phase == SegmentedPhase::Ready
+            || record.preparing.is_some()
             || record.assembly_bytes != 0
         {
             return false;
@@ -55,6 +60,7 @@ impl SegmentedCache {
             return false;
         };
         if record.generation != generation
+            || record.preparing.is_some()
             || record.assembly_bytes != 0
             || !record.staged.iter().all(|object| object.is_assembled())
         {
@@ -69,16 +75,11 @@ impl SegmentedCache {
             .expect("validated complete HLS objects");
         let keys = staged
             .iter()
-            .map(|object| object.request_url.clone())
+            .map(|prepared| prepared.object.request_url.clone())
             .collect::<Vec<_>>();
-        for object in staged {
-            let cached = CachedHlsObject::with_metadata(
-                object.body,
-                object.final_url,
-                object.content_type,
-                object.cache,
-            );
-            insert(&mut state, object.request_url, cached);
+        for prepared in staged {
+            let key = prepared.object.request_url.clone();
+            insert(&mut state, key, CachedHlsObject::from_prepared(prepared));
         }
         let Some(record) = state.focus.get_mut(post) else {
             return false;
@@ -105,6 +106,7 @@ impl SegmentedCache {
             return false;
         }
         record.staged.clear();
+        record.preparing = None;
         record.root_source = None;
         record.reserved_bytes = 0;
         record.assembly_bytes = 0;
@@ -123,6 +125,7 @@ impl SegmentedCache {
             return false;
         }
         record.staged.retain(|object| object.request_url() != url);
+        record.preparing = None;
         record.reserved_bytes = 0;
         record.assembly_bytes = 0;
         record.snapshot.bytes_present = record.staged.iter().map(|object| object.len()).sum();
@@ -139,7 +142,16 @@ impl SegmentedCache {
         let Some(record) = state.focus.get_mut(post) else {
             return false;
         };
-        if record.generation != generation || record.snapshot.phase != SegmentedPhase::Preparing {
+        if record.generation == generation
+            && record.preparing.is_none()
+            && record.snapshot.phase == SegmentedPhase::Queued
+        {
+            return true;
+        }
+        if record.generation != generation
+            || record.preparing.is_some()
+            || record.snapshot.phase != SegmentedPhase::Preparing
+        {
             return false;
         }
         record.reserved_bytes = 0;
@@ -167,6 +179,7 @@ impl SegmentedCache {
             return false;
         }
         record.snapshot.phase = phase;
+        record.preparing = None;
         if phase == SegmentedPhase::Failed {
             record.staged.clear();
             record.root_source = None;

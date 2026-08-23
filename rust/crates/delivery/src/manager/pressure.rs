@@ -18,7 +18,9 @@ use ghostr_partial_store::partial_range_store::OutOfSpace;
 use log::warn;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::watch;
+
+mod capacity;
+pub(crate) use capacity::capacity_changed;
 
 /// What the manager carries between refusals.
 pub(crate) struct StorePressure {
@@ -55,6 +57,10 @@ impl StorePressure {
 
     pub(crate) fn is_parked(&self) -> bool {
         self.parked
+    }
+
+    pub(crate) fn retry_delay(&self) -> Duration {
+        self.pause
     }
 
     fn park(&mut self, observed: CapacityRevision) -> Option<CapacityWait> {
@@ -172,24 +178,6 @@ impl DeliveryWorker {
                 ));
             }
         });
-    }
-}
-
-pub(crate) async fn capacity_changed(
-    store: &ghostr_partial_store::partial_range_store::PartialRangeStore,
-    changes: &mut watch::Receiver<u64>,
-    recheck_after: Duration,
-    observed: CapacityRevision,
-) -> bool {
-    if *changes.borrow_and_update() != observed.value() {
-        return true;
-    }
-    tokio::select! {
-        result = changes.changed() => result.is_ok(),
-        _ = tokio::time::sleep(recheck_after) => {
-            store.recheck_capacity().await;
-            changes.changed().await.is_ok()
-        }
     }
 }
 

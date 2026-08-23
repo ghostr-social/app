@@ -1,12 +1,15 @@
 use super::super::PlanInputs;
 use crate::manager::state::DeliveryState;
 use ghostr_engine::adaptive::{NetworkSnapshot, OriginHealth};
+use ghostr_engine::evidence::{EvidenceField, EvidenceValue};
 use ghostr_engine::host_stats::OPTIMISTIC_THROUGHPUT_BPS;
 use ghostr_engine::origin_model::{
     Admission, DecisionMode, MediaClass, NetworkClass, OriginContext, OriginQuery, RequestMethod,
 };
 use ghostr_engine::playback::EstimateConfidence;
 use ghostr_engine::{PostId, RequestAuthority};
+
+const BOOTSTRAP_REQUEST_BYTES: u64 = 256 * 1024;
 
 pub(super) fn origins(
     state: &DeliveryState,
@@ -62,7 +65,7 @@ fn origin_query(
     network_class: NetworkClass,
 ) -> Option<OriginQuery> {
     let authority = RequestAuthority::from_url(url)?;
-    let (method, media, bytes) = request_context(entry, url);
+    let (method, media, bytes) = request_context(entry, url, inputs.observed_at_ms);
     let concurrency = active_on_authority(inputs, &authority).saturating_add(1);
     Some(OriginQuery::new(
         url,
@@ -91,22 +94,46 @@ fn active_on_authority(inputs: &PlanInputs<'_>, authority: &RequestAuthority) ->
 fn request_context(
     entry: &ghostr_engine::catalog::CatalogEntry,
     url: &str,
+    observed_at_ms: u64,
 ) -> (RequestMethod, MediaClass, u64) {
     if entry.meta.delivery == ghostr_engine::DeliveryKind::Hls {
-        return (RequestMethod::SegmentGet, MediaClass::Segmented, 256 * 1024);
+        return (
+            RequestMethod::SegmentGet,
+            MediaClass::Segmented,
+            BOOTSTRAP_REQUEST_BYTES,
+        );
     }
-    match entry.observed_range_support_for(url) {
-        Some(false) => (
+    let assessment = entry.evidence_assessment_for(url, observed_at_ms);
+    match assessment.value(EvidenceField::RangeSupport) {
+        Some(EvidenceValue::RangeSupport(false)) => (
             RequestMethod::FullGet,
             MediaClass::WholeObject,
-            entry.planning_total_for(url).unwrap_or(256 * 1024),
+            whole_request_bytes(entry, url, &assessment),
         ),
         _ => (
             RequestMethod::RangeGet,
             MediaClass::ProgressiveMp4,
-            256 * 1024,
+            BOOTSTRAP_REQUEST_BYTES,
         ),
     }
+}
+
+fn whole_request_bytes(
+    entry: &ghostr_engine::catalog::CatalogEntry,
+    url: &str,
+    assessment: &ghostr_engine::evidence::EvidenceAssessment,
+) -> u64 {
+    assessment.size.exact.unwrap_or_else(|| {
+        [
+            assessment.size.upper,
+            entry.meta.size_bytes,
+            entry.planning_total_for(url),
+        ]
+        .into_iter()
+        .flatten()
+        .max()
+        .unwrap_or(BOOTSTRAP_REQUEST_BYTES)
+    })
 }
 
 pub(super) fn network(inputs: &PlanInputs<'_>) -> NetworkSnapshot {
@@ -138,3 +165,10 @@ fn finite_bits(bytes_per_second: f64) -> u64 {
     }
     (bytes_per_second * 8.0).min(u64::MAX as f64).round() as u64
 }
+
+#[cfg(test)]
+#[path = "telemetry/request_context_conflict_test.rs"]
+mod request_context_conflict_test;
+#[cfg(test)]
+#[path = "telemetry/request_context_evidence_test.rs"]
+mod request_context_evidence_test;

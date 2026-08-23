@@ -2,7 +2,7 @@ use crate::chunk::downloader::ChunkResult;
 use crate::delivery_events::DecisionResolution;
 use crate::manager::inflight::{ChunkAttempt, InFlightChunks};
 use crate::manager::transfers::ChunkDone;
-use ghostr_engine::adaptive::DecisionAction;
+use ghostr_engine::adaptive::{DecisionAction, WholeBodyContract};
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::{ByteRange, ChunkId, DeliveryKind, PostId, VideoMeta};
 
@@ -19,8 +19,11 @@ pub(crate) fn done(bytes: u64, cancelled: bool) -> ChunkDone {
             promoted: false,
             request_started: true,
         }),
+        received_bytes: bytes,
         origin: None,
         request_started: true,
+        whole_body_completion: None,
+        response_evidence: None,
     }
 }
 
@@ -29,8 +32,30 @@ pub(crate) fn failed() -> ChunkDone {
         attempt: attempt(),
         url: "https://alternate.example/video.mp4".into(),
         outcome: Err(anyhow::anyhow!("alternate failed")),
+        received_bytes: 0,
         origin: None,
         request_started: true,
+        whole_body_completion: None,
+        response_evidence: None,
+    }
+}
+
+pub(crate) fn policy_limited() -> ChunkDone {
+    let error = crate::chunk::whole_body_limit::WholeBodyLimitReached::check(
+        8,
+        1,
+        WholeBodyContract::Capped { maximum_bytes: 8 },
+    )
+    .unwrap_err();
+    ChunkDone {
+        attempt: attempt(),
+        url: "https://primary.example/video.mp4".into(),
+        outcome: Err(error),
+        received_bytes: 9,
+        origin: None,
+        request_started: true,
+        whole_body_completion: None,
+        response_evidence: None,
     }
 }
 

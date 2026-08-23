@@ -1,5 +1,5 @@
 use super::progress::Pending;
-use super::{Active, SegmentedDelivery, SegmentedDone};
+use super::{finished_network, old_root_fence, Active, SegmentedDelivery, SegmentedDone};
 use crate::delivery_events::{DeliveryFocus, FocusGeneration, FocusItem, FocusTransition};
 use crate::segmented::fetch::{FetchFailure, OriginTelemetry};
 use crate::segmented::SegmentedCache;
@@ -14,6 +14,8 @@ async fn queued_physical_terminal_wins_over_a_late_focus_cancellation() {
     delivery.apply_focus(&focus(1, "https://old.example/root.m3u8"));
     let post = PostId::new("stream");
     delivery.active.insert(post.clone(), completed_active());
+    assert_eq!(delivery.active_len(), 0);
+    assert!(delivery.active_sources().is_empty());
 
     delivery.apply_focus(&focus(2, "https://new.example/root.m3u8"));
     assert!(!delivery.active[&post].cancelling);
@@ -41,8 +43,10 @@ pub(super) fn completed_active() -> Active {
     drop(cancelled);
     Active {
         action: ActionId::new(7),
+        fence: old_root_fence(),
         pending: Pending::root(1, 1, 0, "https://old.example/root.m3u8".to_owned()),
         committed_until_ms: u64::MAX,
+        network: finished_network(),
         _task: tokio::spawn(std::future::pending()),
         cancellation: Some(cancellation),
         cancelling: false,
@@ -53,7 +57,7 @@ pub(super) fn failed(post: PostId) -> SegmentedDone {
     SegmentedDone {
         action: ActionId::new(7),
         post,
-        generation: 1,
+        fence: old_root_fence(),
         outcome: Err(FetchFailure::admitted(
             anyhow::anyhow!("server"),
             ErrorReason::Http5xx,

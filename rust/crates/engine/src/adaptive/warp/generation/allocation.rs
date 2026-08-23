@@ -47,6 +47,13 @@ impl<'a> AllocationSpec<'a> {
         }
     }
 
+    pub(super) fn unknown_whole_probe(bytes: u64, source: &'a str) -> Self {
+        Self {
+            reason: AllocationReason::MediaLayoutDiscovery,
+            ..Self::whole(bytes, source, 0)
+        }
+    }
+
     pub(super) fn hedge(request: RetrievalRequest, source: &'a str) -> Self {
         Self {
             request,
@@ -109,11 +116,7 @@ fn utility(candidate: &CandidateSnapshot, playable_ms: u64, expected_ms: u64) ->
 }
 
 pub(super) fn source(candidate: &CandidateSnapshot) -> Option<&str> {
-    candidate
-        .origins
-        .iter()
-        .find(|item| item.available)
-        .map(|item| item.source.as_str())
+    crate::adaptive::sources::best_origin(candidate).map(|item| item.source.as_str())
 }
 
 pub(super) fn classify(allocation: &Allocation) -> super::super::ActionKind {

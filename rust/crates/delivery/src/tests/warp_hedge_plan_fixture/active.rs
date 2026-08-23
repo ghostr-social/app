@@ -80,5 +80,6 @@ pub(super) fn insert(active: &mut InFlightChunks, registration: Registration<'_>
         launched_at_ms: registration.launched_at_ms,
         handle,
         store_action: None,
+        committed_network_bytes: None,
     });
 }

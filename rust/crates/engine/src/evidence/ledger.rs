@@ -8,6 +8,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 const RECORD_CAPACITY: usize = 128;
 
+mod validator;
+
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct EvidenceInvalidation {
     pub invalidated_records: usize,
@@ -25,6 +27,8 @@ impl EvidenceInvalidation {
 pub struct EvidenceLedger {
     records: Vec<Evidence<EvidenceValue>>,
     validators: BTreeMap<String, EvidenceValidator>,
+    #[serde(default)]
+    validator_times: BTreeMap<String, super::EvidenceTime>,
     quarantined_digests: BTreeSet<String>,
     capacity: usize,
 }
@@ -34,6 +38,7 @@ impl Default for EvidenceLedger {
         Self {
             records: Vec::new(),
             validators: BTreeMap::new(),
+            validator_times: BTreeMap::new(),
             quarantined_digests: BTreeSet::new(),
             capacity: RECORD_CAPACITY,
         }
@@ -56,19 +61,6 @@ impl EvidenceLedger {
 
     pub fn assessment(&self, url: &str, now_ms: u64) -> EvidenceAssessment {
         fusion::assess(&self.records, url, now_ms)
-    }
-
-    pub fn observe_validator(
-        &mut self,
-        url: &str,
-        validator: EvidenceValidator,
-        observed_at_ms: u64,
-    ) -> EvidenceInvalidation {
-        let previous = self.validators.insert(url.to_owned(), validator.clone());
-        if previous.as_ref() == Some(&validator) {
-            return EvidenceInvalidation::default();
-        }
-        self.invalidate_url_generation(url, &validator, observed_at_ms)
     }
 
     pub fn quarantine_digest(
@@ -96,13 +88,6 @@ impl EvidenceLedger {
     pub fn is_digest_quarantined(&self, digest: &str) -> bool {
         self.quarantined_digests
             .contains(&digest.to_ascii_lowercase())
-    }
-
-    pub(crate) fn scope_for_url(&self, url: &str) -> EvidenceScope {
-        self.validators.get(url).cloned().map_or_else(
-            || EvidenceScope::url(url),
-            |validator| EvidenceScope::validated(url, validator),
-        )
     }
 
     pub(crate) fn invalidate_parser(&mut self, observed_at_ms: u64) -> EvidenceInvalidation {
@@ -133,22 +118,6 @@ impl EvidenceLedger {
         result
     }
 
-    fn invalidate_url_generation(
-        &mut self,
-        url: &str,
-        current: &EvidenceValidator,
-        observed_at_ms: u64,
-    ) -> EvidenceInvalidation {
-        let mut result = EvidenceInvalidation::default();
-        for item in &mut self.records {
-            if !url_derived(item, url) || item.validator.as_ref() == Some(current) {
-                continue;
-            }
-            note_invalidation(&mut result, item, observed_at_ms);
-        }
-        result
-    }
-
     fn invalidate_mirror_evidence(&mut self, observed_at_ms: u64) -> EvidenceInvalidation {
         let mut result = EvidenceInvalidation::default();
         for item in &mut self.records {
@@ -171,14 +140,6 @@ impl EvidenceLedger {
             .unwrap_or(0);
         self.records.remove(victim);
     }
-}
-
-fn url_derived(item: &Evidence<EvidenceValue>, url: &str) -> bool {
-    item.scope.url_value() == Some(url)
-        && !matches!(
-            item.source,
-            EvidenceSource::Nostr { .. } | EvidenceSource::UrlExtension
-        )
 }
 
 fn note_invalidation(

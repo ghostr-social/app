@@ -30,6 +30,7 @@ impl DeliveryWorker {
         directive: &WarpDirective,
         decision: &mut Option<DecisionToken>,
         commit: &mut Option<SelectedCommit>,
+        observed_at_ms: u64,
     ) {
         match directive {
             WarpDirective::ProbeHead {
@@ -41,6 +42,7 @@ impl DeliveryWorker {
                     post,
                     source,
                     authority: *authority,
+                    observed_at_ms,
                 };
                 self.launch_selected_probe(selected, decision.take(), commit);
             }

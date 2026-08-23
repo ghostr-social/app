@@ -7,6 +7,7 @@ pub mod aba_origin;
 pub mod bounded_hls;
 pub mod bounded_hls_generation;
 pub mod bounded_hls_redirect;
+pub mod clean_eof_origin;
 pub mod concurrency_origin;
 pub mod cooling_plan_origin;
 pub mod decision;

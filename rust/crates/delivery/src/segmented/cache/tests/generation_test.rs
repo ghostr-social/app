@@ -1,4 +1,5 @@
 use super::store_ready;
+use crate::segmented::cache::{CachedHlsGenerationHasher, HlsCacheMetadata};
 use crate::segmented::prepare::PreparedObject;
 use crate::segmented::SegmentedCache;
 use ghostr_engine::PostId;
@@ -28,6 +29,23 @@ fn cached_hls_generation_binds_final_url_length_and_bytes() {
         generation("https://cdn.example/a", b"bc"),
         generation("https://cdn.example/ab", b"c")
     );
+}
+
+#[test]
+fn chunked_generation_hash_matches_the_legacy_one_pass_hash() {
+    let url = Url::parse("https://cdn.example/segment.m4s").unwrap();
+    let body = vec![9; 1024 * 1024 + 17];
+    let mut hasher =
+        CachedHlsGenerationHasher::new(&url, body.len() as u64, &HlsCacheMetadata::default());
+    for chunk in body.chunks(128 * 1024) {
+        hasher.update(chunk);
+    }
+    let expected = crate::segmented::CachedHlsGeneration::for_response(
+        &url,
+        &body,
+        &reqwest::header::HeaderMap::new(),
+    );
+    assert_eq!(hasher.finish(), expected);
 }
 
 fn generation(final_url: &str, body: &[u8]) -> crate::segmented::CachedHlsGeneration {

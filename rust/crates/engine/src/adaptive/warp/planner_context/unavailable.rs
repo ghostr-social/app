@@ -56,5 +56,6 @@ fn unavailable(rank: usize) -> PlannerCandidateContext {
         watch: PlannerWatchEvidence::Unavailable,
         head_probe: HeadProbeHistory::Unobserved,
         retry: PlannerRetryAvailability::Ready,
+        whole_body_exhaustion: None,
     }
 }

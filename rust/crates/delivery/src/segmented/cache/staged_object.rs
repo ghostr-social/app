@@ -1,5 +1,7 @@
 use super::HlsCacheMetadata;
-use crate::segmented::prepare::PreparedObject;
+use crate::segmented::prepare::{PreparedComplete, PreparedObject};
+use crate::segmented::CachedHlsGeneration;
+#[cfg(test)]
 use std::mem::MaybeUninit;
 use std::sync::Arc;
 use url::Url;
@@ -12,6 +14,16 @@ pub(super) struct StagedObject {
     blocks: Vec<Arc<[u8]>>,
     bytes: u64,
     complete: bool,
+    generation: Option<CachedHlsGeneration>,
+}
+
+pub(in crate::segmented) struct AssemblySeed {
+    pub(in crate::segmented) request_url: String,
+    pub(in crate::segmented) final_url: Url,
+    pub(in crate::segmented) content_type: Option<String>,
+    pub(in crate::segmented) cache: HlsCacheMetadata,
+    pub(in crate::segmented) blocks: Vec<Arc<[u8]>>,
+    pub(in crate::segmented) bytes: u64,
 }
 
 impl StagedObject {
@@ -33,7 +45,15 @@ impl StagedObject {
             blocks: vec![object.body],
             bytes,
             complete,
+            generation: None,
         }
+    }
+
+    pub(super) fn complete_prepared(prepared: PreparedComplete) -> Self {
+        let generation = prepared.generation;
+        let mut staged = Self::complete(prepared.object);
+        staged.generation = Some(generation);
+        staged
     }
 
     pub(super) fn request_url(&self) -> &str {
@@ -55,13 +75,14 @@ impl StagedObject {
 
     pub(super) fn push(&mut self, block: PreparedObject, offset: u64) -> Option<()> {
         let bytes = self.continuation_len(&block, offset)?;
-        self.cache.fresh_until = combined_freshness(&self.cache, &block.cache);
+        self.cache = self.cache.combined_with(&block.cache);
         self.blocks.push(block.body);
         self.bytes = bytes;
         self.complete = false;
         Some(())
     }
 
+    #[cfg(test)]
     pub(super) fn assembled_with(
         &self,
         block: PreparedObject,
@@ -78,16 +99,18 @@ impl StagedObject {
         if written != bytes {
             return None;
         }
-        let mut cache = self.cache.clone();
-        cache.fresh_until = combined_freshness(&cache, &block.cache);
+        let cache = self.cache.combined_with(&block.cache);
         // Every slot was initialized exactly once by `write_block`.
         let body = unsafe { body.assume_init() };
         Some(self.prepared(body, cache))
     }
 
-    pub(super) fn into_prepared(mut self) -> Option<PreparedObject> {
+    pub(super) fn into_prepared(mut self) -> Option<PreparedComplete> {
         let body = self.is_assembled().then(|| self.blocks.pop())??;
-        Some(self.prepared(body, self.cache.clone()))
+        Some(PreparedComplete {
+            object: self.prepared(body, self.cache.clone()),
+            generation: self.generation?,
+        })
     }
 
     pub(super) fn matches_identity(&self, object: &PreparedObject, offset: u64) -> bool {
@@ -95,6 +118,17 @@ impl StagedObject {
             && self.request_url == object.request_url
             && self.final_url == object.final_url
             && self.cache.validator == object.cache.validator
+    }
+
+    pub(super) fn assembly_seed(&self) -> AssemblySeed {
+        AssemblySeed {
+            request_url: self.request_url.clone(),
+            final_url: self.final_url.clone(),
+            content_type: self.content_type.clone(),
+            cache: self.cache.clone(),
+            blocks: self.blocks.clone(),
+            bytes: self.bytes,
+        }
     }
 
     fn matches(&self, block: &PreparedObject, offset: u64) -> bool {
@@ -112,6 +146,7 @@ impl StagedObject {
     }
 }
 
+#[cfg(test)]
 fn write_block(output: &mut [MaybeUninit<u8>], written: &mut usize, block: &[u8]) -> Option<()> {
     let end = written.checked_add(block.len())?;
     let target = output.get_mut(*written..end)?;
@@ -120,14 +155,4 @@ fn write_block(output: &mut [MaybeUninit<u8>], written: &mut usize, block: &[u8]
     }
     *written = end;
     Some(())
-}
-
-fn combined_freshness(
-    known: &HlsCacheMetadata,
-    block: &HlsCacheMetadata,
-) -> Option<std::time::Instant> {
-    match (known.fresh_until, block.fresh_until) {
-        (Some(left), Some(right)) => Some(left.min(right)),
-        _ => None,
-    }
 }

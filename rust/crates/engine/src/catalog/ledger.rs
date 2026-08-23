@@ -23,6 +23,13 @@ impl CatalogEntry {
         self.evidence_assessment_for(source, now_ms).size
     }
 
+    pub fn current_validator_for(
+        &self,
+        source: &str,
+    ) -> Option<&crate::evidence::EvidenceValidator> {
+        self.ledger.current_validator(source)
+    }
+
     pub(super) fn quarantine_integrity(&mut self, digest: &str, origin: &str, observed_at_ms: u64) {
         self.quarantined = true;
         self.timeline = None;

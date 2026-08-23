@@ -15,6 +15,7 @@ pub(super) fn completion_use(status: CompletionStatus, done: &ChunkDone) -> Comp
     match status {
         CompletionStatus::Current | CompletionStatus::HedgeWinner => CompletionUse::Useful,
         CompletionStatus::HedgeLoser if !cancelled(done) => CompletionUse::OriginEvidence,
+        CompletionStatus::Cancelled if policy_stop(done) => CompletionUse::OriginEvidence,
         CompletionStatus::Cancelled
         | CompletionStatus::HedgeLoser
         | CompletionStatus::Superseded => CompletionUse::Discarded,
@@ -38,6 +39,13 @@ pub(super) fn record_origin_only(
 
 fn cancelled(done: &ChunkDone) -> bool {
     done.outcome.as_ref().is_ok_and(|result| result.cancelled)
+}
+
+fn policy_stop(done: &ChunkDone) -> bool {
+    done.outcome
+        .as_ref()
+        .err()
+        .is_some_and(crate::chunk::whole_body_policy::is)
 }
 
 #[cfg(test)]

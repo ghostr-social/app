@@ -90,6 +90,7 @@ fn benefits(left: &PlanMetrics, right: &PlanMetrics) -> bool {
         && left.streamability_bps >= right.streamability_bps
         && left.integrity_bps >= right.integrity_bps
         && left.cache_value_micros >= right.cache_value_micros
+        && left.information_value_micros >= right.information_value_micros
 }
 
 fn costs(left: &PlanMetrics, right: &PlanMetrics) -> bool {

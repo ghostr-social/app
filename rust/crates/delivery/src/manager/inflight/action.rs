@@ -24,6 +24,7 @@ pub(crate) struct ActionRegistration<'a> {
     pub(crate) launched_at_ms: u64,
     pub(crate) handle: CancelHandle,
     pub(crate) store_action: Option<StoreAction>,
+    pub(crate) committed_network_bytes: Option<u64>,
 }
 
 impl ChunkAttempt {
@@ -58,6 +59,8 @@ pub(super) struct ActiveChunk {
     pub(super) effective_request: RetrievalRequest,
     pub(super) effective_bytes: ghostr_engine::ByteRange,
     pub(super) reserved_storage_bytes: u64,
+    pub(super) committed_network_bytes: u64,
+    pub(super) uncommitted_network_prefix_bytes: u64,
     pub(super) policy_retained: bool,
     pub(super) io_finished: Arc<AtomicBool>,
     pub(super) host: String,
@@ -66,6 +69,8 @@ pub(super) struct ActiveChunk {
     pub(super) handle: CancelHandle,
     pub(super) store_action: Option<StoreAction>,
     pub(super) promotion_authorization: Option<ghostr_engine::adaptive::PromotionGrant>,
+    pub(super) http_generation: Option<ghostr_engine::representation::HttpGenerationLease>,
+    pub(super) response_generation_fence: Option<super::ResponseGenerationFence>,
     pub(super) response_opened: bool,
     pub(super) hedge_disposition: Option<HedgeDisposition>,
     pub(super) cancelling: bool,
@@ -81,6 +86,10 @@ impl ActiveChunk {
     pub(super) fn from_registration(registration: ActionRegistration<'_>) -> Self {
         let effective_bytes = registration.retrieval.requested_bytes();
         let reserved_storage_bytes = registration.retrieval.immediate_network_bytes();
+        let committed_network_bytes = registration.committed_network_bytes.unwrap_or(0);
+        let uncommitted_network_prefix_bytes = registration
+            .committed_network_bytes
+            .map_or(reserved_storage_bytes, |_| 0);
         Self {
             action_id: registration.attempt.id,
             chunk: registration.attempt.chunk.clone(),
@@ -90,6 +99,8 @@ impl ActiveChunk {
             effective_request: registration.retrieval,
             effective_bytes,
             reserved_storage_bytes,
+            committed_network_bytes,
+            uncommitted_network_prefix_bytes,
             policy_retained: false,
             io_finished: Arc::clone(&registration.attempt.io_finished),
             host: registration.host,
@@ -98,6 +109,8 @@ impl ActiveChunk {
             handle: registration.handle,
             store_action: registration.store_action,
             promotion_authorization: None,
+            http_generation: None,
+            response_generation_fence: None,
             response_opened: false,
             hedge_disposition: None,
             cancelling: false,

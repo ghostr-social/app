@@ -14,6 +14,9 @@ async fn hls_fetch_rejects_oversized_response_headers() {
         Err(error) => error,
     };
 
-    assert!(error.to_string().contains("headers exceed byte limit"));
+    assert!(
+        format!("{error:#}").contains("headers exceed byte limit"),
+        "{error:#}"
+    );
     server.await.expect("server");
 }

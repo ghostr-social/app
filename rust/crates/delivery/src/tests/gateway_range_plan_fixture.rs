@@ -27,6 +27,7 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
     let retry = RetryBook::new(RetryPolicy::default());
     let demanded = HashMap::from([(post.clone(), demanded)]);
     let independent_sources = HashMap::new();
+    let whole_body_exhaustions = HashMap::new();
     let completed_head_probes = HashSet::new();
     let revisions = HashMap::new();
     planned_work(
@@ -40,6 +41,7 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
             continuation_sources: &HashMap::new(),
             revisions: &revisions,
             independent_sources: &independent_sources,
+            whole_body_exhaustions: &whole_body_exhaustions,
             completed_head_probes: &completed_head_probes,
             in_flight: &[],
             active_head_probes: &[],

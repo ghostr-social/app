@@ -8,7 +8,7 @@ use ghostr_engine::PostId;
 use std::collections::HashMap;
 
 #[test]
-fn production_plan_uses_learned_reach_semantic_deadline_and_model_epoch() {
+fn learned_reach_changes_deadlines_without_becoming_semantic_relevance() {
     let cold = run(scenario());
     let model = trained_model();
     let learned = run_with_watch_model(scenario(), &model);
@@ -27,8 +27,15 @@ fn production_plan_uses_learned_reach_semantic_deadline_and_model_epoch() {
     assert!((candidate.view_probability.value() - reach).abs() < f64::EPSILON);
     assert_eq!(
         evidence.semantic,
-        SemanticScore::Known((reach * 1_000_000.0).round() as u64),
+        SemanticScore::Unavailable { rank: 1 },
     );
+    assert!(decision.generated.actions.iter().any(|action| {
+        action.node.post == p1 && decision.admissible_action_ids.contains(&action.node.id)
+    }));
+    let current = PostId::new("p0");
+    assert!(decision.generated.actions.iter().any(|action| {
+        action.node.post == current && decision.admissible_action_ids.contains(&action.node.id)
+    }));
     assert_eq!(evidence.watch.reach_probability_bps(), Some(bps(reach)));
     assert_eq!(
         decision.planner_epochs().unwrap().model,

@@ -4,11 +4,14 @@ use super::{
     ResponseWriteMode,
 };
 use crate::chunk::cancel::CancelToken;
-use crate::chunk::response::{classify, ResponseReply};
+use crate::chunk::response::ResponseReply;
 use crate::chunk::sink::ChunkWrite;
 use crate::chunk::traffic::ChunkTraffic;
 use crate::debug::network::NetworkThrottle;
+use anyhow::Context;
 use ghostr_engine::adaptive::RetrievalRequest;
+
+mod ignored;
 
 #[cfg(test)]
 #[path = "transfer/queued_cancellation_test.rs"]
@@ -30,8 +33,7 @@ pub async fn run<'a, 'spec, W: ChunkWrite + ?Sized>(
         opened::Opened::CancelledBeforeRequest => return Ok(outcome::cancelled_before_request()),
         opened::Opened::CancelledAfterRequest => return Ok(outcome::cancelled_after_request()),
     };
-    execution.traffic.opened(opened.ttfb);
-    let (input, reply) = prepare(spec, execution, opened.response)?;
+    let (input, reply) = prepare(spec, execution, opened.response, opened.observed)?;
     dispatch(input, reply).await
 }
 
@@ -39,12 +41,14 @@ fn prepare<'a, 'spec, W: ChunkWrite + ?Sized>(
     spec: &'a ChunkSpec<'spec>,
     execution: TransferExecution<'a, W>,
     response: ghostr_net::media_request_executor::MediaResponse,
+    observed: ghostr_engine::evidence::EvidenceTime,
 ) -> anyhow::Result<(TransferInput<'a, 'spec, W>, ResponseReply)> {
     let length = response.content_length();
-    let reply = classify(&response, spec.request, spec.continuation.is_some())?;
+    let evidence = HttpResponseEvidence::from_response(&response, observed);
+    let reply = reply::classify(&response, spec, &evidence, execution.traffic)?;
     let total = reply::total(&reply, length);
-    let evidence = HttpResponseEvidence::from_response(&response);
-    let generation = OriginGeneration::from_response(&response, total)?;
+    let generation = OriginGeneration::from_response(&response, total)
+        .context(super::ResponseFailure::InvalidResponse)?;
     Ok((
         TransferInput {
             response,
@@ -78,7 +82,12 @@ async fn dispatch<W: ChunkWrite + ?Sized>(
     reply: ResponseReply,
 ) -> anyhow::Result<ChunkResult> {
     match reply {
-        ResponseReply::Ignored { range_support } => ignored(input, range_support),
+        ResponseReply::Ignored { range_support } => ignored::range(input, range_support),
+        ResponseReply::BoundDiscovered {
+            maximum_bytes,
+            total_bytes,
+            range_support,
+        } => ignored::bound(input, maximum_bytes, total_bytes, range_support),
         ResponseReply::Partial { range, total } => partial(input, range, total).await,
         ResponseReply::Body {
             request,
@@ -86,19 +95,6 @@ async fn dispatch<W: ChunkWrite + ?Sized>(
             promoted,
         } => body(input, request, range_support, promoted).await,
     }
-}
-
-fn ignored<W: ChunkWrite + ?Sized>(
-    input: TransferInput<'_, '_, W>,
-    range_support: Option<bool>,
-) -> anyhow::Result<ChunkResult> {
-    input
-        .traffic
-        .response_observed(ResponseObservation::Ignored {
-            total: input.length,
-            range_support,
-        });
-    Ok(outcome::range_ignored(input.length, range_support))
 }
 
 async fn partial<W: ChunkWrite + ?Sized>(
@@ -128,7 +124,7 @@ async fn body<W: ChunkWrite + ?Sized>(
     let returned = reply::body_spec(input.spec, request);
     let mode = reply::response_mode(request);
     if mode == ResponseWriteMode::Sparse && !input.generation.is_resumable() {
-        return ignored(input, range_support);
+        return ignored::range(input, range_support);
     }
     let observation = ResponseObservation::Body {
         request,

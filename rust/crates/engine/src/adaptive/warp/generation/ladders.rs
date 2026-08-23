@@ -32,7 +32,7 @@ fn candidate_ladder(
     let candidate_context = context
         .candidate(&candidate.post)
         .expect("planner context covers every snapshot candidate");
-    let mut plans = vec![metadata_plan(candidate)];
+    let mut plans = vec![metadata_plan(candidate, candidate_context)];
     if let Some(preview) = preview_plan(candidate, candidate_context.preview) {
         plans.push(preview);
     }
@@ -61,7 +61,11 @@ fn candidate_ladder(
     }
 }
 
-fn metadata_plan(candidate: &CandidateSnapshot) -> RetrievalPlan {
+fn metadata_plan(
+    candidate: &CandidateSnapshot,
+    evidence: PlannerCandidateContext,
+) -> RetrievalPlan {
+    let (lower, upper) = size_bounds(candidate, evidence);
     RetrievalPlan::new(
         format!("{}:metadata", candidate.post.as_str()),
         RetrievalRung::Metadata,
@@ -70,8 +74,24 @@ fn metadata_plan(candidate: &CandidateSnapshot) -> RetrievalPlan {
                 candidate.evidence.confidence.readiness.basis_points(),
                 candidate.evidence.confidence.integrity.basis_points(),
             )
-            .with_size_bounds(candidate.evidence.size.lower, candidate.evidence.size.upper),
+            .with_size_bounds(lower, upper),
     )
+}
+
+pub(super) fn size_bounds(
+    candidate: &CandidateSnapshot,
+    evidence: PlannerCandidateContext,
+) -> (Option<u64>, Option<u64>) {
+    let observed = evidence
+        .whole_body_exhaustion
+        .map(|item| item.observed_bytes());
+    let lower = candidate.evidence.size.lower.max(observed);
+    let upper = candidate
+        .evidence
+        .size
+        .upper
+        .filter(|upper| lower.is_none_or(|lower| *upper >= lower));
+    (lower, upper)
 }
 
 fn preview_plan(
@@ -103,7 +123,7 @@ fn action_plan(
     by_id: &BTreeMap<u16, &GeneratedAction>,
     evidence: PlannerCandidateContext,
 ) -> Option<RetrievalPlan> {
-    let rung = rung(&action.node.kind)?;
+    let rung = rung(candidate, &action.node.kind)?;
     let path = dependency_path(action, by_id);
     let metrics = metrics::build(snapshot, candidate, &path, evidence);
     Some(
@@ -133,11 +153,14 @@ fn dependency_path<'a>(
     path
 }
 
-fn rung(kind: &ActionKind) -> Option<RetrievalRung> {
+fn rung(candidate: &CandidateSnapshot, kind: &ActionKind) -> Option<RetrievalRung> {
     match kind {
         ActionKind::Head => Some(RetrievalRung::Metadata),
         ActionKind::Prefix(_) | ActionKind::Tail(_) => Some(RetrievalRung::FirstFrame),
         ActionKind::FetchRange(_) | ActionKind::Hedge { .. } => Some(RetrievalRung::ReadyPlayback),
+        ActionKind::FetchWhole { .. } if candidate.total_bytes.is_none() => {
+            Some(RetrievalRung::Metadata)
+        }
         ActionKind::FetchWhole { .. }
         | ActionKind::Promote { .. }
         | ActionKind::CacheUpgrade(_) => Some(RetrievalRung::Complete),

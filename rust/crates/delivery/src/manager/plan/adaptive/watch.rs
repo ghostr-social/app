@@ -19,6 +19,7 @@ struct CandidateEvidence {
 
 struct CandidateInput {
     post: PostId,
+    rank: usize,
     current: bool,
     duration_ms: u64,
 }
@@ -76,8 +77,10 @@ fn candidate_inputs(
         .candidates
         .iter()
         .filter(|candidate| candidate.feed_offset.value() >= 0)
-        .map(|candidate| CandidateInput {
+        .enumerate()
+        .map(|(rank, candidate)| CandidateInput {
             post: candidate.post.clone(),
+            rank,
             current: candidate.feed_offset.value() == 0,
             duration_ms: candidate.duration_ms,
         })
@@ -110,7 +113,7 @@ fn candidate_evidence(
         input.post,
         CandidateEvidence {
             view: ViewProbability::new(reach).expect("watch reach is a probability"),
-            semantic: SemanticScore::Known(micros(reach)),
+            semantic: SemanticScore::Unavailable { rank: input.rank },
             watch,
         },
     )
@@ -118,8 +121,4 @@ fn candidate_evidence(
 
 fn basis_points(probability: f64) -> u16 {
     (probability.clamp(0.0, 1.0) * 10_000.0).round() as u16
-}
-
-fn micros(probability: f64) -> u64 {
-    (probability.clamp(0.0, 1.0) * 1_000_000.0).round() as u64
 }

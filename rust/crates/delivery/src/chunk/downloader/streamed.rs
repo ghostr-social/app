@@ -4,12 +4,11 @@ use super::{
 };
 use crate::chunk::cancel::CancelToken;
 use crate::chunk::generation::OriginGeneration;
-use crate::chunk::sink::ChunkWrite;
-use crate::chunk::sink::ResponseWriteMode;
+use crate::chunk::sink::{ChunkWrite, LocalStoreFailure, ResponseWriteMode};
 use crate::chunk::stream::{stream_into, StreamInput, Streamed};
 use crate::chunk::traffic::ChunkTraffic;
 use crate::debug::network::NetworkThrottle;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use ghostr_net::media_request_executor::MediaResponse;
 
 pub(super) struct ReceiveInput<'a, 'spec, W: ChunkWrite + ?Sized> {
@@ -43,10 +42,16 @@ struct Completion<'a, 'spec, W: ChunkWrite + ?Sized> {
 pub(super) async fn receive<W: ChunkWrite + ?Sized>(
     mut input: ReceiveInput<'_, '_, W>,
 ) -> Result<ChunkResult> {
-    if !authorize(&mut input).await? {
+    let opened = input.opened_response();
+    input.traffic.response_observed(opened.clone());
+    if !authorize(&mut input, opened).await? {
         return Ok(rejected(&input.completion()));
     }
-    input.sink.accept(input.generation, input.mode).await?;
+    input
+        .sink
+        .accept(input.generation, input.mode)
+        .await
+        .context(LocalStoreFailure)?;
     let completion = input.completion();
     let streamed = stream(input).await;
     match streamed {
@@ -55,13 +60,10 @@ pub(super) async fn receive<W: ChunkWrite + ?Sized>(
     }
 }
 
-async fn authorize<W: ChunkWrite + ?Sized>(input: &mut ReceiveInput<'_, '_, W>) -> Result<bool> {
-    let opened = OpenedResponse::new(
-        input.observation,
-        input.generation.resumable(),
-        input.mode,
-        input.evidence.clone(),
-    );
+async fn authorize<W: ChunkWrite + ?Sized>(
+    input: &mut ReceiveInput<'_, '_, W>,
+    opened: OpenedResponse,
+) -> Result<bool> {
     let admission = tokio::select! {
         biased;
         _ = input.cancel.cancelled() => ResponseAdmission::Reject,
@@ -80,11 +82,21 @@ async fn stream<W: ChunkWrite + ?Sized>(input: ReceiveInput<'_, '_, W>) -> Resul
         cancel: input.cancel,
         network: input.network,
         traffic: input.traffic,
+        response_evidence: input.evidence.clone(),
     })
     .await
 }
 
 impl<'a, 'spec, W: ChunkWrite + ?Sized> ReceiveInput<'a, 'spec, W> {
+    fn opened_response(&self) -> OpenedResponse {
+        OpenedResponse::new(
+            self.observation,
+            self.generation.resumable(),
+            self.mode,
+            self.evidence.clone(),
+        )
+    }
+
     fn completion(&self) -> Completion<'a, 'spec, W> {
         Completion {
             spec: self.spec,
@@ -115,14 +127,18 @@ async fn finish<W: ChunkWrite + ?Sized>(
     input: &Completion<'_, '_, W>,
     streamed: Streamed,
 ) -> Result<ChunkResult> {
-    let total = streamed.discovered_total.or(input.total);
+    let total = streamed
+        .whole_body_completion
+        .map(|completion| completion.total_bytes())
+        .or(input.total);
     let range = input.spec.request.requested_bytes();
     let complete = !streamed.cancelled
         && total.is_some_and(|total| range.start == 0 && streamed.bytes == total);
     let kept = input
         .sink
         .finish(input.generation, input.mode, total, complete)
-        .await?;
+        .await
+        .context(LocalStoreFailure)?;
     Ok(ChunkResult {
         bytes_written: if kept { streamed.bytes } else { 0 },
         range_support: input.range_support,
@@ -138,9 +154,14 @@ async fn abort<W: ChunkWrite + ?Sized>(
     input: &Completion<'_, '_, W>,
     error: anyhow::Error,
 ) -> Result<ChunkResult> {
-    let _ = input
+    if let Err(rollback) = input
         .sink
         .finish(input.generation, input.mode, input.total, false)
-        .await;
+        .await
+    {
+        return Err(rollback
+            .context(format!("rollback after {error:#}"))
+            .context(LocalStoreFailure));
+    }
     Err(error)
 }

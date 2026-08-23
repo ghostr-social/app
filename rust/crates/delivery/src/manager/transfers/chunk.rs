@@ -112,12 +112,16 @@ pub(crate) fn chunk_event(
     url: String,
     outcome: anyhow::Result<ChunkResult>,
 ) -> TransferEvent {
+    let received_bytes = outcome.as_ref().map_or(0, |result| result.bytes_written);
     TransferEvent::ChunkDone(ChunkDone {
         attempt,
         url,
         outcome,
+        received_bytes,
         origin: None,
         request_started: false,
+        whole_body_completion: None,
+        response_evidence: None,
     })
 }
 
@@ -130,7 +134,10 @@ fn observed_chunk_event(
         attempt,
         url,
         outcome: observed.result,
+        received_bytes: observed.received_bytes,
         origin: observed.origin.map(Box::new),
         request_started: observed.request_started,
+        whole_body_completion: observed.whole_body_completion,
+        response_evidence: observed.response_evidence,
     })
 }

@@ -1,7 +1,7 @@
 mod delivery_fixture;
 mod hls_terminal_wait;
 
-use delivery_fixture::bounded_hls::{serve, INIT_BYTES};
+use delivery_fixture::bounded_hls::{init_body, serve, INIT_BYTES};
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
@@ -25,13 +25,14 @@ async fn large_hls_object_continues_in_hard_budgeted_range_blocks() {
         *requests.lock().unwrap(),
         [
             ("bytes=0-262143".to_owned(), None, None),
-            ("bytes=262144-307199".to_owned(), None, None)
+            ("bytes=262144-524287".to_owned(), None, None),
+            ("bytes=524288-716799".to_owned(), None, None)
         ]
     );
     let init = harness
         .segmented
         .object(&source.replace("index.m3u8", "init.mp4"))
         .unwrap();
-    assert_eq!(init.body.as_ref(), vec![7; INIT_BYTES]);
+    assert_eq!(init.body.as_ref(), init_body());
     std::fs::remove_dir_all(&harness.root).ok();
 }

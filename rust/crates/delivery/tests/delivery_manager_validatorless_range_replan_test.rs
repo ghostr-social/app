@@ -33,20 +33,30 @@ async fn coherent_validatorless_206_replans_as_one_independent_object() {
 }
 
 async fn wait_for_whole_plan(handle: &DeliveryHandle, source: &str) {
-    tokio::time::timeout(Duration::from_secs(1), async {
+    let result = tokio::time::timeout(Duration::from_secs(1), async {
         loop {
-            let planned = handle.plan_history().iter().any(|evidence| {
-                evidence.plan.allocations.iter().any(|allocation| {
-                    allocation.source == source
-                        && matches!(allocation.request, RetrievalRequest::FetchWhole { .. })
-                })
-            });
+            let planned =
+                handle.plan_history().iter().any(|evidence| {
+                    evidence.plan.allocations.iter().any(|allocation| {
+                        whole(allocation.source.as_str(), allocation.request, source)
+                    }) || evidence.plan.retained.iter().any(|allocation| {
+                        whole(allocation.source.as_str(), allocation.request, source)
+                    })
+                });
             if planned {
                 return;
             }
             tokio::task::yield_now().await;
         }
     })
-    .await
-    .expect("validatorless sparse response triggers an independent whole plan");
+    .await;
+    assert!(
+        result.is_ok(),
+        "validatorless sparse response did not trigger an independent whole plan: {:?}",
+        handle.plan_history()
+    );
+}
+
+fn whole(observed: &str, request: RetrievalRequest, expected: &str) -> bool {
+    observed == expected && matches!(request, RetrievalRequest::FetchWhole { .. })
 }

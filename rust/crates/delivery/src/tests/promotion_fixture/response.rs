@@ -19,8 +19,10 @@ pub(crate) fn response() -> OpenedResponse {
         ResponseWriteMode::SingleResponse(contract),
         HttpResponseEvidence {
             final_url: "https://origin.test/video".into(),
+            status: 200,
             content_type: Some("video/mp4".into()),
             validator: None,
+            observed: 0.into(),
         },
     )
 }

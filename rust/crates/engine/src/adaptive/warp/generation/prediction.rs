@@ -130,7 +130,8 @@ fn ready_gain(
         return 0;
     }
     match action {
-        ActionKind::FetchWhole { .. } => candidate.duration_ms,
+        ActionKind::FetchWhole { .. } if candidate.total_bytes.is_some() => candidate.duration_ms,
+        ActionKind::FetchWhole { .. } => 0,
         ActionKind::Prefix(range) | ActionKind::FetchRange(range) => candidate
             .playable_ranges
             .iter()

@@ -27,7 +27,9 @@ fn contradictory_sizes_remain_visible_until_direct_bytes_resolve_the_bound() {
 
     ledger.record(size(
         1_000,
-        EvidenceSource::response(URL),
+        EvidenceSource::CompleteBytes {
+            origin: URL.to_owned(),
+        },
         EvidenceScope::validated(URL, etag("v1")),
         30,
     ));

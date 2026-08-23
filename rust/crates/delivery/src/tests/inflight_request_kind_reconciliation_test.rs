@@ -44,6 +44,7 @@ fn planned_whole_cancels_an_overlapping_range_until_terminal_ack() {
         launched_at_ms: 0,
         handle,
         store_action: None,
+        committed_network_bytes: None,
     });
 
     active.reconcile(std::slice::from_ref(&planned), 1);

@@ -20,7 +20,7 @@ mod watch;
 pub use active::ActivePlannerContext;
 pub use candidate::{
     HeadProbeHistory, PlannerCandidateContext, PlannerCapability, PlannerQuality,
-    PlannerRetryAvailability, PreviewAvailability, TransformCapability,
+    PlannerRetryAvailability, PreviewAvailability, TransformCapability, WholeBodyExhaustion,
     INLINE_BLURHASH_PREVIEW_QUALITY_MICROS,
 };
 pub use request_scope::SoftRequestCommitment;
@@ -171,7 +171,9 @@ fn network_unavailable(value: &NetworkClass) -> bool {
 pub(super) fn default_limits(snapshot: &PlayabilitySnapshot) -> PlannerLimits {
     let rate = snapshot.network.throughput_bps / 8;
     PlannerLimits {
-        network_burst_bytes: rate.saturating_mul(2).max(snapshot.request_slice_bytes),
+        network_burst_bytes: rate
+            .saturating_mul(2)
+            .max(crate::adaptive::BOOTSTRAP_DIRECT_FETCH_BYTES),
         network_rate_bytes_per_second: rate.max(1),
         cpu_ms: 0,
         request_tokens: snapshot.network.connection_capacity.min(u16::MAX as usize) as u16,

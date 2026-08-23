@@ -1,15 +1,16 @@
 //! Streams one origin response into its granted store transaction.
 
 use crate::chunk::cancel::CancelToken;
-use crate::chunk::downloader::ChunkSpec;
+use crate::chunk::downloader::{ChunkSpec, HttpResponseEvidence};
 use crate::chunk::generation::OriginGeneration;
-use crate::chunk::sink::{ChunkWrite, ResponseWriteMode};
-use crate::chunk::traffic::ChunkTraffic;
+use crate::chunk::sink::{ChunkWrite, LocalStoreFailure, ResponseWriteMode};
+use crate::chunk::traffic::{ChunkTraffic, WholeBodyCompletion};
 use crate::debug::network::NetworkThrottle;
 use anyhow::{bail, ensure, Context, Result};
 use ghostr_engine::adaptive::{RetrievalRequest, WholeBodyContract};
 use ghostr_engine::ByteRange;
 use ghostr_net::media_request_executor::MediaResponse;
+use std::num::NonZeroU64;
 use std::time::Duration;
 
 mod progress;
@@ -27,6 +28,7 @@ pub(crate) struct StreamInput<'a, 'spec, W: ChunkWrite + ?Sized> {
     pub cancel: &'a CancelToken,
     pub network: Option<&'a NetworkThrottle>,
     pub traffic: &'a mut dyn ChunkTraffic,
+    pub response_evidence: HttpResponseEvidence,
 }
 
 pub(crate) async fn stream_into<W: ChunkWrite + ?Sized>(
@@ -64,12 +66,17 @@ async fn stream_whole<W: ChunkWrite + ?Sized>(
     let mut written = 0_u64;
     loop {
         let Some(chunk) = next_input(input).await? else {
-            return ended_whole(written, contract, input.cancel);
+            let streamed = ended_whole(written, contract, input)?;
+            if let Some(completion) = streamed.whole_body_completion.clone() {
+                input.traffic.whole_body_completed(completion);
+            }
+            return Ok(streamed);
         };
-        ensure!(
-            written.saturating_add(chunk.len() as u64) <= contract.maximum_bytes(),
-            "whole response exceeds its hard cap"
-        );
+        crate::chunk::whole_body_limit::WholeBodyLimitReached::check(
+            written,
+            chunk.len() as u64,
+            contract,
+        )?;
         let stored = store_bytes(input, written, &chunk).await?;
         written += stored.bytes;
         if stored.cancelled {
@@ -92,12 +99,12 @@ async fn store_bytes<W: ChunkWrite + ?Sized>(
         if !input
             .sink
             .write(input.generation, input.mode, offset + stored, part)
-            .await?
+            .await
+            .context(LocalStoreFailure)?
         {
             return Ok(StoreProgress::cancelled(stored));
         }
         stored += part.len() as u64;
-        input.traffic.wrote(part.len() as u64);
     }
     Ok(StoreProgress::complete(stored))
 }
@@ -105,10 +112,14 @@ async fn store_bytes<W: ChunkWrite + ?Sized>(
 async fn next_input<W: ChunkWrite + ?Sized>(
     input: &mut StreamInput<'_, '_, W>,
 ) -> Result<Option<bytes::Bytes>> {
-    tokio::select! {
+    let next = tokio::select! {
         _ = input.cancel.cancelled() => Ok(None),
         chunk = next_chunk(&mut input.response, input.spec.timeouts.idle) => chunk,
+    }?;
+    if let Some(chunk) = &next {
+        input.traffic.received(chunk.len() as u64);
     }
+    Ok(next)
 }
 
 async fn next_chunk(response: &mut MediaResponse, idle: Duration) -> Result<Option<bytes::Bytes>> {
@@ -142,9 +153,9 @@ fn ended_range(written: u64, cancel: &CancelToken) -> Result<Streamed> {
 fn ended_whole(
     written: u64,
     contract: WholeBodyContract,
-    cancel: &CancelToken,
+    input: &StreamInput<'_, '_, impl ChunkWrite + ?Sized>,
 ) -> Result<Streamed> {
-    if cancel.is_cancelled() {
+    if input.cancel.is_cancelled() {
         return Ok(stopped(written));
     }
     ensure!(written > 0, "whole response body is empty");
@@ -154,7 +165,8 @@ fn ended_whole(
     Ok(Streamed {
         bytes: written,
         cancelled: false,
-        discovered_total: Some(written),
+        whole_body_completion: NonZeroU64::new(written)
+            .map(|total| WholeBodyCompletion::at_network_eof(total, &input.response_evidence)),
     })
 }
 
@@ -169,7 +181,7 @@ fn stopped(bytes: u64) -> Streamed {
     Streamed {
         bytes,
         cancelled: true,
-        discovered_total: None,
+        whole_body_completion: None,
     }
 }
 
@@ -177,6 +189,6 @@ fn completed_range(bytes: u64) -> Streamed {
     Streamed {
         bytes,
         cancelled: false,
-        discovered_total: None,
+        whole_body_completion: None,
     }
 }

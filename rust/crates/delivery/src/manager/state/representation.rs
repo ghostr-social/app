@@ -90,9 +90,15 @@ impl DeliveryState {
         self.candidate_posts().into_iter().collect()
     }
 
+    pub(crate) fn set_observation_posts(&mut self, posts: HashSet<PostId>) {
+        self.observation_posts = posts;
+        self.prune_scheduling_state();
+    }
+
     pub(super) fn prune_scheduling_state(&mut self) {
         let retained = self.retained_posts();
-        self.catalog.retain(|post| retained.contains(post));
+        self.catalog
+            .retain(|post| retained.contains(post) || self.observation_posts.contains(post));
         self.retain_evictions(&retained);
         self.pending_representations
             .retain(|binding| retained.contains(binding.post()));

@@ -21,7 +21,7 @@ mod post_admission_cancellation_test;
 
 pub(super) struct OpenedResponse {
     pub response: MediaResponse,
-    pub ttfb: Duration,
+    pub observed: ghostr_engine::evidence::EvidenceTime,
 }
 
 pub(super) enum Opened {
@@ -83,6 +83,9 @@ async fn open(
     headers: Duration,
     traffic: &mut dyn ChunkTraffic,
 ) -> Result<Opened> {
+    if cancel.is_cancelled() {
+        return Ok(Opened::CancelledBeforeRequest);
+    }
     let started = Instant::now();
     let deadline = started + headers;
     let request_started = AtomicBool::new(false);
@@ -96,21 +99,74 @@ async fn open(
     });
     let response = tokio::select! {
         biased;
+        response = tokio::time::timeout_at(deadline, tracked) => response,
         _ = cancel.cancelled() => {
             return Ok(cancelled(request_started.load(Ordering::Relaxed)));
         },
-        response = tokio::time::timeout_at(deadline, tracked) => response,
     }
     .context("chunk response headers timed out")?
     .context("chunk request failed")?;
-    validate_response_headers(response.headers())?;
-    let response = response
-        .error_for_status()
-        .context("chunk request rejected")?;
-    require_identity_encoding(response.headers())
-        .context("encoded response cannot be assembled into media bytes")?;
+    let observed = crate::manager::time::evidence_time();
     let ttfb = response.origin_elapsed(started.elapsed());
-    Ok(Opened::Response(OpenedResponse { response, ttfb }))
+    traffic.opened(ttfb);
+    validate_response_headers(response.headers())
+        .context(super::ResponseFailure::InvalidResponse)?;
+    let response = accept_status(response, observed, traffic)?;
+    accept_encoding(&response, observed, traffic)?;
+    Ok(Opened::Response(OpenedResponse { response, observed }))
+}
+
+fn accept_status(
+    response: MediaResponse,
+    observed: ghostr_engine::evidence::EvidenceTime,
+    traffic: &mut dyn ChunkTraffic,
+) -> Result<MediaResponse> {
+    if response.status().is_success() {
+        return Ok(response);
+    }
+    observe_rejection(
+        &response,
+        observed,
+        super::ResponseRejection::Status,
+        traffic,
+    );
+    response
+        .error_for_status()
+        .context("chunk request rejected")
+}
+
+fn accept_encoding(
+    response: &MediaResponse,
+    observed: ghostr_engine::evidence::EvidenceTime,
+    traffic: &mut dyn ChunkTraffic,
+) -> Result<()> {
+    if let Err(error) = require_identity_encoding(response.headers()) {
+        observe_rejection(
+            response,
+            observed,
+            super::ResponseRejection::ContentEncoding,
+            traffic,
+        );
+        return Err(error)
+            .context(super::ResponseFailure::InvalidResponse)
+            .context("encoded response cannot be assembled into media bytes");
+    }
+    Ok(())
+}
+
+fn observe_rejection(
+    response: &MediaResponse,
+    observed: ghostr_engine::evidence::EvidenceTime,
+    rejection: super::ResponseRejection,
+    traffic: &mut dyn ChunkTraffic,
+) {
+    let evidence = super::HttpResponseEvidence::from_response(response, observed).provenance_only();
+    traffic.response_observed(super::OpenedResponse::new(
+        super::ResponseObservation::Rejected(rejection),
+        None,
+        crate::chunk::sink::ResponseWriteMode::Sparse,
+        evidence,
+    ));
 }
 
 fn cancelled(request_started: bool) -> Opened {

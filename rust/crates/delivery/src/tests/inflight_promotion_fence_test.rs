@@ -21,6 +21,26 @@ async fn latent_grant_cannot_authorize_headers_or_be_reused_after_open() {
 }
 
 #[tokio::test]
+async fn observed_headers_fence_promotion_without_admitting_body_resources() {
+    let mut fixture = PromotionFixture::new(100).await;
+    let before = fixture.active.actions().remove(0);
+
+    assert!(fixture
+        .active
+        .observe_headers(&fixture.attempt, response().observation()));
+
+    let after = fixture.active.actions().remove(0);
+    assert_eq!(after.request(), before.request());
+    assert_eq!(after.effective_bytes(), before.effective_bytes());
+    assert_eq!(after.reserved_storage_bytes(), before.reserved_storage_bytes());
+    assert!(matches!(
+        fixture.active.preflight_promotion(&fixture.target, 50),
+        Err(PromotionRejection::ResponseOpened)
+    ));
+    fixture.cleanup().await;
+}
+
+#[tokio::test]
 async fn expired_or_reused_identity_is_refused_without_cancelling_primary() {
     let expired = PromotionFixture::new(100).await;
     assert!(matches!(

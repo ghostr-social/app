@@ -10,13 +10,17 @@ use std::time::Duration;
 async fn completed_head_probe_updates_the_head_context_only() {
     let root = super::support::temp_directory("ghostr-origin-head");
     let mut keeper = StatsKeeper::load(root.join("stats.json"), Duration::ZERO).await;
-    let url = "https://head.example/video.mp4".to_owned();
+    let request_url = "https://redirect.example/video.mp4".to_owned();
+    let final_url = "https://head.example/video.mp4".to_owned();
+    let observed_at_ms = crate::manager::time::unix_time_ms();
     keeper.note_probe(&ProbeObservation {
         post: ghostr_engine::PostId::new("clip"),
-        url: url.clone(),
+        url: request_url.clone(),
         concurrency: 3,
         network_class: NetworkClass::Wifi,
         outcome: Ok(ProbeResult {
+            final_url,
+            observed: observed_at_ms.into(),
             content_length: Some(900_000),
             accept_ranges: Some(true),
             content_type: Some("video/mp4".to_owned()),
@@ -26,24 +30,24 @@ async fn completed_head_probe_updates_the_head_context_only() {
     });
     let now = crate::manager::time::unix_time_ms();
     let query = OriginQuery::new(
-        url.clone(),
+        request_url.clone(),
         OriginContext::new(RequestMethod::Head, 900_000, MediaClass::Unknown)
             .with_network(NetworkClass::Wifi)
             .with_concurrency(3)
-            .with_observed_at_ms(now),
+            .with_observed_at_ms(observed_at_ms),
     );
 
     let estimate = keeper
         .stats()
         .origin_model()
         .estimate(&query, now, DecisionMode::Normal);
-    assert!(estimate.effective_samples > 0.0);
+    assert!(estimate.effective_samples > 0.9);
     assert!(estimate.ttfb_ms.p50 > 35);
     assert!(estimate.ttfb_ms.p50 < 250);
     assert!(estimate.range_compliance.is_none());
 
     let range_query = OriginQuery::new(
-        url,
+        request_url,
         OriginContext::new(RequestMethod::RangeGet, 900_000, MediaClass::Unknown)
             .with_network(NetworkClass::Wifi)
             .with_concurrency(3)

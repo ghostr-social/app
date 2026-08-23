@@ -1,3 +1,5 @@
+#[path = "catalog_stale_bitrate_test.rs"]
+mod catalog_stale_bitrate_test;
 #[path = "decision_record_warp_retry_compatibility_test.rs"]
 mod decision_record_warp_retry_compatibility_test;
 #[path = "decision_record_warp_retry_evidence_test.rs"]
@@ -46,6 +48,10 @@ mod network_class_support;
 mod network_refill;
 #[path = "retrieval_request_immediate_bytes_test.rs"]
 mod retrieval_request_immediate_bytes_test;
+#[path = "warp_active_whole_suppression_test.rs"]
+mod warp_active_whole_suppression_test;
+#[path = "warp_exhausted_unknown_whole_test.rs"]
+mod warp_exhausted_unknown_whole_test;
 #[path = "warp_planner_cancelling_suppression_test.rs"]
 mod warp_planner_cancelling_suppression_test;
 #[path = "warp_planner_commit_atomicity_test.rs"]
@@ -70,5 +76,13 @@ mod warp_planner_request_resource_envelope_test;
 mod warp_planner_twin_cache_identity_test;
 #[path = "warp_planner_watch_deadline_test.rs"]
 mod warp_planner_watch_deadline_test;
+#[path = "warp_preferred_whole_source_test.rs"]
+mod warp_preferred_whole_source_test;
 #[path = "warp_range_noncompliant_generation_test.rs"]
 mod warp_range_noncompliant_generation_test;
+#[path = "warp_range_noncompliant_unknown_size_generation_test.rs"]
+mod warp_range_noncompliant_unknown_size_generation_test;
+#[path = "warp_range_noncompliant_unobserved_generation_test.rs"]
+mod warp_range_noncompliant_unobserved_generation_test;
+#[path = "warp_unknown_whole_probe_classification_test.rs"]
+mod warp_unknown_whole_probe_classification_test;

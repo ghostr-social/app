@@ -3,7 +3,7 @@
 //! scratch `HostStats`; the manager re-records outcomes into the one
 //! owned instance, keeping the statistics single-owner and lock-free.
 
-use crate::chunk::downloader::{ChunkResult, ResponseObservation};
+use crate::chunk::downloader::{ChunkResult, OpenedResponse};
 use crate::debug::network::NetworkThrottle;
 use crate::delivery_events::DecisionClaim;
 use crate::manager::inflight::ChunkAttempt;
@@ -41,12 +41,18 @@ pub(crate) enum InternalEvent {
 pub(crate) enum TransferEvent {
     ChunkDone(ChunkDone),
     ProbeDone(ProbeDone),
-    ResponseObserved(ObservedResponse),
+    ResponseObserved(Box<ObservedResponse>),
 }
 
 pub(crate) struct ObservedResponse {
     pub attempt: ChunkAttempt,
-    pub response: ResponseObservation,
+    pub response: OpenedResponse,
+}
+
+impl ObservedResponse {
+    pub(crate) fn at_network_boundary(attempt: ChunkAttempt, response: OpenedResponse) -> Self {
+        Self { attempt, response }
+    }
 }
 
 pub(crate) enum MaintenanceEvent {
@@ -60,8 +66,11 @@ pub(crate) struct ChunkDone {
     pub attempt: ChunkAttempt,
     pub url: String,
     pub outcome: anyhow::Result<ChunkResult>,
+    pub received_bytes: u64,
     pub origin: Option<Box<ghostr_engine::origin_model::OriginObservation>>,
     pub request_started: bool,
+    pub whole_body_completion: Option<crate::chunk::traffic::WholeBodyCompletion>,
+    pub response_evidence: Option<crate::chunk::downloader::HttpResponseEvidence>,
 }
 
 pub(crate) struct ProbeDone {

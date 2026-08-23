@@ -19,6 +19,9 @@ mod cancellation_test;
 #[path = "terminal/failure_class_test.rs"]
 mod failure_class_test;
 #[cfg(test)]
+#[path = "terminal/local_preparation_cancellation_test.rs"]
+mod local_preparation_cancellation_test;
+#[cfg(test)]
 mod tests;
 #[cfg(test)]
 #[path = "terminal/throughput_test.rs"]
@@ -137,7 +140,7 @@ fn observation(
         Ok(completed) => {
             success_observation(query, context.observed_at_ms, completed.bytes, timing)
         }
-        Err(failure) if failure.is_superseded() => success_observation(
+        Err(failure) if failure.response_completed() => success_observation(
             query,
             context.observed_at_ms,
             failure.network_bytes(),

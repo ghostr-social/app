@@ -17,6 +17,7 @@ pub(super) struct SelectedProbe<'a> {
     pub(super) post: &'a PostId,
     pub(super) source: &'a str,
     pub(super) authority: PreemptionAuthority,
+    pub(super) observed_at_ms: u64,
 }
 
 struct ProbeCommit {
@@ -35,12 +36,13 @@ impl DeliveryWorker {
         let Some(token) = decision else {
             return;
         };
-        let query = ProbeClaimQuery::new(
-            self.state.catalog(),
-            &self.retry,
-            selected.post,
-            selected.source,
-        );
+        let query = ProbeClaimQuery {
+            catalog: self.state.catalog(),
+            retry: &self.retry,
+            post: selected.post,
+            source: selected.source,
+            observed_at_ms: selected.observed_at_ms,
+        };
         match self.probes.claim_selected(query) {
             Ok(identity) => self.claim_probe(
                 token,

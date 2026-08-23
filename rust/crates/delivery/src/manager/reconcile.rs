@@ -101,7 +101,8 @@ impl DeliveryWorker {
             planned.plan.clone(),
             startups,
         );
-        self.reconcile_transfers(planned, decision).await;
+        self.reconcile_transfers(planned, decision, observed_at_ms)
+            .await;
     }
 
     /// The planning slice of the window, widened to the full roster

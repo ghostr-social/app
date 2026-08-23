@@ -1,6 +1,9 @@
 use crate::partial_range_disk as disk;
 use crate::partial_range_paths::StorePaths;
 use crate::partial_range_store::replacement_cleanup;
+use crate::partial_range_store::single_response::{
+    rollback_commit, CommitPhase, CommitTarget, ResponseCommit,
+};
 use crate::partial_range_store::sparse_intent;
 use anyhow::{Context, Result};
 use log::warn;
@@ -14,21 +17,70 @@ pub(super) struct SingleResponseRecovery {
 }
 
 pub(super) async fn recover(paths: &StorePaths, key: &str) -> Result<SingleResponseRecovery> {
+    if let Ok(Some(record)) = ResponseCommit::load(paths, key).await {
+        return recover_record(paths, key, record).await;
+    }
     let committed = exists(&paths.single_response_commit(key)).await?;
-    if committed && published_response_is_complete(paths, key).await? {
+    if committed {
+        rollback_legacy_commit(paths, key).await?;
+        return Ok(SingleResponseRecovery::default());
+    }
+    restore_if_present(&paths.partial_staging(key), &paths.partial(key)).await?;
+    restore_if_present(&paths.manifest_backup(key), &paths.manifest(key)).await?;
+    restore_if_present(&paths.generation_backup(key), &paths.generation(key)).await?;
+    restore_if_present(
+        &paths.http_generation_backup(key),
+        &paths.http_generation(key),
+    )
+    .await?;
+    Ok(SingleResponseRecovery {
+        staging_debt: cleanup_transaction(paths, key).await,
+        ..SingleResponseRecovery::default()
+    })
+}
+
+async fn recover_record(
+    paths: &StorePaths,
+    key: &str,
+    record: ResponseCommit,
+) -> Result<SingleResponseRecovery> {
+    if record.phase() == CommitPhase::Committed
+        && committed_response_matches(paths, key, &record).await?
+    {
         return Ok(SingleResponseRecovery {
             published: true,
             replacement_debt: cleanup_replaced_transaction(paths, key).await,
             staging_debt: None,
         });
     }
-    restore_if_present(&paths.partial_staging(key), &paths.partial(key)).await?;
-    restore_if_present(&paths.manifest_backup(key), &paths.manifest(key)).await?;
-    restore_if_present(&paths.generation_backup(key), &paths.generation(key)).await?;
-    Ok(SingleResponseRecovery {
-        staging_debt: cleanup_transaction(paths, key).await,
-        ..SingleResponseRecovery::default()
-    })
+    rollback_commit(paths, key, &record, false).await?;
+    Ok(SingleResponseRecovery::default())
+}
+
+async fn committed_response_matches(
+    paths: &StorePaths,
+    key: &str,
+    record: &ResponseCommit,
+) -> Result<bool> {
+    let path = match record.target() {
+        CommitTarget::Partial => paths.partial(key),
+        CommitTarget::Verified => paths.completed(key),
+    };
+    if disk::file_len(&path).await? != Some(record.total()) {
+        return Ok(false);
+    }
+    let entry = disk::load_entry(paths, key).await?;
+    let expected_completion = match record.target() {
+        CommitTarget::Partial => entry.completion.is_none(),
+        CommitTarget::Verified => {
+            entry.completion == Some(crate::partial_range_completion::Completion::Verified)
+        }
+    };
+    Ok(expected_completion
+        && entry.manifest.is_complete()
+        && disk::sha256_file(&path)
+            .await?
+            .eq_ignore_ascii_case(record.sha256()))
 }
 
 async fn cleanup_replaced_transaction(paths: &StorePaths, key: &str) -> Option<u64> {
@@ -38,13 +90,19 @@ async fn cleanup_replaced_transaction(paths: &StorePaths, key: &str) -> Option<u
     Some(bytes)
 }
 
-async fn published_response_is_complete(paths: &StorePaths, key: &str) -> Result<bool> {
-    let entry = disk::load_entry(paths, key).await?;
-    let Some(total) = entry.manifest.total_len() else {
-        return Ok(false);
-    };
-    let stored = disk::file_len(&paths.partial(key)).await?.unwrap_or(0);
-    Ok(entry.completion.is_none() && entry.manifest.is_complete() && stored == total)
+async fn rollback_legacy_commit(paths: &StorePaths, key: &str) -> Result<()> {
+    disk::remove_if_present(&paths.partial(key)).await?;
+    disk::remove_if_present(&paths.manifest(key)).await?;
+    restore_if_present(&paths.partial_staging(key), &paths.partial(key)).await?;
+    restore_if_present(&paths.manifest_backup(key), &paths.manifest(key)).await?;
+    restore_if_present(&paths.generation_backup(key), &paths.generation(key)).await?;
+    restore_if_present(
+        &paths.http_generation_backup(key),
+        &paths.http_generation(key),
+    )
+    .await?;
+    disk::sync_parent(&paths.partial(key)).await?;
+    remove_transaction_files(paths, key).await
 }
 
 async fn restore_if_present(backup: &Path, canonical: &Path) -> Result<()> {
@@ -92,8 +150,13 @@ async fn replacement_payload_bytes(paths: &StorePaths, key: &str) -> u64 {
         .ok()
         .flatten()
         .unwrap_or(0);
+    let completed = disk::file_len(&paths.completed_backup(key))
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or(0);
     let sparse = sparse_intent::cleanup_bound(paths, key).await;
-    response.saturating_add(backup.max(sparse))
+    response.saturating_add(backup.max(completed).max(sparse))
 }
 
 async fn exists(path: &Path) -> Result<bool> {

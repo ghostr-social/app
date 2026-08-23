@@ -19,6 +19,7 @@ impl DeliveryWorker {
         self.segmented.clear();
         self.timelines.clear();
         self.independent_objects.clear();
+        self.whole_body_limits.clear();
         self.state.clear();
         self.focus_lease.pin(self.ctx.store.as_ref(), None);
         self.cache.replace(Vec::new());

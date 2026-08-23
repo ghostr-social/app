@@ -4,7 +4,9 @@
 use crate::manager::inflight::ActiveAction;
 use crate::manager::retry::RetryBook;
 use crate::manager::state::DeliveryState;
-use ghostr_engine::adaptive::{DiscoveryDemand, Eviction, RetrievalRequest, StorageSnapshot};
+use ghostr_engine::adaptive::{
+    DiscoveryDemand, Eviction, RetrievalRequest, StorageSnapshot, WholeBodyExhaustion,
+};
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::scheduling::RangeRequest;
@@ -25,7 +27,8 @@ pub(crate) struct PlanInputs<'a> {
     pub continuation_sources: &'a HashMap<PostId, String>,
     pub revisions: &'a HashMap<PostId, ContentRevision>,
     pub independent_sources: &'a HashMap<PostId, HashSet<String>>,
-    pub completed_head_probes: &'a HashSet<PostId>,
+    pub whole_body_exhaustions: &'a HashMap<TransferIdentity, WholeBodyExhaustion>,
+    pub completed_head_probes: &'a HashSet<TransferIdentity>,
     pub in_flight: &'a [ActiveAction],
     pub active_head_probes: &'a [TransferIdentity],
     pub hls_candidates: &'a [ghostr_engine::adaptive::HlsCandidateSnapshot],

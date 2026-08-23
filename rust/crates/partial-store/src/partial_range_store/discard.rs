@@ -32,9 +32,13 @@ impl PartialRangeStore {
     ) -> Result<()> {
         self.advance_content_revision(key).await;
         self.source_generations.lock().await.remove(key);
+        self.http_generations.lock().await.remove(key);
         self.selected().remove(key);
         self.changed.notify_waiters();
-        let pending = self.take_sparse_response_bytes(key).await;
+        let pending = self
+            .take_sparse_response_bytes(key)
+            .await
+            .saturating_add(self.take_session_response(key).await);
         let response_error = self.cancel_single_response(key).await.err();
         let removal_error = self.remove_paths(key).await;
         let durability_error = if response_error.is_none() && removal_error.is_none() && durable {

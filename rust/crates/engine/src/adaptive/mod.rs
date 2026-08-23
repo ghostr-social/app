@@ -1,5 +1,8 @@
 //! Pure adaptive allocation policy for progressive media delivery.
 
+/// Initial cold-start whole-object discovery proposal (§5.5).
+pub const BOOTSTRAP_DIRECT_FETCH_BYTES: u64 = 1024 * 1024;
+
 mod admission;
 mod allocation;
 mod allocation_evidence;
@@ -78,6 +81,6 @@ pub use warp::{
     TransformCapability, TransformKind, TransportCensorReason, TwinConfig, TwinEpochs,
     TwinEvaluation, TwinSearchContext, TwinState, TwinStateSignature, WarpActionGenerator,
     WarpPlanner, WarpPlannerConfig, WarpPlannerInput, WarpPlanningDecision, WarpSearch,
-    INLINE_BLURHASH_PREVIEW_QUALITY_MICROS,
+    WholeBodyExhaustion, INLINE_BLURHASH_PREVIEW_QUALITY_MICROS,
 };
 pub(crate) use warp::{HlsGenerationPolicy, PlannerReplayCapsule, PlannerReplayState};

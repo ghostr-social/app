@@ -1,41 +1,36 @@
+use ghostr_engine::catalog::Catalog;
+use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::PostId;
-use ghostr_partial_store::partial_range_store::ContentRevision;
 use std::collections::{HashMap, HashSet};
-
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-struct ObjectSource {
-    post: PostId,
-    source: String,
-}
 
 #[derive(Default)]
 pub(crate) struct IndependentObjects {
-    required_at: HashMap<ObjectSource, ContentRevision>,
+    required: HashSet<TransferIdentity>,
 }
 
 impl IndependentObjects {
-    pub(crate) fn record(&mut self, post: PostId, source: String, revision: ContentRevision) {
-        self.required_at
-            .insert(ObjectSource { post, source }, revision);
+    pub(crate) fn record(&mut self, identity: TransferIdentity) {
+        self.required.insert(identity);
     }
 
-    pub(crate) fn current(
-        &mut self,
-        revisions: &HashMap<PostId, ContentRevision>,
-    ) -> HashMap<PostId, HashSet<String>> {
-        self.required_at
-            .retain(|key, revision| revisions.get(&key.post) == Some(revision));
+    pub(crate) fn current(&mut self, catalog: &Catalog) -> HashMap<PostId, HashSet<String>> {
+        self.required.retain(|identity| {
+            catalog
+                .transfer_identity(identity.post(), identity.source().as_str())
+                .as_ref()
+                == Some(identity)
+        });
         let mut current = HashMap::<PostId, HashSet<String>>::new();
-        for key in self.required_at.keys() {
+        for identity in &self.required {
             current
-                .entry(key.post.clone())
+                .entry(identity.post().clone())
                 .or_default()
-                .insert(key.source.clone());
+                .insert(identity.source().as_str().to_owned());
         }
         current
     }
 
     pub(crate) fn clear(&mut self) {
-        self.required_at.clear();
+        self.required.clear();
     }
 }

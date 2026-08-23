@@ -23,7 +23,7 @@ impl PartialRangeStore {
         }
         self.selected().remove(&key);
         self.cancel_single_response(&key).await?;
-        if restored.is_none() {
+        if restored.is_none() && !self.http_generation_preserves_bytes(&identity).await {
             self.replace_stored_generation(&key, &binding, None).await?;
         }
         self.selected().insert(key, identity);
@@ -79,12 +79,18 @@ impl PartialRangeStore {
             }
             return Ok(());
         }
-        self.replace_stored_generation(
-            key,
-            &binding,
-            Some((identity.source().as_str(), generation.clone())),
-        )
-        .await?;
+        let incoming = (identity.source().as_str(), generation.clone());
+        if current.is_none()
+            && self
+                .http_generation_matches_source(identity, &generation)
+                .await
+        {
+            self.persist_generation(key, &binding, Some(incoming))
+                .await?;
+        } else {
+            self.replace_stored_generation(key, &binding, Some(incoming))
+                .await?;
+        }
         self.selected().insert(key.to_owned(), identity.to_owned());
         self.source_generations.lock().await.insert(
             key.to_owned(),

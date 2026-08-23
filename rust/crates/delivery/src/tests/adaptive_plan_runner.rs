@@ -10,11 +10,11 @@ pub(super) use scenario::PlanScenario;
 
 pub(super) fn run(scenario: PlanScenario<'_>) -> PlannedWork {
     let retry = RetryBook::new(RetryPolicy::default());
-    run_with_retry_and_measurements(scenario, &retry, PlanMeasurements::default())
+    run_with_inputs(scenario, &retry, PlanMeasurements::default(), None)
 }
 
 pub(super) fn run_with_retry(scenario: PlanScenario<'_>, retry: &RetryBook) -> PlannedWork {
-    run_with_retry_and_measurements(scenario, retry, PlanMeasurements::default())
+    run_with_inputs(scenario, retry, PlanMeasurements::default(), None)
 }
 
 pub(super) fn run_with_measurements(
@@ -22,7 +22,7 @@ pub(super) fn run_with_measurements(
     measurements: PlanMeasurements,
 ) -> PlannedWork {
     let retry = RetryBook::new(RetryPolicy::default());
-    run_with_retry_and_measurements(scenario, &retry, measurements)
+    run_with_inputs(scenario, &retry, measurements, None)
 }
 
 pub(super) fn run_with_watch_model(
@@ -31,14 +31,6 @@ pub(super) fn run_with_watch_model(
 ) -> PlannedWork {
     let retry = RetryBook::new(RetryPolicy::default());
     run_with_inputs(scenario, &retry, PlanMeasurements::default(), Some(model))
-}
-
-fn run_with_retry_and_measurements(
-    scenario: PlanScenario<'_>,
-    retry: &RetryBook,
-    measurements: PlanMeasurements,
-) -> PlannedWork {
-    run_with_inputs(scenario, retry, measurements, None)
 }
 
 fn run_with_inputs(
@@ -60,6 +52,7 @@ fn run_with_inputs(
     let stored_totals = HashMap::new();
     let continuation_sources = HashMap::new();
     let independent_sources = HashMap::new();
+    let whole_body_exhaustions = HashMap::new();
     let completed_head_probes = HashSet::new();
     let revisions = HashMap::new();
     let finalized = HashSet::new();
@@ -72,6 +65,7 @@ fn run_with_inputs(
         continuation_sources: &continuation_sources,
         revisions: &revisions,
         independent_sources: &independent_sources,
+        whole_body_exhaustions: &whole_body_exhaustions,
         completed_head_probes: &completed_head_probes,
         in_flight: scenario.in_flight,
         active_head_probes: &[],

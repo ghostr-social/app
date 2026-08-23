@@ -3,6 +3,7 @@ use ghostr_engine::adaptive::WholeBodyContract;
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use ghostr_partial_store::partial_range_store::StoreAction;
+use std::fmt::{Display, Formatter};
 use std::future::Future;
 
 use crate::chunk::generation::OriginGeneration;
@@ -11,6 +12,21 @@ use crate::chunk::generation::OriginGeneration;
 pub enum ResponseWriteMode {
     Sparse,
     SingleResponse(WholeBodyContract),
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct LocalStoreFailure;
+
+impl Display for LocalStoreFailure {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("local media store operation failed")
+    }
+}
+
+impl std::error::Error for LocalStoreFailure {}
+
+pub(crate) fn is_local_store_failure(error: &anyhow::Error) -> bool {
+    error.is::<LocalStoreFailure>()
 }
 
 /// Explicitly unguarded sink retained for isolated transport tests.

@@ -50,6 +50,19 @@ pub(super) fn note_delivery(
     stats.record_success(&host);
 }
 
+pub(super) fn note_network_completion(
+    stats: &mut HostStats,
+    url: &str,
+    bytes: u64,
+    elapsed: Duration,
+) {
+    let Some(host) = host_of(url) else { return };
+    if bytes > 0 {
+        stats.record_transfer(&host, bytes, elapsed);
+    }
+    stats.record_success(&host);
+}
+
 pub(super) fn note_failure(
     stats: &mut HostStats,
     url: &str,

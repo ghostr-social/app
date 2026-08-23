@@ -10,6 +10,8 @@ use std::collections::{HashMap, HashSet};
 mod action;
 mod cancellation;
 mod hedge;
+mod http_generation;
+mod network_reservation;
 mod promotion;
 mod reconciliation;
 mod response;
@@ -17,6 +19,8 @@ mod snapshot;
 
 use action::ActiveChunk;
 pub(crate) use action::{ActionRegistration, ChunkAttempt, CompletionStatus};
+pub(crate) use http_generation::ResponseGenerationFence;
+pub(crate) use network_reservation::FinishedAction;
 pub(crate) use promotion::{PromotionPreflight, PromotionRejection, PromotionTarget};
 pub(crate) use snapshot::ActiveAction;
 
@@ -77,6 +81,7 @@ impl InFlightChunks {
             launched_at_ms: 0,
             handle,
             store_action: None,
+            committed_network_bytes: None,
         });
     }
 
@@ -113,24 +118,15 @@ impl InFlightChunks {
             .count()
     }
 
+    #[cfg(test)]
     pub fn finish(&mut self, attempt: &ChunkAttempt) -> CompletionStatus {
-        let Some(active) = self.transfers.get(&attempt.id()) else {
-            return CompletionStatus::Superseded;
-        };
-        if active.identity != *attempt.identity() || active.chunk != attempt.chunk {
-            return CompletionStatus::Superseded;
-        }
-        let status = hedge::completion_status(active, self.hedges.contains_key(&attempt.id()));
-        self.transfers.remove(&attempt.id());
-        self.hedges.remove(&attempt.id());
-        status
+        self.finish_with_resources(attempt).status()
     }
 
     pub fn clear(&mut self) {
         for active in self.transfers.values_mut() {
             active.cancel();
         }
-        self.transfers.clear();
         self.hedges.clear();
     }
 }

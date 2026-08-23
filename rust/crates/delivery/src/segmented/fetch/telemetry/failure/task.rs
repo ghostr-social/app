@@ -28,6 +28,7 @@ impl FetchFailure {
             FailurePolicy::terminal(),
         );
         failure.task_failure = Some(task_failure);
+        failure.response_completed = progress.response_completed();
         failure
     }
 

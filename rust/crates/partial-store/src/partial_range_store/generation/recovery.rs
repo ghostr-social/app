@@ -5,8 +5,6 @@ use crate::partial_range_representation_disk as representation_disk;
 use anyhow::{bail, Result};
 use ghostr_engine::representation::{RepresentationBinding, SourceGeneration, TransferIdentity};
 
-mod install;
-
 impl PartialRangeStore {
     pub(in crate::partial_range_store) async fn restore_compatible_generation(
         &self,
@@ -36,23 +34,6 @@ impl PartialRangeStore {
             .await
             .insert(key.to_owned(), (stored.source, stored.generation));
         Ok(())
-    }
-
-    pub(in crate::partial_range_store) async fn restore_generation(
-        &self,
-        binding: &RepresentationBinding,
-    ) -> Result<()> {
-        let key = binding.post().as_str();
-        if self.stored_is_complete(key).await? {
-            self.retire_generation(key).await;
-            return Ok(());
-        }
-        let stored = disk::load(&self.paths.generation(key)).await?;
-        let valid = stored.filter(|stored| generation_matches_binding(stored, binding));
-        if let Some(stored) = valid {
-            return self.restore_valid_generation(binding, stored).await;
-        }
-        self.replace_stored_generation(key, binding, None).await
     }
 
     pub(in crate::partial_range_store) async fn retire_generation(&self, key: &str) {
@@ -114,7 +95,7 @@ impl PartialRangeStore {
         self.persist_generation(key, binding, generation).await
     }
 
-    async fn persist_generation(
+    pub(in crate::partial_range_store) async fn persist_generation(
         &self,
         key: &str,
         binding: &RepresentationBinding,
@@ -148,12 +129,6 @@ impl PartialRangeStore {
             bail!("cannot replace a finalized video");
         }
         Ok(())
-    }
-
-    async fn stored_is_complete(&self, key: &str) -> Result<bool> {
-        let mut entries = self.entries.lock().await;
-        let entry = self.entry(&mut entries, key).await?;
-        Ok(entry.completion.is_some() || entry.manifest.is_complete())
     }
 }
 

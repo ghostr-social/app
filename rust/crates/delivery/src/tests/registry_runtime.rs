@@ -1,4 +1,5 @@
 mod inflight_snapshot_test;
+mod inflight_network_reservation_test;
 mod integrity_claim_persistence_test;
 mod known_whole_prefix_exposure_test;
 mod mailbox_closure_test;
@@ -95,3 +96,5 @@ mod watch_model_persistence_version_test;
 mod watch_model_planner_integration_test;
 mod watch_model_transport_censor_test;
 mod whole_sink_fixture;
+mod whole_content_length_bound_test;
+mod transformed_capability_revalidation_test;

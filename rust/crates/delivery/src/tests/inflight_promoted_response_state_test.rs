@@ -39,6 +39,7 @@ fn promoted_200_expands_effective_inflight_coverage_at_headers() {
         launched_at_ms: 0,
         handle,
         store_action: None,
+        committed_network_bytes: None,
     });
 
     assert!(active.observe_response(

@@ -21,6 +21,7 @@ mod eviction;
 mod finalize;
 pub mod free_space;
 mod generation;
+mod http_generation;
 mod keyed_updates;
 pub mod leases;
 mod policy_eviction;
@@ -67,8 +68,10 @@ pub struct PartialRangeStore {
     capacity_updates: Mutex<()>,
     selected_transfers: StdMutex<HashMap<String, TransferIdentity>>,
     source_generations: Mutex<HashMap<String, (String, SourceGeneration)>>,
+    http_generations: Mutex<HashMap<String, http_generation::HttpGenerationState>>,
     sparse_response_actions: Mutex<HashMap<u64, generation::SparseResponseState>>,
     single_response_actions: Mutex<HashMap<String, single_response::SingleResponseState>>,
+    session_responses: Mutex<HashMap<String, single_response::SessionResponse>>,
     action_reservations: Mutex<action::ActionReservations>,
     cleanup_debts: Mutex<cleanup_debt::CleanupDebts>,
     content_revisions: Mutex<HashMap<String, u64>>,
@@ -98,8 +101,10 @@ impl PartialRangeStore {
             capacity_updates: Mutex::new(()),
             selected_transfers: StdMutex::new(HashMap::new()),
             source_generations: Mutex::new(HashMap::new()),
+            http_generations: Mutex::new(HashMap::new()),
             sparse_response_actions: Mutex::new(HashMap::new()),
             single_response_actions: Mutex::new(HashMap::new()),
+            session_responses: Mutex::new(HashMap::new()),
             action_reservations: Mutex::new(HashMap::new()),
             cleanup_debts: Mutex::new(HashMap::new()),
             content_revisions: Mutex::new(HashMap::new()),

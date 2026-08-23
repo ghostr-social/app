@@ -26,9 +26,13 @@ fn selected_rendition_resets_representation_fenced_delivery_state() {
     });
     state.take_representation_bindings();
     assert!(state.apply_playback(playback(post.clone())).is_accepted());
+    let identity = state
+        .catalog()
+        .transfer_identity(&post, "https://high.example/video.mp4")
+        .unwrap();
     let binding = select_rendition(&mut state, &slow_stats(), 8_000).unwrap();
     let mut probes = MetadataProbePool::new(1);
-    probes.learned(&post);
+    probes.learned(&identity, None);
     let mut retry = RetryBook::new(RetryPolicy::default());
     assert!(retry.expedite_demand(&post, 8));
     assert!(retry.cool_down(post.clone()).is_none());

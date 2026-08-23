@@ -1,36 +1,77 @@
 use super::{ChunkAttempt, OpenedResponse, ResponseObservation};
 use crate::manager::DeliveryWorker;
 use ghostr_engine::catalog::{HttpObservation, LearnedFacts};
+use ghostr_engine::representation::{HttpGenerationAuthority, HttpGenerationLease};
 
 impl DeliveryWorker {
-    pub(super) fn learn_opened_response(
+    pub(crate) fn learn_opened_response(
         &mut self,
         attempt: &ChunkAttempt,
         response: &OpenedResponse,
-        observed_at_ms: u64,
-    ) {
-        let (total, ranged) = response_evidence(response.observation());
-        let headers = response.evidence();
-        let facts = LearnedFacts {
-            content_length: total,
-            accept_ranges: ranged,
-            host: ghostr_engine::host_stats::host_of(&headers.final_url),
-        };
-        let observation = HttpObservation::new(
-            facts,
-            headers.content_type.clone(),
-            observed_at_ms,
-            headers.validator.clone(),
-        );
+        observed: ghostr_engine::evidence::EvidenceTime,
+    ) -> Option<HttpGenerationLease> {
+        let observation = opened_observation(response, observed)?;
         self.state
             .catalog_mut()
-            .learn_response_observation_for(attempt.identity(), observation);
+            .learn_response_observation_for(attempt.identity(), observation)
+            .then(|| self.state.catalog().http_generation_for(attempt.identity()))
+            .flatten()
+    }
+
+    pub(crate) fn learn_action_scoped_response(
+        &mut self,
+        attempt: &ChunkAttempt,
+        response: &OpenedResponse,
+        observed: ghostr_engine::evidence::EvidenceTime,
+    ) -> bool {
+        let Some(observation) = opened_observation(response, observed) else {
+            return false;
+        };
+        self.state
+            .catalog_mut()
+            .learn_action_response_observation_for(attempt.identity(), observation)
+    }
+
+    pub(crate) fn reject_opened_generation(
+        &mut self,
+        attempt: &ChunkAttempt,
+        response: &OpenedResponse,
+    ) -> Option<HttpGenerationAuthority> {
+        let headers = response.evidence();
+        self.state.catalog_mut().reject_response_generation_for(
+            attempt.identity(),
+            &headers.final_url,
+            headers.validator.clone(),
+            headers.observed,
+        )
     }
 }
 
-fn response_evidence(response: ResponseObservation) -> (Option<u64>, Option<bool>) {
+fn opened_observation(
+    response: &OpenedResponse,
+    observed: ghostr_engine::evidence::EvidenceTime,
+) -> Option<HttpObservation> {
+    let (total, ranged) = response_evidence(response.observation())?;
+    let headers = response.evidence();
+    Some(
+        HttpObservation::new(
+            LearnedFacts {
+                content_length: total,
+                accept_ranges: ranged,
+                host: ghostr_engine::host_stats::host_of(&headers.final_url),
+            },
+            headers.content_type.clone(),
+            observed,
+            headers.validator.clone(),
+        )
+        .with_final_url(headers.final_url.clone()),
+    )
+}
+
+fn response_evidence(response: ResponseObservation) -> Option<(Option<u64>, Option<bool>)> {
     match response {
-        ResponseObservation::Partial { total, .. } => (total, Some(true)),
+        ResponseObservation::Rejected(_) => None,
+        ResponseObservation::Partial { total, .. } => Some((total, Some(true))),
         ResponseObservation::Body {
             total,
             range_support,
@@ -39,6 +80,6 @@ fn response_evidence(response: ResponseObservation) -> (Option<u64>, Option<bool
         | ResponseObservation::Ignored {
             total,
             range_support,
-        } => (total, range_support),
+        } => Some((total, range_support)),
     }
 }

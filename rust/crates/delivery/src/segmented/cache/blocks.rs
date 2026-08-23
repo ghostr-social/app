@@ -1,20 +1,33 @@
+#[cfg(test)]
 use super::{FocusRecord, SegmentedCache, SegmentedPhase};
+#[cfg(test)]
 use crate::segmented::prepare::PreparedObject;
+#[cfg(test)]
 use ghostr_engine::PostId;
 
-mod commit;
-use commit::{accepts_complete, commit_complete, commit_partial, CompleteValidation};
+pub(in crate::segmented::cache) mod commit;
+#[cfg(test)]
+mod testing;
+#[cfg(test)]
+use commit::{accepts_complete, commit_partial, commit_prepared, CompleteValidation};
+#[cfg(test)]
 mod complete;
+#[cfg(test)]
 use complete::AssemblyReservation;
+#[cfg(test)]
 pub(in crate::segmented) use complete::CompleteStage;
+#[cfg(test)]
 mod input;
+#[cfg(test)]
 pub(in crate::segmented) use input::StageBlock;
 
+#[cfg(test)]
 pub(in crate::segmented) enum StoredStage {
     Partial,
     Complete(Box<CompleteStage>),
 }
 
+#[cfg(test)]
 impl SegmentedCache {
     pub(in crate::segmented) fn store_stage_block(
         &self,
@@ -94,21 +107,22 @@ impl SegmentedCache {
             block_bytes,
             reservation,
         } = completed;
+        let prepared = crate::segmented::prepare::PreparedComplete::new(object);
         let mut state = self.lock();
         let Some(record) = state.focus.get_mut(post) else {
             drop(state);
-            drop(object);
+            drop(prepared);
             drop(reservation);
             return false;
         };
-        let validation = CompleteValidation::new(generation, offset, block_bytes, &object);
+        let validation = CompleteValidation::new(generation, offset, block_bytes, &prepared.object);
         if !accepts_complete(record, validation) {
             drop(state);
-            drop(object);
+            drop(prepared);
             drop(reservation);
             return false;
         }
-        commit_complete(record, offset, object);
+        commit_prepared(record, prepared);
         drop(state);
         drop(reservation);
         self.changed.notify_waiters();
@@ -129,24 +143,9 @@ impl SegmentedCache {
             self.changed.notify_waiters();
         }
     }
-
-    #[cfg(test)]
-    pub(in crate::segmented) fn store_stage_object(
-        &self,
-        post: &PostId,
-        generation: u64,
-        object: PreparedObject,
-    ) -> Option<u64> {
-        let StoredStage::Complete(completed) =
-            self.store_stage_block(post, generation, StageBlock::complete(0, object))?
-        else {
-            return None;
-        };
-        self.commit_stage_complete(post, generation, *completed)
-            .then(|| self.snapshot(post.as_str()).bytes_present)
-    }
 }
 
+#[cfg(test)]
 fn partial_locked(
     state: &mut super::CacheState,
     post: &PostId,
@@ -160,6 +159,7 @@ fn partial_locked(
     Some(StoredStage::Partial)
 }
 
+#[cfg(test)]
 fn accepts(record: &FocusRecord, generation: u64, bytes: u64) -> bool {
     record.generation == generation
         && record.snapshot.phase != SegmentedPhase::Ready
@@ -167,6 +167,7 @@ fn accepts(record: &FocusRecord, generation: u64, bytes: u64) -> bool {
         && bytes <= record.reserved_bytes
 }
 
+#[cfg(test)]
 fn continuation_total(record: &FocusRecord, offset: u64, block: &PreparedObject) -> Option<u64> {
     record
         .staged
@@ -175,6 +176,7 @@ fn continuation_total(record: &FocusRecord, offset: u64, block: &PreparedObject)
         .and_then(|known| known.continuation_len(block, offset))
 }
 
+#[cfg(test)]
 fn assemble(
     state: &super::CacheState,
     post: &PostId,

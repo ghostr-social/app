@@ -35,6 +35,7 @@ impl SegmentedDelivery {
     pub(crate) fn active_sources(&self) -> Vec<&str> {
         self.active
             .values()
+            .filter(|active| active.network.network_active())
             .map(|active| active.pending.url.as_str())
             .collect()
     }

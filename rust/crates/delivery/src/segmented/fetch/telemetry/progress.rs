@@ -3,7 +3,7 @@ use crate::delivery_events::DeliveryNetworkStatusReader;
 use ghostr_engine::origin_model::NetworkClass;
 use ghostr_engine::RequestAuthority;
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaResponse};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 use tokio::time::Instant;
@@ -11,6 +11,8 @@ use tokio::time::Instant;
 pub(in crate::segmented) struct FetchProgress {
     clock: Mutex<Option<OriginClock>>,
     network_bytes: AtomicU64,
+    network_active: AtomicBool,
+    response_completed: AtomicBool,
     traffic: Mutex<Option<SegmentedTraffic>>,
 }
 
@@ -19,6 +21,8 @@ impl FetchProgress {
         Self {
             clock: Mutex::new(None),
             network_bytes: AtomicU64::new(0),
+            network_active: AtomicBool::new(true),
+            response_completed: AtomicBool::new(false),
             traffic: Mutex::new(traffic),
         }
     }
@@ -66,8 +70,25 @@ impl FetchProgress {
         self.network_bytes.load(Ordering::Relaxed)
     }
 
-    pub(in crate::segmented) fn close_traffic(&self) {
+    pub(in crate::segmented) fn finish_network(&self) {
+        if let Some(clock) = self.clock().as_mut() {
+            clock.finish();
+        }
+        self.network_active.store(false, Ordering::Release);
         self.traffic().take();
+    }
+
+    pub(in crate::segmented) fn finish_response(&self) {
+        self.response_completed.store(true, Ordering::Release);
+        self.finish_network();
+    }
+
+    pub(in crate::segmented) fn network_active(&self) -> bool {
+        self.network_active.load(Ordering::Acquire)
+    }
+
+    pub(in crate::segmented) fn response_completed(&self) -> bool {
+        self.response_completed.load(Ordering::Acquire)
     }
 
     fn clock(&self) -> MutexGuard<'_, Option<OriginClock>> {
@@ -93,6 +114,7 @@ struct OriginClock {
     ttfb: Option<Duration>,
     concurrency: usize,
     network_class: NetworkClass,
+    elapsed: Option<Duration>,
 }
 
 impl OriginClock {
@@ -107,6 +129,7 @@ impl OriginClock {
             ttfb: None,
             concurrency: concurrency(requests, url),
             network_class: network.network_class(),
+            elapsed: None,
         }
     }
 
@@ -120,11 +143,21 @@ impl OriginClock {
 
     fn snapshot(&self) -> OriginTelemetry {
         OriginTelemetry {
-            elapsed: self.started.elapsed().saturating_sub(self.redirect_wait),
+            elapsed: self.elapsed.unwrap_or_else(|| self.network_elapsed()),
             ttfb: self.ttfb,
             concurrency: self.concurrency,
             network_class: self.network_class,
         }
+    }
+
+    fn finish(&mut self) {
+        if self.elapsed.is_none() {
+            self.elapsed = Some(self.network_elapsed());
+        }
+    }
+
+    fn network_elapsed(&self) -> Duration {
+        self.started.elapsed().saturating_sub(self.redirect_wait)
     }
 }
 

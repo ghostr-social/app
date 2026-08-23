@@ -1,4 +1,4 @@
-use super::{progress::Pending, Active, SegmentedDone};
+use super::{active_network, progress::Pending, test_fence, Active, SegmentedDone};
 use crate::delivery_events::{DeliveryFocus, FocusGeneration, FocusItem, FocusTransition};
 use crate::segmented::fetch::FetchFailure;
 use crate::segmented::prepare::PreparedObject;
@@ -6,11 +6,10 @@ use crate::segmented::{CachedHlsGeneration, SegmentedCache};
 use ghostr_engine::adaptive::HlsBootstrapStage;
 use ghostr_engine::origin_model::ErrorReason;
 use ghostr_engine::{ActionId, DeliveryKind, PostId, VideoMeta};
-use std::sync::Arc;
 
 pub(super) fn ready_root(cache: &SegmentedCache, post: &PostId) -> CachedHlsGeneration {
     let source = root("stream");
-    let body: Arc<[u8]> = Arc::from(b"#EXTM3U\n#EXTINF:4,\nsegment.m4s\n".as_slice());
+    let body = std::sync::Arc::<[u8]>::from(b"#EXTM3U\n#EXTINF:4,\nsegment.m4s\n".as_slice());
     assert!(cache.mark_stage_preparing(post, 1, 1, body.len() as u64));
     cache
         .store_stage_object(
@@ -36,8 +35,10 @@ pub(super) fn active() -> Active {
     pending.url = root("init");
     Active {
         action: ActionId::new(7),
+        fence: fence(),
         pending,
         committed_until_ms: u64::MAX,
+        network: active_network(),
         _task: tokio::spawn(async move {
             let _ = cancelled.await;
         }),
@@ -50,7 +51,7 @@ pub(super) fn cancelled(post: PostId) -> SegmentedDone {
     SegmentedDone {
         action: ActionId::new(7),
         post,
-        generation: 1,
+        fence: fence(),
         outcome: Err(FetchFailure::preflight(
             anyhow::anyhow!("late"),
             ErrorReason::Policy,
@@ -87,4 +88,13 @@ fn item(name: &str) -> FocusItem {
 
 pub(super) fn root(name: &str) -> String {
     format!("https://{name}.example/root.m3u8")
+}
+
+fn fence() -> crate::segmented::cache::StageFence {
+    test_fence(
+        1,
+        1,
+        &root("init"),
+        HlsBootstrapStage::Initialization.maximum_bytes(),
+    )
 }

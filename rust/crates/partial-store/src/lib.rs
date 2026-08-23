@@ -3,6 +3,7 @@
 pub mod partial_range_completion;
 mod partial_range_disk;
 mod partial_range_generation_disk;
+mod partial_range_http_generation_disk;
 pub mod partial_range_manifest;
 mod partial_range_paths;
 mod partial_range_representation_disk;

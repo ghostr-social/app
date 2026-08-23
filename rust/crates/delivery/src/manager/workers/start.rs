@@ -18,11 +18,17 @@ pub(crate) struct PreparedTransfer {
     committed_until_ms: u64,
     url: String,
     store_action: StoreAction,
+    committed_network_bytes: Option<u64>,
 }
 
 impl PreparedTransfer {
     pub(crate) fn action(&self) -> ActionId {
         self.attempt.id()
+    }
+
+    pub(crate) fn record_network_commit(&mut self, bytes: u64) {
+        debug_assert_eq!(bytes, self.retrieval.immediate_network_bytes());
+        self.committed_network_bytes = Some(bytes);
     }
 
     pub(crate) async fn release(
@@ -59,6 +65,7 @@ impl DownloadWorkers {
             committed_until_ms: transfer.commitment_until_ms,
             url: transfer.url,
             store_action,
+            committed_network_bytes: None,
         })
     }
 
@@ -81,6 +88,7 @@ impl DownloadWorkers {
             launched_at_ms,
             handle,
             store_action: Some(prepared.store_action.clone()),
+            committed_network_bytes: prepared.committed_network_bytes,
         });
         spawn_chunk(ChunkLaunch {
             context: ctx,

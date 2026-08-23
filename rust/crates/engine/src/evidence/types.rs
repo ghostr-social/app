@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 mod confidence;
 pub use confidence::Confidence;
+mod time;
+pub use time::EvidenceTime;
 mod value;
 pub use value::{Evidence, EvidenceField, EvidenceValue};
 
@@ -163,10 +165,7 @@ impl EvidenceSource {
     }
 
     pub(crate) fn direct_bytes(&self) -> bool {
-        matches!(
-            self,
-            Self::Response { .. } | Self::CompleteBytes { .. } | Self::Hash { .. }
-        )
+        matches!(self, Self::CompleteBytes { .. } | Self::Hash { .. })
     }
 
     pub(crate) fn structural(&self) -> bool {

@@ -19,7 +19,10 @@ fn representation_change_clears_completed_probe_history() {
     );
     let retry = RetryBook::new(RetryPolicy::default());
     let mut probes = MetadataProbePool::new(1);
-    probes.learned(&post);
+    let identity = catalog
+        .transfer_identity(&post, "https://media.example/video.mp4")
+        .unwrap();
+    probes.learned(&identity, None);
     assert!(probes
         .claim(&catalog, std::slice::from_ref(&post), &retry)
         .is_empty());
