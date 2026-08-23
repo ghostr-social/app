@@ -38,7 +38,7 @@ async fn validated_snapshot(
     let snapshot = context.store.media_snapshot(post.as_str()).await.ok()?;
     let binding = snapshot.binding()?;
     (snapshot.total_len().is_some()
-        && binding.matches_or_derives_from(meta)
+        && binding.matches_source_meta(meta)
         && context.cache.matches_binding(post.as_str(), binding))
     .then_some(snapshot)
 }

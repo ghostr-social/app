@@ -1,3 +1,4 @@
+use crate::adaptive::TransformKind;
 use crate::catalog::Catalog;
 use crate::playback::{
     AdaptiveBufferPolicy, EstimateConfidence, MediaConsumption, NetworkConditions,
@@ -12,6 +13,7 @@ fn catalog_switches_to_the_safe_representation_without_merging_mirrors() {
     let post = PostId::new("adaptive");
     let high = rendition("high", "high-mirror", 6_000_000);
     let low = rendition("low", "low-mirror", 1_000_000);
+    let advertised = high.meta().clone();
     let mut catalog = Catalog::new();
     let first = catalog.upsert_with_renditions(
         post.clone(),
@@ -42,6 +44,15 @@ fn catalog_switches_to_the_safe_representation_without_merging_mirrors() {
         .expect("quality changed");
 
     assert_ne!(switched, first);
+    assert_eq!(switched.source_representation(), first.representation());
+    assert!(switched.matches_source_meta(&advertised));
+    assert!(!switched.matches_or_derives_from(&advertised));
+    let transformed = switched
+        .derive_transform(TransformKind::Remux, &"b".repeat(64))
+        .unwrap();
+    assert!(transformed.derives_from(&switched));
+    assert_eq!(transformed.source_representation(), first.representation());
+    assert!(transformed.matches_source_meta(&advertised));
     assert_eq!(catalog.lookup(&post).unwrap().meta, low.meta().clone());
     assert_eq!(
         catalog.estimated_bitrate(&post, &Default::default()),
@@ -56,6 +67,10 @@ fn catalog_switches_to_the_safe_representation_without_merging_mirrors() {
     assert!(catalog
         .transfer_identity(&post, "https://high.example/video.mp4")
         .is_none());
+    let identity = switched.transfer("https://low.example/video.mp4").unwrap();
+    assert!(catalog
+        .quarantine_mirror_group(&identity, "low-digest", 1)
+        .contains(&post));
     assert!(catalog
         .select_rendition(&post, network, observation, target)
         .is_none());

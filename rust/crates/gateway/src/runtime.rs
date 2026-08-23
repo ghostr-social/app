@@ -3,7 +3,6 @@ use crate::hls::playback::{HlsPlaybackGateway, NativeHlsPlaybackSession};
 use crate::hls::sessions::HlsSessions;
 use crate::progressive::capabilities::ProgressiveCapabilityId;
 use crate::progressive::route::ProgressiveState;
-use anyhow::Context;
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_delivery::segmented::SegmentedCache;
 use ghostr_engine::adaptive::DiscoveryDemand;
@@ -13,13 +12,10 @@ use ghostr_net::outbound_media_client::MediaHttpRequests;
 use log::warn;
 use nostr_sdk::Client;
 use std::{future::Future, io, path::PathBuf, sync::Arc};
-use tokio::{
-    net::TcpListener,
-    sync::watch,
-    time::{timeout_at, Instant},
-};
+use tokio::{net::TcpListener, sync::watch};
 
 mod media;
+mod progressive;
 
 pub struct GatewayConfiguration {
     pub cache_directory: PathBuf,
@@ -86,23 +82,7 @@ impl GatewayRuntime {
         post: &str,
         expected: &VideoMeta,
     ) -> anyhow::Result<ProgressiveCapabilityId> {
-        let deadline = Instant::now() + self.progressive.timing.unknown_length_wait;
-        loop {
-            let changes = self.progressive.store.change_notifier();
-            let changed = changes.notified();
-            tokio::pin!(changed);
-            changed.as_mut().enable();
-            let snapshot = self.progressive.store.media_snapshot(post).await?;
-            if snapshot
-                .binding()
-                .is_some_and(|binding| binding.matches_meta(expected))
-            {
-                return self.progressive.capabilities.issue(&snapshot).await;
-            }
-            timeout_at(deadline, changed)
-                .await
-                .context("progressive representation is not current")?;
-        }
+        progressive::issue(&self.progressive, post, expected).await
     }
 
     /// Applies the user's progressive-media budget without restarting

@@ -17,7 +17,7 @@ impl Catalog {
         }
     }
 
-    pub(super) fn update_digest_claim(
+    pub(in crate::catalog) fn update_digest_claim(
         &mut self,
         post: &PostId,
         previous: Option<&str>,

@@ -39,7 +39,7 @@ impl Catalog {
     pub fn evidence_state(&self) -> CatalogEvidenceState {
         CatalogEvidenceState {
             reliability: self.reliability.clone(),
-            digest_claims: encode_claims(&self.digest_claims),
+            digest_claims: encode_claims(&self.persisted_digest_claims()),
             quarantined_digests: self.quarantined_digests.clone(),
         }
     }
@@ -53,6 +53,24 @@ impl Catalog {
         for post in posts {
             self.apply_known_quarantine(&post);
         }
+    }
+
+    fn persisted_digest_claims(&self) -> HashMap<String, BTreeSet<PostId>> {
+        let mut claims = self.digest_claims.clone();
+        claims.retain(|_, posts| {
+            posts.retain(|post| !self.entries.contains_key(post));
+            !posts.is_empty()
+        });
+        for (post, entry) in &self.entries {
+            let Some(digest) = entry.renditions.advertised_digest() else {
+                continue;
+            };
+            claims
+                .entry(digest.to_ascii_lowercase())
+                .or_default()
+                .insert(post.clone());
+        }
+        claims
     }
 }
 

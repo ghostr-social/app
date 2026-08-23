@@ -35,6 +35,10 @@ impl RenditionState {
         &self.advertised == meta
     }
 
+    pub(super) fn advertised_digest(&self) -> Option<&str> {
+        self.advertised.sha256.as_deref()
+    }
+
     pub(super) fn active_bitrate(&self, active: &RepresentationId) -> Option<u64> {
         self.variants
             .iter()
@@ -145,10 +149,23 @@ impl Catalog {
             .entries
             .get(post)?
             .selected_meta(network, observation, target)?;
+        if selected.sha256.as_deref().is_some_and(|digest| {
+            self.quarantined_digests
+                .contains(&digest.to_ascii_lowercase())
+        }) {
+            return None;
+        }
+        let entry = self.entries.get(post)?;
+        let source = entry.binding.source_representation().clone();
+        let previous_digest = entry.meta.sha256.clone();
+        let next_digest = selected.sha256.clone();
         let generation = self.allocate_generation();
-        let entry = self.entries.get_mut(post)?;
-        entry.switch(selected, generation);
-        Some(entry.binding())
+        self.entries
+            .get_mut(post)?
+            .switch(selected, generation, Some(source));
+        self.update_digest_claim(post, previous_digest.as_deref(), next_digest.as_deref());
+        self.apply_known_quarantine(post);
+        self.binding(post)
     }
 
     fn replace(

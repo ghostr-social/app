@@ -47,7 +47,7 @@ impl CatalogEntry {
         generation: RepresentationGeneration,
     ) -> Self {
         let mut entry = Self {
-            binding: RepresentationBinding::new(post.clone(), &meta, generation),
+            binding: RepresentationBinding::new(post.clone(), &meta, generation, None),
             post,
             renditions: renditions::RenditionState::new(meta.clone(), variants),
             meta,
@@ -73,23 +73,7 @@ impl CatalogEntry {
         generation: RepresentationGeneration,
     ) {
         self.renditions = renditions::RenditionState::new(meta.clone(), variants);
-        self.switch(meta, generation);
-    }
-
-    fn switch(&mut self, meta: VideoMeta, generation: RepresentationGeneration) {
-        self.binding = RepresentationBinding::new(self.post.clone(), &meta, generation);
-        self.meta = meta;
-        self.evidence.clear();
-        self.ledger = crate::evidence::EvidenceLedger::default();
-        self.evidence_clock_ms = 0;
-        self.http_clocks.clear();
-        self.http_generations.clear();
-        self.next_http_generation = 1;
-        self.quarantined = false;
-        self.timeline = None;
-        self.tail_timeline_needed = false;
-        self.preview = None;
-        self.seed_declared_evidence();
+        self.switch(meta, generation, None);
     }
 
     fn selected_meta(
@@ -148,7 +132,26 @@ impl Catalog {
     }
 
     pub fn retain(&mut self, mut keep: impl FnMut(&PostId) -> bool) {
-        self.entries.retain(|post, _| keep(post));
+        let removed: Vec<_> = self
+            .entries
+            .iter()
+            .filter(|(post, _)| !keep(post))
+            .map(|(post, entry)| {
+                (
+                    post.clone(),
+                    entry.meta.sha256.clone(),
+                    entry.renditions.advertised_digest().map(str::to_owned),
+                )
+            })
+            .collect();
+        for (post, active, advertised) in removed {
+            if active.as_deref().map(str::to_ascii_lowercase)
+                != advertised.as_deref().map(str::to_ascii_lowercase)
+            {
+                self.update_digest_claim(&post, active.as_deref(), advertised.as_deref());
+            }
+            self.entries.remove(&post);
+        }
     }
 
     fn allocate_generation(&mut self) -> RepresentationGeneration {
@@ -188,5 +191,6 @@ impl Catalog {
 
 mod bitrate;
 mod renditions;
+mod representation;
 pub use renditions::RenditionQualityEvidence;
 mod timeline;

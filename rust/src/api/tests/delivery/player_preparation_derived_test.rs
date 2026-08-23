@@ -4,9 +4,9 @@ use crate::api::tests::delivery::player_preparation_authority_fixture::Authority
 use ghostr_engine::PostId;
 
 #[tokio::test]
-async fn derived_representation_is_projected_and_accepted_as_exact_player_authority() {
+async fn selected_derived_representation_keeps_feed_source_and_exact_player_authority() {
     let mut fixture = AuthorityFixture::seeded().await;
-    let source_representation = fixture.representation.clone();
+    let source_representation = fixture.publish_selected_representation().await;
     fixture.publish_derived_representation().await;
     fixture
         .commands

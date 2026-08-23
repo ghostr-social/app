@@ -26,7 +26,7 @@ pub struct CacheRegistry {
     changed: Arc<Notify>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Eq, PartialEq)]
 struct CacheEntries {
     order: Vec<String>,
     by_id: HashMap<String, Option<CacheVideo>>,
@@ -52,12 +52,15 @@ impl CacheRegistry {
     }
 
     pub fn replace(&self, videos: impl IntoIterator<Item = CacheVideo>) {
-        let mut entries = self.write();
-        entries.order.clear();
-        entries.by_id.clear();
+        let mut next = CacheEntries::default();
         for video in videos {
-            remember(&mut entries, video);
+            remember(&mut next, video);
         }
+        let mut entries = self.write();
+        if *entries == next {
+            return;
+        }
+        *entries = next;
         drop(entries);
         self.changed.notify_waiters();
     }
@@ -67,13 +70,23 @@ impl CacheRegistry {
     }
 
     pub fn matches_binding(&self, id: &str, binding: &RepresentationBinding) -> bool {
-        binding.post().as_str() == id
-            && self
-                .read()
-                .by_id
-                .get(id)
-                .and_then(Option::as_ref)
-                .is_some_and(|video| binding.matches_or_derives_from(&video.meta))
+        self.video_for_binding(id, binding).is_some()
+    }
+
+    pub fn video_for_binding(
+        &self,
+        id: &str,
+        binding: &RepresentationBinding,
+    ) -> Option<CacheVideo> {
+        if binding.post().as_str() != id {
+            return None;
+        }
+        self.read()
+            .by_id
+            .get(id)
+            .and_then(Option::as_ref)
+            .filter(|video| binding.matches_or_derives_from(&video.meta))
+            .cloned()
     }
 
     pub fn allows_binding(&self, id: &str, binding: &RepresentationBinding) -> bool {

@@ -30,6 +30,8 @@ mod player_preparation_store_unavailable_test;
 mod post_id_validation_test;
 mod preparation_route_fixture;
 mod repost_candidate_priority_test;
+mod selected_rendition_fixture;
 mod tracked_focus_generation_test;
+mod watcher_hls_stream_test;
 mod watcher_representation_fence_test;
 mod watcher_stream_test;

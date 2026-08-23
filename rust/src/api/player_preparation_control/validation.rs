@@ -57,7 +57,7 @@ fn validate_binding(
     candidate: &CandidateAsset,
 ) -> Result<(), AssetValidationError> {
     let binding = candidate.binding()?;
-    require(binding.matches_or_derives_from(meta))?;
+    require(binding.matches_source_meta(meta))?;
     require(binding.representation().fingerprint() == input.representation_id)?;
     require(
         context

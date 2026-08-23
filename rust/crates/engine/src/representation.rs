@@ -35,6 +35,7 @@ pub struct InvalidSourceGeneration;
 pub struct RepresentationBinding {
     post: PostId,
     representation: RepresentationId,
+    source_representation: RepresentationId,
     derived_from: Option<RepresentationId>,
     generation: RepresentationGeneration,
     sources: Vec<SourceId>,
@@ -135,10 +136,13 @@ impl RepresentationBinding {
         post: PostId,
         meta: &VideoMeta,
         generation: RepresentationGeneration,
+        source_representation: Option<RepresentationId>,
     ) -> Self {
+        let representation = RepresentationId::from_meta(meta);
         Self {
             post,
-            representation: RepresentationId::from_meta(meta),
+            source_representation: source_representation.unwrap_or_else(|| representation.clone()),
+            representation,
             derived_from: None,
             generation,
             sources: meta.urls.iter().cloned().map(SourceId::new).collect(),

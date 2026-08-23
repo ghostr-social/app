@@ -4,7 +4,11 @@ use crate::VideoMeta;
 
 impl RepresentationBinding {
     pub fn source_representation(&self) -> &RepresentationId {
-        self.derived_from.as_ref().unwrap_or(&self.representation)
+        &self.source_representation
+    }
+
+    pub fn matches_source_meta(&self, meta: &VideoMeta) -> bool {
+        self.source_representation == RepresentationId::from_meta(meta)
     }
 
     pub fn matches_or_derives_from(&self, meta: &VideoMeta) -> bool {
@@ -17,6 +21,7 @@ impl RepresentationBinding {
         Some(Self {
             post: self.post.clone(),
             representation: RepresentationId(representation),
+            source_representation: self.source_representation.clone(),
             derived_from: Some(self.representation.clone()),
             generation: self.generation,
             sources: Vec::new(),
