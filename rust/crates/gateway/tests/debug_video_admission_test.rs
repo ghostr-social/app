@@ -10,7 +10,7 @@ use ghostr_discovery::cache::client_with_event_cache;
 use ghostr_engine::DeliveryKind;
 use ghostr_gateway::hls::sessions::HlsSessions;
 use ghostr_gateway::progressive::route::ProgressiveState;
-use ghostr_gateway::router::{configured_router_with_progressive_debug, GatewayRouterResources};
+use ghostr_gateway::router::configured_router_with_progressive_debug;
 use serde_json::Value;
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -19,10 +19,9 @@ use tower::ServiceExt;
 async fn debug_api_submits_a_registered_video_only_when_focused() {
     let harness = gateway_fixture::progressive::progressive_harness("debug-video-add");
     let (delivery, mut commands) = command_channel();
-    let resources =
-        GatewayRouterResources::new(HlsSessions::production(), gateway_fixture::media_client());
     let router = configured_router_with_progressive_debug(
-        resources,
+        HlsSessions::production(),
+        gateway_fixture::media_client(),
         progressive_state(&harness),
         delivery,
         Arc::new(client_with_event_cache()),

@@ -28,19 +28,12 @@ export async function clickVideo(page, id, signal) {
 }
 
 export async function watchProgress(input) {
-  const first = await watchUntilPresented(input);
+  const first = await watchUntilPlaying(input);
   await collectUntil({
     ...input,
     accept: progressed(input.id, first.player.current_time, input.observedSeconds),
     label: "media time",
   });
-}
-
-export function watchUntilPresented(input) {
-  return collectUntil(
-    {...input, accept: isPresented(input.id), label: "presented frame"},
-    PLAYING_POLL_MS,
-  );
 }
 
 export function watchUntilPlaying(input) {
@@ -74,10 +67,6 @@ async function captureSample(input) {
 
 function isPlaying(id) {
   return (sample) => sample.player.id === id && sample.player.phase === "playing";
-}
-
-function isPresented(id) {
-  return (sample) => sample.player.id === id && sample.player.presented === true;
 }
 
 function progressed(id, first, observedSeconds) {

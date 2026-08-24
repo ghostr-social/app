@@ -27,7 +27,7 @@ function player(id, phase, at_ms) {
   const other = id === "a" ? "b" : "a";
   return {
     at_ms,
-    player: {id, phase, presented: phase === "playing", current_time: 0},
+    player: {id, phase, current_time: 0},
     state: {videos: [
       {id, downloaded_bytes: 1_000, total_bytes: 4_000_000},
       {id: other, downloaded_bytes: 65_536, total_bytes: 4_000_000},

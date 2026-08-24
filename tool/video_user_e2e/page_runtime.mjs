@@ -23,7 +23,6 @@ export function playerSnapshot(page) {
       phase: (typeof playbackPhase === "undefined" ? "unavailable" : playbackPhase).toLowerCase(),
       current_time: Number(player.currentTime), paused: player.paused, ended: player.ended,
       ready_state: player.readyState,
-      presented: typeof presentedFrame !== "undefined" && presentedFrame === true,
       error: player.error ? {code: player.error.code, message: player.error.message} : null};
   })()`);
 }

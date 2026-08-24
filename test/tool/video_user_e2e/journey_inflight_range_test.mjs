@@ -21,7 +21,7 @@ test("accepts a truthful range still streaming when smooth evidence is captured"
 function sample(at_ms, current_time, bytes) {
   return {
     at_ms,
-    player: {id: "a", phase: "playing", presented: true, current_time},
+    player: {id: "a", phase: "playing", current_time},
     state: {videos: [
       {id: "a", downloaded_bytes: bytes, total_bytes: 4_000_000},
       {id: "b", downloaded_bytes: 100_000, total_bytes: 4_000_000},

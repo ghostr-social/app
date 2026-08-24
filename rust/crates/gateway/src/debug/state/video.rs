@@ -98,12 +98,7 @@ impl VideoSnapshot {
 }
 
 async fn playback_url(state: &ProgressiveState, id: &str) -> String {
-    let Ok(snapshot) = state.store.media_snapshot(id).await else {
-        return String::new();
-    };
-    let Ok(capability) = state.capabilities.issue(&snapshot).await else {
-        return String::new();
-    };
+    let capability = state.capabilities.issue(id).await;
     format!("/video.mp4?id={id}&cap={}", capability.as_str())
 }
 

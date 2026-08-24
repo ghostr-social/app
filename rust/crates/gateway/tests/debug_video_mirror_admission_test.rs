@@ -9,7 +9,7 @@ use ghostr_delivery::delivery_events::{command_channel, DeliveryCommand};
 use ghostr_discovery::cache::client_with_event_cache;
 use ghostr_gateway::hls::sessions::HlsSessions;
 use ghostr_gateway::progressive::route::ProgressiveState;
-use ghostr_gateway::router::{configured_router_with_progressive_debug, GatewayRouterResources};
+use ghostr_gateway::router::configured_router_with_progressive_debug;
 use std::sync::Arc;
 use tower::ServiceExt;
 
@@ -18,7 +18,8 @@ async fn debug_video_registration_preserves_ordered_mirrors() {
     let harness = gateway_fixture::progressive::progressive_harness("debug-video-mirror");
     let (delivery, mut commands) = command_channel();
     let router = configured_router_with_progressive_debug(
-        GatewayRouterResources::new(HlsSessions::production(), gateway_fixture::media_client()),
+        HlsSessions::production(),
+        gateway_fixture::media_client(),
         progressive_state(&harness),
         delivery,
         Arc::new(client_with_event_cache()),

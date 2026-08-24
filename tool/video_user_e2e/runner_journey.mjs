@@ -35,7 +35,7 @@ function playbackWatchers(context, ids, trace, signal) {
       signal,
       observedSeconds: playbackObservationSeconds(context.scenario, ids.indexOf(id)),
     }),
-    watchStart: (id) => context.boundaries.watchUntilPresented({
+    watchStart: (id) => context.boundaries.watchUntilPlaying({
       page: context.browserRun.page, id, trace, started, signal,
     }),
   };

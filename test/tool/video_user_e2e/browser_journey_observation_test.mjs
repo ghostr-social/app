@@ -30,6 +30,5 @@ function pageReturning(times) {
 }
 
 function player(current_time) {
-  return {id: "protected-video", phase: "playing", presented: true,
-    current_time, paused: false};
+  return {id: "protected-video", phase: "playing", current_time, paused: false};
 }

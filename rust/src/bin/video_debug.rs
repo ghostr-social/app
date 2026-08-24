@@ -22,7 +22,6 @@ async fn main() -> anyhow::Result<()> {
         relays: nostr.read_relays.clone(),
         max_parallel_downloads: DEBUG_PARALLEL_DOWNLOADS,
         max_storage_bytes: DEBUG_STORAGE_BYTES,
-        network_status: ghostr_delivery::delivery_events::DeliveryNetworkStatus::unavailable(),
         device_integration_origin: None,
     };
     let client = Arc::new(client_with_event_cache());

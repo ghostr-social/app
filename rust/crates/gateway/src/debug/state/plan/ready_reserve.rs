@@ -9,7 +9,6 @@ use serde::Serialize;
 pub(super) struct ReadyReserveSnapshot {
     target: usize,
     ready: usize,
-    structural: usize,
     protected: usize,
     recovery_horizon_ms: u64,
     underflow_risk_bps: u16,
@@ -24,9 +23,6 @@ enum ReserveCandidateSnapshot {
         post_id: String,
     },
     Ready {
-        post_id: String,
-    },
-    Structural {
         post_id: String,
     },
     InFlight {
@@ -53,7 +49,6 @@ pub(super) fn snapshot(value: &ReadyReserveEvidence) -> ReadyReserveSnapshot {
     ReadyReserveSnapshot {
         target: value.target,
         ready: value.ready,
-        structural: value.structural,
         protected: value.protected,
         recovery_horizon_ms: value.recovery_horizon_ms,
         underflow_risk_bps: value.underflow_risk_bps,
@@ -66,10 +61,7 @@ fn candidate(value: &ReserveCandidateEvidence) -> ReserveCandidateSnapshot {
     let post_id = value.post.as_str().to_owned();
     match &value.state {
         ReserveCandidateState::Unprepared => ReserveCandidateSnapshot::Unprepared { post_id },
-        ReserveCandidateState::Ready { .. } => ReserveCandidateSnapshot::Ready { post_id },
-        ReserveCandidateState::Structural { .. } => {
-            ReserveCandidateSnapshot::Structural { post_id }
-        }
+        ReserveCandidateState::Ready => ReserveCandidateSnapshot::Ready { post_id },
         ReserveCandidateState::InFlight => ReserveCandidateSnapshot::InFlight { post_id },
         ReserveCandidateState::Probing => ReserveCandidateSnapshot::Probing { post_id },
         ReserveCandidateState::Preparing { ranges } => ReserveCandidateSnapshot::Preparing {

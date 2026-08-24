@@ -71,7 +71,7 @@ test("storage pressure may finish current media before safe ahead work begins", 
 function sample(input) {
   return {
     at_ms: input.at,
-    player: {id: input.id, current_time: input.time, phase: "playing", presented: true},
+    player: {id: input.id, current_time: input.time, phase: "playing"},
     state: {
       videos: [
         {id: input.id, downloaded_bytes: input.currentBytes, total_bytes: 4_000},

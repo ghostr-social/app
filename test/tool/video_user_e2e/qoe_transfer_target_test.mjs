@@ -32,8 +32,7 @@ test("adaptive delivery bounds waste and speculative bytes without forcing a flo
 function sample(at_ms, current, ahead) {
   return {
     at_ms,
-    player: {id: "a", phase: "playing", presented: true,
-      current_time: at_ms / 1_000},
+    player: {id: "a", phase: "playing", current_time: at_ms / 1_000},
     state: {videos: [
       {id: "a", downloaded_bytes: current, total_bytes: 4_000_000},
       {id: "b", downloaded_bytes: ahead, total_bytes: 4_000_000},

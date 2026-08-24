@@ -4,13 +4,9 @@
 #![allow(dead_code)]
 
 #[cfg(feature = "video-debug-web")]
-pub mod adaptive_plan;
-#[cfg(feature = "video-debug-web")]
 pub mod commands;
 #[cfg(feature = "video-debug-web")]
 pub mod debug_clear;
-#[cfg(feature = "video-debug-web")]
-pub mod debug_response;
 pub mod delivery;
 pub mod free_space;
 pub mod hls_origin;
@@ -25,8 +21,6 @@ pub mod progressive_journey_origin;
 pub mod progressive_journey_trace;
 pub mod progressive_request;
 pub mod raw_http;
-#[cfg(feature = "video-debug-web")]
-pub mod ready_reserve;
 pub mod request_gate_origin;
 
 use ghostr_delivery::cache_registry::{CacheStatus, CacheVideo};

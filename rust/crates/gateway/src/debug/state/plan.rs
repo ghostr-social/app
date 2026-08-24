@@ -97,7 +97,7 @@ fn mode(value: ghostr_engine::adaptive::ControlMode) -> &'static str {
 fn allocation(value: &Allocation) -> AllocationSnapshot {
     AllocationSnapshot {
         post_id: value.post.as_str().to_owned(),
-        range: range(value.request.requested_bytes()),
+        range: range(value.range),
         source: value.source.clone(),
         expected_playable_gain_ms: value.expected_playable_gain_ms,
         utility: utility(value.utility),
@@ -119,7 +119,7 @@ fn utility(value: CandidateUtility) -> UtilitySnapshot {
 fn retained(value: &RetainedAllocation) -> RetainedSnapshot {
     RetainedSnapshot {
         post_id: value.post.as_str().to_owned(),
-        range: range(value.request.requested_bytes()),
+        range: range(value.range),
         source: value.source.clone(),
         utility: utility(value.utility),
         committed_until_ms: value.committed_until_ms,

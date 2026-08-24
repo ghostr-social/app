@@ -3,13 +3,13 @@ import test from "node:test";
 import {createVideoUserE2eRunner} from "../../../tool/video_user_e2e/runner.mjs";
 import {successfulRunnerBoundaries} from "./runner_test_support.mjs";
 
-test("protected transitions click the next video immediately after first frame", async () => {
+test("protected transitions click the next video immediately after first playing", async () => {
   const fixture = successfulRunnerBoundaries();
   const refresh = fixture.boundaries.refreshDebugSnapshot;
   fixture.boundaries.refreshDebugSnapshot = async () => withNetwork(
     await refresh(), clickedCount(fixture.events),
   );
-  fixture.boundaries.watchUntilPresented = (input) => addPresented(fixture.events, input);
+  fixture.boundaries.watchUntilPlaying = (input) => addPlaying(fixture.events, input);
   fixture.boundaries.watchProgress = (input) => addProgress(fixture.events, input);
   const run = createVideoUserE2eRunner(fixture.boundaries);
 
@@ -31,7 +31,7 @@ test("protected transitions click the next video immediately after first frame",
   assert.equal(result.trace.qoe.protected_transition_latency_ms, 1);
 });
 
-async function addPresented(events, input) {
+async function addPlaying(events, input) {
   events.push(`start:${input.id}`);
   input.trace.samples.push(sample(input, 1, 0));
   await pause();
@@ -46,7 +46,7 @@ async function addProgress(events, input) {
 function sample(input, elapsed, current_time) {
   const click = input.trace.clicks.at(-1);
   return {at_ms: click.at_ms + elapsed,
-    player: {id: input.id, phase: "playing", presented: true, current_time},
+    player: {id: input.id, phase: "playing", current_time},
     state: withNetwork({videos: input.trace.ordered_video_ids.map((id) => ({
       id, downloaded_bytes: 65_536, total_bytes: 370_912,
     }))}, 0)};

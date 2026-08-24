@@ -62,7 +62,7 @@ async function addProgress(input) {
 }
 
 function sample(ids, id, at_ms, current_time) {
-  return {at_ms, player: {id, phase: "playing", presented: true, current_time},
+  return {at_ms, player: {id, phase: "playing", current_time},
     state: {
       videos: ids.map((videoId) => ({id: videoId,
         downloaded_bytes: 65_536, total_bytes: 370_912})),

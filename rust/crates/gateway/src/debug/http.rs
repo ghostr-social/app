@@ -14,7 +14,6 @@ use axum::routing::{delete, get, post, put};
 use axum::{Json, Router};
 use ghostr_delivery::debug::network::NetworkProfile;
 use ghostr_delivery::delivery_events::DeliveryHandle;
-use ghostr_net::media_request_executor::MediaRequestExecutor;
 use nostr_sdk::Client;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -27,19 +26,10 @@ const MAX_CONNECTIONS: usize = 64;
 #[derive(Clone)]
 struct DebugHttpState {
     progressive: Arc<ProgressiveState>,
-    requests: MediaRequestExecutor,
     videos: DebugVideos,
     delivery: DeliveryHandle,
     hls: HlsSessions,
     client: Arc<Client>,
-}
-
-pub(crate) struct DebugHttpResources {
-    pub progressive: Arc<ProgressiveState>,
-    pub requests: MediaRequestExecutor,
-    pub delivery: DeliveryHandle,
-    pub hls: HlsSessions,
-    pub client: Arc<Client>,
 }
 
 #[derive(Deserialize)]
@@ -66,18 +56,19 @@ struct StorageBudgetRequest {
     budget_bytes: u64,
 }
 
-pub(crate) fn router(resources: DebugHttpResources) -> Router {
-    let hls_routes = debug_hls::router(
-        resources.progressive.debug_feed.clone(),
-        resources.hls.clone(),
-    );
+pub(crate) fn router(
+    progressive: Arc<ProgressiveState>,
+    delivery: DeliveryHandle,
+    hls: HlsSessions,
+    client: Arc<Client>,
+) -> Router {
+    let hls_routes = debug_hls::router(progressive.debug_feed.clone(), hls.clone());
     let state = DebugHttpState {
-        progressive: resources.progressive,
-        requests: resources.requests,
-        videos: DebugVideos::new(resources.delivery.clone()),
-        delivery: resources.delivery,
-        hls: resources.hls,
-        client: resources.client,
+        progressive,
+        videos: DebugVideos::new(delivery.clone()),
+        delivery,
+        hls,
+        client,
     };
     Router::new()
         .route("/debug/api/state", get(current_state))
@@ -92,8 +83,7 @@ pub(crate) fn router(resources: DebugHttpResources) -> Router {
 }
 
 async fn current_state(State(state): State<DebugHttpState>) -> impl IntoResponse {
-    let snapshot: DebugSnapshot =
-        debug_state::snapshot(&state.progressive, &state.delivery, &state.requests).await;
+    let snapshot: DebugSnapshot = debug_state::snapshot(&state.progressive, &state.delivery).await;
     ([(CACHE_CONTROL, "no-store")], Json(snapshot))
 }
 

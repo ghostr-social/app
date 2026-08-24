@@ -30,7 +30,7 @@ test("rebuffer time is measured after startup and rejected above one percent", (
 function player(id, phase, at_ms) {
   return {
     at_ms,
-    player: {id, phase, presented: phase !== "starting", current_time: 0},
+    player: {id, phase, current_time: 0},
     state: {videos: [
       {id, downloaded_bytes: 1_000, total_bytes: 4_000_000},
       {id: "b", downloaded_bytes: 65_536, total_bytes: 4_000_000},

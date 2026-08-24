@@ -62,8 +62,6 @@ async function runScenario(context, signal) {
 async function captureAdaptivePlans(context, trace) {
   const state = await context.boundaries.refreshDebugSnapshot(context.browserRun.page);
   trace.adaptive_plans = structuredClone(state?.adaptive_plans);
-  trace.decisions = structuredClone(state?.decisions);
-  trace.evaluation = structuredClone(state?.evaluation);
 }
 
 async function observeAdaptivePlans(context, signal) {
