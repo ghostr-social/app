@@ -25,6 +25,7 @@ export function readyReserve(overrides = {}) {
   return {
     target: 1,
     ready: 1,
+    structural: 0,
     protected: 1,
     recovery_horizon_ms: 250,
     underflow_risk_bps: 10,

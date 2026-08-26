@@ -10,21 +10,19 @@ import {
 test("adaptive evidence measures the rolling ready reserve", () => {
   const trace = adaptiveTrace({adaptive_plans: [plan({
     mode: "safety",
-    ready_reserve: readyReserve({target: 3, ready: 1, protected: 3,
+    ready_reserve: readyReserve({target: 1, ready: 0, structural: 1, protected: 1,
       recovery_horizon_ms: 2_400, underflow_risk_bps: 320,
-      ready_coverage_ms: 5_800, candidates: [
-        {post_id: "post-1", status: "ready"},
-        {post_id: "post-2", status: "in_flight"},
-        {post_id: "post-3", status: "planned"},
-      ]}),
+      ready_coverage_ms: 0,
+      candidates: [{post_id: "post-1", status: "structural"}]}),
     allocations: [allocation({reason: "next_startability"})],
   })]});
 
   assert.doesNotThrow(() => requireAdaptivePlanEvidence(trace));
   assert.deepEqual(measureAdaptivePlans(trace).ready_reserve, {
-    maximum_target: 3,
-    maximum_ready: 1,
-    maximum_protected: 3,
-    maximum_coverage_ms: 5_800,
+    maximum_target: 1,
+    maximum_ready: 0,
+    maximum_structural: 1,
+    maximum_protected: 1,
+    maximum_coverage_ms: 0,
   });
 });
