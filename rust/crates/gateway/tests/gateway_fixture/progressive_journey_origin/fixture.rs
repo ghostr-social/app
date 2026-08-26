@@ -3,7 +3,7 @@ use base64::prelude::*;
 use super::fixture_expansion::expand_avc_samples;
 use super::fixture_timing::scale_avc_timing;
 
-const EXPANDED_SAMPLE_BYTES: usize = 9_446;
+const EXPANDED_SAMPLE_BYTES: usize = 9_434;
 const TIMING_MULTIPLIER: u32 = 2;
 
 pub(crate) fn progressive_mp4() -> Vec<u8> {

@@ -43,9 +43,11 @@ VIDEO_PLAYER_CONTRACT_TESTS := \
 	integration_test/video_player_adapter_identity_contract_test.dart
 VIDEO_PROGRESSIVE_ANDROID_TESTS := \
 	integration_test/progressive_delivery_video_test.dart \
-	integration_test/warp_feed_playback_video_test.dart
+	integration_test/warp_feed_playback_video_test.dart \
+	integration_test/warp_feed_visible_motion_video_test.dart
 VIDEO_PROGRESSIVE_FLUTTER_TESTS := \
 	test/core/media/remote_playback_delivery_id_test.dart \
+	test/media/device_video_frame_evidence_test.dart \
 	test/media/ffi_playback_telemetry_cross_port_generation_test.dart \
 	test/media/ffi_playback_telemetry_deactivation_collapse_test.dart \
 	test/media/ffi_playback_telemetry_delivery_identity_test.dart \
@@ -54,6 +56,7 @@ VIDEO_PROGRESSIVE_FLUTTER_TESTS := \
 	test/media/ffi_feed_focus_cross_port_generation_test.dart \
 	test/media/ffi_video_gateway_device_integration_scope_test.dart \
 	test/media/progressive_device_fixture_test.dart \
+	test/media/progressive_device_fixture_parity_test.dart \
 	test/media/progressive_device_origin_cancellation_accounting_test.dart \
 	test/media/progressive_device_origin_test.dart \
 	test/media/progressive_device_resources_test.dart \

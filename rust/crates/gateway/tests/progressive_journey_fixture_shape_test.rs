@@ -9,6 +9,6 @@ async fn progressive_journey_uses_the_qoe_media_span() {
     assert_eq!(origin.total_bytes(), 285_652);
     assert_eq!(
         origin.sha256(),
-        "f4b18e44d7705cb706699a35e8179fe11b682ef09cba70fb320dba162e50f7e0",
+        "74ddab015133a0fdb579a04fb71eb2a9b142629fce6eb55e9e87f8cf91d9592b",
     );
 }

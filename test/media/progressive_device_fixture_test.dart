@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../integration_test/support/progressive_mp4_fixture.dart';
@@ -12,6 +13,10 @@ void main() {
     expect(_contains(bytes, 'ftyp'), isTrue);
     expect(_contains(bytes, 'moov'), isTrue);
     expect(_contains(bytes, 'mdat'), isTrue);
+    expect(
+      sha256.convert(bytes).toString(),
+      '74ddab015133a0fdb579a04fb71eb2a9b142629fce6eb55e9e87f8cf91d9592b',
+    );
   });
 }
 
