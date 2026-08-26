@@ -1,0 +1,16 @@
+{
+  "name": "ghostr-social-site",
+  "private": true,
+  "description": "Static landing page for ghostr.social, served by Cloudflare Workers static assets.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "check": "wrangler deploy --dry-run",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.126.0"
+  }
+}

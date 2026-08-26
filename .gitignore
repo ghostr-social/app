@@ -52,3 +52,7 @@ app.*.map.json
 # Android release signing (never commit; keep private backups)
 /android/key.properties
 /android/app/ghostr-release.jks
+
+# Landing page (site/) tooling
+/site/node_modules/
+/site/.wrangler/
