@@ -9,7 +9,7 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 import '../support/audited_video_player_platform.dart';
 
 void main() {
-  testWidgets('a stalled initialization enters bounded recovery', (
+  testWidgets('a late valid initialization remains the owned controller', (
     tester,
   ) async {
     final platform = AuditedVideoPlayerPlatform(autoInitialize: false);
@@ -25,13 +25,16 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: port.buildSurface(request)));
     await tester.pump();
     expect(platform.createdCount, 1);
-    await tester.pump(const Duration(seconds: 2));
+    await tester.pump(const Duration(seconds: 3));
     await tester.runAsync(() => Future<void>.delayed(Duration.zero));
     await tester.pump();
 
-    expect(platform.createdCount, 2);
-    platform.initialize(1);
+    expect(platform.createdCount, 1);
+    expect(platform.playerCount, 1);
+    platform.initialize(0);
     await tester.pump();
     expect(find.byType(Texture), findsOneWidget);
+    expect(platform.commands, contains('play:0'));
+    expect(find.bySemanticsLabel('Video unavailable'), findsNothing);
   });
 }

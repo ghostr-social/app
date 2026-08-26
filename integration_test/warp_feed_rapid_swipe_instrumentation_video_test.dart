@@ -28,6 +28,7 @@ void main() {
     final startup = await journey.waitForPublishedFocus(tester, 0);
     await journey.waitForFirstFrame(tester, startup);
     await journey.waitForPlaying(tester, startup);
+    final playback = journey.telemetry.probe;
     final planningFocus = await journey.waitForPublishedFocus(
       tester,
       0,
@@ -35,9 +36,7 @@ void main() {
       cause: FeedFocusCause.rosterChange,
     );
     final generation = journey.focus.generationFor(planningFocus)!;
-    final planningDeliveryId = journey.telemetry.probe
-        .activationFor(planningFocus)!
-        .deliveryId;
+    final planningDeliveryId = playback.activationFor(startup)!.deliveryId;
     final overlap = await journey.waitForParallelBytes(tester, futurePaths);
     final afterOverlap = journey.preparation.latest.sequence;
     final ready = await journey.waitForReadyWindow(
@@ -59,17 +58,11 @@ void main() {
     await journey.waitForPlaying(tester, burstFinal);
     for (final focus in focuses) {
       expect(journey.isReadyIn(ready.snapshot, focus), isTrue);
-      expect(journey.telemetry.probe.firstFrameLatency(focus), isNotNull);
-      expect(journey.telemetry.probe.playingLatency(focus), isNotNull);
+      expect(playback.firstFrameLatency(focus), isNotNull);
+      expect(playback.playingLatency(focus), isNotNull);
+      expect(playback.hasPhaseFor(focus, PlaybackPhase.failed), isFalse);
       expect(
-        journey.telemetry.probe.hasPhaseFor(focus, PlaybackPhase.failed),
-        isFalse,
-      );
-      expect(
-        journey.telemetry.probe.hasPhaseFor(
-          focus,
-          PlaybackPhase.networkStalled,
-        ),
+        playback.hasPhaseFor(focus, PlaybackPhase.networkStalled),
         isFalse,
       );
     }
@@ -90,13 +83,10 @@ void main() {
     await journey.telemetry.settled;
     expect(journey.isReadyIn(ready.snapshot, next), isFalse);
     expect(journey.isReadyIn(replenished.snapshot, next), isTrue);
-    final position = journey.telemetry.probe.latestPositionFor(next)!;
+    final position = playback.latestPositionFor(next)!;
     await journey.pumpFor(tester, const Duration(seconds: 1));
     journey.reportBurst(ready, replenished, focuses, next);
-    expect(
-      journey.telemetry.probe.latestPositionFor(next),
-      greaterThan(position),
-    );
+    expect(playback.latestPositionFor(next), greaterThan(position));
     expect(journey.hadPlaybackError, isFalse);
     expect(journey.focus.hadTransportRescue, isFalse);
   });

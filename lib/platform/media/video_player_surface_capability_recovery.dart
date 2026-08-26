@@ -11,7 +11,7 @@ extension _VideoPlayerSurfaceCapabilityRecovery on _VideoPlayerSurfaceState {
     _refresh(() => _recoveryState = _VideoPlayerRecoveryState.capabilityRescue);
     _lifecycle.track(_disposeSafely(controller));
     _recoveryTimer = Timer(
-      widget.recoveryPolicy.initializationTimeout,
+      widget.recoveryPolicy.capabilityRescueTimeout,
       () => _exhaustCapabilityRescue(version),
     );
     return Future<void>.value();

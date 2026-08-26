@@ -21,7 +21,6 @@ final _attemptTokenPattern = RegExp(r'^[A-Za-z0-9_-]{21}[AQgw]$');
 enum PlayerPreparationFailureKind {
   decoderUnsupported,
   initialization,
-  initializationTimeout,
   invalidVideoTrack,
   runtimePlayback,
   playbackCommand,

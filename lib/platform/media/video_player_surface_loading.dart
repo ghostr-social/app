@@ -97,19 +97,11 @@ extension _VideoPlayerSurfaceLoading on _VideoPlayerSurfaceState {
     Future<void> superseded,
   ) async {
     if (!_ownsController(controller)) return false;
-    final initialization = controller.initialize();
-    final deadline = _InitializationDeadline(
-      widget.recoveryPolicy.initializationTimeout,
-    );
-    final exit = await deadline.wait(
-      initialization: initialization,
+    final exit = await _waitForInitialization(
+      initialization: controller.initialize(),
       closed: _closing.future,
       superseded: superseded,
     );
-    if (exit == _InitializationExit.timedOut) {
-      _failPreparation(PlayerPreparationFailureKind.initializationTimeout);
-      await _rejectController(controller);
-    }
     return exit == _InitializationExit.initialized &&
         _ownsController(controller);
   }

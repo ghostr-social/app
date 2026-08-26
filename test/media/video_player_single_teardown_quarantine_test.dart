@@ -19,7 +19,7 @@ void main() {
     );
     await fixture.show(tester, ['a'], active: 'a');
 
-    await tester.pump(playbackInitializationTimeout);
+    fixture.platform.fail(0);
     await fixture.turn(tester);
     expect(fixture.creations('a'), 1);
 

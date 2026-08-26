@@ -31,7 +31,7 @@ part 'video_player_controller_budget.dart';
 part 'video_player_controller_budget_pressure.dart';
 part 'video_player_controller_settlement.dart';
 part 'video_player_buffering_overlay.dart';
-part 'video_player_initialization_deadline.dart';
+part 'video_player_initialization_settlement.dart';
 part 'video_player_media_controller.dart';
 part 'video_player_playback_handoff.dart';
 part 'video_player_playback_handoff_command.dart';
