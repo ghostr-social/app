@@ -48,6 +48,21 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v5
 
+      - name: Install stable Rust for Axiom
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Install latest Axiom
+        env:
+          AXIOM_INSTALL_DIR: ${{ runner.temp }}/axiom/bin
+          AXIOM_NO_MODIFY_PATH: "1"
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf \
+            https://raw.githubusercontent.com/gu1p/axiom/main/install.sh | sh
+          echo "$AXIOM_INSTALL_DIR" >> "$GITHUB_PATH"
+          "$AXIOM_INSTALL_DIR/axiom" --version
+
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -67,6 +82,9 @@ jobs:
 
       - name: Enforce 80% coverage floor
         run: make coverage-summary
+
+      - name: Enforce Axiom repository policies
+        run: make axiom
 
   # ─────────────────────────────────────────────────────────────────
   #  1) Build Android App for arm64-v8a

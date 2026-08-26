@@ -88,6 +88,7 @@ The minimum verification surface for this repository is:
 - `flutter test`
 - `make test-coverage`
 - `make coverage-summary`
+- `make axiom` before declaring any task complete; this runs [Axiom](https://github.com/gu1p/axiom) on the complete Rust workspace
 - `make wake-word-unit-tests` when touching the wake-word engine
 - `make wake-word-tests` when touching dataset-driven wake-word behavior
 
@@ -145,6 +146,7 @@ A task is done only when:
 - the behavior is specified by tests first
 - all relevant tests are green
 - the relevant verification commands pass in the current branch state
+- `make axiom` passes against the complete Rust workspace
 - the change keeps the architecture boundaries intact
 - manual verification is documented for any device-only behavior that could not be automated
 - the final report lists the tests added or changed and the command results

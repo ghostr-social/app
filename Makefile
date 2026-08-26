@@ -1,5 +1,6 @@
 FLUTTER ?= flutter
 ADB ?= adb
+AXIOM ?= axiom
 FLUTTER_TEST_CONCURRENCY ?= 4
 FLUTTER_TEST_OPEN_FILES ?= 4096
 ANDROID_ABI ?= arm64-v8a
@@ -77,7 +78,7 @@ HAWK_REPOSITORY := https://github.com/gu1p/hawk
 HAWK_REVISION := 98efa9f7590d12672ece0527e4a908788792a997
 HAWK_REVISION_SHORT := 98efa9f
 
-.PHONY: test-coverage coverage-summary native-check native-test native-coverage web \
+.PHONY: test-coverage coverage-summary axiom native-check native-test native-coverage web \
 	native-dead-code-install native-dead-code native-dead-code-contract-test \
 	web-contract-test video-user-e2e video-user-e2e-contract-test \
 	video-demo \
@@ -100,6 +101,9 @@ coverage-summary: ## Report coverage and enforce the 80% Dart per-file floor.
 	@awk 'BEGIN{FS=":"; include=1} /^SF:/{include=($$0 !~ /lib\/src\/rust\//)} include && /^DA:/{split($$2,a,","); if (a[2] > 0) hit++; total++} END {if (total == 0) {print "No coverage data"; exit 1} printf("Line coverage: %.2f%% (%d/%d)\n", (hit/total)*100, hit, total)}' coverage/lcov.info
 	@sh tool/check_dart_coverage_sources.sh coverage/lcov.info lib tool/dart_coverage_exclusions.txt
 	@awk -f tool/check_dart_coverage.awk coverage/lcov.info
+
+axiom: ## Run all configured Axiom policies on the Rust workspace.
+	$(AXIOM) check --manifest-path rust/Cargo.toml
 
 native-check: ## Check the Rust package.
 	cd rust && cargo clippy --workspace --all-targets --all-features -- -D warnings
