@@ -1,6 +1,6 @@
-use std::ops::Range;
+use core::ops::Range;
 use std::str;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::TcpStream;
 
 pub(super) enum Request {

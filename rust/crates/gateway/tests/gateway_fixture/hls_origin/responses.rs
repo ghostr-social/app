@@ -2,7 +2,7 @@ use super::HlsOrigin;
 use axum::body::Body;
 use axum::extract::State;
 use axum::http::{header, Response};
-use std::sync::atomic::Ordering;
+use core::sync::atomic::Ordering;
 
 pub(super) async fn manifest(state: State<HlsOrigin>) -> Response<Body> {
     if state.master {
@@ -45,12 +45,12 @@ fn response(
     body: &'static [u8],
 ) -> Response<Body> {
     state.hits.fetch_add(1, Ordering::SeqCst);
-    state.paths.lock().unwrap().push(path);
+    state.paths.lock().expect("valid test fixture").push(path);
     let mut response = Response::builder().header(header::CONTENT_TYPE, content_type);
     if state.cacheable {
         response = response
             .header(header::CACHE_CONTROL, "max-age=60")
             .header(header::ETAG, format!("\"fixture-hls-{path}\""));
     }
-    response.body(Body::from(body)).unwrap()
+    response.body(Body::from(body)).expect("valid test fixture")
 }

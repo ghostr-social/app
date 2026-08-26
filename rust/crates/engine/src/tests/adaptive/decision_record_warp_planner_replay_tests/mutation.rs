@@ -67,23 +67,23 @@ fn mutate_network(
 
 fn rejects(mutate: impl FnOnce(&mut crate::adaptive::PlannerReplayCapsule)) {
     let (state, mut decision) = planned();
-    reject_mutation(state, &mut decision, mutate);
+    reject_mutation(&state, &mut decision, mutate);
 }
 
 fn rejects_network(mutate: impl FnOnce(&mut crate::adaptive::PlannerReplayCapsule)) {
     let (state, mut decision) = planned_network_boundary();
-    reject_mutation(state, &mut decision, mutate);
+    reject_mutation(&state, &mut decision, mutate);
 }
 
 fn reject_mutation(
-    state: crate::adaptive::PlayabilitySnapshot,
+    state: &crate::adaptive::PlayabilitySnapshot,
     decision: &mut crate::adaptive::WarpPlanningDecision,
     mutate: impl FnOnce(&mut crate::adaptive::PlannerReplayCapsule),
 ) {
     mutate(capsule(decision));
-    let captured = record(&state, decision);
+    let captured = record(state, decision);
 
-    assert_eq!(captured.replay(), DecisionReplayStatus::Verified);
+    assert_eq!(captured.integrity_status(), DecisionReplayStatus::Verified);
     assert_eq!(
         captured.replay_warp_search(),
         Err(DecisionReplayStatus::PlanMismatch)

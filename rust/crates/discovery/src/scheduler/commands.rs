@@ -28,10 +28,7 @@ pub(crate) enum FeedCommand {
         context: FeedContext,
         older_than: Option<Timestamp>,
     },
-    #[allow(
-        dead_code,
-        reason = "focus commands are exercised only by scheduler tests"
-    )]
+    #[cfg(test)]
     Focus(FeedContext),
     Close(FeedContext),
 }
@@ -46,10 +43,7 @@ pub(crate) enum WorkCommand {
         context: FeedContext,
         token: HuntToken,
     },
-    #[allow(
-        dead_code,
-        reason = "background commands are exercised only by scheduler tests"
-    )]
+    #[cfg(test)]
     Background {
         context: FeedContext,
         request: DiscoveryRequest,
@@ -78,13 +72,14 @@ impl SchedulerWorker {
 
     fn apply_feed_command(&mut self, command: FeedCommand) {
         match command {
-            FeedCommand::Open { context, request } => self.open_feed(context, request),
+            FeedCommand::Open { context, request } => self.open_feed(context, &request),
             FeedCommand::LoadMore {
                 context,
                 older_than,
             } => self.load_more(context, older_than),
+            #[cfg(test)]
             FeedCommand::Focus(context) => self.queue.focus(context),
-            FeedCommand::Close(context) => self.close_feed(context),
+            FeedCommand::Close(context) => self.close_feed(&context),
         }
     }
 
@@ -92,6 +87,7 @@ impl SchedulerWorker {
         match command {
             WorkCommand::Continue { context, token } => self.continue_feed(context, token),
             WorkCommand::Retry { context, token } => self.continue_feed_retry(context, token),
+            #[cfg(test)]
             WorkCommand::Background { context, request } => {
                 self.enqueue(
                     context,
@@ -113,13 +109,13 @@ impl SchedulerWorker {
     fn apply_control_command(&mut self, command: ControlCommand) {
         match command {
             ControlCommand::SetDataUsage(level) => {
-                self.max_concurrent = max_concurrent_requests(level)
+                self.max_concurrent = max_concurrent_requests(level);
             }
             ControlCommand::ResetSession { reply } => self.reset_session(reply),
         }
     }
 
-    fn open_feed(&mut self, context: FeedContext, request: DiscoveryRequest) {
+    fn open_feed(&mut self, context: FeedContext, request: &DiscoveryRequest) {
         self.cancel_hunt(&context);
         self.clear_feed_retry(&context);
         self.cancel_context_work(&context);
@@ -129,7 +125,7 @@ impl SchedulerWorker {
         self.enqueue(
             context,
             RetrievalPriority::Interactive,
-            plan_discovery(&request),
+            plan_discovery(request),
         );
     }
 
@@ -148,7 +144,7 @@ impl SchedulerWorker {
         );
     }
 
-    pub(crate) fn enqueue(
+    pub(super) fn enqueue(
         &mut self,
         context: FeedContext,
         priority: RetrievalPriority,

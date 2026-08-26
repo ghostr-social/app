@@ -1,5 +1,6 @@
 use super::network_class_support::fixture;
-use crate::adaptive::{ActionKind, WarpActionGenerator};
+use crate::adaptive::axiom_test_support::WarpActionGenerator;
+use crate::adaptive::ActionKind;
 use crate::origin_model::NetworkClass;
 
 #[test]

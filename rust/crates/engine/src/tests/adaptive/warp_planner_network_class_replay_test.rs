@@ -23,10 +23,13 @@ fn progressive_network_class_is_replayable_and_mutation_evident() {
         privacy: &DecisionPrivacy::from_key([23; 32]),
     });
     assert!(record.replay_warp_search().is_ok());
-    let mut json = serde_json::to_value(record).unwrap();
+    let mut json = serde_json::to_value(record).expect("valid test fixture");
     let context = &mut json["warp_decision"]["planner_replay_capsule"]["context"];
     assert_eq!(context["network_class"], "Wifi");
     context["network_class"] = serde_json::json!("Cellular");
-    let tampered: DecisionRecord = serde_json::from_value(json).unwrap();
-    assert_eq!(tampered.replay(), DecisionReplayStatus::PlanMismatch);
+    let tampered: DecisionRecord = serde_json::from_value(json).expect("valid test fixture");
+    assert_eq!(
+        tampered.integrity_status(),
+        DecisionReplayStatus::PlanMismatch
+    );
 }

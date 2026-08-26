@@ -48,7 +48,7 @@ impl DeliveryHandle {
 }
 
 impl CommandReceiver {
-    pub fn try_playback_presentation(&mut self) -> Option<PlaybackPresentation> {
+    pub(crate) fn try_playback_presentation(&self) -> Option<PlaybackPresentation> {
         self.commands.try_playback_presentation()
     }
 

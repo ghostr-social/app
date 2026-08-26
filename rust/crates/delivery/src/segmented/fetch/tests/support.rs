@@ -1,9 +1,9 @@
+use core::time::Duration;
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use reqwest::{Client, RequestBuilder};
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
 
@@ -26,7 +26,10 @@ pub(super) fn client() -> MediaRequestExecutor {
             .build()
             .expect("client"),
     );
-    MediaRequestExecutor::new(Arc::new(client), MediaRequestLimits::try_new(1, 1).unwrap())
+    MediaRequestExecutor::new(
+        Arc::new(client),
+        MediaRequestLimits::try_new(1, 1).expect("valid test fixture"),
+    )
 }
 
 pub(super) fn network_status() -> crate::delivery_events::DeliveryNetworkStatusReader {
@@ -47,7 +50,7 @@ pub(super) async fn stalled_headers() -> (String, JoinHandle<()>) {
         let (mut socket, _) = listener.accept().await.expect("request");
         let mut request = [0; 1024];
         assert!(socket.read(&mut request).await.expect("read request") > 0);
-        std::future::pending::<()>().await;
+        core::future::pending::<()>().await;
     });
     (format!("http://{address}/segment.m4s"), task)
 }
@@ -75,7 +78,7 @@ async fn serve_body(period: Option<Duration>) -> (String, JoinHandle<()>) {
                 }
             }
         } else {
-            std::future::pending::<()>().await;
+            core::future::pending::<()>().await;
         }
     });
     (format!("http://{address}/segment.m4s"), task)

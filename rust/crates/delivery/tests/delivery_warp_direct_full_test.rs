@@ -3,6 +3,8 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
+use delivery_fixture::evidence::DeliveryEvidence as _;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::media::{hit_log, hits, media_body, serve_recording};
 use delivery_fixture::options::DeliveryOptions;
@@ -12,13 +14,12 @@ use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::origin_model::{
     MediaClass, OriginContext, OriginObservation, OriginQuery, RequestMethod,
 };
-use std::time::Duration;
 
 #[tokio::test]
 async fn reliable_tiny_object_is_fetched_directly_without_head() {
     let log = hit_log();
     let body = media_body();
-    let origin = serve_recording("tiny", body.clone(), log.clone()).await;
+    let origin = serve_recording("tiny", body.clone(), std::sync::Arc::clone(&log)).await;
     let root = temp_directory("warp-direct-full");
     seed_reliable_full_get(&root, &origin, body.len() as u64);
     let harness = start_harness_at(root, DeliveryOptions::default());
@@ -31,7 +32,11 @@ async fn reliable_tiny_object_is_fetched_directly_without_head() {
 
     let ready = async {
         loop {
-            let ranges = harness.store.present_ranges("tiny").await.unwrap();
+            let ranges = harness
+                .store
+                .present_ranges("tiny")
+                .await
+                .expect("valid test fixture");
             if delivery_fixture::wait::covered(&ranges, 0, body.len() as u64) {
                 return;
             }
@@ -58,7 +63,12 @@ async fn reliable_tiny_object_is_fetched_directly_without_head() {
             .await;
     assert_eq!(decision.schema_version, 3);
     assert!(matches!(
-        decision.warp_decision.unwrap().selected.unwrap().command,
+        decision
+            .warp_decision
+            .expect("valid test fixture")
+            .selected
+            .expect("valid test fixture")
+            .command,
         RecordedWarpCommand::Transfer { .. }
     ));
     assert_eq!(
@@ -82,18 +92,18 @@ fn seed_reliable_full_get(root: &std::path::Path, url: &str, bytes: u64) {
     let mut stats = HostStats::new();
     for _ in 0..4_096 {
         stats.origin_model_mut().observe(
-            OriginObservation::success(query.clone(), now)
+            &OriginObservation::success(query.clone(), now)
                 .with_ttfb_ms(1)
                 .with_throughput_bps(100_000_000),
         );
     }
-    std::fs::create_dir_all(root).unwrap();
-    std::fs::write(root.join("host_stats.json"), stats.to_json()).unwrap();
+    std::fs::create_dir_all(root).expect("valid test fixture");
+    std::fs::write(root.join("host_stats.json"), stats.to_json()).expect("valid test fixture");
 }
 
 fn unix_time_ms() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
+        .expect("valid test fixture")
         .as_millis() as u64
 }

@@ -5,7 +5,7 @@ use crate::partial_range_store::cleanup_debt::CleanupScope;
 use crate::partial_range_store::leases::StoreLease;
 use crate::partial_range_store::policy_intent::{self, TransactionIntent};
 use crate::partial_range_store::PartialRangeStore;
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Context as _, Result};
 
 impl PartialRangeStore {
     pub(super) async fn prepare_and_publish(
@@ -54,7 +54,7 @@ impl PartialRangeStore {
             .await
             .context("read policy source manifest")?;
         ensure!(
-            RangeManifest::from_json(std::str::from_utf8(&bytes)?)? == *expected,
+            RangeManifest::from_json(core::str::from_utf8(&bytes)?)? == *expected,
             "policy source manifest changed"
         );
         Ok(disk::sha256_bytes(&bytes))

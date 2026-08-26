@@ -19,8 +19,8 @@ pub struct RetainedSearchPlan {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PrunedSearchPlan {
-    pub action_ids: Vec<u16>,
-    pub reason: SearchPruneReason,
+    pub(crate) action_ids: Vec<u16>,
+    pub(crate) reason: SearchPruneReason,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]

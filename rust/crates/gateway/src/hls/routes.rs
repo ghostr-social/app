@@ -58,7 +58,10 @@ pub(crate) async fn nested_manifest(
         .ok_or(StatusCode::NOT_FOUND)?;
     let manifest = fetch_manifest(&state, &session, resource.url, CacheUse::Existing)
         .await
-        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+        .map_err(|error| {
+            log::warn!("Nested HLS manifest fetch failed: {error:#}");
+            StatusCode::BAD_GATEWAY
+        })?;
     manifest_response(manifest)
 }
 
@@ -138,5 +141,8 @@ fn manifest_response(manifest: String) -> Result<Response<Body>, StatusCode> {
         .header(CONTENT_TYPE, HLS_CONTENT_TYPE)
         .header(CONTENT_LENGTH, manifest.len())
         .body(Body::from(manifest))
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+        .map_err(|error| {
+            log::warn!("Could not build HLS manifest response: {error}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })
 }

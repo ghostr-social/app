@@ -2,6 +2,7 @@ mod delivery_fixture;
 mod hls_terminal_wait;
 
 use axum::http::StatusCode;
+use delivery_fixture::evidence::DeliveryEvidence as _;
 use delivery_fixture::hls_recovery::{serve, HlsScript};
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
@@ -38,12 +39,20 @@ fn hls_records(handle: &ghostr_delivery::delivery_events::DeliveryHandle) -> Vec
 }
 
 fn assert_terminal_actions(records: &[DecisionRecord]) {
-    assert_eq!(records.len(), 5);
+    assert_eq!(
+        records.len(),
+        5,
+        "every attempted HLS stage must be recorded"
+    );
     let action_ids: HashSet<_> = records
         .iter()
         .map(|record| record.chosen_action_id.expect("bound HLS action"))
         .collect();
-    assert_eq!(action_ids.len(), records.len());
+    assert_eq!(
+        action_ids.len(),
+        records.len(),
+        "each HLS attempt must own a unique action"
+    );
     assert_eq!(
         records.iter().filter_map(stage).collect::<Vec<_>>(),
         vec![
@@ -52,11 +61,15 @@ fn assert_terminal_actions(records: &[DecisionRecord]) {
             RecordedHlsBootstrapStage::Initialization,
             RecordedHlsBootstrapStage::Initialization,
             RecordedHlsBootstrapStage::FirstSegment,
-        ]
+        ],
+        "the bootstrap and retry stages must be recorded in execution order"
     );
-    assert!(records
-        .iter()
-        .all(|record| record.eventual_outcome != DecisionOutcome::Pending));
+    assert!(
+        records
+            .iter()
+            .all(|record| record.eventual_outcome != DecisionOutcome::Pending),
+        "every recorded HLS action must be terminal"
+    );
 }
 
 fn assert_failed_attempt(records: &[DecisionRecord]) {
@@ -64,18 +77,37 @@ fn assert_failed_attempt(records: &[DecisionRecord]) {
         .iter()
         .filter(|record| matches!(record.eventual_outcome, DecisionOutcome::Failed { .. }))
         .collect();
-    assert_eq!(failed.len(), 1);
-    assert!(matches!(
-        &failed[0].eventual_outcome,
-        DecisionOutcome::Failed { class, .. } if class == "warp_hls_http_5xx"
-    ));
+    assert_eq!(
+        failed.len(),
+        1,
+        "only the scripted initialization retry must fail"
+    );
+    assert!(
+        matches!(
+            &failed[0].eventual_outcome,
+            DecisionOutcome::Failed { class, .. } if class == "warp_hls_http_5xx"
+        ),
+        "the failure must retain its HTTP 5xx class"
+    );
     let actual = failed[0]
         .actual_resources
         .expect("failed attempt resources");
-    assert_eq!(actual.network_bytes, 0);
-    assert_eq!(actual.storage_bytes, 0);
-    assert_eq!(actual.cpu_ms, 0);
-    assert_eq!(actual.requests, 1);
+    assert_eq!(
+        actual.network_bytes, 0,
+        "the rejected response has no body bytes"
+    );
+    assert_eq!(
+        actual.storage_bytes, 0,
+        "the rejected response stores no bytes"
+    );
+    assert_eq!(
+        actual.cpu_ms, 0,
+        "the failed fetch performs no transform work"
+    );
+    assert_eq!(
+        actual.requests, 1,
+        "the failed action admitted exactly one request"
+    );
 }
 
 fn stage(record: &ghostr_engine::adaptive::DecisionRecord) -> Option<RecordedHlsBootstrapStage> {

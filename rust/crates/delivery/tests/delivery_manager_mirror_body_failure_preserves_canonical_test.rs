@@ -1,6 +1,7 @@
 mod delivery_fixture;
 mod raw_http;
 
+use core::time::Duration;
 use delivery_fixture::gated_failure;
 use delivery_fixture::items::{focus_now, seed_range};
 use delivery_fixture::options::DeliveryOptions;
@@ -8,7 +9,6 @@ use delivery_fixture::start_harness;
 use ghostr_delivery::delivery_events::FocusItem;
 use ghostr_engine::adaptive::RetrievalRequest;
 use ghostr_engine::{DeliveryKind, EngineParams, PostId, VideoMeta};
-use std::time::Duration;
 
 const SHORT_206: &[u8] = b"HTTP/1.1 206 Partial Content\r\n\
 Content-Type: video/mp4\r\n\
@@ -42,10 +42,14 @@ async fn mirror_body_failure_preserves_the_canonical_prefix() {
     wait_for_independent_replan(&harness.handle, &mirror).await;
 
     assert_eq!(
-        harness.store.read_range("post", 0..4).await.unwrap(),
+        harness
+            .store
+            .read_range("post", 0..4)
+            .await
+            .expect("valid test fixture"),
         Some(b"0123".to_vec())
     );
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(harness.root).ok();
 }
 

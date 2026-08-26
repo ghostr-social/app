@@ -1,16 +1,11 @@
 use super::{ActiveChunk, InFlightChunks};
 use crate::manager::plan::PlannedTransfer;
+use core::cmp::Ordering;
 use ghostr_engine::scheduling::{compare, RangeRequest};
 use ghostr_engine::{ActionId, ChunkId, PostId};
-use std::{cmp::Ordering, collections::HashSet};
+use std::collections::HashSet;
 
 impl InFlightChunks {
-    /// Retains planned IO, then reserves slots for higher-priority work.
-    #[cfg(test)]
-    pub fn reconcile(&mut self, planned: &[PlannedTransfer], capacity: usize) {
-        self.reconcile_with_commitments(planned, capacity, &HashSet::new());
-    }
-
     pub fn reconcile_with_commitments(
         &mut self,
         planned: &[PlannedTransfer],
@@ -163,3 +158,7 @@ fn covers(active: &ChunkId, request: &ChunkId) -> bool {
         && active.range.start <= request.range.start
         && active.range.end >= request.range.end
 }
+
+#[cfg(test)]
+#[path = "reconciliation_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

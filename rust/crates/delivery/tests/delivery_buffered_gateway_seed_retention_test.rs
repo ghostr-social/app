@@ -2,6 +2,7 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::concurrency_origin::{ActiveRequest, ControlledOrigin};
 use delivery_fixture::demand;
 use delivery_fixture::items::{focus_now, seed_range, sized_item};
@@ -10,13 +11,12 @@ use delivery_fixture::options::{base_params, DeliveryOptions};
 use delivery_fixture::playback::playing;
 use delivery_fixture::start_harness;
 use delivery_fixture::wait::wait_for_ranges;
-use ghostr_engine::{ByteRange, EngineParams};
-use std::time::Duration;
+use ghostr_engine::ByteRange;
 
 #[tokio::test]
 async fn buffered_gateway_demand_finishes_the_active_seed_before_using_its_slot() {
     let log = hit_log();
-    let current = serve_recording("current", vec![1; 160], log.clone()).await;
+    let current = serve_recording("current", vec![1; 160], std::sync::Arc::clone(&log)).await;
     let mut ahead = ControlledOrigin::serve(32).await;
     let harness = start_harness("ghostr-buffered-demand-retention", options());
     let current_item = sized_item("current", &current, 160, 20_000);
@@ -32,14 +32,14 @@ async fn buffered_gateway_demand_finishes_the_active_seed_before_using_its_slot(
 
     let seed = next_request(&mut ahead).await;
     assert_eq!(seed.range, 0..32);
-    assert!(seed.send_byte().await);
-    wait_for_ranges(&harness.store, "ahead", &[(0, 1)]).await;
+    send(&seed, 9, "seed survives response admission").await;
     let initial_current_requests = current_requests(&log);
     let _demand = demand::blocked(&harness, "current", ByteRange::new(80, 112)).await;
 
     tokio::time::sleep(Duration::from_millis(150)).await;
     assert_eq!(current_requests(&log), initial_current_requests);
-    finish(seed, 31).await;
+    send(&seed, 23, "seed survives queued demand").await;
+    drop(seed);
     wait_for_ranges(&harness.store, "ahead", &[(0, 32)]).await;
     tokio::time::timeout(Duration::from_secs(2), async {
         while current_requests(&log) <= initial_current_requests {
@@ -55,7 +55,7 @@ async fn buffered_gateway_demand_finishes_the_active_seed_before_using_its_slot(
         "completed ahead seed reopened"
     );
 
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }
 
@@ -72,9 +72,9 @@ fn current_requests(log: &delivery_fixture::media::HitLog) -> usize {
         .count()
 }
 
-async fn finish(request: ActiveRequest, remaining: usize) {
-    for _ in 0..remaining {
-        assert!(request.send_byte().await, "seed remains active");
+async fn send(request: &ActiveRequest, bytes: usize, failure: &str) {
+    for _ in 0..bytes {
+        assert!(request.send_byte().await, "{failure}");
     }
 }
 
@@ -85,7 +85,7 @@ fn options() -> DeliveryOptions {
     params.balanced_concurrency = 1;
     params.aggressive_concurrency = 1;
     DeliveryOptions {
-        params: EngineParams { ..params },
+        params,
         ..DeliveryOptions::default()
     }
 }

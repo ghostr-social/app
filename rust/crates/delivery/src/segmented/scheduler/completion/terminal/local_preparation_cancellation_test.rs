@@ -1,9 +1,9 @@
 use super::super::CompletedObject;
 use super::{terminal, TerminalContext, TerminalInput};
 use crate::segmented::fetch::{FetchFailure, OriginTelemetry};
+use core::time::Duration;
 use ghostr_engine::adaptive::{DecisionOutcome, HlsBootstrapStage, ResourceCost};
 use ghostr_engine::origin_model::{NetworkClass, OriginOutcome};
-use std::time::Duration;
 
 #[test]
 fn local_preparation_cancellation_preserves_successful_origin_evidence() {
@@ -30,5 +30,8 @@ fn local_preparation_cancellation_preserves_successful_origin_evidence() {
         finish.actual_resources,
         Some(ResourceCost::new(131_072, 0, 0, 1))
     );
-    assert_eq!(finish.observation.unwrap().outcome, OriginOutcome::Success);
+    assert_eq!(
+        finish.observation.expect("valid test fixture").outcome,
+        OriginOutcome::Success
+    );
 }

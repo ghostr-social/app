@@ -1,59 +1,9 @@
-#[cfg(test)]
-use super::capacity::fits;
 use super::objects::insert;
-#[cfg(test)]
-use super::StageReservation;
+
 use super::{CachedHlsObject, SegmentedCache, SegmentedPhase, SegmentedSnapshot};
 use ghostr_engine::PostId;
 
 impl SegmentedCache {
-    #[cfg(test)]
-    pub(crate) fn mark_stage_preparing<R: Into<StageReservation>>(
-        &self,
-        post: &PostId,
-        generation: u64,
-        eta_ms: u64,
-        reservation: R,
-    ) -> bool {
-        let reservation = reservation.into();
-        let Some(total_bytes) = reservation.total_bytes() else {
-            return false;
-        };
-        if reservation.block_bytes == 0 {
-            return false;
-        }
-        let mut state = self.lock();
-        let Some(record) = state.focus.get(post) else {
-            return false;
-        };
-        if record.generation != generation
-            || record.snapshot.phase == SegmentedPhase::Ready
-            || record.preparing.is_some()
-            || record.assembly_bytes != 0
-        {
-            return false;
-        }
-        let protected = record.protected;
-        if !fits(&state, post, total_bytes) && protected {
-            super::objects::reclaim_unprotected_ready(&mut state);
-        }
-        if !fits(&state, post, total_bytes) {
-            return false;
-        }
-        let record = state
-            .focus
-            .get_mut(post)
-            .expect("validated HLS cache focus");
-        record.snapshot.phase = SegmentedPhase::Preparing;
-        record.snapshot.eta_ms = Some(eta_ms);
-        record.snapshot.detail = None;
-        record.reserved_bytes = reservation.block_bytes;
-        record.assembly_bytes = reservation.assembly_bytes;
-        drop(state);
-        self.changed.notify_waiters();
-        true
-    }
-
     pub(crate) fn mark_stage_ready(&self, post: &PostId, generation: u64) -> bool {
         let mut state = self.lock();
         let Some(record) = state.focus.get_mut(post) else {
@@ -66,7 +16,7 @@ impl SegmentedCache {
         {
             return false;
         }
-        let staged = std::mem::take(&mut record.staged);
+        let staged = core::mem::take(&mut record.staged);
         record.reserved_bytes = 0;
         let staged = staged
             .into_iter()
@@ -194,3 +144,7 @@ impl SegmentedCache {
         true
     }
 }
+
+#[cfg(test)]
+#[path = "staged_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

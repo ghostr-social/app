@@ -13,6 +13,7 @@ pub(in crate::partial_range_store) struct SingleResponseState {
 
 #[derive(Clone, Eq, PartialEq)]
 pub(in crate::partial_range_store) enum SingleResponseAuthority {
+    #[cfg(any(test, feature = "test"))]
     Legacy,
     Durable(HttpGenerationLease),
     ActionScoped,
@@ -20,12 +21,14 @@ pub(in crate::partial_range_store) enum SingleResponseAuthority {
 
 #[derive(Clone)]
 pub(in crate::partial_range_store) enum ResponseOwner {
+    #[cfg(any(test, feature = "test"))]
     Legacy(u64),
     Granted(StoreAction),
 }
 
 #[derive(Clone, Copy)]
 pub(in crate::partial_range_store) enum ResponseOwnerRef<'a> {
+    #[cfg(any(test, feature = "test"))]
     Legacy(u64),
     Granted(&'a StoreAction),
 }
@@ -39,6 +42,7 @@ pub(in crate::partial_range_store) enum SingleResponseStorage {
 impl ResponseOwner {
     pub(super) fn is_active(&self) -> bool {
         match self {
+            #[cfg(any(test, feature = "test"))]
             Self::Legacy(_) => true,
             Self::Granted(action) => action.is_active(),
         }
@@ -46,20 +50,25 @@ impl ResponseOwner {
 
     pub(super) fn matches(&self, owner: ResponseOwnerRef<'_>) -> bool {
         match (self, owner) {
+            #[cfg(any(test, feature = "test"))]
             (Self::Legacy(known), ResponseOwnerRef::Legacy(seen)) => *known == seen,
             (Self::Granted(known), ResponseOwnerRef::Granted(seen)) => known.same_authority(seen),
+            #[cfg(any(test, feature = "test"))]
             _ => false,
         }
     }
 
     pub(super) fn revoke(&self) {
-        if let Self::Granted(action) = self {
-            action.revoke();
+        match self {
+            Self::Granted(action) => action.revoke(),
+            #[cfg(any(test, feature = "test"))]
+            Self::Legacy(_) => {}
         }
     }
 
     pub(super) fn claim_publication(&self) -> bool {
         match self {
+            #[cfg(any(test, feature = "test"))]
             Self::Legacy(_) => true,
             Self::Granted(action) => action.claim_publication(),
         }
@@ -67,6 +76,7 @@ impl ResponseOwner {
 
     pub(super) fn as_ref(&self) -> ResponseOwnerRef<'_> {
         match self {
+            #[cfg(any(test, feature = "test"))]
             Self::Legacy(id) => ResponseOwnerRef::Legacy(*id),
             Self::Granted(action) => ResponseOwnerRef::Granted(action),
         }
@@ -77,7 +87,9 @@ impl SingleResponseAuthority {
     pub(super) fn generation(&self) -> Option<&HttpGenerationLease> {
         match self {
             Self::Durable(generation) => Some(generation),
-            Self::Legacy | Self::ActionScoped => None,
+            Self::ActionScoped => None,
+            #[cfg(any(test, feature = "test"))]
+            Self::Legacy => None,
         }
     }
 

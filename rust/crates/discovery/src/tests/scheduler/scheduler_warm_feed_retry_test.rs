@@ -4,10 +4,10 @@ use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::retrieval_types::{EventProgress, PlanFailure, RetrievalOutcome};
 use crate::scheduler::{start_discovery_scheduler, DiscoverySchedulerConfig};
 use crate::tests::scheduler_support::{context, next_outcome, next_started, note_at, request};
+use core::sync::atomic::{AtomicUsize, Ordering};
+use core::time::Duration;
 use ghostr_engine::{adaptive::DiscoveryDemand, DataUsageLevel};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::{mpsc, watch, Semaphore};
 use tokio::time::timeout;
 
@@ -29,7 +29,7 @@ impl PlanExecutor for WarmThenFail {
     ) -> PlanFuture {
         let _ = self.starts.send(retrieval);
         let call = self.calls.fetch_add(1, Ordering::SeqCst);
-        let first_page_gate = self.first_page_gate.clone();
+        let first_page_gate = std::sync::Arc::clone(&self.first_page_gate);
         Box::pin(async move {
             if call == 0 {
                 progress.send(note_at(40)).await.expect("progress");
@@ -54,7 +54,7 @@ async fn expansion_failure_does_not_restart_retry_after_playable_progress() {
         executor: Arc::new(WarmThenFail {
             starts,
             calls: AtomicUsize::new(0),
-            first_page_gate: first_page_gate.clone(),
+            first_page_gate: std::sync::Arc::clone(&first_page_gate),
         }),
         level: DataUsageLevel::Conservative,
         demand,

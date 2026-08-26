@@ -10,10 +10,19 @@ pub async fn seed(
 ) -> RepresentationBinding {
     let binding = Catalog::new().upsert(item.post.clone(), item.meta.clone());
     let key = item.post.as_str();
-    store.bind_representation(binding.clone()).await.unwrap();
-    store.set_total_len(key, bytes.len() as u64).await.unwrap();
-    store.write_range(key, 0, bytes).await.unwrap();
-    store.finalize(key, None).await.unwrap();
+    store
+        .bind_representation(binding.clone())
+        .await
+        .expect("valid test fixture");
+    store
+        .set_total_len(key, bytes.len() as u64)
+        .await
+        .expect("valid test fixture");
+    store
+        .write_range(key, 0, bytes)
+        .await
+        .expect("valid test fixture");
+    store.finalize(key, None).await.expect("valid test fixture");
     binding
 }
 
@@ -21,11 +30,6 @@ pub fn authority(
     binding: RepresentationBinding,
     revision: ContentRevision,
 ) -> PlayerPreparationAuthority {
-    PlayerPreparationAuthority::try_new(
-        binding.post().clone(),
-        binding,
-        revision,
-        "asset".to_owned(),
-    )
-    .unwrap()
+    PlayerPreparationAuthority::try_new(binding.post().clone(), binding, revision, "asset")
+        .expect("valid test fixture")
 }

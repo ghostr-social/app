@@ -20,7 +20,7 @@ impl FeedOffset {
         self.0
     }
 
-    pub fn magnitude(self) -> u32 {
+    pub(super) fn magnitude(self) -> u32 {
         self.0.unsigned_abs()
     }
 }
@@ -87,9 +87,10 @@ impl NavigationSnapshot {
         }
         let forward = FORWARD_PRIOR + u32::from(self.forward_swipes_per_minute);
         let backward = BACKWARD_PRIOR + u32::from(self.backward_swipes_per_minute);
-        let directional = match offset.value().is_positive() {
-            true => forward as f64,
-            false => backward as f64,
+        let directional = if offset.value().is_positive() {
+            forward as f64
+        } else {
+            backward as f64
         } / f64::from(forward + backward);
         let exponent = offset.magnitude().saturating_sub(1).min(64) as i32;
         ViewProbability::new(directional * DISTANCE_DECAY.powi(exponent))

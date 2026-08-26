@@ -20,8 +20,10 @@ struct ResetIntent {
 
 impl RelayPoolOwner {
     pub async fn begin_configuration(&self) -> RelayPoolTransition {
-        let serial = self.transition_serial.clone().lock_owned().await;
-        let barrier = self.barrier.clone().write_owned().await;
+        let serial = std::sync::Arc::clone(&self.transition_serial)
+            .lock_owned()
+            .await;
+        let barrier = std::sync::Arc::clone(&self.barrier).write_owned().await;
         RelayPoolTransition {
             owner: self.clone(),
             _serial: serial,
@@ -32,15 +34,20 @@ impl RelayPoolOwner {
 
     pub async fn begin_reset(&self) -> RelayPoolTransition {
         let intent = ResetIntent::new(self.clone());
-        let serial = self.transition_serial.clone().lock_owned().await;
-        let barrier = self.barrier.clone().write_owned().await;
+        let serial = std::sync::Arc::clone(&self.transition_serial)
+            .lock_owned()
+            .await;
+        let barrier = std::sync::Arc::clone(&self.barrier).write_owned().await;
         intent.complete(serial, barrier)
     }
 }
 
 impl RelayPoolTransition {
     pub async fn replace_configuration(&mut self, configuration: RelayPoolConfiguration) {
-        debug_assert!(!self.reset);
+        debug_assert!(
+            !self.reset,
+            "a session-reset transition cannot replace relay configuration"
+        );
         self.owner.roles.replace_configuration(configuration).await;
         self.owner.health.clear();
     }
@@ -50,7 +57,10 @@ impl RelayPoolTransition {
         session: SessionGeneration,
         expected_account: Option<PublicKey>,
     ) {
-        debug_assert!(self.reset);
+        debug_assert!(
+            self.reset,
+            "relay session reset requires an exclusive reset transition"
+        );
         self.owner.roles.reset_session().await;
         self.owner.health.clear();
         let mut lifecycle = locked(&self.owner.lifecycle);

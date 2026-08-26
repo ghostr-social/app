@@ -1,4 +1,4 @@
-use ghostr_engine::watch_model::{WatchContext, WatchKey, WatchModel};
+use crate::watch_model::{WatchContext, WatchKey, WatchModel};
 
 fn context(id: &str, duration_ms: u64) -> WatchContext {
     WatchContext::new(WatchKey::digest(id), Some(duration_ms))

@@ -3,7 +3,7 @@ use crate::partial_range_disk as disk;
 use crate::partial_range_manifest::RangeManifest;
 use crate::partial_range_paths::StorePaths;
 use crate::partial_range_representation_disk as identity_disk;
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use ghostr_engine::representation::RepresentationBinding;
 use std::path::Path;
 
@@ -72,7 +72,7 @@ async fn complete_manifest(path: &Path, bytes: u64) -> Result<RangeManifest> {
     manifest.set_total_len(bytes)?;
     manifest.insert(0..bytes)?;
     let span = 0..bytes;
-    for (span, checksum) in disk::checksum_blocks(path, std::slice::from_ref(&span)).await? {
+    for (span, checksum) in disk::checksum_blocks(path, core::slice::from_ref(&span)).await? {
         manifest.record_checksum(span, checksum)?;
     }
     Ok(manifest)

@@ -52,7 +52,7 @@ async fn redirected_range_updates_the_requested_routes_model() {
         estimate.effective_samples > 0.9,
         "requested route only received global fallback evidence: {estimate:?}"
     );
-    redirect_request.await.unwrap();
+    redirect_request.await.expect("valid test fixture");
     let _ = std::fs::remove_dir_all(root);
 }
 

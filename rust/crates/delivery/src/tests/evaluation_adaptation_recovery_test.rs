@@ -3,9 +3,9 @@ use crate::evaluation::{AdaptationMetricEvent, EvaluationTracker};
 #[test]
 fn adaptation_records_one_change_recovery_and_explicit_calibration() {
     let mut tracker = EvaluationTracker::default();
-    tracker.adaptation(event(1_000, true, true, [false, true, true]));
-    tracker.adaptation(event(1_100, true, false, [true, true, true]));
-    tracker.adaptation(event(1_400, false, true, [true, true, true]));
+    tracker.adaptation(&event(1_000, true, true, [false, true, true]));
+    tracker.adaptation(&event(1_100, true, false, [true, true, true]));
+    tracker.adaptation(&event(1_400, false, true, [true, true, true]));
 
     let metrics = tracker.snapshot().adaptation;
     assert_eq!(metrics.origin_change_points, 1);

@@ -8,7 +8,7 @@ use ghostr_engine::scheduling::RangeRequest;
 use ghostr_engine::{ByteRange, ChunkId, DeliveryKind, PostId, VideoMeta};
 use std::collections::HashSet;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
+use core::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub(crate) mod pressure;
@@ -65,6 +65,7 @@ pub(crate) fn planned_transfer(
     let post = PostId::new(name);
     let url = format!("https://{host}/{name}.mp4");
     PlannedTransfer {
+        control_mode: ghostr_engine::adaptive::ControlMode::Normal,
         identity: transfer_identity(&post, &url),
         request: RangeRequest {
             chunk: ChunkId {
@@ -103,5 +104,5 @@ pub(crate) fn active_hosts(host: &str) -> HashSet<String> {
 }
 
 pub(crate) fn transfer_posts<const N: usize>(items: &[PlannedTransfer; N]) -> [String; N] {
-    std::array::from_fn(|index| items[index].request.chunk.post.as_str().to_owned())
+    core::array::from_fn(|index| items[index].request.chunk.post.as_str().to_owned())
 }

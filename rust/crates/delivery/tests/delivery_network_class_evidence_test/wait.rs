@@ -39,6 +39,6 @@ fn samples(stats: &HostStats, url: &str, network: NetworkClass) -> f64 {
 fn now_ms() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
+        .expect("valid test fixture")
         .as_millis() as u64
 }

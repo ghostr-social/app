@@ -1,12 +1,10 @@
 //! The session's kind-3 contact list yields the followed pubkey set:
 //! p tags only, deduplicated, other tag names and other authors'
 //! contact lists ignored — mirrors `_loadFollowedProfiles` in
-//! lib/platform/nostr/ndk_nostr_social.dart (contacts to a Set).
+//! `lib/platform/nostr/ndk_nostr_social.dart` (contacts to a Set).
 
-mod discovery_support;
-
-use discovery_support::{contact_list, p_tag};
-use ghostr_discovery::content::social_graph::SocialGraph;
+use crate::content::social_graph::SocialGraph;
+use crate::tests::discovery_support::{contact_list, p_tag};
 use nostr_sdk::Keys;
 
 #[test]

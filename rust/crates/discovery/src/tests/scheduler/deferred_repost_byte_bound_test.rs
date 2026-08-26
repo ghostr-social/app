@@ -33,7 +33,7 @@ fn deferred(event: Event) -> RepostRetryDelta {
 
 fn large_wrapper(fill: char) -> Event {
     let target = EventId::all_zeros().to_hex();
-    let padding: String = std::iter::repeat_n(fill, 2_200_000).collect();
+    let padding: String = core::iter::repeat_n(fill, 2_200_000).collect();
     EventBuilder::new(Kind::Custom(16), "")
         .tags([tag(&["e", &target]), tag(&["x", &padding])])
         .sign_with_keys(&Keys::generate())

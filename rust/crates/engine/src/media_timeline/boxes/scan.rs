@@ -42,10 +42,10 @@ fn scan_chain<'a>(
     budget: &mut ParserBudget<'_>,
     scan: &mut Scan<'a>,
 ) -> Result<(), TimelineError> {
-    let mut cursor =
-        usize::try_from(start - segment.start).map_err(|_| TimelineError::Malformed)?;
+    let mut cursor = usize::try_from(start - segment.start)
+        .map_err(|_conversion_error| TimelineError::Malformed)?;
     while cursor.saturating_add(8) <= segment.bytes.len() {
-        let parsed = header(&segment.bytes[cursor..])?.ok_or(TimelineError::Malformed)?;
+        let parsed = header(&segment.bytes[cursor..]).ok_or(TimelineError::Malformed)?;
         if parsed.extends_to_end {
             scan_open_ended(segment, cursor, parsed, budget, scan)?;
             *boundary = None;
@@ -129,7 +129,7 @@ fn scan_search<'a>(
 ) -> Result<(), TimelineError> {
     let mut cursor: usize = 0;
     while cursor.saturating_add(8) <= segment.bytes.len() {
-        let Some(parsed) = header(&segment.bytes[cursor..])? else {
+        let Some(parsed) = header(&segment.bytes[cursor..]) else {
             advance(&mut cursor, budget)?;
             continue;
         };

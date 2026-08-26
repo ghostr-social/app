@@ -2,18 +2,17 @@ use crate::chunk::downloader::{
     HttpResponseEvidence, OpenedResponse, ResponseObservation, ResponseRejection,
     ResponseWriteMode,
 };
+use crate::tests::response_evidence_fixture::{etag, wait_for_validator, SOURCE};
 use crate::tests::timeline_manager_fixture::TimelineManagerFixture;
 use crate::tests::timeline_parser_fixture::GatedTimelineParser;
 use ghostr_engine::evidence::{EvidenceTime, EvidenceValidator};
 
-const SOURCE: &str = "https://unused.example/video.mp4";
-
 #[tokio::test]
 async fn rejected_error_page_cannot_replace_media_validator() {
     let (parser, mut started) = GatedTimelineParser::new(None, 1);
-    let mut fixture = TimelineManagerFixture::new(parser.clone()).await;
+    let mut fixture = TimelineManagerFixture::new(std::sync::Arc::<GatedTimelineParser>::clone(&parser)).await;
     fixture.focus();
-    assert!(fixture.worker.step().await);
+    assert!(fixture.step().await);
     assert_eq!(started.recv().await, Some(0));
     parser.release(0);
     let attempt = fixture
@@ -22,24 +21,20 @@ async fn rejected_error_page_cannot_replace_media_validator() {
     fixture
         .worker
         .queue_response_for_test(attempt.clone(), accepted());
-    wait_for_validator(&mut fixture).await;
-    assert_eq!(fixture.worker.validator_for_test(&fixture.post, SOURCE), Some(etag()));
+    wait_for_validator(&mut fixture, etag("v1")).await;
+    assert_eq!(
+        fixture.worker.validator_for_test(&fixture.post, SOURCE),
+        Some(etag("v1"))
+    );
 
     fixture.worker.queue_response_for_test(attempt, rejected());
-    assert!(fixture.worker.step().await);
+    assert!(fixture.step().await);
 
-    assert_eq!(fixture.worker.validator_for_test(&fixture.post, SOURCE), Some(etag()));
-    tokio::fs::remove_dir_all(fixture.root).await.unwrap();
-}
-
-async fn wait_for_validator(fixture: &mut TimelineManagerFixture) {
-    tokio::time::timeout(std::time::Duration::from_secs(1), async {
-        while fixture.worker.validator_for_test(&fixture.post, SOURCE) != Some(etag()) {
-            assert!(fixture.worker.step().await);
-        }
-    })
-    .await
-    .expect("accepted response evidence arrives");
+    assert_eq!(
+        fixture.worker.validator_for_test(&fixture.post, SOURCE),
+        Some(etag("v1"))
+    );
+    tokio::fs::remove_dir_all(fixture.root).await.expect("valid test fixture");
 }
 
 fn accepted() -> OpenedResponse {
@@ -49,7 +44,7 @@ fn accepted() -> OpenedResponse {
             range_support: Some(false),
         },
         200,
-        Some(etag()),
+        Some(etag("v1")),
         1,
     )
 }
@@ -81,8 +76,4 @@ fn response(
             observed: EvidenceTime::ordered(10, order),
         },
     )
-}
-
-fn etag() -> EvidenceValidator {
-    EvidenceValidator::strong_etag("\"v1\"").unwrap()
 }

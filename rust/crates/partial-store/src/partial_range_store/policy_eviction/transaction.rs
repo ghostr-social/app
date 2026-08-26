@@ -3,7 +3,7 @@ use crate::partial_range_disk as disk;
 use crate::partial_range_manifest::RangeManifest;
 use crate::partial_range_paths::StorePaths;
 use crate::partial_range_store::policy_intent::{self, TransactionIntent};
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use std::path::{Path, PathBuf};
 
 pub(super) async fn publish(paths: &StorePaths, key: &str) -> Result<()> {
@@ -31,7 +31,7 @@ pub(super) async fn rollback(
     policy_intent::remove_authority(paths, key).await
 }
 
-pub(super) async fn restore_backups(paths: &StorePaths, key: &str) -> Result<()> {
+async fn restore_backups(paths: &StorePaths, key: &str) -> Result<()> {
     restore_if_present(&paths.policy_data_backup(key), &paths.partial(key)).await?;
     restore_if_present(&paths.policy_manifest_backup(key), &paths.manifest(key)).await?;
     disk::sync_parent(&paths.partial(key)).await
@@ -84,7 +84,7 @@ pub(super) async fn extra_payload_bytes(paths: &StorePaths, key: &str) -> u64 {
     staged.saturating_add(backup_payload_bytes(paths, key).await)
 }
 
-pub(super) async fn ensure_canonical_pair(paths: &StorePaths, key: &str) -> Result<()> {
+async fn ensure_canonical_pair(paths: &StorePaths, key: &str) -> Result<()> {
     let manifest = disk::load_manifest(&paths.manifest(key)).await?;
     anyhow::ensure!(
         integrity::manifest_is_valid(&paths.partial(key), &manifest).await?,
@@ -125,7 +125,7 @@ async fn ensure_old_pair(paths: &StorePaths, key: &str, intent: &TransactionInte
         disk::sha256_bytes(&bytes) == intent.old_manifest_sha256(),
         "restored policy manifest does not match intent"
     );
-    let manifest = RangeManifest::from_json(std::str::from_utf8(&bytes)?)?;
+    let manifest = RangeManifest::from_json(core::str::from_utf8(&bytes)?)?;
     anyhow::ensure!(
         manifest.covered_bytes() == intent.old_accounted(),
         "restored policy accounting does not match intent"

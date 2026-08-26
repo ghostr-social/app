@@ -1,5 +1,5 @@
 use crate::partial_range_disk as range_disk;
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use ghostr_engine::representation::SourceGeneration;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -17,9 +17,8 @@ pub async fn load(path: &Path) -> Result<Option<StoredGeneration>> {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(error).context("read sparse generation"),
     };
-    let stored = match serde_json::from_str(&text) {
-        Ok(stored) => stored,
-        Err(_) => return Ok(None),
+    let Ok(stored) = serde_json::from_str(&text) else {
+        return Ok(None);
     };
     Ok(validated(stored))
 }

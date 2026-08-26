@@ -1,10 +1,8 @@
 //! Search feeds trim and lowercase the viewer's query. Hashtag queries
 //! become hashtag requests, and blank queries never reach a relay.
 
-mod feed_support;
-
-use feed_support::empty_graph;
-use ghostr_discovery::feed::spec::FeedSpec;
+use crate::feed::spec::FeedSpec;
+use crate::tests::feed_support::empty_graph;
 
 fn search(query: &str) -> FeedSpec {
     FeedSpec::Search(query.to_owned())

@@ -4,7 +4,7 @@ use axum::body::to_bytes;
 use axum::http::header::{ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE};
 use axum::http::StatusCode;
 use gateway_fixture::progressive::progressive_harness;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn serves_a_mid_file_range_with_a_correct_content_range() {

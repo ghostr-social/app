@@ -8,13 +8,13 @@ const TIMING_MULTIPLIER: u32 = 2;
 
 pub(crate) fn progressive_mp4() -> Vec<u8> {
     scale_avc_timing(
-        expand_avc_samples(source_mp4(), EXPANDED_SAMPLE_BYTES),
+        expand_avc_samples(&source_mp4(), EXPANDED_SAMPLE_BYTES),
         TIMING_MULTIPLIER,
     )
 }
 
 pub(super) fn tail_moov_mp4() -> Vec<u8> {
-    super::fixture_tail::move_moov_to_tail(progressive_mp4())
+    super::fixture_tail::move_moov_to_tail(&progressive_mp4())
 }
 
 fn source_mp4() -> Vec<u8> {

@@ -1,10 +1,11 @@
-use crate::manager::timeline::{
-    TimelineIncomplete, TimelineInput, TimelineParse, TimelineParser, TimelineRejection,
-    TimelineTerminal,
-};
+use crate::manager::timeline::axiom_test_support::TimelineIncomplete;
+use crate::manager::timeline::axiom_test_support::TimelineInput;
+use crate::manager::timeline::axiom_test_support::TimelineParse;
+use crate::manager::timeline::axiom_test_support::TimelineParser;
+use crate::manager::timeline::{TimelineRejection, TimelineTerminal};
 use ghostr_engine::media_timeline::MediaTimeline;
 use ghostr_engine::media_timeline::TimelineParseControl;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use tokio::sync::mpsc;
 
@@ -17,7 +18,7 @@ pub(crate) struct GatedTimelineParser {
 }
 
 impl GatedTimelineParser {
-    pub(crate) fn new(
+    pub(super) fn new(
         first_ready: Option<MediaTimeline>,
         gates: usize,
     ) -> (Arc<Self>, mpsc::UnboundedReceiver<usize>) {
@@ -32,7 +33,7 @@ impl GatedTimelineParser {
         (Arc::new(parser), receiver)
     }
 
-    pub(crate) fn rejecting_refresh(
+    pub(super) fn rejecting_refresh(
         first_ready: MediaTimeline,
     ) -> (Arc<Self>, mpsc::UnboundedReceiver<usize>) {
         let (parser, receiver) = Self::new(Some(first_ready), 2);
@@ -46,9 +47,9 @@ impl GatedTimelineParser {
         )
     }
 
-    pub(crate) fn release(&self, call: usize) {
+    pub(super) fn release(&self, call: usize) {
         let (released, changed) = &*self.released;
-        released.lock().unwrap()[call] = true;
+        released.lock().expect("valid test fixture")[call] = true;
         changed.notify_all();
     }
 }
@@ -56,14 +57,14 @@ impl GatedTimelineParser {
 impl TimelineParser for GatedTimelineParser {
     fn parse(&self, _input: TimelineInput, _control: &dyn TimelineParseControl) -> TimelineParse {
         let call = self.calls.fetch_add(1, Ordering::AcqRel);
-        self.started.send(call).unwrap();
+        self.started.send(call).expect("valid test fixture");
         let (released, changed) = &*self.released;
-        let mut state = released.lock().unwrap();
+        let mut state = released.lock().expect("valid test fixture");
         while !state[call] {
-            state = changed.wait(state).unwrap();
+            state = changed.wait(state).expect("valid test fixture");
         }
         TimelineParse::Completed(match (call, self.first_ready.as_ref()) {
-            (0, Some(timeline)) => TimelineTerminal::Ready(timeline.clone()),
+            (0, Some(timeline)) => TimelineTerminal::Ready(Box::new(timeline.clone())),
             _ if self.reject_refresh => TimelineTerminal::Rejected(TimelineRejection::Malformed),
             _ => TimelineTerminal::Incomplete(TimelineIncomplete::Unavailable),
         })

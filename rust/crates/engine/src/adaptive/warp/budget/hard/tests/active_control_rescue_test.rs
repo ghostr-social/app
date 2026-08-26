@@ -14,8 +14,8 @@ fn cancelling_an_active_request_cannot_destroy_its_reserved_promotion() {
     );
     let cancel = node(2, ActionKind::Cancel(active));
     let mut budget = HardBudget::unlimited()
-        .protect(std::slice::from_ref(&promote))
-        .unwrap();
+        .protect(core::slice::from_ref(&promote))
+        .expect("valid test fixture");
 
     assert_eq!(
         budget.consume_action(&cancel),

@@ -1,4 +1,4 @@
-use sha2::{Digest, Sha256};
+use sha2::{Digest as _, Sha256};
 
 pub(super) mod fixture;
 mod fixture_expansion;
@@ -67,7 +67,7 @@ impl ProgressiveJourneyOrigin {
         self.state.requests.snapshot()
     }
 
-    pub fn get_ranges(&self) -> Vec<std::ops::Range<u64>> {
+    pub fn get_ranges(&self) -> Vec<core::ops::Range<u64>> {
         self.state.requests.get_ranges()
     }
 

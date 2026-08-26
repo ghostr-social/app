@@ -18,7 +18,7 @@ fn same_source_retry_releases_reservation_but_preserves_prior_stages() {
     ));
     cache
         .store_stage_object(&post, 1, object("root", b"manifest"))
-        .unwrap();
+        .expect("valid test fixture");
     assert!(cache.mark_stage_preparing(
         &post,
         1,
@@ -42,7 +42,7 @@ fn same_source_retry_releases_reservation_but_preserves_prior_stages() {
 fn object(request_url: &str, body: &[u8]) -> PreparedObject {
     PreparedObject {
         request_url: request_url.to_owned(),
-        final_url: Url::parse("https://primary.example/index.m3u8").unwrap(),
+        final_url: Url::parse("https://primary.example/index.m3u8").expect("valid test fixture"),
         body: Arc::from(body),
         content_type: Some("application/vnd.apple.mpegurl".to_owned()),
         cache: Default::default(),

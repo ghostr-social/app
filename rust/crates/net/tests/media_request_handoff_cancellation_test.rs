@@ -11,7 +11,7 @@ async fn cancellation_after_handoff_returns_capacity() {
     let mut next = HeldOrigin::serve().await;
     let requests = MediaRequestExecutor::new(
         LocalMediaClient::shared(),
-        MediaRequestLimits::try_new(1, 1).unwrap(),
+        MediaRequestLimits::try_new(1, 1).expect("valid test fixture"),
     );
     let active = open(requests.clone(), held.url.clone()).await;
     held.expect_hit().await;
@@ -20,13 +20,13 @@ async fn cancellation_after_handoff_returns_capacity() {
 
     held.release_one();
     drop(active);
-    let admitted = handed_off.await.unwrap();
+    let admitted = handed_off.await.expect("valid test fixture");
     drop(admitted);
     let successor = tokio::spawn(open(requests, next.url.clone()));
 
     next.expect_hit().await;
     next.release_one();
-    drop(successor.await.unwrap());
+    drop(successor.await.expect("valid test fixture"));
 }
 
 async fn admit(
@@ -35,10 +35,10 @@ async fn admit(
 ) -> ghostr_net::media_request_executor::AdmittedMediaRequest {
     requests
         .get(&url, PreemptionAuthority::Transition)
-        .unwrap()
+        .expect("valid test fixture")
         .admit()
         .await
-        .unwrap()
+        .expect("valid test fixture")
 }
 
 async fn open(
@@ -47,11 +47,13 @@ async fn open(
 ) -> ghostr_net::media_request_executor::MediaResponse {
     requests
         .get(&url, PreemptionAuthority::Transition)
-        .unwrap()
+        .expect("valid test fixture")
         .admit()
         .await
-        .unwrap()
-        .send()
+        .expect("valid test fixture")
+        .send_with_redirect_deadline(
+            tokio::time::Instant::now() + core::time::Duration::from_secs(30),
+        )
         .await
-        .unwrap()
+        .expect("valid test fixture")
 }

@@ -1,8 +1,8 @@
 use super::EvictionOutcome;
 use crate::partial_range_disk::Entry;
 use crate::partial_range_manifest::RangeManifest;
-use anyhow::{ensure, Context, Result};
-use std::ops::Range;
+use anyhow::{ensure, Context as _, Result};
+use core::ops::Range;
 
 pub(super) struct EvictionPlan {
     pub(super) source: RangeManifest,

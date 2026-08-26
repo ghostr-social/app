@@ -5,15 +5,23 @@ use gateway_fixture::cache_video;
 use gateway_fixture::progressive::progressive_harness;
 use gateway_fixture::progressive_request::capability_request;
 use ghostr_engine::{DeliveryKind, VideoMeta};
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn cache_replacement_retires_the_old_stored_asset() {
     let harness = progressive_harness("ghostr-progressive-cache-binding");
     let old_meta = meta("https://cdn.example/a.mp4");
     harness.bind_video("clip", &old_meta.urls[0], Some(4)).await;
-    harness.store.set_total_len("clip", 4).await.unwrap();
-    harness.store.write_range("clip", 0, b"aaaa").await.unwrap();
+    harness
+        .store
+        .set_total_len("clip", 4)
+        .await
+        .expect("valid test fixture");
+    harness
+        .store
+        .write_range("clip", 0, b"aaaa")
+        .await
+        .expect("valid test fixture");
     harness.posts.replace([cache_video("clip", old_meta)]);
     let capability = harness.issue_video_asset("clip").await;
 
@@ -21,7 +29,12 @@ async fn cache_replacement_retires_the_old_stored_asset() {
         .posts
         .replace([cache_video("clip", meta("https://cdn.example/b.mp4"))]);
     let request = capability_request("clip", capability.as_str(), None);
-    let response = harness.router.clone().oneshot(request).await.unwrap();
+    let response = harness
+        .router
+        .clone()
+        .oneshot(request)
+        .await
+        .expect("valid test fixture");
 
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
     std::fs::remove_dir_all(harness.root).expect("remove store");

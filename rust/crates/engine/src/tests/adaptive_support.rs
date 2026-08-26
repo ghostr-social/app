@@ -51,7 +51,8 @@ fn candidate(distance: usize) -> CandidateSnapshot {
     let mut candidate = CandidateSnapshot {
         post: PostId::new(format!("p{distance}")),
         feed_offset: FeedOffset::new(distance as i32),
-        view_probability: ViewProbability::new(0.88_f64.powi(distance as i32)).unwrap(),
+        view_probability: ViewProbability::new(0.88_f64.powi(distance as i32))
+            .expect("valid test fixture"),
         retrieval_eligible: true,
         total_bytes: None,
         bitrate_bps: 1_000_000,
@@ -64,6 +65,7 @@ fn candidate(distance: usize) -> CandidateSnapshot {
             StartupProvenance::ClassicMp4V1,
         ),
         player_preparation: crate::adaptive::PlayerPreparation::FirstFrameRendered,
+        direct_playback_blocked: false,
         timeline_probe: None,
         playable_ranges,
         demanded: None,

@@ -1,17 +1,15 @@
 //! A creator-scoped feed serves every creator it names. The Following
 //! feed hands its whole follow set down
-//! (lib/features/video_catalog/domain/filtered_video_feed_repository.dart
+//! (`lib/features/video_catalog/domain/filtered_video_feed_repository.dart`
 //! passes `followed` for FeedKind.following, and ndk turns it into the
 //! query's `authors`), so a spec that kept only one of them would query
 //! one author and then filter the page down to that same author —
 //! everyone else's posts would vanish from the feed.
 
-mod feed_support;
-
-use feed_support::{empty_graph, parsed_posts, video_note};
-use ghostr_discovery::content::social_graph::SocialGraph;
-use ghostr_discovery::feed::spec::FeedSpec;
-use ghostr_discovery::feed::store::FeedStore;
+use crate::content::social_graph::SocialGraph;
+use crate::feed::spec::FeedSpec;
+use crate::feed::store::FeedStore;
+use crate::tests::feed_support::{empty_graph, parsed_posts, video_note};
 use nostr_sdk::Keys;
 
 #[test]

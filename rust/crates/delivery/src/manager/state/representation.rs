@@ -12,11 +12,11 @@ impl DeliveryState {
         preview: Option<PreviewDescriptor>,
     ) {
         let previous = self.catalog.binding(&post);
-        let binding = self.catalog.upsert(post.clone(), meta);
         if let Some(preview) = preview {
             self.catalog.set_preview(&post, Some(preview));
         }
-        self.accept_binding(previous, binding);
+        let binding = self.catalog.upsert(post, meta);
+        self.accept_binding(previous.as_ref(), binding);
     }
 
     pub(super) fn upsert_progressive_candidate(&mut self, candidate: DeliveryCandidate) {
@@ -32,7 +32,7 @@ impl DeliveryState {
         if let Some(preview) = preview {
             self.catalog.set_preview(&post, Some(preview));
         }
-        self.accept_binding(previous, binding);
+        self.accept_binding(previous.as_ref(), binding);
     }
 
     pub(super) fn remove_progressive(&mut self, post: &PostId) {
@@ -52,13 +52,13 @@ impl DeliveryState {
 
     fn accept_binding(
         &mut self,
-        previous: Option<RepresentationBinding>,
+        previous: Option<&RepresentationBinding>,
         binding: RepresentationBinding,
     ) {
-        if previous.as_ref() == Some(&binding) {
+        if previous == Some(&binding) {
             return;
         }
-        if previous.as_ref().is_some_and(|old| old != &binding) {
+        if previous.is_some_and(|old| old != &binding) {
             self.forget_evictions(binding.post());
             self.changed_representations.push(binding.post().clone());
         }
@@ -79,11 +79,11 @@ impl DeliveryState {
     }
 
     pub(crate) fn take_representation_bindings(&mut self) -> Vec<RepresentationBinding> {
-        std::mem::take(&mut self.pending_representations)
+        core::mem::take(&mut self.pending_representations)
     }
 
     pub(crate) fn take_changed_representations(&mut self) -> Vec<PostId> {
-        std::mem::take(&mut self.changed_representations)
+        core::mem::take(&mut self.changed_representations)
     }
 
     pub(crate) fn retained_posts(&self) -> HashSet<PostId> {

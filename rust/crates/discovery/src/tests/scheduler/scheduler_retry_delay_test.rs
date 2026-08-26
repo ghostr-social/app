@@ -1,13 +1,15 @@
 use crate::scheduler::retry::retry_delay;
 use crate::tests::scheduler_support::context;
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn retry_ladder_caps_at_eight_seconds_and_spreads_contexts() {
     let main = context("main");
     let following = context("following");
     let first = retry_delay(&main, 0);
-    let stagger = first - Duration::from_millis(500);
+    let stagger = first
+        .checked_sub(Duration::from_millis(500))
+        .expect("retry delay includes the half-second base");
 
     assert!(stagger >= Duration::from_millis(25));
     assert!(stagger <= Duration::from_millis(200));

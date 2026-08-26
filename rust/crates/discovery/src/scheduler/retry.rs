@@ -5,8 +5,8 @@ use crate::query::search::plan_discovery;
 use crate::retrieval_types::{FeedContext, PlanFailure, RetrievalPriority, RetrievalPurpose};
 use crate::scheduler::hunt::HuntToken;
 use crate::scheduler::{DiscoveryCommand, SchedulerWorker, WorkCommand};
+use core::time::Duration;
 use nostr_sdk::Event;
-use std::time::Duration;
 
 const RETRY_DELAYS: [Duration; 5] = [
     Duration::from_millis(500),
@@ -50,7 +50,7 @@ pub(crate) fn should_retry_feed(
 }
 
 impl SchedulerWorker {
-    pub(crate) fn advance_feed(
+    pub(super) fn advance_feed(
         &mut self,
         context: FeedContext,
         retry: bool,
@@ -69,7 +69,7 @@ impl SchedulerWorker {
         self.clear_feed_retry(&context);
     }
 
-    pub(crate) fn continue_feed_retry(&mut self, context: FeedContext, token: HuntToken) {
+    pub(super) fn continue_feed_retry(&mut self, context: FeedContext, token: HuntToken) {
         if self.pending_feed_retries.get(&context) != Some(&token) {
             return;
         }
@@ -87,7 +87,7 @@ impl SchedulerWorker {
         }
     }
 
-    pub(crate) fn clear_feed_retry(&mut self, context: &FeedContext) {
+    pub(super) fn clear_feed_retry(&mut self, context: &FeedContext) {
         self.cancel_hunt(context);
         self.retry_attempts.remove(context);
         self.pending_feed_retries.remove(context);

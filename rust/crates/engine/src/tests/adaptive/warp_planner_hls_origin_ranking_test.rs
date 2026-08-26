@@ -1,7 +1,8 @@
+use crate::adaptive::axiom_test_support::WarpActionGenerator;
 use crate::adaptive::{
     AdaptivePlayabilityPolicy, FeedOffset, HlsBootstrapStage, HlsBootstrapState,
-    HlsCandidateSnapshot, PlannerCommand, PlannerContext, ViewProbability, WarpActionGenerator,
-    WarpPlanner, WarpPlannerInput,
+    HlsCandidateSnapshot, PlannerCommand, PlannerContext, ViewProbability, WarpPlanner,
+    WarpPlannerInput,
 };
 use crate::origin_model::{
     MediaClass, NetworkClass, OriginContext, OriginModel, OriginObservation, OriginQuery,
@@ -43,7 +44,7 @@ fn candidate(post: &str, source: &str) -> HlsCandidateSnapshot {
     HlsCandidateSnapshot {
         post: PostId::new(post),
         feed_offset: FeedOffset::new(0),
-        view_probability: ViewProbability::new(1.0).unwrap(),
+        view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
         startup_value_ms: 750,
         cursor: Default::default(),
         state: HlsBootstrapState::Pending {
@@ -74,5 +75,5 @@ fn observe(model: &mut OriginModel, source: &str, rate: u64, ttfb: u64, sample: 
     let observation = OriginObservation::success(OriginQuery::new(source, context), 9_000 + sample)
         .with_ttfb_ms(ttfb)
         .with_throughput_bps(rate);
-    model.observe(observation);
+    model.observe(&observation);
 }

@@ -4,6 +4,7 @@
 pub(crate) mod adaptive_support;
 mod byte_range_test;
 mod cmaf_timeline_support;
+mod external;
 mod host_stats_support;
 mod media_timeline_assertions;
 mod media_timeline_support;

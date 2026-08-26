@@ -3,12 +3,13 @@
 mod delivery_fixture;
 mod raw_http;
 
+use core::time::Duration;
+use delivery_fixture::evidence::DeliveryEvidence as _;
 use delivery_fixture::items::{focus_now, unsized_item};
 use delivery_fixture::options::serial_long_retry_options;
 use delivery_fixture::start_harness;
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use raw_http::spawn_stalled_headers;
-use std::time::Duration;
 
 #[tokio::test]
 async fn an_active_head_occupies_the_manager_request_budget() {
@@ -52,7 +53,7 @@ async fn an_active_head_occupies_the_manager_request_budget() {
         .expect("second HEAD reaches its origin");
     second.requests.abort();
     let _ = second.requests.await;
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }
 

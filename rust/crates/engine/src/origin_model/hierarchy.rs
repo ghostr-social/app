@@ -19,12 +19,13 @@ pub(super) fn aggregate(
     };
     for (level, record) in records.into_iter().enumerate() {
         let Some(record) = record else { continue };
-        apply(&mut result, record.snapshot(prior, now, timing), level);
+        let next = record.snapshot(prior, now, timing);
+        apply(&mut result, &next, level);
     }
     result
 }
 
-fn apply(current: &mut RecordSnapshot, next: RecordSnapshot, level: usize) {
+fn apply(current: &mut RecordSnapshot, next: &RecordSnapshot, level: usize) {
     let shrinkage = [8.0, 4.0, 2.0][level];
     let weight = next.evidence / (next.evidence + shrinkage);
     current.success_mean = mix(current.success_mean, next.success_mean, weight);

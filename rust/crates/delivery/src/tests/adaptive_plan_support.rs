@@ -43,7 +43,7 @@ pub(super) fn plan_with_active(range: ByteRange, committed_until_ms: u64) -> Pla
     let identity = state
         .catalog()
         .transfer_identity(&post, &source(1))
-        .unwrap();
+        .expect("valid test fixture");
     let active = ActiveAction::range(ChunkId { post, range }, identity, committed_until_ms);
     run(PlanScenario {
         state,

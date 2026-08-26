@@ -1,15 +1,15 @@
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use ghostr_delivery::delivery_events::DeliveryPlayback;
-use ghostr_delivery::playback_admission::PlaybackRejection;
+use ghostr_delivery::playback_admission::{PlaybackAdmissionCounters, PlaybackRejection};
 use ghostr_engine::playback::{
     PlaybackObservation, PlaybackObservationSequence, PlaybackPhase, PlaybackSession,
 };
 use ghostr_engine::PostId;
-use std::time::Duration;
 
 #[tokio::test]
 async fn manager_counts_each_typed_playback_admission_outcome() {
@@ -30,7 +30,7 @@ async fn manager_counts_each_typed_playback_admission_outcome() {
     assert_eq!(counters.rejected(PlaybackRejection::StaleSession), 1);
     assert_eq!(counters.rejected(PlaybackRejection::StaleSequence), 1);
     assert_eq!(snapshot.last_accepted(), Some(&PostId::new("current")));
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }
 
@@ -45,18 +45,19 @@ async fn report_and_wait(
 
 async fn wait_for_count(harness: &delivery_fixture::DeliveryHarness, total: u64) {
     tokio::time::timeout(Duration::from_secs(1), async {
-        while harness
-            .handle
-            .playback_admission_snapshot()
-            .counters()
-            .total()
-            < total
-        {
+        while counter_total(harness.handle.playback_admission_snapshot().counters()) < total {
             tokio::task::yield_now().await;
         }
     })
     .await
     .expect("playback admission counter");
+}
+
+fn counter_total(counters: PlaybackAdmissionCounters) -> u64 {
+    counters.accepted()
+        + counters.rejected(PlaybackRejection::InactiveDelivery)
+        + counters.rejected(PlaybackRejection::StaleSession)
+        + counters.rejected(PlaybackRejection::StaleSequence)
 }
 
 fn update(post: &str, generation: u64, sequence: u64) -> DeliveryPlayback {
@@ -69,6 +70,6 @@ fn update(post: &str, generation: u64, sequence: u64) -> DeliveryPlayback {
             1_000,
             PlaybackPhase::Playing,
         )
-        .unwrap(),
+        .expect("valid test fixture"),
     }
 }

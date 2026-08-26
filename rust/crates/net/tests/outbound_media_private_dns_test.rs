@@ -1,9 +1,9 @@
+use core::net::SocketAddr;
+use core::time::Duration;
 use ghostr_net::outbound_media_client::MediaHttpClient;
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
-use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::TcpListener;
 
 struct StaticResolver(SocketAddr);

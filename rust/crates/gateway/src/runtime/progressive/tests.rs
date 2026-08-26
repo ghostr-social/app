@@ -1,4 +1,5 @@
 use super::binding_is_current;
+use core::time::Duration;
 use ghostr_delivery::cache_registry::{CacheRegistry, CacheStatus, CacheVideo};
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::playback::{
@@ -7,7 +8,6 @@ use ghostr_engine::playback::{
 };
 use ghostr_engine::video_rendition::VideoRendition;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
-use std::time::Duration;
 
 #[cfg(not(feature = "video-debug-web"))]
 mod cache_wake_test;
@@ -48,12 +48,12 @@ fn selected_binding(
         1_000,
         PlaybackPhase::NetworkStalled,
     )
-    .unwrap();
+    .expect("valid test fixture");
     let target =
         AdaptiveBufferPolicy::default().target(network, MediaConsumption::new(6_000_000, 1_000));
     catalog
         .select_rendition(&post, network, observation, target)
-        .unwrap()
+        .expect("valid test fixture")
 }
 
 fn cached(meta: VideoMeta) -> CacheVideo {
@@ -65,7 +65,7 @@ fn cached(meta: VideoMeta) -> CacheVideo {
 }
 
 fn variant(meta: VideoMeta, bitrate: u64) -> VideoRendition {
-    VideoRendition::try_new(meta, Some(bitrate)).unwrap()
+    VideoRendition::try_new(meta, Some(bitrate)).expect("valid test fixture")
 }
 
 fn meta(name: &str) -> VideoMeta {

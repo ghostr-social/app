@@ -1,6 +1,6 @@
 use crate::relay::roles::{RelayPoolConfiguration, RelayRole};
 use nostr_sdk::RelayServiceFlags;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 #[derive(Clone, Copy, Default)]
 struct RelayUse {
@@ -60,7 +60,7 @@ impl RoleBook {
         }
     }
 
-    pub(super) fn persistent_relays(&self) -> HashSet<String> {
+    pub(super) fn persistent_relays(&self) -> BTreeSet<String> {
         self.configuration
             .read_relays
             .iter()

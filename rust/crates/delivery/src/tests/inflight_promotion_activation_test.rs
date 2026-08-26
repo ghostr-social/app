@@ -34,7 +34,7 @@ async fn rejected_commit_can_restore_the_exact_range_authority() {
     let preflight = fixture
         .active
         .preflight_promotion(&fixture.target, 50)
-        .unwrap();
+        .expect("valid test fixture");
     assert!(fixture.active.activate_promotion(&preflight, 50));
     assert!(fixture.active.rollback_promotion(&preflight));
 
@@ -54,24 +54,24 @@ async fn rejected_commit_rolls_back_the_exact_store_delta_without_cancelling() {
     let preflight = fixture
         .active
         .preflight_promotion(&fixture.target, 50)
-        .unwrap();
+        .expect("valid test fixture");
     let extension = fixture
         .store
         .extend_action(&fixture.action, 16)
         .await
-        .unwrap();
+        .expect("valid test fixture");
     assert_eq!(extension.additional_bytes(), 12);
     assert!(fixture.active.activate_promotion(&preflight, 50));
     assert!(fixture.active.rollback_promotion(&preflight));
-    fixture.store.rollback_action(extension).await.unwrap();
+    fixture.store.rollback_action(extension).await.expect("valid test fixture");
 
     let retry = fixture
         .store
         .extend_action(&fixture.action, 16)
         .await
-        .unwrap();
+        .expect("valid test fixture");
     assert_eq!(retry.additional_bytes(), 12);
-    fixture.store.rollback_action(retry).await.unwrap();
+    fixture.store.rollback_action(retry).await.expect("valid test fixture");
     assert!(!fixture.token.is_cancelled());
     fixture.cleanup().await;
 }

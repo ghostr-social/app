@@ -5,8 +5,8 @@ use crate::query::search::{resolve_relays, PlannedQuery, QueryPlan, QueryRole};
 use crate::relay::route::RelayPoolRoute;
 use crate::retrieval_types::EventProgress;
 use crate::session_generation::SessionGeneration;
+use core::time::Duration;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Semaphore;
 use tokio::time::{timeout_at, Instant};
 
@@ -22,7 +22,7 @@ pub(super) struct ContentFetchRequest {
     pub progress: Option<EventProgress>,
 }
 
-pub(super) struct FetchRequest {
+struct FetchRequest {
     pub session: SessionGeneration,
     pub query: PlannedQuery,
     pub outbox: Option<Vec<String>>,
@@ -46,7 +46,7 @@ impl RelayPlanExecutor {
                     session: request.session,
                     query,
                     outbox,
-                    route: request.route.clone(),
+                    route: std::sync::Arc::clone(&request.route),
                     progress: request.progress.clone(),
                 });
                 (role, fetch)
@@ -54,7 +54,7 @@ impl RelayPlanExecutor {
             .collect()
     }
 
-    pub(super) fn spawn_fetch(&self, request: FetchRequest) -> FetchHandle {
+    fn spawn_fetch(&self, request: FetchRequest) -> FetchHandle {
         tokio::spawn(fetch(self.relay_fetch(request)))
     }
 
@@ -66,7 +66,7 @@ impl RelayPlanExecutor {
         );
         RelayFetch {
             route: request.route,
-            cache: self.cache.clone(),
+            cache: std::sync::Arc::clone(&self.cache),
             session: request.session,
             relays,
             query: request.query,
@@ -79,7 +79,7 @@ impl RelayPlanExecutor {
         session: SessionGeneration,
         plan: QueryPlan,
         outboxes: Vec<Option<Vec<String>>>,
-        route: Arc<RelayPoolRoute>,
+        route: &Arc<RelayPoolRoute>,
     ) -> Vec<(QueryRole, FetchHandle)> {
         let gate = Arc::new(Semaphore::new(ENRICHMENT_FETCH_CONCURRENCY));
         let deadline = Instant::now() + ENRICHMENT_STAGE_TIMEOUT;
@@ -91,10 +91,10 @@ impl RelayPlanExecutor {
                     session,
                     query,
                     outbox,
-                    route: route.clone(),
+                    route: Arc::clone(route),
                     progress: None,
                 };
-                let fetch = self.spawn_gated_fetch(request, gate.clone(), deadline);
+                let fetch = self.spawn_gated_fetch(request, std::sync::Arc::clone(&gate), deadline);
                 (QueryRole::Additive, fetch)
             })
             .collect()
@@ -110,11 +110,17 @@ impl RelayPlanExecutor {
         tokio::spawn(async move {
             let permit = timeout_at(deadline, gate.acquire_owned())
                 .await
-                .map_err(|_| crate::retrieval_types::PlanFailure::new(ENRICHMENT_TIMEOUT_MESSAGE))?
+                .map_err(|error| {
+                    log::warn!("Enrichment permit timed out: {error}");
+                    crate::retrieval_types::PlanFailure::new(ENRICHMENT_TIMEOUT_MESSAGE)
+                })?
                 .map_err(|error| crate::retrieval_types::PlanFailure::new(error.to_string()))?;
-            let result = timeout_at(deadline, fetch(request)).await.map_err(|_| {
-                crate::retrieval_types::PlanFailure::new(ENRICHMENT_TIMEOUT_MESSAGE)
-            })?;
+            let result = timeout_at(deadline, fetch(request))
+                .await
+                .map_err(|error| {
+                    log::warn!("Enrichment fetch timed out: {error}");
+                    crate::retrieval_types::PlanFailure::new(ENRICHMENT_TIMEOUT_MESSAGE)
+                })?;
             drop(permit);
             result
         })

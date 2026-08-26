@@ -1,7 +1,7 @@
 use crate::manager::timeline::attempts::TimelineAttempt;
+use core::time::Duration;
 use ghostr_engine::PostId;
 use std::collections::{HashMap, HashSet};
-use std::time::Duration;
 use tokio::time::Instant;
 
 const RETRY_BASE: Duration = Duration::from_millis(100);

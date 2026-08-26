@@ -1,4 +1,4 @@
-use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
+use crate::plan_executor::{PlanExecutor as _, PlannedRetrieval};
 use crate::query::search::plan_discovery;
 use crate::query::video_filters::{DiscoveryRequest, RepostAdmission};
 use crate::retrieval_types::{FeedContext, RetrievalPriority};

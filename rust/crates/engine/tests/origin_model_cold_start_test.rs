@@ -1,4 +1,4 @@
-use ghostr_engine::origin_model::{
+use crate::origin_model::{
     Availability, ColdStartPrior, ColdStartSelector, DecisionMode, DomainClass, HttpProtocol,
     MediaClass, NetworkClass, OriginContext, OriginEnvironment, OriginModel, OriginQuery,
     RequestMethod, TlsVersion,

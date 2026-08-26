@@ -35,7 +35,7 @@ impl DeliveryWorker {
         if clear.is_none() {
             self.apply_pending_focus().await;
         }
-        self.reconcile().await;
+        Box::pin(self.reconcile()).await;
         clear::complete(clear);
         true
     }
@@ -61,11 +61,11 @@ impl DeliveryWorker {
                 None
             }
             Wake::PlayerPreparation(envelope) => {
-                self.apply_player_preparation_feedback(envelope);
+                self.apply_player_preparation_feedback(envelope).await;
                 None
             }
             Wake::PlaybackPresentation(event) => {
-                self.apply_presentation(event);
+                self.apply_presentation(&event);
                 None
             }
             Wake::Demand(signal) => {
@@ -104,13 +104,16 @@ impl DeliveryWorker {
         match command {
             DeliveryCommand::Candidate(candidate) => self.state.apply_candidate(candidate),
             DeliveryCommand::Focus(focus) => self.apply_focus_command(focus),
-            DeliveryCommand::Playback(playback) => self.apply_playback(playback),
+            DeliveryCommand::Playback(playback) => self.apply_playback(&playback),
             DeliveryCommand::Config(level) => {
                 self.state.apply_level(level);
                 self.update_concurrency_ceiling();
             }
             DeliveryCommand::NetworkStatus(status) => self.apply_network_status(status),
-            DeliveryCommand::NetworkChanged => self.note_network_profile_change(),
+            DeliveryCommand::NetworkProfile {
+                generation,
+                profile,
+            } => self.apply_network_profile(generation, profile),
             DeliveryCommand::StorageChanged => {}
         }
         self.prune_scheduling_history();
@@ -132,8 +135,11 @@ impl DeliveryWorker {
         let segmented_changed = self.segmented.apply_focus(&segmented_focus);
         let current = self.state.focus().current().cloned();
         let progressive_changed = self.state.take_changed_representations();
-        let hls_restarts =
-            self.reset_focus_representations(progressive_changed, hls_changed, hls_cooldown_resets);
+        let hls_restarts = self.reset_focus_representations(
+            progressive_changed,
+            hls_changed,
+            &hls_cooldown_resets,
+        );
         self.apply_retry_focus_change(previous.as_ref(), current.as_ref());
         if segmented_changed {
             self.restart_segmented_roots(&hls_restarts);
@@ -153,7 +159,7 @@ impl DeliveryWorker {
         self.timelines.retain_history(&retained);
     }
 
-    pub(crate) async fn bind_representations(&mut self) {
+    pub(super) async fn bind_representations(&mut self) {
         for binding in self.state.take_representation_bindings() {
             self.cancel_obsolete_transform(&binding);
             self.downloads.cancel_obsolete(&binding);

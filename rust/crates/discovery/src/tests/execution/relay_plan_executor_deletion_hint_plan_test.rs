@@ -1,4 +1,5 @@
-use crate::execution::relay_executor::deletion_enrichment::deletion_plan;
+use crate::execution::relay_executor::deletion_enrichment::axiom_test_support::deletion_plan;
+
 use crate::query::search::RelayTarget;
 use crate::tests::support::filter_json;
 use nostr_sdk::{EventBuilder, Keys, Kind, Tag};

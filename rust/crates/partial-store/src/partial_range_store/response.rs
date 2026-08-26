@@ -2,7 +2,7 @@ use super::{PartialRangeStore, StoreAction};
 use anyhow::Result;
 use ghostr_engine::representation::{SourceGeneration, TransferIdentity};
 use ghostr_engine::ByteRange;
-use sha2::{Digest, Sha256};
+use sha2::{Digest as _, Sha256};
 
 mod sparse;
 mod whole;
@@ -15,6 +15,9 @@ pub enum ResponseOpenResult {
 }
 
 impl PartialRangeStore {
+    /// # Errors
+    ///
+    /// Returns an error when response authority, range geometry, or persistence validation fails.
     pub async fn open_sparse_response(
         &self,
         identity: &TransferIdentity,
@@ -99,49 +102,77 @@ impl PartialRangeStore {
         generation: SourceGeneration,
         range: ByteRange,
     ) -> Result<ResponseOpenResult> {
-        if range.is_empty()
-            || range.len() > ghostr_engine::adaptive::REQUEST_SLICE_BYTES
-            || range.end > generation.total_bytes()
-        {
+        if !valid_sparse_range(&generation, range) {
             return Ok(ResponseOpenResult::Stale);
         }
+        if !self.sparse_range_is_missing(identity, range).await? {
+            return Ok(ResponseOpenResult::Stale);
+        }
+        let mut responses = self.sparse_response_actions.lock().await;
+        if has_active_overlap(responses.values(), identity, range) {
+            return Ok(ResponseOpenResult::Stale);
+        }
+        responses.insert(
+            action.id(),
+            sparse_response_state(identity, action, generation, range),
+        );
+        Ok(ResponseOpenResult::Opened)
+    }
+
+    async fn sparse_range_is_missing(
+        &self,
+        identity: &TransferIdentity,
+        range: ByteRange,
+    ) -> Result<bool> {
         let mut entries = self.entries.lock().await;
         let missing = self
             .entry(&mut entries, identity.post().as_str())
             .await?
             .manifest
             .missing_within(&(range.start..range.end));
-        drop(entries);
-        let exact_hole =
-            missing.len() == 1 && missing[0].start == range.start && missing[0].end == range.end;
-        if !exact_hole {
-            return Ok(ResponseOpenResult::Stale);
-        }
-        let mut responses = self.sparse_response_actions.lock().await;
-        if responses.values().any(|known| {
-            known.owner.is_active()
-                && known.identity.post() == identity.post()
-                && known.range.start < range.end
-                && range.start < known.range.end
-        }) {
-            return Ok(ResponseOpenResult::Stale);
-        }
-        responses.insert(
-            action.id(),
-            super::generation::SparseResponseState {
-                owner: action.clone(),
-                identity: identity.clone(),
-                generation,
-                range,
-                next_offset: range.start,
-                received: 0,
-                pending: 0,
-                hasher: Sha256::new(),
-                intent_installed: false,
-                dirty: false,
-                committed: false,
-            },
-        );
-        Ok(ResponseOpenResult::Opened)
+        Ok(matches!(
+            missing.as_slice(),
+            [span] if span.start == range.start && span.end == range.end
+        ))
+    }
+}
+
+fn valid_sparse_range(generation: &SourceGeneration, range: ByteRange) -> bool {
+    !range.is_empty()
+        && range.len() <= ghostr_engine::adaptive::REQUEST_SLICE_BYTES
+        && range.end <= generation.total_bytes()
+}
+
+fn has_active_overlap<'a>(
+    responses: impl Iterator<Item = &'a super::generation::SparseResponseState>,
+    identity: &TransferIdentity,
+    range: ByteRange,
+) -> bool {
+    responses.into_iter().any(|known| {
+        known.owner.is_active()
+            && known.identity.post() == identity.post()
+            && known.range.start < range.end
+            && range.start < known.range.end
+    })
+}
+
+fn sparse_response_state(
+    identity: &TransferIdentity,
+    action: &StoreAction,
+    generation: SourceGeneration,
+    range: ByteRange,
+) -> super::generation::SparseResponseState {
+    super::generation::SparseResponseState {
+        owner: action.clone(),
+        identity: identity.clone(),
+        generation,
+        range,
+        next_offset: range.start,
+        received: 0,
+        pending: 0,
+        hasher: Sha256::new(),
+        intent_installed: false,
+        dirty: false,
+        committed: false,
     }
 }

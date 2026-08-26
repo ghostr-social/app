@@ -23,21 +23,37 @@ impl TransformFixture {
     pub(super) async fn seeded(label: &str) -> Self {
         let nonce = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("valid test fixture")
             .as_nanos();
         let root = std::env::temp_dir().join(format!("{label}-{nonce}"));
-        std::fs::create_dir_all(&root).unwrap();
+        std::fs::create_dir_all(&root).expect("valid test fixture");
         let store = Arc::new(PartialRangeStore::with_capacity(
             root.clone(),
             Arc::new(Mutex::new(0)),
             StoreCapacity::system(u64::MAX),
         ));
         let binding = binding();
-        store.bind_representation(binding.clone()).await.unwrap();
-        store.set_total_len("post", 4).await.unwrap();
-        store.write_range("post", 0, b"data").await.unwrap();
-        store.finalize("post", None).await.unwrap();
-        let revision = store.media_snapshot("post").await.unwrap().revision();
+        store
+            .bind_representation(binding.clone())
+            .await
+            .expect("valid test fixture");
+        store
+            .set_total_len("post", 4)
+            .await
+            .expect("valid test fixture");
+        store
+            .write_range("post", 0, b"data")
+            .await
+            .expect("valid test fixture");
+        store
+            .finalize("post", None)
+            .await
+            .expect("valid test fixture");
+        let revision = store
+            .media_snapshot("post")
+            .await
+            .expect("valid test fixture")
+            .revision();
         Self {
             store,
             root,
@@ -63,7 +79,7 @@ impl TransformFixture {
             b"done!".to_vec(),
             16,
         )
-        .unwrap()
+        .expect("valid test fixture")
     }
 
     pub(super) fn has_transform_staging(&self) -> bool {

@@ -1,11 +1,11 @@
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::cooling_plan_origin::CoolingPlanOrigin;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::serial_long_retry_options;
 use delivery_fixture::start_harness;
 use ghostr_delivery::delivery_events::{DeliveryFocus, FocusAdmission};
-use std::time::Duration;
 
 #[tokio::test]
 async fn cooling_protected_post_does_not_restart_useful_protected_io() {
@@ -30,7 +30,7 @@ async fn cooling_protected_post_does_not_restart_useful_protected_io() {
     assert_eq!(origin.useful_requests(), 1, "origin saw duplicate IO");
 
     origin.release();
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }
 

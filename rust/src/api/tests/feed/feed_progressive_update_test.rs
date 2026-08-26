@@ -12,7 +12,7 @@ fn a_progress_event_is_visible_while_the_page_keeps_loading() {
     let context = open.expect("search dispatch").context;
     let event = video_note(&keys, "early", 40);
 
-    state.apply_progress(&context, event.clone());
+    state.apply_progress(&context, &event);
 
     assert_eq!(state.stage(feed), FfiFeedStage::Loading);
     assert_eq!(state.snapshot(feed).len(), 1);

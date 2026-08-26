@@ -1,4 +1,4 @@
-use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
+use crate::plan_executor::{PlanExecutor as _, PlannedRetrieval};
 use crate::query::search::plan_discovery;
 use crate::query::video_filters::DiscoveryRequest;
 use crate::retrieval_types::{FeedContext, RetrievalPriority};
@@ -18,7 +18,7 @@ async fn feed_execution_loads_metadata_for_the_returned_creator() {
         .expect("video");
     let io = ProfileIo::new(Kind::TextNote, video, profile.clone());
 
-    let events = executor(io.clone())
+    let events = executor(std::sync::Arc::clone(&io))
         .execute(retrieval())
         .await
         .expect("feed retrieval");

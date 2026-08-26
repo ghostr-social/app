@@ -32,9 +32,9 @@ fn omitted_segmented_headroom_fails_closed_until_exact_capacity_is_explicit() {
     state.hls_candidates.push(candidate("only"));
     let base = AdaptivePlayabilityPolicy.plan(&state);
     let default = PlannerContext::explicitly_unavailable(&state);
-    let json = serde_json::to_value(default).unwrap();
+    let json = serde_json::to_value(default).expect("valid test fixture");
     assert!(json.get("segmented_storage_available_bytes").is_none());
-    let omitted: PlannerContext = serde_json::from_value(json).unwrap();
+    let omitted: PlannerContext = serde_json::from_value(json).expect("valid test fixture");
     let blocked = plan(&state, &base, &omitted);
     let exact = PlannerContext::explicitly_unavailable(&state)
         .with_segmented_storage_available_bytes(256 * 1024);
@@ -62,7 +62,7 @@ fn candidate(post: &str) -> HlsCandidateSnapshot {
     HlsCandidateSnapshot {
         post: PostId::new(post),
         feed_offset: FeedOffset::new(0),
-        view_probability: ViewProbability::new(1.0).unwrap(),
+        view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
         startup_value_ms: 750,
         cursor: Default::default(),
         state: HlsBootstrapState::Pending {

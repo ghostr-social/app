@@ -1,7 +1,7 @@
 use super::asset_sequence_origin::{header_values, request, request_error, serve};
 use super::support::{asset_resource, state};
 use axum::body::to_bytes;
-use std::time::Duration;
+use core::time::Duration;
 
 macro_rules! response {
     ($range:literal, $etag:literal, $body:literal) => {
@@ -38,9 +38,19 @@ async fn verify_rotation(rotated: &'static [u8]) {
     let resource = asset_resource(&state, &session).await;
 
     let first = request(&state, &session, &resource, "bytes=0-3").await;
-    assert_eq!(to_bytes(first.into_body(), 4).await.unwrap(), "aaaa");
+    assert_eq!(
+        to_bytes(first.into_body(), 4)
+            .await
+            .expect("valid test fixture"),
+        "aaaa"
+    );
     let second = request(&state, &session, &resource, "bytes=4-7").await;
-    assert_eq!(to_bytes(second.into_body(), 4).await.unwrap(), "bbbb");
+    assert_eq!(
+        to_bytes(second.into_body(), 4)
+            .await
+            .expect("valid test fixture"),
+        "bbbb"
+    );
     assert_eq!(
         request_error(&state, &session, &resource, "bytes=8-11").await,
         502

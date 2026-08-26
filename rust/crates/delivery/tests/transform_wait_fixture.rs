@@ -1,6 +1,6 @@
+use core::time::Duration;
 use ghostr_engine::representation::RepresentationBinding;
 use ghostr_partial_store::partial_range_store::{PartialRangeStore, StoredMediaSnapshot};
-use std::time::Duration;
 
 pub async fn wait_for_transform(
     store: &PartialRangeStore,
@@ -9,7 +9,10 @@ pub async fn wait_for_transform(
 ) -> StoredMediaSnapshot {
     let waiting = async {
         loop {
-            let snapshot = store.media_snapshot("post").await.unwrap();
+            let snapshot = store
+                .media_snapshot("post")
+                .await
+                .expect("valid test fixture");
             if snapshot
                 .binding()
                 .is_some_and(|binding| binding.derives_from(input))
@@ -21,5 +24,5 @@ pub async fn wait_for_transform(
     };
     tokio::time::timeout(Duration::from_secs(2), waiting)
         .await
-        .unwrap_or_else(|_| panic!("transform timed out: {:?}", handle.decision_history()))
+        .unwrap_or_else(|_| panic!("transform timed out: {:?}", handle.decision_history_json()))
 }

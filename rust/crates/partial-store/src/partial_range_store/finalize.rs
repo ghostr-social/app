@@ -4,7 +4,7 @@
 use crate::partial_range_completion::{self as completion, Completion, IntegrityMismatch};
 use crate::partial_range_disk as disk;
 use crate::partial_range_store::{Entries, PartialRangeStore};
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Context as _, Result};
 
 mod session;
 
@@ -12,6 +12,10 @@ impl PartialRangeStore {
     /// Moves a byte-complete file out of the partial pool. `advertised`
     /// is the note's `imeta x` when it has one: absent, the bytes are
     /// kept unverified; present, they must hash to it or they are lost.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for incomplete or invalid bytes, or when promotion cannot be persisted.
     pub async fn finalize(&self, key: &str, advertised: Option<&str>) -> Result<Completion> {
         let _update = self.update_key(key).await?;
         let mut entries = self.entries.lock().await;
@@ -29,12 +33,11 @@ impl PartialRangeStore {
         if !entry.manifest.is_complete() {
             bail!("cannot finalize a video with missing ranges");
         }
-        match completion::judge(&self.paths.partial(key), advertised).await? {
-            Some(verdict) => self.promote(&mut entries, key, verdict).await,
-            None => {
-                self.discard(&mut entries, key).await?;
-                Err(IntegrityMismatch.into())
-            }
+        if let Some(verdict) = completion::judge(&self.paths.partial(key), advertised).await? {
+            self.promote(&mut entries, key, verdict).await
+        } else {
+            self.discard(&mut entries, key).await?;
+            Err(IntegrityMismatch.into())
         }
     }
 

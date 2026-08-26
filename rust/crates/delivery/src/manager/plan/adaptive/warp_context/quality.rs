@@ -10,5 +10,5 @@ pub(super) fn apply(
     let Some(evidence) = state.catalog().rendition_quality(post) else {
         return context;
     };
-    context.with_quality(post.clone(), PlannerQuality::from_rendition(evidence))
+    context.with_quality(post, PlannerQuality::from_rendition(evidence))
 }

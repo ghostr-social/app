@@ -1,7 +1,7 @@
 use crate::concurrency::{
     AdaptiveConcurrency, ConcurrencyEvidence, ConcurrencyOccupancy, NetworkSetback,
 };
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn a_stall_or_failed_trial_returns_to_the_last_safe_limit() {

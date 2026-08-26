@@ -27,20 +27,20 @@ pub struct FfiPlaybackObservation {
 /// One user-visible Flutter frame for an exact playback session.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FfiPlaybackPresentation {
-    pub post_id: String,
-    pub generation: u64,
-    pub sequence: u64,
-    pub observed_at_ms: u64,
+    pub(crate) post_id: String,
+    pub(crate) generation: u64,
+    pub(crate) sequence: u64,
+    pub(crate) observed_at_ms: u64,
 }
 
 /// Delivery manager decisions and latest accepted identity in this process.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FfiPlaybackAdmissionSnapshot {
-    pub accepted: u64,
-    pub inactive_delivery: u64,
-    pub stale_session: u64,
-    pub stale_sequence: u64,
-    pub last_accepted_delivery_id: Option<String>,
+    pub(crate) accepted: u64,
+    pub(crate) inactive_delivery: u64,
+    pub(crate) stale_session: u64,
+    pub(crate) stale_sequence: u64,
+    pub(crate) last_accepted_delivery_id: Option<String>,
 }
 
 impl From<PlaybackAdmissionSnapshot> for FfiPlaybackAdmissionSnapshot {

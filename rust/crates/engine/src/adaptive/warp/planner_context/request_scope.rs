@@ -53,6 +53,10 @@ impl RequestScope {
             || self.soft.iter().any(|item| item.admits(action))
     }
 
+    pub(super) fn expand_ordinary(&mut self, ceiling: u16) {
+        self.ordinary_tokens = self.ordinary_tokens.saturating_add(1).min(ceiling);
+    }
+
     pub(super) fn replay_sources(&self) -> Vec<String> {
         self.soft.iter().map(|item| item.source.clone()).collect()
     }

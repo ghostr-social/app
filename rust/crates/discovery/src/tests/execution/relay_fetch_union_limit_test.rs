@@ -1,6 +1,6 @@
 //! What `Client::fetch_events_from` keeps when several relays answer one
 //! filter. nostr-sdk collects into `Events::new(&filters)`, a set capped
-//! at the single filter's `limit` (OverCapacityPolicy::Last), so the
+//! at the single filter's `limit` (`OverCapacityPolicy::Last`), so the
 //! limit bounds the *union* across relays and the oldest events fall out.
 //! The engine instead drains the relay stream so the filter limit applies
 //! independently to each relay before the results are merged.

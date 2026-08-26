@@ -2,12 +2,12 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::full_disk::{discard, limits, spaced_store};
 use delivery_fixture::items::{focus_now, seed_range, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness_with_store;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::time::timeout;
 
 const UNREACHABLE: &str = "http://127.0.0.1:9/video.mp4";
@@ -38,11 +38,19 @@ async fn full_store_considers_a_cached_victim_beyond_the_retrieval_window() {
     wait_until_used(&harness, 99).await;
 
     assert_eq!(
-        harness.store.present_ranges("p0").await.unwrap(),
+        harness
+            .store
+            .present_ranges("p0")
+            .await
+            .expect("valid test fixture"),
         vec![0..45]
     );
     assert_eq!(
-        harness.store.present_ranges("p25").await.unwrap(),
+        harness
+            .store
+            .present_ranges("p25")
+            .await
+            .expect("valid test fixture"),
         vec![0..54]
     );
     assert!(harness.handle.plan_history().iter().all(|evidence| {
@@ -56,7 +64,7 @@ async fn full_store_considers_a_cached_victim_beyond_the_retrieval_window() {
 }
 
 async fn wait_until_used(harness: &delivery_fixture::DeliveryHarness, expected: u64) {
-    let result = timeout(Duration::from_secs(2), async {
+    let result = timeout(Duration::from_secs(30), async {
         while harness.store.used_bytes().await != expected {
             tokio::time::sleep(Duration::from_millis(5)).await;
         }

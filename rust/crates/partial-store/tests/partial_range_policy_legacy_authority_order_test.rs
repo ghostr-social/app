@@ -1,33 +1,43 @@
-mod store_fixture;
-
-use sha2::{Digest, Sha256};
+use sha2::{Digest as _, Sha256};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn unusable_legacy_authority_outlives_failed_canonical_cleanup() {
-    let root = store_fixture::temp_root("policy-legacy-authority-order");
-    let store = store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
-    tokio::fs::create_dir_all(&root).await.unwrap();
-    tokio::fs::create_dir(root.join("clip.part")).await.unwrap();
+    let root = crate::tests::store_fixture::temp_root("policy-legacy-authority-order");
+    let store = crate::tests::store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
+    tokio::fs::create_dir_all(&root)
+        .await
+        .expect("valid test fixture");
+    tokio::fs::create_dir(root.join("clip.part"))
+        .await
+        .expect("valid test fixture");
     tokio::fs::write(root.join("clip.ranges.json"), retained_manifest())
         .await
-        .unwrap();
+        .expect("valid test fixture");
     tokio::fs::write(
         root.join("clip.evict.intent"),
         br#"{"version":1,"retained_bytes":8}"#,
     )
     .await
-    .unwrap();
+    .expect("valid test fixture");
 
-    store.load_existing().await.unwrap();
+    store.load_existing().await.expect("valid test fixture");
 
     assert!(root.join("clip.evict.intent").exists());
-    assert_eq!(store.read_range("clip", 0..4).await.unwrap(), None);
-    tokio::fs::remove_dir(root.join("clip.part")).await.unwrap();
-    store.clear().await.unwrap();
+    assert_eq!(
+        store
+            .read_range("clip", 0..4)
+            .await
+            .expect("valid test fixture"),
+        None
+    );
+    tokio::fs::remove_dir(root.join("clip.part"))
+        .await
+        .expect("valid test fixture");
+    store.clear().await.expect("valid test fixture");
     assert!(!root.join("clip.evict.intent").exists());
-    store_fixture::discard(&root);
+    crate::tests::store_fixture::discard(&root);
 }
 
 fn retained_manifest() -> Vec<u8> {

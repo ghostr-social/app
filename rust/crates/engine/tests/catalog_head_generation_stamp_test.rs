@@ -1,7 +1,7 @@
-use ghostr_engine::catalog::{Catalog, HttpObservation, LearnedFacts};
-use ghostr_engine::evidence::{EvidenceTime, EvidenceValidator};
-use ghostr_engine::representation::HttpGenerationAuthority;
-use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
+use crate::catalog::{Catalog, HttpObservation, LearnedFacts};
+use crate::evidence::{EvidenceTime, EvidenceValidator};
+use crate::representation::HttpGenerationAuthority;
+use crate::{DeliveryKind, PostId, VideoMeta};
 
 const SOURCE: &str = "https://media.example/video.mp4";
 const REDIRECTED: &str = "https://cdn.example/video.mp4";
@@ -45,10 +45,13 @@ fn stale_head_never_inherits_a_newer_response_stamp() {
         .is_none());
 }
 
-fn fixture() -> (Catalog, ghostr_engine::representation::TransferIdentity) {
+fn fixture() -> (Catalog, crate::representation::TransferIdentity) {
     let post = PostId::new("post");
     let mut catalog = Catalog::new();
-    let identity = catalog.upsert(post, metadata()).transfer(SOURCE).unwrap();
+    let identity = catalog
+        .upsert(post, metadata())
+        .transfer(SOURCE)
+        .expect("valid test fixture");
     (catalog, identity)
 }
 

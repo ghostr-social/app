@@ -45,6 +45,9 @@ async fn capped_whole_accepts_a_shorter_declared_body_and_finishes_at_eof() {
 
     assert_eq!(result.bytes_written, 16);
     assert_eq!(result.total_bytes, Some(16));
-    assert_eq!(store.total_len("clip").await.unwrap(), Some(16));
+    assert_eq!(
+        store.total_len("clip").await.expect("valid test fixture"),
+        Some(16)
+    );
     let _ = std::fs::remove_dir_all(root);
 }

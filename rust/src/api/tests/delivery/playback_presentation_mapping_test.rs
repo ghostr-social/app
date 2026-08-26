@@ -3,7 +3,7 @@ use crate::api::playback_types::FfiPlaybackPresentation;
 
 #[test]
 fn maps_only_ordered_presentations_with_exact_session_identity() {
-    let mapped = playback_presentation(input(7, 9)).unwrap();
+    let mapped = playback_presentation(input(7, 9)).expect("test fixture precondition must hold");
 
     assert_eq!(mapped.session().post().as_str(), "video_1");
     assert_eq!(mapped.session().generation(), 7);

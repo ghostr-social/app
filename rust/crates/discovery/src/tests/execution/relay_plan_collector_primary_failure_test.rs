@@ -8,7 +8,7 @@ use nostr_sdk::{EventBuilder, Keys};
 async fn primary_failure_keeps_the_successful_page_unsettled() {
     let event = EventBuilder::text_note("additive")
         .sign_with_keys(&Keys::generate())
-        .unwrap();
+        .expect("valid test fixture");
     let primary = tokio::spawn(async { Err(PlanFailure::new("primary failed")) });
     let additive = tokio::spawn({
         let event = event.clone();

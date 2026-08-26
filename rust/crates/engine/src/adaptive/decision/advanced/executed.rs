@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RecordedExecutedRequest {
-    pub post_id: String,
-    pub source_id: String,
+    post_id: String,
+    source_id: String,
     pub request: RecordedRetrievalRequest,
     pub resources: RecordedResourceCost,
 }

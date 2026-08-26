@@ -31,7 +31,9 @@ fn stale_admission_cannot_evict_a_reclaimable_ready_bootstrap() {
 fn store_ready(cache: &SegmentedCache, post: &PostId) {
     for (attempt, bytes) in [MIB, 8 * MIB, 8 * MIB, 8 * MIB].into_iter().enumerate() {
         let name = format!("old-{attempt}");
-        let lease = cache.admit_stage(admission(post, 2, &name, bytes)).unwrap();
+        let lease = cache
+            .admit_stage(admission(post, 2, &name, bytes))
+            .expect("valid test fixture");
         assert!(lease.commit_complete(PreparedComplete::new(object(&name, bytes))));
     }
     assert!(cache.mark_stage_ready(post, 2));

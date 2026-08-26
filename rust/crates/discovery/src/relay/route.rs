@@ -23,12 +23,17 @@ pub struct RelayPoolRoute {
 }
 
 impl RelayPoolOwner {
+    /// Acquires a stable relay route for one session generation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the requested session is no longer current.
     pub async fn begin_route(
         &self,
         session: crate::session_generation::SessionGeneration,
     ) -> Result<Arc<RelayPoolRoute>, PlanFailure> {
         let cancellation = self.cancellations.subscribe();
-        let barrier = self.barrier.clone().read_owned().await;
+        let barrier = std::sync::Arc::clone(&self.barrier).read_owned().await;
         let epoch = *cancellation.borrow();
         self.ensure_session(session, epoch)?;
         Ok(Arc::new(RelayPoolRoute {
@@ -47,7 +52,7 @@ impl RelayPoolRoute {
         request: RelayReadRequest,
     ) -> Result<RelayReadResult, PlanFailure> {
         let (lifetime, cancelled) = oneshot::channel();
-        let route = self.clone();
+        let route = std::sync::Arc::clone(self);
         let task = tokio::spawn(async move { route.read_owned(request, cancelled).await });
         let result = task
             .await
@@ -87,9 +92,14 @@ impl RelayPoolRoute {
         result
     }
 
+    /// Broadcasts an event through this route's stable session.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the route is stale, has no relays, or relay IO fails.
     pub async fn broadcast(self: &Arc<Self>, request: RelayBroadcastRequest) -> anyhow::Result<()> {
         let (lifetime, cancelled) = oneshot::channel();
-        let route = self.clone();
+        let route = std::sync::Arc::clone(self);
         let task = tokio::spawn(async move { route.broadcast_owned(request, cancelled).await });
         let result = task.await.unwrap_or_else(|error| Err(error.into()));
         drop(lifetime);
@@ -129,11 +139,11 @@ impl RelayPoolRoute {
     }
 
     async fn read_targets(&self, relays: Option<Vec<String>>) -> Result<Vec<String>, PlanFailure> {
-        match relays {
-            Some(relays) => exact_read_targets(relays),
-            None => Ok(bounded_relay_targets(
-                self.owner.roles.fallback_read_relays().await,
-            )),
+        if let Some(relays) = relays {
+            exact_read_targets(&relays)
+        } else {
+            let fallback = self.owner.roles.fallback_read_relays().await;
+            Ok(bounded_relay_targets(&fallback))
         }
     }
 
@@ -171,8 +181,8 @@ impl RelayPoolRoute {
     }
 }
 
-fn exact_read_targets(relays: Vec<String>) -> Result<Vec<String>, PlanFailure> {
-    let relays = unique(&relays);
+fn exact_read_targets(relays: &[String]) -> Result<Vec<String>, PlanFailure> {
+    let relays = unique(relays);
     if relays.len() > MAX_RELAY_READ_FANOUT {
         return Err(PlanFailure::new(format!(
             "relay fanout exceeds {MAX_RELAY_READ_FANOUT}"

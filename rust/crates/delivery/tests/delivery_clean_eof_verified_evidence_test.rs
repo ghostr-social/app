@@ -31,7 +31,7 @@ fn has_verified_complete(
     history: &ghostr_delivery::delivery_events::DecisionHistorySnapshot,
 ) -> bool {
     history.records.iter().any(|record| {
-        let value = serde_json::to_value(record).unwrap();
+        let value = serde_json::to_value(record).expect("valid test fixture");
         let evidence = &value["replay_state"]["candidates"][0]["evidence"];
         evidence["size"]["exact"] == 16 && !evidence["fields"]["Integrity"].is_null()
     })

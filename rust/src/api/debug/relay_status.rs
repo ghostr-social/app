@@ -5,7 +5,7 @@ use nostr_sdk::Client;
 use std::sync::Arc;
 use std::time::Duration;
 
-pub(crate) async fn monitor(client: Arc<Client>, feed: DebugFeed, configured: Vec<String>) {
+pub(super) async fn monitor(client: Arc<Client>, feed: DebugFeed, configured: Vec<String>) {
     loop {
         feed.update_relays(snapshot(&client, &configured).await);
         tokio::time::sleep(Duration::from_millis(750)).await;

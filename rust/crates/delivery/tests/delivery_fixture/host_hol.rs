@@ -24,8 +24,10 @@ pub struct SlowHost {
 
 impl SlowHost {
     pub async fn serve() -> Self {
-        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let address = listener.local_addr().unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("valid test fixture");
+        let address = listener.local_addr().expect("valid test fixture");
         let started = Arc::new(Semaphore::new(0));
         let release = Arc::new(Semaphore::new(0));
         let state = HostState {
@@ -33,7 +35,11 @@ impl SlowHost {
             release: Arc::clone(&release),
         };
         let app = Router::new().route("/{id}", get(media)).with_state(state);
-        tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        tokio::spawn(async move {
+            axum::serve(listener, app)
+                .await
+                .expect("valid test fixture");
+        });
         Self {
             base: format!("http://{address}"),
             started,
@@ -50,7 +56,11 @@ impl SlowHost {
     }
 
     pub async fn wait_started(&self) {
-        self.started.acquire().await.unwrap().forget();
+        self.started
+            .acquire()
+            .await
+            .expect("valid test fixture")
+            .forget();
     }
 
     pub fn release(&self) {
@@ -68,6 +78,11 @@ async fn media(
         return head_response();
     }
     state.started.add_permits(1);
-    state.release.acquire().await.unwrap().forget();
+    state
+        .release
+        .acquire()
+        .await
+        .expect("valid test fixture")
+        .forget();
     range_response(&headers)
 }

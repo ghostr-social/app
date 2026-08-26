@@ -3,7 +3,7 @@ use super::support::state;
 use crate::hls::routes::root_manifest;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use std::time::Duration;
+use core::time::Duration;
 
 #[tokio::test]
 async fn partial_manifest_is_never_rewritten_as_complete() {

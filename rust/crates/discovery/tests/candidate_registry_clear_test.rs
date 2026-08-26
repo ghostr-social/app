@@ -1,7 +1,5 @@
-mod feed_support;
-
-use feed_support::video_note;
-use ghostr_discovery::content::candidates::{CandidateAdmission, CandidateRegistry};
+use crate::content::candidates::{CandidateAdmission, CandidateRegistry};
+use crate::tests::feed_support::video_note;
 use nostr_sdk::Keys;
 
 #[test]

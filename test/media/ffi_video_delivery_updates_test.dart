@@ -29,7 +29,7 @@ void main() {
   });
 
   test(
-    'maps native progress and errors into typed delivery snapshots',
+    'maps native progress and terminal failure into delivery snapshots',
     () async {
       final native = StreamController<FfiDeliveryEvent>();
       addTearDown(native.close);
@@ -37,14 +37,18 @@ void main() {
       final received = updates.watchDelivery().take(2).toList();
 
       native.add(event(startable: true, kind: FfiDeliveryEventKind.progress));
-      native.add(event(startable: false, kind: FfiDeliveryEventKind.error));
+      native.add(event(startable: false, kind: FfiDeliveryEventKind.failed));
 
       final snapshots = await received;
       expect(snapshots.first.deliveryId, PlaybackDeliveryId.parse('media-one'));
       expect(snapshots.first.phase, VideoDeliveryPhase.startable);
       expect(snapshots.first.eta, const Duration(milliseconds: 120));
       expect(snapshots.last.phase, VideoDeliveryPhase.failed);
-      expect(snapshots.last.detail, 'store failure');
+      expect(snapshots.last.detail, 'playback blocked');
+      expect(
+        snapshots.last.authority?.assetId.value,
+        'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      );
     },
   );
 }
@@ -60,6 +64,12 @@ FfiDeliveryEvent event({
     bytesPresent: BigInt.from(64),
     totalBytes: BigInt.from(128),
     etaMs: BigInt.from(120),
-    detail: kind == FfiDeliveryEventKind.error ? 'store failure' : null,
+    detail: kind == FfiDeliveryEventKind.failed ? 'playback blocked' : null,
+    representationId: kind == FfiDeliveryEventKind.failed
+        ? List.filled(64, '1').join()
+        : null,
+    assetId: kind == FfiDeliveryEventKind.failed
+        ? 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        : null,
   );
 }

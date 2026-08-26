@@ -21,11 +21,11 @@ fn protected_rescue_capacity_mutations_fail_authenticated_coherence() {
     });
     rejects(&state, &decision, |r| r.protected_action_ids.push(999));
     rejects(&state, &decision, |r| {
-        r.authority_occupancy.push(r.authority_occupancy[0].clone())
+        r.authority_occupancy.push(r.authority_occupancy[0].clone());
     });
     rejects(&state, &decision, |r| {
         r.authority_occupancy
-            .retain(|item| item.occupied_request_slots > 0)
+            .retain(|item| item.occupied_request_slots > 0);
     });
 }
 
@@ -54,7 +54,7 @@ fn protected_rescue_chance_mutations_fail_authenticated_coherence() {
 }
 
 fn chance(reserve: &mut ReserveConstraint) -> &mut crate::adaptive::RescueChanceEvidence {
-    reserve.chance.as_mut().unwrap()
+    reserve.chance.as_mut().expect("valid test fixture")
 }
 
 fn rejects(
@@ -64,9 +64,18 @@ fn rejects(
 ) {
     let mut decision = source.clone();
     mutate(&mut decision.reserve);
-    mutate(&mut decision.search_replay.as_mut().unwrap().reserve);
+    mutate(
+        &mut decision
+            .search_replay
+            .as_mut()
+            .expect("valid test fixture")
+            .reserve,
+    );
     let captured = record(state, &decision);
-    assert_eq!(captured.replay(), DecisionReplayStatus::PlanMismatch);
+    assert_eq!(
+        captured.integrity_status(),
+        DecisionReplayStatus::PlanMismatch
+    );
     assert_eq!(
         captured.replay_warp_search(),
         Err(DecisionReplayStatus::PlanMismatch)

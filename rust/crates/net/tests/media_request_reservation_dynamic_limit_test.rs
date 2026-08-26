@@ -1,6 +1,7 @@
 mod request_gate_fixture;
 
 use ghostr_engine::adaptive::PreemptionAuthority;
+use ghostr_engine::RequestAuthority;
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use request_gate_fixture::request::open;
 use request_gate_fixture::{HeldOrigin, LocalMediaClient};
@@ -12,7 +13,7 @@ async fn resized_gate_reserves_after_growth_and_drains_after_shrink() {
     let mut critical_origin = HeldOrigin::serve().await;
     let requests = MediaRequestExecutor::new(
         LocalMediaClient::shared(),
-        MediaRequestLimits::try_new(1, 1).unwrap(),
+        MediaRequestLimits::try_new(1, 1).expect("valid test fixture"),
     );
     let active = open(
         requests.clone(),
@@ -34,19 +35,21 @@ async fn resized_gate_reserves_after_growth_and_drains_after_shrink() {
     waiting_origin.expect_quiet().await;
     critical_origin.expect_quiet().await;
 
-    requests.update_limits(MediaRequestLimits::try_new(2, 2).unwrap());
+    requests.update_limits(MediaRequestLimits::try_new(2, 2).expect("valid test fixture"));
     critical_origin.expect_hit().await;
-    let critical = critical.await.unwrap();
+    let critical = critical.await.expect("valid test fixture");
     waiting_origin.expect_quiet().await;
     critical_origin.release_one();
     drop(critical);
     waiting_origin.expect_quiet().await;
 
-    requests.update_limits(MediaRequestLimits::try_new(1, 1).unwrap());
-    assert_eq!(requests.active_connections().len(), 1);
+    requests.update_limits(MediaRequestLimits::try_new(1, 1).expect("valid test fixture"));
+    let active_authority =
+        RequestAuthority::from_url(&active_origin.url).expect("valid test fixture");
+    assert_eq!(requests.active_for(&active_authority), 1);
     active_origin.release_one();
     drop(active);
     waiting_origin.expect_hit().await;
     waiting_origin.release_one();
-    drop(waiting.await.unwrap());
+    drop(waiting.await.expect("valid test fixture"));
 }

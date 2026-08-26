@@ -1,10 +1,10 @@
 use super::ActiveWatch;
 use crate::delivery_events::{DeliveryFocus, FocusTransition, TransportRescueReason};
+use core::cmp::Ordering;
 use ghostr_engine::watch_model::{
     WatchCensor, WatchContext, WatchKey, WatchNavigation, WatchSampleKind,
 };
 use ghostr_engine::PostId;
-use std::cmp::Ordering;
 
 pub(super) fn focused(focus: &DeliveryFocus) -> Option<ActiveWatch> {
     let item = focus

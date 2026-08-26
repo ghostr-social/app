@@ -4,7 +4,7 @@ use ghostr_engine::playback::{
     PlaybackObservation, PlaybackObservationSequence, PlaybackPhase, PlaybackSession,
 };
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn presentation_acceptance_requires_the_current_session_and_newer_sequence() {
@@ -12,31 +12,31 @@ fn presentation_acceptance_requires_the_current_session_and_newer_sequence() {
     let current = PlaybackSession::new(PostId::new("current"), 2);
     let early = event(current.clone(), 3);
     assert_eq!(
-        state.apply_presentation(early.clone()),
+        state.apply_presentation(&early),
         PresentationAdmission::Pending
     );
     state.apply_focus(focus(), 0);
     assert!(state
-        .apply_playback(playback(current.clone()))
+        .apply_playback(&playback(current.clone()))
         .is_accepted());
     assert_eq!(state.take_pending_presentation(), Some(early));
 
     assert_eq!(
-        state.apply_presentation(event(current.clone(), 4)),
+        state.apply_presentation(&event(current.clone(), 4)),
         PresentationAdmission::Accepted
     );
     assert_eq!(
-        state.apply_presentation(event(current, 4)),
+        state.apply_presentation(&event(current, 4)),
         PresentationAdmission::Stale
     );
     assert_eq!(
-        state.apply_presentation(event(PlaybackSession::new(PostId::new("current"), 1), 5)),
+        state.apply_presentation(&event(PlaybackSession::new(PostId::new("current"), 1), 5)),
         PresentationAdmission::Stale,
     );
 }
 
 fn event(session: PlaybackSession, sequence: u64) -> PlaybackPresentation {
-    PlaybackPresentation::try_new(session, sequence, 100).unwrap()
+    PlaybackPresentation::try_new(session, sequence, 100).expect("valid test fixture")
 }
 
 fn playback(session: PlaybackSession) -> DeliveryPlayback {
@@ -49,7 +49,7 @@ fn playback(session: PlaybackSession) -> DeliveryPlayback {
             1_000,
             PlaybackPhase::Starting,
         )
-        .unwrap(),
+        .expect("valid test fixture"),
     }
 }
 

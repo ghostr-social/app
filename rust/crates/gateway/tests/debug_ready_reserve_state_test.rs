@@ -33,6 +33,7 @@ async fn debug_state_exposes_the_rolling_ready_reserve() {
         serde_json::json!({
             "target": 3,
             "ready": 1,
+            "structural": 0,
             "protected": 2,
             "recovery_horizon_ms": 1800,
             "underflow_risk_bps": 420,
@@ -52,6 +53,7 @@ fn plan() -> AllocationPlan {
         ready_reserve: ReadyReserveEvidence {
             target: 3,
             ready: 1,
+            structural: 0,
             protected: 2,
             recovery_horizon_ms: 1_800,
             underflow_risk_bps: 420,
@@ -63,7 +65,12 @@ fn plan() -> AllocationPlan {
 }
 
 fn ready() -> ReserveCandidateEvidence {
-    evidence("p1", ReserveCandidateState::Ready)
+    evidence(
+        "p1",
+        ReserveCandidateState::Ready {
+            startup: gateway_fixture::progressive_startup(),
+        },
+    )
 }
 
 fn planned() -> ReserveCandidateEvidence {

@@ -12,7 +12,9 @@ fn local_rescue_needs_no_synthetic_request_slot() {
     )
     .with_resources(ResourceCost::new(0, 16, 4, 0));
     let budget = HardBudget::new(ResourceCost::new(0, 16, 4, 0), 0);
-    let mut protected = budget.protect(std::slice::from_ref(&rescue)).unwrap();
+    let mut protected = budget
+        .protect(core::slice::from_ref(&rescue))
+        .expect("valid test fixture");
 
     assert!(protected.consume_action(&rescue).is_ok());
 }

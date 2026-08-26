@@ -14,7 +14,7 @@ impl MediaHttpRequests for LocalMediaClient {
 pub fn media_client() -> MediaRequestExecutor {
     MediaRequestExecutor::new(
         raw_media_client(),
-        MediaRequestLimits::try_new(4, 4).unwrap(),
+        MediaRequestLimits::try_new(4, 4).expect("valid test fixture"),
     )
 }
 

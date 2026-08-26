@@ -28,6 +28,12 @@ pub(super) struct ReplayState {
 }
 
 impl ReplayState {
+    pub(super) fn has_direct_playback_block(&self) -> bool {
+        self.candidates
+            .iter()
+            .any(CandidateState::direct_playback_blocked)
+    }
+
     pub(super) fn capture(value: &PlayabilitySnapshot, privacy: &DecisionPrivacy) -> Self {
         Self {
             observed_at_ms: value.observed_at_ms,

@@ -5,12 +5,13 @@
 use crate::manager::traffic::{OverallTrafficWindow, TrafficBatch, TrafficMeter};
 use crate::manager::transfers::{InternalEvent, ProbeObservation};
 use crate::manager::DeliveryWorker;
+use core::time::Duration;
 use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_net::media_request_executor::MediaRequestAdmissionTimeout;
 use log::warn;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
@@ -79,7 +80,7 @@ impl StatsKeeper {
             .as_ref()
             .map_or_else(|_| unix_time_ms(), |result| result.observed.observed_at_ms);
         let observation = origin::probe(done, observed_at_ms);
-        self.stats.origin_model_mut().observe(observation);
+        self.stats.origin_model_mut().observe(&observation);
         self.dirty = true;
     }
 
@@ -120,7 +121,7 @@ fn is_admission_timeout<T>(outcome: &anyhow::Result<T>) -> bool {
 }
 
 impl DeliveryWorker {
-    pub(crate) fn absorb_traffic(&mut self) {
+    pub(super) fn absorb_traffic(&mut self) {
         let batch = self.traffic.drain(Instant::now());
         if let Some(window) = self.keeper.note_traffic(batch) {
             self.observe_capacity(window);

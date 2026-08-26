@@ -2,11 +2,13 @@
 name = "ghostr-discovery"
 version = "0.1.0"
 edition = "2021"
+publish = false
+autotests = false
 description = "Nostr discovery: relay querying, outbox routing, search, and feed assembly."
 
 [features]
 # Exposes the scripted relay IO port so dependents can test against it.
-test-support = []
+test = []
 
 [dependencies]
 ghostr-engine = { path = "../engine" }

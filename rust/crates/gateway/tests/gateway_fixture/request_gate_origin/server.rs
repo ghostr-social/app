@@ -50,16 +50,16 @@ fn reply(status: StatusCode, length: u64, range: Option<String>, body: Body) -> 
     if let Some(range) = range {
         response = response.header(header::CONTENT_RANGE, range);
     }
-    response.body(body).unwrap()
+    response.body(body).expect("valid test fixture")
 }
 
 fn requested(headers: &HeaderMap, total: u64) -> (u64, u64) {
     let value = headers[header::RANGE]
         .to_str()
-        .unwrap()
+        .expect("valid test fixture")
         .trim_start_matches("bytes=");
-    let (start, end) = value.split_once('-').unwrap();
-    let start = start.parse().unwrap();
+    let (start, end) = value.split_once('-').expect("valid test fixture");
+    let start = start.parse().expect("valid test fixture");
     let end = end.parse::<u64>().unwrap_or(total - 1).min(total - 1) + 1;
     (start, end)
 }

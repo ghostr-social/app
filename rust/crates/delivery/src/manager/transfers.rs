@@ -22,8 +22,7 @@ use tokio::sync::mpsc::UnboundedSender;
 mod chunk;
 mod probe;
 mod traffic;
-#[cfg(test)]
-pub(crate) use chunk::chunk_event;
+
 pub(crate) use chunk::{spawn_chunk, ChunkLaunch};
 pub(crate) use probe::{spawn_probe, ProbeLaunch};
 
@@ -39,8 +38,8 @@ pub(crate) enum InternalEvent {
 }
 
 pub(crate) enum TransferEvent {
-    ChunkDone(ChunkDone),
-    ProbeDone(ProbeDone),
+    ChunkDone(Box<ChunkDone>),
+    ProbeDone(Box<ProbeDone>),
     ResponseObserved(Box<ObservedResponse>),
 }
 
@@ -98,3 +97,7 @@ pub(crate) struct TransferContext {
     pub traffic: TrafficPublisher,
     pub network_status: crate::delivery_events::DeliveryNetworkStatusReader,
 }
+
+#[cfg(test)]
+#[path = "transfers_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

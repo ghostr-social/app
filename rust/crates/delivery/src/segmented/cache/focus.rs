@@ -5,22 +5,6 @@ use std::collections::{HashMap, HashSet};
 pub(crate) type PreservedFocus = HashMap<PostId, (u64, String)>;
 
 impl SegmentedCache {
-    #[cfg(test)]
-    pub(crate) fn replace_focus(&self, generation: u64, items: Vec<(PostId, Vec<String>)>) {
-        let protected = items.iter().map(|(post, _)| post.clone()).collect();
-        self.replace_focus_window(generation, items, &protected);
-    }
-
-    #[cfg(test)]
-    pub(crate) fn replace_focus_window(
-        &self,
-        generation: u64,
-        items: Vec<(PostId, Vec<String>)>,
-        protected: &HashSet<PostId>,
-    ) {
-        self.reconcile_focus_window(generation, items, protected, &HashMap::new());
-    }
-
     pub(crate) fn reconcile_focus_window(
         &self,
         generation: u64,
@@ -102,3 +86,7 @@ fn empty_record(generation: u64) -> FocusRecord {
         assembly_bytes: 0,
     }
 }
+
+#[cfg(test)]
+#[path = "focus_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

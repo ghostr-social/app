@@ -8,8 +8,12 @@ use ghostr_partial_store::partial_range_store::PartialRangeStore;
 
 pub(super) async fn publish(commands: &mut CommandReceiver, store: &PartialRangeStore) {
     let startup = complete_startup(&sized_meta(16, 2_000), 16);
-    let snapshot = store.media_snapshot("next").await.unwrap();
-    let certificate = StartupCertificate::issue(startup.clone(), &snapshot).unwrap();
+    let snapshot = store
+        .media_snapshot("next")
+        .await
+        .expect("test fixture precondition must hold");
+    let certificate = StartupCertificate::issue(startup.clone(), &snapshot)
+        .expect("test fixture precondition must hold");
     let plan = AllocationPlan {
         next_reserve: NextReserveEvidence::Ready {
             post: PostId::new("next"),

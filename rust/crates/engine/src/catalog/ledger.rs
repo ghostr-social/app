@@ -1,7 +1,6 @@
 use super::CatalogEntry;
 use crate::evidence::{
     Confidence, Evidence, EvidenceAssessment, EvidenceScope, EvidenceSource, EvidenceValue,
-    SizeAssessment,
 };
 
 const LEGACY_METADATA_CONFIDENCE_BPS: u16 = 7_500;
@@ -17,17 +16,6 @@ impl CatalogEntry {
 
     pub fn evidence_assessment_for(&self, source: &str, now_ms: u64) -> EvidenceAssessment {
         self.ledger.assessment(source, now_ms)
-    }
-
-    pub fn conservative_size_for(&self, source: &str, now_ms: u64) -> SizeAssessment {
-        self.evidence_assessment_for(source, now_ms).size
-    }
-
-    pub fn current_validator_for(
-        &self,
-        source: &str,
-    ) -> Option<&crate::evidence::EvidenceValidator> {
-        self.ledger.current_validator(source)
     }
 
     pub(super) fn quarantine_integrity(&mut self, digest: &str, origin: &str, observed_at_ms: u64) {
@@ -54,7 +42,8 @@ impl CatalogEntry {
     }
 
     fn record_metadata_fields(&mut self, metadata: &crate::evidence::NostrMetadataEvidence) {
-        let confidence = Confidence::new(LEGACY_METADATA_CONFIDENCE_BPS).unwrap();
+        let confidence = Confidence::new(LEGACY_METADATA_CONFIDENCE_BPS)
+            .expect("legacy metadata confidence stays within the confidence scale");
         for url in &metadata.urls {
             for value in metadata.values() {
                 self.ledger.record(Evidence::new(
@@ -92,3 +81,7 @@ impl CatalogEntry {
         ));
     }
 }
+
+#[cfg(any(test, feature = "test"))]
+#[path = "ledger/test_support.rs"]
+mod test_support;

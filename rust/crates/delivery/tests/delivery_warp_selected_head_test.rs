@@ -3,11 +3,11 @@
 mod delivery_fixture;
 mod raw_http;
 
+use core::time::Duration;
 use delivery_fixture::items::{focus_now, unsized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use raw_http::spawn_stalled_headers;
-use std::time::Duration;
 
 #[tokio::test]
 async fn unresolved_window_launches_only_the_selected_head() {
@@ -34,6 +34,6 @@ async fn unresolved_window_launches_only_the_selected_head() {
             .is_err(),
         "an unselected HEAD must not launch during the same planning event"
     );
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }

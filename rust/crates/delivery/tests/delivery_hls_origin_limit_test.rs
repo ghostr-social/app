@@ -1,12 +1,12 @@
 mod delivery_fixture;
 
+use core::num::NonZeroUsize;
+use core::time::Duration;
 use delivery_fixture::hls::{serve, HlsGate};
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use ghostr_engine::DeliveryKind;
-use std::num::NonZeroUsize;
-use std::time::Duration;
 
 #[tokio::test]
 async fn hls_bootstraps_respect_the_configured_per_origin_limit() {
@@ -27,7 +27,7 @@ async fn hls_bootstraps_respect_the_configured_per_origin_limit() {
         second.is_err(),
         "one slow origin consumed another origin slot"
     );
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }
 
@@ -39,6 +39,6 @@ async fn started(gate: &HlsGate) {
     tokio::time::timeout(Duration::from_secs(2), gate.started.acquire())
         .await
         .expect("first HLS request starts")
-        .unwrap()
+        .expect("valid test fixture")
         .forget();
 }

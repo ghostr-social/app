@@ -1,6 +1,6 @@
-use ghostr_engine::catalog::{Catalog, HttpObservation, LearnedFacts};
-use ghostr_engine::evidence::{EvidenceField, EvidenceTime, EvidenceValidator, EvidenceValue};
-use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
+use crate::catalog::{Catalog, HttpObservation, LearnedFacts};
+use crate::evidence::{EvidenceField, EvidenceTime, EvidenceValidator, EvidenceValue};
+use crate::{DeliveryKind, PostId, VideoMeta};
 
 const URL: &str = "https://media.example/video.mp4";
 
@@ -11,14 +11,14 @@ fn cross_authority_observations_cannot_lower_the_validator_clock() {
     let identity = catalog
         .upsert(post.clone(), metadata())
         .transfer(URL)
-        .unwrap();
+        .expect("valid test fixture");
     assert!(catalog.learn_response_observation_for(&identity, observation(200, "v2", Some(false))));
     assert!(catalog.learn_head_observation_for(&identity, observation(100, "v2", Some(true))));
 
     assert!(!catalog.learn_head_observation_for(&identity, observation(150, "v1", Some(true))));
     let assessment = catalog
         .lookup(&post)
-        .unwrap()
+        .expect("valid test fixture")
         .evidence_assessment_for(URL, 201);
     assert_eq!(
         assessment.value(EvidenceField::RangeSupport),
@@ -33,7 +33,7 @@ fn monotonic_order_wins_when_the_wall_clock_moves_backward() {
     let identity = catalog
         .upsert(post.clone(), metadata())
         .transfer(URL)
-        .unwrap();
+        .expect("valid test fixture");
     assert!(catalog
         .learn_response_observation_for(&identity, ordered_observation(200, 1, "v2", Some(false))));
     assert!(catalog
@@ -41,7 +41,7 @@ fn monotonic_order_wins_when_the_wall_clock_moves_backward() {
 
     let assessment = catalog
         .lookup(&post)
-        .unwrap()
+        .expect("valid test fixture")
         .evidence_assessment_for(URL, 201);
     assert_eq!(
         assessment.value(EvidenceField::RangeSupport),

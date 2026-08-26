@@ -11,9 +11,9 @@ use crate::discovery::feed::spec::FeedSpec;
 use crate::discovery::outbox::bootstrap::OUTBOX_CONTEXT;
 use crate::discovery::retrieval_types::{FeedContext, RetrievalOutcome, RetrievalPurpose};
 use crate::discovery::session_generation::SessionGeneration;
+use core::time::Duration;
 use nostr_sdk::{Event, Keys, Kind, PublicKey};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 

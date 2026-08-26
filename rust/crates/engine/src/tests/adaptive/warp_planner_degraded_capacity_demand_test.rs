@@ -50,7 +50,7 @@ fn decision(transform: bool, priced_out: bool) -> crate::adaptive::WarpPlanningD
     let mut context = PlannerContext::explicitly_unavailable(&input);
     if transform {
         context = context.with_capability(
-            post,
+            &post,
             PlannerCapability::reported(
                 false,
                 Some(TransformCapability::new(TransformKind::Remux, 1, 1_000)),

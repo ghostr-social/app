@@ -1,5 +1,5 @@
 use crate::partial_range_disk as disk;
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use ghostr_engine::representation::HttpGenerationKey;
 use serde::{Deserialize, Serialize};
 use std::path::Path;

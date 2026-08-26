@@ -1,9 +1,10 @@
+use super::super::axiom_test_support::open;
 use super::super::telemetry::FetchProgress;
-use super::super::{open, FetchRuntime, FetchSpec};
+use super::super::{FetchRuntime, FetchSpec};
 use super::support::{client, network_status, stalled_headers};
+use core::time::Duration;
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
-use std::time::Duration;
 
 #[tokio::test]
 async fn total_deadline_wins_while_waiting_for_hls_headers() {
@@ -28,9 +29,8 @@ async fn total_deadline_wins_while_waiting_for_hls_headers() {
     let progress = FetchProgress::default();
     let runtime = FetchRuntime::new(&requests, deadline, &network, &progress);
     let result = open(runtime, spec).await;
-    let error = match result {
-        Ok(_) => panic!("transfer must hit its total deadline"),
-        Err(error) => error,
+    let Err(error) = result else {
+        panic!("transfer must hit its total deadline")
     };
     assert!(error.to_string().contains("transfer timed out"));
     assert!(!error.to_string().contains("response headers timed out"));

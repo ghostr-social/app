@@ -1,10 +1,11 @@
 //! Primary failure still joins additive work so its relay lease can clean up.
 
-use crate::execution::collector::collect_events;
+use crate::execution::collector::axiom_test_support::collect_events;
+
 use crate::execution::fetch::FetchedEvents;
 use crate::query::search::QueryRole;
 use crate::retrieval_types::PlanFailure;
-use std::time::Duration;
+use core::time::Duration;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
@@ -22,7 +23,7 @@ impl Drop for DropNotice {
 fn pending_fetch(dropped: oneshot::Sender<()>) -> JoinHandle<Result<FetchedEvents, PlanFailure>> {
     tokio::spawn(async move {
         let _notice = DropNotice(Some(dropped));
-        std::future::pending().await
+        core::future::pending().await
     })
 }
 

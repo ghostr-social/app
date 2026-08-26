@@ -73,7 +73,7 @@ pub async fn serve_rejecting(tag: &str, log: HitLog) -> String {
 }
 
 async fn reject(State(state): State<Recorder>, method: Method, headers: HeaderMap) -> Response {
-    request::note(&state, method, &headers);
+    request::note(&state, &method, &headers);
     Response::builder()
         .status(StatusCode::NOT_FOUND)
         .body(Body::empty())
@@ -81,7 +81,7 @@ async fn reject(State(state): State<Recorder>, method: Method, headers: HeaderMa
 }
 
 async fn record(State(state): State<Recorder>, method: Method, headers: HeaderMap) -> Response {
-    match request::note(&state, method, &headers) {
+    match request::note(&state, &method, &headers) {
         Some((start, end)) => response::partial(&state.bytes, start, end),
         None => response::full(&state.bytes),
     }

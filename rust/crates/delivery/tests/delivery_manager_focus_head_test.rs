@@ -12,8 +12,8 @@ use ghostr_engine::{DataUsageLevel, EngineParams};
 #[tokio::test]
 async fn delivery_manager_downloads_heads_in_priority_order() {
     let log = hit_log();
-    let current = serve_recording("current", media_body(), log.clone()).await;
-    let next = serve_recording("next", media_body(), log.clone()).await;
+    let current = serve_recording("current", media_body(), std::sync::Arc::clone(&log)).await;
+    let next = serve_recording("next", media_body(), std::sync::Arc::clone(&log)).await;
     let harness = start_harness("ghostr-delivery-focus", serial_options());
 
     harness.handle.update_focus(focus_now(

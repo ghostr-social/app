@@ -9,7 +9,11 @@ use ghostr_gateway::runtime::{GatewayConfiguration, GatewayRuntime};
 use std::sync::Arc;
 use support::fixtures::temp_directory;
 
-const MANIFEST: &str = r#"{"total_len":16,"ranges":[[0,16]]}"#;
+const MANIFEST: &str = concat!(
+    r#"{"version":2,"total_len":16,"intervals":[{"start":0,"end":16,"sha256":""#,
+    "e7ce0c4b18872a08b2226ce9df48f4825e5fa0727f09bd724d6e9534d64cabf7",
+    r#""}]}"#,
+);
 
 #[tokio::test]
 async fn starting_the_gateway_keeps_the_progressive_store() {

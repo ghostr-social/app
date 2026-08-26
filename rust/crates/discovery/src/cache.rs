@@ -4,7 +4,7 @@
 //! results, so stored rows are selected with the same filter here and
 //! appended after fresh relay events. A private database plus generation
 //! checks keeps late work from one account out of the next account's
-//! answers. See [`MAX_CACHED_EVENTS`] for the in-memory bound.
+//! answers. `MAX_CACHED_EVENTS` defines the in-memory bound.
 
 pub mod database;
 pub(crate) mod merge;
@@ -12,8 +12,7 @@ pub mod session;
 
 use log::warn;
 use nostr_sdk::prelude::{Event, Filter, NostrDatabase};
-#[cfg(test)]
-use nostr_sdk::Client;
+
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -32,14 +31,7 @@ pub struct EventCache {
 }
 
 impl EventCache {
-    /// Uses a private pool: the client's seen-ID database is deliberately
-    /// eventless so late relay work cannot mutate account cache state.
-    #[cfg(test)]
-    pub(crate) fn of(_client: &Client) -> Self {
-        Self::session()
-    }
-
-    pub(crate) fn session() -> Self {
+    pub(super) fn session() -> Self {
         Self::new(Arc::new(session_event_database(MAX_CACHED_EVENTS)))
     }
 
@@ -50,18 +42,7 @@ impl EventCache {
         }
     }
 
-    /// One query's answer: everything the relays streamed, in arrival
-    /// order, plus the rows this session already holds for the same
-    /// filter and the relays did not repeat. An empty pool changes
-    /// nothing, so a cold query behaves exactly as it did before.
-    #[cfg(test)]
-    pub(crate) async fn union(&self, filter: &Filter, fetched: Vec<Event>) -> Vec<Event> {
-        self.union_for(SessionGeneration::initial(), filter, fetched)
-            .await
-            .unwrap_or_default()
-    }
-
-    pub(crate) async fn union_for(
+    pub(super) async fn union_for(
         &self,
         generation: SessionGeneration,
         filter: &Filter,
@@ -123,18 +104,7 @@ impl EventCache {
         admitted
     }
 
-    /// Scopes the pool to one viewer and reports whether it emptied it.
-    /// The engine outlives a sign-out — the gateway and its client are
-    /// installed once per process — so a session that changes identity
-    /// must not answer from the previous viewer's rows.
-    #[cfg(test)]
-    pub(crate) async fn adopt(&self, viewer: ViewerScope) -> bool {
-        self.adopt_for(SessionGeneration::initial(), viewer)
-            .await
-            .unwrap_or(false)
-    }
-
-    pub(crate) async fn adopt_for(
+    pub(super) async fn adopt_for(
         &self,
         generation: SessionGeneration,
         viewer: ViewerScope,
@@ -156,7 +126,7 @@ impl EventCache {
         self.wipe().await;
     }
 
-    pub(crate) async fn is_current(&self, generation: SessionGeneration) -> bool {
+    pub(super) async fn is_current(&self, generation: SessionGeneration) -> bool {
         self.session.lock().await.matches(generation)
     }
 
@@ -170,3 +140,7 @@ impl EventCache {
 fn cacheable_event(event: &Event) -> bool {
     !matches!(event.kind.as_u16(), 6 | 16) || event.content.len() <= MAX_REPOSTABLE_EVENT_BYTES
 }
+
+#[cfg(test)]
+#[path = "cache_axiom_test.rs"]
+mod axiom_test_support;

@@ -33,5 +33,9 @@ void main() {
     expect(origin.bytesServed('current'), greaterThan(0));
     expect(origin.bytesServed('current'), lessThan(64 * 1024));
     expect(origin.rangesFor('current'), isEmpty);
+    final recorded = origin.requests.single;
+    expect(recorded.servedBytes, origin.bytesServed('current'));
+    expect(recorded.outcome, ProgressiveOriginRequestOutcome.serving);
+    expect(recorded.finishedAt, isNull);
   });
 }

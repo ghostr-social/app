@@ -1,11 +1,11 @@
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::pressure_origin::serve;
 use delivery_fixture::pressure_store::movable_store;
 use delivery_fixture::start_harness_with_store;
-use std::time::Duration;
 
 #[tokio::test]
 async fn admitted_body_recovers_when_capacity_disappears_before_its_write() {
@@ -35,7 +35,7 @@ async fn admitted_body_recovers_when_capacity_disappears_before_its_write() {
         .count();
     assert_eq!(retries, 2, "the refused range must retry exactly once");
     assert_eq!(harness.store.refusals(), 1);
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     drop(harness);
     std::fs::remove_dir_all(root).ok();
 }
@@ -53,7 +53,11 @@ async fn wait_for_refusal(harness: &delivery_fixture::DeliveryHarness) {
 async fn wait_for_complete(harness: &delivery_fixture::DeliveryHarness) {
     tokio::time::timeout(Duration::from_secs(2), async {
         loop {
-            let ranges = harness.store.present_ranges("current").await.unwrap();
+            let ranges = harness
+                .store
+                .present_ranges("current")
+                .await
+                .expect("valid test fixture");
             if ranges.len() == 1 && ranges[0] == (0..16) {
                 return;
             }

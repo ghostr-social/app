@@ -1,5 +1,5 @@
 use crate::api::playback_preparation_stream::projection;
-use crate::api::player_preparation_control::report_player_preparation;
+use crate::api::player_preparation_control::axiom_test_support::report_player_preparation;
 use crate::api::tests::delivery::player_preparation_authority_fixture::AuthorityFixture;
 use ghostr_engine::PostId;
 
@@ -22,8 +22,11 @@ async fn selected_derived_representation_keeps_feed_source_and_exact_player_auth
     assert_eq!(asset.asset_id, fixture.asset);
     report_player_preparation(&fixture.context, fixture.input())
         .await
-        .unwrap();
-    let report = fixture.commands.try_player_preparation().unwrap();
+        .expect("test fixture precondition must hold");
+    let report = fixture
+        .commands
+        .try_player_preparation()
+        .expect("test fixture precondition must hold");
     assert_eq!(
         report.binding().representation().fingerprint(),
         fixture.representation

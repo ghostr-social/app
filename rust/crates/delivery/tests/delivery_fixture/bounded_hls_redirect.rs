@@ -1,10 +1,10 @@
 use axum::body::Body;
 use axum::extract::State;
 use axum::http::{header, HeaderMap, Response, Uri};
-use axum::response::{IntoResponse, Redirect};
+use axum::response::{IntoResponse as _, Redirect};
 use axum::routing::get;
 use axum::Router;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::net::TcpListener;
 
@@ -19,11 +19,17 @@ struct FixtureState {
 
 pub async fn serve() -> (String, Requests) {
     let state = FixtureState::default();
-    let requests = state.requests.clone();
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let address = listener.local_addr().unwrap();
+    let requests = std::sync::Arc::clone(&state.requests);
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("valid test fixture");
+    let address = listener.local_addr().expect("valid test fixture");
     let app = Router::new().fallback(get(object)).with_state(state);
-    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    tokio::spawn(async move {
+        axum::serve(listener, app)
+            .await
+            .expect("valid test fixture");
+    });
     (format!("http://{address}/index.m3u8"), requests)
 }
 
@@ -36,7 +42,10 @@ async fn object(State(state): State<FixtureState>, uri: Uri, headers: HeaderMap)
         "/v1/init.mp4" => ranged("v1", &headers, &state),
         "/v2/init.mp4" => ranged("v2", &headers, &state),
         "/segment.m4s" => full(b"segment"),
-        _ => Response::builder().status(404).body(Body::empty()).unwrap(),
+        _ => Response::builder()
+            .status(404)
+            .body(Body::empty())
+            .expect("valid test fixture"),
     }
 }
 
@@ -51,11 +60,15 @@ fn redirect(state: &FixtureState) -> Response<Body> {
 }
 
 fn ranged(version: &str, headers: &HeaderMap, state: &FixtureState) -> Response<Body> {
-    let range = headers.get(header::RANGE).unwrap().to_str().unwrap();
+    let range = headers
+        .get(header::RANGE)
+        .expect("valid test fixture")
+        .to_str()
+        .expect("valid test fixture");
     state
         .requests
         .lock()
-        .unwrap()
+        .expect("valid test fixture")
         .push((version.to_owned(), range.to_owned()));
     let (start, requested_end) = parse_range(range);
     let end = requested_end.min(INIT_BYTES - 1);
@@ -69,21 +82,24 @@ fn ranged(version: &str, headers: &HeaderMap, state: &FixtureState) -> Response<
         .header(header::CONTENT_LENGTH, end - start + 1)
         .header(header::ETAG, "\"stable\"")
         .body(Body::from(vec![value; end - start + 1]))
-        .unwrap()
+        .expect("valid test fixture")
 }
 
 fn parse_range(value: &str) -> (usize, usize) {
     let (start, end) = value
         .strip_prefix("bytes=")
-        .unwrap()
+        .expect("valid test fixture")
         .split_once('-')
-        .unwrap();
-    (start.parse().unwrap(), end.parse().unwrap())
+        .expect("valid test fixture");
+    (
+        start.parse().expect("valid test fixture"),
+        end.parse().expect("valid test fixture"),
+    )
 }
 
 fn full(body: &'static [u8]) -> Response<Body> {
     Response::builder()
         .header(header::CONTENT_LENGTH, body.len())
         .body(Body::from(body))
-        .unwrap()
+        .expect("valid test fixture")
 }

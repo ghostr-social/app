@@ -1,7 +1,8 @@
 use super::warp_range_noncompliant_unknown_size_generation_test::range_blind_candidate;
+use crate::adaptive::axiom_test_support::WarpActionGenerator;
 use crate::adaptive::{
     ActionKind, AdaptivePlayabilityPolicy, HeadProbeHistory, PlannerContext, PlannerLimits,
-    WarpActionGenerator, WarpPlanner, WarpPlannerInput, WholeBodyExhaustion,
+    WarpPlanner, WarpPlannerInput, WholeBodyExhaustion,
 };
 use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::snapshot;
@@ -38,8 +39,11 @@ fn decision(maximum: u64, observed: u64, burst: u64) -> crate::adaptive::WarpPla
     input.candidates = vec![candidate];
     let base = AdaptivePlayabilityPolicy.plan(&input);
     let context = PlannerContext::explicitly_unavailable(&input)
-        .with_head_probe_history(post.clone(), HeadProbeHistory::Completed)
-        .with_whole_body_exhaustion(post, WholeBodyExhaustion::new(maximum, observed).unwrap())
+        .with_head_probe_history(&post, HeadProbeHistory::Completed)
+        .with_whole_body_exhaustion(
+            &post,
+            WholeBodyExhaustion::new(maximum, observed).expect("valid test fixture"),
+        )
         .with_limits(PlannerLimits {
             network_burst_bytes: burst,
             network_rate_bytes_per_second: 0,

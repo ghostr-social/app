@@ -1,7 +1,5 @@
-mod store_fixture;
-
+use crate::tests::store_fixture::{plain_store, temp_root};
 use std::sync::Arc;
-use store_fixture::{plain_store, temp_root};
 use tokio::sync::Mutex;
 
 #[tokio::test]
@@ -20,6 +18,12 @@ async fn partial_range_store_quarantines_an_unreadable_manifest_entry() {
         .await
         .expect("quarantined entry")
         .is_empty());
-    assert_eq!(store.read_range("clip", 0..1).await.unwrap(), None);
+    assert_eq!(
+        store
+            .read_range("clip", 0..1)
+            .await
+            .expect("valid test fixture"),
+        None
+    );
     std::fs::remove_dir_all(root).expect("remove store");
 }

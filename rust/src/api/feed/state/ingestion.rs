@@ -53,15 +53,15 @@ impl FeedState {
     pub(crate) fn apply_progress(
         &mut self,
         context: &FeedContext,
-        event: Event,
+        event: &Event,
     ) -> Option<VideoCandidate> {
         let feed = self.feed_for(context)?;
-        self.ingest_deletion_events(feed, std::slice::from_ref(&event));
+        self.ingest_deletion_events(feed, core::slice::from_ref(event));
         let following = matches!(self.store.spec(feed), FeedSpec::Following { .. });
-        if following || waits_for_deletion_checks(&event) {
+        if following || waits_for_deletion_checks(event) {
             return None;
         }
-        let inspected = self.candidates.inspect(&event);
+        let inspected = self.candidates.inspect(event);
         if let Some(post) = inspected.post {
             self.store.ingest_progress(feed, post, &self.graph);
         }
@@ -93,7 +93,7 @@ impl FeedState {
         batch.admitted
     }
 
-    pub(super) fn ingest_head(&mut self, feed: FeedId, events: &[Event]) -> Vec<VideoCandidate> {
+    fn ingest_head(&mut self, feed: FeedId, events: &[Event]) -> Vec<VideoCandidate> {
         for event in events {
             self.profiles.ingest(event);
         }

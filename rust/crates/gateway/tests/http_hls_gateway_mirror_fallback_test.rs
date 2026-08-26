@@ -6,7 +6,7 @@ use gateway_fixture::media_client;
 use gateway_fixture::progressive_hls::router_with_hls;
 use gateway_fixture::raw_http::spawn_raw_server;
 use ghostr_gateway::hls::sessions::HlsSessions;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn falls_back_to_the_next_manifest_mirror() {

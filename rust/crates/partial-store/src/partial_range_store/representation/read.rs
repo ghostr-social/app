@@ -1,7 +1,9 @@
 use super::PartialRangeStore;
+use core::ops::Range;
 use ghostr_engine::representation::RepresentationBinding;
-use std::ops::Range;
 
+#[cfg(test)]
+mod test_support;
 #[cfg(test)]
 mod tests;
 
@@ -15,6 +17,9 @@ pub enum RepresentationRead {
 pub struct ContentRevision(pub(super) u64);
 
 impl PartialRangeStore {
+    /// # Errors
+    ///
+    /// Returns an error when representation authority or persisted bytes cannot be validated.
     pub async fn read_for_representation(
         &self,
         binding: &RepresentationBinding,
@@ -41,18 +46,9 @@ impl PartialRangeStore {
         Ok(read.map_or(RepresentationRead::Missing, RepresentationRead::Present))
     }
 
-    pub async fn stream_snapshot(
-        &self,
-        key: &str,
-    ) -> (Option<RepresentationBinding>, ContentRevision) {
-        let Ok(_update) = self.observe_key(key).await else {
-            return (None, self.current_content_revision(key).await);
-        };
-        let binding = self.representations.lock().await.get(key).cloned();
-        let revision = self.current_content_revision(key).await;
-        (binding, revision)
-    }
-
+    /// # Errors
+    ///
+    /// Returns an error when stream authority or persisted bytes cannot be validated.
     pub async fn read_for_stream(
         &self,
         key: &str,
@@ -96,6 +92,10 @@ impl PartialRangeStore {
 
     /// Instantaneous authority check. A caller that waits after `true` must
     /// arm [`PartialRangeStore::change_notifier`] before checking.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the key cannot be observed coherently.
     pub async fn stream_is_current(
         &self,
         key: &str,

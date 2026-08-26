@@ -5,7 +5,7 @@ use crate::discovery::relay::pool::{RelayPoolConfiguration, RelayPoolOwner, Rela
 use nostr_sdk::Client;
 use std::sync::Arc;
 
-pub(crate) async fn initialize_relay_pool(
+pub(super) async fn initialize_relay_pool(
     client: Arc<Client>,
     read_relays: Vec<String>,
     search_relays: Vec<String>,

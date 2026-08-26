@@ -46,7 +46,7 @@ fn whole_context_uses_the_conservative_size_upper_bound() {
     let post = PostId::new("bounded");
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(post.clone(), metadata(Some(20_000_000)));
-    let identity = binding.transfer(SOURCE).unwrap();
+    let identity = binding.transfer(SOURCE).expect("valid test fixture");
     let head = HttpObservation::new(
         LearnedFacts {
             content_length: Some(1_000_000),
@@ -69,7 +69,11 @@ fn whole_context_uses_the_conservative_size_upper_bound() {
     assert!(catalog.learn_action_response_observation_for(&identity, response));
 
     assert_eq!(
-        request_context(catalog.lookup(&post).unwrap(), SOURCE, OBSERVED_AT_MS),
+        request_context(
+            catalog.lookup(&post).expect("valid test fixture"),
+            SOURCE,
+            OBSERVED_AT_MS
+        ),
         (RequestMethod::FullGet, MediaClass::WholeObject, 20_000_000)
     );
 }

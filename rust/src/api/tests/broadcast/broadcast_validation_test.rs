@@ -3,7 +3,7 @@
 
 use crate::api::broadcast_control::verified_event;
 use crate::api::tests::feed_fixtures::video_note;
-use nostr_sdk::{JsonUtil, Keys};
+use nostr_sdk::{JsonUtil as _, Keys};
 
 #[test]
 fn a_correctly_signed_event_passes() {

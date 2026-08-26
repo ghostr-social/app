@@ -89,7 +89,13 @@ fn recorded(request: RetrievalRequest) -> RecordedTransfer {
         maximum_bytes: request.reserved_network_bytes(),
     };
     let captured = record(&decision("secret-post", command, kind));
-    match captured.warp_decision.unwrap().selected.unwrap().command {
+    match captured
+        .warp_decision
+        .expect("valid test fixture")
+        .selected
+        .expect("valid test fixture")
+        .command
+    {
         RecordedWarpCommand::Transfer { transfer } => transfer,
         other => panic!("expected transfer, got {other:?}"),
     }

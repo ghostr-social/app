@@ -1,29 +1,31 @@
-mod store_fixture;
-
 #[tokio::test]
 async fn resumable_takeover_fences_the_older_single_response() {
-    let (root, store, transfer) = store_fixture::mode_fixture("resumable-takeover").await;
+    let (root, store, transfer) =
+        crate::tests::store_fixture::mode_fixture("resumable-takeover").await;
     store
-        .begin_single_response(&transfer, 1, store_fixture::exact_response(8))
+        .begin_single_response(&transfer, 1, crate::tests::store_fixture::exact_response(8))
         .await
-        .unwrap();
-    let generation = store_fixture::source_generation();
+        .expect("valid test fixture");
+    let generation = crate::tests::store_fixture::source_generation();
     store
         .accept_generation(&transfer, generation.clone())
         .await
-        .unwrap();
+        .expect("valid test fixture");
 
     assert!(!store
         .write_single_response_if_current(&transfer, 1, 0, b"stale")
         .await
-        .unwrap());
+        .expect("valid test fixture"));
     assert!(store
         .write_range_for_generation_if_current(&transfer, &generation, 0, b"fresh")
         .await
-        .unwrap());
+        .expect("valid test fixture"));
     assert_eq!(
-        store.read_range("post", 0..5).await.unwrap(),
+        store
+            .read_range("post", 0..5)
+            .await
+            .expect("valid test fixture"),
         Some(b"fresh".to_vec())
     );
-    store_fixture::discard(&root);
+    crate::tests::store_fixture::discard(&root);
 }

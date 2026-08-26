@@ -20,7 +20,7 @@ fn invalid_sidx_fields_are_rejected() {
 #[test]
 fn version_one_sidx_uses_64_bit_time_and_offset_fields() {
     let sidx = cmaf_sidx_v1(1_000, 4_000, 100, 500);
-    let timeline = parse(&sidx).unwrap();
+    let timeline = parse(&sidx).expect("valid test fixture");
 
     assert_eq!(duration_ms(&timeline), 4_500);
 }

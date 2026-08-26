@@ -2,7 +2,7 @@
 //! rows: the *stage* went from `Loading` back to `Settled`, and that is
 //! the only signal telling the pull-shaped Dart adapter the request is
 //! over. Without it a spent feed costs the adapter its whole deadline
-//! (rust_feed_page_reader.dart).
+//! (`rust_feed_page_reader.dart`).
 
 use crate::api::feed::state::FeedState;
 use crate::api::feed_types::FfiFeedStage;
@@ -28,7 +28,7 @@ async fn loaded(state: &SharedFeedState, keys: &Keys, seen: Event) -> (FeedConte
     let (sender, mut updates) = mpsc::unbounded_channel();
     tokio::spawn(watch_feed(
         ChannelOut(sender),
-        state.clone(),
+        std::sync::Arc::clone(state),
         feed,
         revisions,
     ));

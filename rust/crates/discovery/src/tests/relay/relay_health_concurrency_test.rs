@@ -1,5 +1,5 @@
 use crate::relay::health::RelayHealth;
-use std::time::Duration;
+use core::time::Duration;
 
 const RELAY: &str = "wss://failed.example";
 

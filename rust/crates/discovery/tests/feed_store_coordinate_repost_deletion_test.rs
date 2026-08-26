@@ -1,11 +1,9 @@
-mod feed_support;
-
-use feed_support::SignedEventFixture;
-use feed_support::{addressable_video, empty_graph, parsed, repost, signed_event};
-use ghostr_discovery::content::deletions::deletion_claims;
-use ghostr_discovery::content::reposts::feed_post_from_event;
-use ghostr_discovery::feed::spec::FeedSpec;
-use ghostr_discovery::feed::store::FeedStore;
+use crate::content::deletions::deletion_claims;
+use crate::content::reposts::feed_post_from_event;
+use crate::feed::spec::FeedSpec;
+use crate::feed::store::FeedStore;
+use crate::tests::feed_support::SignedEventFixture;
+use crate::tests::feed_support::{addressable_video, empty_graph, parsed, repost, signed_event};
 use nostr_sdk::{Keys, Kind};
 
 #[test]
@@ -30,7 +28,7 @@ fn coordinate_repost_revives_with_a_newer_original_revision() {
     });
     store.ingest_first_page(
         feed,
-        vec![feed_post_from_event(&wrapper).unwrap()],
+        vec![feed_post_from_event(&wrapper).expect("valid test fixture")],
         &empty_graph(),
     );
 
@@ -40,6 +38,9 @@ fn coordinate_repost_revives_with_a_newer_original_revision() {
 
     let post = &store.posts(feed)[0];
     assert_eq!(post.event_id, current.id.to_hex());
-    assert_eq!(post.repost.as_ref().unwrap().event_id, wrapper.id.to_hex());
+    assert_eq!(
+        post.repost.as_ref().expect("valid test fixture").event_id,
+        wrapper.id.to_hex()
+    );
     assert_eq!(post.feed_sort_at, 40);
 }

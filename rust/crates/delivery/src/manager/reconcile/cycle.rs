@@ -31,7 +31,7 @@ pub(super) struct PlanningCycle {
 }
 
 impl DeliveryWorker {
-    pub(super) fn reconcile_request_surfaces(&mut self, limits: RequestConcurrencyLimits) {
+    pub(super) fn reconcile_request_surfaces(&self, limits: RequestConcurrencyLimits) {
         self.sync_request_gate(limits);
     }
 
@@ -59,7 +59,7 @@ impl DeliveryWorker {
         let hls_candidates = self.segmented.planning_candidates(navigation);
         let segmented_storage_available_bytes = self.segmented.available_bytes();
         let segmented_storage_used_bytes = self.segmented.used_bytes();
-        let segmented_storage_capacity_bytes = self.segmented.capacity_bytes();
+        let segmented_storage_capacity_bytes = crate::segmented::SegmentedCache::capacity_bytes();
         let active_hls_sources = self
             .segmented
             .active_sources()
@@ -121,8 +121,8 @@ impl DeliveryWorker {
             demanded: &cycle.demanded,
         };
         planned_work_with_planner(
-            &mut self.state,
-            inputs,
+            &self.state,
+            &inputs,
             &mut self.warp_planner,
             self.qoe.watch_model(),
         )

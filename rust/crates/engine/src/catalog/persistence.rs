@@ -20,14 +20,15 @@ impl CatalogEvidenceState {
         }
     }
 
-    pub fn reliability(&self) -> &FieldReliabilityModel {
-        &self.reliability
-    }
-
     pub fn to_json(&self) -> String {
         serde_json::to_string(self).expect("catalog evidence always serializes")
     }
 
+    /// Restores persisted catalog evidence.
+    ///
+    /// # Errors
+    ///
+    /// Returns a JSON decoding error when the persisted state is malformed.
     pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
         let mut state: Self = serde_json::from_str(json)?;
         state.reliability = FieldReliabilityModel::normalized(state.reliability);
@@ -61,7 +62,9 @@ impl Catalog {
             posts.retain(|post| !self.entries.contains_key(post));
             !posts.is_empty()
         });
-        for (post, entry) in &self.entries {
+        let mut entries = self.entries.iter().collect::<Vec<_>>();
+        entries.sort_by_key(|(post, _)| (*post).clone());
+        for (post, entry) in entries {
             let Some(digest) = entry.renditions.advertised_digest() else {
                 continue;
             };

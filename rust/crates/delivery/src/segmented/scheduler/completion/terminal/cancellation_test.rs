@@ -1,9 +1,9 @@
 use super::super::CompletedObject;
 use super::{terminal, TerminalContext, TerminalInput};
 use crate::segmented::fetch::{FetchFailure, OriginTelemetry};
+use core::time::Duration;
 use ghostr_engine::adaptive::{DecisionOutcome, HlsBootstrapStage, ResourceCost};
 use ghostr_engine::origin_model::NetworkClass;
-use std::time::Duration;
 
 #[test]
 fn admitted_cancellation_keeps_partial_bytes_and_request_usage() {

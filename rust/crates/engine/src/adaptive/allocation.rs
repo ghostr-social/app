@@ -1,19 +1,25 @@
 use super::admission::admitted;
 use super::allocation_evidence::{allocation, whole_allocation, AllocationInputs};
-use super::allocation_geometry::{fit_to_budget, overlaps_planned, request_slices};
+use super::allocation_geometry::{fit_to_budget, overlaps_planned};
 use super::plan::{AllocationPlan, AllocationReason};
-use super::ranges::{missing, missing_playable};
+use super::ranges::missing;
 use super::sources::best_origin;
 use super::{CandidateSnapshot, MediaLayout, OriginHealth, PlayabilitySnapshot, PlayableRange};
 
-/// Default upper bound for one origin range request. An interrupted
-/// request forfeits its undelivered bytes, so oversized requests make
-/// focus changes and failures expensive; per-sample micro-requests
-/// instead pay a round trip per few kilobytes. Contiguous missing
+mod range_requests;
+
+/// Default upper bound for one origin range request.
+///
+/// An interrupted request forfeits its undelivered bytes, so oversized
+/// requests make focus changes and failures expensive; per-sample micro-requests
+/// instead pay a round trip per few kilobytes.
+///
+/// Contiguous missing
 /// extents are therefore repacked into slices no larger than the
 /// snapshot's `request_slice_bytes`, for which this is the ceiling.
 pub const REQUEST_SLICE_BYTES: u64 = 256 * 1024;
 
+#[derive(Clone, Copy)]
 pub(super) struct AppendInputs<'a> {
     pub(super) candidate: &'a CandidateSnapshot,
     pub(super) target_ms: u64,
@@ -42,8 +48,7 @@ pub(super) fn append_candidate(
     if inputs.reason == Some(AllocationReason::MediaBootstrap) {
         return append_bootstrap(plan, snapshot, origin, inputs);
     }
-    let budget = append_timeline_probe(plan, snapshot, origin, &inputs);
-    append_ranges(plan, snapshot, origin, AppendInputs { budget, ..inputs })
+    range_requests::append(plan, snapshot, origin, inputs)
 }
 
 fn has_exclusive_action(candidate: &CandidateSnapshot) -> bool {
@@ -140,110 +145,4 @@ fn admitted_for_reason(
         Some(AllocationReason::MediaBootstrap) => inputs.candidate.needs_bootstrap(),
         _ => admitted(snapshot, inputs.candidate, origin),
     }
-}
-
-fn append_timeline_probe(
-    plan: &mut AllocationPlan,
-    snapshot: &PlayabilitySnapshot,
-    origin: &OriginHealth,
-    inputs: &AppendInputs<'_>,
-) -> u64 {
-    let Some(probe) = inputs.candidate.timeline_probe else {
-        return inputs.budget;
-    };
-    let mut budget = inputs.budget;
-    for playable in request_slices(
-        missing_playable(inputs.candidate, probe),
-        snapshot.request_slice_bytes,
-    ) {
-        if playable.bytes.len() > budget {
-            break;
-        }
-        if overlaps_planned(plan, inputs.candidate, playable.bytes) {
-            continue;
-        }
-        let work = allocation(
-            snapshot,
-            AllocationInputs {
-                candidate: inputs.candidate,
-                origin,
-                playable,
-                emergency: inputs.emergency,
-                reason: Some(AllocationReason::MediaLayoutDiscovery),
-                reservation_budget: budget,
-            },
-        );
-        let reserved = work.request.reserved_network_bytes();
-        let promoted = work.request.promotion().is_some();
-        plan.allocations.push(work);
-        budget = budget.saturating_sub(reserved);
-        if promoted {
-            break;
-        }
-    }
-    budget
-}
-
-fn append_ranges(
-    plan: &mut AllocationPlan,
-    snapshot: &PlayabilitySnapshot,
-    origin: &OriginHealth,
-    inputs: AppendInputs<'_>,
-) -> u64 {
-    let mut budget = candidate_budget(snapshot, &inputs);
-    let mut gained = 0;
-    for available in request_slices(missing(inputs.candidate), snapshot.request_slice_bytes) {
-        if budget == 0 {
-            break;
-        }
-        if gained >= inputs.target_ms && !demanded(inputs.candidate, available.bytes) {
-            continue;
-        }
-        let playable = fit_to_budget(available, budget);
-        if overlaps_planned(plan, inputs.candidate, playable.bytes) {
-            continue;
-        }
-        let work = allocation(
-            snapshot,
-            AllocationInputs {
-                candidate: inputs.candidate,
-                origin,
-                playable,
-                emergency: inputs.emergency,
-                reason: inputs.reason,
-                reservation_budget: budget,
-            },
-        );
-        let reserved = work.request.reserved_network_bytes();
-        let promoted = work.request.promotion().is_some();
-        plan.allocations.push(work);
-        gained = gained.saturating_add(playable.playable_ms);
-        budget = budget.saturating_sub(reserved);
-        if promoted {
-            break;
-        }
-    }
-    budget
-}
-
-/// Whether a slice covers bytes a live consumer is blocked on; those
-/// are fetched regardless of how satisfied the playback reserve is.
-fn demanded(candidate: &CandidateSnapshot, bytes: crate::ByteRange) -> bool {
-    candidate
-        .demanded
-        .is_some_and(|wanted| wanted.start < bytes.end && bytes.start < wanted.end)
-}
-
-fn candidate_budget(snapshot: &PlayabilitySnapshot, inputs: &AppendInputs<'_>) -> u64 {
-    if inputs.candidate.layout != MediaLayout::RequiresCompleteFile {
-        return inputs.budget;
-    }
-    let missing_bytes: u64 = missing(inputs.candidate)
-        .iter()
-        .map(|playable| playable.bytes.len())
-        .sum();
-    inputs
-        .budget
-        .max(missing_bytes)
-        .min(snapshot.storage.available_bytes())
 }

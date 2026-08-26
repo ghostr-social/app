@@ -1,5 +1,5 @@
 use crate::chunk::downloader::HttpResponseEvidence;
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_engine::representation::SourceGeneration;
 use ghostr_net::media_request_executor::MediaResponse;
@@ -14,7 +14,7 @@ pub struct OriginGeneration {
 }
 
 impl HttpResponseEvidence {
-    pub(crate) fn from_response(
+    pub(super) fn from_response(
         response: &MediaResponse,
         observed: ghostr_engine::evidence::EvidenceTime,
     ) -> Self {
@@ -37,22 +37,19 @@ impl HttpResponseEvidence {
 }
 
 impl OriginGeneration {
-    pub(crate) fn from_response(
-        response: &MediaResponse,
-        total_bytes: Option<u64>,
-    ) -> Result<Self> {
+    pub(super) fn from_response(response: &MediaResponse, total_bytes: Option<u64>) -> Self {
         let strong_etag = single_strong_etag(response.headers())
             .ok()
             .flatten()
             .and_then(|etag| etag.to_ascii().map(str::to_owned));
-        Ok(Self {
+        Self {
             final_url: response.url().to_string(),
             strong_etag,
             total_bytes,
-        })
+        }
     }
 
-    pub(crate) fn strict(&self) -> Result<SourceGeneration> {
+    pub(super) fn strict(&self) -> Result<SourceGeneration> {
         let etag = self
             .strong_etag
             .as_deref()
@@ -64,11 +61,11 @@ impl OriginGeneration {
             .context("invalid sparse response generation")
     }
 
-    pub(crate) fn is_resumable(&self) -> bool {
+    pub(super) fn is_resumable(&self) -> bool {
         self.strong_etag.is_some() && self.total_bytes.is_some()
     }
 
-    pub(crate) fn resumable(&self) -> Option<SourceGeneration> {
+    pub(super) fn resumable(&self) -> Option<SourceGeneration> {
         self.strict().ok()
     }
 }

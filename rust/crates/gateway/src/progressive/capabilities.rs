@@ -1,10 +1,10 @@
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Context as _, Result};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-use base64::Engine;
+use base64::Engine as _;
+use core::time::Duration;
 use ghostr_engine::representation::RepresentationBinding;
 use ghostr_partial_store::partial_range_store::{ContentRevision, StoredMediaSnapshot};
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
 
@@ -13,7 +13,7 @@ use state::CapabilityState;
 
 const TOKEN_BYTES: usize = 32;
 const PRODUCTION_CAPACITY: usize = 256;
-const PRODUCTION_IDLE_TTL: Duration = Duration::from_secs(30 * 60);
+const PRODUCTION_IDLE_TTL: Duration = Duration::from_mins(30);
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ProgressiveCapabilityId(String);
@@ -36,6 +36,11 @@ pub struct ProgressiveCapabilityLimits {
 }
 
 impl ProgressiveCapabilityLimits {
+    /// Creates positive capacity and lifetime limits for progressive capabilities.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when capacity is zero or the idle lifetime is empty.
     pub fn new(capacity: usize, idle_ttl: Duration) -> Result<Self> {
         ensure!(
             capacity > 0,
@@ -69,6 +74,11 @@ impl ProgressiveCapabilities {
         }
     }
 
+    /// Issues or refreshes a capability for one stored representation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the snapshot has no representation binding.
     pub async fn issue(&self, snapshot: &StoredMediaSnapshot) -> Result<ProgressiveCapabilityId> {
         let authority = ProgressiveAssetAuthority::capture(snapshot)
             .context("progressive asset needs a representation binding")?;

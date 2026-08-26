@@ -1,9 +1,9 @@
 //! SDK relay removal behind the role book's external-operation seam.
 
 use crate::relay::registration::{RelayRegistration, SdkRelayRegistration};
+use core::future::Future;
+use core::pin::Pin;
 use nostr_sdk::Client;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 
 pub(crate) type RelayRemovalFuture<'a> =
@@ -21,7 +21,7 @@ pub(crate) struct RelayRoleIo {
 
 impl RelayRoleIo {
     pub(crate) fn new(client: Arc<Client>, removal: Arc<dyn RelayRemoval>) -> Self {
-        let registration = Arc::new(SdkRelayRegistration::new(client.clone()));
+        let registration = Arc::new(SdkRelayRegistration::new(std::sync::Arc::clone(&client)));
         Self {
             client,
             removal,
@@ -31,24 +31,9 @@ impl RelayRoleIo {
 
     pub(crate) fn sdk(client: Arc<Client>) -> Self {
         let removal = Arc::new(SdkRelayRemoval {
-            client: client.clone(),
+            client: std::sync::Arc::clone(&client),
         });
         Self::new(client, removal)
-    }
-
-    #[cfg(test)]
-    pub(crate) fn with_registration(
-        client: Arc<Client>,
-        registration: Arc<dyn RelayRegistration>,
-    ) -> Self {
-        let removal = Arc::new(SdkRelayRemoval {
-            client: client.clone(),
-        });
-        Self {
-            client,
-            removal,
-            registration,
-        }
     }
 }
 
@@ -64,3 +49,7 @@ impl RelayRemoval for SdkRelayRemoval {
         })
     }
 }
+
+#[cfg(test)]
+#[path = "removal_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

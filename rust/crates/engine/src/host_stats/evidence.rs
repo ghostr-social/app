@@ -1,12 +1,12 @@
+use core::num::NonZeroUsize;
+use core::time::Duration;
 use serde::{Deserialize, Serialize};
-use std::num::NonZeroUsize;
-use std::time::Duration;
 
 /// Sample weight for failure and latency observations.
 pub(crate) const EWMA_ALPHA: f64 = 0.066_967_008_463_192_6;
 const THROUGHPUT_HALF_LIFE_MS: f64 = 5_000.0;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ThroughputSample {
     bytes: u64,
     elapsed: Duration,
@@ -28,7 +28,7 @@ impl ThroughputSample {
         })
     }
 
-    pub fn observed_at_ms(self) -> u64 {
+    pub(super) fn observed_at_ms(self) -> u64 {
         self.observed_at_ms
     }
 
@@ -50,7 +50,7 @@ impl ThroughputEstimate {
         self.bytes_per_second
     }
 
-    pub fn variability_bytes_per_second(self) -> f64 {
+    pub(crate) fn variability_bytes_per_second(self) -> f64 {
         self.variability_bytes_per_second
     }
 

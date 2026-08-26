@@ -1,6 +1,4 @@
-mod store_fixture;
-
-use store_fixture::{discard, limits, spaced_store};
+use crate::tests::store_fixture::{discard, limits, spaced_store};
 
 /// Eviction must never pull the file out from under a reader, so a
 /// leased video is skipped even when it is the oldest candidate.

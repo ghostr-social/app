@@ -1,5 +1,5 @@
 use crate::hls::asset_response::{AssetBodyContract, AssetResponseEnvelope};
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Context as _, Result};
 use axum::body::Body;
 use axum::http::header::{ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE};
 use axum::http::{Response, StatusCode};
@@ -30,7 +30,7 @@ mod total_header_timeout_test;
 
 pub(super) struct HlsTransfer {
     response: MediaResponse,
-    idle: std::time::Duration,
+    idle: core::time::Duration,
     total_deadline: Instant,
 }
 
@@ -98,9 +98,10 @@ impl HlsTransfer {
             response = response.header(ACCEPT_RANGES, "bytes");
         }
         let body = self.proxy_body(envelope.body_contract());
-        response
-            .body(body)
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+        response.body(body).map_err(|error| {
+            log::warn!("Could not build proxied HLS asset response: {error}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })
     }
 
     fn proxy_body(self, contract: AssetBodyContract) -> Body {

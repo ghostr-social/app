@@ -16,7 +16,7 @@ fn capped_unknown_whole_is_valued_as_discovery_not_completion() {
     let base = AdaptivePlayabilityPolicy.plan(&input);
     let context = PlannerContext::explicitly_unavailable(&input)
         .with_quality(
-            post.clone(),
+            &post,
             PlannerQuality::Estimated {
                 expected_micros: 900_000,
                 lower_micros: 800_000,
@@ -24,14 +24,14 @@ fn capped_unknown_whole_is_valued_as_discovery_not_completion() {
             },
         )
         .with_whole_body_exhaustion(
-            post.clone(),
+            &post,
             WholeBodyExhaustion::new(
                 crate::adaptive::REQUEST_SLICE_BYTES,
                 crate::adaptive::REQUEST_SLICE_BYTES + 1,
             )
-            .unwrap(),
+            .expect("valid test fixture"),
         )
-        .with_head_probe_history(post, HeadProbeHistory::Completed);
+        .with_head_probe_history(&post, HeadProbeHistory::Completed);
 
     let decision = WarpPlanner::default().plan(WarpPlannerInput::new(
         &input,

@@ -49,7 +49,7 @@ fn candidate() -> HlsCandidateSnapshot {
     HlsCandidateSnapshot {
         post: PostId::new("tail"),
         feed_offset: FeedOffset::new(0),
-        view_probability: ViewProbability::new(1.0).unwrap(),
+        view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
         startup_value_ms: 750,
         cursor: HlsObjectCursor::new(7, 256 * 1024, Some(300 * 1024), HlsTransport::ResumeRange),
         state: HlsBootstrapState::Pending {

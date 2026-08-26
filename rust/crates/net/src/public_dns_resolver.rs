@@ -1,7 +1,7 @@
 use crate::native_cache_failure::permanent_cause;
 use crate::public_media_address::is_public;
+use core::error::Error;
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
-use std::error::Error;
 use std::io;
 use std::sync::Arc;
 use tokio::net::lookup_host;

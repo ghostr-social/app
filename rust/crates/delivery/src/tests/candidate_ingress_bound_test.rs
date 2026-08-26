@@ -1,6 +1,5 @@
-use crate::delivery_events::{
-    command_channel_with_candidate_capacity, CandidateAdmission, DeliveryCandidate,
-};
+use crate::delivery_events::axiom_test_support::command_channel_with_candidate_capacity;
+use crate::delivery_events::{CandidateAdmission, DeliveryCandidate};
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 
 #[test]
@@ -20,8 +19,8 @@ fn candidate_ingress_reports_saturation_without_growing_its_backlog() {
         CandidateAdmission::Saturated
     );
 
-    assert_eq!(receiver.try_candidate().unwrap().post.as_str(), "a");
-    assert_eq!(receiver.try_candidate().unwrap().post.as_str(), "b");
+    assert_eq!(receiver.try_candidate().expect("valid test fixture").post.as_str(), "a");
+    assert_eq!(receiver.try_candidate().expect("valid test fixture").post.as_str(), "b");
     assert!(receiver.try_candidate().is_none());
 }
 

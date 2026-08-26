@@ -5,7 +5,7 @@ fn continuously_ready_lanes_each_advance_once_per_round() {
     let mut cursor = WakeCursor::default();
     let ready = [true; 9];
 
-    let selected: Vec<_> = (0..18).map(|_| cursor.choose(&ready).unwrap()).collect();
+    let selected: Vec<_> = (0..18).map(|_| cursor.choose(&ready).expect("valid test fixture")).collect();
 
     assert_eq!(
         selected,

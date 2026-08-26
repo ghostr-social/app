@@ -37,7 +37,7 @@ async fn progressive_to_hls_cancels_the_obsolete_transform() {
     let input = seed_input(&store, &item, INPUT).await;
     let backend = Arc::new(BlockingRemux::new());
     let options = DeliveryOptions {
-        transform: Some(backend.clone()),
+        transform: Some(Arc::<BlockingRemux>::clone(&backend)),
         ..DeliveryOptions::default()
     };
     let harness = start_harness_with_store(store, root, options);
@@ -56,7 +56,7 @@ async fn progressive_to_hls_cancels_the_obsolete_transform() {
         history.records.iter().any(cancelled_transform)
     })
     .await;
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }
 

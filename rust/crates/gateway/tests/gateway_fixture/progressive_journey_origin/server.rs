@@ -63,31 +63,27 @@ async fn serve(State(state): State<OriginState>, method: Method, headers: Header
     state.requests.record(method.clone(), &headers);
     if method == Method::HEAD {
         return match state.head {
-            HeadBehavior::Blocked => std::future::pending::<Response>().await,
+            HeadBehavior::Blocked => core::future::pending::<Response>().await,
             HeadBehavior::Rejected => {
-                tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+                tokio::time::sleep(core::time::Duration::from_millis(20)).await;
                 response::rejected_head()
             }
-            HeadBehavior::Lengthless => {
-                tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+            HeadBehavior::Lengthless | HeadBehavior::DeferredFailure => {
+                tokio::time::sleep(core::time::Duration::from_millis(20)).await;
                 response::lengthless_head()
             }
             HeadBehavior::RangeOpaque => response::range_opaque_head(state.bytes.len()),
             HeadBehavior::RangeBlindSplit => response::range_blind_head(state.bytes.len()),
-            HeadBehavior::DeferredFailure => {
-                tokio::time::sleep(std::time::Duration::from_millis(20)).await;
-                response::lengthless_head()
-            }
         };
     }
     if matches!(
         state.head,
         HeadBehavior::Rejected | HeadBehavior::Lengthless
     ) {
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        tokio::time::sleep(core::time::Duration::from_millis(100)).await;
     }
     if matches!(state.head, HeadBehavior::DeferredFailure) {
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        tokio::time::sleep(core::time::Duration::from_millis(100)).await;
         return response::failed_body();
     }
     if matches!(state.head, HeadBehavior::RangeBlindSplit) {

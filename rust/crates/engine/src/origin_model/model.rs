@@ -1,13 +1,13 @@
 use super::circuit::{CircuitBook, CircuitStatus};
 use super::estimate::build_estimate;
-use super::exploration::ExplorationBudget;
+use super::exploration::{ExplorationBudget, ExplorationClaim};
 use super::hierarchy::aggregate;
 use super::keys::{OriginContextKey, OriginMethodKey, UrlContextKey};
 use super::record::AdaptiveRecord;
 use super::retention::retain_oldest;
 use super::{
-    ColdStartPrior, ColdStartSelector, DecisionMode, ModelTiming, OriginEstimate,
-    OriginObservation, OriginOutcome, OriginQuery, PriorRegistration,
+    ColdStartPrior, DecisionMode, ModelTiming, OriginEstimate, OriginObservation, OriginOutcome,
+    OriginQuery, PriorRegistration,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -21,11 +21,16 @@ const EXPLORATION_SAMPLES: f64 = 8.0;
 const SPARSE_PROBE_BYTES: u64 = 65_536;
 const PRIOR_CAP: usize = 128;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Admission {
     Production,
-    Exploration { maximum_bytes: u64 },
-    RecoveryProbe { maximum_bytes: u64 },
+    Exploration {
+        maximum_bytes: u64,
+        claim: ExplorationClaim,
+    },
+    RecoveryProbe {
+        maximum_bytes: u64,
+    },
     Blocked,
 }
 
@@ -46,13 +51,6 @@ pub struct OriginModel {
 }
 
 impl OriginModel {
-    pub fn register_cold_start(&mut self, selector: ColdStartSelector, prior: ColdStartPrior) {
-        if self.priors.len() == PRIOR_CAP {
-            self.priors.remove(0);
-        }
-        self.priors.push(PriorRegistration { selector, prior });
-    }
-
     pub(crate) fn normalize_loaded(&mut self) {
         retain_oldest(&mut self.global, GLOBAL_CAP);
         retain_oldest(&mut self.origins, ORIGIN_CAP);
@@ -62,7 +60,7 @@ impl OriginModel {
         self.priors.drain(..excess);
     }
 
-    pub fn observe(&mut self, item: OriginObservation) {
+    pub fn observe(&mut self, item: &OriginObservation) {
         if item.outcome == OriginOutcome::Cancelled {
             return;
         }
@@ -70,15 +68,15 @@ impl OriginModel {
         self.global
             .entry(item.query.context)
             .or_default()
-            .observe(&item, timing);
+            .observe(item, timing);
         let origin = origin_key(&item.query);
         self.origins
             .entry(origin)
             .or_default()
-            .observe(&item, timing);
+            .observe(item, timing);
         let url = url_key(&item.query);
-        self.urls.entry(url).or_default().observe(&item, timing);
-        self.observe_circuit(&item);
+        self.urls.entry(url).or_default().observe(item, timing);
+        self.observe_circuit(item);
         retain_oldest(&mut self.global, GLOBAL_CAP);
         retain_oldest(&mut self.origins, ORIGIN_CAP);
         retain_oldest(&mut self.urls, URL_CAP);
@@ -106,11 +104,12 @@ impl OriginModel {
         match self.circuits.status(&key, now) {
             CircuitStatus::Open => return Admission::Blocked,
             CircuitStatus::Recovery => {
-                return match self.circuits.claim(key, now) {
-                    true => Admission::RecoveryProbe {
+                return if self.circuits.claim(key, now) {
+                    Admission::RecoveryProbe {
                         maximum_bytes: SPARSE_PROBE_BYTES,
-                    },
-                    false => Admission::Blocked,
+                    }
+                } else {
+                    Admission::Blocked
                 };
             }
             CircuitStatus::Closed => {}
@@ -119,12 +118,18 @@ impl OriginModel {
         if mode != DecisionMode::Normal || samples >= EXPLORATION_SAMPLES {
             return Admission::Production;
         }
-        match self.exploration.claim(query.origin(), now) {
-            true => Admission::Exploration {
+        if let Some(claim) = self.exploration.claim(query.origin(), now) {
+            Admission::Exploration {
                 maximum_bytes: SPARSE_PROBE_BYTES,
-            },
-            false => Admission::Blocked,
+                claim,
+            }
+        } else {
+            Admission::Blocked
         }
+    }
+
+    pub fn release_exploration(&mut self, claim: &ExplorationClaim) {
+        self.exploration.release(claim);
     }
 
     pub fn circuit_admission(&self, query: &OriginQuery, now: u64) -> Admission {
@@ -158,6 +163,10 @@ impl OriginModel {
             .observe(circuit_key(&item.query), success, item.observed_at_ms);
     }
 }
+
+#[cfg(test)]
+#[path = "model/test_support.rs"]
+mod test_support;
 
 fn origin_key(query: &OriginQuery) -> OriginContextKey {
     OriginContextKey {

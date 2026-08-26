@@ -41,14 +41,27 @@ async fn seed_mirror_prefix(
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(item.post.clone(), item.meta.clone());
     let mirror = &item.meta.urls[1];
-    let identity = binding.transfer(mirror).unwrap();
-    let generation = SourceGeneration::try_new(mirror, "\"mirror\"", 16).unwrap();
-    store.bind_representation(binding).await.unwrap();
-    store.select_transfer(identity.clone()).await.unwrap();
+    let identity = binding.transfer(mirror).expect("valid test fixture");
+    let generation =
+        SourceGeneration::try_new(mirror, "\"mirror\"", 16).expect("valid test fixture");
+    store
+        .bind_representation(binding)
+        .await
+        .expect("valid test fixture");
+    store
+        .select_transfer(identity.clone())
+        .await
+        .expect("valid test fixture");
     store
         .accept_generation(&identity, generation)
         .await
-        .unwrap();
-    store.set_total_len("post", 16).await.unwrap();
-    store.write_range("post", 0, b"01234567").await.unwrap();
+        .expect("valid test fixture");
+    store
+        .set_total_len("post", 16)
+        .await
+        .expect("valid test fixture");
+    store
+        .write_range("post", 0, b"01234567")
+        .await
+        .expect("valid test fixture");
 }

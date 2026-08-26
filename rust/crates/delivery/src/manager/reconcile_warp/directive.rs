@@ -63,9 +63,10 @@ pub(crate) fn execution(mut planned: PlannedWork) -> WarpExecution {
     let command = selected.as_ref().map(|action| &action.command);
     let directive = directive_for(command, &planned.selected_transfers);
     let retained_posts = retained_posts(&planned, advanced);
-    let transfers = match advanced {
-        true => std::mem::take(&mut planned.selected_transfers),
-        false => std::mem::take(&mut planned.transfers),
+    let transfers = if advanced {
+        core::mem::take(&mut planned.selected_transfers)
+    } else {
+        core::mem::take(&mut planned.transfers)
     };
     WarpExecution {
         transfers,

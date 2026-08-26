@@ -12,7 +12,7 @@ fn delayed_probe_facts_are_rejected_after_source_replacement() {
     let retry = RetryBook::new(RetryPolicy::default());
     assert_eq!(
         probes
-            .claim(&catalog, std::slice::from_ref(&post), &retry)
+            .claim(&catalog, core::slice::from_ref(&post), &retry)
             .len(),
         1
     );

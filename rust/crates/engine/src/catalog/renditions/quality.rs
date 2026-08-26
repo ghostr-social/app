@@ -3,6 +3,9 @@ use crate::catalog::Catalog;
 use crate::representation::RepresentationId;
 use crate::PostId;
 
+#[cfg(test)]
+mod api_test;
+
 const QUALITY_SCALE_MICROS: u64 = 1_000_000;
 
 /// Exact active rendition quality relative to a complete advertised ladder.
@@ -13,15 +16,7 @@ pub struct RenditionQualityEvidence {
 }
 
 impl RenditionQualityEvidence {
-    pub const fn active_bitrate_bps(self) -> u64 {
-        self.active_bitrate_bps
-    }
-
-    pub const fn ceiling_bitrate_bps(self) -> u64 {
-        self.ceiling_bitrate_bps
-    }
-
-    pub fn normalized_micros(self) -> u64 {
+    pub(crate) fn normalized_micros(self) -> u64 {
         let scaled = u128::from(self.active_bitrate_bps) * u128::from(QUALITY_SCALE_MICROS);
         (scaled / u128::from(self.ceiling_bitrate_bps)) as u64
     }

@@ -1,21 +1,18 @@
 //! Older-page windows: a fresh load rebases the cursor one second below
 //! the oldest *visible* post (`FeedPagination.restartFrom` called with the
-//! policy-selected posts in feed_cubit.dart `_acceptLoad`), one older
+//! policy-selected posts in `feed_cubit.dart` `_acceptLoad`), one older
 //! request is in flight at a time (`beginLoad`), and a completed page
 //! advances the cursor by what was *fetched*
-//! (filtered_video_feed_repository.dart `_nextCursor`).
+//! (`filtered_video_feed_repository.dart` `_nextCursor`).
 
-mod discovery_support;
-mod feed_support;
-
-use discovery_support::{mute_list, p_tag};
-use feed_support::{parsed_posts, video_note};
-use ghostr_discovery::content::social_graph::SocialGraph;
-use ghostr_discovery::feed::spec::FeedSpec;
-use ghostr_discovery::feed::store::FeedStore;
+use crate::content::social_graph::SocialGraph;
+use crate::feed::spec::FeedSpec;
+use crate::feed::store::FeedStore;
+use crate::tests::discovery_support::{mute_list, p_tag};
+use crate::tests::feed_support::{parsed_posts, video_note};
 use nostr_sdk::{Keys, Timestamp};
 
-fn main_feed(store: &mut FeedStore, viewer: &Keys) -> ghostr_discovery::feed::store::FeedId {
+fn main_feed(store: &mut FeedStore, viewer: &Keys) -> crate::feed::store::FeedId {
     store.open_feed(FeedSpec::MainFeed {
         viewer: Some(viewer.public_key()),
     })

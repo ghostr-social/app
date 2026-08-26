@@ -56,7 +56,9 @@ extension FeedCubitPreparation on FeedCubit {
       current.roster.active.media,
       _upcomingMedia(current),
     );
-    if (accepted != null) emit(current.withPreparation(accepted));
+    if (accepted == null) return;
+    emit(current.withPreparation(accepted));
+    _rescueAfterDeliveryUpdate();
   }
 
   FeedLoaded _projectPreparation(FeedLoaded feed) {

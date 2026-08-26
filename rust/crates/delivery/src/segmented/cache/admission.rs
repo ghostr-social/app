@@ -57,12 +57,12 @@ impl SegmentedCache {
         Some(assembly)
     }
 
-    fn release_stage_lease(&self, key: InflightKey) {
+    fn release_stage_lease(&self, key: &InflightKey) {
         let mut state = self.lock();
-        let Some(inflight) = state.inflight.remove(&key) else {
+        let Some(inflight) = state.inflight.remove(key) else {
             return;
         };
-        restore_focus_after_release(&mut state, &key, inflight);
+        restore_focus_after_release(&mut state, key, inflight);
         drop(state);
         self.changed.notify_waiters();
     }
@@ -92,14 +92,14 @@ fn restore_focus_after_release(
 impl Drop for StageLease {
     fn drop(&mut self) {
         if let Some(key) = self.key.take() {
-            self.cache.release_stage_lease(key);
+            self.cache.release_stage_lease(&key);
         }
     }
 }
 
 impl StageLease {
     pub(in crate::segmented) fn claim_assembly(
-        &mut self,
+        &self,
         block: &PreparedObject,
     ) -> Option<AssemblySeed> {
         self.cache.claim_stage_assembly(self.key.as_ref()?, block)
@@ -151,7 +151,10 @@ fn ensure_capacity(
     }
     (protected && fits_after_reclaim(state, post, total)).then_some(())?;
     super::objects::reclaim_unprotected_ready(state);
-    debug_assert!(fits(state, post, total));
+    debug_assert!(
+        fits(state, post, total),
+        "reclaim must make room for a protected HLS stage"
+    );
     Some(())
 }
 

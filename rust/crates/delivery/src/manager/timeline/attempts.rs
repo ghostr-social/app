@@ -1,7 +1,7 @@
 use super::TimelineEvidence;
+use core::sync::atomic::{AtomicBool, Ordering};
 use ghostr_engine::PostId;
-use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -20,13 +20,13 @@ pub(crate) struct TimelineAttempt {
 
 #[derive(Default)]
 pub(crate) struct TimelineAttempts {
-    active: HashMap<PostId, TimelineAttempt>,
-    terminal: HashMap<PostId, TimelineEvidence>,
+    active: BTreeMap<PostId, TimelineAttempt>,
+    terminal: BTreeMap<PostId, TimelineEvidence>,
     next_id: u64,
 }
 
 impl TimelineAttempts {
-    pub(crate) fn matches(&self, post: &PostId, evidence: &TimelineEvidence) -> bool {
+    pub(super) fn matches(&self, post: &PostId, evidence: &TimelineEvidence) -> bool {
         self.terminal
             .get(post)
             .is_some_and(|known| known.same_parse(evidence))
@@ -67,7 +67,7 @@ impl TimelineAttempts {
         true
     }
 
-    pub(crate) fn retain_active(&mut self, posts: &HashSet<PostId>) {
+    pub(super) fn retain_active(&mut self, posts: &HashSet<PostId>) {
         let stale: Vec<_> = self
             .active
             .keys()
@@ -79,11 +79,11 @@ impl TimelineAttempts {
         }
     }
 
-    pub(crate) fn retain_history(&mut self, posts: &HashSet<PostId>) {
+    pub(super) fn retain_history(&mut self, posts: &HashSet<PostId>) {
         self.terminal.retain(|post, _| posts.contains(post));
     }
 
-    pub(crate) fn clear(&mut self) {
+    pub(super) fn clear(&mut self) {
         for attempt in self.active.values() {
             attempt.cancel();
         }
@@ -91,12 +91,12 @@ impl TimelineAttempts {
         self.terminal.clear();
     }
 
-    pub(crate) fn invalidate(&mut self, post: &PostId) {
+    pub(super) fn invalidate(&mut self, post: &PostId) {
         self.cancel_active(post);
         self.terminal.remove(post);
     }
 
-    pub(crate) fn is_current(&self, attempt: &TimelineAttempt) -> bool {
+    pub(super) fn is_current(&self, attempt: &TimelineAttempt) -> bool {
         self.active.get(&attempt.post).map(|active| active.id) == Some(attempt.id)
     }
 
@@ -121,20 +121,20 @@ impl TimelineAttempts {
 }
 
 impl TimelineAttempt {
-    pub(crate) fn post(&self) -> &PostId {
+    pub(super) fn post(&self) -> &PostId {
         &self.post
     }
 
-    pub(crate) fn evidence(&self) -> &TimelineEvidence {
+    pub(super) fn evidence(&self) -> &TimelineEvidence {
         &self.evidence
     }
 
-    pub(crate) fn is_cancelled(&self) -> bool {
+    pub(super) fn is_cancelled(&self) -> bool {
         self.cancelled.load(Ordering::Acquire)
     }
 
-    pub(crate) fn control(&self) -> Arc<AtomicBool> {
-        self.cancelled.clone()
+    pub(super) fn control(&self) -> Arc<AtomicBool> {
+        std::sync::Arc::clone(&self.cancelled)
     }
 
     fn cancel(&self) {

@@ -1,4 +1,4 @@
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::task::JoinHandle;
 use tokio::time::{timeout, Duration};
@@ -7,7 +7,10 @@ const MANIFEST: &str = "#EXTM3U\n#EXTINF:4,\nsegment.m4s\n#EXT-X-ENDLIST\n";
 
 pub(super) async fn serve_asset(response: Vec<u8>) -> (String, JoinHandle<Vec<String>>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("listener");
-    let source = format!("http://{}/index.m3u8", listener.local_addr().unwrap());
+    let source = format!(
+        "http://{}/index.m3u8",
+        listener.local_addr().expect("valid test fixture")
+    );
     let task = tokio::spawn(async move {
         let (mut root, root_request) = accept(&listener).await;
         write_manifest(&mut root).await;
@@ -21,7 +24,10 @@ pub(super) async fn serve_asset(response: Vec<u8>) -> (String, JoinHandle<Vec<St
 
 pub(super) async fn serve_optional_asset(response: Vec<u8>) -> (String, JoinHandle<Vec<String>>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("listener");
-    let source = format!("http://{}/index.m3u8", listener.local_addr().unwrap());
+    let source = format!(
+        "http://{}/index.m3u8",
+        listener.local_addr().expect("valid test fixture")
+    );
     let task = tokio::spawn(async move {
         let (mut root, root_request) = accept(&listener).await;
         write_manifest(&mut root).await;
@@ -40,7 +46,10 @@ pub(super) async fn serve_optional_asset(response: Vec<u8>) -> (String, JoinHand
 
 pub(super) async fn serve_stalled_asset() -> (String, JoinHandle<()>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("listener");
-    let source = format!("http://{}/index.m3u8", listener.local_addr().unwrap());
+    let source = format!(
+        "http://{}/index.m3u8",
+        listener.local_addr().expect("valid test fixture")
+    );
     let task = tokio::spawn(async move {
         let (mut root, _) = accept(&listener).await;
         write_manifest(&mut root).await;

@@ -38,7 +38,7 @@ fn candidate(post: &str) -> HlsCandidateSnapshot {
     HlsCandidateSnapshot {
         post: PostId::new(post),
         feed_offset: FeedOffset::new(0),
-        view_probability: ViewProbability::new(1.0).unwrap(),
+        view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
         startup_value_ms: 750,
         cursor: Default::default(),
         state: HlsBootstrapState::Pending {
@@ -67,7 +67,7 @@ fn observe(model: &mut OriginModel, class: NetworkClass, rate: u64, ttfb: u64, s
     .with_network(class)
     .with_observed_at_ms(9_000 + sample);
     model.observe(
-        OriginObservation::success(OriginQuery::new(SOURCE, context), 9_000 + sample)
+        &OriginObservation::success(OriginQuery::new(SOURCE, context), 9_000 + sample)
             .with_ttfb_ms(ttfb)
             .with_throughput_bps(rate),
     );

@@ -1,8 +1,8 @@
 use super::TrafficWindow;
-use std::time::Duration;
+use core::time::Duration;
 use tokio::time::Instant;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(crate) struct TransferKey(u64);
 
 impl TransferKey {
@@ -59,9 +59,8 @@ impl TrafficBatch {
     pub(super) fn into_events(self) -> Vec<TrafficEvent> {
         self.events
     }
-
-    #[cfg(test)]
-    pub(crate) fn events(&self) -> &[TrafficEvent] {
-        &self.events
-    }
 }
+
+#[cfg(test)]
+#[path = "event_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

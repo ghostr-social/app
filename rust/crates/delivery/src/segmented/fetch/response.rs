@@ -1,5 +1,5 @@
 use super::{FetchSpec, ObjectContinuation};
-use anyhow::Context;
+use anyhow::Context as _;
 use ghostr_engine::origin_model::ErrorReason;
 use ghostr_net::content_range;
 use ghostr_net::identity_encoding::require_identity_encoding;
@@ -154,7 +154,7 @@ fn invalid(message: impl Into<String>) -> super::FetchProblem {
 }
 
 fn invalid_error(error: anyhow::Error) -> super::FetchProblem {
-    invalid(error.to_string())
+    super::FetchProblem::new(error, ErrorReason::InvalidResponse)
 }
 
 fn valid(condition: bool, message: &'static str) -> Result<(), super::FetchProblem> {

@@ -14,7 +14,7 @@ fn same_range_from_a_replacement_representation_cancels_the_old_attempt() {
     catalog.upsert(post.clone(), meta("https://a.example/video"));
     let old_identity = catalog
         .transfer_identity(&post, "https://a.example/video")
-        .unwrap();
+        .expect("valid test fixture");
     let chunk = ChunkId {
         post: post.clone(),
         range: ByteRange::new(0, 8),
@@ -45,7 +45,7 @@ fn binding_change_cancels_obsolete_committed_work_before_replanning() {
     catalog.upsert(post.clone(), meta("https://a.example/video"));
     let old_identity = catalog
         .transfer_identity(&post, "https://a.example/video")
-        .unwrap();
+        .expect("valid test fixture");
     let chunk = ChunkId {
         post: post.clone(),
         range: ByteRange::new(0, 8),
@@ -73,7 +73,8 @@ fn binding_change_cancels_obsolete_committed_work_before_replanning() {
 fn transfer(catalog: &Catalog, chunk: ChunkId, url: &str) -> PlannedTransfer {
     let retrieval = range_retrieval(chunk.range);
     PlannedTransfer {
-        identity: catalog.transfer_identity(&chunk.post, url).unwrap(),
+        control_mode: ghostr_engine::adaptive::ControlMode::Normal,
+        identity: catalog.transfer_identity(&chunk.post, url).expect("valid test fixture"),
         request: RangeRequest {
             chunk,
             authority: PreemptionAuthority::Transition,

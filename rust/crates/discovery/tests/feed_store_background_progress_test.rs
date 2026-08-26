@@ -1,9 +1,7 @@
-mod feed_support;
-
-use feed_support::{parsed, video_note};
-use ghostr_discovery::content::social_graph::SocialGraph;
-use ghostr_discovery::feed::spec::FeedSpec;
-use ghostr_discovery::feed::store::FeedStore;
+use crate::content::social_graph::SocialGraph;
+use crate::feed::spec::FeedSpec;
+use crate::feed::store::FeedStore;
+use crate::tests::feed_support::{parsed, video_note};
 use nostr_sdk::{Keys, Timestamp};
 
 #[test]

@@ -1,8 +1,8 @@
 //! Shared fixtures for the per-source retry policy tests.
 
+use core::time::Duration;
 use ghostr_delivery::manager::retry::{RetryPolicy, Source};
 use ghostr_engine::PostId;
-use std::time::Duration;
 
 pub const CDN_URL: &str = "https://cdn.example/video.mp4";
 
@@ -20,5 +20,5 @@ pub fn retry_policy() -> RetryPolicy {
 }
 
 pub fn cdn_source() -> Source {
-    Source::new(PostId::new("aa11"), CDN_URL.to_owned())
+    Source::new(PostId::new("aa11"), CDN_URL)
 }

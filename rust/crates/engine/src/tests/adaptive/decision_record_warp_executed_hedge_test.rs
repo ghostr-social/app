@@ -8,5 +8,5 @@ fn selected_hedge_accepts_the_exact_admitted_alternate_request() {
     assert!(bind(&mut record));
     assert_eq!(record.chosen_action_id, Some(44));
     assert!(record.executed_request.is_some());
-    assert_eq!(record.replay(), DecisionReplayStatus::Verified);
+    assert_eq!(record.integrity_status(), DecisionReplayStatus::Verified);
 }

@@ -1,9 +1,13 @@
 use super::plan::PlannedTransfer;
-use ghostr_engine::adaptive::{PreemptionAuthority, RetrievalRequest};
+use ghostr_engine::adaptive::{ControlMode, RetrievalRequest};
 use ghostr_engine::origin_model::{
     Admission, DecisionMode, MediaClass, NetworkClass, OriginContext, OriginQuery, RequestMethod,
 };
 use ghostr_engine::ByteRange;
+
+#[cfg(test)]
+#[path = "origin_admission/mode_test.rs"]
+mod mode_test;
 
 pub(super) fn query(
     transfer: &PlannedTransfer,
@@ -26,22 +30,21 @@ pub(super) fn query(
 }
 
 pub(super) fn mode(transfer: &PlannedTransfer) -> DecisionMode {
-    match transfer.request.authority {
-        PreemptionAuthority::PlaybackCritical => DecisionMode::Emergency,
-        PreemptionAuthority::Transition => DecisionMode::Safety,
-        PreemptionAuthority::Speculative => DecisionMode::Normal,
+    match transfer.control_mode {
+        ControlMode::Emergency => DecisionMode::Emergency,
+        ControlMode::Safety => DecisionMode::Safety,
+        ControlMode::Normal => DecisionMode::Normal,
     }
 }
 
 pub(super) fn apply(
     mut transfer: PlannedTransfer,
-    admission: Admission,
+    admission: &Admission,
 ) -> Option<PlannedTransfer> {
     let maximum = match admission {
         Admission::Production => return Some(transfer),
-        Admission::Exploration { maximum_bytes } | Admission::RecoveryProbe { maximum_bytes } => {
-            maximum_bytes
-        }
+        Admission::Exploration { maximum_bytes, .. }
+        | Admission::RecoveryProbe { maximum_bytes } => *maximum_bytes,
         Admission::Blocked => return None,
     };
     transfer.retrieval = cap_request(transfer.retrieval, maximum);

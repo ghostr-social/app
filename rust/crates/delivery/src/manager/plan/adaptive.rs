@@ -13,17 +13,17 @@ mod watch;
 
 pub(super) fn planned_work(
     state: &DeliveryState,
-    inputs: PlanInputs<'_>,
+    inputs: &PlanInputs<'_>,
     planner: &mut ghostr_engine::adaptive::WarpPlanner,
     model: &ghostr_engine::watch_model::WatchModel,
 ) -> PlannedWork {
-    let Some(mut snapshot) = snapshot::build(state, &inputs) else {
+    let Some(mut snapshot) = snapshot::build(state, inputs) else {
         return empty_work();
     };
     let watch = watch::WatchPlanningWindow::predict(&mut snapshot, model);
     let allocation = AdaptivePlayabilityPolicy.plan(&snapshot);
     let (context, occupancy, hedge_tails) =
-        warp_context::build(state, &snapshot, &allocation, &inputs);
+        warp_context::build(state, &snapshot, &allocation, inputs);
     let context = watch.apply_context(context);
     let warp = planner.plan(ghostr_engine::adaptive::WarpPlannerInput::new(
         &snapshot,
@@ -33,14 +33,12 @@ pub(super) fn planned_work(
     ));
     let network_refill_deadline_ms =
         network_refill_deadline(planner, &warp, snapshot.observed_at_ms);
-    let decision_models = observability::models(&snapshot, &inputs, allocation.mode);
+    let decision_models = observability::models(&snapshot, inputs, allocation.mode);
     let shadow_prices = observability::shadow_prices(&snapshot, occupancy.total() as u64);
-    let emergency = allocation
-        .allocations
-        .iter()
-        .any(|work| work.authority == PreemptionAuthority::PlaybackCritical);
+    let emergency = has_playback_critical_work(&allocation);
     let transfers = mapping::transfers(state, inputs.present, &allocation);
-    let selected_transfers = mapping::selected_transfers(state, inputs.present, &warp);
+    let selected_transfers =
+        mapping::selected_transfers(state, inputs.present, &warp, allocation.mode);
     let retained = mapping::retained_actions(inputs.in_flight, &warp);
     let evictions = allocation.evictions.clone();
     let discovery_demand = allocation.discovery_demand;
@@ -61,6 +59,13 @@ pub(super) fn planned_work(
         planner_cpu_micros: 0,
         warp: Some(warp),
     }
+}
+
+fn has_playback_critical_work(allocation: &ghostr_engine::adaptive::AllocationPlan) -> bool {
+    allocation
+        .allocations
+        .iter()
+        .any(|work| work.authority == PreemptionAuthority::PlaybackCritical)
 }
 
 fn empty_work() -> PlannedWork {

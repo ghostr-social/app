@@ -10,6 +10,14 @@ pub(crate) enum NetworkStatusUpdate {
 }
 
 impl DeliveryState {
+    pub(crate) const fn network_status(&self) -> DeliveryNetworkStatus {
+        self.network_status
+    }
+
+    pub(crate) const fn network_profile_generation(&self) -> u64 {
+        self.network_profile_generation
+    }
+
     pub(crate) fn apply_network_status(
         &mut self,
         status: DeliveryNetworkStatus,
@@ -19,13 +27,22 @@ impl DeliveryState {
         }
         let class_changed = status.network_class() != self.network_status.network_class();
         self.network_status = status;
-        match class_changed {
-            true => NetworkStatusUpdate::ClassChanged,
-            false => NetworkStatusUpdate::Refreshed,
+        if class_changed {
+            NetworkStatusUpdate::ClassChanged
+        } else {
+            NetworkStatusUpdate::Refreshed
         }
     }
 
     pub(crate) fn network_class(&self) -> NetworkClass {
         self.network_status.network_class()
+    }
+
+    pub(crate) fn apply_network_profile_generation(&mut self, generation: u64) -> bool {
+        if generation <= self.network_profile_generation {
+            return false;
+        }
+        self.network_profile_generation = generation;
+        true
     }
 }

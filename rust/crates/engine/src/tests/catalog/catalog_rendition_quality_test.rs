@@ -53,7 +53,7 @@ fn incomplete_or_unrated_ladder_cannot_invent_quality() {
 }
 
 fn rendition(name: &str, bitrate: Option<u64>) -> VideoRendition {
-    VideoRendition::try_new(meta(name), bitrate).unwrap()
+    VideoRendition::try_new(meta(name), bitrate).expect("valid test fixture")
 }
 
 fn meta(name: &str) -> VideoMeta {

@@ -1,12 +1,10 @@
-use crate::delivery_events::{
-    command_channel, DeliveryCommand, DeliveryPlayback, PlaybackPresentation,
-    PlaybackPresentationIngress,
-};
+
+use crate::delivery_events::{command_channel, DeliveryCommand, DeliveryPlayback, PlaybackPresentation, PlaybackPresentationIngress};
 use ghostr_engine::playback::{
     PlaybackObservation, PlaybackObservationSequence, PlaybackPhase, PlaybackSession,
 };
 use ghostr_engine::PostId;
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn presentation_survives_latest_phase_coalescing_in_its_own_bounded_mailbox() {
@@ -19,7 +17,7 @@ fn presentation_survives_latest_phase_coalescing_in_its_own_bounded_mailbox() {
     );
     handle.report_playback(playback(session.clone(), 2, PlaybackPhase::Inactive));
 
-    let DeliveryCommand::Playback(latest) = receiver.try_control().unwrap() else {
+    let DeliveryCommand::Playback(latest) = receiver.try_control().expect("valid test fixture") else {
         panic!("expected playback");
     };
     assert_eq!(latest.sequence, PlaybackObservationSequence::new(2));
@@ -46,7 +44,7 @@ fn presentation_survives_latest_phase_coalescing_in_its_own_bounded_mailbox() {
 }
 
 fn presentation(session: PlaybackSession, sequence: u64) -> PlaybackPresentation {
-    PlaybackPresentation::try_new(session, sequence, 450).unwrap()
+    PlaybackPresentation::try_new(session, sequence, 450).expect("valid test fixture")
 }
 
 fn playback(session: PlaybackSession, sequence: u64, phase: PlaybackPhase) -> DeliveryPlayback {
@@ -59,6 +57,6 @@ fn playback(session: PlaybackSession, sequence: u64, phase: PlaybackPhase) -> De
             1_000,
             phase,
         )
-        .unwrap(),
+        .expect("valid test fixture"),
     }
 }

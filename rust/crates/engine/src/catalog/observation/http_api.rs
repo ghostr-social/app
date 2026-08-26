@@ -5,15 +5,6 @@ use crate::representation::{
 };
 
 impl Catalog {
-    pub fn learn_head_observation_for(
-        &mut self,
-        identity: &TransferIdentity,
-        observation: HttpObservation,
-    ) -> bool {
-        self.learn_head_observation_with_stamp_for(identity, observation)
-            .is_some()
-    }
-
     pub fn learn_head_observation_with_stamp_for(
         &mut self,
         identity: &TransferIdentity,
@@ -78,3 +69,7 @@ impl Catalog {
         Some(authority)
     }
 }
+
+#[cfg(any(test, feature = "test"))]
+#[path = "http_api/test_support.rs"]
+mod test_support;

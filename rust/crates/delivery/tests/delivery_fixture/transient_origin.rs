@@ -1,7 +1,7 @@
 use axum::http::{Method, StatusCode};
 use axum::routing::any;
 use axum::Router;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 
@@ -15,7 +15,7 @@ pub type Attempts = Arc<AttemptCounts>;
 
 pub async fn serve() -> (String, Attempts) {
     let attempts = Arc::new(AttemptCounts::default());
-    let observed = attempts.clone();
+    let observed = std::sync::Arc::clone(&attempts);
     let app = Router::new().route(
         "/video.mp4",
         any(move |method: Method| {
@@ -34,7 +34,7 @@ pub async fn serve() -> (String, Attempts) {
     tokio::spawn(async move {
         axum::serve(listener, app)
             .await
-            .expect("serve transient origin")
+            .expect("serve transient origin");
     });
     (format!("http://{address}/video.mp4"), attempts)
 }

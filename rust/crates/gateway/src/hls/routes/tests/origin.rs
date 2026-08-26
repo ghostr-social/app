@@ -1,4 +1,4 @@
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::task::JoinHandle;
 
@@ -6,7 +6,7 @@ pub(super) async fn stalled_headers() -> (String, JoinHandle<()>) {
     let (listener, url) = listener().await;
     let task = tokio::spawn(async move {
         let _socket = accept(&listener).await;
-        std::future::pending::<()>().await;
+        core::future::pending::<()>().await;
     });
     (url, task)
 }
@@ -19,7 +19,7 @@ pub(super) async fn stalled_manifest_body() -> (String, JoinHandle<()>) {
             .write_all(b"HTTP/1.1 200 OK\r\nContent-Type: application/vnd.apple.mpegurl\r\nContent-Length: 100\r\n\r\n#EXTM3U\n")
             .await
             .expect("manifest prefix");
-        std::future::pending::<()>().await;
+        core::future::pending::<()>().await;
     });
     (url, task)
 }
@@ -74,14 +74,17 @@ pub(super) async fn manifest_then_stalled_asset() -> (String, JoinHandle<()>) {
             .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\nx")
             .await
             .expect("asset prefix");
-        std::future::pending::<()>().await;
+        core::future::pending::<()>().await;
     });
     (url, task)
 }
 
 async fn listener() -> (TcpListener, String) {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("listener");
-    let url = format!("http://{}/index.m3u8", listener.local_addr().unwrap());
+    let url = format!(
+        "http://{}/index.m3u8",
+        listener.local_addr().expect("valid test fixture")
+    );
     (listener, url)
 }
 

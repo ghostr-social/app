@@ -7,8 +7,8 @@ use crate::partial_range_manifest::RangeManifest;
 use crate::partial_range_store::cleanup_debt::CleanupScope;
 use crate::partial_range_store::StoreAction;
 use crate::partial_range_store::{Entries, PartialRangeStore};
-use anyhow::{bail, Context, Result};
-use std::ops::Range;
+use anyhow::{bail, Context as _, Result};
+use core::ops::Range;
 
 /// The manifest a write would produce and the bytes it would add.
 struct PlannedWrite {
@@ -18,6 +18,9 @@ struct PlannedWrite {
 }
 
 impl PartialRangeStore {
+    /// # Errors
+    ///
+    /// Returns an error when range geometry, capacity admission, or persistence fails.
     pub async fn write_range(&self, key: &str, offset: u64, bytes: &[u8]) -> Result<()> {
         let _update = self.update_key(key).await?;
         let mut entries = self.entries.lock().await;
@@ -87,7 +90,7 @@ impl PartialRangeStore {
     ) -> Result<()> {
         let path = self.paths.partial(key);
         disk::write_at(&path, offset, bytes).await?;
-        let spans = std::slice::from_ref(&plan.checksum_span);
+        let spans = core::slice::from_ref(&plan.checksum_span);
         for (span, checksum) in disk::checksum_blocks(&path, spans).await? {
             plan.manifest.record_checksum(span, checksum)?;
         }
@@ -108,6 +111,9 @@ impl PartialRangeStore {
         }
     }
 
+    /// # Errors
+    ///
+    /// Returns an error when the object is finalized or its length cannot be persisted safely.
     pub async fn set_total_len(&self, key: &str, len: u64) -> Result<()> {
         let _update = self.update_key(key).await?;
         let mut entries = self.entries.lock().await;

@@ -18,7 +18,7 @@ struct PageExecutor {
 
 impl PlanExecutor for PageExecutor {
     fn execute(&self, _: PlannedRetrieval) -> PlanFuture {
-        Box::pin(std::future::pending())
+        Box::pin(core::future::pending())
     }
 
     fn execute_page_with_progress(
@@ -30,7 +30,7 @@ impl PlanExecutor for PageExecutor {
         let page = self.page.lock().expect("page").take();
         Box::pin(async move {
             let Some(page) = page else {
-                return std::future::pending().await;
+                return core::future::pending().await;
             };
             Ok(page)
         })
@@ -96,5 +96,5 @@ fn following_request() -> crate::query::video_filters::DiscoveryRequest {
 fn signed_wrapper() -> Event {
     EventBuilder::new(Kind::Custom(16), "")
         .sign_with_keys(&Keys::generate())
-        .unwrap()
+        .expect("valid test fixture")
 }

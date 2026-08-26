@@ -12,12 +12,12 @@
 
 use crate::manager::transfers::InternalEvent;
 use crate::manager::DeliveryWorker;
+use core::time::Duration;
 use ghostr_engine::PostId;
 use ghostr_partial_store::partial_range_store::capacity::CapacityRevision;
 use ghostr_partial_store::partial_range_store::OutOfSpace;
 use log::warn;
 use std::sync::Arc;
-use std::time::Duration;
 
 mod capacity;
 pub(crate) use capacity::capacity_changed;
@@ -55,11 +55,11 @@ impl StorePressure {
         self.claim_report(decisions).then_some(short)
     }
 
-    pub(crate) fn is_parked(&self) -> bool {
+    pub(super) fn is_parked(&self) -> bool {
         self.parked
     }
 
-    pub(crate) fn retry_delay(&self) -> Duration {
+    pub(super) fn retry_delay(&self) -> Duration {
         self.pause
     }
 
@@ -76,19 +76,19 @@ impl StorePressure {
         })
     }
 
-    pub(crate) fn resume(&mut self, generation: u64) {
+    fn resume(&mut self, generation: u64) {
         if self.wait_generation == generation {
             self.parked = false;
         }
     }
 
-    pub(crate) fn clear(&mut self) {
+    pub(super) fn clear(&mut self) {
         self.wait_generation = self.wait_generation.saturating_add(1);
         self.reported = 0;
         self.parked = false;
     }
 
-    pub(crate) fn focus_changed(&mut self) {
+    pub(super) fn focus_changed(&mut self) {
         self.wait_generation = self.wait_generation.saturating_add(1);
         self.parked = false;
     }
@@ -105,7 +105,7 @@ impl DeliveryWorker {
     /// Replans on every store capacity revision. The policy budgets
     /// origin work to the room the store reports, so a capacity change
     /// must wake planning even when nothing is parked on a refusal.
-    pub(crate) fn spawn_capacity_replans(&self) {
+    pub(super) fn spawn_capacity_replans(&self) {
         let store = Arc::clone(&self.ctx.store);
         let events = self.ctx.events.clone();
         tokio::spawn(async move {
@@ -123,7 +123,7 @@ impl DeliveryWorker {
                             return;
                         }
                     }
-                    _ = events.closed() => return,
+                    () = events.closed() => return,
                 }
             }
         });
@@ -132,7 +132,7 @@ impl DeliveryWorker {
     /// Absorbs a chunk that failed on the store rather than on the
     /// network. `true` when it was one, so the caller leaves the
     /// source's retry ledger alone.
-    pub(crate) fn absorb_store_pressure(&mut self, _post: &PostId, error: &anyhow::Error) -> bool {
+    pub(super) fn absorb_store_pressure(&mut self, _post: &PostId, error: &anyhow::Error) -> bool {
         let Some(refusal) = out_of_space(error) else {
             return false;
         };
@@ -141,7 +141,7 @@ impl DeliveryWorker {
         true
     }
 
-    pub(crate) fn resume_store_capacity(&mut self, generation: u64) {
+    pub(super) fn resume_store_capacity(&mut self, generation: u64) {
         self.pressure.resume(generation);
     }
 
@@ -168,7 +168,7 @@ impl DeliveryWorker {
                     wait.recheck_after,
                     wait.observed,
                 ) => changed,
-                _ = events.closed() => false,
+                () = events.closed() => false,
             };
             if changed {
                 let _ = events.send(InternalEvent::Maintenance(

@@ -2,6 +2,7 @@ mod delivery_fixture;
 mod raw_http;
 
 use delivery_fixture::decision::wait_for_history;
+use delivery_fixture::evidence::DeliveryEvidence as _;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
@@ -39,7 +40,11 @@ async fn selected_promotion_authorizes_the_exact_live_request_before_headers() {
         .find(promotion_record)
         .expect("resolved promotion decision");
     assert_eq!(record.schema_version, 3);
-    let selected = record.warp_decision.unwrap().selected.unwrap();
+    let selected = record
+        .warp_decision
+        .expect("valid test fixture")
+        .selected
+        .expect("valid test fixture");
     assert_eq!(selected.resources.network_bytes, 12);
     assert_eq!(selected.resources.storage_bytes, 12);
     assert_eq!(selected.resources.requests, 0);
@@ -49,10 +54,10 @@ async fn selected_promotion_authorizes_the_exact_live_request_before_headers() {
     origin.requests.await.expect("probe and promoted request");
     wait_for_file(&harness.root.join("post.video")).await;
     assert_eq!(
-        std::fs::read(harness.root.join("post.video")).unwrap(),
+        std::fs::read(harness.root.join("post.video")).expect("valid test fixture"),
         b"0123456789abcdef"
     );
-    std::fs::remove_dir_all(&harness.root).unwrap();
+    std::fs::remove_dir_all(&harness.root).expect("valid test fixture");
 }
 
 fn promotion_succeeded(
@@ -85,8 +90,17 @@ fn assert_exact_promotion(command: RecordedWarpCommand) {
     else {
         panic!("expected promotion command");
     };
-    assert!(action_id > 0);
-    assert!(!source_id.is_empty());
-    assert_eq!(grant.maximum_bytes, 16);
-    assert!(grant.valid_until_ms > 0);
+    assert!(action_id > 0, "promotion must target a live action");
+    assert!(
+        !source_id.is_empty(),
+        "promotion must preserve its source identity"
+    );
+    assert_eq!(
+        grant.maximum_bytes, 16,
+        "promotion must authorize the unrequested remainder"
+    );
+    assert!(
+        grant.valid_until_ms > 0,
+        "promotion must carry a finite authorization deadline"
+    );
 }

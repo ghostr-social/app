@@ -2,6 +2,7 @@
 name = "ghostr-media-model"
 version = "0.1.0"
 edition = "2021"
+publish = false
 description = "Nostr event to media description: imeta parsing, video identity, media metadata models."
 
 [dependencies]

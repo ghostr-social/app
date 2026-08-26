@@ -52,7 +52,7 @@ impl DeliveryState {
         posts[start..end].to_vec()
     }
 
-    pub(crate) fn preparation_posts(&self) -> HashSet<PostId> {
+    pub(super) fn preparation_posts(&self) -> HashSet<PostId> {
         self.planning_window_posts().into_iter().collect()
     }
 

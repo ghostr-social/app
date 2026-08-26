@@ -5,6 +5,9 @@ pub const MAX_MEDIA_RESPONSE_HEADER_BYTES: usize = 32 * 1024;
 const MAX_MEDIA_RESPONSE_HEADERS: usize = 128;
 const HEADER_WIRE_OVERHEAD: usize = 4;
 
+/// # Errors
+///
+/// Returns an error when the response has too many headers or exceeds the header-byte limit.
 pub fn validate_response_headers(headers: &HeaderMap) -> Result<()> {
     ensure!(
         headers.len() <= MAX_MEDIA_RESPONSE_HEADERS,

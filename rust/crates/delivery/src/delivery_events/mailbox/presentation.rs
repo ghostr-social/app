@@ -48,15 +48,16 @@ impl MailboxSender {
         if admission != PlaybackPresentationIngress::Accepted {
             return admission;
         }
-        match signal(&self.preparation_wake) {
-            true => admission,
-            false => PlaybackPresentationIngress::Closed,
+        if signal(&self.preparation_wake) {
+            admission
+        } else {
+            PlaybackPresentationIngress::Closed
         }
     }
 }
 
 impl MailboxReceiver {
-    pub(crate) fn try_playback_presentation(&mut self) -> Option<PlaybackPresentation> {
+    pub(crate) fn try_playback_presentation(&self) -> Option<PlaybackPresentation> {
         self.lock().presentations.pop()
     }
 

@@ -1,47 +1,67 @@
 #![cfg(unix)]
 
-mod store_fixture;
-
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
-use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::PermissionsExt as _;
 
 #[tokio::test]
 async fn failed_policy_scratch_cleanup_preserves_and_accounts_canonical() {
-    let fixture =
-        store_fixture::spaced_store("policy-scratch-cleanup", store_fixture::limits(20, 0), 20);
+    let fixture = crate::tests::store_fixture::spaced_store(
+        "policy-scratch-cleanup",
+        crate::tests::store_fixture::limits(20, 0),
+        20,
+    );
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(PostId::new("clip"), meta());
-    let identity = binding.transfer("https://cdn.example/video").unwrap();
+    let identity = binding
+        .transfer("https://cdn.example/video")
+        .expect("valid test fixture");
     fixture
         .store
         .bind_representation(binding.clone())
         .await
-        .unwrap();
+        .expect("valid test fixture");
     fixture
         .store
         .write_range("clip", 0, b"abcdefghijkl")
         .await
-        .unwrap();
-    fixture.store.set_total_len("clip", 12).await.unwrap();
+        .expect("valid test fixture");
+    fixture
+        .store
+        .set_total_len("clip", 12)
+        .await
+        .expect("valid test fixture");
     tokio::fs::write(fixture.root.join("clip.part.evict"), b"abcd0000ijkl")
         .await
-        .unwrap();
+        .expect("valid test fixture");
     tokio::fs::write(
         fixture.root.join("clip.evict.intent"),
         br#"{"version":1,"retained_bytes":8}"#,
     )
     .await
-    .unwrap();
-    std::fs::set_permissions(&fixture.root, std::fs::Permissions::from_mode(0o500)).unwrap();
+    .expect("valid test fixture");
+    std::fs::set_permissions(&fixture.root, std::fs::Permissions::from_mode(0o500))
+        .expect("valid test fixture");
 
-    let reopened = store_fixture::reopened(&fixture);
-    reopened.store.load_existing().await.unwrap();
-    reopened.store.bind_representation(binding).await.unwrap();
+    let reopened = crate::tests::store_fixture::reopened(&fixture);
+    reopened
+        .store
+        .load_existing()
+        .await
+        .expect("valid test fixture");
+    reopened
+        .store
+        .bind_representation(binding)
+        .await
+        .expect("valid test fixture");
 
     assert_eq!(reopened.store.used_bytes().await, 20);
     assert_eq!(
-        reopened.store.read_range("clip", 4..8).await.unwrap(),
+        reopened
+            .store
+            .read_range("clip", 4..8)
+            .await
+            .expect("valid test fixture"),
         Some(b"efgh".to_vec())
     );
     assert!(reopened
@@ -49,16 +69,17 @@ async fn failed_policy_scratch_cleanup_preserves_and_accounts_canonical() {
         .reserve_action(&identity, 1, 8)
         .await
         .is_err());
-    std::fs::set_permissions(&fixture.root, std::fs::Permissions::from_mode(0o700)).unwrap();
+    std::fs::set_permissions(&fixture.root, std::fs::Permissions::from_mode(0o700))
+        .expect("valid test fixture");
     let retry = reopened
         .store
         .reserve_action(&identity, 2, 8)
         .await
-        .unwrap();
+        .expect("valid test fixture");
     assert_eq!(reopened.store.used_bytes().await, 12);
     assert!(!fixture.root.join("clip.part.evict").exists());
     reopened.store.release_action(&retry).await;
-    store_fixture::discard(&fixture.root);
+    crate::tests::store_fixture::discard(&fixture.root);
 }
 
 fn meta() -> VideoMeta {

@@ -39,13 +39,10 @@ impl AssetCall {
         let transfer = self
             .open(&request.url, request.range, Some(generation.if_range()))
             .await?;
-        let envelope = match validate(request.range, transfer.response()) {
-            Ok(envelope) => envelope,
-            Err(_) => {
-                return self
-                    .reject_envelope(request.fence, generation, transfer)
-                    .await
-            }
+        let Ok(envelope) = validate(request.range, transfer.response()) else {
+            return self
+                .reject_envelope(request.fence, generation, transfer)
+                .await;
         };
         request
             .fence

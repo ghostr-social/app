@@ -4,9 +4,9 @@ use crate::evaluation::{
 };
 use crate::manager::transfers::{InternalEvent, MaintenanceEvent};
 use crate::qoe::{load_playback_learning, save_playback_learning, QoeTracker, WatchLearner};
+use core::time::Duration;
 use log::warn;
 use std::path::PathBuf;
-use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
 pub(crate) struct QoeKeeper {
@@ -71,7 +71,7 @@ impl QoeKeeper {
             buffer_ms,
             now_ms,
         );
-        self.evaluation.playback(PlaybackMetricEvent {
+        self.evaluation.playback(&PlaybackMetricEvent {
             post: playback.session.post().clone(),
             phase: playback.observation.phase(),
             bitrate_bps,
@@ -83,7 +83,7 @@ impl QoeKeeper {
     pub fn note_presentation(&mut self, event: &PlaybackPresentation, bitrate: u64, origin: &str) {
         self.tracker
             .present(event.session().post(), event.observed_at_ms());
-        self.evaluation.present(PresentationMetricEvent {
+        self.evaluation.present(&PresentationMetricEvent {
             post: event.session().post().clone(),
             bitrate_bps: bitrate,
             origin: origin.to_owned(),

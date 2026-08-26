@@ -17,6 +17,7 @@ impl CatalogEntry {
         self.evidence_clock_ms = 0;
         self.http_clocks.clear();
         self.http_generations.clear();
+        self.verified_mirrors.clear();
         self.next_http_generation = 1;
         self.quarantined = false;
         self.timeline = None;

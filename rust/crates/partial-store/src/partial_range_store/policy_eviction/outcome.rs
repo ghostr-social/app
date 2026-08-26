@@ -1,5 +1,5 @@
 use crate::partial_range_manifest::RangeManifest;
-use std::ops::Range;
+use core::ops::Range;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct EvictionOutcome {

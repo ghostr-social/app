@@ -1,10 +1,10 @@
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use delivery_fixture::transient_origin::{body_count, serve, Attempts};
-use std::time::Duration;
 use tokio::time::Instant;
 
 #[tokio::test]

@@ -33,16 +33,16 @@ pub enum TlsVersion {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct OriginEnvironment {
-    pub domain_class: Availability<DomainClass>,
-    pub hosting_service: Availability<String>,
-    pub asn: Availability<u32>,
-    pub region: Availability<String>,
-    pub protocol: Availability<HttpProtocol>,
-    pub tls_version: Availability<TlsVersion>,
+    pub(super) domain_class: Availability<DomainClass>,
+    pub(super) hosting_service: Availability<String>,
+    pub(crate) asn: Availability<u32>,
+    pub(crate) region: Availability<String>,
+    pub(super) protocol: Availability<HttpProtocol>,
+    pub(super) tls_version: Availability<TlsVersion>,
 }
 
 impl OriginEnvironment {
-    pub fn unavailable() -> Self {
+    pub(crate) fn unavailable() -> Self {
         Self {
             domain_class: Availability::Unavailable,
             hosting_service: Availability::Unavailable,
@@ -52,37 +52,11 @@ impl OriginEnvironment {
             tls_version: Availability::Unavailable,
         }
     }
-
-    pub fn with_domain_class(mut self, value: DomainClass) -> Self {
-        self.domain_class = Availability::Available(value);
-        self
-    }
-
-    pub fn with_hosting_service(mut self, value: impl Into<String>) -> Self {
-        self.hosting_service = Availability::Available(value.into());
-        self
-    }
-
-    pub fn with_asn(mut self, value: u32) -> Self {
-        self.asn = Availability::Available(value);
-        self
-    }
-
-    pub fn with_region(mut self, value: impl Into<String>) -> Self {
-        self.region = Availability::Available(value.into());
-        self
-    }
-
-    pub fn with_protocol(mut self, value: HttpProtocol) -> Self {
-        self.protocol = Availability::Available(value);
-        self
-    }
-
-    pub fn with_tls_version(mut self, value: TlsVersion) -> Self {
-        self.tls_version = Availability::Available(value);
-        self
-    }
 }
+
+#[cfg(test)]
+#[path = "environment/test_support.rs"]
+mod test_support;
 
 impl Default for OriginEnvironment {
     fn default() -> Self {

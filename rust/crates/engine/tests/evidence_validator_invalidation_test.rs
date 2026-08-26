@@ -1,4 +1,4 @@
-use ghostr_engine::evidence::{
+use crate::evidence::{
     Confidence, Evidence, EvidenceField, EvidenceLedger, EvidenceScope, EvidenceSource,
     EvidenceValidator, EvidenceValue,
 };
@@ -60,5 +60,5 @@ fn first_validator_invalidates_provisional_url_structural_evidence() {
 const URL: &str = "https://media.example/video.mp4";
 
 fn etag(value: &str) -> EvidenceValidator {
-    EvidenceValidator::strong_etag(format!("\"{value}\"")).unwrap()
+    EvidenceValidator::strong_etag(format!("\"{value}\"")).expect("valid test fixture")
 }

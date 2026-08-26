@@ -7,7 +7,7 @@ use gateway_fixture::progressive_request::capability_request;
 use ghostr_engine::adaptive::WholeBodyContract;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn old_asset_cannot_serve_a_new_revision_of_the_same_representation() {
@@ -26,10 +26,24 @@ async fn install_initial(
 ) -> ghostr_engine::representation::TransferIdentity {
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(PostId::new("clip"), meta());
-    let transfer = binding.transfer("https://cdn.example/clip.mp4").unwrap();
-    harness.store.bind_representation(binding).await.unwrap();
-    harness.store.set_total_len("clip", 4).await.unwrap();
-    harness.store.write_range("clip", 0, b"aaaa").await.unwrap();
+    let transfer = binding
+        .transfer("https://cdn.example/clip.mp4")
+        .expect("valid test fixture");
+    harness
+        .store
+        .bind_representation(binding)
+        .await
+        .expect("valid test fixture");
+    harness
+        .store
+        .set_total_len("clip", 4)
+        .await
+        .expect("valid test fixture");
+    harness
+        .store
+        .write_range("clip", 0, b"aaaa")
+        .await
+        .expect("valid test fixture");
     transfer
 }
 
@@ -41,23 +55,23 @@ async fn replace_bytes(
         .store
         .select_transfer(transfer.clone())
         .await
-        .unwrap();
+        .expect("valid test fixture");
     let contract = WholeBodyContract::Exact { expected_bytes: 4 };
     harness
         .store
         .begin_single_response(&transfer, 7, contract)
         .await
-        .unwrap();
+        .expect("valid test fixture");
     harness
         .store
         .write_single_response_if_current(&transfer, 7, 0, b"bbbb")
         .await
-        .unwrap();
+        .expect("valid test fixture");
     harness
         .store
         .finish_single_response(&transfer, 7, Some(4), true)
         .await
-        .unwrap();
+        .expect("valid test fixture");
 }
 
 async fn assert_assets(
@@ -66,11 +80,31 @@ async fn assert_assets(
     new: &str,
 ) {
     let stale = capability_request("clip", old, None);
-    let stale = harness.router.clone().oneshot(stale).await.unwrap();
-    assert_eq!(stale.status(), StatusCode::NOT_FOUND);
+    let stale = harness
+        .router
+        .clone()
+        .oneshot(stale)
+        .await
+        .expect("valid test fixture");
+    assert_eq!(
+        stale.status(),
+        StatusCode::NOT_FOUND,
+        "the old capability must not authorize revised bytes"
+    );
     let current = capability_request("clip", new, None);
-    let current = harness.router.clone().oneshot(current).await.unwrap();
-    assert_eq!(to_bytes(current.into_body(), 4).await.unwrap(), b"bbbb"[..]);
+    let current = harness
+        .router
+        .clone()
+        .oneshot(current)
+        .await
+        .expect("valid test fixture");
+    assert_eq!(
+        to_bytes(current.into_body(), 4)
+            .await
+            .expect("valid test fixture"),
+        b"bbbb"[..],
+        "the current capability must expose the revised bytes"
+    );
 }
 
 fn meta() -> VideoMeta {

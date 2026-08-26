@@ -19,7 +19,7 @@ mod hedge;
 mod policy_limit;
 
 impl DeliveryWorker {
-    pub(crate) async fn finish_chunk(&mut self, done: ChunkDone) {
+    pub(super) async fn finish_chunk(&mut self, done: ChunkDone) {
         self.record_whole_body_limit(&done);
         let generation = self.downloads.http_generation(&done.attempt);
         let whole_body_completed = self.learn_network_completion(&done, generation.as_ref());
@@ -28,7 +28,8 @@ impl DeliveryWorker {
         }
         let finished = self.downloads.finish(&done.attempt);
         let status = finished.status();
-        self.observe_chunk_completion(&done, finished);
+        self.observe_chunk_completion(&done, &finished);
+        self.release_unstarted_exploration(&done, &finished);
         let identity = done.attempt.identity().clone();
         self.finish_body(&identity);
         if !self.retain_completion(status, &done, &identity) {
@@ -38,16 +39,33 @@ impl DeliveryWorker {
             .await;
     }
 
+    fn release_unstarted_exploration(
+        &mut self,
+        done: &ChunkDone,
+        finished: &crate::manager::inflight::FinishedAction,
+    ) {
+        if done.request_started {
+            return;
+        }
+        let Some(claim) = finished.exploration_claim() else {
+            return;
+        };
+        self.keeper
+            .stats_mut()
+            .origin_model_mut()
+            .release_exploration(claim);
+    }
+
     fn retain_completion(
         &mut self,
         status: crate::manager::inflight::CompletionStatus,
         done: &ChunkDone,
         identity: &TransferIdentity,
     ) -> bool {
-        match hedge::completion_use(status, &done) {
+        match hedge::completion_use(status, done) {
             hedge::CompletionUse::Useful => true,
             hedge::CompletionUse::OriginEvidence => {
-                hedge::record_origin_only(self, &done, &identity);
+                hedge::record_origin_only(self, done, identity);
                 false
             }
             hedge::CompletionUse::Discarded => false,
@@ -80,13 +98,13 @@ impl DeliveryWorker {
                         generation: generation.as_ref(),
                     },
                 )
-                .await
+                .await;
             }
             Err(error) => self.absorb_failure(identity.post(), &done.url, &error),
         }
     }
 
-    pub(crate) fn finish_body(&mut self, identity: &TransferIdentity) {
+    fn finish_body(&mut self, identity: &TransferIdentity) {
         if !self.downloads.contains_identity(identity) {
             self.probes.body_finished(identity.post());
         }

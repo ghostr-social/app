@@ -42,6 +42,7 @@ fn transfer(start: u64) -> PlannedTransfer {
     let post = PostId::new("ahead");
     let url = "https://a.example/video".to_owned();
     PlannedTransfer {
+        control_mode: ghostr_engine::adaptive::ControlMode::Normal,
         identity: transfer_identity(&post, &url),
         request: chunk_request(
             ChunkId {

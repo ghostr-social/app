@@ -13,13 +13,13 @@ mod tests;
 mod zero_copy_test;
 
 pub(super) fn response(
-    object: CachedHlsObject,
+    object: &CachedHlsObject,
     request: AssetRangeRequest,
 ) -> Result<Response<Body>, StatusCode> {
     let total = object.body.len() as u64;
     match request.resolve(total) {
-        ResolvedAssetRange::Full => build(&object, 0, total, false),
-        ResolvedAssetRange::Partial { start, end } => build(&object, start, end, true),
+        ResolvedAssetRange::Full => build(object, 0, total, false),
+        ResolvedAssetRange::Partial { start, end } => build(object, start, end, true),
         ResolvedAssetRange::Unsatisfiable => unsatisfiable(total),
     }
 }
@@ -55,9 +55,10 @@ fn build(
             format!("bytes {start}-{}/{}", end - 1, object.body.len()),
         );
     }
-    response
-        .body(Body::from(body))
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+    response.body(Body::from(body)).map_err(|error| {
+        log::warn!("Could not build cached HLS response: {error}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })
 }
 
 fn unsatisfiable(total: u64) -> Result<Response<Body>, StatusCode> {
@@ -66,5 +67,8 @@ fn unsatisfiable(total: u64) -> Result<Response<Body>, StatusCode> {
         .header(CONTENT_LENGTH, 0)
         .header(CONTENT_RANGE, format!("bytes */{total}"))
         .body(Body::empty())
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+        .map_err(|error| {
+            log::warn!("Could not build cached HLS range rejection: {error}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })
 }

@@ -68,7 +68,7 @@ fn stage_current(cache: &SegmentedCache, post: &PostId) {
 fn object(request_url: &str, bytes: usize) -> PreparedObject {
     PreparedObject {
         request_url: request_url.to_owned(),
-        final_url: request_url.parse().unwrap(),
+        final_url: request_url.parse().expect("valid test fixture"),
         body: Arc::from(vec![0; bytes]),
         content_type: None,
         cache: Default::default(),

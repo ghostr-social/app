@@ -1,11 +1,11 @@
 use super::{PartialRangeStore, StoreAction};
 use anyhow::{ensure, Result};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 mod isolated;
 mod policy;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(super) enum CleanupScope {
     CanonicalDirty,
     PolicyStagingOnly,
@@ -119,8 +119,8 @@ impl PartialRangeStore {
         self.release(released).await;
     }
 
-    pub(super) async fn cleanup_debt_bytes(&self) -> HashMap<String, u64> {
-        let mut totals = HashMap::<String, u64>::new();
+    pub(super) async fn cleanup_debt_bytes(&self) -> BTreeMap<String, u64> {
+        let mut totals = BTreeMap::<String, u64>::new();
         for ((key, _), debt) in self.cleanup_debts.lock().await.iter() {
             *totals.entry(key.clone()).or_default() += debt.bytes;
         }
@@ -143,7 +143,7 @@ impl PartialRangeStore {
     }
 }
 
-pub(super) type CleanupDebts = HashMap<(String, CleanupScope), CleanupDebt>;
+pub(super) type CleanupDebts = BTreeMap<(String, CleanupScope), CleanupDebt>;
 
 fn same_owner(known: Option<&StoreAction>, seen: Option<&StoreAction>) -> bool {
     match (known, seen) {

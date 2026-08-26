@@ -9,4 +9,5 @@ mod session_generation_test;
 mod session_reset_feed_state_test;
 mod session_reset_outcome_test;
 mod session_reset_relay_pool_test;
+mod snapshot_decoder_block_test;
 mod snapshot_readiness_test;

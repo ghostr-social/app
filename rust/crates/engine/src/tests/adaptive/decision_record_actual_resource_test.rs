@@ -37,31 +37,40 @@ fn terminal_transform_resources_are_atomic_and_privacy_safe() {
         record.actual_resources,
         Some(RecordedResourceCost::from(actual))
     );
-    let json = serde_json::to_string(&record).unwrap();
+    let json = serde_json::to_string(&record).expect("valid test fixture");
     assert!(json.contains("\"cpu_ms\":7"));
     assert!(json.contains("terminal_evidence_hash"));
     assert!(!json.contains("secret-post"));
 
-    assert_eq!(record.replay(), DecisionReplayStatus::Verified);
-    let mut tampered = serde_json::to_value(&record).unwrap();
+    assert_eq!(record.integrity_status(), DecisionReplayStatus::Verified);
+    let mut tampered = serde_json::to_value(&record).expect("valid test fixture");
     tampered["actual_resources"]["cpu_ms"] = serde_json::json!(8);
-    let tampered: DecisionRecord = serde_json::from_value(tampered).unwrap();
-    assert_eq!(tampered.replay(), DecisionReplayStatus::PlanMismatch);
+    let tampered: DecisionRecord = serde_json::from_value(tampered).expect("valid test fixture");
+    assert_eq!(
+        tampered.integrity_status(),
+        DecisionReplayStatus::PlanMismatch
+    );
 
-    let mut tampered = serde_json::to_value(&record).unwrap();
+    let mut tampered = serde_json::to_value(&record).expect("valid test fixture");
     tampered["eventual_outcome"]["elapsed_ms"] = serde_json::json!(12);
-    let tampered: DecisionRecord = serde_json::from_value(tampered).unwrap();
-    assert_eq!(tampered.replay(), DecisionReplayStatus::PlanMismatch);
+    let tampered: DecisionRecord = serde_json::from_value(tampered).expect("valid test fixture");
+    assert_eq!(
+        tampered.integrity_status(),
+        DecisionReplayStatus::PlanMismatch
+    );
 
-    let mut tampered = serde_json::to_value(&record).unwrap();
+    let mut tampered = serde_json::to_value(&record).expect("valid test fixture");
     tampered["chosen_action_id"] = serde_json::json!(8);
-    let tampered: DecisionRecord = serde_json::from_value(tampered).unwrap();
-    assert_eq!(tampered.replay(), DecisionReplayStatus::PlanMismatch);
+    let tampered: DecisionRecord = serde_json::from_value(tampered).expect("valid test fixture");
+    assert_eq!(
+        tampered.integrity_status(),
+        DecisionReplayStatus::PlanMismatch
+    );
 
     let mut legacy = record.clone();
     legacy.emulate_legacy_warp_v2();
-    let legacy_json = serde_json::to_string(&legacy).unwrap();
+    let legacy_json = serde_json::to_string(&legacy).expect("valid test fixture");
     assert_eq!(legacy.schema_version, 2);
     assert!(!legacy_json.contains("terminal_evidence_hash"));
-    assert_eq!(legacy.replay(), DecisionReplayStatus::Verified);
+    assert_eq!(legacy.integrity_status(), DecisionReplayStatus::Verified);
 }

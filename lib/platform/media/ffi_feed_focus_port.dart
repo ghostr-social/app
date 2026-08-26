@@ -26,6 +26,9 @@ final class FfiFeedFocusPort implements FeedFocusPort {
 
   final RustFocusUpdater _updateFocus;
   final _scheduler = _FocusWriteScheduler();
+  BigInt? _lastScheduledGeneration;
+
+  BigInt? get lastScheduledGeneration => _lastScheduledGeneration;
 
   @override
   void focusChanged(FeedFocus focus) {
@@ -34,7 +37,11 @@ final class FfiFeedFocusPort implements FeedFocusPort {
 
   void _schedule(_FfiFocusWindow window, Duration watched) {
     _nextGeneration += BigInt.one;
-    _scheduler.schedule(_FocusWrite(window, watched, _nextGeneration), _send);
+    _lastScheduledGeneration = _nextGeneration;
+    _scheduler.schedule(
+      _FocusWrite(window, watched, _lastScheduledGeneration!),
+      _send,
+    );
   }
 
   Future<void> _send(_FocusWrite work) async {

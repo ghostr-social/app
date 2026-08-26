@@ -31,7 +31,7 @@ fn cursorless_hls_record_replays_historical_whole_stage_budgeting() {
         models: &[],
         privacy: &DecisionPrivacy::from_key([18; 32]),
     });
-    let json = serde_json::to_value(record).unwrap();
+    let json = serde_json::to_value(record).expect("valid test fixture");
     let pruned = &json["warp_decision"]["unattributed_pre_search_pruned_actions"][0];
 
     assert!(json["warp_decision"]["selected"].is_null());
@@ -43,14 +43,18 @@ fn cursorless_hls_record_replays_historical_whole_stage_budgeting() {
     assert!(json["warp_decision"]["prices"]["storage_micros"]
         .as_u64()
         .is_some_and(|price| price > 0));
-    assert!(!serde_json::to_string(&json).unwrap().contains("cursor"));
-    assert!(!serde_json::to_string(&json).unwrap().contains("revision"));
+    assert!(!serde_json::to_string(&json)
+        .expect("valid test fixture")
+        .contains("cursor"));
+    assert!(!serde_json::to_string(&json)
+        .expect("valid test fixture")
+        .contains("revision"));
     assert!(json["warp_decision"]["planner_replay_capsule"]
         .get("hls_generation_policy")
         .is_none());
 
-    let restored: DecisionRecord = serde_json::from_value(json).unwrap();
-    assert_eq!(restored.replay(), DecisionReplayStatus::Verified);
+    let restored: DecisionRecord = serde_json::from_value(json).expect("valid test fixture");
+    assert_eq!(restored.integrity_status(), DecisionReplayStatus::Verified);
     assert!(restored.replay_warp_search().is_ok());
 }
 
@@ -69,7 +73,7 @@ fn hls_state() -> crate::adaptive::PlayabilitySnapshot {
     state.hls_candidates.push(HlsCandidateSnapshot {
         post: PostId::new("p0"),
         feed_offset: FeedOffset::new(0),
-        view_probability: ViewProbability::new(1.0).unwrap(),
+        view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
         startup_value_ms: 2_000,
         cursor: Default::default(),
         state: HlsBootstrapState::Pending {

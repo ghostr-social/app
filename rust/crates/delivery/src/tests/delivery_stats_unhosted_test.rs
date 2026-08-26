@@ -5,7 +5,7 @@ use crate::manager::stats::StatsKeeper;
 use crate::manager::transfers::{ChunkDone, ProbeObservation};
 use crate::probe::media::ProbeResult;
 use ghostr_engine::{ByteRange, ChunkId, PostId};
-use std::time::Duration;
+use core::time::Duration;
 
 #[tokio::test]
 async fn unhosted_outcomes_do_not_dirty_or_persist_host_stats() {

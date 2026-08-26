@@ -6,7 +6,7 @@ fn an_existing_linked_hedge_suppresses_another_alternate() {
     let work = mirror_plan(HedgeCase::Linked);
     assert!(work
         .warp
-        .unwrap()
+        .expect("valid test fixture")
         .generated
         .actions
         .iter()

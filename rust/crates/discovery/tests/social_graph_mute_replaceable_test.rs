@@ -1,12 +1,10 @@
-//! Kind-10000 mute lists are replaceable: strictly newer created_at
+//! Kind-10000 mute lists are replaceable: strictly newer `created_at`
 //! wins, an equally old or older list is ignored, and an unmute takes
 //! effect through the newer list — mirrors `_newestMute` in
-//! lib/platform/nostr/ndk_nostr_social_models.dart.
+//! `lib/platform/nostr/ndk_nostr_social_models.dart`.
 
-mod discovery_support;
-
-use discovery_support::{mute_list, p_tag};
-use ghostr_discovery::content::social_graph::SocialGraph;
+use crate::content::social_graph::SocialGraph;
+use crate::tests::discovery_support::{mute_list, p_tag};
 use nostr_sdk::Keys;
 
 #[test]

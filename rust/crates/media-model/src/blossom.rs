@@ -22,7 +22,7 @@ fn terminal_hex(name: &[u8]) -> Option<&str> {
             && boundary_before(name, start)
             && terminal_suffix(&name[end..])
         {
-            return std::str::from_utf8(candidate).ok();
+            return core::str::from_utf8(candidate).ok();
         }
     }
     None

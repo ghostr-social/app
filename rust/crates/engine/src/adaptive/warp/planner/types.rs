@@ -1,30 +1,24 @@
 use super::super::{
-    BeamConfig, GeneratedAction, GeneratedActions, PlannerCandidateContext, PlannerContext,
-    PlannerRetryEvidence, ResourcePrices, SearchDecision, SemanticAdmission, TwinConfig,
-    TwinEpochs, TwinEvaluation,
+    BeamConfig, GeneratedAction, GeneratedActions, PlannerContext, PlannerRetryEvidence,
+    ResourcePrices, SearchDecision, SemanticAdmission, TwinConfig, TwinEvaluation,
 };
 use super::reserve::ReserveConstraint;
 use super::{PlannerReplayCapsule, SearchReplayInput};
 use crate::adaptive::{AllocationPlan, PlayabilitySnapshot};
-use crate::origin_model::{NetworkClass, OriginModel};
+use crate::origin_model::OriginModel;
 use crate::PostId;
+
+#[cfg(test)]
+mod api_test;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct WarpPlannerConfig {
-    pub beam: BeamConfig,
-    pub twin: TwinConfig,
-    pub semantic_top_k: usize,
-    pub semantic_epsilon_micros: u64,
-    pub safety_rescue_bps: u16,
-    pub emergency_rescue_bps: u16,
-}
-
-impl WarpPlannerConfig {
-    pub const fn with_rescue_thresholds(mut self, safety_bps: u16, emergency_bps: u16) -> Self {
-        self.safety_rescue_bps = clamp_bps(safety_bps);
-        self.emergency_rescue_bps = clamp_bps(emergency_bps);
-        self
-    }
+    pub(crate) beam: BeamConfig,
+    pub(crate) twin: TwinConfig,
+    pub(crate) semantic_top_k: usize,
+    pub(crate) semantic_epsilon_micros: u64,
+    pub(crate) safety_rescue_bps: u16,
+    pub(crate) emergency_rescue_bps: u16,
 }
 
 impl Default for WarpPlannerConfig {
@@ -40,11 +34,12 @@ impl Default for WarpPlannerConfig {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct WarpPlannerInput<'a> {
-    pub snapshot: &'a PlayabilitySnapshot,
-    pub base: &'a AllocationPlan,
-    pub origins: &'a OriginModel,
-    pub context: &'a PlannerContext,
+    pub(super) snapshot: &'a PlayabilitySnapshot,
+    pub(super) base: &'a AllocationPlan,
+    pub(super) origins: &'a OriginModel,
+    pub(super) context: &'a PlannerContext,
 }
 
 impl<'a> WarpPlannerInput<'a> {
@@ -65,8 +60,8 @@ impl<'a> WarpPlannerInput<'a> {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SemanticDecision {
-    pub post: PostId,
-    pub admission: SemanticAdmission,
+    pub(super) post: PostId,
+    pub(super) admission: SemanticAdmission,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -79,8 +74,8 @@ pub struct WarpPlanningDecision {
     pub evaluation: Option<TwinEvaluation>,
     pub admissible_action_ids: Vec<u16>,
     pub pruned_action_ids: Vec<u16>,
-    pub reserve: ReserveConstraint,
-    pub semantic: Vec<SemanticDecision>,
+    pub(crate) reserve: ReserveConstraint,
+    pub(crate) semantic: Vec<SemanticDecision>,
     pub prices: ResourcePrices,
     pub common_random_seed: u64,
     pub retry_availability: Vec<PlannerRetryEvidence>,
@@ -88,24 +83,6 @@ pub struct WarpPlanningDecision {
     pub(crate) planner_replay: Option<PlannerReplayCapsule>,
 }
 
-impl WarpPlanningDecision {
-    pub fn planner_candidate_evidence(&self, post: &PostId) -> Option<PlannerCandidateContext> {
-        self.planner_replay.as_ref()?.context().candidate(post)
-    }
-
-    pub fn planner_epochs(&self) -> Option<TwinEpochs> {
-        Some(self.planner_replay.as_ref()?.context().epochs)
-    }
-
-    pub fn planner_network_class(&self) -> Option<NetworkClass> {
-        Some(self.planner_replay.as_ref()?.context().network_class())
-    }
-}
-
-const fn clamp_bps(value: u16) -> u16 {
-    if value > 10_000 {
-        10_000
-    } else {
-        value
-    }
-}
+#[cfg(any(test, feature = "test"))]
+#[path = "types/test_support.rs"]
+mod test_support;

@@ -13,12 +13,10 @@ use crate::discovery::content::social_graph::SocialGraph;
 use crate::discovery::feed::spec::FeedSpec;
 use crate::discovery::feed::store::{FeedId, FeedStore};
 use crate::discovery::retrieval_types::FeedContext;
-#[cfg(test)]
-use crate::discovery::retrieval_types::PlanFailure;
+
 use crate::discovery::session_generation::SessionGeneration;
 use flutter_rust_bridge::frb;
-#[cfg(test)]
-use nostr_sdk::Event;
+
 use nostr_sdk::{Keys, Timestamp};
 use std::collections::HashMap;
 use tokio::sync::watch;
@@ -56,14 +54,13 @@ impl FeedState {
     /// the spec can never produce content (blank search parity).
     pub(crate) fn open(&mut self, spec: FeedSpec) -> (FeedId, Option<OpenDispatch>) {
         self.adopt_viewer(&spec);
-        let feed = self.store.open_feed(spec.clone());
+        let request = spec.page_request(None, &self.graph);
+        let feed = self.store.open_feed(spec);
         let context = FeedContext::for_session(format!("feed-{}", feed.0), self.session);
-        let dispatch = spec
-            .page_request(None, &self.graph)
-            .map(|request| OpenDispatch {
-                context: context.clone(),
-                request,
-            });
+        let dispatch = request.map(|request| OpenDispatch {
+            context: context.clone(),
+            request,
+        });
         self.feeds
             .insert(feed, FeedProgress::new(context, dispatch.is_some()));
         (feed, dispatch)
@@ -97,21 +94,6 @@ impl FeedState {
             return self.reopen(feed, context);
         }
         self.claim_older(feed, context, explicit)
-    }
-
-    /// Compatibility helper for focused state tests.
-    #[cfg(test)]
-    pub(crate) fn apply(&mut self, context: &FeedContext, result: Result<Vec<Event>, PlanFailure>) {
-        let Some(feed) = self.feed_for(context) else {
-            return;
-        };
-        match result {
-            Ok(events) => {
-                let cursor = crate::discovery::feed::cursor::retrieval_cursor(&events);
-                self.ingest_page(feed, &events, cursor);
-            }
-            Err(_) => self.record_failure(feed),
-        }
     }
 
     /// How far the feed's current page got; a feed nobody opened has
@@ -194,3 +176,7 @@ impl FeedState {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "state_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

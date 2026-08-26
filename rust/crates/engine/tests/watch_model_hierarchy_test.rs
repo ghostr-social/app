@@ -1,6 +1,4 @@
-use ghostr_engine::watch_model::{
-    WatchContext, WatchKey, WatchModel, WatchSample, WatchSampleKind,
-};
+use crate::watch_model::{WatchContext, WatchKey, WatchModel, WatchSample, WatchSampleKind};
 
 fn context(video: &str, creator: &str, category: &str, duration: u64) -> WatchContext {
     WatchContext::new(WatchKey::digest(video), Some(duration))
@@ -13,7 +11,7 @@ fn context(video: &str, creator: &str, category: &str, duration: u64) -> WatchCo
 fn cold_videos_shrink_to_creator_category_duration_user_and_global_priors() {
     let mut model = WatchModel::default();
     for index in 0..12 {
-        model.observe(WatchSample::new(
+        model.observe(&WatchSample::new(
             context(&format!("trained-{index}"), "creator-a", "music", 20_000),
             18_000,
             WatchSampleKind::Completed,
@@ -34,7 +32,7 @@ fn cold_videos_shrink_to_creator_category_duration_user_and_global_priors() {
 fn enough_video_specific_evidence_can_override_a_creator_prior() {
     let mut model = WatchModel::default();
     for index in 0..10 {
-        model.observe(WatchSample::new(
+        model.observe(&WatchSample::new(
             context(&format!("long-{index}"), "creator", "topic", 20_000),
             18_000,
             WatchSampleKind::Completed,
@@ -44,7 +42,7 @@ fn enough_video_specific_evidence_can_override_a_creator_prior() {
     let target = context("target", "creator", "topic", 20_000);
     let inherited = model.predict(&target, 2_000).p50_ms();
     for index in 0..12 {
-        model.observe(WatchSample::new(
+        model.observe(&WatchSample::new(
             target.clone(),
             800,
             WatchSampleKind::Abandoned,

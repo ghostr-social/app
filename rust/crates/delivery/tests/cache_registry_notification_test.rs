@@ -1,6 +1,6 @@
+use core::time::Duration;
 use ghostr_delivery::cache_registry::{CacheRegistry, CacheStatus, CacheVideo};
 use ghostr_engine::{DeliveryKind, VideoMeta};
-use std::time::Duration;
 
 #[tokio::test]
 async fn identical_replacement_does_not_publish_a_cache_change() {
@@ -20,7 +20,7 @@ async fn identical_replacement_does_not_publish_a_cache_change() {
     registry.replace([video(CacheStatus::Complete)]);
     tokio::time::timeout(Duration::from_secs(1), notification)
         .await
-        .unwrap();
+        .expect("valid test fixture");
 }
 
 fn video(status: CacheStatus) -> CacheVideo {

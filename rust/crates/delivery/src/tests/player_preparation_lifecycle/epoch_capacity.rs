@@ -1,15 +1,12 @@
-use crate::delivery_events::{
-    command_channel, PlayerPreparationAttempt, PlayerPreparationAuthority,
-    PlayerPreparationIngress, PlayerPreparationObservation, PlayerPreparationReport,
-    PlayerPreparationState,
-};
+
+use crate::delivery_events::{command_channel, PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationIngress, PlayerPreparationObservation, PlayerPreparationReport, PlayerPreparationState};
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 use ghostr_partial_store::partial_range_store::ContentRevision;
 
 #[test]
 fn newer_client_epoch_atomically_retires_a_full_active_generation() {
-    let (handle, mut receiver) = command_channel();
+    let (handle, receiver) = command_channel();
     let ticket = handle.player_preparation_admission();
     for post in 0..16 {
         assert_eq!(
@@ -29,7 +26,7 @@ fn newer_client_epoch_atomically_retires_a_full_active_generation() {
         PlayerPreparationIngress::Accepted,
     );
     let reports: Vec<_> =
-        std::iter::from_fn(|| receiver.try_player_preparation()).collect();
+        core::iter::from_fn(|| receiver.try_player_preparation()).collect();
     assert_eq!(reports.len(), 1);
     assert_eq!(reports[0].post(), &PostId::new("p99"));
     assert_eq!(reports[0].state(), PlayerPreparationState::Initializing);
@@ -48,10 +45,10 @@ fn report(post: u64, epoch: u64, state: PlayerPreparationState) -> PlayerPrepara
         ContentRevision::default(),
         "asset",
     )
-    .unwrap();
-    let attempt = PlayerPreparationAttempt::try_new(1, epoch, post + 1).unwrap();
-    let observation = PlayerPreparationObservation::try_new(state, None, 1).unwrap();
-    PlayerPreparationReport::try_new(authority, attempt, 1, observation).unwrap()
+    .expect("valid test fixture");
+    let attempt = PlayerPreparationAttempt::try_new(1, epoch, post + 1).expect("valid test fixture");
+    let observation = PlayerPreparationObservation::try_new(state, None, 1).expect("valid test fixture");
+    PlayerPreparationReport::try_new(authority, attempt, 1, observation).expect("valid test fixture")
 }
 
 fn meta() -> VideoMeta {

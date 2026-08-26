@@ -1,3 +1,9 @@
+mod decoder_capability_evidence_test;
+mod decoder_capability_integrity_persistence_test;
+mod decoder_capability_claim_scope_test;
+mod decoder_capability_validator_generation_test;
+mod decoder_capability_validatorless_epoch_test;
+mod decoder_post_start_fallback_test;
 mod player_preparation_acknowledgement_test;
 mod player_preparation_attempt_scope_test;
 mod player_preparation_capability_test;

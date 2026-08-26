@@ -1,6 +1,6 @@
 use crate::manager::resource_control::{ResourceControl, ResourceEnvironment};
 use ghostr_engine::adaptive::ResourceObservation;
-use std::time::Duration;
+use core::time::Duration;
 use tokio::time::Instant;
 
 #[tokio::test(start_paused = true)]
@@ -35,13 +35,13 @@ async fn boundary_race_always_places_cpu_in_the_new_half_open_interval() {
     let sample = tokio::spawn(async move { sampler.feedback(environment) });
     let (_, first) = tokio::join!(record, sample);
 
-    let first = first.unwrap();
-    assert_eq!(first.price_snapshot.unwrap().cursor.revision, 1);
+    let first = first.expect("valid test fixture");
+    assert_eq!(first.price_snapshot.expect("valid test fixture").cursor.revision, 1);
     assert_eq!(first.actual.cpu, 0);
     assert_eq!(first.actual.requests, 0);
     tokio::time::advance(Duration::from_millis(500)).await;
     let second = control.feedback(environment);
-    assert_eq!(second.price_snapshot.unwrap().cursor.revision, 2);
+    assert_eq!(second.price_snapshot.expect("valid test fixture").cursor.revision, 2);
     assert_eq!(second.actual.cpu, 7);
     assert_eq!(second.actual.requests, 1);
 }

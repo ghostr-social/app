@@ -5,11 +5,11 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::retry::{cdn_source, retry_policy, CDN_URL};
 use ghostr_delivery::manager::failure::FailureClass;
 use ghostr_delivery::manager::retry::{Retry, RetryBook};
 use ghostr_engine::PostId;
-use std::time::Duration;
 
 #[tokio::test(start_paused = true)]
 async fn delivery_retry_revives_a_retired_source_after_the_long_cooldown() {

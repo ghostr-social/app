@@ -2,7 +2,7 @@
 
 use crate::cache::client_with_event_cache;
 use crate::execution::relay_executor::RelayPlanExecutor;
-use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
+use crate::plan_executor::{PlanExecutor as _, PlannedRetrieval};
 use crate::query::events::plan_event_queries;
 use crate::retrieval_types::{FeedContext, RetrievalPriority};
 use crate::session_generation::SessionGeneration;
@@ -39,7 +39,7 @@ async fn stale_outbox_routing_is_rejected_before_relay_fetches_start() {
     let executor = RelayPlanExecutor::new(
         Arc::new(client_with_event_cache()),
         Vec::new(),
-        directory.clone(),
+        std::sync::Arc::clone(&directory),
         DataUsageLevel::Balanced,
     );
     let stale = SessionGeneration::initial();

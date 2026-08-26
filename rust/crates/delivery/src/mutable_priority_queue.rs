@@ -22,7 +22,7 @@ pub(crate) struct ForegroundSlots {
 }
 
 impl ForegroundSlots {
-    pub(crate) fn new(active: usize, goal: usize) -> Self {
+    pub(super) fn new(active: usize, goal: usize) -> Self {
         Self { active, goal }
     }
 
@@ -118,11 +118,6 @@ impl MutablePriorityQueue {
             .position(|transfer| transfer.request.authority == PreemptionAuthority::Transition)
     }
 
-    #[cfg(test)]
-    pub fn wanted(&self) -> HashSet<PlannedTransferId> {
-        self.wanted.clone()
-    }
-
     pub fn wanted_len(&self) -> usize {
         self.wanted.len()
     }
@@ -137,3 +132,7 @@ impl MutablePriorityQueue {
 fn is_foreground(authority: PreemptionAuthority) -> bool {
     authority == PreemptionAuthority::PlaybackCritical
 }
+
+#[cfg(test)]
+#[path = "mutable_priority_queue_axiom_test.rs"]
+mod axiom_test_support;

@@ -1,51 +1,62 @@
 #![cfg(unix)]
 
-mod store_fixture;
-
+use core::time::Duration;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::representation::SourceGeneration;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
-use std::ffi::CString;
-use std::os::unix::ffi::OsStrExt;
+use nix::sys::stat::Mode;
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::io::AsyncWriteExt;
+use tokio::io::AsyncWriteExt as _;
 use tokio::sync::oneshot;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn eviction_while_binding_never_resurrects_a_stale_generation() {
-    let seed = store_fixture::spaced_store(
+    let seed = crate::tests::store_fixture::spaced_store(
         "generation-eviction-race",
-        store_fixture::limits(16, 0),
+        crate::tests::store_fixture::limits(16, 0),
         1_000,
     );
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(PostId::new("clip"), meta());
-    let transfer = binding.transfer("https://cdn.example/video").unwrap();
+    let transfer = binding
+        .transfer("https://cdn.example/video")
+        .expect("valid test fixture");
     let generation =
-        SourceGeneration::try_new("https://cdn.example/video", "\"generation-one\"", 8).unwrap();
+        SourceGeneration::try_new("https://cdn.example/video", "\"generation-one\"", 8)
+            .expect("valid test fixture");
     seed.store
         .bind_representation(binding.clone())
         .await
-        .unwrap();
-    seed.store.select_transfer(transfer.clone()).await.unwrap();
+        .expect("valid test fixture");
+    seed.store
+        .select_transfer(transfer.clone())
+        .await
+        .expect("valid test fixture");
     seed.store
         .accept_generation(&transfer, generation.clone())
         .await
-        .unwrap();
+        .expect("valid test fixture");
     assert!(seed
         .store
         .write_range_for_generation_if_current(&transfer, &generation, 0, b"data")
         .await
-        .unwrap());
+        .expect("valid test fixture"));
 
-    let reopened = store_fixture::reopened(&seed);
-    reopened.store.load_existing().await.unwrap();
+    let reopened = crate::tests::store_fixture::reopened(&seed);
+    reopened
+        .store
+        .load_existing()
+        .await
+        .expect("valid test fixture");
     let root = reopened.root.clone();
     let store = Arc::new(reopened.store);
     let generation_path = root.join("clip.generation.json");
-    let payload = tokio::fs::read(&generation_path).await.unwrap();
-    tokio::fs::remove_file(&generation_path).await.unwrap();
+    let payload = tokio::fs::read(&generation_path)
+        .await
+        .expect("valid test fixture");
+    tokio::fs::remove_file(&generation_path)
+        .await
+        .expect("valid test fixture");
     make_fifo(&generation_path);
     let (written, observed) = oneshot::channel();
     let (close, release) = oneshot::channel();
@@ -54,35 +65,44 @@ async fn eviction_while_binding_never_resurrects_a_stale_generation() {
             .write(true)
             .open(generation_path)
             .await
-            .unwrap();
-        fifo.write_all(&payload).await.unwrap();
-        written.send(()).unwrap();
-        release.await.unwrap();
+            .expect("valid test fixture");
+        fifo.write_all(&payload).await.expect("valid test fixture");
+        written.send(()).expect("valid test fixture");
+        release.await.expect("valid test fixture");
     });
-    let binding_store = store.clone();
+    let binding_store = std::sync::Arc::clone(&store);
     let bind = tokio::spawn(async move { binding_store.bind_representation(binding).await });
     tokio::time::timeout(Duration::from_secs(2), observed)
         .await
-        .unwrap()
-        .unwrap();
+        .expect("valid test fixture")
+        .expect("valid test fixture");
 
-    store.set_storage_budget(1).await.unwrap();
-    close.send(()).unwrap();
+    store
+        .set_storage_budget(1)
+        .await
+        .expect("valid test fixture");
+    close.send(()).expect("valid test fixture");
     tokio::time::timeout(Duration::from_secs(2), bind)
         .await
-        .unwrap()
-        .unwrap()
-        .unwrap();
-    writer.await.unwrap();
+        .expect("valid test fixture")
+        .expect("valid test fixture")
+        .expect("valid test fixture");
+    writer.await.expect("valid test fixture");
     assert_eq!(store.used_bytes().await, 0);
     assert!(!root.join("clip.ranges.json").exists());
-    assert_eq!(store.select_transfer(transfer).await.unwrap(), None);
-    store_fixture::discard(&root);
+    assert_eq!(
+        store
+            .select_transfer(transfer)
+            .await
+            .expect("valid test fixture"),
+        None
+    );
+    crate::tests::store_fixture::discard(&root);
 }
 
 fn make_fifo(path: &std::path::Path) {
-    let path = CString::new(path.as_os_str().as_bytes()).unwrap();
-    assert_eq!(unsafe { libc::mkfifo(path.as_ptr(), 0o600) }, 0);
+    let owner_access = Mode::S_IRUSR | Mode::S_IWUSR;
+    nix::unistd::mkfifo(path, owner_access).expect("test FIFO should be created");
 }
 
 fn meta() -> VideoMeta {

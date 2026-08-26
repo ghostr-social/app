@@ -7,7 +7,7 @@ use crate::PostId;
 #[test]
 fn schema_two_search_trace_keeps_distinct_private_action_definitions() {
     let captured = record(&search_trace());
-    let advanced = captured.warp_decision.unwrap();
+    let advanced = captured.warp_decision.expect("valid test fixture");
     assert_trace(&advanced);
     assert_private(&advanced);
 }
@@ -53,7 +53,12 @@ fn assert_trace(advanced: &crate::adaptive::RecordedWarpDecision) {
     assert_eq!(ids(&advanced.search.retained_plans[0].actions), vec![7]);
     assert_eq!(advanced.search.retained_plans_total, 1);
     assert_eq!(
-        ids(&advanced.search.chosen_plan.as_ref().unwrap().actions),
+        ids(&advanced
+            .search
+            .chosen_plan
+            .as_ref()
+            .expect("valid test fixture")
+            .actions),
         vec![7]
     );
     let pruned = &advanced.search.recorded_pruned_plans[0];
@@ -65,13 +70,13 @@ fn assert_trace(advanced: &crate::adaptive::RecordedWarpDecision) {
     assert!(!advanced.search.used_greedy_fallback);
     assert_eq!(advanced.search.common_random_seed, 99);
     assert_eq!(
-        serde_json::to_value(pruned).unwrap()["reason"],
+        serde_json::to_value(pruned).expect("valid test fixture")["reason"],
         serde_json::json!("beam_width")
     );
 }
 
 fn assert_private(advanced: &crate::adaptive::RecordedWarpDecision) {
-    let serialized = serde_json::to_string(&advanced).unwrap();
+    let serialized = serde_json::to_string(&advanced).expect("valid test fixture");
     for private in ["selected.example", "unselected.example", "filtered.example"] {
         assert!(!serialized.contains(private));
     }

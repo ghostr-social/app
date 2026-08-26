@@ -1,5 +1,5 @@
-pub(super) fn move_moov_to_tail(bytes: Vec<u8>) -> Vec<u8> {
-    let (start, size) = top_level_box(&bytes, b"moov");
+pub(super) fn move_moov_to_tail(bytes: &[u8]) -> Vec<u8> {
+    let (start, size) = top_level_box(bytes, b"moov");
     let mut moved = Vec::with_capacity(bytes.len());
     moved.extend_from_slice(&bytes[..start]);
     moved.extend_from_slice(&bytes[start + size..]);

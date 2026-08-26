@@ -1,7 +1,7 @@
 //! A cold query must behave exactly as it does today. An empty pool
 //! adds no row and reorders none, so the first query of a session is
 //! still the relays' answer alone, in arrival order — the order the
-//! feed's own assembly then sorts (feed_assembly.rs).
+//! feed's own assembly then sorts (`feed_assembly.rs`).
 
 use crate::tests::event_cache_support::{cache, note, notes, timestamps};
 

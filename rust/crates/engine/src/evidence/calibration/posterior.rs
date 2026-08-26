@@ -28,19 +28,17 @@ impl Level {
         let right = &wanted.dimensions;
         match self {
             Self::Global => true,
-            Self::Issuer => same(&left.issuer, &right.issuer),
-            Self::Client => same(&left.client, &right.client),
-            Self::Origin => same(&left.origin, &right.origin),
-            Self::Url => same(&left.url, &right.url),
+            Self::Issuer => same(left.issuer.as_ref(), right.issuer.as_ref()),
+            Self::Client => same(left.client.as_ref(), right.client.as_ref()),
+            Self::Origin => same(left.origin.as_ref(), right.origin.as_ref()),
+            Self::Url => same(left.url.as_ref(), right.url.as_ref()),
             Self::Exact => left == right,
         }
     }
 }
 
-fn same(left: &Option<String>, right: &Option<String>) -> bool {
-    right
-        .as_ref()
-        .is_some_and(|value| left.as_ref() == Some(value))
+fn same(left: Option<&String>, right: Option<&String>) -> bool {
+    right.is_some_and(|value| left == Some(value))
 }
 
 #[derive(Clone, Copy)]

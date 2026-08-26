@@ -8,9 +8,9 @@ use crate::api::runtime::discovery::{lock, SharedFeedState};
 use crate::api::tests::feed_fixtures::video_note;
 use crate::api::tests::feed_watch_support::{next, ChannelOut};
 use crate::discovery::feed::spec::FeedSpec;
+use core::time::Duration;
 use nostr_sdk::Keys;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 
@@ -26,7 +26,7 @@ async fn snapshots_stream_from_baseline_to_close() {
     let (sender, mut updates) = mpsc::unbounded_channel();
     let watcher = tokio::spawn(watch_feed(
         ChannelOut(sender),
-        state.clone(),
+        std::sync::Arc::clone(&state),
         feed,
         revisions,
     ));

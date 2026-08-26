@@ -1,4 +1,5 @@
-use crate::execution::relay_executor::target_enrichment::target_plan;
+use crate::execution::relay_executor::target_enrichment::axiom_test_support::target_plan;
+
 use crate::query::search::RelayTarget;
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, Tag};
 use std::collections::BTreeSet;

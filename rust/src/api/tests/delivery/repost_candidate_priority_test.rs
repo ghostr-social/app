@@ -1,6 +1,6 @@
 use crate::api::delivery::candidates::delivery_candidate;
 use crate::discovery::content::candidates::CandidateRegistry;
-use nostr_sdk::{EventBuilder, JsonUtil, Keys, Kind, Tag, Timestamp};
+use nostr_sdk::{EventBuilder, JsonUtil as _, Keys, Kind, Tag, Timestamp};
 
 #[test]
 fn repost_candidate_priority_uses_the_occurrence_time() {

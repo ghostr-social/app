@@ -2,7 +2,7 @@
 //! ASCII-case-insensitive, so padding must not cost an otherwise playable
 //! post.
 
-use ghostr_discovery::content::parsing::video_post_from_event;
+use crate::content::parsing::video_post_from_event;
 use ghostr_engine::DeliveryKind;
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, Tag};
 

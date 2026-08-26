@@ -29,7 +29,8 @@ fn validate_non_overlapping(segments: &[MediaSegment<'_>]) -> Result<(), Timelin
 }
 
 fn checked_end(segment: MediaSegment<'_>) -> Result<u64, TimelineError> {
-    let length = u64::try_from(segment.bytes.len()).map_err(|_| TimelineError::Malformed)?;
+    let length =
+        u64::try_from(segment.bytes.len()).map_err(|_conversion_error| TimelineError::Malformed)?;
     segment
         .start
         .checked_add(length)

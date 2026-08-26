@@ -1,6 +1,6 @@
 use super::whole_sink_fixture::{fixture, split, whole_spec, AuthorizedTraffic};
 use crate::chunk::cancel::cancel_pair;
-use crate::chunk::downloader::{download_chunk_captured, ChunkExecution};
+use crate::chunk::downloader::{download_chunk_observed, ChunkExecution};
 use crate::chunk::sink::TransferChunkSink;
 use crate::debug::network::NetworkThrottle;
 use ghostr_engine::adaptive::WholeBodyContract;
@@ -20,7 +20,7 @@ async fn chunked_whole_above_its_cap_rolls_back_without_harming_seed() {
     let (_handle, cancel) = cancel_pair();
     let mut stats = HostStats::new();
     let mut traffic = AuthorizedTraffic::new(
-        fixture.store.clone(),
+        std::sync::Arc::clone(&fixture.store),
         fixture.identity.clone(),
         fixture.action.clone(),
     );
@@ -31,7 +31,7 @@ async fn chunked_whole_above_its_cap_rolls_back_without_harming_seed() {
         WholeBodyContract::Capped { maximum_bytes: 8 },
     );
 
-    let observed = download_chunk_captured(
+    let observed = download_chunk_observed(
         &spec,
         ChunkExecution {
             sink: &sink,
@@ -48,11 +48,11 @@ async fn chunked_whole_above_its_cap_rolls_back_without_harming_seed() {
         .result
     .expect_err("cap+1 must fail");
 
-    let limit = crate::chunk::whole_body_limit::from_error(&error).unwrap();
+    let limit = crate::chunk::whole_body_limit::from_error(&error).expect("valid test fixture");
     assert_eq!(limit.maximum_bytes(), 8);
     assert_eq!(limit.received_bytes(), 9);
     assert_eq!(
-        fixture.store.read_range("post", 0..4).await.unwrap(),
+        fixture.store.read_range("post", 0..4).await.expect("valid test fixture"),
         Some(b"old!".to_vec())
     );
     assert_eq!(*fixture.used.lock().await, 4);
@@ -65,6 +65,6 @@ async fn chunked_whole_above_its_cap_rolls_back_without_harming_seed() {
             WholeBodyContract::Capped { maximum_bytes: 8 },
         )
         .await
-        .unwrap());
-    std::fs::remove_dir_all(fixture.root).unwrap();
+        .expect("valid test fixture"));
+    std::fs::remove_dir_all(fixture.root).expect("valid test fixture");
 }

@@ -1,4 +1,6 @@
-use crate::manager::plan::{planned_work, planned_work_with_watch, PlanInputs, PlannedWork};
+use crate::manager::plan::axiom_test_support::planned_work;
+use crate::manager::plan::axiom_test_support::planned_work_with_watch;
+use crate::manager::plan::{PlanInputs, PlannedWork};
 use crate::manager::retry::{RetryBook, RetryPolicy};
 use crate::tests::adaptive_plan_fixture::playback_for;
 use crate::tests::adaptive_plan_measurements::PlanMeasurements;
@@ -42,7 +44,7 @@ fn run_with_inputs(
     let current = scenario.state.focus().current().cloned().expect("focus");
     scenario
         .state
-        .apply_playback(playback_for(current, scenario.buffer_ms));
+        .apply_playback(&playback_for(current, scenario.buffer_ms));
     let mut stats = HostStats::new();
     let sample = scenario.throughput_sample();
     stats.record_overall_throughput(sample);
@@ -88,7 +90,7 @@ fn run_with_inputs(
         demanded: &demanded,
     };
     match watch {
-        Some(model) => planned_work_with_watch(&mut scenario.state, inputs, model),
-        None => planned_work(&mut scenario.state, inputs),
+        Some(model) => planned_work_with_watch(&scenario.state, &inputs, model),
+        None => planned_work(&scenario.state, &inputs),
     }
 }

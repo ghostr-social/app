@@ -10,19 +10,19 @@ pub(crate) use scan::scan;
 
 #[derive(Clone, Copy)]
 pub(crate) struct Atom<'a> {
-    pub(crate) kind: [u8; 4],
-    pub(crate) start: u64,
-    pub(crate) bytes: &'a [u8],
+    pub(super) kind: [u8; 4],
+    pub(super) start: u64,
+    bytes: &'a [u8],
     header: usize,
     top_level: bool,
 }
 
 impl<'a> Atom<'a> {
-    pub(crate) fn payload(&self) -> &'a [u8] {
+    pub(super) fn payload(&self) -> &'a [u8] {
         &self.bytes[self.header..]
     }
 
-    pub(crate) fn range(&self) -> Result<ByteRange, TimelineError> {
+    pub(super) fn range(&self) -> Result<ByteRange, TimelineError> {
         let end = self
             .start
             .checked_add(self.bytes.len() as u64)
@@ -30,22 +30,22 @@ impl<'a> Atom<'a> {
         Ok(ByteRange::new(self.start, end))
     }
 
-    pub(crate) fn is_top_level(&self) -> bool {
+    pub(super) fn is_top_level(&self) -> bool {
         self.top_level
     }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct MediaData {
-    pub(crate) header: ByteRange,
-    pub(crate) payload: ByteRange,
+    pub(super) header: ByteRange,
+    pub(super) payload: ByteRange,
 }
 
 pub(crate) struct Scan<'a> {
-    pub(crate) atoms: Vec<Atom<'a>>,
-    pub(crate) media_data: Vec<MediaData>,
-    pub(crate) fragmented_markers: usize,
-    pub(crate) truncated: bool,
+    pub(super) atoms: Vec<Atom<'a>>,
+    pub(super) media_data: Vec<MediaData>,
+    pub(super) fragmented_markers: usize,
+    pub(super) truncated: bool,
 }
 
 pub(crate) fn children<'a>(
@@ -58,7 +58,7 @@ pub(crate) fn children<'a>(
     let payload = parent.payload();
     while cursor < payload.len() {
         budget.work(1)?;
-        let header = header(&payload[cursor..])?.ok_or(TimelineError::Truncated)?;
+        let header = header(&payload[cursor..]).ok_or(TimelineError::Truncated)?;
         let end = cursor
             .checked_add(header.size)
             .ok_or(TimelineError::Malformed)?;

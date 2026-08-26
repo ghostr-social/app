@@ -23,13 +23,13 @@ pub mod progressive_request;
 pub mod raw_http;
 pub mod request_gate_origin;
 
+use core::sync::atomic::{AtomicU64, Ordering};
 use ghostr_delivery::cache_registry::{CacheStatus, CacheVideo};
 use ghostr_engine::VideoMeta;
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use reqwest::{Client, RequestBuilder};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -65,7 +65,7 @@ pub fn media_client() -> MediaRequestExecutor {
         .expect("local media client");
     MediaRequestExecutor::new(
         Arc::new(LocalMediaHttpClient(client)),
-        MediaRequestLimits::try_new(4, 4).unwrap(),
+        MediaRequestLimits::try_new(4, 4).expect("valid test fixture"),
     )
 }
 

@@ -19,7 +19,7 @@ async fn chunked_whole_keeps_seed_readable_until_atomic_eof_commit() {
     let (_handle, cancel) = cancel_pair();
     let mut stats = HostStats::new();
     let mut traffic = AuthorizedTraffic::new(
-        fixture.store.clone(),
+        std::sync::Arc::clone(&fixture.store),
         fixture.identity.clone(),
         fixture.action.clone(),
     );
@@ -44,7 +44,7 @@ async fn chunked_whole_keeps_seed_readable_until_atomic_eof_commit() {
 
     let mut prefix_sent = origin.prefix_sent;
     tokio::select! {
-        sent = &mut prefix_sent => sent.unwrap(),
+        sent = &mut prefix_sent => sent.expect("valid test fixture"),
         result = &mut download => panic!("download ended before prefix: {result:?}"),
     }
     let staged = wait_for_staging(&fixture.used);
@@ -54,17 +54,20 @@ async fn chunked_whole_keeps_seed_readable_until_atomic_eof_commit() {
         () = &mut staged => {}
     }
     assert_eq!(
-        fixture.store.read_range("post", 0..4).await.unwrap(),
+        fixture.store.read_range("post", 0..4).await.expect("valid test fixture"),
         Some(b"old!".to_vec())
     );
     origin.release.notify_one();
-    assert_eq!(download.await.unwrap().total_bytes, Some(8));
     assert_eq!(
-        fixture.store.read_range("post", 0..8).await.unwrap(),
+        download.await.result.expect("valid test fixture").total_bytes,
+        Some(8)
+    );
+    assert_eq!(
+        fixture.store.read_range("post", 0..8).await.expect("valid test fixture"),
         Some(b"new!body".to_vec())
     );
     fixture.store.release_action(&fixture.action).await;
-    std::fs::remove_dir_all(fixture.root).unwrap();
+    std::fs::remove_dir_all(fixture.root).expect("valid test fixture");
 }
 
 async fn wait_for_staging(used: &tokio::sync::Mutex<u64>) {

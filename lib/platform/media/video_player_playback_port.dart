@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:ghostr/core/media/playback_asset_authority.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
@@ -38,8 +39,10 @@ part 'video_player_playback_handoff_reconciliation.dart';
 part 'video_player_playback_handoff_state.dart';
 part 'video_player_playback_handoff_teardown.dart';
 part 'video_player_surface.dart';
+part 'video_player_surface_capability_recovery.dart';
 part 'video_player_surface_controller_acceptance.dart';
 part 'video_player_surface_commands.dart';
+part 'video_player_surface_failure.dart';
 part 'video_player_surface_loading.dart';
 part 'video_player_surface_preparation_feedback.dart';
 part 'video_player_surface_recovery.dart';

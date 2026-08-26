@@ -1,4 +1,4 @@
-use ghostr_engine::evidence::{
+use crate::evidence::{
     Confidence, Evidence, EvidenceLedger, EvidenceScope, EvidenceSource, EvidenceValue,
 };
 

@@ -1,9 +1,9 @@
 //! Test-only HTTP and filesystem environment for delivery fixtures.
 
+use core::sync::atomic::{AtomicU64, Ordering};
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct LocalMediaClient(reqwest::Client);
@@ -22,7 +22,7 @@ pub fn media_client() -> MediaRequestExecutor {
         .expect("local media client");
     MediaRequestExecutor::new(
         std::sync::Arc::new(LocalMediaClient(client)),
-        MediaRequestLimits::try_new(4, 4).unwrap(),
+        MediaRequestLimits::try_new(4, 4).expect("valid test fixture"),
     )
 }
 

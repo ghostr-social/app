@@ -1,17 +1,18 @@
 use super::{Catalog, CatalogEntry};
 use crate::evidence::NostrMetadataEvidence;
-use crate::playback::{BufferTarget, NetworkConditions, PlaybackObservation};
 use crate::rendition::{
     QualitySelectionInput, QualitySelectionPolicy, Rendition, RenditionId, RenditionSet,
 };
 use crate::representation::{RepresentationBinding, RepresentationId};
 use crate::video_rendition::VideoRendition;
 use crate::{PostId, VideoMeta};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashSet};
 
 mod integrity;
 mod quality;
+mod selection;
 pub use quality::RenditionQualityEvidence;
+pub use selection::RenditionSelection;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct RenditionState {
@@ -27,11 +28,11 @@ impl RenditionState {
         }
     }
 
-    pub(super) fn matches(&self, meta: &VideoMeta, variants: &[VideoRendition]) -> bool {
+    fn matches(&self, meta: &VideoMeta, variants: &[VideoRendition]) -> bool {
         &self.advertised == meta && self.variants == variants
     }
 
-    pub(super) fn advertised_is(&self, meta: &VideoMeta) -> bool {
+    fn advertised_is(&self, meta: &VideoMeta) -> bool {
         &self.advertised == meta
     }
 
@@ -46,28 +47,48 @@ impl RenditionState {
             .and_then(VideoRendition::bitrate_bits_per_second)
     }
 
+    fn variants(&self) -> &[VideoRendition] {
+        &self.variants
+    }
+
+    fn meta_for(&self, representation: &RepresentationId) -> Option<VideoMeta> {
+        self.variants
+            .iter()
+            .find(|variant| variant.identity() == *representation)
+            .map(|variant| variant.meta().clone())
+    }
+
     pub(super) fn select(
         &self,
         active: &RepresentationId,
-        network: NetworkConditions,
-        observation: PlaybackObservation,
-        target: BufferTarget,
+        input: RenditionSelection,
+        excluded: &HashSet<RepresentationId>,
     ) -> Option<VideoMeta> {
-        let (qualities, current) = self.qualities(active);
+        let (qualities, current) = self.qualities(active, excluded);
         let ladder = RenditionSet::try_new(qualities).ok()?;
-        let input = QualitySelectionInput::new(network, observation, target, current);
-        let selected = QualitySelectionPolicy::default().select(&ladder, input);
+        let input =
+            QualitySelectionInput::new(input.network, input.observation, input.target, current);
+        let selected = QualitySelectionPolicy::default().select(&ladder, &input);
         self.variant(selected.selected().id())
             .filter(|variant| variant.identity() != *active)
             .map(|variant| variant.meta().clone())
     }
 
-    fn qualities(&self, active: &RepresentationId) -> (Vec<Rendition>, Option<RenditionId>) {
+    fn qualities(
+        &self,
+        active: &RepresentationId,
+        excluded: &HashSet<RepresentationId>,
+    ) -> (Vec<Rendition>, Option<RenditionId>) {
         let current = self.current_quality(active);
         let mut seen = BTreeSet::new();
         let mut qualities = current.clone().into_iter().collect::<Vec<_>>();
         seen.extend(qualities.iter().map(Rendition::bitrate_bits_per_second));
-        for quality in self.variants.iter().filter_map(VideoRendition::quality) {
+        for quality in self
+            .variants
+            .iter()
+            .filter(|variant| !excluded.contains(&variant.identity()))
+            .filter_map(VideoRendition::quality)
+        {
             if seen.insert(quality.bitrate_bits_per_second()) {
                 qualities.push(quality);
             }
@@ -130,42 +151,12 @@ impl Catalog {
             .map(|item| item.observed_at_ms)
             .max()
             .unwrap_or(0);
-        let binding = self.upsert_with_renditions(post.clone(), meta, variants);
-        if let Some(entry) = self.entries.get_mut(&post) {
+        let binding = self.upsert_with_renditions(post, meta, variants);
+        if let Some(entry) = self.entries.get_mut(binding.post()) {
             entry.record_nostr_metadata(evidence);
         }
         self.recalibrate(observed_at_ms);
         binding
-    }
-
-    pub fn select_rendition(
-        &mut self,
-        post: &PostId,
-        network: NetworkConditions,
-        observation: PlaybackObservation,
-        target: BufferTarget,
-    ) -> Option<RepresentationBinding> {
-        let selected = self
-            .entries
-            .get(post)?
-            .selected_meta(network, observation, target)?;
-        if selected.sha256.as_deref().is_some_and(|digest| {
-            self.quarantined_digests
-                .contains(&digest.to_ascii_lowercase())
-        }) {
-            return None;
-        }
-        let entry = self.entries.get(post)?;
-        let source = entry.binding.source_representation().clone();
-        let previous_digest = entry.meta.sha256.clone();
-        let next_digest = selected.sha256.clone();
-        let generation = self.allocate_generation();
-        self.entries
-            .get_mut(post)?
-            .switch(selected, generation, Some(source));
-        self.update_digest_claim(post, previous_digest.as_deref(), next_digest.as_deref());
-        self.apply_known_quarantine(post);
-        self.binding(post)
     }
 
     fn replace(
@@ -174,23 +165,24 @@ impl Catalog {
         meta: VideoMeta,
         variants: Vec<VideoRendition>,
     ) -> RepresentationBinding {
+        let key = post.clone();
         let previous_digest = self
             .entries
-            .get(&post)
+            .get(&key)
             .and_then(|entry| entry.meta.sha256.clone());
         let next_digest = meta.sha256.clone();
         let generation = self.allocate_generation();
-        match self.entries.get_mut(&post) {
+        match self.entries.get_mut(&key) {
             Some(entry) => entry.refresh(meta, variants, generation),
             None => {
                 self.entries.insert(
-                    post.clone(),
-                    CatalogEntry::new(post.clone(), meta, variants, generation),
+                    key.clone(),
+                    CatalogEntry::new(post, meta, variants, generation),
                 );
             }
         }
-        self.update_digest_claim(&post, previous_digest.as_deref(), next_digest.as_deref());
-        self.apply_known_quarantine(&post);
-        self.binding(&post).expect("upserted catalog entry")
+        self.update_digest_claim(&key, previous_digest.as_deref(), next_digest.as_deref());
+        self.apply_known_quarantine(&key);
+        self.binding(&key).expect("upserted catalog entry")
     }
 }

@@ -30,7 +30,7 @@ impl SegmentedCache {
     }
 
     pub(crate) fn take_invalidated(&self) -> Vec<(PostId, u64)> {
-        std::mem::take(&mut self.lock().invalidated)
+        core::mem::take(&mut self.lock().invalidated)
     }
 }
 

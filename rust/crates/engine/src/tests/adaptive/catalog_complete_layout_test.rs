@@ -21,7 +21,8 @@ fn range_blind_probe_evidence_requires_one_complete_file_opportunity() {
         },
     );
 
-    let candidate = candidate_snapshot(&catalog, &EngineParams::default(), evidence(post)).unwrap();
+    let candidate = candidate_snapshot(&catalog, &EngineParams::default(), evidence(post))
+        .expect("valid test fixture");
 
     assert_eq!(candidate.layout, MediaLayout::RequiresCompleteFile);
     assert_eq!(candidate.playable_ranges.len(), 1);
@@ -36,7 +37,7 @@ fn evidence(post: PostId) -> CandidateEvidence {
     CandidateEvidence {
         post,
         feed_offset: FeedOffset::new(1),
-        view_probability: ViewProbability::new(0.8).unwrap(),
+        view_probability: ViewProbability::new(0.8).expect("valid test fixture"),
         present: Vec::new(),
         stored_total: None,
         continuation_source: None,

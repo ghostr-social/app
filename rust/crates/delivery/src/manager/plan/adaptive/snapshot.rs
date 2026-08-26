@@ -65,6 +65,9 @@ fn candidate(
     )?;
     candidate.player_preparation =
         state.player_preparation(&post, inputs.revisions.get(&post).copied());
+    candidate.direct_playback_blocked = state
+        .planner_capability(&post, inputs.observed_at_ms)
+        .blocks_direct_playback();
     candidate.retrieval_eligible = position.retrieval_eligible;
     candidate.finalized = inputs.finalized.contains(&post);
     if let Some(range) = demanded_range(inputs, &post) {

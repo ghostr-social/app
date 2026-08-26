@@ -1,7 +1,7 @@
 //! Parser for HTTP `Content-Range` headers of the form
 //! `bytes <start>-<end>/<total>`.
 
-use std::ops::Range;
+use core::ops::Range;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ParsedContentRange {

@@ -8,7 +8,7 @@ use crate::chunk::sink::{ChunkWrite, LocalStoreFailure, ResponseWriteMode};
 use crate::chunk::stream::{stream_into, StreamInput, Streamed};
 use crate::chunk::traffic::ChunkTraffic;
 use crate::debug::network::NetworkThrottle;
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use ghostr_net::media_request_executor::MediaResponse;
 
 pub(super) struct ReceiveInput<'a, 'spec, W: ChunkWrite + ?Sized> {
@@ -66,7 +66,7 @@ async fn authorize<W: ChunkWrite + ?Sized>(
 ) -> Result<bool> {
     let admission = tokio::select! {
         biased;
-        _ = input.cancel.cancelled() => ResponseAdmission::Reject,
+        () = input.cancel.cancelled() => ResponseAdmission::Reject,
         result = input.traffic.authorize_response(opened) => result?,
     };
     Ok(admission == ResponseAdmission::Proceed)

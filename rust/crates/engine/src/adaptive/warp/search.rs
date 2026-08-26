@@ -4,9 +4,12 @@ mod progress;
 mod scoring;
 mod state;
 
+#[cfg(test)]
+mod api_test;
+
 pub use output::{PrunedSearchPlan, RetainedSearchPlan, SearchDecision, SearchPruneReason};
 pub(crate) use scoring::ScoredSearchPlan;
-pub use scoring::TwinSearchContext;
+pub(crate) use scoring::TwinSearchContext;
 
 use self::output::{decision, pruned_plan};
 use self::progress::SearchProgress;
@@ -23,7 +26,7 @@ pub struct BeamConfig {
 }
 
 impl BeamConfig {
-    pub const fn new(
+    pub(crate) const fn new(
         depth: usize,
         width: usize,
         max_expansions: usize,
@@ -46,7 +49,7 @@ impl BeamConfig {
         )
     }
 
-    pub(crate) const fn without_latency_limit(mut self) -> Self {
+    pub(super) const fn without_latency_limit(mut self) -> Self {
         self.max_latency_us = u64::MAX;
         self
     }
@@ -58,7 +61,7 @@ pub struct WarpSearch {
 }
 
 impl WarpSearch {
-    pub const fn new(config: BeamConfig) -> Self {
+    pub(crate) const fn new(config: BeamConfig) -> Self {
         Self {
             config,
             prices: ResourcePrices {
@@ -70,17 +73,12 @@ impl WarpSearch {
         }
     }
 
-    pub const fn with_prices(mut self, prices: ResourcePrices) -> Self {
+    pub(super) const fn with_prices(mut self, prices: ResourcePrices) -> Self {
         self.prices = prices;
         self
     }
 
-    pub fn choose_first(&self, nodes: &[ActionNode], budget: HardBudget) -> SearchDecision {
-        let mut scorer = |actions: &[ActionNode]| static_score(actions, self.prices);
-        self.choose(nodes, budget, &mut scorer)
-    }
-
-    pub fn choose_first_simulated(
+    pub(crate) fn choose_first_simulated(
         &self,
         nodes: &[ActionNode],
         budget: HardBudget,
@@ -102,10 +100,10 @@ impl WarpSearch {
         self.choose(nodes, budget, scorer)
     }
 
-    pub(crate) fn choose_first_greedy(
+    pub(super) fn choose_first_greedy(
         &self,
         nodes: &[ActionNode],
-        budget: HardBudget,
+        budget: &HardBudget,
         reason: SearchPruneReason,
     ) -> SearchDecision {
         self.greedy(nodes, budget, reason)
@@ -116,11 +114,11 @@ impl WarpSearch {
         F: FnMut(&[ActionNode]) -> i64,
     {
         if self.config.max_latency_us == 0 {
-            return self.greedy(nodes, budget, SearchPruneReason::PlannerLatency);
+            return self.greedy(nodes, &budget, SearchPruneReason::PlannerLatency);
         }
         let fallback = budget.clone();
         self.beam(nodes, budget, scorer)
-            .unwrap_or_else(|reason| self.greedy(nodes, fallback, reason))
+            .unwrap_or_else(|reason| self.greedy(nodes, &fallback, reason))
     }
 
     fn beam<F>(
@@ -175,7 +173,7 @@ impl WarpSearch {
         }
         next.sort_by(compare);
         next.drain(self.config.width.min(next.len())..)
-            .for_each(|state| progress.prune_state(state, SearchPruneReason::BeamWidth));
+            .for_each(|state| progress.prune_state(&state, SearchPruneReason::BeamWidth));
         Ok(next)
     }
 

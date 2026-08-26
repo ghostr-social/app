@@ -3,7 +3,7 @@
 use crate::manager::DeliveryWorker;
 
 impl DeliveryWorker {
-    pub(crate) async fn clear(&mut self) -> anyhow::Result<()> {
+    pub(super) async fn clear(&mut self) -> anyhow::Result<()> {
         self.commands.discard_pending();
         self.cancel_all_transforms();
         self.downloads.clear();

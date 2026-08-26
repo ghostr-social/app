@@ -1,7 +1,8 @@
 use super::apply;
+use crate::adaptive::axiom_test_support::WarpActionGenerator;
 use crate::adaptive::{
     ActionKind, AllocationPlan, ControlMode, PlannerCapability, PlannerCommand, PlannerContext,
-    TransformCapability, TransformKind, WarpActionGenerator, WarpPlannerConfig, WarpPlannerInput,
+    TransformCapability, TransformKind, WarpPlannerConfig, WarpPlannerInput,
 };
 use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::snapshot;
@@ -16,7 +17,7 @@ fn transform_required_media_reserves_fetch_then_transform() {
     };
     let post = input.candidates[0].post.clone();
     let mut context = PlannerContext::explicitly_unavailable(&input).with_capability(
-        post,
+        &post,
         PlannerCapability::reported(
             false,
             Some(TransformCapability::new(TransformKind::Remux, 10, 128_000)),
@@ -43,17 +44,17 @@ fn transform_required_media_reserves_fetch_then_transform() {
     let whole = frontier
         .iter()
         .find(|node| matches!(node.kind, ActionKind::FetchWhole { .. }))
-        .unwrap();
+        .expect("valid test fixture");
     let transform = frontier
         .iter()
         .find(|node| matches!(node.kind, ActionKind::Transform(_)))
-        .unwrap();
+        .expect("valid test fixture");
     let whole_command = generated
         .actions
         .iter()
         .find(|item| item.node.id == whole.id)
         .map(|item| &item.command)
-        .unwrap();
+        .expect("valid test fixture");
 
     assert_eq!(whole.forecast.ready_playback_ms, 0);
     assert!(matches!(

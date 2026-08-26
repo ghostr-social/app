@@ -3,7 +3,7 @@ use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimit
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use reqwest::{Client, RequestBuilder};
 use std::sync::Arc;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::{TcpListener, TcpStream};
 
 struct MappedClient(Client);
@@ -16,19 +16,23 @@ impl MediaHttpRequests for MappedClient {
 
 #[tokio::test]
 async fn a_public_chain_cannot_pivot_into_an_adapter_allowed_loopback() {
-    let target = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let target_address = target.local_addr().unwrap();
+    let target = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("valid test fixture");
+    let target_address = target.local_addr().expect("valid test fixture");
     let target = tokio::spawn(async move {
-        let (socket, _) = target.accept().await.unwrap();
+        let (socket, _) = target.accept().await.expect("valid test fixture");
         answer(socket, b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n").await;
     });
-    let origin = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let origin_address = origin.local_addr().unwrap();
+    let origin = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("valid test fixture");
+    let origin_address = origin.local_addr().expect("valid test fixture");
     let redirect = format!(
         "HTTP/1.1 302 Found\r\nLocation: http://{target_address}/private\r\nContent-Length: 0\r\n\r\n"
     );
     tokio::spawn(async move {
-        let (socket, _) = origin.accept().await.unwrap();
+        let (socket, _) = origin.accept().await.expect("valid test fixture");
         answer(socket, redirect.as_bytes()).await;
     });
     let client = Client::builder()
@@ -36,20 +40,22 @@ async fn a_public_chain_cannot_pivot_into_an_adapter_allowed_loopback() {
         .redirect(reqwest::redirect::Policy::none())
         .resolve("public.example", origin_address)
         .build()
-        .unwrap();
+        .expect("valid test fixture");
     let executor = MediaRequestExecutor::new(
         Arc::new(MappedClient(client)),
-        MediaRequestLimits::try_new(1, 1).unwrap(),
+        MediaRequestLimits::try_new(1, 1).expect("valid test fixture"),
     );
     let url = format!("http://public.example:{}/start", origin_address.port());
 
     let result = executor
         .get(&url, PreemptionAuthority::Transition)
-        .unwrap()
+        .expect("valid test fixture")
         .admit()
         .await
-        .unwrap()
-        .send()
+        .expect("valid test fixture")
+        .send_with_redirect_deadline(
+            tokio::time::Instant::now() + core::time::Duration::from_secs(30),
+        )
         .await;
 
     assert!(result.is_err(), "public chain reached a private redirect");
@@ -59,6 +65,12 @@ async fn a_public_chain_cannot_pivot_into_an_adapter_allowed_loopback() {
 
 async fn answer(mut socket: TcpStream, response: &[u8]) {
     let mut request = [0u8; 2048];
-    assert!(socket.read(&mut request).await.unwrap() > 0);
-    socket.write_all(response).await.unwrap();
+    assert!(
+        socket.read(&mut request).await.expect("valid test fixture") > 0,
+        "test server should receive a request"
+    );
+    socket
+        .write_all(response)
+        .await
+        .expect("valid test fixture");
 }

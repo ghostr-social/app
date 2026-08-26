@@ -2,12 +2,13 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::full_disk::{discard, limits, spaced_store};
 use delivery_fixture::items::{focus_now, seed_range, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness_with_store;
+use sha2::{Digest as _, Sha256};
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::time::timeout;
 
 const UNREACHABLE: &str = "http://127.0.0.1:9/video.mp4";
@@ -27,8 +28,14 @@ async fn storage_pressure_evicts_a_far_finalized_video_atomically() {
         })
         .collect();
     seed_range(&fixture.store, &items[1], 0, &[1; 45]).await;
-    seed_range(&fixture.store, &items[8], 0, &[8; 55]).await;
-    fixture.store.finalize("p8", None).await.unwrap();
+    let finalized_bytes = [8; 55];
+    seed_range(&fixture.store, &items[8], 0, &finalized_bytes).await;
+    let digest = format!("{:x}", Sha256::digest(finalized_bytes));
+    fixture
+        .store
+        .finalize("p8", Some(&digest))
+        .await
+        .expect("valid test fixture");
     let root = fixture.root.clone();
     let harness = start_harness_with_store(
         Arc::new(fixture.store),
@@ -45,10 +52,19 @@ async fn storage_pressure_evicts_a_far_finalized_video_atomically() {
         harness.handle.plan_history()
     );
     assert_eq!(
-        harness.store.present_ranges("p1").await.unwrap(),
+        harness
+            .store
+            .present_ranges("p1")
+            .await
+            .expect("valid test fixture"),
         vec![0..45]
     );
-    assert!(harness.store.present_ranges("p8").await.unwrap().is_empty());
+    assert!(harness
+        .store
+        .present_ranges("p8")
+        .await
+        .expect("valid test fixture")
+        .is_empty());
     discard(&root);
 }
 
@@ -61,7 +77,7 @@ fn planned_whole_eviction(handle: &ghostr_delivery::delivery_events::DeliveryHan
 }
 
 async fn wait_until_evicted(harness: &delivery_fixture::DeliveryHarness) {
-    timeout(Duration::from_secs(2), async {
+    let result = timeout(Duration::from_secs(2), async {
         loop {
             if harness.store.used_bytes().await == 45 && planned_whole_eviction(&harness.handle) {
                 return;
@@ -69,6 +85,11 @@ async fn wait_until_evicted(harness: &delivery_fixture::DeliveryHarness) {
             tokio::time::sleep(Duration::from_millis(5)).await;
         }
     })
-    .await
-    .expect("finalized eviction");
+    .await;
+    assert!(
+        result.is_ok(),
+        "finalized eviction: used={}, plans={:#?}",
+        harness.store.used_bytes().await,
+        harness.handle.plan_history()
+    );
 }

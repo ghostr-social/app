@@ -1,6 +1,6 @@
-use ghostr_engine::catalog::Catalog;
-use ghostr_engine::evidence::{EvidenceField, EvidenceValue, NostrMetadataEvidence};
-use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
+use crate::catalog::Catalog;
+use crate::evidence::{EvidenceField, EvidenceValue, NostrMetadataEvidence};
+use crate::{DeliveryKind, PostId, VideoMeta};
 
 #[test]
 fn every_nostr_planning_field_enters_the_typed_ledger_with_real_provenance() {
@@ -31,7 +31,7 @@ fn every_nostr_planning_field_enters_the_typed_ledger_with_real_provenance() {
     catalog.upsert_with_evidence(PostId::new("post"), meta, Vec::new(), vec![evidence]);
     let fused = catalog
         .lookup(&PostId::new("post"))
-        .unwrap()
+        .expect("valid test fixture")
         .evidence_assessment_for(url, 10);
 
     assert_eq!(

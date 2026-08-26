@@ -31,10 +31,17 @@ extension FeedCubitDelivery on FeedCubit {
 
   FeedReadyDecision _readyDecision(FeedLoaded current, int intended) {
     return _readySelector.select(
-      current.posts,
+      _readinessEvidence(current),
       fromIndex: current.activeIndex,
       intendedIndex: intended,
+    );
+  }
+
+  FeedReadinessEvidence _readinessEvidence(FeedLoaded current) {
+    return FeedReadinessEvidence(
+      posts: current.posts,
       delivery: _delivery,
+      preparation: current.preparation,
     );
   }
 
@@ -43,19 +50,9 @@ extension FeedCubitDelivery on FeedCubit {
     FeedReadyDecision decision,
     int transition,
   ) {
+    if (_isClosing || isClosed) return _completePageTransition(transition);
     _clearPendingRescue();
-    final selected = decision.selectedIndex;
     final commit = _RescueCommit(transition, current, decision);
-    final preparation = _viewer.prepareToShow(current.posts[selected]);
-    if (preparation is Future<bool>) {
-      return unawaited(_finishRescue(preparation, commit));
-    }
-    if (!preparation) return _completePageTransition(transition);
-    _finishRescueNow(commit);
-  }
-
-  Future<void> _finishRescue(Future<bool> ready, _RescueCommit commit) async {
-    if (!await ready) return _completePageTransition(commit.transition);
     _finishRescueNow(commit);
   }
 
@@ -103,10 +100,9 @@ extension FeedCubitDelivery on FeedCubit {
     _PendingTransportRescue pending,
   ) {
     return _readySelector.select(
-      current.posts,
+      _readinessEvidence(current),
       fromIndex: intendedIndex - pending.direction,
       intendedIndex: intendedIndex,
-      delivery: _delivery,
       graceExpired: pending.graceExpired,
     );
   }
@@ -118,6 +114,8 @@ extension FeedCubitDelivery on FeedCubit {
       _rescueTo(current, selected, transition);
     } else if (selected.action == FeedReadyAction.wait) {
       _ensureRescueTimer();
+    } else if (selected.reason == FeedReadyReason.intendedReady) {
+      _clearPendingRescue();
     }
   }
 

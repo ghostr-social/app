@@ -1,10 +1,10 @@
 use crate::playback::{BufferTarget, PlaybackObservation, PlaybackPhase};
 
-pub(super) const FULL_CAPACITY_MILLI: u64 = 1_000;
+const FULL_CAPACITY_MILLI: u64 = 1_000;
 // Reserve capacity while refilling so the buffer converges instead of merely
 // staying flat at its risky level.
-pub(super) const RECOVERY_CAPACITY_MILLI: u64 = 850;
-pub(super) const CRITICAL_CAPACITY_MILLI: u64 = 650;
+const RECOVERY_CAPACITY_MILLI: u64 = 850;
+const CRITICAL_CAPACITY_MILLI: u64 = 650;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum BufferRisk {

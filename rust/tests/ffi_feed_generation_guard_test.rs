@@ -48,8 +48,8 @@ async fn same_account_and_sign_out_resets_reject_stale_opens() {
         .await
         .expect("signed-out feed");
     assert_eq!(
-        next.parse::<u64>().unwrap(),
-        fresh.parse::<u64>().unwrap() + 1
+        next.parse::<u64>().expect("next feed id must be numeric"),
+        fresh.parse::<u64>().expect("fresh feed id must be numeric") + 1
     );
     std::fs::remove_dir_all(directory).expect("remove cache");
 }

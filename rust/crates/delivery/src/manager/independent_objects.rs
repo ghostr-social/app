@@ -1,19 +1,19 @@
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::PostId;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 #[derive(Default)]
 pub(crate) struct IndependentObjects {
-    required: HashSet<TransferIdentity>,
+    required: BTreeSet<TransferIdentity>,
 }
 
 impl IndependentObjects {
-    pub(crate) fn record(&mut self, identity: TransferIdentity) {
+    pub(super) fn record(&mut self, identity: TransferIdentity) {
         self.required.insert(identity);
     }
 
-    pub(crate) fn current(&mut self, catalog: &Catalog) -> HashMap<PostId, HashSet<String>> {
+    pub(super) fn current(&mut self, catalog: &Catalog) -> HashMap<PostId, HashSet<String>> {
         self.required.retain(|identity| {
             catalog
                 .transfer_identity(identity.post(), identity.source().as_str())
@@ -30,7 +30,7 @@ impl IndependentObjects {
         current
     }
 
-    pub(crate) fn clear(&mut self) {
+    pub(super) fn clear(&mut self) {
         self.required.clear();
     }
 }

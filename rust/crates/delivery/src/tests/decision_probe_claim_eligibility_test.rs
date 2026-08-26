@@ -40,8 +40,8 @@ fn malformed_head_records_are_not_claimable(
     let privacy = DecisionPrivacy::from_key([7; 32]);
     let mut record = DecisionRecord::capture_warp(WarpDecisionRecordInput {
         sequence: 1,
-        snapshot: work.snapshot.as_ref().unwrap(),
-        decision: work.warp.as_ref().unwrap(),
+        snapshot: work.snapshot.as_ref().expect("valid test fixture"),
+        decision: work.warp.as_ref().expect("valid test fixture"),
         legacy_shadow_prices: work.shadow_prices,
         models: &work.decision_models,
         privacy: &privacy,

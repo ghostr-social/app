@@ -1,12 +1,12 @@
 mod redirect_gate_fixture;
 
+use core::time::Duration;
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_net::media_request_executor::{
     MediaRequestAdmissionTimeout, MediaRequestExecutor, MediaRequestLimits,
 };
 use redirect_gate_fixture::target::TargetOrigin;
 use redirect_gate_fixture::{redirect_origin, OneHopClient};
-use std::time::Duration;
 
 #[tokio::test]
 async fn redirect_gate_expiry_is_a_typed_local_admission_timeout() {
@@ -14,24 +14,26 @@ async fn redirect_gate_expiry_is_a_typed_local_admission_timeout() {
     let start = redirect_origin(target.redirected_url.clone()).await;
     let executor = MediaRequestExecutor::new(
         OneHopClient::shared(),
-        MediaRequestLimits::try_new(2, 1).unwrap(),
+        MediaRequestLimits::try_new(2, 1).expect("valid test fixture"),
     );
     let held = executor
         .get(&target.held_url, PreemptionAuthority::Transition)
-        .unwrap()
+        .expect("valid test fixture")
         .admit()
         .await
-        .unwrap()
-        .send()
+        .expect("valid test fixture")
+        .send_with_redirect_deadline(
+            tokio::time::Instant::now() + core::time::Duration::from_secs(30),
+        )
         .await
-        .unwrap();
+        .expect("valid test fixture");
     let _ = target.hit().await;
     let admitted = executor
         .get(&start, PreemptionAuthority::PlaybackCritical)
-        .unwrap()
+        .expect("valid test fixture")
         .admit()
         .await
-        .unwrap();
+        .expect("valid test fixture");
 
     let deadline = tokio::time::Instant::now() + Duration::from_millis(40);
     let result = admitted.send_with_redirect_deadline(deadline).await;

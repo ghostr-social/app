@@ -3,7 +3,7 @@
 
 use crate::host_stats::{HostStats, OPTIMISTIC_THROUGHPUT_BPS};
 use crate::tests::host_stats_support::assert_close;
-use std::time::Duration;
+use core::time::Duration;
 
 const HOST: &str = "cdn.example";
 

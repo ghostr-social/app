@@ -1,11 +1,11 @@
 mod gateway_fixture;
 
 use axum::http::Method;
+use core::time::Duration;
 use gateway_fixture::progressive_delivery::ProgressiveDeliveryHarness;
 use gateway_fixture::progressive_journey_item::unknown_item;
 use gateway_fixture::progressive_journey_origin::ProgressiveJourneyOrigin;
 use ghostr_delivery::manager::DeliveryTuning;
-use std::time::Duration;
 
 #[tokio::test]
 async fn deferred_probe_retries_after_the_active_body_fails() {

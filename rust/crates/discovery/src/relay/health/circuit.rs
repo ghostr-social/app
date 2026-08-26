@@ -65,7 +65,7 @@ impl RelayCircuit {
         self.probe_until.is_some_and(|until| now < until)
     }
 
-    pub(super) fn has_in_flight(&self) -> bool {
+    fn has_in_flight(&self) -> bool {
         !self.active_generations.is_empty()
     }
 
@@ -100,7 +100,7 @@ impl RelayCircuit {
     }
 }
 
-fn backoff(level: u8) -> std::time::Duration {
+fn backoff(level: u8) -> core::time::Duration {
     let factor = 1_u32 << level.min(16);
     INITIAL_BACKOFF.saturating_mul(factor).min(MAX_BACKOFF)
 }

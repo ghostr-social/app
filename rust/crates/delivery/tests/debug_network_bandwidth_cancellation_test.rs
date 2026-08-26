@@ -1,5 +1,5 @@
+use core::time::Duration;
 use ghostr_delivery::debug::network::{NetworkProfile, NetworkThrottle};
-use std::time::Duration;
 
 #[tokio::test(start_paused = true)]
 async fn canceling_the_link_owner_leaves_no_ghost_bandwidth_debt() {
@@ -23,7 +23,7 @@ async fn canceling_the_link_owner_leaves_no_ghost_bandwidth_debt() {
 
     tokio::time::advance(Duration::from_millis(1)).await;
     tokio::task::yield_now().await;
-    queued.await.unwrap();
+    queued.await.expect("valid test fixture");
 }
 
 fn configured_throttle() -> NetworkThrottle {

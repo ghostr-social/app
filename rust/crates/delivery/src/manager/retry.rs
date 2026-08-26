@@ -28,10 +28,10 @@ pub struct Source {
 }
 
 impl Source {
-    pub fn new(post: PostId, url: String) -> Self {
+    pub fn new(post: PostId, url: &str) -> Self {
         Self {
             post,
-            url: crate::segmented::source_key::canonical(&url),
+            url: crate::segmented::source_key::canonical(url),
         }
     }
 }
@@ -67,9 +67,10 @@ impl RetryBook {
             return Retry::GiveUp;
         }
         let attempts = self.charge(&source);
-        match attempts >= self.budget(class) {
-            true => self.retire(source, class, false),
-            false => Retry::After(self.policy.backoff(attempts)),
+        if attempts >= self.budget(class) {
+            self.retire(source, class, false)
+        } else {
+            Retry::After(self.policy.backoff(attempts))
         }
     }
 
@@ -92,14 +93,19 @@ impl RetryBook {
     pub fn live_urls(&self, post: &PostId, urls: &[String]) -> Vec<String> {
         let mut live: Vec<_> = urls
             .iter()
-            .filter(|url| !self.is_retired(&Source::new(post.clone(), (*url).clone())))
+            .filter(|url| !self.is_retired(&Source::new(post.clone(), url)))
             .cloned()
             .collect();
         live.sort_by_key(|url| self.failure_count(post, url));
         live
     }
 
-    pub fn has_ready_alternative(&self, post: &PostId, failed: &str, urls: &[String]) -> bool {
+    pub(crate) fn has_ready_alternative(
+        &self,
+        post: &PostId,
+        failed: &str,
+        urls: &[String],
+    ) -> bool {
         let failed = crate::segmented::source_key::canonical(failed);
         self.live_urls(post, urls)
             .iter()
@@ -112,7 +118,7 @@ impl RetryBook {
         !urls.is_empty() && self.live_urls(post, urls).is_empty()
     }
 
-    pub(crate) fn representation_changed(&mut self, post: &PostId) {
+    pub(super) fn representation_changed(&mut self, post: &PostId) {
         self.attempts.retain(|source, _| &source.post != post);
         self.retired.retain(|source, _| &source.post != post);
         self.cooldowns.representation_changed(post);
@@ -129,11 +135,6 @@ impl RetryBook {
             }
         }
         self.cooldowns.focus_changed(previous, current);
-    }
-
-    #[cfg(test)]
-    pub(crate) fn demand_tracking_units(&self) -> usize {
-        self.cooldowns.demand_tracking_units()
     }
 
     pub(crate) fn clear(&mut self) {
@@ -160,7 +161,7 @@ impl RetryBook {
 
     fn failure_count(&self, post: &PostId, url: &str) -> u32 {
         self.attempts
-            .get(&Source::new(post.clone(), url.to_owned()))
+            .get(&Source::new(post.clone(), url))
             .copied()
             .unwrap_or(0)
     }
@@ -191,3 +192,7 @@ impl RetryBook {
         Retry::GiveUp
     }
 }
+
+#[cfg(test)]
+#[path = "retry_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

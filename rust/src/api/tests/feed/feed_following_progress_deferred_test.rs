@@ -16,7 +16,7 @@ fn following_progress_waits_for_page_deletion_checks() {
     });
     let context = open.expect("following dispatch").context;
 
-    state.apply_progress(&context, event.clone());
+    state.apply_progress(&context, &event);
 
     assert_eq!(state.stage(feed), FfiFeedStage::Loading);
     assert!(state.snapshot(feed).is_empty());

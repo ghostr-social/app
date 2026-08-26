@@ -4,7 +4,7 @@ use crate::segmented::prepare::prepare_complete;
 #[tokio::test]
 async fn completed_assembly_reservation_stays_counted_until_lease_release() {
     let (cache, post) = cache_with_ready_bytes(16 * MIB, 4 * MIB);
-    let mut lease = cache
+    let lease = cache
         .admit_stage(final_admission(&post, 4 * MIB, 4 * MIB, 8 * MIB))
         .expect("final assembly admitted");
     let block = object("current", 4 * MIB);

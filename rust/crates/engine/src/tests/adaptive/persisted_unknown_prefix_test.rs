@@ -46,7 +46,8 @@ fn candidate(present: Vec<ByteRange>) -> crate::adaptive::CandidateSnapshot {
         CandidateEvidence {
             post,
             feed_offset: FeedOffset::new(0),
-            view_probability: crate::adaptive::ViewProbability::new(1.0).unwrap(),
+            view_probability: crate::adaptive::ViewProbability::new(1.0)
+                .expect("valid test fixture"),
             present,
             stored_total: None,
             continuation_source: None,

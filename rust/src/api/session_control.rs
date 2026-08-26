@@ -2,10 +2,10 @@
 
 use crate::api::runtime::discovery::{lock, DiscoveryRuntime};
 use crate::api::runtime::registry;
+use core::error::Error;
+use core::fmt::{Display, Formatter};
 use flutter_rust_bridge::frb;
 use nostr_sdk::PublicKey;
-use std::error::Error;
-use std::fmt::{Display, Formatter};
 
 /// Typed failures from [`ffi_reset_nostr_session`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -15,7 +15,7 @@ pub enum NostrSessionResetError {
 }
 
 impl Display for NostrSessionResetError {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::EngineNotStarted => formatter.write_str("the Nostr engine is not started"),
             Self::InvalidExpectedPublicKey => {
@@ -42,13 +42,13 @@ pub async fn ffi_reset_nostr_session(
 }
 
 impl DiscoveryRuntime {
-    pub(crate) fn session_generation(
+    pub(super) fn session_generation(
         &self,
     ) -> crate::discovery::session_generation::SessionGeneration {
         lock(&self.state).session_generation()
     }
 
-    pub(crate) async fn reset_session(&self, expected_account: Option<PublicKey>) {
+    pub(super) async fn reset_session(&self, expected_account: Option<PublicKey>) {
         let mut transition = self.relay_pool.begin_reset().await;
         let generation = lock(&self.state).reset_session();
         let _ = self.handle.reset_session().await;

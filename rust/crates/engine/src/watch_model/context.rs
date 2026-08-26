@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
-
-const MAX_CATEGORIES: usize = 4;
+use sha2::{Digest as _, Sha256};
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct WatchKey(String);
@@ -23,7 +21,7 @@ pub enum DurationBucket {
 }
 
 impl DurationBucket {
-    pub(crate) fn of(duration_ms: Option<u64>) -> Self {
+    pub(super) fn of(duration_ms: Option<u64>) -> Self {
         match duration_ms {
             None => Self::Unknown,
             Some(0..=3_000) => Self::Tiny,
@@ -34,7 +32,7 @@ impl DurationBucket {
         }
     }
 
-    pub(crate) fn neighbors(self) -> impl Iterator<Item = Self> {
+    pub(super) fn neighbors(self) -> impl Iterator<Item = Self> {
         let values = match self {
             Self::Unknown => [None, None],
             Self::Tiny => [None, Some(Self::Short)],
@@ -49,11 +47,11 @@ impl DurationBucket {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WatchContext {
-    pub(crate) video: WatchKey,
-    pub(crate) creator: Option<WatchKey>,
-    pub(crate) categories: Vec<WatchKey>,
-    pub(crate) user: Option<WatchKey>,
-    pub(crate) duration_ms: Option<u64>,
+    pub(super) video: WatchKey,
+    pub(super) creator: Option<WatchKey>,
+    pub(super) categories: Vec<WatchKey>,
+    pub(super) user: Option<WatchKey>,
+    pub(super) duration_ms: Option<u64>,
 }
 
 impl WatchContext {
@@ -66,34 +64,8 @@ impl WatchContext {
             duration_ms,
         }
     }
-
-    pub fn with_creator(mut self, creator: WatchKey) -> Self {
-        self.creator = Some(creator);
-        self
-    }
-
-    pub fn with_categories(mut self, categories: impl IntoIterator<Item = WatchKey>) -> Self {
-        for category in categories {
-            if self.categories.len() == MAX_CATEGORIES {
-                break;
-            }
-            if !self.categories.contains(&category) {
-                self.categories.push(category);
-            }
-        }
-        self
-    }
-
-    pub fn with_user(mut self, user: WatchKey) -> Self {
-        self.user = Some(user);
-        self
-    }
-
-    pub fn duration_ms(&self) -> Option<u64> {
-        self.duration_ms
-    }
-
-    pub fn video(&self) -> &WatchKey {
-        &self.video
-    }
 }
+
+#[cfg(test)]
+#[path = "context/test_support.rs"]
+mod test_support;

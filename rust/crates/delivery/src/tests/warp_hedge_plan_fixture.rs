@@ -16,20 +16,23 @@ pub(super) const OBSERVED_AT_MS: u64 = 5_000;
 #[derive(Clone, Copy)]
 pub(super) enum HedgeCase {
     Eligible,
+    AdvertisedOnly,
+    PrimaryVerifiedOnly,
+    AlternateRotated,
     BeforeTail,
     Linked,
     PrimaryUnavailable,
 }
 
 impl HedgeCase {
-    pub(super) const fn primary_launched_at_ms(self) -> u64 {
+    const fn primary_launched_at_ms(self) -> u64 {
         match self {
-            Self::Eligible | Self::Linked | Self::PrimaryUnavailable => 1_000,
             Self::BeforeTail => 4_000,
+            _ => 1_000,
         }
     }
 
-    pub(super) const fn linked(self) -> bool {
+    const fn linked(self) -> bool {
         matches!(self, Self::Linked)
     }
 }
@@ -43,17 +46,18 @@ pub(super) fn mirror_plan_on_network(
     network_class: ghostr_engine::origin_model::NetworkClass,
 ) -> PlannedWork {
     let post = PostId::new("current");
-    let mut state = state(post.clone(), network_class);
+    let mut state = state(&post, network_class, case);
     let active = active::actions(&state, post.clone(), case);
     let stats = stats::model(case);
     let evidence = evidence::PlanEvidence::new(post.clone());
-    state.apply_playback(playback_for(post, 0));
-    evidence.plan(&mut state, &stats, &active)
+    state.apply_playback(&playback_for(post, 0));
+    evidence.plan(&state, &stats, &active)
 }
 
 fn state(
-    post: PostId,
+    post: &PostId,
     network_class: ghostr_engine::origin_model::NetworkClass,
+    case: HedgeCase,
 ) -> DeliveryState {
     let meta = VideoMeta {
         urls: vec![PRIMARY.into(), ALTERNATE.into()],
@@ -78,20 +82,6 @@ fn state(
         ),
         0,
     );
-    learn_sources(&mut state, &post);
+    evidence::learn_identity(&mut state, post, case);
     state
-}
-
-fn learn_sources(state: &mut DeliveryState, post: &PostId) {
-    for source in [PRIMARY, ALTERNATE] {
-        let identity = state.catalog().transfer_identity(post, source).unwrap();
-        state.catalog_mut().learn_response_for(
-            &identity,
-            ghostr_engine::catalog::LearnedFacts {
-                content_length: Some(1_000_000),
-                accept_ranges: Some(true),
-                host: None,
-            },
-        );
-    }
 }

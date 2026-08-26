@@ -1,9 +1,9 @@
 use crate::chunk::downloader::{HttpResponseEvidence, OpenedResponse, ResponseAdmission};
+use core::future::Future;
+use core::num::NonZeroU64;
+use core::pin::Pin;
+use core::time::Duration;
 use ghostr_engine::catalog::CompleteBytesObservation;
-use std::future::Future;
-use std::num::NonZeroU64;
-use std::pin::Pin;
-use std::time::Duration;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WholeBodyCompletion {
@@ -11,7 +11,7 @@ pub struct WholeBodyCompletion {
 }
 
 impl WholeBodyCompletion {
-    pub(crate) fn at_network_eof(total_bytes: NonZeroU64, response: &HttpResponseEvidence) -> Self {
+    pub(super) fn at_network_eof(total_bytes: NonZeroU64, response: &HttpResponseEvidence) -> Self {
         Self {
             observation: CompleteBytesObservation::new(
                 total_bytes,
@@ -22,7 +22,7 @@ impl WholeBodyCompletion {
         }
     }
 
-    pub(crate) const fn total_bytes(&self) -> u64 {
+    pub(super) const fn total_bytes(&self) -> u64 {
         self.observation.total_bytes.get()
     }
 

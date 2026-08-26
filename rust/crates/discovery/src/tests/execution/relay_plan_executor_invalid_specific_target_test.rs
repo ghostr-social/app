@@ -1,4 +1,4 @@
-use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
+use crate::plan_executor::{PlanExecutor as _, PlannedRetrieval};
 use crate::query::search::plan_discovery;
 use crate::query::video_filters::{DiscoveryRequest, RepostAdmission};
 use crate::retrieval_types::{FeedContext, RetrievalPriority};
@@ -30,7 +30,7 @@ async fn fetched_invalid_specific_replaceable_target_is_not_retried() {
     let (progress, _) = tokio::sync::mpsc::channel(1);
 
     let page = executor
-        .execute_page_with_progress(retrieval(request), progress)
+        .execute_page_with_progress(retrieval(&request), progress)
         .await
         .expect("content page");
 
@@ -38,14 +38,14 @@ async fn fetched_invalid_specific_replaceable_target_is_not_retried() {
     assert!(page.repost_retry.deferred.is_empty());
 }
 
-fn retrieval(request: DiscoveryRequest) -> PlannedRetrieval {
+fn retrieval(request: &DiscoveryRequest) -> PlannedRetrieval {
     PlannedRetrieval {
         context: FeedContext::for_session(
             "following",
             crate::session_generation::SessionGeneration::initial(),
         ),
         priority: RetrievalPriority::Interactive,
-        plan: plan_discovery(&request),
+        plan: plan_discovery(request),
         deferred_reposts: Vec::new(),
     }
 }

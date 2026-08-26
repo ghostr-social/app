@@ -1,6 +1,6 @@
+use core::time::Duration;
 use ghostr_engine::host_stats::HostStats;
 use std::path::Path;
-use std::time::Duration;
 
 pub async fn wait_for(path: &Path, ready: impl Fn(&HostStats) -> bool) -> HostStats {
     tokio::time::timeout(Duration::from_secs(2), async {

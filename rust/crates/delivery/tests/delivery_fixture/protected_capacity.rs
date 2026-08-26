@@ -1,9 +1,9 @@
 use super::items::{focus_now, sized_item};
 use super::options::{base_params, DeliveryOptions};
 use super::{start_harness, DeliveryHarness};
+use core::time::Duration;
 use ghostr_delivery::playback_demand::DemandConsumer;
 use ghostr_engine::{ByteRange, EngineParams};
-use std::time::Duration;
 
 pub const POSTS: [&str; 4] = ["current", "next-1", "next-2", "next-3"];
 
@@ -34,7 +34,7 @@ async fn stored_bytes(harness: &DeliveryHarness) -> u64 {
             .store
             .present_ranges(post)
             .await
-            .unwrap()
+            .expect("valid test fixture")
             .iter()
             .map(|range| range.end - range.start)
             .sum::<u64>();
@@ -43,7 +43,7 @@ async fn stored_bytes(harness: &DeliveryHarness) -> u64 {
 }
 
 fn items(url: &str) -> Vec<ghostr_delivery::delivery_events::FocusItem> {
-    let mut items = vec![sized_item("current", url, 8, 1_000)];
+    let mut items = vec![sized_item("current", url, 32, 4_000)];
     items.extend(POSTS[1..].iter().map(|id| sized_item(id, url, 32, 4_000)));
     items
 }

@@ -1,4 +1,4 @@
-use ghostr_engine::evidence::{
+use crate::evidence::{
     Confidence, Evidence, EvidenceLedger, EvidenceScope, EvidenceSource, EvidenceValidator,
     EvidenceValue,
 };
@@ -53,11 +53,11 @@ fn size(
         EvidenceValue::SizeBytes(bytes),
         source,
         observed_at_ms,
-        Confidence::new(9_000).unwrap(),
+        Confidence::new(9_000).expect("valid test fixture"),
         scope,
     )
 }
 
 fn etag(value: &str) -> EvidenceValidator {
-    EvidenceValidator::strong_etag(format!("\"{value}\"")).unwrap()
+    EvidenceValidator::strong_etag(format!("\"{value}\"")).expect("valid test fixture")
 }

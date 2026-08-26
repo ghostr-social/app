@@ -7,7 +7,7 @@ fn initial_quality_is_the_highest_rendition_with_sustainable_headroom() {
     let policy = QualitySelectionPolicy::default();
     let network = network(11_000_000, 200_000, EstimateConfidence::High);
 
-    let decision = policy.select(&ladder(), playing_input(network, None, 20, 1_000));
+    let decision = policy.select(&ladder(), &playing_input(network, None, 20, 1_000));
 
     assert_eq!(decision.selected().id(), &id("high"));
     assert_eq!(decision.selected().bitrate_bits_per_second(), 6_000_000);

@@ -1,8 +1,9 @@
 use anyhow::{ensure, Result};
-use rand::RngCore;
+use core::fmt::Write as _;
+use core::fmt::{Display, Formatter};
+use core::time::Duration;
+use rand::RngCore as _;
 use reqwest::Url;
-use std::fmt::{Display, Formatter};
-use std::time::Duration;
 
 const MAX_HLS_SOURCE_URLS: usize = 5;
 const MAX_HLS_URL_BYTES: usize = 2_048;
@@ -38,19 +39,24 @@ impl HlsResourceId {
 }
 
 impl Display for HlsResourceId {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> core::fmt::Result {
         formatter.write_str(&self.0)
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct HlsSessionLimits {
-    pub(crate) max_sessions: usize,
-    pub(crate) idle_ttl: Duration,
-    pub(crate) max_ranged_assets: usize,
+    pub(super) max_sessions: usize,
+    pub(super) idle_ttl: Duration,
+    pub(super) max_ranged_assets: usize,
 }
 
 impl HlsSessionLimits {
+    /// Creates positive capacity and lifetime limits for secure HLS sessions.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when any capacity is zero or the idle lifetime is empty.
     pub fn new(max_sessions: usize, idle_ttl: Duration, max_ranged_assets: usize) -> Result<Self> {
         ensure!(max_sessions > 0, "HLS session capacity must be positive");
         ensure!(!idle_ttl.is_zero(), "HLS session TTL must be positive");
@@ -102,5 +108,9 @@ pub(crate) fn random_secret() -> [u8; 32] {
 }
 
 fn hex_secret(bytes: [u8; 32]) -> String {
-    bytes.iter().map(|value| format!("{value:02x}")).collect()
+    let mut encoded = String::with_capacity(bytes.len() * 2);
+    for value in bytes {
+        write!(&mut encoded, "{value:02x}").expect("writing to a string cannot fail");
+    }
+    encoded
 }

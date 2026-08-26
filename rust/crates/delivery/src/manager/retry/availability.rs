@@ -2,12 +2,6 @@ use super::{CooldownId, RetryBook};
 use ghostr_engine::PostId;
 
 impl RetryBook {
-    /// Marks the post as pausing between attempts. `None` when a pause already owns a timer.
-    #[cfg(test)]
-    pub(crate) fn cool_down(&mut self, post: PostId) -> Option<CooldownId> {
-        self.cool_down_until(post, u64::MAX)
-    }
-
     pub(crate) fn cool_down_until(
         &mut self,
         post: PostId,
@@ -44,3 +38,7 @@ impl RetryBook {
         self.cooldowns.eligible_at_ms(post)
     }
 }
+
+#[cfg(test)]
+#[path = "availability_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

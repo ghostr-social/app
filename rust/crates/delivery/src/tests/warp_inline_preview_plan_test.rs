@@ -58,7 +58,7 @@ pub(super) fn plan(preview: Option<PreviewDescriptor>) -> crate::manager::plan::
 fn has_preview(work: &crate::manager::plan::PlannedWork) -> bool {
     work.warp
         .as_ref()
-        .unwrap()
+        .expect("valid test fixture")
         .generated
         .ladders
         .iter()

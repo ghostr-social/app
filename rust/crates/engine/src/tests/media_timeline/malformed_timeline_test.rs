@@ -15,7 +15,10 @@ fn a_declared_box_cut_short_is_reported_as_truncated() {
 #[test]
 fn an_invalid_media_timescale_is_rejected() {
     let mut moov = classic_moov(&[1_000], &[100]);
-    let marker = moov.windows(4).position(|bytes| bytes == b"mdhd").unwrap();
+    let marker = moov
+        .windows(4)
+        .position(|bytes| bytes == b"mdhd")
+        .expect("valid test fixture");
     let timescale = marker + 16;
     moov[timescale..timescale + 4].fill(0);
 
@@ -69,7 +72,8 @@ fn malformed_nested_box_headers_are_rejected_without_panicking() {
 fn timeline_extents_must_fit_the_known_representation_size() {
     let moov = classic_moov(&[100], &[100]);
     let start = 1_000;
-    let timeline = parse_mp4_segments(&[MediaSegment::new(start, &moov)]).unwrap();
+    let timeline =
+        parse_mp4_segments(&[MediaSegment::new(start, &moov)]).expect("valid test fixture");
     let total = start + moov.len() as u64;
 
     assert!(timeline.fits_within(total));

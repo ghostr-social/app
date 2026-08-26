@@ -1,7 +1,5 @@
-mod store_fixture;
-
+use crate::tests::store_fixture::{plain_store, temp_root};
 use std::sync::Arc;
-use store_fixture::{plain_store, temp_root};
 use tokio::sync::Mutex;
 
 #[tokio::test]
@@ -14,7 +12,7 @@ async fn partial_range_manifest_reloads_from_disk_after_a_restart() {
     }
 
     let used_bytes = Arc::new(Mutex::new(0));
-    let store = plain_store(root.clone(), used_bytes.clone());
+    let store = plain_store(root.clone(), std::sync::Arc::clone(&used_bytes));
 
     assert_eq!(
         store.present_ranges("clip").await.expect("ranges"),

@@ -49,7 +49,7 @@ impl RetrievalRequest {
         }
     }
 
-    pub fn reserved_coverage(self) -> ByteRange {
+    pub(super) fn reserved_coverage(self) -> ByteRange {
         match self {
             Self::FetchRange {
                 promotion: Some(grant),

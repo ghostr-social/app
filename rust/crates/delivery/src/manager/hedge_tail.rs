@@ -1,7 +1,7 @@
 use crate::manager::transfers::InternalEvent;
+use core::time::Duration;
 use ghostr_engine::ActionId;
-use std::collections::HashMap;
-use std::time::Duration;
+use std::collections::BTreeMap;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::task::JoinHandle;
 
@@ -27,7 +27,7 @@ struct ActiveTimer {
 
 #[derive(Default)]
 pub(crate) struct HedgeTailTimers {
-    active: HashMap<ActionId, ActiveTimer>,
+    active: BTreeMap<ActionId, ActiveTimer>,
 }
 
 impl HedgeTailTimers {
@@ -54,8 +54,8 @@ impl HedgeTailTimers {
         true
     }
 
-    pub(crate) fn clear(&mut self) {
-        for (_, timer) in self.active.drain() {
+    pub(super) fn clear(&mut self) {
+        for (_, timer) in core::mem::take(&mut self.active) {
             timer.handle.abort();
         }
     }

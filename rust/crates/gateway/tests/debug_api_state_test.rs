@@ -30,16 +30,17 @@ async fn json_request(
 #[tokio::test]
 async fn debug_state_reports_downloaded_bytes_duration_and_source() {
     let harness = progressive_harness("ghostr-debug-state");
-    harness.posts.replace([gateway_fixture::cache_video(
-        "clip",
-        VideoMeta {
-            urls: vec!["https://relay.example/media/clip.mp4".to_owned()],
-            delivery: DeliveryKind::Progressive,
-            sha256: None,
-            size_bytes: Some(1_000),
-            duration_ms: Some(120_000),
-        },
-    )]);
+    let meta = VideoMeta {
+        urls: vec!["https://relay.example/media/clip.mp4".to_owned()],
+        delivery: DeliveryKind::Progressive,
+        sha256: None,
+        size_bytes: Some(1_000),
+        duration_ms: Some(120_000),
+    };
+    harness
+        .posts
+        .replace([gateway_fixture::cache_video("clip", meta.clone())]);
+    harness.bind_video_meta("clip", meta).await;
     harness
         .store
         .set_total_len("clip", 1_000)
@@ -91,6 +92,6 @@ async fn debug_network_profile_can_be_changed_without_restart() {
     assert_eq!(harness.network.profile().packet_loss_bps, 2_500);
     assert!(matches!(
         harness.debug_commands.try_control(),
-        Some(DeliveryCommand::NetworkChanged)
+        Some(DeliveryCommand::NetworkProfile { generation: 1, .. })
     ));
 }

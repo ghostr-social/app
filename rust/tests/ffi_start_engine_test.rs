@@ -1,5 +1,5 @@
 //! One started engine per process: this scenario walks the whole
-//! delivery control surface against a single ffi_start_engine call.
+//! delivery control surface against a single `ffi_start_engine` call.
 
 mod support;
 

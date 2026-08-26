@@ -3,18 +3,18 @@
 use crate::manager::failure::FailureClass;
 use crate::manager::retry::{Retry, Source};
 use crate::manager::DeliveryWorker;
+use core::time::Duration;
 use ghostr_engine::PostId;
 use ghostr_net::media_log_identity::MediaLogIdentity;
 use log::warn;
-use std::time::Duration;
 
 impl DeliveryWorker {
     /// Charges one failed attempt to the source: either a paced retry
     /// or immediate fallback to an available mirror.
-    pub(crate) fn note_failed_attempt(&mut self, post: &PostId, url: &str, class: FailureClass) {
+    pub(super) fn note_failed_attempt(&mut self, post: &PostId, url: &str, class: FailureClass) {
         let retry = self
             .retry
-            .note_failure(Source::new(post.clone(), url.to_owned()), class);
+            .note_failure(Source::new(post.clone(), url), class);
         match retry {
             Retry::After(_) if self.has_ready_alternative(post, url) => {}
             Retry::After(wait) => self.start_cooldown(post.clone(), wait),
@@ -29,7 +29,7 @@ impl DeliveryWorker {
         })
     }
 
-    fn retire_source(&mut self, post: &PostId, url: &str) {
+    fn retire_source(&self, post: &PostId, url: &str) {
         let id = MediaLogIdentity::from_url(url);
         if self.is_servable(post) {
             warn!("Giving up on {id}; another source remains");
@@ -38,7 +38,7 @@ impl DeliveryWorker {
         warn!("No working source left for {id}; reporting item unplayable");
     }
 
-    pub(crate) fn start_cooldown(&mut self, post: PostId, wait: Duration) {
+    pub(super) fn start_cooldown(&mut self, post: PostId, wait: Duration) {
         let observed_at_ms = crate::manager::time::unix_time_ms();
         let eligible_at_ms = observed_at_ms.saturating_add(duration_ms(wait));
         let Some(cooldown) = self.retry.cool_down_until(post.clone(), eligible_at_ms) else {
@@ -48,7 +48,7 @@ impl DeliveryWorker {
             .start(post, cooldown, wait, self.ctx.events.clone());
     }
 
-    pub(crate) fn start_hls_cooldown(&mut self, post: PostId, wait: Duration) {
+    pub(super) fn start_hls_cooldown(&mut self, post: PostId, wait: Duration) {
         let eligible_at_ms = crate::manager::time::unix_time_ms().saturating_add(duration_ms(wait));
         let Some(cooldown) = self.retry.cool_down_hls_until(post.clone(), eligible_at_ms) else {
             return;
@@ -57,7 +57,7 @@ impl DeliveryWorker {
             .start(post, cooldown, wait, self.ctx.events.clone());
     }
 
-    pub(crate) fn expedite_demand(&mut self, post: &PostId, offset: u64) -> bool {
+    pub(super) fn expedite_demand(&mut self, post: &PostId, offset: u64) -> bool {
         let accepted = self.retry.expedite_demand(post, offset);
         if accepted && !self.retry.is_cooling(post) {
             self.cooldown_timers.cancel(post);
@@ -65,10 +65,9 @@ impl DeliveryWorker {
         accepted
     }
 
-    pub(crate) fn note_successful_attempt(&mut self, post: &PostId, url: &str) {
+    pub(super) fn note_successful_attempt(&mut self, post: &PostId, url: &str) {
         self.cooldown_timers.cancel(post);
-        self.retry
-            .note_success(&Source::new(post.clone(), url.to_owned()));
+        self.retry.note_success(&Source::new(post.clone(), url));
     }
 }
 

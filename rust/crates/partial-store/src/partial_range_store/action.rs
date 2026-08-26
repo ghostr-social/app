@@ -26,15 +26,15 @@ pub(super) struct ActionReservation {
 }
 
 impl StoreAction {
-    pub fn id(&self) -> u64 {
+    pub(super) fn id(&self) -> u64 {
         self.id
     }
 
-    pub fn is_active(&self) -> bool {
+    pub(crate) fn is_active(&self) -> bool {
         self.state.is_active()
     }
 
-    pub fn identity(&self) -> &TransferIdentity {
+    pub(super) fn identity(&self) -> &TransferIdentity {
         &self.identity
     }
 
@@ -57,6 +57,9 @@ impl StoreAction {
 }
 
 impl PartialRangeStore {
+    /// # Errors
+    ///
+    /// Returns an error when the transfer is stale, duplicated, or exceeds store capacity.
     pub async fn reserve_action(
         &self,
         identity: &TransferIdentity,

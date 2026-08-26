@@ -1,5 +1,5 @@
+use core::time::Duration;
 use ghostr_delivery::debug::network::{NetworkProfile, NetworkThrottle};
-use std::time::Duration;
 
 #[tokio::test(start_paused = true)]
 async fn a_live_rate_change_reprices_only_the_unserved_bytes() {
@@ -21,7 +21,7 @@ async fn a_live_rate_change_reprices_only_the_unserved_bytes() {
     tokio::time::advance(Duration::from_millis(1)).await;
     tokio::task::yield_now().await;
     assert!(transfer.is_finished());
-    transfer.await.unwrap();
+    transfer.await.expect("valid test fixture");
 }
 
 fn profile(bandwidth_kbps: u64) -> NetworkProfile {

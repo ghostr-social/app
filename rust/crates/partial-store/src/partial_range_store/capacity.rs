@@ -1,14 +1,15 @@
-//! What the store is allowed to occupy right now. The user's budget is
-//! an upper bound, never a promise: the effective cap is whichever of
+//! Calculates what the store may occupy right now.
+//!
+//! The user's budget is an upper bound, never a promise: the effective cap is whichever of
 //! the budget and the device's real free space is smaller, minus a
 //! reserve the store must never spend.
 
 use crate::partial_range_store::free_space::{FreeSpace, SystemFreeSpace};
 use anyhow::{ensure, Result};
+use core::sync::atomic::{AtomicU64, Ordering};
+use core::time::Duration;
 use std::path::Path;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
 
@@ -32,8 +33,9 @@ struct Sample {
     generation: u64,
 }
 
-/// Measures free space (at most once per recheck window) and turns the
-/// measurement into the store's effective cap. Between measurements the
+/// Measures free space and turns it into the store's effective cap.
+///
+/// Measurements occur at most once per recheck window. Between measurements the
 /// store's own writes and evictions move the standing measurement, so a
 /// cap taken inside one window still describes the file system.
 pub struct StoreCapacity {
@@ -70,23 +72,27 @@ impl StoreCapacity {
 
     /// The most the store may occupy, given the `used` bytes it already
     /// holds: `min(budget, used + free - reserve)`, never below zero.
-    pub async fn cap(&self, root: &Path, used: u64) -> u64 {
+    pub(crate) async fn cap(&self, root: &Path, used: u64) -> u64 {
         let mut sample = self.sample.lock().await;
         cap_for(self.limits(), used, self.current(&mut sample, root, used))
     }
 
-    pub(crate) async fn recheck(&self, root: &Path, used: u64) {
+    pub(super) async fn recheck(&self, root: &Path, used: u64) {
         let mut sample = self.sample.lock().await;
         self.measure(&mut sample, root, used);
     }
 
-    pub(crate) fn events(&self) -> CapacityEvents {
+    pub(super) fn events(&self) -> CapacityEvents {
         self.events.clone()
     }
 
     /// Replaces the user ceiling for future decisions. A real change
     /// invalidates a standing refusal even when free space is unchanged.
-    pub fn set_budget(&self, budget: u64) -> Result<bool> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when `budget` is zero.
+    pub(crate) fn set_budget(&self, budget: u64) -> Result<bool> {
         ensure!(budget > 0, "video store budget must be positive");
         let previous = self.budget.swap(budget, Ordering::SeqCst);
         if previous == budget {
@@ -100,7 +106,7 @@ impl StoreCapacity {
     /// Identifies the measurement in force right now: it changes when
     /// free space is re-measured and when the store gives bytes back,
     /// which are the only two things that can turn a refusal around.
-    pub fn generation(&self) -> u64 {
+    pub(crate) fn generation(&self) -> u64 {
         self.generations.load(Ordering::SeqCst)
     }
 
@@ -108,7 +114,7 @@ impl StoreCapacity {
     /// measurement understates free space by exactly that much. Without
     /// this an eviction is invisible until the next syscall, and the
     /// store goes on refusing writes it has just made room for.
-    pub async fn gave_back(&self, bytes: u64) {
+    pub(crate) async fn gave_back(&self, bytes: u64) {
         if bytes == 0 {
             return;
         }
@@ -121,7 +127,7 @@ impl StoreCapacity {
         self.events.signal();
     }
 
-    pub(crate) fn released_reservation(&self, bytes: u64) {
+    pub(super) fn released_reservation(&self, bytes: u64) {
         if bytes == 0 {
             return;
         }
@@ -131,7 +137,7 @@ impl StoreCapacity {
 
     /// The store spent `bytes`: the same measurement, that much less of
     /// it left. Keeps the reserve exact between measurements.
-    pub async fn spent(&self, bytes: u64) {
+    pub(crate) async fn spent(&self, bytes: u64) {
         let mut sample = self.sample.lock().await;
         let Some(current) = sample.as_mut() else {
             return;

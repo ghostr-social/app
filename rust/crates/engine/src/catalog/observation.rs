@@ -5,6 +5,8 @@ use crate::PostId;
 mod http;
 mod http_api;
 pub(in crate::catalog) use http::HttpGenerationRecord;
+mod mirror;
+pub(super) use mirror::VerifiedMirrorRecord;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(super) enum HttpAuthority {
@@ -14,8 +16,8 @@ pub(super) enum HttpAuthority {
 }
 
 pub(super) struct HttpLearning {
-    pub(super) observed_at_ms: u64,
-    pub(super) labels: Vec<crate::evidence::CalibrationLabel>,
+    observed_at_ms: u64,
+    labels: Vec<crate::evidence::CalibrationLabel>,
 }
 
 impl Catalog {
@@ -55,6 +57,30 @@ impl Catalog {
         }
         self.record_hash_match(identity, digest, origin, observed.into());
         true
+    }
+
+    pub fn record_verified_hash_for_generation(
+        &mut self,
+        identity: &TransferIdentity,
+        digest: &str,
+        origin: &str,
+        observed: impl Into<crate::evidence::EvidenceTime>,
+        generation: &crate::representation::HttpGenerationLease,
+    ) -> bool {
+        if !self.identity_claims_digest(identity, digest)
+            || self.http_generation_for(identity).as_ref() != Some(generation)
+            || !generation
+                .key()
+                .validator()
+                .is_some_and(|value| value.is_strong())
+        {
+            return false;
+        }
+        self.record_hash_match(identity, digest, origin, observed.into());
+        let stamp = crate::representation::HttpGenerationStamp::from_trusted(generation.clone());
+        self.entries.get_mut(identity.post()).is_some_and(|entry| {
+            entry.record_verified_mirror(identity.source().as_str(), digest, stamp)
+        })
     }
 
     pub fn quarantine_mirror_group(

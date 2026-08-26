@@ -10,7 +10,7 @@ fn shared_dependency_is_reserved_once_in_topological_order() {
         node(4, ResourceCost::new(0, 10, 1, 0), 1_000, &[2, 3]),
     ];
     let limits = ResourceCost::new(50, 60, 1, 1);
-    let selected = select_path(&path, limits).unwrap();
+    let selected = select_path(&path, limits).expect("valid test fixture");
 
     assert_eq!(
         selected

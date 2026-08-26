@@ -20,7 +20,11 @@ fn retry_eligibility_is_recorded_with_exact_time_and_private_identity() {
     )];
 
     let captured = record(&decision);
-    let evidence = &captured.warp_decision.as_ref().unwrap().retry_availability[0];
+    let evidence = &captured
+        .warp_decision
+        .as_ref()
+        .expect("valid test fixture")
+        .retry_availability[0];
     assert_ne!(evidence.post_id, "secret-post");
     assert_eq!(
         evidence.availability,
@@ -29,13 +33,16 @@ fn retry_eligibility_is_recorded_with_exact_time_and_private_identity() {
         }
     );
     assert!(!serde_json::to_string(&captured)
-        .unwrap()
+        .expect("valid test fixture")
         .contains("secret-post"));
-    assert_eq!(captured.replay(), DecisionReplayStatus::Verified);
+    assert_eq!(captured.integrity_status(), DecisionReplayStatus::Verified);
 
-    let mut value = serde_json::to_value(captured).unwrap();
+    let mut value = serde_json::to_value(captured).expect("valid test fixture");
     value["warp_decision"]["retry_availability"][0]["availability"]["cooling"]["eligible_at_ms"] =
         serde_json::json!(43_000);
-    let tampered: DecisionRecord = serde_json::from_value(value).unwrap();
-    assert_eq!(tampered.replay(), DecisionReplayStatus::PlanMismatch);
+    let tampered: DecisionRecord = serde_json::from_value(value).expect("valid test fixture");
+    assert_eq!(
+        tampered.integrity_status(),
+        DecisionReplayStatus::PlanMismatch
+    );
 }

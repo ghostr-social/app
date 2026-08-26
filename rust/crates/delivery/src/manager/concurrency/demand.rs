@@ -12,10 +12,11 @@ impl HlsDemand {
         }
     }
 
-    pub(crate) const fn effective(self) -> usize {
-        match self.expansion_allowed {
-            true => self.count,
-            false => 0,
+    pub(super) const fn effective(self) -> usize {
+        if self.expansion_allowed {
+            self.count
+        } else {
+            0
         }
     }
 }

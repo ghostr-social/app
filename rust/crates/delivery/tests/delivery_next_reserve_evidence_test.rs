@@ -1,5 +1,6 @@
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::media::{hit_log, media_body, serve_recording, serve_rejecting};
 use delivery_fixture::options::DeliveryOptions;
@@ -7,7 +8,6 @@ use delivery_fixture::start_harness;
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_engine::adaptive::{NextReserveEvidence, NextReserveInfeasibility};
 use ghostr_engine::PostId;
-use std::time::Duration;
 
 #[tokio::test]
 async fn manager_grants_a_servable_immediate_next_reserve() {

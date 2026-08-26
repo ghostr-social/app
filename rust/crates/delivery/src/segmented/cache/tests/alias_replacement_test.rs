@@ -27,7 +27,11 @@ fn replacing_source_forgets_the_old_final_url_alias() {
     );
     assert!(cache.object("https://cdn.example/a").is_none());
     assert_eq!(
-        cache.object("https://cdn.example/b").unwrap().body.as_ref(),
+        cache
+            .object("https://cdn.example/b")
+            .expect("valid test fixture")
+            .body
+            .as_ref(),
         b"bbbb"
     );
 }
@@ -61,7 +65,9 @@ fn exact_cache_key_takes_precedence_over_a_redirect_alias() {
         )],
     );
 
-    let direct = cache.object("https://cdn.example/c").unwrap();
+    let direct = cache
+        .object("https://cdn.example/c")
+        .expect("valid test fixture");
     assert_eq!(direct.final_url.as_str(), "https://cdn.example/d");
     assert_eq!(direct.body.as_ref(), b"dddd");
 }
@@ -69,7 +75,7 @@ fn exact_cache_key_takes_precedence_over_a_redirect_alias() {
 fn prepared(request_url: &str, final_url: &str, body: &[u8]) -> PreparedObject {
     PreparedObject {
         request_url: request_url.to_owned(),
-        final_url: Url::parse(final_url).unwrap(),
+        final_url: Url::parse(final_url).expect("valid test fixture"),
         body: Arc::from(body),
         content_type: None,
         cache: Default::default(),

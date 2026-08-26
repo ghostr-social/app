@@ -4,7 +4,7 @@ use super::deletions::{DeletionClaim, DeletionTarget};
 use super::parsing::ParsedVideoPost;
 use super::pending_deletions::PendingDeletions;
 use super::reposts::RepostTarget;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(super) struct DeletionKey {
@@ -14,20 +14,20 @@ pub(super) struct DeletionKey {
 
 #[derive(Debug, Default)]
 pub struct DeletionIndex {
-    anchored: HashMap<DeletionKey, Option<u64>>,
+    anchored: BTreeMap<DeletionKey, Option<u64>>,
     pending: PendingDeletions,
 }
 
 impl DeletionIndex {
-    pub fn ingest(&mut self, claims: Vec<DeletionClaim>) -> bool {
+    pub(crate) fn ingest(&mut self, claims: Vec<DeletionClaim>) -> bool {
         claims
             .into_iter()
             .fold(false, |changed, claim| self.insert(claim) | changed)
     }
 
-    pub fn reanchor(&mut self, posts: &[ParsedVideoPost]) {
-        let mut previous = std::mem::take(&mut self.anchored);
-        let mut anchored = HashMap::new();
+    pub(crate) fn reanchor(&mut self, posts: &[ParsedVideoPost]) {
+        let mut previous = core::mem::take(&mut self.anchored);
+        let mut anchored = BTreeMap::new();
         for post in posts {
             for key in keys_for_post(post) {
                 self.anchor(key, &mut previous, &mut anchored);
@@ -37,7 +37,7 @@ impl DeletionIndex {
         self.anchored = anchored;
     }
 
-    pub fn deletes_content(&self, post: &ParsedVideoPost) -> bool {
+    pub(crate) fn deletes_content(&self, post: &ParsedVideoPost) -> bool {
         if self.event_deleted(&post.event_id, &post.author_pubkey) {
             return true;
         }
@@ -47,7 +47,7 @@ impl DeletionIndex {
         })
     }
 
-    pub fn deletes_occurrence(&self, post: &ParsedVideoPost) -> bool {
+    pub(crate) fn deletes_occurrence(&self, post: &ParsedVideoPost) -> bool {
         let Some(repost) = &post.repost else {
             return self.deletes_content(post);
         };
@@ -59,20 +59,19 @@ impl DeletionIndex {
 
     fn insert(&mut self, claim: DeletionClaim) -> bool {
         let key = DeletionKey::new(claim.target, claim.deleter_pubkey);
-        match self.anchored.get_mut(&key) {
-            Some(current) => replace_if_newer(current, claim.deleted_at),
-            None => {
-                self.pending.insert(key, claim.deleted_at);
-                false
-            }
+        if let Some(current) = self.anchored.get_mut(&key) {
+            replace_if_newer(current, claim.deleted_at)
+        } else {
+            self.pending.insert(key, claim.deleted_at);
+            false
         }
     }
 
     fn anchor(
         &mut self,
         key: DeletionKey,
-        previous: &mut HashMap<DeletionKey, Option<u64>>,
-        anchored: &mut HashMap<DeletionKey, Option<u64>>,
+        previous: &mut BTreeMap<DeletionKey, Option<u64>>,
+        anchored: &mut BTreeMap<DeletionKey, Option<u64>>,
     ) {
         if anchored.contains_key(&key) {
             return;
@@ -84,7 +83,7 @@ impl DeletionIndex {
         anchored.insert(key, claim);
     }
 
-    fn demote(&mut self, previous: HashMap<DeletionKey, Option<u64>>) {
+    fn demote(&mut self, previous: BTreeMap<DeletionKey, Option<u64>>) {
         for (key, claim) in previous {
             if let Some(deleted_at) = claim {
                 self.pending.insert(key, deleted_at);
@@ -103,23 +102,6 @@ impl DeletionIndex {
             .copied()
             .flatten()
             .or_else(|| self.pending.get(key))
-    }
-
-    #[cfg(test)]
-    pub(crate) fn with_retention(retention: usize) -> Self {
-        Self {
-            pending: PendingDeletions::with_retention(retention),
-            ..Self::default()
-        }
-    }
-
-    #[cfg(test)]
-    pub(crate) fn retained_claims(&self) -> usize {
-        self.anchored
-            .values()
-            .filter(|claim| claim.is_some())
-            .count()
-            + self.pending.len()
     }
 }
 
@@ -166,3 +148,7 @@ fn replace_if_newer(current: &mut Option<u64>, incoming: u64) -> bool {
     *current = Some(incoming);
     true
 }
+
+#[cfg(test)]
+#[path = "deletion_index_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

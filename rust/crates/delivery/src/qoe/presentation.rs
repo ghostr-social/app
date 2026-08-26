@@ -18,7 +18,7 @@ impl FinishedPlayback {
 }
 
 impl QoeTracker {
-    pub fn present(&mut self, post: &PostId, now_ms: u64) {
+    pub(crate) fn present(&mut self, post: &PostId, now_ms: u64) {
         if let Some(active) = self.active.as_mut().filter(|active| &active.post == post) {
             record_first_frame(
                 &mut self.stats,

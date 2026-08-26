@@ -1,6 +1,6 @@
 use crate::partial_range_disk as disk;
 use crate::partial_range_paths::StorePaths;
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Context as _, Result};
 use ghostr_engine::representation::SourceGeneration;
 use ghostr_engine::ByteRange;
 use serde::{Deserialize, Serialize};
@@ -85,9 +85,10 @@ pub(super) async fn commit(
         "sparse action intent is missing"
     );
     intent.stable_accounted = stable_accounted;
-    match intent.actions.is_empty() {
-        true => remove(paths, key).await,
-        false => save(paths, key, &intent).await,
+    if intent.actions.is_empty() {
+        remove(paths, key).await
+    } else {
+        save(paths, key, &intent).await
     }
 }
 

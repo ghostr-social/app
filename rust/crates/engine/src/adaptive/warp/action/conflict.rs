@@ -54,9 +54,8 @@ fn same_control_target(left: &ActionKind, right: &ActionKind) -> bool {
 
 fn control_target(kind: &ActionKind) -> Option<ActionId> {
     match kind {
-        ActionKind::Promote { active, .. } => Some(*active),
+        ActionKind::Promote { active, .. } | ActionKind::Cancel(active) => Some(*active),
         ActionKind::Hedge { primary, .. } => Some(*primary),
-        ActionKind::Cancel(active) => Some(*active),
         _ => None,
     }
 }

@@ -15,6 +15,6 @@ pub use context::{DurationBucket, WatchContext, WatchKey};
 pub use distribution::{DeadlineDistribution, WatchDistribution};
 pub use model::WatchModel;
 pub use navigation::{NavigationPrediction, WatchNavigation};
-pub use prediction::{CandidateWatchPrediction, UnitDeadline, WatchWindowPrediction};
+pub use prediction::{CandidateWatchPrediction, WatchWindowPrediction};
 pub use sample::{WatchCensor, WatchSample, WatchSampleKind};
 pub use state::{WatchModelState, WatchStateError};

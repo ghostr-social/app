@@ -8,36 +8,57 @@ pub(super) fn assert_selected_intent(record: &DecisionRecord) {
     let selected = record
         .warp_decision
         .as_ref()
-        .unwrap()
+        .expect("valid test fixture")
         .selected
         .as_ref()
-        .unwrap();
+        .expect("valid test fixture");
     let RecordedWarpCommand::Transfer { transfer } = &selected.command else {
         panic!("expected selected transfer");
     };
-    assert_eq!(transfer.authority, RecordedPreemptionAuthority::Speculative);
-    assert!(matches!(
-        transfer.request,
-        RecordedRetrievalRequest::FetchRange {
-            bytes_start: 0,
-            bytes_end: TOTAL,
-            promotion: None,
-        }
-    ));
-    assert_eq!(selected.resources, resources(TOTAL));
+    assert_eq!(
+        transfer.authority,
+        RecordedPreemptionAuthority::Speculative,
+        "the selected intent must retain speculative authority"
+    );
+    assert!(
+        matches!(
+            transfer.request,
+            RecordedRetrievalRequest::FetchRange {
+                bytes_start: 0,
+                bytes_end: TOTAL,
+                promotion: None,
+            }
+        ),
+        "the selected intent must retain its full requested range"
+    );
+    assert_eq!(
+        selected.resources,
+        resources(TOTAL),
+        "selected resources must describe the requested range"
+    );
 }
 
 pub(super) fn assert_executed_cap(record: &DecisionRecord) {
-    let executed = record.executed_request.as_ref().unwrap();
-    assert!(matches!(
-        executed.request,
-        RecordedRetrievalRequest::FetchRange {
-            bytes_start: 0,
-            bytes_end: ADMITTED,
-            promotion: None,
-        }
-    ));
-    assert_eq!(executed.resources, resources(ADMITTED));
+    let executed = record
+        .executed_request
+        .as_ref()
+        .expect("valid test fixture");
+    assert!(
+        matches!(
+            executed.request,
+            RecordedRetrievalRequest::FetchRange {
+                bytes_start: 0,
+                bytes_end: ADMITTED,
+                promotion: None,
+            }
+        ),
+        "the executed request must record the admitted cap"
+    );
+    assert_eq!(
+        executed.resources,
+        resources(ADMITTED),
+        "executed resources must describe the admitted request"
+    );
 }
 
 fn resources(bytes: u64) -> RecordedResourceCost {

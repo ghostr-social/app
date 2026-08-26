@@ -31,7 +31,11 @@ impl NostrMetadataEvidence {
         push(&mut values, self.mime.clone().map(EvidenceValue::Mime));
         push(&mut values, self.size_bytes.map(EvidenceValue::SizeBytes));
         push(&mut values, self.duration_ms.map(EvidenceValue::DurationMs));
-        push(&mut values, dimensions(self.dimensions));
+        push(
+            &mut values,
+            self.dimensions
+                .map(|(width, height)| EvidenceValue::Dimensions { width, height }),
+        );
         push(&mut values, self.bitrate_bps.map(EvidenceValue::BitrateBps));
         push(
             &mut values,
@@ -45,10 +49,6 @@ impl NostrMetadataEvidence {
         );
         values
     }
-}
-
-fn dimensions(value: Option<(u32, u32)>) -> Option<EvidenceValue> {
-    value.map(|(width, height)| EvidenceValue::Dimensions { width, height })
 }
 
 fn push(values: &mut Vec<EvidenceValue>, value: Option<EvidenceValue>) {

@@ -1,6 +1,6 @@
 use axum::routing::get;
 use axum::Router;
-use std::sync::atomic::AtomicUsize;
+use core::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Mutex};
 use tokio::net::TcpListener;
 use tokio::sync::{oneshot, Notify};
@@ -44,7 +44,7 @@ pub async fn serve() -> PressureOrigin {
     tokio::spawn(async move {
         axum::serve(listener, app)
             .await
-            .expect("serve pressure origin")
+            .expect("serve pressure origin");
     });
     PressureOrigin {
         url: format!("http://{address}/video.mp4"),

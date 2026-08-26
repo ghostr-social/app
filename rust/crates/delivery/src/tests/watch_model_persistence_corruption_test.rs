@@ -9,7 +9,7 @@ async fn corrupt_watch_state_is_dropped_without_discarding_valid_qoe() {
         br#"{"version":1,"qoe":{"completions":7},"watch":"raw-post"}"#,
     )
     .await
-    .unwrap();
+    .expect("valid test fixture");
 
     let restored = load_playback_learning(&path).await;
 

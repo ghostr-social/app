@@ -16,11 +16,10 @@ pub(crate) async fn prepare_network(
     let Some(throttle) = network else {
         return NetworkPreparation::Ready(None);
     };
-    let permit = tokio::select! {
-        biased;
-        _ = cancel.cancelled() => return NetworkPreparation::Cancelled,
-        permit = throttle.acquire(url) => permit,
-    };
+    if cancel.is_cancelled() {
+        return NetworkPreparation::Cancelled;
+    }
+    let permit = throttle.acquire(url);
     if wait_for_latency(throttle, cancel).await {
         return NetworkPreparation::Cancelled;
     }
@@ -30,7 +29,7 @@ pub(crate) async fn prepare_network(
 async fn wait_for_latency(network: &NetworkThrottle, cancel: &CancelToken) -> bool {
     tokio::select! {
         biased;
-        _ = cancel.cancelled() => true,
-        _ = network.wait_for_latency() => false,
+        () = cancel.cancelled() => true,
+        () = network.wait_for_latency() => false,
     }
 }

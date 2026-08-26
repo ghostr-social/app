@@ -12,11 +12,11 @@ pub(crate) struct ProfileIo {
     primary: Event,
     return_primary: bool,
     profile: Event,
-    pub(crate) filters: Mutex<Vec<Filter>>,
+    pub(super) filters: Mutex<Vec<Filter>>,
 }
 
 impl ProfileIo {
-    pub(crate) fn new(primary_kind: Kind, primary: Event, profile: Event) -> Arc<Self> {
+    pub(super) fn new(primary_kind: Kind, primary: Event, profile: Event) -> Arc<Self> {
         Arc::new(Self {
             primary_kind,
             primary,
@@ -26,7 +26,7 @@ impl ProfileIo {
         })
     }
 
-    pub(crate) fn empty(primary_kind: Kind, placeholder: Event) -> Arc<Self> {
+    pub(super) fn empty(primary_kind: Kind, placeholder: Event) -> Arc<Self> {
         Arc::new(Self {
             primary_kind,
             primary: placeholder.clone(),

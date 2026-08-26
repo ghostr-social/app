@@ -5,7 +5,7 @@ use ghostr_engine::playback::{
     PlaybackObservation, PlaybackObservationSequence, PlaybackPhase, PlaybackSession,
 };
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
-use std::time::Duration;
+use core::time::Duration;
 
 pub(super) fn state() -> DeliveryState {
     let mut state = DeliveryState::new(EngineParams::default(), DataUsageLevel::Balanced);
@@ -35,7 +35,7 @@ pub(super) fn playback_for(post: PostId, buffer_ms: u64) -> DeliveryPlayback {
             1_000,
             PlaybackPhase::Playing,
         )
-        .unwrap(),
+        .expect("valid test fixture"),
     }
 }
 

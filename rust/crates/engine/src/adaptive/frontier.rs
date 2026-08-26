@@ -12,9 +12,10 @@ pub(super) fn discovery_demand(
         return DiscoveryDemand::Hold;
     }
     let admitted = admitted_posts(plan, snapshot.network.connection_ceiling);
-    match has_waiting_candidate(snapshot, &admitted) {
-        true => DiscoveryDemand::Hold,
-        false => DiscoveryDemand::Expand,
+    if has_waiting_candidate(snapshot, &admitted) {
+        DiscoveryDemand::Hold
+    } else {
+        DiscoveryDemand::Expand
     }
 }
 

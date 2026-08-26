@@ -1,5 +1,6 @@
 mod range_fixture;
 
+use core::time::Duration;
 use ghostr_delivery::chunk::cancel::cancel_pair;
 use ghostr_delivery::chunk::downloader::{
     download_chunk_observed, ChunkExecution, ChunkSink, ChunkSpec, DownloadTraffic, OpenedResponse,
@@ -8,7 +9,6 @@ use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::ByteRange;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
-use std::time::Duration;
 use tokio::sync::oneshot;
 
 #[tokio::test]
@@ -46,6 +46,7 @@ async fn ignored_range_reports_complete_header_evidence() {
         },
     )
     .await
+    .result
     .expect("ignored response");
 
     let response = observed.await.expect("header observation");
@@ -68,6 +69,10 @@ impl DownloadTraffic for HeaderTraffic {
     fn opened(&mut self, _: Duration) {}
     fn wrote(&mut self, _: u64) {}
     fn response_observed(&mut self, response: OpenedResponse) {
-        self.0.take().unwrap().send(response).ok();
+        self.0
+            .take()
+            .expect("valid test fixture")
+            .send(response)
+            .ok();
     }
 }

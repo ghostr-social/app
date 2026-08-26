@@ -4,7 +4,8 @@
 use crate::event_identity::VIDEO_KINDS;
 use crate::imeta_extras::{event_extras, ImetaExtras};
 use crate::native_media_metadata::{
-    lenient_native_media, mime_or_url_delivery, parse_sha256, playable_media, NativeMediaMetadata,
+    lenient_native_media, mime_or_url_delivery, optional_sha256, parse_sha256, playable_media,
+    NativeMediaMetadata,
 };
 use crate::native_models::NativeVideoDelivery;
 use crate::video_link_scan::{first_video_link, is_bounded_http_url, url_delivery};
@@ -56,7 +57,7 @@ fn file_tag_media(event: &Event) -> Option<NativeMediaMetadata> {
     Some(NativeMediaMetadata {
         declared_mime: mime.map(|value| value.trim().to_ascii_lowercase()),
         delivery: mime_or_url_delivery(mime, url),
-        expected_digest: file_digest(event)?,
+        expected_digest: optional_sha256(tag_values(event, "x").next()).ok()?,
         extras: event_extras(event),
         fallback_urls: file_fallbacks(event, url),
         original_digest: tag_values(event, "ox").next().and_then(parse_sha256),
@@ -73,14 +74,6 @@ fn file_fallbacks(event: &Event, primary: &str) -> Vec<String> {
         }
     }
     fallbacks
-}
-
-/// A present-but-invalid `x` digest rejects the file tags entirely.
-fn file_digest(event: &Event) -> Option<Option<String>> {
-    let Some(raw) = tag_values(event, "x").next() else {
-        return Some(None);
-    };
-    parse_sha256(raw.trim()).map(Some)
 }
 
 /// The first direct video link becomes the media.

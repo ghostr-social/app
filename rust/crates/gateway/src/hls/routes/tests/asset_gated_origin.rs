@@ -2,7 +2,7 @@ use axum::http::header::IF_RANGE;
 use axum::http::HeaderMap;
 use axum::routing::get;
 use axum::Router;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::net::TcpListener;
 use tokio::sync::Notify;
@@ -23,7 +23,7 @@ pub(super) struct GatedOrigin {
 }
 
 impl GatedOrigin {
-    pub async fn start() -> (String, Self) {
+    pub(super) async fn start() -> (String, Self) {
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("listener");
         let state = OriginState {
             hits: Arc::new(AtomicUsize::new(0)),
@@ -35,12 +35,16 @@ impl GatedOrigin {
             .route("/segment.m4s", get(asset))
             .with_state(state.clone());
         let address = listener.local_addr().expect("origin address");
-        let task = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let task = tokio::spawn(async move {
+            axum::serve(listener, app)
+                .await
+                .expect("valid test fixture");
+        });
         (format!("http://{address}/index.m3u8"), Self { state, task })
     }
 
-    pub async fn wait_hits(&self, expected: usize) {
-        tokio::time::timeout(std::time::Duration::from_secs(2), async {
+    pub(super) async fn wait_hits(&self, expected: usize) {
+        tokio::time::timeout(core::time::Duration::from_secs(2), async {
             while self.hits() < expected {
                 tokio::task::yield_now().await;
             }
@@ -49,15 +53,15 @@ impl GatedOrigin {
         .expect("origin asset request");
     }
 
-    pub fn hits(&self) -> usize {
+    fn hits(&self) -> usize {
         self.state.hits.load(Ordering::SeqCst)
     }
 
-    pub fn release_first(&self) {
+    pub(super) fn release_first(&self) {
         self.state.release.notify_one();
     }
 
-    pub fn if_ranges(&self) -> Vec<Option<String>> {
+    pub(super) fn if_ranges(&self) -> Vec<Option<String>> {
         self.state
             .requests
             .lock()

@@ -2,11 +2,11 @@ use crate::hls::asset_generation::AssetFence;
 use crate::hls::capability::{issue, open};
 use crate::hls::state::{HlsSession, HlsSessionState};
 use crate::hls::types::validated_sources;
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Context as _, Result};
+use core::time::Duration;
 use ghostr_hls_manifest::hls_manifest::{rewrite_hls_manifest, HlsResource, HlsResourceKind};
 use reqwest::Url;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::{timeout_at, Instant};
 
@@ -20,7 +20,7 @@ pub struct HlsSessions {
 
 impl HlsSessions {
     pub fn production() -> Self {
-        let limits = HlsSessionLimits::new(32, Duration::from_secs(30 * 60), 1_024)
+        let limits = HlsSessionLimits::new(32, Duration::from_mins(30), 1_024)
             .expect("static HLS session limits");
         Self::new(limits)
     }
@@ -32,6 +32,11 @@ impl HlsSessions {
         }
     }
 
+    /// Opens a bounded session for validated HLS source URLs.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid sources or exhausted session capacity.
     pub async fn acquire(&self, sources: Vec<String>) -> Result<HlsSessionId> {
         let sources = validated_sources(sources)?;
         let now = Instant::now();
@@ -115,6 +120,11 @@ impl HlsSessions {
             .is_some_and(|active| active.owns(fence)))
     }
 
+    /// Rewrites a manifest with authenticated, session-scoped resource paths.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the session is unavailable or manifest rewriting fails.
     pub async fn rewrite_manifest(
         &self,
         id: &HlsSessionId,
@@ -130,8 +140,8 @@ impl HlsSessions {
         drop(state);
         rewrite_hls_manifest(body, base_url, |resource| {
             let kind = resource.kind;
-            let resource = issue(&secret, resource)?;
-            Ok(resource_path(id, resource, kind))
+            let resource = issue(&secret, &resource)?;
+            Ok(resource_path(id, &resource, kind))
         })
     }
 
@@ -152,7 +162,11 @@ impl HlsSessions {
     }
 }
 
-fn resource_path(session: &HlsSessionId, resource: HlsResourceId, kind: HlsResourceKind) -> String {
+fn resource_path(
+    session: &HlsSessionId,
+    resource: &HlsResourceId,
+    kind: HlsResourceKind,
+) -> String {
     match kind {
         HlsResourceKind::Manifest => {
             format!("/hls/{}/manifests/{resource}/index.m3u8", session.as_str())

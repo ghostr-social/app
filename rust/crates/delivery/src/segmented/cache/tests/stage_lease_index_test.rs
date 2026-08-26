@@ -20,27 +20,27 @@ async fn completing_a_claimed_prefix_preserves_later_staged_objects() {
     );
     assert!(cache
         .admit_stage(prefix)
-        .unwrap()
+        .expect("valid test fixture")
         .commit_partial(object(ROOT, 64)));
     let child = PreparedComplete::new(object(CHILD, 16));
     assert!(cache
         .admit_stage(child_admission(&post))
-        .unwrap()
+        .expect("valid test fixture")
         .commit_complete(child));
 
     let final_stage = admission(
         &post,
         3,
         StageRequest::new(ROOT.to_owned(), 64, 32),
-        StageReservation::final_block(32, 96).unwrap(),
+        StageReservation::final_block(32, 96).expect("valid test fixture"),
     );
-    let mut lease = cache.admit_stage(final_stage).unwrap();
+    let lease = cache.admit_stage(final_stage).expect("valid test fixture");
     let block = object(ROOT, 32);
-    let seed = lease.claim_assembly(&block).unwrap();
+    let seed = lease.claim_assembly(&block).expect("valid test fixture");
     let (_cancel, mut cancelled) = tokio::sync::oneshot::channel();
     let complete = prepare_complete(Some(seed), block, &mut cancelled)
         .await
-        .unwrap();
+        .expect("valid test fixture");
     assert!(lease.commit_complete(complete));
     assert!(cache.mark_stage_ready(&post, 1));
 
@@ -74,7 +74,7 @@ fn admission(
 fn object(url: &str, bytes: usize) -> PreparedObject {
     PreparedObject {
         request_url: url.to_owned(),
-        final_url: url.parse().unwrap(),
+        final_url: url.parse().expect("valid test fixture"),
         body: Arc::from(vec![1; bytes]),
         content_type: None,
         cache: Default::default(),

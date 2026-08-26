@@ -36,24 +36,15 @@ pub struct QuantileEstimate {
 #[derive(Clone, Debug, PartialEq)]
 pub struct OriginEstimate {
     pub context: OriginContext,
-    pub environment: OriginEnvironment,
+    pub(crate) environment: OriginEnvironment,
     pub success: ProbabilityEstimate,
     pub range_compliance: Option<ProbabilityEstimate>,
     pub ttfb_ms: QuantileEstimate,
     pub throughput_bps: QuantileEstimate,
-    pub error_frequencies: BTreeMap<ErrorReason, f64>,
+    error_frequencies: BTreeMap<ErrorReason, f64>,
     pub effective_samples: f64,
     pub adaptation: AdaptationState,
     pub uncertainty: f64,
-}
-
-impl OriginEstimate {
-    pub fn most_likely_error(&self) -> Option<ErrorReason> {
-        self.error_frequencies
-            .iter()
-            .max_by(|left, right| left.1.total_cmp(right.1))
-            .map(|(reason, _)| *reason)
-    }
 }
 
 pub(super) fn build_estimate(
@@ -79,13 +70,18 @@ pub(super) fn build_estimate(
         throughput_bps: throughput_estimate(throughput, uncertainty, mode),
         error_frequencies: snapshot.errors,
         effective_samples: snapshot.evidence,
-        adaptation: match snapshot.adapting {
-            true => AdaptationState::Short,
-            false => AdaptationState::Long,
+        adaptation: if snapshot.adapting {
+            AdaptationState::Short
+        } else {
+            AdaptationState::Long
         },
         uncertainty,
     }
 }
+
+#[cfg(test)]
+#[path = "estimate/test_support.rs"]
+mod test_support;
 
 fn probability(mean: f64, uncertainty: f64, mode: DecisionMode) -> ProbabilityEstimate {
     let z = match mode {

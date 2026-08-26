@@ -3,56 +3,16 @@
 
 mod persistence;
 mod presentation;
+mod stats;
 mod watch;
 
 use crate::delivery_events::{FocusTransition, TransportRescue, TransportRescueReason};
 use ghostr_engine::playback::PlaybackPhase;
 use ghostr_engine::PostId;
-pub use persistence::{
-    load_playback_learning, load_qoe_stats, save_playback_learning, save_qoe_stats,
-    PlaybackLearningState,
-};
-use serde::{Deserialize, Serialize};
+pub(crate) use persistence::save_playback_learning;
+pub use persistence::{load_playback_learning, PlaybackLearningState};
+pub use stats::QoeStats;
 pub(crate) use watch::WatchLearner;
-#[cfg(test)]
-pub(crate) use watch::WatchOutcome;
-
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
-pub struct QoeStats {
-    pub playback_sessions: u64,
-    pub user_navigations: u64,
-    pub first_frames: u64,
-    pub startup_failures: u64,
-    pub startup_total_ms: u64,
-    pub startup_max_ms: u64,
-    pub buffer_samples: u64,
-    pub buffer_ahead_total_ms: u64,
-    pub minimum_buffer_ahead_ms: Option<u64>,
-    pub stall_events: u64,
-    pub stall_total_ms: u64,
-    pub decode_failures: u64,
-    pub abandonments: u64,
-    pub completions: u64,
-    pub transport_substitutions: u64,
-    pub rank_displacement_total: u64,
-    pub rescue_wait_total_ms: u64,
-    pub eta_unavailable_rescues: u64,
-    pub eta_too_long_rescues: u64,
-    pub delivery_failed_rescues: u64,
-    pub grace_expired_rescues: u64,
-}
-
-impl QoeStats {
-    pub fn startup_eta_ms(&self) -> u64 {
-        if self.first_frames == 0 {
-            return QoeTracker::DEFAULT_STARTUP_ETA_MS;
-        }
-        let mean = self.startup_total_ms / self.first_frames;
-        mean.saturating_add(self.startup_max_ms.saturating_sub(mean) / 2)
-            .clamp(50, 5_000)
-    }
-}
 
 #[derive(Default)]
 pub struct QoeTracker {
@@ -70,9 +30,9 @@ struct ActivePlayback {
 }
 
 impl QoeTracker {
-    pub const DEFAULT_STARTUP_ETA_MS: u64 = 750;
+    pub(super) const DEFAULT_STARTUP_ETA_MS: u64 = 750;
 
-    pub fn from_stats(stats: QoeStats) -> Self {
+    pub(super) fn from_stats(stats: QoeStats) -> Self {
         Self {
             stats,
             active: None,
@@ -80,11 +40,11 @@ impl QoeTracker {
         }
     }
 
-    pub fn stats(&self) -> &QoeStats {
+    pub(super) fn stats(&self) -> &QoeStats {
         &self.stats
     }
 
-    pub fn focus(
+    pub(super) fn focus(
         &mut self,
         post: Option<PostId>,
         transition: FocusTransition,
@@ -106,7 +66,13 @@ impl QoeTracker {
         self.stats.playback_sessions += u64::from(self.active.is_some());
     }
 
-    pub fn observe(&mut self, post: &PostId, phase: PlaybackPhase, buffer_ms: u64, now_ms: u64) {
+    pub(super) fn observe(
+        &mut self,
+        post: &PostId,
+        phase: PlaybackPhase,
+        buffer_ms: u64,
+        now_ms: u64,
+    ) {
         let Some(active) = self.active.as_mut().filter(|active| &active.post == post) else {
             return;
         };
@@ -121,7 +87,7 @@ impl QoeTracker {
             }
             PlaybackPhase::Inactive => self.finish_active(now_ms),
             PlaybackPhase::Starting | PlaybackPhase::Paused => {
-                close_stall(&mut self.stats, active, now_ms)
+                close_stall(&mut self.stats, active, now_ms);
             }
         }
     }
@@ -197,3 +163,7 @@ fn close_stall(stats: &mut QoeStats, active: &mut ActivePlayback, now_ms: u64) {
             .saturating_add(now_ms.saturating_sub(started));
     }
 }
+
+#[cfg(test)]
+#[path = "qoe_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

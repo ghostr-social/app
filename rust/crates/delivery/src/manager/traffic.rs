@@ -1,6 +1,6 @@
+use core::time::Duration;
 use ghostr_engine::host_stats::{HostStats, ThroughputSample};
-use std::collections::HashMap;
-use std::time::Duration;
+use std::collections::BTreeMap;
 use tokio::time::Instant;
 
 mod event;
@@ -19,9 +19,9 @@ pub(crate) struct TrafficMeter {
     origin_unix_ms: u64,
     timing: ActiveTiming,
     bytes: u64,
-    host_bytes: HashMap<String, u64>,
+    host_bytes: BTreeMap<String, u64>,
     peak_active: usize,
-    host_peak: HashMap<String, usize>,
+    host_peak: BTreeMap<String, usize>,
     latest_ttfb: Option<Duration>,
 }
 
@@ -32,9 +32,9 @@ impl TrafficMeter {
             origin_unix_ms,
             timing: ActiveTiming::default(),
             bytes: 0,
-            host_bytes: HashMap::new(),
+            host_bytes: BTreeMap::new(),
             peak_active: 0,
-            host_peak: HashMap::new(),
+            host_peak: BTreeMap::new(),
             latest_ttfb: None,
         }
     }
@@ -112,7 +112,7 @@ impl TrafficMeter {
     }
 
     fn flush_hosts(&mut self, window: TrafficWindow, stats: &mut HostStats) {
-        for (host, active) in std::mem::take(&mut self.host_peak) {
+        for (host, active) in core::mem::take(&mut self.host_peak) {
             let bytes = self.host_bytes.remove(&host).unwrap_or_default();
             let elapsed = self.host_elapsed(&host, window);
             if self.should_sample(bytes, elapsed) {

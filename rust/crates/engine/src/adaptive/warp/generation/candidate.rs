@@ -98,11 +98,18 @@ impl Builder<'_> {
         else {
             return;
         };
-        let kind = ActionKind::Tail(probe.bytes);
+        let Some(missing) = super::super::super::ranges::missing_playable(candidate, probe)
+            .into_iter()
+            .next()
+        else {
+            return;
+        };
+        let range = bounded_range(missing.bytes, self.snapshot.request_slice_bytes);
+        let kind = ActionKind::Tail(range);
         if self.contains(candidate, &kind) {
             return;
         }
-        let allocation = self.allocation(candidate, AllocationSpec::range(probe.bytes, source, 0));
+        let allocation = self.allocation(candidate, AllocationSpec::range(range, source, 0));
         let dependencies: Vec<_> = prefix.into_iter().collect();
         self.push_transfer(candidate, kind, allocation, &dependencies);
     }

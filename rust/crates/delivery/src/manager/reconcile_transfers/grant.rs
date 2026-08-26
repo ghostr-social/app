@@ -3,10 +3,12 @@ use crate::manager::plan::PlannedTransfer;
 use crate::manager::selected_commit::{CommitResult, SelectedCommit};
 use crate::manager::workers::PreparedTransfer;
 use crate::manager::{origin_admission, time, DeliveryWorker};
-use ghostr_engine::adaptive::{DecisionOutcome, ExecutedRequest, ResourceCost, RetrievalRequest};
+use ghostr_engine::adaptive::{ExecutedRequest, ResourceCost, RetrievalRequest};
+use ghostr_engine::origin_model::ExplorationClaim;
 
 mod admitted;
 use admitted::AdmittedGrant;
+mod rejection;
 
 #[cfg(test)]
 #[path = "grant/immediate_resources_test.rs"]
@@ -20,6 +22,7 @@ struct PreparedGrant {
     executed: ExecutedRequest,
     resources: ResourceCost,
     observed_at_ms: u64,
+    exploration_claim: Option<ExplorationClaim>,
 }
 
 impl DeliveryWorker {
@@ -50,6 +53,7 @@ impl DeliveryWorker {
         selected: &mut Option<SelectedCommit>,
     ) -> Option<ghostr_engine::ActionId> {
         let post = admitted.transfer.request.chunk.post.clone();
+        let exploration_claim = admitted.exploration_claim.clone();
         match self.downloads.prepare(&self.ctx, admitted.transfer).await {
             Ok(transfer) => {
                 self.bind_and_launch(
@@ -58,6 +62,7 @@ impl DeliveryWorker {
                         executed: admitted.executed,
                         resources: admitted.resources,
                         observed_at_ms: admitted.observed_at_ms,
+                        exploration_claim: admitted.exploration_claim,
                     },
                     decision,
                     selected,
@@ -65,7 +70,7 @@ impl DeliveryWorker {
                 .await
             }
             Err(error) => {
-                self.reject_grant(&post, &error, decision.take());
+                self.reject_grant(&post, &error, decision.take(), exploration_claim);
                 None
             }
         }
@@ -83,13 +88,15 @@ impl DeliveryWorker {
             let binding =
                 RequestDecisionBinding::new(action, &prepared.executed, prepared.observed_at_ms);
             if !self.commands.bind_request_decision(&token, binding) {
-                self.reject_binding(prepared.transfer, token).await;
+                self.reject_binding(prepared.transfer, token, prepared.exploration_claim)
+                    .await;
                 return None;
             }
         }
         let result = self.commit_selected(selected, prepared.resources, prepared.observed_at_ms);
         if result == CommitResult::Rejected {
-            self.reject_commit(prepared.transfer, action, bound).await;
+            self.reject_commit(prepared.transfer, action, bound, prepared.exploration_claim)
+                .await;
             return None;
         }
         if result == CommitResult::Committed {
@@ -103,41 +110,12 @@ impl DeliveryWorker {
             prepared.transfer,
             launched_at_ms,
             self.state.network_class(),
+            prepared.exploration_claim,
         );
         if result == CommitResult::Committed {
             self.request_immediate_replan();
         }
         Some(action)
-    }
-
-    async fn reject_commit(
-        &mut self,
-        prepared: PreparedTransfer,
-        action: ghostr_engine::ActionId,
-        bound: bool,
-    ) {
-        if bound {
-            self.commands.resolve_decision(
-                action,
-                DecisionOutcome::Failed {
-                    class: "warp_resource_commit_rejected".into(),
-                    elapsed_ms: 0,
-                },
-                time::unix_time_ms(),
-            );
-        }
-        prepared.release(&self.ctx.store).await;
-    }
-
-    async fn reject_binding(&mut self, prepared: PreparedTransfer, token: DecisionToken) {
-        self.commands.resolve_decision_token(
-            &token,
-            DecisionOutcome::Failed {
-                class: "decision_binding_rejected".into(),
-                elapsed_ms: 0,
-            },
-        );
-        prepared.release(&self.ctx.store).await;
     }
 
     fn admit_origin(&mut self, transfer: PlannedTransfer) -> Option<AdmittedGrant> {
@@ -156,28 +134,18 @@ impl DeliveryWorker {
                 .stats_mut()
                 .origin_model_mut()
                 .claim(&query, observed_at_ms, mode);
-        let transfer = origin_admission::apply(transfer, admission)?;
-        Some(AdmittedGrant::new(transfer, observed_at_ms))
-    }
-
-    fn reject_grant(
-        &mut self,
-        post: &ghostr_engine::PostId,
-        error: &anyhow::Error,
-        decision: Option<DecisionToken>,
-    ) {
-        if let Some(token) = decision {
-            self.commands.resolve_decision_token(
-                &token,
-                DecisionOutcome::Failed {
-                    class: format!("{:?}", crate::manager::failure::classify(error)),
-                    elapsed_ms: 0,
-                },
-            );
-        }
-        if !self.absorb_store_pressure(post, error) {
-            log::warn!("Could not reserve a video action: {error:#}");
-        }
+        let exploration_claim = match &admission {
+            ghostr_engine::origin_model::Admission::Exploration { claim, .. } => {
+                Some(claim.clone())
+            }
+            _ => None,
+        };
+        let transfer = origin_admission::apply(transfer, &admission)?;
+        Some(AdmittedGrant::new(
+            transfer,
+            observed_at_ms,
+            exploration_claim,
+        ))
     }
 }
 

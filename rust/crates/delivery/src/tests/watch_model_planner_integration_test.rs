@@ -21,14 +21,11 @@ fn learned_reach_changes_deadlines_without_becoming_semantic_relevance() {
         .candidates
         .iter()
         .find(|candidate| candidate.post == p1)
-        .unwrap();
-    let evidence = decision.planner_candidate_evidence(&p1).unwrap();
+        .expect("valid test fixture");
+    let evidence = decision.planner_candidate_evidence(&p1).expect("valid test fixture");
 
     assert!((candidate.view_probability.value() - reach).abs() < f64::EPSILON);
-    assert_eq!(
-        evidence.semantic,
-        SemanticScore::Unavailable { rank: 1 },
-    );
+    assert_eq!(evidence.semantic, SemanticScore::Unavailable { rank: 1 },);
     assert!(decision.generated.actions.iter().any(|action| {
         action.node.post == p1 && decision.admissible_action_ids.contains(&action.node.id)
     }));
@@ -38,12 +35,12 @@ fn learned_reach_changes_deadlines_without_becoming_semantic_relevance() {
     }));
     assert_eq!(evidence.watch.reach_probability_bps(), Some(bps(reach)));
     assert_eq!(
-        decision.planner_epochs().unwrap().model,
+        decision.planner_epochs().expect("valid test fixture").model,
         model.change_epoch()
     );
     assert!(model.change_epoch() > 0);
     assert_ne!(
-        cold.warp.unwrap().common_random_seed,
+        cold.warp.expect("valid test fixture").common_random_seed,
         decision.common_random_seed,
     );
 }
@@ -51,7 +48,7 @@ fn learned_reach_changes_deadlines_without_becoming_semantic_relevance() {
 fn trained_model() -> WatchModel {
     let mut model = WatchModel::default();
     for index in 0..8 {
-        model.observe(WatchSample::new(
+        model.observe(&WatchSample::new(
             contexts()[0].clone(),
             500,
             WatchSampleKind::Abandoned,

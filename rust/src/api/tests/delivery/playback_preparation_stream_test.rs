@@ -5,13 +5,13 @@ use crate::api::playback_preparation_stream::{
 use crate::api::runtime::tracked_items::TrackedItems;
 use crate::api::tests::delivery::playback_preparation_sparse_fixture::complete_startup;
 use crate::api::tests::support::{bind_store, sized_meta, temp_store};
+use core::time::Duration;
 use ghostr_delivery::cache_registry::{CacheRegistry, CacheStatus, CacheVideo};
 use ghostr_delivery::delivery_events::command_channel;
 use ghostr_delivery::startup_certificate::StartupCertificate;
 use ghostr_engine::adaptive::{AllocationPlan, NextReserveEvidence};
 use ghostr_engine::PostId;
 use ghostr_gateway::progressive::capabilities::ProgressiveCapabilities;
-use std::time::Duration;
 use tokio::sync::mpsc;
 
 struct ChannelOut(mpsc::UnboundedSender<FfiPlaybackPreparationPlan>);
@@ -31,9 +31,12 @@ async fn projects_exact_current_and_structurally_ready_adjacent_next_assets() {
     let startup = complete_startup(&sized_meta(16, 2_000), 16);
     let certificate = StartupCertificate::issue(
         startup.clone(),
-        &store.media_snapshot("next").await.unwrap(),
+        &store
+            .media_snapshot("next")
+            .await
+            .expect("test fixture precondition must hold"),
     )
-    .unwrap();
+    .expect("test fixture precondition must hold");
     let (handle, mut commands) = command_channel();
     let plan = AllocationPlan {
         next_reserve: NextReserveEvidence::Ready {
@@ -94,7 +97,13 @@ async fn prepare(
 ) {
     let meta = sized_meta(16, 2_000);
     bind_store(store, id, &meta).await;
-    store.set_total_len(id, 16).await.unwrap();
-    store.write_range(id, 0, &[7; 16]).await.unwrap();
+    store
+        .set_total_len(id, 16)
+        .await
+        .expect("test fixture precondition must hold");
+    store
+        .write_range(id, 0, &[7; 16])
+        .await
+        .expect("test fixture precondition must hold");
     tracked.insert(id.to_owned(), meta);
 }

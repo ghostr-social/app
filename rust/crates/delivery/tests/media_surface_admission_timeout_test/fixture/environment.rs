@@ -28,17 +28,20 @@ pub(super) struct Fixture {
 impl Fixture {
     pub async fn new() -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("listener");
-        let url = format!("http://{}/video.mp4", listener.local_addr().unwrap());
+        let url = format!(
+            "http://{}/video.mp4",
+            listener.local_addr().expect("valid test fixture")
+        );
         let requests = MediaRequestExecutor::new(
             range_fixture::raw_media_client(),
-            MediaRequestLimits::try_new(1, 1).unwrap(),
+            MediaRequestLimits::try_new(1, 1).expect("valid test fixture"),
         );
         let held = requests
             .get(&url, PreemptionAuthority::Transition)
-            .unwrap()
+            .expect("valid test fixture")
             .admit()
             .await
-            .unwrap();
+            .expect("valid test fixture");
         let root = range_fixture::temp_root("surface-admission-timeout");
         let (_handle, token) = cancel_pair();
         Self {

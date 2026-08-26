@@ -14,7 +14,7 @@ use ghostr_delivery::delivery_events::{command_channel, DeliveryHandle};
 use ghostr_delivery::playback_demand::demand_channel;
 use ghostr_gateway::progressive::capabilities::ProgressiveCapabilities;
 use ghostr_gateway::progressive::route::{ProgressiveState, ProgressiveTiming};
-use ghostr_gateway::router::configured_router_with_progressive;
+use ghostr_gateway::router::configured_router_with_segmented;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
 
@@ -51,7 +51,7 @@ impl RouteAuthority {
     pub(super) fn context(&self, endpoint: String) -> PreparationContext {
         PreparationContext {
             endpoint,
-            store: self.store.clone(),
+            store: std::sync::Arc::clone(&self.store),
             capabilities: self.capabilities.clone(),
             delivery: self.delivery.clone(),
             tracked: self.tracked.clone(),
@@ -62,7 +62,7 @@ impl RouteAuthority {
     pub(super) fn router(&self) -> axum::Router {
         let (demand, _) = demand_channel();
         let state = Arc::new(ProgressiveState {
-            store: self.store.clone(),
+            store: std::sync::Arc::clone(&self.store),
             demand,
             cache: self.cache.clone(),
             network: NetworkThrottle::new(),
@@ -75,15 +75,21 @@ impl RouteAuthority {
             ))]
             debug_feed: DebugFeed::new(self.delivery.clone(), Vec::new()),
         });
-        configured_router_with_progressive(requests::router_resources(), state)
+        configured_router_with_segmented(requests::router_resources(), state)
     }
 }
 
 async fn seed(store: &PartialRangeStore, tracked: &TrackedItems, id: &str, bytes: &[u8]) {
     let meta = sized_meta(bytes.len() as u64, 2_000);
     bind_store(store, id, &meta).await;
-    store.set_total_len(id, bytes.len() as u64).await.unwrap();
-    store.write_range(id, 0, bytes).await.unwrap();
+    store
+        .set_total_len(id, bytes.len() as u64)
+        .await
+        .expect("test fixture precondition must hold");
+    store
+        .write_range(id, 0, bytes)
+        .await
+        .expect("test fixture precondition must hold");
     tracked.insert(id.to_owned(), meta);
 }
 

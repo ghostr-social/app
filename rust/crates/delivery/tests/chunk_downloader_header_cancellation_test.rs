@@ -1,12 +1,12 @@
 mod range_fixture;
 mod raw_http;
 
+use core::time::Duration;
 use ghostr_delivery::chunk::cancel::cancel_pair;
 use ghostr_delivery::chunk::downloader::{ChunkSink, ChunkSpec};
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::ByteRange;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
-use std::time::Duration;
 
 #[tokio::test]
 async fn cancellation_while_waiting_for_headers_ends_the_request_promptly() {
@@ -34,7 +34,7 @@ async fn cancellation_while_waiting_for_headers_ends_the_request_promptly() {
     };
     let network = range_fixture::network();
     let cancel = async {
-        stalled.request_started.await.unwrap();
+        stalled.request_started.await.expect("valid test fixture");
         handle.cancel();
     };
 
@@ -51,7 +51,7 @@ async fn cancellation_while_waiting_for_headers_ends_the_request_promptly() {
     .await
     .expect("cancellation deadline");
 
-    assert!(result.unwrap().cancelled);
-    stalled.requests.await.unwrap();
+    assert!(result.expect("valid test fixture").cancelled);
+    stalled.requests.await.expect("valid test fixture");
     std::fs::remove_dir_all(root).ok();
 }

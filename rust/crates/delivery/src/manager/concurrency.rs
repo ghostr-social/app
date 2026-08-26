@@ -1,12 +1,12 @@
 use crate::manager::plan::PlannedTransfer;
 use crate::manager::traffic::OverallTrafficWindow;
 use crate::manager::DeliveryWorker;
+use core::num::NonZeroUsize;
+use core::time::Duration;
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::concurrency::{ConcurrencyEvidence, ConcurrencyOccupancy, NetworkSetback};
 use ghostr_engine::PostId;
 use std::collections::HashSet;
-use std::num::NonZeroUsize;
-use std::time::Duration;
 
 mod observed;
 pub(crate) use observed::{observed_admitted_capacity, observed_claimed_requests};
@@ -22,7 +22,7 @@ pub(crate) struct PlannedCapacity {
 }
 
 impl PlannedCapacity {
-    pub(crate) fn with_selected_hedge(
+    pub(super) fn with_selected_hedge(
         mut self,
         active: usize,
         ceiling: usize,
@@ -139,19 +139,19 @@ pub(crate) fn planned_capacity(
 }
 
 impl DeliveryWorker {
-    pub(crate) fn note_network_class_change(&mut self) {
+    pub(super) fn note_network_class_change(&mut self) {
         self.note_network_setback(NetworkSetback::Failure);
         self.warp_planner.reset_adaptation();
     }
 
-    pub(crate) fn note_network_profile_change(&mut self) {
+    pub(super) fn note_network_profile_change(&mut self) {
         let loss = self.ctx.network.profile().packet_loss_bps;
         if let Some(setback) = network_profile_setback(loss) {
             self.note_network_setback(setback);
         }
     }
 
-    pub(crate) fn observe_capacity(&mut self, window: OverallTrafficWindow) {
+    pub(super) fn observe_capacity(&mut self, window: OverallTrafficWindow) {
         let saturated = self
             .additional_request_slot_demand
             .unwrap_or_else(|| self.queue.wanted_len() > self.downloads.len());
@@ -167,7 +167,7 @@ impl DeliveryWorker {
             .observe(capacity_evidence(window, saturated, fallback, occupancy));
     }
 
-    pub(crate) fn note_network_setback(&mut self, setback: NetworkSetback) {
+    pub(super) fn note_network_setback(&mut self, setback: NetworkSetback) {
         let admitted = observed_admitted_capacity(
             self.downloads.admitted_capacity(),
             self.concurrency_limit(),
@@ -183,11 +183,11 @@ impl DeliveryWorker {
         });
     }
 
-    pub(crate) fn update_concurrency_ceiling(&mut self) {
+    pub(super) fn update_concurrency_ceiling(&mut self) {
         self.concurrency.set_maximum(self.state.concurrency());
     }
 
-    pub(crate) fn concurrency_limit(&self) -> usize {
+    pub(super) fn concurrency_limit(&self) -> usize {
         self.concurrency.limit()
     }
 }

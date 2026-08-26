@@ -1,7 +1,7 @@
-use futures_util::{SinkExt, StreamExt};
-use nostr_sdk::{Event, JsonUtil};
+use core::time::Duration;
+use futures_util::{SinkExt as _, StreamExt as _};
+use nostr_sdk::{Event, JsonUtil as _};
 use serde_json::Value;
-use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::tungstenite::Message;
 
@@ -35,7 +35,7 @@ async fn serve_client(stream: TcpStream, event: Option<Event>, complete: bool) {
     while let Some(Ok(message)) = socket.next().await {
         match message {
             Message::Text(payload) => {
-                send_result(&mut socket, &payload, event.as_ref(), complete).await
+                send_result(&mut socket, &payload, event.as_ref(), complete).await;
             }
             Message::Ping(bytes) => {
                 let _ = socket.send(Message::Pong(bytes)).await;

@@ -11,8 +11,8 @@ struct HedgeContext {
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ActivePlannerContext {
-    pub action: ActionId,
-    pub continuation_advantage_micros: Option<i64>,
+    pub(crate) action: ActionId,
+    pub(crate) continuation_advantage_micros: Option<i64>,
     post: PostId,
     cancelling: bool,
     hedge: Option<HedgeContext>,
@@ -64,7 +64,7 @@ impl ActivePlannerContext {
     pub(in crate::adaptive::warp) fn hedge(&self) -> Option<(&HedgeInput, IdentityProof, &str)> {
         self.hedge
             .as_ref()
-            .map(|item| (&item.input, item.identity.clone(), item.alternate.as_str()))
+            .map(|item| (&item.input, item.identity, item.alternate.as_str()))
     }
 
     pub(super) fn replay_source(&self) -> Option<String> {

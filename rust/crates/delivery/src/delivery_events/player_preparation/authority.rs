@@ -1,8 +1,8 @@
+use core::fmt::{Debug, Formatter};
 use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::PostId;
 use ghostr_partial_store::partial_range_store::ContentRevision;
-use sha2::{Digest, Sha256};
-use std::fmt::{Debug, Formatter};
+use sha2::{Digest as _, Sha256};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PlayerPreparationAuthority {
@@ -59,11 +59,11 @@ impl PlayerPreparationClaim {
         })
     }
 
-    pub(crate) fn post(&self) -> &PostId {
+    pub(super) fn post(&self) -> &PostId {
         &self.post
     }
 
-    pub(crate) fn from_authority(authority: &PlayerPreparationAuthority) -> Self {
+    pub(super) fn from_authority(authority: &PlayerPreparationAuthority) -> Self {
         Self {
             post: authority.post.clone(),
             representation: authority.binding.representation().fingerprint().to_owned(),
@@ -85,7 +85,7 @@ impl PlayerPreparationAssetFingerprint {
 }
 
 impl Debug for PlayerPreparationAssetFingerprint {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> core::fmt::Result {
         formatter.write_str("[redacted]")
     }
 }

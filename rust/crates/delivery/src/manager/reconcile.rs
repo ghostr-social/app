@@ -54,8 +54,9 @@ impl PlanningStoreState {
 }
 
 impl DeliveryWorker {
-    pub(crate) async fn reconcile(&mut self) {
+    pub(super) async fn reconcile(&mut self) {
         let observed_at_ms = unix_time_ms();
+        self.apply_known_capability_fallbacks(observed_at_ms).await;
         self.select_playback_rendition(observed_at_ms).await;
         let request_limits = self.request_limits();
         self.reconcile_request_surfaces(request_limits);
@@ -65,8 +66,7 @@ impl DeliveryWorker {
         let planned = self.plan_cycle(&cycle);
         let decision = self.observe_plan(&planned, observed_at_ms);
         let execution = PlannedExecution { planned, decision };
-        self.execute_planned_work(observed_at_ms, execution, &cycle.stored)
-            .await;
+        Box::pin(self.execute_planned_work(observed_at_ms, execution, &cycle.stored)).await;
         self.finish_reconcile();
     }
 
@@ -93,11 +93,22 @@ impl DeliveryWorker {
             .update_ready_target(planned.plan.ready_reserve.target);
         self.state
             .observe_discovery_demand(planned.discovery_demand);
-        self.refresh_cache_registry().await;
+        self.refresh_cache_registry(observed_at_ms).await;
         let startups = self.startup_certificates(&planned.plan, &stored.snapshots);
-        self.commands.publish_focused_plan_with_startups(
+        let publication = crate::delivery_events::PlanPublicationContext::new(
             observed_at_ms,
             self.state.current_post(),
+        )
+        .with_focus(
+            self.state.focus_generation(),
+            self.state.focus_covers_from(),
+        )
+        .with_network(
+            self.state.network_status(),
+            self.state.network_profile_generation(),
+        );
+        self.commands.publish_causal_plan_with_startups(
+            publication,
             planned.plan.clone(),
             startups,
         );
@@ -159,7 +170,9 @@ impl DeliveryWorker {
         let demanded = self
             .demand_leases
             .reconcile(&foreground, self.state.catalog(), present);
-        for (post, range) in &demanded {
+        let mut ordered: Vec<_> = demanded.iter().collect();
+        ordered.sort_by(|left, right| left.0.cmp(right.0));
+        for (post, range) in ordered {
             self.expedite_demand(post, range.start);
         }
         demanded

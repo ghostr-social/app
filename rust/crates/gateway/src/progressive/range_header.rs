@@ -20,7 +20,7 @@ pub fn resolve(header: Option<&HeaderValue>, total: u64) -> ResolvedRange {
 }
 
 /// Resolves exactly one `Range` field; absent or duplicate fields are ignored.
-pub(crate) fn resolve_all(headers: &HeaderMap, total: u64) -> ResolvedRange {
+pub(super) fn resolve_all(headers: &HeaderMap, total: u64) -> ResolvedRange {
     let mut values = headers.get_all(RANGE).iter();
     let Some(value) = values.next() else {
         return ResolvedRange::Full;
@@ -31,6 +31,7 @@ pub(crate) fn resolve_all(headers: &HeaderMap, total: u64) -> ResolvedRange {
     resolve(Some(value), total)
 }
 
+#[derive(Clone, Copy)]
 enum Spec {
     FromTo(u64, u64),
     From(u64),

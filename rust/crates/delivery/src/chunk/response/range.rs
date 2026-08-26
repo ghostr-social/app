@@ -1,4 +1,4 @@
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Context as _, Result};
 use ghostr_engine::ByteRange;
 use ghostr_net::content_range;
 use ghostr_net::media_request_executor::MediaResponse;

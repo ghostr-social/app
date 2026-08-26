@@ -1,5 +1,5 @@
 use crate::partial_range_disk as disk;
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Context as _, Result};
 use std::path::Path;
 
 pub async fn load(path: &Path) -> Result<Option<String>> {

@@ -11,6 +11,7 @@ use std::collections::HashSet;
 #[path = "request_capacity/hls_hard_budget_test.rs"]
 mod hls_hard_budget_test;
 
+#[derive(Clone, Copy)]
 pub(super) struct Query<'a> {
     pub(super) state: &'a DeliveryState,
     pub(super) snapshot: &'a PlayabilitySnapshot,
@@ -59,12 +60,6 @@ pub(super) fn resolve(query: Query<'_>) -> RequestCapacity {
         hls_tokens: hls.min(u16::MAX as usize) as u16,
         soft: soft.commitments,
     }
-}
-
-#[cfg(test)]
-pub(super) fn hls_burst_floor(snapshot: &PlayabilitySnapshot, hls_tokens: u16) -> u64 {
-    let _ = (snapshot, hls_tokens);
-    0
 }
 
 fn hls_demand(inputs: &PlanInputs<'_>) -> usize {
@@ -142,3 +137,7 @@ fn current_head_companion(query: &Query<'_>, post: &PostId) -> bool {
                     == Some(identity)
         })
 }
+
+#[cfg(test)]
+#[path = "request_capacity_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

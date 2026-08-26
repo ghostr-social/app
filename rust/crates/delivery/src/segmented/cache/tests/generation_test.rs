@@ -33,7 +33,7 @@ fn cached_hls_generation_binds_final_url_length_and_bytes() {
 
 #[test]
 fn chunked_generation_hash_matches_the_legacy_one_pass_hash() {
-    let url = Url::parse("https://cdn.example/segment.m4s").unwrap();
+    let url = Url::parse("https://cdn.example/segment.m4s").expect("valid test fixture");
     let body = vec![9; 1024 * 1024 + 17];
     let mut hasher =
         CachedHlsGenerationHasher::new(&url, body.len() as u64, &HlsCacheMetadata::default());

@@ -3,7 +3,7 @@ use super::privacy::DecisionPrivacy;
 use super::types::{DecisionAction, PrunedCandidate, PrunedReason};
 use crate::adaptive::{AllocationPlan, CandidateSnapshot, NextReserveEvidence, RetrievalRequest};
 use crate::PostId;
-use sha2::{Digest, Sha256};
+use sha2::{Digest as _, Sha256};
 use std::collections::HashSet;
 
 const RECORD_LIMIT: usize = 64;
@@ -166,6 +166,12 @@ fn sanitize(plan: &mut AllocationPlan, privacy: &DecisionPrivacy) {
     sanitize_next(&mut plan.next_reserve, privacy);
 }
 
+pub(super) fn sanitized(value: &AllocationPlan, privacy: &DecisionPrivacy) -> AllocationPlan {
+    let mut plan = value.clone();
+    sanitize(&mut plan, privacy);
+    plan
+}
+
 fn sanitize_next(value: &mut NextReserveEvidence, privacy: &DecisionPrivacy) {
     let post = match value {
         NextReserveEvidence::Ready { post, .. }
@@ -181,5 +187,5 @@ fn sanitize_next(value: &mut NextReserveEvidence, privacy: &DecisionPrivacy) {
 }
 
 fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+    super::privacy::hex(bytes)
 }

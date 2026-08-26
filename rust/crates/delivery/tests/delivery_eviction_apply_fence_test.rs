@@ -2,12 +2,12 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::full_disk::{discard, limits, spaced_store};
 use delivery_fixture::items::{focus_now, seed_range, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness_with_store;
 use std::sync::Arc;
-use std::time::Duration;
 
 const UNREACHABLE: &str = "http://127.0.0.1:9/video.mp4";
 
@@ -39,7 +39,11 @@ async fn missed_policy_eviction_never_launches_its_dependent_allocation() {
 
     assert_eq!(harness.store.used_bytes().await, 100);
     assert_eq!(
-        harness.store.present_ranges("p1").await.unwrap(),
+        harness
+            .store
+            .present_ranges("p1")
+            .await
+            .expect("valid test fixture"),
         vec![0..45]
     );
     discard(&root);

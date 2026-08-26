@@ -30,7 +30,7 @@ async fn a_page_in_flight_streams_as_loading_and_then_settles() {
     let (sender, mut updates) = mpsc::unbounded_channel();
     tokio::spawn(watch_feed(
         ChannelOut(sender),
-        state.clone(),
+        std::sync::Arc::clone(&state),
         feed,
         revisions,
     ));
@@ -53,7 +53,7 @@ async fn a_failed_first_page_publishes_a_failed_revision() {
     let (sender, mut updates) = mpsc::unbounded_channel();
     tokio::spawn(watch_feed(
         ChannelOut(sender),
-        state.clone(),
+        std::sync::Arc::clone(&state),
         feed,
         revisions,
     ));
@@ -79,7 +79,7 @@ async fn a_feed_that_dispatches_nothing_is_settled_at_once() {
     let (sender, mut updates) = mpsc::unbounded_channel();
     tokio::spawn(watch_feed(
         ChannelOut(sender),
-        state.clone(),
+        std::sync::Arc::clone(&state),
         feed,
         revisions,
     ));

@@ -9,13 +9,13 @@ pub enum SemanticScore {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SemanticCandidate {
-    pub post: PostId,
-    pub score: SemanticScore,
-    pub ready: bool,
+    pub(super) post: PostId,
+    score: SemanticScore,
+    ready: bool,
 }
 
 impl SemanticCandidate {
-    pub const fn new(post: PostId, score: SemanticScore, ready: bool) -> Self {
+    pub(crate) const fn new(post: PostId, score: SemanticScore, ready: bool) -> Self {
         Self { post, score, ready }
     }
 }
@@ -29,10 +29,10 @@ pub enum TransportCensorReason {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SemanticAdmission {
-    pub admissible: bool,
-    pub rescue: bool,
-    pub rank_displacement: usize,
-    pub censor: Option<TransportCensorReason>,
+    pub(crate) admissible: bool,
+    pub(crate) rescue: bool,
+    pub(super) rank_displacement: usize,
+    pub(crate) censor: Option<TransportCensorReason>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -42,14 +42,14 @@ pub struct SemanticGuardrail {
 }
 
 impl SemanticGuardrail {
-    pub const fn new(top_k: usize, epsilon_micros: u64) -> Self {
+    pub(crate) const fn new(top_k: usize, epsilon_micros: u64) -> Self {
         Self {
             top_k,
             epsilon_micros,
         }
     }
 
-    pub fn admit(
+    pub(crate) fn admit(
         self,
         candidate: &SemanticCandidate,
         window: &[SemanticCandidate],

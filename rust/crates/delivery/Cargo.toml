@@ -2,10 +2,11 @@
 name = "ghostr-delivery"
 version = "0.1.0"
 edition = "2021"
+publish = false
 description = "Delivery scheduling and chunk transfer for the media engine."
 
 [features]
-test-support = []
+test = []
 video-debug-web = []
 
 [dependencies]
@@ -27,11 +28,13 @@ tokio = { workspace = true }
 url = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
-libc = { workspace = true }
+nix = { workspace = true }
 
 # `range_fixture` serves real ranged responses over a loopback listener, so the
 # chunk downloader and probes are exercised against an actual HTTP origin.
 [dev-dependencies]
 axum = { workspace = true }
+ghostr-engine = { path = "../engine", features = ["test"] }
+ghostr-partial-store = { path = "../partial-store", features = ["test"] }
 tokio = { workspace = true, features = ["test-util"] }
 tokio-stream = { workspace = true }

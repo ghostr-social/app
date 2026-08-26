@@ -11,17 +11,16 @@ mod semantic;
 mod twin;
 
 pub use action::{ActionForecast, ActionKind, ActionNode, ActionValue, TransformKind};
-pub use action_frontier::ActionFrontier;
+pub(crate) use action_frontier::ActionFrontier;
 pub use budget::{
     HardBudget, NetworkTokenBucket, ResourceCost, ResourceObservation, ResourcePrices,
     ShadowPriceController,
 };
-pub use control::{
-    ContinuationDecision, ContinuationPolicy, HedgeInput, HedgePolicy, IdentityProof,
-};
+pub(crate) use control::ContinuationPolicy;
+pub use control::{ContinuationDecision, HedgeInput, HedgePolicy, IdentityProof};
+pub(crate) use generation::WarpActionGenerator;
 pub use generation::{
     ActiveControl, CandidateRetrievalLadder, GeneratedAction, GeneratedActions, PlannerCommand,
-    WarpActionGenerator,
 };
 pub(crate) use generation::{HlsGenerationPolicy, WarpGenerationInput};
 pub(crate) use planner::{
@@ -37,17 +36,15 @@ pub use planner_context::{
     PlannerContext, PlannerLimits, PlannerQuality, PlannerRetryAvailability, PlannerRetryEvidence,
     PlannerWatchEvidence, PreviewAvailability, ResourceFeedback, ResourceFeedbackCursor,
     ResourcePriceSnapshot, SegmentedStorageBudget, SoftRequestCommitment, TransformCapability,
-    WholeBodyExhaustion, INLINE_BLURHASH_PREVIEW_QUALITY_MICROS,
+    WholeBodyExhaustion,
 };
 pub use request_occupancy::RequestOccupancy;
 pub(crate) use search::ScoredSearchPlan;
 pub use search::{
     BeamConfig, PrunedSearchPlan, RetainedSearchPlan, SearchDecision, SearchPruneReason,
-    TwinSearchContext, WarpSearch,
 };
-pub use semantic::{
-    SemanticAdmission, SemanticCandidate, SemanticGuardrail, SemanticScore, TransportCensorReason,
-};
-pub use twin::{
-    DigitalTwin, TwinConfig, TwinEpochs, TwinEvaluation, TwinState, TwinStateSignature,
-};
+pub(crate) use search::{TwinSearchContext, WarpSearch};
+pub use semantic::{SemanticAdmission, SemanticScore, TransportCensorReason};
+pub(crate) use semantic::{SemanticCandidate, SemanticGuardrail};
+pub(crate) use twin::TwinState;
+pub use twin::{DigitalTwin, TwinConfig, TwinEpochs, TwinEvaluation, TwinStateSignature};

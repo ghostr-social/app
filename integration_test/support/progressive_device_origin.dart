@@ -9,16 +9,20 @@ part 'progressive_device_origin_response.dart';
 part 'progressive_device_origin_request.dart';
 part 'progressive_device_origin_concurrency.dart';
 
+enum ProgressiveOriginValidator { none, stableStrong }
+
 final class ProgressiveDeviceOrigin {
   ProgressiveDeviceOrigin._(
     this._server,
     this._responseChunkBytes,
     this._responseChunkDelay,
+    this._validator,
   );
 
   static Future<ProgressiveDeviceOrigin> start({
     int responseChunkBytes = 16 * 1024,
     Duration responseChunkDelay = Duration.zero,
+    ProgressiveOriginValidator validator = ProgressiveOriginValidator.none,
   }) async {
     if (responseChunkBytes <= 0) throw ArgumentError.value(responseChunkBytes);
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
@@ -26,6 +30,7 @@ final class ProgressiveDeviceOrigin {
       server,
       responseChunkBytes,
       responseChunkDelay,
+      validator,
     );
     origin._subscription = server.listen(origin._dispatch);
     return origin;
@@ -34,10 +39,12 @@ final class ProgressiveDeviceOrigin {
   final HttpServer _server;
   final int _responseChunkBytes;
   final Duration _responseChunkDelay;
+  final ProgressiveOriginValidator _validator;
   final requests = <ProgressiveOriginRequest>[];
   final _completed = <ProgressiveOriginRequest>[];
   final _heldHeads = <HttpResponse>[];
   final _servedBytes = <String, int>{};
+  final _clock = Stopwatch()..start();
   late final StreamSubscription<HttpRequest> _subscription;
   final _concurrency = _ProgressiveOriginConcurrency();
 
@@ -75,18 +82,25 @@ final class ProgressiveDeviceOrigin {
       request.method,
       request.uri.path,
       range,
+      startedAt: _clock.elapsed,
     );
     requests.add(entry);
     if (request.method == 'HEAD') {
+      entry._blockHead();
       _heldHeads.add(request.response);
       return;
     }
-    final completed = await _write(request.response, range, entry.path);
+    final completed = await _write(request.response, range, entry);
     if (completed) _completed.add(entry);
   }
 
-  void _recordBytes(String path, int count) {
-    _servedBytes.update(path, (total) => total + count, ifAbsent: () => count);
+  void _recordBytes(ProgressiveOriginRequest request, int count) {
+    request._recordBytes(count, _clock.elapsed);
+    _servedBytes.update(
+      request.path,
+      (total) => total + count,
+      ifAbsent: () => count,
+    );
   }
 
   Future<void> close() async {

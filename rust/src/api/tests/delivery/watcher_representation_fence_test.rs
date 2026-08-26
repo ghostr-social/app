@@ -5,9 +5,9 @@ use crate::api::tests::delivery::selected_rendition_fixture::selected_rendition;
 use crate::api::tests::support::temp_store;
 use crate::engine::catalog::Catalog;
 use crate::engine::{DeliveryKind, PostId, VideoMeta};
+use core::time::Duration;
 use ghostr_delivery::cache_registry::{CacheRegistry, CacheStatus, CacheVideo};
 use ghostr_delivery::segmented::SegmentedCache;
-use std::time::Duration;
 use tokio::sync::mpsc;
 
 struct ChannelOut(mpsc::UnboundedSender<FfiDeliveryEvent>);
@@ -23,9 +23,18 @@ async fn watcher_never_labels_old_representation_bytes_as_new_metadata() {
     let store = temp_store("ghostr-api-watch-representation");
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(PostId::new("clip"), meta("https://old.example/video"));
-    store.bind_representation(binding).await.unwrap();
-    store.set_total_len("clip", 16).await.unwrap();
-    store.write_range("clip", 0, &[7; 16]).await.unwrap();
+    store
+        .bind_representation(binding)
+        .await
+        .expect("test fixture precondition must hold");
+    store
+        .set_total_len("clip", 16)
+        .await
+        .expect("test fixture precondition must hold");
+    store
+        .write_range("clip", 0, &[7; 16])
+        .await
+        .expect("test fixture precondition must hold");
     let tracked = TrackedItems::new();
     let current = meta("https://new.example/video");
     tracked.insert("clip".to_owned(), current.clone());
@@ -47,8 +56,14 @@ async fn watcher_never_labels_old_representation_bytes_as_new_metadata() {
 async fn watcher_attributes_selected_rendition_bytes_to_the_advertised_feed_item() {
     let store = temp_store("ghostr-api-watch-selected-rendition");
     let rendition = selected_rendition("clip");
-    store.bind_representation(rendition.binding).await.unwrap();
-    store.write_range("clip", 0, &[7; 16]).await.unwrap();
+    store
+        .bind_representation(rendition.binding)
+        .await
+        .expect("test fixture precondition must hold");
+    store
+        .write_range("clip", 0, &[7; 16])
+        .await
+        .expect("test fixture precondition must hold");
     let tracked = TrackedItems::new();
     tracked.insert("clip".to_owned(), rendition.advertised);
     let cache = CacheRegistry::new();
@@ -74,8 +89,8 @@ async fn watcher_attributes_selected_rendition_bytes_to_the_advertised_feed_item
 async fn next(events: &mut mpsc::UnboundedReceiver<FfiDeliveryEvent>) -> FfiDeliveryEvent {
     tokio::time::timeout(Duration::from_secs(2), events.recv())
         .await
-        .unwrap()
-        .unwrap()
+        .expect("test fixture precondition must hold")
+        .expect("test fixture precondition must hold")
 }
 
 fn cache_video(meta: VideoMeta) -> CacheVideo {

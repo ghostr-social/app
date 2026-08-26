@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 
+use core::time::Duration;
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use reqwest::{Client, RequestBuilder};
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 
@@ -19,7 +19,7 @@ impl OneHopClient {
             .no_proxy()
             .redirect(reqwest::redirect::Policy::none())
             .build()
-            .unwrap();
+            .expect("valid test fixture");
         Arc::new(Self(client))
     }
 }
@@ -31,8 +31,10 @@ impl MediaHttpRequests for OneHopClient {
 }
 
 pub async fn redirect_origin(target: String) -> String {
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let address = listener.local_addr().unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("valid test fixture");
+    let address = listener.local_addr().expect("valid test fixture");
     tokio::spawn(async move {
         while let Ok((mut socket, _)) = listener.accept().await {
             let target = target.clone();
@@ -53,11 +55,13 @@ pub async fn delayed_redirect_origin(
     target: String,
     delay: Duration,
 ) -> (String, oneshot::Receiver<()>) {
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let address = listener.local_addr().unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("valid test fixture");
+    let address = listener.local_addr().expect("valid test fixture");
     let (contacted, contact) = oneshot::channel();
     tokio::spawn(async move {
-        let (mut socket, _) = listener.accept().await.unwrap();
+        let (mut socket, _) = listener.accept().await.expect("valid test fixture");
         let mut request = [0u8; 2048];
         let _ = socket.read(&mut request).await;
         let _ = contacted.send(());
@@ -71,12 +75,14 @@ pub async fn delayed_redirect_origin(
 }
 
 pub async fn loop_origin() -> String {
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let address = listener.local_addr().unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("valid test fixture");
+    let address = listener.local_addr().expect("valid test fixture");
     let url = format!("http://{address}/loop");
     let target = format!("{url}#next");
     tokio::spawn(async move {
-        let (mut socket, _) = listener.accept().await.unwrap();
+        let (mut socket, _) = listener.accept().await.expect("valid test fixture");
         let mut request = [0u8; 2048];
         let _ = socket.read(&mut request).await;
         let response =

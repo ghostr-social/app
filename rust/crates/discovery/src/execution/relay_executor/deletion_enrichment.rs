@@ -10,9 +10,6 @@ use nostr_sdk::{Event, EventId};
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-#[cfg(test)]
-pub(crate) use super::deletion_planning::deletion_plan;
-
 pub(super) struct DeletionEnrichment {
     pub(super) events: Vec<Event>,
     pub(super) settled: BTreeSet<EventId>,
@@ -34,7 +31,7 @@ impl RelayPlanExecutor {
         };
         let DependentDeletionPlan { plan, dependencies } = dependent;
         let outboxes = self.session_plan_outboxes(session, &plan).await?;
-        let fetches = self.enrichment_fetches(session, plan, outboxes, route);
+        let fetches = self.enrichment_fetches(session, plan, outboxes, &route);
         let outcomes = collect_partial_fetches(fetches).await;
         Ok(deletion_result(events, dependencies, outcomes))
     }
@@ -65,3 +62,7 @@ fn deletion_result(
     }
     DeletionEnrichment { events, settled }
 }
+
+#[cfg(test)]
+#[path = "deletion_enrichment_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

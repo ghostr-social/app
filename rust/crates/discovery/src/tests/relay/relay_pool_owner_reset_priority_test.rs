@@ -3,9 +3,9 @@
 use crate::relay::pool::{RelayPoolConfiguration, RelayPoolOwner};
 use crate::session_generation::SessionGeneration;
 use crate::test_support::{read_request, TestRelayIo};
+use core::time::Duration;
 use nostr_sdk::Client;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::time::timeout;
 
 const DYNAMIC: &str = "wss://old-account.example";
@@ -16,18 +16,18 @@ async fn reset_cancels_a_query_a_configuration_writer_is_waiting_for() {
     let owner = Arc::new(RelayPoolOwner::with_io(
         Arc::new(Client::default()),
         RelayPoolConfiguration::default(),
-        io.clone(),
+        std::sync::Arc::<TestRelayIo>::clone(&io),
     ));
-    let query_owner = owner.clone();
+    let query_owner = std::sync::Arc::clone(&owner);
     let query = tokio::spawn(async move { query_owner.read(read_request(DYNAMIC)).await });
     io.query_started.notified().await;
 
-    let config_owner = owner.clone();
+    let config_owner = std::sync::Arc::clone(&owner);
     let config = tokio::spawn(async move {
         let _guard = config_owner.begin_configuration().await;
     });
     wait_until_serial_is_held(&owner).await;
-    let reset_owner = owner.clone();
+    let reset_owner = std::sync::Arc::clone(&owner);
     let reset = tokio::spawn(async move {
         let mut guard = reset_owner.begin_reset().await;
         guard
@@ -46,7 +46,7 @@ async fn reset_cancels_a_query_a_configuration_writer_is_waiting_for() {
 async fn wait_until_serial_is_held(owner: &RelayPoolOwner) {
     timeout(Duration::from_secs(1), async {
         loop {
-            match owner.transition_serial.clone().try_lock_owned() {
+            match std::sync::Arc::clone(&owner.transition_serial).try_lock_owned() {
                 Ok(guard) => {
                     drop(guard);
                     tokio::task::yield_now().await;

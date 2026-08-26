@@ -2,8 +2,8 @@
 
 use crate::relay::removal::{RelayRemoval, RelayRemovalFuture, RelayRoleIo};
 use crate::relay::roles::{RelayPoolConfiguration, RelayPoolRoles, RelayRole};
+use core::sync::atomic::{AtomicBool, Ordering};
 use nostr_sdk::Client;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 const RELAY: &str = "wss://retry-removal.example";
@@ -29,10 +29,10 @@ impl RelayRemoval for FailOnceRemoval {
 async fn failed_removal_is_retried_after_the_next_lease() {
     let client = Arc::new(Client::default());
     let removal = Arc::new(FailOnceRemoval {
-        client: client.clone(),
+        client: std::sync::Arc::clone(&client),
         failed: AtomicBool::new(false),
     });
-    let io = RelayRoleIo::new(client.clone(), removal);
+    let io = RelayRoleIo::new(std::sync::Arc::clone(&client), removal);
     let roles = RelayPoolRoles::new(io, RelayPoolConfiguration::default());
     let relays = [RELAY.to_owned()];
 

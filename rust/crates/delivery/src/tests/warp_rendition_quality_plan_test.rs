@@ -66,5 +66,5 @@ fn rendition(name: &str, bitrate: Option<u64>) -> VideoRendition {
         },
         bitrate,
     )
-    .unwrap()
+    .expect("valid test fixture")
 }

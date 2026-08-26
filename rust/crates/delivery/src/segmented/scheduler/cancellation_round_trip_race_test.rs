@@ -26,7 +26,7 @@ async fn focus_round_trip_keeps_fresh_root_while_old_terminal_is_queued() {
     delivery.apply_focus(&focus(3, A));
     assert_eq!(delivery.pending[&post].generation, 3);
 
-    let finish = delivery.finish(done).unwrap();
+    let finish = delivery.finish(done).expect("valid test fixture");
     assert_eq!(finish.outcome, DecisionOutcome::Superseded);
     assert_eq!(delivery.pending[&post].generation, 3);
     assert_eq!(delivery.pending[&post].root_source, A);
@@ -42,7 +42,9 @@ async fn stale_round_trip_failure_cannot_retry_the_fresh_generation() {
     delivery.apply_focus(&failed_focus(3, A));
     assert_eq!(delivery.pending[&post].generation, 3);
 
-    let finish = delivery.finish(failed(post.clone())).unwrap();
+    let finish = delivery
+        .finish(failed(post.clone()))
+        .expect("valid test fixture");
     assert!(matches!(finish.recovery, SegmentedRecovery::None));
     assert_eq!(delivery.pending[&post].generation, 3);
 }

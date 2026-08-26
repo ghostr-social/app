@@ -8,6 +8,8 @@ use crate::{ActionId, ByteRange};
 
 #[path = "warp_planner_available_capacity_demand_test.rs"]
 mod available_capacity_demand_test;
+#[path = "warp_planner_capacity_demand/request_scope_test.rs"]
+mod request_scope_test;
 
 #[test]
 fn one_more_slot_is_demanded_only_when_warp_would_use_it() {

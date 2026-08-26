@@ -4,6 +4,7 @@ use crate::origin_model::{
     MediaClass, NetworkClass, OriginContext, OriginModel, OriginQuery, RequestMethod,
 };
 
+#[derive(Clone, Copy)]
 pub(super) struct HlsPredictionInput<'a> {
     pub snapshot: &'a PlayabilitySnapshot,
     pub model: &'a OriginModel,
@@ -18,9 +19,10 @@ pub(super) struct HlsPredictionInput<'a> {
 }
 
 pub(super) fn predict(input: HlsPredictionInput<'_>) -> Prediction {
-    let method = match input.stage.is_manifest() {
-        true => RequestMethod::ManifestGet,
-        false => RequestMethod::SegmentGet,
+    let method = if input.stage.is_manifest() {
+        RequestMethod::ManifestGet
+    } else {
+        RequestMethod::SegmentGet
     };
     let query = OriginQuery::new(
         input.source,

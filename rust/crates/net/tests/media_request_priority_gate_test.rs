@@ -11,7 +11,7 @@ async fn playback_critical_waiter_precedes_older_speculation() {
     let mut critical = HeldOrigin::serve().await;
     let requests = MediaRequestExecutor::new(
         LocalMediaClient::shared(),
-        MediaRequestLimits::try_new(1, 1).unwrap(),
+        MediaRequestLimits::try_new(1, 1).expect("valid test fixture"),
     );
     let active = open(
         requests.clone(),
@@ -38,12 +38,12 @@ async fn playback_critical_waiter_precedes_older_speculation() {
     drop(active);
     critical.expect_hit().await;
     speculative.expect_quiet().await;
-    let urgent = urgent.await.unwrap();
+    let urgent = urgent.await.expect("valid test fixture");
     critical.release_one();
     drop(urgent);
     speculative.expect_hit().await;
     speculative.release_one();
-    drop(later.await.unwrap());
+    drop(later.await.expect("valid test fixture"));
 }
 
 async fn open(
@@ -53,11 +53,13 @@ async fn open(
 ) -> ghostr_net::media_request_executor::MediaResponse {
     requests
         .get(&url, priority)
-        .unwrap()
+        .expect("valid test fixture")
         .admit()
         .await
-        .unwrap()
-        .send()
+        .expect("valid test fixture")
+        .send_with_redirect_deadline(
+            tokio::time::Instant::now() + core::time::Duration::from_secs(30),
+        )
         .await
-        .unwrap()
+        .expect("valid test fixture")
 }

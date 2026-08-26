@@ -1,11 +1,11 @@
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::media::{hit_log, media_body, serve_recording};
 use delivery_fixture::options::serial_long_retry_options;
 use delivery_fixture::start_harness;
 use delivery_fixture::transient_origin::{count, serve, Attempts};
-use std::time::Duration;
 
 #[tokio::test]
 async fn newly_focused_post_retries_without_reviving_other_retry_state() {

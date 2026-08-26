@@ -1,6 +1,6 @@
 use super::{same_authority, StoreAction};
 use crate::partial_range_store::PartialRangeStore;
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Context as _, Result};
 
 #[derive(Debug)]
 #[must_use = "commit or roll back every prepared action extension"]
@@ -19,6 +19,9 @@ impl ActionReservationExtension {
 }
 
 impl PartialRangeStore {
+    /// # Errors
+    ///
+    /// Returns an error when the action is stale, missing, or cannot reserve the added capacity.
     pub async fn extend_action(
         &self,
         action: &StoreAction,
@@ -42,6 +45,9 @@ impl PartialRangeStore {
         })
     }
 
+    /// # Errors
+    ///
+    /// Returns an error when the reservation changed or cannot be recovered durably.
     pub async fn rollback_action(&self, extension: ActionReservationExtension) -> Result<()> {
         let _update = self.update_key(&extension.action.key).await?;
         let _capacity = self.capacity_updates.lock().await;
@@ -61,6 +67,9 @@ impl PartialRangeStore {
         Ok(())
     }
 
+    /// # Errors
+    ///
+    /// Returns an error when the action is stale, missing, or cannot be resized safely.
     pub async fn resize_action(&self, action: &StoreAction, maximum_bytes: u64) -> Result<()> {
         ensure!(action.is_active(), "action reservation was revoked");
         let _update = self.update_key(&action.key).await?;

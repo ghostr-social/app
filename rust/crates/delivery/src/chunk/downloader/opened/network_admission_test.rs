@@ -3,6 +3,7 @@ use crate::chunk::cancel::cancel_pair;
 use crate::chunk::downloader::telemetry::MeasuredTraffic;
 use crate::chunk::downloader::{ChunkSpec, DownloadTraffic};
 use crate::delivery_events::{DeliveryNetworkStatus, DeliveryNetworkStatusReader};
+use core::time::Duration;
 use ghostr_engine::adaptive::{PreemptionAuthority, RetrievalRequest};
 use ghostr_engine::origin_model::NetworkClass;
 use ghostr_engine::ByteRange;
@@ -10,7 +11,6 @@ use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimit
 use ghostr_net::outbound_media_client::{MediaHttpClient, MediaHttpRequests};
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Notify;
 
 struct LiveTraffic {
@@ -33,23 +33,27 @@ impl DownloadTraffic for LiveTraffic {
 
 #[tokio::test]
 async fn queued_request_samples_network_class_only_after_admission() {
-    let raw: Arc<dyn MediaHttpRequests> = Arc::new(MediaHttpClient::public().unwrap());
-    let requests = MediaRequestExecutor::new(raw, MediaRequestLimits::try_new(1, 1).unwrap());
+    let raw: Arc<dyn MediaHttpRequests> =
+        Arc::new(MediaHttpClient::public().expect("valid test fixture"));
+    let requests = MediaRequestExecutor::new(
+        raw,
+        MediaRequestLimits::try_new(1, 1).expect("valid test fixture"),
+    );
     let held = requests
         .get(
             "https://media.example/video.mp4",
             PreemptionAuthority::Transition,
         )
-        .unwrap()
+        .expect("valid test fixture")
         .admit()
         .await
-        .unwrap();
+        .expect("valid test fixture");
     let wifi = DeliveryNetworkStatus::new(NetworkClass::Wifi, 1);
     let network = DeliveryNetworkStatusReader::new(wifi);
     let started = Arc::new(Notify::new());
     let mut traffic = LiveTraffic {
         network: network.clone(),
-        started: started.clone(),
+        started: std::sync::Arc::clone(&started),
     };
     let mut measured = MeasuredTraffic::new(&mut traffic, NetworkClass::Wifi);
     let (handle, token) = cancel_pair();
@@ -65,7 +69,7 @@ async fn queued_request_samples_network_class_only_after_admission() {
         });
         drop(held);
         let _ = future.await;
-        stopper.await.unwrap();
+        stopper.await.expect("valid test fixture");
     }
     assert_eq!(
         measured.measurements().network_class(),
@@ -73,14 +77,14 @@ async fn queued_request_samples_network_class_only_after_admission() {
     );
 }
 
-async fn expect_queued<F>(future: &mut std::pin::Pin<&mut F>)
+async fn expect_queued<F>(future: &mut core::pin::Pin<&mut F>)
 where
-    F: std::future::Future<Output = anyhow::Result<super::Opened>>,
+    F: core::future::Future<Output = anyhow::Result<super::Opened>>,
 {
     tokio::select! {
         biased;
         _ = future => panic!("request was not queued"),
-        _ = tokio::task::yield_now() => {}
+        () = tokio::task::yield_now() => {}
     }
 }
 

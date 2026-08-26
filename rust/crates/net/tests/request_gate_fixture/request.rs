@@ -8,11 +8,13 @@ pub async fn open(
 ) -> MediaResponse {
     requests
         .get(&url, priority)
-        .unwrap()
+        .expect("valid test fixture")
         .admit()
         .await
-        .unwrap()
-        .send()
+        .expect("valid test fixture")
+        .send_with_redirect_deadline(
+            tokio::time::Instant::now() + core::time::Duration::from_secs(30),
+        )
         .await
-        .unwrap()
+        .expect("valid test fixture")
 }

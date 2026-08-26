@@ -6,7 +6,8 @@ mod fresh_search;
 mod reserve;
 
 use super::super::DecisionRecord;
-use crate::adaptive::{DecisionReplayStatus, VerifiedWarpReplay};
+use crate::adaptive::decision::replay::VerifiedWarpReplay;
+use crate::adaptive::DecisionReplayStatus;
 
 pub(super) fn reconstruct(
     record: &DecisionRecord,

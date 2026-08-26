@@ -3,7 +3,7 @@ use crate::adaptive::{
     DecisionReplayStatus, ShadowPrices,
 };
 use crate::tests::adaptive_support::snapshot;
-use sha2::{Digest, Sha256};
+use sha2::{Digest as _, Sha256};
 
 #[test]
 fn replay_without_the_authority_limit_preserves_its_legacy_state_hash() {
@@ -21,20 +21,30 @@ fn replay_without_the_authority_limit_preserves_its_legacy_state_hash() {
         privacy: &DecisionPrivacy::from_key([4; 32]),
     });
     let field = ",\"per_authority_request_limit\":1";
-    let mut json = serde_json::to_string(&record).unwrap();
+    let mut json = serde_json::to_string(&record).expect("valid test fixture");
     assert!(json.contains(field));
     json = json.replace(field, "");
     let replay = replay_json(&json);
     let digest = Sha256::digest(replay.as_bytes());
-    let hash: String = digest.iter().map(|byte| format!("{byte:02x}")).collect();
+    let hash = hex(&digest);
     json = json.replace(&record.state_hash, &hash);
 
-    let restored: DecisionRecord = serde_json::from_str(&json).unwrap();
+    let restored: DecisionRecord = serde_json::from_str(&json).expect("valid test fixture");
 
-    assert_eq!(restored.replay(), DecisionReplayStatus::Verified);
+    assert_eq!(restored.integrity_status(), DecisionReplayStatus::Verified);
     assert!(!serde_json::to_string(&restored)
-        .unwrap()
+        .expect("valid test fixture")
         .contains("per_authority_request_limit"));
+}
+
+fn hex(bytes: &[u8]) -> String {
+    const DIGITS: &[u8; 16] = b"0123456789abcdef";
+    let mut output = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        output.push(DIGITS[(byte >> 4) as usize] as char);
+        output.push(DIGITS[(byte & 0x0f) as usize] as char);
+    }
+    output
 }
 
 fn replay_json(record: &str) -> &str {

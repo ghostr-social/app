@@ -1,8 +1,8 @@
 use super::super::{HttpResponseEvidence, OpenedResponse, ResponseAdmission};
 use crate::chunk::traffic::{ChunkTraffic, WholeBodyCompletion};
-use std::future::Future;
-use std::pin::Pin;
-use std::time::Duration;
+use core::future::Future;
+use core::pin::Pin;
+use core::time::Duration;
 use tokio::time::Instant;
 
 #[derive(Clone, Debug)]

@@ -1,5 +1,5 @@
 use crate::host_stats::HostStats;
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn host_ttfb_overrides_the_observed_overall_fallback() {
@@ -18,7 +18,7 @@ fn host_ttfb_overrides_the_observed_overall_fallback() {
         stats.expected_ttfb("slow.example"),
         Some(Duration::from_millis(800))
     );
-    let overall = stats.overall_ttfb().unwrap();
+    let overall = stats.overall_ttfb().expect("valid test fixture");
     assert!(overall > Duration::from_millis(120));
     assert!(overall < Duration::from_millis(800));
     assert_eq!(stats.expected_ttfb("new.example"), Some(overall));

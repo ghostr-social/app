@@ -15,7 +15,11 @@ fn integrity_valid_but_contradictory_warp_traces_fail_closed() {
     );
 
     let mut wrong_seed = original.clone();
-    wrong_seed.evaluation.as_mut().unwrap().common_random_seed = 1;
+    wrong_seed
+        .evaluation
+        .as_mut()
+        .expect("valid test fixture")
+        .common_random_seed = 1;
     assert_mismatch(&wrong_seed);
 
     let mut wrong_plan = original.clone();
@@ -23,20 +27,29 @@ fn integrity_valid_but_contradictory_warp_traces_fail_closed() {
         .search
         .chosen_plan
         .as_mut()
-        .unwrap()
+        .expect("valid test fixture")
         .action_ids
         .clear();
     assert_mismatch(&wrong_plan);
 
     let mut wrong_command = original;
-    wrong_command.selected.as_mut().unwrap().node.kind = ActionKind::Cancel(ActionId::new(3));
-    wrong_command.generated.actions[0] = wrong_command.selected.clone().unwrap();
+    wrong_command
+        .selected
+        .as_mut()
+        .expect("valid test fixture")
+        .node
+        .kind = ActionKind::Cancel(ActionId::new(3));
+    wrong_command.generated.actions[0] =
+        wrong_command.selected.clone().expect("valid test fixture");
     assert_mismatch(&wrong_command);
 }
 
 fn assert_mismatch(decision: &crate::adaptive::WarpPlanningDecision) {
     let captured = record(decision);
-    assert_eq!(captured.replay(), DecisionReplayStatus::PlanMismatch);
+    assert_eq!(
+        captured.integrity_status(),
+        DecisionReplayStatus::PlanMismatch
+    );
     assert_eq!(
         captured.replay_warp(),
         Err(DecisionReplayStatus::PlanMismatch)

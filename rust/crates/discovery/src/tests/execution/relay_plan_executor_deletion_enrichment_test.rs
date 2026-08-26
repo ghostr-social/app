@@ -1,10 +1,10 @@
-use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
+use crate::plan_executor::{PlanExecutor as _, PlannedRetrieval};
 use crate::query::search::plan_discovery;
 use crate::query::video_filters::{DiscoveryRequest, RepostAdmission};
 use crate::retrieval_types::{FeedContext, RetrievalPriority};
 use crate::tests::deletion_enrichment_support::{executor, DeletionIo};
 use crate::tests::support::filter_json;
-use nostr_sdk::{EventBuilder, JsonUtil, Keys, Kind, Tag, Timestamp};
+use nostr_sdk::{EventBuilder, JsonUtil as _, Keys, Kind, Tag, Timestamp};
 
 #[tokio::test]
 async fn feed_fetches_original_authors_deletion_for_a_repost() {
@@ -26,7 +26,7 @@ async fn feed_fetches_original_authors_deletion_for_a_repost() {
         .expect("deletion");
     let io = DeletionIo::new(wrapper.clone(), deletion.clone());
 
-    let events = executor(io.clone())
+    let events = executor(std::sync::Arc::clone(&io))
         .execute(retrieval(reposter.public_key()))
         .await
         .expect("feed retrieval");

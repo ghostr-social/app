@@ -1,7 +1,9 @@
 use super::super::PlannedTransfer;
 use crate::manager::inflight::ActiveAction;
 use crate::manager::state::DeliveryState;
-use ghostr_engine::adaptive::{Allocation, AllocationPlan, PlannerCommand, WarpPlanningDecision};
+use ghostr_engine::adaptive::{
+    Allocation, AllocationPlan, ControlMode, PlannerCommand, WarpPlanningDecision,
+};
 use ghostr_engine::scheduling::RangeRequest;
 use ghostr_engine::{ByteRange, ChunkId, PostId};
 use std::collections::{HashMap, HashSet};
@@ -13,7 +15,7 @@ pub(super) fn transfers(
 ) -> Vec<PlannedTransfer> {
     plan.allocations
         .iter()
-        .filter_map(|allocation| transfer(state, present, allocation))
+        .filter_map(|allocation| transfer(state, present, allocation, plan.mode))
         .collect()
 }
 
@@ -21,6 +23,7 @@ pub(super) fn selected_transfers(
     state: &DeliveryState,
     present: &HashMap<PostId, Vec<ByteRange>>,
     decision: &WarpPlanningDecision,
+    mode: ControlMode,
 ) -> Vec<PlannedTransfer> {
     let allocation = match decision.selected.as_ref().map(|item| &item.command) {
         Some(PlannerCommand::Transfer(allocation)) => Some(allocation),
@@ -28,7 +31,7 @@ pub(super) fn selected_transfers(
         _ => None,
     };
     allocation
-        .and_then(|item| transfer(state, present, item))
+        .and_then(|item| transfer(state, present, item, mode))
         .into_iter()
         .collect()
 }
@@ -38,10 +41,16 @@ pub(super) fn retained_actions(
     decision: &WarpPlanningDecision,
 ) -> HashSet<ghostr_engine::ActionId> {
     let mut retained: HashSet<_> = in_flight.iter().map(ActiveAction::action_id).collect();
-    if let Some(PlannerCommand::Cancel(action)) =
-        decision.selected.as_ref().map(|item| &item.command)
-    {
-        retained.remove(action);
+    match decision.selected.as_ref().map(|item| &item.command) {
+        Some(PlannerCommand::Cancel(action)) => {
+            retained.remove(action);
+        }
+        Some(PlannerCommand::Transfer(_)) => {
+            for action in decision.generated.aborted_action_ids() {
+                retained.remove(&action);
+            }
+        }
+        _ => {}
     }
     retained
 }
@@ -61,11 +70,13 @@ fn transfer(
     state: &DeliveryState,
     present: &HashMap<PostId, Vec<ByteRange>>,
     allocation: &Allocation,
+    mode: ControlMode,
 ) -> Option<PlannedTransfer> {
     let identity = state
         .catalog()
         .transfer_identity(&allocation.post, &allocation.source)?;
     Some(PlannedTransfer {
+        control_mode: mode,
         request: RangeRequest {
             chunk: ChunkId {
                 post: allocation.post.clone(),

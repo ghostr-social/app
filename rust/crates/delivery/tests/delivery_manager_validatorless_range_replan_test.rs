@@ -1,13 +1,13 @@
 mod delivery_fixture;
 mod raw_http;
 
+use core::time::Duration;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_engine::adaptive::RetrievalRequest;
 use ghostr_engine::EngineParams;
-use std::time::Duration;
 
 #[tokio::test]
 async fn coherent_validatorless_206_replans_as_one_independent_object() {
@@ -27,8 +27,8 @@ async fn coherent_validatorless_206_replans_as_one_independent_object() {
     wait_for_whole_plan(&harness.handle, &origin.url).await;
 
     origin.release.notify_one();
-    origin.requests.await.unwrap();
-    harness.handle.clear().await.unwrap();
+    origin.requests.await.expect("valid test fixture");
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(harness.root).ok();
 }
 

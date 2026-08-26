@@ -100,7 +100,7 @@ impl AdaptiveRecord {
         let long = self.long.snapshot(prior, now, config.long_ms);
         let short = self.short.snapshot(prior, now, config.short_ms);
         let weight = self.detector.short_weight(now, config.adaptation_ms);
-        RecordSnapshot::blend(long, short, weight, self.adapting(now, config))
+        RecordSnapshot::blend(long, &short, weight, self.adapting(now, config))
     }
 
     pub fn last_at_ms(&self) -> u64 {
@@ -121,7 +121,7 @@ fn metric_surprise(value: Option<u64>, expected: Option<Quantiles>) -> f64 {
     f64::from(below || above)
 }
 
-pub(super) struct StatSnapshot {
+struct StatSnapshot {
     success: BetaPosterior,
     range: BetaPosterior,
     ttfb: Option<Quantiles>,
@@ -140,13 +140,13 @@ pub(super) struct RecordSnapshot {
 }
 
 impl RecordSnapshot {
-    fn blend(long: StatSnapshot, short: StatSnapshot, weight: f64, adapting: bool) -> Self {
+    fn blend(long: StatSnapshot, short: &StatSnapshot, weight: f64, adapting: bool) -> Self {
         Self {
             success_mean: mix(long.success.mean(), short.success.mean(), weight),
             range_mean: mix(long.range.mean(), short.range.mean(), weight),
             ttfb: blend_quantiles(long.ttfb, short.ttfb, weight),
             throughput: blend_quantiles(long.throughput, short.throughput, weight),
-            errors: blend_errors(long.errors, short.errors, weight),
+            errors: blend_errors(long.errors, &short.errors, weight),
             evidence: mix(long.success.evidence, short.success.evidence, weight),
             adapting,
         }
@@ -181,7 +181,7 @@ fn mix_u64(long: u64, short: u64, weight: f64) -> u64 {
 
 fn blend_errors(
     mut long: BTreeMap<ErrorReason, f64>,
-    short: BTreeMap<ErrorReason, f64>,
+    short: &BTreeMap<ErrorReason, f64>,
     weight: f64,
 ) -> BTreeMap<ErrorReason, f64> {
     for reason in long.keys().chain(short.keys()).copied().collect::<Vec<_>>() {

@@ -4,10 +4,10 @@ use crate::api::runtime::discovery::{DiscoveryBoot, DiscoveryRuntime};
 use crate::api::runtime::tracked_items::TrackedItems;
 use crate::discovery::cache::client_with_event_cache;
 use anyhow::bail;
+use core::sync::atomic::{AtomicBool, Ordering};
 use flutter_rust_bridge::frb;
 use ghostr_gateway::runtime::{GatewayConfiguration, GatewayRuntime};
 use once_cell::sync::{Lazy, OnceCell};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 /// Everything the FFI layer holds onto after a successful start.
@@ -45,7 +45,8 @@ pub(crate) async fn start_and_install(
     // Never `Client::default()`: the shared client must retain verified
     // events for session-scoped cache union and deduplication.
     let client = Arc::new(client_with_event_cache());
-    let (endpoint, runtime, demand) = GatewayRuntime::start(configuration, client.clone()).await?;
+    let (endpoint, runtime, demand) =
+        GatewayRuntime::start(configuration, std::sync::Arc::clone(&client)).await?;
     let discovery = DiscoveryRuntime::start(DiscoveryBoot {
         client,
         demand,
@@ -94,7 +95,9 @@ impl StartGate {
         if !acquired {
             bail!("The embedded gateway is already running.");
         }
-        let permit = StartPermit { gate: self.clone() };
+        let permit = StartPermit {
+            gate: std::sync::Arc::clone(self),
+        };
         if is_installed() {
             bail!("The embedded gateway is already running.");
         }

@@ -6,18 +6,19 @@ use crate::transform::{
     TransformBackend, TransformControl, TransformInput, TransformLimits, TransformOutput,
     TransformProfile,
 };
+use core::hint::black_box;
+use core::time::Duration;
 use ghostr_engine::adaptive::ResourceObservation;
 use ghostr_engine::adaptive::TransformKind;
-use std::hint::black_box;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tokio::sync::mpsc;
 
 struct BusyBackend;
 
 impl TransformBackend for BusyBackend {
     fn profile(&self) -> TransformProfile {
-        let limits = TransformLimits::try_new(16, 16, 100, 200).unwrap();
+        let limits = TransformLimits::try_new(16, 16, 100, 200).expect("valid test fixture");
         TransformProfile::new(TransformKind::Remux, limits)
     }
 
@@ -45,9 +46,9 @@ async fn bounded_busy_transform_charges_cpu_before_manager_completion() {
     let environment = ResourceEnvironment::new(0, target);
     let resources = ResourceControl::new(tokio::time::Instant::now(), environment);
     let mut jobs = TransformJobs::new(Some(Arc::new(BusyBackend)), events, resources.clone());
-    assert!(jobs.launch(fixture.store.clone(), fixture.request(8)));
+    assert!(jobs.launch(std::sync::Arc::clone(&fixture.store), fixture.request(8)));
 
-    let InternalEvent::Transform(done) = receiver.recv().await.unwrap() else {
+    let InternalEvent::Transform(done) = receiver.recv().await.expect("valid test fixture") else {
         panic!("expected Transform completion");
     };
     let actual = done.actual_resources.expect("measured resources");

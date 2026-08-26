@@ -18,7 +18,7 @@ pub enum HlsTransport {
 }
 
 impl HlsTransport {
-    pub const fn opens_request(self) -> bool {
+    pub(crate) const fn opens_request(self) -> bool {
         !matches!(self, Self::ContinueLive { .. })
     }
 }
@@ -27,8 +27,8 @@ impl HlsTransport {
 pub struct HlsObjectCursor {
     pub attempt: u64,
     pub next_offset: u64,
-    pub total_bytes: Option<u64>,
-    pub transport: HlsTransport,
+    total_bytes: Option<u64>,
+    pub(crate) transport: HlsTransport,
 }
 
 impl HlsObjectCursor {
@@ -56,7 +56,7 @@ impl HlsObjectCursor {
         (remaining > 0).then(|| stage.block_bytes(requested).min(remaining))
     }
 
-    pub const fn completes(self, bytes: u64) -> bool {
+    pub(crate) const fn completes(self, bytes: u64) -> bool {
         match self.total_bytes {
             Some(total) => self.next_offset.saturating_add(bytes) >= total,
             None => false,
@@ -72,7 +72,7 @@ impl HlsObjectCursor {
         }
     }
 
-    pub fn is_default(&self) -> bool {
+    pub(crate) fn is_default(&self) -> bool {
         *self == Self::default()
     }
 }
@@ -141,18 +141,18 @@ pub struct HlsCandidateSnapshot {
 }
 
 impl HlsCandidateSnapshot {
-    pub fn pending(&self) -> Option<(HlsBootstrapStage, &str)> {
+    pub(crate) fn pending(&self) -> Option<(HlsBootstrapStage, &str)> {
         match &self.state {
             HlsBootstrapState::Pending { stage, source } => Some((*stage, source)),
             _ => None,
         }
     }
 
-    pub const fn ready(&self) -> bool {
+    pub(crate) const fn ready(&self) -> bool {
         matches!(self.state, HlsBootstrapState::Ready)
     }
 
-    pub fn source(&self) -> Option<&str> {
+    pub(super) fn source(&self) -> Option<&str> {
         match &self.state {
             HlsBootstrapState::Pending { source, .. }
             | HlsBootstrapState::Active { source, .. } => Some(source),
@@ -160,7 +160,7 @@ impl HlsCandidateSnapshot {
         }
     }
 
-    pub fn active_source(&self) -> Option<&str> {
+    pub(crate) fn active_source(&self) -> Option<&str> {
         match &self.state {
             HlsBootstrapState::Active { source, .. } => Some(source),
             _ => None,

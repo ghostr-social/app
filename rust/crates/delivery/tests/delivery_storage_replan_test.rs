@@ -1,9 +1,9 @@
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use ghostr_delivery::delivery_events::{DeliveryHandle, PlanEvidence};
-use std::time::Duration;
 
 #[tokio::test]
 async fn storage_change_wakes_an_idle_manager_for_replanning() {

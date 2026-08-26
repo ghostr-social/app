@@ -1,6 +1,7 @@
+use crate::adaptive::axiom_test_support::WarpActionGenerator;
 use crate::adaptive::{
     ActionKind, ActivePlannerContext, AllocationPlan, HedgeInput, IdentityProof, InFlightAction,
-    PlannerCommand, PlannerContext, PromotionGrant, RetrievalRequest, WarpActionGenerator,
+    PlannerCommand, PlannerContext, PromotionGrant, RetrievalRequest,
 };
 use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::snapshot;

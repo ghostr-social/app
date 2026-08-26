@@ -9,7 +9,7 @@ const CELLULAR_SOURCE: &str = "https://cellular-fast.example/video.mp4";
 pub(super) fn fixture(network_class: NetworkClass) -> NetworkClassFixture {
     let mut snapshot = snapshot(2, 80_000_000, 20_000, 0);
     for (candidate, source) in snapshot.candidates.iter_mut().zip(sources()) {
-        candidate.view_probability = ViewProbability::new(1.0).unwrap();
+        candidate.view_probability = ViewProbability::new(1.0).expect("valid test fixture");
         candidate.origins[0].source = source.to_owned();
     }
     let base = AdaptivePlayabilityPolicy.plan(&snapshot);

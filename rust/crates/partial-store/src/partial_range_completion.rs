@@ -3,19 +3,19 @@
 
 use crate::partial_range_disk as disk;
 use anyhow::Result;
-use std::fmt::{Display, Formatter};
+use core::fmt::{Display, Formatter};
 use std::path::Path;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct IntegrityMismatch;
 
 impl Display for IntegrityMismatch {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> core::fmt::Result {
         formatter.write_str("partial video digest does not match the expected digest")
     }
 }
 
-impl std::error::Error for IntegrityMismatch {}
+impl core::error::Error for IntegrityMismatch {}
 
 /// How a completed file's bytes were checked.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -31,7 +31,7 @@ pub enum Completion {
 /// out of the cache, but most Nostr video notes advertise no `imeta x`
 /// at all: those files are kept as [`Completion::Unverified`] instead
 /// of sitting in the partial pool forever. `None` means "discard".
-pub(crate) async fn judge(partial: &Path, advertised: Option<&str>) -> Result<Option<Completion>> {
+pub(super) async fn judge(partial: &Path, advertised: Option<&str>) -> Result<Option<Completion>> {
     let Some(expected) = advertised else {
         return Ok(Some(Completion::Unverified));
     };
@@ -43,7 +43,7 @@ pub(crate) async fn judge(partial: &Path, advertised: Option<&str>) -> Result<Op
 
 /// Records the verdict beside the completed file so a later run can
 /// still tell a checked file from a merely finished one.
-pub(crate) async fn record(marker: &Path, completion: Completion) -> Result<()> {
+pub(super) async fn record(marker: &Path, completion: Completion) -> Result<()> {
     match completion {
         Completion::Verified => disk::write_marker(marker).await,
         Completion::Unverified => {
@@ -56,7 +56,7 @@ pub(crate) async fn record(marker: &Path, completion: Completion) -> Result<()> 
 /// Reads a completed file's provenance back from disk. A missing marker
 /// reads as unverified, so nothing is ever promoted to "verified" by
 /// losing state.
-pub(crate) async fn recorded(marker: &Path) -> Result<Completion> {
+pub(super) async fn recorded(marker: &Path) -> Result<Completion> {
     let present = disk::file_len(marker).await?.is_some();
     Ok(if present {
         Completion::Verified

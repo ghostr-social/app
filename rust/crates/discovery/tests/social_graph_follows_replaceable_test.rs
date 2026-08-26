@@ -1,11 +1,9 @@
-//! Kind-3 contact lists are replaceable: strictly newer created_at
+//! Kind-3 contact lists are replaceable: strictly newer `created_at`
 //! wins and an equally old or older list is ignored — mirrors
-//! `_newestContact` in lib/platform/nostr/ndk_nostr_social_models.dart.
+//! `_newestContact` in `lib/platform/nostr/ndk_nostr_social_models.dart`.
 
-mod discovery_support;
-
-use discovery_support::{contact_list, p_tag};
-use ghostr_discovery::content::social_graph::SocialGraph;
+use crate::content::social_graph::SocialGraph;
+use crate::tests::discovery_support::{contact_list, p_tag};
 use nostr_sdk::Keys;
 
 #[test]

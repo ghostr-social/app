@@ -1,5 +1,5 @@
 use crate::partial_range_paths::validate_key;
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use std::collections::BTreeSet;
 use std::path::Path;
 

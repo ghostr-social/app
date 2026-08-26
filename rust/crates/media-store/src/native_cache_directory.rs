@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use std::fs;
 use std::path::Path;
 
@@ -7,11 +7,16 @@ use std::path::Path;
 /// otherwise hold disk space for the life of the install.
 const STALE_DOWNLOADS: [&str; 2] = ["mp4", "partial"];
 
-/// Startup housekeeping for the cache directory. The directory itself
-/// outlives the process: the progressive range store and the host model
+/// Performs startup housekeeping for the cache directory.
+///
+/// The directory itself outlives the process: the progressive range store and the host model
 /// live in it, and clearing them would throw away every byte the user
 /// already paid for — device pass 3 measured the store at 8 KB after
 /// every launch. Only the stale whole-file downloads are swept.
+///
+/// # Errors
+///
+/// Returns an error when the cache directory cannot be created, read, or cleaned.
 pub fn prepare_native_cache_directory(directory: &Path) -> Result<()> {
     fs::create_dir_all(directory).context("create native video cache")?;
     for item in fs::read_dir(directory).context("read native video cache")? {

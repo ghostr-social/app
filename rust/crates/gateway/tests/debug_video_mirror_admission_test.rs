@@ -9,7 +9,7 @@ use ghostr_delivery::delivery_events::{command_channel, DeliveryCommand};
 use ghostr_discovery::cache::client_with_event_cache;
 use ghostr_gateway::hls::sessions::HlsSessions;
 use ghostr_gateway::progressive::route::ProgressiveState;
-use ghostr_gateway::router::configured_router_with_progressive_debug;
+use ghostr_gateway::router::{configured_router_with_segmented_debug, GatewayRouterResources};
 use std::sync::Arc;
 use tower::ServiceExt;
 
@@ -17,9 +17,8 @@ use tower::ServiceExt;
 async fn debug_video_registration_preserves_ordered_mirrors() {
     let harness = gateway_fixture::progressive::progressive_harness("debug-video-mirror");
     let (delivery, mut commands) = command_channel();
-    let router = configured_router_with_progressive_debug(
-        HlsSessions::production(),
-        gateway_fixture::media_client(),
+    let router = configured_router_with_segmented_debug(
+        GatewayRouterResources::new(HlsSessions::production(), gateway_fixture::media_client()),
         progressive_state(&harness),
         delivery,
         Arc::new(client_with_event_cache()),
@@ -32,26 +31,29 @@ async fn debug_video_registration_preserves_ordered_mirrors() {
             Request::post("/debug/api/videos")
                 .header("content-type", "application/json")
                 .body(Body::from(body))
-                .unwrap(),
+                .expect("valid test fixture"),
         )
         .await
-        .unwrap();
+        .expect("valid test fixture");
 
     assert_eq!(response.status(), StatusCode::CREATED);
     let body = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
-        .unwrap();
-    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
-    let focus = format!(r#"{{"id":"{}"}}"#, json["id"].as_str().unwrap());
+        .expect("valid test fixture");
+    let json: serde_json::Value = serde_json::from_slice(&body).expect("valid test fixture");
+    let focus = format!(
+        r#"{{"id":"{}"}}"#,
+        json["id"].as_str().expect("valid test fixture")
+    );
     let selected = router
         .oneshot(
             Request::put("/debug/api/focus")
                 .header("content-type", "application/json")
                 .body(Body::from(focus))
-                .unwrap(),
+                .expect("valid test fixture"),
         )
         .await
-        .unwrap();
+        .expect("valid test fixture");
     assert_eq!(selected.status(), StatusCode::NO_CONTENT);
     let DeliveryCommand::Focus(focus) = next_control(&mut commands).await else {
         panic!("expected focus");

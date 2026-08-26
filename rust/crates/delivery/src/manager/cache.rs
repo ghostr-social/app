@@ -2,21 +2,29 @@
 
 use crate::cache_registry::{CacheStatus, CacheVideo};
 use crate::manager::DeliveryWorker;
+use core::ops::Range;
 use ghostr_engine::{PostId, VideoMeta};
-use std::ops::Range;
 
 impl DeliveryWorker {
-    pub(crate) async fn refresh_cache_registry(&self) {
+    pub(super) async fn refresh_cache_registry(&self, observed_at_ms: u64) {
         let mut videos = Vec::new();
+        let mut blocked = Vec::new();
         for post in self.state.candidate_posts() {
-            if let Some(video) = self.cache_video(post).await {
+            if let Some(video) = self.cache_video(post.clone()).await {
+                if self
+                    .state
+                    .planner_capability(&post, observed_at_ms)
+                    .blocks_direct_playback()
+                {
+                    blocked.push(post.as_str().to_owned());
+                }
                 videos.push(video);
             }
         }
-        self.cache.replace(videos);
+        self.cache.replace_with_blocked(videos, blocked);
     }
 
-    pub(crate) fn is_servable(&self, post: &PostId) -> bool {
+    pub(super) fn is_servable(&self, post: &PostId) -> bool {
         self.state
             .catalog()
             .lookup(post)

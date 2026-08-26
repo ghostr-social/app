@@ -7,7 +7,7 @@ use crate::representation::{
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(in crate::catalog) struct HttpGenerationRecord {
-    pub(super) stamp: HttpGenerationStamp,
+    stamp: HttpGenerationStamp,
     observed: EvidenceTime,
 }
 

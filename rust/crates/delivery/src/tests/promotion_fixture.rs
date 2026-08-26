@@ -10,17 +10,17 @@ pub(super) use response::response;
 use setup::{registered, store_setup};
 
 pub(crate) struct PromotionFixture {
-    pub active: InFlightChunks,
-    pub attempt: ChunkAttempt,
-    pub action: StoreAction,
-    pub target: PromotionTarget,
-    pub token: CancelToken,
-    pub store: PartialRangeStore,
+    pub(super) active: InFlightChunks,
+    pub(super) attempt: ChunkAttempt,
+    pub(super) action: StoreAction,
+    pub(super) target: PromotionTarget,
+    pub(super) token: CancelToken,
+    pub(super) store: PartialRangeStore,
     root: PathBuf,
 }
 
 impl PromotionFixture {
-    pub async fn new(valid_until_ms: u64) -> Self {
+    pub(super) async fn new(valid_until_ms: u64) -> Self {
         let setup = store_setup().await;
         let grant = PromotionGrant {
             maximum_bytes: 16,
@@ -38,9 +38,9 @@ impl PromotionFixture {
         }
     }
 
-    pub async fn cleanup(self) {
+    pub(super) async fn cleanup(self) {
         self.store.release_action(&self.action).await;
         drop(self.store);
-        std::fs::remove_dir_all(self.root).unwrap();
+        std::fs::remove_dir_all(self.root).expect("valid test fixture");
     }
 }

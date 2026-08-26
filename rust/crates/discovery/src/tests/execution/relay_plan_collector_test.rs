@@ -1,11 +1,12 @@
 //! The executor keeps every relay's answer. `Client::fetch_events_from`
 //! collects into `Events::new(&filters)`, a set capped at the single
-//! filter's `limit` (see relay_fetch_union_limit_test), so the limit
+//! filter's `limit` (see `relay_fetch_union_limit_test`), so the limit
 //! bounds the *union across relays* and the oldest events fall out.
 //! Draining the pool's stream preserves each relay's contribution before
 //! the engine merges the union.
 
-use crate::relay::io::drain_events;
+use crate::relay::io::axiom_test_support::drain_events;
+
 use nostr_sdk::prelude::*;
 
 fn note(keys: &Keys, created_at: u64) -> Event {

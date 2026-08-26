@@ -40,7 +40,7 @@ async fn old_outcome_is_ignored_after_a_new_session_opens() {
     let (sender, outcomes) = mpsc::unbounded_channel();
     let pump = tokio::spawn(pump_outcomes(
         OutcomeSinks {
-            state: state.clone(),
+            state: std::sync::Arc::clone(&state),
             bootstrap,
             candidates: None,
         },

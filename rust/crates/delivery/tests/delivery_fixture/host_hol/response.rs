@@ -9,7 +9,7 @@ pub(super) fn head_response() -> Response {
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::ETAG, "\"fixture-host-hol\"")
         .body(Body::empty())
-        .unwrap()
+        .expect("valid test fixture")
 }
 
 pub(super) fn range_response(headers: &HeaderMap) -> Response {
@@ -24,7 +24,7 @@ pub(super) fn range_response(headers: &HeaderMap) -> Response {
             format!("bytes {start}-{}/64", end - 1),
         )
         .body(Body::from(vec![1; (end - start) as usize]))
-        .unwrap()
+        .expect("valid test fixture")
 }
 
 fn requested(headers: &HeaderMap) -> (u64, u64) {
@@ -32,8 +32,11 @@ fn requested(headers: &HeaderMap) -> (u64, u64) {
         .get(header::RANGE)
         .and_then(|value| value.to_str().ok())
         .unwrap_or("bytes=0-7");
-    let (start, end) = value.trim_start_matches("bytes=").split_once('-').unwrap();
-    let start = start.parse().unwrap();
+    let (start, end) = value
+        .trim_start_matches("bytes=")
+        .split_once('-')
+        .expect("valid test fixture");
+    let start = start.parse().expect("valid test fixture");
     let end = end.parse::<u64>().unwrap_or(63).min(63) + 1;
     (start, end)
 }

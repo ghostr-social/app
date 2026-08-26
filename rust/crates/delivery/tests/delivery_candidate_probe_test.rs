@@ -9,7 +9,7 @@ use delivery_fixture::wait::wait_total_len;
 #[tokio::test]
 async fn an_unsized_candidate_enters_the_probe_pool_before_focus() {
     let log = hit_log();
-    let origin = serve_recording("origin", media_body(), log.clone()).await;
+    let origin = serve_recording("origin", media_body(), std::sync::Arc::clone(&log)).await;
     let harness = start_harness("ghostr-candidate-probe", DeliveryOptions::default());
 
     harness

@@ -2,9 +2,9 @@ use crate::plan_executor::{PlanExecutor, PlanFuture, PlanPage, PlanPageFuture, P
 use crate::retrieval_types::{EventProgress, RetrievalOutcome};
 use crate::scheduler::{start_discovery_scheduler, DiscoverySchedulerConfig};
 use crate::tests::scheduler_support::{context, next_outcome, next_started, note_at, request};
+use core::time::Duration;
 use ghostr_engine::{adaptive::DiscoveryDemand, DataUsageLevel};
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::{mpsc, watch};
 
 struct IncompleteExecutor {

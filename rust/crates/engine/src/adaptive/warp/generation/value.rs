@@ -80,8 +80,8 @@ fn cache_gain(candidate: &CandidateSnapshot, action: &ActionKind, reach_bps: u64
         return 0;
     }
     let bytes = match action {
-        ActionKind::FetchWhole { maximum_bytes } => *maximum_bytes,
-        ActionKind::HlsBootstrap { maximum_bytes, .. } => *maximum_bytes,
+        ActionKind::FetchWhole { maximum_bytes }
+        | ActionKind::HlsBootstrap { maximum_bytes, .. } => *maximum_bytes,
         ActionKind::CacheUpgrade(range) => range.len(),
         _ => 0,
     };

@@ -3,7 +3,7 @@ use crate::playback::{
     PlaybackObservation, PlaybackPhase,
 };
 use crate::rendition::{QualitySelectionInput, Rendition, RenditionId, RenditionSet};
-use std::time::Duration;
+use core::time::Duration;
 
 pub(crate) fn ladder() -> RenditionSet {
     RenditionSet::try_new(vec![
@@ -61,6 +61,7 @@ pub(crate) fn phase_input(
     )
 }
 
+#[derive(Clone, Copy)]
 struct PlaybackCase {
     buffer_seconds: u64,
     playback_rate_milli: u16,

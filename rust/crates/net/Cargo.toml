@@ -2,6 +2,7 @@
 name = "ghostr-net"
 version = "0.1.0"
 edition = "2021"
+publish = false
 description = "Guarded outbound media HTTP: public-address checks, DNS resolution, range and content-type handling."
 
 [dependencies]

@@ -3,7 +3,7 @@ use crate::manager::stats::StatsKeeper;
 use crate::manager::transfers::ProbeObservation;
 use anyhow::anyhow;
 use ghostr_engine::PostId;
-use std::time::Duration;
+use core::time::Duration;
 
 #[tokio::test]
 async fn failed_host_stats_save_stays_dirty_for_the_next_attempt() {

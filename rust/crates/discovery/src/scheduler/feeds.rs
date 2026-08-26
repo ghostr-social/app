@@ -3,9 +3,9 @@
 use crate::query::video_filters::DiscoveryRequest;
 use crate::retrieval_types::FeedContext;
 use crate::scheduler::control::FeedQueryState;
+use core::time::Duration;
 use nostr_sdk::Timestamp;
 use std::collections::HashMap;
-use std::time::Duration;
 
 pub(crate) const FEED_REFRESH_BACKOFF: Duration = Duration::from_secs(8);
 const FEED_HISTORY_PAGE_BURST: u8 = 3;
@@ -53,17 +53,17 @@ impl FeedBook {
         self.active = Some(context);
     }
 
-    pub(crate) fn active(&self) -> Option<&FeedContext> {
+    pub(super) fn active(&self) -> Option<&FeedContext> {
         self.active.as_ref()
     }
 
-    pub(crate) fn reset_session(&mut self) {
+    pub(super) fn reset_session(&mut self) {
         self.active = None;
         self.feeds.clear();
         self.inflight.clear();
     }
 
-    pub(crate) fn close(&mut self, context: &FeedContext) {
+    pub(super) fn close(&mut self, context: &FeedContext) {
         self.feeds.remove(context);
         self.inflight.remove(context);
         if self.active.as_ref() == Some(context) {
@@ -71,11 +71,11 @@ impl FeedBook {
         }
     }
 
-    pub(crate) fn base_request(&self, context: &FeedContext) -> Option<&DiscoveryRequest> {
+    pub(super) fn base_request(&self, context: &FeedContext) -> Option<&DiscoveryRequest> {
         self.feeds.get(context).map(|feed| &feed.request)
     }
 
-    pub(crate) fn older_page_request(
+    pub(super) fn older_page_request(
         &self,
         context: &FeedContext,
         older_than: Option<Timestamp>,
@@ -88,23 +88,23 @@ impl FeedBook {
         })
     }
 
-    pub(crate) fn mark_widened(&mut self, context: &FeedContext) {
+    pub(super) fn mark_widened(&mut self, context: &FeedContext) {
         if let Some(feed) = self.feeds.get_mut(context) {
             feed.widened = true;
         }
     }
 
-    pub(crate) fn record_start(&mut self, context: &FeedContext) {
+    pub(super) fn record_start(&mut self, context: &FeedContext) {
         *self.inflight.entry(context.clone()).or_default() += 1;
     }
 
-    pub(crate) fn record_done(&mut self, context: &FeedContext) {
+    pub(super) fn record_done(&mut self, context: &FeedContext) {
         if let Some(count) = self.inflight.get_mut(context) {
             *count = count.saturating_sub(1);
         }
     }
 
-    pub(crate) fn record_page(
+    pub(super) fn record_page(
         &mut self,
         context: &FeedContext,
         cursor: Option<Timestamp>,
@@ -125,24 +125,24 @@ impl FeedBook {
         }
     }
 
-    pub(crate) fn record_failure(&mut self, context: &FeedContext) {
+    pub(super) fn record_failure(&mut self, context: &FeedContext) {
         if let Some(feed) = self.feeds.get_mut(context) {
             feed.loaded = true;
             feed.failed = true;
         }
     }
 
-    pub(crate) fn record_playable(&mut self, context: &FeedContext) {
+    pub(super) fn record_playable(&mut self, context: &FeedContext) {
         if let Some(feed) = self.feeds.get_mut(context) {
             feed.playable = true;
         }
     }
 
-    pub(crate) fn has_playable(&self, context: &FeedContext) -> bool {
+    pub(super) fn has_playable(&self, context: &FeedContext) -> bool {
         self.feeds.get(context).is_some_and(|feed| feed.playable)
     }
 
-    pub(crate) fn head_request(&self, context: &FeedContext) -> Option<DiscoveryRequest> {
+    pub(super) fn head_request(&self, context: &FeedContext) -> Option<DiscoveryRequest> {
         let feed = self.feeds.get(context)?;
         Some(DiscoveryRequest {
             older_than: None,
@@ -150,7 +150,7 @@ impl FeedBook {
         })
     }
 
-    pub(crate) fn is_continuous(&self, context: &FeedContext) -> bool {
+    pub(super) fn is_continuous(&self, context: &FeedContext) -> bool {
         self.feeds.get(context).is_some_and(|feed| feed.continuous)
     }
 
@@ -171,7 +171,7 @@ impl FeedBook {
         Some(FeedHuntAction::OlderNow)
     }
 
-    pub(crate) fn total_inflight(&self) -> usize {
+    pub(super) fn total_inflight(&self) -> usize {
         self.inflight.values().sum()
     }
 

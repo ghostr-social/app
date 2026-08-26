@@ -1,3 +1,4 @@
+import 'package:ghostr/core/media/playback_asset_authority.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
 
 enum VideoDeliveryPhase { preparing, startable, failed }
@@ -11,6 +12,7 @@ final class VideoDeliverySnapshot {
     this.totalBytes,
     this.eta,
     this.detail,
+    this.authority,
   });
 
   final PlaybackDeliveryId deliveryId;
@@ -19,6 +21,7 @@ final class VideoDeliverySnapshot {
   final BigInt? totalBytes;
   final Duration? eta;
   final String? detail;
+  final PlaybackAssetAuthority? authority;
 }
 
 /// Live readiness emitted by the delivery engine for focused media.

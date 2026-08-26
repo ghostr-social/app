@@ -7,15 +7,15 @@ use super::PlannerContext;
 pub struct SegmentedStorageBudget(u64);
 
 impl SegmentedStorageBudget {
-    pub const fn new(available_bytes: u64) -> Self {
+    pub(crate) const fn new(available_bytes: u64) -> Self {
         Self(available_bytes)
     }
 
-    pub const fn available_bytes(self) -> u64 {
+    pub(crate) const fn available_bytes(self) -> u64 {
         self.0
     }
 
-    pub const fn is_empty(&self) -> bool {
+    pub(super) const fn is_empty(&self) -> bool {
         self.0 == 0
     }
 

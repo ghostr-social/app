@@ -1,4 +1,5 @@
-use crate::segmented::cache::{StageBlock, StageReservation, StoredStage};
+use crate::segmented::cache::axiom_test_support::{StageBlock, StoredStage};
+use crate::segmented::cache::StageReservation;
 use crate::segmented::prepare::PreparedObject;
 use crate::segmented::SegmentedCache;
 use ghostr_engine::PostId;
@@ -20,7 +21,7 @@ fn partial_blocks_remain_shared_until_one_final_assembly() {
             cache.store_stage_block(
                 &post,
                 1,
-                StageBlock::partial((index * 4) as u64, object(body.clone()))
+                StageBlock::partial((index * 4) as u64, object(std::sync::Arc::clone(body)))
             ),
             Some(StoredStage::Partial)
         ));
@@ -29,12 +30,12 @@ fn partial_blocks_remain_shared_until_one_final_assembly() {
         .iter()
         .take(3)
         .all(|body| Arc::strong_count(body) == 2));
-    let reservation = StageReservation::final_block(4, 16).unwrap();
+    let reservation = StageReservation::final_block(4, 16).expect("valid test fixture");
     assert!(cache.mark_stage_preparing(&post, 1, 500, reservation));
     let Some(StoredStage::Complete(completed)) = cache.store_stage_block(
         &post,
         1,
-        StageBlock::complete(12, object(bodies[3].clone())),
+        StageBlock::complete(12, object(std::sync::Arc::clone(&bodies[3]))),
     ) else {
         panic!("final block assembles the staged object");
     };
@@ -51,7 +52,7 @@ fn partial_blocks_remain_shared_until_one_final_assembly() {
 fn object(body: Arc<[u8]>) -> PreparedObject {
     PreparedObject {
         request_url: "source".to_owned(),
-        final_url: Url::parse("https://cdn.example/source").unwrap(),
+        final_url: Url::parse("https://cdn.example/source").expect("valid test fixture"),
         body,
         content_type: None,
         cache: Default::default(),

@@ -1,12 +1,12 @@
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::concurrency_origin::ControlledOrigin;
 use delivery_fixture::hls::{serve, HlsGate};
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::{base_params, DeliveryOptions};
 use delivery_fixture::start_harness;
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams};
-use std::time::Duration;
 
 #[tokio::test]
 async fn progressive_to_hls_releases_the_obsolete_network_request() {
@@ -29,13 +29,13 @@ async fn progressive_to_hls_releases_the_obsolete_network_request() {
     tokio::time::timeout(Duration::from_secs(2), hls.started.acquire())
         .await
         .expect("HLS bootstrap receives the released slot")
-        .unwrap()
+        .expect("valid test fixture")
         .forget();
     assert!(
         !old.send_byte().await,
         "obsolete progressive body is still live"
     );
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }
 

@@ -26,6 +26,8 @@ pub(super) struct CandidateState {
     preferred_source: Option<String>,
     startup: Option<StartupState>,
     player_preparation: u8,
+    #[serde(default, skip_serializing_if = "is_false")]
+    direct_playback_blocked: bool,
     timeline_probe: Option<PlayableState>,
     playable_ranges: Vec<PlayableState>,
     demanded: Option<RangeState>,
@@ -38,6 +40,10 @@ pub(super) struct CandidateState {
 }
 
 impl CandidateState {
+    pub(super) const fn direct_playback_blocked(&self) -> bool {
+        self.direct_playback_blocked
+    }
+
     pub(super) fn capture(value: &CandidateSnapshot, privacy: &DecisionPrivacy) -> Self {
         Self {
             post: privacy.post(value.post.as_str()),
@@ -54,6 +60,7 @@ impl CandidateState {
                 .map(|item| privacy.source(item)),
             startup: value.startup.as_ref().map(StartupState::capture),
             player_preparation: preparation_code(value.player_preparation),
+            direct_playback_blocked: value.direct_playback_blocked,
             timeline_probe: value.timeline_probe.map(PlayableState::capture),
             playable_ranges: map_playable(&value.playable_ranges),
             demanded: value.demanded.map(RangeState::capture),
@@ -88,6 +95,7 @@ impl CandidateState {
             preferred_source: self.preferred_source.clone(),
             startup: self.startup.as_ref().map(StartupState::startup),
             player_preparation: preparation(self.player_preparation),
+            direct_playback_blocked: self.direct_playback_blocked,
             timeline_probe: self.timeline_probe.map(PlayableState::playable),
             playable_ranges: self
                 .playable_ranges
@@ -104,6 +112,10 @@ impl CandidateState {
             evidence: self.evidence.clone(),
         }
     }
+}
+
+const fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

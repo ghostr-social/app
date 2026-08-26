@@ -21,6 +21,6 @@ async fn repeated_full_responses_to_continuation_exhaust_the_retry_budget() {
     let terminal = hls_terminal_wait::wait_terminal(&harness.segmented, "stream").await;
 
     assert_eq!(terminal.phase, SegmentedPhase::Failed);
-    assert_eq!(requests.lock().unwrap().len(), 5);
+    assert_eq!(requests.lock().expect("valid test fixture").len(), 5);
     std::fs::remove_dir_all(&harness.root).ok();
 }

@@ -1,6 +1,6 @@
 use crate::manager::traffic::{TrafficEvent, TrafficMeter, TrafficWindow, TransferKey};
 use ghostr_engine::host_stats::HostStats;
-use std::time::Duration;
+use core::time::Duration;
 use tokio::time::Instant;
 
 #[test]

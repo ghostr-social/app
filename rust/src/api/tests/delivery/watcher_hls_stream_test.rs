@@ -3,9 +3,9 @@ use crate::api::delivery_types::{FfiDeliveryEvent, FfiDeliveryEventKind};
 use crate::api::runtime::tracked_items::TrackedItems;
 use crate::api::tests::support::temp_store;
 use crate::engine::{DeliveryKind, VideoMeta};
+use core::time::Duration;
 use ghostr_delivery::cache_registry::CacheRegistry;
 use ghostr_delivery::segmented::SegmentedCache;
-use std::time::Duration;
 use tokio::sync::mpsc;
 
 struct ChannelOut(mpsc::UnboundedSender<FfiDeliveryEvent>);
@@ -31,8 +31,8 @@ async fn includes_hls_posts_in_the_readiness_baseline() {
 
     let event = tokio::time::timeout(Duration::from_secs(10), events.recv())
         .await
-        .unwrap()
-        .unwrap();
+        .expect("test fixture precondition must hold")
+        .expect("test fixture precondition must hold");
     assert_eq!(event.post_id, "stream");
     assert_eq!(event.kind, FfiDeliveryEventKind::Readiness);
     assert!(!event.startable);

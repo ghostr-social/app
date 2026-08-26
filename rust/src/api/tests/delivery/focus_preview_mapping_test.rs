@@ -23,7 +23,7 @@ fn focus_accepts_only_a_valid_inline_blurhash_as_a_preview() {
 
 fn preview(item: crate::api::delivery_types::FfiFocusItem) -> Option<PreviewDescriptor> {
     delivery_focus(&[item], 0, 0, 1, FfiFocusTransition::UserNavigation, None)
-        .unwrap()
+        .expect("test fixture precondition must hold")
         .previews
         .first()
         .map(|preview| preview.descriptor)

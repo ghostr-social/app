@@ -1,7 +1,5 @@
-mod store_fixture;
-
+use crate::tests::store_fixture::{discard, plain_store, temp_root};
 use std::sync::Arc;
-use store_fixture::{discard, plain_store, temp_root};
 use tokio::sync::Mutex;
 
 #[tokio::test]
@@ -23,7 +21,7 @@ async fn interrupted_policy_eviction_never_reloads_its_sparse_scratch_as_media()
         .await
         .expect("block manifest commit");
     store
-        .evict_ranges("clip", std::slice::from_ref(&(4..8)))
+        .evict_ranges("clip", core::slice::from_ref(&(4..8)))
         .await
         .expect_err("eviction commit must fail");
     tokio::fs::remove_dir(&manifest)

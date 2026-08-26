@@ -1,6 +1,6 @@
 use crate::progressive::capabilities::ProgressiveCapabilityId;
 use crate::progressive::route::ProgressiveState;
-use anyhow::Context;
+use anyhow::Context as _;
 use ghostr_delivery::cache_registry::CacheRegistry;
 use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::VideoMeta;
@@ -28,7 +28,7 @@ pub(super) async fn issue(
             return state.capabilities.issue(&snapshot).await;
         }
         let changed = async {
-            tokio::select! { _ = store_wake => {}, _ = cache_wake => {} }
+            tokio::select! { () = store_wake => {}, () = cache_wake => {} }
         };
         timeout_at(deadline, changed)
             .await

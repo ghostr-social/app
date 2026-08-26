@@ -40,18 +40,12 @@ fn retrieval_matches(action: &RecordedWarpAction) -> bool {
             RecordedWarpActionKind::Prefix {
                 bytes_start,
                 bytes_end,
-            },
-            command,
-        )
-        | (
-            RecordedWarpActionKind::Tail {
+            }
+            | RecordedWarpActionKind::Tail {
                 bytes_start,
                 bytes_end,
-            },
-            command,
-        )
-        | (
-            RecordedWarpActionKind::FetchRange {
+            }
+            | RecordedWarpActionKind::FetchRange {
                 bytes_start,
                 bytes_end,
             },

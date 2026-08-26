@@ -3,7 +3,7 @@ use crate::manager::state::DeliveryState;
 use ghostr_engine::adaptive::StorageSnapshot;
 use ghostr_engine::host_stats::ThroughputSample;
 use std::collections::HashMap;
-use std::time::Duration;
+use core::time::Duration;
 
 pub(in crate::tests) struct PlanScenario<'a> {
     pub(in crate::tests) state: DeliveryState,

@@ -31,7 +31,7 @@ pub(crate) enum ResponseReply {
     },
 }
 
-pub(crate) fn classify(
+pub(super) fn classify(
     response: &MediaResponse,
     request: RetrievalRequest,
     conditional: bool,
@@ -80,7 +80,7 @@ fn classify_range(
             promoted: true,
         });
     }
-    bounded_or_ignored(response, expected, range_support)
+    Ok(bounded_or_ignored(response, expected, range_support))
 }
 
 fn classify_whole(
@@ -125,9 +125,9 @@ fn bounded_or_ignored(
     response: &MediaResponse,
     expected: ByteRange,
     range_support: Option<bool>,
-) -> Result<ResponseReply> {
+) -> ResponseReply {
     if expected.start != 0 {
-        return Ok(ResponseReply::Ignored { range_support });
+        return ResponseReply::Ignored { range_support };
     }
     let request = match response.content_length() {
         Some(length) if length > 0 && length <= expected.end => RetrievalRequest::FetchWhole {
@@ -141,11 +141,11 @@ fn bounded_or_ignored(
             promotion: None,
         },
     };
-    Ok(ResponseReply::Body {
+    ResponseReply::Body {
         request,
         range_support,
         promoted: false,
-    })
+    }
 }
 
 fn validate_contract(length: Option<u64>, contract: WholeBodyContract) -> Result<()> {

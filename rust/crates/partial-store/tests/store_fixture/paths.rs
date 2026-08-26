@@ -1,5 +1,5 @@
+use core::sync::atomic::{AtomicU64, Ordering};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// A directory no other caller holds. The clock alone cannot promise
@@ -7,7 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 /// built in the same instant would share a root, so the process and a
 /// per-call counter carry the uniqueness and the reading only separates
 /// this run from an earlier one that left a directory behind.
-pub fn temp_root(prefix: &str) -> PathBuf {
+pub(super) fn temp_root(prefix: &str) -> PathBuf {
     static NEXT: AtomicU64 = AtomicU64::new(0);
     let nonce = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -18,7 +18,7 @@ pub fn temp_root(prefix: &str) -> PathBuf {
     std::env::temp_dir().join(format!("{prefix}-{nonce}-{process}-{sequence}"))
 }
 
-pub fn discard(root: &Path) {
+pub(super) fn discard(root: &Path) {
     if root.exists() {
         std::fs::remove_dir_all(root).expect("remove store");
     }

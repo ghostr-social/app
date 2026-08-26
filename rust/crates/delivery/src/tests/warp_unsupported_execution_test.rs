@@ -1,4 +1,5 @@
-use crate::manager::reconcile_warp::{directive_for, WarpDirective};
+use crate::manager::reconcile_warp::axiom_test_support::directive_for;
+use crate::manager::reconcile_warp::WarpDirective;
 use ghostr_engine::adaptive::{PlannerCommand, PromotionGrant, TransformKind};
 use ghostr_engine::{ActionId, PostId};
 

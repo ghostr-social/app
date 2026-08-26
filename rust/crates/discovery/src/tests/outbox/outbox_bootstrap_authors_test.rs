@@ -3,7 +3,7 @@
 use crate::outbox::bootstrap::OutboxBootstrap;
 use crate::tests::outbox_support::{empty_directory, recording_executor};
 use crate::tests::support::{author, filter_json, AUTHOR_A};
-use std::time::Duration;
+use core::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 

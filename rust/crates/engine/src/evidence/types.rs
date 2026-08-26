@@ -29,7 +29,7 @@ impl EvidenceValidator {
             .then_some(Self::LastModified(value))
     }
 
-    pub fn is_strong(&self) -> bool {
+    pub(crate) fn is_strong(&self) -> bool {
         matches!(self, Self::StrongEtag(_))
     }
 }
@@ -51,18 +51,18 @@ pub enum EvidenceScope {
 }
 
 impl EvidenceScope {
-    pub fn url(value: impl Into<String>) -> Self {
+    pub(crate) fn url(value: impl Into<String>) -> Self {
         Self::Url(value.into())
     }
 
-    pub fn validated(url: impl Into<String>, validator: EvidenceValidator) -> Self {
+    pub(crate) fn validated(url: impl Into<String>, validator: EvidenceValidator) -> Self {
         Self::ValidatedUrl {
             url: url.into(),
             validator,
         }
     }
 
-    pub fn event_url(event: impl Into<String>, url: impl Into<String>) -> Self {
+    pub(super) fn event_url(event: impl Into<String>, url: impl Into<String>) -> Self {
         Self::EventUrl {
             event: event.into(),
             url: url.into(),
@@ -78,7 +78,7 @@ impl EvidenceScope {
         }
     }
 
-    pub(crate) fn validator(&self) -> Option<&EvidenceValidator> {
+    fn validator(&self) -> Option<&EvidenceValidator> {
         match self {
             Self::ValidatedUrl { validator, .. } => Some(validator),
             _ => None,
@@ -114,39 +114,39 @@ pub enum EvidenceSource {
 }
 
 impl EvidenceSource {
-    pub fn nostr(issuer: impl Into<String>) -> Self {
+    pub(crate) fn nostr(issuer: impl Into<String>) -> Self {
         Self::Nostr {
             issuer: issuer.into(),
             client: None,
         }
     }
-    pub fn nostr_with_client(issuer: impl Into<String>, client: Option<String>) -> Self {
+    pub(super) fn nostr_with_client(issuer: impl Into<String>, client: Option<String>) -> Self {
         Self::Nostr {
             issuer: issuer.into(),
             client,
         }
     }
-    pub fn head(origin: impl Into<String>) -> Self {
+    pub(crate) fn head(origin: impl Into<String>) -> Self {
         Self::Head {
             origin: origin.into(),
         }
     }
-    pub fn response(origin: impl Into<String>) -> Self {
+    pub(crate) fn response(origin: impl Into<String>) -> Self {
         Self::Response {
             origin: origin.into(),
         }
     }
-    pub fn parser(profile: impl Into<String>) -> Self {
+    pub(crate) fn parser(profile: impl Into<String>) -> Self {
         Self::Parser {
             profile: profile.into(),
         }
     }
-    pub fn hash(origin: impl Into<String>) -> Self {
+    pub(crate) fn hash(origin: impl Into<String>) -> Self {
         Self::Hash {
             origin: origin.into(),
         }
     }
-    pub fn playback(client: impl Into<String>) -> Self {
+    pub(crate) fn playback(client: impl Into<String>) -> Self {
         Self::Playback {
             client: client.into(),
         }
@@ -164,11 +164,11 @@ impl EvidenceSource {
         }
     }
 
-    pub(crate) fn direct_bytes(&self) -> bool {
+    pub(super) fn direct_bytes(&self) -> bool {
         matches!(self, Self::CompleteBytes { .. } | Self::Hash { .. })
     }
 
-    pub(crate) fn structural(&self) -> bool {
+    pub(super) fn structural(&self) -> bool {
         matches!(
             self,
             Self::Parser { .. } | Self::Hash { .. } | Self::Playback { .. }

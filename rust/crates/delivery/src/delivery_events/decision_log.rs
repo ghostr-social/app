@@ -28,6 +28,7 @@ pub(crate) struct DecisionToken {
     armed: bool,
 }
 
+#[derive(Clone, Copy)]
 pub(crate) struct RequestDecisionBinding<'a> {
     action: ghostr_engine::ActionId,
     request: &'a ghostr_engine::adaptive::ExecutedRequest,
@@ -97,8 +98,8 @@ impl Default for DecisionLog {
     }
 }
 
-impl std::fmt::Debug for DecisionLog {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for DecisionLog {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         formatter
             .debug_struct("DecisionLog")
             .finish_non_exhaustive()
@@ -129,7 +130,10 @@ impl DecisionLog {
             store.completed.push_back(sequence);
         }
         trim(&mut store);
-        debug_assert!(!legacy_noop || !pending);
+        debug_assert!(
+            !legacy_noop || !pending,
+            "a legacy no-op decision must resolve during publication"
+        );
         pending.then(|| DecisionToken::new(sequence, &self.store))
     }
 
@@ -137,6 +141,17 @@ impl DecisionLog {
         DecisionHistorySnapshot {
             records: self.lock().records.iter().cloned().collect(),
         }
+    }
+
+    pub(super) fn pseudonymized_post(&self, value: &str) -> String {
+        self.privacy.pseudonymized_post(value)
+    }
+
+    pub(super) fn sanitized_plan(
+        &self,
+        value: &ghostr_engine::adaptive::AllocationPlan,
+    ) -> ghostr_engine::adaptive::AllocationPlan {
+        self.privacy.sanitized_plan(value)
     }
 
     fn lock(&self) -> MutexGuard<'_, DecisionStore> {

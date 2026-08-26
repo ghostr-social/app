@@ -1,9 +1,9 @@
 use super::{ProgressiveAssetAuthority, ProgressiveCapabilityId, TOKEN_BYTES};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-use base64::Engine;
-use rand::RngCore;
+use base64::Engine as _;
+use core::time::Duration;
+use rand::RngCore as _;
 use std::collections::HashMap;
-use std::time::Duration;
 use tokio::time::Instant;
 
 #[derive(Default)]

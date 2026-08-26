@@ -3,7 +3,7 @@ use crate::partial_range_completion::{self as completion, Completion};
 use crate::partial_range_disk as disk;
 use crate::partial_range_paths::StorePaths;
 use crate::partial_range_store::replacement_cleanup;
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use std::path::{Path, PathBuf};
 
 pub(super) async fn publish(

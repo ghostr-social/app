@@ -2,8 +2,8 @@ use super::SparseResponseState;
 use crate::partial_range_disk as disk;
 use crate::partial_range_store::PartialRangeStore;
 use anyhow::{ensure, Result};
-use sha2::Digest;
-use std::ops::Range;
+use core::ops::Range;
+use sha2::Digest as _;
 
 struct CommitRecord {
     span: Range<u64>,

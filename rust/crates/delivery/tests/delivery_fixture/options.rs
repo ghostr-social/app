@@ -1,10 +1,10 @@
 //! Delivery-manager settings scaled for deterministic fixture servers.
 
+use core::time::Duration;
 use ghostr_delivery::manager::retry::RetryPolicy;
 use ghostr_delivery::manager::DeliveryTuning;
 use ghostr_engine::{DataUsageLevel, EngineParams};
 use std::sync::Arc;
-use std::time::Duration;
 
 pub struct DeliveryOptions {
     pub params: EngineParams,

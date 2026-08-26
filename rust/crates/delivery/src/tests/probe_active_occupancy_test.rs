@@ -12,7 +12,7 @@ fn representation_change_keeps_a_live_probe_occupied_until_completion() {
     let mut probes = MetadataProbePool::new(1);
     assert_eq!(
         probes
-            .claim(&catalog, std::slice::from_ref(&post), &retry)
+            .claim(&catalog, core::slice::from_ref(&post), &retry)
             .len(),
         1
     );
@@ -20,7 +20,7 @@ fn representation_change_keeps_a_live_probe_occupied_until_completion() {
     catalog.upsert(post.clone(), unknown_meta("new"));
     probes.representation_changed(&post);
     assert!(probes
-        .claim(&catalog, std::slice::from_ref(&post), &retry)
+        .claim(&catalog, core::slice::from_ref(&post), &retry)
         .is_empty());
 
     probes.release(&post);
@@ -38,14 +38,14 @@ fn manager_reset_keeps_a_live_probe_occupied_until_completion() {
     let mut probes = MetadataProbePool::new(1);
     assert_eq!(
         probes
-            .claim(&catalog, std::slice::from_ref(&first), &retry)
+            .claim(&catalog, core::slice::from_ref(&first), &retry)
             .len(),
         1
     );
 
     probes.clear();
     assert!(probes
-        .claim(&catalog, std::slice::from_ref(&second), &retry)
+        .claim(&catalog, core::slice::from_ref(&second), &retry)
         .is_empty());
 
     probes.release(&first);
@@ -63,7 +63,7 @@ fn manager_reset_invalidates_a_live_probe_even_when_identity_numbers_restart() {
     let mut probes = MetadataProbePool::new(1);
     assert_eq!(
         probes
-            .claim(&catalog, std::slice::from_ref(&post), &retry)
+            .claim(&catalog, core::slice::from_ref(&post), &retry)
             .len(),
         1
     );
@@ -74,7 +74,7 @@ fn manager_reset_invalidates_a_live_probe_even_when_identity_numbers_restart() {
 
     assert!(probes.current_identity(&catalog, &post, &source).is_none());
     assert!(probes
-        .claim(&catalog, std::slice::from_ref(&post), &retry)
+        .claim(&catalog, core::slice::from_ref(&post), &retry)
         .is_empty());
     probes.release(&post);
     assert_eq!(probes.claim(&catalog, &[post], &retry).len(), 1);

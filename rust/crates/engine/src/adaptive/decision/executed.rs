@@ -11,12 +11,12 @@ pub struct ExecutedRequest {
 }
 
 impl ExecutedRequest {
-    pub(crate) fn has_exact_resources(&self) -> bool {
+    pub(super) fn has_exact_resources(&self) -> bool {
         self.resources == resources_for(self.request)
     }
 }
 
-pub(crate) fn resources_for(request: RetrievalRequest) -> ResourceCost {
+fn resources_for(request: RetrievalRequest) -> ResourceCost {
     let bytes = request.immediate_network_bytes();
     ResourceCost::new(bytes, bytes, 0, 1)
 }

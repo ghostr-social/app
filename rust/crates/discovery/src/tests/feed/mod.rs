@@ -1,3 +1,4 @@
+mod assembly;
 mod feed_cursor_multi_filter_test;
 mod feed_cursor_wire_filter_test;
 mod feed_spec_main_feed_routing_test;

@@ -47,7 +47,7 @@ impl RequestOccupancy {
         }
     }
 
-    pub(crate) fn replay_project(&self, source: &impl Fn(&str) -> String) -> Self {
+    pub(super) fn replay_project(&self, source: &impl Fn(&str) -> String) -> Self {
         let authorities = self
             .authorities
             .iter()
@@ -63,7 +63,7 @@ impl RequestOccupancy {
         }
     }
 
-    pub(crate) fn replay_bounded(&self, limit: usize) -> bool {
+    pub(super) fn replay_bounded(&self, limit: usize) -> bool {
         self.authorities.len() <= limit
     }
 }

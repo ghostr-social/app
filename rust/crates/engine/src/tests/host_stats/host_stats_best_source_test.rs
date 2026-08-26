@@ -2,7 +2,7 @@
 //! performance so the downloader stops falling back blindly.
 
 use crate::host_stats::{host_of, HostStats};
-use std::time::Duration;
+use core::time::Duration;
 
 fn urls(raw: &[&str]) -> Vec<String> {
     raw.iter().map(|url| (*url).to_owned()).collect()

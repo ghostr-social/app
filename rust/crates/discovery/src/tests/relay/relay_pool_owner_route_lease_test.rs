@@ -15,15 +15,15 @@ async fn queued_configuration_cannot_replace_a_resolved_route_before_read() {
     let client = Arc::new(Client::default());
     let io = Arc::new(TestRelayIo::blocked());
     let owner = Arc::new(RelayPoolOwner::with_io(
-        client.clone(),
+        std::sync::Arc::clone(&client),
         configuration(OLD),
-        io.clone(),
+        std::sync::Arc::<TestRelayIo>::clone(&io),
     ));
     let route = owner
         .begin_route(SessionGeneration::initial())
         .await
         .expect("route lease");
-    let config_owner = owner.clone();
+    let config_owner = std::sync::Arc::clone(&owner);
     let (finished, mut config_done) = oneshot::channel();
     tokio::spawn(async move {
         let mut guard = config_owner.begin_configuration().await;
@@ -33,7 +33,7 @@ async fn queued_configuration_cannot_replace_a_resolved_route_before_read() {
     tokio::task::yield_now().await;
 
     let read = tokio::spawn({
-        let route = route.clone();
+        let route = std::sync::Arc::clone(&route);
         async move { route.read(read_request(OLD)).await }
     });
     io.query_started.notified().await;

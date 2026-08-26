@@ -4,6 +4,7 @@ mod focus_wait_fixture;
 mod transform_delivery_fixture;
 mod transform_wait_fixture;
 
+use delivery_fixture::evidence::DeliveryEvidence as _;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::{start_harness_with_store, temp_directory};
@@ -38,14 +39,18 @@ async fn exact_tail_mp4_failure_reaches_the_production_fast_start_transform() {
         transform: Some(Arc::new(FastStartRemuxBackend::production())),
         ..DeliveryOptions::default()
     };
-    let harness = start_harness_with_store(store.clone(), root, options);
+    let harness = start_harness_with_store(std::sync::Arc::clone(&store), root, options);
     harness.handle.update_focus(focus_now(vec![item], 0, 0));
     wait_for_focus(&harness.cache).await;
     report_unsupported(&harness.handle, &store, input.clone()).await;
 
     let transformed = wait_for_transform(&store, &input, &harness.handle).await;
     let total = transformed.total_len().expect("derived total");
-    let output = store.read_range("post", 0..total).await.unwrap().unwrap();
+    let output = store
+        .read_range("post", 0..total)
+        .await
+        .expect("valid test fixture")
+        .expect("valid test fixture");
     assert_eq!(top_level_boxes(&output), [*b"ftyp", *b"moov", *b"mdat"]);
     assert!(harness.handle.decision_history().records.iter().any(|record| {
         matches!(record.eventual_outcome, DecisionOutcome::Succeeded { bytes, .. } if bytes == total)
@@ -54,6 +59,6 @@ async fn exact_tail_mp4_failure_reaches_the_production_fast_start_transform() {
                 Some(selected) if matches!(selected.command, RecordedWarpCommand::Transform { .. })
             )
     }));
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }

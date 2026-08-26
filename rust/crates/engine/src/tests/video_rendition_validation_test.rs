@@ -24,7 +24,7 @@ fn video_rendition_rejects_invalid_boundaries_and_keeps_optional_bitrate() {
     assert!(unrated.quality().is_none());
     assert_eq!(
         unrated.quality_id(),
-        RenditionId::try_new(unrated.identity().fingerprint()).unwrap()
+        RenditionId::try_new(unrated.identity().fingerprint()).expect("valid test fixture")
     );
 }
 

@@ -2,6 +2,7 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::{media_client, temp_directory};
 use ghostr_delivery::debug::network::NetworkThrottle;
@@ -16,7 +17,6 @@ use ghostr_engine::{DataUsageLevel, EngineParams};
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::timeout;
 
@@ -73,6 +73,6 @@ async fn delivery_manager_publishes_adaptive_discovery_demand() {
         .expect("empty supply should request expansion")
         .expect("manager should stay alive");
     assert_eq!(*discovery_demand.borrow(), DiscoveryDemand::Expand);
-    handle.clear().await.unwrap();
+    handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&root).ok();
 }

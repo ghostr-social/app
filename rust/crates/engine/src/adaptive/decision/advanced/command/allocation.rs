@@ -5,22 +5,22 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RecordedTransfer {
-    pub post_id: String,
-    pub source_id: String,
+    pub(crate) post_id: String,
+    pub(crate) source_id: String,
     pub request: RecordedRetrievalRequest,
-    pub expected_playable_gain_ms: u64,
-    pub utility: RecordedCandidateUtility,
+    pub(crate) expected_playable_gain_ms: u64,
+    pub(crate) utility: RecordedCandidateUtility,
     pub authority: RecordedPreemptionAuthority,
-    pub commitment_until_ms: u64,
+    pub(crate) commitment_until_ms: u64,
     pub reason: RecordedAllocationReason,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RecordedCandidateUtility {
-    pub view_probability_bits: u64,
-    pub additional_playable_ms: u64,
-    pub expected_delivery_ms: u64,
-    pub score_bits: u64,
+    pub(crate) view_probability_bits: u64,
+    pub(crate) additional_playable_ms: u64,
+    pub(crate) expected_delivery_ms: u64,
+    pub(crate) score_bits: u64,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]

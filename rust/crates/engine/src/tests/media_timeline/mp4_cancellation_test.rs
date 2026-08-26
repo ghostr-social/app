@@ -3,7 +3,7 @@ use crate::media_timeline::{
     TimelineParseControl,
 };
 use crate::tests::media_timeline_support::{advanced_moov, classic_moov};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 #[test]
 fn byte_scanning_stops_at_a_deterministic_cancellation_checkpoint() {

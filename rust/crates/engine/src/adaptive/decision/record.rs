@@ -7,18 +7,21 @@ use super::types::{
     DecisionAction, DecisionModelInput, DecisionOutcome, DecisionReplayStatus, ModelQuantiles,
     PrunedCandidate, ShadowPrices,
 };
-use crate::adaptive::VerifiedWarpReplay;
 use crate::adaptive::{AllocationPlan, PlayabilitySnapshot, WarpPlanningDecision};
 use serde::{Deserialize, Serialize};
 
 mod authorization;
 mod binding;
 mod replay;
+#[cfg(test)]
+mod replay_api_test;
 mod resolution;
 
 pub(super) const LEGACY_SCHEMA_VERSION: u16 = 1;
 pub(super) const UNSEALED_WARP_SCHEMA_VERSION: u16 = 2;
 pub(super) const WARP_SCHEMA_VERSION: u16 = 3;
+pub(super) const CAPABILITY_SCHEMA_VERSION: u16 = 4;
+#[derive(Clone, Copy)]
 pub struct DecisionRecordInput<'a> {
     pub sequence: u64,
     pub snapshot: &'a PlayabilitySnapshot,
@@ -28,6 +31,7 @@ pub struct DecisionRecordInput<'a> {
     pub privacy: &'a DecisionPrivacy,
 }
 
+#[derive(Clone, Copy)]
 pub struct WarpDecisionRecordInput<'a> {
     pub sequence: u64,
     pub snapshot: &'a PlayabilitySnapshot,
@@ -41,15 +45,15 @@ pub struct WarpDecisionRecordInput<'a> {
 pub struct DecisionRecord {
     pub schema_version: u16,
     pub sequence: u64,
-    pub state_hash: String,
-    pub admissible_candidates: Vec<String>,
-    pub retained_plans: Vec<DecisionAction>,
-    pub pruned: Vec<PrunedCandidate>,
-    pub model_quantiles: Vec<ModelQuantiles>,
-    pub shadow_prices: ShadowPrices,
+    pub(crate) state_hash: String,
+    pub(crate) admissible_candidates: Vec<String>,
+    pub(crate) retained_plans: Vec<DecisionAction>,
+    pub(crate) pruned: Vec<PrunedCandidate>,
+    pub(crate) model_quantiles: Vec<ModelQuantiles>,
+    pub(crate) shadow_prices: ShadowPrices,
     pub chosen_action: Option<DecisionAction>,
     pub chosen_action_id: Option<u64>,
-    pub random_seed: u64,
+    pub(crate) random_seed: u64,
     pub eventual_outcome: DecisionOutcome,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub actual_resources: Option<RecordedResourceCost>,
@@ -82,17 +86,16 @@ impl DecisionRecord {
         record
     }
 
-    pub fn replay(&self) -> DecisionReplayStatus {
+    /// Verifies the retained decision's privacy-safe replay envelope and search trace.
+    #[must_use]
+    pub fn integrity_status(&self) -> DecisionReplayStatus {
         replay::status(self)
     }
 
-    pub fn replay_warp(&self) -> Result<VerifiedWarpReplay, DecisionReplayStatus> {
-        replay::warp(self)
-    }
-
-    /// Re-executes the captured privacy-safe WARP search and verifies its exact output.
-    pub fn replay_warp_search(&self) -> Result<VerifiedWarpReplay, DecisionReplayStatus> {
-        replay::warp_search(self)
+    /// Re-executes the captured WARP search and verifies its exact output.
+    #[must_use]
+    pub fn search_integrity_status(&self) -> DecisionReplayStatus {
+        replay::search_status(self)
     }
 }
 
@@ -103,8 +106,13 @@ fn legacy_record(
     random_seed: u64,
 ) -> DecisionRecord {
     let retained_plans = plan::actions(input.allocation, input.privacy);
+    let schema_version = if replay_state.has_direct_playback_block() {
+        CAPABILITY_SCHEMA_VERSION
+    } else {
+        LEGACY_SCHEMA_VERSION
+    };
     DecisionRecord {
-        schema_version: LEGACY_SCHEMA_VERSION,
+        schema_version,
         sequence: input.sequence,
         state_hash,
         admissible_candidates: plan::admissible(input.snapshot, input.privacy),
@@ -132,8 +140,13 @@ fn warp_record(
     captured: advanced::WarpCapture,
 ) -> DecisionRecord {
     let outcome = initial_warp_outcome(captured.decision.selected.is_some());
+    let schema_version = if replay_state.has_direct_playback_block() {
+        CAPABILITY_SCHEMA_VERSION
+    } else {
+        WARP_SCHEMA_VERSION
+    };
     DecisionRecord {
-        schema_version: WARP_SCHEMA_VERSION,
+        schema_version,
         sequence: input.sequence,
         state_hash,
         admissible_candidates: captured.admissible_candidates,
@@ -155,11 +168,12 @@ fn warp_record(
 }
 
 fn initial_warp_outcome(selected: bool) -> DecisionOutcome {
-    match selected {
-        true => DecisionOutcome::Pending,
-        false => DecisionOutcome::Succeeded {
+    if selected {
+        DecisionOutcome::Pending
+    } else {
+        DecisionOutcome::Succeeded {
             bytes: 0,
             elapsed_ms: 0,
-        },
+        }
     }
 }

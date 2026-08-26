@@ -3,14 +3,14 @@ use super::redirect::{self, AdmittedHop, RedirectContext};
 use super::response::MediaResponse;
 use crate::outbound_media_client::MediaHttpRequests;
 use crate::public_media_address::validate_url;
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Context as _, Result};
+use core::time::Duration;
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::RequestAuthority;
 use reqwest::header::{HeaderName, HeaderValue, HOST};
 use reqwest::{Method, Request, RequestBuilder, Url};
 use std::fmt;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::time::Instant;
 
 #[derive(Debug)]
@@ -22,7 +22,7 @@ impl fmt::Display for MediaRequestAdmissionTimeout {
     }
 }
 
-impl std::error::Error for MediaRequestAdmissionTimeout {}
+impl core::error::Error for MediaRequestAdmissionTimeout {}
 
 pub struct MediaRequest {
     builder: RequestBuilder,
@@ -82,6 +82,9 @@ impl MediaRequest {
         self
     }
 
+    /// # Errors
+    ///
+    /// Returns an error when the request is invalid or request capacity cannot be acquired.
     pub async fn admit(self) -> Result<AdmittedMediaRequest> {
         let (client, request) = self.builder.build_split();
         let mut request = request.context("build media request")?;
@@ -103,6 +106,9 @@ impl MediaRequest {
         })
     }
 
+    /// # Errors
+    ///
+    /// Returns an error when admission fails or does not complete within `wait`.
     pub async fn admit_for(self, wait: Duration) -> Result<AdmittedMediaRequest> {
         match tokio::time::timeout(wait, self.admit()).await {
             Ok(result) => result,
@@ -124,12 +130,12 @@ pub(super) fn validate_request(request: &Request, expected: &RequestAuthority) -
 }
 
 impl AdmittedMediaRequest {
-    pub async fn send(self) -> Result<MediaResponse> {
-        redirect::send(self.hop, self.redirects, None).await
-    }
-
     /// Sends while giving every redirect admission the caller's absolute deadline.
     /// The caller remains responsible for applying the same deadline to origin IO.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the request, redirect validation, deadline, or origin send fails.
     pub async fn send_with_redirect_deadline(self, deadline: Instant) -> Result<MediaResponse> {
         redirect::send(self.hop, self.redirects, Some(deadline)).await
     }

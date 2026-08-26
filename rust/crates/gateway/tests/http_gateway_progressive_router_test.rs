@@ -9,13 +9,13 @@ use ghostr_delivery::progressive_posts::ServablePosts;
 use ghostr_gateway::hls::sessions::HlsSessions;
 use ghostr_gateway::progressive::capabilities::ProgressiveCapabilities;
 use ghostr_gateway::progressive::route::{ProgressiveState, ProgressiveTiming};
-use ghostr_gateway::router::{configured_router_with_progressive, GatewayRouterResources};
+use ghostr_gateway::router::{configured_router_with_segmented, GatewayRouterResources};
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 fn standard_router() -> (Router, PathBuf) {
     let root = gateway_fixture::temp_directory("progressive-router");
@@ -37,7 +37,7 @@ fn standard_router() -> (Router, PathBuf) {
         debug_feed: ghostr_delivery::debug::feed::DebugFeed::new(delivery, Vec::new()),
     });
     (
-        configured_router_with_progressive(
+        configured_router_with_segmented(
             GatewayRouterResources::new(HlsSessions::production(), gateway_fixture::media_client()),
             progressive,
         ),

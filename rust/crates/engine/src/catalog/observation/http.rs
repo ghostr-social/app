@@ -23,7 +23,7 @@ impl CatalogEntry {
             observed.observed_at_ms,
         );
         self.retain_response(url, observation.facts.clone());
-        self.record_http_fields(url, observation, HttpAuthority::Response);
+        self.record_http_fields(url, &observation, HttpAuthority::Response);
         Some(HttpLearning {
             observed_at_ms: observed.observed_at_ms,
             labels,
@@ -49,10 +49,10 @@ impl CatalogEntry {
         match authority {
             HttpAuthority::Head => self.retain_head(url, observation.facts.clone()),
             HttpAuthority::Response | HttpAuthority::CompleteBytes => {
-                self.retain_response(url, observation.facts.clone())
+                self.retain_response(url, observation.facts.clone());
             }
         }
-        self.record_http_fields(url, observation, authority);
+        self.record_http_fields(url, &observation, authority);
         Some(HttpLearning {
             observed_at_ms,
             labels,
@@ -80,16 +80,16 @@ impl CatalogEntry {
     fn record_http_fields(
         &mut self,
         url: &str,
-        observation: HttpObservation,
+        observation: &HttpObservation,
         authority: HttpAuthority,
     ) {
-        let source = http_source(url, &observation, authority);
+        let source = http_source(url, observation, authority);
         let scope = observation.validator.clone().map_or_else(
             || EvidenceScope::url(url),
             |validator| EvidenceScope::validated(url, validator),
         );
         let confidence = http_confidence(authority);
-        for value in http_truths(&observation) {
+        for value in http_truths(observation) {
             self.ledger.record(Evidence::new_at(
                 value,
                 source.clone(),
@@ -171,7 +171,7 @@ fn http_confidence(authority: HttpAuthority) -> Confidence {
         HttpAuthority::Response => 9_000,
         HttpAuthority::CompleteBytes => 10_000,
     };
-    Confidence::new(basis_points).unwrap()
+    Confidence::new(basis_points).expect("HTTP authority confidence stays within the scale")
 }
 
 fn normalize_mime(value: &str) -> String {

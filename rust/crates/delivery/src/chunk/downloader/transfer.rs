@@ -8,7 +8,6 @@ use crate::chunk::response::ResponseReply;
 use crate::chunk::sink::ChunkWrite;
 use crate::chunk::traffic::ChunkTraffic;
 use crate::debug::network::NetworkThrottle;
-use anyhow::Context;
 use ghostr_engine::adaptive::RetrievalRequest;
 
 mod ignored;
@@ -24,8 +23,8 @@ pub(super) struct TransferExecution<'a, W: ChunkWrite + ?Sized> {
     pub traffic: &'a mut dyn ChunkTraffic,
 }
 
-pub async fn run<'a, 'spec, W: ChunkWrite + ?Sized>(
-    spec: &'a ChunkSpec<'spec>,
+pub async fn run<'a, W: ChunkWrite + ?Sized>(
+    spec: &'a ChunkSpec<'_>,
     execution: TransferExecution<'a, W>,
 ) -> anyhow::Result<ChunkResult> {
     let opened = match opened::send(spec, execution.cancel, execution.traffic).await? {
@@ -43,20 +42,25 @@ fn prepare<'a, 'spec, W: ChunkWrite + ?Sized>(
     response: ghostr_net::media_request_executor::MediaResponse,
     observed: ghostr_engine::evidence::EvidenceTime,
 ) -> anyhow::Result<(TransferInput<'a, 'spec, W>, ResponseReply)> {
+    let TransferExecution {
+        sink,
+        cancel,
+        network,
+        traffic,
+    } = execution;
     let length = response.content_length();
     let evidence = HttpResponseEvidence::from_response(&response, observed);
-    let reply = reply::classify(&response, spec, &evidence, execution.traffic)?;
+    let reply = reply::classify(&response, spec, &evidence, traffic)?;
     let total = reply::total(&reply, length);
-    let generation = OriginGeneration::from_response(&response, total)
-        .context(super::ResponseFailure::InvalidResponse)?;
+    let generation = OriginGeneration::from_response(&response, total);
     Ok((
         TransferInput {
             response,
             spec,
-            sink: execution.sink,
-            cancel: execution.cancel,
-            network: execution.network,
-            traffic: execution.traffic,
+            sink,
+            cancel,
+            network,
+            traffic,
             generation,
             length,
             evidence,
@@ -82,7 +86,7 @@ async fn dispatch<W: ChunkWrite + ?Sized>(
     reply: ResponseReply,
 ) -> anyhow::Result<ChunkResult> {
     match reply {
-        ResponseReply::Ignored { range_support } => ignored::range(input, range_support),
+        ResponseReply::Ignored { range_support } => Ok(ignored::range(input, range_support)),
         ResponseReply::BoundDiscovered {
             maximum_bytes,
             total_bytes,
@@ -124,7 +128,7 @@ async fn body<W: ChunkWrite + ?Sized>(
     let returned = reply::body_spec(input.spec, request);
     let mode = reply::response_mode(request);
     if mode == ResponseWriteMode::Sparse && !input.generation.is_resumable() {
-        return ignored::range(input, range_support);
+        return Ok(ignored::range(input, range_support));
     }
     let observation = ResponseObservation::Body {
         request,
@@ -161,7 +165,7 @@ async fn receive<W: ChunkWrite + ?Sized>(
     args.execute().await
 }
 
-impl<'a, 'spec, W: ChunkWrite + ?Sized> ReceiveArgs<'a, 'spec, W> {
+impl<W: ChunkWrite + ?Sized> ReceiveArgs<'_, '_, W> {
     async fn execute(self) -> anyhow::Result<ChunkResult> {
         let input = self.input;
         let returned = self.returned;

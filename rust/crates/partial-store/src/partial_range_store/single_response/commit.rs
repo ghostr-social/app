@@ -1,6 +1,6 @@
 use crate::partial_range_disk as disk;
 use crate::partial_range_paths::StorePaths;
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Context as _, Result};
 use serde::{Deserialize, Serialize};
 
 const VERSION: u8 = 1;

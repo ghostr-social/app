@@ -9,7 +9,7 @@ pub(super) fn head(total: u64) -> Response<Body> {
         .header(header::CONTENT_LENGTH, total)
         .header(header::ETAG, "\"hedge-tail-fixture\"")
         .body(Body::empty())
-        .unwrap()
+        .expect("valid test fixture")
 }
 
 pub(super) fn partial(total: u64, bytes: u64) -> Response<Body> {
@@ -24,5 +24,5 @@ pub(super) fn partial(total: u64, bytes: u64) -> Response<Body> {
         )
         .header(header::ETAG, "\"hedge-tail-fixture\"")
         .body(Body::from(vec![7; bytes as usize]))
-        .unwrap()
+        .expect("valid test fixture")
 }

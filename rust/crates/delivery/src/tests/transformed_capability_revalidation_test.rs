@@ -1,7 +1,5 @@
-use crate::delivery_events::{
-    PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationObservation,
-    PlayerPreparationReport, PlayerPreparationState,
-};
+
+use crate::delivery_events::{PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationObservation, PlayerPreparationReport, PlayerPreparationState};
 use crate::tests::player_preparation_fixture::state;
 use ghostr_engine::adaptive::{PlannerCapability, TransformKind};
 use ghostr_engine::representation::RepresentationBinding;
@@ -13,10 +11,10 @@ use std::collections::HashMap;
 fn transformed_bytes_are_not_declared_playable_without_fresh_player_evidence() {
     let mut state = state(&["current", "next"], 0);
     let post = PostId::new("next");
-    let input = state.catalog().binding(&post).unwrap();
+    let input = state.catalog().binding(&post).expect("valid test fixture");
     let derived = input
         .derive_transform(TransformKind::Remux, &"ab".repeat(32))
-        .unwrap();
+        .expect("valid test fixture");
     state.replace_transformed_posts(HashMap::from([(post.clone(), derived.clone())]));
 
     assert_eq!(
@@ -57,14 +55,14 @@ fn apply(
         ContentRevision::default(),
         "asset",
     )
-    .unwrap();
-    let observation = PlayerPreparationObservation::try_new(status, None, sequence * 100).unwrap();
+    .expect("valid test fixture");
+    let observation = PlayerPreparationObservation::try_new(status, None, sequence * 100).expect("valid test fixture");
     let report = PlayerPreparationReport::try_new(
         authority,
-        PlayerPreparationAttempt::try_new(1, 1, 1).unwrap(),
+        PlayerPreparationAttempt::try_new(1, 1, 1).expect("valid test fixture"),
         sequence,
         observation,
     )
-    .unwrap();
+    .expect("valid test fixture");
     assert!(state.apply_player_preparation(report));
 }

@@ -13,7 +13,9 @@ fn incompatible_range_source_replans_as_one_independent_object() {
     let mirror = "https://b.example/video";
     let mut catalog = Catalog::new();
     catalog.upsert(post.clone(), meta(primary, mirror));
-    let mirror_id = catalog.transfer_identity(&post, mirror).unwrap();
+    let mirror_id = catalog
+        .transfer_identity(&post, mirror)
+        .expect("valid test fixture");
     catalog.learn_response_for(
         &mirror_id,
         LearnedFacts {
@@ -28,7 +30,7 @@ fn incompatible_range_source_replans_as_one_independent_object() {
         CandidateEvidence {
             post,
             feed_offset: FeedOffset::new(0),
-            view_probability: ViewProbability::new(1.0).unwrap(),
+            view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
             present: vec![crate::ByteRange::new(0, 4)],
             stored_total: Some(16),
             continuation_source: Some(primary.to_owned()),
@@ -38,7 +40,7 @@ fn incompatible_range_source_replans_as_one_independent_object() {
             origins: vec![healthy_origin(mirror, 1_000_000, 20)],
         },
     )
-    .unwrap();
+    .expect("valid test fixture");
 
     assert_eq!(candidate.preferred_source.as_deref(), Some(mirror));
     assert_eq!(candidate.layout, MediaLayout::RequiresCompleteFile);

@@ -76,7 +76,7 @@ impl SchedulerWorker {
         }
     }
 
-    pub(crate) fn prefetch(&mut self, context: FeedContext) {
+    pub(super) fn prefetch(&mut self, context: FeedContext) {
         let Some(request) = self.feeds.older_page_request(&context, None) else {
             return;
         };
@@ -136,7 +136,7 @@ impl SchedulerWorker {
 
     fn apply_repost_retry(&mut self, done: &mut FinishedRetrieval) -> bool {
         if let Ok(page) = &mut done.result {
-            let delta = std::mem::take(&mut page.repost_retry);
+            let delta = core::mem::take(&mut page.repost_retry);
             self.deferred_reposts.apply(&done.context, delta)
         } else {
             self.deferred_reposts.has_pending(&done.context)
@@ -181,7 +181,7 @@ impl SchedulerWorker {
         let deferred_reposts = self.deferred_reposts.batch(&task_context);
         let task = spawn_retrieval_task(RetrievalTaskInput {
             task_id,
-            executor: self.executor.clone(),
+            executor: std::sync::Arc::clone(&self.executor),
             finished: self.finished_sender.clone(),
             outcomes: self.outcomes.clone(),
             request,

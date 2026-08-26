@@ -3,7 +3,7 @@ use axum::body::Body;
 use axum::extract::State;
 use axum::http::header::{CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, ETAG, RANGE};
 use axum::http::{HeaderMap, Response, StatusCode};
-use std::sync::atomic::Ordering;
+use core::sync::atomic::Ordering;
 
 const MANIFEST: &str = "#EXTM3U\n#EXTINF:4,\nsegment.m4s\n#EXT-X-ENDLIST\n";
 const ASSET: &[u8] = b"abcdefghijklmnop";
@@ -13,7 +13,7 @@ pub(super) async fn manifest() -> Response<Body> {
         .header(CONTENT_TYPE, "application/vnd.apple.mpegurl")
         .header(CONTENT_LENGTH, MANIFEST.len())
         .body(Body::from(MANIFEST))
-        .unwrap()
+        .expect("valid test fixture")
 }
 
 pub(super) async fn asset(State(state): State<OriginState>, headers: HeaderMap) -> Response<Body> {
@@ -29,8 +29,17 @@ pub(super) async fn asset(State(state): State<OriginState>, headers: HeaderMap) 
 }
 
 fn ranged_response(headers: &HeaderMap) -> Response<Body> {
-    let range = headers.get(RANGE).unwrap().to_str().unwrap();
-    let start: usize = range[6..].split('-').next().unwrap().parse().unwrap();
+    let range = headers
+        .get(RANGE)
+        .expect("valid test fixture")
+        .to_str()
+        .expect("valid test fixture");
+    let start: usize = range[6..]
+        .split('-')
+        .next()
+        .expect("valid test fixture")
+        .parse()
+        .expect("valid test fixture");
     let end = (start + 4).min(ASSET.len());
     Response::builder()
         .status(StatusCode::PARTIAL_CONTENT)
@@ -41,5 +50,5 @@ fn ranged_response(headers: &HeaderMap) -> Response<Body> {
         .header(CONTENT_LENGTH, end - start)
         .header(ETAG, "\"v1\"")
         .body(Body::from(ASSET[start..end].to_vec()))
-        .unwrap()
+        .expect("valid test fixture")
 }

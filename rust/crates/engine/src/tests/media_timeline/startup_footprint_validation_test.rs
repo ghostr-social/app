@@ -11,7 +11,7 @@ fn classic_startup_requires_a_valid_file_type_and_video_track() {
         MediaSegment::new(0, &invalid_prefix),
         MediaSegment::new(10_000, &moov),
     ])
-    .unwrap();
+    .expect("valid test fixture");
     assert!(invalid.startup_footprint().is_none());
 
     let ftyp = valid_ftyp();
@@ -20,7 +20,7 @@ fn classic_startup_requires_a_valid_file_type_and_video_track() {
         MediaSegment::new(0, &prefix),
         MediaSegment::new(10_000, &moov),
     ])
-    .unwrap();
+    .expect("valid test fixture");
     assert!(valid.startup_footprint().is_some());
 }
 
@@ -34,7 +34,7 @@ fn sidx_prediction_without_a_verified_fragment_is_not_startup() {
         MediaSegment::new(100, &moov),
         MediaSegment::new(1_000, &sidx),
     ])
-    .unwrap();
+    .expect("valid test fixture");
 
     assert!(timeline.startup_footprint().is_none());
 }

@@ -27,10 +27,10 @@ impl WholeBodyExhaustion {
 impl PlannerContext {
     pub fn with_whole_body_exhaustion(
         mut self,
-        post: PostId,
+        post: &PostId,
         exhaustion: WholeBodyExhaustion,
     ) -> Self {
-        if let Some(candidate) = self.candidates.get_mut(&post) {
+        if let Some(candidate) = self.candidates.get_mut(post) {
             candidate.whole_body_exhaustion = Some(exhaustion);
         }
         self

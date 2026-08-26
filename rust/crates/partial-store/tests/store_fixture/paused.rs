@@ -1,28 +1,28 @@
 #![allow(dead_code)]
 
-use crate::store_fixture::temp_root;
-use ghostr_partial_store::partial_range_store::capacity::{Limits, StoreCapacity};
-use ghostr_partial_store::partial_range_store::free_space::FreeSpace;
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
+use super::store_fixture::temp_root;
+use crate::partial_range_store::capacity::{Limits, StoreCapacity};
+use crate::partial_range_store::free_space::FreeSpace;
+use crate::partial_range_store::PartialRangeStore;
+use core::sync::atomic::{AtomicUsize, Ordering};
+use core::time::Duration;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{mpsc, Arc, Mutex as StdMutex};
-use std::time::Duration;
 use tokio::sync::{oneshot, Mutex};
 
-pub struct PausedStore {
-    pub store: Arc<PartialRangeStore>,
-    pub root: PathBuf,
+pub(super) struct PausedStore {
+    pub(super) store: Arc<PartialRangeStore>,
+    pub(super) root: PathBuf,
     entered: oneshot::Receiver<()>,
     resume: mpsc::Sender<()>,
 }
 
 impl PausedStore {
-    pub async fn wait_until_admission(&mut self) {
+    pub(super) async fn wait_until_admission(&mut self) {
         (&mut self.entered).await.expect("admission entered");
     }
 
-    pub fn resume(&self) {
+    pub(super) fn resume(&self) {
         self.resume.send(()).expect("resume admission");
     }
 }
@@ -53,15 +53,15 @@ impl FreeSpace for PausedSpace {
     }
 }
 
-pub fn paused_store(prefix: &str) -> PausedStore {
+pub(super) fn paused_store(prefix: &str) -> PausedStore {
     build_store(prefix, 0, Duration::from_secs(60), u64::MAX)
 }
 
-pub fn paused_store_after(prefix: &str, pause_after: usize) -> PausedStore {
+pub(super) fn paused_store_after(prefix: &str, pause_after: usize) -> PausedStore {
     build_store(prefix, pause_after, Duration::ZERO, u64::MAX)
 }
 
-pub fn paused_store_with_budget(prefix: &str, budget: u64) -> PausedStore {
+pub(super) fn paused_store_with_budget(prefix: &str, budget: u64) -> PausedStore {
     build_store(prefix, 0, Duration::from_secs(60), budget)
 }
 

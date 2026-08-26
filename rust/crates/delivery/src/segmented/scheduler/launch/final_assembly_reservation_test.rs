@@ -21,15 +21,17 @@ fn final_stage_admission_reserves_the_full_assembly_peak() {
     let cache = SegmentedCache::new();
     let post = PostId::new("stream");
     cache.replace_focus(1, vec![(post.clone(), vec![URL.to_owned()])]);
-    let prefix = cache.admit_stage(admission(&post, 1, 0, PREFIX)).unwrap();
+    let prefix = cache
+        .admit_stage(admission(&post, 1, 0, PREFIX))
+        .expect("valid test fixture");
     assert!(prefix.commit_partial(object(PREFIX as usize)));
     let pending = pending();
-    let reservation = stage_reservation(&pending, BLOCK).unwrap();
+    let reservation = stage_reservation(&pending, BLOCK).expect("valid test fixture");
     let fence = stage_fence(&pending, BLOCK);
 
     let lease = cache
         .admit_stage(StageAdmission::new(post, fence, 500, reservation))
-        .unwrap();
+        .expect("valid test fixture");
 
     assert_eq!(cache.physical_used_bytes(), 2 * TOTAL);
     drop(lease);
@@ -55,8 +57,10 @@ fn continuation() -> ObjectContinuation {
     ObjectContinuation {
         next_offset: PREFIX,
         total: TOTAL,
-        final_url: URL.parse().unwrap(),
-        strong_etag: single_strong_etag(&headers).unwrap().unwrap(),
+        final_url: URL.parse().expect("valid test fixture"),
+        strong_etag: single_strong_etag(&headers)
+            .expect("valid test fixture")
+            .expect("valid test fixture"),
     }
 }
 
@@ -69,7 +73,7 @@ fn admission(post: &PostId, attempt: u64, offset: u64, bytes: u64) -> StageAdmis
 fn object(bytes: usize) -> PreparedObject {
     PreparedObject {
         request_url: URL.to_owned(),
-        final_url: URL.parse().unwrap(),
+        final_url: URL.parse().expect("valid test fixture"),
         body: Arc::from(vec![7; bytes]),
         content_type: Some("video/mp4".to_owned()),
         cache: Default::default(),

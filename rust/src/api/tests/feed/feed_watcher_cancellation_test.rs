@@ -23,7 +23,13 @@ async fn a_closed_receiver_gets_one_baseline_before_the_watcher_ends() {
     let revisions = lock(&state).subscribe(feed).expect("open feed");
     let captured = Arc::new(Mutex::new(None));
 
-    watch_feed(RejectingOut(captured.clone()), state, feed, revisions).await;
+    watch_feed(
+        RejectingOut(std::sync::Arc::clone(&captured)),
+        state,
+        feed,
+        revisions,
+    )
+    .await;
 
     let update = captured.lock().expect("update capture").clone();
     assert_eq!(update.expect("baseline").feed_id, feed.0.to_string());

@@ -20,7 +20,7 @@ pub(super) fn build(
         ..EngineParams::default()
     };
     DeliveryManagerConfig {
-        store: resources.store.clone(),
+        store: std::sync::Arc::clone(&resources.store),
         requests: resources.requests.clone(),
         cache: resources.cache.clone(),
         segmented: resources.segmented.clone(),

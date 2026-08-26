@@ -19,15 +19,15 @@ impl DeliveryNetworkStatus {
         Self::new(NetworkClass::Unavailable, 0)
     }
 
-    pub const fn network_class(self) -> NetworkClass {
+    pub(crate) const fn network_class(self) -> NetworkClass {
         self.network_class
     }
 
-    pub const fn generation(self) -> u64 {
+    pub(crate) const fn generation(self) -> u64 {
         self.generation
     }
 
-    pub const fn is_fresher_than(self, previous: Self) -> bool {
+    pub(crate) const fn is_fresher_than(self, previous: Self) -> bool {
         self.generation > previous.generation
     }
 }
@@ -55,5 +55,11 @@ impl DeliveryNetworkStatusReader {
         if status.is_fresher_than(*current) {
             *current = status;
         }
+    }
+}
+
+impl crate::probe::media::ProbeNetwork for DeliveryNetworkStatusReader {
+    fn network_class(&self) -> NetworkClass {
+        self.network_class()
     }
 }

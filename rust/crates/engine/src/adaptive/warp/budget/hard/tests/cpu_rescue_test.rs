@@ -6,8 +6,8 @@ use crate::PostId;
 fn ordinary_local_work_cannot_auction_reserved_cpu() {
     let rescue = transform(1);
     let mut budget = HardBudget::new(ResourceCost::new(0, 0, 1, 0), 0)
-        .protect(std::slice::from_ref(&rescue))
-        .unwrap();
+        .protect(core::slice::from_ref(&rescue))
+        .expect("valid test fixture");
 
     assert_eq!(
         budget.consume_action(&transform(2)),

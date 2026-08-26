@@ -18,25 +18,34 @@ impl AuthorityFixture {
         Self::seeded_with(ProgressiveCapabilities::production()).await
     }
 
-    pub(super) async fn seeded_with(capabilities: ProgressiveCapabilities) -> Self {
+    async fn seeded_with(capabilities: ProgressiveCapabilities) -> Self {
         let store = temp_store("ghostr-player-preparation-authority");
         let tracked = TrackedItems::new();
         let meta = sized_meta(16, 2_000);
         bind_store(&store, "clip", &meta).await;
-        store.set_total_len("clip", 16).await.unwrap();
-        store.write_range("clip", 0, &[7; 16]).await.unwrap();
+        store
+            .set_total_len("clip", 16)
+            .await
+            .expect("test fixture precondition must hold");
+        store
+            .write_range("clip", 0, &[7; 16])
+            .await
+            .expect("test fixture precondition must hold");
         tracked.insert("clip".to_owned(), meta.clone());
-        let snapshot = store.media_snapshot("clip").await.unwrap();
+        let snapshot = store
+            .media_snapshot("clip")
+            .await
+            .expect("test fixture precondition must hold");
         let representation = snapshot
             .binding()
-            .unwrap()
+            .expect("test fixture precondition must hold")
             .representation()
             .fingerprint()
             .to_owned();
         let asset = capabilities
             .issue(&snapshot)
             .await
-            .unwrap()
+            .expect("test fixture precondition must hold")
             .as_str()
             .to_owned();
         let cache = CacheRegistry::new();
@@ -79,15 +88,20 @@ impl AuthorityFixture {
     pub(super) async fn renew_content_revision(&self) -> String {
         self.context
             .store
-            .evict_ranges("clip", &[8..16])
+            .evict_ranges("clip", core::slice::from_ref(&(8..16)))
             .await
-            .unwrap();
-        let snapshot = self.context.store.media_snapshot("clip").await.unwrap();
+            .expect("test fixture precondition must hold");
+        let snapshot = self
+            .context
+            .store
+            .media_snapshot("clip")
+            .await
+            .expect("test fixture precondition must hold");
         self.context
             .capabilities
             .issue(&snapshot)
             .await
-            .unwrap()
+            .expect("test fixture precondition must hold")
             .as_str()
             .to_owned()
     }

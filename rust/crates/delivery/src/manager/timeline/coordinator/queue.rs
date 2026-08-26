@@ -47,8 +47,8 @@ impl TimelineCoordinator {
 
     fn launch(&mut self, attempt: TimelineAttempt) {
         self.running += 1;
-        let store = self.store.clone();
-        let parser = self.parser.clone();
+        let store = std::sync::Arc::clone(&self.store);
+        let parser = std::sync::Arc::clone(&self.parser);
         let sender = self.sender.clone();
         tokio::spawn(async move {
             let result = job::run(attempt, store, parser).await;

@@ -6,10 +6,15 @@ use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
 use std::sync::MutexGuard;
 
 mod read;
+#[cfg(any(test, feature = "test"))]
+mod test_support;
 
 pub use read::{ContentRevision, RepresentationRead};
 
 impl PartialRangeStore {
+    /// # Errors
+    ///
+    /// Returns an error when the binding is invalid, stale, or cannot be persisted safely.
     pub async fn bind_representation(&self, binding: RepresentationBinding) -> Result<()> {
         let key = binding.post().as_str();
         validate_key(key)?;
@@ -28,37 +33,11 @@ impl PartialRangeStore {
         Ok(())
     }
 
-    pub async fn write_range_for_transfer_if_current(
-        &self,
-        identity: &TransferIdentity,
-        offset: u64,
-        bytes: &[u8],
-    ) -> Result<bool> {
-        let key = identity.post().as_str();
-        self.retry_cleanup_debt(key).await?;
-        if !self.transfer_is_current(identity).await {
-            return Ok(false);
-        }
-        let mut entries = self.entries.lock().await;
-        if !self.transfer_is_current(identity).await
-            || self.policy_transaction_debt(key).await.is_some()
-        {
-            return Ok(false);
-        }
-        self.write_range_locked(&mut entries, key, offset, bytes)
-            .await?;
-        if self.transfer_is_current(identity).await {
-            return Ok(true);
-        }
-        self.discard_stale_write(&mut entries, key).await?;
-        Ok(false)
-    }
-
     pub async fn representation_binding(&self, key: &str) -> Option<RepresentationBinding> {
         self.representations.lock().await.get(key).cloned()
     }
 
-    pub async fn representation_is_current(&self, binding: &RepresentationBinding) -> bool {
+    pub(super) async fn representation_is_current(&self, binding: &RepresentationBinding) -> bool {
         self.representations
             .lock()
             .await
@@ -118,19 +97,6 @@ impl PartialRangeStore {
         if let Err(error) = self.restore_http_generation(&binding).await {
             self.remove_binding_if(&binding).await;
             return Err(error);
-        }
-        Ok(())
-    }
-
-    async fn discard_stale_write(&self, entries: &mut super::Entries, key: &str) -> Result<()> {
-        self.discard_before_authority(entries, key).await?;
-        let binding = self.representations.lock().await.get(key).cloned();
-        if let Some(binding) = binding {
-            identity_disk::save(
-                &self.paths.representation(key),
-                binding.representation().fingerprint(),
-            )
-            .await?;
         }
         Ok(())
     }

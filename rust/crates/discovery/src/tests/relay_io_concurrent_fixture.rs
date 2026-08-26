@@ -1,5 +1,5 @@
-use futures_util::{SinkExt, StreamExt};
-use nostr_sdk::{Event, JsonUtil};
+use futures_util::{SinkExt as _, StreamExt as _};
+use nostr_sdk::{Event, JsonUtil as _};
 use serde_json::Value;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};

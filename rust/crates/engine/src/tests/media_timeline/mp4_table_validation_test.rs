@@ -48,7 +48,7 @@ fn unsupported_mdhd_and_truncated_co64_are_explicit() {
     let mdhd = unsupported
         .windows(4)
         .position(|bytes| bytes == b"mdhd")
-        .unwrap();
+        .expect("valid test fixture");
     unsupported[mdhd + 4] = 2;
     let mut co64 = full_box(b"co64", values(&[2]));
     co64.extend(1_000_u64.to_be_bytes());

@@ -1,6 +1,7 @@
-use crate::execution::relay_executor::deletion_enrichment::deletion_plan;
+use crate::execution::relay_executor::deletion_enrichment::axiom_test_support::deletion_plan;
+
 use crate::query::search::RelayTarget;
-use nostr_sdk::{EventBuilder, JsonUtil, Keys, Kind, Tag};
+use nostr_sdk::{EventBuilder, JsonUtil as _, Keys, Kind, Tag};
 
 #[test]
 fn repeated_reposts_cannot_expand_one_deletion_target_past_four_hints() {

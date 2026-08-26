@@ -9,7 +9,7 @@ async fn unsupported_learning_envelope_fails_closed() {
         br#"{"version":2,"qoe":{"completions":7},"watch":{}}"#,
     )
     .await
-    .unwrap();
+    .expect("valid test fixture");
 
     let restored = load_playback_learning(&path).await;
 

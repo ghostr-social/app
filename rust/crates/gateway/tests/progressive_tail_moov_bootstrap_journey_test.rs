@@ -1,9 +1,9 @@
 mod gateway_fixture;
 
+use core::time::Duration;
 use gateway_fixture::progressive_delivery::ProgressiveDeliveryHarness;
 use gateway_fixture::progressive_journey_item::unknown_item;
 use gateway_fixture::progressive_journey_origin::ProgressiveJourneyOrigin;
-use std::time::Duration;
 
 #[tokio::test]
 async fn tail_moov_bootstrap_fetches_metadata_without_refetching_the_prefix() {
@@ -18,7 +18,7 @@ async fn tail_moov_bootstrap_fetches_metadata_without_refetching_the_prefix() {
                 .store
                 .present_ranges("delivery-current")
                 .await
-                .unwrap();
+                .expect("valid test fixture");
             if ranges.iter().any(|range| range.end == origin.total_bytes()) {
                 break;
             }

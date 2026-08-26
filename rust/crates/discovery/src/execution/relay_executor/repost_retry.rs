@@ -72,7 +72,7 @@ impl RepostSettlement {
         let present = verified_event_ids(&events);
         for index in 0..self.selected.len() {
             let status = self.target_status(index, &present);
-            self.settle_wrapper_target(status);
+            self.settle_wrapper_target(&status);
         }
         events.retain(|event| self.keeps_target_event(event));
         events
@@ -90,7 +90,7 @@ impl RepostSettlement {
         }
     }
 
-    fn settle_wrapper_target(&mut self, status: TargetStatus) {
+    fn settle_wrapper_target(&mut self, status: &TargetStatus) {
         if status.materialized {
             self.settle_materialized_target(status);
         } else if status.exact_present {
@@ -100,7 +100,7 @@ impl RepostSettlement {
         }
     }
 
-    fn settle_materialized_target(&mut self, status: TargetStatus) {
+    fn settle_materialized_target(&mut self, status: &TargetStatus) {
         if status.exact {
             self.retry.remove(&status.id);
         }
@@ -116,7 +116,7 @@ impl RepostSettlement {
     pub(super) fn finish(
         mut self,
         events: Vec<Event>,
-        deletion_settled: BTreeSet<EventId>,
+        deletion_settled: &BTreeSet<EventId>,
     ) -> (Vec<Event>, RepostRetryDelta) {
         if !self.enabled {
             return (events, RepostRetryDelta::default());
@@ -128,7 +128,7 @@ impl RepostSettlement {
         );
         let safe: BTreeSet<_> = self
             .target_settled
-            .intersection(&deletion_settled)
+            .intersection(deletion_settled)
             .copied()
             .collect();
         let donors = self.support.donors_for(&safe);
@@ -187,7 +187,7 @@ fn unique(events: impl IntoIterator<Item = Event>) -> Vec<Event> {
         .collect()
 }
 
-fn newest_first(left: &Event, right: &Event) -> std::cmp::Ordering {
+fn newest_first(left: &Event, right: &Event) -> core::cmp::Ordering {
     right
         .created_at
         .cmp(&left.created_at)

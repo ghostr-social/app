@@ -1,4 +1,4 @@
-use crate::relay::io::drain_events_with_progress;
+use crate::relay::io::axiom_test_support::drain_events_with_progress;
 use crate::tests::scheduler_support::note_at;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;

@@ -1,9 +1,9 @@
-use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
+use crate::plan_executor::{PlanExecutor as _, PlannedRetrieval};
 use crate::query::search::plan_discovery;
 use crate::query::video_filters::{DiscoveryRequest, RepostAdmission};
 use crate::retrieval_types::{FeedContext, RetrievalPriority};
 use crate::tests::deletion_enrichment_support::{executor, DeletionIo};
-use nostr_sdk::{EventBuilder, JsonUtil, Keys, Kind, Tag, Timestamp};
+use nostr_sdk::{EventBuilder, JsonUtil as _, Keys, Kind, Tag, Timestamp};
 
 #[tokio::test]
 async fn historical_feed_fetches_a_newer_wrapper_deletion() {

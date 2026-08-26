@@ -34,7 +34,7 @@ impl TimelineParser for ProductionTimelineParser {
             .collect();
         match parse_mp4_segments_with_control(&segments, control) {
             Ok(timeline) if timeline.fits_within(input.total) => {
-                TimelineParse::Completed(TimelineTerminal::Ready(timeline))
+                TimelineParse::Completed(TimelineTerminal::Ready(Box::new(timeline)))
             }
             Ok(_) => {
                 TimelineParse::Completed(TimelineTerminal::Rejected(TimelineRejection::OutOfBounds))

@@ -1,8 +1,8 @@
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-use base64::Engine;
+use base64::Engine as _;
+use core::time::Duration;
 use ghostr_gateway::hls::sessions::{HlsResourceId, HlsSessionId, HlsSessionLimits, HlsSessions};
 use reqwest::Url;
-use std::time::Duration;
 
 #[tokio::test]
 async fn failed_rewrites_leave_no_partial_resource_state() {

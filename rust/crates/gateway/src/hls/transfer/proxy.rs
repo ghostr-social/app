@@ -2,11 +2,11 @@ use super::HlsTransfer;
 use crate::hls::asset_response::AssetBodyContract;
 use axum::body::Body;
 use bytes::Bytes;
+use core::pin::Pin;
+use core::task::{Context, Poll};
 use futures_util::Stream;
 use std::io;
-use std::pin::Pin;
 use std::sync::{Arc, Mutex};
-use std::task::{Context, Poll};
 use tokio::sync::mpsc;
 use tokio::time::{sleep_until, Instant};
 
@@ -64,7 +64,7 @@ async fn pump(mut state: AssetBodyState, sender: mpsc::Sender<Bytes>, terminal: 
 
 async fn next_step(state: &mut AssetBodyState, sender: &mpsc::Sender<Bytes>) -> PumpStep {
     let next = tokio::select! {
-        _ = sender.closed() => return PumpStep::Finished,
+        () = sender.closed() => return PumpStep::Finished,
         next = state.transfer.next_chunk() => next,
     };
     classify(state, next)
@@ -79,22 +79,24 @@ fn classify(state: &mut AssetBodyState, next: anyhow::Result<Option<Bytes>>) -> 
 }
 
 fn classify_chunk(state: &mut AssetBodyState, chunk: Bytes) -> PumpStep {
-    match state.accepts(&chunk) {
-        true => PumpStep::Chunk(chunk),
-        false => PumpStep::Failed(
+    if state.accepts(&chunk) {
+        PumpStep::Chunk(chunk)
+    } else {
+        PumpStep::Failed(
             io::ErrorKind::InvalidData,
             "HLS body exceeds its extent".to_owned(),
-        ),
+        )
     }
 }
 
 fn classify_end(state: &AssetBodyState) -> PumpStep {
-    match state.contract.complete(state.sent) {
-        true => PumpStep::Finished,
-        false => PumpStep::Failed(
+    if state.contract.complete(state.sent) {
+        PumpStep::Finished
+    } else {
+        PumpStep::Failed(
             io::ErrorKind::UnexpectedEof,
             "HLS body ended early".to_owned(),
-        ),
+        )
     }
 }
 
@@ -106,11 +108,11 @@ async fn send_chunk(
 ) -> bool {
     tokio::select! {
         biased;
-        _ = sleep_until(deadline) => {
+        () = sleep_until(deadline) => {
             fail(terminal, io::ErrorKind::TimedOut, "HLS object transfer timed out");
             false
         }
-        _ = sender.closed() => false,
+        () = sender.closed() => false,
         result = sender.send(chunk) => result.is_ok(),
     }
 }

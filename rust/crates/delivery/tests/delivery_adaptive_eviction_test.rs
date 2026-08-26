@@ -2,12 +2,12 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::full_disk::{discard, limits, spaced_store};
 use delivery_fixture::items::{focus_now, seed_range, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness_with_store;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::time::timeout;
 
 const UNREACHABLE: &str = "http://127.0.0.1:9/video.mp4";
@@ -38,11 +38,19 @@ async fn storage_pressure_evicts_only_the_far_exact_tail() {
     wait_until_used(&harness, 99).await;
 
     assert_eq!(
-        harness.store.present_ranges("p1").await.unwrap(),
+        harness
+            .store
+            .present_ranges("p1")
+            .await
+            .expect("valid test fixture"),
         vec![0..45]
     );
     assert_eq!(
-        harness.store.present_ranges("p8").await.unwrap(),
+        harness
+            .store
+            .present_ranges("p8")
+            .await
+            .expect("valid test fixture"),
         vec![0..54]
     );
     discard(&root);

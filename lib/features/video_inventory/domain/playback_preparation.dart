@@ -61,6 +61,7 @@ final class PlaybackPreparationAsset {
       media: media,
       authority: authority,
       sourceRepresentationId: sourceRepresentationId,
+      isStructurallyStartable: readiness.isStructurallyStartable,
     );
   }
 

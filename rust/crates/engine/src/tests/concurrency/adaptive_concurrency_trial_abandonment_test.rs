@@ -1,7 +1,7 @@
 use crate::concurrency::{
     AdaptiveConcurrency, ConcurrencyEvidence, ConcurrencyOccupancy, NetworkSetback,
 };
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn four_consecutive_unclaimed_windows_abandon_a_trial() {

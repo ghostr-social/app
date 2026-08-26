@@ -1,11 +1,10 @@
-use crate::delivery_events::{
-    DeliveryFocus, FocusItem, PlayerPreparationAttempt, PlayerPreparationAuthority,
-    PlayerPreparationObservation, PlayerPreparationReport, PlayerPreparationState,
-};
+
+use crate::delivery_events::{DeliveryFocus, FocusItem, PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationObservation, PlayerPreparationReport, PlayerPreparationState};
 use crate::manager::state::DeliveryState;
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
 use ghostr_partial_store::partial_range_store::ContentRevision;
 
+#[derive(Clone, Copy)]
 pub(super) struct EvidenceSpec<'a> {
     pub(super) post: &'a str,
     pub(super) revision: ContentRevision,
@@ -38,16 +37,16 @@ pub(super) fn evidence(state: &DeliveryState, spec: EvidenceSpec<'_>) -> PlayerP
     PlayerPreparationReport::try_new(
         PlayerPreparationAuthority::try_new(
             post.clone(),
-            state.catalog().binding(&post).unwrap(),
+            state.catalog().binding(&post).expect("valid test fixture"),
             spec.revision,
             format!("asset-{}", spec.post),
         )
-        .unwrap(),
-        PlayerPreparationAttempt::try_new(1, 9, 4).unwrap(),
+        .expect("valid test fixture"),
+        PlayerPreparationAttempt::try_new(1, 9, 4).expect("valid test fixture"),
         spec.sequence,
-        PlayerPreparationObservation::try_new(spec.state, failure, spec.sequence).unwrap(),
+        PlayerPreparationObservation::try_new(spec.state, failure, spec.sequence).expect("valid test fixture"),
     )
-    .unwrap()
+    .expect("valid test fixture")
 }
 
 pub(super) fn report(
@@ -72,15 +71,15 @@ pub(super) fn report_with_epoch(
         ContentRevision::default(),
         "asset",
     )
-    .unwrap();
-    let attempt = PlayerPreparationAttempt::try_new(1, client_epoch, attempt_generation).unwrap();
+    .expect("valid test fixture");
+    let attempt = PlayerPreparationAttempt::try_new(1, client_epoch, attempt_generation).expect("valid test fixture");
     let observation = PlayerPreparationObservation::try_new(
         PlayerPreparationState::Initializing,
         None,
         observed_us,
     )
-    .unwrap();
-    PlayerPreparationReport::try_new(authority, attempt, 1, observation).unwrap()
+    .expect("valid test fixture");
+    PlayerPreparationReport::try_new(authority, attempt, 1, observation).expect("valid test fixture")
 }
 
 pub(super) fn meta(id: &str) -> VideoMeta {

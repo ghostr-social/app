@@ -3,7 +3,7 @@ mod gateway_fixture;
 use axum::http::header::CONTENT_RANGE;
 use axum::http::StatusCode;
 use gateway_fixture::progressive::progressive_harness;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn rejects_a_range_that_starts_past_the_end_of_the_video() {

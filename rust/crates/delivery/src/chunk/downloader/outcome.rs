@@ -1,6 +1,6 @@
 use super::ChunkResult;
+use core::time::Duration;
 use ghostr_engine::host_stats::{host_of, HostStats};
-use std::time::Duration;
 
 pub(super) fn range_ignored(total_bytes: Option<u64>, range_support: Option<bool>) -> ChunkResult {
     ChunkResult {

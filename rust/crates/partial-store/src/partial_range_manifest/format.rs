@@ -1,5 +1,5 @@
 use super::{coalesce, IntervalChecksum};
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Context as _, Result};
 use serde::{Deserialize, Serialize};
 
 const MANIFEST_VERSION: u8 = 2;

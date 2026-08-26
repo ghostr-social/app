@@ -11,18 +11,18 @@ pub(crate) enum PresentationAdmission {
 impl DeliveryState {
     pub(crate) fn apply_presentation(
         &mut self,
-        event: PlaybackPresentation,
+        event: &PlaybackPresentation,
     ) -> PresentationAdmission {
         if event.sequence() <= self.latest_presentation_sequence {
             return PresentationAdmission::Stale;
         }
-        let admission = self.presentation_admission(&event);
+        let admission = self.presentation_admission(event);
         if admission == PresentationAdmission::Stale {
             return admission;
         }
         self.latest_presentation_sequence = event.sequence();
         if admission == PresentationAdmission::Pending {
-            self.pending_presentation = Some(event);
+            self.pending_presentation = Some(event.clone());
         } else {
             if self.pending_matches(event.session()) {
                 self.pending_presentation = None;

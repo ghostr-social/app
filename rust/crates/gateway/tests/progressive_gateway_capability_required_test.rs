@@ -3,7 +3,7 @@ mod gateway_fixture;
 use axum::http::StatusCode;
 use gateway_fixture::progressive::progressive_harness;
 use gateway_fixture::progressive_request::video_request;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn post_id_alone_does_not_authorize_playback() {

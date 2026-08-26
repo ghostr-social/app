@@ -38,7 +38,7 @@ fn evidence(post: PostId) -> CandidateEvidence {
     CandidateEvidence {
         post,
         feed_offset: FeedOffset::new(0),
-        view_probability: ViewProbability::new(1.0).unwrap(),
+        view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
         present: Vec::new(),
         stored_total: None,
         continuation_source: None,

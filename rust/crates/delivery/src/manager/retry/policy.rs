@@ -1,6 +1,6 @@
 //! Retry budgets and the exponential backoff policy they grant.
 
-use std::time::Duration;
+use core::time::Duration;
 
 /// The backoff ladder and the attempt budgets it is spent from.
 #[derive(Clone, Copy, Debug, PartialEq)]

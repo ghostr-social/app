@@ -11,6 +11,7 @@ use std::collections::HashMap;
 
 mod epoch;
 mod evidence;
+mod fallback;
 mod retention;
 use evidence::{capability_profile, capability_signal};
 use retention::{abandon, retain_preparations};
@@ -22,11 +23,6 @@ impl DeliveryState {
         }
         self.ready_target = target;
         self.prune_player_preparation_scope();
-    }
-
-    #[cfg(test)]
-    pub(crate) fn apply_player_preparation(&mut self, report: PlayerPreparationReport) -> bool {
-        self.apply_player_preparation_at(report, 0) == PlayerPreparationActorOutcome::Applied
     }
 
     pub(crate) fn apply_player_preparation_at(
@@ -189,3 +185,7 @@ impl DeliveryState {
         ))
     }
 }
+
+#[cfg(test)]
+#[path = "player_preparation_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

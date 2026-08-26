@@ -1,0 +1,52 @@
+version = 1
+
+[sources]
+include = ["**/*.rs"]
+exclude = ["src/frb_generated.rs"]
+test = [
+  "**/tests.rs",
+  "**/*_test.rs",
+  "**/*_tests.rs",
+  "**/test_support.rs",
+  "**/test_support/**/*.rs",
+  "**/tests/**/*.rs",
+]
+
+[tools.clippy]
+enabled = true
+profile = "axiom"
+check-docs = true
+targets = "all"
+features = "default"
+warnings = "deny"
+
+[rules."size/function-max-lines"]
+level = "deny"
+limit = 50
+scope = "production"
+
+[rules."size/file-max-lines"]
+level = "deny"
+limit = 200
+scope = "production"
+
+[rules."testing/separate-test-files"]
+level = "deny"
+
+[rules."dead-code/private"]
+level = "warn"
+
+[rules."dead-code/public"]
+level = "warn"
+
+[rules."dead-code/test-only"]
+level = "warn"
+
+[rules."visibility/unnecessary-public"]
+level = "deny"
+
+[rules."visibility/unnecessary-restricted"]
+level = "warn"
+
+[rules."visibility/unnecessary-crate"]
+level = "warn"

@@ -93,7 +93,7 @@ async fn update_network(
 ) -> Result<Json<NetworkProfile>, StatusCode> {
     validate_network(profile)?;
     state.progressive.network.update(profile);
-    state.delivery.network_changed();
+    state.delivery.update_network_profile(profile);
     Ok(Json(profile))
 }
 

@@ -1,7 +1,7 @@
 use super::warp_range_noncompliant_unknown_size_generation_test::range_blind_candidate;
+use crate::adaptive::axiom_test_support::WarpActionGenerator;
 use crate::adaptive::{
-    ActionKind, AdaptivePlayabilityPolicy, PlannerContext, WarpActionGenerator,
-    BOOTSTRAP_DIRECT_FETCH_BYTES,
+    ActionKind, AdaptivePlayabilityPolicy, PlannerContext, BOOTSTRAP_DIRECT_FETCH_BYTES,
 };
 use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::snapshot;

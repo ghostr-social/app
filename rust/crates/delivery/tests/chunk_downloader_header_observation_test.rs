@@ -1,5 +1,7 @@
 mod range_fixture;
 
+use core::time::Duration;
+use core::{future::Future, pin::Pin};
 use ghostr_delivery::chunk::cancel::cancel_pair;
 use ghostr_delivery::chunk::downloader::{
     download_chunk_observed, ChunkExecution, ChunkSink, ChunkSpec, DownloadTraffic,
@@ -9,8 +11,6 @@ use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::ByteRange;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
-use std::time::Duration;
-use std::{future::Future, pin::Pin};
 use tokio::sync::oneshot;
 
 #[tokio::test]
@@ -67,7 +67,7 @@ async fn coherent_response_semantics_are_reported_before_body_completion() {
         EvidenceValidator::strong_etag("\"fixture-stall\"")
     );
     handle.cancel();
-    assert!(download.await.unwrap().cancelled);
+    assert!(download.await.result.expect("valid test fixture").cancelled);
     std::fs::remove_dir_all(root).ok();
 }
 
@@ -84,7 +84,11 @@ impl DownloadTraffic for HeaderTraffic {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<ResponseAdmission>> + Send + 'a>> {
         let observed = response.observation();
         let evidence = response.evidence().clone();
-        self.0.take().unwrap().send((observed, evidence)).ok();
+        self.0
+            .take()
+            .expect("valid test fixture")
+            .send((observed, evidence))
+            .ok();
         Box::pin(async { Ok(ResponseAdmission::Proceed) })
     }
 }

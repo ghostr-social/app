@@ -1,14 +1,12 @@
-#[cfg(test)]
-use super::{fetch, FetchInput, SegmentedTraffic};
 use super::{
     fetch_tracked, FetchFailure, FetchProgress, FetchRuntime, FetchSpec, FetchedObject,
     ObjectContinuation, ObjectRequest,
 };
 use crate::delivery_events::DeliveryNetworkStatusReader;
+use core::time::Duration;
 use ghostr_engine::adaptive::{HlsBootstrapStage, PreemptionAuthority};
 use ghostr_net::media_request_executor::MediaRequestExecutor;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
-use std::time::Duration;
 use tokio::time::Instant;
 
 pub(in crate::segmented) struct StagedFetch<'a> {
@@ -22,27 +20,12 @@ pub(in crate::segmented) struct StagedFetch<'a> {
     pub network_status: &'a DeliveryNetworkStatusReader,
     pub cancellation: Option<tokio::sync::oneshot::Receiver<()>>,
     #[cfg(test)]
-    pub traffic: Option<SegmentedTraffic>,
+    pub(crate) traffic: Option<super::SegmentedTraffic>,
 }
 
 pub(in crate::segmented) struct TrackedStageFetch {
-    pub result: std::result::Result<FetchedObject, FetchFailure>,
+    pub result: core::result::Result<FetchedObject, FetchFailure>,
     pub cancellation: Option<tokio::sync::oneshot::Receiver<()>>,
-}
-
-#[cfg(test)]
-pub(in crate::segmented) async fn fetch_stage(
-    mut input: StagedFetch<'_>,
-) -> std::result::Result<FetchedObject, FetchFailure> {
-    let spec = stage_spec(&input)?;
-    let traffic = input.traffic.take();
-    fetch(
-        input.requests,
-        FetchInput { spec, traffic },
-        input.network_status,
-        input.cancellation,
-    )
-    .await
 }
 
 pub(in crate::segmented) async fn fetch_stage_tracked(
@@ -73,7 +56,7 @@ pub(in crate::segmented) async fn fetch_stage_tracked(
     }
 }
 
-fn stage_spec<'a>(input: &StagedFetch<'a>) -> std::result::Result<FetchSpec<'a>, FetchFailure> {
+fn stage_spec<'a>(input: &StagedFetch<'a>) -> core::result::Result<FetchSpec<'a>, FetchFailure> {
     if !valid_block(input) {
         return Err(preflight("invalid HLS WARP block commitment"));
     }
@@ -123,3 +106,7 @@ fn preflight(message: &'static str) -> FetchFailure {
         ghostr_engine::origin_model::ErrorReason::Policy,
     )
 }
+
+#[cfg(test)]
+#[path = "staged_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

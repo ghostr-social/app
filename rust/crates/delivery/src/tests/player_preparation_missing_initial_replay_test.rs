@@ -1,15 +1,12 @@
-use crate::delivery_events::{
-    command_channel, PlayerPreparationAttempt, PlayerPreparationAuthority,
-    PlayerPreparationFollowup, PlayerPreparationIngress, PlayerPreparationObservation,
-    PlayerPreparationReport, PlayerPreparationState,
-};
+
+use crate::delivery_events::{command_channel, PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationFollowup, PlayerPreparationIngress, PlayerPreparationObservation, PlayerPreparationReport, PlayerPreparationState};
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 use ghostr_partial_store::partial_range_store::ContentRevision;
 
 #[test]
 fn acknowledged_initial_can_be_replayed_after_manager_reset() {
-    let (handle, mut receiver) = command_channel();
+    let (handle, receiver) = command_channel();
     let initial = report(1, PlayerPreparationState::Initializing);
     let followup = PlayerPreparationFollowup::from_report(report(
         2,
@@ -20,7 +17,7 @@ fn acknowledged_initial_can_be_replayed_after_manager_reset() {
         handle.report_player_preparation_initial(admission, initial.clone()),
         PlayerPreparationIngress::Accepted,
     );
-    receiver.try_player_preparation().unwrap();
+    receiver.try_player_preparation().expect("valid test fixture");
     receiver.discard_pending();
 
     assert_eq!(
@@ -32,13 +29,13 @@ fn acknowledged_initial_can_be_replayed_after_manager_reset() {
         handle.report_player_preparation_initial(admission, initial),
         PlayerPreparationIngress::Accepted,
     );
-    receiver.try_player_preparation().unwrap();
+    receiver.try_player_preparation().expect("valid test fixture");
     assert_eq!(
         handle.report_player_preparation_followup(followup),
         PlayerPreparationIngress::Accepted,
     );
     assert_eq!(
-        receiver.try_player_preparation().unwrap().state(),
+        receiver.try_player_preparation().expect("valid test fixture").state(),
         PlayerPreparationState::Initialized,
     );
 }
@@ -48,10 +45,10 @@ fn report(sequence: u64, state: PlayerPreparationState) -> PlayerPreparationRepo
     let binding = Catalog::new().upsert(post.clone(), meta());
     let authority =
         PlayerPreparationAuthority::try_new(post, binding, ContentRevision::default(), "asset")
-            .unwrap();
-    let attempt = PlayerPreparationAttempt::try_new(1, 7, 1).unwrap();
-    let observation = PlayerPreparationObservation::try_new(state, None, sequence).unwrap();
-    PlayerPreparationReport::try_new(authority, attempt, sequence, observation).unwrap()
+            .expect("valid test fixture");
+    let attempt = PlayerPreparationAttempt::try_new(1, 7, 1).expect("valid test fixture");
+    let observation = PlayerPreparationObservation::try_new(state, None, sequence).expect("valid test fixture");
+    PlayerPreparationReport::try_new(authority, attempt, sequence, observation).expect("valid test fixture")
 }
 
 fn meta() -> VideoMeta {

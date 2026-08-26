@@ -9,20 +9,6 @@ impl Catalog {
             .unwrap_or(params.assumed_bitrate_bps)
     }
 
-    pub fn estimated_bitrate_for(
-        &self,
-        post: &PostId,
-        source: Option<&str>,
-        params: &EngineParams,
-    ) -> u64 {
-        self.lookup(post)
-            .and_then(|entry| {
-                let total = source.and_then(|value| entry.planning_total_for(value));
-                active_or_measured(entry, total)
-            })
-            .unwrap_or(params.assumed_bitrate_bps)
-    }
-
     pub(crate) fn estimated_bitrate_for_total(
         &self,
         post: &PostId,

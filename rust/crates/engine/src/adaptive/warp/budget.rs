@@ -37,12 +37,12 @@ impl ResourceObservation {
 pub struct ResourcePrices {
     pub network_micros: u64,
     pub storage_micros: u64,
-    pub cpu_micros: u64,
-    pub request_micros: u64,
+    pub(crate) cpu_micros: u64,
+    pub(crate) request_micros: u64,
 }
 
 impl ResourcePrices {
-    pub fn cost(self, resources: ResourceCost) -> i64 {
+    pub(super) fn cost(self, resources: ResourceCost) -> i64 {
         let value = u128::from(self.network_micros) * u128::from(resources.network_bytes)
             + u128::from(self.storage_micros) * u128::from(resources.storage_bytes)
             + u128::from(self.cpu_micros) * u128::from(resources.cpu_ms)
@@ -57,7 +57,7 @@ pub struct ShadowPriceController {
 }
 
 impl ShadowPriceController {
-    pub(crate) const fn from_prices(prices: ResourcePrices) -> Self {
+    pub(super) const fn from_prices(prices: ResourcePrices) -> Self {
         Self { prices }
     }
 
@@ -96,19 +96,19 @@ impl ShadowPriceController {
         );
     }
 
-    pub(crate) fn observe_network(&mut self, actual: u64, target: u64) {
+    fn observe_network(&mut self, actual: u64, target: u64) {
         self.prices.network_micros = adjust(self.prices.network_micros, actual, target);
     }
 
-    pub(crate) fn observe_storage(&mut self, actual: u64, target: u64) {
+    fn observe_storage(&mut self, actual: u64, target: u64) {
         self.prices.storage_micros = adjust(self.prices.storage_micros, actual, target);
     }
 
-    pub(crate) fn observe_cpu(&mut self, actual: u64, target: u64) {
+    fn observe_cpu(&mut self, actual: u64, target: u64) {
         self.prices.cpu_micros = adjust_observed_cpu(self.prices.cpu_micros, actual, target);
     }
 
-    pub(crate) fn observe_requests(&mut self, actual: u64, target: u64) {
+    fn observe_requests(&mut self, actual: u64, target: u64) {
         self.prices.request_micros = adjust(self.prices.request_micros, actual, target);
     }
 

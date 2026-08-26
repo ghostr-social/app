@@ -65,7 +65,7 @@ impl AssetCall {
 
     async fn full(&self, url: Url, range: AssetRangeRequest) -> Result<Response<Body>, StatusCode> {
         if let Some(object) = self.state.segmented.object(url.as_str()) {
-            return cached::response(object, range);
+            return cached::response(&object, range);
         }
         let transfer = self.open(&url, range, None).await?;
         let envelope = validate(range, transfer.response()).map_err(bad_gateway)?;
@@ -81,7 +81,7 @@ impl AssetCall {
             .segmented
             .object(url.as_str())
             .map_or_else(asset_response::local_unsatisfiable, |object| {
-                cached::response(object, range)
+                cached::response(&object, range)
             })
     }
 
@@ -101,7 +101,7 @@ impl AssetCall {
             .map_err(bad_gateway)?;
         self.ensure_owner(&fence).await?;
         match plan {
-            AssetPlan::Cache(generation) => self.cached(object, generation, range),
+            AssetPlan::Cache(generation) => Self::cached(object, generation, range),
             AssetPlan::First(admission) => {
                 self.first(OriginRequest { url, range, fence }, admission)
                     .await
@@ -114,13 +114,12 @@ impl AssetCall {
     }
 
     fn cached(
-        &self,
         object: Option<CachedHlsObject>,
         generation: ghostr_delivery::segmented::CachedHlsGeneration,
         range: AssetRangeRequest,
     ) -> Result<Response<Body>, StatusCode> {
         let object = object.filter(|object| object.generation() == generation);
-        cached::response(object.ok_or(StatusCode::BAD_GATEWAY)?, range)
+        cached::response(&object.ok_or(StatusCode::BAD_GATEWAY)?, range)
     }
 
     async fn fence(&self, url: &Url) -> Result<AssetFence, StatusCode> {
@@ -143,6 +142,6 @@ impl AssetCall {
     }
 }
 
-pub(super) fn bad_gateway(_: impl std::fmt::Display) -> StatusCode {
+pub(super) fn bad_gateway(_: impl core::fmt::Display) -> StatusCode {
     StatusCode::BAD_GATEWAY
 }

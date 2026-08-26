@@ -12,7 +12,7 @@ fn imeta_preserves_declared_mime_and_separates_x_from_ox() {
         format!("ox {ox}"),
     ];
 
-    let media = lenient_native_media(&tag).unwrap();
+    let media = lenient_native_media(&tag).expect("valid test fixture");
 
     assert_eq!(media.declared_mime.as_deref(), Some("video/mp4"));
     assert_eq!(media.expected_digest.as_deref(), Some(x.as_str()));

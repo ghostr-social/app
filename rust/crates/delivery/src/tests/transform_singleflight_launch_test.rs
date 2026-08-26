@@ -18,7 +18,7 @@ impl TransformBackend for PassBackend {
     fn profile(&self) -> TransformProfile {
         TransformProfile::new(
             TransformKind::Remux,
-            TransformLimits::try_new(16, 16, 5, 10).unwrap(),
+            TransformLimits::try_new(16, 16, 5, 10).expect("valid test fixture"),
         )
     }
 
@@ -45,7 +45,7 @@ async fn runtime_rejects_cross_post_transform_while_one_is_linked() {
         StoreCapacity::system(u64::MAX),
     ));
 
-    assert!(jobs.launch(store.clone(), request("first", 1)));
+    assert!(jobs.launch(std::sync::Arc::clone(&store), request("first", 1)));
     assert!(!jobs.launch(store, request("second", 2)));
     assert_eq!(jobs.clear(), 1);
 }

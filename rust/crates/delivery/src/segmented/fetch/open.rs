@@ -73,12 +73,13 @@ fn timeout(error: tokio::time::error::Elapsed, context: &'static str) -> FetchPr
 }
 
 fn admission_timeout(error: tokio::time::error::Elapsed, commitment_limited: bool) -> FetchProblem {
-    match commitment_limited {
-        true => ownership_expired(),
-        false => FetchProblem::neutral(
+    if commitment_limited {
+        ownership_expired()
+    } else {
+        FetchProblem::neutral(
             anyhow::Error::new(error).context("HLS request admission timed out"),
             ErrorReason::Timeout,
-        ),
+        )
     }
 }
 

@@ -28,7 +28,14 @@ fn mirror_retry_discards_objects_and_bytes_from_the_failed_source() {
     );
     assert!(cache.mark_stage_ready(&post, 1));
     assert!(cache.object("primary").is_none());
-    assert_eq!(cache.object("mirror").unwrap().body.as_ref(), b"new");
+    assert_eq!(
+        cache
+            .object("mirror")
+            .expect("valid test fixture")
+            .body
+            .as_ref(),
+        b"new"
+    );
 }
 
 #[test]
@@ -44,13 +51,20 @@ fn staged_root_is_invisible_until_the_entire_bootstrap_is_ready() {
 
     assert!(cache.object("root").is_none());
     assert!(cache.mark_stage_ready(&post, 1));
-    assert_eq!(cache.object("root").unwrap().body.as_ref(), b"manifest");
+    assert_eq!(
+        cache
+            .object("root")
+            .expect("valid test fixture")
+            .body
+            .as_ref(),
+        b"manifest"
+    );
 }
 
 fn object(request_url: &str, body: &[u8]) -> PreparedObject {
     PreparedObject {
         request_url: request_url.to_owned(),
-        final_url: Url::parse("https://primary.example/index.m3u8").unwrap(),
+        final_url: Url::parse("https://primary.example/index.m3u8").expect("valid test fixture"),
         body: Arc::from(body),
         content_type: Some("application/vnd.apple.mpegurl".to_owned()),
         cache: Default::default(),

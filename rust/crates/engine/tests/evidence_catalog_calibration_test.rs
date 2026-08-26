@@ -1,9 +1,9 @@
-use ghostr_engine::catalog::{Catalog, CompleteBytesObservation, LearnedFacts};
-use ghostr_engine::evidence::{
+use crate::catalog::{Catalog, CompleteBytesObservation, LearnedFacts};
+use crate::evidence::{
     CalibrationContext, CalibrationDimensions, EvidenceField, NostrMetadataEvidence,
 };
-use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
-use std::num::NonZeroU64;
+use crate::{DeliveryKind, PostId, VideoMeta};
+use core::num::NonZeroU64;
 
 #[test]
 fn complete_bytes_label_the_exact_issuer_origin_url_and_size_context() {
@@ -26,11 +26,16 @@ fn complete_bytes_label_the_exact_issuer_origin_url_and_size_context() {
         ..Default::default()
     };
     let binding = catalog.upsert_with_evidence(post, meta, Vec::new(), vec![declared]);
-    let identity = binding.transfer(url).unwrap();
+    let identity = binding.transfer(url).expect("valid test fixture");
 
     assert!(catalog.learn_complete_bytes_for(
         &identity,
-        CompleteBytesObservation::new(NonZeroU64::new(20).unwrap(), url, 10, None)
+        CompleteBytesObservation::new(
+            NonZeroU64::new(20).expect("valid test fixture"),
+            url,
+            10,
+            None
+        )
     ));
 
     let dimensions = CalibrationDimensions::new(
@@ -55,7 +60,7 @@ fn range_response_labels_the_advisory_head_claim() {
         duration_ms: None,
     };
     let binding = catalog.upsert(post, meta);
-    let identity = binding.transfer(url).unwrap();
+    let identity = binding.transfer(url).expect("valid test fixture");
     assert!(catalog.learn_head_for(&identity, range_facts(true)));
     assert!(catalog.learn_response_for(&identity, range_facts(false)));
     let dimensions = CalibrationDimensions::new(None, Some("cdn.example".into()), Some(url.into()));

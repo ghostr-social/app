@@ -1,5 +1,5 @@
+use core::time::Duration;
 use ghostr_gateway::hls::sessions::{HlsSessionLimits, HlsSessions};
-use std::time::Duration;
 
 #[tokio::test]
 async fn bounds_live_sessions_until_an_owner_releases_one() {

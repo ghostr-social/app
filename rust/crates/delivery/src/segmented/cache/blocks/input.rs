@@ -7,21 +7,15 @@ pub(in crate::segmented) struct StageBlock {
 }
 
 impl StageBlock {
-    pub(in crate::segmented) fn new(offset: u64, object: PreparedObject, complete: bool) -> Self {
+    fn new(offset: u64, object: PreparedObject, complete: bool) -> Self {
         Self {
             offset,
             object,
             complete,
         }
     }
-
-    #[cfg(test)]
-    pub(in crate::segmented) fn partial(offset: u64, object: PreparedObject) -> Self {
-        Self::new(offset, object, false)
-    }
-
-    #[cfg(test)]
-    pub(in crate::segmented) fn complete(offset: u64, object: PreparedObject) -> Self {
-        Self::new(offset, object, true)
-    }
 }
+
+#[cfg(test)]
+#[path = "input_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

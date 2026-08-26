@@ -10,12 +10,12 @@ fn classic_startup_requires_a_proven_mdat_and_tail_box_boundary() {
         MediaSegment::new(0, &prefix_through_sample()),
         MediaSegment::new(MOVIE_START, &movie),
     ])
-    .unwrap();
+    .expect("valid test fixture");
     let unproven = parse_mp4_segments(&[
         MediaSegment::new(0, &valid_ftyp()),
         MediaSegment::new(MOVIE_START, &movie),
     ])
-    .unwrap();
+    .expect("valid test fixture");
 
     assert!(valid.startup_footprint().is_some());
     assert!(unproven.startup_footprint().is_none());
@@ -28,7 +28,7 @@ fn a_moov_inside_a_nonzero_mdat_segment_is_not_startup() {
         MediaSegment::new(0, &valid_ftyp()),
         MediaSegment::new(MOVIE_START, &nested),
     ])
-    .unwrap();
+    .expect("valid test fixture");
 
     assert!(timeline.startup_footprint().is_none());
 }
@@ -41,7 +41,7 @@ fn a_nested_tail_moov_cannot_borrow_a_proven_head_mdat() {
         MediaSegment::new(0, &prefix),
         MediaSegment::new(MOVIE_START, &movie),
     ])
-    .unwrap();
+    .expect("valid test fixture");
 
     assert!(timeline.startup_footprint().is_none());
 }
@@ -56,7 +56,7 @@ fn a_nested_movie_cannot_shadow_a_later_top_level_movie() {
         MediaSegment::new(40, &nested),
         MediaSegment::new(MOVIE_START, &top_level),
     ])
-    .unwrap();
+    .expect("valid test fixture");
 
     assert!(timeline.startup_footprint().is_some());
 }
@@ -71,7 +71,7 @@ fn a_size_zero_file_type_cannot_authorize_sparse_tail_metadata() {
         MediaSegment::new(0, &open_ended),
         MediaSegment::new(MOVIE_START, &movie),
     ])
-    .unwrap();
+    .expect("valid test fixture");
 
     assert!(timeline.startup_footprint().is_none());
 }
@@ -87,7 +87,7 @@ fn missing_metadata_payload_breaks_later_top_level_authority() {
         MediaSegment::new(64, &missing_movie),
         MediaSegment::new(MOVIE_START, &movie),
     ])
-    .unwrap();
+    .expect("valid test fixture");
 
     assert!(timeline.startup_footprint().is_none());
 }

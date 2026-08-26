@@ -18,7 +18,7 @@ async fn an_error_from_a_replaced_stream_is_reported_as_superseded() {
         store
             .finish_stream_read("clip", None, revision, read)
             .await
-            .unwrap(),
+            .expect("valid test fixture"),
         RepresentationRead::Superseded
     ));
 }
@@ -26,7 +26,7 @@ async fn an_error_from_a_replaced_stream_is_reported_as_superseded() {
 #[tokio::test]
 async fn a_stream_authority_check_preserves_store_failure() {
     let (root, store) = store();
-    std::fs::create_dir_all(root.join("clip.transform.video")).unwrap();
+    std::fs::create_dir_all(root.join("clip.transform.video")).expect("valid test fixture");
 
     assert!(store
         .stream_is_current("clip", None, ContentRevision::default())
@@ -47,7 +47,7 @@ async fn a_representation_authority_check_preserves_store_failure() {
             duration_ms: Some(2_000),
         },
     );
-    std::fs::create_dir_all(root.join("clip.transform.video")).unwrap();
+    std::fs::create_dir_all(root.join("clip.transform.video")).expect("valid test fixture");
 
     assert!(store.read_for_representation(&binding, 0..1).await.is_err());
 }
@@ -58,7 +58,7 @@ fn store() -> (std::path::PathBuf, PartialRangeStore) {
         std::process::id(),
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("valid test fixture")
             .as_nanos()
     ));
     let store = PartialRangeStore::with_capacity(

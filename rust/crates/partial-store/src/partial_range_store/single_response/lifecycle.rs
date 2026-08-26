@@ -1,7 +1,7 @@
 use super::{PartialRangeStore, ResponseOwnerRef, SingleResponseState, SingleResponseStorage};
 use anyhow::Result;
 use ghostr_engine::representation::TransferIdentity;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 impl PartialRangeStore {
     pub(super) async fn current_single_response(
@@ -115,8 +115,8 @@ impl PartialRangeStore {
 
     pub(in crate::partial_range_store) async fn staged_response_bytes(
         &self,
-    ) -> HashMap<String, u64> {
-        let mut staged: HashMap<_, _> = self
+    ) -> BTreeMap<String, u64> {
+        let mut staged: BTreeMap<_, _> = self
             .single_response_actions
             .lock()
             .await

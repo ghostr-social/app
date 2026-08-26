@@ -8,7 +8,10 @@ impl Builder<'_> {
     pub(super) fn add_whole(&mut self, candidate: &CandidateSnapshot) -> Option<u16> {
         let source = self.request_source(candidate)?;
         let maximum = self.maximum(candidate)?;
-        if candidate.finalized || crate::adaptive::resources::fully_stored(candidate) {
+        if whole_is_owned(candidate)
+            || candidate.finalized
+            || crate::adaptive::resources::fully_stored(candidate)
+        {
             return None;
         }
         let kind = ActionKind::FetchWhole {
@@ -53,4 +56,11 @@ impl Builder<'_> {
         }
         Some(target)
     }
+}
+
+fn whole_is_owned(candidate: &CandidateSnapshot) -> bool {
+    candidate
+        .in_flight
+        .iter()
+        .any(|active| active.identity_current)
 }

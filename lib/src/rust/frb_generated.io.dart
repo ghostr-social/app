@@ -19,6 +19,7 @@ import 'api/playback_preparation_stream.dart';
 import 'api/playback_types.dart';
 import 'api/player_preparation_control.dart';
 import 'api/session_control.dart';
+import 'api/warp_evidence_control.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' as ffi;

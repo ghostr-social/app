@@ -1,5 +1,5 @@
-use ghostr_discovery::content::candidates::CandidateRegistry;
-use nostr_sdk::{EventBuilder, JsonUtil, Keys, Kind, Tag, Timestamp};
+use crate::content::candidates::CandidateRegistry;
+use nostr_sdk::{EventBuilder, JsonUtil as _, Keys, Kind, Tag, Timestamp};
 
 #[test]
 fn later_repost_readmits_current_content_for_delivery_priority() {

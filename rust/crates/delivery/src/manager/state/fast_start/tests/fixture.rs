@@ -5,8 +5,8 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 pub(super) fn store(prefix: &str) -> (PathBuf, PartialRangeStore) {
-    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
-    let unique = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    static NEXT: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(1);
+    let unique = NEXT.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
     let root =
         std::env::temp_dir().join(format!("ghostr-{prefix}-{}-{unique}", std::process::id()));
     let store = PartialRangeStore::with_capacity(

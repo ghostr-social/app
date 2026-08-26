@@ -1,7 +1,5 @@
-mod store_fixture;
-
+use crate::tests::store_fixture::{plain_store, temp_root};
 use std::sync::Arc;
-use store_fixture::{plain_store, temp_root};
 use tokio::sync::Mutex;
 
 #[tokio::test]
@@ -18,7 +16,7 @@ async fn partial_range_missing_within_reports_only_the_gaps_inside_the_span() {
     );
     assert_eq!(
         store.missing_within("clip", 2..4).await.expect("covered"),
-        Vec::<std::ops::Range<u64>>::new()
+        Vec::<core::ops::Range<u64>>::new()
     );
     assert_eq!(
         store.missing_within("clip", 3..9).await.expect("clipped"),

@@ -1,8 +1,8 @@
 use crate::hls::asset_generation::{AssetFence, AssetRegistry};
 use crate::hls::types::{random_id, random_secret, HlsSessionId};
+use core::time::Duration;
 use reqwest::Url;
 use std::collections::HashMap;
-use std::time::Duration;
 use tokio::time::Instant;
 
 #[derive(Default)]

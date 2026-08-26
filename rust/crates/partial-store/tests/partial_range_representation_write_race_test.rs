@@ -1,15 +1,11 @@
-#[path = "store_fixture/paused.rs"]
-mod paused_fixture;
-mod store_fixture;
-
+use crate::partial_range_store::PartialRangeStore;
+use core::future::{poll_fn, Future as _};
+use core::task::Poll;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
-use std::future::{poll_fn, Future};
 use std::path::Path;
 use std::sync::Arc;
-use std::task::Poll;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 
@@ -17,35 +13,49 @@ type Write = JoinHandle<anyhow::Result<bool>>;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn source_switch_fences_persisting_and_waiting_writers() {
-    let mut fixture = paused_fixture::paused_store("partial-representation-write-race");
-    let store = fixture.store.clone();
+    let mut fixture =
+        crate::tests::paused_fixture::paused_store("partial-representation-write-race");
+    let store = std::sync::Arc::clone(&fixture.store);
     let (binding, old, current) = identities();
-    store.bind_representation(binding.clone()).await.unwrap();
-    store.select_transfer(old.clone()).await.unwrap();
-    let persisting = persisting_write(store.clone(), old.clone());
+    store
+        .bind_representation(binding.clone())
+        .await
+        .expect("valid test fixture");
+    store
+        .select_transfer(old.clone())
+        .await
+        .expect("valid test fixture");
+    let persisting = persisting_write(std::sync::Arc::clone(&store), old.clone());
     fixture.wait_until_admission().await;
     let (ready, waiting_ready) = oneshot::channel();
-    let waiting = waiting_write(store.clone(), old, ready);
-    waiting_ready.await.unwrap();
+    let waiting = waiting_write(std::sync::Arc::clone(&store), old, ready);
+    waiting_ready.await.expect("valid test fixture");
 
     let switching = tokio::spawn({
-        let store = store.clone();
+        let store = std::sync::Arc::clone(&store);
         async move { store.select_transfer(current).await }
     });
     fixture.resume();
-    switching.await.unwrap().unwrap();
+    switching
+        .await
+        .expect("valid test fixture")
+        .expect("valid test fixture");
 
     assert_rejected(persisting, waiting).await;
     assert_discarded(&store, &fixture.root, &binding).await;
-    store_fixture::discard(&fixture.root);
+    crate::tests::store_fixture::discard(&fixture.root);
 }
 
 fn identities() -> (RepresentationBinding, TransferIdentity, TransferIdentity) {
     let post = PostId::new("same");
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(post, mirrored_meta());
-    let old = binding.transfer("https://a.example/video").unwrap();
-    let current = binding.transfer("https://b.example/video").unwrap();
+    let old = binding
+        .transfer("https://a.example/video")
+        .expect("valid test fixture");
+    let current = binding
+        .transfer("https://b.example/video")
+        .expect("valid test fixture");
     (binding, old, current)
 }
 
@@ -75,16 +85,39 @@ fn waiting_write(
 }
 
 async fn assert_rejected(persisting: Write, waiting: Write) {
-    assert!(!persisting.await.unwrap().unwrap());
-    assert!(!waiting.await.unwrap().unwrap());
+    assert!(
+        !persisting
+            .await
+            .expect("valid test fixture")
+            .expect("valid test fixture"),
+        "persisting stale write should be rejected"
+    );
+    assert!(
+        !waiting
+            .await
+            .expect("valid test fixture")
+            .expect("valid test fixture"),
+        "waiting stale write should be rejected"
+    );
 }
 
 async fn assert_discarded(store: &PartialRangeStore, root: &Path, binding: &RepresentationBinding) {
-    assert!(store.present_ranges("same").await.unwrap().is_empty());
+    assert!(
+        store
+            .present_ranges("same")
+            .await
+            .expect("valid test fixture")
+            .is_empty(),
+        "discarded representation should have no ranges"
+    );
     let stored = tokio::fs::read_to_string(root.join("same.representation"))
         .await
-        .unwrap();
-    assert_eq!(stored, binding.representation().fingerprint());
+        .expect("valid test fixture");
+    assert_eq!(
+        stored,
+        binding.representation().fingerprint(),
+        "replacement representation should remain authoritative"
+    );
 }
 
 fn mirrored_meta() -> VideoMeta {

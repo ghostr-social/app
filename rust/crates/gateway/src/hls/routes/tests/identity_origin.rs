@@ -1,4 +1,4 @@
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::task::JoinHandle;
 
@@ -45,7 +45,10 @@ pub(super) fn assert_identity_request(request: &str) {
 
 async fn listener() -> (TcpListener, String) {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("listener");
-    let source = format!("http://{}/index.m3u8", listener.local_addr().unwrap());
+    let source = format!(
+        "http://{}/index.m3u8",
+        listener.local_addr().expect("valid test fixture")
+    );
     (listener, source)
 }
 

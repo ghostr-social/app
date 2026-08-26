@@ -1,9 +1,11 @@
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::{TcpListener, TcpStream};
 
 pub async fn redirect_chain(redirects: usize) -> String {
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let address = listener.local_addr().unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("valid test fixture");
+    let address = listener.local_addr().expect("valid test fixture");
     tokio::spawn(async move {
         while let Ok((socket, _)) = listener.accept().await {
             tokio::spawn(answer(socket, redirects));

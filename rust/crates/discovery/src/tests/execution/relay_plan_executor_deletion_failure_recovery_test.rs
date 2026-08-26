@@ -3,7 +3,7 @@ use crate::query::search::plan_discovery;
 use crate::query::video_filters::{DiscoveryRequest, RepostAdmission};
 use crate::retrieval_types::{FeedContext, RetrievalPriority};
 use crate::tests::deletion_failure_support::{deletion_failure_executor, DeletionFailureIo};
-use nostr_sdk::{Event, EventBuilder, JsonUtil, Keys, Kind, Tag, Timestamp};
+use nostr_sdk::{Event, EventBuilder, JsonUtil as _, Keys, Kind, Tag, Timestamp};
 
 #[tokio::test]
 async fn failed_deletion_lookup_keeps_safe_rows_and_retries_the_wrapper() {

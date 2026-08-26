@@ -12,6 +12,8 @@ final class ProgressiveDeviceTelemetry implements PlaybackTelemetryPort {
   final probe = DevicePlaybackProbe();
   final observedDeliveryIds = <String>{};
 
+  Future<void> get settled => rust.settled;
+
   @override
   PlaybackSession openSession(
     PlaybackVideoId videoId,

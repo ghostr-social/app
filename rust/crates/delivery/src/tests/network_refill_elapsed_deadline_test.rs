@@ -1,7 +1,7 @@
 use crate::manager::network_refill_timer::NetworkRefillTimer;
 use crate::manager::time::unix_time_ms;
 use crate::manager::transfers::InternalEvent;
-use std::time::Duration;
+use core::time::Duration;
 
 #[tokio::test]
 async fn an_elapsed_deadline_wakes_immediately_at_scheduling_time() {

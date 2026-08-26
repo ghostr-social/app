@@ -1,4 +1,6 @@
-use super::{DecisionRecord, UNSEALED_WARP_SCHEMA_VERSION, WARP_SCHEMA_VERSION};
+use super::{
+    DecisionRecord, CAPABILITY_SCHEMA_VERSION, UNSEALED_WARP_SCHEMA_VERSION, WARP_SCHEMA_VERSION,
+};
 use crate::adaptive::{DecisionPrivacy, RecordedWarpCommand};
 use crate::representation::TransferIdentity;
 
@@ -9,8 +11,10 @@ impl DecisionRecord {
         privacy: &DecisionPrivacy,
     ) -> bool {
         let version = self.schema_version;
-        if !matches!(version, UNSEALED_WARP_SCHEMA_VERSION | WARP_SCHEMA_VERSION)
-            || self.chosen_action.is_none()
+        if !matches!(
+            version,
+            UNSEALED_WARP_SCHEMA_VERSION | WARP_SCHEMA_VERSION | CAPABILITY_SCHEMA_VERSION
+        ) || self.chosen_action.is_none()
         {
             return false;
         }

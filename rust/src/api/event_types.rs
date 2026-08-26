@@ -1,6 +1,6 @@
 //! Typed FFI shapes for generic Nostr reads.
 
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use nostr_sdk::{Event, EventId, Filter, Kind, PublicKey, SingleLetterTag, Timestamp};
 
 /// One case-sensitive single-letter Nostr tag filter.
@@ -47,7 +47,7 @@ impl TryFrom<FfiNostrEventFilter> for Filter {
             search,
         } = value;
         anyhow::ensure!(limit > 0, "the query limit must be positive");
-        let mut filter = Filter::new()
+        let mut filter = Self::new()
             .kinds(kinds.into_iter().map(Kind::from))
             .limit(limit as usize);
         filter = with_authors(filter, authors)?;

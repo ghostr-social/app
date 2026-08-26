@@ -2,9 +2,9 @@ use crate::api::delivery_events_stream::{watch_delivery, DeliveryWatchContext, E
 use crate::api::delivery_types::{FfiDeliveryEvent, FfiDeliveryEventKind};
 use crate::api::runtime::tracked_items::TrackedItems;
 use crate::api::tests::support::{bind_store, sized_meta, temp_store};
+use core::time::Duration;
 use ghostr_delivery::cache_registry::{CacheRegistry, CacheStatus, CacheVideo};
 use ghostr_delivery::segmented::SegmentedCache;
-use std::time::Duration;
 use tokio::sync::mpsc;
 
 struct ChannelOut(mpsc::UnboundedSender<FfiDeliveryEvent>);
@@ -31,7 +31,12 @@ async fn streams_readiness_once_the_head_bytes_land() {
     let (sender, mut events) = mpsc::unbounded_channel();
     tokio::spawn(watch_delivery(
         ChannelOut(sender),
-        DeliveryWatchContext::new(store.clone(), SegmentedCache::new(), tracked, cache),
+        DeliveryWatchContext::new(
+            std::sync::Arc::clone(&store),
+            SegmentedCache::new(),
+            tracked,
+            cache,
+        ),
     ));
 
     let first = recv(&mut events).await;

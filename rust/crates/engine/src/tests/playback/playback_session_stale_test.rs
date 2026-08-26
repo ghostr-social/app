@@ -3,7 +3,7 @@ use crate::playback::{
     PlaybackStatus,
 };
 use crate::PostId;
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn only_the_active_generation_accepts_increasing_observations() {
@@ -33,5 +33,5 @@ fn observation() -> PlaybackObservation {
         1_000,
         PlaybackPhase::Playing,
     )
-    .unwrap()
+    .expect("valid test fixture")
 }

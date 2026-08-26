@@ -13,7 +13,7 @@ use log::warn;
 mod generation;
 
 impl DeliveryWorker {
-    pub(crate) async fn finish_probe(&mut self, done: ProbeDone) {
+    pub(super) async fn finish_probe(&mut self, done: ProbeDone) {
         let ProbeDone {
             observation,
             decision,
@@ -30,7 +30,7 @@ impl DeliveryWorker {
         self.keeper.note_probe(&observation);
         let outcome = match observation.outcome {
             Ok(result) => self.finish_probe_result(&identity, result).await,
-            Err(error) => self.finish_probe_error(&identity, error),
+            Err(error) => self.finish_probe_error(&identity, &error),
         };
         self.resolve_probe_claim(decision, outcome, observed_at_ms);
     }
@@ -51,7 +51,7 @@ impl DeliveryWorker {
         let observed_size = result.content_length.is_some_and(|length| length > 0);
         self.probes.learned_probe(identity, stamp, observed_size);
         if result.content_length.is_some_and(|length| length > 0) {
-            return self.finish_sized_probe(&result);
+            return Self::finish_sized_probe(&result);
         }
         self.finish_missing_length(identity)
     }
@@ -69,7 +69,7 @@ impl DeliveryWorker {
         }
     }
 
-    fn finish_sized_probe(&self, result: &ProbeResult) -> DecisionOutcome {
+    fn finish_sized_probe(result: &ProbeResult) -> DecisionOutcome {
         DecisionOutcome::HeadObserved {
             content_length: result.content_length.unwrap_or_default(),
             accept_ranges: result.accept_ranges,
@@ -89,9 +89,10 @@ impl DeliveryWorker {
             self.note_failed_attempt(identity.post(), source, FailureClass::Transient);
         }
         DecisionOutcome::Failed {
-            class: match deferred {
-                true => "warp_head_probe_deferred_to_body",
-                false => "warp_head_probe_missing_length",
+            class: if deferred {
+                "warp_head_probe_deferred_to_body"
+            } else {
+                "warp_head_probe_missing_length"
             }
             .into(),
             elapsed_ms: 0,
@@ -101,9 +102,9 @@ impl DeliveryWorker {
     fn finish_probe_error(
         &mut self,
         identity: &TransferIdentity,
-        error: anyhow::Error,
+        error: &anyhow::Error,
     ) -> DecisionOutcome {
-        let Some(class) = origin_failure_class(&error) else {
+        let Some(class) = origin_failure_class(error) else {
             self.probes.release(identity.post());
             return DecisionOutcome::Failed {
                 class: "warp_head_probe_admission_exhausted".into(),

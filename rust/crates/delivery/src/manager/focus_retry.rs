@@ -6,7 +6,7 @@ impl DeliveryWorker {
         &mut self,
         progressive: Vec<PostId>,
         hls: Vec<PostId>,
-        cooldown_resets: Vec<PostId>,
+        cooldown_resets: &[PostId],
     ) -> Vec<PostId> {
         for post in progressive {
             self.cancel_transform(&post);
@@ -19,7 +19,7 @@ impl DeliveryWorker {
             self.probes.representation_changed(&post);
             self.retry.reconcile_hls_sources(&post, &roots);
         }
-        self.reset_hls_cooldowns(&cooldown_resets)
+        self.reset_hls_cooldowns(cooldown_resets)
     }
 
     fn reset_hls_cooldowns(&mut self, posts: &[PostId]) -> Vec<PostId> {

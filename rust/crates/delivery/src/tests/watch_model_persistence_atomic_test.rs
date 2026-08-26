@@ -12,15 +12,15 @@ async fn interrupted_staging_never_replaces_the_last_complete_snapshot() {
     };
     save_playback_learning(&path, &expected, &WatchModel::default())
         .await
-        .unwrap();
+        .expect("valid test fixture");
     tokio::fs::write(&staging, b"interrupted raw-post")
         .await
-        .unwrap();
+        .expect("valid test fixture");
 
     assert_eq!(load_playback_learning(&path).await.qoe, expected);
     save_playback_learning(&path, &expected, &WatchModel::default())
         .await
-        .unwrap();
+        .expect("valid test fixture");
     assert!(!staging.exists());
     std::fs::remove_dir_all(root).ok();
 }

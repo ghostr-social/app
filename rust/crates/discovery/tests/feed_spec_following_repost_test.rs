@@ -1,10 +1,8 @@
-mod feed_support;
-
-use feed_support::{empty_graph, repost, video_note};
-use ghostr_discovery::content::reposts::feed_post_from_event;
-use ghostr_discovery::feed::spec::FeedSpec;
-use ghostr_discovery::feed::store::FeedStore;
-use ghostr_discovery::query::video_filters::{DiscoveryFlow, RepostAdmission};
+use crate::content::reposts::feed_post_from_event;
+use crate::feed::spec::FeedSpec;
+use crate::feed::store::FeedStore;
+use crate::query::video_filters::{DiscoveryFlow, RepostAdmission};
+use crate::tests::feed_support::{empty_graph, repost, video_note};
 use nostr_sdk::Keys;
 
 #[test]

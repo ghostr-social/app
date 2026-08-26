@@ -5,6 +5,12 @@ const WINDOW_MS: u64 = 60_000;
 const GLOBAL_LIMIT: u8 = 4;
 const ORIGIN_LIMIT: u8 = 1;
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ExplorationClaim {
+    origin: String,
+    window_started_ms: u64,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub(super) struct ExplorationBudget {
     window_started_ms: u64,
@@ -13,15 +19,32 @@ pub(super) struct ExplorationBudget {
 }
 
 impl ExplorationBudget {
-    pub fn claim(&mut self, origin: &str, at_ms: u64) -> bool {
+    pub fn claim(&mut self, origin: &str, at_ms: u64) -> Option<ExplorationClaim> {
         self.refresh(at_ms);
         let origin_claims = self.per_origin.get(origin).copied().unwrap_or_default();
         if self.global_claims >= GLOBAL_LIMIT || origin_claims >= ORIGIN_LIMIT {
-            return false;
+            return None;
         }
         self.global_claims += 1;
         self.per_origin.insert(origin.to_owned(), origin_claims + 1);
-        true
+        Some(ExplorationClaim {
+            origin: origin.to_owned(),
+            window_started_ms: self.window_started_ms,
+        })
+    }
+
+    pub fn release(&mut self, claim: &ExplorationClaim) {
+        if claim.window_started_ms != self.window_started_ms {
+            return;
+        }
+        let Some(count) = self.per_origin.get_mut(&claim.origin) else {
+            return;
+        };
+        *count = count.saturating_sub(1);
+        self.global_claims = self.global_claims.saturating_sub(1);
+        if *count == 0 {
+            self.per_origin.remove(&claim.origin);
+        }
     }
 
     fn refresh(&mut self, at_ms: u64) {

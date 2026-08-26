@@ -10,11 +10,11 @@ use std::sync::{Arc, Mutex};
 pub(crate) struct DeletionIo {
     wrapper: Event,
     deletion: Event,
-    pub(crate) filters: Mutex<Vec<Filter>>,
+    pub(super) filters: Mutex<Vec<Filter>>,
 }
 
 impl DeletionIo {
-    pub(crate) fn new(wrapper: Event, deletion: Event) -> Arc<Self> {
+    pub(super) fn new(wrapper: Event, deletion: Event) -> Arc<Self> {
         Arc::new(Self {
             wrapper,
             deletion,

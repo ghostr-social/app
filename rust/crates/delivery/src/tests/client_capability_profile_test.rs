@@ -1,7 +1,5 @@
-use crate::client_capability::{
-    CapabilityAttempt, CapabilityEvent, CapabilityObservation, CapabilitySignal,
-    ClientCapabilityModel, ClientCapabilityProfile, ClientCapabilityStatus,
-};
+
+use crate::client_capability::{CapabilityAttempt, CapabilityEvent, CapabilityObservation, CapabilitySignal, ClientCapabilityModel, ClientCapabilityProfile, ClientCapabilityStatus};
 
 #[test]
 fn capability_generalizes_success_conservatively_and_bounds_unknown_tests() {
@@ -73,5 +71,5 @@ fn observe(
 }
 
 fn profile(id: &str, codec: &str, dimensions: (u32, u32)) -> ClientCapabilityProfile {
-    ClientCapabilityProfile::try_new(id, Some(codec), Some(dimensions)).unwrap()
+    ClientCapabilityProfile::try_new(id, Some(codec), Some(dimensions)).expect("valid test fixture")
 }

@@ -3,7 +3,7 @@ use crate::evaluation::events::TransferMetricEvent;
 use ghostr_engine::PostId;
 
 impl EvaluationTracker {
-    pub fn transfer(&mut self, event: TransferMetricEvent) {
+    pub(crate) fn transfer(&mut self, event: TransferMetricEvent) {
         if event.full_download_started {
             self.note_unused_full_download(event.post);
         }

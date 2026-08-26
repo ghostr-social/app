@@ -9,6 +9,7 @@ import 'package:ghostr/features/video_catalog/data/rust_feed_remote_source.dart'
 import 'package:ghostr/platform/media/ffi_video_gateway.dart';
 
 import 'progressive_device_resources.dart';
+import 'warp_controlled_network_status.dart';
 import 'warp_feed_preparation_probe.dart';
 import 'warp_feed_rust_probe.dart';
 
@@ -27,6 +28,7 @@ Future<ProductionVideoDelivery> buildWarpFeedProductionDelivery(
             Directory(input.resources.cachePath),
         gateway: WarpDeviceFfiVideoGateway(input.resources.origin.origin),
         preparationUpdates: input.preparation,
+        networkStatus: input.network,
       ),
       playbackCapabilities: VideoPlaybackCapabilities.progressiveOnly,
     ),
@@ -39,6 +41,7 @@ typedef WarpFeedProductionDeliveryInput = ({
   ProgressiveDeviceResources resources,
   WarpFeedPreparationProbe preparation,
   WarpFeedRustProbe rustProbe,
+  WarpControlledNetworkStatus network,
 });
 
 final class WarpDeviceFfiVideoGateway extends FfiVideoGateway {

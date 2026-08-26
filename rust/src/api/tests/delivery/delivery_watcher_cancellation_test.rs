@@ -24,7 +24,7 @@ async fn a_closed_receiver_ends_after_an_invalid_store_key_error() {
     let captured = Arc::new(Mutex::new(None));
 
     watch_delivery(
-        RejectingOut(captured.clone()),
+        RejectingOut(std::sync::Arc::clone(&captured)),
         DeliveryWatchContext::new(
             temp_store("ghostr-api-cancelled-watch"),
             SegmentedCache::new(),

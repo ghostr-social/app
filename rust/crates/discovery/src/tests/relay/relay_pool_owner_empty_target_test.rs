@@ -12,7 +12,11 @@ async fn empty_configured_target_does_not_query_an_unrelated_pool_relay() {
     let client = Arc::new(Client::default());
     client.add_relay(UNRELATED).await.expect("unrelated relay");
     let io = Arc::new(TestRelayIo::blocked());
-    let owner = RelayPoolOwner::with_io(client, RelayPoolConfiguration::default(), io.clone());
+    let owner = RelayPoolOwner::with_io(
+        client,
+        RelayPoolConfiguration::default(),
+        std::sync::Arc::<TestRelayIo>::clone(&io),
+    );
     let mut request = read_request(UNRELATED);
     request.relays = None;
 

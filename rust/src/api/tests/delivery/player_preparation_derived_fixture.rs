@@ -12,13 +12,17 @@ impl AuthorityFixture {
             .store
             .bind_representation(rendition.binding)
             .await
-            .unwrap();
-        self.context.store.set_total_len("clip", 16).await.unwrap();
+            .expect("test fixture precondition must hold");
+        self.context
+            .store
+            .set_total_len("clip", 16)
+            .await
+            .expect("test fixture precondition must hold");
         self.context
             .store
             .write_range("clip", 0, &[7; 16])
             .await
-            .unwrap();
+            .expect("test fixture precondition must hold");
         self.context
             .tracked
             .insert("clip".to_owned(), rendition.advertised);
@@ -32,25 +36,45 @@ impl AuthorityFixture {
     }
 
     pub(super) async fn publish_derived_representation(&mut self) {
-        self.context.store.finalize("clip", None).await.unwrap();
-        let input = self.context.store.media_snapshot("clip").await.unwrap();
+        self.context
+            .store
+            .finalize("clip", None)
+            .await
+            .expect("test fixture precondition must hold");
+        let input = self
+            .context
+            .store
+            .media_snapshot("clip")
+            .await
+            .expect("test fixture precondition must hold");
         let publication = TransformPublication::try_new(
-            TransformFence::new(input.binding().unwrap().clone(), input.revision()),
+            TransformFence::new(
+                input
+                    .binding()
+                    .expect("test fixture precondition must hold")
+                    .clone(),
+                input.revision(),
+            ),
             TransformKind::Remux,
             vec![8; 16],
             16,
         )
-        .unwrap();
+        .expect("test fixture precondition must hold");
         assert!(self
             .context
             .store
             .publish_transform(publication)
             .await
-            .unwrap());
-        let derived = self.context.store.media_snapshot("clip").await.unwrap();
+            .expect("test fixture precondition must hold"));
+        let derived = self
+            .context
+            .store
+            .media_snapshot("clip")
+            .await
+            .expect("test fixture precondition must hold");
         self.representation = derived
             .binding()
-            .unwrap()
+            .expect("test fixture precondition must hold")
             .representation()
             .fingerprint()
             .to_owned();
@@ -59,7 +83,7 @@ impl AuthorityFixture {
             .capabilities
             .issue(&derived)
             .await
-            .unwrap()
+            .expect("test fixture precondition must hold")
             .as_str()
             .to_owned();
     }
@@ -67,7 +91,7 @@ impl AuthorityFixture {
     pub(super) fn preparation_context(&self) -> PreparationContext {
         PreparationContext {
             endpoint: "127.0.0.1:8080".to_owned(),
-            store: self.context.store.clone(),
+            store: std::sync::Arc::clone(&self.context.store),
             capabilities: self.context.capabilities.clone(),
             delivery: self.context.delivery.clone(),
             tracked: self.context.tracked.clone(),
@@ -76,10 +100,15 @@ impl AuthorityFixture {
     }
 
     async fn refresh_authority(&mut self) {
-        let snapshot = self.context.store.media_snapshot("clip").await.unwrap();
+        let snapshot = self
+            .context
+            .store
+            .media_snapshot("clip")
+            .await
+            .expect("test fixture precondition must hold");
         self.representation = snapshot
             .binding()
-            .unwrap()
+            .expect("test fixture precondition must hold")
             .representation()
             .fingerprint()
             .to_owned();
@@ -88,7 +117,7 @@ impl AuthorityFixture {
             .capabilities
             .issue(&snapshot)
             .await
-            .unwrap()
+            .expect("test fixture precondition must hold")
             .as_str()
             .to_owned();
     }

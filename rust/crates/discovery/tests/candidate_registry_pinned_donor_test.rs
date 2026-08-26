@@ -1,7 +1,5 @@
-mod feed_support;
-
-use feed_support::{addressable_video, specific_repost};
-use ghostr_discovery::content::candidates::CandidateRegistry;
+use crate::content::candidates::CandidateRegistry;
+use crate::tests::feed_support::{addressable_video, specific_repost};
 use nostr_sdk::Keys;
 
 #[test]

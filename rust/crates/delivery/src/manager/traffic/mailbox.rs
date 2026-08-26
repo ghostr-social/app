@@ -1,8 +1,8 @@
 use super::{TrafficBatch, TrafficEvent, TrafficWindow, TransferKey, SAMPLE_INTERVAL};
 use crate::manager::transfers::InternalEvent;
+use core::time::Duration;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard};
-use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
@@ -72,7 +72,7 @@ pub(crate) struct TrafficInbox {
 }
 
 impl TrafficInbox {
-    pub(crate) fn drain(&mut self, at: Instant) -> TrafficBatch {
+    pub(crate) fn drain(&self, at: Instant) -> TrafficBatch {
         let (batch, timer_start) = self.lock().drain(at);
         if let Some(started) = timer_start {
             spawn_timer(Arc::clone(&self.state), self.events.clone(), started);

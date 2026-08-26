@@ -2,8 +2,8 @@ use super::asset_gated_origin::GatedOrigin;
 use super::asset_sequence_origin::request_result;
 use super::support::{asset_resource, state_with_timeouts};
 use axum::body::to_bytes;
+use core::time::Duration;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
-use std::time::Duration;
 
 #[tokio::test]
 async fn overlapping_first_hls_ranges_share_one_generation_bootstrap() {
@@ -11,7 +11,7 @@ async fn overlapping_first_hls_ranges_share_one_generation_bootstrap() {
     let (state, session) = state_with_timeouts(source, timeouts()).await;
     let resource = asset_resource(&state, &session).await;
     let first = spawn(
-        state.clone(),
+        std::sync::Arc::clone(&state),
         session.clone(),
         resource.clone(),
         "bytes=0-3",
@@ -28,15 +28,25 @@ async fn overlapping_first_hls_ranges_share_one_generation_bootstrap() {
     origin.release_first();
     let first = tokio::time::timeout(Duration::from_secs(2), first)
         .await
-        .unwrap()
-        .unwrap()
-        .unwrap();
+        .expect("valid test fixture")
+        .expect("valid test fixture")
+        .expect("valid test fixture");
     let second = tokio::time::timeout(Duration::from_secs(2), second)
         .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(to_bytes(first.into_body(), 4).await.unwrap(), "abcd");
-    assert_eq!(to_bytes(second.into_body(), 4).await.unwrap(), "efgh");
+        .expect("valid test fixture")
+        .expect("valid test fixture");
+    assert_eq!(
+        to_bytes(first.into_body(), 4)
+            .await
+            .expect("valid test fixture"),
+        "abcd"
+    );
+    assert_eq!(
+        to_bytes(second.into_body(), 4)
+            .await
+            .expect("valid test fixture"),
+        "efgh"
+    );
     assert_eq!(origin.if_ranges(), [None, Some("\"v1\"".to_owned())]);
 }
 

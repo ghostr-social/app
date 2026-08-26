@@ -1,10 +1,14 @@
 use super::{cleanup_debt, policy_intent, Entries, PartialRangeStore};
 use crate::partial_range_disk as disk;
 use crate::partial_range_manifest::RangeManifest;
-use anyhow::{Context, Error, Result};
+use anyhow::{Context as _, Error, Result};
 
 impl PartialRangeStore {
     /// Invalidates one object's cached authority and removes all of its bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the object state cannot be loaded or removed durably.
     pub async fn quarantine(&self, key: &str) -> Result<()> {
         let _update = self.update_key(key).await?;
         let mut entries = self.entries.lock().await;

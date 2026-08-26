@@ -1,7 +1,8 @@
-use crate::execution::relay_executor::target_enrichment::target_plan;
+use crate::execution::relay_executor::target_enrichment::axiom_test_support::target_plan;
+
 use crate::query::search::RelayTarget;
 use crate::tests::support::filter_json;
-use nostr_sdk::{EventBuilder, JsonUtil, Keys, Kind, Tag};
+use nostr_sdk::{EventBuilder, JsonUtil as _, Keys, Kind, Tag};
 use serde_json::json;
 
 #[test]
@@ -17,7 +18,7 @@ fn coordinate_repost_queries_the_exact_current_address_without_a_cutoff() {
         .sign_with_keys(&Keys::generate())
         .expect("wrapper");
 
-    let plan = target_plan(std::slice::from_ref(&wrapper)).expect("target lookup");
+    let plan = target_plan(core::slice::from_ref(&wrapper)).expect("target lookup");
     assert_eq!(plan.queries.len(), 1);
     let filter = filter_json(&plan.queries[0].filter);
 

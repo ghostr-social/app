@@ -1,6 +1,7 @@
 use ghostr_engine::adaptive::PlayerPreparation;
 
 const MAX_FAILURE_KIND_BYTES: usize = 128;
+pub const DECODER_UNSUPPORTED_FAILURE: &str = "decoderUnsupported";
 
 mod authority;
 mod followup;
@@ -74,11 +75,11 @@ pub struct PlayerPreparationReport {
 pub struct PlayerPreparationAdmission(u64);
 
 impl PlayerPreparationAdmission {
-    pub(crate) const fn new(epoch: u64) -> Self {
+    pub(super) const fn new(epoch: u64) -> Self {
         Self(epoch)
     }
 
-    pub(crate) const fn epoch(self) -> u64 {
+    pub(super) const fn epoch(self) -> u64 {
         self.0
     }
 }
@@ -123,8 +124,7 @@ fn valid_failure(state: PlayerPreparationState, failure: Option<&str>) -> bool {
                 && kind.len() <= MAX_FAILURE_KIND_BYTES
                 && !kind.chars().any(char::is_control)
         }
-        (PlayerPreparationState::Failed, None) => false,
+        (PlayerPreparationState::Failed, None) | (_, Some(_)) => false,
         (_, None) => true,
-        (_, Some(_)) => false,
     }
 }

@@ -1,6 +1,6 @@
 use axum::routing::get;
 use axum::Router;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::sync::Mutex;
 use tokio::net::TcpListener;
@@ -40,15 +40,21 @@ impl HlsOrigin {
             master,
             cacheable,
         };
-        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let address = listener.local_addr().unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("valid test fixture");
+        let address = listener.local_addr().expect("valid test fixture");
         let app = Router::new()
             .route("/index.m3u8", get(manifest))
             .route("/child.m3u8", get(child))
             .route("/init.mp4", get(init))
             .route("/segment.m4s", get(segment))
             .with_state(origin.clone());
-        tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        tokio::spawn(async move {
+            axum::serve(listener, app)
+                .await
+                .expect("valid test fixture");
+        });
         (origin, format!("http://{address}/index.m3u8"))
     }
 
@@ -57,6 +63,6 @@ impl HlsOrigin {
     }
 
     pub fn paths(&self) -> Vec<&'static str> {
-        self.paths.lock().unwrap().clone()
+        self.paths.lock().expect("valid test fixture").clone()
     }
 }

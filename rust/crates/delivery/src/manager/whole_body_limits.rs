@@ -27,7 +27,7 @@ impl WholeBodyLimits {
         observed_bytes: u64,
         generation: Option<HttpGenerationStamp>,
     ) -> bool {
-        if !generation_is_current(catalog, &identity, &generation) {
+        if !generation_is_current(catalog, &identity, generation.as_ref()) {
             return false;
         }
         let Some(evidence) = merged_evidence(
@@ -89,11 +89,11 @@ fn merged_evidence(
 fn generation_is_current(
     catalog: &Catalog,
     identity: &TransferIdentity,
-    generation: &Option<HttpGenerationStamp>,
+    generation: Option<&HttpGenerationStamp>,
 ) -> bool {
     catalog
         .transfer_identity(identity.post(), identity.source().as_str())
         .as_ref()
         == Some(identity)
-        && catalog.http_generation_stamp_for(identity).as_ref() == generation.as_ref()
+        && catalog.http_generation_stamp_for(identity).as_ref() == generation
 }

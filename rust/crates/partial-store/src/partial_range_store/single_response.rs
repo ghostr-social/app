@@ -2,8 +2,6 @@ use super::PartialRangeStore;
 use crate::partial_range_disk as disk;
 use crate::partial_range_manifest::RangeManifest;
 use crate::partial_range_representation_disk as representation_disk;
-use crate::partial_range_store::response::ResponseOpenResult;
-use crate::partial_range_store::StoreAction;
 use anyhow::{ensure, Result};
 use ghostr_engine::adaptive::WholeBodyContract;
 use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
@@ -11,9 +9,13 @@ use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
 mod commit;
 mod finish;
 mod lifecycle;
+mod open;
+mod opening;
 mod session;
 mod staged;
 mod state;
+#[cfg(any(test, feature = "test"))]
+mod test_support;
 mod transaction;
 mod write;
 pub(in crate::partial_range_store) use commit::{CommitPhase, CommitTarget, ResponseCommit};
@@ -25,101 +27,23 @@ pub(super) use state::{
 pub(in crate::partial_range_store) use transaction::rollback_commit;
 
 impl PartialRangeStore {
-    pub async fn begin_single_response_for_action(
+    async fn prepare_live_exact_response(
         &self,
         identity: &TransferIdentity,
-        action: &StoreAction,
+        binding: &RepresentationBinding,
         contract: WholeBodyContract,
-    ) -> Result<bool> {
-        Ok(matches!(
-            self.open_single_response_for_action(identity, action, contract)
-                .await?,
-            ResponseOpenResult::Opened
-        ))
-    }
-
-    pub async fn begin_single_response(
-        &self,
-        identity: &TransferIdentity,
-        action: u64,
-        contract: WholeBodyContract,
-    ) -> Result<bool> {
-        ensure!(
-            contract.maximum_bytes() > 0,
-            "single response limit must be positive"
-        );
-        let _update = self.update_key(identity.post().as_str()).await?;
-        self.current_binding(identity).await?;
-        if self.selected().get(identity.post().as_str()) != Some(identity) {
-            return Ok(false);
+        storage: SingleResponseStorage,
+    ) -> Result<()> {
+        let WholeBodyContract::Exact { expected_bytes } = contract else {
+            return Ok(());
+        };
+        if !matches!(storage, SingleResponseStorage::Live { .. }) {
+            return Ok(());
         }
-        Ok(matches!(
-            self.open_single_response_action_locked(
-                identity,
-                ResponseOwner::Legacy(action),
-                contract,
-                SingleResponseAuthority::Legacy,
-            )
-            .await?,
-            ResponseOpenResult::Opened
-        ))
-    }
-
-    pub(super) async fn open_single_response_action_locked(
-        &self,
-        identity: &TransferIdentity,
-        owner: ResponseOwner,
-        contract: WholeBodyContract,
-        authority: SingleResponseAuthority,
-    ) -> Result<ResponseOpenResult> {
-        ensure!(
-            contract.maximum_bytes() > 0,
-            "single response limit must be positive"
-        );
-        let binding = self.current_binding(identity).await?;
-        let key = identity.post().as_str();
-        self.retry_inactive_single_response_locked(key).await?;
-        if self.session_response(key).await.is_some() {
-            return Ok(ResponseOpenResult::RequiresIndependentObject);
-        }
-        if let Some(known) = self.single_response_actions.lock().await.get(key) {
-            let same = known.owner.matches(owner.as_ref())
-                && known.identity == *identity
-                && known.contract == contract
-                && known.authority == authority;
-            return Ok(if same {
-                ResponseOpenResult::Opened
-            } else {
-                ResponseOpenResult::RequiresIndependentObject
-            });
-        }
-        let force_staged = matches!(&authority, SingleResponseAuthority::ActionScoped);
-        let storage = self
-            .single_response_storage(key, contract, force_staged)
-            .await?;
-        if matches!(storage, SingleResponseStorage::Live { .. })
-            && self.sparse_response_for_post(key).await
-        {
-            return Ok(ResponseOpenResult::RequiresIndependentObject);
-        }
-        if let WholeBodyContract::Exact { expected_bytes } = contract {
-            if matches!(storage, SingleResponseStorage::Live { .. }) {
-                self.selected().insert(key.to_owned(), identity.clone());
-                self.install_provisional_total(&binding, expected_bytes)
-                    .await?;
-            }
-        }
-        self.single_response_actions.lock().await.insert(
-            key.to_owned(),
-            SingleResponseState {
-                owner,
-                identity: identity.clone(),
-                contract,
-                storage,
-                authority,
-            },
-        );
-        Ok(ResponseOpenResult::Opened)
+        self.selected()
+            .insert(binding.post().as_str().to_owned(), identity.clone());
+        self.install_provisional_total(binding, expected_bytes)
+            .await
     }
 
     async fn install_provisional_total(
@@ -159,9 +83,10 @@ impl PartialRangeStore {
             && !has_sparse_generation
             && !force_staged
             && matches!(contract, WholeBodyContract::Exact { .. });
-        Ok(match can_stream_live {
-            true => SingleResponseStorage::Live { started: false },
-            false => SingleResponseStorage::Staged { received: 0 },
+        Ok(if can_stream_live {
+            SingleResponseStorage::Live { started: false }
+        } else {
+            SingleResponseStorage::Staged { received: 0 }
         })
     }
 }

@@ -1,5 +1,6 @@
 //! The session account's social graph consumed from relay events
 //! (plan §5.2): kind-3 follow lists and NIP-51 kind-10000 mute lists.
+//!
 //! Pure ingestion and lookup — lists are edited and published by Dart,
 //! only consumed here. Mutes hide creators: a muted pubkey's posts are
 //! filtered by author, never by hashtag or single event.
@@ -44,7 +45,7 @@ impl SocialGraph {
     /// Ingests the session's kind-3 follow list or kind-10000 mute
     /// list; other kinds and other authors' lists are ignored. Reports
     /// whether the follow set was replaced.
-    pub fn ingest(&mut self, event: &Event) -> bool {
+    pub(crate) fn ingest(&mut self, event: &Event) -> bool {
         if event.pubkey != self.session {
             return false;
         }
@@ -75,7 +76,7 @@ impl SocialGraph {
     }
 
     /// Whether posts by this creator are muted.
-    pub fn is_muted(&self, author: &PublicKey) -> bool {
+    pub(crate) fn is_muted(&self, author: &PublicKey) -> bool {
         self.mutes.pubkeys.contains(author)
     }
 }

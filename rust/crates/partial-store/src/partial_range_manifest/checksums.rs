@@ -1,6 +1,6 @@
 use super::{format, IntervalChecksum, RangeManifest};
 use anyhow::{ensure, Result};
-use std::ops::Range;
+use core::ops::Range;
 
 impl RangeManifest {
     pub(crate) fn checksum_span_for_write(&self, span: Range<u64>) -> Range<u64> {

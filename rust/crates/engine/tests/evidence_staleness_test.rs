@@ -1,4 +1,4 @@
-use ghostr_engine::evidence::{
+use crate::evidence::{
     Confidence, Evidence, EvidenceField, EvidenceLedger, EvidenceScope, EvidenceSource,
     EvidenceValue,
 };
@@ -11,7 +11,7 @@ fn expired_network_evidence_is_stale_instead_of_missing_or_actionable() {
         EvidenceValue::RangeSupport(true),
         EvidenceSource::response("cdn.example"),
         1,
-        Confidence::new(8_000).unwrap(),
+        Confidence::new(8_000).expect("valid test fixture"),
         EvidenceScope::url(url),
     ));
 

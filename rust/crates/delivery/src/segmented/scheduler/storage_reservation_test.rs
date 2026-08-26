@@ -36,7 +36,7 @@ fn object(index: usize, bytes: usize) -> PreparedObject {
     let url = format!("https://first.example/{index}");
     PreparedObject {
         request_url: url.clone(),
-        final_url: Url::parse(&url).unwrap(),
+        final_url: Url::parse(&url).expect("valid test fixture"),
         body: Arc::from(vec![0; bytes]),
         content_type: None,
         cache: Default::default(),
@@ -61,7 +61,7 @@ fn focus() -> DeliveryFocus {
         previews: Vec::new(),
         current_index: 0,
         watch_ms: 0,
-        generation: FocusGeneration::try_new(1).unwrap(),
+        generation: FocusGeneration::try_new(1).expect("valid test fixture"),
         transition: FocusTransition::RosterChange,
         rescue: None,
     }

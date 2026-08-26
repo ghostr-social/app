@@ -6,7 +6,7 @@ use gateway_fixture::media_client;
 use gateway_fixture::progressive_hls::router_with_hls;
 use gateway_fixture::raw_http::spawn_raw_server;
 use ghostr_gateway::hls::sessions::HlsSessions;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn valid_manifest_bytes_do_not_require_an_hls_mime() {
@@ -20,15 +20,22 @@ async fn valid_manifest_bytes_do_not_require_an_hls_mime() {
 async fn assert_manifest_accepted(response: &'static [u8]) {
     let (source, origin_request) = spawn_raw_server(response).await;
     let sessions = HlsSessions::production();
-    let session = sessions.acquire(vec![source]).await.unwrap();
+    let session = sessions
+        .acquire(vec![source])
+        .await
+        .expect("valid test fixture");
     let router = router_with_hls(sessions, media_client());
     let request = Request::builder()
         .uri(format!("/hls/{}/index.m3u8", session.as_str()))
         .body(Body::empty())
-        .unwrap();
+        .expect("valid test fixture");
 
-    let response = router.oneshot(request).await.unwrap();
+    let response = router.oneshot(request).await.expect("valid test fixture");
 
-    assert_eq!(response.status(), StatusCode::OK);
-    origin_request.await.unwrap();
+    assert_eq!(
+        response.status(),
+        StatusCode::OK,
+        "a manifest MIME type is sufficient when the URL has no extension"
+    );
+    origin_request.await.expect("valid test fixture");
 }

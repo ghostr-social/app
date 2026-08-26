@@ -1,6 +1,7 @@
+use crate::adaptive::axiom_test_support::WarpActionGenerator;
 use crate::adaptive::{
     ActionKind, AdaptivePlayabilityPolicy, HeadProbeHistory, MediaLayout, PlannerCommand,
-    PlannerContext, WarpActionGenerator,
+    PlannerContext,
 };
 use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::snapshot;
@@ -16,8 +17,8 @@ fn head_probe_generation_follows_representation_history() {
         (HeadProbeHistory::Active, false),
         (HeadProbeHistory::Completed, false),
     ] {
-        let context = PlannerContext::explicitly_unavailable(&input)
-            .with_head_probe_history(post.clone(), history);
+        let context =
+            PlannerContext::explicitly_unavailable(&input).with_head_probe_history(&post, history);
         let generated =
             WarpActionGenerator::generate(&input, &base, &OriginModel::default(), &context);
         assert_eq!(

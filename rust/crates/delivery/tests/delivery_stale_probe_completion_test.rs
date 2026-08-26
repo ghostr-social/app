@@ -2,18 +2,18 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::aba_origin::serve;
 use delivery_fixture::items::{focus_now, unsized_item};
 use delivery_fixture::media::{hit_log, hits, media_body, serve_recording};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
-use std::time::Duration;
 
 #[tokio::test]
 async fn stale_probe_completion_releases_the_post_for_its_new_source() {
     let (old_url, old_origin) = serve(media_body()).await;
     let new_hits = hit_log();
-    let new_url = serve_recording("new", media_body(), new_hits.clone()).await;
+    let new_url = serve_recording("new", media_body(), std::sync::Arc::clone(&new_hits)).await;
     let mut options = DeliveryOptions::default();
     options.params.conservative_concurrency = 0;
     options.params.balanced_concurrency = 0;

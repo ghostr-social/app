@@ -5,7 +5,7 @@ use axum::http::StatusCode;
 use gateway_fixture::progressive::progressive_harness;
 use ghostr_delivery::playback_demand::DemandState;
 use ghostr_engine::ByteRange;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn missing_bytes_emit_demand_and_stream_once_they_arrive() {

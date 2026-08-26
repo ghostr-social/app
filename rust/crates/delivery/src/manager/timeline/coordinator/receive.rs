@@ -13,7 +13,7 @@ impl TimelineCoordinator {
         }
     }
 
-    pub(crate) fn try_recv(&mut self) -> Option<TimelineResult> {
+    fn try_recv(&mut self) -> Option<TimelineResult> {
         self.launch_due();
         loop {
             let result = self.receiver.try_recv().ok()?;
@@ -43,7 +43,7 @@ impl TimelineCoordinator {
             };
             tokio::select! {
                 result = self.receiver.recv() => return result,
-                _ = tokio::time::sleep_until(deadline) => {}
+                () = tokio::time::sleep_until(deadline) => {}
             }
         }
     }
@@ -74,10 +74,10 @@ fn note_retry(post: &PostId, retry: &TimelineRetry) {
     match retry {
         TimelineRetry::Missing => log::debug!("Timeline bytes unavailable for {}", post.as_str()),
         TimelineRetry::Read(error) => {
-            log::debug!("Timeline read failed for {}: {error}", post.as_str())
+            log::debug!("Timeline read failed for {}: {error}", post.as_str());
         }
         TimelineRetry::Worker(error) => {
-            log::warn!("Timeline worker failed for {}: {error}", post.as_str())
+            log::warn!("Timeline worker failed for {}: {error}", post.as_str());
         }
     }
 }

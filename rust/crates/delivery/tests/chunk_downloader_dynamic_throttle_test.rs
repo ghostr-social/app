@@ -2,6 +2,7 @@
 
 mod range_fixture;
 
+use core::time::Duration;
 use ghostr_delivery::chunk::cancel::cancel_pair;
 use ghostr_delivery::chunk::downloader::{ChunkSink, ChunkSpec};
 use ghostr_delivery::debug::network::NetworkProfile;
@@ -10,7 +11,6 @@ use ghostr_engine::ByteRange;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use range_fixture::download_chunk_throttled;
-use std::time::Duration;
 
 const TOTAL: u64 = 256 * 1_024;
 const DROP_AFTER: u64 = 160 * 1_024;

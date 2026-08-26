@@ -21,11 +21,11 @@ async fn shortened_object_restarts_after_a_resumed_range_is_unsatisfied() {
     let terminal = hls_terminal_wait::wait_terminal(&harness.segmented, "stream").await;
 
     assert_eq!(terminal.phase, SegmentedPhase::Ready);
-    assert_eq!(requests.lock().unwrap().len(), 3);
+    assert_eq!(requests.lock().expect("valid test fixture").len(), 3);
     let init = harness
         .segmented
         .object(&source.replace("index.m3u8", "init.mp4"))
-        .unwrap();
+        .expect("valid test fixture");
     assert_eq!(init.body.as_ref(), vec![8; SHORT_INIT_BYTES]);
     std::fs::remove_dir_all(&harness.root).ok();
 }

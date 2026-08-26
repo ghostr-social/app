@@ -1,29 +1,37 @@
-mod store_fixture;
-
 #[tokio::test]
 async fn a_stably_truncated_interval_is_discarded_and_requested_again() {
-    let fixture =
-        store_fixture::spaced_store("truncated-read-recovery", store_fixture::limits(64, 0), 64);
+    let fixture = crate::tests::store_fixture::spaced_store(
+        "truncated-read-recovery",
+        crate::tests::store_fixture::limits(64, 0),
+        64,
+    );
     fixture
         .store
         .write_range("clip", 0, b"abcdefgh")
         .await
-        .unwrap();
+        .expect("valid test fixture");
     std::fs::OpenOptions::new()
         .write(true)
         .open(fixture.root.join("clip.part"))
-        .unwrap()
+        .expect("valid test fixture")
         .set_len(4)
-        .unwrap();
+        .expect("valid test fixture");
 
-    assert_eq!(fixture.store.read_range("clip", 0..8).await.unwrap(), None);
+    assert_eq!(
+        fixture
+            .store
+            .read_range("clip", 0..8)
+            .await
+            .expect("valid test fixture"),
+        None
+    );
     assert!(fixture
         .store
         .present_ranges("clip")
         .await
-        .unwrap()
+        .expect("valid test fixture")
         .is_empty());
     assert_eq!(fixture.store.used_bytes().await, 0);
     assert!(!fixture.root.join("clip.part").exists());
-    store_fixture::discard(&fixture.root);
+    crate::tests::store_fixture::discard(&fixture.root);
 }

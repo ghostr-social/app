@@ -1,9 +1,9 @@
 use super::super::CompletedObject;
 use super::{terminal, TerminalContext, TerminalInput};
 use crate::segmented::fetch::{FetchFailure, OriginTelemetry};
+use core::time::Duration;
 use ghostr_engine::adaptive::{HlsBootstrapStage, ResourceCost};
 use ghostr_engine::origin_model::{ErrorReason, NetworkClass, OriginOutcome};
-use std::time::Duration;
 
 #[test]
 fn timeout_failure_keeps_typed_origin_reason() {

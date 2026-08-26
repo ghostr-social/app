@@ -1,11 +1,11 @@
 use super::origin_concurrency;
+use core::time::Duration;
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::RequestAuthority;
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use reqwest::{Client, RequestBuilder};
 use std::sync::Arc;
-use std::time::Duration;
 
 const URL: &str = "https://media.example/video.mp4";
 
@@ -20,7 +20,7 @@ impl MediaHttpRequests for LocalClient {
 #[tokio::test]
 async fn predicted_origin_concurrency_is_the_next_slot_capped_by_authority_limit() {
     let requests = executor();
-    let authority = RequestAuthority::from_url(URL).unwrap();
+    let authority = RequestAuthority::from_url(URL).expect("valid test fixture");
     assert_eq!(origin_concurrency(&requests, &authority), 1);
     let first = admit(&requests, PreemptionAuthority::Transition).await;
     assert_eq!(origin_concurrency(&requests, &authority), 2);
@@ -35,10 +35,10 @@ async fn admit(
 ) -> ghostr_net::media_request_executor::AdmittedMediaRequest {
     requests
         .get(URL, priority)
-        .unwrap()
+        .expect("valid test fixture")
         .admit_for(Duration::from_secs(1))
         .await
-        .unwrap()
+        .expect("valid test fixture")
 }
 
 fn executor() -> MediaRequestExecutor {
@@ -46,9 +46,9 @@ fn executor() -> MediaRequestExecutor {
         .no_proxy()
         .redirect(reqwest::redirect::Policy::none())
         .build()
-        .unwrap();
+        .expect("valid test fixture");
     MediaRequestExecutor::new(
         Arc::new(LocalClient(client)),
-        MediaRequestLimits::try_new(2, 2).unwrap(),
+        MediaRequestLimits::try_new(2, 2).expect("valid test fixture"),
     )
 }

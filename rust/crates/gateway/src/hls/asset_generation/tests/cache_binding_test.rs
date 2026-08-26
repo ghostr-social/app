@@ -7,11 +7,11 @@ use tokio::time::{Duration, Instant};
 
 #[tokio::test]
 async fn provider_binding_is_sticky_and_cache_change_retires() {
-    let url = Url::parse("https://media.example/segment.m4s").unwrap();
+    let url = Url::parse("https://media.example/segment.m4s").expect("valid test fixture");
     let first = object(&url, b"aaaa").generation();
     let changed = object(&url, b"bbbb").generation();
     let mut registry = AssetRegistry::new();
-    let fence = registry.fence(&url, 1).unwrap();
+    let fence = registry.fence(&url, 1).expect("valid test fixture");
     let deadline = Instant::now() + Duration::from_secs(1);
 
     assert!(matches!(

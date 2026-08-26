@@ -1,23 +1,26 @@
 use super::player_preparation_authority_fixture::AuthorityFixture;
 use crate::api::delivery_types::FfiPlayerPreparationState;
-use crate::api::player_preparation_control::report_player_preparation;
+use crate::api::player_preparation_control::axiom_test_support::report_player_preparation;
 use ghostr_delivery::delivery_events::PlayerPreparationState;
 
 #[tokio::test]
 async fn admitted_attempt_finishes_under_its_original_revision_after_renewal() {
-    let mut fixture = AuthorityFixture::seeded().await;
+    let fixture = AuthorityFixture::seeded().await;
     let original = fixture
         .context
         .store
         .media_snapshot("clip")
         .await
-        .unwrap()
+        .expect("test fixture precondition must hold")
         .revision();
     let mut report = fixture.input();
     report_player_preparation(&fixture.context, report.clone())
         .await
-        .unwrap();
-    fixture.commands.try_player_preparation().unwrap();
+        .expect("test fixture precondition must hold");
+    fixture
+        .commands
+        .try_player_preparation()
+        .expect("test fixture precondition must hold");
     let renewed = fixture.renew_content_revision().await;
     assert_ne!(renewed, fixture.asset);
 
@@ -25,8 +28,11 @@ async fn admitted_attempt_finishes_under_its_original_revision_after_renewal() {
     report.state = FfiPlayerPreparationState::FirstFrameRendered;
     report_player_preparation(&fixture.context, report.clone())
         .await
-        .unwrap();
-    let rendered = fixture.commands.try_player_preparation().unwrap();
+        .expect("test fixture precondition must hold");
+    let rendered = fixture
+        .commands
+        .try_player_preparation()
+        .expect("test fixture precondition must hold");
     assert_eq!(rendered.state(), PlayerPreparationState::FirstFrameRendered);
     assert_eq!(rendered.revision(), original);
 
@@ -34,8 +40,11 @@ async fn admitted_attempt_finishes_under_its_original_revision_after_renewal() {
     report.state = FfiPlayerPreparationState::Released;
     report_player_preparation(&fixture.context, report.clone())
         .await
-        .unwrap();
-    let released = fixture.commands.try_player_preparation().unwrap();
+        .expect("test fixture precondition must hold");
+    let released = fixture
+        .commands
+        .try_player_preparation()
+        .expect("test fixture precondition must hold");
     assert_eq!(released.state(), PlayerPreparationState::Released);
     assert_eq!(released.revision(), original);
 
@@ -48,12 +57,15 @@ async fn admitted_attempt_finishes_under_its_original_revision_after_renewal() {
 
 #[tokio::test]
 async fn renewed_asset_cannot_forge_a_follow_up_for_an_admitted_attempt() {
-    let mut fixture = AuthorityFixture::seeded().await;
+    let fixture = AuthorityFixture::seeded().await;
     let begin = fixture.input();
     report_player_preparation(&fixture.context, begin.clone())
         .await
-        .unwrap();
-    fixture.commands.try_player_preparation().unwrap();
+        .expect("test fixture precondition must hold");
+    fixture
+        .commands
+        .try_player_preparation()
+        .expect("test fixture precondition must hold");
     let renewed = fixture.renew_content_revision().await;
     let mut forged = begin;
     forged.asset_id = renewed;
@@ -66,7 +78,7 @@ async fn renewed_asset_cannot_forge_a_follow_up_for_an_admitted_attempt() {
 
 #[tokio::test]
 async fn unseen_attempt_cannot_claim_first_frame_evidence() {
-    let mut fixture = AuthorityFixture::seeded().await;
+    let fixture = AuthorityFixture::seeded().await;
     let mut unseen = fixture.input();
     unseen.sequence = 2;
     unseen.state = FfiPlayerPreparationState::FirstFrameRendered;
@@ -79,12 +91,15 @@ async fn unseen_attempt_cannot_claim_first_frame_evidence() {
 
 #[tokio::test]
 async fn admitted_follow_up_survives_current_cache_removal() {
-    let mut fixture = AuthorityFixture::seeded().await;
+    let fixture = AuthorityFixture::seeded().await;
     let mut report = fixture.input();
     report_player_preparation(&fixture.context, report.clone())
         .await
-        .unwrap();
-    fixture.commands.try_player_preparation().unwrap();
+        .expect("test fixture precondition must hold");
+    fixture
+        .commands
+        .try_player_preparation()
+        .expect("test fixture precondition must hold");
     fixture.context.cache.replace(Vec::new());
     report.sequence = 2;
     report.state = FfiPlayerPreparationState::Released;
@@ -93,6 +108,9 @@ async fn admitted_follow_up_survives_current_cache_removal() {
         .await
         .expect("admitted authority owns its terminal lifecycle");
 
-    let released = fixture.commands.try_player_preparation().unwrap();
+    let released = fixture
+        .commands
+        .try_player_preparation()
+        .expect("test fixture precondition must hold");
     assert_eq!(released.state(), PlayerPreparationState::Released);
 }

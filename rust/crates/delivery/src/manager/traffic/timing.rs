@@ -1,15 +1,15 @@
 use super::TransferKey;
-use std::collections::HashMap;
-use std::time::Duration;
+use core::time::Duration;
+use std::collections::BTreeMap;
 use tokio::time::Instant;
 
 #[derive(Default)]
 pub(super) struct ActiveTiming {
-    active: HashMap<TransferKey, String>,
+    active: BTreeMap<TransferKey, String>,
     overall_started: Option<Instant>,
     overall_elapsed: Duration,
-    host_started: HashMap<String, Instant>,
-    host_elapsed: HashMap<String, Duration>,
+    host_started: BTreeMap<String, Instant>,
+    host_elapsed: BTreeMap<String, Duration>,
 }
 
 impl ActiveTiming {
@@ -85,8 +85,8 @@ fn finish(elapsed: &mut Duration, started: &mut Option<Instant>, at: Instant) {
 
 fn finish_host(
     host: &str,
-    elapsed: &mut HashMap<String, Duration>,
-    started: &mut HashMap<String, Instant>,
+    elapsed: &mut BTreeMap<String, Duration>,
+    started: &mut BTreeMap<String, Instant>,
     at: Instant,
 ) {
     let duration = running(started.remove(host), at);

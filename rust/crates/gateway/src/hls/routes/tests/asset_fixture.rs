@@ -5,13 +5,13 @@ use axum::body::Body;
 use axum::extract::{Path, State};
 use axum::http::header::RANGE;
 use axum::http::{HeaderMap, HeaderValue, Response, StatusCode};
-use std::time::Duration;
+use core::time::Duration;
 use tokio::task::JoinHandle;
-use tokio_stream::StreamExt;
+use tokio_stream::StreamExt as _;
 
 pub(super) struct AssetExchange {
-    pub result: Result<Response<Body>, StatusCode>,
-    pub requests: Vec<String>,
+    pub(super) result: Result<Response<Body>, StatusCode>,
+    pub(super) requests: Vec<String>,
 }
 
 pub(super) async fn exchange(response: Vec<u8>, ranges: &[&str]) -> AssetExchange {

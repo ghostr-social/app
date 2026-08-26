@@ -1,15 +1,12 @@
-use crate::delivery_events::{
-    command_channel, PlayerPreparationAttempt, PlayerPreparationAuthority,
-    PlayerPreparationIngress, PlayerPreparationObservation, PlayerPreparationReport,
-    PlayerPreparationState,
-};
+
+use crate::delivery_events::{command_channel, PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationIngress, PlayerPreparationObservation, PlayerPreparationReport, PlayerPreparationState};
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 use ghostr_partial_store::partial_range_store::ContentRevision;
 
 #[test]
 fn client_epoch_keeps_one_capability_generation_after_terminal_cleanup() {
-    let (handle, mut receiver) = command_channel();
+    let (handle, receiver) = command_channel();
     let ticket = handle.player_preparation_admission();
     assert_eq!(
         handle.report_player_preparation_initial(ticket, report(1, 7, 1, 1)),
@@ -41,15 +38,15 @@ fn report(generation: u64, epoch: u64, attempt: u64, sequence: u64) -> PlayerPre
         ContentRevision::default(),
         "asset",
     )
-    .unwrap();
-    let attempt = PlayerPreparationAttempt::try_new(generation, epoch, attempt).unwrap();
+    .expect("valid test fixture");
+    let attempt = PlayerPreparationAttempt::try_new(generation, epoch, attempt).expect("valid test fixture");
     let state = if sequence == 1 {
         PlayerPreparationState::Initializing
     } else {
         PlayerPreparationState::Released
     };
-    let observation = PlayerPreparationObservation::try_new(state, None, sequence).unwrap();
-    PlayerPreparationReport::try_new(authority, attempt, sequence, observation).unwrap()
+    let observation = PlayerPreparationObservation::try_new(state, None, sequence).expect("valid test fixture");
+    PlayerPreparationReport::try_new(authority, attempt, sequence, observation).expect("valid test fixture")
 }
 
 fn meta() -> VideoMeta {

@@ -2,12 +2,18 @@
 name = "ghostr-partial-store"
 version = "0.1.0"
 edition = "2021"
+publish = false
+autotests = false
 description = "Sparse on-disk store of partially downloaded byte ranges, with free-space-aware capacity and LRU eviction."
+
+[features]
+test = []
 
 [dependencies]
 ghostr-engine = { path = "../engine" }
 
 anyhow = { workspace = true }
+fs2 = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -19,6 +25,5 @@ tokio = { workspace = true }
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
 
-# statvfs, for measuring the free space the video store may not consume.
-[target.'cfg(unix)'.dependencies]
-libc = { workspace = true }
+[target.'cfg(unix)'.dev-dependencies]
+nix = { workspace = true }

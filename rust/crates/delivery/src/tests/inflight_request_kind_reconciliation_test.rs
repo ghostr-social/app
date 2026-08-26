@@ -26,6 +26,7 @@ fn planned_whole_cancels_an_overlapping_range_until_terminal_ack() {
         reason: WholeFetchReason::PlannedCompletion,
     };
     let planned = PlannedTransfer {
+        control_mode: ghostr_engine::adaptive::ControlMode::Normal,
         request: priority.clone(),
         retrieval: whole,
         url: url.to_owned(),
@@ -45,9 +46,10 @@ fn planned_whole_cancels_an_overlapping_range_until_terminal_ack() {
         handle,
         store_action: None,
         committed_network_bytes: None,
+        exploration_claim: None,
     });
 
-    active.reconcile(std::slice::from_ref(&planned), 1);
+    active.reconcile(core::slice::from_ref(&planned), 1);
 
     assert!(token.is_cancelled());
     assert_eq!(active.len(), 1, "cancelling work retains its reservation");

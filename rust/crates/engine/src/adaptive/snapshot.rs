@@ -4,6 +4,8 @@ use crate::playback::{EstimateConfidence, PlaybackPhase};
 use crate::{ActionId, ByteRange, PostId};
 
 mod hls;
+#[cfg(test)]
+mod in_flight_action_api_test;
 mod replay;
 pub use hls::*;
 
@@ -11,6 +13,12 @@ pub use hls::*;
 pub struct ViewProbability(f64);
 
 impl ViewProbability {
+    /// Creates a bounded probability.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SnapshotError::InvalidProbability`] for non-finite values or values outside
+    /// the inclusive range from zero to one.
     pub fn new(value: f64) -> Result<Self, SnapshotError> {
         if !value.is_finite() || !(0.0..=1.0).contains(&value) {
             return Err(SnapshotError::InvalidProbability);
@@ -113,30 +121,6 @@ pub struct InFlightAction {
     pub cancelling: bool,
 }
 
-impl InFlightAction {
-    pub fn range(
-        action_id: ActionId,
-        bytes: ByteRange,
-        source: impl Into<String>,
-        committed_until_ms: u64,
-        identity_current: bool,
-    ) -> Self {
-        Self {
-            action_id,
-            request: RetrievalRequest::FetchRange {
-                bytes,
-                promotion: None,
-            },
-            effective_bytes: bytes,
-            reserved_storage_bytes: bytes.len(),
-            source: source.into(),
-            committed_until_ms,
-            identity_current,
-            cancelling: false,
-        }
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct OriginHealth {
     pub source: String,
@@ -161,22 +145,23 @@ pub struct CandidateSnapshot {
     pub preferred_source: Option<String>,
     pub startup: Option<StartupFootprint>,
     pub player_preparation: PlayerPreparation,
-    pub timeline_probe: Option<PlayableRange>,
+    pub direct_playback_blocked: bool,
+    pub(crate) timeline_probe: Option<PlayableRange>,
     pub playable_ranges: Vec<PlayableRange>,
     /// Bytes a live consumer is blocked on right now (a gateway read
     /// outside the buffered region). Always fetched, independent of
     /// how comfortable the playback reserve currently is.
     pub demanded: Option<ByteRange>,
-    pub present: Vec<ByteRange>,
+    pub(crate) present: Vec<ByteRange>,
     pub finalized: bool,
-    pub recently_evicted: Vec<ByteRange>,
+    pub(crate) recently_evicted: Vec<ByteRange>,
     pub in_flight: Vec<InFlightAction>,
     pub origins: Vec<OriginHealth>,
     pub evidence: crate::evidence::EvidenceAssessment,
 }
 
 impl CandidateSnapshot {
-    pub fn needs_bootstrap(&self) -> bool {
+    pub(super) fn needs_bootstrap(&self) -> bool {
         !self.evidence.size.reliable
             || self.total_bytes.is_none()
             || self.layout == MediaLayout::Unknown

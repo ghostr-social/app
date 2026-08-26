@@ -1,11 +1,11 @@
 use super::temp_directory;
+use core::sync::atomic::{AtomicU64, Ordering};
+use core::time::Duration;
 use ghostr_partial_store::partial_range_store::capacity::{Limits, StoreCapacity};
 use ghostr_partial_store::partial_range_store::free_space::FreeSpace;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Mutex;
 
 pub struct MutableSpace(AtomicU64);
@@ -30,7 +30,7 @@ pub fn movable_store(prefix: &str) -> (Arc<PartialRangeStore>, Arc<MutableSpace>
             budget: 16,
             reserve: 0,
         },
-        space.clone(),
+        Arc::<MutableSpace>::clone(&space),
         Duration::ZERO,
     );
     let store = PartialRangeStore::with_capacity(root.clone(), Arc::new(Mutex::new(0)), capacity);

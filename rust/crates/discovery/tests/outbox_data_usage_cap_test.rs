@@ -1,11 +1,9 @@
 //! The outbox fan-out is capped before bootstrap merging, and the cap
 //! per data-usage level mirrors `maxOutboxRelays` in
-//! lib/features/settings/domain/data_usage_level.dart (6 / 12 / 18).
+//! `lib/features/settings/domain/data_usage_level.dart` (6 / 12 / 18).
 
-mod discovery_support;
-
-use discovery_support::write_relay_list;
-use ghostr_discovery::outbox::directory::{max_outbox_relays, OutboxDirectory};
+use crate::outbox::directory::{max_outbox_relays, OutboxDirectory};
+use crate::tests::discovery_support::write_relay_list;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::Keys;
 

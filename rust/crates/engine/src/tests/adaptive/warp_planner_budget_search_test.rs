@@ -55,7 +55,10 @@ fn beam_search_values_probe_then_fetch_and_commits_only_its_first_action() {
     assert_eq!(selected.action, Some(prefix));
     assert_eq!(selected.committed_actions, 1);
     assert!(!selected.used_greedy_fallback);
-    assert_eq!(selected.chosen_plan.unwrap().action_ids, vec![1, 2]);
+    assert_eq!(
+        selected.chosen_plan.expect("valid test fixture").action_ids,
+        vec![1, 2]
+    );
     assert!(selected
         .pruned_plans
         .iter()
@@ -82,7 +85,8 @@ fn planner_latency_budget_uses_greedy_positive_fallback() {
 #[test]
 fn hard_tokens_reject_over_budget_work_and_shadow_prices_follow_pressure() {
     let mut budget = HardBudget::new(ResourceCost::new(100, 100, 10, 2), 1);
-    let authority = RequestAuthority::from_url("https://a.example/media").unwrap();
+    let authority =
+        RequestAuthority::from_url("https://a.example/media").expect("valid test fixture");
     assert!(budget.consume(&ResourceCost::new(80, 50, 5, 1), Some(&authority)));
     assert!(!budget.consume(&ResourceCost::new(30, 10, 1, 1), Some(&authority)));
     let mut prices = ShadowPriceController::default();

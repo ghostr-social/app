@@ -5,9 +5,9 @@ use axum::http::Request;
 use gateway_fixture::media_client;
 use gateway_fixture::progressive_hls::router_with_hls;
 use ghostr_gateway::hls::sessions::{HlsResourceId, HlsSessions};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::TcpListener;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn resolves_relative_resources_against_the_final_redirect_url() {
@@ -50,6 +50,9 @@ async fn serve_redirect(listener: TcpListener, port: u16) {
 async fn serve_once(listener: &TcpListener, response: &[u8]) {
     let (mut socket, _) = listener.accept().await.expect("request");
     let mut request = [0; 2048];
-    assert!(socket.read(&mut request).await.expect("read") > 0);
+    assert!(
+        socket.read(&mut request).await.expect("read") > 0,
+        "the origin must receive a request before replying"
+    );
     socket.write_all(response).await.expect("response");
 }

@@ -8,6 +8,8 @@ use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::Response;
 use axum::routing::get;
 use axum::Router;
+use core::ops::Range;
+use core::time::Duration;
 use ghostr_delivery::cache_registry::CacheRegistry;
 #[cfg(all(
     feature = "video-debug-web",
@@ -19,9 +21,7 @@ use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_delivery::playback_demand::DemandSender;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use serde::Deserialize;
-use std::ops::Range;
 use std::sync::Arc;
-use std::time::Duration;
 
 mod authority;
 mod snapshot;
@@ -36,7 +36,7 @@ pub struct ProgressiveTiming {
     /// Wait for binding or total-length readiness before giving up.
     pub(crate) unknown_length_wait: Duration,
     /// Abort a stalled stream once no byte lands for this long.
-    pub(crate) idle_timeout: Duration,
+    pub(super) idle_timeout: Duration,
 }
 
 impl Default for ProgressiveTiming {
@@ -89,7 +89,7 @@ async fn serve(
         return retry_later();
     };
     require_current_asset(&state, &query, &stored).await?;
-    let snapshot = VideoSnapshot::from_stored(query.id, stored);
+    let snapshot = VideoSnapshot::from_stored(query.id, &stored);
     let mut response = match range_header::resolve_all(&headers, snapshot.total) {
         ResolvedRange::Full => full_response(state, snapshot),
         ResolvedRange::Partial { start, end } => partial_response(state, snapshot, start..end),
@@ -106,7 +106,10 @@ fn retry_later() -> Result<Response, StatusCode> {
         .status(StatusCode::SERVICE_UNAVAILABLE)
         .header(RETRY_AFTER, "1")
         .body(Body::empty())
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+        .map_err(|error| {
+            log::warn!("Could not build progressive retry response: {error}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })
 }
 
 fn full_response(
@@ -120,7 +123,10 @@ fn full_response(
         .header(CONTENT_LENGTH, snapshot.total)
         .header(ACCEPT_RANGES, "bytes")
         .body(body)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+        .map_err(|error| {
+            log::warn!("Could not build full progressive response: {error}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })
 }
 
 fn partial_response(
@@ -138,7 +144,10 @@ fn partial_response(
         .header(CONTENT_RANGE, content_range)
         .header(ACCEPT_RANGES, "bytes")
         .body(body)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+        .map_err(|error| {
+            log::warn!("Could not build ranged progressive response: {error}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })
 }
 
 fn unsatisfiable_response(total: u64) -> Result<Response, StatusCode> {
@@ -146,5 +155,8 @@ fn unsatisfiable_response(total: u64) -> Result<Response, StatusCode> {
         .status(StatusCode::RANGE_NOT_SATISFIABLE)
         .header(CONTENT_RANGE, format!("bytes */{total}"))
         .body(Body::empty())
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+        .map_err(|error| {
+            log::warn!("Could not build progressive range rejection: {error}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })
 }

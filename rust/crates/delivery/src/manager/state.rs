@@ -5,9 +5,7 @@ use crate::client_capability::ClientCapabilityModel;
 use crate::delivery_events::{
     DeliveryCandidate, FocusGenerationGuard, PlaybackPresentation, PlayerPreparationReport,
 };
-use ghostr_engine::adaptive::{
-    CurrentAuthority, DiscoveryDemand, NavigationHistory, NavigationSnapshot,
-};
+use ghostr_engine::adaptive::{CurrentAuthority, DiscoveryDemand, NavigationHistory};
 use ghostr_engine::budget::params_for;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::focus::{FocusState, FocusUpdate};
@@ -45,8 +43,11 @@ pub(crate) struct DeliveryState {
     observation_posts: HashSet<PostId>,
     ready_target: usize,
     network_status: crate::delivery_events::DeliveryNetworkStatus,
+    focus_generation: crate::delivery_events::FocusGeneration,
+    network_profile_generation: u64,
 }
 
+mod access;
 mod evictions;
 mod fast_start;
 mod focus;
@@ -56,7 +57,9 @@ mod playback_evidence;
 mod player_preparation;
 mod presentation;
 pub(crate) use presentation::PresentationAdmission;
-mod probes;
+#[cfg(test)]
+#[path = "state/probes_axiom_test.rs"]
+mod probes_test;
 mod representation;
 mod transform;
 mod window;
@@ -92,6 +95,8 @@ impl DeliveryState {
             observation_posts: Default::default(),
             ready_target: 1,
             network_status: crate::delivery_events::DeliveryNetworkStatus::unavailable(),
+            focus_generation: crate::delivery_events::FocusGeneration::compatibility(),
+            network_profile_generation: 0,
         }
     }
 
@@ -128,7 +133,7 @@ impl DeliveryState {
 
     /// Re-derives the budgeted parameters from the pristine base
     /// (never from an already-scaled result).
-    pub(crate) fn apply_level(&mut self, level: DataUsageLevel) {
+    pub(super) fn apply_level(&mut self, level: DataUsageLevel) {
         self.level = level;
         self.effective = params_for(level, self.base);
     }
@@ -154,6 +159,7 @@ impl DeliveryState {
         self.transformed_posts.clear();
         self.observation_posts.clear();
         self.ready_target = 1;
+        self.focus_generation = crate::delivery_events::FocusGeneration::compatibility();
     }
 
     pub(crate) fn observe_discovery_demand(&self, demand: DiscoveryDemand) {
@@ -167,33 +173,5 @@ impl DeliveryState {
             }
             changed
         });
-    }
-
-    pub(crate) fn catalog(&self) -> &Catalog {
-        &self.catalog
-    }
-
-    pub(crate) fn catalog_mut(&mut self) -> &mut Catalog {
-        &mut self.catalog
-    }
-
-    pub(crate) fn focus(&self) -> &FocusState {
-        &self.focus
-    }
-
-    pub(crate) fn current_post(&self) -> Option<PostId> {
-        self.focus.current().cloned()
-    }
-
-    pub(crate) fn params(&self) -> &EngineParams {
-        &self.effective
-    }
-
-    pub(crate) fn concurrency(&self) -> usize {
-        self.effective.concurrency(self.level)
-    }
-
-    pub(crate) fn navigation(&self, observed_at_ms: u64) -> NavigationSnapshot {
-        self.navigation.snapshot(observed_at_ms)
     }
 }

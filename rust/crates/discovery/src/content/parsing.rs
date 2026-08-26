@@ -1,5 +1,5 @@
 //! Converts one accepted Nostr event into one playable video post.
-//! Feed assembly consumes [`video_post_from_event`]; nothing here does IO.
+//! Feed assembly consumes `video_post_from_event`; nothing here does IO.
 
 use super::renditions::{progressive_renditions, video_meta};
 use ghostr_engine::evidence::NostrMetadataEvidence;
@@ -11,7 +11,7 @@ use ghostr_media_model::nostr_event_media::{event_media, tag_values};
 use ghostr_media_model::post_text::{
     caption_without_urls, content_hashtags, normalized_hashtag, push_unique,
 };
-use nostr_sdk::{Event, JsonUtil};
+use nostr_sdk::{Event, JsonUtil as _};
 use std::sync::Arc;
 
 const NOTE_KIND: u16 = 1;
@@ -66,7 +66,7 @@ impl ParsedVideoPost {
     /// share `kind:pubkey:identifier`, everything else is its event id.
     /// The identifier is compared exactly as published: padding names a
     /// distinct coordinate.
-    pub fn coordinate(&self) -> String {
+    pub(crate) fn coordinate(&self) -> String {
         if !(30_000..40_000).contains(&u32::from(self.kind)) {
             return self.event_id.clone();
         }
@@ -78,21 +78,21 @@ impl ParsedVideoPost {
         }
     }
 
-    pub fn activity_event_id(&self) -> &str {
+    pub(crate) fn activity_event_id(&self) -> &str {
         self.repost
             .as_ref()
             .map_or(self.event_id.as_str(), |repost| repost.event_id.as_str())
     }
 }
 
-pub fn video_post_from_event(event: &Event) -> Option<ParsedVideoPost> {
+pub(crate) fn video_post_from_event(event: &Event) -> Option<ParsedVideoPost> {
     if !accepts_kind(event) {
         return None;
     }
-    let identifier = addressable_identifier(event)?;
+    let identifier = addressable_identifier(event)?.into_value();
     let media = event_media(event)?;
     let renditions = progressive_renditions(event);
-    Some(parsed_post(event, identifier, media, renditions))
+    Some(parsed_post(event, identifier, &media, renditions))
 }
 
 fn accepts_kind(event: &Event) -> bool {
@@ -109,26 +109,26 @@ fn has_video_file_mime(event: &Event) -> bool {
 
 /// Addressable kinds must name a non-blank `d` identifier or the event is
 /// skipped. The value stays exact for coordinates and is trimmed for display.
-fn addressable_identifier(event: &Event) -> Option<Option<String>> {
+fn addressable_identifier(event: &Event) -> Option<IdentifierPresence> {
     if event.kind.as_u16() < 30_000 {
-        return Some(None);
+        return Some(IdentifierPresence::Absent);
     }
     let tag = event
         .tags
         .iter()
         .find(|tag| tag.as_slice().first().map(String::as_str) == Some("d"))?;
     let value = tag.as_slice().get(1)?;
-    (!value.trim().is_empty()).then(|| Some(value.clone()))
+    (!value.trim().is_empty()).then(|| IdentifierPresence::Present(value.clone()))
 }
 
 fn parsed_post(
     event: &Event,
     published: Option<String>,
-    media: NativeMediaMetadata,
+    media: &NativeMediaMetadata,
     renditions: Vec<VideoRendition>,
 ) -> ParsedVideoPost {
-    let meta = video_meta(&media);
-    let metadata_evidence = super::evidence::metadata(event, &media);
+    let meta = video_meta(media);
+    let metadata_evidence = super::evidence::metadata(event, media);
     ParsedVideoPost {
         event_id: event.id.to_hex(),
         author_pubkey: event.pubkey.to_hex(),
@@ -149,6 +149,20 @@ fn parsed_post(
         meta,
         metadata_evidence,
         renditions,
+    }
+}
+
+enum IdentifierPresence {
+    Absent,
+    Present(String),
+}
+
+impl IdentifierPresence {
+    fn into_value(self) -> Option<String> {
+        match self {
+            Self::Absent => None,
+            Self::Present(value) => Some(value),
+        }
     }
 }
 

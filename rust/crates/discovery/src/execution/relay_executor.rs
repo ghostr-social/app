@@ -2,24 +2,20 @@
 //! session-safe relay-pool owner.
 
 use crate::cache::EventCache;
-#[cfg(test)]
-use crate::execution::routes::outbox_relays as resolved_outbox;
+
 use crate::execution::routes::plan_outbox_relays as resolved_plan_outboxes;
 use crate::outbox::directory::{max_outbox_relays, SharedOutboxDirectory};
 use crate::plan_executor::{PlanExecutor, PlanFuture, PlanPageFuture, PlannedRetrieval};
 use crate::query::live_search_relays::LiveSearchRelays;
-#[cfg(test)]
-use crate::query::search::OutboxLookup;
+
 use crate::query::search::QueryPlan;
-#[cfg(test)]
-use crate::relay::pool::RelayPoolConfiguration;
+
 use crate::relay::pool::RelayPoolOwner;
 use crate::retrieval_types::{EventProgress, PlanFailure};
 use crate::session_generation::{SessionGeneration, SESSION_RESET_MESSAGE};
+use core::sync::atomic::{AtomicUsize, Ordering};
 use ghostr_engine::DataUsageLevel;
-#[cfg(test)]
-use nostr_sdk::Client;
-use std::sync::atomic::{AtomicUsize, Ordering};
+
 use std::sync::Arc;
 
 pub(crate) mod deletion_enrichment;
@@ -50,21 +46,6 @@ pub struct RelayPlanExecutor {
 }
 
 impl RelayPlanExecutor {
-    #[cfg(test)]
-    pub(crate) fn new(
-        client: Arc<Client>,
-        search_relays: Vec<String>,
-        outbox: SharedOutboxDirectory,
-        level: DataUsageLevel,
-    ) -> Self {
-        let configuration = RelayPoolConfiguration {
-            read_relays: Vec::new(),
-            search_relays: search_relays.clone(),
-        };
-        let relay_pool = Arc::new(RelayPoolOwner::new(client, configuration));
-        Self::with_owner(relay_pool, search_relays, outbox, level)
-    }
-
     pub fn with_owner(
         relay_pool: Arc<RelayPoolOwner>,
         search_relays: Vec<String>,
@@ -82,14 +63,7 @@ impl RelayPlanExecutor {
 
     /// The session event pool this executor reads and files into.
     pub fn cache(&self) -> Arc<EventCache> {
-        self.cache.clone()
-    }
-
-    /// Scopes the pool to whoever this plan's feed named, before any of
-    /// its queries reads it; reports whether the pool was emptied.
-    #[cfg(test)]
-    pub(crate) async fn adopt_plan_viewer(&self, plan: &QueryPlan) -> bool {
-        self.cache.adopt(plan.viewer).await
+        std::sync::Arc::clone(&self.cache)
     }
 
     /// Live outbox fan-out change (`ffi_set_delivery_config`): the next
@@ -117,22 +91,6 @@ impl RelayPlanExecutor {
             .await
             .map(|_| ())
             .ok_or_else(|| PlanFailure::new(SESSION_RESET_MESSAGE))
-    }
-
-    /// Resolves author write relays or the viewer's ranked discovery
-    /// relays. An empty result falls back to the bootstrap pool.
-    #[cfg(test)]
-    pub(crate) async fn outbox_relays(&self, lookup: &OutboxLookup) -> Option<Vec<String>> {
-        let cap = self.outbox_cap.load(Ordering::Relaxed);
-        let directory = self.outbox.read().await;
-        resolved_outbox(&directory, lookup, cap)
-    }
-
-    #[cfg(test)]
-    pub(crate) async fn plan_outbox_relays(&self, plan: &QueryPlan) -> Vec<Option<Vec<String>>> {
-        let cap = self.outbox_cap.load(Ordering::Relaxed);
-        let directory = self.outbox.read().await;
-        resolved_plan_outboxes(&directory, plan, cap)
     }
 
     pub(crate) async fn session_plan_outboxes(
@@ -166,3 +124,7 @@ impl PlanExecutor for RelayPlanExecutor {
         Box::pin(self.clone().run_page(retrieval, Some(progress)))
     }
 }
+
+#[cfg(test)]
+#[path = "relay_executor_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

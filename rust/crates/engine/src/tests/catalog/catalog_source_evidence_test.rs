@@ -8,7 +8,7 @@ fn one_mirrors_range_response_does_not_poison_another_mirror() {
     let second = "https://second.example/video.mp4";
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(post.clone(), meta(first, second));
-    let identity = binding.transfer(first).unwrap();
+    let identity = binding.transfer(first).expect("valid test fixture");
 
     assert!(catalog.learn_response_for(
         &identity,
@@ -18,7 +18,7 @@ fn one_mirrors_range_response_does_not_poison_another_mirror() {
         },
     ));
 
-    let entry = catalog.lookup(&post).unwrap();
+    let entry = catalog.lookup(&post).expect("valid test fixture");
     assert_eq!(entry.observed_range_support_for(first), Some(false));
     assert_eq!(entry.observed_range_support_for(second), None);
 }

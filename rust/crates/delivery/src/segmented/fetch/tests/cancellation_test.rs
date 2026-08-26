@@ -1,9 +1,10 @@
-use super::super::{fetch_stage, StagedFetch};
+use super::super::axiom_test_support::fetch_stage;
+use super::super::StagedFetch;
 use super::support::{client, immediate_asset, network_status};
 use crate::manager::time::unix_time_ms;
+use core::time::Duration;
 use ghostr_engine::adaptive::{HlsBootstrapStage, PreemptionAuthority, ResourceCost};
-use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::TcpListener;
 
 #[tokio::test]
@@ -15,10 +16,14 @@ async fn cancellation_after_admission_keeps_exact_partial_network_usage() {
         let network = network_status();
         fetch_stage(input(&requests, &network, &url, cancelled)).await
     });
-    sent.await.unwrap();
+    sent.await.expect("valid test fixture");
     tokio::time::sleep(Duration::from_millis(50)).await;
-    cancel.send(()).unwrap();
-    let failure = task.await.unwrap().err().expect("cancelled fetch");
+    cancel.send(()).expect("valid test fixture");
+    let failure = task
+        .await
+        .expect("valid test fixture")
+        .err()
+        .expect("cancelled fetch");
 
     assert!(failure.is_cancelled());
     assert_eq!(failure.network_bytes(), 37);
@@ -35,10 +40,10 @@ async fn cancellation_before_admission_has_no_request_or_byte_usage() {
     let requests = client();
     let held = requests
         .get(&url, PreemptionAuthority::Transition)
-        .unwrap()
+        .expect("valid test fixture")
         .admit()
         .await
-        .unwrap();
+        .expect("valid test fixture");
     let (cancel, cancelled) = tokio::sync::oneshot::channel();
     let queued = requests.clone();
     let task = tokio::spawn(async move {
@@ -46,8 +51,12 @@ async fn cancellation_before_admission_has_no_request_or_byte_usage() {
         fetch_stage(input(&queued, &network, &url, cancelled)).await
     });
     tokio::task::yield_now().await;
-    cancel.send(()).unwrap();
-    let failure = task.await.unwrap().err().expect("cancelled fetch");
+    cancel.send(()).expect("valid test fixture");
+    let failure = task
+        .await
+        .expect("valid test fixture")
+        .err()
+        .expect("cancelled fetch");
 
     assert!(failure.is_cancelled());
     assert!(failure.origin().is_none());
@@ -81,20 +90,22 @@ async fn partial_asset() -> (
     tokio::sync::oneshot::Receiver<()>,
     tokio::task::JoinHandle<()>,
 ) {
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let address = listener.local_addr().unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("valid test fixture");
+    let address = listener.local_addr().expect("valid test fixture");
     let (sent, received) = tokio::sync::oneshot::channel();
     let server = tokio::spawn(async move {
-        let (mut socket, _) = listener.accept().await.unwrap();
+        let (mut socket, _) = listener.accept().await.expect("valid test fixture");
         let mut request = [0; 1024];
-        let read = socket.read(&mut request).await.unwrap();
+        let read = socket.read(&mut request).await.expect("valid test fixture");
         assert!(read > 0);
         socket
             .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\n1234567890123456789012345678901234567")
             .await
-            .unwrap();
-        sent.send(()).unwrap();
-        std::future::pending::<()>().await;
+            .expect("valid test fixture");
+        sent.send(()).expect("valid test fixture");
+        core::future::pending::<()>().await;
     });
     (format!("http://{address}/segment.m4s"), received, server)
 }

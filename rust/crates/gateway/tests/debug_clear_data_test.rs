@@ -10,7 +10,7 @@ use ghostr_delivery::debug::feed::{DebugFeed, DebugFeedStage};
 use ghostr_discovery::cache::client_with_event_cache;
 use ghostr_gateway::hls::sessions::HlsSessions;
 use ghostr_gateway::progressive::route::{ProgressiveState, ProgressiveTiming};
-use ghostr_gateway::router::configured_router_with_progressive_debug;
+use ghostr_gateway::router::{configured_router_with_segmented_debug, GatewayRouterResources};
 use nostr_sdk::{EventBuilder, Filter, Keys, Kind};
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -52,9 +52,8 @@ async fn clear_api_removes_feed_download_hls_and_nostr_database_state() {
             ghostr_gateway::progressive::capabilities::ProgressiveCapabilities::production(),
         debug_feed: feed.clone(),
     });
-    let router = configured_router_with_progressive_debug(
-        hls.clone(),
-        gateway_fixture::media_client(),
+    let router = configured_router_with_segmented_debug(
+        GatewayRouterResources::new(hls.clone(), gateway_fixture::media_client()),
         state,
         delivery.handle,
         client.clone(),
@@ -64,7 +63,7 @@ async fn clear_api_removes_feed_download_hls_and_nostr_database_state() {
         .oneshot(
             Request::delete("/debug/api/data")
                 .body(Body::empty())
-                .unwrap(),
+                .expect("valid test fixture"),
         )
         .await
         .expect("clear response");

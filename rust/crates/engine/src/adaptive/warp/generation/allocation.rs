@@ -6,6 +6,7 @@ use crate::adaptive::{
 };
 use crate::ByteRange;
 
+#[derive(Clone, Copy)]
 pub(super) struct AllocationSpec<'a> {
     request: RetrievalRequest,
     source: &'a str,

@@ -10,15 +10,15 @@ use ghostr_engine::representation::{
 };
 
 mod recovery;
-
-#[derive(Clone)]
-pub(super) struct HttpGenerationState {
-    source: String,
-    key: Option<HttpGenerationKey>,
-    authority: Option<HttpGenerationAuthority>,
-}
+mod state;
+#[cfg(any(test, feature = "test"))]
+mod test_support;
+pub(super) use state::HttpGenerationState;
 
 impl PartialRangeStore {
+    /// # Errors
+    ///
+    /// Returns an error when generation evidence conflicts or replacement cannot be persisted.
     pub async fn apply_http_generation(
         &self,
         identity: &TransferIdentity,
@@ -62,24 +62,6 @@ impl PartialRangeStore {
             HttpGenerationAuthority::Trusted(lease) => Some(lease.clone()),
             HttpGenerationAuthority::Unknown(_) => None,
         }
-    }
-
-    pub(super) async fn http_generation_preserves_bytes(
-        &self,
-        identity: &TransferIdentity,
-    ) -> bool {
-        self.http_generations
-            .lock()
-            .await
-            .get(identity.post().as_str())
-            .is_some_and(|state| {
-                state.source == identity.source().as_str()
-                    && state
-                        .key
-                        .as_ref()
-                        .and_then(HttpGenerationKey::validator)
-                        .is_some()
-            })
     }
 
     pub(super) async fn http_generation_matches_source(

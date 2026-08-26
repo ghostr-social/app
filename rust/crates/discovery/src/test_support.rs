@@ -1,6 +1,6 @@
 //! Controllable external relay IO for lifecycle ownership tests.
 //!
-//! Gated behind the `test-support` feature so dependents can drive the relay
+//! Gated behind the `test` feature so dependents can drive the relay
 //! pool with a scripted IO port instead of reaching a live relay.
 
 #[cfg(test)]
@@ -10,18 +10,18 @@ use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo, Re
 use crate::relay::pool::RelayReadRequest;
 #[cfg(test)]
 use crate::session_generation::SessionGeneration;
+use core::sync::atomic::{AtomicUsize, Ordering};
+#[cfg(test)]
+use core::time::Duration;
 #[cfg(test)]
 use nostr_sdk::Filter;
-use std::sync::atomic::{AtomicUsize, Ordering};
-#[cfg(test)]
-use std::time::Duration;
 use tokio::sync::{Notify, Semaphore};
 
 pub struct TestRelayIo {
     query_gate: Semaphore,
     send_gate: Semaphore,
-    pub(crate) query_started: Notify,
-    pub(crate) send_started: Notify,
+    pub(super) query_started: Notify,
+    pub(super) send_started: Notify,
     reads: AtomicUsize,
     sends: AtomicUsize,
 }
@@ -39,7 +39,7 @@ impl TestRelayIo {
     }
 
     #[cfg(test)]
-    pub(crate) fn release_query(&self) {
+    pub(super) fn release_query(&self) {
         self.query_gate.add_permits(1);
     }
 
@@ -52,7 +52,7 @@ impl TestRelayIo {
     }
 
     #[cfg(test)]
-    pub(crate) fn read_count(&self) -> usize {
+    pub(super) fn read_count(&self) -> usize {
         self.reads.load(Ordering::SeqCst)
     }
 

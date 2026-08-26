@@ -11,7 +11,7 @@ fn known_size_media_is_still_probed_until_its_range_capability_is_known() {
     let retry = RetryBook::new(RetryPolicy::default());
     let mut probes = MetadataProbePool::new(1);
 
-    let claimed = probes.claim(&catalog, std::slice::from_ref(&post), &retry);
+    let claimed = probes.claim(&catalog, core::slice::from_ref(&post), &retry);
     assert_eq!(claimed.len(), 1);
     probes.release(&post);
     catalog.learn(

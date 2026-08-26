@@ -11,13 +11,13 @@ pub use http_generation::{
     HttpGenerationStamp, InvalidHttpGeneration,
 };
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct RepresentationId(String);
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct RepresentationGeneration(u64);
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct SourceId(String);
 
 /// One coherent sparse-byte generation returned by an origin.
@@ -41,7 +41,7 @@ pub struct RepresentationBinding {
     sources: Vec<SourceId>,
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct TransferIdentity {
     post: PostId,
     representation: RepresentationId,
@@ -50,7 +50,7 @@ pub struct TransferIdentity {
 }
 
 impl RepresentationId {
-    pub(crate) fn from_meta(meta: &VideoMeta) -> Self {
+    pub(super) fn from_meta(meta: &VideoMeta) -> Self {
         Self(identity::fingerprint(meta))
     }
 
@@ -60,11 +60,11 @@ impl RepresentationId {
 }
 
 impl RepresentationGeneration {
-    pub(crate) fn first() -> Self {
+    pub(super) fn first() -> Self {
         Self(1)
     }
 
-    pub(crate) fn next(self) -> Self {
+    pub(super) fn next(self) -> Self {
         let next = self
             .0
             .checked_add(1)
@@ -84,6 +84,12 @@ impl SourceId {
 }
 
 impl SourceGeneration {
+    /// Creates a validated immutable source generation.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`InvalidSourceGeneration`] when the URL or strong entity tag is invalid, or when
+    /// the total byte length is zero.
     pub fn try_new(
         final_url: impl Into<String>,
         strong_etag: impl Into<String>,
@@ -129,10 +135,10 @@ impl fmt::Display for InvalidSourceGeneration {
     }
 }
 
-impl std::error::Error for InvalidSourceGeneration {}
+impl core::error::Error for InvalidSourceGeneration {}
 
 impl RepresentationBinding {
-    pub(crate) fn new(
+    pub(super) fn new(
         post: PostId,
         meta: &VideoMeta,
         generation: RepresentationGeneration,
@@ -155,10 +161,6 @@ impl RepresentationBinding {
 
     pub fn representation(&self) -> &RepresentationId {
         &self.representation
-    }
-
-    pub fn matches_meta(&self, meta: &VideoMeta) -> bool {
-        self.representation == RepresentationId::from_meta(meta)
     }
 
     pub fn transfer(&self, url: &str) -> Option<TransferIdentity> {

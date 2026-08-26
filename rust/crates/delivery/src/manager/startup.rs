@@ -35,10 +35,10 @@ fn startup_certificate(
     candidate: &ReserveCandidateEvidence,
     snapshots: &HashMap<PostId, StoredMediaSnapshot>,
 ) -> Option<StartupCertificate> {
-    let startup = match &candidate.state {
-        ReserveCandidateState::Ready { startup }
-        | ReserveCandidateState::Structural { startup } => startup,
-        _ => return None,
+    let (ReserveCandidateState::Ready { startup } | ReserveCandidateState::Structural { startup }) =
+        &candidate.state
+    else {
+        return None;
     };
     let post = &candidate.post;
     let binding = state.catalog().binding(post)?;

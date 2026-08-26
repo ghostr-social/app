@@ -64,10 +64,9 @@ pub(super) fn completion_status(active: &ActiveChunk, linked: bool) -> Completio
 }
 
 fn disposition(
-    transfers: &std::collections::HashMap<ActionId, ActiveChunk>,
+    transfers: &std::collections::BTreeMap<ActionId, ActiveChunk>,
     action: ActionId,
 ) -> Option<HedgeDisposition> {
-    transfers
-        .get(&action)
-        .and_then(|active| active.hedge_disposition)
+    let active = transfers.get(&action)?;
+    active.hedge_disposition
 }

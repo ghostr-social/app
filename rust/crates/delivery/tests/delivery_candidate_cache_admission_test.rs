@@ -1,10 +1,10 @@
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::items::candidate;
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::probe_origins::serve_lengthless;
 use delivery_fixture::start_harness;
-use std::time::Duration;
 
 #[tokio::test]
 async fn a_candidate_stays_registered_while_metadata_is_pending() {

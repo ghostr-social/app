@@ -6,11 +6,11 @@ use crate::scheduler::{start_discovery_scheduler, DiscoveryHandle, DiscoverySche
 use crate::tests::scheduler_support::{
     context, next_outcome, next_started, no_start, note_at, request,
 };
+use core::time::Duration;
 use ghostr_engine::{adaptive::DiscoveryDemand, DataUsageLevel};
 use nostr_sdk::Event;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 use tokio::sync::{mpsc, oneshot, watch};
 use tokio::time::timeout;
 

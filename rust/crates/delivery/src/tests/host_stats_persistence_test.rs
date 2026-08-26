@@ -3,7 +3,7 @@
 use crate::manager::stats::{load_host_stats, save_host_stats};
 use ghostr_engine::host_stats::HostStats;
 use std::path::PathBuf;
-use std::time::Duration;
+use core::time::Duration;
 
 fn temp_path(name: &str) -> PathBuf {
     let file = format!("ghostr_host_stats_{}_{name}.json", std::process::id());

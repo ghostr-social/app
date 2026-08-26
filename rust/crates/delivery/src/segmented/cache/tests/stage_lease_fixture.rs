@@ -19,14 +19,14 @@ pub(super) fn store_partial(cache: &SegmentedCache, post: &PostId, bytes: usize)
         500,
         StageReservation::block(bytes as u64),
     );
-    let lease = cache.admit_stage(admission).unwrap();
+    let lease = cache.admit_stage(admission).expect("valid test fixture");
     assert!(lease.commit_partial(object(bytes)));
 }
 
 pub(super) fn object(bytes: usize) -> PreparedObject {
     PreparedObject {
         request_url: source(),
-        final_url: source().parse().unwrap(),
+        final_url: source().parse().expect("valid test fixture"),
         body: Arc::from(vec![7; bytes]),
         content_type: Some("video/mp4".to_owned()),
         cache: Default::default(),

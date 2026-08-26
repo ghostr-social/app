@@ -4,14 +4,9 @@ use crate::playback_admission::{PlaybackAdmission, PlaybackRejection};
 use ghostr_engine::playback::{PlaybackPhase, PlaybackStatus};
 
 impl DeliveryState {
-    #[cfg(test)]
-    pub(crate) fn apply_playback(&mut self, update: DeliveryPlayback) -> PlaybackAdmission {
-        self.apply_playback_at(update, 0)
-    }
-
     pub(crate) fn apply_playback_at(
         &mut self,
-        update: DeliveryPlayback,
+        update: &DeliveryPlayback,
         observed_at_ms: u64,
     ) -> PlaybackAdmission {
         let post = update.session.post().clone();
@@ -23,7 +18,7 @@ impl DeliveryState {
         admission
     }
 
-    fn admit_playback(&mut self, update: DeliveryPlayback) -> PlaybackAdmission {
+    fn admit_playback(&mut self, update: &DeliveryPlayback) -> PlaybackAdmission {
         if self.focus.current() != Some(update.session.post()) {
             if update.observation.phase() == PlaybackPhase::Inactive {
                 return PlaybackAdmission::IgnoredInactive;
@@ -54,3 +49,7 @@ impl DeliveryState {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "playback_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

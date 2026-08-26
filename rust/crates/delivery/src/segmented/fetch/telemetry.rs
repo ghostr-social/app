@@ -1,5 +1,5 @@
+use core::time::Duration;
 use ghostr_engine::origin_model::NetworkClass;
-use std::time::Duration;
 
 mod failure;
 pub(in crate::segmented) use failure::FetchFailure;

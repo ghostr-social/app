@@ -1,5 +1,5 @@
 use crate::relay::registration::{
-    RelayRegistration, RelayRegistrationPolicy, SdkRelayRegistration,
+    RelayRegistration as _, RelayRegistrationPolicy, SdkRelayRegistration,
 };
 use nostr_sdk::{Client, RelayOptions, RelayServiceFlags};
 use std::sync::Arc;
@@ -16,7 +16,7 @@ async fn a_preexisting_relay_is_replaced_with_the_owned_policy() {
         .await
         .expect("preexisting relay"));
     let stale = client.relay(RELAY).await.expect("stale relay");
-    let registration = SdkRelayRegistration::new(client.clone());
+    let registration = SdkRelayRegistration::new(std::sync::Arc::clone(&client));
     let policy = RelayRegistrationPolicy::eager(RelayServiceFlags::PING | RelayServiceFlags::READ);
 
     registration

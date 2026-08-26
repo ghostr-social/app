@@ -5,7 +5,7 @@ use crate::partial_range_store::single_response::{
     rollback_commit, CommitPhase, CommitTarget, ResponseCommit,
 };
 use crate::partial_range_store::sparse_intent;
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use log::warn;
 use std::path::Path;
 

@@ -1,7 +1,7 @@
 use crate::concurrency::{
     AdaptiveConcurrency, ConcurrencyEvidence, ConcurrencyOccupancy, NetworkSetback,
 };
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn a_network_failure_reduces_an_accepted_parallel_limit() {

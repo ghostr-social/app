@@ -3,13 +3,14 @@
 use crate::manager::state::DeliveryState;
 use crate::manager::DeliveryWorker;
 use crate::probe::pool::MetadataProbePool;
+use core::time::Duration;
+use ghostr_engine::catalog::RenditionSelection;
 use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_engine::playback::{
     AdaptiveBufferPolicy, BufferTarget, MediaConsumption, NetworkConditions, PlaybackObservation,
 };
 use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::PostId;
-use std::time::Duration;
 
 struct SelectionEvidence {
     post: PostId,
@@ -24,11 +25,11 @@ pub(crate) fn select_rendition(
     observed_at_ms: u64,
 ) -> Option<RepresentationBinding> {
     let evidence = evidence(state, stats, observed_at_ms)?;
-    state.catalog_mut().select_rendition(
+    let excluded = state.decoder_blocked_representations(&evidence.post, observed_at_ms);
+    state.catalog_mut().select_rendition_excluding(
         &evidence.post,
-        evidence.network,
-        evidence.observation,
-        evidence.target,
+        RenditionSelection::new(evidence.network, evidence.observation, evidence.target),
+        &excluded,
     )
 }
 

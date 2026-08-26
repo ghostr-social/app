@@ -2,7 +2,7 @@ use super::support::temp_directory;
 use crate::manager::stats::StatsKeeper;
 use crate::manager::traffic::{channel, TransferKey};
 use log::{Level, LevelFilter, Log, Metadata, Record};
-use std::time::Duration;
+use core::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time::Instant;
 
@@ -14,7 +14,7 @@ async fn live_window_exposes_every_field_used_by_capacity_observability() {
     let root = temp_directory("ghostr-traffic-observability");
     let mut keeper = StatsKeeper::load(root.join("stats.json"), Duration::ZERO).await;
     let (events, _wakes) = mpsc::unbounded_channel();
-    let (publisher, mut inbox) = channel(events, 2);
+    let (publisher, inbox) = channel(events, 2);
     let started = Instant::now();
     let transfer = TransferKey::new(1);
     assert!(publisher.opened(

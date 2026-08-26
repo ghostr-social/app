@@ -16,7 +16,7 @@ fn complete_file_layout_excludes_ranges_and_selects_the_whole_body() {
     input.candidates = vec![candidate];
     let base = AdaptivePlayabilityPolicy.plan(&input);
     let context = PlannerContext::explicitly_unavailable(&input)
-        .with_head_probe_history(post, HeadProbeHistory::Completed);
+        .with_head_probe_history(&post, HeadProbeHistory::Completed);
 
     let decision = WarpPlanner::default().plan(WarpPlannerInput::new(
         &input,

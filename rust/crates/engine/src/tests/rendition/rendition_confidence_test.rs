@@ -12,11 +12,11 @@ fn an_upgrade_waits_for_high_confidence_even_with_abundant_bandwidth() {
     for evidence in [low, medium] {
         let decision = policy.select(
             &ladder(),
-            playing_input(evidence, Some("medium"), 40, 1_000),
+            &playing_input(evidence, Some("medium"), 40, 1_000),
         );
         assert_eq!(decision.selected().id(), &id("medium"));
     }
 
-    let upgraded = policy.select(&ladder(), playing_input(high, Some("medium"), 20, 1_000));
+    let upgraded = policy.select(&ladder(), &playing_input(high, Some("medium"), 20, 1_000));
     assert_eq!(upgraded.selected().id(), &id("high"));
 }

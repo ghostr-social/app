@@ -1,9 +1,9 @@
-use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
+use crate::plan_executor::{PlanExecutor as _, PlannedRetrieval};
 use crate::query::search::plan_discovery;
 use crate::query::video_filters::{DiscoveryRequest, RepostAdmission};
 use crate::retrieval_types::{FeedContext, RetrievalPriority};
 use crate::tests::selective_deletion_support::{selective_deletion_executor, SelectiveDeletionIo};
-use nostr_sdk::{Event, EventBuilder, JsonUtil, Keys, Kind, Tag};
+use nostr_sdk::{Event, EventBuilder, JsonUtil as _, Keys, Kind, Tag};
 
 const BAD_RELAY: &str = "wss://bad-deletions.example";
 const GOOD_RELAY: &str = "wss://good-deletions.example";

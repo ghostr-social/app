@@ -11,7 +11,7 @@ const DAY_MS: u64 = 24 * 60 * 60 * 1_000;
 fn completed_head_history_rearms_after_its_size_evidence_stales() {
     let post = PostId::new("post");
     let mut state = state(post.clone(), SOURCE);
-    let identity = state.catalog().transfer_identity(&post, SOURCE).unwrap();
+    let identity = state.catalog().transfer_identity(&post, SOURCE).expect("valid test fixture");
     let head = HttpObservation::new(
         LearnedFacts {
             content_length: Some(16),
@@ -24,7 +24,7 @@ fn completed_head_history_rearms_after_its_size_evidence_stales() {
     assert!(state.catalog_mut().learn_head_observation_for(&identity, head));
     let completed = HashSet::from([identity]);
 
-    let work = plan_at(&mut state, &[], &completed, OBSERVED_AT_MS + DAY_MS, 2);
+    let work = plan_at(&state, &[], &completed, OBSERVED_AT_MS + DAY_MS, 2);
 
     assert!(generates_head(work));
 }

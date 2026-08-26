@@ -1,10 +1,10 @@
 use anyhow::Result;
+use core::fmt::{Display, Formatter};
+use core::future::Future;
 use ghostr_engine::adaptive::WholeBodyContract;
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use ghostr_partial_store::partial_range_store::StoreAction;
-use std::fmt::{Display, Formatter};
-use std::future::Future;
 
 use crate::chunk::generation::OriginGeneration;
 
@@ -18,12 +18,12 @@ pub enum ResponseWriteMode {
 pub(crate) struct LocalStoreFailure;
 
 impl Display for LocalStoreFailure {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> core::fmt::Result {
         formatter.write_str("local media store operation failed")
     }
 }
 
-impl std::error::Error for LocalStoreFailure {}
+impl core::error::Error for LocalStoreFailure {}
 
 pub(crate) fn is_local_store_failure(error: &anyhow::Error) -> bool {
     error.is::<LocalStoreFailure>()
@@ -80,12 +80,12 @@ impl<'a> TransferChunkSink<'a> {
 }
 
 impl ChunkWrite for ChunkSink<'_> {
-    async fn accept<'a>(
+    fn accept<'a>(
         &'a self,
         _generation: &'a OriginGeneration,
         _mode: ResponseWriteMode,
-    ) -> Result<()> {
-        Ok(())
+    ) -> impl Future<Output = Result<()>> + Send + 'a {
+        core::future::ready(Ok(()))
     }
 
     async fn write<'a>(
@@ -116,12 +116,12 @@ impl ChunkWrite for ChunkSink<'_> {
 }
 
 impl ChunkWrite for TransferChunkSink<'_> {
-    async fn accept<'a>(
+    fn accept<'a>(
         &'a self,
         _generation: &'a OriginGeneration,
         _mode: ResponseWriteMode,
-    ) -> Result<()> {
-        Ok(())
+    ) -> impl Future<Output = Result<()>> + Send + 'a {
+        core::future::ready(Ok(()))
     }
 
     async fn write<'a>(

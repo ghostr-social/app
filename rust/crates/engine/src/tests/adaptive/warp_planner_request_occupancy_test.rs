@@ -12,8 +12,8 @@ fn same_authority_paths_share_the_hard_request_budget() {
     let request = ResourceCost::new(0, 0, 0, 1);
     let mut budget = HardBudget::new(ResourceCost::new(0, 0, 0, 2), 1);
 
-    let a = RequestAuthority::from_url("https://a.example/first").unwrap();
-    let b = RequestAuthority::from_url("https://b.example/second").unwrap();
+    let a = RequestAuthority::from_url("https://a.example/first").expect("valid test fixture");
+    let b = RequestAuthority::from_url("https://b.example/second").expect("valid test fixture");
     assert!(budget.consume(&request, Some(&a)));
     assert!(!budget.allows(&request, Some(&a)));
     assert!(budget.allows(&request, Some(&b)));

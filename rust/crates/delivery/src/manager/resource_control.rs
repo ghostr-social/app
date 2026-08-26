@@ -24,15 +24,10 @@ impl ResourceEnvironment {
             target,
         }
     }
-
-    #[cfg(test)]
-    pub(crate) const fn target(self) -> ResourceObservation {
-        self.target
-    }
 }
 
 impl ResourceControl {
-    pub(crate) fn bootstrap(
+    pub(super) fn bootstrap(
         config: &crate::manager::DeliveryManagerConfig,
         origin: Instant,
     ) -> Self {
@@ -52,7 +47,7 @@ impl ResourceControl {
         }
     }
 
-    pub(crate) fn origin(&self) -> Instant {
+    pub(super) fn origin(&self) -> Instant {
         self.lock().origin
     }
 
@@ -168,7 +163,7 @@ impl ResourceState {
 
 impl ghostr_net::media_request_executor::MediaResourceObserver for ResourceControl {
     fn record_request(&self) {
-        ResourceControl::record_request(self);
+        Self::record_request(self);
     }
 
     fn record_response_bytes(&self, bytes: u64) {
@@ -198,3 +193,7 @@ fn bootstrap_network_target(config: &crate::manager::DeliveryManagerConfig) -> u
         value => value,
     }
 }
+
+#[cfg(test)]
+#[path = "resource_control_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

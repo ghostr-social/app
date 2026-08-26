@@ -15,11 +15,17 @@ pub struct MediaOrigin {
 
 impl MediaOrigin {
     pub async fn serve() -> Self {
-        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let address = listener.local_addr().unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("valid test fixture");
+        let address = listener.local_addr().expect("valid test fixture");
         let state = OriginState::new();
         let app = server::router(state.clone());
-        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let server = tokio::spawn(async move {
+            axum::serve(listener, app)
+                .await
+                .expect("valid test fixture")
+        });
         Self {
             base: format!("http://{address}"),
             state,

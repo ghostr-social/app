@@ -1,13 +1,13 @@
 mod delivery_fixture;
 
 use axum::http::StatusCode;
+use core::time::Duration;
 use delivery_fixture::hls_recovery::{serve, HlsScript};
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use ghostr_delivery::segmented::SegmentedPhase;
 use ghostr_engine::DeliveryKind;
-use std::time::Duration;
 
 #[tokio::test]
 async fn new_root_prepares_while_retired_roots_are_still_waiting() {

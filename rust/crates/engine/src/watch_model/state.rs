@@ -1,9 +1,9 @@
 use super::calibration::CalibrationState;
 use super::hierarchy::{GroupKey, GroupState};
 use super::navigation::NavigationState;
+use core::error::Error;
+use core::fmt::{Display, Formatter};
 use serde::{Deserialize, Serialize};
-use std::error::Error;
-use std::fmt::{Display, Formatter};
 
 const STATE_VERSION: u16 = 1;
 pub(crate) const PERSISTED_GROUP_LIMIT: usize = 256;
@@ -27,7 +27,7 @@ pub struct WatchModelState {
 }
 
 impl WatchModelState {
-    pub(crate) fn new(
+    pub(super) fn new(
         revision: u64,
         change_epoch: u64,
         last_observed_ms: u64,
@@ -52,7 +52,7 @@ impl WatchModelState {
         serde_json::to_string(self).expect("watch state always serializes")
     }
 
-    pub(crate) fn from_json(json: &str) -> Result<Self, WatchStateError> {
+    pub(super) fn from_json(json: &str) -> Result<Self, WatchStateError> {
         let state: Self = serde_json::from_str(json).map_err(WatchStateError::InvalidJson)?;
         if state.version != STATE_VERSION {
             return Err(WatchStateError::UnsupportedVersion(state.version));
@@ -60,7 +60,7 @@ impl WatchModelState {
         Ok(state)
     }
 
-    pub(crate) fn into_parts(
+    pub(super) fn into_parts(
         self,
     ) -> (
         u64,
@@ -88,7 +88,7 @@ pub enum WatchStateError {
 }
 
 impl Display for WatchStateError {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::InvalidJson(error) => write!(formatter, "invalid watch-model state: {error}"),
             Self::UnsupportedVersion(version) => {
@@ -100,7 +100,7 @@ impl Display for WatchStateError {
 
 impl Error for WatchStateError {}
 
-fn group_order(left: &GroupState, right: &GroupState) -> std::cmp::Ordering {
+fn group_order(left: &GroupState, right: &GroupState) -> core::cmp::Ordering {
     let left_global = matches!(left.key, GroupKey::Global);
     let right_global = matches!(right.key, GroupKey::Global);
     right_global

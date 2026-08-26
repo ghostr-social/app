@@ -12,7 +12,7 @@ impl SegmentedResourceCommitment {
         })
     }
 
-    pub(crate) const fn expected_network_bytes(self) -> u64 {
+    pub(super) const fn expected_network_bytes(self) -> u64 {
         self.expected_network_bytes
     }
 

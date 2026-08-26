@@ -18,26 +18,12 @@ struct ActiveWatch {
     generation: u64,
 }
 
-#[cfg(test)]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct WatchOutcome {
-    pub(crate) watched_ms: u64,
-    pub(crate) kind: WatchSampleKind,
-}
-
-#[cfg(test)]
-impl WatchOutcome {
-    pub(crate) const fn sample(watched_ms: u64, kind: WatchSampleKind) -> Self {
-        Self { watched_ms, kind }
-    }
-}
-
 #[derive(Default)]
 pub(crate) struct WatchLearner {
     model: WatchModel,
     active: Option<ActiveWatch>,
     #[cfg(test)]
-    last_outcome: Option<WatchOutcome>,
+    last_outcome: Option<axiom_test_support::WatchOutcome>,
     #[cfg(test)]
     last_navigation: Option<WatchNavigation>,
 }
@@ -94,16 +80,6 @@ impl WatchLearner {
         &self.model
     }
 
-    #[cfg(test)]
-    pub(crate) fn last_outcome(&self) -> Option<WatchOutcome> {
-        self.last_outcome
-    }
-
-    #[cfg(test)]
-    pub(crate) fn last_navigation(&self) -> Option<WatchNavigation> {
-        self.last_navigation
-    }
-
     fn finish_departure(&mut self, focus: &DeliveryFocus, now_ms: u64) {
         let kind = departure_kind(focus);
         if let Some(active) = self.active.as_mut().filter(|item| !item.terminal) {
@@ -131,7 +107,7 @@ impl WatchLearner {
             return;
         };
         active.terminal = true;
-        self.model.observe(WatchSample::new(
+        self.model.observe(&WatchSample::new(
             active.context.clone(),
             active.watched_ms,
             kind,
@@ -139,7 +115,10 @@ impl WatchLearner {
         ));
         #[cfg(test)]
         {
-            self.last_outcome = Some(WatchOutcome::sample(active.watched_ms, kind));
+            self.last_outcome = Some(axiom_test_support::WatchOutcome::sample(
+                active.watched_ms,
+                kind,
+            ));
         }
     }
 
@@ -177,3 +156,7 @@ fn playback_outcome(phase: PlaybackPhase) -> Option<WatchSampleKind> {
         _ => None,
     }
 }
+
+#[cfg(test)]
+#[path = "watch_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

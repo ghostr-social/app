@@ -15,22 +15,29 @@ fn old_schema_two_reserve_shape_round_trips_without_hash_drift() {
         ActionKind::Head,
     );
     let original = record(&decision);
-    let json = serde_json::to_string(&original).unwrap();
+    let json = serde_json::to_string(&original).expect("valid test fixture");
     let original_hash = original
         .replay_warp()
-        .unwrap()
+        .expect("valid test fixture")
         .integrity()
         .decision_hash()
         .to_owned();
 
     assert_legacy_shape(&json);
-    let restored: DecisionRecord = serde_json::from_str(&json).unwrap();
-    assert_eq!(serde_json::to_string(&restored).unwrap(), json);
+    let restored: DecisionRecord = serde_json::from_str(&json).expect("valid test fixture");
     assert_eq!(
-        restored.replay_warp().unwrap().integrity().decision_hash(),
+        serde_json::to_string(&restored).expect("valid test fixture"),
+        json
+    );
+    assert_eq!(
+        restored
+            .replay_warp()
+            .expect("valid test fixture")
+            .integrity()
+            .decision_hash(),
         original_hash
     );
-    assert_eq!(restored.replay(), DecisionReplayStatus::Verified);
+    assert_eq!(restored.integrity_status(), DecisionReplayStatus::Verified);
 }
 
 fn assert_legacy_shape(json: &str) {
@@ -50,20 +57,28 @@ fn assert_legacy_shape(json: &str) {
 #[test]
 fn old_search_replay_reserve_defaults_reserialize_to_the_same_shape() {
     let (state, decision) = planned();
-    let mut old = serde_json::to_value(reserve_record(&state, &decision)).unwrap();
-    let warp = old["warp_decision"].as_object_mut().unwrap();
-    strip_reserve(warp["reserve"].as_object_mut().unwrap());
-    let replay = warp["search_replay_input"].as_object_mut().unwrap();
+    let mut old =
+        serde_json::to_value(reserve_record(&state, &decision)).expect("valid test fixture");
+    let warp = old["warp_decision"]
+        .as_object_mut()
+        .expect("valid test fixture");
+    strip_reserve(warp["reserve"].as_object_mut().expect("valid test fixture"));
+    let replay = warp["search_replay_input"]
+        .as_object_mut()
+        .expect("valid test fixture");
     replay.remove("reserve");
     replay.remove("reserve_threshold_bps");
     replay.remove("reserve_degraded_reason");
     replay["budget"]
         .as_object_mut()
-        .unwrap()
+        .expect("valid test fixture")
         .remove("global_request_width");
 
-    let restored: DecisionRecord = serde_json::from_value(old.clone()).unwrap();
-    assert_eq!(serde_json::to_value(restored).unwrap(), old);
+    let restored: DecisionRecord = serde_json::from_value(old.clone()).expect("valid test fixture");
+    assert_eq!(
+        serde_json::to_value(restored).expect("valid test fixture"),
+        old
+    );
 }
 
 fn strip_reserve(value: &mut serde_json::Map<String, serde_json::Value>) {

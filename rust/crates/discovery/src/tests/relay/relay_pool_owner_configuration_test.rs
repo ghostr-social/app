@@ -15,14 +15,14 @@ async fn overlapping_replacements_leave_only_the_last_configuration() {
     let client = Arc::new(Client::default());
     client.add_relay(UNRELATED).await.expect("unrelated relay");
     let owner = Arc::new(RelayPoolOwner::with_io(
-        client.clone(),
+        std::sync::Arc::clone(&client),
         RelayPoolConfiguration::default(),
         Arc::new(TestRelayIo::blocked()),
     ));
     let mut first = owner.begin_configuration().await;
     first.replace_configuration(configuration(FIRST)).await;
 
-    let next_owner = owner.clone();
+    let next_owner = std::sync::Arc::clone(&owner);
     let (finished, mut done) = oneshot::channel();
     tokio::spawn(async move {
         let mut next = next_owner.begin_configuration().await;

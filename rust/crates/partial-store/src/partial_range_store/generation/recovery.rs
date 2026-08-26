@@ -5,6 +5,9 @@ use crate::partial_range_representation_disk as representation_disk;
 use anyhow::{bail, Result};
 use ghostr_engine::representation::{RepresentationBinding, SourceGeneration, TransferIdentity};
 
+#[cfg(any(test, feature = "test"))]
+mod test_support;
+
 impl PartialRangeStore {
     pub(in crate::partial_range_store) async fn restore_compatible_generation(
         &self,
@@ -116,17 +119,6 @@ impl PartialRangeStore {
         .await?;
         if !self.install_generation_total(key, total).await? {
             bail!("sparse generation conflicts with its stored extent");
-        }
-        Ok(())
-    }
-
-    pub(in crate::partial_range_store) async fn ensure_sparse_mutable(
-        &self,
-        key: &str,
-    ) -> Result<()> {
-        let mut entries = self.entries.lock().await;
-        if self.entry(&mut entries, key).await?.completion.is_some() {
-            bail!("cannot replace a finalized video");
         }
         Ok(())
     }

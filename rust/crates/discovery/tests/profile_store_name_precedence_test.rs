@@ -1,11 +1,9 @@
 //! Display-name precedence is `display_name` when non-blank, then `name`;
 //! a name equal to the creator's hex public key is treated as missing.
 
-mod feed_support;
-
-use feed_support::profile_event;
-use ghostr_discovery::content::profiles::ProfileStore;
-use nostr_sdk::{Keys, ToBech32};
+use crate::content::profiles::ProfileStore;
+use crate::tests::feed_support::profile_event;
+use nostr_sdk::{Keys, ToBech32 as _};
 
 fn display_name(content: &str) -> String {
     let creator = Keys::generate();

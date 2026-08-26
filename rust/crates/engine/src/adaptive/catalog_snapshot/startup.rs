@@ -1,7 +1,9 @@
-use super::{CatalogEntry, MediaLayout};
+use crate::adaptive::MediaLayout;
+use crate::catalog::CatalogEntry;
 use crate::media_timeline::StartupFootprint;
 use crate::ByteRange;
 
+#[derive(Clone, Copy)]
 pub(super) struct Inputs<'a> {
     pub(super) entry: &'a CatalogEntry,
     pub(super) layout: MediaLayout,

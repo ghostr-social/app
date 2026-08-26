@@ -10,7 +10,7 @@ fn hedge_waits_for_the_exact_primary_p95_completion_tail() {
 fn generates_hedge(case: HedgeCase) -> bool {
     mirror_plan(case)
         .warp
-        .unwrap()
+        .expect("valid test fixture")
         .generated
         .actions
         .iter()

@@ -11,11 +11,14 @@ fn absent_capsule_keeps_legacy_v2_bytes_and_captured_search_replay() {
     let (state, mut decision) = planned();
     decision.planner_replay = None;
     let captured = record(&state, &decision);
-    let json = serde_json::to_string(&captured).unwrap();
-    let restored: DecisionRecord = serde_json::from_str(&json).unwrap();
+    let json = serde_json::to_string(&captured).expect("valid test fixture");
+    let restored: DecisionRecord = serde_json::from_str(&json).expect("valid test fixture");
 
     assert!(!json.contains("planner_replay_capsule"));
-    assert_eq!(serde_json::to_string(&restored).unwrap(), json);
+    assert_eq!(
+        serde_json::to_string(&restored).expect("valid test fixture"),
+        json
+    );
     assert!(restored.replay_warp_search().is_ok());
 }
 
@@ -25,7 +28,7 @@ fn authentically_incomplete_capsule_fails_closed() {
     capsule(&mut decision).mark_incomplete();
     let captured = record(&state, &decision);
 
-    assert_eq!(captured.replay(), DecisionReplayStatus::Verified);
+    assert_eq!(captured.integrity_status(), DecisionReplayStatus::Verified);
     assert_eq!(
         captured.replay_warp_search(),
         Err(DecisionReplayStatus::AdvancedReplayUnavailable)
@@ -49,7 +52,7 @@ fn oversized_real_planner_input_records_unavailable_capsule() {
     let captured = record(&state, &decision);
 
     assert_eq!(
-        captured.replay(),
+        captured.integrity_status(),
         DecisionReplayStatus::AdvancedReplayUnavailable
     );
     assert_eq!(
@@ -75,11 +78,14 @@ fn pre_revision_feedback_capsule_keeps_its_historical_json_shape() {
         &context,
     ));
     let captured = record(&state, &decision);
-    let json = serde_json::to_string(&captured).unwrap();
-    let restored: DecisionRecord = serde_json::from_str(&json).unwrap();
+    let json = serde_json::to_string(&captured).expect("valid test fixture");
+    let restored: DecisionRecord = serde_json::from_str(&json).expect("valid test fixture");
 
     assert!(!json.contains("\"revision\""));
-    assert_eq!(serde_json::to_string(&restored).unwrap(), json);
-    assert_eq!(restored.replay(), DecisionReplayStatus::Verified);
+    assert_eq!(
+        serde_json::to_string(&restored).expect("valid test fixture"),
+        json
+    );
+    assert_eq!(restored.integrity_status(), DecisionReplayStatus::Verified);
     assert!(restored.replay_warp_search().is_ok());
 }

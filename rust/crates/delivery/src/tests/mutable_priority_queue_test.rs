@@ -35,6 +35,7 @@ fn transfer(id: &str, score: f64) -> PlannedTransfer {
     let post = PostId::new(id);
     let url = format!("https://media.example/{id}.mp4");
     PlannedTransfer {
+        control_mode: ghostr_engine::adaptive::ControlMode::Normal,
         identity: transfer_identity(&post, &url),
         request: RangeRequest {
             chunk: ChunkId {

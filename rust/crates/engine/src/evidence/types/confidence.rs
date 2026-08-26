@@ -6,11 +6,11 @@ pub const CONFIDENCE_SCALE: u16 = 10_000;
 pub struct Confidence(u16);
 
 impl Confidence {
-    pub fn new(basis_points: u16) -> Option<Self> {
+    pub(crate) fn new(basis_points: u16) -> Option<Self> {
         (basis_points <= CONFIDENCE_SCALE).then_some(Self(basis_points))
     }
 
-    pub const fn none() -> Self {
+    pub(crate) const fn none() -> Self {
         Self(0)
     }
 

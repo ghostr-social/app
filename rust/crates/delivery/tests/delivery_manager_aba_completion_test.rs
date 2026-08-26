@@ -3,6 +3,7 @@
 mod delivery_fixture;
 mod range_fixture;
 
+use core::time::Duration;
 use delivery_fixture::aba_origin::serve;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::{base_params, DeliveryOptions};
@@ -10,7 +11,6 @@ use delivery_fixture::start_harness;
 use delivery_fixture::wait::wait_for_file;
 use ghostr_engine::{DataUsageLevel, EngineParams};
 use range_fixture::stall::serve_stalling_signaled;
-use std::time::Duration;
 
 #[tokio::test]
 async fn delivery_manager_ignores_stale_completion_after_focus_returns_to_a() {

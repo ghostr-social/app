@@ -1,5 +1,5 @@
 use crate::playback::{PlaybackObservation, PlaybackObservationError, PlaybackPhase};
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn an_observation_preserves_the_measured_playback_frontier_and_rate() {

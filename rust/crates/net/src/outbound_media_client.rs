@@ -1,12 +1,12 @@
 use crate::native_cache_failure::permanent;
 use crate::public_dns_resolver::{PublicDnsResolver, SystemResolver};
 use crate::public_media_address::validate_url;
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
+use core::time::Duration;
 use reqwest::dns::Resolve;
 use reqwest::redirect::Policy;
 use reqwest::{Client, ClientBuilder, RequestBuilder, Url};
 use std::sync::Arc;
-use std::time::Duration;
 
 pub const MEDIA_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 pub const MEDIA_REQUEST_TIMEOUT: Duration = Duration::from_secs(300);
@@ -35,14 +35,24 @@ pub struct MediaHttpClient {
 /// concrete guarded HTTP client.
 pub trait MediaHttpRequests: Send + Sync {
     /// Builds one guarded GET hop for `raw_url`; automatic redirects must be disabled.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the URL is unsafe or a request cannot be built.
     fn get(&self, raw_url: &str) -> Result<RequestBuilder>;
 }
 
 impl MediaHttpClient {
+    /// # Errors
+    ///
+    /// Returns an error when the guarded production client cannot be constructed.
     pub fn public() -> Result<Self> {
         Self::with_resolver(Arc::new(SystemResolver))
     }
 
+    /// # Errors
+    ///
+    /// Returns an error when a guarded client cannot be constructed with `resolver`.
     pub fn with_resolver<R: Resolve + 'static>(resolver: Arc<R>) -> Result<Self> {
         let resolver = Arc::new(PublicDnsResolver::new(resolver));
         let client = media_client_builder(MediaHttpTimeouts::production())
@@ -52,6 +62,9 @@ impl MediaHttpClient {
         Ok(Self { client })
     }
 
+    /// # Errors
+    ///
+    /// Returns an error when `raw_url` is unsafe or a request cannot be built.
     pub fn get(&self, raw_url: &str) -> Result<RequestBuilder> {
         validate_initial_url(raw_url)?;
         Ok(self.client.get(raw_url))
@@ -60,7 +73,7 @@ impl MediaHttpClient {
 
 impl MediaHttpRequests for MediaHttpClient {
     fn get(&self, raw_url: &str) -> Result<RequestBuilder> {
-        MediaHttpClient::get(self, raw_url)
+        Self::get(self, raw_url)
     }
 }
 
@@ -79,6 +92,6 @@ fn media_client_builder(timeouts: MediaHttpTimeouts) -> ClientBuilder {
 }
 
 fn validate_initial_url(raw_url: &str) -> Result<()> {
-    let url = Url::parse(raw_url).map_err(|_| permanent("media URL is invalid"))?;
+    let url = Url::parse(raw_url).map_err(|_parse_error| permanent("media URL is invalid"))?;
     validate_url(&url)
 }

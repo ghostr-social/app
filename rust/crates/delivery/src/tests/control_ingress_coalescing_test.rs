@@ -1,6 +1,6 @@
-use crate::delivery_events::{
-    command_channel, DeliveryCommand, DeliveryFocus, DeliveryNetworkStatus,
-};
+
+use crate::delivery_events::{command_channel, DeliveryCommand, DeliveryFocus, DeliveryNetworkStatus};
+use crate::debug::network::NetworkProfile;
 use ghostr_engine::origin_model::NetworkClass;
 use ghostr_engine::DataUsageLevel;
 
@@ -12,7 +12,7 @@ fn replaceable_controls_coalesce_to_the_latest_pending_intent() {
     handle.set_data_usage(DataUsageLevel::Conservative);
     handle.set_data_usage(DataUsageLevel::Aggressive);
 
-    let commands: Vec<_> = std::iter::from_fn(|| receiver.try_control()).collect();
+    let commands: Vec<_> = core::iter::from_fn(|| receiver.try_control()).collect();
 
     assert_eq!(commands.len(), 2);
     assert!(commands.iter().any(latest_focus));
@@ -24,9 +24,11 @@ fn focus_batch_preserves_earlier_controls_and_leaves_the_suffix() {
     let (handle, mut receiver) = command_channel();
     handle.set_data_usage(DataUsageLevel::Conservative);
     handle.update_focus(focus(1));
-    handle.network_changed();
+    let generation = handle
+        .update_network_profile(NetworkProfile::default())
+        .expect("valid test fixture");
 
-    let commands = receiver.try_controls_through_focus().unwrap();
+    let commands = receiver.try_controls_through_focus().expect("valid test fixture");
 
     assert!(matches!(
         commands.as_slice(),
@@ -37,7 +39,10 @@ fn focus_batch_preserves_earlier_controls_and_leaves_the_suffix() {
     ));
     assert!(matches!(
         receiver.try_control(),
-        Some(DeliveryCommand::NetworkChanged)
+        Some(DeliveryCommand::NetworkProfile {
+            generation: actual,
+            ..
+        }) if actual == generation
     ));
 }
 

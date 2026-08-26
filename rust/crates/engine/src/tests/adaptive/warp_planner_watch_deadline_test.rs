@@ -14,12 +14,12 @@ fn learned_play_start_quantiles_replace_the_rank_fallback_deadline() {
     let learned = PlannerWatchEvidence::learned(4_200, 4_000, 8_000, 12_000, 2_500, None);
     let context = PlannerContext::explicitly_unavailable(&input)
         .with_watch(
-            current.clone(),
+            &current,
             PlannerWatchEvidence::learned(10_000, 0, 0, 0, 10_000, Some(3_000)),
         )
-        .with_watch(ahead.clone(), learned)
-        .with_semantic(current, SemanticScore::Known(1_000_000))
-        .with_semantic(ahead.clone(), SemanticScore::Known(420_000));
+        .with_watch(&ahead, learned)
+        .with_semantic(&current, SemanticScore::Known(1_000_000))
+        .with_semantic(&ahead, SemanticScore::Known(420_000));
 
     let decision = WarpPlanner::default().plan(WarpPlannerInput::new(
         &input,
@@ -47,5 +47,11 @@ fn learned_play_start_quantiles_replace_the_rank_fallback_deadline() {
 
     assert_eq!(deadlines, vec![4_000, 8_000, 12_000]);
     assert_eq!(learned.reach_probability_bps(), Some(4_200));
-    assert_eq!(learned.probability_by_commitment_bps(), Some(2_500));
+    assert!(matches!(
+        learned,
+        PlannerWatchEvidence::Learned {
+            probability_by_commitment_bps: 2_500,
+            ..
+        }
+    ));
 }

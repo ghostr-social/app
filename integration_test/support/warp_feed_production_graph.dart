@@ -6,9 +6,13 @@ import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart'
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/platform/media/ffi_feed_focus_port.dart';
 import 'package:ghostr/platform/media/ffi_player_preparation_feedback_port.dart';
+import 'package:ghostr/platform/media/ffi_video_delivery_updates.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:ndk/ndk.dart';
 import 'progressive_device_telemetry.dart';
+import 'warp_controlled_network_status.dart';
+import 'warp_evidence_reader.dart';
+import 'warp_feed_delivery_probe.dart';
 import 'warp_feed_focus_probe.dart';
 import 'warp_feed_player_stage_probe.dart';
 import 'warp_feed_preparation_probe.dart';
@@ -32,7 +36,10 @@ final class WarpFeedProductionGraph {
   WarpFeedPlayerStageProbe get playerStages => _evidence.playerStages;
   WarpFeedPreparationMetrics get preparation => _evidence.preparation;
   WarpFeedFocusProbe get focus => _evidence.focus;
+  WarpFeedDeliveryProbe get deliveryProbe => _evidence.deliveryProbe;
   WarpFeedRustProbe get rustProbe => _evidence.rustProbe;
+  WarpControlledNetworkStatus get network => _evidence.network;
+  WarpEvidenceReader get evidence => const WarpEvidenceReader();
 
   VideoFeedRepository get feedRepository =>
       dependencies.videoCatalogServices.feed;
@@ -51,14 +58,25 @@ final class WarpFeedProductionGraph {
 WarpFeedProductionGraph composeWarpFeedProductionGraph(
   WarpFeedProductionComposition input,
 ) {
-  final focus = WarpFeedFocusProbe(FfiFeedFocusPort(), input.telemetry.probe);
+  final ffiFocus = FfiFeedFocusPort();
+  final focus = WarpFeedFocusProbe(
+    ffiFocus,
+    input.telemetry.probe,
+    () => ffiFocus.lastScheduledGeneration,
+  );
   final playerStages = WarpFeedPlayerStageProbe(
     FfiPlayerPreparationFeedbackPort(),
     () => input.telemetry.probe.elapsed,
   );
+  final deliveryProbe = WarpFeedDeliveryProbe(
+    FfiVideoDeliveryUpdates(),
+    () => input.telemetry.probe.elapsed,
+    input.telemetry.probe.markExternalEvidence,
+  );
   final controllers = AppControllerFactory(
     input.dependencies,
     feedFocus: focus,
+    deliveryUpdates: deliveryProbe,
   );
   return WarpFeedProductionGraph(
     (
@@ -78,7 +96,9 @@ WarpFeedProductionGraph composeWarpFeedProductionGraph(
       playerStages: playerStages,
       preparation: input.preparation,
       focus: focus,
+      deliveryProbe: deliveryProbe,
       rustProbe: input.rustProbe,
+      network: input.network,
     ),
   );
 }

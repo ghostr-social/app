@@ -1,5 +1,5 @@
+use core::time::Duration;
 use ghostr_delivery::delivery_events::*;
-use std::time::Duration;
 
 pub async fn report_failed(
     handle: &DeliveryHandle,
@@ -35,18 +35,20 @@ async fn report(
     generation: u64,
     terminal: PlayerPreparationState,
 ) {
-    let attempt = PlayerPreparationAttempt::try_new(generation, generation, 1).unwrap();
+    let attempt =
+        PlayerPreparationAttempt::try_new(generation, generation, 1).expect("valid test fixture");
     send(
         handle,
         authority.clone(),
         attempt,
         (1, PlayerPreparationState::Initializing),
-    );
+    )
+    .await;
     tokio::time::sleep(Duration::from_millis(20)).await;
-    send(handle, authority, attempt, (2, terminal));
+    send(handle, authority, attempt, (2, terminal)).await;
 }
 
-fn send(
+async fn send(
     handle: &DeliveryHandle,
     authority: PlayerPreparationAuthority,
     attempt: PlayerPreparationAttempt,
@@ -54,9 +56,30 @@ fn send(
 ) {
     let (sequence, state) = evidence;
     let failure = (state == PlayerPreparationState::Failed).then(|| "invalidVideoTrack".to_owned());
-    let observation =
-        PlayerPreparationObservation::try_new(state, failure, sequence * 100).unwrap();
+    let observation = PlayerPreparationObservation::try_new(state, failure, sequence * 100)
+        .expect("valid test fixture");
     let report =
-        PlayerPreparationReport::try_new(authority, attempt, sequence, observation).unwrap();
-    handle.report_player_preparation(report);
+        PlayerPreparationReport::try_new(authority, attempt, sequence, observation.clone())
+            .expect("valid test fixture");
+    let disposition = if sequence == 1 {
+        let admission = handle.player_preparation_admission();
+        handle
+            .confirm_player_preparation_initial(admission, report)
+            .await
+    } else {
+        let claim = PlayerPreparationClaim::try_new(
+            report.post().clone(),
+            report.binding().representation().fingerprint(),
+            "asset",
+        )
+        .expect("valid test fixture");
+        let followup = PlayerPreparationFollowup::try_new(claim, attempt, sequence, observation)
+            .expect("valid test fixture");
+        handle.confirm_player_preparation_followup(followup).await
+    };
+    assert_eq!(
+        disposition,
+        PlayerPreparationDisposition::Applied,
+        "fixture preparation should be admitted"
+    );
 }

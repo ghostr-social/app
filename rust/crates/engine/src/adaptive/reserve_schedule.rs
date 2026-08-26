@@ -10,6 +10,7 @@ use super::reserves::{planned_bytes, sibling_planned_bytes};
 use super::sources::best_origin;
 use super::{CandidateSnapshot, MediaLayout, PlayabilitySnapshot};
 
+#[derive(Clone, Copy)]
 pub(super) struct ScheduleInputs<'a> {
     pub(super) snapshot: &'a PlayabilitySnapshot,
     pub(super) required: usize,
@@ -98,9 +99,10 @@ fn append_readiness(
     candidate: &CandidateSnapshot,
     budget: u64,
 ) {
-    let reason = match candidate.needs_bootstrap() {
-        true => AllocationReason::MediaBootstrap,
-        false => AllocationReason::NextStartability,
+    let reason = if candidate.needs_bootstrap() {
+        AllocationReason::MediaBootstrap
+    } else {
+        AllocationReason::NextStartability
     };
     append_candidate(
         plan,
@@ -126,11 +128,12 @@ fn planned_outcome(plan: &AllocationPlan, candidate: &CandidateSnapshot) -> Sche
         return unavailable(NextReserveInfeasibility::NoTransferBudget);
     }
     let protected = planned_covers(candidate, &ranges);
-    let state = match protected {
-        true => ReserveCandidateState::Planned { ranges },
-        false => ReserveCandidateState::Preparing { ranges },
+    let state = if protected {
+        ReserveCandidateState::Planned { ranges }
+    } else {
+        ReserveCandidateState::Preparing { ranges }
     };
-    ScheduleOutcome { protected, state }
+    ScheduleOutcome { state, protected }
 }
 
 fn planned_covers(candidate: &CandidateSnapshot, planned: &[crate::ByteRange]) -> bool {

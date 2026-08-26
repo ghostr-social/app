@@ -1,7 +1,7 @@
 use super::stage_lease_fixture::{focused_cache, object, source, store_partial};
 use crate::segmented::cache::{StageAdmission, StageFence, StageRequest, StageReservation};
+use core::time::Duration;
 use ghostr_engine::PostId;
-use std::time::Duration;
 
 #[tokio::test]
 async fn final_stage_memory_stays_counted_after_focus_removal() {
@@ -10,10 +10,11 @@ async fn final_stage_memory_stays_counted_after_focus_removal() {
     store_partial(&cache, &post, 256 * 1024);
     let request = StageRequest::new(source(), 256 * 1024, 128 * 1024);
     let fence = StageFence::new(1, 7, request);
-    let reservation = StageReservation::final_block(128 * 1024, 384 * 1024).unwrap();
+    let reservation =
+        StageReservation::final_block(128 * 1024, 384 * 1024).expect("valid test fixture");
     let admission = StageAdmission::new(post, fence, 500, reservation);
 
-    let mut lease = cache.admit_stage(admission).expect("final stage admitted");
+    let lease = cache.admit_stage(admission).expect("final stage admitted");
     assert_eq!(cache.physical_used_bytes(), 768 * 1024);
     let assembly = lease
         .claim_assembly(&object(128 * 1024))

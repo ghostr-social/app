@@ -1,6 +1,7 @@
-use crate::execution::relay_executor::deletion_enrichment::deletion_plan;
+use crate::execution::relay_executor::deletion_enrichment::axiom_test_support::deletion_plan;
+
 use crate::tests::support::filter_json;
-use nostr_sdk::{EventBuilder, JsonUtil, Keys, Kind, Tag, Timestamp};
+use nostr_sdk::{EventBuilder, JsonUtil as _, Keys, Kind, Tag, Timestamp};
 use serde_json::json;
 
 #[test]
@@ -23,7 +24,7 @@ fn original_deletion_filters_split_event_and_exact_address_targets() {
         .sign_with_keys(&reposter)
         .expect("wrapper");
 
-    let plan = deletion_plan(std::slice::from_ref(&wrapper)).expect("deletion lookup");
+    let plan = deletion_plan(core::slice::from_ref(&wrapper)).expect("deletion lookup");
 
     assert_eq!(plan.queries.len(), 3);
     let filters: Vec<_> = plan
@@ -42,7 +43,7 @@ fn original_deletion_filters_split_event_and_exact_address_targets() {
     let address = filters
         .iter()
         .find(|filter| filter.get("#a").is_some())
-        .unwrap();
+        .expect("valid test fixture");
     assert_eq!(address["#a"], json!([coordinate]));
     assert_eq!(address["authors"], json!([creator.public_key().to_hex()]));
     assert!(filters

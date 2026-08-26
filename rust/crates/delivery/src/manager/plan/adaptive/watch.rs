@@ -50,8 +50,8 @@ impl WatchPlanningWindow {
     pub(super) fn apply_context(&self, mut context: PlannerContext) -> PlannerContext {
         for (post, evidence) in &self.candidates {
             context = context
-                .with_semantic(post.clone(), evidence.semantic)
-                .with_watch(post.clone(), evidence.watch);
+                .with_semantic(post, evidence.semantic)
+                .with_watch(post, evidence.watch);
         }
         let epochs = context.epochs;
         context.with_epochs(TwinEpochs::new(

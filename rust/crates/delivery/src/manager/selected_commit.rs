@@ -21,11 +21,11 @@ impl SelectedCommit {
         }
     }
 
-    pub(crate) fn optional(action: Option<GeneratedAction>) -> Option<Self> {
+    pub(super) fn optional(action: Option<GeneratedAction>) -> Option<Self> {
         action.map(Self::new)
     }
 
-    pub(crate) fn resources(&self) -> Option<(ResourceCost, ResourceCost)> {
+    pub(super) fn resources(&self) -> Option<(ResourceCost, ResourceCost)> {
         let action = self.action.as_ref()?;
         Some((action.node.resources, action.node.authorized_resources()))
     }
@@ -39,9 +39,10 @@ impl SelectedCommit {
         let Some(action) = self.action.take() else {
             return CommitResult::Untracked;
         };
-        match planner.commit(&action, resources, observed_at_ms) {
-            true => CommitResult::Committed,
-            false => CommitResult::Rejected,
+        if planner.commit(&action, resources, observed_at_ms) {
+            CommitResult::Committed
+        } else {
+            CommitResult::Rejected
         }
     }
 }

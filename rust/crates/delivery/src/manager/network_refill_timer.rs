@@ -1,5 +1,5 @@
 use crate::manager::transfers::InternalEvent;
-use std::time::Duration;
+use core::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::task::JoinHandle;
 
@@ -75,7 +75,7 @@ impl NetworkRefillTimer {
         true
     }
 
-    pub(crate) fn clear(&mut self) {
+    pub(super) fn clear(&mut self) {
         if let Some(timer) = self.active.take() {
             timer.handle.abort();
         }

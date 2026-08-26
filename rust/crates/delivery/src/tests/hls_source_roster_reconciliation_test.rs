@@ -5,7 +5,7 @@ use ghostr_engine::PostId;
 #[test]
 fn roster_reconciliation_preserves_unchanged_retirements() {
     let post = PostId::new("hls");
-    let failed = Source::new(post.clone(), "https://a.example/root.m3u8".to_owned());
+    let failed = Source::new(post.clone(), "https://a.example/root.m3u8");
     let mut retry = RetryBook::new(RetryPolicy {
         permanent_attempts: 1,
         ..RetryPolicy::default()
@@ -25,7 +25,7 @@ fn roster_reconciliation_preserves_unchanged_retirements() {
     );
 
     assert!(retry.is_retired(&failed));
-    let removed = Source::new(post.clone(), "https://b.example/root.m3u8".to_owned());
+    let removed = Source::new(post.clone(), "https://b.example/root.m3u8");
     assert_eq!(
         retry.note_hls_failure(removed.clone(), FailureClass::Permanent),
         Retry::GiveUp

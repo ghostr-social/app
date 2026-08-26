@@ -17,10 +17,17 @@ async fn advisory_head_length_cannot_poison_coherent_body_extent() {
     harness
         .handle
         .update_focus(focus_now(vec![unsized_item("post", &url)], 0, 0));
-    requests.await.unwrap();
+    requests.await.expect("valid test fixture");
     wait_for_ranges(&harness.store, "post", &[(0, 8)]).await;
     wait_total_len(&harness.store, "post", 16).await;
 
-    assert_eq!(harness.store.total_len("post").await.unwrap(), Some(16));
+    assert_eq!(
+        harness
+            .store
+            .total_len("post")
+            .await
+            .expect("valid test fixture"),
+        Some(16)
+    );
     std::fs::remove_dir_all(harness.root).ok();
 }

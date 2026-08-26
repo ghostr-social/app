@@ -2,12 +2,10 @@
 //! the main feed queries unscoped, profiles scope to the creator, and
 //! hashtag feeds carry the normalized tag.
 
-mod feed_support;
-
-use feed_support::empty_graph;
-use ghostr_discovery::cache::ViewerScope;
-use ghostr_discovery::feed::spec::FeedSpec;
-use ghostr_discovery::query::video_filters::{DiscoveryFlow, DiscoveryRequest};
+use crate::cache::ViewerScope;
+use crate::feed::spec::FeedSpec;
+use crate::query::video_filters::{DiscoveryFlow, DiscoveryRequest};
+use crate::tests::feed_support::empty_graph;
 use nostr_sdk::{Keys, Timestamp};
 
 /// Nothing narrows the wire filter — no authors, tag or term — and the

@@ -10,7 +10,7 @@ fn ordinary_relay_resolution_keeps_priority_order_inside_the_fanout_bound() {
     outbox.extend(relays("outbox", 22));
     let target = RelayTarget::HintedRelays(hints.clone());
 
-    let resolved = resolve_relays(&target, &search, Some(&outbox)).unwrap();
+    let resolved = resolve_relays(&target, &search, Some(&outbox)).expect("valid test fixture");
 
     assert_eq!(resolved.len(), MAX_RELAY_READ_FANOUT);
     assert_eq!(&resolved[..8], hints);

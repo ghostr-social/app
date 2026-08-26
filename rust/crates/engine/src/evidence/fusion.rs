@@ -15,13 +15,13 @@ pub struct ConfidenceAxes {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SizeAssessment {
-    pub lower: Option<u64>,
+    pub(crate) lower: Option<u64>,
     pub upper: Option<u64>,
     pub exact: Option<u64>,
-    pub confidence: Confidence,
-    pub conflict: bool,
-    pub reliable: bool,
-    pub resolved_by_direct_evidence: bool,
+    confidence: Confidence,
+    pub(crate) conflict: bool,
+    pub(crate) reliable: bool,
+    pub(crate) resolved_by_direct_evidence: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -31,7 +31,7 @@ pub struct EvidenceAssessment {
     pub missing: Vec<EvidenceField>,
     #[serde(default)]
     pub stale: Vec<EvidenceField>,
-    pub conflicts: Vec<EvidenceField>,
+    pub(crate) conflicts: Vec<EvidenceField>,
     fields: BTreeMap<EvidenceField, EvidenceValue>,
 }
 
@@ -65,7 +65,7 @@ impl EvidenceAssessment {
     }
 }
 
-pub(crate) fn assess(
+pub(super) fn assess(
     records: &[Evidence<EvidenceValue>],
     url: &str,
     now_ms: u64,

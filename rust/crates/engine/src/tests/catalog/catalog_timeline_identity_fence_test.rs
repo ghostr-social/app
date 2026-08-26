@@ -10,7 +10,8 @@ fn evicted_representation_cannot_restore_timing_state() {
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(post.clone(), progressive_meta(Some(1_000), Some(1_000)));
     let moov = classic_moov(&[100], &[100]);
-    let timeline = parse_mp4_segments(&[MediaSegment::new(500, &moov)]).unwrap();
+    let timeline =
+        parse_mp4_segments(&[MediaSegment::new(500, &moov)]).expect("valid test fixture");
     catalog.retain(|known| known != &post);
 
     assert!(!catalog.learn_timeline_for(&binding, timeline));

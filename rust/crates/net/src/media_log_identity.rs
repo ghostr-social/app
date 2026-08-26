@@ -1,6 +1,6 @@
+use core::fmt::{Display, Formatter, Write as _};
 use reqwest::Url;
-use sha2::{Digest, Sha256};
-use std::fmt::{Display, Formatter, Write};
+use sha2::{Digest as _, Sha256};
 
 /// Correlatable media identity for logs that never exposes a source URL.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -22,18 +22,10 @@ impl MediaLogIdentity {
             object: digest(object.as_bytes()),
         }
     }
-
-    pub fn origin_id(&self) -> &str {
-        &self.origin
-    }
-
-    pub fn object_id(&self) -> &str {
-        &self.object
-    }
 }
 
 impl Display for MediaLogIdentity {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> core::fmt::Result {
         write!(
             formatter,
             "media(origin={}, object={})",

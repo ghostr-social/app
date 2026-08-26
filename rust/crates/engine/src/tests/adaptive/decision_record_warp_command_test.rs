@@ -74,7 +74,8 @@ fn every_planner_command_has_a_typed_authoritative_record() {
     ];
 
     for (command, kind, command_tag) in cases {
-        let value = serde_json::to_value(record(&decision("secret-post", command, kind))).unwrap();
+        let value = serde_json::to_value(record(&decision("secret-post", command, kind)))
+            .expect("valid test fixture");
         let selected = &value["warp_decision"]["selected"];
         assert_eq!(selected["command"]["command"], command_tag);
         if command_tag == "probe_head" {

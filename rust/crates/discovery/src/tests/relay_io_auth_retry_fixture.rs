@@ -1,5 +1,5 @@
-use futures_util::{SinkExt, StreamExt};
-use nostr_sdk::{Event, JsonUtil};
+use futures_util::{SinkExt as _, StreamExt as _};
+use nostr_sdk::{Event, JsonUtil as _};
 use serde_json::Value;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::tungstenite::Message;
@@ -51,7 +51,10 @@ async fn handle_request(
         let _ = socket.send(Message::Text(closed)).await;
         return;
     }
-    let stale = format!(r#"["EOSE","{}"]"#, first_id.as_deref().unwrap());
+    let stale = format!(
+        r#"["EOSE","{}"]"#,
+        first_id.as_deref().expect("valid test fixture")
+    );
     let result = format!(r#"["EVENT","{id}",{}]"#, event.as_json());
     let eose = format!(r#"["EOSE","{id}"]"#);
     let _ = socket.send(Message::Text(stale)).await;

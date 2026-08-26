@@ -1,7 +1,7 @@
 use super::asset_sequence_origin::{header_values, request, request_error, serve};
 use super::support::{asset_resource, state};
 use axum::body::to_bytes;
-use std::time::Duration;
+use core::time::Duration;
 
 const REDIRECT_A: &[u8] = b"HTTP/1.1 302 Found\r\nLocation: /a.m4s\r\n\
 Content-Length: 0\r\nConnection: close\r\n\r\n";
@@ -19,7 +19,12 @@ async fn redirected_hls_asset_cannot_change_its_final_url_generation() {
     let resource = asset_resource(&state, &session).await;
 
     let first = request(&state, &session, &resource, "bytes=0-3").await;
-    assert_eq!(to_bytes(first.into_body(), 4).await.unwrap(), "aaaa");
+    assert_eq!(
+        to_bytes(first.into_body(), 4)
+            .await
+            .expect("valid test fixture"),
+        "aaaa"
+    );
     assert_eq!(
         request_error(&state, &session, &resource, "bytes=4-7").await,
         502

@@ -3,7 +3,7 @@
 use super::PartialRangeStore;
 use crate::partial_range_store::ContentRevision;
 use anyhow::{ensure, Result};
-use std::ops::Range;
+use core::ops::Range;
 
 mod integrity;
 mod outcome;
@@ -11,15 +11,16 @@ mod plan;
 mod preparation;
 pub(super) mod recovery;
 mod tail;
+#[cfg(any(test, feature = "test"))]
+mod test_support;
 mod transaction;
 
 pub use outcome::EvictionOutcome;
 
 impl PartialRangeStore {
-    pub async fn evict_ranges(&self, key: &str, ranges: &[Range<u64>]) -> Result<EvictionOutcome> {
-        self.evict_ranges_at_revision(key, ranges, None).await
-    }
-
+    /// # Errors
+    ///
+    /// Returns an error when revision validation or durable eviction cannot be completed.
     pub async fn evict_ranges_if_current(
         &self,
         key: &str,

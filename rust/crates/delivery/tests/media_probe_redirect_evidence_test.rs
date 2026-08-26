@@ -28,8 +28,8 @@ async fn head_probe_keeps_final_url_and_network_boundary_time() {
 
     assert_eq!(result.final_url, target);
     assert!((before..=after).contains(&result.observed.observed_at_ms));
-    redirect_request.await.unwrap();
-    target_request.await.unwrap();
+    redirect_request.await.expect("valid test fixture");
+    target_request.await.expect("valid test fixture");
 }
 
 fn unix_time_ms() -> u64 {

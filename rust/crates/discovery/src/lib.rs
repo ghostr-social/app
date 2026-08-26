@@ -21,7 +21,7 @@ pub mod query;
 pub mod relay;
 pub mod scheduler;
 
-#[cfg(any(test, feature = "test-support"))]
+#[cfg(any(test, feature = "test"))]
 pub mod test_support;
 
 #[cfg(test)]

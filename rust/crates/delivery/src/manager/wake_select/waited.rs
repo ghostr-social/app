@@ -28,7 +28,7 @@ pub(super) enum ControlArrival {
 pub(super) enum WorkerArrival {
     Internal(InternalEvent),
     Invalidation(bool),
-    Timeline(TimelineResult),
+    Timeline(Box<TimelineResult>),
     Interval,
 }
 
@@ -75,7 +75,7 @@ async fn wait_worker(
         biased;
         Some(event) = events.recv() => WorkerArrival::Internal(event),
         changed = invalidations.changed() => WorkerArrival::Invalidation(changed.is_ok()),
-        Some(result) = timelines.recv() => WorkerArrival::Timeline(result),
+        Some(result) = timelines.recv() => WorkerArrival::Timeline(Box::new(result)),
         _ = interval.tick() => WorkerArrival::Interval,
     }
 }
@@ -113,7 +113,7 @@ impl WorkerArrival {
                 Wake::SegmentedInvalidated,
             ),
             Self::Invalidation(false) => Resolution::Retry,
-            Self::Timeline(result) => observed(cursor, WakeLane::Timeline, Wake::Timeline(result)),
+            Self::Timeline(result) => observed(cursor, WakeLane::Timeline, Wake::Timeline(*result)),
             Self::Interval => Resolution::Wake(Box::new(Wake::ControlInterval)),
         }
     }

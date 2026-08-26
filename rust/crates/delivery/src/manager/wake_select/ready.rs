@@ -30,17 +30,17 @@ fn fair(sources: &mut WakeSources<'_>, cursor: &mut WakeCursor) -> Option<Wake> 
         sources.invalidations.has_changed().unwrap_or(false),
         sources.timelines.prepare_wake(),
     ];
-    take_lane(sources, cursor.choose(&ready)?)
+    Some(take_lane(sources, cursor.choose(&ready)?))
 }
 
-fn take_lane(sources: &mut WakeSources<'_>, lane: WakeLane) -> Option<Wake> {
+fn take_lane(sources: &mut WakeSources<'_>, lane: WakeLane) -> Wake {
     match lane {
         WakeLane::Control
         | WakeLane::PlayerPreparation
         | WakeLane::PlaybackPresentation
-        | WakeLane::Candidate => Some(command_lane(sources, lane)),
-        WakeLane::Demand | WakeLane::Response | WakeLane::Internal => Some(io_lane(sources, lane)),
-        WakeLane::SegmentedInvalidation | WakeLane::Timeline => Some(system_lane(sources, lane)),
+        | WakeLane::Candidate => command_lane(sources, lane),
+        WakeLane::Demand | WakeLane::Response | WakeLane::Internal => io_lane(sources, lane),
+        WakeLane::SegmentedInvalidation | WakeLane::Timeline => system_lane(sources, lane),
     }
 }
 

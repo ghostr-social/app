@@ -40,7 +40,7 @@ async fn apply_outcome(sinks: &OutcomeSinks, outcome: RetrievalOutcome) {
             lock(&sinks.state).apply_started(&context);
         }
         RetrievalOutcome::Progress { context, event } => {
-            let candidate = lock(&sinks.state).apply_progress(&context, *event);
+            let candidate = lock(&sinks.state).apply_progress(&context, &event);
             crate::api::delivery::candidates::admit(sinks.candidates.as_ref(), candidate);
         }
         RetrievalOutcome::Completed {

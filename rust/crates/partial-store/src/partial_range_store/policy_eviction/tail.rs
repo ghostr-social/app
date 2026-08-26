@@ -3,7 +3,7 @@ use crate::partial_range_disk as disk;
 use crate::partial_range_manifest::RangeManifest;
 use crate::partial_range_paths::StorePaths;
 use crate::partial_range_store::policy_intent::{self, TailIntent};
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use std::path::Path;
 
 pub(super) async fn prepare(
@@ -122,7 +122,7 @@ async fn load_manifest(path: &Path) -> Result<Option<(Vec<u8>, RangeManifest)>> 
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(error).context("read tail eviction manifest"),
     };
-    let Ok(text) = std::str::from_utf8(&bytes) else {
+    let Ok(text) = core::str::from_utf8(&bytes) else {
         return Ok(None);
     };
     let Ok(manifest) = RangeManifest::from_json(text) else {

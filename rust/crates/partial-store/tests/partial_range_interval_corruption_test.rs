@@ -1,7 +1,5 @@
-mod store_fixture;
-
-use std::io::{Seek, SeekFrom, Write};
-use store_fixture::{limits, reopened, spaced_store};
+use crate::tests::store_fixture::{limits, reopened, spaced_store};
+use std::io::{Seek as _, SeekFrom, Write as _};
 
 #[tokio::test]
 async fn committed_interval_corruption_is_never_served_after_restart() {
@@ -16,12 +14,20 @@ async fn committed_interval_corruption_is_never_served_after_restart() {
     let second = reopened(&first);
     second.store.load_existing().await.expect("reload cache");
     assert_eq!(
-        second.store.present_ranges("clip").await.unwrap(),
+        second
+            .store
+            .present_ranges("clip")
+            .await
+            .expect("valid test fixture"),
         vec![0..8]
     );
     assert_eq!(second.store.used_bytes().await, 8);
     assert_eq!(
-        second.store.read_range("clip", 0..8).await.unwrap(),
+        second
+            .store
+            .read_range("clip", 0..8)
+            .await
+            .expect("valid test fixture"),
         Some(b"abcdefgh".to_vec())
     );
     let mut file = std::fs::OpenOptions::new()
@@ -39,5 +45,5 @@ async fn committed_interval_corruption_is_never_served_after_restart() {
     );
     assert_eq!(second.store.used_bytes().await, 0);
     assert!(!second.root.join("clip.part").exists());
-    store_fixture::discard(&second.root);
+    crate::tests::store_fixture::discard(&second.root);
 }

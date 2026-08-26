@@ -15,7 +15,7 @@ async fn cached_matches_arrive_before_the_network_finishes() {
     let owner = RelayPoolOwner::with_io(
         Arc::new(Client::default()),
         RelayPoolConfiguration::default(),
-        io.clone(),
+        std::sync::Arc::<TestRelayIo>::clone(&io),
     );
     let session = SessionGeneration::initial();
     let route = owner.begin_route(session).await.expect("current route");
@@ -24,7 +24,7 @@ async fn cached_matches_arrive_before_the_network_finishes() {
     let event = note_at(40);
     let cache = Arc::new(EventCache::session());
     cache
-        .remember_for(session, std::slice::from_ref(&event))
+        .remember_for(session, core::slice::from_ref(&event))
         .await;
     let (progress, mut updates) = mpsc::channel(1);
 

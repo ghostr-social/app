@@ -4,7 +4,7 @@ use axum::body::to_bytes;
 use axum::http::header::{CONTENT_LENGTH, CONTENT_RANGE};
 use axum::http::StatusCode;
 use gateway_fixture::progressive::progressive_harness;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test(start_paused = true)]
 async fn fails_a_promised_range_after_the_idle_timeout() {

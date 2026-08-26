@@ -4,7 +4,7 @@ mod gateway_fixture;
 
 use gateway_fixture::progressive::progressive_harness;
 use ghostr_delivery::playback_demand::DemandState;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 const LARGE_VIDEO_BYTES: u64 = 8 * 1024 * 1024;
 
@@ -23,11 +23,19 @@ async fn an_open_ended_player_request_demands_only_the_next_bounded_window() {
         .store
         .set_total_len("clip", LARGE_VIDEO_BYTES)
         .await
-        .unwrap();
-    harness.store.write_range("clip", 0, &[7]).await.unwrap();
+        .expect("valid test fixture");
+    harness
+        .store
+        .write_range("clip", 0, &[7])
+        .await
+        .expect("valid test fixture");
 
     let request = harness.video_request("clip", Some("bytes=0-")).await;
-    let response = harness.router.oneshot(request).await.unwrap();
+    let response = harness
+        .router
+        .oneshot(request)
+        .await
+        .expect("valid test fixture");
     let DemandState::Blocked(signal) = harness.demand.recv().await.expect("demand signal") else {
         panic!("first demand state must block");
     };

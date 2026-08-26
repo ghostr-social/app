@@ -35,12 +35,12 @@ fn another_sources_completed_head_does_not_suppress_planner_discovery() {
     use crate::tests::warp_head_probe_context_fixture::{generates_head, plan_at, state_with_sources};
 
     let post = PostId::new("post");
-    let mut state = state_with_sources(post.clone(), vec![SECOND.into(), FIRST.into()]);
-    let first = state.catalog().transfer_identity(&post, FIRST).unwrap();
+    let state = state_with_sources(post.clone(), vec![SECOND.into(), FIRST.into()]);
+    let first = state.catalog().transfer_identity(&post, FIRST).expect("valid test fixture");
     let completed = HashSet::from([first]);
 
     assert!(generates_head(plan_at(
-        &mut state,
+        &state,
         &[],
         &completed,
         1,

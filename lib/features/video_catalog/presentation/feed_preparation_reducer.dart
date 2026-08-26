@@ -49,6 +49,10 @@ final class FeedPlaybackPreparation {
     if (current?.matches(media) == true) return current;
     return upcoming.where((asset) => asset.matches(media)).firstOrNull;
   }
+
+  bool isStructurallyStartable(VideoMediaSource media) {
+    return forMedia(media)?.isStructurallyStartable == true;
+  }
 }
 
 final class FeedPreparationReducer {

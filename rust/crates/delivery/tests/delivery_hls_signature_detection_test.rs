@@ -28,16 +28,22 @@ async fn hls_signature_accepts_generic_or_missing_manifest_mime() {
         let terminal = hls_terminal_wait::wait_terminal(&harness.segmented, "stream").await;
 
         assert_eq!(terminal.phase, SegmentedPhase::Ready, "{label}");
-        harness.handle.clear().await.unwrap();
+        harness.handle.clear().await.expect("valid test fixture");
         std::fs::remove_dir_all(&harness.root).ok();
     }
 }
 
 async fn serve(content_type: Option<&'static str>) -> String {
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let address = listener.local_addr().unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("valid test fixture");
+    let address = listener.local_addr().expect("valid test fixture");
     let app = Router::new().fallback(get(object)).with_state(content_type);
-    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    tokio::spawn(async move {
+        axum::serve(listener, app)
+            .await
+            .expect("valid test fixture");
+    });
     format!("http://{address}/index.m3u8")
 }
 
@@ -53,5 +59,5 @@ async fn object(State(content_type): State<Option<&'static str>>, uri: Uri) -> R
     if let Some(content_type) = content_type {
         response = response.header(header::CONTENT_TYPE, content_type);
     }
-    response.body(Body::from(body)).unwrap()
+    response.body(Body::from(body)).expect("valid test fixture")
 }

@@ -19,6 +19,7 @@ import 'api/playback_preparation_stream.dart';
 import 'api/playback_types.dart';
 import 'api/player_preparation_control.dart';
 import 'api/session_control.dart';
+import 'api/warp_evidence_control.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -81,7 +82,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.7.0';
 
   @override
-  int get rustContentHash => -585840162;
+  int get rustContentHash => 1302116321;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -182,6 +183,13 @@ abstract class RustLibApi extends BaseApi {
 
   Future<void> crateApiFocusControlFfiUpdateFocus({
     required FfiFocusUpdate update,
+  });
+
+  Future<String> crateApiWarpEvidenceControlFfiWarpDecisionHistoryJson();
+
+  Future<String> crateApiWarpEvidenceControlFfiWarpEvidencePageJson({
+    required BigInt afterPlanRevision,
+    required int limit,
   });
 
   Future<void> crateVideoNativeGatewayInitApp();
@@ -995,7 +1003,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "ffi_update_focus", argNames: ["update"]);
 
   @override
-  Future<void> crateVideoNativeGatewayInitApp() {
+  Future<String> crateApiWarpEvidenceControlFfiWarpDecisionHistoryJson() {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -1004,6 +1012,74 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             generalizedFrbRustBinding,
             serializer,
             funcId: 27,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta:
+            kCrateApiWarpEvidenceControlFfiWarpDecisionHistoryJsonConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiWarpEvidenceControlFfiWarpDecisionHistoryJsonConstMeta =>
+      const TaskConstMeta(
+        debugName: "ffi_warp_decision_history_json",
+        argNames: [],
+      );
+
+  @override
+  Future<String> crateApiWarpEvidenceControlFfiWarpEvidencePageJson({
+    required BigInt afterPlanRevision,
+    required int limit,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_u_64(afterPlanRevision, serializer);
+          sse_encode_u_32(limit, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 28,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiWarpEvidenceControlFfiWarpEvidencePageJsonConstMeta,
+        argValues: [afterPlanRevision, limit],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiWarpEvidenceControlFfiWarpEvidencePageJsonConstMeta =>
+      const TaskConstMeta(
+        debugName: "ffi_warp_evidence_page_json",
+        argNames: ["afterPlanRevision", "limit"],
+      );
+
+  @override
+  Future<void> crateVideoNativeGatewayInitApp() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 29,
             port: port_,
           );
         },
@@ -1205,8 +1281,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   FfiDeliveryEvent dco_decode_ffi_delivery_event(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 7)
-      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
+    if (arr.length != 9)
+      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
     return FfiDeliveryEvent(
       postId: dco_decode_String(arr[0]),
       kind: dco_decode_ffi_delivery_event_kind(arr[1]),
@@ -1215,6 +1291,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       totalBytes: dco_decode_opt_box_autoadd_u_64(arr[4]),
       etaMs: dco_decode_opt_box_autoadd_u_64(arr[5]),
       detail: dco_decode_opt_String(arr[6]),
+      representationId: dco_decode_opt_String(arr[7]),
+      assetId: dco_decode_opt_String(arr[8]),
     );
   }
 
@@ -1998,6 +2076,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_totalBytes = sse_decode_opt_box_autoadd_u_64(deserializer);
     var var_etaMs = sse_decode_opt_box_autoadd_u_64(deserializer);
     var var_detail = sse_decode_opt_String(deserializer);
+    var var_representationId = sse_decode_opt_String(deserializer);
+    var var_assetId = sse_decode_opt_String(deserializer);
     return FfiDeliveryEvent(
       postId: var_postId,
       kind: var_kind,
@@ -2006,6 +2086,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       totalBytes: var_totalBytes,
       etaMs: var_etaMs,
       detail: var_detail,
+      representationId: var_representationId,
+      assetId: var_assetId,
     );
   }
 
@@ -3015,6 +3097,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_box_autoadd_u_64(self.totalBytes, serializer);
     sse_encode_opt_box_autoadd_u_64(self.etaMs, serializer);
     sse_encode_opt_String(self.detail, serializer);
+    sse_encode_opt_String(self.representationId, serializer);
+    sse_encode_opt_String(self.assetId, serializer);
   }
 
   @protected

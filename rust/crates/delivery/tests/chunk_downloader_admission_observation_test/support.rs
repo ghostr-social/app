@@ -1,17 +1,17 @@
 use super::super::range_fixture;
+use core::time::Duration;
 use ghostr_delivery::chunk::downloader::{ChunkSpec, DownloadTraffic};
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::ByteRange;
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::transfer_timeouts::TransferTimeouts;
-use std::time::Duration;
 
 pub(super) const BODY_BYTES: u64 = 32 * 1_024;
 
 pub(super) fn executor() -> MediaRequestExecutor {
     MediaRequestExecutor::new(
         range_fixture::raw_media_client(),
-        MediaRequestLimits::try_new(3, 3).unwrap(),
+        MediaRequestLimits::try_new(3, 3).expect("valid test fixture"),
     )
 }
 
@@ -21,20 +21,20 @@ pub(super) async fn admit(
 ) -> ghostr_net::media_request_executor::AdmittedMediaRequest {
     requests
         .get(url, PreemptionAuthority::Transition)
-        .unwrap()
+        .expect("valid test fixture")
         .admit_for(Duration::from_secs(1))
         .await
-        .unwrap()
+        .expect("valid test fixture")
 }
 
-pub(super) async fn expect_queued<F>(future: &mut std::pin::Pin<&mut F>)
+pub(super) async fn expect_queued<F>(future: &mut core::pin::Pin<&mut F>)
 where
-    F: std::future::Future,
+    F: core::future::Future,
 {
     tokio::select! {
         biased;
         _ = future => panic!("download bypassed the occupied global gate"),
-        _ = tokio::time::sleep(Duration::from_millis(500)) => {}
+        () = tokio::time::sleep(Duration::from_millis(500)) => {}
     }
 }
 

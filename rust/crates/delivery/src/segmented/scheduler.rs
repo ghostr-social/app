@@ -6,7 +6,7 @@ use ghostr_engine::adaptive::{HlsBootstrapStage, HlsObjectCursor};
 use ghostr_engine::origin_model::OriginObservation;
 use ghostr_engine::{ActionId, DeliveryKind, PostId};
 use ghostr_net::media_request_executor::MediaRequestExecutor;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -39,8 +39,8 @@ pub(crate) struct SegmentedDelivery {
     cache: SegmentedCache,
     tracked: Vec<(PostId, Vec<String>)>,
     targets: Vec<Target>,
-    pending: HashMap<PostId, Pending>,
-    active: HashMap<PostId, Active>,
+    pending: BTreeMap<PostId, Pending>,
+    active: BTreeMap<PostId, Active>,
     next_generation: u64,
     next_attempt: u64,
     current_delivery: Option<DeliveryKind>,
@@ -97,8 +97,8 @@ impl SegmentedDelivery {
             cache,
             tracked: Vec::new(),
             targets: Vec::new(),
-            pending: HashMap::new(),
-            active: HashMap::new(),
+            pending: BTreeMap::new(),
+            active: BTreeMap::new(),
             next_generation: 0,
             next_attempt: 0,
             current_delivery: None,

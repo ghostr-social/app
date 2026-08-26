@@ -1,17 +1,14 @@
 //! Feed pages hide muted creators' posts: the main feed drops them like
 //! the blocked filter in
-//! lib/features/video_catalog/domain/video_feed_policy.dart, and search
+//! `lib/features/video_catalog/domain/video_feed_policy.dart`, and search
 //! feeds drop them like `_selectPosts` in
-//! lib/features/video_catalog/domain/discovery_video_search_repository.dart.
+//! `lib/features/video_catalog/domain/discovery_video_search_repository.dart`.
 
-mod discovery_support;
-mod feed_support;
-
-use discovery_support::{mute_list, p_tag};
-use feed_support::{parsed_posts, video_note};
-use ghostr_discovery::content::social_graph::SocialGraph;
-use ghostr_discovery::feed::spec::FeedSpec;
-use ghostr_discovery::feed::store::FeedStore;
+use crate::content::social_graph::SocialGraph;
+use crate::feed::spec::FeedSpec;
+use crate::feed::store::FeedStore;
+use crate::tests::discovery_support::{mute_list, p_tag};
+use crate::tests::feed_support::{parsed_posts, video_note};
 use nostr_sdk::Keys;
 
 fn muting_graph(session: &Keys, muted: &Keys) -> SocialGraph {

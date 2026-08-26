@@ -2,10 +2,8 @@
 //! first twelve npub characters plus an ellipsis as display name, the
 //! full `@npub` handle, and no avatar.
 
-mod feed_support;
-
-use ghostr_discovery::content::profiles::ProfileStore;
-use nostr_sdk::{Keys, ToBech32};
+use crate::content::profiles::ProfileStore;
+use nostr_sdk::{Keys, ToBech32 as _};
 
 #[test]
 fn profile_store_falls_back_to_a_shortened_npub_identity() {
@@ -24,7 +22,7 @@ fn profile_store_falls_back_to_a_shortened_npub_identity() {
 fn profile_store_uses_the_metadata_name_as_handle() {
     let creator = Keys::generate();
     let mut store = ProfileStore::new();
-    store.ingest(&feed_support::profile_event(
+    store.ingest(&crate::tests::feed_support::profile_event(
         &creator,
         r#"{"name":"Alice_42","picture":"https://cdn.example/alice.png"}"#,
         10,

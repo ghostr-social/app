@@ -2,9 +2,9 @@ use crate::outbox::bootstrap::OutboxBootstrap;
 use crate::plan_executor::{PlanExecutor, PlanFuture, PlanPage, PlanPageFuture, PlannedRetrieval};
 use crate::retrieval_types::RetrievalOutcome;
 use crate::tests::outbox_support::{empty_directory, relay_list_event};
+use core::time::Duration;
 use nostr_sdk::Keys;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 

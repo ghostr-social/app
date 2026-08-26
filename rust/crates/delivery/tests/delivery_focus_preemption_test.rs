@@ -3,19 +3,19 @@
 mod delivery_fixture;
 mod range_fixture;
 
+use core::time::Duration;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::media::{hit_log, hits, media_body, serve_recording};
 use delivery_fixture::options::{base_params, DeliveryOptions};
 use delivery_fixture::start_harness;
 use ghostr_engine::{DataUsageLevel, EngineParams};
 use range_fixture::stall::serve_stalling_signaled;
-use std::time::Duration;
 
 #[tokio::test]
 async fn a_jump_preempts_old_work_even_when_the_old_post_remains_behind() {
     let (slow, started) = serve_stalling_signaled(media_body()[..4].to_vec(), 16).await;
     let fast_hits = hit_log();
-    let fast = serve_recording("fast", media_body(), fast_hits.clone()).await;
+    let fast = serve_recording("fast", media_body(), std::sync::Arc::clone(&fast_hits)).await;
     let harness = start_harness("ghostr-focus-preemption", options());
     harness.handle.update_focus(window(&slow, &fast, 0));
     tokio::time::timeout(Duration::from_secs(1), started)

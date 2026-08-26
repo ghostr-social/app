@@ -8,6 +8,6 @@ fn ignored_terminal_teardown_does_not_change_health_counters() {
     ledger.record(PlaybackAdmission::IgnoredInactive, &PostId::new("retired"));
 
     let snapshot = ledger.snapshot();
-    assert_eq!(snapshot.counters().total(), 0);
+    assert_eq!(snapshot.counters(), Default::default());
     assert_eq!(snapshot.last_accepted(), None);
 }

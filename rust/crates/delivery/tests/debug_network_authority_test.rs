@@ -1,7 +1,7 @@
 use ghostr_delivery::debug::network::{NetworkProfile, NetworkThrottle};
 
-#[tokio::test]
-async fn connection_accounting_uses_scheme_host_and_effective_port() {
+#[test]
+fn connection_accounting_uses_scheme_host_and_effective_port() {
     let throttle = NetworkThrottle::new();
     throttle.update(NetworkProfile {
         bandwidth_kbps: 0,
@@ -9,9 +9,9 @@ async fn connection_accounting_uses_scheme_host_and_effective_port() {
         packet_loss_bps: 0,
         max_connections_per_host: 0,
     });
-    let first = throttle.acquire("https://EXAMPLE.com:443/a").await;
-    let equivalent = throttle.acquire("https://example.com/b").await;
-    let other_scheme = throttle.acquire("http://example.com/a").await;
+    let first = throttle.acquire("https://EXAMPLE.com:443/a");
+    let equivalent = throttle.acquire("https://example.com/b");
+    let other_scheme = throttle.acquire("http://example.com/a");
 
     assert_eq!(
         throttle.active_connections(),

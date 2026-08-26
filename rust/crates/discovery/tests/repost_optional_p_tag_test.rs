@@ -1,8 +1,6 @@
-mod feed_support;
-
-use feed_support::{signed_event, video_note, SignedEventFixture};
-use ghostr_discovery::content::reposts::feed_post_from_event;
-use nostr_sdk::{JsonUtil, Keys, Kind};
+use crate::content::reposts::feed_post_from_event;
+use crate::tests::feed_support::{signed_event, video_note, SignedEventFixture};
+use nostr_sdk::{JsonUtil as _, Keys, Kind};
 
 #[test]
 fn kind_six_accepts_a_missing_recommended_p_tag() {

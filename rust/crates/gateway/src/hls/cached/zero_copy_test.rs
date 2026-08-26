@@ -8,12 +8,12 @@ use std::sync::Arc;
 fn cached_response_keeps_the_cache_allocation_as_its_body_owner() {
     let body: Arc<[u8]> = Arc::from(vec![7; 1024]);
     let object = CachedHlsObject::new(
-        body.clone(),
-        Url::parse("https://media.example/segment.m4s").unwrap(),
+        std::sync::Arc::clone(&body),
+        Url::parse("https://media.example/segment.m4s").expect("valid test fixture"),
         None,
     );
 
-    let response = response(object, AssetRangeRequest::Full).unwrap();
+    let response = response(&object, AssetRangeRequest::Full).expect("valid test fixture");
 
     assert_eq!(Arc::strong_count(&body), 2);
     drop(response);

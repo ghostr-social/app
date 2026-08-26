@@ -7,7 +7,6 @@ package io.flutter.plugins.videoplayer;
 import android.os.Handler;
 import android.os.Looper;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.media3.common.C;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
@@ -148,6 +147,11 @@ public abstract class ExoPlayerEventListener implements Player.Listener {
       // https://exoplayer.dev/live-streaming.html#behindlivewindowexception-and-error_code_behind_live_window
       exoPlayer.seekToDefaultPosition();
       exoPlayer.prepare();
+    } else if (WarpDecoderCapabilityError.isDefinitive(error)) {
+      events.onError(
+          WarpDecoderCapabilityError.ERROR_CODE,
+          WarpDecoderCapabilityError.message(error),
+          WarpDecoderCapabilityError.details(error));
     } else {
       events.onError("VideoError", "Video player had error " + error, null);
     }
@@ -160,60 +164,7 @@ public abstract class ExoPlayerEventListener implements Player.Listener {
 
   @Override
   public void onTracksChanged(@NonNull Tracks tracks) {
-    // Find the currently selected audio track and notify
-    String selectedAudioTrackId = findSelectedAudioTrackId(tracks);
-    events.onAudioTrackChanged(selectedAudioTrackId);
-
-    // Find the currently selected video track and notify
-    String selectedVideoTrackId = findSelectedVideoTrackId(tracks);
-    events.onVideoTrackChanged(selectedVideoTrackId);
-  }
-
-  /**
-   * Finds the ID of the currently selected audio track.
-   *
-   * @param tracks The current tracks
-   * @return The track ID in format "groupIndex_trackIndex", or null if no audio track is selected
-   */
-  @Nullable
-  private String findSelectedAudioTrackId(@NonNull Tracks tracks) {
-    // Keep this ID format in sync with android_video_player.dart::_parseAndroidTrackId.
-    int groupIndex = 0;
-    for (Tracks.Group group : tracks.getGroups()) {
-      if (group.getType() == C.TRACK_TYPE_AUDIO && group.isSelected()) {
-        // Find the selected track within this group
-        for (int i = 0; i < group.length; i++) {
-          if (group.isTrackSelected(i)) {
-            return groupIndex + "_" + i;
-          }
-        }
-      }
-      groupIndex++;
-    }
-    return null;
-  }
-
-  /**
-   * Finds the ID of the currently selected video track.
-   *
-   * @param tracks The current tracks
-   * @return The track ID in format "groupIndex_trackIndex", or null if no video track is selected
-   */
-  @Nullable
-  private String findSelectedVideoTrackId(@NonNull Tracks tracks) {
-    // Keep this ID format in sync with android_video_player.dart::_parseAndroidTrackId.
-    int groupIndex = 0;
-    for (Tracks.Group group : tracks.getGroups()) {
-      if (group.getType() == C.TRACK_TYPE_VIDEO && group.isSelected()) {
-        // Find the selected track within this group
-        for (int i = 0; i < group.length; i++) {
-          if (group.isTrackSelected(i)) {
-            return groupIndex + "_" + i;
-          }
-        }
-      }
-      groupIndex++;
-    }
-    return null;
+    events.onAudioTrackChanged(SelectedTrackId.find(tracks, C.TRACK_TYPE_AUDIO));
+    events.onVideoTrackChanged(SelectedTrackId.find(tracks, C.TRACK_TYPE_VIDEO));
   }
 }

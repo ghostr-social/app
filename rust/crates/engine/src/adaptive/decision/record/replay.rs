@@ -1,11 +1,13 @@
 use super::{
-    DecisionRecord, LEGACY_SCHEMA_VERSION, UNSEALED_WARP_SCHEMA_VERSION, WARP_SCHEMA_VERSION,
+    DecisionRecord, CAPABILITY_SCHEMA_VERSION, LEGACY_SCHEMA_VERSION, UNSEALED_WARP_SCHEMA_VERSION,
+    WARP_SCHEMA_VERSION,
 };
 use crate::adaptive::decision::plan;
+use crate::adaptive::decision::replay::VerifiedWarpReplay;
 use crate::adaptive::decision::state::ReplayState;
-use crate::adaptive::{AdaptivePlayabilityPolicy, DecisionReplayStatus, VerifiedWarpReplay};
+use crate::adaptive::{AdaptivePlayabilityPolicy, DecisionReplayStatus};
 use serde::Serialize;
-use sha2::{Digest, Sha256};
+use sha2::{Digest as _, Sha256};
 
 mod trace;
 
@@ -15,10 +17,16 @@ const TERMINAL_EVIDENCE_DOMAIN: &[u8] = b"ghostr-warp-terminal-evidence\0";
 
 pub(super) fn status(record: &DecisionRecord) -> DecisionReplayStatus {
     match (record.schema_version, record.warp_decision.is_some()) {
-        (LEGACY_SCHEMA_VERSION, false) => legacy(record),
-        (UNSEALED_WARP_SCHEMA_VERSION | WARP_SCHEMA_VERSION, true) => replay_status(warp(record)),
+        (LEGACY_SCHEMA_VERSION | CAPABILITY_SCHEMA_VERSION, false) => legacy(record),
+        (UNSEALED_WARP_SCHEMA_VERSION | WARP_SCHEMA_VERSION | CAPABILITY_SCHEMA_VERSION, true) => {
+            replay_status(warp(record))
+        }
         _ => DecisionReplayStatus::UnsupportedSchema,
     }
+}
+
+pub(super) fn search_status(record: &DecisionRecord) -> DecisionReplayStatus {
+    replay_status(warp_search(record))
 }
 
 pub(super) fn warp(record: &DecisionRecord) -> Result<VerifiedWarpReplay, DecisionReplayStatus> {
@@ -99,14 +107,17 @@ fn legacy(record: &DecisionRecord) -> DecisionReplayStatus {
         return DecisionReplayStatus::StateHashMismatch;
     }
     let replayed = AdaptivePlayabilityPolicy.plan(&record.replay_state.snapshot());
-    match plan::replay_hash(&replayed) == record.replay_plan_hash {
-        true => DecisionReplayStatus::Verified,
-        false => DecisionReplayStatus::PlanMismatch,
+    if plan::replay_hash(&replayed) == record.replay_plan_hash {
+        DecisionReplayStatus::Verified
+    } else {
+        DecisionReplayStatus::PlanMismatch
     }
 }
 
 fn verify_terminal_evidence(record: &DecisionRecord) -> Result<(), DecisionReplayStatus> {
-    if record.schema_version == WARP_SCHEMA_VERSION && record.terminal_evidence_hash.is_none() {
+    let sealed = record.schema_version == WARP_SCHEMA_VERSION
+        || (record.schema_version == CAPABILITY_SCHEMA_VERSION && record.warp_decision.is_some());
+    if sealed && record.terminal_evidence_hash.is_none() {
         return Err(DecisionReplayStatus::PlanMismatch);
     }
     match &record.terminal_evidence_hash {
@@ -118,7 +129,10 @@ fn verify_terminal_evidence(record: &DecisionRecord) -> Result<(), DecisionRepla
 }
 
 fn is_warp_schema(version: u16) -> bool {
-    matches!(version, UNSEALED_WARP_SCHEMA_VERSION | WARP_SCHEMA_VERSION)
+    matches!(
+        version,
+        UNSEALED_WARP_SCHEMA_VERSION | WARP_SCHEMA_VERSION | CAPABILITY_SCHEMA_VERSION
+    )
 }
 
 fn replay_status(result: Result<VerifiedWarpReplay, DecisionReplayStatus>) -> DecisionReplayStatus {
@@ -141,5 +155,5 @@ fn identity(digest: impl AsRef<[u8]>) -> (String, u64) {
 }
 
 fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+    super::super::privacy::hex(bytes)
 }

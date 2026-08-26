@@ -2,7 +2,7 @@
 
 use crate::content::parsing::{video_post_from_event, ParsedVideoPost, MAX_REPOSTABLE_EVENT_BYTES};
 use crate::content::repost_hint::valid_relay_hint;
-use nostr_sdk::{Event, JsonUtil, Kind};
+use nostr_sdk::{Event, JsonUtil as _, Kind};
 
 pub const REPOST_KIND: u16 = 6;
 pub const GENERIC_REPOST_KIND: u16 = 16;
@@ -24,11 +24,11 @@ pub enum RepostTarget {
 
 /// Parses direct video events and verified, fully embedded repost wrappers.
 /// Empty-content wrappers require target resolution and are deferred.
-pub fn feed_post_from_event(event: &Event) -> Option<ParsedVideoPost> {
+pub(crate) fn feed_post_from_event(event: &Event) -> Option<ParsedVideoPost> {
     video_post_from_event(event).or_else(|| reposted_video_from_event(event))
 }
 
-pub fn reposted_video_from_event(wrapper: &Event) -> Option<ParsedVideoPost> {
+pub(crate) fn reposted_video_from_event(wrapper: &Event) -> Option<ParsedVideoPost> {
     let wrapper_kind = verified_wrapper_kind(wrapper)?;
     let original = embedded_original(wrapper)?;
     if is_protected(&original) {

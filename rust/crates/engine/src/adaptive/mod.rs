@@ -44,8 +44,7 @@ pub use decision::{
     RecordedRetrievalRequest, RecordedSearchPruneReason, RecordedTransfer, RecordedTransformKind,
     RecordedTwinEvaluation, RecordedWarpAction, RecordedWarpActionKind, RecordedWarpCommand,
     RecordedWarpDecision, RecordedWarpReserve, RecordedWarpSearch, RecordedWarpSearchInput,
-    RecordedWholeBodyContract, RecordedWholeFetchReason, ShadowPrices, VerifiedWarpReplay,
-    WarpDecisionRecordInput, WarpReplayIntegrity,
+    RecordedWholeBodyContract, RecordedWholeFetchReason, ShadowPrices, WarpDecisionRecordInput,
 };
 pub use navigation::{FeedOffset, NavigationDirection, NavigationHistory};
 pub use plan::{
@@ -66,21 +65,27 @@ pub use snapshot::{
     PlaybackSnapshot, PlayerPreparation, SnapshotError, StorageSnapshot, ViewProbability,
 };
 pub use warp::{
-    ActionForecast, ActionFrontier, ActionKind, ActionNode, ActionValue, ActiveControl,
-    ActivePlannerContext, BeamConfig, CandidateRetrievalLadder, ContinuationDecision,
-    ContinuationPolicy, DigitalTwin, GeneratedAction, GeneratedActions, HardBudget,
-    HeadProbeHistory, HedgeInput, HedgePolicy, IdentityProof, NetworkTokenBucket,
-    PlannerCandidateContext, PlannerCapability, PlannerCommand, PlannerContext, PlannerLimits,
-    PlannerQuality, PlannerRetryAvailability, PlannerRetryEvidence, PlannerWatchEvidence,
-    PreviewAvailability, PrunedSearchPlan, RequestOccupancy, RescueChanceEvidence,
-    RescueTimingQuantile, ReserveAuthorityOccupancy, ReserveConstraint, ReserveDegradedReason,
-    ResourceCost, ResourceFeedback, ResourceFeedbackCursor, ResourceObservation,
-    ResourcePriceSnapshot, ResourcePrices, RetainedSearchPlan, SearchDecision, SearchPruneReason,
-    SegmentedStorageBudget, SemanticAdmission, SemanticCandidate, SemanticDecision,
-    SemanticGuardrail, SemanticScore, ShadowPriceController, SoftRequestCommitment,
-    TransformCapability, TransformKind, TransportCensorReason, TwinConfig, TwinEpochs,
-    TwinEvaluation, TwinSearchContext, TwinState, TwinStateSignature, WarpActionGenerator,
-    WarpPlanner, WarpPlannerConfig, WarpPlannerInput, WarpPlanningDecision, WarpSearch,
-    WholeBodyExhaustion, INLINE_BLURHASH_PREVIEW_QUALITY_MICROS,
+    ActionForecast, ActionKind, ActionNode, ActionValue, ActiveControl, ActivePlannerContext,
+    BeamConfig, CandidateRetrievalLadder, ContinuationDecision, DigitalTwin, GeneratedAction,
+    GeneratedActions, HardBudget, HeadProbeHistory, HedgeInput, HedgePolicy, IdentityProof,
+    NetworkTokenBucket, PlannerCandidateContext, PlannerCapability, PlannerCommand, PlannerContext,
+    PlannerLimits, PlannerQuality, PlannerRetryAvailability, PlannerRetryEvidence,
+    PlannerWatchEvidence, PreviewAvailability, PrunedSearchPlan, RequestOccupancy,
+    RescueChanceEvidence, RescueTimingQuantile, ReserveAuthorityOccupancy, ReserveConstraint,
+    ReserveDegradedReason, ResourceCost, ResourceFeedback, ResourceFeedbackCursor,
+    ResourceObservation, ResourcePriceSnapshot, ResourcePrices, RetainedSearchPlan, SearchDecision,
+    SearchPruneReason, SegmentedStorageBudget, SemanticAdmission, SemanticDecision, SemanticScore,
+    ShadowPriceController, SoftRequestCommitment, TransformCapability, TransformKind,
+    TransportCensorReason, TwinConfig, TwinEpochs, TwinEvaluation, TwinStateSignature, WarpPlanner,
+    WarpPlannerConfig, WarpPlannerInput, WarpPlanningDecision, WholeBodyExhaustion,
+};
+
+pub(crate) use warp::{
+    ContinuationPolicy, SemanticCandidate, SemanticGuardrail, TwinSearchContext, TwinState,
+    WarpSearch,
 };
 pub(crate) use warp::{HlsGenerationPolicy, PlannerReplayCapsule, PlannerReplayState};
+
+#[cfg(test)]
+#[path = "mod_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

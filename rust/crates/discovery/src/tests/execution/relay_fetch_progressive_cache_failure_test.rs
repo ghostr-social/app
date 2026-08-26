@@ -15,7 +15,7 @@ async fn progressive_cache_fallback_keeps_the_page_retryable() {
     let cache = Arc::new(EventCache::session());
     let cached = note(100);
     cache
-        .remember_for(session, std::slice::from_ref(&cached))
+        .remember_for(session, core::slice::from_ref(&cached))
         .await;
     let owner = RelayPoolOwner::with_io(
         Arc::new(Client::default()),

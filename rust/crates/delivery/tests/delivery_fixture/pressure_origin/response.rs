@@ -3,7 +3,7 @@ use axum::body::Body;
 use axum::extract::State;
 use axum::http::{header, HeaderMap, Method, StatusCode};
 use axum::response::Response;
-use std::sync::atomic::Ordering;
+use core::sync::atomic::Ordering;
 
 const MEDIA: &[u8] = b"0123456789abcdef";
 
@@ -34,8 +34,11 @@ pub(super) async fn response(
 
 fn requested(headers: &HeaderMap) -> (usize, usize) {
     let range = headers[header::RANGE].to_str().expect("range header");
-    let (start, end) = range.trim_start_matches("bytes=").split_once('-').unwrap();
-    let start = start.parse().unwrap();
+    let (start, end) = range
+        .trim_start_matches("bytes=")
+        .split_once('-')
+        .expect("valid test fixture");
+    let start = start.parse().expect("valid test fixture");
     let end = end.parse().unwrap_or(MEDIA.len() - 1).min(MEDIA.len() - 1);
     (start, end)
 }

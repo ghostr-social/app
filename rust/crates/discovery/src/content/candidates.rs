@@ -9,7 +9,7 @@ use crate::content::repost_resolution::feed_posts_from_events;
 use crate::content::reposts::feed_post_from_event;
 use crate::feed::assembly::CanonicalPost;
 use nostr_sdk::Event;
-use sha2::{Digest, Sha256};
+use sha2::{Digest as _, Sha256};
 use std::collections::{HashMap, VecDeque};
 
 const CANDIDATE_COORDINATE_RETENTION: usize = 10_000;
@@ -86,7 +86,7 @@ impl CandidateRegistry {
     }
 
     pub fn inspect(&mut self, event: &Event) -> CandidateInspection {
-        self.blossom.ingest(std::slice::from_ref(event));
+        self.blossom.ingest(core::slice::from_ref(event));
         let mut post = feed_post_from_event(event);
         if let Some(post) = &mut post {
             self.blossom.enrich(post);
@@ -150,19 +150,6 @@ impl CandidateRegistry {
         }
         self.coordinate_order.push_back(coordinate);
     }
-
-    #[cfg(test)]
-    pub(crate) fn with_retention(retention: usize) -> Self {
-        Self {
-            retention: retention.max(1),
-            ..Self::default()
-        }
-    }
-
-    #[cfg(test)]
-    pub(crate) fn retained_coordinates(&self) -> usize {
-        self.canonical.len()
-    }
 }
 
 fn candidate_admission(candidate: VideoCandidate, replacing: bool) -> CandidateAdmission {
@@ -195,3 +182,7 @@ fn admitted_candidate(admission: CandidateAdmission) -> Option<VideoCandidate> {
         CandidateAdmission::Duplicate | CandidateAdmission::Rejected => None,
     }
 }
+
+#[cfg(test)]
+#[path = "candidates_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

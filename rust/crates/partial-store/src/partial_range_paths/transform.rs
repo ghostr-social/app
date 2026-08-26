@@ -7,7 +7,7 @@ pub(crate) struct TransformPaths<'a> {
 }
 
 impl<'a> TransformPaths<'a> {
-    pub(crate) const fn new(paths: &'a StorePaths, key: &'a str) -> Self {
+    pub(super) const fn new(paths: &'a StorePaths, key: &'a str) -> Self {
         Self { paths, key }
     }
 
@@ -51,7 +51,7 @@ impl<'a> TransformPaths<'a> {
         self.paths.named(self.key, "transform.commit")
     }
 
-    pub(crate) fn all(&self) -> Vec<PathBuf> {
+    pub(super) fn all(&self) -> Vec<PathBuf> {
         let manifest = self.manifest();
         let identity = self.identity();
         let record = self.record();

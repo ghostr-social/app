@@ -1,4 +1,4 @@
-use std::mem::size_of;
+use core::mem::size_of;
 
 use super::{MediaSegment, TimelineError, TimelineParseControl};
 
@@ -117,7 +117,7 @@ impl<'a> ParserBudget<'a> {
         Self::take(&mut self.allocation_bytes, bytes, MAXIMUM_ALLOCATION_BYTES)?;
         target
             .try_reserve_exact(additional)
-            .map_err(|_| TimelineError::ResourceLimit)
+            .map_err(|_allocation_error| TimelineError::ResourceLimit)
     }
 
     pub(super) fn vector<T>(&mut self, count: usize) -> Result<Vec<T>, TimelineError> {
@@ -150,9 +150,10 @@ impl<'a> ParserBudget<'a> {
     }
 
     fn checkpoint(&self) -> Result<(), TimelineError> {
-        match self.control.is_cancelled() {
-            true => Err(TimelineError::Cancelled),
-            false => Ok(()),
+        if self.control.is_cancelled() {
+            Err(TimelineError::Cancelled)
+        } else {
+            Ok(())
         }
     }
 

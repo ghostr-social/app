@@ -34,20 +34,26 @@ pub enum FfiDeliveryEventKind {
     Progress,
     /// The store could not be read for this post; see `detail`.
     Error,
+    /// Playback is terminally blocked for the current delivery binding.
+    Failed,
 }
 
 /// One per-post delivery update streamed to Dart.
 #[derive(Clone, Debug)]
 pub struct FfiDeliveryEvent {
-    pub post_id: String,
-    pub kind: FfiDeliveryEventKind,
-    pub startable: bool,
-    pub bytes_present: u64,
-    pub total_bytes: Option<u64>,
+    pub(crate) post_id: String,
+    pub(crate) kind: FfiDeliveryEventKind,
+    pub(crate) startable: bool,
+    pub(crate) bytes_present: u64,
+    pub(crate) total_bytes: Option<u64>,
     /// Best current completion estimate; absent when the engine cannot
     /// make a defensible estimate.
-    pub eta_ms: Option<u64>,
-    pub detail: Option<String>,
+    pub(crate) eta_ms: Option<u64>,
+    pub(crate) detail: Option<String>,
+    /// Exact progressive representation when this event has one.
+    pub(crate) representation_id: Option<String>,
+    /// Exact progressive capability bound to the observed content revision.
+    pub(crate) asset_id: Option<String>,
 }
 
 /// What the native cache has proved for one exact playback asset.
@@ -61,25 +67,25 @@ pub enum FfiPlaybackPreparationReadiness {
 /// One exact loopback asset selected for current or adjacent-next use.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FfiPlaybackPreparationAsset {
-    pub delivery_id: String,
-    pub representation_id: String,
-    pub source_representation_id: String,
-    pub asset_id: String,
-    pub playback_url: String,
-    pub readiness: FfiPlaybackPreparationReadiness,
+    pub(crate) delivery_id: String,
+    pub(crate) representation_id: String,
+    pub(crate) source_representation_id: String,
+    pub(crate) asset_id: String,
+    pub(crate) playback_url: String,
+    pub(crate) readiness: FfiPlaybackPreparationReadiness,
 }
 
 /// Atomic playback preparation window from one manager plan.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FfiPlaybackPreparationPlan {
-    pub revision: u64,
+    pub(crate) revision: u64,
     /// The focused delivery even while no exact progressive asset exists.
-    pub current_delivery_id: Option<String>,
-    pub current: Option<FfiPlaybackPreparationAsset>,
+    pub(crate) current_delivery_id: Option<String>,
+    pub(crate) current: Option<FfiPlaybackPreparationAsset>,
     /// Every certified upcoming asset, in feed order.
-    pub upcoming: Vec<FfiPlaybackPreparationAsset>,
+    pub(crate) upcoming: Vec<FfiPlaybackPreparationAsset>,
     /// Compatibility projection of the first upcoming asset.
-    pub next: Option<FfiPlaybackPreparationAsset>,
+    pub(crate) next: Option<FfiPlaybackPreparationAsset>,
 }
 
 /// Native-player evidence for one exact progressive playback attempt.
@@ -109,14 +115,14 @@ pub enum FfiPlayerPreparationDisposition {
 /// Authority and monotonic ordering for a player-preparation update.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FfiPlayerPreparationReport {
-    pub post_id: String,
-    pub representation_id: String,
-    pub asset_id: String,
-    pub player_capability_generation: u64,
-    pub client_epoch: u64,
-    pub attempt_generation: u64,
-    pub sequence: u64,
-    pub state: FfiPlayerPreparationState,
-    pub failure_kind: Option<String>,
-    pub observed_monotonic_us: u64,
+    pub(crate) post_id: String,
+    pub(crate) representation_id: String,
+    pub(crate) asset_id: String,
+    pub(crate) player_capability_generation: u64,
+    pub(crate) client_epoch: u64,
+    pub(crate) attempt_generation: u64,
+    pub(crate) sequence: u64,
+    pub(crate) state: FfiPlayerPreparationState,
+    pub(crate) failure_kind: Option<String>,
+    pub(crate) observed_monotonic_us: u64,
 }

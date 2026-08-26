@@ -1,7 +1,7 @@
+use core::time::Duration;
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_engine::adaptive::ReserveCandidateState;
 use ghostr_engine::PostId;
-use std::time::Duration;
 
 pub async fn wait_for_state(
     handle: &DeliveryHandle,

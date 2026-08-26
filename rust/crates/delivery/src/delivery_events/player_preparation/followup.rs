@@ -43,11 +43,11 @@ impl PlayerPreparationFollowup {
         self.attempt.attempt_generation
     }
 
-    pub(crate) fn sequence(&self) -> u64 {
+    fn sequence(&self) -> u64 {
         self.sequence
     }
 
-    pub(crate) fn state(&self) -> PlayerPreparationState {
+    fn state(&self) -> PlayerPreparationState {
         self.observation.state
     }
 
@@ -78,15 +78,6 @@ impl PlayerPreparationFollowup {
             && self.attempt_generation() == report.attempt_generation()
     }
 
-    pub(crate) fn from_report(report: PlayerPreparationReport) -> Self {
-        Self {
-            claim: PlayerPreparationClaim::from_authority(&report.authority),
-            attempt: report.attempt,
-            sequence: report.sequence,
-            observation: report.observation,
-        }
-    }
-
     pub(crate) fn anchor_to(
         self,
         admitted: &PlayerPreparationReport,
@@ -102,3 +93,7 @@ impl PlayerPreparationFollowup {
         )
     }
 }
+
+#[cfg(test)]
+#[path = "followup/test_support.rs"]
+mod test_support;

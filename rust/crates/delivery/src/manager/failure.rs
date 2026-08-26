@@ -1,10 +1,7 @@
-//! Failure triage for media transfers. Some failures are about the
-//! moment — a timeout, a 5xx, a reset connection — and deserve another
-//! attempt shortly. Others are about the source itself: a host that
-//! does not resolve, a URL that is gone, a certificate that cannot be
-//! trusted, a destination the SSRF guard refuses. The retry policy
-//! spends far fewer attempts on the second kind, because the engine
-//! exists to spend the radio carefully (plan §3).
+//! Failure triage for media transfers.
+//!
+//! Some failures describe a transient moment and deserve another attempt shortly. Others describe
+//! the source itself. The retry policy spends far fewer attempts on source failures (plan §3).
 
 use ghostr_net::media_request_executor::MediaRequestAdmissionTimeout;
 use ghostr_net::native_cache_failure::PermanentCacheFailure;
@@ -54,9 +51,10 @@ pub fn classify(error: &anyhow::Error) -> FailureClass {
     if let Some(status) = rejected_status(error) {
         return of_status(status);
     }
-    match error.chain().any(|cause| is_hopeless(&cause.to_string())) {
-        true => FailureClass::Permanent,
-        false => FailureClass::Transient,
+    if error.chain().any(|cause| is_hopeless(&cause.to_string())) {
+        FailureClass::Permanent
+    } else {
+        FailureClass::Transient
     }
 }
 
@@ -82,9 +80,10 @@ fn rejected_status(error: &anyhow::Error) -> Option<StatusCode> {
 fn of_status(status: StatusCode) -> FailureClass {
     let retryable =
         status == StatusCode::REQUEST_TIMEOUT || status == StatusCode::TOO_MANY_REQUESTS;
-    match status.is_client_error() && !retryable {
-        true => FailureClass::Permanent,
-        false => FailureClass::Transient,
+    if status.is_client_error() && !retryable {
+        FailureClass::Permanent
+    } else {
+        FailureClass::Transient
     }
 }
 

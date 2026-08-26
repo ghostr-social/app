@@ -4,7 +4,7 @@ use crate::partial_range_store::cleanup_debt::CleanupScope;
 use crate::partial_range_store::replacement_cleanup;
 use crate::partial_range_store::single_response::{transaction, ResponseCommit};
 use crate::partial_range_store::Entries;
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 
 pub(super) async fn publish(
     store: &PartialRangeStore,

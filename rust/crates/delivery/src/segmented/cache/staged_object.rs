@@ -1,8 +1,7 @@
 use super::HlsCacheMetadata;
 use crate::segmented::prepare::{PreparedComplete, PreparedObject};
 use crate::segmented::CachedHlsGeneration;
-#[cfg(test)]
-use std::mem::MaybeUninit;
+
 use std::sync::Arc;
 use url::Url;
 
@@ -31,7 +30,7 @@ impl StagedObject {
         Self::new(object, false)
     }
 
-    pub(super) fn complete(object: PreparedObject) -> Self {
+    fn complete(object: PreparedObject) -> Self {
         Self::new(object, true)
     }
 
@@ -82,29 +81,6 @@ impl StagedObject {
         Some(())
     }
 
-    #[cfg(test)]
-    pub(super) fn assembled_with(
-        &self,
-        block: PreparedObject,
-        offset: u64,
-    ) -> Option<PreparedObject> {
-        let bytes = usize::try_from(self.continuation_len(&block, offset)?).ok()?;
-        let mut body = Arc::<[u8]>::new_uninit_slice(bytes);
-        let output = Arc::get_mut(&mut body)?;
-        let mut written = 0;
-        for known in &self.blocks {
-            write_block(output, &mut written, known)?;
-        }
-        write_block(output, &mut written, &block.body)?;
-        if written != bytes {
-            return None;
-        }
-        let cache = self.cache.combined_with(&block.cache);
-        // Every slot was initialized exactly once by `write_block`.
-        let body = unsafe { body.assume_init() };
-        Some(self.prepared(body, cache))
-    }
-
     pub(super) fn into_prepared(mut self) -> Option<PreparedComplete> {
         let body = self.is_assembled().then(|| self.blocks.pop())??;
         Some(PreparedComplete {
@@ -147,12 +123,5 @@ impl StagedObject {
 }
 
 #[cfg(test)]
-fn write_block(output: &mut [MaybeUninit<u8>], written: &mut usize, block: &[u8]) -> Option<()> {
-    let end = written.checked_add(block.len())?;
-    let target = output.get_mut(*written..end)?;
-    for (slot, byte) in target.iter_mut().zip(block) {
-        slot.write(*byte);
-    }
-    *written = end;
-    Some(())
-}
+#[path = "staged_object_axiom_test.rs"]
+mod axiom_test_support;

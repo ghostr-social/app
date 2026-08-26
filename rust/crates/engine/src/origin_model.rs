@@ -28,6 +28,7 @@ pub use errors::ErrorReason;
 pub use estimate::{
     AdaptationState, DecisionMode, OriginEstimate, ProbabilityEstimate, QuantileEstimate,
 };
+pub use exploration::ExplorationClaim;
 pub use model::{Admission, OriginModel};
 pub use observation::{OriginObservation, OriginOutcome};
 pub use prior::{ColdStartPrior, ColdStartSelector};

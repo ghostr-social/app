@@ -1,19 +1,19 @@
 //! Engine startup remains exclusive across awaits and cancellation.
 
 use crate::api::runtime::registry::StartGate;
-use std::sync::atomic::{AtomicBool, Ordering};
+use core::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::sync::oneshot;
 
 #[tokio::test]
 async fn start_permit_blocks_overlap_and_releases_when_cancelled() {
     let gate = Arc::new(StartGate::new());
-    let task_gate = gate.clone();
+    let task_gate = std::sync::Arc::clone(&gate);
     let (entered, started) = oneshot::channel();
     let task = tokio::spawn(async move {
         let _permit = task_gate.acquire(|| false).expect("first start");
         let _ = entered.send(());
-        std::future::pending::<()>().await;
+        core::future::pending::<()>().await;
     });
     started.await.expect("start entered an awaited phase");
 

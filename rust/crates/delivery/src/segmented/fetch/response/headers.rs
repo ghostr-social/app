@@ -1,5 +1,5 @@
 use super::{invalid, invalid_error, valid};
-use anyhow::Context;
+use anyhow::Context as _;
 use ghostr_net::strong_etag::{single_strong_etag, StrongEtag};
 use reqwest::header::{HeaderMap, HeaderName, CONTENT_LENGTH};
 
@@ -15,7 +15,8 @@ pub(super) fn required_length(headers: &HeaderMap) -> Result<u64, super::super::
 pub(super) fn strong_etag(
     headers: &HeaderMap,
 ) -> Result<Option<StrongEtag>, super::super::FetchProblem> {
-    single_strong_etag(headers).map_err(|_| invalid("invalid or duplicate HLS ETag"))
+    single_strong_etag(headers)
+        .map_err(|error| invalid(format!("invalid or duplicate HLS ETag: {error:?}")))
 }
 
 pub(super) fn single_header(
@@ -29,7 +30,7 @@ pub(super) fn single_header(
         .map(|value| {
             value
                 .to_str()
-                .map_err(|_| invalid("invalid HLS response header text"))
+                .map_err(|error| invalid(format!("invalid HLS response header text: {error}")))
         })
         .transpose()
 }

@@ -3,10 +3,10 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::retry::{cdn_source, retry_policy};
 use ghostr_delivery::manager::failure::FailureClass;
 use ghostr_delivery::manager::retry::{Retry, RetryBook};
-use std::time::Duration;
 
 fn waits(book: &mut RetryBook, attempts: usize) -> Vec<Duration> {
     (0..attempts)

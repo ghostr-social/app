@@ -3,7 +3,7 @@ use crate::segmented::prepare::PreparedObject;
 use ghostr_engine::PostId;
 
 pub(in crate::segmented) struct CompleteStage {
-    pub object: PreparedObject,
+    pub(crate) object: PreparedObject,
     pub(super) offset: u64,
     pub(super) block_bytes: u64,
     pub(super) reservation: Option<AssemblyReservation>,

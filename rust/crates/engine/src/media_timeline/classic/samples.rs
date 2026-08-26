@@ -4,11 +4,11 @@ use super::tables::{ChunkSamples, TrackTables};
 use crate::ByteRange;
 
 pub(super) fn map_samples(
-    tables: TrackTables,
+    tables: &TrackTables,
     budget: &mut ParserBudget<'_>,
     output: &mut Vec<TimedRange>,
 ) -> Result<(), TimelineError> {
-    validate_chunks(&tables, budget)?;
+    validate_chunks(tables, budget)?;
     budget.reserve(output, tables.sizes.len())?;
     let mut rules = ChunkRuleCursor::new(&tables.chunk_samples);
     let mut sample = 0;
@@ -54,7 +54,7 @@ impl<'a> ChunkRuleCursor<'a> {
     }
 
     fn count_for(&mut self, chunk: usize) -> Result<usize, TimelineError> {
-        let chunk = u32::try_from(chunk).map_err(|_| TimelineError::Malformed)?;
+        let chunk = u32::try_from(chunk).map_err(|_conversion_error| TimelineError::Malformed)?;
         while self
             .entries
             .get(self.index + 1)
@@ -68,7 +68,7 @@ impl<'a> ChunkRuleCursor<'a> {
             .filter(|entry| entry.first_chunk <= chunk)
             .map(|entry| entry.samples_per_chunk)
             .ok_or(TimelineError::Malformed)?;
-        usize::try_from(count).map_err(|_| TimelineError::Malformed)
+        usize::try_from(count).map_err(|_conversion_error| TimelineError::Malformed)
     }
 
     fn used_all(&self) -> bool {
@@ -76,6 +76,7 @@ impl<'a> ChunkRuleCursor<'a> {
     }
 }
 
+#[derive(Clone, Copy)]
 struct SampleTiming {
     offset: u64,
     size: u32,

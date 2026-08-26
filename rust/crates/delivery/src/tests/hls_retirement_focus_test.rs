@@ -5,7 +5,7 @@ use ghostr_engine::PostId;
 #[test]
 fn focus_change_cannot_rearm_a_strict_hls_retirement() {
     let post = PostId::new("hls");
-    let source = Source::new(post.clone(), "https://origin.test/root.m3u8".to_owned());
+    let source = Source::new(post.clone(), "https://origin.test/root.m3u8");
     let mut retry = RetryBook::new(RetryPolicy {
         transient_attempts: 1,
         ..RetryPolicy::default()

@@ -63,7 +63,7 @@ impl<'a> Builder<'a> {
         requires: &[u16],
     ) -> u16 {
         let prediction = self.prediction(candidate, &kind, &allocation.source);
-        let input = NodeInput::new(kind.clone(), &allocation.source, prediction, requires);
+        let input = NodeInput::new(kind, &allocation.source, prediction, requires);
         let mut node = self.node(candidate, input);
         node.resources = request_resources(allocation.request);
         node = node.with_request(allocation.request);
@@ -82,15 +82,11 @@ impl<'a> Builder<'a> {
     ) -> super::super::ActionNode {
         let id = self.next_action_id();
         let forecast = super::quality::incremental(candidate, self.context, input.prediction);
-        super::super::ActionNode::new(
-            id,
-            candidate.post.clone(),
-            input.kind.clone(),
-            value::score(candidate, &input.kind, input.prediction, self.base.mode),
-        )
-        .with_origin(input.source)
-        .with_forecast(forecast)
-        .requiring(input.requires)
+        let value = value::score(candidate, &input.kind, input.prediction, self.base.mode);
+        super::super::ActionNode::new(id, candidate.post.clone(), input.kind, value)
+            .with_origin(input.source)
+            .with_forecast(forecast)
+            .requiring(input.requires)
     }
 
     pub(super) fn local_node(

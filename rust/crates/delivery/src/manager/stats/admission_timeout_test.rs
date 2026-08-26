@@ -1,13 +1,13 @@
 use super::StatsKeeper;
 use crate::manager::inflight::InFlightChunks;
 use crate::manager::transfers::{ChunkDone, ProbeObservation};
+use core::time::Duration;
 use fixture::{temp_directory, transfer_identity};
 use ghostr_engine::origin_model::{
     DecisionMode, MediaClass, NetworkClass, OriginContext, OriginQuery, RequestMethod,
 };
 use ghostr_engine::{ByteRange, ChunkId, PostId};
 use ghostr_net::media_request_executor::MediaRequestAdmissionTimeout;
-use std::time::Duration;
 
 #[path = "admission_timeout_fixture.rs"]
 mod fixture;

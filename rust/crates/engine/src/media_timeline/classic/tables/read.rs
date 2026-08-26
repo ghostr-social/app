@@ -48,12 +48,14 @@ pub(super) fn u32_at(data: &[u8], offset: usize) -> Result<u32, TimelineError> {
     let bytes = data
         .get(offset..offset + 4)
         .ok_or(TimelineError::Truncated)?;
-    Ok(u32::from_be_bytes(bytes.try_into().unwrap()))
+    Ok(u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
 }
 
 pub(super) fn u64_at(data: &[u8], offset: usize) -> Result<u64, TimelineError> {
     let bytes = data
         .get(offset..offset + 8)
         .ok_or(TimelineError::Truncated)?;
-    Ok(u64::from_be_bytes(bytes.try_into().unwrap()))
+    Ok(u64::from_be_bytes([
+        bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+    ]))
 }

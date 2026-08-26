@@ -15,6 +15,9 @@ pub struct NativeMediaMetadata {
     pub url: String,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct InvalidSha256;
+
 /// Lenient discovery imeta parsing: mime is optional when the URL
 /// extension proves a video, and a fallback may supply the playable media.
 pub fn lenient_native_media(tag: &[String]) -> Option<NativeMediaMetadata> {
@@ -33,7 +36,7 @@ pub fn lenient_native_media(tag: &[String]) -> Option<NativeMediaMetadata> {
     Some(NativeMediaMetadata {
         declared_mime: mime.map(normalized_mime),
         delivery: mime_or_url_delivery(mime, &primary),
-        expected_digest: expected_digest(tag)?,
+        expected_digest: optional_sha256(imeta_field(tag, "x")).ok()?,
         extras: imeta_extras(tag),
         fallback_urls: urls,
         original_digest: imeta_field(tag, "ox").and_then(parse_sha256),
@@ -82,17 +85,17 @@ pub(crate) fn mime_or_url_delivery(mime: Option<&str>, url: &str) -> NativeVideo
     }
 }
 
-fn expected_digest(tag: &[String]) -> Option<Option<String>> {
-    let Some(digest) = imeta_field(tag, "x") else {
-        return Some(None);
-    };
-    parse_sha256(digest).map(Some)
-}
-
 /// A valid digest is 64 hexadecimal characters, normalized to lowercase.
 pub(crate) fn parse_sha256(raw: &str) -> Option<String> {
     (raw.len() == 64 && raw.chars().all(|value| value.is_ascii_hexdigit()))
         .then(|| raw.to_ascii_lowercase())
+}
+
+pub(crate) fn optional_sha256(raw: Option<&str>) -> Result<Option<String>, InvalidSha256> {
+    match raw {
+        None => Ok(None),
+        Some(raw) => parse_sha256(raw.trim()).map(Some).ok_or(InvalidSha256),
+    }
 }
 
 pub(crate) fn imeta_field<'a>(tag: &'a [String], name: &str) -> Option<&'a str> {

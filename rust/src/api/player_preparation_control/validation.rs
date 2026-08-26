@@ -1,9 +1,9 @@
 use super::{FfiPlayerPreparationReport, PlayerPreparationAuthority, PlayerPreparationContext};
 use crate::api::delivery::focus_mapping::validate_post_id;
+use core::fmt::{Display, Formatter};
 use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 use ghostr_partial_store::partial_range_store::StoredMediaSnapshot;
-use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum AssetValidationError {
@@ -33,7 +33,10 @@ async fn load_candidate(
     context: &PlayerPreparationContext,
     input: &FfiPlayerPreparationReport,
 ) -> Result<CandidateAsset, AssetValidationError> {
-    validate_post_id(&input.post_id).map_err(|_| AssetValidationError::Rejected)?;
+    validate_post_id(&input.post_id).map_err(|error| {
+        log::debug!("Rejected player preparation post id: {error:#}");
+        AssetValidationError::Rejected
+    })?;
     let post = PostId::new(input.post_id.clone());
     let meta = context
         .tracked
@@ -44,7 +47,10 @@ async fn load_candidate(
         .store
         .media_snapshot(post.as_str())
         .await
-        .map_err(|_| AssetValidationError::Unavailable)?;
+        .map_err(|error| {
+            log::debug!("Player preparation media snapshot is unavailable: {error:#}");
+            AssetValidationError::Unavailable
+        })?;
     let candidate = CandidateAsset { post, snapshot };
     validate_binding(context, input, &meta, &candidate)?;
     Ok(candidate)
@@ -96,7 +102,10 @@ async fn ensure_revision(
             candidate.snapshot.revision(),
         )
         .await
-        .map_err(|_| AssetValidationError::Unavailable)?;
+        .map_err(|error| {
+            log::debug!("Player preparation revision check is unavailable: {error:#}");
+            AssetValidationError::Unavailable
+        })?;
     require(current)
 }
 
@@ -113,7 +122,7 @@ fn require(valid: bool) -> Result<(), AssetValidationError> {
 }
 
 impl Display for AssetValidationError {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::Rejected => formatter.write_str("player preparation authority was rejected"),
             Self::Unavailable => formatter.write_str("player preparation authority is unavailable"),
@@ -121,4 +130,4 @@ impl Display for AssetValidationError {
     }
 }
 
-impl std::error::Error for AssetValidationError {}
+impl core::error::Error for AssetValidationError {}

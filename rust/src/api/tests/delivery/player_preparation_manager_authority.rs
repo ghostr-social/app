@@ -12,7 +12,7 @@ pub(super) struct SeededAuthority {
     pub(super) tracked: TrackedItems,
     pub(super) cache: CacheRegistry,
     pub(super) capabilities: ProgressiveCapabilities,
-    pub(super) meta: VideoMeta,
+    meta: VideoMeta,
     pub(super) representation: String,
     pub(super) asset: String,
 }
@@ -27,7 +27,7 @@ impl SeededAuthority {
         let asset = capabilities
             .issue(&snapshot)
             .await
-            .unwrap()
+            .expect("test fixture precondition must hold")
             .as_str()
             .to_owned();
         Self {
@@ -38,7 +38,7 @@ impl SeededAuthority {
             meta,
             representation: snapshot
                 .binding()
-                .unwrap()
+                .expect("test fixture precondition must hold")
                 .representation()
                 .fingerprint()
                 .to_owned(),
@@ -61,9 +61,18 @@ impl SeededAuthority {
 async fn seeded_store(meta: &VideoMeta) -> (Arc<PartialRangeStore>, StoredMediaSnapshot) {
     let store = temp_store("ghostr-player-preparation-manager");
     bind_store(&store, "clip", meta).await;
-    store.set_total_len("clip", 16).await.unwrap();
-    store.write_range("clip", 0, &[7; 16]).await.unwrap();
-    let snapshot = store.media_snapshot("clip").await.unwrap();
+    store
+        .set_total_len("clip", 16)
+        .await
+        .expect("test fixture precondition must hold");
+    store
+        .write_range("clip", 0, &[7; 16])
+        .await
+        .expect("test fixture precondition must hold");
+    let snapshot = store
+        .media_snapshot("clip")
+        .await
+        .expect("test fixture precondition must hold");
     (store, snapshot)
 }
 

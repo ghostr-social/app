@@ -21,6 +21,7 @@ mod decision_record_warp_request_test;
 mod decision_record_warp_schema_test;
 mod decision_record_warp_test_support;
 mod decision_replay_authority_limit_test;
+mod decoder_blocked_reserve_test;
 mod discovery_emergency_hold_test;
 mod discovery_empty_expand_test;
 mod discovery_safe_expand_test;

@@ -4,10 +4,10 @@ use super::io::{RelayReadIo, RelayReadResult};
 use super::scoped_query::event_limit;
 use super::scoped_state::EventSink;
 use crate::relay::roles::MAX_RELAY_READ_FANOUT;
-use anyhow::{bail, Context};
+use anyhow::{bail, Context as _};
+use core::time::Duration;
 use nostr_sdk::{Client, Filter};
 use std::sync::Arc;
-use std::time::Duration;
 
 mod batch;
 use batch::{QueryBatch, QuerySummary, QueryTemplate};

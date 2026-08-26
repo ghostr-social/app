@@ -4,7 +4,7 @@ use crate::probe::media::ProbeResult;
 use ghostr_engine::origin_model::{
     DecisionMode, MediaClass, NetworkClass, OriginContext, OriginQuery, RequestMethod,
 };
-use std::time::Duration;
+use core::time::Duration;
 
 #[tokio::test]
 async fn completed_head_probe_updates_the_head_context_only() {

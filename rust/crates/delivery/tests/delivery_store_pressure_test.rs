@@ -7,6 +7,7 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::full_disk::{discard, limits, paced_store};
 use delivery_fixture::items::{focus_now, seed_range, sized_item};
 use delivery_fixture::media::{hit_log, hits, media_body, serve_recording};
@@ -16,7 +17,6 @@ use delivery_fixture::stats::wait_for;
 use ghostr_engine::host_stats::host_of;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::time::timeout;
 
 #[tokio::test]
@@ -29,7 +29,7 @@ async fn delivery_waits_for_real_capacity_change_then_resumes_same_source() {
     );
     std::fs::create_dir_all(&fixture.root).expect("store root");
     let log = hit_log();
-    let origin = serve_recording("origin", media_body(), log.clone()).await;
+    let origin = serve_recording("origin", media_body(), std::sync::Arc::clone(&log)).await;
     let item = sized_item("aa11", &origin, 16, 2_000);
     seed_range(&fixture.store, &item, 0, &media_body()[..8]).await;
     let root = fixture.root.clone();
@@ -54,11 +54,15 @@ async fn delivery_waits_for_real_capacity_change_then_resumes_same_source() {
     );
     assert_range(&harness.store, 0..8).await;
 
-    harness.store.set_storage_budget(16).await.unwrap();
+    harness
+        .store
+        .set_storage_budget(16)
+        .await
+        .expect("valid test fixture");
     wait_for_complete(&harness.store).await;
     assert_eq!(get_count(), 1, "the same source resumes once");
     assert!(harness.posts.contains("aa11"));
-    let host = host_of(&origin).unwrap();
+    let host = host_of(&origin).expect("valid test fixture");
     let stats = wait_for(&harness.root.join("host_stats.json"), |stats| {
         stats.host_throughput(&host).is_some()
     })
@@ -81,11 +85,14 @@ async fn wait_for_complete(store: &PartialRangeStore) {
     .expect("capacity wake resumes parked post");
 }
 
-async fn assert_range(store: &PartialRangeStore, wanted: std::ops::Range<u64>) {
+async fn assert_range(store: &PartialRangeStore, wanted: core::ops::Range<u64>) {
     assert!(has_range(store, &wanted).await, "useful bytes stay present");
 }
 
-async fn has_range(store: &PartialRangeStore, wanted: &std::ops::Range<u64>) -> bool {
-    let ranges = store.present_ranges("aa11").await.unwrap();
+async fn has_range(store: &PartialRangeStore, wanted: &core::ops::Range<u64>) -> bool {
+    let ranges = store
+        .present_ranges("aa11")
+        .await
+        .expect("valid test fixture");
     ranges.len() == 1 && ranges.first() == Some(wanted)
 }

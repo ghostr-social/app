@@ -1,6 +1,6 @@
+use core::time::Duration;
 use ghostr_gateway::hls::sessions::{HlsSessionLimits, HlsSessions};
 use reqwest::Url;
-use std::time::Duration;
 
 #[tokio::test(start_paused = true)]
 async fn expired_sessions_cannot_be_used_and_release_capacity() {

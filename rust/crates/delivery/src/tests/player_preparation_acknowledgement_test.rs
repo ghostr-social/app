@@ -1,11 +1,10 @@
-use crate::delivery_events::{
-    command_channel, PlayerPreparationActorOutcome, PlayerPreparationDisposition,
-};
+
+use crate::delivery_events::{command_channel, PlayerPreparationActorOutcome, PlayerPreparationDisposition};
 use crate::tests::player_preparation_fixture::report;
 
 #[tokio::test]
 async fn acknowledgement_waits_for_the_actor_and_is_idempotent() {
-    let (handle, mut receiver) = command_channel();
+    let (handle, receiver) = command_channel();
     let initial = report("first", 1, 1);
     let ticket = handle.player_preparation_admission();
     let pending = tokio::spawn({
@@ -14,10 +13,10 @@ async fn acknowledgement_waits_for_the_actor_and_is_idempotent() {
         async move { handle.confirm_player_preparation_initial(ticket, report).await }
     });
     tokio::task::yield_now().await;
-    let envelope = receiver.try_player_preparation_envelope().unwrap();
+    let envelope = receiver.try_player_preparation_envelope().expect("valid test fixture");
     assert!(!pending.is_finished());
     receiver.complete_player_preparation(envelope, PlayerPreparationActorOutcome::Applied);
-    assert_eq!(pending.await.unwrap(), PlayerPreparationDisposition::Applied);
+    assert_eq!(pending.await.expect("valid test fixture"), PlayerPreparationDisposition::Applied);
 
     let ticket = handle.player_preparation_admission();
     assert_eq!(
@@ -30,7 +29,7 @@ async fn acknowledgement_waits_for_the_actor_and_is_idempotent() {
 
 #[tokio::test]
 async fn conflicting_replay_is_rejected_and_clear_releases_pending_confirmation() {
-    let (handle, mut receiver) = command_channel();
+    let (handle, receiver) = command_channel();
     let initial = report("first", 1, 1);
     let ticket = handle.player_preparation_admission();
     let pending = tokio::spawn({
@@ -39,9 +38,9 @@ async fn conflicting_replay_is_rejected_and_clear_releases_pending_confirmation(
         async move { handle.confirm_player_preparation_initial(ticket, report).await }
     });
     tokio::task::yield_now().await;
-    let envelope = receiver.try_player_preparation_envelope().unwrap();
+    let envelope = receiver.try_player_preparation_envelope().expect("valid test fixture");
     receiver.complete_player_preparation(envelope, PlayerPreparationActorOutcome::Applied);
-    assert_eq!(pending.await.unwrap(), PlayerPreparationDisposition::Applied);
+    assert_eq!(pending.await.expect("valid test fixture"), PlayerPreparationDisposition::Applied);
 
     let ticket = handle.player_preparation_admission();
     assert_eq!(
@@ -62,12 +61,12 @@ async fn conflicting_replay_is_rejected_and_clear_releases_pending_confirmation(
     });
     tokio::task::yield_now().await;
     receiver.discard_pending();
-    assert_eq!(cleared.await.unwrap(), PlayerPreparationDisposition::Unavailable);
+    assert_eq!(cleared.await.expect("valid test fixture"), PlayerPreparationDisposition::Unavailable);
 }
 
 #[tokio::test]
 async fn invalid_admission_is_proven_not_admitted() {
-    let (handle, mut receiver) = command_channel();
+    let (handle, receiver) = command_channel();
     let stale = handle.player_preparation_admission();
     receiver.discard_pending();
 

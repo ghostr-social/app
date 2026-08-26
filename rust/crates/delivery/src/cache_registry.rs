@@ -2,7 +2,7 @@
 
 use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::VideoMeta;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::sync::Notify;
 
@@ -30,6 +30,7 @@ pub struct CacheRegistry {
 struct CacheEntries {
     order: Vec<String>,
     by_id: HashMap<String, Option<CacheVideo>>,
+    blocked: HashSet<String>,
 }
 
 impl CacheRegistry {
@@ -52,10 +53,20 @@ impl CacheRegistry {
     }
 
     pub fn replace(&self, videos: impl IntoIterator<Item = CacheVideo>) {
+        self.replace_with_blocked(videos, core::iter::empty());
+    }
+
+    pub fn replace_with_blocked(
+        &self,
+        videos: impl IntoIterator<Item = CacheVideo>,
+        blocked: impl IntoIterator<Item = String>,
+    ) {
         let mut next = CacheEntries::default();
         for video in videos {
             remember(&mut next, video);
         }
+        next.blocked
+            .extend(blocked.into_iter().filter(|id| next.by_id.contains_key(id)));
         let mut entries = self.write();
         if *entries == next {
             return;
@@ -70,7 +81,7 @@ impl CacheRegistry {
     }
 
     pub fn matches_binding(&self, id: &str, binding: &RepresentationBinding) -> bool {
-        self.video_for_binding(id, binding).is_some()
+        !self.is_playback_blocked(id, binding) && self.video_for_binding(id, binding).is_some()
     }
 
     pub fn video_for_binding(
@@ -93,15 +104,32 @@ impl CacheRegistry {
         if binding.post().as_str() != id {
             return false;
         }
-        match self.read().by_id.get(id) {
+        let entries = self.read();
+        if entries.blocked.contains(id) {
+            return false;
+        }
+        match entries.by_id.get(id) {
             Some(None) => true,
             Some(Some(video)) => binding.matches_or_derives_from(&video.meta),
             None => false,
         }
     }
 
+    pub fn is_playback_blocked(&self, id: &str, binding: &RepresentationBinding) -> bool {
+        if binding.post().as_str() != id {
+            return false;
+        }
+        let entries = self.read();
+        entries.blocked.contains(id)
+            && entries
+                .by_id
+                .get(id)
+                .and_then(Option::as_ref)
+                .is_some_and(|video| binding.matches_or_derives_from(&video.meta))
+    }
+
     pub fn notifier(&self) -> Arc<Notify> {
-        self.changed.clone()
+        std::sync::Arc::clone(&self.changed)
     }
 
     pub fn videos(&self) -> Vec<CacheVideo> {

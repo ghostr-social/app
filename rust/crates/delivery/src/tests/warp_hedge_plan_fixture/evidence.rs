@@ -1,12 +1,16 @@
+use crate::manager::plan::axiom_test_support::planned_work;
 use super::OBSERVED_AT_MS;
 use crate::manager::inflight::ActiveAction;
-use crate::manager::plan::{planned_work, PlanInputs, PlannedWork};
+use crate::manager::plan::{PlanInputs, PlannedWork};
 use crate::manager::retry::{RetryBook, RetryPolicy};
 use crate::manager::state::DeliveryState;
 use ghostr_engine::adaptive::{StorageSnapshot, WholeBodyExhaustion};
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::{ByteRange, PostId};
 use std::collections::{HashMap, HashSet};
+
+mod identity;
+pub(super) use identity::learn_identity;
 
 pub(super) struct PlanEvidence {
     retry: RetryBook,
@@ -37,14 +41,14 @@ impl PlanEvidence {
 
     pub(super) fn plan(
         &self,
-        state: &mut DeliveryState,
+        state: &DeliveryState,
         stats: &ghostr_engine::host_stats::HostStats,
         active: &[ActiveAction],
     ) -> PlannedWork {
         let revisions = HashMap::new();
         planned_work(
             state,
-            PlanInputs {
+            &PlanInputs {
                 stats,
                 retry: &self.retry,
                 present: &self.present,

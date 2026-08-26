@@ -6,7 +6,7 @@ use ghostr_engine::playback::PlaybackPhase;
 use ghostr_engine::PostId;
 
 impl EvaluationTracker {
-    pub fn focus(&mut self, post: PostId, observed_at_ms: u64) {
+    pub(crate) fn focus(&mut self, post: PostId, observed_at_ms: u64) {
         if self
             .active
             .as_ref()
@@ -28,7 +28,7 @@ impl EvaluationTracker {
         self.metrics.semantics.focus_sessions += 1;
     }
 
-    pub fn playback(&mut self, event: PlaybackMetricEvent) {
+    pub(crate) fn playback(&mut self, event: &PlaybackMetricEvent) {
         let Some(active) = self.active.as_ref().filter(|item| item.post == event.post) else {
             return;
         };
@@ -54,7 +54,7 @@ impl EvaluationTracker {
         }
     }
 
-    pub fn present(&mut self, event: PresentationMetricEvent) {
+    pub(crate) fn present(&mut self, event: &PresentationMetricEvent) {
         let Some(active) = self.active.as_ref().filter(|item| item.post == event.post) else {
             return;
         };
@@ -77,7 +77,7 @@ impl EvaluationTracker {
         }
     }
 
-    pub fn finish(&mut self, observed_at_ms: u64) {
+    pub(crate) fn finish(&mut self, observed_at_ms: u64) {
         self.finish_active(observed_at_ms);
     }
 

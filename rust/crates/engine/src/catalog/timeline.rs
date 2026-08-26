@@ -4,19 +4,6 @@ use crate::media_timeline::MediaTimeline;
 use crate::representation::RepresentationBinding;
 
 impl Catalog {
-    /// Installs timing only for the representation that produced the bytes.
-    pub fn learn_timeline_for(
-        &mut self,
-        binding: &RepresentationBinding,
-        timeline: MediaTimeline,
-    ) -> bool {
-        let observed_at_ms = self
-            .entries
-            .get(binding.post())
-            .map_or(1, |entry| entry.evidence_clock_ms.saturating_add(1));
-        self.learn_timeline_observation_for(binding, timeline, observed_at_ms)
-    }
-
     pub fn learn_timeline_observation_for(
         &mut self,
         binding: &RepresentationBinding,
@@ -64,6 +51,10 @@ impl Catalog {
         (&entry.binding == binding).then_some(entry)
     }
 }
+
+#[cfg(any(test, feature = "test"))]
+#[path = "timeline/test_support.rs"]
+mod test_support;
 
 impl super::CatalogEntry {
     fn record_parser_evidence(

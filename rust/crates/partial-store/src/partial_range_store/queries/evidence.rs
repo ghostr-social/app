@@ -1,13 +1,13 @@
 use super::StoredMediaSnapshot;
 use crate::partial_range_manifest::{IntervalChecksum, RangeManifest};
-use sha2::{Digest, Sha256};
-use std::ops::Range;
+use core::ops::Range;
+use sha2::{Digest as _, Sha256};
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct StoredEvidenceId([u8; 32]);
 
-impl std::fmt::Debug for StoredEvidenceId {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for StoredEvidenceId {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         formatter.write_str("StoredEvidenceId(<redacted>)")
     }
 }

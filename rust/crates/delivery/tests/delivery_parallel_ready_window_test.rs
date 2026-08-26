@@ -1,20 +1,21 @@
 mod delivery_fixture;
 
+use core::num::NonZeroUsize;
+use core::time::Duration;
 use delivery_fixture::concurrency_origin::{ActiveRequest, ControlledOrigin};
 use delivery_fixture::items::{focus_now, seed_range, sized_item};
 use delivery_fixture::options::{base_params, DeliveryOptions};
 use delivery_fixture::playback::playing;
 use delivery_fixture::start_harness;
 use ghostr_engine::EngineParams;
-use std::time::Duration;
 
 #[tokio::test]
-async fn safe_playback_retrieves_four_future_videos_in_parallel() {
+async fn probabilistic_reserve_retrieves_two_future_videos_in_parallel() {
     let current = ControlledOrigin::serve(32).await;
     let mut next_1 = ControlledOrigin::serve(32).await;
     let mut next_2 = ControlledOrigin::serve(32).await;
-    let mut next_3 = ControlledOrigin::serve(32).await;
-    let mut next_4 = ControlledOrigin::serve(32).await;
+    let next_3 = ControlledOrigin::serve(32).await;
+    let next_4 = ControlledOrigin::serve(32).await;
     let harness = start_harness("ghostr-parallel-ready-window", options());
     let current_item = item("current", &current);
     seed_range(&harness.store, &current_item, 0, &[7; 32]).await;
@@ -36,15 +37,21 @@ async fn safe_playback_retrieves_four_future_videos_in_parallel() {
     let requests = tokio::join!(
         next_request("next-1", &mut next_1),
         next_request("next-2", &mut next_2),
-        next_request("next-3", &mut next_3),
-        next_request("next-4", &mut next_4),
     );
 
     assert!(requests.0.send_byte().await);
     assert!(requests.1.send_byte().await);
-    assert!(requests.2.send_byte().await);
-    assert!(requests.3.send_byte().await);
-    harness.handle.clear().await.unwrap();
+    assert_eq!(
+        harness
+            .handle
+            .latest_plan()
+            .expect("published reserve plan")
+            .plan
+            .ready_reserve
+            .target,
+        2
+    );
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }
 
@@ -62,11 +69,13 @@ async fn next_request(label: &str, origin: &mut ControlledOrigin) -> ActiveReque
 }
 
 fn options() -> DeliveryOptions {
-    DeliveryOptions {
+    let mut options = DeliveryOptions {
         params: EngineParams {
             balanced_concurrency: 4,
             ..base_params()
         },
         ..DeliveryOptions::default()
-    }
+    };
+    options.tuning.max_requests_per_authority = NonZeroUsize::new(4);
+    options
 }

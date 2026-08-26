@@ -1,9 +1,9 @@
 use crate::chunk::downloader::{OpenedResponse, ResponseAdmission, ResponseObservation};
 use crate::manager::inflight::ChunkAttempt;
 use crate::manager::DeliveryWorker;
+use core::time::Duration;
 use ghostr_net::media_log_identity::MediaLogIdentity;
 use ghostr_partial_store::partial_range_store::{ResponseOpenResult, StoreAction};
-use std::time::Duration;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::{timeout, Instant};
 
@@ -38,7 +38,7 @@ pub(crate) fn channel(timeout: Duration) -> (ResponseOpener, ResponseOpenReceive
 }
 
 impl ResponseOpener {
-    pub(crate) async fn authorize(
+    pub(super) async fn authorize(
         &self,
         attempt: ChunkAttempt,
         action: StoreAction,
@@ -65,7 +65,7 @@ impl ResponseOpener {
 }
 
 impl DeliveryWorker {
-    pub(crate) async fn apply_response_open(&mut self, request: ResponseOpenRequest) {
+    pub(super) async fn apply_response_open(&mut self, request: ResponseOpenRequest) {
         let ResponseOpenRequest {
             attempt,
             action,

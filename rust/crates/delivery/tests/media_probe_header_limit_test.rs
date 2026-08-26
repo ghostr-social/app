@@ -6,7 +6,7 @@ use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_net::response_limits::MAX_MEDIA_RESPONSE_HEADER_BYTES;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use probe_fixture::probe;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
 

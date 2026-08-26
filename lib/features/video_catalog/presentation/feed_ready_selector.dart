@@ -1,6 +1,7 @@
 import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_delivery_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
+import 'package:ghostr/features/video_catalog/presentation/feed_preparation_reducer.dart';
 
 enum FeedReadyAction { intended, wait, rescue }
 
@@ -31,6 +32,40 @@ final class FeedReadyDecision {
   int get displacement => (selectedIndex - intendedIndex).abs();
 }
 
+final class FeedReadinessEvidence {
+  const FeedReadinessEvidence({
+    required this.posts,
+    required this.delivery,
+    this.preparation,
+  });
+
+  final List<VideoPost> posts;
+  final Map<PlaybackDeliveryId, VideoDeliverySnapshot> delivery;
+  final FeedPlaybackPreparation? preparation;
+
+  VideoDeliverySnapshot? snapshotAt(int index) {
+    final deliveryId = posts[index].media.playbackDeliveryId;
+    return deliveryId == null ? null : delivery[deliveryId];
+  }
+
+  bool isReadyAt(int index) {
+    final snapshot = snapshotAt(index);
+    if (snapshot?.phase == VideoDeliveryPhase.failed &&
+        _failureApplies(index, snapshot!)) {
+      return false;
+    }
+    if (snapshot?.phase == VideoDeliveryPhase.startable) return true;
+    return preparation?.isStructurallyStartable(posts[index].media) == true;
+  }
+
+  bool _failureApplies(int index, VideoDeliverySnapshot snapshot) {
+    final authority = snapshot.authority;
+    if (authority == null) return true;
+    final prepared = preparation?.forMedia(posts[index].media);
+    return prepared == null || prepared.authority == authority;
+  }
+}
+
 /// Keeps feed semantics authoritative while avoiding a visibly stalled post.
 final class FeedReadySelector {
   const FeedReadySelector({
@@ -42,20 +77,19 @@ final class FeedReadySelector {
   final Duration grace;
 
   FeedReadyDecision select(
-    List<VideoPost> posts, {
+    FeedReadinessEvidence evidence, {
     required int fromIndex,
     required int intendedIndex,
-    required Map<PlaybackDeliveryId, VideoDeliverySnapshot> delivery,
     bool graceExpired = false,
   }) {
-    final intended = _snapshot(posts[intendedIndex], delivery);
+    final intended = evidence.snapshotAt(intendedIndex);
+    if (evidence.isReadyAt(intendedIndex)) {
+      return _stay(intendedIndex, FeedReadyReason.intendedReady);
+    }
     if (intended == null) {
       return _stay(intendedIndex, FeedReadyReason.unknownDelivery);
     }
-    if (intended.phase == VideoDeliveryPhase.startable) {
-      return _stay(intendedIndex, FeedReadyReason.intendedReady);
-    }
-    final ready = _firstReady(posts, fromIndex, intendedIndex, delivery);
+    final ready = _firstReady(evidence, fromIndex, intendedIndex);
     final wait =
         intended.phase != VideoDeliveryPhase.failed &&
         intended.eta != null &&
@@ -68,21 +102,13 @@ final class FeedReadySelector {
     return _rescue(intended, intendedIndex, ready, graceExpired);
   }
 
-  int _firstReady(
-    List<VideoPost> posts,
-    int from,
-    int intended,
-    Map<PlaybackDeliveryId, VideoDeliverySnapshot> delivery,
-  ) {
+  int _firstReady(FeedReadinessEvidence evidence, int from, int intended) {
     final direction = intended.compareTo(from);
     if (direction == 0) return intended;
     for (var distance = 1; distance < maxCandidates; distance += 1) {
       final index = intended + (distance * direction);
-      if (index < 0 || index >= posts.length) break;
-      if (_snapshot(posts[index], delivery)?.phase ==
-          VideoDeliveryPhase.startable) {
-        return index;
-      }
+      if (index < 0 || index >= evidence.posts.length) break;
+      if (evidence.isReadyAt(index)) return index;
     }
     return intended;
   }
@@ -119,11 +145,3 @@ FeedReadyDecision _rescue(
   intendedIndex: intendedIndex,
   selectedIndex: selectedIndex,
 );
-
-VideoDeliverySnapshot? _snapshot(
-  VideoPost post,
-  Map<PlaybackDeliveryId, VideoDeliverySnapshot> delivery,
-) {
-  final id = post.media.playbackDeliveryId;
-  return id == null ? null : delivery[id];
-}

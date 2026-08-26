@@ -2,8 +2,8 @@ use crate::partial_range_disk::{self as disk, Entry};
 use crate::partial_range_manifest::IntervalChecksum;
 use crate::partial_range_manifest::RangeManifest;
 use crate::partial_range_paths::StorePaths;
-use anyhow::{ensure, Context, Result};
-use std::ops::Range;
+use anyhow::{ensure, Context as _, Result};
+use core::ops::Range;
 use std::path::PathBuf;
 
 pub(super) struct ReadPlan {
@@ -15,7 +15,7 @@ pub(super) struct ReadPlan {
 }
 
 pub(super) struct ReadOutcome {
-    pub(super) bytes: Vec<u8>,
+    bytes: Vec<u8>,
     pub(super) valid: bool,
 }
 
@@ -26,16 +26,6 @@ pub(super) enum RetryOutcome {
 }
 
 impl ReadPlan {
-    #[cfg(test)]
-    pub(super) fn capture(
-        paths: &StorePaths,
-        key: &str,
-        entry: &Entry,
-        requested: Range<u64>,
-    ) -> Result<Option<Self>> {
-        Self::capture_with_manifest(paths, key, entry, &entry.manifest, requested)
-    }
-
     pub(super) fn capture_with_manifest(
         paths: &StorePaths,
         key: &str,
@@ -82,15 +72,15 @@ impl ReadPlan {
         Ok(ReadOutcome { bytes, valid })
     }
 
-    pub(super) fn is_current(&self, paths: &StorePaths, key: &str, entry: &Entry) -> Result<bool> {
+    pub(super) fn is_current(&self, paths: &StorePaths, key: &str, entry: &Entry) -> bool {
         let current_path = match entry.completion {
             Some(_) => paths.completed(key),
             None => paths.partial(key),
         };
         if current_path != self.path || entry.manifest != self.stable_manifest {
-            return Ok(false);
+            return false;
         }
-        Ok(true)
+        true
     }
 
     fn matches(&self, checksum: &IntervalChecksum, bytes: &[u8]) -> Result<bool> {
@@ -137,9 +127,8 @@ fn slice<'a>(bytes: &'a [u8], envelope: &Range<u64>, span: &Range<u64>) -> Resul
 }
 
 pub(super) fn verified_bytes(outcome: Result<ReadOutcome>) -> Option<Vec<u8>> {
-    outcome
-        .ok()
-        .and_then(|outcome| outcome.valid.then_some(outcome.bytes))
+    let outcome = outcome.ok()?;
+    outcome.valid.then_some(outcome.bytes)
 }
 
 pub(super) fn classify_retry(outcome: Result<ReadOutcome>) -> RetryOutcome {
@@ -163,3 +152,7 @@ fn proves_structural_loss(error: &anyhow::Error) -> bool {
         })
     })
 }
+
+#[cfg(test)]
+#[path = "read_axiom_test.rs"]
+mod axiom_test_support;

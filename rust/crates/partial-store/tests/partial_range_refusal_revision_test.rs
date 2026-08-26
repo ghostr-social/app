@@ -1,13 +1,15 @@
-mod store_fixture;
-
-use ghostr_partial_store::partial_range_store::OutOfSpace;
-use std::time::Duration;
-use store_fixture::{discard, limits, paced_store};
+use crate::partial_range_store::OutOfSpace;
+use crate::tests::store_fixture::{discard, limits, paced_store};
+use core::time::Duration;
 
 #[tokio::test]
 async fn refusal_preserves_a_capacity_change_during_its_decision() {
     let fixture = paced_store("ghostr-refusal-revision", limits(16, 0), 16, Duration::ZERO);
-    fixture.store.write_range("hot", 0, &[1; 8]).await.unwrap();
+    fixture
+        .store
+        .write_range("hot", 0, &[1; 8])
+        .await
+        .expect("valid test fixture");
     fixture.space.set(0);
     let changes = fixture.store.capacity_changes();
 
@@ -15,12 +17,12 @@ async fn refusal_preserves_a_capacity_change_during_its_decision() {
         .store
         .write_range("hot", 8, &[2; 8])
         .await
-        .unwrap_err()
+        .expect_err("scenario must fail")
         .downcast::<OutOfSpace>()
-        .unwrap();
+        .expect("valid test fixture");
 
     assert!(
-        changes.has_changed().unwrap(),
+        changes.has_changed().expect("valid test fixture"),
         "measurement changed capacity"
     );
     assert!(

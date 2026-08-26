@@ -12,10 +12,10 @@ const SECOND: &str = "https://cdn-b.example/video.mp4";
 fn validatorless_response_cannot_rearm_unbound_probe_history() {
     let post = PostId::new("post");
     let mut catalog = Catalog::new();
-    let identity = catalog.upsert(post.clone(), metadata()).transfer(SOURCE).unwrap();
+    let identity = catalog.upsert(post.clone(), metadata()).transfer(SOURCE).expect("valid test fixture");
     let stamp = catalog
         .learn_head_observation_with_stamp_for(&identity, observation(FIRST, 1))
-        .unwrap();
+        .expect("valid test fixture");
     let mut probes = MetadataProbePool::new(1);
     probes.learned_probe(&identity, stamp, false);
     assert!(!catalog.learn_response_observation_for(&identity, observation(SECOND, 2)));

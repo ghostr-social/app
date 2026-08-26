@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![expect(dead_code, reason = "shared fixture APIs vary by integration scenario")]
 
 pub mod cancellation;
 pub mod content_type;
@@ -10,19 +10,25 @@ pub mod reject;
 pub mod short;
 pub mod stall;
 
+use core::sync::atomic::{AtomicU64, Ordering};
 use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_engine::adaptive::RetrievalRequest;
 use ghostr_engine::ByteRange;
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 
-#[allow(unused_imports)]
-pub use download::{context, download_chunk_throttled, DownloadContext};
+#[expect(
+    unused_imports,
+    reason = "shared fixture APIs vary by integration scenario"
+)]
+pub use download::{
+    context, download_chunk_throttled, download_chunk_with_traffic, DownloadContext,
+    ObservationTraffic,
+};
 
 pub fn media_client() -> ghostr_net::media_request_executor::MediaRequestExecutor {
     media_client::media_client()

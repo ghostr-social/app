@@ -5,7 +5,7 @@ use crate::adaptive::{DecisionOutcome, DecisionRecord, DecisionReplayStatus, Res
 fn replay_rejects_every_executed_request_contract_mutation() {
     let mut record = transfer_record();
     assert!(bind(&mut record));
-    let original = serde_json::to_value(record).unwrap();
+    let original = serde_json::to_value(record).expect("valid test fixture");
     let mutations = [
         ("post_id", serde_json::json!("changed")),
         ("source_id", serde_json::json!("https://changed.invalid/x")),
@@ -16,9 +16,9 @@ fn replay_rejects_every_executed_request_contract_mutation() {
     for (path, replacement) in mutations {
         let mut value = original.clone();
         replace(&mut value["executed_request"], path, replacement);
-        let tampered: DecisionRecord = serde_json::from_value(value).unwrap();
+        let tampered: DecisionRecord = serde_json::from_value(value).expect("valid test fixture");
         assert_eq!(
-            tampered.replay(),
+            tampered.integrity_status(),
             DecisionReplayStatus::PlanMismatch,
             "{path}"
         );
@@ -36,7 +36,7 @@ fn terminal_seal_binds_a_coherent_executed_range() {
         },
         ResourceCost::new(32, 32, 0, 1),
     ));
-    let mut value = serde_json::to_value(record).unwrap();
+    let mut value = serde_json::to_value(record).expect("valid test fixture");
     replace(
         &mut value["executed_request"],
         "request.bytes_start",
@@ -48,8 +48,11 @@ fn terminal_seal_binds_a_coherent_executed_range() {
         serde_json::json!(49),
     );
 
-    let tampered: DecisionRecord = serde_json::from_value(value).unwrap();
-    assert_eq!(tampered.replay(), DecisionReplayStatus::PlanMismatch);
+    let tampered: DecisionRecord = serde_json::from_value(value).expect("valid test fixture");
+    assert_eq!(
+        tampered.integrity_status(),
+        DecisionReplayStatus::PlanMismatch
+    );
 }
 
 fn replace(value: &mut serde_json::Value, path: &str, replacement: serde_json::Value) {

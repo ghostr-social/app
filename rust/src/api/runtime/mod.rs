@@ -9,7 +9,7 @@
 pub(crate) mod accepted_events;
 pub(crate) mod configuration;
 pub(crate) mod discovery;
-pub(crate) mod event_queries;
+pub(super) mod event_queries;
 pub(crate) mod registry;
-pub(crate) mod start;
+mod start;
 pub(crate) mod tracked_items;

@@ -23,7 +23,7 @@ pub(crate) struct EventCacheSession {
 }
 
 impl EventCacheSession {
-    pub(crate) fn initial() -> Self {
+    pub(super) fn initial() -> Self {
         Self {
             generation: SessionGeneration::initial(),
             viewer: ViewerScope::Unknown,
@@ -31,17 +31,17 @@ impl EventCacheSession {
         }
     }
 
-    pub(crate) fn matches(&self, generation: SessionGeneration) -> bool {
+    pub(super) fn matches(&self, generation: SessionGeneration) -> bool {
         self.generation == generation
     }
 
-    pub(crate) fn reset(&mut self, generation: SessionGeneration) {
+    pub(super) fn reset(&mut self, generation: SessionGeneration) {
         self.generation = generation;
         self.viewer = ViewerScope::Unknown;
         self.admitted = Some(HashSet::new());
     }
 
-    pub(crate) fn adopt(&mut self, viewer: ViewerScope) -> bool {
+    pub(super) fn adopt(&mut self, viewer: ViewerScope) -> bool {
         if viewer == ViewerScope::Unknown {
             return false;
         }
@@ -53,13 +53,13 @@ impl EventCacheSession {
         replaced
     }
 
-    pub(crate) fn admit(&mut self, event_ids: &[EventId]) {
+    pub(super) fn admit(&mut self, event_ids: &[EventId]) {
         if let Some(admitted) = &mut self.admitted {
             admitted.extend(event_ids.iter().copied());
         }
     }
 
-    pub(crate) fn retain_admitted(&self, events: &mut Vec<Event>) {
+    pub(super) fn retain_admitted(&self, events: &mut Vec<Event>) {
         if let Some(admitted) = &self.admitted {
             events.retain(|event| admitted.contains(&event.id));
         }

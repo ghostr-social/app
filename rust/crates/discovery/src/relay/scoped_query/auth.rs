@@ -26,9 +26,9 @@ impl ScopedQuery {
 
     pub(super) fn handle_closed(
         &mut self,
-        message: String,
+        message: &str,
     ) -> anyhow::Result<Option<QueryCompletion>> {
-        if !is_auth_required(&message) || self.auth_retried {
+        if !is_auth_required(message) || self.auth_retried {
             bail!("relay closed query: {message}");
         }
         self.auth_retried = true;

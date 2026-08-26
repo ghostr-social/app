@@ -27,7 +27,11 @@ impl PreparedTransfer {
     }
 
     pub(crate) fn record_network_commit(&mut self, bytes: u64) {
-        debug_assert_eq!(bytes, self.retrieval.immediate_network_bytes());
+        debug_assert_eq!(
+            bytes,
+            self.retrieval.immediate_network_bytes(),
+            "network commitment must match the prepared retrieval"
+        );
         self.committed_network_bytes = Some(bytes);
     }
 
@@ -75,6 +79,7 @@ impl DownloadWorkers {
         prepared: PreparedTransfer,
         launched_at_ms: u64,
         network_class: ghostr_engine::origin_model::NetworkClass,
+        exploration_claim: Option<ghostr_engine::origin_model::ExplorationClaim>,
     ) -> ActionId {
         let action = prepared.action();
         let priority = prepared.priority.authority;
@@ -89,6 +94,7 @@ impl DownloadWorkers {
             handle,
             store_action: Some(prepared.store_action.clone()),
             committed_network_bytes: prepared.committed_network_bytes,
+            exploration_claim,
         });
         spawn_chunk(ChunkLaunch {
             context: ctx,

@@ -13,7 +13,7 @@ fn incomplete_first_page_stays_reopenable_and_is_replaced_when_settled() {
     let (feed, open) = state.open(FeedSpec::MainFeed {
         viewer: Some(keys.public_key()),
     });
-    let context = open.unwrap().context;
+    let context = open.expect("test fixture precondition must hold").context;
     state.apply_retrieval(
         &context,
         Ok(vec![video_note(&keys, "partial", 40)]),
@@ -46,7 +46,7 @@ fn incomplete_older_page_keeps_the_last_authoritative_cursor() {
     let (feed, open) = state.open(FeedSpec::MainFeed {
         viewer: Some(keys.public_key()),
     });
-    let context = open.unwrap().context;
+    let context = open.expect("test fixture precondition must hold").context;
     state.apply_retrieval(
         &context,
         Ok(vec![video_note(&keys, "head", 100)]),

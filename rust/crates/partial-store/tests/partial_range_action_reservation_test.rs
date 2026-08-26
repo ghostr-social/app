@@ -1,14 +1,16 @@
-mod store_fixture;
-
+use crate::tests::store_fixture::{discard, limits, spaced_store};
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
-use store_fixture::{discard, limits, spaced_store};
 
 #[tokio::test]
 async fn action_reservations_are_exclusive_and_release_exactly_once() {
     let fixture = spaced_store("action-reservation", limits(8, 0), 8);
     let identity = identity();
-    fixture.store.bind_representation(binding()).await.unwrap();
+    fixture
+        .store
+        .bind_representation(binding())
+        .await
+        .expect("valid test fixture");
     let first = fixture
         .store
         .reserve_action(&identity, 1, 6)
@@ -36,7 +38,9 @@ fn binding() -> ghostr_engine::representation::RepresentationBinding {
 }
 
 fn identity() -> ghostr_engine::representation::TransferIdentity {
-    binding().transfer("https://cdn.example/video").unwrap()
+    binding()
+        .transfer("https://cdn.example/video")
+        .expect("valid test fixture")
 }
 
 fn meta() -> VideoMeta {

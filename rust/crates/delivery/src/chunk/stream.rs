@@ -3,21 +3,20 @@
 use crate::chunk::cancel::CancelToken;
 use crate::chunk::downloader::{ChunkSpec, HttpResponseEvidence};
 use crate::chunk::generation::OriginGeneration;
-use crate::chunk::sink::{ChunkWrite, LocalStoreFailure, ResponseWriteMode};
+use crate::chunk::sink::{ChunkWrite, ResponseWriteMode};
 use crate::chunk::traffic::{ChunkTraffic, WholeBodyCompletion};
 use crate::debug::network::NetworkThrottle;
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{bail, ensure, Context as _, Result};
+use core::num::NonZeroU64;
+use core::time::Duration;
 use ghostr_engine::adaptive::{RetrievalRequest, WholeBodyContract};
 use ghostr_engine::ByteRange;
 use ghostr_net::media_request_executor::MediaResponse;
-use std::num::NonZeroU64;
-use std::time::Duration;
 
 mod progress;
-use progress::StoreProgress;
 pub(crate) use progress::Streamed;
-
-const PACED_WRITE_BYTES: usize = 16 * 1024;
+mod store;
+use store::{store_bytes, StoreInput};
 
 pub(crate) struct StreamInput<'a, 'spec, W: ChunkWrite + ?Sized> {
     pub response: MediaResponse,
@@ -50,7 +49,12 @@ async fn stream_range<W: ChunkWrite + ?Sized>(
             return ended_range(written, input.cancel);
         };
         let take = chunk.len().min((range.len() - written) as usize);
-        let stored = store_bytes(input, range.start + written, &chunk[..take]).await?;
+        let stored = store_bytes(
+            StoreInput::from(&*input),
+            range.start + written,
+            &chunk[..take],
+        )
+        .await?;
         written += stored.bytes;
         if stored.cancelled {
             return Ok(stopped(written));
@@ -77,7 +81,7 @@ async fn stream_whole<W: ChunkWrite + ?Sized>(
             chunk.len() as u64,
             contract,
         )?;
-        let stored = store_bytes(input, written, &chunk).await?;
+        let stored = store_bytes(StoreInput::from(&*input), written, &chunk).await?;
         written += stored.bytes;
         if stored.cancelled {
             return Ok(stopped(written));
@@ -85,35 +89,11 @@ async fn stream_whole<W: ChunkWrite + ?Sized>(
     }
 }
 
-async fn store_bytes<W: ChunkWrite + ?Sized>(
-    input: &mut StreamInput<'_, '_, W>,
-    offset: u64,
-    bytes: &[u8],
-) -> Result<StoreProgress> {
-    let quantum = write_quantum(input.network, bytes.len());
-    let mut stored = 0;
-    for part in bytes.chunks(quantum) {
-        if pace_or_cancel(input.network, part.len() as u64, input.cancel).await {
-            return Ok(StoreProgress::cancelled(stored));
-        }
-        if !input
-            .sink
-            .write(input.generation, input.mode, offset + stored, part)
-            .await
-            .context(LocalStoreFailure)?
-        {
-            return Ok(StoreProgress::cancelled(stored));
-        }
-        stored += part.len() as u64;
-    }
-    Ok(StoreProgress::complete(stored))
-}
-
 async fn next_input<W: ChunkWrite + ?Sized>(
     input: &mut StreamInput<'_, '_, W>,
 ) -> Result<Option<bytes::Bytes>> {
     let next = tokio::select! {
-        _ = input.cancel.cancelled() => Ok(None),
+        () = input.cancel.cancelled() => Ok(None),
         chunk = next_chunk(&mut input.response, input.spec.timeouts.idle) => chunk,
     }?;
     if let Some(chunk) = &next {
@@ -127,20 +107,6 @@ async fn next_chunk(response: &mut MediaResponse, idle: Duration) -> Result<Opti
         .await
         .context("chunk body read timed out")?
         .context("chunk body read failed")
-}
-
-async fn pace_or_cancel(
-    network: Option<&NetworkThrottle>,
-    bytes: u64,
-    cancel: &CancelToken,
-) -> bool {
-    let Some(throttle) = network else {
-        return false;
-    };
-    tokio::select! {
-        _ = cancel.cancelled() => true,
-        _ = throttle.pace(bytes) => false,
-    }
 }
 
 fn ended_range(written: u64, cancel: &CancelToken) -> Result<Streamed> {
@@ -168,13 +134,6 @@ fn ended_whole(
         whole_body_completion: NonZeroU64::new(written)
             .map(|total| WholeBodyCompletion::at_network_eof(total, &input.response_evidence)),
     })
-}
-
-fn write_quantum(network: Option<&NetworkThrottle>, available: usize) -> usize {
-    match network.is_some_and(|throttle| throttle.profile().bandwidth_kbps > 0) {
-        true => available.clamp(1, PACED_WRITE_BYTES),
-        false => available.max(1),
-    }
 }
 
 fn stopped(bytes: u64) -> Streamed {

@@ -1,9 +1,7 @@
-mod feed_support;
-
-use feed_support::{addressable_video, empty_graph, parsed, repost};
-use ghostr_discovery::content::reposts::feed_post_from_event;
-use ghostr_discovery::feed::spec::FeedSpec;
-use ghostr_discovery::feed::store::FeedStore;
+use crate::content::reposts::feed_post_from_event;
+use crate::feed::spec::FeedSpec;
+use crate::feed::store::FeedStore;
+use crate::tests::feed_support::{addressable_video, empty_graph, parsed, repost};
 use nostr_sdk::Keys;
 
 #[test]
@@ -21,7 +19,10 @@ fn coordinate_repost_resolves_the_newest_verified_revision_in_its_batch() {
 
     store.ingest_first_page(
         feed,
-        vec![feed_post_from_event(&wrapper).unwrap(), parsed(&current)],
+        vec![
+            feed_post_from_event(&wrapper).expect("valid test fixture"),
+            parsed(&current),
+        ],
         &empty_graph(),
     );
     let repost = &store.posts(feed)[0];

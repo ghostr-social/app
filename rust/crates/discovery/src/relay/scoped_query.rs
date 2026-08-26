@@ -1,8 +1,8 @@
 use super::scoped_state::{CloseGuard, EventSink};
-use anyhow::{bail, Context};
+use anyhow::{bail, Context as _};
+use core::time::Duration;
 use nostr_sdk::pool::RelayNotification;
 use nostr_sdk::{ClientMessage, Event, Filter, Relay, RelayMessage, RelayStatus, SubscriptionId};
-use std::time::Duration;
 use tokio::sync::broadcast::error::RecvError;
 use tokio::time::{timeout_at, Instant};
 
@@ -183,7 +183,7 @@ impl ScopedQuery {
             RelayMessage::Closed {
                 subscription_id,
                 message,
-            } if subscription_id == self.id => self.handle_closed(message),
+            } if subscription_id == self.id => self.handle_closed(&message),
             _ => Ok(None),
         }
     }

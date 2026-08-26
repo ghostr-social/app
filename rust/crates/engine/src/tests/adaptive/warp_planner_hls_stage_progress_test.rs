@@ -13,7 +13,7 @@ fn current_initialization_stage_remains_worth_selecting_at_the_production_envelo
     state.hls_candidates.push(HlsCandidateSnapshot {
         post: PostId::new("p0"),
         feed_offset: FeedOffset::new(0),
-        view_probability: ViewProbability::new(1.0).unwrap(),
+        view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
         startup_value_ms: 750,
         cursor: Default::default(),
         state: HlsBootstrapState::Pending {

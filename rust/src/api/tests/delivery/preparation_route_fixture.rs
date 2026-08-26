@@ -1,6 +1,6 @@
 use crate::api::delivery_types::FfiPlaybackPreparationPlan;
 use crate::api::playback_preparation_stream::{watch_preparation, PreparationOut};
-use std::time::Duration;
+use core::time::Duration;
 use tokio::sync::mpsc;
 
 mod authority;
@@ -25,13 +25,18 @@ impl PreparationRouteFixture {
         let router = authority.router();
         let context = authority.context(endpoint);
         let server = tokio::spawn(async move {
-            axum::serve(listener, router).await.unwrap();
+            axum::serve(listener, router)
+                .await
+                .expect("test fixture precondition must hold");
         });
         let (sender, plans) = mpsc::unbounded_channel();
         tokio::spawn(watch_preparation(ChannelOut(sender), context));
         Self {
             plans,
-            client: reqwest::Client::builder().no_proxy().build().unwrap(),
+            client: reqwest::Client::builder()
+                .no_proxy()
+                .build()
+                .expect("test fixture precondition must hold"),
             server,
         }
     }

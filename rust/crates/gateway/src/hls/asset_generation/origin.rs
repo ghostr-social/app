@@ -3,7 +3,7 @@ use ghostr_net::media_request_executor::MediaResponse;
 use ghostr_net::strong_etag::{single_strong_etag, StrongEtag};
 use reqwest::header::HeaderValue;
 use reqwest::Url;
-use sha2::{Digest, Sha256};
+use sha2::{Digest as _, Sha256};
 
 const URL_DOMAIN: &[u8] = b"ghostr:hls-final-url:v1";
 const MAX_ETAG_BYTES: usize = 1_024;

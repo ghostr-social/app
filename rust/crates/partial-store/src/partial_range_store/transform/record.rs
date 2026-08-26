@@ -1,6 +1,6 @@
 use crate::partial_range_disk as disk;
 use crate::partial_range_paths::StorePaths;
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Context as _, Result};
 use ghostr_engine::adaptive::TransformKind;
 use ghostr_engine::representation::RepresentationBinding;
 

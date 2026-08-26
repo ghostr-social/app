@@ -7,6 +7,7 @@ mod priced_transform_fixture;
 mod transform_delivery_fixture;
 
 use delivery_fixture::decision::wait_for_history;
+use delivery_fixture::evidence::DeliveryEvidence as _;
 use ghostr_delivery::delivery_events::DecisionHistorySnapshot;
 use ghostr_engine::adaptive::{DecisionOutcome, DecisionRecord, RecordedWarpCommand};
 use priced_transform_fixture::PricedRemux;
@@ -24,7 +25,7 @@ async fn measured_transform_changes_later_cpu_price_and_records_resources() {
         .records
         .iter()
         .find(|record| transform(record))
-        .unwrap();
+        .expect("valid test fixture");
     let actual = terminal
         .actual_resources
         .expect("actual Transform resources");
@@ -37,9 +38,17 @@ async fn measured_transform_changes_later_cpu_price_and_records_resources() {
         .records
         .iter()
         .find(|record| later_cpu_price(record, terminal.sequence))
-        .unwrap();
-    assert!(later.warp_decision.as_ref().unwrap().prices.cpu_micros > 0);
-    harness.handle.clear().await.unwrap();
+        .expect("valid test fixture");
+    assert!(
+        later
+            .warp_decision
+            .as_ref()
+            .expect("valid test fixture")
+            .prices
+            .cpu_micros
+            > 0
+    );
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }
 

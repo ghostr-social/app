@@ -1,3 +1,4 @@
+use core::time::Duration;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::playback::{
     AdaptiveBufferPolicy, EstimateConfidence, MediaConsumption, NetworkConditions,
@@ -6,7 +7,6 @@ use ghostr_engine::playback::{
 use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::video_rendition::VideoRendition;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
-use std::time::Duration;
 
 pub(super) struct SelectedRendition {
     pub(super) advertised: VideoMeta,
@@ -53,14 +53,14 @@ fn stalled_selection() -> (
         1_000,
         PlaybackPhase::NetworkStalled,
     )
-    .unwrap();
+    .expect("test fixture precondition must hold");
     let target =
         AdaptiveBufferPolicy::default().target(network, MediaConsumption::new(6_000_000, 1_000));
     (network, observation, target)
 }
 
 fn variant(meta: VideoMeta, bitrate: u64) -> VideoRendition {
-    VideoRendition::try_new(meta, Some(bitrate)).unwrap()
+    VideoRendition::try_new(meta, Some(bitrate)).expect("test fixture precondition must hold")
 }
 
 fn meta(name: &str, size_bytes: u64) -> VideoMeta {

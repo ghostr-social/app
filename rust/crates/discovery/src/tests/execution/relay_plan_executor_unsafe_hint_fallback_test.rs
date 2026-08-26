@@ -1,4 +1,5 @@
-use crate::execution::relay_executor::target_enrichment::target_plan;
+use crate::execution::relay_executor::target_enrichment::axiom_test_support::target_plan;
+
 use crate::query::search::RelayTarget;
 use nostr_sdk::{EventBuilder, Keys, Kind, Tag};
 
@@ -16,7 +17,7 @@ fn unsafe_but_syntactic_hint_falls_back_to_the_author_outbox() {
         .sign_with_keys(&Keys::generate())
         .expect("wrapper");
 
-    let plan = target_plan(std::slice::from_ref(&wrapper)).expect("fallback plan");
+    let plan = target_plan(core::slice::from_ref(&wrapper)).expect("fallback plan");
 
     assert_eq!(plan.queries.len(), 1);
     assert_eq!(plan.queries[0].target, RelayTarget::OutboxRelays);

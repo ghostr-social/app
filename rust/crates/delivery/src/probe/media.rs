@@ -2,7 +2,9 @@
 //! range support, and content type through the SSRF-safe outbound
 //! client. Body requests remain exclusively owned by policy grants.
 
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
+use core::future::Future;
+use core::time::Duration;
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_engine::host_stats::{host_of, HostStats};
@@ -13,8 +15,6 @@ use ghostr_net::origin_content_type;
 use ghostr_net::response_limits::validate_response_headers;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use reqwest::header::{HeaderValue, ACCEPT_ENCODING};
-use std::future::Future;
-use std::time::Duration;
 use tokio::time::Instant;
 
 mod response_headers;
@@ -36,40 +36,29 @@ pub struct ProbeSpec<'a> {
     pub url: &'a str,
     pub priority: PreemptionAuthority,
     pub timeouts: TransferTimeouts,
+    pub network: Option<&'a dyn ProbeNetwork>,
 }
 
-pub(crate) struct ObservedProbe {
+pub trait ProbeNetwork: Sync {
+    fn network_class(&self) -> ghostr_engine::origin_model::NetworkClass;
+}
+
+pub struct ObservedProbe {
     pub outcome: Result<ProbeResult>,
-    pub concurrency: usize,
-    pub network_class: ghostr_engine::origin_model::NetworkClass,
+    pub(crate) concurrency: usize,
+    pub(crate) network_class: ghostr_engine::origin_model::NetworkClass,
 }
 
 /// Probes `url` with HEAD. Range support remains unknown when the
 /// header is absent; a later policy-granted body request resolves it.
-pub async fn probe(spec: ProbeSpec<'_>, stats: &mut HostStats) -> Result<ProbeResult> {
-    probe_observed(spec, stats).await.outcome
-}
-
-pub(crate) async fn probe_observed(spec: ProbeSpec<'_>, stats: &mut HostStats) -> ObservedProbe {
-    observe(spec, stats, None).await
-}
-
-pub(crate) async fn probe_observed_on_network(
-    spec: ProbeSpec<'_>,
-    stats: &mut HostStats,
-    network: &crate::delivery_events::DeliveryNetworkStatusReader,
-) -> ObservedProbe {
-    observe(spec, stats, Some(network)).await
-}
-
-async fn observe(
-    spec: ProbeSpec<'_>,
-    stats: &mut HostStats,
-    network: Option<&crate::delivery_events::DeliveryNetworkStatusReader>,
-) -> ObservedProbe {
+///
+/// # Errors
+///
+/// Returns an error when admission, transport, or response validation fails.
+pub async fn probe(spec: ProbeSpec<'_>, stats: &mut HostStats) -> ObservedProbe {
     let mut concurrency = 0;
     let mut network_class = ghostr_engine::origin_model::NetworkClass::Unavailable;
-    let outcome = describe(&spec, &mut concurrency, &mut network_class, network).await;
+    let outcome = describe(&spec, &mut concurrency, &mut network_class).await;
     ObservedProbe {
         outcome: conclude(stats, spec.url, outcome),
         concurrency,
@@ -91,9 +80,8 @@ async fn describe(
     spec: &ProbeSpec<'_>,
     concurrency: &mut usize,
     network_class: &mut ghostr_engine::origin_model::NetworkClass,
-    network: Option<&crate::delivery_events::DeliveryNetworkStatusReader>,
 ) -> Result<ProbeFacts> {
-    let (head, ttfb, observed) = send_head(spec, concurrency, network_class, network).await?;
+    let (head, ttfb, observed) = send_head(spec, concurrency, network_class).await?;
     validate_response_headers(head.headers())?;
     let head = head.error_for_status().context("HEAD probe rejected")?;
     require_identity_encoding(head.headers()).context("HEAD response is encoded")?;
@@ -105,7 +93,6 @@ async fn send_head(
     spec: &ProbeSpec<'_>,
     concurrency: &mut usize,
     network_class: &mut ghostr_engine::origin_model::NetworkClass,
-    network: Option<&crate::delivery_events::DeliveryNetworkStatusReader>,
 ) -> Result<(
     MediaResponse,
     Duration,
@@ -118,7 +105,9 @@ async fn send_head(
         .head()
         .admit_for(spec.timeouts.admission)
         .await?;
-    *network_class = network.map_or(*network_class, |status| status.network_class());
+    *network_class = spec
+        .network
+        .map_or(*network_class, ProbeNetwork::network_class);
     *concurrency = RequestAuthority::from_url(spec.url)
         .map(|authority| spec.requests.active_for(&authority))
         .unwrap_or(1)

@@ -58,7 +58,7 @@ impl DebugVideos {
         true
     }
 
-    pub fn clear(&self) {
+    pub(super) fn clear(&self) {
         self.retained().clear();
     }
 
@@ -98,6 +98,8 @@ fn delivery_candidate(registration: DebugVideoRegistration) -> anyhow::Result<De
             size_bytes: registration.size_bytes,
             duration_ms: registration.duration_ms,
         },
+        preview: None,
+        metadata_evidence: Vec::new(),
         renditions: Vec::new(),
         discovered_at: 0,
     })

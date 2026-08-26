@@ -24,7 +24,7 @@ pub enum PlannerRetryAvailability {
 }
 
 impl PlannerRetryAvailability {
-    pub const fn permits_request(self) -> bool {
+    pub(super) const fn permits_request(self) -> bool {
         matches!(self, Self::Ready)
     }
 }
@@ -52,7 +52,7 @@ impl PlannerCapability {
         }
     }
 
-    pub const fn required_transform(self) -> Option<TransformCapability> {
+    pub(crate) const fn required_transform(self) -> Option<TransformCapability> {
         match self {
             Self::Reported {
                 playback_supported: false,
@@ -76,9 +76,9 @@ impl PlannerCapability {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct TransformCapability {
-    pub kind: TransformKind,
-    pub estimated_cpu_ms: u64,
-    pub output_upper_bytes: u64,
+    pub(crate) kind: TransformKind,
+    pub(crate) estimated_cpu_ms: u64,
+    pub(crate) output_upper_bytes: u64,
 }
 
 impl TransformCapability {
@@ -130,53 +130,53 @@ impl PreviewAvailability {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PlannerCandidateContext {
     pub semantic: SemanticScore,
-    pub capability: PlannerCapability,
-    pub quality: PlannerQuality,
-    pub preview: PreviewAvailability,
+    pub(crate) capability: PlannerCapability,
+    pub(crate) quality: PlannerQuality,
+    pub(crate) preview: PreviewAvailability,
     pub watch: PlannerWatchEvidence,
-    pub head_probe: HeadProbeHistory,
-    pub retry: PlannerRetryAvailability,
-    pub whole_body_exhaustion: Option<WholeBodyExhaustion>,
+    pub(crate) head_probe: HeadProbeHistory,
+    pub(super) retry: PlannerRetryAvailability,
+    pub(crate) whole_body_exhaustion: Option<WholeBodyExhaustion>,
 }
 
 impl PlannerContext {
-    pub fn with_capability(mut self, post: PostId, capability: PlannerCapability) -> Self {
-        if let Some(candidate) = self.candidates.get_mut(&post) {
+    pub fn with_capability(mut self, post: &PostId, capability: PlannerCapability) -> Self {
+        if let Some(candidate) = self.candidates.get_mut(post) {
             candidate.capability = capability;
         }
         self
     }
 
-    pub fn with_semantic(mut self, post: PostId, semantic: SemanticScore) -> Self {
-        if let Some(candidate) = self.candidates.get_mut(&post) {
+    pub fn with_semantic(mut self, post: &PostId, semantic: SemanticScore) -> Self {
+        if let Some(candidate) = self.candidates.get_mut(post) {
             candidate.semantic = semantic;
         }
         self
     }
 
-    pub fn with_quality(mut self, post: PostId, quality: PlannerQuality) -> Self {
-        if let Some(candidate) = self.candidates.get_mut(&post) {
+    pub fn with_quality(mut self, post: &PostId, quality: PlannerQuality) -> Self {
+        if let Some(candidate) = self.candidates.get_mut(post) {
             candidate.quality = quality;
         }
         self
     }
 
-    pub fn with_preview(mut self, post: PostId, preview: PreviewAvailability) -> Self {
-        if let Some(candidate) = self.candidates.get_mut(&post) {
+    pub fn with_preview(mut self, post: &PostId, preview: PreviewAvailability) -> Self {
+        if let Some(candidate) = self.candidates.get_mut(post) {
             candidate.preview = preview;
         }
         self
     }
 
-    pub fn with_watch(mut self, post: PostId, watch: PlannerWatchEvidence) -> Self {
-        if let Some(candidate) = self.candidates.get_mut(&post) {
+    pub fn with_watch(mut self, post: &PostId, watch: PlannerWatchEvidence) -> Self {
+        if let Some(candidate) = self.candidates.get_mut(post) {
             candidate.watch = watch;
         }
         self
     }
 
-    pub fn with_head_probe_history(mut self, post: PostId, history: HeadProbeHistory) -> Self {
-        if let Some(candidate) = self.candidates.get_mut(&post) {
+    pub fn with_head_probe_history(mut self, post: &PostId, history: HeadProbeHistory) -> Self {
+        if let Some(candidate) = self.candidates.get_mut(post) {
             candidate.head_probe = history;
         }
         self
@@ -184,10 +184,10 @@ impl PlannerContext {
 
     pub fn with_retry_availability(
         mut self,
-        post: PostId,
+        post: &PostId,
         availability: PlannerRetryAvailability,
     ) -> Self {
-        if let Some(candidate) = self.candidates.get_mut(&post) {
+        if let Some(candidate) = self.candidates.get_mut(post) {
             candidate.retry = availability;
         }
         self

@@ -1,12 +1,12 @@
 mod gateway_fixture;
 
+use core::time::Duration;
 use gateway_fixture::progressive_delivery::ProgressiveDeliveryHarness;
 use ghostr_delivery::delivery_events::{DeliveryPlayback, FocusItem};
 use ghostr_engine::playback::{
     PlaybackObservation, PlaybackObservationSequence, PlaybackPhase, PlaybackSession,
 };
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
-use std::time::Duration;
 
 #[tokio::test]
 async fn progressive_journey_records_control_and_player_events() {
@@ -46,7 +46,7 @@ fn playback(phase: PlaybackPhase, sequence: u64) -> DeliveryPlayback {
             1_000,
             phase,
         )
-        .unwrap(),
+        .expect("valid test fixture"),
     }
 }
 

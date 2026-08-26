@@ -5,17 +5,17 @@
 use crate::feed::cursor::retrieval_cursor;
 use crate::query::search::QueryPlan;
 use crate::retrieval_types::{EventProgress, FeedContext, PlanFailure, RetrievalPriority};
+use core::future::Future;
+use core::pin::Pin;
 use nostr_sdk::{Event, EventId, Timestamp};
-use std::future::Future;
-use std::pin::Pin;
 
 /// One retrieval as handed to the executor.
 #[derive(Clone, Debug)]
 pub struct PlannedRetrieval {
-    pub(crate) context: FeedContext,
-    pub(crate) priority: RetrievalPriority,
+    pub(super) context: FeedContext,
+    pub(super) priority: RetrievalPriority,
     pub plan: QueryPlan,
-    pub(crate) deferred_reposts: Vec<Event>,
+    pub(super) deferred_reposts: Vec<Event>,
 }
 
 /// Boxed result future so the executor trait stays object-safe.
@@ -24,10 +24,10 @@ pub type PlanFuture = Pin<Box<dyn Future<Output = Result<Vec<Event>, PlanFailure
 /// A completed scheduled page plus the conservative cursor its wire filters
 /// reached. Generic executors derive it from their merged events.
 pub struct PlanPage {
-    pub(crate) events: Vec<Event>,
-    pub(crate) cursor: Option<Timestamp>,
-    pub(crate) complete: bool,
-    pub(crate) repost_retry: RepostRetryDelta,
+    pub(super) events: Vec<Event>,
+    pub(super) cursor: Option<Timestamp>,
+    pub(super) complete: bool,
+    pub(super) repost_retry: RepostRetryDelta,
 }
 
 impl PlanPage {
@@ -44,16 +44,11 @@ impl PlanPage {
 
 #[derive(Default)]
 pub(crate) struct RepostRetryDelta {
-    pub(crate) considered: Vec<EventId>,
-    pub(crate) deferred: Vec<Event>,
+    pub(super) considered: Vec<EventId>,
+    pub(super) deferred: Vec<Event>,
 }
 
-impl RepostRetryDelta {
-    #[cfg(test)]
-    pub(crate) fn is_pending(&self) -> bool {
-        !self.deferred.is_empty()
-    }
-}
+impl RepostRetryDelta {}
 
 pub type PlanPageFuture = Pin<Box<dyn Future<Output = Result<PlanPage, PlanFailure>> + Send>>;
 
@@ -83,3 +78,7 @@ pub trait PlanExecutor: Send + Sync {
         Box::pin(async move { execution.await.map(PlanPage::from_events) })
     }
 }
+
+#[cfg(test)]
+#[path = "plan_executor_axiom_test.rs"]
+mod axiom_test_support;

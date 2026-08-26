@@ -17,14 +17,14 @@ impl MediaHttpRequests for BodyClient {
 async fn outbound_media_request_body_is_rejected_before_admission() {
     let requests = MediaRequestExecutor::new(
         Arc::new(BodyClient(Client::new())),
-        MediaRequestLimits::try_new(1, 1).unwrap(),
+        MediaRequestLimits::try_new(1, 1).expect("valid test fixture"),
     );
     let request = requests
         .get(
             "https://media.example/video",
             PreemptionAuthority::Transition,
         )
-        .unwrap();
+        .expect("valid test fixture");
 
     assert!(
         request.admit().await.is_err(),

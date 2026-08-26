@@ -1,9 +1,9 @@
 use crate::hls::asset_response::AssetResponseEnvelope;
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Context as _, Result};
 use ghostr_delivery::segmented::CachedHlsGeneration;
 use ghostr_net::media_request_executor::MediaResponse;
 use reqwest::Url;
-use sha2::{Digest, Sha256};
+use sha2::{Digest as _, Sha256};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{Mutex, OwnedMutexGuard};
@@ -72,13 +72,13 @@ impl AssetRegistry {
         if !self.entries.contains_key(&key) && self.entries.len() >= maximum {
             bail!("secure HLS asset generation capacity is exhausted");
         }
-        let state = self
-            .entries
-            .entry(key)
-            .or_insert_with(|| Arc::new(Mutex::new(AssetBinding::Vacant)))
-            .clone();
+        let state = std::sync::Arc::clone(
+            self.entries
+                .entry(key)
+                .or_insert_with(|| Arc::new(Mutex::new(AssetBinding::Vacant))),
+        );
         Ok(AssetFence {
-            owner: self.owner.clone(),
+            owner: std::sync::Arc::clone(&self.owner),
             state,
         })
     }
@@ -130,7 +130,7 @@ impl AssetFence {
     }
 
     async fn lock(&self, deadline: Instant) -> Result<OwnedMutexGuard<AssetBinding>> {
-        timeout_at(deadline, self.state.clone().lock_owned())
+        timeout_at(deadline, std::sync::Arc::clone(&self.state).lock_owned())
             .await
             .context("HLS asset generation wait timed out")
     }
@@ -139,19 +139,19 @@ impl AssetFence {
 impl AssetBinding {
     fn next(&mut self, cached: Option<CachedHlsGeneration>) -> Result<BindingPlan> {
         match self {
-            Self::Vacant => self.bind_first(cached),
+            Self::Vacant => Ok(self.bind_first(cached)),
             Self::Origin(generation) => Ok(BindingPlan::Origin(generation.clone())),
             Self::Cache(_) => self.reuse_cache(cached),
             Self::Retired => bail!("HLS asset generation is retired"),
         }
     }
 
-    fn bind_first(&mut self, cached: Option<CachedHlsGeneration>) -> Result<BindingPlan> {
+    fn bind_first(&mut self, cached: Option<CachedHlsGeneration>) -> BindingPlan {
         let Some(generation) = cached else {
-            return Ok(BindingPlan::First);
+            return BindingPlan::First;
         };
         *self = Self::Cache(generation);
-        Ok(BindingPlan::Cache(generation))
+        BindingPlan::Cache(generation)
     }
 
     fn reuse_cache(&mut self, cached: Option<CachedHlsGeneration>) -> Result<BindingPlan> {

@@ -23,3 +23,34 @@ fn delayed_verified_primary_selects_one_exact_alternate_hedge() {
     );
     assert_eq!(selected.node.resources.requests, 1);
 }
+
+#[test]
+fn advertised_hash_alone_cannot_authorize_sparse_mirror_hedging() {
+    let work = mirror_plan(HedgeCase::AdvertisedOnly);
+
+    assert_no_hedge(work);
+}
+
+#[test]
+fn one_verified_source_cannot_authorize_ranges_from_an_unverified_alternate() {
+    let work = mirror_plan(HedgeCase::PrimaryVerifiedOnly);
+
+    assert_no_hedge(work);
+}
+
+#[test]
+fn alternate_validator_rotation_revokes_sparse_mirror_authority() {
+    let work = mirror_plan(HedgeCase::AlternateRotated);
+
+    assert_no_hedge(work);
+}
+
+fn assert_no_hedge(work: crate::manager::plan::PlannedWork) {
+    assert!(work
+        .warp
+        .expect("advanced decision")
+        .generated
+        .actions
+        .iter()
+        .all(|action| !matches!(action.command, PlannerCommand::Hedge { .. })));
+}

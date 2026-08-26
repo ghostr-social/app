@@ -71,7 +71,7 @@ impl PreparationLedger {
         let Some(admitted) = self.active.get(followup.post()) else {
             return Err(self.unanchored(&followup));
         };
-        let mismatch = self.followup_mismatch(&followup, admitted);
+        let mismatch = Self::followup_mismatch(&followup, admitted);
         let report = followup.anchor_to(admitted).ok_or(mismatch)?;
         if report.advances(admitted) {
             return Ok(report);
@@ -148,16 +148,14 @@ fn actor_disposition(outcome: PlayerPreparationActorOutcome) -> PlayerPreparatio
 
 fn ingress(probe: ReceiptProbe) -> PlayerPreparationIngress {
     match probe {
-        ReceiptProbe::Pending => PlayerPreparationIngress::Pending,
-        ReceiptProbe::Final(PlayerPreparationDisposition::Applied)
-        | ReceiptProbe::Final(PlayerPreparationDisposition::Duplicate) => {
-            PlayerPreparationIngress::Duplicate
-        }
+        ReceiptProbe::Final(
+            PlayerPreparationDisposition::Applied | PlayerPreparationDisposition::Duplicate,
+        ) => PlayerPreparationIngress::Duplicate,
         ReceiptProbe::Final(PlayerPreparationDisposition::Stale) => PlayerPreparationIngress::Stale,
         ReceiptProbe::Final(PlayerPreparationDisposition::Rejected) | ReceiptProbe::Conflict => {
             PlayerPreparationIngress::Rejected
         }
-        ReceiptProbe::Final(_) => PlayerPreparationIngress::Pending,
+        ReceiptProbe::Pending | ReceiptProbe::Final(_) => PlayerPreparationIngress::Pending,
     }
 }
 

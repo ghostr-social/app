@@ -8,9 +8,9 @@ mod network;
 mod session;
 
 pub use buffer::{AdaptiveBufferPolicy, BufferTarget};
+use core::time::Duration;
 pub use network::{EstimateConfidence, NetworkConditions};
 pub use session::{PlaybackObservationSequence, PlaybackSession, PlaybackStatus};
-use std::time::Duration;
 
 /// Byte window shared by protected prefetch grants and progressive demand.
 pub const PLAYBACK_SLICE_BYTES: u64 = 256 * 1024;
@@ -46,7 +46,7 @@ impl MediaConsumption {
         }
     }
 
-    pub fn bits_per_second(self) -> u64 {
+    fn bits_per_second(self) -> u64 {
         let scaled = u128::from(self.bitrate_bits_per_second)
             .saturating_mul(u128::from(self.playback_rate_milli))
             / 1_000;
@@ -63,6 +63,12 @@ pub struct PlaybackObservation {
 }
 
 impl PlaybackObservation {
+    /// Creates a coherent playback observation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the buffered extent precedes the position or the playback rate is
+    /// zero.
     pub fn try_new(
         position: Duration,
         buffered_extent: Duration,
@@ -84,7 +90,7 @@ impl PlaybackObservation {
     }
 
     pub fn buffer_ahead(self) -> Duration {
-        self.buffered_extent - self.position
+        self.buffered_extent.saturating_sub(self.position)
     }
 
     pub fn position(self) -> Duration {

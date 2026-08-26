@@ -7,6 +7,7 @@ typedef WarpFeedProductionComposition = ({
   ProgressiveDeviceTelemetry telemetry,
   WarpFeedPreparationMetrics preparation,
   WarpFeedRustProbe rustProbe,
+  WarpControlledNetworkStatus network,
 });
 
 typedef _WarpFeedRuntime = ({
@@ -23,5 +24,7 @@ typedef _WarpFeedEvidence = ({
   WarpFeedPlayerStageProbe playerStages,
   WarpFeedPreparationMetrics preparation,
   WarpFeedFocusProbe focus,
+  WarpFeedDeliveryProbe deliveryProbe,
   WarpFeedRustProbe rustProbe,
+  WarpControlledNetworkStatus network,
 });

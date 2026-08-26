@@ -6,15 +6,15 @@ use ghostr_engine::{DataUsageLevel, EngineParams};
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
-use std::path::PathBuf;
+use std::path::Path;
 use std::sync::Arc;
 
-pub(crate) fn config(store: Arc<PartialRangeStore>, root: PathBuf) -> DeliveryManagerConfig {
+pub(super) fn config(store: Arc<PartialRangeStore>, root: &Path) -> DeliveryManagerConfig {
     DeliveryManagerConfig {
         store,
         requests: MediaRequestExecutor::new(
             Arc::new(NoRequest),
-            MediaRequestLimits::try_new(1, 1).unwrap(),
+            MediaRequestLimits::try_new(1, 1).expect("valid test fixture"),
         ),
         cache: CacheRegistry::new(),
         segmented: SegmentedCache::new(),

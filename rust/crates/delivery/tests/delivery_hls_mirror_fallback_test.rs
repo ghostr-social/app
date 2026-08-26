@@ -1,6 +1,7 @@
 mod delivery_fixture;
 mod hls_terminal_wait;
 use axum::http::StatusCode;
+use core::time::Duration;
 use delivery_fixture::hls::{serve, HlsGate};
 use delivery_fixture::hls_recovery::{serve as serve_script, HlsScript};
 use delivery_fixture::items::{focus_now, sized_item};
@@ -8,7 +9,6 @@ use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use ghostr_delivery::segmented::SegmentedPhase;
 use ghostr_engine::DeliveryKind;
-use std::time::Duration;
 
 #[tokio::test]
 async fn failed_first_hls_source_switches_to_the_healthy_mirror() {
@@ -28,7 +28,7 @@ async fn failed_first_hls_source_switches_to_the_healthy_mirror() {
     tokio::time::timeout(Duration::from_secs(2), gate.started.acquire())
         .await
         .expect("healthy mirror starts before the failed source backoff")
-        .unwrap()
+        .expect("valid test fixture")
         .forget();
     gate.release.add_permits(1);
     let terminal = hls_terminal_wait::wait_terminal(&harness.segmented, "stream").await;

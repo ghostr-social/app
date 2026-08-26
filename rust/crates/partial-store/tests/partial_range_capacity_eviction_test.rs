@@ -1,6 +1,4 @@
-mod store_fixture;
-
-use store_fixture::{discard, limits, spaced_store};
+use crate::tests::store_fixture::{discard, limits, spaced_store};
 
 /// Other apps eat the same filesystem, so the cap can fall under what
 /// the store already holds. Refusing new writes is not enough then: the

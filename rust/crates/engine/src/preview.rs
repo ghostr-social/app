@@ -14,7 +14,7 @@ impl PreviewDescriptor {
         })
     }
 
-    pub const fn encoded_bytes(self) -> u64 {
+    pub(super) const fn encoded_bytes(self) -> u64 {
         match self {
             Self::InlineBlurhash { encoded_bytes } => encoded_bytes as u64,
         }

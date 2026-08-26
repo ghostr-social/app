@@ -1,6 +1,6 @@
-use ghostr_engine::catalog::{Catalog, PlaybackEvidence};
-use ghostr_engine::evidence::Confidence;
-use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
+use crate::catalog::{Catalog, PlaybackEvidence};
+use crate::evidence::Confidence;
+use crate::{DeliveryKind, PostId, VideoMeta};
 
 #[test]
 fn first_frame_updates_readiness_without_promoting_integrity() {
@@ -23,7 +23,7 @@ fn first_frame_updates_readiness_without_promoting_integrity() {
 
     let assessment = catalog
         .lookup(&post)
-        .unwrap()
+        .expect("valid test fixture")
         .evidence_assessment_for("https://cdn.example/video.mp4", 10);
     assert!(assessment.confidence.readiness > Confidence::none());
     assert_eq!(assessment.confidence.integrity, Confidence::none());

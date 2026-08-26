@@ -5,7 +5,7 @@ use axum::http::{Method, StatusCode};
 use gateway_fixture::progressive_delivery::ProgressiveDeliveryHarness;
 use gateway_fixture::progressive_journey_item::unknown_item;
 use gateway_fixture::progressive_journey_origin::ProgressiveJourneyOrigin;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn head_without_accept_ranges_is_resolved_by_an_admitted_206() {
@@ -15,9 +15,16 @@ async fn head_without_accept_ranges_is_resolved_by_an_admitted_206() {
     harness.wait_until_registered("delivery-current").await;
     let request = harness.request("delivery-current", "bytes=0-2047").await;
 
-    let response = harness.router.clone().oneshot(request).await.unwrap();
+    let response = harness
+        .router
+        .clone()
+        .oneshot(request)
+        .await
+        .expect("valid test fixture");
     let status = response.status();
-    let body = to_bytes(response.into_body(), 2_048).await.unwrap();
+    let body = to_bytes(response.into_body(), 2_048)
+        .await
+        .expect("valid test fixture");
 
     assert_eq!(status, StatusCode::PARTIAL_CONTENT);
     assert!(!body.is_empty());

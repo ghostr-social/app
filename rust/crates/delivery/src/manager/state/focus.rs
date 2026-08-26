@@ -1,12 +1,24 @@
 use super::DeliveryState;
 use crate::delivery_events::{DeliveryFocus, FocusPreview, FocusTransition};
+use core::cmp::Ordering;
 use ghostr_engine::adaptive::NavigationDirection;
 use ghostr_engine::focus::FocusUpdate;
 use ghostr_engine::DeliveryKind;
-use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
 impl DeliveryState {
+    pub(crate) fn current_post(&self) -> Option<ghostr_engine::PostId> {
+        self.focus.current().cloned()
+    }
+
+    pub(crate) const fn focus_generation(&self) -> Option<u64> {
+        self.focus_generation.value()
+    }
+
+    pub(crate) const fn focus_covers_from(&self) -> Option<u64> {
+        self.focus_generation.covers_from_value()
+    }
+
     pub(crate) fn current_authority(&self) -> ghostr_engine::adaptive::CurrentAuthority {
         self.current_authority
     }
@@ -15,6 +27,13 @@ impl DeliveryState {
         if !self.focus_generations.accept(update.generation) {
             return false;
         }
+        let same_current =
+            update.current_post().is_some() && update.current_post() == self.focus.current();
+        self.focus_generation = if same_current {
+            update.generation.covering(self.focus_generation)
+        } else {
+            update.generation
+        };
         let direction = navigation_direction(self.focus.current(), &update);
         let previews = preview_map(update.previews);
         let mut window = Vec::new();

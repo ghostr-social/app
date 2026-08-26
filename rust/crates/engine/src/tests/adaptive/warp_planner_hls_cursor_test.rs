@@ -1,7 +1,8 @@
+use crate::adaptive::axiom_test_support::WarpActionGenerator;
 use crate::adaptive::{
     AdaptivePlayabilityPolicy, FeedOffset, HlsBootstrapStage, HlsBootstrapState,
     HlsCandidateSnapshot, HlsObjectCursor, HlsTransport, PlannerCommand, PlannerContext,
-    ResourceCost, ViewProbability, WarpActionGenerator,
+    ResourceCost, ViewProbability,
 };
 use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::snapshot;
@@ -66,7 +67,7 @@ fn candidate(cursor: HlsObjectCursor) -> HlsCandidateSnapshot {
     HlsCandidateSnapshot {
         post: PostId::new("p0"),
         feed_offset: FeedOffset::new(0),
-        view_probability: ViewProbability::new(1.0).unwrap(),
+        view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
         startup_value_ms: 2_000,
         cursor,
         state: HlsBootstrapState::Pending {

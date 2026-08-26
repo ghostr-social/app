@@ -1,10 +1,10 @@
 //! A sibling EOSE cannot terminate another in-flight relay query.
 
-use crate::relay::io::{RelayIo, RelayReadIo, RelayReadResult, SdkRelayIo};
+use crate::relay::io::{RelayIo as _, RelayReadIo, RelayReadResult, SdkRelayIo};
 use crate::tests::relay_io_concurrent_fixture::relay_closing_empty_before_event;
+use core::time::Duration;
 use nostr_sdk::{Client, EventBuilder, Filter, Keys, Kind};
 use std::sync::Arc;
-use std::time::Duration;
 
 #[tokio::test]
 async fn empty_subscription_close_does_not_terminate_video_read() {
@@ -19,7 +19,7 @@ async fn empty_subscription_close_does_not_terminate_video_read() {
         Duration::from_secs(2),
     ));
 
-    let video = read(io.clone(), relay.clone(), Kind::Custom(22));
+    let video = read(std::sync::Arc::clone(&io), relay.clone(), Kind::Custom(22));
     let empty = read(io, relay, Kind::TextNote);
     let (video, empty) = tokio::join!(video, empty);
 

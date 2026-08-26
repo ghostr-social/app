@@ -1,5 +1,6 @@
 mod range_fixture;
 
+use core::time::Duration;
 use ghostr_delivery::chunk::cancel::{cancel_pair, CancelHandle};
 use ghostr_delivery::chunk::downloader::{ChunkSink, ChunkSpec};
 use ghostr_engine::host_stats::HostStats;
@@ -7,7 +8,6 @@ use ghostr_engine::ByteRange;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use range_fixture::download_chunk_throttled;
-use std::time::Duration;
 
 #[tokio::test]
 async fn chunk_downloader_cancellation_mid_stream_keeps_the_partial_bytes() {
@@ -59,6 +59,6 @@ async fn cancel_once_partial(store: &PartialRangeStore, handle: &CancelHandle) {
     }
 }
 
-fn is_head_only(ranges: &[std::ops::Range<u64>]) -> bool {
+fn is_head_only(ranges: &[core::ops::Range<u64>]) -> bool {
     matches!(ranges, [range] if range.start == 0 && range.end == 4)
 }

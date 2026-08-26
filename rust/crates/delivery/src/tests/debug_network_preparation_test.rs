@@ -1,7 +1,7 @@
 use crate::chunk::cancel::cancel_pair;
 use crate::chunk::network::{prepare_network, NetworkPreparation};
 use crate::debug::network::{NetworkProfile, NetworkThrottle};
-use std::time::Duration;
+use core::time::Duration;
 use tokio::time::timeout;
 
 #[tokio::test]
@@ -13,7 +13,7 @@ async fn debug_network_simulation_does_not_add_a_second_connection_queue() {
         packet_loss_bps: 0,
         max_connections_per_host: 1,
     });
-    let _occupied = network.acquire("https://relay.example/first").await;
+    let _occupied = network.acquire("https://relay.example/first");
     let (_handle, token) = cancel_pair();
     let waiting = prepare_network(Some(&network), "https://relay.example/second", &token);
     let prepared = timeout(Duration::from_millis(100), waiting)

@@ -1,49 +1,59 @@
-#![allow(dead_code)]
-
-use sha2::{Digest, Sha256};
+use sha2::{Digest as _, Sha256};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-pub async fn staged(name: &str) -> PathBuf {
-    let root = super::store_fixture::temp_root(name);
-    let store = super::store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
-    store.write_range("clip", 0, b"abcdefghijkl").await.unwrap();
-    store.set_total_len("clip", 12).await.unwrap();
+pub(super) async fn staged(name: &str) -> PathBuf {
+    let root = crate::tests::store_fixture::temp_root(name);
+    let store = crate::tests::store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
+    store
+        .write_range("clip", 0, b"abcdefghijkl")
+        .await
+        .expect("valid test fixture");
+    store
+        .set_total_len("clip", 12)
+        .await
+        .expect("valid test fixture");
     drop(store);
 
     let old = tokio::fs::read(root.join("clip.ranges.json"))
         .await
-        .unwrap();
+        .expect("valid test fixture");
     let new = retained_manifest();
     tokio::fs::write(root.join("clip.ranges.evict"), &new)
         .await
-        .unwrap();
+        .expect("valid test fixture");
     tokio::fs::write(root.join("clip.evict.intent"), intent(&old, &new))
         .await
-        .unwrap();
+        .expect("valid test fixture");
     root
 }
 
-pub async fn truncate(root: &Path) {
+pub(super) async fn truncate(root: &Path) {
     let file = tokio::fs::OpenOptions::new()
         .write(true)
         .open(root.join("clip.part"))
         .await
-        .unwrap();
-    file.set_len(8).await.unwrap();
-    file.sync_all().await.unwrap();
+        .expect("valid test fixture");
+    file.set_len(8).await.expect("valid test fixture");
+    file.sync_all().await.expect("valid test fixture");
 }
 
-pub async fn reopen(root: &Path) -> ghostr_partial_store::partial_range_store::PartialRangeStore {
-    let store = super::store_fixture::plain_store(root.to_owned(), Arc::new(Mutex::new(0)));
-    store.load_existing().await.unwrap();
+pub(super) async fn reopen(root: &Path) -> crate::partial_range_store::PartialRangeStore {
+    let store = crate::tests::store_fixture::plain_store(root.to_owned(), Arc::new(Mutex::new(0)));
+    store.load_existing().await.expect("valid test fixture");
     store
 }
 
-pub fn assert_clean(root: &Path) {
-    assert!(!root.join("clip.evict.intent").exists());
-    assert!(!root.join("clip.ranges.evict").exists());
+pub(super) fn assert_clean(root: &Path) {
+    assert!(
+        !root.join("clip.evict.intent").exists(),
+        "eviction intent should be cleaned"
+    );
+    assert!(
+        !root.join("clip.ranges.evict").exists(),
+        "eviction manifest should be cleaned"
+    );
 }
 
 fn retained_manifest() -> Vec<u8> {

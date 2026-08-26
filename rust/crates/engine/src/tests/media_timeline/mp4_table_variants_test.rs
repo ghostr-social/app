@@ -7,7 +7,7 @@ use crate::ByteRange;
 fn version_one_time_co64_fixed_sizes_and_multi_sample_chunks_are_supported() {
     let offset = 5_000_000_000_u64;
     let moov = advanced_moov(offset, 2, 250);
-    let timeline = parse_mp4_segments(&[MediaSegment::new(0, &moov)]).unwrap();
+    let timeline = parse_mp4_segments(&[MediaSegment::new(0, &moov)]).expect("valid test fixture");
 
     assert_eq!(
         media_ranges(&timeline, 0, 2_000),
@@ -23,7 +23,7 @@ fn overlapping_tracks_produce_one_non_overlapping_range_intent() {
         b"moov",
         joined(&[first[8..].to_vec(), second[8..].to_vec()]),
     );
-    let timeline = parse_mp4_segments(&[MediaSegment::new(0, &moov)]).unwrap();
+    let timeline = parse_mp4_segments(&[MediaSegment::new(0, &moov)]).expect("valid test fixture");
 
     assert_eq!(
         media_ranges(&timeline, 0, 1_000),

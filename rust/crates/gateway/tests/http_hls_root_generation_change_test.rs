@@ -5,16 +5,16 @@ use axum::extract::State;
 use axum::http::{header, Request, Response};
 use axum::routing::get;
 use axum::Router;
+use core::sync::atomic::{AtomicUsize, Ordering};
+use core::time::Duration;
 use gateway_fixture::delivery::start_delivery;
 use gateway_fixture::media_client;
 use gateway_fixture::progressive_hls::{hls_focus, router_with_segmented_hls};
 use ghostr_delivery::segmented::SegmentedPhase;
 use ghostr_gateway::hls::sessions::HlsSessions;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::net::TcpListener;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn changed_root_generation_invalidates_and_reprepares_its_bootstrap_cohort() {
@@ -25,13 +25,16 @@ async fn changed_root_generation_invalidates_and_reprepares_its_bootstrap_cohort
     let old_init = source.replace("index.m3u8", "init-v1.mp4");
     assert!(delivery.segmented.object(&old_init).is_some());
     let sessions = HlsSessions::production();
-    let session = sessions.acquire(vec![source]).await.unwrap();
+    let session = sessions
+        .acquire(vec![source])
+        .await
+        .expect("valid test fixture");
     let router = router_with_segmented_hls(sessions, media_client(), delivery.segmented.clone());
     let request = Request::get(format!("/hls/{}/index.m3u8", session.as_str()))
         .body(Body::empty())
-        .unwrap();
+        .expect("valid test fixture");
 
-    router.oneshot(request).await.unwrap();
+    router.oneshot(request).await.expect("valid test fixture");
 
     assert_eq!(root_hits.load(Ordering::SeqCst), 2);
     assert!(delivery.segmented.object(&old_init).is_none());
@@ -61,8 +64,10 @@ async fn wait_ready(delivery: &gateway_fixture::delivery::DeliveryFixture) {
 
 async fn origin() -> (String, Arc<AtomicUsize>) {
     let hits = Arc::new(AtomicUsize::new(0));
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let address = listener.local_addr().unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("valid test fixture");
+    let address = listener.local_addr().expect("valid test fixture");
     let app = Router::new()
         .route("/index.m3u8", get(root))
         .route(
@@ -73,8 +78,12 @@ async fn origin() -> (String, Arc<AtomicUsize>) {
             "/segment-v1.m4s",
             get(|| async { cacheable("segment", "segment-v1") }),
         )
-        .with_state(hits.clone());
-    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        .with_state(std::sync::Arc::clone(&hits));
+    tokio::spawn(async move {
+        axum::serve(listener, app)
+            .await
+            .expect("valid test fixture");
+    });
     (format!("http://{address}/index.m3u8"), hits)
 }
 
@@ -87,7 +96,7 @@ async fn root(State(hits): State<Arc<AtomicUsize>>) -> Response<Body> {
         .body(Body::from(
             "#EXTM3U\n#EXT-X-MAP:URI=\"init-v1.mp4\"\n#EXTINF:4,\nsegment-v1.m4s\n#EXT-X-ENDLIST\n",
         ))
-        .unwrap()
+        .expect("valid test fixture")
 }
 
 fn cacheable(body: &'static str, etag: &'static str) -> Response<Body> {
@@ -95,5 +104,5 @@ fn cacheable(body: &'static str, etag: &'static str) -> Response<Body> {
         .header(header::CACHE_CONTROL, "max-age=60")
         .header(header::ETAG, format!("\"{etag}\""))
         .body(Body::from(body))
-        .unwrap()
+        .expect("valid test fixture")
 }

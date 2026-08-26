@@ -5,7 +5,7 @@ mod gateway_fixture;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use gateway_fixture::progressive::progressive_harness;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn ordinary_gateway_builds_do_not_expose_the_debug_page() {

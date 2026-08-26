@@ -36,7 +36,7 @@ impl RelayPlanExecutor {
             session,
             plan,
             outboxes,
-            route: route.clone(),
+            route: std::sync::Arc::clone(&route),
             progress,
         });
         let page = collect_page(fetches).await?;
@@ -44,15 +44,15 @@ impl RelayPlanExecutor {
         let (events, mut settlement) =
             RepostSettlement::prepare(page.events, deferred_reposts, settles_reposts);
         let target = self
-            .enrich_targets(session, priority, events, route.clone())
+            .enrich_targets(session, priority, events, std::sync::Arc::clone(&route))
             .await?;
         let events = settlement.settle_targets(target.events, target.retry);
         let deletion = self
-            .enrich_deletions(session, priority, events, route.clone())
+            .enrich_deletions(session, priority, events, std::sync::Arc::clone(&route))
             .await?;
-        let (events, repost_retry) = settlement.finish(deletion.events, deletion.settled);
+        let (events, repost_retry) = settlement.finish(deletion.events, &deletion.settled);
         let events = self
-            .enrich_profiles(session, priority, events, route.clone())
+            .enrich_profiles(session, priority, events, std::sync::Arc::clone(&route))
             .await?;
         route.ensure_current()?;
         if !self.cache.is_current(session).await {

@@ -15,7 +15,7 @@ pub(crate) mod tests;
 use outcome::{decision_outcome, result_bytes};
 
 impl DeliveryWorker {
-    pub(super) fn observe_chunk_completion(&mut self, done: &ChunkDone, finished: FinishedAction) {
+    pub(super) fn observe_chunk_completion(&mut self, done: &ChunkDone, finished: &FinishedAction) {
         let observed_at_ms = completion_time(done);
         let status = finished.status();
         if let Some(reservation) = finished.network_reservation() {
@@ -35,7 +35,7 @@ impl DeliveryWorker {
         let evaluation = self.commands.evaluation();
         evaluation.transfer(transfer_event(done, status, resolution.as_ref()));
         if let Some(event) = self.adaptation_event(done) {
-            evaluation.adaptation(event);
+            evaluation.adaptation(&event);
         }
         if let Some(event) = integrity_event(done) {
             evaluation.integrity(event);

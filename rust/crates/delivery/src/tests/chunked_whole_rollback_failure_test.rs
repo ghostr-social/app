@@ -14,7 +14,7 @@ async fn cap_stop_with_failed_rollback_is_a_local_store_failure() {
     let (_handle, cancel) = cancel_pair();
     let mut stats = HostStats::new();
     let mut traffic = AuthorizedTraffic::new(
-        fixture.store.clone(),
+        std::sync::Arc::clone(&fixture.store),
         fixture.identity.clone(),
         fixture.action.clone(),
     );
@@ -36,10 +36,11 @@ async fn cap_stop_with_failed_rollback_is_a_local_store_failure() {
         },
     )
     .await
-    .unwrap_err();
+    .result
+    .expect_err("scenario must fail");
 
     assert!(crate::chunk::sink::is_local_store_failure(&error));
     assert!(format!("{error:#}").contains("policy limit"));
     fixture.store.release_action(&fixture.action).await;
-    std::fs::remove_dir_all(fixture.root).unwrap();
+    std::fs::remove_dir_all(fixture.root).expect("valid test fixture");
 }

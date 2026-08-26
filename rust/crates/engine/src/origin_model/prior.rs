@@ -3,36 +3,24 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ColdStartPrior {
-    pub success_alpha: f64,
-    pub success_beta: f64,
-    pub range_alpha: f64,
-    pub range_beta: f64,
-    pub ttfb_p50_ms: u64,
-    pub throughput_p50_bps: u64,
+    pub(super) success_alpha: f64,
+    pub(super) success_beta: f64,
+    pub(crate) range_alpha: f64,
+    pub(crate) range_beta: f64,
+    pub(super) ttfb_p50_ms: u64,
+    pub(super) throughput_p50_bps: u64,
 }
 
 impl ColdStartPrior {
-    pub fn new(success_alpha: f64, success_beta: f64, ttfb_ms: u64, throughput_bps: u64) -> Self {
-        Self {
-            success_alpha: success_alpha.max(0.1),
-            success_beta: success_beta.max(0.1),
-            range_alpha: 3.0,
-            range_beta: 2.0,
-            ttfb_p50_ms: ttfb_ms.max(1),
-            throughput_p50_bps: throughput_bps.max(1),
-        }
-    }
-
     pub(super) fn bootstrap(method: RequestMethod) -> Self {
         let (success, range, ttfb, throughput) = match method {
-            RequestMethod::Head => ((8.0, 2.0), (1.0, 1.0), 250, 4_194_304),
+            RequestMethod::Head | RequestMethod::ManifestGet | RequestMethod::SegmentGet => {
+                ((8.0, 2.0), (1.0, 1.0), 250, 4_194_304)
+            }
             RequestMethod::RangeGet | RequestMethod::PrefixGet | RequestMethod::TailGet => {
                 ((7.0, 3.0), (3.0, 2.0), 300, 3_145_728)
             }
             RequestMethod::FullGet => ((7.0, 3.0), (1.0, 1.0), 300, 3_145_728),
-            RequestMethod::ManifestGet | RequestMethod::SegmentGet => {
-                ((8.0, 2.0), (1.0, 1.0), 250, 4_194_304)
-            }
         };
         Self {
             success_alpha: success.0,
@@ -58,41 +46,6 @@ pub struct ColdStartSelector {
 }
 
 impl ColdStartSelector {
-    pub fn with_domain_class(mut self, value: DomainClass) -> Self {
-        self.domain_class = Some(value);
-        self
-    }
-
-    pub fn with_hosting_service(mut self, value: impl Into<String>) -> Self {
-        self.hosting_service = Some(value.into());
-        self
-    }
-
-    pub fn with_asn(mut self, value: u32) -> Self {
-        self.asn = Some(value);
-        self
-    }
-
-    pub fn with_region(mut self, value: impl Into<String>) -> Self {
-        self.region = Some(value.into());
-        self
-    }
-
-    pub fn with_protocol(mut self, value: HttpProtocol) -> Self {
-        self.protocol = Some(value);
-        self
-    }
-
-    pub fn with_tls_version(mut self, value: TlsVersion) -> Self {
-        self.tls_version = Some(value);
-        self
-    }
-
-    pub fn with_method(mut self, value: RequestMethod) -> Self {
-        self.method = Some(value);
-        self
-    }
-
     pub(super) fn score(&self, query: &OriginQuery) -> Option<usize> {
         let env = &query.environment;
         let scores = [
@@ -113,6 +66,10 @@ impl ColdStartSelector {
         Some(scores.into_iter().flatten().sum::<usize>() + usize::from(self.method.is_some()))
     }
 }
+
+#[cfg(test)]
+#[path = "prior/test_support.rs"]
+mod test_support;
 
 fn match_value<T: PartialEq>(wanted: Option<&T>, actual: &Availability<T>) -> Option<usize> {
     match wanted {

@@ -15,14 +15,26 @@ fn stale_source_facts_cannot_cross_a_representation_generation() {
 
     let second = catalog.upsert(post.clone(), meta("https://b.example/video", 4));
     assert_ne!(second, first);
-    assert!(!catalog.learn_for(&old, learned(99)));
-    assert_eq!(catalog.lookup(&post).unwrap().total_bytes(), Some(4));
+    assert!(!catalog.learn_response_for(&old, learned(99)));
+    assert_eq!(
+        catalog
+            .lookup(&post)
+            .expect("valid test fixture")
+            .total_bytes(),
+        Some(4)
+    );
 
     let current = catalog
         .transfer_identity(&post, "https://b.example/video")
         .expect("replacement source identity");
-    assert!(catalog.learn_for(&current, learned(5)));
-    assert_eq!(catalog.lookup(&post).unwrap().total_bytes(), Some(5));
+    assert!(catalog.learn_response_for(&current, learned(5)));
+    assert_eq!(
+        catalog
+            .lookup(&post)
+            .expect("valid test fixture")
+            .total_bytes(),
+        Some(5)
+    );
 }
 
 #[test]
@@ -36,7 +48,7 @@ fn evicted_transfer_identity_cannot_reintroduce_learned_state() {
 
     catalog.retain(|known| known != &post);
 
-    assert!(!catalog.learn_for(&evicted, learned(99)));
+    assert!(!catalog.learn_response_for(&evicted, learned(99)));
     assert!(catalog.lookup(&post).is_none());
 }
 

@@ -3,10 +3,15 @@
 use super::reload::stored_keys;
 use super::PartialRangeStore;
 use anyhow::Result;
+use core::sync::atomic::Ordering;
 use std::collections::BTreeSet;
-use std::sync::atomic::Ordering;
 
 impl PartialRangeStore {
+    /// Removes every progressive artifact and resets store accounting.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when persisted store artifacts cannot be enumerated or removed.
     pub async fn clear(&self) -> Result<()> {
         let _update = self.representation_updates.write().await;
         self.revoke_all_actions().await;

@@ -91,7 +91,7 @@ impl DiscoveryRequest {
 
     /// The authors this request routes to: the ones it filters by, or —
     /// when it filters by nobody — the routing-only set.
-    pub(crate) fn routed_authors(&self) -> &[PublicKey] {
+    pub(super) fn routed_authors(&self) -> &[PublicKey] {
         if self.authors.is_empty() {
             &self.routing_authors
         } else {
@@ -100,7 +100,7 @@ impl DiscoveryRequest {
     }
 
     /// Trimmed NIP-50 term; blank input carries no term.
-    pub(crate) fn normalized_search(&self) -> Option<&str> {
+    pub(super) fn normalized_search(&self) -> Option<&str> {
         let term = self.search_query.as_deref()?.trim();
         if term.is_empty() {
             None

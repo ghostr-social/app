@@ -8,6 +8,9 @@ mod reservation;
 mod segmented_storage;
 
 #[cfg(test)]
+mod api_test;
+
+#[cfg(test)]
 #[path = "hard/tests/mod.rs"]
 mod tests;
 
@@ -15,7 +18,7 @@ mod tests;
 pub struct ResourceCost {
     pub network_bytes: u64,
     pub storage_bytes: u64,
-    pub cpu_ms: u64,
+    pub(crate) cpu_ms: u64,
     pub requests: u16,
 }
 
@@ -29,7 +32,7 @@ impl ResourceCost {
         }
     }
 
-    pub fn no_more_than(self, other: Self) -> bool {
+    pub(crate) fn no_more_than(self, other: Self) -> bool {
         self.network_bytes <= other.network_bytes
             && self.storage_bytes <= other.storage_bytes
             && self.cpu_ms <= other.cpu_ms
@@ -54,7 +57,7 @@ pub(in crate::adaptive::warp) enum BudgetDenial {
 }
 
 impl HardBudget {
-    pub fn new(limits: ResourceCost, per_origin_requests: u16) -> Self {
+    pub(crate) fn new(limits: ResourceCost, per_origin_requests: u16) -> Self {
         Self {
             remaining: limits,
             request_width: limits.requests,
@@ -65,22 +68,7 @@ impl HardBudget {
         }
     }
 
-    pub fn unlimited() -> Self {
-        Self::new(
-            ResourceCost::new(u64::MAX, u64::MAX, u64::MAX, u16::MAX),
-            u16::MAX,
-        )
-    }
-
-    pub fn consume(&mut self, cost: &ResourceCost, authority: Option<&RequestAuthority>) -> bool {
-        self.consume_raw(cost, authority)
-    }
-
-    pub(super) fn consume_raw(
-        &mut self,
-        cost: &ResourceCost,
-        authority: Option<&RequestAuthority>,
-    ) -> bool {
+    fn consume_raw(&mut self, cost: &ResourceCost, authority: Option<&RequestAuthority>) -> bool {
         if !cost.no_more_than(self.remaining) {
             return false;
         }
@@ -98,11 +86,6 @@ impl HardBudget {
         let used = self.origins.entry(authority.clone()).or_default();
         *used = used.saturating_add(usize::from(cost.requests));
         true
-    }
-
-    pub fn allows(&self, cost: &ResourceCost, authority: Option<&RequestAuthority>) -> bool {
-        let mut copy = self.clone();
-        copy.consume(cost, authority)
     }
 
     pub(crate) const fn replay_remaining(&self) -> ResourceCost {

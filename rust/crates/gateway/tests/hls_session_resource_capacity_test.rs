@@ -1,6 +1,7 @@
+use core::fmt::Write as _;
+use core::time::Duration;
 use ghostr_gateway::hls::sessions::{HlsResourceId, HlsSessionLimits, HlsSessions};
 use reqwest::Url;
-use std::time::Duration;
 
 #[tokio::test]
 async fn long_and_rotating_playlists_do_not_accumulate_session_resources() {
@@ -31,7 +32,7 @@ async fn long_and_rotating_playlists_do_not_accumulate_session_resources() {
 fn playlist(start: usize) -> Vec<u8> {
     let mut value = String::from("#EXTM3U\n#EXT-X-TARGETDURATION:4\n");
     for index in start..start + 3_000 {
-        value.push_str(&format!("#EXTINF:4,\n{index}.m4s\n"));
+        let _ = write!(value, "#EXTINF:4,\n{index}.m4s\n");
     }
     value.into_bytes()
 }

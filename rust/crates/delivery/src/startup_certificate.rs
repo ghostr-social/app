@@ -19,8 +19,8 @@ pub struct StartupCertificate {
     profile: u16,
 }
 
-impl std::fmt::Debug for StartupCertificate {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for StartupCertificate {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         formatter
             .debug_struct("StartupCertificate")
             .field("post", self.binding.post())
@@ -56,11 +56,11 @@ impl StartupCertificate {
         })
     }
 
-    pub fn post(&self) -> &PostId {
+    fn post(&self) -> &PostId {
         self.binding.post()
     }
 
-    pub fn startup(&self) -> &StartupFootprint {
+    fn startup(&self) -> &StartupFootprint {
         &self.startup
     }
 

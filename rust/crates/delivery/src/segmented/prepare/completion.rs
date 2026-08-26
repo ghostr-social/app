@@ -1,7 +1,6 @@
 use super::PreparedObject;
 use crate::segmented::cache::{AssemblySeed, CachedHlsGenerationHasher};
 use crate::segmented::CachedHlsGeneration;
-use std::mem::MaybeUninit;
 use std::sync::Arc;
 use tokio::sync::oneshot;
 
@@ -14,8 +13,8 @@ struct AssemblyBytes {
 }
 
 struct AssemblyWriter<'a> {
-    output: &'a mut [MaybeUninit<u8>],
-    written: usize,
+    output: &'a mut Vec<u8>,
+    limit: usize,
     hasher: &'a mut CachedHlsGenerationHasher,
 }
 
@@ -24,21 +23,7 @@ pub(in crate::segmented) struct PreparedComplete {
     pub(in crate::segmented) generation: CachedHlsGeneration,
 }
 
-impl PreparedComplete {
-    #[cfg(test)]
-    pub(in crate::segmented) fn new(object: PreparedObject) -> Self {
-        let mut hasher = CachedHlsGenerationHasher::new(
-            &object.final_url,
-            object.body.len() as u64,
-            &object.cache,
-        );
-        hasher.update(&object.body);
-        Self {
-            object,
-            generation: hasher.finish(),
-        }
-    }
-}
+impl PreparedComplete {}
 
 pub(in crate::segmented) async fn prepare_complete(
     seed: Option<AssemblySeed>,
@@ -74,7 +59,9 @@ async fn assemble(
     cancelled: &mut oneshot::Receiver<()>,
 ) -> Result<PreparedComplete, ()> {
     let total = seed.bytes.checked_add(block.body.len() as u64).ok_or(())?;
-    let length = usize::try_from(total).map_err(|_| ())?;
+    let Ok(length) = usize::try_from(total) else {
+        return Err(());
+    };
     let cache = seed.cache.combined_with(&block.cache);
     let mut hasher = CachedHlsGenerationHasher::new(&seed.final_url, total, &cache);
     check_cancelled(cancelled)?;
@@ -101,31 +88,29 @@ async fn assemble_bytes(
     hasher: &mut CachedHlsGenerationHasher,
     cancelled: &mut oneshot::Receiver<()>,
 ) -> Result<Arc<[u8]>, ()> {
-    let mut body = Arc::<[u8]>::new_uninit_slice(bytes.length);
-    let written = copy_sources(&mut body, &bytes, hasher, cancelled).await?;
-    if written != bytes.length {
+    let mut body = Vec::with_capacity(bytes.length);
+    copy_sources(&mut body, &bytes, hasher, cancelled).await?;
+    if body.len() != bytes.length {
         return Err(());
     }
-    // Every slot was initialized exactly once by `copy_source`.
-    Ok(unsafe { body.assume_init() })
+    Ok(body.into())
 }
 
 async fn copy_sources(
-    body: &mut Arc<[MaybeUninit<u8>]>,
+    body: &mut Vec<u8>,
     bytes: &AssemblyBytes,
     hasher: &mut CachedHlsGenerationHasher,
     cancelled: &mut oneshot::Receiver<()>,
-) -> Result<usize, ()> {
-    let output = Arc::get_mut(body).ok_or(())?;
+) -> Result<(), ()> {
     let mut writer = AssemblyWriter {
-        output,
-        written: 0,
+        output: body,
+        limit: bytes.length,
         hasher,
     };
-    for source in bytes.prefix.iter().chain(std::iter::once(&bytes.block)) {
+    for source in bytes.prefix.iter().chain(core::iter::once(&bytes.block)) {
         writer.copy_source(source, cancelled).await?;
     }
-    Ok(writer.written)
+    Ok(())
 }
 
 impl AssemblyWriter<'_> {
@@ -135,7 +120,7 @@ impl AssemblyWriter<'_> {
         cancelled: &mut oneshot::Receiver<()>,
     ) -> Result<(), ()> {
         for chunk in source.chunks(ASSEMBLY_QUANTUM) {
-            write_chunk(self.output, &mut self.written, chunk)?;
+            write_chunk(self.output, self.limit, chunk)?;
             self.hasher.update(chunk);
             checkpoint(cancelled).await?;
         }
@@ -143,17 +128,10 @@ impl AssemblyWriter<'_> {
     }
 }
 
-fn write_chunk(
-    output: &mut [MaybeUninit<u8>],
-    written: &mut usize,
-    chunk: &[u8],
-) -> Result<(), ()> {
-    let end = written.checked_add(chunk.len()).ok_or(())?;
-    let target = output.get_mut(*written..end).ok_or(())?;
-    for (slot, byte) in target.iter_mut().zip(chunk) {
-        slot.write(*byte);
-    }
-    *written = end;
+fn write_chunk(output: &mut Vec<u8>, limit: usize, chunk: &[u8]) -> Result<(), ()> {
+    let end = output.len().checked_add(chunk.len()).ok_or(())?;
+    (end <= limit).then_some(()).ok_or(())?;
+    output.extend_from_slice(chunk);
     Ok(())
 }
 
@@ -161,7 +139,7 @@ async fn checkpoint(cancelled: &mut oneshot::Receiver<()>) -> Result<(), ()> {
     tokio::select! {
         biased;
         _ = &mut *cancelled => Err(()),
-        _ = tokio::task::yield_now() => Ok(()),
+        () = tokio::task::yield_now() => Ok(()),
     }
 }
 
@@ -171,3 +149,7 @@ fn check_cancelled(cancelled: &mut oneshot::Receiver<()>) -> Result<(), ()> {
         Err(oneshot::error::TryRecvError::Empty) => Ok(()),
     }
 }
+
+#[cfg(test)]
+#[path = "completion_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

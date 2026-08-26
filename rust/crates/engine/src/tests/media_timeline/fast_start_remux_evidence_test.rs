@@ -30,14 +30,14 @@ fn sparse_head_and_tail_metadata_cannot_claim_exact_remuxability() {
         MediaSegment::new(0, &prefix),
         MediaSegment::new(512, &movie),
     ])
-    .unwrap();
+    .expect("valid test fixture");
 
     assert!(timeline.startup_footprint().is_some());
     assert!(!timeline.fast_start_remuxable(total));
 }
 
 fn parse(bytes: &[u8]) -> crate::media_timeline::MediaTimeline {
-    parse_mp4_segments(&[MediaSegment::new(0, bytes)]).unwrap()
+    parse_mp4_segments(&[MediaSegment::new(0, bytes)]).expect("valid test fixture")
 }
 
 fn tail_movie() -> Vec<u8> {

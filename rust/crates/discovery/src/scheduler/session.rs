@@ -4,11 +4,11 @@ use crate::scheduler::SchedulerWorker;
 use tokio::sync::oneshot;
 
 impl SchedulerWorker {
-    pub(crate) fn reset_session(&mut self, reply: oneshot::Sender<()>) {
-        for (_, task) in self.tasks.drain() {
+    pub(super) fn reset_session(&mut self, reply: oneshot::Sender<()>) {
+        for task in core::mem::take(&mut self.tasks).into_values() {
             task.abort.abort();
         }
-        for (_, task) in self.hunts.drain() {
+        for task in core::mem::take(&mut self.hunts).into_values() {
             task.abort();
         }
         self.queue.reset_session();

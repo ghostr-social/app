@@ -6,10 +6,9 @@ use ghostr_engine::concurrency::NetworkSetback;
 use ghostr_engine::playback::PlaybackPhase;
 
 impl DeliveryWorker {
-    pub(crate) fn apply_playback(&mut self, playback: DeliveryPlayback) {
+    pub(super) fn apply_playback(&mut self, playback: &DeliveryPlayback) {
         let stalled = playback.observation.phase() == PlaybackPhase::NetworkStalled;
         let post = playback.session.post().clone();
-        let evidence = playback.clone();
         let observed_at_ms = unix_time_ms();
         let false_streamability = stalled_or_failed_streamability(
             &self.state,
@@ -25,7 +24,7 @@ impl DeliveryWorker {
                 .catalog()
                 .estimated_bitrate(&post, self.state.params());
             self.apply_pending_presentation();
-            self.qoe.note_playback(&evidence, bitrate, observed_at_ms);
+            self.qoe.note_playback(playback, bitrate, observed_at_ms);
             if false_streamability {
                 self.commands
                     .evaluation()

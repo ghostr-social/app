@@ -24,7 +24,8 @@ fn missing_head_timing_exposes_one_bounded_tail_layout_probe() {
         ..EngineParams::default()
     };
 
-    let candidate = candidate_snapshot(&catalog, &params, evidence(post)).unwrap();
+    let candidate =
+        candidate_snapshot(&catalog, &params, evidence(post)).expect("valid test fixture");
 
     let probe = candidate.timeline_probe.expect("tail probe");
     assert_eq!(probe.bytes, ByteRange::new(2_000_000, 3_000_000));
@@ -35,7 +36,7 @@ fn evidence(post: PostId) -> CandidateEvidence {
     CandidateEvidence {
         post,
         feed_offset: FeedOffset::new(1),
-        view_probability: ViewProbability::new(0.8).unwrap(),
+        view_probability: ViewProbability::new(0.8).expect("valid test fixture"),
         present: Vec::new(),
         stored_total: None,
         continuation_source: None,

@@ -134,7 +134,7 @@ impl DiscoveryRuntime {
         let revisions = lock(&self.state)
             .subscribe(feed)
             .ok_or_else(|| anyhow::anyhow!("the feed is not open"))?;
-        Ok((self.state.clone(), revisions))
+        Ok((std::sync::Arc::clone(&self.state), revisions))
     }
 
     /// Both knobs the level moves: the worker pool in the scheduler and

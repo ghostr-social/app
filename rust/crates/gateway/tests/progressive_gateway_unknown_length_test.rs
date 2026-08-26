@@ -3,7 +3,7 @@ mod gateway_fixture;
 use axum::http::header::RETRY_AFTER;
 use axum::http::StatusCode;
 use gateway_fixture::progressive::progressive_harness;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test(start_paused = true)]
 async fn answers_retry_later_while_the_total_length_is_still_unknown() {

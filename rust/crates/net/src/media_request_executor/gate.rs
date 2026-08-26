@@ -1,5 +1,5 @@
 use super::{MediaRequestLimits, MediaResourceObserver};
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::RequestAuthority;
 use std::sync::{Arc, Mutex};
@@ -79,10 +79,6 @@ impl MediaRequestGate {
 
     pub(super) fn active_for(&self, authority: &RequestAuthority) -> usize {
         self.with_state(|state| state.active_for(authority))
-    }
-
-    pub(super) fn active_connections(&self) -> Vec<(String, usize)> {
-        self.with_state(|state| state.active_connections())
     }
 
     fn enqueue(

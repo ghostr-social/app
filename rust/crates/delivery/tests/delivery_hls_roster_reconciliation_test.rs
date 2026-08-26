@@ -2,13 +2,13 @@ mod delivery_fixture;
 mod hls_terminal_wait;
 
 use axum::http::StatusCode;
+use core::time::Duration;
 use delivery_fixture::hls_recovery::{serve, HlsScript};
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use ghostr_delivery::segmented::SegmentedPhase;
 use ghostr_engine::DeliveryKind;
-use std::time::Duration;
 
 #[tokio::test]
 async fn ready_backup_survives_root_add_reorder_and_unrelated_removal() {
@@ -32,18 +32,35 @@ async fn ready_backup_survives_root_add_reorder_and_unrelated_removal() {
 
     assert_eq!(
         harness.segmented.snapshot("stream").phase,
-        SegmentedPhase::Ready
+        SegmentedPhase::Ready,
+        "reordering the roster must preserve ready media"
     );
-    assert_eq!(primary.paths(), vec!["root"]);
-    assert_eq!(backup.paths(), vec!["root", "child", "init", "segment"]);
-    assert!(third.paths().is_empty());
+    assert_eq!(
+        primary.paths(),
+        vec!["root"],
+        "the failed primary must not be retried"
+    );
+    assert_eq!(
+        backup.paths(),
+        vec!["root", "child", "init", "segment"],
+        "the ready backup must remain authoritative"
+    );
+    assert!(third.paths().is_empty(), "an unused root must stay idle");
     std::fs::remove_dir_all(&harness.root).ok();
 }
 
 fn assert_initial_ready(primary: &HlsScript, backup: &HlsScript, phase: SegmentedPhase) {
-    assert_eq!(phase, SegmentedPhase::Ready);
-    assert_eq!(primary.paths(), vec!["root"]);
-    assert_eq!(backup.paths(), vec!["root", "child", "init", "segment"]);
+    assert_eq!(phase, SegmentedPhase::Ready, "the backup must reach ready");
+    assert_eq!(
+        primary.paths(),
+        vec!["root"],
+        "the primary must fail after its root"
+    );
+    assert_eq!(
+        backup.paths(),
+        vec!["root", "child", "init", "segment"],
+        "the backup must complete the HLS bootstrap"
+    );
 }
 
 async fn reorder_roots(

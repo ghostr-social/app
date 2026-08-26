@@ -12,13 +12,13 @@ fn deferred_probe_rearms_only_after_the_matching_body_finishes() {
 
     assert_eq!(
         probes
-            .claim(&catalog, std::slice::from_ref(&post), &retry)
+            .claim(&catalog, core::slice::from_ref(&post), &retry)
             .len(),
         1
     );
     probes.defer_to_body(&post);
     assert!(probes
-        .claim(&catalog, std::slice::from_ref(&post), &retry)
+        .claim(&catalog, core::slice::from_ref(&post), &retry)
         .is_empty());
 
     probes.body_finished(&post);

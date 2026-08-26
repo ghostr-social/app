@@ -4,10 +4,10 @@ use crate::chunk::traffic::ChunkTraffic;
 use crate::manager::inflight::ChunkAttempt;
 use crate::manager::response_open::ResponseOpener;
 use crate::manager::traffic::{TrafficPublisher, TransferKey};
+use core::future::Future;
+use core::pin::Pin;
+use core::time::Duration;
 use ghostr_partial_store::partial_range_store::StoreAction;
-use std::future::Future;
-use std::pin::Pin;
-use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 

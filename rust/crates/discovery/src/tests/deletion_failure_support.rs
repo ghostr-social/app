@@ -3,9 +3,9 @@ use crate::execution::relay_executor::RelayPlanExecutor;
 use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo, RelayReadResult};
 use crate::relay::pool::{RelayPoolConfiguration, RelayPoolOwner};
 use crate::tests::outbox_support::{empty_directory, BOOTSTRAP_RELAY};
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::{Event, Kind};
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 
 pub(crate) struct DeletionFailureIo {
@@ -16,7 +16,7 @@ pub(crate) struct DeletionFailureIo {
 }
 
 impl DeletionFailureIo {
-    pub(crate) fn new(wrapper: Event, safe: Event) -> Arc<Self> {
+    pub(super) fn new(wrapper: Event, safe: Event) -> Arc<Self> {
         Arc::new(Self {
             wrapper,
             safe,

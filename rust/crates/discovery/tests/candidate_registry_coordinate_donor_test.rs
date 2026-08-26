@@ -1,7 +1,5 @@
-mod feed_support;
-
-use feed_support::{addressable_video, repost};
-use ghostr_discovery::content::candidates::CandidateRegistry;
+use crate::content::candidates::CandidateRegistry;
+use crate::tests::feed_support::{addressable_video, repost};
 use nostr_sdk::Keys;
 
 #[test]
@@ -12,7 +10,7 @@ fn coordinate_repost_reprioritizes_the_latest_revision() {
     let wrapper = repost(&Keys::generate(), &stale, 400);
     let mut registry = CandidateRegistry::new();
 
-    registry.inspect_all(std::slice::from_ref(&current));
+    registry.inspect_all(core::slice::from_ref(&current));
     let admitted = registry.inspect_all(&[wrapper]).admitted;
 
     assert_eq!(admitted.len(), 1);

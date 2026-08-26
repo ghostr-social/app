@@ -9,7 +9,7 @@ fn startup_uses_extra_capacity_margin_before_committing_to_quality() {
 
     let decision = policy.select(
         &ladder(),
-        phase_input(network, None, 0, PlaybackPhase::Starting),
+        &phase_input(network, None, 0, PlaybackPhase::Starting),
     );
 
     assert_eq!(decision.selected().id(), &id("medium"));

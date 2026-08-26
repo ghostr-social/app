@@ -34,7 +34,7 @@ pub struct WarpPlanner {
 }
 
 impl WarpPlanner {
-    pub fn new(config: WarpPlannerConfig) -> Self {
+    pub(crate) fn new(config: WarpPlannerConfig) -> Self {
         Self {
             twin: DigitalTwin::new(config.twin),
             config,
@@ -49,7 +49,7 @@ impl WarpPlanner {
         self.plan_with_hls_policy(input, HlsGenerationPolicy::BoundedObjectCursor)
     }
 
-    pub(super) fn plan_with_hls_policy(
+    fn plan_with_hls_policy(
         &mut self,
         input: WarpPlannerInput<'_>,
         hls_policy: HlsGenerationPolicy,
@@ -78,7 +78,7 @@ impl WarpPlanner {
         let evaluation = selected.as_ref().map(|item| {
             self.twin.evaluate(
                 &simulation::state(&input),
-                std::slice::from_ref(&item.node),
+                core::slice::from_ref(&item.node),
                 simulation::epochs(&input, self.price_epoch),
             )
         });
@@ -132,13 +132,13 @@ impl WarpPlanner {
         }
     }
 
-    pub fn network_tokens(&mut self, observed_at_ms: u64) -> u64 {
+    pub(crate) fn network_tokens(&mut self, observed_at_ms: u64) -> u64 {
         self.network
             .as_mut()
             .map_or(0, |bucket| bucket.available(observed_at_ms))
     }
 
-    pub fn network_refill_deadline_ms(
+    fn network_refill_deadline_ms(
         &mut self,
         required_bytes: u64,
         observed_at_ms: u64,

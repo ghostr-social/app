@@ -1,13 +1,13 @@
 mod delivery_fixture;
 mod raw_http;
 
+use core::time::Duration;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_engine::{EngineParams, PostId};
 use raw_http::spawn_split_response;
-use std::time::Duration;
 
 #[tokio::test]
 async fn coherent_206_replans_before_the_first_body_finishes() {
@@ -28,7 +28,7 @@ async fn coherent_206_replans_before_the_first_body_finishes() {
 
     origin.release.notify_one();
     origin.requests.await.expect("first response completion");
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(harness.root).ok();
 }
 

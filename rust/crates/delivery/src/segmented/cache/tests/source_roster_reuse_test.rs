@@ -51,7 +51,7 @@ pub(super) fn roots(primary: &str, backup: &str) -> Vec<String> {
 pub(super) fn object(root: &str) -> PreparedObject {
     PreparedObject {
         request_url: root.to_owned(),
-        final_url: Url::parse(root).unwrap(),
+        final_url: Url::parse(root).expect("valid test fixture"),
         body: Arc::from(b"#EXTM3U\n".as_slice()),
         content_type: Some("application/vnd.apple.mpegurl".to_owned()),
         cache: Default::default(),

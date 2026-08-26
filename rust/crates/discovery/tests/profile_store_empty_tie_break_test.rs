@@ -1,7 +1,5 @@
-mod feed_support;
-
-use feed_support::profile_event;
-use ghostr_discovery::content::profiles::ProfileStore;
+use crate::content::profiles::ProfileStore;
+use crate::tests::feed_support::profile_event;
 use nostr_sdk::Keys;
 
 #[test]

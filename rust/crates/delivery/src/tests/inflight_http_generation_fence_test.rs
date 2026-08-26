@@ -17,13 +17,13 @@ fn only_the_exact_http_generation_keeps_concurrent_work_alive() {
     let (_second, second_token) = insert(&mut active, &identity, &chunk);
     let original = generation(1);
 
-    assert!(active.adopt_http_generation(&first, original.clone()));
+    assert!(active.adopt_http_generation(&first, &original));
     assert!(!first_token.is_cancelled());
     assert!(second_token.is_cancelled());
     assert_eq!(active.http_generation(&first), Some(original));
 
     let (replacement, replacement_token) = insert(&mut active, &identity, &chunk);
-    assert!(active.adopt_http_generation(&replacement, generation(2)));
+    assert!(active.adopt_http_generation(&replacement, &generation(2)));
     assert!(first_token.is_cancelled(), "ABA epoch must fence the old response");
     assert!(!replacement_token.is_cancelled());
 }
@@ -52,10 +52,10 @@ fn identity() -> TransferIdentity {
         urls: vec![SOURCE.into()], delivery: DeliveryKind::Progressive,
         sha256: None, size_bytes: Some(8), duration_ms: Some(1_000),
     });
-    catalog.transfer_identity(&post, SOURCE).unwrap()
+    catalog.transfer_identity(&post, SOURCE).expect("valid test fixture")
 }
 
 fn generation(epoch: u64) -> HttpGenerationLease {
-    let key = HttpGenerationKey::try_new(SOURCE, None).unwrap();
-    HttpGenerationLease::try_new(key, epoch).unwrap()
+    let key = HttpGenerationKey::try_new(SOURCE, None).expect("valid test fixture");
+    HttpGenerationLease::try_new(key, epoch).expect("valid test fixture")
 }

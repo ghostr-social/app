@@ -1,5 +1,3 @@
-mod store_fixture;
-
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::representation::SourceGeneration;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
@@ -8,37 +6,54 @@ use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn strong_generation_survives_restart_for_if_range_continuation() {
-    let root = store_fixture::temp_root("partial-generation-restart");
+    let root = crate::tests::store_fixture::temp_root("partial-generation-restart");
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(PostId::new("same"), meta());
-    let transfer = binding.transfer("https://a.example/video").unwrap();
-    let generation =
-        SourceGeneration::try_new("https://cdn.example/video", "\"version-one\"", 8).unwrap();
-    let first = store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
-    first.bind_representation(binding.clone()).await.unwrap();
-    first.select_transfer(transfer.clone()).await.unwrap();
+    let transfer = binding
+        .transfer("https://a.example/video")
+        .expect("valid test fixture");
+    let generation = SourceGeneration::try_new("https://cdn.example/video", "\"version-one\"", 8)
+        .expect("valid test fixture");
+    let first = crate::tests::store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
+    first
+        .bind_representation(binding.clone())
+        .await
+        .expect("valid test fixture");
+    first
+        .select_transfer(transfer.clone())
+        .await
+        .expect("valid test fixture");
     first
         .accept_generation(&transfer, generation.clone())
         .await
-        .unwrap();
+        .expect("valid test fixture");
     assert!(first
         .write_range_for_generation_if_current(&transfer, &generation, 0, b"part")
         .await
-        .unwrap());
+        .expect("valid test fixture"));
     drop(first);
 
-    let reopened = store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
-    reopened.load_existing().await.unwrap();
-    reopened.bind_representation(binding).await.unwrap();
-    let restored = reopened.select_transfer(transfer).await.unwrap();
+    let reopened = crate::tests::store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
+    reopened.load_existing().await.expect("valid test fixture");
+    reopened
+        .bind_representation(binding)
+        .await
+        .expect("valid test fixture");
+    let restored = reopened
+        .select_transfer(transfer)
+        .await
+        .expect("valid test fixture");
 
     assert!(root.join("same.http-generation.json").exists());
     assert_eq!(restored, Some(generation));
     assert_eq!(
-        reopened.read_range("same", 0..4).await.unwrap(),
+        reopened
+            .read_range("same", 0..4)
+            .await
+            .expect("valid test fixture"),
         Some(b"part".to_vec())
     );
-    store_fixture::discard(&root);
+    crate::tests::store_fixture::discard(&root);
 }
 
 fn meta() -> VideoMeta {

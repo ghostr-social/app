@@ -1,20 +1,20 @@
 use crate::chunk::downloader::{ChunkResult, ChunkSpec, DownloadTraffic};
+use core::time::Duration;
 use ghostr_engine::adaptive::{PreemptionAuthority, RetrievalRequest};
 use ghostr_engine::ByteRange;
 use ghostr_net::media_request_executor::MediaRequestExecutor;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
-use std::time::Duration;
 
 pub(super) const URL: &str = "https://media.example/video.mp4";
 
-pub(super) async fn expect_pending<F>(future: &mut std::pin::Pin<&mut F>)
+pub(super) async fn expect_pending<F>(future: &mut core::pin::Pin<&mut F>)
 where
-    F: std::future::Future<Output = anyhow::Result<ChunkResult>>,
+    F: core::future::Future<Output = anyhow::Result<ChunkResult>>,
 {
     tokio::select! {
         biased;
         result = future => panic!("queued request completed early: {result:?}"),
-        _ = tokio::task::yield_now() => {}
+        () = tokio::task::yield_now() => {}
     }
 }
 

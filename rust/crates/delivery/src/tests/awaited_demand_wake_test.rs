@@ -19,7 +19,7 @@ async fn awaited_demand_is_delivered_and_advances_lane_fairness() {
     let (_events_sender, mut events) = mpsc::unbounded_channel::<InternalEvent>();
     let (_invalidation_sender, mut invalidations) = watch::channel(0_u64);
     let (_responses_sender, mut responses) =
-        response_open::channel(std::time::Duration::from_secs(1));
+        response_open::channel(core::time::Duration::from_secs(1));
     let mut cursor = WakeCursor::default();
     let root = crate::tests::support::temp_directory("awaited-demand-wake");
     let store = Arc::new(PartialRangeStore::with_capacity(
@@ -28,9 +28,9 @@ async fn awaited_demand_is_delivered_and_advances_lane_fairness() {
         StoreCapacity::system(u64::MAX),
     ));
     let mut timelines = TimelineCoordinator::new(store);
-    let mut control_interval = crate::manager::control_interval::new();
+    let mut control_interval = crate::manager::control_interval::axiom_test_support::new();
     let signal = DemandState::Blocked(DemandLease::new(
-        ConsumerId::new(1).unwrap(),
+        ConsumerId::new(1).expect("valid test fixture"),
         PostId::new("playing"),
         None,
         ByteRange::new(4, 8),
@@ -58,5 +58,5 @@ async fn awaited_demand_is_delivered_and_advances_lane_fairness() {
         cursor.choose(&[false, false, false, false, false, false, true, false, false]),
         Some(WakeLane::Internal)
     );
-    tokio::fs::remove_dir_all(root).await.unwrap();
+    tokio::fs::remove_dir_all(root).await.expect("valid test fixture");
 }

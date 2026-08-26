@@ -16,14 +16,14 @@ pub struct ContinuationPolicy {
 }
 
 impl ContinuationPolicy {
-    pub const fn new(continue_hysteresis: i64, abort_hysteresis: i64) -> Self {
+    pub(crate) const fn new(continue_hysteresis: i64, abort_hysteresis: i64) -> Self {
         Self {
             continue_hysteresis,
             abort_hysteresis,
         }
     }
 
-    pub fn decide(self, continuation_advantage: i64) -> ContinuationDecision {
+    pub(crate) fn decide(self, continuation_advantage: i64) -> ContinuationDecision {
         if continuation_advantage > self.continue_hysteresis {
             return ContinuationDecision::Continue;
         }
@@ -34,7 +34,7 @@ impl ContinuationPolicy {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum IdentityProof {
     VerifiedHash([u8; 32]),
     IndependentWhole,
@@ -44,13 +44,13 @@ pub enum IdentityProof {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct HedgeInput {
     pub primary: ActionId,
-    pub action: ActionKind,
+    pub(super) action: ActionKind,
     pub elapsed_ms: u64,
     pub tail_trigger_ms: u64,
-    pub loss_reduction_micros: u64,
-    pub duplicate_cost_micros: u64,
-    pub maximum_network_bytes: u64,
-    pub urgent: bool,
+    pub(super) loss_reduction_micros: u64,
+    pub(super) duplicate_cost_micros: u64,
+    pub(super) maximum_network_bytes: u64,
+    urgent: bool,
 }
 
 impl HedgeInput {

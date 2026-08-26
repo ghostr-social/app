@@ -5,11 +5,12 @@ use crate::transform::{
     TransformBackend, TransformControl, TransformInput, TransformLimits, TransformOutput,
     TransformProfile,
 };
+use core::hint::black_box;
+use core::sync::atomic::{AtomicUsize, Ordering};
+use core::time::Duration;
 use ghostr_engine::adaptive::TransformKind;
-use std::hint::black_box;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tokio::sync::mpsc;
 
 #[derive(Default)]
@@ -21,7 +22,7 @@ struct DeadlineBackend {
 
 impl TransformBackend for DeadlineBackend {
     fn profile(&self) -> TransformProfile {
-        let limits = TransformLimits::try_new(16, 16, 5, 5).unwrap();
+        let limits = TransformLimits::try_new(16, 16, 5, 5).expect("valid test fixture");
         TransformProfile::new(TransformKind::Remux, limits)
     }
 
@@ -63,20 +64,25 @@ async fn deadline_joins_worker_before_releasing_global_singleflight() {
     let backend = Arc::new(DeadlineBackend::default());
     let (events, mut receiver) = mpsc::unbounded_channel::<InternalEvent>();
     let resources = super::resource_test_fixture::control();
-    let mut jobs = TransformJobs::new(Some(backend.clone()), events, resources);
-    assert!(jobs.launch(fixture.store.clone(), fixture.request(10)));
+    let mut jobs = TransformJobs::new(
+        Some(std::sync::Arc::<DeadlineBackend>::clone(&backend)),
+        events,
+        resources,
+    );
+    assert!(jobs.launch(std::sync::Arc::clone(&fixture.store), fixture.request(10)));
 
-    let InternalEvent::Transform(first) = receiver.recv().await.unwrap() else {
+    let InternalEvent::Transform(first) = receiver.recv().await.expect("valid test fixture") else {
         panic!("expected Transform completion");
     };
     assert!(matches!(
         first.terminal,
         TransformTerminal::Failed("warp_transform_deadline_exceeded")
     ));
-    assert!(first.actual_resources.unwrap().cpu_ms() > 0);
+    assert!(first.actual_resources.expect("valid test fixture").cpu_ms() > 0);
     assert!(jobs.finish(&first).is_some());
-    assert!(jobs.launch(fixture.store.clone(), fixture.request(11)));
-    let InternalEvent::Transform(second) = receiver.recv().await.unwrap() else {
+    assert!(jobs.launch(std::sync::Arc::clone(&fixture.store), fixture.request(11)));
+    let InternalEvent::Transform(second) = receiver.recv().await.expect("valid test fixture")
+    else {
         panic!("expected second Transform completion");
     };
     assert!(jobs.finish(&second).is_some());

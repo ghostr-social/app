@@ -1,6 +1,6 @@
 use super::NetworkProfile;
+use core::time::Duration;
 use std::sync::RwLock;
-use std::time::Duration;
 use tokio::sync::{Mutex, Notify};
 use tokio::time::Instant;
 
@@ -35,8 +35,8 @@ async fn serve(mut remaining: f64, profile: &RwLock<NetworkProfile>, changed: &N
         }
         let started = Instant::now();
         tokio::select! {
-            _ = tokio::time::sleep(service_time(remaining, rate)) => return,
-            _ = update => remaining = unserved(remaining, rate, started.elapsed()),
+            () = tokio::time::sleep(service_time(remaining, rate)) => return,
+            () = update => remaining = unserved(remaining, rate, started.elapsed()),
         }
     }
 }

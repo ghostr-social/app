@@ -1,9 +1,8 @@
 //! Pagination accepts UTC unix milliseconds and truncates them to the
 //! whole seconds required by Nostr's `until` field.
 
+use crate::feed::pagination::axiom_test_support::older_than_from_unix_millis;
 use nostr_sdk::Timestamp;
-
-use crate::feed::pagination::older_than_from_unix_millis;
 
 #[test]
 fn milliseconds_truncate_down_to_whole_seconds() {

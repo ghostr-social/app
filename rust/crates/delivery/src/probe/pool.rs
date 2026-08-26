@@ -12,6 +12,7 @@ mod history;
 pub(crate) use availability::evidence_needs_head_refresh;
 use history::CompletedHeadProbe;
 
+#[derive(Clone, Copy)]
 pub(crate) struct ProbeClaimQuery<'a> {
     pub(crate) catalog: &'a Catalog,
     pub(crate) retry: &'a RetryBook,
@@ -51,33 +52,6 @@ impl MetadataProbePool {
         }
     }
 
-    /// Window posts with unresolved size or range support, bounded by the limit.
-    /// Returned posts are marked as probing until released or learned.
-    /// Sources the retry policy retired are never probed again.
-    #[cfg(test)]
-    pub fn claim(
-        &mut self,
-        catalog: &Catalog,
-        window: &[PostId],
-        retry: &RetryBook,
-    ) -> Vec<(PostId, String)> {
-        let mut claimed = Vec::new();
-        for post in window {
-            if self.probing.len() >= self.limit {
-                break;
-            }
-            if let Some(url) = self.needed_probe(catalog, retry, post) {
-                let identity = catalog
-                    .transfer_identity(post, &url)
-                    .expect("probe source came from the catalog");
-                self.probing
-                    .insert(post.clone(), ActiveProbe::new(identity));
-                claimed.push((post.clone(), url));
-            }
-        }
-        claimed
-    }
-
     pub(crate) fn claim_selected(
         &mut self,
         query: ProbeClaimQuery<'_>,
@@ -92,17 +66,6 @@ impl MetadataProbePool {
         self.probing
             .insert(query.post.clone(), ActiveProbe::new(identity.clone()));
         Ok(identity)
-    }
-    #[cfg(test)]
-    pub fn learned(
-        &mut self,
-        identity: &TransferIdentity,
-        generation: Option<ghostr_engine::representation::HttpGenerationLease>,
-    ) {
-        self.probing.remove(identity.post());
-        self.deferred.remove(identity.post());
-        self.probed
-            .insert(identity.clone(), CompletedHeadProbe::for_test(generation));
     }
 
     pub(crate) fn learned_probe(
@@ -172,11 +135,6 @@ impl MetadataProbePool {
             .collect()
     }
 
-    #[cfg(test)]
-    pub(crate) fn has_completed_identity(&self, identity: &TransferIdentity) -> bool {
-        self.probed.contains_key(identity)
-    }
-
     pub(crate) fn active_identities(&self) -> Vec<TransferIdentity> {
         self.probing
             .values()
@@ -198,3 +156,7 @@ impl MetadataProbePool {
         (claimed.identity == current).then_some(current)
     }
 }
+
+#[cfg(test)]
+#[path = "pool_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

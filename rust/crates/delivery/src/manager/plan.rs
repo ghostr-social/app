@@ -5,7 +5,7 @@ use crate::manager::inflight::ActiveAction;
 use crate::manager::retry::RetryBook;
 use crate::manager::state::DeliveryState;
 use ghostr_engine::adaptive::{
-    DiscoveryDemand, Eviction, RetrievalRequest, StorageSnapshot, WholeBodyExhaustion,
+    ControlMode, DiscoveryDemand, Eviction, RetrievalRequest, StorageSnapshot, WholeBodyExhaustion,
 };
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::representation::TransferIdentity;
@@ -18,6 +18,7 @@ use std::time::Instant;
 mod adaptive;
 
 /// Everything a planning pass reads besides the engine state.
+#[derive(Clone, Copy)]
 pub(crate) struct PlanInputs<'a> {
     pub stats: &'a HostStats,
     pub retry: &'a RetryBook,
@@ -68,6 +69,7 @@ pub(crate) struct PlannedWork {
 pub(crate) struct PlannedTransfer {
     pub request: RangeRequest,
     pub retrieval: RetrievalRequest,
+    pub control_mode: ControlMode,
     pub url: String,
     pub identity: TransferIdentity,
     pub commitment_until_ms: u64,
@@ -75,8 +77,8 @@ pub(crate) struct PlannedTransfer {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub(crate) struct PlannedTransferId {
-    pub(crate) chunk: ghostr_engine::ChunkId,
-    pub(crate) identity: TransferIdentity,
+    chunk: ghostr_engine::ChunkId,
+    identity: TransferIdentity,
     pub(crate) retrieval: RetrievalRequest,
 }
 
@@ -90,29 +92,9 @@ impl PlannedTransfer {
     }
 }
 
-/// Runs the pure engine planner over the manager's current picture.
-/// Posts with no source left to try drop out entirely: they are
-/// terminal, not work to reschedule on the next pass.
-#[cfg(test)]
-pub(crate) fn planned_work(state: &mut DeliveryState, inputs: PlanInputs<'_>) -> PlannedWork {
-    let mut planner = ghostr_engine::adaptive::WarpPlanner::default();
-    let watch = ghostr_engine::watch_model::WatchModel::default();
-    planned_work_with_planner(state, inputs, &mut planner, &watch)
-}
-
-#[cfg(test)]
-pub(crate) fn planned_work_with_watch(
-    state: &mut DeliveryState,
-    inputs: PlanInputs<'_>,
-    watch: &ghostr_engine::watch_model::WatchModel,
-) -> PlannedWork {
-    let mut planner = ghostr_engine::adaptive::WarpPlanner::default();
-    planned_work_with_planner(state, inputs, &mut planner, watch)
-}
-
 pub(crate) fn planned_work_with_planner(
-    state: &mut DeliveryState,
-    inputs: PlanInputs<'_>,
+    state: &DeliveryState,
+    inputs: &PlanInputs<'_>,
     planner: &mut ghostr_engine::adaptive::WarpPlanner,
     watch: &ghostr_engine::watch_model::WatchModel,
 ) -> PlannedWork {
@@ -122,3 +104,7 @@ pub(crate) fn planned_work_with_planner(
         started.elapsed().as_micros().clamp(1, u128::from(u64::MAX)) as u64;
     planned
 }
+
+#[cfg(test)]
+#[path = "plan_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

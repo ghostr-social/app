@@ -1,7 +1,7 @@
+use core::num::NonZeroU64;
+use core::sync::atomic::{AtomicU64, Ordering};
 use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::{ByteRange, PostId};
-use std::num::NonZeroU64;
-use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::mpsc;
 
 static NEXT_CONSUMER_ID: AtomicU64 = AtomicU64::new(1);
@@ -51,7 +51,7 @@ impl DemandLease {
         &self.post
     }
 
-    pub fn representation(&self) -> Option<&RepresentationBinding> {
+    pub(super) fn representation(&self) -> Option<&RepresentationBinding> {
         self.representation.as_ref()
     }
 

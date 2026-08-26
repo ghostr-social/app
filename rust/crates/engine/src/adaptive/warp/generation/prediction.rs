@@ -12,6 +12,7 @@ pub(super) struct Prediction {
     pub uncertainty_bps: u16,
 }
 
+#[derive(Clone, Copy)]
 pub(super) struct PredictionInput<'a> {
     pub model: &'a OriginModel,
     pub snapshot: &'a PlayabilitySnapshot,
@@ -115,8 +116,8 @@ fn action_bytes(action: &ActionKind) -> u64 {
         | ActionKind::Tail(range)
         | ActionKind::FetchRange(range)
         | ActionKind::CacheUpgrade(range) => range.len(),
-        ActionKind::FetchWhole { maximum_bytes } => *maximum_bytes,
-        ActionKind::HlsBootstrap { maximum_bytes, .. } => *maximum_bytes,
+        ActionKind::FetchWhole { maximum_bytes }
+        | ActionKind::HlsBootstrap { maximum_bytes, .. } => *maximum_bytes,
         _ => 0,
     }
 }
@@ -131,7 +132,6 @@ fn ready_gain(
     }
     match action {
         ActionKind::FetchWhole { .. } if candidate.total_bytes.is_some() => candidate.duration_ms,
-        ActionKind::FetchWhole { .. } => 0,
         ActionKind::Prefix(range) | ActionKind::FetchRange(range) => candidate
             .playable_ranges
             .iter()

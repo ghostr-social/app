@@ -9,7 +9,7 @@ const STATE_VERSION: u16 = 1;
 
 #[derive(Default)]
 pub struct PlaybackLearningState {
-    pub qoe: QoeStats,
+    pub(crate) qoe: QoeStats,
     pub watch: WatchModel,
 }
 
@@ -21,14 +21,6 @@ struct PersistedLearningState {
     watch: serde_json::Value,
 }
 
-pub async fn load_qoe_stats(path: &Path) -> QoeStats {
-    load_playback_learning(path).await.qoe
-}
-
-pub async fn save_qoe_stats(path: &Path, stats: &QoeStats) -> io::Result<()> {
-    save_playback_learning(path, stats, &WatchModel::default()).await
-}
-
 pub async fn load_playback_learning(path: &Path) -> PlaybackLearningState {
     let Ok(json) = tokio::fs::read_to_string(path).await else {
         return PlaybackLearningState::default();
@@ -36,6 +28,11 @@ pub async fn load_playback_learning(path: &Path) -> PlaybackLearningState {
     load_json(&json).unwrap_or_default()
 }
 
+/// Atomically persists `QoE` statistics and learned playback behavior.
+///
+/// # Errors
+///
+/// Returns an I/O error when the staged state cannot be written or renamed into place.
 pub async fn save_playback_learning(
     path: &Path,
     qoe: &QoeStats,

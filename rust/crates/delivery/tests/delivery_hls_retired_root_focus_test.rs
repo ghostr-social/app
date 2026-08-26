@@ -2,6 +2,7 @@ mod delivery_fixture;
 mod hls_terminal_wait;
 
 use axum::http::StatusCode;
+use core::time::Duration;
 use delivery_fixture::hls::{serve, HlsGate};
 use delivery_fixture::hls_recovery::{serve as serve_script, HlsScript};
 use delivery_fixture::items::{focus_now, sized_item};
@@ -9,7 +10,6 @@ use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use ghostr_delivery::segmented::SegmentedPhase;
 use ghostr_engine::DeliveryKind;
-use std::time::Duration;
 
 #[tokio::test]
 async fn focus_regeneration_does_not_reseed_a_retired_hls_root() {

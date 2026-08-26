@@ -3,11 +3,11 @@ use crate::partial_range_disk::Entry;
 use crate::partial_range_paths::{validate_key, StorePaths};
 use crate::partial_range_store::capacity::StoreCapacity;
 use crate::partial_range_store::leases::{StoreLease, StoreLeases};
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
+use core::sync::atomic::{AtomicU64, Ordering};
 use ghostr_engine::representation::{RepresentationBinding, SourceGeneration, TransferIdentity};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex as StdMutex};
 use tokio::sync::{Mutex, Notify, RwLock};
 
@@ -46,8 +46,9 @@ pub use transform::{TransformFence, TransformPublication, TransformPublicationOu
 
 pub(crate) type Entries = HashMap<String, Entry>;
 
-/// Sparse on-disk store of partially downloaded videos: per key one data
-/// file written at byte offsets plus a persisted manifest of the present
+/// Sparse on-disk store of partially downloaded videos.
+///
+/// Each key has one data file written at byte offsets plus a persisted manifest of the present
 /// ranges. Its configured budget is capped by the device's real free
 /// space.
 pub struct PartialRangeStore {
@@ -106,7 +107,7 @@ impl PartialRangeStore {
             single_response_actions: Mutex::new(HashMap::new()),
             session_responses: Mutex::new(HashMap::new()),
             action_reservations: Mutex::new(HashMap::new()),
-            cleanup_debts: Mutex::new(HashMap::new()),
+            cleanup_debts: Mutex::new(cleanup_debt::CleanupDebts::new()),
             content_revisions: Mutex::new(HashMap::new()),
         }
     }
@@ -114,7 +115,7 @@ impl PartialRangeStore {
     /// Woken (`notify_waiters`) after stored-byte or binding-authority
     /// changes; readers register before re-checking the store.
     pub fn change_notifier(&self) -> Arc<Notify> {
-        self.changed.clone()
+        std::sync::Arc::clone(&self.changed)
     }
 
     /// Pins `key` until the returned lease drops: capacity pressure

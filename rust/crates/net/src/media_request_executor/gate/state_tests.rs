@@ -50,7 +50,8 @@ struct Fixture {
 
 impl Fixture {
     fn new(global: usize, per_authority: usize) -> Self {
-        let limits = MediaRequestLimits::try_new(global, per_authority).unwrap();
+        let limits =
+            MediaRequestLimits::try_new(global, per_authority).expect("valid test fixture");
         Self {
             state: GateState::new(limits),
             gate: MediaRequestGate::new(limits),
@@ -58,7 +59,8 @@ impl Fixture {
     }
 
     fn enqueue(&mut self, host: &str, priority: PreemptionAuthority) {
-        let authority = RequestAuthority::from_url(&format!("https://{host}/media")).unwrap();
+        let authority = RequestAuthority::from_url(&format!("https://{host}/media"))
+            .expect("valid test fixture");
         let (sender, _receiver) = oneshot::channel();
         self.state.enqueue(authority, priority, sender);
     }

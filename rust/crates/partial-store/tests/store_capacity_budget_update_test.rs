@@ -1,7 +1,5 @@
-mod store_fixture;
-
-use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
-use store_fixture::{limits, temp_root, FakeSpace};
+use crate::partial_range_store::capacity::StoreCapacity;
+use crate::tests::store_fixture::{limits, temp_root, FakeSpace};
 
 #[tokio::test]
 async fn store_capacity_budget_change_is_immediate_and_advances_its_generation() {
@@ -9,7 +7,7 @@ async fn store_capacity_budget_change_is_immediate_and_advances_its_generation()
     let capacity = StoreCapacity::new(
         limits(800, 0),
         FakeSpace::new(10_000),
-        std::time::Duration::ZERO,
+        core::time::Duration::ZERO,
     );
     assert_eq!(capacity.cap(&root, 0).await, 800);
     let measured = capacity.generation();

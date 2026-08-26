@@ -1,4 +1,6 @@
-//! Canonical relay URL policy for configured and NIP-65 values:
+//! Canonical relay URL policy for configured and NIP-65 values.
+//!
+//! The policy accepts
 //! `wss` anywhere, `ws` only on local development hosts, no query or
 //! fragment, no userinfo, lowercase scheme and host, and no default
 //! ports or trailing slashes.
@@ -28,7 +30,7 @@ pub fn normalize_relay_url(raw: &str) -> Option<String> {
 
 /// NIP-18 hints are attacker-controlled network targets. They must use
 /// public-domain WSS endpoints; configured relays retain the broader policy.
-pub fn normalize_untrusted_relay_url(raw: &str) -> Option<String> {
+pub(crate) fn normalize_untrusted_relay_url(raw: &str) -> Option<String> {
     let normalized = normalize_relay_url(raw)?;
     let parsed = url::Url::parse(&normalized).ok()?;
     if parsed.scheme() != "wss" {

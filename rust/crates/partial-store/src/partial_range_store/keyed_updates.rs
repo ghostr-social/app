@@ -8,7 +8,7 @@ pub(super) struct KeyedUpdates {
 }
 
 impl KeyedUpdates {
-    pub(super) async fn lock(&self, key: &str) -> OwnedMutexGuard<()> {
+    async fn lock(&self, key: &str) -> OwnedMutexGuard<()> {
         let lock = {
             let mut locks = self.locks.lock().unwrap_or_else(|error| error.into_inner());
             locks.retain(|_, known| known.strong_count() > 0);

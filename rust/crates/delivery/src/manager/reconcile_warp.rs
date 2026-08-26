@@ -6,8 +6,6 @@ mod probe;
 mod promotion;
 mod transform;
 
-#[cfg(test)]
-pub(crate) use directive::directive_for;
 pub(crate) use directive::{execution, WarpDirective};
 use probe::SelectedProbe;
 
@@ -147,3 +145,7 @@ impl DeliveryWorker {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "reconcile_warp_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

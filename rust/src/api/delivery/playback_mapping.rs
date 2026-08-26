@@ -6,9 +6,9 @@ use crate::engine::playback::{
     PlaybackObservation, PlaybackObservationSequence, PlaybackPhase, PlaybackSession,
 };
 use crate::engine::PostId;
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Context as _, Result};
+use core::time::Duration;
 use ghostr_delivery::delivery_events::{DeliveryPlayback, PlaybackPresentation};
-use std::time::Duration;
 
 pub(crate) fn playback_update(input: FfiPlaybackObservation) -> Result<DeliveryPlayback> {
     validate_post_id(&input.post_id)?;

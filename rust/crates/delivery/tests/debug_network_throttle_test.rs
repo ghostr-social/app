@@ -1,9 +1,9 @@
+use core::time::Duration;
 use ghostr_delivery::debug::network::{NetworkProfile, NetworkThrottle};
-use std::time::Duration;
-use tokio::time::{timeout, Instant};
+use tokio::time::Instant;
 
-#[tokio::test]
-async fn per_host_setting_does_not_create_a_second_admission_queue() {
+#[test]
+fn per_host_setting_does_not_create_a_second_admission_queue() {
     let throttle = NetworkThrottle::new();
     throttle.update(NetworkProfile {
         bandwidth_kbps: 0,
@@ -11,13 +11,8 @@ async fn per_host_setting_does_not_create_a_second_admission_queue() {
         packet_loss_bps: 0,
         max_connections_per_host: 1,
     });
-    let first = throttle.acquire("https://relay.example/a").await;
-    let second = timeout(
-        Duration::from_millis(100),
-        throttle.acquire("https://relay.example/b"),
-    )
-    .await
-    .expect("the shared request executor owns connection admission");
+    let first = throttle.acquire("https://relay.example/a");
+    let second = throttle.acquire("https://relay.example/b");
 
     assert_eq!(
         throttle.active_connections(),

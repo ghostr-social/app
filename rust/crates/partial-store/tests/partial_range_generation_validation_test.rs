@@ -1,5 +1,3 @@
-mod store_fixture;
-
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::representation::SourceGeneration;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
@@ -8,22 +6,31 @@ use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn persisted_weak_validator_never_authorizes_sparse_continuation() {
-    let root = store_fixture::temp_root("generation-validation");
+    let root = crate::tests::store_fixture::temp_root("generation-validation");
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(PostId::new("clip"), meta());
-    let identity = binding.transfer(&meta().urls[0]).unwrap();
-    let generation = SourceGeneration::try_new(&meta().urls[0], "\"valid\"", 8).unwrap();
-    let first = store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
-    first.bind_representation(binding.clone()).await.unwrap();
-    first.select_transfer(identity.clone()).await.unwrap();
+    let identity = binding
+        .transfer(&meta().urls[0])
+        .expect("valid test fixture");
+    let generation =
+        SourceGeneration::try_new(&meta().urls[0], "\"valid\"", 8).expect("valid test fixture");
+    let first = crate::tests::store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
+    first
+        .bind_representation(binding.clone())
+        .await
+        .expect("valid test fixture");
+    first
+        .select_transfer(identity.clone())
+        .await
+        .expect("valid test fixture");
     first
         .accept_generation(&identity, generation.clone())
         .await
-        .unwrap();
+        .expect("valid test fixture");
     first
         .write_range_for_generation_if_current(&identity, &generation, 0, b"part")
         .await
-        .unwrap();
+        .expect("valid test fixture");
     drop(first);
 
     let invalid = serde_json::json!({
@@ -37,20 +44,34 @@ async fn persisted_weak_validator_never_authorizes_sparse_continuation() {
     });
     tokio::fs::write(
         root.join("clip.generation.json"),
-        serde_json::to_vec(&invalid).unwrap(),
+        serde_json::to_vec(&invalid).expect("valid test fixture"),
     )
     .await
-    .unwrap();
+    .expect("valid test fixture");
 
     let used = Arc::new(Mutex::new(0));
-    let reopened = store_fixture::plain_store(root.clone(), used.clone());
-    reopened.load_existing().await.unwrap();
-    reopened.bind_representation(binding).await.unwrap();
+    let reopened =
+        crate::tests::store_fixture::plain_store(root.clone(), std::sync::Arc::clone(&used));
+    reopened.load_existing().await.expect("valid test fixture");
+    reopened
+        .bind_representation(binding)
+        .await
+        .expect("valid test fixture");
 
-    assert_eq!(reopened.select_transfer(identity).await.unwrap(), None);
-    assert!(reopened.present_ranges("clip").await.unwrap().is_empty());
+    assert_eq!(
+        reopened
+            .select_transfer(identity)
+            .await
+            .expect("valid test fixture"),
+        None
+    );
+    assert!(reopened
+        .present_ranges("clip")
+        .await
+        .expect("valid test fixture")
+        .is_empty());
     assert_eq!(*used.lock().await, 0);
-    store_fixture::discard(&root);
+    crate::tests::store_fixture::discard(&root);
 }
 
 fn meta() -> VideoMeta {

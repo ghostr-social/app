@@ -1,9 +1,9 @@
 //! Loopback origins that answer with a byte-for-byte canned response, for
 //! the malformed headers a real HTTP server would refuse to emit.
 
-#![allow(dead_code)]
+#![expect(dead_code, reason = "shared fixture APIs vary by integration scenario")]
 
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
@@ -11,9 +11,15 @@ use tokio::task::JoinHandle;
 mod gated_response;
 mod split_response;
 
-#[allow(unused_imports)]
+#[expect(
+    unused_imports,
+    reason = "shared fixture APIs vary by integration scenario"
+)]
 pub use gated_response::{spawn_gated_response, GatedResponse};
-#[allow(unused_imports)]
+#[expect(
+    unused_imports,
+    reason = "shared fixture APIs vary by integration scenario"
+)]
 pub use split_response::{spawn_gated_split_response, spawn_split_response, SplitResponse};
 
 pub struct StalledHeaders {
@@ -29,7 +35,10 @@ pub async fn spawn_stalled_headers() -> StalledHeaders {
     let requests = tokio::spawn(async move {
         let (mut socket, _) = listener.accept().await.expect("request");
         let mut buffer = vec![0; 4096];
-        assert!(socket.read(&mut buffer).await.expect("read request") > 0);
+        assert!(
+            socket.read(&mut buffer).await.expect("read request") > 0,
+            "the client must start its request"
+        );
         started.send(()).ok();
         let _ = socket.read(&mut buffer[..1]).await;
     });
@@ -92,6 +101,9 @@ pub async fn spawn_response_sequence(responses: Vec<&'static [u8]>) -> (String, 
 pub(super) async fn answer_once(listener: &TcpListener, response: &[u8]) {
     let (mut socket, _) = listener.accept().await.expect("request");
     let mut request = vec![0; 4096];
-    assert!(socket.read(&mut request).await.expect("read request") > 0);
+    assert!(
+        socket.read(&mut request).await.expect("read request") > 0,
+        "the client must send a request"
+    );
     socket.write_all(response).await.expect("write response");
 }

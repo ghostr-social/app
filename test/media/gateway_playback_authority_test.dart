@@ -69,6 +69,7 @@ PreparedProgressivePlayback _prepared() {
     origin: origin,
     media: ProxiedProgressiveVideoMediaSource(fakeProgressivePlaybackUrl),
     authority: authority,
+    isStructurallyStartable: true,
   );
 }
 

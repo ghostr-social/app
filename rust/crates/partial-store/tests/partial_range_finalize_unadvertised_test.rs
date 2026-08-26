@@ -1,18 +1,16 @@
 //! Most Nostr video notes carry no `imeta x`, so a byte-complete file
 //! with nothing to check against must still leave the partial pool.
 
-mod store_fixture;
-
-use ghostr_partial_store::partial_range_completion::Completion;
+use crate::partial_range_completion::Completion;
+use crate::tests::store_fixture::{plain_store, temp_root};
 use std::sync::Arc;
-use store_fixture::{plain_store, temp_root};
 use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn partial_range_finalize_promotes_a_complete_file_without_an_advertised_digest() {
     let root = temp_root("ghostr-partial-unadvertised");
     let used_bytes = Arc::new(Mutex::new(0));
-    let store = plain_store(root.clone(), used_bytes.clone());
+    let store = plain_store(root.clone(), std::sync::Arc::clone(&used_bytes));
     store
         .write_range("clip", 0, b"headtail")
         .await

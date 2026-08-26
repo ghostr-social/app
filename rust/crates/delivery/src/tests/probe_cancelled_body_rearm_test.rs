@@ -12,7 +12,7 @@ fn deferred_probe_rearms_when_reconciliation_finds_no_active_body() {
     let mut probes = MetadataProbePool::new(1);
     assert_eq!(
         probes
-            .claim(&catalog, std::slice::from_ref(&post), &retry)
+            .claim(&catalog, core::slice::from_ref(&post), &retry)
             .len(),
         1
     );

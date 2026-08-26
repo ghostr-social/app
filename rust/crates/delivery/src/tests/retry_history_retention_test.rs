@@ -15,15 +15,15 @@ fn evicted_retry_history_is_dropped_without_reviving_retained_sources() {
     });
     assert_eq!(retire(&mut retry, &old, &old_url), Retry::GiveUp);
     assert_eq!(retire(&mut retry, &kept, &kept_url), Retry::GiveUp);
-    retry.cool_down(old.clone()).unwrap();
-    retry.cool_down(kept.clone()).unwrap();
+    retry.cool_down(old.clone()).expect("valid test fixture");
+    retry.cool_down(kept.clone()).expect("valid test fixture");
 
     retry.retain_history(&HashSet::from([kept.clone()]));
 
     assert!(!retry.is_cooling(&old));
     assert!(retry.is_cooling(&kept));
     assert_eq!(
-        retry.live_urls(&old, std::slice::from_ref(&old_url)),
+        retry.live_urls(&old, core::slice::from_ref(&old_url)),
         vec![old_url]
     );
     assert!(retry.live_urls(&kept, &[kept_url]).is_empty());
@@ -31,7 +31,7 @@ fn evicted_retry_history_is_dropped_without_reviving_retained_sources() {
 
 fn retire(retry: &mut RetryBook, post: &PostId, url: &str) -> Retry {
     retry.note_failure(
-        Source::new(post.clone(), url.to_owned()),
+        Source::new(post.clone(), url),
         FailureClass::Permanent,
     )
 }

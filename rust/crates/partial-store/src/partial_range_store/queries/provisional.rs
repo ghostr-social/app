@@ -1,8 +1,8 @@
 use super::PartialRangeStore;
 use crate::partial_range_manifest::RangeManifest;
 use anyhow::Result;
-use sha2::Digest;
-use std::ops::Range;
+use core::ops::Range;
+use sha2::Digest as _;
 
 pub(super) struct ProvisionalInterval {
     span: Range<u64>,

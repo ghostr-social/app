@@ -1,7 +1,5 @@
-mod feed_support;
-
-use feed_support::{repost, signed_event, SignedEventFixture};
-use ghostr_discovery::content::reposts::feed_post_from_event;
+use crate::content::reposts::feed_post_from_event;
+use crate::tests::feed_support::{repost, signed_event, SignedEventFixture};
 use nostr_sdk::{Keys, Kind};
 
 #[test]

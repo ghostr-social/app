@@ -23,6 +23,7 @@ fn stored_prefix_progress_keeps_the_overlapping_origin_request_in_flight() {
         handle,
     );
     let transfer = PlannedTransfer {
+        control_mode: ghostr_engine::adaptive::ControlMode::Normal,
         identity,
         request: chunk_request(wanted_chunk.clone(), PreemptionAuthority::PlaybackCritical),
         url: url.to_owned(),
@@ -63,6 +64,7 @@ fn assert_foreground_supersedes_seed(authority: PreemptionAuthority) {
         handle,
     );
     let planned = PlannedTransfer {
+        control_mode: ghostr_engine::adaptive::ControlMode::Normal,
         identity,
         request: chunk_request(foreground.clone(), authority),
         url: url.to_owned(),

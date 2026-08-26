@@ -12,11 +12,6 @@ impl FeedState {
         self.session
     }
 
-    #[cfg(test)]
-    pub(crate) fn ingest_social(&mut self, events: &[Event]) -> Option<Vec<PublicKey>> {
-        self.ingest_social_for(self.session, events)
-    }
-
     pub(crate) fn ingest_social_for(
         &mut self,
         session: SessionGeneration,
@@ -54,3 +49,7 @@ impl FeedState {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "session_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

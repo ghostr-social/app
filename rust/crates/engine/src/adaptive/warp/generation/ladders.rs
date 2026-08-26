@@ -78,7 +78,7 @@ fn metadata_plan(
     )
 }
 
-pub(super) fn size_bounds(
+fn size_bounds(
     candidate: &CandidateSnapshot,
     evidence: PlannerCandidateContext,
 ) -> (Option<u64>, Option<u64>) {

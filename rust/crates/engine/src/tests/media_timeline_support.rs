@@ -65,7 +65,7 @@ pub(super) fn full_box(kind: &[u8; 4], body: Vec<u8>) -> Vec<u8> {
     full_box_version(kind, 0, body)
 }
 
-pub(super) fn full_box_version(kind: &[u8; 4], version: u8, body: Vec<u8>) -> Vec<u8> {
+fn full_box_version(kind: &[u8; 4], version: u8, body: Vec<u8>) -> Vec<u8> {
     let mut payload = vec![version, 0, 0, 0];
     payload.extend(body);
     atom(kind, payload)

@@ -19,13 +19,18 @@ pub(super) struct FixtureState {
     pub(super) change: Change,
 }
 
+#[derive(Clone, Copy)]
 struct RequestedRange {
     start: usize,
     end: usize,
 }
 
 pub(super) fn init(headers: &HeaderMap, state: &FixtureState) -> Response<Body> {
-    let range = headers.get(header::RANGE).unwrap().to_str().unwrap();
+    let range = headers
+        .get(header::RANGE)
+        .expect("valid test fixture")
+        .to_str()
+        .expect("valid test fixture");
     let if_range = value(headers, header::IF_RANGE);
     let if_match = value(headers, header::IF_MATCH);
     let guarded = if_range.is_some();
@@ -48,7 +53,7 @@ fn observe(
     if_range: Option<String>,
     if_match: Option<String>,
 ) -> u8 {
-    let mut seen = state.requests.lock().unwrap();
+    let mut seen = state.requests.lock().expect("valid test fixture");
     seen.push((range.to_owned(), if_range, if_match));
     seen.iter()
         .filter(|(range, _, _)| range.starts_with("bytes=0-"))
@@ -84,17 +89,17 @@ fn changed_response(
 fn parse_range(value: &str) -> RequestedRange {
     let (start, end) = value
         .strip_prefix("bytes=")
-        .unwrap()
+        .expect("valid test fixture")
         .split_once('-')
-        .unwrap();
+        .expect("valid test fixture");
     RequestedRange {
-        start: start.parse().unwrap(),
-        end: end.parse().unwrap(),
+        start: start.parse().expect("valid test fixture"),
+        end: end.parse().expect("valid test fixture"),
     }
 }
 
 fn value(headers: &HeaderMap, name: header::HeaderName) -> Option<String> {
     headers
         .get(name)
-        .map(|value| value.to_str().unwrap().to_owned())
+        .map(|value| value.to_str().expect("valid test fixture").to_owned())
 }

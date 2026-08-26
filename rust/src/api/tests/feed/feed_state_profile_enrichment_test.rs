@@ -1,5 +1,5 @@
 //! Kind-0 events riding in a retrieval outcome enrich the creator
-//! identity of every snapshot row (profile_store precedence rules).
+//! identity of every snapshot row (`profile_store` precedence rules).
 
 use crate::api::feed::state::FeedState;
 use crate::api::tests::feed_fixtures::{profile_event, video_note};

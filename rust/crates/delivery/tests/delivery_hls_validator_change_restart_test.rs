@@ -22,7 +22,7 @@ async fn changed_strong_etag_restarts_the_object_without_poisoning_origin() {
 
     assert_eq!(terminal.phase, SegmentedPhase::Ready);
     assert_eq!(
-        *requests.lock().unwrap(),
+        *requests.lock().expect("valid test fixture"),
         [
             ("bytes=0-262143".to_owned(), None, None),
             ("bytes=262144-307199".to_owned(), None, None),
@@ -33,7 +33,7 @@ async fn changed_strong_etag_restarts_the_object_without_poisoning_origin() {
     let init = harness
         .segmented
         .object(&source.replace("index.m3u8", "init.mp4"))
-        .unwrap();
+        .expect("valid test fixture");
     assert_eq!(init.body.as_ref(), vec![8; INIT_BYTES]);
     std::fs::remove_dir_all(&harness.root).ok();
 }

@@ -107,7 +107,7 @@ impl Cooldowns {
         self.active.get(post).map(|active| active.eligible_at_ms)
     }
 
-    pub(super) fn is_strict(&self, post: &PostId) -> bool {
+    fn is_strict(&self, post: &PostId) -> bool {
         self.active.get(post).is_some_and(|active| active.strict)
     }
 
@@ -142,9 +142,8 @@ impl Cooldowns {
         self.demanded_offsets.remove(post);
         self.credits.remove(post);
     }
-
-    #[cfg(test)]
-    pub(super) fn demand_tracking_units(&self) -> usize {
-        self.demanded_offsets.values().map(VecDeque::len).sum()
-    }
 }
+
+#[cfg(test)]
+#[path = "cooldowns_axiom_test.rs"]
+mod axiom_test_support;

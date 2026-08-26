@@ -1,16 +1,14 @@
 //! An empty older page exhausts a canonical feed (`_nextCursor` returns
-//! null in lib/features/video_catalog/domain/filtered_video_feed_repository.dart)
+//! null in `lib/features/video_catalog/domain/filtered_video_feed_repository.dart`)
 //! but a query feed keeps its cursor and keeps hunting — the viewer asked
 //! for exactly this content, so the search never reports itself finished
-//! (lib/features/video_catalog/domain/query_video_feed_repository.dart
+//! (`lib/features/video_catalog/domain/query_video_feed_repository.dart`
 //! `_freshMatches`).
 
-mod feed_support;
-
-use feed_support::{parsed_posts, video_note};
-use ghostr_discovery::content::social_graph::SocialGraph;
-use ghostr_discovery::feed::spec::FeedSpec;
-use ghostr_discovery::feed::store::FeedStore;
+use crate::content::social_graph::SocialGraph;
+use crate::feed::spec::FeedSpec;
+use crate::feed::store::FeedStore;
+use crate::tests::feed_support::{parsed_posts, video_note};
 use nostr_sdk::{Keys, Timestamp};
 
 #[test]

@@ -1,7 +1,7 @@
 use super::{ChunkDone, TransferContext, TransferEvent};
 use crate::chunk::cancel::CancelToken;
 use crate::chunk::downloader::{
-    download_chunk_captured, ChunkExecution, ChunkResult, ChunkSpec, ObservedChunk,
+    download_chunk_observed, ChunkExecution, ChunkResult, ChunkSpec, ObservedChunk,
 };
 use crate::chunk::sink::TransferChunkSink;
 use crate::manager::inflight::ChunkAttempt;
@@ -79,7 +79,7 @@ async fn execute_chunk(
         launch.action.clone(),
     );
     let spec = chunk_spec(launch, continuation);
-    download_chunk_captured(
+    download_chunk_observed(
         &spec,
         ChunkExecution {
             sink: &sink,
@@ -113,7 +113,7 @@ pub(crate) fn chunk_event(
     outcome: anyhow::Result<ChunkResult>,
 ) -> TransferEvent {
     let received_bytes = outcome.as_ref().map_or(0, |result| result.bytes_written);
-    TransferEvent::ChunkDone(ChunkDone {
+    TransferEvent::ChunkDone(Box::new(ChunkDone {
         attempt,
         url,
         outcome,
@@ -122,7 +122,7 @@ pub(crate) fn chunk_event(
         request_started: false,
         whole_body_completion: None,
         response_evidence: None,
-    })
+    }))
 }
 
 fn observed_chunk_event(
@@ -130,7 +130,7 @@ fn observed_chunk_event(
     url: String,
     observed: ObservedChunk,
 ) -> TransferEvent {
-    TransferEvent::ChunkDone(ChunkDone {
+    TransferEvent::ChunkDone(Box::new(ChunkDone {
         attempt,
         url,
         outcome: observed.result,
@@ -139,5 +139,5 @@ fn observed_chunk_event(
         request_started: observed.request_started,
         whole_body_completion: observed.whole_body_completion,
         response_evidence: observed.response_evidence,
-    })
+    }))
 }

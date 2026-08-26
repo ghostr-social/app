@@ -22,7 +22,7 @@ pub(super) fn active(post: &str) -> Active {
         pending,
         committed_until_ms: u64::MAX,
         network: active_network(),
-        _task: tokio::spawn(std::future::pending()),
+        _task: tokio::spawn(core::future::pending()),
         cancellation: Some(cancellation),
         cancelling: false,
     }

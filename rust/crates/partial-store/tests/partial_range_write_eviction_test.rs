@@ -3,9 +3,7 @@
 //! then lands; only the write's own key and leased videos are out of
 //! reach, so nothing the user is watching is pulled away.
 
-mod store_fixture;
-
-use store_fixture::{discard, limits, spaced_store};
+use crate::tests::store_fixture::{discard, limits, spaced_store};
 
 #[tokio::test]
 async fn partial_range_write_evicts_unleased_content_instead_of_refusing() {

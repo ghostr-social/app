@@ -5,10 +5,10 @@ use crate::relay::registration::{
 };
 use crate::relay::removal::RelayRoleIo;
 use crate::relay::roles::{RelayPoolConfiguration, RelayPoolRoles};
+use core::time::Duration;
 use nostr_sdk::{Client, RelayServiceFlags};
 use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 #[derive(Clone)]
 struct RecordedRegistration {
@@ -43,7 +43,10 @@ impl RelayRegistration for RecordingRegistration {
 #[tokio::test]
 async fn configured_relay_replacement_and_reset_keep_one_bounded_eager_union() {
     let registration = Arc::new(RecordingRegistration::default());
-    let io = RelayRoleIo::with_registration(Arc::new(Client::default()), registration.clone());
+    let io = RelayRoleIo::with_registration(
+        Arc::new(Client::default()),
+        std::sync::Arc::<RecordingRegistration>::clone(&registration),
+    );
     let roles = RelayPoolRoles::new(io, RelayPoolConfiguration::default());
     roles.replace_configuration(configuration()).await;
     let first = take_calls(&registration);
@@ -65,7 +68,7 @@ fn configuration() -> RelayPoolConfiguration {
 }
 
 fn take_calls(registration: &RecordingRegistration) -> Vec<RecordedRegistration> {
-    std::mem::take(&mut *registration.calls.lock().expect("registration calls"))
+    core::mem::take(&mut *registration.calls.lock().expect("registration calls"))
 }
 
 fn assert_bounded_policy(calls: &[RecordedRegistration]) {

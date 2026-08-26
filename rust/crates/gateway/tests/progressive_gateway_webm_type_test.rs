@@ -3,7 +3,7 @@ mod gateway_fixture;
 use axum::http::header::CONTENT_TYPE;
 use axum::http::StatusCode;
 use gateway_fixture::progressive::progressive_harness;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 const WEBM_HEADER: &[u8] = b"\x1a\x45\xdf\xa3\x9f\x42\x82\x84webm";
 

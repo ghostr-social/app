@@ -4,6 +4,7 @@ mod transform_delivery_fixture;
 mod transform_fixture;
 mod transform_wait_fixture;
 
+use delivery_fixture::evidence::DeliveryEvidence as _;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::{start_harness_with_store, temp_directory};
@@ -36,18 +37,21 @@ async fn selected_transform_publishes_exact_derived_representation() {
         transform: Some(Arc::new(FixtureRemux)),
         ..DeliveryOptions::default()
     };
-    let harness = start_harness_with_store(store.clone(), root, options);
+    let harness = start_harness_with_store(std::sync::Arc::clone(&store), root, options);
     harness.handle.update_focus(focus_now(vec![item], 0, 0));
     wait_for_focus(&harness.cache).await;
     report_unsupported(&harness.handle, &store, input.clone()).await;
 
     let transformed = wait_for_transform(&store, &input, &harness.handle).await;
-    assert!(transformed.binding().unwrap().derives_from(&input));
+    assert!(transformed
+        .binding()
+        .expect("valid test fixture")
+        .derives_from(&input));
     assert_eq!(
         store
             .read_range("post", 0..OUTPUT.len() as u64)
             .await
-            .unwrap(),
+            .expect("valid test fixture"),
         Some(OUTPUT.to_vec())
     );
     let record = harness
@@ -67,9 +71,14 @@ async fn selected_transform_publishes_exact_derived_representation() {
     assert!(actual.cpu_ms <= 5);
     assert_eq!(actual.requests, 0);
     assert!(matches!(
-        record.warp_decision.unwrap().selected.unwrap().command,
+        record
+            .warp_decision
+            .expect("valid test fixture")
+            .selected
+            .expect("valid test fixture")
+            .command,
         RecordedWarpCommand::Transform { .. }
     ));
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }

@@ -1,10 +1,10 @@
+use core::error::Error;
+use core::net::SocketAddr;
+use core::sync::atomic::{AtomicUsize, Ordering};
+use core::time::Duration;
 use ghostr_net::outbound_media_client::MediaHttpClient;
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
-use std::error::Error;
-use std::net::SocketAddr;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 
 struct RecordingResolver {
     address: SocketAddr,
@@ -24,7 +24,7 @@ async fn allows_a_hostname_only_after_its_resolution_is_public() {
     let calls = Arc::new(AtomicUsize::new(0));
     let resolver = RecordingResolver {
         address: "1.1.1.1:9".parse().expect("public address"),
-        calls: calls.clone(),
+        calls: std::sync::Arc::clone(&calls),
     };
     let client = MediaHttpClient::with_resolver(Arc::new(resolver)).expect("media client");
     let request = client.get("http://media.test/video.mp4").expect("request");

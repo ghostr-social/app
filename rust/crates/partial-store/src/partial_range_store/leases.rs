@@ -12,35 +12,35 @@ pub struct StoreLeases {
 }
 
 impl StoreLeases {
-    pub(crate) fn new(events: CapacityEvents) -> Self {
+    pub(super) fn new(events: CapacityEvents) -> Self {
         Self {
             counts: Mutex::new(HashMap::new()),
             events,
         }
     }
 
-    pub(crate) fn acquire(self: &Arc<Self>, key: &str) -> StoreLease {
+    pub(super) fn acquire(self: &Arc<Self>, key: &str) -> StoreLease {
         *self.counts().entry(key.to_owned()).or_insert(0) += 1;
         StoreLease {
-            leases: self.clone(),
+            leases: std::sync::Arc::clone(self),
             key: key.to_owned(),
         }
     }
 
-    pub(crate) fn try_acquire_unheld(self: &Arc<Self>, key: &str) -> Option<StoreLease> {
+    pub(super) fn try_acquire_unheld(self: &Arc<Self>, key: &str) -> Option<StoreLease> {
         let mut counts = self.counts();
         if counts.contains_key(key) {
             return None;
         }
         counts.insert(key.to_owned(), 1);
         Some(StoreLease {
-            leases: self.clone(),
+            leases: std::sync::Arc::clone(self),
             key: key.to_owned(),
         })
     }
 
     /// True while at least one lease on `key` is alive.
-    pub(crate) fn held(&self, key: &str) -> bool {
+    pub(super) fn held(&self, key: &str) -> bool {
         self.counts().get(key).is_some_and(|count| *count > 0)
     }
 
@@ -71,7 +71,7 @@ pub struct StoreLease {
 }
 
 impl StoreLease {
-    pub(crate) fn is_exclusive(&self) -> bool {
+    pub(super) fn is_exclusive(&self) -> bool {
         self.leases
             .counts()
             .get(&self.key)

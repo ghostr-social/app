@@ -37,7 +37,7 @@ impl DeliveryWorker {
     ) {
         match outcome {
             TimelineJobOutcome::Terminal(TimelineTerminal::Ready(timeline)) => {
-                if install_timeline(&mut self.state, evidence.binding(), timeline) {
+                if install_timeline(&mut self.state, evidence.binding(), *timeline) {
                     self.timelines
                         .publish_installed(post.clone(), evidence.clone());
                 }

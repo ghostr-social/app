@@ -1,6 +1,7 @@
 use super::super::issue;
 use crate::progressive::capabilities::ProgressiveCapabilities;
 use crate::progressive::route::{ProgressiveState, ProgressiveTiming};
+use core::time::Duration;
 use ghostr_delivery::cache_registry::{CacheStatus, CacheVideo};
 use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_delivery::playback_demand::demand_channel;
@@ -10,7 +11,7 @@ use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 
 #[tokio::test]
@@ -19,13 +20,24 @@ async fn issuance_wakes_when_cache_publishes_exact_authority() {
     let meta = meta();
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(PostId::new("clip"), meta.clone());
-    state.store.bind_representation(binding).await.unwrap();
-    state.store.set_total_len("clip", 16).await.unwrap();
+    state
+        .store
+        .bind_representation(binding)
+        .await
+        .expect("valid test fixture");
+    state
+        .store
+        .set_total_len("clip", 16)
+        .await
+        .expect("valid test fixture");
     state.cache.insert("clip");
-    let issued_state = state.clone();
+    let issued_state = std::sync::Arc::clone(&state);
     let issued_meta = meta.clone();
-    let mut issued =
-        tokio::spawn(async move { issue(&issued_state, "clip", &issued_meta).await.unwrap() });
+    let mut issued = tokio::spawn(async move {
+        issue(&issued_state, "clip", &issued_meta)
+            .await
+            .expect("valid test fixture")
+    });
     assert!(tokio::time::timeout(Duration::from_millis(25), &mut issued)
         .await
         .is_err());
@@ -37,9 +49,9 @@ async fn issuance_wakes_when_cache_publishes_exact_authority() {
     }]);
     tokio::time::timeout(Duration::from_secs(1), issued)
         .await
-        .unwrap()
-        .unwrap();
-    std::fs::remove_dir_all(root).unwrap();
+        .expect("valid test fixture")
+        .expect("valid test fixture");
+    std::fs::remove_dir_all(root).expect("valid test fixture");
 }
 
 fn state() -> (Arc<ProgressiveState>, PathBuf) {
@@ -47,7 +59,7 @@ fn state() -> (Arc<ProgressiveState>, PathBuf) {
         "ghostr-progressive-cache-wake-{}",
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("valid test fixture")
             .as_nanos()
     ));
     let store = Arc::new(PartialRangeStore::with_capacity(

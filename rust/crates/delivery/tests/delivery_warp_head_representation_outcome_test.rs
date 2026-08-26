@@ -3,14 +3,15 @@
 mod delivery_fixture;
 mod raw_http;
 
+use core::time::Duration;
 use delivery_fixture::decision::wait_for_history;
+use delivery_fixture::evidence::DeliveryEvidence as _;
 use delivery_fixture::items::{focus_now, unsized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_engine::adaptive::{DecisionOutcome, RecordedWarpCommand};
 use raw_http::{spawn_raw_server, spawn_stalled_headers};
-use std::time::Duration;
 
 const HEAD_RESPONSE: &[u8] =
     b"HTTP/1.1 200 OK\r\nContent-Length: 8\r\nAccept-Ranges: bytes\r\nConnection: close\r\n\r\n";
@@ -41,7 +42,7 @@ async fn replaced_head_stays_pending_then_resolves_as_superseded() {
     assert!(request.starts_with(b"HEAD "));
     wait_for_superseded(&harness.handle, sequence).await;
 
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }
 

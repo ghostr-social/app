@@ -3,7 +3,7 @@ use crate::tests::player_preparation_fixture::report;
 
 #[test]
 fn saturated_initial_never_enters_the_receiver() {
-    let (handle, mut receiver) = command_channel();
+    let (handle, receiver) = command_channel();
     for index in 0..16 {
         let admission = handle.player_preparation_admission();
         assert_eq!(

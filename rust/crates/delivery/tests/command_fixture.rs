@@ -1,5 +1,5 @@
+use core::time::Duration;
 use ghostr_delivery::delivery_events::{CommandReceiver, DeliveryCommand};
-use std::time::Duration;
 
 pub async fn next_control(commands: &mut CommandReceiver) -> DeliveryCommand {
     tokio::time::timeout(Duration::from_secs(5), async {

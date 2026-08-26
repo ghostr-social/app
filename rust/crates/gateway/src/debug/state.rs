@@ -51,7 +51,7 @@ pub struct HlsVideoSnapshot {
     status: &'static str,
 }
 
-pub(crate) async fn snapshot(state: &ProgressiveState, delivery: &DeliveryHandle) -> DebugSnapshot {
+pub(super) async fn snapshot(state: &ProgressiveState, delivery: &DeliveryHandle) -> DebugSnapshot {
     let mut videos = Vec::new();
     for video in state.cache.videos() {
         videos.push(video_snapshot(state, video).await);

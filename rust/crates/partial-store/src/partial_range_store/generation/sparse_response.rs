@@ -21,6 +21,9 @@ pub(in crate::partial_range_store) struct SparseResponseState {
 }
 
 impl PartialRangeStore {
+    /// # Errors
+    ///
+    /// Returns an error when the response is stale, invalid, over capacity, or cannot be persisted.
     pub async fn write_range_for_action_if_current(
         &self,
         identity: &TransferIdentity,
@@ -71,6 +74,9 @@ impl PartialRangeStore {
         Ok(())
     }
 
+    /// # Errors
+    ///
+    /// Returns an error when response state cannot be validated, committed, or discarded durably.
     pub async fn finish_sparse_response(
         &self,
         identity: &TransferIdentity,

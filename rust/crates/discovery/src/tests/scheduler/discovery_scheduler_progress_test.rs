@@ -24,7 +24,7 @@ impl PlanExecutor for ProgressiveExecutor {
         progress: EventProgress,
     ) -> PlanFuture {
         let event = self.event.clone();
-        let gate = self.gate.clone();
+        let gate = std::sync::Arc::clone(&self.gate);
         Box::pin(async move {
             progress
                 .send(event.clone())
@@ -41,7 +41,7 @@ async fn publishes_events_before_the_retrieval_settles() {
     let gate = Arc::new(Semaphore::new(0));
     let executor = Arc::new(ProgressiveExecutor {
         event: note_at(40),
-        gate: gate.clone(),
+        gate: std::sync::Arc::clone(&gate),
     });
     let (sender, mut outcomes) = mpsc::unbounded_channel();
     let (_, demand) = watch::channel(DiscoveryDemand::Hold);

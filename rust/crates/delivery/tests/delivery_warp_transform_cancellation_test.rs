@@ -4,7 +4,9 @@ mod focus_wait_fixture;
 mod transform_delivery_fixture;
 
 use blocking_transform_fixture::BlockingRemux;
+use core::time::Duration;
 use delivery_fixture::decision::wait_for_history;
+use delivery_fixture::evidence::DeliveryEvidence as _;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::{start_harness_with_store, temp_directory};
@@ -13,7 +15,6 @@ use ghostr_engine::adaptive::{DecisionOutcome, RecordedWarpCommand};
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Mutex;
 use transform_delivery_fixture::{report_unsupported, seed_input};
 
@@ -36,17 +37,17 @@ async fn clear_cancels_selected_transform_without_publishing_output() {
     let input = seed_input(&store, &item, INPUT).await;
     let backend = Arc::new(BlockingRemux::new());
     let options = DeliveryOptions {
-        transform: Some(backend.clone()),
+        transform: Some(Arc::<BlockingRemux>::clone(&backend)),
         ..DeliveryOptions::default()
     };
-    let harness = start_harness_with_store(store.clone(), root, options);
+    let harness = start_harness_with_store(std::sync::Arc::clone(&store), root, options);
     harness.handle.update_focus(focus_now(vec![item], 0, 0));
     wait_for_focus(&harness.cache).await;
     report_unsupported(&harness.handle, &store, input).await;
     backend.wait_until_entered().await;
     tokio::time::sleep(Duration::from_millis(2)).await;
 
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     wait_for_history(&harness.handle, |history| {
         history.records.iter().any(cancelled_transform)
     })
@@ -65,7 +66,7 @@ async fn clear_cancels_selected_transform_without_publishing_output() {
     assert!(store
         .read_range("post", 0..INPUT.len() as u64)
         .await
-        .unwrap()
+        .expect("valid test fixture")
         .is_none());
     std::fs::remove_dir_all(&harness.root).ok();
 }

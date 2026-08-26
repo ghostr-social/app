@@ -1,5 +1,5 @@
 use anyhow::{ensure, Result};
-use std::sync::atomic::{AtomicU8, Ordering};
+use core::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -24,6 +24,11 @@ impl TransformControl {
         }
     }
 
+    /// Verifies that the transform may continue doing work.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error after cancellation or once the transform deadline has elapsed.
     pub fn checkpoint(&self) -> Result<()> {
         ensure!(
             self.phase.load(Ordering::Acquire) == TransformPhase::Running as u8,
@@ -36,7 +41,7 @@ impl TransformControl {
         Ok(())
     }
 
-    pub fn cancel(&self) -> bool {
+    pub(crate) fn cancel(&self) -> bool {
         self.transition(TransformPhase::Cancelled)
     }
 

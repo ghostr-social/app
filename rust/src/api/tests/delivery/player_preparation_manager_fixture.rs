@@ -2,11 +2,11 @@ use super::player_preparation_manager_authority::SeededAuthority;
 use super::player_preparation_manager_environment;
 use crate::api::delivery_types::{FfiPlayerPreparationReport, FfiPlayerPreparationState};
 use crate::api::player_preparation_control::PlayerPreparationContext;
+use core::time::Duration;
 use ghostr_delivery::delivery_events::{DeliveryHandle, FocusAdmission};
 use ghostr_delivery::playback_demand::DemandSender;
 use ghostr_engine::adaptive::DiscoveryDemand;
 use std::path::PathBuf;
-use std::time::Duration;
 use tokio::sync::watch;
 use tokio::time::timeout;
 
@@ -23,7 +23,7 @@ impl ProductionManagerFixture {
         let authority = SeededAuthority::new().await;
         let (delivery, demand, discovery, stats_root) =
             player_preparation_manager_environment::start(
-                authority.store.clone(),
+                std::sync::Arc::clone(&authority.store),
                 authority.cache.clone(),
             );
         assert_eq!(
@@ -56,7 +56,7 @@ impl ProductionManagerFixture {
         })
         .await
         .expect("production manager shutdown");
-        std::fs::remove_dir_all(stats_root).unwrap();
+        std::fs::remove_dir_all(stats_root).expect("test fixture precondition must hold");
     }
 }
 
@@ -65,7 +65,7 @@ fn player_context(
     delivery: DeliveryHandle,
 ) -> PlayerPreparationContext {
     PlayerPreparationContext {
-        store: authority.store.clone(),
+        store: std::sync::Arc::clone(&authority.store),
         capabilities: authority.capabilities.clone(),
         delivery,
         tracked: authority.tracked.clone(),

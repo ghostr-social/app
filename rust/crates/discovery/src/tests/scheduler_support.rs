@@ -25,7 +25,7 @@ pub struct GatedExecutor {
 impl PlanExecutor for GatedExecutor {
     fn execute(&self, retrieval: PlannedRetrieval) -> PlanFuture {
         let _ = self.starts.send(retrieval);
-        let gate = self.gate.clone();
+        let gate = std::sync::Arc::clone(&self.gate);
         let events = self.events.clone();
         Box::pin(async move {
             let permit = gate
@@ -39,11 +39,11 @@ impl PlanExecutor for GatedExecutor {
 }
 
 pub(crate) struct SchedulerHarness {
-    pub(crate) handle: DiscoveryHandle,
-    pub(crate) started: mpsc::UnboundedReceiver<PlannedRetrieval>,
-    pub(crate) gate: Arc<Semaphore>,
-    pub(crate) outcomes: mpsc::UnboundedReceiver<RetrievalOutcome>,
-    pub(crate) demand: watch::Sender<DiscoveryDemand>,
+    pub(super) handle: DiscoveryHandle,
+    pub(super) started: mpsc::UnboundedReceiver<PlannedRetrieval>,
+    pub(super) gate: Arc<Semaphore>,
+    pub(super) outcomes: mpsc::UnboundedReceiver<RetrievalOutcome>,
+    pub(super) demand: watch::Sender<DiscoveryDemand>,
 }
 
 /// Boots a scheduler over a gated executor. Demand starts held so a
@@ -53,7 +53,7 @@ pub(crate) fn start_scheduler(level: DataUsageLevel, events: Vec<Event>) -> Sche
     let gate = Arc::new(Semaphore::new(0));
     let executor = Arc::new(GatedExecutor {
         starts,
-        gate: gate.clone(),
+        gate: std::sync::Arc::clone(&gate),
         events,
     });
     let (outcome_sender, outcomes) = mpsc::unbounded_channel();

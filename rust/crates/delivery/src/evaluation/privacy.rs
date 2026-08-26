@@ -1,4 +1,5 @@
-use sha2::{Digest, Sha256};
+use core::fmt::Write as _;
+use sha2::{Digest as _, Sha256};
 
 pub(super) struct EvaluationPrivacy([u8; 32]);
 
@@ -14,9 +15,10 @@ impl EvaluationPrivacy {
         digest.update(self.0);
         digest.update(b"origin");
         digest.update(value.as_bytes());
-        digest.finalize()[..12]
-            .iter()
-            .map(|byte| format!("{byte:02x}"))
-            .collect()
+        let mut pseudonym = String::with_capacity(24);
+        for byte in &digest.finalize()[..12] {
+            write!(pseudonym, "{byte:02x}").expect("writing to a String is infallible");
+        }
+        pseudonym
     }
 }

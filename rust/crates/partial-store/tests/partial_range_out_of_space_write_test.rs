@@ -1,6 +1,4 @@
-mod store_fixture;
-
-use store_fixture::{discard, limits, spaced_store};
+use crate::tests::store_fixture::{discard, limits, spaced_store};
 
 /// Running out of room mid-transfer must cost only the chunk that could
 /// not land: the partial file, its manifest and its accounting stay

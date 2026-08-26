@@ -32,7 +32,7 @@ pub(super) fn safety_plan() -> AllocationPlan {
 pub(super) fn rescue_context(state: &crate::adaptive::PlayabilitySnapshot) -> PlannerContext {
     let mut context = PlannerContext::explicitly_unavailable(state)
         .with_capability(
-            state.candidates[0].post.clone(),
+            &state.candidates[0].post,
             PlannerCapability::reported(
                 false,
                 Some(TransformCapability::new(TransformKind::Remux, 17, 128_000)),
@@ -69,7 +69,7 @@ pub(super) fn reliable_origin() -> OriginModel {
     .with_observed_at_ms(10_000);
     let query = OriginQuery::new("https://origin.example/media", context);
     for _ in 0..10_000 {
-        model.observe(OriginObservation::success(query.clone(), 10_000));
+        model.observe(&OriginObservation::success(query.clone(), 10_000));
     }
     model
 }

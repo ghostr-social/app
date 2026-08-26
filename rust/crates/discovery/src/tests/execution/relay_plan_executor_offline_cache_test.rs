@@ -3,7 +3,7 @@
 use crate::cache::client_with_event_cache;
 use crate::execution::relay_executor::RelayPlanExecutor;
 use crate::outbox::directory::OutboxDirectory;
-use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
+use crate::plan_executor::{PlanExecutor as _, PlannedRetrieval};
 use crate::query::events::plan_event_queries;
 use crate::retrieval_types::{FeedContext, RetrievalPriority};
 use crate::session_generation::SessionGeneration;

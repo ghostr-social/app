@@ -4,11 +4,11 @@ use crate::api::playback_preparation_stream::{
 };
 use crate::api::runtime::tracked_items::TrackedItems;
 use crate::api::tests::support::{bind_store, sized_meta, temp_store};
+use core::time::Duration;
 use ghostr_delivery::cache_registry::{CacheRegistry, CacheStatus, CacheVideo};
 use ghostr_delivery::delivery_events::command_channel;
 use ghostr_engine::PostId;
 use ghostr_gateway::progressive::capabilities::ProgressiveCapabilities;
-use std::time::Duration;
 use tokio::sync::mpsc;
 
 struct ChannelOut(mpsc::UnboundedSender<FfiPlaybackPreparationPlan>);
@@ -26,8 +26,14 @@ async fn preparation_waits_for_exact_cache_authority() {
     let mut meta = sized_meta(16, 2_000);
     meta.sha256 = Some("a".repeat(64));
     bind_store(&store, "clip", &meta).await;
-    store.set_total_len("clip", 16).await.unwrap();
-    store.write_range("clip", 0, &[7; 16]).await.unwrap();
+    store
+        .set_total_len("clip", 16)
+        .await
+        .expect("test fixture precondition must hold");
+    store
+        .write_range("clip", 0, &[7; 16])
+        .await
+        .expect("test fixture precondition must hold");
     tracked.insert("clip".to_owned(), meta.clone());
     let cache = CacheRegistry::new();
     cache.insert("clip");

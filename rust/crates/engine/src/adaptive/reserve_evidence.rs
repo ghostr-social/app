@@ -64,8 +64,9 @@ pub(super) fn immediate_next(evidence: &[ReserveCandidateEvidence]) -> NextReser
         ReserveCandidateState::Ready { startup } => ready(item, startup),
         ReserveCandidateState::Structural { startup } => structural(item, startup),
         ReserveCandidateState::InFlight => in_flight(item),
-        ReserveCandidateState::Preparing { ranges } => granted(item, ranges),
-        ReserveCandidateState::Planned { ranges } => granted(item, ranges),
+        ReserveCandidateState::Preparing { ranges } | ReserveCandidateState::Planned { ranges } => {
+            granted(item, ranges)
+        }
         ReserveCandidateState::Infeasible { reason } => infeasible(item, *reason),
         ReserveCandidateState::Unprepared | ReserveCandidateState::Probing => {
             NextReserveEvidence::NotApplicable
@@ -107,9 +108,10 @@ fn preparing_state(candidate: &CandidateSnapshot) -> ReserveCandidateState {
         .filter(|active| !active.cancelling)
         .map(|active| active.effective_bytes)
         .collect();
-    match ranges.is_empty() {
-        true => ReserveCandidateState::Unprepared,
-        false => ReserveCandidateState::Preparing { ranges },
+    if ranges.is_empty() {
+        ReserveCandidateState::Unprepared
+    } else {
+        ReserveCandidateState::Preparing { ranges }
     }
 }
 

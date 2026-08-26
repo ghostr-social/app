@@ -4,9 +4,9 @@ use crate::representation::RepresentationBinding;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PlaybackEvidence {
-    pub client: String,
-    pub first_frame: bool,
-    pub observed_at_ms: u64,
+    client: String,
+    first_frame: bool,
+    observed_at_ms: u64,
 }
 
 impl PlaybackEvidence {
@@ -40,7 +40,7 @@ impl Catalog {
             .flat_map(|url| {
                 entry.calibration_labels(
                     url,
-                    std::slice::from_ref(&truth),
+                    core::slice::from_ref(&truth),
                     &source,
                     observation.observed_at_ms,
                 )
@@ -50,7 +50,8 @@ impl Catalog {
             truth,
             source,
             observation.observed_at_ms,
-            Confidence::new(9_500).unwrap(),
+            Confidence::new(9_500)
+                .expect("playback evidence confidence stays within the confidence scale"),
             EvidenceScope::ClientVersion(observation.client),
         ));
         entry.evidence_clock_ms = entry.evidence_clock_ms.max(observation.observed_at_ms);

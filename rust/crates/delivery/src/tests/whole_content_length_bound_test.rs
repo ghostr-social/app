@@ -1,12 +1,12 @@
 use super::whole_sink_fixture::{fixture, split, whole_spec, AuthorizedTraffic};
 use crate::chunk::cancel::cancel_pair;
-use crate::chunk::downloader::{download_chunk_captured, ChunkExecution};
+use crate::chunk::downloader::{download_chunk_observed, ChunkExecution};
 use crate::chunk::sink::TransferChunkSink;
 use crate::debug::network::NetworkThrottle;
 use ghostr_engine::adaptive::WholeBodyContract;
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::origin_model::OriginOutcome;
-use std::time::Duration;
+use core::time::Duration;
 
 #[tokio::test]
 async fn oversized_content_length_is_learned_without_reading_or_blame() {
@@ -21,7 +21,7 @@ async fn oversized_content_length_is_learned_without_reading_or_blame() {
     let (_handle, cancel) = cancel_pair();
     let mut stats = HostStats::new();
     let mut traffic = AuthorizedTraffic::new(
-        fixture.store.clone(),
+        std::sync::Arc::clone(&fixture.store),
         fixture.identity.clone(),
         fixture.action.clone(),
     );
@@ -33,7 +33,7 @@ async fn oversized_content_length_is_learned_without_reading_or_blame() {
 
     let observed = tokio::time::timeout(
         Duration::from_secs(1),
-        download_chunk_captured(
+        download_chunk_observed(
             &spec,
             ChunkExecution {
                 sink: &sink,
@@ -48,13 +48,19 @@ async fn oversized_content_length_is_learned_without_reading_or_blame() {
     .await
     .expect("headers alone resolve the bounded probe");
 
-    let error = observed.result.unwrap_err();
-    let bound = crate::chunk::whole_body_bound::from_error(&error).unwrap();
+    let error = observed.result.expect_err("scenario must fail");
+    let bound = crate::chunk::whole_body_bound::from_error(&error).expect("valid test fixture");
     assert_eq!((bound.maximum_bytes(), bound.total_bytes()), (8, 9));
     assert_eq!(observed.received_bytes, 0);
-    assert!(matches!(observed.origin.unwrap().outcome, OriginOutcome::Success));
-    assert_eq!(fixture.store.read_range("post", 0..4).await.unwrap(), Some(b"old!".to_vec()));
+    assert!(matches!(
+        observed.origin.expect("valid test fixture").outcome,
+        OriginOutcome::Success
+    ));
+    assert_eq!(
+        fixture.store.read_range("post", 0..4).await.expect("valid test fixture"),
+        Some(b"old!".to_vec())
+    );
     origin.release.notify_one();
     fixture.store.release_action(&fixture.action).await;
-    std::fs::remove_dir_all(fixture.root).unwrap();
+    std::fs::remove_dir_all(fixture.root).expect("valid test fixture");
 }

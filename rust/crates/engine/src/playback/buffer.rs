@@ -1,5 +1,5 @@
 use super::{EstimateConfidence, MediaConsumption, NetworkConditions};
-use std::time::Duration;
+use core::time::Duration;
 
 const MINIMUM_SECONDS: u64 = 4;
 const MAXIMUM_SECONDS: u64 = 30;
@@ -11,11 +11,11 @@ pub struct BufferTarget {
 }
 
 impl BufferTarget {
-    pub fn steady(self) -> Duration {
+    pub(crate) fn steady(self) -> Duration {
         self.steady
     }
 
-    pub fn emergency_horizon(self) -> Duration {
+    pub(crate) fn emergency_horizon(self) -> Duration {
         self.emergency_horizon
     }
 }

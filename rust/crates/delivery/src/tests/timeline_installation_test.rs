@@ -26,10 +26,10 @@ fn parsed_timeline_is_installed_for_the_matching_representation() {
         ),
         0,
     ));
-    let binding = state.catalog().binding(&post).unwrap();
+    let binding = state.catalog().binding(&post).expect("valid test fixture");
     let moov = classic_moov(100, 100);
-    let timeline = parse_mp4_segments(&[MediaSegment::new(10_000, &moov)]).unwrap();
+    let timeline = parse_mp4_segments(&[MediaSegment::new(10_000, &moov)]).expect("valid test fixture");
 
     assert!(install_timeline(&mut state, &binding, timeline));
-    assert!(state.catalog().lookup(&post).unwrap().timeline().is_some());
+    assert!(state.catalog().lookup(&post).expect("valid test fixture").timeline().is_some());
 }

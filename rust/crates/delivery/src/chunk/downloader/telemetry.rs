@@ -1,10 +1,10 @@
 use super::{ChunkResult, ChunkSpec};
+use core::time::Duration;
 use ghostr_engine::adaptive::RetrievalRequest;
 use ghostr_engine::origin_model::{
     ErrorReason, MediaClass, NetworkClass, OriginContext, OriginObservation, OriginQuery,
     RequestMethod,
 };
-use std::time::Duration;
 
 mod measurements;
 #[cfg(test)]
@@ -79,7 +79,7 @@ fn range_compliance(
     match result {
         Ok(result) => result
             .range_support
-            .or(result.range_ignored.then_some(false)),
+            .or_else(|| result.range_ignored.then_some(false)),
         Err(error) if error_reason(error) == ErrorReason::RangeNoncompliant => Some(false),
         Err(_) => None,
     }
@@ -106,9 +106,10 @@ fn error_reason(error: &anyhow::Error) -> ErrorReason {
         };
     }
     if let Some(status) = error.chain().find_map(reqwest_status) {
-        return match status.is_server_error() {
-            true => ErrorReason::Http5xx,
-            false => ErrorReason::Http4xx,
+        return if status.is_server_error() {
+            ErrorReason::Http5xx
+        } else {
+            ErrorReason::Http4xx
         };
     }
     let text = format!("{error:#}").to_ascii_lowercase();
@@ -130,7 +131,7 @@ fn error_reason(error: &anyhow::Error) -> ErrorReason {
     ErrorReason::Unknown
 }
 
-fn reqwest_status(error: &(dyn std::error::Error + 'static)) -> Option<reqwest::StatusCode> {
+fn reqwest_status(error: &(dyn core::error::Error + 'static)) -> Option<reqwest::StatusCode> {
     error
         .downcast_ref::<reqwest::Error>()
         .and_then(reqwest::Error::status)

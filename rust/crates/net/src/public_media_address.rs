@@ -1,7 +1,7 @@
 use crate::native_cache_failure::permanent;
 use anyhow::Result;
+use core::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use reqwest::Url;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 const BLOCKED_IPV4: &[([u8; 4], u8)] = &[
     ([0, 0, 0, 0], 8),

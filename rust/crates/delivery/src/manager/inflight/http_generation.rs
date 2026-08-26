@@ -13,7 +13,7 @@ impl InFlightChunks {
     pub(crate) fn adopt_http_generation(
         &mut self,
         attempt: &ChunkAttempt,
-        generation: HttpGenerationLease,
+        generation: &HttpGenerationLease,
     ) -> bool {
         let Some(active) = self.transfers.get_mut(&attempt.id()) else {
             return false;
@@ -28,7 +28,7 @@ impl InFlightChunks {
         for (id, candidate) in &mut self.transfers {
             if *id != attempt.id()
                 && candidate.identity == identity
-                && candidate.http_generation.as_ref() != Some(&generation)
+                && candidate.http_generation.as_ref() != Some(generation)
             {
                 candidate.cancel();
             }

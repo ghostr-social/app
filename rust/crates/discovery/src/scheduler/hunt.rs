@@ -20,7 +20,7 @@ impl SchedulerWorker {
         }
     }
 
-    pub(crate) fn continue_feed(&mut self, context: FeedContext, token: HuntToken) {
+    pub(super) fn continue_feed(&mut self, context: FeedContext, token: HuntToken) {
         if self.pending_feed_hunts.get(&context) != Some(&token) {
             return;
         }
@@ -32,15 +32,15 @@ impl SchedulerWorker {
         self.refresh_head(context);
     }
 
-    pub(crate) fn close_feed(&mut self, context: FeedContext) {
-        self.cancel_hunt(&context);
-        self.clear_feed_retry(&context);
-        self.cancel_context_work(&context);
-        self.deferred_reposts.remove_context(&context);
-        self.feeds.close(&context);
+    pub(super) fn close_feed(&mut self, context: &FeedContext) {
+        self.cancel_hunt(context);
+        self.clear_feed_retry(context);
+        self.cancel_context_work(context);
+        self.deferred_reposts.remove_context(context);
+        self.feeds.close(context);
     }
 
-    pub(crate) fn cancel_context_work(&mut self, context: &FeedContext) {
+    pub(super) fn cancel_context_work(&mut self, context: &FeedContext) {
         self.queue.remove(context);
         let tasks = self.context_tasks(context);
         for task_id in tasks {
@@ -50,7 +50,7 @@ impl SchedulerWorker {
         }
     }
 
-    pub(crate) fn cancel_hunt(&mut self, context: &FeedContext) {
+    pub(super) fn cancel_hunt(&mut self, context: &FeedContext) {
         self.pending_feed_hunts.remove(context);
         if let Some(task) = self.hunts.remove(context) {
             task.abort();
@@ -86,7 +86,7 @@ impl SchedulerWorker {
         self.hunts.insert(context, task.abort_handle());
     }
 
-    pub(crate) fn feed_busy(&self, context: &FeedContext) -> bool {
+    pub(super) fn feed_busy(&self, context: &FeedContext) -> bool {
         let queued = self.queue.has_pending(context);
         self.feeds.query_state(context, queued).busy
     }
@@ -98,7 +98,7 @@ impl SchedulerWorker {
             .collect()
     }
 
-    pub(crate) fn next_hunt_token(&mut self) -> HuntToken {
+    pub(super) fn next_hunt_token(&mut self) -> HuntToken {
         self.next_hunt_token = self.next_hunt_token.wrapping_add(1);
         HuntToken(self.next_hunt_token)
     }

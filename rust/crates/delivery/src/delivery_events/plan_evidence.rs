@@ -1,26 +1,28 @@
 use super::{CommandReceiver, DeliveryHandle};
 use crate::startup_certificate::StartupCertificate;
 use ghostr_engine::adaptive::AllocationPlan;
-use ghostr_engine::PostId;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex, MutexGuard};
 use tokio::sync::Notify;
 
 const HISTORY_CAPACITY: usize = 512;
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct PlanEvidence {
-    pub revision: u64,
-    pub observed_at_ms: u64,
-    pub current: Option<PostId>,
-    pub plan: AllocationPlan,
-    pub startups: Vec<StartupCertificate>,
-}
+mod model;
+pub use model::PlanEvidence;
+pub(crate) use model::PlanPublicationContext;
 
 #[derive(Clone, Debug, Default)]
 pub(super) struct PlanEvidenceHistory {
     store: Arc<Mutex<PlanEvidenceStore>>,
     changed: Arc<Notify>,
+}
+
+pub(super) struct PlanEvidencePage {
+    pub oldest_retained_revision: u64,
+    pub latest_retained_revision: u64,
+    pub cursor_truncated: bool,
+    pub has_more: bool,
+    pub records: Vec<PlanEvidence>,
 }
 
 #[derive(Debug, Default)]
@@ -30,18 +32,34 @@ struct PlanEvidenceStore {
 }
 
 impl PlanEvidenceHistory {
-    pub(super) fn snapshot(&self) -> Vec<PlanEvidence> {
+    fn snapshot(&self) -> Vec<PlanEvidence> {
         self.lock().history.iter().cloned().collect()
     }
 
-    pub(super) fn publish(&self, observed_at_ms: u64, plan: AllocationPlan) {
-        self.publish_focused(observed_at_ms, None, plan, Vec::new());
+    pub(super) fn page(&self, after_revision: u64, limit: usize) -> PlanEvidencePage {
+        let store = self.lock();
+        let oldest = store.history.front().map_or(0, |plan| plan.revision);
+        let latest = store.history.back().map_or(0, |plan| plan.revision);
+        let truncated = after_revision.saturating_add(1) < oldest;
+        let cursor = if truncated {
+            oldest.saturating_sub(1)
+        } else {
+            after_revision
+        };
+        let mut remaining = store.history.iter().filter(|plan| plan.revision > cursor);
+        let records = remaining.by_ref().take(limit).cloned().collect();
+        PlanEvidencePage {
+            oldest_retained_revision: oldest,
+            latest_retained_revision: latest,
+            cursor_truncated: truncated,
+            has_more: remaining.next().is_some(),
+            records,
+        }
     }
 
-    pub(super) fn publish_focused(
+    fn publish_focused(
         &self,
-        observed_at_ms: u64,
-        current: Option<PostId>,
+        context: PlanPublicationContext,
         plan: AllocationPlan,
         startups: Vec<StartupCertificate>,
     ) {
@@ -50,8 +68,13 @@ impl PlanEvidenceHistory {
         let revision = store.next_revision;
         store.history.push_back(PlanEvidence {
             revision,
-            observed_at_ms,
-            current,
+            observed_at_ms: context.observed_at_ms,
+            current: context.current,
+            focus_generation: context.focus_generation,
+            focus_covers_from: context.focus_covers_from,
+            network_status_generation: context.network_status.generation(),
+            network_class: context.network_status.network_class(),
+            network_profile_generation: context.network_profile_generation,
             plan,
             startups,
         });
@@ -62,12 +85,12 @@ impl PlanEvidenceHistory {
         self.changed.notify_waiters();
     }
 
-    pub(super) fn latest(&self) -> Option<PlanEvidence> {
+    fn latest(&self) -> Option<PlanEvidence> {
         self.lock().history.back().cloned()
     }
 
-    pub(super) fn notifier(&self) -> Arc<Notify> {
-        self.changed.clone()
+    fn notifier(&self) -> Arc<Notify> {
+        std::sync::Arc::clone(&self.changed)
     }
 
     fn lock(&self) -> MutexGuard<'_, PlanEvidenceStore> {
@@ -92,43 +115,16 @@ impl DeliveryHandle {
 }
 
 impl CommandReceiver {
-    pub fn publish_plan(&mut self, observed_at_ms: u64, plan: AllocationPlan) {
-        self.plans.publish(observed_at_ms, plan);
-    }
-
-    pub fn publish_focused_plan(
-        &mut self,
-        observed_at_ms: u64,
-        current: Option<PostId>,
-        plan: AllocationPlan,
-    ) {
-        self.plans
-            .publish_focused(observed_at_ms, current, plan, Vec::new());
-    }
-
-    pub fn publish_focused_plan_with_startup(
-        &mut self,
-        observed_at_ms: u64,
-        current: Option<PostId>,
-        plan: AllocationPlan,
-        startup: Option<StartupCertificate>,
-    ) {
-        self.publish_focused_plan_with_startups(
-            observed_at_ms,
-            current,
-            plan,
-            startup.into_iter().collect(),
-        );
-    }
-
-    pub fn publish_focused_plan_with_startups(
-        &mut self,
-        observed_at_ms: u64,
-        current: Option<PostId>,
+    pub(crate) fn publish_causal_plan_with_startups(
+        &self,
+        context: PlanPublicationContext,
         plan: AllocationPlan,
         startups: Vec<StartupCertificate>,
     ) {
-        self.plans
-            .publish_focused(observed_at_ms, current, plan, startups);
+        self.plans.publish_focused(context, plan, startups);
     }
 }
+
+#[cfg(any(test, feature = "test"))]
+#[path = "plan_evidence/test_support.rs"]
+mod test_support;

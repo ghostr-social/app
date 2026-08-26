@@ -1,4 +1,6 @@
-use crate::execution::relay_executor::target_enrichment::{target_plan, MAX_TARGET_LOOKUPS};
+use crate::execution::relay_executor::target_enrichment::axiom_test_support::target_plan;
+use crate::execution::relay_executor::target_enrichment::axiom_test_support::MAX_TARGET_LOOKUPS;
+
 use nostr_sdk::{Event, EventBuilder, EventId, Keys, Kind, Tag, Timestamp};
 use std::collections::BTreeSet;
 

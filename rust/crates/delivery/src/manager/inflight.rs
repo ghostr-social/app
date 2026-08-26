@@ -5,7 +5,7 @@
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::{ActionId, ChunkId, PostId};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 
 mod action;
 mod cancellation;
@@ -26,8 +26,8 @@ pub(crate) use snapshot::ActiveAction;
 
 #[derive(Default)]
 pub(crate) struct InFlightChunks {
-    transfers: HashMap<ActionId, ActiveChunk>,
-    hedges: HashMap<ActionId, ActionId>,
+    transfers: BTreeMap<ActionId, ActiveChunk>,
+    hedges: BTreeMap<ActionId, ActionId>,
     next_id: u64,
 }
 
@@ -51,38 +51,12 @@ impl InFlightChunks {
         ChunkAttempt::new(chunk, identity, self.next_action_id())
     }
 
-    pub(crate) fn next_action_id(&mut self) -> ActionId {
+    pub(super) fn next_action_id(&mut self) -> ActionId {
         self.next_id = self
             .next_id
             .checked_add(1)
             .expect("chunk attempt id exhausted");
         ActionId::new(self.next_id)
-    }
-
-    #[cfg(test)]
-    pub fn insert(
-        &mut self,
-        attempt: &ChunkAttempt,
-        priority: ghostr_engine::scheduling::RangeRequest,
-        host: String,
-        committed_until_ms: u64,
-        handle: crate::chunk::cancel::CancelHandle,
-    ) {
-        let retrieval = ghostr_engine::adaptive::RetrievalRequest::FetchRange {
-            bytes: priority.chunk.range,
-            promotion: None,
-        };
-        self.insert_action(ActionRegistration {
-            attempt,
-            priority,
-            retrieval,
-            host,
-            committed_until_ms,
-            launched_at_ms: 0,
-            handle,
-            store_action: None,
-            committed_network_bytes: None,
-        });
     }
 
     pub fn insert_action(&mut self, registration: ActionRegistration<'_>) {
@@ -118,11 +92,6 @@ impl InFlightChunks {
             .count()
     }
 
-    #[cfg(test)]
-    pub fn finish(&mut self, attempt: &ChunkAttempt) -> CompletionStatus {
-        self.finish_with_resources(attempt).status()
-    }
-
     pub fn clear(&mut self) {
         for active in self.transfers.values_mut() {
             active.cancel();
@@ -136,3 +105,7 @@ fn overlaps(active: &ChunkId, request: &ChunkId) -> bool {
         && active.range.start < request.range.end
         && request.range.start < active.range.end
 }
+
+#[cfg(test)]
+#[path = "inflight_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

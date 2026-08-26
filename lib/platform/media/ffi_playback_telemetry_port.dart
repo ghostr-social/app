@@ -12,6 +12,7 @@ import 'package:ghostr/src/rust/api/playback_types.dart';
 
 part 'ffi_playback_observation_mapping.dart';
 part 'ffi_playback_presentation_queue.dart';
+part 'ffi_playback_settlement.dart';
 
 typedef RustPlaybackReporter =
     Future<void> Function({required FfiPlaybackObservation input});
@@ -33,8 +34,10 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
 
   final RustPlaybackReporter _reportPlayback;
   final _PlaybackPresentationQueue _presentations;
+  final _settlement = _PlaybackTelemetrySettlement();
   final LinkedHashMap<int, ListQueue<FfiPlaybackObservation>> _pending =
       LinkedHashMap<int, ListQueue<FfiPlaybackObservation>>();
+  final Map<FfiPlaybackObservation, int> _tickets = Map.identity();
   final _latest = <int, FfiPlaybackObservation>{};
   PlaybackSession? _active;
   Future<void>? _draining;
@@ -80,6 +83,9 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
     _retainTerminalSample(session.generation);
   }
 
+  Future<void> get settled =>
+      Future.wait([_settlement.throughNow(), _presentations.settled]);
+
   void _retainTerminalSample(int generation) {
     final queued = _pending[generation];
     final failure =
@@ -91,23 +97,24 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
         queued?.where(_isInactive).lastOrNull ??
         _terminalAfter(_latest[generation]);
     if (terminal == null) {
-      _pending.remove(generation);
+      _discardPending(generation);
       return;
     }
     final retained = <FfiPlaybackObservation>[];
     if (failure != null && !identical(failure, _sendingInput)) {
       retained.add(failure);
     }
-    retained.add(terminal);
+    if (!identical(terminal, _sendingInput)) retained.add(terminal);
     _latest[generation] = terminal;
-    _pending[generation] = ListQueue.of(retained);
+    _replacePending(generation, retained);
     _draining ??= _drain();
   }
 
   void _enqueue(int generation, FfiPlaybackObservation input) {
+    _track(input);
     final queue = _pending.putIfAbsent(generation, ListQueue.new);
     if (queue.isNotEmpty && queue.last.phase == input.phase) {
-      queue.removeLast();
+      _resolve(queue.removeLast());
     }
     queue.add(input);
   }
@@ -127,6 +134,7 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
           stackTrace: stackTrace,
         );
       }
+      _resolve(input);
       _sendingInput = null;
       if (_isInactive(input) && identical(_latest[generation], input)) {
         _latest.remove(generation);
@@ -147,8 +155,39 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
       final discard = _pending.keys.firstWhere(
         (generation) => _sendingInput?.generation != BigInt.from(generation),
       );
-      _pending.remove(discard);
+      _discardPending(discard);
       _latest.remove(discard);
     }
+  }
+
+  void _replacePending(int generation, List<FfiPlaybackObservation> retained) {
+    final previous = _pending.remove(generation);
+    if (previous != null) {
+      for (final input in previous) {
+        if (!retained.any((item) => identical(item, input))) _resolve(input);
+      }
+    }
+    if (retained.isEmpty) return;
+    for (final input in retained) {
+      _track(input);
+    }
+    _pending[generation] = ListQueue.of(retained);
+  }
+
+  void _discardPending(int generation) {
+    final discarded = _pending.remove(generation);
+    if (discarded == null) return;
+    for (final input in discarded) {
+      _resolve(input);
+    }
+  }
+
+  void _track(FfiPlaybackObservation input) {
+    _tickets.putIfAbsent(input, _settlement.issue);
+  }
+
+  void _resolve(FfiPlaybackObservation input) {
+    final ticket = _tickets.remove(input);
+    if (ticket != null) _settlement.resolve(ticket);
   }
 }

@@ -29,7 +29,7 @@ pub(super) fn apply(
     let Some((input, proof, alternate)) = hedge(evidence, candidate) else {
         return unavailable(context);
     };
-    let eligible = eligible_at_tail(&input, proof.clone());
+    let eligible = eligible_at_tail(&input, proof);
     let wake = tail_wake(evidence, &input, eligible);
     let soft = eligible.then(|| hedge_commitment(evidence, alternate.clone()));
     Application {

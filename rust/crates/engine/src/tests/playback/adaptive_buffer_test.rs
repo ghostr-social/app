@@ -1,7 +1,7 @@
 use crate::playback::{
     AdaptiveBufferPolicy, EstimateConfidence, MediaConsumption, NetworkConditions,
 };
-use std::time::Duration;
+use core::time::Duration;
 
 fn network(
     bytes_per_second: u64,

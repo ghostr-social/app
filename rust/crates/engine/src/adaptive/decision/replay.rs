@@ -1,7 +1,7 @@
-use super::{
-    RecordedResourcePrices, RecordedWarpAction, RecordedWarpDecision, RecordedWarpReserve,
-    RecordedWarpSearch,
-};
+use super::RecordedWarpDecision;
+
+#[cfg(test)]
+mod replay_api_test;
 
 /// A privacy-safe WARP trace whose state, envelope, and internal links were verified.
 ///
@@ -29,52 +29,10 @@ impl VerifiedWarpReplay {
             decision,
         }
     }
-
-    pub const fn sequence(&self) -> u64 {
-        self.sequence
-    }
-
-    pub const fn integrity(&self) -> &WarpReplayIntegrity {
-        &self.integrity
-    }
-
-    pub const fn decision(&self) -> &RecordedWarpDecision {
-        &self.decision
-    }
-
-    pub fn selected(&self) -> Option<&RecordedWarpAction> {
-        self.decision.selected.as_ref()
-    }
-
-    pub const fn search(&self) -> &RecordedWarpSearch {
-        &self.decision.search
-    }
-
-    pub const fn common_random_seed(&self) -> u64 {
-        self.decision.search.common_random_seed
-    }
-
-    pub const fn prices(&self) -> RecordedResourcePrices {
-        self.decision.prices
-    }
-
-    pub fn reserve(&self) -> RecordedWarpReserve {
-        self.decision.reserve.clone()
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WarpReplayIntegrity {
     state_hash: String,
     decision_hash: String,
-}
-
-impl WarpReplayIntegrity {
-    pub fn state_hash(&self) -> &str {
-        &self.state_hash
-    }
-
-    pub fn decision_hash(&self) -> &str {
-        &self.decision_hash
-    }
 }

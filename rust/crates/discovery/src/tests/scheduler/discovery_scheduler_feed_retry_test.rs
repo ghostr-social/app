@@ -6,7 +6,7 @@ use crate::tests::scheduler_support::{
     context, next_outcome, next_started, no_start, note_at, request,
 };
 use crate::tests::scripted_scheduler_support::scripted_scheduler_results;
-use std::time::Duration;
+use core::time::Duration;
 
 #[tokio::test(start_paused = true)]
 async fn failed_first_page_retries_and_lands_content() {

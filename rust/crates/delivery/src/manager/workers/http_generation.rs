@@ -8,7 +8,7 @@ impl DownloadWorkers {
     pub(crate) fn adopt_http_generation(
         &mut self,
         attempt: &ChunkAttempt,
-        generation: HttpGenerationLease,
+        generation: &HttpGenerationLease,
     ) -> bool {
         self.active.adopt_http_generation(attempt, generation)
     }

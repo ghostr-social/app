@@ -20,7 +20,7 @@ const HLS_PLAYER: &str = include_str!("web/hls_player.js");
 const HLS_LICENSE: &str = include_str!("web/hls.LICENSE.txt");
 const STYLES: &str = include_str!("web/styles.css");
 
-pub(crate) fn router() -> Router {
+pub(super) fn router() -> Router {
     Router::new()
         .route("/debug", get(index))
         .route("/debug/", get(index))

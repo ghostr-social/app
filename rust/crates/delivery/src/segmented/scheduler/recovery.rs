@@ -167,7 +167,7 @@ impl SegmentedDelivery {
         true
     }
 
-    fn mark_failed(&mut self, retry: SegmentedRetry) -> bool {
+    fn mark_failed(&self, retry: SegmentedRetry) -> bool {
         if !self
             .cache
             .mark_stage_failed(&retry.post, retry.pending.generation, retry.detail)

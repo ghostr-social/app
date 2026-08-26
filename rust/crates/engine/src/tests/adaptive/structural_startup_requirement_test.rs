@@ -81,7 +81,7 @@ fn candidate(
         MediaSegment::new(0, &prefix),
         MediaSegment::new(10_000, moov),
     ])
-    .unwrap();
+    .expect("valid test fixture");
     assert!(catalog.learn_timeline_for(&binding, timeline));
     candidate_snapshot(
         &catalog,
@@ -89,7 +89,7 @@ fn candidate(
         CandidateEvidence {
             post,
             feed_offset: FeedOffset::new(1),
-            view_probability: ViewProbability::new(0.8).unwrap(),
+            view_probability: ViewProbability::new(0.8).expect("valid test fixture"),
             present,
             stored_total: Some(20_000),
             continuation_source: None,
@@ -103,7 +103,7 @@ fn candidate(
             )],
         },
     )
-    .unwrap()
+    .expect("valid test fixture")
 }
 
 fn metadata(moov: &[u8]) -> Vec<ByteRange> {

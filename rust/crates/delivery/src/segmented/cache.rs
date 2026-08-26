@@ -5,8 +5,7 @@ use tokio::sync::{watch, Notify};
 
 mod blocks;
 mod capacity;
-#[cfg(test)]
-pub(in crate::segmented) use blocks::{StageBlock, StoredStage};
+
 mod admission;
 pub(crate) use admission::{StageAdmission, StageFence, StageLease, StageRequest};
 mod focus;
@@ -33,14 +32,14 @@ pub(crate) struct StageReservation {
 }
 
 impl StageReservation {
-    pub(crate) const fn block(block_bytes: u64) -> Self {
+    pub(super) const fn block(block_bytes: u64) -> Self {
         Self {
             block_bytes,
             assembly_bytes: 0,
         }
     }
 
-    pub(crate) fn final_block(block_bytes: u64, total_bytes: u64) -> Option<Self> {
+    pub(super) fn final_block(block_bytes: u64, total_bytes: u64) -> Option<Self> {
         if block_bytes == 0 || total_bytes < block_bytes {
             return None;
         }
@@ -156,7 +155,7 @@ impl SegmentedCache {
     }
 
     pub fn notifier(&self) -> Arc<Notify> {
-        self.changed.clone()
+        std::sync::Arc::clone(&self.changed)
     }
 
     pub(crate) fn invalidation_receiver(&self) -> watch::Receiver<u64> {
@@ -165,7 +164,7 @@ impl SegmentedCache {
 
     pub fn clear(&self) {
         let mut state = self.lock();
-        let inflight = std::mem::take(&mut state.inflight);
+        let inflight = core::mem::take(&mut state.inflight);
         *state = CacheState {
             inflight,
             ..CacheState::default()
@@ -178,3 +177,7 @@ impl SegmentedCache {
         self.state.lock().unwrap_or_else(|error| error.into_inner())
     }
 }
+
+#[cfg(test)]
+#[path = "cache_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

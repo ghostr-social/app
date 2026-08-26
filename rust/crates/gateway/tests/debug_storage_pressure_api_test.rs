@@ -18,7 +18,7 @@ async fn debug_storage_budget_can_force_and_release_capacity_pressure() {
         .store
         .write_range("clip", 0, &[7; 17])
         .await
-        .unwrap_err();
+        .expect_err("scenario must fail");
     assert!(error.downcast_ref::<OutOfSpace>().is_some());
 
     update_budget(&harness, 32).await;
@@ -27,7 +27,7 @@ async fn debug_storage_budget_can_force_and_release_capacity_pressure() {
         .store
         .write_range("clip", 0, &[7; 17])
         .await
-        .unwrap();
+        .expect("valid test fixture");
 }
 
 fn assert_storage_wake(harness: &mut gateway_fixture::progressive::ProgressiveHarness) {
@@ -46,9 +46,9 @@ async fn update_budget(harness: &gateway_fixture::progressive::ProgressiveHarnes
             Request::put("/debug/api/storage")
                 .header("content-type", "application/json")
                 .body(Body::from(body))
-                .unwrap(),
+                .expect("valid test fixture"),
         )
         .await
-        .unwrap();
+        .expect("valid test fixture");
     assert_eq!(response.status(), StatusCode::NO_CONTENT);
 }

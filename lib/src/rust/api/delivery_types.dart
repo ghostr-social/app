@@ -21,6 +21,12 @@ class FfiDeliveryEvent {
   final BigInt? etaMs;
   final String? detail;
 
+  /// Exact progressive representation when this event has one.
+  final String? representationId;
+
+  /// Exact progressive capability bound to the observed content revision.
+  final String? assetId;
+
   const FfiDeliveryEvent({
     required this.postId,
     required this.kind,
@@ -29,6 +35,8 @@ class FfiDeliveryEvent {
     this.totalBytes,
     this.etaMs,
     this.detail,
+    this.representationId,
+    this.assetId,
   });
 
   @override
@@ -39,7 +47,9 @@ class FfiDeliveryEvent {
       bytesPresent.hashCode ^
       totalBytes.hashCode ^
       etaMs.hashCode ^
-      detail.hashCode;
+      detail.hashCode ^
+      representationId.hashCode ^
+      assetId.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -52,7 +62,9 @@ class FfiDeliveryEvent {
           bytesPresent == other.bytesPresent &&
           totalBytes == other.totalBytes &&
           etaMs == other.etaMs &&
-          detail == other.detail;
+          detail == other.detail &&
+          representationId == other.representationId &&
+          assetId == other.assetId;
 }
 
 /// What a delivery event reports about one post.
@@ -65,6 +77,9 @@ enum FfiDeliveryEventKind {
 
   /// The store could not be read for this post; see `detail`.
   error,
+
+  /// Playback is terminally blocked for the current delivery binding.
+  failed,
 }
 
 /// One entry of the ordered focus window, including the current item.

@@ -1,7 +1,7 @@
 //! Raw TCP fixture that answers one ranged request with a 206 header
 //! for `total` bytes, sends only `prefix`, then stalls forever.
 
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::oneshot;
 
@@ -46,7 +46,7 @@ async fn stall(socket: &mut TcpStream, prefix: &[u8], total: u64) {
     let _ = socket.write_all(head.as_bytes()).await;
     let _ = socket.write_all(prefix).await;
     let _ = socket.flush().await;
-    std::future::pending::<()>().await
+    core::future::pending::<()>().await;
 }
 
 async fn write_head(socket: &mut TcpStream, total: u64) {

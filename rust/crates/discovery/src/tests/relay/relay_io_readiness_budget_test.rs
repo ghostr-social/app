@@ -1,10 +1,10 @@
 //! Relay connection readiness does not consume the subscription response budget.
 
-use crate::relay::io::{RelayIo, RelayReadIo, SdkRelayIo};
+use crate::relay::io::{RelayIo as _, RelayReadIo, SdkRelayIo};
 use crate::tests::relay_io_delayed_fixture::delayed_relay;
+use core::time::Duration;
 use nostr_sdk::{Client, Filter};
 use std::sync::Arc;
-use std::time::Duration;
 
 #[tokio::test]
 async fn slow_connection_still_receives_a_full_query_response_budget() {

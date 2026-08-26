@@ -57,7 +57,7 @@ pub(super) fn delivery_ms(
     bytes.saturating_mul(8_000).div_ceil(throughput) + origin.rtt_ms.max(snapshot.network.rtt_ms)
 }
 
-pub(super) fn effective_throughput(origin: &OriginHealth) -> u64 {
+fn effective_throughput(origin: &OriginHealth) -> u64 {
     let loss = u64::from(origin.packet_loss_bps.min(10_000));
     let failure = u64::from(origin.failure_bps.min(10_000));
     origin

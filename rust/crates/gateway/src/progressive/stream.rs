@@ -1,13 +1,13 @@
 use crate::progressive::route::ProgressiveState;
 use axum::body::Body;
 use bytes::Bytes;
+use core::future::Future;
+use core::ops::Range;
+use core::pin::Pin;
 use ghostr_delivery::playback_demand::DemandConsumer;
 use ghostr_engine::playback::PLAYBACK_SLICE_BYTES;
 use ghostr_engine::{ByteRange, PostId};
-use std::future::Future;
 use std::io;
-use std::ops::Range;
-use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::futures::Notified;
 use tokio::sync::{mpsc, Notify};
@@ -73,14 +73,14 @@ struct PumpProgress {
 }
 
 impl PumpProgress {
-    fn new(cursor: u64, timeout: std::time::Duration) -> Self {
+    fn new(cursor: u64, timeout: core::time::Duration) -> Self {
         Self {
             cursor,
             deadline: Instant::now() + timeout,
         }
     }
 
-    fn advance(&mut self, cursor: u64, timeout: std::time::Duration) {
+    fn advance(&mut self, cursor: u64, timeout: core::time::Duration) {
         self.cursor = cursor;
         self.deadline = Instant::now() + timeout;
     }
@@ -90,7 +90,7 @@ async fn apply_step(
     step: PumpStep,
     progress: &mut PumpProgress,
     sender: &ChunkSender,
-    timeout: std::time::Duration,
+    timeout: core::time::Duration,
 ) -> bool {
     match step {
         PumpStep::Advanced(next) => progress.advance(next, timeout),
@@ -150,10 +150,10 @@ async fn advance(
     }
 }
 
-async fn read_with_armed_change<'a, T>(
-    notify: &'a Notify,
+async fn read_with_armed_change<T>(
+    notify: &Notify,
     read: impl Future<Output = T>,
-) -> (T, Pin<Box<Notified<'a>>>) {
+) -> (T, Pin<Box<Notified<'_>>>) {
     let mut changed = Box::pin(notify.notified());
     changed.as_mut().enable();
     (read.await, changed)
@@ -184,9 +184,9 @@ async fn wait_for_store_change(
 ) -> PumpStep {
     tokio::select! {
         biased;
-        _ = closed => PumpStep::Stop,
-        _ = tokio::time::sleep_until(deadline) => PumpStep::TimedOut,
-        _ = changed => PumpStep::Retry,
+        () = closed => PumpStep::Stop,
+        () = tokio::time::sleep_until(deadline) => PumpStep::TimedOut,
+        () = changed => PumpStep::Retry,
     }
 }
 

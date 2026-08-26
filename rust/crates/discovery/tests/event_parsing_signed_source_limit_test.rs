@@ -1,7 +1,5 @@
-mod feed_support;
-
-use feed_support::{signed_event, SignedEventFixture};
-use ghostr_discovery::content::parsing::video_post_from_event;
+use crate::content::parsing::video_post_from_event;
+use crate::tests::feed_support::{signed_event, SignedEventFixture};
 use nostr_sdk::{Keys, Kind};
 
 #[test]

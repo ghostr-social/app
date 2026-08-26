@@ -1,7 +1,7 @@
 use crate::partial_range_disk as disk;
 use crate::partial_range_manifest::{IntervalChecksum, RangeManifest};
 use anyhow::{ensure, Result};
-use std::ops::Range;
+use core::ops::Range;
 use std::path::Path;
 
 pub(in crate::partial_range_store) async fn verified_manifest(

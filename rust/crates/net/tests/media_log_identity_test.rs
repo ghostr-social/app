@@ -21,11 +21,21 @@ fn media_log_identity_hides_url_credentials_path_and_query() {
 
 #[test]
 fn media_log_identity_separates_origin_and_object_correlation() {
-    let first = MediaLogIdentity::from_url("https://cdn.example/a.mp4");
-    let second = MediaLogIdentity::from_url("https://cdn.example/b.mp4");
-    let other = MediaLogIdentity::from_url("https://mirror.example/a.mp4");
+    let first = log_ids("https://cdn.example/a.mp4");
+    let second = log_ids("https://cdn.example/b.mp4");
+    let other = log_ids("https://mirror.example/a.mp4");
 
-    assert_eq!(first.origin_id(), second.origin_id());
-    assert_ne!(first.object_id(), second.object_id());
-    assert_ne!(first.origin_id(), other.origin_id());
+    assert_eq!(first.0, second.0);
+    assert_ne!(first.1, second.1);
+    assert_ne!(first.0, other.0);
+}
+
+fn log_ids(url: &str) -> (String, String) {
+    let rendered = MediaLogIdentity::from_url(url).to_string();
+    let values = rendered
+        .strip_prefix("media(origin=")
+        .and_then(|value| value.strip_suffix(')'))
+        .expect("stable media identity format");
+    let (origin, object) = values.split_once(", object=").expect("both log identities");
+    (origin.to_owned(), object.to_owned())
 }

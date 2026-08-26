@@ -1,10 +1,8 @@
 //! Blank metadata clears optional fields; known fields must be strings.
 
-mod feed_support;
-
-use feed_support::profile_event;
-use ghostr_discovery::content::profiles::ProfileStore;
-use nostr_sdk::{Keys, ToBech32};
+use crate::content::profiles::ProfileStore;
+use crate::tests::feed_support::profile_event;
+use nostr_sdk::{Keys, ToBech32 as _};
 
 #[test]
 fn blank_metadata_replaces_named_profile_with_fallback() {

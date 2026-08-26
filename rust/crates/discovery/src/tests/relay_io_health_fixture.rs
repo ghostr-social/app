@@ -1,5 +1,5 @@
 use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo, RelayReadResult};
-use std::sync::atomic::{AtomicBool, Ordering};
+use core::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 
 pub(crate) struct HealthRelayIo {
@@ -9,7 +9,7 @@ pub(crate) struct HealthRelayIo {
 }
 
 impl HealthRelayIo {
-    pub(crate) fn new(failing: &str) -> Self {
+    pub(super) fn new(failing: &str) -> Self {
         Self {
             failing: failing.to_owned(),
             recovered: AtomicBool::new(false),
@@ -17,11 +17,11 @@ impl HealthRelayIo {
         }
     }
 
-    pub(crate) fn recover(&self) {
+    pub(super) fn recover(&self) {
         self.recovered.store(true, Ordering::Release);
     }
 
-    pub(crate) fn reads(&self) -> Vec<Vec<String>> {
+    pub(super) fn reads(&self) -> Vec<Vec<String>> {
         self.reads.lock().expect("reads").clone()
     }
 }

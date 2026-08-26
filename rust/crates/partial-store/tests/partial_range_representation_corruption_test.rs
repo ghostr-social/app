@@ -1,5 +1,3 @@
-mod store_fixture;
-
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 use std::sync::Arc;
@@ -7,12 +5,14 @@ use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn corrupt_representation_identity_fails_closed() {
-    let root = store_fixture::temp_root("partial-representation-corrupt");
-    tokio::fs::create_dir_all(&root).await.unwrap();
+    let root = crate::tests::store_fixture::temp_root("partial-representation-corrupt");
+    tokio::fs::create_dir_all(&root)
+        .await
+        .expect("valid test fixture");
     tokio::fs::write(root.join("same.representation"), "not-a-fingerprint")
         .await
-        .unwrap();
-    let store = store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
+        .expect("valid test fixture");
+    let store = crate::tests::store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
     let (binding, identity) = binding();
 
     let error = store
@@ -23,7 +23,7 @@ async fn corrupt_representation_identity_fails_closed() {
 
     assert!(error.to_string().contains("identity is invalid"));
     assert!(!store.transfer_is_current(&identity).await);
-    store_fixture::discard(&root);
+    crate::tests::store_fixture::discard(&root);
 }
 
 fn binding() -> (
@@ -33,7 +33,9 @@ fn binding() -> (
     let post = PostId::new("same");
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(post, meta());
-    let identity = binding.transfer("https://a.example/video").unwrap();
+    let identity = binding
+        .transfer("https://a.example/video")
+        .expect("valid test fixture");
     (binding, identity)
 }
 

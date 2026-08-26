@@ -1,7 +1,7 @@
-use super::{
-    metadata_ranges, TimelineIncomplete, TimelineInput, TimelineParse, TimelineParser,
-    TimelineTerminal,
+use super::axiom_test_support::{
+    TimelineIncomplete, TimelineInput, TimelineParse, TimelineParser as _,
 };
+use super::{metadata_ranges, TimelineTerminal};
 use ghostr_engine::media_timeline::MediaTimeline;
 use ghostr_engine::{ByteRange, PostId};
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
@@ -22,13 +22,15 @@ pub(crate) async fn load_timeline(
         owned.push((range.start, bytes));
     }
     let parser = super::parser::ProductionTimelineParser;
-    let control = std::sync::atomic::AtomicBool::new(false);
+    let control = core::sync::atomic::AtomicBool::new(false);
     match parser.parse(TimelineInput::new(total, owned), &control) {
-        TimelineParse::Completed(TimelineTerminal::Ready(timeline)) => Some(timeline),
-        TimelineParse::Completed(TimelineTerminal::Incomplete(
-            TimelineIncomplete::Unavailable | TimelineIncomplete::Truncated,
-        ))
-        | TimelineParse::Completed(TimelineTerminal::Rejected(_))
+        TimelineParse::Completed(TimelineTerminal::Ready(timeline)) => Some(*timeline),
+        TimelineParse::Completed(
+            TimelineTerminal::Incomplete(
+                TimelineIncomplete::Unavailable | TimelineIncomplete::Truncated,
+            )
+            | TimelineTerminal::Rejected(_),
+        )
         | TimelineParse::Cancelled => None,
     }
 }

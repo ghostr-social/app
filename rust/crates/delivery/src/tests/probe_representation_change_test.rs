@@ -21,10 +21,10 @@ fn representation_change_clears_completed_probe_history() {
     let mut probes = MetadataProbePool::new(1);
     let identity = catalog
         .transfer_identity(&post, "https://media.example/video.mp4")
-        .unwrap();
+        .expect("valid test fixture");
     probes.learned(&identity, None);
     assert!(probes
-        .claim(&catalog, std::slice::from_ref(&post), &retry)
+        .claim(&catalog, core::slice::from_ref(&post), &retry)
         .is_empty());
 
     probes.representation_changed(&post);

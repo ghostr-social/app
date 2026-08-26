@@ -14,12 +14,13 @@ pub(in crate::evidence) fn effective_confidence(
                 .validator
                 .as_ref()
                 .is_some_and(|value| value.is_strong()));
-    match stable {
-        true => item.confidence,
-        false => item.confidence.decayed(
+    if stable {
+        item.confidence
+    } else {
+        item.confidence.decayed(
             now_ms.saturating_sub(item.observed_at_ms),
             NETWORK_HALF_LIFE_MS,
-        ),
+        )
     }
 }
 

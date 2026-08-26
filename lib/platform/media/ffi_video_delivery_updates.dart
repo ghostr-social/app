@@ -1,4 +1,6 @@
+import 'package:ghostr/core/media/playback_asset_authority.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
+import 'package:ghostr/core/media/video_representation_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_delivery_updates.dart';
 import 'package:ghostr/src/rust/api/delivery_events_stream.dart';
 import 'package:ghostr/src/rust/api/delivery_types.dart';
@@ -19,13 +21,32 @@ final class FfiVideoDeliveryUpdates implements VideoDeliveryUpdates {
   Stream<VideoDeliverySnapshot> watchDelivery() => _events;
 
   Stream<FfiDeliveryEvent> _nativeEvents() async* {
-    yield* _watch();
+    await for (final event in _watch()) {
+      if (event.kind != FfiDeliveryEventKind.error) {
+        yield event;
+        continue;
+      }
+      yield* Stream<FfiDeliveryEvent>.error(
+        VideoDeliveryObservationException(event.postId, event.detail),
+      );
+    }
   }
 }
 
+final class VideoDeliveryObservationException implements Exception {
+  const VideoDeliveryObservationException(this.postId, this.detail);
+
+  final String postId;
+  final String? detail;
+
+  @override
+  String toString() => 'Video delivery observation failed for $postId: $detail';
+}
+
 VideoDeliverySnapshot _snapshot(FfiDeliveryEvent event) {
+  final deliveryId = PlaybackDeliveryId.parse(event.postId);
   return VideoDeliverySnapshot(
-    deliveryId: PlaybackDeliveryId.parse(event.postId),
+    deliveryId: deliveryId,
     phase: _phase(event),
     bytesPresent: event.bytesPresent,
     totalBytes: event.totalBytes,
@@ -33,11 +54,29 @@ VideoDeliverySnapshot _snapshot(FfiDeliveryEvent event) {
         ? null
         : Duration(milliseconds: event.etaMs!.toInt()),
     detail: event.detail,
+    authority: _authority(event, deliveryId),
+  );
+}
+
+PlaybackAssetAuthority? _authority(
+  FfiDeliveryEvent event,
+  PlaybackDeliveryId deliveryId,
+) {
+  final representation = event.representationId;
+  final asset = event.assetId;
+  if (representation == null && asset == null) return null;
+  if (representation == null || asset == null) {
+    throw const FormatException('Incomplete delivery authority.');
+  }
+  return PlaybackAssetAuthority(
+    deliveryId: deliveryId,
+    representationId: VideoRepresentationId.parse(representation),
+    assetId: PlaybackAssetId.parse(asset),
   );
 }
 
 VideoDeliveryPhase _phase(FfiDeliveryEvent event) {
-  if (event.kind == FfiDeliveryEventKind.error) {
+  if (event.kind == FfiDeliveryEventKind.failed) {
     return VideoDeliveryPhase.failed;
   }
   return event.startable

@@ -9,12 +9,12 @@ pub(crate) fn canonical(raw: &str) -> String {
     parsed.to_string()
 }
 
-pub(crate) fn contains(sources: &[String], source: &str) -> bool {
+pub(super) fn contains(sources: &[String], source: &str) -> bool {
     let expected = canonical(source);
     sources.iter().any(|known| canonical(known) == expected)
 }
 
-pub(crate) fn same_members(left: &[String], right: &[String]) -> bool {
+pub(super) fn same_members(left: &[String], right: &[String]) -> bool {
     keys(left) == keys(right)
 }
 

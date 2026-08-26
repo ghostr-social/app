@@ -1,13 +1,16 @@
 use crate::client_capability::{
     load_client_capabilities, save_client_capabilities, ClientCapabilityModel,
 };
-use crate::delivery_events::{PlayerPreparationActorOutcome, PlayerPreparationEnvelope};
+use crate::delivery_events::{
+    PlayerPreparationActorOutcome, PlayerPreparationEnvelope, DECODER_UNSUPPORTED_FAILURE,
+};
+use crate::manager::quality::prepare_rendition_switch;
 use crate::manager::time::unix_time_ms;
 use crate::manager::transfers::{InternalEvent, MaintenanceEvent};
 use crate::manager::DeliveryWorker;
+use core::time::Duration;
 use log::warn;
 use std::path::PathBuf;
-use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
 pub(super) struct CapabilityKeeper {
@@ -31,7 +34,7 @@ impl CapabilityKeeper {
         (keeper, model)
     }
 
-    pub(super) fn observe(&mut self, revision: u64, events: &UnboundedSender<InternalEvent>) {
+    fn observe(&mut self, revision: u64, events: &UnboundedSender<InternalEvent>) {
         if revision == self.seen_revision {
             return;
         }
@@ -40,7 +43,7 @@ impl CapabilityKeeper {
         self.schedule_save(events);
     }
 
-    pub(super) async fn save_now(&mut self, model: &ClientCapabilityModel) {
+    async fn save_now(&mut self, model: &ClientCapabilityModel) {
         self.save_pending = false;
         if !self.dirty {
             return;
@@ -66,10 +69,13 @@ impl CapabilityKeeper {
 }
 
 impl DeliveryWorker {
-    pub(super) fn apply_player_preparation_feedback(
+    pub(super) async fn apply_player_preparation_feedback(
         &mut self,
         envelope: PlayerPreparationEnvelope,
     ) {
+        let post = envelope.report().post().clone();
+        let decoder_unsupported =
+            envelope.report().failure_kind() == Some(DECODER_UNSUPPORTED_FAILURE);
         let outcome = self
             .state
             .apply_player_preparation_at(envelope.report().clone(), unix_time_ms());
@@ -78,6 +84,27 @@ impl DeliveryWorker {
                 .observe(self.state.client_capability_revision(), &self.ctx.events);
         }
         self.commands.complete_player_preparation(envelope, outcome);
+        if outcome == PlayerPreparationActorOutcome::Applied && decoder_unsupported {
+            self.apply_capability_fallback(&post).await;
+        }
+    }
+
+    async fn apply_capability_fallback(&mut self, post: &ghostr_engine::PostId) {
+        let Some(binding) = self.state.select_capability_fallback(post, unix_time_ms()) else {
+            return;
+        };
+        self.cooldown_timers.cancel(post);
+        prepare_rendition_switch(&mut self.state, &mut self.probes, &mut self.retry, binding);
+        self.bind_representations().await;
+    }
+
+    pub(super) async fn apply_known_capability_fallbacks(&mut self, observed_at_ms: u64) {
+        let bindings = self.state.select_known_capability_fallbacks(observed_at_ms);
+        for binding in bindings {
+            self.cooldown_timers.cancel(binding.post());
+            prepare_rendition_switch(&mut self.state, &mut self.probes, &mut self.retry, binding);
+        }
+        self.bind_representations().await;
     }
 
     pub(super) async fn save_capability(&mut self) {

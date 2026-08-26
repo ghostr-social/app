@@ -20,14 +20,6 @@ impl NavigationPrediction {
     pub fn forward_probability(self) -> f64 {
         self.forward
     }
-
-    pub fn backward_probability(self) -> f64 {
-        self.backward
-    }
-
-    pub fn exit_probability(self) -> f64 {
-        self.exit
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -52,7 +44,7 @@ impl Default for NavigationState {
 }
 
 impl NavigationState {
-    pub(crate) fn observe(&mut self, event: WatchNavigation, now_ms: u64) {
+    pub(super) fn observe(&mut self, event: WatchNavigation, now_ms: u64) {
         self.decay(now_ms);
         match event {
             WatchNavigation::Forward => self.forward += 1.0,
@@ -62,7 +54,7 @@ impl NavigationState {
         self.observations = self.observations.saturating_add(1);
     }
 
-    pub(crate) fn prediction(&self, now_ms: u64) -> NavigationPrediction {
+    pub(super) fn prediction(&self, now_ms: u64) -> NavigationPrediction {
         let scale = decay_scale(now_ms, self.last_updated_ms);
         let forward = 4.0 + self.forward * scale;
         let backward = 1.0 + self.backward * scale;
@@ -75,11 +67,7 @@ impl NavigationState {
         }
     }
 
-    pub(crate) fn observations(&self) -> u64 {
-        self.observations
-    }
-
-    pub(crate) fn sanitize(mut self) -> Self {
+    pub(super) fn sanitize(mut self) -> Self {
         self.forward = finite(self.forward);
         self.backward = finite(self.backward);
         self.exit = finite(self.exit);
@@ -94,6 +82,10 @@ impl NavigationState {
         self.last_updated_ms = now_ms;
     }
 }
+
+#[cfg(any(test, feature = "test"))]
+#[path = "navigation/test_support.rs"]
+mod test_support;
 
 fn decay_scale(now_ms: u64, then_ms: u64) -> f64 {
     if then_ms == 0 || now_ms <= then_ms {

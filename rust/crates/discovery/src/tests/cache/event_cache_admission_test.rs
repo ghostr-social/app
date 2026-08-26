@@ -1,7 +1,7 @@
 //! The pool answers a query only with rows that query's own filter
 //! matches, and only as many as its `limit` allows — it behaves like one
 //! more relay. Nothing therefore reaches feed assembly
-//! (event_parsing.rs, feed_spec.rs) that a network answer could not have
+//! (`event_parsing.rs`, `feed_spec.rs`) that a network answer could not have
 //! carried; stored rows travel the identical parsing and filtering path.
 
 use crate::tests::event_cache_support::{cache, note, notes, timestamps};

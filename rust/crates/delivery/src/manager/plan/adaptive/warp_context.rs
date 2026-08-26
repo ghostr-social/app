@@ -72,11 +72,11 @@ fn candidate_context(
     let context = whole_body::apply(context, state, candidate, inputs);
     let context = context
         .with_capability(
-            candidate.post.clone(),
+            &candidate.post,
             state.planner_capability(&candidate.post, inputs.observed_at_ms),
         )
         .with_head_probe_history(
-            candidate.post.clone(),
+            &candidate.post,
             head_probe_history(state, candidate, inputs),
         );
     let Some(preview) = state
@@ -87,7 +87,7 @@ fn candidate_context(
         return context;
     };
     context.with_preview(
-        candidate.post.clone(),
+        &candidate.post,
         PreviewAvailability::inline_blurhash(preview),
     )
 }
@@ -114,9 +114,10 @@ fn head_probe_history(
                 .as_ref()
                 == Some(identity)
     });
-    match active {
-        true => HeadProbeHistory::Active,
-        false => HeadProbeHistory::Unobserved,
+    if active {
+        HeadProbeHistory::Active
+    } else {
+        HeadProbeHistory::Unobserved
     }
 }
 

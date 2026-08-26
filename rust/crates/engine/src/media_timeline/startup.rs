@@ -34,7 +34,7 @@ impl StartupFootprint {
         &self.ranges
     }
 
-    pub fn playable_ms(&self) -> u64 {
+    pub(crate) fn playable_ms(&self) -> u64 {
         self.playable_ms
     }
 

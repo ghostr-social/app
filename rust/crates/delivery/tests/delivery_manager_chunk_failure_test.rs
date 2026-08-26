@@ -35,7 +35,7 @@ async fn failed_chunk_is_charged_to_the_origin_without_storing_bytes() {
         .store
         .present_ranges("failed")
         .await
-        .unwrap()
+        .expect("valid test fixture")
         .is_empty());
     std::fs::remove_dir_all(&harness.root).ok();
 }

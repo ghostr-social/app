@@ -7,8 +7,7 @@ use crate::api::runtime::registry;
 use crate::api::runtime::tracked_items::TrackedItems;
 use flutter_rust_bridge::frb;
 use ghostr_delivery::cache_registry::CacheRegistry;
-#[cfg(test)]
-use ghostr_delivery::delivery_events::PlayerPreparationIngress;
+
 use ghostr_delivery::delivery_events::{
     DeliveryHandle, PlayerPreparationAuthority, PlayerPreparationDisposition,
 };
@@ -22,11 +21,11 @@ use mapping::{map_followup, map_initial};
 use validation::{validate_asset, AssetValidationError};
 
 pub(crate) struct PlayerPreparationContext {
-    pub(crate) store: Arc<PartialRangeStore>,
-    pub(crate) capabilities: ProgressiveCapabilities,
-    pub(crate) delivery: DeliveryHandle,
-    pub(crate) tracked: TrackedItems,
-    pub(crate) cache: CacheRegistry,
+    pub(super) store: Arc<PartialRangeStore>,
+    pub(super) capabilities: ProgressiveCapabilities,
+    pub(super) delivery: DeliveryHandle,
+    pub(super) tracked: TrackedItems,
+    pub(super) cache: CacheRegistry,
 }
 
 #[frb]
@@ -55,7 +54,7 @@ pub(crate) async fn confirm_player_preparation(
     if initial {
         return confirm_initial(context, input).await;
     }
-    let Ok(report) = map_followup(input) else {
+    let Ok(report) = map_followup(&input) else {
         return FfiPlayerPreparationDisposition::Rejected;
     };
     context
@@ -69,7 +68,7 @@ async fn confirm_initial(
     context: &PlayerPreparationContext,
     input: FfiPlayerPreparationReport,
 ) -> FfiPlayerPreparationDisposition {
-    let Ok(probe) = map_followup(input.clone()) else {
+    let Ok(probe) = map_followup(&input) else {
         return FfiPlayerPreparationDisposition::Rejected;
     };
     if let Some(disposition) = context.delivery.player_preparation_disposition(&probe) {
@@ -95,64 +94,6 @@ async fn confirm_initial(
         .into()
 }
 
-#[cfg(test)]
-pub(crate) async fn report_player_preparation(
-    context: &PlayerPreparationContext,
-    input: FfiPlayerPreparationReport,
-) -> anyhow::Result<()> {
-    let initial = input.sequence == 1 && input.state == FfiPlayerPreparationState::Initializing;
-    if initial {
-        report_initial(context, input).await
-    } else {
-        report_followup(context, input)
-    }
-}
-
-#[cfg(test)]
-async fn report_initial(
-    context: &PlayerPreparationContext,
-    input: FfiPlayerPreparationReport,
-) -> anyhow::Result<()> {
-    let admission = context.delivery.player_preparation_admission();
-    let authority = validate_asset(context, &input).await?;
-    let report = map_initial(&input, authority)?;
-    admit(
-        context
-            .delivery
-            .report_player_preparation_initial(admission, report),
-    )
-}
-
-#[cfg(test)]
-fn report_followup(
-    context: &PlayerPreparationContext,
-    input: FfiPlayerPreparationReport,
-) -> anyhow::Result<()> {
-    admit(
-        context
-            .delivery
-            .report_player_preparation_followup(map_followup(input)?),
-    )
-}
-
-#[cfg(test)]
-fn admit(admission: PlayerPreparationIngress) -> anyhow::Result<()> {
-    match admission {
-        PlayerPreparationIngress::Accepted | PlayerPreparationIngress::Duplicate => Ok(()),
-        PlayerPreparationIngress::Stale
-        | PlayerPreparationIngress::Rejected
-        | PlayerPreparationIngress::InvalidAdmission
-        | PlayerPreparationIngress::MissingInitial
-        | PlayerPreparationIngress::Pending => {
-            anyhow::bail!("player preparation attempt was not admitted")
-        }
-        PlayerPreparationIngress::Saturated => {
-            anyhow::bail!("player preparation mailbox is saturated")
-        }
-        PlayerPreparationIngress::Closed => anyhow::bail!("delivery manager is unavailable"),
-    }
-}
-
 impl From<PlayerPreparationDisposition> for FfiPlayerPreparationDisposition {
     fn from(value: PlayerPreparationDisposition) -> Self {
         match value {
@@ -168,3 +109,7 @@ impl From<PlayerPreparationDisposition> for FfiPlayerPreparationDisposition {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "player_preparation_control_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

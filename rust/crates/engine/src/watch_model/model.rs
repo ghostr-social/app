@@ -2,7 +2,7 @@ use super::calibration::CalibrationState;
 use super::context::WatchContext;
 use super::distribution::{DeadlineDistribution, WatchDistribution};
 use super::hierarchy::WatchHierarchy;
-use super::navigation::{NavigationPrediction, NavigationState, WatchNavigation};
+use super::navigation::{NavigationState, WatchNavigation};
 use super::prediction::{CandidateWatchPrediction, WatchWindowPrediction};
 use super::sample::{WatchSample, WatchSampleKind};
 use super::state::{WatchModelState, WatchStateError, PERSISTED_GROUP_LIMIT};
@@ -19,15 +19,13 @@ pub struct WatchModel {
 }
 
 impl WatchModel {
-    pub const MAX_PERSISTED_GROUPS: usize = PERSISTED_GROUP_LIMIT;
-
-    pub fn observe(&mut self, sample: WatchSample) {
+    pub fn observe(&mut self, sample: &WatchSample) {
         if matches!(sample.kind, WatchSampleKind::Censored(_)) {
             return;
         }
-        self.observe_calibration(&sample);
+        self.observe_calibration(sample);
         let event = sample.kind == WatchSampleKind::Abandoned;
-        let watched_ms = bounded_watch_ms(&sample);
+        let watched_ms = bounded_watch_ms(sample);
         self.hierarchy
             .observe(&sample.context, watched_ms, event, sample.observed_at_ms);
         self.advance(sample.observed_at_ms);
@@ -68,16 +66,7 @@ impl WatchModel {
             start = start.after_watch(&watch);
             reach *= forward;
         }
-        WatchWindowPrediction::new(candidates, self.revision)
-    }
-
-    pub fn navigation(&self) -> NavigationPrediction {
-        self.navigation.prediction(self.last_observed_ms)
-    }
-
-    pub fn reset_session(&mut self, now_ms: u64) {
-        self.hierarchy.reset_session();
-        self.advance(now_ms);
+        WatchWindowPrediction::new(candidates)
     }
 
     pub fn state(&self) -> WatchModelState {
@@ -91,6 +80,11 @@ impl WatchModel {
         )
     }
 
+    /// Restores a normalized watch model snapshot.
+    ///
+    /// # Errors
+    ///
+    /// Returns a state error when the JSON is malformed or uses an unsupported schema.
     pub fn from_state_json(json: &str) -> Result<Self, WatchStateError> {
         let parts = WatchModelState::from_json(json)?.into_parts();
         Ok(Self {
@@ -103,32 +97,8 @@ impl WatchModel {
         })
     }
 
-    pub fn revision(&self) -> u64 {
-        self.revision
-    }
-
     pub fn change_epoch(&self) -> u64 {
         self.change_epoch
-    }
-
-    pub fn session_observations(&self) -> u64 {
-        self.hierarchy.session_observations(self.last_observed_ms)
-    }
-
-    pub fn navigation_observations(&self) -> u64 {
-        self.navigation.observations()
-    }
-
-    pub fn persisted_group_count(&self) -> usize {
-        self.hierarchy.persistent_count()
-    }
-
-    pub fn calibration_labels(&self) -> u64 {
-        self.calibration.labels()
-    }
-
-    pub fn calibration_error_bps(&self) -> u16 {
-        self.calibration.error_bps()
     }
 
     fn observe_calibration(&mut self, sample: &WatchSample) {
@@ -152,6 +122,10 @@ impl WatchModel {
         self.last_observed_ms = self.last_observed_ms.max(now_ms);
     }
 }
+
+#[cfg(any(test, feature = "test"))]
+#[path = "model/test_support.rs"]
+mod test_support;
 
 fn bounded_watch_ms(sample: &WatchSample) -> u64 {
     sample

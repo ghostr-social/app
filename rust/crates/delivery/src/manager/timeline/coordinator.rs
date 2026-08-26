@@ -98,7 +98,7 @@ impl TimelineCoordinator {
         self.completed.push_back(result);
     }
 
-    pub(crate) fn take_completed(&mut self) -> Vec<TimelineResult> {
+    pub(super) fn take_completed(&mut self) -> Vec<TimelineResult> {
         self.completed.drain(..).collect()
     }
 
@@ -126,7 +126,7 @@ impl TimelineCoordinator {
         Some(result.outcome)
     }
 
-    pub(crate) fn retain_active(&mut self, posts: &HashSet<PostId>) {
+    pub(super) fn retain_active(&mut self, posts: &HashSet<PostId>) {
         self.attempts.retain_active(posts);
         self.pending.retain(|post, _| posts.contains(post));
         self.order.retain(|post| posts.contains(post));

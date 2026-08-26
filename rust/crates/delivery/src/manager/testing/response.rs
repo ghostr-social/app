@@ -36,7 +36,7 @@ impl DeliveryWorker {
         self.ctx
             .events
             .send(crate::manager::transfers::InternalEvent::Transfer(event))
-            .unwrap();
+            .expect("valid test fixture");
     }
 
     pub(crate) fn queue_cancelled_attempt_for_test(
@@ -54,11 +54,15 @@ impl DeliveryWorker {
             promoted: false,
             request_started: true,
         };
-        let event = crate::manager::transfers::chunk_event(attempt, source.into(), Ok(result));
+        let event = crate::manager::transfers::axiom_test_support::chunk_event(
+            attempt,
+            source.into(),
+            Ok(result),
+        );
         self.ctx
             .events
             .send(crate::manager::transfers::InternalEvent::Transfer(event))
-            .unwrap();
+            .expect("valid test fixture");
     }
 
     pub(crate) fn validator_for_test(
@@ -83,9 +87,7 @@ impl DeliveryWorker {
         source: &str,
         result: crate::probe::media::ProbeResult,
     ) -> Option<ghostr_engine::adaptive::DecisionOutcome> {
-        let Some(identity) = self.state.catalog().transfer_identity(post, source) else {
-            return None;
-        };
+        let identity = self.state.catalog().transfer_identity(post, source)?;
         Some(self.finish_probe_result(&identity, result).await)
     }
 }

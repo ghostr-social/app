@@ -1,10 +1,10 @@
 //! A ranged origin whose tail is released only after the test proves
 //! delivery gave the serial slot to a replacement post.
 
-use std::ops::Range;
-use std::sync::atomic::{AtomicU64, Ordering};
+use core::ops::Range;
+use core::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use tokio::io::AsyncWriteExt;
+use tokio::io::AsyncWriteExt as _;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{oneshot, Notify};
 
@@ -63,7 +63,7 @@ async fn stream_once(input: StreamInput) {
         if !write_body(&mut socket, &tail, &input.sent).await {
             break;
         }
-        tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+        tokio::time::sleep(core::time::Duration::from_millis(5)).await;
     }
 }
 

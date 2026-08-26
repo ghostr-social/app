@@ -2,7 +2,7 @@ mod gateway_fixture;
 
 use axum::http::StatusCode;
 use gateway_fixture::progressive::progressive_harness;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn rejects_a_post_the_manager_never_registered() {

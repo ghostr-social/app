@@ -1,9 +1,7 @@
 #![cfg(unix)]
 
-mod store_fixture;
-
-use std::os::unix::fs::PermissionsExt;
-use store_fixture::{discard, limits, spaced_store};
+use crate::tests::store_fixture::{discard, limits, spaced_store};
+use std::os::unix::fs::PermissionsExt as _;
 
 #[tokio::test]
 async fn failed_partial_range_eviction_reports_no_freed_bytes() {
@@ -28,7 +26,7 @@ async fn failed_partial_range_eviction_reports_no_freed_bytes() {
         .store
         .media_snapshot("clip")
         .await
-        .unwrap()
+        .expect("valid test fixture")
         .ranges()
         .is_empty());
     assert_eq!(fixture.store.enforce_capacity().await, 400);

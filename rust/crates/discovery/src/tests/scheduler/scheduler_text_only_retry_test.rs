@@ -1,8 +1,8 @@
 use crate::retrieval_types::{PlanFailure, RetrievalOutcome};
 use crate::tests::scheduler_support::{context, next_outcome, next_started, note_at, request};
 use crate::tests::scripted_scheduler_support::scripted_scheduler_results;
+use core::time::Duration;
 use nostr_sdk::{EventBuilder, Keys};
-use std::time::Duration;
 
 #[tokio::test(start_paused = true)]
 async fn text_only_page_does_not_suppress_a_later_failure_retry() {

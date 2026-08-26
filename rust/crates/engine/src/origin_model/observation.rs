@@ -7,7 +7,7 @@ pub enum OriginOutcome {
     Cancelled,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OriginObservation {
     pub query: OriginQuery,
     pub observed_at_ms: u64,
@@ -30,18 +30,8 @@ impl OriginObservation {
         Self::new(query, observed_at_ms, OriginOutcome::Cancelled)
     }
 
-    pub fn with_range_compliance(mut self, value: bool) -> Self {
-        self.range_compliant = Some(value);
-        self
-    }
-
     pub fn with_ttfb_ms(mut self, value: u64) -> Self {
         self.ttfb_ms = Some(value.max(1));
-        self
-    }
-
-    pub fn with_throughput_bps(mut self, value: u64) -> Self {
-        self.throughput_bps = Some(value.max(1));
         self
     }
 
@@ -56,3 +46,7 @@ impl OriginObservation {
         }
     }
 }
+
+#[cfg(any(test, feature = "test"))]
+#[path = "observation/test_support.rs"]
+mod test_support;

@@ -28,5 +28,10 @@ async fn range_collector_ignores_invalid_sets_and_canonicalizes_one_valid_spec()
     assert_eq!(range_values(&valid.requests[1]), ["bytes=4-7"]);
     let response = valid.result.expect("canonical range");
     assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
-    assert_eq!(to_bytes(response.into_body(), 4).await.unwrap(), "good");
+    assert_eq!(
+        to_bytes(response.into_body(), 4)
+            .await
+            .expect("valid test fixture"),
+        "good"
+    );
 }

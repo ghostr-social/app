@@ -1,13 +1,13 @@
 use super::HlsTransfer;
 use crate::hls::asset_response::AssetResponseEnvelope;
+use core::time::Duration;
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
 use reqwest::{Client, RequestBuilder};
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::oneshot;
 
@@ -52,7 +52,10 @@ async fn fixture() -> (
     tokio::task::JoinHandle<()>,
 ) {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("listener");
-    let url = format!("http://{}/asset.ts", listener.local_addr().unwrap());
+    let url = format!(
+        "http://{}/asset.ts",
+        listener.local_addr().expect("valid test fixture")
+    );
     let (second_hit, observed) = oneshot::channel();
     let server = tokio::spawn(serve(listener, second_hit));
     let client = Client::builder()
@@ -60,7 +63,7 @@ async fn fixture() -> (
         .redirect(reqwest::redirect::Policy::none())
         .build()
         .expect("client");
-    let limits = MediaRequestLimits::try_new(1, 1).unwrap();
+    let limits = MediaRequestLimits::try_new(1, 1).expect("valid test fixture");
     let executor = MediaRequestExecutor::new(Arc::new(LocalClient(client)), limits);
     (executor, url, observed, server)
 }
@@ -79,7 +82,7 @@ async fn stall_body(mut socket: TcpStream) {
         .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 8\r\n\r\n1234")
         .await
         .expect("write response");
-    std::future::pending::<()>().await;
+    core::future::pending::<()>().await;
 }
 
 fn spawn_next(
@@ -88,7 +91,12 @@ fn spawn_next(
 ) -> tokio::task::JoinHandle<anyhow::Result<()>> {
     tokio::spawn(async move {
         let request = executor.get(&url, PreemptionAuthority::Transition)?;
-        let _response = request.admit().await?.send().await?;
+        let deadline = tokio::time::Instant::now() + core::time::Duration::from_secs(30);
+        let _response = request
+            .admit()
+            .await?
+            .send_with_redirect_deadline(deadline)
+            .await?;
         Ok(())
     })
 }

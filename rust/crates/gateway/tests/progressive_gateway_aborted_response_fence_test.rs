@@ -1,13 +1,13 @@
 mod gateway_fixture;
 
+use core::time::Duration;
 use gateway_fixture::progressive::progressive_harness;
 use ghostr_engine::adaptive::WholeBodyContract;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::playback::PLAYBACK_SLICE_BYTES;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
-use std::time::Duration;
-use tokio_stream::StreamExt;
-use tower::ServiceExt;
+use tokio_stream::StreamExt as _;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn open_gateway_response_never_splices_an_aborted_response_with_its_retry() {
@@ -16,18 +16,24 @@ async fn open_gateway_response_never_splices_an_aborted_response_with_its_retry(
     let total = PLAYBACK_SLICE_BYTES * 2;
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(PostId::new("clip"), meta(total));
-    let transfer = binding.transfer("https://cdn.example/video").unwrap();
-    harness.store.bind_representation(binding).await.unwrap();
+    let transfer = binding
+        .transfer("https://cdn.example/video")
+        .expect("valid test fixture");
+    harness
+        .store
+        .bind_representation(binding)
+        .await
+        .expect("valid test fixture");
     harness
         .store
         .select_transfer(transfer.clone())
         .await
-        .unwrap();
+        .expect("valid test fixture");
     harness
         .store
         .begin_single_response(&transfer, 1, exact(total))
         .await
-        .unwrap();
+        .expect("valid test fixture");
     harness
         .store
         .write_single_response_if_current(
@@ -37,41 +43,49 @@ async fn open_gateway_response_never_splices_an_aborted_response_with_its_retry(
             &vec![b'a'; PLAYBACK_SLICE_BYTES as usize],
         )
         .await
-        .unwrap();
+        .expect("valid test fixture");
 
     let request = harness
         .video_request("clip", Some(&format!("bytes=0-{}", total - 1)))
         .await;
-    let response = harness.router.oneshot(request).await.unwrap();
+    let response = harness
+        .router
+        .oneshot(request)
+        .await
+        .expect("valid test fixture");
     let mut body = response.into_body().into_data_stream();
-    let first = body.next().await.unwrap().unwrap();
+    let first = body
+        .next()
+        .await
+        .expect("valid test fixture")
+        .expect("valid test fixture");
     assert!(first.iter().all(|byte| *byte == b'a'));
 
     assert!(!harness
         .store
         .finish_single_response(&transfer, 1, None, false)
         .await
-        .unwrap());
+        .expect("valid test fixture"));
     assert!(!harness
         .store
         .begin_single_response(&transfer, 2, exact(total))
         .await
-        .unwrap());
+        .expect("valid test fixture"));
     harness
         .store
         .select_transfer(transfer.clone())
         .await
-        .unwrap();
+        .expect("valid test fixture");
     assert!(harness
         .store
         .begin_single_response(&transfer, 2, exact(total))
         .await
-        .unwrap());
+        .expect("valid test fixture"));
     harness
         .store
         .write_single_response_if_current(&transfer, 2, 0, &vec![b'b'; total as usize])
         .await
-        .unwrap();
+        .expect("valid test fixture");
 
     let stopped = tokio::time::timeout(Duration::from_secs(1), body.next())
         .await

@@ -31,7 +31,7 @@ fn bound_terminal_resources_are_recorded_exactly_once() {
         .records
         .into_iter()
         .find(|record| record.sequence == sequence)
-        .unwrap();
+        .expect("valid test fixture");
     assert_eq!(
         record.actual_resources,
         Some(RecordedResourceCost::from(actual))

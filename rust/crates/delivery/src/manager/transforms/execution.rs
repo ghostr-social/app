@@ -10,9 +10,6 @@ use tokio::sync::mpsc::UnboundedSender;
 
 mod backend;
 #[cfg(test)]
-#[path = "../../tests/transform_cpu_unavailable_test.rs"]
-mod cpu_unavailable_test;
-#[cfg(test)]
 #[path = "../../tests/transform_publication_arbitration_test.rs"]
 mod publication_arbitration_test;
 
@@ -50,7 +47,7 @@ async fn execute(context: &JobContext, request: TransformRequest) -> TransformCo
         Err(class) => return unmeasured_failure(class),
     };
     let attempt = backend::execute(backend::Run {
-        backend: context.backend.clone(),
+        backend: std::sync::Arc::clone(&context.backend),
         bytes,
         kind: request.kind,
         profile: context.profile,
@@ -106,7 +103,7 @@ async fn read_input(
     {
         Ok(RepresentationRead::Present(bytes)) if bytes.len() as u64 == request.total => Ok(bytes),
         Ok(RepresentationRead::Superseded) => Err("warp_transform_input_superseded"),
-        Ok(RepresentationRead::Present(_)) | Ok(RepresentationRead::Missing) => {
+        Ok(RepresentationRead::Present(_) | RepresentationRead::Missing) => {
             Err("warp_transform_input_incomplete")
         }
         Err(_) => Err("warp_transform_input_read_failed"),

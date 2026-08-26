@@ -1,6 +1,6 @@
-use ghostr_engine::catalog::{Catalog, HttpObservation, LearnedFacts};
-use ghostr_engine::evidence::{EvidenceTime, EvidenceValidator};
-use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
+use crate::catalog::{Catalog, HttpObservation, LearnedFacts};
+use crate::evidence::{EvidenceTime, EvidenceValidator};
+use crate::{DeliveryKind, PostId, VideoMeta};
 
 const URL: &str = "https://media.example/video.mp4";
 
@@ -11,9 +11,11 @@ fn validatorless_response_facts_do_not_claim_or_revoke_http_authority() {
     let identity = catalog
         .upsert(post.clone(), metadata())
         .transfer(URL)
-        .unwrap();
+        .expect("valid test fixture");
     assert!(catalog.learn_response_observation_for(&identity, trusted_response()));
-    let authority = catalog.http_generation_for(&identity).unwrap();
+    let authority = catalog
+        .http_generation_for(&identity)
+        .expect("valid test fixture");
 
     assert!(catalog.learn_action_response_observation_for(
         &identity,
@@ -31,7 +33,7 @@ fn validatorless_response_facts_do_not_claim_or_revoke_http_authority() {
     ));
 
     assert_eq!(catalog.http_generation_for(&identity), Some(authority));
-    let entry = catalog.lookup(&post).unwrap();
+    let entry = catalog.lookup(&post).expect("valid test fixture");
     assert_eq!(entry.authoritative_total_for(URL), Some(32));
     assert_eq!(entry.observed_range_support_for(URL), Some(false));
 }

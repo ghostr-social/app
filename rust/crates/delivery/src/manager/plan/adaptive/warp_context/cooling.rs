@@ -20,9 +20,7 @@ pub(super) fn apply(
             let Some(eligible_at_ms) = inputs.retry.cooling_until(post) else {
                 return context;
             };
-            context.with_retry_availability(
-                post.clone(),
-                PlannerRetryAvailability::Cooling { eligible_at_ms },
-            )
+            context
+                .with_retry_availability(post, PlannerRetryAvailability::Cooling { eligible_at_ms })
         })
 }

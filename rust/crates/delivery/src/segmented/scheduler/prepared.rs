@@ -26,9 +26,9 @@ enum PreparationFailure {
 }
 
 pub(super) async fn prepare_transfer(
-    mut lease: StageLease,
+    lease: StageLease,
     fetched: FetchedObject,
-    mut cancelled: oneshot::Receiver<()>,
+    cancelled: oneshot::Receiver<()>,
 ) -> Result<PreparedTransfer, FetchFailure> {
     let received_bytes = fetched.body.len() as u64;
     let telemetry = fetched.telemetry;
@@ -38,7 +38,7 @@ pub(super) async fn prepare_transfer(
     let stage = if continuation.is_some() {
         PreparedStage::Partial(object)
     } else {
-        prepare_terminal(&mut lease, object, offset, &mut cancelled)
+        prepare_terminal(&lease, object, offset, cancelled)
             .await
             .map_err(|failure| failure.into_fetch(telemetry, received_bytes))?
     };
@@ -52,10 +52,10 @@ pub(super) async fn prepare_transfer(
 }
 
 async fn prepare_terminal(
-    lease: &mut StageLease,
+    lease: &StageLease,
     object: PreparedObject,
     offset: u64,
-    cancelled: &mut oneshot::Receiver<()>,
+    mut cancelled: oneshot::Receiver<()>,
 ) -> Result<PreparedStage, PreparationFailure> {
     let seed = match offset {
         0 => None,
@@ -65,7 +65,7 @@ async fn prepare_terminal(
                 .ok_or(PreparationFailure::Superseded)?,
         ),
     };
-    prepare_complete(seed, object, cancelled)
+    prepare_complete(seed, object, &mut cancelled)
         .await
         .map(PreparedStage::Complete)
         .map_err(|()| PreparationFailure::Cancelled)

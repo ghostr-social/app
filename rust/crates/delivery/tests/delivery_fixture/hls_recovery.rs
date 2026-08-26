@@ -44,11 +44,11 @@ impl HlsScript {
     }
 
     pub fn hits(&self) -> Vec<HlsHit> {
-        self.shared.hits.lock().unwrap().clone()
+        self.shared.hits.lock().expect("valid test fixture").clone()
     }
 
     pub async fn wait_for_hits(&self, count: usize) {
-        tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        tokio::time::timeout(core::time::Duration::from_secs(2), async {
             loop {
                 let changed = self.shared.changed.notified();
                 tokio::pin!(changed);
@@ -63,27 +63,43 @@ impl HlsScript {
         .expect("scripted HLS request count");
     }
 
-    async fn record(&self, path: &'static str) -> Option<StatusCode> {
-        self.shared.hits.lock().unwrap().push(HlsHit {
-            path,
-            at: Instant::now(),
-        });
+    fn record(&self, path: &'static str) -> Option<StatusCode> {
+        self.shared
+            .hits
+            .lock()
+            .expect("valid test fixture")
+            .push(HlsHit {
+                path,
+                at: Instant::now(),
+            });
         self.shared.changed.notify_waiters();
         (path == self.shared.failure_path)
-            .then(|| self.shared.statuses.lock().unwrap().pop_front())
+            .then(|| {
+                self.shared
+                    .statuses
+                    .lock()
+                    .expect("valid test fixture")
+                    .pop_front()
+            })
             .flatten()
     }
 }
 
 pub async fn serve(script: HlsScript) -> String {
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let address = listener.local_addr().unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("valid test fixture");
+    let address = listener.local_addr().expect("valid test fixture");
     let app = Router::new()
         .route("/index.m3u8", get(responses::root))
         .route("/child.m3u8", get(responses::child))
         .route("/init.mp4", get(responses::init))
         .route("/segment.m4s", get(responses::segment))
         .with_state(script);
-    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    tokio::spawn(async move {
+        axum::serve(listener, app)
+            .await
+            .expect("valid test fixture");
+    });
     format!("http://{address}/index.m3u8")
 }

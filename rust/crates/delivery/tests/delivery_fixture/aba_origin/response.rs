@@ -1,4 +1,4 @@
-use tokio::io::AsyncWriteExt;
+use tokio::io::AsyncWriteExt as _;
 use tokio::net::TcpStream;
 
 pub(super) fn is_head(request: &[u8]) -> bool {

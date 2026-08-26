@@ -3,7 +3,7 @@
 use crate::content::parsing::MAX_REPOSTABLE_EVENT_BYTES;
 use crate::plan_executor::RepostRetryDelta;
 use crate::retrieval_types::FeedContext;
-use nostr_sdk::{Event, EventId, JsonUtil};
+use nostr_sdk::{Event, EventId, JsonUtil as _};
 use std::collections::HashMap;
 
 const MAX_DEFERRED_REPOSTS: usize = 128;
@@ -58,7 +58,7 @@ impl DeferredRepostBook {
         self.has_pending(context)
     }
 
-    pub(crate) fn has_pending(&self, context: &FeedContext) -> bool {
+    pub(super) fn has_pending(&self, context: &FeedContext) -> bool {
         self.entries.keys().any(|(stored, _)| stored == context)
     }
 
@@ -77,16 +77,6 @@ impl DeferredRepostBook {
     pub(crate) fn reset(&mut self) {
         self.entries.clear();
         self.bytes = 0;
-    }
-
-    #[cfg(test)]
-    pub(crate) fn retained_len(&self) -> usize {
-        self.entries.len()
-    }
-
-    #[cfg(test)]
-    pub(crate) fn retained_bytes(&self) -> usize {
-        self.bytes
     }
 
     fn take_attempts(
@@ -171,3 +161,7 @@ fn retained_wire_bytes(event: &Event) -> Option<usize> {
     let wire_bytes = event.as_json().len();
     (wire_bytes <= MAX_DEFERRED_EVENT_BYTES).then_some(wire_bytes)
 }
+
+#[cfg(test)]
+#[path = "deferred_reposts_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

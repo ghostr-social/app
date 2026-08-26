@@ -8,7 +8,7 @@ use ghostr_engine::ActionId;
 async fn tracked_hls_traffic_closes_when_the_http_body_finishes() {
     let (url, server) = immediate_asset().await;
     let (events, _receiver) = tokio::sync::mpsc::unbounded_channel();
-    let (publisher, mut inbox) = channel(events, 8);
+    let (publisher, inbox) = channel(events, 8);
     let progress = FetchProgress::new(Some(SegmentedTraffic::new(ActionId::new(17), publisher)));
     let requests = client();
     let network = network_status();
@@ -37,5 +37,5 @@ async fn tracked_hls_traffic_closes_when_the_http_body_finishes() {
         batch.events().last(),
         Some(TrafficEvent::Closed { .. })
     ));
-    server.await.unwrap();
+    server.await.expect("valid test fixture");
 }

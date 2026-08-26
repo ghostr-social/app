@@ -25,7 +25,7 @@ struct AcquireResponse {
     playback_url: String,
 }
 
-pub(crate) fn router(feed: DebugFeed, sessions: HlsSessions) -> Router {
+pub(super) fn router(feed: DebugFeed, sessions: HlsSessions) -> Router {
     Router::new()
         .route("/debug/api/hls", post(acquire))
         .route("/debug/api/hls/{session}", delete(release))

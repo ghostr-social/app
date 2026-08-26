@@ -18,23 +18,23 @@ use crate::engine::DataUsageLevel;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{mpsc, watch, RwLock};
 
-pub(crate) async fn start(boot: DiscoveryBoot) -> DiscoveryRuntime {
+pub(super) async fn start(boot: DiscoveryBoot) -> DiscoveryRuntime {
     let relay_pool = configuration::initialize_relay_pool(
-        boot.client.clone(),
+        std::sync::Arc::clone(&boot.client),
         boot.bootstrap.clone(),
         boot.search_relays.clone(),
     )
     .await;
     let outbox = shared_outbox(boot.bootstrap);
     let executor = RelayPlanExecutor::with_owner(
-        relay_pool.clone(),
+        std::sync::Arc::clone(&relay_pool),
         boot.search_relays,
-        outbox.clone(),
+        std::sync::Arc::clone(&outbox),
         DataUsageLevel::Balanced,
     );
     let pipeline = DiscoveryPipeline::start(
         executor.clone(),
-        outbox.clone(),
+        std::sync::Arc::clone(&outbox),
         boot.demand,
         boot.candidates,
     );
@@ -66,7 +66,12 @@ impl DiscoveryPipeline {
         let handle = scheduler(executor.clone(), demand, sender.clone());
         let state = Arc::new(Mutex::new(FeedState::new()));
         let bootstrap = Arc::new(OutboxBootstrap::new(Arc::new(executor), outbox, sender));
-        spawn_pump(state.clone(), bootstrap.clone(), candidates, outcomes);
+        spawn_pump(
+            std::sync::Arc::clone(&state),
+            std::sync::Arc::clone(&bootstrap),
+            candidates,
+            outcomes,
+        );
         Self {
             handle,
             state,

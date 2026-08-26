@@ -30,6 +30,7 @@ fn focus_cancellation_preserves_the_admitted_response_generation_fence() {
         handle,
         store_action: None,
         committed_network_bytes: None,
+        exploration_claim: None,
     });
     assert!(active.adopt_action_scoped_generation(&attempt, None));
 

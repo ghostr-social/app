@@ -3,109 +3,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
 mod posterior;
+mod types;
 use posterior::{Level, Posterior};
+pub use types::{CalibrationContext, CalibrationDimensions, CalibrationLabel, ReliabilityEstimate};
 const LABEL_CAPACITY: usize = 4_096;
 const DEFAULT_HALF_LIFE_MS: u64 = 24 * 60 * 60 * 1_000;
 const PRIOR_WEIGHT: f64 = 0.25;
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct CalibrationDimensions {
-    pub issuer: Option<String>,
-    pub client: Option<String>,
-    pub origin: Option<String>,
-    pub url: Option<String>,
-}
-
-impl CalibrationDimensions {
-    pub fn new(
-        issuer_or_client: Option<String>,
-        origin: Option<String>,
-        url: Option<String>,
-    ) -> Self {
-        Self {
-            issuer: issuer_or_client,
-            client: None,
-            origin,
-            url,
-        }
-    }
-
-    pub fn provider(
-        issuer: Option<String>,
-        client: Option<String>,
-        origin: Option<String>,
-        url: Option<String>,
-    ) -> Self {
-        Self {
-            issuer,
-            client,
-            origin,
-            url,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct CalibrationContext {
-    pub dimensions: CalibrationDimensions,
-    pub field: EvidenceField,
-    pub context: String,
-}
-
-impl CalibrationContext {
-    pub fn new(
-        dimensions: CalibrationDimensions,
-        field: EvidenceField,
-        context: impl Into<String>,
-    ) -> Self {
-        Self {
-            dimensions,
-            field,
-            context: context.into(),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct CalibrationLabel {
-    pub context: CalibrationContext,
-    pub correct: bool,
-    pub observed_at_ms: u64,
-    #[serde(default = "full_weight")]
-    pub weight_bps: u16,
-}
-
-impl CalibrationLabel {
-    pub fn new(context: CalibrationContext, correct: bool, observed_at_ms: u64) -> Self {
-        Self {
-            context,
-            correct,
-            observed_at_ms,
-            weight_bps: 10_000,
-        }
-    }
-
-    pub fn discounted(
-        context: CalibrationContext,
-        correct: bool,
-        observed_at_ms: u64,
-        weight_bps: u16,
-    ) -> Self {
-        Self {
-            context,
-            correct,
-            observed_at_ms,
-            weight_bps: weight_bps.min(10_000),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct ReliabilityEstimate {
-    pub mean_bps: u16,
-    pub lower_bound_bps: u16,
-    pub effective_samples_bps: u32,
-}
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct FieldReliabilityModel {
@@ -140,10 +43,11 @@ impl FieldReliabilityModel {
         posterior.estimate()
     }
 
-    pub fn to_json(&self) -> String {
-        serde_json::to_string(self).expect("field reliability always serializes")
-    }
-
+    /// Restores and normalizes a persisted reliability model.
+    ///
+    /// # Errors
+    ///
+    /// Returns a JSON decoding error when the persisted model is malformed.
     pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
         Ok(Self::normalized(serde_json::from_str(json)?))
     }
@@ -195,6 +99,6 @@ impl FieldReliabilityModel {
     }
 }
 
-const fn full_weight() -> u16 {
-    10_000
-}
+#[cfg(any(test, feature = "test"))]
+#[path = "calibration/test_support.rs"]
+mod test_support;

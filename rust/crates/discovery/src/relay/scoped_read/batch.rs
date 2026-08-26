@@ -4,11 +4,11 @@ use super::super::scoped_query::{
     is_local_progress_backpressure, PreparedQuery, QueryCompletion, QueryRequest, ScopedQuery,
 };
 use super::super::scoped_state::{CloseGuard, EventSink};
-use anyhow::Context;
+use anyhow::Context as _;
+use core::time::Duration;
 use nostr_sdk::{Client, Filter};
 use std::collections::HashSet;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::task::{JoinError, JoinSet};
 
 #[derive(Clone)]
@@ -60,7 +60,9 @@ impl QueryBatch {
     ) -> Self {
         let mut batch = Self::default();
         for url in relays {
-            batch.add(client.clone(), url, template.clone()).await;
+            batch
+                .add(std::sync::Arc::clone(&client), url, template.clone())
+                .await;
         }
         batch
     }

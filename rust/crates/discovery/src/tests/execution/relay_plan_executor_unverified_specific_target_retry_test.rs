@@ -1,11 +1,11 @@
-use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
+use crate::plan_executor::{PlanExecutor as _, PlannedRetrieval};
 use crate::query::search::plan_discovery;
 use crate::query::video_filters::{DiscoveryRequest, RepostAdmission};
 use crate::retrieval_types::{FeedContext, RetrievalPriority};
 use crate::tests::repost_target_executor_support::target_executor;
 use crate::tests::repost_target_support::{RepostTargetIo, TARGET_RELAY};
+use core::sync::atomic::Ordering;
 use nostr_sdk::{EventBuilder, Keys, Kind, Tag};
-use std::sync::atomic::Ordering;
 
 #[tokio::test]
 async fn unverified_exact_target_remains_retryable() {
@@ -24,7 +24,7 @@ async fn unverified_exact_target_remains_retryable() {
         .expect("wrapper");
     original.content.push_str("?tampered");
     let io = RepostTargetIo::new(wrapper.clone(), original);
-    let executor = target_executor(io.clone());
+    let executor = target_executor(std::sync::Arc::clone(&io));
     let request = DiscoveryRequest {
         authors: vec![reposter.public_key()],
         reposts: RepostAdmission::Included,
@@ -33,7 +33,7 @@ async fn unverified_exact_target_remains_retryable() {
     let (progress, _) = tokio::sync::mpsc::channel(1);
 
     let page = executor
-        .execute_page_with_progress(retrieval(request), progress)
+        .execute_page_with_progress(retrieval(&request), progress)
         .await
         .expect("content page");
 
@@ -42,14 +42,14 @@ async fn unverified_exact_target_remains_retryable() {
     assert!(io.used_hint.load(Ordering::Relaxed));
 }
 
-fn retrieval(request: DiscoveryRequest) -> PlannedRetrieval {
+fn retrieval(request: &DiscoveryRequest) -> PlannedRetrieval {
     PlannedRetrieval {
         context: FeedContext::for_session(
             "following",
             crate::session_generation::SessionGeneration::initial(),
         ),
         priority: RetrievalPriority::Interactive,
-        plan: plan_discovery(&request),
+        plan: plan_discovery(request),
         deferred_reposts: Vec::new(),
     }
 }

@@ -26,5 +26,8 @@ pub(super) async fn download(
     tokio::pin!(download);
     expect_queued(&mut download).await;
     drop(fixture.held_other.take().expect("held queue slot"));
-    download.await.expect("download after local gate wait");
+    download
+        .await
+        .result
+        .expect("download after local gate wait");
 }

@@ -1,4 +1,5 @@
 use crate::range_fixture;
+use core::time::Duration;
 use ghostr_delivery::chunk::downloader::{
     download_chunk_observed, ChunkExecution, ChunkSink, ChunkSpec, DownloadTraffic,
 };
@@ -7,7 +8,6 @@ use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::host_stats::host_of;
 use ghostr_engine::ByteRange;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
-use std::time::Duration;
 
 #[path = "fixture/environment.rs"]
 mod environment;
@@ -45,6 +45,7 @@ impl Fixture {
             },
         )
         .await
+        .result
         .expect_err("body admission must expire")
     }
 
@@ -54,9 +55,11 @@ impl Fixture {
             url: &self.url,
             priority: PreemptionAuthority::Transition,
             timeouts: self.timeouts,
+            network: None,
         };
         probe(spec, &mut self.stats)
             .await
+            .outcome
             .expect_err("HEAD admission must expire")
     }
 }
@@ -70,7 +73,8 @@ pub(super) async fn exercise() -> SurfaceTimeouts {
     assert!(
         tokio::time::timeout(Duration::from_millis(50), fixture.listener.accept())
             .await
-            .is_err()
+            .is_err(),
+        "admission timeouts must occur before either surface reaches the origin"
     );
     std::fs::remove_dir_all(fixture.root).ok();
     SurfaceTimeouts {

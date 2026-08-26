@@ -9,11 +9,13 @@ base64 = "0.22.1"
 bytes = "1.10"
 flutter_rust_bridge = "=2.7.0"
 futures-util = "0.3"
+fs2 = "0.4.3"
 hmac = "0.12.1"
 httpdate = "1.0.3"
 libc = "0.2"
 log = "0.4.25"
 nostr-sdk = "0.38.0"
+nix = { version = "0.30.1", features = ["fs", "time"] }
 once_cell = "1.20.2"
 rand = "0.8.7"
 reqwest = { version = "0.12.12", default-features = false, features = ["rustls-tls", "stream"] }
@@ -30,6 +32,8 @@ url = "2.5.8"
 name = "rust_lib_ghostr"
 version = "0.1.0"
 edition = "2021"
+publish = false
+description = "Native media discovery, adaptive delivery, and Flutter bridge for Ghostr."
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
@@ -79,8 +83,10 @@ serde_json = { workspace = true }
 sha2 = { workspace = true }
 
 [dev-dependencies]
-ghostr-delivery = { path = "crates/delivery", features = ["test-support"] }
-ghostr-discovery = { path = "crates/discovery", features = ["test-support"] }
+ghostr-delivery = { path = "crates/delivery", features = ["test"] }
+ghostr-discovery = { path = "crates/discovery", features = ["test"] }
+ghostr-engine = { path = "crates/engine", features = ["test"] }
+ghostr-partial-store = { path = "crates/partial-store", features = ["test"] }
 futures-util = { workspace = true }
 tokio = { version = "1.43.0", features = ["test-util"] }
 tokio-tungstenite = { workspace = true }

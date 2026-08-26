@@ -1,6 +1,6 @@
 use crate::manager::resource_control::{ResourceControl, ResourceEnvironment};
 use ghostr_engine::adaptive::ResourceObservation;
-use std::time::Duration;
+use core::time::Duration;
 use tokio::time::Instant;
 
 #[tokio::test(start_paused = true)]

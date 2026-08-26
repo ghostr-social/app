@@ -1,7 +1,5 @@
-use crate::delivery_events::{
-    CommandReceiver, DecisionHistorySnapshot, DecisionToken, DeliveryHandle,
-    LegacyDecisionPublication, WarpDecisionPublication,
-};
+
+use crate::delivery_events::{CommandReceiver, DecisionHistorySnapshot, DecisionToken, DeliveryHandle, LegacyDecisionPublication, WarpDecisionPublication};
 use crate::manager::plan::PlannedWork;
 use crate::tests::adaptive_plan_support::plan;
 use ghostr_engine::adaptive::{AllocationPlan, DecisionOutcome, StorageSnapshot};
@@ -44,7 +42,7 @@ pub(crate) fn selected_head(
         legacy_prices: work.shadow_prices,
         models: &work.decision_models,
     });
-    let sequence = handle.decision_history().records.last().unwrap().sequence;
+    let sequence = handle.decision_history().records.last().expect("valid test fixture").sequence;
     (sequence, token.expect("selected HEAD decision token"))
 }
 
@@ -63,7 +61,7 @@ pub(crate) fn selected_warp(
         legacy_prices: work.shadow_prices,
         models: &work.decision_models,
     });
-    let sequence = handle.decision_history().records.last().unwrap().sequence;
+    let sequence = handle.decision_history().records.last().expect("valid test fixture").sequence;
     (sequence, token.expect("selected WARP decision token"))
 }
 
@@ -79,7 +77,7 @@ pub(crate) fn publish(
         prices: work.shadow_prices,
         models: &work.decision_models,
     });
-    let sequence = handle.decision_history().records.last().unwrap().sequence;
+    let sequence = handle.decision_history().records.last().expect("valid test fixture").sequence;
     (sequence, token)
 }
 

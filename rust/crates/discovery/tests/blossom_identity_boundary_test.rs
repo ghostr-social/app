@@ -1,4 +1,4 @@
-use ghostr_discovery::content::candidates::CandidateRegistry;
+use crate::content::candidates::CandidateRegistry;
 use nostr_sdk::{EventBuilder, Keys, Kind, Tag};
 
 #[test]
@@ -42,7 +42,7 @@ fn video(author: &Keys, url: &str, identity: &str) -> nostr_sdk::Event {
         .expect("video")
 }
 
-fn candidate(events: &[nostr_sdk::Event]) -> ghostr_discovery::content::parsing::ParsedVideoPost {
+fn candidate(events: &[nostr_sdk::Event]) -> crate::content::parsing::ParsedVideoPost {
     CandidateRegistry::new()
         .inspect_all(events)
         .admitted

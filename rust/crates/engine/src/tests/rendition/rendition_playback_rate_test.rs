@@ -7,8 +7,8 @@ fn accelerated_playback_reduces_the_safely_sustainable_rendition() {
     let policy = QualitySelectionPolicy::default();
     let network = network(10_000_000, 0, EstimateConfidence::High);
 
-    let normal = policy.select(&ladder(), playing_input(network, None, 20, 1_000));
-    let doubled = policy.select(&ladder(), playing_input(network, None, 20, 2_000));
+    let normal = policy.select(&ladder(), &playing_input(network, None, 20, 1_000));
+    let doubled = policy.select(&ladder(), &playing_input(network, None, 20, 2_000));
 
     assert_eq!(normal.selected().id(), &id("high"));
     assert_eq!(doubled.selected().id(), &id("medium"));

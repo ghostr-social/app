@@ -1,24 +1,24 @@
-use ghostr_partial_store::partial_range_store::capacity::{Limits, StoreCapacity};
-use ghostr_partial_store::partial_range_store::free_space::FreeSpace;
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
+use crate::partial_range_store::capacity::{Limits, StoreCapacity};
+use crate::partial_range_store::free_space::FreeSpace;
+use crate::partial_range_store::PartialRangeStore;
+use core::sync::atomic::{AtomicU64, Ordering};
+use core::time::Duration;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Mutex;
 
-pub struct FakeSpace {
+pub(in crate::tests) struct FakeSpace {
     available: AtomicU64,
 }
 
 impl FakeSpace {
-    pub fn new(available: u64) -> Arc<Self> {
+    pub(in crate::tests) fn new(available: u64) -> Arc<Self> {
         Arc::new(Self {
             available: AtomicU64::new(available),
         })
     }
 
-    pub fn set(&self, available: u64) {
+    pub(in crate::tests) fn set(&self, available: u64) {
         self.available.store(available, Ordering::SeqCst);
     }
 }
@@ -29,20 +29,25 @@ impl FreeSpace for FakeSpace {
     }
 }
 
-pub struct SpacedStore {
-    pub store: PartialRangeStore,
-    pub used_bytes: Arc<Mutex<u64>>,
-    pub space: Arc<FakeSpace>,
-    pub root: PathBuf,
-    pub limits: Limits,
-    pub recheck: Duration,
+pub(in crate::tests) struct SpacedStore {
+    pub(in crate::tests) store: PartialRangeStore,
+    pub(in crate::tests) used_bytes: Arc<Mutex<u64>>,
+    pub(in crate::tests) space: Arc<FakeSpace>,
+    pub(in crate::tests) root: PathBuf,
+    limits: Limits,
+    recheck: Duration,
 }
 
-pub fn spaced_store(prefix: &str, limits: Limits, available: u64) -> SpacedStore {
+pub(in crate::tests) fn spaced_store(prefix: &str, limits: Limits, available: u64) -> SpacedStore {
     paced_store(prefix, limits, available, Duration::ZERO)
 }
 
-pub fn paced_store(prefix: &str, limits: Limits, available: u64, recheck: Duration) -> SpacedStore {
+pub(in crate::tests) fn paced_store(
+    prefix: &str,
+    limits: Limits,
+    available: u64,
+    recheck: Duration,
+) -> SpacedStore {
     on_disk(
         super::temp_root(prefix),
         FakeSpace::new(available),
@@ -51,10 +56,10 @@ pub fn paced_store(prefix: &str, limits: Limits, available: u64, recheck: Durati
     )
 }
 
-pub fn reopened(fixture: &SpacedStore) -> SpacedStore {
+pub(in crate::tests) fn reopened(fixture: &SpacedStore) -> SpacedStore {
     on_disk(
         fixture.root.clone(),
-        fixture.space.clone(),
+        std::sync::Arc::clone(&fixture.space),
         fixture.limits,
         fixture.recheck,
     )
@@ -62,9 +67,13 @@ pub fn reopened(fixture: &SpacedStore) -> SpacedStore {
 
 fn on_disk(root: PathBuf, space: Arc<FakeSpace>, limits: Limits, recheck: Duration) -> SpacedStore {
     let used_bytes = Arc::new(Mutex::new(0));
-    let capacity = StoreCapacity::new(limits, space.clone(), recheck);
+    let capacity = StoreCapacity::new(limits, std::sync::Arc::<FakeSpace>::clone(&space), recheck);
     SpacedStore {
-        store: PartialRangeStore::with_capacity(root.clone(), used_bytes.clone(), capacity),
+        store: PartialRangeStore::with_capacity(
+            root.clone(),
+            std::sync::Arc::clone(&used_bytes),
+            capacity,
+        ),
         used_bytes,
         space,
         root,
@@ -73,10 +82,13 @@ fn on_disk(root: PathBuf, space: Arc<FakeSpace>, limits: Limits, recheck: Durati
     }
 }
 
-pub fn limits(budget: u64, reserve: u64) -> Limits {
+pub(in crate::tests) fn limits(budget: u64, reserve: u64) -> Limits {
     Limits { budget, reserve }
 }
 
-pub fn plain_store(root: PathBuf, used_bytes: Arc<Mutex<u64>>) -> PartialRangeStore {
+pub(in crate::tests) fn plain_store(
+    root: PathBuf,
+    used_bytes: Arc<Mutex<u64>>,
+) -> PartialRangeStore {
     PartialRangeStore::with_capacity(root, used_bytes, StoreCapacity::system(u64::MAX))
 }

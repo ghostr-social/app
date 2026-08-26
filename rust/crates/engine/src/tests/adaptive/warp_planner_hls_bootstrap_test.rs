@@ -66,7 +66,7 @@ fn every_hls_stage_commits_one_bounded_network_and_storage_block() {
     for stage in cases {
         let mut state = snapshot(0, 80_000_000, 0, 0);
         state.hls_candidates.push(candidate(stage));
-        let generated = crate::adaptive::WarpActionGenerator::generate(
+        let generated = crate::adaptive::axiom_test_support::WarpActionGenerator::generate(
             &state,
             &AdaptivePlayabilityPolicy.plan(&state),
             &OriginModel::default(),
@@ -89,7 +89,7 @@ fn candidate(stage: HlsBootstrapStage) -> HlsCandidateSnapshot {
     HlsCandidateSnapshot {
         post: PostId::new("p0"),
         feed_offset: FeedOffset::new(0),
-        view_probability: ViewProbability::new(1.0).unwrap(),
+        view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
         startup_value_ms: 2_000,
         cursor: Default::default(),
         state: HlsBootstrapState::Pending {

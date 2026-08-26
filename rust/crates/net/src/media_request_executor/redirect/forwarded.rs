@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use ghostr_engine::RequestAuthority;
 use reqwest::header::{HeaderMap, AUTHORIZATION, COOKIE, PROXY_AUTHORIZATION};
 use reqwest::{Method, Request, Url};

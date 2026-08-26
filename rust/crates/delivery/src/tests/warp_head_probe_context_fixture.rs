@@ -1,5 +1,6 @@
+use crate::manager::plan::axiom_test_support::planned_work;
 use crate::delivery_events::{DeliveryFocus, FocusItem};
-use crate::manager::plan::{planned_work, PlanInputs, PlannedWork};
+use crate::manager::plan::{PlanInputs, PlannedWork};
 use crate::manager::retry::{RetryBook, RetryPolicy};
 use crate::manager::state::DeliveryState;
 use ghostr_engine::adaptive::{PlannerCommand, StorageSnapshot};
@@ -9,13 +10,13 @@ use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMet
 use std::collections::{HashMap, HashSet};
 
 pub(super) fn generates_head(work: PlannedWork) -> bool {
-    work.warp.unwrap().generated.actions.iter().any(|action| {
+    work.warp.expect("valid test fixture").generated.actions.iter().any(|action| {
         matches!(&action.command, PlannerCommand::ProbeHead { post, .. } if post.as_str() == "post")
     })
 }
 
 pub(super) fn plan(
-    state: &mut DeliveryState,
+    state: &DeliveryState,
     active: &[TransferIdentity],
     capacity: usize,
 ) -> PlannedWork {
@@ -23,7 +24,7 @@ pub(super) fn plan(
 }
 
 pub(super) fn plan_at(
-    state: &mut DeliveryState,
+    state: &DeliveryState,
     active: &[TransferIdentity],
     completed: &HashSet<TransferIdentity>,
     observed_at_ms: u64,
@@ -31,7 +32,7 @@ pub(super) fn plan_at(
 ) -> PlannedWork {
     planned_work(
         state,
-        PlanInputs {
+        &PlanInputs {
             stats: &HostStats::new(),
             retry: &RetryBook::new(RetryPolicy::default()),
             present: &HashMap::new(),

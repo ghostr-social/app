@@ -28,11 +28,8 @@ impl DecisionRecord {
         self.terminal_evidence_hash = Some(super::replay::terminal_identity(self));
         true
     }
-
-    #[cfg(test)]
-    pub(crate) fn emulate_legacy_warp_v2(&mut self) {
-        self.schema_version = super::UNSEALED_WARP_SCHEMA_VERSION;
-        self.replay_plan_hash = super::replay::warp_identity(self);
-        self.terminal_evidence_hash = None;
-    }
 }
+
+#[cfg(test)]
+#[path = "resolution_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

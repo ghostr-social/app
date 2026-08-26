@@ -10,15 +10,24 @@ fn invalidation_breaks_a_live_stage_fence_before_reseed() {
     let post = PostId::new("stream");
     let root = object("root", 4);
     cache.replace_focus(1, vec![(post.clone(), vec![root.request_url.clone()])]);
-    let root_lease = cache.admit_stage(admission(&post, 1, "root", 4)).unwrap();
+    let root_lease = cache
+        .admit_stage(admission(&post, 1, "root", 4))
+        .expect("valid test fixture");
     assert!(root_lease.commit_complete(PreparedComplete::new(root.clone())));
     assert!(cache.mark_stage_ready(&post, 1));
-    let generation = cache.object(&root.request_url).unwrap().generation();
+    let generation = cache
+        .object(&root.request_url)
+        .expect("valid test fixture")
+        .generation();
     assert!(cache.reset_stage_retry(&post, 1));
-    let stale = cache.admit_stage(admission(&post, 2, "next", 4)).unwrap();
+    let stale = cache
+        .admit_stage(admission(&post, 2, "next", 4))
+        .expect("valid test fixture");
 
     assert!(cache.invalidate_generation(&root.request_url, generation));
-    let replacement = cache.admit_stage(admission(&post, 3, "next", 4)).unwrap();
+    let replacement = cache
+        .admit_stage(admission(&post, 3, "next", 4))
+        .expect("valid test fixture");
     drop(stale);
 
     assert!(replacement.commit_complete(PreparedComplete::new(object("next", 4))));

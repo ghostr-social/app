@@ -55,14 +55,14 @@ pub struct QuantileRecord {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ModelQuantiles {
-    pub source_id: String,
-    pub success: ProbabilityEstimateRecord,
-    pub range_compliance: ProbabilityEstimateRecord,
-    pub ttfb_ms: QuantileRecord,
-    pub throughput_bps: QuantileRecord,
-    pub effective_samples: u64,
-    pub adapting: bool,
-    pub uncertainty_bps: u16,
+    pub(super) source_id: String,
+    pub(super) success: ProbabilityEstimateRecord,
+    pub(super) range_compliance: ProbabilityEstimateRecord,
+    pub(crate) ttfb_ms: QuantileRecord,
+    pub(super) throughput_bps: QuantileRecord,
+    pub(super) effective_samples: u64,
+    pub(super) adapting: bool,
+    pub(super) uncertainty_bps: u16,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -91,8 +91,8 @@ pub enum PrunedReason {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PrunedCandidate {
-    pub post_id: String,
-    pub reasons: Vec<PrunedReason>,
+    pub(super) post_id: String,
+    pub(crate) reasons: Vec<PrunedReason>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -137,7 +137,8 @@ pub enum ProbeClaimRefusal {
     IdentityMissing,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum DecisionReplayStatus {
     Verified,
     UnsupportedSchema,

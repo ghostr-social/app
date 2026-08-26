@@ -1,5 +1,5 @@
 use crate::{DeliveryKind, VideoMeta};
-use sha2::{Digest, Sha256};
+use sha2::{Digest as _, Sha256};
 
 pub(super) fn fingerprint(meta: &VideoMeta) -> String {
     let mut digest = Sha256::new();

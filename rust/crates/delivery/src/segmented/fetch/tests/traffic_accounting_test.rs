@@ -1,4 +1,5 @@
-use super::super::{fetch, FetchInput, FetchSpec, SegmentedTraffic};
+use super::super::axiom_test_support::{fetch, FetchInput};
+use super::super::{FetchSpec, SegmentedTraffic};
 use super::support::{client, immediate_asset};
 use crate::delivery_events::{DeliveryNetworkStatus, DeliveryNetworkStatusReader};
 use crate::manager::traffic::{channel, TrafficEvent, TrafficPublisher};
@@ -10,9 +11,9 @@ use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
 #[tokio::test]
 async fn staged_hls_bytes_enter_the_shared_measured_traffic_stream() {
     let (url, server) = immediate_asset().await;
-    let url = url::Url::parse(&url).unwrap();
+    let url = url::Url::parse(&url).expect("valid test fixture");
     let (events, _receiver) = tokio::sync::mpsc::unbounded_channel();
-    let (publisher, mut inbox) = channel(events, 8);
+    let (publisher, inbox) = channel(events, 8);
 
     let network = DeliveryNetworkStatusReader::new(DeliveryNetworkStatus::unavailable());
     let object = fetch(&client(), input(&url, publisher), &network, None)
@@ -40,7 +41,7 @@ async fn staged_hls_bytes_enter_the_shared_measured_traffic_stream() {
             .sum::<u64>(),
         1
     );
-    server.await.unwrap();
+    server.await.expect("valid test fixture");
 }
 
 fn input(url: &url::Url, publisher: TrafficPublisher) -> FetchInput<'_> {

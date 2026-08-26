@@ -1,8 +1,6 @@
 //! Addressable posts without a published identifier fall back to event ID.
 
-mod feed_support;
-
-use feed_support::{addressable_video, parsed};
+use crate::tests::feed_support::{addressable_video, parsed};
 use nostr_sdk::Keys;
 
 #[test]

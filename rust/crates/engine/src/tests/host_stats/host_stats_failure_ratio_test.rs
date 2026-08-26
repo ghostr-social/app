@@ -1,6 +1,7 @@
 //! Failure ratio: an EWMA over success (0) / failure (1) outcomes.
 
-use crate::host_stats::{HostStats, EWMA_ALPHA};
+use crate::host_stats::axiom_test_support::EWMA_ALPHA;
+use crate::host_stats::HostStats;
 use crate::tests::host_stats_support::assert_close;
 
 const HOST: &str = "cdn.example";

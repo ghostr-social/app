@@ -51,7 +51,7 @@ fn active() -> Active {
         network: active_network(),
         _task: tokio::spawn(async move {
             let _ = cancelled.await;
-            std::future::pending::<()>().await;
+            core::future::pending::<()>().await;
         }),
         cancellation: Some(cancellation),
         cancelling: false,
@@ -71,7 +71,7 @@ fn done(post: PostId) -> SegmentedDone {
 
 fn telemetry() -> OriginTelemetry {
     OriginTelemetry {
-        elapsed: std::time::Duration::from_millis(25),
+        elapsed: core::time::Duration::from_millis(25),
         ttfb: None,
         concurrency: 1,
         network_class: NetworkClass::Wifi,
@@ -93,7 +93,7 @@ fn focus(generation: u64, source: &str) -> DeliveryFocus {
         previews: Vec::new(),
         current_index: 0,
         watch_ms: 0,
-        generation: FocusGeneration::try_new(generation).unwrap(),
+        generation: FocusGeneration::try_new(generation).expect("valid test fixture"),
         transition: FocusTransition::RosterChange,
         rescue: None,
     }

@@ -18,13 +18,13 @@ async fn captured_old_signer_cannot_cross_completed_reset() {
     let owner = Arc::new(RelayPoolOwner::with_io(
         client,
         RelayPoolConfiguration::default(),
-        io.clone(),
+        std::sync::Arc::<TestRelayIo>::clone(&io),
     ));
     set_account(&owner, SessionGeneration::initial(), &old).await;
     let event = EventBuilder::new(Kind::TextNote, "old")
         .sign_with_keys(&old)
         .expect("event");
-    let send_owner = owner.clone();
+    let send_owner = std::sync::Arc::clone(&owner);
     let old_send = tokio::spawn({
         let event = event.clone();
         async move {
@@ -35,7 +35,7 @@ async fn captured_old_signer_cannot_cross_completed_reset() {
     });
     io.send_started.notified().await;
 
-    let reset_owner = owner.clone();
+    let reset_owner = std::sync::Arc::clone(&owner);
     let (finished, mut reset_done) = oneshot::channel();
     tokio::spawn(async move {
         set_account(&reset_owner, SessionGeneration::initial().next(), &fresh).await;

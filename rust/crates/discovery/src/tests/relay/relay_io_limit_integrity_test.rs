@@ -1,11 +1,11 @@
 //! Duplicate events do not consume the bound and overflow is not authoritative.
 
 use crate::relay::health::RelayHealth;
-use crate::relay::io::{RelayIo, RelayReadIo, SdkRelayIo};
+use crate::relay::io::{RelayIo as _, RelayReadIo, SdkRelayIo};
 use crate::tests::relay_io_relay_fixture::relay_serving_events;
+use core::time::Duration;
 use nostr_sdk::{Client, Event, EventBuilder, Filter, Keys, Kind, Timestamp};
 use std::sync::Arc;
-use std::time::Duration;
 
 #[tokio::test]
 async fn unique_event_overflow_returns_a_bounded_partial_answer() {
@@ -24,7 +24,7 @@ async fn unique_event_overflow_returns_a_bounded_partial_answer() {
             filter: Filter::new().kind(Kind::Custom(22)).limit(2),
             timeout: Duration::from_secs(1),
             progress: None,
-            admissions: Some(health.batch(std::slice::from_ref(&relay))),
+            admissions: Some(health.batch(core::slice::from_ref(&relay))),
         })
         .await
         .expect("safe prefix remains usable");
@@ -32,7 +32,7 @@ async fn unique_event_overflow_returns_a_bounded_partial_answer() {
     assert_eq!(result.events.len(), 2);
     assert!(!result.complete);
     assert_eq!(
-        health.batch(std::slice::from_ref(&relay)).urls(),
+        health.batch(core::slice::from_ref(&relay)).urls(),
         vec![relay]
     );
 }

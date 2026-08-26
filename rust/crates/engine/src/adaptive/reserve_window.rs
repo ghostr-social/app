@@ -7,6 +7,7 @@ use super::reserve_model::{candidates, ready_coverage_ms, target};
 use super::reserve_schedule::{fill, ScheduleInputs};
 use super::PlayabilitySnapshot;
 
+#[derive(Clone, Copy)]
 pub(super) struct ReserveInputs {
     pub(super) transfer_budget: u64,
     pub(super) storage_room: u64,

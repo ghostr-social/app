@@ -1,7 +1,7 @@
 use crate::concurrency::{
     AdaptiveConcurrency, ConcurrencyEvidence, ConcurrencyOccupancy, NetworkSetback,
 };
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn a_filled_trial_does_not_require_demand_for_another_slot() {

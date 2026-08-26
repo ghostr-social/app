@@ -1,5 +1,5 @@
+use core::fmt::{Display, Formatter};
 use ghostr_engine::adaptive::WholeBodyContract;
-use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct WholeBodyLimitReached {
@@ -39,7 +39,7 @@ impl WholeBodyLimitReached {
 }
 
 impl Display for WholeBodyLimitReached {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> core::fmt::Result {
         write!(
             formatter,
             "whole response exceeded its {} byte policy limit after {} bytes",
@@ -48,7 +48,7 @@ impl Display for WholeBodyLimitReached {
     }
 }
 
-impl std::error::Error for WholeBodyLimitReached {}
+impl core::error::Error for WholeBodyLimitReached {}
 
 pub(crate) fn from_error(error: &anyhow::Error) -> Option<WholeBodyLimitReached> {
     error.downcast_ref::<WholeBodyLimitReached>().copied()

@@ -1,7 +1,7 @@
 use crate::concurrency::{
     AdaptiveConcurrency, ConcurrencyEvidence, ConcurrencyOccupancy, NetworkSetback,
 };
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn a_trial_is_kept_only_when_parallelism_improves_aggregate_throughput() {

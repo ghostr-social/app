@@ -2,13 +2,13 @@ mod delivery_fixture;
 mod hls_terminal_wait;
 mod raw_http;
 
+use core::time::Duration;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use ghostr_delivery::segmented::SegmentedPhase;
 use ghostr_engine::DeliveryKind;
 use hls_terminal_wait::wait_terminal;
-use std::time::Duration;
 
 const MANIFEST: &[u8] = b"HTTP/1.1 200 OK\r\n\
 Content-Type: application/vnd.apple.mpegurl\r\n\

@@ -2,7 +2,7 @@ use crate::api::feed::state::FeedState;
 use crate::api::feed_types::FfiFeedStage;
 use crate::api::tests::feed_fixtures::video_note;
 use crate::discovery::feed::spec::FeedSpec;
-use nostr_sdk::{EventBuilder, JsonUtil, Keys, Kind, Tag};
+use nostr_sdk::{EventBuilder, JsonUtil as _, Keys, Kind, Tag};
 
 #[test]
 fn repost_progress_waits_for_settled_deletion_checks() {
@@ -20,7 +20,7 @@ fn repost_progress_waits_for_settled_deletion_checks() {
     let (feed, open) = state.open(FeedSpec::Search("original".to_owned()));
     let context = open.expect("search dispatch").context;
 
-    let candidate = state.apply_progress(&context, wrapper);
+    let candidate = state.apply_progress(&context, &wrapper);
 
     assert!(candidate.is_none());
     assert_eq!(state.stage(feed), FfiFeedStage::Loading);

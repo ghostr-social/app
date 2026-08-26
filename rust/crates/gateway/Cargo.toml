@@ -2,6 +2,7 @@
 name = "ghostr-gateway"
 version = "0.1.0"
 edition = "2021"
+publish = false
 description = "Local HTTP gateway serving progressive and HLS playback, plus the debug web dashboard."
 
 [features]
@@ -38,7 +39,9 @@ tokio-stream = { workspace = true }
 # `ghostr-discovery` — a test-only edge, not the production one dropped in
 # commit 4d400c6.
 [dev-dependencies]
+ghostr-delivery = { path = "../delivery", features = ["test"] }
 ghostr-discovery = { path = "../discovery" }
+ghostr-engine = { path = "../engine", features = ["test"] }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["test-util"] }
 tower = { workspace = true }

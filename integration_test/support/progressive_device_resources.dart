@@ -7,9 +7,11 @@ final class ProgressiveDeviceResources {
 
   static Future<ProgressiveDeviceResources> start({
     Duration responseChunkDelay = Duration.zero,
+    ProgressiveOriginValidator validator = ProgressiveOriginValidator.none,
   }) async {
     final origin = await ProgressiveDeviceOrigin.start(
       responseChunkDelay: responseChunkDelay,
+      validator: validator,
     );
     try {
       final cache = await Directory.systemTemp.createTemp(

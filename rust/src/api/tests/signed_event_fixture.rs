@@ -2,15 +2,15 @@
 
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, Tag, Timestamp};
 
-pub struct SignedEventFixture<'a> {
-    pub keys: &'a Keys,
-    pub kind: Kind,
-    pub content: &'a str,
-    pub tags: Vec<Vec<String>>,
-    pub created_at: u64,
+pub(crate) struct SignedEventFixture<'a> {
+    pub(super) keys: &'a Keys,
+    pub(super) kind: Kind,
+    pub(super) content: &'a str,
+    pub(super) tags: Vec<Vec<String>>,
+    pub(super) created_at: u64,
 }
 
-pub fn signed_event(fixture: SignedEventFixture<'_>) -> Event {
+pub(crate) fn signed_event(fixture: SignedEventFixture<'_>) -> Event {
     let tags = fixture
         .tags
         .into_iter()

@@ -1,13 +1,11 @@
 //! Mutes hide creators, not hashtags or single events: only the mute
 //! list's p tags mute, and a muted creator's posts are filtered by
 //! author — mirrors `_loadBlockedProfiles` reading only `pubKeys` in
-//! lib/platform/nostr/ndk_nostr_social.dart and the blocked-creator
-//! filter in lib/features/video_catalog/domain/video_feed_policy.dart.
+//! `lib/platform/nostr/ndk_nostr_social.dart` and the blocked-creator
+//! filter in `lib/features/video_catalog/domain/video_feed_policy.dart`.
 
-mod discovery_support;
-
-use discovery_support::{mute_list, p_tag, plain_note};
-use ghostr_discovery::content::social_graph::SocialGraph;
+use crate::content::social_graph::SocialGraph;
+use crate::tests::discovery_support::{mute_list, p_tag, plain_note};
 use nostr_sdk::Keys;
 
 #[test]

@@ -28,46 +28,28 @@ impl DownloadWorkers {
         self.active.len()
     }
 
-    pub(crate) fn next_action_id(&mut self) -> ghostr_engine::ActionId {
+    pub(super) fn next_action_id(&mut self) -> ghostr_engine::ActionId {
         self.active.next_action_id()
     }
 
-    pub(crate) fn contains_transfer(&self, transfer: &PlannedTransfer) -> bool {
+    pub(super) fn contains_transfer(&self, transfer: &PlannedTransfer) -> bool {
         self.active.contains_transfer(transfer)
     }
 
-    pub(crate) fn actions(&self) -> Vec<ActiveAction> {
+    pub(super) fn actions(&self) -> Vec<ActiveAction> {
         self.active.actions()
     }
 
-    pub(crate) fn body_posts(&self) -> HashSet<PostId> {
+    pub(super) fn body_posts(&self) -> HashSet<PostId> {
         self.active.body_posts()
     }
 
-    #[cfg(test)]
-    pub(crate) fn insert_test_attempt(&mut self, attempt: &ChunkAttempt) {
-        let request = ghostr_engine::scheduling::RangeRequest {
-            chunk: attempt.chunk.clone(),
-            authority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
-            score: 1.0,
-            contiguous_depth_bytes: 0,
-        };
-        let (handle, _token) = crate::chunk::cancel::cancel_pair();
-        self.active
-            .insert(attempt, request, "fixture.example".into(), 0, handle);
-    }
-
-    pub(crate) fn contains_identity(&self, identity: &TransferIdentity) -> bool {
+    pub(super) fn contains_identity(&self, identity: &TransferIdentity) -> bool {
         self.active.contains_identity(identity)
     }
 
     pub fn preempt_for_current(&mut self, current: &PostId, priority: &[ChunkId], capacity: usize) {
         self.active.preempt_for_current(current, priority, capacity);
-    }
-
-    #[cfg(test)]
-    pub fn reconcile(&mut self, planned: &[PlannedTransfer], capacity: usize) {
-        self.reconcile_with_commitments(planned, capacity, &HashSet::new());
     }
 
     pub fn reconcile_with_commitments(
@@ -90,7 +72,7 @@ impl DownloadWorkers {
         self.admitted_capacity = 1;
     }
 
-    pub(crate) fn cancel_obsolete(&mut self, binding: &RepresentationBinding) {
+    pub(super) fn cancel_obsolete(&mut self, binding: &RepresentationBinding) {
         self.active.cancel_obsolete(binding);
     }
 
@@ -106,15 +88,15 @@ impl DownloadWorkers {
         self.active.finish_with_resources(attempt)
     }
 
-    pub(crate) fn cancel_action(&mut self, action: ghostr_engine::ActionId) -> bool {
+    pub(super) fn cancel_action(&mut self, action: ghostr_engine::ActionId) -> bool {
         self.active.cancel_action(action)
     }
 
-    pub(crate) fn can_cancel_action(&self, action: ghostr_engine::ActionId) -> bool {
+    pub(super) fn can_cancel_action(&self, action: ghostr_engine::ActionId) -> bool {
         self.active.can_cancel_action(action)
     }
 
-    pub(crate) fn link_hedge(
+    pub(super) fn link_hedge(
         &mut self,
         primary: ghostr_engine::ActionId,
         alternate: ghostr_engine::ActionId,
@@ -122,15 +104,15 @@ impl DownloadWorkers {
         self.active.link_hedge(primary, alternate)
     }
 
-    pub(crate) fn complete_hedge_winner(&mut self, action: ghostr_engine::ActionId) -> bool {
+    pub(super) fn complete_hedge_winner(&mut self, action: ghostr_engine::ActionId) -> bool {
         self.active.complete_hedge_winner(action)
     }
 
-    pub(crate) fn cancel_hedge_loser(&mut self, action: ghostr_engine::ActionId) -> bool {
+    pub(super) fn cancel_hedge_loser(&mut self, action: ghostr_engine::ActionId) -> bool {
         self.active.cancel_hedge_loser(action)
     }
 
-    pub(crate) fn observe_response(
+    pub(super) fn observe_response(
         &mut self,
         attempt: &ChunkAttempt,
         response: crate::chunk::downloader::ResponseObservation,
@@ -138,7 +120,7 @@ impl DownloadWorkers {
         self.active.observe_response(attempt, response)
     }
 
-    pub(crate) fn observe_headers(
+    pub(super) fn observe_headers(
         &mut self,
         attempt: &ChunkAttempt,
         response: crate::chunk::downloader::ResponseObservation,
@@ -146,7 +128,7 @@ impl DownloadWorkers {
         self.active.observe_headers(attempt, response)
     }
 
-    pub(crate) fn authorizes_response(
+    pub(super) fn authorizes_response(
         &mut self,
         attempt: &ChunkAttempt,
         action: &ghostr_partial_store::partial_range_store::StoreAction,
@@ -157,11 +139,11 @@ impl DownloadWorkers {
             .authorizes_response(attempt, action, response, opened_at_ms)
     }
 
-    pub(crate) fn reject_response(&mut self, attempt: &ChunkAttempt) {
+    pub(super) fn reject_response(&mut self, attempt: &ChunkAttempt) {
         self.active.reject_response(attempt);
     }
 
-    pub(crate) fn preflight_promotion(
+    pub(super) fn preflight_promotion(
         &self,
         target: &crate::manager::inflight::PromotionTarget,
         now_ms: u64,
@@ -172,7 +154,7 @@ impl DownloadWorkers {
         self.active.preflight_promotion(target, now_ms)
     }
 
-    pub(crate) fn activate_promotion(
+    pub(super) fn activate_promotion(
         &mut self,
         preflight: &crate::manager::inflight::PromotionPreflight,
         now_ms: u64,
@@ -180,17 +162,21 @@ impl DownloadWorkers {
         self.active.activate_promotion(preflight, now_ms)
     }
 
-    pub(crate) fn rollback_promotion(
+    pub(super) fn rollback_promotion(
         &mut self,
         preflight: &crate::manager::inflight::PromotionPreflight,
     ) -> bool {
         self.active.rollback_promotion(preflight)
     }
 
-    pub(crate) fn commit_promotion_network(
+    pub(super) fn commit_promotion_network(
         &mut self,
         preflight: &crate::manager::inflight::PromotionPreflight,
     ) -> bool {
         self.active.commit_promotion_network(preflight)
     }
 }
+
+#[cfg(test)]
+#[path = "workers_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

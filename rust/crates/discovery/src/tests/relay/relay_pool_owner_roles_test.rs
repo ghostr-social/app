@@ -16,9 +16,9 @@ async fn shared_dynamic_relay_leaves_after_both_operations_finish() {
     let client = Arc::new(Client::default());
     let io = Arc::new(TestRelayIo::blocked());
     let owner = Arc::new(RelayPoolOwner::with_io(
-        client.clone(),
+        std::sync::Arc::clone(&client),
         RelayPoolConfiguration::default(),
-        io.clone(),
+        std::sync::Arc::<TestRelayIo>::clone(&io),
     ));
     let mut transition = owner.begin_reset().await;
     transition
@@ -26,10 +26,10 @@ async fn shared_dynamic_relay_leaves_after_both_operations_finish() {
         .await;
     drop(transition);
 
-    let read_owner = owner.clone();
+    let read_owner = std::sync::Arc::clone(&owner);
     let read = tokio::spawn(async move { read_owner.read(read_request(DYNAMIC)).await });
     io.query_started.notified().await;
-    let send_owner = owner.clone();
+    let send_owner = std::sync::Arc::clone(&owner);
     let send = tokio::spawn(async move {
         send_owner
             .broadcast(RelayBroadcastRequest {
@@ -58,7 +58,7 @@ async fn shared_dynamic_relay_leaves_after_both_operations_finish() {
 async fn invalid_and_unowned_write_roles_leave_the_pool_clean() {
     let client = Arc::new(Client::default());
     let roles = RelayPoolRoles::new(
-        RelayRoleIo::sdk(client.clone()),
+        RelayRoleIo::sdk(std::sync::Arc::clone(&client)),
         RelayPoolConfiguration::default(),
     );
 

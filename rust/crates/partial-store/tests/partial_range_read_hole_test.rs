@@ -1,7 +1,5 @@
-mod store_fixture;
-
+use crate::tests::store_fixture::{plain_store, temp_root};
 use std::sync::Arc;
-use store_fixture::{plain_store, temp_root};
 use tokio::sync::Mutex;
 
 #[tokio::test]

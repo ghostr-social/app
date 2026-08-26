@@ -1,12 +1,13 @@
 mod delivery_fixture;
 
+use core::time::Duration;
+use delivery_fixture::evidence::DeliveryEvidence as _;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::playback::playing;
 use delivery_fixture::{start_harness_at, temp_directory};
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_delivery::qoe::load_playback_learning;
-use std::time::Duration;
 
 const FIRST: &str = "private-watch-a";
 const SECOND: &str = "private-watch-b";
@@ -33,7 +34,7 @@ async fn manager_restart_replays_learned_watch_evidence_into_real_decisions() {
     assert_ne!(cold_seed, learned_seed);
     assert!(json.contains("play_start_p95_ms"));
     assert!(!json.contains(FIRST) && !json.contains(SECOND) && !json.contains(SOURCE));
-    restarted.handle.clear().await.unwrap();
+    restarted.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(root).ok();
 }
 
@@ -76,7 +77,7 @@ async fn wait_for_epoch(handle: &DeliveryHandle, expected: u64) -> (u64, String)
     tokio::time::timeout(Duration::from_secs(2), async {
         loop {
             for record in handle.decision_history().records.iter().rev() {
-                let value = serde_json::to_value(record).unwrap();
+                let value = serde_json::to_value(record).expect("valid test fixture");
                 if value.pointer("/warp_decision/planner_replay_capsule/context/epochs/model")
                     == Some(&expected.into())
                 {
@@ -84,7 +85,7 @@ async fn wait_for_epoch(handle: &DeliveryHandle, expected: u64) -> (u64, String)
                         record
                             .warp_decision
                             .as_ref()
-                            .unwrap()
+                            .expect("valid test fixture")
                             .search
                             .common_random_seed,
                         value.to_string(),

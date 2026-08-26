@@ -1,4 +1,4 @@
-use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
+use crate::plan_executor::{PlanExecutor as _, PlannedRetrieval};
 use crate::query::events::plan_event_queries;
 use crate::retrieval_types::{FeedContext, RetrievalPriority};
 use crate::tests::profile_enrichment_support::{executor, has_kind, ProfileIo};
@@ -24,7 +24,7 @@ async fn generic_reads_do_not_wait_for_creator_metadata() {
         deferred_reposts: Vec::new(),
     };
 
-    let events = executor(io.clone())
+    let events = executor(std::sync::Arc::clone(&io))
         .execute(retrieval)
         .await
         .expect("generic read");

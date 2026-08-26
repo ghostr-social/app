@@ -39,7 +39,7 @@ impl RelayPoolRoles {
         }
     }
 
-    pub(crate) async fn fallback_read_relays(&self) -> Vec<String> {
+    pub(super) async fn fallback_read_relays(&self) -> Vec<String> {
         self.book.lock().await.configuration.read_relays.clone()
     }
 
@@ -126,7 +126,7 @@ impl RelayPoolRoles {
 
 impl RelayPoolConfiguration {
     fn bounded(self) -> Self {
-        let read_relays = bounded_relay_targets(self.read_relays);
+        let read_relays = bounded_relay_targets(&self.read_relays);
         let remaining = MAX_RELAY_READ_FANOUT.saturating_sub(read_relays.len());
         let search_relays = unique(&self.search_relays)
             .into_iter()
@@ -140,8 +140,8 @@ impl RelayPoolConfiguration {
     }
 }
 
-pub(crate) fn bounded_relay_targets(relays: Vec<String>) -> Vec<String> {
-    unique(&relays)
+pub(crate) fn bounded_relay_targets(relays: &[String]) -> Vec<String> {
+    unique(relays)
         .into_iter()
         .take(MAX_RELAY_READ_FANOUT)
         .collect()

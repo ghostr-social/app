@@ -3,13 +3,13 @@
 //! while a response is still streaming.
 
 use super::temp_directory;
+use core::sync::atomic::{AtomicU64, Ordering};
+use core::time::Duration;
 use ghostr_partial_store::partial_range_store::capacity::{Limits, StoreCapacity};
 use ghostr_partial_store::partial_range_store::free_space::FreeSpace;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Mutex;
 
 pub struct FakeSpace {
@@ -41,7 +41,7 @@ pub fn spaced_store(prefix: &str, limits: Limits, available: u64) -> SpacedStore
     let space = Arc::new(FakeSpace {
         available: AtomicU64::new(available),
     });
-    let capacity = StoreCapacity::new(limits, space.clone(), Duration::ZERO);
+    let capacity = StoreCapacity::new(limits, Arc::<FakeSpace>::clone(&space), Duration::ZERO);
     SpacedStore {
         store: PartialRangeStore::with_capacity(root.clone(), Arc::new(Mutex::new(0)), capacity),
         space,

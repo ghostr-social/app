@@ -1,18 +1,15 @@
 //! A profile feed shows exactly the target creator's posts: strangers'
 //! posts are dropped, and even a muted target keeps their own grid —
 //! mirrors `ProfileDetailsPolicy.build` filtering only by creator id in
-//! lib/features/video_catalog/domain/profile_details_policy.dart (a
+//! `lib/features/video_catalog/domain/profile_details_policy.dart` (a
 //! blocked creator's page still lists their posts; only the
 //! relationship flags the block).
 
-mod discovery_support;
-mod feed_support;
-
-use discovery_support::{mute_list, p_tag};
-use feed_support::{parsed_posts, video_note};
-use ghostr_discovery::content::social_graph::SocialGraph;
-use ghostr_discovery::feed::spec::FeedSpec;
-use ghostr_discovery::feed::store::FeedStore;
+use crate::content::social_graph::SocialGraph;
+use crate::feed::spec::FeedSpec;
+use crate::feed::store::FeedStore;
+use crate::tests::discovery_support::{mute_list, p_tag};
+use crate::tests::feed_support::{parsed_posts, video_note};
 use nostr_sdk::Keys;
 
 #[test]

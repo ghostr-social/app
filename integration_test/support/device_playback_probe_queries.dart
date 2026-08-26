@@ -2,11 +2,7 @@ part of 'device_playback_probe.dart';
 
 extension DevicePlaybackProbeQueries on DevicePlaybackProbe {
   Duration? playingLatency(PlaybackFocus focus) {
-    final event = _firstPhaseAfter(
-      PlaybackPhase.playing,
-      focus.startedAt,
-      videoId: focus.videoId,
-    );
+    final event = phaseFor(focus, PlaybackPhase.playing);
     return event == null ? null : event.elapsed - focus.startedAt;
   }
 
@@ -19,12 +15,116 @@ extension DevicePlaybackProbeQueries on DevicePlaybackProbe {
     return _focusedPresentation(focus);
   }
 
-  TimedPlaybackOwnership? _focusedPresentation(PlaybackFocus focus) {
-    PlaybackSession? active;
+  PlaybackSession? sessionFor(PlaybackFocus focus) {
+    return _sessionWindow(focus)?.session;
+  }
+
+  PlaybackSession? activationFor(PlaybackFocus focus) {
+    final nextFocus = _nextFocusSequence(focus);
     for (final event in _ownershipEvents) {
       if (event.sequence <= focus.sequence) continue;
+      if (nextFocus != null && event.sequence >= nextFocus) return null;
+      if (event.action == PlaybackOwnershipAction.activate &&
+          event.session.videoId == focus.videoId) {
+        return event.session;
+      }
+    }
+    return null;
+  }
+
+  bool hasPhaseFor(PlaybackFocus focus, PlaybackPhase phase) {
+    final window = _sessionWindow(focus);
+    if (window == null) return false;
+    return observations.any(
+      (event) =>
+          window.contains(event.sequence) &&
+          event.observation.session == window.session &&
+          event.observation.phase == phase,
+    );
+  }
+
+  TimedPlaybackObservation? phaseFor(PlaybackFocus focus, PlaybackPhase phase) {
+    final window = _sessionWindow(focus);
+    if (window == null) return null;
+    for (final event in observations) {
+      if (!window.contains(event.sequence)) continue;
+      if (event.observation.session != window.session) continue;
+      if (event.observation.phase == phase) return event;
+    }
+    return null;
+  }
+
+  Duration? latestPositionFor(PlaybackFocus focus) {
+    final window = _sessionWindow(focus);
+    if (window == null) return null;
+    TimedPlaybackObservation? latest;
+    for (final event in observations) {
+      if (!window.contains(event.sequence)) continue;
+      if (event.observation.session == window.session) latest = event;
+    }
+    return latest?.observation.position;
+  }
+
+  TimedPlaybackOwnership? _focusedPresentation(PlaybackFocus focus) {
+    PlaybackSession? active;
+    final nextFocus = _nextFocusSequence(focus);
+    for (final event in _ownershipEvents) {
+      if (event.sequence <= focus.sequence) continue;
+      if (nextFocus != null && event.sequence >= nextFocus) return null;
       active = _nextActiveSession(event, active);
       if (_isFocusedPresentation(event, active, focus)) return event;
+    }
+    return null;
+  }
+
+  _PlaybackSessionWindow? _sessionWindow(PlaybackFocus focus) {
+    final presentation = _focusedPresentation(focus);
+    if (presentation == null) return null;
+    final openedAt = _activationSequence(focus, presentation);
+    if (openedAt == null) return null;
+    return _PlaybackSessionWindow(
+      presentation.session,
+      openedAt,
+      _closedSequence(focus, presentation.session, openedAt),
+    );
+  }
+
+  int? _activationSequence(
+    PlaybackFocus focus,
+    TimedPlaybackOwnership presentation,
+  ) {
+    for (final event in _ownershipEvents) {
+      if (event.sequence <= focus.sequence) continue;
+      if (event.sequence >= presentation.sequence) break;
+      if (event.action == PlaybackOwnershipAction.activate &&
+          event.session == presentation.session) {
+        return event.sequence;
+      }
+    }
+    return null;
+  }
+
+  int? _closedSequence(
+    PlaybackFocus focus,
+    PlaybackSession session,
+    int openedAt,
+  ) {
+    final nextFocus = _nextFocusSequence(focus);
+    for (final event in _ownershipEvents) {
+      if (event.sequence <= openedAt) continue;
+      if (nextFocus != null && event.sequence >= nextFocus) return nextFocus;
+      if (event.action == PlaybackOwnershipAction.deactivate &&
+          event.session == session) {
+        return event.sequence;
+      }
+    }
+    return nextFocus;
+  }
+
+  int? _nextFocusSequence(PlaybackFocus focus) {
+    for (final candidate in _focuses) {
+      if (candidate.sequence <= focus.sequence) continue;
+      if (candidate.videoId != focus.videoId) return candidate.sequence;
     }
     return null;
   }

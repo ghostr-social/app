@@ -22,7 +22,7 @@ fn success_and_focus_departure_release_demand_tracking() {
     assert!(retry.cool_down(post.clone()).is_none());
     assert!(retry.cool_down(post.clone()).is_some());
 
-    retry.note_success(&Source::new(post.clone(), "https://media".into()));
+    retry.note_success(&Source::new(post.clone(), "https://media"));
     assert_eq!(retry.demand_tracking_units(), 0);
     assert!(!retry.is_cooling(&post));
     assert!(retry.expedite_demand(&post, 24));

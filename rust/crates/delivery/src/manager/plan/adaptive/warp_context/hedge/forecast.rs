@@ -88,9 +88,10 @@ fn concurrency(evidence: &ActiveContextInput<'_>, source: &str, existing: bool) 
             RequestAuthority::from_url(item.source().as_str()) == Some(authority.clone())
         })
         .count();
-    match existing {
-        true => active.max(1),
-        false => active.saturating_add(1),
+    if existing {
+        active.max(1)
+    } else {
+        active.saturating_add(1)
     }
 }
 

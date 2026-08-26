@@ -2,11 +2,11 @@
 //! Defaults are inert, so production delivery is unchanged until a
 //! developer explicitly enables simulation.
 
+use core::time::Duration;
 use ghostr_engine::RequestAuthority;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
-use std::time::Duration;
 use tokio::sync::Notify;
 
 mod bandwidth;
@@ -85,7 +85,7 @@ impl NetworkThrottle {
         hosts
     }
 
-    pub async fn acquire(&self, url: &str) -> ConnectionPermit {
+    pub fn acquire(&self, url: &str) -> ConnectionPermit {
         let host = connection_key(url);
         self.claim(&host);
         ConnectionPermit {

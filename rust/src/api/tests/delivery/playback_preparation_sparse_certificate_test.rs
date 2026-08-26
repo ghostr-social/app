@@ -5,13 +5,13 @@ use crate::api::playback_preparation_stream::{
 use crate::api::runtime::tracked_items::TrackedItems;
 use crate::api::tests::delivery::playback_preparation_sparse_fixture::sparse_startup;
 use crate::api::tests::support::{bind_store, sized_meta, temp_store};
+use core::time::Duration;
 use ghostr_delivery::cache_registry::{CacheRegistry, CacheStatus, CacheVideo};
 use ghostr_delivery::delivery_events::command_channel;
 use ghostr_delivery::startup_certificate::StartupCertificate;
 use ghostr_engine::adaptive::{AllocationPlan, NextReserveEvidence};
 use ghostr_engine::PostId;
 use ghostr_gateway::progressive::capabilities::ProgressiveCapabilities;
-use std::time::Duration;
 use tokio::sync::mpsc;
 
 struct ChannelOut(mpsc::UnboundedSender<FfiPlaybackPreparationPlan>);
@@ -29,15 +29,25 @@ async fn exact_sparse_startup_certificate_projects_the_adjacent_asset() {
     seed_current(&store, &tracked).await;
     let sparse = sparse_startup();
     bind_store(&store, "next", &sparse.meta).await;
-    store.set_total_len("next", sparse.total).await.unwrap();
+    store
+        .set_total_len("next", sparse.total)
+        .await
+        .expect("test fixture precondition must hold");
     for (offset, bytes) in &sparse.writes {
-        store.write_range("next", *offset, bytes).await.unwrap();
+        store
+            .write_range("next", *offset, bytes)
+            .await
+            .expect("test fixture precondition must hold");
     }
     tracked.insert("next".to_owned(), sparse.meta.clone());
     let startup = sparse.startup;
-    let snapshot = store.media_snapshot("next").await.unwrap();
+    let snapshot = store
+        .media_snapshot("next")
+        .await
+        .expect("test fixture precondition must hold");
     assert!(!snapshot.is_complete());
-    let certificate = StartupCertificate::issue(startup.clone(), &snapshot).unwrap();
+    let certificate = StartupCertificate::issue(startup.clone(), &snapshot)
+        .expect("test fixture precondition must hold");
     let plan = AllocationPlan {
         next_reserve: NextReserveEvidence::Structural {
             post: PostId::new("next"),
@@ -71,9 +81,15 @@ async fn exact_sparse_startup_certificate_projects_the_adjacent_asset() {
     ));
     let projected = tokio::time::timeout(Duration::from_secs(1), plans.recv())
         .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(projected.next.unwrap().delivery_id, "next");
+        .expect("test fixture precondition must hold")
+        .expect("test fixture precondition must hold");
+    assert_eq!(
+        projected
+            .next
+            .expect("test fixture precondition must hold")
+            .delivery_id,
+        "next"
+    );
 }
 
 async fn seed_current(
@@ -82,8 +98,14 @@ async fn seed_current(
 ) {
     let meta = sized_meta(16, 2_000);
     bind_store(store, "current", &meta).await;
-    store.set_total_len("current", 16).await.unwrap();
-    store.write_range("current", 0, &[7; 16]).await.unwrap();
+    store
+        .set_total_len("current", 16)
+        .await
+        .expect("test fixture precondition must hold");
+    store
+        .write_range("current", 0, &[7; 16])
+        .await
+        .expect("test fixture precondition must hold");
     tracked.insert("current".to_owned(), meta);
 }
 

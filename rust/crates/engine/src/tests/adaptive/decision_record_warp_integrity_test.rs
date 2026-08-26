@@ -18,33 +18,48 @@ fn schema_two_detects_state_and_decision_tampering_before_trace_reconstruction()
         ActionKind::Head,
     );
     let record = record(&decision);
-    let mut value = serde_json::to_value(&record).unwrap();
+    let mut value = serde_json::to_value(&record).expect("valid test fixture");
 
     value["replay_state"]["observed_at_ms"] = serde_json::json!(123);
-    let tampered: crate::adaptive::DecisionRecord = serde_json::from_value(value).unwrap();
-    assert_eq!(tampered.replay(), DecisionReplayStatus::StateHashMismatch);
+    let tampered: crate::adaptive::DecisionRecord =
+        serde_json::from_value(value).expect("valid test fixture");
+    assert_eq!(
+        tampered.integrity_status(),
+        DecisionReplayStatus::StateHashMismatch
+    );
 
-    let mut value = serde_json::to_value(record).unwrap();
+    let mut value = serde_json::to_value(record).expect("valid test fixture");
     value["warp_decision"]["selected"]["post_id"] = serde_json::json!("changed");
-    let tampered: crate::adaptive::DecisionRecord = serde_json::from_value(value).unwrap();
-    assert_eq!(tampered.replay(), DecisionReplayStatus::PlanMismatch);
+    let tampered: crate::adaptive::DecisionRecord =
+        serde_json::from_value(value).expect("valid test fixture");
+    assert_eq!(
+        tampered.integrity_status(),
+        DecisionReplayStatus::PlanMismatch
+    );
 }
 
 #[test]
 fn schema_two_binds_the_recorded_state_to_the_authoritative_decision() {
     let decision = head_decision();
-    let mut first = serde_json::to_value(record(&decision)).unwrap();
+    let mut first = serde_json::to_value(record(&decision)).expect("valid test fixture");
     let other_state = snapshot(2, 20_000_000, 8_000, 18);
-    let second = serde_json::to_value(record_for(&decision, &other_state)).unwrap();
+    let second =
+        serde_json::to_value(record_for(&decision, &other_state)).expect("valid test fixture");
     first["state_hash"] = second["state_hash"].clone();
     first["replay_state"] = second["replay_state"].clone();
-    let spliced: DecisionRecord = serde_json::from_value(first).unwrap();
-    assert_eq!(spliced.replay(), DecisionReplayStatus::PlanMismatch);
+    let spliced: DecisionRecord = serde_json::from_value(first).expect("valid test fixture");
+    assert_eq!(
+        spliced.integrity_status(),
+        DecisionReplayStatus::PlanMismatch
+    );
 
-    let mut value = serde_json::to_value(record(&decision)).unwrap();
+    let mut value = serde_json::to_value(record(&decision)).expect("valid test fixture");
     value["replay_plan_hash"] = serde_json::json!("unchecked");
-    let tampered: DecisionRecord = serde_json::from_value(value).unwrap();
-    assert_eq!(tampered.replay(), DecisionReplayStatus::PlanMismatch);
+    let tampered: DecisionRecord = serde_json::from_value(value).expect("valid test fixture");
+    assert_eq!(
+        tampered.integrity_status(),
+        DecisionReplayStatus::PlanMismatch
+    );
 }
 
 #[test]
@@ -68,10 +83,13 @@ fn schema_two_state_domain_differs_from_legacy_for_the_same_private_state() {
 #[test]
 fn unsupported_schema_payload_pairs_never_fall_back_to_legacy_replay() {
     let decision = head_decision();
-    let mut value = serde_json::to_value(record(&decision)).unwrap();
+    let mut value = serde_json::to_value(record(&decision)).expect("valid test fixture");
     value["schema_version"] = serde_json::json!(1);
-    let record: DecisionRecord = serde_json::from_value(value).unwrap();
-    assert_eq!(record.replay(), DecisionReplayStatus::UnsupportedSchema);
+    let record: DecisionRecord = serde_json::from_value(value).expect("valid test fixture");
+    assert_eq!(
+        record.integrity_status(),
+        DecisionReplayStatus::UnsupportedSchema
+    );
 }
 
 fn head_decision() -> crate::adaptive::WarpPlanningDecision {

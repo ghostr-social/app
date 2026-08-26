@@ -76,6 +76,7 @@ fn transfer(post: &str, start: u64, authority: PreemptionAuthority, depth: u64) 
     let post = PostId::new(post);
     let url = format!("https://shared.example/{}.mp4", post.as_str());
     PlannedTransfer {
+        control_mode: ghostr_engine::adaptive::ControlMode::Normal,
         identity: transfer_identity(&post, &url),
         request: RangeRequest {
             chunk: ChunkId {

@@ -1,7 +1,5 @@
-mod feed_support;
-
-use feed_support::{signed_event, SignedEventFixture};
-use ghostr_discovery::content::candidates::CandidateRegistry;
+use crate::content::candidates::CandidateRegistry;
+use crate::tests::feed_support::{signed_event, SignedEventFixture};
 use nostr_sdk::{Keys, Kind};
 
 #[test]
@@ -41,7 +39,7 @@ fn empty_repost_resolves_a_verified_protected_original() {
     assert!(repost.signed_event_json.is_none());
     assert_eq!(repost.feed_sort_at, 20);
     assert_eq!(
-        repost.repost.as_ref().unwrap().event_id,
+        repost.repost.as_ref().expect("valid test fixture").event_id,
         wrapper.id.to_hex()
     );
 }

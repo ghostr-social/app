@@ -4,13 +4,15 @@ import 'progressive_device_origin.dart';
 import 'progressive_mp4_fixture.dart';
 
 Future<List<Nip01Event>> signedWarpFeedEvents(
-  ProgressiveDeviceOrigin origin,
-) async {
+  ProgressiveDeviceOrigin origin, {
+  int count = 3,
+}) async {
+  RangeError.checkValueInInterval(count, 1, _labels.length, 'count');
   final signer = const Bip340EventSignerFactory().createWithNewKeyPair();
   final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
   try {
     final events = <Nip01Event>[];
-    for (var index = 0; index < 3; index += 1) {
+    for (var index = 0; index < count; index += 1) {
       final label = _labels[index];
       final event = Nip01Event(
         pubKey: signer.getPublicKey(),
@@ -34,7 +36,15 @@ Future<List<Nip01Event>> signedWarpFeedEvents(
   }
 }
 
-const _labels = ['current', 'next', 'third'];
+const _labels = [
+  'current',
+  'next',
+  'third',
+  'fourth',
+  'fifth',
+  'sixth',
+  'seventh',
+];
 
 List<List<String>> _videoTags(Uri url, String label, int publishedAt) => [
   ['title', 'WARP $label'],

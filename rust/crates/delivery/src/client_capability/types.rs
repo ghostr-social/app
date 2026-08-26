@@ -1,9 +1,12 @@
 use serde::{Deserialize, Serialize};
 
+mod profile;
+pub(crate) use profile::ClientCapabilityProfile;
+
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) struct CapabilityAttempt {
-    pub(super) client_epoch: u64,
-    pub(super) attempt_generation: u64,
+    client_epoch: u64,
+    attempt_generation: u64,
 }
 
 impl CapabilityAttempt {
@@ -13,69 +16,6 @@ impl CapabilityAttempt {
             attempt_generation,
         }
     }
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub(crate) struct ClientCapabilityProfile {
-    representation: String,
-    codec: Option<String>,
-    dimensions: Option<(u32, u32)>,
-}
-
-impl ClientCapabilityProfile {
-    pub(crate) fn try_new(
-        representation: &str,
-        codec: Option<&str>,
-        dimensions: Option<(u32, u32)>,
-    ) -> Result<Self, CapabilityProfileError> {
-        let representation = required(representation)?;
-        let codec = codec
-            .map(required)
-            .transpose()?
-            .map(|value| value.to_lowercase());
-        if dimensions.is_some_and(|(width, height)| width == 0 || height == 0) {
-            return Err(CapabilityProfileError::ZeroDimension);
-        }
-        Ok(Self {
-            representation,
-            codec,
-            dimensions,
-        })
-    }
-
-    pub(crate) fn codec(&self) -> Option<&str> {
-        self.codec.as_deref()
-    }
-
-    pub(crate) const fn dimensions(&self) -> Option<(u32, u32)> {
-        self.dimensions
-    }
-
-    pub(super) fn is_valid(&self) -> bool {
-        !self.representation.trim().is_empty()
-            && self
-                .codec
-                .as_ref()
-                .is_none_or(|value| !value.trim().is_empty())
-            && self
-                .dimensions
-                .is_none_or(|(width, height)| width > 0 && height > 0)
-    }
-}
-
-fn required(value: &str) -> Result<String, CapabilityProfileError> {
-    let value = value.trim();
-    if value.is_empty() {
-        Err(CapabilityProfileError::EmptyValue)
-    } else {
-        Ok(value.to_owned())
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum CapabilityProfileError {
-    EmptyValue,
-    ZeroDimension,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -126,7 +66,7 @@ impl CapabilityObservation {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum ClientCapabilityStatus {
     Unknown,
     Testing,

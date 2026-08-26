@@ -1,7 +1,8 @@
+use crate::adaptive::axiom_test_support::WarpActionGenerator;
 use crate::adaptive::{
     ActionKind, Allocation, AllocationPlan, AllocationReason, CandidateUtility, PlannerCapability,
-    PlannerCommand, PlannerContext, PreemptionAuthority, RetrievalRequest, WarpActionGenerator,
-    WholeBodyContract, WholeFetchReason,
+    PlannerCommand, PlannerContext, PreemptionAuthority, RetrievalRequest, WholeBodyContract,
+    WholeFetchReason,
 };
 use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::snapshot;
@@ -34,7 +35,7 @@ fn unsupported_media_without_transform_never_claims_playable_gain() {
         ..AllocationPlan::default()
     };
     let context = PlannerContext::explicitly_unavailable(&input)
-        .with_capability(post, PlannerCapability::reported(false, None, 1));
+        .with_capability(&post, PlannerCapability::reported(false, None, 1));
     let generated = WarpActionGenerator::generate(&input, &base, &OriginModel::default(), &context);
     let whole = generated
         .actions
@@ -44,8 +45,8 @@ fn unsupported_media_without_transform_never_claims_playable_gain() {
 
     assert_eq!(whole.node.forecast.ready_playback_ms, 0);
     assert!(matches!(
-        whole.command,
-        PlannerCommand::Transfer(ref allocation)
+        &whole.command,
+        PlannerCommand::Transfer(allocation)
             if allocation.expected_playable_gain_ms == 0
                 && allocation.utility.additional_playable_ms == 0
                 && allocation.utility.score == 0.0

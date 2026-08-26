@@ -4,8 +4,8 @@ use crate::manager::concurrency::{
 };
 use crate::manager::traffic::OverallTrafficWindow;
 use ghostr_engine::concurrency::{ConcurrencyOccupancy, NetworkSetback};
-use std::num::NonZeroUsize;
-use std::time::Duration;
+use core::num::NonZeroUsize;
+use core::time::Duration;
 
 #[test]
 fn traffic_windows_preserve_aggregate_rate_occupancy_and_latency() {

@@ -1,10 +1,9 @@
 use super::open::open;
 use super::telemetry::{FetchProblem, FetchProgress};
 use super::{content_type, FetchRuntime, FetchSpec, FetchedObject};
-use anyhow::Context;
+use anyhow::Context as _;
 use ghostr_engine::origin_model::ErrorReason;
 use ghostr_net::media_request_executor::MediaResponse;
-use std::mem::MaybeUninit;
 use std::sync::Arc;
 
 pub(super) async fn fetch_before_total(
@@ -49,42 +48,36 @@ pub(super) async fn fetch_before_total(
 async fn read_body(
     response: &mut MediaResponse,
     limit: usize,
-    idle: std::time::Duration,
+    idle: core::time::Duration,
     progress: &FetchProgress,
 ) -> Result<Arc<[u8]>, FetchProblem> {
-    let mut body = Arc::<[u8]>::new_uninit_slice(limit);
-    let mut written = 0usize;
+    let mut body = Vec::with_capacity(limit);
     while let Some(chunk) = next_chunk(response, idle).await? {
         progress.add_network_bytes(chunk.len() as u64);
-        let Some(end) = written.checked_add(chunk.len()).filter(|end| *end <= limit) else {
+        let Some(_end) = body
+            .len()
+            .checked_add(chunk.len())
+            .filter(|end| *end <= limit)
+        else {
             return Err(FetchProblem::new(
                 anyhow::anyhow!("HLS object exceeds its byte limit"),
                 ErrorReason::InvalidResponse,
             ));
         };
-        write_chunk(&mut body, written, end, &chunk);
-        written = end;
+        body.extend_from_slice(&chunk);
     }
-    if written != limit {
+    if body.len() != limit {
         return Err(FetchProblem::new(
             anyhow::anyhow!("HLS object body length changed"),
             ErrorReason::RangeNoncompliant,
         ));
     }
-    // Every slot was initialized exactly once by `write_chunk`.
-    Ok(unsafe { body.assume_init() })
-}
-
-fn write_chunk(body: &mut Arc<[MaybeUninit<u8>]>, start: usize, end: usize, chunk: &[u8]) {
-    let output = Arc::get_mut(body).expect("HLS body allocation is uniquely owned");
-    for (slot, byte) in output[start..end].iter_mut().zip(chunk) {
-        slot.write(*byte);
-    }
+    Ok(body.into())
 }
 
 async fn next_chunk(
     response: &mut MediaResponse,
-    idle: std::time::Duration,
+    idle: core::time::Duration,
 ) -> Result<Option<bytes::Bytes>, FetchProblem> {
     let result = tokio::time::timeout(idle, response.chunk())
         .await

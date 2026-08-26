@@ -22,7 +22,7 @@ async fn large_hls_object_continues_in_hard_budgeted_range_blocks() {
 
     assert_eq!(terminal.phase, SegmentedPhase::Ready);
     assert_eq!(
-        *requests.lock().unwrap(),
+        *requests.lock().expect("valid test fixture"),
         [
             ("bytes=0-262143".to_owned(), None, None),
             ("bytes=262144-524287".to_owned(), None, None),
@@ -32,7 +32,7 @@ async fn large_hls_object_continues_in_hard_budgeted_range_blocks() {
     let init = harness
         .segmented
         .object(&source.replace("index.m3u8", "init.mp4"))
-        .unwrap();
+        .expect("valid test fixture");
     assert_eq!(init.body.as_ref(), init_body());
     std::fs::remove_dir_all(&harness.root).ok();
 }

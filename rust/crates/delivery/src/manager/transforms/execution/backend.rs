@@ -1,7 +1,7 @@
 use crate::transform::{TransformBackend, TransformControl, TransformInput, TransformProfile};
+use core::time::Duration;
 use ghostr_engine::adaptive::TransformKind;
 use std::sync::Arc;
-use std::time::Duration;
 
 mod cpu_clock;
 use cpu_clock::CpuClock;
@@ -32,15 +32,10 @@ pub(super) async fn execute(run: Run) -> Attempt {
     execute_with_clock(run, CpuClock::system()).await
 }
 
-#[cfg(test)]
-pub(super) async fn execute_without_clock(run: Run) -> Attempt {
-    execute_with_clock(run, CpuClock::unavailable()).await
-}
-
 async fn execute_with_clock(run: Run, clock: CpuClock) -> Attempt {
     let profile = run.profile;
     let control = run.control.clone();
-    let mut work = tokio::task::spawn_blocking(move || run_work(run, clock));
+    let mut work = tokio::task::spawn_blocking(move || run_work(&run, clock));
     let limit = Duration::from_millis(profile.limits().elapsed_ms());
     match tokio::time::timeout(limit, &mut work).await {
         Ok(Ok(result)) => finished(result, profile),
@@ -52,7 +47,7 @@ async fn execute_with_clock(run: Run, clock: CpuClock) -> Attempt {
     }
 }
 
-fn run_work(run: Run, clock: CpuClock) -> Work {
+fn run_work(run: &Run, clock: CpuClock) -> Work {
     let Some(started) = clock.read() else {
         return Work {
             output: Err(anyhow::anyhow!("thread CPU clock unavailable")),
@@ -76,7 +71,10 @@ fn finished(work: Work, profile: TransformProfile) -> Attempt {
     };
     let output = work
         .output
-        .map_err(|_| "warp_transform_backend_rejected")
+        .map_err(|error| {
+            log::warn!("Transform backend rejected its input: {error:#}");
+            "warp_transform_backend_rejected"
+        })
         .and_then(|bytes| validate(bytes, cpu, profile));
     Attempt::Finished {
         output,
@@ -114,3 +112,10 @@ fn deadline(result: Result<Work, tokio::task::JoinError>) -> Attempt {
 fn duration_ms(duration: Duration) -> u64 {
     duration.as_millis().min(u128::from(u64::MAX)) as u64
 }
+
+#[cfg(test)]
+#[path = "backend_axiom_test.rs"]
+mod axiom_test_support;
+#[cfg(test)]
+#[path = "../../../tests/transform_cpu_sample_test.rs"]
+mod cpu_sample_test;

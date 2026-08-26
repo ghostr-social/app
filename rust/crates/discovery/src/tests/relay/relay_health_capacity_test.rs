@@ -32,7 +32,7 @@ async fn all_cooling_capacity_fails_closed_without_bypassing_quarantine() {
     let health = RelayHealth::new();
     for index in 0..256 {
         let url = format!("wss://dead-{index:03}.example");
-        let admission = health.admit(std::slice::from_ref(&url));
+        let admission = health.admit(core::slice::from_ref(&url));
         health.observe(&admission, &[], &[url]);
     }
 
@@ -41,7 +41,7 @@ async fn all_cooling_capacity_fails_closed_without_bypassing_quarantine() {
         .is_empty());
     assert!(health.admit(&urls(["wss://dead-000.example"])).is_empty());
 
-    tokio::time::advance(std::time::Duration::from_secs(2)).await;
+    tokio::time::advance(core::time::Duration::from_secs(2)).await;
     assert_eq!(
         health.admit(&urls(["wss://untracked-new.example"])).len(),
         1,
@@ -54,15 +54,15 @@ async fn eviction_cannot_reset_a_later_candidate_recovery_history() {
     let health = RelayHealth::new();
     for index in 0..256 {
         let url = format!("wss://dead-{index:03}.example");
-        let admission = health.admit(std::slice::from_ref(&url));
+        let admission = health.admit(core::slice::from_ref(&url));
         health.observe(&admission, &[], &[url]);
     }
-    tokio::time::advance(std::time::Duration::from_secs(2)).await;
+    tokio::time::advance(core::time::Duration::from_secs(2)).await;
     let candidates = urls(["wss://000-new.example", "wss://dead-000.example"]);
 
     let admissions = health.admit(&candidates);
     health.observe(&admissions, &[], &candidates);
-    tokio::time::advance(std::time::Duration::from_secs(2)).await;
+    tokio::time::advance(core::time::Duration::from_secs(2)).await;
 
     assert!(health.admit(&urls(["wss://dead-000.example"])).is_empty());
 }
@@ -70,7 +70,7 @@ async fn eviction_cannot_reset_a_later_candidate_recovery_history() {
 fn fill_with_closed_circuits(health: &RelayHealth) {
     for index in 0..255 {
         let url = format!("wss://healthy-{index:03}.example");
-        let admission = health.admit(std::slice::from_ref(&url));
+        let admission = health.admit(core::slice::from_ref(&url));
         health.observe(&admission, &[url], &[]);
     }
 }

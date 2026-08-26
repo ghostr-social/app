@@ -24,7 +24,7 @@ pub(super) struct VideoSnapshot {
     complete: bool,
     status: &'static str,
     ranges: Vec<RangeSnapshot>,
-    playback_url: String,
+    playback_url: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -40,7 +40,7 @@ struct VideoFacts {
     ranges: Vec<Range<u64>>,
     downloaded: u64,
     complete: bool,
-    playback_url: String,
+    playback_url: Option<String>,
 }
 
 pub(super) async fn snapshot(state: &ProgressiveState, video: CacheVideo) -> VideoSnapshot {
@@ -97,9 +97,10 @@ impl VideoSnapshot {
     }
 }
 
-async fn playback_url(state: &ProgressiveState, id: &str) -> String {
-    let capability = state.capabilities.issue(id).await;
-    format!("/video.mp4?id={id}&cap={}", capability.as_str())
+async fn playback_url(state: &ProgressiveState, id: &str) -> Option<String> {
+    let snapshot = state.store.media_snapshot(id).await.ok()?;
+    let capability = state.capabilities.issue(&snapshot).await.ok()?;
+    Some(format!("/video.mp4?id={id}&cap={}", capability.as_str()))
 }
 
 async fn total_len(state: &ProgressiveState, video: &CacheVideo) -> Option<u64> {

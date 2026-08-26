@@ -1,9 +1,9 @@
 use super::{signed_event, SignedEventFixture};
-use ghostr_discovery::content::reposts::GENERIC_REPOST_KIND;
-use nostr_sdk::{Event, JsonUtil, Keys, Kind};
+use crate::content::reposts::GENERIC_REPOST_KIND;
+use nostr_sdk::{Event, JsonUtil as _, Keys, Kind};
 
 /// A verified NIP-18 wrapper embedding the complete original event.
-pub fn repost(keys: &Keys, original: &Event, created_at: u64) -> Event {
+pub(in crate::tests) fn repost(keys: &Keys, original: &Event, created_at: u64) -> Event {
     let kind = if original.kind == Kind::TextNote {
         6
     } else {
@@ -39,7 +39,7 @@ pub fn repost(keys: &Keys, original: &Event, created_at: u64) -> Event {
 }
 
 /// A generic wrapper pinned to one exact addressable revision.
-pub fn specific_repost(keys: &Keys, original: &Event, created_at: u64) -> Event {
+pub(in crate::tests) fn specific_repost(keys: &Keys, original: &Event, created_at: u64) -> Event {
     signed_event(SignedEventFixture {
         keys,
         kind: Kind::Custom(GENERIC_REPOST_KIND),

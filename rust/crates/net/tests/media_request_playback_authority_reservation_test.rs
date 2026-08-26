@@ -10,7 +10,7 @@ async fn same_authority_keeps_one_socket_slot_for_playback() {
     let mut origin = HeldOrigin::serve().await;
     let requests = MediaRequestExecutor::new(
         LocalMediaClient::shared(),
-        MediaRequestLimits::try_new(3, 2).unwrap(),
+        MediaRequestLimits::try_new(3, 2).expect("valid test fixture"),
     );
     let first = open(
         requests.clone(),
@@ -32,7 +32,7 @@ async fn same_authority_keeps_one_socket_slot_for_playback() {
         PreemptionAuthority::PlaybackCritical,
     ));
     origin.expect_hit().await;
-    let critical = critical.await.unwrap();
+    let critical = critical.await.expect("valid test fixture");
     origin.expect_quiet().await;
 
     origin.release_one();
@@ -42,5 +42,5 @@ async fn same_authority_keeps_one_socket_slot_for_playback() {
     drop(first);
     origin.expect_hit().await;
     origin.release_one();
-    drop(waiting.await.unwrap());
+    drop(waiting.await.expect("valid test fixture"));
 }

@@ -3,7 +3,7 @@ mod gateway_fixture;
 use gateway_fixture::progressive::progressive_harness;
 use ghostr_delivery::playback_demand::DemandState;
 use ghostr_engine::playback::PLAYBACK_SLICE_BYTES;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn waiting_response_advances_its_existing_consumer_lease() {
@@ -13,11 +13,24 @@ async fn waiting_response_advances_its_existing_consumer_lease() {
     harness
         .bind_video("clip", "https://cdn.example/clip.mp4", Some(total))
         .await;
-    harness.store.set_total_len("clip", total).await.unwrap();
-    harness.store.write_range("clip", 0, &[7]).await.unwrap();
+    harness
+        .store
+        .set_total_len("clip", total)
+        .await
+        .expect("valid test fixture");
+    harness
+        .store
+        .write_range("clip", 0, &[7])
+        .await
+        .expect("valid test fixture");
     let request = harness.video_request("clip", Some("bytes=0-")).await;
-    let response = harness.router.oneshot(request).await.unwrap();
-    let DemandState::Blocked(first) = harness.demand.recv().await.unwrap() else {
+    let response = harness
+        .router
+        .oneshot(request)
+        .await
+        .expect("valid test fixture");
+    let DemandState::Blocked(first) = harness.demand.recv().await.expect("valid test fixture")
+    else {
         panic!("first state must block");
     };
     harness
@@ -28,9 +41,10 @@ async fn waiting_response_advances_its_existing_consumer_lease() {
             &vec![7; first.range().len() as usize],
         )
         .await
-        .unwrap();
+        .expect("valid test fixture");
 
-    let DemandState::Advanced(next) = harness.demand.recv().await.unwrap() else {
+    let DemandState::Advanced(next) = harness.demand.recv().await.expect("valid test fixture")
+    else {
         panic!("second state must advance");
     };
 

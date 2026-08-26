@@ -5,10 +5,10 @@ use ghostr_engine::representation::TransferIdentity;
 use ghostr_partial_store::partial_range_store::{
     PartialRangeStore, ResponseOpenResult, StoreAction,
 };
-use std::future::Future;
-use std::pin::Pin;
+use core::future::Future;
+use core::pin::Pin;
 use std::sync::Arc;
-use std::time::Duration;
+use core::time::Duration;
 
 pub(crate) struct AuthorizedTraffic {
     store: Arc<PartialRangeStore>,

@@ -1,9 +1,9 @@
-mod feed_support;
-
-use feed_support::{addressable_video, empty_graph, parsed, signed_event, SignedEventFixture};
-use ghostr_discovery::content::deletions::deletion_claims;
-use ghostr_discovery::feed::spec::FeedSpec;
-use ghostr_discovery::feed::store::FeedStore;
+use crate::content::deletions::deletion_claims;
+use crate::feed::spec::FeedSpec;
+use crate::feed::store::FeedStore;
+use crate::tests::feed_support::{
+    addressable_video, empty_graph, parsed, signed_event, SignedEventFixture,
+};
 use nostr_sdk::{Keys, Kind};
 
 #[test]

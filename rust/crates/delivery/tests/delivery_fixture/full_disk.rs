@@ -2,12 +2,12 @@
 //! test names, so delivery can meet a full device without filling one.
 
 use super::temp_directory;
+use core::time::Duration;
 use ghostr_partial_store::partial_range_store::capacity::{Limits, StoreCapacity};
 use ghostr_partial_store::partial_range_store::free_space::FreeSpace;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Mutex;
 
 struct FixedSpace {

@@ -1,12 +1,16 @@
-//! Creator identities from kind-0 metadata events. `display_name` wins
-//! over `name`, NIP-01 replaceable-event ordering selects metadata, and a
-//! creator without usable metadata receives an npub-based identity.
+//! Creator identities from kind-0 metadata events.
+//!
+//! `display_name` wins over `name`, NIP-01 replaceable-event ordering
+//! selects metadata, and creators without usable metadata receive an
+//! npub-based identity.
 
 use std::collections::HashMap;
 
-use nostr_sdk::{Event, EventId, Kind, PublicKey, Timestamp, ToBech32};
+use nostr_sdk::{Event, EventId, Kind, PublicKey, Timestamp, ToBech32 as _};
 use serde_json::Value;
-use url::Url;
+
+mod sanitization;
+use sanitization::{safe_handle, safe_name, safe_picture};
 
 /// The creator identity every feed row renders.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -68,7 +72,7 @@ impl ProfileStore {
 }
 
 fn profile_handle(fields: Option<&ProfileFields>, author: &PublicKey, npub: &str) -> String {
-    let name = fields.and_then(|profile| safe_handle(&profile.name, author));
+    let name = fields.and_then(|profile| safe_handle(profile.name.as_deref(), author));
     format!("@{}", name.as_deref().unwrap_or(npub))
 }
 
@@ -76,8 +80,8 @@ fn profile_handle(fields: Option<&ProfileFields>, author: &PublicKey, npub: &str
 /// public key is treated as missing.
 fn display_name(fields: Option<&ProfileFields>, author: &PublicKey, npub: &str) -> String {
     let candidate = fields.and_then(|profile| {
-        safe_name(&profile.display_name, author, 50)
-            .or_else(|| safe_name(&profile.name, author, 50))
+        safe_name(profile.display_name.as_deref(), author, 50)
+            .or_else(|| safe_name(profile.name.as_deref(), author, 50))
     });
     candidate.unwrap_or_else(|| short_npub(npub))
 }
@@ -96,12 +100,15 @@ fn parsed_fields(event: &Event) -> Option<ProfileFields> {
     }
     let content: Value = serde_json::from_str(&event.content).ok()?;
     content.is_object().then_some(())?;
+    let display_name = string_field(&content, "display_name")?.into_value();
+    let name = string_field(&content, "name")?.into_value();
+    let picture = string_field(&content, "picture")?.into_value();
     Some(ProfileFields {
         created_at: event.created_at,
         event_id: event.id,
-        display_name: string_field(&content, "display_name")?,
-        name: string_field(&content, "name")?,
-        picture: safe_picture(&string_field(&content, "picture")?),
+        display_name,
+        name,
+        picture: safe_picture(picture.as_deref()),
     })
 }
 
@@ -120,70 +127,25 @@ fn is_newer(candidate: &ProfileFields, current: &ProfileFields) -> bool {
         || (candidate.created_at == current.created_at && candidate.event_id < current.event_id)
 }
 
-fn safe_handle(value: &Option<String>, author: &PublicKey) -> Option<String> {
-    let normalized = normalized_text(value)?;
-    let without_at = normalized.trim_start_matches('@').trim_start();
-    if without_at.eq_ignore_ascii_case(&author.to_hex()) {
-        return None;
-    }
-    bounded_text(without_at, 30)
-}
-
-fn safe_name(value: &Option<String>, author: &PublicKey, maximum: usize) -> Option<String> {
-    let normalized = normalized_text(value)?;
-    if normalized.eq_ignore_ascii_case(&author.to_hex()) {
-        return None;
-    }
-    bounded_text(&normalized, maximum)
-}
-
-fn bounded_text(value: &str, maximum: usize) -> Option<String> {
-    let bounded: String = value.chars().take(maximum).collect();
-    (!bounded.is_empty()).then_some(bounded)
-}
-
-fn normalized_text(value: &Option<String>) -> Option<String> {
-    let mut output = String::new();
-    let mut separator = false;
-    for character in value.as_deref()?.chars() {
-        if unsafe_text(character) {
-            separator |= !output.is_empty();
-        } else {
-            if separator {
-                output.push(' ');
-                separator = false;
-            }
-            output.push(character);
-        }
-    }
-    let trimmed = output.trim().to_owned();
-    (!trimmed.is_empty()).then_some(trimmed)
-}
-
-fn unsafe_text(character: char) -> bool {
-    character <= '\u{20}'
-        || ('\u{7f}'..='\u{9f}').contains(&character)
-        || ('\u{202a}'..='\u{202e}').contains(&character)
-        || ('\u{2066}'..='\u{2069}').contains(&character)
-}
-
-fn safe_picture(value: &Option<String>) -> Option<String> {
-    let raw = value.as_deref()?.trim();
-    if raw.len() > 2048 {
-        return None;
-    }
-    let parsed = Url::parse(raw).ok()?;
-    let safe_scheme = matches!(parsed.scheme(), "http" | "https");
-    let safe_user = parsed.username().is_empty() && parsed.password().is_none();
-    (safe_scheme && safe_user && parsed.host().is_some()).then(|| raw.to_owned())
-}
-
-/// `Some(None)` when absent or null, `None` (drop the event) when the
-/// value is present but not a string.
-fn string_field(content: &Value, key: &str) -> Option<Option<String>> {
+/// Returns absence for missing or null values and rejects non-string values.
+fn string_field(content: &Value, key: &str) -> Option<StringField> {
     match content.get(key) {
-        None | Some(Value::Null) => Some(None),
-        Some(Value::String(value)) => Some(Some(value.clone())),
+        None | Some(Value::Null) => Some(StringField::Absent),
+        Some(Value::String(value)) => Some(StringField::Present(value.clone())),
         Some(_) => None,
+    }
+}
+
+enum StringField {
+    Absent,
+    Present(String),
+}
+
+impl StringField {
+    fn into_value(self) -> Option<String> {
+        match self {
+            Self::Absent => None,
+            Self::Present(value) => Some(value),
+        }
     }
 }

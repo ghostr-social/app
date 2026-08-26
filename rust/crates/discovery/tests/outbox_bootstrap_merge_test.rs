@@ -1,12 +1,10 @@
 //! Bootstrap relays always lead the result and outbox relays merge in
 //! after them without duplicates; authors with no known relay list fall
 //! back to the bootstrap set alone — mirrors `_merged` and `_guarded` in
-//! lib/platform/nostr/ndk_nostr_outbox_directory.dart.
+//! `lib/platform/nostr/ndk_nostr_outbox_directory.dart`.
 
-mod discovery_support;
-
-use discovery_support::write_relay_list;
-use ghostr_discovery::outbox::directory::OutboxDirectory;
+use crate::outbox::directory::OutboxDirectory;
+use crate::tests::discovery_support::write_relay_list;
 use nostr_sdk::Keys;
 
 fn bootstrap() -> Vec<String> {

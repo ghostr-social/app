@@ -12,7 +12,7 @@ async fn independent_authorities_keep_one_global_socket_slot_for_playback() {
     let mut critical_origin = HeldOrigin::serve().await;
     let requests = MediaRequestExecutor::new(
         LocalMediaClient::shared(),
-        MediaRequestLimits::try_new(2, 1).unwrap(),
+        MediaRequestLimits::try_new(2, 1).expect("valid test fixture"),
     );
     let first = open(
         requests.clone(),
@@ -34,7 +34,7 @@ async fn independent_authorities_keep_one_global_socket_slot_for_playback() {
         PreemptionAuthority::PlaybackCritical,
     ));
     critical_origin.expect_hit().await;
-    let critical = critical.await.unwrap();
+    let critical = critical.await.expect("valid test fixture");
     waiting_origin.expect_quiet().await;
 
     critical_origin.release_one();
@@ -44,5 +44,5 @@ async fn independent_authorities_keep_one_global_socket_slot_for_playback() {
     drop(first);
     waiting_origin.expect_hit().await;
     waiting_origin.release_one();
-    drop(waiting.await.unwrap());
+    drop(waiting.await.expect("valid test fixture"));
 }

@@ -19,15 +19,15 @@ pub(crate) enum GroupKey {
 }
 
 impl GroupKey {
-    pub(crate) fn persistent(&self) -> bool {
+    fn persistent(&self) -> bool {
         !matches!(self, Self::Session)
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct GroupState {
-    pub(crate) key: GroupKey,
-    pub(crate) stats: HazardStats,
+    pub(super) key: GroupKey,
+    pub(super) stats: HazardStats,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -36,7 +36,7 @@ pub(crate) struct WatchHierarchy {
 }
 
 impl WatchHierarchy {
-    pub(crate) fn observe(
+    pub(super) fn observe(
         &mut self,
         context: &WatchContext,
         watched_ms: u64,
@@ -54,7 +54,7 @@ impl WatchHierarchy {
         }
     }
 
-    pub(crate) fn survival(&self, context: &WatchContext, at_ms: u64, now_ms: u64) -> f64 {
+    pub(super) fn survival(&self, context: &WatchContext, at_ms: u64, now_ms: u64) -> f64 {
         let mut weighted = super::stats::cold_survival(at_ms);
         let mut total = 1.0;
         for (key, similarity) in context_groups(context, true) {
@@ -69,19 +69,11 @@ impl WatchHierarchy {
         (weighted / total).clamp(0.0, 1.0)
     }
 
-    pub(crate) fn reset_session(&mut self) {
+    pub(super) fn reset_session(&mut self) {
         self.groups.remove(&GroupKey::Session);
     }
 
-    pub(crate) fn session_observations(&self, now_ms: u64) -> u64 {
-        self.groups.get(&GroupKey::Session).map_or(0, |stats| {
-            stats
-                .effective_samples(now_ms, SESSION_HALF_LIFE_MS)
-                .round() as u64
-        })
-    }
-
-    pub(crate) fn persistent_state(&self) -> Vec<GroupState> {
+    pub(super) fn persistent_state(&self) -> Vec<GroupState> {
         self.groups
             .iter()
             .filter(|(key, _)| key.persistent())
@@ -92,7 +84,7 @@ impl WatchHierarchy {
             .collect()
     }
 
-    pub(crate) fn from_state(groups: Vec<GroupState>, limit: usize) -> Self {
+    pub(super) fn from_state(groups: Vec<GroupState>, limit: usize) -> Self {
         let mut model = Self::default();
         for group in groups
             .into_iter()
@@ -102,10 +94,6 @@ impl WatchHierarchy {
             model.groups.insert(group.key, group.stats.sanitize());
         }
         model
-    }
-
-    pub(crate) fn persistent_count(&self) -> usize {
-        self.groups.keys().filter(|key| key.persistent()).count()
     }
 
     fn ensure_room(&mut self, incoming: &GroupKey) {
@@ -123,6 +111,10 @@ impl WatchHierarchy {
         }
     }
 }
+
+#[cfg(any(test, feature = "test"))]
+#[path = "hierarchy/test_support.rs"]
+mod test_support;
 
 fn context_groups(context: &WatchContext, session: bool) -> Vec<(GroupKey, f64)> {
     let mut groups = vec![(GroupKey::Global, 0.7)];

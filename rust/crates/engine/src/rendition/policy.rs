@@ -13,7 +13,7 @@ pub struct QualityDecision {
 }
 
 impl QualityDecision {
-    pub fn selected(&self) -> &Rendition {
+    pub(crate) fn selected(&self) -> &Rendition {
         &self.selected
     }
 }
@@ -27,7 +27,7 @@ pub struct QualitySelectionInput {
 }
 
 impl QualitySelectionInput {
-    pub const fn new(
+    pub(crate) const fn new(
         network: NetworkConditions,
         observation: PlaybackObservation,
         target: BufferTarget,
@@ -58,15 +58,15 @@ impl Default for QualitySelectionPolicy {
 }
 
 impl QualitySelectionPolicy {
-    pub fn select(
+    pub(crate) fn select(
         self,
         renditions: &RenditionSet,
-        input: QualitySelectionInput,
+        input: &QualitySelectionInput,
     ) -> QualityDecision {
         let risk = BufferRisk::from(input.observation, input.target);
         match renditions.find(input.current.as_ref()) {
-            Some(current) => self.select_from_current(renditions, current, &input, risk),
-            None => self.select_initial(renditions, &input, risk),
+            Some(current) => self.select_from_current(renditions, current, input, risk),
+            None => self.select_initial(renditions, input, risk),
         }
     }
 

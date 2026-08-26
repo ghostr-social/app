@@ -13,7 +13,7 @@ impl DeliveryState {
         self.transform_profile
     }
 
-    pub(crate) fn transform_available_for(&self, post: &PostId) -> Option<TransformProfile> {
+    pub(super) fn transform_available_for(&self, post: &PostId) -> Option<TransformProfile> {
         if !self.active_transforms.is_empty() || self.transformed_posts.contains_key(post) {
             return None;
         }
@@ -38,7 +38,7 @@ impl DeliveryState {
         self.transformed_posts = posts;
     }
 
-    pub(crate) fn playback_binding(&self, post: &PostId) -> Option<RepresentationBinding> {
+    pub(super) fn playback_binding(&self, post: &PostId) -> Option<RepresentationBinding> {
         self.transformed_posts
             .get(post)
             .cloned()

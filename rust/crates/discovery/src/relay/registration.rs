@@ -1,11 +1,11 @@
 //! Owned Nostr SDK relay registration with responsive reconnects.
 
+use core::future::Future;
+use core::pin::Pin;
+use core::time::Duration;
 use nostr_sdk::{Client, RelayOptions, RelayServiceFlags};
 use std::collections::HashSet;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 const RELAY_RETRY_INTERVAL: Duration = Duration::from_secs(4);
 

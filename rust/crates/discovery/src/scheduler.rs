@@ -3,7 +3,7 @@
 pub(crate) mod commands;
 pub mod control;
 pub(crate) mod deferred_reposts;
-pub(crate) mod event_loop;
+pub(super) mod event_loop;
 pub(crate) mod feeds;
 pub mod hunt;
 pub(crate) mod plans;
@@ -20,10 +20,10 @@ use crate::scheduler::feeds::FeedBook;
 use crate::scheduler::hunt::HuntToken;
 use crate::scheduler::queries::QueryBook;
 use crate::scheduler::queue::RetrievalQueue;
+use core::sync::atomic::AtomicU64;
 use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_engine::DataUsageLevel;
-use std::collections::HashMap;
-use std::sync::atomic::AtomicU64;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use tokio::sync::mpsc::WeakUnboundedSender;
 use tokio::sync::{mpsc, watch};
@@ -78,39 +78,39 @@ async fn run(mut worker: SchedulerWorker) {
 }
 
 pub(crate) struct FinishedRetrieval {
-    pub(crate) task_id: u64,
-    pub(crate) context: FeedContext,
-    pub(crate) result: Result<PlanPage, PlanFailure>,
-    pub(crate) purpose: RetrievalPurpose,
-    pub(crate) had_playable_progress: bool,
+    pub(super) task_id: u64,
+    pub(super) context: FeedContext,
+    pub(super) result: Result<PlanPage, PlanFailure>,
+    pub(super) purpose: RetrievalPurpose,
+    pub(super) had_playable_progress: bool,
 }
 
 pub(crate) struct ActiveRetrieval {
-    pub(crate) context: FeedContext,
-    pub(crate) abort: AbortHandle,
+    pub(super) context: FeedContext,
+    pub(super) abort: AbortHandle,
 }
 
 pub(crate) struct SchedulerWorker {
-    pub(crate) queue: RetrievalQueue<QueryPlan>,
-    pub(crate) feeds: FeedBook,
-    pub(crate) deferred_reposts: deferred_reposts::DeferredRepostBook,
-    pub(crate) queries: QueryBook,
-    pub(crate) executor: Arc<dyn PlanExecutor>,
-    pub(crate) max_concurrent: usize,
-    pub(crate) outcomes: mpsc::UnboundedSender<RetrievalOutcome>,
-    pub(crate) finished_sender: mpsc::UnboundedSender<FinishedRetrieval>,
-    pub(crate) finished: mpsc::UnboundedReceiver<FinishedRetrieval>,
-    pub(crate) tasks: HashMap<u64, ActiveRetrieval>,
-    pub(crate) hunts: HashMap<FeedContext, AbortHandle>,
-    pub(crate) retry_attempts: HashMap<FeedContext, usize>,
-    pub(crate) pending_feed_retries: HashMap<FeedContext, HuntToken>,
-    pub(crate) pending_feed_hunts: HashMap<FeedContext, HuntToken>,
-    pub(crate) next_hunt_token: u64,
-    pub(crate) next_task_id: u64,
-    pub(crate) commands: mpsc::UnboundedReceiver<DiscoveryCommand>,
-    pub(crate) command_sender: WeakUnboundedSender<DiscoveryCommand>,
-    pub(crate) demand: watch::Receiver<DiscoveryDemand>,
-    pub(crate) demand_live: bool,
+    pub(super) queue: RetrievalQueue<QueryPlan>,
+    pub(super) feeds: FeedBook,
+    pub(super) deferred_reposts: deferred_reposts::DeferredRepostBook,
+    pub(super) queries: QueryBook,
+    pub(super) executor: Arc<dyn PlanExecutor>,
+    pub(super) max_concurrent: usize,
+    pub(super) outcomes: mpsc::UnboundedSender<RetrievalOutcome>,
+    pub(super) finished_sender: mpsc::UnboundedSender<FinishedRetrieval>,
+    pub(super) finished: mpsc::UnboundedReceiver<FinishedRetrieval>,
+    pub(super) tasks: BTreeMap<u64, ActiveRetrieval>,
+    pub(super) hunts: BTreeMap<FeedContext, AbortHandle>,
+    pub(super) retry_attempts: HashMap<FeedContext, usize>,
+    pub(super) pending_feed_retries: HashMap<FeedContext, HuntToken>,
+    pub(super) pending_feed_hunts: HashMap<FeedContext, HuntToken>,
+    pub(super) next_hunt_token: u64,
+    pub(super) next_task_id: u64,
+    pub(super) commands: mpsc::UnboundedReceiver<DiscoveryCommand>,
+    pub(super) command_sender: WeakUnboundedSender<DiscoveryCommand>,
+    pub(super) demand: watch::Receiver<DiscoveryDemand>,
+    pub(super) demand_live: bool,
 }
 
 impl SchedulerWorker {
@@ -130,8 +130,8 @@ impl SchedulerWorker {
             outcomes: config.outcomes,
             finished_sender,
             finished,
-            tasks: HashMap::new(),
-            hunts: HashMap::new(),
+            tasks: BTreeMap::new(),
+            hunts: BTreeMap::new(),
             retry_attempts: HashMap::new(),
             pending_feed_retries: HashMap::new(),
             pending_feed_hunts: HashMap::new(),

@@ -1,8 +1,6 @@
-mod store_fixture;
-
+use crate::tests::store_fixture::{plain_store, temp_root};
+use core::time::Duration;
 use std::sync::Arc;
-use std::time::Duration;
-use store_fixture::{plain_store, temp_root};
 use tokio::sync::Mutex;
 use tokio::time::timeout;
 

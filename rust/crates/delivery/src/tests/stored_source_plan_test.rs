@@ -1,5 +1,6 @@
+use crate::manager::plan::axiom_test_support::planned_work;
 use crate::delivery_events::{DeliveryFocus, FocusItem};
-use crate::manager::plan::{planned_work, PlanInputs};
+use crate::manager::plan::PlanInputs;
 use crate::manager::retry::{RetryBook, RetryPolicy};
 use crate::manager::state::DeliveryState;
 use ghostr_engine::adaptive::StorageSnapshot;
@@ -7,14 +8,14 @@ use ghostr_engine::catalog::LearnedFacts;
 use ghostr_engine::host_stats::{HostStats, ThroughputSample};
 use ghostr_engine::{ByteRange, DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
 use std::collections::{HashMap, HashSet};
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn stored_mirror_generation_controls_continuation_source_and_extent() {
     let post = PostId::new("post");
     let mut state = state(post.clone());
     let mirror = "https://mirror.test/video.mp4";
-    let identity = state.catalog().transfer_identity(&post, mirror).unwrap();
+    let identity = state.catalog().transfer_identity(&post, mirror).expect("valid test fixture");
     state.catalog_mut().learn_response_for(
         &identity,
         LearnedFacts {
@@ -35,8 +36,8 @@ fn stored_mirror_generation_controls_continuation_source_and_extent() {
     let retry = RetryBook::new(RetryPolicy::default());
     let demanded = HashMap::new();
     let work = planned_work(
-        &mut state,
-        PlanInputs {
+        &state,
+        &PlanInputs {
             stats: &stats,
             retry: &retry,
             present: &present,
@@ -91,7 +92,7 @@ fn state(post: PostId) -> DeliveryState {
 
 fn stats() -> HostStats {
     let mut stats = HostStats::new();
-    let sample = ThroughputSample::new(1_000_000, Duration::from_secs(1), 1, 1).unwrap();
+    let sample = ThroughputSample::new(1_000_000, Duration::from_secs(1), 1, 1).expect("valid test fixture");
     stats.record_overall_throughput(sample);
     stats
 }

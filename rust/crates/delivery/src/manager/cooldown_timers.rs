@@ -1,8 +1,8 @@
 use crate::manager::retry::CooldownId;
 use crate::manager::transfers::{InternalEvent, MaintenanceEvent};
+use core::time::Duration;
 use ghostr_engine::PostId;
-use std::collections::{HashMap, HashSet};
-use std::time::Duration;
+use std::collections::{BTreeMap, HashSet};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::task::JoinHandle;
 
@@ -13,7 +13,7 @@ struct ActiveTimer {
 
 #[derive(Default)]
 pub(crate) struct CooldownTimers {
-    active: HashMap<PostId, ActiveTimer>,
+    active: BTreeMap<PostId, ActiveTimer>,
 }
 
 impl CooldownTimers {
@@ -61,14 +61,9 @@ impl CooldownTimers {
     }
 
     pub(crate) fn clear(&mut self) {
-        for (_, timer) in self.active.drain() {
+        for (_, timer) in core::mem::take(&mut self.active) {
             timer.handle.abort();
         }
-    }
-
-    #[cfg(test)]
-    pub(crate) fn len(&self) -> usize {
-        self.active.len()
     }
 }
 
@@ -77,3 +72,7 @@ impl Drop for CooldownTimers {
         self.clear();
     }
 }
+
+#[cfg(test)]
+#[path = "cooldown_timers_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

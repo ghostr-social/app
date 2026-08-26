@@ -3,7 +3,7 @@ mod gateway_fixture;
 use axum::http::StatusCode;
 use gateway_fixture::progressive::progressive_harness;
 use gateway_fixture::progressive_request::capability_request;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn capability_for_another_post_fails_closed() {

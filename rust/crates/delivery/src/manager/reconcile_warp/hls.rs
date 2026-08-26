@@ -21,7 +21,7 @@ impl DeliveryWorker {
         let Some(token) = decision else {
             return;
         };
-        let Some((resources, authorized)) = selected_resources(commit) else {
+        let Some((resources, authorized)) = selected_resources(commit.as_ref()) else {
             return self.fail_hls_token(Some(token), "warp_hls_resources_missing");
         };
         let observed_at_ms = time::unix_time_ms();
@@ -92,9 +92,9 @@ impl DeliveryWorker {
 }
 
 fn selected_resources(
-    selected: &Option<SelectedCommit>,
+    selected: Option<&SelectedCommit>,
 ) -> Option<(SegmentedResourceCommitment, ResourceCost)> {
-    let (expected, authorized) = selected.as_ref()?.resources()?;
+    let (expected, authorized) = selected?.resources()?;
     let resources =
         SegmentedResourceCommitment::new(expected.network_bytes, authorized.network_bytes)?;
     Some((resources, authorized))

@@ -12,7 +12,7 @@ fn ready_window_can_select_new_work_while_the_adaptive_limit_is_one() {
     let identity = state
         .catalog()
         .transfer_identity(&active_post, &source(1))
-        .unwrap();
+        .expect("valid test fixture");
     let active = ActiveAction::range(
         ChunkId {
             post: active_post.clone(),
@@ -37,7 +37,7 @@ fn ready_window_can_select_new_work_while_the_adaptive_limit_is_one() {
         .iter()
         .map(|item| item.post.clone())
         .collect();
-    let warp = work.warp.unwrap();
+    let warp = work.warp.expect("valid test fixture");
     let selected = warp.selected.as_ref().expect("new ready-window work");
 
     assert!(matches!(selected.command, PlannerCommand::Transfer(_)));

@@ -14,11 +14,11 @@ fn newest_deletion_survives_anchor_release_and_restoration() {
     let mut index = DeletionIndex::with_retention(2);
     index.ingest(deletion_claims(&[deletion(&author, &original, 20)]));
     index.ingest(deletion_claims(&[deletion(&author, &original, 10)]));
-    index.reanchor(std::slice::from_ref(&post));
+    index.reanchor(core::slice::from_ref(&post));
     index.ingest(deletion_claims(&[deletion(&author, &original, 10)]));
 
     index.reanchor(&[]);
-    index.reanchor(std::slice::from_ref(&post));
+    index.reanchor(core::slice::from_ref(&post));
 
     assert!(index.deletes_content(&post));
     assert_eq!(index.retained_claims(), 1);

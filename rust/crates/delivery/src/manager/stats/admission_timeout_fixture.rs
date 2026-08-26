@@ -1,8 +1,8 @@
+use core::sync::atomic::{AtomicU64, Ordering};
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 static NEXT_DIRECTORY: AtomicU64 = AtomicU64::new(1);

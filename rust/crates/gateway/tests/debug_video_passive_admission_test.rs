@@ -12,7 +12,7 @@ use ghostr_discovery::cache::client_with_event_cache;
 use ghostr_gateway::hls::sessions::HlsSessions;
 use ghostr_gateway::progressive::capabilities::ProgressiveCapabilities;
 use ghostr_gateway::progressive::route::ProgressiveState;
-use ghostr_gateway::router::configured_router_with_progressive_debug;
+use ghostr_gateway::router::{configured_router_with_segmented_debug, GatewayRouterResources};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use tower::ServiceExt;
@@ -31,7 +31,7 @@ async fn registrations_wait_for_focus_before_starting_origin_work() {
     select(&router, &ids[0]).await;
     origin.wait_for_gets(&["video-0"]).await;
 
-    delivery.handle.clear().await.unwrap();
+    delivery.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&delivery.root).ok();
 }
 
@@ -45,9 +45,8 @@ fn debug_router(delivery: &DeliveryFixture) -> Router {
         capabilities: ProgressiveCapabilities::production(),
         debug_feed: DebugFeed::new(delivery.handle.clone(), Vec::new()),
     });
-    configured_router_with_progressive_debug(
-        HlsSessions::production(),
-        gateway_fixture::media_client(),
+    configured_router_with_segmented_debug(
+        GatewayRouterResources::new(HlsSessions::production(), gateway_fixture::media_client()),
         progressive,
         delivery.handle.clone(),
         Arc::new(client_with_event_cache()),
@@ -60,19 +59,29 @@ async fn register(router: &Router, url: String) -> String {
         .body(Body::from(
             json!({"url": url, "size_bytes": 64, "duration_ms": 1_000}).to_string(),
         ))
-        .unwrap();
-    let response = router.clone().oneshot(request).await.unwrap();
+        .expect("valid test fixture");
+    let response = router
+        .clone()
+        .oneshot(request)
+        .await
+        .expect("valid test fixture");
     assert_eq!(response.status(), StatusCode::CREATED);
-    let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
-    let json: Value = serde_json::from_slice(&body).unwrap();
-    json["id"].as_str().unwrap().to_owned()
+    let body = to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("valid test fixture");
+    let json: Value = serde_json::from_slice(&body).expect("valid test fixture");
+    json["id"].as_str().expect("valid test fixture").to_owned()
 }
 
 async fn select(router: &Router, id: &str) {
     let request = Request::put("/debug/api/focus")
         .header("content-type", "application/json")
         .body(Body::from(json!({"id": id}).to_string()))
-        .unwrap();
-    let response = router.clone().oneshot(request).await.unwrap();
+        .expect("valid test fixture");
+    let response = router
+        .clone()
+        .oneshot(request)
+        .await
+        .expect("valid test fixture");
     assert_eq!(response.status(), StatusCode::NO_CONTENT);
 }

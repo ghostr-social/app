@@ -39,6 +39,12 @@ async fn short_200_body_completes_a_larger_speculative_grant() {
 
     assert_eq!(result.bytes_written, bytes.len() as u64);
     assert_eq!(result.total_bytes, Some(bytes.len() as u64));
-    assert_eq!(store.read_range("clip", 0..16).await.unwrap(), Some(bytes));
+    assert_eq!(
+        store
+            .read_range("clip", 0..16)
+            .await
+            .expect("valid test fixture"),
+        Some(bytes)
+    );
     let _ = std::fs::remove_dir_all(root);
 }

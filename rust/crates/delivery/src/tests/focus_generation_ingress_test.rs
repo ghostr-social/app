@@ -1,7 +1,5 @@
-use crate::delivery_events::{
-    command_channel, DeliveryCommand, DeliveryFocus, FocusAdmission, FocusGeneration,
-    FocusTransition,
-};
+
+use crate::delivery_events::{command_channel, DeliveryCommand, DeliveryFocus, FocusAdmission, FocusGeneration, FocusTransition};
 
 #[test]
 fn stale_focus_is_rejected_after_the_newer_intent_is_consumed() {
@@ -22,7 +20,7 @@ fn stale_focus_is_rejected_after_the_newer_intent_is_consumed() {
 
 #[test]
 fn clearing_pending_work_does_not_reopen_an_old_generation() {
-    let (handle, mut receiver) = command_channel();
+    let (handle, receiver) = command_channel();
     assert_eq!(handle.update_focus(focus(2)), FocusAdmission::Accepted);
 
     receiver.discard_pending();

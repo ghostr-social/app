@@ -4,9 +4,9 @@ use crate::query::events::plan_event_queries;
 use crate::retrieval_types::{RetrievalOutcome, RetrievalPriority};
 use crate::session_generation::SessionGeneration;
 use crate::tests::scheduler_support::{next_started, start_scheduler};
+use core::time::Duration;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::{Filter, Kind};
-use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 

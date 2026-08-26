@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.7.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -585840162;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1302116321;
 
 // Section: executor
 
@@ -442,7 +442,7 @@ fn wire__crate__api__playback_preparation_stream__ffi_playback_preparation_event
     rust_vec_len_: i32,
     data_len_: i32,
 ) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec,_,_,_>(flutter_rust_bridge::for_generated::TaskInfo{ debug_name: "ffi_playback_preparation_events", port: Some(port_), mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal }, move || {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec,_,_,_>(flutter_rust_bridge::for_generated::TaskInfo{ debug_name: "ffi_playback_preparation_events", port: Some(port_), mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal }, move || { 
             let message = unsafe { flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(ptr_, rust_vec_len_, data_len_) };
             let mut deserializer = flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_sink = <StreamSink<crate::api::delivery_types::FfiPlaybackPreparationPlan,flutter_rust_bridge::for_generated::SseCodec>>::sse_decode(&mut deserializer);deserializer.end(); move |context| async move {
@@ -930,6 +930,81 @@ fn wire__crate__api__focus_control__ffi_update_focus_impl(
         },
     )
 }
+fn wire__crate__api__warp_evidence_control__ffi_warp_decision_history_json_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ffi_warp_decision_history_json",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let output_ok =
+                            crate::api::warp_evidence_control::ffi_warp_decision_history_json()?;
+                        Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__warp_evidence_control__ffi_warp_evidence_page_json_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ffi_warp_evidence_page_json",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_after_plan_revision = <u64>::sse_decode(&mut deserializer);
+            let api_limit = <u32>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || {
+                        let output_ok =
+                            crate::api::warp_evidence_control::ffi_warp_evidence_page_json(
+                                api_after_plan_revision,
+                                api_limit,
+                            )?;
+                        Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
 fn wire__crate__video__native_gateway__init_app_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1053,6 +1128,8 @@ impl SseDecode for crate::api::delivery_types::FfiDeliveryEvent {
         let mut var_totalBytes = <Option<u64>>::sse_decode(deserializer);
         let mut var_etaMs = <Option<u64>>::sse_decode(deserializer);
         let mut var_detail = <Option<String>>::sse_decode(deserializer);
+        let mut var_representationId = <Option<String>>::sse_decode(deserializer);
+        let mut var_assetId = <Option<String>>::sse_decode(deserializer);
         return crate::api::delivery_types::FfiDeliveryEvent {
             post_id: var_postId,
             kind: var_kind,
@@ -1061,6 +1138,8 @@ impl SseDecode for crate::api::delivery_types::FfiDeliveryEvent {
             total_bytes: var_totalBytes,
             eta_ms: var_etaMs,
             detail: var_detail,
+            representation_id: var_representationId,
+            asset_id: var_assetId,
         };
     }
 }
@@ -1073,6 +1152,7 @@ impl SseDecode for crate::api::delivery_types::FfiDeliveryEventKind {
             0 => crate::api::delivery_types::FfiDeliveryEventKind::Readiness,
             1 => crate::api::delivery_types::FfiDeliveryEventKind::Progress,
             2 => crate::api::delivery_types::FfiDeliveryEventKind::Error,
+            3 => crate::api::delivery_types::FfiDeliveryEventKind::Failed,
             _ => unreachable!("Invalid variant for FfiDeliveryEventKind: {}", inner),
         };
     }
@@ -2066,7 +2146,19 @@ fn pde_ffi_dispatcher_primary_impl(
             rust_vec_len,
             data_len,
         ),
-        27 => wire__crate__video__native_gateway__init_app_impl(port, ptr, rust_vec_len, data_len),
+        27 => wire__crate__api__warp_evidence_control__ffi_warp_decision_history_json_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        28 => wire__crate__api__warp_evidence_control__ffi_warp_evidence_page_json_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        29 => wire__crate__video__native_gateway__init_app_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -2118,6 +2210,8 @@ impl flutter_rust_bridge::IntoDart for crate::api::delivery_types::FfiDeliveryEv
             self.total_bytes.into_into_dart().into_dart(),
             self.eta_ms.into_into_dart().into_dart(),
             self.detail.into_into_dart().into_dart(),
+            self.representation_id.into_into_dart().into_dart(),
+            self.asset_id.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2140,6 +2234,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::delivery_types::FfiDeliveryEv
             Self::Readiness => 0.into_dart(),
             Self::Progress => 1.into_dart(),
             Self::Error => 2.into_dart(),
+            Self::Failed => 3.into_dart(),
             _ => unreachable!(),
         }
     }
@@ -3057,6 +3152,8 @@ impl SseEncode for crate::api::delivery_types::FfiDeliveryEvent {
         <Option<u64>>::sse_encode(self.total_bytes, serializer);
         <Option<u64>>::sse_encode(self.eta_ms, serializer);
         <Option<String>>::sse_encode(self.detail, serializer);
+        <Option<String>>::sse_encode(self.representation_id, serializer);
+        <Option<String>>::sse_encode(self.asset_id, serializer);
     }
 }
 
@@ -3068,6 +3165,7 @@ impl SseEncode for crate::api::delivery_types::FfiDeliveryEventKind {
                 crate::api::delivery_types::FfiDeliveryEventKind::Readiness => 0,
                 crate::api::delivery_types::FfiDeliveryEventKind::Progress => 1,
                 crate::api::delivery_types::FfiDeliveryEventKind::Error => 2,
+                crate::api::delivery_types::FfiDeliveryEventKind::Failed => 3,
                 _ => {
                     unimplemented!("");
                 }

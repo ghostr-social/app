@@ -50,11 +50,6 @@ impl PendingDeletions {
         self.claims.get(key).map(|claim| claim.deleted_at)
     }
 
-    #[cfg(test)]
-    pub(super) fn len(&self) -> usize {
-        self.claims.len()
-    }
-
     fn admit(&mut self, key: DeletionKey, deleted_at: u64) {
         let admitted_at = self.next_admission;
         self.next_admission += 1;
@@ -77,14 +72,6 @@ impl PendingDeletions {
             self.claims.remove(&key);
         }
     }
-
-    #[cfg(test)]
-    pub(super) fn with_retention(retention: usize) -> Self {
-        Self {
-            retention: retention.max(1),
-            ..Self::default()
-        }
-    }
 }
 
 fn replace_if_newer(current: &mut u64, incoming: u64) -> bool {
@@ -94,3 +81,7 @@ fn replace_if_newer(current: &mut u64, incoming: u64) -> bool {
     *current = incoming;
     true
 }
+
+#[cfg(test)]
+#[path = "pending_deletions_axiom_test.rs"]
+mod axiom_test_support;

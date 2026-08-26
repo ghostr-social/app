@@ -126,11 +126,16 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   void _handleValueChange(VideoPlayerValue value) {
     if (_cannotObservePlayback) return;
     _rememberPlaybackValue(value);
-    final phaseChanged = _captureObservation(value);
     final controller = _controller;
+    if (controller != null &&
+        value.hasError &&
+        _decoderUnsupportedDescription(value.errorDescription)) {
+      _handleRuntimeFailure(controller, value);
+      return;
+    }
+    final phaseChanged = _captureObservation(value);
     if (controller != null && value.hasError) {
-      _failPreparation(PlayerPreparationFailureKind.runtimePlayback);
-      _lifecycle.track(_rejectController(controller));
+      _handleRuntimeFailure(controller, value);
       return;
     }
     if (phaseChanged) setState(() {});

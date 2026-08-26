@@ -7,7 +7,9 @@ import '../../integration_test/support/progressive_device_origin.dart';
 
 void main() {
   test('device origin serves a range while its HEAD remains blocked', () async {
-    final origin = await ProgressiveDeviceOrigin.start();
+    final origin = await ProgressiveDeviceOrigin.start(
+      validator: ProgressiveOriginValidator.stableStrong,
+    );
     final client = HttpClient();
     addTearDown(() async {
       client.close(force: true);
@@ -25,12 +27,18 @@ void main() {
     );
 
     expect(response.statusCode, HttpStatus.partialContent);
+    expect(response.headers.value(HttpHeaders.etagHeader), '"warp-fixture-v1"');
     expect(body, hasLength(2048));
     await expectLater(
       head.timeout(const Duration(milliseconds: 20)),
       throwsA(isA<TimeoutException>()),
     );
     expect(origin.requests.map((request) => request.method), ['HEAD', 'GET']);
+    expect(origin.requests.map((request) => request.outcome), [
+      ProgressiveOriginRequestOutcome.headBlocked,
+      ProgressiveOriginRequestOutcome.completed,
+    ]);
+    expect(origin.requests.last.servedBytes, 2048);
   });
 }
 

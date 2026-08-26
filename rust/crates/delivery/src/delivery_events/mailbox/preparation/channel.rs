@@ -11,21 +11,6 @@ impl MailboxSender {
         self.lock().preparations.admission()
     }
 
-    pub(crate) fn send_player_preparation_initial(
-        &self,
-        admission: PlayerPreparationAdmission,
-        report: PlayerPreparationReport,
-    ) -> PlayerPreparationIngress {
-        self.send_player_preparation_initial_with_completion(admission, report, None)
-    }
-
-    pub(crate) fn send_player_preparation_followup(
-        &self,
-        report: PlayerPreparationFollowup,
-    ) -> PlayerPreparationIngress {
-        self.send_player_preparation_followup_with_completion(report, None)
-    }
-
     pub(crate) fn player_preparation_disposition(
         &self,
         report: &PlayerPreparationFollowup,
@@ -72,21 +57,25 @@ impl MailboxSender {
     }
 }
 
+#[cfg(any(test, feature = "test"))]
+#[path = "channel/test_support.rs"]
+mod test_support;
+
 impl MailboxReceiver {
-    #[cfg(any(test, feature = "test-support"))]
-    pub(crate) fn try_player_preparation(&mut self) -> Option<PlayerPreparationReport> {
+    #[cfg(any(test, feature = "test"))]
+    pub(crate) fn try_player_preparation(&self) -> Option<PlayerPreparationReport> {
         let envelope = self.try_player_preparation_envelope()?;
         let report = envelope.report().clone();
         self.complete_player_preparation(envelope, PlayerPreparationActorOutcome::Applied);
         Some(report)
     }
 
-    pub(crate) fn try_player_preparation_envelope(&mut self) -> Option<PlayerPreparationEnvelope> {
+    pub(crate) fn try_player_preparation_envelope(&self) -> Option<PlayerPreparationEnvelope> {
         self.lock().preparations.pop()
     }
 
     pub(crate) fn complete_player_preparation(
-        &mut self,
+        &self,
         envelope: PlayerPreparationEnvelope,
         outcome: PlayerPreparationActorOutcome,
     ) {

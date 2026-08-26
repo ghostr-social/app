@@ -1,6 +1,6 @@
 use crate::partial_range_disk as disk;
 use crate::partial_range_paths::StorePaths;
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Context as _, Result};
 use serde::{Deserialize, Serialize};
 
 mod tail;
@@ -52,7 +52,7 @@ impl TransactionIntent {
         self.old_accounted
     }
 
-    pub(super) fn new_accounted(&self) -> u64 {
+    fn new_accounted(&self) -> u64 {
         self.new_accounted
     }
 

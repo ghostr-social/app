@@ -1,11 +1,11 @@
 use super::builder::Builder;
-use super::hls_prediction::{predict, HlsPredictionInput};
-use super::{GeneratedAction, HlsGenerationPolicy, PlannerCommand};
-use crate::adaptive::{
-    ActionKind, ActionNode, ActionValue, HlsBootstrapStage, HlsCandidateSnapshot,
-};
+use super::HlsGenerationPolicy;
+use crate::adaptive::{ActionValue, HlsBootstrapStage, HlsCandidateSnapshot};
 use crate::adaptive::{ControlMode, ResourceCost};
 
+mod action;
+
+#[derive(Clone, Copy)]
 struct HlsValueInput<'a> {
     candidate: &'a HlsCandidateSnapshot,
     stage: HlsBootstrapStage,
@@ -43,56 +43,15 @@ pub(super) fn add(
     if commitment.requests > 0 && !builder.context.permits_request(&candidate.post) {
         return;
     }
-    let prediction = predict(HlsPredictionInput {
-        snapshot: builder.snapshot,
-        model: builder.origins,
-        stage,
-        source,
-        bytes: commitment.expected,
-        concurrency: builder
-            .context
-            .request_occupancy()
-            .authority_count(source)
-            .saturating_add(usize::from(commitment.requests > 0)),
-        mode: builder.base.mode,
-        startup_value_ms: candidate.startup_value_ms,
-        network_class: builder.context.network_class(),
-        completes_object: commitment.completes_object,
-    });
-    let kind = ActionKind::HlsBootstrap {
-        stage,
-        cursor: candidate.cursor,
-        maximum_bytes: commitment.maximum,
-    };
-    let node = ActionNode::new(
-        builder.next_action_id(),
-        candidate.post.clone(),
-        kind,
-        value(HlsValueInput {
+    action::push(
+        builder,
+        action::Input {
             candidate,
             stage,
-            prediction,
-            mode: builder.base.mode,
-            expected_bytes: commitment.expected,
-        }),
-    )
-    .with_origin(source)
-    .with_resources(commitment.resources())
-    .with_forecast(prediction.forecast);
-    builder.actions.push(GeneratedAction {
-        node,
-        command: PlannerCommand::FetchHlsBootstrap {
-            post: candidate.post.clone(),
-            stage,
-            source: source.to_owned(),
-            cursor: candidate.cursor,
-            maximum_bytes: commitment.maximum,
-            committed_until_ms: builder
-                .snapshot
-                .observed_at_ms
-                .saturating_add(builder.snapshot.commitment_ms),
+            source,
+            commitment,
         },
-    });
+    );
 }
 
 fn commitment(

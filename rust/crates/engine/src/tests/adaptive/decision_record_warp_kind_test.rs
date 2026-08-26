@@ -56,7 +56,8 @@ fn every_action_kind_has_a_typed_authoritative_record() {
             source: "https://origin.example/media".into(),
             authority: crate::adaptive::PreemptionAuthority::Transition,
         };
-        let value = serde_json::to_value(record(&decision("secret-post", command, kind))).unwrap();
+        let value = serde_json::to_value(record(&decision("secret-post", command, kind)))
+            .expect("valid test fixture");
         let kind = &value["warp_decision"]["selected"]["kind"];
         assert_eq!(kind["kind"], tag);
         if let Some(transform) = transform {

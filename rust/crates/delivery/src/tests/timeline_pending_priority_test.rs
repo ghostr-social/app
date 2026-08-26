@@ -6,7 +6,7 @@ use ghostr_engine::PostId;
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
-use std::time::Duration;
+use core::time::Duration;
 use tokio::sync::Mutex;
 
 #[tokio::test]
@@ -22,13 +22,13 @@ async fn newly_current_pending_timeline_is_dispatched_before_old_prefetch() {
         store
             .bind_representation(binding(&catalog, post))
             .await
-            .unwrap();
-        store.set_total_len(post, 32).await.unwrap();
-        store.write_range(post, 0, post.as_bytes()).await.unwrap();
+            .expect("valid test fixture");
+        store.set_total_len(post, 32).await.expect("valid test fixture");
+        store.write_range(post, 0, post.as_bytes()).await.expect("valid test fixture");
     }
     let (parser, mut started) = GatedTimelineParser::new(None, 3);
-    let _release = ReleaseAll(parser.clone());
-    let mut coordinator = TimelineCoordinator::with_parser(store.clone(), parser.clone(), 1);
+    let _release = ReleaseAll(std::sync::Arc::clone(&parser));
+    let mut coordinator = TimelineCoordinator::with_parser(std::sync::Arc::clone(&store), std::sync::Arc::<GatedTimelineParser>::clone(&parser), 1);
     let posts = [PostId::new("a"), PostId::new("b"), PostId::new("c")];
 
     for post in &posts {
@@ -40,14 +40,14 @@ async fn newly_current_pending_timeline_is_dispatched_before_old_prefetch() {
     coordinator.dispatch(&posts);
     assert_eq!(recv(&mut started).await, 0);
     parser.release(0);
-    let _ = coordinator.recv().await.unwrap();
+    let _ = coordinator.recv().await.expect("valid test fixture");
     coordinator.dispatch(&[posts[2].clone(), posts[1].clone()]);
     assert_eq!(recv(&mut started).await, 1);
     parser.release(1);
-    let next = coordinator.recv().await.unwrap();
+    let next = coordinator.recv().await.expect("valid test fixture");
 
     assert_eq!(next.post(), &posts[2]);
-    tokio::fs::remove_dir_all(root).await.unwrap();
+    tokio::fs::remove_dir_all(root).await.expect("valid test fixture");
 }
 
 struct ReleaseAll(Arc<GatedTimelineParser>);
@@ -66,13 +66,13 @@ async fn evidence(
     post: &PostId,
 ) -> TimelineEvidence {
     let binding = binding(catalog, post.as_str());
-    let snapshot = store.media_snapshot(post.as_str()).await.unwrap();
-    TimelineEvidence::from_snapshot(&binding, &snapshot).unwrap()
+    let snapshot = store.media_snapshot(post.as_str()).await.expect("valid test fixture");
+    TimelineEvidence::from_snapshot(&binding, &snapshot).expect("valid test fixture")
 }
 
 async fn recv(receiver: &mut tokio::sync::mpsc::UnboundedReceiver<usize>) -> usize {
     tokio::time::timeout(Duration::from_secs(1), receiver.recv())
         .await
-        .unwrap()
-        .unwrap()
+        .expect("valid test fixture")
+        .expect("valid test fixture")
 }

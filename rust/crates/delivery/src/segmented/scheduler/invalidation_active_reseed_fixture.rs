@@ -17,15 +17,18 @@ pub(super) fn ready_root(cache: &SegmentedCache, post: &PostId) -> CachedHlsGene
             1,
             PreparedObject {
                 request_url: source.clone(),
-                final_url: source.parse().unwrap(),
+                final_url: source.parse().expect("valid test fixture"),
                 body,
                 content_type: None,
                 cache: Default::default(),
             },
         )
-        .unwrap();
+        .expect("valid test fixture");
     assert!(cache.mark_stage_ready(post, 1));
-    cache.object(&source).unwrap().generation()
+    cache
+        .object(&source)
+        .expect("valid test fixture")
+        .generation()
 }
 
 pub(super) fn active() -> Active {
@@ -67,7 +70,7 @@ pub(super) fn focus() -> DeliveryFocus {
         previews: Vec::new(),
         current_index: 0,
         watch_ms: 0,
-        generation: FocusGeneration::try_new(1).unwrap(),
+        generation: FocusGeneration::try_new(1).expect("valid test fixture"),
         transition: FocusTransition::RosterChange,
         rescue: None,
     }

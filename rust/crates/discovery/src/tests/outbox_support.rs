@@ -66,7 +66,7 @@ pub struct RecordingExecutor {
 impl PlanExecutor for RecordingExecutor {
     fn execute(&self, retrieval: PlannedRetrieval) -> PlanFuture {
         let _ = self.started.send(retrieval);
-        Box::pin(std::future::pending())
+        Box::pin(core::future::pending())
     }
 }
 

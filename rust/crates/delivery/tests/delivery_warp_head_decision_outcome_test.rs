@@ -3,13 +3,14 @@
 mod delivery_fixture;
 mod raw_http;
 
+use core::time::Duration;
+use delivery_fixture::evidence::DeliveryEvidence as _;
 use delivery_fixture::items::{focus_now, unsized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use ghostr_delivery::delivery_events::{DecisionHistorySnapshot, DeliveryHandle};
 use ghostr_engine::adaptive::{DecisionOutcome, RecordedWarpCommand};
 use raw_http::spawn_raw_server;
-use std::time::Duration;
 
 const HEAD_RESPONSE: &[u8] = b"HTTP/1.1 200 OK\r\nContent-Length: 8\r\nAccept-Ranges: bytes\r\nContent-Type: video/mp4\r\nConnection: close\r\n\r\n";
 
@@ -21,7 +22,7 @@ async fn learned_head_resolves_the_exact_authoritative_decision() {
         .handle
         .update_focus(focus_now(vec![unsized_item("post", &url)], 0, 0));
 
-    let request = request.await.unwrap();
+    let request = request.await.expect("valid test fixture");
     assert!(request.starts_with(b"HEAD "));
     let history = wait_for_head(&harness.handle).await;
     let record = history
@@ -49,7 +50,7 @@ async fn learned_head_resolves_the_exact_authoritative_decision() {
     assert_eq!((content_length, accept_ranges), (8, Some(true)));
     assert!(elapsed_ms < 2_000);
 
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }
 

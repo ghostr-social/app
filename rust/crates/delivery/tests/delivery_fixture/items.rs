@@ -81,20 +81,29 @@ pub async fn seed_range(store: &PartialRangeStore, item: &FocusItem, offset: u64
     let binding = catalog.upsert(item.post.clone(), item.meta.clone());
     let source = item.meta.urls.first().expect("fixture source");
     let identity = binding.transfer(source).expect("fixture identity");
-    store.bind_representation(binding).await.unwrap();
-    store.select_transfer(identity.clone()).await.unwrap();
+    store
+        .bind_representation(binding)
+        .await
+        .expect("valid test fixture");
+    store
+        .select_transfer(identity.clone())
+        .await
+        .expect("valid test fixture");
     let generation = SourceGeneration::try_new(
         source,
         "\"fixture-media\"",
         item.meta.size_bytes.unwrap_or(offset + bytes.len() as u64),
     )
-    .unwrap();
+    .expect("valid test fixture");
     store
         .accept_generation(&identity, generation.clone())
         .await
-        .unwrap();
-    assert!(store
-        .write_range_for_generation_if_current(&identity, &generation, offset, bytes)
-        .await
-        .unwrap());
+        .expect("valid test fixture");
+    assert!(
+        store
+            .write_range_for_generation_if_current(&identity, &generation, offset, bytes)
+            .await
+            .expect("valid test fixture"),
+        "the seeded generation must remain current"
+    );
 }

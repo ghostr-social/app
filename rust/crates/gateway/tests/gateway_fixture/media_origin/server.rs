@@ -19,7 +19,7 @@ impl OriginState {
     }
 
     pub fn gets(&self) -> Vec<String> {
-        self.gets.lock().unwrap().clone()
+        self.gets.lock().expect("valid test fixture").clone()
     }
 }
 
@@ -36,6 +36,6 @@ async fn media(
     if method == Method::HEAD {
         return response::metadata();
     }
-    state.gets.lock().unwrap().push(id);
+    state.gets.lock().expect("valid test fixture").push(id);
     response::partial(&headers)
 }

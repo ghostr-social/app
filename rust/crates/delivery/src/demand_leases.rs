@@ -9,7 +9,7 @@ pub(crate) struct DemandLeases {
 }
 
 impl DemandLeases {
-    pub(crate) fn apply(&mut self, state: DemandState) {
+    pub(super) fn apply(&mut self, state: DemandState) {
         match state {
             DemandState::Blocked(lease) | DemandState::Advanced(lease) => {
                 self.active.insert(lease.consumer(), lease);
@@ -20,7 +20,7 @@ impl DemandLeases {
         }
     }
 
-    pub(crate) fn reconcile(
+    pub(super) fn reconcile(
         &mut self,
         foreground: &HashSet<PostId>,
         catalog: &Catalog,
@@ -30,13 +30,8 @@ impl DemandLeases {
         active_ranges(self.active.values(), foreground, present)
     }
 
-    pub(crate) fn clear(&mut self) {
+    pub(super) fn clear(&mut self) {
         self.active.clear();
-    }
-
-    #[cfg(test)]
-    pub(crate) fn len(&self) -> usize {
-        self.active.len()
     }
 }
 
@@ -58,15 +53,16 @@ fn active_ranges<'a>(
         ranges
             .entry(lease.post().clone())
             .and_modify(|active: &mut ByteRange| *active = earlier(*active, lease.range()))
-            .or_insert(lease.range());
+            .or_insert_with(|| lease.range());
     }
     ranges
 }
 
 fn earlier(left: ByteRange, right: ByteRange) -> ByteRange {
-    match (left.start, left.end) <= (right.start, right.end) {
-        true => left,
-        false => right,
+    if (left.start, left.end) <= (right.start, right.end) {
+        left
+    } else {
+        right
     }
 }
 
@@ -77,3 +73,7 @@ fn covered(range: ByteRange, have: Option<&Vec<ByteRange>>) -> bool {
             .any(|span| span.start <= range.start && span.end >= range.end)
     })
 }
+
+#[cfg(test)]
+#[path = "demand_leases_axiom_test.rs"]
+mod axiom_test_support;

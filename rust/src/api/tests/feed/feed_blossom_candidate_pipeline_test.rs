@@ -3,10 +3,10 @@ use crate::api::runtime::discovery::{lock, pump_outcomes, OutcomeSinks, SharedFe
 use crate::api::tests::outbox_runtime_support::test_bootstrap;
 use crate::discovery::feed::spec::FeedSpec;
 use crate::discovery::retrieval_types::{RetrievalOutcome, RetrievalPurpose};
+use core::time::Duration;
 use ghostr_delivery::delivery_events::{command_channel, CommandReceiver, DeliveryCandidate};
 use nostr_sdk::{EventBuilder, Keys, Kind, Tag};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 use tokio::sync::mpsc;
 
 #[tokio::test]

@@ -3,15 +3,15 @@ use crate::manager::state::PresentationAdmission;
 use crate::manager::DeliveryWorker;
 
 impl DeliveryWorker {
-    pub(crate) fn apply_presentation(&mut self, event: PlaybackPresentation) {
-        if self.state.apply_presentation(event.clone()) == PresentationAdmission::Accepted {
+    pub(super) fn apply_presentation(&mut self, event: &PlaybackPresentation) {
+        if self.state.apply_presentation(event) == PresentationAdmission::Accepted {
             let (bitrate, origin) = self.presentation_metrics(event.session().post());
-            self.qoe.note_presentation(&event, bitrate, &origin);
+            self.qoe.note_presentation(event, bitrate, &origin);
             self.qoe.schedule_save(&self.ctx.events);
         }
     }
 
-    pub(crate) fn apply_pending_presentation(&mut self) {
+    pub(super) fn apply_pending_presentation(&mut self) {
         if let Some(event) = self.state.take_pending_presentation() {
             let (bitrate, origin) = self.presentation_metrics(event.session().post());
             self.qoe.note_presentation(&event, bitrate, &origin);

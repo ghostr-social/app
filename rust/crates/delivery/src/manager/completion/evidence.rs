@@ -1,10 +1,10 @@
 use crate::chunk::downloader::HttpResponseEvidence;
 use crate::manager::transfers::ChunkDone;
 use crate::manager::DeliveryWorker;
+use core::num::NonZeroU64;
 use ghostr_engine::catalog::CompleteBytesObservation;
 use ghostr_engine::representation::{HttpGenerationLease, TransferIdentity};
 use ghostr_partial_store::partial_range_completion::Completion;
-use std::num::NonZeroU64;
 
 pub(super) struct FinalizedEvidence<'a> {
     pub total: Option<u64>,
@@ -32,21 +32,31 @@ impl DeliveryWorker {
     pub(super) fn learn_finalized(
         &mut self,
         identity: &TransferIdentity,
-        finalized: FinalizedEvidence<'_>,
+        finalized: &FinalizedEvidence<'_>,
     ) {
         let observed = crate::manager::time::evidence_time();
-        if let Some(exact) = complete_observation(
+        let exact_generation_accepted = complete_observation(
             finalized.total,
             finalized.response,
             finalized.generation,
             observed,
-        ) {
+        )
+        .is_some_and(|exact| {
             self.state
                 .catalog_mut()
-                .learn_complete_bytes_for(identity, exact);
-        }
+                .learn_complete_bytes_for(identity, exact)
+        });
         if finalized.completion == Completion::Verified {
-            self.learn_verified_hash(identity, finalized.response, finalized.advertised, observed);
+            let generation = exact_generation_accepted
+                .then_some(finalized.generation)
+                .flatten();
+            self.learn_verified_hash(
+                identity,
+                finalized.response,
+                finalized.advertised,
+                generation,
+                observed,
+            );
         }
     }
 
@@ -55,13 +65,18 @@ impl DeliveryWorker {
         identity: &TransferIdentity,
         response: Option<&HttpResponseEvidence>,
         advertised: Option<&str>,
+        generation: Option<&HttpGenerationLease>,
         observed: ghostr_engine::evidence::EvidenceTime,
     ) {
         let Some(digest) = advertised else { return };
-        let origin = response.map_or(identity.source().as_str(), |item| &item.final_url);
-        self.state
-            .catalog_mut()
-            .record_verified_hash_for(identity, digest, origin, observed);
+        let origin = response.map_or_else(|| identity.source().as_str(), |item| &item.final_url);
+        let catalog = self.state.catalog_mut();
+        if generation.is_some_and(|value| {
+            catalog.record_verified_hash_for_generation(identity, digest, origin, observed, value)
+        }) {
+            return;
+        }
+        catalog.record_verified_hash_for(identity, digest, origin, observed);
     }
 }
 

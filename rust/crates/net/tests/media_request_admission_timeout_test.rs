@@ -1,11 +1,11 @@
 mod request_gate_fixture;
 
+use core::time::Duration;
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_net::media_request_executor::{
     MediaRequestAdmissionTimeout, MediaRequestExecutor, MediaRequestLimits,
 };
 use request_gate_fixture::{HeldOrigin, LocalMediaClient};
-use std::time::Duration;
 
 #[tokio::test]
 async fn admission_timeout_is_distinct_from_an_origin_failure() {
@@ -23,7 +23,7 @@ async fn admission_timeout_is_distinct_from_an_origin_failure() {
 fn executor() -> MediaRequestExecutor {
     MediaRequestExecutor::new(
         LocalMediaClient::shared(),
-        MediaRequestLimits::try_new(1, 1).unwrap(),
+        MediaRequestLimits::try_new(1, 1).expect("valid test fixture"),
     )
 }
 
@@ -33,13 +33,15 @@ async fn occupy(
 ) -> ghostr_net::media_request_executor::MediaResponse {
     let active = requests
         .get(&held.url, PreemptionAuthority::Transition)
-        .unwrap()
+        .expect("valid test fixture")
         .admit()
         .await
-        .unwrap()
-        .send()
+        .expect("valid test fixture")
+        .send_with_redirect_deadline(
+            tokio::time::Instant::now() + core::time::Duration::from_secs(30),
+        )
         .await
-        .unwrap();
+        .expect("valid test fixture");
     held.expect_hit().await;
     active
 }
@@ -47,7 +49,7 @@ async fn occupy(
 async fn admission_error(requests: &MediaRequestExecutor, url: &str) -> anyhow::Error {
     requests
         .get(url, PreemptionAuthority::PlaybackCritical)
-        .unwrap()
+        .expect("valid test fixture")
         .admit_for(Duration::from_millis(20))
         .await
         .err()

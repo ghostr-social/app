@@ -11,7 +11,7 @@ fn retained_commitment_preserves_a_whole_actions_request_kind() {
     candidate.layout = MediaLayout::RequiresCompleteFile;
     let request = RetrievalRequest::FetchWhole {
         contract: WholeBodyContract::Exact {
-            expected_bytes: candidate.total_bytes.unwrap(),
+            expected_bytes: candidate.total_bytes.expect("valid test fixture"),
         },
         reason: WholeFetchReason::PlannedCompletion,
     };

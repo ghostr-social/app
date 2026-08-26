@@ -1,6 +1,6 @@
 use crate::relay::io::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo, RelayReadResult};
+use core::sync::atomic::{AtomicBool, Ordering};
 use nostr_sdk::Event;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 pub(crate) const TARGET_RELAY: &str = "wss://target.example";
@@ -9,14 +9,14 @@ pub(crate) struct RepostTargetIo {
     wrapper: Event,
     original: Event,
     deletion: Option<Event>,
-    pub(crate) used_hint: AtomicBool,
-    pub(crate) used_deletion_hint: AtomicBool,
+    pub(super) used_hint: AtomicBool,
+    pub(super) used_deletion_hint: AtomicBool,
     target_failure: AtomicBool,
     target_empty: AtomicBool,
 }
 
 impl RepostTargetIo {
-    pub(crate) fn new(wrapper: Event, original: Event) -> Arc<Self> {
+    pub(super) fn new(wrapper: Event, original: Event) -> Arc<Self> {
         Arc::new(Self::value(wrapper, original))
     }
 
@@ -32,19 +32,19 @@ impl RepostTargetIo {
         }
     }
 
-    pub(crate) fn failing(wrapper: Event, original: Event) -> Arc<Self> {
+    pub(super) fn failing(wrapper: Event, original: Event) -> Arc<Self> {
         let io = Self::value(wrapper, original);
         io.target_failure.store(true, Ordering::Relaxed);
         Arc::new(io)
     }
 
-    pub(crate) fn empty_once(wrapper: Event, original: Event) -> Arc<Self> {
+    pub(super) fn empty_once(wrapper: Event, original: Event) -> Arc<Self> {
         let io = Self::value(wrapper, original);
         io.target_empty.store(true, Ordering::Relaxed);
         Arc::new(io)
     }
 
-    pub(crate) fn with_deletion(wrapper: Event, original: Event, deletion: Event) -> Arc<Self> {
+    pub(super) fn with_deletion(wrapper: Event, original: Event, deletion: Event) -> Arc<Self> {
         let mut io = Self::value(wrapper, original);
         io.deletion = Some(deletion);
         Arc::new(io)

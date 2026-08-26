@@ -5,7 +5,7 @@ use ghostr_engine::playback::{
     PlaybackObservation, PlaybackObservationSequence, PlaybackPhase, PlaybackSession,
 };
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn state_accepts_only_current_session_and_increasing_sequence() {
@@ -13,15 +13,15 @@ fn state_accepts_only_current_session_and_increasing_sequence() {
     state.apply_focus(focus("current"), 0);
 
     assert_eq!(
-        state.apply_playback(update("current", 2, 3)),
+        state.apply_playback(&update("current", 2, 3)),
         PlaybackAdmission::Accepted,
     );
     assert_eq!(
-        state.apply_playback(update("other", 3, 1)),
+        state.apply_playback(&update("other", 3, 1)),
         PlaybackAdmission::Rejected(PlaybackRejection::InactiveDelivery),
     );
     assert_eq!(
-        state.apply_playback(update("current", 2, 2)),
+        state.apply_playback(&update("current", 2, 2)),
         PlaybackAdmission::Rejected(PlaybackRejection::StaleSequence),
     );
     assert_eq!(
@@ -37,13 +37,13 @@ fn state_accepts_only_current_session_and_increasing_sequence() {
 fn returning_to_a_post_does_not_revive_an_older_playback_session() {
     let mut state = DeliveryState::new(EngineParams::default(), DataUsageLevel::Balanced);
     state.apply_focus(focus("current"), 0);
-    assert!(state.apply_playback(update("current", 2, 1)).is_accepted());
+    assert!(state.apply_playback(&update("current", 2, 1)).is_accepted());
 
     state.apply_focus(focus("other"), 1);
     state.apply_focus(focus("current"), 2);
 
     assert_eq!(
-        state.apply_playback(update("current", 1, 2)),
+        state.apply_playback(&update("current", 1, 2)),
         PlaybackAdmission::Rejected(PlaybackRejection::StaleSession),
     );
 }
@@ -54,7 +54,7 @@ fn inactive_observation_for_a_retired_focus_is_ignored() {
     state.apply_focus(focus("current"), 0);
 
     assert_eq!(
-        state.apply_playback(update_phase("other", 1, 1, PlaybackPhase::Inactive)),
+        state.apply_playback(&update_phase("other", 1, 1, PlaybackPhase::Inactive)),
         PlaybackAdmission::IgnoredInactive,
     );
 }
@@ -78,7 +78,7 @@ fn update_phase(
             1_000,
             phase,
         )
-        .unwrap(),
+        .expect("valid test fixture"),
     }
 }
 

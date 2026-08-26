@@ -1,5 +1,6 @@
-//! Open feeds and their assembled post lists (plan §5.3). Pages arrive
-//! already parsed; the store canonicalizes, filters through the feed's
+//! Open feeds and their assembled post lists (plan §5.3).
+//!
+//! Pages arrive parsed; the store canonicalizes, filters through the feed's
 //! spec, windows pagination, and notifies subscribers when the visible
 //! list changes. A fresh load rebases one second below the oldest
 //! visible post; older pages advance by what was fetched.

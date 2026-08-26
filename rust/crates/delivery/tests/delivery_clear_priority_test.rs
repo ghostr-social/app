@@ -1,10 +1,10 @@
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use ghostr_delivery::delivery_events::DeliveryCandidate;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
-use std::time::Duration;
 
 #[tokio::test]
 async fn clear_jumps_a_large_candidate_backlog() {

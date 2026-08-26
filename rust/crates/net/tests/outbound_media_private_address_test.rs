@@ -5,10 +5,10 @@ use std::sync::Arc;
 fn rejects_literal_non_public_destinations() {
     let client: Arc<dyn MediaHttpRequests> =
         Arc::new(MediaHttpClient::public().expect("media client"));
-    assert_rejects_private(client);
+    assert_rejects_private(client.as_ref());
 }
 
-fn assert_rejects_private(client: impl MediaHttpRequests) {
+fn assert_rejects_private(client: &dyn MediaHttpRequests) {
     for address in
         include_str!("../../../../test/support/public_media_private_addresses.txt").lines()
     {

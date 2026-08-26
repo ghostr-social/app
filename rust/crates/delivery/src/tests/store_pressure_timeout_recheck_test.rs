@@ -4,9 +4,9 @@ use ghostr_partial_store::partial_range_store::capacity::{Limits, StoreCapacity}
 use ghostr_partial_store::partial_range_store::free_space::FreeSpace;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
+use core::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use core::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::timeout;
 
@@ -44,7 +44,7 @@ async fn pressure_timeout_rechecks_external_capacity_before_resuming() {
     .expect("the pressure timeout must complete");
 
     assert!(changed, "new external capacity must wake delivery");
-    std::fs::remove_dir_all(root).unwrap();
+    std::fs::remove_dir_all(root).expect("valid test fixture");
 }
 
 fn recheck_store() -> (PartialRangeStore, Arc<MutableSpace>, PathBuf) {
@@ -55,7 +55,7 @@ fn recheck_store() -> (PartialRangeStore, Arc<MutableSpace>, PathBuf) {
             budget: 16,
             reserve: 0,
         },
-        space.clone(),
+        std::sync::Arc::<MutableSpace>::clone(&space),
         Duration::from_secs(60),
     );
     let store = PartialRangeStore::with_capacity(root.clone(), Arc::new(Mutex::new(0)), capacity);

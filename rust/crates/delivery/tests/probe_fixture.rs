@@ -4,6 +4,11 @@ use ghostr_engine::host_stats::HostStats;
 use ghostr_net::media_request_executor::MediaRequestExecutor;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 
+/// Runs one media probe through the shared integration-test configuration.
+///
+/// # Errors
+///
+/// Returns the admission, transport, or response-validation failure from the probe.
 pub async fn probe(
     requests: &MediaRequestExecutor,
     url: &str,
@@ -16,8 +21,10 @@ pub async fn probe(
             url,
             priority: PreemptionAuthority::Transition,
             timeouts,
+            network: None,
         },
         stats,
     )
     .await
+    .outcome
 }

@@ -8,7 +8,7 @@ fn profile_enrichment_keeps_the_newest_visible_window_bounded() {
         .map(|index| video(index as u64 + 1))
         .collect();
     let oldest_author = events[0].pubkey;
-    let newest_author = events.last().unwrap().pubkey;
+    let newest_author = events.last().expect("valid test fixture").pubkey;
 
     let plan = profile_plan(&events).expect("profile plan");
     let authors: BTreeSet<_> = plan

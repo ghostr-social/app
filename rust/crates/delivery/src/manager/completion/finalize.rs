@@ -4,7 +4,7 @@ use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::PostId;
 
 impl DeliveryWorker {
-    pub(crate) async fn transfer_is_current(&self, identity: &TransferIdentity) -> bool {
+    pub(super) async fn transfer_is_current(&self, identity: &TransferIdentity) -> bool {
         if !self.ctx.store.transfer_is_current(identity).await {
             return false;
         }
@@ -52,7 +52,7 @@ impl DeliveryWorker {
         match outcome {
             Ok(completion) => self.learn_finalized(
                 identity,
-                FinalizedEvidence {
+                &FinalizedEvidence {
                     total,
                     response,
                     advertised: advertised.as_deref(),
@@ -62,7 +62,7 @@ impl DeliveryWorker {
             ),
             Err(error) => {
                 self.finish_finalize_error(identity, advertised.as_deref(), error)
-                    .await
+                    .await;
             }
         }
     }

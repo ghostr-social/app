@@ -1,6 +1,6 @@
 use super::CatalogEntry;
 use crate::evidence::{EvidenceTime, EvidenceValidator};
-use std::num::NonZeroU64;
+use core::num::NonZeroU64;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct LearnedFacts {
@@ -11,12 +11,12 @@ pub struct LearnedFacts {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HttpObservation {
-    pub facts: LearnedFacts,
-    pub content_type: Option<String>,
-    pub observed: EvidenceTime,
-    pub validator: Option<EvidenceValidator>,
-    pub final_url: Option<String>,
-    pub generation: Option<crate::representation::HttpGenerationLease>,
+    pub(super) facts: LearnedFacts,
+    pub(super) content_type: Option<String>,
+    pub(super) observed: EvidenceTime,
+    pub(super) validator: Option<EvidenceValidator>,
+    pub(super) final_url: Option<String>,
+    pub(super) generation: Option<crate::representation::HttpGenerationLease>,
 }
 
 impl HttpObservation {
@@ -41,7 +41,7 @@ impl HttpObservation {
         self
     }
 
-    pub fn with_generation(
+    pub(super) fn with_generation(
         mut self,
         generation: crate::representation::HttpGenerationLease,
     ) -> Self {
@@ -57,10 +57,10 @@ impl HttpObservation {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompleteBytesObservation {
     pub total_bytes: NonZeroU64,
-    pub final_url: String,
-    pub observed: EvidenceTime,
-    pub validator: Option<EvidenceValidator>,
-    pub generation: Option<crate::representation::HttpGenerationLease>,
+    pub(super) final_url: String,
+    pub(super) observed: EvidenceTime,
+    pub(super) validator: Option<EvidenceValidator>,
+    pub(super) generation: Option<crate::representation::HttpGenerationLease>,
 }
 
 impl CompleteBytesObservation {
@@ -95,7 +95,7 @@ pub(super) struct SourceEvidence {
 }
 
 impl LearnedFacts {
-    fn merge(&mut self, update: LearnedFacts) {
+    fn merge(&mut self, update: Self) {
         merge_field(&mut self.content_length, update.content_length);
         merge_field(&mut self.accept_ranges, update.accept_ranges);
         merge_field(&mut self.host, update.host);
@@ -103,32 +103,19 @@ impl LearnedFacts {
 }
 
 impl SourceEvidence {
-    pub(super) fn learn_head(&mut self, facts: LearnedFacts) {
+    fn learn_head(&mut self, facts: LearnedFacts) {
         self.advisory.merge(facts);
     }
 
-    pub(super) fn learn_response(&mut self, facts: LearnedFacts) {
+    fn learn_response(&mut self, facts: LearnedFacts) {
         self.observed.merge(facts);
     }
 
-    pub(super) fn planning_total(&self, declared: Option<u64>) -> Option<u64> {
+    fn planning_total(&self, declared: Option<u64>) -> Option<u64> {
         self.observed
             .content_length
             .or(self.advisory.content_length)
             .or(declared)
-    }
-
-    pub(super) fn authoritative_total(&self) -> Option<u64> {
-        self.observed.content_length
-    }
-
-    pub(super) fn observed_range_support(&self) -> Option<bool> {
-        self.observed.accept_ranges
-    }
-
-    #[cfg(test)]
-    pub(super) fn observed(&self) -> &LearnedFacts {
-        &self.observed
     }
 }
 
@@ -140,19 +127,12 @@ fn merge_field<T>(current: &mut Option<T>, update: Option<T>) {
 
 impl CatalogEntry {
     /// Best-known file size: an observed response beats advisory discovery.
-    pub fn total_bytes(&self) -> Option<u64> {
+    pub(crate) fn total_bytes(&self) -> Option<u64> {
         self.meta
             .urls
             .first()
             .and_then(|source| self.planning_total_for(source))
             .or(self.meta.size_bytes)
-    }
-
-    pub fn accepts_byte_ranges(&self) -> Option<bool> {
-        self.meta
-            .urls
-            .first()
-            .and_then(|source| self.observed_range_support_for(source))
     }
 
     pub fn planning_total_for(&self, source: &str) -> Option<u64> {
@@ -161,18 +141,6 @@ impl CatalogEntry {
             .map_or(self.meta.size_bytes, |evidence| {
                 evidence.planning_total(self.meta.size_bytes)
             })
-    }
-
-    pub fn authoritative_total_for(&self, source: &str) -> Option<u64> {
-        self.evidence
-            .get(source)
-            .and_then(SourceEvidence::authoritative_total)
-    }
-
-    pub fn observed_range_support_for(&self, source: &str) -> Option<bool> {
-        self.evidence
-            .get(source)
-            .and_then(SourceEvidence::observed_range_support)
     }
 
     pub(super) fn retain_head(&mut self, source: &str, facts: LearnedFacts) {
@@ -188,9 +156,8 @@ impl CatalogEntry {
             .or_default()
             .learn_response(facts);
     }
-
-    #[cfg(test)]
-    pub(crate) fn observed_facts_for(&self, source: &str) -> Option<&LearnedFacts> {
-        self.evidence.get(source).map(SourceEvidence::observed)
-    }
 }
+
+#[cfg(test)]
+#[path = "evidence_axiom_test.rs"]
+mod axiom_test_support;

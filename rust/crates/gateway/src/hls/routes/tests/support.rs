@@ -3,13 +3,13 @@ use crate::hls::sessions::{HlsSessionId, HlsSessions};
 use crate::router::GatewayHttpState;
 use axum::body::to_bytes;
 use axum::extract::{Path, State};
+use core::time::Duration;
 use ghostr_delivery::segmented::SegmentedCache;
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
 use reqwest::{Client, RequestBuilder};
 use std::sync::Arc;
-use std::time::Duration;
 
 struct LocalClient(Client);
 
@@ -50,7 +50,7 @@ pub(super) async fn state_with_sessions(
     let state = GatewayHttpState {
         requests: MediaRequestExecutor::new(
             Arc::new(LocalClient(client)),
-            MediaRequestLimits::try_new(4, 4).unwrap(),
+            MediaRequestLimits::try_new(4, 4).expect("valid test fixture"),
         ),
         hls_sessions: sessions,
         segmented: SegmentedCache::new(),
@@ -70,9 +70,12 @@ pub(super) async fn asset_resources(
     state: &Arc<GatewayHttpState>,
     session: &HlsSessionId,
 ) -> Vec<String> {
-    let response = root_manifest(State(state.clone()), Path(session.as_str().to_owned()))
-        .await
-        .expect("root manifest");
+    let response = root_manifest(
+        State(std::sync::Arc::clone(state)),
+        Path(session.as_str().to_owned()),
+    )
+    .await
+    .expect("root manifest");
     let body = to_bytes(response.into_body(), 4096)
         .await
         .expect("manifest body");

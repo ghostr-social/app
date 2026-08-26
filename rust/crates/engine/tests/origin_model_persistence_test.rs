@@ -1,5 +1,5 @@
-use ghostr_engine::host_stats::HostStats;
-use ghostr_engine::origin_model::{
+use crate::host_stats::HostStats;
+use crate::origin_model::{
     DecisionMode, MediaClass, OriginContext, OriginObservation, OriginQuery, RequestMethod,
 };
 
@@ -11,7 +11,7 @@ fn host_stats_snapshot_round_trips_the_origin_model() {
     );
     let mut stats = HostStats::new();
     stats.origin_model_mut().observe(
-        OriginObservation::success(query.clone(), 1_000)
+        &OriginObservation::success(query.clone(), 1_000)
             .with_ttfb_ms(25)
             .with_throughput_bps(9_000_000),
     );
@@ -33,7 +33,7 @@ fn loaded_origin_model_reapplies_url_retention_bound() {
     let mut stats = HostStats::new();
     stats
         .origin_model_mut()
-        .observe(OriginObservation::success(query, 1_000));
+        .observe(&OriginObservation::success(query, 1_000));
     let mut snapshot = serde_json::to_value(stats).expect("serializable stats");
     let urls = snapshot["origin_model"]["urls"]
         .as_array_mut()
@@ -48,7 +48,10 @@ fn loaded_origin_model_reapplies_url_retention_bound() {
     let loaded = HostStats::from_json(&snapshot.to_string()).expect("valid oversized snapshot");
     let normalized = serde_json::to_value(loaded).expect("serializable normalized stats");
     assert_eq!(
-        normalized["origin_model"]["urls"].as_array().unwrap().len(),
+        normalized["origin_model"]["urls"]
+            .as_array()
+            .expect("valid test fixture")
+            .len(),
         768
     );
 }

@@ -1,5 +1,6 @@
 //! The shared nouns of the retrieval pipeline: which screen a fetch
 //! serves, how urgent it is, how it failed, and what it reported back.
+//!
 //! Transport, routing, and scheduling all speak this vocabulary, so it
 //! is kept dependency-free and each layer can depend on it without
 //! depending on the others.
@@ -10,7 +11,7 @@ use tokio::sync::mpsc;
 
 /// Screen-level scope a retrieval serves, e.g. `feed`, `search:ghost`,
 /// `tag:dance`, or `discover`.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct FeedContext {
     value: String,
     session: SessionGeneration,
@@ -24,7 +25,7 @@ impl FeedContext {
         }
     }
 
-    pub(crate) fn as_str(&self) -> &str {
+    pub(super) fn as_str(&self) -> &str {
         &self.value
     }
 
@@ -44,8 +45,8 @@ pub enum RetrievalPriority {
 /// Describes one unit of network retrieval for scheduling decisions.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RetrievalRequest {
-    pub(crate) context: FeedContext,
-    pub(crate) priority: RetrievalPriority,
+    pub(super) context: FeedContext,
+    pub(super) priority: RetrievalPriority,
 }
 
 /// Why a whole retrieval could not settle. Any planned content-query failure

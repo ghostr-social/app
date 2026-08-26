@@ -1,6 +1,6 @@
 use crate::transform::TransformControl;
-use anyhow::{ensure, Context, Result};
-use std::ops::Range;
+use anyhow::{ensure, Context as _, Result};
+use core::ops::Range;
 
 #[derive(Clone, Copy)]
 struct Atom {
@@ -30,7 +30,7 @@ pub(super) fn fast_start(input: &[u8], control: &TransformControl) -> Result<Vec
         patched_offsets > 0,
         "MP4 moov has no supported chunk offsets"
     );
-    assemble(input, media.start, index.start, patched)
+    assemble(input, media.start, index.start, &patched)
 }
 
 fn exactly_one(atoms: &[Atom], kind: [u8; 4]) -> Result<Atom> {
@@ -40,13 +40,13 @@ fn exactly_one(atoms: &[Atom], kind: [u8; 4]) -> Result<Atom> {
     Ok(atom)
 }
 
-fn assemble(input: &[u8], media: usize, index: usize, moov: Vec<u8>) -> Result<Vec<u8>> {
+fn assemble(input: &[u8], media: usize, index: usize, moov: &[u8]) -> Result<Vec<u8>> {
     let mut output = Vec::new();
     output
         .try_reserve_exact(input.len())
         .context("reserve remux output")?;
     output.extend_from_slice(&input[..media]);
-    output.extend_from_slice(&moov);
+    output.extend_from_slice(moov);
     output.extend_from_slice(&input[media..index]);
     ensure!(
         output.len() == input.len(),

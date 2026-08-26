@@ -2,7 +2,7 @@ use crate::host_stats::{HostStats, ThroughputSample};
 use crate::playback::{
     AdaptiveBufferPolicy, EstimateConfidence, MediaConsumption, NetworkConditions,
 };
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn fresh_repeated_evidence_needs_less_reserve_than_the_same_stale_estimate() {
@@ -10,10 +10,12 @@ fn fresh_repeated_evidence_needs_less_reserve_than_the_same_stale_estimate() {
     for observed_at_ms in 1..=8 {
         let sample =
             ThroughputSample::new(2_000_000, Duration::from_secs(1), observed_at_ms * 1_000, 2)
-                .unwrap();
+                .expect("valid test fixture");
         stats.record_host_throughput("cdn.example", sample);
     }
-    let estimate = stats.host_throughput("cdn.example").unwrap();
+    let estimate = stats
+        .host_throughput("cdn.example")
+        .expect("valid test fixture");
     let ttfb = Duration::from_millis(100);
     let fresh = NetworkConditions::from_estimate(estimate, ttfb, 8_000);
     let aging = NetworkConditions::from_estimate(estimate, ttfb, 108_000);

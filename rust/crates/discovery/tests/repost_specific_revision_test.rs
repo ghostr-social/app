@@ -1,8 +1,6 @@
-mod feed_support;
-
-use feed_support::{addressable_video, signed_event, SignedEventFixture};
-use ghostr_discovery::content::reposts::feed_post_from_event;
-use nostr_sdk::{JsonUtil, Keys, Kind};
+use crate::content::reposts::feed_post_from_event;
+use crate::tests::feed_support::{addressable_video, signed_event, SignedEventFixture};
+use nostr_sdk::{JsonUtil as _, Keys, Kind};
 
 #[test]
 fn embedded_generic_repost_can_target_one_specific_revision() {

@@ -1,5 +1,6 @@
 use super::action;
-use crate::adaptive::{ActionFrontier, ActionKind, ActionValue, EpsilonBuckets, ResourceCost};
+use crate::adaptive::axiom_test_support::ActionFrontier;
+use crate::adaptive::{ActionKind, ActionValue, EpsilonBuckets, ResourceCost};
 use crate::ActionId;
 
 #[test]

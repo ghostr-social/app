@@ -10,13 +10,6 @@ use nostr_sdk::{Event, EventId};
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-#[cfg(test)]
-pub(crate) use super::target_dependencies::target_plan_with_dependencies;
-#[cfg(test)]
-pub(crate) use super::target_planning::target_plan;
-#[cfg(test)]
-pub(crate) use super::target_planning::MAX_TARGET_LOOKUPS;
-
 pub(super) struct TargetEnrichment {
     pub(super) events: Vec<Event>,
     pub(super) retry: BTreeSet<EventId>,
@@ -42,7 +35,7 @@ impl RelayPlanExecutor {
             unplanned,
         } = dependent;
         let outboxes = self.session_plan_outboxes(session, &plan).await?;
-        let fetches = self.enrichment_fetches(session, plan, outboxes, route);
+        let fetches = self.enrichment_fetches(session, plan, outboxes, &route);
         let outcomes = collect_partial_fetches(fetches).await;
         Ok(target_result(events, dependencies, unplanned, outcomes))
     }
@@ -74,3 +67,7 @@ fn target_result(
     }
     TargetEnrichment { events, retry }
 }
+
+#[cfg(test)]
+#[path = "target_enrichment_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

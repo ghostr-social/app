@@ -9,7 +9,7 @@ async fn discovery_boot_uses_only_the_configured_read_and_search_relays() {
     let (_demand_sender, demand) = watch::channel(DiscoveryDemand::Hold);
     let client = Arc::new(Client::default());
     let runtime = DiscoveryRuntime::start(DiscoveryBoot {
-        client: client.clone(),
+        client: std::sync::Arc::clone(&client),
         demand,
         bootstrap: vec!["wss://read.example".to_owned()],
         search_relays: vec!["wss://search.example".to_owned()],

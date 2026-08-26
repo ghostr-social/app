@@ -55,16 +55,16 @@ pub(crate) fn action(line: &str) -> Result<HlsTagAction> {
             bail!("{name} is not supported by the secure HLS gateway")
         }
         tag::EXT_X_STREAM_INF => Ok(HlsTagAction::NextUri(HlsResourceKind::Manifest)),
-        tag::EXT_X_MEDIA => rewrite(HlsResourceKind::Manifest, false),
+        tag::EXT_X_MEDIA => Ok(rewrite(HlsResourceKind::Manifest, false)),
         tag::EXT_X_I_FRAME_STREAM_INF | tag::EXT_X_IMAGE_STREAM_INF => {
-            rewrite(HlsResourceKind::Manifest, true)
+            Ok(rewrite(HlsResourceKind::Manifest, true))
         }
-        tag::EXT_X_RENDITION_REPORT => rewrite(HlsResourceKind::Manifest, true),
+        tag::EXT_X_RENDITION_REPORT => Ok(rewrite(HlsResourceKind::Manifest, true)),
         tag::EXT_X_KEY | tag::EXT_X_SESSION_KEY | tag::EXT_X_SESSION_DATA => {
-            rewrite(HlsResourceKind::Asset, false)
+            Ok(rewrite(HlsResourceKind::Asset, false))
         }
         tag::EXT_X_MAP | tag::EXT_X_PART | tag::EXT_X_PRELOAD_HINT => {
-            rewrite(HlsResourceKind::Asset, true)
+            Ok(rewrite(HlsResourceKind::Asset, true))
         }
         tag::EXT_X_DATERANGE => validate_date_range(line),
         _ if is_safe_tag(name) || !name.starts_with(tag::EXT_PREFIX) => Ok(HlsTagAction::Pass),
@@ -72,8 +72,8 @@ pub(crate) fn action(line: &str) -> Result<HlsTagAction> {
     }
 }
 
-fn rewrite(kind: HlsResourceKind, required: bool) -> Result<HlsTagAction> {
-    Ok(HlsTagAction::RewriteUri { kind, required })
+const fn rewrite(kind: HlsResourceKind, required: bool) -> HlsTagAction {
+    HlsTagAction::RewriteUri { kind, required }
 }
 
 fn validate_date_range(line: &str) -> Result<HlsTagAction> {

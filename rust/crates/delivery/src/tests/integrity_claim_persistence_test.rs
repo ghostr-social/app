@@ -11,7 +11,7 @@ async fn mirror_claims_survive_the_production_evidence_snapshot() {
 
     save_catalog_evidence(&path, &catalog.evidence_state())
         .await
-        .unwrap();
+        .expect("valid test fixture");
     let persisted = load_catalog_evidence(&path).await;
     let mut restored = Catalog::new();
     restored.replace_evidence_state(persisted, 1);
@@ -19,7 +19,7 @@ async fn mirror_claims_survive_the_production_evidence_snapshot() {
     let binding = restored.upsert(failed.clone(), meta("failed", &digest));
     let identity = binding
         .transfer("https://failed.example/video.mp4")
-        .unwrap();
+        .expect("valid test fixture");
 
     assert_eq!(
         restored.quarantine_mirror_group(&identity, &digest, 2),

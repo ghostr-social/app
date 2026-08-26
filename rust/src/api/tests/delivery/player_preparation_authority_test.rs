@@ -1,22 +1,21 @@
 use crate::api::delivery_types::{FfiPlayerPreparationDisposition, FfiPlayerPreparationState};
-use crate::api::player_preparation_control::{
-    confirm_player_preparation, report_player_preparation,
-};
+use crate::api::player_preparation_control::axiom_test_support::report_player_preparation;
+use crate::api::player_preparation_control::confirm_player_preparation;
 use crate::api::tests::delivery::player_preparation_authority_fixture::AuthorityFixture;
 use ghostr_delivery::delivery_events::PlayerPreparationState;
 
 #[tokio::test]
 async fn feedback_requires_the_exact_live_asset_authority() {
-    let mut fixture = AuthorityFixture::seeded().await;
-    assert_mapping(&mut fixture).await;
+    let fixture = AuthorityFixture::seeded().await;
+    assert_mapping(&fixture).await;
     assert_invalid_authorities(&fixture).await;
     let eviction = 8..16;
     fixture
         .context
         .store
-        .evict_ranges("clip", std::slice::from_ref(&eviction))
+        .evict_ranges("clip", core::slice::from_ref(&eviction))
         .await
-        .unwrap();
+        .expect("test fixture precondition must hold");
     assert!(report_player_preparation(&fixture.context, fixture.input())
         .await
         .is_err());
@@ -34,11 +33,14 @@ async fn a_closed_manager_is_a_terminal_confirmation() {
     );
 }
 
-async fn assert_mapping(fixture: &mut AuthorityFixture) {
+async fn assert_mapping(fixture: &AuthorityFixture) {
     report_player_preparation(&fixture.context, fixture.input())
         .await
-        .unwrap();
-    let report = fixture.commands.try_player_preparation().unwrap();
+        .expect("test fixture precondition must hold");
+    let report = fixture
+        .commands
+        .try_player_preparation()
+        .expect("test fixture precondition must hold");
     assert_eq!(report.post().as_str(), "clip");
     assert_eq!(
         report.binding().representation().fingerprint(),
@@ -55,8 +57,11 @@ async fn assert_mapping(fixture: &mut AuthorityFixture) {
     rendered.state = FfiPlayerPreparationState::FirstFrameRendered;
     report_player_preparation(&fixture.context, rendered)
         .await
-        .unwrap();
-    let rendered = fixture.commands.try_player_preparation().unwrap();
+        .expect("test fixture precondition must hold");
+    let rendered = fixture
+        .commands
+        .try_player_preparation()
+        .expect("test fixture precondition must hold");
     assert_eq!(rendered.state(), PlayerPreparationState::FirstFrameRendered);
 }
 

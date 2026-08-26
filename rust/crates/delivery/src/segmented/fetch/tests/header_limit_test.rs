@@ -9,9 +9,8 @@ async fn hls_fetch_rejects_oversized_response_headers() {
     let url = Url::parse(&raw_url).expect("URL");
 
     let requests = client();
-    let error = match asset(&requests, &url, PreemptionAuthority::Transition).await {
-        Ok(_) => panic!("oversized headers must be rejected"),
-        Err(error) => error,
+    let Err(error) = asset(&requests, &url, PreemptionAuthority::Transition).await else {
+        panic!("oversized headers must be rejected")
     };
 
     assert!(

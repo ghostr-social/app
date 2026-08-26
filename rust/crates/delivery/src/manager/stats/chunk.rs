@@ -30,9 +30,7 @@ impl StatsKeeper {
             Err(_) => self.stats.record_failure(&host),
         }
         if let Some(observation) = &done.origin {
-            self.stats
-                .origin_model_mut()
-                .observe((**observation).clone());
+            self.stats.origin_model_mut().observe(observation);
         }
         self.dirty = true;
     }

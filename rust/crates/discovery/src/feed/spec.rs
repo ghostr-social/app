@@ -45,8 +45,8 @@ impl FeedSpec {
     ) -> Option<DiscoveryRequest> {
         match self {
             Self::MainFeed { viewer } => Some(DiscoveryRequest {
-                routing_authors: routing_follows(viewer, graph),
-                viewer: viewer_scope(viewer),
+                routing_authors: routing_follows(viewer.as_ref(), graph),
+                viewer: viewer_scope(viewer.as_ref()),
                 flow: DiscoveryFlow::Continuous,
                 ..request(older_than)
             }),
@@ -56,7 +56,7 @@ impl FeedSpec {
             }),
             Self::Following { viewer, follows } => Some(DiscoveryRequest {
                 authors: follows.clone(),
-                viewer: viewer_scope(viewer),
+                viewer: viewer_scope(viewer.as_ref()),
                 flow: DiscoveryFlow::Continuous,
                 reposts: RepostAdmission::Included,
                 ..request(older_than)
@@ -67,12 +67,12 @@ impl FeedSpec {
     }
 
     /// Whether one assembled post is visible in this feed. Mutes hide
-    /// creators from the main and query feeds (video_feed_policy.dart,
-    /// `_selectPosts` in discovery_video_search_repository.dart); a
+    /// creators from the main and query feeds (`video_feed_policy.dart`,
+    /// `_selectPosts` in `discovery_video_search_repository.dart`); a
     /// signed-out main feed has no viewer whose mutes could apply, and
     /// a profile grid shows exactly its creators, muted or not
     /// (`ProfileDetailsPolicy.build` filters only by creator id).
-    pub(crate) fn accepts(
+    pub(super) fn accepts(
         &self,
         post: &crate::content::parsing::ParsedVideoPost,
         graph: &SocialGraph,
@@ -82,7 +82,7 @@ impl FeedSpec {
 
     /// Following may use an unfollowed original as content for an already
     /// visible followed-reposter occurrence; other feeds recheck each donor.
-    pub(crate) fn accepts_content(
+    pub(super) fn accepts_content(
         &self,
         post: &crate::content::parsing::ParsedVideoPost,
         graph: &SocialGraph,
@@ -91,23 +91,23 @@ impl FeedSpec {
     }
 
     /// Whether an empty older page ends pagination. Canonical feeds
-    /// exhaust (`_nextCursor` null in filtered_video_feed_repository.dart);
+    /// exhaust (`_nextCursor` null in `filtered_video_feed_repository.dart`);
     /// query feeds never report themselves finished
-    /// (query_video_feed_repository.dart).
+    /// (`query_video_feed_repository.dart`).
     pub fn exhausts_on_empty_page(&self) -> bool {
         !self.is_query()
     }
 
     /// Search and hashtag feeds keep extending while their native hunt stays
     /// open; canonical feeds may retain only a bounded head window.
-    pub(crate) fn is_query(&self) -> bool {
+    pub(super) fn is_query(&self) -> bool {
         matches!(self, Self::Hashtag(_) | Self::Search(_))
     }
 }
 
 /// A signed-out viewer has no follow set, and a graph belonging to
 /// someone else must not leak into this feed's routing.
-fn routing_follows(viewer: &Option<PublicKey>, graph: &SocialGraph) -> Vec<PublicKey> {
+fn routing_follows(viewer: Option<&PublicKey>, graph: &SocialGraph) -> Vec<PublicKey> {
     match viewer {
         Some(viewer) if graph.belongs_to(viewer) => graph.follow_list(),
         _ => Vec::new(),
@@ -118,7 +118,7 @@ fn routing_follows(viewer: &Option<PublicKey>, graph: &SocialGraph) -> Vec<Publi
 /// the only one that scopes the session's event pool. Signing out is a
 /// scope change of its own: a signed-out feed must not answer from the
 /// rows the previous viewer's session gathered.
-fn viewer_scope(viewer: &Option<PublicKey>) -> ViewerScope {
+fn viewer_scope(viewer: Option<&PublicKey>) -> ViewerScope {
     match viewer {
         Some(viewer) => ViewerScope::SignedIn(*viewer),
         None => ViewerScope::SignedOut,

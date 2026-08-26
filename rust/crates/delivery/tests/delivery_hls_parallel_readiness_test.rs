@@ -1,12 +1,12 @@
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::hls::{serve, HlsGate};
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use ghostr_delivery::segmented::SegmentedPhase;
 use ghostr_engine::DeliveryKind;
-use std::time::Duration;
 
 #[tokio::test]
 async fn focused_hls_videos_prepare_in_parallel_and_require_bootstrap_assets() {
@@ -25,8 +25,8 @@ async fn focused_hls_videos_prepare_in_parallel_and_require_bootstrap_assets() {
 
     tokio::time::timeout(Duration::from_secs(2), gate.started.acquire_many(2))
         .await
-        .unwrap()
-        .unwrap()
+        .expect("valid test fixture")
+        .expect("valid test fixture")
         .forget();
     assert_eq!(
         harness.segmented.snapshot("first").phase,

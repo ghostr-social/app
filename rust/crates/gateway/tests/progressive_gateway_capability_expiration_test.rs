@@ -1,10 +1,10 @@
 mod gateway_fixture;
 
+use core::time::Duration;
 use gateway_fixture::progressive::progressive_harness;
 use ghostr_gateway::progressive::capabilities::{
     ProgressiveCapabilities, ProgressiveCapabilityLimits,
 };
-use std::time::Duration;
 
 #[tokio::test(start_paused = true)]
 async fn expired_capability_fails_closed() {
@@ -14,8 +14,15 @@ async fn expired_capability_fails_closed() {
     harness
         .bind_video("clip", "https://cdn.example/clip.mp4", Some(1))
         .await;
-    let snapshot = harness.store.media_snapshot("clip").await.unwrap();
-    let capability = capabilities.issue(&snapshot).await.unwrap();
+    let snapshot = harness
+        .store
+        .media_snapshot("clip")
+        .await
+        .expect("valid test fixture");
+    let capability = capabilities
+        .issue(&snapshot)
+        .await
+        .expect("valid test fixture");
     tokio::time::advance(Duration::from_secs(5)).await;
 
     assert!(

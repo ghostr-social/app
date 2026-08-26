@@ -3,9 +3,9 @@ use ghostr_engine::PostId;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub(crate) struct StageRequest {
-    pub(crate) url: String,
-    pub(crate) offset: u64,
-    pub(crate) block_bytes: u64,
+    pub(super) url: String,
+    pub(super) offset: u64,
+    pub(super) block_bytes: u64,
 }
 
 impl StageRequest {
@@ -20,9 +20,9 @@ impl StageRequest {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub(crate) struct StageFence {
-    pub(crate) generation: u64,
-    pub(crate) attempt: u64,
-    pub(crate) request: StageRequest,
+    pub(super) generation: u64,
+    attempt: u64,
+    pub(super) request: StageRequest,
 }
 
 impl StageFence {
@@ -60,16 +60,16 @@ impl StageAdmission {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub(crate) struct InflightKey {
-    pub(crate) post: PostId,
-    pub(crate) fence: StageFence,
+    pub(super) post: PostId,
+    pub(super) fence: StageFence,
 }
 
 pub(crate) struct InflightStage {
-    pub(crate) prefix: Option<(usize, StagedObject)>,
+    pub(super) prefix: Option<(usize, StagedObject)>,
     pub(crate) reserved_bytes: u64,
 }
 
 pub(crate) struct StageLease {
-    pub(crate) cache: SegmentedCache,
-    pub(crate) key: Option<InflightKey>,
+    pub(super) cache: SegmentedCache,
+    pub(super) key: Option<InflightKey>,
 }

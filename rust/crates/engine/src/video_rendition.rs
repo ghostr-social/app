@@ -3,7 +3,7 @@
 use crate::rendition::{Rendition, RenditionId};
 use crate::representation::RepresentationId;
 use crate::{DeliveryKind, VideoMeta};
-use std::num::NonZeroU64;
+use core::num::NonZeroU64;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum VideoRenditionError {
@@ -19,6 +19,10 @@ pub struct VideoRendition {
 }
 
 impl VideoRendition {
+    /// # Errors
+    ///
+    /// Returns an error when the media has no source, is not progressive, or declares a zero
+    /// bitrate.
     pub fn try_new(meta: VideoMeta, bitrate_bps: Option<u64>) -> Result<Self, VideoRenditionError> {
         if meta.urls.is_empty() {
             return Err(VideoRenditionError::EmptySources);
@@ -40,16 +44,16 @@ impl VideoRendition {
         self.bitrate_bps.map(NonZeroU64::get)
     }
 
-    pub(crate) fn identity(&self) -> RepresentationId {
+    pub fn identity(&self) -> RepresentationId {
         RepresentationId::from_meta(&self.meta)
     }
 
-    pub(crate) fn quality(&self) -> Option<Rendition> {
+    pub(super) fn quality(&self) -> Option<Rendition> {
         let bitrate = self.bitrate_bits_per_second()?;
         Rendition::try_new(self.identity().fingerprint(), bitrate).ok()
     }
 
-    pub(crate) fn quality_id(&self) -> RenditionId {
+    pub(super) fn quality_id(&self) -> RenditionId {
         RenditionId::try_new(self.identity().fingerprint()).expect("representation id is non-empty")
     }
 }

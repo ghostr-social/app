@@ -4,7 +4,7 @@
 //! limit stays temporary until filled traffic proves a useful gain without
 //! materially inflating request latency; an unclaimed trial is abandoned.
 
-use std::time::Duration;
+use core::time::Duration;
 
 mod occupancy;
 pub use occupancy::ConcurrencyOccupancy;

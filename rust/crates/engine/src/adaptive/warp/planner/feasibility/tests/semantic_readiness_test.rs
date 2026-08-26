@@ -41,12 +41,9 @@ fn unsupported_cached_media_cannot_block_a_playable_rescue() {
     let unsupported = input.candidates[0].post.clone();
     let rescue = input.candidates[1].post.clone();
     let context = PlannerContext::explicitly_unavailable(&input)
-        .with_capability(
-            unsupported.clone(),
-            PlannerCapability::reported(false, None, 1),
-        )
-        .with_semantic(unsupported, SemanticScore::Known(1_000))
-        .with_semantic(rescue.clone(), SemanticScore::Known(1));
+        .with_capability(&unsupported, PlannerCapability::reported(false, None, 1))
+        .with_semantic(&unsupported, SemanticScore::Known(1_000))
+        .with_semantic(&rescue, SemanticScore::Known(1));
     let base = AllocationPlan::default();
     let origins = OriginModel::default();
     let planner_input = WarpPlannerInput::new(&input, &base, &origins, &context);

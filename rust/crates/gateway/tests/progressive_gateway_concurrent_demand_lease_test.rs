@@ -3,7 +3,7 @@ mod gateway_fixture;
 use gateway_fixture::progressive::progressive_harness;
 use ghostr_delivery::playback_demand::DemandState;
 use std::collections::HashSet;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn current_and_prepared_next_responses_own_distinct_demand_leases() {
@@ -13,13 +13,31 @@ async fn current_and_prepared_next_responses_own_distinct_demand_leases() {
         harness
             .bind_video(post, &format!("https://cdn.example/{post}.mp4"), Some(10))
             .await;
-        harness.store.set_total_len(post, 10).await.unwrap();
-        harness.store.write_range(post, 0, &[7]).await.unwrap();
+        harness
+            .store
+            .set_total_len(post, 10)
+            .await
+            .expect("valid test fixture");
+        harness
+            .store
+            .write_range(post, 0, &[7])
+            .await
+            .expect("valid test fixture");
     }
     let current = harness.video_request("current", Some("bytes=0-9")).await;
     let next = harness.video_request("next", Some("bytes=0-9")).await;
-    let current = harness.router.clone().oneshot(current).await.unwrap();
-    let next = harness.router.clone().oneshot(next).await.unwrap();
+    let current = harness
+        .router
+        .clone()
+        .oneshot(current)
+        .await
+        .expect("valid test fixture");
+    let next = harness
+        .router
+        .clone()
+        .oneshot(next)
+        .await
+        .expect("valid test fixture");
 
     let first = blocked(harness.demand.recv().await.expect("first lease"));
     let second = blocked(harness.demand.recv().await.expect("second lease"));

@@ -15,7 +15,7 @@ use ghostr_engine::origin_model::{
 
 #[tokio::test]
 async fn manager_persists_wifi_and_cellular_origin_evidence_separately() {
-    tokio::time::timeout(std::time::Duration::from_secs(20), exercise_manager())
+    tokio::time::timeout(core::time::Duration::from_secs(20), exercise_manager())
         .await
         .expect("network-class evidence deadline");
 }
@@ -42,14 +42,21 @@ async fn transfer(
     network: NetworkClass,
     generation: u64,
 ) {
-    assert!(harness
-        .handle
-        .update_network_status(DeliveryNetworkStatus::new(network, generation)));
+    assert!(
+        harness
+            .handle
+            .update_network_status(DeliveryNetworkStatus::new(network, generation)),
+        "the network generation must advance"
+    );
     let item = sized_item(post, url, 16, 1_000);
     let admission = harness
         .handle
         .update_focus(focus_now(vec![item], 0, generation * 1_000));
-    assert_eq!(admission, FocusAdmission::Accepted);
+    assert_eq!(
+        admission,
+        FocusAdmission::Accepted,
+        "the transfer focus must be admitted"
+    );
     wait_for_ranges(&harness.store, post, &[(0, 16)]).await;
 }
 
@@ -68,8 +75,15 @@ fn assert_unavailable_is_cold(stats: &HostStats, url: &str) {
     let estimate = stats
         .origin_model()
         .estimate(&query, now, DecisionMode::Normal);
-    assert_eq!(estimate.effective_samples, 0.0);
-    assert_eq!(estimate.context.network, NetworkClass::Unavailable);
+    assert_eq!(
+        estimate.effective_samples, 0.0,
+        "unclassified network evidence must remain cold"
+    );
+    assert_eq!(
+        estimate.context.network,
+        NetworkClass::Unavailable,
+        "the estimate must preserve the requested network class"
+    );
 }
 
 fn query(url: &str, network: NetworkClass, observed_at_ms: u64) -> OriginQuery {
@@ -84,6 +98,6 @@ fn query(url: &str, network: NetworkClass, observed_at_ms: u64) -> OriginQuery {
 fn now_ms() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
+        .expect("valid test fixture")
         .as_millis() as u64
 }

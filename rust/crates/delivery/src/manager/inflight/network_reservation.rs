@@ -6,10 +6,11 @@ pub(crate) struct NetworkReservation {
     uncommitted_prefix_bytes: u64,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct FinishedAction {
     status: CompletionStatus,
     network_reservation: Option<NetworkReservation>,
+    exploration_claim: Option<ghostr_engine::origin_model::ExplorationClaim>,
 }
 
 impl NetworkReservation {
@@ -23,12 +24,18 @@ impl NetworkReservation {
 }
 
 impl FinishedAction {
-    pub(crate) const fn status(self) -> CompletionStatus {
+    pub(crate) const fn status(&self) -> CompletionStatus {
         self.status
     }
 
-    pub(crate) const fn network_reservation(self) -> Option<NetworkReservation> {
+    pub(crate) const fn network_reservation(&self) -> Option<NetworkReservation> {
         self.network_reservation
+    }
+
+    pub(crate) fn exploration_claim(
+        &self,
+    ) -> Option<&ghostr_engine::origin_model::ExplorationClaim> {
+        self.exploration_claim.as_ref()
     }
 }
 
@@ -46,11 +53,13 @@ impl InFlightChunks {
                 committed_bytes: active.committed_network_bytes,
                 uncommitted_prefix_bytes: active.uncommitted_network_prefix_bytes,
             });
+        let exploration_claim = active.exploration_claim.clone();
         self.transfers.remove(&attempt.id());
         self.hedges.remove(&attempt.id());
         FinishedAction {
             status,
             network_reservation,
+            exploration_claim,
         }
     }
 }
@@ -59,5 +68,6 @@ const fn superseded() -> FinishedAction {
     FinishedAction {
         status: CompletionStatus::Superseded,
         network_reservation: None,
+        exploration_claim: None,
     }
 }

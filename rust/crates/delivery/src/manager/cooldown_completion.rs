@@ -3,13 +3,13 @@ use crate::manager::DeliveryWorker;
 use ghostr_engine::PostId;
 
 impl DeliveryWorker {
-    pub(crate) fn finish_cooldown(&mut self, post: PostId, cooldown: CooldownId) {
-        if !self.cooldown_timers.finish(&post, cooldown) {
+    pub(super) fn finish_cooldown(&mut self, post: &PostId, cooldown: CooldownId) {
+        if !self.cooldown_timers.finish(post, cooldown) {
             return;
         }
-        if !self.retry.warm_up(&post, cooldown) {
+        if !self.retry.warm_up(post, cooldown) {
             return;
         }
-        self.revive_segmented(&post);
+        self.revive_segmented(post);
     }
 }

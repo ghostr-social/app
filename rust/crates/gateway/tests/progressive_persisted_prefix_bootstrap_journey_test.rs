@@ -1,11 +1,11 @@
 mod gateway_fixture;
 
+use core::time::Duration;
 use gateway_fixture::progressive_delivery::ProgressiveDeliveryHarness;
 use gateway_fixture::progressive_journey_item::unknown_item;
 use gateway_fixture::progressive_journey_origin::ProgressiveJourneyOrigin;
 use ghostr_delivery::delivery_events::FocusItem;
 use ghostr_engine::catalog::Catalog;
-use std::time::Duration;
 
 const STORED_PREFIX: usize = 262_144;
 
@@ -50,17 +50,20 @@ async fn seed_prefix(harness: &ProgressiveDeliveryHarness, item: &FocusItem) {
         .store
         .bind_representation(binding)
         .await
-        .unwrap();
+        .expect("valid test fixture");
     harness
         .delivery
         .store
         .select_transfer(identity.clone())
         .await
-        .unwrap();
-    assert!(harness
-        .delivery
-        .store
-        .write_range_for_transfer_if_current(&identity, 0, &vec![1; STORED_PREFIX])
-        .await
-        .unwrap());
+        .expect("valid test fixture");
+    assert!(
+        harness
+            .delivery
+            .store
+            .write_range_for_transfer_if_current(&identity, 0, &vec![1; STORED_PREFIX])
+            .await
+            .expect("valid test fixture"),
+        "the persisted prefix must belong to the selected transfer"
+    );
 }

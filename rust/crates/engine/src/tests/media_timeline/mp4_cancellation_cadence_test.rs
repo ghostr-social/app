@@ -1,7 +1,7 @@
 use crate::media_timeline::{
     parse_mp4_segments_with_control, MediaSegment, TimelineError, TimelineParseControl,
 };
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 const INPUT_BYTES: usize = 8 * 1024 * 1024;
 const MAXIMUM_BYTES_BETWEEN_POLLS: usize = 4 * 1024;

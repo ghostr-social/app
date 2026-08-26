@@ -66,9 +66,7 @@ extension _VideoPlayerSurfaceLoading on _VideoPlayerSurfaceState {
       _failPreparation(PlayerPreparationFailureKind.invalidVideoTrack);
       await _rejectControllerPermanently(controller);
     } on Object catch (error, stackTrace) {
-      _logInitializationFailure(error, stackTrace);
-      _failPreparation(PlayerPreparationFailureKind.initialization);
-      await _rejectController(controller);
+      await _handlePreparationFailure(controller, error, stackTrace);
     }
   }
 

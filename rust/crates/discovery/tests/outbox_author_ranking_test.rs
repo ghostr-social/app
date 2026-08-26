@@ -1,11 +1,9 @@
 //! Write relays shared by more of the queried authors rank first, and
 //! rank ties break by URL ascending — mirrors `_rankedWriteRelays` in
-//! lib/platform/nostr/ndk_nostr_outbox_directory.dart.
+//! `lib/platform/nostr/ndk_nostr_outbox_directory.dart`.
 
-mod discovery_support;
-
-use discovery_support::write_relay_list;
-use ghostr_discovery::outbox::directory::OutboxDirectory;
+use crate::outbox::directory::OutboxDirectory;
+use crate::tests::discovery_support::write_relay_list;
 use nostr_sdk::Keys;
 
 #[test]

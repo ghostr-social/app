@@ -17,7 +17,7 @@ impl MediaHttpRequests for RewritingClient {
 async fn adapter_cannot_execute_a_different_authority_under_the_raw_url_lease() {
     let requests = MediaRequestExecutor::new(
         Arc::new(RewritingClient(Client::new())),
-        MediaRequestLimits::try_new(1, 1).unwrap(),
+        MediaRequestLimits::try_new(1, 1).expect("valid test fixture"),
     );
 
     let result = requests
@@ -25,7 +25,7 @@ async fn adapter_cannot_execute_a_different_authority_under_the_raw_url_lease() 
             "https://media.example/video",
             PreemptionAuthority::Transition,
         )
-        .unwrap()
+        .expect("valid test fixture")
         .admit()
         .await;
 

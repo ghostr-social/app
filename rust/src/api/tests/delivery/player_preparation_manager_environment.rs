@@ -42,7 +42,7 @@ fn manager_config(
         store,
         requests: MediaRequestExecutor::new(
             Arc::new(NoRequest),
-            MediaRequestLimits::try_new(1, 1).unwrap(),
+            MediaRequestLimits::try_new(1, 1).expect("test fixture precondition must hold"),
         ),
         cache,
         segmented: SegmentedCache::new(),
@@ -62,10 +62,10 @@ fn unique_stats_root() -> PathBuf {
         std::process::id(),
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("test fixture precondition must hold")
             .as_nanos()
     ));
-    std::fs::create_dir_all(&root).unwrap();
+    std::fs::create_dir_all(&root).expect("test fixture precondition must hold");
     root
 }
 

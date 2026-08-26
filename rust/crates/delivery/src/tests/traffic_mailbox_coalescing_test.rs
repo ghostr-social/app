@@ -1,13 +1,13 @@
 use crate::manager::traffic::{channel, TrafficEvent, TransferKey, SAMPLE_INTERVAL};
 use crate::manager::transfers::InternalEvent;
-use std::time::Duration;
+use core::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time::Instant;
 
 #[tokio::test(start_paused = true)]
 async fn body_chunks_coalesce_into_one_bounded_manager_wake() {
     let (events, mut wakes) = mpsc::unbounded_channel();
-    let (publisher, mut inbox) = channel(events, 2);
+    let (publisher, inbox) = channel(events, 2);
     let started = Instant::now();
     let transfer = TransferKey::new(7);
 

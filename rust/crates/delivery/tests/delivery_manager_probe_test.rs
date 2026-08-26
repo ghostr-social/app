@@ -3,18 +3,18 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::items::{focus_now, unsized_item};
 use delivery_fixture::media::{hit_log, hits, media_body, serve_recording, HitLog};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use delivery_fixture::wait::{wait_for_ranges, wait_total_len};
 use ghostr_engine::EngineParams;
-use std::time::Duration;
 
 #[tokio::test]
 async fn delivery_manager_probes_unknown_size_posts() {
     let log = hit_log();
-    let origin = serve_recording("origin", media_body(), log.clone()).await;
+    let origin = serve_recording("origin", media_body(), std::sync::Arc::clone(&log)).await;
     let mut options = DeliveryOptions::default();
     options.params = EngineParams {
         chunk_bytes: 4,
@@ -57,5 +57,5 @@ async fn wait_for_head_and_body(log: &HitLog) -> Vec<String> {
         "HEAD did not converge to body: {:?}",
         hits(log)
     );
-    observed.unwrap()
+    observed.expect("valid test fixture")
 }

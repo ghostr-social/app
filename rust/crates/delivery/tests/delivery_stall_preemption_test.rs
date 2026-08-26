@@ -2,6 +2,7 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::host_hol::SlowHost;
 use delivery_fixture::items::{focus_now, seed_range, sized_item};
 use delivery_fixture::options::{base_params, DeliveryOptions};
@@ -11,7 +12,6 @@ use ghostr_engine::playback::{
     PlaybackObservation, PlaybackObservationSequence, PlaybackPhase, PlaybackSession,
 };
 use ghostr_engine::{EngineParams, PostId};
-use std::time::Duration;
 
 #[tokio::test]
 async fn network_stall_preempts_a_still_wanted_ahead_transfer() {
@@ -41,7 +41,7 @@ async fn network_stall_preempts_a_still_wanted_ahead_transfer() {
     );
     current.release();
     ahead.release();
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }
 
@@ -55,7 +55,7 @@ fn stalled_playback() -> DeliveryPlayback {
             1_000,
             PlaybackPhase::NetworkStalled,
         )
-        .unwrap(),
+        .expect("valid test fixture"),
     }
 }
 

@@ -42,7 +42,7 @@ async fn real_range_outcome_updates_contextual_origin_model() {
 
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
+        .expect("valid test fixture")
         .as_millis() as u64;
     let query = OriginQuery::new(
         url,

@@ -1,4 +1,4 @@
-//! A feed open cannot claim one account while its MainFeed embeds another.
+//! A feed open cannot claim one account while its `MainFeed` embeds another.
 
 mod support;
 
@@ -64,8 +64,8 @@ async fn account_mismatches_do_not_allocate_or_rescope_a_feed() {
     .expect("account B main feed");
 
     assert_eq!(
-        next.parse::<u64>().unwrap(),
-        fresh.parse::<u64>().unwrap() + 1
+        next.parse::<u64>().expect("next feed id must be numeric"),
+        fresh.parse::<u64>().expect("fresh feed id must be numeric") + 1
     );
     assert!(ffi_load_more(fresh, None)
         .await

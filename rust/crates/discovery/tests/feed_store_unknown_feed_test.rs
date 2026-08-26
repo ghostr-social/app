@@ -1,10 +1,8 @@
 //! Pages for a closed or unknown feed ID never recreate that feed.
 
-mod feed_support;
-
-use feed_support::{empty_graph, parsed, video_note};
-use ghostr_discovery::content::deletions::deletion_claims;
-use ghostr_discovery::feed::store::{FeedId, FeedStore};
+use crate::content::deletions::deletion_claims;
+use crate::feed::store::{FeedId, FeedStore};
+use crate::tests::feed_support::{empty_graph, parsed, video_note};
 use nostr_sdk::{EventBuilder, Keys, Kind, Tag};
 
 #[test]

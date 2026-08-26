@@ -1,16 +1,22 @@
 use super::request_resources;
 use crate::manager::plan::PlannedTransfer;
 use ghostr_engine::adaptive::{ExecutedRequest, ResourceCost};
+use ghostr_engine::origin_model::ExplorationClaim;
 
 pub(super) struct AdmittedGrant {
     pub(super) transfer: PlannedTransfer,
     pub(super) executed: ExecutedRequest,
     pub(super) resources: ResourceCost,
     pub(super) observed_at_ms: u64,
+    pub(super) exploration_claim: Option<ExplorationClaim>,
 }
 
 impl AdmittedGrant {
-    pub(super) fn new(transfer: PlannedTransfer, observed_at_ms: u64) -> Self {
+    pub(super) fn new(
+        transfer: PlannedTransfer,
+        observed_at_ms: u64,
+        exploration_claim: Option<ExplorationClaim>,
+    ) -> Self {
         let resources = request_resources(transfer.retrieval);
         let executed = ExecutedRequest {
             post: transfer.request.chunk.post.clone(),
@@ -23,6 +29,7 @@ impl AdmittedGrant {
             executed,
             resources,
             observed_at_ms,
+            exploration_claim,
         }
     }
 }

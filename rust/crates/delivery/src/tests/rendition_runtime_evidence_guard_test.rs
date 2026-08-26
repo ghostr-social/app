@@ -7,7 +7,7 @@ use ghostr_engine::playback::{
 };
 use ghostr_engine::video_rendition::VideoRendition;
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn runtime_quality_waits_for_both_playback_and_measured_network_evidence() {
@@ -25,7 +25,7 @@ fn runtime_quality_waits_for_both_playback_and_measured_network_evidence() {
     let empty = HostStats::new();
 
     assert!(select_rendition(&mut state, &empty, 1_000).is_none());
-    assert!(state.apply_playback(playback(post)).is_accepted());
+    assert!(state.apply_playback(&playback(post)).is_accepted());
     assert!(select_rendition(&mut state, &empty, 1_000).is_none());
 }
 
@@ -39,7 +39,7 @@ fn playback(post: PostId) -> DeliveryPlayback {
             1_000,
             PlaybackPhase::Starting,
         )
-        .unwrap(),
+        .expect("valid test fixture"),
     }
 }
 
@@ -54,5 +54,5 @@ fn rendition(name: &str, bitrate: u64) -> VideoRendition {
         },
         Some(bitrate),
     )
-    .unwrap()
+    .expect("valid test fixture")
 }

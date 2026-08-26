@@ -7,7 +7,7 @@ mod privacy;
 mod tracker;
 mod types;
 
-pub use events::{
+pub(crate) use events::{
     AdaptationMetricEvent, BudgetMetricEvent, IntegrityMetricEvent, PlaybackMetricEvent,
     PresentationMetricEvent, ReadinessMetricEvent, SemanticMetricEvent, TransferMetricEvent,
 };

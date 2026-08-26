@@ -1,9 +1,10 @@
+use super::super::axiom_test_support::open;
 use super::super::telemetry::FetchProgress;
-use super::super::{open, FetchRuntime, FetchSpec};
+use super::super::{FetchRuntime, FetchSpec};
 use super::support::{client, network_status, stalled_headers};
+use core::time::Duration;
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
-use std::time::Duration;
 
 #[tokio::test]
 async fn occupied_gate_expires_as_the_hls_total_deadline() {
@@ -24,9 +25,8 @@ async fn occupied_gate_expires_as_the_hls_total_deadline() {
     let network = network_status();
     let progress = FetchProgress::default();
     let runtime = FetchRuntime::new(&requests, deadline, &network, &progress);
-    let error = match open(runtime, spec(&url, timing)).await {
-        Ok(_) => panic!("transfer must hit its total deadline"),
-        Err(error) => error,
+    let Err(error) = open(runtime, spec(&url, timing)).await else {
+        panic!("transfer must hit its total deadline")
     };
     assert!(error.to_string().contains("request admission timed out"));
     drop(held);

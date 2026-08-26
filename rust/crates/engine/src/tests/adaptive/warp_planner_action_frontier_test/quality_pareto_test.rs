@@ -1,5 +1,6 @@
 use super::action;
-use crate::adaptive::{ActionFrontier, EpsilonBuckets};
+use crate::adaptive::axiom_test_support::ActionFrontier;
+use crate::adaptive::EpsilonBuckets;
 
 #[test]
 fn exact_pruning_keeps_a_quality_resource_tradeoff() {

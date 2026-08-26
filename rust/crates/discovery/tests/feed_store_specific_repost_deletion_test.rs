@@ -1,11 +1,11 @@
-mod feed_support;
-
-use feed_support::{addressable_video, empty_graph, parsed, signed_event, SignedEventFixture};
-use ghostr_discovery::content::deletions::deletion_claims;
-use ghostr_discovery::content::reposts::feed_post_from_event;
-use ghostr_discovery::feed::spec::FeedSpec;
-use ghostr_discovery::feed::store::FeedStore;
-use nostr_sdk::{JsonUtil, Keys, Kind};
+use crate::content::deletions::deletion_claims;
+use crate::content::reposts::feed_post_from_event;
+use crate::feed::spec::FeedSpec;
+use crate::feed::store::FeedStore;
+use crate::tests::feed_support::{
+    addressable_video, empty_graph, parsed, signed_event, SignedEventFixture,
+};
+use nostr_sdk::{JsonUtil as _, Keys, Kind};
 
 #[test]
 fn deleted_specific_repost_does_not_adopt_a_newer_revision() {
@@ -34,7 +34,7 @@ fn deleted_specific_repost_does_not_adopt_a_newer_revision() {
     });
     store.ingest_first_page(
         feed,
-        vec![feed_post_from_event(&wrapper).unwrap()],
+        vec![feed_post_from_event(&wrapper).expect("valid test fixture")],
         &empty_graph(),
     );
     store.ingest_deletions(feed, deletion_claims(&[deletion]), &empty_graph());

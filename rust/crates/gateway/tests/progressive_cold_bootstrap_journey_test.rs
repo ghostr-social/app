@@ -2,11 +2,11 @@ mod gateway_fixture;
 
 use axum::body::to_bytes;
 use axum::http::{Method, StatusCode};
+use core::time::Duration;
 use gateway_fixture::progressive_delivery::ProgressiveDeliveryHarness;
 use gateway_fixture::progressive_journey_item::unknown_item;
 use gateway_fixture::progressive_journey_origin::ProgressiveJourneyOrigin;
-use std::time::Duration;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn cold_focus_starts_admitted_body_bytes_without_waiting_for_head() {

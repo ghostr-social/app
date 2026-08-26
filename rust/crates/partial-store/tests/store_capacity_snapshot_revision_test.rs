@@ -1,6 +1,4 @@
-mod store_fixture;
-
-use store_fixture::{discard, limits, spaced_store};
+use crate::tests::store_fixture::{discard, limits, spaced_store};
 
 #[tokio::test]
 async fn capacity_snapshot_revision_changes_when_equal_storage_totals_are_reconfigured() {

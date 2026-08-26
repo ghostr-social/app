@@ -1,12 +1,10 @@
-//! Kind-10002 relay lists are replaceable: a strictly newer created_at
+//! Kind-10002 relay lists are replaceable: a strictly newer `created_at`
 //! replaces the author's list, an older or equally old event is ignored
 //! — the newest-wins floor mirrors `_newestContact`/`_newestMute` in
-//! lib/platform/nostr/ndk_nostr_social_models.dart.
+//! `lib/platform/nostr/ndk_nostr_social_models.dart`.
 
-mod discovery_support;
-
-use discovery_support::write_relay_list;
-use ghostr_discovery::outbox::directory::OutboxDirectory;
+use crate::outbox::directory::OutboxDirectory;
+use crate::tests::discovery_support::write_relay_list;
 use nostr_sdk::Keys;
 
 fn relays_of(directory: &OutboxDirectory, keys: &Keys) -> Vec<String> {

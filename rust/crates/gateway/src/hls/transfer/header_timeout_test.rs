@@ -1,8 +1,8 @@
 use super::test_fixture::fixture;
 use super::HlsTransfer;
+use core::time::Duration;
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
-use std::time::Duration;
 
 #[tokio::test]
 async fn header_deadline_wins_before_the_hls_total_deadline() {
@@ -15,9 +15,8 @@ async fn header_deadline_wins_before_the_hls_total_deadline() {
         Duration::from_secs(1),
         Duration::from_secs(1),
     );
-    let error = match HlsTransfer::open(request, timing).await {
-        Ok(_) => panic!("transfer must hit its header deadline"),
-        Err(error) => error,
+    let Err(error) = HlsTransfer::open(request, timing).await else {
+        panic!("transfer must hit its header deadline")
     };
     assert!(error.to_string().contains("response headers timed out"));
     assert!(!error.to_string().contains("object transfer timed out"));

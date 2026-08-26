@@ -6,7 +6,8 @@ use crate::ByteRange;
 #[test]
 fn vbr_samples_map_playback_time_to_their_exact_byte_extents() {
     let moov = classic_moov(&[1_000, 1_500, 3_000, 3_500], &[100, 900, 200, 800]);
-    let timeline = parse_mp4_segments(&[MediaSegment::new(400, &moov)]).unwrap();
+    let timeline =
+        parse_mp4_segments(&[MediaSegment::new(400, &moov)]).expect("valid test fixture");
 
     let first = media_ranges(&timeline, 0, 1_000);
     let second = media_ranges(&timeline, 1_000, 2_000);

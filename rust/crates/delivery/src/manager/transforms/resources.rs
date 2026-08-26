@@ -12,11 +12,11 @@ impl TransformActualResources {
         }
     }
 
-    pub(crate) const fn cpu_ms(self) -> u64 {
+    pub(super) const fn cpu_ms(self) -> u64 {
         self.cpu_ms
     }
 
-    pub(crate) const fn storage_bytes(self) -> u64 {
+    pub(super) const fn storage_bytes(self) -> u64 {
         self.storage_bytes
     }
 }

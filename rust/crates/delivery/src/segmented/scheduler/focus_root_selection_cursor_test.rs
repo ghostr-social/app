@@ -19,11 +19,11 @@ fn root_selection_preserves_same_cursor_and_clears_a_changed_root() {
         cache.store_stage_block(
             &post,
             1,
-            crate::segmented::cache::StageBlock::partial(0, object("a"))
+            crate::segmented::cache::axiom_test_support::StageBlock::partial(0, object("a"))
         ),
-        Some(crate::segmented::cache::StoredStage::Partial)
+        Some(crate::segmented::cache::axiom_test_support::StoredStage::Partial)
     ));
-    let pending = delivery.pending.get_mut(&post).unwrap();
+    let pending = delivery.pending.get_mut(&post).expect("valid test fixture");
     *pending = pending.continued(continuation());
     let cursor = pending.cursor();
 
@@ -41,15 +41,17 @@ fn continuation() -> ObjectContinuation {
     ObjectContinuation {
         next_offset: 256 * 1024,
         total: 512 * 1024,
-        final_url: root("a").parse().unwrap(),
-        strong_etag: single_strong_etag(&headers).unwrap().unwrap(),
+        final_url: root("a").parse().expect("valid test fixture"),
+        strong_etag: single_strong_etag(&headers)
+            .expect("valid test fixture")
+            .expect("valid test fixture"),
     }
 }
 
 fn object(name: &str) -> PreparedObject {
     PreparedObject {
         request_url: root(name),
-        final_url: root(name).parse().unwrap(),
+        final_url: root(name).parse().expect("valid test fixture"),
         body: Arc::from(vec![1; 256 * 1024]),
         content_type: None,
         cache: Default::default(),
@@ -71,7 +73,7 @@ fn focus() -> DeliveryFocus {
         previews: Vec::new(),
         current_index: 0,
         watch_ms: 0,
-        generation: FocusGeneration::try_new(1).unwrap(),
+        generation: FocusGeneration::try_new(1).expect("valid test fixture"),
         transition: FocusTransition::RosterChange,
         rescue: None,
     }

@@ -2,12 +2,12 @@ mod gateway_fixture;
 
 use axum::body::to_bytes;
 use axum::http::StatusCode;
+use core::time::Duration;
 use gateway_fixture::progressive_delivery::ProgressiveDeliveryHarness;
 use gateway_fixture::progressive_journey_item::unknown_item;
 use gateway_fixture::progressive_journey_origin::ProgressiveJourneyOrigin;
 use ghostr_delivery::manager::DeliveryTuning;
-use std::time::Duration;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn lengthless_head_cannot_preempt_an_admitted_bootstrap_get() {
@@ -27,7 +27,9 @@ async fn lengthless_head_cannot_preempt_an_admitted_bootstrap_get() {
         .await
         .expect("gateway response");
     let status = response.status();
-    let body = to_bytes(response.into_body(), 2_048).await.unwrap();
+    let body = to_bytes(response.into_body(), 2_048)
+        .await
+        .expect("valid test fixture");
 
     assert_eq!(status, StatusCode::PARTIAL_CONTENT);
     assert!(!body.is_empty());

@@ -4,7 +4,9 @@ mod raw_http;
 
 use delivery_fixture::{media_client, temp_directory};
 use ghostr_delivery::chunk::cancel::cancel_pair;
-use ghostr_delivery::chunk::downloader::{ChunkSink, ChunkSpec};
+use ghostr_delivery::chunk::downloader::{
+    ChunkSink, ChunkSpec, ResponseObservation, ResponseRejection,
+};
 use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::origin_model::{
@@ -14,7 +16,7 @@ use ghostr_engine::ByteRange;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
-use range_fixture::download_chunk_throttled;
+use range_fixture::{download_chunk_with_traffic, ObservationTraffic};
 use raw_http::spawn_raw_server;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -46,15 +48,20 @@ async fn chunk_downloader_rejects_partial_content_without_a_content_range() {
         key: "clip",
     };
 
-    let error = download_chunk_throttled(
+    let mut traffic = ObservationTraffic::default();
+    let outcome = download_chunk_with_traffic(
         &spec,
         &sink,
         range_fixture::context(&mut stats, &token, &NetworkThrottle::new()),
+        &mut traffic,
     )
-    .await
-    .expect_err("malformed partial response must fail");
+    .await;
 
-    assert!(error.to_string().contains("missing Content-Range"));
+    assert!(outcome.is_err(), "malformed partial response must fail");
+    assert_eq!(
+        traffic.observation(),
+        Some(ResponseObservation::Rejected(ResponseRejection::Semantics))
+    );
     assert!(store
         .present_ranges("clip")
         .await
@@ -62,7 +69,7 @@ async fn chunk_downloader_rejects_partial_content_without_a_content_range() {
         .is_empty());
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
+        .expect("valid test fixture")
         .as_millis() as u64;
     let query = OriginQuery::new(
         url,

@@ -2,8 +2,8 @@ use crate::relay::pool::RelayReadRequest;
 use crate::test_support::read_request;
 use crate::tests::relay_health_owner_fixture::{health_owner, RegistrationLog};
 use crate::tests::relay_io_health_fixture::HealthRelayIo;
+use core::time::Duration;
 use std::sync::Arc;
-use std::time::Duration;
 
 const HEALTHY: &str = "wss://healthy.example";
 const FAILING: &str = "wss://failing.example";
@@ -12,7 +12,10 @@ const FAILING: &str = "wss://failing.example";
 async fn owner_skips_cooling_relay_then_reintroduces_one_recovery_probe() {
     let io = Arc::new(HealthRelayIo::new(FAILING));
     let registrations = Arc::new(RegistrationLog::default());
-    let owner = health_owner(io.clone(), registrations.clone());
+    let owner = health_owner(
+        std::sync::Arc::clone(&io),
+        std::sync::Arc::clone(&registrations),
+    );
     assert!(
         !owner
             .read(request([HEALTHY, FAILING]))
@@ -48,7 +51,10 @@ async fn owner_skips_cooling_relay_then_reintroduces_one_recovery_probe() {
 #[tokio::test(start_paused = true)]
 async fn all_cooling_targets_return_retryable_incomplete_without_io() {
     let io = Arc::new(HealthRelayIo::new(FAILING));
-    let owner = health_owner(io.clone(), Arc::new(RegistrationLog::default()));
+    let owner = health_owner(
+        std::sync::Arc::clone(&io),
+        Arc::new(RegistrationLog::default()),
+    );
     assert!(
         !owner
             .read(request([FAILING]))

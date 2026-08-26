@@ -4,7 +4,7 @@ use super::limits::ParserBudget;
 use super::{TimedRange, TimelineError};
 use crate::ByteRange;
 
-pub(crate) fn parse(
+pub(super) fn parse(
     atom: &Atom<'_>,
     budget: &mut ParserBudget<'_>,
     ranges: &mut Vec<TimedRange>,
@@ -63,6 +63,7 @@ fn version_fields(data: &[u8], version: u8) -> Result<(u64, u64, usize), Timelin
     }
 }
 
+#[derive(Clone, Copy)]
 struct ReferenceTiming {
     offset: u64,
     size: u64,
@@ -98,19 +99,21 @@ fn u16_at(data: &[u8], offset: usize) -> Result<u16, TimelineError> {
     let bytes = data
         .get(offset..offset + 2)
         .ok_or(TimelineError::Truncated)?;
-    Ok(u16::from_be_bytes(bytes.try_into().unwrap()))
+    Ok(u16::from_be_bytes([bytes[0], bytes[1]]))
 }
 
 fn u32_at(data: &[u8], offset: usize) -> Result<u32, TimelineError> {
     let bytes = data
         .get(offset..offset + 4)
         .ok_or(TimelineError::Truncated)?;
-    Ok(u32::from_be_bytes(bytes.try_into().unwrap()))
+    Ok(u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
 }
 
 fn u64_at(data: &[u8], offset: usize) -> Result<u64, TimelineError> {
     let bytes = data
         .get(offset..offset + 8)
         .ok_or(TimelineError::Truncated)?;
-    Ok(u64::from_be_bytes(bytes.try_into().unwrap()))
+    Ok(u64::from_be_bytes([
+        bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+    ]))
 }

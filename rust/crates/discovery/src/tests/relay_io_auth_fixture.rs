@@ -1,6 +1,6 @@
-use futures_util::{SinkExt, StreamExt};
+use core::time::Duration;
+use futures_util::{SinkExt as _, StreamExt as _};
 use serde_json::Value;
-use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::tungstenite::Message;
 

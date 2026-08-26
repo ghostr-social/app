@@ -23,12 +23,12 @@ fn authoritative_resource_snapshot_survives_json_and_exact_replay() {
         &OriginModel::default(),
         &context,
     ));
-    let json = serde_json::to_string(&record(&state, &decision)).unwrap();
-    let restored: DecisionRecord = serde_json::from_str(&json).unwrap();
+    let json = serde_json::to_string(&record(&state, &decision)).expect("valid test fixture");
+    let restored: DecisionRecord = serde_json::from_str(&json).expect("valid test fixture");
 
     assert!(json.contains("\"cursor\":{\"epoch\":3,\"revision\":7}"));
     assert!(json.contains("\"network_micros\":101"));
-    assert_eq!(restored.replay(), DecisionReplayStatus::Verified);
+    assert_eq!(restored.integrity_status(), DecisionReplayStatus::Verified);
     assert!(restored.replay_warp_search().is_ok());
 }
 

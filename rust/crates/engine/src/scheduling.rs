@@ -1,6 +1,6 @@
 use crate::adaptive::PreemptionAuthority;
 use crate::ChunkId;
-use std::cmp::Ordering;
+use core::cmp::Ordering;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RangeRequest {
@@ -22,10 +22,10 @@ pub fn compare(left: &RangeRequest, right: &RangeRequest) -> Ordering {
 fn transition_depth_order(left: &RangeRequest, right: &RangeRequest) -> Ordering {
     let both_transition = left.authority == PreemptionAuthority::Transition
         && right.authority == PreemptionAuthority::Transition;
-    match both_transition {
-        true => left
-            .contiguous_depth_bytes
-            .cmp(&right.contiguous_depth_bytes),
-        false => Ordering::Equal,
+    if both_transition {
+        left.contiguous_depth_bytes
+            .cmp(&right.contiguous_depth_bytes)
+    } else {
+        Ordering::Equal
     }
 }

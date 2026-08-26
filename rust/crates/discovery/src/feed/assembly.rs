@@ -6,13 +6,6 @@ use std::collections::HashMap;
 
 use crate::content::parsing::ParsedVideoPost;
 use crate::content::reposts::RepostTarget;
-/// One canonical post per coordinate — newest created_at wins, ties keep
-/// the lexicographically smaller event id — ordered newest-first with
-/// ascending-ID tiebreak.
-pub fn canonical_posts(fetched: Vec<ParsedVideoPost>) -> Vec<ParsedVideoPost> {
-    canonical_posts_from_axes(fetched.clone(), fetched)
-}
-
 pub(crate) fn canonical_posts_from_axes(
     contents: Vec<ParsedVideoPost>,
     occurrences: Vec<ParsedVideoPost>,
@@ -37,6 +30,10 @@ pub(crate) fn canonical_posts_from_axes(
     posts.sort_by(newest_first);
     posts
 }
+
+#[cfg(test)]
+#[path = "assembly/test_support.rs"]
+pub(crate) mod test_support;
 
 fn is_newer(incoming: &ParsedVideoPost, current: &ParsedVideoPost) -> bool {
     if incoming.event_id == current.event_id {
@@ -65,7 +62,7 @@ fn occurrence_tiebreak(incoming: &ParsedVideoPost, current: &ParsedVideoPost) ->
     }
 }
 
-fn newest_first(left: &ParsedVideoPost, right: &ParsedVideoPost) -> std::cmp::Ordering {
+fn newest_first(left: &ParsedVideoPost, right: &ParsedVideoPost) -> core::cmp::Ordering {
     right
         .feed_sort_at
         .cmp(&left.feed_sort_at)

@@ -33,8 +33,8 @@ pub(super) fn final_admission(
     total_bytes: usize,
 ) -> StageAdmission {
     let request = StageRequest::new(url("current"), prefix_bytes as u64, block_bytes as u64);
-    let reservation =
-        StageReservation::final_block(block_bytes as u64, total_bytes as u64).unwrap();
+    let reservation = StageReservation::final_block(block_bytes as u64, total_bytes as u64)
+        .expect("valid test fixture");
     admission(post, 3, request, reservation)
 }
 
@@ -42,7 +42,7 @@ pub(super) fn object(name: &str, bytes: usize) -> PreparedObject {
     let url = url(name);
     PreparedObject {
         request_url: url.clone(),
-        final_url: url.parse().unwrap(),
+        final_url: url.parse().expect("valid test fixture"),
         body: Arc::from(vec![0; bytes]),
         content_type: None,
         cache: Default::default(),
@@ -54,7 +54,7 @@ fn store_complete(cache: &SegmentedCache, post: &PostId, object: PreparedObject)
     let request = StageRequest::new(object.request_url.clone(), 0, bytes);
     let lease = cache
         .admit_stage(admission(post, 1, request, StageReservation::block(bytes)))
-        .unwrap();
+        .expect("valid test fixture");
     assert!(lease.commit_complete(PreparedComplete::new(object)));
 }
 
@@ -67,7 +67,7 @@ fn store_partial(cache: &SegmentedCache, post: &PostId, bytes: usize) {
             request,
             StageReservation::block(bytes as u64),
         ))
-        .unwrap();
+        .expect("valid test fixture");
     assert!(lease.commit_partial(object("current", bytes)));
 }
 

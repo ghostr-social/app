@@ -12,8 +12,8 @@ fn full_probe_pool_does_not_consume_invalidated_head_history() {
     let mut catalog = Catalog::new();
     let active_binding = catalog.upsert(active.clone(), metadata("active"));
     let stale_binding = catalog.upsert(stale.clone(), metadata("stale"));
-    let active_identity = active_binding.transfer(source("active")).unwrap();
-    let stale_identity = stale_binding.transfer(source("stale")).unwrap();
+    let active_identity = active_binding.transfer(source("active")).expect("valid test fixture");
+    let stale_identity = stale_binding.transfer(source("stale")).expect("valid test fixture");
     assert!(catalog.learn_head_observation_for(
         &stale_identity,
         observation(Some(16), Some(true), "v1", 1)
@@ -22,7 +22,7 @@ fn full_probe_pool_does_not_consume_invalidated_head_history() {
     let mut probes = MetadataProbePool::new(1);
     probes
         .claim_selected(query(&catalog, &retry, &active, source("active")))
-        .unwrap();
+        .expect("valid test fixture");
     probes.learned(
         &stale_identity,
         catalog.http_generation_for(&stale_identity),

@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 
+use core::time::Duration;
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use reqwest::{Client, RequestBuilder};
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{mpsc, Semaphore};
 
@@ -38,8 +38,10 @@ pub struct HeldOrigin {
 
 impl HeldOrigin {
     pub async fn serve() -> Self {
-        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let address = listener.local_addr().unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("valid test fixture");
+        let address = listener.local_addr().expect("valid test fixture");
         let (hits, hit_events) = mpsc::unbounded_channel();
         let release = Arc::new(Semaphore::new(0));
         let task_release = Arc::clone(&release);

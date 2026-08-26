@@ -1,8 +1,8 @@
 use super::gate::RequestLease;
 use bytes::Bytes;
+use core::time::Duration;
 use reqwest::header::HeaderMap;
 use reqwest::{Response, StatusCode, Url};
-use std::time::Duration;
 
 pub struct MediaResponse {
     inner: Response,
@@ -48,6 +48,9 @@ impl MediaResponse {
         elapsed.saturating_sub(self.redirect_admission_wait())
     }
 
+    /// # Errors
+    ///
+    /// Returns an error when the next response chunk cannot be read.
     pub async fn chunk(&mut self) -> reqwest::Result<Option<Bytes>> {
         let chunk = self.inner.chunk().await;
         if let Ok(Some(bytes)) = &chunk {
@@ -60,6 +63,9 @@ impl MediaResponse {
         chunk
     }
 
+    /// # Errors
+    ///
+    /// Returns an error when the response status is not successful.
     pub fn error_for_status(self) -> reqwest::Result<Self> {
         self.inner.error_for_status_ref()?;
         Ok(self)

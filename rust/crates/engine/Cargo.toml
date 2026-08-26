@@ -2,7 +2,12 @@
 name = "ghostr-engine"
 version = "0.1.0"
 edition = "2021"
+publish = false
+autotests = false
 description = "Pure deterministic adaptive media allocation, focus, budgets, and host evidence."
+
+[features]
+test = []
 
 [dependencies]
 serde = { workspace = true }

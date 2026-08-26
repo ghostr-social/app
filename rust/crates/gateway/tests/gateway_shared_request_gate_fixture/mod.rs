@@ -27,7 +27,7 @@ impl SharedGateScenario {
             Arc::new(client_with_event_cache()),
         )
         .await
-        .unwrap();
+        .expect("valid test fixture");
         runtime.delivery().update_focus(setup::focus(&video.url));
         let demand = setup::demand(&runtime).await;
         Self {
@@ -47,16 +47,24 @@ impl SharedGateScenario {
             .runtime
             .acquire_hls(vec![self.manifest.url.clone()])
             .await
-            .unwrap();
-        let client = reqwest::Client::builder().no_proxy().build().unwrap();
-        let hls =
-            tokio::spawn(async move { client.get(session.playback_url).send().await.unwrap() });
+            .expect("valid test fixture");
+        let client = reqwest::Client::builder()
+            .no_proxy()
+            .build()
+            .expect("valid test fixture");
+        let hls = tokio::spawn(async move {
+            client
+                .get(session.playback_url)
+                .send()
+                .await
+                .expect("valid test fixture")
+        });
         self.manifest.expect_quiet().await;
         active.finish().await;
         tokio::time::timeout(Duration::from_secs(1), self.manifest.next())
             .await
             .expect("HLS starts after release");
-        assert!(hls.await.unwrap().status().is_success());
+        assert!(hls.await.expect("valid test fixture").status().is_success());
         std::fs::remove_dir_all(self.root).ok();
     }
 }

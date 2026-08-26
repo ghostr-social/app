@@ -1,4 +1,5 @@
-use crate::manager::timeline::load_timeline;
+use crate::manager::timeline::axiom_test_support::load_timeline;
+
 use crate::tests::media_timeline_fixture::classic_moov;
 use crate::tests::support::temp_directory;
 use ghostr_engine::{ByteRange, PostId};
@@ -22,9 +23,9 @@ async fn disjoint_tail_metadata_hydrates_without_reading_the_file_middle() {
     store
         .write_range("post", moov_start - 200, &tail)
         .await
-        .unwrap();
+        .expect("valid test fixture");
     let total = moov_start + moov.len() as u64;
-    store.set_total_len("post", total).await.unwrap();
+    store.set_total_len("post", total).await.expect("valid test fixture");
     let present = [ByteRange::new(
         moov_start - 200,
         moov_start + moov.len() as u64,
@@ -35,7 +36,7 @@ async fn disjoint_tail_metadata_hydrates_without_reading_the_file_middle() {
         .expect("tail timeline");
 
     assert!(timeline.fits_within(total));
-    tokio::fs::remove_dir_all(root).await.unwrap();
+    tokio::fs::remove_dir_all(root).await.expect("valid test fixture");
 }
 
 #[tokio::test]
@@ -49,7 +50,7 @@ async fn incomplete_metadata_keeps_the_planner_on_its_safe_fallback() {
     store
         .write_range("post", 0, &[0, 0, 1, 0, b'm', b'o', b'o', b'v'])
         .await
-        .unwrap();
+        .expect("valid test fixture");
 
     let timeline = load_timeline(
         &store,
@@ -60,7 +61,7 @@ async fn incomplete_metadata_keeps_the_planner_on_its_safe_fallback() {
     .await;
 
     assert!(timeline.is_none());
-    tokio::fs::remove_dir_all(root).await.unwrap();
+    tokio::fs::remove_dir_all(root).await.expect("valid test fixture");
 }
 
 #[tokio::test]
@@ -72,9 +73,9 @@ async fn sample_offsets_beyond_the_representation_are_not_authorized() {
         StoreCapacity::system(u64::MAX),
     );
     let moov = classic_moov(100_000, 100);
-    store.write_range("post", 0, &moov).await.unwrap();
+    store.write_range("post", 0, &moov).await.expect("valid test fixture");
     let total = moov.len() as u64;
-    store.set_total_len("post", total).await.unwrap();
+    store.set_total_len("post", total).await.expect("valid test fixture");
 
     let timeline = load_timeline(
         &store,
@@ -85,5 +86,5 @@ async fn sample_offsets_beyond_the_representation_are_not_authorized() {
     .await;
 
     assert!(timeline.is_none());
-    tokio::fs::remove_dir_all(root).await.unwrap();
+    tokio::fs::remove_dir_all(root).await.expect("valid test fixture");
 }

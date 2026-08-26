@@ -44,7 +44,11 @@ async fn chunk_downloader_rejects_coded_bytes_hidden_after_identity() {
     .await
     .expect_err("coded bytes must not enter the sparse store");
 
-    assert!(store.present_ranges("clip").await.unwrap().is_empty());
+    assert!(store
+        .present_ranges("clip")
+        .await
+        .expect("valid test fixture")
+        .is_empty());
     request.await.expect("upstream request");
     std::fs::remove_dir_all(root).ok();
 }

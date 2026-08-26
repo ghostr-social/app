@@ -2,19 +2,19 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::items::{focus_now, unsized_mirrored_item};
 use delivery_fixture::media::{hit_log, hits, media_body, serve_recording};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::probe_origins::serve_lengthless;
 use delivery_fixture::start_harness;
 use delivery_fixture::wait::wait_total_len;
-use std::time::Duration;
 
 #[tokio::test]
 async fn delivery_manager_falls_back_after_a_lengthless_probe() {
     let lengthless = serve_lengthless().await;
     let log = hit_log();
-    let mirror = serve_recording("mirror", media_body(), log.clone()).await;
+    let mirror = serve_recording("mirror", media_body(), std::sync::Arc::clone(&log)).await;
     let mut options = DeliveryOptions::default();
     options.tuning.retry.transient_attempts = 1;
     options.params.conservative_concurrency = 0;

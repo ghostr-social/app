@@ -36,11 +36,11 @@ pub(crate) fn parse_feed_spec(spec: &FfiFeedSpec) -> Result<FeedSpec> {
 pub(crate) fn parse_feed_id(raw: &str) -> Result<FeedId> {
     raw.parse::<u64>()
         .map(FeedId)
-        .map_err(|_| anyhow!("feed ids are the numeric strings ffi_open_feed returned"))
+        .map_err(|error| anyhow!("feed ids are numeric strings from ffi_open_feed: {error}"))
 }
 
 /// Dart has already dropped the ids that decode to nothing
-/// (rust_feed_spec_builder.dart), so an empty list means the caller
+/// (`rust_feed_spec_builder.dart`), so an empty list means the caller
 /// asked for a feed that cannot exist.
 fn parsed_keys(raw: &[String]) -> Result<Vec<PublicKey>> {
     if raw.is_empty() {

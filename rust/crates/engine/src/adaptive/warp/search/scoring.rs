@@ -14,7 +14,7 @@ pub struct TwinSearchContext<'a> {
 }
 
 impl<'a> TwinSearchContext<'a> {
-    pub fn new(twin: &'a mut DigitalTwin, state: TwinState, epochs: TwinEpochs) -> Self {
+    pub(crate) fn new(twin: &'a mut DigitalTwin, state: TwinState, epochs: TwinEpochs) -> Self {
         Self {
             twin,
             state,

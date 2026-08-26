@@ -42,15 +42,21 @@ pub async fn serve_full_unstable() -> (String, Requests) {
 
 async fn start(change: Change) -> (String, Requests) {
     let requests = Requests::default();
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let address = listener.local_addr().unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("valid test fixture");
+    let address = listener.local_addr().expect("valid test fixture");
     let app = Router::new()
         .fallback(get(object))
         .with_state(FixtureState {
-            requests: requests.clone(),
+            requests: std::sync::Arc::clone(&requests),
             change,
         });
-    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    tokio::spawn(async move {
+        axum::serve(listener, app)
+            .await
+            .expect("valid test fixture");
+    });
     (format!("http://{address}/index.m3u8"), requests)
 }
 
@@ -59,6 +65,9 @@ async fn object(State(state): State<FixtureState>, uri: Uri, headers: HeaderMap)
         "/index.m3u8" => full(MANIFEST, "root-v1"),
         "/init.mp4" => init(&headers, &state),
         "/segment.m4s" => full(b"segment", "segment-v1"),
-        _ => Response::builder().status(404).body(Body::empty()).unwrap(),
+        _ => Response::builder()
+            .status(404)
+            .body(Body::empty())
+            .expect("valid test fixture"),
     }
 }

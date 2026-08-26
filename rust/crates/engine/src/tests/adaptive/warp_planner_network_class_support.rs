@@ -7,28 +7,28 @@ use crate::origin_model::{
 };
 use crate::tests::adaptive_support::snapshot;
 
-pub(super) const SOURCE: &str = "https://same.example/video.mp4";
+const SOURCE: &str = "https://same.example/video.mp4";
 
 pub(super) struct NetworkClassFixture {
-    pub snapshot: crate::adaptive::PlayabilitySnapshot,
-    pub base: AllocationPlan,
-    pub origins: OriginModel,
-    pub context: PlannerContext,
+    pub(super) snapshot: crate::adaptive::PlayabilitySnapshot,
+    pub(super) base: AllocationPlan,
+    pub(super) origins: OriginModel,
+    pub(super) context: PlannerContext,
 }
 
 #[derive(Clone, Copy)]
 pub(super) struct NetworkEvidence {
-    pub class: NetworkClass,
-    pub rate: u64,
-    pub ttfb: u64,
-    pub observed_at_ms: u64,
+    class: NetworkClass,
+    rate: u64,
+    ttfb: u64,
+    observed_at_ms: u64,
 }
 
 pub(super) fn fixture(network_class: NetworkClass) -> NetworkClassFixture {
     let mut snapshot = snapshot(1, 80_000_000, 20_000, 0);
     for candidate in &mut snapshot.candidates {
         candidate.feed_offset = FeedOffset::new(0);
-        candidate.view_probability = ViewProbability::new(1.0).unwrap();
+        candidate.view_probability = ViewProbability::new(1.0).expect("valid test fixture");
         candidate.origins[0].source = SOURCE.to_owned();
     }
     let base = AdaptivePlayabilityPolicy.plan(&snapshot);
@@ -85,7 +85,7 @@ pub(super) fn record(model: &mut OriginModel, source: &str, evidence: NetworkEvi
             .with_network(evidence.class)
             .with_observed_at_ms(evidence.observed_at_ms);
         model.observe(
-            OriginObservation::success(OriginQuery::new(source, context), evidence.observed_at_ms)
+            &OriginObservation::success(OriginQuery::new(source, context), evidence.observed_at_ms)
                 .with_ttfb_ms(evidence.ttfb)
                 .with_throughput_bps(evidence.rate),
         );

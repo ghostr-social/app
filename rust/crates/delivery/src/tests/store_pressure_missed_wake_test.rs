@@ -5,7 +5,7 @@ use ghostr_partial_store::partial_range_store::free_space::FreeSpace;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::Path;
 use std::sync::Arc;
-use std::time::Duration;
+use core::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::timeout;
 
@@ -21,7 +21,7 @@ impl FreeSpace for PlentyOfSpace {
 async fn capacity_change_before_wait_subscription_is_not_lost() {
     let (store, root) = bounded_store();
     let refusal = fill_and_refuse(&store).await;
-    store.set_storage_budget(16).await.unwrap();
+    store.set_storage_budget(16).await.expect("valid test fixture");
     let mut changes = store.capacity_changes();
 
     let changed = timeout(
@@ -37,7 +37,7 @@ async fn capacity_change_before_wait_subscription_is_not_lost() {
     .expect("capacity change predating subscription must remain visible");
 
     assert!(changed);
-    std::fs::remove_dir_all(root).unwrap();
+    std::fs::remove_dir_all(root).expect("valid test fixture");
 }
 
 fn bounded_store() -> (PartialRangeStore, std::path::PathBuf) {

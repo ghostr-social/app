@@ -2,12 +2,10 @@
 //! host, default ports and trailing slashes stripped, and duplicate
 //! urls within one event keep the last marker — mirrors ndk's
 //! `cleanRelayUrl` composed with `RelayUrl.tryParse`
-//! (lib/features/settings/domain/relay_url.dart).
+//! (`lib/features/settings/domain/relay_url.dart`).
 
-mod discovery_support;
-
-use discovery_support::{r_tag, r_tag_marked, relay_list};
-use ghostr_discovery::outbox::directory::OutboxDirectory;
+use crate::outbox::directory::OutboxDirectory;
+use crate::tests::discovery_support::{r_tag, r_tag_marked, relay_list};
 use nostr_sdk::Keys;
 
 fn ingested(keys: &Keys, tags: Vec<Vec<String>>) -> Vec<String> {

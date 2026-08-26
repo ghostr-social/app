@@ -1,6 +1,6 @@
 use crate::hls_manifest::MAX_HLS_MANIFEST_BYTES;
 use crate::hls_manifest_attributes::quoted_attribute;
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{bail, ensure, Context as _, Result};
 use url::Url;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -9,12 +9,17 @@ pub enum HlsBootstrap {
     Media { init: Option<Url>, segment: Url },
 }
 
+/// Inspects a bounded HLS manifest and resolves its first playable resource.
+///
+/// # Errors
+///
+/// Returns an error for malformed, unsupported, live, oversized, or non-HTTP manifests.
 pub fn inspect_hls_bootstrap(body: &[u8], base_url: &Url) -> Result<HlsBootstrap> {
     ensure!(
         body.len() <= MAX_HLS_MANIFEST_BYTES,
         "HLS manifest exceeds its byte limit"
     );
-    let text = std::str::from_utf8(body).context("HLS manifest must be UTF-8")?;
+    let text = core::str::from_utf8(body).context("HLS manifest must be UTF-8")?;
     require_header(text)?;
     let mut scan = Scan::default();
     for raw in text.lines().skip(1) {

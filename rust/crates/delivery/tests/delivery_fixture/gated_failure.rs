@@ -1,7 +1,7 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
+use core::time::Duration;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{oneshot, Notify};
 use tokio::time::Instant;
@@ -20,7 +20,12 @@ pub async fn serve() -> GatedFailure {
     let release = Arc::new(Notify::new());
     let (started, observed) = oneshot::channel();
     let started = Arc::new(Mutex::new(Some(started)));
-    tokio::spawn(accept(listener, attempts.clone(), release.clone(), started));
+    tokio::spawn(accept(
+        listener,
+        std::sync::Arc::clone(&attempts),
+        std::sync::Arc::clone(&release),
+        started,
+    ));
     GatedFailure {
         url: format!("http://{address}/video.mp4"),
         attempts,
@@ -66,9 +71,9 @@ async fn accept(
     started: Arc<Mutex<Option<oneshot::Sender<()>>>>,
 ) {
     while let Ok((socket, _)) = listener.accept().await {
-        let attempts = attempts.clone();
-        let started = started.clone();
-        let release = release.clone();
+        let attempts = std::sync::Arc::clone(&attempts);
+        let started = std::sync::Arc::clone(&started);
+        let release = std::sync::Arc::clone(&release);
         tokio::spawn(async move { answer(socket, attempts, started, release).await });
     }
 }

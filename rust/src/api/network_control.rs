@@ -14,8 +14,8 @@ pub enum FfiDeliveryNetworkClass {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FfiDeliveryNetworkStatus {
-    pub network_class: FfiDeliveryNetworkClass,
-    pub generation: u64,
+    pub(crate) network_class: FfiDeliveryNetworkClass,
+    pub(crate) generation: u64,
 }
 
 impl FfiDeliveryNetworkStatus {

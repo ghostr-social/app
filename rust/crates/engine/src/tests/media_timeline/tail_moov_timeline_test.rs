@@ -11,7 +11,8 @@ fn a_tail_moov_authorizes_early_samples_without_the_middle_of_the_file() {
     let mut tail = vec![0xa5; 200];
     tail.extend_from_slice(&moov);
 
-    let timeline = parse_mp4_segments(&[MediaSegment::new(segment_start, &tail)]).unwrap();
+    let timeline =
+        parse_mp4_segments(&[MediaSegment::new(segment_start, &tail)]).expect("valid test fixture");
     let startup = required_ranges(&timeline, 0, 1_000);
 
     assert_eq!(

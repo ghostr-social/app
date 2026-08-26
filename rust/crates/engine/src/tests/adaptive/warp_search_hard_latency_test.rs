@@ -2,7 +2,7 @@ use crate::adaptive::{
     ActionKind, ActionNode, ActionValue, BeamConfig, HardBudget, SearchPruneReason, WarpSearch,
 };
 use crate::{ByteRange, PostId};
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn latency_limit_is_checked_before_each_scorer_evaluation() {

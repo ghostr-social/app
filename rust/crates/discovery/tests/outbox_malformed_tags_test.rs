@@ -1,12 +1,10 @@
 //! Only well-formed NIP-65 write declarations are ingested: malformed
 //! r tags, non-relay URLs, and read-only markers are skipped — mirrors
 //! ndk's Nip65.fromEvent plus the `RelayUrl.tryParse` validation in
-//! `_writeUrls` of lib/platform/nostr/ndk_nostr_outbox_directory.dart.
+//! `_writeUrls` of `lib/platform/nostr/ndk_nostr_outbox_directory.dart`.
 
-mod discovery_support;
-
-use discovery_support::{list_event, r_tag, r_tag_marked, relay_list};
-use ghostr_discovery::outbox::directory::OutboxDirectory;
+use crate::outbox::directory::OutboxDirectory;
+use crate::tests::discovery_support::{list_event, r_tag, r_tag_marked, relay_list};
 use nostr_sdk::{Keys, Kind};
 
 fn ingested(keys: &Keys, tags: Vec<Vec<String>>) -> Vec<String> {

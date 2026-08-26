@@ -8,7 +8,7 @@ fn coordinate_resolution_uses_the_smaller_id_on_a_timestamp_tie() {
     let reposter = Keys::generate();
     let first = addressable_video(&creator, "https://cdn.example/one.mp4");
     let second = addressable_video(&creator, "https://cdn.example/two.mp4");
-    let winner = std::cmp::min(first.id, second.id).to_hex();
+    let winner = core::cmp::min(first.id, second.id).to_hex();
     let coordinate = format!("34235:{}:clip", creator.public_key());
     let wrapper = signed_wrapper(&reposter, 16, "", vec![tag(&["a", &coordinate])]);
 

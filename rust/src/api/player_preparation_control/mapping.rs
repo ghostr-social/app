@@ -1,6 +1,6 @@
 use crate::api::delivery::focus_mapping::validate_post_id;
 use crate::api::delivery_types::{FfiPlayerPreparationReport, FfiPlayerPreparationState};
-use anyhow::Context;
+use anyhow::Context as _;
 use ghostr_delivery::delivery_events::{
     PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationClaim,
     PlayerPreparationFollowup, PlayerPreparationObservation, PlayerPreparationReport,
@@ -22,7 +22,7 @@ pub(super) fn map_initial(
 }
 
 pub(super) fn map_followup(
-    input: FfiPlayerPreparationReport,
+    input: &FfiPlayerPreparationReport,
 ) -> anyhow::Result<PlayerPreparationFollowup> {
     validate_post_id(&input.post_id)?;
     let claim = PlayerPreparationClaim::try_new(
@@ -31,13 +31,8 @@ pub(super) fn map_followup(
         &input.asset_id,
     )
     .context("player preparation claim is invalid")?;
-    PlayerPreparationFollowup::try_new(
-        claim,
-        attempt(&input)?,
-        input.sequence,
-        observation(&input)?,
-    )
-    .context("player preparation sequence must be positive")
+    PlayerPreparationFollowup::try_new(claim, attempt(input)?, input.sequence, observation(input)?)
+        .context("player preparation sequence must be positive")
 }
 
 fn attempt(input: &FfiPlayerPreparationReport) -> anyhow::Result<PlayerPreparationAttempt> {

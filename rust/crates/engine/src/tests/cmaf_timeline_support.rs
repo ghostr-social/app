@@ -23,7 +23,7 @@ pub(super) fn cmaf_sidx_v1(timescale: u32, earliest: u64, size: u32, duration: u
     full_box(b"sidx", 1, body)
 }
 
-pub(super) fn full_box(kind: &[u8; 4], version: u8, body: Vec<u8>) -> Vec<u8> {
+fn full_box(kind: &[u8; 4], version: u8, body: Vec<u8>) -> Vec<u8> {
     let mut payload = vec![version, 0, 0, 0];
     payload.extend(body);
     let mut bytes = ((payload.len() + 8) as u32).to_be_bytes().to_vec();

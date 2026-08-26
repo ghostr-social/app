@@ -22,7 +22,7 @@ async fn store_validation_failure_is_proven_not_admitted() {
         std::process::id(),
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("test fixture precondition must hold")
             .as_nanos()
     ));
     let store = Arc::new(PartialRangeStore::with_capacity(
@@ -30,10 +30,11 @@ async fn store_validation_failure_is_proven_not_admitted() {
         Arc::new(Mutex::new(0)),
         StoreCapacity::system(u64::MAX),
     ));
-    std::fs::create_dir_all(root.join("clip.transform.video")).unwrap();
+    std::fs::create_dir_all(root.join("clip.transform.video"))
+        .expect("test fixture precondition must hold");
     let tracked = TrackedItems::new();
     tracked.insert("clip".to_owned(), sized_meta(16, 2_000));
-    let (delivery, mut commands) = command_channel();
+    let (delivery, commands) = command_channel();
     let context = PlayerPreparationContext {
         store,
         capabilities: ProgressiveCapabilities::production(),
@@ -48,7 +49,7 @@ async fn store_validation_failure_is_proven_not_admitted() {
     );
     assert!(commands.try_player_preparation().is_none());
     drop(context);
-    std::fs::remove_dir_all(root).unwrap();
+    std::fs::remove_dir_all(root).expect("test fixture precondition must hold");
 }
 
 fn input() -> FfiPlayerPreparationReport {

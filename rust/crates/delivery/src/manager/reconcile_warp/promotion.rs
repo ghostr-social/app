@@ -51,11 +51,14 @@ impl DeliveryWorker {
             .downloads
             .preflight_promotion(target, time::unix_time_ms())
             .map_err(PromotionRejection::class)?;
-        let store = self.ctx.store.clone();
+        let store = std::sync::Arc::clone(&self.ctx.store);
         let extension = store
             .extend_action(preflight.store_action(), target.maximum_bytes())
             .await
-            .map_err(|_| "warp_promotion_store_extension_rejected")?;
+            .map_err(|error| {
+                log::warn!("WARP promotion store extension was rejected: {error:#}");
+                "warp_promotion_store_extension_rejected"
+            })?;
         if extension.additional_bytes() != preflight.additional_bytes()
             || !self
                 .downloads

@@ -2,7 +2,7 @@ use crate::api::feed::state::FeedState;
 use crate::api::feed_types::FfiFeedRepostTarget;
 use crate::api::tests::feed_fixtures::{profile_event, signed_event, SignedEventFixture};
 use crate::discovery::feed::spec::FeedSpec;
-use nostr_sdk::{JsonUtil, Keys, Kind};
+use nostr_sdk::{JsonUtil as _, Keys, Kind};
 
 #[test]
 fn coordinate_repost_snapshot_resolves_its_reposter() {

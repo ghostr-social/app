@@ -1,5 +1,6 @@
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::media::{hit_log, hits, media_body, serve_recording, HitLog};
 use delivery_fixture::options::DeliveryOptions;
@@ -8,7 +9,6 @@ use delivery_fixture::temp_directory;
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Mutex;
 
 #[tokio::test]
@@ -26,7 +26,7 @@ async fn unpersistable_total_length_does_not_stop_delivery_reconciliation() {
     std::fs::remove_dir(&blocked_root).expect("remove store root");
     std::fs::write(&blocked_root, b"not a directory").expect("block store root");
     let log = hit_log();
-    let origin = serve_recording("origin", media_body(), log.clone()).await;
+    let origin = serve_recording("origin", media_body(), std::sync::Arc::clone(&log)).await;
     let harness = start_harness_with_store(store, blocked_root.clone(), DeliveryOptions::default());
 
     harness.handle.update_focus(focus_now(

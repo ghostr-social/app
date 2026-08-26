@@ -37,27 +37,27 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RecordedWarpDecision {
     pub selected: Option<RecordedWarpAction>,
-    pub admissible_actions: Vec<RecordedWarpAction>,
-    pub admissible_actions_total: u64,
-    pub unattributed_pre_search_pruned_actions: Vec<RecordedWarpAction>,
-    pub unattributed_pre_search_pruned_actions_total: u64,
+    pub(crate) admissible_actions: Vec<RecordedWarpAction>,
+    pub(crate) admissible_actions_total: u64,
+    pub(crate) unattributed_pre_search_pruned_actions: Vec<RecordedWarpAction>,
+    pub(crate) unattributed_pre_search_pruned_actions_total: u64,
     pub search: RecordedWarpSearch,
     pub prices: RecordedResourcePrices,
-    pub evaluation: Option<RecordedTwinEvaluation>,
-    pub reserve: RecordedWarpReserve,
-    pub additional_request_slot_demanded: bool,
+    pub(super) evaluation: Option<RecordedTwinEvaluation>,
+    pub(crate) reserve: RecordedWarpReserve,
+    additional_request_slot_demanded: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub retry_availability: Vec<RecordedPlannerRetryEvidence>,
+    pub(crate) retry_availability: Vec<RecordedPlannerRetryEvidence>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub search_replay_input: Option<RecordedWarpSearchInput>,
+    pub(super) search_replay_input: Option<RecordedWarpSearchInput>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub planner_replay_capsule: Option<RecordedPlannerReplayCapsule>,
+    pub(super) planner_replay_capsule: Option<RecordedPlannerReplayCapsule>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RecordedPlannerRetryEvidence {
-    pub post_id: String,
-    pub availability: RecordedPlannerRetryAvailability,
+    pub(crate) post_id: String,
+    pub(crate) availability: RecordedPlannerRetryAvailability,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -69,31 +69,31 @@ pub enum RecordedPlannerRetryAvailability {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RecordedWarpSearch {
-    pub committed_actions: u8,
-    pub used_greedy_fallback: bool,
-    pub chosen_plan: Option<RecordedRetainedSearchPlan>,
-    pub retained_plans: Vec<RecordedRetainedSearchPlan>,
-    pub retained_plans_total: u64,
+    pub(crate) committed_actions: u8,
+    pub(crate) used_greedy_fallback: bool,
+    pub(crate) chosen_plan: Option<RecordedRetainedSearchPlan>,
+    pub(crate) retained_plans: Vec<RecordedRetainedSearchPlan>,
+    pub(crate) retained_plans_total: u64,
     /// Search already keeps only a bounded audit sample; these are those recorded prunes.
-    pub recorded_pruned_plans: Vec<RecordedPrunedSearchPlan>,
-    pub pruned_plan_events_total: u64,
-    pub pruned_plan_sample_truncated: bool,
-    pub recorder_truncated_pruned_plans: bool,
+    pub(crate) recorded_pruned_plans: Vec<RecordedPrunedSearchPlan>,
+    pub(crate) pruned_plan_events_total: u64,
+    pub(crate) pruned_plan_sample_truncated: bool,
+    pub(super) recorder_truncated_pruned_plans: bool,
     pub common_random_seed: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RecordedRetainedSearchPlan {
-    pub actions: Vec<RecordedWarpAction>,
-    pub actions_total: u64,
-    pub score_micros: i64,
+    pub(crate) actions: Vec<RecordedWarpAction>,
+    pub(super) actions_total: u64,
+    score_micros: i64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RecordedPrunedSearchPlan {
-    pub actions: Vec<RecordedWarpAction>,
-    pub actions_total: u64,
-    pub reason: RecordedSearchPruneReason,
+    pub(crate) actions: Vec<RecordedWarpAction>,
+    pub(super) actions_total: u64,
+    pub(crate) reason: RecordedSearchPruneReason,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -109,14 +109,14 @@ pub enum RecordedSearchPruneReason {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RecordedWarpAction {
-    pub planner_action_id: u16,
-    pub post_id: String,
-    pub kind: RecordedWarpActionKind,
+    pub(crate) planner_action_id: u16,
+    pub(super) post_id: String,
+    pub(super) kind: RecordedWarpActionKind,
     pub command: RecordedWarpCommand,
     pub resources: RecordedResourceCost,
-    pub dependencies: Vec<u16>,
-    pub ready_playback_ms: u64,
-    pub static_score_micros: i64,
+    pub(super) dependencies: Vec<u16>,
+    pub(super) ready_playback_ms: u64,
+    pub(super) static_score_micros: i64,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -129,23 +129,23 @@ pub struct RecordedResourceCost {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RecordedResourcePrices {
-    pub network_micros: u64,
-    pub storage_micros: u64,
+    pub(crate) network_micros: u64,
+    storage_micros: u64,
     pub cpu_micros: u64,
-    pub request_micros: u64,
+    request_micros: u64,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RecordedTwinEvaluation {
-    pub expected_score_micros: i64,
-    pub expected_visible_delay_ms: u64,
-    pub p95_visible_delay_ms: u64,
-    pub p99_visible_delay_ms: u64,
-    pub cvar_visible_delay_ms: u64,
-    pub on_time_probability_bps: u16,
-    pub expected_ready_coverage_ms: u64,
-    pub expected_cache_bytes: u64,
-    pub common_random_seed: u64,
+    expected_score_micros: i64,
+    expected_visible_delay_ms: u64,
+    p95_visible_delay_ms: u64,
+    p99_visible_delay_ms: u64,
+    cvar_visible_delay_ms: u64,
+    on_time_probability_bps: u16,
+    expected_ready_coverage_ms: u64,
+    expected_cache_bytes: u64,
+    pub(super) common_random_seed: u64,
 }
 
 pub(super) use capture::{capture, WarpCapture};

@@ -7,6 +7,7 @@ use super::{
 
 const COLD_DIRECT_FETCH_CAP_BYTES: u64 = 1024 * 1024;
 
+#[derive(Clone, Copy)]
 pub(super) struct AllocationInputs<'a> {
     pub(super) candidate: &'a CandidateSnapshot,
     pub(super) origin: &'a OriginHealth,
@@ -124,9 +125,10 @@ fn authority(
     if candidate.post == snapshot.playback.current && emergency {
         return PreemptionAuthority::PlaybackCritical;
     }
-    match candidate.feed_offset.magnitude() <= 1 {
-        true => PreemptionAuthority::Transition,
-        false => PreemptionAuthority::Speculative,
+    if candidate.feed_offset.magnitude() <= 1 {
+        PreemptionAuthority::Transition
+    } else {
+        PreemptionAuthority::Speculative
     }
 }
 
@@ -136,13 +138,15 @@ fn reason(
     emergency: bool,
 ) -> AllocationReason {
     if candidate.post == snapshot.playback.current {
-        return match emergency {
-            true => AllocationReason::CurrentStallPrevention,
-            false => AllocationReason::CurrentBufferReserve,
+        return if emergency {
+            AllocationReason::CurrentStallPrevention
+        } else {
+            AllocationReason::CurrentBufferReserve
         };
     }
-    match snapshot.navigation.forward_swipes_per_minute >= 12 {
-        true => AllocationReason::RapidNavigationCoverage,
-        false => AllocationReason::LikelyNextTransition,
+    if snapshot.navigation.forward_swipes_per_minute >= 12 {
+        AllocationReason::RapidNavigationCoverage
+    } else {
+        AllocationReason::LikelyNextTransition
     }
 }

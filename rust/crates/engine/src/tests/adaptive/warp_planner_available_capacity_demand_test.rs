@@ -19,7 +19,12 @@ fn selected_action_reports_demand_for_an_independent_second_slot() {
 }
 
 fn independent_requests(decision: &crate::adaptive::WarpPlanningDecision) -> usize {
-    let chosen = &decision.search.chosen_plan.as_ref().unwrap().action_ids;
+    let chosen = &decision
+        .search
+        .chosen_plan
+        .as_ref()
+        .expect("valid test fixture")
+        .action_ids;
     decision
         .generated
         .actions
@@ -43,7 +48,7 @@ fn scenario() -> Scenario {
     input.candidates[0].retrieval_eligible = false;
     for candidate in &mut input.candidates {
         candidate.present.push(candidate.playable_ranges[0].bytes);
-        candidate.view_probability = ViewProbability::new(1.0).unwrap();
+        candidate.view_probability = ViewProbability::new(1.0).expect("valid test fixture");
     }
     let base = AdaptivePlayabilityPolicy.plan(&input);
     assert_eq!(base.mode, ControlMode::Normal);

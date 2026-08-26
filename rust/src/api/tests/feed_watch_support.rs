@@ -4,7 +4,7 @@
 
 use crate::api::feed_types::FfiFeedUpdate;
 use crate::api::feed_updates_stream::FeedOut;
-use std::time::Duration;
+use core::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 

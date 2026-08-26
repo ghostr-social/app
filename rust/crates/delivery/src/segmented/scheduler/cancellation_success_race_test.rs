@@ -17,14 +17,17 @@ async fn queued_success_is_superseded_without_losing_origin_or_resource_truth() 
 
     delivery.apply_focus(&focus(2, "https://new.example/root.m3u8"));
     assert!(!delivery.active[&post].cancelling);
-    let finish = delivery.finish(done).unwrap();
+    let finish = delivery.finish(done).expect("valid test fixture");
 
     assert_eq!(finish.outcome, DecisionOutcome::Superseded);
     assert_eq!(
         finish.actual_resources,
         Some(ResourceCost::new(MANIFEST.len() as u64, 0, 0, 1))
     );
-    assert_eq!(finish.observation.unwrap().outcome, OriginOutcome::Success);
+    assert_eq!(
+        finish.observation.expect("valid test fixture").outcome,
+        OriginOutcome::Success
+    );
     assert_eq!(cache.snapshot("stream").phase, SegmentedPhase::Queued);
     assert_eq!(delivery.pending[&post].generation, 2);
 }

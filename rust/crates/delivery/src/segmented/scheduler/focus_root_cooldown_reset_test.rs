@@ -26,7 +26,7 @@ fn adding_an_untried_root_resets_cooldown_after_all_roots_retire() {
     let mut delivery = SegmentedDelivery::new(cache.clone());
     assert!(delivery.apply_focus(&focus(1, &["a", "b"])));
     let post = PostId::new("stream");
-    let pending = delivery.pending.remove(&post).unwrap();
+    let pending = delivery.pending.remove(&post).expect("valid test fixture");
     assert!(cache.mark_stage_failed(&post, pending.generation, "retired".to_owned()));
 
     assert!(delivery
@@ -53,7 +53,7 @@ fn focus(generation: u64, names: &[&str]) -> DeliveryFocus {
         previews: Vec::new(),
         current_index: 0,
         watch_ms: 0,
-        generation: FocusGeneration::try_new(generation).unwrap(),
+        generation: FocusGeneration::try_new(generation).expect("valid test fixture"),
         transition: FocusTransition::RosterChange,
         rescue: None,
     }

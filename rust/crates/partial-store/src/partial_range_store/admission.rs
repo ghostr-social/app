@@ -1,18 +1,20 @@
-//! Admission control. Every byte enters the store through here, so the
-//! device's free space is re-measured on the write path rather than
+//! Admission control for every byte entering the store.
+//!
+//! The device's free space is re-measured on the write path rather than
 //! only at startup, and a cap that moved below what the store holds
 //! evicts instead of merely refusing.
 
 use crate::partial_range_store::capacity::CapacityRevision;
 use crate::partial_range_store::{eviction, Entries, PartialRangeStore};
 use anyhow::{Error, Result};
+use core::sync::atomic::Ordering;
 use log::warn;
 use std::fmt;
-use std::sync::atomic::Ordering;
 use tokio::sync::watch;
 
-/// A write the store could not admit: the effective cap was reached and
-/// nothing unleased was left to give back. Callers above the store read
+/// A write the store could not admit because its effective cap was reached.
+///
+/// Nothing unleased was left to give back. Callers above the store read
 /// it as a local condition — the device is full — never as a failure of
 /// whatever they were downloading from.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -38,7 +40,7 @@ impl fmt::Display for OutOfSpace {
     }
 }
 
-impl std::error::Error for OutOfSpace {}
+impl core::error::Error for OutOfSpace {}
 
 impl PartialRangeStore {
     /// Refusal decisions taken so far. Writes that repeat a standing
@@ -67,6 +69,10 @@ impl PartialRangeStore {
     /// Applies a positive user budget to subsequent admissions. The
     /// entry lock makes a shrink wait for any already-admitted write,
     /// then evicts immediately against the final accounted usage.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when `budget` is zero or the resulting eviction cannot be persisted.
     pub async fn set_storage_budget(&self, budget: u64) -> Result<()> {
         let _capacity = self.capacity_updates.lock().await;
         self.capacity.set_budget(budget)?;
@@ -104,7 +110,7 @@ impl PartialRangeStore {
     /// Makes room for `wanted` more bytes of `key` before anything is
     /// written. `key` is never evicted to make room for itself, so a
     /// video in progress is refused rather than silently truncated.
-    pub(crate) async fn make_room(
+    pub(super) async fn make_room(
         &self,
         entries: &mut Entries,
         key: &str,
@@ -116,16 +122,17 @@ impl PartialRangeStore {
             return Ok(());
         }
         let freed = self.evict(entries, key, short).await;
-        match freed >= short {
-            true => Ok(()),
-            false => Err(self.refuse(short - freed, revision).await),
+        if freed >= short {
+            Ok(())
+        } else {
+            Err(self.refuse(short - freed, revision).await)
         }
     }
 
     /// Admits transaction scratch only from existing headroom. Policy
     /// eviction must never choose an unrelated LRU victim behind the
     /// planner's back merely to construct the selected replacement.
-    pub(crate) async fn require_headroom(&self, wanted: u64) -> Result<()> {
+    pub(super) async fn require_headroom(&self, wanted: u64) -> Result<()> {
         let revision = self.capacity.events().revision();
         let short = self.shortfall(wanted).await;
         match short {

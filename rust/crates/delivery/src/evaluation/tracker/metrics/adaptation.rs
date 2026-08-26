@@ -5,8 +5,8 @@ use crate::evaluation::types::EvaluationSnapshot;
 const ORIGIN_CAPACITY: usize = 64;
 
 impl EvaluationTracker {
-    pub fn adaptation(&mut self, event: AdaptationMetricEvent) {
-        self.note_adaptation_state(&event);
+    pub(crate) fn adaptation(&mut self, event: &AdaptationMetricEvent) {
+        self.note_adaptation_state(event);
         let metrics = &mut self.metrics.adaptation;
         metrics.regret_micros = metrics.regret_micros.saturating_add(event.regret_micros);
         if let Some(succeeded) = event.succeeded {

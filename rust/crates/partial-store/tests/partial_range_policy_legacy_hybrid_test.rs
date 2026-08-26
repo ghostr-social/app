@@ -1,37 +1,47 @@
-mod store_fixture;
-
-use sha2::{Digest, Sha256};
+use sha2::{Digest as _, Sha256};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn legacy_policy_hybrid_is_discarded_instead_of_undercounted() {
-    let root = store_fixture::temp_root("policy-legacy-hybrid");
-    let store = store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
-    store.write_range("clip", 0, b"abcdefghijkl").await.unwrap();
-    store.set_total_len("clip", 12).await.unwrap();
+    let root = crate::tests::store_fixture::temp_root("policy-legacy-hybrid");
+    let store = crate::tests::store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
+    store
+        .write_range("clip", 0, b"abcdefghijkl")
+        .await
+        .expect("valid test fixture");
+    store
+        .set_total_len("clip", 12)
+        .await
+        .expect("valid test fixture");
     tokio::fs::write(root.join("clip.ranges.json"), retained_manifest())
         .await
-        .unwrap();
+        .expect("valid test fixture");
     tokio::fs::write(root.join("clip.part.evict"), b"abcd\0\0\0\0ijkl")
         .await
-        .unwrap();
+        .expect("valid test fixture");
     tokio::fs::write(
         root.join("clip.evict.intent"),
         br#"{"version":1,"retained_bytes":8}"#,
     )
     .await
-    .unwrap();
+    .expect("valid test fixture");
     drop(store);
 
-    let reopened = store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
-    reopened.load_existing().await.unwrap();
+    let reopened = crate::tests::store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
+    reopened.load_existing().await.expect("valid test fixture");
 
-    assert_eq!(reopened.read_range("clip", 0..4).await.unwrap(), None);
+    assert_eq!(
+        reopened
+            .read_range("clip", 0..4)
+            .await
+            .expect("valid test fixture"),
+        None
+    );
     assert_eq!(reopened.used_bytes().await, 0);
     assert!(!root.join("clip.part").exists());
     assert!(!root.join("clip.evict.intent").exists());
-    store_fixture::discard(&root);
+    crate::tests::store_fixture::discard(&root);
 }
 
 fn retained_manifest() -> Vec<u8> {

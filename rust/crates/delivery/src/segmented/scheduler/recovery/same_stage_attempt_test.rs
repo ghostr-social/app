@@ -9,7 +9,7 @@ fn same_cursor_retry_allocates_a_fresh_attempt_fence() {
     let mut delivery = SegmentedDelivery::new(SegmentedCache::new());
     delivery.apply_focus(&focus());
     let post = PostId::new("stream");
-    let pending = delivery.pending.remove(&post).unwrap();
+    let pending = delivery.pending.remove(&post).expect("valid test fixture");
     let old_attempt = pending.attempt;
     let root = pending.root_source.clone();
     let retry = SegmentedRetry {
@@ -39,7 +39,7 @@ fn focus() -> DeliveryFocus {
         previews: Vec::new(),
         current_index: 0,
         watch_ms: 0,
-        generation: FocusGeneration::try_new(1).unwrap(),
+        generation: FocusGeneration::try_new(1).expect("valid test fixture"),
         transition: FocusTransition::RosterChange,
         rescue: None,
     }

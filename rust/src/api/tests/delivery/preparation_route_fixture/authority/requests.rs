@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 pub(super) fn router_resources() -> GatewayRouterResources {
     let requests = MediaRequestExecutor::new(
-        Arc::new(MediaHttpClient::public().unwrap()),
-        MediaRequestLimits::try_new(3, 3).unwrap(),
+        Arc::new(MediaHttpClient::public().expect("test fixture precondition must hold")),
+        MediaRequestLimits::try_new(3, 3).expect("test fixture precondition must hold"),
     );
     GatewayRouterResources::new(HlsSessions::production(), requests)
 }

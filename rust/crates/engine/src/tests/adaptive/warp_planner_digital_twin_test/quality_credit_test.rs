@@ -13,7 +13,7 @@ fn rendition_transition_is_credited_once_per_post() {
     let second = action(2, "post-a", 1);
     let other = action(2, "post-b", 1);
 
-    let once = twin.evaluate(&state, std::slice::from_ref(&first), epochs);
+    let once = twin.evaluate(&state, core::slice::from_ref(&first), epochs);
     let repeated = twin.evaluate(&state, &[first.clone(), second], epochs);
     let independent = twin.evaluate(&state, &[first, other], epochs);
 

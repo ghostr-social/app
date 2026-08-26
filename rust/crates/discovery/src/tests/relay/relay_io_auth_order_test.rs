@@ -1,13 +1,13 @@
 //! An early relay-wide AUTH failure must settle an exact auth-required query.
 
-use crate::relay::io::{RelayIo, RelayReadIo, SdkRelayIo};
+use crate::relay::io::{RelayIo as _, RelayReadIo, SdkRelayIo};
 use crate::tests::relay_io_auth_fixture::{
     auth_closed_then_stale_eose_relay, auth_failure_before_closed_relay,
 };
 use crate::tests::relay_io_auth_retry_fixture::auth_retry_relay;
+use core::time::Duration;
 use nostr_sdk::{Client, EventBuilder, Filter, Keys};
 use std::sync::Arc;
-use std::time::Duration;
 
 #[tokio::test]
 async fn auth_failure_before_exact_closed_does_not_wait_for_query_timeout() {
@@ -59,7 +59,7 @@ async fn stale_eose_cannot_complete_an_auth_blocked_subscription() {
 async fn authenticated_retry_uses_a_fresh_subscription_identity() {
     let event = EventBuilder::text_note("authenticated")
         .sign_with_keys(&Keys::generate())
-        .unwrap();
+        .expect("valid test fixture");
     let relay = auth_retry_relay(event.clone()).await;
     let client = Arc::new(Client::builder().signer(Keys::generate()).build());
     client.add_relay(&relay).await.expect("mock relay");

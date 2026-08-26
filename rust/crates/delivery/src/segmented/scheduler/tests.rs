@@ -26,7 +26,12 @@ async fn equivalent_focus_keeps_inflight_hls_bootstrap() {
     assert_eq!(cache.snapshot("stream").eta_ms, Some(700));
     delivery.cancel_all();
     assert!(delivery.active[&post].cancelling);
-    delivery.active.remove(&post).unwrap()._task.abort();
+    delivery
+        .active
+        .remove(&post)
+        .expect("valid test fixture")
+        ._task
+        .abort();
 }
 
 #[tokio::test]
@@ -42,7 +47,12 @@ async fn changed_hls_source_cancels_inflight_bootstrap() {
 
     assert!(delivery.active[&post].cancelling);
     assert_eq!(cache.snapshot("stream").phase, SegmentedPhase::Queued);
-    delivery.active.remove(&post).unwrap()._task.abort();
+    delivery
+        .active
+        .remove(&post)
+        .expect("valid test fixture")
+        ._task
+        .abort();
 }
 
 fn active() -> Active {
@@ -76,7 +86,7 @@ fn focus(generation: u64, source: &str) -> DeliveryFocus {
         previews: Vec::new(),
         current_index: 0,
         watch_ms: 0,
-        generation: FocusGeneration::try_new(generation).unwrap(),
+        generation: FocusGeneration::try_new(generation).expect("valid test fixture"),
         transition: FocusTransition::RosterChange,
         rescue: None,
     }

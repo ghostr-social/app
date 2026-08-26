@@ -14,7 +14,7 @@ pub(crate) struct CandidatePriority {
 }
 
 impl CandidatePriority {
-    pub(crate) fn rank(&mut self, post: PostId, discovered_at: u64) {
+    pub(super) fn rank(&mut self, post: PostId, discovered_at: u64) {
         if let Some(known) = self.candidates.iter_mut().find(|known| known.post == post) {
             known.discovered_at = discovered_at.max(known.discovered_at);
         } else {
@@ -27,7 +27,7 @@ impl CandidatePriority {
         self.candidates.truncate(RETAINED_CANDIDATES);
     }
 
-    pub(crate) fn ranked(&self) -> Vec<PostId> {
+    pub(super) fn ranked(&self) -> Vec<PostId> {
         self.candidates
             .iter()
             .map(|candidate| &candidate.post)
@@ -36,7 +36,7 @@ impl CandidatePriority {
     }
 }
 
-fn newest_first(left: &CandidateRank, right: &CandidateRank) -> std::cmp::Ordering {
+fn newest_first(left: &CandidateRank, right: &CandidateRank) -> core::cmp::Ordering {
     right
         .discovered_at
         .cmp(&left.discovered_at)

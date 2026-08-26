@@ -1,6 +1,6 @@
 use crate::host_stats::host_of;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
+use sha2::{Digest as _, Sha256};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum RequestMethod {
@@ -24,7 +24,7 @@ pub enum SizeBucket {
 }
 
 impl SizeBucket {
-    pub fn of(bytes: u64) -> Self {
+    fn of(bytes: u64) -> Self {
         match bytes {
             0 => Self::Empty,
             1..=65_536 => Self::Tiny,
@@ -65,7 +65,7 @@ pub enum TimeOfDay {
 }
 
 impl TimeOfDay {
-    pub fn at_utc_ms(at_ms: u64) -> Self {
+    fn at_utc_ms(at_ms: u64) -> Self {
         let hour = (at_ms / 3_600_000) % 24;
         match hour {
             0..=5 => Self::Night,
@@ -85,7 +85,7 @@ pub enum ConcurrencyBucket {
 }
 
 impl ConcurrencyBucket {
-    pub fn of(active: usize) -> Self {
+    fn of(active: usize) -> Self {
         match active.max(1) {
             1 => Self::One,
             2 => Self::Two,
@@ -97,12 +97,12 @@ impl ConcurrencyBucket {
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct OriginContext {
-    pub method: RequestMethod,
-    pub size: SizeBucket,
-    pub media: MediaClass,
+    pub(super) method: RequestMethod,
+    size: SizeBucket,
+    media: MediaClass,
     pub network: NetworkClass,
-    pub time_of_day: TimeOfDay,
-    pub concurrency: ConcurrencyBucket,
+    time_of_day: TimeOfDay,
+    concurrency: ConcurrencyBucket,
 }
 
 impl OriginContext {
@@ -138,8 +138,8 @@ pub struct OriginQuery {
     url: String,
     origin: String,
     url_id: String,
-    pub context: OriginContext,
-    pub environment: super::OriginEnvironment,
+    pub(super) context: OriginContext,
+    pub(super) environment: super::OriginEnvironment,
 }
 
 impl OriginQuery {
@@ -154,26 +154,25 @@ impl OriginQuery {
         }
     }
 
-    pub fn with_environment(mut self, environment: super::OriginEnvironment) -> Self {
-        self.environment = environment;
-        self
-    }
-
     pub fn url(&self) -> &str {
         &self.url
     }
 
-    pub(crate) fn origin(&self) -> &str {
+    pub(super) fn origin(&self) -> &str {
         &self.origin
     }
 
-    pub(crate) fn url_id(&self) -> &str {
+    pub(super) fn url_id(&self) -> &str {
         &self.url_id
     }
 }
 
+#[cfg(test)]
+#[path = "context/test_support.rs"]
+mod test_support;
+
 fn hashed_url(url: &str) -> String {
-    use std::fmt::Write;
+    use core::fmt::Write as _;
 
     let digest = Sha256::digest(url.as_bytes());
     let mut encoded = String::with_capacity(24);

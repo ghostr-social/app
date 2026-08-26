@@ -5,9 +5,9 @@ use crate::discovery::content::parsing::ParsedVideoPost;
 use crate::discovery::content::profiles::CreatorProfile;
 use crate::engine::catalog::Catalog;
 use crate::engine::{DeliveryKind, PostId, VideoMeta};
+use core::sync::atomic::{AtomicU64, Ordering};
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
@@ -94,5 +94,8 @@ pub(crate) fn temp_store(prefix: &str) -> Arc<PartialRangeStore> {
 pub(crate) async fn bind_store(store: &PartialRangeStore, id: &str, meta: &VideoMeta) {
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(PostId::new(id), meta.clone());
-    store.bind_representation(binding).await.unwrap();
+    store
+        .bind_representation(binding)
+        .await
+        .expect("test fixture precondition must hold");
 }

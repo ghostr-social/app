@@ -11,6 +11,7 @@ pub(super) struct Trial {
     misses: usize,
 }
 
+#[derive(Clone, Copy)]
 pub(super) enum TrialProgress {
     Pending(Trial),
     Accepted(EvidenceWindow),
@@ -33,17 +34,19 @@ impl Trial {
         if self.evidence.len() < TRIAL_SAMPLES {
             return TrialProgress::Pending(self);
         }
-        match trial_improved(self) {
-            true => TrialProgress::Accepted(self.evidence),
-            false => TrialProgress::Rejected,
+        if trial_improved(self) {
+            TrialProgress::Accepted(self.evidence)
+        } else {
+            TrialProgress::Rejected
         }
     }
 
     pub(super) fn miss(mut self) -> TrialProgress {
         self.misses = self.misses.saturating_add(1);
-        match self.misses < TRIAL_SAMPLES {
-            true => TrialProgress::Pending(self),
-            false => TrialProgress::Abandoned,
+        if self.misses < TRIAL_SAMPLES {
+            TrialProgress::Pending(self)
+        } else {
+            TrialProgress::Abandoned
         }
     }
 }

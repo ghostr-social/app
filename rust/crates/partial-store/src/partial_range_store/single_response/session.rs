@@ -3,7 +3,7 @@ use crate::partial_range_disk as disk;
 use crate::partial_range_manifest::RangeManifest;
 use anyhow::{ensure, Result};
 use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 mod promotion;
 
@@ -22,7 +22,7 @@ impl SessionResponse {
         &self.manifest
     }
 
-    pub(in crate::partial_range_store) fn bytes(&self) -> u64 {
+    fn bytes(&self) -> u64 {
         self.manifest.covered_bytes()
     }
 }
@@ -75,7 +75,7 @@ impl PartialRangeStore {
         self.session_responses.lock().await.get(key).cloned()
     }
 
-    pub(super) async fn session_response_bytes(&self) -> HashMap<String, u64> {
+    pub(super) async fn session_response_bytes(&self) -> BTreeMap<String, u64> {
         self.session_responses
             .lock()
             .await

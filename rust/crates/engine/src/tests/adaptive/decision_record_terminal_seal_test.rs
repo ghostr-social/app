@@ -30,12 +30,12 @@ fn removing_or_downgrading_terminal_evidence_never_restores_verified() {
         },
         ResourceCost::new(0, 32, 7, 0),
     ));
-    let terminal = serde_json::to_value(record).unwrap();
+    let terminal = serde_json::to_value(record).expect("valid test fixture");
 
     let mut missing = terminal.clone();
     missing
         .as_object_mut()
-        .unwrap()
+        .expect("valid test fixture")
         .remove("terminal_evidence_hash");
     assert_mismatch(missing);
 
@@ -44,35 +44,43 @@ fn removing_or_downgrading_terminal_evidence_never_restores_verified() {
     reverted["actual_resources"] = serde_json::Value::Null;
     reverted
         .as_object_mut()
-        .unwrap()
+        .expect("valid test fixture")
         .remove("terminal_evidence_hash");
     assert_mismatch(reverted);
 }
 
 #[test]
 fn schema_downgrade_cannot_turn_new_records_into_legacy_payloads() {
-    let original = serde_json::to_value(selected_record()).unwrap();
+    let original = serde_json::to_value(selected_record()).expect("valid test fixture");
     let mut v2 = original.clone();
     v2["schema_version"] = serde_json::json!(2);
-    v2.as_object_mut().unwrap().remove("terminal_evidence_hash");
+    v2.as_object_mut()
+        .expect("valid test fixture")
+        .remove("terminal_evidence_hash");
     assert_mismatch(v2);
 
     let mut v1 = original;
     v1["schema_version"] = serde_json::json!(1);
-    let v1: DecisionRecord = serde_json::from_value(v1).unwrap();
-    assert_eq!(v1.replay(), DecisionReplayStatus::UnsupportedSchema);
+    let v1: DecisionRecord = serde_json::from_value(v1).expect("valid test fixture");
+    assert_eq!(
+        v1.integrity_status(),
+        DecisionReplayStatus::UnsupportedSchema
+    );
 }
 
 fn assert_sealed(record: &DecisionRecord) {
     assert_eq!(record.schema_version, 3);
-    let value = serde_json::to_value(record).unwrap();
+    let value = serde_json::to_value(record).expect("valid test fixture");
     assert!(value["terminal_evidence_hash"].is_string());
-    assert_eq!(record.replay(), DecisionReplayStatus::Verified);
+    assert_eq!(record.integrity_status(), DecisionReplayStatus::Verified);
 }
 
 fn assert_mismatch(value: serde_json::Value) {
-    let record: DecisionRecord = serde_json::from_value(value).unwrap();
-    assert_eq!(record.replay(), DecisionReplayStatus::PlanMismatch);
+    let record: DecisionRecord = serde_json::from_value(value).expect("valid test fixture");
+    assert_eq!(
+        record.integrity_status(),
+        DecisionReplayStatus::PlanMismatch
+    );
 }
 
 fn selected_record() -> DecisionRecord {

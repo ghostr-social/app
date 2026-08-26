@@ -4,14 +4,14 @@
 mod delivery_fixture;
 mod range_fixture;
 
+use core::sync::atomic::Ordering;
+use core::time::Duration;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::media::{hit_log, media_body, serve_recording};
 use delivery_fixture::options::{base_params, DeliveryOptions};
 use delivery_fixture::start_harness;
 use delivery_fixture::wait::wait_for_ranges;
 use ghostr_engine::{DataUsageLevel, EngineParams};
-use std::sync::atomic::Ordering;
-use std::time::Duration;
 
 const PREFIX: usize = 1_024;
 const TOTAL: u64 = 128 * 1_024;
@@ -41,7 +41,7 @@ async fn a_focus_jump_bounds_bytes_accepted_after_cancellation() {
 
     let sent = old.bytes_sent.load(Ordering::SeqCst);
     assert!(sent <= (PREFIX * 3) as u64, "post-cancel bytes: {sent}");
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }
 

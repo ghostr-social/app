@@ -12,15 +12,9 @@ mod validator;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct EvidenceInvalidation {
-    pub invalidated_records: usize,
-    pub structural_evidence: bool,
-    pub integrity_evidence: bool,
-}
-
-impl EvidenceInvalidation {
-    pub fn is_empty(self) -> bool {
-        self.invalidated_records == 0
-    }
+    pub(crate) invalidated_records: usize,
+    pub(crate) structural_evidence: bool,
+    integrity_evidence: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -32,6 +26,10 @@ pub struct EvidenceLedger {
     quarantined_digests: BTreeSet<String>,
     capacity: usize,
 }
+
+#[cfg(test)]
+#[path = "ledger/test_support.rs"]
+mod test_support;
 
 impl Default for EvidenceLedger {
     fn default() -> Self {
@@ -46,12 +44,12 @@ impl Default for EvidenceLedger {
 }
 
 impl EvidenceLedger {
-    pub fn record(&mut self, evidence: Evidence<EvidenceValue>) {
+    pub(crate) fn record(&mut self, evidence: Evidence<EvidenceValue>) {
         self.make_room();
         self.records.push(evidence);
     }
 
-    pub fn records(&self) -> &[Evidence<EvidenceValue>] {
+    pub(crate) fn records(&self) -> &[Evidence<EvidenceValue>] {
         &self.records
     }
 
@@ -59,11 +57,11 @@ impl EvidenceLedger {
         &mut self.records
     }
 
-    pub fn assessment(&self, url: &str, now_ms: u64) -> EvidenceAssessment {
+    pub(crate) fn assessment(&self, url: &str, now_ms: u64) -> EvidenceAssessment {
         fusion::assess(&self.records, url, now_ms)
     }
 
-    pub fn quarantine_digest(
+    pub(crate) fn quarantine_digest(
         &mut self,
         digest: &str,
         origin: &str,
@@ -83,11 +81,6 @@ impl EvidenceLedger {
         ));
         result.integrity_evidence = true;
         result
-    }
-
-    pub fn is_digest_quarantined(&self, digest: &str) -> bool {
-        self.quarantined_digests
-            .contains(&digest.to_ascii_lowercase())
     }
 
     pub(crate) fn invalidate_parser(&mut self, observed_at_ms: u64) -> EvidenceInvalidation {

@@ -11,7 +11,7 @@ fn a_failed_source_yields_immediately_to_an_untried_mirror() {
     let mut retry = RetryBook::new(RetryPolicy::default());
 
     let decision = retry.note_failure(
-        Source::new(post.clone(), primary.clone()),
+        Source::new(post.clone(), &primary),
         FailureClass::Transient,
     );
 

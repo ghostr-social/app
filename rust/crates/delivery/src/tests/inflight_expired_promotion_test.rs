@@ -24,9 +24,9 @@ async fn promotion_expired_at_headers_is_rejected_before_store_open() {
     );
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(PostId::new("post"), meta());
-    let identity = binding.transfer("https://origin.test/video").unwrap();
-    store.bind_representation(binding).await.unwrap();
-    let action = store.reserve_action(&identity, 1, 16).await.unwrap();
+    let identity = binding.transfer("https://origin.test/video").expect("valid test fixture");
+    store.bind_representation(binding).await.expect("valid test fixture");
+    let action = store.reserve_action(&identity, 1, 16).await.expect("valid test fixture");
     let bytes = ByteRange::new(4, 8);
     let chunk = ChunkId {
         post: PostId::new("post"),
@@ -52,6 +52,7 @@ async fn promotion_expired_at_headers_is_rejected_before_store_open() {
         handle,
         store_action: Some(action.clone()),
         committed_network_bytes: None,
+        exploration_claim: None,
     });
     let whole = RetrievalRequest::FetchWhole {
         contract: WholeBodyContract::Exact { expected_bytes: 16 },
@@ -79,11 +80,11 @@ async fn promotion_expired_at_headers_is_rejected_before_store_open() {
     assert!(store
         .media_snapshot("post")
         .await
-        .unwrap()
+        .expect("valid test fixture")
         .ranges()
         .is_empty());
     store.release_action(&action).await;
-    std::fs::remove_dir_all(root).unwrap();
+    std::fs::remove_dir_all(root).expect("valid test fixture");
 }
 
 fn meta() -> VideoMeta {

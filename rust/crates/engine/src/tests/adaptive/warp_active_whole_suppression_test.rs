@@ -1,9 +1,10 @@
 use super::warp_range_noncompliant_unknown_size_generation_test::range_blind_candidate;
+use crate::adaptive::axiom_test_support::WarpActionGenerator;
 use crate::adaptive::{
     ActionKind, ActivePlannerContext, AdaptivePlayabilityPolicy, HeadProbeHistory, HedgeInput,
     IdentityProof, InFlightAction, PlannerCapability, PlannerContext, PlannerLimits,
-    RetrievalRequest, TransformCapability, TransformKind, WarpActionGenerator, WholeBodyContract,
-    WholeBodyExhaustion, WholeFetchReason,
+    RetrievalRequest, TransformCapability, TransformKind, WholeBodyContract, WholeBodyExhaustion,
+    WholeFetchReason,
 };
 use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::snapshot;
@@ -33,9 +34,9 @@ fn changed_network_envelope_does_not_duplicate_an_active_whole_fetch() {
         "https://mirror.example/media",
     );
     let context = PlannerContext::explicitly_unavailable(&input)
-        .with_head_probe_history(post.clone(), HeadProbeHistory::Completed)
+        .with_head_probe_history(&post, HeadProbeHistory::Completed)
         .with_capability(
-            post.clone(),
+            &post,
             PlannerCapability::reported(
                 false,
                 Some(TransformCapability::new(
@@ -47,8 +48,8 @@ fn changed_network_envelope_does_not_duplicate_an_active_whole_fetch() {
             ),
         )
         .with_whole_body_exhaustion(
-            post,
-            WholeBodyExhaustion::new(prior_cap, prior_cap + 1).unwrap(),
+            &post,
+            WholeBodyExhaustion::new(prior_cap, prior_cap + 1).expect("valid test fixture"),
         )
         .with_limits(PlannerLimits {
             network_burst_bytes: active_cap * 4,

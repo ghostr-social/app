@@ -17,33 +17,6 @@ impl DeliveryHandle {
         self.sender.player_preparation_disposition(report)
     }
 
-    pub fn report_player_preparation(
-        &self,
-        report: PlayerPreparationReport,
-    ) -> PlayerPreparationIngress {
-        if report.is_initial() {
-            let admission = self.player_preparation_admission();
-            return self.report_player_preparation_initial(admission, report);
-        }
-        self.report_player_preparation_followup(PlayerPreparationFollowup::from_report(report))
-    }
-
-    pub fn report_player_preparation_initial(
-        &self,
-        admission: PlayerPreparationAdmission,
-        report: PlayerPreparationReport,
-    ) -> PlayerPreparationIngress {
-        self.sender
-            .send_player_preparation_initial(admission, report)
-    }
-
-    pub fn report_player_preparation_followup(
-        &self,
-        report: PlayerPreparationFollowup,
-    ) -> PlayerPreparationIngress {
-        self.sender.send_player_preparation_followup(report)
-    }
-
     pub async fn confirm_player_preparation_initial(
         &self,
         admission: PlayerPreparationAdmission,
@@ -70,22 +43,26 @@ impl DeliveryHandle {
     }
 }
 
+#[cfg(any(test, feature = "test"))]
+#[path = "ingress/test_support.rs"]
+mod test_support;
+
 impl CommandReceiver {
     pub(crate) fn has_player_preparation(&self) -> bool {
         self.commands.has_player_preparation()
     }
 
-    #[cfg(any(test, feature = "test-support"))]
-    pub fn try_player_preparation(&mut self) -> Option<PlayerPreparationReport> {
+    #[cfg(any(test, feature = "test"))]
+    pub fn try_player_preparation(&self) -> Option<PlayerPreparationReport> {
         self.commands.try_player_preparation()
     }
 
-    pub(crate) fn try_player_preparation_envelope(&mut self) -> Option<PlayerPreparationEnvelope> {
+    pub(crate) fn try_player_preparation_envelope(&self) -> Option<PlayerPreparationEnvelope> {
         self.commands.try_player_preparation_envelope()
     }
 
     pub(crate) fn complete_player_preparation(
-        &mut self,
+        &self,
         envelope: PlayerPreparationEnvelope,
         outcome: PlayerPreparationActorOutcome,
     ) {

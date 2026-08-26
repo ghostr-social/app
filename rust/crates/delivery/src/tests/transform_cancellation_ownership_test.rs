@@ -5,11 +5,11 @@ use crate::transform::{
     TransformBackend, TransformControl, TransformInput, TransformLimits, TransformOutput,
     TransformProfile,
 };
+use core::hint::black_box;
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use core::time::Duration;
 use ghostr_engine::adaptive::TransformKind;
-use std::hint::black_box;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::mpsc;
 
 #[derive(Default)]
@@ -21,7 +21,7 @@ struct CooperativeBackend {
 
 impl TransformBackend for CooperativeBackend {
     fn profile(&self) -> TransformProfile {
-        let limits = TransformLimits::try_new(16, 16, 100, 200).unwrap();
+        let limits = TransformLimits::try_new(16, 16, 100, 200).expect("valid test fixture");
         TransformProfile::new(TransformKind::Remux, limits)
     }
 
@@ -51,20 +51,25 @@ async fn cancellation_drains_worker_before_releasing_global_singleflight() {
     let backend = Arc::new(CooperativeBackend::default());
     let (events, mut receiver) = mpsc::unbounded_channel::<InternalEvent>();
     let resources = super::resource_test_fixture::control();
-    let mut jobs = TransformJobs::new(Some(backend.clone()), events, resources);
-    assert!(jobs.launch(fixture.store.clone(), fixture.request(20)));
+    let mut jobs = TransformJobs::new(
+        Some(std::sync::Arc::<CooperativeBackend>::clone(&backend)),
+        events,
+        resources,
+    );
+    assert!(jobs.launch(std::sync::Arc::clone(&fixture.store), fixture.request(20)));
     wait_until_entered(&backend).await;
 
     assert_eq!(jobs.clear(), 1);
-    assert!(!jobs.launch(fixture.store.clone(), fixture.request(21)));
-    let InternalEvent::Transform(first) = receiver.recv().await.unwrap() else {
+    assert!(!jobs.launch(std::sync::Arc::clone(&fixture.store), fixture.request(21)));
+    let InternalEvent::Transform(first) = receiver.recv().await.expect("valid test fixture") else {
         panic!("expected cancelled Transform completion");
     };
     assert!(first.actual_resources.is_some());
     assert!(jobs.finish(&first).is_some());
-    assert!(jobs.launch(fixture.store.clone(), fixture.request(21)));
+    assert!(jobs.launch(std::sync::Arc::clone(&fixture.store), fixture.request(21)));
     jobs.clear();
-    let InternalEvent::Transform(second) = receiver.recv().await.unwrap() else {
+    let InternalEvent::Transform(second) = receiver.recv().await.expect("valid test fixture")
+    else {
         panic!("expected second Transform completion");
     };
     assert!(jobs.finish(&second).is_some());
@@ -78,5 +83,5 @@ async fn wait_until_entered(backend: &CooperativeBackend) {
         }
     })
     .await
-    .unwrap();
+    .expect("valid test fixture");
 }

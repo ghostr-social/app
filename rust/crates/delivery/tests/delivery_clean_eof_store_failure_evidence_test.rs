@@ -2,6 +2,7 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::clean_eof_origin::{serve, BODY};
 use delivery_fixture::decision::wait_for_history;
 use delivery_fixture::items::{focus_now, unsized_item};
@@ -12,7 +13,6 @@ use ghostr_engine::adaptive::{
     DecisionOutcome, DecisionRecord, RecordedRetrievalRequest, RecordedWarpCommand,
 };
 use ghostr_engine::host_stats::host_of;
-use std::time::Duration;
 
 const DIGEST: &str = "9f9f5111f7b27a781f1f1ddde5ebc2dd2b796bfc7365c9c28b548e564176929f";
 
@@ -30,10 +30,10 @@ async fn clean_eof_teaches_size_without_claiming_unpublished_bytes_were_verified
 
     harness.handle.update_focus(focus_now(vec![item], 0, 0));
     origin.wait_whole_started().await;
-    std::fs::create_dir(harness.root.join("aa11.response.ranges")).unwrap();
+    std::fs::create_dir(harness.root.join("aa11.response.ranges")).expect("valid test fixture");
     origin.release();
     wait_for_history(&harness.handle, learned_after_failed_whole).await;
-    let host = host_of(origin.url()).unwrap();
+    let host = host_of(origin.url()).expect("valid test fixture");
     let stats = wait_for(&harness.root.join("host_stats.json"), |stats| {
         stats.host_throughput(&host).is_some()
     })
@@ -79,7 +79,7 @@ fn failed_whole(record: &DecisionRecord) -> bool {
 }
 
 fn has_exact_unverified_evidence(record: &DecisionRecord) -> bool {
-    let value = serde_json::to_value(record).unwrap();
+    let value = serde_json::to_value(record).expect("valid test fixture");
     let evidence = &value["replay_state"]["candidates"][0]["evidence"];
     evidence["size"]["exact"] == 16
         && !evidence["fields"]["AdvertisedHash"].is_null()

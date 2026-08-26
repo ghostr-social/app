@@ -18,7 +18,8 @@ async fn absent_accept_ranges_remains_unknown_without_a_probe_get() {
     let result = probe(&requests, &url, TransferTimeouts::default(), &mut stats)
         .await
         .expect("HEAD metadata");
-    let request = String::from_utf8(request.await.unwrap()).unwrap();
+    let request =
+        String::from_utf8(request.await.expect("valid test fixture")).expect("valid test fixture");
 
     assert_eq!(result.content_length, Some(16));
     assert_eq!(result.accept_ranges, None);

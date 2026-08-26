@@ -23,8 +23,16 @@ pub fn top_level_boxes(bytes: &[u8]) -> Vec<[u8; 4]> {
     let mut boxes = Vec::new();
     let mut cursor = 0;
     while cursor < bytes.len() {
-        boxes.push(bytes[cursor + 4..cursor + 8].try_into().unwrap());
-        cursor += u32::from_be_bytes(bytes[cursor..cursor + 4].try_into().unwrap()) as usize;
+        boxes.push(
+            bytes[cursor + 4..cursor + 8]
+                .try_into()
+                .expect("valid test fixture"),
+        );
+        cursor += u32::from_be_bytes(
+            bytes[cursor..cursor + 4]
+                .try_into()
+                .expect("valid test fixture"),
+        ) as usize;
     }
     boxes
 }

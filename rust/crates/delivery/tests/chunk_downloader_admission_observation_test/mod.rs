@@ -51,7 +51,7 @@ impl ObservationFixture {
     async fn observe(mut self) -> Observation {
         let mut stats = HostStats::new();
         let mut traffic = ObservedTraffic::default();
-        let host = host_of(&self.url).unwrap();
+        let host = host_of(&self.url).expect("valid test fixture");
         run::download(&mut self, &mut stats, &mut traffic).await;
         let throughput = stats.expected_throughput(&host);
         let concurrency = traffic.concurrency;

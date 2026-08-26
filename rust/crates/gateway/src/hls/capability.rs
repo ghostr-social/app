@@ -1,9 +1,9 @@
 use crate::hls::sessions::HlsResourceId;
 use anyhow::{ensure, Result};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-use base64::Engine;
+use base64::Engine as _;
 use ghostr_hls_manifest::hls_manifest::{HlsResource, HlsResourceKind};
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, Mac as _};
 use reqwest::Url;
 use sha2::Sha256;
 
@@ -11,7 +11,7 @@ const TOKEN_VERSION: u8 = 1;
 const MAC_BYTES: usize = 32;
 const MAX_RESOURCE_URL_BYTES: usize = 8_192;
 
-pub(crate) fn issue(secret: &[u8; 32], resource: HlsResource) -> Result<HlsResourceId> {
+pub(crate) fn issue(secret: &[u8; 32], resource: &HlsResource) -> Result<HlsResourceId> {
     let raw_url = resource.url.as_str().as_bytes();
     ensure!(
         raw_url.len() <= MAX_RESOURCE_URL_BYTES,
@@ -34,7 +34,7 @@ pub(crate) fn open(secret: &[u8; 32], id: HlsResourceId) -> Option<HlsResource> 
         .filter(|version| **version == TOKEN_VERSION)?;
     let kind = resource_kind(*payload.get(1)?)?;
     verify(secret, payload, signature).ok()?;
-    let url = Url::parse(std::str::from_utf8(payload.get(2..)?).ok()?).ok()?;
+    let url = Url::parse(core::str::from_utf8(payload.get(2..)?).ok()?).ok()?;
     valid_resource_url(&url).then_some(HlsResource { url, kind })
 }
 

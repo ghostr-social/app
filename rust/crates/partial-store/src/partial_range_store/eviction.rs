@@ -4,7 +4,7 @@
 
 use crate::partial_range_disk::Entry;
 use crate::partial_range_store::Entries;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 struct Candidate<'a> {
     touched: u64,
@@ -15,9 +15,9 @@ struct Candidate<'a> {
 /// Keys to discard, oldest use first, until `wanted` bytes are covered.
 /// Protected and leased keys are skipped even when that leaves the
 /// caller short — refusing a write is better than breaking playback.
-pub(crate) fn victims(
+pub(super) fn victims(
     entries: &Entries,
-    staged: &HashMap<String, u64>,
+    staged: &BTreeMap<String, u64>,
     wanted: u64,
     protected: &str,
     leased: &dyn Fn(&str) -> bool,
@@ -27,7 +27,7 @@ pub(crate) fn victims(
         .filter(|(key, _)| key.as_str() != protected && !leased(key))
         .map(|(key, entry)| candidate(key, entry, staged.get(key).copied().unwrap_or_default()))
         .collect();
-    candidates.sort_by_key(|candidate| candidate.touched);
+    candidates.sort_by_key(|candidate| (candidate.touched, candidate.key));
     take_until(candidates, wanted)
 }
 

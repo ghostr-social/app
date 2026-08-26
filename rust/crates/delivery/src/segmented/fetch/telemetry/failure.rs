@@ -21,6 +21,7 @@ pub(in crate::segmented) struct FetchFailure {
     task_failure: Option<TaskFailure>,
 }
 
+#[derive(Clone, Copy)]
 struct FailureEvidence {
     origin: Option<OriginTelemetry>,
     network_bytes: u64,
@@ -72,24 +73,6 @@ impl FetchFailure {
                 network_bytes,
             },
             FailurePolicy::for_reason(reason),
-        )
-    }
-
-    #[cfg(test)]
-    pub(in crate::segmented) fn admitted_neutral(
-        error: anyhow::Error,
-        reason: ErrorReason,
-        origin: OriginTelemetry,
-        network_bytes: u64,
-    ) -> Self {
-        Self::failure(
-            error,
-            reason,
-            FailureEvidence {
-                origin: Some(origin),
-                network_bytes,
-            },
-            FailurePolicy::neutral(),
         )
     }
 
@@ -161,3 +144,7 @@ impl FetchFailure {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "failure_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

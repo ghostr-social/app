@@ -16,7 +16,7 @@ pub enum PlaybackAdmission {
 }
 
 impl PlaybackAdmission {
-    pub(crate) fn is_accepted(self) -> bool {
+    pub(super) fn is_accepted(self) -> bool {
         self == Self::Accepted
     }
 }
@@ -40,13 +40,6 @@ impl PlaybackAdmissionCounters {
             PlaybackRejection::StaleSession => self.stale_session,
             PlaybackRejection::StaleSequence => self.stale_sequence,
         }
-    }
-
-    pub fn total(self) -> u64 {
-        self.accepted
-            .saturating_add(self.inactive_delivery)
-            .saturating_add(self.stale_session)
-            .saturating_add(self.stale_sequence)
     }
 
     fn record(&mut self, admission: PlaybackAdmission) {
@@ -94,11 +87,11 @@ pub(crate) struct PlaybackAdmissionLedger {
 }
 
 impl PlaybackAdmissionLedger {
-    pub(crate) fn record(&self, admission: PlaybackAdmission, post: &PostId) {
+    pub(super) fn record(&self, admission: PlaybackAdmission, post: &PostId) {
         self.lock().record(admission, post);
     }
 
-    pub(crate) fn snapshot(&self) -> PlaybackAdmissionSnapshot {
+    pub(super) fn snapshot(&self) -> PlaybackAdmissionSnapshot {
         self.lock().clone()
     }
 

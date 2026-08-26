@@ -1,4 +1,5 @@
-use super::super::{fetch, FetchInput, FetchSpec, ObjectRequest};
+use super::super::axiom_test_support::{fetch, FetchInput};
+use super::super::{FetchSpec, ObjectRequest};
 use super::support::{client, network_status, oversized_status};
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::origin_model::ErrorReason;
@@ -10,7 +11,7 @@ async fn resumed_unsatisfied_range_still_enforces_the_header_limit_first() {
     let (url, server) = oversized_status("416 Range Not Satisfiable").await;
     let requests = client();
     let network = network_status();
-    let failure = match fetch(
+    let Err(failure) = fetch(
         &requests,
         FetchInput {
             spec: FetchSpec {
@@ -32,9 +33,8 @@ async fn resumed_unsatisfied_range_still_enforces_the_header_limit_first() {
         None,
     )
     .await
-    {
-        Ok(_) => panic!("oversized resumed response headers must fail"),
-        Err(failure) => failure,
+    else {
+        panic!("oversized resumed response headers must fail")
     };
 
     assert_eq!(failure.reason(), ErrorReason::InvalidResponse);
@@ -42,5 +42,5 @@ async fn resumed_unsatisfied_range_still_enforces_the_header_limit_first() {
         format!("{failure:#}").contains("headers exceed byte limit"),
         "{failure:#}"
     );
-    server.await.unwrap();
+    server.await.expect("valid test fixture");
 }

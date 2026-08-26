@@ -22,7 +22,7 @@ async fn changed_redirect_final_url_restarts_before_appending_bytes() {
 
     assert_eq!(terminal.phase, SegmentedPhase::Ready);
     assert_eq!(
-        *requests.lock().unwrap(),
+        *requests.lock().expect("valid test fixture"),
         [
             ("v1".to_owned(), "bytes=0-262143".to_owned()),
             ("v2".to_owned(), "bytes=262144-307199".to_owned()),
@@ -33,7 +33,7 @@ async fn changed_redirect_final_url_restarts_before_appending_bytes() {
     let init = harness
         .segmented
         .object(&source.replace("index.m3u8", "init.mp4"))
-        .unwrap();
+        .expect("valid test fixture");
     assert_eq!(init.body.as_ref(), vec![8; INIT_BYTES]);
     std::fs::remove_dir_all(&harness.root).ok();
 }

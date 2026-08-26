@@ -1,8 +1,8 @@
-use crate::relay::io::{RelayIo, RelayReadIo, SdkRelayIo};
+use crate::relay::io::{RelayIo as _, RelayReadIo, SdkRelayIo};
 use crate::tests::relay_io_relay_fixture::relay_serving_events;
+use core::time::Duration;
 use nostr_sdk::{Client, Event, EventBuilder, Filter, Keys, Kind};
 use std::sync::Arc;
-use std::time::Duration;
 
 #[tokio::test]
 async fn forged_frame_overflow_preserves_another_relays_safe_prefix() {

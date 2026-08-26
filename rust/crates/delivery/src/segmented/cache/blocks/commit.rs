@@ -1,48 +1,6 @@
 use super::super::{FocusRecord, SegmentedPhase, StagedObject};
 use crate::segmented::prepare::{PreparedComplete, PreparedObject};
 
-#[cfg(test)]
-pub(super) struct CompleteValidation<'a> {
-    generation: u64,
-    offset: u64,
-    block_bytes: u64,
-    object: &'a PreparedObject,
-}
-
-#[cfg(test)]
-impl<'a> CompleteValidation<'a> {
-    pub(super) const fn new(
-        generation: u64,
-        offset: u64,
-        block_bytes: u64,
-        object: &'a PreparedObject,
-    ) -> Self {
-        Self {
-            generation,
-            offset,
-            block_bytes,
-            object,
-        }
-    }
-}
-
-#[cfg(test)]
-pub(super) fn accepts_complete(record: &FocusRecord, input: CompleteValidation<'_>) -> bool {
-    if invalid(record, input.generation, input.block_bytes) {
-        return false;
-    }
-    if input.offset == 0 {
-        return input.object.body.len() as u64 == input.block_bytes && record.assembly_bytes == 0;
-    }
-    let total = input.offset.checked_add(input.block_bytes);
-    record.assembly_bytes == input.object.body.len() as u64
-        && Some(input.object.body.len() as u64) == total
-        && record
-            .staged
-            .iter()
-            .any(|known| known.matches_identity(input.object, input.offset))
-}
-
 pub(in crate::segmented::cache) fn commit_partial(
     record: &mut FocusRecord,
     offset: u64,
@@ -74,14 +32,6 @@ pub(in crate::segmented::cache) fn commit_prepared(
     finish(record);
 }
 
-#[cfg(test)]
-fn invalid(record: &FocusRecord, generation: u64, block_bytes: u64) -> bool {
-    record.generation != generation
-        || record.snapshot.phase == SegmentedPhase::Ready
-        || block_bytes == 0
-        || block_bytes > record.reserved_bytes
-}
-
 fn set_root(record: &mut FocusRecord, object: &PreparedObject) {
     if record.staged.is_empty() {
         record.root_source = Some(object.request_url.clone());
@@ -102,3 +52,7 @@ fn find(record: &FocusRecord, url: &str) -> Option<usize> {
         .iter()
         .position(|known| known.request_url() == url)
 }
+
+#[cfg(test)]
+#[path = "commit_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

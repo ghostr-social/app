@@ -1,4 +1,5 @@
-use crate::rendition::{Rendition, RenditionError, RenditionId, RenditionSet, RenditionSetError};
+use crate::rendition::axiom_test_support::{RenditionError, RenditionSetError};
+use crate::rendition::{Rendition, RenditionId, RenditionSet};
 use crate::tests::rendition_support::rendition;
 
 #[test]

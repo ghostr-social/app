@@ -1,4 +1,4 @@
-use super::{StageBlock, StoredStage};
+use super::axiom_test_support::{StageBlock, StoredStage};
 use crate::segmented::prepare::PreparedObject;
 use crate::segmented::SegmentedCache;
 use ghostr_engine::PostId;

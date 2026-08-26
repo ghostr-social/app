@@ -4,12 +4,12 @@ use crate::api::delivery_types::FfiPlaybackPreparationPlan;
 use crate::api::runtime::registry;
 use crate::api::runtime::tracked_items::TrackedItems;
 use crate::frb_generated::StreamSink;
+use core::future::Future;
 use flutter_rust_bridge::frb;
 use ghostr_delivery::cache_registry::CacheRegistry;
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_gateway::progressive::capabilities::ProgressiveCapabilities;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
-use std::future::Future;
 use std::sync::Arc;
 
 pub(crate) mod projection;
@@ -25,12 +25,12 @@ impl PreparationOut for StreamSink<FfiPlaybackPreparationPlan> {
 }
 
 pub(crate) struct PreparationContext {
-    pub(crate) endpoint: String,
-    pub(crate) store: Arc<PartialRangeStore>,
-    pub(crate) capabilities: ProgressiveCapabilities,
-    pub(crate) delivery: DeliveryHandle,
-    pub(crate) tracked: TrackedItems,
-    pub(crate) cache: CacheRegistry,
+    pub(super) endpoint: String,
+    pub(super) store: Arc<PartialRangeStore>,
+    pub(super) capabilities: ProgressiveCapabilities,
+    pub(super) delivery: DeliveryHandle,
+    pub(super) tracked: TrackedItems,
+    pub(super) cache: CacheRegistry,
 }
 
 /// Streams one atomic current-plus-upcoming window; cancellation drops the watcher.
@@ -90,5 +90,5 @@ where
     T: Future<Output = ()>,
     C: Future<Output = ()>,
 {
-    tokio::select! { _ = plan => {}, _ = store => {}, _ = tracked => {}, _ = cache => {} }
+    tokio::select! { () = plan => {}, () = store => {}, () = tracked => {}, () = cache => {} }
 }

@@ -1,6 +1,6 @@
 use crate::manager::traffic::{TrafficEvent, TrafficMeter, TrafficWindow, TransferKey};
 use ghostr_engine::host_stats::HostStats;
-use std::time::Duration;
+use core::time::Duration;
 use tokio::time::Instant;
 
 #[test]
@@ -34,14 +34,14 @@ fn simultaneous_host_bytes_form_one_overall_wall_window() {
     assert_eq!(
         stats
             .host_throughput("fast.example")
-            .unwrap()
+            .expect("valid test fixture")
             .bytes_per_second(),
         3_000.0
     );
     assert_eq!(
         stats
             .host_throughput("slow.example")
-            .unwrap()
+            .expect("valid test fixture")
             .bytes_per_second(),
         1_000.0
     );

@@ -1,9 +1,9 @@
 use crate::relay::pool::{RelayBroadcastRequest, RelayPoolConfiguration, RelayPoolOwner};
 use crate::session_generation::SessionGeneration;
 use crate::test_support::TestRelayIo;
+use core::time::Duration;
 use nostr_sdk::{Client, EventBuilder, Keys, Kind};
 use std::sync::Arc;
-use std::time::Duration;
 
 const TRANSIENT_RELAY: &str = "wss://cancelled-broadcast.example";
 
@@ -13,16 +13,16 @@ async fn cancelling_a_broadcast_releases_its_transient_relay_role() {
     let client = Arc::new(Client::default());
     let io = Arc::new(TestRelayIo::blocked());
     let owner = Arc::new(RelayPoolOwner::with_io(
-        client.clone(),
+        std::sync::Arc::clone(&client),
         RelayPoolConfiguration::default(),
-        io.clone(),
+        std::sync::Arc::<TestRelayIo>::clone(&io),
     ));
     let mut reset = owner.begin_reset().await;
     reset
         .reset_session(SessionGeneration::initial(), Some(keys.public_key()))
         .await;
     drop(reset);
-    let task_owner = owner.clone();
+    let task_owner = std::sync::Arc::clone(&owner);
     let task = tokio::spawn(async move {
         task_owner
             .broadcast(RelayBroadcastRequest {

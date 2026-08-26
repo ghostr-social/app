@@ -9,13 +9,14 @@ mod early;
 mod timing;
 use timing::{is_admission_timeout, unix_time_ms};
 
-pub(crate) struct ObservedChunk {
+#[derive(Debug)]
+pub struct ObservedChunk {
     pub result: anyhow::Result<ChunkResult>,
-    pub received_bytes: u64,
-    pub origin: Option<ghostr_engine::origin_model::OriginObservation>,
-    pub request_started: bool,
-    pub whole_body_completion: Option<crate::chunk::traffic::WholeBodyCompletion>,
-    pub response_evidence: Option<super::HttpResponseEvidence>,
+    pub(crate) received_bytes: u64,
+    pub(crate) origin: Option<ghostr_engine::origin_model::OriginObservation>,
+    pub(crate) request_started: bool,
+    pub(crate) whole_body_completion: Option<crate::chunk::traffic::WholeBodyCompletion>,
+    pub(crate) response_evidence: Option<super::HttpResponseEvidence>,
 }
 
 pub(super) struct CapturedTransfer {
@@ -107,13 +108,15 @@ type ExecutionParts<'a, W> = (
 fn execution_parts<W: ChunkWrite + ?Sized>(
     execution: ChunkExecution<'_, W>,
 ) -> ExecutionParts<'_, W> {
-    (
-        execution.sink,
-        execution.stats,
-        execution.cancel,
-        execution.network,
-        execution.traffic,
-    )
+    let ChunkExecution {
+        sink,
+        stats,
+        cancel,
+        network,
+        traffic,
+        network_class: _,
+    } = execution;
+    (sink, stats, cancel, network, traffic)
 }
 
 fn record_legacy(
@@ -165,7 +168,7 @@ pub(super) fn finish(
         || local_before_network_completion(&result, &measured);
     let origin = (!ignored).then(|| {
         let item = telemetry::observation(spec, &result, &measured, timing);
-        stats.origin_model_mut().observe(item.clone());
+        stats.origin_model_mut().observe(&item);
         item
     });
     ObservedChunk {

@@ -1,15 +1,13 @@
-//! Ranged chunk downloader (plan Phase 1 step 5): fetches one granted
-//! byte range with an HTTP `Range` GET, streams it into the partial
-//! range store, and feeds the per-host performance model. Honors
-//! cooperative cancellation so scroll-past can abandon transfers while
-//! keeping the bytes already fetched.
+//! Ranged chunk downloader (plan Phase 1 step 5).
+//!
+//! Each grant fetches one HTTP byte range, streams it into the partial store, and updates the host
+//! model. Cooperative cancellation preserves bytes received before a post scrolls out of demand.
 
 use crate::chunk::cancel::CancelToken;
 pub use crate::chunk::generation::OriginGeneration;
 pub use crate::chunk::sink::ResponseWriteMode;
 use crate::chunk::traffic::ChunkTraffic;
 use crate::debug::network::NetworkThrottle;
-use anyhow::Result;
 use ghostr_engine::adaptive::{PreemptionAuthority, RetrievalRequest};
 use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_engine::host_stats::HostStats;
@@ -55,7 +53,7 @@ pub struct ChunkResult {
     pub range_ignored: bool,
     pub cancelled: bool,
     pub total_bytes: Option<u64>,
-    pub promoted: bool,
+    pub(crate) promoted: bool,
     pub(crate) request_started: bool,
 }
 
@@ -92,8 +90,8 @@ pub(crate) enum ResponseFailure {
     InvalidResponse,
 }
 
-impl std::fmt::Display for ResponseFailure {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for ResponseFailure {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::RangeNoncompliant => formatter.write_str("range response is noncompliant"),
             Self::InvalidResponse => formatter.write_str("origin response is invalid"),
@@ -101,7 +99,7 @@ impl std::fmt::Display for ResponseFailure {
     }
 }
 
-impl std::error::Error for ResponseFailure {}
+impl core::error::Error for ResponseFailure {}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct OpenedResponse {
@@ -121,13 +119,13 @@ pub struct HttpResponseEvidence {
 }
 
 impl HttpResponseEvidence {
-    pub(crate) fn provenance_only(mut self) -> Self {
+    fn provenance_only(mut self) -> Self {
         self.content_type = None;
         self.validator = None;
         self
     }
 
-    pub(crate) fn authority_only(mut self) -> Self {
+    fn authority_only(mut self) -> Self {
         self.content_type = None;
         self
     }
@@ -152,11 +150,11 @@ impl OpenedResponse {
         self.observation
     }
 
-    pub fn generation(&self) -> Option<&SourceGeneration> {
+    pub(crate) fn generation(&self) -> Option<&SourceGeneration> {
         self.generation.as_ref()
     }
 
-    pub fn mode(&self) -> ResponseWriteMode {
+    pub(crate) fn mode(&self) -> ResponseWriteMode {
         self.mode
     }
 
@@ -171,17 +169,14 @@ pub enum ResponseAdmission {
     Reject,
 }
 
-pub(crate) use captured::ObservedChunk;
+pub use captured::ObservedChunk;
 
 /// Executes an admitted range and emits transfer observations.
+///
+/// # Errors
+///
+/// Returns an error when admission, transport, response validation, or storage fails.
 pub async fn download_chunk_observed<W: ChunkWrite + ?Sized>(
-    spec: &ChunkSpec<'_>,
-    execution: ChunkExecution<'_, W>,
-) -> Result<ChunkResult> {
-    download_chunk_captured(spec, execution).await.result
-}
-
-pub(crate) async fn download_chunk_captured<W: ChunkWrite + ?Sized>(
     spec: &ChunkSpec<'_>,
     execution: ChunkExecution<'_, W>,
 ) -> ObservedChunk {

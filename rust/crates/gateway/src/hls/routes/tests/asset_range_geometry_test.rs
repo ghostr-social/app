@@ -31,5 +31,10 @@ async fn uncached_asset_requires_the_exact_requested_response_range() {
     assert_eq!(response.headers()[CONTENT_RANGE], "bytes 4-7/16");
     assert_eq!(response.headers()[CONTENT_LENGTH], "4");
     assert_eq!(response.headers()[ACCEPT_RANGES], "bytes");
-    assert_eq!(to_bytes(response.into_body(), 4).await.unwrap(), "good");
+    assert_eq!(
+        to_bytes(response.into_body(), 4)
+            .await
+            .expect("valid test fixture"),
+        "good"
+    );
 }

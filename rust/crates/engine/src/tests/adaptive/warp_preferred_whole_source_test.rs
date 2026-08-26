@@ -25,7 +25,7 @@ fn unknown_whole_uses_the_same_preferred_source_as_its_exhaustion_evidence() {
     input.candidates = vec![candidate];
     let base = AdaptivePlayabilityPolicy.plan(&input);
     let context = PlannerContext::explicitly_unavailable(&input)
-        .with_head_probe_history(post, HeadProbeHistory::Completed);
+        .with_head_probe_history(&post, HeadProbeHistory::Completed);
 
     let decision = WarpPlanner::default().plan(WarpPlannerInput::new(
         &input,

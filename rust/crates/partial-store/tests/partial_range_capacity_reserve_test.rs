@@ -1,6 +1,4 @@
-mod store_fixture;
-
-use store_fixture::{discard, limits, spaced_store};
+use crate::tests::store_fixture::{discard, limits, spaced_store};
 
 /// The reserve is a floor, not a target: the store may spend every byte
 /// above it and not one byte of it, however large the budget is.

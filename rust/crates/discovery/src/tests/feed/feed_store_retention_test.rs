@@ -1,5 +1,5 @@
 //! A feed now lives as long as the app does
-//! (lib/features/video_catalog/data/rust_feed_sessions.dart), so the
+//! (`lib/features/video_catalog/data/rust_feed_sessions.dart`), so the
 //! store bounds what one canonical feed keeps: the newest rows stay,
 //! the tail the viewer already scrolled past is dropped, and trimming
 //! it never rewinds pagination.

@@ -7,9 +7,9 @@ use ghostr_gateway::hls::sessions::HlsSessions;
 use ghostr_gateway::progressive::capabilities::ProgressiveCapabilities;
 use ghostr_gateway::progressive::route::{ProgressiveState, ProgressiveTiming};
 #[cfg(not(feature = "video-debug-web"))]
-use ghostr_gateway::router::configured_router_with_progressive;
+use ghostr_gateway::router::configured_router_with_segmented;
 #[cfg(feature = "video-debug-web")]
-use ghostr_gateway::router::configured_router_with_progressive_debug;
+use ghostr_gateway::router::configured_router_with_segmented_debug;
 use ghostr_gateway::router::GatewayRouterResources;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::{path::PathBuf, sync::Arc};
@@ -52,7 +52,7 @@ pub fn progressive_harness_with_store(
     #[cfg(feature = "video-debug-web")]
     let hls_sessions = HlsSessions::production();
     let state = Arc::new(ProgressiveState {
-        store: store.clone(),
+        store: std::sync::Arc::clone(&store),
         demand: sender,
         cache: posts.clone(),
         network: network.clone(),
@@ -66,9 +66,9 @@ pub fn progressive_harness_with_store(
     #[cfg(feature = "video-debug-web")]
     let resources = GatewayRouterResources::new(hls_sessions.clone(), super::media_client());
     #[cfg(not(feature = "video-debug-web"))]
-    let router = configured_router_with_progressive(resources, state);
+    let router = configured_router_with_segmented(resources, state);
     #[cfg(feature = "video-debug-web")]
-    let router = configured_router_with_progressive_debug(
+    let router = configured_router_with_segmented_debug(
         resources,
         state,
         debug_delivery,

@@ -1,6 +1,7 @@
-//! Event-driven delivery manager (plan Phase 1 step 7): replaces the
-//! old one-second poll loop. Control and completion updates arrive over channels; every event
-//! triggers one replanning pass, with one bounded control-interval wake for sampled feedback.
+//! Event-driven delivery manager (plan Phase 1 step 7).
+//!
+//! Control and completion updates arrive over channels. Every event triggers one replanning pass,
+//! with one bounded control-interval wake for sampled feedback, replacing the old one-second loop.
 //!
 //! The parts of that pass live beside this file: `reconcile` decides
 //! what should be in flight, `transfers` and `workers` run it,
@@ -14,7 +15,8 @@ mod completion;
 mod completion_decision;
 mod completion_observability;
 pub(crate) mod concurrency;
-pub(crate) mod control_interval;
+mod config;
+pub(super) mod control_interval;
 mod cooldown_completion;
 pub(crate) mod cooldown_timers;
 mod create;
@@ -71,7 +73,6 @@ mod whole_body_limits;
 pub(crate) mod workers;
 
 use crate::cache_registry::CacheRegistry;
-use crate::debug::network::NetworkThrottle;
 use crate::delivery_events::{command_channel, CommandReceiver, DeliveryHandle};
 use crate::demand_leases::DemandLeases;
 use crate::manager::capability::CapabilityKeeper;
@@ -97,36 +98,17 @@ use crate::mutable_priority_queue::MutablePriorityQueue;
 use crate::playback_demand::DemandReceiver;
 use crate::probe::pool::MetadataProbePool;
 use crate::segmented::scheduler::SegmentedDelivery;
-use crate::segmented::SegmentedCache;
+use core::num::NonZeroUsize;
 use ghostr_engine::adaptive::DiscoveryDemand;
 use ghostr_engine::concurrency::AdaptiveConcurrency;
-use ghostr_engine::{DataUsageLevel, EngineParams};
-use ghostr_net::media_request_executor::MediaRequestExecutor;
-use ghostr_partial_store::partial_range_store::PartialRangeStore;
-use std::num::NonZeroUsize;
-use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::{mpsc, watch};
 
+pub use config::DeliveryManagerConfig;
 pub(crate) use focus_lease::FocusedStoreLease;
 pub use tuning::DeliveryTuning;
 
 const TRAFFIC_MAILBOX_CAPACITY: usize = 64;
-
-/// Everything the manager owns or reaches, as one typed object.
-pub struct DeliveryManagerConfig {
-    pub store: Arc<PartialRangeStore>,
-    pub requests: MediaRequestExecutor,
-    pub cache: CacheRegistry,
-    pub segmented: SegmentedCache,
-    pub network: NetworkThrottle,
-    pub network_status: crate::delivery_events::DeliveryNetworkStatus,
-    pub stats_path: PathBuf,
-    pub params: EngineParams,
-    pub level: DataUsageLevel,
-    pub tuning: DeliveryTuning,
-    pub transform: Option<Arc<dyn crate::transform::TransformBackend>>,
-}
 
 /// Starts the manager task and exposes adaptive candidate-demand changes.
 pub fn start_delivery_manager_with_discovery_demand(
@@ -138,10 +120,13 @@ pub fn start_delivery_manager_with_discovery_demand(
     let resources =
         resource_control::ResourceControl::bootstrap(&config, tokio::time::Instant::now());
     let observer = Arc::new(resources.clone());
-    assert!(config.requests.install_resource_observer(observer));
+    assert!(
+        config.requests.install_resource_observer(observer),
+        "a delivery manager must install its sole request resource observer"
+    );
     tokio::spawn(async move {
         let worker = DeliveryWorker::create(config, commands, demand, resources).await;
-        run(worker, Some(discovery_sender)).await;
+        Box::pin(run(worker, Some(discovery_sender))).await;
     });
     (handle, discovery_updates)
 }
@@ -151,7 +136,7 @@ async fn run(mut worker: DeliveryWorker, discovery_watch: Option<watch::Sender<D
     if let Some(sender) = discovery_watch {
         worker.state.publish_discovery_demand(sender);
     }
-    while worker.step().await {}
+    while Box::pin(worker.step()).await {}
     worker.keeper.save_now().await;
     let evidence = worker.state.catalog().evidence_state();
     worker.reliability.save_now(&evidence).await;

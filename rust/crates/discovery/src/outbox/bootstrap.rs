@@ -1,6 +1,7 @@
-//! Populates the outbox directory and the social graph in the
-//! background (plan §5.2). Relay lists are an optimisation: a feed must
-//! never wait for one, so every retrieval here runs on its own task
+//! Populates the outbox directory and social graph in the background.
+//!
+//! Relay lists are an optimisation (plan §5.2): a feed never waits for
+//! one, so every retrieval here runs on its own task
 //! instead of taking a worker slot in the discovery scheduler's pool,
 //! and its results flow through the same outcome channel a feed page
 //! uses. The first page therefore leaves with whatever the directory
@@ -76,28 +77,12 @@ impl OutboxBootstrap {
         self.authors_for(generation, authors);
     }
 
-    /// Adopts a landed follow set as the main feed's routing set and
-    /// chases the relay lists it does not know yet.
-    #[cfg(test)]
-    pub(crate) async fn track_follows(&self, follows: Vec<PublicKey>) {
-        let generation = locked(&self.session).generation;
-        self.track_follows_for(generation, follows).await;
-    }
-
     pub async fn track_follows_for(&self, generation: SessionGeneration, follows: Vec<PublicKey>) {
         self.outbox
             .write()
             .await
             .track_viewer_follows_for(generation, follows.clone());
         self.authors_for(generation, &follows);
-    }
-
-    /// Files every relay list in a retrieval's events. Every page flows
-    /// through here, so a page carrying none never takes the lock.
-    #[cfg(test)]
-    pub(crate) async fn ingest(&self, events: &[Event]) {
-        let generation = locked(&self.session).generation;
-        self.ingest_for(generation, events).await;
     }
 
     pub async fn ingest_for(&self, generation: SessionGeneration, events: &[Event]) {
@@ -145,9 +130,9 @@ impl OutboxBootstrap {
             plan,
             deferred_reposts: Vec::new(),
         };
-        let executor = self.executor.clone();
+        let executor = std::sync::Arc::clone(&self.executor);
         let outcomes = self.outcomes.clone();
-        let session = self.session.clone();
+        let session = std::sync::Arc::clone(&self.session);
         tokio::spawn(async move {
             let page = executor.execute_page(retrieval).await;
             let (result, cursor, complete) = match page {
@@ -186,3 +171,7 @@ fn locked(session: &SharedSession) -> std::sync::MutexGuard<'_, BootstrapSession
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
+
+#[cfg(test)]
+#[path = "bootstrap_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

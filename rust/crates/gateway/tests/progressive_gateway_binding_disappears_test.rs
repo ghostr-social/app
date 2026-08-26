@@ -5,7 +5,7 @@ use axum::http::StatusCode;
 use gateway_fixture::progressive::progressive_harness;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test(start_paused = true)]
 async fn retries_when_the_representation_disappears_while_length_is_learned() {
@@ -13,18 +13,29 @@ async fn retries_when_the_representation_disappears_while_length_is_learned() {
     harness.posts.insert("clip");
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(PostId::new("clip"), meta());
-    harness.store.bind_representation(binding).await.unwrap();
+    harness
+        .store
+        .bind_representation(binding)
+        .await
+        .expect("valid test fixture");
     let request = harness.video_request("clip", None).await;
     let response = tokio::spawn(harness.router.clone().oneshot(request));
 
     tokio::task::yield_now().await;
-    harness.store.clear().await.unwrap();
-    harness.store.set_total_len("clip", 8).await.unwrap();
-    let response = response.await.unwrap().unwrap();
+    harness.store.clear().await.expect("valid test fixture");
+    harness
+        .store
+        .set_total_len("clip", 8)
+        .await
+        .expect("valid test fixture");
+    let response = response
+        .await
+        .expect("valid test fixture")
+        .expect("valid test fixture");
 
     assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
     assert_eq!(response.headers()[RETRY_AFTER], "1");
-    std::fs::remove_dir_all(harness.root).unwrap();
+    std::fs::remove_dir_all(harness.root).expect("valid test fixture");
 }
 
 fn meta() -> VideoMeta {

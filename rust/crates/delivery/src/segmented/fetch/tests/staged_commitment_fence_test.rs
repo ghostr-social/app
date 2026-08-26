@@ -1,9 +1,10 @@
-use super::super::{fetch_stage, StagedFetch};
+use super::super::axiom_test_support::fetch_stage;
+use super::super::StagedFetch;
 use super::support::{client, delayed_asset, immediate_asset, network_status};
 use crate::manager::time::unix_time_ms;
+use core::time::Duration;
 use ghostr_engine::adaptive::{HlsBootstrapStage, PreemptionAuthority};
 use ghostr_engine::origin_model::ErrorReason;
-use std::time::Duration;
 
 #[tokio::test]
 async fn admitted_stage_may_complete_after_its_ownership_fence() {
@@ -17,7 +18,7 @@ async fn admitted_stage_may_complete_after_its_ownership_fence() {
 
     assert_eq!(object.body.as_ref(), b"x");
     assert!(unix_time_ms() > committed_until_ms);
-    server.await.unwrap();
+    server.await.expect("valid test fixture");
 }
 
 #[tokio::test]
@@ -32,9 +33,8 @@ async fn expired_stage_is_rejected_before_origin_contact() {
         unix_time_ms().saturating_sub(1),
     ))
     .await;
-    let error = match result {
-        Ok(_) => panic!("stale ownership cannot launch"),
-        Err(error) => error,
+    let Err(error) = result else {
+        panic!("stale ownership cannot launch")
     };
 
     assert!(error.to_string().contains("expired before launch"));
@@ -48,10 +48,10 @@ async fn gate_admission_after_the_ownership_fence_never_contacts_the_origin() {
     let requests = client();
     let held = requests
         .get(&url, PreemptionAuthority::Transition)
-        .unwrap()
+        .expect("valid test fixture")
         .admit()
         .await
-        .unwrap();
+        .expect("valid test fixture");
     let committed_until_ms = unix_time_ms() + 40;
     let queued_requests = requests.clone();
     let queued_url = url.clone();
@@ -67,9 +67,8 @@ async fn gate_admission_after_the_ownership_fence_never_contacts_the_origin() {
     });
     tokio::time::sleep(Duration::from_millis(80)).await;
     drop(held);
-    let error = match task.await.unwrap() {
-        Ok(_) => panic!("expired queued stage must fail"),
-        Err(error) => error,
+    let Err(error) = task.await.expect("valid test fixture") else {
+        panic!("expired queued stage must fail")
     };
 
     assert_eq!(error.reason(), ErrorReason::Policy);

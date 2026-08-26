@@ -8,7 +8,12 @@ use reqwest::Url;
 
 fn origin_generation(url: &Url, etag: &str, total: u64) -> OriginGeneration {
     let mut headers = HeaderMap::new();
-    headers.insert(ETAG, HeaderValue::from_str(etag).unwrap());
-    let etag = single_strong_etag(&headers).unwrap().unwrap();
+    headers.insert(
+        ETAG,
+        HeaderValue::from_str(etag).expect("valid test fixture"),
+    );
+    let etag = single_strong_etag(&headers)
+        .expect("valid test fixture")
+        .expect("valid test fixture");
     OriginGeneration::new(url, etag, total)
 }

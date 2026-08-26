@@ -1,4 +1,4 @@
-use ghostr_discovery::content::candidates::{CandidateAdmission, CandidateRegistry};
+use crate::content::candidates::{CandidateAdmission, CandidateRegistry};
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, Tag, Timestamp};
 
 #[test]

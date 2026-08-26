@@ -13,9 +13,9 @@ const SOURCE: &str = "https://private.example/root.m3u8";
 #[test]
 fn hls_bootstrap_commitment_is_private_typed_and_fully_replayable() {
     let record = hls_record();
-    let json = serde_json::to_value(&record).unwrap();
+    let json = serde_json::to_value(&record).expect("valid test fixture");
     let selected = &json["warp_decision"]["selected"];
-    let cursor = serde_json::to_value(resume_cursor()).unwrap();
+    let cursor = serde_json::to_value(resume_cursor()).expect("valid test fixture");
 
     assert_eq!(selected["kind"]["kind"], "hls_bootstrap");
     assert_eq!(selected["kind"]["stage"], "root_manifest");
@@ -30,15 +30,22 @@ fn hls_bootstrap_commitment_is_private_typed_and_fully_replayable() {
         "bounded_object_cursor"
     );
     assert_ne!(selected["command"]["source_id"], SOURCE);
-    assert!(!serde_json::to_string(&record).unwrap().contains(SOURCE));
-    let restored: DecisionRecord = serde_json::from_value(json.clone()).unwrap();
-    assert_eq!(restored.replay(), DecisionReplayStatus::Verified);
+    assert!(!serde_json::to_string(&record)
+        .expect("valid test fixture")
+        .contains(SOURCE));
+    let restored: DecisionRecord =
+        serde_json::from_value(json.clone()).expect("valid test fixture");
+    assert_eq!(restored.integrity_status(), DecisionReplayStatus::Verified);
     assert!(restored.replay_warp_search().is_ok());
     for location in ["kind", "command"] {
         let mut tampered = json.clone();
         tampered["warp_decision"]["selected"][location]["cursor"]["attempt"] = serde_json::json!(8);
-        let tampered: DecisionRecord = serde_json::from_value(tampered).unwrap();
-        assert_eq!(tampered.replay(), DecisionReplayStatus::PlanMismatch);
+        let tampered: DecisionRecord =
+            serde_json::from_value(tampered).expect("valid test fixture");
+        assert_eq!(
+            tampered.integrity_status(),
+            DecisionReplayStatus::PlanMismatch
+        );
     }
 }
 
@@ -50,12 +57,15 @@ fn hls_terminal_failure_class_is_sealed_against_replay_mutation() {
         class: "warp_hls_http_5xx".to_owned(),
         elapsed_ms: 8,
     }));
-    assert_eq!(record.replay(), DecisionReplayStatus::Verified);
+    assert_eq!(record.integrity_status(), DecisionReplayStatus::Verified);
 
-    let mut tampered = serde_json::to_value(record).unwrap();
+    let mut tampered = serde_json::to_value(record).expect("valid test fixture");
     tampered["eventual_outcome"]["class"] = serde_json::json!("warp_hls_policy");
-    let tampered: DecisionRecord = serde_json::from_value(tampered).unwrap();
-    assert_eq!(tampered.replay(), DecisionReplayStatus::PlanMismatch);
+    let tampered: DecisionRecord = serde_json::from_value(tampered).expect("valid test fixture");
+    assert_eq!(
+        tampered.integrity_status(),
+        DecisionReplayStatus::PlanMismatch
+    );
 }
 
 fn hls_record() -> DecisionRecord {
@@ -63,7 +73,7 @@ fn hls_record() -> DecisionRecord {
     state.hls_candidates.push(HlsCandidateSnapshot {
         post: PostId::new("p0"),
         feed_offset: FeedOffset::new(0),
-        view_probability: ViewProbability::new(1.0).unwrap(),
+        view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
         startup_value_ms: 2_000,
         cursor: resume_cursor(),
         state: HlsBootstrapState::Pending {

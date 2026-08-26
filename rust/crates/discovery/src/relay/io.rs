@@ -1,13 +1,9 @@
 //! External nostr-sdk network calls behind the relay-pool owner.
 
+use core::future::Future;
+use core::pin::Pin;
+use core::time::Duration;
 use nostr_sdk::{Event, Filter};
-use std::future::Future;
-use std::pin::Pin;
-use std::time::Duration;
-#[cfg(test)]
-use tokio::time::sleep;
-#[cfg(test)]
-use tokio_stream::{Stream, StreamExt};
 
 use crate::relay::health::RelayAdmissionBatch;
 use crate::retrieval_types::EventProgress;
@@ -39,55 +35,5 @@ pub trait RelayIo: Send + Sync {
 }
 
 #[cfg(test)]
-pub(crate) async fn drain_events<S>(mut stream: S) -> Vec<Event>
-where
-    S: Stream<Item = Event> + Unpin,
-{
-    drain_events_with_progress(&mut stream, None).await
-}
-
-#[cfg(test)]
-pub(crate) async fn drain_events_with_progress<S>(
-    mut stream: S,
-    progress: Option<EventProgress>,
-) -> Vec<Event>
-where
-    S: Stream<Item = Event> + Unpin,
-{
-    let mut events = Vec::new();
-    while let Some(event) = stream.next().await {
-        if let Some(progress) = &progress {
-            let _ = progress.send(event.clone()).await;
-        }
-        events.push(event);
-    }
-    events
-}
-
-#[cfg(test)]
-pub(crate) async fn drain_events_until<S>(
-    mut stream: S,
-    progress: Option<EventProgress>,
-    wait: Duration,
-) -> Vec<Event>
-where
-    S: Stream<Item = Event> + Unpin,
-{
-    let deadline = sleep(wait);
-    tokio::pin!(deadline);
-    let mut events = Vec::new();
-    loop {
-        tokio::select! {
-            _ = &mut deadline => return events,
-            event = stream.next() => match event {
-                Some(event) => {
-                    if let Some(progress) = &progress {
-                        let _ = progress.send(event.clone()).await;
-                    }
-                    events.push(event);
-                }
-                None => return events,
-            }
-        }
-    }
-}
+#[path = "io_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

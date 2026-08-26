@@ -3,8 +3,8 @@
 use crate::api::tests::outbox_runtime_support::test_bootstrap;
 use crate::api::tests::runtime_fixture::runtime;
 use crate::discovery::feed::spec::FeedSpec;
+use core::time::Duration;
 use nostr_sdk::Keys;
-use std::time::Duration;
 use tokio::time::timeout;
 
 #[tokio::test]

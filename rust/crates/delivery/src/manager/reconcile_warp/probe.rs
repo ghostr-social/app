@@ -13,6 +13,7 @@ struct ClaimedProbe {
     authority: PreemptionAuthority,
 }
 
+#[derive(Clone, Copy)]
 pub(super) struct SelectedProbe<'a> {
     pub(super) post: &'a PostId,
     pub(super) source: &'a str,

@@ -1,5 +1,5 @@
 use crate::hls::asset_request::AssetRangeRequest;
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{bail, ensure, Context as _, Result};
 use axum::body::Body;
 use axum::http::header::{CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE};
 use axum::http::{HeaderMap, Response, StatusCode};
@@ -49,7 +49,10 @@ pub(super) fn local_unsatisfiable() -> Result<Response<Body>, StatusCode> {
         .status(StatusCode::RANGE_NOT_SATISFIABLE)
         .header(CONTENT_LENGTH, 0)
         .body(Body::empty())
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+        .map_err(|error| {
+            log::warn!("Could not build local HLS range response: {error}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })
 }
 
 impl AssetResponseEnvelope {

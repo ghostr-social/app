@@ -29,7 +29,11 @@ async fn the_engine_client_keeps_only_seen_ids() {
 
     assert!(ids(&stored(&client).await).is_empty());
     assert_eq!(
-        client.database().check_id(&event.id).await.unwrap(),
+        client
+            .database()
+            .check_id(&event.id)
+            .await
+            .expect("valid test fixture"),
         DatabaseEventStatus::Saved
     );
 }
@@ -58,7 +62,7 @@ async fn the_session_cache_does_not_write_through_the_client_database() {
 
     let session = SessionGeneration::initial();
     cache
-        .remember_for(session, std::slice::from_ref(&event))
+        .remember_for(session, core::slice::from_ref(&event))
         .await;
 
     let cached = cache

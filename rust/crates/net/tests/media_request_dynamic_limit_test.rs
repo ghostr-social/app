@@ -15,26 +15,26 @@ async fn growth_dispatches_waiters_and_shrink_drains_without_revocation() {
     let active_b = tokio::spawn(open(requests.clone(), b.url.clone()));
     b.expect_quiet().await;
 
-    requests.update_limits(MediaRequestLimits::try_new(3, 1).unwrap());
+    requests.update_limits(MediaRequestLimits::try_new(3, 1).expect("valid test fixture"));
     b.expect_hit().await;
-    requests.update_limits(MediaRequestLimits::try_new(1, 1).unwrap());
+    requests.update_limits(MediaRequestLimits::try_new(1, 1).expect("valid test fixture"));
     let waiting_c = tokio::spawn(open(requests, c.url.clone()));
     c.expect_quiet().await;
 
     a.release_one();
-    drop(active_a.await.unwrap());
+    drop(active_a.await.expect("valid test fixture"));
     c.expect_quiet().await;
     b.release_one();
-    drop(active_b.await.unwrap());
+    drop(active_b.await.expect("valid test fixture"));
     c.expect_hit().await;
     c.release_one();
-    drop(waiting_c.await.unwrap());
+    drop(waiting_c.await.expect("valid test fixture"));
 }
 
 fn executor(global: usize) -> MediaRequestExecutor {
     MediaRequestExecutor::new(
         LocalMediaClient::shared(),
-        MediaRequestLimits::try_new(global, 1).unwrap(),
+        MediaRequestLimits::try_new(global, 1).expect("valid test fixture"),
     )
 }
 
@@ -44,11 +44,13 @@ async fn open(
 ) -> ghostr_net::media_request_executor::MediaResponse {
     requests
         .get(&url, PreemptionAuthority::Transition)
-        .unwrap()
+        .expect("valid test fixture")
         .admit()
         .await
-        .unwrap()
-        .send()
+        .expect("valid test fixture")
+        .send_with_redirect_deadline(
+            tokio::time::Instant::now() + core::time::Duration::from_secs(30),
+        )
         .await
-        .unwrap()
+        .expect("valid test fixture")
 }

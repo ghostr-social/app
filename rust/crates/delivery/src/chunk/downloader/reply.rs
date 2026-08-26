@@ -3,7 +3,7 @@ use super::{
 };
 use crate::chunk::response::ResponseReply;
 use crate::chunk::traffic::ChunkTraffic;
-use anyhow::Context;
+use anyhow::Context as _;
 use ghostr_engine::adaptive::RetrievalRequest;
 use ghostr_net::origin_content_type;
 

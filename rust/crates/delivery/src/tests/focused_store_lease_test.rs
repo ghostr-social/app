@@ -6,7 +6,7 @@ use ghostr_partial_store::partial_range_store::free_space::FreeSpace;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::Path;
 use std::sync::Arc;
-use std::time::Duration;
+use core::time::Duration;
 use tokio::sync::Mutex;
 
 struct RoomyDisk;
@@ -39,8 +39,8 @@ async fn focused_video_survives_capacity_eviction_between_player_requests() {
 
     store.set_storage_budget(400).await.expect("shrink budget");
 
-    assert_eq!(store.present_ranges("focused").await.unwrap(), vec![0..400]);
-    assert!(store.present_ranges("old").await.unwrap().is_empty());
+    assert_eq!(store.present_ranges("focused").await.expect("valid test fixture"), vec![0..400]);
+    assert!(store.present_ranges("old").await.expect("valid test fixture").is_empty());
     drop(lease);
     std::fs::remove_dir_all(root).expect("remove test directory");
 }

@@ -42,7 +42,7 @@ fn every_source_bearing_warp_command_is_privacy_transformed_field_by_field() {
     ];
 
     for decision in cases {
-        let json = serde_json::to_string(&record(&decision)).unwrap();
+        let json = serde_json::to_string(&record(&decision)).expect("valid test fixture");
         for secret in [
             "secret-post",
             "private.example",

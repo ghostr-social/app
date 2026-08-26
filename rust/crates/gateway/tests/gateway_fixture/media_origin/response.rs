@@ -11,7 +11,7 @@ pub(super) fn metadata() -> Response {
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::ETAG, "\"fixture-gateway-media\"")
         .body(Body::empty())
-        .unwrap()
+        .expect("valid test fixture")
 }
 
 pub(super) fn partial(headers: &HeaderMap) -> Response {
@@ -26,7 +26,7 @@ pub(super) fn partial(headers: &HeaderMap) -> Response {
         .header(header::CONTENT_TYPE, "video/mp4")
         .header(header::ETAG, "\"fixture-gateway-media\"")
         .body(Body::from(vec![1; (end - start + 1) as usize]))
-        .unwrap()
+        .expect("valid test fixture")
 }
 
 fn requested_span(headers: &HeaderMap) -> (u64, u64) {

@@ -1,13 +1,18 @@
 use super::{
-    accepted_total, save_binding, PartialRangeStore, ResponseOwnerRef, SingleResponseState,
-    SingleResponseStorage,
+    accepted_total, PartialRangeStore, ResponseOwnerRef, SingleResponseState, SingleResponseStorage,
 };
-use crate::partial_range_disk as disk;
 use crate::partial_range_store::StoreAction;
-use anyhow::{bail, Context, Result};
+use anyhow::{Context as _, Result};
 use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
 
+mod live;
+#[cfg(any(test, feature = "test"))]
+mod test_support;
+
 impl PartialRangeStore {
+    /// # Errors
+    ///
+    /// Returns an error when the action is stale or response completion cannot be committed.
     pub async fn finish_single_response_for_action(
         &self,
         identity: &TransferIdentity,
@@ -18,22 +23,6 @@ impl PartialRangeStore {
         self.finish_single_response_owned(
             identity,
             ResponseOwnerRef::Granted(action),
-            total,
-            complete,
-        )
-        .await
-    }
-
-    pub async fn finish_single_response(
-        &self,
-        identity: &TransferIdentity,
-        action: u64,
-        total: Option<u64>,
-        complete: bool,
-    ) -> Result<bool> {
-        self.finish_single_response_owned(
-            identity,
-            ResponseOwnerRef::Legacy(action),
             total,
             complete,
         )
@@ -110,52 +99,6 @@ impl PartialRangeStore {
         Ok(false)
     }
 
-    async fn finish_live_single_response(
-        &self,
-        binding: &RepresentationBinding,
-        total: u64,
-        started: bool,
-        exact: bool,
-    ) -> Result<bool> {
-        if exact && started {
-            return match self.seal_live_single_response(binding, total).await {
-                Ok(sealed) => Ok(sealed),
-                Err(error) => {
-                    self.rollback_live_single_response(binding).await?;
-                    Err(error)
-                }
-            };
-        }
-        self.rollback_live_single_response(binding).await?;
-        Ok(false)
-    }
-
-    async fn rollback_live_single_response(&self, binding: &RepresentationBinding) -> Result<()> {
-        let mut entries = self.entries.lock().await;
-        self.discard_before_authority(&mut entries, binding.post().as_str())
-            .await?;
-        save_binding(self, binding).await?;
-        self.changed.notify_waiters();
-        Ok(())
-    }
-
-    async fn seal_live_single_response(
-        &self,
-        binding: &RepresentationBinding,
-        total: u64,
-    ) -> Result<bool> {
-        let key = binding.post().as_str();
-        let mut entries = self.entries.lock().await;
-        let entry = self.entry(&mut entries, key).await?;
-        entry.manifest.set_total_len(total)?;
-        if !entry.manifest.is_complete() {
-            bail!("single response ended without the complete object");
-        }
-        disk::save_manifest(&self.paths.manifest(key), &entry.manifest).await?;
-        self.changed.notify_waiters();
-        Ok(true)
-    }
-
     async fn finish_staged_single_response(
         &self,
         binding: &RepresentationBinding,
@@ -182,7 +125,7 @@ impl PartialRangeStore {
         Ok(false)
     }
 
-    pub(super) async fn remove_single_response_owner(
+    async fn remove_single_response_owner(
         &self,
         identity: &TransferIdentity,
         owner: ResponseOwnerRef<'_>,

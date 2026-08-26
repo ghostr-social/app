@@ -185,7 +185,7 @@ impl StorePaths {
         paths
     }
 
-    pub(crate) fn transform<'a>(&'a self, key: &'a str) -> TransformPaths<'a> {
+    pub(super) fn transform<'a>(&'a self, key: &'a str) -> TransformPaths<'a> {
         TransformPaths::new(self, key)
     }
 

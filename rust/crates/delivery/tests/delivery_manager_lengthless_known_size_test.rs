@@ -14,7 +14,7 @@ use ghostr_engine::adaptive::REQUEST_SLICE_BYTES;
 async fn reliable_size_completes_a_lengthless_body_larger_than_the_speculative_cap() {
     let body = vec![b'k'; REQUEST_SLICE_BYTES as usize + 1];
     let log = hit_log();
-    let origin = serve_recording_range_blind_body(log.clone(), body.clone()).await;
+    let origin = serve_recording_range_blind_body(std::sync::Arc::clone(&log), body.clone()).await;
     let harness = start_harness("ghostr-known-lengthless-whole", DeliveryOptions::default());
 
     harness.handle.update_focus(focus_now(
@@ -29,8 +29,8 @@ async fn reliable_size_completes_a_lengthless_body_larger_than_the_speculative_c
             .store
             .read_range("aa11", 0..body.len() as u64)
             .await
-            .unwrap()
-            .unwrap(),
+            .expect("valid test fixture")
+            .expect("valid test fixture"),
         body
     );
     let requests = hits(&log);

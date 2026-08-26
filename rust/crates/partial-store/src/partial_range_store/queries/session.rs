@@ -4,7 +4,7 @@ use super::snapshot::StoredMediaSnapshot;
 use crate::partial_range_store::single_response::SessionResponse;
 use crate::partial_range_store::PartialRangeStore;
 use anyhow::Result;
-use std::ops::Range;
+use core::ops::Range;
 
 pub(super) async fn snapshot(
     store: &PartialRangeStore,

@@ -1,5 +1,5 @@
 //! Documented contract choice: HLS items never get a progressive URL.
-//! HLS playback stays on the session-owning ffi_acquire_hls_playback.
+//! HLS playback stays on the session-owning `ffi_acquire_hls_playback`.
 
 use rust_lib_ghostr::api::delivery_types::{FfiFocusItem, FfiMediaDelivery};
 use rust_lib_ghostr::api::focus_control::ffi_playback_url;

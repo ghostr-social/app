@@ -24,7 +24,11 @@ fn response_length_conflict_keeps_the_conservative_whole_request_size() {
     assert!(catalog.learn_action_response_observation_for(&identity, response));
 
     assert_eq!(
-        request_context(catalog.lookup(&post).unwrap(), SOURCE, 1_000),
+        request_context(
+            catalog.lookup(&post).expect("valid test fixture"),
+            SOURCE,
+            1_000
+        ),
         (RequestMethod::FullGet, MediaClass::WholeObject, 20_000_000)
     );
 }

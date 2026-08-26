@@ -17,5 +17,5 @@ pub(super) fn apply(
     let Some(exhaustion) = inputs.whole_body_exhaustions.get(&identity) else {
         return context;
     };
-    context.with_whole_body_exhaustion(candidate.post.clone(), *exhaustion)
+    context.with_whole_body_exhaustion(&candidate.post, *exhaustion)
 }

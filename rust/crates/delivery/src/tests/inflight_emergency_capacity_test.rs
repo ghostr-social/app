@@ -52,7 +52,7 @@ fn satisfied_current_demand_does_not_preempt_work() {
     let mut active = InFlightChunks::new();
     let (_, token) = insert(&mut active, &demanded);
 
-    active.preempt_for_current(&current, std::slice::from_ref(&demanded), 1);
+    active.preempt_for_current(&current, core::slice::from_ref(&demanded), 1);
 
     assert!(!token.is_cancelled());
 }

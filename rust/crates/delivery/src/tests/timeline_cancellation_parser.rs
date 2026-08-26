@@ -1,7 +1,8 @@
-use crate::manager::timeline::{
-    TimelineCoordinator, TimelineEvidence, TimelineIncomplete, TimelineInput, TimelineParse,
-    TimelineParser, TimelineResult, TimelineTerminal,
-};
+use crate::manager::timeline::axiom_test_support::TimelineIncomplete;
+use crate::manager::timeline::axiom_test_support::TimelineInput;
+use crate::manager::timeline::axiom_test_support::TimelineParse;
+use crate::manager::timeline::axiom_test_support::TimelineParser;
+use crate::manager::timeline::{TimelineCoordinator, TimelineEvidence, TimelineResult, TimelineTerminal};
 use crate::tests::demand_lease_fixture::{binding, catalog};
 use crate::tests::support::temp_directory;
 use ghostr_engine::media_timeline::TimelineParseControl;
@@ -9,21 +10,21 @@ use ghostr_engine::PostId;
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
 
 pub(crate) struct CancellationHarness {
-    pub(crate) root: PathBuf,
-    pub(crate) coordinator: TimelineCoordinator,
-    pub(crate) evidence: TimelineEvidence,
-    pub(crate) post: PostId,
+    pub(super) root: PathBuf,
+    pub(super) coordinator: TimelineCoordinator,
+    pub(super) evidence: TimelineEvidence,
+    pub(super) post: PostId,
     started: mpsc::UnboundedReceiver<usize>,
 }
 
 impl CancellationHarness {
-    pub(crate) async fn new() -> Self {
+    pub(super) async fn new() -> Self {
         let root = temp_directory("timeline-cancellation");
         let store = Arc::new(PartialRangeStore::with_capacity(
             root.clone(),
@@ -32,11 +33,11 @@ impl CancellationHarness {
         ));
         let catalog = catalog(&["post"]);
         let binding = binding(&catalog, "post");
-        store.bind_representation(binding.clone()).await.unwrap();
-        store.set_total_len("post", 32).await.unwrap();
-        store.write_range("post", 0, b"abcdefgh").await.unwrap();
-        let snapshot = store.media_snapshot("post").await.unwrap();
-        let evidence = TimelineEvidence::from_snapshot(&binding, &snapshot).unwrap();
+        store.bind_representation(binding.clone()).await.expect("valid test fixture");
+        store.set_total_len("post", 32).await.expect("valid test fixture");
+        store.write_range("post", 0, b"abcdefgh").await.expect("valid test fixture");
+        let snapshot = store.media_snapshot("post").await.expect("valid test fixture");
+        let evidence = TimelineEvidence::from_snapshot(&binding, &snapshot).expect("valid test fixture");
         let (parser, started) = CancellationParser::new();
         let coordinator = TimelineCoordinator::with_parser(store, Arc::new(parser), 1);
         Self {
@@ -48,18 +49,18 @@ impl CancellationHarness {
         }
     }
 
-    pub(crate) async fn next_started(&mut self) -> usize {
-        tokio::time::timeout(std::time::Duration::from_secs(1), self.started.recv())
+    pub(super) async fn next_started(&mut self) -> usize {
+        tokio::time::timeout(core::time::Duration::from_secs(1), self.started.recv())
             .await
-            .unwrap()
-            .unwrap()
+            .expect("valid test fixture")
+            .expect("valid test fixture")
     }
 
-    pub(crate) async fn next_result(&mut self) -> TimelineResult {
-        tokio::time::timeout(std::time::Duration::from_secs(1), self.coordinator.recv())
+    pub(super) async fn next_result(&mut self) -> TimelineResult {
+        tokio::time::timeout(core::time::Duration::from_secs(1), self.coordinator.recv())
             .await
-            .unwrap()
-            .unwrap()
+            .expect("valid test fixture")
+            .expect("valid test fixture")
     }
 }
 
@@ -69,7 +70,7 @@ pub(crate) struct CancellationParser {
 }
 
 impl CancellationParser {
-    pub(crate) fn new() -> (Self, mpsc::UnboundedReceiver<usize>) {
+    fn new() -> (Self, mpsc::UnboundedReceiver<usize>) {
         let (started, receiver) = mpsc::unbounded_channel();
         (
             Self {
@@ -84,7 +85,7 @@ impl CancellationParser {
 impl TimelineParser for CancellationParser {
     fn parse(&self, _input: TimelineInput, control: &dyn TimelineParseControl) -> TimelineParse {
         let call = self.calls.fetch_add(1, Ordering::AcqRel);
-        self.started.send(call).unwrap();
+        self.started.send(call).expect("valid test fixture");
         if call > 0 {
             return TimelineParse::Completed(TimelineTerminal::Incomplete(
                 TimelineIncomplete::Unavailable,

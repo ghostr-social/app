@@ -22,8 +22,7 @@ impl WarpPlanner {
         }
         let available = input.context.remaining_request_slots();
         let mut context = input.context.clone();
-        context.limits.request_tokens =
-            context.limits.request_tokens.saturating_add(1).min(ceiling);
+        context.expand_ordinary_request_capacity(ceiling);
         let expanded = WarpPlannerInput::new(input.snapshot, input.base, input.origins, &context);
         let feasible = feasibility::apply(&expanded, frontier, &self.config, network_bytes);
         let (search, _) = self.search(&expanded, &feasible);

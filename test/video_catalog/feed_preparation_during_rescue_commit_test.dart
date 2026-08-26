@@ -2,22 +2,27 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
+import 'package:ghostr/core/media/video_media_source.dart';
+import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
 import 'package:ghostr/features/video_catalog/domain/video_delivery_updates.dart';
-import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_preparation.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_entry.dart';
 import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart';
 
+import '../support/controlled_video_delivery_updates.dart';
+import '../support/fake_feed_focus_port.dart';
 import '../support/fakes.dart';
 import '../support/feed_preparation_updates.dart';
+import '../support/ready_playback_preparation.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('preparation update cannot cancel a durable rescue commit', () async {
+  test('watch persistence cannot delay or relabel a rescue', () async {
     final history = _GatedHistory();
-    final delivery = _DeliveryUpdates();
+    final delivery = ControlledVideoDeliveryUpdates();
     final preparation = ControlledPlaybackPreparationUpdates();
+    final focus = FakeFeedFocusPort();
     final posts = List.generate(3, (index) => samplePost(id: 'p$index'));
     final source = FakeVideoCatalogRepository(forYouFeed: posts);
     final cubit = FeedCubit(
@@ -25,6 +30,7 @@ void main() {
         feed: source,
         engagement: source,
         optional: FeedOptionalDependencies(
+          focus: focus,
           watch: FeedWatchDependencies(
             tracker: WatchHistoryTracker(
               history: history,
@@ -43,24 +49,35 @@ void main() {
       await Future.wait([cubit.close(), delivery.close(), preparation.close()]);
     });
     await cubit.load();
-    delivery.publish(posts[1], startable: false);
-    delivery.publish(posts[2], startable: true);
+    delivery.publish(posts[1], VideoDeliveryPhase.preparing);
+    delivery.publish(posts[2], VideoDeliveryPhase.startable);
 
     cubit.pageChanged(1);
     await history.secondStarted.future;
-    preparation.publish(_plan('p0'));
+    await pumpEventQueue();
+
+    expect((cubit.state as FeedLoaded).posts.first.id.value, 'p2');
+    expect(focus.focuses.last.cause, FeedFocusCause.transportRescue);
+    preparation.publish(_plan(posts[0].media, posts[1].media));
+    await pumpEventQueue();
+    expect((cubit.state as FeedLoaded).posts.first.id.value, 'p2');
+
     history.release.complete();
     await pumpEventQueue();
 
     final loaded = cubit.state as FeedLoaded;
-    expect(loaded.posts.first.id.value, 'p2');
     expect(loaded.preparation.isManaged, isTrue);
+    expect(history.entries.map((entry) => entry.videoId), ['e:p2', 'e:p0']);
   });
 }
 
-PlaybackPreparationPlan _plan(String current) => PlaybackPreparationPlan(
+PlaybackPreparationPlan _plan(
+  VideoMediaSource current,
+  VideoMediaSource intended,
+) => PlaybackPreparationPlan(
   revision: BigInt.one,
-  currentDeliveryId: PlaybackDeliveryId.parse(current),
+  currentDeliveryId: current.playbackDeliveryId,
+  upcoming: [readyPlaybackPreparation(intended)],
 );
 
 final class _GatedHistory extends FakeWatchHistoryRepository {
@@ -76,25 +93,4 @@ final class _GatedHistory extends FakeWatchHistoryRepository {
     }
     await super.record(entry);
   }
-}
-
-final class _DeliveryUpdates implements VideoDeliveryUpdates {
-  final _events = StreamController<VideoDeliverySnapshot>.broadcast(sync: true);
-
-  @override
-  Stream<VideoDeliverySnapshot> watchDelivery() => _events.stream;
-
-  void publish(VideoPost post, {required bool startable}) {
-    _events.add(
-      VideoDeliverySnapshot(
-        deliveryId: post.media.playbackDeliveryId!,
-        phase: startable
-            ? VideoDeliveryPhase.startable
-            : VideoDeliveryPhase.preparing,
-        bytesPresent: BigInt.zero,
-      ),
-    );
-  }
-
-  Future<void> close() => _events.close();
 }

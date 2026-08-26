@@ -49,8 +49,9 @@ impl FailurePolicy {
             ErrorReason::Timeout | ErrorReason::Http5xx | ErrorReason::Connection => {
                 Self::retry(FailureClass::Transient)
             }
-            ErrorReason::Dns | ErrorReason::Tls => Self::retry(FailureClass::Permanent),
-            ErrorReason::Http4xx
+            ErrorReason::Dns
+            | ErrorReason::Tls
+            | ErrorReason::Http4xx
             | ErrorReason::RangeNoncompliant
             | ErrorReason::InvalidResponse
             | ErrorReason::Policy => Self::retry(FailureClass::Permanent),

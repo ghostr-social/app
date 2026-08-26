@@ -8,7 +8,7 @@ use crate::evaluation::events::{
 use crate::evaluation::types::EvaluationSnapshot;
 
 impl EvaluationTracker {
-    pub fn budget(&mut self, event: BudgetMetricEvent) {
+    pub(crate) fn budget(&mut self, event: BudgetMetricEvent) {
         self.account_storage_time(event.observed_at_ms, event.stored_bytes);
         let metrics = &mut self.metrics.budget;
         metrics.observations += 1;
@@ -47,7 +47,7 @@ impl EvaluationTracker {
         self.last_storage_observation = Some((observed_at_ms, stored_bytes));
     }
 
-    pub fn readiness(&mut self, event: ReadinessMetricEvent) {
+    pub(crate) fn readiness(&mut self, event: ReadinessMetricEvent) {
         let metrics = &mut self.metrics.readiness;
         self.readiness_observations += 1;
         let inferred = self
@@ -91,7 +91,7 @@ impl EvaluationTracker {
         metrics.protected_rescue_slot_uses += u64::from(event.protected_slot_used);
     }
 
-    pub fn semantic(&mut self, event: SemanticMetricEvent) {
+    pub(crate) fn semantic(&mut self, event: SemanticMetricEvent) {
         let metrics = &mut self.metrics.semantics;
         metrics.rank_displacement = metrics
             .rank_displacement
@@ -102,19 +102,19 @@ impl EvaluationTracker {
         metrics.transport_substitutions += u64::from(event.transport_substitution);
     }
 
-    pub fn integrity(&mut self, event: IntegrityMetricEvent) {
+    pub(crate) fn integrity(&mut self, event: IntegrityMetricEvent) {
         let metrics = &mut self.metrics.integrity;
         match event {
             IntegrityMetricEvent::HashMismatch => metrics.hash_mismatches += 1,
             IntegrityMetricEvent::StaleValidator => metrics.stale_validator_incidents += 1,
             IntegrityMetricEvent::FalseStreamability => {
-                metrics.false_streamability_classifications += 1
+                metrics.false_streamability_classifications += 1;
             }
             IntegrityMetricEvent::MetadataCalibrationError => {
-                metrics.metadata_field_calibration_errors += 1
+                metrics.metadata_field_calibration_errors += 1;
             }
             IntegrityMetricEvent::IncorrectRangeSplicePrevented => {
-                metrics.incorrect_range_splices_prevented += 1
+                metrics.incorrect_range_splices_prevented += 1;
             }
             IntegrityMetricEvent::ParserLimitRejection => metrics.parser_limit_rejections += 1,
             IntegrityMetricEvent::SsrfOrRedirectBlock => metrics.ssrf_redirect_blocks += 1,
@@ -132,10 +132,14 @@ pub(super) fn populate(tracker: &EvaluationTracker, output: &mut EvaluationSnaps
         readiness.protected_rescue_slot_uses,
         readiness.protected_rescue_slot_claims,
     );
-    if tracker.readiness_observations > 0 {
-        readiness.probability_weighted_ready_reserve_millis /= tracker.readiness_observations;
-        readiness.useful_ready_coverage_ms /= tracker.readiness_observations;
-    }
+    readiness.probability_weighted_ready_reserve_millis = readiness
+        .probability_weighted_ready_reserve_millis
+        .checked_div(tracker.readiness_observations)
+        .unwrap_or_default();
+    readiness.useful_ready_coverage_ms = readiness
+        .useful_ready_coverage_ms
+        .checked_div(tracker.readiness_observations)
+        .unwrap_or_default();
     adaptation::populate(tracker, output);
 }
 

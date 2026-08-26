@@ -3,15 +3,18 @@ use crate::hls::routes::asset;
 use axum::extract::{Path, State};
 use axum::http::header::RANGE;
 use axum::http::{HeaderMap, HeaderValue, Response, StatusCode};
-use std::time::Duration;
-use tokio::io::AsyncWriteExt;
+use core::time::Duration;
+use tokio::io::AsyncWriteExt as _;
 use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 
 pub(super) async fn serve(responses: Vec<&'static [u8]>) -> (String, JoinHandle<Vec<String>>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("listener");
-    let source = format!("http://{}/index.m3u8", listener.local_addr().unwrap());
+    let source = format!(
+        "http://{}/index.m3u8",
+        listener.local_addr().expect("valid test fixture")
+    );
     let task = tokio::spawn(async move {
         let (mut root, _) = accept(&listener).await;
         write_manifest(&mut root).await;
@@ -69,7 +72,7 @@ pub(super) async fn request_result(
     range: &str,
 ) -> Result<Response<axum::body::Body>, StatusCode> {
     asset(
-        State(state.clone()),
+        State(std::sync::Arc::clone(state)),
         Path((session.as_str().to_owned(), resource.to_owned())),
         headers(range),
     )

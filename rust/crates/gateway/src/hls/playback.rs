@@ -1,6 +1,6 @@
 use crate::hls::sessions::{HlsSessionId, HlsSessions};
 use anyhow::Result;
-use std::net::SocketAddr;
+use core::net::SocketAddr;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NativeHlsPlaybackSession {

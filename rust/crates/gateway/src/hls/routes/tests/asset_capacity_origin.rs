@@ -1,6 +1,6 @@
 use super::asset_origin::accept;
-use std::time::Duration;
-use tokio::io::AsyncWriteExt;
+use core::time::Duration;
+use tokio::io::AsyncWriteExt as _;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::task::JoinHandle;
 
@@ -8,7 +8,10 @@ const MANIFEST: &str = "#EXTM3U\n#EXTINF:2,\nfirst.m4s\n#EXTINF:2,\nsecond.m4s\n
 
 pub(super) async fn serve() -> (String, JoinHandle<Vec<String>>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("listener");
-    let source = format!("http://{}/index.m3u8", listener.local_addr().unwrap());
+    let source = format!(
+        "http://{}/index.m3u8",
+        listener.local_addr().expect("valid test fixture")
+    );
     let task = tokio::spawn(async move {
         let (mut root, _) = accept(&listener).await;
         write_manifest(&mut root).await;

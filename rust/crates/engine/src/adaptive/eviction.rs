@@ -112,7 +112,7 @@ fn overlap_gain(playable: super::PlayableRange, stored: ByteRange) -> u64 {
     (scaled / u128::from(playable.bytes.len().max(1))) as u64
 }
 
-fn eviction_order(left: &EvictionCandidate, right: &EvictionCandidate) -> std::cmp::Ordering {
+fn eviction_order(left: &EvictionCandidate, right: &EvictionCandidate) -> core::cmp::Ordering {
     density(left)
         .total_cmp(&density(right))
         .then_with(|| right.eviction.post.cmp(&left.eviction.post))

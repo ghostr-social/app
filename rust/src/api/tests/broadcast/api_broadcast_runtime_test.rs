@@ -20,7 +20,7 @@ async fn accepted_broadcast_is_sent_and_immediately_queryable_locally() {
     let client = Arc::new(Client::default());
     let (_demand_sender, demand) = watch::channel(DiscoveryDemand::Hold);
     let mut runtime = DiscoveryRuntime::start(DiscoveryBoot {
-        client: client.clone(),
+        client: std::sync::Arc::clone(&client),
         demand,
         bootstrap: vec![RELAY.to_owned()],
         search_relays: Vec::new(),
@@ -34,7 +34,7 @@ async fn accepted_broadcast_is_sent_and_immediately_queryable_locally() {
             read_relays: vec![RELAY.to_owned()],
             search_relays: Vec::new(),
         },
-        io.clone(),
+        Arc::<TestRelayIo>::clone(&io),
     ));
     runtime.reset_session(Some(keys.public_key())).await;
     let session = runtime.session_generation();

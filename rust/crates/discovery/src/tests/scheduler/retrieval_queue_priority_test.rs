@@ -23,7 +23,7 @@ fn urgent_classes_leave_first_and_classes_stay_fifo() {
     queue.push(request("e", RetrievalPriority::Background), 5);
 
     let order: Vec<i32> =
-        std::iter::from_fn(|| queue.take_next().map(|(_, payload)| payload)).collect();
+        core::iter::from_fn(|| queue.take_next().map(|(_, payload)| payload)).collect();
 
     assert_eq!(order, vec![2, 4, 3, 1, 5]);
 }

@@ -1,7 +1,7 @@
 use crate::execution::relay_executor::profile_enrichment::{
     profile_plan, MAX_PROFILE_AUTHORS, MAX_PROFILE_AUTHORS_PER_QUERY, MAX_PROFILE_OCCURRENCES,
 };
-use nostr_sdk::{Event, EventBuilder, JsonUtil, Keys, Kind, Timestamp};
+use nostr_sdk::{Event, EventBuilder, JsonUtil as _, Keys, Kind, Timestamp};
 use std::collections::BTreeSet;
 
 #[test]

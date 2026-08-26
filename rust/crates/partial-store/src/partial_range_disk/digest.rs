@@ -1,9 +1,9 @@
-use anyhow::{Context, Result};
-use sha2::{Digest, Sha256};
+use anyhow::{Context as _, Result};
+use core::ops::Range;
+use sha2::{Digest as _, Sha256};
 use std::io::SeekFrom;
-use std::ops::Range;
 use std::path::Path;
-use tokio::io::{AsyncReadExt, AsyncSeekExt};
+use tokio::io::{AsyncReadExt as _, AsyncSeekExt as _};
 
 const BUFFER_BYTES: usize = 64 * 1024;
 

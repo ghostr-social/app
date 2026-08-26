@@ -9,6 +9,9 @@ mod prediction;
 mod quality;
 mod value;
 
+#[cfg(test)]
+mod api_test;
+
 use super::{ActionNode, ContinuationDecision, PlannerContext, TransformKind};
 use crate::adaptive::{
     Allocation, AllocationPlan, PlayabilitySnapshot, PromotionGrant, RetrievalLadder,
@@ -22,6 +25,7 @@ pub(crate) enum HlsGenerationPolicy {
     BoundedObjectCursor,
 }
 
+#[derive(Clone, Copy)]
 pub(crate) struct WarpGenerationInput<'a> {
     snapshot: &'a PlayabilitySnapshot,
     base: &'a AllocationPlan,
@@ -30,7 +34,7 @@ pub(crate) struct WarpGenerationInput<'a> {
 }
 
 impl<'a> WarpGenerationInput<'a> {
-    pub(crate) const fn new(
+    pub(super) const fn new(
         snapshot: &'a PlayabilitySnapshot,
         base: &'a AllocationPlan,
         origins: &'a OriginModel,
@@ -86,39 +90,37 @@ pub struct GeneratedAction {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CandidateRetrievalLadder {
-    pub post: PostId,
+    pub(crate) post: PostId,
     pub frontier: RetrievalLadder,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ActiveControl {
-    pub action: ActionId,
-    pub decision: ContinuationDecision,
+    action: ActionId,
+    decision: ContinuationDecision,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct GeneratedActions {
     pub actions: Vec<GeneratedAction>,
     pub ladders: Vec<CandidateRetrievalLadder>,
-    pub active_controls: Vec<ActiveControl>,
+    pub(crate) active_controls: Vec<ActiveControl>,
+}
+
+impl GeneratedActions {
+    /// Returns actions whose continuation policy requires reconciliation to release them.
+    pub fn aborted_action_ids(&self) -> impl Iterator<Item = ActionId> + '_ {
+        self.active_controls
+            .iter()
+            .filter(|control| control.decision == ContinuationDecision::Abort)
+            .map(|control| control.action)
+    }
 }
 
 pub struct WarpActionGenerator;
 
 impl WarpActionGenerator {
-    pub fn generate(
-        snapshot: &PlayabilitySnapshot,
-        base: &AllocationPlan,
-        origins: &OriginModel,
-        context: &PlannerContext,
-    ) -> GeneratedActions {
-        Self::generate_with_policy(
-            WarpGenerationInput::new(snapshot, base, origins, context),
-            HlsGenerationPolicy::BoundedObjectCursor,
-        )
-    }
-
-    pub(crate) fn generate_with_policy(
+    pub(super) fn generate_with_policy(
         input: WarpGenerationInput<'_>,
         hls_policy: HlsGenerationPolicy,
     ) -> GeneratedActions {

@@ -3,10 +3,8 @@
 //! and partial files with a usable manifest are accounted for and
 //! reusable before anything asks for them.
 
-mod store_fixture;
-
+use crate::tests::store_fixture::{plain_store, temp_root};
 use std::sync::Arc;
-use store_fixture::{plain_store, temp_root};
 use tokio::sync::Mutex;
 
 #[tokio::test]
@@ -16,7 +14,7 @@ async fn partial_range_store_reloads_its_contents_at_startup() {
     std::fs::write(root.join("orphan.part"), b"nomanifest").expect("orphan bytes");
 
     let used_bytes = Arc::new(Mutex::new(0));
-    let store = plain_store(root.clone(), used_bytes.clone());
+    let store = plain_store(root.clone(), std::sync::Arc::clone(&used_bytes));
     store.load_existing().await.expect("reload");
 
     assert_eq!(

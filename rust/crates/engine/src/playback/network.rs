@@ -1,5 +1,5 @@
 use crate::host_stats::ThroughputEstimate;
-use std::time::Duration;
+use core::time::Duration;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum EstimateConfidence {
@@ -50,13 +50,13 @@ impl NetworkConditions {
 
     /// Throughput available after discounting observed variation according
     /// to the amount and freshness of supporting evidence.
-    pub fn sustainable_bits_per_second(self) -> u64 {
+    pub(crate) fn sustainable_bits_per_second(self) -> u64 {
         let throughput = self.bytes_per_second.saturating_mul(8);
         let variability = self.variability_bytes_per_second.saturating_mul(8);
         throughput.saturating_sub(discounted_variability(variability, self.confidence))
     }
 
-    pub fn confidence(self) -> EstimateConfidence {
+    pub(crate) fn confidence(self) -> EstimateConfidence {
         self.confidence
     }
 }

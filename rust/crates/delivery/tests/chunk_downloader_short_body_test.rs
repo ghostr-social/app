@@ -40,7 +40,11 @@ async fn a_body_shorter_than_its_advertised_range_is_rejected() {
     .await;
 
     assert!(result.is_err(), "short 206 must not count as success");
-    assert!(store.present_ranges("clip").await.unwrap().is_empty());
+    assert!(store
+        .present_ranges("clip")
+        .await
+        .expect("valid test fixture")
+        .is_empty());
     assert_range_failure(&stats, &url);
     std::fs::remove_dir_all(root).ok();
 }
@@ -48,7 +52,7 @@ async fn a_body_shorter_than_its_advertised_range_is_rejected() {
 fn assert_range_failure(stats: &HostStats, url: &str) {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
+        .expect("valid test fixture")
         .as_millis() as u64;
     let context = OriginContext::new(RequestMethod::RangeGet, 8, MediaClass::ProgressiveMp4)
         .with_observed_at_ms(now);

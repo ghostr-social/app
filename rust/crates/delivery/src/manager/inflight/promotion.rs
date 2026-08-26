@@ -47,11 +47,6 @@ impl PromotionTarget {
     pub(crate) fn maximum_bytes(&self) -> u64 {
         self.grant.maximum_bytes
     }
-
-    #[cfg(test)]
-    pub(crate) fn retarget(&self, action: ActionId, identity: TransferIdentity) -> Self {
-        Self::new(action, identity, self.grant)
-    }
 }
 
 impl PromotionPreflight {
@@ -154,3 +149,7 @@ pub(super) fn promoted_request(maximum_bytes: u64) -> RetrievalRequest {
         reason: WholeFetchReason::PromotedResponse,
     }
 }
+
+#[cfg(test)]
+#[path = "promotion_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

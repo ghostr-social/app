@@ -2,15 +2,15 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::concurrency_origin::{ActiveRequest, ControlledOrigin};
 use delivery_fixture::protected_capacity::{start, wait_for_bytes};
 use delivery_fixture::DeliveryHarness;
-use std::time::Duration;
 
 const SAMPLE_WINDOW: Duration = Duration::from_millis(520);
 
 #[tokio::test]
-async fn protected_override_windows_admit_a_third_same_host_request() {
+async fn protected_override_evidence_backfills_its_second_slot() {
     let mut origin = ControlledOrigin::serve(32).await;
     let (harness, _demand) = start(&origin.url).await;
 
@@ -20,11 +20,19 @@ async fn protected_override_windows_admit_a_third_same_host_request() {
     ];
     expect_no_request(&mut origin).await;
     drive_learning_windows(&harness, &mut origin, &active).await;
+    finish(&active[0], 4).await;
 
     let third = next_request(&mut origin).await;
-    assert!(!third.range.is_empty(), "trial admits useful range work");
-    harness.handle.clear().await.unwrap();
+    assert!(!third.range.is_empty(), "trial backfills useful range work");
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
+}
+
+async fn finish(request: &ActiveRequest, sent: u64) {
+    let length = request.range.end - request.range.start;
+    for _ in sent..length {
+        assert!(request.send_byte().await, "protected range completes");
+    }
 }
 
 async fn drive_learning_windows(
@@ -33,14 +41,15 @@ async fn drive_learning_windows(
     active: &[ActiveRequest; 2],
 ) {
     for window in 1..=4 {
-        tokio::time::sleep(SAMPLE_WINDOW).await;
         for request in active {
             assert!(
                 request.send_byte().await,
-                "protected override remains active"
+                "protected range {:?} remains active in window {window}",
+                request.range
             );
         }
         wait_for_bytes(harness, (window * 2) as u64).await;
+        tokio::time::sleep(SAMPLE_WINDOW).await;
         if window < 4 {
             expect_no_request(origin).await;
         }

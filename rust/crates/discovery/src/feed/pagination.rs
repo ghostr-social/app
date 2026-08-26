@@ -6,12 +6,6 @@ use nostr_sdk::Timestamp;
 /// inclusive `until` cannot re-fetch that post.
 pub(crate) const NEXT_PAGE_BACKSTEP_SECS: u64 = 1;
 
-/// Inclusive `until` cutoff from a UTC unix-millisecond clock value.
-#[cfg(test)]
-pub(crate) fn older_than_from_unix_millis(millis: u64) -> Timestamp {
-    Timestamp::from(millis / 1000)
-}
-
 /// Cursor for the page after fetching these posts: one second before the
 /// oldest fetched `created_at`; `None` when nothing was fetched (the feed
 /// is exhausted). Callers pass what was fetched, not what survived
@@ -26,3 +20,7 @@ where
         .and_then(|oldest| oldest.as_u64().checked_sub(NEXT_PAGE_BACKSTEP_SECS))
         .map(Timestamp::from)
 }
+
+#[cfg(test)]
+#[path = "pagination_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

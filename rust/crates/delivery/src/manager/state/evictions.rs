@@ -1,6 +1,6 @@
 use super::DeliveryState;
+use core::ops::Range;
 use ghostr_engine::{ByteRange, PostId};
-use std::ops::Range;
 
 impl DeliveryState {
     pub(crate) fn record_policy_evictions(&mut self, post: PostId, ranges: &[Range<u64>]) {
@@ -11,7 +11,7 @@ impl DeliveryState {
                 .filter(|range| range.start < range.end)
                 .map(|range| ByteRange::new(range.start, range.end)),
         );
-        *tracked = ghostr_engine::media_timeline::normalize(std::mem::take(tracked));
+        *tracked = ghostr_engine::media_timeline::normalize(core::mem::take(tracked));
     }
 
     pub(crate) fn recently_evicted(&self, post: &PostId) -> Vec<ByteRange> {

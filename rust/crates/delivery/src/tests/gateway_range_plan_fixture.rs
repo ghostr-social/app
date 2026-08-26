@@ -1,5 +1,6 @@
+use crate::manager::plan::axiom_test_support::planned_work;
 use crate::delivery_events::{DeliveryFocus, FocusItem};
-use crate::manager::plan::{planned_work, PlanInputs, PlannedWork};
+use crate::manager::plan::{PlanInputs, PlannedWork};
 use crate::manager::retry::{RetryBook, RetryPolicy};
 use crate::manager::state::DeliveryState;
 use crate::tests::adaptive_plan_fixture::playback_for;
@@ -9,7 +10,7 @@ use ghostr_engine::catalog::LearnedFacts;
 use ghostr_engine::host_stats::{HostStats, ThroughputSample};
 use ghostr_engine::{ByteRange, DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
 use std::collections::{HashMap, HashSet};
-use std::time::Duration;
+use core::time::Duration;
 
 pub(super) fn demand_plan(demanded: ByteRange) -> PlannedWork {
     build_demand_plan(demanded, false)
@@ -19,9 +20,9 @@ pub(super) fn buffered_demand_plan(demanded: ByteRange) -> PlannedWork {
 }
 fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
     let post = PostId::new("current");
-    let mut state = state(post.clone());
+    let mut state = state(&post);
     if buffered {
-        state.apply_playback(playback_for(post.clone(), 10_000));
+        state.apply_playback(&playback_for(post.clone(), 10_000));
     }
     let stats = stats(buffered);
     let retry = RetryBook::new(RetryPolicy::default());
@@ -31,8 +32,8 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
     let completed_head_probes = HashSet::new();
     let revisions = HashMap::new();
     planned_work(
-        &mut state,
-        PlanInputs {
+        &state,
+        &PlanInputs {
             stats: &stats,
             retry: &retry,
             present: &HashMap::new(),
@@ -65,14 +66,14 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
 fn stats(buffered: bool) -> HostStats {
     let mut stats = HostStats::new();
     if buffered {
-        let sample = ThroughputSample::new(1_000_000, Duration::from_secs(1), 1_000, 1).unwrap();
+        let sample = ThroughputSample::new(1_000_000, Duration::from_secs(1), 1_000, 1).expect("valid test fixture");
         stats.record_overall_throughput(sample);
         stats.record_host_throughput("media.example", sample);
     }
     stats
 }
 
-fn state(post: PostId) -> DeliveryState {
+fn state(post: &PostId) -> DeliveryState {
     let meta = VideoMeta {
         urls: vec!["https://media.example/video.mp4".into()],
         delivery: DeliveryKind::Progressive,
@@ -87,12 +88,12 @@ fn state(post: PostId) -> DeliveryState {
     };
     state.apply_focus(DeliveryFocus::compatibility(vec![item], 0, 0), 0);
     state.catalog_mut().learn(
-        &post,
+        post,
         LearnedFacts {
             accept_ranges: Some(true),
             ..LearnedFacts::default()
         },
     );
-    install_classic_timeline(&mut state, &post, 100, 100);
+    install_classic_timeline(&mut state, post, 100, 100);
     state
 }

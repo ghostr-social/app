@@ -1,23 +1,27 @@
-use super::inference::{inferred_support, merge_result, normalize_record, status_for};
+use super::inference::merge_result;
 use super::types::{
     CapabilityAttempt, CapabilityObservation, CapabilityRecord, CapabilityResult, CapabilitySignal,
-    ClientCapabilityProfile, ClientCapabilityState, ClientCapabilityStatus,
+    ClientCapabilityProfile, ClientCapabilityState,
 };
 use std::collections::VecDeque;
 
 const ACTIVE_CAPACITY: usize = 16;
 const RECORD_CAPACITY: usize = 128;
+mod lookup;
+mod restoration;
 
 #[derive(Clone, Debug)]
 struct ActiveTest {
     attempt: CapabilityAttempt,
     profile: ClientCapabilityProfile,
     started_us: u64,
+    first_frame_recorded: bool,
 }
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct ClientCapabilityModel {
     generation: Option<u64>,
+    generation_confirmed: bool,
     records: VecDeque<CapabilityRecord>,
     active: VecDeque<ActiveTest>,
     revision: u64,
@@ -25,45 +29,26 @@ pub(crate) struct ClientCapabilityModel {
 
 impl ClientCapabilityModel {
     pub(crate) fn observe(&mut self, observation: CapabilityObservation) {
-        self.select_generation(observation.capability_generation);
         match observation.event.signal {
-            CapabilitySignal::Initializing => self.start(observation),
+            CapabilitySignal::Initializing => {
+                self.select_generation(observation.capability_generation);
+                self.start(observation);
+            }
+            _ if self.generation != Some(observation.capability_generation) => {}
             CapabilitySignal::Released => self.release(observation.attempt),
-            signal => self.finish(observation, signal),
+            signal => self.finish(&observation, signal),
         }
-    }
-
-    pub(crate) fn status(
-        &self,
-        generation: u64,
-        profile: &ClientCapabilityProfile,
-    ) -> ClientCapabilityStatus {
-        if self.generation != Some(generation) {
-            return ClientCapabilityStatus::Unknown;
-        }
-        if let Some(result) = self.exact_result(profile) {
-            return status_for(result);
-        }
-        if self.active.iter().any(|item| &item.profile == profile) {
-            return ClientCapabilityStatus::Testing;
-        }
-        self.inferred_support(profile)
-            .unwrap_or(ClientCapabilityStatus::Unknown)
-    }
-
-    #[cfg(test)]
-    pub(crate) fn bounded_test_allowed(
-        &self,
-        generation: u64,
-        profile: &ClientCapabilityProfile,
-    ) -> bool {
-        self.status(generation, profile) == ClientCapabilityStatus::Unknown
     }
 
     pub(crate) fn state(&self) -> ClientCapabilityState {
         ClientCapabilityState {
             generation: self.generation,
-            records: self.records.iter().cloned().collect(),
+            records: self
+                .records
+                .iter()
+                .filter(|record| record.profile.is_persistent())
+                .cloned()
+                .collect(),
             revision: self.revision,
         }
     }
@@ -73,33 +58,17 @@ impl ClientCapabilityModel {
     }
 
     pub(crate) const fn current_generation(&self) -> Option<u64> {
-        self.generation
+        if self.generation_confirmed {
+            self.generation
+        } else {
+            None
+        }
     }
 
     pub(crate) fn abandon(&mut self, generation: u64, attempt: CapabilityAttempt) {
         if self.generation == Some(generation) {
             self.release(attempt);
         }
-    }
-
-    pub(crate) fn from_state(state: ClientCapabilityState) -> Self {
-        let ClientCapabilityState {
-            generation,
-            records,
-            revision,
-        } = state;
-        let Some(generation) = generation else {
-            return Self::default();
-        };
-        let mut model = Self {
-            generation: Some(generation),
-            ..Self::default()
-        };
-        for record in records.into_iter().filter_map(normalize_record) {
-            model.record(record.profile, record.result);
-        }
-        model.revision = model.revision.max(revision);
-        model
     }
 
     fn select_generation(&mut self, generation: u64) {
@@ -109,10 +78,12 @@ impl ClientCapabilityModel {
             self.active.clear();
             self.revision = self.revision.saturating_add(1);
         }
+        self.generation_confirmed = true;
     }
 
     fn start(&mut self, observation: CapabilityObservation) {
         self.release(observation.attempt);
+        self.supersede_volatile_records(&observation.profile);
         if self.active.len() == ACTIVE_CAPACITY {
             self.active.pop_front();
         }
@@ -120,6 +91,7 @@ impl ClientCapabilityModel {
             attempt: observation.attempt,
             profile: observation.profile,
             started_us: observation.event.observed_us,
+            first_frame_recorded: false,
         });
     }
 
@@ -127,33 +99,67 @@ impl ClientCapabilityModel {
         self.active.retain(|item| item.attempt != attempt);
     }
 
-    fn finish(&mut self, observation: CapabilityObservation, signal: CapabilitySignal) {
-        let Some(index) = self.active.iter().position(|item| {
-            item.attempt == observation.attempt && item.profile == observation.profile
-        }) else {
+    fn finish(&mut self, observation: &CapabilityObservation, signal: CapabilitySignal) {
+        let Some(index) = self
+            .active
+            .iter()
+            .position(|item| item.attempt == observation.attempt)
+        else {
             return;
         };
+        if self.active[index].profile != observation.profile {
+            self.active.remove(index);
+            return;
+        }
+        match signal {
+            CapabilitySignal::FirstFrameRendered => self.record_first_frame(index, observation),
+            CapabilitySignal::UnsupportedFailure | CapabilitySignal::InconclusiveFailure => {
+                self.record_terminal(index, signal);
+            }
+            CapabilitySignal::Initializing | CapabilitySignal::Released => {}
+        }
+    }
+
+    fn record_first_frame(&mut self, index: usize, observation: &CapabilityObservation) {
+        let active = &mut self.active[index];
+        if active.first_frame_recorded {
+            return;
+        }
+        active.first_frame_recorded = true;
+        let profile = active.profile.clone();
+        let elapsed = observation
+            .event
+            .observed_us
+            .saturating_sub(active.started_us);
+        self.record(
+            profile,
+            CapabilityResult::Supported {
+                first_frame_us: vec![elapsed],
+            },
+        );
+    }
+
+    fn record_terminal(&mut self, index: usize, signal: CapabilitySignal) {
         let active = self
             .active
             .remove(index)
             .expect("matched active test exists");
         let result = match signal {
-            CapabilitySignal::FirstFrameRendered => CapabilityResult::Supported {
-                first_frame_us: vec![observation
-                    .event
-                    .observed_us
-                    .saturating_sub(active.started_us)],
-            },
             CapabilitySignal::UnsupportedFailure => CapabilityResult::Unsupported,
-            CapabilitySignal::InconclusiveFailure => CapabilityResult::Inconclusive,
-            CapabilitySignal::Initializing | CapabilitySignal::Released => return,
+            CapabilitySignal::InconclusiveFailure if !active.first_frame_recorded => {
+                CapabilityResult::Inconclusive
+            }
+            _ => return,
         };
-        self.record(observation.profile, result);
+        self.record(active.profile, result);
     }
 
     fn record(&mut self, profile: ClientCapabilityProfile, result: CapabilityResult) {
-        if let Some(record) = self.records.iter_mut().find(|item| item.profile == profile) {
+        if let Some(index) = self.records.iter().position(|item| item.profile == profile) {
+            let mut record = self.records.remove(index).expect("matched record exists");
+            record.profile.promote_persistence(profile.is_persistent());
             merge_result(&mut record.result, result);
+            self.records.push_back(record);
             self.revision = self.revision.saturating_add(1);
             return;
         }
@@ -164,17 +170,12 @@ impl ClientCapabilityModel {
         self.revision = self.revision.saturating_add(1);
     }
 
-    fn exact_result(&self, profile: &ClientCapabilityProfile) -> Option<&CapabilityResult> {
+    fn supersede_volatile_records(&mut self, profile: &ClientCapabilityProfile) {
+        let before = self.records.len();
         self.records
-            .iter()
-            .find(|item| &item.profile == profile)
-            .map(|item| &item.result)
-    }
-
-    fn inferred_support(
-        &self,
-        profile: &ClientCapabilityProfile,
-    ) -> Option<ClientCapabilityStatus> {
-        inferred_support(&self.records, profile)
+            .retain(|record| !record.profile.is_superseded_by(profile));
+        if self.records.len() != before {
+            self.revision = self.revision.saturating_add(1);
+        }
     }
 }

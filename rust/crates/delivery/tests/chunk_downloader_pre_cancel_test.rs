@@ -40,6 +40,10 @@ async fn cancellation_before_admission_finishes_without_an_http_request() {
     assert_eq!(result.bytes_written, 0);
     assert_eq!(result.range_support, None);
     assert_eq!(result.total_bytes, None);
-    assert!(store.present_ranges("clip").await.unwrap().is_empty());
+    assert!(store
+        .present_ranges("clip")
+        .await
+        .expect("valid test fixture")
+        .is_empty());
     std::fs::remove_dir_all(root).ok();
 }

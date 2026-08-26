@@ -1,7 +1,7 @@
 //! The next-page cursor steps one second below the oldest fetched post and
 //! disappears when a page fetched nothing — the cursor advances by what was
 //! fetched, not what survived filtering
-//! (lib/features/video_catalog/domain/filtered_video_feed_repository.dart
+//! (`lib/features/video_catalog/domain/filtered_video_feed_repository.dart`
 //! `_nextCursor`: `oldest.subtract(const Duration(seconds: 1))`).
 
 use nostr_sdk::Timestamp;

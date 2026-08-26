@@ -4,12 +4,12 @@ use std::collections::BTreeSet;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ActionFrontier {
-    pub retained: Vec<ActionNode>,
-    pub pruned_ids: Vec<u16>,
+    pub(crate) retained: Vec<ActionNode>,
+    pub(crate) pruned_ids: Vec<u16>,
 }
 
 impl ActionFrontier {
-    pub fn prune(mut actions: Vec<ActionNode>, epsilon: EpsilonBuckets) -> Self {
+    pub(crate) fn prune(mut actions: Vec<ActionNode>, epsilon: EpsilonBuckets) -> Self {
         actions.sort_by_key(|action| action.id);
         let exact: Vec<_> = actions
             .iter()
@@ -78,7 +78,7 @@ fn static_value(action: &ActionNode) -> i64 {
 
 fn broader_unlock(left: &ActionKind, right: &ActionKind) -> bool {
     let (Some(left), Some(right)) = (unlock(left), unlock(right)) else {
-        return std::mem::discriminant(left) == std::mem::discriminant(right);
+        return core::mem::discriminant(left) == core::mem::discriminant(right);
     };
     left >= right
 }

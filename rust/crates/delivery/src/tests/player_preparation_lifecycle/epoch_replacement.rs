@@ -1,15 +1,12 @@
-use crate::delivery_events::{
-    command_channel, PlayerPreparationAttempt, PlayerPreparationAuthority,
-    PlayerPreparationIngress, PlayerPreparationObservation, PlayerPreparationReport,
-    PlayerPreparationState,
-};
+
+use crate::delivery_events::{command_channel, PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationIngress, PlayerPreparationObservation, PlayerPreparationReport, PlayerPreparationState};
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 use ghostr_partial_store::partial_range_store::ContentRevision;
 
 #[test]
 fn retired_client_epoch_cannot_replace_or_reenter_any_post() {
-    let (handle, mut receiver) = command_channel();
+    let (handle, receiver) = command_channel();
     let ticket = handle.player_preparation_admission();
     assert_eq!(
         handle.report_player_preparation_initial(
@@ -35,7 +32,7 @@ fn retired_client_epoch_cannot_replace_or_reenter_any_post() {
         )),
         PlayerPreparationIngress::Accepted,
     );
-    let states: Vec<_> = std::iter::from_fn(|| receiver.try_player_preparation())
+    let states: Vec<_> = core::iter::from_fn(|| receiver.try_player_preparation())
         .map(|report| report.state())
         .collect();
     assert_eq!(
@@ -80,10 +77,10 @@ fn report(
         ContentRevision::default(),
         "asset-1",
     )
-    .unwrap();
-    let attempt = PlayerPreparationAttempt::try_new(1, client_epoch, 1).unwrap();
-    let observation = PlayerPreparationObservation::try_new(state, None, sequence).unwrap();
-    PlayerPreparationReport::try_new(authority, attempt, sequence, observation).unwrap()
+    .expect("valid test fixture");
+    let attempt = PlayerPreparationAttempt::try_new(1, client_epoch, 1).expect("valid test fixture");
+    let observation = PlayerPreparationObservation::try_new(state, None, sequence).expect("valid test fixture");
+    PlayerPreparationReport::try_new(authority, attempt, sequence, observation).expect("valid test fixture")
 }
 
 fn meta() -> VideoMeta {

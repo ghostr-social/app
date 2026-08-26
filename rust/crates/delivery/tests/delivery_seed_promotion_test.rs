@@ -3,13 +3,13 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::demand;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::media::{hit_log, hits, serve_recording, HitLog};
 use delivery_fixture::{options::DeliveryOptions, start_harness};
 use ghostr_delivery::debug::network::NetworkProfile;
 use ghostr_engine::{ByteRange, EngineParams};
-use std::time::Duration;
 
 const PLAYBACK_SLICE: u64 = 256 * 1_024;
 const TOTAL: u64 = 370_912;
@@ -17,8 +17,13 @@ const TOTAL: u64 = 370_912;
 #[tokio::test]
 async fn focus_promotion_fetches_exact_disjoint_ranges() {
     let log = hit_log();
-    let current = serve_recording("current", vec![1; TOTAL as usize], log.clone()).await;
-    let next = serve_recording("next", vec![2; TOTAL as usize], log.clone()).await;
+    let current = serve_recording(
+        "current",
+        vec![1; TOTAL as usize],
+        std::sync::Arc::clone(&log),
+    )
+    .await;
+    let next = serve_recording("next", vec![2; TOTAL as usize], std::sync::Arc::clone(&log)).await;
     let harness = start_harness("ghostr-seed-promotion", production_options());
     configure_network(&harness);
     let items = vec![
@@ -37,7 +42,7 @@ async fn focus_promotion_fetches_exact_disjoint_ranges() {
     let mut gets = next_gets(&log);
     gets.sort();
     assert_eq!(gets, ["next:GET:0-262143", "next:GET:262144-370911"]);
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }
 

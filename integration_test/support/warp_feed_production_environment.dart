@@ -5,6 +5,7 @@ import 'package:sembast/sembast_memory.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'progressive_device_resources.dart';
+import 'warp_controlled_network_status.dart';
 import 'warp_feed_preparation_probe.dart';
 import 'warp_feed_production_delivery.dart';
 import 'warp_feed_rust_probe.dart';
@@ -13,6 +14,7 @@ final class WarpFeedProductionCapture {
   ProductionNostrServices? nostr;
   ProductionVideoDelivery? delivery;
   final rustProbe = WarpFeedRustProbe();
+  final network = WarpControlledNetworkStatus();
 }
 
 ProductionDependenciesEnvironment warpFeedProductionEnvironment(
@@ -38,6 +40,7 @@ ProductionDependenciesEnvironment warpFeedProductionEnvironment(
         resources: resources,
         preparation: preparation,
         rustProbe: capture.rustProbe,
+        network: capture.network,
       ));
       capture.delivery = delivery;
       return delivery;

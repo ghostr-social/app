@@ -1,6 +1,5 @@
-use crate::delivery_events::{
-    DeliveryCandidate, DeliveryFocus, FocusGeneration, FocusItem, FocusTransition,
-};
+
+use crate::delivery_events::{DeliveryCandidate, DeliveryFocus, FocusGeneration, FocusItem, FocusTransition};
 use crate::manager::state::DeliveryState;
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
 
@@ -47,7 +46,7 @@ fn focus(generation: u64, delivery: DeliveryKind) -> DeliveryFocus {
         previews: Vec::new(),
         current_index: 0,
         watch_ms: 0,
-        generation: FocusGeneration::try_new(generation).unwrap(),
+        generation: FocusGeneration::try_new(generation).expect("valid test fixture"),
         transition: FocusTransition::RosterChange,
         rescue: None,
     }

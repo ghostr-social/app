@@ -51,6 +51,7 @@ impl<'a> TerminalContext<'a> {
     }
 }
 
+#[derive(Clone, Copy)]
 pub(super) struct TerminalInput<'a> {
     pub context: TerminalContext<'a>,
     pub result: &'a Result<CompletedObject, FetchFailure>,
@@ -64,11 +65,8 @@ pub(super) fn terminal(input: TerminalInput<'_>) -> SegmentedFinish {
         .map(|completed| completed.telemetry)
         .ok()
         .or_else(|| {
-            input
-                .result
-                .as_ref()
-                .err()
-                .and_then(|failure| failure.origin())
+            let failure = input.result.as_ref().err()?;
+            failure.origin()
         });
     let (outcome, actual_resources) = decision_outcome(input.result, telemetry);
     SegmentedFinish {
@@ -170,21 +168,22 @@ fn success_observation(
     success
 }
 
-fn duration_ms(value: std::time::Duration) -> u64 {
+fn duration_ms(value: core::time::Duration) -> u64 {
     value.as_millis().min(u128::from(u64::MAX)).max(1) as u64
 }
 
 fn method(stage: HlsBootstrapStage) -> RequestMethod {
-    match stage.is_manifest() {
-        true => RequestMethod::ManifestGet,
-        false => RequestMethod::SegmentGet,
+    if stage.is_manifest() {
+        RequestMethod::ManifestGet
+    } else {
+        RequestMethod::SegmentGet
     }
 }
 
 fn throughput(
     bytes: u64,
-    elapsed: std::time::Duration,
-    ttfb: Option<std::time::Duration>,
+    elapsed: core::time::Duration,
+    ttfb: Option<core::time::Duration>,
 ) -> Option<u64> {
     if bytes < MIN_RELIABLE_THROUGHPUT_SAMPLE_BYTES {
         return None;

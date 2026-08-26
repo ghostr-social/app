@@ -20,19 +20,19 @@ async fn renewed_revision_keeps_live_decode_learning_without_inheriting_readines
         StoreCapacity::system(u64::MAX),
     );
     store
-        .bind_representation(state.catalog().binding(&post).unwrap())
+        .bind_representation(state.catalog().binding(&post).expect("valid test fixture"))
         .await
-        .unwrap();
-    store.set_total_len(post.as_str(), 16).await.unwrap();
-    store.write_range(post.as_str(), 0, &[7; 16]).await.unwrap();
-    let original = store.media_snapshot(post.as_str()).await.unwrap().revision();
+        .expect("valid test fixture");
+    store.set_total_len(post.as_str(), 16).await.expect("valid test fixture");
+    store.write_range(post.as_str(), 0, &[7; 16]).await.expect("valid test fixture");
+    let original = store.media_snapshot(post.as_str()).await.expect("valid test fixture").revision();
     apply(&mut state, original, PlayerPreparationState::Initializing);
     let removed = 8..16;
     store
-        .evict_ranges(post.as_str(), std::slice::from_ref(&removed))
+        .evict_ranges(post.as_str(), core::slice::from_ref(&removed))
         .await
-        .unwrap();
-    let renewed = store.media_snapshot(post.as_str()).await.unwrap().revision();
+        .expect("valid test fixture");
+    let renewed = store.media_snapshot(post.as_str()).await.expect("valid test fixture").revision();
 
     assert_ne!(renewed, original);
     assert_eq!(
@@ -59,7 +59,7 @@ async fn renewed_revision_keeps_live_decode_learning_without_inheriting_readines
         state.player_preparation(&post, Some(renewed)),
         ghostr_engine::adaptive::PlayerPreparation::Unverified,
     );
-    tokio::fs::remove_dir_all(root).await.unwrap();
+    tokio::fs::remove_dir_all(root).await.expect("valid test fixture");
 }
 
 fn apply(

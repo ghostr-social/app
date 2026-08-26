@@ -24,10 +24,7 @@ fn selected_cancel_targets_the_exact_obsolete_action() {
     let WarpDirective::Cancel(selected) = execution.directive else {
         panic!("one exact cancel must be selected");
     };
-    let other = match selected == ActionId::new(1) {
-        true => ActionId::new(2),
-        false => ActionId::new(1),
-    };
+    let other = if selected == ActionId::new(1) { ActionId::new(2) } else { ActionId::new(1) };
 
     assert!([ActionId::new(1), ActionId::new(2)].contains(&selected));
     assert!(!execution.retained.contains(&selected));
@@ -39,7 +36,7 @@ fn active(state: &crate::manager::state::DeliveryState, index: usize, id: u64) -
     let identity = state
         .catalog()
         .transfer_identity(&post, &source(index))
-        .unwrap();
+        .expect("valid test fixture");
     ActiveAction::range_with_action(
         ActionId::new(id),
         ChunkId {

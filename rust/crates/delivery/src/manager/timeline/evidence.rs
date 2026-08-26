@@ -17,8 +17,8 @@ pub(crate) struct TimelineEvidence {
     parser_profile: u16,
 }
 
-impl std::fmt::Debug for TimelineEvidence {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for TimelineEvidence {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         formatter
             .debug_struct("TimelineEvidence")
             .field("post", &self.binding.post())
@@ -52,23 +52,23 @@ impl TimelineEvidence {
         })
     }
 
-    pub(crate) fn binding(&self) -> &RepresentationBinding {
+    pub(super) fn binding(&self) -> &RepresentationBinding {
         &self.binding
     }
 
-    pub(crate) fn revision(&self) -> ContentRevision {
+    pub(super) fn revision(&self) -> ContentRevision {
         self.revision
     }
 
-    pub(crate) fn total(&self) -> u64 {
+    pub(super) fn total(&self) -> u64 {
         self.total
     }
 
-    pub(crate) fn spans(&self) -> &[ByteRange] {
+    pub(super) fn spans(&self) -> &[ByteRange] {
         &self.spans
     }
 
-    pub(crate) fn same_parse(&self, other: &Self) -> bool {
+    pub(super) fn same_parse(&self, other: &Self) -> bool {
         self.binding == other.binding
             && self.total == other.total
             && self.spans == other.spans
@@ -76,7 +76,7 @@ impl TimelineEvidence {
             && self.parser_profile == other.parser_profile
     }
 
-    pub(crate) fn still_valid_in(&self, snapshot: &StoredMediaSnapshot) -> bool {
+    pub(super) fn still_valid_in(&self, snapshot: &StoredMediaSnapshot) -> bool {
         let spans: Vec<_> = self.spans.iter().map(|span| span.start..span.end).collect();
         snapshot.binding() == Some(&self.binding)
             && snapshot.total_len() == Some(self.total)

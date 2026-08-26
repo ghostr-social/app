@@ -1,7 +1,7 @@
-use crate::relay::io::drain_events_until;
+use crate::relay::io::axiom_test_support::drain_events_until;
 use crate::tests::scheduler_support::note_at;
-use std::time::Duration;
-use tokio_stream::StreamExt;
+use core::time::Duration;
+use tokio_stream::StreamExt as _;
 
 #[tokio::test]
 async fn a_stalled_sdk_stream_keeps_progress_and_ends_at_the_adapter_deadline() {

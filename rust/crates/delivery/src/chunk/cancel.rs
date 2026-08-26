@@ -1,7 +1,7 @@
-//! Cooperative cancellation for chunk transfers (scroll-past): the
-//! engine keeps the [`CancelHandle`], the downloader polls the
-//! [`CancelToken`]. Built on a watch channel so no extra crate
-//! dependency is needed.
+//! Cooperative cancellation for chunk transfers after scroll-past.
+//!
+//! The engine keeps the [`CancelHandle`], and the downloader polls the [`CancelToken`]. A watch
+//! channel provides the link without another dependency.
 
 use tokio::sync::watch;
 
@@ -41,7 +41,7 @@ impl CancelToken {
     pub async fn cancelled(&self) {
         let mut receiver = self.receiver.clone();
         if receiver.wait_for(|cancelled| *cancelled).await.is_err() {
-            std::future::pending::<()>().await;
+            core::future::pending::<()>().await;
         }
     }
 }

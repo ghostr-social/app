@@ -9,6 +9,7 @@ mod probe_validator_absence_rearm_test;
 mod probe_http_generation_store_test;
 mod probe_stale_size_claim_test;
 mod response_observation_timestamp_test;
+mod response_evidence_fixture;
 mod response_observation_focus_fixture;
 mod response_observation_focus_retention_test;
 mod rejected_response_evidence_safety_test;

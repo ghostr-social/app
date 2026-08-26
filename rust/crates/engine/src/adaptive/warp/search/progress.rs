@@ -39,7 +39,7 @@ impl<'a, F> SearchProgress<'a, F> {
         }
     }
 
-    pub(super) fn prune_state(&mut self, state: State, reason: SearchPruneReason) {
+    pub(super) fn prune_state(&mut self, state: &State, reason: SearchPruneReason) {
         self.prune(PrunedSearchPlan {
             action_ids: state.sequence.iter().map(|node| node.id).collect(),
             reason,
@@ -60,8 +60,8 @@ impl<'a, F> SearchProgress<'a, F> {
 
     pub(super) fn audit(&mut self) -> SearchAudit {
         SearchAudit {
-            retained: std::mem::take(&mut self.retained),
-            pruned: std::mem::take(&mut self.pruned),
+            retained: core::mem::take(&mut self.retained),
+            pruned: core::mem::take(&mut self.pruned),
             prune_events_total: self.prune_events_total,
             pruned_sample_truncated: self.pruned_sample_truncated,
         }

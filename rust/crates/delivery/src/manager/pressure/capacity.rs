@@ -1,5 +1,5 @@
+use core::time::Duration;
 use ghostr_partial_store::partial_range_store::capacity::CapacityRevision;
-use std::time::Duration;
 use tokio::sync::watch;
 
 pub(crate) async fn capacity_changed(
@@ -13,7 +13,7 @@ pub(crate) async fn capacity_changed(
     }
     tokio::select! {
         result = changes.changed() => result.is_ok(),
-        _ = tokio::time::sleep(recheck_after) => {
+        () = tokio::time::sleep(recheck_after) => {
             store.recheck_capacity().await;
             changes.changed().await.is_ok()
         }

@@ -8,7 +8,7 @@ const EMERGENCY_DEPTH_MS: u64 = 12_000;
 const SAFE_CURRENT_DEPTH_MS: u64 = 6_000;
 
 pub(super) struct CurrentLane<'a> {
-    pub(super) candidate: &'a CandidateSnapshot,
+    candidate: &'a CandidateSnapshot,
     pub(super) emergency: bool,
     pub(super) storage_room: u64,
     target_ms: u64,
@@ -94,9 +94,10 @@ fn target_ms(
     candidate: &CandidateSnapshot,
     emergency: bool,
 ) -> u64 {
-    let depth = match emergency {
-        true => EMERGENCY_DEPTH_MS,
-        false => SAFE_CURRENT_DEPTH_MS,
+    let depth = if emergency {
+        EMERGENCY_DEPTH_MS
+    } else {
+        SAFE_CURRENT_DEPTH_MS
     };
     depth.saturating_sub(
         snapshot

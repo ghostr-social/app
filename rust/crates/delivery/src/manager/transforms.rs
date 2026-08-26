@@ -2,13 +2,14 @@
 
 use crate::manager::transfers::InternalEvent;
 use crate::transform::{TransformBackend, TransformControl, TransformProfile};
+use core::time::Duration;
 use ghostr_engine::adaptive::TransformKind;
 use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::{ActionId, PostId};
 use ghostr_partial_store::partial_range_store::{ContentRevision, PartialRangeStore};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tokio::sync::mpsc::UnboundedSender;
 
 mod cancellation;
@@ -18,9 +19,6 @@ mod cancellation_ownership_test;
 #[cfg(test)]
 #[path = "../tests/transform_cpu_busy_sample_test.rs"]
 mod cpu_busy_sample_test;
-#[cfg(test)]
-#[path = "../tests/transform_cpu_sample_test.rs"]
-mod cpu_sample_test;
 #[cfg(test)]
 #[path = "../tests/transform_deadline_ownership_test.rs"]
 mod deadline_ownership_test;
@@ -38,11 +36,11 @@ mod singleflight_test;
 mod test_fixture;
 
 pub(crate) struct TransformRequest {
-    pub(crate) action: ActionId,
-    pub(crate) binding: RepresentationBinding,
-    pub(crate) revision: ContentRevision,
-    pub(crate) total: u64,
-    pub(crate) kind: TransformKind,
+    pub(super) action: ActionId,
+    pub(super) binding: RepresentationBinding,
+    pub(super) revision: ContentRevision,
+    pub(super) total: u64,
+    pub(super) kind: TransformKind,
 }
 
 pub(crate) use resources::TransformActualResources;
@@ -54,9 +52,9 @@ pub(crate) enum TransformTerminal {
 }
 
 pub(crate) struct TransformDone {
-    pub(crate) action: ActionId,
-    pub(crate) terminal: TransformTerminal,
-    pub(crate) actual_resources: Option<TransformActualResources>,
+    action: ActionId,
+    terminal: TransformTerminal,
+    actual_resources: Option<TransformActualResources>,
 }
 
 struct ActiveTransform {
@@ -66,9 +64,9 @@ struct ActiveTransform {
     cancellation_requested: bool,
 }
 
-pub(crate) struct TransformFinish {
-    pub(crate) post: PostId,
-    pub(crate) cancellation_requested: bool,
+struct TransformFinish {
+    post: PostId,
+    cancellation_requested: bool,
 }
 
 pub(crate) struct TransformJobs {
@@ -79,7 +77,7 @@ pub(crate) struct TransformJobs {
 }
 
 impl TransformJobs {
-    pub(crate) fn new(
+    pub(super) fn new(
         backend: Option<Arc<dyn TransformBackend>>,
         events: UnboundedSender<InternalEvent>,
         resources: crate::manager::resource_control::ResourceControl,
@@ -92,15 +90,15 @@ impl TransformJobs {
         }
     }
 
-    pub(crate) fn profile(&self) -> Option<TransformProfile> {
+    pub(super) fn profile(&self) -> Option<TransformProfile> {
         self.backend.as_ref().map(|backend| backend.profile())
     }
 
-    pub(crate) fn contains(&self, post: &PostId) -> bool {
+    pub(super) fn contains(&self, post: &PostId) -> bool {
         self.active.values().any(|job| &job.post == post)
     }
 
-    pub(crate) fn launch(
+    pub(super) fn launch(
         &mut self,
         store: Arc<PartialRangeStore>,
         request: TransformRequest,
@@ -140,7 +138,7 @@ impl TransformJobs {
         );
     }
 
-    pub(crate) fn finish(&mut self, done: &TransformDone) -> Option<TransformFinish> {
+    fn finish(&mut self, done: &TransformDone) -> Option<TransformFinish> {
         let job = self.active.remove(&done.action)?;
         Some(TransformFinish {
             post: job.post,

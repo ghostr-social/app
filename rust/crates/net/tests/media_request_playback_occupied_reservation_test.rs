@@ -10,7 +10,7 @@ async fn playback_occupying_the_reservation_leaves_ordinary_capacity_usable() {
     let mut origin = HeldOrigin::serve().await;
     let requests = MediaRequestExecutor::new(
         LocalMediaClient::shared(),
-        MediaRequestLimits::try_new(2, 2).unwrap(),
+        MediaRequestLimits::try_new(2, 2).expect("valid test fixture"),
     );
     let critical = tokio::spawn(open(
         requests.clone(),
@@ -27,5 +27,8 @@ async fn playback_occupying_the_reservation_leaves_ordinary_capacity_usable() {
 
     origin.release_one();
     origin.release_one();
-    drop((critical.await.unwrap(), speculative.await.unwrap()));
+    drop((
+        critical.await.expect("valid test fixture"),
+        speculative.await.expect("valid test fixture"),
+    ));
 }

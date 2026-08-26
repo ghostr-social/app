@@ -16,6 +16,13 @@ pub(crate) struct DeliverySnapshot {
     pub eta_ms: Option<u64>,
     pub failed: bool,
     pub detail: Option<String>,
+    pub authority: Option<DeliverySnapshotAuthority>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct DeliverySnapshotAuthority {
+    pub representation_id: String,
+    pub asset_id: String,
 }
 
 /// Everything a snapshot is computed from.
@@ -25,17 +32,23 @@ pub(crate) struct SnapshotInput<'a> {
     /// The store's declared total; beats the discovery size.
     pub stored_total: Option<u64>,
     pub params: &'a EngineParams,
+    pub playback_blocked: bool,
+    pub authority: Option<DeliverySnapshotAuthority>,
 }
 
 pub(crate) fn compute_snapshot(post: &PostId, input: SnapshotInput<'_>) -> DeliverySnapshot {
     let catalog = catalog_for(post, input.meta, input.stored_total);
     DeliverySnapshot {
-        startable: initial_playable_range_is_cached(&catalog, post, &input),
+        startable: !input.playback_blocked
+            && initial_playable_range_is_cached(&catalog, post, &input),
         bytes_present: input.ranges.iter().map(ByteRange::len).sum(),
         total_bytes: input.stored_total.or(input.meta.size_bytes),
         eta_ms: None,
-        failed: false,
-        detail: None,
+        failed: input.playback_blocked,
+        detail: input
+            .playback_blocked
+            .then(|| "decoder unsupported".to_owned()),
+        authority: input.authority,
     }
 }
 
@@ -47,6 +60,7 @@ pub(crate) fn hls_snapshot(snapshot: SegmentedSnapshot) -> DeliverySnapshot {
         eta_ms: snapshot.eta_ms,
         failed: snapshot.phase == SegmentedPhase::Failed,
         detail: snapshot.detail,
+        authority: None,
     }
 }
 
@@ -107,6 +121,11 @@ pub(crate) fn event_for(
         total_bytes: current.total_bytes,
         eta_ms: current.eta_ms,
         detail: current.detail.clone(),
+        representation_id: current
+            .authority
+            .as_ref()
+            .map(|authority| authority.representation_id.clone()),
+        asset_id: current.authority.map(|authority| authority.asset_id),
     })
 }
 
@@ -115,7 +134,7 @@ fn change_kind(
     current: &DeliverySnapshot,
 ) -> Option<FfiDeliveryEventKind> {
     if current.failed {
-        return Some(FfiDeliveryEventKind::Error);
+        return Some(FfiDeliveryEventKind::Failed);
     }
     match previous {
         None => Some(FfiDeliveryEventKind::Readiness),
@@ -131,7 +150,7 @@ fn changed_snapshot(
         return None;
     }
     if current.failed {
-        return Some(FfiDeliveryEventKind::Error);
+        return Some(FfiDeliveryEventKind::Failed);
     }
     if previous.startable != current.startable {
         return Some(FfiDeliveryEventKind::Readiness);
@@ -148,5 +167,7 @@ pub(crate) fn error_event(post_id: &str, detail: String) -> FfiDeliveryEvent {
         total_bytes: None,
         eta_ms: None,
         detail: Some(detail),
+        representation_id: None,
+        asset_id: None,
     }
 }

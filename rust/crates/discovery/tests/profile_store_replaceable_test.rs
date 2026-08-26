@@ -1,11 +1,9 @@
-//! Kind-0 metadata is replaceable: newer created_at wins and older
+//! Kind-0 metadata is replaceable: newer `created_at` wins and older
 //! revisions keep what is stored. Events whose content is not a JSON
 //! object are ignored.
 
-mod feed_support;
-
-use feed_support::profile_event;
-use ghostr_discovery::content::profiles::ProfileStore;
+use crate::content::profiles::ProfileStore;
+use crate::tests::feed_support::profile_event;
 use nostr_sdk::Keys;
 
 #[test]
@@ -36,7 +34,9 @@ fn profile_store_ignores_events_of_other_kinds() {
     let creator = Keys::generate();
     let mut store = ProfileStore::new();
 
-    store.ingest(&feed_support::video_note(&creator, "clip", 10));
+    store.ingest(&crate::tests::feed_support::video_note(
+        &creator, "clip", 10,
+    ));
 
     let npub_short = &store.profile(&creator.public_key()).display_name;
     assert!(

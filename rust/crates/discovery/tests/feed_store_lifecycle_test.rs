@@ -1,5 +1,5 @@
-use ghostr_discovery::feed::spec::FeedSpec;
-use ghostr_discovery::feed::store::FeedStore;
+use crate::feed::spec::FeedSpec;
+use crate::feed::store::FeedStore;
 use nostr_sdk::Keys;
 
 #[tokio::test]

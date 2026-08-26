@@ -7,7 +7,7 @@ mod tables;
 use samples::map_samples;
 use tables::TrackTables;
 
-pub(crate) fn parse(
+pub(super) fn parse(
     moov: &Atom<'_>,
     budget: &mut ParserBudget<'_>,
     media: &mut Vec<TimedRange>,
@@ -22,7 +22,7 @@ pub(crate) fn parse(
             continue;
         };
         video |= track.video;
-        map_samples(track.tables, budget, media)?;
+        map_samples(&track.tables, budget, media)?;
     }
     Ok(video)
 }

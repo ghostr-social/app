@@ -1,12 +1,12 @@
 //! Exact nostr-sdk relay reads with owner-supplied admission settlement.
 
 use super::{RelayBroadcastIo, RelayIo, RelayIoFuture, RelayReadIo, RelayReadResult};
-use anyhow::{bail, Context};
+use anyhow::{bail, Context as _};
+use core::time::Duration;
 use log::warn;
 use nostr_sdk::pool::RelayNotification;
 use nostr_sdk::{Client, RelayStatus};
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::broadcast::error::RecvError;
 use tokio::task::JoinSet;
 use tokio::time::timeout;
@@ -23,11 +23,6 @@ impl SdkRelayIo {
         Self::with_components(client, RELAY_READINESS_TIMEOUT)
     }
 
-    #[cfg(test)]
-    pub(crate) fn with_readiness_timeout(client: Arc<Client>, timeout: Duration) -> Self {
-        Self::with_components(client, timeout)
-    }
-
     fn with_components(client: Arc<Client>, readiness_timeout: Duration) -> Self {
         Self {
             client,
@@ -38,7 +33,10 @@ impl SdkRelayIo {
     async fn await_connected_target(&self, relays: &[String]) -> anyhow::Result<()> {
         let mut waiters = JoinSet::new();
         for relay in relays {
-            waiters.spawn(wait_for_connection(self.client.clone(), relay.clone()));
+            waiters.spawn(wait_for_connection(
+                std::sync::Arc::clone(&self.client),
+                relay.clone(),
+            ));
         }
         let connected = timeout(self.readiness_timeout, first_connected(&mut waiters))
             .await
@@ -55,7 +53,7 @@ impl RelayIo for SdkRelayIo {
         Box::pin(async move {
             let mut admissions = request.admissions.take();
             let outcome = crate::relay::scoped_read::read(
-                self.client.clone(),
+                std::sync::Arc::clone(&self.client),
                 request,
                 self.readiness_timeout,
             )
@@ -117,3 +115,7 @@ async fn wait_for_connection(client: Arc<Client>, url: String) -> bool {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "sdk_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

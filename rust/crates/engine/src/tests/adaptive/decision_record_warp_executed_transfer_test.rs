@@ -6,14 +6,17 @@ fn selected_transfer_records_the_exact_smaller_executed_request() {
     let mut record = transfer_record();
     let selected_hash = record
         .replay_warp()
-        .unwrap()
+        .expect("valid test fixture")
         .integrity()
         .decision_hash()
         .to_owned();
 
     assert!(bind(&mut record));
 
-    let executed = record.executed_request.as_ref().unwrap();
+    let executed = record
+        .executed_request
+        .as_ref()
+        .expect("valid test fixture");
     assert_eq!(record.chosen_action_id, Some(44));
     assert!(matches!(
         executed.request,
@@ -32,9 +35,13 @@ fn selected_transfer_records_the_exact_smaller_executed_request() {
             requests: 1,
         }
     );
-    assert_eq!(record.replay(), DecisionReplayStatus::Verified);
+    assert_eq!(record.integrity_status(), DecisionReplayStatus::Verified);
     assert_eq!(
-        record.replay_warp().unwrap().integrity().decision_hash(),
+        record
+            .replay_warp()
+            .expect("valid test fixture")
+            .integrity()
+            .decision_hash(),
         selected_hash
     );
 }

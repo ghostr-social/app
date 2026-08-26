@@ -8,9 +8,10 @@ pub(super) struct ChangeDetector {
 
 impl ChangeDetector {
     pub fn observe(&mut self, surprise: f64, at_ms: u64) -> bool {
-        self.surprise_streak = match surprise >= 0.5 {
-            true => self.surprise_streak.saturating_add(1),
-            false => self.surprise_streak.saturating_sub(1),
+        self.surprise_streak = if surprise >= 0.5 {
+            self.surprise_streak.saturating_add(1)
+        } else {
+            self.surprise_streak.saturating_sub(1)
         };
         if self.surprise_streak < 3 {
             return false;

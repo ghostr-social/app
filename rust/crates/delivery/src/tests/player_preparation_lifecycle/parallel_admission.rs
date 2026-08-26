@@ -1,8 +1,5 @@
-use crate::delivery_events::{
-    command_channel, PlayerPreparationAttempt, PlayerPreparationAuthority,
-    PlayerPreparationIngress, PlayerPreparationObservation, PlayerPreparationReport,
-    PlayerPreparationState,
-};
+
+use crate::delivery_events::{command_channel, PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationIngress, PlayerPreparationObservation, PlayerPreparationReport, PlayerPreparationState};
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 use ghostr_partial_store::partial_range_store::ContentRevision;
@@ -28,15 +25,15 @@ fn report(post: &str, attempt_generation: u64) -> PlayerPreparationReport {
         ContentRevision::default(),
         "asset",
     )
-    .unwrap();
-    let attempt = PlayerPreparationAttempt::try_new(1, 7, attempt_generation).unwrap();
+    .expect("valid test fixture");
+    let attempt = PlayerPreparationAttempt::try_new(1, 7, attempt_generation).expect("valid test fixture");
     let observation = PlayerPreparationObservation::try_new(
         PlayerPreparationState::Initializing,
         None,
         attempt_generation,
     )
-    .unwrap();
-    PlayerPreparationReport::try_new(authority, attempt, 1, observation).unwrap()
+    .expect("valid test fixture");
+    PlayerPreparationReport::try_new(authority, attempt, 1, observation).expect("valid test fixture")
 }
 
 fn meta() -> VideoMeta {

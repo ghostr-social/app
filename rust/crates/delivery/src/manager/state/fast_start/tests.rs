@@ -13,22 +13,44 @@ use ghostr_partial_store::partial_range_store::ContentRevision;
 async fn evidence_requires_finalized_exact_bytes_and_current_player_authority() {
     let binding = binding();
     let bytes = tail_indexed_mp4();
-    let timeline = parse_mp4_segments(&[MediaSegment::new(0, &bytes)]).unwrap();
+    let timeline = parse_mp4_segments(&[MediaSegment::new(0, &bytes)]).expect("valid test fixture");
     let (root, store) = store("fast-start-authority");
-    store.bind_representation(binding.clone()).await.unwrap();
+    store
+        .bind_representation(binding.clone())
+        .await
+        .expect("valid test fixture");
     store
         .set_total_len("next", bytes.len() as u64)
         .await
-        .unwrap();
-    store.write_range("next", 0, &bytes[..16]).await.unwrap();
-    let incomplete = store.media_snapshot("next").await.unwrap();
+        .expect("valid test fixture");
+    store
+        .write_range("next", 0, &bytes[..16])
+        .await
+        .expect("valid test fixture");
+    let incomplete = store
+        .media_snapshot("next")
+        .await
+        .expect("valid test fixture");
     assert!(FastStartEvidence::from_snapshot(&binding, &incomplete, &timeline).is_none());
-    store.write_range("next", 16, &bytes[16..]).await.unwrap();
-    let unfinalized = store.media_snapshot("next").await.unwrap();
+    store
+        .write_range("next", 16, &bytes[16..])
+        .await
+        .expect("valid test fixture");
+    let unfinalized = store
+        .media_snapshot("next")
+        .await
+        .expect("valid test fixture");
     assert!(FastStartEvidence::from_snapshot(&binding, &unfinalized, &timeline).is_none());
-    store.finalize("next", None).await.unwrap();
-    let finalized = store.media_snapshot("next").await.unwrap();
-    let evidence = FastStartEvidence::from_snapshot(&binding, &finalized, &timeline).unwrap();
+    store
+        .finalize("next", None)
+        .await
+        .expect("valid test fixture");
+    let finalized = store
+        .media_snapshot("next")
+        .await
+        .expect("valid test fixture");
+    let evidence = FastStartEvidence::from_snapshot(&binding, &finalized, &timeline)
+        .expect("valid test fixture");
 
     assert!(evidence.matches(&report(&binding, finalized.revision(), 2), Some(2)));
     assert!(!evidence.matches(&report(&binding, ContentRevision::default(), 2), Some(2)));
@@ -47,18 +69,18 @@ fn report(
         revision,
         "asset",
     )
-    .unwrap();
+    .expect("valid test fixture");
     let observation = PlayerPreparationObservation::try_new(
         PlayerPreparationState::Failed,
         Some("invalidVideoTrack".into()),
         2,
     )
-    .unwrap();
+    .expect("valid test fixture");
     PlayerPreparationReport::try_new(
         authority,
-        PlayerPreparationAttempt::try_new(generation, 1, 1).unwrap(),
+        PlayerPreparationAttempt::try_new(generation, 1, 1).expect("valid test fixture"),
         2,
         observation,
     )
-    .unwrap()
+    .expect("valid test fixture")
 }

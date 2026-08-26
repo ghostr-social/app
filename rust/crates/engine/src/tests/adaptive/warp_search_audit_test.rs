@@ -46,7 +46,10 @@ fn chosen_plan_preserves_an_earlier_best_after_the_final_beam_changes() {
         .choose_first(&[whole.clone(), prefix, tail], HardBudget::unlimited());
 
     assert_eq!(decision.action, Some(whole));
-    assert_eq!(decision.chosen_plan.unwrap().action_ids, vec![1]);
+    assert_eq!(
+        decision.chosen_plan.expect("valid test fixture").action_ids,
+        vec![1]
+    );
     assert!(decision
         .retained_plans
         .iter()

@@ -3,7 +3,7 @@ use ghostr_engine::playback::{
     PlaybackObservation, PlaybackObservationSequence, PlaybackPhase, PlaybackSession,
 };
 use ghostr_engine::PostId;
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn a_late_stale_sample_cannot_replace_newer_pending_playback_evidence() {
@@ -27,6 +27,6 @@ fn update(sequence: u64) -> DeliveryPlayback {
             1_000,
             PlaybackPhase::Playing,
         )
-        .unwrap(),
+        .expect("valid test fixture"),
     }
 }

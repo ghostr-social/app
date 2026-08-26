@@ -103,7 +103,7 @@ impl SearchReplayInput {
     fn run_greedy(&self, reason: SearchPruneReason) -> SearchDecision {
         WarpSearch::new(self.beam)
             .with_prices(self.prices)
-            .choose_first_greedy(&self.nodes, self.budget.clone(), reason)
+            .choose_first_greedy(&self.nodes, &self.budget, reason)
     }
 }
 

@@ -1,5 +1,6 @@
 mod range_fixture;
 
+use core::{future::Future, pin::Pin, time::Duration};
 use ghostr_delivery::chunk::cancel::{cancel_pair, CancelHandle};
 use ghostr_delivery::chunk::downloader::{
     download_chunk_observed, ChunkExecution, ChunkSink, ChunkSpec, DownloadTraffic, OpenedResponse,
@@ -7,8 +8,7 @@ use ghostr_delivery::chunk::downloader::{
 };
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::ByteRange;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use std::{future::Future, pin::Pin};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[tokio::test]
 async fn headers_are_observed_once_when_cancellation_wins_authorization() {
@@ -51,7 +51,8 @@ async fn headers_are_observed_once_when_cancellation_wins_authorization() {
         },
     )
     .await
-    .unwrap();
+    .result
+    .expect("valid test fixture");
 
     assert!(result.cancelled);
     assert_eq!(traffic.observed, 1);
@@ -85,9 +86,9 @@ impl DownloadTraffic for CancelAtHeaders {
         &'a mut self,
         _: OpenedResponse,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<ResponseAdmission>> + Send + 'a>> {
-        Box::pin(std::future::poll_fn(move |_| {
+        Box::pin(core::future::poll_fn(move |_| {
             self.authorized += 1;
-            std::task::Poll::Ready(Ok(ResponseAdmission::Proceed))
+            core::task::Poll::Ready(Ok(ResponseAdmission::Proceed))
         }))
     }
 }

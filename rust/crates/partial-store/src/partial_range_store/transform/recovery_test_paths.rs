@@ -4,7 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub(super) fn temp_root() -> PathBuf {
     let stamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
+        .expect("valid test fixture")
         .as_nanos();
     std::env::temp_dir().join(format!(
         "ghostr-transform-recovery-{}-{stamp}",

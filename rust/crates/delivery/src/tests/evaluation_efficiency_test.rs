@@ -17,7 +17,7 @@ fn full_download_is_unused_until_explicit_presentation() {
     assert_eq!(before.efficiency.full_downloads_never_useful, 1);
     assert_eq!(before.efficiency.completable_probe_bytes, 65_536);
 
-    tracker.present(PresentationMetricEvent {
+    tracker.present(&PresentationMetricEvent {
         post,
         bitrate_bps: 1_000_000,
         origin: "private-origin".into(),

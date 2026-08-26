@@ -1,7 +1,7 @@
 use crate::api::delivery::playback_mapping::playback_update;
 use crate::api::playback_types::{FfiPlaybackObservation, FfiPlaybackPhase};
 use crate::engine::playback::PlaybackPhase;
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn maps_explicit_playback_evidence_into_the_delivery_domain() {

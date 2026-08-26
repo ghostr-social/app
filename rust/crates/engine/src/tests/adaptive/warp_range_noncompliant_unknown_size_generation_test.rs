@@ -22,7 +22,7 @@ fn unknown_size_complete_file_uses_a_capped_whole_fetch() {
     input.candidates = vec![candidate];
     let base = AdaptivePlayabilityPolicy.plan(&input);
     let context = PlannerContext::explicitly_unavailable(&input)
-        .with_head_probe_history(post, HeadProbeHistory::Completed);
+        .with_head_probe_history(&post, HeadProbeHistory::Completed);
 
     let decision = WarpPlanner::default().plan(WarpPlannerInput::new(
         &input,
@@ -83,7 +83,7 @@ pub(super) fn range_blind_candidate_with_size(
         CandidateEvidence {
             post,
             feed_offset: FeedOffset::new(0),
-            view_probability: ViewProbability::new(1.0).unwrap(),
+            view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
             present: Vec::new(),
             stored_total: None,
             continuation_source: None,

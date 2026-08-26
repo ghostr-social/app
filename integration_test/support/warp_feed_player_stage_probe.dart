@@ -2,6 +2,8 @@ import 'package:ghostr/core/media/playback_asset_authority.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/features/video_inventory/domain/player_preparation_feedback_port.dart';
 
+part 'warp_feed_player_stage_queries.dart';
+
 typedef WarpFeedStageClock = Duration Function();
 
 final class WarpFeedPlayerStageProbe implements PlayerPreparationFeedbackPort {
@@ -20,19 +22,6 @@ final class WarpFeedPlayerStageProbe implements PlayerPreparationFeedbackPort {
       evidence,
       _clock,
     );
-  }
-
-  WarpFeedPlayerStageEvidence? latestFor(
-    PlaybackDeliveryId deliveryId, {
-    Duration? noLaterThan,
-  }) {
-    WarpFeedPlayerStageEvidence? latest;
-    for (final evidence in _evidence) {
-      if (evidence.authority.deliveryId != deliveryId) continue;
-      if (noLaterThan != null && evidence.selectionAt > noLaterThan) continue;
-      latest = evidence;
-    }
-    return latest;
   }
 }
 

@@ -18,10 +18,12 @@ fn parsed_timing_exposes_exact_sparse_media_ranges_to_the_policy() {
         },
     );
     let moov = classic_moov(&[100, 500], &[100, 100]);
-    let timeline = parse_mp4_segments(&[MediaSegment::new(10_000, &moov)]).unwrap();
+    let timeline =
+        parse_mp4_segments(&[MediaSegment::new(10_000, &moov)]).expect("valid test fixture");
     assert!(catalog.learn_timeline_for(&binding, timeline));
 
-    let candidate = candidate_snapshot(&catalog, &EngineParams::default(), evidence(post)).unwrap();
+    let candidate = candidate_snapshot(&catalog, &EngineParams::default(), evidence(post))
+        .expect("valid test fixture");
     let ranges: Vec<_> = candidate
         .playable_ranges
         .iter()
@@ -39,7 +41,7 @@ fn evidence(post: PostId) -> CandidateEvidence {
     CandidateEvidence {
         post,
         feed_offset: FeedOffset::new(1),
-        view_probability: ViewProbability::new(0.8).unwrap(),
+        view_probability: ViewProbability::new(0.8).expect("valid test fixture"),
         present: Vec::new(),
         stored_total: None,
         continuation_source: None,

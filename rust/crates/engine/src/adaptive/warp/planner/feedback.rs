@@ -11,7 +11,7 @@ pub(super) fn observe(planner: &mut WarpPlanner, input: &WarpPlannerInput<'_>) {
         match current.price_snapshot {
             Some(snapshot) => {
                 planner.prices =
-                    crate::adaptive::ShadowPriceController::from_prices(snapshot.prices)
+                    crate::adaptive::ShadowPriceController::from_prices(snapshot.prices);
             }
             None => planner.prices.observe(current.actual, current.target),
         }

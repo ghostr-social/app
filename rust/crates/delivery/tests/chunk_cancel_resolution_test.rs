@@ -1,5 +1,5 @@
+use core::time::Duration;
 use ghostr_delivery::chunk::cancel::cancel_pair;
-use std::time::Duration;
 
 #[tokio::test(start_paused = true)]
 async fn chunk_cancel_token_resolves_only_after_the_handle_cancels() {
@@ -9,8 +9,8 @@ async fn chunk_cancel_token_resolves_only_after_the_handle_cancels() {
     let waiting = token.cancelled();
     tokio::pin!(waiting);
     tokio::select! {
-        _ = &mut waiting => panic!("token resolved before cancel"),
-        _ = tokio::time::sleep(Duration::from_millis(10)) => {}
+        () = &mut waiting => panic!("token resolved before cancel"),
+        () = tokio::time::sleep(Duration::from_millis(10)) => {}
     }
 
     handle.cancel();

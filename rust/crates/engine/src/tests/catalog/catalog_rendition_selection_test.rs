@@ -6,7 +6,7 @@ use crate::playback::{
 };
 use crate::video_rendition::VideoRendition;
 use crate::{DeliveryKind, PostId, VideoMeta};
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn catalog_switches_to_the_safe_representation_without_merging_mirrors() {
@@ -35,7 +35,7 @@ fn catalog_switches_to_the_safe_representation_without_merging_mirrors() {
         1_000,
         PlaybackPhase::NetworkStalled,
     )
-    .unwrap();
+    .expect("valid test fixture");
     let target =
         AdaptiveBufferPolicy::default().target(network, MediaConsumption::new(6_000_000, 1_000));
 
@@ -49,11 +49,14 @@ fn catalog_switches_to_the_safe_representation_without_merging_mirrors() {
     assert!(!switched.matches_or_derives_from(&advertised));
     let transformed = switched
         .derive_transform(TransformKind::Remux, &"b".repeat(64))
-        .unwrap();
+        .expect("valid test fixture");
     assert!(transformed.derives_from(&switched));
     assert_eq!(transformed.source_representation(), first.representation());
     assert!(transformed.matches_source_meta(&advertised));
-    assert_eq!(catalog.lookup(&post).unwrap().meta, low.meta().clone());
+    assert_eq!(
+        catalog.lookup(&post).expect("valid test fixture").meta,
+        low.meta().clone()
+    );
     assert_eq!(
         catalog.estimated_bitrate(&post, &Default::default()),
         1_000_000
@@ -67,7 +70,9 @@ fn catalog_switches_to_the_safe_representation_without_merging_mirrors() {
     assert!(catalog
         .transfer_identity(&post, "https://high.example/video.mp4")
         .is_none());
-    let identity = switched.transfer("https://low.example/video.mp4").unwrap();
+    let identity = switched
+        .transfer("https://low.example/video.mp4")
+        .expect("valid test fixture");
     assert!(catalog
         .quarantine_mirror_group(&identity, "low-digest", 1)
         .contains(&post));
@@ -90,5 +95,5 @@ fn rendition(name: &str, mirror: &str, bitrate: u64) -> VideoRendition {
         },
         Some(bitrate),
     )
-    .unwrap()
+    .expect("valid test fixture")
 }

@@ -1,6 +1,8 @@
 mod delivery_fixture;
 mod hls_terminal_wait;
 
+use core::sync::atomic::{AtomicUsize, Ordering};
+use delivery_fixture::evidence::DeliveryEvidence as _;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness_with_requests;
@@ -8,7 +10,6 @@ use ghostr_engine::adaptive::{DecisionOutcome, RecordedWarpCommand};
 use ghostr_engine::DeliveryKind;
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::MediaHttpRequests;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 struct PanicClient(Arc<AtomicUsize>);
@@ -25,7 +26,7 @@ async fn panicking_hls_fetch_has_one_terminal_decision_and_no_retry() {
     let calls = Arc::new(AtomicUsize::new(0));
     let requests = MediaRequestExecutor::new(
         Arc::new(PanicClient(Arc::clone(&calls))),
-        MediaRequestLimits::try_new(2, 1).unwrap(),
+        MediaRequestLimits::try_new(2, 1).expect("valid test fixture"),
     );
     let harness =
         start_harness_with_requests("hls-panicking-fetch", DeliveryOptions::default(), requests);
@@ -34,7 +35,7 @@ async fn panicking_hls_fetch_has_one_terminal_decision_and_no_retry() {
     harness.handle.update_focus(focus_now(vec![item], 0, 0));
 
     let terminal = hls_terminal_wait::wait_terminal(&harness.segmented, "stream").await;
-    tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+    tokio::time::sleep(core::time::Duration::from_millis(150)).await;
     assert_eq!(
         terminal.phase,
         ghostr_delivery::segmented::SegmentedPhase::Failed

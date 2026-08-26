@@ -1,14 +1,12 @@
 //! Hashtag feeds recheck the tag on every fetched post — relay tag
 //! matching is not trusted the way NIP-50 text judgement is — mirrors
 //! `_selectPosts` in
-//! lib/features/video_catalog/domain/discovery_video_search_repository.dart.
+//! `lib/features/video_catalog/domain/discovery_video_search_repository.dart`.
 
-mod feed_support;
-
-use feed_support::{hashtag_video_note, parsed_posts, video_note};
-use ghostr_discovery::content::social_graph::SocialGraph;
-use ghostr_discovery::feed::spec::FeedSpec;
-use ghostr_discovery::feed::store::FeedStore;
+use crate::content::social_graph::SocialGraph;
+use crate::feed::spec::FeedSpec;
+use crate::feed::store::FeedStore;
+use crate::tests::feed_support::{hashtag_video_note, parsed_posts, video_note};
 use nostr_sdk::Keys;
 
 #[test]

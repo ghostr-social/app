@@ -46,6 +46,10 @@ mod network_class_selection;
 mod network_class_support;
 #[path = "warp_planner_network_refill_test.rs"]
 mod network_refill;
+#[path = "warp_planner_present_tail_suppression_test.rs"]
+mod present_tail_suppression;
+#[path = "warp_planner_retained_control_test.rs"]
+mod retained_control;
 #[path = "retrieval_request_immediate_bytes_test.rs"]
 mod retrieval_request_immediate_bytes_test;
 #[path = "warp_active_whole_suppression_test.rs"]

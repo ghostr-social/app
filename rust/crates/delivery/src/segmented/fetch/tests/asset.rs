@@ -1,4 +1,5 @@
-use super::super::{fetch, FetchFailure, FetchInput, FetchSpec, FetchedObject};
+use super::super::axiom_test_support::{fetch, FetchInput};
+use super::super::{FetchFailure, FetchSpec, FetchedObject};
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_hls_manifest::hls_manifest::MAX_HLS_ASSET_BYTES;
 use ghostr_net::media_request_executor::MediaRequestExecutor;

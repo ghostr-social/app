@@ -1,10 +1,10 @@
 //! A faster empty relay cannot exclude a slower connected target.
 
-use crate::relay::io::{RelayIo, RelayReadIo, SdkRelayIo};
+use crate::relay::io::{RelayIo as _, RelayReadIo, SdkRelayIo};
 use crate::tests::relay_io_delayed_fixture::{delayed_relay, incomplete_relay};
+use core::time::Duration;
 use nostr_sdk::{Client, EventBuilder, Filter, Keys, Kind};
 use std::sync::Arc;
-use std::time::Duration;
 
 #[tokio::test]
 async fn slower_target_contributes_to_the_parallel_relay_union() {

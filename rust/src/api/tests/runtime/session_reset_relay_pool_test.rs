@@ -18,7 +18,7 @@ async fn reset_keeps_only_current_configured_relays() {
     }
     let (_demand_sender, demand) = watch::channel(DiscoveryDemand::Hold);
     let runtime = DiscoveryRuntime::start(DiscoveryBoot {
-        client: client.clone(),
+        client: std::sync::Arc::clone(&client),
         demand,
         bootstrap: vec![READ_RELAY.to_owned()],
         search_relays: vec![SEARCH_RELAY.to_owned()],

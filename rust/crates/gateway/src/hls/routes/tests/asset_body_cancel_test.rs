@@ -3,8 +3,8 @@ use super::support::{asset_resource, state_with_timeouts};
 use crate::hls::routes::asset;
 use axum::extract::{Path, State};
 use axum::http::HeaderMap;
+use core::time::Duration;
 use ghostr_net::transfer_timeouts::HlsTransferTimeouts;
-use std::time::Duration;
 
 #[tokio::test]
 async fn dropping_the_player_body_closes_the_origin_transfer_promptly() {

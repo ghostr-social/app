@@ -1,4 +1,4 @@
-use super::hls_burst_floor;
+use super::axiom_test_support::hls_burst_floor;
 use ghostr_engine::adaptive::{
     CurrentAuthority, FeedOffset, HlsBootstrapStage, HlsBootstrapState, HlsCandidateSnapshot,
     NavigationSnapshot, NetworkSnapshot, PlayabilitySnapshot, PlaybackSnapshot, StorageSnapshot,
@@ -44,7 +44,7 @@ fn candidate(index: usize) -> HlsCandidateSnapshot {
     HlsCandidateSnapshot {
         post: PostId::new(format!("hls-{index}")),
         feed_offset: FeedOffset::new(index as i32),
-        view_probability: ViewProbability::new(0.8).unwrap(),
+        view_probability: ViewProbability::new(0.8).expect("valid test fixture"),
         startup_value_ms: 1_000,
         cursor: Default::default(),
         state: HlsBootstrapState::Pending {

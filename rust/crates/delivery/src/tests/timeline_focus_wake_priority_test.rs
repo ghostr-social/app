@@ -5,17 +5,17 @@ use crate::tests::timeline_parser_fixture::GatedTimelineParser;
 use ghostr_engine::budget::params_for;
 use ghostr_engine::media_timeline::{parse_mp4_segments, MediaSegment};
 use ghostr_engine::{DataUsageLevel, EngineParams};
-use std::time::Duration;
+use core::time::Duration;
 
 #[tokio::test]
 async fn queued_focus_is_applied_before_a_simultaneously_ready_timeline_result() {
     let moov = classic_moov(100, 10);
-    let ready = parse_mp4_segments(&[MediaSegment::new(0, &moov)]).unwrap();
+    let ready = parse_mp4_segments(&[MediaSegment::new(0, &moov)]).expect("valid test fixture");
     let (parser, mut started) = GatedTimelineParser::new(Some(ready), 1);
-    let mut fixture = TimelineManagerFixture::new(parser.clone()).await;
+    let mut fixture = TimelineManagerFixture::new(std::sync::Arc::<GatedTimelineParser>::clone(&parser)).await;
 
     fixture.focus();
-    assert!(fixture.worker.step().await);
+    assert!(fixture.step().await);
     assert_eq!(started.recv().await, Some(0));
     parser.release(0);
     wait_until_result_is_ready(&mut fixture).await;
@@ -24,14 +24,14 @@ async fn queued_focus_is_applied_before_a_simultaneously_ready_timeline_result()
         .handle
         .update_focus(DeliveryFocus::compatibility(Vec::new(), 0, 0));
 
-    assert!(fixture.worker.step().await);
+    assert!(fixture.step().await);
     assert_eq!(
         fixture.worker.params_for_test(),
         params_for(DataUsageLevel::Conservative, EngineParams::default())
     );
     assert!(fixture.worker.current_post_for_test().is_none());
     assert!(fixture.timeline().is_none());
-    tokio::fs::remove_dir_all(fixture.root).await.unwrap();
+    tokio::fs::remove_dir_all(fixture.root).await.expect("valid test fixture");
 }
 
 async fn wait_until_result_is_ready(fixture: &mut TimelineManagerFixture) {
@@ -41,5 +41,5 @@ async fn wait_until_result_is_ready(fixture: &mut TimelineManagerFixture) {
         }
     })
     .await
-    .unwrap();
+    .expect("valid test fixture");
 }

@@ -37,7 +37,7 @@ fn current() -> HlsCandidateSnapshot {
     HlsCandidateSnapshot {
         post: PostId::new("p0"),
         feed_offset: FeedOffset::new(0),
-        view_probability: ViewProbability::new(1.0).unwrap(),
+        view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
         startup_value_ms: 2_000,
         cursor: Default::default(),
         state: HlsBootstrapState::Pending {

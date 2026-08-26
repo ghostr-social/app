@@ -1,7 +1,5 @@
-mod store_fixture;
-
-use std::time::Duration;
-use store_fixture::{discard, limits, paced_store};
+use crate::tests::store_fixture::{discard, limits, paced_store};
+use core::time::Duration;
 use tokio::sync::watch;
 
 #[tokio::test]
@@ -23,7 +21,10 @@ async fn only_real_capacity_changes_wake_parked_delivery() {
     changes.borrow_and_update();
 
     fixture.store.recheck_capacity().await;
-    assert!(!changes.has_changed().unwrap(), "same capacity stays quiet");
+    assert!(
+        !changes.has_changed().expect("valid test fixture"),
+        "same capacity stays quiet"
+    );
 
     fixture.space.set(900);
     fixture.store.recheck_capacity().await;
@@ -32,14 +33,28 @@ async fn only_real_capacity_changes_wake_parked_delivery() {
     drop(lease);
     take_change(&mut changes);
 
-    fixture.store.set_storage_budget(2_500).await.unwrap();
+    fixture
+        .store
+        .set_storage_budget(2_500)
+        .await
+        .expect("valid test fixture");
     take_change(&mut changes);
-    fixture.store.set_storage_budget(2_500).await.unwrap();
-    assert!(!changes.has_changed().unwrap(), "same budget stays quiet");
+    fixture
+        .store
+        .set_storage_budget(2_500)
+        .await
+        .expect("valid test fixture");
+    assert!(
+        !changes.has_changed().expect("valid test fixture"),
+        "same budget stays quiet"
+    );
     discard(&fixture.root);
 }
 
 fn take_change(changes: &mut watch::Receiver<u64>) {
-    assert!(changes.has_changed().unwrap(), "capacity event");
+    assert!(
+        changes.has_changed().expect("valid test fixture"),
+        "capacity event"
+    );
     changes.borrow_and_update();
 }

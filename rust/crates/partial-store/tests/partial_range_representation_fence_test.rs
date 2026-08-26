@@ -1,5 +1,3 @@
-mod store_fixture;
-
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::representation::SourceGeneration;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
@@ -8,60 +6,79 @@ use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn stale_writer_cannot_mix_bytes_after_representation_replacement() {
-    let root = store_fixture::temp_root("partial-representation-fence");
+    let root = crate::tests::store_fixture::temp_root("partial-representation-fence");
     let used = Arc::new(Mutex::new(0));
-    let store = store_fixture::plain_store(root.clone(), used.clone());
+    let store =
+        crate::tests::store_fixture::plain_store(root.clone(), std::sync::Arc::clone(&used));
     let post = PostId::new("same");
     let mut catalog = Catalog::new();
 
     let first = catalog.upsert(post.clone(), meta("https://a.example/video", 8));
     let stale = catalog
         .transfer_identity(&post, "https://a.example/video")
-        .unwrap();
-    store.bind_representation(first).await.unwrap();
-    store.select_transfer(stale.clone()).await.unwrap();
+        .expect("valid test fixture");
+    store
+        .bind_representation(first)
+        .await
+        .expect("valid test fixture");
+    store
+        .select_transfer(stale.clone())
+        .await
+        .expect("valid test fixture");
     assert!(store
         .write_range_for_transfer_if_current(&stale, 0, b"old")
         .await
-        .unwrap());
+        .expect("valid test fixture"));
 
     let second = catalog.upsert(post.clone(), meta("https://b.example/video", 4));
     let current = catalog
         .transfer_identity(&post, "https://b.example/video")
-        .unwrap();
-    store.bind_representation(second).await.unwrap();
-    store.select_transfer(current.clone()).await.unwrap();
-    let generation =
-        SourceGeneration::try_new("https://b.example/video", "\"current\"", 4).unwrap();
+        .expect("valid test fixture");
+    store
+        .bind_representation(second)
+        .await
+        .expect("valid test fixture");
+    store
+        .select_transfer(current.clone())
+        .await
+        .expect("valid test fixture");
+    let generation = SourceGeneration::try_new("https://b.example/video", "\"current\"", 4)
+        .expect("valid test fixture");
     store
         .accept_generation(&current, generation.clone())
         .await
-        .unwrap();
+        .expect("valid test fixture");
     assert!(!store
         .write_range_for_transfer_if_current(&stale, 0, b"late")
         .await
-        .unwrap());
+        .expect("valid test fixture"));
     assert!(store
         .write_range_for_generation_if_current(&current, &generation, 0, b"new!")
         .await
-        .unwrap());
+        .expect("valid test fixture"));
     assert_eq!(
-        store.read_range("same", 0..4).await.unwrap(),
+        store
+            .read_range("same", 0..4)
+            .await
+            .expect("valid test fixture"),
         Some(b"new!".to_vec())
     );
 
     drop(store);
-    let reopened = store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
-    reopened.load_existing().await.unwrap();
+    let reopened = crate::tests::store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
+    reopened.load_existing().await.expect("valid test fixture");
     reopened
-        .bind_representation(catalog.binding(&post).unwrap())
+        .bind_representation(catalog.binding(&post).expect("valid test fixture"))
         .await
-        .unwrap();
+        .expect("valid test fixture");
     assert_eq!(
-        reopened.read_range("same", 0..4).await.unwrap(),
+        reopened
+            .read_range("same", 0..4)
+            .await
+            .expect("valid test fixture"),
         Some(b"new!".to_vec())
     );
-    store_fixture::discard(&root);
+    crate::tests::store_fixture::discard(&root);
 }
 
 fn meta(url: &str, size: u64) -> VideoMeta {

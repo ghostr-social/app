@@ -11,7 +11,10 @@ fn an_explicit_dependency_can_follow_its_whole_fetch() {
     let decision = WarpSearch::new(BeamConfig::new(2, 8, 32, u64::MAX))
         .choose_first(&[whole, transform], HardBudget::unlimited());
 
-    assert_eq!(decision.chosen_plan.unwrap().action_ids, [1, 2]);
+    assert_eq!(
+        decision.chosen_plan.expect("valid test fixture").action_ids,
+        [1, 2]
+    );
 }
 
 fn node(id: u16, kind: ActionKind, score: i64, requires: &[u16]) -> ActionNode {

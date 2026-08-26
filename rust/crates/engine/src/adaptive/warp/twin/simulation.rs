@@ -1,8 +1,11 @@
 use super::run::{self, SimulationRun};
 use super::{TwinConfig, TwinEpochs, TwinEvaluation, TwinState, TwinStateSignature};
 use crate::adaptive::{ActionNode, ResourcePrices};
+use core::hash::{Hash as _, Hasher};
 use std::collections::BTreeMap;
-use std::hash::{Hash, Hasher};
+
+#[cfg(test)]
+mod api_test;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 struct CacheKey {
@@ -20,7 +23,7 @@ pub struct DigitalTwin {
 }
 
 impl DigitalTwin {
-    pub fn new(config: TwinConfig) -> Self {
+    pub(crate) fn new(config: TwinConfig) -> Self {
         Self {
             config,
             prices: ResourcePrices::default(),
@@ -28,15 +31,15 @@ impl DigitalTwin {
         }
     }
 
-    pub fn set_prices(&mut self, prices: ResourcePrices) {
+    pub(crate) fn set_prices(&mut self, prices: ResourcePrices) {
         self.prices = prices;
     }
 
-    pub fn common_random_seed(state: &TwinState, epochs: TwinEpochs) -> u64 {
+    pub(crate) fn common_random_seed(state: &TwinState, epochs: TwinEpochs) -> u64 {
         run::common_seed(state.signature(), epochs)
     }
 
-    pub fn evaluate(
+    pub(crate) fn evaluate(
         &mut self,
         state: &TwinState,
         actions: &[ActionNode],
@@ -50,10 +53,6 @@ impl DigitalTwin {
         let result = run::simulate(run, actions);
         self.cache.insert(key, result);
         result
-    }
-
-    pub fn cache_entries(&self) -> usize {
-        self.cache.len()
     }
 }
 
@@ -91,7 +90,7 @@ fn stable_hash(action: &ActionNode, state: &mut impl Hasher) {
 
 fn stable_kind(kind: &crate::adaptive::ActionKind, state: &mut impl Hasher) {
     use crate::adaptive::ActionKind;
-    std::mem::discriminant(kind).hash(state);
+    core::mem::discriminant(kind).hash(state);
     match kind {
         ActionKind::Prefix(range)
         | ActionKind::Tail(range)

@@ -1,7 +1,9 @@
 use super::super::{allocation::REQUEST_SLICE_BYTES, PlayableRange};
-use super::{CatalogEntry, MediaLayout};
+use crate::adaptive::MediaLayout;
+use crate::catalog::CatalogEntry;
 use crate::ByteRange;
 
+#[derive(Clone, Copy)]
 pub(super) struct Inputs<'a> {
     pub(super) entry: &'a CatalogEntry,
     pub(super) total: Option<u64>,
@@ -53,9 +55,10 @@ fn bootstrap_range(inputs: &Inputs<'_>) -> PlayableRange {
     let start = bootstrap_start(inputs.present).min(inputs.total.unwrap_or(u64::MAX));
     let next_end = start.saturating_add(bound);
     let end = inputs.total.map_or(next_end, |known| known.min(next_end));
-    let bytes = match start < end {
-        true => ByteRange::new(start, end),
-        false => ByteRange::new(0, end),
+    let bytes = if start < end {
+        ByteRange::new(start, end)
+    } else {
+        ByteRange::new(0, end)
     };
     PlayableRange {
         bytes,

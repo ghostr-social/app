@@ -13,11 +13,12 @@ pub enum FfiFeedKind {
     Following,
 }
 
-/// One feed to open, as Dart names it. `Main` reads the signed-in
-/// viewer from `viewer_pubkey` (hex or npub); `Hashtag` reads the tag
-/// from `value` (leading `#` optional); `Search` reads the query from
-/// `value`, as typed; `Profile` reads every creator key from `creators` — one for a
-/// profile grid, the whole follow set for the Following feed.
+/// One feed to open, as Dart names it.
+///
+/// `Main` reads the signed-in viewer from `viewer_pubkey` (hex or npub);
+/// `Hashtag` reads the tag from `value` (leading `#` optional); `Search` reads the
+/// query from `value`, as typed; `Profile` reads every creator key from `creators`
+/// — one for a profile grid, the whole follow set for the Following feed.
 #[derive(Clone, Debug)]
 pub struct FfiFeedSpec {
     pub kind: FfiFeedKind,
@@ -30,10 +31,10 @@ pub struct FfiFeedSpec {
 /// shortened-npub fallback when no metadata is known.
 #[derive(Clone, Debug)]
 pub struct FfiFeedCreator {
-    pub pubkey: String,
-    pub display_name: String,
-    pub handle: String,
-    pub avatar_url: Option<String>,
+    pub(crate) pubkey: String,
+    pub(crate) display_name: String,
+    pub(crate) handle: String,
+    pub(crate) avatar_url: Option<String>,
 }
 
 /// The outer NIP-18 occurrence that lifted an original into the feed.
@@ -46,18 +47,18 @@ pub enum FfiFeedRepostTarget {
 /// The outer NIP-18 occurrence that lifted an original into the feed.
 #[derive(Clone, Debug)]
 pub struct FfiFeedRepost {
-    pub event_id: String,
-    pub event_kind: u16,
-    pub target: FfiFeedRepostTarget,
-    pub reposted_at: u64,
-    pub reposter: FfiFeedCreator,
+    pub(crate) event_id: String,
+    pub(crate) event_kind: u16,
+    pub(crate) target: FfiFeedRepostTarget,
+    pub(crate) reposted_at: u64,
+    pub(crate) reposter: FfiFeedCreator,
 }
 
 /// Pixel dimensions from the post's imeta, when declared.
 #[derive(Clone, Copy, Debug)]
 pub struct FfiMediaDim {
-    pub width: u32,
-    pub height: u32,
+    pub(crate) width: u32,
+    pub(crate) height: u32,
 }
 
 /// Playable media of one post. `delivery` round-trips with
@@ -65,14 +66,14 @@ pub struct FfiMediaDim {
 #[derive(Clone, Debug)]
 pub struct FfiFeedMedia {
     /// Playback candidates in preference order (imeta url + fallbacks).
-    pub urls: Vec<String>,
-    pub delivery: FfiMediaDelivery,
-    pub sha256: Option<String>,
-    pub size_bytes: Option<u64>,
-    pub duration_ms: Option<u64>,
-    pub dim: Option<FfiMediaDim>,
-    pub blurhash: Option<String>,
-    pub thumb_url: Option<String>,
+    pub(crate) urls: Vec<String>,
+    pub(crate) delivery: FfiMediaDelivery,
+    pub(crate) sha256: Option<String>,
+    pub(crate) size_bytes: Option<u64>,
+    pub(crate) duration_ms: Option<u64>,
+    pub(crate) dim: Option<FfiMediaDim>,
+    pub(crate) blurhash: Option<String>,
+    pub(crate) thumb_url: Option<String>,
 }
 
 /// One assembled feed row. `post_id` is the gateway-safe id Dart hands
@@ -80,28 +81,28 @@ pub struct FfiFeedMedia {
 /// across addressable revisions of the same video.
 #[derive(Clone, Debug)]
 pub struct FfiFeedPost {
-    pub post_id: String,
-    pub event_id: String,
+    pub(crate) post_id: String,
+    pub(crate) event_id: String,
     /// The Nostr kind of `event_id`. Named apart from `FfiFeedSpec.kind`
     /// (a feed shape) and `FfiDeliveryEvent.kind` (an event type); with
     /// `identifier` it completes the reference Dart's social writes
     /// address.
-    pub event_kind: u16,
+    pub(crate) event_kind: u16,
     /// The addressable `d` tag, present exactly for kinds 30000-39999.
-    pub identifier: Option<String>,
+    pub(crate) identifier: Option<String>,
     /// The exact published `d` tag used in Nostr coordinates.
-    pub published_identifier: Option<String>,
+    pub(crate) published_identifier: Option<String>,
     /// Unix seconds of the post's newest event.
-    pub created_at: u64,
-    pub feed_sort_at: u64,
-    pub signed_event_json: Option<String>,
-    pub is_protected: bool,
-    pub repost: Option<FfiFeedRepost>,
-    pub caption: String,
-    pub title: Option<String>,
-    pub hashtags: Vec<String>,
-    pub creator: FfiFeedCreator,
-    pub media: FfiFeedMedia,
+    pub(crate) created_at: u64,
+    pub(crate) feed_sort_at: u64,
+    pub(crate) signed_event_json: Option<String>,
+    pub(crate) is_protected: bool,
+    pub(crate) repost: Option<FfiFeedRepost>,
+    pub(crate) caption: String,
+    pub(crate) title: Option<String>,
+    pub(crate) hashtags: Vec<String>,
+    pub(crate) creator: FfiFeedCreator,
+    pub(crate) media: FfiFeedMedia,
 }
 
 /// How far the snapshot's page got. Row counts cannot answer that — a
@@ -118,14 +119,15 @@ pub enum FfiFeedStage {
     Failed,
 }
 
-/// One feed-stream update: the feed's full ordered snapshot, newest
-/// first. Snapshots replace the previous list wholesale — chosen over
-/// diffs so the Dart side has nothing to reconcile; `revision` is the
-/// feed store's monotonic revision for cheap deduplication.
+/// One feed-stream update: the feed's full ordered snapshot, newest first.
+///
+/// Snapshots replace the previous list wholesale — chosen over diffs so the Dart
+/// side has nothing to reconcile; `revision` is the feed store's monotonic
+/// revision for cheap deduplication.
 #[derive(Clone, Debug)]
 pub struct FfiFeedUpdate {
-    pub feed_id: String,
-    pub revision: u64,
-    pub stage: FfiFeedStage,
-    pub posts: Vec<FfiFeedPost>,
+    pub(crate) feed_id: String,
+    pub(crate) revision: u64,
+    pub(crate) stage: FfiFeedStage,
+    pub(crate) posts: Vec<FfiFeedPost>,
 }

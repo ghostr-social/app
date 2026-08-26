@@ -1,7 +1,5 @@
-use crate::delivery_events::{
-    PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationObservation,
-    PlayerPreparationReport, PlayerPreparationState,
-};
+
+use crate::delivery_events::{PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationObservation, PlayerPreparationReport, PlayerPreparationState};
 use crate::tests::player_preparation_fixture::state;
 use ghostr_engine::adaptive::PlannerCapability;
 use ghostr_engine::PostId;
@@ -38,20 +36,20 @@ fn report(
     let post = PostId::new("next");
     let authority = PlayerPreparationAuthority::try_new(
         post.clone(),
-        state.catalog().binding(&post).unwrap(),
+        state.catalog().binding(&post).expect("valid test fixture"),
         ContentRevision::default(),
         "asset-next",
     )
-    .unwrap();
+    .expect("valid test fixture");
     let observation =
         PlayerPreparationObservation::try_new(status, failure.map(str::to_owned), sequence)
-            .unwrap();
+            .expect("valid test fixture");
     let report = PlayerPreparationReport::try_new(
         authority,
-        PlayerPreparationAttempt::try_new(1, 1, 1).unwrap(),
+        PlayerPreparationAttempt::try_new(1, 1, 1).expect("valid test fixture"),
         sequence,
         observation,
     )
-    .unwrap();
+    .expect("valid test fixture");
     assert!(state.apply_player_preparation(report));
 }

@@ -2,7 +2,7 @@
 
 use super::media::HitLog;
 use std::sync::Arc;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::{TcpListener, TcpStream};
 
 mod header_bound;
@@ -36,7 +36,11 @@ pub async fn serve_recording_range_blind_body(log: HitLog, body: Vec<u8>) -> Str
     tokio::spawn(async move {
         loop {
             let (socket, _) = listener.accept().await.expect("accept probe");
-            tokio::spawn(answer_recording(socket, log.clone(), Arc::clone(&body)));
+            tokio::spawn(answer_recording(
+                socket,
+                std::sync::Arc::clone(&log),
+                Arc::clone(&body),
+            ));
         }
     });
     format!("http://{address}/video.mp4")

@@ -13,9 +13,10 @@ pub(super) async fn run(
     let outcome = match load_input(&attempt, &store).await {
         Ok(input) if !attempt.is_cancelled() => {
             let parsed = parse(input, parser, attempt.control()).await;
-            match attempt.is_cancelled() {
-                true => TimelineJobOutcome::Superseded,
-                false => parsed,
+            if attempt.is_cancelled() {
+                TimelineJobOutcome::Superseded
+            } else {
+                parsed
             }
         }
         Ok(_) => TimelineJobOutcome::Superseded,
@@ -44,7 +45,7 @@ async fn load_input(
 async fn read_span(
     store: &PartialRangeStore,
     evidence: &TimelineEvidence,
-    span: std::ops::Range<u64>,
+    span: core::ops::Range<u64>,
 ) -> Result<Vec<u8>, TimelineJobOutcome> {
     let read = store
         .read_for_stream(
@@ -80,7 +81,7 @@ async fn ensure_evidence(
 async fn parse(
     input: TimelineInput,
     parser: Arc<dyn TimelineParser>,
-    control: Arc<std::sync::atomic::AtomicBool>,
+    control: Arc<core::sync::atomic::AtomicBool>,
 ) -> TimelineJobOutcome {
     match tokio::task::spawn_blocking(move || parser.parse(input, control.as_ref())).await {
         Ok(TimelineParse::Cancelled) => TimelineJobOutcome::Superseded,

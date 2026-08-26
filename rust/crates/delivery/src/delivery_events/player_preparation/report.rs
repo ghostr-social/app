@@ -50,7 +50,7 @@ impl PlayerPreparationReport {
         self.attempt.attempt_generation
     }
 
-    pub fn failure_kind(&self) -> Option<&str> {
+    pub(crate) fn failure_kind(&self) -> Option<&str> {
         self.observation.failure_kind.as_deref()
     }
 

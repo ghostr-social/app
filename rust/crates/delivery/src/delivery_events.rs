@@ -1,24 +1,27 @@
 //! Inbound delivery controls arrive over a channel so the manager reacts to
 //! focus, config, and network events instead of polling.
 
-use ghostr_engine::evidence::NostrMetadataEvidence;
-use ghostr_engine::video_rendition::VideoRendition;
-use ghostr_engine::{DataUsageLevel, PostId, PreviewDescriptor, VideoMeta};
+use ghostr_engine::DataUsageLevel;
 use tokio::sync::{mpsc, oneshot};
 
 mod channel;
 mod decision_log;
+mod evidence_snapshot;
 mod focus_generation;
+#[cfg(test)]
+mod generated_focus_api_test;
 mod mailbox;
+mod models;
 mod network;
 mod plan_evidence;
 mod playback_presentation;
 mod player_preparation;
 mod receiver;
 mod transport;
-use crate::evaluation::{EvaluationLedger, EvaluationSnapshot};
+use crate::evaluation::EvaluationLedger;
 use crate::playback_admission::{PlaybackAdmissionLedger, PlaybackAdmissionSnapshot};
-pub use channel::{command_channel, command_channel_with_candidate_capacity};
+pub use channel::command_channel;
+
 pub use decision_log::DecisionHistorySnapshot;
 use decision_log::DecisionLog;
 pub(crate) use decision_log::{
@@ -30,12 +33,18 @@ pub use focus_generation::{FocusAdmission, FocusGeneration};
 pub use mailbox::MailboxReceiver;
 use mailbox::MailboxSender;
 pub(crate) use mailbox::PlayerPreparationEnvelope;
+pub use models::{
+    CandidateAdmission, DeliveryCandidate, DeliveryCommand, DeliveryFocus, FocusItem, FocusPreview,
+    FocusTransition,
+};
 pub use network::DeliveryNetworkStatus;
 pub(crate) use network::DeliveryNetworkStatusReader;
 pub use plan_evidence::PlanEvidence;
 use plan_evidence::PlanEvidenceHistory;
+pub(crate) use plan_evidence::PlanPublicationContext;
 pub use playback_presentation::{PlaybackPresentation, PlaybackPresentationIngress};
 pub(crate) use player_preparation::PlayerPreparationActorOutcome;
+pub(crate) use player_preparation::DECODER_UNSUPPORTED_FAILURE;
 pub use player_preparation::{
     PlayerPreparationAdmission, PlayerPreparationAttempt, PlayerPreparationAuthority,
     PlayerPreparationClaim, PlayerPreparationDisposition, PlayerPreparationFollowup,
@@ -45,84 +54,6 @@ pub use player_preparation::{
 pub use transport::{DeliveryPlayback, TransportRescue, TransportRescueReason};
 
 const DEFAULT_CANDIDATE_CAPACITY: usize = 32;
-
-/// One post of the viewer's focus window with its discovery metadata.
-#[derive(Clone, Debug)]
-pub struct FocusItem {
-    pub post: PostId,
-    pub meta: VideoMeta,
-}
-
-/// A validated discovery candidate available to probes before focus ranks it.
-#[derive(Clone, Debug)]
-pub struct DeliveryCandidate {
-    pub post: PostId,
-    pub meta: VideoMeta,
-    pub preview: Option<PreviewDescriptor>,
-    pub metadata_evidence: Vec<NostrMetadataEvidence>,
-    pub renditions: Vec<VideoRendition>,
-    pub discovered_at: u64,
-}
-
-/// Validated inline preview evidence associated with one focused post.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct FocusPreview {
-    pub post: PostId,
-    pub descriptor: PreviewDescriptor,
-}
-
-/// Whether a focus movement represents user navigation or system control.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum FocusTransition {
-    UserNavigation,
-    RosterChange,
-    TransportRescue,
-}
-
-/// A full replacement of the focus window (plan §2 `ffi_update_focus`).
-#[derive(Clone, Debug)]
-pub struct DeliveryFocus {
-    pub items: Vec<FocusItem>,
-    pub previews: Vec<FocusPreview>,
-    pub current_index: usize,
-    pub watch_ms: u64,
-    pub generation: FocusGeneration,
-    pub transition: FocusTransition,
-    pub rescue: Option<TransportRescue>,
-}
-
-impl DeliveryFocus {
-    pub fn compatibility(items: Vec<FocusItem>, current_index: usize, watch_ms: u64) -> Self {
-        Self {
-            items,
-            previews: Vec::new(),
-            current_index,
-            watch_ms,
-            generation: FocusGeneration::compatibility(),
-            transition: FocusTransition::UserNavigation,
-            rescue: None,
-        }
-    }
-}
-
-/// Control events the manager reacts to.
-#[derive(Debug)]
-pub enum DeliveryCommand {
-    Candidate(DeliveryCandidate),
-    Focus(DeliveryFocus),
-    Playback(DeliveryPlayback),
-    Config(DataUsageLevel),
-    NetworkStatus(DeliveryNetworkStatus),
-    NetworkChanged,
-    StorageChanged,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum CandidateAdmission {
-    Accepted,
-    Saturated,
-    Closed,
-}
 
 /// Cloneable control handle. Replaceable controls never block; clear
 /// requests apply bounded backpressure. Dropping every clone ends the
@@ -155,8 +86,11 @@ impl DeliveryHandle {
         self.sender.send_control(DeliveryCommand::Config(level));
     }
 
-    pub fn network_changed(&self) {
-        self.sender.send_control(DeliveryCommand::NetworkChanged);
+    pub fn update_network_profile(
+        &self,
+        profile: crate::debug::network::NetworkProfile,
+    ) -> Option<u64> {
+        self.sender.send_network_profile(profile)
     }
 
     pub fn update_network_status(&self, status: DeliveryNetworkStatus) -> bool {
@@ -171,14 +105,6 @@ impl DeliveryHandle {
     pub fn playback_admission_snapshot(&self) -> PlaybackAdmissionSnapshot {
         self.playback_admissions.snapshot()
     }
-
-    pub fn evaluation_snapshot(&self) -> EvaluationSnapshot {
-        self.evaluation.snapshot()
-    }
-
-    pub fn decision_history(&self) -> DecisionHistorySnapshot {
-        self.decisions.snapshot()
-    }
 }
 
 pub type ClearRequest = oneshot::Sender<anyhow::Result<()>>;
@@ -190,3 +116,7 @@ pub struct CommandReceiver {
     evaluation: EvaluationLedger,
     decisions: DecisionLog,
 }
+
+#[cfg(test)]
+#[path = "delivery_events_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

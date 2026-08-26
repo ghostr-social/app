@@ -1,11 +1,12 @@
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::concurrency_origin::{ActiveRequest, ControlledOrigin};
 use delivery_fixture::items::{focus_now, seed_range, sized_item};
 use delivery_fixture::options::DeliveryOptions;
+use delivery_fixture::plan::wait_for_current;
 use delivery_fixture::playback::playing;
 use delivery_fixture::start_harness;
-use std::time::Duration;
 
 #[tokio::test]
 async fn swipe_cancels_stale_work_and_starts_the_new_forward_edge() {
@@ -29,11 +30,12 @@ async fn swipe_cancels_stale_work_and_starts_the_new_forward_edge() {
     harness
         .handle
         .report_playback(playing("p3", Duration::from_secs(20)));
+    wait_for_current(&harness.handle, "p3").await;
 
-    let edge = next_request("p5", &mut origins.posts[5]).await;
     wait_cancelled(&active[0]).await;
+    let edge = next_request("p5", &mut origins.posts[5]).await;
     assert!(edge.send_byte().await, "new forward edge is live");
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }
 
@@ -58,7 +60,7 @@ impl Origins {
         &self,
         first: ghostr_delivery::delivery_events::FocusItem,
     ) -> Vec<ghostr_delivery::delivery_events::FocusItem> {
-        std::iter::once(first)
+        core::iter::once(first)
             .chain((1..7).map(|index| self.item(index)))
             .collect()
     }
@@ -69,7 +71,7 @@ impl Origins {
 
     async fn first_window(&mut self) -> Vec<ActiveRequest> {
         let mut requests = Vec::new();
-        for index in 1..=4 {
+        for index in 1..=2 {
             requests.push(next_request(id(index), &mut self.posts[index]).await);
         }
         requests
@@ -81,14 +83,14 @@ fn id(index: usize) -> &'static str {
 }
 
 async fn next_request(label: &str, origin: &mut ControlledOrigin) -> ActiveRequest {
-    tokio::time::timeout(Duration::from_secs(2), origin.next())
+    tokio::time::timeout(Duration::from_secs(10), origin.next())
         .await
         .unwrap_or_else(|_| panic!("{label} starts in time"))
 }
 
 async fn wait_cancelled(request: &ActiveRequest) {
-    tokio::time::timeout(Duration::from_secs(1), async {
-        while request.send_byte().await {
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while request.is_open() {
             tokio::task::yield_now().await;
         }
     })

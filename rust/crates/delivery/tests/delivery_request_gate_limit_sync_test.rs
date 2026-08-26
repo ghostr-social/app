@@ -2,12 +2,12 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use ghostr_delivery::debug::network::NetworkProfile;
 use ghostr_engine::DataUsageLevel;
 use ghostr_net::media_request_executor::MediaRequestLimits;
-use std::time::Duration;
 
 #[tokio::test]
 async fn data_usage_and_network_changes_synchronize_request_gate_limits() {
@@ -17,13 +17,12 @@ async fn data_usage_and_network_changes_synchronize_request_gate_limits() {
     harness.handle.set_data_usage(DataUsageLevel::Aggressive);
     wait_limits(&harness.requests, limits(4, 4)).await;
 
-    harness.network.update(NetworkProfile {
+    let _ = harness.handle.update_network_profile(NetworkProfile {
         bandwidth_kbps: 0,
         latency_ms: 0,
         packet_loss_bps: 0,
         max_connections_per_host: 1,
     });
-    harness.handle.network_changed();
     wait_limits(&harness.requests, limits(4, 1)).await;
 }
 
@@ -41,5 +40,5 @@ async fn wait_limits(
 }
 
 fn limits(global: usize, per_authority: usize) -> MediaRequestLimits {
-    MediaRequestLimits::try_new(global, per_authority).unwrap()
+    MediaRequestLimits::try_new(global, per_authority).expect("valid test fixture")
 }

@@ -16,10 +16,7 @@ mod staged;
 mod telemetry;
 use body::fetch_before_total;
 pub(crate) use failure_policy::FailureDisposition;
-#[cfg(test)]
-use open::open;
-#[cfg(test)]
-pub(super) use staged::fetch_stage;
+
 pub(super) use staged::{fetch_stage_tracked, StagedFetch};
 use telemetry::FetchProblem;
 pub(super) use telemetry::{FetchFailure, FetchProgress, OriginTelemetry, SegmentedTraffic};
@@ -74,12 +71,6 @@ impl FetchSpec<'_> {
     }
 }
 
-#[cfg(test)]
-struct FetchInput<'a> {
-    spec: FetchSpec<'a>,
-    traffic: Option<SegmentedTraffic>,
-}
-
 #[derive(Clone, Copy)]
 pub(super) struct FetchRuntime<'a> {
     requests: &'a MediaRequestExecutor,
@@ -89,7 +80,7 @@ pub(super) struct FetchRuntime<'a> {
 }
 
 impl<'a> FetchRuntime<'a> {
-    pub(super) const fn new(
+    const fn new(
         requests: &'a MediaRequestExecutor,
         deadline: Instant,
         network: &'a crate::delivery_events::DeliveryNetworkStatusReader,
@@ -104,25 +95,11 @@ impl<'a> FetchRuntime<'a> {
     }
 }
 
-#[cfg(test)]
-async fn fetch(
-    requests: &MediaRequestExecutor,
-    input: FetchInput<'_>,
-    network: &crate::delivery_events::DeliveryNetworkStatusReader,
-    mut cancellation: Option<tokio::sync::oneshot::Receiver<()>>,
-) -> std::result::Result<FetchedObject, FetchFailure> {
-    let spec = input.spec;
-    let deadline = Instant::now() + spec.timeouts.total;
-    let progress = FetchProgress::new(input.traffic);
-    let runtime = FetchRuntime::new(requests, deadline, network, &progress);
-    fetch_tracked(runtime, spec, &mut cancellation).await
-}
-
 pub(super) async fn fetch_tracked(
     runtime: FetchRuntime<'_>,
     spec: FetchSpec<'_>,
     cancellation: &mut Option<tokio::sync::oneshot::Receiver<()>>,
-) -> std::result::Result<FetchedObject, FetchFailure> {
+) -> core::result::Result<FetchedObject, FetchFailure> {
     let result = await_transfer(runtime, spec, cancellation).await;
     let Some(result) = result else {
         return Err(FetchFailure::cancelled(
@@ -133,8 +110,8 @@ pub(super) async fn fetch_tracked(
     finish_transfer(result, runtime.progress)
 }
 
-type TimedFetch = std::result::Result<
-    std::result::Result<FetchedObject, FetchProblem>,
+type TimedFetch = core::result::Result<
+    core::result::Result<FetchedObject, FetchProblem>,
     tokio::time::error::Elapsed,
 >;
 
@@ -159,7 +136,7 @@ async fn await_transfer(
 fn finish_transfer(
     result: TimedFetch,
     progress: &FetchProgress,
-) -> std::result::Result<FetchedObject, FetchFailure> {
+) -> core::result::Result<FetchedObject, FetchFailure> {
     match result {
         Ok(Ok(object)) => Ok(object),
         Ok(Err(problem)) => Err(FetchFailure::new(problem, progress)),
@@ -169,9 +146,10 @@ fn finish_transfer(
 
 fn total_timeout(error: tokio::time::error::Elapsed, progress: &FetchProgress) -> FetchFailure {
     let error = anyhow::Error::new(error).context("HLS object transfer timed out");
-    let problem = match progress.has_admission() {
-        true => FetchProblem::new(error, ghostr_engine::origin_model::ErrorReason::Timeout),
-        false => FetchProblem::neutral(error, ghostr_engine::origin_model::ErrorReason::Timeout),
+    let problem = if progress.has_admission() {
+        FetchProblem::new(error, ghostr_engine::origin_model::ErrorReason::Timeout)
+    } else {
+        FetchProblem::neutral(error, ghostr_engine::origin_model::ErrorReason::Timeout)
     };
     FetchFailure::new(problem, progress)
 }
@@ -183,3 +161,7 @@ fn content_type(response: &MediaResponse) -> Option<String> {
         .and_then(|value| value.to_str().ok())
         .map(str::to_owned)
 }
+
+#[cfg(test)]
+#[path = "fetch_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

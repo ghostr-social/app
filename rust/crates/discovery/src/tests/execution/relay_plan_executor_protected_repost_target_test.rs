@@ -1,12 +1,12 @@
 use crate::content::candidates::CandidateRegistry;
-use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
+use crate::plan_executor::{PlanExecutor as _, PlannedRetrieval};
 use crate::query::search::plan_discovery;
 use crate::query::video_filters::{DiscoveryRequest, RepostAdmission};
 use crate::retrieval_types::{FeedContext, RetrievalPriority};
 use crate::tests::repost_target_executor_support::target_executor;
 use crate::tests::repost_target_support::{RepostTargetIo, TARGET_RELAY};
+use core::sync::atomic::Ordering;
 use nostr_sdk::{EventBuilder, Keys, Kind, Tag};
-use std::sync::atomic::Ordering;
 
 #[tokio::test]
 async fn protected_empty_repost_resolves_only_through_its_hinted_relay() {
@@ -26,7 +26,7 @@ async fn protected_empty_repost_resolves_only_through_its_hinted_relay() {
         .expect("wrapper");
     let io = RepostTargetIo::new(wrapper, original);
 
-    let events = target_executor(io.clone())
+    let events = target_executor(std::sync::Arc::clone(&io))
         .execute(retrieval(reposter.public_key()))
         .await
         .expect("feed retrieval");

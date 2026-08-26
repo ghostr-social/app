@@ -50,7 +50,7 @@ impl PartialRangeStore {
             .lock()
             .await
             .get_mut(&(key.to_owned(), scope))
-            .map(|debt| std::mem::replace(&mut debt.bytes, bytes));
+            .map(|debt| core::mem::replace(&mut debt.bytes, bytes));
         let Some(previous) = previous else { return };
         if bytes > previous {
             let added = bytes - previous;

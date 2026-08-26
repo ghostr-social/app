@@ -1,10 +1,11 @@
 use crate::chunk::cancel::CancelHandle;
+use core::sync::atomic::{AtomicBool, Ordering};
 use ghostr_engine::adaptive::RetrievalRequest;
+use ghostr_engine::origin_model::ExplorationClaim;
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::scheduling::RangeRequest;
 use ghostr_engine::{ActionId, ChunkId};
 use ghostr_partial_store::partial_range_store::StoreAction;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 #[derive(Clone, Debug)]
@@ -25,6 +26,7 @@ pub(crate) struct ActionRegistration<'a> {
     pub(crate) handle: CancelHandle,
     pub(crate) store_action: Option<StoreAction>,
     pub(crate) committed_network_bytes: Option<u64>,
+    pub(crate) exploration_claim: Option<ExplorationClaim>,
 }
 
 impl ChunkAttempt {
@@ -62,11 +64,11 @@ pub(super) struct ActiveChunk {
     pub(super) committed_network_bytes: u64,
     pub(super) uncommitted_network_prefix_bytes: u64,
     pub(super) policy_retained: bool,
-    pub(super) io_finished: Arc<AtomicBool>,
+    io_finished: Arc<AtomicBool>,
     pub(super) host: String,
     pub(super) committed_until_ms: u64,
     pub(super) launched_at_ms: u64,
-    pub(super) handle: CancelHandle,
+    handle: CancelHandle,
     pub(super) store_action: Option<StoreAction>,
     pub(super) promotion_authorization: Option<ghostr_engine::adaptive::PromotionGrant>,
     pub(super) http_generation: Option<ghostr_engine::representation::HttpGenerationLease>,
@@ -74,6 +76,7 @@ pub(super) struct ActiveChunk {
     pub(super) response_opened: bool,
     pub(super) hedge_disposition: Option<HedgeDisposition>,
     pub(super) cancelling: bool,
+    pub(super) exploration_claim: Option<ExplorationClaim>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -114,6 +117,7 @@ impl ActiveChunk {
             response_opened: false,
             hedge_disposition: None,
             cancelling: false,
+            exploration_claim: registration.exploration_claim,
         }
     }
 

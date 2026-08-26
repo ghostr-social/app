@@ -18,7 +18,12 @@ const ADMITTED: u64 = 64 * 1024;
 #[tokio::test]
 async fn cold_speculative_intent_records_the_executed_sparse_cap() {
     let log = hit_log();
-    let origin = serve_recording("speculative", vec![7; TOTAL as usize], log.clone()).await;
+    let origin = serve_recording(
+        "speculative",
+        vec![7; TOTAL as usize],
+        std::sync::Arc::clone(&log),
+    )
+    .await;
     let harness = start_harness("warp-executed-attribution", options());
     let current = sized_item("current", &origin, 16, 1_000);
     let adjacent = sized_item("adjacent", &origin, 16, 1_000);
@@ -55,7 +60,10 @@ async fn seed_complete(
     item: &ghostr_delivery::delivery_events::FocusItem,
 ) {
     seed_range(store, item, 0, &[1; 16]).await;
-    store.finalize(item.post.as_str(), None).await.unwrap();
+    store
+        .finalize(item.post.as_str(), None)
+        .await
+        .expect("valid test fixture");
 }
 
 fn options() -> DeliveryOptions {

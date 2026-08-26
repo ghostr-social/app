@@ -27,16 +27,6 @@ pub(crate) struct FetchedEvents {
 }
 
 impl FetchedEvents {
-    #[cfg(test)]
-    pub(crate) fn fresh(events: Vec<Event>) -> Self {
-        let fresh_boundary = wire_page_boundary(&events);
-        Self {
-            events,
-            fresh_boundary,
-            wire_complete: true,
-        }
-    }
-
     fn cached(events: Vec<Event>) -> Self {
         Self {
             events,
@@ -97,3 +87,7 @@ async fn publish_cached(request: &RelayFetch, filter: &nostr_sdk::Filter) {
         let _ = progress.send(event).await;
     }
 }
+
+#[cfg(test)]
+#[path = "fetch_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

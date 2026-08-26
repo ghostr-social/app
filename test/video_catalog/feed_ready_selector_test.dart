@@ -16,10 +16,9 @@ void main() {
     };
 
     final decision = const FeedReadySelector().select(
-      posts,
+      FeedReadinessEvidence(posts: posts, delivery: delivery),
       fromIndex: 0,
       intendedIndex: 1,
-      delivery: delivery,
     );
 
     expect(decision.action, FeedReadyAction.rescue);

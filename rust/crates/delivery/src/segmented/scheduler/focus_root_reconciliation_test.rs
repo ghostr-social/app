@@ -20,7 +20,12 @@ async fn roster_edit_preserves_an_active_unchanged_root_and_generation() {
     assert_eq!(active.pending.generation, 1);
     assert_eq!(active.pending.source_index, 0);
     assert_eq!(cache.snapshot("stream").phase, SegmentedPhase::Preparing);
-    delivery.active.remove(&post).unwrap()._task.abort();
+    delivery
+        .active
+        .remove(&post)
+        .expect("valid test fixture")
+        ._task
+        .abort();
 }
 
 fn active() -> Active {
@@ -54,7 +59,7 @@ fn focus(generation: u64, names: &[&str]) -> DeliveryFocus {
         previews: Vec::new(),
         current_index: 0,
         watch_ms: 0,
-        generation: FocusGeneration::try_new(generation).unwrap(),
+        generation: FocusGeneration::try_new(generation).expect("valid test fixture"),
         transition: FocusTransition::RosterChange,
         rescue: None,
     }

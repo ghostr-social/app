@@ -13,7 +13,7 @@ fn deferred_probe_history_does_not_outlive_post_retention() {
     let mut probes = MetadataProbePool::new(1);
     assert_eq!(
         probes
-            .claim(&catalog, std::slice::from_ref(&old), &retry)
+            .claim(&catalog, core::slice::from_ref(&old), &retry)
             .len(),
         1
     );

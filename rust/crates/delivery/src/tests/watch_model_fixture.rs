@@ -1,12 +1,10 @@
-use crate::delivery_events::{
-    DeliveryFocus, DeliveryPlayback, FocusItem, FocusTransition, TransportRescue,
-    TransportRescueReason,
-};
+
+use crate::delivery_events::{DeliveryFocus, DeliveryPlayback, FocusItem, FocusTransition, TransportRescue, TransportRescueReason};
 use ghostr_engine::playback::{
     PlaybackObservation, PlaybackObservationSequence, PlaybackPhase, PlaybackSession,
 };
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
-use std::time::Duration;
+use core::time::Duration;
 
 pub(super) fn focus(index: usize, watch_ms: u64, transition: FocusTransition) -> DeliveryFocus {
     let mut focus = DeliveryFocus::compatibility(
@@ -47,7 +45,7 @@ pub(super) fn playback(
             1_000,
             phase,
         )
-        .unwrap(),
+        .expect("valid test fixture"),
     }
 }
 

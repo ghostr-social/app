@@ -18,18 +18,11 @@ mod load;
 mod outcome;
 mod parser;
 
-#[cfg(test)]
-pub(crate) use attempts::{TimelineAttemptDisposition, TimelineAttempts};
 pub(crate) use coordinator::TimelineCoordinator;
 pub(crate) use coordinator::TimelineSchedule;
 pub(crate) use evidence::TimelineEvidence;
-#[cfg(test)]
-pub(crate) use load::load_timeline;
-#[cfg(test)]
-pub(crate) use outcome::TimelineIncomplete;
+
 pub(crate) use outcome::{TimelineJobOutcome, TimelineRejection, TimelineResult, TimelineTerminal};
-#[cfg(test)]
-pub(crate) use parser::{TimelineInput, TimelineParse, TimelineParser};
 
 const MAX_METADATA_SPAN: u64 = 4 * 1024 * 1024;
 
@@ -101,7 +94,7 @@ pub(crate) fn install_timeline(
     )
 }
 
-fn engine_ranges(ranges: &[std::ops::Range<u64>]) -> Vec<ByteRange> {
+fn engine_ranges(ranges: &[core::ops::Range<u64>]) -> Vec<ByteRange> {
     ranges
         .iter()
         .map(|range| ByteRange::new(range.start, range.end))
@@ -122,3 +115,7 @@ fn metadata_ranges(total: u64, present: &[ByteRange]) -> Vec<ByteRange> {
     }
     normalize(ranges)
 }
+
+#[cfg(test)]
+#[path = "timeline_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

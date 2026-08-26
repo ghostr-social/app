@@ -9,7 +9,7 @@ fn the_lowest_rendition_is_the_safe_fallback_when_none_are_sustainable() {
 
     let decision = policy.select(
         &ladder(),
-        playing_input(unusable, Some("medium"), 40, 1_000),
+        &playing_input(unusable, Some("medium"), 40, 1_000),
     );
 
     assert_eq!(decision.selected().id(), &id("low"));

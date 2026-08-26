@@ -6,13 +6,13 @@ impl WarpSearch {
     pub(super) fn greedy(
         &self,
         nodes: &[ActionNode],
-        budget: HardBudget,
+        budget: &HardBudget,
         reason: SearchPruneReason,
     ) -> SearchDecision {
         let mut scorer = |actions: &[ActionNode]| static_score(actions, self.prices);
         let best = nodes
             .iter()
-            .filter_map(|node| append(node, &budget, &mut scorer))
+            .filter_map(|node| append(node, budget, &mut scorer))
             .filter(|state| state.score > 0)
             .min_by(compare);
         let audit = SearchAudit {

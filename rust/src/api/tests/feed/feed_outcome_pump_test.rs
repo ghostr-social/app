@@ -8,9 +8,9 @@ use crate::api::tests::feed_fixtures::video_note;
 use crate::api::tests::outbox_runtime_support::test_bootstrap;
 use crate::discovery::feed::spec::FeedSpec;
 use crate::discovery::retrieval_types::{RetrievalOutcome, RetrievalPurpose};
+use core::time::Duration;
 use nostr_sdk::{Keys, Timestamp};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 
@@ -25,7 +25,7 @@ async fn pumped_outcomes_reach_the_feed_state() {
 
     let (sender, outcomes) = mpsc::unbounded_channel();
     let sinks = OutcomeSinks {
-        state: state.clone(),
+        state: std::sync::Arc::clone(&state),
         bootstrap: test_bootstrap().0,
         candidates: None,
     };

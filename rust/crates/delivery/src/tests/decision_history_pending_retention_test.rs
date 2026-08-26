@@ -8,7 +8,7 @@ fn a_bound_decision_keeps_its_eventual_outcome_after_sixty_five_later_plans() {
     let work = work();
     let (handle, commands) = command_channel();
     let (sequence, token) = publish(&handle, &commands, &work, &work.plan);
-    assert!(commands.bind_decision(&token.unwrap(), ActionId::new(7), 100));
+    assert!(commands.bind_decision(&token.expect("valid test fixture"), ActionId::new(7), 100));
     for _ in 0..65 {
         let (_, token) = publish(&handle, &commands, &work, &AllocationPlan::default());
         assert!(token.is_none());

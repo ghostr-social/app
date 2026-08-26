@@ -57,7 +57,7 @@ struct AdaptationWindow {
 }
 
 impl EvaluationTracker {
-    pub fn snapshot(&self) -> EvaluationSnapshot {
+    pub(crate) fn snapshot(&self) -> EvaluationSnapshot {
         let mut output = self.metrics.clone();
         output.user_visible.swipe_to_first_frame = self.first_frame_latency.distribution();
         output.readiness.replenish_after_burst = self.replenish_latency.distribution();

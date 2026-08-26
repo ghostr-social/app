@@ -11,8 +11,8 @@ pub(crate) struct EvaluationLedger {
     tracker: Arc<Mutex<EvaluationTracker>>,
 }
 
-impl std::fmt::Debug for EvaluationLedger {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for EvaluationLedger {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         formatter
             .debug_struct("EvaluationLedger")
             .finish_non_exhaustive()
@@ -28,11 +28,11 @@ impl EvaluationLedger {
         }
     }
 
-    pub(crate) fn playback(&self, event: PlaybackMetricEvent) {
+    pub(crate) fn playback(&self, event: &PlaybackMetricEvent) {
         self.lock().playback(event);
     }
 
-    pub(crate) fn present(&self, event: PresentationMetricEvent) {
+    pub(crate) fn present(&self, event: &PresentationMetricEvent) {
         self.lock().present(event);
     }
 
@@ -48,7 +48,7 @@ impl EvaluationLedger {
         self.lock().readiness(event);
     }
 
-    pub(crate) fn adaptation(&self, event: AdaptationMetricEvent) {
+    pub(crate) fn adaptation(&self, event: &AdaptationMetricEvent) {
         self.lock().adaptation(event);
     }
 

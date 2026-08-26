@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use std::ops::Range;
+use core::ops::Range;
 
 mod checksums;
 mod format;
@@ -18,27 +18,30 @@ pub struct RangeManifest {
 #[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct IntervalChecksum {
-    pub(super) start: u64,
-    pub(super) end: u64,
-    pub(super) sha256: String,
+    start: u64,
+    end: u64,
+    sha256: String,
 }
 
 impl IntervalChecksum {
-    pub(crate) fn span(&self) -> Range<u64> {
+    pub(super) fn span(&self) -> Range<u64> {
         self.start..self.end
     }
 
-    pub(crate) fn digest(&self) -> &str {
+    pub(super) fn digest(&self) -> &str {
         &self.sha256
     }
 }
 
 impl RangeManifest {
-    pub(crate) fn total_len(&self) -> Option<u64> {
+    pub(super) fn total_len(&self) -> Option<u64> {
         self.total_len
     }
 
-    pub fn set_total_len(&mut self, len: u64) -> Result<()> {
+    /// # Errors
+    ///
+    /// Returns an error when `len` conflicts with the declared length or stored ranges.
+    pub(super) fn set_total_len(&mut self, len: u64) -> Result<()> {
         if self.total_len.is_some_and(|current| current != len) {
             bail!("total length is already declared with a different value");
         }
@@ -49,7 +52,10 @@ impl RangeManifest {
         Ok(())
     }
 
-    pub fn insert(&mut self, span: Range<u64>) -> Result<()> {
+    /// # Errors
+    ///
+    /// Returns an error when `span` extends beyond the declared object length.
+    pub(super) fn insert(&mut self, span: Range<u64>) -> Result<()> {
         if span.start >= span.end {
             return Ok(());
         }
@@ -62,7 +68,7 @@ impl RangeManifest {
         Ok(())
     }
 
-    pub(crate) fn remove(&mut self, span: &Range<u64>) -> u64 {
+    pub(super) fn remove(&mut self, span: &Range<u64>) -> u64 {
         if span.start >= span.end {
             return 0;
         }
@@ -76,15 +82,15 @@ impl RangeManifest {
         before.saturating_sub(self.covered_bytes())
     }
 
-    pub fn ranges(&self) -> Vec<Range<u64>> {
+    pub(super) fn ranges(&self) -> Vec<Range<u64>> {
         self.ranges.iter().map(|&(start, end)| start..end).collect()
     }
 
-    pub(crate) fn covered_bytes(&self) -> u64 {
+    pub(super) fn covered_bytes(&self) -> u64 {
         self.ranges.iter().map(|(start, end)| end - start).sum()
     }
 
-    pub(crate) fn contains(&self, span: &Range<u64>) -> bool {
+    pub(super) fn contains(&self, span: &Range<u64>) -> bool {
         span.start >= span.end
             || self
                 .ranges
@@ -92,7 +98,7 @@ impl RangeManifest {
                 .any(|&(start, end)| start <= span.start && span.end <= end)
     }
 
-    pub(crate) fn missing_within(&self, span: &Range<u64>) -> Vec<Range<u64>> {
+    pub(super) fn missing_within(&self, span: &Range<u64>) -> Vec<Range<u64>> {
         let mut missing = Vec::new();
         let mut cursor = span.start;
         for &(start, end) in &self.ranges {
@@ -107,7 +113,7 @@ impl RangeManifest {
         missing
     }
 
-    pub fn is_complete(&self) -> bool {
+    pub(super) fn is_complete(&self) -> bool {
         match self.total_len {
             Some(0) => self.ranges.is_empty(),
             Some(len) => self.ranges == [(0, len)],
@@ -115,11 +121,11 @@ impl RangeManifest {
         }
     }
 
-    pub(crate) fn to_json(&self) -> Result<String> {
+    pub(super) fn to_json(&self) -> Result<String> {
         format::encode(self.total_len, &self.ranges, &self.checksums)
     }
 
-    pub(crate) fn from_json(text: &str) -> Result<Self> {
+    pub(super) fn from_json(text: &str) -> Result<Self> {
         let disk = format::decode(text)?;
         Ok(Self {
             total_len: disk.total_len,

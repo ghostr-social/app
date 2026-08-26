@@ -1,15 +1,13 @@
 //! An older page appends below the posts the viewer already scrolls —
 //! never reordering them — and posts already present are skipped by
 //! same-video identity, mirroring `FeedPagination.appendNew` (keyed by
-//! VideoInteractionTarget) in
-//! lib/features/video_catalog/presentation/feed_pagination.dart.
+//! `VideoInteractionTarget`) in
+//! `lib/features/video_catalog/presentation/feed_pagination.dart`.
 
-mod feed_support;
-
-use feed_support::{addressable_video, parsed, parsed_posts, video_note};
-use ghostr_discovery::content::social_graph::SocialGraph;
-use ghostr_discovery::feed::spec::FeedSpec;
-use ghostr_discovery::feed::store::{FeedId, FeedStore};
+use crate::content::social_graph::SocialGraph;
+use crate::feed::spec::FeedSpec;
+use crate::feed::store::{FeedId, FeedStore};
+use crate::tests::feed_support::{addressable_video, parsed, parsed_posts, video_note};
 use nostr_sdk::Keys;
 
 fn open_main(store: &mut FeedStore, viewer: &Keys) -> FeedId {

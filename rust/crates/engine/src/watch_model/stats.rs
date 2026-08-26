@@ -7,8 +7,8 @@ pub(crate) struct HazardStats {
     risk: Vec<f64>,
     events: Vec<f64>,
     samples: f64,
-    pub(crate) last_updated_ms: u64,
-    pub(crate) last_used_ms: u64,
+    last_updated_ms: u64,
+    pub(super) last_used_ms: u64,
 }
 
 impl Default for HazardStats {
@@ -24,7 +24,7 @@ impl Default for HazardStats {
 }
 
 impl HazardStats {
-    pub(crate) fn observe(&mut self, watched_ms: u64, event: bool, now_ms: u64, half_life: u64) {
+    pub(super) fn observe(&mut self, watched_ms: u64, event: bool, now_ms: u64, half_life: u64) {
         self.decay_in_place(now_ms, half_life);
         for index in 0..BINS {
             if bin_start_ms(index) > watched_ms {
@@ -39,11 +39,11 @@ impl HazardStats {
         self.last_used_ms = now_ms;
     }
 
-    pub(crate) fn effective_samples(&self, now_ms: u64, half_life: u64) -> f64 {
+    pub(super) fn effective_samples(&self, now_ms: u64, half_life: u64) -> f64 {
         self.samples * decay(now_ms, self.last_updated_ms, half_life)
     }
 
-    pub(crate) fn survival(&self, at_ms: u64, now_ms: u64, half_life: u64) -> f64 {
+    pub(super) fn survival(&self, at_ms: u64, now_ms: u64, half_life: u64) -> f64 {
         let scale = decay(now_ms, self.last_updated_ms, half_life);
         let mut survival = 1.0;
         for index in 0..=bin_index(at_ms) {
@@ -56,7 +56,7 @@ impl HazardStats {
         survival.clamp(0.0, 1.0)
     }
 
-    pub(crate) fn sanitize(mut self) -> Self {
+    pub(super) fn sanitize(mut self) -> Self {
         self.risk.resize(BINS, 0.0);
         self.events.resize(BINS, 0.0);
         self.risk.truncate(BINS);
@@ -104,7 +104,7 @@ fn cold_hazard(index: usize) -> f64 {
     1.0 - cold_survival(end) / start_survival.max(f64::MIN_POSITIVE)
 }
 
-pub(crate) fn cold_survival(at_ms: u64) -> f64 {
+pub(super) fn cold_survival(at_ms: u64) -> f64 {
     let seconds = at_ms as f64 / 1_000.0;
     0.55 * (-seconds / 1.5).exp() + 0.45 * (-seconds / 18.0).exp()
 }
@@ -117,7 +117,9 @@ fn decay(now_ms: u64, then_ms: u64, half_life: u64) -> f64 {
 }
 
 fn sanitize_values(values: &mut [f64]) {
-    values.iter_mut().for_each(|value| *value = finite(*value));
+    for value in values.iter_mut() {
+        *value = finite(*value);
+    }
 }
 
 fn finite(value: f64) -> f64 {

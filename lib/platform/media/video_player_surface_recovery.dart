@@ -1,6 +1,12 @@
 part of 'video_player_playback_port.dart';
 
-enum _VideoPlayerRecoveryState { ready, scheduled, deferred, exhausted }
+enum _VideoPlayerRecoveryState {
+  ready,
+  scheduled,
+  deferred,
+  capabilityRescue,
+  exhausted,
+}
 
 extension _VideoPlayerSurfaceRecovery on _VideoPlayerSurfaceState {
   Future<void> _rejectControllerPermanently(VideoPlayerController controller) {

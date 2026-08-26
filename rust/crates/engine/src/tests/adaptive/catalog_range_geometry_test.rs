@@ -37,7 +37,8 @@ fn only_observed_range_capability_exposes_chunk_opportunities() {
         ..EngineParams::default()
     };
 
-    let candidate = candidate_snapshot(&catalog, &params, evidence(post)).unwrap();
+    let candidate =
+        candidate_snapshot(&catalog, &params, evidence(post)).expect("valid test fixture");
 
     assert_eq!(candidate.layout, MediaLayout::Streamable);
     assert_eq!(candidate.playable_ranges.len(), 3);
@@ -78,7 +79,8 @@ fn advertised_range_denial_does_not_force_complete_layout() {
         },
     );
 
-    let candidate = candidate_snapshot(&catalog, &EngineParams::default(), evidence(post)).unwrap();
+    let candidate = candidate_snapshot(&catalog, &EngineParams::default(), evidence(post))
+        .expect("valid test fixture");
 
     assert_eq!(candidate.layout, MediaLayout::Unknown);
 }
@@ -87,7 +89,7 @@ fn evidence(post: PostId) -> CandidateEvidence {
     CandidateEvidence {
         post,
         feed_offset: FeedOffset::new(1),
-        view_probability: ViewProbability::new(0.8).unwrap(),
+        view_probability: ViewProbability::new(0.8).expect("valid test fixture"),
         present: Vec::new(),
         stored_total: None,
         continuation_source: None,

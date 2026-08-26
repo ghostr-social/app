@@ -7,7 +7,7 @@ use ghostr_delivery::manager::DeliveryTuning;
 use ghostr_gateway::hls::sessions::HlsSessions;
 use ghostr_gateway::progressive::capabilities::ProgressiveCapabilities;
 use ghostr_gateway::progressive::route::{ProgressiveState, ProgressiveTiming};
-use ghostr_gateway::router::{configured_router_with_progressive, GatewayRouterResources};
+use ghostr_gateway::router::{configured_router_with_segmented, GatewayRouterResources};
 use std::sync::Arc;
 
 mod request;
@@ -32,7 +32,7 @@ impl ProgressiveDeliveryHarness {
         let trace = ProgressiveJourneyTrace::default();
         let capabilities = ProgressiveCapabilities::production();
         let state = Arc::new(ProgressiveState {
-            store: delivery.store.clone(),
+            store: std::sync::Arc::clone(&delivery.store),
             demand: delivery.demand.clone(),
             cache: delivery.cache.clone(),
             network: delivery.network.clone(),
@@ -43,7 +43,7 @@ impl ProgressiveDeliveryHarness {
         });
         let resources =
             GatewayRouterResources::new(HlsSessions::production(), delivery.requests.clone());
-        let router = configured_router_with_progressive(resources, state);
+        let router = configured_router_with_segmented(resources, state);
         Self {
             delivery,
             router,
@@ -74,9 +74,9 @@ impl ProgressiveDeliveryHarness {
     }
 
     pub async fn wait_until_registered(&self, post: &str) {
-        tokio::time::timeout(std::time::Duration::from_secs(1), async {
+        tokio::time::timeout(core::time::Duration::from_secs(1), async {
             while !self.delivery.cache.contains(post) {
-                tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+                tokio::time::sleep(core::time::Duration::from_millis(5)).await;
             }
         })
         .await

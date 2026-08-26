@@ -13,7 +13,7 @@ pub(crate) struct SelectiveDeletionIo {
 }
 
 impl SelectiveDeletionIo {
-    pub(crate) fn new(wrappers: Vec<Event>, failing_relay: &str) -> Arc<Self> {
+    pub(super) fn new(wrappers: Vec<Event>, failing_relay: &str) -> Arc<Self> {
         Arc::new(Self {
             wrappers,
             failing_relay: failing_relay.to_owned(),

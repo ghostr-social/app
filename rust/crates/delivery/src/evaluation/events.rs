@@ -3,80 +3,80 @@ use ghostr_engine::PostId;
 
 #[derive(Clone, Debug)]
 pub struct PlaybackMetricEvent {
-    pub post: PostId,
-    pub phase: PlaybackPhase,
-    pub bitrate_bps: u64,
-    pub observed_at_ms: u64,
+    pub(crate) post: PostId,
+    pub(crate) phase: PlaybackPhase,
+    pub(crate) bitrate_bps: u64,
+    pub(crate) observed_at_ms: u64,
 }
 
 #[derive(Clone, Debug)]
 pub struct PresentationMetricEvent {
-    pub post: PostId,
-    pub bitrate_bps: u64,
-    pub origin: String,
-    pub observed_at_ms: u64,
+    pub(crate) post: PostId,
+    pub(crate) bitrate_bps: u64,
+    pub(crate) origin: String,
+    pub(crate) observed_at_ms: u64,
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct TransferMetricEvent {
-    pub post: Option<PostId>,
-    pub total_bytes: u64,
-    pub aborted_bytes: u64,
-    pub duplicate_hedge_bytes: u64,
-    pub completable_probe_bytes: u64,
-    pub full_download_started: bool,
-    pub request_started: bool,
-    pub promotion_avoided_restart: bool,
-    pub cpu_micros: u64,
-    pub storage_byte_ms: u64,
+    pub(crate) post: Option<PostId>,
+    pub(crate) total_bytes: u64,
+    pub(crate) aborted_bytes: u64,
+    pub(crate) duplicate_hedge_bytes: u64,
+    pub(crate) completable_probe_bytes: u64,
+    pub(crate) full_download_started: bool,
+    pub(crate) request_started: bool,
+    pub(crate) promotion_avoided_restart: bool,
+    pub(crate) cpu_micros: u64,
+    pub(crate) storage_byte_ms: u64,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct BudgetMetricEvent {
-    pub observed_at_ms: u64,
-    pub stored_bytes: u64,
-    pub instantaneous_violation: bool,
-    pub network_target_error_bps: i32,
-    pub storage_target_error_bps: i32,
-    pub shadow_price_total_micros: u64,
-    pub qoe_micros: u64,
-    pub matched_network_bytes: u64,
-    pub matched_storage_byte_ms: u64,
+    pub(crate) observed_at_ms: u64,
+    pub(crate) stored_bytes: u64,
+    pub(crate) instantaneous_violation: bool,
+    pub(crate) network_target_error_bps: i32,
+    pub(crate) storage_target_error_bps: i32,
+    pub(crate) shadow_price_total_micros: u64,
+    pub(crate) qoe_micros: u64,
+    pub(crate) matched_network_bytes: u64,
+    pub(crate) matched_storage_byte_ms: u64,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct ReadinessMetricEvent {
-    pub observed_at_ms: u64,
-    pub observed_ms: u64,
-    pub underflow: bool,
-    pub underflow_ms: u64,
-    pub probability_weighted_reserve_millis: u64,
-    pub ready_coverage_ms: u64,
-    pub on_time_prediction_bps: Option<u16>,
-    pub on_time_observed: Option<bool>,
-    pub replenished_after_ms: Option<u64>,
-    pub protected_slot_claimed: bool,
-    pub protected_slot_used: bool,
+    pub(crate) observed_at_ms: u64,
+    pub(crate) observed_ms: u64,
+    pub(crate) underflow: bool,
+    pub(crate) underflow_ms: u64,
+    pub(crate) probability_weighted_reserve_millis: u64,
+    pub(crate) ready_coverage_ms: u64,
+    pub(crate) on_time_prediction_bps: Option<u16>,
+    pub(crate) on_time_observed: Option<bool>,
+    pub(crate) replenished_after_ms: Option<u64>,
+    pub(crate) protected_slot_claimed: bool,
+    pub(crate) protected_slot_used: bool,
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct AdaptationMetricEvent {
-    pub origin: String,
-    pub observed_at_ms: u64,
-    pub adapting: bool,
-    pub predicted_success_bps: u16,
-    pub succeeded: Option<bool>,
-    pub latency_quantiles_on_time: Option<[bool; 3]>,
-    pub regret_micros: u64,
-    pub exploration_bytes: u64,
-    pub failed_exploration_bytes: u64,
+    pub(crate) origin: String,
+    pub(crate) observed_at_ms: u64,
+    pub(crate) adapting: bool,
+    pub(crate) predicted_success_bps: u16,
+    pub(crate) succeeded: Option<bool>,
+    pub(crate) latency_quantiles_on_time: Option<[bool; 3]>,
+    pub(crate) regret_micros: u64,
+    pub(crate) exploration_bytes: u64,
+    pub(crate) failed_exploration_bytes: u64,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct SemanticMetricEvent {
-    pub rank_displacement: u32,
-    pub semantic_regret_micros: u64,
-    pub transport_substitution: bool,
+    pub(crate) rank_displacement: u32,
+    pub(crate) semantic_regret_micros: u64,
+    pub(crate) transport_substitution: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

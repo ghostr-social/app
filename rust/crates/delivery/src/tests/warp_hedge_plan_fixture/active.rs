@@ -8,6 +8,7 @@ use ghostr_engine::{ByteRange, ChunkId, PostId};
 
 mod link;
 
+#[derive(Clone, Copy)]
 pub(super) struct Registration<'a> {
     attempt: &'a ChunkAttempt,
     source: &'a str,
@@ -22,7 +23,7 @@ pub(super) fn actions(
 ) -> Vec<crate::manager::inflight::ActiveAction> {
     let range = ByteRange::new(0, 64_000);
     let chunk = ChunkId {
-        post: post.clone(),
+        post,
         range,
     };
     let mut active = InFlightChunks::new();
@@ -57,7 +58,7 @@ pub(super) fn attempt(
     let identity = state
         .catalog()
         .transfer_identity(&chunk.post, source)
-        .unwrap();
+        .expect("valid test fixture");
     active.next_attempt(chunk, identity)
 }
 
@@ -81,5 +82,6 @@ pub(super) fn insert(active: &mut InFlightChunks, registration: Registration<'_>
         handle,
         store_action: None,
         committed_network_bytes: None,
+        exploration_claim: None,
     });
 }

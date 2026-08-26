@@ -1,6 +1,7 @@
 mod delivery_fixture;
 mod raw_http;
 
+use core::time::Duration;
 use delivery_fixture::decision::wait_for_promotion;
 use delivery_fixture::items::{focus_now, seed_range, sized_item};
 use delivery_fixture::options::DeliveryOptions;
@@ -9,7 +10,6 @@ use delivery_fixture::temp_directory;
 use delivery_fixture::wait::{wait_for_file, wait_for_ranges};
 use ghostr_engine::EngineParams;
 use raw_http::spawn_gated_split_response;
-use std::time::Duration;
 
 #[tokio::test]
 async fn range_blind_origin_promotes_the_live_response_without_an_etag() {
@@ -77,7 +77,7 @@ async fn nonzero_range_promotes_its_live_200_instead_of_restarting() {
     origin.requests.await.expect("probe and one promoted body");
     wait_for_file(&harness.root.join("bb22.video")).await;
     assert_eq!(
-        std::fs::read(harness.root.join("bb22.video")).unwrap(),
+        std::fs::read(harness.root.join("bb22.video")).expect("valid test fixture"),
         b"0123456789abcdef"
     );
     std::fs::remove_dir_all(&harness.root).expect("remove store");

@@ -1,7 +1,5 @@
-use crate::delivery_events::{
-    PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationObservation,
-    PlayerPreparationReport, PlayerPreparationState,
-};
+
+use crate::delivery_events::{PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationObservation, PlayerPreparationReport, PlayerPreparationState};
 use crate::tests::player_preparation_fixture::state;
 use crate::transform::{TransformLimits, TransformProfile, TransformTrigger};
 use ghostr_engine::adaptive::{PlannerCapability, TransformKind};
@@ -36,12 +34,12 @@ fn report_unsupported(state: &mut crate::manager::state::DeliveryState, id: &str
     let post = PostId::new(id);
     let authority = PlayerPreparationAuthority::try_new(
         post.clone(),
-        state.catalog().binding(&post).unwrap(),
+        state.catalog().binding(&post).expect("valid test fixture"),
         ContentRevision::default(),
         format!("asset-{id}"),
     )
-    .unwrap();
-    let attempt = PlayerPreparationAttempt::try_new(1, 1, 1).unwrap();
+    .expect("valid test fixture");
+    let attempt = PlayerPreparationAttempt::try_new(1, 1, 1).expect("valid test fixture");
     apply(
         state,
         authority.clone(),
@@ -65,16 +63,16 @@ fn apply(
     let (sequence, status) = evidence;
     let failure =
         (status == PlayerPreparationState::Failed).then(|| "invalidVideoTrack".to_owned());
-    let observation = PlayerPreparationObservation::try_new(status, failure, sequence).unwrap();
+    let observation = PlayerPreparationObservation::try_new(status, failure, sequence).expect("valid test fixture");
     let report =
-        PlayerPreparationReport::try_new(authority, attempt, sequence, observation).unwrap();
+        PlayerPreparationReport::try_new(authority, attempt, sequence, observation).expect("valid test fixture");
     assert!(state.apply_player_preparation(report));
 }
 
 fn profile() -> TransformProfile {
     TransformProfile::new(
         TransformKind::Remux,
-        TransformLimits::try_new(16, 16, 5, 10).unwrap(),
+        TransformLimits::try_new(16, 16, 5, 10).expect("valid test fixture"),
     )
     .with_trigger(TransformTrigger::InvalidVideoTrack)
 }

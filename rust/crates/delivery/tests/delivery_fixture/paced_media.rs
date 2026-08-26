@@ -4,9 +4,9 @@ use axum::http::{header, HeaderMap, Method, StatusCode};
 use axum::response::Response;
 use axum::routing::get;
 use axum::Router;
-use std::convert::Infallible;
+use core::convert::Infallible;
+use core::time::Duration;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::{mpsc, Notify};
 use tokio_stream::wrappers::ReceiverStream;
@@ -35,7 +35,7 @@ pub async fn serve(total: u64, header_delay: Duration, body_delay: Duration) -> 
     tokio::spawn(async move {
         axum::serve(listener, app)
             .await
-            .expect("serve paced origin")
+            .expect("serve paced origin");
     });
     format!("http://{address}/video.mp4")
 }
@@ -61,14 +61,14 @@ fn stalled_body(length: u64, delay: Duration, release: Arc<Notify>) -> Body {
     tokio::spawn(async move {
         tokio::time::sleep(delay).await;
         let prefix_len = length.saturating_sub(1).min(64 * 1024);
-        let prefix = vec![7; usize::try_from(prefix_len).unwrap()];
+        let prefix = vec![7; usize::try_from(prefix_len).expect("valid test fixture")];
         sender
             .send(Ok::<_, Infallible>(Bytes::from(prefix)))
             .await
             .ok();
         release.notified().await;
         let remaining = length.saturating_sub(prefix_len);
-        let suffix = vec![8; usize::try_from(remaining).unwrap()];
+        let suffix = vec![8; usize::try_from(remaining).expect("valid test fixture")];
         sender
             .send(Ok::<_, Infallible>(Bytes::from(suffix)))
             .await
@@ -91,11 +91,11 @@ fn builder(status: StatusCode, length: u64, range: Option<String>, body: Body) -
 }
 
 fn requested(headers: &HeaderMap, total: u64) -> (u64, u64) {
-    let value = headers[header::RANGE].to_str().unwrap();
-    let value = value.strip_prefix("bytes=").unwrap();
-    let (start, end) = value.split_once('-').unwrap();
+    let value = headers[header::RANGE].to_str().expect("valid test fixture");
+    let value = value.strip_prefix("bytes=").expect("valid test fixture");
+    let (start, end) = value.split_once('-').expect("valid test fixture");
     (
-        start.parse().unwrap(),
+        start.parse().expect("valid test fixture"),
         end.parse().unwrap_or(total - 1).min(total - 1),
     )
 }

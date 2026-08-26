@@ -1,4 +1,4 @@
-use std::time::Duration;
+use core::time::Duration;
 use tokio::time::Instant;
 
 #[derive(Clone, Copy)]
@@ -42,16 +42,6 @@ impl OverallTrafficWindow {
         }
     }
 
-    #[cfg(test)]
-    pub(crate) fn bytes(self) -> u64 {
-        self.bytes
-    }
-
-    #[cfg(test)]
-    pub(crate) fn elapsed(self) -> Duration {
-        self.elapsed
-    }
-
     pub(crate) fn bytes_per_second(self) -> f64 {
         self.bytes as f64 / self.elapsed.as_secs_f64()
     }
@@ -60,12 +50,11 @@ impl OverallTrafficWindow {
         self.peak_active_transfers
     }
 
-    #[cfg(test)]
-    pub(crate) fn observed_at_ms(self) -> u64 {
-        self.observed_at_ms
-    }
-
     pub(crate) fn latest_ttfb(self) -> Option<Duration> {
         self.latest_ttfb
     }
 }
+
+#[cfg(test)]
+#[path = "window_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

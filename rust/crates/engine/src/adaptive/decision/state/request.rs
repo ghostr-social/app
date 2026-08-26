@@ -122,13 +122,14 @@ fn range_request(bytes: RangeState, maximum: Option<u64>, until: Option<u64>) ->
 }
 
 fn whole_request(maximum: u64, exact: bool, reason: u8) -> RetrievalRequest {
-    let contract = match exact {
-        true => WholeBodyContract::Exact {
+    let contract = if exact {
+        WholeBodyContract::Exact {
             expected_bytes: maximum,
-        },
-        false => WholeBodyContract::Capped {
+        }
+    } else {
+        WholeBodyContract::Capped {
             maximum_bytes: maximum,
-        },
+        }
     };
     RetrievalRequest::FetchWhole {
         contract,

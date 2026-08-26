@@ -1,15 +1,13 @@
-mod store_fixture;
-
-use ghostr_partial_store::partial_range_completion::IntegrityMismatch;
+use crate::partial_range_completion::IntegrityMismatch;
+use crate::tests::store_fixture::{plain_store, temp_root};
 use std::sync::Arc;
-use store_fixture::{plain_store, temp_root};
 use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn partial_range_finalize_rejects_and_discards_a_mismatched_digest() {
     let root = temp_root("ghostr-partial-mismatch");
     let used_bytes = Arc::new(Mutex::new(0));
-    let store = plain_store(root.clone(), used_bytes.clone());
+    let store = plain_store(root.clone(), std::sync::Arc::clone(&used_bytes));
     store
         .write_range("clip", 0, b"headtail")
         .await
@@ -26,7 +24,7 @@ async fn partial_range_finalize_rejects_and_discards_a_mismatched_digest() {
     assert_eq!(*used_bytes.lock().await, 0);
     assert_eq!(
         store.present_ranges("clip").await.expect("ranges"),
-        Vec::<std::ops::Range<u64>>::new()
+        Vec::<core::ops::Range<u64>>::new()
     );
     assert_eq!(
         std::fs::read_dir(&root).expect("store contents").count(),

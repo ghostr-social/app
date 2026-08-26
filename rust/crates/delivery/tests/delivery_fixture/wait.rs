@@ -1,11 +1,11 @@
 //! Event-driven waiting on the partial-range store: registers on the
 //! change notifier before every re-check, with a hard deadline.
 
+use core::ops::Range;
+use core::time::Duration;
 use ghostr_delivery::cache_registry::CacheRegistry;
 use ghostr_delivery::progressive_posts::ServablePosts;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
-use std::ops::Range;
-use std::time::Duration;
 use tokio::time::{timeout_at, Instant};
 
 const WAIT_LIMIT: Duration = Duration::from_secs(10);
@@ -31,9 +31,10 @@ pub async fn wait_until(
         if ready(&ranges) {
             return;
         }
-        if timeout_at(deadline, changed).await.is_err() {
-            panic!("timed out waiting on ranges of {key}: {ranges:?}");
-        }
+        assert!(
+            timeout_at(deadline, changed).await.is_ok(),
+            "timed out waiting on ranges of {key}: {ranges:?}"
+        );
     }
 }
 
@@ -45,18 +46,21 @@ pub async fn wait_total_len(store: &PartialRangeStore, key: &str, expected: u64)
         if store.total_len(key).await.expect("total len") == Some(expected) {
             return;
         }
-        if timeout_at(deadline, changed).await.is_err() {
-            panic!("timed out waiting on the total length of {key}");
-        }
+        assert!(
+            timeout_at(deadline, changed).await.is_ok(),
+            "timed out waiting on the total length of {key}"
+        );
     }
 }
 
 pub async fn wait_for_file(path: &std::path::Path) {
     let deadline = Instant::now() + WAIT_LIMIT;
     while !path.exists() {
-        if Instant::now() >= deadline {
-            panic!("timed out waiting for {}", path.display());
-        }
+        assert!(
+            Instant::now() < deadline,
+            "timed out waiting for {}",
+            path.display()
+        );
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
 }

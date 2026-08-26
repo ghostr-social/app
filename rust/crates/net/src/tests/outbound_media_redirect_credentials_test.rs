@@ -8,14 +8,16 @@ async fn guarded_redirect_execution_rejects_credentials_before_following() {
 
     let result = executor(&start)
         .get(&start, PreemptionAuthority::Transition)
-        .unwrap()
+        .expect("valid test fixture")
         .admit()
         .await
-        .unwrap()
-        .send()
+        .expect("valid test fixture")
+        .send_with_redirect_deadline(
+            tokio::time::Instant::now() + core::time::Duration::from_secs(30),
+        )
         .await;
 
-    origin.await.unwrap();
+    origin.await.expect("valid test fixture");
     let Err(error) = result else {
         panic!("credential redirect was followed");
     };

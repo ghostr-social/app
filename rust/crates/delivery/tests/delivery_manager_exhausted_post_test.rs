@@ -4,19 +4,19 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::media::{hit_log, hits, media_body, serve_recording, serve_rejecting};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use delivery_fixture::wait::wait_for_ranges;
-use std::time::Duration;
 use tokio::time::Instant;
 
 #[tokio::test]
 async fn delivery_manager_stops_retrying_a_post_with_no_working_source() {
     let log = hit_log();
-    let broken = serve_rejecting("broken", log.clone()).await;
-    let live = serve_recording("live", media_body(), log.clone()).await;
+    let broken = serve_rejecting("broken", std::sync::Arc::clone(&log)).await;
+    let live = serve_recording("live", media_body(), std::sync::Arc::clone(&log)).await;
     let harness = start_harness("ghostr-delivery-exhausted", DeliveryOptions::default());
     let doomed = sized_item("aa11", &broken, 16, 1_000);
 

@@ -31,28 +31,38 @@ impl HlsGate {
     }
 
     pub fn hits(&self) -> Vec<&'static str> {
-        self.hits.lock().unwrap().clone()
+        self.hits.lock().expect("valid test fixture").clone()
     }
 
     async fn hit(&self, path: &'static str) {
-        self.hits.lock().unwrap().push(path);
+        self.hits.lock().expect("valid test fixture").push(path);
         if path == self.blocked {
             self.started.add_permits(1);
-            self.release.acquire().await.unwrap().forget();
+            self.release
+                .acquire()
+                .await
+                .expect("valid test fixture")
+                .forget();
         }
     }
 }
 
 pub async fn serve(gate: HlsGate) -> String {
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let address = listener.local_addr().unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("valid test fixture");
+    let address = listener.local_addr().expect("valid test fixture");
     let app = Router::new()
         .route("/index.m3u8", get(manifest))
         .route("/child.m3u8", get(child))
         .route("/init.mp4", get(init))
         .route("/segment.m4s", get(segment))
         .with_state(gate);
-    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    tokio::spawn(async move {
+        axum::serve(listener, app)
+            .await
+            .expect("valid test fixture");
+    });
     format!("http://{address}/index.m3u8")
 }
 
@@ -87,5 +97,5 @@ fn response(content_type: &'static str, bytes: &'static [u8]) -> Response<Body> 
     Response::builder()
         .header(header::CONTENT_TYPE, content_type)
         .body(Body::from(bytes))
-        .unwrap()
+        .expect("valid test fixture")
 }

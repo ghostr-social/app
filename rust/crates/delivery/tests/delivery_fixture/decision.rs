@@ -1,6 +1,7 @@
+use super::evidence::DeliveryEvidence as _;
+use core::time::Duration;
 use ghostr_delivery::delivery_events::{DecisionHistorySnapshot, DeliveryHandle};
 use ghostr_engine::adaptive::{DecisionOutcome, DecisionRecord};
-use std::time::Duration;
 
 pub async fn wait_for_completed_bytes(handle: &DeliveryHandle, expected: u64) -> DecisionRecord {
     let notifier = handle.plan_notifier();

@@ -24,7 +24,7 @@ impl RelayRegistration for RegistrationLog {
 }
 
 impl RegistrationLog {
-    pub(crate) fn count(&self, url: &str) -> usize {
+    pub(super) fn count(&self, url: &str) -> usize {
         self.0
             .lock()
             .expect("registrations")

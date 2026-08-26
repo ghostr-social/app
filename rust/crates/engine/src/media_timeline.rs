@@ -20,8 +20,8 @@ pub use startup::{StartupFootprint, StartupProvenance};
 /// A contiguous piece of the remote representation already held locally.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct MediaSegment<'a> {
-    pub(crate) start: u64,
-    pub(crate) bytes: &'a [u8],
+    start: u64,
+    bytes: &'a [u8],
 }
 
 impl<'a> MediaSegment<'a> {
@@ -42,34 +42,34 @@ pub enum TimelineError {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MediaTimeline {
-    pub(crate) inspected: Vec<ByteRange>,
-    pub(crate) metadata: Vec<ByteRange>,
-    pub(crate) file_types: Vec<ByteRange>,
-    pub(crate) movie: Option<ByteRange>,
-    pub(crate) movie_top_level: bool,
-    pub(crate) top_level_file_types: usize,
-    pub(crate) top_level_movies: usize,
-    pub(crate) fragmented_indexes: usize,
-    pub(crate) media_data: Vec<boxes::MediaData>,
-    pub(crate) classic_video: bool,
-    pub(crate) media: Vec<TimedRange>,
+    inspected: Vec<ByteRange>,
+    pub(super) metadata: Vec<ByteRange>,
+    file_types: Vec<ByteRange>,
+    movie: Option<ByteRange>,
+    movie_top_level: bool,
+    top_level_file_types: usize,
+    top_level_movies: usize,
+    fragmented_indexes: usize,
+    media_data: Vec<boxes::MediaData>,
+    classic_video: bool,
+    pub(super) media: Vec<TimedRange>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct PlayableExtent {
-    pub(crate) bytes: ByteRange,
-    pub(crate) playable_ms: u64,
+    pub(super) bytes: ByteRange,
+    pub(super) playable_ms: u64,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct TimedRange {
-    pub(crate) start_ms: u64,
-    pub(crate) end_ms: u64,
-    pub(crate) bytes: ByteRange,
+    pub(super) start_ms: u64,
+    pub(super) end_ms: u64,
+    pub(super) bytes: ByteRange,
 }
 
 impl MediaTimeline {
-    pub fn front_moov(&self) -> bool {
+    pub(super) fn front_moov(&self) -> bool {
         let Some(movie) = self.movie else {
             return false;
         };
@@ -82,7 +82,7 @@ impl MediaTimeline {
         self.movie_top_level && movie.end <= first_media
     }
 
-    pub fn duration_ms(&self) -> Option<u64> {
+    pub(super) fn duration_ms(&self) -> Option<u64> {
         let start = self.media.iter().map(|range| range.start_ms).min()?;
         let end = self.media.iter().map(|range| range.end_ms).max()?;
         (end > start).then_some(end - start)
@@ -96,7 +96,7 @@ impl MediaTimeline {
             .all(|range| range.end <= total_bytes)
     }
 
-    pub(crate) fn playable_extents(&self) -> Vec<PlayableExtent> {
+    pub(super) fn playable_extents(&self) -> Vec<PlayableExtent> {
         self.media
             .iter()
             .map(|range| PlayableExtent {
@@ -133,13 +133,12 @@ impl MediaTimeline {
     }
 }
 
-/// Parses complete metadata boxes found in the supplied absolute segments.
-/// Segments may be disjoint or adjacent, but their non-empty ranges must not
-/// overlap. Input order does not affect the result.
-pub fn parse_mp4_segments(segments: &[MediaSegment<'_>]) -> Result<MediaTimeline, TimelineError> {
-    parse_mp4_segments_with_control(segments, &control::NeverCancelled)
-}
-
+/// Parses MP4 metadata while honoring an external cancellation control.
+///
+/// # Errors
+///
+/// Returns a timeline error for cancellation, invalid segment geometry, malformed MP4 data, or
+/// exhausted parser limits.
 pub fn parse_mp4_segments_with_control(
     segments: &[MediaSegment<'_>],
     control: &dyn TimelineParseControl,
@@ -166,3 +165,9 @@ pub fn parse_mp4_segments_with_control(
         &mut budget,
     )
 }
+
+#[cfg(any(test, feature = "test"))]
+#[path = "media_timeline/test_support.rs"]
+mod test_support;
+#[cfg(any(test, feature = "test"))]
+pub use test_support::parse_mp4_segments;

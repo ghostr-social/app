@@ -19,7 +19,11 @@ pub(super) fn candidates(snapshot: &PlayabilitySnapshot) -> Vec<&CandidateSnapsh
     let mut candidates: Vec<_> = snapshot
         .candidates
         .iter()
-        .filter(|candidate| candidate.retrieval_eligible && candidate.feed_offset.value() > 0)
+        .filter(|candidate| {
+            candidate.retrieval_eligible
+                && !candidate.direct_playback_blocked
+                && candidate.feed_offset.value() > 0
+        })
         .collect();
     candidates.sort_by_key(|candidate| candidate.feed_offset.magnitude());
     candidates.truncate(MAX_READY_VIDEOS);
@@ -41,21 +45,24 @@ pub(super) fn target(
 }
 
 pub(super) fn is_ready(candidate: &CandidateSnapshot) -> bool {
-    candidate.player_preparation == PlayerPreparation::FirstFrameRendered
+    !candidate.direct_playback_blocked
+        && candidate.player_preparation == PlayerPreparation::FirstFrameRendered
         && is_structural(candidate)
 }
 
 pub(super) fn is_structural(candidate: &CandidateSnapshot) -> bool {
-    candidate.startup.as_ref().is_some_and(|startup| {
-        startup
-            .ranges()
-            .iter()
-            .all(|range| uncovered_bytes(*range, &candidate.present) == 0)
-    })
+    !candidate.direct_playback_blocked
+        && candidate.startup.as_ref().is_some_and(|startup| {
+            startup
+                .ranges()
+                .iter()
+                .all(|range| uncovered_bytes(*range, &candidate.present) == 0)
+        })
 }
 
 pub(super) fn is_in_flight(candidate: &CandidateSnapshot) -> bool {
-    if candidate.startup.is_none() || is_structural(candidate) {
+    if candidate.direct_playback_blocked || candidate.startup.is_none() || is_structural(candidate)
+    {
         return false;
     }
     let mut covered = candidate.present.clone();
@@ -73,6 +80,9 @@ pub(super) fn is_in_flight(candidate: &CandidateSnapshot) -> bool {
 }
 
 pub(super) fn readiness_ranges(candidate: &CandidateSnapshot) -> Vec<crate::ByteRange> {
+    if candidate.direct_playback_blocked {
+        return Vec::new();
+    }
     if let Some(startup) = &candidate.startup {
         return startup.ranges().to_vec();
     }

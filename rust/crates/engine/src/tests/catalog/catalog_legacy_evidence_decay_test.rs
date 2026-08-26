@@ -16,7 +16,7 @@ fn legacy_http_observation_uses_its_normalized_clock_for_decay() {
         },
     ));
 
-    let entry = catalog.lookup(&post).unwrap();
+    let entry = catalog.lookup(&post).expect("valid test fixture");
     let source = "https://host.example/video.mp4";
     let assessment = entry.evidence_assessment_for(source, 30 * 24 * 60 * 60 * 1_000);
 

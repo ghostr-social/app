@@ -17,12 +17,16 @@ pub enum RetrievalRung {
 pub struct RetrievalPlan {
     id: String,
     pub terminal: RetrievalRung,
-    pub actions: Vec<ActionKind>,
-    pub metrics: PlanMetrics,
+    pub(crate) actions: Vec<ActionKind>,
+    pub(crate) metrics: PlanMetrics,
 }
 
 impl RetrievalPlan {
-    pub fn new(id: impl Into<String>, terminal: RetrievalRung, metrics: PlanMetrics) -> Self {
+    pub(crate) fn new(
+        id: impl Into<String>,
+        terminal: RetrievalRung,
+        metrics: PlanMetrics,
+    ) -> Self {
         Self {
             id: id.into(),
             terminal,
@@ -31,12 +35,12 @@ impl RetrievalPlan {
         }
     }
 
-    pub fn with_actions(mut self, actions: Vec<ActionKind>) -> Self {
+    pub(crate) fn with_actions(mut self, actions: Vec<ActionKind>) -> Self {
         self.actions = actions;
         self
     }
 
-    pub fn id(&self) -> &str {
+    pub(super) fn id(&self) -> &str {
         &self.id
     }
 }

@@ -4,10 +4,10 @@ use crate::api::tests::feed_fixtures::video_note;
 use crate::api::tests::outbox_runtime_support::test_bootstrap;
 use crate::discovery::feed::spec::FeedSpec;
 use crate::discovery::retrieval_types::RetrievalOutcome;
+use core::time::Duration;
 use ghostr_delivery::delivery_events::command_channel;
 use nostr_sdk::Keys;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 use tokio::sync::mpsc;
 
 #[tokio::test]
@@ -19,7 +19,7 @@ async fn relay_progress_admits_a_candidate_before_page_completion() {
     let (sender, outcomes) = mpsc::unbounded_channel();
     let pump = tokio::spawn(pump_outcomes(
         OutcomeSinks {
-            state: state.clone(),
+            state: std::sync::Arc::clone(&state),
             bootstrap: test_bootstrap().0,
             candidates: Some(delivery),
         },

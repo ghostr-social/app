@@ -1,12 +1,12 @@
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::gated_failure::serve;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::media::{hit_log, media_body, serve_recording};
 use delivery_fixture::options::serial_long_retry_options;
 use delivery_fixture::start_harness;
 use delivery_fixture::wait::wait_cache_first;
-use std::time::Duration;
 
 #[tokio::test]
 async fn focus_before_failure_grants_exactly_one_immediate_retry() {

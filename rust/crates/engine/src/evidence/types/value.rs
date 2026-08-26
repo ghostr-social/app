@@ -18,7 +18,7 @@ pub enum EvidenceField {
 }
 
 impl EvidenceField {
-    pub const ALL: [Self; 12] = [
+    pub(crate) const ALL: [Self; 12] = [
         Self::Size,
         Self::Mime,
         Self::Duration,
@@ -58,7 +58,7 @@ pub enum EvidenceValue {
 }
 
 impl EvidenceValue {
-    pub fn field(&self) -> EvidenceField {
+    pub(crate) fn field(&self) -> EvidenceField {
         match self {
             Self::SizeBytes(_) => EvidenceField::Size,
             Self::Mime(_) => EvidenceField::Mime,
@@ -78,19 +78,19 @@ impl EvidenceValue {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Evidence<T> {
-    pub value: T,
-    pub source: EvidenceSource,
-    pub observed_at_ms: u64,
+    pub(crate) value: T,
+    pub(crate) source: EvidenceSource,
+    pub(crate) observed_at_ms: u64,
     #[serde(default)]
-    pub observed_order: u64,
-    pub confidence: Confidence,
-    pub validator: Option<EvidenceValidator>,
-    pub scope: EvidenceScope,
+    pub(crate) observed_order: u64,
+    pub(crate) confidence: Confidence,
+    pub(crate) validator: Option<EvidenceValidator>,
+    pub(crate) scope: EvidenceScope,
     invalidated_at_ms: Option<u64>,
 }
 
 impl<T> Evidence<T> {
-    pub fn new(
+    pub(crate) fn new(
         value: T,
         source: EvidenceSource,
         observed_at_ms: u64,
@@ -122,10 +122,6 @@ impl<T> Evidence<T> {
         evidence
     }
 
-    pub fn invalidated_at_ms(&self) -> Option<u64> {
-        self.invalidated_at_ms
-    }
-
     pub(crate) fn invalidate(&mut self, observed_at_ms: u64) -> bool {
         if self.invalidated_at_ms.is_some() {
             return false;
@@ -138,3 +134,7 @@ impl<T> Evidence<T> {
         self.invalidated_at_ms.is_none()
     }
 }
+
+#[cfg(test)]
+#[path = "value/test_support.rs"]
+mod test_support;

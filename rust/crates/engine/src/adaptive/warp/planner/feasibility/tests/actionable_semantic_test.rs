@@ -14,8 +14,8 @@ fn startup_ready_incomplete_current_cannot_starve_parallel_ahead_preparation() {
     let ahead = input.candidates[1].post.clone();
     let base = AdaptivePlayabilityPolicy.plan(&input);
     let context = PlannerContext::explicitly_unavailable(&input)
-        .with_semantic(current, SemanticScore::Known(1_000_000))
-        .with_semantic(ahead.clone(), SemanticScore::Known(667_000));
+        .with_semantic(&current, SemanticScore::Known(1_000_000))
+        .with_semantic(&ahead, SemanticScore::Known(667_000));
     let origins = OriginModel::default();
     let planner_input = WarpPlannerInput::new(&input, &base, &origins, &context);
 

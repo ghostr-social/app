@@ -1,8 +1,8 @@
-use ghostr_engine::catalog::{Catalog, CompleteBytesObservation, HttpObservation, LearnedFacts};
-use ghostr_engine::evidence::{EvidenceTime, EvidenceValidator};
-use ghostr_engine::representation::HttpGenerationAuthority;
-use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
-use std::num::NonZeroU64;
+use crate::catalog::{Catalog, CompleteBytesObservation, HttpObservation, LearnedFacts};
+use crate::evidence::{EvidenceTime, EvidenceValidator};
+use crate::representation::HttpGenerationAuthority;
+use crate::{DeliveryKind, PostId, VideoMeta};
+use core::num::NonZeroU64;
 
 const SOURCE: &str = "https://media.example/video.mp4";
 const FINAL: &str = "https://cdn.example/video.mp4";
@@ -14,9 +14,11 @@ fn changed_validator_on_malformed_media_revokes_old_authority_without_new_facts(
     let identity = catalog
         .upsert(post.clone(), metadata())
         .transfer(SOURCE)
-        .unwrap();
+        .expect("valid test fixture");
     assert!(catalog.learn_response_observation_for(&identity, accepted()));
-    let old = catalog.http_generation_for(&identity).unwrap();
+    let old = catalog
+        .http_generation_for(&identity)
+        .expect("valid test fixture");
 
     let authority = catalog
         .reject_response_generation_for(
@@ -25,16 +27,16 @@ fn changed_validator_on_malformed_media_revokes_old_authority_without_new_facts(
             Some(etag("v2")),
             EvidenceTime::ordered(100, 2),
         )
-        .unwrap();
+        .expect("valid test fixture");
 
     assert!(matches!(authority, HttpGenerationAuthority::Unknown(_)));
     assert_eq!(catalog.http_generation_for(&identity), None);
-    let entry = catalog.lookup(&post).unwrap();
+    let entry = catalog.lookup(&post).expect("valid test fixture");
     assert_eq!(entry.current_validator_for(SOURCE), None);
     assert_eq!(entry.authoritative_total_for(SOURCE), None);
     assert_eq!(entry.observed_range_support_for(SOURCE), None);
     let stale = CompleteBytesObservation::new(
-        NonZeroU64::new(16).unwrap(),
+        NonZeroU64::new(16).expect("valid test fixture"),
         FINAL,
         EvidenceTime::ordered(100, 3),
         Some(etag("v1")),
@@ -58,7 +60,7 @@ fn accepted() -> HttpObservation {
 }
 
 fn etag(value: &str) -> EvidenceValidator {
-    EvidenceValidator::strong_etag(format!("\"{value}\"")).unwrap()
+    EvidenceValidator::strong_etag(format!("\"{value}\"")).expect("valid test fixture")
 }
 
 fn metadata() -> VideoMeta {

@@ -97,7 +97,7 @@ pub(crate) async fn start_progressive_delivery(
         hls_sessions,
         requests: resources.requests.clone(),
         segmented: resources.segmented.clone(),
-        progressive: progressive.clone(),
+        progressive: std::sync::Arc::clone(&progressive),
         delivery: delivery.clone(),
         nostr,
     });
@@ -117,7 +117,7 @@ fn progressive_state(
     demand: ghostr_delivery::playback_demand::DemandSender,
 ) -> Arc<ProgressiveState> {
     Arc::new(ProgressiveState {
-        store: resources.store.clone(),
+        store: std::sync::Arc::clone(&resources.store),
         demand,
         cache: resources.cache.clone(),
         network: resources.network.clone(),

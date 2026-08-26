@@ -34,7 +34,7 @@ impl RelayPlanExecutor {
             return Ok(events);
         };
         let outboxes = self.session_plan_outboxes(session, &plan).await?;
-        let fetches = self.enrichment_fetches(session, plan, outboxes, route);
+        let fetches = self.enrichment_fetches(session, plan, outboxes, &route);
         events.extend(collect_best_effort_events(fetches).await);
         Ok(events)
     }
@@ -51,7 +51,10 @@ pub(crate) fn profile_plan(events: &[Event]) -> Option<QueryPlan> {
         .filter(|post| supports_blossom(post))
         .filter_map(|post| nostr_sdk::PublicKey::from_hex(&post.author_pubkey).ok())
         .collect();
-    debug_assert!(authors.len() <= MAX_PROFILE_AUTHORS);
+    debug_assert!(
+        authors.len() <= MAX_PROFILE_AUTHORS,
+        "profile occurrence compaction must bound unique authors"
+    );
     let mut filters = author_filters(Kind::Metadata, authors);
     filters.extend(author_filters(Kind::Custom(10063), media_authors));
     Some(plan_event_queries(filters))

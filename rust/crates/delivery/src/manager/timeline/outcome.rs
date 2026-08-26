@@ -25,7 +25,7 @@ pub(crate) enum TimelineRetry {
 #[derive(Debug)]
 pub(crate) enum TimelineTerminal {
     Incomplete(TimelineIncomplete),
-    Ready(MediaTimeline),
+    Ready(Box<MediaTimeline>),
     Rejected(TimelineRejection),
 }
 

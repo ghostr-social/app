@@ -11,7 +11,7 @@ async fn cancelling_a_queued_request_cannot_leak_capacity() {
     let mut next = HeldOrigin::serve().await;
     let requests = MediaRequestExecutor::new(
         LocalMediaClient::shared(),
-        MediaRequestLimits::try_new(1, 1).unwrap(),
+        MediaRequestLimits::try_new(1, 1).expect("valid test fixture"),
     );
     let active = tokio::spawn(open(requests.clone(), held.url.clone()));
     held.expect_hit().await;
@@ -22,11 +22,11 @@ async fn cancelling_a_queued_request_cannot_leak_capacity() {
     let successor = tokio::spawn(open(requests, next.url.clone()));
 
     held.release_one();
-    drop(active.await.unwrap());
+    drop(active.await.expect("valid test fixture"));
     next.expect_hit().await;
     cancelled.expect_quiet().await;
     next.release_one();
-    drop(successor.await.unwrap());
+    drop(successor.await.expect("valid test fixture"));
 }
 
 async fn open(
@@ -35,11 +35,13 @@ async fn open(
 ) -> ghostr_net::media_request_executor::MediaResponse {
     requests
         .get(&url, PreemptionAuthority::Transition)
-        .unwrap()
+        .expect("valid test fixture")
         .admit()
         .await
-        .unwrap()
-        .send()
+        .expect("valid test fixture")
+        .send_with_redirect_deadline(
+            tokio::time::Instant::now() + core::time::Duration::from_secs(30),
+        )
         .await
-        .unwrap()
+        .expect("valid test fixture")
 }

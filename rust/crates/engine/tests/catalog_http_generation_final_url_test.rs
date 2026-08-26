@@ -1,6 +1,6 @@
-use ghostr_engine::catalog::{Catalog, HttpObservation, LearnedFacts};
-use ghostr_engine::evidence::{EvidenceTime, EvidenceValidator};
-use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
+use crate::catalog::{Catalog, HttpObservation, LearnedFacts};
+use crate::evidence::{EvidenceTime, EvidenceValidator};
+use crate::{DeliveryKind, PostId, VideoMeta};
 
 const SOURCE: &str = "https://media.example/video.mp4";
 
@@ -10,10 +10,12 @@ fn changed_redirect_target_rotates_authority_even_with_the_same_etag() {
     let identity = catalog
         .upsert(PostId::new("redirect-generation"), metadata())
         .transfer(SOURCE)
-        .unwrap();
+        .expect("valid test fixture");
     assert!(catalog
         .learn_response_observation_for(&identity, response("https://a.example/video.mp4", 1),));
-    let first = catalog.http_generation_for(&identity).unwrap();
+    let first = catalog
+        .http_generation_for(&identity)
+        .expect("valid test fixture");
     assert!(catalog
         .learn_response_observation_for(&identity, response("https://b.example/video.mp4", 2),));
 

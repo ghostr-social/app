@@ -61,7 +61,7 @@ impl State {
     }
 }
 
-pub(super) fn compare(left: &State, right: &State) -> std::cmp::Ordering {
+pub(super) fn compare(left: &State, right: &State) -> core::cmp::Ordering {
     right.score.cmp(&left.score).then_with(|| {
         left.sequence
             .iter()

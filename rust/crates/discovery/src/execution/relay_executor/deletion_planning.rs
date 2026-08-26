@@ -35,11 +35,6 @@ impl Default for Evidence {
     }
 }
 
-#[cfg(test)]
-pub(crate) fn deletion_plan(events: &[Event]) -> Option<QueryPlan> {
-    dependent_deletion_plan(events).map(|dependent| dependent.plan)
-}
-
 pub(super) fn dependent_deletion_plan(events: &[Event]) -> Option<DependentDeletionPlan> {
     let targets = deletion_targets(events);
     let mut queries = tagged_queries(targets.events, Alphabet::E);
@@ -76,20 +71,20 @@ fn tagged_queries(targets: Vec<DeletionTarget>, tag: Alphabet) -> Vec<DeletionQu
     }
     grouped
         .into_iter()
-        .flat_map(|((author, hints), values)| grouped_queries(author, hints, values, tag))
+        .flat_map(|((author, hints), values)| grouped_queries(author, &hints, values, tag))
         .collect()
 }
 
 fn grouped_queries(
     author: PublicKey,
-    hints: Vec<String>,
+    hints: &[String],
     values: BTreeMap<String, Evidence>,
     tag: Alphabet,
 ) -> Vec<DeletionQuery> {
     let values: Vec<_> = values.into_iter().collect();
     values
         .chunks(TARGETS_PER_FILTER)
-        .map(|chunk| query(author, hints.clone(), chunk, tag))
+        .map(|chunk| query(author, hints.to_vec(), chunk, tag))
         .collect()
 }
 
@@ -124,3 +119,7 @@ fn deletion_filter(author: PublicKey) -> Filter {
         .author(author)
         .limit(DELETION_LIMIT)
 }
+
+#[cfg(test)]
+#[path = "deletion_planning_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

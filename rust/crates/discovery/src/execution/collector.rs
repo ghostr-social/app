@@ -37,22 +37,13 @@ impl Drop for AbortFetch {
     }
 }
 
-#[cfg(test)]
-pub(crate) async fn collect_events(
-    fetches: Vec<(QueryRole, FetchHandle)>,
-) -> Result<Vec<Event>, PlanFailure> {
-    collect_page(fetches).await.map(|page| page.events)
-}
-
 pub(crate) async fn collect_best_effort_events(
     fetches: Vec<(QueryRole, FetchHandle)>,
 ) -> Vec<Event> {
     collect_partial_events(fetches).await.events
 }
 
-pub(crate) async fn collect_partial_events(
-    fetches: Vec<(QueryRole, FetchHandle)>,
-) -> CollectedEvents {
+async fn collect_partial_events(fetches: Vec<(QueryRole, FetchHandle)>) -> CollectedEvents {
     let outcomes = collect_partial_fetches(fetches).await;
     let complete = outcomes.iter().all(|outcome| outcome.complete);
     let events = outcomes
@@ -95,13 +86,13 @@ pub(crate) async fn collect_page(
         .collect::<Vec<_>>();
     let mut collection = PageCollection::default();
     for (role, fetch) in fetches {
-        collection.record(role, joined(fetch).await);
+        collection.record(&role, joined(fetch).await);
     }
     collection.finish()
 }
 
 impl PageCollection {
-    fn record(&mut self, role: QueryRole, result: Result<FetchedEvents, PlanFailure>) {
+    fn record(&mut self, role: &QueryRole, result: Result<FetchedEvents, PlanFailure>) {
         let failure = match result {
             Ok(fetched) => return self.pages.push(fetched),
             Err(failure) => failure,
@@ -153,3 +144,7 @@ async fn joined(mut fetch: AbortFetch) -> Result<FetchedEvents, PlanFailure> {
         .await
         .unwrap_or_else(|error| Err(PlanFailure::new(error.to_string())))
 }
+
+#[cfg(test)]
+#[path = "collector_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

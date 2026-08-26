@@ -4,21 +4,13 @@ use anyhow::Result;
 use ghostr_engine::adaptive::WholeBodyContract;
 use ghostr_engine::representation::{HttpGenerationLease, TransferIdentity};
 
-impl PartialRangeStore {
-    pub async fn open_single_response_for_action(
-        &self,
-        identity: &TransferIdentity,
-        action: &StoreAction,
-        contract: WholeBodyContract,
-    ) -> Result<ResponseOpenResult> {
-        let authority = self.http_generation_for(identity).await.map_or(
-            SingleResponseAuthority::Legacy,
-            SingleResponseAuthority::Durable,
-        );
-        self.open_single_response(identity, action, contract, authority)
-            .await
-    }
+#[cfg(any(test, feature = "test"))]
+mod test_support;
 
+impl PartialRangeStore {
+    /// # Errors
+    ///
+    /// Returns an error when generation authority or response state cannot be validated.
     pub async fn open_durable_single_response(
         &self,
         identity: &TransferIdentity,
@@ -35,6 +27,9 @@ impl PartialRangeStore {
         .await
     }
 
+    /// # Errors
+    ///
+    /// Returns an error when the action is stale or response state cannot be opened safely.
     pub async fn open_action_scoped_single_response(
         &self,
         identity: &TransferIdentity,
@@ -89,7 +84,9 @@ impl PartialRangeStore {
             SingleResponseAuthority::Durable(lease) => {
                 self.http_generation_is_current(identity, lease).await
             }
-            SingleResponseAuthority::Legacy | SingleResponseAuthority::ActionScoped => true,
+            SingleResponseAuthority::ActionScoped => true,
+            #[cfg(any(test, feature = "test"))]
+            SingleResponseAuthority::Legacy => true,
         }
     }
 }

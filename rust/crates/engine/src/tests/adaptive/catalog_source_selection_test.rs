@@ -21,7 +21,7 @@ fn candidate_geometry_uses_the_selected_origins_observed_semantics() {
         CandidateEvidence {
             post,
             feed_offset: FeedOffset::new(0),
-            view_probability: ViewProbability::new(1.0).unwrap(),
+            view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
             present: Vec::new(),
             stored_total: None,
             continuation_source: None,
@@ -34,7 +34,7 @@ fn candidate_geometry_uses_the_selected_origins_observed_semantics() {
             ],
         },
     )
-    .unwrap();
+    .expect("valid test fixture");
 
     assert_eq!(candidate.total_bytes, Some(16));
     assert_eq!(candidate.layout, MediaLayout::Streamable);
@@ -54,7 +54,7 @@ fn equally_unknown_sources_keep_the_publishers_order() {
         CandidateEvidence {
             post,
             feed_offset: FeedOffset::new(0),
-            view_probability: ViewProbability::new(1.0).unwrap(),
+            view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
             present: Vec::new(),
             stored_total: None,
             continuation_source: None,
@@ -67,13 +67,15 @@ fn equally_unknown_sources_keep_the_publishers_order() {
             ],
         },
     )
-    .unwrap();
+    .expect("valid test fixture");
 
     assert_eq!(candidate.preferred_source.as_deref(), Some(primary));
 }
 
 fn learn(catalog: &mut Catalog, post: &PostId, source: &str, total: u64, ranged: bool) {
-    let identity = catalog.transfer_identity(post, source).unwrap();
+    let identity = catalog
+        .transfer_identity(post, source)
+        .expect("valid test fixture");
     assert!(catalog.learn_response_for(
         &identity,
         LearnedFacts {

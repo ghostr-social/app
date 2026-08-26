@@ -1,16 +1,17 @@
 use super::generation::HlsCacheMetadata;
+use core::time::Duration;
 use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_net::strong_etag::single_strong_etag;
 use reqwest::header::{HeaderMap, HeaderName, AGE, CACHE_CONTROL, DATE, LAST_MODIFIED, VARY};
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Instant, SystemTime};
 use url::Url;
 
-impl HlsCacheMetadata {
-    #[cfg(test)]
-    pub(in crate::segmented) fn from_headers(headers: &HeaderMap) -> Self {
-        Self::from_parts(headers, Duration::ZERO, true)
-    }
+enum HeaderPresence<'a> {
+    Missing,
+    Present(&'a str),
+}
 
+impl HlsCacheMetadata {
     pub(in crate::segmented) fn from_response(
         request_url: &str,
         final_url: &Url,
@@ -49,7 +50,9 @@ fn strong_etag(headers: &HeaderMap) -> Option<EvidenceValidator> {
 }
 
 fn last_modified(headers: &HeaderMap) -> Option<EvidenceValidator> {
-    let value = single_header(headers, &LAST_MODIFIED)??;
+    let HeaderPresence::Present(value) = single_header(headers, &LAST_MODIFIED)? else {
+        return None;
+    };
     httpdate::parse_http_date(value).ok()?;
     EvidenceValidator::last_modified(value)
 }
@@ -133,15 +136,16 @@ fn delta_seconds(value: &str) -> Option<u64> {
 
 fn current_age(headers: &HeaderMap) -> Option<Duration> {
     let age = match single_header(headers, &AGE)? {
-        Some(value) => Duration::from_secs(value.trim().parse().ok()?),
-        None => Duration::ZERO,
+        HeaderPresence::Present(value) => Duration::from_secs(value.trim().parse().ok()?),
+        HeaderPresence::Missing => Duration::ZERO,
     };
     Some(age.max(apparent_age(headers)?))
 }
 
 fn apparent_age(headers: &HeaderMap) -> Option<Duration> {
-    let Some(value) = single_header(headers, &DATE)? else {
-        return Some(Duration::ZERO);
+    let value = match single_header(headers, &DATE)? {
+        HeaderPresence::Present(value) => value,
+        HeaderPresence::Missing => return Some(Duration::ZERO),
     };
     let date = httpdate::parse_http_date(value).ok()?;
     Some(SystemTime::now().duration_since(date).unwrap_or_default())
@@ -157,14 +161,18 @@ fn supported_vary(headers: &HeaderMap) -> bool {
     })
 }
 
-fn single_header<'a>(headers: &'a HeaderMap, name: &HeaderName) -> Option<Option<&'a str>> {
+fn single_header<'a>(headers: &'a HeaderMap, name: &HeaderName) -> Option<HeaderPresence<'a>> {
     let mut values = headers.get_all(name).iter();
     let first = values.next();
     if values.next().is_some() {
         return None;
     }
     match first {
-        Some(value) => value.to_str().ok().map(Some),
-        None => Some(None),
+        Some(value) => value.to_str().ok().map(HeaderPresence::Present),
+        None => Some(HeaderPresence::Missing),
     }
 }
+
+#[cfg(test)]
+#[path = "freshness_axiom_test.rs"]
+mod axiom_test_support;

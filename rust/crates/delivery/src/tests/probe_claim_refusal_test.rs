@@ -18,7 +18,7 @@ fn selected_probe_refusals_preserve_the_specific_pool_state() {
 
     let identity = probes
         .claim_selected(query(&catalog, &retry, &first, &first_url))
-        .unwrap();
+        .expect("valid test fixture");
     assert_eq!(
         probes.claim_selected(query(&catalog, &retry, &first, &first_url)),
         Err(ProbeClaimRefusal::AlreadyProbing)
@@ -31,7 +31,7 @@ fn selected_probe_refusals_preserve_the_specific_pool_state() {
         serde_json::to_value(DecisionOutcome::ClaimRefused {
             reason: ProbeClaimRefusal::PoolAtCapacity,
         })
-        .unwrap(),
+        .expect("valid test fixture"),
         serde_json::json!({"status": "claim_refused", "reason": "pool_at_capacity"})
     );
 
@@ -54,14 +54,14 @@ fn deferred_and_cooling_probes_have_distinct_refusals() {
 
     probes
         .claim_selected(query(&catalog, &retry, &post, &source))
-        .unwrap();
+        .expect("valid test fixture");
     probes.defer_to_body(&post);
     assert_eq!(
         probes.claim_selected(query(&catalog, &retry, &post, &source)),
         Err(ProbeClaimRefusal::DeferredToBody)
     );
     probes.body_finished(&post);
-    retry.cool_down(post.clone()).unwrap();
+    retry.cool_down(post.clone()).expect("valid test fixture");
     assert_eq!(
         probes.claim_selected(query(&catalog, &retry, &post, &source)),
         Err(ProbeClaimRefusal::RetryCooling)

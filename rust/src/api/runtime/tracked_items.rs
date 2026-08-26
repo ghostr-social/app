@@ -85,7 +85,7 @@ impl TrackedItems {
 
     /// Woken after every registry or level change.
     pub(crate) fn notifier(&self) -> Arc<Notify> {
-        self.changed.clone()
+        std::sync::Arc::clone(&self.changed)
     }
 
     fn read(&self) -> RwLockReadGuard<'_, Tracked> {

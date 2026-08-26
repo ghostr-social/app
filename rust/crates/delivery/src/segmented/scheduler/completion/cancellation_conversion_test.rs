@@ -1,8 +1,8 @@
 use super::{cancelled, terminal, CompletedObject, TerminalContext, TerminalInput};
 use crate::segmented::fetch::{FetchFailure, OriginTelemetry};
+use core::time::Duration;
 use ghostr_engine::adaptive::{DecisionOutcome, HlsBootstrapStage};
 use ghostr_engine::origin_model::{NetworkClass, OriginOutcome};
-use std::time::Duration;
 
 #[test]
 fn cancelling_a_superseded_response_keeps_successful_origin_evidence() {
@@ -26,5 +26,8 @@ fn cancelling_a_superseded_response_keeps_successful_origin_evidence() {
     });
 
     assert!(matches!(finish.outcome, DecisionOutcome::Cancelled { .. }));
-    assert_eq!(finish.observation.unwrap().outcome, OriginOutcome::Success);
+    assert_eq!(
+        finish.observation.expect("valid test fixture").outcome,
+        OriginOutcome::Success
+    );
 }

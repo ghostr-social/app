@@ -10,11 +10,11 @@ use std::sync::{Arc, Mutex};
 pub(crate) struct BlossomIo {
     video: Event,
     servers: Event,
-    pub(crate) filters: Mutex<Vec<Filter>>,
+    pub(super) filters: Mutex<Vec<Filter>>,
 }
 
 impl BlossomIo {
-    pub(crate) fn new(video: Event, servers: Event) -> Arc<Self> {
+    pub(super) fn new(video: Event, servers: Event) -> Arc<Self> {
         Arc::new(Self {
             video,
             servers,

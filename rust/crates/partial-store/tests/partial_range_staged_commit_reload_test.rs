@@ -1,5 +1,3 @@
-mod store_fixture;
-
 #[path = "staged_commit_reload_fixture.rs"]
 mod staged_commit_reload_fixture;
 
@@ -11,27 +9,35 @@ use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn restart_keeps_a_published_stage_when_sparse_retirement_was_interrupted() {
-    let root = store_fixture::temp_root("staged-commit-reload");
-    let store = store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
+    let root = crate::tests::store_fixture::temp_root("staged-commit-reload");
+    let store = crate::tests::store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(PostId::new("post"), staged_commit_reload_fixture::meta());
-    let sparse_identity = binding.transfer("https://a.example/video").unwrap();
+    let sparse_identity = binding
+        .transfer("https://a.example/video")
+        .expect("valid test fixture");
     let whole_identity = sparse_identity.clone();
-    let generation =
-        SourceGeneration::try_new(sparse_identity.source().as_str(), "\"a\"", 8).unwrap();
-    store.bind_representation(binding.clone()).await.unwrap();
+    let generation = SourceGeneration::try_new(sparse_identity.source().as_str(), "\"a\"", 8)
+        .expect("valid test fixture");
+    store
+        .bind_representation(binding.clone())
+        .await
+        .expect("valid test fixture");
     store
         .apply_http_generation(
             &sparse_identity,
-            store_fixture::http_generation("https://a.example/video", "a", 1),
+            crate::tests::store_fixture::http_generation("https://a.example/video", "a", 1),
         )
         .await
-        .unwrap();
+        .expect("valid test fixture");
     store
         .select_transfer(sparse_identity.clone())
         .await
-        .unwrap();
-    let sparse = store.reserve_action(&sparse_identity, 1, 8).await.unwrap();
+        .expect("valid test fixture");
+    let sparse = store
+        .reserve_action(&sparse_identity, 1, 8)
+        .await
+        .expect("valid test fixture");
     store
         .open_sparse_response(
             &sparse_identity,
@@ -40,46 +46,62 @@ async fn restart_keeps_a_published_stage_when_sparse_retirement_was_interrupted(
             ByteRange::new(0, 8),
         )
         .await
-        .unwrap();
+        .expect("valid test fixture");
     store
         .write_range_for_action_if_current(&sparse_identity, &generation, &sparse, 0, b"old!")
         .await
-        .unwrap();
-    let whole = store.reserve_action(&whole_identity, 2, 8).await.unwrap();
-    store
-        .open_single_response_for_action(&whole_identity, &whole, store_fixture::exact_response(8))
+        .expect("valid test fixture");
+    let whole = store
+        .reserve_action(&whole_identity, 2, 8)
         .await
-        .unwrap();
+        .expect("valid test fixture");
+    store
+        .open_single_response_for_action(
+            &whole_identity,
+            &whole,
+            crate::tests::store_fixture::exact_response(8),
+        )
+        .await
+        .expect("valid test fixture");
     store
         .write_single_response_for_action(&whole_identity, &whole, 0, b"new data")
         .await
-        .unwrap();
+        .expect("valid test fixture");
     tokio::fs::create_dir(root.join("post.sparse.intent.tmp"))
         .await
-        .unwrap();
+        .expect("valid test fixture");
     assert!(store
         .finish_single_response_for_action(&whole_identity, &whole, Some(8), true)
         .await
-        .unwrap());
+        .expect("valid test fixture"));
     assert_eq!(
-        store.read_range("post", 0..8).await.unwrap(),
+        store
+            .read_range("post", 0..8)
+            .await
+            .expect("valid test fixture"),
         Some(b"new data".to_vec())
     );
     assert!(
         tokio::fs::metadata(root.join("post.response.commit"))
             .await
-            .unwrap()
+            .expect("valid test fixture")
             .len()
             > 0
     );
     drop(store);
 
-    let reopened = store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
-    reopened.load_existing().await.unwrap();
-    reopened.bind_representation(binding.clone()).await.unwrap();
+    let reopened = crate::tests::store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
+    reopened.load_existing().await.expect("valid test fixture");
+    reopened
+        .bind_representation(binding.clone())
+        .await
+        .expect("valid test fixture");
 
     assert_eq!(
-        reopened.read_range("post", 0..8).await.unwrap(),
+        reopened
+            .read_range("post", 0..8)
+            .await
+            .expect("valid test fixture"),
         Some(b"new data".to_vec())
     );
     assert!(root.join("post.response.commit").exists());
@@ -87,14 +109,14 @@ async fn restart_keeps_a_published_stage_when_sparse_retirement_was_interrupted(
     assert!((8..=16).contains(&recovered_usage));
     tokio::fs::remove_dir(root.join("post.sparse.intent.tmp"))
         .await
-        .unwrap();
+        .expect("valid test fixture");
     let retry = reopened
         .reserve_action(&whole_identity, 3, 8)
         .await
-        .unwrap();
+        .expect("valid test fixture");
     assert_eq!(reopened.used_bytes().await, 8);
     reopened.release_action(&retry).await;
     assert!(!root.join("post.response.commit").exists());
     assert!(!root.join("post.sparse.intent").exists());
-    store_fixture::discard(&root);
+    crate::tests::store_fixture::discard(&root);
 }

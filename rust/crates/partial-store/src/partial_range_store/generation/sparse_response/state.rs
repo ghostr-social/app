@@ -3,7 +3,7 @@ use crate::partial_range_store::sparse_intent::{self, SparseIntentAction};
 use crate::partial_range_store::{PartialRangeStore, StoreAction};
 use anyhow::{ensure, Result};
 use ghostr_engine::representation::{SourceGeneration, TransferIdentity};
-use sha2::Digest;
+use sha2::Digest as _;
 
 impl PartialRangeStore {
     pub(super) async fn sparse_state(

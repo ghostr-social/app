@@ -44,7 +44,7 @@ fn candidate(mirror_available: bool) -> crate::adaptive::CandidateSnapshot {
         CandidateEvidence {
             post,
             feed_offset: FeedOffset::new(0),
-            view_probability: ViewProbability::new(1.0).unwrap(),
+            view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
             present: vec![ByteRange::new(0, 8)],
             stored_total: Some(16),
             continuation_source: Some(MIRROR.to_owned()),
@@ -54,7 +54,7 @@ fn candidate(mirror_available: bool) -> crate::adaptive::CandidateSnapshot {
             origins: vec![healthy_origin(PRIMARY, 20_000_000, 50), mirror],
         },
     )
-    .unwrap()
+    .expect("valid test fixture")
 }
 
 fn metadata() -> VideoMeta {

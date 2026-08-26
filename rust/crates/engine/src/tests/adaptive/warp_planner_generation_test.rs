@@ -1,7 +1,8 @@
+use crate::adaptive::axiom_test_support::WarpActionGenerator;
 use crate::adaptive::{
     ActionKind, ActivePlannerContext, AdaptivePlayabilityPolicy, GeneratedActions, HedgeInput,
     IdentityProof, InFlightAction, PlannerCapability, PlannerContext, PromotionGrant,
-    RetrievalRequest, TransformCapability, TransformKind, WarpActionGenerator,
+    RetrievalRequest, TransformCapability, TransformKind,
 };
 use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::{healthy_origin, snapshot};
@@ -85,7 +86,7 @@ pub(super) fn generated_actions() -> GeneratedActions {
         .with_hedge(hedge, IdentityProof::VerifiedHash([3; 32]), MIRROR);
     let context = PlannerContext::explicitly_unavailable(&input)
         .with_capability(
-            post,
+            &post,
             PlannerCapability::reported(
                 false,
                 Some(TransformCapability::new(TransformKind::Remux, 300, 900_000)),

@@ -6,7 +6,7 @@ use gateway_fixture::progressive::progressive_harness;
 use gateway_fixture::progressive_request::capability_request;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn old_progressive_asset_cannot_serve_a_replacement_representation() {
@@ -19,14 +19,29 @@ async fn old_progressive_asset_cannot_serve_a_replacement_representation() {
     let new = harness.issue_video_asset("clip").await;
 
     let stale = capability_request("clip", old.as_str(), None);
-    let stale = harness.router.clone().oneshot(stale).await.unwrap();
+    let stale = harness
+        .router
+        .clone()
+        .oneshot(stale)
+        .await
+        .expect("valid test fixture");
     assert_eq!(stale.status(), StatusCode::NOT_FOUND);
     assert_ne!(old, new);
 
     let current = capability_request("clip", new.as_str(), None);
-    let current = harness.router.clone().oneshot(current).await.unwrap();
+    let current = harness
+        .router
+        .clone()
+        .oneshot(current)
+        .await
+        .expect("valid test fixture");
     assert_eq!(current.status(), StatusCode::OK);
-    assert_eq!(to_bytes(current.into_body(), 4).await.unwrap(), b"bbbb"[..]);
+    assert_eq!(
+        to_bytes(current.into_body(), 4)
+            .await
+            .expect("valid test fixture"),
+        b"bbbb"[..]
+    );
     std::fs::remove_dir_all(harness.root).expect("remove store");
 }
 
@@ -37,13 +52,21 @@ async fn bind_bytes(
 ) {
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(PostId::new("clip"), meta(source, bytes.len() as u64));
-    harness.store.bind_representation(binding).await.unwrap();
+    harness
+        .store
+        .bind_representation(binding)
+        .await
+        .expect("valid test fixture");
     harness
         .store
         .set_total_len("clip", bytes.len() as u64)
         .await
-        .unwrap();
-    harness.store.write_range("clip", 0, bytes).await.unwrap();
+        .expect("valid test fixture");
+    harness
+        .store
+        .write_range("clip", 0, bytes)
+        .await
+        .expect("valid test fixture");
 }
 
 fn meta(source: &str, size: u64) -> VideoMeta {

@@ -22,7 +22,7 @@ fn an_authentically_truncated_warp_trace_fails_closed() {
         Err(DecisionReplayStatus::AdvancedReplayUnavailable)
     );
     assert_eq!(
-        captured.replay(),
+        captured.integrity_status(),
         DecisionReplayStatus::AdvancedReplayUnavailable
     );
 }

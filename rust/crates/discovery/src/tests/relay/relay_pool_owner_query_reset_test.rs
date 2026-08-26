@@ -13,11 +13,11 @@ async fn reset_finishes_without_releasing_the_old_query() {
     let client = Arc::new(Client::default());
     let io = Arc::new(TestRelayIo::blocked());
     let owner = Arc::new(RelayPoolOwner::with_io(
-        client.clone(),
+        std::sync::Arc::clone(&client),
         RelayPoolConfiguration::default(),
-        io.clone(),
+        std::sync::Arc::<TestRelayIo>::clone(&io),
     ));
-    let query_owner = owner.clone();
+    let query_owner = std::sync::Arc::clone(&owner);
     let query = tokio::spawn(async move { query_owner.read(read_request(DYNAMIC)).await });
     io.query_started.notified().await;
 

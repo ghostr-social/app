@@ -14,12 +14,14 @@ impl FetchFailure {
         error: tokio::task::JoinError,
         progress: &FetchProgress,
     ) -> Self {
-        let task_failure = match error.is_panic() {
-            true => TaskFailure::Panicked,
-            false => TaskFailure::Cancelled,
+        let task_failure = if error.is_panic() {
+            TaskFailure::Panicked
+        } else {
+            TaskFailure::Cancelled
         };
+        let error = anyhow::Error::new(error).context("HLS fetch task failed");
         let mut failure = Self::failure(
-            anyhow::anyhow!("HLS fetch task failed: {error}"),
+            error,
             ErrorReason::Unknown,
             FailureEvidence {
                 origin: progress.origin(),
@@ -30,14 +32,6 @@ impl FetchFailure {
         failure.task_failure = Some(task_failure);
         failure.response_completed = progress.response_completed();
         failure
-    }
-
-    #[cfg(test)]
-    pub(in crate::segmented) fn is_local_terminal(&self) -> bool {
-        matches!(
-            self.disposition(),
-            crate::segmented::fetch::FailureDisposition::Terminal
-        )
     }
 
     pub(in crate::segmented) fn task_failure_class(&self) -> Option<&'static str> {
@@ -53,3 +47,7 @@ impl TaskFailure {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "task_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

@@ -1,12 +1,12 @@
 //! A signed-out main feed has no follows to route to. Its request stays
 //! unscoped, asks for discovery relays, and uses configured read relays.
 
-use ghostr_discovery::cache::ViewerScope;
-use ghostr_discovery::content::social_graph::SocialGraph;
-use ghostr_discovery::feed::spec::FeedSpec;
-use ghostr_discovery::outbox::directory::OutboxDirectory;
-use ghostr_discovery::query::search::{plan_discovery, OutboxLookup};
-use ghostr_discovery::query::video_filters::{DiscoveryFlow, DiscoveryRequest};
+use crate::cache::ViewerScope;
+use crate::content::social_graph::SocialGraph;
+use crate::feed::spec::FeedSpec;
+use crate::outbox::directory::OutboxDirectory;
+use crate::query::search::{plan_discovery, OutboxLookup};
+use crate::query::video_filters::{DiscoveryFlow, DiscoveryRequest};
 use nostr_sdk::Keys;
 
 const BOOTSTRAP: &str = "wss://boot.example";

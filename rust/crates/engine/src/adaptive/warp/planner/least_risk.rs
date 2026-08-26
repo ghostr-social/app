@@ -24,13 +24,18 @@ pub(super) fn choose(nodes: &[ActionNode]) -> SearchDecision {
 }
 
 fn select(nodes: &[ActionNode]) -> Option<ActionNode> {
+    least_risk_root(nodes, true).or_else(|| least_risk_root(nodes, false))
+}
+
+fn least_risk_root(nodes: &[ActionNode], require_ready_gain: bool) -> Option<ActionNode> {
     nodes
         .iter()
         .filter(|node| node.requires.is_empty())
+        .filter(|node| !require_ready_gain || node.forecast.ready_playback_ms > 0)
         .min_by_key(|node| {
             (
                 node.forecast.completion.p99_ms,
-                std::cmp::Reverse(node.forecast.success_bps),
+                core::cmp::Reverse(node.forecast.success_bps),
                 node.id,
             )
         })

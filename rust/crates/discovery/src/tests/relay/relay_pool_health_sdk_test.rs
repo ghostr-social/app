@@ -1,9 +1,9 @@
 use crate::relay::pool::{RelayPoolConfiguration, RelayPoolOwner, RelayReadRequest};
 use crate::test_support::read_request;
 use crate::tests::relay_io_delayed_fixture::{delayed_relay, incomplete_relay};
+use core::time::Duration;
 use nostr_sdk::{Client, EventBuilder, Keys, Kind};
 use std::sync::Arc;
-use std::time::Duration;
 
 #[tokio::test]
 async fn owner_sdk_retry_stays_incomplete_until_every_requested_relay_recovers() {

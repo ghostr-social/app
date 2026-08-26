@@ -16,6 +16,8 @@ fn becomes_startable_once_the_head_is_on_disk() {
             ranges: &covered,
             stored_total: None,
             params: &params,
+            playback_blocked: false,
+            authority: None,
         },
     );
 
@@ -38,6 +40,8 @@ fn stays_unstartable_while_head_bytes_are_missing() {
             ranges: &partial,
             stored_total: None,
             params: &params,
+            playback_blocked: false,
+            authority: None,
         },
     );
 
@@ -58,6 +62,8 @@ fn a_stored_total_beats_the_discovery_size() {
             ranges: &[],
             stored_total: Some(20),
             params: &params,
+            playback_blocked: false,
+            authority: None,
         },
     );
 

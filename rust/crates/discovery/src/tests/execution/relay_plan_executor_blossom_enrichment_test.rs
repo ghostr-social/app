@@ -1,5 +1,5 @@
 use crate::content::candidates::CandidateRegistry;
-use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
+use crate::plan_executor::{PlanExecutor as _, PlannedRetrieval};
 use crate::query::search::plan_discovery;
 use crate::query::video_filters::DiscoveryRequest;
 use crate::retrieval_types::{FeedContext, RetrievalPriority};
@@ -17,7 +17,7 @@ async fn feed_execution_loads_the_media_authors_blossom_server_list() {
         .expect("server list");
     let io = BlossomIo::new(video, servers.clone());
 
-    let events = executor(io.clone())
+    let events = executor(std::sync::Arc::clone(&io))
         .execute(retrieval())
         .await
         .expect("feed retrieval");

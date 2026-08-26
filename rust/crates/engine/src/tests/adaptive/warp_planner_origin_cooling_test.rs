@@ -1,6 +1,6 @@
+use crate::adaptive::axiom_test_support::WarpActionGenerator;
 use crate::adaptive::{
     AdaptivePlayabilityPolicy, PlannerCommand, PlannerContext, PlannerRetryAvailability,
-    WarpActionGenerator,
 };
 use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::{healthy_origin, snapshot};
@@ -19,7 +19,7 @@ fn cooling_blocks_requests_until_the_authoritative_ready_transition() {
     let post = input.candidates[0].post.clone();
     let base = AdaptivePlayabilityPolicy.plan(&input);
     let context = PlannerContext::explicitly_unavailable(&input).with_retry_availability(
-        post,
+        &post,
         PlannerRetryAvailability::Cooling {
             eligible_at_ms: 2_000,
         },
@@ -45,8 +45,9 @@ fn network_sources(actions: &crate::adaptive::GeneratedActions) -> impl Iterator
         .iter()
         .filter_map(|action| match &action.command {
             PlannerCommand::ProbeHead { source, .. } => Some(source.as_str()),
-            PlannerCommand::Transfer(transfer) => Some(transfer.source.as_str()),
-            PlannerCommand::Hedge { transfer, .. } => Some(transfer.source.as_str()),
+            PlannerCommand::Transfer(transfer) | PlannerCommand::Hedge { transfer, .. } => {
+                Some(transfer.source.as_str())
+            }
             _ => None,
         })
 }

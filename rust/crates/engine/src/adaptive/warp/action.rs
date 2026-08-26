@@ -8,27 +8,27 @@ pub use kind::{ActionKind, TransformKind};
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct ActionValue {
-    pub delay_loss_micros: i64,
-    pub reserve_gain_micros: i64,
-    pub information_value_micros: i64,
-    pub exploration_micros: i64,
-    pub cache_gain_micros: i64,
-    pub tail_risk_micros: i64,
-    pub cvar_micros: i64,
-    pub rank_cost_micros: i64,
+    pub(crate) delay_loss_micros: i64,
+    pub(crate) reserve_gain_micros: i64,
+    pub(crate) information_value_micros: i64,
+    pub(crate) exploration_micros: i64,
+    pub(crate) cache_gain_micros: i64,
+    pub(crate) tail_risk_micros: i64,
+    pub(crate) cvar_micros: i64,
+    pub(crate) rank_cost_micros: i64,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct ActionForecast {
-    pub completion: CompletionTimes,
-    pub success_bps: u16,
+    pub(crate) completion: CompletionTimes,
+    pub(crate) success_bps: u16,
     pub ready_playback_ms: u64,
     pub quality_gain_micros: u64,
-    pub cache_reuse_bps: u16,
+    pub(crate) cache_reuse_bps: u16,
 }
 
 impl ActionForecast {
-    pub const fn new(
+    pub(crate) const fn new(
         completion: CompletionTimes,
         success_bps: u16,
         ready_playback_ms: u64,
@@ -42,12 +42,12 @@ impl ActionForecast {
         }
     }
 
-    pub const fn with_quality(mut self, gain_micros: u64) -> Self {
+    pub(crate) const fn with_quality(mut self, gain_micros: u64) -> Self {
         self.quality_gain_micros = gain_micros;
         self
     }
 
-    pub const fn with_cache_reuse(mut self, probability_bps: u16) -> Self {
+    pub(crate) const fn with_cache_reuse(mut self, probability_bps: u16) -> Self {
         self.cache_reuse_bps = clamp_bps(probability_bps);
         self
     }
@@ -73,7 +73,7 @@ impl ActionValue {
         }
     }
 
-    pub fn total(self, resources: ResourceCost, prices: ResourcePrices) -> i64 {
+    pub(crate) fn total(self, resources: ResourceCost, prices: ResourcePrices) -> i64 {
         let benefits = self
             .delay_loss_micros
             .saturating_add(self.reserve_gain_micros)
@@ -93,12 +93,12 @@ pub struct ActionNode {
     pub id: u16,
     pub post: PostId,
     pub kind: ActionKind,
-    pub value: ActionValue,
+    pub(crate) value: ActionValue,
     pub resources: ResourceCost,
     pub forecast: ActionForecast,
     pub(super) origin: String,
     request_authority: Option<RequestAuthority>,
-    pub requires: Vec<u16>,
+    pub(crate) requires: Vec<u16>,
     request: Option<RetrievalRequest>,
 }
 
@@ -131,7 +131,7 @@ impl ActionNode {
         authorized
     }
 
-    pub fn with_forecast(mut self, forecast: ActionForecast) -> Self {
+    pub(crate) fn with_forecast(mut self, forecast: ActionForecast) -> Self {
         self.forecast = forecast;
         self
     }
@@ -143,12 +143,12 @@ impl ActionNode {
         self
     }
 
-    pub fn with_request(mut self, request: RetrievalRequest) -> Self {
+    pub(super) fn with_request(mut self, request: RetrievalRequest) -> Self {
         self.request = Some(request);
         self
     }
 
-    pub fn request_authority(&self) -> Option<&RequestAuthority> {
+    pub(crate) fn request_authority(&self) -> Option<&RequestAuthority> {
         self.request_authority.as_ref()
     }
 
@@ -160,7 +160,7 @@ impl ActionNode {
         self.request
     }
 
-    pub fn requiring(mut self, requirements: &[u16]) -> Self {
+    pub(crate) fn requiring(mut self, requirements: &[u16]) -> Self {
         self.requires = requirements.to_vec();
         self
     }

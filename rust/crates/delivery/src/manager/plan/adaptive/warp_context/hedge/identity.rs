@@ -1,6 +1,5 @@
 use super::super::active::ActiveContextInput;
 use ghostr_engine::adaptive::{CandidateSnapshot, IdentityProof, RetrievalRequest};
-use ghostr_engine::evidence::{EvidenceField, EvidenceValue};
 
 pub(super) fn proof(
     evidence: &ActiveContextInput<'_>,
@@ -12,24 +11,22 @@ pub(super) fn proof(
         .catalog()
         .transfer_identity(&candidate.post, alternate)?;
     match evidence.active.request() {
-        RetrievalRequest::FetchRange { .. } => verified_hash(candidate),
+        RetrievalRequest::FetchRange { .. } => verified_hash(evidence, candidate, alternate),
         RetrievalRequest::FetchWhole { .. } => independent_whole(evidence, alternate),
     }
 }
 
-fn verified_hash(candidate: &CandidateSnapshot) -> Option<IdentityProof> {
-    if candidate
-        .evidence
-        .conflicts
-        .contains(&EvidenceField::AdvertisedHash)
-    {
-        return None;
-    }
-    let EvidenceValue::AdvertisedHash(value) =
-        candidate.evidence.value(EvidenceField::AdvertisedHash)?
-    else {
-        return None;
-    };
+fn verified_hash(
+    evidence: &ActiveContextInput<'_>,
+    candidate: &CandidateSnapshot,
+    alternate: &str,
+) -> Option<IdentityProof> {
+    let primary = evidence.active.identity().source().as_str();
+    let value =
+        evidence
+            .state
+            .catalog()
+            .verified_mirror_digest(&candidate.post, primary, alternate)?;
     decode_hash(value).map(IdentityProof::VerifiedHash)
 }
 
@@ -47,7 +44,7 @@ fn decode_hash(value: &str) -> Option<[u8; 32]> {
         return None;
     }
     let mut result = [0; 32];
-    for (index, pair) in value.as_bytes().chunks_exact(2).enumerate() {
+    for (index, pair) in value.as_bytes().as_chunks::<2>().0.iter().enumerate() {
         result[index] = nibble(pair[0])?
             .checked_mul(16)?
             .checked_add(nibble(pair[1])?)?;

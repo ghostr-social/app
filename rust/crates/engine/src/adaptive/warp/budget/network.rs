@@ -13,7 +13,7 @@ pub struct NetworkTokenBucket {
 }
 
 impl NetworkTokenBucket {
-    pub const fn new(capacity: u64, refill_per_second: u64, now_ms: u64) -> Self {
+    pub(crate) const fn new(capacity: u64, refill_per_second: u64, now_ms: u64) -> Self {
         Self {
             capacity,
             refill_per_second,
@@ -24,12 +24,12 @@ impl NetworkTokenBucket {
         }
     }
 
-    pub fn available(&mut self, now_ms: u64) -> u64 {
+    pub(crate) fn available(&mut self, now_ms: u64) -> u64 {
         self.refill(now_ms);
         self.tokens
     }
 
-    pub fn consume(&mut self, bytes: u64, now_ms: u64) -> bool {
+    pub(crate) fn consume(&mut self, bytes: u64, now_ms: u64) -> bool {
         self.refill(now_ms);
         if bytes > self.tokens {
             return false;
@@ -38,7 +38,7 @@ impl NetworkTokenBucket {
         true
     }
 
-    pub fn reconcile_reservation(&mut self, reserved: u64, actual: u64, now_ms: u64) {
+    pub(crate) fn reconcile_reservation(&mut self, reserved: u64, actual: u64, now_ms: u64) {
         self.refill(now_ms);
         if actual <= reserved {
             self.credit(reserved - actual);
@@ -65,7 +65,7 @@ impl NetworkTokenBucket {
         Some(now_ms.saturating_add(wait_ms.min(u128::from(u64::MAX)) as u64))
     }
 
-    pub fn reconfigure(&mut self, capacity: u64, refill_per_second: u64, now_ms: u64) {
+    pub(crate) fn reconfigure(&mut self, capacity: u64, refill_per_second: u64, now_ms: u64) {
         self.refill(now_ms);
         let outstanding = self
             .capacity
@@ -87,9 +87,10 @@ impl NetworkTokenBucket {
             .saturating_add(u128::from(self.refill_milli_bytes));
         let produced_bytes = (produced / 1_000).min(u128::from(u64::MAX)) as u64;
         self.credit(produced_bytes);
-        self.refill_milli_bytes = match self.tokens == self.capacity && self.debt_bytes == 0 {
-            true => 0,
-            false => (produced % 1_000) as u64,
+        self.refill_milli_bytes = if self.tokens == self.capacity && self.debt_bytes == 0 {
+            0
+        } else {
+            (produced % 1_000) as u64
         };
         self.updated_at_ms = self.updated_at_ms.max(now_ms);
     }

@@ -1,11 +1,11 @@
 //! Executes exact storage ranges selected by the adaptive policy.
 
 use crate::manager::DeliveryWorker;
+use core::ops::Range;
 use ghostr_engine::adaptive::Eviction;
 use ghostr_engine::PostId;
 use ghostr_partial_store::partial_range_store::ContentRevision;
 use std::collections::{BTreeMap, HashMap};
-use std::ops::Range;
 
 impl DeliveryWorker {
     pub(super) async fn apply_policy_evictions(

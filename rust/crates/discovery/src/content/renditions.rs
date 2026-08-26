@@ -14,7 +14,7 @@ pub(crate) fn progressive_renditions(event: &Event) -> Vec<VideoRendition> {
         return Vec::new();
     }
     event_imeta_media(event)
-        .into_iter()
+        .iter()
         .filter_map(progressive_rendition)
         .collect()
 }
@@ -34,9 +34,9 @@ pub(crate) fn video_meta(media: &NativeMediaMetadata) -> VideoMeta {
     }
 }
 
-fn progressive_rendition(media: NativeMediaMetadata) -> Option<VideoRendition> {
+fn progressive_rendition(media: &NativeMediaMetadata) -> Option<VideoRendition> {
     let bitrate = media.extras.bitrate_bps;
-    VideoRendition::try_new(video_meta(&media), bitrate).ok()
+    VideoRendition::try_new(video_meta(media), bitrate).ok()
 }
 
 fn delivery_kind(delivery: NativeVideoDelivery) -> DeliveryKind {

@@ -1,6 +1,6 @@
 use super::answer_once;
 use std::sync::Arc;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::TcpListener;
 use tokio::sync::{oneshot, Notify};
 use tokio::task::JoinHandle;

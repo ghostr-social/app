@@ -56,34 +56,11 @@ impl GatewayRouterResources {
     }
 }
 
-/// The gateway with `/video.mp4` served from the partial store instead of
-/// proxied upstream; HLS routes and `/status` are wired unchanged.
-pub fn configured_router_with_progressive(
-    resources: GatewayRouterResources,
-    progressive: Arc<ProgressiveState>,
-) -> Router {
-    configured_router_with_segmented(resources, progressive)
-}
-
 pub fn configured_router_with_segmented(
     resources: GatewayRouterResources,
     progressive: Arc<ProgressiveState>,
 ) -> Router {
     progressive_route::router(progressive).merge(shared_router(shared_state(resources)))
-}
-
-#[cfg(all(
-    feature = "video-debug-web",
-    debug_assertions,
-    not(any(target_os = "android", target_os = "ios"))
-))]
-pub fn configured_router_with_progressive_debug(
-    resources: GatewayRouterResources,
-    progressive: Arc<ProgressiveState>,
-    delivery: DeliveryHandle,
-    nostr: Arc<Client>,
-) -> Router {
-    configured_router_with_segmented_debug(resources, progressive, delivery, nostr)
 }
 
 #[cfg(all(
@@ -97,16 +74,13 @@ pub fn configured_router_with_segmented_debug(
     delivery: DeliveryHandle,
     nostr: Arc<Client>,
 ) -> Router {
-    let debug = debug_http::DebugHttpResources {
-        progressive: progressive.clone(),
-        requests: resources.requests.clone(),
+    let debug = debug_http::router(
+        progressive.clone(),
         delivery,
-        hls: resources.hls_sessions.clone(),
-        client: nostr,
-    };
-    progressive_route::router(progressive.clone())
-        .merge(debug_http::router(debug))
-        .merge(shared_router(shared_state(resources)))
+        resources.hls_sessions.clone(),
+        nostr,
+    );
+    configured_router_with_segmented(resources, progressive).merge(debug)
 }
 
 fn shared_state(resources: GatewayRouterResources) -> Arc<GatewayHttpState> {

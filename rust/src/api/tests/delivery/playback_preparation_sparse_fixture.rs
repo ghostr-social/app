@@ -17,12 +17,14 @@ pub(super) fn sparse_startup() -> SparseStartupFixture {
     let moov = classic_moov();
     let timeline =
         parse_mp4_segments(&[MediaSegment::new(0, &prefix), MediaSegment::new(512, &moov)])
-            .unwrap();
+            .expect("test fixture precondition must hold");
     SparseStartupFixture {
         meta: sized_meta(1_024, 1_000),
         total: 1_024,
         writes: vec![(0, prefix), (512, moov)],
-        startup: timeline.startup_footprint().unwrap(),
+        startup: timeline
+            .startup_footprint()
+            .expect("test fixture precondition must hold"),
     }
 }
 
@@ -45,7 +47,8 @@ pub(super) fn complete_startup(meta: &VideoMeta, total: u64) -> StartupFootprint
         CandidateEvidence {
             post,
             feed_offset: FeedOffset::new(1),
-            view_probability: ViewProbability::new(1.0).unwrap(),
+            view_probability: ViewProbability::new(1.0)
+                .expect("test fixture precondition must hold"),
             present: vec![ByteRange::new(0, total)],
             stored_total: Some(total),
             continuation_source: None,

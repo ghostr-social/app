@@ -3,10 +3,8 @@
 //! re-report the same answer sixteen times a second; a fresh
 //! measurement is what starts a new decision.
 
-mod store_fixture;
-
-use std::time::Duration;
-use store_fixture::{discard, limits, paced_store};
+use crate::tests::store_fixture::{discard, limits, paced_store};
+use core::time::Duration;
 
 const RECHECK: Duration = Duration::from_secs(2);
 

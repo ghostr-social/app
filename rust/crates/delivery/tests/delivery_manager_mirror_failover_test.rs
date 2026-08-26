@@ -14,8 +14,8 @@ use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 #[tokio::test]
 async fn delivery_manager_falls_back_to_a_healthy_mirror() {
     let log = hit_log();
-    let broken = serve_rejecting("broken", log.clone()).await;
-    let mirror = serve_recording("mirror", media_body(), log.clone()).await;
+    let broken = serve_rejecting("broken", std::sync::Arc::clone(&log)).await;
+    let mirror = serve_recording("mirror", media_body(), std::sync::Arc::clone(&log)).await;
     let harness = start_harness("ghostr-delivery-mirror", DeliveryOptions::default());
 
     harness

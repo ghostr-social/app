@@ -1,7 +1,7 @@
 use crate::evidence::EvidenceValidator;
+use core::fmt::{Display, Formatter};
+use core::num::NonZeroU64;
 use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter};
-use std::num::NonZeroU64;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct HttpGenerationKey {
@@ -34,6 +34,9 @@ pub enum HttpGenerationAuthority {
 pub struct InvalidHttpGeneration;
 
 impl HttpGenerationKey {
+    /// # Errors
+    ///
+    /// Returns [`InvalidHttpGeneration`] when the final URL is empty or contains control bytes.
     pub fn try_new(
         final_url: impl Into<String>,
         validator: Option<EvidenceValidator>,
@@ -58,7 +61,10 @@ impl HttpGenerationKey {
 }
 
 impl HttpGenerationEpoch {
-    pub fn try_new(value: u64) -> Result<Self, InvalidHttpGeneration> {
+    /// # Errors
+    ///
+    /// Returns [`InvalidHttpGeneration`] when the epoch is zero.
+    pub(crate) fn try_new(value: u64) -> Result<Self, InvalidHttpGeneration> {
         NonZeroU64::new(value)
             .map(Self)
             .ok_or(InvalidHttpGeneration)
@@ -70,6 +76,9 @@ impl HttpGenerationEpoch {
 }
 
 impl HttpGenerationLease {
+    /// # Errors
+    ///
+    /// Returns [`InvalidHttpGeneration`] when the epoch is zero.
     pub fn try_new(key: HttpGenerationKey, epoch: u64) -> Result<Self, InvalidHttpGeneration> {
         Ok(Self {
             key,
@@ -81,7 +90,7 @@ impl HttpGenerationLease {
         &self.key
     }
 
-    pub const fn epoch(&self) -> HttpGenerationEpoch {
+    const fn epoch(&self) -> HttpGenerationEpoch {
         self.epoch
     }
 }
@@ -99,7 +108,7 @@ impl HttpGenerationStamp {
             HttpGenerationAuthority::Trusted(lease) => lease.key() == &key,
             HttpGenerationAuthority::Unknown(_) => true,
         };
-        debug_assert!(coherent);
+        debug_assert!(coherent, "HTTP generation authority must match its key");
         Self { key, authority }
     }
 
@@ -122,9 +131,9 @@ impl HttpGenerationAuthority {
 }
 
 impl Display for InvalidHttpGeneration {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> core::fmt::Result {
         formatter.write_str("HTTP generation requires a final URL and nonzero epoch")
     }
 }
 
-impl std::error::Error for InvalidHttpGeneration {}
+impl core::error::Error for InvalidHttpGeneration {}

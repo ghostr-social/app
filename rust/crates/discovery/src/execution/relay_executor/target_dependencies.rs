@@ -36,14 +36,6 @@ pub(super) fn dependent_target_plan(events: &[Event]) -> Option<DependentTargetP
     })
 }
 
-#[cfg(test)]
-pub(crate) fn target_plan_with_dependencies(
-    events: &[Event],
-) -> Option<(QueryPlan, Vec<BTreeSet<EventId>>, BTreeSet<EventId>)> {
-    dependent_target_plan(events)
-        .map(|dependent| (dependent.plan, dependent.dependencies, dependent.unplanned))
-}
-
 fn matching_query(queries: &[PlannedQuery], target: &RepostLookupTarget) -> Option<usize> {
     queries.iter().position(|query| match target {
         RepostLookupTarget::Event { id, author, kind } => {
@@ -111,3 +103,7 @@ fn identifier_matches(query: &PlannedQuery, identifier: &str) -> bool {
         .get(&tag)
         .is_some_and(|values| values.contains(identifier))
 }
+
+#[cfg(test)]
+#[path = "target_dependencies_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

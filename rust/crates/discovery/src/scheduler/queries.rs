@@ -17,15 +17,15 @@ pub(crate) struct QueryBook {
 }
 
 impl QueryBook {
-    pub(crate) fn reset_session(&mut self) {
+    pub(super) fn reset_session(&mut self) {
         self.pending.clear();
     }
 
-    pub(crate) fn register(&mut self, context: FeedContext, reply: oneshot::Sender<QueryResult>) {
+    pub(super) fn register(&mut self, context: FeedContext, reply: oneshot::Sender<QueryResult>) {
         self.pending.insert(context, reply);
     }
 
-    pub(crate) fn finish(
+    pub(super) fn finish(
         &mut self,
         context: &FeedContext,
         result: PageResult,
@@ -39,9 +39,8 @@ impl QueryBook {
 }
 
 fn complete(result: PageResult) -> QueryResult {
-    result.and_then(|page| {
-        page.complete
-            .then_some(page.events)
-            .ok_or_else(|| PlanFailure::new(INCOMPLETE_QUERY_MESSAGE))
-    })
+    let page = result?;
+    page.complete
+        .then_some(page.events)
+        .ok_or_else(|| PlanFailure::new(INCOMPLETE_QUERY_MESSAGE))
 }

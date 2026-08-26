@@ -8,15 +8,20 @@ use ghostr_engine::PostId;
 use tokio::sync::{mpsc, oneshot};
 
 impl DeliveryHandle {
+    /// Clears pending delivery work and waits for the manager to acknowledge it.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the manager is unavailable or the acknowledgement is interrupted.
     pub async fn clear(&self) -> anyhow::Result<()> {
         let (reply, result) = oneshot::channel();
         self.clears
             .send(reply)
             .await
-            .map_err(|_| anyhow::anyhow!("delivery manager is unavailable"))?;
+            .map_err(|error| anyhow::anyhow!("delivery manager is unavailable: {error}"))?;
         result
             .await
-            .map_err(|_| anyhow::anyhow!("delivery reset was interrupted"))?
+            .map_err(|error| anyhow::anyhow!("delivery reset was interrupted: {error}"))?
     }
 }
 
@@ -25,11 +30,13 @@ impl CommandReceiver {
         self.evaluation.clone()
     }
 
-    pub fn receivers(&mut self) -> (&mut MailboxReceiver, &mut mpsc::Receiver<ClearRequest>) {
+    pub(crate) fn receivers(
+        &mut self,
+    ) -> (&mut MailboxReceiver, &mut mpsc::Receiver<ClearRequest>) {
         (&mut self.commands, &mut self.clears)
     }
 
-    pub(crate) fn discard_pending(&mut self) {
+    pub(crate) fn discard_pending(&self) {
         self.commands.clear();
     }
 
@@ -49,7 +56,7 @@ impl CommandReceiver {
         self.commands.try_control()
     }
 
-    pub(crate) fn try_controls_through_focus(&mut self) -> Option<Vec<DeliveryCommand>> {
+    pub(crate) fn try_controls_through_focus(&self) -> Option<Vec<DeliveryCommand>> {
         self.commands.try_controls_through_focus()
     }
 

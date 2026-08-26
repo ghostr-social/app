@@ -12,15 +12,15 @@ use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
+use core::time::Duration;
 use tokio::sync::Mutex;
 
 pub(super) struct TrackedHead {
-    pub handle: DeliveryHandle,
-    pub commands: CommandReceiver,
-    pub sequence: u64,
-    pub identity: ghostr_engine::representation::TransferIdentity,
-    pub claim: DecisionClaim,
+    pub(super) handle: DeliveryHandle,
+    pub(super) commands: CommandReceiver,
+    pub(super) sequence: u64,
+    pub(super) identity: ghostr_engine::representation::TransferIdentity,
+    pub(super) claim: DecisionClaim,
 }
 
 struct PanicClient;
@@ -60,7 +60,7 @@ pub(super) fn context() -> (TransferContext, PathBuf) {
     let context = TransferContext {
         requests: MediaRequestExecutor::new(
             Arc::new(PanicClient),
-            MediaRequestLimits::try_new(1, 1).unwrap(),
+            MediaRequestLimits::try_new(1, 1).expect("valid test fixture"),
         ),
         store,
         events,

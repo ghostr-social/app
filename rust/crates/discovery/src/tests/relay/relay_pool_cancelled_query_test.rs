@@ -1,8 +1,8 @@
 use crate::relay::pool::{RelayPoolConfiguration, RelayPoolOwner};
 use crate::test_support::{read_request, TestRelayIo};
+use core::time::Duration;
 use nostr_sdk::Client;
 use std::sync::Arc;
-use std::time::Duration;
 
 const TRANSIENT_RELAY: &str = "wss://cancelled-query.example";
 
@@ -11,11 +11,11 @@ async fn cancelling_a_read_releases_its_transient_relay_role() {
     let client = Arc::new(Client::default());
     let io = Arc::new(TestRelayIo::blocked());
     let owner = Arc::new(RelayPoolOwner::with_io(
-        client.clone(),
+        std::sync::Arc::clone(&client),
         RelayPoolConfiguration::default(),
-        io.clone(),
+        std::sync::Arc::<TestRelayIo>::clone(&io),
     ));
-    let task_owner = owner.clone();
+    let task_owner = std::sync::Arc::clone(&owner);
     let task = tokio::spawn(async move { task_owner.read(read_request(TRANSIENT_RELAY)).await });
     io.query_started.notified().await;
 

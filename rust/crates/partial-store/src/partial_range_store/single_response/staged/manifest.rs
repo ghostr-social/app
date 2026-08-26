@@ -11,7 +11,7 @@ pub(in crate::partial_range_store) async fn complete(
     manifest.set_total_len(total)?;
     manifest.insert(0..total)?;
     let whole = 0..total;
-    for (span, checksum) in disk::checksum_blocks(path, std::slice::from_ref(&whole)).await? {
+    for (span, checksum) in disk::checksum_blocks(path, core::slice::from_ref(&whole)).await? {
         manifest.record_checksum(span, checksum)?;
     }
     Ok(manifest)

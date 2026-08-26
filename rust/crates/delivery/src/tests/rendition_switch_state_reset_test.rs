@@ -9,7 +9,7 @@ use ghostr_engine::playback::{
 };
 use ghostr_engine::video_rendition::VideoRendition;
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn selected_rendition_resets_representation_fenced_delivery_state() {
@@ -25,12 +25,12 @@ fn selected_rendition_resets_representation_fenced_delivery_state() {
         discovered_at: 1,
     });
     state.take_representation_bindings();
-    assert!(state.apply_playback(playback(post.clone())).is_accepted());
+    assert!(state.apply_playback(&playback(post.clone())).is_accepted());
     let identity = state
         .catalog()
         .transfer_identity(&post, "https://high.example/video.mp4")
-        .unwrap();
-    let binding = select_rendition(&mut state, &slow_stats(), 8_000).unwrap();
+        .expect("valid test fixture");
+    let binding = select_rendition(&mut state, &slow_stats(), 8_000).expect("valid test fixture");
     let mut probes = MetadataProbePool::new(1);
     probes.learned(&identity, None);
     let mut retry = RetryBook::new(RetryPolicy::default());
@@ -56,7 +56,7 @@ fn playback(post: PostId) -> DeliveryPlayback {
             1_000,
             PlaybackPhase::NetworkStalled,
         )
-        .unwrap(),
+        .expect("valid test fixture"),
     }
 }
 
@@ -64,7 +64,7 @@ fn slow_stats() -> HostStats {
     let mut stats = HostStats::new();
     for second in 1..=8 {
         let sample =
-            ThroughputSample::new(200_000, Duration::from_secs(1), second * 1_000, 1).unwrap();
+            ThroughputSample::new(200_000, Duration::from_secs(1), second * 1_000, 1).expect("valid test fixture");
         stats.record_host_throughput("high.example", sample);
     }
     stats
@@ -81,5 +81,5 @@ fn rendition(name: &str, bitrate: u64) -> VideoRendition {
         },
         Some(bitrate),
     )
-    .unwrap()
+    .expect("valid test fixture")
 }

@@ -1,7 +1,7 @@
 use super::stage_lease_fixture::object;
 use crate::segmented::prepare::prepare_complete;
-use std::future::{poll_fn, Future};
-use std::task::Poll;
+use core::future::{poll_fn, Future as _};
+use core::task::Poll;
 
 const MIB: usize = 1024 * 1024;
 
@@ -16,7 +16,7 @@ async fn first_block_hashing_cancels_at_a_bounded_checkpoint() {
         Poll::Ready(_) => panic!("prehash crossed its first cancellation checkpoint"),
     })
     .await;
-    cancel.send(()).unwrap();
+    cancel.send(()).expect("valid test fixture");
 
     assert!(future.await.is_err());
 }

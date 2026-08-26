@@ -20,7 +20,10 @@ pub(super) async fn refresh_current_asset(
         .store
         .media_snapshot(&query.id)
         .await
-        .map_err(|_| StatusCode::NOT_FOUND)?;
+        .map_err(|error| {
+            log::warn!("Could not inspect progressive asset authority: {error:#}");
+            StatusCode::NOT_FOUND
+        })?;
     if snapshot.binding().is_none() {
         return Ok(false);
     }

@@ -62,10 +62,7 @@ impl GateState {
         gate: &MediaRequestGate,
     ) -> Vec<(oneshot::Sender<RequestLease>, RequestLease)> {
         let mut grants = Vec::new();
-        loop {
-            let Some(index) = self.next_admissible() else {
-                break;
-            };
+        while let Some(index) = self.next_admissible() {
             let waiter = self.waiters.remove(index);
             self.claim(&waiter.authority, waiter.priority);
             let lease = RequestLease::new(gate.clone(), waiter.authority, waiter.priority);
@@ -85,16 +82,6 @@ impl GateState {
 
     pub(super) fn active_for(&self, authority: &RequestAuthority) -> usize {
         self.authority_capacity(authority).total()
-    }
-
-    pub(super) fn active_connections(&self) -> Vec<(String, usize)> {
-        let mut active: Vec<_> = self
-            .authorities
-            .iter()
-            .map(|(authority, active)| (authority.as_str().to_owned(), active.total()))
-            .collect();
-        active.sort_by(|left, right| left.0.cmp(&right.0));
-        active
     }
 
     fn next_admissible(&self) -> Option<usize> {

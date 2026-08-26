@@ -1,4 +1,4 @@
-use std::num::NonZeroU64;
+use core::num::NonZeroU64;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct RenditionId(String);
@@ -28,7 +28,10 @@ pub struct RenditionSet {
 }
 
 impl RenditionId {
-    pub fn try_new(value: impl Into<String>) -> Result<Self, RenditionError> {
+    /// # Errors
+    ///
+    /// Returns [`RenditionError::EmptyId`] when the identifier is blank.
+    pub(crate) fn try_new(value: impl Into<String>) -> Result<Self, RenditionError> {
         let value = value.into();
         if value.trim().is_empty() {
             return Err(RenditionError::EmptyId);
@@ -38,7 +41,10 @@ impl RenditionId {
 }
 
 impl Rendition {
-    pub fn try_new(
+    /// # Errors
+    ///
+    /// Returns an error when the identifier is blank or the bitrate is zero.
+    pub(crate) fn try_new(
         id: impl Into<String>,
         bitrate_bits_per_second: u64,
     ) -> Result<Self, RenditionError> {
@@ -48,17 +54,20 @@ impl Rendition {
         })
     }
 
-    pub fn id(&self) -> &RenditionId {
+    pub(crate) fn id(&self) -> &RenditionId {
         &self.id
     }
 
-    pub fn bitrate_bits_per_second(&self) -> u64 {
+    pub(crate) fn bitrate_bits_per_second(&self) -> u64 {
         self.bitrate.get()
     }
 }
 
 impl RenditionSet {
-    pub fn try_new(mut renditions: Vec<Rendition>) -> Result<Self, RenditionSetError> {
+    /// # Errors
+    ///
+    /// Returns an error for an empty set or duplicate identifiers or bitrates.
+    pub(crate) fn try_new(mut renditions: Vec<Rendition>) -> Result<Self, RenditionSetError> {
         if renditions.is_empty() {
             return Err(RenditionSetError::Empty);
         }
@@ -89,7 +98,7 @@ impl RenditionSet {
     }
 }
 
-fn rendition_order(left: &Rendition, right: &Rendition) -> std::cmp::Ordering {
+fn rendition_order(left: &Rendition, right: &Rendition) -> core::cmp::Ordering {
     left.bitrate
         .cmp(&right.bitrate)
         .then_with(|| left.id.cmp(&right.id))

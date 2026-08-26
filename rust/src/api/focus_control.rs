@@ -22,9 +22,9 @@ pub struct FfiFocusUpdate {
 
 #[derive(Clone, Copy, Debug)]
 pub struct FfiTransportRescue {
-    pub reason: FfiTransportRescueReason,
-    pub rank_displacement: u32,
-    pub wait_ms: u64,
+    pub(crate) reason: FfiTransportRescueReason,
+    pub(crate) rank_displacement: u32,
+    pub(crate) wait_ms: u64,
 }
 
 #[derive(Clone, Copy, Debug)]

@@ -1,4 +1,5 @@
-use crate::manager::reconcile_warp::{directive_for, WarpDirective};
+use crate::manager::reconcile_warp::axiom_test_support::directive_for;
+use crate::manager::reconcile_warp::WarpDirective;
 use crate::tests::support::planned_transfer;
 use ghostr_engine::adaptive::{
     Allocation, AllocationReason, CandidateUtility, PlannerCommand, PreemptionAuthority,
@@ -18,7 +19,7 @@ fn selected_hedge_retains_its_primary_and_links_the_exact_alternate() {
     };
 
     assert_eq!(
-        directive_for(Some(&command), std::slice::from_ref(&transfer)),
+        directive_for(Some(&command), core::slice::from_ref(&transfer)),
         WarpDirective::Hedge {
             primary: ActionId::new(7),
             alternate: transfer.id(),

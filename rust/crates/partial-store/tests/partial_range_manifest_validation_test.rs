@@ -1,4 +1,4 @@
-use ghostr_partial_store::partial_range_manifest::RangeManifest;
+use crate::partial_range_manifest::RangeManifest;
 
 #[test]
 fn range_manifest_rejects_conflicting_bounds_and_handles_empty_states() {

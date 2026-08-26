@@ -16,7 +16,7 @@ pub mod media_timeline;
 pub mod origin_model;
 pub mod playback;
 mod preview;
-pub mod rendition;
+pub(crate) mod rendition;
 pub mod representation;
 mod request_authority;
 pub mod scheduling;

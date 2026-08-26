@@ -16,13 +16,13 @@ use tokio::task::JoinHandle;
 const PROGRESS_BUFFER: usize = 8;
 
 pub(crate) struct RetrievalTaskInput {
-    pub(crate) task_id: u64,
-    pub(crate) executor: Arc<dyn PlanExecutor>,
-    pub(crate) finished: mpsc::UnboundedSender<FinishedRetrieval>,
-    pub(crate) outcomes: mpsc::UnboundedSender<RetrievalOutcome>,
-    pub(crate) request: RetrievalRequest,
-    pub(crate) plan: QueryPlan,
-    pub(crate) deferred_reposts: Vec<Event>,
+    pub(super) task_id: u64,
+    pub(super) executor: Arc<dyn PlanExecutor>,
+    pub(super) finished: mpsc::UnboundedSender<FinishedRetrieval>,
+    pub(super) outcomes: mpsc::UnboundedSender<RetrievalOutcome>,
+    pub(super) request: RetrievalRequest,
+    pub(super) plan: QueryPlan,
+    pub(super) deferred_reposts: Vec<Event>,
 }
 
 pub(crate) fn spawn_retrieval_task(input: RetrievalTaskInput) -> JoinHandle<()> {
@@ -140,6 +140,6 @@ fn forward_event(
     event: Event,
     had_playable: &mut bool,
 ) {
-    *had_playable |= playable_cursor(std::slice::from_ref(&event)).is_some();
+    *had_playable |= playable_cursor(core::slice::from_ref(&event)).is_some();
     send_progress(outcomes, context, event);
 }

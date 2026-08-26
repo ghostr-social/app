@@ -1,4 +1,4 @@
-use ghostr_engine::watch_model::{
+use crate::watch_model::{
     WatchCensor, WatchContext, WatchKey, WatchModel, WatchSample, WatchSampleKind,
 };
 
@@ -16,8 +16,8 @@ fn abandonment_changes_hazard_while_censored_delivery_events_do_not_become_swipe
     let mut censored = WatchModel::default();
     for index in 0..8 {
         let at_ms = 1_000 + index * 100;
-        abandoned.observe(sample("clip", 1_000, WatchSampleKind::Abandoned, at_ms));
-        censored.observe(sample(
+        abandoned.observe(&sample("clip", 1_000, WatchSampleKind::Abandoned, at_ms));
+        censored.observe(&sample(
             "clip",
             1_000,
             WatchSampleKind::Censored(WatchCensor::TransportSubstitution),
@@ -39,8 +39,8 @@ fn completions_are_right_censored_and_raise_late_watch_probability() {
     let mut early = WatchModel::default();
     for index in 0..8 {
         let at_ms = 10_000 + index * 100;
-        complete.observe(sample("clip", 10_000, WatchSampleKind::Completed, at_ms));
-        early.observe(sample("clip", 1_000, WatchSampleKind::Abandoned, at_ms));
+        complete.observe(&sample("clip", 10_000, WatchSampleKind::Completed, at_ms));
+        early.observe(&sample("clip", 1_000, WatchSampleKind::Abandoned, at_ms));
     }
 
     assert!(

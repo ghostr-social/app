@@ -2,13 +2,13 @@ mod delivery_fixture;
 mod hls_terminal_wait;
 
 use axum::http::StatusCode;
+use core::time::Duration;
 use delivery_fixture::hls_recovery::{serve, HlsScript};
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use ghostr_delivery::segmented::SegmentedPhase;
 use ghostr_engine::DeliveryKind;
-use std::time::Duration;
 
 #[tokio::test]
 async fn newly_advertised_root_does_not_inherit_a_failed_roots_backoff() {

@@ -1,15 +1,15 @@
 use super::ChunkSpec;
 use crate::chunk::cancel::CancelToken;
 use crate::chunk::traffic::ChunkTraffic;
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
+use core::future::{poll_fn, Future as _};
+use core::sync::atomic::{AtomicBool, Ordering};
+use core::time::Duration;
 use ghostr_engine::adaptive::RetrievalRequest;
 use ghostr_net::identity_encoding::require_identity_encoding;
 use ghostr_net::media_request_executor::{AdmittedMediaRequest, MediaRequest, MediaResponse};
 use ghostr_net::response_limits::validate_response_headers;
 use reqwest::header::{HeaderValue, ACCEPT_ENCODING, IF_RANGE, RANGE};
-use std::future::{poll_fn, Future};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
 use tokio::time::Instant;
 
 #[cfg(test)]
@@ -65,7 +65,7 @@ async fn admit(
 ) -> Result<Option<AdmittedMediaRequest>> {
     tokio::select! {
         biased;
-        _ = cancel.cancelled() => Ok(None),
+        () = cancel.cancelled() => Ok(None),
         admitted = request.admit_for(wait) => admitted.map(Some),
     }
 }
@@ -100,7 +100,7 @@ async fn open(
     let response = tokio::select! {
         biased;
         response = tokio::time::timeout_at(deadline, tracked) => response,
-        _ = cancel.cancelled() => {
+        () = cancel.cancelled() => {
             return Ok(cancelled(request_started.load(Ordering::Relaxed)));
         },
     }
@@ -170,8 +170,9 @@ fn observe_rejection(
 }
 
 fn cancelled(request_started: bool) -> Opened {
-    match request_started {
-        true => Opened::CancelledAfterRequest,
-        false => Opened::CancelledBeforeRequest,
+    if request_started {
+        Opened::CancelledAfterRequest
+    } else {
+        Opened::CancelledBeforeRequest
     }
 }

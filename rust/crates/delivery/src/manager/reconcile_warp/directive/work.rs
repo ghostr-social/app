@@ -73,11 +73,12 @@ fn hedge(primary: ActionId, selected: &[PlannedTransfer]) -> WarpDirective {
 }
 
 fn transfer(selected: &[PlannedTransfer]) -> WarpDirective {
-    match selected.is_empty() {
-        false => WarpDirective::None,
-        true => WarpDirective::Unsupported {
+    if selected.is_empty() {
+        WarpDirective::Unsupported {
             class: "warp_transfer_unavailable",
-        },
+        }
+    } else {
+        WarpDirective::None
     }
 }
 

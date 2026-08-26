@@ -1,7 +1,7 @@
 use axum::body::{Body, Bytes};
 use axum::http::{header, StatusCode};
 use axum::response::Response;
-use std::convert::Infallible;
+use core::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tokio_stream::wrappers::ReceiverStream;

@@ -1,9 +1,9 @@
 //! Shared result state and cancellation cleanup for scoped relay reads.
 
 use crate::retrieval_types::EventProgress;
+use core::sync::atomic::{AtomicBool, Ordering};
 use nostr_sdk::{ClientMessage, Event, EventId, Relay, SubscriptionId};
 use std::collections::HashSet;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]

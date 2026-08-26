@@ -1,5 +1,6 @@
+use crate::qoe::axiom_test_support::WatchOutcome;
 use crate::delivery_events::{FocusTransition, TransportRescueReason};
-use crate::qoe::{WatchLearner, WatchOutcome};
+use crate::qoe::WatchLearner;
 use crate::tests::watch_model_fixture::{focus, rescue};
 use ghostr_engine::watch_model::{WatchCensor, WatchSampleKind};
 

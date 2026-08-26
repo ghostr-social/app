@@ -24,7 +24,7 @@ struct ServerList {
 }
 
 impl BlossomServerStore {
-    pub(crate) fn ingest(&mut self, events: &[Event]) {
+    pub(super) fn ingest(&mut self, events: &[Event]) {
         for event in events
             .iter()
             .filter(|event| event.kind.as_u16() == SERVER_LIST_KIND)
@@ -43,20 +43,20 @@ impl BlossomServerStore {
         }
     }
 
-    pub(crate) fn enrich(&self, post: &mut ParsedVideoPost) {
+    pub(super) fn enrich(&self, post: &mut ParsedVideoPost) {
         let Some(list) = self.lists.get(&post.author_pubkey) else {
             return;
         };
         add_mirrors(&mut post.meta, &list.servers);
         post.renditions = post
             .renditions
-            .drain(..)
+            .iter()
             .map(|rendition| enrich_rendition(rendition, &list.servers))
             .collect();
         enrich_evidence(post, &list.servers);
     }
 
-    pub(crate) fn clear(&mut self) {
+    pub(super) fn clear(&mut self) {
         self.lists.clear();
     }
 }
@@ -69,7 +69,7 @@ pub(crate) fn supports_blossom(post: &ParsedVideoPost) -> bool {
             .any(|rendition| exact_identity(rendition.meta()).is_some())
 }
 
-fn enrich_rendition(rendition: VideoRendition, servers: &[String]) -> VideoRendition {
+fn enrich_rendition(rendition: &VideoRendition, servers: &[String]) -> VideoRendition {
     let bitrate = rendition.bitrate_bits_per_second();
     let mut meta = rendition.meta().clone();
     add_mirrors(&mut meta, servers);

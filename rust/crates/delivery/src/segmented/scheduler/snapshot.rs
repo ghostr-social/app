@@ -28,10 +28,6 @@ impl SegmentedDelivery {
         self.cache.physical_used_bytes()
     }
 
-    pub(crate) fn capacity_bytes(&self) -> u64 {
-        crate::segmented::SegmentedCache::capacity_bytes()
-    }
-
     pub(crate) fn active_sources(&self) -> Vec<&str> {
         self.active
             .values()
@@ -62,8 +58,9 @@ impl SegmentedDelivery {
         }
         match phase {
             SegmentedPhase::Ready => HlsBootstrapState::Ready,
-            SegmentedPhase::Failed => HlsBootstrapState::Failed,
-            SegmentedPhase::Queued | SegmentedPhase::Preparing => HlsBootstrapState::Failed,
+            SegmentedPhase::Failed | SegmentedPhase::Queued | SegmentedPhase::Preparing => {
+                HlsBootstrapState::Failed
+            }
         }
     }
 

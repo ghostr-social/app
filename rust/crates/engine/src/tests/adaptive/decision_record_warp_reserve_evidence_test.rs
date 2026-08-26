@@ -8,7 +8,11 @@ use crate::adaptive::{
 fn protected_rescue_records_exact_private_capacity_and_chance_evidence() {
     let (state, decision) = planned();
     let record = record(&state, &decision);
-    let reserve = &record.warp_decision.as_ref().unwrap().reserve;
+    let reserve = &record
+        .warp_decision
+        .as_ref()
+        .expect("valid test fixture")
+        .reserve;
     let source = &decision.reserve;
     let chance = reserve
         .chance
@@ -70,8 +74,8 @@ fn assert_chance(chance: &crate::adaptive::RecordedRescueChanceEvidence, deadlin
 }
 
 fn assert_replay(record: &DecisionRecord) {
-    assert_eq!(record.replay(), DecisionReplayStatus::Verified);
+    assert_eq!(record.integrity_status(), DecisionReplayStatus::Verified);
     assert!(record.replay_warp_search().is_ok());
-    let json = serde_json::to_string(&record).unwrap();
+    let json = serde_json::to_string(&record).expect("valid test fixture");
     assert!(!json.contains("origin.example") && !json.contains("active.example"));
 }

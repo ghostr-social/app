@@ -20,7 +20,7 @@ pub(crate) struct FeedProgress {
 impl FeedProgress {
     /// A feed whose open dispatched no query has nothing to wait for
     /// (blank search parity) and is settled from the start.
-    pub(crate) fn new(context: FeedContext, awaiting_first: bool) -> Self {
+    pub(super) fn new(context: FeedContext, awaiting_first: bool) -> Self {
         Self {
             context,
             first_loaded: false,
@@ -30,7 +30,7 @@ impl FeedProgress {
         }
     }
 
-    pub(crate) fn stage(&self) -> FfiFeedStage {
+    pub(super) fn stage(&self) -> FfiFeedStage {
         if self.awaiting_first || self.awaiting_more {
             return FfiFeedStage::Loading;
         }
@@ -40,26 +40,26 @@ impl FeedProgress {
         FfiFeedStage::Settled
     }
 
-    pub(crate) fn is_awaiting(&self) -> bool {
+    pub(super) fn is_awaiting(&self) -> bool {
         self.awaiting_first || self.awaiting_more
     }
 
-    pub(crate) fn await_first(&mut self) {
+    pub(super) fn await_first(&mut self) {
         self.awaiting_first = true;
         self.failed = false;
     }
 
-    pub(crate) fn await_more(&mut self) {
+    pub(super) fn await_more(&mut self) {
         self.awaiting_more = true;
         self.failed = false;
     }
 
-    pub(crate) fn record_page(&mut self) {
+    pub(super) fn record_page(&mut self) {
         self.first_loaded = true;
         self.settle(false);
     }
 
-    pub(crate) fn record_failure(&mut self) {
+    pub(super) fn record_failure(&mut self) {
         self.settle(true);
     }
 

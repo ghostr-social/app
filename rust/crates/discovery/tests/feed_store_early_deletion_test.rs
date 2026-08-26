@@ -1,10 +1,10 @@
-mod feed_support;
-
-use feed_support::{empty_graph, repost, signed_event, video_note, SignedEventFixture};
-use ghostr_discovery::content::deletions::deletion_claims;
-use ghostr_discovery::content::reposts::feed_post_from_event;
-use ghostr_discovery::feed::spec::FeedSpec;
-use ghostr_discovery::feed::store::FeedStore;
+use crate::content::deletions::deletion_claims;
+use crate::content::reposts::feed_post_from_event;
+use crate::feed::spec::FeedSpec;
+use crate::feed::store::FeedStore;
+use crate::tests::feed_support::{
+    empty_graph, repost, signed_event, video_note, SignedEventFixture,
+};
 use nostr_sdk::{Keys, Kind};
 
 #[test]
@@ -29,7 +29,7 @@ fn explicit_event_deletion_suppresses_a_wrapper_regardless_of_timestamp() {
     store.ingest_deletions(feed, deletion_claims(&[deletion]), &empty_graph());
     store.ingest_first_page(
         feed,
-        vec![feed_post_from_event(&wrapper).unwrap()],
+        vec![feed_post_from_event(&wrapper).expect("valid test fixture")],
         &empty_graph(),
     );
 

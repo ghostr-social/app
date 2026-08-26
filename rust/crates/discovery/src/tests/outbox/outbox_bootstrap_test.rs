@@ -7,8 +7,8 @@ use crate::tests::outbox_support::{
     empty_directory, failing_executor, recording_executor, relay_list_event,
 };
 use crate::tests::support::{author, filter_json, AUTHOR_A};
+use core::time::Duration;
 use nostr_sdk::Keys;
-use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 
@@ -46,7 +46,7 @@ async fn landed_follows_are_chased_for_their_relay_lists() {
     let (executor, mut retrievals) = recording_executor();
     let (outcomes, _sink) = mpsc::unbounded_channel();
     let directory = empty_directory();
-    let bootstrap = OutboxBootstrap::new(executor, directory.clone(), outcomes);
+    let bootstrap = OutboxBootstrap::new(executor, std::sync::Arc::clone(&directory), outcomes);
 
     bootstrap.track_follows(vec![author(AUTHOR_A)]).await;
 
@@ -86,7 +86,7 @@ async fn ingested_relay_lists_reach_the_directory() {
     let (executor, _retrievals) = recording_executor();
     let (outcomes, _sink) = mpsc::unbounded_channel();
     let directory = empty_directory();
-    let bootstrap = OutboxBootstrap::new(executor, directory.clone(), outcomes);
+    let bootstrap = OutboxBootstrap::new(executor, std::sync::Arc::clone(&directory), outcomes);
     let follow = Keys::generate();
 
     bootstrap.track_follows(vec![follow.public_key()]).await;

@@ -34,6 +34,10 @@ impl PartialRangeStore {
     /// nothing can be resumed from — bytes whose manifest is missing,
     /// unreadable or shorter than the file — is given back instead of
     /// leaking, since the space it holds would never be reclaimed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when persisted store state cannot be enumerated or recovered safely.
     pub async fn load_existing(&self) -> Result<()> {
         let mut entries = self.entries.lock().await;
         for key in stored_keys(&self.root).await? {

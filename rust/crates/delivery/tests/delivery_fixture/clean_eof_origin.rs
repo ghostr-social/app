@@ -1,8 +1,8 @@
 //! Range-blind origin whose recovery GET pauses after response headers.
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{oneshot, Notify};
 
@@ -16,13 +16,20 @@ pub struct CleanEofOrigin {
 }
 
 pub async fn serve() -> CleanEofOrigin {
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let address = listener.local_addr().unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("valid test fixture");
+    let address = listener.local_addr().expect("valid test fixture");
     let release = Arc::new(Notify::new());
     let gets = Arc::new(AtomicUsize::new(0));
     let (started, whole_started) = oneshot::channel();
     let started = Arc::new(Mutex::new(Some(started)));
-    tokio::spawn(accept(listener, gets.clone(), started, release.clone()));
+    tokio::spawn(accept(
+        listener,
+        std::sync::Arc::clone(&gets),
+        started,
+        std::sync::Arc::clone(&release),
+    ));
     CleanEofOrigin {
         url: format!("http://{address}/video.mp4"),
         whole_started: Some(whole_started),
@@ -38,12 +45,12 @@ impl CleanEofOrigin {
 
     pub async fn wait_whole_started(&mut self) {
         tokio::time::timeout(
-            std::time::Duration::from_secs(1),
-            self.whole_started.take().unwrap(),
+            core::time::Duration::from_secs(1),
+            self.whole_started.take().expect("valid test fixture"),
         )
         .await
         .expect("whole GET starts")
-        .unwrap();
+        .expect("valid test fixture");
     }
 
     pub fn release(&self) {
@@ -64,9 +71,9 @@ async fn accept(
     while let Ok((socket, _)) = listener.accept().await {
         tokio::spawn(answer(
             socket,
-            gets.clone(),
-            started.clone(),
-            release.clone(),
+            std::sync::Arc::clone(&gets),
+            std::sync::Arc::clone(&started),
+            std::sync::Arc::clone(&release),
         ));
     }
 }
@@ -89,7 +96,7 @@ async fn answer(
     }
     gets.fetch_add(1, Ordering::SeqCst);
     if !range {
-        if let Some(signal) = started.lock().unwrap().take() {
+        if let Some(signal) = started.lock().expect("valid test fixture").take() {
             signal.send(()).ok();
         }
         release.notified().await;

@@ -35,7 +35,12 @@ async fn uncached_asset_status_and_total_must_match_the_request() {
 
     let bounded = exchange(UNKNOWN_TOTAL.to_vec(), &["bytes=4-9"]).await;
     let response = bounded.result.expect("bounded unknown total");
-    assert_eq!(to_bytes(response.into_body(), 4).await.unwrap(), "good");
+    assert_eq!(
+        to_bytes(response.into_body(), 4)
+            .await
+            .expect("valid test fixture"),
+        "good"
+    );
 
     let open = exchange(UNKNOWN_TOTAL.to_vec(), &["bytes=4-"]).await;
     assert_eq!(

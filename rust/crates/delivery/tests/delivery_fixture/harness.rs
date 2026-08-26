@@ -61,7 +61,7 @@ pub(super) fn start_harness_config(
     let (demand, demand_receiver) = demand_channel();
     let (handle, _discovery_demand) = start_delivery_manager_with_discovery_demand(
         DeliveryManagerConfig {
-            store: store.clone(),
+            store: std::sync::Arc::clone(&store),
             requests: requests.clone(),
             cache: posts.clone(),
             segmented: segmented.clone(),

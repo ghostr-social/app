@@ -1,5 +1,7 @@
 mod range_fixture;
 
+use core::sync::atomic::{AtomicBool, Ordering};
+use core::time::Duration;
 use ghostr_delivery::chunk::cancel::cancel_pair;
 use ghostr_delivery::chunk::downloader::{
     download_chunk_observed, ChunkExecution, ChunkSpec, ChunkWrite, DownloadTraffic,
@@ -7,9 +9,7 @@ use ghostr_delivery::chunk::downloader::{
 };
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::ByteRange;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 
 #[tokio::test]
 async fn response_semantics_are_authorized_before_store_admission() {
@@ -17,8 +17,8 @@ async fn response_semantics_are_authorized_before_store_admission() {
     let client = range_fixture::media_client();
     let accepted = Arc::new(AtomicBool::new(false));
     let observed_first = Arc::new(AtomicBool::new(false));
-    let sink = OrderingSink(accepted.clone());
-    let mut traffic = OrderingTraffic(accepted, observed_first.clone());
+    let sink = OrderingSink(std::sync::Arc::clone(&accepted));
+    let mut traffic = OrderingTraffic(accepted, std::sync::Arc::clone(&observed_first));
     let (_, token) = cancel_pair();
     let mut stats = HostStats::new();
     let spec = ChunkSpec {
@@ -43,7 +43,8 @@ async fn response_semantics_are_authorized_before_store_admission() {
         },
     )
     .await
-    .unwrap();
+    .result
+    .expect("valid test fixture");
 
     assert!(observed_first.load(Ordering::Acquire));
 }
@@ -51,33 +52,33 @@ async fn response_semantics_are_authorized_before_store_admission() {
 struct OrderingSink(Arc<AtomicBool>);
 
 impl ChunkWrite for OrderingSink {
-    async fn accept<'a>(
+    fn accept<'a>(
         &'a self,
         _: &'a OriginGeneration,
         _: ResponseWriteMode,
-    ) -> anyhow::Result<()> {
+    ) -> impl core::future::Future<Output = anyhow::Result<()>> + Send + 'a {
         self.0.store(true, Ordering::Release);
-        Ok(())
+        core::future::ready(Ok(()))
     }
 
-    async fn write<'a>(
+    fn write<'a>(
         &'a self,
         _: &'a OriginGeneration,
         _: ResponseWriteMode,
         _: u64,
         _: &'a [u8],
-    ) -> anyhow::Result<bool> {
-        Ok(true)
+    ) -> impl core::future::Future<Output = anyhow::Result<bool>> + Send + 'a {
+        core::future::ready(Ok(true))
     }
 
-    async fn finish<'a>(
+    fn finish<'a>(
         &'a self,
         _: &'a OriginGeneration,
         _: ResponseWriteMode,
         _: Option<u64>,
         _: bool,
-    ) -> anyhow::Result<bool> {
-        Ok(true)
+    ) -> impl core::future::Future<Output = anyhow::Result<bool>> + Send + 'a {
+        core::future::ready(Ok(true))
     }
 }
 

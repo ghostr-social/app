@@ -46,7 +46,7 @@ fn candidate(
         CandidateEvidence {
             post: PostId::new(post),
             feed_offset: FeedOffset::new(distance as i32),
-            view_probability: ViewProbability::new(1.0).unwrap(),
+            view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
             present: Vec::new(),
             stored_total: None,
             continuation_source: None,

@@ -1,10 +1,10 @@
-use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
+use crate::plan_executor::{PlanExecutor as _, PlannedRetrieval};
 use crate::query::search::plan_discovery;
 use crate::query::video_filters::{DiscoveryRequest, RepostAdmission};
 use crate::retrieval_types::{FeedContext, RetrievalPriority};
 use crate::tests::repost_target_executor_support::target_executor;
 use crate::tests::repost_target_support::RepostTargetIo;
-use nostr_sdk::{EventBuilder, JsonUtil, Keys, Kind};
+use nostr_sdk::{EventBuilder, JsonUtil as _, Keys, Kind};
 
 #[tokio::test]
 async fn embedded_kind_sixteen_without_reference_tags_survives_execution() {

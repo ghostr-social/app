@@ -1,9 +1,9 @@
 use super::stage_lease_fixture::{focused_cache, object, source, store_partial};
 use crate::segmented::cache::{StageAdmission, StageFence, StageRequest, StageReservation};
 use crate::segmented::prepare::prepare_complete;
+use core::future::{poll_fn, Future as _};
+use core::task::Poll;
 use ghostr_engine::PostId;
-use std::future::{poll_fn, Future};
-use std::task::Poll;
 
 const KIB: u64 = 1024;
 
@@ -14,9 +14,10 @@ async fn final_assembly_cancels_at_a_bounded_checkpoint_off_cache_lock() {
     store_partial(&cache, &post, (1024 * KIB) as usize);
     let request = StageRequest::new(source(), 1024 * KIB, 128 * KIB);
     let fence = StageFence::new(1, 7, request);
-    let reservation = StageReservation::final_block(128 * KIB, 1152 * KIB).unwrap();
+    let reservation =
+        StageReservation::final_block(128 * KIB, 1152 * KIB).expect("valid test fixture");
     let admission = StageAdmission::new(post, fence, 500, reservation);
-    let mut lease = cache.admit_stage(admission).expect("final stage admitted");
+    let lease = cache.admit_stage(admission).expect("final stage admitted");
     let block = object((128 * KIB) as usize);
     let seed = lease.claim_assembly(&block).expect("prefix claimed");
     let (cancel, mut cancelled) = tokio::sync::oneshot::channel();
@@ -30,7 +31,7 @@ async fn final_assembly_cancels_at_a_bounded_checkpoint_off_cache_lock() {
     .await;
     cache.clear();
     assert_eq!(cache.physical_used_bytes(), 2304 * KIB);
-    cancel.send(()).unwrap();
+    cancel.send(()).expect("valid test fixture");
     assert!(future.await.is_err());
 
     drop(lease);

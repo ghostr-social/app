@@ -23,9 +23,8 @@ impl DeliveryWorker {
             Err(class) => return self.fail_transform_token(decision, class),
         };
         let action = prepared.request.action;
-        let bound = match self.bind_transform_decision(decision, action) {
-            Ok(bound) => bound,
-            Err(()) => return,
+        let Ok(bound) = self.bind_transform_decision(decision, action) else {
+            return;
         };
         if !self.commit_transform(commit, prepared.profile) {
             return self.fail_bound_transform(action, bound, "warp_resource_commit_rejected");
@@ -34,7 +33,7 @@ impl DeliveryWorker {
         if !self.state.begin_transform(post.clone())
             || !self
                 .transforms
-                .launch(self.ctx.store.clone(), prepared.request)
+                .launch(std::sync::Arc::clone(&self.ctx.store), prepared.request)
         {
             self.state.finish_transform(&post);
             return self.fail_bound_transform(action, bound, "warp_transform_launch_rejected");
@@ -66,7 +65,10 @@ impl DeliveryWorker {
             .store
             .media_snapshot(post.as_str())
             .await
-            .map_err(|_| "warp_transform_input_read_failed")?;
+            .map_err(|error| {
+                log::warn!("WARP transform input could not be read: {error:#}");
+                "warp_transform_input_read_failed"
+            })?;
         let total = transform_total(&snapshot, &binding, profile)?;
         Ok(PreparedTransform {
             request: TransformRequest {

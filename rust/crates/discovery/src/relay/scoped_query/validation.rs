@@ -6,7 +6,7 @@ const ABSOLUTE_QUERY_EVENT_LIMIT: usize = 1_000;
 const CANDIDATE_MULTIPLIER: usize = 4;
 const ABSOLUTE_QUERY_CANDIDATE_LIMIT: usize = ABSOLUTE_QUERY_EVENT_LIMIT * CANDIDATE_MULTIPLIER;
 
-pub(super) fn structural_filter(filter: &Filter) -> Filter {
+fn structural_filter(filter: &Filter) -> Filter {
     let mut structural = filter.clone();
     structural.search = None;
     structural

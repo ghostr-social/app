@@ -3,9 +3,7 @@
 //! refuses writes while the disk is full of videos the store does not
 //! know it holds.
 
-mod store_fixture;
-
-use store_fixture::{discard, limits, reopened, spaced_store};
+use crate::tests::store_fixture::{discard, limits, reopened, spaced_store};
 
 #[tokio::test]
 async fn partial_range_reloaded_content_is_evictable() {

@@ -25,8 +25,20 @@ pub use advanced::{
 pub use executed::ExecutedRequest;
 pub use privacy::DecisionPrivacy;
 pub use record::{DecisionRecord, DecisionRecordInput, WarpDecisionRecordInput};
-pub use replay::{VerifiedWarpReplay, WarpReplayIntegrity};
 pub use types::{
     DecisionAction, DecisionModelInput, DecisionOutcome, DecisionReplayStatus, ModelQuantiles,
     ProbeClaimRefusal, PrunedCandidate, PrunedReason, ShadowPrices,
 };
+
+impl DecisionPrivacy {
+    pub fn pseudonymized_post(&self, value: &str) -> String {
+        self.post(value)
+    }
+
+    pub fn sanitized_plan(
+        &self,
+        value: &crate::adaptive::AllocationPlan,
+    ) -> crate::adaptive::AllocationPlan {
+        plan::sanitized(value, self)
+    }
+}

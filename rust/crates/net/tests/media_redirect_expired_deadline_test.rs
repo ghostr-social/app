@@ -1,12 +1,12 @@
 mod redirect_gate_fixture;
 
+use core::time::Duration;
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_net::media_request_executor::{
     MediaRequestAdmissionTimeout, MediaRequestExecutor, MediaRequestLimits,
 };
 use redirect_gate_fixture::target::TargetOrigin;
 use redirect_gate_fixture::{delayed_redirect_origin, OneHopClient};
-use std::time::Duration;
 
 #[tokio::test]
 async fn an_expired_redirect_deadline_cannot_admit_an_immediately_free_target() {
@@ -15,14 +15,14 @@ async fn an_expired_redirect_deadline_cannot_admit_an_immediately_free_target() 
         delayed_redirect_origin(target.redirected_url.clone(), Duration::from_millis(60)).await;
     let executor = MediaRequestExecutor::new(
         OneHopClient::shared(),
-        MediaRequestLimits::try_new(1, 1).unwrap(),
+        MediaRequestLimits::try_new(1, 1).expect("valid test fixture"),
     );
     let admitted = executor
         .get(&start, PreemptionAuthority::Transition)
-        .unwrap()
+        .expect("valid test fixture")
         .admit()
         .await
-        .unwrap();
+        .expect("valid test fixture");
 
     let result = admitted
         .send_with_redirect_deadline(tokio::time::Instant::now() + Duration::from_millis(30))

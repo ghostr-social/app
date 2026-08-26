@@ -3,10 +3,10 @@ use super::{finished_network, old_root_fence, Active, SegmentedDelivery, Segment
 use crate::delivery_events::{DeliveryFocus, FocusGeneration, FocusItem, FocusTransition};
 use crate::segmented::fetch::{FetchFailure, OriginTelemetry};
 use crate::segmented::SegmentedCache;
+use core::time::Duration;
 use ghostr_engine::adaptive::DecisionOutcome;
 use ghostr_engine::origin_model::{ErrorReason, NetworkClass};
 use ghostr_engine::{ActionId, DeliveryKind, PostId, VideoMeta};
-use std::time::Duration;
 
 #[tokio::test]
 async fn queued_physical_terminal_wins_over_a_late_focus_cancellation() {
@@ -25,10 +25,10 @@ async fn queued_physical_terminal_wins_over_a_late_focus_cancellation() {
 
     assert!(matches!(
         finish.outcome,
-        DecisionOutcome::Failed { ref class, .. } if class == "warp_hls_http_5xx"
+        DecisionOutcome::Failed { class, .. } if class == "warp_hls_http_5xx"
     ));
     assert_eq!(
-        finish.observation.unwrap().outcome,
+        finish.observation.expect("valid test fixture").outcome,
         ghostr_engine::origin_model::OriginOutcome::Failure(ErrorReason::Http5xx)
     );
     assert_eq!(delivery.pending[&post].generation, 2);
@@ -47,7 +47,7 @@ pub(super) fn completed_active() -> Active {
         pending: Pending::root(1, 1, 0, "https://old.example/root.m3u8".to_owned()),
         committed_until_ms: u64::MAX,
         network: finished_network(),
-        _task: tokio::spawn(std::future::pending()),
+        _task: tokio::spawn(core::future::pending()),
         cancellation: Some(cancellation),
         cancelling: false,
     }
@@ -93,7 +93,7 @@ pub(super) fn focus(generation: u64, source: &str) -> DeliveryFocus {
         previews: Vec::new(),
         current_index: 0,
         watch_ms: 0,
-        generation: FocusGeneration::try_new(generation).unwrap(),
+        generation: FocusGeneration::try_new(generation).expect("valid test fixture"),
         transition: FocusTransition::RosterChange,
         rescue: None,
     }

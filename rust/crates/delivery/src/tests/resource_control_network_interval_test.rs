@@ -1,6 +1,6 @@
 use crate::manager::resource_control::{ResourceControl, ResourceEnvironment};
 use ghostr_engine::adaptive::ResourceObservation;
-use std::time::Duration;
+use core::time::Duration;
 use tokio::time::Instant;
 
 #[tokio::test(start_paused = true)]
@@ -13,14 +13,14 @@ async fn network_bytes_keep_the_producer_interval_when_planning_is_delayed() {
     tokio::time::advance(Duration::from_millis(400)).await;
     let first = control.feedback(environment);
     assert_eq!(first.actual.network, 200_000);
-    assert_eq!(first.price_snapshot.unwrap().cursor.revision, 1);
+    assert_eq!(first.price_snapshot.expect("valid test fixture").cursor.revision, 1);
 
     tokio::time::advance(Duration::from_millis(100)).await;
     control.record_network_bytes(200_000);
     tokio::time::advance(Duration::from_millis(400)).await;
     let second = control.feedback(environment);
     assert_eq!(second.actual.network, 400_000);
-    assert_eq!(second.price_snapshot.unwrap().cursor.revision, 2);
+    assert_eq!(second.price_snapshot.expect("valid test fixture").cursor.revision, 2);
 }
 
 #[tokio::test(start_paused = true)]
@@ -32,12 +32,12 @@ async fn a_late_burst_never_backfills_the_already_closed_interval() {
     control.record_network_bytes(100_000);
     let closed = control.feedback(environment);
     assert_eq!(closed.actual.network, 0);
-    assert_eq!(closed.price_snapshot.unwrap().cursor.revision, 1);
+    assert_eq!(closed.price_snapshot.expect("valid test fixture").cursor.revision, 1);
 
     tokio::time::advance(Duration::from_millis(400)).await;
     let next = control.feedback(environment);
     assert_eq!(next.actual.network, 200_000);
-    assert_eq!(next.price_snapshot.unwrap().cursor.revision, 2);
+    assert_eq!(next.price_snapshot.expect("valid test fixture").cursor.revision, 2);
 }
 
 fn environment() -> ResourceEnvironment {

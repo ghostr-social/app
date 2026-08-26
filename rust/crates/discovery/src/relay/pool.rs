@@ -52,30 +52,8 @@ pub(super) struct Lifecycle {
 impl RelayPoolOwner {
     pub fn new(client: Arc<Client>, configuration: RelayPoolConfiguration) -> Self {
         let health = Arc::new(RelayHealth::new());
-        let io = Arc::new(SdkRelayIo::new(client.clone()));
+        let io = Arc::new(SdkRelayIo::new(std::sync::Arc::clone(&client)));
         Self::with_components(configuration, io, RelayRoleIo::sdk(client), health)
-    }
-
-    pub fn with_io(
-        client: Arc<Client>,
-        configuration: RelayPoolConfiguration,
-        io: Arc<dyn RelayIo>,
-    ) -> Self {
-        Self::with_components(
-            configuration,
-            io,
-            RelayRoleIo::sdk(client),
-            Arc::new(RelayHealth::new()),
-        )
-    }
-
-    #[cfg(test)]
-    pub(crate) fn with_role_io(
-        configuration: RelayPoolConfiguration,
-        io: Arc<dyn RelayIo>,
-        roles: RelayRoleIo,
-    ) -> Self {
-        Self::with_components(configuration, io, roles, Arc::new(RelayHealth::new()))
     }
 
     fn with_components(
@@ -101,29 +79,17 @@ impl RelayPoolOwner {
         }
     }
 
-    #[cfg(test)]
-    pub(crate) async fn read(
-        &self,
-        request: RelayReadRequest,
-    ) -> Result<crate::relay::io::RelayReadResult, PlanFailure> {
-        self.begin_route(request.session).await?.read(request).await
-    }
-
-    #[cfg(test)]
-    pub(crate) async fn broadcast(&self, request: RelayBroadcastRequest) -> anyhow::Result<()> {
-        let route = self
-            .begin_route(request.session)
-            .await
-            .map_err(|failure| anyhow::anyhow!(failure.message))?;
-        route.broadcast(request).await
-    }
-
+    /// Begins an account-scoped request while holding the session barrier.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the expected account or session is no longer active.
     pub async fn begin_account_request(
         &self,
         expected_account: Option<PublicKey>,
         expected_session: SessionGeneration,
     ) -> anyhow::Result<OwnedRwLockReadGuard<()>> {
-        let barrier = self.barrier.clone().read_owned().await;
+        let barrier = std::sync::Arc::clone(&self.barrier).read_owned().await;
         let active_session = self.active_session(expected_account)?;
         anyhow::ensure!(
             active_session == expected_session,
@@ -132,11 +98,16 @@ impl RelayPoolOwner {
         Ok(barrier)
     }
 
+    /// Returns the generation for the expected active account.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the expected account is not active.
     pub async fn account_session(
         &self,
         expected_account: Option<PublicKey>,
     ) -> anyhow::Result<SessionGeneration> {
-        let _barrier = self.barrier.clone().read_owned().await;
+        let _barrier = std::sync::Arc::clone(&self.barrier).read_owned().await;
         self.active_session(expected_account)
     }
 
@@ -175,6 +146,10 @@ impl RelayPoolOwner {
     }
 }
 
+#[cfg(any(test, feature = "test"))]
+#[path = "pool/test_support.rs"]
+mod test_support;
+
 pub(super) fn locked(lifecycle: &StdMutex<Lifecycle>) -> std::sync::MutexGuard<'_, Lifecycle> {
     lifecycle
         .lock()
@@ -184,3 +159,7 @@ pub(super) fn locked(lifecycle: &StdMutex<Lifecycle>) -> std::sync::MutexGuard<'
 pub(super) fn session_failure() -> PlanFailure {
     PlanFailure::new(SESSION_RESET_MESSAGE)
 }
+
+#[cfg(test)]
+#[path = "pool_axiom_test.rs"]
+mod axiom_test_support;

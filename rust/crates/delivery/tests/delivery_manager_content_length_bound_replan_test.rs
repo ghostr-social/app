@@ -2,6 +2,7 @@
 
 mod delivery_fixture;
 
+use delivery_fixture::evidence::DeliveryEvidence as _;
 use delivery_fixture::items::{focus_now, unsized_item};
 use delivery_fixture::media::{hit_log, hits};
 use delivery_fixture::options::DeliveryOptions;
@@ -14,7 +15,7 @@ use ghostr_engine::adaptive::REQUEST_SLICE_BYTES;
 async fn oversized_header_replans_once_and_then_completes_exactly() {
     let body = vec![b'b'; REQUEST_SLICE_BYTES as usize + 1];
     let log = hit_log();
-    let origin = serve_header_bound_then_complete(log.clone(), body.clone()).await;
+    let origin = serve_header_bound_then_complete(std::sync::Arc::clone(&log), body.clone()).await;
     let harness = start_harness("ghostr-header-bound-replan", DeliveryOptions::default());
 
     harness
@@ -27,7 +28,7 @@ async fn oversized_header_replans_once_and_then_completes_exactly() {
             .store
             .read_range("aa11", 0..body.len() as u64)
             .await
-            .unwrap(),
+            .expect("valid test fixture"),
         Some(body)
     );
     let requests = hits(&log);

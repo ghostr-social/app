@@ -1,23 +1,32 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
-
+import 'video_player_test_events.dart';
 final class RecoveringVideoPlayerPlatform extends VideoPlayerPlatform {
-  RecoveringVideoPlayerPlatform({this.initializationFailures = 0});
+  RecoveringVideoPlayerPlatform({
+    this.initializationFailures = 0,
+    this.initializationErrorCode = 'initialize-failed',
+    this.retainDisposedStreams = false,
+  });
 
   final List<DataSource> dataSources = [];
   final List<String> commands = [];
   final Map<int, StreamController<VideoEvent>> _streams = {};
   Duration position = Duration.zero;
   int initializationFailures;
+  final String initializationErrorCode;
+  final bool retainDisposedStreams;
   int _nextId = 0;
 
   int get latestId => _nextId - 1;
 
   void failLatest(String message) {
-    _streams[latestId]!.addError(
+    fail(latestId, message);
+  }
+
+  void fail(int id, String message) {
+    _streams[id]!.addError(
       PlatformException(code: 'stream-failed', message: message),
     );
   }
@@ -35,13 +44,11 @@ final class RecoveringVideoPlayerPlatform extends VideoPlayerPlatform {
 
   void _initialize(StreamController<VideoEvent> stream) {
     if (initializationFailures == 0) {
-      stream.add(_initialized);
+      stream.add(initializedVideoEvent);
       return;
     }
     initializationFailures -= 1;
-    stream.addError(
-      PlatformException(code: 'initialize-failed', message: 'Source failed'),
-    );
+    stream.addError(initializationError(initializationErrorCode));
   }
 
   @override
@@ -55,7 +62,7 @@ final class RecoveringVideoPlayerPlatform extends VideoPlayerPlatform {
   @override
   Future<void> dispose(int textureId) async {
     commands.add('dispose:$textureId');
-    _streams.remove(textureId);
+    if (!retainDisposedStreams) _streams.remove(textureId);
   }
 
   @override
@@ -91,9 +98,3 @@ final class RecoveringVideoPlayerPlatform extends VideoPlayerPlatform {
   @override
   Widget buildView(int textureId) => Texture(textureId: textureId);
 }
-
-final _initialized = VideoEvent(
-  eventType: VideoEventType.initialized,
-  size: Size(180, 320),
-  duration: Duration(seconds: 30),
-);

@@ -3,15 +3,16 @@
 
 mod delivery_fixture;
 
+use core::time::Duration;
 use delivery_fixture::concurrency_origin::{ActiveRequest, ControlledOrigin};
 use delivery_fixture::demand;
 use delivery_fixture::items::{focus_now, seed_range, sized_item};
 use delivery_fixture::media::{hit_log, serve_recording};
 use delivery_fixture::options::{base_params, DeliveryOptions};
+use delivery_fixture::plan::wait_for_current;
 use delivery_fixture::start_harness;
 use delivery_fixture::wait::wait_for_ranges;
 use ghostr_engine::{ByteRange, DataUsageLevel};
-use std::time::Duration;
 
 #[tokio::test]
 async fn promotion_never_restarts_bytes_owned_by_an_open_request() {
@@ -31,6 +32,8 @@ async fn promotion_never_restarts_bytes_owned_by_an_open_request() {
     wait_for_ranges(&harness.store, "ahead", &[(0, 32)]).await;
 
     harness.handle.update_focus(focus_now(items, 1, 0));
+    wait_for_current(&harness.handle, "ahead").await;
+    assert!(seed.is_open(), "focus promotion retains the seed body");
     let _demand = demand::blocked(&harness, "ahead", ByteRange::new(0, 96)).await;
     expect_no_request(&mut ahead).await;
     send(&seed, 32).await;
@@ -40,11 +43,11 @@ async fn promotion_never_restarts_bytes_owned_by_an_open_request() {
     let suffix = next_request(&mut ahead).await;
     assert_eq!(suffix.range, 64..96);
     send(&suffix, 32).await;
-    drop(suffix);
     wait_for_ranges(&harness.store, "ahead", &[(0, 96)]).await;
     expect_no_request(&mut ahead).await;
+    drop(suffix);
 
-    harness.handle.clear().await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }
 
@@ -63,7 +66,7 @@ async fn send(request: &ActiveRequest, bytes: usize) {
 async fn expect_no_request(origin: &mut ControlledOrigin) {
     if let Ok(request) = tokio::time::timeout(Duration::from_millis(150), origin.next()).await {
         panic!(
-            "origin received {:?} while the prefix was owned",
+            "origin received {:?} while the planned bytes were owned",
             request.range
         );
     }

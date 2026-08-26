@@ -10,7 +10,7 @@ use crate::discovery::session_generation::{SessionGeneration, SESSION_RESET_MESS
 use crate::engine::DataUsageLevel;
 use anyhow::anyhow;
 use flutter_rust_bridge::frb;
-use nostr_sdk::{Event, JsonUtil, PublicKey};
+use nostr_sdk::{Event, JsonUtil as _, PublicKey};
 
 /// Validates one pre-signed event and publishes it with outbox-aware
 /// relay selection: the author's declared write relays after the
@@ -35,7 +35,7 @@ pub(crate) fn verified_event(json: &str) -> anyhow::Result<Event> {
         Event::from_json(json).map_err(|error| anyhow!("unparseable event JSON: {error}"))?;
     event
         .verify()
-        .map_err(|_| anyhow!("the event id or signature does not verify"))?;
+        .map_err(|error| anyhow!("the event id or signature does not verify: {error}"))?;
     Ok(event)
 }
 
@@ -50,7 +50,7 @@ pub(crate) fn broadcast_relays(
 }
 
 impl DiscoveryRuntime {
-    pub(crate) async fn broadcast(
+    pub(super) async fn broadcast(
         &self,
         session: SessionGeneration,
         event: Event,

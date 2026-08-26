@@ -37,7 +37,7 @@ impl PreparationLedger {
             .ok_or(PlayerPreparationIngress::Rejected)
     }
 
-    pub(super) fn fence_allows(&self, report: &PlayerPreparationReport) -> bool {
+    fn fence_allows(&self, report: &PlayerPreparationReport) -> bool {
         self.fence(report)
             .is_none_or(|fence| report.attempt_generation() > fence.max_attempt())
     }
@@ -77,7 +77,7 @@ impl PreparationLedger {
             .ok_or(PlayerPreparationIngress::Rejected)
     }
 
-    pub(super) fn can_record_fence(&self, report: &PlayerPreparationReport) -> bool {
+    fn can_record_fence(&self, report: &PlayerPreparationReport) -> bool {
         self.fence(report).is_some()
             || self.fences.len() < ATTEMPT_FENCE_CAPACITY
             || self.fences.iter().any(|fence| !self.fence_is_active(fence))
@@ -116,7 +116,6 @@ impl PreparationLedger {
     }
 
     pub(super) fn followup_mismatch(
-        &self,
         report: &PlayerPreparationFollowup,
         admitted: &PlayerPreparationReport,
     ) -> PlayerPreparationIngress {

@@ -25,7 +25,7 @@ impl Default for CalibrationState {
 }
 
 impl CalibrationState {
-    pub(crate) fn observe(&mut self, prediction: f64, positive: bool, now_ms: u64) {
+    pub(super) fn observe(&mut self, prediction: f64, positive: bool, now_ms: u64) {
         self.decay(now_ms);
         let bucket = bucket(prediction);
         self.counts[bucket] += 1.0;
@@ -34,7 +34,7 @@ impl CalibrationState {
         self.labels = self.labels.saturating_add(1);
     }
 
-    pub(crate) fn calibrate(&self, prediction: f64, now_ms: u64) -> f64 {
+    pub(super) fn calibrate(&self, prediction: f64, now_ms: u64) -> f64 {
         let bucket = bucket(prediction);
         let scale = decay_scale(now_ms, self.last_updated_ms);
         let count = self.counts[bucket] * scale;
@@ -46,35 +46,11 @@ impl CalibrationState {
         (prediction * (1.0 - confidence) + empirical * confidence).clamp(0.0, 1.0)
     }
 
-    pub(crate) fn error_bps(&self) -> u16 {
-        let total: f64 = self.counts.iter().sum();
-        if total == 0.0 {
-            return 0;
-        }
-        let error = (0..BUCKETS)
-            .map(|index| self.bucket_error(index))
-            .sum::<f64>()
-            / total;
-        (error.clamp(0.0, 1.0) * 10_000.0).round() as u16
-    }
-
-    pub(crate) fn labels(&self) -> u64 {
-        self.labels
-    }
-
-    pub(crate) fn sanitize(mut self) -> Self {
+    pub(super) fn sanitize(mut self) -> Self {
         sanitize(&mut self.counts);
         sanitize(&mut self.positives);
         sanitize(&mut self.predicted);
         self
-    }
-
-    fn bucket_error(&self, index: usize) -> f64 {
-        let count = self.counts[index];
-        if count == 0.0 {
-            return 0.0;
-        }
-        (self.positives[index] / count - self.predicted[index] / count).abs() * count
     }
 
     fn decay(&mut self, now_ms: u64) {
@@ -85,6 +61,10 @@ impl CalibrationState {
         self.last_updated_ms = now_ms;
     }
 }
+
+#[cfg(test)]
+#[path = "calibration/test_support.rs"]
+mod test_support;
 
 fn bucket(probability: f64) -> usize {
     (probability.clamp(0.0, 1.0) * BUCKETS as f64)
@@ -102,9 +82,9 @@ fn decay_scale(now_ms: u64, then_ms: u64) -> f64 {
 fn sanitize(values: &mut Vec<f64>) {
     values.resize(BUCKETS, 0.0);
     values.truncate(BUCKETS);
-    values.iter_mut().for_each(|value| {
+    for value in values.iter_mut() {
         if !value.is_finite() || *value < 0.0 {
             *value = 0.0;
         }
-    });
+    }
 }

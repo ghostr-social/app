@@ -4,12 +4,6 @@ use crate::api::runtime::discovery::{lock, OutcomeSinks};
 use crate::discovery::session_generation::SessionGeneration;
 use nostr_sdk::Event;
 
-#[cfg(test)]
-pub(crate) async fn file_lists(sinks: &OutcomeSinks, events: &[Event]) {
-    let session = lock(&sinks.state).session_generation();
-    file_lists_for(sinks, session, events).await;
-}
-
 pub(crate) async fn file_lists_for(
     sinks: &OutcomeSinks,
     session: SessionGeneration,
@@ -21,3 +15,7 @@ pub(crate) async fn file_lists_for(
         sinks.bootstrap.track_follows_for(session, follows).await;
     }
 }
+
+#[cfg(test)]
+#[path = "outcomes_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

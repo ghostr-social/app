@@ -1,4 +1,4 @@
-use std::time::Duration;
+use core::time::Duration;
 
 #[derive(Clone, Copy)]
 pub(super) struct CpuClock {
@@ -10,11 +10,6 @@ impl CpuClock {
         Self { read: thread_time }
     }
 
-    #[cfg(test)]
-    pub(super) const fn unavailable() -> Self {
-        Self { read: || None }
-    }
-
     pub(super) fn read(self) -> Option<Duration> {
         (self.read)()
     }
@@ -22,16 +17,11 @@ impl CpuClock {
 
 #[cfg(unix)]
 fn thread_time() -> Option<Duration> {
-    let mut value = std::mem::MaybeUninit::<libc::timespec>::uninit();
-    // SAFETY: `value` points to writable storage for one `timespec`, and it is
-    // read only after `clock_gettime` reports success.
-    let status = unsafe { libc::clock_gettime(libc::CLOCK_THREAD_CPUTIME_ID, value.as_mut_ptr()) };
-    if status != 0 {
-        return None;
-    }
-    // SAFETY: A successful `clock_gettime` initialized the complete value.
-    let value = unsafe { value.assume_init() };
-    timespec_duration(value)
+    use nix::sys::time::TimeValLike as _;
+
+    let value = nix::time::clock_gettime(nix::time::ClockId::CLOCK_THREAD_CPUTIME_ID).ok()?;
+    let nanos = u64::try_from(value.num_nanoseconds()).ok()?;
+    Some(Duration::from_nanos(nanos))
 }
 
 #[cfg(not(unix))]
@@ -43,9 +33,6 @@ pub(super) fn elapsed(start: Option<Duration>, end: Option<Duration>) -> Option<
     end?.checked_sub(start?)
 }
 
-#[cfg(unix)]
-fn timespec_duration(value: libc::timespec) -> Option<Duration> {
-    let seconds = u64::try_from(value.tv_sec).ok()?;
-    let nanos = u32::try_from(value.tv_nsec).ok()?;
-    (nanos < 1_000_000_000).then(|| Duration::new(seconds, nanos))
-}
+#[cfg(test)]
+#[path = "cpu_clock_axiom_test.rs"]
+mod axiom_test_support;

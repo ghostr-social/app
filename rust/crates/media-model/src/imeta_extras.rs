@@ -1,6 +1,7 @@
-//! Optional imeta hints beyond the playable URL, parsed leniently: a
-//! malformed field becomes `None` without ever failing the media parse
-//! (units and leniency per lib/core/media/video_media_metadata.dart).
+//! Parses optional imeta hints beyond the playable URL leniently.
+//!
+//! A malformed field becomes `None` without ever failing the media parse
+//! (units and leniency per `lib/core/media/video_media_metadata.dart`).
 
 use crate::native_media_metadata::imeta_field;
 use crate::native_text::bounded_native_text;
@@ -15,7 +16,7 @@ pub struct ImetaExtras {
     pub size_bytes: Option<u64>,
     /// imeta `duration`: seconds (fractional allowed) converted to ms.
     pub duration_ms: Option<u64>,
-    /// imeta `dim`: "WxH" pixels, both positive.
+    /// imeta `dim`: `WxH` pixels, both positive.
     pub dimensions: Option<(u32, u32)>,
     /// imeta `blurhash`: opaque placeholder string.
     pub blurhash: Option<String>,

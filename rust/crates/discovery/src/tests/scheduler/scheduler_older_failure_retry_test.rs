@@ -3,8 +3,8 @@ use crate::tests::scheduler_support::{
     context, next_outcome, next_started, no_start, note_at, request,
 };
 use crate::tests::scripted_scheduler_support::scripted_scheduler_results;
+use core::time::Duration;
 use nostr_sdk::Timestamp;
-use std::time::Duration;
 
 #[tokio::test(start_paused = true)]
 async fn an_older_page_failure_never_turns_into_a_head_retry() {

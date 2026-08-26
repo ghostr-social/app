@@ -2,6 +2,7 @@
 name = "ghostr-media-store"
 version = "0.1.0"
 edition = "2021"
+publish = false
 description = "Startup housekeeping for on-disk media storage."
 
 [dependencies]

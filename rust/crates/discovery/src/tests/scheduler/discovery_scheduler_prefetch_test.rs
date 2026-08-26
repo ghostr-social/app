@@ -1,6 +1,6 @@
 //! Expansion demand prefetches the active feed's next older page at
 //! background priority, cursored one second below the oldest fetched
-//! post (plan §5.4; discovery::pagination::next_page_cursor).
+//! post (plan §5.4; `discovery::pagination::next_page_cursor`).
 
 use crate::retrieval_types::RetrievalPriority;
 use crate::tests::scheduler_support::{

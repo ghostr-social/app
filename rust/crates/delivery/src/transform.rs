@@ -21,6 +21,11 @@ pub struct TransformLimits {
 }
 
 impl TransformLimits {
+    /// Creates bounded production transform limits.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for zero, internally inconsistent, or out-of-policy limits.
     pub fn try_new(
         input_bytes: u64,
         output_bytes: u64,
@@ -51,16 +56,16 @@ impl TransformLimits {
         })
     }
 
-    pub const fn input_bytes(self) -> u64 {
+    pub(super) const fn input_bytes(self) -> u64 {
         self.input_bytes
     }
-    pub const fn output_bytes(self) -> u64 {
+    pub(super) const fn output_bytes(self) -> u64 {
         self.output_bytes
     }
-    pub const fn cpu_ms(self) -> u64 {
+    pub(super) const fn cpu_ms(self) -> u64 {
         self.cpu_ms
     }
-    pub const fn elapsed_ms(self) -> u64 {
+    pub(super) const fn elapsed_ms(self) -> u64 {
         self.elapsed_ms
     }
 }
@@ -91,26 +96,26 @@ impl TransformProfile {
         self.trigger = trigger;
         self
     }
-    pub const fn kind(self) -> TransformKind {
+    pub(super) const fn kind(self) -> TransformKind {
         self.kind
     }
-    pub const fn limits(self) -> TransformLimits {
+    pub(super) const fn limits(self) -> TransformLimits {
         self.limits
     }
-    pub const fn trigger(self) -> TransformTrigger {
+    pub(super) const fn trigger(self) -> TransformTrigger {
         self.trigger
     }
 }
 
 impl TransformTrigger {
-    pub(crate) fn allows_failure(self, failure: Option<&str>) -> bool {
+    pub(super) fn allows_failure(self, failure: Option<&str>) -> bool {
         matches!(
             self,
             Self::InvalidVideoTrack | Self::FastStartInvalidVideoTrack
         ) && failure == Some("invalidVideoTrack")
     }
 
-    pub(crate) const fn requires_fast_start(self) -> bool {
+    pub(super) const fn requires_fast_start(self) -> bool {
         matches!(self, Self::FastStartInvalidVideoTrack)
     }
 }
@@ -136,6 +141,11 @@ impl<'a> TransformInput<'a> {
 pub struct TransformOutput(Vec<u8>);
 
 impl TransformOutput {
+    /// Wraps non-empty transformed media bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when `bytes` is empty.
     pub fn try_new(bytes: Vec<u8>) -> Result<Self> {
         ensure!(!bytes.is_empty(), "transform output must not be empty");
         Ok(Self(bytes))
@@ -146,13 +156,18 @@ impl TransformOutput {
     }
 }
 
-/// A backend must enforce its advertised byte bounds, perform CPU work
-/// synchronously on the calling worker thread, and call
-/// [`TransformControl::checkpoint`] often enough to honor cancellation and
-/// elapsed limits. Child-thread CPU cannot be attributed by this contract.
-/// Production only installs cooperative in-process backends.
+/// A bounded, cooperative media-transform backend.
+///
+/// Implementations enforce advertised byte bounds, work synchronously on the calling worker, and
+/// call [`TransformControl::checkpoint`] often enough to honor cancellation and elapsed limits.
+/// This contract cannot attribute child-thread CPU, so production installs in-process backends.
 pub trait TransformBackend: Send + Sync {
     fn profile(&self) -> TransformProfile;
+    /// Applies the configured transform while honoring `control`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when input is invalid, a resource bound is exceeded, or work is cancelled.
     fn transform(
         &self,
         input: TransformInput<'_>,

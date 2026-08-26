@@ -59,8 +59,9 @@ fn prepared(post: &str) -> Vec<PreparedObject> {
         .into_iter()
         .map(|name| PreparedObject {
             request_url: format!("https://{post}.example/{name}"),
-            final_url: Url::parse(&format!("https://{post}.example/{name}")).unwrap(),
-            body: body.clone(),
+            final_url: Url::parse(&format!("https://{post}.example/{name}"))
+                .expect("valid test fixture"),
+            body: std::sync::Arc::clone(&body),
             content_type: None,
             cache: Default::default(),
         })

@@ -1,7 +1,7 @@
 //! An accepted mute list filters the active feed without a relay echo.
 
 use crate::api::feed::state::FeedState;
-use crate::api::runtime::accepted_events::remember_accepted;
+use crate::api::runtime::accepted_events::axiom_test_support::remember_accepted;
 use crate::api::runtime::discovery::{lock, OutcomeSinks, SharedFeedState};
 use crate::api::tests::feed_fixtures::{signed_event, video_note, SignedEventFixture};
 use crate::api::tests::outbox_runtime_support::test_bootstrap;
@@ -20,7 +20,7 @@ async fn accepted_mute_list_filters_the_active_viewers_feed() {
     });
     let (bootstrap, _probe) = test_bootstrap();
     let sinks = OutcomeSinks {
-        state: state.clone(),
+        state: std::sync::Arc::clone(&state),
         bootstrap,
         candidates: None,
     };

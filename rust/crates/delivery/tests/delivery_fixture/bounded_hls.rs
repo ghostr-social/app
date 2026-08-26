@@ -11,12 +11,18 @@ pub type Requests = Arc<Mutex<Vec<(String, Option<String>, Option<String>)>>>;
 
 pub async fn serve() -> (String, Requests) {
     let requests = Requests::default();
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let address = listener.local_addr().unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("valid test fixture");
+    let address = listener.local_addr().expect("valid test fixture");
     let app = Router::new()
         .fallback(get(object))
-        .with_state(requests.clone());
-    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        .with_state(std::sync::Arc::clone(&requests));
+    tokio::spawn(async move {
+        axum::serve(listener, app)
+            .await
+            .expect("valid test fixture");
+    });
     (format!("http://{address}/index.m3u8"), requests)
 }
 
@@ -28,28 +34,38 @@ async fn object(State(requests): State<Requests>, uri: Uri, headers: HeaderMap) 
         ),
         "/init.mp4" => partial(&headers, &requests),
         "/segment.m4s" => full(b"segment", "segment-v1"),
-        _ => Response::builder().status(404).body(Body::empty()).unwrap(),
+        _ => Response::builder()
+            .status(404)
+            .body(Body::empty())
+            .expect("valid test fixture"),
     }
 }
 
 fn partial(headers: &HeaderMap, requests: &Requests) -> Response<Body> {
-    let requested = headers.get(header::RANGE).unwrap().to_str().unwrap();
+    let requested = headers
+        .get(header::RANGE)
+        .expect("valid test fixture")
+        .to_str()
+        .expect("valid test fixture");
     let if_range = headers
         .get(header::IF_RANGE)
-        .map(|value| value.to_str().unwrap().to_owned());
+        .map(|value| value.to_str().expect("valid test fixture").to_owned());
     let if_match = headers
         .get(header::IF_MATCH)
-        .map(|value| value.to_str().unwrap().to_owned());
+        .map(|value| value.to_str().expect("valid test fixture").to_owned());
     requests
         .lock()
-        .unwrap()
+        .expect("valid test fixture")
         .push((requested.to_owned(), if_range, if_match));
     let (start, end) = requested
         .strip_prefix("bytes=")
-        .unwrap()
+        .expect("valid test fixture")
         .split_once('-')
-        .unwrap();
-    ranged(start.parse().unwrap(), end.parse().unwrap())
+        .expect("valid test fixture");
+    ranged(
+        start.parse().expect("valid test fixture"),
+        end.parse().expect("valid test fixture"),
+    )
 }
 
 fn ranged(start: usize, requested_end: usize) -> Response<Body> {
@@ -63,7 +79,7 @@ fn ranged(start: usize, requested_end: usize) -> Response<Body> {
         .header(header::CONTENT_LENGTH, end - start + 1)
         .header(header::ETAG, "\"init-v1\"")
         .body(Body::from(init_range(start, end)))
-        .unwrap()
+        .expect("valid test fixture")
 }
 
 pub fn init_body() -> Vec<u8> {
@@ -79,5 +95,5 @@ fn full(body: &'static [u8], etag: &'static str) -> Response<Body> {
         .header(header::CONTENT_LENGTH, body.len())
         .header(header::ETAG, format!("\"{etag}\""))
         .body(Body::from(body))
-        .unwrap()
+        .expect("valid test fixture")
 }

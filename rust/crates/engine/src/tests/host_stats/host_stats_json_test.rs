@@ -1,7 +1,7 @@
 //! JSON snapshot round-trip keeps every learned host statistic.
 
 use crate::host_stats::HostStats;
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn round_trip_preserves_all_recorded_stats() {

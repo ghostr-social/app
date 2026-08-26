@@ -2,11 +2,11 @@ use crate::plan_executor::{PlanExecutor, PlanFuture, PlannedRetrieval};
 use crate::retrieval_types::PlanFailure;
 use crate::scheduler::{start_discovery_scheduler, DiscoverySchedulerConfig};
 use crate::tests::scheduler_support::{context, next_outcome, next_started, note_at, request};
+use core::sync::atomic::{AtomicUsize, Ordering};
+use core::time::Duration;
 use ghostr_engine::{adaptive::DiscoveryDemand, DataUsageLevel};
 use nostr_sdk::Timestamp;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::{mpsc, watch, Semaphore};
 
 struct BusyOlderExecutor {
@@ -18,7 +18,7 @@ struct BusyOlderExecutor {
 impl PlanExecutor for BusyOlderExecutor {
     fn execute(&self, retrieval: PlannedRetrieval) -> PlanFuture {
         let _ = self.starts.send(retrieval);
-        let gate = self.gate.clone();
+        let gate = std::sync::Arc::clone(&self.gate);
         let call = self.calls.fetch_add(1, Ordering::SeqCst);
         Box::pin(async move {
             match call {
@@ -42,7 +42,7 @@ async fn a_retry_deferred_by_older_work_remains_pending() {
     let handle = start_discovery_scheduler(DiscoverySchedulerConfig {
         executor: Arc::new(BusyOlderExecutor {
             starts,
-            gate: gate.clone(),
+            gate: std::sync::Arc::clone(&gate),
             calls: AtomicUsize::new(0),
         }),
         level: DataUsageLevel::Conservative,

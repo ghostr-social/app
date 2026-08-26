@@ -57,13 +57,14 @@ impl RecordedPlannerConfig {
     fn restore(self) -> Result<WarpPlannerConfig, DecisionReplayStatus> {
         Ok(WarpPlannerConfig {
             beam: crate::adaptive::BeamConfig::new(
-                usize::try_from(self.beam_depth).map_err(|_| mismatch())?,
-                usize::try_from(self.beam_width).map_err(|_| mismatch())?,
-                usize::try_from(self.beam_expansions).map_err(|_| mismatch())?,
+                usize::try_from(self.beam_depth).map_err(|_conversion_error| mismatch())?,
+                usize::try_from(self.beam_width).map_err(|_conversion_error| mismatch())?,
+                usize::try_from(self.beam_expansions).map_err(|_conversion_error| mismatch())?,
                 self.beam_latency_us,
             ),
             twin: crate::adaptive::TwinConfig::new(self.twin_particles, self.twin_tail_bps),
-            semantic_top_k: usize::try_from(self.semantic_top_k).map_err(|_| mismatch())?,
+            semantic_top_k: usize::try_from(self.semantic_top_k)
+                .map_err(|_conversion_error| mismatch())?,
             semantic_epsilon_micros: self.semantic_epsilon_micros,
             safety_rescue_bps: self.safety_rescue_bps,
             emergency_rescue_bps: self.emergency_rescue_bps,

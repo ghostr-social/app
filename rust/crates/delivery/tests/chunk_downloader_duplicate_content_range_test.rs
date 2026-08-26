@@ -1,6 +1,7 @@
 mod range_fixture;
 mod raw_http;
 
+use core::time::Duration;
 use ghostr_delivery::chunk::cancel::cancel_pair;
 use ghostr_delivery::chunk::downloader::{
     download_chunk_observed, ChunkExecution, ChunkSink, ChunkSpec, DownloadTraffic, OpenedResponse,
@@ -11,7 +12,6 @@ use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::representation::SourceGeneration;
 use ghostr_engine::ByteRange;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
-use std::time::Duration;
 
 const DUPLICATE_RANGE: &[u8] = b"HTTP/1.1 206 Partial Content\r\n\
 Content-Type: video/mp4\r\n\
@@ -27,9 +27,16 @@ async fn duplicate_content_range_cannot_extend_a_sparse_generation() {
     let client = range_fixture::media_client();
     let root = range_fixture::temp_root("duplicate-content-range");
     let store = range_fixture::store(root.clone());
-    store.write_range("clip", 0, b"01234567").await.unwrap();
-    store.set_total_len("clip", 16).await.unwrap();
-    let generation = SourceGeneration::try_new(&url, "\"fixture-media\"", 16).unwrap();
+    store
+        .write_range("clip", 0, b"01234567")
+        .await
+        .expect("valid test fixture");
+    store
+        .set_total_len("clip", 16)
+        .await
+        .expect("valid test fixture");
+    let generation =
+        SourceGeneration::try_new(&url, "\"fixture-media\"", 16).expect("valid test fixture");
     let (_handle, token) = cancel_pair();
     let spec = ChunkSpec {
         requests: &client,
@@ -58,7 +65,8 @@ async fn duplicate_content_range_cannot_extend_a_sparse_generation() {
             network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
         },
     )
-    .await;
+    .await
+    .result;
 
     assert!(result.is_err(), "ambiguous 206 must fail before storage");
     let headers = traffic.observed.expect("arrived headers");
@@ -70,8 +78,15 @@ async fn duplicate_content_range_cannot_extend_a_sparse_generation() {
         headers.evidence().validator,
         EvidenceValidator::strong_etag("\"fixture-media\"")
     );
-    assert_eq!(store.present_ranges("clip").await.unwrap(), vec![0..8]);
-    let request = String::from_utf8(request.await.unwrap()).unwrap();
+    assert_eq!(
+        store
+            .present_ranges("clip")
+            .await
+            .expect("valid test fixture"),
+        vec![0..8]
+    );
+    let request =
+        String::from_utf8(request.await.expect("valid test fixture")).expect("valid test fixture");
     assert!(request.contains("range: bytes=8-15"));
     assert!(request.contains("if-range: \"fixture-media\""));
     std::fs::remove_dir_all(root).ok();

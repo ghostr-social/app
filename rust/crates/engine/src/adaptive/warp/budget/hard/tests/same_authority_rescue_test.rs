@@ -8,8 +8,8 @@ fn ordinary_work_cannot_take_the_rescues_authority_slot() {
     let same = request(2, "https://a.example/ordinary");
     let other = request(3, "https://b.example/ordinary");
     let mut budget = HardBudget::new(ResourceCost::new(2, 2, 0, 2), 2)
-        .protect(std::slice::from_ref(&rescue))
-        .unwrap();
+        .protect(core::slice::from_ref(&rescue))
+        .expect("valid test fixture");
 
     assert_eq!(
         budget.consume_action(&same),

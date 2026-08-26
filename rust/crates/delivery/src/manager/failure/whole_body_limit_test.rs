@@ -8,10 +8,10 @@ fn whole_body_policy_limit_is_not_an_origin_failure() {
         1,
         WholeBodyContract::Capped { maximum_bytes: 8 },
     )
-    .unwrap_err();
+    .expect_err("scenario must fail");
 
     assert_eq!(origin_failure_class(&error), None);
-    let limit = crate::chunk::whole_body_limit::from_error(&error).unwrap();
+    let limit = crate::chunk::whole_body_limit::from_error(&error).expect("valid test fixture");
     assert_eq!(limit.maximum_bytes(), 8);
     assert_eq!(limit.received_bytes(), 9);
 }

@@ -25,8 +25,8 @@ fn a_private_decision_record_replays_the_exact_deterministic_plan() {
         models: &models,
         privacy: &privacy,
     });
-    let json = serde_json::to_string(&record).unwrap();
-    let exported: DecisionRecord = serde_json::from_str(&json).unwrap();
+    let json = serde_json::to_string(&record).expect("valid test fixture");
+    let exported: DecisionRecord = serde_json::from_str(&json).expect("valid test fixture");
 
     assert!(!json.contains("secret-current"));
     assert!(!json.contains("private.example"));
@@ -39,8 +39,8 @@ fn a_private_decision_record_replays_the_exact_deterministic_plan() {
     assert_eq!(record.shadow_prices.network_micros, 12);
     assert!(record.chosen_action.is_some());
     assert_ne!(record.random_seed, 0);
-    assert_eq!(record.replay(), DecisionReplayStatus::Verified);
-    assert_eq!(exported.replay(), DecisionReplayStatus::Verified);
+    assert_eq!(record.integrity_status(), DecisionReplayStatus::Verified);
+    assert_eq!(exported.integrity_status(), DecisionReplayStatus::Verified);
     assert!(record.bind_action(crate::ActionId::new(44)));
     assert!(!record.bind_action(crate::ActionId::new(45)));
     assert!(record.resolve(crate::adaptive::DecisionOutcome::Succeeded {

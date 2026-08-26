@@ -19,13 +19,13 @@ struct PendingExecutor {
 impl PlanExecutor for PendingExecutor {
     fn execute(&self, retrieval: PlannedRetrieval) -> PlanFuture {
         let _ = self.started.send(retrieval);
-        Box::pin(std::future::pending())
+        Box::pin(core::future::pending())
     }
 }
 
 pub(crate) struct BootstrapProbe {
-    pub(crate) started: mpsc::UnboundedReceiver<PlannedRetrieval>,
-    pub(crate) directory: SharedOutboxDirectory,
+    pub(super) started: mpsc::UnboundedReceiver<PlannedRetrieval>,
+    pub(super) directory: SharedOutboxDirectory,
 }
 
 /// A bootstrap whose retrievals never finish, plus the probes for what
@@ -39,7 +39,7 @@ pub(crate) fn test_bootstrap() -> (Arc<OutboxBootstrap>, BootstrapProbe) {
     ])));
     let bootstrap = OutboxBootstrap::new(
         Arc::new(PendingExecutor { started }),
-        directory.clone(),
+        std::sync::Arc::clone(&directory),
         outcomes,
     );
     (

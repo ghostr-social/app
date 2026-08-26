@@ -19,16 +19,16 @@ impl PlanExecutor for ScriptedExecutor {
         Box::pin(async move {
             match page {
                 Some(result) => result,
-                None => std::future::pending().await,
+                None => core::future::pending().await,
             }
         })
     }
 }
 
 pub(crate) struct ScriptedScheduler {
-    pub(crate) handle: DiscoveryHandle,
-    pub(crate) started: mpsc::UnboundedReceiver<PlannedRetrieval>,
-    pub(crate) outcomes: mpsc::UnboundedReceiver<RetrievalOutcome>,
+    pub(super) handle: DiscoveryHandle,
+    pub(super) started: mpsc::UnboundedReceiver<PlannedRetrieval>,
+    pub(super) outcomes: mpsc::UnboundedReceiver<RetrievalOutcome>,
 }
 
 pub(crate) fn scripted_scheduler(pages: Vec<Vec<Event>>) -> ScriptedScheduler {

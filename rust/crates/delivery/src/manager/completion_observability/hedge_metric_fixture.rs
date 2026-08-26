@@ -40,13 +40,13 @@ pub(crate) fn failed() -> ChunkDone {
     }
 }
 
-pub(crate) fn policy_limited() -> ChunkDone {
+pub(super) fn policy_limited() -> ChunkDone {
     let error = crate::chunk::whole_body_limit::WholeBodyLimitReached::check(
         8,
         1,
         WholeBodyContract::Capped { maximum_bytes: 8 },
     )
-    .unwrap_err();
+    .expect_err("scenario must fail");
     ChunkDone {
         attempt: attempt(),
         url: "https://primary.example/video.mp4".into(),
@@ -91,7 +91,9 @@ fn attempt() -> ChunkAttempt {
             duration_ms: Some(1),
         },
     );
-    let identity = catalog.transfer_identity(&post, url).unwrap();
+    let identity = catalog
+        .transfer_identity(&post, url)
+        .expect("valid test fixture");
     let chunk = ChunkId {
         post,
         range: ByteRange::new(0, 64),

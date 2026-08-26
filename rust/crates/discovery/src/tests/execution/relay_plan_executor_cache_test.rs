@@ -32,7 +32,7 @@ fn request(viewer: ViewerScope) -> DiscoveryRequest {
 #[tokio::test]
 async fn client_seen_ids_are_not_rows_in_the_account_cache() {
     let client = Arc::new(client_with_event_cache());
-    let executor = executor(client.clone());
+    let executor = executor(std::sync::Arc::clone(&client));
 
     client
         .database()

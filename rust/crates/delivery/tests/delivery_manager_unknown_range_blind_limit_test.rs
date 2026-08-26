@@ -3,6 +3,8 @@
 mod delivery_fixture;
 mod fast_start_mp4_fixture;
 
+use core::time::Duration;
+use delivery_fixture::evidence::DeliveryEvidence as _;
 use delivery_fixture::items::{focus_now, unsized_item};
 use delivery_fixture::media::{hit_log, hits};
 use delivery_fixture::options::DeliveryOptions;
@@ -10,13 +12,12 @@ use delivery_fixture::probe_origins::{serve_lengthless, serve_recording_range_bl
 use delivery_fixture::start_harness;
 use delivery_fixture::wait::wait_for_ranges;
 use ghostr_engine::adaptive::BOOTSTRAP_DIRECT_FETCH_BYTES;
-use std::time::Duration;
 
 #[tokio::test]
 async fn exhausted_unknown_whole_fetch_grows_once_and_completes() {
     let log = hit_log();
     let body = padded_mp4(BOOTSTRAP_DIRECT_FETCH_BYTES as usize + 1);
-    let origin = serve_recording_range_blind_body(log.clone(), body.clone()).await;
+    let origin = serve_recording_range_blind_body(std::sync::Arc::clone(&log), body.clone()).await;
     let alternate = serve_lengthless().await;
     let mut options = DeliveryOptions::default();
     options.tuning.retry.transient_attempts = 4;
@@ -44,7 +45,7 @@ async fn exhausted_unknown_whole_fetch_grows_once_and_completes() {
             .store
             .read_range("aa11", 0..body.len() as u64)
             .await
-            .unwrap(),
+            .expect("valid test fixture"),
         Some(body)
     );
     let efficiency = harness.handle.evaluation_snapshot().efficiency;

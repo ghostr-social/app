@@ -1,15 +1,13 @@
 //! Subscribers hear about a feed exactly when its visible list changes:
 //! every fresh load notifies (the cubit re-emits on every load), while an
 //! older page that adds nothing new stays silent — mirrors the early
-//! return in feed_cubit.dart `_appendPage` ("A page that adds nothing new
+//! return in `feed_cubit.dart` `_appendPage` ("A page that adds nothing new
 //! stops the digging chain").
 
-mod feed_support;
-
-use feed_support::{parsed, parsed_posts, video_note};
-use ghostr_discovery::content::social_graph::SocialGraph;
-use ghostr_discovery::feed::spec::FeedSpec;
-use ghostr_discovery::feed::store::FeedStore;
+use crate::content::social_graph::SocialGraph;
+use crate::feed::spec::FeedSpec;
+use crate::feed::store::FeedStore;
+use crate::tests::feed_support::{parsed, parsed_posts, video_note};
 use nostr_sdk::Keys;
 
 #[test]

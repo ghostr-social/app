@@ -3,7 +3,7 @@ use ghostr_engine::host_stats::host_of;
 use ghostr_engine::origin_model::{OriginObservation, OriginOutcome};
 
 impl StatsKeeper {
-    pub(crate) fn note_hls(&mut self, observation: OriginObservation) {
+    pub(crate) fn note_hls(&mut self, observation: &OriginObservation) {
         if let Some(host) = host_of(observation.query.url()) {
             match observation.outcome {
                 OriginOutcome::Success => self.stats.record_success(&host),

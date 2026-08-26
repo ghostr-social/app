@@ -22,8 +22,14 @@ async fn projects_every_certified_upcoming_asset_in_feed_order() {
     for id in ["next-1", "next-2", "next-3"] {
         prepare(&store, &tracked, id).await;
         certificates.push(
-            StartupCertificate::issue(startup.clone(), &store.media_snapshot(id).await.unwrap())
-                .unwrap(),
+            StartupCertificate::issue(
+                startup.clone(),
+                &store
+                    .media_snapshot(id)
+                    .await
+                    .expect("test fixture precondition must hold"),
+            )
+            .expect("test fixture precondition must hold"),
         );
     }
     cache.replace(["next-1", "next-2", "next-3"].into_iter().map(cached));
@@ -75,7 +81,14 @@ async fn projects_every_certified_upcoming_asset_in_feed_order() {
             ("next-3", Readiness::Ready),
         ]
     );
-    assert_eq!(projected.next.as_ref().unwrap().delivery_id, "next-1");
+    assert_eq!(
+        projected
+            .next
+            .as_ref()
+            .expect("test fixture precondition must hold")
+            .delivery_id,
+        "next-1"
+    );
 }
 
 async fn prepare(
@@ -85,8 +98,14 @@ async fn prepare(
 ) {
     let meta = sized_meta(16, 2_000);
     bind_store(store, id, &meta).await;
-    store.set_total_len(id, 16).await.unwrap();
-    store.write_range(id, 0, &[7; 16]).await.unwrap();
+    store
+        .set_total_len(id, 16)
+        .await
+        .expect("test fixture precondition must hold");
+    store
+        .write_range(id, 0, &[7; 16])
+        .await
+        .expect("test fixture precondition must hold");
     tracked.insert(id.to_owned(), meta);
 }
 

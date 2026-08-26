@@ -32,16 +32,18 @@ pub(super) async fn segment(State(script): State<HlsScript>) -> Response<Body> {
     response(&script, "segment", "video/iso.segment", b"segment").await
 }
 
-async fn response(
+fn response(
     script: &HlsScript,
     path: &'static str,
     content_type: &'static str,
     body: &'static [u8],
-) -> Response<Body> {
-    let status = script.record(path).await.unwrap_or(StatusCode::OK);
-    Response::builder()
-        .status(status)
-        .header(header::CONTENT_TYPE, content_type)
-        .body(Body::from(body))
-        .unwrap()
+) -> impl core::future::Future<Output = Response<Body>> {
+    let status = script.record(path).unwrap_or(StatusCode::OK);
+    core::future::ready(
+        Response::builder()
+            .status(status)
+            .header(header::CONTENT_TYPE, content_type)
+            .body(Body::from(body))
+            .expect("valid test fixture"),
+    )
 }

@@ -1,8 +1,8 @@
 use super::super::media::HitLog;
 use super::note_request;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::{TcpListener, TcpStream};
 
 pub(super) async fn serve_header_bound_then_complete(log: HitLog, body: Vec<u8>) -> String {
@@ -17,7 +17,7 @@ pub(super) async fn serve_header_bound_then_complete(log: HitLog, body: Vec<u8>)
             let (socket, _) = listener.accept().await.expect("accept header-bound");
             tokio::spawn(answer(
                 socket,
-                log.clone(),
+                std::sync::Arc::clone(&log),
                 Arc::clone(&body),
                 Arc::clone(&full_gets),
             ));

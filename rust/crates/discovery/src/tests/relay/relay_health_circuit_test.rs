@@ -1,5 +1,5 @@
 use crate::relay::health::RelayHealth;
-use std::time::Duration;
+use core::time::Duration;
 
 const HEALTHY: &str = "wss://healthy.example";
 const FAILING: &str = "wss://failing.example";
@@ -73,7 +73,7 @@ async fn recovery_probes_are_capped_per_batch_and_globally() {
     let mut probes = vec![health.admit(&failures)];
     assert_eq!(probes[0].len(), 1, "one recovery per batch");
     for relay in failures.iter().skip(1).take(3) {
-        probes.push(health.admit(std::slice::from_ref(relay)));
+        probes.push(health.admit(core::slice::from_ref(relay)));
     }
     assert!(health.admit(&failures[4..]).is_empty(), "global cap");
 

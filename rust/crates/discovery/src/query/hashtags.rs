@@ -8,7 +8,7 @@ pub(crate) fn normalize_hashtag(raw: &str) -> Option<String> {
     if value.is_empty() {
         None
     } else {
-        Some(value.to_string())
+        Some(value.to_owned())
     }
 }
 
@@ -22,7 +22,7 @@ pub(crate) fn hashtag_query_variants(raw: &str) -> Vec<String> {
         Some(tag) => {
             let upper = tag.to_uppercase();
             let title = title_case(&tag);
-            dedup_in_order(vec![typed.to_string(), tag, upper, title])
+            dedup_in_order(vec![typed.to_owned(), tag, upper, title])
         }
     }
 }

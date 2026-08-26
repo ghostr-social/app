@@ -2,7 +2,7 @@
 //! queries (term or tag filter) wait 8 seconds, canonical feed queries 5
 //! to preserve the distinct latency contracts.
 
-use std::time::Duration;
+use core::time::Duration;
 
 use crate::query::search::{plan_discovery, DISCOVERY_QUERY_TIMEOUT, FEED_QUERY_TIMEOUT};
 use crate::query::video_filters::DiscoveryRequest;

@@ -14,8 +14,8 @@ use terminal::{terminal, TerminalContext, TerminalInput};
 mod cancellation_conversion_test;
 
 pub(super) struct CompletedObject {
-    pub(super) bytes: u64,
-    pub(super) telemetry: OriginTelemetry,
+    bytes: u64,
+    telemetry: OriginTelemetry,
 }
 
 struct LeasedComplete {
@@ -39,9 +39,10 @@ impl SegmentedDelivery {
         let post = done.post;
         let observed_at_ms = done.observed_at_ms;
         let resources = done.resources;
-        let outcome = match active.cancelling {
-            true => Err(cancelled(done.outcome)),
-            false => done.outcome,
+        let outcome = if active.cancelling {
+            Err(cancelled(done.outcome))
+        } else {
+            done.outcome
         };
         let result = self.complete_stage(&post, &active, outcome);
         let context = TerminalContext::new(&source, stage, action, observed_at_ms);
@@ -88,7 +89,7 @@ impl SegmentedDelivery {
                 self.continue_stage(post, active, continuation);
             }
             PreparedStage::Complete(object) => {
-                self.advance_stage(post, active, LeasedComplete { object, lease }, &completed)?
+                self.advance_stage(post, active, LeasedComplete { object, lease }, &completed)?;
             }
         }
         Ok(completed)

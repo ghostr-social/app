@@ -22,7 +22,7 @@ pub(super) fn partial(
         .header(header::CONTENT_LENGTH, end - start + 1)
         .header(header::ETAG, format!("\"init-v{generation}\""))
         .body(Body::from(vec![value; end - start + 1]))
-        .unwrap()
+        .expect("valid test fixture")
 }
 
 pub(super) fn changed_full(generation: u8) -> Response<Body> {
@@ -31,7 +31,7 @@ pub(super) fn changed_full(generation: u8) -> Response<Body> {
         .header(header::CONTENT_LENGTH, INIT_BYTES)
         .header(header::ETAG, format!("\"init-v{generation}\""))
         .body(Body::from(vec![value; INIT_BYTES]))
-        .unwrap()
+        .expect("valid test fixture")
 }
 
 pub(super) fn partial_with_etag(
@@ -50,7 +50,7 @@ pub(super) fn partial_with_etag(
         .header(header::CONTENT_LENGTH, end - start + 1)
         .header(header::ETAG, format!("\"{etag}\""))
         .body(Body::from(vec![8; end - start + 1]))
-        .unwrap()
+        .expect("valid test fixture")
 }
 
 pub(super) fn unsatisfied(total: usize, generation: u8) -> Response<Body> {
@@ -60,7 +60,7 @@ pub(super) fn unsatisfied(total: usize, generation: u8) -> Response<Body> {
         .header(header::CONTENT_LENGTH, 0)
         .header(header::ETAG, format!("\"init-v{generation}\""))
         .body(Body::empty())
-        .unwrap()
+        .expect("valid test fixture")
 }
 
 pub(super) fn full(body: &'static [u8], etag: &'static str) -> Response<Body> {
@@ -68,5 +68,5 @@ pub(super) fn full(body: &'static [u8], etag: &'static str) -> Response<Body> {
         .header(header::CONTENT_LENGTH, body.len())
         .header(header::ETAG, format!("\"{etag}\""))
         .body(Body::from(body))
-        .unwrap()
+        .expect("valid test fixture")
 }

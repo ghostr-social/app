@@ -26,7 +26,10 @@ impl SegmentedDelivery {
         if crate::segmented::source_key::canonical(&pending.root_source)
             == crate::segmented::source_key::canonical(root)
         {
-            self.pending.get_mut(post).unwrap().source_index = index;
+            self.pending
+                .get_mut(post)
+                .expect("pending root was checked")
+                .source_index = index;
             return true;
         }
         if !self.cache.reset_stage_retry(post, generation) {

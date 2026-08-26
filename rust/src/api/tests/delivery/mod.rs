@@ -1,5 +1,6 @@
 mod data_usage_mapping_test;
 mod delivery_kind_mapping_test;
+mod delivery_preparation_authority_alignment_test;
 mod delivery_watcher_cancellation_test;
 mod focus_generation_mapping_test;
 mod focus_item_mapping_test;

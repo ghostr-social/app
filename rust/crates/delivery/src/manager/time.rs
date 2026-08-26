@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicU64, Ordering};
+use core::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 static NEXT_OBSERVATION_ORDER: AtomicU64 = AtomicU64::new(1);

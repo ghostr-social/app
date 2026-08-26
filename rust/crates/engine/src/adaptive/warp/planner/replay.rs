@@ -103,46 +103,6 @@ impl PlannerReplayCapsule {
         &self.sources
     }
 
-    #[cfg(test)]
-    pub(crate) fn mark_incomplete(&mut self) {
-        self.complete = false;
-    }
-
-    #[cfg(test)]
-    pub(crate) fn base_mut(&mut self) -> &mut AllocationPlan {
-        &mut self.base
-    }
-
-    #[cfg(test)]
-    pub(crate) fn origins_mut(&mut self) -> &mut OriginModel {
-        &mut self.origins
-    }
-
-    #[cfg(test)]
-    pub(crate) fn context_mut(&mut self) -> &mut PlannerContext {
-        &mut self.context
-    }
-
-    #[cfg(test)]
-    pub(crate) fn config_mut(&mut self) -> &mut WarpPlannerConfig {
-        &mut self.config
-    }
-
-    #[cfg(test)]
-    pub(crate) fn controller_prices_mut(&mut self) -> &mut ResourcePrices {
-        &mut self.controller_prices
-    }
-
-    #[cfg(test)]
-    pub(crate) fn network_mut(&mut self) -> Option<&mut NetworkTokenBucket> {
-        self.network.as_mut()
-    }
-
-    #[cfg(test)]
-    pub(crate) fn price_epoch_mut(&mut self) -> &mut u64 {
-        &mut self.price_epoch
-    }
-
     pub(crate) fn restored(
         base: AllocationPlan,
         origins: OriginModel,
@@ -175,16 +135,6 @@ pub(crate) struct PlannerReplayState {
     pub hls_generation_policy: HlsGenerationPolicy,
 }
 
-#[cfg(test)]
-impl WarpPlanner {
-    pub(crate) fn plan_legacy_hls_for_test(
-        &mut self,
-        input: WarpPlannerInput<'_>,
-    ) -> WarpPlanningDecision {
-        self.plan_with_hls_policy(input, HlsGenerationPolicy::LegacyWholeStage)
-    }
-}
-
 fn sources(input: &WarpPlannerInput<'_>) -> Vec<String> {
     let mut values = input.snapshot.replay_sources();
     values.extend(input.base.replay_sources());
@@ -193,3 +143,7 @@ fn sources(input: &WarpPlannerInput<'_>) -> Vec<String> {
     values.dedup();
     values
 }
+
+#[cfg(test)]
+#[path = "replay_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

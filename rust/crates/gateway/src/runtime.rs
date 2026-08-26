@@ -3,6 +3,7 @@ use crate::hls::playback::{HlsPlaybackGateway, NativeHlsPlaybackSession};
 use crate::hls::sessions::HlsSessions;
 use crate::progressive::capabilities::ProgressiveCapabilityId;
 use crate::progressive::route::ProgressiveState;
+use core::future::Future;
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_delivery::segmented::SegmentedCache;
 use ghostr_engine::adaptive::DiscoveryDemand;
@@ -11,7 +12,7 @@ use ghostr_media_store::native_cache::prepare_native_cache_directory;
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use log::warn;
 use nostr_sdk::Client;
-use std::{future::Future, io, path::PathBuf, sync::Arc};
+use std::{io, path::PathBuf, sync::Arc};
 use tokio::{net::TcpListener, sync::watch};
 
 mod media;
@@ -42,6 +43,10 @@ impl GatewayRuntime {
     /// Contract on `client`: build it with `client_with_event_cache()`,
     /// never `Client::default()` — the shared client must retain verified
     /// events for session-scoped cache union and deduplication.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when configuration, cache, networking, or delivery startup fails.
     pub async fn start(
         configuration: GatewayConfiguration,
         client: Arc<Client>,
@@ -70,13 +75,18 @@ impl GatewayRuntime {
 
     /// Progressive plumbing (store/demand/posts) for the FFI layer.
     pub fn progressive(&self) -> Arc<ProgressiveState> {
-        self.progressive.clone()
+        std::sync::Arc::clone(&self.progressive)
     }
 
     pub fn segmented(&self) -> SegmentedCache {
         self.segmented.clone()
     }
 
+    /// Issues a capability for the current progressive representation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the representation is unavailable or cannot be authorized.
     pub async fn issue_progressive(
         &self,
         post: &str,
@@ -87,10 +97,19 @@ impl GatewayRuntime {
 
     /// Applies the user's progressive-media budget without restarting
     /// the gateway; shrinking completes only after immediate eviction.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the store cannot apply or persist the new budget.
     pub async fn set_storage_budget(&self, budget: u64) -> anyhow::Result<()> {
         self.progressive.store.set_storage_budget(budget).await
     }
 
+    /// Acquires a secure HLS playback session for validated sources.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the sources are invalid or session capacity is exhausted.
     pub async fn acquire_hls(
         &self,
         sources: Vec<String>,

@@ -1,6 +1,8 @@
 mod delivery_fixture;
 mod hls_terminal_wait;
 
+use core::time::Duration;
+use delivery_fixture::evidence::DeliveryEvidence as _;
 use delivery_fixture::hls::{serve, HlsGate};
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
@@ -9,7 +11,6 @@ use ghostr_engine::adaptive::{
     DecisionOutcome, HlsBootstrapStage, RecordedHlsBootstrapStage, RecordedWarpCommand,
 };
 use ghostr_engine::DeliveryKind;
-use std::time::Duration;
 
 #[tokio::test]
 async fn hls_bootstrap_objects_are_singular_recorded_warp_commitments() {

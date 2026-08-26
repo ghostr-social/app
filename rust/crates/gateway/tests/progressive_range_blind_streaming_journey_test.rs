@@ -2,11 +2,11 @@ mod gateway_fixture;
 
 use axum::body::to_bytes;
 use axum::http::StatusCode;
+use core::time::Duration;
 use gateway_fixture::progressive_delivery::ProgressiveDeliveryHarness;
 use gateway_fixture::progressive_journey_item::unknown_item;
 use gateway_fixture::progressive_journey_origin::ProgressiveJourneyOrigin;
-use std::time::Duration;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn range_blind_body_reaches_the_real_gateway_before_the_origin_finishes() {

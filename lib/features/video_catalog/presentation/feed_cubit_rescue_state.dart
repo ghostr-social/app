@@ -3,13 +3,12 @@ part of 'feed_cubit.dart';
 extension FeedCubitRescueState on FeedCubit {
   void _rememberPendingRescue(FeedLoaded current, FeedReadyDecision decision) {
     final intended = decision.intendedIndex;
-    final snapshot = _snapshotFor(current.posts[intended]);
     _clearPendingRescue();
     final deliveryId = current.posts[intended].media.playbackDeliveryId;
     _awaitingTransportRescue =
         deliveryId == null ||
             intended == current.activeIndex ||
-            snapshot?.phase == VideoDeliveryPhase.startable
+            decision.reason == FeedReadyReason.intendedReady
         ? null
         : (
             deliveryId: deliveryId,

@@ -10,12 +10,19 @@ final class PreparedProgressivePlayback {
     required VideoMediaSource origin,
     required ProxiedProgressiveVideoMediaSource media,
     required PlaybackAssetAuthority authority,
+    required bool isStructurallyStartable,
     VideoRepresentationId? sourceRepresentationId,
   }) {
     final sourceId = sourceRepresentationId ?? authority.representationId;
     _validateOrigin(origin, authority, sourceId);
     _validateProxy(media, authority);
-    return PreparedProgressivePlayback._(origin, media, authority, sourceId);
+    return PreparedProgressivePlayback._(
+      origin,
+      media,
+      authority,
+      sourceId,
+      isStructurallyStartable,
+    );
   }
 
   const PreparedProgressivePlayback._(
@@ -23,12 +30,14 @@ final class PreparedProgressivePlayback {
     this.media,
     this.authority,
     this.sourceRepresentationId,
+    this.isStructurallyStartable,
   );
 
   final VideoMediaSource origin;
   final ProxiedProgressiveVideoMediaSource media;
   final PlaybackAssetAuthority authority;
   final VideoRepresentationId sourceRepresentationId;
+  final bool isStructurallyStartable;
 
   bool matches(VideoMediaSource candidate) {
     return candidate.inventoryPlaybackIdentity ==

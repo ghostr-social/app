@@ -1,7 +1,5 @@
-use crate::delivery_events::{
-    PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationObservation,
-    PlayerPreparationReport, PlayerPreparationState,
-};
+
+use crate::delivery_events::{PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationObservation, PlayerPreparationReport, PlayerPreparationState};
 use crate::tests::player_preparation_fixture::{focus, state};
 use ghostr_engine::PostId;
 use ghostr_partial_store::partial_range_store::ContentRevision;
@@ -21,6 +19,7 @@ fn newer_epoch_retires_old_evidence_even_when_its_first_post_left_scope() {
     )));
 }
 
+#[derive(Clone, Copy)]
 struct ReportSpec<'a> {
     post: &'a str,
     epoch: u64,
@@ -49,13 +48,13 @@ fn report(
     let post = PostId::new(spec.post);
     let authority = PlayerPreparationAuthority::try_new(
         post.clone(),
-        delivery.catalog().binding(&post).unwrap(),
+        delivery.catalog().binding(&post).expect("valid test fixture"),
         ContentRevision::default(),
         format!("asset-{}", spec.post),
     )
-    .unwrap();
-    let attempt = PlayerPreparationAttempt::try_new(1, spec.epoch, 1).unwrap();
+    .expect("valid test fixture");
+    let attempt = PlayerPreparationAttempt::try_new(1, spec.epoch, 1).expect("valid test fixture");
     let observation =
-        PlayerPreparationObservation::try_new(spec.state, None, spec.sequence).unwrap();
-    PlayerPreparationReport::try_new(authority, attempt, spec.sequence, observation).unwrap()
+        PlayerPreparationObservation::try_new(spec.state, None, spec.sequence).expect("valid test fixture");
+    PlayerPreparationReport::try_new(authority, attempt, spec.sequence, observation).expect("valid test fixture")
 }

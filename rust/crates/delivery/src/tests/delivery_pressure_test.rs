@@ -1,5 +1,5 @@
 use crate::manager::pressure::StorePressure;
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn one_store_refusal_decision_is_reported_once() {

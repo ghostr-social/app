@@ -60,7 +60,7 @@ impl DecisionClaim {
     fn new(token: &DecisionToken, started_at_ms: u64) -> Self {
         Self {
             sequence: token.sequence,
-            owner: token.owner.clone(),
+            owner: std::sync::Weak::clone(&token.owner),
             started_at_ms,
             armed: true,
         }

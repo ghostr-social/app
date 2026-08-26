@@ -1,13 +1,13 @@
 mod delivery_fixture;
 mod hls_terminal_wait;
 
+use core::time::Duration;
 use delivery_fixture::hls::{serve, HlsGate};
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use ghostr_delivery::segmented::SegmentedPhase;
 use ghostr_engine::DeliveryKind;
-use std::time::Duration;
 
 #[tokio::test]
 async fn authorized_hls_initialization_stages_prepare_in_parallel() {
@@ -23,8 +23,18 @@ async fn authorized_hls_initialization_stages_prepare_in_parallel() {
     harness.handle.update_focus(focus_now(items, 0, 0));
 
     let both_started = async {
-        first_gate.started.acquire().await.unwrap().forget();
-        second_gate.started.acquire().await.unwrap().forget();
+        first_gate
+            .started
+            .acquire()
+            .await
+            .expect("valid test fixture")
+            .forget();
+        second_gate
+            .started
+            .acquire()
+            .await
+            .expect("valid test fixture")
+            .forget();
     };
     tokio::time::timeout(Duration::from_secs(2), both_started)
         .await

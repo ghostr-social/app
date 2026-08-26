@@ -5,10 +5,10 @@ use crate::chunk::sink::{ChunkWrite, ResponseWriteMode};
 pub(super) fn range<W: ChunkWrite + ?Sized>(
     input: TransferInput<'_, '_, W>,
     range_support: Option<bool>,
-) -> anyhow::Result<ChunkResult> {
+) -> ChunkResult {
     let length = input.length;
     observe(input, length, range_support);
-    Ok(outcome::range_ignored(length, range_support))
+    outcome::range_ignored(length, range_support)
 }
 
 pub(super) fn bound<W: ChunkWrite + ?Sized>(

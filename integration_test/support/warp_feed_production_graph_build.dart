@@ -1,5 +1,6 @@
 import 'package:ghostr/app/build_production_dependencies.dart';
 import 'package:ghostr/app/app_dependencies.dart';
+import 'package:ghostr/features/settings/domain/data_usage_level.dart';
 import 'package:ghostr/platform/media/ffi_playback_preparation_updates.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,8 +15,9 @@ import 'warp_feed_relay.dart';
 Future<WarpFeedProductionGraph> buildWarpFeedProductionGraph(
   ProgressiveDeviceResources resources,
   WarpFeedRelay relay,
+  DataUsageLevel dataUsage,
 ) async {
-  SharedPreferences.setMockInitialValues(_settings(relay));
+  SharedPreferences.setMockInitialValues(_settings(relay, dataUsage));
   final build = _newBuild();
   try {
     final dependencies = await _buildDependencies(build, resources);
@@ -38,7 +40,10 @@ typedef _WarpFeedBuild = ({
 _WarpFeedBuild _newBuild() {
   final account = WarpFeedNostrAccount.create();
   final telemetry = ProgressiveDeviceTelemetry();
-  final metrics = WarpFeedPreparationMetrics(() => telemetry.probe.elapsed);
+  final metrics = WarpFeedPreparationMetrics(
+    () => telemetry.probe.elapsed,
+    telemetry.probe.markExternalEvidence,
+  );
   return (
     account: account,
     telemetry: telemetry,
@@ -75,15 +80,23 @@ WarpFeedProductionGraph _composeGraph(
     telemetry: build.telemetry,
     preparation: build.metrics,
     rustProbe: build.capture.rustProbe,
+    network: build.capture.network,
   ));
 }
 
 Future<void> _closeFailedBuild(_WarpFeedBuild build) async {
-  await build.capture.delivery?.dispose();
+  final delivery = build.capture.delivery;
+  if (delivery == null) {
+    await build.capture.network.close();
+  } else {
+    await delivery.dispose();
+  }
   await build.account.ndk.destroy();
 }
 
-Map<String, Object> _settings(WarpFeedRelay relay) => {
-  'ghostr.settings.relays': <String>[relay.uri.toString()],
-  'ghostr.settings.searchRelays': <String>[],
-};
+Map<String, Object> _settings(WarpFeedRelay relay, DataUsageLevel dataUsage) =>
+    {
+      'ghostr.settings.relays': <String>[relay.uri.toString()],
+      'ghostr.settings.searchRelays': <String>[],
+      'ghostr.settings.dataUsage': dataUsage.name,
+    };

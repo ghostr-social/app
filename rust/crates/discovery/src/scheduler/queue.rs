@@ -2,7 +2,7 @@
 //! context leaves first, then the more urgent priority class, then
 //! submission order.
 
-use std::cmp::Ordering;
+use core::cmp::Ordering;
 use std::collections::HashSet;
 
 use crate::retrieval_types::{FeedContext, RetrievalRequest};
@@ -46,12 +46,12 @@ impl<T> RetrievalQueue<T> {
         self.sequence += 1;
     }
 
-    pub(crate) fn reset_session(&mut self) {
+    pub(super) fn reset_session(&mut self) {
         self.pending.clear();
         self.focused = None;
     }
 
-    pub(crate) fn remove(&mut self, context: &FeedContext) {
+    pub(super) fn remove(&mut self, context: &FeedContext) {
         self.pending
             .retain(|entry| &entry.request.context != context);
         if self.focused.as_ref() == Some(context) {
@@ -63,12 +63,6 @@ impl<T> RetrievalQueue<T> {
         self.pending
             .iter()
             .any(|entry| &entry.request.context == context)
-    }
-
-    /// Removes and returns the most urgent pending retrieval.
-    #[cfg(test)]
-    pub(crate) fn take_next(&mut self) -> Option<(RetrievalRequest, T)> {
-        self.take_next_excluding(std::iter::empty())
     }
 
     pub(crate) fn take_next_excluding<'a>(
@@ -114,3 +108,7 @@ impl<T> RetrievalQueue<T> {
         self.focused.as_ref() == Some(&entry.request.context)
     }
 }
+
+#[cfg(test)]
+#[path = "queue_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

@@ -11,7 +11,7 @@ async fn learned_watch_predictions_survive_an_atomic_privacy_safe_restart() {
     let context = WatchContext::new(WatchKey::digest(raw), Some(20_000));
     let mut model = WatchModel::default();
     for observed_at_ms in 1..=8 {
-        model.observe(WatchSample::new(
+        model.observe(&WatchSample::new(
             context.clone(),
             1_000,
             WatchSampleKind::Abandoned,
@@ -22,9 +22,9 @@ async fn learned_watch_predictions_survive_an_atomic_privacy_safe_restart() {
 
     save_playback_learning(&path, &QoeStats::default(), &model)
         .await
-        .unwrap();
+        .expect("valid test fixture");
     let restored = load_playback_learning(&path).await;
-    let json = tokio::fs::read_to_string(&path).await.unwrap();
+    let json = tokio::fs::read_to_string(&path).await.expect("valid test fixture");
 
     assert_eq!(restored.watch.predict(&context, 20).p50_ms(), expected);
     assert_eq!(restored.watch.revision(), model.revision());

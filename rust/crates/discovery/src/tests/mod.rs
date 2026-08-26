@@ -1,6 +1,13 @@
 //! Shared fixtures sit here; each folder holds the tests
 //! for the matching folder of the crate.
 
+#[path = "../../tests/discovery_support/mod.rs"]
+mod discovery_support;
+mod external_a;
+mod external_b;
+#[path = "../../tests/feed_support/mod.rs"]
+mod feed_support;
+
 mod blossom_enrichment_support;
 mod candidate_registry_bound_test;
 mod deletion_enrichment_support;

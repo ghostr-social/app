@@ -10,7 +10,7 @@ use crate::scheduler::{
 };
 use crate::tests::scheduler_support::{context, request};
 use ghostr_engine::adaptive::DiscoveryDemand;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use tokio::sync::{mpsc, watch};
 
@@ -18,7 +18,7 @@ struct NeverExecutor;
 
 impl PlanExecutor for NeverExecutor {
     fn execute(&self, _retrieval: PlannedRetrieval) -> PlanFuture {
-        Box::pin(std::future::pending())
+        Box::pin(core::future::pending())
     }
 }
 
@@ -38,8 +38,8 @@ async fn queued_completion_is_ignored_after_its_feed_closes() {
         outcomes: outcome_sender,
         finished_sender,
         finished,
-        tasks: HashMap::new(),
-        hunts: HashMap::new(),
+        tasks: BTreeMap::new(),
+        hunts: BTreeMap::new(),
         retry_attempts: HashMap::new(),
         pending_feed_retries: HashMap::new(),
         pending_feed_hunts: HashMap::new(),
@@ -55,7 +55,7 @@ async fn queued_completion_is_ignored_after_its_feed_closes() {
         context: feed.clone(),
         request: request(),
     }));
-    let active = tokio::spawn(std::future::pending::<()>());
+    let active = tokio::spawn(core::future::pending::<()>());
     worker.tasks.insert(
         0,
         ActiveRetrieval {

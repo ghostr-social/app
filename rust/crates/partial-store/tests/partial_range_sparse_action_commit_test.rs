@@ -1,5 +1,3 @@
-mod store_fixture;
-
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::representation::SourceGeneration;
 use ghostr_engine::ByteRange;
@@ -7,25 +5,41 @@ use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 
 #[tokio::test]
 async fn sparse_callbacks_are_visible_before_one_durable_action_commit() {
-    let fixture =
-        store_fixture::spaced_store("sparse-action-commit", store_fixture::limits(8, 0), 8);
+    let fixture = crate::tests::store_fixture::spaced_store(
+        "sparse-action-commit",
+        crate::tests::store_fixture::limits(8, 0),
+        8,
+    );
     let (binding, identity) = identity();
-    let generation = SourceGeneration::try_new(identity.source().as_str(), "\"g\"", 8).unwrap();
-    fixture.store.bind_representation(binding).await.unwrap();
-    let action = fixture.store.reserve_action(&identity, 1, 8).await.unwrap();
+    let generation = SourceGeneration::try_new(identity.source().as_str(), "\"g\"", 8)
+        .expect("valid test fixture");
+    fixture
+        .store
+        .bind_representation(binding)
+        .await
+        .expect("valid test fixture");
+    let action = fixture
+        .store
+        .reserve_action(&identity, 1, 8)
+        .await
+        .expect("valid test fixture");
     fixture
         .store
         .open_sparse_response(&identity, &action, generation.clone(), ByteRange::new(0, 8))
         .await
-        .unwrap();
+        .expect("valid test fixture");
 
     assert!(fixture
         .store
         .write_range_for_action_if_current(&identity, &generation, &action, 0, b"abcd")
         .await
-        .unwrap());
+        .expect("valid test fixture"));
     assert_eq!(
-        fixture.store.read_range("clip", 0..4).await.unwrap(),
+        fixture
+            .store
+            .read_range("clip", 0..4)
+            .await
+            .expect("valid test fixture"),
         Some(b"abcd".to_vec())
     );
     assert!(persisted_intervals(&fixture.root).is_empty());
@@ -34,15 +48,15 @@ async fn sparse_callbacks_are_visible_before_one_durable_action_commit() {
         .store
         .write_range_for_action_if_current(&identity, &generation, &action, 4, b"efgh")
         .await
-        .unwrap());
+        .expect("valid test fixture"));
     assert!(fixture
         .store
         .finish_sparse_response(&identity, &generation, &action)
         .await
-        .unwrap());
+        .expect("valid test fixture"));
     assert_eq!(persisted_intervals(&fixture.root), vec![(0, 8)]);
     fixture.store.release_action(&action).await;
-    store_fixture::discard(&fixture.root);
+    crate::tests::store_fixture::discard(&fixture.root);
 }
 
 fn identity() -> (
@@ -60,22 +74,25 @@ fn identity() -> (
             duration_ms: Some(1_000),
         },
     );
-    let identity = binding.transfer("https://cdn.example/clip").unwrap();
+    let identity = binding
+        .transfer("https://cdn.example/clip")
+        .expect("valid test fixture");
     (binding, identity)
 }
 
 fn persisted_intervals(root: &std::path::Path) -> Vec<(u64, u64)> {
-    let value: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(root.join("clip.ranges.json")).unwrap())
-            .unwrap();
+    let value: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(root.join("clip.ranges.json")).expect("valid test fixture"),
+    )
+    .expect("valid test fixture");
     value["intervals"]
         .as_array()
-        .unwrap()
+        .expect("valid test fixture")
         .iter()
         .map(|item| {
             (
-                item["start"].as_u64().unwrap(),
-                item["end"].as_u64().unwrap(),
+                item["start"].as_u64().expect("valid test fixture"),
+                item["end"].as_u64().expect("valid test fixture"),
             )
         })
         .collect()

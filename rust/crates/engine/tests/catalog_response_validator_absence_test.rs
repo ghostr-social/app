@@ -1,7 +1,7 @@
-use ghostr_engine::catalog::{Catalog, HttpObservation, LearnedFacts};
-use ghostr_engine::evidence::{EvidenceTime, EvidenceValidator};
-use ghostr_engine::representation::HttpGenerationAuthority;
-use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
+use crate::catalog::{Catalog, HttpObservation, LearnedFacts};
+use crate::evidence::{EvidenceTime, EvidenceValidator};
+use crate::representation::HttpGenerationAuthority;
+use crate::{DeliveryKind, PostId, VideoMeta};
 
 const URL: &str = "https://media.example/video.mp4";
 
@@ -12,12 +12,14 @@ fn response_validator_absence_cannot_claim_or_revoke_trusted_generation() {
     let identity = catalog
         .upsert(post.clone(), metadata())
         .transfer(URL)
-        .unwrap();
+        .expect("valid test fixture");
     assert!(catalog.learn_response_observation_for(
         &identity,
         observation(Some(16), EvidenceValidator::strong_etag("\"v1\""), 1)
     ));
-    let original = catalog.http_generation_for(&identity).unwrap();
+    let original = catalog
+        .http_generation_for(&identity)
+        .expect("valid test fixture");
     assert!(catalog.learn_head_observation_for(&identity, observation(None, None, 2)));
     assert_eq!(
         catalog.http_generation_for(&identity),
@@ -32,10 +34,10 @@ fn response_validator_absence_cannot_claim_or_revoke_trusted_generation() {
             None,
             EvidenceTime::ordered(100, 4),
         )
-        .unwrap();
+        .expect("valid test fixture");
     assert_eq!(rejected, HttpGenerationAuthority::Trusted(original.clone()));
     assert_eq!(catalog.http_generation_for(&identity), Some(original));
-    let entry = catalog.lookup(&post).unwrap();
+    let entry = catalog.lookup(&post).expect("valid test fixture");
     let expected = EvidenceValidator::strong_etag("\"v1\"");
     assert_eq!(entry.current_validator_for(URL), expected.as_ref());
     assert_eq!(entry.conservative_size_for(URL, 4).exact, Some(16));

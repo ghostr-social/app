@@ -7,11 +7,11 @@ fn omitted_focus_preview_retains_same_binding_but_not_a_replacement() {
 
     assert!(state.apply_focus(focus(post.clone(), original), 2));
     assert_eq!(
-        state.catalog().lookup(&post).unwrap().preview(),
+        state.catalog().lookup(&post).expect("valid test fixture").preview(),
         PreviewDescriptor::inline_blurhash(BLURHASH)
     );
 
     let replacement = meta("https://media.example/replacement.mp4");
     assert!(state.apply_focus(focus(post.clone(), replacement), 3));
-    assert_eq!(state.catalog().lookup(&post).unwrap().preview(), None);
+    assert_eq!(state.catalog().lookup(&post).expect("valid test fixture").preview(), None);
 }

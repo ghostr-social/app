@@ -23,7 +23,9 @@ async fn invalidation_during_active_work_reseeds_only_the_affected_post() {
     );
     assert_eq!(delivery.pending[&PostId::new("other")], other);
 
-    delivery.finish(cancelled(post.clone())).unwrap();
+    delivery
+        .finish(cancelled(post.clone()))
+        .expect("valid test fixture");
     assert_eq!(
         delivery.pending[&post],
         Pending::root(1, 3, 0, root("stream"))

@@ -1,4 +1,4 @@
-use ghostr_engine::evidence::{
+use crate::evidence::{
     Confidence, Evidence, EvidenceField, EvidenceLedger, EvidenceScope, EvidenceSource,
     EvidenceValidator, EvidenceValue,
 };
@@ -28,5 +28,5 @@ fn late_old_validator_cannot_invalidate_newer_generation_evidence() {
 }
 
 fn etag(value: &str) -> EvidenceValidator {
-    EvidenceValidator::strong_etag(format!("\"{value}\"")).unwrap()
+    EvidenceValidator::strong_etag(format!("\"{value}\"")).expect("valid test fixture")
 }

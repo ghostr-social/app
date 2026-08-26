@@ -1,7 +1,8 @@
 use super::action;
+use crate::adaptive::axiom_test_support::ActionFrontier;
 use crate::adaptive::{
-    ActionForecast, ActionFrontier, ActionKind, ActionNode, ActionValue, CompletionTimes,
-    EpsilonBuckets, ResourceCost, TransformKind,
+    ActionForecast, ActionKind, ActionNode, ActionValue, CompletionTimes, EpsilonBuckets,
+    ResourceCost, TransformKind,
 };
 use crate::PostId;
 

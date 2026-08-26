@@ -20,10 +20,13 @@ fn complete_capsule_reruns_real_multi_action_transform_rescue_plan() {
     let captured = record(&state, &decision);
     let replay = captured.replay_warp_search().expect("full planner replay");
 
-    assert_eq!(captured.replay(), DecisionReplayStatus::Verified);
-    assert_eq!(replay.decision(), captured.warp_decision.as_ref().unwrap());
+    assert_eq!(captured.integrity_status(), DecisionReplayStatus::Verified);
+    assert_eq!(
+        replay.decision(),
+        captured.warp_decision.as_ref().expect("valid test fixture")
+    );
     assert!(serde_json::to_string(&captured)
-        .unwrap()
+        .expect("valid test fixture")
         .contains("planner_replay_capsule"));
 }
 
@@ -34,15 +37,15 @@ fn privacy_hash_order_reversal_preserves_original_candidate_order() {
     assert_eq!(state.candidates[1].post.as_str(), "p1");
     let context = PlannerContext::explicitly_unavailable(&state)
         .with_retry_availability(
-            state.candidates[0].post.clone(),
+            &state.candidates[0].post,
             PlannerRetryAvailability::Cooling { eligible_at_ms: 10 },
         )
         .with_retry_availability(
-            state.candidates[1].post.clone(),
+            &state.candidates[1].post,
             PlannerRetryAvailability::Cooling { eligible_at_ms: 20 },
         )
         .with_watch(
-            state.candidates[1].post.clone(),
+            &state.candidates[1].post,
             PlannerWatchEvidence::learned(4_000, 4_000, 8_000, 12_000, 2_000, None),
         );
     let config = WarpPlannerConfig {
@@ -57,13 +60,17 @@ fn privacy_hash_order_reversal_preserves_original_candidate_order() {
         &context,
     ));
     let captured = super::support::record(&state, &decision);
-    let retry = &captured.warp_decision.as_ref().unwrap().retry_availability;
+    let retry = &captured
+        .warp_decision
+        .as_ref()
+        .expect("valid test fixture")
+        .retry_availability;
 
     assert!(
         retry[0].post_id > retry[1].post_id,
         "fixture reverses hash order"
     );
-    let json = serde_json::to_string(&captured).unwrap();
+    let json = serde_json::to_string(&captured).expect("valid test fixture");
     assert!(json.contains("play_start_p95_ms"));
     assert!(!json.contains("\"p1\""));
     assert!(captured.replay_warp_search().is_ok());

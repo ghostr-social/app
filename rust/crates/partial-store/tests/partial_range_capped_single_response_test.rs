@@ -1,5 +1,3 @@
-mod store_fixture;
-
 use ghostr_engine::adaptive::WholeBodyContract;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
@@ -8,14 +6,25 @@ use tokio::sync::Mutex;
 
 #[tokio::test]
 async fn capped_response_keeps_seed_until_eof_then_commits_discovered_total() {
-    let root = store_fixture::temp_root("single-response-capped");
-    let store = store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
+    let root = crate::tests::store_fixture::temp_root("single-response-capped");
+    let store = crate::tests::store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(PostId::new("post"), meta());
-    let transfer = binding.transfer("https://cdn.example/video").unwrap();
-    store.bind_representation(binding).await.unwrap();
-    store.select_transfer(transfer.clone()).await.unwrap();
-    store.write_range("post", 0, b"old!").await.unwrap();
+    let transfer = binding
+        .transfer("https://cdn.example/video")
+        .expect("valid test fixture");
+    store
+        .bind_representation(binding)
+        .await
+        .expect("valid test fixture");
+    store
+        .select_transfer(transfer.clone())
+        .await
+        .expect("valid test fixture");
+    store
+        .write_range("post", 0, b"old!")
+        .await
+        .expect("valid test fixture");
 
     assert!(store
         .begin_single_response(
@@ -24,26 +33,35 @@ async fn capped_response_keeps_seed_until_eof_then_commits_discovered_total() {
             WholeBodyContract::Capped { maximum_bytes: 16 },
         )
         .await
-        .unwrap());
+        .expect("valid test fixture"));
     store
         .write_single_response_if_current(&transfer, 7, 0, b"new body")
         .await
-        .unwrap();
+        .expect("valid test fixture");
     assert_eq!(
-        store.read_range("post", 0..4).await.unwrap(),
+        store
+            .read_range("post", 0..4)
+            .await
+            .expect("valid test fixture"),
         Some(b"old!".to_vec())
     );
 
     assert!(store
         .finish_single_response(&transfer, 7, Some(8), true)
         .await
-        .unwrap());
-    assert_eq!(store.total_len("post").await.unwrap(), Some(8));
+        .expect("valid test fixture"));
     assert_eq!(
-        store.read_range("post", 0..8).await.unwrap(),
+        store.total_len("post").await.expect("valid test fixture"),
+        Some(8)
+    );
+    assert_eq!(
+        store
+            .read_range("post", 0..8)
+            .await
+            .expect("valid test fixture"),
         Some(b"new body".to_vec())
     );
-    store_fixture::discard(&root);
+    crate::tests::store_fixture::discard(&root);
 }
 
 fn meta() -> VideoMeta {

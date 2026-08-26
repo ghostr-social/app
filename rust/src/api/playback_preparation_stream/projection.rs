@@ -17,7 +17,7 @@ pub(super) enum CertifiedReadiness<'a> {
 }
 
 impl<'a> CertifiedReadiness<'a> {
-    pub(super) fn certificate(self) -> &'a StartupCertificate {
+    fn certificate(self) -> &'a StartupCertificate {
         match self {
             Self::Structural(certificate) | Self::Ready(certificate) => certificate,
         }
@@ -65,9 +65,10 @@ fn certified_upcoming(evidence: &PlanEvidence) -> Vec<(&PostId, CertifiedReadine
         .iter()
         .filter_map(|candidate| certified_candidate(candidate, &evidence.startups))
         .collect();
-    match certified.is_empty() {
-        true => certified_next(evidence).into_iter().collect(),
-        false => certified,
+    if certified.is_empty() {
+        certified_next(evidence).into_iter().collect()
+    } else {
+        certified
     }
 }
 

@@ -2,11 +2,11 @@ mod gateway_fixture;
 
 use axum::body::to_bytes;
 use axum::http::{Method, StatusCode};
+use core::time::Duration;
 use gateway_fixture::progressive_delivery::ProgressiveDeliveryHarness;
 use gateway_fixture::progressive_journey_item::unknown_item;
 use gateway_fixture::progressive_journey_origin::ProgressiveJourneyOrigin;
-use std::time::Duration;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn rejected_head_cannot_block_an_admitted_bootstrap_get() {
@@ -24,7 +24,9 @@ async fn rejected_head_cannot_block_an_admitted_bootstrap_get() {
     .expect("gateway progress")
     .expect("gateway response");
     let status = response.status();
-    let body = to_bytes(response.into_body(), 2_048).await.unwrap();
+    let body = to_bytes(response.into_body(), 2_048)
+        .await
+        .expect("valid test fixture");
     let requests = origin.requests();
     let total = harness.delivery.store.total_len("delivery-current").await;
     let ranges = harness

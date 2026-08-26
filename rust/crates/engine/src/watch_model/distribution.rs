@@ -28,9 +28,9 @@ impl ProbabilityMass {
             }
         }
         let total = combined.iter().map(|point| point.probability).sum::<f64>();
-        combined
-            .iter_mut()
-            .for_each(|point| point.probability /= total.max(f64::MIN_POSITIVE));
+        for point in &mut combined {
+            point.probability /= total.max(f64::MIN_POSITIVE);
+        }
         Self(compress(combined))
     }
 
@@ -55,18 +55,6 @@ impl ProbabilityMass {
             .clamp(0.0, 1.0)
     }
 
-    fn shifted(&self, offset_ms: u64) -> Self {
-        Self::normalize(
-            self.0
-                .iter()
-                .map(|point| Point {
-                    at_ms: point.at_ms.saturating_add(offset_ms),
-                    probability: point.probability,
-                })
-                .collect(),
-        )
-    }
-
     fn convolve(&self, other: &Self) -> Self {
         let mut points = Vec::with_capacity(self.0.len().saturating_mul(other.0.len()));
         for left in &self.0 {
@@ -85,7 +73,7 @@ impl ProbabilityMass {
 pub struct WatchDistribution(ProbabilityMass);
 
 impl WatchDistribution {
-    pub(crate) fn from_survival(curve: &[(u64, f64)], horizon_ms: u64) -> Self {
+    pub(super) fn from_survival(curve: &[(u64, f64)], horizon_ms: u64) -> Self {
         let mut points = Vec::with_capacity(curve.len() + 1);
         let mut previous = 1.0;
         for &(at_ms, raw_survival) in curve {
@@ -103,20 +91,8 @@ impl WatchDistribution {
         Self(ProbabilityMass::normalize(points))
     }
 
-    pub fn survival(&self, at_ms: u64) -> f64 {
+    pub(crate) fn survival(&self, at_ms: u64) -> f64 {
         (1.0 - self.0.probability_by(at_ms.saturating_sub(1))).clamp(0.0, 1.0)
-    }
-
-    pub fn p50_ms(&self) -> u64 {
-        self.0.quantile(0.50)
-    }
-
-    pub fn p95_ms(&self) -> u64 {
-        self.0.quantile(0.95)
-    }
-
-    pub fn p99_ms(&self) -> u64 {
-        self.0.quantile(0.99)
     }
 
     fn mass(&self) -> &ProbabilityMass {
@@ -128,16 +104,12 @@ impl WatchDistribution {
 pub struct DeadlineDistribution(ProbabilityMass);
 
 impl DeadlineDistribution {
-    pub(crate) fn immediate() -> Self {
+    pub(super) fn immediate() -> Self {
         Self(ProbabilityMass::point(0))
     }
 
-    pub(crate) fn after_watch(&self, watch: &WatchDistribution) -> Self {
+    pub(super) fn after_watch(&self, watch: &WatchDistribution) -> Self {
         Self(self.0.convolve(watch.mass()))
-    }
-
-    pub(crate) fn shifted(&self, offset_ms: u64) -> Self {
-        Self(self.0.shifted(offset_ms))
     }
 
     pub fn p50_ms(&self) -> u64 {
@@ -156,6 +128,10 @@ impl DeadlineDistribution {
         self.0.probability_by(at_ms)
     }
 }
+
+#[cfg(any(test, feature = "test"))]
+#[path = "distribution/test_support.rs"]
+mod test_support;
 
 fn compress(points: Vec<Point>) -> Vec<Point> {
     if points.len() <= MAX_POINTS {

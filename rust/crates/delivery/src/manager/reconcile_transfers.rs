@@ -121,7 +121,7 @@ impl DeliveryWorker {
         )
     }
 
-    pub(super) fn progressive_capacity(&self) -> usize {
+    fn progressive_capacity(&self) -> usize {
         self.connection_ceiling()
             .saturating_sub(self.segmented.active_len())
     }

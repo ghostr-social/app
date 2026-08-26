@@ -26,14 +26,18 @@ struct QueuedFixture {
 
 impl QueuedFixture {
     async fn new() -> Self {
-        let raw: Arc<dyn MediaHttpRequests> = Arc::new(MediaHttpClient::public().unwrap());
-        let requests = MediaRequestExecutor::new(raw, MediaRequestLimits::try_new(1, 1).unwrap());
+        let raw: Arc<dyn MediaHttpRequests> =
+            Arc::new(MediaHttpClient::public().expect("valid test fixture"));
+        let requests = MediaRequestExecutor::new(
+            raw,
+            MediaRequestLimits::try_new(1, 1).expect("valid test fixture"),
+        );
         let held = requests
             .get(URL, PreemptionAuthority::Transition)
-            .unwrap()
+            .expect("valid test fixture")
             .admit()
             .await
-            .unwrap();
+            .expect("valid test fixture");
         let root = std::env::temp_dir().join(format!("queued-cancel-{}", std::process::id()));
         let store = PartialRangeStore::with_capacity(
             root,

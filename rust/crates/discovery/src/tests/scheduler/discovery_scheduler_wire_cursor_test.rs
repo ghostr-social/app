@@ -20,7 +20,7 @@ impl PlanExecutor for CursorExecutor {
         Box::pin(async move {
             match page {
                 Some(page) => Ok(page.events),
-                None => std::future::pending().await,
+                None => core::future::pending().await,
             }
         })
     }
@@ -35,7 +35,7 @@ impl PlanExecutor for CursorExecutor {
         Box::pin(async move {
             match page {
                 Some(page) => Ok(page),
-                None => std::future::pending().await,
+                None => core::future::pending().await,
             }
         })
     }

@@ -6,12 +6,12 @@ use ghostr_engine::PostId;
 use std::collections::HashSet;
 
 impl DeliveryWorker {
-    pub(crate) fn finish_transform_job(&mut self, done: TransformDone) {
-        let Some(finish) = self.transforms.finish(&done) else {
+    pub(crate) fn finish_transform_job(&mut self, done: &TransformDone) {
+        let Some(finish) = self.transforms.finish(done) else {
             return;
         };
         self.state.finish_transform(&finish.post);
-        self.resolve_transform_decision(&done, finish.cancellation_requested);
+        self.resolve_transform_decision(done, finish.cancellation_requested);
         self.request_immediate_replan();
     }
 

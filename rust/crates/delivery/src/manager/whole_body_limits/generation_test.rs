@@ -9,7 +9,7 @@ const SOURCE: &str = "https://media.example/video.mp4";
 fn new_http_generation_rearms_an_exhausted_whole_body_cap() {
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(PostId::new("post"), meta());
-    let identity = binding.transfer(SOURCE).unwrap();
+    let identity = binding.transfer(SOURCE).expect("valid test fixture");
     assert!(catalog.learn_response_observation_for(&identity, observation("\"v1\"", 1)));
     let mut limits = WholeBodyLimits::default();
     let generation = catalog.http_generation_stamp_for(&identity);

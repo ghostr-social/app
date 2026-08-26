@@ -1,18 +1,18 @@
 //! Per-host performance model (plan §3): EWMA throughput, TTFB, and
-//! failure ratio, updated by every probe and chunk transfer. Drives ETA
-//! ranking and best-URL choice among imeta fallbacks. Pure and
-//! deterministic — persistence lives in `host_stats_persistence`.
+//! failure ratio, updated by every probe and chunk transfer.
+//!
+//! The model drives ETA ranking and best-URL choice among imeta fallbacks. It is pure and
+//! deterministic; persistence lives in `host_stats_persistence`.
 
 use crate::origin_model::OriginModel;
+use core::time::Duration;
 use evidence::HostRecord;
 pub use evidence::{ThroughputEstimate, ThroughputSample};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::time::Duration;
 
 mod evidence;
-#[cfg(test)]
-pub(crate) use evidence::EWMA_ALPHA;
+
 mod retention;
 
 /// Throughput assumed for hosts never transferred from, in bytes/s.
@@ -135,6 +135,10 @@ impl HostStats {
     }
 
     /// Restores a snapshot produced by [`Self::to_json`].
+    ///
+    /// # Errors
+    ///
+    /// Returns a JSON decoding error when the snapshot is malformed.
     pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
         let mut stats: Self = serde_json::from_str(json)?;
         stats.normalize_loaded();
@@ -170,3 +174,7 @@ pub fn host_of(url: &str) -> Option<String> {
         .map_or(authority, |(_, host)| host);
     (!host.is_empty()).then(|| host.to_ascii_lowercase())
 }
+
+#[cfg(test)]
+#[path = "host_stats_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

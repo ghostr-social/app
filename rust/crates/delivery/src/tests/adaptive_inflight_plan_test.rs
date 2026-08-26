@@ -11,7 +11,7 @@ fn manager_plan_subtracts_and_retains_exact_useful_inflight_ranges() {
         let range = transfer.request.chunk.range;
         transfer.request.chunk.post != p1 || range.end <= active.start || active.end <= range.start
     }));
-    assert_eq!(work.retained, [ActionId::new(1)].into_iter().collect());
+    assert_eq!(work.retained, core::iter::once(ActionId::new(1)).collect());
     assert!(work.plan.retained.iter().any(|retained| {
         retained.post == p1
             && retained.request.requested_bytes() == active

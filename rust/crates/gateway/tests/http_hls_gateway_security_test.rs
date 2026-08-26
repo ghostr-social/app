@@ -9,7 +9,7 @@ use ghostr_gateway::hls::sessions::HlsSessions;
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::MediaHttpClient;
 use std::sync::Arc;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn rejects_private_root_manifest_without_contacting_it() {
@@ -19,7 +19,7 @@ async fn rejects_private_root_manifest_without_contacting_it() {
     let id = sessions.acquire(vec![origin]).await.expect("session");
     let requests = MediaRequestExecutor::new(
         Arc::new(MediaHttpClient::public().expect("public client")),
-        MediaRequestLimits::try_new(4, 4).unwrap(),
+        MediaRequestLimits::try_new(4, 4).expect("valid test fixture"),
     );
     let app = router_with_hls(sessions, requests);
 

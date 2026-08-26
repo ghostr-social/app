@@ -1,7 +1,8 @@
+use crate::adaptive::axiom_test_support::WarpActionGenerator;
 use crate::adaptive::{
     AdaptivePlayabilityPolicy, FeedOffset, HlsBootstrapStage, HlsBootstrapState,
     HlsCandidateSnapshot, HlsObjectCursor, HlsTransport, PlannerContext, PlannerRetryAvailability,
-    PlannerRetryEvidence, ViewProbability, WarpActionGenerator, WarpPlanner, WarpPlannerInput,
+    PlannerRetryEvidence, ViewProbability, WarpPlanner, WarpPlannerInput,
 };
 use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::snapshot;
@@ -15,8 +16,8 @@ fn cooling_hls_candidate_is_suppressed_and_recorded_for_replay() {
     let availability = PlannerRetryAvailability::Cooling {
         eligible_at_ms: 42_000,
     };
-    let context = PlannerContext::explicitly_unavailable(&state)
-        .with_retry_availability(post.clone(), availability);
+    let context =
+        PlannerContext::explicitly_unavailable(&state).with_retry_availability(&post, availability);
 
     let decision = WarpPlanner::default().plan(WarpPlannerInput::new(
         &state,
@@ -47,7 +48,7 @@ fn cooling_does_not_block_an_already_open_hls_response() {
     );
     state.hls_candidates.push(live);
     let context = PlannerContext::explicitly_unavailable(&state).with_retry_availability(
-        post,
+        &post,
         PlannerRetryAvailability::Cooling {
             eligible_at_ms: 42_000,
         },
@@ -68,7 +69,7 @@ fn candidate(post: PostId) -> HlsCandidateSnapshot {
     HlsCandidateSnapshot {
         post,
         feed_offset: FeedOffset::new(0),
-        view_probability: ViewProbability::new(1.0).unwrap(),
+        view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
         startup_value_ms: 2_000,
         cursor: Default::default(),
         state: HlsBootstrapState::Pending {

@@ -13,7 +13,11 @@ fn only_a_rendered_first_frame_satisfies_the_ready_reserve() {
 
     for (preparation, expected_ready) in cases {
         let mut input = snapshot(2, 20_000_000, 20_000, 0);
-        let startup = input.candidates[1].startup.as_ref().unwrap().ranges()[0];
+        let startup = input.candidates[1]
+            .startup
+            .as_ref()
+            .expect("valid test fixture")
+            .ranges()[0];
         input.candidates[1].present = vec![startup];
         input.candidates[1].player_preparation = preparation;
 

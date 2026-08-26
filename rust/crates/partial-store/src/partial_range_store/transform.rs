@@ -6,6 +6,8 @@ use ghostr_engine::representation::RepresentationBinding;
 
 mod record;
 mod recovery;
+#[cfg(any(test, feature = "test"))]
+mod test_support;
 mod transaction;
 
 pub struct TransformFence {
@@ -33,6 +35,9 @@ pub enum TransformPublicationOutcome {
 }
 
 impl TransformPublication {
+    /// # Errors
+    ///
+    /// Returns an error when output is empty or exceeds its selected byte envelope.
     pub fn try_new(
         fence: TransformFence,
         kind: TransformKind,
@@ -57,13 +62,9 @@ impl TransformPublication {
 }
 
 impl PartialRangeStore {
-    pub async fn publish_transform(&self, publication: TransformPublication) -> Result<bool> {
-        let outcome = self
-            .publish_transform_authorized(publication, || true)
-            .await?;
-        Ok(outcome == TransformPublicationOutcome::Published)
-    }
-
+    /// # Errors
+    ///
+    /// Returns an error when authorization, authority, or durable publication fails.
     pub async fn publish_transform_authorized<F>(
         &self,
         publication: TransformPublication,

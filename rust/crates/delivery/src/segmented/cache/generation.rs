@@ -1,7 +1,7 @@
 use crate::segmented::prepare::PreparedComplete;
 use ghostr_engine::evidence::EvidenceValidator;
 use reqwest::header::HeaderMap;
-use sha2::{Digest, Sha256};
+use sha2::{Digest as _, Sha256};
 use std::sync::Arc;
 use std::time::Instant;
 use url::Url;
@@ -46,28 +46,6 @@ pub struct CachedHlsObject {
 }
 
 impl CachedHlsObject {
-    pub fn new(body: Arc<[u8]>, final_url: Url, content_type: Option<String>) -> Self {
-        Self::with_metadata(body, final_url, content_type, HlsCacheMetadata::default())
-    }
-
-    pub(in crate::segmented) fn with_metadata(
-        body: Arc<[u8]>,
-        final_url: Url,
-        content_type: Option<String>,
-        metadata: HlsCacheMetadata,
-    ) -> Self {
-        let generation =
-            CachedHlsGeneration::for_object(&final_url, body.as_ref(), metadata.validator.as_ref());
-        Self {
-            body,
-            final_url,
-            content_type,
-            validator: metadata.validator,
-            fresh_until: metadata.fresh_until,
-            generation,
-        }
-    }
-
     pub(in crate::segmented) fn from_prepared(prepared: PreparedComplete) -> Self {
         let PreparedComplete { object, generation } = prepared;
         Self {
@@ -84,14 +62,14 @@ impl CachedHlsObject {
         self.generation
     }
 
-    pub fn validator(&self) -> Option<&EvidenceValidator> {
-        self.validator.as_ref()
-    }
-
-    pub fn is_reusable(&self) -> bool {
+    pub(super) fn is_reusable(&self) -> bool {
         self.validator.is_some() && self.fresh_until.is_some_and(|until| Instant::now() < until)
     }
 }
+
+#[cfg(any(test, feature = "test"))]
+#[path = "generation/test_support.rs"]
+mod test_support;
 
 impl CachedHlsGeneration {
     fn for_object(final_url: &Url, body: &[u8], validator: Option<&EvidenceValidator>) -> Self {

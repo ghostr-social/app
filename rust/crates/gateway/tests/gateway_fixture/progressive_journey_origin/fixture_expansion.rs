@@ -7,12 +7,12 @@ struct Layout {
     payload_end: usize,
 }
 
-pub(super) fn expand_avc_samples(input: Vec<u8>, extra_bytes: usize) -> Vec<u8> {
-    let layout = read_layout(&input);
+pub(super) fn expand_avc_samples(input: &[u8], extra_bytes: usize) -> Vec<u8> {
+    let layout = read_layout(input);
     let extra_total = layout.sample_count * extra_bytes;
     let mut output = vec![0; input.len() + extra_total];
     output[..layout.payload_start].copy_from_slice(&input[..layout.payload_start]);
-    let target = copy_samples(&input, &mut output, &layout, extra_bytes);
+    let target = copy_samples(input, &mut output, &layout, extra_bytes);
     output[target..].copy_from_slice(&input[layout.payload_end..]);
     write_u32(
         &mut output,

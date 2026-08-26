@@ -1,43 +1,12 @@
 use super::{MetadataProbePool, ProbeClaimQuery};
-#[cfg(test)]
-use crate::manager::retry::RetryBook;
+
 use crate::manager::retry::Source;
 use ghostr_engine::adaptive::ProbeClaimRefusal;
-#[cfg(test)]
-use ghostr_engine::catalog::Catalog;
+
 use ghostr_engine::evidence::{EvidenceAssessment, EvidenceField};
 use ghostr_engine::representation::TransferIdentity;
-#[cfg(test)]
-use ghostr_engine::PostId;
 
 impl MetadataProbePool {
-    #[cfg(test)]
-    pub(super) fn needed_probe(
-        &self,
-        catalog: &Catalog,
-        retry: &RetryBook,
-        post: &PostId,
-    ) -> Option<String> {
-        if self.probing.contains_key(post) || self.deferred.contains(post) || retry.is_cooling(post)
-        {
-            return None;
-        }
-        let entry = catalog.lookup(post)?;
-        let url = retry.live_urls(post, &entry.meta.urls).into_iter().next()?;
-        let identity = catalog.transfer_identity(post, &url)?;
-        if self
-            .probed
-            .get(&identity)
-            .is_some_and(|history| history.current(catalog, &identity))
-        {
-            return None;
-        }
-        if evidence_complete(&entry.evidence_assessment_for(&url, 0)) {
-            return None;
-        }
-        Some(url)
-    }
-
     pub(super) fn probe_identity(
         &self,
         query: &ProbeClaimQuery<'_>,
@@ -57,9 +26,7 @@ impl MetadataProbePool {
         let generation_changed =
             history.is_some_and(|completed| !completed.current(query.catalog, &identity));
         let size_refresh = evidence_needs_head_refresh(&evidence, had_size)
-            && history.map_or(true, |completed| {
-                generation_changed || completed.observed_size()
-            });
+            && history.is_none_or(|completed| generation_changed || completed.observed_size());
         let rearm = generation_changed || size_refresh;
         self.transient_refusal(query, &identity, rearm)?;
         if evidence_complete(&evidence) {
@@ -100,13 +67,18 @@ fn source_available(
     if !offered.iter().any(|source| source == query.source) {
         return Err(ProbeClaimRefusal::SourceNotOffered);
     }
-    let source = Source::new(query.post.clone(), query.source.to_owned());
-    match query.retry.is_retired(&source) {
-        true => Err(ProbeClaimRefusal::SourceRetired),
-        false => Ok(()),
+    let source = Source::new(query.post.clone(), query.source);
+    if query.retry.is_retired(&source) {
+        Err(ProbeClaimRefusal::SourceRetired)
+    } else {
+        Ok(())
     }
 }
 pub(crate) fn evidence_needs_head_refresh(assessment: &EvidenceAssessment, had_size: bool) -> bool {
     assessment.stale.contains(&EvidenceField::Size)
         || had_size && assessment.missing.contains(&EvidenceField::Size)
 }
+
+#[cfg(test)]
+#[path = "availability_axiom_test.rs"]
+mod axiom_test_support;

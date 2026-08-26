@@ -33,27 +33,7 @@ impl PlannerWatchEvidence {
         }
     }
 
-    pub const fn reach_probability_bps(self) -> Option<u16> {
-        match self {
-            Self::Unavailable => None,
-            Self::Learned {
-                reach_probability_bps,
-                ..
-            } => Some(reach_probability_bps),
-        }
-    }
-
-    pub const fn probability_by_commitment_bps(self) -> Option<u16> {
-        match self {
-            Self::Unavailable => None,
-            Self::Learned {
-                probability_by_commitment_bps,
-                ..
-            } => Some(probability_by_commitment_bps),
-        }
-    }
-
-    pub const fn deadlines(self) -> Option<([u64; 3], Option<u64>)> {
+    pub(crate) const fn deadlines(self) -> Option<([u64; 3], Option<u64>)> {
         match self {
             Self::Unavailable => None,
             Self::Learned {
@@ -69,6 +49,10 @@ impl PlannerWatchEvidence {
         }
     }
 }
+
+#[cfg(any(test, feature = "test"))]
+#[path = "watch/test_support.rs"]
+mod test_support;
 
 const fn clamp_bps(value: u16) -> u16 {
     if value > 10_000 {

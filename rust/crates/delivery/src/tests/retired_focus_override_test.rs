@@ -6,8 +6,8 @@ use ghostr_engine::PostId;
 fn new_focus_revives_only_the_focused_posts_retired_sources() {
     let focused = PostId::new("focused");
     let unrelated = PostId::new("unrelated");
-    let focused_source = Source::new(focused.clone(), "https://focused.test/v".into());
-    let unrelated_source = Source::new(unrelated.clone(), "https://other.test/v".into());
+    let focused_source = Source::new(focused.clone(), "https://focused.test/v");
+    let unrelated_source = Source::new(unrelated.clone(), "https://other.test/v");
     let mut retry = one_attempt_book();
     retire(&mut retry, focused_source.clone());
     retire(&mut retry, unrelated_source.clone());
@@ -21,7 +21,7 @@ fn new_focus_revives_only_the_focused_posts_retired_sources() {
 #[test]
 fn repeated_same_focus_does_not_revive_a_retired_source() {
     let focused = PostId::new("focused");
-    let source = Source::new(focused.clone(), "https://focused.test/v".into());
+    let source = Source::new(focused.clone(), "https://focused.test/v");
     let mut retry = one_attempt_book();
     retire(&mut retry, source.clone());
 
@@ -33,7 +33,7 @@ fn repeated_same_focus_does_not_revive_a_retired_source() {
 #[test]
 fn new_focus_does_not_revive_a_permanently_failed_source() {
     let focused = PostId::new("focused");
-    let source = Source::new(focused.clone(), "https://missing.test/v".into());
+    let source = Source::new(focused.clone(), "https://missing.test/v");
     let mut retry = one_attempt_book();
     while retry.note_failure(source.clone(), FailureClass::Permanent) != Retry::GiveUp {}
 

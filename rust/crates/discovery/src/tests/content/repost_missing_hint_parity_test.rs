@@ -1,7 +1,7 @@
 use crate::content::repost_reference::reference_for_repost;
 use crate::content::reposts::feed_post_from_event;
 use crate::tests::repost_reference_fixture::{signed_wrapper, tag, video};
-use nostr_sdk::{JsonUtil, Keys, Kind};
+use nostr_sdk::{JsonUtil as _, Keys, Kind};
 
 #[test]
 fn kind_six_requires_a_hint_for_empty_and_embedded_forms() {

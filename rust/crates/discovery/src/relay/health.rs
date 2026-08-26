@@ -1,8 +1,8 @@
 //! Bounded relay-read circuits with fenced, single-probe recovery.
 
 use book::HealthBook;
+use core::time::Duration;
 use std::sync::{Arc, Mutex, MutexGuard};
-use std::time::Duration;
 use tokio::time::Instant;
 
 mod book;
@@ -17,8 +17,8 @@ pub(super) const ACTIVE_RECOVERY_PROBE_LIMIT: usize = 4;
 
 #[derive(Clone, Debug)]
 pub(crate) struct RelayAdmission {
-    pub(super) url: String,
-    pub(super) generation: u64,
+    url: String,
+    generation: u64,
 }
 
 pub(crate) struct RelayAdmissionBatch {
@@ -47,11 +47,11 @@ impl RelayAdmissionBatch {
             .collect()
     }
 
-    pub(crate) fn is_empty(&self) -> bool {
+    pub(super) fn is_empty(&self) -> bool {
         self.admissions.is_empty()
     }
 
-    pub(crate) fn covers(&self, relays: &[String]) -> bool {
+    pub(super) fn covers(&self, relays: &[String]) -> bool {
         self.all_candidates_admitted
             && self.admissions.len() == relays.len()
             && self
@@ -82,7 +82,7 @@ impl RelayHealth {
     pub(crate) fn batch(self: &Arc<Self>, candidates: &[String]) -> RelayAdmissionBatch {
         let admissions = self.admit(candidates);
         RelayAdmissionBatch {
-            health: self.clone(),
+            health: std::sync::Arc::clone(self),
             all_candidates_admitted: admissions.len() == candidates.len(),
             admissions,
             settled: false,

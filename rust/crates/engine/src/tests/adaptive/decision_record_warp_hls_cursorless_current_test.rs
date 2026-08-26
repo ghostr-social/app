@@ -29,7 +29,7 @@ fn current_cursorless_hls_record_explicitly_selects_bounded_replay() {
         models: &[],
         privacy: &DecisionPrivacy::from_key([21; 32]),
     });
-    let json = serde_json::to_value(record).unwrap();
+    let json = serde_json::to_value(record).expect("valid test fixture");
     let selected = &json["warp_decision"]["selected"];
 
     assert_eq!(selected["command"]["maximum_bytes"], 256 * 1024);
@@ -39,7 +39,7 @@ fn current_cursorless_hls_record_explicitly_selects_bounded_replay() {
         json["warp_decision"]["planner_replay_capsule"]["hls_generation_policy"],
         "bounded_object_cursor"
     );
-    let restored: DecisionRecord = serde_json::from_value(json).unwrap();
+    let restored: DecisionRecord = serde_json::from_value(json).expect("valid test fixture");
     assert!(restored.replay_warp_search().is_ok());
 }
 
@@ -47,7 +47,7 @@ fn candidate() -> HlsCandidateSnapshot {
     HlsCandidateSnapshot {
         post: PostId::new("p0"),
         feed_offset: FeedOffset::new(0),
-        view_probability: ViewProbability::new(1.0).unwrap(),
+        view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
         startup_value_ms: 2_000,
         cursor: Default::default(),
         state: HlsBootstrapState::Pending {

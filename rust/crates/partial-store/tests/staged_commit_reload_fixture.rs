@@ -1,6 +1,6 @@
 use ghostr_engine::{DeliveryKind, VideoMeta};
 
-pub(crate) fn meta() -> VideoMeta {
+pub(super) fn meta() -> VideoMeta {
     VideoMeta {
         urls: vec![
             "https://a.example/video".to_owned(),

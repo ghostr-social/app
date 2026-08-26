@@ -11,7 +11,7 @@ fn one_author_cannot_evict_another_authors_active_tombstone() {
         .expect("original");
     let post = video_post_from_event(&original).expect("video");
     let mut index = DeletionIndex::with_retention(4);
-    index.reanchor(std::slice::from_ref(&post));
+    index.reanchor(core::slice::from_ref(&post));
     index.ingest(deletion_claims(&[deletion(
         &alice,
         &original.id.to_hex(),

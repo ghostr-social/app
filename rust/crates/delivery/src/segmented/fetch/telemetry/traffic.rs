@@ -1,7 +1,7 @@
 use crate::manager::traffic::{TrafficPublisher, TransferKey};
+use core::time::Duration;
 use ghostr_engine::ActionId;
 use ghostr_net::media_request_executor::MediaResponse;
-use std::time::Duration;
 use tokio::time::Instant;
 
 pub(in crate::segmented) struct SegmentedTraffic {

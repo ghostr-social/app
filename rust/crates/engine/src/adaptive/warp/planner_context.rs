@@ -21,7 +21,6 @@ pub use active::ActivePlannerContext;
 pub use candidate::{
     HeadProbeHistory, PlannerCandidateContext, PlannerCapability, PlannerQuality,
     PlannerRetryAvailability, PreviewAvailability, TransformCapability, WholeBodyExhaustion,
-    INLINE_BLURHASH_PREVIEW_QUALITY_MICROS,
 };
 pub use request_scope::SoftRequestCommitment;
 pub use resource_feedback::{ResourceFeedback, ResourceFeedbackCursor, ResourcePriceSnapshot};
@@ -30,8 +29,8 @@ pub use watch::PlannerWatchEvidence;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PlannerRetryEvidence {
-    pub post: PostId,
-    pub availability: PlannerRetryAvailability,
+    pub(crate) post: PostId,
+    pub(crate) availability: PlannerRetryAvailability,
 }
 
 impl PlannerRetryEvidence {
@@ -60,12 +59,12 @@ pub struct PlannerContext {
     network_class: NetworkClass,
     #[serde(default, skip_serializing_if = "SegmentedStorageBudget::is_empty")]
     segmented_storage_available_bytes: SegmentedStorageBudget,
-    pub limits: PlannerLimits,
+    pub(crate) limits: PlannerLimits,
     request_occupancy: RequestOccupancy,
     request_scope: Option<request_scope::RequestScope>,
-    pub feedback: Option<ResourceFeedback>,
+    pub(super) feedback: Option<ResourceFeedback>,
     pub epochs: TwinEpochs,
-    pub epsilon: EpsilonBuckets,
+    pub(super) epsilon: EpsilonBuckets,
 }
 
 impl PlannerContext {
@@ -117,11 +116,6 @@ impl PlannerContext {
         self
     }
 
-    pub fn with_epsilon(mut self, epsilon: EpsilonBuckets) -> Self {
-        self.epsilon = epsilon;
-        self
-    }
-
     pub(super) fn candidate(&self, post: &PostId) -> Option<PlannerCandidateContext> {
         self.candidates.get(post).copied()
     }
@@ -151,6 +145,13 @@ impl PlannerContext {
         self.limits
             .request_tokens
             .saturating_sub(self.request_occupancy.total().min(u16::MAX as usize) as u16)
+    }
+
+    pub(super) fn expand_ordinary_request_capacity(&mut self, ceiling: u16) {
+        self.limits.request_tokens = self.limits.request_tokens.saturating_add(1).min(ceiling);
+        if let Some(scope) = self.request_scope.as_mut() {
+            scope.expand_ordinary(ceiling);
+        }
     }
 
     pub(super) fn request_admits(&self, action: &crate::adaptive::ActionNode) -> bool {

@@ -1,7 +1,7 @@
-use crate::relay::io::{RelayIo, RelayReadIo, SdkRelayIo};
+use crate::relay::io::{RelayIo as _, RelayReadIo, SdkRelayIo};
+use core::time::Duration;
 use nostr_sdk::{Client, Filter, Kind};
 use std::sync::Arc;
-use std::time::Duration;
 
 #[tokio::test]
 async fn excessive_relay_fanout_is_rejected_before_queries_start() {

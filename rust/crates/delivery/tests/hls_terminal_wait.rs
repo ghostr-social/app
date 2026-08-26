@@ -1,5 +1,5 @@
+use core::time::Duration;
 use ghostr_delivery::segmented::{SegmentedCache, SegmentedPhase, SegmentedSnapshot};
-use std::time::Duration;
 
 pub async fn wait_terminal(cache: &SegmentedCache, post: &str) -> SegmentedSnapshot {
     let changed = cache.notifier();

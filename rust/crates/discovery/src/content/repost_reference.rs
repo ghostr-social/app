@@ -50,16 +50,16 @@ pub(crate) fn reference_for_repost(wrapper: &Event) -> Option<RepostLookup> {
         return None;
     }
     match uniform_tag_value(wrapper, ADDRESS_TAG)? {
-        Some(address) => coordinate_lookup(wrapper, wrapper_kind, address),
-        None => event_lookup(wrapper, wrapper_kind),
+        UniformTagValue::Present(address) => coordinate_lookup(wrapper, wrapper_kind, &address),
+        UniformTagValue::Absent => event_lookup(wrapper, wrapper_kind),
     }
 }
 
-fn coordinate_lookup(wrapper: &Event, wrapper_kind: u16, raw: String) -> Option<RepostLookup> {
+fn coordinate_lookup(wrapper: &Event, wrapper_kind: u16, raw: &str) -> Option<RepostLookup> {
     if wrapper_kind != GENERIC_REPOST_KIND {
         return None;
     }
-    let (kind, author, identifier) = parse_coordinate(&raw)?;
+    let (kind, author, identifier) = parse_coordinate(raw)?;
     if kind == 1 || !Kind::from(kind).is_addressable() {
         return None;
     }
@@ -76,8 +76,8 @@ fn coordinate_lookup(wrapper: &Event, wrapper_kind: u16, raw: String) -> Option<
 
 fn event_lookup(wrapper: &Event, wrapper_kind: u16) -> Option<RepostLookup> {
     let (id, hints) = event_reference(wrapper, wrapper_kind)?;
-    let author = optional_author(wrapper)?;
-    let tagged_kind = optional_kind(wrapper)?;
+    let author = optional_author(wrapper)?.into_value();
+    let tagged_kind = optional_kind(wrapper)?.into_value();
     if wrapper_kind == REPOST_KIND && tagged_kind.is_some_and(|value| value != 1) {
         return None;
     }
@@ -97,26 +97,34 @@ fn parse_coordinate(raw: &str) -> Option<(u16, PublicKey, String)> {
 }
 
 fn optional_tags_match(wrapper: &Event, author: PublicKey, kind: u16) -> Option<()> {
-    if optional_author(wrapper)?.is_some_and(|value| value != author) {
+    if optional_author(wrapper)?
+        .into_value()
+        .is_some_and(|value| value != author)
+    {
         return None;
     }
-    if optional_kind(wrapper)?.is_some_and(|value| value != kind) {
+    if optional_kind(wrapper)?
+        .into_value()
+        .is_some_and(|value| value != kind)
+    {
         return None;
     }
     Some(())
 }
 
-fn optional_author(event: &Event) -> Option<Option<PublicKey>> {
+fn optional_author(event: &Event) -> Option<UniformTagValue<PublicKey>> {
     match uniform_tag_value(event, AUTHOR_TAG)? {
-        Some(raw) => Some(Some(PublicKey::from_hex(&raw).ok()?)),
-        None => Some(None),
+        UniformTagValue::Present(raw) => {
+            Some(UniformTagValue::Present(PublicKey::from_hex(&raw).ok()?))
+        }
+        UniformTagValue::Absent => Some(UniformTagValue::Absent),
     }
 }
 
-fn optional_kind(event: &Event) -> Option<Option<u16>> {
+fn optional_kind(event: &Event) -> Option<UniformTagValue<u16>> {
     match uniform_tag_value(event, KIND_TAG)? {
-        Some(raw) => Some(Some(raw.parse().ok()?)),
-        None => Some(None),
+        UniformTagValue::Present(raw) => Some(UniformTagValue::Present(raw.parse().ok()?)),
+        UniformTagValue::Absent => Some(UniformTagValue::Absent),
     }
 }
 
@@ -134,16 +142,30 @@ fn event_reference(wrapper: &Event, wrapper_kind: u16) -> Option<(EventId, Vec<S
     Some((id, hints))
 }
 
-fn uniform_tag_value(event: &Event, name: &str) -> Option<Option<String>> {
+fn uniform_tag_value(event: &Event, name: &str) -> Option<UniformTagValue<String>> {
     let mut tags = tags_named(event, name);
     let Some(first) = tags.next() else {
-        return Some(None);
+        return Some(UniformTagValue::Absent);
     };
     let value = first.get(1)?;
     if tags.any(|tag| tag.get(1) != Some(value)) {
         return None;
     }
-    Some(Some(value.clone()))
+    Some(UniformTagValue::Present(value.clone()))
+}
+
+enum UniformTagValue<T> {
+    Absent,
+    Present(T),
+}
+
+impl<T> UniformTagValue<T> {
+    fn into_value(self) -> Option<T> {
+        match self {
+            Self::Absent => None,
+            Self::Present(value) => Some(value),
+        }
+    }
 }
 
 fn coordinate_hints(event: &Event) -> Vec<String> {

@@ -13,12 +13,15 @@ fn schema_two_without_retry_evidence_keeps_its_durable_identity() {
         },
         ActionKind::Head,
     ));
-    let json = serde_json::to_string(&old).unwrap();
+    let json = serde_json::to_string(&old).expect("valid test fixture");
     assert!(!json.contains("retry_availability"));
 
-    let restored: DecisionRecord = serde_json::from_str(&json).unwrap();
-    assert_eq!(serde_json::to_string(&restored).unwrap(), json);
-    assert_eq!(restored.replay(), DecisionReplayStatus::Verified);
+    let restored: DecisionRecord = serde_json::from_str(&json).expect("valid test fixture");
+    assert_eq!(
+        serde_json::to_string(&restored).expect("valid test fixture"),
+        json
+    );
+    assert_eq!(restored.integrity_status(), DecisionReplayStatus::Verified);
     assert_eq!(
         restored.replay_warp_search(),
         Err(DecisionReplayStatus::AdvancedReplayUnavailable)

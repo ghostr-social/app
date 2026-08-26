@@ -6,7 +6,7 @@ use super::reposts::{feed_post_from_event, resolved_repost, verified_wrapper_kin
 use nostr_sdk::Event;
 use std::collections::HashMap;
 
-pub fn feed_posts_from_events(events: &[Event]) -> Vec<ParsedVideoPost> {
+pub(crate) fn feed_posts_from_events(events: &[Event]) -> Vec<ParsedVideoPost> {
     let originals = OriginalIndex::new(events);
     events
         .iter()

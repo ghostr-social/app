@@ -1,25 +1,8 @@
-#[cfg(test)]
-use super::overlaps;
 use super::InFlightChunks;
 use ghostr_engine::representation::RepresentationBinding;
 use ghostr_engine::ActionId;
-#[cfg(test)]
-use ghostr_engine::ChunkId;
 
 impl InFlightChunks {
-    #[cfg(test)]
-    pub fn cancel(&mut self, chunk: &ChunkId) -> bool {
-        let Some(active) = self
-            .transfers
-            .values_mut()
-            .find(|active| overlaps(&active.chunk, chunk) && !active.cancelling)
-        else {
-            return false;
-        };
-        active.cancel();
-        true
-    }
-
     pub(crate) fn cancel_action(&mut self, action: ActionId) -> bool {
         let Some(active) = self.transfers.get_mut(&action) else {
             return false;
@@ -48,3 +31,7 @@ impl InFlightChunks {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "cancellation_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

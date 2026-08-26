@@ -38,9 +38,10 @@ pub(super) fn speculative_budget(snapshot: &PlayabilitySnapshot) -> u64 {
 }
 
 pub(super) fn upcoming_depth_ms(snapshot: &PlayabilitySnapshot) -> u64 {
-    match snapshot.navigation.forward_swipes_per_minute >= 12 {
-        true => 2_000,
-        false => 6_000,
+    if snapshot.navigation.forward_swipes_per_minute >= 12 {
+        2_000
+    } else {
+        6_000
     }
 }
 

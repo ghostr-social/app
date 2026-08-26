@@ -15,22 +15,23 @@
 
 // The generated bindings name these paths. Do not move without
 // re-running flutter_rust_bridge_codegen.
-pub mod broadcast_control;
-pub mod delivery_events_stream;
+pub(crate) mod broadcast_control;
+pub(crate) mod delivery_events_stream;
 pub mod delivery_types;
 pub mod engine_control;
 pub mod event_control;
 pub mod event_types;
 pub mod feed_control;
 pub mod feed_types;
-pub mod feed_updates_stream;
+pub(crate) mod feed_updates_stream;
 pub mod focus_control;
 pub mod network_control;
 pub mod playback_control;
-pub mod playback_preparation_stream;
+pub(crate) mod playback_preparation_stream;
 pub mod playback_types;
 pub mod player_preparation_control;
 pub mod session_control;
+pub(super) mod warp_evidence_control;
 
 pub(crate) mod delivery;
 pub(crate) mod feed;

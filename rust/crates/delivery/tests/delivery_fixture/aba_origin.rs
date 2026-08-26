@@ -1,9 +1,9 @@
 //! Controlled range origin for an A→B→A stale-completion scenario.
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
+use core::time::Duration;
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Semaphore;
 
@@ -32,7 +32,11 @@ pub async fn serve(bytes: Vec<u8>) -> (String, AbaOrigin) {
     tokio::spawn(async move {
         loop {
             let (socket, _) = listener.accept().await.expect("accept ABA request");
-            tokio::spawn(answer(socket, bytes.clone(), server_control.clone()));
+            tokio::spawn(answer(
+                socket,
+                std::sync::Arc::clone(&bytes),
+                server_control.clone(),
+            ));
         }
     });
     (format!("http://{address}/video.mp4"), control)
@@ -55,7 +59,7 @@ async fn answer(mut socket: TcpStream, bytes: Arc<Vec<u8>>, gate: AbaOrigin) {
     }
     write_range_headers(&mut socket, bytes.len()).await;
     if attempt == 1 {
-        std::future::pending::<()>().await;
+        core::future::pending::<()>().await;
     }
     gate.bodies.acquire().await.expect("body gate").forget();
     let _ = socket.write_all(&bytes).await;

@@ -5,7 +5,7 @@ use crate::playback::{
 };
 use crate::video_rendition::VideoRendition;
 use crate::{DeliveryKind, PostId, VideoMeta};
-use std::time::Duration;
+use core::time::Duration;
 
 #[test]
 fn catalog_refuses_a_rendition_with_a_known_quarantined_digest() {
@@ -21,7 +21,7 @@ fn catalog_refuses_a_rendition_with_a_known_quarantined_digest() {
     let selected = catalog.select_rendition(&post, network, observation, target);
 
     assert!(selected.is_none());
-    let active = catalog.lookup(&post).unwrap();
+    let active = catalog.lookup(&post).expect("valid test fixture");
     assert_eq!(active.meta.urls, vec!["https://high.example/video.mp4"]);
     assert!(!active.is_quarantined());
 }
@@ -31,7 +31,7 @@ fn quarantine_digest(catalog: &mut Catalog, digest: &str) {
     let binding = catalog.upsert(post, meta("failed", digest));
     let identity = binding
         .transfer("https://failed.example/video.mp4")
-        .unwrap();
+        .expect("valid test fixture");
     catalog.quarantine_mirror_group(&identity, digest, 1);
 }
 
@@ -52,14 +52,14 @@ fn stalled_selection() -> (
         1_000,
         PlaybackPhase::NetworkStalled,
     )
-    .unwrap();
+    .expect("valid test fixture");
     let target =
         AdaptiveBufferPolicy::default().target(network, MediaConsumption::new(6_000_000, 1_000));
     (network, observation, target)
 }
 
 fn variant(meta: VideoMeta, bitrate: u64) -> VideoRendition {
-    VideoRendition::try_new(meta, Some(bitrate)).unwrap()
+    VideoRendition::try_new(meta, Some(bitrate)).expect("valid test fixture")
 }
 
 fn meta(name: &str, digest: &str) -> VideoMeta {

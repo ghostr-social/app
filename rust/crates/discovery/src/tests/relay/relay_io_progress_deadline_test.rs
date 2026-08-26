@@ -1,11 +1,11 @@
 //! Progress backpressure cannot outlive a relay query deadline.
 
 use crate::relay::health::RelayHealth;
-use crate::relay::io::{RelayIo, RelayReadIo, SdkRelayIo};
+use crate::relay::io::{RelayIo as _, RelayReadIo, SdkRelayIo};
 use crate::tests::relay_io_relay_fixture::relay_serving;
+use core::time::Duration;
 use nostr_sdk::{Client, EventBuilder, Filter, Keys, Kind};
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 

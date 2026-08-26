@@ -9,11 +9,6 @@ impl SegmentedCache {
             .min(MAX_CACHE_BYTES as u64)
     }
 
-    #[cfg(test)]
-    pub(crate) fn physical_available_bytes(&self) -> u64 {
-        physical_available(physical_used(&self.lock()))
-    }
-
     pub(crate) fn physical_used_bytes(&self) -> u64 {
         physical_used(&self.lock())
     }
@@ -72,3 +67,7 @@ fn physical_used(state: &CacheState) -> u64 {
 fn physical_available(used: u64) -> u64 {
     (MAX_CACHE_BYTES as u64).saturating_sub(used)
 }
+
+#[cfg(test)]
+#[path = "capacity_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

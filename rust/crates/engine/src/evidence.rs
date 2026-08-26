@@ -11,7 +11,7 @@ pub use calibration::{
     ReliabilityEstimate,
 };
 pub use fusion::{ConfidenceAxes, EvidenceAssessment, SizeAssessment};
-pub use ledger::{EvidenceInvalidation, EvidenceLedger};
+pub(crate) use ledger::{EvidenceInvalidation, EvidenceLedger};
 pub use metadata::NostrMetadataEvidence;
 pub use types::{
     Confidence, Evidence, EvidenceField, EvidenceScope, EvidenceSource, EvidenceTime,

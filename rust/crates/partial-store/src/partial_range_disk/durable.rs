@@ -1,6 +1,6 @@
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use std::path::Path;
-use tokio::io::AsyncWriteExt;
+use tokio::io::AsyncWriteExt as _;
 
 pub(super) async fn replace(staging: &Path, target: &Path, bytes: &[u8]) -> Result<()> {
     let parent = target

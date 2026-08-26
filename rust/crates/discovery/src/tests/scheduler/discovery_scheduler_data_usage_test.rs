@@ -1,6 +1,6 @@
 //! The data-usage knob sets the worker-pool cap (2/4/6) and applies
 //! live — parity: `maxConcurrentRequests` in
-//! lib/features/settings/domain/data_usage_level.dart.
+//! `lib/features/settings/domain/data_usage_level.dart`.
 
 use crate::scheduler::max_concurrent_requests;
 use crate::tests::scheduler_support::{context, next_started, no_start, request, start_scheduler};

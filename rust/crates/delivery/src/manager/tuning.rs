@@ -1,7 +1,7 @@
 use crate::manager::retry::RetryPolicy;
+use core::num::NonZeroUsize;
+use core::time::Duration;
 use ghostr_partial_store::partial_range_store::capacity::DEFAULT_RECHECK;
-use std::num::NonZeroUsize;
-use std::time::Duration;
 
 /// Operational knobs outside the engine's tuning table.
 #[derive(Clone, Copy, Debug)]

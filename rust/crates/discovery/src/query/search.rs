@@ -2,7 +2,7 @@
 //! filter, in what role, and under which timeout. Pure data executed by
 //! the scheduler.
 
-use std::time::Duration;
+use core::time::Duration;
 
 use nostr_sdk::{Filter, PublicKey};
 
@@ -38,7 +38,7 @@ pub enum OutboxRoute {
 }
 
 /// Which relay set executes one query. Resolution to concrete URLs
-/// happens in [`resolve_relays`]; `None` there means bootstrap relays.
+/// happens in `resolve_relays`; `None` there means bootstrap relays.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RelayTarget {
     /// The NIP-50 search relay set alone.
@@ -75,14 +75,14 @@ pub struct PlannedQuery {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct QueryPlan {
     /// Default lookup for queries whose route is [`OutboxRoute::Shared`].
-    pub outbox: OutboxLookup,
+    pub(crate) outbox: OutboxLookup,
     pub queries: Vec<PlannedQuery>,
     /// Whose session the executor's event pool answers this plan from.
     pub(crate) viewer: ViewerScope,
 }
 
 /// Lays out the full query plan for one discovery request.
-pub fn plan_discovery(request: &DiscoveryRequest) -> QueryPlan {
+pub(crate) fn plan_discovery(request: &DiscoveryRequest) -> QueryPlan {
     let queries = discovery_filters(request)
         .into_iter()
         .enumerate()
@@ -114,7 +114,8 @@ pub(crate) fn resolve_relays(
             &merged(search_relays, outbox_relays.unwrap_or(&[])),
         )),
     };
-    resolved.and_then(|relays| non_empty(bounded_relay_targets(relays)))
+    let relays = resolved?;
+    non_empty(bounded_relay_targets(&relays))
 }
 
 fn planned(filter: Filter, primary: bool) -> PlannedQuery {

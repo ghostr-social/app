@@ -11,7 +11,7 @@ fn completed_head_history_rearms_when_a_validator_invalidates_size() {
     let post = PostId::new("post");
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(post.clone(), metadata());
-    let identity = binding.transfer(SOURCE).unwrap();
+    let identity = binding.transfer(SOURCE).expect("valid test fixture");
     assert!(catalog.learn_head_observation_for(
         &identity,
         observation(Some(16), Some(true), "\"generation-1\"", 1)
@@ -25,7 +25,7 @@ fn completed_head_history_rearms_when_a_validator_invalidates_size() {
     assert_eq!(
         catalog
             .lookup(&post)
-            .unwrap()
+            .expect("valid test fixture")
             .conservative_size_for(SOURCE, 2)
             .exact,
         Some(16)

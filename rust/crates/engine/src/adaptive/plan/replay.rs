@@ -69,7 +69,7 @@ fn project_reserve(plan: &mut AllocationPlan, post: &impl Fn(&str) -> String) {
 
 fn reserve_ranges_bounded(plan: &AllocationPlan) -> bool {
     let candidate_ranges = plan.ready_reserve.candidates.iter().all(|candidate| {
-        use super::ReserveCandidateState::*;
+        use super::ReserveCandidateState::{Planned, Preparing, Ready, Structural};
         match &candidate.state {
             Ready { startup } | Structural { startup } => startup.ranges().len() <= ENTRY_LIMIT,
             Preparing { ranges } | Planned { ranges } => ranges.len() <= ENTRY_LIMIT,

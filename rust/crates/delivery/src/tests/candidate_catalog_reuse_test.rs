@@ -14,36 +14,36 @@ async fn readmitted_candidate_reuses_sparse_bytes_after_catalog_eviction() {
     let (store, root) = store();
     state.apply_candidate(candidate("reused", 0));
     let first = binding(&mut state, "reused");
-    store.bind_representation(first.clone()).await.unwrap();
-    let identity = first.transfer(&url("reused")).unwrap();
-    store.select_transfer(identity.clone()).await.unwrap();
-    let generation = SourceGeneration::try_new(url("reused"), "\"stable\"", 8).unwrap();
+    store.bind_representation(first.clone()).await.expect("valid test fixture");
+    let identity = first.transfer(&url("reused")).expect("valid test fixture");
+    store.select_transfer(identity.clone()).await.expect("valid test fixture");
+    let generation = SourceGeneration::try_new(url("reused"), "\"stable\"", 8).expect("valid test fixture");
     store
         .accept_generation(&identity, generation.clone())
         .await
-        .unwrap();
+        .expect("valid test fixture");
     assert!(store
         .write_range_for_generation_if_current(&identity, &generation, 0, &[1; 4])
         .await
-        .unwrap());
+        .expect("valid test fixture"));
 
     for index in 1..=64 {
         state.apply_candidate(candidate(&format!("new-{index}"), index));
         state.take_representation_bindings();
     }
     assert!(state.catalog().lookup(&PostId::new("reused")).is_none());
-    assert_eq!(store.present_ranges("reused").await.unwrap(), vec![0..4]);
+    assert_eq!(store.present_ranges("reused").await.expect("valid test fixture"), vec![0..4]);
 
     state.apply_candidate(candidate("reused", 100));
     let readmitted = binding(&mut state, "reused");
     assert_ne!(readmitted, first);
-    store.bind_representation(readmitted).await.unwrap();
+    store.bind_representation(readmitted).await.expect("valid test fixture");
     assert!(!store
         .write_range_for_transfer_if_current(&identity, 4, &[9; 4])
         .await
-        .unwrap());
-    assert_eq!(store.present_ranges("reused").await.unwrap(), vec![0..4]);
-    std::fs::remove_dir_all(root).unwrap();
+        .expect("valid test fixture"));
+    assert_eq!(store.present_ranges("reused").await.expect("valid test fixture"), vec![0..4]);
+    std::fs::remove_dir_all(root).expect("valid test fixture");
 }
 
 fn store() -> (PartialRangeStore, std::path::PathBuf) {

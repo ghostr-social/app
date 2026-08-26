@@ -4,7 +4,7 @@
 
 mod range_fixture;
 
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use ghostr_delivery::manager::failure::{classify, FailureClass};
 use ghostr_net::outbound_media_client::{MediaHttpClient, MediaHttpRequests};
 

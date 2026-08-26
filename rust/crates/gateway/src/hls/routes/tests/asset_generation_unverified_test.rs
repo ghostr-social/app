@@ -1,7 +1,7 @@
 use super::asset_sequence_origin::{request, request_error, serve};
 use super::support::{asset_resource, state};
 use axum::body::to_bytes;
-use std::time::Duration;
+use core::time::Duration;
 
 const NO_ETAG: &[u8] = b"HTTP/1.1 206 Partial Content\r\nContent-Length: 4\r\n\
 Content-Range: bytes 0-3/16\r\nConnection: close\r\n\r\nonce";
@@ -21,7 +21,12 @@ async fn verify_one_shot(response: &'static [u8]) {
     let resource = asset_resource(&state, &session).await;
 
     let first = request(&state, &session, &resource, "bytes=0-3").await;
-    assert_eq!(to_bytes(first.into_body(), 4).await.unwrap(), "once");
+    assert_eq!(
+        to_bytes(first.into_body(), 4)
+            .await
+            .expect("valid test fixture"),
+        "once"
+    );
     assert_eq!(
         request_error(&state, &session, &resource, "bytes=4-7").await,
         502

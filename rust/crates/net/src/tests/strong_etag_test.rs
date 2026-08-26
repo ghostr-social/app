@@ -5,7 +5,10 @@ use reqwest::header::{HeaderMap, HeaderValue, ETAG};
 fn only_one_well_formed_strong_etag_is_identity_evidence() {
     assert_eq!(etag_bytes(&headers(&["\"v1\""])), Some(b"\"v1\"".to_vec()));
     assert_eq!(etag_bytes(&headers(&["\"\""])), Some(b"\"\"".to_vec()));
-    assert_eq!(single_strong_etag(&HeaderMap::new()).unwrap(), None);
+    assert_eq!(
+        single_strong_etag(&HeaderMap::new()).expect("valid test fixture"),
+        None
+    );
     assert!(single_strong_etag(&headers(&["W/\"v1\""])).is_err());
     assert!(single_strong_etag(&headers(&["\"a\"", "\"b\""])).is_err());
     assert!(single_strong_etag(&headers(&["\"a\", \"b\""])).is_err());
@@ -13,7 +16,10 @@ fn only_one_well_formed_strong_etag_is_identity_evidence() {
     assert!(single_strong_etag(&headers(&["\"bad\"quote\""])).is_err());
     assert!(single_strong_etag(&headers(&[" \"v1\" "])).is_err());
     let mut opaque = HeaderMap::new();
-    opaque.insert(ETAG, HeaderValue::from_bytes(&[b'"', 0x80, b'"']).unwrap());
+    opaque.insert(
+        ETAG,
+        HeaderValue::from_bytes(&[b'"', 0x80, b'"']).expect("valid test fixture"),
+    );
     assert_eq!(etag_bytes(&opaque), Some(vec![b'"', 0x80, b'"']));
 }
 

@@ -10,7 +10,7 @@ impl DeliveryWorker {
             }
             InternalEvent::Transfer(transfer) => self.apply_transfer(transfer).await,
             InternalEvent::Segmented(done) => self.finish_segmented(*done),
-            InternalEvent::Transform(done) => self.finish_transform_job(done),
+            InternalEvent::Transform(done) => self.finish_transform_job(&done),
             InternalEvent::HedgeTail(wake) => self.consume_hedge_tail_wake(wake),
             InternalEvent::Maintenance(maintenance) => self.apply_maintenance(maintenance).await,
             InternalEvent::TrafficChanged => self.absorb_traffic(),
@@ -31,15 +31,15 @@ impl DeliveryWorker {
 
     async fn apply_transfer(&mut self, event: TransferEvent) {
         match event {
-            TransferEvent::ChunkDone(done) => self.finish_chunk(done).await,
-            TransferEvent::ProbeDone(done) => self.finish_probe(done).await,
+            TransferEvent::ChunkDone(done) => self.finish_chunk(*done).await,
+            TransferEvent::ProbeDone(done) => self.finish_probe(*done).await,
             TransferEvent::ResponseObserved(observed) => self.observe_response(*observed).await,
         }
     }
 
     async fn apply_maintenance(&mut self, event: MaintenanceEvent) {
         match event {
-            MaintenanceEvent::CooldownOver(post, cooldown) => self.finish_cooldown(post, cooldown),
+            MaintenanceEvent::CooldownOver(post, cooldown) => self.finish_cooldown(&post, cooldown),
             MaintenanceEvent::SaveStats => {
                 self.keeper.save_now().await;
                 let evidence = self.state.catalog().evidence_state();

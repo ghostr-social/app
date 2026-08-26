@@ -7,7 +7,7 @@ use crate::segmented::scheduler::{
 use ghostr_engine::{ActionId, PostId};
 
 impl DeliveryWorker {
-    pub(crate) fn finish_segmented(&mut self, done: SegmentedDone) {
+    pub(super) fn finish_segmented(&mut self, done: SegmentedDone) {
         let Some(finish) = self.segmented.finish(done) else {
             return;
         };
@@ -27,7 +27,7 @@ impl DeliveryWorker {
             observed_at_ms,
         );
         if let Some(observation) = finish.observation {
-            self.keeper.note_hls(observation);
+            self.keeper.note_hls(&observation);
         }
         self.resolve_segmented(finish.action, finish.outcome, finish.actual_resources);
         finish.recovery
@@ -86,7 +86,7 @@ impl DeliveryWorker {
         let root = retry.root().to_owned();
         match self
             .retry
-            .note_hls_failure(Source::new(post.clone(), root), class)
+            .note_hls_failure(Source::new(post.clone(), &root), class)
         {
             Retry::After(wait) => self.retry_segmented_after(retry, post, wait),
             Retry::GiveUp => self.fallback_or_retire(retry),
@@ -97,7 +97,7 @@ impl DeliveryWorker {
         &mut self,
         retry: SegmentedRetry,
         post: PostId,
-        wait: std::time::Duration,
+        wait: core::time::Duration,
     ) {
         if let Some(root) = self
             .retry
@@ -128,7 +128,7 @@ impl DeliveryWorker {
         }
     }
 
-    pub(crate) fn revive_segmented(&mut self, post: &PostId) {
+    pub(super) fn revive_segmented(&mut self, post: &PostId) {
         let Some(roots) = self.segmented.roots(post) else {
             return;
         };
@@ -143,7 +143,7 @@ impl DeliveryWorker {
         }
     }
 
-    pub(crate) fn reconcile_segmented_roots(&mut self) {
+    pub(super) fn reconcile_segmented_roots(&mut self) {
         for (post, roots) in self.segmented.root_sets() {
             match self.retry.hls_root_availability(&post, &roots) {
                 HlsRootAvailability::Live(live) => {
@@ -159,7 +159,7 @@ impl DeliveryWorker {
         }
     }
 
-    pub(crate) fn restart_segmented_roots(&mut self, posts: &[PostId]) {
+    pub(super) fn restart_segmented_roots(&mut self, posts: &[PostId]) {
         for post in posts {
             let Some(roots) = self.segmented.roots(post) else {
                 continue;
@@ -175,7 +175,7 @@ impl DeliveryWorker {
         &mut self,
         retry: SegmentedRetry,
         post: PostId,
-        wait: Option<std::time::Duration>,
+        wait: Option<core::time::Duration>,
     ) {
         if self.segmented.apply_recovery(retry, RecoveryAction::Retire) {
             if let Some(wait) = wait {

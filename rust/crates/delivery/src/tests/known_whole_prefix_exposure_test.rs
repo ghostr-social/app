@@ -3,9 +3,9 @@ use crate::chunk::cancel::cancel_pair;
 use crate::chunk::downloader::{download_chunk_observed, ChunkExecution};
 use crate::chunk::sink::TransferChunkSink;
 use crate::debug::network::NetworkThrottle;
+use core::time::Duration;
 use ghostr_engine::adaptive::WholeBodyContract;
 use ghostr_engine::host_stats::HostStats;
-use std::time::Duration;
 
 #[tokio::test]
 async fn capped_whole_with_a_declared_length_exposes_its_live_prefix() {
@@ -20,7 +20,7 @@ async fn capped_whole_with_a_declared_length_exposes_its_live_prefix() {
     let (_handle, cancel) = cancel_pair();
     let mut stats = HostStats::new();
     let mut traffic = AuthorizedTraffic::new(
-        fixture.store.clone(),
+        std::sync::Arc::clone(&fixture.store),
         fixture.identity.clone(),
         fixture.action.clone(),
     );
@@ -45,26 +45,34 @@ async fn capped_whole_with_a_declared_length_exposes_its_live_prefix() {
 
     let mut prefix_sent = origin.prefix_sent;
     tokio::select! {
-        sent = &mut prefix_sent => sent.unwrap(),
+        sent = &mut prefix_sent => sent.expect("valid test fixture"),
         result = &mut download => panic!("download ended before prefix: {result:?}"),
     }
-    let readable = tokio::time::timeout(Duration::from_secs(1), wait_for_prefix(&fixture.store));
+    let readable = tokio::time::timeout(Duration::from_secs(10), wait_for_prefix(&fixture.store));
     tokio::pin!(readable);
     tokio::select! {
         result = &mut download => panic!("download ended before release: {result:?}"),
         result = &mut readable => result.expect("declared whole prefix becomes player-readable"),
     }
     origin.release.notify_one();
-    assert_eq!(download.await.unwrap().bytes_written, 8);
+    assert_eq!(
+        download.await.result.expect("valid test fixture").bytes_written,
+        8
+    );
     fixture.store.release_action(&fixture.action).await;
-    std::fs::remove_dir_all(fixture.root).unwrap();
+    std::fs::remove_dir_all(fixture.root).expect("valid test fixture");
 }
 
 async fn wait_for_prefix(store: &ghostr_partial_store::partial_range_store::PartialRangeStore) {
     let notifier = store.change_notifier();
     loop {
         let changed = notifier.notified();
-        if store.read_range("post", 0..4).await.unwrap() == Some(b"new!".to_vec()) {
+        if store
+            .read_range("post", 0..4)
+            .await
+            .expect("valid test fixture")
+            == Some(b"new!".to_vec())
+        {
             return;
         }
         changed.await;

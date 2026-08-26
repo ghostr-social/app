@@ -42,7 +42,7 @@ impl DeliveryWorker {
         }
         Ok(self
             .downloads
-            .adopt_http_generation(attempt, generation.clone())
+            .adopt_http_generation(attempt, &generation)
             .then_some(ResponseAuthorityAdmission::Durable(generation)))
     }
 

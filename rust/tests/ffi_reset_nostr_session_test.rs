@@ -28,6 +28,9 @@ async fn reset_closes_feeds_without_reusing_their_handles() {
     let fresh = ffi_open_feed(main_feed(None), None, fresh_generation)
         .await
         .expect("new feed");
-    assert!(fresh.parse::<u64>().unwrap() > stale.parse::<u64>().unwrap());
+    assert!(
+        fresh.parse::<u64>().expect("fresh feed id must be numeric")
+            > stale.parse::<u64>().expect("stale feed id must be numeric")
+    );
     std::fs::remove_dir_all(directory).expect("remove cache");
 }

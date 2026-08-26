@@ -1,13 +1,13 @@
 mod delivery_fixture;
 mod raw_http;
 
+use core::time::Duration;
 use delivery_fixture::gated_failure;
 use delivery_fixture::items::{focus_now, seed_range};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
 use ghostr_delivery::delivery_events::FocusItem;
 use ghostr_engine::{DeliveryKind, EngineParams, PostId, VideoMeta};
-use std::time::Duration;
 
 #[tokio::test]
 async fn mirror_header_failure_preserves_the_canonical_prefix() {
@@ -32,11 +32,15 @@ async fn mirror_header_failure_preserves_the_canonical_prefix() {
         .expect("mirror request");
 
     assert_eq!(
-        harness.store.read_range("post", 0..4).await.unwrap(),
+        harness
+            .store
+            .read_range("post", 0..4)
+            .await
+            .expect("valid test fixture"),
         Some(b"0123".to_vec())
     );
-    harness.handle.clear().await.unwrap();
-    mirror.requests.await.unwrap();
+    harness.handle.clear().await.expect("valid test fixture");
+    mirror.requests.await.expect("valid test fixture");
     std::fs::remove_dir_all(harness.root).ok();
 }
 

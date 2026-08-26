@@ -39,13 +39,13 @@ impl Selection {
             if self.remaining == 0 {
                 return;
             }
-            self.consider(candidate);
+            self.consider(&candidate);
         }
     }
 
-    fn consider(&mut self, candidate: EvictionCandidate) {
-        let eviction = selected_extent(&candidate, self.remaining);
-        if !feasible(&candidate, &eviction, self.headroom) {
+    fn consider(&mut self, candidate: &EvictionCandidate) {
+        let eviction = selected_extent(candidate, self.remaining);
+        if !feasible(candidate, &eviction, self.headroom) {
             return;
         }
         let released = eviction.range.len();

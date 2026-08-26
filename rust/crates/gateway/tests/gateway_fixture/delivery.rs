@@ -53,10 +53,10 @@ pub fn start_delivery_with_tuning(prefix: &str, tuning: DeliveryTuning) -> Deliv
     let segmented = SegmentedCache::new();
     let (demand, demand_receiver) = demand_channel();
     let demands = Arc::new(StdMutex::new(Vec::new()));
-    let demand_receiver = trace_demands(demand_receiver, demands.clone());
+    let demand_receiver = trace_demands(demand_receiver, std::sync::Arc::clone(&demands));
     let (handle, _discovery_demand) = start_delivery_manager_with_discovery_demand(
         DeliveryManagerConfig {
-            store: store.clone(),
+            store: std::sync::Arc::clone(&store),
             requests: requests.clone(),
             cache: cache.clone(),
             segmented: segmented.clone(),

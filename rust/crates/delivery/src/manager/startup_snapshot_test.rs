@@ -31,7 +31,11 @@ async fn certificate_stays_bound_to_the_planning_snapshot() {
         ),
         1,
     );
-    let planned = snapshot(state.catalog().binding(&post).unwrap(), "planned").await;
+    let planned = snapshot(
+        state.catalog().binding(&post).expect("valid test fixture"),
+        "planned",
+    )
+    .await;
     let mut replacement_catalog = Catalog::new();
     let replacement = snapshot(
         replacement_catalog.upsert(post.clone(), meta("replacement")),
@@ -62,7 +66,7 @@ fn complete_startup(catalog: &Catalog, post: PostId) -> StartupFootprint {
         CandidateEvidence {
             post,
             feed_offset: FeedOffset::new(1),
-            view_probability: ViewProbability::new(1.0).unwrap(),
+            view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
             present: vec![ByteRange::new(0, 16)],
             stored_total: Some(16),
             continuation_source: None,
@@ -72,9 +76,9 @@ fn complete_startup(catalog: &Catalog, post: PostId) -> StartupFootprint {
             origins: Vec::new(),
         },
     )
-    .unwrap()
+    .expect("valid test fixture")
     .startup
-    .unwrap()
+    .expect("valid test fixture")
 }
 async fn snapshot(binding: RepresentationBinding, name: &str) -> StoredMediaSnapshot {
     let store = PartialRangeStore::with_capacity(
@@ -83,10 +87,22 @@ async fn snapshot(binding: RepresentationBinding, name: &str) -> StoredMediaSnap
         StoreCapacity::system(u64::MAX),
     );
     let post = binding.post().as_str().to_owned();
-    store.bind_representation(binding).await.unwrap();
-    store.set_total_len(&post, 16).await.unwrap();
-    store.write_range(&post, 0, &[7; 16]).await.unwrap();
-    store.media_snapshot(&post).await.unwrap()
+    store
+        .bind_representation(binding)
+        .await
+        .expect("valid test fixture");
+    store
+        .set_total_len(&post, 16)
+        .await
+        .expect("valid test fixture");
+    store
+        .write_range(&post, 0, &[7; 16])
+        .await
+        .expect("valid test fixture");
+    store
+        .media_snapshot(&post)
+        .await
+        .expect("valid test fixture")
 }
 
 fn meta(name: &str) -> VideoMeta {

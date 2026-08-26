@@ -12,7 +12,7 @@ const SOURCE: &str = "https://media.example/video.mp4";
 fn planner_reprobes_after_redirect_changes_with_the_same_validator() {
     let post = PostId::new("post");
     let mut state = state_with_size(post.clone(), SOURCE, 16);
-    let identity = state.catalog().transfer_identity(&post, SOURCE).unwrap();
+    let identity = state.catalog().transfer_identity(&post, SOURCE).expect("valid test fixture");
     assert!(state.catalog_mut().learn_head_observation_for(
         &identity,
         observation(Some(true), "https://cdn-a.example/video.mp4", 1)
@@ -25,13 +25,13 @@ fn planner_reprobes_after_redirect_changes_with_the_same_validator() {
     ));
     let completed = probes.current_completed_identities(state.catalog());
 
-    assert!(generates_head(plan_at(&mut state, &[], &completed, 2, 2)));
+    assert!(generates_head(plan_at(&state, &[], &completed, 2, 2)));
 }
 
 fn observation(ranges: Option<bool>, final_url: &str, at: u64) -> HttpObservation {
     HttpObservation::new(
         LearnedFacts {
-            content_length: Some(16).filter(|_| ranges.is_some()),
+            content_length: ranges.map(|_| 16),
             accept_ranges: ranges,
             host: None,
         },

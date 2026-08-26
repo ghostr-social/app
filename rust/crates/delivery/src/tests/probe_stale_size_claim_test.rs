@@ -12,7 +12,7 @@ fn completed_head_history_rearms_when_its_size_is_stale() {
     let post = PostId::new("post");
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(post.clone(), metadata());
-    let identity = binding.transfer(SOURCE).unwrap();
+    let identity = binding.transfer(SOURCE).expect("valid test fixture");
     let head = HttpObservation::new(
         LearnedFacts {
             content_length: Some(16),
@@ -24,7 +24,7 @@ fn completed_head_history_rearms_when_its_size_is_stale() {
     );
     let stamp = catalog
         .learn_head_observation_with_stamp_for(&identity, head)
-        .unwrap();
+        .expect("valid test fixture");
     let retry = RetryBook::new(RetryPolicy::default());
     let mut probes = MetadataProbePool::new(1);
     probes.learned_probe(&identity, stamp, true);

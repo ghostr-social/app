@@ -1,7 +1,7 @@
 use crate::chunk::cancel::cancel_pair;
 use crate::chunk::network::{prepare_network, NetworkPreparation};
 use crate::debug::network::{NetworkProfile, NetworkThrottle};
-use std::time::Duration;
+use core::time::Duration;
 use tokio::time::timeout;
 
 #[tokio::test]

@@ -4,7 +4,7 @@ use ghostr_engine::ByteRange;
 pub(super) fn prioritize(candidate: &mut CandidateSnapshot, wanted: ByteRange) {
     let mut surrounding = Vec::new();
     let mut overlap_gain = 0_u64;
-    for playable in std::mem::take(&mut candidate.playable_ranges) {
+    for playable in core::mem::take(&mut candidate.playable_ranges) {
         let (pieces, gain) = split_around(playable, wanted);
         surrounding.extend(pieces);
         overlap_gain = overlap_gain.saturating_add(gain);

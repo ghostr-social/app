@@ -8,6 +8,9 @@ pub struct StrongEtag(HeaderValue);
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct InvalidStrongEtag;
 
+/// # Errors
+///
+/// Returns an error when the response contains multiple, weak, or malformed `ETag` values.
 pub fn single_strong_etag(headers: &HeaderMap) -> Result<Option<StrongEtag>, InvalidStrongEtag> {
     let mut values = headers.get_all(ETAG).iter();
     let Some(value) = values.next() else {

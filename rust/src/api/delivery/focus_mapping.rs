@@ -53,18 +53,18 @@ pub(crate) fn focus_item(item: &FfiFocusItem) -> Result<FocusItem> {
     validate_post_id(&item.post_id)?;
     Ok(FocusItem {
         post: PostId::new(item.post_id.clone()),
-        meta: video_meta(item)?,
+        meta: video_meta(item),
     })
 }
 
-fn video_meta(item: &FfiFocusItem) -> Result<VideoMeta> {
-    Ok(VideoMeta {
+fn video_meta(item: &FfiFocusItem) -> VideoMeta {
+    VideoMeta {
         urls: item.urls.clone(),
         delivery: item.delivery.into(),
         sha256: item.sha256.clone(),
         size_bytes: item.size_bytes,
         duration_ms: item.duration_ms,
-    })
+    }
 }
 
 /// Maps the whole window atomically: one bad item rejects the call so

@@ -12,7 +12,7 @@ fn inactive_playback_holds_quality_instead_of_reacting_to_network_noise() {
         PlaybackPhase::Ended,
         PlaybackPhase::Inactive,
     ] {
-        let decision = policy.select(&ladder(), phase_input(poor, Some("high"), 20, phase));
+        let decision = policy.select(&ladder(), &phase_input(poor, Some("high"), 20, phase));
         assert_eq!(decision.selected().id(), &id("high"));
     }
 }

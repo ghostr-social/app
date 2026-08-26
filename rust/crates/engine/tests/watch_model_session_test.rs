@@ -1,4 +1,4 @@
-use ghostr_engine::watch_model::{
+use crate::watch_model::{
     WatchContext, WatchKey, WatchModel, WatchNavigation, WatchSample, WatchSampleKind,
 };
 
@@ -11,7 +11,7 @@ fn consecutive_early_swipes_shift_the_session_then_completions_restore_continuat
     let mut model = WatchModel::default();
     let cold = model.predict(&context("next"), 0).p50_ms();
     for index in 0..3 {
-        model.observe(WatchSample::new(
+        model.observe(&WatchSample::new(
             context(&format!("early-{index}")),
             500,
             WatchSampleKind::Abandoned,
@@ -23,7 +23,7 @@ fn consecutive_early_swipes_shift_the_session_then_completions_restore_continuat
     let early = model.predict(&context("next"), 2_000).p50_ms();
 
     for index in 0..5 {
-        model.observe(WatchSample::new(
+        model.observe(&WatchSample::new(
             context(&format!("complete-{index}")),
             20_000,
             WatchSampleKind::Completed,

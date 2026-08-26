@@ -24,31 +24,33 @@ async fn saturated_authority_cannot_hoard_independent_global_capacity() {
     a.release_one();
     drop(first_a);
     a.expect_hit().await;
-    let second_a = second_a.await.unwrap();
+    let second_a = second_a.await.expect("valid test fixture");
     c.expect_quiet().await;
 
     b.release_one();
     drop(first_b);
     c.expect_hit().await;
-    let first_c = first_c.await.unwrap();
+    let first_c = first_c.await.expect("valid test fixture");
     a.release_one();
     c.release_one();
     drop((second_a, first_c));
 }
 
 fn executor(global: usize, authority: usize) -> MediaRequestExecutor {
-    let limits = MediaRequestLimits::try_new(global, authority).unwrap();
+    let limits = MediaRequestLimits::try_new(global, authority).expect("valid test fixture");
     MediaRequestExecutor::new(LocalMediaClient::shared(), limits)
 }
 
 async fn open(requests: MediaRequestExecutor, url: String) -> MediaResponse {
     requests
         .get(&url, PreemptionAuthority::Transition)
-        .unwrap()
+        .expect("valid test fixture")
         .admit()
         .await
-        .unwrap()
-        .send()
+        .expect("valid test fixture")
+        .send_with_redirect_deadline(
+            tokio::time::Instant::now() + core::time::Duration::from_secs(30),
+        )
         .await
-        .unwrap()
+        .expect("valid test fixture")
 }

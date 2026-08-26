@@ -1,7 +1,8 @@
-//! R→D feed updates (plan §2 phase-2 additions). Each subscription
-//! runs its own watcher on the feed's revision watch: it first sends a
-//! baseline snapshot, then one full snapshot per visible-list change.
-//! The stream ends when the feed closes or Dart cancels it.
+//! R→D feed updates (plan §2 phase-2 additions).
+//!
+//! Each subscription runs its own watcher on the feed's revision watch: it first
+//! sends a baseline snapshot, then one full snapshot per visible-list change. The
+//! stream ends when the feed closes or Dart cancels it.
 
 use crate::api::feed::mapping::parse_feed_id;
 use crate::api::feed::projection::project;

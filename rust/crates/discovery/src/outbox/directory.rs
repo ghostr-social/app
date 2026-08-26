@@ -6,7 +6,7 @@ use crate::outbox::relay_list::write_urls;
 use crate::session_generation::SessionGeneration;
 use ghostr_engine::DataUsageLevel;
 use nostr_sdk::{Event, Kind, PublicKey, Timestamp};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -14,7 +14,7 @@ use tokio::sync::RwLock;
 pub type SharedOutboxDirectory = Arc<RwLock<OutboxDirectory>>;
 
 /// Outbox fan-out cap per data-usage level; mirrors `maxOutboxRelays`
-/// in lib/features/settings/domain/data_usage_level.dart.
+/// in `lib/features/settings/domain/data_usage_level.dart`.
 pub fn max_outbox_relays(level: DataUsageLevel) -> usize {
     match level {
         DataUsageLevel::Conservative => 6,
@@ -63,7 +63,7 @@ impl OutboxDirectory {
     }
 
     pub fn replace_bootstrap(&mut self, relays: Vec<String>) -> Vec<String> {
-        std::mem::replace(&mut self.bootstrap, relays)
+        core::mem::replace(&mut self.bootstrap, relays)
     }
 
     /// Ingests a kind-10002 relay list; anything else is ignored.
@@ -86,16 +86,7 @@ impl OutboxDirectory {
         }
     }
 
-    /// Ingests a whole retrieval's events; anything that is not a
-    /// kind-10002 relay list is ignored.
-    #[cfg(test)]
-    pub(crate) fn ingest_all(&mut self, events: &[Event]) {
-        for event in events {
-            self.ingest(event);
-        }
-    }
-
-    pub(crate) fn ingest_all_for(&mut self, session: SessionGeneration, events: &[Event]) {
+    pub(super) fn ingest_all_for(&mut self, session: SessionGeneration, events: &[Event]) {
         for event in events {
             self.ingest_for(session, event);
         }
@@ -104,7 +95,7 @@ impl OutboxDirectory {
     /// Remembers the signed-in viewer's follows after the bootstrap task
     /// retrieves their kind-3 list. Later unscoped feed queries can then
     /// route through those authors' write relays.
-    pub fn track_viewer_follows(&mut self, follows: Vec<PublicKey>) {
+    pub(crate) fn track_viewer_follows(&mut self, follows: Vec<PublicKey>) {
         self.viewer_follows = follows;
     }
 
@@ -148,7 +139,7 @@ impl OutboxDirectory {
     }
 
     fn ranked_write_relays(&self, authors: &[PublicKey], cap: usize) -> Vec<String> {
-        let unique: HashSet<&PublicKey> = authors.iter().collect();
+        let unique: BTreeSet<&PublicKey> = authors.iter().collect();
         let mut counts: HashMap<&String, usize> = HashMap::new();
         for author in unique {
             for url in self.write_relays(author) {
@@ -176,3 +167,7 @@ fn merged(bootstrap: &[String], outbox: Vec<String>) -> Vec<String> {
     }
     result
 }
+
+#[cfg(test)]
+#[path = "directory_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

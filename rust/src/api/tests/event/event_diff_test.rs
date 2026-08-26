@@ -1,4 +1,6 @@
-use crate::api::delivery::snapshots::{error_event, event_for, DeliverySnapshot};
+use crate::api::delivery::snapshots::{
+    error_event, event_for, DeliverySnapshot, DeliverySnapshotAuthority,
+};
 use crate::api::delivery_types::FfiDeliveryEventKind;
 
 fn snapshot(startable: bool, bytes: u64) -> DeliverySnapshot {
@@ -9,6 +11,7 @@ fn snapshot(startable: bool, bytes: u64) -> DeliverySnapshot {
         eta_ms: None,
         failed: false,
         detail: None,
+        authority: None,
     }
 }
 
@@ -59,4 +62,22 @@ fn error_events_carry_the_detail() {
     assert_eq!(event.post_id, "clip");
     assert!(!event.startable);
     assert_eq!(event.detail.as_deref(), Some("store failed"));
+}
+
+#[test]
+fn a_playback_block_is_distinct_from_an_observer_error() {
+    let mut failed = snapshot(false, 8);
+    failed.failed = true;
+    failed.detail = Some("decoder unsupported".to_owned());
+    failed.authority = Some(DeliverySnapshotAuthority {
+        representation_id: "a".repeat(64),
+        asset_id: "b".repeat(43),
+    });
+
+    let event = event_for("clip", None, failed).expect("failure event");
+
+    assert_eq!(event.kind, FfiDeliveryEventKind::Failed);
+    assert_eq!(event.detail.as_deref(), Some("decoder unsupported"));
+    assert_eq!(event.representation_id, Some("a".repeat(64)));
+    assert_eq!(event.asset_id, Some("b".repeat(43)));
 }

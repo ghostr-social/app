@@ -11,7 +11,7 @@ const DAY_MS: u64 = 24 * 60 * 60 * 1_000;
 fn successful_lengthless_head_does_not_loop_on_an_older_stale_size() {
     let post = PostId::new("post");
     let mut catalog = Catalog::new();
-    let identity = catalog.upsert(post.clone(), metadata()).transfer(SOURCE).unwrap();
+    let identity = catalog.upsert(post.clone(), metadata()).transfer(SOURCE).expect("valid test fixture");
     assert!(catalog.learn_head_observation_for(&identity, observation(Some(16), 1)));
     let stamp = catalog
         .learn_head_observation_with_stamp_for(&identity, observation(None, 2))

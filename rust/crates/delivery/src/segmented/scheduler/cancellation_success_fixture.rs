@@ -3,11 +3,11 @@ use super::{test_fence, SegmentedDone};
 use crate::segmented::cache::{StageAdmission, StageReservation};
 use crate::segmented::fetch::{FetchedObject, OriginTelemetry};
 use crate::segmented::SegmentedCache;
+use core::time::Duration;
 use ghostr_engine::adaptive::HlsBootstrapStage;
 use ghostr_engine::origin_model::NetworkClass;
 use ghostr_engine::{ActionId, PostId};
 use std::sync::Arc;
-use std::time::Duration;
 
 pub(super) const MANIFEST: &str =
     "#EXTM3U\n#EXT-X-TARGETDURATION:4\n#EXTINF:4,\nsegment.m4s\n#EXT-X-ENDLIST\n";
@@ -22,7 +22,7 @@ pub(super) async fn succeeded(cache: &SegmentedCache, post: PostId) -> Segmented
         500,
         StageReservation::block(maximum),
     );
-    let lease = cache.admit_stage(admission).unwrap();
+    let lease = cache.admit_stage(admission).expect("valid test fixture");
     let (cancel, cancelled) = tokio::sync::oneshot::channel();
     let outcome = prepare_transfer(lease, fetched(), cancelled).await;
     drop(cancel);
@@ -39,7 +39,7 @@ pub(super) async fn succeeded(cache: &SegmentedCache, post: PostId) -> Segmented
 fn fetched() -> FetchedObject {
     FetchedObject {
         request_url: SOURCE.to_owned(),
-        final_url: SOURCE.parse().unwrap(),
+        final_url: SOURCE.parse().expect("valid test fixture"),
         body: Arc::from(MANIFEST.as_bytes()),
         content_type: Some("application/vnd.apple.mpegurl".to_owned()),
         cache: Default::default(),

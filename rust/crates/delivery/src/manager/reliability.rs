@@ -1,10 +1,10 @@
 use crate::manager::transfers::{InternalEvent, MaintenanceEvent};
+use core::time::Duration;
 use ghostr_engine::catalog::CatalogEvidenceState;
 use ghostr_engine::evidence::FieldReliabilityModel;
 use log::warn;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
 pub(crate) struct ReliabilityKeeper {
@@ -16,7 +16,7 @@ pub(crate) struct ReliabilityKeeper {
 }
 
 impl ReliabilityKeeper {
-    pub(crate) async fn load(path: PathBuf, debounce: Duration) -> (Self, CatalogEvidenceState) {
+    pub(super) async fn load(path: PathBuf, debounce: Duration) -> (Self, CatalogEvidenceState) {
         let state = load_catalog_evidence(&path).await;
         let keeper = Self {
             path,
@@ -28,7 +28,7 @@ impl ReliabilityKeeper {
         (keeper, state)
     }
 
-    pub(crate) fn observe(&mut self, revision: u64, events: &UnboundedSender<InternalEvent>) {
+    pub(super) fn observe(&mut self, revision: u64, events: &UnboundedSender<InternalEvent>) {
         if revision == self.seen_revision {
             return;
         }
@@ -37,7 +37,7 @@ impl ReliabilityKeeper {
         self.schedule_save(events);
     }
 
-    pub(crate) async fn save_now(&mut self, state: &CatalogEvidenceState) {
+    pub(super) async fn save_now(&mut self, state: &CatalogEvidenceState) {
         self.save_pending = false;
         if !self.dirty {
             return;
@@ -80,22 +80,6 @@ pub(crate) async fn save_catalog_evidence(
     save_json(path, state.to_json()).await
 }
 
-#[cfg(test)]
-pub(crate) async fn load_field_reliability(path: &Path) -> FieldReliabilityModel {
-    match tokio::fs::read_to_string(path).await {
-        Ok(json) => FieldReliabilityModel::from_json(&json).unwrap_or_default(),
-        Err(_) => FieldReliabilityModel::default(),
-    }
-}
-
-#[cfg(test)]
-pub(crate) async fn save_field_reliability(
-    path: &Path,
-    model: &FieldReliabilityModel,
-) -> io::Result<()> {
-    save_json(path, model.to_json()).await
-}
-
 async fn save_json(path: &Path, json: String) -> io::Result<()> {
     let staging = path.with_extension("json.tmp");
     tokio::fs::write(&staging, json).await?;
@@ -105,3 +89,7 @@ async fn save_json(path: &Path, json: String) -> io::Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "reliability_axiom_test.rs"]
+pub(crate) mod axiom_test_support;

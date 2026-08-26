@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicU8, Ordering};
+use core::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
 
 const ACTIVE: u8 = 0;

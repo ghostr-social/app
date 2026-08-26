@@ -1,9 +1,9 @@
 use super::support;
 
-#[path = "traffic_mailbox_coalescing_test.rs"]
-mod mailbox_coalescing;
 #[path = "traffic_closed_interval_wake_test.rs"]
 mod closed_interval_wake;
+#[path = "traffic_mailbox_coalescing_test.rs"]
+mod mailbox_coalescing;
 #[path = "traffic_meter_aggregate_test.rs"]
 mod meter_aggregate;
 #[path = "traffic_meter_idempotence_test.rs"]

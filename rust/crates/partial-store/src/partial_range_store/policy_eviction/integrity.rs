@@ -1,10 +1,10 @@
 use crate::partial_range_disk as disk;
 use crate::partial_range_manifest::{IntervalChecksum, RangeManifest};
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Context as _, Result};
+use core::ops::Range;
 use std::collections::BTreeSet;
-use std::ops::Range;
 use std::path::Path;
-use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncSeekExt as _, AsyncWriteExt as _};
 
 const COPY_BLOCK_BYTES: u64 = ghostr_engine::adaptive::REQUEST_SLICE_BYTES;
 
@@ -16,7 +16,7 @@ struct StagingWriter<'a> {
     manifest: &'a mut RangeManifest,
 }
 
-pub(super) async fn retained_is_valid(
+async fn retained_is_valid(
     source: &Path,
     manifest: &RangeManifest,
     retained: &[Range<u64>],

@@ -11,10 +11,10 @@ mod request;
 mod response;
 
 use crate::outbound_media_client::MediaHttpRequests;
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Context as _, Result};
+use core::num::NonZeroUsize;
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::RequestAuthority;
-use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use gate::MediaRequestGate;
@@ -34,6 +34,9 @@ pub struct MediaRequestLimits {
 }
 
 impl MediaRequestLimits {
+    /// # Errors
+    ///
+    /// Returns an error when a limit is zero or the per-authority limit exceeds the global limit.
     pub fn try_new(global: usize, per_authority: usize) -> Result<Self> {
         let global = NonZeroUsize::new(global).context("global request limit is zero")?;
         let per_authority =
@@ -48,7 +51,7 @@ impl MediaRequestLimits {
         })
     }
 
-    pub const fn global(self) -> usize {
+    const fn global(self) -> usize {
         self.global.get()
     }
 
@@ -71,6 +74,9 @@ impl MediaRequestExecutor {
         }
     }
 
+    /// # Errors
+    ///
+    /// Returns an error when `raw_url` is unsafe or a request cannot be built.
     pub fn get(&self, raw_url: &str, priority: PreemptionAuthority) -> Result<MediaRequest> {
         let route = RequestRoute::new(
             Arc::clone(&self.client),
@@ -96,9 +102,5 @@ impl MediaRequestExecutor {
 
     pub fn active_for(&self, authority: &RequestAuthority) -> usize {
         self.gate.active_for(authority)
-    }
-
-    pub fn active_connections(&self) -> Vec<(String, usize)> {
-        self.gate.active_connections()
     }
 }

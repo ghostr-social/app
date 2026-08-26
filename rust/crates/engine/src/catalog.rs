@@ -2,11 +2,10 @@
 //! Pure bookkeeping — probing itself happens elsewhere.
 
 use crate::media_timeline::MediaTimeline;
-use crate::playback::{BufferTarget, NetworkConditions, PlaybackObservation};
 use crate::representation::{RepresentationBinding, RepresentationGeneration, TransferIdentity};
 use crate::video_rendition::VideoRendition;
 use crate::{PostId, PreviewDescriptor, VideoMeta};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 mod evidence;
 use evidence::SourceEvidence;
@@ -19,6 +18,7 @@ mod persistence;
 mod playback_evidence;
 pub use persistence::CatalogEvidenceState;
 pub use playback_evidence::PlaybackEvidence;
+pub use renditions::RenditionSelection;
 
 /// One catalogued post: what discovery said plus what probing taught us.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -30,6 +30,7 @@ pub struct CatalogEntry {
     evidence_clock_ms: u64,
     http_clocks: HashMap<(String, observation::HttpAuthority), crate::evidence::EvidenceTime>,
     http_generations: HashMap<String, observation::HttpGenerationRecord>,
+    verified_mirrors: HashMap<String, observation::VerifiedMirrorRecord>,
     next_http_generation: u64,
     quarantined: bool,
     binding: RepresentationBinding,
@@ -56,6 +57,7 @@ impl CatalogEntry {
             evidence_clock_ms: 0,
             http_clocks: HashMap::new(),
             http_generations: HashMap::new(),
+            verified_mirrors: HashMap::new(),
             next_http_generation: 1,
             quarantined: false,
             timeline: None,
@@ -78,23 +80,18 @@ impl CatalogEntry {
 
     fn selected_meta(
         &self,
-        network: NetworkConditions,
-        observation: PlaybackObservation,
-        target: BufferTarget,
+        input: RenditionSelection,
+        excluded: &HashSet<crate::representation::RepresentationId>,
     ) -> Option<VideoMeta> {
         self.renditions
-            .select(self.binding.representation(), network, observation, target)
+            .select(self.binding.representation(), input, excluded)
     }
 
     pub fn binding(&self) -> RepresentationBinding {
         self.binding.clone()
     }
 
-    pub fn evidence(&self) -> &crate::evidence::EvidenceLedger {
-        &self.ledger
-    }
-
-    pub fn is_quarantined(&self) -> bool {
+    pub(super) fn is_quarantined(&self) -> bool {
         self.quarantined
     }
 
@@ -106,11 +103,11 @@ impl CatalogEntry {
         self.preview
     }
 
-    pub fn needs_tail_probe(&self) -> bool {
+    fn needs_tail_probe(&self) -> bool {
         self.timeline.is_none() && self.meta.duration_ms.is_none()
     }
 
-    pub(crate) fn needs_timeline_probe(&self) -> bool {
+    pub(super) fn needs_timeline_probe(&self) -> bool {
         self.timeline.is_none() && (self.needs_tail_probe() || self.tail_timeline_needed)
     }
 }
@@ -177,16 +174,6 @@ impl Catalog {
             entry.preview = preview;
         }
     }
-
-    #[cfg(test)]
-    pub(crate) fn len(&self) -> usize {
-        self.entries.len()
-    }
-
-    #[cfg(test)]
-    pub(crate) fn is_empty(&self) -> bool {
-        self.entries.is_empty()
-    }
 }
 
 mod bitrate;
@@ -194,3 +181,7 @@ mod renditions;
 mod representation;
 pub use renditions::RenditionQualityEvidence;
 mod timeline;
+
+#[cfg(test)]
+#[path = "catalog_axiom_test.rs"]
+mod axiom_test_support;

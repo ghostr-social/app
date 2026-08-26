@@ -12,13 +12,13 @@ impl ResourceObserverSlot {
         self.observer.set(observer).is_ok()
     }
 
-    pub(in crate::media_request_executor) fn record_request(&self) {
+    fn record_request(&self) {
         if let Some(observer) = self.get() {
             observer.record_request();
         }
     }
 
-    pub(in crate::media_request_executor) fn record_response_bytes(&self, bytes: u64) {
+    fn record_response_bytes(&self, bytes: u64) {
         if let Some(observer) = self.get() {
             observer.record_response_bytes(bytes);
         }

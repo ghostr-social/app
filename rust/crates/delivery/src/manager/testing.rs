@@ -1,6 +1,7 @@
 use super::{DeliveryManagerConfig, DeliveryWorker};
 use crate::delivery_events::CommandReceiver;
-use crate::manager::timeline::{TimelineCoordinator, TimelineParser};
+use crate::manager::timeline::axiom_test_support::TimelineParser;
+use crate::manager::timeline::TimelineCoordinator;
 use crate::playback_demand::DemandReceiver;
 use ghostr_engine::media_timeline::MediaTimeline;
 use ghostr_engine::{EngineParams, PostId};
@@ -15,7 +16,7 @@ impl DeliveryWorker {
         demand: DemandReceiver,
         parser: Arc<dyn TimelineParser>,
     ) -> Self {
-        let store = config.store.clone();
+        let store = std::sync::Arc::clone(&config.store);
         let resources = crate::manager::resource_control::ResourceControl::bootstrap(
             &config,
             tokio::time::Instant::now(),

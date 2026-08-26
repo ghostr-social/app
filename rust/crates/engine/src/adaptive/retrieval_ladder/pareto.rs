@@ -10,7 +10,7 @@ pub struct EpsilonBuckets {
 }
 
 impl EpsilonBuckets {
-    pub const fn disabled() -> Self {
+    pub(crate) const fn disabled() -> Self {
         Self {
             readiness_time_ms: 0,
             readiness_bytes: 0,
@@ -19,7 +19,12 @@ impl EpsilonBuckets {
         }
     }
 
-    pub const fn new(time_ms: u64, bytes: u64, coverage_ms: u64, quality_micros: u64) -> Self {
+    pub(crate) const fn new(
+        time_ms: u64,
+        bytes: u64,
+        coverage_ms: u64,
+        quality_micros: u64,
+    ) -> Self {
         Self {
             readiness_time_ms: time_ms,
             readiness_bytes: bytes,
@@ -28,19 +33,19 @@ impl EpsilonBuckets {
         }
     }
 
-    pub const fn readiness_time_ms(self) -> u64 {
+    pub(crate) const fn readiness_time_ms(self) -> u64 {
         self.readiness_time_ms
     }
 
-    pub const fn readiness_bytes(self) -> u64 {
+    pub(crate) const fn readiness_bytes(self) -> u64 {
         self.readiness_bytes
     }
 
-    pub const fn coverage_ms(self) -> u64 {
+    pub(crate) const fn coverage_ms(self) -> u64 {
         self.coverage_ms
     }
 
-    pub const fn quality_micros(self) -> u64 {
+    pub(crate) const fn quality_micros(self) -> u64 {
         self.quality_micros
     }
 }
@@ -51,7 +56,7 @@ pub struct RetrievalLadder {
 }
 
 impl RetrievalLadder {
-    pub fn prune(mut plans: Vec<RetrievalPlan>, epsilon: EpsilonBuckets) -> Self {
+    pub(crate) fn prune(mut plans: Vec<RetrievalPlan>, epsilon: EpsilonBuckets) -> Self {
         plans.sort_by(|left, right| left.id().cmp(right.id()));
         let exact: Vec<_> = plans
             .iter()
@@ -62,11 +67,11 @@ impl RetrievalLadder {
             plans: merge_epsilon(exact, epsilon),
         }
     }
-
-    pub fn plans(&self) -> &[RetrievalPlan] {
-        &self.plans
-    }
 }
+
+#[cfg(any(test, feature = "test"))]
+#[path = "pareto/test_support.rs"]
+mod test_support;
 
 fn dominates(left: &RetrievalPlan, right: &RetrievalPlan) -> bool {
     if left.id() == right.id() || !no_worse(&left.metrics, &right.metrics) {
@@ -118,7 +123,7 @@ fn deadlines(left: &PlanMetrics, right: &PlanMetrics) -> bool {
 fn upper_no_larger(left: Option<u64>, right: Option<u64>) -> bool {
     match (left, right) {
         (Some(left), Some(right)) => left <= right,
-        (Some(_), None) | (None, None) => true,
+        (Some(_) | None, None) => true,
         (None, Some(_)) => false,
     }
 }

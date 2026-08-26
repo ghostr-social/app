@@ -12,17 +12,8 @@ struct LabelOutcome<'a> {
 }
 
 impl Catalog {
-    pub fn field_reliability(&self) -> &FieldReliabilityModel {
-        &self.reliability
-    }
-
     pub fn reliability_revision(&self) -> u64 {
         self.reliability_revision
-    }
-
-    pub fn replace_field_reliability(&mut self, model: FieldReliabilityModel, now_ms: u64) {
-        self.reliability = model;
-        self.recalibrate(now_ms);
     }
 
     pub(super) fn observe_labels(&mut self, labels: Vec<CalibrationLabel>, now_ms: u64) {
@@ -37,11 +28,19 @@ impl Catalog {
     }
 
     pub(super) fn recalibrate(&mut self, now_ms: u64) {
-        for entry in self.entries.values_mut() {
-            entry.recalibrate(&self.reliability, now_ms);
+        let mut posts = self.entries.keys().cloned().collect::<Vec<_>>();
+        posts.sort();
+        for post in posts {
+            if let Some(entry) = self.entries.get_mut(&post) {
+                entry.recalibrate(&self.reliability, now_ms);
+            }
         }
     }
 }
+
+#[cfg(test)]
+#[path = "calibration/test_support.rs"]
+mod test_support;
 
 impl CatalogEntry {
     pub(super) fn calibration_labels(
@@ -65,7 +64,7 @@ impl CatalogEntry {
             .collect()
     }
 
-    pub(super) fn recalibrate(&mut self, model: &FieldReliabilityModel, now_ms: u64) {
+    fn recalibrate(&mut self, model: &FieldReliabilityModel, now_ms: u64) {
         for item in self.ledger.records_mut() {
             if !calibratable(&item.source) {
                 continue;
@@ -76,7 +75,8 @@ impl CatalogEntry {
             let context = context(item, &url);
             let estimate = model.estimate(&context, now_ms);
             if estimate.effective_samples_bps > 0 {
-                item.confidence = Confidence::new(estimate.mean_bps).unwrap();
+                item.confidence = Confidence::new(estimate.mean_bps)
+                    .expect("reliability estimates stay within the confidence scale");
             }
         }
     }

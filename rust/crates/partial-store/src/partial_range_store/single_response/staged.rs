@@ -5,7 +5,7 @@ use crate::partial_range_store::cleanup_debt::CleanupScope;
 use crate::partial_range_store::replacement_cleanup;
 use crate::partial_range_store::single_response::{transaction, ResponseCommit};
 use crate::partial_range_store::StoreAction;
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Context as _, Result};
 use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
 
 pub(super) mod manifest;

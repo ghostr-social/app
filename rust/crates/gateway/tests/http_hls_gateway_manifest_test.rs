@@ -2,12 +2,12 @@ mod gateway_fixture;
 
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
+use core::time::Duration;
 use gateway_fixture::media_client;
 use gateway_fixture::progressive_hls::router_with_hls;
 use gateway_fixture::raw_http::spawn_raw_server;
 use ghostr_gateway::hls::sessions::{HlsSessionLimits, HlsSessions};
-use std::time::Duration;
-use tower::ServiceExt;
+use tower::ServiceExt as _;
 
 #[tokio::test]
 async fn serves_a_root_manifest_with_only_gateway_resource_urls() {

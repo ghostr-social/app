@@ -1,10 +1,11 @@
-//! Transfer-phase timeouts for media probes and chunk downloads,
-//! consistent with the Dart-side video download timeouts: ~15 s to
+//! Transfer-phase timeouts for media probes and chunk downloads.
+//!
+//! These are consistent with the Dart-side video download timeouts: ~15 s to
 //! response headers and ~15 s maximum gap between body chunks. The
 //! outbound client's connect and whole-request timeouts still apply
 //! underneath these.
 
-use std::time::Duration;
+use core::time::Duration;
 
 /// Longest wait for local request-capacity admission.
 const ADMISSION_TIMEOUT: Duration = Duration::from_secs(15);

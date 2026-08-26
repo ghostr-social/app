@@ -25,7 +25,7 @@ fn fragmented_init_tracks_without_sample_tables_defer_to_sidx() {
 
     let timeline =
         parse_mp4_segments(&[MediaSegment::new(0, &moov), MediaSegment::new(1_000, &sidx)])
-            .unwrap();
+            .expect("valid test fixture");
 
     assert_eq!(
         media_ranges(&timeline, 0, 1_000),

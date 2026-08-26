@@ -1,4 +1,4 @@
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{bail, ensure, Context as _, Result};
 use url::Url;
 
 use crate::hls_manifest_attributes::quoted_attribute;
@@ -23,6 +23,12 @@ pub struct HlsResource {
     pub kind: HlsResourceKind,
 }
 
+/// Rewrites every resource in a bounded HLS manifest through `issue`.
+///
+/// # Errors
+///
+/// Returns an error when the manifest is malformed, unsupported, oversized, contains an unsafe
+/// resource, or when `issue` cannot create a replacement URL.
 pub fn rewrite_hls_manifest<Issue>(body: &[u8], base_url: &Url, mut issue: Issue) -> Result<String>
 where
     Issue: FnMut(HlsResource) -> Result<String>,
@@ -31,7 +37,7 @@ where
         body.len() <= MAX_HLS_MANIFEST_BYTES,
         "HLS manifest exceeds its byte limit"
     );
-    let manifest = std::str::from_utf8(body).context("HLS manifest must be UTF-8")?;
+    let manifest = core::str::from_utf8(body).context("HLS manifest must be UTF-8")?;
     require_header(manifest)?;
     let mut rewritten = String::with_capacity(manifest.len());
     let mut next_uri_kind = None;

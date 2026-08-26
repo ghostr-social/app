@@ -18,7 +18,7 @@ use tokio::sync::Mutex;
 async fn delivery_manager_resumes_from_the_persisted_manifest() {
     let root = temp_directory("ghostr-delivery-restart");
     let log = hit_log();
-    let origin = serve_recording("origin", media_body(), log.clone()).await;
+    let origin = serve_recording("origin", media_body(), std::sync::Arc::clone(&log)).await;
     let item = sized_item("aa11", &origin, 16, 1_000);
     let earlier = PartialRangeStore::with_capacity(
         root.clone(),

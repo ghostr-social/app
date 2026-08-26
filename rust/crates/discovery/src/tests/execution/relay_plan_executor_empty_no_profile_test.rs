@@ -1,4 +1,4 @@
-use crate::plan_executor::{PlanExecutor, PlannedRetrieval};
+use crate::plan_executor::{PlanExecutor as _, PlannedRetrieval};
 use crate::query::search::plan_discovery;
 use crate::query::video_filters::DiscoveryRequest;
 use crate::retrieval_types::{FeedContext, RetrievalPriority};
@@ -21,7 +21,7 @@ async fn empty_feed_result_skips_profile_enrichment() {
         deferred_reposts: Vec::new(),
     };
 
-    let events = executor(io.clone())
+    let events = executor(std::sync::Arc::clone(&io))
         .execute(retrieval)
         .await
         .expect("empty feed");

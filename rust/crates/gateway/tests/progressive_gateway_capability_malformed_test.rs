@@ -10,7 +10,11 @@ async fn malformed_capabilities_fail_closed_for_use_and_release() {
     harness
         .bind_video("clip", "https://cdn.example/clip.mp4", Some(1))
         .await;
-    let snapshot = harness.store.media_snapshot("clip").await.unwrap();
+    let snapshot = harness
+        .store
+        .media_snapshot("clip")
+        .await
+        .expect("valid test fixture");
 
     assert!(!capabilities.recognizes("not-a-capability", "clip").await);
     assert!(

@@ -3,7 +3,7 @@ use url::Url;
 
 #[test]
 fn rejects_live_encrypted_and_low_latency_playlists() {
-    let base = Url::parse("https://cdn.example/video/index.m3u8").unwrap();
+    let base = Url::parse("https://cdn.example/video/index.m3u8").expect("valid test fixture");
     let cases: &[&[u8]] = &[
         b"#EXTM3U\n#EXTINF:4,\nsegment.ts\n",
         b"#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI=\"key\"\n\

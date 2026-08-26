@@ -1,8 +1,8 @@
 use crate::segmented::fetch::failure_policy::FailurePolicy;
+use core::fmt::{Display, Formatter};
 use ghostr_engine::origin_model::ErrorReason;
 use ghostr_net::media_request_executor::MediaRequestAdmissionTimeout;
 use reqwest::StatusCode;
-use std::fmt::{Display, Formatter};
 
 pub(in crate::segmented::fetch) struct FetchProblem {
     pub(super) error: anyhow::Error,
@@ -46,12 +46,11 @@ impl FetchProblem {
         if admission_timed_out(&error) {
             return Self::neutral(error, ErrorReason::Timeout);
         }
-        match transport_status(&error) {
-            Some(status) => Self::http(error, status),
-            None => {
-                let reason = transport_reason(&error);
-                Self::new(error, reason)
-            }
+        if let Some(status) = transport_status(&error) {
+            Self::http(error, status)
+        } else {
+            let reason = transport_reason(&error);
+            Self::new(error, reason)
         }
     }
 
@@ -66,7 +65,7 @@ impl FetchProblem {
 }
 
 impl Display for FetchProblem {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> core::fmt::Result {
         Display::fmt(&self.error, formatter)
     }
 }
@@ -97,9 +96,10 @@ fn request_reason(request: &reqwest::Error) -> ErrorReason {
     if request.is_timeout() {
         return ErrorReason::Timeout;
     }
-    match request.is_connect() {
-        true => ErrorReason::Connection,
-        false => ErrorReason::InvalidResponse,
+    if request.is_connect() {
+        ErrorReason::Connection
+    } else {
+        ErrorReason::InvalidResponse
     }
 }
 

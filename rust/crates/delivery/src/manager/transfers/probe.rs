@@ -1,6 +1,6 @@
 use super::{InternalEvent, ProbeDone, ProbeObservation, TransferContext, TransferEvent};
 use crate::delivery_events::DecisionClaim;
-use crate::probe::media::{probe_observed_on_network, ObservedProbe, ProbeSpec};
+use crate::probe::media::{probe, ObservedProbe, ProbeSpec};
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::PostId;
 
@@ -25,7 +25,7 @@ pub(crate) fn spawn_probe(ctx: TransferContext, launch: ProbeLaunch) {
                 network_class: network_status.network_class(),
             },
         };
-        let event = TransferEvent::ProbeDone(ProbeDone {
+        let event = TransferEvent::ProbeDone(Box::new(ProbeDone {
             observation: ProbeObservation {
                 post: launch.post,
                 url: launch.url,
@@ -34,7 +34,7 @@ pub(crate) fn spawn_probe(ctx: TransferContext, launch: ProbeLaunch) {
                 network_class: observed.network_class,
             },
             decision: launch.decision,
-        });
+        }));
         let _ = events.send(InternalEvent::Transfer(event));
     });
 }
@@ -50,6 +50,7 @@ async fn run_probe(
         url: &url,
         priority,
         timeouts: ctx.timeouts,
+        network: Some(&ctx.network_status),
     };
-    probe_observed_on_network(spec, &mut scratch, &ctx.network_status).await
+    probe(spec, &mut scratch).await
 }

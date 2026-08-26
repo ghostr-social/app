@@ -1,11 +1,11 @@
 use super::{OriginTelemetry, SegmentedTraffic};
 use crate::delivery_events::DeliveryNetworkStatusReader;
+use core::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use core::time::Duration;
 use ghostr_engine::origin_model::NetworkClass;
 use ghostr_engine::RequestAuthority;
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaResponse};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Mutex, MutexGuard};
-use std::time::Duration;
 use tokio::time::Instant;
 
 pub(in crate::segmented) struct FetchProgress {

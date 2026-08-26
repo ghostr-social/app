@@ -1,6 +1,5 @@
-use super::{
-    PartialRangeStore, ResponseOwnerRef, SingleResponseState, SingleResponseStorage, StoreAction,
-};
+use super::{PartialRangeStore, ResponseOwnerRef, SingleResponseState, SingleResponseStorage};
+use crate::partial_range_store::StoreAction;
 use anyhow::{ensure, Result};
 use ghostr_engine::representation::TransferIdentity;
 
@@ -11,23 +10,13 @@ struct SingleResponseWrite<'a> {
     bytes: &'a [u8],
 }
 
-impl PartialRangeStore {
-    pub async fn write_single_response_if_current(
-        &self,
-        identity: &TransferIdentity,
-        action: u64,
-        offset: u64,
-        bytes: &[u8],
-    ) -> Result<bool> {
-        let write = SingleResponseWrite {
-            owner: ResponseOwnerRef::Legacy(action),
-            reservation: None,
-            offset,
-            bytes,
-        };
-        self.write_single_response(identity, write).await
-    }
+#[cfg(any(test, feature = "test"))]
+mod test_support;
 
+impl PartialRangeStore {
+    /// # Errors
+    ///
+    /// Returns an error when the action is stale or bytes cannot be persisted safely.
     pub async fn write_single_response_for_action(
         &self,
         identity: &TransferIdentity,
@@ -95,7 +84,7 @@ impl PartialRangeStore {
                     write.offset,
                     write.bytes,
                 )
-                .await?
+                .await?;
             }
             None => {
                 self.write_range_locked(
@@ -104,7 +93,7 @@ impl PartialRangeStore {
                     write.offset,
                     write.bytes,
                 )
-                .await?
+                .await?;
             }
         }
         self.mark_live_started(identity.post().as_str(), state.owner.as_ref())

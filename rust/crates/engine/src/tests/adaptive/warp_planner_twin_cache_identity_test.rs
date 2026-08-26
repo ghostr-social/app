@@ -13,7 +13,7 @@ fn same_shape_different_origin_is_consistent_between_cached_and_fresh_twin() {
     let mut reused = DigitalTwin::new(TwinConfig::new(64, 9_500));
 
     reused.evaluate(&state, &[first], epochs);
-    let cached = reused.evaluate(&state, std::slice::from_ref(&second), epochs);
+    let cached = reused.evaluate(&state, core::slice::from_ref(&second), epochs);
     let fresh = DigitalTwin::new(TwinConfig::new(64, 9_500)).evaluate(&state, &[second], epochs);
 
     assert_eq!(cached, fresh);

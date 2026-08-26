@@ -1,14 +1,13 @@
+
 #[path = "panicking_probe_reports_terminal_test/fixture.rs"]
 mod fixture;
 
 use crate::delivery_events::{CommandReceiver, DecisionClaim, DeliveryHandle};
-use crate::manager::transfers::{
-    spawn_probe, InternalEvent, ProbeDone, ProbeLaunch, TransferEvent,
-};
+use crate::manager::transfers::{spawn_probe, InternalEvent, ProbeDone, ProbeLaunch, TransferEvent};
 use crate::tests::decision_log_fixture::outcome;
 use ghostr_engine::adaptive::DecisionOutcome;
 use ghostr_engine::representation::TransferIdentity;
-use std::time::Duration;
+use core::time::Duration;
 
 #[tokio::test]
 async fn panicking_probe_reports_a_terminal_event() {
@@ -22,7 +21,7 @@ async fn panicking_probe_reports_a_terminal_event() {
         tracked.sequence,
         done.decision,
     );
-    std::fs::remove_dir_all(root).unwrap();
+    std::fs::remove_dir_all(root).expect("valid test fixture");
 }
 
 async fn receive_panic(
@@ -49,7 +48,7 @@ async fn receive_panic(
     let InternalEvent::Transfer(TransferEvent::ProbeDone(done)) = event else {
         panic!("probe terminal event")
     };
-    done
+    *done
 }
 
 fn assert_panic(done: &ProbeDone, identity: &TransferIdentity) {
@@ -59,7 +58,7 @@ fn assert_panic(done: &ProbeDone, identity: &TransferIdentity) {
         .observation
         .outcome
         .as_ref()
-        .unwrap_err()
+        .expect_err("scenario must fail")
         .to_string()
         .contains("task failed"));
 }

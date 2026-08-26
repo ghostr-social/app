@@ -1,7 +1,7 @@
 //! An accepted local write is immediately queryable and updates feed routing.
 
 use crate::api::feed::state::FeedState;
-use crate::api::runtime::accepted_events::remember_accepted;
+use crate::api::runtime::accepted_events::axiom_test_support::remember_accepted;
 use crate::api::runtime::discovery::{lock, OutcomeSinks, SharedFeedState};
 use crate::api::tests::feed_fixtures::{signed_event, SignedEventFixture};
 use crate::api::tests::outbox_runtime_support::test_bootstrap;
@@ -32,7 +32,7 @@ async fn accepted_contact_list_is_cached_and_routes_the_next_feed() {
     });
     let (bootstrap, _probe) = test_bootstrap();
     let sinks = OutcomeSinks {
-        state: state.clone(),
+        state: std::sync::Arc::clone(&state),
         bootstrap,
         candidates: None,
     };
