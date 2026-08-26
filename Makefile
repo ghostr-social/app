@@ -21,6 +21,8 @@ ANDROID_AGENT_IMAGE_DIR := $(ANDROID_AGENT_SDK)/system-images/android-37.1/googl
 ANDROID_GRADLE_JAVA_HOME ?= $(shell if [ -x /usr/libexec/java_home ]; then /usr/libexec/java_home -v 21; fi)
 ANDROID_GRADLE_JAVA_OPTION := $(if $(ANDROID_GRADLE_JAVA_HOME),-Dorg.gradle.java.home=$(ANDROID_GRADLE_JAVA_HOME),)
 VIDEO_ANDROID_EMULATOR_SERIAL ?= emulator-5580
+WARP_LAB_ROUTE ?= /warp
+WARP_LAB_TARGET := tool/warp_lab/main.dart
 ANDROID_PHYSICAL_SERIAL ?=
 VIDEO_IMPAIRMENT_SCENARIOS := bandwidth_drop packet_loss high_rtt rapid_swipes \
 	storage_pressure source_failure protected_transitions
@@ -88,6 +90,7 @@ HAWK_REVISION_SHORT := 98efa9f
 	video-player-contract video-player-contract-android video-player-contract-ios \
 	video-progressive-suite-contract-test video-progressive-suite \
 	video-progressive-android \
+	warp-lab-contract-test warp-lab-android \
 	native-coverage-contract-test rust rust-no-clean gen icons run run-fast \
 	run-fast-profile android-unit-tests android-debug-apk android-debug-apk-check \
 	android-release-apk android-release-apk-check android-agent-avd-create \
@@ -183,6 +186,20 @@ video-progressive-suite: video-progressive-suite-contract-test ## Run the repair
 video-progressive-android: video-progressive-suite-contract-test ## Run progressive playback on the repository AVD.
 	tool/run_video_player_contract_android.sh $(VIDEO_PROGRESSIVE_ANDROID_TESTS)
 
+warp-lab-contract-test: ## Verify the debug-only WARP Lab target contract.
+	sh test/tool/warp_lab_target_contract_test.sh
+
+warp-lab-android: android-agent-avd-create warp-lab-contract-test ## Open a debug-only WARP test route on the repository AVD.
+	@case "$(WARP_LAB_ROUTE)" in \
+		/warp|/warp/feed-playback|/warp/rapid-swipes|/warp/network-evidence) ;; \
+		*) echo "Unknown WARP Lab route: $(WARP_LAB_ROUTE)" >&2; exit 1 ;; \
+	esac
+	@$(ADB) -s "$(VIDEO_ANDROID_EMULATOR_SERIAL)" get-state >/dev/null 2>&1 || \
+		{ echo "Start $(VIDEO_ANDROID_EMULATOR_SERIAL) with make android-agent-avd-run." >&2; exit 1; }
+	$(FLUTTER) run --debug --no-pub \
+		--target "$(WARP_LAB_TARGET)" --route "$(WARP_LAB_ROUTE)" \
+		-d "$(VIDEO_ANDROID_EMULATOR_SERIAL)"
+
 video-android-physical-tests: ## Run the device video playback matrix on physical Android.
 	@test -n "$(ANDROID_PHYSICAL_SERIAL)" || { echo "Set ANDROID_PHYSICAL_SERIAL to an attached device serial." >&2; exit 1; }
 	@case "$(ANDROID_PHYSICAL_SERIAL)" in emulator-*) echo "ANDROID_PHYSICAL_SERIAL must identify physical hardware." >&2; exit 1;; esac
@@ -237,14 +254,17 @@ android-unit-tests: ## Run host-side Android bridge and share-receiver tests.
 		:app:incomingVideoShareCoverageCheck
 
 android-debug-apk: ## Build the Android debug APK.
-	$(FLUTTER) build apk --debug --target-platform "$(ANDROID_DEBUG_TARGET)"
+	$(FLUTTER) build apk --debug --target lib/main.dart \
+		--target-platform "$(ANDROID_DEBUG_TARGET)"
 
 android-debug-apk-check: android-debug-apk ## Build the Android debug APK and verify its ABI.
 	@sh tool/check_android_apk_abi.sh "$(ANDROID_DEBUG_APK)" "$(ANDROID_DEBUG_ABI)"
 
 android-release-apk: ## Build the Android release APK.
-	$(FLUTTER) build apk --release --target-platform "$(ANDROID_RELEASE_TARGET)" --config-only
-	$(FLUTTER) build apk --release --target-platform "$(ANDROID_RELEASE_TARGET)"
+	$(FLUTTER) build apk --release --target lib/main.dart \
+		--target-platform "$(ANDROID_RELEASE_TARGET)" --config-only
+	$(FLUTTER) build apk --release --target lib/main.dart \
+		--target-platform "$(ANDROID_RELEASE_TARGET)"
 
 android-release-apk-check: android-release-apk ## Build and validate the Android release APK.
 	@sh tool/check_android_apk_abi.sh "$(ANDROID_RELEASE_APK)" "$(ANDROID_RELEASE_ABI)"
