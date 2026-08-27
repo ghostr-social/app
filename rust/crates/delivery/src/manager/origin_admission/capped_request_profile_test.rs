@@ -56,7 +56,9 @@ fn a_successful_prefix_recovery_closes_the_planners_circuit() {
             OriginObservation::failure(planned_query.clone(), at_ms, ErrorReason::Timeout);
         model.observe(&failure);
     }
-    let admission = model.claim(&planned_query, 2_003, DecisionMode::Normal);
+    let (admission, claim) = model
+        .claim(&planned_query, 2_003, DecisionMode::Normal)
+        .into_parts();
     assert!(matches!(admission, Admission::RecoveryProbe { .. }));
     let capped = apply(transfer, &admission).expect("recovery request");
 
@@ -64,7 +66,11 @@ fn a_successful_prefix_recovery_closes_the_planners_circuit() {
     assert_eq!(capped.profile.request(), forecast);
     let context = OriginAttemptContext::new(capped.profile, NetworkClass::Wifi, 1, 2_003);
     let observed = OriginQuery::new(capped.url, context.request_context());
-    model.observe(&OriginObservation::success(observed, 2_004));
+    let observation = OriginObservation::success(observed, 2_004);
+    model.complete_claim(
+        claim.expect("recovery claim"),
+        ghostr_engine::origin_model::AdmissionClaimTerminal::Observed(&observation),
+    );
     assert_eq!(
         model.circuit_admission(&planned_query, 2_004),
         Admission::Production

@@ -3,7 +3,7 @@ use crate::manager::time;
 use crate::manager::workers::PreparedTransfer;
 use crate::manager::DeliveryWorker;
 use ghostr_engine::adaptive::DecisionOutcome;
-use ghostr_engine::origin_model::ExplorationClaim;
+use ghostr_engine::origin_model::{AdmissionClaim, AdmissionClaimTerminal};
 use ghostr_engine::{ActionId, PostId};
 
 impl DeliveryWorker {
@@ -12,7 +12,7 @@ impl DeliveryWorker {
         prepared: PreparedTransfer,
         action: ActionId,
         bound: bool,
-        exploration_claim: Option<ExplorationClaim>,
+        admission_claim: Option<AdmissionClaim>,
     ) {
         if bound {
             self.commands.resolve_decision(
@@ -24,7 +24,7 @@ impl DeliveryWorker {
                 time::unix_time_ms(),
             );
         }
-        self.release_exploration(exploration_claim);
+        self.release_admission(admission_claim);
         prepared.release(&self.ctx.store).await;
     }
 
@@ -32,7 +32,7 @@ impl DeliveryWorker {
         &mut self,
         prepared: PreparedTransfer,
         token: DecisionToken,
-        exploration_claim: Option<ExplorationClaim>,
+        admission_claim: Option<AdmissionClaim>,
     ) {
         self.commands.resolve_decision_token(
             &token,
@@ -41,7 +41,7 @@ impl DeliveryWorker {
                 elapsed_ms: 0,
             },
         );
-        self.release_exploration(exploration_claim);
+        self.release_admission(admission_claim);
         prepared.release(&self.ctx.store).await;
     }
 
@@ -50,7 +50,7 @@ impl DeliveryWorker {
         post: &PostId,
         error: &anyhow::Error,
         decision: Option<DecisionToken>,
-        exploration_claim: Option<ExplorationClaim>,
+        admission_claim: Option<AdmissionClaim>,
     ) {
         if let Some(token) = decision {
             self.commands.resolve_decision_token(
@@ -64,14 +64,15 @@ impl DeliveryWorker {
         if !self.absorb_store_pressure(post, error) {
             log::warn!("Could not reserve a video action: {error:#}");
         }
-        self.release_exploration(exploration_claim);
+        self.release_admission(admission_claim);
     }
 
-    fn release_exploration(&mut self, claim: Option<ExplorationClaim>) {
+    fn release_admission(&mut self, claim: Option<AdmissionClaim>) {
         let Some(claim) = claim else { return };
         self.keeper
             .stats_mut()
             .origin_model_mut()
-            .release_exploration(&claim);
+            .complete_claim(claim, AdmissionClaimTerminal::NotStarted);
+        self.keeper.mark_origin_model_changed();
     }
 }

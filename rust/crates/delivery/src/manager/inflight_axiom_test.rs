@@ -23,7 +23,7 @@ impl InFlightChunks {
             handle,
             store_action: None,
             committed_network_bytes: None,
-            exploration_claim: None,
+            admission_claim: None,
         });
     }
     pub(crate) fn finish(&mut self, attempt: &ChunkAttempt) -> CompletionStatus {

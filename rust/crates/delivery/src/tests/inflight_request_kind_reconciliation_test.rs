@@ -47,7 +47,7 @@ fn planned_whole_cancels_an_overlapping_range_until_terminal_ack() {
         handle,
         store_action: None,
         committed_network_bytes: None,
-        exploration_claim: None,
+        admission_claim: None,
     });
 
     active.reconcile(core::slice::from_ref(&planned), 1);

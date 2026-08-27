@@ -81,7 +81,7 @@ impl DownloadWorkers {
         prepared: PreparedTransfer,
         launched_at_ms: u64,
         network_class: ghostr_engine::origin_model::NetworkClass,
-        exploration_claim: Option<ghostr_engine::origin_model::ExplorationClaim>,
+        admission_claim: Option<ghostr_engine::origin_model::AdmissionClaim>,
     ) -> ActionId {
         let action = prepared.action();
         let priority = prepared.priority.authority;
@@ -96,7 +96,7 @@ impl DownloadWorkers {
             handle,
             store_action: Some(prepared.store_action.clone()),
             committed_network_bytes: prepared.committed_network_bytes,
-            exploration_claim,
+            admission_claim,
         });
         spawn_chunk(ChunkLaunch {
             context: ctx,

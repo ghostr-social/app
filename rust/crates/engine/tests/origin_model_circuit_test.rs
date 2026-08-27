@@ -1,6 +1,6 @@
 use crate::origin_model::{
-    Admission, DecisionMode, ErrorReason, MediaClass, OriginContext, OriginModel,
-    OriginObservation, OriginQuery, RequestMethod,
+    Admission, AdmissionClaimTerminal, DecisionMode, ErrorReason, MediaClass, OriginContext,
+    OriginModel, OriginObservation, OriginQuery, RequestMethod,
 };
 
 fn query() -> OriginQuery {
@@ -19,18 +19,18 @@ fn exploration_is_bounded_and_disabled_outside_normal_mode() {
     let mut model = OriginModel::default();
     let key = query();
     assert!(matches!(
-        model.claim(&key, 1_000, DecisionMode::Normal),
+        model.claim(&key, 1_000, DecisionMode::Normal).admission(),
         Admission::Exploration {
             maximum_bytes: 65_536,
             ..
         }
     ));
     assert_eq!(
-        model.claim(&key, 1_001, DecisionMode::Normal),
+        model.claim(&key, 1_001, DecisionMode::Normal).admission(),
         Admission::Blocked
     );
     assert_eq!(
-        model.claim(&key, 1_002, DecisionMode::Safety),
+        model.claim(&key, 1_002, DecisionMode::Safety).admission(),
         Admission::Production
     );
 }
@@ -47,22 +47,27 @@ fn open_circuit_allows_one_sparse_backed_off_recovery_probe() {
         ));
     }
     assert_eq!(
-        model.claim(&key, 3_100, DecisionMode::Normal),
+        model.claim(&key, 3_100, DecisionMode::Normal).admission(),
         Admission::Blocked
     );
+    let (recovery, claim) = model.claim(&key, 5_000, DecisionMode::Normal).into_parts();
     assert!(matches!(
-        model.claim(&key, 5_000, DecisionMode::Normal),
+        recovery,
         Admission::RecoveryProbe {
             maximum_bytes: 65_536
         }
     ));
     assert_eq!(
-        model.claim(&key, 5_001, DecisionMode::Normal),
+        model.claim(&key, 5_001, DecisionMode::Normal).admission(),
         Admission::Blocked
     );
-    model.observe(&OriginObservation::success(key.clone(), 5_100));
+    let success = OriginObservation::success(key.clone(), 5_100);
+    model.complete_claim(
+        claim.expect("recovery claim"),
+        AdmissionClaimTerminal::Observed(&success),
+    );
     assert_eq!(
-        model.claim(&key, 5_101, DecisionMode::Safety),
+        model.claim(&key, 5_101, DecisionMode::Safety).admission(),
         Admission::Production
     );
 }

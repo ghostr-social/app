@@ -46,6 +46,32 @@ mod origin_model_cold_start_test;
 mod origin_model_context_test;
 #[path = "../../tests/origin_model_persistence_test.rs"]
 mod origin_model_persistence_test;
+#[path = "../../tests/origin_model_recovery_attribution_test.rs"]
+mod origin_model_recovery_attribution_test;
+#[path = "../../tests/origin_model_recovery_claim_test.rs"]
+mod origin_model_recovery_claim_test;
+#[path = "../../tests/origin_model_recovery_completion_test.rs"]
+mod origin_model_recovery_completion_test;
+#[path = "../../tests/origin_model_recovery_fence_test.rs"]
+mod origin_model_recovery_fence_test;
+#[path = "../../tests/origin_model_recovery_fixture.rs"]
+mod origin_model_recovery_fixture;
+#[path = "../../tests/origin_model_recovery_ignored_range_test.rs"]
+mod origin_model_recovery_ignored_range_test;
+#[path = "../../tests/origin_model_recovery_malformed_range_test.rs"]
+mod origin_model_recovery_malformed_range_test;
+#[path = "../../tests/origin_model_recovery_no_observation_test.rs"]
+mod origin_model_recovery_no_observation_test;
+#[path = "../../tests/origin_model_recovery_persistence_test.rs"]
+mod origin_model_recovery_persistence_test;
+#[path = "../../tests/origin_model_recovery_stale_test.rs"]
+mod origin_model_recovery_stale_test;
+#[path = "../../tests/origin_model_recovery_wrong_origin_test.rs"]
+mod origin_model_recovery_wrong_origin_test;
+#[path = "../../tests/origin_model_recovery_wrong_stage_test.rs"]
+mod origin_model_recovery_wrong_stage_test;
+#[path = "../../tests/origin_model_started_exploration_test.rs"]
+mod origin_model_started_exploration_test;
 #[path = "../../tests/watch_model_censoring_test.rs"]
 mod watch_model_censoring_test;
 #[path = "../../tests/watch_model_deadline_test.rs"]

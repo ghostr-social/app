@@ -1,6 +1,6 @@
-use super::circuit::{CircuitBook, CircuitStatus};
+use super::circuit::CircuitBook;
 use super::estimate::build_estimate;
-use super::exploration::{ExplorationBudget, ExplorationClaim};
+use super::exploration::ExplorationBudget;
 use super::hierarchy::aggregate;
 use super::keys::{OriginContextKey, OriginMethodKey, UrlContextKey};
 use super::record::AdaptiveRecord;
@@ -12,7 +12,9 @@ use super::{
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+mod claim;
 mod replay;
+pub use claim::{Admission, AdmissionClaim, AdmissionClaimTerminal, ClaimedAdmission};
 
 const GLOBAL_CAP: usize = 128;
 const ORIGIN_CAP: usize = 384;
@@ -20,19 +22,6 @@ const URL_CAP: usize = 768;
 const EXPLORATION_SAMPLES: f64 = 8.0;
 const SPARSE_PROBE_BYTES: u64 = 65_536;
 const PRIOR_CAP: usize = 128;
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum Admission {
-    Production,
-    Exploration {
-        maximum_bytes: u64,
-        claim: ExplorationClaim,
-    },
-    RecoveryProbe {
-        maximum_bytes: u64,
-    },
-    Blocked,
-}
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct OriginModel {
@@ -64,6 +53,11 @@ impl OriginModel {
         if item.outcome == OriginOutcome::Cancelled {
             return;
         }
+        self.observe_records(item);
+        self.observe_circuit(item);
+    }
+
+    fn observe_records(&mut self, item: &OriginObservation) {
         let timing = ModelTiming::default();
         self.global
             .entry(item.query.context)
@@ -76,7 +70,6 @@ impl OriginModel {
             .observe(item, timing);
         let url = url_key(&item.query);
         self.urls.entry(url).or_default().observe(item, timing);
-        self.observe_circuit(item);
         retain_oldest(&mut self.global, GLOBAL_CAP);
         retain_oldest(&mut self.origins, ORIGIN_CAP);
         retain_oldest(&mut self.urls, URL_CAP);
@@ -99,49 +92,6 @@ impl OriginModel {
         )
     }
 
-    pub fn claim(&mut self, query: &OriginQuery, now: u64, mode: DecisionMode) -> Admission {
-        let key = circuit_key(query);
-        match self.circuits.status(&key, now) {
-            CircuitStatus::Open => return Admission::Blocked,
-            CircuitStatus::Recovery => {
-                return if self.circuits.claim(key, now) {
-                    Admission::RecoveryProbe {
-                        maximum_bytes: SPARSE_PROBE_BYTES,
-                    }
-                } else {
-                    Admission::Blocked
-                };
-            }
-            CircuitStatus::Closed => {}
-        }
-        let samples = self.estimate(query, now, mode).effective_samples;
-        if mode != DecisionMode::Normal || samples >= EXPLORATION_SAMPLES {
-            return Admission::Production;
-        }
-        if let Some(claim) = self.exploration.claim(query.origin(), now) {
-            Admission::Exploration {
-                maximum_bytes: SPARSE_PROBE_BYTES,
-                claim,
-            }
-        } else {
-            Admission::Blocked
-        }
-    }
-
-    pub fn release_exploration(&mut self, claim: &ExplorationClaim) {
-        self.exploration.release(claim);
-    }
-
-    pub fn circuit_admission(&self, query: &OriginQuery, now: u64) -> Admission {
-        match self.circuits.status(&circuit_key(query), now) {
-            CircuitStatus::Closed => Admission::Production,
-            CircuitStatus::Open => Admission::Blocked,
-            CircuitStatus::Recovery => Admission::RecoveryProbe {
-                maximum_bytes: SPARSE_PROBE_BYTES,
-            },
-        }
-    }
-
     fn prior(&self, query: &OriginQuery) -> ColdStartPrior {
         self.priors
             .iter()
@@ -154,13 +104,11 @@ impl OriginModel {
     }
 
     fn observe_circuit(&mut self, item: &OriginObservation) {
-        let success = match item.outcome {
-            OriginOutcome::Success => item.range_compliant != Some(false),
-            OriginOutcome::Failure(_) => false,
-            OriginOutcome::Cancelled => return,
+        let Some((success, observed_at_ms)) = circuit_result(item) else {
+            return;
         };
         self.circuits
-            .observe(circuit_key(&item.query), success, item.observed_at_ms);
+            .observe(circuit_key(&item.query), success, observed_at_ms);
     }
 }
 
@@ -187,4 +135,13 @@ fn circuit_key(query: &OriginQuery) -> OriginMethodKey {
         origin: query.origin().to_owned(),
         method: query.context.method,
     }
+}
+
+fn circuit_result(item: &OriginObservation) -> Option<(bool, u64)> {
+    let success = match item.outcome {
+        OriginOutcome::Success => item.range_compliant != Some(false),
+        OriginOutcome::Failure(_) => false,
+        OriginOutcome::Cancelled => return None,
+    };
+    Some((success, item.observed_at_ms))
 }

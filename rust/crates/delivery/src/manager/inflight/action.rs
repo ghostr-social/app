@@ -1,7 +1,7 @@
 use crate::chunk::cancel::CancelHandle;
 use core::sync::atomic::{AtomicBool, Ordering};
 use ghostr_engine::adaptive::RetrievalRequest;
-use ghostr_engine::origin_model::{ExplorationClaim, OriginAttemptProfile};
+use ghostr_engine::origin_model::{AdmissionClaim, OriginAttemptProfile};
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::scheduling::RangeRequest;
 use ghostr_engine::{ActionId, ChunkId};
@@ -27,7 +27,7 @@ pub(crate) struct ActionRegistration<'a> {
     pub(crate) handle: CancelHandle,
     pub(crate) store_action: Option<StoreAction>,
     pub(crate) committed_network_bytes: Option<u64>,
-    pub(crate) exploration_claim: Option<ExplorationClaim>,
+    pub(crate) admission_claim: Option<AdmissionClaim>,
 }
 
 impl ChunkAttempt {
@@ -104,7 +104,7 @@ pub(super) struct ActiveChunk {
     pub(super) response_opened: bool,
     pub(super) hedge_disposition: Option<HedgeDisposition>,
     pub(super) cancelling: bool,
-    pub(super) exploration_claim: Option<ExplorationClaim>,
+    pub(super) admission_claim: Option<AdmissionClaim>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -145,7 +145,7 @@ impl ActiveChunk {
             response_opened: false,
             hedge_disposition: None,
             cancelling: false,
-            exploration_claim: registration.exploration_claim,
+            admission_claim: registration.admission_claim,
         }
     }
 

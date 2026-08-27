@@ -60,7 +60,7 @@ pub(super) fn registered(
         handle,
         store_action: Some(action.clone()),
         committed_network_bytes: Some(4),
-        exploration_claim: None,
+        admission_claim: None,
     });
     (active, attempt, token)
 }

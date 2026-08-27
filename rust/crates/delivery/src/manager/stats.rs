@@ -57,6 +57,10 @@ impl StatsKeeper {
         &mut self.stats
     }
 
+    pub(crate) fn mark_origin_model_changed(&mut self) {
+        self.dirty = true;
+    }
+
     pub fn note_traffic(&mut self, batch: TrafficBatch) -> Option<OverallTrafficWindow> {
         self.dirty = true;
         self.traffic.apply(batch, &mut self.stats)

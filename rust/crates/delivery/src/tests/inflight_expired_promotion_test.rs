@@ -52,7 +52,7 @@ async fn promotion_expired_at_headers_is_rejected_before_store_open() {
         handle,
         store_action: Some(action.clone()),
         committed_network_bytes: None,
-        exploration_claim: None,
+        admission_claim: None,
     });
     let whole = RetrievalRequest::FetchWhole {
         contract: WholeBodyContract::Exact { expected_bytes: 16 },

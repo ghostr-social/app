@@ -16,20 +16,24 @@ use log::warn;
 mod evidence;
 mod finalize;
 mod hedge;
+mod origin_claim;
+#[cfg(test)]
+#[path = "completion/origin_claim_test.rs"]
+mod origin_claim_test;
 mod policy_limit;
 
 impl DeliveryWorker {
-    pub(super) async fn finish_chunk(&mut self, done: ChunkDone) {
+    pub(super) async fn finish_chunk(&mut self, mut done: ChunkDone) {
         self.record_whole_body_limit(&done);
         let generation = self.downloads.http_generation(&done.attempt);
         let whole_body_completed = self.learn_network_completion(&done, generation.as_ref());
         if successful_required_bytes(&done) {
             self.downloads.complete_hedge_winner(done.attempt.id());
         }
-        let finished = self.downloads.finish(&done.attempt);
+        let mut finished = self.downloads.finish(&done.attempt);
         let status = finished.status();
         self.observe_chunk_completion(&done, &finished);
-        self.release_unstarted_exploration(&done, &finished);
+        self.settle_origin_claim(&mut done, &mut finished);
         let identity = done.attempt.identity().clone();
         self.finish_body(&identity);
         if !self.retain_completion(status, &done, &identity) {
@@ -39,21 +43,18 @@ impl DeliveryWorker {
             .await;
     }
 
-    fn release_unstarted_exploration(
+    fn settle_origin_claim(
         &mut self,
-        done: &ChunkDone,
-        finished: &crate::manager::inflight::FinishedAction,
+        done: &mut ChunkDone,
+        finished: &mut crate::manager::inflight::FinishedAction,
     ) {
-        if done.request_started {
+        let settled =
+            origin_claim::settle(self.keeper.stats_mut().origin_model_mut(), done, finished);
+        if !settled {
             return;
         }
-        let Some(claim) = finished.exploration_claim() else {
-            return;
-        };
-        self.keeper
-            .stats_mut()
-            .origin_model_mut()
-            .release_exploration(claim);
+        self.keeper.mark_origin_model_changed();
+        done.origin = None;
     }
 
     fn retain_completion(

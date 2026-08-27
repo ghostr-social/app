@@ -46,7 +46,7 @@ pub(super) fn apply(
     admission: &Admission,
 ) -> Option<PlannedTransfer> {
     let maximum = match admission {
-        Admission::Production => return Some(transfer),
+        Admission::Production | Admission::RecoveryTrial => return Some(transfer),
         Admission::Exploration { maximum_bytes, .. }
         | Admission::RecoveryProbe { maximum_bytes } => *maximum_bytes,
         Admission::Blocked => return None,

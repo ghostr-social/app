@@ -34,7 +34,7 @@ fn coherent_206_releases_the_unused_promotion_reservation() {
         handle,
         store_action: None,
         committed_network_bytes: None,
-        exploration_claim: None,
+        admission_claim: None,
     });
 
     assert!(active.observe_response(

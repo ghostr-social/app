@@ -30,7 +30,7 @@ pub use estimate::{
     AdaptationState, DecisionMode, OriginEstimate, ProbabilityEstimate, QuantileEstimate,
 };
 pub use exploration::ExplorationClaim;
-pub use model::{Admission, OriginModel};
+pub use model::{Admission, AdmissionClaim, AdmissionClaimTerminal, ClaimedAdmission, OriginModel};
 pub use observation::{OriginObservation, OriginOutcome};
 pub use prior::{ColdStartPrior, ColdStartSelector};
 pub use request_profile::{OriginAttemptContext, OriginAttemptProfile, OriginRequestProfile};

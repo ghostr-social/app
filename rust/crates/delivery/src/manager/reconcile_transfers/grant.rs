@@ -4,7 +4,7 @@ use crate::manager::selected_commit::{CommitResult, SelectedCommit};
 use crate::manager::workers::PreparedTransfer;
 use crate::manager::{origin_admission, time, DeliveryWorker};
 use ghostr_engine::adaptive::{ExecutedRequest, ResourceCost, RetrievalRequest};
-use ghostr_engine::origin_model::ExplorationClaim;
+use ghostr_engine::origin_model::AdmissionClaim;
 
 mod admitted;
 use admitted::AdmittedGrant;
@@ -22,7 +22,7 @@ struct PreparedGrant {
     executed: ExecutedRequest,
     resources: ResourceCost,
     observed_at_ms: u64,
-    exploration_claim: Option<ExplorationClaim>,
+    admission_claim: Option<AdmissionClaim>,
 }
 
 impl DeliveryWorker {
@@ -52,17 +52,23 @@ impl DeliveryWorker {
         decision: &mut Option<DecisionToken>,
         selected: &mut Option<SelectedCommit>,
     ) -> Option<ghostr_engine::ActionId> {
-        let post = admitted.transfer.request.chunk.post.clone();
-        let exploration_claim = admitted.exploration_claim.clone();
-        match self.downloads.prepare(&self.ctx, admitted.transfer).await {
+        let AdmittedGrant {
+            transfer,
+            executed,
+            resources,
+            observed_at_ms,
+            admission_claim,
+        } = admitted;
+        let post = transfer.request.chunk.post.clone();
+        match self.downloads.prepare(&self.ctx, transfer).await {
             Ok(transfer) => {
                 self.bind_and_launch(
                     PreparedGrant {
                         transfer,
-                        executed: admitted.executed,
-                        resources: admitted.resources,
-                        observed_at_ms: admitted.observed_at_ms,
-                        exploration_claim: admitted.exploration_claim,
+                        executed,
+                        resources,
+                        observed_at_ms,
+                        admission_claim,
                     },
                     decision,
                     selected,
@@ -70,7 +76,7 @@ impl DeliveryWorker {
                 .await
             }
             Err(error) => {
-                self.reject_grant(&post, &error, decision.take(), exploration_claim);
+                self.reject_grant(&post, &error, decision.take(), admission_claim);
                 None
             }
         }
@@ -88,14 +94,14 @@ impl DeliveryWorker {
             let binding =
                 RequestDecisionBinding::new(action, &prepared.executed, prepared.observed_at_ms);
             if !self.commands.bind_request_decision(&token, binding) {
-                self.reject_binding(prepared.transfer, token, prepared.exploration_claim)
+                self.reject_binding(prepared.transfer, token, prepared.admission_claim)
                     .await;
                 return None;
             }
         }
         let result = self.commit_selected(selected, prepared.resources, prepared.observed_at_ms);
         if result == CommitResult::Rejected {
-            self.reject_commit(prepared.transfer, action, bound, prepared.exploration_claim)
+            self.reject_commit(prepared.transfer, action, bound, prepared.admission_claim)
                 .await;
             return None;
         }
@@ -110,7 +116,7 @@ impl DeliveryWorker {
             prepared.transfer,
             launched_at_ms,
             self.state.network_class(),
-            prepared.exploration_claim,
+            prepared.admission_claim,
         );
         if result == CommitResult::Committed {
             self.request_immediate_replan();
@@ -129,22 +135,17 @@ impl DeliveryWorker {
             self.state.network_class(),
         );
         let mode = origin_admission::mode(&transfer);
-        let admission =
-            self.keeper
-                .stats_mut()
-                .origin_model_mut()
-                .claim(&query, observed_at_ms, mode);
-        let exploration_claim = match &admission {
-            ghostr_engine::origin_model::Admission::Exploration { claim, .. } => {
-                Some(claim.clone())
-            }
-            _ => None,
-        };
+        let (admission, admission_claim) = self
+            .keeper
+            .stats_mut()
+            .origin_model_mut()
+            .claim(&query, observed_at_ms, mode)
+            .into_parts();
         let transfer = origin_admission::apply(transfer, &admission)?;
         Some(AdmittedGrant::new(
             transfer,
             observed_at_ms,
-            exploration_claim,
+            admission_claim,
         ))
     }
 }
