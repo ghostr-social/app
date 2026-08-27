@@ -1,9 +1,12 @@
+use core::time::Duration;
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::origin_model::{
     Admission, ErrorReason, MediaClass, OriginContext, OriginObservation, OriginQuery,
     RequestMethod,
 };
 use std::path::Path;
+
+const EVIDENCE_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub fn seed(root: &Path, urls: &[(&str, u64)]) {
     let now = unix_time_ms();
@@ -58,4 +61,19 @@ pub async fn assert_admission(path: &Path, query: &OriginQuery, expected: Admiss
             .circuit_admission(query, unix_time_ms()),
         expected
     );
+}
+
+pub async fn wait_for_admission(path: &Path, query: &OriginQuery, expected: Admission) {
+    crate::delivery_fixture::stats::wait_for_within(
+        path,
+        EVIDENCE_TIMEOUT,
+        "recovery circuit evidence",
+        |stats| {
+            stats
+                .origin_model()
+                .circuit_admission(query, unix_time_ms())
+                == expected
+        },
+    )
+    .await;
 }

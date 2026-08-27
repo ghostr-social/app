@@ -1,8 +1,7 @@
-use super::{unix_time_ms, Scenario, CHUNK_BYTES};
+use super::{Scenario, CHUNK_BYTES};
 use crate::delivery_fixture::full_recovery_origin::{ObservedRequest, PROBE_BYTES, TRIAL_BYTES};
-use crate::delivery_fixture::full_recovery_stats::assert_admission;
+use crate::delivery_fixture::full_recovery_stats::{assert_admission, wait_for_admission};
 use crate::delivery_fixture::items::{focus_now, sized_item};
-use crate::delivery_fixture::stats::wait_for;
 use ghostr_engine::origin_model::Admission;
 
 impl Scenario {
@@ -46,13 +45,7 @@ impl Scenario {
     pub(super) async fn start_trial(&mut self) -> ObservedRequest {
         let path = self.stats_path();
         let query = self.trial_query();
-        wait_for(&path, |stats| {
-            stats
-                .origin_model()
-                .circuit_admission(&query, unix_time_ms())
-                == Admission::RecoveryTrial
-        })
-        .await;
+        wait_for_admission(&path, &query, Admission::RecoveryTrial).await;
         self.harness.handle.update_focus(focus_now(
             vec![sized_item(
                 "trial",
@@ -86,13 +79,7 @@ impl Scenario {
         let path = self.stats_path();
         let query = self.trial_query();
         trial.finish(TRIAL_BYTES - 1).await;
-        wait_for(&path, |stats| {
-            stats
-                .origin_model()
-                .circuit_admission(&query, unix_time_ms())
-                == Admission::Production
-        })
-        .await;
+        wait_for_admission(&path, &query, Admission::Production).await;
         crate::delivery_fixture::wait::wait_for_file(&self.harness.root.join("trial.video")).await;
         self.harness.handle.clear().await.expect("clear manager");
         std::fs::remove_dir_all(&self.harness.root).ok();

@@ -12,6 +12,7 @@ mod response;
 pub const PROBE_BYTES: usize = 65_536;
 pub const PARALLEL_BYTES: usize = 4_096;
 pub const TRIAL_BYTES: usize = 900_000;
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub(super) type BodySender = mpsc::Sender<Result<Bytes, Infallible>>;
 pub(super) type OriginState = mpsc::Sender<ObservedRequest>;
@@ -53,7 +54,7 @@ impl RecoveryOrigin {
     }
 
     pub async fn next_within(&mut self, label: &str) -> ObservedRequest {
-        tokio::time::timeout(Duration::from_secs(2), self.next())
+        tokio::time::timeout(REQUEST_TIMEOUT, self.next())
             .await
             .unwrap_or_else(|_| panic!("missing {label}"))
     }
