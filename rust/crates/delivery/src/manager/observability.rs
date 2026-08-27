@@ -82,21 +82,35 @@ fn budget_event(
 }
 
 fn readiness_event(planned: &PlannedWork, observed_at_ms: u64) -> ReadinessMetricEvent {
-    let reserve = &planned.plan.ready_reserve;
+    readiness_event_for(
+        &planned.plan.ready_reserve,
+        !planned.plan.allocations.is_empty(),
+        observed_at_ms,
+    )
+}
+
+pub(super) fn readiness_event_for(
+    reserve: &ghostr_engine::adaptive::ReadyReserveEvidence,
+    scheduled_work: bool,
+    observed_at_ms: u64,
+) -> ReadinessMetricEvent {
     let weighted = u128::from(reserve.ready_coverage_ms).saturating_mul(u128::from(
         10_000_u16.saturating_sub(reserve.underflow_risk_bps),
     )) / 10_000;
     ReadinessMetricEvent {
         observed_at_ms,
-        underflow: reserve.target > reserve.ready,
+        underflow: reserve_underflow(reserve),
         probability_weighted_reserve_millis: weighted.min(u128::from(u64::MAX)) as u64,
         ready_coverage_ms: reserve.ready_coverage_ms,
-        on_time_prediction_bps: Some(10_000_u16.saturating_sub(reserve.underflow_risk_bps)),
-        on_time_observed: Some(reserve.target <= reserve.ready),
+        // TODO: Emit calibration only after the forecast horizon has a matched outcome.
         protected_slot_claimed: reserve.protected > 0,
-        protected_slot_used: reserve.protected > 0 && !planned.plan.allocations.is_empty(),
+        protected_slot_used: reserve.protected > 0 && scheduled_work,
         ..ReadinessMetricEvent::default()
     }
+}
+
+pub(super) fn reserve_underflow(reserve: &ghostr_engine::adaptive::ReadyReserveEvidence) -> bool {
+    !reserve.ordered_target_satisfied()
 }
 
 fn utilization(value: u64, capacity: u64) -> i32 {

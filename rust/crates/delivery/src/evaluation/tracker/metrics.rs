@@ -1,10 +1,9 @@
 mod adaptation;
 mod efficiency;
+mod readiness;
 
-use super::{average, ratio, unit_rate, EvaluationTracker};
-use crate::evaluation::events::{
-    BudgetMetricEvent, IntegrityMetricEvent, ReadinessMetricEvent, SemanticMetricEvent,
-};
+use super::{average, unit_rate, EvaluationTracker};
+use crate::evaluation::events::{BudgetMetricEvent, IntegrityMetricEvent, SemanticMetricEvent};
 use crate::evaluation::types::EvaluationSnapshot;
 
 impl EvaluationTracker {
@@ -47,50 +46,6 @@ impl EvaluationTracker {
         self.last_storage_observation = Some((observed_at_ms, stored_bytes));
     }
 
-    pub(crate) fn readiness(&mut self, event: ReadinessMetricEvent) {
-        let metrics = &mut self.metrics.readiness;
-        self.readiness_observations += 1;
-        let inferred = self
-            .last_readiness_at_ms
-            .map_or(0, |previous| event.observed_at_ms.saturating_sub(previous));
-        self.last_readiness_at_ms = Some(event.observed_at_ms);
-        let observed_ms = event.observed_ms.max(inferred);
-        metrics.observed_ms = metrics.observed_ms.saturating_add(observed_ms);
-        if event.underflow && !self.readiness_underflow_active {
-            metrics.reserve_underflows += 1;
-            self.readiness_underflow_started_at_ms = Some(event.observed_at_ms);
-        } else if !event.underflow && self.readiness_underflow_active {
-            if let Some(started) = self.readiness_underflow_started_at_ms.take() {
-                self.replenish_latency
-                    .push(event.observed_at_ms.saturating_sub(started));
-            }
-        }
-        self.readiness_underflow_active = event.underflow;
-        if event.underflow || event.underflow_ms > 0 {
-            metrics.reserve_underflow_ms = metrics
-                .reserve_underflow_ms
-                .saturating_add(event.underflow_ms.max(observed_ms));
-        }
-        metrics.probability_weighted_ready_reserve_millis = metrics
-            .probability_weighted_ready_reserve_millis
-            .saturating_add(event.probability_weighted_reserve_millis);
-        metrics.useful_ready_coverage_ms = metrics
-            .useful_ready_coverage_ms
-            .saturating_add(event.ready_coverage_ms);
-        if let (Some(predicted), Some(observed)) =
-            (event.on_time_prediction_bps, event.on_time_observed)
-        {
-            metrics.on_time_readiness_samples += 1;
-            self.readiness_expected += u128::from(predicted.min(10_000));
-            self.readiness_observed += u64::from(observed);
-        }
-        if let Some(value) = event.replenished_after_ms {
-            self.replenish_latency.push(value);
-        }
-        metrics.protected_rescue_slot_claims += u64::from(event.protected_slot_claimed);
-        metrics.protected_rescue_slot_uses += u64::from(event.protected_slot_used);
-    }
-
     pub(crate) fn semantic(&mut self, event: SemanticMetricEvent) {
         let metrics = &mut self.metrics.semantics;
         metrics.rank_displacement = metrics
@@ -124,41 +79,8 @@ impl EvaluationTracker {
 
 pub(super) fn populate(tracker: &EvaluationTracker, output: &mut EvaluationSnapshot) {
     populate_budget(tracker, output);
-    let readiness = &mut output.readiness;
-    readiness.reserve_underflow_frequency_bps =
-        ratio(readiness.reserve_underflow_ms, readiness.observed_ms);
-    populate_readiness_calibration(tracker, readiness);
-    readiness.protected_rescue_slot_utilization_bps = ratio(
-        readiness.protected_rescue_slot_uses,
-        readiness.protected_rescue_slot_claims,
-    );
-    readiness.probability_weighted_ready_reserve_millis = readiness
-        .probability_weighted_ready_reserve_millis
-        .checked_div(tracker.readiness_observations)
-        .unwrap_or_default();
-    readiness.useful_ready_coverage_ms = readiness
-        .useful_ready_coverage_ms
-        .checked_div(tracker.readiness_observations)
-        .unwrap_or_default();
+    readiness::populate(tracker, &mut output.readiness);
     adaptation::populate(tracker, output);
-}
-
-fn populate_readiness_calibration(
-    tracker: &EvaluationTracker,
-    metrics: &mut crate::evaluation::types::ReadinessMetrics,
-) {
-    let samples = metrics.on_time_readiness_samples;
-    metrics.on_time_readiness_expected_bps = tracker
-        .readiness_expected
-        .checked_div(u128::from(samples))
-        .unwrap_or_default()
-        .min(10_000) as u16;
-    metrics.on_time_readiness_observed_bps = ratio(tracker.readiness_observed, samples);
-    metrics.on_time_readiness_calibration_error_bps = metrics
-        .on_time_readiness_expected_bps
-        .abs_diff(metrics.on_time_readiness_observed_bps);
-    metrics.on_time_readiness_calibration_bps =
-        10_000 - metrics.on_time_readiness_calibration_error_bps;
 }
 
 fn populate_budget(tracker: &EvaluationTracker, output: &mut EvaluationSnapshot) {
