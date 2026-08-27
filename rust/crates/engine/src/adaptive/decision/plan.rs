@@ -3,7 +3,6 @@ use super::privacy::DecisionPrivacy;
 use super::types::{DecisionAction, PrunedCandidate, PrunedReason};
 use crate::adaptive::{AllocationPlan, CandidateSnapshot, NextReserveEvidence, RetrievalRequest};
 use crate::PostId;
-use sha2::{Digest as _, Sha256};
 use std::collections::HashSet;
 
 const RECORD_LIMIT: usize = 64;
@@ -57,18 +56,6 @@ pub(super) fn pruned(
             reasons: prune_reasons(snapshot, item),
         })
         .collect()
-}
-
-pub(super) fn capture_hash(plan: &AllocationPlan, privacy: &DecisionPrivacy) -> String {
-    let mut sanitized = plan.clone();
-    sanitize(&mut sanitized, privacy);
-    replay_hash(&sanitized)
-}
-
-pub(super) fn replay_hash(plan: &AllocationPlan) -> String {
-    let mut digest = Sha256::new();
-    digest.update(format!("{plan:?}").as_bytes());
-    hex(&digest.finalize())
 }
 
 fn allocation(item: &crate::adaptive::Allocation, privacy: &DecisionPrivacy) -> DecisionAction {
@@ -184,8 +171,4 @@ fn sanitize_next(value: &mut NextReserveEvidence, privacy: &DecisionPrivacy) {
     if let Some(post) = post {
         *post = PostId::new(privacy.post(post.as_str()));
     }
-}
-
-fn hex(bytes: &[u8]) -> String {
-    super::privacy::hex(bytes)
 }

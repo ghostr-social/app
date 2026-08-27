@@ -1,5 +1,7 @@
 #[path = "catalog_stale_bitrate_test.rs"]
 mod catalog_stale_bitrate_test;
+#[path = "decision_record_ordered_reserve_replay_test.rs"]
+mod decision_record_ordered_reserve_replay_test;
 #[path = "decision_record_warp_retry_compatibility_test.rs"]
 mod decision_record_warp_retry_compatibility_test;
 #[path = "decision_record_warp_retry_evidence_test.rs"]
@@ -46,8 +48,12 @@ mod network_class_selection;
 mod network_class_support;
 #[path = "warp_planner_network_refill_test.rs"]
 mod network_refill;
+#[path = "ordered_ready_reserve_test.rs"]
+mod ordered_ready_reserve_test;
 #[path = "warp_planner_present_tail_suppression_test.rs"]
 mod present_tail_suppression;
+#[path = "probabilistic_ready_reserve_test.rs"]
+mod probabilistic_ready_reserve_test;
 #[path = "warp_planner_retained_control_test.rs"]
 mod retained_control;
 #[path = "retrieval_request_immediate_bytes_test.rs"]

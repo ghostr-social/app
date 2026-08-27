@@ -48,7 +48,6 @@ mod persisted_unknown_prefix_test;
 mod plan_evidence_test;
 mod player_preparation_reserve_test;
 mod policy_rewrite_feasibility_test;
-mod probabilistic_ready_reserve_test;
 mod probability_admission_test;
 mod promotion_cap_subtracts_cumulatively_test;
 mod promotion_single_grant_per_post_test;

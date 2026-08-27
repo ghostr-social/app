@@ -4,6 +4,7 @@ mod advanced;
 mod executed;
 mod model;
 mod plan;
+mod plan_identity;
 mod privacy;
 mod record;
 mod replay;

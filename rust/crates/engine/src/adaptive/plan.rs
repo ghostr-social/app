@@ -90,6 +90,19 @@ pub struct ReadyReserveEvidence {
     pub candidates: Vec<ReserveCandidateEvidence>,
 }
 
+impl ReadyReserveEvidence {
+    pub fn ordered_ready(&self) -> usize {
+        self.candidates
+            .iter()
+            .take_while(|item| matches!(item.state, ReserveCandidateState::Ready { .. }))
+            .count()
+    }
+
+    pub fn ordered_target_satisfied(&self) -> bool {
+        self.ordered_ready() >= self.target
+    }
+}
+
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub enum NextReserveEvidence {
     #[default]

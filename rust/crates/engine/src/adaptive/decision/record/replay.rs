@@ -1,8 +1,8 @@
 use super::{
-    DecisionRecord, CAPABILITY_SCHEMA_VERSION, LEGACY_SCHEMA_VERSION, UNSEALED_WARP_SCHEMA_VERSION,
-    WARP_SCHEMA_VERSION,
+    DecisionRecord, CAPABILITY_SCHEMA_VERSION, LEGACY_SCHEMA_VERSION,
+    ORDERED_RESERVE_SCHEMA_VERSION, UNSEALED_WARP_SCHEMA_VERSION, WARP_SCHEMA_VERSION,
 };
-use crate::adaptive::decision::plan;
+use crate::adaptive::decision::plan_identity;
 use crate::adaptive::decision::replay::VerifiedWarpReplay;
 use crate::adaptive::decision::state::ReplayState;
 use crate::adaptive::{AdaptivePlayabilityPolicy, DecisionReplayStatus};
@@ -18,6 +18,7 @@ const TERMINAL_EVIDENCE_DOMAIN: &[u8] = b"ghostr-warp-terminal-evidence\0";
 pub(super) fn status(record: &DecisionRecord) -> DecisionReplayStatus {
     match (record.schema_version, record.warp_decision.is_some()) {
         (LEGACY_SCHEMA_VERSION | CAPABILITY_SCHEMA_VERSION, false) => legacy(record),
+        (ORDERED_RESERVE_SCHEMA_VERSION, false) => ordered(record),
         (UNSEALED_WARP_SCHEMA_VERSION | WARP_SCHEMA_VERSION | CAPABILITY_SCHEMA_VERSION, true) => {
             replay_status(warp(record))
         }
@@ -100,14 +101,23 @@ pub(super) fn terminal_identity(record: &DecisionRecord) -> String {
 }
 
 fn legacy(record: &DecisionRecord) -> DecisionReplayStatus {
+    let replayed = AdaptivePlayabilityPolicy.plan_legacy_replay(&record.replay_state.snapshot());
+    policy_status(record, plan_identity::legacy(&replayed))
+}
+
+fn ordered(record: &DecisionRecord) -> DecisionReplayStatus {
+    let replayed = AdaptivePlayabilityPolicy.plan(&record.replay_state.snapshot());
+    policy_status(record, plan_identity::ordered(&replayed))
+}
+
+fn policy_status(record: &DecisionRecord, replayed_hash: String) -> DecisionReplayStatus {
     if verify_terminal_evidence(record).is_err() {
         return DecisionReplayStatus::PlanMismatch;
     }
     if state_identity(&record.replay_state).0 != record.state_hash {
         return DecisionReplayStatus::StateHashMismatch;
     }
-    let replayed = AdaptivePlayabilityPolicy.plan(&record.replay_state.snapshot());
-    if plan::replay_hash(&replayed) == record.replay_plan_hash {
+    if replayed_hash == record.replay_plan_hash {
         DecisionReplayStatus::Verified
     } else {
         DecisionReplayStatus::PlanMismatch

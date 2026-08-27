@@ -21,6 +21,13 @@ pub(super) fn count_ready(evidence: &[ReserveCandidateEvidence]) -> usize {
         .count()
 }
 
+pub(super) fn count_ordered_ready(evidence: &[ReserveCandidateEvidence]) -> usize {
+    evidence
+        .iter()
+        .take_while(|item| matches!(item.state, ReserveCandidateState::Ready { .. }))
+        .count()
+}
+
 pub(super) fn count_structural(evidence: &[ReserveCandidateEvidence]) -> usize {
     evidence
         .iter()

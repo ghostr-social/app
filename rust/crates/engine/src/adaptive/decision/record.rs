@@ -1,6 +1,7 @@
 use super::advanced::{self, RecordedResourceCost, RecordedWarpDecision};
 use super::model;
 use super::plan;
+use super::plan_identity;
 use super::privacy::DecisionPrivacy;
 use super::state::ReplayState;
 use super::types::{
@@ -21,6 +22,7 @@ pub(super) const LEGACY_SCHEMA_VERSION: u16 = 1;
 pub(super) const UNSEALED_WARP_SCHEMA_VERSION: u16 = 2;
 pub(super) const WARP_SCHEMA_VERSION: u16 = 3;
 pub(super) const CAPABILITY_SCHEMA_VERSION: u16 = 4;
+pub(super) const ORDERED_RESERVE_SCHEMA_VERSION: u16 = 5;
 #[derive(Clone, Copy)]
 pub struct DecisionRecordInput<'a> {
     pub sequence: u64,
@@ -71,7 +73,7 @@ impl DecisionRecord {
     pub fn capture(input: DecisionRecordInput<'_>) -> Self {
         let replay_state = ReplayState::capture(input.snapshot, input.privacy);
         let (state_hash, random_seed) = replay::state_identity(&replay_state);
-        legacy_record(input, replay_state, state_hash, random_seed)
+        policy_record(input, replay_state, state_hash, random_seed)
     }
 
     /// Captures the selected WARP command. A selected record must later be bound or resolved.
@@ -99,20 +101,15 @@ impl DecisionRecord {
     }
 }
 
-fn legacy_record(
+fn policy_record(
     input: DecisionRecordInput<'_>,
     replay_state: ReplayState,
     state_hash: String,
     random_seed: u64,
 ) -> DecisionRecord {
     let retained_plans = plan::actions(input.allocation, input.privacy);
-    let schema_version = if replay_state.has_direct_playback_block() {
-        CAPABILITY_SCHEMA_VERSION
-    } else {
-        LEGACY_SCHEMA_VERSION
-    };
     DecisionRecord {
-        schema_version,
+        schema_version: ORDERED_RESERVE_SCHEMA_VERSION,
         sequence: input.sequence,
         state_hash,
         admissible_candidates: plan::admissible(input.snapshot, input.privacy),
@@ -128,7 +125,7 @@ fn legacy_record(
         warp_decision: None,
         executed_request: None,
         replay_state,
-        replay_plan_hash: plan::capture_hash(input.allocation, input.privacy),
+        replay_plan_hash: plan_identity::capture_ordered(input.allocation, input.privacy),
         terminal_evidence_hash: None,
     }
 }

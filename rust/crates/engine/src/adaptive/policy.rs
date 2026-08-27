@@ -5,7 +5,7 @@ use super::eviction::evictions;
 use super::frontier::{admitted_posts, discovery_demand, upcoming_candidates};
 use super::plan::{AllocationPlan, DiscoveryDemand, NextReserveEvidence};
 use super::ranges::missing;
-use super::reserve_window::{build as build_ready_reserve, ReserveInputs};
+use super::reserve_window::{build as build_ready_reserve, ReserveInputs, ReserveModePolicy};
 use super::reserves::{critical_slots, planned_bytes, planned_gain, sibling_planned_bytes};
 use super::resources::{endangered, speculative_budget, upcoming_depth_ms};
 use super::{CandidateSnapshot, PlayabilitySnapshot};
@@ -17,6 +17,18 @@ pub struct AdaptivePlayabilityPolicy;
 
 impl AdaptivePlayabilityPolicy {
     pub fn plan(self, snapshot: &PlayabilitySnapshot) -> AllocationPlan {
+        self.plan_with_reserve(snapshot, ReserveModePolicy::Ordered)
+    }
+
+    pub(super) fn plan_legacy_replay(self, snapshot: &PlayabilitySnapshot) -> AllocationPlan {
+        self.plan_with_reserve(snapshot, ReserveModePolicy::LegacyAggregate)
+    }
+
+    fn plan_with_reserve(
+        self,
+        snapshot: &PlayabilitySnapshot,
+        reserve_policy: ReserveModePolicy,
+    ) -> AllocationPlan {
         let Some(current) = current_candidate(snapshot) else {
             return hls_frontier_plan(snapshot);
         };
@@ -25,7 +37,7 @@ impl AdaptivePlayabilityPolicy {
         let mut plan = initial_plan(snapshot, inflight_need_bytes(current));
         let lane = CurrentLane::new(snapshot, current, emergency, &plan);
         lane.append_start(&mut plan, snapshot);
-        reserve_next(&mut plan, snapshot, &lane);
+        reserve_next(&mut plan, snapshot, &lane, reserve_policy);
         lane.append_depth(&mut plan, snapshot);
         append_followup(&mut plan, snapshot, &lane);
         let admitted = admitted_posts(&plan, snapshot.network.connection_ceiling);
@@ -35,7 +47,12 @@ impl AdaptivePlayabilityPolicy {
     }
 }
 
-fn reserve_next(plan: &mut AllocationPlan, snapshot: &PlayabilitySnapshot, lane: &CurrentLane<'_>) {
+fn reserve_next(
+    plan: &mut AllocationPlan,
+    snapshot: &PlayabilitySnapshot,
+    lane: &CurrentLane<'_>,
+    mode_policy: ReserveModePolicy,
+) {
     let protected = !lane.emergency || lane.protected(plan);
     build_ready_reserve(
         plan,
@@ -45,6 +62,7 @@ fn reserve_next(plan: &mut AllocationPlan, snapshot: &PlayabilitySnapshot, lane:
             storage_room: lane.storage_room,
             current_emergency: lane.emergency,
             current_protected: protected,
+            mode_policy,
         },
     );
 }

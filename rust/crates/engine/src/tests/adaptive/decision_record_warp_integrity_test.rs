@@ -1,3 +1,6 @@
+#[path = "decision_record_warp_integrity_support.rs"]
+mod support;
+
 use super::decision_record_warp_test_support::{decision, record, record_for};
 use crate::adaptive::{
     ActionKind, AdaptivePlayabilityPolicy, DecisionPrivacy, DecisionRecord, DecisionRecordInput,
@@ -5,6 +8,7 @@ use crate::adaptive::{
 };
 use crate::tests::adaptive_support::snapshot;
 use crate::PostId;
+use support::head_decision;
 
 #[test]
 fn schema_two_detects_state_and_decision_tampering_before_trace_reconstruction() {
@@ -83,23 +87,13 @@ fn schema_two_state_domain_differs_from_legacy_for_the_same_private_state() {
 #[test]
 fn unsupported_schema_payload_pairs_never_fall_back_to_legacy_replay() {
     let decision = head_decision();
-    let mut value = serde_json::to_value(record(&decision)).expect("valid test fixture");
-    value["schema_version"] = serde_json::json!(1);
-    let record: DecisionRecord = serde_json::from_value(value).expect("valid test fixture");
-    assert_eq!(
-        record.integrity_status(),
-        DecisionReplayStatus::UnsupportedSchema
-    );
-}
-
-fn head_decision() -> crate::adaptive::WarpPlanningDecision {
-    decision(
-        "secret-post",
-        PlannerCommand::ProbeHead {
-            post: PostId::new("secret-post"),
-            source: "https://origin.example/media".into(),
-            authority: crate::adaptive::PreemptionAuthority::Transition,
-        },
-        ActionKind::Head,
-    )
+    for schema in [1, 5] {
+        let mut value = serde_json::to_value(record(&decision)).expect("valid test fixture");
+        value["schema_version"] = serde_json::json!(schema);
+        let record: DecisionRecord = serde_json::from_value(value).expect("valid test fixture");
+        assert_eq!(
+            record.integrity_status(),
+            DecisionReplayStatus::UnsupportedSchema
+        );
+    }
 }
