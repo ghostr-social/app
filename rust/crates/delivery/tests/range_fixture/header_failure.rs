@@ -24,6 +24,7 @@ pub async fn download(
         requests: &client,
         url: &url,
         request: super::range_request(ByteRange::new(0, 8)),
+        attempt_profile: super::range_profile(8),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: Default::default(),

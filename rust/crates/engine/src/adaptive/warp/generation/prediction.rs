@@ -1,15 +1,12 @@
 use super::super::{ActionForecast, ActionKind};
-use crate::adaptive::{
-    CandidateSnapshot, CompletionTimes, ControlMode, MediaLayout, PlayabilitySnapshot,
-};
-use crate::origin_model::{
-    DecisionMode, MediaClass, OriginContext, OriginModel, OriginQuery, RequestMethod,
-};
+use crate::adaptive::{CandidateSnapshot, CompletionTimes, ControlMode, PlayabilitySnapshot};
+use crate::origin_model::{DecisionMode, OriginModel, OriginQuery, OriginRequestProfile};
 
 #[derive(Clone, Copy)]
 pub(super) struct Prediction {
     pub forecast: ActionForecast,
     pub uncertainty_bps: u16,
+    pub request_profile: Option<OriginRequestProfile>,
 }
 
 #[derive(Clone, Copy)]
@@ -26,17 +23,16 @@ pub(super) struct PredictionInput<'a> {
 }
 
 pub(super) fn predict(input: PredictionInput<'_>) -> Prediction {
-    let bytes = action_bytes(input.action);
+    let request_profile = super::request_profile::for_action(input.candidate, input.action);
+    let profile = request_profile.expect("network predictions require a request profile");
+    let bytes = profile.planned_bytes();
     let query = OriginQuery::new(
         input.source,
-        OriginContext::new(
-            method(input.action),
-            bytes,
-            media(input.candidate, input.action),
-        )
-        .with_concurrency(input.concurrency)
-        .with_network(input.network_class)
-        .with_observed_at_ms(input.snapshot.observed_at_ms),
+        profile
+            .context()
+            .with_concurrency(input.concurrency)
+            .with_network(input.network_class)
+            .with_observed_at_ms(input.snapshot.observed_at_ms),
     );
     let estimate = input.model.estimate(
         &query,
@@ -51,6 +47,7 @@ pub(super) fn predict(input: PredictionInput<'_>) -> Prediction {
             ready_gain(input.candidate, input.action, input.direct_playback_blocked),
         ),
         uncertainty_bps: basis_points(estimate.uncertainty),
+        request_profile,
     }
 }
 
@@ -62,6 +59,7 @@ pub(super) fn transform_prediction(candidate: &CandidateSnapshot, cpu_ms: u64) -
             candidate.duration_ms,
         ),
         uncertainty_bps: 0,
+        request_profile: None,
     }
 }
 
@@ -110,18 +108,6 @@ fn range_adjusted_success(
     estimate.success.selected * range
 }
 
-fn action_bytes(action: &ActionKind) -> u64 {
-    match action {
-        ActionKind::Prefix(range)
-        | ActionKind::Tail(range)
-        | ActionKind::FetchRange(range)
-        | ActionKind::CacheUpgrade(range) => range.len(),
-        ActionKind::FetchWhole { maximum_bytes }
-        | ActionKind::HlsBootstrap { maximum_bytes, .. } => *maximum_bytes,
-        _ => 0,
-    }
-}
-
 fn ready_gain(
     candidate: &CandidateSnapshot,
     action: &ActionKind,
@@ -144,36 +130,6 @@ fn ready_gain(
 
 fn overlaps(left: crate::ByteRange, right: crate::ByteRange) -> bool {
     left.start < right.end && right.start < left.end
-}
-
-fn method(action: &ActionKind) -> RequestMethod {
-    match action {
-        ActionKind::Head => RequestMethod::Head,
-        ActionKind::Prefix(_) => RequestMethod::PrefixGet,
-        ActionKind::Tail(_) => RequestMethod::TailGet,
-        ActionKind::FetchRange(_)
-        | ActionKind::CacheUpgrade(_)
-        | ActionKind::Hedge { .. }
-        | ActionKind::Transform(_)
-        | ActionKind::Cancel(_) => RequestMethod::RangeGet,
-        ActionKind::FetchWhole { .. } | ActionKind::Promote { .. } => RequestMethod::FullGet,
-        ActionKind::HlsBootstrap { stage, .. } if stage.is_manifest() => RequestMethod::ManifestGet,
-        ActionKind::HlsBootstrap { .. } => RequestMethod::SegmentGet,
-    }
-}
-
-fn media(candidate: &CandidateSnapshot, action: &ActionKind) -> MediaClass {
-    if matches!(action, ActionKind::HlsBootstrap { .. }) {
-        return MediaClass::Segmented;
-    }
-    if matches!(action, ActionKind::Transform(_)) {
-        return MediaClass::TransformRequired;
-    }
-    match candidate.layout {
-        MediaLayout::Unknown => MediaClass::Unknown,
-        MediaLayout::Streamable => MediaClass::ProgressiveMp4,
-        MediaLayout::RequiresCompleteFile => MediaClass::WholeObject,
-    }
 }
 
 pub(super) fn decision_mode(mode: ControlMode) -> DecisionMode {

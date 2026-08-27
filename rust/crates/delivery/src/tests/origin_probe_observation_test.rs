@@ -1,10 +1,11 @@
 use crate::manager::stats::StatsKeeper;
 use crate::manager::transfers::ProbeObservation;
 use crate::probe::media::ProbeResult;
-use ghostr_engine::origin_model::{
-    DecisionMode, MediaClass, NetworkClass, OriginContext, OriginQuery, RequestMethod,
-};
 use core::time::Duration;
+use ghostr_engine::origin_model::{
+    DecisionMode, MediaClass, NetworkClass, OriginAttemptContext, OriginAttemptProfile,
+    OriginContext, OriginQuery, OriginRequestProfile, RequestMethod,
+};
 
 #[tokio::test]
 async fn completed_head_probe_updates_the_head_context_only() {
@@ -16,8 +17,16 @@ async fn completed_head_probe_updates_the_head_context_only() {
     keeper.note_probe(&ProbeObservation {
         post: ghostr_engine::PostId::new("clip"),
         url: request_url.clone(),
-        concurrency: 3,
-        network_class: NetworkClass::Wifi,
+        attempt_context: Some(OriginAttemptContext::new(
+            OriginAttemptProfile::new(OriginRequestProfile::new(
+                RequestMethod::Head,
+                0,
+                MediaClass::Unknown,
+            )),
+            NetworkClass::Wifi,
+            3,
+            observed_at_ms,
+        )),
         outcome: Ok(ProbeResult {
             final_url,
             observed: observed_at_ms.into(),
@@ -31,7 +40,7 @@ async fn completed_head_probe_updates_the_head_context_only() {
     let now = crate::manager::time::unix_time_ms();
     let query = OriginQuery::new(
         request_url.clone(),
-        OriginContext::new(RequestMethod::Head, 900_000, MediaClass::Unknown)
+        OriginContext::new(RequestMethod::Head, 0, MediaClass::Unknown)
             .with_network(NetworkClass::Wifi)
             .with_concurrency(3)
             .with_observed_at_ms(observed_at_ms),

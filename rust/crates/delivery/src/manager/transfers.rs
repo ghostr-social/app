@@ -81,8 +81,7 @@ pub(crate) struct ProbeObservation {
     pub post: PostId,
     pub url: String,
     pub outcome: anyhow::Result<ProbeResult>,
-    pub concurrency: usize,
-    pub network_class: ghostr_engine::origin_model::NetworkClass,
+    pub attempt_context: Option<ghostr_engine::origin_model::OriginAttemptContext>,
 }
 
 /// Everything a spawned transfer needs; cheap to clone per task.

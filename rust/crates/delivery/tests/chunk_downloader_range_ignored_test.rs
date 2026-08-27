@@ -19,6 +19,7 @@ async fn chunk_downloader_writes_nothing_when_the_server_ignores_a_nonzero_range
         requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(8, 16)),
+        attempt_profile: range_fixture::range_profile(8),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),

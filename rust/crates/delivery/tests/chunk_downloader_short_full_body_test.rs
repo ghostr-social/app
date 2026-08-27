@@ -20,6 +20,7 @@ async fn short_200_body_completes_a_larger_speculative_grant() {
         requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(0, 256 * 1024)),
+        attempt_profile: range_fixture::range_profile(256 * 1024),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),

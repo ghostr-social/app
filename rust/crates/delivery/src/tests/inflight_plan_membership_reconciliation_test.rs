@@ -64,6 +64,7 @@ fn transfer(post: &str, start: u64, authority: PreemptionAuthority) -> PlannedTr
         ),
         url,
         retrieval: range_retrieval(ByteRange::new(start, start + 8)),
+        profile: crate::tests::support::range_profile(8),
         commitment_until_ms: 0,
     }
 }

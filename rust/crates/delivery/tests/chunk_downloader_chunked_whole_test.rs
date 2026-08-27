@@ -24,6 +24,7 @@ async fn capped_chunked_whole_discovers_its_exact_length_at_eof() {
             contract: WholeBodyContract::Capped { maximum_bytes: 32 },
             reason: WholeFetchReason::DirectCrossover,
         },
+        attempt_profile: range_fixture::whole_profile(32),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),

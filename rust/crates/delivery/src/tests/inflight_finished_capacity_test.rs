@@ -89,6 +89,7 @@ fn transfer(post: &str, start: u64, authority: PreemptionAuthority, depth: u64) 
         },
         url,
         retrieval: range_retrieval(ByteRange::new(start, start + 64)),
+        profile: crate::tests::support::range_profile(64),
         commitment_until_ms: 0,
     }
 }

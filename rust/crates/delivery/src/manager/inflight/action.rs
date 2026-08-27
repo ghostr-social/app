@@ -1,7 +1,7 @@
 use crate::chunk::cancel::CancelHandle;
 use core::sync::atomic::{AtomicBool, Ordering};
 use ghostr_engine::adaptive::RetrievalRequest;
-use ghostr_engine::origin_model::ExplorationClaim;
+use ghostr_engine::origin_model::{ExplorationClaim, OriginAttemptProfile};
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::scheduling::RangeRequest;
 use ghostr_engine::{ActionId, ChunkId};
@@ -13,6 +13,7 @@ pub(crate) struct ChunkAttempt {
     pub chunk: ChunkId,
     identity: TransferIdentity,
     id: ActionId,
+    profile: OriginAttemptProfile,
     io_finished: Arc<AtomicBool>,
 }
 
@@ -30,13 +31,25 @@ pub(crate) struct ActionRegistration<'a> {
 }
 
 impl ChunkAttempt {
-    pub(crate) fn new(chunk: ChunkId, identity: TransferIdentity, id: ActionId) -> Self {
+    pub(crate) fn new_with_profile(
+        chunk: ChunkId,
+        identity: TransferIdentity,
+        id: ActionId,
+        profile: OriginAttemptProfile,
+    ) -> Self {
         Self {
             chunk,
             identity,
             id,
+            profile,
             io_finished: Arc::new(AtomicBool::new(false)),
         }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn new(chunk: ChunkId, identity: TransferIdentity, id: ActionId) -> Self {
+        let profile = test_profile(chunk.range.len());
+        Self::new_with_profile(chunk, identity, id, profile)
     }
 
     pub(crate) fn id(&self) -> ActionId {
@@ -47,9 +60,24 @@ impl ChunkAttempt {
         &self.identity
     }
 
+    pub(crate) const fn profile(&self) -> OriginAttemptProfile {
+        self.profile
+    }
+
     pub(crate) fn mark_io_finished(&self) {
         self.io_finished.store(true, Ordering::Release);
     }
+}
+
+#[cfg(test)]
+pub(super) fn test_profile(bytes: u64) -> OriginAttemptProfile {
+    use ghostr_engine::origin_model::{MediaClass, OriginRequestProfile, RequestMethod};
+
+    OriginAttemptProfile::new(OriginRequestProfile::new(
+        RequestMethod::RangeGet,
+        bytes,
+        MediaClass::ProgressiveMp4,
+    ))
 }
 
 pub(super) struct ActiveChunk {

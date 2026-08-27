@@ -1,7 +1,7 @@
 use super::prediction::{basis_points, completion, decision_mode, Prediction};
 use crate::adaptive::{ActionForecast, ControlMode, HlsBootstrapStage, PlayabilitySnapshot};
 use crate::origin_model::{
-    MediaClass, NetworkClass, OriginContext, OriginModel, OriginQuery, RequestMethod,
+    MediaClass, NetworkClass, OriginModel, OriginQuery, OriginRequestProfile, RequestMethod,
 };
 
 #[derive(Clone, Copy)]
@@ -24,9 +24,11 @@ pub(super) fn predict(input: HlsPredictionInput<'_>) -> Prediction {
     } else {
         RequestMethod::SegmentGet
     };
+    let request_profile = OriginRequestProfile::new(method, input.bytes, MediaClass::Segmented);
     let query = OriginQuery::new(
         input.source,
-        OriginContext::new(method, input.bytes, MediaClass::Segmented)
+        request_profile
+            .context()
             .with_concurrency(input.concurrency)
             .with_network(input.network_class)
             .with_observed_at_ms(input.snapshot.observed_at_ms),
@@ -47,5 +49,6 @@ pub(super) fn predict(input: HlsPredictionInput<'_>) -> Prediction {
             ready,
         ),
         uncertainty_bps: basis_points(estimate.uncertainty),
+        request_profile: Some(request_profile),
     }
 }

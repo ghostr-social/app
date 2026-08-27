@@ -47,8 +47,19 @@ impl InFlightChunks {
         })
     }
 
+    pub fn next_attempt_with_profile(
+        &mut self,
+        chunk: ChunkId,
+        identity: TransferIdentity,
+        profile: ghostr_engine::origin_model::OriginAttemptProfile,
+    ) -> ChunkAttempt {
+        ChunkAttempt::new_with_profile(chunk, identity, self.next_action_id(), profile)
+    }
+
+    #[cfg(test)]
     pub fn next_attempt(&mut self, chunk: ChunkId, identity: TransferIdentity) -> ChunkAttempt {
-        ChunkAttempt::new(chunk, identity, self.next_action_id())
+        let profile = action::test_profile(chunk.range.len());
+        self.next_attempt_with_profile(chunk, identity, profile)
     }
 
     pub(super) fn next_action_id(&mut self) -> ActionId {

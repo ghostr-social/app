@@ -25,6 +25,7 @@ async fn response_semantics_are_authorized_before_store_admission() {
         requests: &client,
         url: &origin,
         request: range_fixture::range_request(ByteRange::new(0, 8)),
+        attempt_profile: range_fixture::range_profile(8),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: Default::default(),

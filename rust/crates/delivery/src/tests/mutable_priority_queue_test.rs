@@ -48,6 +48,7 @@ fn transfer(id: &str, score: f64) -> PlannedTransfer {
         },
         url,
         retrieval: range_retrieval(ByteRange::new(0, 4)),
+        profile: crate::tests::support::range_profile(4),
         commitment_until_ms: 0,
     }
 }

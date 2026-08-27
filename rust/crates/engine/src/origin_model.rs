@@ -16,6 +16,7 @@ mod prior;
 mod probability;
 mod quantile;
 mod record;
+mod request_profile;
 mod retention;
 mod timing;
 
@@ -32,6 +33,7 @@ pub use exploration::ExplorationClaim;
 pub use model::{Admission, OriginModel};
 pub use observation::{OriginObservation, OriginOutcome};
 pub use prior::{ColdStartPrior, ColdStartSelector};
+pub use request_profile::{OriginAttemptContext, OriginAttemptProfile, OriginRequestProfile};
 
 use prior::PriorRegistration;
 use record::{AdaptiveRecord, RecordSnapshot};

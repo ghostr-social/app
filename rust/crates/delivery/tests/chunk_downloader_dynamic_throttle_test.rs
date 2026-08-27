@@ -31,6 +31,7 @@ async fn bandwidth_drop_paces_only_bytes_not_yet_delivered() {
         requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(0, TOTAL)),
+        attempt_profile: range_fixture::range_profile(TOTAL),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),

@@ -1,3 +1,4 @@
+use super::support::whole_profile;
 use ghostr_engine::adaptive::{RetrievalRequest, WholeBodyContract, WholeFetchReason};
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::representation::TransferIdentity;
@@ -10,14 +11,12 @@ use ghostr_partial_store::partial_range_store::{PartialRangeStore, StoreAction};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-
 mod authorization;
 mod failing_finish;
 mod origin;
 pub(super) use authorization::AuthorizedTraffic;
 pub(super) use failing_finish::FailingFinishSink;
 pub(super) use origin::split;
-
 pub(super) struct SinkFixture {
     pub(super) root: PathBuf,
     pub(super) store: Arc<PartialRangeStore>,
@@ -83,6 +82,7 @@ pub(super) fn whole_spec<'a>(
             contract,
             reason: WholeFetchReason::DirectCrossover,
         },
+        attempt_profile: whole_profile(contract.maximum_bytes()),
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         continuation: None,
         timeouts: TransferTimeouts::default(),

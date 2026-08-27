@@ -28,6 +28,7 @@ async fn coherent_response_semantics_are_reported_before_body_completion() {
         requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(0, 8)),
+        attempt_profile: range_fixture::range_profile(8),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),

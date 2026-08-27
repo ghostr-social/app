@@ -31,6 +31,7 @@ fn planned_whole_cancels_an_overlapping_range_until_terminal_ack() {
         retrieval: whole,
         url: url.to_owned(),
         identity: identity.clone(),
+        profile: crate::tests::support::whole_profile(16),
         commitment_until_ms: 0,
     };
     let mut active = InFlightChunks::new();

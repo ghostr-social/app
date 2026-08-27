@@ -96,6 +96,7 @@ pub struct ActionNode {
     pub(crate) value: ActionValue,
     pub resources: ResourceCost,
     pub forecast: ActionForecast,
+    request_profile: Option<crate::origin_model::OriginRequestProfile>,
     pub(super) origin: String,
     request_authority: Option<RequestAuthority>,
     pub(crate) requires: Vec<u16>,
@@ -111,6 +112,7 @@ impl ActionNode {
             value,
             resources: ResourceCost::default(),
             forecast: ActionForecast::default(),
+            request_profile: None,
             origin: String::new(),
             request_authority: None,
             requires: Vec::new(),
@@ -134,6 +136,18 @@ impl ActionNode {
     pub(crate) fn with_forecast(mut self, forecast: ActionForecast) -> Self {
         self.forecast = forecast;
         self
+    }
+
+    pub(crate) fn with_request_profile(
+        mut self,
+        profile: Option<crate::origin_model::OriginRequestProfile>,
+    ) -> Self {
+        self.request_profile = profile;
+        self
+    }
+
+    pub const fn request_profile(&self) -> Option<crate::origin_model::OriginRequestProfile> {
+        self.request_profile
     }
 
     pub fn with_origin(mut self, origin: impl Into<String>) -> Self {

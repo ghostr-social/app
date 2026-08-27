@@ -14,6 +14,7 @@ use crate::manager::plan::PlannedTransferId;
 use crate::manager::selected_commit::{CommitResult, SelectedCommit};
 use crate::manager::{time, DeliveryWorker};
 use ghostr_engine::adaptive::{DecisionOutcome, ResourceCost};
+use ghostr_engine::origin_model::{OriginAttemptProfile, RequestMethod};
 use ghostr_engine::ActionId;
 
 enum CancelCommit {
@@ -36,11 +37,20 @@ impl DeliveryWorker {
                 source,
                 authority,
             } => {
+                let profile = commit
+                    .as_ref()
+                    .and_then(SelectedCommit::request_profile)
+                    .filter(|profile| profile.method() == RequestMethod::Head);
+                let Some(profile) = profile else {
+                    self.fail_selected("warp_head_profile_missing", decision.take());
+                    return;
+                };
                 let selected = SelectedProbe {
                     post,
                     source,
                     authority: *authority,
                     observed_at_ms,
+                    profile: OriginAttemptProfile::new(profile),
                 };
                 self.launch_selected_probe(selected, decision.take(), commit);
             }

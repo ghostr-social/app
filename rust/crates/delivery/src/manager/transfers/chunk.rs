@@ -101,6 +101,7 @@ fn chunk_spec<'a>(
         requests: &launch.context.requests,
         url: &launch.url,
         request: launch.retrieval,
+        attempt_profile: launch.attempt.profile(),
         priority: launch.priority,
         continuation,
         timeouts: launch.context.timeouts,

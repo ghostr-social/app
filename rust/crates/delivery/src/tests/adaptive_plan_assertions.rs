@@ -2,9 +2,10 @@ use crate::manager::plan::PlannedWork;
 use ghostr_engine::PostId;
 use std::collections::HashSet;
 
-pub(super) fn posts(work: &PlannedWork) -> HashSet<PostId> {
-    work.transfers
+pub(super) fn allocated_posts(work: &PlannedWork) -> HashSet<PostId> {
+    work.plan
+        .allocations
         .iter()
-        .map(|transfer| transfer.request.chunk.post.clone())
+        .map(|allocation| allocation.post.clone())
         .collect()
 }

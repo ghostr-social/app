@@ -23,6 +23,7 @@ async fn real_range_outcome_updates_contextual_origin_model() {
         requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(0, 16)),
+        attempt_profile: range_fixture::range_profile(16),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),

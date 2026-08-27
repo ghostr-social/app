@@ -7,6 +7,7 @@ mod hls_prediction;
 mod ladders;
 mod prediction;
 mod quality;
+mod request_profile;
 mod value;
 
 #[cfg(test)]

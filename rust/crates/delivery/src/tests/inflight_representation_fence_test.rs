@@ -6,7 +6,6 @@ use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::scheduling::RangeRequest;
 use ghostr_engine::{ByteRange, ChunkId, DeliveryKind, PostId, VideoMeta};
-
 #[test]
 fn same_range_from_a_replacement_representation_cancels_the_old_attempt() {
     let post = PostId::new("same");
@@ -74,7 +73,9 @@ fn transfer(catalog: &Catalog, chunk: ChunkId, url: &str) -> PlannedTransfer {
     let retrieval = range_retrieval(chunk.range);
     PlannedTransfer {
         control_mode: ghostr_engine::adaptive::ControlMode::Normal,
-        identity: catalog.transfer_identity(&chunk.post, url).expect("valid test fixture"),
+        identity: catalog
+            .transfer_identity(&chunk.post, url)
+            .expect("valid test fixture"),
         request: RangeRequest {
             chunk,
             authority: PreemptionAuthority::Transition,
@@ -83,6 +84,7 @@ fn transfer(catalog: &Catalog, chunk: ChunkId, url: &str) -> PlannedTransfer {
         },
         url: url.to_owned(),
         retrieval,
+        profile: crate::tests::support::range_profile(8),
         commitment_until_ms: 0,
     }
 }

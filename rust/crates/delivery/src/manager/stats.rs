@@ -20,6 +20,9 @@ use tokio::time::Instant;
 mod admission_timeout_test;
 mod chunk;
 mod hls;
+#[cfg(test)]
+#[path = "stats/no_request_start_test.rs"]
+mod no_request_start_test;
 mod origin;
 
 pub(crate) struct StatsKeeper {
@@ -61,7 +64,7 @@ impl StatsKeeper {
 
     /// Mirrors the probe service's recording rules on the owned stats.
     pub fn note_probe(&mut self, done: &ProbeObservation) {
-        if is_admission_timeout(&done.outcome) {
+        if is_admission_timeout(&done.outcome) || done.attempt_context.is_none() {
             return;
         }
         let Some(host) = host_of(&done.url) else {
@@ -79,8 +82,9 @@ impl StatsKeeper {
             .outcome
             .as_ref()
             .map_or_else(|_| unix_time_ms(), |result| result.observed.observed_at_ms);
-        let observation = origin::probe(done, observed_at_ms);
-        self.stats.origin_model_mut().observe(&observation);
+        if let Some(observation) = origin::probe(done, observed_at_ms) {
+            self.stats.origin_model_mut().observe(&observation);
+        }
         self.dirty = true;
     }
 

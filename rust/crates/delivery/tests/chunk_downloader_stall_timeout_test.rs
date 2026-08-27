@@ -19,6 +19,7 @@ async fn chunk_downloader_times_out_on_a_stalled_transfer_and_records_a_failure(
         requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(0, 8)),
+        attempt_profile: range_fixture::range_profile(8),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),

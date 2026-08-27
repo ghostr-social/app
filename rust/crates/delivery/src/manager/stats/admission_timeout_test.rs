@@ -57,8 +57,7 @@ fn note_probe_timeout(keeper: &mut StatsKeeper) {
         post: PostId::new("probe"),
         url: "https://probe.example/video.mp4".to_owned(),
         outcome: Err(MediaRequestAdmissionTimeout.into()),
-        concurrency: 0,
-        network_class: NetworkClass::Unavailable,
+        attempt_context: None,
     });
 }
 

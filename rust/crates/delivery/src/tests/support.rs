@@ -1,17 +1,18 @@
-use crate::manager::plan::PlannedTransfer;
-use crate::mutable_priority_queue::MutablePriorityQueue;
+use core::sync::atomic::{AtomicU64, Ordering};
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::adaptive::RetrievalRequest;
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::scheduling::RangeRequest;
 use ghostr_engine::{ByteRange, ChunkId, DeliveryKind, PostId, VideoMeta};
-use std::collections::HashSet;
 use std::path::PathBuf;
-use core::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub(crate) mod pressure;
+mod queue;
+mod request_profile;
+pub(crate) use queue::{active_hosts, planned_queue, planned_transfer, transfer_posts};
+pub(crate) use request_profile::{range_profile, whole_profile};
 
 static NEXT_TEMP_DIRECTORY: AtomicU64 = AtomicU64::new(1);
 
@@ -55,54 +56,4 @@ pub(crate) fn range_retrieval(bytes: ByteRange) -> RetrievalRequest {
         bytes,
         promotion: None,
     }
-}
-
-pub(crate) fn planned_transfer(
-    name: &str,
-    host: &str,
-    authority: PreemptionAuthority,
-) -> PlannedTransfer {
-    let post = PostId::new(name);
-    let url = format!("https://{host}/{name}.mp4");
-    PlannedTransfer {
-        control_mode: ghostr_engine::adaptive::ControlMode::Normal,
-        identity: transfer_identity(&post, &url),
-        request: RangeRequest {
-            chunk: ChunkId {
-                post,
-                range: ByteRange::new(0, 4),
-            },
-            authority,
-            score: 1.0,
-            contiguous_depth_bytes: 0,
-        },
-        retrieval: RetrievalRequest::FetchRange {
-            bytes: ByteRange::new(0, 4),
-            promotion: None,
-        },
-        url,
-        commitment_until_ms: 0,
-    }
-}
-
-pub(crate) fn planned_queue(
-    items: &[(&str, PreemptionAuthority)],
-    host: &str,
-) -> MutablePriorityQueue {
-    let mut queue = MutablePriorityQueue::new();
-    queue.replace(
-        items
-            .iter()
-            .map(|(name, authority)| planned_transfer(name, host, *authority))
-            .collect(),
-    );
-    queue
-}
-
-pub(crate) fn active_hosts(host: &str) -> HashSet<String> {
-    HashSet::from([host.to_owned()])
-}
-
-pub(crate) fn transfer_posts<const N: usize>(items: &[PlannedTransfer; N]) -> [String; N] {
-    core::array::from_fn(|index| items[index].request.chunk.post.as_str().to_owned())
 }

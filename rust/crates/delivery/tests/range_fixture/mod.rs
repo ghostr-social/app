@@ -49,6 +49,25 @@ pub fn range_request(bytes: ByteRange) -> RetrievalRequest {
     }
 }
 
+pub fn range_profile(bytes: u64) -> ghostr_engine::origin_model::OriginAttemptProfile {
+    use ghostr_engine::origin_model::{MediaClass, OriginRequestProfile, RequestMethod};
+    let profile =
+        OriginRequestProfile::new(RequestMethod::RangeGet, bytes, MediaClass::ProgressiveMp4);
+    ghostr_engine::origin_model::OriginAttemptProfile::new(profile)
+}
+
+pub fn whole_profile(bytes: u64) -> ghostr_engine::origin_model::OriginAttemptProfile {
+    use ghostr_engine::origin_model::{MediaClass, OriginRequestProfile, RequestMethod};
+    let profile = OriginRequestProfile::new(RequestMethod::FullGet, bytes, MediaClass::WholeObject);
+    ghostr_engine::origin_model::OriginAttemptProfile::new(profile)
+}
+
+pub fn head_profile() -> ghostr_engine::origin_model::OriginAttemptProfile {
+    use ghostr_engine::origin_model::{MediaClass, OriginRequestProfile, RequestMethod};
+    let profile = OriginRequestProfile::new(RequestMethod::Head, 0, MediaClass::Unknown);
+    ghostr_engine::origin_model::OriginAttemptProfile::new(profile)
+}
+
 /// A directory no other caller holds. The clock alone cannot promise
 /// that: it repeats a nanosecond reading often enough that two fixtures
 /// built in the same instant would share a root, so the process and a

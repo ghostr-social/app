@@ -5,7 +5,7 @@ use ghostr_engine::host_stats::host_of;
 impl StatsKeeper {
     /// Mirrors the downloader's recording rules on the owned stats.
     pub fn note_chunk(&mut self, done: &ChunkDone) {
-        if is_admission_timeout(&done.outcome) {
+        if !done.request_started || is_admission_timeout(&done.outcome) {
             return;
         }
         let local = done

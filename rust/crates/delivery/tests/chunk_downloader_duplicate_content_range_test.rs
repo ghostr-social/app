@@ -1,11 +1,14 @@
 mod range_fixture;
 mod raw_http;
 
-use core::time::Duration;
+#[path = "chunk_downloader_duplicate_content_range_test/header_traffic.rs"]
+mod header_traffic;
+use header_traffic::HeaderTraffic;
+
 use ghostr_delivery::chunk::cancel::cancel_pair;
 use ghostr_delivery::chunk::downloader::{
-    download_chunk_observed, ChunkExecution, ChunkSink, ChunkSpec, DownloadTraffic, OpenedResponse,
-    ResponseObservation, ResponseRejection,
+    download_chunk_observed, ChunkExecution, ChunkSink, ChunkSpec, ResponseObservation,
+    ResponseRejection,
 };
 use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_engine::host_stats::HostStats;
@@ -42,6 +45,7 @@ async fn duplicate_content_range_cannot_extend_a_sparse_generation() {
         requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(8, 16)),
+        attempt_profile: range_fixture::range_profile(8),
         continuation: Some(&generation),
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
@@ -90,17 +94,4 @@ async fn duplicate_content_range_cannot_extend_a_sparse_generation() {
     assert!(request.contains("range: bytes=8-15"));
     assert!(request.contains("if-range: \"fixture-media\""));
     std::fs::remove_dir_all(root).ok();
-}
-
-#[derive(Default)]
-struct HeaderTraffic {
-    observed: Option<OpenedResponse>,
-}
-
-impl DownloadTraffic for HeaderTraffic {
-    fn opened(&mut self, _: Duration) {}
-    fn wrote(&mut self, _: u64) {}
-    fn response_observed(&mut self, response: OpenedResponse) {
-        self.observed = Some(response);
-    }
 }

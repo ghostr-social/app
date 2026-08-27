@@ -27,6 +27,7 @@ async fn chunk_downloader_rejects_coded_bytes_hidden_after_identity() {
         requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(0, 5)),
+        attempt_profile: range_fixture::range_profile(5),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),

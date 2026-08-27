@@ -20,6 +20,7 @@ async fn cancellation_while_waiting_for_headers_ends_the_request_promptly() {
         requests: &client,
         url: &stalled.url,
         request: range_fixture::range_request(ByteRange::new(0, 8)),
+        attempt_profile: range_fixture::range_profile(8),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts {

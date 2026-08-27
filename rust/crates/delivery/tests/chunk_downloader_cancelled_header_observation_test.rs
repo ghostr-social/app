@@ -1,5 +1,4 @@
 mod range_fixture;
-
 use core::{future::Future, pin::Pin, time::Duration};
 use ghostr_delivery::chunk::cancel::{cancel_pair, CancelHandle};
 use ghostr_delivery::chunk::downloader::{
@@ -9,7 +8,6 @@ use ghostr_delivery::chunk::downloader::{
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::ByteRange;
 use std::time::{SystemTime, UNIX_EPOCH};
-
 #[tokio::test]
 async fn headers_are_observed_once_when_cancellation_wins_authorization() {
     let url = range_fixture::ranged::serve_ranged(range_fixture::body()).await;
@@ -29,6 +27,7 @@ async fn headers_are_observed_once_when_cancellation_wins_authorization() {
         requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(0, 8)),
+        attempt_profile: range_fixture::range_profile(8),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: Default::default(),

@@ -3,6 +3,7 @@ use crate::chunk::traffic::{ChunkTraffic, WholeBodyCompletion};
 use core::future::Future;
 use core::pin::Pin;
 use core::time::Duration;
+use ghostr_engine::origin_model::{OriginAttemptContext, OriginAttemptProfile};
 use tokio::time::Instant;
 
 #[derive(Clone, Debug)]
@@ -13,6 +14,7 @@ pub(in crate::chunk::downloader) struct TrafficMeasurements {
     request_started: bool,
     origin_elapsed: Option<Duration>,
     network_class: ghostr_engine::origin_model::NetworkClass,
+    attempt_context: Option<OriginAttemptContext>,
     whole_body_completion: Option<WholeBodyCompletion>,
     response_evidence: Option<HttpResponseEvidence>,
 }
@@ -20,6 +22,7 @@ pub(in crate::chunk::downloader) struct TrafficMeasurements {
 pub(in crate::chunk::downloader) struct MeasuredTraffic<'a> {
     inner: &'a mut dyn ChunkTraffic,
     measured: TrafficMeasurements,
+    attempt_profile: OriginAttemptProfile,
     opened_at: Option<Instant>,
 }
 
@@ -32,6 +35,7 @@ impl Default for TrafficMeasurements {
             request_started: false,
             origin_elapsed: None,
             network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
+            attempt_context: None,
             whole_body_completion: None,
             response_evidence: None,
         }
@@ -42,6 +46,7 @@ impl<'a> MeasuredTraffic<'a> {
     pub fn new(
         inner: &'a mut dyn ChunkTraffic,
         network_class: ghostr_engine::origin_model::NetworkClass,
+        attempt_profile: OriginAttemptProfile,
     ) -> Self {
         let measured = TrafficMeasurements {
             network_class,
@@ -50,6 +55,7 @@ impl<'a> MeasuredTraffic<'a> {
         Self {
             inner,
             measured,
+            attempt_profile,
             opened_at: None,
         }
     }
@@ -63,13 +69,24 @@ impl<'a> MeasuredTraffic<'a> {
         });
         measured
     }
+
+    pub(super) fn capture_request_start(&mut self, started_at_ms: u64) {
+        let network = self
+            .inner
+            .current_network_class()
+            .unwrap_or(self.measured.network_class);
+        self.measured.network_class = network;
+        self.measured.request_started = true;
+        self.measured.attempt_context = Some(OriginAttemptContext::new(
+            self.attempt_profile,
+            network,
+            self.measured.concurrency,
+            started_at_ms,
+        ));
+    }
 }
 
 impl TrafficMeasurements {
-    pub fn concurrency(&self) -> usize {
-        self.concurrency
-    }
-
     pub fn bytes(&self) -> u64 {
         self.bytes
     }
@@ -82,8 +99,10 @@ impl TrafficMeasurements {
         self.request_started
     }
 
-    pub fn network_class(&self) -> ghostr_engine::origin_model::NetworkClass {
-        self.network_class
+    pub(in crate::chunk::downloader) const fn attempt_context(
+        &self,
+    ) -> Option<OriginAttemptContext> {
+        self.attempt_context
     }
 
     pub fn with_network_class(
@@ -110,10 +129,7 @@ impl ChunkTraffic for MeasuredTraffic<'_> {
     }
 
     fn request_started(&mut self) {
-        self.measured.request_started = true;
-        if let Some(network_class) = self.inner.current_network_class() {
-            self.measured.network_class = network_class;
-        }
+        self.capture_request_start(crate::manager::time::unix_time_ms());
         self.inner.request_started();
     }
 

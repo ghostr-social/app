@@ -26,6 +26,13 @@ pub(super) fn spec(requests: &MediaRequestExecutor) -> ChunkSpec<'_> {
             bytes: ByteRange::new(0, 1),
             promotion: None,
         },
+        attempt_profile: ghostr_engine::origin_model::OriginAttemptProfile::new(
+            ghostr_engine::origin_model::OriginRequestProfile::new(
+                ghostr_engine::origin_model::RequestMethod::RangeGet,
+                1,
+                ghostr_engine::origin_model::MediaClass::ProgressiveMp4,
+            ),
+        ),
         priority: PreemptionAuthority::Transition,
         continuation: None,
         timeouts: TransferTimeouts::default(),

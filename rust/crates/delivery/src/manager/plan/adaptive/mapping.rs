@@ -1,23 +1,11 @@
 use super::super::PlannedTransfer;
 use crate::manager::inflight::ActiveAction;
 use crate::manager::state::DeliveryState;
-use ghostr_engine::adaptive::{
-    Allocation, AllocationPlan, ControlMode, PlannerCommand, WarpPlanningDecision,
-};
+use ghostr_engine::adaptive::{Allocation, ControlMode, PlannerCommand, WarpPlanningDecision};
+use ghostr_engine::origin_model::{OriginAttemptProfile, OriginRequestProfile};
 use ghostr_engine::scheduling::RangeRequest;
 use ghostr_engine::{ByteRange, ChunkId, PostId};
 use std::collections::{HashMap, HashSet};
-
-pub(super) fn transfers(
-    state: &DeliveryState,
-    present: &HashMap<PostId, Vec<ByteRange>>,
-    plan: &AllocationPlan,
-) -> Vec<PlannedTransfer> {
-    plan.allocations
-        .iter()
-        .filter_map(|allocation| transfer(state, present, allocation, plan.mode))
-        .collect()
-}
 
 pub(super) fn selected_transfers(
     state: &DeliveryState,
@@ -25,13 +13,15 @@ pub(super) fn selected_transfers(
     decision: &WarpPlanningDecision,
     mode: ControlMode,
 ) -> Vec<PlannedTransfer> {
-    let allocation = match decision.selected.as_ref().map(|item| &item.command) {
-        Some(PlannerCommand::Transfer(allocation)) => Some(allocation),
-        Some(PlannerCommand::Hedge { transfer, .. }) => Some(transfer),
-        _ => None,
+    let selected = decision.selected.as_ref();
+    let allocation = match selected.map(|item| &item.command) {
+        Some(PlannerCommand::Transfer(allocation)) => allocation,
+        Some(PlannerCommand::Hedge { transfer, .. }) => transfer,
+        _ => return Vec::new(),
     };
-    allocation
-        .and_then(|item| transfer(state, present, item, mode))
+    let profile = selected.and_then(|item| item.node.request_profile());
+    profile
+        .and_then(|item| transfer(state, present, allocation, mode, item))
         .into_iter()
         .collect()
 }
@@ -71,6 +61,7 @@ fn transfer(
     present: &HashMap<PostId, Vec<ByteRange>>,
     allocation: &Allocation,
     mode: ControlMode,
+    profile: OriginRequestProfile,
 ) -> Option<PlannedTransfer> {
     let identity = state
         .catalog()
@@ -93,6 +84,7 @@ fn transfer(
         },
         url: allocation.source.clone(),
         identity,
+        profile: OriginAttemptProfile::new(profile),
         retrieval: allocation.request,
         commitment_until_ms: allocation.commitment_until_ms,
     })

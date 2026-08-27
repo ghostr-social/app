@@ -1,4 +1,4 @@
-use crate::tests::adaptive_plan_assertions::posts;
+use crate::tests::adaptive_plan_assertions::allocated_posts;
 use crate::tests::adaptive_plan_support::{plan, plan_with_present};
 use ghostr_engine::adaptive::StorageSnapshot;
 use ghostr_engine::{ByteRange, PostId};
@@ -9,8 +9,8 @@ fn live_storage_pressure_contracts_manager_origin_admission() {
     let roomy = plan(20_000, 4_000_000, StorageSnapshot::new(2_000_000_000, 0));
     let pressured = plan(20_000, 4_000_000, StorageSnapshot::new(1_000_000, 950_000));
 
-    assert!(posts(&roomy).len() > 1);
-    assert_eq!(posts(&pressured).len(), 1);
+    assert!(allocated_posts(&roomy).len() > 1);
+    assert_eq!(allocated_posts(&pressured).len(), 1);
 }
 
 #[test]

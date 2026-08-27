@@ -53,6 +53,7 @@ fn transfer(start: u64) -> PlannedTransfer {
         ),
         url,
         retrieval: range_retrieval(ByteRange::new(start, start + 96)),
+        profile: crate::tests::support::range_profile(96),
         commitment_until_ms: 5_000,
     }
 }

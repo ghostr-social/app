@@ -29,6 +29,7 @@ async fn throttled_large_response_makes_incremental_store_progress() {
         requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(0, TOTAL)),
+        attempt_profile: range_fixture::range_profile(TOTAL),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),

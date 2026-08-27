@@ -39,6 +39,13 @@ async fn receive_panic(
             url: identity.source().as_str().to_owned(),
             authority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
             decision: claim,
+            profile: ghostr_engine::origin_model::OriginAttemptProfile::new(
+                ghostr_engine::origin_model::OriginRequestProfile::new(
+                    ghostr_engine::origin_model::RequestMethod::Head,
+                    0,
+                    ghostr_engine::origin_model::MediaClass::Unknown,
+                ),
+            ),
         },
     );
     let event = tokio::time::timeout(Duration::from_secs(1), events.recv())

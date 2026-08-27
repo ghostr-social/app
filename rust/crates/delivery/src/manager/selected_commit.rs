@@ -30,6 +30,12 @@ impl SelectedCommit {
         Some((action.node.resources, action.node.authorized_resources()))
     }
 
+    pub(super) fn request_profile(
+        &self,
+    ) -> Option<ghostr_engine::origin_model::OriginRequestProfile> {
+        self.action.as_ref()?.node.request_profile()
+    }
+
     pub(crate) fn commit(
         &mut self,
         planner: &mut WarpPlanner,

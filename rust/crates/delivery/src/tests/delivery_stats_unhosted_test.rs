@@ -4,8 +4,8 @@ use crate::manager::inflight::InFlightChunks;
 use crate::manager::stats::StatsKeeper;
 use crate::manager::transfers::{ChunkDone, ProbeObservation};
 use crate::probe::media::ProbeResult;
-use ghostr_engine::{ByteRange, ChunkId, PostId};
 use core::time::Duration;
+use ghostr_engine::{ByteRange, ChunkId, PostId};
 
 #[tokio::test]
 async fn unhosted_outcomes_do_not_dirty_or_persist_host_stats() {
@@ -49,12 +49,24 @@ async fn unhosted_outcomes_do_not_dirty_or_persist_host_stats() {
             validator: None,
             ttfb: Duration::from_millis(1),
         }),
-        concurrency: 1,
-        network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
+        attempt_context: Some(head_context()),
     });
 
     keeper.save_now().await;
 
     assert!(!path.exists());
     std::fs::remove_dir_all(root).expect("remove test directory");
+}
+
+fn head_context() -> ghostr_engine::origin_model::OriginAttemptContext {
+    use ghostr_engine::origin_model::{
+        MediaClass, NetworkClass, OriginAttemptProfile, OriginRequestProfile, RequestMethod,
+    };
+    let profile = OriginRequestProfile::new(RequestMethod::Head, 0, MediaClass::Unknown);
+    ghostr_engine::origin_model::OriginAttemptContext::new(
+        OriginAttemptProfile::new(profile),
+        NetworkClass::Unavailable,
+        1,
+        0,
+    )
 }

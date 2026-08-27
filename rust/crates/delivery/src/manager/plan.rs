@@ -72,6 +72,7 @@ pub(crate) struct PlannedTransfer {
     pub control_mode: ControlMode,
     pub url: String,
     pub identity: TransferIdentity,
+    pub profile: ghostr_engine::origin_model::OriginAttemptProfile,
     pub commitment_until_ms: u64,
 }
 

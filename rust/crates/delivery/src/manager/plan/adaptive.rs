@@ -36,7 +36,7 @@ pub(super) fn planned_work(
     let decision_models = observability::models(&snapshot, inputs, allocation.mode);
     let shadow_prices = observability::shadow_prices(&snapshot, occupancy.total() as u64);
     let emergency = has_playback_critical_work(&allocation);
-    let transfers = mapping::transfers(state, inputs.present, &allocation);
+    let transfers = Vec::new();
     let selected_transfers =
         mapping::selected_transfers(state, inputs.present, &warp, allocation.mode);
     let retained = mapping::retained_actions(inputs.in_flight, &warp);

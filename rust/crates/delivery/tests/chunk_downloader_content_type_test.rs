@@ -20,6 +20,7 @@ async fn chunk_downloader_rejects_an_explicit_image_before_writing_bytes() {
         requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(0, 16)),
+        attempt_profile: range_fixture::range_profile(16),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),

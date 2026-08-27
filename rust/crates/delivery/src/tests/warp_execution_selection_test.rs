@@ -12,6 +12,10 @@ fn advanced_decision_executes_only_its_selected_transfer() {
         .map(|item| item.id())
         .collect();
     let legacy: Vec<_> = work.transfers.iter().map(|item| item.id()).collect();
+    assert!(
+        legacy.is_empty(),
+        "advanced WARP must not materialize an unused legacy transfer queue"
+    );
 
     let execution = reconcile_warp::execution(work);
     let actual: Vec<_> = execution.transfers.iter().map(|item| item.id()).collect();

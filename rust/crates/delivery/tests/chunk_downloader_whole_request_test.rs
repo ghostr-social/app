@@ -25,6 +25,7 @@ async fn whole_fetch_omits_range_headers_and_accepts_exact_200() {
             contract: WholeBodyContract::Exact { expected_bytes: 16 },
             reason: WholeFetchReason::DirectCrossover,
         },
+        attempt_profile: range_fixture::whole_profile(16),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),

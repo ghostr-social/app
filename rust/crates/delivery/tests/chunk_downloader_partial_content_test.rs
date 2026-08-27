@@ -19,6 +19,7 @@ async fn chunk_downloader_streams_partial_content_into_the_store() {
         requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(4, 12)),
+        attempt_profile: range_fixture::range_profile(8),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),

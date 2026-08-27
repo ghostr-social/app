@@ -32,6 +32,7 @@ async fn continuation_requests_identity_bytes_with_if_range() {
         requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(4, 8)),
+        attempt_profile: range_fixture::range_profile(4),
         continuation: Some(&generation),
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),

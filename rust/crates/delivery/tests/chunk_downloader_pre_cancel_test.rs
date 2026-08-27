@@ -19,6 +19,7 @@ async fn cancellation_before_admission_finishes_without_an_http_request() {
         requests: &client,
         url: "not an http URL",
         request: range_fixture::range_request(ByteRange::new(0, 8)),
+        attempt_profile: range_fixture::range_profile(8),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),

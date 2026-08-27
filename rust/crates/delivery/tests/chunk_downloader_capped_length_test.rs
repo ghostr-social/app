@@ -25,6 +25,7 @@ async fn capped_whole_accepts_a_shorter_declared_body_and_finishes_at_eof() {
             contract: WholeBodyContract::Capped { maximum_bytes: 32 },
             reason: WholeFetchReason::DirectCrossover,
         },
+        attempt_profile: range_fixture::whole_profile(32),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),

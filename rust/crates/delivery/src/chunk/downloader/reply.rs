@@ -58,6 +58,7 @@ pub(super) fn body_spec<'a>(spec: &ChunkSpec<'a>, request: RetrievalRequest) -> 
         requests: spec.requests,
         url: spec.url,
         request,
+        attempt_profile: spec.attempt_profile,
         priority: spec.priority,
         continuation: spec.continuation,
         timeouts: spec.timeouts,

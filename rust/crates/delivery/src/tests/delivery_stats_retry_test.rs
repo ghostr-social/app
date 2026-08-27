@@ -2,8 +2,12 @@ use super::support::temp_directory;
 use crate::manager::stats::StatsKeeper;
 use crate::manager::transfers::ProbeObservation;
 use anyhow::anyhow;
-use ghostr_engine::PostId;
 use core::time::Duration;
+use ghostr_engine::origin_model::{
+    MediaClass, NetworkClass, OriginAttemptContext, OriginAttemptProfile, OriginRequestProfile,
+    RequestMethod,
+};
+use ghostr_engine::PostId;
 
 #[tokio::test]
 async fn failed_host_stats_save_stays_dirty_for_the_next_attempt() {
@@ -15,8 +19,7 @@ async fn failed_host_stats_save_stays_dirty_for_the_next_attempt() {
         post: PostId::new("clip"),
         url: "https://media.example/clip.mp4".to_owned(),
         outcome: Err(anyhow!("origin failed")),
-        concurrency: 1,
-        network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
+        attempt_context: Some(head_context()),
     });
 
     keeper.save_now().await;
@@ -27,4 +30,14 @@ async fn failed_host_stats_save_stays_dirty_for_the_next_attempt() {
 
     assert!(path.exists(), "dirty snapshot should retry");
     std::fs::remove_dir_all(root).expect("remove test directory");
+}
+
+fn head_context() -> OriginAttemptContext {
+    let profile = OriginRequestProfile::new(RequestMethod::Head, 0, MediaClass::Unknown);
+    OriginAttemptContext::new(
+        OriginAttemptProfile::new(profile),
+        NetworkClass::Unavailable,
+        1,
+        0,
+    )
 }

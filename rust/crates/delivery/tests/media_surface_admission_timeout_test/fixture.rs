@@ -25,6 +25,7 @@ impl Fixture {
             requests: &self.requests,
             url: &self.url,
             request: range_fixture::range_request(ByteRange::new(0, 8)),
+            attempt_profile: range_fixture::range_profile(8),
             priority: PreemptionAuthority::Transition,
             continuation: None,
             timeouts: self.timeouts,
@@ -56,6 +57,7 @@ impl Fixture {
             priority: PreemptionAuthority::Transition,
             timeouts: self.timeouts,
             network: None,
+            profile: range_fixture::head_profile(),
         };
         probe(spec, &mut self.stats)
             .await
@@ -63,7 +65,6 @@ impl Fixture {
             .expect_err("HEAD admission must expire")
     }
 }
-
 pub(super) async fn exercise() -> SurfaceTimeouts {
     let mut fixture = Fixture::new().await;
     let progressive = fixture.progressive().await;
@@ -83,7 +84,6 @@ pub(super) async fn exercise() -> SurfaceTimeouts {
         failure_ratio,
     }
 }
-
 pub(super) fn short_admission() -> TransferTimeouts {
     TransferTimeouts {
         admission: Duration::from_millis(20),

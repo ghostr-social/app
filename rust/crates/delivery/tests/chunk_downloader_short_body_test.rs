@@ -23,6 +23,7 @@ async fn a_body_shorter_than_its_advertised_range_is_rejected() {
         requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(4, 12)),
+        attempt_profile: range_fixture::range_profile(8),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),

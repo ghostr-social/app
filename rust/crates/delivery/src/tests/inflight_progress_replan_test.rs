@@ -28,6 +28,7 @@ fn stored_prefix_progress_keeps_the_overlapping_origin_request_in_flight() {
         request: chunk_request(wanted_chunk.clone(), PreemptionAuthority::PlaybackCritical),
         url: url.to_owned(),
         retrieval: range_retrieval(wanted_chunk.range),
+        profile: crate::tests::support::range_profile(wanted_chunk.range.len()),
         commitment_until_ms: 0,
     };
 
@@ -69,6 +70,7 @@ fn assert_foreground_supersedes_seed(authority: PreemptionAuthority) {
         request: chunk_request(foreground.clone(), authority),
         url: url.to_owned(),
         retrieval: range_retrieval(foreground.range),
+        profile: crate::tests::support::range_profile(foreground.range.len()),
         commitment_until_ms: 0,
     };
 

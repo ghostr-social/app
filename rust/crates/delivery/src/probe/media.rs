@@ -8,6 +8,7 @@ use core::time::Duration;
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_engine::host_stats::{host_of, HostStats};
+use ghostr_engine::origin_model::{NetworkClass, OriginAttemptContext, OriginAttemptProfile};
 use ghostr_engine::RequestAuthority;
 use ghostr_net::identity_encoding::require_identity_encoding;
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaResponse};
@@ -37,6 +38,7 @@ pub struct ProbeSpec<'a> {
     pub priority: PreemptionAuthority,
     pub timeouts: TransferTimeouts,
     pub network: Option<&'a dyn ProbeNetwork>,
+    pub profile: OriginAttemptProfile,
 }
 
 pub trait ProbeNetwork: Sync {
@@ -45,8 +47,7 @@ pub trait ProbeNetwork: Sync {
 
 pub struct ObservedProbe {
     pub outcome: Result<ProbeResult>,
-    pub(crate) concurrency: usize,
-    pub(crate) network_class: ghostr_engine::origin_model::NetworkClass,
+    pub(crate) attempt_context: Option<OriginAttemptContext>,
 }
 
 /// Probes `url` with HEAD. Range support remains unknown when the
@@ -56,13 +57,16 @@ pub struct ObservedProbe {
 ///
 /// Returns an error when admission, transport, or response validation fails.
 pub async fn probe(spec: ProbeSpec<'_>, stats: &mut HostStats) -> ObservedProbe {
-    let mut concurrency = 0;
-    let mut network_class = ghostr_engine::origin_model::NetworkClass::Unavailable;
-    let outcome = describe(&spec, &mut concurrency, &mut network_class).await;
+    let mut attempt_context = None;
+    let outcome = describe(&spec, &mut attempt_context).await;
+    let outcome = if attempt_context.is_some() {
+        conclude(stats, spec.url, outcome)
+    } else {
+        outcome.map(result_from)
+    };
     ObservedProbe {
-        outcome: conclude(stats, spec.url, outcome),
-        concurrency,
-        network_class,
+        outcome,
+        attempt_context,
     }
 }
 
@@ -78,10 +82,9 @@ struct ProbeFacts {
 
 async fn describe(
     spec: &ProbeSpec<'_>,
-    concurrency: &mut usize,
-    network_class: &mut ghostr_engine::origin_model::NetworkClass,
+    attempt_context: &mut Option<OriginAttemptContext>,
 ) -> Result<ProbeFacts> {
-    let (head, ttfb, observed) = send_head(spec, concurrency, network_class).await?;
+    let (head, ttfb, observed) = send_head(spec, attempt_context).await?;
     validate_response_headers(head.headers())?;
     let head = head.error_for_status().context("HEAD probe rejected")?;
     require_identity_encoding(head.headers()).context("HEAD response is encoded")?;
@@ -91,8 +94,7 @@ async fn describe(
 
 async fn send_head(
     spec: &ProbeSpec<'_>,
-    concurrency: &mut usize,
-    network_class: &mut ghostr_engine::origin_model::NetworkClass,
+    attempt_context: &mut Option<OriginAttemptContext>,
 ) -> Result<(
     MediaResponse,
     Duration,
@@ -105,13 +107,19 @@ async fn send_head(
         .head()
         .admit_for(spec.timeouts.admission)
         .await?;
-    *network_class = spec
+    let network = spec
         .network
-        .map_or(*network_class, ProbeNetwork::network_class);
-    *concurrency = RequestAuthority::from_url(spec.url)
+        .map_or(NetworkClass::Unavailable, ProbeNetwork::network_class);
+    let concurrency = RequestAuthority::from_url(spec.url)
         .map(|authority| spec.requests.active_for(&authority))
         .unwrap_or(1)
         .max(1);
+    *attempt_context = Some(OriginAttemptContext::new(
+        spec.profile,
+        network,
+        concurrency,
+        crate::manager::time::unix_time_ms(),
+    ));
     let started = Instant::now();
     let deadline = started + spec.timeouts.headers;
     let response = await_headers(admitted.send_with_redirect_deadline(deadline), deadline).await?;

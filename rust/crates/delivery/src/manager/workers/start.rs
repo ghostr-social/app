@@ -50,9 +50,11 @@ impl DownloadWorkers {
         transfer: PlannedTransfer,
     ) -> anyhow::Result<PreparedTransfer> {
         let host = origin_key(&transfer.url);
-        let attempt = self
-            .active
-            .next_attempt(transfer.request.chunk.clone(), transfer.identity);
+        let attempt = self.active.next_attempt_with_profile(
+            transfer.request.chunk.clone(),
+            transfer.identity,
+            transfer.profile,
+        );
         let store_action = ctx
             .store
             .reserve_action(

@@ -19,6 +19,7 @@ async fn chunk_downloader_caps_a_200_full_body_stream_at_the_grant() {
         requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(0, 4)),
+        attempt_profile: range_fixture::range_profile(4),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),

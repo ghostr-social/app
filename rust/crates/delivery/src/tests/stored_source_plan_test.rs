@@ -66,9 +66,9 @@ fn stored_mirror_generation_controls_continuation_source_and_extent() {
         },
     );
 
-    let transfer = work.transfers.first().expect("mirror continuation");
-    assert_eq!(transfer.url, mirror);
-    assert_eq!(transfer.retrieval.requested_bytes(), ByteRange::new(8, 16));
+    let transfer = work.plan.allocations.first().expect("mirror continuation");
+    assert_eq!(transfer.source, mirror);
+    assert_eq!(transfer.request.requested_bytes(), ByteRange::new(8, 16));
 }
 
 fn state(post: PostId) -> DeliveryState {

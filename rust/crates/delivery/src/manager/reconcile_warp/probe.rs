@@ -11,6 +11,7 @@ use ghostr_engine::PostId;
 struct ClaimedProbe {
     identity: TransferIdentity,
     authority: PreemptionAuthority,
+    profile: ghostr_engine::origin_model::OriginAttemptProfile,
 }
 
 #[derive(Clone, Copy)]
@@ -19,6 +20,7 @@ pub(super) struct SelectedProbe<'a> {
     pub(super) source: &'a str,
     pub(super) authority: PreemptionAuthority,
     pub(super) observed_at_ms: u64,
+    pub(super) profile: ghostr_engine::origin_model::OriginAttemptProfile,
 }
 
 struct ProbeCommit {
@@ -50,6 +52,7 @@ impl DeliveryWorker {
                 ClaimedProbe {
                     identity,
                     authority: selected.authority,
+                    profile: selected.profile,
                 },
                 commit,
             ),
@@ -99,6 +102,7 @@ impl DeliveryWorker {
                 url: owned.probe.identity.source().as_str().to_owned(),
                 authority: owned.probe.authority,
                 decision: owned.decision,
+                profile: owned.probe.profile,
             },
         );
         self.request_immediate_replan();

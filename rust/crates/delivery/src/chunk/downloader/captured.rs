@@ -52,7 +52,7 @@ async fn run_transfer<W: ChunkWrite + ?Sized>(
 ) -> ObservedChunk {
     let network_class = execution.network_class;
     let (sink, stats, cancel, network, traffic) = execution_parts(execution);
-    let mut measured = MeasuredTraffic::new(traffic, network_class);
+    let mut measured = MeasuredTraffic::new(traffic, network_class, spec.attempt_profile);
     let result = transfer::run(
         spec,
         transfer::TransferExecution {
@@ -125,6 +125,9 @@ fn record_legacy(
     result: anyhow::Result<ChunkResult>,
     measured: &TrafficMeasurements,
 ) -> anyhow::Result<ChunkResult> {
+    if !measured.request_started() {
+        return result;
+    }
     let elapsed = measured.origin_elapsed().unwrap_or_default();
     match result {
         Ok(result) => {
@@ -161,10 +164,9 @@ pub(super) fn finish(
         elapsed: measured
             .origin_elapsed()
             .unwrap_or_else(|| started.elapsed()),
-        concurrency: measured.concurrency(),
-        network_class: measured.network_class(),
     };
-    let ignored = result.as_ref().err().is_some_and(is_admission_timeout)
+    let ignored = !measured.request_started()
+        || result.as_ref().err().is_some_and(is_admission_timeout)
         || local_before_network_completion(&result, &measured);
     let origin = (!ignored).then(|| {
         let item = telemetry::observation(spec, &result, &measured, timing);

@@ -1,6 +1,9 @@
 use ghostr_delivery::probe::media::{probe as probe_media, ProbeResult, ProbeSpec};
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::host_stats::HostStats;
+use ghostr_engine::origin_model::{
+    MediaClass, OriginAttemptProfile, OriginRequestProfile, RequestMethod,
+};
 use ghostr_net::media_request_executor::MediaRequestExecutor;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
 
@@ -22,6 +25,11 @@ pub async fn probe(
             priority: PreemptionAuthority::Transition,
             timeouts,
             network: None,
+            profile: OriginAttemptProfile::new(OriginRequestProfile::new(
+                RequestMethod::Head,
+                0,
+                MediaClass::Unknown,
+            )),
         },
         stats,
     )

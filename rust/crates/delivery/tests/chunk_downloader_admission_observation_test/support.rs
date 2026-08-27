@@ -43,6 +43,7 @@ pub(super) fn spec<'a>(requests: &'a MediaRequestExecutor, url: &'a str) -> Chun
         requests,
         url,
         request: range_fixture::range_request(ByteRange::new(0, BODY_BYTES)),
+        attempt_profile: range_fixture::range_profile(BODY_BYTES),
         continuation: None,
         priority: PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),

@@ -1,17 +1,19 @@
 use super::send;
 use crate::chunk::cancel::cancel_pair;
 use crate::chunk::downloader::telemetry::MeasuredTraffic;
-use crate::chunk::downloader::{ChunkSpec, DownloadTraffic};
+use crate::chunk::downloader::DownloadTraffic;
 use crate::delivery_events::{DeliveryNetworkStatus, DeliveryNetworkStatusReader};
 use core::time::Duration;
-use ghostr_engine::adaptive::{PreemptionAuthority, RetrievalRequest};
+use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::origin_model::NetworkClass;
-use ghostr_engine::ByteRange;
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::{MediaHttpClient, MediaHttpRequests};
-use ghostr_net::transfer_timeouts::TransferTimeouts;
 use std::sync::Arc;
 use tokio::sync::Notify;
+
+#[path = "network_admission_test/fixture.rs"]
+mod fixture;
+use fixture::spec;
 
 struct LiveTraffic {
     network: DeliveryNetworkStatusReader,
@@ -55,9 +57,9 @@ async fn queued_request_samples_network_class_only_after_admission() {
         network: network.clone(),
         started: std::sync::Arc::clone(&started),
     };
-    let mut measured = MeasuredTraffic::new(&mut traffic, NetworkClass::Wifi);
     let (handle, token) = cancel_pair();
     let spec = spec(&requests);
+    let mut measured = MeasuredTraffic::new(&mut traffic, NetworkClass::Wifi, spec.attempt_profile);
     {
         let future = send(&spec, &token, &mut measured);
         tokio::pin!(future);
@@ -71,10 +73,11 @@ async fn queued_request_samples_network_class_only_after_admission() {
         let _ = future.await;
         stopper.await.expect("valid test fixture");
     }
-    assert_eq!(
-        measured.measurements().network_class(),
-        NetworkClass::Cellular
-    );
+    let context = measured
+        .measurements()
+        .attempt_context()
+        .expect("started request context");
+    assert_eq!(context.request_context().network, NetworkClass::Cellular);
 }
 
 async fn expect_queued<F>(future: &mut core::pin::Pin<&mut F>)
@@ -85,19 +88,5 @@ where
         biased;
         _ = future => panic!("request was not queued"),
         () = tokio::task::yield_now() => {}
-    }
-}
-
-fn spec(requests: &MediaRequestExecutor) -> ChunkSpec<'_> {
-    ChunkSpec {
-        requests,
-        url: "https://media.example/video.mp4",
-        request: RetrievalRequest::FetchRange {
-            bytes: ByteRange::new(0, 1),
-            promotion: None,
-        },
-        priority: PreemptionAuthority::Transition,
-        continuation: None,
-        timeouts: TransferTimeouts::default(),
     }
 }

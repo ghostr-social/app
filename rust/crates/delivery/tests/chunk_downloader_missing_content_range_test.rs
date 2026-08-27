@@ -39,6 +39,7 @@ async fn chunk_downloader_rejects_partial_content_without_a_content_range() {
         requests: &media_client(),
         url: &url,
         request: range_fixture::range_request(ByteRange::new(0, 5)),
+        attempt_profile: range_fixture::range_profile(5),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),

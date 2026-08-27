@@ -1,14 +1,14 @@
 use super::{ChunkResult, ChunkSpec};
 use core::time::Duration;
 use ghostr_engine::adaptive::RetrievalRequest;
-use ghostr_engine::origin_model::{
-    ErrorReason, MediaClass, NetworkClass, OriginContext, OriginObservation, OriginQuery,
-    RequestMethod,
-};
+use ghostr_engine::origin_model::{ErrorReason, OriginContext, OriginObservation, OriginQuery};
 
 mod measurements;
 #[cfg(test)]
 mod rejection_reason_test;
+#[cfg(test)]
+#[path = "telemetry/request_start_context_test.rs"]
+mod request_start_context_test;
 
 pub(super) use measurements::{MeasuredTraffic, TrafficMeasurements};
 
@@ -18,7 +18,7 @@ pub(super) fn observation(
     measured: &TrafficMeasurements,
     timing: ObservationTiming,
 ) -> OriginObservation {
-    let query = OriginQuery::new(spec.url, context(spec, timing));
+    let query = OriginQuery::new(spec.url, context(measured, timing));
     let mut item = match result {
         Ok(result) if result.cancelled => OriginObservation::cancelled(query, timing.at_ms),
         Ok(_) => OriginObservation::success(query, timing.at_ms),
@@ -40,33 +40,13 @@ pub(super) fn observation(
 pub(super) struct ObservationTiming {
     pub at_ms: u64,
     pub elapsed: Duration,
-    pub concurrency: usize,
-    pub network_class: NetworkClass,
 }
 
-fn context(spec: &ChunkSpec<'_>, timing: ObservationTiming) -> OriginContext {
-    OriginContext::new(
-        method(spec.request),
-        spec.request.requested_bytes().len(),
-        media_class(spec.request),
-    )
-    .with_network(timing.network_class)
-    .with_concurrency(timing.concurrency)
-    .with_observed_at_ms(timing.at_ms)
-}
-
-fn method(request: RetrievalRequest) -> RequestMethod {
-    match request {
-        RetrievalRequest::FetchRange { .. } => RequestMethod::RangeGet,
-        RetrievalRequest::FetchWhole { .. } => RequestMethod::FullGet,
-    }
-}
-
-fn media_class(request: RetrievalRequest) -> MediaClass {
-    match request {
-        RetrievalRequest::FetchRange { .. } => MediaClass::ProgressiveMp4,
-        RetrievalRequest::FetchWhole { .. } => MediaClass::WholeObject,
-    }
+fn context(measured: &TrafficMeasurements, _timing: ObservationTiming) -> OriginContext {
+    measured
+        .attempt_context()
+        .expect("origin observations require a started request")
+        .request_context()
 }
 
 fn range_compliance(

@@ -54,6 +54,8 @@ mod ordered_ready_reserve_test;
 mod present_tail_suppression;
 #[path = "probabilistic_ready_reserve_test.rs"]
 mod probabilistic_ready_reserve_test;
+#[path = "warp_request_profile_generation_test.rs"]
+mod request_profile_generation;
 #[path = "warp_planner_retained_control_test.rs"]
 mod retained_control;
 #[path = "retrieval_request_immediate_bytes_test.rs"]

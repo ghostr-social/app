@@ -85,6 +85,7 @@ impl<'a> Builder<'a> {
         let value = value::score(candidate, &input.kind, input.prediction, self.base.mode);
         super::super::ActionNode::new(id, candidate.post.clone(), input.kind, value)
             .with_origin(input.source)
+            .with_request_profile(input.prediction.request_profile)
             .with_forecast(forecast)
             .requiring(input.requires)
     }

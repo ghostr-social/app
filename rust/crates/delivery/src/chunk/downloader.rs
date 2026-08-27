@@ -31,6 +31,7 @@ pub struct ChunkSpec<'a> {
     pub requests: &'a MediaRequestExecutor,
     pub url: &'a str,
     pub request: RetrievalRequest,
+    pub attempt_profile: ghostr_engine::origin_model::OriginAttemptProfile,
     pub priority: PreemptionAuthority,
     pub continuation: Option<&'a SourceGeneration>,
     pub timeouts: TransferTimeouts,

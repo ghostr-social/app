@@ -25,6 +25,7 @@ async fn ignored_range_reports_complete_header_evidence() {
         requests: &client,
         url: &url,
         request: range_fixture::range_request(ByteRange::new(8, 16)),
+        attempt_profile: range_fixture::range_profile(8),
         continuation: None,
         priority: ghostr_engine::adaptive::PreemptionAuthority::Transition,
         timeouts: TransferTimeouts::default(),
