@@ -12,6 +12,9 @@ mod rejection_reason_test;
 #[path = "telemetry/request_start_context_test.rs"]
 mod request_start_context_test;
 #[cfg(test)]
+#[path = "telemetry/response_semantics_test.rs"]
+mod response_semantics_test;
+#[cfg(test)]
 #[path = "telemetry/throughput_unit_test.rs"]
 mod throughput_unit_test;
 
@@ -80,12 +83,6 @@ fn body_outcome(
     if measured.whole_body_completion().is_some() {
         return OriginOutcome::Success;
     }
-    match observed {
-        Some(super::ResponseObservation::Partial { .. }) => return Some(true),
-        Some(super::ResponseObservation::Body { .. })
-        | Some(super::ResponseObservation::Ignored { .. }) => return Some(false),
-        Some(super::ResponseObservation::Rejected(_)) | None => {}
-    }
     match result {
         Ok(item) if item.cancelled => OriginOutcome::Cancelled,
         Ok(_) => OriginOutcome::Failure(ErrorReason::Unknown),
@@ -119,11 +116,23 @@ fn range_compliance(
     if !matches!(request, RetrievalRequest::FetchRange { .. }) {
         return None;
     }
+    if result
+        .as_ref()
+        .err()
+        .is_some_and(|error| error_reason(error) == ErrorReason::RangeNoncompliant)
+    {
+        return Some(false);
+    }
+    match observed {
+        Some(super::ResponseObservation::Partial { .. }) => return Some(true),
+        Some(super::ResponseObservation::Body { .. })
+        | Some(super::ResponseObservation::Ignored { .. }) => return Some(false),
+        Some(super::ResponseObservation::Rejected(_)) | None => {}
+    }
     match result {
         Ok(result) => result
             .range_support
             .or_else(|| result.range_ignored.then_some(false)),
-        Err(error) if error_reason(error) == ErrorReason::RangeNoncompliant => Some(false),
         Err(_) => None,
     }
 }
