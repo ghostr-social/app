@@ -15,6 +15,7 @@ VideoPlayerController _videoPlayerController(
     return VideoPlayerController.networkUrl(
       media.playbackUri,
       formatHint: VideoFormat.hls,
+      httpHeaders: _attemptHeaders(attemptToken),
       viewType: viewType,
     );
   }

@@ -26,6 +26,10 @@ void main() {
 
     expect(testbed.probe.playingLatency(focus), lessThan(deviceStartupTarget));
     expect(
+      testbed.probe.firstFrameLatency(focus),
+      lessThan(deviceStartupTarget),
+    );
+    expect(
       testbed.probe.rebufferRatio,
       lessThanOrEqualTo(deviceRebufferTarget),
     );
