@@ -1,6 +1,7 @@
 use crate::origin_model::{
-    Admission, AdmissionClaimTerminal, DecisionMode, ErrorReason, MediaClass, OriginContext,
-    OriginModel, OriginObservation, OriginQuery, RequestMethod,
+    Admission, AdmissionClaimTerminal, DecisionMode, ErrorReason, MediaClass,
+    OriginAdmissionIntent, OriginContext, OriginModel, OriginObservation, OriginQuery,
+    RequestMethod,
 };
 
 #[test]
@@ -15,7 +16,12 @@ fn an_unclaimed_late_success_cannot_settle_a_recovery_lease() {
         ));
     }
     let claim = model
-        .claim(&full, 5_000, DecisionMode::Normal)
+        .claim(
+            &full,
+            5_000,
+            DecisionMode::Normal,
+            OriginAdmissionIntent::Delivery,
+        )
         .into_parts()
         .1
         .expect("recovery claim");

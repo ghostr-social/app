@@ -18,11 +18,16 @@ pub use budget::{
 };
 pub(crate) use control::ContinuationPolicy;
 pub use control::{ContinuationDecision, HedgeInput, HedgePolicy, IdentityProof};
+#[cfg(test)]
+pub(crate) use generation::predicted_ready_gain;
 pub(crate) use generation::WarpActionGenerator;
 pub use generation::{
     ActiveControl, CandidateRetrievalLadder, GeneratedAction, GeneratedActions, PlannerCommand,
 };
-pub(crate) use generation::{HlsGenerationPolicy, WarpGenerationInput};
+pub(crate) use generation::{
+    HlsGenerationPolicy, OriginAdmissionGenerationPolicy, PromotionGenerationPolicy,
+    WarpGenerationInput, WarpGenerationPolicies,
+};
 pub(crate) use planner::{
     PlannerReplayCapsule, PlannerReplayState, SearchReplayInput, SearchReplayMode,
 };

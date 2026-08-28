@@ -4,6 +4,7 @@ mod delivery_fixture;
 
 use core::time::Duration;
 use delivery_fixture::full_disk::{discard, limits, spaced_store};
+use delivery_fixture::evidence::DeliveryEvidence as _;
 use delivery_fixture::items::{focus_now, seed_range, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness_with_store;
@@ -38,6 +39,11 @@ async fn missed_policy_eviction_never_launches_its_dependent_allocation() {
     tokio::time::sleep(Duration::from_millis(250)).await;
 
     assert_eq!(harness.store.used_bytes().await, 100);
+    assert!(
+        harness.handle.decision_history().records.is_empty(),
+        "a rejected planning transaction must not publish an orphan decision"
+    );
+    assert!(harness.handle.plan_history().is_empty());
     assert_eq!(
         harness
             .store

@@ -43,7 +43,9 @@ fn projected(
         network: Some(network(value.network())),
         price_epoch: Some(value.price_epoch()),
         last_feedback: value.last_feedback(),
-        hls_generation_policy: value.hls_generation_policy().into(),
+        hls_generation_policy: value.generation_policies().hls.into(),
+        promotion_generation_policy: value.generation_policies().promotion.into(),
+        origin_admission_generation_policy: value.generation_policies().origin_admission.into(),
     })
 }
 
@@ -116,6 +118,8 @@ impl RecordedPlannerReplayCapsule {
             price_epoch: None,
             last_feedback: None,
             hls_generation_policy: Default::default(),
+            promotion_generation_policy: Default::default(),
+            origin_admission_generation_policy: Default::default(),
         }
     }
 }

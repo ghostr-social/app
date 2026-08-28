@@ -23,6 +23,9 @@ mod hls;
 #[cfg(test)]
 #[path = "stats/no_request_start_test.rs"]
 mod no_request_start_test;
+#[cfg(test)]
+#[path = "stats/open_body_persistence_test.rs"]
+mod open_body_persistence_test;
 mod origin;
 
 pub(crate) struct StatsKeeper {

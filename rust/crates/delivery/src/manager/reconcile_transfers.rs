@@ -16,6 +16,12 @@ struct SelectedGrant<'a> {
     commit: &'a mut Option<SelectedCommit>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum PlannedGrantDisposition {
+    Reconciled,
+    CapacityFenced,
+}
+
 impl DeliveryWorker {
     pub(super) async fn reconcile_transfers(
         &mut self,
@@ -58,8 +64,10 @@ impl DeliveryWorker {
             decision: &mut decision,
             commit: &mut commit,
         };
-        self.grant_planned(total, capacity.foreground_goal.min(total), selected)
+        let disposition = self
+            .grant_planned(total, capacity.foreground_goal.min(total), selected)
             .await;
+        self.resolve_capacity_fenced_selection(disposition, &mut decision);
         if !execution.emergency {
             self.grant_origin_exploration().await;
         }
@@ -77,12 +85,15 @@ impl DeliveryWorker {
         capacity: usize,
         foreground_goal: usize,
         selected: SelectedGrant<'_>,
-    ) {
+    ) -> PlannedGrantDisposition {
+        if self.downloads.len() >= capacity {
+            return PlannedGrantDisposition::CapacityFenced;
+        }
         while self.downloads.len() < capacity {
             let active_hosts = self.downloads.active_hosts();
             let foreground = ForegroundSlots::new(self.downloads.foreground_len(), foreground_goal);
             let Some(transfer) = self.queue.pop_for_hosts(&active_hosts, foreground) else {
-                return;
+                return PlannedGrantDisposition::Reconciled;
             };
             let alternate = transfer.id();
             if let Some(action) = self
@@ -91,6 +102,23 @@ impl DeliveryWorker {
             {
                 self.link_selected_hedge(selected.directive, &alternate, action);
             }
+        }
+        PlannedGrantDisposition::Reconciled
+    }
+
+    fn resolve_capacity_fenced_selection(
+        &self,
+        disposition: PlannedGrantDisposition,
+        decision: &mut Option<DecisionToken>,
+    ) {
+        if disposition != PlannedGrantDisposition::CapacityFenced {
+            return;
+        }
+        if let Some(token) = decision.take() {
+            self.commands.resolve_decision_token(
+                &token,
+                ghostr_engine::adaptive::DecisionOutcome::Superseded,
+            );
         }
     }
 

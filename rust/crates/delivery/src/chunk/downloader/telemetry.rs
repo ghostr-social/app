@@ -1,7 +1,9 @@
 use super::{ChunkResult, ChunkSpec};
 use core::time::Duration;
 use ghostr_engine::adaptive::RetrievalRequest;
-use ghostr_engine::origin_model::{ErrorReason, OriginContext, OriginObservation, OriginQuery};
+use ghostr_engine::origin_model::{
+    ErrorReason, OpenBodyObservation, OriginContext, OriginObservation, OriginOutcome, OriginQuery,
+};
 
 mod measurements;
 #[cfg(test)]
@@ -9,6 +11,9 @@ mod rejection_reason_test;
 #[cfg(test)]
 #[path = "telemetry/request_start_context_test.rs"]
 mod request_start_context_test;
+#[cfg(test)]
+#[path = "telemetry/throughput_unit_test.rs"]
+mod throughput_unit_test;
 
 pub(super) use measurements::{MeasuredTraffic, TrafficMeasurements};
 
@@ -30,10 +35,67 @@ pub(super) fn observation(
         }
         Err(error) => OriginObservation::failure(query, timing.at_ms, error_reason(error)),
     };
-    item.range_compliant = range_compliance(spec.request, result);
+    item.range_compliant = range_compliance(spec.request, result, measured.response_observation());
     item.ttfb_ms = measured.ttfb.map(duration_ms);
     item.throughput_bps = throughput(measured.bytes, timing.elapsed, measured.ttfb);
     item
+}
+
+pub(super) fn open_body_observation(
+    spec: &ChunkSpec<'_>,
+    result: &anyhow::Result<ChunkResult>,
+    measured: &TrafficMeasurements,
+    observed_at_ms: u64,
+) -> Option<OpenBodyObservation> {
+    let body = measured.open_body()?;
+    let context = measured
+        .attempt_context()?
+        .request_context()
+        .with_planned_bytes(body.planned_bytes());
+    let query = OriginQuery::new(spec.url, context);
+    let mut item = body_item(query, result, measured, observed_at_ms);
+    item.throughput_bps = throughput(body.received_bytes(measured.bytes), body.elapsed(), None);
+    Some(item)
+}
+
+fn body_item(
+    query: OriginQuery,
+    result: &anyhow::Result<ChunkResult>,
+    measured: &TrafficMeasurements,
+    observed_at_ms: u64,
+) -> OpenBodyObservation {
+    match body_outcome(result, measured) {
+        OriginOutcome::Success => OpenBodyObservation::success(query, observed_at_ms),
+        OriginOutcome::Failure(reason) => {
+            OpenBodyObservation::failure(query, observed_at_ms, reason)
+        }
+        OriginOutcome::Cancelled => OpenBodyObservation::cancelled(query, observed_at_ms),
+    }
+}
+
+fn body_outcome(
+    result: &anyhow::Result<ChunkResult>,
+    measured: &TrafficMeasurements,
+) -> OriginOutcome {
+    if measured.whole_body_completion().is_some() {
+        return OriginOutcome::Success;
+    }
+    match observed {
+        Some(super::ResponseObservation::Partial { .. }) => return Some(true),
+        Some(super::ResponseObservation::Body { .. })
+        | Some(super::ResponseObservation::Ignored { .. }) => return Some(false),
+        Some(super::ResponseObservation::Rejected(_)) | None => {}
+    }
+    match result {
+        Ok(item) if item.cancelled => OriginOutcome::Cancelled,
+        Ok(_) => OriginOutcome::Failure(ErrorReason::Unknown),
+        Err(error) if censored_body_error(error) => OriginOutcome::Cancelled,
+        Err(error) => OriginOutcome::Failure(error_reason(error)),
+    }
+}
+
+fn censored_body_error(error: &anyhow::Error) -> bool {
+    crate::chunk::sink::is_local_store_failure(error) || crate::chunk::whole_body_policy::is(error)
 }
 
 #[derive(Clone, Copy)]
@@ -52,6 +114,7 @@ fn context(measured: &TrafficMeasurements, _timing: ObservationTiming) -> Origin
 fn range_compliance(
     request: RetrievalRequest,
     result: &anyhow::Result<ChunkResult>,
+    observed: Option<super::ResponseObservation>,
 ) -> Option<bool> {
     if !matches!(request, RetrievalRequest::FetchRange { .. }) {
         return None;
@@ -70,8 +133,8 @@ fn throughput(bytes: u64, elapsed: Duration, ttfb: Option<Duration>) -> Option<u
         return None;
     }
     let body = elapsed.saturating_sub(ttfb.unwrap_or_default());
-    let seconds = body.max(Duration::from_millis(1)).as_secs_f64();
-    Some((bytes as f64 / seconds).round().clamp(1.0, u64::MAX as f64) as u64)
+    let millis = body.as_millis().max(1).min(u128::from(u64::MAX)) as u64;
+    Some(bytes.saturating_mul(8_000) / millis)
 }
 
 fn duration_ms(value: Duration) -> u64 {

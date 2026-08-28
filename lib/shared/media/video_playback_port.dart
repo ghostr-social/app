@@ -28,6 +28,7 @@ final class VideoPlaybackSurfaceRequest {
     this.mode = VideoPlaybackMode.normal,
     this.surfaceScope,
     this.reservesPreparedDecoder = false,
+    this.keepWarmWhenInactive = false,
     this.authority,
     this.progressiveRefresh,
     this.onPlaybackMediaReleased,
@@ -40,6 +41,7 @@ final class VideoPlaybackSurfaceRequest {
   final VideoPlaybackMode mode;
   final VideoPlaybackSurfaceScope? surfaceScope;
   final bool reservesPreparedDecoder;
+  final bool keepWarmWhenInactive;
   final PlaybackAssetAuthority? authority;
   final ProgressivePlaybackRefreshPort? progressiveRefresh;
   final VoidCallback? onPlaybackMediaReleased;
@@ -73,6 +75,7 @@ final class PreparedProgressiveVideoPlaybackRequest
         mode: request.mode,
         surfaceScope: request.surfaceScope,
         reservesPreparedDecoder: true,
+        keepWarmWhenInactive: request.keepWarmWhenInactive,
         authority: prepared.authority,
         onPlaybackMediaReleased: request.onPlaybackMediaReleased,
         preview: request.preview,

@@ -4,6 +4,7 @@ use super::{CircuitBreaker, OriginMethodKey, PROBE_LEASE_MS};
 pub(crate) enum CircuitStatus {
     Closed,
     Open,
+    RecoveryLease,
     RecoveryProbe,
     RecoveryTrial,
 }
@@ -35,7 +36,9 @@ impl CircuitBreaker {
         let stage = match self.status(at_ms) {
             CircuitStatus::RecoveryProbe => RecoveryStage::Probe,
             CircuitStatus::RecoveryTrial => RecoveryStage::Trial,
-            CircuitStatus::Closed | CircuitStatus::Open => return None,
+            CircuitStatus::Closed | CircuitStatus::Open | CircuitStatus::RecoveryLease => {
+                return None;
+            }
         };
         self.probe_generation = self.probe_generation.checked_add(1)?;
         self.probe_lease_until_ms = at_ms.saturating_add(PROBE_LEASE_MS);

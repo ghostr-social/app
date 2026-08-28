@@ -58,7 +58,7 @@ extension FeedCubitNavigation on FeedCubit {
   void _finishPageTransitionNow(_PageTransitionCommit commit) {
     final current = _acceptedPageTransition(commit.transition, commit.current);
     if (current == null) return _completePageTransition(commit.transition);
-    final moved = _movedTo(current, commit.index);
+    final moved = _presentedAt(current, commit.index);
     emit(moved);
     _completePageTransition(commit.transition);
     _viewer.landedOn(moved.posts, moved.activeIndex);
@@ -78,12 +78,16 @@ extension FeedCubitNavigation on FeedCubit {
         : null;
   }
 
-  FeedLoaded _movedTo(FeedLoaded current, int index) {
-    final roster = _session.movedTo(
+  FeedLoaded _presentedAt(FeedLoaded current, int index) {
+    final roster = _session.presentedAt(
       current.roster,
       index,
-      forgetPrevious: _forgetsViewed(current),
+      history: _navigationHistory(current),
     );
+    return _withRoster(current, roster);
+  }
+
+  FeedLoaded _withRoster(FeedLoaded current, FeedRoster roster) {
     final moved = FeedLoaded.of(
       current.kind,
       roster,
@@ -93,10 +97,16 @@ extension FeedCubitNavigation on FeedCubit {
     return _realignPreparation(current, moved);
   }
 
-  bool _forgetsViewed(FeedLoaded current) {
+  bool _excludesWatched(FeedLoaded current) {
     return _dependencies.watchTracker != null &&
         _dependencies.replayPolicy == FeedReplayPolicy.prevent &&
         current.kind != FeedKind.following;
+  }
+
+  FeedNavigationHistory _navigationHistory(FeedLoaded current) {
+    return _excludesWatched(current)
+        ? FeedNavigationHistory.ordinary
+        : FeedNavigationHistory.unlimited;
   }
 
   int _targetIndex(FeedRoster roster, VideoInteractionTarget target) {

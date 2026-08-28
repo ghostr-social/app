@@ -1,7 +1,8 @@
 use crate::host_stats::HostStats;
 use crate::origin_model::{
-    Admission, AdmissionClaimTerminal, DecisionMode, ErrorReason, MediaClass, OriginContext,
-    OriginModel, OriginObservation, OriginQuery, RequestMethod,
+    Admission, AdmissionClaimTerminal, DecisionMode, ErrorReason, MediaClass,
+    OriginAdmissionIntent, OriginContext, OriginModel, OriginObservation, OriginQuery,
+    RequestMethod,
 };
 
 #[test]
@@ -11,7 +12,12 @@ fn loaded_origin_model_releases_an_inflight_recovery_trial() {
     open_circuit(stats.origin_model_mut(), &full);
     let probe = stats
         .origin_model_mut()
-        .claim(&full, 5_000, DecisionMode::Normal)
+        .claim(
+            &full,
+            5_000,
+            DecisionMode::Normal,
+            OriginAdmissionIntent::Delivery,
+        )
         .into_parts()
         .1
         .expect("sparse probe claim");
@@ -19,9 +25,12 @@ fn loaded_origin_model_releases_an_inflight_recovery_trial() {
     stats
         .origin_model_mut()
         .complete_claim(probe, AdmissionClaimTerminal::Observed(&sparse));
-    stats
-        .origin_model_mut()
-        .claim(&full, 5_101, DecisionMode::Normal);
+    stats.origin_model_mut().claim(
+        &full,
+        5_101,
+        DecisionMode::Normal,
+        OriginAdmissionIntent::Delivery,
+    );
 
     let loaded = HostStats::from_json(&stats.to_json()).expect("valid model snapshot");
 

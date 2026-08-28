@@ -1,21 +1,42 @@
 use super::{circuit_key, OriginModel, EXPLORATION_SAMPLES, SPARSE_PROBE_BYTES};
 use crate::origin_model::circuit::{CircuitStatus, RecoveryClaim, RecoveryStage};
 use crate::origin_model::exploration::ExplorationClaim;
-use crate::origin_model::{DecisionMode, OriginObservation, OriginQuery};
+use crate::origin_model::{DecisionMode, OriginAdmissionIntent, OriginObservation, OriginQuery};
 
 mod completion;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Admission {
     Production,
-    Exploration { maximum_bytes: u64 },
+    Exploration,
     RecoveryProbe { maximum_bytes: u64 },
     RecoveryTrial,
     Blocked,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AdmissionBlockReason {
+    CircuitOpen,
+    RecoveryLease,
+    ExplorationBudgetExhausted,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum AdmissionPath {
+    Production,
+    Exploration,
+    Recovery,
+    Blocked(AdmissionBlockReason),
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct AdmissionClaim(ClaimKind);
+
+impl AdmissionClaim {
+    pub const fn is_exploration(&self) -> bool {
+        matches!(self.0, ClaimKind::Exploration(_))
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 pub enum AdmissionClaimTerminal<'a> {
@@ -35,11 +56,16 @@ enum ClaimKind {
 pub struct ClaimedAdmission {
     admission: Admission,
     claim: Option<AdmissionClaim>,
+    block_reason: Option<AdmissionBlockReason>,
 }
 
 impl ClaimedAdmission {
     pub const fn admission(&self) -> Admission {
         self.admission
+    }
+
+    pub const fn block_reason(&self) -> Option<AdmissionBlockReason> {
+        self.block_reason
     }
 
     pub fn into_parts(self) -> (Admission, Option<AdmissionClaim>) {
@@ -50,6 +76,7 @@ impl ClaimedAdmission {
         Self {
             admission,
             claim: None,
+            block_reason: None,
         }
     }
 
@@ -57,31 +84,44 @@ impl ClaimedAdmission {
         Self {
             admission,
             claim: Some(AdmissionClaim(claim)),
+            block_reason: None,
         }
     }
 }
 
 impl OriginModel {
-    pub fn claim(&mut self, query: &OriginQuery, now: u64, mode: DecisionMode) -> ClaimedAdmission {
-        let key = circuit_key(query);
-        match self.circuits.status(&key, now) {
-            CircuitStatus::Open => return blocked(),
-            CircuitStatus::RecoveryProbe | CircuitStatus::RecoveryTrial => {
-                return self.claim_recovery(key, now);
-            }
-            CircuitStatus::Closed => {}
+    pub fn claim(
+        &mut self,
+        query: &OriginQuery,
+        now: u64,
+        mode: DecisionMode,
+        intent: OriginAdmissionIntent,
+    ) -> ClaimedAdmission {
+        match self.admission_path(query, now, mode, intent) {
+            AdmissionPath::Production => ClaimedAdmission::without_claim(Admission::Production),
+            AdmissionPath::Exploration => self.claim_exploration(query, now),
+            AdmissionPath::Recovery => self.claim_recovery(circuit_key(query), now),
+            AdmissionPath::Blocked(reason) => blocked(reason),
         }
-        let samples = self.estimate(query, now, mode).effective_samples;
-        if mode != DecisionMode::Normal || samples >= EXPLORATION_SAMPLES {
-            return ClaimedAdmission::without_claim(Admission::Production);
+    }
+
+    pub fn admission_block_reason(
+        &self,
+        query: &OriginQuery,
+        now: u64,
+        mode: DecisionMode,
+        intent: OriginAdmissionIntent,
+    ) -> Option<AdmissionBlockReason> {
+        match self.admission_path(query, now, mode, intent) {
+            AdmissionPath::Blocked(reason) => Some(reason),
+            _ => None,
         }
-        self.claim_exploration(query, now)
     }
 
     pub fn circuit_admission(&self, query: &OriginQuery, now: u64) -> Admission {
         match self.circuits.status(&circuit_key(query), now) {
             CircuitStatus::Closed => Admission::Production,
-            CircuitStatus::Open => Admission::Blocked,
+            CircuitStatus::Open | CircuitStatus::RecoveryLease => Admission::Blocked,
             CircuitStatus::RecoveryProbe => Admission::RecoveryProbe {
                 maximum_bytes: SPARSE_PROBE_BYTES,
             },
@@ -95,7 +135,7 @@ impl OriginModel {
         now: u64,
     ) -> ClaimedAdmission {
         let Some(claim) = self.circuits.claim(key, now) else {
-            return blocked();
+            return blocked(AdmissionBlockReason::RecoveryLease);
         };
         let admission = match claim.stage() {
             RecoveryStage::Probe => Admission::RecoveryProbe {
@@ -108,17 +148,53 @@ impl OriginModel {
 
     fn claim_exploration(&mut self, query: &OriginQuery, now: u64) -> ClaimedAdmission {
         let Some(claim) = self.exploration.claim(query.origin(), now) else {
-            return blocked();
+            return blocked(AdmissionBlockReason::ExplorationBudgetExhausted);
         };
-        ClaimedAdmission::with_claim(
-            Admission::Exploration {
-                maximum_bytes: SPARSE_PROBE_BYTES,
-            },
-            ClaimKind::Exploration(claim),
-        )
+        ClaimedAdmission::with_claim(Admission::Exploration, ClaimKind::Exploration(claim))
+    }
+
+    fn admission_path(
+        &self,
+        query: &OriginQuery,
+        now: u64,
+        mode: DecisionMode,
+        intent: OriginAdmissionIntent,
+    ) -> AdmissionPath {
+        match self.circuits.status(&circuit_key(query), now) {
+            CircuitStatus::Open => AdmissionPath::Blocked(AdmissionBlockReason::CircuitOpen),
+            CircuitStatus::RecoveryLease => {
+                AdmissionPath::Blocked(AdmissionBlockReason::RecoveryLease)
+            }
+            CircuitStatus::RecoveryProbe | CircuitStatus::RecoveryTrial => AdmissionPath::Recovery,
+            CircuitStatus::Closed => self.closed_path(query, now, mode, intent),
+        }
+    }
+
+    fn closed_path(
+        &self,
+        query: &OriginQuery,
+        now: u64,
+        mode: DecisionMode,
+        intent: OriginAdmissionIntent,
+    ) -> AdmissionPath {
+        if intent == OriginAdmissionIntent::Delivery {
+            return AdmissionPath::Production;
+        }
+        let samples = self.estimate(query, now, mode).effective_samples;
+        if mode != DecisionMode::Normal || samples >= EXPLORATION_SAMPLES {
+            return AdmissionPath::Production;
+        }
+        if self.exploration.can_claim(query.origin(), now) {
+            return AdmissionPath::Exploration;
+        }
+        AdmissionPath::Blocked(AdmissionBlockReason::ExplorationBudgetExhausted)
     }
 }
 
-const fn blocked() -> ClaimedAdmission {
-    ClaimedAdmission::without_claim(Admission::Blocked)
+const fn blocked(reason: AdmissionBlockReason) -> ClaimedAdmission {
+    ClaimedAdmission {
+        admission: Admission::Blocked,
+        claim: None,
+        block_reason: Some(reason),
+    }
 }

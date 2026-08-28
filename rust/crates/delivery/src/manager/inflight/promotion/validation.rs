@@ -25,7 +25,11 @@ pub(super) fn unchanged(current: &ActiveChunk, preflight: &PromotionPreflight) -
 pub(super) fn activated(current: &ActiveChunk, preflight: &PromotionPreflight) -> bool {
     let maximum = preflight.target.grant.maximum_bytes;
     current.identity == preflight.target.identity
-        && !current.response_opened
+        && super::super::response_phase::grant_matches(
+            current.response_phase,
+            current.launched_request,
+            preflight.target.grant,
+        )
         && current.promotion_authorization == Some(preflight.target.grant)
         && current.effective_request == promoted_request(maximum)
         && current.reserved_storage_bytes == maximum
@@ -42,8 +46,12 @@ fn state(current: &ActiveChunk) -> Result<(), PromotionRejection> {
     if current.cancelling || current.io_finished() || current.store_action.is_none() {
         return Err(PromotionRejection::Unavailable);
     }
-    if current.response_opened {
-        return Err(PromotionRejection::ResponseOpened);
+    match current.response_phase {
+        super::super::ResponsePhase::Opened => return Err(PromotionRejection::ResponseOpened),
+        super::super::ResponsePhase::AwaitingHeaders | super::super::ResponsePhase::Observed => {
+            return Err(PromotionRejection::ResponseNotPromotable);
+        }
+        super::super::ResponsePhase::Promotable(_) => {}
     }
     if current.promotion_authorization.is_some() {
         return Err(PromotionRejection::AlreadyActivated);
@@ -52,7 +60,11 @@ fn state(current: &ActiveChunk) -> Result<(), PromotionRejection> {
 }
 
 fn grant(current: &ActiveChunk, target: &PromotionTarget) -> Result<(), PromotionRejection> {
-    if current.launched_request.promotion() != Some(target.grant) {
+    if !super::super::response_phase::grant_matches(
+        current.response_phase,
+        current.launched_request,
+        target.grant,
+    ) {
         return Err(PromotionRejection::GrantMismatch);
     }
     Ok(())
@@ -63,7 +75,7 @@ fn delta(current: &ActiveChunk, target: &PromotionTarget) -> Result<(), Promotio
         .grant
         .maximum_bytes
         .checked_sub(current.reserved_storage_bytes);
-    if bytes.is_none_or(|bytes| bytes == 0) {
+    if bytes.is_none() {
         return Err(PromotionRejection::InvalidDelta);
     }
     Ok(())

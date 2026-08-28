@@ -2,10 +2,12 @@ mod active;
 mod allocation;
 mod builder;
 mod candidate;
+mod continuation;
 mod hls;
 mod hls_prediction;
 mod ladders;
 mod prediction;
+mod policies;
 mod quality;
 mod request_profile;
 mod value;
@@ -20,11 +22,10 @@ use crate::adaptive::{
 use crate::origin_model::OriginModel;
 use crate::{ActionId, PostId};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum HlsGenerationPolicy {
-    LegacyWholeStage,
-    BoundedObjectCursor,
-}
+pub(crate) use policies::{
+    HlsGenerationPolicy, OriginAdmissionGenerationPolicy, PromotionGenerationPolicy,
+    WarpGenerationPolicies,
+};
 
 #[derive(Clone, Copy)]
 pub(crate) struct WarpGenerationInput<'a> {
@@ -120,20 +121,33 @@ impl GeneratedActions {
 
 pub struct WarpActionGenerator;
 
+#[cfg(test)]
+pub(crate) fn predicted_ready_gain(
+    candidate: &crate::adaptive::CandidateSnapshot,
+    action: &super::ActionKind,
+    direct_playback_blocked: bool,
+) -> u64 {
+    prediction::ready_gain(
+        candidate,
+        action,
+        &crate::adaptive::AllocationPlan::default(),
+        direct_playback_blocked,
+    )
+}
+
 impl WarpActionGenerator {
     pub(super) fn generate_with_policy(
         input: WarpGenerationInput<'_>,
-        hls_policy: HlsGenerationPolicy,
+        policies: WarpGenerationPolicies,
     ) -> GeneratedActions {
-        let mut builder =
-            builder::Builder::new(input.snapshot, input.base, input.origins, input.context);
+        let mut builder = builder::Builder::new(input, policies);
         for candidate in &input.snapshot.candidates {
             if candidate.retrieval_eligible {
                 builder.add_candidate(candidate);
             }
         }
         for candidate in &input.snapshot.hls_candidates {
-            hls::add(&mut builder, candidate, hls_policy);
+            hls::add(&mut builder, candidate, policies.hls);
         }
         builder.add_detached_active();
         builder.finish()

@@ -21,11 +21,14 @@ final class WarpFeedDeviceRuntime {
     int eventCount = 3,
     ProgressiveOriginValidator validator = ProgressiveOriginValidator.none,
     DataUsageLevel dataUsage = DataUsageLevel.balanced,
-    Duration responseChunkDelay = const Duration(milliseconds: 4),
+    ProgressiveOriginPacing pacing =
+        const ProgressiveOriginPacing.perResponseDelay(
+          Duration(milliseconds: 4),
+        ),
   }) async {
     return transferDeviceResourceOwnership(
       acquire: () => ProgressiveDeviceResources.start(
-        responseChunkDelay: responseChunkDelay,
+        pacing: pacing,
         validator: validator,
       ),
       build: (resources) =>

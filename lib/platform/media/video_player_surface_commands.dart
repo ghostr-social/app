@@ -1,6 +1,18 @@
 part of 'video_player_playback_port.dart';
 
 extension _VideoPlayerSurfaceCommands on _VideoPlayerSurfaceState {
+  void _leaveActivePlayback() {
+    if (widget.request.keepWarmWhenInactive) {
+      _endObservation(_controller?.value);
+      _playbackSession = null;
+      _playbackPhase = null;
+      _resetActivationPresentation();
+      _syncPlayback();
+      return;
+    }
+    _coverPlayback();
+  }
+
   void _coverPlayback() {
     _loadRequested = false;
     _cancelPendingLoad();

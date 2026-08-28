@@ -22,6 +22,7 @@ pub(crate) enum PromotionRejection {
     GrantMismatch,
     InvalidDelta,
     Missing,
+    ResponseNotPromotable,
     ResponseOpened,
     StaleIdentity,
     Unavailable,

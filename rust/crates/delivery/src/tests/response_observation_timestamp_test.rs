@@ -12,7 +12,10 @@ const SOURCE: &str = "https://media.example/video.mp4";
 fn response_event_keeps_the_network_boundary_timestamp() {
     let observed = ObservedResponse::at_network_boundary(attempt(), response());
 
-    assert_eq!(observed.response.evidence().observed.observed_at_ms, 424_242);
+    assert_eq!(
+        observed.response.evidence().observed.observed_at_ms,
+        424_242
+    );
     assert_eq!(observed.response.evidence().observed.order, 7);
 }
 

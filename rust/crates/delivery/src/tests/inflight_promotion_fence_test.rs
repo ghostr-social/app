@@ -4,7 +4,7 @@ use crate::manager::inflight::PromotionRejection;
 use ghostr_engine::{ActionId, PostId};
 
 #[tokio::test]
-async fn latent_grant_cannot_authorize_headers_or_be_reused_after_open() {
+async fn direct_authorization_stages_headers_but_needs_selected_promotion() {
     let mut fixture = PromotionFixture::new(100).await;
     assert!(!fixture.active.authorizes_response(
         &fixture.attempt,
@@ -12,31 +12,32 @@ async fn latent_grant_cannot_authorize_headers_or_be_reused_after_open() {
         &response(),
         50
     ));
-    assert!(matches!(
-        fixture.active.preflight_promotion(&fixture.target, 50),
-        Err(PromotionRejection::ResponseOpened)
-    ));
+    assert!(fixture
+        .active
+        .preflight_promotion(&fixture.target, 50)
+        .is_ok());
     assert!(!fixture.token.is_cancelled());
     fixture.cleanup().await;
 }
 
 #[tokio::test]
-async fn observed_headers_fence_promotion_without_admitting_body_resources() {
+async fn observed_promotable_headers_publish_an_opportunity_without_admitting_body() {
     let mut fixture = PromotionFixture::new(100).await;
     let before = fixture.active.actions().remove(0);
 
     assert!(fixture
         .active
-        .observe_headers(&fixture.attempt, response().observation()));
+        .observe_headers(&fixture.attempt, &response(), 50));
 
     let after = fixture.active.actions().remove(0);
     assert_eq!(after.request(), before.request());
     assert_eq!(after.effective_bytes(), before.effective_bytes());
     assert_eq!(after.reserved_storage_bytes(), before.reserved_storage_bytes());
-    assert!(matches!(
-        fixture.active.preflight_promotion(&fixture.target, 50),
-        Err(PromotionRejection::ResponseOpened)
-    ));
+        assert!(fixture
+        .active
+        .preflight_promotion(&fixture.target, 50)
+        .is_ok());
+
     fixture.cleanup().await;
 }
 

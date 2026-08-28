@@ -1,7 +1,5 @@
 use crate::probe::pool::MetadataProbePool;
-use crate::tests::warp_head_probe_context_fixture::{
-    generates_head, plan_at, state_with_size,
-};
+use crate::tests::warp_head_probe_context_fixture::{generates_head, plan_at, state_with_size};
 use ghostr_engine::catalog::{HttpObservation, LearnedFacts};
 use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_engine::PostId;
@@ -12,7 +10,10 @@ const SOURCE: &str = "https://media.example/video.mp4";
 fn planner_reprobes_after_redirect_changes_with_the_same_validator() {
     let post = PostId::new("post");
     let mut state = state_with_size(post.clone(), SOURCE, 16);
-    let identity = state.catalog().transfer_identity(&post, SOURCE).expect("valid test fixture");
+    let identity = state
+        .catalog()
+        .transfer_identity(&post, SOURCE)
+        .expect("valid test fixture");
     assert!(state.catalog_mut().learn_head_observation_for(
         &identity,
         observation(Some(true), "https://cdn-a.example/video.mp4", 1)

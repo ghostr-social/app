@@ -127,6 +127,11 @@ impl OriginContext {
         self
     }
 
+    pub fn with_planned_bytes(mut self, bytes: u64) -> Self {
+        self.size = SizeBucket::of(bytes);
+        self
+    }
+
     pub fn with_observed_at_ms(mut self, at_ms: u64) -> Self {
         self.time_of_day = TimeOfDay::at_utc_ms(at_ms);
         self

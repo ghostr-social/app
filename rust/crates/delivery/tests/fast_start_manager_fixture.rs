@@ -1,7 +1,7 @@
 use ghostr_delivery::delivery_events::{FocusItem, PlayerPreparationAuthority};
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::representation::RepresentationBinding;
-use ghostr_partial_store::partial_range_store::{ContentRevision, PartialRangeStore};
+use ghostr_partial_store::partial_range_store::{ContentEpoch, PartialRangeStore};
 
 pub async fn seed(
     store: &PartialRangeStore,
@@ -28,8 +28,8 @@ pub async fn seed(
 
 pub fn authority(
     binding: RepresentationBinding,
-    revision: ContentRevision,
+    epoch: ContentEpoch,
 ) -> PlayerPreparationAuthority {
-    PlayerPreparationAuthority::try_new(binding.post().clone(), binding, revision, "asset")
+    PlayerPreparationAuthority::try_new(binding.post().clone(), binding, epoch, "asset")
         .expect("valid test fixture")
 }

@@ -13,6 +13,7 @@ extension on _HlsVideoPlaybackSurfaceState {
           videoId: widget.videoId,
           isActive: widget.isActive,
           mode: widget.mode,
+          keepWarmWhenInactive: widget.request.keepWarmWhenInactive,
           preview: widget.request.preview,
           onPlaybackMediaReleased: () {
             final released = _releaseRenderedLease(lease);

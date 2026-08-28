@@ -1,5 +1,9 @@
 use super::{hedge, ChunkAttempt, CompletionStatus, InFlightChunks};
 
+#[cfg(test)]
+#[path = "network_reservation/exploration_admission_test.rs"]
+mod exploration_admission_test;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct NetworkReservation {
     committed_bytes: u64,
@@ -30,6 +34,12 @@ impl FinishedAction {
 
     pub(crate) const fn network_reservation(&self) -> Option<NetworkReservation> {
         self.network_reservation
+    }
+
+    pub(crate) fn exploration_admitted(&self) -> bool {
+        self.admission_claim
+            .as_ref()
+            .is_some_and(ghostr_engine::origin_model::AdmissionClaim::is_exploration)
     }
 
     pub(crate) fn take_admission_claim(

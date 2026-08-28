@@ -72,20 +72,20 @@ async fn derived_fast_start_candidate_waits_for_fresh_exact_player_success() {
         .binding()
         .expect("valid test fixture")
         .clone();
-    let current_revision = current_snapshot.revision();
-    let input_revision = input_snapshot.revision();
+    let current_epoch = current_snapshot.content_epoch();
+    let input_epoch = input_snapshot.content_epoch();
     report_ready(
         &harness.handle,
-        authority(current_binding, current_revision),
+        authority(current_binding, current_epoch),
         1,
     )
     .await;
-    report_failed(&harness.handle, authority(input.clone(), input_revision), 1).await;
+    report_failed(&harness.handle, authority(input.clone(), input_epoch), 1).await;
 
     let transformed = wait_for_transform(&store, &input, &harness.handle).await;
     let post = PostId::new("post");
     let structural = wait_for_state(&harness.handle, &post, 0, false).await;
-    report_ready(&harness.handle, authority(input, input_revision), 2).await;
+    report_ready(&harness.handle, authority(input, input_epoch), 2).await;
     let _ = harness
         .handle
         .update_network_profile(NetworkProfile::default());
@@ -93,7 +93,7 @@ async fn derived_fast_start_candidate_waits_for_fresh_exact_player_success() {
     let derived = transformed.binding().expect("valid test fixture").clone();
     report_ready(
         &harness.handle,
-        authority(derived, transformed.revision()),
+        authority(derived, transformed.content_epoch()),
         3,
     )
     .await;

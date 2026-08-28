@@ -4,9 +4,9 @@ use ghostr_engine::adaptive::{
     PreemptionAuthority, RetrievalRequest, WholeBodyContract, WholeFetchReason,
 };
 use ghostr_engine::origin_model::{
-    Admission, DecisionMode, ErrorReason, MediaClass, NetworkClass, OriginAttemptContext,
-    OriginAttemptProfile, OriginModel, OriginObservation, OriginQuery, OriginRequestProfile,
-    RequestMethod,
+    Admission, DecisionMode, ErrorReason, MediaClass, NetworkClass, OriginAdmissionIntent,
+    OriginAttemptContext, OriginAttemptProfile, OriginModel, OriginObservation, OriginQuery,
+    OriginRequestProfile, RequestMethod,
 };
 use ghostr_engine::ByteRange;
 
@@ -34,6 +34,24 @@ fn a_capped_request_keeps_forecast_identity_but_reports_executed_transport() {
 }
 
 #[test]
+fn normal_exploration_preserves_the_planners_exact_byte_decision() {
+    let mut transfer = planned_transfer("whole", "media.example", PreemptionAuthority::Transition);
+    let request = RetrievalRequest::FetchWhole {
+        contract: WholeBodyContract::Capped {
+            maximum_bytes: 900_000,
+        },
+        reason: WholeFetchReason::DirectCrossover,
+    };
+    transfer.retrieval = request;
+    transfer.request.chunk.range = request.requested_bytes();
+
+    let admitted = apply(transfer, &Admission::Exploration).expect("exploration request");
+
+    assert_eq!(admitted.retrieval, request);
+    assert_eq!(admitted.request.chunk.range, request.requested_bytes());
+}
+
+#[test]
 fn a_successful_prefix_recovery_closes_the_planners_circuit() {
     let mut transfer = planned_transfer("prefix", "media.example", PreemptionAuthority::Transition);
     let bytes = ByteRange::new(0, 65_536);
@@ -57,7 +75,12 @@ fn a_successful_prefix_recovery_closes_the_planners_circuit() {
         model.observe(&failure);
     }
     let (admission, claim) = model
-        .claim(&planned_query, 2_003, DecisionMode::Normal)
+        .claim(
+            &planned_query,
+            2_003,
+            DecisionMode::Normal,
+            OriginAdmissionIntent::Delivery,
+        )
         .into_parts();
     assert!(matches!(admission, Admission::RecoveryProbe { .. }));
     let capped = apply(transfer, &admission).expect("recovery request");

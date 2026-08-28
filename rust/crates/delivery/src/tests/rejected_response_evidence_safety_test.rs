@@ -1,6 +1,5 @@
 use crate::chunk::downloader::{
-    HttpResponseEvidence, OpenedResponse, ResponseObservation, ResponseRejection,
-    ResponseWriteMode,
+    HttpResponseEvidence, OpenedResponse, ResponseObservation, ResponseRejection, ResponseWriteMode,
 };
 use crate::tests::response_evidence_fixture::{etag, wait_for_validator, SOURCE};
 use crate::tests::timeline_manager_fixture::TimelineManagerFixture;
@@ -10,7 +9,8 @@ use ghostr_engine::evidence::{EvidenceTime, EvidenceValidator};
 #[tokio::test]
 async fn rejected_error_page_cannot_replace_media_validator() {
     let (parser, mut started) = GatedTimelineParser::new(None, 1);
-    let mut fixture = TimelineManagerFixture::new(std::sync::Arc::<GatedTimelineParser>::clone(&parser)).await;
+    let mut fixture =
+        TimelineManagerFixture::new(std::sync::Arc::<GatedTimelineParser>::clone(&parser)).await;
     fixture.focus();
     assert!(fixture.step().await);
     assert_eq!(started.recv().await, Some(0));
@@ -34,7 +34,9 @@ async fn rejected_error_page_cannot_replace_media_validator() {
         fixture.worker.validator_for_test(&fixture.post, SOURCE),
         Some(etag("v1"))
     );
-    tokio::fs::remove_dir_all(fixture.root).await.expect("valid test fixture");
+    tokio::fs::remove_dir_all(fixture.root)
+        .await
+        .expect("valid test fixture");
 }
 
 fn accepted() -> OpenedResponse {

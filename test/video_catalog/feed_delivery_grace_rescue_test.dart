@@ -41,15 +41,15 @@ void main() {
       updates.publish(posts[2], ready: true, etaMs: 0);
       cubit.pageChanged(1);
       clock.flushMicrotasks();
-      expect((cubit.state as FeedLoaded).posts.first.id.value, 'p0');
+      expect((cubit.state as FeedLoaded).roster.active.id.value, 'p0');
 
       clock.elapse(const Duration(milliseconds: 250));
       history.release.complete();
       clock.flushMicrotasks();
-      expect((cubit.state as FeedLoaded).posts.first.id.value, 'p1');
+      expect((cubit.state as FeedLoaded).roster.active.id.value, 'p1');
       clock.elapse(const Duration(milliseconds: 250));
 
-      expect((cubit.state as FeedLoaded).posts.first.id.value, 'p2');
+      expect((cubit.state as FeedLoaded).roster.active.id.value, 'p2');
       cubit.close();
       updates.close();
       clock.flushMicrotasks();

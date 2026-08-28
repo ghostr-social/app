@@ -1,5 +1,5 @@
 use super::InFlightChunks;
-use ghostr_engine::adaptive::RetrievalRequest;
+use ghostr_engine::adaptive::{PromotionOpportunity, RetrievalRequest};
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_engine::{ActionId, ByteRange, PostId};
 
@@ -11,6 +11,7 @@ pub(crate) struct ActiveAction {
     request: RetrievalRequest,
     effective_bytes: ByteRange,
     reserved_storage_bytes: u64,
+    promotion_opportunity: Option<PromotionOpportunity>,
     committed_until_ms: u64,
     launched_at_ms: u64,
     cancelling: bool,
@@ -36,6 +37,10 @@ impl ActiveAction {
 
     pub(crate) fn reserved_storage_bytes(&self) -> u64 {
         self.reserved_storage_bytes
+    }
+
+    pub(crate) fn promotion_opportunity(&self) -> Option<PromotionOpportunity> {
+        self.promotion_opportunity
     }
 
     pub(crate) fn cancelling(&self) -> bool {
@@ -70,6 +75,7 @@ impl InFlightChunks {
                 request: active.effective_request,
                 effective_bytes: active.effective_bytes,
                 reserved_storage_bytes: active.reserved_storage_bytes,
+                promotion_opportunity: active.response_phase.opportunity(),
                 committed_until_ms: active.committed_until_ms,
                 launched_at_ms: active.launched_at_ms,
                 cancelling: active.cancelling,

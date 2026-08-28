@@ -30,10 +30,14 @@ impl SelectedCommit {
         Some((action.node.resources, action.node.authorized_resources()))
     }
 
-    pub(super) fn request_profile(
+    pub(super) fn attempt_profile(
         &self,
-    ) -> Option<ghostr_engine::origin_model::OriginRequestProfile> {
-        self.action.as_ref()?.node.request_profile()
+    ) -> Option<ghostr_engine::origin_model::OriginAttemptProfile> {
+        let node = &self.action.as_ref()?.node;
+        node.request_profile().map(|profile| {
+            ghostr_engine::origin_model::OriginAttemptProfile::new(profile)
+                .with_admission_intent(node.origin_admission_intent())
+        })
     }
 
     pub(crate) fn commit(

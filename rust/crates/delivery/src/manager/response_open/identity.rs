@@ -2,7 +2,7 @@ use super::{ChunkAttempt, OpenedResponse, StoreAction};
 use crate::manager::DeliveryWorker;
 
 impl DeliveryWorker {
-    pub(super) async fn response_identity_current(
+    pub(in crate::manager) async fn response_identity_current(
         &mut self,
         attempt: &ChunkAttempt,
         action: &StoreAction,
@@ -13,6 +13,7 @@ impl DeliveryWorker {
             .downloads
             .authorizes_response(attempt, action, response, observed_at_ms)
         {
+            self.downloads.reject_response(attempt);
             return false;
         }
         if self.transfer_binding_is_current(attempt.identity()).await {

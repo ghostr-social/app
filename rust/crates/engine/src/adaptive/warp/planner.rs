@@ -20,8 +20,8 @@ pub(crate) use search_replay::{SearchReplayInput, SearchReplayMode};
 pub use types::{SemanticDecision, WarpPlannerConfig, WarpPlannerInput, WarpPlanningDecision};
 
 use super::{
-    ActionFrontier, DigitalTwin, GeneratedAction, HlsGenerationPolicy, NetworkTokenBucket,
-    ResourceCost, ShadowPriceController, WarpActionGenerator, WarpGenerationInput,
+    ActionFrontier, DigitalTwin, GeneratedAction, NetworkTokenBucket, ResourceCost,
+    ShadowPriceController, WarpActionGenerator, WarpGenerationInput, WarpGenerationPolicies,
 };
 
 pub struct WarpPlanner {
@@ -46,20 +46,20 @@ impl WarpPlanner {
     }
 
     pub fn plan(&mut self, input: WarpPlannerInput<'_>) -> WarpPlanningDecision {
-        self.plan_with_hls_policy(input, HlsGenerationPolicy::BoundedObjectCursor)
+        self.plan_with_generation_policies(input, WarpGenerationPolicies::current())
     }
 
-    fn plan_with_hls_policy(
+    fn plan_with_generation_policies(
         &mut self,
         input: WarpPlannerInput<'_>,
-        hls_policy: HlsGenerationPolicy,
+        policies: WarpGenerationPolicies,
     ) -> WarpPlanningDecision {
-        let planner_replay = PlannerReplayCapsule::capture(&input, self, hls_policy);
+        let planner_replay = PlannerReplayCapsule::capture(&input, self, policies);
         feedback::observe(self, &input);
         self.prepare_network(&input);
         let generation =
             WarpGenerationInput::new(input.snapshot, input.base, input.origins, input.context);
-        let generated = WarpActionGenerator::generate_with_policy(generation, hls_policy);
+        let generated = WarpActionGenerator::generate_with_policy(generation, policies);
         let frontier = ActionFrontier::prune(
             generated
                 .actions

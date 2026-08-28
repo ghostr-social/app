@@ -4,7 +4,28 @@ import 'package:ghostr/features/video_catalog/domain/use_cases/feed_interaction_
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_pagination.dart';
 import 'package:ghostr/features/video_catalog/domain/use_cases/feed_repost_reconciler.dart';
 import 'package:ghostr/features/video_catalog/domain/video_media_identity.dart';
+import 'package:ghostr/features/video_catalog/domain/video_interaction_target.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
+
+typedef _FeedResyncLists = ({
+  List<VideoPost> refreshed,
+  List<VideoPost> eligible,
+});
+
+final class FeedSessionResync {
+  FeedSessionResync._(
+    _FeedResyncLists lists,
+    this.retainWatched,
+    Iterable<VideoInteractionTarget> retainedHeldTargets,
+  ) : refreshed = List.unmodifiable(lists.refreshed),
+      eligible = List.unmodifiable(lists.eligible),
+      retainedHeldTargets = Set.unmodifiable(retainedHeldTargets);
+
+  final List<VideoPost> refreshed;
+  final List<VideoPost> eligible;
+  final bool retainWatched;
+  final Set<VideoInteractionTarget> retainedHeldTargets;
+}
 
 /// The posts one viewing session holds, with the viewer's own interactions
 /// layered on top of them.
@@ -16,6 +37,7 @@ import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 final class FeedSession {
   final _interactions = FeedInteractionReconciler();
   final _reposts = FeedRepostReconciler();
+  final _visited = <VideoInteractionTarget>{};
   var _held = const <VideoPost>[];
 
   /// Every post the session holds, on screen or not.
@@ -24,32 +46,60 @@ final class FeedSession {
   /// A fresh feed: the viewer starts at the top of what arrived, with
   /// later same-video repeats dropped.
   FeedRoster loaded(List<VideoPost> fresh) {
+    _visited.clear();
     return _holding(FeedRoster(_reconciled(distinctVideoPosts(fresh), _held)));
   }
 
-  /// A refresh: [visible] keeps its order and the viewer keeps their place.
-  FeedRoster resynced(
-    FeedRoster visible,
+  FeedSessionResync captureResync(
     List<VideoPost> refreshed, {
     required List<VideoPost> eligible,
     required bool retainWatched,
   }) {
+    return FeedSessionResync._(
+      (refreshed: refreshed, eligible: eligible),
+      retainWatched,
+      _visited,
+    );
+  }
+
+  FeedRoster previewResynced(FeedRoster visible, FeedSessionResync refresh) {
+    return visible.resynced(
+      refresh.refreshed,
+      eligible: refresh.eligible,
+      retainWatched: refresh.retainWatched,
+      retainedHeldTargets: refresh.retainedHeldTargets,
+    );
+  }
+
+  /// A refresh keeps the captured traversal branch and the viewer's place.
+  FeedRoster resynced(FeedRoster visible, FeedSessionResync refresh) {
     final current = visible.posts;
     return _holding(
       visible.resynced(
-        _reconciled(refreshed, current),
-        eligible: _reconciled(eligible, current),
-        retainWatched: retainWatched,
+        _reconciled(refresh.refreshed, current),
+        eligible: _reconciled(refresh.eligible, current),
+        retainWatched: refresh.retainWatched,
+        retainedHeldTargets: refresh.retainedHeldTargets,
       ),
     );
   }
 
-  FeedRoster movedTo(
+  /// Records a video that this surface actually presented to the viewer.
+  FeedRoster presentedAt(
     FeedRoster visible,
     int index, {
-    required bool forgetPrevious,
+    required FeedNavigationHistory history,
   }) {
-    return _holding(visible.movedTo(index, forgetPrevious: forgetPrevious));
+    _rememberTraversal(visible, index, history);
+    return _holding(visible.movedTo(index, history: history));
+  }
+
+  FeedRoster positionedAt(
+    FeedRoster visible,
+    int index, {
+    required FeedNavigationHistory history,
+  }) {
+    return _holding(visible.movedTo(index, history: history));
   }
 
   /// An older page: the posts it adds beyond what the viewer already has,
@@ -103,7 +153,7 @@ final class FeedSession {
 
   /// Forgets every post published by a blocked creator.
   void dropCreator(ProfileId creator) {
-    _held = FeedRoster(_held).withoutCreator(creator).posts;
+    _holding(FeedRoster(_held).withoutCreator(creator));
   }
 
   List<VideoPost> _reconciled(
@@ -119,6 +169,23 @@ final class FeedSession {
 
   FeedRoster _holding(FeedRoster roster) {
     _held = roster.posts;
+    final retained = roster.posts.map(VideoInteractionTarget.fromPost).toSet();
+    _visited.retainWhere(retained.contains);
     return roster;
+  }
+
+  void _rememberTraversal(
+    FeedRoster visible,
+    int index,
+    FeedNavigationHistory history,
+  ) {
+    final maximum = history.maximumPrevious;
+    if (maximum == null) return;
+    RangeError.checkValidIndex(index, visible.posts, 'index');
+    _visited.add(VideoInteractionTarget.fromPost(visible.active));
+    _visited.add(VideoInteractionTarget.fromPost(visible.posts[index]));
+    while (_visited.length > maximum + 1) {
+      _visited.remove(_visited.first);
+    }
   }
 }

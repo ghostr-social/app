@@ -1,7 +1,7 @@
 use crate::manager::failure::FailureClass;
 use crate::manager::retry::{HlsRootAvailability, Retry, RetryBook, RetryPolicy, Source};
-use ghostr_engine::PostId;
 use core::time::Duration;
+use ghostr_engine::PostId;
 
 #[tokio::test(start_paused = true)]
 async fn hls_root_availability_is_atomic_at_retirement_expiry() {
@@ -14,7 +14,10 @@ async fn hls_root_availability_is_atomic_at_retirement_expiry() {
     });
     for root in &roots {
         let source = Source::new(post.clone(), root);
-        assert_eq!(retry.note_hls_failure(source, FailureClass::Transient), Retry::GiveUp);
+        assert_eq!(
+            retry.note_hls_failure(source, FailureClass::Transient),
+            Retry::GiveUp
+        );
     }
 
     assert_wait(&retry.hls_root_availability(&post, &roots), 100);

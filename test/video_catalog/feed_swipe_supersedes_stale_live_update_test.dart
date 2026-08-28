@@ -47,15 +47,16 @@ void main() {
     );
     await source.refreshStarted.future;
 
-    cubit.pageChanged(1);
+    cubit.pageChanged((cubit.state as FeedLoaded).activeIndex + 1);
     await pumpEventQueue();
-    cubit.pageChanged(1);
+    cubit.pageChanged((cubit.state as FeedLoaded).activeIndex + 1);
     await pumpEventQueue();
     source.releaseRefresh.complete();
     await pumpEventQueue();
 
     final loaded = cubit.state as FeedLoaded;
-    expect(loaded.posts.map((post) => post.id.value), ['p2']);
+    expect(loaded.roster.active.id.value, 'p2');
+    expect(loaded.posts.map((post) => post.id.value), ['p0', 'p1', 'p2']);
   });
 }
 

@@ -1,6 +1,10 @@
 use crate::manager::DeliveryWorker;
 use ghostr_engine::{ActionId, ByteRange, ChunkId, PostId};
 
+mod covered;
+mod promotion;
+mod rejection;
+
 impl DeliveryWorker {
     pub(crate) fn register_response_attempt_for_test(
         &mut self,

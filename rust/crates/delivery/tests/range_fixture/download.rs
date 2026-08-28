@@ -1,11 +1,17 @@
-use core::time::Duration;
 use ghostr_delivery::chunk::cancel::CancelToken;
 use ghostr_delivery::chunk::downloader::{
     download_chunk_observed, ChunkExecution, ChunkResult, ChunkSink, ChunkSpec, DownloadTraffic,
-    OpenedResponse, ResponseObservation,
 };
 use ghostr_delivery::debug::network::NetworkThrottle;
 use ghostr_engine::host_stats::HostStats;
+
+mod traffic;
+use traffic::IgnoreTraffic;
+pub use traffic::ObservationTraffic;
+
+pub fn rejection_traffic() -> impl DownloadTraffic {
+    traffic::RejectTraffic
+}
 
 pub struct DownloadContext<'a> {
     stats: &'a mut HostStats,
@@ -52,33 +58,4 @@ pub async fn download_chunk_with_traffic(
     )
     .await
     .result
-}
-
-#[derive(Default)]
-pub struct ObservationTraffic {
-    observation: Option<ResponseObservation>,
-}
-
-impl ObservationTraffic {
-    pub const fn observation(&self) -> Option<ResponseObservation> {
-        self.observation
-    }
-}
-
-impl DownloadTraffic for ObservationTraffic {
-    fn opened(&mut self, _ttfb: Duration) {}
-
-    fn wrote(&mut self, _bytes: u64) {}
-
-    fn response_observed(&mut self, response: OpenedResponse) {
-        self.observation = Some(response.observation());
-    }
-}
-
-struct IgnoreTraffic;
-
-impl DownloadTraffic for IgnoreTraffic {
-    fn opened(&mut self, _ttfb: Duration) {}
-
-    fn wrote(&mut self, _bytes: u64) {}
 }

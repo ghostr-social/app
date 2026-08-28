@@ -4,6 +4,8 @@ use crate::adaptive::{ActionNode, ResourcePrices};
 use crate::PostId;
 use std::collections::BTreeSet;
 
+mod timing;
+
 #[derive(Clone, Copy)]
 pub(super) struct SimulationRun {
     state: TwinState,
@@ -81,9 +83,12 @@ impl ParticleState {
     }
 
     fn apply(&mut self, run: SimulationRun, action: &ActionNode, sample: Sample) {
-        self.elapsed_ms = self
-            .elapsed_ms
-            .saturating_add(completion_ms(run.state, action, sample));
+        self.elapsed_ms = self.elapsed_ms.saturating_add(timing::completion_ms(
+            run.state,
+            action,
+            sample.quantile_bps,
+            sample.success,
+        ));
         self.score = self
             .score
             .saturating_add(action.value.total(action.resources, run.prices));
@@ -158,33 +163,6 @@ fn sampled_watch_ms(random: u64, swipe_rate: u16, maximum_ms: u64) -> u64 {
     mean.saturating_mul(centered_bps)
         .saturating_div(10_000)
         .min(maximum_ms)
-}
-
-fn completion_ms(state: TwinState, action: &ActionNode, sample: Sample) -> u64 {
-    let times = action.forecast.completion;
-    let fallback = state.rtt_ms.saturating_add(
-        action.resources.network_bytes.saturating_mul(8_000) / state.throughput_bps.max(1),
-    );
-    let expected = times.expected_ms.max(fallback);
-    let sampled = interpolate(
-        expected,
-        times.p95_ms.max(expected),
-        times.p99_ms.max(expected),
-        sample.quantile_bps,
-    );
-    if sample.success && action.resources.requests <= state.request_slots {
-        sampled
-    } else {
-        sampled.max(times.cvar_ms).saturating_mul(2)
-    }
-}
-
-fn interpolate(expected: u64, p95: u64, p99: u64, quantile: u16) -> u64 {
-    match quantile {
-        0..=4_999 => expected.saturating_mul(50 + u64::from(quantile) / 100) / 100,
-        5_000..=9_499 => expected + (p95 - expected) * u64::from(quantile - 5_000) / 4_500,
-        _ => p95 + (p99 - p95) * u64::from(quantile - 9_500) / 500,
-    }
 }
 
 fn mix(mut value: u64) -> u64 {

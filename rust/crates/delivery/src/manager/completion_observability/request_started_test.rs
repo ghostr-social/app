@@ -13,6 +13,7 @@ fn a_transport_failure_after_send_still_counts_the_request() {
         outcome: Err(anyhow::anyhow!("response headers timed out")),
         received_bytes: 0,
         origin: None,
+        open_body: None,
         request_started: true,
         whole_body_completion: None,
         response_evidence: None,

@@ -82,6 +82,7 @@ fn active_whole(maximum_bytes: u64) -> InFlightAction {
         request,
         effective_bytes: request.requested_bytes(),
         reserved_storage_bytes: maximum_bytes,
+        promotion_opportunity: None,
         source: "https://origin.example/media".to_owned(),
         committed_until_ms: 20_000,
         identity_current: true,

@@ -2,6 +2,7 @@ use crate::delivery_events::{DecisionToken, LegacyDecisionPublication, WarpDecis
 use crate::evaluation::{BudgetMetricEvent, ReadinessMetricEvent, TransferMetricEvent};
 use crate::manager::plan::PlannedWork;
 use crate::manager::DeliveryWorker;
+use ghostr_engine::adaptive::ReserveCandidateState;
 
 impl DeliveryWorker {
     pub(super) fn observe_plan(
@@ -94,6 +95,12 @@ pub(super) fn readiness_event_for(
     scheduled_work: bool,
     observed_at_ms: u64,
 ) -> ReadinessMetricEvent {
+    let slot_claimed = reserve.candidates.iter().any(|candidate| {
+        matches!(
+            &candidate.state,
+            ReserveCandidateState::InFlight | ReserveCandidateState::Planned { .. }
+        )
+    });
     let weighted = u128::from(reserve.ready_coverage_ms).saturating_mul(u128::from(
         10_000_u16.saturating_sub(reserve.underflow_risk_bps),
     )) / 10_000;
@@ -103,8 +110,8 @@ pub(super) fn readiness_event_for(
         probability_weighted_reserve_millis: weighted.min(u128::from(u64::MAX)) as u64,
         ready_coverage_ms: reserve.ready_coverage_ms,
         // TODO: Emit calibration only after the forecast horizon has a matched outcome.
-        protected_slot_claimed: reserve.protected > 0,
-        protected_slot_used: reserve.protected > 0 && scheduled_work,
+        protected_slot_claimed: slot_claimed,
+        protected_slot_used: slot_claimed && scheduled_work,
         ..ReadinessMetricEvent::default()
     }
 }

@@ -1,17 +1,18 @@
 use crate::delivery_events::DecisionResolution;
-use crate::evaluation::{AdaptationMetricEvent, IntegrityMetricEvent, TransferMetricEvent};
+use crate::evaluation::{IntegrityMetricEvent, TransferMetricEvent};
 use crate::manager::completion_decision;
 use crate::manager::inflight::{CompletionStatus, FinishedAction};
 use crate::manager::transfers::ChunkDone;
 use crate::manager::DeliveryWorker;
 use ghostr_engine::adaptive::ResourceCost;
-use ghostr_engine::host_stats::host_of;
-use ghostr_engine::origin_model::{AdaptationState, DecisionMode, OriginOutcome};
 
+mod adaptation;
 mod outcome;
 mod policy_limit;
 #[cfg(test)]
 pub(crate) mod tests;
+#[cfg(test)]
+use adaptation::exploration_cost;
 use outcome::{decision_outcome, result_bytes};
 
 impl DeliveryWorker {
@@ -34,44 +35,16 @@ impl DeliveryWorker {
         );
         let evaluation = self.commands.evaluation();
         evaluation.transfer(transfer_event(done, status, resolution.as_ref()));
-        if let Some(event) = self.adaptation_event(done) {
+        if let Some(event) = adaptation::event(
+            self.keeper.stats().origin_model(),
+            done,
+            finished.exploration_admitted(),
+        ) {
             evaluation.adaptation(&event);
         }
         if let Some(event) = integrity_event(done) {
             evaluation.integrity(event);
         }
-    }
-
-    fn adaptation_event(&self, done: &ChunkDone) -> Option<AdaptationMetricEvent> {
-        let observation = done.origin.as_ref()?;
-        let estimate = self.keeper.stats().origin_model().estimate(
-            &observation.query,
-            observation.observed_at_ms,
-            DecisionMode::Normal,
-        );
-        let bytes = result_bytes(done);
-        let exploring = estimate.effective_samples < 8.0;
-        let failed = matches!(observation.outcome, OriginOutcome::Failure(_));
-        let regret_ms = observation
-            .ttfb_ms
-            .map_or(0, |actual| actual.saturating_sub(estimate.ttfb_ms.p50));
-        Some(AdaptationMetricEvent {
-            origin: host_of(observation.query.url()).unwrap_or_else(|| "unavailable".into()),
-            observed_at_ms: observation.observed_at_ms,
-            adapting: estimate.adaptation == AdaptationState::Short,
-            predicted_success_bps: probability_bps(estimate.success.mean),
-            succeeded: success_observation(observation.outcome),
-            latency_quantiles_on_time: observation.ttfb_ms.map(|actual| {
-                [
-                    actual <= estimate.ttfb_ms.p50,
-                    actual <= estimate.ttfb_ms.p95,
-                    actual <= estimate.ttfb_ms.p99,
-                ]
-            }),
-            regret_micros: regret_ms.saturating_mul(1_000),
-            exploration_bytes: if exploring { bytes } else { 0 },
-            failed_exploration_bytes: if exploring && failed { bytes } else { 0 },
-        })
     }
 }
 
@@ -90,18 +63,6 @@ fn actual_resources(done: &ChunkDone) -> ResourceCost {
         0,
         u16::from(done.request_started),
     )
-}
-
-fn success_observation(outcome: OriginOutcome) -> Option<bool> {
-    match outcome {
-        OriginOutcome::Success => Some(true),
-        OriginOutcome::Failure(_) => Some(false),
-        OriginOutcome::Cancelled => None,
-    }
-}
-
-fn probability_bps(value: f64) -> u16 {
-    (value.clamp(0.0, 1.0) * 10_000.0).round() as u16
 }
 
 fn transfer_event(

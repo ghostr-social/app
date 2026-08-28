@@ -30,6 +30,7 @@ extension WarpFeedPlaybackJourneyNetwork on WarpFeedPlaybackJourney {
       }
       if (!page.planPage.hasMore) await _tickAndSample(tester);
     }
+    await reportSchedulingEvidence();
     fail('WARP plan evidence timed out after $timeout.');
   }
 }

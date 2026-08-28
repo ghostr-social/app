@@ -1,6 +1,10 @@
 use super::super::{ActionForecast, ActionKind};
-use crate::adaptive::{CandidateSnapshot, CompletionTimes, ControlMode, PlayabilitySnapshot};
+use crate::adaptive::{
+    AllocationPlan, CandidateSnapshot, CompletionTimes, ControlMode, PlayabilitySnapshot,
+};
 use crate::origin_model::{DecisionMode, OriginModel, OriginQuery, OriginRequestProfile};
+
+mod readiness;
 
 #[derive(Clone, Copy)]
 pub(super) struct Prediction {
@@ -13,6 +17,7 @@ pub(super) struct Prediction {
 pub(super) struct PredictionInput<'a> {
     pub model: &'a OriginModel,
     pub snapshot: &'a PlayabilitySnapshot,
+    pub base: &'a AllocationPlan,
     pub candidate: &'a CandidateSnapshot,
     pub action: &'a ActionKind,
     pub source: &'a str,
@@ -44,11 +49,35 @@ pub(super) fn predict(input: PredictionInput<'_>) -> Prediction {
         forecast: ActionForecast::new(
             completion(bytes, &estimate),
             basis_points(success),
-            ready_gain(input.candidate, input.action, input.direct_playback_blocked),
+            ready_gain(
+                input.candidate,
+                input.action,
+                input.base,
+                input.direct_playback_blocked,
+            ),
         ),
         uncertainty_bps: basis_points(estimate.uncertainty),
         request_profile,
     }
+}
+
+pub(super) fn estimate_open_body(
+    input: PredictionInput<'_>,
+    profile: OriginRequestProfile,
+) -> crate::origin_model::OriginEstimate {
+    let query = OriginQuery::new(
+        input.source,
+        profile
+            .context()
+            .with_concurrency(input.concurrency)
+            .with_network(input.network_class)
+            .with_observed_at_ms(input.snapshot.observed_at_ms),
+    );
+    input.model.estimate_open_body(
+        &query,
+        input.snapshot.observed_at_ms,
+        decision_mode(input.mode),
+    )
 }
 
 pub(super) fn transform_prediction(candidate: &CandidateSnapshot, cpu_ms: u64) -> Prediction {
@@ -87,11 +116,11 @@ pub(super) fn completion(
     CompletionTimes::new(expected, p95.max(expected), p99.max(p95), cvar(p95, p99))
 }
 
-fn cvar(p95: u64, p99: u64) -> u64 {
+pub(super) fn cvar(p95: u64, p99: u64) -> u64 {
     p99.saturating_add(p99.saturating_sub(p95) / 2)
 }
 
-fn transfer_ms(bytes: u64, throughput_bps: u64) -> u64 {
+pub(super) fn transfer_ms(bytes: u64, throughput_bps: u64) -> u64 {
     bytes.saturating_mul(8_000) / throughput_bps.max(1)
 }
 
@@ -108,28 +137,16 @@ fn range_adjusted_success(
     estimate.success.selected * range
 }
 
-fn ready_gain(
+pub(super) fn ready_gain(
     candidate: &CandidateSnapshot,
     action: &ActionKind,
+    base: &AllocationPlan,
     direct_playback_blocked: bool,
 ) -> u64 {
     if direct_playback_blocked {
         return 0;
     }
-    match action {
-        ActionKind::FetchWhole { .. } if candidate.total_bytes.is_some() => candidate.duration_ms,
-        ActionKind::Prefix(range) | ActionKind::FetchRange(range) => candidate
-            .playable_ranges
-            .iter()
-            .filter(|item| overlaps(item.bytes, *range))
-            .map(|item| item.playable_ms)
-            .sum(),
-        _ => 0,
-    }
-}
-
-fn overlaps(left: crate::ByteRange, right: crate::ByteRange) -> bool {
-    left.start < right.end && right.start < left.end
+    readiness::gain(candidate, action, base)
 }
 
 pub(super) fn decision_mode(mode: ControlMode) -> DecisionMode {

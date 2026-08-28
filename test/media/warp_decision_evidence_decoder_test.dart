@@ -15,6 +15,15 @@ void main() {
     expect(decision.executed?.end, 131072);
     expect(decision.outcome.status, 'succeeded');
     expect(decision.outcome.bytes, 65536);
+    expect(decision.observedAtMs, 105);
+    expect(decision.networkThroughputBps, 700000);
+    expect(decision.plannerNetworkRateBytesPerSecond, 87500);
+    expect(decision.additionalRequestSlotDemanded, isTrue);
+    expect(decision.appliesMeasuredNetworkRate, isTrue);
+    final mismatched = WarpDecisionEvidence.parse(
+      _decisionJson.replaceFirst('87500}}', '87501}}'),
+    ).records.single;
+    expect(mismatched.appliesMeasuredNetworkRate, isFalse);
   });
 }
 
@@ -22,7 +31,8 @@ const _decisionJson = r'''
 {"schema_version":1,"decisions":{"records":[{
   "sequence":4,"chosen_action_id":17,
   "eventual_outcome":{"status":"succeeded","bytes":65536,"elapsed_ms":120},
-  "warp_decision":{"selected":{"planner_action_id":5,"post_id":"opaque-post","kind":{"kind":"fetch_range","bytes_start":65536,"bytes_end":131072},"command":{"command":"transfer","transfer":{"post_id":"opaque-post","source_id":"opaque-source","request":{"request":"fetch_range","bytes_start":65536,"bytes_end":131072,"promotion":null},"expected_playable_gain_ms":500,"utility":{"view_probability_bits":0,"additional_playable_ms":500,"expected_delivery_ms":100,"score_bits":0},"authority":"transition","commitment_until_ms":200,"reason":"next_startability"}},"resources":{"network_bytes":65536,"storage_bytes":65536,"cpu_ms":0,"requests":1},"dependencies":[],"ready_playback_ms":500,"static_score_micros":1}},
+  "warp_decision":{"additional_request_slot_demanded":true,"planner_replay_capsule":{"complete":true,"context":{"limits":{"network_rate_bytes_per_second":87500}}},"selected":{"planner_action_id":5,"post_id":"opaque-post","kind":{"kind":"fetch_range","bytes_start":65536,"bytes_end":131072},"command":{"command":"transfer","transfer":{"post_id":"opaque-post","source_id":"opaque-source","request":{"request":"fetch_range","bytes_start":65536,"bytes_end":131072,"promotion":null},"expected_playable_gain_ms":500,"utility":{"view_probability_bits":0,"additional_playable_ms":500,"expected_delivery_ms":100,"score_bits":0},"authority":"transition","commitment_until_ms":200,"reason":"next_startability"}},"resources":{"network_bytes":65536,"storage_bytes":65536,"cpu_ms":0,"requests":1},"dependencies":[],"ready_playback_ms":500,"static_score_micros":1}},
   "executed_request":{"post_id":"opaque-post","source_id":"opaque-source","request":{"request":"fetch_range","bytes_start":65536,"bytes_end":131072,"promotion":null},"resources":{"network_bytes":65536,"storage_bytes":65536,"cpu_ms":0,"requests":1}}
+  ,"replay_state":{"observed_at_ms":105,"network":{"throughput_bps":700000}}
 }]}}
 ''';

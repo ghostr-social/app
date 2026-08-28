@@ -12,7 +12,10 @@ const DAY_MS: u64 = 24 * 60 * 60 * 1_000;
 fn stale_range_evidence_does_not_repeat_an_uninformative_head() {
     let post = PostId::new("post");
     let mut state = state(post.clone(), SOURCE);
-    let identity = state.catalog().transfer_identity(&post, SOURCE).expect("valid test fixture");
+    let identity = state
+        .catalog()
+        .transfer_identity(&post, SOURCE)
+        .expect("valid test fixture");
     let observation = HttpObservation::new(
         LearnedFacts {
             content_length: Some(16),

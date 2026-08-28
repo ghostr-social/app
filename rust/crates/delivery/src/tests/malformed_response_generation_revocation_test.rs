@@ -1,9 +1,7 @@
 use crate::chunk::downloader::{
     HttpResponseEvidence, OpenedResponse, ResponseObservation, ResponseRejection, ResponseWriteMode,
 };
-use crate::tests::response_evidence_fixture::{
-    etag, wait_for_validator, EVENT_TIMEOUT, SOURCE,
-};
+use crate::tests::response_evidence_fixture::{etag, wait_for_validator, EVENT_TIMEOUT, SOURCE};
 use crate::tests::timeline_manager_fixture::TimelineManagerFixture;
 use crate::tests::timeline_parser_fixture::GatedTimelineParser;
 use ghostr_engine::evidence::EvidenceTime;
@@ -11,7 +9,8 @@ use ghostr_engine::evidence::EvidenceTime;
 #[tokio::test]
 async fn malformed_new_generation_revokes_cached_bytes_and_validator() {
     let (parser, mut started) = GatedTimelineParser::new(None, 1);
-    let mut fixture = TimelineManagerFixture::new(std::sync::Arc::<GatedTimelineParser>::clone(&parser)).await;
+    let mut fixture =
+        TimelineManagerFixture::new(std::sync::Arc::<GatedTimelineParser>::clone(&parser)).await;
     fixture.focus();
     assert!(fixture.step().await);
     assert_eq!(started.recv().await, Some(0));

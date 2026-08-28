@@ -43,6 +43,14 @@ pub fn serial_long_retry_options(transient_attempts: u32) -> DeliveryOptions {
     options
 }
 
+pub fn production_geometry_parallel_options() -> DeliveryOptions {
+    DeliveryOptions {
+        params: EngineParams::default(),
+        level: DataUsageLevel::Aggressive,
+        ..DeliveryOptions::default()
+    }
+}
+
 /// The production ladder, scaled down: pauses in milliseconds and a
 /// revival window far longer than any test run.
 fn test_tuning() -> DeliveryTuning {

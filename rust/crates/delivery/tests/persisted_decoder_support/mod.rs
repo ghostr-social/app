@@ -5,7 +5,7 @@ use ghostr_delivery::delivery_events::{
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::video_rendition::VideoRendition;
 use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
-use ghostr_partial_store::partial_range_store::ContentRevision;
+use ghostr_partial_store::partial_range_store::ContentEpoch;
 
 pub(super) fn initializing(post: &PostId, meta: &VideoMeta) -> PlayerPreparationReport {
     let binding = Catalog::new().upsert(post.clone(), meta.clone());
@@ -13,7 +13,7 @@ pub(super) fn initializing(post: &PostId, meta: &VideoMeta) -> PlayerPreparation
         PlayerPreparationAuthority::try_new(
             post.clone(),
             binding,
-            ContentRevision::default(),
+            ContentEpoch::default(),
             "asset",
         )
         .expect("valid test fixture"),

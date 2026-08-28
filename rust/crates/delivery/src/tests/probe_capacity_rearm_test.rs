@@ -12,12 +12,14 @@ fn full_probe_pool_does_not_consume_invalidated_head_history() {
     let mut catalog = Catalog::new();
     let active_binding = catalog.upsert(active.clone(), metadata("active"));
     let stale_binding = catalog.upsert(stale.clone(), metadata("stale"));
-    let active_identity = active_binding.transfer(source("active")).expect("valid test fixture");
-    let stale_identity = stale_binding.transfer(source("stale")).expect("valid test fixture");
-    assert!(catalog.learn_head_observation_for(
-        &stale_identity,
-        observation(Some(16), Some(true), "v1", 1)
-    ));
+    let active_identity = active_binding
+        .transfer(source("active"))
+        .expect("valid test fixture");
+    let stale_identity = stale_binding
+        .transfer(source("stale"))
+        .expect("valid test fixture");
+    assert!(catalog
+        .learn_head_observation_for(&stale_identity, observation(Some(16), Some(true), "v1", 1)));
     let retry = RetryBook::new(RetryPolicy::default());
     let mut probes = MetadataProbePool::new(1);
     probes
@@ -27,10 +29,9 @@ fn full_probe_pool_does_not_consume_invalidated_head_history() {
         &stale_identity,
         catalog.http_generation_for(&stale_identity),
     );
-    assert!(catalog.learn_response_observation_for(
-        &stale_identity,
-        observation(None, None, "v2", 2)
-    ));
+    assert!(
+        catalog.learn_response_observation_for(&stale_identity, observation(None, None, "v2", 2))
+    );
 
     assert_eq!(
         probes.claim_selected(query(&catalog, &retry, &stale, source("stale"))),
@@ -60,12 +61,7 @@ fn query<'a>(
     }
 }
 
-fn observation(
-    size: Option<u64>,
-    ranges: Option<bool>,
-    etag: &str,
-    at: u64,
-) -> HttpObservation {
+fn observation(size: Option<u64>, ranges: Option<bool>, etag: &str, at: u64) -> HttpObservation {
     HttpObservation::new(
         LearnedFacts {
             content_length: size,

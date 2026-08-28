@@ -2,9 +2,15 @@ import 'dart:convert';
 
 part 'warp_evidence_json.dart';
 part 'warp_evidence_decisions.dart';
+part 'warp_evidence_decision_record.dart';
+part 'warp_evidence_planner_context.dart';
 part 'warp_evidence_metrics.dart';
 part 'warp_evidence_metrics_adaptation.dart';
 part 'warp_evidence_plan.dart';
+part 'warp_evidence_ready_reserve.dart';
+part 'warp_evidence_plan_network.dart';
+part 'warp_evidence_transfer.dart';
+part 'warp_evidence_network_class.dart';
 
 final class WarpEvidencePage {
   const WarpEvidencePage({required this.planPage, required this.evaluation});

@@ -47,7 +47,8 @@ void main() {
       await pumpEventQueue();
 
       final loaded = cubit.state as FeedLoaded;
-      expect(loaded.posts.map((post) => post.id.value), ['p1', 'p2']);
+      expect(loaded.roster.active.id.value, 'p1');
+      expect(loaded.posts.map((post) => post.id.value), ['p0', 'p1', 'p2']);
     },
   );
 }

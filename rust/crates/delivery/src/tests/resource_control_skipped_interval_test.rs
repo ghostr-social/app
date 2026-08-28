@@ -1,6 +1,6 @@
 use crate::manager::resource_control::{ResourceControl, ResourceEnvironment};
-use ghostr_engine::adaptive::ResourceObservation;
 use core::time::Duration;
+use ghostr_engine::adaptive::ResourceObservation;
 use tokio::time::Instant;
 
 #[tokio::test(start_paused = true)]
@@ -11,7 +11,14 @@ async fn skipped_empty_intervals_update_prices_exactly_without_iteration() {
     control.record_network_bytes(100_000);
     tokio::time::advance(Duration::from_millis(500)).await;
     let first = control.feedback(environment);
-    assert_eq!(first.price_snapshot.expect("valid test fixture").prices.network_micros, 1_000);
+    assert_eq!(
+        first
+            .price_snapshot
+            .expect("valid test fixture")
+            .prices
+            .network_micros,
+        1_000
+    );
 
     tokio::time::advance(Duration::from_secs(500000)).await;
     let skipped = control.feedback(environment);

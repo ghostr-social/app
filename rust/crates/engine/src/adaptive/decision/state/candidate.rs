@@ -3,7 +3,8 @@ mod origin;
 
 use super::request::{RangeState, RequestState, StartupState};
 use crate::adaptive::{
-    CandidateSnapshot, FeedOffset, InFlightAction, PlayableRange, ViewProbability,
+    CandidateSnapshot, FeedOffset, InFlightAction, PlayableRange, PromotionOpportunity,
+    ViewProbability,
 };
 use crate::evidence::EvidenceAssessment;
 use crate::{ActionId, PostId};
@@ -146,6 +147,8 @@ struct InFlightState {
     request: RequestState,
     effective_bytes: RangeState,
     reserved_storage_bytes: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    promotion_opportunity: Option<PromotionOpportunity>,
     source: String,
     committed_until_ms: u64,
     identity_current: bool,
@@ -159,6 +162,7 @@ impl InFlightState {
             request: RequestState::capture(value.request),
             effective_bytes: RangeState::capture(value.effective_bytes),
             reserved_storage_bytes: value.reserved_storage_bytes,
+            promotion_opportunity: value.promotion_opportunity,
             source: privacy.source(&value.source),
             committed_until_ms: value.committed_until_ms,
             identity_current: value.identity_current,
@@ -172,6 +176,7 @@ impl InFlightState {
             request: self.request.request(),
             effective_bytes: self.effective_bytes.range(),
             reserved_storage_bytes: self.reserved_storage_bytes,
+            promotion_opportunity: self.promotion_opportunity,
             source: self.source.clone(),
             committed_until_ms: self.committed_until_ms,
             identity_current: self.identity_current,

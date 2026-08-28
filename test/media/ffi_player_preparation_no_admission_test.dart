@@ -8,7 +8,7 @@ import '../support/drain_test_microtasks.dart';
 import '../support/playback_authority_fixture.dart';
 
 void main() {
-  test('six proven unadmitted attempts yield to a healthy seventh', () async {
+  test('eight proven unadmitted attempts yield to a healthy ninth', () async {
     final sent = <FfiPlayerPreparationReport>[];
     final feedback = FfiPlayerPreparationFeedbackPort(
       reportPreparation: ({required input}) async {
@@ -23,7 +23,7 @@ void main() {
     );
     final first = feedback.prepare(testPlaybackAuthority(postId: 'bad-0'))
       ..begin();
-    for (var index = 1; index < 6; index += 1) {
+    for (var index = 1; index < 8; index += 1) {
       feedback.prepare(testPlaybackAuthority(postId: 'bad-$index')).begin();
     }
     await drainTestMicrotasks();

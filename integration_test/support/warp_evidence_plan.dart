@@ -1,7 +1,5 @@
 part of 'warp_evidence_models.dart';
 
-enum WarpNetworkClass { unavailable, wifi, cellular, wired, constrained }
-
 final class WarpPlanEvidence {
   const WarpPlanEvidence({
     required this.revision,
@@ -77,89 +75,48 @@ final class WarpAllocationPlan {
   final List<WarpPlanTransfer> retained;
 }
 
-final class WarpReadyReserve {
-  const WarpReadyReserve({
-    required this.target,
-    required this.ready,
-    required this.structural,
-    required this.protected,
-    required this.recoveryHorizonMs,
-    required this.underflowRiskBps,
-    required this.readyCoverageMs,
-    required this.candidateCount,
-  });
-
-  factory WarpReadyReserve.fromJson(Map<String, Object?> json) =>
-      WarpReadyReserve(
-        target: _warpInt(json, 'target'),
-        ready: _warpInt(json, 'ready'),
-        structural: _warpInt(json, 'structural'),
-        protected: _warpInt(json, 'protected'),
-        recoveryHorizonMs: _warpInt(json, 'recovery_horizon_ms'),
-        underflowRiskBps: _warpInt(json, 'underflow_risk_bps'),
-        readyCoverageMs: _warpInt(json, 'ready_coverage_ms'),
-        candidateCount: _warpList(json, 'candidates').length,
-      );
-
-  final int target;
-  final int ready;
-  final int structural;
-  final int protected;
-  final int recoveryHorizonMs;
-  final int underflowRiskBps;
-  final int readyCoverageMs;
-  final int candidateCount;
-}
-
-final class WarpPlanTransfer {
-  const WarpPlanTransfer({
-    required this.postId,
-    required this.sourceId,
-    required this.start,
-    required this.end,
-    required this.reason,
-    required this.actionId,
-  });
-
-  final String postId;
-  final String sourceId;
-  final int start;
-  final int end;
-  final String reason;
-  final int? actionId;
-}
-
 List<WarpPlanTransfer> _warpTransfers(
   Map<String, Object?> json,
   String field,
 ) => _warpList(json, field)
     .map((item) {
       final value = _warpObject(item, field);
-      final range = _warpRequestRange(_warpChild(value, 'request'));
-      return WarpPlanTransfer(
+      final request = _warpRequest(_warpChild(value, 'request'));
+      return WarpPlanTransfer((
         postId: _warpString(value, 'post'),
         sourceId: _warpString(value, 'source'),
-        start: range.start,
-        end: range.end,
+        requestKind: request.kind,
+        start: request.start,
+        end: request.end,
         reason: _warpString(value, 'reason'),
         actionId: value.containsKey('action_id')
             ? _warpInt(value, 'action_id')
             : null,
-      );
+        expectedDeliveryMs: _warpInt(
+          _warpChild(value, 'utility'),
+          'expected_delivery_ms',
+        ),
+      ));
     })
     .toList(growable: false);
 
-({int start, int end}) _warpRequestRange(Map<String, Object?> json) {
+({int start, int end, WarpTransferRequestKind kind}) _warpRequest(
+  Map<String, Object?> json,
+) {
   if (json['FetchRange'] case final Object? value?) {
     final range = _warpChild(_warpObject(value, 'FetchRange'), 'bytes');
-    return (start: _warpInt(range, 'start'), end: _warpInt(range, 'end'));
+    return (
+      start: _warpInt(range, 'start'),
+      end: _warpInt(range, 'end'),
+      kind: WarpTransferRequestKind.range,
+    );
   }
   final whole = _warpChild(json, 'FetchWhole');
   final contract = _warpChild(whole, 'contract');
   final variant = _warpObject(contract.values.single, 'contract');
   final end = variant.values.single;
   if (end is! int) throw const FormatException('Invalid whole request.');
-  return (start: 0, end: end);
+  return (start: 0, end: end, kind: WarpTransferRequestKind.whole);
 }
 
 String _warpVariantName(Object? value) {
@@ -168,12 +125,3 @@ String _warpVariantName(Object? value) {
   if (variant.length != 1) throw const FormatException('Invalid variant.');
   return variant.keys.single;
 }
-
-WarpNetworkClass _warpNetworkClass(String value) => switch (value) {
-  'Unavailable' => WarpNetworkClass.unavailable,
-  'Wifi' => WarpNetworkClass.wifi,
-  'Cellular' => WarpNetworkClass.cellular,
-  'Wired' => WarpNetworkClass.wired,
-  'Constrained' => WarpNetworkClass.constrained,
-  _ => throw FormatException('Unknown network class: $value'),
-};

@@ -24,10 +24,13 @@ impl Statistics {
                 self.success.observe(false, at, half_life_ms);
                 self.errors.observe(reason, at, half_life_ms);
             }
-            OriginOutcome::Cancelled => return,
+            OriginOutcome::Cancelled => {}
         }
         if let Some(value) = item.range_compliant {
             self.range.observe(value, at, half_life_ms);
+        }
+        if item.outcome == OriginOutcome::Cancelled {
+            return;
         }
         if let Some(value) = item.ttfb_ms {
             self.ttfb.observe(value, at);
@@ -55,6 +58,9 @@ impl Statistics {
     }
 
     fn surprise(&self, item: &OriginObservation, half_life_ms: u64) -> f64 {
+        if item.outcome == OriginOutcome::Cancelled {
+            return 0.0;
+        }
         let success = self
             .success
             .posterior(8.0, 2.0, item.observed_at_ms, half_life_ms)
@@ -86,7 +92,7 @@ pub(super) struct AdaptiveRecord {
 
 impl AdaptiveRecord {
     pub fn observe(&mut self, item: &OriginObservation, config: ModelTiming) {
-        if item.outcome == OriginOutcome::Cancelled {
+        if item.outcome == OriginOutcome::Cancelled && item.range_compliant.is_none() {
             return;
         }
         let surprise = self.long.surprise(item, config.long_ms);
@@ -136,6 +142,7 @@ pub(super) struct RecordSnapshot {
     pub throughput: Option<Quantiles>,
     pub errors: BTreeMap<ErrorReason, f64>,
     pub evidence: f64,
+    pub range_evidence: f64,
     pub adapting: bool,
 }
 
@@ -148,6 +155,7 @@ impl RecordSnapshot {
             throughput: blend_quantiles(long.throughput, short.throughput, weight),
             errors: blend_errors(long.errors, &short.errors, weight),
             evidence: mix(long.success.evidence, short.success.evidence, weight),
+            range_evidence: mix(long.range.evidence, short.range.evidence, weight),
             adapting,
         }
     }

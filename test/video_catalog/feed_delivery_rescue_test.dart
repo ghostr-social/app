@@ -45,8 +45,9 @@ void main() {
     await pumpEventQueue();
 
     final loaded = cubit.state as FeedLoaded;
-    expect(loaded.activeIndex, 0);
-    expect(loaded.posts.map((post) => post.id.value), ['p2']);
+    expect(loaded.activeIndex, 2);
+    expect(loaded.posts.map((post) => post.id.value), ['p0', 'p1', 'p2']);
+    expect(loaded.roster.active.id.value, 'p2');
     expect(focus.focuses.last.cause, FeedFocusCause.transportRescue);
     expect(
       focus.focuses.last.rescue?.reason,

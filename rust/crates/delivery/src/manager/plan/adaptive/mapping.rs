@@ -2,7 +2,7 @@ use super::super::PlannedTransfer;
 use crate::manager::inflight::ActiveAction;
 use crate::manager::state::DeliveryState;
 use ghostr_engine::adaptive::{Allocation, ControlMode, PlannerCommand, WarpPlanningDecision};
-use ghostr_engine::origin_model::{OriginAttemptProfile, OriginRequestProfile};
+use ghostr_engine::origin_model::OriginAttemptProfile;
 use ghostr_engine::scheduling::RangeRequest;
 use ghostr_engine::{ByteRange, ChunkId, PostId};
 use std::collections::{HashMap, HashSet};
@@ -19,7 +19,12 @@ pub(super) fn selected_transfers(
         Some(PlannerCommand::Hedge { transfer, .. }) => transfer,
         _ => return Vec::new(),
     };
-    let profile = selected.and_then(|item| item.node.request_profile());
+    let profile = selected.and_then(|item| {
+        item.node.request_profile().map(|profile| {
+            OriginAttemptProfile::new(profile)
+                .with_admission_intent(item.node.origin_admission_intent())
+        })
+    });
     profile
         .and_then(|item| transfer(state, present, allocation, mode, item))
         .into_iter()
@@ -61,7 +66,7 @@ fn transfer(
     present: &HashMap<PostId, Vec<ByteRange>>,
     allocation: &Allocation,
     mode: ControlMode,
-    profile: OriginRequestProfile,
+    profile: OriginAttemptProfile,
 ) -> Option<PlannedTransfer> {
     let identity = state
         .catalog()
@@ -84,7 +89,7 @@ fn transfer(
         },
         url: allocation.source.clone(),
         identity,
-        profile: OriginAttemptProfile::new(profile),
+        profile,
         retrieval: allocation.request,
         commitment_until_ms: allocation.commitment_until_ms,
     })

@@ -1,6 +1,5 @@
 use crate::chunk::downloader::{
-    HttpResponseEvidence, OpenedResponse, ResponseObservation, ResponseRejection,
-    ResponseWriteMode,
+    HttpResponseEvidence, OpenedResponse, ResponseObservation, ResponseRejection, ResponseWriteMode,
 };
 use crate::tests::response_evidence_fixture::{etag, wait_for_validator, SOURCE};
 use crate::tests::timeline_manager_fixture::TimelineManagerFixture;
@@ -10,7 +9,8 @@ use ghostr_engine::evidence::{EvidenceTime, EvidenceValidator};
 #[tokio::test]
 async fn malformed_validatorless_response_preserves_trusted_cached_bytes() {
     let (parser, mut started) = GatedTimelineParser::new(None, 1);
-    let mut fixture = TimelineManagerFixture::new(std::sync::Arc::<GatedTimelineParser>::clone(&parser)).await;
+    let mut fixture =
+        TimelineManagerFixture::new(std::sync::Arc::<GatedTimelineParser>::clone(&parser)).await;
     fixture.focus();
     assert!(fixture.step().await);
     assert_eq!(started.recv().await, Some(0));
@@ -28,9 +28,7 @@ async fn malformed_validatorless_response_preserves_trusted_cached_bytes() {
         .await
         .expect("valid test fixture");
 
-    fixture
-        .worker
-        .queue_response_for_test(attempt, rejected());
+    fixture.worker.queue_response_for_test(attempt, rejected());
     assert!(fixture.step().await);
 
     assert_eq!(
@@ -44,7 +42,9 @@ async fn malformed_validatorless_response_preserves_trusted_cached_bytes() {
         .expect("valid test fixture");
     assert_eq!(ranges.len(), 1);
     assert_eq!(ranges[0], 0..4);
-    tokio::fs::remove_dir_all(fixture.root).await.expect("valid test fixture");
+    tokio::fs::remove_dir_all(fixture.root)
+        .await
+        .expect("valid test fixture");
 }
 
 fn accepted() -> OpenedResponse {

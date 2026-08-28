@@ -1,6 +1,7 @@
 use crate::origin_model::{
-    Admission, AdmissionClaimTerminal, DecisionMode, ErrorReason, MediaClass, OriginContext,
-    OriginModel, OriginObservation, OriginQuery, RequestMethod,
+    Admission, AdmissionClaimTerminal, DecisionMode, ErrorReason, MediaClass,
+    OriginAdmissionIntent, OriginContext, OriginModel, OriginObservation, OriginQuery,
+    RequestMethod,
 };
 
 #[test]
@@ -53,7 +54,12 @@ fn claim(
     at_ms: u64,
 ) -> crate::origin_model::AdmissionClaim {
     model
-        .claim(query, at_ms, DecisionMode::Normal)
+        .claim(
+            query,
+            at_ms,
+            DecisionMode::Normal,
+            OriginAdmissionIntent::Delivery,
+        )
         .into_parts()
         .1
         .expect("recovery claim")

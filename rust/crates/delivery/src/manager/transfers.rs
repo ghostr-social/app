@@ -3,7 +3,7 @@
 //! scratch `HostStats`; the manager re-records outcomes into the one
 //! owned instance, keeping the statistics single-owner and lock-free.
 
-use crate::chunk::downloader::{ChunkResult, OpenedResponse};
+use crate::chunk::downloader::OpenedResponse;
 use crate::debug::network::NetworkThrottle;
 use crate::delivery_events::DecisionClaim;
 use crate::manager::inflight::ChunkAttempt;
@@ -20,10 +20,12 @@ use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
 mod chunk;
+mod done;
 mod probe;
 mod traffic;
 
 pub(crate) use chunk::{spawn_chunk, ChunkLaunch};
+pub(crate) use done::ChunkDone;
 pub(crate) use probe::{spawn_probe, ProbeLaunch};
 
 pub(crate) enum InternalEvent {
@@ -59,17 +61,6 @@ pub(crate) enum MaintenanceEvent {
     SaveStats,
     SaveQoe,
     StoreCapacityChanged(u64),
-}
-
-pub(crate) struct ChunkDone {
-    pub attempt: ChunkAttempt,
-    pub url: String,
-    pub outcome: anyhow::Result<ChunkResult>,
-    pub received_bytes: u64,
-    pub origin: Option<Box<ghostr_engine::origin_model::OriginObservation>>,
-    pub request_started: bool,
-    pub whole_body_completion: Option<crate::chunk::traffic::WholeBodyCompletion>,
-    pub response_evidence: Option<crate::chunk::downloader::HttpResponseEvidence>,
 }
 
 pub(crate) struct ProbeDone {

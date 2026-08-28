@@ -1,6 +1,8 @@
 use super::origin_claim::settle;
 use crate::manager::transfers::ChunkDone;
-use ghostr_engine::origin_model::{Admission, DecisionMode, OriginObservation, RequestMethod};
+use ghostr_engine::origin_model::{
+    Admission, DecisionMode, OriginAdmissionIntent, OriginObservation, RequestMethod,
+};
 
 #[path = "origin_claim_fixture.rs"]
 mod fixture;
@@ -10,7 +12,12 @@ use fixture::{finished_action, open_circuit, query, success, URL};
 fn physical_range_terminal_advances_its_full_get_recovery_claim() {
     let full = query(RequestMethod::FullGet, 900_000);
     let mut model = open_circuit(&full);
-    let claimed = model.claim(&full, 5_000, DecisionMode::Normal);
+    let claimed = model.claim(
+        &full,
+        5_000,
+        DecisionMode::Normal,
+        OriginAdmissionIntent::Delivery,
+    );
     assert!(matches!(
         claimed.admission(),
         Admission::RecoveryProbe { .. }
@@ -24,6 +31,7 @@ fn physical_range_terminal_advances_its_full_get_recovery_claim() {
         outcome: Ok(success()),
         received_bytes: 65_536,
         origin: Some(Box::new(physical)),
+        open_body: None,
         request_started: true,
         whole_body_completion: None,
         response_evidence: None,

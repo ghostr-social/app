@@ -120,7 +120,10 @@ extension FeedCubitEngagementActions on FeedCubit {
     final index = _targetIndex(proposal.roster, target);
     if (index < 0) return proposal;
     return (
-      roster: proposal.roster.movedTo(index, forgetPrevious: false),
+      roster: proposal.roster.movedTo(
+        index,
+        history: FeedNavigationHistory.unlimited,
+      ),
       target: target,
     );
   }
@@ -140,7 +143,11 @@ extension FeedCubitEngagementActions on FeedCubit {
     final target = proposal.target;
     final index = target == null ? -1 : _targetIndex(roster, target);
     if (index < 0) return;
-    roster = _session.movedTo(roster, index, forgetPrevious: false);
+    roster = _session.positionedAt(
+      roster,
+      index,
+      history: FeedNavigationHistory.unlimited,
+    );
     final blocked = 'Blocked ${post.creator.handle}';
     _emitState(
       _projectPreparation(

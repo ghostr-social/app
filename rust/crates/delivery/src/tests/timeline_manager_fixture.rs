@@ -56,10 +56,14 @@ impl TimelineManagerFixture {
     }
 
     pub(super) fn focus(&self) {
+        self.focus_with(self.meta.clone());
+    }
+
+    pub(super) fn focus_with(&self, meta: VideoMeta) {
         self.handle.update_focus(DeliveryFocus::compatibility(
             vec![FocusItem {
                 post: self.post.clone(),
-                meta: self.meta.clone(),
+                meta,
             }],
             0,
             0,

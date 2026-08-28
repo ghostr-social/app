@@ -8,7 +8,7 @@ import '../support/drain_test_microtasks.dart';
 import '../support/playback_authority_fixture.dart';
 
 void main() {
-  test('all six controller attempts survive a blocked reporter', () async {
+  test('all eight controller attempts survive a blocked reporter', () async {
     final first = Completer<FfiPlayerPreparationDisposition>();
     final sent = <FfiPlayerPreparationReport>[];
     final feedback = FfiPlayerPreparationFeedbackPort(
@@ -23,16 +23,16 @@ void main() {
       monotonicMicros: () => 1,
     );
 
-    for (var index = 0; index < 6; index += 1) {
+    for (var index = 0; index < 8; index += 1) {
       feedback.prepare(testPlaybackAuthority(postId: 'post-$index')).begin();
     }
     await drainTestMicrotasks();
-    expect(sent, hasLength(6));
+    expect(sent, hasLength(8));
     first.complete(FfiPlayerPreparationDisposition.applied);
     await drainTestMicrotasks(12);
 
-    expect(sent, hasLength(6));
-    expect(sent.last.postId, 'post-5');
+    expect(sent, hasLength(8));
+    expect(sent.last.postId, 'post-7');
   });
 
   test('a dispatched initial keeps its queued terminal under churn', () async {
@@ -52,7 +52,7 @@ void main() {
     final active = feedback.prepare(testPlaybackAuthority(postId: 'active'));
     active.begin();
     active.release();
-    for (var index = 0; index < 6; index += 1) {
+    for (var index = 0; index < 8; index += 1) {
       feedback.prepare(testPlaybackAuthority(postId: 'churn-$index')).begin();
     }
 
@@ -70,7 +70,7 @@ void main() {
     );
   });
 
-  test('six in-flight reporters bound controller tracking', () async {
+  test('eight in-flight reporters bound controller tracking', () async {
     final blocked = <Completer<FfiPlayerPreparationDisposition>>[];
     final feedback = FfiPlayerPreparationFeedbackPort(
       reportPreparation: ({required input}) {
@@ -83,10 +83,10 @@ void main() {
       monotonicMicros: () => 1,
     );
 
-    for (var index = 0; index < 7; index += 1) {
+    for (var index = 0; index < 9; index += 1) {
       feedback.prepare(testPlaybackAuthority(postId: 'post-$index')).begin();
     }
-    expect(blocked, hasLength(6));
+    expect(blocked, hasLength(8));
     for (final completion in blocked) {
       completion.complete(FfiPlayerPreparationDisposition.applied);
     }

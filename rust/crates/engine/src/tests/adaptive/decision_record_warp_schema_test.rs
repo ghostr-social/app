@@ -12,6 +12,8 @@ mod fresh_search_support;
 mod hls_tests;
 #[path = "decision_record_warp_incomplete_replay_test.rs"]
 mod incomplete_replay_test;
+#[path = "decision_record_warp_origin_intent_test.rs"]
+mod origin_intent_test;
 #[path = "decision_record_warp_planner_replay_tests.rs"]
 mod planner_replay_tests;
 #[path = "decision_record_warp_replay_coherence_test.rs"]

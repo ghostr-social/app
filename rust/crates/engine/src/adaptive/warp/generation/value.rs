@@ -69,7 +69,9 @@ fn exploration_value(action: &ActionKind, uncertainty_bps: u16, mode: ControlMod
 fn low_cost_probe(action: &ActionKind) -> bool {
     match action {
         ActionKind::Head => true,
-        ActionKind::Prefix(range) | ActionKind::Tail(range) => range.len() <= 65_536,
+        ActionKind::Prefix(range) | ActionKind::Tail(range) => {
+            range.len() <= crate::adaptive::MEDIA_BOOTSTRAP_PROBE_BYTES
+        }
         ActionKind::HlsBootstrap { stage, .. } => stage.is_manifest(),
         _ => false,
     }
@@ -81,6 +83,7 @@ fn cache_gain(candidate: &CandidateSnapshot, action: &ActionKind, reach_bps: u64
     }
     let bytes = match action {
         ActionKind::FetchWhole { maximum_bytes }
+        | ActionKind::Promote { maximum_bytes, .. }
         | ActionKind::HlsBootstrap { maximum_bytes, .. } => *maximum_bytes,
         ActionKind::CacheUpgrade(range) => range.len(),
         _ => 0,
@@ -92,6 +95,17 @@ fn cache_gain(candidate: &CandidateSnapshot, action: &ActionKind, reach_bps: u64
             .map(|range| range.len())
             .sum::<u64>()
             / 8
+}
+
+pub(super) fn legacy_promotion_cache_gain(candidate: &CandidateSnapshot) -> i64 {
+    as_i64(
+        candidate
+            .present
+            .iter()
+            .map(|range| range.len())
+            .sum::<u64>()
+            / 8,
+    )
 }
 
 fn tail_risk(prediction: Prediction, mode: ControlMode) -> u64 {

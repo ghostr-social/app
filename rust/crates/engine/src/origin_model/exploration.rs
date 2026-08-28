@@ -19,12 +19,20 @@ pub(super) struct ExplorationBudget {
 }
 
 impl ExplorationBudget {
+    pub fn can_claim(&self, origin: &str, at_ms: u64) -> bool {
+        if self.window_expired(at_ms) {
+            return true;
+        }
+        let origin_claims = self.per_origin.get(origin).copied().unwrap_or_default();
+        self.global_claims < GLOBAL_LIMIT && origin_claims < ORIGIN_LIMIT
+    }
+
     pub fn claim(&mut self, origin: &str, at_ms: u64) -> Option<ExplorationClaim> {
         self.refresh(at_ms);
-        let origin_claims = self.per_origin.get(origin).copied().unwrap_or_default();
-        if self.global_claims >= GLOBAL_LIMIT || origin_claims >= ORIGIN_LIMIT {
+        if !self.can_claim(origin, at_ms) {
             return None;
         }
+        let origin_claims = self.per_origin.get(origin).copied().unwrap_or_default();
         self.global_claims += 1;
         self.per_origin.insert(origin.to_owned(), origin_claims + 1);
         Some(ExplorationClaim {
@@ -52,12 +60,16 @@ impl ExplorationBudget {
             self.window_started_ms = at_ms;
             return;
         }
-        if at_ms.saturating_sub(self.window_started_ms) < WINDOW_MS {
+        if !self.window_expired(at_ms) {
             return;
         }
         self.window_started_ms = at_ms;
         self.global_claims = 0;
         self.per_origin.clear();
+    }
+
+    fn window_expired(&self, at_ms: u64) -> bool {
+        self.window_started_ms != 0 && at_ms.saturating_sub(self.window_started_ms) >= WINDOW_MS
     }
 
     pub(super) fn replay_project(&self, aliases: impl Fn(&str) -> Vec<String>) -> Self {

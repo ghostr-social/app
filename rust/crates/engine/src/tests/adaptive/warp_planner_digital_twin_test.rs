@@ -6,6 +6,8 @@ use crate::{ByteRange, PostId};
 
 #[path = "warp_planner_digital_twin_test/quality_credit_test.rs"]
 mod quality_credit_test;
+#[path = "warp_planner_digital_twin_test/response_continuation_test.rs"]
+mod response_continuation_test;
 
 fn action(id: u16, completion: CompletionTimes) -> ActionNode {
     ActionNode::new(

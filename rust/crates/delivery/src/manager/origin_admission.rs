@@ -46,9 +46,10 @@ pub(super) fn apply(
     admission: &Admission,
 ) -> Option<PlannedTransfer> {
     let maximum = match admission {
-        Admission::Production | Admission::RecoveryTrial => return Some(transfer),
-        Admission::Exploration { maximum_bytes, .. }
-        | Admission::RecoveryProbe { maximum_bytes } => *maximum_bytes,
+        Admission::Production | Admission::Exploration | Admission::RecoveryTrial => {
+            return Some(transfer);
+        }
+        Admission::RecoveryProbe { maximum_bytes } => *maximum_bytes,
         Admission::Blocked => return None,
     };
     let method = capped_method(&transfer.retrieval, transfer.profile.request().method());

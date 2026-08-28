@@ -15,6 +15,7 @@ mod network_reservation;
 mod promotion;
 mod reconciliation;
 mod response;
+mod response_phase;
 mod snapshot;
 
 use action::ActiveChunk;
@@ -22,6 +23,8 @@ pub(crate) use action::{ActionRegistration, ChunkAttempt, CompletionStatus};
 pub(crate) use http_generation::ResponseGenerationFence;
 pub(crate) use network_reservation::FinishedAction;
 pub(crate) use promotion::{PromotionPreflight, PromotionRejection, PromotionTarget};
+use response_phase::ResponsePhase;
+pub(crate) use response_phase::ResponsePromotionStage;
 pub(crate) use snapshot::ActiveAction;
 
 #[derive(Default)]

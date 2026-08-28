@@ -45,7 +45,7 @@ fn storage_costs(path: &[ActionNode]) -> Option<(u64, u64)> {
                 ))
             } else {
                 Some((
-                    progressive.checked_add(node.resources.storage_bytes)?,
+                    progressive.checked_add(node.authorized_resources().storage_bytes)?,
                     segmented,
                 ))
             }

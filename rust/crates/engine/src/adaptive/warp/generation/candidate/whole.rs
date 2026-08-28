@@ -1,12 +1,11 @@
 use super::super::allocation::AllocationSpec;
-use super::super::builder::Builder;
+use super::super::builder::{Builder, TransferInput};
 use crate::adaptive::{
     ActionKind, CandidateSnapshot, MediaLayout, BOOTSTRAP_DIRECT_FETCH_BYTES, REQUEST_SLICE_BYTES,
 };
 
 impl Builder<'_> {
     pub(super) fn add_whole(&mut self, candidate: &CandidateSnapshot) -> Option<u16> {
-        let source = self.request_source(candidate)?;
         let maximum = self.maximum(candidate)?;
         if whole_is_owned(candidate)
             || candidate.finalized
@@ -17,6 +16,7 @@ impl Builder<'_> {
         let kind = ActionKind::FetchWhole {
             maximum_bytes: maximum,
         };
+        let source = self.admitted_request_source(candidate, &kind)?;
         if self.contains(candidate, &kind) {
             return self.action_id(candidate, |item| {
                 matches!(item, ActionKind::FetchWhole { .. })
@@ -27,7 +27,7 @@ impl Builder<'_> {
             |_| AllocationSpec::whole(maximum, source, candidate.duration_ms),
         );
         let allocation = self.allocation(candidate, spec);
-        Some(self.push_transfer(candidate, kind, allocation, &[]))
+        self.push_transfer(candidate, TransferInput::delivery(kind, allocation, &[]))
     }
 
     fn maximum(&self, candidate: &CandidateSnapshot) -> Option<u64> {

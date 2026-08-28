@@ -186,4 +186,7 @@ const _labels = [
   'fifth',
   'sixth',
   'seventh',
+  'eighth',
+  'ninth',
+  'tenth',
 ];

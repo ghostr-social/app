@@ -8,7 +8,7 @@ import '../support/drain_test_microtasks.dart';
 import '../support/playback_authority_fixture.dart';
 
 void main() {
-  test('six saturated initials yield to a healthy seventh', () async {
+  test('eight saturated initials yield to a healthy ninth', () async {
     final sent = <FfiPlayerPreparationReport>[];
     final feedback = FfiPlayerPreparationFeedbackPort(
       reportPreparation: ({required input}) async {
@@ -23,7 +23,7 @@ void main() {
     );
     final first = feedback.prepare(testPlaybackAuthority(postId: 'full-0'))
       ..begin();
-    for (var index = 1; index < 6; index += 1) {
+    for (var index = 1; index < 8; index += 1) {
       feedback.prepare(testPlaybackAuthority(postId: 'full-$index')).begin();
     }
     await drainTestMicrotasks();
@@ -67,7 +67,7 @@ void main() {
     await drainTestMicrotasks();
     protected.initialized();
     await drainTestMicrotasks();
-    for (var index = 0; index < 5; index += 1) {
+    for (var index = 0; index < 7; index += 1) {
       feedback.prepare(testPlaybackAuthority(postId: 'blocked-$index')).begin();
     }
     feedback.prepare(testPlaybackAuthority(postId: 'healthy')).begin();

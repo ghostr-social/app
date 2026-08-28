@@ -24,7 +24,7 @@ void main() {
     );
     final retired = feedback.prepare(testPlaybackAuthority(postId: 'retired'))
       ..begin();
-    for (var index = 1; index < 6; index += 1) {
+    for (var index = 1; index < 8; index += 1) {
       feedback.prepare(testPlaybackAuthority(postId: 'active-$index')).begin();
     }
     retired.release();

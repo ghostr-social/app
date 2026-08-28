@@ -13,6 +13,15 @@ void main() {
       WarpNetworkClass.wifi,
     );
     expect(evidence.planPage.records.single.plan.readyReserve.ready, 2);
+    expect(
+      evidence.planPage.records.single.plan.readyReserve.candidatePostIds,
+      ['p1', 'p2', 'p3'],
+    );
+    expect(evidence.planPage.records.single.plan.readyReserve.candidateStates, [
+      WarpReserveCandidateState.ready,
+      WarpReserveCandidateState.unprepared,
+      WarpReserveCandidateState.ready,
+    ]);
     expect(evidence.evaluation.userVisible.startupSessions, 4);
     expect(evidence.evaluation.efficiency.totalBytes, 1000);
     expect(evidence.evaluation.readiness.readyCoverageMs, 6000);

@@ -3,6 +3,9 @@
 /// Initial cold-start whole-object discovery proposal (§5.5).
 pub const BOOTSTRAP_DIRECT_FETCH_BYTES: u64 = 1024 * 1024;
 
+/// Initial bounded prefix probe for unresolved progressive media (§5.5).
+pub const MEDIA_BOOTSTRAP_PROBE_BYTES: u64 = 64 * 1024;
+
 mod admission;
 mod allocation;
 mod allocation_evidence;
@@ -53,7 +56,9 @@ pub use plan::{
     ReadyReserveEvidence, ReserveCandidateEvidence, ReserveCandidateState, RetainedAllocation,
 };
 pub use policy::AdaptivePlayabilityPolicy;
-pub use retrieval::{PromotionGrant, RetrievalRequest, WholeBodyContract, WholeFetchReason};
+pub use retrieval::{
+    PromotionGrant, PromotionOpportunity, RetrievalRequest, WholeBodyContract, WholeFetchReason,
+};
 pub use retrieval_ladder::{
     CompletionTimes, DeadlineReadiness, EpsilonBuckets, PlanMetrics, QualityEstimate,
     RetrievalLadder, RetrievalPlan, RetrievalRung, SizeBounds,
@@ -84,7 +89,10 @@ pub(crate) use warp::{
     ContinuationPolicy, SemanticCandidate, SemanticGuardrail, TwinSearchContext, TwinState,
     WarpSearch,
 };
-pub(crate) use warp::{HlsGenerationPolicy, PlannerReplayCapsule, PlannerReplayState};
+pub(crate) use warp::{
+    HlsGenerationPolicy, OriginAdmissionGenerationPolicy, PlannerReplayCapsule,
+    PlannerReplayState, PromotionGenerationPolicy, WarpGenerationPolicies,
+};
 
 #[cfg(test)]
 #[path = "mod_axiom_test.rs"]

@@ -59,7 +59,7 @@ extension FeedCubitDelivery on FeedCubit {
   void _finishRescueNow(_RescueCommit commit) {
     final current = _acceptedPageTransition(commit.transition, commit.current);
     if (current == null) return _completePageTransition(commit.transition);
-    final moved = _movedTo(current, commit.decision.selectedIndex);
+    final moved = _presentedAt(current, commit.decision.selectedIndex);
     _pendingTransportJump = moved.activeIndex;
     emit(moved);
     _completePageTransition(commit.transition);

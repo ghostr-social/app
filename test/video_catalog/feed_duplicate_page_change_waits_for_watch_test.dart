@@ -37,10 +37,10 @@ void main() {
     await history.secondStarted.future;
     cubit.pageChanged(1);
 
-    expect((cubit.state as FeedLoaded).posts.first.id.value, 'first');
+    expect((cubit.state as FeedLoaded).roster.active.id.value, 'first');
     history.release.complete();
     await pumpEventQueue();
-    expect((cubit.state as FeedLoaded).posts.first.id.value, 'second');
+    expect((cubit.state as FeedLoaded).roster.active.id.value, 'second');
   });
 }
 

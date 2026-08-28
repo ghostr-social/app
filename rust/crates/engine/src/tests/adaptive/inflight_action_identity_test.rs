@@ -15,6 +15,7 @@ fn retained_commitment_returns_the_exact_launched_action_identity() {
         },
         effective_bytes: bytes,
         reserved_storage_bytes: bytes.len(),
+        promotion_opportunity: None,
         source: "https://origin.example/media".to_owned(),
         committed_until_ms: 12_000,
         identity_current: true,

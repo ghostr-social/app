@@ -6,7 +6,20 @@ use ghostr_engine::adaptive::DecisionOutcome;
 use ghostr_engine::origin_model::{AdmissionClaim, AdmissionClaimTerminal};
 use ghostr_engine::{ActionId, PostId};
 
+use super::disposition::{outcome_for_rejection, GrantRejection};
+
 impl DeliveryWorker {
+    pub(super) fn reject_selection(
+        &self,
+        decision: &mut Option<DecisionToken>,
+        rejection: GrantRejection,
+    ) {
+        if let Some(token) = decision.take() {
+            self.commands
+                .resolve_decision_token(&token, outcome_for_rejection(rejection));
+        }
+    }
+
     pub(super) async fn reject_commit(
         &mut self,
         prepared: PreparedTransfer,

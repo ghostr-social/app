@@ -126,6 +126,7 @@ fn active_range(
         request: active.request(),
         effective_bytes: active.effective_bytes(),
         reserved_storage_bytes: active.reserved_storage_bytes(),
+        promotion_opportunity: active.promotion_opportunity(),
         source: source.to_owned(),
         committed_until_ms: active.committed_until_ms(),
         identity_current: current.as_ref() == Some(active.identity()),

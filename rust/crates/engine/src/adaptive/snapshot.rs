@@ -1,4 +1,4 @@
-use super::{FeedOffset, RetrievalRequest};
+use super::{FeedOffset, PromotionOpportunity, RetrievalRequest};
 use crate::media_timeline::StartupFootprint;
 use crate::playback::{EstimateConfidence, PlaybackPhase};
 use crate::{ActionId, ByteRange, PostId};
@@ -115,6 +115,7 @@ pub struct InFlightAction {
     pub request: RetrievalRequest,
     pub effective_bytes: ByteRange,
     pub reserved_storage_bytes: u64,
+    pub promotion_opportunity: Option<PromotionOpportunity>,
     pub source: String,
     pub committed_until_ms: u64,
     pub identity_current: bool,

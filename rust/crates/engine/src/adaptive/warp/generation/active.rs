@@ -6,6 +6,8 @@ use crate::adaptive::{
     ContinuationPolicy, HedgePolicy, InFlightAction,
 };
 
+mod promotion;
+
 impl Builder<'_> {
     pub(super) fn add_active(&mut self, candidate: &CandidateSnapshot) {
         for active in &candidate.in_flight {
@@ -59,36 +61,6 @@ impl Builder<'_> {
         }
     }
 
-    fn add_promotion(&mut self, candidate: &CandidateSnapshot, active: &InFlightAction) {
-        let Some(grant) = active.request.promotion() else {
-            return;
-        };
-        let Some(additional_bytes) = promotion_delta(active, grant, self.snapshot.observed_at_ms)
-        else {
-            return;
-        };
-        let forecast_kind = ActionKind::FetchWhole {
-            maximum_bytes: grant.maximum_bytes,
-        };
-        let prediction = self.prediction(candidate, &forecast_kind, &active.source);
-        let kind = ActionKind::Promote {
-            active: active.action_id,
-            maximum_bytes: grant.maximum_bytes,
-        };
-        let input = NodeInput::new(kind, &active.source, prediction, &[]);
-        let mut node = self.node(candidate, input);
-        node.resources = super::super::ResourceCost::new(additional_bytes, additional_bytes, 0, 0);
-        self.actions.push(GeneratedAction {
-            node,
-            command: PlannerCommand::Promote {
-                post: candidate.post.clone(),
-                action: active.action_id,
-                source: active.source.clone(),
-                grant,
-            },
-        });
-    }
-
     fn add_hedge(
         &mut self,
         candidate: &CandidateSnapshot,
@@ -104,6 +76,12 @@ impl Builder<'_> {
         if !exact_hedge(input, active)
             || !HedgePolicy::eligible(input, proof)
             || alternate == active.source
+            || !self.source_admitted(
+                candidate,
+                &input.action,
+                alternate,
+                crate::origin_model::OriginAdmissionIntent::Delivery,
+            )
         {
             return;
         }
@@ -136,20 +114,6 @@ impl Builder<'_> {
             command: PlannerCommand::Cancel(action),
         });
     }
-}
-
-fn promotion_delta(
-    active: &InFlightAction,
-    grant: crate::adaptive::PromotionGrant,
-    observed_at_ms: u64,
-) -> Option<u64> {
-    if active.cancelling || !active.identity_current || grant.valid_until_ms < observed_at_ms {
-        return None;
-    }
-    grant
-        .maximum_bytes
-        .checked_sub(active.reserved_storage_bytes)
-        .filter(|bytes| *bytes > 0)
 }
 
 fn net_hedge_value(input: &crate::adaptive::HedgeInput) -> i64 {

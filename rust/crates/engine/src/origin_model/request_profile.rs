@@ -8,6 +8,25 @@ pub struct OriginRequestProfile {
     media: MediaClass,
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub struct OpenBodyProfile {
+    method: RequestMethod,
+    media: MediaClass,
+}
+
+impl OpenBodyProfile {
+    pub const fn from_request(profile: OriginRequestProfile) -> Self {
+        Self {
+            method: profile.method,
+            media: profile.media,
+        }
+    }
+
+    pub const fn request_profile(self, body_bytes: u64) -> OriginRequestProfile {
+        OriginRequestProfile::new(self.method, body_bytes, self.media)
+    }
+}
+
 impl OriginRequestProfile {
     pub const fn new(method: RequestMethod, planned_bytes: u64, media: MediaClass) -> Self {
         Self {
@@ -42,6 +61,8 @@ impl OriginRequestProfile {
 pub struct OriginAttemptProfile {
     forecast: OriginRequestProfile,
     request: OriginRequestProfile,
+    #[serde(default)]
+    admission_intent: super::OriginAdmissionIntent,
 }
 
 impl OriginAttemptProfile {
@@ -49,6 +70,7 @@ impl OriginAttemptProfile {
         Self {
             forecast,
             request: forecast,
+            admission_intent: super::OriginAdmissionIntent::Delivery,
         }
     }
 
@@ -58,6 +80,15 @@ impl OriginAttemptProfile {
 
     pub const fn request(self) -> OriginRequestProfile {
         self.request
+    }
+
+    pub const fn admission_intent(self) -> super::OriginAdmissionIntent {
+        self.admission_intent
+    }
+
+    pub const fn with_admission_intent(mut self, intent: super::OriginAdmissionIntent) -> Self {
+        self.admission_intent = intent;
+        self
     }
 
     pub const fn with_executed_transport(

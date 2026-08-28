@@ -3,6 +3,11 @@ part of 'feed_cubit.dart';
 typedef _RefreshLists = ({List<VideoPost> refreshed, List<VideoPost> eligible});
 
 typedef _RosterProposal = ({FeedRoster roster, VideoInteractionTarget? target});
+typedef _RefreshProposal = ({
+  FeedRoster roster,
+  VideoInteractionTarget? target,
+  FeedSessionResync refresh,
+});
 
 extension FeedCubitLoading on FeedCubit {
   Future<void> _accepting(
@@ -74,7 +79,7 @@ extension FeedCubitLoading on FeedCubit {
     var basis = current;
     var lists = initialLists;
     var proposal = _refreshProposal(current, lists);
-    if (proposal.roster.isEmpty) return _commitRefresh(basis, lists, proposal);
+    if (proposal.roster.isEmpty) return _commitRefresh(basis, proposal);
     final transition = ++_pageTransition;
     while (!proposal.roster.isEmpty) {
       if (!await _viewer.prepareToShow(proposal.roster.active)) return;
@@ -83,12 +88,12 @@ extension FeedCubitLoading on FeedCubit {
       lists = _includeRefreshTail(basis, latest, lists);
       final rebased = _refocusRefresh(latest, lists, proposal);
       if (rebased.target == proposal.target) {
-        return _commitRefresh(latest, lists, rebased);
+        return _commitRefresh(latest, rebased);
       }
       basis = latest;
       proposal = rebased;
     }
-    _commitRefresh(basis, lists, proposal);
+    _commitRefresh(basis, proposal);
   }
 
   FeedLoaded? _acceptedRefreshTransition(
@@ -100,20 +105,26 @@ extension FeedCubitLoading on FeedCubit {
     return _acceptedPageTransition(transition, basis);
   }
 
-  _RosterProposal _refreshProposal(FeedLoaded current, _RefreshLists lists) {
-    final roster = _rawRefreshRoster(current, lists);
+  _RefreshProposal _refreshProposal(FeedLoaded current, _RefreshLists lists) {
+    final refresh = _session.captureResync(
+      lists.refreshed,
+      eligible: lists.eligible,
+      retainWatched: !_excludesWatched(current),
+    );
+    final roster = _session.previewResynced(current.roster, refresh);
     return (
       roster: roster,
       target: roster.isEmpty
           ? null
           : VideoInteractionTarget.fromPost(roster.active),
+      refresh: refresh,
     );
   }
 
-  _RosterProposal _refocusRefresh(
+  _RefreshProposal _refocusRefresh(
     FeedLoaded current,
     _RefreshLists lists,
-    _RosterProposal previous,
+    _RefreshProposal previous,
   ) {
     final proposal = _refreshProposal(current, lists);
     final target = previous.target;
@@ -121,16 +132,12 @@ extension FeedCubitLoading on FeedCubit {
     final index = _targetIndex(proposal.roster, target);
     if (index < 0) return proposal;
     return (
-      roster: proposal.roster.movedTo(index, forgetPrevious: false),
+      roster: proposal.roster.movedTo(
+        index,
+        history: FeedNavigationHistory.unlimited,
+      ),
       target: target,
-    );
-  }
-
-  FeedRoster _rawRefreshRoster(FeedLoaded current, _RefreshLists lists) {
-    return current.roster.resynced(
-      lists.refreshed,
-      eligible: lists.eligible,
-      retainWatched: !_forgetsViewed(current),
+      refresh: proposal.refresh,
     );
   }
 
@@ -150,22 +157,17 @@ extension FeedCubitLoading on FeedCubit {
     );
   }
 
-  void _commitRefresh(
-    FeedLoaded current,
-    _RefreshLists lists,
-    _RosterProposal proposal,
-  ) {
-    var roster = _session.resynced(
-      current.roster,
-      lists.refreshed,
-      eligible: lists.eligible,
-      retainWatched: !_forgetsViewed(current),
-    );
+  void _commitRefresh(FeedLoaded current, _RefreshProposal proposal) {
+    var roster = _session.resynced(current.roster, proposal.refresh);
     if (roster.isEmpty) return _emitEmpty(current.kind);
     final target = proposal.target;
     final index = target == null ? -1 : _targetIndex(roster, target);
     if (index < 0) return;
-    roster = _session.movedTo(roster, index, forgetPrevious: false);
+    roster = _session.positionedAt(
+      roster,
+      index,
+      history: FeedNavigationHistory.unlimited,
+    );
     final loaded = FeedLoaded.of(current.kind, roster, follows: _follows);
     _emitState(_projectPreparation(loaded));
     unawaited(_settleReposts());

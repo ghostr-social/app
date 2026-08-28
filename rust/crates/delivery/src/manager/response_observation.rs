@@ -7,7 +7,11 @@ use ghostr_net::media_log_identity::MediaLogIdentity;
 impl DeliveryWorker {
     pub(super) async fn observe_response(&mut self, observed: ObservedResponse) {
         let response = observed.response.observation();
-        if !self.downloads.observe_headers(&observed.attempt, response) {
+        if !self.downloads.observe_headers(
+            &observed.attempt,
+            &observed.response,
+            crate::manager::time::unix_time_ms(),
+        ) {
             return;
         }
         let outcome = match response {

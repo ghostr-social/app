@@ -7,6 +7,7 @@ enum FeedReadyAction { intended, wait, rescue }
 
 enum FeedReadyReason {
   intendedReady,
+  historyTraversal,
   unknownDelivery,
   shortEta,
   etaTooLong,
@@ -85,6 +86,9 @@ final class FeedReadySelector {
     final intended = evidence.snapshotAt(intendedIndex);
     if (evidence.isReadyAt(intendedIndex)) {
       return _stay(intendedIndex, FeedReadyReason.intendedReady);
+    }
+    if (intendedIndex < fromIndex) {
+      return _stay(intendedIndex, FeedReadyReason.historyTraversal);
     }
     if (intended == null) {
       return _stay(intendedIndex, FeedReadyReason.unknownDelivery);

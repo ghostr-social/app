@@ -34,15 +34,15 @@ pub async fn report_unsupported(
     store: &PartialRangeStore,
     binding: RepresentationBinding,
 ) {
-    let revision = store
+    let epoch = store
         .media_snapshot("post")
         .await
         .expect("valid test fixture")
-        .revision();
+        .content_epoch();
     let authority = PlayerPreparationAuthority::try_new(
         ghostr_engine::PostId::new("post"),
         binding,
-        revision,
+        epoch,
         "asset",
     )
     .expect("valid test fixture");

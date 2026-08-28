@@ -1,7 +1,8 @@
 use crate::adaptive::axiom_test_support::WarpActionGenerator;
 use crate::adaptive::{
     ActionKind, ActivePlannerContext, AdaptivePlayabilityPolicy, HedgeInput, IdentityProof,
-    InFlightAction, PlannerCommand, PlannerContext, PromotionGrant, RetrievalRequest,
+    InFlightAction, PlannerCommand, PlannerContext, PromotionGrant, PromotionOpportunity,
+    RetrievalRequest, WholeBodyContract,
 };
 use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::{healthy_origin, snapshot};
@@ -27,6 +28,16 @@ fn cancelling_action_emits_no_control_promotion_or_hedge() {
             valid_until_ms: 20_000,
         }),
     };
+    in_flight.promotion_opportunity = Some(PromotionOpportunity::new(
+        WholeBodyContract::Exact {
+            expected_bytes: 200_000,
+        },
+        crate::origin_model::OriginRequestProfile::new(
+            crate::origin_model::RequestMethod::RangeGet,
+            64_000,
+            crate::origin_model::MediaClass::ProgressiveMp4,
+        ),
+    ));
     input.candidates[0].origins.push(healthy_origin(
         "https://mirror.example/media",
         7_000_000,

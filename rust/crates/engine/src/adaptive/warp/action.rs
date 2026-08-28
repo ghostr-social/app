@@ -1,9 +1,10 @@
-use super::{ResourceCost, ResourcePrices};
+use super::ResourceCost;
 use crate::adaptive::{CompletionTimes, RetrievalRequest};
 use crate::{PostId, RequestAuthority};
 
 mod conflict;
 mod kind;
+mod value;
 pub use kind::{ActionKind, TransformKind};
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
@@ -59,35 +60,6 @@ impl Default for ActionForecast {
     }
 }
 
-impl ActionValue {
-    pub const fn from_net_micros(value: i64) -> Self {
-        Self {
-            delay_loss_micros: value,
-            reserve_gain_micros: 0,
-            information_value_micros: 0,
-            exploration_micros: 0,
-            cache_gain_micros: 0,
-            tail_risk_micros: 0,
-            cvar_micros: 0,
-            rank_cost_micros: 0,
-        }
-    }
-
-    pub(crate) fn total(self, resources: ResourceCost, prices: ResourcePrices) -> i64 {
-        let benefits = self
-            .delay_loss_micros
-            .saturating_add(self.reserve_gain_micros)
-            .saturating_add(self.information_value_micros)
-            .saturating_add(self.exploration_micros)
-            .saturating_add(self.cache_gain_micros);
-        benefits
-            .saturating_sub(prices.cost(resources))
-            .saturating_sub(self.tail_risk_micros)
-            .saturating_sub(self.cvar_micros)
-            .saturating_sub(self.rank_cost_micros)
-    }
-}
-
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ActionNode {
     pub id: u16,
@@ -95,8 +67,10 @@ pub struct ActionNode {
     pub kind: ActionKind,
     pub(crate) value: ActionValue,
     pub resources: ResourceCost,
+    resource_authority: Option<ResourceCost>,
     pub forecast: ActionForecast,
     request_profile: Option<crate::origin_model::OriginRequestProfile>,
+    origin_admission_intent: crate::origin_model::OriginAdmissionIntent,
     pub(super) origin: String,
     request_authority: Option<RequestAuthority>,
     pub(crate) requires: Vec<u16>,
@@ -111,8 +85,10 @@ impl ActionNode {
             kind,
             value,
             resources: ResourceCost::default(),
+            resource_authority: None,
             forecast: ActionForecast::default(),
             request_profile: None,
+            origin_admission_intent: crate::origin_model::OriginAdmissionIntent::Delivery,
             origin: String::new(),
             request_authority: None,
             requires: Vec::new(),
@@ -126,11 +102,20 @@ impl ActionNode {
     }
 
     pub fn authorized_resources(&self) -> ResourceCost {
-        let mut authorized = self.resources;
+        let mut authorized = self.resource_authority.unwrap_or(self.resources);
         if let ActionKind::HlsBootstrap { maximum_bytes, .. } = &self.kind {
             authorized.network_bytes = *maximum_bytes;
         }
         authorized
+    }
+
+    pub(crate) const fn with_resource_authority(mut self, resources: ResourceCost) -> Self {
+        self.resource_authority = Some(resources);
+        self
+    }
+
+    pub(crate) const fn resource_authority(&self) -> Option<ResourceCost> {
+        self.resource_authority
     }
 
     pub(crate) fn with_forecast(mut self, forecast: ActionForecast) -> Self {
@@ -148,6 +133,18 @@ impl ActionNode {
 
     pub const fn request_profile(&self) -> Option<crate::origin_model::OriginRequestProfile> {
         self.request_profile
+    }
+
+    pub(crate) const fn with_origin_admission_intent(
+        mut self,
+        intent: crate::origin_model::OriginAdmissionIntent,
+    ) -> Self {
+        self.origin_admission_intent = intent;
+        self
+    }
+
+    pub const fn origin_admission_intent(&self) -> crate::origin_model::OriginAdmissionIntent {
+        self.origin_admission_intent
     }
 
     pub fn with_origin(mut self, origin: impl Into<String>) -> Self {

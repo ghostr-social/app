@@ -20,6 +20,7 @@ async fn terminal_completion_returns_the_committed_reservation_once() {
 #[tokio::test]
 async fn committed_promotion_delta_joins_the_terminal_reservation() {
     let mut fixture = PromotionFixture::new(100).await;
+    fixture.observe_headers(50);
     let preflight = fixture
         .active
         .preflight_promotion(&fixture.target, 50)

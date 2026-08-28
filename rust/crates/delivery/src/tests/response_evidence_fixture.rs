@@ -19,6 +19,5 @@ pub(super) async fn wait_for_validator(
 }
 
 pub(super) fn etag(value: &str) -> EvidenceValidator {
-    EvidenceValidator::strong_etag(format!("\"{value}\""))
-        .expect("valid response-evidence fixture")
+    EvidenceValidator::strong_etag(format!("\"{value}\"")).expect("valid response-evidence fixture")
 }

@@ -12,7 +12,10 @@ const SECOND: &str = "https://cdn-b.example/video.mp4";
 fn validatorless_response_cannot_rearm_unbound_probe_history() {
     let post = PostId::new("post");
     let mut catalog = Catalog::new();
-    let identity = catalog.upsert(post.clone(), metadata()).transfer(SOURCE).expect("valid test fixture");
+    let identity = catalog
+        .upsert(post.clone(), metadata())
+        .transfer(SOURCE)
+        .expect("valid test fixture");
     let stamp = catalog
         .learn_head_observation_with_stamp_for(&identity, observation(FIRST, 1))
         .expect("valid test fixture");
@@ -34,8 +37,7 @@ fn validatorless_response_cannot_rearm_unbound_probe_history() {
 }
 
 fn observation(final_url: &str, at: u64) -> HttpObservation {
-    HttpObservation::new(LearnedFacts::default(), None, at, None)
-        .with_final_url(final_url)
+    HttpObservation::new(LearnedFacts::default(), None, at, None).with_final_url(final_url)
 }
 
 fn metadata() -> VideoMeta {

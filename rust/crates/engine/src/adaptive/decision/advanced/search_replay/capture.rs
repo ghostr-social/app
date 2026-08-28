@@ -108,6 +108,8 @@ fn action(node: &ActionNode, privacy: &DecisionPrivacy) -> RecordedSearchAction 
         kind: super::super::kind::capture(&node.kind, privacy),
         value: node.value.into(),
         resources: node.resources.into(),
+        authorized_resources: node.resource_authority().map(Into::into),
+        origin_admission_intent: node.origin_admission_intent().into(),
         forecast: node.forecast.into(),
         request_source_id: node
             .request_authority()

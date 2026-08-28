@@ -83,6 +83,8 @@ pub(super) fn action(
         kind: kind::capture(&value.node.kind, privacy),
         command: command::capture(&value.command, privacy),
         resources: RecordedResourceCost::from(resources),
+        authorized_resources: value.node.resource_authority().map(Into::into),
+        origin_admission_intent: value.node.origin_admission_intent().into(),
         dependencies: value.node.requires.clone(),
         ready_playback_ms: value.node.forecast.ready_playback_ms,
         static_score_micros: value.node.value.total(resources, prices),

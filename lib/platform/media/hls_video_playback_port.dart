@@ -38,6 +38,7 @@ final class HlsVideoPlaybackPort
         videoId: request.videoId,
         isActive: request.isActive,
         mode: request.mode,
+        keepWarmWhenInactive: request.keepWarmWhenInactive,
         onPlaybackMediaReleased: request.onPlaybackMediaReleased,
         preview: request.preview,
       ),

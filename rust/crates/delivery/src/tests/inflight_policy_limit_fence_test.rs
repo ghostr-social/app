@@ -1,8 +1,6 @@
 use super::support::{chunk_request, transfer_identity};
 use crate::chunk::cancel::cancel_pair;
-use crate::manager::inflight::{
-    ActionRegistration, InFlightChunks, ResponseGenerationFence,
-};
+use crate::manager::inflight::{ActionRegistration, InFlightChunks, ResponseGenerationFence};
 use ghostr_engine::adaptive::{PreemptionAuthority, RetrievalRequest};
 use ghostr_engine::{ByteRange, ChunkId, PostId};
 

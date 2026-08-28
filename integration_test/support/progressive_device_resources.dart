@@ -6,11 +6,12 @@ final class ProgressiveDeviceResources {
   ProgressiveDeviceResources._(this.origin, this._cache);
 
   static Future<ProgressiveDeviceResources> start({
-    Duration responseChunkDelay = Duration.zero,
+    ProgressiveOriginPacing pacing =
+        const ProgressiveOriginPacing.perResponseDelay(Duration.zero),
     ProgressiveOriginValidator validator = ProgressiveOriginValidator.none,
   }) async {
     final origin = await ProgressiveDeviceOrigin.start(
-      responseChunkDelay: responseChunkDelay,
+      pacing: pacing,
       validator: validator,
     );
     try {

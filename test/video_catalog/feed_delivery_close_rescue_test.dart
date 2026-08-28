@@ -42,8 +42,8 @@ void main() {
     final focusCount = focus.focuses.length;
 
     final closing = cubit.close();
-    delivery.publish(posts[2], VideoDeliveryPhase.startable);
-    delivery.publish(posts[0], VideoDeliveryPhase.failed);
+    delivery.publish(posts[2], phase: VideoDeliveryPhase.startable);
+    delivery.publish(posts[0], phase: VideoDeliveryPhase.failed);
     await pumpEventQueue();
 
     expect((cubit.state as FeedLoaded).roster.active.id.value, 'p0');

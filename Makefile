@@ -44,8 +44,13 @@ VIDEO_PLAYER_CONTRACT_TESTS := \
 VIDEO_PROGRESSIVE_ANDROID_TESTS := \
 	integration_test/progressive_delivery_video_test.dart \
 	integration_test/warp_feed_playback_video_test.dart \
-	integration_test/warp_feed_visible_motion_video_test.dart
+	integration_test/warp_feed_visible_motion_video_test.dart \
+	integration_test/warp_feed_rapid_swipe_instrumentation_video_test.dart \
+	integration_test/warp_feed_bandwidth_recovery_video_test.dart
+VIDEO_ANDROID_PHYSICAL_TESTS := $(VIDEO_ANDROID_INTEGRATION_TESTS) \
+	$(VIDEO_PROGRESSIVE_ANDROID_TESTS)
 VIDEO_PROGRESSIVE_FLUTTER_TESTS := \
+	test/media/warp_ready_window_acceptance_test.dart \
 	test/core/media/remote_playback_delivery_id_test.dart \
 	test/media/device_video_frame_evidence_test.dart \
 	test/media/ffi_playback_telemetry_cross_port_generation_test.dart \
@@ -58,9 +63,19 @@ VIDEO_PROGRESSIVE_FLUTTER_TESTS := \
 	test/media/progressive_device_fixture_test.dart \
 	test/media/progressive_device_fixture_parity_test.dart \
 	test/media/progressive_device_origin_cancellation_accounting_test.dart \
+	test/media/progressive_device_origin_parallel_rendezvous_test.dart \
+	test/media/progressive_device_origin_rendezvous_arming_test.dart \
+	test/media/progressive_device_origin_rendezvous_duplicate_bypass_test.dart \
+	test/media/progressive_device_origin_rendezvous_timeout_test.dart \
+	test/media/progressive_device_origin_staged_nonblocking_test.dart \
+	test/media/progressive_device_origin_staged_rendezvous_test.dart \
+	test/media/progressive_device_origin_staged_zero_arrival_timeout_test.dart \
 	test/media/progressive_device_origin_test.dart \
+	test/media/progressive_device_origin_useful_overlap_test.dart \
 	test/media/progressive_device_resources_test.dart \
 	test/media/progressive_device_wait_deadline_test.dart \
+	test/media/device_ready_burst_qoe_target_test.dart \
+	test/media/warp_decision_material_history_test.dart \
 	test/video_catalog/feed_load_more_appends_test.dart \
 	test/video_catalog/feed_backfill_dry_cursor_test.dart \
 	test/video_catalog/feed_backfill_retry_rechecks_buffer_test.dart \
@@ -210,7 +225,7 @@ video-android-physical-tests: ## Run the device video playback matrix on physica
 		test "$$state" = device || { echo "Android device $(ANDROID_PHYSICAL_SERIAL) is not ready." >&2; exit 1; }; \
 		qemu=$$($(ADB) -s "$(ANDROID_PHYSICAL_SERIAL)" shell getprop ro.kernel.qemu | tr -d '\r'); \
 		test "$$qemu" != 1 || { echo "ANDROID_PHYSICAL_SERIAL must identify physical hardware." >&2; exit 1; }
-	$(FLUTTER) test $(VIDEO_ANDROID_INTEGRATION_TESTS) -d "$(ANDROID_PHYSICAL_SERIAL)"
+	$(FLUTTER) test $(VIDEO_ANDROID_PHYSICAL_TESTS) -d "$(ANDROID_PHYSICAL_SERIAL)"
 
 native-coverage-contract-test: ## Test the per-file native coverage contract.
 	sh test/tool/native_coverage_contract_test.sh

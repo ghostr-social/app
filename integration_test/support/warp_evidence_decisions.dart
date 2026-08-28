@@ -21,33 +21,6 @@ final class WarpDecisionEvidence {
   final List<WarpDecisionRecord> records;
 }
 
-final class WarpDecisionRecord {
-  const WarpDecisionRecord({
-    required this.sequence,
-    required this.chosenActionId,
-    required this.outcome,
-    required this.selected,
-    required this.executed,
-  });
-
-  factory WarpDecisionRecord.fromJson(Map<String, Object?> json) =>
-      WarpDecisionRecord(
-        sequence: _warpInt(json, 'sequence'),
-        chosenActionId: _warpOptionalInt(json, 'chosen_action_id'),
-        outcome: WarpDecisionOutcome.fromJson(
-          _warpChild(json, 'eventual_outcome'),
-        ),
-        selected: _warpSelected(json),
-        executed: _warpExecuted(json),
-      );
-
-  final int sequence;
-  final int? chosenActionId;
-  final WarpDecisionOutcome outcome;
-  final WarpDecisionAction? selected;
-  final WarpExecutedRequest? executed;
-}
-
 final class WarpDecisionOutcome {
   const WarpDecisionOutcome({
     required this.status,

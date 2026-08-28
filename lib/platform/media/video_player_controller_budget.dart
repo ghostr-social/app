@@ -114,7 +114,7 @@ final class _VideoPlayerControllerBudget {
     _syncPressure();
   }
 
-  void enablePreparedReserve() {
+  void enableExtendedCapacity() {
     if (_memoryConstrained || _limit == maximum) return;
     _limit = maximum;
     while (_inUse < _limit) {

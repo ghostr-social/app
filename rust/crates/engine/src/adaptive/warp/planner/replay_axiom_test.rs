@@ -1,11 +1,46 @@
 use super::*;
+use crate::adaptive::{
+    HlsGenerationPolicy, OriginAdmissionGenerationPolicy, PromotionGenerationPolicy,
+};
 
 impl WarpPlanner {
     pub(crate) fn plan_legacy_hls_for_test(
         &mut self,
         input: WarpPlannerInput<'_>,
     ) -> WarpPlanningDecision {
-        self.plan_with_hls_policy(input, HlsGenerationPolicy::LegacyWholeStage)
+        self.plan_with_generation_policies(
+            input,
+            WarpGenerationPolicies {
+                hls: HlsGenerationPolicy::LegacyWholeStage,
+                ..WarpGenerationPolicies::current()
+            },
+        )
+    }
+
+    pub(crate) fn plan_legacy_promotions_for_test(
+        &mut self,
+        input: WarpPlannerInput<'_>,
+    ) -> WarpPlanningDecision {
+        self.plan_with_generation_policies(
+            input,
+            WarpGenerationPolicies {
+                promotion: PromotionGenerationPolicy::LegacyLatentGrant,
+                ..WarpGenerationPolicies::current()
+            },
+        )
+    }
+
+    pub(crate) fn plan_legacy_origin_admission_for_test(
+        &mut self,
+        input: WarpPlannerInput<'_>,
+    ) -> WarpPlanningDecision {
+        self.plan_with_generation_policies(
+            input,
+            WarpGenerationPolicies {
+                origin_admission: OriginAdmissionGenerationPolicy::LegacyUnclassified,
+                ..WarpGenerationPolicies::current()
+            },
+        )
     }
 }
 

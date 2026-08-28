@@ -21,6 +21,7 @@ final class FeedCardPlayback {
     required this.isActive,
     this.surfaceScope,
     this.preparedOnly = false,
+    this.keepWarmWhenInactive = false,
   });
 
   final VideoPlaybackPort port;
@@ -28,6 +29,7 @@ final class FeedCardPlayback {
   final bool isActive;
   final VideoPlaybackSurfaceScope? surfaceScope;
   final bool preparedOnly;
+  final bool keepWarmWhenInactive;
 }
 
 final class FeedCardPlaybackSource {
@@ -81,6 +83,7 @@ class FeedCard extends StatelessWidget {
                 isActive: playback.isActive,
                 mode: mode,
                 surfaceScope: playback.surfaceScope,
+                keepWarmWhenInactive: playback.keepWarmWhenInactive,
               ),
             ),
           ),

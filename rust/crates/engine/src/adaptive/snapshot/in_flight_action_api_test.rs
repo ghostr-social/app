@@ -18,6 +18,7 @@ impl InFlightAction {
             },
             effective_bytes: bytes,
             reserved_storage_bytes: bytes.len(),
+            promotion_opportunity: None,
             source: source.into(),
             committed_until_ms,
             identity_current,

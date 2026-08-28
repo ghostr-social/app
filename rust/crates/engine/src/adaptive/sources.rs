@@ -3,29 +3,42 @@ use super::{CandidateSnapshot, OriginHealth, PlayabilitySnapshot};
 use crate::RequestAuthority;
 
 pub(super) fn best_origin(candidate: &CandidateSnapshot) -> Option<&OriginHealth> {
+    best_origin_where(candidate, |_| true)
+}
+
+pub(super) fn best_origin_where<'a>(
+    candidate: &'a CandidateSnapshot,
+    mut admitted: impl FnMut(&OriginHealth) -> bool,
+) -> Option<&'a OriginHealth> {
     if let Some(preferred) = candidate.preferred_source.as_deref() {
         if let Some(origin) = candidate
             .origins
             .iter()
-            .find(|origin| retrievable(origin) && origin.source == preferred)
+            .find(|origin| retrievable(origin) && admitted(origin) && origin.source == preferred)
         {
             return Some(origin);
         }
     }
-    best_available(&candidate.origins)
+    candidate
+        .origins
+        .iter()
+        .filter(|origin| retrievable(origin) && admitted(origin))
+        .reduce(faster)
 }
 
 pub(super) fn best_available(origins: &[OriginHealth]) -> Option<&OriginHealth> {
     origins
         .iter()
         .filter(|origin| retrievable(origin))
-        .reduce(|best, candidate| {
-            if effective_throughput(candidate) > effective_throughput(best) {
-                candidate
-            } else {
-                best
-            }
-        })
+        .reduce(faster)
+}
+
+fn faster<'a>(best: &'a OriginHealth, candidate: &'a OriginHealth) -> &'a OriginHealth {
+    if effective_throughput(candidate) > effective_throughput(best) {
+        candidate
+    } else {
+        best
+    }
 }
 
 pub(in crate::adaptive) fn retrievable(origin: &OriginHealth) -> bool {

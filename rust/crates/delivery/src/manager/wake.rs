@@ -11,6 +11,7 @@ use crate::playback_demand::DemandState;
 mod clear;
 mod internal;
 mod network;
+mod response;
 use clear::ClearCompletion;
 
 pub(crate) enum Wake {
@@ -30,6 +31,13 @@ impl DeliveryWorker {
     pub(crate) async fn step(&mut self) -> bool {
         let Some(wake) = self.next_wake().await else {
             return false;
+        };
+        let wake = match wake {
+            Wake::Response(response) => {
+                self.step_response(*response).await;
+                return true;
+            }
+            wake => wake,
         };
         let clear = self.apply(wake).await;
         if clear.is_none() {
@@ -72,10 +80,7 @@ impl DeliveryWorker {
                 self.demand_leases.apply(signal);
                 None
             }
-            Wake::Response(response) => {
-                self.apply_response_open(*response).await;
-                None
-            }
+            Wake::Response(_) => unreachable!("response wakes have a staged reconciliation"),
             Wake::Internal(event) => {
                 self.apply_internal(event).await;
                 None

@@ -1,5 +1,7 @@
-
-use crate::delivery_events::{PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationObservation, PlayerPreparationReport, PlayerPreparationState};
+use crate::delivery_events::{
+    PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationObservation,
+    PlayerPreparationReport, PlayerPreparationState,
+};
 use crate::tests::player_preparation_fixture::state;
 use ghostr_engine::adaptive::PlannerCapability;
 use ghostr_engine::PostId;

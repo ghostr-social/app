@@ -26,6 +26,9 @@ The browser contract is defined in `tool/video_user_e2e/qoe_targets.mjs`.
 Device constants live in
 `integration_test/support/device_qoe_targets.dart`. A change to either budget
 requires a failing contract test and an explanation backed by retained traces.
+The Android gesture injector targets 150 ms to leave its coarse live-device
+pump below the unchanged 300 ms observed-cadence gate; this is stress
+headroom, not a relaxed or redefined QoE target.
 
 The browser matrix admits eight ordered videos. The `adaptive_plans` row starts
 with a fresh private cache, explicitly focuses the first video, and holds that

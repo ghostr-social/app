@@ -33,6 +33,7 @@ async fn unhosted_outcomes_do_not_dirty_or_persist_host_stats() {
         }),
         received_bytes: 1,
         origin: None,
+        open_body: None,
         whole_body_completion: None,
         response_evidence: None,
         request_started: true,

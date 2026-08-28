@@ -44,6 +44,9 @@ const _labels = [
   'fifth',
   'sixth',
   'seventh',
+  'eighth',
+  'ninth',
+  'tenth',
 ];
 
 List<List<String>> _videoTags(Uri url, String label, int publishedAt) => [

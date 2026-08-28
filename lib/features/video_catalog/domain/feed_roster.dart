@@ -1,8 +1,11 @@
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
+import 'package:ghostr/features/video_catalog/domain/feed_navigation_history.dart';
 import 'package:ghostr/features/video_catalog/domain/video_interaction_target.dart';
 import 'package:ghostr/features/video_catalog/domain/video_media_identity.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post_id.dart';
+
+export 'package:ghostr/features/video_catalog/domain/feed_navigation_history.dart';
 
 /// The posts a viewer is scrolling through and where they are standing in
 /// them.
@@ -38,11 +41,20 @@ final class FeedRoster {
     List<VideoPost> refreshed, {
     List<VideoPost>? eligible,
     bool retainWatched = true,
+    Set<VideoInteractionTarget> retainedHeldTargets = const {},
   }) {
     final eligibility = eligible ?? refreshed;
-    final admission = _RefreshAdmission(refreshed, eligibility, retainWatched);
-    final activeTarget = isEmpty ? null : _targetOf(active);
-    final kept = _keptPosts(admission, activeTarget);
+    final retained = <VideoInteractionTarget>{
+      ...retainedHeldTargets,
+      if (!isEmpty) _targetOf(active),
+    };
+    final admission = _RefreshAdmission(
+      refreshed,
+      eligibility,
+      retainWatched,
+      retained,
+    );
+    final kept = _keptPosts(admission);
     final seen = SeenVideoIdentities(kept);
     final merged = <VideoPost>[
       ...kept,
@@ -52,27 +64,20 @@ final class FeedRoster {
     return FeedRoster(merged, activeIndex: _preserved(merged));
   }
 
-  List<VideoPost> _keptPosts(
-    _RefreshAdmission admission,
-    VideoInteractionTarget? activeTarget,
-  ) {
+  List<VideoPost> _keptPosts(_RefreshAdmission admission) {
     return <VideoPost>[
       for (final post in posts)
-        if (_retains(
-          post,
-          admission.eligibleTargets,
-          activeTarget,
-          admission.retainWatched,
-        ))
-          if (admission.revisionFor(post, activeTarget) case final revision?)
-            revision,
+        if (admission.revisionFor(post) case final revision?) revision,
     ];
   }
 
-  FeedRoster movedTo(int index, {required bool forgetPrevious}) {
+  FeedRoster movedTo(int index, {required FeedNavigationHistory history}) {
     RangeError.checkValidIndex(index, posts, 'index');
-    if (!forgetPrevious) return FeedRoster(posts, activeIndex: index);
-    return FeedRoster(List<VideoPost>.unmodifiable(posts.skip(index)));
+    final first = history.firstRetained(index);
+    return FeedRoster(
+      List<VideoPost>.unmodifiable(posts.skip(first)),
+      activeIndex: index - first,
+    );
   }
 
   /// Drops every post published by [creator].
@@ -111,65 +116,43 @@ final class FeedRoster {
   static VideoInteractionTarget _targetOf(VideoPost post) {
     return VideoInteractionTarget.fromPost(post);
   }
-
-  bool _retains(
-    VideoPost post,
-    Set<VideoInteractionTarget> eligible,
-    VideoInteractionTarget? activeTarget,
-    bool retainWatched,
-  ) {
-    final target = _targetOf(post);
-    return retainWatched || target == activeTarget || eligible.contains(target);
-  }
 }
+
+typedef _RefreshRevisions = ({
+  Map<VideoInteractionTarget, VideoPost> raw,
+  Map<VideoInteractionTarget, VideoPost> eligible,
+});
 
 final class _RefreshAdmission {
   factory _RefreshAdmission(
     List<VideoPost> raw,
     List<VideoPost> eligible,
     bool retainWatched,
+    Set<VideoInteractionTarget> retainedTargets,
   ) {
-    final rawByTarget = _index(raw);
-    final eligibleByTarget = _index(eligible);
     return _RefreshAdmission._(
-      rawByTarget,
-      eligibleByTarget,
-      eligibleByTarget.keys.toSet(),
+      (raw: _index(raw), eligible: _index(eligible)),
       retainWatched,
+      retainedTargets,
     );
   }
 
   const _RefreshAdmission._(
-    this.rawByTarget,
-    this.eligibleByTarget,
-    this.eligibleTargets,
+    this.revisions,
     this.retainWatched,
+    this.retainedTargets,
   );
 
-  final Map<VideoInteractionTarget, VideoPost> rawByTarget;
-  final Map<VideoInteractionTarget, VideoPost> eligibleByTarget;
-  final Set<VideoInteractionTarget> eligibleTargets;
+  final _RefreshRevisions revisions;
   final bool retainWatched;
+  final Set<VideoInteractionTarget> retainedTargets;
 
-  VideoPost? revisionFor(VideoPost held, VideoInteractionTarget? activeTarget) {
+  VideoPost? revisionFor(VideoPost held) {
     final target = VideoInteractionTarget.fromPost(held);
-    if (_admittedRevisions[target] case final revision?) return revision;
-    return _retainedActive(held, target, activeTarget);
-  }
-
-  Map<VideoInteractionTarget, VideoPost> get _admittedRevisions {
-    return retainWatched ? rawByTarget : eligibleByTarget;
-  }
-
-  VideoPost? _retainedActive(
-    VideoPost held,
-    VideoInteractionTarget target,
-    VideoInteractionTarget? activeTarget,
-  ) {
-    if (retainWatched) return null;
-    if (target != activeTarget) return null;
-    if (!rawByTarget.containsKey(target)) return null;
-    return held;
+    final admitted = retainWatched ? revisions.raw : revisions.eligible;
+    if (admitted[target] case final revision?) return revision;
+    if (!retainedTargets.contains(target)) return null;
+    return revisions.raw.containsKey(target) ? held : null;
   }
 
   static Map<VideoInteractionTarget, VideoPost> _index(List<VideoPost> posts) {

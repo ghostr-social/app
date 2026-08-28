@@ -71,9 +71,12 @@ fn append_bootstrap(
     origin: &OriginHealth,
     inputs: AppendInputs<'_>,
 ) -> u64 {
-    let Some(playable) = bootstrap_missing(snapshot, &inputs) else {
+    let Some(mut playable) = bootstrap_missing(snapshot, &inputs) else {
         return inputs.budget;
     };
+    if inputs.candidate.layout == MediaLayout::Unknown {
+        playable.playable_ms = 0;
+    }
     if playable.bytes.is_empty() || overlaps_planned(plan, inputs.candidate, playable.bytes) {
         return inputs.budget;
     }
@@ -130,10 +133,14 @@ fn bootstrap_missing(
     _snapshot: &PlayabilitySnapshot,
     inputs: &AppendInputs<'_>,
 ) -> Option<PlayableRange> {
+    let budget = inputs.budget.min(super::MEDIA_BOOTSTRAP_PROBE_BYTES);
+    if budget == 0 {
+        return None;
+    }
     missing(inputs.candidate)
         .into_iter()
         .next()
-        .map(|missing| fit_to_budget(missing, inputs.budget))
+        .map(|missing| fit_to_budget(missing, budget))
 }
 
 fn admitted_for_reason(

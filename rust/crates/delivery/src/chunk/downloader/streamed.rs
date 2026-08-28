@@ -11,6 +11,10 @@ use crate::debug::network::NetworkThrottle;
 use anyhow::{Context as _, Result};
 use ghostr_net::media_request_executor::MediaResponse;
 
+#[cfg(test)]
+#[path = "streamed/rejected_promotion_test.rs"]
+mod rejected_promotion_test;
+
 pub(super) struct ReceiveInput<'a, 'spec, W: ChunkWrite + ?Sized> {
     pub response: MediaResponse,
     pub spec: &'a ChunkSpec<'spec>,
@@ -112,13 +116,21 @@ impl<'a, 'spec, W: ChunkWrite + ?Sized> ReceiveInput<'a, 'spec, W> {
 }
 
 fn rejected<W: ChunkWrite + ?Sized>(input: &Completion<'_, '_, W>) -> ChunkResult {
+    rejected_result(input.total, input.range_support, input.range_ignored)
+}
+
+fn rejected_result(
+    total: Option<u64>,
+    range_support: Option<bool>,
+    range_ignored: bool,
+) -> ChunkResult {
     ChunkResult {
         bytes_written: 0,
-        range_support: input.range_support,
-        range_ignored: input.range_ignored,
+        range_support,
+        range_ignored,
         cancelled: true,
-        total_bytes: input.total,
-        promoted: input.promoted,
+        total_bytes: total,
+        promoted: false,
         request_started: true,
     }
 }

@@ -116,10 +116,6 @@ fn utility(candidate: &CandidateSnapshot, playable_ms: u64, expected_ms: u64) ->
     }
 }
 
-pub(super) fn source(candidate: &CandidateSnapshot) -> Option<&str> {
-    crate::adaptive::sources::best_origin(candidate).map(|item| item.source.as_str())
-}
-
 pub(super) fn classify(allocation: &Allocation) -> super::super::ActionKind {
     match allocation.request {
         RetrievalRequest::FetchWhole { contract, .. } => super::super::ActionKind::FetchWhole {

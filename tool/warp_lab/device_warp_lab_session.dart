@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import '../../integration_test/support/progressive_origin_pacing.dart';
 import '../../integration_test/support/warp_feed_device_runtime.dart';
 import 'warp_lab_destination.dart';
 import 'warp_lab_feed_surface.dart';
@@ -19,7 +20,9 @@ final class DeviceWarpLabSession implements WarpLabSession {
       eventCount: profile.eventCount,
       validator: profile.validator,
       dataUsage: profile.dataUsage,
-      responseChunkDelay: profile.responseChunkDelay,
+      pacing: ProgressiveOriginPacing.perResponseDelay(
+        profile.responseChunkDelay,
+      ),
     );
     return DeviceWarpLabSession._(runtime);
   }

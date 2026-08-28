@@ -18,10 +18,8 @@ fn completed_head_history_rearms_when_a_validator_invalidates_size() {
     ));
     let mut probes = MetadataProbePool::new(1);
     probes.learned(&identity, catalog.http_generation_for(&identity));
-    assert!(catalog.learn_response_observation_for(
-        &identity,
-        observation(None, None, "\"generation-2\"", 2)
-    ));
+    assert!(catalog
+        .learn_response_observation_for(&identity, observation(None, None, "\"generation-2\"", 2)));
     assert_eq!(
         catalog
             .lookup(&post)
@@ -42,12 +40,7 @@ fn completed_head_history_rearms_when_a_validator_invalidates_size() {
     assert!(probes.claim_selected(query).is_ok());
 }
 
-fn observation(
-    size: Option<u64>,
-    ranges: Option<bool>,
-    etag: &str,
-    at_ms: u64,
-) -> HttpObservation {
+fn observation(size: Option<u64>, ranges: Option<bool>, etag: &str, at_ms: u64) -> HttpObservation {
     HttpObservation::new(
         LearnedFacts {
             content_length: size,

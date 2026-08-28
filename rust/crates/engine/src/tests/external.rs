@@ -44,6 +44,10 @@ mod origin_model_circuit_test;
 mod origin_model_cold_start_test;
 #[path = "../../tests/origin_model_context_test.rs"]
 mod origin_model_context_test;
+#[path = "../../tests/origin_model_open_body_persistence_test.rs"]
+mod origin_model_open_body_persistence_test;
+#[path = "../../tests/origin_model_open_body_test.rs"]
+mod origin_model_open_body_test;
 #[path = "../../tests/origin_model_persistence_test.rs"]
 mod origin_model_persistence_test;
 #[path = "../../tests/origin_model_recovery_attribution_test.rs"]

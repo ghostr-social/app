@@ -5,6 +5,7 @@ mod command;
 mod executed;
 mod hls;
 mod kind;
+mod origin_intent;
 mod planner_replay;
 mod reserve;
 mod search;
@@ -21,6 +22,7 @@ pub(in crate::adaptive::decision) use executed::{
 };
 pub use hls::RecordedHlsBootstrapStage;
 pub use kind::RecordedWarpActionKind;
+use origin_intent::RecordedOriginAdmissionIntent;
 pub(in crate::adaptive::decision) use planner_replay::verify as verify_planner_replay;
 pub use planner_replay::RecordedPlannerReplayCapsule;
 pub use reserve::{
@@ -114,6 +116,13 @@ pub struct RecordedWarpAction {
     pub(super) kind: RecordedWarpActionKind,
     pub command: RecordedWarpCommand,
     pub resources: RecordedResourceCost,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub authorized_resources: Option<RecordedResourceCost>,
+    #[serde(
+        default,
+        skip_serializing_if = "RecordedOriginAdmissionIntent::is_delivery"
+    )]
+    origin_admission_intent: RecordedOriginAdmissionIntent,
     pub(super) dependencies: Vec<u16>,
     pub(super) ready_playback_ms: u64,
     pub(super) static_score_micros: i64,

@@ -6,7 +6,7 @@ import '../support/fakes.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('leaving a video removes it from the ordinary feed roster', () async {
+  test('leaving a video retains it only in bounded session history', () async {
     final posts = [
       samplePost(id: 'first'),
       samplePost(id: 'second'),
@@ -35,8 +35,12 @@ void main() {
     await pumpEventQueue();
 
     final loaded = cubit.state as FeedLoaded;
-    expect(loaded.posts.map((post) => post.id.value), ['second', 'third']);
-    expect(loaded.activeIndex, 0);
+    expect(loaded.posts.map((post) => post.id.value), [
+      'first',
+      'second',
+      'third',
+    ]);
+    expect(loaded.roster.active.id.value, 'second');
     expect(history.entries.map((entry) => entry.videoId), [
       'e:second',
       'e:first',

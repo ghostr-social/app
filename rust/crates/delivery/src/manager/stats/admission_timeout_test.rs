@@ -46,6 +46,7 @@ fn note_chunk_timeout(keeper: &mut StatsKeeper) {
         outcome: Err(MediaRequestAdmissionTimeout.into()),
         received_bytes: 0,
         origin: None,
+        open_body: None,
         request_started: false,
         whole_body_completion: None,
         response_evidence: None,

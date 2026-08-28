@@ -47,16 +47,29 @@ pub struct OriginEstimate {
     pub uncertainty: f64,
 }
 
-pub(super) fn build_estimate(
-    context: OriginContext,
-    environment: OriginEnvironment,
-    snapshot: RecordSnapshot,
-    prior: super::ColdStartPrior,
-    mode: DecisionMode,
-) -> OriginEstimate {
-    let uncertainty = (1.0 / (snapshot.evidence + 1.0).sqrt()).clamp(0.0, 1.0);
-    let success = probability(snapshot.success_mean, uncertainty, mode);
-    let range = probability(snapshot.range_mean, uncertainty, mode);
+pub(super) struct EstimateInput {
+    pub context: OriginContext,
+    pub environment: OriginEnvironment,
+    pub snapshot: RecordSnapshot,
+    pub prior: super::ColdStartPrior,
+    pub mode: DecisionMode,
+    pub success_prior_evidence: f64,
+}
+
+pub(super) fn build_estimate(input: EstimateInput) -> OriginEstimate {
+    let EstimateInput {
+        context,
+        environment,
+        snapshot,
+        prior,
+        mode,
+        success_prior_evidence,
+    } = input;
+    let uncertainty = sample_uncertainty(snapshot.evidence);
+    let success_uncertainty = sample_uncertainty(snapshot.evidence + success_prior_evidence);
+    let range_uncertainty = sample_uncertainty(snapshot.range_evidence);
+    let success = probability(snapshot.success_mean, success_uncertainty, mode);
+    let range = probability(snapshot.range_mean, range_uncertainty, mode);
     let ttfb = snapshot.ttfb.unwrap_or_else(|| prior_ttfb(prior));
     let throughput = snapshot
         .throughput
@@ -77,6 +90,10 @@ pub(super) fn build_estimate(
         },
         uncertainty,
     }
+}
+
+fn sample_uncertainty(evidence: f64) -> f64 {
+    (1.0 / (evidence + 1.0).sqrt()).clamp(0.0, 1.0)
 }
 
 #[cfg(test)]

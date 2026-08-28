@@ -96,7 +96,10 @@ fn path_cost(input: &RecordedWarpSearchInput, ids: &[u16]) -> Option<RecordedRes
             .actions
             .iter()
             .find(|action| action.planner_action_id == *id)?;
-        add_cost(total, action.resources)
+        add_cost(
+            total,
+            action.authorized_resources.unwrap_or(action.resources),
+        )
     })
 }
 

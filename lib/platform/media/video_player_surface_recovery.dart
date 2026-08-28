@@ -136,7 +136,7 @@ extension _VideoPlayerSurfaceRecovery on _VideoPlayerSurfaceState {
       return;
     }
     if (!widget.isActive) {
-      _coverPlayback();
+      _leaveActivePlayback();
       return;
     }
     if (_controller == null &&
@@ -189,9 +189,8 @@ extension _VideoPlayerSurfaceRecovery on _VideoPlayerSurfaceState {
       ? PlaybackSurfaceActivity.active
       : PlaybackSurfaceActivity.inactive;
 
-  bool _acceptsRecovery(int version) {
-    return !_isClosing && mounted && version == _recoveryVersion;
-  }
+  bool _acceptsRecovery(int version) =>
+      !_isClosing && mounted && version == _recoveryVersion;
 
   void _cancelRecovery() {
     _recoveryVersion += 1;

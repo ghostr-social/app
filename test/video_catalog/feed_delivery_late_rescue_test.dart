@@ -41,12 +41,12 @@ void main() {
 
     cubit.pageChanged(1);
     await pumpEventQueue();
-    expect((cubit.state as FeedLoaded).posts.first.id.value, 'p1');
+    expect((cubit.state as FeedLoaded).roster.active.id.value, 'p1');
     updates.publish(posts[1], startable: false);
     updates.publish(posts[2], startable: true);
     await pumpEventQueue();
 
-    expect((cubit.state as FeedLoaded).posts.first.id.value, 'p2');
+    expect((cubit.state as FeedLoaded).roster.active.id.value, 'p2');
     expect(focus.focuses.last.cause, FeedFocusCause.transportRescue);
     expect(history.entries.map((entry) => entry.videoId), [
       'e:p2',

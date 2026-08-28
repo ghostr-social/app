@@ -1,5 +1,6 @@
-
-use crate::delivery_events::{DeliveryCandidate, DeliveryFocus, FocusGeneration, FocusItem, FocusTransition};
+use crate::delivery_events::{
+    DeliveryCandidate, DeliveryFocus, FocusGeneration, FocusItem, FocusTransition,
+};
 use crate::manager::state::DeliveryState;
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
 

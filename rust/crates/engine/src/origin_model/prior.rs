@@ -31,6 +31,15 @@ impl ColdStartPrior {
             throughput_p50_bps: throughput,
         }
     }
+
+    pub(super) fn for_open_body(mut self) -> Self {
+        self.success_alpha = 9.0;
+        self.success_beta = 1.0;
+        self.range_alpha = 1.0;
+        self.range_beta = 1.0;
+        self.ttfb_p50_ms = 1;
+        self
+    }
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]

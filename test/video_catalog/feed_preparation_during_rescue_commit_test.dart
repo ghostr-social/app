@@ -49,18 +49,18 @@ void main() {
       await Future.wait([cubit.close(), delivery.close(), preparation.close()]);
     });
     await cubit.load();
-    delivery.publish(posts[1], VideoDeliveryPhase.preparing);
-    delivery.publish(posts[2], VideoDeliveryPhase.startable);
+    delivery.publish(posts[1], phase: VideoDeliveryPhase.preparing);
+    delivery.publish(posts[2], phase: VideoDeliveryPhase.startable);
 
     cubit.pageChanged(1);
     await history.secondStarted.future;
     await pumpEventQueue();
 
-    expect((cubit.state as FeedLoaded).posts.first.id.value, 'p2');
+    expect((cubit.state as FeedLoaded).roster.active.id.value, 'p2');
     expect(focus.focuses.last.cause, FeedFocusCause.transportRescue);
     preparation.publish(_plan(posts[0].media, posts[1].media));
     await pumpEventQueue();
-    expect((cubit.state as FeedLoaded).posts.first.id.value, 'p2');
+    expect((cubit.state as FeedLoaded).roster.active.id.value, 'p2');
 
     history.release.complete();
     await pumpEventQueue();

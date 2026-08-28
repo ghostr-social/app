@@ -120,6 +120,12 @@ extension _VideoPlayerSurfacePreparationFeedback on _VideoPlayerSurfaceState {
     _presentationReported = false;
   }
 
+  void _resetActivationPresentation() {
+    _presentationVersion += 1;
+    _presentationScheduled = false;
+    _presentationReported = false;
+  }
+
   void _adoptRequestAuthority() {
     final authority = widget.request.authority;
     final media = widget.media;

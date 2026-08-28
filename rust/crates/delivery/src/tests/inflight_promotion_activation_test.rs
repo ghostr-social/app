@@ -3,8 +3,9 @@ use ghostr_engine::adaptive::{RetrievalRequest, WholeBodyContract, WholeFetchRea
 use ghostr_engine::ByteRange;
 
 #[tokio::test]
-async fn selected_promotion_activates_only_before_response_headers() {
+async fn selected_promotion_activates_after_response_headers_pause_the_body() {
     let mut fixture = PromotionFixture::new(100).await;
+    fixture.observe_headers(50);
     let preflight = fixture
         .active
         .preflight_promotion(&fixture.target, 50)
@@ -31,6 +32,7 @@ async fn selected_promotion_activates_only_before_response_headers() {
 #[tokio::test]
 async fn rejected_commit_can_restore_the_exact_range_authority() {
     let mut fixture = PromotionFixture::new(100).await;
+    fixture.observe_headers(50);
     let preflight = fixture
         .active
         .preflight_promotion(&fixture.target, 50)
@@ -51,6 +53,7 @@ async fn rejected_commit_can_restore_the_exact_range_authority() {
 #[tokio::test]
 async fn rejected_commit_rolls_back_the_exact_store_delta_without_cancelling() {
     let mut fixture = PromotionFixture::new(100).await;
+    fixture.observe_headers(50);
     let preflight = fixture
         .active
         .preflight_promotion(&fixture.target, 50)

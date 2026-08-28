@@ -8,20 +8,7 @@ extension _ProgressiveDeviceOriginResponse on ProgressiveDeviceOrigin {
   ) async {
     _concurrency.started(request.path, range);
     try {
-      final bytes = ProgressiveMp4Fixture.bytes;
-      final span = range ?? (start: 0, end: bytes.length);
-      _configure(response, range, span, bytes.length);
-      for (var offset = span.start; offset < span.end;) {
-        final end = (offset + _responseChunkBytes).clamp(offset, span.end);
-        response.add(Uint8List.sublistView(bytes, offset, end));
-        await response.flush();
-        _recordBytes(request, end - offset);
-        offset = end;
-        if (offset < span.end && _responseChunkDelay > Duration.zero) {
-          await Future<void>.delayed(_responseChunkDelay);
-        }
-      }
-      await response.close();
+      await _writeResponse(response, range, request);
       request._finish(
         ProgressiveOriginRequestOutcome.completed,
         _clock.elapsed,
@@ -38,6 +25,49 @@ extension _ProgressiveDeviceOriginResponse on ProgressiveDeviceOrigin {
     }
   }
 
+  Future<void> _writeResponse(
+    HttpResponse response,
+    ({int start, int end})? range,
+    ProgressiveOriginRequest request,
+  ) async {
+    final bytes = ProgressiveMp4Fixture.bytes;
+    final span = range ?? (start: 0, end: bytes.length);
+    _configure(response, range, span, bytes.length);
+    await _streamChunks(response, bytes, span, request);
+    await _closeResponse(response);
+  }
+
+  Future<void> _streamChunks(
+    HttpResponse response,
+    Uint8List bytes,
+    ({int start, int end}) span,
+    ProgressiveOriginRequest request,
+  ) async {
+    var firstChunk = true;
+    for (var offset = span.start; offset < span.end;) {
+      final end = (offset + _responseChunkBytes).clamp(offset, span.end);
+      final hasMore = end < span.end;
+      final event = await _sendChunk(response, (
+        bytes: bytes,
+        request: request,
+        start: offset,
+        end: end,
+      ));
+      _bandwidthTrigger?._afterChunk(request, hasMore, event);
+      if (firstChunk) {
+        await _firstChunkRendezvous?._afterFirstChunk(request);
+        firstChunk = false;
+      }
+      await _chunkGate?._afterChunk(
+        request,
+        _requestSequences[request]!,
+        hasMore,
+      );
+      offset = end;
+      await _pacing.afterChunk(hasMore);
+    }
+  }
+
   void _configure(
     HttpResponse response,
     ({int start, int end})? range,
@@ -48,6 +78,7 @@ extension _ProgressiveDeviceOriginResponse on ProgressiveDeviceOrigin {
         ? HttpStatus.ok
         : HttpStatus.partialContent;
     response.headers.contentType = ContentType('video', 'mp4');
+    response.bufferOutput = false;
     response.headers.contentLength = span.end - span.start;
     response.headers.set(HttpHeaders.acceptRangesHeader, 'bytes');
     if (_validator == ProgressiveOriginValidator.stableStrong) {
@@ -55,27 +86,4 @@ extension _ProgressiveDeviceOriginResponse on ProgressiveDeviceOrigin {
     }
     if (range != null) _setContentRange(response, span, total);
   }
-}
-
-({int start, int end})? _requestedRange(HttpRequest request, int total) {
-  final raw = request.headers.value(HttpHeaders.rangeHeader);
-  if (raw == null || !raw.startsWith('bytes=')) return null;
-  final bounds = raw.substring(6).split('-');
-  final start = int.tryParse(bounds.first) ?? 0;
-  final inclusiveEnd = int.tryParse(bounds.last) ?? total - 1;
-  return (
-    start: start.clamp(0, total - 1),
-    end: (inclusiveEnd + 1).clamp(1, total),
-  );
-}
-
-void _setContentRange(
-  HttpResponse response,
-  ({int start, int end}) range,
-  int total,
-) {
-  response.headers.set(
-    HttpHeaders.contentRangeHeader,
-    'bytes ${range.start}-${range.end - 1}/$total',
-  );
 }

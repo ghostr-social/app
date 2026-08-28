@@ -12,6 +12,7 @@ const RESPONSE_OPEN_CAPACITY: usize = 16;
 mod evidence;
 mod identity;
 mod metrics;
+mod promotion;
 mod sizing;
 mod store;
 use sizing::response_bytes;

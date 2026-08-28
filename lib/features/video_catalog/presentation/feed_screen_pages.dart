@@ -53,30 +53,42 @@ extension _FeedScreenPages on _FeedScreenState {
 
   Widget _feedPage(BuildContext context, FeedLoaded state, int index) {
     final post = state.posts[index];
-    final prepared = _preparedPlayback(state, index);
+    final source = _playbackSource(state, index);
     final isCurrent = index == state.activeIndex;
-    if (isCurrent) {
-      return _feedCard(
+    if (source == null) {
+      return ColoredBox(key: ValueKey(post.id.value), color: Colors.black);
+    }
+    return _PlaybackFeedPage(
+      keepAlive: isCurrent || _keepsWarmPrevious(state.activeIndex - index),
+      child: _feedCard(
         context,
         state,
         index,
         _playback(
-          prepared == null
-              ? FeedCardPlaybackSource.direct(post.media)
-              : FeedCardPlaybackSource.prepared(prepared),
-          isCurrent: true,
+          source,
+          isCurrent: isCurrent,
+          keepWarmWhenInactive: !isCurrent,
         ),
-      );
+      ),
+    );
+  }
+
+  FeedCardPlaybackSource? _playbackSource(FeedLoaded state, int index) {
+    final prepared = _preparedPlayback(state, index);
+    if (prepared != null) return FeedCardPlaybackSource.prepared(prepared);
+    final current = index == state.activeIndex;
+    final previousDistance = state.activeIndex - index;
+    if (current || _keepsWarmPrevious(previousDistance)) {
+      return FeedCardPlaybackSource.direct(state.posts[index].media);
     }
-    if (prepared != null) {
-      return _feedCard(
-        context,
-        state,
-        index,
-        _playback(FeedCardPlaybackSource.prepared(prepared), isCurrent: false),
-      );
-    }
-    return ColoredBox(key: ValueKey(post.id.value), color: Colors.black);
+    return null;
+  }
+
+  bool _keepsWarmPrevious(int distance) {
+    return distance > 0 &&
+        distance <= _warmPreviousDepth &&
+        _isVisible &&
+        !_memoryConstrained;
   }
 
   PreparedProgressivePlayback? _preparedPlayback(FeedLoaded state, int index) {
@@ -106,13 +118,45 @@ extension _FeedScreenPages on _FeedScreenState {
   FeedCardPlayback _playback(
     FeedCardPlaybackSource source, {
     required bool isCurrent,
+    bool keepWarmWhenInactive = false,
   }) {
     return FeedCardPlayback(
       port: widget.bindings.playbackPort,
       source: source,
       isActive: _isVisible && isCurrent,
       preparedOnly: !isCurrent,
+      keepWarmWhenInactive: keepWarmWhenInactive,
       surfaceScope: _playbackSurfaceScope,
     );
+  }
+}
+
+const _warmPreviousDepth = 2;
+
+final class _PlaybackFeedPage extends StatefulWidget {
+  const _PlaybackFeedPage({required this.keepAlive, required this.child});
+
+  final bool keepAlive;
+  final Widget child;
+
+  @override
+  State<_PlaybackFeedPage> createState() => _PlaybackFeedPageState();
+}
+
+final class _PlaybackFeedPageState extends State<_PlaybackFeedPage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => widget.keepAlive;
+
+  @override
+  void didUpdateWidget(covariant _PlaybackFeedPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.keepAlive != widget.keepAlive) updateKeepAlive();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }

@@ -51,7 +51,7 @@ void main() {
     await pumpEventQueue();
 
     final loaded = cubit.state as FeedLoaded;
-    expect(loaded.posts.first.id.value, 'second');
+    expect(loaded.roster.active.id.value, 'second');
     expect(loaded.preparation.isManaged, isTrue);
   });
 }

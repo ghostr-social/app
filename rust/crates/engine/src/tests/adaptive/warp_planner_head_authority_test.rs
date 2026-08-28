@@ -3,7 +3,7 @@ use crate::adaptive::PlannerCommand;
 
 #[test]
 fn a_head_probe_uses_the_same_preemption_authority_as_its_candidate_transfer() {
-    let generated = generated_actions();
+    let generated = generated_actions(Some(200_000));
     let head = generated
         .actions
         .iter()

@@ -15,13 +15,17 @@ pub async fn wait_for_admissions(
     handle: &ghostr_delivery::delivery_events::DeliveryHandle,
     expected: u64,
 ) {
-    tokio::time::timeout(Duration::from_secs(2), async {
+    let result = tokio::time::timeout(Duration::from_secs(2), async {
         while handle.playback_admission_snapshot().counters().accepted() < expected {
             tokio::task::yield_now().await;
         }
     })
-    .await
-    .expect("accepted playback fixture");
+    .await;
+    assert!(
+        result.is_ok(),
+        "accepted playback fixture: {:?}",
+        handle.playback_admission_snapshot()
+    );
 }
 
 pub fn playing(post: &str, buffer: Duration) -> DeliveryPlayback {

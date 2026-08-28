@@ -11,7 +11,10 @@ const SOURCE: &str = "https://a.example/video";
 #[test]
 fn only_the_exact_http_generation_keeps_concurrent_work_alive() {
     let identity = identity();
-    let chunk = ChunkId { post: identity.post().clone(), range: ByteRange::new(0, 8) };
+    let chunk = ChunkId {
+        post: identity.post().clone(),
+        range: ByteRange::new(0, 8),
+    };
     let mut active = InFlightChunks::new();
     let (first, first_token) = insert(&mut active, &identity, &chunk);
     let (_second, second_token) = insert(&mut active, &identity, &chunk);
@@ -24,7 +27,10 @@ fn only_the_exact_http_generation_keeps_concurrent_work_alive() {
 
     let (replacement, replacement_token) = insert(&mut active, &identity, &chunk);
     assert!(active.adopt_http_generation(&replacement, &generation(2)));
-    assert!(first_token.is_cancelled(), "ABA epoch must fence the old response");
+    assert!(
+        first_token.is_cancelled(),
+        "ABA epoch must fence the old response"
+    );
     assert!(!replacement_token.is_cancelled());
 }
 
@@ -48,11 +54,19 @@ fn insert(
 fn identity() -> TransferIdentity {
     let mut catalog = Catalog::new();
     let post = PostId::new("post");
-    catalog.upsert(post.clone(), VideoMeta {
-        urls: vec![SOURCE.into()], delivery: DeliveryKind::Progressive,
-        sha256: None, size_bytes: Some(8), duration_ms: Some(1_000),
-    });
-    catalog.transfer_identity(&post, SOURCE).expect("valid test fixture")
+    catalog.upsert(
+        post.clone(),
+        VideoMeta {
+            urls: vec![SOURCE.into()],
+            delivery: DeliveryKind::Progressive,
+            sha256: None,
+            size_bytes: Some(8),
+            duration_ms: Some(1_000),
+        },
+    );
+    catalog
+        .transfer_identity(&post, SOURCE)
+        .expect("valid test fixture")
 }
 
 fn generation(epoch: u64) -> HttpGenerationLease {

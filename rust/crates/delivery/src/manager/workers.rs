@@ -123,9 +123,22 @@ impl DownloadWorkers {
     pub(super) fn observe_headers(
         &mut self,
         attempt: &ChunkAttempt,
-        response: crate::chunk::downloader::ResponseObservation,
+        response: &crate::chunk::downloader::OpenedResponse,
+        observed_at_ms: u64,
     ) -> bool {
-        self.active.observe_headers(attempt, response)
+        self.active
+            .observe_headers(attempt, response, observed_at_ms)
+    }
+
+    pub(super) fn stage_response_promotion(
+        &mut self,
+        attempt: &ChunkAttempt,
+        action: &ghostr_partial_store::partial_range_store::StoreAction,
+        response: &crate::chunk::downloader::OpenedResponse,
+        observed_at_ms: u64,
+    ) -> crate::manager::inflight::ResponsePromotionStage {
+        self.active
+            .stage_response_promotion(attempt, action, response, observed_at_ms)
     }
 
     pub(super) fn authorizes_response(

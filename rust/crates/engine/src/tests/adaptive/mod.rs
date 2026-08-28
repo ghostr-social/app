@@ -96,5 +96,7 @@ mod warp_planner_request_occupancy_test;
 mod warp_planner_semantic_enforcement_test;
 mod warp_planner_test_assertions;
 mod warp_tests;
+mod warp_unknown_prefix_readiness_test;
+mod warp_unknown_probe_continuation_test;
 mod zero_storage_capacity_test;
 mod zero_storage_plan_test;

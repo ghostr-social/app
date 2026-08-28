@@ -10,12 +10,17 @@ final class ControlledVideoDeliveryUpdates implements VideoDeliveryUpdates {
   @override
   Stream<VideoDeliverySnapshot> watchDelivery() => _events.stream;
 
-  void publish(VideoPost post, VideoDeliveryPhase phase) {
+  void publish(
+    VideoPost post, {
+    required VideoDeliveryPhase phase,
+    Duration? eta,
+  }) {
     _events.add(
       VideoDeliverySnapshot(
         deliveryId: post.media.playbackDeliveryId!,
         phase: phase,
         bytesPresent: BigInt.zero,
+        eta: eta,
       ),
     );
   }

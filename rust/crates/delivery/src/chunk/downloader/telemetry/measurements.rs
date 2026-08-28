@@ -1,10 +1,13 @@
-use super::super::{HttpResponseEvidence, OpenedResponse, ResponseAdmission};
+use super::super::{HttpResponseEvidence, OpenedResponse, ResponseAdmission, ResponseObservation};
 use crate::chunk::traffic::{ChunkTraffic, WholeBodyCompletion};
 use core::future::Future;
 use core::pin::Pin;
 use core::time::Duration;
 use ghostr_engine::origin_model::{OriginAttemptContext, OriginAttemptProfile};
 use tokio::time::Instant;
+
+mod open_body;
+pub(in crate::chunk::downloader) use open_body::OpenBodyMeasurement;
 
 #[derive(Clone, Debug)]
 pub(in crate::chunk::downloader) struct TrafficMeasurements {
@@ -17,6 +20,8 @@ pub(in crate::chunk::downloader) struct TrafficMeasurements {
     attempt_context: Option<OriginAttemptContext>,
     whole_body_completion: Option<WholeBodyCompletion>,
     response_evidence: Option<HttpResponseEvidence>,
+    response_observation: Option<ResponseObservation>,
+    open_body: Option<OpenBodyMeasurement>,
 }
 
 pub(in crate::chunk::downloader) struct MeasuredTraffic<'a> {
@@ -38,6 +43,8 @@ impl Default for TrafficMeasurements {
             attempt_context: None,
             whole_body_completion: None,
             response_evidence: None,
+            response_observation: None,
+            open_body: None,
         }
     }
 }
@@ -120,6 +127,14 @@ impl TrafficMeasurements {
     pub fn response_evidence(&self) -> Option<&HttpResponseEvidence> {
         self.response_evidence.as_ref()
     }
+
+    pub(super) const fn response_observation(&self) -> Option<ResponseObservation> {
+        self.response_observation
+    }
+
+    pub(super) fn open_body(&self) -> Option<&OpenBodyMeasurement> {
+        self.open_body.as_ref()
+    }
 }
 
 impl ChunkTraffic for MeasuredTraffic<'_> {
@@ -145,6 +160,7 @@ impl ChunkTraffic for MeasuredTraffic<'_> {
     }
 
     fn response_observed(&mut self, response: OpenedResponse) {
+        self.measured.response_observation = Some(response.observation());
         self.measured.response_evidence = Some(response.evidence().clone());
         self.inner.response_observed(response);
     }
@@ -162,6 +178,14 @@ impl ChunkTraffic for MeasuredTraffic<'_> {
         &'a mut self,
         response: OpenedResponse,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<ResponseAdmission>> + Send + 'a>> {
-        self.inner.authorize_response(response)
+        let body_bytes = open_body::promoted_body_bytes(response.observation());
+        Box::pin(async move {
+            let admission = self.inner.authorize_response(response).await?;
+            if admission == ResponseAdmission::Proceed {
+                self.measured.open_body = body_bytes
+                    .map(|bytes| OpenBodyMeasurement::accepted(bytes, self.measured.bytes));
+            }
+            Ok(admission)
+        })
     }
 }

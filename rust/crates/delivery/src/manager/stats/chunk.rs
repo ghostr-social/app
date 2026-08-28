@@ -32,6 +32,9 @@ impl StatsKeeper {
         if let Some(observation) = &done.origin {
             self.stats.origin_model_mut().observe(observation);
         }
+        if let Some(observation) = &done.open_body {
+            self.stats.origin_model_mut().observe_open_body(observation);
+        }
         self.dirty = true;
     }
 }

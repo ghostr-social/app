@@ -25,6 +25,7 @@ impl ActiveAction {
             request,
             effective_bytes: chunk.range,
             reserved_storage_bytes: chunk.range.len(),
+            promotion_opportunity: None,
             committed_until_ms,
             launched_at_ms: 0,
             cancelling: false,

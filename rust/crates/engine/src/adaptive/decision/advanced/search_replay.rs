@@ -71,6 +71,13 @@ struct RecordedSearchAction {
     kind: RecordedWarpActionKind,
     value: RecordedActionValue,
     resources: RecordedResourceCost,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    authorized_resources: Option<RecordedResourceCost>,
+    #[serde(
+        default,
+        skip_serializing_if = "super::RecordedOriginAdmissionIntent::is_delivery"
+    )]
+    origin_admission_intent: super::RecordedOriginAdmissionIntent,
     forecast: RecordedActionForecast,
     request_source_id: Option<String>,
     dependencies: Vec<u16>,

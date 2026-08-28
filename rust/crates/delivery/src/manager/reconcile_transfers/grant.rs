@@ -2,20 +2,23 @@ use crate::delivery_events::{DecisionToken, RequestDecisionBinding};
 use crate::manager::plan::PlannedTransfer;
 use crate::manager::selected_commit::{CommitResult, SelectedCommit};
 use crate::manager::workers::PreparedTransfer;
-use crate::manager::{origin_admission, time, DeliveryWorker};
+use crate::manager::{time, DeliveryWorker};
 use ghostr_engine::adaptive::{ExecutedRequest, ResourceCost, RetrievalRequest};
 use ghostr_engine::origin_model::AdmissionClaim;
 
 mod admitted;
 use admitted::AdmittedGrant;
+mod disposition;
+use disposition::GrantRejection;
+mod origin;
 mod rejection;
 
 #[cfg(test)]
 #[path = "grant/immediate_resources_test.rs"]
 mod immediate_resources_test;
 #[cfg(test)]
-#[path = "grant/origin_concurrency_test.rs"]
-mod origin_concurrency_test;
+#[path = "grant/rejection_disposition_test.rs"]
+mod rejection_disposition_test;
 
 struct PreparedGrant {
     transfer: PreparedTransfer,
@@ -32,18 +35,36 @@ impl DeliveryWorker {
         decision: &mut Option<DecisionToken>,
         selected: &mut Option<SelectedCommit>,
     ) -> Option<ghostr_engine::ActionId> {
-        if !self.grant_eligible(&transfer) {
-            return None;
-        }
-        let admitted = self.admit_origin(transfer)?;
+        let admitted = match self.prepare_admission(transfer) {
+            Ok(admitted) => admitted,
+            Err(rejection) => {
+                self.reject_selection(decision, rejection);
+                return None;
+            }
+        };
         self.prepare_grant(admitted, decision, selected).await
     }
 
-    fn grant_eligible(&self, transfer: &PlannedTransfer) -> bool {
+    fn prepare_admission(
+        &mut self,
+        transfer: PlannedTransfer,
+    ) -> Result<AdmittedGrant, GrantRejection> {
+        self.check_grant_eligibility(&transfer)?;
+        self.admit_origin(transfer)
+    }
+
+    fn check_grant_eligibility(&self, transfer: &PlannedTransfer) -> Result<(), GrantRejection> {
         let post = &transfer.request.chunk.post;
-        !self.downloads.contains_transfer(transfer)
-            && !self.retry.is_cooling(post)
-            && !self.pressure.is_parked()
+        if self.downloads.contains_transfer(transfer) {
+            return Err(GrantRejection::Duplicate);
+        }
+        if self.retry.is_cooling(post) {
+            return Err(GrantRejection::RetryCooling);
+        }
+        if self.pressure.is_parked() {
+            return Err(GrantRejection::StorePressure);
+        }
+        Ok(())
     }
 
     async fn prepare_grant(
@@ -123,44 +144,9 @@ impl DeliveryWorker {
         }
         Some(action)
     }
-
-    fn admit_origin(&mut self, transfer: PlannedTransfer) -> Option<AdmittedGrant> {
-        let observed_at_ms = time::unix_time_ms();
-        let authority = ghostr_engine::RequestAuthority::from_url(&transfer.url)?;
-        let concurrency = origin_concurrency(&self.ctx.requests, &authority);
-        let query = origin_admission::query(
-            &transfer,
-            observed_at_ms,
-            concurrency,
-            self.state.network_class(),
-        );
-        let mode = origin_admission::mode(&transfer);
-        let (admission, admission_claim) = self
-            .keeper
-            .stats_mut()
-            .origin_model_mut()
-            .claim(&query, observed_at_ms, mode)
-            .into_parts();
-        let transfer = origin_admission::apply(transfer, &admission)?;
-        Some(AdmittedGrant::new(
-            transfer,
-            observed_at_ms,
-            admission_claim,
-        ))
-    }
 }
 
 fn request_resources(request: RetrievalRequest) -> ResourceCost {
     let bytes = request.immediate_network_bytes();
     ResourceCost::new(bytes, bytes, 0, 1)
-}
-
-fn origin_concurrency(
-    requests: &ghostr_net::media_request_executor::MediaRequestExecutor,
-    authority: &ghostr_engine::RequestAuthority,
-) -> usize {
-    requests
-        .active_for(authority)
-        .saturating_add(1)
-        .min(requests.limits().per_authority())
 }

@@ -1,8 +1,10 @@
 mod capture;
 mod run;
 
-use crate::adaptive::HlsGenerationPolicy;
-use crate::adaptive::{AllocationPlan, PlannerContext};
+use crate::adaptive::{
+    AllocationPlan, HlsGenerationPolicy, OriginAdmissionGenerationPolicy, PlannerContext,
+    WarpGenerationPolicies,
+};
 use crate::origin_model::OriginModel;
 use serde::{Deserialize, Serialize};
 
@@ -29,6 +31,10 @@ pub struct RecordedPlannerReplayCapsule {
     last_feedback: Option<crate::adaptive::ResourceFeedback>,
     #[serde(default, skip_serializing_if = "is_legacy_hls_generation")]
     hls_generation_policy: RecordedHlsGenerationPolicy,
+    #[serde(default, skip_serializing_if = "is_legacy_promotion_generation")]
+    promotion_generation_policy: RecordedPromotionGenerationPolicy,
+    #[serde(default, skip_serializing_if = "is_legacy_origin_admission_generation")]
+    origin_admission_generation_policy: RecordedOriginAdmissionGenerationPolicy,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -37,6 +43,22 @@ enum RecordedHlsGenerationPolicy {
     #[default]
     LegacyWholeStage,
     BoundedObjectCursor,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum RecordedPromotionGenerationPolicy {
+    #[default]
+    LegacyLatentGrant,
+    ObservedResponse,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum RecordedOriginAdmissionGenerationPolicy {
+    #[default]
+    LegacyUnclassified,
+    TypedIntent,
 }
 
 impl From<HlsGenerationPolicy> for RecordedHlsGenerationPolicy {
@@ -53,6 +75,46 @@ impl RecordedHlsGenerationPolicy {
         match self {
             Self::LegacyWholeStage => HlsGenerationPolicy::LegacyWholeStage,
             Self::BoundedObjectCursor => HlsGenerationPolicy::BoundedObjectCursor,
+        }
+    }
+}
+
+impl From<crate::adaptive::PromotionGenerationPolicy> for RecordedPromotionGenerationPolicy {
+    fn from(value: crate::adaptive::PromotionGenerationPolicy) -> Self {
+        match value {
+            crate::adaptive::PromotionGenerationPolicy::LegacyLatentGrant => {
+                Self::LegacyLatentGrant
+            }
+            crate::adaptive::PromotionGenerationPolicy::ObservedResponse => Self::ObservedResponse,
+        }
+    }
+}
+
+impl RecordedPromotionGenerationPolicy {
+    const fn restore(self) -> crate::adaptive::PromotionGenerationPolicy {
+        match self {
+            Self::LegacyLatentGrant => {
+                crate::adaptive::PromotionGenerationPolicy::LegacyLatentGrant
+            }
+            Self::ObservedResponse => crate::adaptive::PromotionGenerationPolicy::ObservedResponse,
+        }
+    }
+}
+
+impl From<OriginAdmissionGenerationPolicy> for RecordedOriginAdmissionGenerationPolicy {
+    fn from(value: OriginAdmissionGenerationPolicy) -> Self {
+        match value {
+            OriginAdmissionGenerationPolicy::LegacyUnclassified => Self::LegacyUnclassified,
+            OriginAdmissionGenerationPolicy::TypedIntent => Self::TypedIntent,
+        }
+    }
+}
+
+impl RecordedOriginAdmissionGenerationPolicy {
+    const fn restore(self) -> OriginAdmissionGenerationPolicy {
+        match self {
+            Self::LegacyUnclassified => OriginAdmissionGenerationPolicy::LegacyUnclassified,
+            Self::TypedIntent => OriginAdmissionGenerationPolicy::TypedIntent,
         }
     }
 }
@@ -93,6 +155,26 @@ const fn is_zero(value: &u64) -> bool {
 
 fn is_legacy_hls_generation(value: &RecordedHlsGenerationPolicy) -> bool {
     *value == RecordedHlsGenerationPolicy::LegacyWholeStage
+}
+
+fn is_legacy_promotion_generation(value: &RecordedPromotionGenerationPolicy) -> bool {
+    *value == RecordedPromotionGenerationPolicy::LegacyLatentGrant
+}
+
+fn is_legacy_origin_admission_generation(
+    value: &RecordedOriginAdmissionGenerationPolicy,
+) -> bool {
+    *value == RecordedOriginAdmissionGenerationPolicy::LegacyUnclassified
+}
+
+impl RecordedPlannerReplayCapsule {
+    fn generation_policies(&self) -> WarpGenerationPolicies {
+        WarpGenerationPolicies {
+            hls: self.hls_generation_policy.restore(),
+            promotion: self.promotion_generation_policy.restore(),
+            origin_admission: self.origin_admission_generation_policy.restore(),
+        }
+    }
 }
 
 pub(in crate::adaptive::decision) use capture::capture;

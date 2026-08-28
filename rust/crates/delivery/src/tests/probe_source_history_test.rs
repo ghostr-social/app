@@ -32,20 +32,19 @@ fn completed_head_history_is_scoped_to_the_probed_source() {
 
 #[test]
 fn another_sources_completed_head_does_not_suppress_planner_discovery() {
-    use crate::tests::warp_head_probe_context_fixture::{generates_head, plan_at, state_with_sources};
+    use crate::tests::warp_head_probe_context_fixture::{
+        generates_head, plan_at, state_with_sources,
+    };
 
     let post = PostId::new("post");
     let state = state_with_sources(post.clone(), vec![SECOND.into(), FIRST.into()]);
-    let first = state.catalog().transfer_identity(&post, FIRST).expect("valid test fixture");
+    let first = state
+        .catalog()
+        .transfer_identity(&post, FIRST)
+        .expect("valid test fixture");
     let completed = HashSet::from([first]);
 
-    assert!(generates_head(plan_at(
-        &state,
-        &[],
-        &completed,
-        1,
-        2
-    )));
+    assert!(generates_head(plan_at(&state, &[], &completed, 1, 2)));
 }
 
 fn query<'a>(

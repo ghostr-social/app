@@ -1,6 +1,13 @@
 use super::*;
 
 impl DownloadWorkers {
+    pub(in super::super) fn insert_test_action(
+        &mut self,
+        registration: crate::manager::inflight::ActionRegistration<'_>,
+    ) {
+        self.active.insert_action(registration);
+    }
+
     pub(in super::super) fn insert_test_attempt(&mut self, attempt: &ChunkAttempt) {
         let request = ghostr_engine::scheduling::RangeRequest {
             chunk: attempt.chunk.clone(),

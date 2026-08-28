@@ -129,6 +129,7 @@ impl PromotionRejection {
             Self::Missing => "warp_promotion_action_missing",
             Self::StaleIdentity => "warp_promotion_identity_stale",
             Self::ResponseOpened => "warp_promotion_response_opened",
+            Self::ResponseNotPromotable => "warp_promotion_response_not_promotable",
             Self::AlreadyActivated => "warp_promotion_already_activated",
             Self::GrantMismatch => "warp_promotion_grant_mismatch",
             Self::InvalidDelta => "warp_promotion_invalid_delta",

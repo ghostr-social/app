@@ -1,5 +1,5 @@
 use super::circuit::CircuitBook;
-use super::estimate::build_estimate;
+use super::estimate::{build_estimate, EstimateInput};
 use super::exploration::ExplorationBudget;
 use super::hierarchy::aggregate;
 use super::keys::{OriginContextKey, OriginMethodKey, UrlContextKey};
@@ -13,8 +13,11 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 mod claim;
+mod open_body;
 mod replay;
-pub use claim::{Admission, AdmissionClaim, AdmissionClaimTerminal, ClaimedAdmission};
+pub use claim::{
+    Admission, AdmissionBlockReason, AdmissionClaim, AdmissionClaimTerminal, ClaimedAdmission,
+};
 
 const GLOBAL_CAP: usize = 128;
 const ORIGIN_CAP: usize = 384;
@@ -31,6 +34,24 @@ pub struct OriginModel {
     origins: BTreeMap<OriginContextKey, AdaptiveRecord>,
     #[serde(default, with = "super::map_serde")]
     urls: BTreeMap<UrlContextKey, AdaptiveRecord>,
+    #[serde(
+        default,
+        skip_serializing_if = "BTreeMap::is_empty",
+        with = "super::map_serde"
+    )]
+    open_body_global: BTreeMap<super::OriginContext, AdaptiveRecord>,
+    #[serde(
+        default,
+        skip_serializing_if = "BTreeMap::is_empty",
+        with = "super::map_serde"
+    )]
+    open_body_origins: BTreeMap<OriginContextKey, AdaptiveRecord>,
+    #[serde(
+        default,
+        skip_serializing_if = "BTreeMap::is_empty",
+        with = "super::map_serde"
+    )]
+    open_body_urls: BTreeMap<UrlContextKey, AdaptiveRecord>,
     #[serde(default)]
     circuits: CircuitBook,
     #[serde(default)]
@@ -44,13 +65,16 @@ impl OriginModel {
         retain_oldest(&mut self.global, GLOBAL_CAP);
         retain_oldest(&mut self.origins, ORIGIN_CAP);
         retain_oldest(&mut self.urls, URL_CAP);
+        retain_oldest(&mut self.open_body_global, GLOBAL_CAP);
+        retain_oldest(&mut self.open_body_origins, ORIGIN_CAP);
+        retain_oldest(&mut self.open_body_urls, URL_CAP);
         self.circuits.normalize_loaded();
         let excess = self.priors.len().saturating_sub(PRIOR_CAP);
         self.priors.drain(..excess);
     }
 
     pub fn observe(&mut self, item: &OriginObservation) {
-        if item.outcome == OriginOutcome::Cancelled {
+        if item.outcome == OriginOutcome::Cancelled && item.range_compliant.is_none() {
             return;
         }
         self.observe_records(item);
@@ -83,13 +107,14 @@ impl OriginModel {
             self.urls.get(&url_key(query)),
         ];
         let snapshot = aggregate(records, prior, now, ModelTiming::default());
-        build_estimate(
-            query.context,
-            query.environment.clone(),
+        build_estimate(EstimateInput {
+            context: query.context,
+            environment: query.environment.clone(),
             snapshot,
             prior,
             mode,
-        )
+            success_prior_evidence: 0.0,
+        })
     }
 
     fn prior(&self, query: &OriginQuery) -> ColdStartPrior {

@@ -65,8 +65,11 @@ impl CircuitBreaker {
         if self.failures < FAILURE_THRESHOLD {
             return CircuitStatus::Closed;
         }
-        if at_ms < self.retry_at_ms || at_ms < self.probe_lease_until_ms {
+        if at_ms < self.retry_at_ms {
             return CircuitStatus::Open;
+        }
+        if at_ms < self.probe_lease_until_ms {
+            return CircuitStatus::RecoveryLease;
         }
         if self.trial_pending {
             CircuitStatus::RecoveryTrial

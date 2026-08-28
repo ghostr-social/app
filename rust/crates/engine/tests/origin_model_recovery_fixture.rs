@@ -1,6 +1,6 @@
 use crate::origin_model::{
-    Admission, AdmissionClaim, DecisionMode, ErrorReason, MediaClass, OriginContext, OriginModel,
-    OriginObservation, OriginQuery, RequestMethod,
+    Admission, AdmissionClaim, DecisionMode, ErrorReason, MediaClass, OriginAdmissionIntent,
+    OriginContext, OriginModel, OriginObservation, OriginQuery, RequestMethod,
 };
 
 pub(super) const URL: &str = "https://recovered.example/video.mp4";
@@ -34,7 +34,14 @@ pub(super) fn claim(
     at_ms: u64,
     expected: Admission,
 ) -> AdmissionClaim {
-    let (admission, claim) = model.claim(query, at_ms, DecisionMode::Normal).into_parts();
+    let (admission, claim) = model
+        .claim(
+            query,
+            at_ms,
+            DecisionMode::Normal,
+            OriginAdmissionIntent::Delivery,
+        )
+        .into_parts();
     assert_eq!(admission, expected);
     claim.expect("typed recovery claim")
 }

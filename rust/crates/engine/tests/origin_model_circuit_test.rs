@@ -1,6 +1,7 @@
 use crate::origin_model::{
-    Admission, AdmissionClaimTerminal, DecisionMode, ErrorReason, MediaClass, OriginContext,
-    OriginModel, OriginObservation, OriginQuery, RequestMethod,
+    Admission, AdmissionClaimTerminal, DecisionMode, ErrorReason, MediaClass,
+    OriginAdmissionIntent, OriginContext, OriginModel, OriginObservation, OriginQuery,
+    RequestMethod,
 };
 
 fn query() -> OriginQuery {
@@ -17,20 +18,41 @@ fn query() -> OriginQuery {
 #[test]
 fn exploration_is_bounded_and_disabled_outside_normal_mode() {
     let mut model = OriginModel::default();
-    let key = query();
+    let key = OriginQuery::new(
+        "https://small-provider.example/video.mp4",
+        OriginContext::new(RequestMethod::PrefixGet, 65_536, MediaClass::ProgressiveMp4),
+    );
     assert!(matches!(
-        model.claim(&key, 1_000, DecisionMode::Normal).admission(),
-        Admission::Exploration {
-            maximum_bytes: 65_536,
-            ..
-        }
+        model
+            .claim(
+                &key,
+                1_000,
+                DecisionMode::Normal,
+                OriginAdmissionIntent::OptionalExploration,
+            )
+            .admission(),
+        Admission::Exploration
     ));
     assert_eq!(
-        model.claim(&key, 1_001, DecisionMode::Normal).admission(),
+        model
+            .claim(
+                &key,
+                1_001,
+                DecisionMode::Normal,
+                OriginAdmissionIntent::OptionalExploration,
+            )
+            .admission(),
         Admission::Blocked
     );
     assert_eq!(
-        model.claim(&key, 1_002, DecisionMode::Safety).admission(),
+        model
+            .claim(
+                &key,
+                1_002,
+                DecisionMode::Safety,
+                OriginAdmissionIntent::OptionalExploration,
+            )
+            .admission(),
         Admission::Production
     );
 }
@@ -47,10 +69,24 @@ fn open_circuit_allows_one_sparse_backed_off_recovery_probe() {
         ));
     }
     assert_eq!(
-        model.claim(&key, 3_100, DecisionMode::Normal).admission(),
+        model
+            .claim(
+                &key,
+                3_100,
+                DecisionMode::Normal,
+                OriginAdmissionIntent::Delivery,
+            )
+            .admission(),
         Admission::Blocked
     );
-    let (recovery, claim) = model.claim(&key, 5_000, DecisionMode::Normal).into_parts();
+    let (recovery, claim) = model
+        .claim(
+            &key,
+            5_000,
+            DecisionMode::Normal,
+            OriginAdmissionIntent::Delivery,
+        )
+        .into_parts();
     assert!(matches!(
         recovery,
         Admission::RecoveryProbe {
@@ -58,7 +94,14 @@ fn open_circuit_allows_one_sparse_backed_off_recovery_probe() {
         }
     ));
     assert_eq!(
-        model.claim(&key, 5_001, DecisionMode::Normal).admission(),
+        model
+            .claim(
+                &key,
+                5_001,
+                DecisionMode::Normal,
+                OriginAdmissionIntent::Delivery,
+            )
+            .admission(),
         Admission::Blocked
     );
     let success = OriginObservation::success(key.clone(), 5_100);
@@ -67,7 +110,14 @@ fn open_circuit_allows_one_sparse_backed_off_recovery_probe() {
         AdmissionClaimTerminal::Observed(&success),
     );
     assert_eq!(
-        model.claim(&key, 5_101, DecisionMode::Safety).admission(),
+        model
+            .claim(
+                &key,
+                5_101,
+                DecisionMode::Safety,
+                OriginAdmissionIntent::Delivery,
+            )
+            .admission(),
         Admission::Production
     );
 }

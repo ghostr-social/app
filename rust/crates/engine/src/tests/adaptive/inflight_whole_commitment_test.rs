@@ -20,6 +20,7 @@ fn retained_commitment_preserves_a_whole_actions_request_kind() {
         request,
         effective_bytes: request.requested_bytes(),
         reserved_storage_bytes: request.reserved_network_bytes(),
+        promotion_opportunity: None,
         source: "https://origin.example/media".to_owned(),
         committed_until_ms: 12_000,
         identity_current: true,

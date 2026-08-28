@@ -6,6 +6,7 @@ use ghostr_engine::host_stats::HostStats;
 use tokio::time::Instant;
 
 mod early;
+mod observations;
 mod timing;
 use timing::{is_admission_timeout, unix_time_ms};
 
@@ -14,6 +15,7 @@ pub struct ObservedChunk {
     pub result: anyhow::Result<ChunkResult>,
     pub(crate) received_bytes: u64,
     pub(crate) origin: Option<ghostr_engine::origin_model::OriginObservation>,
+    pub(crate) open_body: Option<ghostr_engine::origin_model::OpenBodyObservation>,
     pub(crate) request_started: bool,
     pub(crate) whole_body_completion: Option<crate::chunk::traffic::WholeBodyCompletion>,
     pub(crate) response_evidence: Option<super::HttpResponseEvidence>,
@@ -165,31 +167,14 @@ pub(super) fn finish(
             .origin_elapsed()
             .unwrap_or_else(|| started.elapsed()),
     };
-    let ignored = !measured.request_started()
-        || result.as_ref().err().is_some_and(is_admission_timeout)
-        || local_before_network_completion(&result, &measured);
-    let origin = (!ignored).then(|| {
-        let item = telemetry::observation(spec, &result, &measured, timing);
-        stats.origin_model_mut().observe(&item);
-        item
-    });
+    let (origin, open_body) = observations::record(spec, &result, &measured, timing, stats);
     ObservedChunk {
         result,
         received_bytes: measured.bytes(),
         origin,
+        open_body,
         request_started: measured.request_started(),
         whole_body_completion: measured.whole_body_completion().cloned(),
         response_evidence: measured.response_evidence().cloned(),
     }
-}
-
-fn local_before_network_completion(
-    result: &anyhow::Result<ChunkResult>,
-    measured: &TrafficMeasurements,
-) -> bool {
-    result
-        .as_ref()
-        .err()
-        .is_some_and(crate::chunk::sink::is_local_store_failure)
-        && measured.whole_body_completion().is_none()
 }

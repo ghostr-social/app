@@ -1,4 +1,6 @@
-use super::{GeneratedActions, HlsGenerationPolicy, WarpActionGenerator, WarpGenerationInput};
+use super::{
+    GeneratedActions, WarpActionGenerator, WarpGenerationInput, WarpGenerationPolicies,
+};
 use crate::adaptive::{AllocationPlan, PlannerContext, PlayabilitySnapshot};
 use crate::origin_model::OriginModel;
 
@@ -11,7 +13,7 @@ impl WarpActionGenerator {
     ) -> GeneratedActions {
         Self::generate_with_policy(
             WarpGenerationInput::new(snapshot, base, origins, context),
-            HlsGenerationPolicy::BoundedObjectCursor,
+            WarpGenerationPolicies::current(),
         )
     }
 }

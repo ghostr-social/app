@@ -1,3 +1,4 @@
+use crate::origin_model::{OpenBodyProfile, OriginRequestProfile};
 use crate::ByteRange;
 use serde::{Deserialize, Serialize};
 
@@ -5,6 +6,12 @@ use serde::{Deserialize, Serialize};
 pub struct PromotionGrant {
     pub maximum_bytes: u64,
     pub valid_until_ms: u64,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub struct PromotionOpportunity {
+    contract: WholeBodyContract,
+    trigger_profile: OpenBodyProfile,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -38,6 +45,23 @@ impl WholeBodyContract {
             Self::Exact { expected_bytes } => expected_bytes,
             Self::Capped { maximum_bytes } => maximum_bytes,
         }
+    }
+}
+
+impl PromotionOpportunity {
+    pub const fn new(contract: WholeBodyContract, request_profile: OriginRequestProfile) -> Self {
+        Self {
+            contract,
+            trigger_profile: OpenBodyProfile::from_request(request_profile),
+        }
+    }
+
+    pub const fn contract(self) -> WholeBodyContract {
+        self.contract
+    }
+
+    pub const fn request_profile(self, body_bytes: u64) -> OriginRequestProfile {
+        self.trigger_profile.request_profile(body_bytes)
     }
 }
 

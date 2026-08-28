@@ -31,7 +31,16 @@ fn cold_current_and_next_receive_typed_bounded_bootstrap_allocations() {
         .find(|work| work.post == PostId::new("p1"))
         .expect("immediate-next bootstrap");
     assert_eq!(next.reason, AllocationReason::MediaBootstrap);
-    assert!(next.request.requested_bytes().len() <= input.request_slice_bytes);
+    assert_eq!(next.request.requested_bytes().len(), 65_536);
+    assert!(plan
+        .allocations
+        .iter()
+        .filter(|work| work.reason == AllocationReason::MediaBootstrap)
+        .all(|work| {
+            work.request.requested_bytes().len() == 65_536
+                && work.expected_playable_gain_ms == 0
+                && work.utility.additional_playable_ms == 0
+        }));
 }
 
 fn candidate(

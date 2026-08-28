@@ -15,6 +15,9 @@ impl OriginModel {
             global: self.global.clone(),
             origins: project_origins(&self.origins, &aliases, opaque),
             urls: project_urls(&self.urls, &aliases, opaque),
+            open_body_global: self.open_body_global.clone(),
+            open_body_origins: project_origins(&self.open_body_origins, &aliases, opaque),
+            open_body_urls: project_urls(&self.open_body_urls, &aliases, opaque),
             circuits: self
                 .circuits
                 .replay_project(|origin| aliases.origins(origin, opaque)),
@@ -29,6 +32,9 @@ impl OriginModel {
         self.global.len() <= super::GLOBAL_CAP
             && self.origins.len() <= super::ORIGIN_CAP
             && self.urls.len() <= super::URL_CAP
+            && self.open_body_global.len() <= super::GLOBAL_CAP
+            && self.open_body_origins.len() <= super::ORIGIN_CAP
+            && self.open_body_urls.len() <= super::URL_CAP
             && self.priors.len() <= super::PRIOR_CAP
             && self.circuits.replay_bounded()
             && self.exploration.replay_bounded()

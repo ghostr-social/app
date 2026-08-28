@@ -2,9 +2,10 @@
 
 pub mod cancellation;
 pub mod content_type;
-mod download;
+pub mod download;
 pub mod header_failure;
 mod media_client;
+pub mod promoted_stall;
 pub mod ranged;
 pub mod reject;
 pub mod short;

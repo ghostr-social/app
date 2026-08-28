@@ -61,6 +61,12 @@ fn classify_range(
         "range response is not 200 or 206"
     );
     let range_support = (!conditional).then_some(false);
+    if response
+        .content_length()
+        .is_some_and(|length| expected.start == 0 && length > 0 && length <= expected.end)
+    {
+        return Ok(bounded_or_ignored(response, expected, range_support));
+    }
     if let Some(grant) = promotion {
         if let Some(total_bytes) =
             bounds::discovered_total(response.content_length(), grant.maximum_bytes)?

@@ -43,4 +43,12 @@ impl PromotionFixture {
         drop(self.store);
         std::fs::remove_dir_all(self.root).expect("valid test fixture");
     }
+
+    pub(super) fn observe_headers(&mut self, observed_at_ms: u64) {
+        assert!(self.active.observe_headers(
+            &self.attempt,
+            &response(),
+            observed_at_ms
+        ));
+    }
 }

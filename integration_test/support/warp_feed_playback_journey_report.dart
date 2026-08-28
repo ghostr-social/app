@@ -13,8 +13,13 @@ extension WarpFeedPlaybackJourneyReport on WarpFeedPlaybackJourney {
       reportPlan(plan);
     }
     final decisions = await evidence.decisions();
-    for (final decision
-        in decisions.records.reversed.take(20).toList().reversed) {
+    final retained = decisions.records;
+    debugPrint(
+      'WARP_DECISION_HISTORY retained=${retained.length} '
+      'first=${retained.isEmpty ? 'none' : retained.first.sequence} '
+      'latest=${retained.isEmpty ? 'none' : retained.last.sequence}',
+    );
+    for (final decision in decisions.materialRecords) {
       debugPrint(_decisionEvidence(decision));
     }
   }
@@ -40,16 +45,30 @@ extension WarpFeedPlaybackJourneyReport on WarpFeedPlaybackJourney {
     final reserve = plan.plan.readyReserve;
     final allocations = plan.plan.allocations
         .map(
-          (item) => '${item.postId}:${item.start}-${item.end}:${item.reason}',
+          (item) =>
+              '${item.postId}:${item.start}-${item.end}:'
+              '${item.expectedDeliveryMs}:${item.reason}',
+        )
+        .join('|');
+    final retained = plan.plan.retained
+        .map(
+          (item) =>
+              '${item.postId}:${item.start}-${item.end}:'
+              '${item.expectedDeliveryMs}:${item.reason}',
         )
         .join('|');
     debugPrint(
-      'WARP_PLAN revision=${plan.revision} focus=${plan.focusGeneration} '
+      'WARP_PLAN revision=${plan.revision} mode=${plan.plan.mode} '
+      'at=${plan.observedAtMs} network=${plan.networkClass.name} '
+      'throughput_work_breadth=${plan.plan.workBreadth} '
+      'focus=${plan.focusGeneration} '
       'covers=${plan.focusCoversFrom} '
       'current=${plan.currentPostId} target=${reserve.target} '
       'candidates=${reserve.candidateCount} ready=${reserve.ready} '
+      'ordered=${reserve.orderedReady} '
       'structural=${reserve.structural} coverage_ms=${reserve.readyCoverageMs} '
-      'next=${plan.plan.nextReserveStatus} allocations=$allocations',
+      'next=${plan.plan.nextReserveStatus} allocations=$allocations '
+      'retained=$retained',
     );
   }
 
@@ -144,10 +163,12 @@ extension WarpFeedPlaybackJourneyReport on WarpFeedPlaybackJourney {
         .map((request) {
           final range = request.range;
           final span = range == null ? 'full' : '${range.start}-${range.end}';
+          final first = request.firstByteAt?.inMilliseconds ?? 'none';
+          final last = request.lastByteAt?.inMilliseconds ?? 'none';
           final finished = request.finishedAt?.inMilliseconds ?? 'open';
           return '${request.method}:${request.path}:$span:'
               'bytes=${request.servedBytes}:state=${request.outcome.name}:'
-              'time_ms=${request.startedAt.inMilliseconds}-$finished';
+              'time_ms=${request.startedAt.inMilliseconds}-$first-$last-$finished';
         })
         .join(',');
   }
@@ -157,11 +178,15 @@ String _decisionEvidence(WarpDecisionRecord record) {
   final selected = record.selected;
   final executed = record.executed;
   return 'WARP_DECISION sequence=${record.sequence} '
+      'at=${record.observedAtMs} throughput_bps=${record.networkThroughputBps} '
+      'planner_Bps=${record.plannerNetworkRateBytesPerSecond} '
+      'slot_demand=${record.additionalRequestSlotDemanded} '
       'action=${record.chosenActionId} outcome=${record.outcome.status} '
       'detail=${record.outcome.failureClass ?? record.outcome.claimRefusal} '
       'bytes=${record.outcome.bytes} elapsed_ms=${record.outcome.elapsedMs} '
       'selected=${selected?.kind}:${selected?.command}:${selected?.postId}:'
-      '${selected?.sourceId}:${selected?.start}-${selected?.end} '
+      '${selected?.sourceId}:${selected?.start}-${selected?.end}:'
+      'target=${selected?.targetActionId} '
       'executed=${executed?.postId}:${executed?.sourceId}:'
       '${executed?.start}-${executed?.end}';
 }

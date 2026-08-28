@@ -1,9 +1,7 @@
 use crate::chunk::downloader::{
     HttpResponseEvidence, OpenedResponse, ResponseObservation, ResponseWriteMode,
 };
-use crate::tests::response_evidence_fixture::{
-    etag, wait_for_validator, EVENT_TIMEOUT, SOURCE,
-};
+use crate::tests::response_evidence_fixture::{etag, wait_for_validator, EVENT_TIMEOUT, SOURCE};
 use crate::tests::response_observation_focus_fixture::replacement_focus;
 use crate::tests::timeline_manager_fixture::TimelineManagerFixture;
 use crate::tests::timeline_parser_fixture::GatedTimelineParser;
@@ -12,7 +10,8 @@ use ghostr_engine::evidence::EvidenceTime;
 #[tokio::test]
 async fn queued_headers_survive_focus_pruning_until_the_attempt_is_terminal() {
     let (parser, mut started) = GatedTimelineParser::new(None, 1);
-    let mut fixture = TimelineManagerFixture::new(std::sync::Arc::<GatedTimelineParser>::clone(&parser)).await;
+    let mut fixture =
+        TimelineManagerFixture::new(std::sync::Arc::<GatedTimelineParser>::clone(&parser)).await;
     fixture.focus();
     assert!(fixture.step().await);
     assert_eq!(started.recv().await, Some(0));
@@ -38,7 +37,9 @@ async fn queued_headers_survive_focus_pruning_until_the_attempt_is_terminal() {
         .queue_cancelled_attempt_for_test(attempt, SOURCE);
     wait_for_prune(&mut fixture).await;
     assert!(!fixture.worker.catalog_contains_for_test(&fixture.post));
-    tokio::fs::remove_dir_all(fixture.root).await.expect("valid test fixture");
+    tokio::fs::remove_dir_all(fixture.root)
+        .await
+        .expect("valid test fixture");
 }
 
 async fn wait_for_prune(fixture: &mut TimelineManagerFixture) {

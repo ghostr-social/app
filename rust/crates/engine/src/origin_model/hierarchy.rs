@@ -15,6 +15,7 @@ pub(super) fn aggregate(
         throughput: Some(prior_throughput(prior)),
         errors: BTreeMap::new(),
         evidence: 0.0,
+        range_evidence: 0.0,
         adapting: false,
     };
     for (level, record) in records.into_iter().enumerate() {
@@ -27,13 +28,20 @@ pub(super) fn aggregate(
 
 fn apply(current: &mut RecordSnapshot, next: &RecordSnapshot, level: usize) {
     let shrinkage = [8.0, 4.0, 2.0][level];
-    let weight = next.evidence / (next.evidence + shrinkage);
-    current.success_mean = mix(current.success_mean, next.success_mean, weight);
-    current.range_mean = mix(current.range_mean, next.range_mean, weight);
-    current.ttfb = combine_quantiles(current.ttfb, next.ttfb, weight);
-    current.throughput = combine_quantiles(current.throughput, next.throughput, weight);
-    combine_errors(&mut current.errors, &next.errors, weight);
+    let success_weight = next.evidence / (next.evidence + shrinkage);
+    let range_evidence = if next.evidence > 0.0 {
+        next.evidence
+    } else {
+        next.range_evidence
+    };
+    let range_weight = range_evidence / (range_evidence + shrinkage);
+    current.success_mean = mix(current.success_mean, next.success_mean, success_weight);
+    current.range_mean = mix(current.range_mean, next.range_mean, range_weight);
+    current.ttfb = combine_quantiles(current.ttfb, next.ttfb, success_weight);
+    current.throughput = combine_quantiles(current.throughput, next.throughput, success_weight);
+    combine_errors(&mut current.errors, &next.errors, success_weight);
     current.evidence += next.evidence * [0.15, 0.35, 0.50][level];
+    current.range_evidence += range_evidence * [0.15, 0.35, 0.50][level];
     current.adapting |= next.adapting;
 }
 

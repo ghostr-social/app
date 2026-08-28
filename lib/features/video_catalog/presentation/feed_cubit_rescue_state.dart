@@ -7,7 +7,7 @@ extension FeedCubitRescueState on FeedCubit {
     final deliveryId = current.posts[intended].media.playbackDeliveryId;
     _awaitingTransportRescue =
         deliveryId == null ||
-            intended == current.activeIndex ||
+            intended <= current.activeIndex ||
             decision.reason == FeedReadyReason.intendedReady
         ? null
         : (

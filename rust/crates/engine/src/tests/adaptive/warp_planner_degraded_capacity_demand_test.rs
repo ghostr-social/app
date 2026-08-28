@@ -1,6 +1,7 @@
 use crate::adaptive::{
-    AdaptivePlayabilityPolicy, InFlightAction, PlannerCapability, PlannerContext, ResourceFeedback,
-    ResourceObservation, TransformCapability, TransformKind, WarpPlanner, WarpPlannerInput,
+    ActionKind, AdaptivePlayabilityPolicy, InFlightAction, PlannerCapability, PlannerContext,
+    ResourceFeedback, ResourceObservation, TransformCapability, TransformKind, WarpPlanner,
+    WarpPlannerInput,
 };
 use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::snapshot;
@@ -10,6 +11,19 @@ use crate::{ActionId, ByteRange};
 #[test]
 fn degraded_dependency_root_request_demands_the_slot() {
     let decision = decision(true, false);
+    let whole = decision
+        .generated
+        .actions
+        .iter()
+        .find(|action| matches!(action.node.kind, ActionKind::FetchWhole { .. }))
+        .expect("whole-fetch dependency root");
+    let transform = decision
+        .generated
+        .actions
+        .iter()
+        .find(|action| matches!(action.node.kind, ActionKind::Transform(_)))
+        .expect("dependent transform");
+    assert_eq!(transform.node.requires, [whole.node.id]);
     assert!(decision.reserve.degraded);
     assert!(decision.selected.is_none());
     assert!(decision.additional_request_slot_demanded);
@@ -32,12 +46,13 @@ fn degraded_least_risk_request_demand_is_reported() {
 }
 
 fn decision(transform: bool, priced_out: bool) -> crate::adaptive::WarpPlanningDecision {
-    let mut input = snapshot(1, 20_000_000, 0, 0);
+    let target = usize::from(transform);
+    let mut input = snapshot(target + 1, 20_000_000, 0, 0);
     input.commitment_ms = 0;
     input.network.connection_capacity = 1;
     input.network.connection_ceiling = 2;
     input.network.per_authority_request_limit = 2;
-    set_reliable_total_bytes(&mut input.candidates[0], 128_000, input.observed_at_ms);
+    set_reliable_total_bytes(&mut input.candidates[target], 128_000, input.observed_at_ms);
     input.candidates[0].in_flight.push(InFlightAction::range(
         ActionId::new(1),
         ByteRange::new(0, 64_000),
@@ -45,7 +60,7 @@ fn decision(transform: bool, priced_out: bool) -> crate::adaptive::WarpPlanningD
         20_000,
         true,
     ));
-    let post = input.candidates[0].post.clone();
+    let post = input.candidates[target].post.clone();
     let base = AdaptivePlayabilityPolicy.plan(&input);
     let mut context = PlannerContext::explicitly_unavailable(&input);
     if transform {

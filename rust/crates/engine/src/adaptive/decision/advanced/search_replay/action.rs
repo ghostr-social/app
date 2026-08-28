@@ -15,8 +15,16 @@ impl RecordedSearchAction {
         )
         .with_resources(self.resources.restore())
         .with_forecast(self.forecast.restore())
+        .with_origin_admission_intent(self.origin_admission_intent.restore())
         .requiring(&self.dependencies);
-        self.attach_source(node)
+        self.attach_source(self.attach_authority(node))
+    }
+
+    fn attach_authority(&self, node: ActionNode) -> ActionNode {
+        match self.authorized_resources {
+            Some(value) => node.with_resource_authority(value.restore()),
+            None => node,
+        }
     }
 
     fn attach_source(&self, node: ActionNode) -> Option<ActionNode> {

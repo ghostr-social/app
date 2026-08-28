@@ -43,6 +43,7 @@ fn note_unstarted_chunk(keeper: &mut StatsKeeper) {
         outcome: Err(anyhow::anyhow!("request construction failed")),
         received_bytes: 0,
         origin: None,
+        open_body: None,
         request_started: false,
         whole_body_completion: None,
         response_evidence: None,

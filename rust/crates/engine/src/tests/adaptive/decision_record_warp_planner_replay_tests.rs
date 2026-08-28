@@ -4,6 +4,8 @@ mod compatibility;
 mod exact;
 #[path = "decision_record_warp_planner_replay_tests/mutation.rs"]
 mod mutation;
+#[path = "decision_record_warp_planner_replay_tests/origin_intent_compatibility.rs"]
+mod origin_intent_compatibility;
 #[path = "decision_record_warp_planner_replay_tests/origin_recovery_compatibility.rs"]
 mod origin_recovery_compatibility;
 #[path = "decision_record_warp_planner_replay_tests/privacy.rs"]
