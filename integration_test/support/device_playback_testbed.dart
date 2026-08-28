@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_observation.dart';
@@ -7,8 +8,6 @@ import 'package:ghostr/platform/media/native_rendered_first_frame_port.dart';
 import 'package:ghostr/platform/media/video_player_playback_port.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 
-import 'device_player_preparation_feedback.dart';
-import 'device_playback_authority.dart';
 import 'device_playback_probe.dart';
 import 'device_video_scenario.dart';
 import 'device_video_server.dart';
@@ -21,7 +20,6 @@ final class DevicePlaybackTestbed {
   DevicePlaybackTestbed._(this.server, this.probe, this._firstFrames)
     : _playback = VideoPlayerPlaybackPort(
         telemetry: probe,
-        preparationFeedback: DevicePlayerPreparationFeedback(),
         renderedFirstFrames: _firstFrames,
       );
 
@@ -43,6 +41,8 @@ final class DevicePlaybackTestbed {
   bool _closed = false;
   bool _shellMounted = false;
 
+  VideoPlayerPlaybackPort get playback => _playback;
+
   Future<PlaybackFocus> show(
     WidgetTester tester,
     String rawVideoId, {
@@ -53,7 +53,9 @@ final class DevicePlaybackTestbed {
     final media = ProxiedHlsVideoMediaSource(
       server.playbackUri(rawVideoId).toString(),
     );
-    final authority = devicePlaybackFixtureAuthority(media);
+    final deliveryId = PlaybackDeliveryId.parse(
+      server.deliveryIdFor(rawVideoId),
+    );
     final focus = probe.markFocus(videoId);
     await tester.pumpWidget(
       MaterialApp(
@@ -63,7 +65,7 @@ final class DevicePlaybackTestbed {
               media: media,
               videoId: videoId,
               isActive: isActive,
-              authority: authority,
+              playbackDeliveryId: deliveryId,
             ),
           ),
         ),

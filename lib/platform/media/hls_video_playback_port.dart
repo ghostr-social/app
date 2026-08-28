@@ -38,6 +38,8 @@ final class HlsVideoPlaybackPort
         videoId: request.videoId,
         isActive: request.isActive,
         mode: request.mode,
+        surfaceScope: request.surfaceScope,
+        reservesPreparedDecoder: request.reservesPreparedDecoder,
         keepWarmWhenInactive: request.keepWarmWhenInactive,
         onPlaybackMediaReleased: request.onPlaybackMediaReleased,
         preview: request.preview,

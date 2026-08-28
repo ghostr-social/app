@@ -60,5 +60,6 @@ VideoPlaybackSurfaceRequest surfaceRequest(
     media: media,
     videoId: id,
     isActive: isActive,
+    playbackDeliveryId: testCanonicalPlaybackDeliveryId,
   );
 }

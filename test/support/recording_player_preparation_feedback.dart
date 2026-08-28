@@ -18,15 +18,10 @@ typedef RecordedPreparation = ({
 final class RecordingPlayerPreparationFeedback
     implements PlayerPreparationFeedbackPort {
   final events = <RecordedPreparation>[];
-  var _nextToken = 0;
 
   @override
   PlayerPreparationAttempt prepare(PlaybackAssetAuthority authority) {
-    final suffix = (++_nextToken).toRadixString(36).padLeft(2, '0');
-    final token = PlayerPreparationAttemptToken.parse(
-      '${suffix.padLeft(21, 'a')}A',
-    );
-    return _RecordingAttempt(this, authority, token);
+    return _RecordingAttempt(this, authority);
   }
 
   void _record(
@@ -39,12 +34,10 @@ final class RecordingPlayerPreparationFeedback
 }
 
 final class _RecordingAttempt implements PlayerPreparationAttempt {
-  _RecordingAttempt(this.owner, this.authority, this.nativeToken);
+  _RecordingAttempt(this.owner, this.authority);
 
   final RecordingPlayerPreparationFeedback owner;
   final PlaybackAssetAuthority authority;
-  @override
-  final PlayerPreparationAttemptToken nativeToken;
   bool _terminal = false;
   bool _begun = false;
 

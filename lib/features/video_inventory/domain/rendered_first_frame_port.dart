@@ -1,32 +1,33 @@
-import 'package:ghostr/features/video_inventory/domain/player_preparation_feedback_port.dart';
+final class RenderedFirstFrameAttemptToken {
+  factory RenderedFirstFrameAttemptToken.parse(String raw) {
+    if (!_attemptTokenPattern.hasMatch(raw)) {
+      throw const FormatException('Invalid rendered-frame attempt token.');
+    }
+    return RenderedFirstFrameAttemptToken._(raw);
+  }
 
-abstract interface class RenderedFirstFrameRegistration {
+  const RenderedFirstFrameAttemptToken._(this.value);
+
+  final String value;
+}
+
+final _attemptTokenPattern = RegExp(r'^[A-Za-z0-9_-]{21}[AQgw]$');
+
+abstract interface class RenderedFirstFrameAttempt {
+  RenderedFirstFrameAttemptToken get token;
+
+  void listen(void Function() onRendered);
+
   void release();
 }
 
 abstract interface class RenderedFirstFramePort {
-  RenderedFirstFrameRegistration register(
-    PlayerPreparationAttemptToken token,
-    void Function() onRendered,
-  );
+  RenderedFirstFrameAttempt? beginAttempt();
 }
 
 final class NoopRenderedFirstFramePort implements RenderedFirstFramePort {
   const NoopRenderedFirstFramePort();
 
   @override
-  RenderedFirstFrameRegistration register(
-    PlayerPreparationAttemptToken token,
-    void Function() onRendered,
-  ) {
-    return const _NoopRenderedFirstFrameRegistration();
-  }
-}
-
-final class _NoopRenderedFirstFrameRegistration
-    implements RenderedFirstFrameRegistration {
-  const _NoopRenderedFirstFrameRegistration();
-
-  @override
-  void release() {}
+  RenderedFirstFrameAttempt? beginAttempt() => null;
 }

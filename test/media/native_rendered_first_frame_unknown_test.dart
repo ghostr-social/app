@@ -5,7 +5,7 @@ import 'package:ghostr/features/video_inventory/domain/rendered_first_frame_port
 import 'package:ghostr/platform/media/native_rendered_first_frame_port.dart';
 
 void main() {
-  test('accepts only the exact versioned native event schema', () async {
+  test('drops native frames emitted before token issuance', () async {
     final events = StreamController<Object?>();
     final token = RenderedFirstFrameAttemptToken.parse(
       'abcdefghijklmnopqrstuA',
@@ -14,18 +14,16 @@ void main() {
       events: events.stream,
       tokenFactory: () => token,
     );
-    final attempt = port.beginAttempt()!;
-    var frames = 0;
-    attempt.listen(() => frames += 1);
-
-    events.add({'version': 2, 'attemptToken': token.value});
-    events.add({'version': 1, 'attemptToken': '${token.value}x'});
-    events.add({'version': 1, 'attemptToken': token.value, 'extra': true});
-    await Future<void>.delayed(Duration.zero);
-    expect(frames, 0);
-
     events.add({'version': 1, 'attemptToken': token.value});
     await Future<void>.delayed(Duration.zero);
+    var frames = 0;
+
+    final attempt = port.beginAttempt()!;
+    attempt.listen(() => frames += 1);
+    expect(frames, 0);
+    events.add({'version': 1, 'attemptToken': token.value});
+    await Future<void>.delayed(Duration.zero);
+
     expect(frames, 1);
     await port.dispose();
     await events.close();

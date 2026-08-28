@@ -13,10 +13,11 @@ extension _VideoPlayerSurfaceLoading on _VideoPlayerSurfaceState {
     if (permit == null) return;
     final preparation = _preparePreparation();
     preparation?.begin();
-    final controller = _claimController(permit, preparation);
+    final frameAttempt = _beginFrameAttempt();
+    final controller = _claimController(permit, preparation, frameAttempt);
     if (controller == null) return;
     final superseded = _ownController(controller);
-    _claimPreparation(controller, preparation);
+    _claimPreparation(controller, preparation, frameAttempt);
     await _prepareController(controller, superseded.future);
   }
 
@@ -73,16 +74,20 @@ extension _VideoPlayerSurfaceLoading on _VideoPlayerSurfaceState {
   VideoPlayerController? _claimController(
     _ControllerPermit permit,
     PlayerPreparationAttempt? preparation,
+    RenderedFirstFrameAttempt? frameAttempt,
   ) {
     try {
       final controller = _videoPlayerController(
         _playbackMedia,
-        preparation?.nativeToken,
+        frameAttempt?.token,
       );
       _lifecycle.attach(controller, permit);
       return controller;
     } on Object catch (error, stackTrace) {
       permit.release();
+      if (frameAttempt != null) {
+        _releaseFrameAttemptSafely(frameAttempt);
+      }
       preparation?.failed(PlayerPreparationFailureKind.initialization);
       _logInitializationFailure(error, stackTrace);
       if (!_isClosing) {
@@ -168,13 +173,6 @@ extension _VideoPlayerSurfaceLoading on _VideoPlayerSurfaceState {
     } finally {
       _isLoading = false;
     }
-  }
-
-  PlaybackSession? _openPlaybackSession() {
-    final videoId = widget.videoId;
-    final deliveryId = _playbackMedia.playbackDeliveryId;
-    if (videoId == null || deliveryId == null) return null;
-    return widget.telemetry.openSession(videoId, deliveryId);
   }
 
   void _logInitializationFailure(Object error, StackTrace stackTrace) {

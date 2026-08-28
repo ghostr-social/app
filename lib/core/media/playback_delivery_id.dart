@@ -27,9 +27,7 @@ final class PlaybackDeliveryId {
 
 extension VideoMediaPlaybackDelivery on VideoMediaSource {
   PlaybackDeliveryId? get playbackDeliveryId => switch (this) {
-    ProxiedHlsVideoMediaSource(:final playbackUri) => PlaybackDeliveryId.parse(
-      playbackUri.pathSegments[1],
-    ),
+    ProxiedHlsVideoMediaSource() => null,
     ProxiedProgressiveVideoMediaSource(:final playbackUri) =>
       PlaybackDeliveryId.parse(playbackUri.queryParameters['id']!),
     _ when remoteUrl != null => PlaybackDeliveryId.parse(

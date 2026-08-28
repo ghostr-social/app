@@ -51,7 +51,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   final Completer<void> _closing = Completer<void>();
   PlaybackSession? _playbackSession;
   PlayerPreparationAttempt? _preparationAttempt;
-  RenderedFirstFrameRegistration? _firstFrameRegistration;
+  RenderedFirstFrameAttempt? _firstFrameAttempt;
   late PlaybackAssetAuthority? _playbackAuthority = widget.request.authority;
   PlaybackPhase? _playbackPhase;
   Future<void> _playbackTail = Future<void>.value();

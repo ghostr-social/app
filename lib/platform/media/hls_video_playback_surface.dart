@@ -93,6 +93,10 @@ final class _HlsVideoPlaybackSurfaceState
         lease.release();
         return;
       }
+      if (lease.deliveryId != request.deliveryId) {
+        lease.release();
+        throw StateError('HLS lease delivery identity mismatch.');
+      }
       _acceptMedia(lease);
     } catch (error, stackTrace) {
       _logFailure(error, stackTrace);

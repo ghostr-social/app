@@ -43,6 +43,7 @@ Future<void> showPair(
               media: ProxiedHlsVideoMediaSource(testHlsPlaybackUrl),
               videoId: PlaybackVideoId.parse('clip-$index'),
               isActive: index == activeIndex,
+              playbackDeliveryId: testCanonicalPlaybackDeliveryId,
             ),
           );
         }),

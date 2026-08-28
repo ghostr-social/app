@@ -8,7 +8,7 @@ bool _isPlayableMedia(VideoMediaSource media) {
 
 VideoPlayerController _videoPlayerController(
   VideoMediaSource media,
-  PlayerPreparationAttemptToken? attemptToken,
+  RenderedFirstFrameAttemptToken? attemptToken,
 ) {
   const viewType = VideoViewType.textureView;
   if (media is ProxiedHlsVideoMediaSource) {
@@ -29,7 +29,7 @@ VideoPlayerController _videoPlayerController(
   return VideoPlayerController.file(File(media.localPath!), viewType: viewType);
 }
 
-Map<String, String> _attemptHeaders(PlayerPreparationAttemptToken? token) {
+Map<String, String> _attemptHeaders(RenderedFirstFrameAttemptToken? token) {
   return token == null ? const {} : {warpPlaybackAttemptHeader: token.value};
 }
 

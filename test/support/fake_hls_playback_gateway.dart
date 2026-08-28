@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/features/video_inventory/domain/hls_playback_gateway_port.dart';
 import 'package:ghostr/features/video_inventory/domain/hls_playback_lease.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
@@ -17,17 +18,30 @@ class FakeHlsPlaybackGateway implements HlsPlaybackGatewayPort {
     return pending.future;
   }
 
-  void completeNext({String proxyUrl = _proxyUrl}) {
+  void completeNext({
+    String proxyUrl = _proxyUrl,
+    PlaybackDeliveryId? deliveryId,
+  }) {
     completeAt(
-        _pending.indexWhere((pending) => !pending.isCompleted), proxyUrl);
+      _pending.indexWhere((pending) => !pending.isCompleted),
+      proxyUrl: proxyUrl,
+      deliveryId: deliveryId,
+    );
   }
 
-  void completeAt(int index, [String proxyUrl = _proxyUrl]) {
+  void completeAt(
+    int index, {
+    String proxyUrl = _proxyUrl,
+    PlaybackDeliveryId? deliveryId,
+  }) {
     activeLeaseCount += 1;
-    _pending[index].complete(HlsPlaybackLease(
-      ProxiedHlsVideoMediaSource(proxyUrl),
-      () => activeLeaseCount -= 1,
-    ));
+    _pending[index].complete(
+      HlsPlaybackLease(
+        deliveryId: deliveryId ?? requests[index].deliveryId,
+        media: ProxiedHlsVideoMediaSource(proxyUrl),
+        onReleased: () => activeLeaseCount -= 1,
+      ),
+    );
   }
 
   void failNext() => _nextPending.completeError(StateError('HLS unavailable'));
@@ -37,6 +51,7 @@ class FakeHlsPlaybackGateway implements HlsPlaybackGatewayPort {
   }
 }
 
-const _proxyUrl = 'http://127.0.0.1:3210/hls/'
+const _proxyUrl =
+    'http://127.0.0.1:3210/hls/'
     '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef/'
     'index.m3u8';

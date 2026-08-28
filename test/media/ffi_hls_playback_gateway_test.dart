@@ -21,10 +21,13 @@ void main() {
         return true;
       },
     );
-    final media = VideoMediaSource.remote(
-      'https://media.example/master.m3u8',
-      fallbackUrls: const ['https://mirror.example/master.m3u8'],
-      delivery: VideoMediaDelivery.hls,
+    final media = VideoMediaSource.withCacheScope(
+      VideoMediaSource.remote(
+        'https://media.example/master.m3u8',
+        fallbackUrls: const ['https://mirror.example/master.m3u8'],
+        delivery: VideoMediaDelivery.hls,
+      ),
+      'post-A',
     );
 
     final lease = await gateway.acquire(HlsPlaybackRequest.fromMedia(media));
@@ -33,6 +36,7 @@ void main() {
       'https://media.example/master.m3u8',
       'https://mirror.example/master.m3u8',
     ]);
+    expect(lease.deliveryId.value, 'post-A');
     expect(lease.media.playbackUri.host, '127.0.0.1');
     lease.release();
     lease.release();
@@ -45,18 +49,20 @@ void main() {
     final gateway = FfiHlsPlaybackGateway(
       acquireSession: ({required sourceUrls}) async =>
           const FfiHlsPlaybackSession(
-        sessionId: 'native-session',
-        playbackUrl: 'https://media.example/unsafe.m3u8',
-      ),
+            sessionId: 'native-session',
+            playbackUrl: 'https://media.example/unsafe.m3u8',
+          ),
       releaseSession: ({required sessionId}) async {
         released.add(sessionId);
         return true;
       },
     );
-    final request = HlsPlaybackRequest.fromMedia(VideoMediaSource.remote(
-      'https://media.example/master.m3u8',
-      delivery: VideoMediaDelivery.hls,
-    ));
+    final request = HlsPlaybackRequest.fromMedia(
+      VideoMediaSource.remote(
+        'https://media.example/master.m3u8',
+        delivery: VideoMediaDelivery.hls,
+      ),
+    );
 
     await expectLater(gateway.acquire(request), throwsFormatException);
     expect(released, ['native-session']);
@@ -76,10 +82,12 @@ void main() {
         ),
         releaseSession: release,
       );
-      final request = HlsPlaybackRequest.fromMedia(VideoMediaSource.remote(
-        'https://media.example/master.m3u8',
-        delivery: VideoMediaDelivery.hls,
-      ));
+      final request = HlsPlaybackRequest.fromMedia(
+        VideoMediaSource.remote(
+          'https://media.example/master.m3u8',
+          delivery: VideoMediaDelivery.hls,
+        ),
+      );
       final lease = await gateway.acquire(request);
 
       lease.release();

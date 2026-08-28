@@ -26,6 +26,7 @@ void main() {
           media: ProxiedHlsVideoMediaSource(testHlsPlaybackUrl),
           videoId: PlaybackVideoId.parse('clip'),
           isActive: true,
+          playbackDeliveryId: testCanonicalPlaybackDeliveryId,
         ),
       );
       await _expectStartup(tester, platform, telemetry);

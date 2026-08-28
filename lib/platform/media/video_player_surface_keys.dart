@@ -8,6 +8,7 @@ extension _VideoPlayerSurfaceKeys on _VideoPlayerSurfaceDependencies {
         this,
         request.media.inventoryPlaybackIdentity,
         request.videoId,
+        request.playbackDeliveryId,
       ));
     }
     return _exactSurfaceKeys.putIfAbsent(
@@ -42,14 +43,24 @@ _ExactProgressiveSurfaceSlot? _exactProgressiveSurfaceSlot(
   final authority = request.authority;
   if (scope == null ||
       media is! ProxiedProgressiveVideoMediaSource ||
-      authority == null ||
-      !_proxyMatches(media, authority)) {
+      authority == null) {
     return null;
   }
+  if (!_matchesExactProgressiveIdentity(request, media, authority)) return null;
   return (
     scope,
     authority.deliveryId,
     authority.representationId,
     request.videoId,
   );
+}
+
+bool _matchesExactProgressiveIdentity(
+  VideoPlaybackSurfaceRequest request,
+  ProxiedProgressiveVideoMediaSource media,
+  PlaybackAssetAuthority authority,
+) {
+  final requested = request.playbackDeliveryId;
+  return _proxyMatches(media, authority) &&
+      (requested == null || requested == authority.deliveryId);
 }

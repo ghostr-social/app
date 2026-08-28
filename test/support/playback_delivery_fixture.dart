@@ -1,3 +1,6 @@
+import 'package:ghostr/core/media/playback_delivery_id.dart';
+
+final testCanonicalPlaybackDeliveryId = PlaybackDeliveryId.parse('delivery');
 const testPlaybackDeliveryId =
     '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 const testHlsPlaybackUrl =

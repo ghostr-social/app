@@ -14,7 +14,7 @@ void main() {
       'http://127.0.0.1:8080/video.mp4?id=delivery-7&cap=$capability',
     );
 
-    expect(hls.playbackDeliveryId, PlaybackDeliveryId.parse(hlsId));
+    expect(hls.playbackDeliveryId, isNull);
     expect(
       progressive.playbackDeliveryId,
       PlaybackDeliveryId.parse('delivery-7'),

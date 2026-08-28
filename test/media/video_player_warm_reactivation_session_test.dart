@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
-import 'package:ghostr/features/video_inventory/domain/player_preparation_feedback_port.dart';
 import 'package:ghostr/platform/media/native_rendered_first_frame_port.dart';
+import 'package:ghostr/platform/media/rendered_first_frame_protocol.dart';
 import 'package:ghostr/platform/media/video_player_playback_port.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
@@ -33,8 +33,8 @@ void main() {
     );
     await pumpVideoPlayerSurface(tester, port, _request(scope, true));
     await settleVideoPlayerTasks(tester);
-    final token = platform.dataSources.single
-        .httpHeaders[warpPlaybackAttemptHeader]!;
+    final token =
+        platform.dataSources.single.httpHeaders[warpPlaybackAttemptHeader]!;
     frames.add({'version': 1, 'attemptToken': token});
     await settleVideoPlayerTasks(tester);
 

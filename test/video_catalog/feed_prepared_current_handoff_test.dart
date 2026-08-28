@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ghostr/features/video_inventory/domain/player_preparation_feedback_port.dart';
 import 'package:ghostr/platform/media/gateway_video_playback_port.dart';
 import 'package:ghostr/platform/media/hls_video_playback_port.dart';
 import 'package:ghostr/platform/media/native_rendered_first_frame_port.dart';
+import 'package:ghostr/platform/media/rendered_first_frame_protocol.dart';
 import 'package:ghostr/platform/media/video_player_playback_port.dart';
 
 import '../support/fake_hls_playback_gateway.dart';

@@ -1,18 +1,11 @@
 part of 'ffi_player_preparation_feedback_port.dart';
 
 final class _FfiPlayerPreparationAttempt implements PlayerPreparationAttempt {
-  _FfiPlayerPreparationAttempt(
-    this._owner,
-    this._authority,
-    this._attempt,
-    this.nativeToken,
-  );
+  _FfiPlayerPreparationAttempt(this._owner, this._authority, this._attempt);
 
   final FfiPlayerPreparationFeedbackPort _owner;
   final PlaybackAssetAuthority _authority;
   final BigInt _attempt;
-  @override
-  final PlayerPreparationAttemptToken nativeToken;
   var _sequence = BigInt.zero;
   var _terminal = false;
   var _pluginReady = false;

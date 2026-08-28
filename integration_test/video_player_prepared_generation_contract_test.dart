@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/platform/media/video_player_playback_port.dart';
@@ -18,7 +19,7 @@ void main() {
     final testbed = await DevicePlaybackTestbed.start(
       DeviceVideoScenario.contract,
     );
-    final port = VideoPlayerPlaybackPort(telemetry: testbed.probe);
+    final port = testbed.playback;
     addTearDown(testbed.close);
 
     final currentFocus = await showPair(tester, testbed, port, activeIndex: 1);
@@ -54,6 +55,9 @@ Future<PlaybackFocus> showPair(
               ),
               videoId: id,
               isActive: index == activeIndex,
+              playbackDeliveryId: PlaybackDeliveryId.parse(
+                testbed.server.deliveryIdFor(id.value),
+              ),
             ),
           );
         }),

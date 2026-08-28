@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:ghostr/core/media/inline_blurhash.dart';
 import 'package:ghostr/core/media/playback_asset_authority.dart';
+import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/core/media/prepared_progressive_playback.dart';
 import 'package:ghostr/core/media/progressive_playback_refresh_port.dart';
@@ -27,6 +28,7 @@ final class VideoPlaybackSurfaceRequest {
     required this.isActive,
     this.mode = VideoPlaybackMode.normal,
     this.surfaceScope,
+    this.playbackDeliveryId,
     this.reservesPreparedDecoder = false,
     this.keepWarmWhenInactive = false,
     this.authority,
@@ -40,6 +42,7 @@ final class VideoPlaybackSurfaceRequest {
   final bool isActive;
   final VideoPlaybackMode mode;
   final VideoPlaybackSurfaceScope? surfaceScope;
+  final PlaybackDeliveryId? playbackDeliveryId;
   final bool reservesPreparedDecoder;
   final bool keepWarmWhenInactive;
   final PlaybackAssetAuthority? authority;
@@ -74,6 +77,7 @@ final class PreparedProgressiveVideoPlaybackRequest
         isActive: request.isActive,
         mode: request.mode,
         surfaceScope: request.surfaceScope,
+        playbackDeliveryId: request.playbackDeliveryId,
         reservesPreparedDecoder: true,
         keepWarmWhenInactive: request.keepWarmWhenInactive,
         authority: prepared.authority,

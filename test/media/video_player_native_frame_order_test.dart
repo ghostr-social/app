@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
-import 'package:ghostr/features/video_inventory/domain/player_preparation_feedback_port.dart';
+import 'package:ghostr/features/video_inventory/domain/rendered_first_frame_port.dart';
 import 'package:ghostr/platform/media/ffi_player_preparation_feedback_port.dart';
 import 'package:ghostr/platform/media/native_rendered_first_frame_port.dart';
 import 'package:ghostr/platform/media/video_player_playback_port.dart';
@@ -23,9 +23,12 @@ void main() {
     VideoPlayerPlatform.instance = FakeVideoPlayerPlatform()
       ..pauseBarrier = pause;
     final events = StreamController<Object?>();
-    final frames = NativeRenderedFirstFramePort(events: events.stream);
+    final token = RenderedFirstFrameAttemptToken.parse(_token);
+    final frames = NativeRenderedFirstFramePort(
+      events: events.stream,
+      tokenFactory: () => token,
+    );
     final sent = <FfiPlayerPreparationReport>[];
-    final token = PlayerPreparationAttemptToken.parse(_token);
     final feedback = FfiPlayerPreparationFeedbackPort(
       reportPreparation: ({required input}) async {
         sent.add(input);
@@ -34,7 +37,6 @@ void main() {
       playerCapabilityGeneration: BigInt.one,
       clientEpoch: BigInt.one,
       monotonicMicros: () => 1,
-      tokenFactory: () => token,
     );
     final port = VideoPlayerPlaybackPort(
       preparationFeedback: feedback,

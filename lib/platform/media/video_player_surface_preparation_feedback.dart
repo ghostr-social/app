@@ -3,55 +3,31 @@ part of 'video_player_playback_port.dart';
 extension _VideoPlayerSurfacePreparationFeedback on _VideoPlayerSurfaceState {
   PlayerPreparationAttempt? _preparePreparation() {
     final authority = _playbackAuthority;
-    return authority == null
-        ? null
-        : widget.preparationFeedback.prepare(authority);
-  }
-
-  void _claimPreparation(
-    VideoPlayerController controller,
-    PlayerPreparationAttempt? attempt,
-  ) {
-    _resetPresentationEvidence();
-    _preparationAttempt = attempt;
-    final token = attempt?.nativeToken;
-    if (token != null) {
-      _firstFrameRegistration = widget.renderedFirstFrames.register(
-        token,
-        () => _handleNativeFrame(controller, attempt),
-      );
+    final media = _playbackMedia;
+    if (authority == null ||
+        media is! ProxiedProgressiveVideoMediaSource ||
+        !_proxyMatches(media, authority)) {
+      return null;
     }
-  }
-
-  void _handleNativeFrame(
-    VideoPlayerController controller,
-    PlayerPreparationAttempt? attempt,
-  ) {
-    if (!_ownsController(controller) ||
-        !identical(_preparationAttempt, attempt)) {
-      return;
-    }
-    attempt?.firstFrameRendered();
-    _nativeFrameObserved = true;
-    _schedulePresentedFrame();
+    return widget.preparationFeedback.prepare(authority);
   }
 
   void _schedulePresentedFrame() {
     final controller = _controller;
-    final attempt = _preparationAttempt;
+    final frameAttempt = _firstFrameAttempt;
     final session = _playbackSession;
-    if (!_canSchedulePresentation(controller, attempt, session)) return;
+    if (!_canSchedulePresentation(controller, frameAttempt, session)) return;
     _presentationScheduled = true;
     final version = _presentationVersion;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _reportPresentedFrame(controller!, attempt!, session!, version);
+      _reportPresentedFrame(controller!, frameAttempt!, session!, version);
     });
     WidgetsBinding.instance.scheduleFrame();
   }
 
   bool _canSchedulePresentation(
     VideoPlayerController? controller,
-    PlayerPreparationAttempt? attempt,
+    RenderedFirstFrameAttempt? frameAttempt,
     PlaybackSession? session,
   ) {
     return _nativeFrameObserved &&
@@ -61,32 +37,32 @@ extension _VideoPlayerSurfacePreparationFeedback on _VideoPlayerSurfaceState {
         widget.isActive &&
         _isObserving &&
         controller != null &&
-        attempt != null &&
+        frameAttempt != null &&
         session != null;
   }
 
   void _reportPresentedFrame(
     VideoPlayerController controller,
-    PlayerPreparationAttempt attempt,
+    RenderedFirstFrameAttempt frameAttempt,
     PlaybackSession session,
     int version,
   ) {
     if (version != _presentationVersion) return;
     _presentationScheduled = false;
-    if (!_ownsPresentedFrame(controller, attempt, session)) return;
+    if (!_ownsPresentedFrame(controller, frameAttempt, session)) return;
     _presentationReported = true;
     widget.telemetry.presented(session);
   }
 
   bool _ownsPresentedFrame(
     VideoPlayerController controller,
-    PlayerPreparationAttempt attempt,
+    RenderedFirstFrameAttempt frameAttempt,
     PlaybackSession session,
   ) {
     return _ownsController(controller) &&
         widget.isActive &&
         _isObserving &&
-        identical(_preparationAttempt, attempt) &&
+        identical(_firstFrameAttempt, frameAttempt) &&
         _playbackSession == session &&
         _nativeFrameObserved &&
         !_presentationReported;
@@ -99,14 +75,16 @@ extension _VideoPlayerSurfacePreparationFeedback on _VideoPlayerSurfaceState {
   }
 
   void _failPreparation(PlayerPreparationFailureKind failure) {
-    _firstFrameRegistration?.release();
-    _firstFrameRegistration = null;
+    final frameAttempt = _firstFrameAttempt;
+    _firstFrameAttempt = null;
+    if (frameAttempt != null) _releaseFrameAttemptSafely(frameAttempt);
     _preparationAttempt?.failed(failure);
   }
 
   void _releasePreparation() {
-    _firstFrameRegistration?.release();
-    _firstFrameRegistration = null;
+    final frameAttempt = _firstFrameAttempt;
+    _firstFrameAttempt = null;
+    if (frameAttempt != null) _releaseFrameAttemptSafely(frameAttempt);
     _preparationAttempt?.release();
     _preparationAttempt = null;
     _resetPresentationEvidence();

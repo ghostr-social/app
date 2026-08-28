@@ -1,103 +1,113 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer';
+import 'dart:math' show Random;
 
 import 'package:flutter/services.dart';
-import 'package:ghostr/features/video_inventory/domain/player_preparation_feedback_port.dart';
 import 'package:ghostr/features/video_inventory/domain/rendered_first_frame_port.dart';
 
 const _firstFrameChannel = EventChannel(
   'social.ghostr/video_player_first_frames',
 );
 
+typedef RenderedFirstFrameTokenFactory =
+    RenderedFirstFrameAttemptToken Function();
+
 final class NativeRenderedFirstFramePort implements RenderedFirstFramePort {
   factory NativeRenderedFirstFramePort.production({Stream<Object?>? events}) {
     return _production ??= NativeRenderedFirstFramePort(events: events);
   }
 
-  NativeRenderedFirstFramePort({Stream<Object?>? events}) {
+  NativeRenderedFirstFramePort({
+    Stream<Object?>? events,
+    RenderedFirstFrameTokenFactory tokenFactory = _newAttemptToken,
+  }) : _tokenFactory = tokenFactory {
     final source = events ?? _firstFrameChannel.receiveBroadcastStream();
     _subscription = source.listen(_receive, onError: _onError);
   }
 
   static const _historyLimit = 8;
+  static const _collisionLimit = 8;
   static NativeRenderedFirstFramePort? _production;
 
+  final RenderedFirstFrameTokenFactory _tokenFactory;
   late final StreamSubscription<Object?> _subscription;
-  final _registrations = <String, _NativeFrameRegistration>{};
-  final _pending = <String>{};
+  final _attempts = <String, _NativeFrameAttempt>{};
   final _consumed = <String>{};
   bool _disposed = false;
 
   @override
-  RenderedFirstFrameRegistration register(
-    PlayerPreparationAttemptToken token,
-    void Function() onRendered,
-  ) {
-    if (_disposed || _consumed.contains(token.value)) {
-      return const _ReleasedFrameRegistration();
+  RenderedFirstFrameAttempt? beginAttempt() {
+    if (_disposed) return null;
+    for (var index = 0; index < _collisionLimit; index += 1) {
+      final token = _tokenFactory();
+      if (_attempts.containsKey(token.value) ||
+          _consumed.contains(token.value)) {
+        continue;
+      }
+      final attempt = _NativeFrameAttempt(this, token);
+      _attempts[token.value] = attempt;
+      return attempt;
     }
-    final registration = _NativeFrameRegistration(this, token, onRendered);
-    _registrations.remove(token.value)?.release();
-    _registrations[token.value] = registration;
-    if (_pending.remove(token.value)) _deliver(registration);
-    return registration;
+    return null;
   }
 
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
     await _subscription.cancel();
-    for (final registration in _registrations.values.toList()) {
-      registration.release();
+    for (final attempt in _attempts.values.toList()) {
+      attempt.release();
     }
-    _registrations.clear();
-    _pending.clear();
+    _attempts.clear();
     _consumed.clear();
+  }
+
+  void _listen(_NativeFrameAttempt attempt, void Function() onRendered) {
+    if (attempt._released ||
+        !identical(_attempts[attempt.token.value], attempt) ||
+        attempt._onRendered != null) {
+      return;
+    }
+    attempt._onRendered = onRendered;
+    if (attempt._frameSeen) _deliver(attempt);
   }
 
   void _receive(Object? event) {
     final token = _parse(event);
     if (token == null || _disposed || _consumed.contains(token.value)) return;
-    final registration = _registrations[token.value];
-    if (registration != null) {
-      _deliver(registration);
-      return;
-    }
-    _pending.add(token.value);
-    _bound(_pending);
+    final attempt = _attempts[token.value];
+    if (attempt == null) return;
+    attempt._frameSeen = true;
+    if (attempt._onRendered != null) _deliver(attempt);
   }
 
-  void _deliver(_NativeFrameRegistration registration) {
-    if (registration._released || _disposed) return;
-    final token = registration.token.value;
-    if (!identical(_registrations.remove(token), registration)) return;
+  void _deliver(_NativeFrameAttempt attempt) {
+    if (attempt._released || _disposed || attempt._onRendered == null) return;
+    final token = attempt.token.value;
+    if (!identical(_attempts.remove(token), attempt)) return;
     _consumed.add(token);
     _bound(_consumed);
-    registration._complete();
+    attempt._complete();
   }
 
-  void _release(_NativeFrameRegistration registration) {
-    final token = registration.token.value;
-    if (identical(_registrations[token], registration)) {
-      _registrations.remove(token);
-    }
-    _pending.remove(token);
+  void _release(_NativeFrameAttempt attempt) {
+    final token = attempt.token.value;
+    if (identical(_attempts[token], attempt)) _attempts.remove(token);
     _consumed.add(token);
     _bound(_consumed);
   }
 
-  PlayerPreparationAttemptToken? _parse(Object? event) {
+  RenderedFirstFrameAttemptToken? _parse(Object? event) {
     if (event is! Map<Object?, Object?> ||
         event.length != 2 ||
-        !event.containsKey('version') ||
-        !event.containsKey('attemptToken') ||
         event['version'] != 1) {
       return null;
     }
     final raw = event['attemptToken'];
     if (raw is! String) return null;
     try {
-      return PlayerPreparationAttemptToken.parse(raw);
+      return RenderedFirstFrameAttemptToken.parse(raw);
     } on FormatException {
       return null;
     }
@@ -119,18 +129,23 @@ final class NativeRenderedFirstFramePort implements RenderedFirstFramePort {
   }
 }
 
-final class _NativeFrameRegistration implements RenderedFirstFrameRegistration {
-  _NativeFrameRegistration(this.owner, this.token, this._onRendered);
+final class _NativeFrameAttempt implements RenderedFirstFrameAttempt {
+  _NativeFrameAttempt(this.owner, this.token);
 
   final NativeRenderedFirstFramePort owner;
-  final PlayerPreparationAttemptToken token;
-  final void Function() _onRendered;
+  @override
+  final RenderedFirstFrameAttemptToken token;
+  void Function()? _onRendered;
+  bool _frameSeen = false;
   bool _released = false;
+
+  @override
+  void listen(void Function() onRendered) => owner._listen(this, onRendered);
 
   void _complete() {
     if (_released) return;
     _released = true;
-    _onRendered();
+    _onRendered?.call();
   }
 
   @override
@@ -141,10 +156,9 @@ final class _NativeFrameRegistration implements RenderedFirstFrameRegistration {
   }
 }
 
-final class _ReleasedFrameRegistration
-    implements RenderedFirstFrameRegistration {
-  const _ReleasedFrameRegistration();
-
-  @override
-  void release() {}
+RenderedFirstFrameAttemptToken _newAttemptToken() {
+  final random = Random.secure();
+  final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+  final raw = base64Url.encode(bytes).replaceAll('=', '');
+  return RenderedFirstFrameAttemptToken.parse(raw);
 }

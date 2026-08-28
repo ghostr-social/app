@@ -32,6 +32,7 @@ void main() {
           media: media,
           videoId: PlaybackVideoId.parse('clip'),
           isActive: true,
+          playbackDeliveryId: testCanonicalPlaybackDeliveryId,
         ),
       );
 
@@ -43,6 +44,7 @@ void main() {
           videoId: PlaybackVideoId.parse('clip'),
           isActive: true,
           mode: VideoPlaybackMode.paused,
+          playbackDeliveryId: testCanonicalPlaybackDeliveryId,
         ),
       );
 

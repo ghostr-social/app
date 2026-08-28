@@ -84,6 +84,7 @@ final class _GatewayVideoPlaybackSurfaceState
         isActive: widget.isActive,
         mode: widget.mode,
         surfaceScope: widget.request.surfaceScope,
+        playbackDeliveryId: widget.request.playbackDeliveryId,
         reservesPreparedDecoder: widget.request.reservesPreparedDecoder,
         keepWarmWhenInactive: widget.request.keepWarmWhenInactive,
         authority: _readyAuthority(origin, media),

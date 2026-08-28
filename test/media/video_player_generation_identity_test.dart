@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/platform/media/video_player_playback_port.dart';
@@ -25,11 +24,12 @@ void main() {
       media: media,
       videoId: PlaybackVideoId.parse('clip'),
       isActive: true,
+      playbackDeliveryId: testCanonicalPlaybackDeliveryId,
     );
 
     await _pump(tester, port, request);
     final first = telemetry.activations.single;
-    expect(first.deliveryId, PlaybackDeliveryId.parse(testPlaybackDeliveryId));
+    expect(first.deliveryId, testCanonicalPlaybackDeliveryId);
     platform.emit(VideoEvent(eventType: VideoEventType.bufferingStart));
     await tester.pump();
     expect(
@@ -76,5 +76,6 @@ VideoPlaybackSurfaceRequest _activity(
     media: request.media,
     videoId: request.videoId,
     isActive: isActive,
+    playbackDeliveryId: request.playbackDeliveryId,
   );
 }

@@ -5,7 +5,7 @@ import 'package:ghostr/features/video_inventory/domain/rendered_first_frame_port
 import 'package:ghostr/platform/media/native_rendered_first_frame_port.dart';
 
 void main() {
-  test('replays one early native frame and rejects duplicates', () async {
+  test('a repeated token cannot alias an active frame attempt', () async {
     final events = StreamController<Object?>();
     final token = RenderedFirstFrameAttemptToken.parse(
       'abcdefghijklmnopqrstuA',
@@ -14,16 +14,12 @@ void main() {
       events: events.stream,
       tokenFactory: () => token,
     );
-    final attempt = port.beginAttempt()!;
-    events.add({'version': 1, 'attemptToken': token.value});
-    await Future<void>.delayed(Duration.zero);
-    var frames = 0;
 
-    attempt.listen(() => frames += 1);
-    events.add({'version': 1, 'attemptToken': token.value});
-    await Future<void>.delayed(Duration.zero);
+    final first = port.beginAttempt();
+    final collision = port.beginAttempt();
 
-    expect(frames, 1);
+    expect(first?.token, same(token));
+    expect(collision, isNull);
     await port.dispose();
     await events.close();
   });

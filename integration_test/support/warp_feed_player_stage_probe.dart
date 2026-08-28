@@ -50,9 +50,6 @@ final class _WarpFeedPlayerStageAttempt implements PlayerPreparationAttempt {
   final WarpFeedStageClock _clock;
 
   @override
-  PlayerPreparationAttemptToken? get nativeToken => _delegate.nativeToken;
-
-  @override
   void begin() {
     _delegate.begin();
     if (_evidence.isTerminal || _evidence.initializingAt != null) return;

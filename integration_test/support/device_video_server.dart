@@ -49,7 +49,7 @@ final class DeviceVideoServer {
     'http://${_server.address.address}:${_server.port}/missing/index.m3u8',
   );
 
-  String deliveryIdFor(String videoId) => _sessionId(videoId);
+  String deliveryIdFor(String videoId) => 'fixture-$videoId';
 
   int requestsFor(String asset) => _requests[asset] ?? 0;
 

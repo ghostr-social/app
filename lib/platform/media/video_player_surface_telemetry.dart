@@ -1,6 +1,16 @@
 part of 'video_player_playback_port.dart';
 
 extension _VideoPlayerSurfaceTelemetry on _VideoPlayerSurfaceState {
+  PlaybackSession? _openPlaybackSession() {
+    final videoId = widget.videoId;
+    final deliveryId = _resolvedPlaybackDeliveryId(
+      widget.request.playbackDeliveryId,
+      _playbackMedia.playbackDeliveryId,
+    );
+    if (videoId == null || deliveryId == null) return null;
+    return widget.telemetry.openSession(videoId, deliveryId);
+  }
+
   void _beginObservation(VideoPlayerValue value) {
     if (_isObserving) return;
     _isObserving = true;
@@ -44,4 +54,15 @@ extension _VideoPlayerSurfaceTelemetry on _VideoPlayerSurfaceState {
     if (session == null) return;
     widget.telemetry.report(_playbackObserver.observe(session, value, phase));
   }
+}
+
+PlaybackDeliveryId? _resolvedPlaybackDeliveryId(
+  PlaybackDeliveryId? requested,
+  PlaybackDeliveryId? media,
+) {
+  if (requested != null && media != null && requested != media) {
+    log('Playback delivery identity mismatch.', name: 'ghostr.video.player');
+    return null;
+  }
+  return requested ?? media;
 }

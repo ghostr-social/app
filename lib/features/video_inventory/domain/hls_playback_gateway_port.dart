@@ -1,3 +1,4 @@
+import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/features/video_inventory/domain/hls_playback_lease.dart';
 
@@ -8,20 +9,32 @@ abstract interface class HlsPlaybackGatewayPort {
 }
 
 final class HlsPlaybackRequest {
-  HlsPlaybackRequest._(this.sourceUrls);
+  HlsPlaybackRequest._(this.deliveryId, this.sourceUrls);
 
   factory HlsPlaybackRequest.fromMedia(VideoMediaSource media) {
     if (!_isCanonicalHls(media)) {
       throw ArgumentError.value(
-          media, 'media', 'Remote HLS media is required.');
+        media,
+        'media',
+        'Remote HLS media is required.',
+      );
+    }
+    final deliveryId = media.playbackDeliveryId;
+    if (deliveryId == null) {
+      throw ArgumentError.value(
+        media,
+        'media',
+        'Delivery identity is required.',
+      );
     }
     final sources = media.remoteUrls
         .take(maxHlsPlaybackSourceCount)
         .map(_validatedSourceUri)
         .toList(growable: false);
-    return HlsPlaybackRequest._(List<Uri>.unmodifiable(sources));
+    return HlsPlaybackRequest._(deliveryId, List<Uri>.unmodifiable(sources));
   }
 
+  final PlaybackDeliveryId deliveryId;
   final List<Uri> sourceUrls;
 }
 
