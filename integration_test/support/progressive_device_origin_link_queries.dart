@@ -76,8 +76,9 @@ extension ProgressiveOriginLinkControl on ProgressiveDeviceOrigin {
 
 int progressiveConfirmedWindowFence(Iterable<int> epochs) {
   final iterator = epochs.iterator;
-  if (!iterator.moveNext())
+  if (!iterator.moveNext()) {
     throw StateError('A confirmation fence needs data.');
+  }
   var latest = iterator.current;
   while (iterator.moveNext()) {
     if (iterator.current > latest) latest = iterator.current;
