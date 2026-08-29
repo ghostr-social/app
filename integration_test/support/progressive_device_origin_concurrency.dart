@@ -63,13 +63,16 @@ typedef ProgressiveRangedRequestPair = ({
 });
 
 bool _hasByteInterval(ProgressiveOriginRequest request) {
+  if (!_isCompletedRange(request)) return false;
   final first = request.firstByteAt;
   final last = request.lastByteAt;
-  return request.range != null &&
-      request.servedBytes > 0 &&
-      first != null &&
-      last != null &&
-      first < last;
+  return first != null && last != null && first < last;
+}
+
+bool _isCompletedRange(ProgressiveOriginRequest request) {
+  return request.outcome == ProgressiveOriginRequestOutcome.completed &&
+      request.range != null &&
+      request.servedBytes > 0;
 }
 
 bool _byteIntervalsOverlap(ProgressiveRangedRequestPair pair) {
