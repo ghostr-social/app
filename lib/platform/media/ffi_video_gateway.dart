@@ -55,7 +55,7 @@ class FfiVideoGateway {
         error: error,
         stackTrace: stackTrace,
       );
-      return VideoGatewayFailed(failure.message);
+      return VideoGatewayFailed(failure.message, diagnostic: error.toString());
     }
   }
 
@@ -108,7 +108,8 @@ class VideoGatewayStarted extends VideoGatewayStartResult {
 }
 
 class VideoGatewayFailed extends VideoGatewayStartResult {
-  const VideoGatewayFailed(this.message);
+  const VideoGatewayFailed(this.message, {this.diagnostic});
 
   final String message;
+  final String? diagnostic;
 }

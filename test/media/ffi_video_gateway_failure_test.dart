@@ -11,9 +11,8 @@ void main() {
     final result = await gateway.start(AppSettings.defaults(), '/cache/native');
 
     expect(result, isA<VideoGatewayFailed>());
-    expect(
-      (result as VideoGatewayFailed).message,
-      'The embedded video gateway could not start.',
-    );
+    final failure = result as VideoGatewayFailed;
+    expect(failure.message, 'The embedded video gateway could not start.');
+    expect(failure.diagnostic, 'Bad state: port unavailable');
   });
 }
