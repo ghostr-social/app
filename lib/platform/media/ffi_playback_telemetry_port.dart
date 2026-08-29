@@ -161,13 +161,16 @@ final class FfiPlaybackTelemetryPort implements PlaybackTelemetryPort {
   }
 
   void _replacePending(int generation, List<FfiPlaybackObservation> retained) {
-    final previous = _pending.remove(generation);
+    final previous = _pending[generation];
     if (previous != null) {
       for (final input in previous) {
         if (!retained.any((item) => identical(item, input))) _resolve(input);
       }
     }
-    if (retained.isEmpty) return;
+    if (retained.isEmpty) {
+      _pending.remove(generation);
+      return;
+    }
     for (final input in retained) {
       _track(input);
     }

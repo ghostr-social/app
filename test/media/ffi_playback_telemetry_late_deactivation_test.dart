@@ -27,7 +27,7 @@ void main() {
 
     telemetry.deactivate(old);
     first.complete();
-    await drainTelemetryMicrotasks();
+    await telemetry.settled;
 
     expect(sent.map((item) => item.phase), [
       FfiPlaybackPhase.starting,
