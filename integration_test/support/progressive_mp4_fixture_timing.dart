@@ -34,7 +34,9 @@ void _scaleScalar(
 }
 
 void _scaleTable(Uint8List bytes, String box, int factor) {
-  final start = _findBox(bytes, box) - 4;
+  final typeOffset = _findBoxOrNull(bytes, box);
+  if (typeOffset == null) return;
+  final start = typeOffset - 4;
   final count = _readU32(bytes, start + 12);
   for (var index = 0; index < count; index += 1) {
     final offset = start + 20 + index * 8;

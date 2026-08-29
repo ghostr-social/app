@@ -57,7 +57,7 @@ fn item(post: &str) -> FocusItem {
             urls: vec!["https://media.example/video.mp4".to_owned()],
             delivery: DeliveryKind::Progressive,
             sha256: None,
-            size_bytes: Some(285_652),
+            size_bytes: Some(293_999),
             duration_ms: Some(6_000),
         },
     }

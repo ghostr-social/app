@@ -73,7 +73,8 @@ function scaleScalar(bytes, field, multiplier) {
 }
 
 function scaleTable(bytes, type, multiplier) {
-  const start = boxStart(bytes, type);
+  const start = optionalBoxStart(bytes, type);
+  if (start === null) return;
   const count = bytes.readUInt32BE(start + 12);
   for (let index = 0; index < count; index += 1) {
     const offset = start + 20 + index * 8;
@@ -82,9 +83,14 @@ function scaleTable(bytes, type, multiplier) {
 }
 
 function boxStart(bytes, type) {
+  const start = optionalBoxStart(bytes, type);
+  if (start === null) throw new Error(`missing ${type} box`);
+  return start;
+}
+
+function optionalBoxStart(bytes, type) {
   const typeOffset = bytes.indexOf(Buffer.from(type));
-  if (typeOffset < 4) throw new Error(`missing ${type} box`);
-  return typeOffset - 4;
+  return typeOffset < 4 ? null : typeOffset - 4;
 }
 
 function requirePositiveInteger(value) {

@@ -64,5 +64,5 @@ async fn cold_focus_starts_admitted_body_bytes_without_waiting_for_head() {
         .await
         .expect("stored ranges");
     assert!(!stored.is_empty(), "the bootstrap prefix is retained");
-    assert_eq!(origin.total_bytes(), 285_652);
+    assert_eq!(origin.total_bytes(), 293_999);
 }

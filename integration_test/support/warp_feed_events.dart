@@ -59,6 +59,6 @@ List<List<String>> _videoTags(Uri url, String label, int publishedAt) => [
     'm video/mp4',
     'size ${ProgressiveMp4Fixture.bytes.length}',
     'duration 6',
-    'dim 64x64',
+    'dim 320x180',
   ],
 ];

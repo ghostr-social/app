@@ -73,6 +73,12 @@ void _appendFiller(Uint8List output, int offset, int byteLength) {
 }
 
 int _findBox(Uint8List bytes, String box) {
+  final offset = _findBoxOrNull(bytes, box);
+  if (offset != null) return offset;
+  throw StateError('Missing MP4 box $box.');
+}
+
+int? _findBoxOrNull(Uint8List bytes, String box) {
   final needle = ascii.encode(box);
   for (var offset = 0; offset <= bytes.length - needle.length; offset += 1) {
     var matches = true;
@@ -81,7 +87,7 @@ int _findBox(Uint8List bytes, String box) {
     }
     if (matches) return offset;
   }
-  throw StateError('Missing MP4 box $box.');
+  return null;
 }
 
 int _readU32(Uint8List bytes, int offset) {

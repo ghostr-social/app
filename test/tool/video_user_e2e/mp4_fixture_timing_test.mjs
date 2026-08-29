@@ -22,7 +22,7 @@ function timingOf(bytes) {
     editStart: scalar(bytes, "elst", 20, true),
     media: scalar(bytes, "mdhd", 24),
     decoding: table(bytes, "stts"),
-    composition: table(bytes, "ctts"),
+    composition: optionalTable(bytes, "ctts"),
   };
 }
 
@@ -54,6 +54,10 @@ function table(bytes, type) {
     count: bytes.readUInt32BE(start + 16 + index * 8),
     value: bytes.readUInt32BE(start + 20 + index * 8),
   }));
+}
+
+function optionalTable(bytes, type) {
+  return bytes.includes(Buffer.from(type)) ? table(bytes, type) : [];
 }
 
 function boxStart(bytes, type) {

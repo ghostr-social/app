@@ -6,9 +6,9 @@ use gateway_fixture::progressive_journey_origin::ProgressiveJourneyOrigin;
 async fn progressive_journey_uses_the_qoe_media_span() {
     let origin = ProgressiveJourneyOrigin::with_blocked_head().await;
 
-    assert_eq!(origin.total_bytes(), 285_652);
+    assert_eq!(origin.total_bytes(), 293_999);
     assert_eq!(
         origin.sha256(),
-        "74ddab015133a0fdb579a04fb71eb2a9b142629fce6eb55e9e87f8cf91d9592b",
+        "d5c6f10986d2a23730172e1b74e8ee7e9dd976aefe673570e719029ec3bd4ddc",
     );
 }

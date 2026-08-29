@@ -60,6 +60,7 @@ VIDEO_PROGRESSIVE_FLUTTER_TESTS := \
 	test/media/ffi_playback_telemetry_terminal_synthesis_test.dart \
 	test/media/ffi_feed_focus_cross_port_generation_test.dart \
 	test/media/ffi_video_gateway_device_integration_scope_test.dart \
+	test/media/progressive_device_fixture_android_codec_test.dart \
 	test/media/progressive_device_fixture_test.dart \
 	test/media/progressive_device_fixture_parity_test.dart \
 	test/media/progressive_device_origin_cancellation_accounting_test.dart \

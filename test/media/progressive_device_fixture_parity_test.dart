@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../integration_test/support/progressive_mp4_fixture.dart';
 
 const _sourceSha256 =
-    'f9f8f3ca660be3b6a7e8d9f8dd818a215e061a6e88c120dea919b0595453c5bc';
+    'ebfb2821b5362cfc4f0791c7bc47b7c9023f6ff04b3a17ec64a3a5ed83008344';
 
 void main() {
   test('device and JavaScript journeys share the visible source MP4', () {
