@@ -117,6 +117,10 @@ impl PlayerPreparationReport {
         }
     }
 
+    pub(crate) fn claim(&self) -> super::PlayerPreparationClaim {
+        super::PlayerPreparationClaim::from_authority(&self.authority)
+    }
+
     fn ordering_key(&self) -> (u64, u64, u64) {
         (
             self.client_epoch(),

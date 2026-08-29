@@ -118,6 +118,7 @@ impl DeliveryWorker {
             observed_at_ms,
             self.state.current_post(),
         )
+        .with_player_preparations(planned.player_preparations.clone())
         .with_focus(
             self.state.focus_generation(),
             self.state.focus_covers_from(),

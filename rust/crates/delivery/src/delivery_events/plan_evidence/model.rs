@@ -1,4 +1,5 @@
 use super::super::DeliveryNetworkStatus;
+use super::super::PlayerPreparationClaim;
 use crate::startup_certificate::StartupCertificate;
 use ghostr_engine::adaptive::AllocationPlan;
 use ghostr_engine::origin_model::NetworkClass;
@@ -15,6 +16,7 @@ pub struct PlanEvidence {
     pub network_status_generation: u64,
     pub network_class: NetworkClass,
     pub network_profile_generation: u64,
+    pub player_preparations: Vec<PlayerPreparationClaim>,
     pub plan: AllocationPlan,
     pub startups: Vec<StartupCertificate>,
 }
@@ -27,6 +29,7 @@ pub(crate) struct PlanPublicationContext {
     pub(super) focus_covers_from: Option<u64>,
     pub(super) network_status: DeliveryNetworkStatus,
     pub(super) network_profile_generation: u64,
+    pub(super) player_preparations: Vec<PlayerPreparationClaim>,
 }
 
 impl PlanPublicationContext {
@@ -39,7 +42,16 @@ impl PlanPublicationContext {
             focus_covers_from: None,
             network_status: DeliveryNetworkStatus::unavailable(),
             network_profile_generation: 0,
+            player_preparations: Vec::new(),
         }
+    }
+
+    pub(crate) fn with_player_preparations(
+        mut self,
+        preparations: Vec<PlayerPreparationClaim>,
+    ) -> Self {
+        self.player_preparations = preparations;
+        self
     }
 
     pub(crate) const fn with_decision_sequence(mut self, sequence: Option<u64>) -> Self {

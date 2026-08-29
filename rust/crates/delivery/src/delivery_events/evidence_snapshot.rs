@@ -1,5 +1,5 @@
 use super::plan_evidence::PlanEvidencePage;
-use super::{DecisionLog, DeliveryHandle, PlanEvidence};
+use super::{DecisionLog, DeliveryHandle, PlanEvidence, PlayerPreparationClaim};
 use crate::evaluation::EvaluationSnapshot;
 use ghostr_engine::adaptive::{AllocationPlan, DecisionRecord, DecisionReplayStatus};
 use ghostr_engine::origin_model::NetworkClass;
@@ -44,6 +44,7 @@ struct PlanEvidenceSnapshot {
     decision_sequence: Option<u64>,
     observed_at_ms: u64,
     current_post_id: Option<String>,
+    player_verified_post_ids: Vec<String>,
     focus_generation: Option<u64>,
     focus_covers_from: Option<u64>,
     network_status_generation: u64,
@@ -128,6 +129,7 @@ impl PlanEvidenceSnapshot {
                 .current
                 .as_ref()
                 .map(|post| privacy.pseudonymized_post(post.as_str())),
+            player_verified_post_ids: pseudonymized_posts(&value.player_preparations, privacy),
             focus_generation: value.focus_generation,
             focus_covers_from: value.focus_covers_from,
             network_status_generation: value.network_status_generation,
@@ -136,4 +138,11 @@ impl PlanEvidenceSnapshot {
             plan: privacy.sanitized_plan(&value.plan),
         }
     }
+}
+
+fn pseudonymized_posts(claims: &[PlayerPreparationClaim], privacy: &DecisionLog) -> Vec<String> {
+    claims
+        .iter()
+        .map(|claim| privacy.pseudonymized_post(claim.post().as_str()))
+        .collect()
 }

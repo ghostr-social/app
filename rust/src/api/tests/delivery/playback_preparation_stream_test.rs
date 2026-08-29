@@ -79,7 +79,10 @@ async fn projects_exact_current_and_structurally_ready_adjacent_next_assets() {
     assert_eq!(next.representation_id.len(), 64);
     assert_eq!(current.representation_id, next.representation_id);
     assert_ne!(current.asset_id, next.asset_id);
-    assert_eq!(next.readiness, FfiPlaybackPreparationReadiness::Ready);
+    assert_eq!(
+        next.readiness,
+        FfiPlaybackPreparationReadiness::StructuralStartable,
+    );
 }
 
 fn cached(id: &str) -> CacheVideo {

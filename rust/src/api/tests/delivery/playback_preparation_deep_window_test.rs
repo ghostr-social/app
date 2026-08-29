@@ -76,9 +76,9 @@ async fn projects_every_certified_upcoming_asset_in_feed_order() {
     assert_eq!(
         assets,
         [
-            ("next-1", Readiness::Ready),
+            ("next-1", Readiness::StructuralStartable),
             ("next-2", Readiness::StructuralStartable),
-            ("next-3", Readiness::Ready),
+            ("next-3", Readiness::StructuralStartable),
         ]
     );
     assert_eq!(

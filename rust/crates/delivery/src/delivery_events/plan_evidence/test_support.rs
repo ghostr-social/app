@@ -1,4 +1,5 @@
 use super::*;
+use crate::delivery_events::PlayerPreparationClaim;
 use ghostr_engine::PostId;
 
 impl PlanEvidenceHistory {
@@ -50,6 +51,22 @@ impl CommandReceiver {
     ) {
         self.plans.publish_focused(
             PlanPublicationContext::new(observed_at_ms, current),
+            plan,
+            startups,
+        );
+    }
+
+    pub fn publish_focused_plan_with_player_preparations(
+        &mut self,
+        observed_at_ms: u64,
+        current: Option<PostId>,
+        plan: AllocationPlan,
+        evidence: (Vec<PlayerPreparationClaim>, Vec<StartupCertificate>),
+    ) {
+        let (preparations, startups) = evidence;
+        self.plans.publish_focused(
+            PlanPublicationContext::new(observed_at_ms, current)
+                .with_player_preparations(preparations),
             plan,
             startups,
         );

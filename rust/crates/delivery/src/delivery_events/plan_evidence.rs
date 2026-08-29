@@ -76,6 +76,7 @@ impl PlanEvidenceHistory {
             network_status_generation: context.network_status.generation(),
             network_class: context.network_status.network_class(),
             network_profile_generation: context.network_profile_generation,
+            player_preparations: context.player_preparations,
             plan,
             startups,
         });

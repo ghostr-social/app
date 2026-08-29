@@ -63,6 +63,22 @@ pub(crate) struct PlannedWork {
     pub network_refill_deadline_ms: Option<u64>,
     pub planner_cpu_micros: u64,
     pub warp: Option<ghostr_engine::adaptive::WarpPlanningDecision>,
+    pub(crate) player_preparations: Vec<crate::delivery_events::PlayerPreparationClaim>,
+}
+
+impl PlannedWork {
+    fn player_verified_posts(&self) -> Vec<PostId> {
+        self.snapshot
+            .as_ref()
+            .into_iter()
+            .flat_map(|snapshot| &snapshot.candidates)
+            .filter(|candidate| {
+                candidate.player_preparation
+                    == ghostr_engine::adaptive::PlayerPreparation::FirstFrameRendered
+            })
+            .map(|candidate| candidate.post.clone())
+            .collect()
+    }
 }
 
 #[derive(Clone)]
@@ -101,6 +117,8 @@ pub(crate) fn planned_work_with_planner(
 ) -> PlannedWork {
     let started = Instant::now();
     let mut planned = adaptive::planned_work(state, inputs, planner, watch);
+    let verified = planned.player_verified_posts();
+    planned.player_preparations = state.player_preparation_claims(&verified);
     planned.planner_cpu_micros =
         started.elapsed().as_micros().clamp(1, u128::from(u64::MAX)) as u64;
     planned

@@ -9,6 +9,7 @@ use ghostr_engine::PostId;
 use ghostr_partial_store::partial_range_store::ContentRevision;
 use std::collections::HashMap;
 
+mod claim;
 mod epoch;
 mod evidence;
 mod fallback;

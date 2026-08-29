@@ -25,6 +25,7 @@ mod playback_presentation_state_test;
 mod playback_seed_lane_queue_test;
 mod playback_seed_lane_refill_test;
 mod playback_state_stale_test;
+mod player_preparation_evidence_snapshot_test;
 mod policy_eviction_history_test;
 mod probe_active_occupancy_test;
 mod probe_body_deferral_test;

@@ -58,6 +58,7 @@ pub(super) fn planned_work(
         network_refill_deadline_ms,
         planner_cpu_micros: 0,
         warp: Some(warp),
+        player_preparations: Vec::new(),
     }
 }
 
@@ -85,6 +86,7 @@ fn empty_work() -> PlannedWork {
         network_refill_deadline_ms: None,
         planner_cpu_micros: 0,
         warp: None,
+        player_preparations: Vec::new(),
     }
 }
 

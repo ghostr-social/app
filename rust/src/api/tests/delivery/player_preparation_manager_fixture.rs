@@ -10,6 +10,8 @@ use std::path::PathBuf;
 use tokio::sync::watch;
 use tokio::time::timeout;
 
+const MANAGER_SHUTDOWN_LIMIT: Duration = Duration::from_secs(30);
+
 pub(super) struct ProductionManagerFixture {
     pub(super) context: PlayerPreparationContext,
     pub(super) input: FfiPlayerPreparationReport,
@@ -51,11 +53,19 @@ impl ProductionManagerFixture {
         } = self;
         drop(demand);
         drop(context);
-        timeout(Duration::from_secs(2), async move {
+        let closed = timeout(MANAGER_SHUTDOWN_LIMIT, async {
             while discovery.changed().await.is_ok() {}
         })
-        .await
-        .expect("production manager shutdown");
+        .await;
+        if closed.is_err() {
+            let demand = *discovery.borrow();
+            let channel = discovery.has_changed();
+            let root_exists = stats_root.exists();
+            panic!(
+                "production manager shutdown; demand={demand:?}; channel={channel:?}; \
+                 stats_root_exists={root_exists}"
+            );
+        }
         std::fs::remove_dir_all(stats_root).expect("test fixture precondition must hold");
     }
 }

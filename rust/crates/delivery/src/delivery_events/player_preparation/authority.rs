@@ -59,7 +59,7 @@ impl PlayerPreparationClaim {
         })
     }
 
-    pub(super) fn post(&self) -> &PostId {
+    pub fn post(&self) -> &PostId {
         &self.post
     }
 

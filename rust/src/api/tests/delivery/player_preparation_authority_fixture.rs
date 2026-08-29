@@ -18,7 +18,7 @@ impl AuthorityFixture {
         Self::seeded_with(ProgressiveCapabilities::production()).await
     }
 
-    async fn seeded_with(capabilities: ProgressiveCapabilities) -> Self {
+    pub(super) async fn seeded_with(capabilities: ProgressiveCapabilities) -> Self {
         let store = temp_store("ghostr-player-preparation-authority");
         let tracked = TrackedItems::new();
         let meta = sized_meta(16, 2_000);
