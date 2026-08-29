@@ -10,7 +10,7 @@ import '../support/ready_playback_preparation.dart';
 import '../support/sample_data.dart';
 
 void main() {
-  test('terminal failure only overrides its exact prepared authority', () {
+  test('terminal failure never certifies conflicting player evidence', () {
     final post = samplePost(id: 'intended');
     final asset = readyPlaybackPreparation(post.media);
     final preparation = FeedPlaybackPreparation.managed(
@@ -30,8 +30,10 @@ void main() {
       ),
     );
 
-    expect(matching.isReadyAt(0), isFalse);
-    expect(stale.isReadyAt(0), isTrue);
+    expect(matching.isStructurallyStartableAt(0), isFalse);
+    expect(stale.isStructurallyStartableAt(0), isTrue);
+    expect(matching.isPlayerVerifiedAt(0), isFalse);
+    expect(stale.isPlayerVerifiedAt(0), isFalse);
   });
 }
 

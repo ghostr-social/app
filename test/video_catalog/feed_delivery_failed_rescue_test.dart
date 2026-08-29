@@ -9,11 +9,14 @@ import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 
 import '../support/fake_feed_focus_port.dart';
 import '../support/fakes.dart';
+import '../support/feed_preparation_updates.dart';
+import '../support/player_verified_preparation.dart';
 import '../support/sample_data.dart';
 
 void main() {
   test('active decoder failure rescues to the next ready post', () async {
     final updates = _DeliveryUpdates();
+    final preparation = ControlledPlaybackPreparationUpdates();
     final focus = FakeFeedFocusPort();
     final posts = List.generate(3, (index) => samplePost(id: 'p$index'));
     final repository = FakeVideoCatalogRepository(forYouFeed: posts);
@@ -23,15 +26,22 @@ void main() {
         engagement: repository,
         optional: FeedOptionalDependencies(
           focus: focus,
-          delivery: FeedDeliveryDependencies(deliveryUpdates: updates),
+          delivery: FeedDeliveryDependencies(
+            deliveryUpdates: updates,
+            preparationUpdates: preparation,
+          ),
         ),
       ),
     );
     addTearDown(cubit.close);
     addTearDown(updates.close);
+    addTearDown(preparation.close);
     await cubit.load();
     updates.publish(posts[0], VideoDeliveryPhase.startable);
     updates.publish(posts[1], VideoDeliveryPhase.startable);
+    preparation.publish(
+      playerVerifiedPlan(posts, currentIndex: 0, readyIndices: [1]),
+    );
 
     updates.publish(posts[0], VideoDeliveryPhase.failed);
     await pumpEventQueue();

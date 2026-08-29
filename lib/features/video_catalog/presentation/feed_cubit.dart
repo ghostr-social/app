@@ -123,8 +123,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   var _isClosing = false;
 
   Future<void> load([FeedKind? selectedKind]) async {
-    _pageTransition += 1;
-    _cancelPageTransition();
+    _beginLoadGeneration();
     _reloadWhenSurfaceVisible = false;
     _loads.take();
     _reposts?.forget();
@@ -144,8 +143,7 @@ class FeedCubit extends DisposalSafeCubit<FeedState> {
   Future<void> reload() async {
     final previous = state;
     if (previous is! FeedLoaded) return load();
-    _pageTransition += 1;
-    _cancelPageTransition();
+    _beginLoadGeneration();
     _reposts?.forget();
     final follows = _reloadFollows();
     emit(FeedLoading(previous.kind));

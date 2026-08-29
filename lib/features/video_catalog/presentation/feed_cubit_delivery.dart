@@ -83,11 +83,6 @@ extension FeedCubitDelivery on FeedCubit {
     if (pending == null) return;
     final active = _currentRescueFeed(pending);
     if (active == null) return;
-    final intended = _snapshotFor(active.feed.posts[active.intendedIndex]);
-    if (intended?.phase == VideoDeliveryPhase.startable) {
-      _clearPendingRescue();
-      return;
-    }
     _applyRescueDecision(
       active.feed,
       _rescueDecision(active.feed, active.intendedIndex, pending),
@@ -115,8 +110,20 @@ extension FeedCubitDelivery on FeedCubit {
     } else if (selected.action == FeedReadyAction.wait) {
       _ensureRescueTimer();
     } else if (selected.reason == FeedReadyReason.intendedReady) {
-      _clearPendingRescue();
+      _settlePendingRescue();
     }
+  }
+
+  void _settlePendingRescue() {
+    final pending = _awaitingTransportRescue;
+    if (pending == null) return;
+    _awaitingTransportRescue = (
+      deliveryId: pending.deliveryId,
+      direction: pending.direction,
+      graceExpired: false,
+    );
+    _rescueTimer?.cancel();
+    _rescueTimer = null;
   }
 
   void _ensureRescueTimer() {
@@ -139,11 +146,6 @@ extension FeedCubitDelivery on FeedCubit {
     _awaitingTransportRescue = null;
     _rescueTimer?.cancel();
     _rescueTimer = null;
-  }
-
-  VideoDeliverySnapshot? _snapshotFor(VideoPost post) {
-    final id = post.media.playbackDeliveryId;
-    return id == null ? null : _delivery[id];
   }
 
   FeedTransportRescue _transportRescue(FeedReadyDecision decision) {

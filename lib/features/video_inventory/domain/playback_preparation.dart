@@ -21,6 +21,14 @@ extension PlaybackPreparationReadinessEvidence on PlaybackPreparationReadiness {
       this == PlaybackPreparationReadiness.ready;
 
   bool get isPlayerVerified => this == PlaybackPreparationReadiness.ready;
+
+  PreparedPlaybackReadiness get preparedReadiness {
+    if (isPlayerVerified) return PreparedPlaybackReadiness.playerVerified;
+    if (isStructurallyStartable) {
+      return PreparedPlaybackReadiness.structuralStartable;
+    }
+    return PreparedPlaybackReadiness.preparing;
+  }
 }
 
 final class PlaybackPreparationAsset {
@@ -57,11 +65,13 @@ final class PlaybackPreparationAsset {
 
   PreparedProgressivePlayback bind(VideoMediaSource origin) {
     return PreparedProgressivePlayback.bind(
-      origin: origin,
+      binding: PreparedProgressivePlaybackBinding(
+        origin: origin,
+        sourceRepresentationId: sourceRepresentationId,
+      ),
       media: media,
       authority: authority,
-      sourceRepresentationId: sourceRepresentationId,
-      isStructurallyStartable: readiness.isStructurallyStartable,
+      readiness: readiness.preparedReadiness,
     );
   }
 

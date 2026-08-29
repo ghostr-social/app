@@ -66,10 +66,13 @@ PreparedProgressivePlayback _prepared() {
   final origin = _origin();
   final authority = _authority(origin);
   return PreparedProgressivePlayback.bind(
-    origin: origin,
+    binding: PreparedProgressivePlaybackBinding(
+      origin: origin,
+      sourceRepresentationId: authority.representationId,
+    ),
     media: ProxiedProgressiveVideoMediaSource(fakeProgressivePlaybackUrl),
     authority: authority,
-    isStructurallyStartable: true,
+    readiness: PreparedPlaybackReadiness.structuralStartable,
   );
 }
 

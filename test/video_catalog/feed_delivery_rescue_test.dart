@@ -10,11 +10,14 @@ import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart'
 
 import '../support/fake_feed_focus_port.dart';
 import '../support/fakes.dart';
+import '../support/feed_preparation_updates.dart';
+import '../support/player_verified_preparation.dart';
 import '../support/sample_data.dart';
 
 void main() {
   test('a delivery rescue records the video it makes visible', () async {
     final updates = _DeliveryUpdates();
+    final preparation = ControlledPlaybackPreparationUpdates();
     final focus = FakeFeedFocusPort();
     final history = FakeWatchHistoryRepository();
     final posts = List.generate(3, (index) => samplePost(id: 'p$index'));
@@ -25,7 +28,10 @@ void main() {
         engagement: repository,
         optional: FeedOptionalDependencies(
           focus: focus,
-          delivery: FeedDeliveryDependencies(deliveryUpdates: updates),
+          delivery: FeedDeliveryDependencies(
+            deliveryUpdates: updates,
+            preparationUpdates: preparation,
+          ),
           watch: FeedWatchDependencies(
             tracker: WatchHistoryTracker(
               history: history,
@@ -37,9 +43,13 @@ void main() {
     );
     addTearDown(cubit.close);
     addTearDown(updates.close);
+    addTearDown(preparation.close);
     await cubit.load();
     updates.publish(posts[1], startable: false);
     updates.publish(posts[2], startable: true);
+    preparation.publish(
+      playerVerifiedPlan(posts, currentIndex: 0, readyIndices: [2]),
+    );
 
     cubit.pageChanged(1);
     await pumpEventQueue();

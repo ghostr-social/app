@@ -49,7 +49,7 @@ final class FeedReadinessEvidence {
     return deliveryId == null ? null : delivery[deliveryId];
   }
 
-  bool isReadyAt(int index) {
+  bool isStructurallyStartableAt(int index) {
     final snapshot = snapshotAt(index);
     if (snapshot?.phase == VideoDeliveryPhase.failed &&
         _failureApplies(index, snapshot!)) {
@@ -57,6 +57,16 @@ final class FeedReadinessEvidence {
     }
     if (snapshot?.phase == VideoDeliveryPhase.startable) return true;
     return preparation?.isStructurallyStartable(posts[index].media) == true;
+  }
+
+  bool isPlayerVerifiedAt(int index) {
+    final snapshot = snapshotAt(index);
+    if (snapshot?.phase == VideoDeliveryPhase.failed) return false;
+    final prepared = preparation?.forMedia(posts[index].media);
+    if (prepared?.readiness.isPlayerVerified != true) return false;
+    final deliveryAuthority = snapshot?.authority;
+    return deliveryAuthority == null ||
+        deliveryAuthority == prepared!.authority;
   }
 
   bool _failureApplies(int index, VideoDeliverySnapshot snapshot) {
@@ -84,7 +94,7 @@ final class FeedReadySelector {
     bool graceExpired = false,
   }) {
     final intended = evidence.snapshotAt(intendedIndex);
-    if (evidence.isReadyAt(intendedIndex)) {
+    if (evidence.isPlayerVerifiedAt(intendedIndex)) {
       return _stay(intendedIndex, FeedReadyReason.intendedReady);
     }
     if (intendedIndex < fromIndex) {
@@ -112,7 +122,7 @@ final class FeedReadySelector {
     for (var distance = 1; distance < maxCandidates; distance += 1) {
       final index = intended + (distance * direction);
       if (index < 0 || index >= evidence.posts.length) break;
-      if (evidence.isReadyAt(index)) return index;
+      if (evidence.isPlayerVerifiedAt(index)) return index;
     }
     return intended;
   }

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
+import 'package:ghostr/core/media/prepared_progressive_playback.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/media/video_representation_id.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_preparation_reducer.dart';
@@ -19,6 +20,7 @@ void main() {
     final result = FeedPreparationReducer().accept(plan, current, next);
 
     expect(result?.next?.media, asset.media);
+    expect(result?.next?.readiness, PreparedPlaybackReadiness.playerVerified);
   });
 }
 

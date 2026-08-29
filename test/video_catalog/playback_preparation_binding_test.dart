@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
+import 'package:ghostr/core/media/prepared_progressive_playback.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/media/video_representation_id.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_preparation.dart';
@@ -15,13 +16,11 @@ void main() {
 
     expect(prepared.origin, same(represented));
     expect(prepared.media, same(asset.media));
+    expect(prepared.readiness, PreparedPlaybackReadiness.structuralStartable);
     expect(() => asset.bind(different), throwsArgumentError);
     expect(
       () => PreparedProgressiveVideoPlaybackRequest(
-        request: VideoPlaybackSurfaceRequest(
-          media: different,
-          isActive: true,
-        ),
+        request: VideoPlaybackSurfaceRequest(media: different, isActive: true),
         prepared: prepared,
       ),
       throwsArgumentError,

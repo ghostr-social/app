@@ -4,6 +4,7 @@ import 'package:ghostr/features/video_catalog/domain/video_delivery_updates.dart
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_ready_selector.dart';
 
+import '../support/player_verified_preparation.dart';
 import '../support/sample_data.dart';
 
 void main() {
@@ -64,7 +65,15 @@ final class _Fixture {
       ),
     };
     return const FeedReadySelector().select(
-      FeedReadinessEvidence(posts: posts, delivery: delivery),
+      FeedReadinessEvidence(
+        posts: posts,
+        delivery: delivery,
+        preparation: playerVerifiedWindow(
+          posts,
+          currentIndex: 0,
+          readyIndices: [_readyIndex],
+        ),
+      ),
       fromIndex: 0,
       intendedIndex: 1,
       graceExpired: graceExpired,

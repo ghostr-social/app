@@ -1,6 +1,12 @@
 part of 'feed_cubit.dart';
 
 extension FeedCubitRescueState on FeedCubit {
+  void _beginLoadGeneration() {
+    _pageTransition += 1;
+    _cancelPageTransition();
+    _clearPendingRescue();
+  }
+
   void _rememberPendingRescue(FeedLoaded current, FeedReadyDecision decision) {
     final intended = decision.intendedIndex;
     _clearPendingRescue();

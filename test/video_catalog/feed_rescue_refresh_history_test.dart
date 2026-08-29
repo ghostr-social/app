@@ -6,6 +6,8 @@ import 'package:ghostr/features/watch_history/domain/watch_history_tracker.dart'
 
 import '../support/controlled_video_delivery_updates.dart';
 import '../support/fakes.dart';
+import '../support/feed_preparation_updates.dart';
+import '../support/player_verified_preparation.dart';
 import '../support/sample_data.dart';
 
 void main() {
@@ -15,6 +17,7 @@ void main() {
     final history = FakeWatchHistoryRepository();
     final reporter = RecordingFailureReporter();
     final delivery = ControlledVideoDeliveryUpdates();
+    final preparation = ControlledPlaybackPreparationUpdates();
     final cubit = FeedCubit(
       FeedDependencies(
         feed: WatchAwareVideoFeedRepository(
@@ -30,16 +33,22 @@ void main() {
               failureReporter: reporter,
             ),
           ),
-          delivery: FeedDeliveryDependencies(deliveryUpdates: delivery),
+          delivery: FeedDeliveryDependencies(
+            deliveryUpdates: delivery,
+            preparationUpdates: preparation,
+          ),
         ),
       ),
     );
     addTearDown(() async {
-      await Future.wait([cubit.close(), delivery.close()]);
+      await Future.wait([cubit.close(), delivery.close(), preparation.close()]);
     });
     await cubit.load();
     delivery.publish(posts[1], phase: VideoDeliveryPhase.preparing);
     delivery.publish(posts[2], phase: VideoDeliveryPhase.startable);
+    preparation.publish(
+      playerVerifiedPlan(posts, currentIndex: 0, readyIndices: [2]),
+    );
     cubit.pageChanged(1);
     await pumpEventQueue();
     expect((cubit.state as FeedLoaded).roster.active.id.value, 'p2');

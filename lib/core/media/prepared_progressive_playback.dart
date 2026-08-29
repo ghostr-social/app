@@ -4,40 +4,53 @@ import 'package:ghostr/core/media/video_media_cache_identity.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/media/video_representation_id.dart';
 
+enum PreparedPlaybackReadiness {
+  preparing,
+  structuralStartable,
+  playerVerified;
+
+  bool get isStructurallyStartable => this != preparing;
+  bool get isPlayerVerified => this == playerVerified;
+}
+
+final class PreparedProgressivePlaybackBinding {
+  const PreparedProgressivePlaybackBinding({
+    required this.origin,
+    required this.sourceRepresentationId,
+  });
+
+  final VideoMediaSource origin;
+  final VideoRepresentationId sourceRepresentationId;
+}
+
 /// One exact loopback asset paired with the canonical source that can renew it.
 final class PreparedProgressivePlayback {
   factory PreparedProgressivePlayback.bind({
-    required VideoMediaSource origin,
+    required PreparedProgressivePlaybackBinding binding,
     required ProxiedProgressiveVideoMediaSource media,
     required PlaybackAssetAuthority authority,
-    required bool isStructurallyStartable,
-    VideoRepresentationId? sourceRepresentationId,
+    required PreparedPlaybackReadiness readiness,
   }) {
-    final sourceId = sourceRepresentationId ?? authority.representationId;
-    _validateOrigin(origin, authority, sourceId);
+    _validateOrigin(binding.origin, authority, binding.sourceRepresentationId);
     _validateProxy(media, authority);
-    return PreparedProgressivePlayback._(
-      origin,
-      media,
-      authority,
-      sourceId,
-      isStructurallyStartable,
-    );
+    return PreparedProgressivePlayback._(binding, media, authority, readiness);
   }
 
-  const PreparedProgressivePlayback._(
-    this.origin,
+  PreparedProgressivePlayback._(
+    PreparedProgressivePlaybackBinding binding,
     this.media,
     this.authority,
-    this.sourceRepresentationId,
-    this.isStructurallyStartable,
-  );
+    this.readiness,
+  ) : origin = binding.origin,
+      sourceRepresentationId = binding.sourceRepresentationId;
 
   final VideoMediaSource origin;
   final ProxiedProgressiveVideoMediaSource media;
   final PlaybackAssetAuthority authority;
   final VideoRepresentationId sourceRepresentationId;
-  final bool isStructurallyStartable;
+  final PreparedPlaybackReadiness readiness;
+
+  bool get isStructurallyStartable => readiness.isStructurallyStartable;
 
   bool matches(VideoMediaSource candidate) {
     return candidate.inventoryPlaybackIdentity ==

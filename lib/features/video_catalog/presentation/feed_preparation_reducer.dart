@@ -53,6 +53,10 @@ final class FeedPlaybackPreparation {
   bool isStructurallyStartable(VideoMediaSource media) {
     return forMedia(media)?.isStructurallyStartable == true;
   }
+
+  bool isPlayerVerified(VideoMediaSource media) {
+    return forMedia(media)?.readiness.isPlayerVerified == true;
+  }
 }
 
 final class FeedPreparationReducer {
