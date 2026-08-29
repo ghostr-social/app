@@ -26,6 +26,8 @@ part 'progressive_device_origin_bandwidth_trigger.dart';
 part 'progressive_device_origin_bandwidth_trigger_control.dart';
 part 'progressive_device_origin_chunk_gate.dart';
 part 'progressive_device_origin_chunk_gate_control.dart';
+part 'progressive_device_origin_pre_body_gate.dart';
+part 'progressive_device_origin_pre_body_gate_control.dart';
 part 'progressive_device_origin_send.dart';
 part 'progressive_device_origin_queries.dart';
 part 'progressive_device_origin_rendezvous_control.dart';
@@ -73,6 +75,7 @@ final class ProgressiveDeviceOrigin {
   ProgressiveOriginFirstChunkRendezvous? _firstChunkRendezvous;
   ProgressiveOriginBandwidthTrigger? _bandwidthTrigger;
   ProgressiveOriginChunkGate? _chunkGate;
+  ProgressiveOriginPreBodyGate? _preBodyGate;
   var _nextRequestSequence = 0;
   final _requestSequences = <ProgressiveOriginRequest, int>{};
 }

@@ -47,6 +47,7 @@ extension ProgressiveDeviceOriginLifecycle on ProgressiveDeviceOrigin {
     _firstChunkRendezvous?.release();
     _bandwidthTrigger?.cancel();
     _chunkGate?.release();
+    _preBodyGate?.release();
     for (final response in _heldHeads) {
       await response.close();
     }

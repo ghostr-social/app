@@ -15,6 +15,7 @@ extension _ProgressiveDeviceOriginSend on ProgressiveDeviceOrigin {
     HttpResponse response,
     _ProgressiveResponseChunk chunk,
   ) async {
+    await _preBodyGate?._beforeFirstBody(chunk.request);
     final permit = await _pacing.acquire(chunk.end - chunk.start);
     ProgressiveOriginChunkEvent? event;
     try {
