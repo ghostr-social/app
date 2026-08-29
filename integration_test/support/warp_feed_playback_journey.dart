@@ -45,6 +45,7 @@ part 'warp_feed_playback_journey_swipe.dart';
 part 'warp_feed_playback_journey_recovery_window.dart';
 part 'warp_feed_playback_journey_window.dart';
 part 'warp_feed_playback_journey_wait.dart';
+part 'warp_feed_playback_journey_wait_core.dart';
 part 'warp_feed_playback_journey_origin_wait.dart';
 part 'warp_feed_playback_journey_origin_assertions.dart';
 part 'warp_feed_playback_journey_store_assertions.dart';

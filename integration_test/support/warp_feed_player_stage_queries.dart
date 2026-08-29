@@ -1,6 +1,14 @@
 part of 'warp_feed_player_stage_probe.dart';
 
 extension WarpFeedPlayerStageQueries on WarpFeedPlayerStageProbe {
+  List<WarpFeedPlayerStageEvidence> attemptsFor(PlaybackDeliveryId deliveryId) {
+    return List.unmodifiable(
+      _evidence.where(
+        (evidence) => evidence.authority.deliveryId == deliveryId,
+      ),
+    );
+  }
+
   WarpFeedPlayerStageEvidence? preparedFor(
     PlaybackDeliveryId deliveryId,
     Duration noLaterThan,
