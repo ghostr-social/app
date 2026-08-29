@@ -8,6 +8,7 @@ import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_remote_source.dart';
 import 'package:ghostr/platform/media/ffi_video_gateway.dart';
 
+import 'progressive_device_origin.dart';
 import 'progressive_device_resources.dart';
 import 'warp_controlled_network_status.dart';
 import 'warp_feed_preparation_probe.dart';
