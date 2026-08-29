@@ -4,6 +4,7 @@ use axum::http::StatusCode;
 use core::time::Duration;
 use delivery_fixture::hls::{serve, HlsGate};
 use delivery_fixture::hls_recovery::{serve as serve_script, HlsScript};
+use delivery_fixture::hls_start::wait_for_start;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
@@ -17,19 +18,21 @@ async fn failed_first_hls_source_switches_to_the_healthy_mirror() {
     let gate = HlsGate::new();
     let valid = serve(gate.clone()).await;
     let mut options = DeliveryOptions::default();
-    options.tuning.retry.base = Duration::from_secs(5);
-    options.tuning.retry.max = Duration::from_secs(5);
+    options.tuning.retry.base = Duration::from_secs(60);
+    options.tuning.retry.max = Duration::from_secs(60);
     let harness = start_harness("hls-mirror-fallback", options);
     let mut item = sized_item("stream", &invalid, 32, 4_000);
     item.meta.delivery = DeliveryKind::Hls;
     item.meta.urls.push(valid);
     harness.handle.update_focus(focus_now(vec![item], 0, 0));
 
-    tokio::time::timeout(Duration::from_secs(2), gate.started.acquire())
-        .await
-        .expect("healthy mirror starts before the failed source backoff")
-        .expect("valid test fixture")
-        .forget();
+    wait_for_start(
+        &harness,
+        &gate,
+        "stream",
+        "healthy mirror starts before the failed source backoff",
+    )
+    .await;
     gate.release.add_permits(1);
     let terminal = hls_terminal_wait::wait_terminal(&harness.segmented, "stream").await;
     assert_eq!(terminal.phase, SegmentedPhase::Ready);

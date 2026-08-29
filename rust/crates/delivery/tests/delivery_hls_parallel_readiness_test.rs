@@ -1,7 +1,8 @@
 mod delivery_fixture;
+mod hls_terminal_wait;
 
-use core::time::Duration;
 use delivery_fixture::hls::{serve, HlsGate};
+use delivery_fixture::hls_start::wait_for_starts;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
@@ -23,11 +24,13 @@ async fn focused_hls_videos_prepare_in_parallel_and_require_bootstrap_assets() {
     }
     harness.handle.update_focus(focus_now(items, 0, 0));
 
-    tokio::time::timeout(Duration::from_secs(2), gate.started.acquire_many(2))
-        .await
-        .expect("valid test fixture")
-        .expect("valid test fixture")
-        .forget();
+    wait_for_starts(
+        &harness,
+        &gate,
+        &["first", "second"],
+        "both HLS root requests start",
+    )
+    .await;
     assert_eq!(
         harness.segmented.snapshot("first").phase,
         SegmentedPhase::Preparing
@@ -44,16 +47,6 @@ async fn focused_hls_videos_prepare_in_parallel_and_require_bootstrap_assets() {
 }
 
 async fn wait_ready(harness: &delivery_fixture::DeliveryHarness, post: &str) {
-    let changed = harness.segmented.notifier();
-    let result = tokio::time::timeout(Duration::from_secs(2), async {
-        while harness.segmented.snapshot(post).phase != SegmentedPhase::Ready {
-            changed.notified().await;
-        }
-    })
-    .await;
-    assert!(
-        result.is_ok(),
-        "{post} did not become ready: {:?}",
-        harness.segmented.snapshot(post)
-    );
+    let terminal = hls_terminal_wait::wait_terminal(&harness.segmented, post).await;
+    assert_eq!(terminal.phase, SegmentedPhase::Ready);
 }

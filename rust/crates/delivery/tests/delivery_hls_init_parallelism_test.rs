@@ -1,8 +1,8 @@
 mod delivery_fixture;
 mod hls_terminal_wait;
 
-use core::time::Duration;
 use delivery_fixture::hls::{serve, HlsGate};
+use delivery_fixture::hls_start::wait_for_start;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
@@ -22,23 +22,10 @@ async fn authorized_hls_initialization_stages_prepare_in_parallel() {
     }
     harness.handle.update_focus(focus_now(items, 0, 0));
 
-    let both_started = async {
-        first_gate
-            .started
-            .acquire()
-            .await
-            .expect("valid test fixture")
-            .forget();
-        second_gate
-            .started
-            .acquire()
-            .await
-            .expect("valid test fixture")
-            .forget();
-    };
-    tokio::time::timeout(Duration::from_secs(2), both_started)
-        .await
-        .expect("both authorized HLS init stages start before either completes");
+    tokio::join!(
+        wait_for_start(&harness, &first_gate, "first", "first HLS init starts"),
+        wait_for_start(&harness, &second_gate, "second", "second HLS init starts"),
+    );
     first_gate.release.add_permits(1);
     second_gate.release.add_permits(1);
     assert_eq!(ready(&harness, "first").await, SegmentedPhase::Ready);

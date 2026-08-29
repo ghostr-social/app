@@ -1,12 +1,13 @@
 mod delivery_fixture;
 mod hls_terminal_wait;
 
-use core::time::Duration;
 use delivery_fixture::evidence::DeliveryEvidence as _;
 use delivery_fixture::hls::{serve, HlsGate};
+use delivery_fixture::hls_start::wait_for_start;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
+use ghostr_delivery::delivery_events::FocusAdmission;
 use ghostr_engine::adaptive::{
     DecisionOutcome, HlsBootstrapStage, RecordedHlsBootstrapStage, RecordedWarpCommand,
 };
@@ -19,13 +20,12 @@ async fn hls_bootstrap_objects_are_singular_recorded_warp_commitments() {
     let harness = start_harness("hls-warp-decisions", DeliveryOptions::default());
     let mut item = sized_item("stream", &source, 32, 4_000);
     item.meta.delivery = DeliveryKind::Hls;
-    harness.handle.update_focus(focus_now(vec![item], 0, 0));
+    assert_eq!(
+        harness.handle.update_focus(focus_now(vec![item], 0, 0)),
+        FocusAdmission::Accepted
+    );
 
-    tokio::time::timeout(Duration::from_secs(2), gate.started.acquire())
-        .await
-        .expect("selected root request starts")
-        .expect("gate remains open")
-        .forget();
+    wait_for_start(&harness, &gate, "stream", "selected root request starts").await;
     let pending = hls_records(&harness, Some(HlsBootstrapStage::RootManifest));
     assert_eq!(pending.len(), 1);
     assert!(pending[0].chosen_action_id.is_some());

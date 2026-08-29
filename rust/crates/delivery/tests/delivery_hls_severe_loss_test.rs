@@ -2,6 +2,7 @@ mod delivery_fixture;
 
 use core::time::Duration;
 use delivery_fixture::hls::{serve, HlsGate};
+use delivery_fixture::hls_start::wait_for_start;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
@@ -24,7 +25,7 @@ async fn severe_packet_loss_keeps_hls_bootstrap_at_one_request() {
     }
     harness.handle.update_focus(focus_now(items, 0, 0));
 
-    started(&gate).await;
+    wait_for_start(&harness, &gate, "first", "first HLS request starts").await;
     let second = tokio::time::timeout(Duration::from_millis(100), gate.started.acquire()).await;
     assert!(second.is_err(), "severe loss admitted parallel HLS work");
     harness.handle.clear().await.expect("valid test fixture");
@@ -33,12 +34,4 @@ async fn severe_packet_loss_keeps_hls_bootstrap_at_one_request() {
 
 fn item(id: &'static str, source: &str) -> ghostr_delivery::delivery_events::FocusItem {
     sized_item(id, source, 32, 4_000)
-}
-
-async fn started(gate: &HlsGate) {
-    tokio::time::timeout(Duration::from_secs(2), gate.started.acquire())
-        .await
-        .expect("first HLS request starts")
-        .expect("valid test fixture")
-        .forget();
 }

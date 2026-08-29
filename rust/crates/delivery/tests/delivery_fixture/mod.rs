@@ -26,6 +26,7 @@ pub mod hedge_tail_origin;
 pub mod hedge_tail_stats;
 pub mod hls;
 pub mod hls_recovery;
+pub mod hls_start;
 pub mod host_hol;
 pub mod items;
 pub mod media;

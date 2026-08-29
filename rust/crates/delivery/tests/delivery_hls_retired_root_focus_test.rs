@@ -5,6 +5,7 @@ use axum::http::StatusCode;
 use core::time::Duration;
 use delivery_fixture::hls::{serve, HlsGate};
 use delivery_fixture::hls_recovery::{serve as serve_script, HlsScript};
+use delivery_fixture::hls_start::wait_for_start;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
@@ -25,7 +26,7 @@ async fn focus_regeneration_does_not_reseed_a_retired_hls_root() {
     harness
         .handle
         .update_focus(focus(&primary_url, &backup_url, 0));
-    wait_backup_root(&backup).await;
+    wait_backup_root(&harness, &backup).await;
     harness
         .handle
         .update_focus(focus(&primary_url, &backup_url, 1));
@@ -34,7 +35,7 @@ async fn focus_regeneration_does_not_reseed_a_retired_hls_root() {
     harness
         .handle
         .update_focus(focus(&primary_url, &backup_url, 0));
-    wait_backup_root(&backup).await;
+    wait_backup_root(&harness, &backup).await;
     backup.release.add_permits(1);
 
     let terminal = hls_terminal_wait::wait_terminal(&harness.segmented, "stream").await;
@@ -55,10 +56,6 @@ fn focus(
     focus_now(vec![item, other], current, 0)
 }
 
-async fn wait_backup_root(gate: &HlsGate) {
-    tokio::time::timeout(Duration::from_secs(2), gate.started.acquire())
-        .await
-        .expect("backup root request")
-        .expect("backup gate")
-        .forget();
+async fn wait_backup_root(harness: &delivery_fixture::DeliveryHarness, gate: &HlsGate) {
+    wait_for_start(harness, gate, "stream", "backup root request").await;
 }

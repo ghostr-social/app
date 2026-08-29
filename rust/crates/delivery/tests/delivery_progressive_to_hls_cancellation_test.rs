@@ -3,6 +3,7 @@ mod delivery_fixture;
 use core::time::Duration;
 use delivery_fixture::concurrency_origin::ControlledOrigin;
 use delivery_fixture::hls::{serve, HlsGate};
+use delivery_fixture::hls_start::wait_for_start;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::{base_params, DeliveryOptions};
 use delivery_fixture::start_harness;
@@ -26,11 +27,13 @@ async fn progressive_to_hls_releases_the_obsolete_network_request() {
     item.meta.urls = vec![root];
     harness.handle.update_focus(focus_now(vec![item], 0, 0));
 
-    tokio::time::timeout(Duration::from_secs(2), hls.started.acquire())
-        .await
-        .expect("HLS bootstrap receives the released slot")
-        .expect("valid test fixture")
-        .forget();
+    wait_for_start(
+        &harness,
+        &hls,
+        "post",
+        "HLS bootstrap receives the released slot",
+    )
+    .await;
     assert!(
         !old.send_byte().await,
         "obsolete progressive body is still live"
