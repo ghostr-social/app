@@ -225,9 +225,11 @@ video-android-physical-tests: ## Run the device video playback matrix on physica
 	@case "$(ANDROID_PHYSICAL_SERIAL)" in emulator-*) echo "ANDROID_PHYSICAL_SERIAL must identify physical hardware." >&2; exit 1;; esac
 	@state=$$($(ADB) -s "$(ANDROID_PHYSICAL_SERIAL)" get-state 2>/dev/null || true); \
 		test "$$state" = device || { echo "Android device $(ANDROID_PHYSICAL_SERIAL) is not ready." >&2; exit 1; }; \
-		qemu=$$($(ADB) -s "$(ANDROID_PHYSICAL_SERIAL)" shell getprop ro.kernel.qemu | tr -d '\r'); \
+		raw_qemu=$$($(ADB) -s "$(ANDROID_PHYSICAL_SERIAL)" shell getprop ro.kernel.qemu) || \
+			{ echo "Unable to verify physical hardware for $(ANDROID_PHYSICAL_SERIAL)." >&2; exit 1; }; \
+		qemu=$$(printf '%s' "$$raw_qemu" | tr -d '\r'); \
 		test "$$qemu" != 1 || { echo "ANDROID_PHYSICAL_SERIAL must identify physical hardware." >&2; exit 1; }
-	$(FLUTTER) test $(VIDEO_ANDROID_PHYSICAL_TESTS) -d "$(ANDROID_PHYSICAL_SERIAL)"
+	$(FLUTTER) test --no-uninstall $(VIDEO_ANDROID_PHYSICAL_TESTS) -d "$(ANDROID_PHYSICAL_SERIAL)"
 
 native-coverage-contract-test: ## Test the per-file native coverage contract.
 	sh test/tool/native_coverage_contract_test.sh

@@ -20,7 +20,9 @@ then
 fi
 grep -Fq 'must identify physical hardware' "$output"
 grep -Fq 'ro.kernel.qemu' "$makefile"
+grep -Fq 'Unable to verify physical hardware' "$makefile"
 grep -Fq 'VIDEO_ANDROID_PHYSICAL_TESTS :=' "$makefile"
-grep -Fq '$(VIDEO_ANDROID_PHYSICAL_TESTS)' "$makefile"
+grep -Fq 'test --no-uninstall $(VIDEO_ANDROID_PHYSICAL_TESTS)' "$makefile"
+grep -Fq -- '-d "$(ANDROID_PHYSICAL_SERIAL)"' "$makefile"
 grep -Fq 'integration_test/warp_feed_rapid_swipe_instrumentation_video_test.dart' "$makefile"
 grep -Fq 'integration_test/warp_feed_bandwidth_recovery_video_test.dart' "$makefile"
