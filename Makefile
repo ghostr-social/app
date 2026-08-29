@@ -76,6 +76,7 @@ VIDEO_PROGRESSIVE_FLUTTER_TESTS := \
 	test/media/progressive_device_wait_deadline_test.dart \
 	test/media/device_ready_burst_qoe_target_test.dart \
 	test/media/warp_decision_material_history_test.dart \
+	test/media/warp_decision_capacity_history_test.dart \
 	test/media/warp_feed_player_stage_history_test.dart \
 	test/video_catalog/feed_load_more_appends_test.dart \
 	test/video_catalog/feed_backfill_dry_cursor_test.dart \

@@ -9,6 +9,13 @@ void main() {
     expect(plan.sharesPlanningCycleWith(_decision(42, sequence: 2)), isTrue);
     expect(plan.sharesPlanningCycleWith(_decision(42, sequence: 1)), isFalse);
     expect(plan.sharesPlanningCycleWith(_decision(43, sequence: 2)), isFalse);
+    expect(
+      _plan(
+        observedAtMs: 42,
+        decisionSequence: null,
+      ).sharesPlanningCycleWith(_decision(42, sequence: 2)),
+      isFalse,
+    );
   });
 
   test('pair selection skips an earlier decision without a matching plan', () {
@@ -27,7 +34,7 @@ void main() {
 
 WarpPlanEvidence _plan({
   required int observedAtMs,
-  required int decisionSequence,
+  required int? decisionSequence,
 }) => WarpPlanEvidence(
   revision: 1,
   decisionSequence: decisionSequence,

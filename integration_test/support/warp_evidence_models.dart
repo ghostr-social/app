@@ -2,11 +2,15 @@ import 'dart:convert';
 
 part 'warp_evidence_json.dart';
 part 'warp_evidence_decisions.dart';
+part 'warp_evidence_decision_action.dart';
+part 'warp_evidence_decision_outcome.dart';
 part 'warp_evidence_decision_record.dart';
+part 'warp_evidence_decision_history.dart';
 part 'warp_evidence_planner_context.dart';
 part 'warp_evidence_metrics.dart';
 part 'warp_evidence_metrics_adaptation.dart';
 part 'warp_evidence_plan.dart';
+part 'warp_evidence_plan_parsing.dart';
 part 'warp_evidence_ready_reserve.dart';
 part 'warp_evidence_plan_network.dart';
 part 'warp_evidence_transfer.dart';

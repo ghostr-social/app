@@ -69,7 +69,11 @@ extension WarpBandwidthPlanEvidence on WarpAllocationPlan {
 
 extension WarpPlanDecisionCycle on WarpPlanEvidence {
   bool sharesPlanningCycleWith(WarpDecisionRecord decision) {
-    return observedAtMs > 0 && observedAtMs == decision.observedAtMs;
+    final sequence = decisionSequence;
+    return sequence != null &&
+        sequence == decision.sequence &&
+        observedAtMs > 0 &&
+        observedAtMs == decision.observedAtMs;
   }
 }
 
