@@ -1,9 +1,9 @@
 mod delivery_fixture;
 
-use core::time::Duration;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::media::{hit_log, media_body, serve_recording, serve_rejecting};
 use delivery_fixture::options::DeliveryOptions;
+use delivery_fixture::plan::wait_for_plan;
 use delivery_fixture::start_harness;
 use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_engine::adaptive::{NextReserveEvidence, NextReserveInfeasibility};
@@ -64,19 +64,8 @@ async fn wait_for_reserve(
     handle: &DeliveryHandle,
     expected: impl Fn(&NextReserveEvidence) -> bool,
 ) -> NextReserveEvidence {
-    tokio::time::timeout(Duration::from_secs(2), async {
-        loop {
-            if let Some(evidence) = handle
-                .plan_history()
-                .into_iter()
-                .map(|entry| entry.plan.next_reserve)
-                .find(|evidence| expected(evidence))
-            {
-                return evidence;
-            }
-            tokio::task::yield_now().await;
-        }
-    })
-    .await
-    .expect("manager did not publish immediate-next reserve evidence")
+    wait_for_plan(handle, 0, |entry| expected(&entry.plan.next_reserve))
+        .await
+        .plan
+        .next_reserve
 }
