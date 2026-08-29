@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_state.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_swipe_physics.dart';
 
@@ -86,6 +87,7 @@ class _FeedPageViewState extends State<FeedPageView> {
           physics: _physics,
           pageSnapping: false,
           allowImplicitScrolling: true,
+          scrollCacheExtent: _transportRescuePageCache,
           itemCount: widget.model.keys.length,
           onPageChanged: _pageChanged,
           itemBuilder: _buildPage,
@@ -189,3 +191,5 @@ class _FeedPageViewState extends State<FeedPageView> {
     super.dispose();
   }
 }
+
+const _transportRescuePageCache = ScrollCacheExtent.viewport(3.0);
