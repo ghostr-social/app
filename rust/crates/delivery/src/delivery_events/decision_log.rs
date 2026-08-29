@@ -28,6 +28,26 @@ pub(crate) struct DecisionToken {
     armed: bool,
 }
 
+#[must_use = "a published decision must retain or dispose of its pending token"]
+pub(crate) struct DecisionPublicationReceipt {
+    sequence: u64,
+    token: Option<DecisionToken>,
+}
+
+impl DecisionPublicationReceipt {
+    fn new(sequence: u64, token: Option<DecisionToken>) -> Self {
+        Self { sequence, token }
+    }
+
+    pub(crate) const fn sequence(&self) -> u64 {
+        self.sequence
+    }
+
+    pub(crate) fn into_token(self) -> Option<DecisionToken> {
+        self.token
+    }
+}
+
 #[derive(Clone, Copy)]
 pub(crate) struct RequestDecisionBinding<'a> {
     action: ghostr_engine::ActionId,
@@ -107,7 +127,7 @@ impl core::fmt::Debug for DecisionLog {
 }
 
 impl DecisionLog {
-    fn publish(&self, publication: DecisionPublication<'_>) -> Option<DecisionToken> {
+    fn publish(&self, publication: DecisionPublication<'_>) -> DecisionPublicationReceipt {
         let mut store = self.lock();
         let superseded = {
             let store = &mut *store;
@@ -134,7 +154,8 @@ impl DecisionLog {
             !legacy_noop || !pending,
             "a legacy no-op decision must resolve during publication"
         );
-        pending.then(|| DecisionToken::new(sequence, &self.store))
+        let token = pending.then(|| DecisionToken::new(sequence, &self.store));
+        DecisionPublicationReceipt::new(sequence, token)
     }
 
     pub(super) fn snapshot(&self) -> DecisionHistorySnapshot {

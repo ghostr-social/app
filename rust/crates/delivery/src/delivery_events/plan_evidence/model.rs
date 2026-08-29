@@ -7,6 +7,7 @@ use ghostr_engine::PostId;
 #[derive(Clone, Debug, PartialEq)]
 pub struct PlanEvidence {
     pub revision: u64,
+    pub decision_sequence: Option<u64>,
     pub observed_at_ms: u64,
     pub current: Option<PostId>,
     pub focus_generation: Option<u64>,
@@ -19,6 +20,7 @@ pub struct PlanEvidence {
 }
 
 pub(crate) struct PlanPublicationContext {
+    pub(super) decision_sequence: Option<u64>,
     pub(super) observed_at_ms: u64,
     pub(super) current: Option<PostId>,
     pub(super) focus_generation: Option<u64>,
@@ -30,6 +32,7 @@ pub(crate) struct PlanPublicationContext {
 impl PlanPublicationContext {
     pub(crate) const fn new(observed_at_ms: u64, current: Option<PostId>) -> Self {
         Self {
+            decision_sequence: None,
             observed_at_ms,
             current,
             focus_generation: None,
@@ -37,6 +40,11 @@ impl PlanPublicationContext {
             network_status: DeliveryNetworkStatus::unavailable(),
             network_profile_generation: 0,
         }
+    }
+
+    pub(crate) const fn with_decision_sequence(mut self, sequence: Option<u64>) -> Self {
+        self.decision_sequence = sequence;
+        self
     }
 
     pub(crate) const fn with_focus(

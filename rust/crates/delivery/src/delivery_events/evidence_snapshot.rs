@@ -41,6 +41,7 @@ struct PlanEvidencePageSnapshot {
 #[derive(Serialize)]
 struct PlanEvidenceSnapshot {
     revision: u64,
+    decision_sequence: Option<u64>,
     observed_at_ms: u64,
     current_post_id: Option<String>,
     focus_generation: Option<u64>,
@@ -121,6 +122,7 @@ impl PlanEvidenceSnapshot {
     fn capture(value: &PlanEvidence, privacy: &DecisionLog) -> Self {
         Self {
             revision: value.revision,
+            decision_sequence: value.decision_sequence,
             observed_at_ms: value.observed_at_ms,
             current_post_id: value
                 .current

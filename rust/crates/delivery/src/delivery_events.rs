@@ -25,8 +25,8 @@ pub use channel::command_channel;
 pub use decision_log::DecisionHistorySnapshot;
 use decision_log::DecisionLog;
 pub(crate) use decision_log::{
-    DecisionClaim, DecisionResolution, DecisionToken, LegacyDecisionPublication,
-    RequestDecisionBinding, WarpDecisionPublication,
+    DecisionClaim, DecisionPublicationReceipt, DecisionResolution, DecisionToken,
+    LegacyDecisionPublication, RequestDecisionBinding, WarpDecisionPublication,
 };
 pub(crate) use focus_generation::FocusGenerationGuard;
 pub use focus_generation::{FocusAdmission, FocusGeneration};

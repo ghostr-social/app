@@ -1,5 +1,7 @@
-
-use crate::delivery_events::{CommandReceiver, DecisionHistorySnapshot, DecisionToken, DeliveryHandle, LegacyDecisionPublication, WarpDecisionPublication};
+use crate::delivery_events::{
+    CommandReceiver, DecisionHistorySnapshot, DecisionToken, DeliveryHandle,
+    LegacyDecisionPublication, WarpDecisionPublication,
+};
 use crate::manager::plan::PlannedWork;
 use crate::tests::adaptive_plan_support::plan;
 use ghostr_engine::adaptive::{AllocationPlan, DecisionOutcome, StorageSnapshot};
@@ -32,18 +34,21 @@ pub(crate) fn selected(
 }
 
 pub(crate) fn selected_head(
-    handle: &DeliveryHandle,
+    _handle: &DeliveryHandle,
     commands: &CommandReceiver,
 ) -> (u64, DecisionToken) {
     let work = head::work();
-    let token = commands.publish_warp_decision(WarpDecisionPublication {
+    let published = commands.publish_warp_decision(WarpDecisionPublication {
         snapshot: work.snapshot.as_ref().expect("planning snapshot"),
         decision: work.warp.as_ref().expect("WARP decision"),
         legacy_prices: work.shadow_prices,
         models: &work.decision_models,
     });
-    let sequence = handle.decision_history().records.last().expect("valid test fixture").sequence;
-    (sequence, token.expect("selected HEAD decision token"))
+    let sequence = published.sequence();
+    let token = published
+        .into_token()
+        .expect("selected HEAD decision token");
+    (sequence, token)
 }
 
 pub(crate) use head::{
@@ -51,34 +56,37 @@ pub(crate) use head::{
 };
 
 pub(crate) fn selected_warp(
-    handle: &DeliveryHandle,
+    _handle: &DeliveryHandle,
     commands: &CommandReceiver,
     work: &PlannedWork,
 ) -> (u64, DecisionToken) {
-    let token = commands.publish_warp_decision(WarpDecisionPublication {
+    let published = commands.publish_warp_decision(WarpDecisionPublication {
         snapshot: work.snapshot.as_ref().expect("planning snapshot"),
         decision: work.warp.as_ref().expect("WARP decision"),
         legacy_prices: work.shadow_prices,
         models: &work.decision_models,
     });
-    let sequence = handle.decision_history().records.last().expect("valid test fixture").sequence;
-    (sequence, token.expect("selected WARP decision token"))
+    let sequence = published.sequence();
+    let token = published
+        .into_token()
+        .expect("selected WARP decision token");
+    (sequence, token)
 }
 
 pub(crate) fn publish(
-    handle: &DeliveryHandle,
+    _handle: &DeliveryHandle,
     commands: &CommandReceiver,
     work: &PlannedWork,
     allocation: &AllocationPlan,
 ) -> (u64, Option<DecisionToken>) {
-    let token = commands.publish_decision(LegacyDecisionPublication {
+    let published = commands.publish_decision(LegacyDecisionPublication {
         snapshot: work.snapshot.as_ref().expect("planning snapshot"),
         plan: allocation,
         prices: work.shadow_prices,
         models: &work.decision_models,
     });
-    let sequence = handle.decision_history().records.last().expect("valid test fixture").sequence;
-    (sequence, token)
+    let sequence = published.sequence();
+    (sequence, published.into_token())
 }
 
 pub(crate) fn outcome(history: &DecisionHistorySnapshot, sequence: u64) -> &DecisionOutcome {

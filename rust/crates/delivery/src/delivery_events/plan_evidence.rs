@@ -68,6 +68,7 @@ impl PlanEvidenceHistory {
         let revision = store.next_revision;
         store.history.push_back(PlanEvidence {
             revision,
+            decision_sequence: context.decision_sequence,
             observed_at_ms: context.observed_at_ms,
             current: context.current,
             focus_generation: context.focus_generation,

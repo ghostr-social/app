@@ -23,11 +23,6 @@ struct PlanningStoreState {
     transformed: HashMap<PostId, ghostr_engine::representation::RepresentationBinding>,
 }
 
-struct PlannedExecution {
-    planned: PlannedWork,
-    decision: Option<crate::delivery_events::DecisionToken>,
-}
-
 impl PlanningStoreState {
     fn insert(&mut self, post: PostId, snapshot: StoredMediaSnapshot, retain_snapshot: bool) {
         let ranges = snapshot
@@ -64,37 +59,61 @@ impl DeliveryWorker {
             .prepare_planning_cycle(observed_at_ms, request_limits)
             .await;
         let planned = self.plan_cycle(&cycle);
-        let decision = self.observe_plan(&planned, observed_at_ms);
-        let execution = PlannedExecution { planned, decision };
-        Box::pin(self.execute_planned_work(observed_at_ms, execution, &cycle.stored)).await;
+        self.observe_planner_cpu(&planned);
+        Box::pin(self.execute_planned_work(observed_at_ms, planned, &cycle.stored)).await;
         self.finish_reconcile();
     }
 
     async fn execute_planned_work(
         &mut self,
         observed_at_ms: u64,
-        execution: PlannedExecution,
+        planned: PlannedWork,
         stored: &PlanningStoreState,
     ) {
-        let PlannedExecution { planned, decision } = execution;
         self.schedule_hedge_tail_wakes(&planned.hedge_tails, observed_at_ms);
         self.schedule_network_refill_wake(planned.network_refill_deadline_ms);
-        self.additional_request_slot_demand = planned
-            .warp
-            .as_ref()
-            .map(|decision| decision.additional_request_slot_demanded);
         if !self
             .apply_policy_evictions(&planned.evictions, &stored.revisions)
             .await
         {
             return;
         }
+        let startups = self
+            .prepare_applied_plan(observed_at_ms, &planned, stored)
+            .await;
+        let receipt = self.observe_plan(&planned, observed_at_ms);
+        let decision_sequence = receipt.as_ref().map(|receipt| receipt.sequence());
+        let decision = receipt.and_then(|receipt| receipt.into_token());
+        self.publish_applied_plan(observed_at_ms, &planned, startups, decision_sequence);
+        self.reconcile_transfers(planned, decision, observed_at_ms)
+            .await;
+    }
+
+    async fn prepare_applied_plan(
+        &mut self,
+        observed_at_ms: u64,
+        planned: &PlannedWork,
+        stored: &PlanningStoreState,
+    ) -> Vec<crate::startup_certificate::StartupCertificate> {
+        self.additional_request_slot_demand = planned
+            .warp
+            .as_ref()
+            .map(|decision| decision.additional_request_slot_demanded);
         self.state
             .update_ready_target(planned.plan.ready_reserve.target);
         self.state
             .observe_discovery_demand(planned.discovery_demand);
         self.refresh_cache_registry(observed_at_ms).await;
-        let startups = self.startup_certificates(&planned.plan, &stored.snapshots);
+        self.startup_certificates(&planned.plan, &stored.snapshots)
+    }
+
+    fn publish_applied_plan(
+        &self,
+        observed_at_ms: u64,
+        planned: &PlannedWork,
+        startups: Vec<crate::startup_certificate::StartupCertificate>,
+        decision_sequence: Option<u64>,
+    ) {
         let publication = crate::delivery_events::PlanPublicationContext::new(
             observed_at_ms,
             self.state.current_post(),
@@ -106,14 +125,13 @@ impl DeliveryWorker {
         .with_network(
             self.state.network_status(),
             self.state.network_profile_generation(),
-        );
+        )
+        .with_decision_sequence(decision_sequence);
         self.commands.publish_causal_plan_with_startups(
             publication,
             planned.plan.clone(),
             startups,
         );
-        self.reconcile_transfers(planned, decision, observed_at_ms)
-            .await;
     }
 
     /// The planning slice of the window, widened to the full roster

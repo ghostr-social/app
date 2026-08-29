@@ -1,6 +1,6 @@
 use super::{
-    DecisionClaim, DecisionResolution, DecisionToken, LegacyDecisionPublication,
-    RequestDecisionBinding, WarpDecisionPublication,
+    DecisionClaim, DecisionPublicationReceipt, DecisionResolution, DecisionToken,
+    LegacyDecisionPublication, RequestDecisionBinding, WarpDecisionPublication,
 };
 use crate::delivery_events::CommandReceiver;
 use ghostr_engine::adaptive::{DecisionOutcome, ResourceCost};
@@ -29,14 +29,14 @@ impl CommandReceiver {
     pub(crate) fn publish_decision(
         &self,
         publication: LegacyDecisionPublication<'_>,
-    ) -> Option<DecisionToken> {
+    ) -> DecisionPublicationReceipt {
         self.decisions.publish(publication.into())
     }
 
     pub(crate) fn publish_warp_decision(
         &self,
         publication: WarpDecisionPublication<'_>,
-    ) -> Option<DecisionToken> {
+    ) -> DecisionPublicationReceipt {
         self.decisions.publish(publication.into())
     }
 

@@ -1,25 +1,33 @@
-use crate::delivery_events::{DecisionToken, LegacyDecisionPublication, WarpDecisionPublication};
+use crate::delivery_events::{
+    DecisionPublicationReceipt, LegacyDecisionPublication, WarpDecisionPublication,
+};
 use crate::evaluation::{BudgetMetricEvent, ReadinessMetricEvent, TransferMetricEvent};
 use crate::manager::plan::PlannedWork;
 use crate::manager::DeliveryWorker;
 use ghostr_engine::adaptive::ReserveCandidateState;
 
 impl DeliveryWorker {
+    pub(super) fn observe_planner_cpu(&self, planned: &PlannedWork) {
+        if planned.snapshot.is_none() {
+            return;
+        }
+        self.commands.evaluation().transfer(TransferMetricEvent {
+            cpu_micros: planned.planner_cpu_micros,
+            ..TransferMetricEvent::default()
+        });
+    }
+
     pub(super) fn observe_plan(
         &self,
         planned: &PlannedWork,
         observed_at_ms: u64,
-    ) -> Option<DecisionToken> {
+    ) -> Option<DecisionPublicationReceipt> {
         let snapshot = planned.snapshot.as_ref()?;
         let decision = self.publish_planning_decision(planned, snapshot);
         let evaluation = self.commands.evaluation();
-        evaluation.transfer(TransferMetricEvent {
-            cpu_micros: planned.planner_cpu_micros,
-            ..TransferMetricEvent::default()
-        });
         evaluation.budget(budget_event(planned, snapshot));
         evaluation.readiness(readiness_event(planned, observed_at_ms));
-        decision
+        Some(decision)
     }
 }
 
@@ -28,7 +36,7 @@ impl DeliveryWorker {
         &self,
         planned: &PlannedWork,
         snapshot: &ghostr_engine::adaptive::PlayabilitySnapshot,
-    ) -> Option<DecisionToken> {
+    ) -> DecisionPublicationReceipt {
         match &planned.warp {
             Some(warp) => self
                 .commands
