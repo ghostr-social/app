@@ -17,6 +17,8 @@ extension on _HlsVideoPlaybackSurfaceState {
           playbackDeliveryId: lease.deliveryId,
           hlsAuthority: lease.authority,
           onHlsFirstFrameRendered: widget.request.onHlsFirstFrameRendered,
+          onHlsDecodedReadinessRevoked:
+              widget.request.onHlsDecodedReadinessRevoked,
           reservesPreparedDecoder: widget.request.reservesPreparedDecoder,
           keepWarmWhenInactive: widget.request.keepWarmWhenInactive,
           preview: widget.request.preview,

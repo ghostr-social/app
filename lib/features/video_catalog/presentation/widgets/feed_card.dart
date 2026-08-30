@@ -25,7 +25,7 @@ final class FeedCardPlayback {
     this.keepWarmWhenInactive = false,
     this.hlsAuthority,
     this.onHlsFirstFrameRendered,
-    this.onPlaybackMediaReleased,
+    this.onHlsDecodedReadinessRevoked,
   });
 
   final VideoPlaybackPort port;
@@ -36,7 +36,7 @@ final class FeedCardPlayback {
   final bool keepWarmWhenInactive;
   final HlsPlaybackAuthority? hlsAuthority;
   final ValueChanged<HlsPlaybackAuthority>? onHlsFirstFrameRendered;
-  final VoidCallback? onPlaybackMediaReleased;
+  final ValueChanged<HlsPlaybackAuthority>? onHlsDecodedReadinessRevoked;
 }
 
 final class FeedCardPlaybackSource {
@@ -93,7 +93,8 @@ class FeedCard extends StatelessWidget {
                 keepWarmWhenInactive: playback.keepWarmWhenInactive,
                 hlsAuthority: playback.hlsAuthority,
                 onHlsFirstFrameRendered: playback.onHlsFirstFrameRendered,
-                onPlaybackMediaReleased: playback.onPlaybackMediaReleased,
+                onHlsDecodedReadinessRevoked:
+                    playback.onHlsDecodedReadinessRevoked,
               ),
             ),
           ),

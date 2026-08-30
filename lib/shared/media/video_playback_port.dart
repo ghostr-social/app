@@ -35,6 +35,7 @@ final class VideoPlaybackSurfaceRequest {
     this.authority,
     this.hlsAuthority,
     this.onHlsFirstFrameRendered,
+    this.onHlsDecodedReadinessRevoked,
     this.progressiveRefresh,
     this.onPlaybackMediaReleased,
     InlineBlurHash? preview,
@@ -51,6 +52,7 @@ final class VideoPlaybackSurfaceRequest {
   final PlaybackAssetAuthority? authority;
   final HlsPlaybackAuthority? hlsAuthority;
   final ValueChanged<HlsPlaybackAuthority>? onHlsFirstFrameRendered;
+  final ValueChanged<HlsPlaybackAuthority>? onHlsDecodedReadinessRevoked;
   final ProgressivePlaybackRefreshPort? progressiveRefresh;
   final VoidCallback? onPlaybackMediaReleased;
   final InlineBlurHash? _preview;

@@ -74,6 +74,7 @@ extension _VideoPlayerSurfaceFrameCorrelation on _VideoPlayerSurfaceState {
     final authority = widget.request.hlsAuthority;
     final callback = widget.request.onHlsFirstFrameRendered;
     if (_playbackMedia is! ProxiedHlsVideoMediaSource ||
+        _reportedHlsAuthority != null ||
         authority == null ||
         callback == null ||
         widget.request.playbackDeliveryId != authority.deliveryId) {
@@ -81,8 +82,17 @@ extension _VideoPlayerSurfaceFrameCorrelation on _VideoPlayerSurfaceState {
     }
     try {
       callback(authority);
+      _reportedHlsAuthority = authority;
     } on Object catch (error, stackTrace) {
       _logFrameCorrelationFailure('HLS feedback', error, stackTrace);
+    }
+  }
+
+  void _revokeHlsDecodedReadiness(HlsPlaybackAuthority authority) {
+    try {
+      widget.request.onHlsDecodedReadinessRevoked?.call(authority);
+    } on Object catch (error, stackTrace) {
+      _logFrameCorrelationFailure('HLS revocation', error, stackTrace);
     }
   }
 }

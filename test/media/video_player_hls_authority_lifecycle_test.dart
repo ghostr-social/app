@@ -63,7 +63,7 @@ void main() {
 
     await tester.pumpWidget(const SizedBox());
     await settleVideoPlayerTasks(tester);
-    expect(released, [stale, current]);
+    expect(released, [current]);
   });
 }
 
@@ -80,7 +80,7 @@ VideoPlaybackSurfaceRequest _request(
   playbackDeliveryId: authority.deliveryId,
   hlsAuthority: authority,
   onHlsFirstFrameRendered: verified.add,
-  onPlaybackMediaReleased: () => released.add(authority),
+  onHlsDecodedReadinessRevoked: released.add,
 );
 
 HlsPlaybackAuthority _authority(int revision) => HlsPlaybackAuthority(

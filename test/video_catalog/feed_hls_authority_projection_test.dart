@@ -48,7 +48,7 @@ void main() {
     request.onHlsFirstFrameRendered?.call(exact);
     await tester.pumpAndSettle();
     expect(_loaded(tester).isHlsPlayerVerified(exact), isTrue);
-    request.onPlaybackMediaReleased?.call();
+    request.onHlsDecodedReadinessRevoked?.call(exact);
     await tester.pump();
     expect(_loaded(tester).isHlsPlayerVerified(exact), isFalse);
 

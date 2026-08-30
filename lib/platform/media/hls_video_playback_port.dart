@@ -43,6 +43,7 @@ final class HlsVideoPlaybackPort
         keepWarmWhenInactive: request.keepWarmWhenInactive,
         hlsAuthority: request.hlsAuthority,
         onHlsFirstFrameRendered: request.onHlsFirstFrameRendered,
+        onHlsDecodedReadinessRevoked: request.onHlsDecodedReadinessRevoked,
         onPlaybackMediaReleased: request.onPlaybackMediaReleased,
         preview: request.preview,
       ),

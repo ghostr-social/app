@@ -43,9 +43,7 @@ extension _FeedScreenHlsPlayback on _FeedScreenState {
       surfaceScope: _playbackSurfaceScope,
       hlsAuthority: authority,
       onHlsFirstFrameRendered: cubit.hlsFirstFrameRendered,
-      onPlaybackMediaReleased: authority == null
-          ? null
-          : () => cubit.hlsPlaybackReleased(authority),
+      onHlsDecodedReadinessRevoked: cubit.hlsPlaybackReleased,
     );
   }
 }

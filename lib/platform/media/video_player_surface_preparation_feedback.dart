@@ -82,12 +82,15 @@ extension _VideoPlayerSurfacePreparationFeedback on _VideoPlayerSurfaceState {
   }
 
   void _releasePreparation() {
+    final hlsAuthority = _reportedHlsAuthority;
+    _reportedHlsAuthority = null;
     final frameAttempt = _firstFrameAttempt;
     _firstFrameAttempt = null;
     if (frameAttempt != null) _releaseFrameAttemptSafely(frameAttempt);
     _preparationAttempt?.release();
     _preparationAttempt = null;
     _resetPresentationEvidence();
+    if (hlsAuthority != null) _revokeHlsDecodedReadiness(hlsAuthority);
   }
 
   void _resetPresentationEvidence() {
