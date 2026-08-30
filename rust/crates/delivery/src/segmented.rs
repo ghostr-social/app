@@ -7,5 +7,6 @@ pub(crate) mod scheduler;
 pub(super) mod source_key;
 
 pub use cache::{
-    CachedHlsGeneration, CachedHlsObject, SegmentedCache, SegmentedPhase, SegmentedSnapshot,
+    CachedHlsGeneration, CachedHlsObject, HlsPreparedAssetAuthority, SegmentedAssetRevision,
+    SegmentedCache, SegmentedPhase, SegmentedSnapshot,
 };

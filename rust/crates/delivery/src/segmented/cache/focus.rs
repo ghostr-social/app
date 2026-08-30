@@ -1,32 +1,66 @@
 use super::{objects, FocusRecord, SegmentedCache, SegmentedPhase, SegmentedSnapshot};
+use ghostr_engine::representation::RepresentationId;
 use ghostr_engine::PostId;
 use std::collections::{HashMap, HashSet};
 
 pub(crate) type PreservedFocus = HashMap<PostId, (u64, String)>;
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct SegmentedFocusItem {
+    post: PostId,
+    representation_id: RepresentationId,
+    sources: Vec<String>,
+}
+
+impl SegmentedFocusItem {
+    pub(crate) fn new(
+        post: PostId,
+        representation_id: RepresentationId,
+        sources: Vec<String>,
+    ) -> Self {
+        Self {
+            post,
+            representation_id,
+            sources,
+        }
+    }
+
+    pub(crate) fn post(&self) -> &PostId {
+        &self.post
+    }
+
+    pub(crate) fn representation_id(&self) -> &RepresentationId {
+        &self.representation_id
+    }
+
+    pub(crate) fn sources(&self) -> &[String] {
+        &self.sources
+    }
+}
+
 impl SegmentedCache {
     pub(crate) fn reconcile_focus_window(
         &self,
         generation: u64,
-        items: Vec<(PostId, Vec<String>)>,
+        items: Vec<SegmentedFocusItem>,
         protected: &HashSet<PostId>,
         preserved: &PreservedFocus,
     ) {
         let mut state = self.lock();
         let mut next = HashMap::new();
-        for (post, sources) in items {
-            let previous = state.focus.remove(&post);
-            let record = reconcile_record(
+        for item in items {
+            let previous = state.focus.remove(item.post());
+            let mut record = reconcile_record(
                 previous,
                 RecordInput {
                     generation,
-                    sources,
+                    item: &item,
                     protected,
                     preserved,
-                    post: &post,
                 },
             );
-            next.insert(post, record);
+            rebind_ready_authority(&mut state, &mut record, &item);
+            next.insert(item.post, record);
         }
         state.focus = next;
         objects::retain_referenced(&mut state);
@@ -45,19 +79,38 @@ impl SegmentedCache {
 
 struct RecordInput<'a> {
     generation: u64,
-    sources: Vec<String>,
+    item: &'a SegmentedFocusItem,
     protected: &'a HashSet<PostId>,
     preserved: &'a PreservedFocus,
-    post: &'a PostId,
 }
 
 fn reconcile_record(previous: Option<FocusRecord>, input: RecordInput<'_>) -> FocusRecord {
-    let active = input.preserved.get(input.post);
-    let reusable = previous.filter(|record| reusable(record, &input.sources, active));
-    let mut record = reusable.unwrap_or_else(|| empty_record(input.generation));
-    record.sources = input.sources;
-    record.protected = input.protected.contains(input.post);
+    let active = input.preserved.get(input.item.post());
+    let reusable = previous.filter(|record| reusable(record, input.item.sources(), active));
+    let mut record = reusable.unwrap_or_else(|| empty_record(input.generation, input.item));
+    record.sources = input.item.sources.clone();
+    record.protected = input.protected.contains(input.item.post());
     record
+}
+
+fn rebind_ready_authority(
+    state: &mut super::CacheState,
+    record: &mut FocusRecord,
+    item: &SegmentedFocusItem,
+) {
+    if record.representation_id == *item.representation_id() {
+        return;
+    }
+    record.representation_id = item.representation_id.clone();
+    if record.snapshot.phase != SegmentedPhase::Ready {
+        return;
+    }
+    let revision = super::SegmentedAssetRevision::allocate(&mut state.last_asset_revision);
+    record.snapshot.authority = Some(super::HlsPreparedAssetAuthority::new(
+        item.post.clone(),
+        item.representation_id.clone(),
+        revision,
+    ));
 }
 
 fn reusable(record: &FocusRecord, sources: &[String], active: Option<&(u64, String)>) -> bool {
@@ -72,9 +125,10 @@ fn reusable(record: &FocusRecord, sources: &[String], active: Option<&(u64, Stri
     ready || working
 }
 
-fn empty_record(generation: u64) -> FocusRecord {
+fn empty_record(generation: u64, item: &SegmentedFocusItem) -> FocusRecord {
     FocusRecord {
         generation,
+        representation_id: item.representation_id.clone(),
         sources: Vec::new(),
         root_source: None,
         protected: false,

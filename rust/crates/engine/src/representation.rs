@@ -50,8 +50,12 @@ pub struct TransferIdentity {
 }
 
 impl RepresentationId {
-    pub(super) fn from_meta(meta: &VideoMeta) -> Self {
+    pub fn for_meta(meta: &VideoMeta) -> Self {
         Self(identity::fingerprint(meta))
+    }
+
+    pub(super) fn from_meta(meta: &VideoMeta) -> Self {
+        Self::for_meta(meta)
     }
 
     pub fn fingerprint(&self) -> &str {

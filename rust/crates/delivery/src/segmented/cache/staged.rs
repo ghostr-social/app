@@ -1,6 +1,9 @@
 use super::objects::insert;
 
-use super::{CachedHlsObject, SegmentedCache, SegmentedPhase, SegmentedSnapshot};
+use super::{
+    CachedHlsObject, HlsPreparedAssetAuthority, SegmentedAssetRevision, SegmentedCache,
+    SegmentedPhase, SegmentedSnapshot,
+};
 use ghostr_engine::PostId;
 
 impl SegmentedCache {
@@ -31,13 +34,20 @@ impl SegmentedCache {
             let key = prepared.object.request_url.clone();
             insert(&mut state, key, CachedHlsObject::from_prepared(prepared));
         }
-        let Some(record) = state.focus.get_mut(post) else {
-            return false;
-        };
+        let revision = SegmentedAssetRevision::allocate(&mut state.last_asset_revision);
+        let record = state
+            .focus
+            .get_mut(post)
+            .expect("validated HLS focus record");
         record.objects = keys;
         record.snapshot.phase = SegmentedPhase::Ready;
         record.snapshot.eta_ms = Some(0);
         record.snapshot.detail = None;
+        record.snapshot.authority = Some(HlsPreparedAssetAuthority::new(
+            post.clone(),
+            record.representation_id.clone(),
+            revision,
+        ));
         drop(state);
         self.changed.notify_waiters();
         true

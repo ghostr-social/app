@@ -1,3 +1,4 @@
+use super::cache::SegmentedFocusItem;
 use super::fetch::FetchFailure;
 use super::SegmentedCache;
 use crate::manager::traffic::TrafficPublisher;
@@ -18,6 +19,7 @@ mod completion;
 mod focus;
 use focus::hls_items;
 mod focus_changes;
+mod focus_identity;
 mod launch;
 mod prepared;
 mod progress;
@@ -37,7 +39,7 @@ const MAX_HLS_READY_WINDOW: usize = 5;
 
 pub(crate) struct SegmentedDelivery {
     cache: SegmentedCache,
-    tracked: Vec<(PostId, Vec<String>)>,
+    tracked: Vec<SegmentedFocusItem>,
     targets: Vec<Target>,
     pending: BTreeMap<PostId, Pending>,
     active: BTreeMap<PostId, Active>,

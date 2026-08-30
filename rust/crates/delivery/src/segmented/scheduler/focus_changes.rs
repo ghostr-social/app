@@ -1,5 +1,6 @@
 use super::{hls_items, SegmentedDelivery};
 use crate::delivery_events::DeliveryFocus;
+use crate::segmented::cache::SegmentedFocusItem;
 use ghostr_engine::PostId;
 use std::collections::HashSet;
 
@@ -10,7 +11,7 @@ impl SegmentedDelivery {
         self.tracked
             .iter()
             .chain(next.iter())
-            .map(|(post, _)| post)
+            .map(SegmentedFocusItem::post)
             .filter(|post| seen.insert((*post).clone()))
             .filter(|post| changed(roots(&self.tracked, post), roots(&next, post)))
             .cloned()
@@ -18,21 +19,23 @@ impl SegmentedDelivery {
     }
 
     pub(crate) fn tracked_roots(&self, post: &PostId) -> Vec<String> {
-        roots(&self.tracked, post).cloned().unwrap_or_default()
+        roots(&self.tracked, post)
+            .map(<[String]>::to_vec)
+            .unwrap_or_default()
     }
 
     pub(crate) fn hls_cooldown_resets(&self, focus: &DeliveryFocus) -> Vec<PostId> {
         let next = hls_items(&focus.items);
         self.tracked
             .iter()
-            .filter(|(post, previous)| {
+            .filter(|item| {
                 should_reset(
-                    previous,
-                    roots(&next, post).map(Vec::as_slice).unwrap_or_default(),
-                    self.selected_root(post).as_deref(),
+                    item.sources(),
+                    roots(&next, item.post()).unwrap_or_default(),
+                    self.selected_root(item.post()).as_deref(),
                 )
             })
-            .map(|(post, _)| post.clone())
+            .map(|item| item.post().clone())
             .collect()
     }
 
@@ -50,7 +53,7 @@ impl SegmentedDelivery {
     }
 }
 
-fn changed(previous: Option<&Vec<String>>, next: Option<&Vec<String>>) -> bool {
+fn changed(previous: Option<&[String]>, next: Option<&[String]>) -> bool {
     match (previous, next) {
         (Some(previous), Some(next)) => !crate::segmented::source_key::same_members(previous, next),
         (None, None) => false,
@@ -72,9 +75,9 @@ fn should_reset(previous: &[String], next: &[String], selected: Option<&str>) ->
     selected_removed || next.is_empty() || disjoint || new_root
 }
 
-fn roots<'a>(items: &'a [(PostId, Vec<String>)], post: &PostId) -> Option<&'a Vec<String>> {
+fn roots<'a>(items: &'a [SegmentedFocusItem], post: &PostId) -> Option<&'a [String]> {
     items
         .iter()
-        .find(|(candidate, _)| candidate == post)
-        .map(|(_, roots)| roots)
+        .find(|candidate| candidate.post() == post)
+        .map(SegmentedFocusItem::sources)
 }

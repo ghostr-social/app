@@ -8,8 +8,10 @@ mod capacity;
 
 mod admission;
 pub(crate) use admission::{StageAdmission, StageFence, StageLease, StageRequest};
+mod authority;
+pub use authority::{HlsPreparedAssetAuthority, SegmentedAssetRevision};
 mod focus;
-pub(crate) use focus::PreservedFocus;
+pub(crate) use focus::{PreservedFocus, SegmentedFocusItem};
 mod freshness;
 mod generation;
 pub(in crate::segmented) use generation::{CachedHlsGenerationHasher, HlsCacheMetadata};
@@ -75,6 +77,7 @@ pub struct SegmentedSnapshot {
     pub bytes_present: u64,
     pub eta_ms: Option<u64>,
     pub detail: Option<String>,
+    pub authority: Option<HlsPreparedAssetAuthority>,
 }
 
 impl Default for SegmentedSnapshot {
@@ -84,6 +87,7 @@ impl Default for SegmentedSnapshot {
             bytes_present: 0,
             eta_ms: None,
             detail: None,
+            authority: None,
         }
     }
 }
@@ -105,10 +109,12 @@ struct CacheState {
     invalidated: Vec<(PostId, u64)>,
     inflight: HashMap<admission::InflightKey, admission::InflightStage>,
     bytes: usize,
+    last_asset_revision: u64,
 }
 
 struct FocusRecord {
     generation: u64,
+    representation_id: ghostr_engine::representation::RepresentationId,
     sources: Vec<String>,
     root_source: Option<String>,
     protected: bool,
@@ -165,8 +171,10 @@ impl SegmentedCache {
     pub fn clear(&self) {
         let mut state = self.lock();
         let inflight = core::mem::take(&mut state.inflight);
+        let last_asset_revision = state.last_asset_revision;
         *state = CacheState {
             inflight,
+            last_asset_revision,
             ..CacheState::default()
         };
         drop(state);

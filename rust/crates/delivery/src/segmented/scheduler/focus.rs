@@ -1,8 +1,9 @@
 use super::progress::Pending;
 use super::{targets, Active, SegmentedDelivery, Target, MAX_HLS_READY_WINDOW};
 use crate::delivery_events::{DeliveryFocus, FocusItem};
-use crate::segmented::cache::PreservedFocus;
+use crate::segmented::cache::{PreservedFocus, SegmentedFocusItem};
 use crate::segmented::SegmentedPhase;
+use ghostr_engine::representation::RepresentationId;
 use ghostr_engine::{DeliveryKind, PostId};
 use std::collections::HashSet;
 
@@ -12,7 +13,8 @@ impl SegmentedDelivery {
         let tracked = hls_items(&focus.items);
         let targets = targets(&focus.items, current, MAX_HLS_READY_WINDOW + 1);
         let delivery = focus.items.get(current).map(|item| item.meta.delivery);
-        if self.equivalent(&tracked, &targets, delivery) {
+        if self.equivalent_work(&tracked, &targets, delivery) {
+            self.refresh_tracked_identity(focus, tracked, &targets);
             return false;
         }
         let generation = self.generation(focus);
@@ -27,7 +29,7 @@ impl SegmentedDelivery {
         true
     }
 
-    fn reconcile_work(&mut self, targets: &[Target]) -> PreservedFocus {
+    pub(super) fn reconcile_work(&mut self, targets: &[Target]) -> PreservedFocus {
         let mut preserved = PreservedFocus::new();
         for (post, active) in &mut self.active {
             match retained_index(targets, post, &active.pending.root_source) {
@@ -101,16 +103,7 @@ impl SegmentedDelivery {
         );
     }
 
-    fn equivalent(
-        &self,
-        tracked: &[(PostId, Vec<String>)],
-        targets: &[Target],
-        delivery: Option<DeliveryKind>,
-    ) -> bool {
-        self.current_delivery == delivery && self.tracked == tracked && self.targets == targets
-    }
-
-    fn generation(&mut self, focus: &DeliveryFocus) -> u64 {
+    pub(super) fn generation(&mut self, focus: &DeliveryFocus) -> u64 {
         self.next_generation = focus
             .generation
             .value()
@@ -129,13 +122,19 @@ fn active_matches_target(
         && crate::segmented::source_key::contains(&target.sources, &active.pending.root_source)
 }
 
-pub(super) fn hls_items(items: &[FocusItem]) -> Vec<(PostId, Vec<String>)> {
+pub(super) fn hls_items(items: &[FocusItem]) -> Vec<SegmentedFocusItem> {
     let mut seen = HashSet::new();
     items
         .iter()
         .filter(|item| item.meta.delivery == DeliveryKind::Hls)
         .filter(|item| seen.insert(item.post.clone()))
-        .map(|item| (item.post.clone(), item.meta.urls.clone()))
+        .map(|item| {
+            SegmentedFocusItem::new(
+                item.post.clone(),
+                RepresentationId::for_meta(&item.meta),
+                item.meta.urls.clone(),
+            )
+        })
         .collect()
 }
 
