@@ -8,6 +8,7 @@ import 'package:ghostr/platform/media/ffi_feed_focus_port.dart';
 import 'package:ghostr/platform/media/ffi_progressive_playback_gateway.dart';
 import 'package:ghostr/platform/media/ffi_video_gateway.dart';
 import 'package:ghostr/platform/media/gateway_video_playback_port.dart';
+import 'package:ghostr/platform/media/native_rendered_first_frame_port.dart';
 import 'package:ghostr/platform/media/video_player_playback_port.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 
@@ -32,7 +33,10 @@ final class ProgressiveDeviceJourney {
        _telemetry = telemetry,
        _admissions = admissions,
        _playback = GatewayVideoPlaybackPort(
-         delegate: VideoPlayerPlaybackPort(telemetry: telemetry),
+         delegate: VideoPlayerPlaybackPort(
+           telemetry: telemetry,
+           renderedFirstFrames: NativeRenderedFirstFramePort.production(),
+         ),
          gateway: const FfiProgressivePlaybackGateway(),
        );
 
