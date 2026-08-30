@@ -13,13 +13,15 @@ impl MetadataProbePool {
         retry: &RetryBook,
         post: &PostId,
     ) -> Option<String> {
-        if self.probing.contains_key(post) || self.deferred.contains(post) || retry.is_cooling(post)
-        {
+        if self.probing.contains_key(post) || retry.is_cooling(post) {
             return None;
         }
         let entry = catalog.lookup(post)?;
         let url = retry.live_urls(post, &entry.meta.urls).into_iter().next()?;
         let identity = catalog.transfer_identity(post, &url)?;
+        if self.deferred.contains(&identity) {
+            return None;
+        }
         if self
             .probed
             .get(&identity)

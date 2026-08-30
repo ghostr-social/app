@@ -16,7 +16,10 @@ fn deferred_probe_rearms_when_reconciliation_finds_no_active_body() {
             .len(),
         1
     );
-    probes.defer_to_body(&post);
+    let identity = catalog
+        .transfer_identity(&post, "https://cancelled.example/video.mp4")
+        .expect("current identity");
+    probes.defer_to_body(&identity);
 
     probes.reconcile_bodies(&HashSet::new());
 

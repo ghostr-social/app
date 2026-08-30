@@ -45,7 +45,7 @@ impl MetadataProbePool {
             Some(ProbeClaimRefusal::AlreadyProbing)
         } else if self.probed.contains_key(identity) && !rearm {
             Some(ProbeClaimRefusal::AlreadyProbed)
-        } else if self.deferred.contains(query.post) {
+        } else if self.deferred.contains(identity) {
             Some(ProbeClaimRefusal::DeferredToBody)
         } else if query.retry.is_cooling(query.post) {
             Some(ProbeClaimRefusal::RetryCooling)

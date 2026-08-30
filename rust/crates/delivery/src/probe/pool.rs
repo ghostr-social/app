@@ -8,6 +8,7 @@ use ghostr_engine::PostId;
 use std::collections::{HashMap, HashSet};
 
 mod availability;
+mod body;
 mod history;
 pub(crate) use availability::evidence_needs_head_refresh;
 use history::CompletedHeadProbe;
@@ -25,7 +26,7 @@ pub(crate) struct MetadataProbePool {
     limit: usize,
     probing: HashMap<PostId, ActiveProbe>,
     probed: HashMap<TransferIdentity, CompletedHeadProbe>,
-    deferred: HashSet<PostId>,
+    deferred: HashSet<TransferIdentity>,
     head_unavailable: HashSet<TransferIdentity>,
 }
 
@@ -77,7 +78,7 @@ impl MetadataProbePool {
         observed_size: bool,
     ) {
         self.probing.remove(identity.post());
-        self.deferred.remove(identity.post());
+        self.deferred.remove(identity);
         self.head_unavailable.remove(identity);
         self.probed.insert(
             identity.clone(),
@@ -87,31 +88,6 @@ impl MetadataProbePool {
 
     pub fn release(&mut self, post: &PostId) {
         self.probing.remove(post);
-    }
-
-    pub fn defer_to_body(&mut self, post: &PostId) {
-        self.probing.remove(post);
-        self.deferred.insert(post.clone());
-    }
-
-    pub fn require_body(&mut self, identity: &TransferIdentity) {
-        self.defer_to_body(identity.post());
-        self.head_unavailable.insert(identity.clone());
-    }
-
-    pub fn body_finished(&mut self, post: &PostId) {
-        self.deferred.remove(post);
-        self.head_unavailable
-            .retain(|identity| identity.post() != post);
-    }
-
-    pub(crate) fn reconcile_bodies(&mut self, active: &HashSet<PostId>) {
-        let unavailable = &self.head_unavailable;
-        self.deferred.retain(|post| {
-            active.contains(post) || unavailable.iter().any(|item| item.post() == post)
-        });
-        self.head_unavailable
-            .retain(|identity| self.deferred.contains(identity.post()));
     }
 
     pub fn clear(&mut self) {
@@ -128,7 +104,7 @@ impl MetadataProbePool {
             probe.result_current = false;
         }
         self.probed.retain(|identity, _| identity.post() != post);
-        self.deferred.remove(post);
+        self.deferred.retain(|identity| identity.post() != post);
         self.head_unavailable
             .retain(|identity| identity.post() != post);
     }
@@ -138,7 +114,8 @@ impl MetadataProbePool {
     pub(crate) fn retain_history(&mut self, retained: &HashSet<PostId>) {
         self.probed
             .retain(|identity, _| retained.contains(identity.post()));
-        self.deferred.retain(|post| retained.contains(post));
+        self.deferred
+            .retain(|identity| retained.contains(identity.post()));
         self.head_unavailable
             .retain(|identity| retained.contains(identity.post()));
     }

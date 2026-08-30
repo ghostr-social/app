@@ -32,7 +32,7 @@ impl MetadataProbePool {
         generation: Option<ghostr_engine::representation::HttpGenerationLease>,
     ) {
         self.probing.remove(identity.post());
-        self.deferred.remove(identity.post());
+        self.deferred.remove(identity);
         self.probed
             .insert(identity.clone(), CompletedHeadProbe::for_test(generation));
     }

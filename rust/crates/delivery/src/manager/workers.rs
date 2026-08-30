@@ -44,6 +44,10 @@ impl DownloadWorkers {
         self.active.body_posts()
     }
 
+    pub(super) fn body_identities(&self) -> HashSet<TransferIdentity> {
+        self.active.body_identities()
+    }
+
     pub(super) fn contains_identity(&self, identity: &TransferIdentity) -> bool {
         self.active.contains_identity(identity)
     }

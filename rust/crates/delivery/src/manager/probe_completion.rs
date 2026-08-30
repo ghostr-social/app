@@ -154,7 +154,7 @@ impl DeliveryWorker {
         if !self.downloads.contains_identity(identity) {
             return false;
         }
-        self.probes.defer_to_body(identity.post());
+        self.probes.defer_to_body(identity);
         true
     }
 }

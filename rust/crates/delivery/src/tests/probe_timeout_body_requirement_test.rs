@@ -5,7 +5,7 @@ use ghostr_engine::PostId;
 use std::collections::HashSet;
 
 #[test]
-fn expired_head_requires_body_until_the_body_finishes() {
+fn expired_head_requires_a_successful_matching_body() {
     let post = PostId::new("body-required");
     let catalog = catalog(&["body-required"]);
     let retry = RetryBook::new(RetryPolicy::default());
@@ -25,11 +25,20 @@ fn expired_head_requires_body_until_the_body_finishes() {
 
     assert_eq!(
         probes.current_unavailable_identities(&catalog),
-        HashSet::from([identity])
+        HashSet::from([identity.clone()])
     );
     assert!(probes
         .claim(&catalog, core::slice::from_ref(&post), &retry)
         .is_empty());
-    probes.body_finished(&post);
+    probes.body_finished(&identity);
+    assert_eq!(
+        probes.current_unavailable_identities(&catalog),
+        HashSet::from([identity.clone()])
+    );
+    assert!(probes
+        .claim(&catalog, core::slice::from_ref(&post), &retry)
+        .is_empty());
+    probes.body_satisfied(&identity);
+    probes.body_finished(&identity);
     assert_eq!(probes.claim(&catalog, &[post], &retry).len(), 1);
 }

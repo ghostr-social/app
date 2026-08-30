@@ -17,7 +17,10 @@ fn deferred_probe_history_does_not_outlive_post_retention() {
             .len(),
         1
     );
-    probes.defer_to_body(&old);
+    let identity = catalog
+        .transfer_identity(&old, "https://old.example/video.mp4")
+        .expect("current identity");
+    probes.defer_to_body(&identity);
 
     probes.retain_history(&HashSet::from([kept]));
 

@@ -52,15 +52,15 @@ fn deferred_and_cooling_probes_have_distinct_refusals() {
     let mut retry = RetryBook::new(RetryPolicy::default());
     let mut probes = MetadataProbePool::new(1);
 
-    probes
+    let identity = probes
         .claim_selected(query(&catalog, &retry, &post, &source))
         .expect("valid test fixture");
-    probes.defer_to_body(&post);
+    probes.defer_to_body(&identity);
     assert_eq!(
         probes.claim_selected(query(&catalog, &retry, &post, &source)),
         Err(ProbeClaimRefusal::DeferredToBody)
     );
-    probes.body_finished(&post);
+    probes.body_finished(&identity);
     retry.cool_down(post.clone()).expect("valid test fixture");
     assert_eq!(
         probes.claim_selected(query(&catalog, &retry, &post, &source)),

@@ -27,7 +27,8 @@ impl DeliveryWorker {
         self.record_whole_body_limit(&done);
         let generation = self.downloads.http_generation(&done.attempt);
         let whole_body_completed = self.learn_network_completion(&done, generation.as_ref());
-        if successful_required_bytes(&done) {
+        let body_satisfied = successful_required_bytes(&done);
+        if body_satisfied {
             self.downloads.complete_hedge_winner(done.attempt.id());
         }
         let mut finished = self.downloads.finish(&done.attempt);
@@ -35,6 +36,9 @@ impl DeliveryWorker {
         self.observe_chunk_completion(&done, &finished);
         self.settle_origin_claim(&mut done, &mut finished);
         let identity = done.attempt.identity().clone();
+        if body_satisfied {
+            self.probes.body_satisfied(&identity);
+        }
         self.finish_body(&identity);
         if !self.retain_completion(status, &done, &identity) {
             return;
@@ -107,7 +111,7 @@ impl DeliveryWorker {
 
     fn finish_body(&mut self, identity: &TransferIdentity) {
         if !self.downloads.contains_identity(identity) {
-            self.probes.body_finished(identity.post());
+            self.probes.body_finished(identity);
         }
     }
 

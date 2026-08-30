@@ -177,7 +177,7 @@ impl DeliveryWorker {
     }
 
     fn reconcile_probe_bodies(&mut self) {
-        let active = self.downloads.body_posts();
+        let active = self.downloads.body_identities();
         self.probes.reconcile_bodies(&active);
     }
 

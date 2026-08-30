@@ -16,11 +16,14 @@ fn deferred_probe_rearms_only_after_the_matching_body_finishes() {
             .len(),
         1
     );
-    probes.defer_to_body(&post);
+    let identity = catalog
+        .transfer_identity(&post, "https://body.example/video.mp4")
+        .expect("current identity");
+    probes.defer_to_body(&identity);
     assert!(probes
         .claim(&catalog, core::slice::from_ref(&post), &retry)
         .is_empty());
 
-    probes.body_finished(&post);
+    probes.body_finished(&identity);
     assert_eq!(probes.claim(&catalog, &[post], &retry).len(), 1);
 }

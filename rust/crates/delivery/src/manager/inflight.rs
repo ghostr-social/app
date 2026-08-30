@@ -85,6 +85,13 @@ impl InFlightChunks {
             .collect()
     }
 
+    pub(crate) fn body_identities(&self) -> HashSet<TransferIdentity> {
+        self.transfers
+            .values()
+            .map(|active| active.identity.clone())
+            .collect()
+    }
+
     pub fn active_hosts(&self) -> HashSet<String> {
         self.transfers
             .values()
