@@ -52,6 +52,11 @@ pub(super) async fn send(
     let deadline = phase(action, phase_limit);
     let sending = request.send_with_redirect_deadline(deadline.at);
     match tokio::time::timeout_at(deadline.at, sending).await {
+        Ok(Err(error))
+            if deadline.usefulness_limited && error.is::<MediaRequestAdmissionTimeout>() =>
+        {
+            Err(HeadProbeUsefulnessTimeout.into())
+        }
         Ok(result) => result.context("probe request failed"),
         Err(_) if deadline.usefulness_limited => Err(HeadProbeUsefulnessTimeout.into()),
         Err(error) => Err(error).context("probe response headers timed out"),

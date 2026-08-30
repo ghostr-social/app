@@ -5,6 +5,7 @@
 use crate::manager::traffic::{OverallTrafficWindow, TrafficBatch, TrafficMeter};
 use crate::manager::transfers::{InternalEvent, ProbeObservation};
 use crate::manager::DeliveryWorker;
+use crate::probe::media::is_usefulness_timeout;
 use core::time::Duration;
 use ghostr_engine::host_stats::{host_of, HostStats};
 use ghostr_net::media_request_executor::MediaRequestAdmissionTimeout;
@@ -71,7 +72,7 @@ impl StatsKeeper {
 
     /// Mirrors the probe service's recording rules on the owned stats.
     pub fn note_probe(&mut self, done: &ProbeObservation) {
-        if is_admission_timeout(&done.outcome) || done.attempt_context.is_none() {
+        if is_local_probe_timeout(&done.outcome) || done.attempt_context.is_none() {
             return;
         }
         let Some(host) = host_of(&done.url) else {
@@ -123,6 +124,13 @@ impl StatsKeeper {
             Err(error) => warn!("Host stats snapshot failed: {error}"),
         }
     }
+}
+
+fn is_local_probe_timeout<T>(outcome: &anyhow::Result<T>) -> bool {
+    is_admission_timeout(outcome)
+        || outcome
+            .as_ref()
+            .is_err_and(|error| is_usefulness_timeout(error))
 }
 
 fn is_admission_timeout<T>(outcome: &anyhow::Result<T>) -> bool {
