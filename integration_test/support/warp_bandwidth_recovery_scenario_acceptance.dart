@@ -37,7 +37,10 @@ Future<void> _verifyBandwidthAcceptance(
   expect(evaluation.userVisible.stallRatioBps, lessThanOrEqualTo(100));
   expect(evaluation.efficiency.totalBytes, greaterThan(0));
   expect(evaluation.efficiency.usefulWatchedBytes, greaterThan(0));
-  expect(evaluation.efficiency.abortedBytes, lessThanOrEqualTo(192 * 1024));
+  expect(
+    evaluation.efficiency.abortedBytes,
+    lessThanOrEqualTo(deviceCancellationWasteTargetBytes),
+  );
   expect(evaluation.efficiency.duplicateHedgeBytes, 0);
   expect(evaluation.efficiency.requestCount, greaterThan(0));
   expect(evaluation.budget.instantaneousViolations, 0);

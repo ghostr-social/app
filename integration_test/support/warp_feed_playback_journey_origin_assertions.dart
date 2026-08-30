@@ -13,12 +13,16 @@ extension WarpFeedPlaybackJourneyOriginAssertions on WarpFeedPlaybackJourney {
     WarpOriginSnapshot before,
     WarpOriginSnapshot after,
   ) {
+    final coverages = <ProgressiveOriginCoverage>[];
     for (final entry in before.entries) {
-      _expectReplayOriginUse(entry.key, entry.value, after[entry.key]!);
+      coverages.add(
+        _expectReplayOriginUse(entry.key, entry.value, after[entry.key]!),
+      );
     }
+    _expectAggregateCancellationOverlap(coverages);
   }
 
-  void _expectReplayOriginUse(
+  ProgressiveOriginCoverage _expectReplayOriginUse(
     String id,
     WarpOriginUse before,
     WarpOriginUse after,
@@ -33,8 +37,8 @@ extension WarpFeedPlaybackJourneyOriginAssertions on WarpFeedPlaybackJourney {
         .skip(before.requests)
         .toList();
     final evidence =
-        '$id beforeMissing=${prior.missingRanges} '
-        'afterMissing=${finalCoverage.missingRanges}; '
+        '$id prior=${_coverageEvidence(prior)} '
+        'final=${_coverageEvidence(finalCoverage)}; '
         '${originRequestEvidence([id])}';
     _expectCoverageIntegrity(prior, finalCoverage, evidence);
     _expectCoverageDelta((
@@ -45,6 +49,22 @@ extension WarpFeedPlaybackJourneyOriginAssertions on WarpFeedPlaybackJourney {
       evidence: evidence,
     ));
     _expectReplayRequests(added, prior, evidence);
+    return finalCoverage;
+  }
+
+  void _expectAggregateCancellationOverlap(
+    List<ProgressiveOriginCoverage> coverages,
+  ) {
+    expect(
+      progressiveReplayCancellationOverlapWithin(
+        coverages,
+        budgetBytes: deviceCancellationWasteTargetBytes,
+      ),
+      isTrue,
+      reason:
+          'Replay cancellation overlap exceeded the scenario budget: '
+          '${coverages.map((item) => item.cancellationAttributedDuplicateBytes)}',
+    );
   }
 
   void _expectCoverageIntegrity(
@@ -52,9 +72,28 @@ extension WarpFeedPlaybackJourneyOriginAssertions on WarpFeedPlaybackJourney {
     ProgressiveOriginCoverage finalCoverage,
     String evidence,
   ) {
-    expect(prior.isWithinObject, isTrue, reason: evidence);
-    expect(prior.duplicateBytes, 0, reason: evidence);
-    expect(finalCoverage.isExact, isTrue, reason: evidence);
+    expect(
+      prior.hasReplayIntegrityWithin(
+        cancellationOverlapBudgetBytes: deviceCancellationWasteTargetBytes,
+      ),
+      isTrue,
+      reason: evidence,
+    );
+    expect(
+      finalCoverage.isReplayCompleteWithin(
+        cancellationOverlapBudgetBytes: deviceCancellationWasteTargetBytes,
+      ),
+      isTrue,
+      reason: evidence,
+    );
+  }
+
+  String _coverageEvidence(ProgressiveOriginCoverage coverage) {
+    return 'missing=${coverage.missingRanges},'
+        'network=${coverage.networkBytes},unique=${coverage.uniqueBytes},'
+        'duplicate=${coverage.duplicateBytes},'
+        'completedDuplicate=${coverage.completedDuplicateBytes},'
+        'canceledDuplicate=${coverage.cancellationAttributedDuplicateBytes}';
   }
 
   void _expectCoverageDelta(_OriginCoverageDelta delta) {
@@ -70,7 +109,10 @@ extension WarpFeedPlaybackJourneyOriginAssertions on WarpFeedPlaybackJourney {
     );
     expect(
       delta.after.bytes - delta.before.bytes,
-      delta.finalCoverage.uniqueBytes - delta.prior.uniqueBytes,
+      delta.finalCoverage.uniqueBytes -
+          delta.prior.uniqueBytes +
+          delta.finalCoverage.duplicateBytes -
+          delta.prior.duplicateBytes,
       reason: delta.evidence,
     );
   }

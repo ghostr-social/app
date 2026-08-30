@@ -8,6 +8,7 @@ const deviceRapidSwipeMaximumInterval = Duration(milliseconds: 300);
 const deviceHeldResponseRecoveryTarget = Duration(seconds: 2);
 const deviceManifestRetryStartupTarget = Duration(seconds: 4);
 const deviceRebufferTarget = 0.01;
+const deviceCancellationWasteTargetBytes = 192 * 1024;
 
 bool deviceRapidCadenceIsWithinTarget(Iterable<Duration> intervals) {
   return intervals.isNotEmpty &&
