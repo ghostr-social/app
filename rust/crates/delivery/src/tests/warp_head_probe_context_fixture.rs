@@ -1,4 +1,3 @@
-use crate::delivery_events::{DeliveryFocus, FocusItem};
 use crate::manager::plan::axiom_test_support::planned_work;
 use crate::manager::plan::{PlanInputs, PlannedWork};
 use crate::manager::retry::{RetryBook, RetryPolicy};
@@ -6,12 +5,18 @@ use crate::manager::state::DeliveryState;
 use ghostr_engine::adaptive::{PlannerCommand, StorageSnapshot};
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::representation::TransferIdentity;
-use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
+use ghostr_engine::PostId;
 use std::collections::{HashMap, HashSet};
 
-pub(super) fn generates_head(work: PlannedWork) -> bool {
+#[path = "warp_head_probe_context_fixture/state.rs"]
+mod state_fixture;
+pub(super) use state_fixture::{
+    ahead_state, ahead_state_with_size, ahead_state_with_sources, current_state,
+};
+
+pub(super) fn generates_head_for(work: PlannedWork, post: &PostId) -> bool {
     work.warp.expect("valid test fixture").generated.actions.iter().any(|action| {
-        matches!(&action.command, PlannerCommand::ProbeHead { post, .. } if post.as_str() == "post")
+        matches!(&action.command, PlannerCommand::ProbeHead { post: candidate, .. } if candidate == post)
     })
 }
 
@@ -61,32 +66,4 @@ pub(super) fn plan_at(
             demanded: &HashMap::new(),
         },
     )
-}
-
-pub(super) fn state(post: PostId, source: &str) -> DeliveryState {
-    state_with_sources(post, vec![source.to_owned()])
-}
-
-pub(super) fn state_with_sources(post: PostId, sources: Vec<String>) -> DeliveryState {
-    state_with_meta(post, sources, None)
-}
-
-pub(super) fn state_with_size(post: PostId, source: &str, size: u64) -> DeliveryState {
-    state_with_meta(post, vec![source.to_owned()], Some(size))
-}
-
-fn state_with_meta(post: PostId, sources: Vec<String>, size_bytes: Option<u64>) -> DeliveryState {
-    let mut state = DeliveryState::new(EngineParams::default(), DataUsageLevel::Balanced);
-    let item = FocusItem {
-        post,
-        meta: VideoMeta {
-            urls: sources,
-            delivery: DeliveryKind::Progressive,
-            sha256: None,
-            size_bytes,
-            duration_ms: None,
-        },
-    };
-    state.apply_focus(DeliveryFocus::compatibility(vec![item], 0, 0), 0);
-    state
 }

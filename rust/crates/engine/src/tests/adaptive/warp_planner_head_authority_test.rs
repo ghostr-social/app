@@ -6,6 +6,9 @@ use crate::tests::adaptive_support::snapshot;
 mod warp_current_bootstrap_priority_contract_test {
     include!("warp_current_bootstrap_priority_contract_test.rs");
 }
+mod warp_current_head_suppression_test {
+    include!("warp_current_head_suppression_test.rs");
+}
 
 #[test]
 fn a_head_probe_uses_the_same_preemption_authority_as_its_candidate_transfer() {

@@ -1,4 +1,4 @@
-use crate::tests::warp_head_probe_context_fixture::{generates_head, plan_at, state};
+use crate::tests::warp_head_probe_context_fixture::{ahead_state, generates_head_for, plan_at};
 use ghostr_engine::catalog::{HttpObservation, LearnedFacts};
 use ghostr_engine::PostId;
 use std::collections::HashSet;
@@ -10,7 +10,7 @@ const DAY_MS: u64 = 24 * 60 * 60 * 1_000;
 #[test]
 fn completed_head_history_rearms_after_its_size_evidence_stales() {
     let post = PostId::new("post");
-    let mut state = state(post.clone(), SOURCE);
+    let mut state = ahead_state(post.clone(), SOURCE);
     let identity = state
         .catalog()
         .transfer_identity(&post, SOURCE)
@@ -31,5 +31,5 @@ fn completed_head_history_rearms_after_its_size_evidence_stales() {
 
     let work = plan_at(&state, &[], &completed, OBSERVED_AT_MS + DAY_MS, 2);
 
-    assert!(generates_head(work));
+    assert!(generates_head_for(work, &post));
 }

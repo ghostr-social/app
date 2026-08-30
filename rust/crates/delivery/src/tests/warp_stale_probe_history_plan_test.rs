@@ -1,4 +1,4 @@
-use crate::tests::warp_head_probe_context_fixture::{generates_head, plan_at, state};
+use crate::tests::warp_head_probe_context_fixture::{ahead_state, generates_head_for, plan_at};
 use ghostr_engine::catalog::{HttpObservation, LearnedFacts};
 use ghostr_engine::evidence::EvidenceValidator;
 use ghostr_engine::PostId;
@@ -11,7 +11,11 @@ const DAY_MS: u64 = 24 * 60 * 60 * 1_000;
 #[test]
 fn stale_range_evidence_does_not_repeat_an_uninformative_head() {
     let post = PostId::new("post");
-    let mut state = state(post.clone(), SOURCE);
+    let mut state = ahead_state(post.clone(), SOURCE);
+    assert!(generates_head_for(
+        plan_at(&state, &[], &HashSet::new(), OBSERVED_AT_MS, 2),
+        &post
+    ));
     let identity = state
         .catalog()
         .transfer_identity(&post, SOURCE)
@@ -33,5 +37,5 @@ fn stale_range_evidence_does_not_repeat_an_uninformative_head() {
 
     let work = plan_at(&state, &[], &completed, OBSERVED_AT_MS + DAY_MS, 2);
 
-    assert!(!generates_head(work));
+    assert!(!generates_head_for(work, &post));
 }
