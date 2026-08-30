@@ -1,11 +1,15 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show ChangeNotifier, setEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/features/comments/presentation/comments_sheet.dart';
 import 'package:ghostr/core/media/prepared_progressive_playback.dart';
+import 'package:ghostr/features/video_catalog/domain/feed_navigation_history.dart';
+import 'package:ghostr/features/video_catalog/domain/feed_player_retention.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
+import 'package:ghostr/features/video_catalog/domain/video_post_id.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_screen_bindings.dart';
 import 'package:ghostr/features/video_catalog/presentation/video_share_feed_scope.dart';
@@ -13,6 +17,7 @@ import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card.dar
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_kind_selector.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_page_view.dart';
 import 'package:ghostr/features/video_sharing/presentation/video_share_cubit.dart';
+import 'package:ghostr/features/video_inventory/domain/player_preparation_feedback_port.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:ghostr/shared/widgets/async_state_panel.dart';
 import 'package:ghostr/shared/widgets/loading_panel.dart';
@@ -20,6 +25,7 @@ import 'package:ghostr/shared/widgets/loading_panel.dart';
 export 'feed_screen_bindings.dart';
 
 part 'feed_screen_actions.dart';
+part 'feed_screen_page_playback_controller.dart';
 part 'feed_screen_pages.dart';
 
 class FeedScreen extends StatefulWidget {
@@ -33,6 +39,7 @@ class FeedScreen extends StatefulWidget {
 
 class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   final _playbackSurfaceScope = VideoPlaybackSurfaceScope();
+  final _pagePlayback = _FeedPagePlaybackController();
   bool _commentsOpen = false;
   bool _appIsResumed = true;
   bool _memoryConstrained = false;
@@ -86,6 +93,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _cubit?.surfaceVisibilityChanged(false);
+    _pagePlayback.dispose();
     super.dispose();
   }
 

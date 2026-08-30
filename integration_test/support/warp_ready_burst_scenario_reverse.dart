@@ -7,6 +7,15 @@ Future<void> _consumeBackward(
 ) async {
   final ids = _previousOriginIds(journey, 3);
   final before = await journey.waitForOriginQuiescence(tester, ids);
+  final reverse = await _reversePlayback(tester, journey, from);
+  await _verifyReverseReuse(tester, journey, ids, before, reverse.focuses.last);
+}
+
+Future<WarpSwipeBurst> _reversePlayback(
+  WidgetTester tester,
+  WarpFeedPlaybackJourney journey,
+  PlaybackFocus from,
+) async {
   final startedAt = journey.telemetry.probe.elapsed;
   final reverse = await journey.swipeBackward(
     tester,
@@ -19,7 +28,7 @@ Future<void> _consumeBackward(
   await journey.waitForFirstFrame(tester, finalFocus);
   await journey.waitForPlaying(tester, finalFocus);
   journey.verifyReversePlayback(reverse.focuses, reverse.releases);
-  await _verifyReverseReuse(tester, journey, ids, before, finalFocus);
+  return reverse;
 }
 
 Future<void> _verifyReverseReuse(

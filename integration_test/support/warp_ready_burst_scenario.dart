@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/features/settings/domain/data_usage_level.dart';
+import 'package:video_player/video_player.dart';
 
 import 'device_playback_probe.dart';
 import 'device_qoe_targets.dart';
@@ -11,6 +13,7 @@ import 'warp_feed_playback_journey.dart';
 
 part 'warp_ready_burst_scenario_consume.dart';
 part 'warp_ready_burst_scenario_open.dart';
+part 'warp_ready_burst_scenario_retention.dart';
 part 'warp_ready_burst_scenario_reverse.dart';
 
 typedef _OpenedFeed = ({

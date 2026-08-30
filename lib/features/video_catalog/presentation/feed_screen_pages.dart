@@ -2,6 +2,11 @@ part of 'feed_screen.dart';
 
 extension _FeedScreenPages on _FeedScreenState {
   Widget _feedPages(BuildContext context, FeedLoaded state) {
+    final warmPreviousDepth = _warmPreviousDepth(state);
+    _pagePlayback.synchronize(
+      playbackIds: _pagePlaybackIds(state, warmPreviousDepth),
+      keepAliveIds: _pageKeepAliveIds(state, warmPreviousDepth),
+    );
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -13,7 +18,8 @@ extension _FeedScreenPages on _FeedScreenState {
             activePage: state.activeIndex,
           ),
           onPageChanged: context.read<FeedCubit>().pageChanged,
-          itemBuilder: (_, index) => _feedPage(context, state, index),
+          itemBuilder: (_, index) =>
+              _feedPage(context, state, index, warmPreviousDepth),
         ),
         ..._reserveHosts(state),
       ],
@@ -51,15 +57,21 @@ extension _FeedScreenPages on _FeedScreenState {
     );
   }
 
-  Widget _feedPage(BuildContext context, FeedLoaded state, int index) {
+  Widget _feedPage(
+    BuildContext context,
+    FeedLoaded state,
+    int index,
+    int warmPreviousDepth,
+  ) {
     final post = state.posts[index];
-    final source = _playbackSource(state, index);
+    final source = _playbackSource(state, index, warmPreviousDepth);
     final isCurrent = index == state.activeIndex;
     if (source == null) {
       return ColoredBox(key: ValueKey(post.id.value), color: Colors.black);
     }
     return _PlaybackFeedPage(
-      keepAlive: isCurrent || _keepsWarmPrevious(state.activeIndex - index),
+      controller: _pagePlayback,
+      postId: post.id,
       child: _feedCard(
         context,
         state,
@@ -73,22 +85,67 @@ extension _FeedScreenPages on _FeedScreenState {
     );
   }
 
-  FeedCardPlaybackSource? _playbackSource(FeedLoaded state, int index) {
+  FeedCardPlaybackSource? _playbackSource(
+    FeedLoaded state,
+    int index,
+    int warmPreviousDepth,
+  ) {
     final prepared = _preparedPlayback(state, index);
     if (prepared != null) return FeedCardPlaybackSource.prepared(prepared);
     final current = index == state.activeIndex;
     final previousDistance = state.activeIndex - index;
-    if (current || _keepsWarmPrevious(previousDistance)) {
+    if (current || _keepsWarmPrevious(previousDistance, warmPreviousDepth)) {
       return FeedCardPlaybackSource.direct(state.posts[index].media);
     }
     return null;
   }
 
-  bool _keepsWarmPrevious(int distance) {
-    return distance > 0 &&
-        distance <= _warmPreviousDepth &&
-        _isVisible &&
-        !_memoryConstrained;
+  bool _keepsWarmPrevious(int distance, int warmPreviousDepth) {
+    return distance > 0 && distance <= warmPreviousDepth;
+  }
+
+  Set<VideoPostId> _pagePlaybackIds(FeedLoaded state, int warmPreviousDepth) {
+    return {
+      for (var index = 0; index < state.posts.length; index++)
+        if (_playbackSource(state, index, warmPreviousDepth) != null)
+          state.posts[index].id,
+    };
+  }
+
+  Set<VideoPostId> _pageKeepAliveIds(FeedLoaded state, int warmPreviousDepth) {
+    return {
+      for (var index = 0; index <= state.activeIndex; index++)
+        if (index == state.activeIndex ||
+            _keepsWarmPrevious(state.activeIndex - index, warmPreviousDepth))
+          state.posts[index].id,
+    };
+  }
+
+  int _warmPreviousDepth(FeedLoaded state) {
+    if (!_isVisible || _memoryConstrained) return 0;
+    final demand = _futureRetentionDemand(state);
+    return _playerRetention.warmPreviousDepth(
+      preparedFutureCount: demand.prepared,
+      canReplenish: demand.canReplenish,
+    );
+  }
+
+  ({int prepared, bool canReplenish}) _futureRetentionDemand(FeedLoaded state) {
+    var prepared = 0;
+    var canReplenish = false;
+    for (
+      var index = state.activeIndex + 1;
+      index < state.posts.length;
+      index++
+    ) {
+      final media = state.posts[index].media;
+      if (state.preparation.forMedia(media) == null) {
+        canReplenish = true;
+      } else {
+        prepared++;
+      }
+    }
+    return (prepared: prepared, canReplenish: canReplenish);
   }
 
   PreparedProgressivePlayback? _preparedPlayback(FeedLoaded state, int index) {
@@ -131,32 +188,8 @@ extension _FeedScreenPages on _FeedScreenState {
   }
 }
 
-const _warmPreviousDepth = 2;
-
-final class _PlaybackFeedPage extends StatefulWidget {
-  const _PlaybackFeedPage({required this.keepAlive, required this.child});
-
-  final bool keepAlive;
-  final Widget child;
-
-  @override
-  State<_PlaybackFeedPage> createState() => _PlaybackFeedPageState();
-}
-
-final class _PlaybackFeedPageState extends State<_PlaybackFeedPage>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => widget.keepAlive;
-
-  @override
-  void didUpdateWidget(covariant _PlaybackFeedPage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.keepAlive != widget.keepAlive) updateKeepAlive();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return widget.child;
-  }
-}
+const _playerRetention = FeedPlayerRetention(
+  maximumControllers: warpMaximumConcurrentPlaybackControllers,
+  minimumPrevious: 2,
+  history: FeedNavigationHistory.ordinary,
+);
