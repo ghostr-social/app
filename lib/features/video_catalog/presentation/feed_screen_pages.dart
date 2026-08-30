@@ -65,23 +65,13 @@ extension _FeedScreenPages on _FeedScreenState {
   ) {
     final post = state.posts[index];
     final source = _playbackSource(state, index, warmPreviousDepth);
-    final isCurrent = index == state.activeIndex;
     if (source == null) {
       return ColoredBox(key: ValueKey(post.id.value), color: Colors.black);
     }
     return _PlaybackFeedPage(
       controller: _pagePlayback,
       postId: post.id,
-      child: _feedCard(
-        context,
-        state,
-        index,
-        _playback(
-          source,
-          isCurrent: isCurrent,
-          keepWarmWhenInactive: !isCurrent,
-        ),
-      ),
+      child: _hlsBoundFeedCard(context, state, index, source),
     );
   }
 
@@ -169,21 +159,6 @@ extension _FeedScreenPages on _FeedScreenState {
         playback: playback,
         actions: _actions(context, state, post, sharing),
       ),
-    );
-  }
-
-  FeedCardPlayback _playback(
-    FeedCardPlaybackSource source, {
-    required bool isCurrent,
-    bool keepWarmWhenInactive = false,
-  }) {
-    return FeedCardPlayback(
-      port: widget.bindings.playbackPort,
-      source: source,
-      isActive: _isVisible && isCurrent,
-      preparedOnly: !isCurrent,
-      keepWarmWhenInactive: keepWarmWhenInactive,
-      surfaceScope: _playbackSurfaceScope,
     );
   }
 }

@@ -45,7 +45,7 @@ impl SharedGateScenario {
             .expect("progressive body starts");
         let session = self
             .runtime
-            .acquire_hls(vec![self.manifest.url.clone()])
+            .acquire_unprepared_hls(vec![self.manifest.url.clone()])
             .await
             .expect("valid test fixture");
         let client = reqwest::Client::builder()

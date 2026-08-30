@@ -1,4 +1,6 @@
+import 'package:ghostr/core/media/hls_playback_authority.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
+import 'package:ghostr/core/media/video_representation_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_delivery_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_preparation_reducer.dart';
@@ -38,11 +40,13 @@ final class FeedReadinessEvidence {
     required this.posts,
     required this.delivery,
     this.preparation,
+    this.verifiedHlsAuthorities = const {},
   });
 
   final List<VideoPost> posts;
   final Map<PlaybackDeliveryId, VideoDeliverySnapshot> delivery;
   final FeedPlaybackPreparation? preparation;
+  final Set<HlsPlaybackAuthority> verifiedHlsAuthorities;
 
   VideoDeliverySnapshot? snapshotAt(int index) {
     final deliveryId = posts[index].media.playbackDeliveryId;
@@ -62,6 +66,13 @@ final class FeedReadinessEvidence {
   bool isPlayerVerifiedAt(int index) {
     final snapshot = snapshotAt(index);
     if (snapshot?.phase == VideoDeliveryPhase.failed) return false;
+    final hlsAuthority = snapshot?.hlsAuthority;
+    if (hlsAuthority != null) {
+      return verifiedHlsAuthorities.contains(hlsAuthority) &&
+          hlsAuthority.deliveryId == posts[index].media.playbackDeliveryId &&
+          hlsAuthority.representationId ==
+              VideoRepresentationId.forMedia(posts[index].media);
+    }
     final prepared = preparation?.forMedia(posts[index].media);
     if (prepared?.readiness.isPlayerVerified != true) return false;
     final deliveryAuthority = snapshot?.authority;

@@ -3,6 +3,8 @@
 
 mod feed_fixtures;
 mod feed_watch_support;
+mod hls_runtime_origin;
+mod hls_runtime_support;
 mod outbox_runtime_support;
 mod runtime_fixture;
 mod signed_event_fixture;

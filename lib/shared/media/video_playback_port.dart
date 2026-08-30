@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:ghostr/core/media/inline_blurhash.dart';
+import 'package:ghostr/core/media/hls_playback_authority.dart';
 import 'package:ghostr/core/media/playback_asset_authority.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
@@ -32,6 +33,8 @@ final class VideoPlaybackSurfaceRequest {
     this.reservesPreparedDecoder = false,
     this.keepWarmWhenInactive = false,
     this.authority,
+    this.hlsAuthority,
+    this.onHlsFirstFrameRendered,
     this.progressiveRefresh,
     this.onPlaybackMediaReleased,
     InlineBlurHash? preview,
@@ -46,6 +49,8 @@ final class VideoPlaybackSurfaceRequest {
   final bool reservesPreparedDecoder;
   final bool keepWarmWhenInactive;
   final PlaybackAssetAuthority? authority;
+  final HlsPlaybackAuthority? hlsAuthority;
+  final ValueChanged<HlsPlaybackAuthority>? onHlsFirstFrameRendered;
   final ProgressivePlaybackRefreshPort? progressiveRefresh;
   final VoidCallback? onPlaybackMediaReleased;
   final InlineBlurHash? _preview;

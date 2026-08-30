@@ -41,6 +41,8 @@ final class HlsVideoPlaybackPort
         surfaceScope: request.surfaceScope,
         reservesPreparedDecoder: request.reservesPreparedDecoder,
         keepWarmWhenInactive: request.keepWarmWhenInactive,
+        hlsAuthority: request.hlsAuthority,
+        onHlsFirstFrameRendered: request.onHlsFirstFrameRendered,
         onPlaybackMediaReleased: request.onPlaybackMediaReleased,
         preview: request.preview,
       ),

@@ -9,6 +9,7 @@ use reqwest::Url;
 pub struct NativeHlsPlaybackSession {
     pub id: HlsSessionId,
     pub playback_url: String,
+    pub authority: Option<HlsPreparedAssetAuthority>,
 }
 
 pub struct HlsPlaybackRequest {
@@ -41,8 +42,17 @@ impl HlsPlaybackGateway {
 
     pub(crate) async fn acquire(&self, sources: Vec<String>) -> Result<NativeHlsPlaybackSession> {
         let id = self.sessions.acquire(sources).await?;
-        let playback_url = format!("http://{}/hls/{}/index.m3u8", self.endpoint, id.as_str());
-        Ok(NativeHlsPlaybackSession { id, playback_url })
+        Ok(self.session(id, None))
+    }
+
+    pub(crate) async fn acquire_prepared(
+        &self,
+        cache: &ghostr_delivery::segmented::SegmentedCache,
+        request: HlsPlaybackRequest,
+    ) -> Result<NativeHlsPlaybackSession> {
+        let authority = request.authority.clone();
+        let id = self.sessions.acquire_prepared(cache, request).await?;
+        Ok(self.session(id, Some(authority)))
     }
 
     pub(crate) async fn release(&self, raw_session_id: &str) -> bool {
@@ -50,5 +60,18 @@ impl HlsPlaybackGateway {
             return false;
         };
         self.sessions.release(&id).await
+    }
+
+    fn session(
+        &self,
+        id: HlsSessionId,
+        authority: Option<HlsPreparedAssetAuthority>,
+    ) -> NativeHlsPlaybackSession {
+        let playback_url = format!("http://{}/hls/{}/index.m3u8", self.endpoint, id.as_str());
+        NativeHlsPlaybackSession {
+            id,
+            playback_url,
+            authority,
+        }
     }
 }

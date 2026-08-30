@@ -39,9 +39,8 @@ extension FeedCubitLoading on FeedCubit {
     }
     if (!await _viewer.prepareToShow(roster.active)) return;
     if (!_acceptsLoadedFeed(kind, request)) return;
-    _emitState(
-      _projectPreparation(FeedLoaded.of(kind, roster, follows: _follows)),
-    );
+    final loaded = FeedLoaded.of(kind, roster, follows: _follows);
+    _emitState(_projectHlsDelivery(_projectPreparation(loaded)));
     unawaited(_settleReposts());
     _hunt.filled();
     _viewer.landedOn(roster.posts, roster.activeIndex);
@@ -169,7 +168,7 @@ extension FeedCubitLoading on FeedCubit {
       history: FeedNavigationHistory.unlimited,
     );
     final loaded = FeedLoaded.of(current.kind, roster, follows: _follows);
-    _emitState(_projectPreparation(loaded));
+    _emitState(_projectHlsDelivery(_projectPreparation(loaded)));
     unawaited(_settleReposts());
     _viewer.rosterChanged(roster.posts, roster.activeIndex);
     _ensureBuffered();

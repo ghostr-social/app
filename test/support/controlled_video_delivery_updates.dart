@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:ghostr/core/media/hls_playback_authority.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_delivery_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
@@ -14,6 +15,7 @@ final class ControlledVideoDeliveryUpdates implements VideoDeliveryUpdates {
     VideoPost post, {
     required VideoDeliveryPhase phase,
     Duration? eta,
+    HlsPlaybackAuthority? hlsAuthority,
   }) {
     _events.add(
       VideoDeliverySnapshot(
@@ -21,6 +23,7 @@ final class ControlledVideoDeliveryUpdates implements VideoDeliveryUpdates {
         phase: phase,
         bytesPresent: BigInt.zero,
         eta: eta,
+        hlsAuthority: hlsAuthority,
       ),
     );
   }

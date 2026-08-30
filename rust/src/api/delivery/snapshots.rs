@@ -5,7 +5,8 @@ use crate::api::delivery_types::{FfiDeliveryEvent, FfiDeliveryEventKind};
 use crate::engine::adaptive::{candidate_snapshot, CandidateEvidence, FeedOffset, ViewProbability};
 use crate::engine::catalog::{Catalog, LearnedFacts};
 use crate::engine::{ByteRange, EngineParams, PostId, VideoMeta};
-use ghostr_delivery::segmented::{SegmentedPhase, SegmentedSnapshot};
+
+pub(crate) use super::snapshots_hls::{hls_snapshot, DeliverySnapshotHlsAuthority};
 
 /// What one tracked post looks like right now.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -17,6 +18,7 @@ pub(crate) struct DeliverySnapshot {
     pub failed: bool,
     pub detail: Option<String>,
     pub authority: Option<DeliverySnapshotAuthority>,
+    pub hls_authority: Option<DeliverySnapshotHlsAuthority>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -49,18 +51,7 @@ pub(crate) fn compute_snapshot(post: &PostId, input: SnapshotInput<'_>) -> Deliv
             .playback_blocked
             .then(|| "decoder unsupported".to_owned()),
         authority: input.authority,
-    }
-}
-
-pub(crate) fn hls_snapshot(snapshot: SegmentedSnapshot) -> DeliverySnapshot {
-    DeliverySnapshot {
-        startable: snapshot.phase == SegmentedPhase::Ready,
-        bytes_present: snapshot.bytes_present,
-        total_bytes: None,
-        eta_ms: snapshot.eta_ms,
-        failed: snapshot.phase == SegmentedPhase::Failed,
-        detail: snapshot.detail,
-        authority: None,
+        hls_authority: None,
     }
 }
 
@@ -126,6 +117,17 @@ pub(crate) fn event_for(
             .as_ref()
             .map(|authority| authority.representation_id.clone()),
         asset_id: current.authority.map(|authority| authority.asset_id),
+        hls_delivery_id: current
+            .hls_authority
+            .as_ref()
+            .map(|authority| authority.delivery_id.clone()),
+        hls_representation_id: current
+            .hls_authority
+            .as_ref()
+            .map(|authority| authority.representation_id.clone()),
+        hls_asset_revision: current
+            .hls_authority
+            .map(|authority| authority.asset_revision),
     })
 }
 
@@ -169,5 +171,8 @@ pub(crate) fn error_event(post_id: &str, detail: String) -> FfiDeliveryEvent {
         detail: Some(detail),
         representation_id: None,
         asset_id: None,
+        hls_delivery_id: None,
+        hls_representation_id: None,
+        hls_asset_revision: None,
     }
 }

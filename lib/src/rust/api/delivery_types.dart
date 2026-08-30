@@ -27,6 +27,15 @@ class FfiDeliveryEvent {
   /// Exact progressive capability bound to the observed content revision.
   final String? assetId;
 
+  /// Cache-certified HLS post identity; separate from progressive authority.
+  final String? hlsDeliveryId;
+
+  /// Exact HLS representation for the prepared cache cohort.
+  final String? hlsRepresentationId;
+
+  /// Monotonic HLS cache asset revision.
+  final BigInt? hlsAssetRevision;
+
   const FfiDeliveryEvent({
     required this.postId,
     required this.kind,
@@ -37,6 +46,9 @@ class FfiDeliveryEvent {
     this.detail,
     this.representationId,
     this.assetId,
+    this.hlsDeliveryId,
+    this.hlsRepresentationId,
+    this.hlsAssetRevision,
   });
 
   @override
@@ -49,7 +61,10 @@ class FfiDeliveryEvent {
       etaMs.hashCode ^
       detail.hashCode ^
       representationId.hashCode ^
-      assetId.hashCode;
+      assetId.hashCode ^
+      hlsDeliveryId.hashCode ^
+      hlsRepresentationId.hashCode ^
+      hlsAssetRevision.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -64,7 +79,10 @@ class FfiDeliveryEvent {
           etaMs == other.etaMs &&
           detail == other.detail &&
           representationId == other.representationId &&
-          assetId == other.assetId;
+          assetId == other.assetId &&
+          hlsDeliveryId == other.hlsDeliveryId &&
+          hlsRepresentationId == other.hlsRepresentationId &&
+          hlsAssetRevision == other.hlsAssetRevision;
 }
 
 /// What a delivery event reports about one post.

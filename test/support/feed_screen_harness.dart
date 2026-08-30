@@ -5,6 +5,7 @@ import 'package:ghostr/features/reposts/domain/video_repost_repository.dart';
 import 'package:ghostr/features/social/domain/social_graph_repository.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
+import 'package:ghostr/features/video_catalog/domain/video_delivery_updates.dart';
 import 'package:ghostr/features/video_catalog/domain/video_feed_repository.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_screen.dart';
@@ -29,6 +30,7 @@ final class FeedScreenHarnessOptions {
     this.reposts,
     this.feed,
     this.focus,
+    this.deliveryUpdates,
     this.preparationUpdates,
     this.watch = const FeedWatchDependencies(),
   });
@@ -42,6 +44,7 @@ final class FeedScreenHarnessOptions {
   final VideoRepostRepository? reposts;
   final VideoFeedRepository? feed;
   final FeedFocusPort? focus;
+  final VideoDeliveryUpdates? deliveryUpdates;
   final PlaybackPreparationUpdates? preparationUpdates;
   final FeedWatchDependencies watch;
 }
@@ -65,6 +68,7 @@ Widget feedScreenHarness(
             watch: options.watch,
             delivery: FeedDeliveryDependencies(
               reposts: options.reposts ?? repository,
+              deliveryUpdates: options.deliveryUpdates,
               preparationUpdates: options.preparationUpdates,
             ),
           ),

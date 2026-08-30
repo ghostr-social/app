@@ -67,14 +67,20 @@ fn wire__crate__video__native_gateway__ffi_acquire_hls_playback_impl(
             };
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_authority =
+                <Option<crate::video::ffi_models::FfiHlsPreparedAssetAuthority>>::sse_decode(
+                    &mut deserializer,
+                );
             let api_source_urls = <Vec<String>>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || async move {
-                        let output_ok =
-                            crate::video::native_gateway::ffi_acquire_hls_playback(api_source_urls)
-                                .await?;
+                        let output_ok = crate::video::native_gateway::ffi_acquire_hls_playback(
+                            api_authority,
+                            api_source_urls,
+                        )
+                        .await?;
                         Ok(output_ok)
                     })()
                     .await,
@@ -1130,6 +1136,9 @@ impl SseDecode for crate::api::delivery_types::FfiDeliveryEvent {
         let mut var_detail = <Option<String>>::sse_decode(deserializer);
         let mut var_representationId = <Option<String>>::sse_decode(deserializer);
         let mut var_assetId = <Option<String>>::sse_decode(deserializer);
+        let mut var_hlsDeliveryId = <Option<String>>::sse_decode(deserializer);
+        let mut var_hlsRepresentationId = <Option<String>>::sse_decode(deserializer);
+        let mut var_hlsAssetRevision = <Option<u64>>::sse_decode(deserializer);
         return crate::api::delivery_types::FfiDeliveryEvent {
             post_id: var_postId,
             kind: var_kind,
@@ -1140,6 +1149,9 @@ impl SseDecode for crate::api::delivery_types::FfiDeliveryEvent {
             detail: var_detail,
             representation_id: var_representationId,
             asset_id: var_assetId,
+            hls_delivery_id: var_hlsDeliveryId,
+            hls_representation_id: var_hlsRepresentationId,
+            hls_asset_revision: var_hlsAssetRevision,
         };
     }
 }
@@ -1440,9 +1452,29 @@ impl SseDecode for crate::video::ffi_models::FfiHlsPlaybackSession {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_sessionId = <String>::sse_decode(deserializer);
         let mut var_playbackUrl = <String>::sse_decode(deserializer);
+        let mut var_deliveryId = <Option<String>>::sse_decode(deserializer);
+        let mut var_representationId = <Option<String>>::sse_decode(deserializer);
+        let mut var_assetRevision = <Option<u64>>::sse_decode(deserializer);
         return crate::video::ffi_models::FfiHlsPlaybackSession {
             session_id: var_sessionId,
             playback_url: var_playbackUrl,
+            delivery_id: var_deliveryId,
+            representation_id: var_representationId,
+            asset_revision: var_assetRevision,
+        };
+    }
+}
+
+impl SseDecode for crate::video::ffi_models::FfiHlsPreparedAssetAuthority {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_deliveryId = <String>::sse_decode(deserializer);
+        let mut var_representationId = <String>::sse_decode(deserializer);
+        let mut var_assetRevision = <u64>::sse_decode(deserializer);
+        return crate::video::ffi_models::FfiHlsPreparedAssetAuthority {
+            delivery_id: var_deliveryId,
+            representation_id: var_representationId,
+            asset_revision: var_assetRevision,
         };
     }
 }
@@ -1934,6 +1966,19 @@ impl SseDecode for Option<crate::api::feed_types::FfiFeedRepost> {
     }
 }
 
+impl SseDecode for Option<crate::video::ffi_models::FfiHlsPreparedAssetAuthority> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(
+                <crate::video::ffi_models::FfiHlsPreparedAssetAuthority>::sse_decode(deserializer),
+            );
+        } else {
+            return None;
+        }
+    }
+}
+
 impl SseDecode for Option<crate::api::feed_types::FfiMediaDim> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2212,6 +2257,9 @@ impl flutter_rust_bridge::IntoDart for crate::api::delivery_types::FfiDeliveryEv
             self.detail.into_into_dart().into_dart(),
             self.representation_id.into_into_dart().into_dart(),
             self.asset_id.into_into_dart().into_dart(),
+            self.hls_delivery_id.into_into_dart().into_dart(),
+            self.hls_representation_id.into_into_dart().into_dart(),
+            self.hls_asset_revision.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2619,6 +2667,9 @@ impl flutter_rust_bridge::IntoDart for crate::video::ffi_models::FfiHlsPlaybackS
         [
             self.session_id.into_into_dart().into_dart(),
             self.playback_url.into_into_dart().into_dart(),
+            self.delivery_id.into_into_dart().into_dart(),
+            self.representation_id.into_into_dart().into_dart(),
+            self.asset_revision.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2631,6 +2682,28 @@ impl flutter_rust_bridge::IntoIntoDart<crate::video::ffi_models::FfiHlsPlaybackS
     for crate::video::ffi_models::FfiHlsPlaybackSession
 {
     fn into_into_dart(self) -> crate::video::ffi_models::FfiHlsPlaybackSession {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::video::ffi_models::FfiHlsPreparedAssetAuthority {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.delivery_id.into_into_dart().into_dart(),
+            self.representation_id.into_into_dart().into_dart(),
+            self.asset_revision.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::video::ffi_models::FfiHlsPreparedAssetAuthority
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::video::ffi_models::FfiHlsPreparedAssetAuthority>
+    for crate::video::ffi_models::FfiHlsPreparedAssetAuthority
+{
+    fn into_into_dart(self) -> crate::video::ffi_models::FfiHlsPreparedAssetAuthority {
         self
     }
 }
@@ -3154,6 +3227,9 @@ impl SseEncode for crate::api::delivery_types::FfiDeliveryEvent {
         <Option<String>>::sse_encode(self.detail, serializer);
         <Option<String>>::sse_encode(self.representation_id, serializer);
         <Option<String>>::sse_encode(self.asset_id, serializer);
+        <Option<String>>::sse_encode(self.hls_delivery_id, serializer);
+        <Option<String>>::sse_encode(self.hls_representation_id, serializer);
+        <Option<u64>>::sse_encode(self.hls_asset_revision, serializer);
     }
 }
 
@@ -3394,6 +3470,18 @@ impl SseEncode for crate::video::ffi_models::FfiHlsPlaybackSession {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.session_id, serializer);
         <String>::sse_encode(self.playback_url, serializer);
+        <Option<String>>::sse_encode(self.delivery_id, serializer);
+        <Option<String>>::sse_encode(self.representation_id, serializer);
+        <Option<u64>>::sse_encode(self.asset_revision, serializer);
+    }
+}
+
+impl SseEncode for crate::video::ffi_models::FfiHlsPreparedAssetAuthority {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.delivery_id, serializer);
+        <String>::sse_encode(self.representation_id, serializer);
+        <u64>::sse_encode(self.asset_revision, serializer);
     }
 }
 
@@ -3777,6 +3865,16 @@ impl SseEncode for Option<crate::api::feed_types::FfiFeedRepost> {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
             <crate::api::feed_types::FfiFeedRepost>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<crate::video::ffi_models::FfiHlsPreparedAssetAuthority> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::video::ffi_models::FfiHlsPreparedAssetAuthority>::sse_encode(value, serializer);
         }
     }
 }

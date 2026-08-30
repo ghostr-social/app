@@ -6,6 +6,7 @@ mod focus_generation_mapping_test;
 mod focus_item_mapping_test;
 mod focus_preview_mapping_test;
 mod focus_window_mapping_test;
+mod hls_delivery_authority_mapping_test;
 mod playback_admission_snapshot_mapping_test;
 mod playback_mapping_test;
 mod playback_preparation_cache_authority_test;

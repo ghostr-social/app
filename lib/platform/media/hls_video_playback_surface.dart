@@ -35,8 +35,12 @@ final class _HlsVideoPlaybackSurfaceState
   @override
   void didUpdateWidget(covariant _HlsVideoPlaybackSurface oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.media.inventoryPlaybackIdentity !=
-        widget.media.inventoryPlaybackIdentity) {
+    final mediaChanged =
+        oldWidget.media.inventoryPlaybackIdentity !=
+        widget.media.inventoryPlaybackIdentity;
+    final authorityChanged =
+        oldWidget.request.hlsAuthority != widget.request.hlsAuthority;
+    if (mediaChanged || authorityChanged) {
       _resetMedia();
     }
   }
@@ -87,15 +91,18 @@ final class _HlsVideoPlaybackSurfaceState
 
   Future<void> _loadGatewayMedia(int version) async {
     try {
-      final request = HlsPlaybackRequest.fromMedia(widget.media);
+      final request = HlsPlaybackRequest.fromMedia(
+        widget.media,
+        expectedAuthority: widget.request.hlsAuthority,
+      );
       final lease = await widget.port._gateway.acquire(request);
       if (!_isCurrent(version)) {
         lease.release();
         return;
       }
-      if (lease.deliveryId != request.deliveryId) {
+      if (!_matchesRequest(lease, request)) {
         lease.release();
-        throw StateError('HLS lease delivery identity mismatch.');
+        throw StateError('HLS lease authority mismatch.');
       }
       _acceptMedia(lease);
     } catch (error, stackTrace) {
@@ -132,6 +139,12 @@ final class _HlsVideoPlaybackSurfaceState
     });
     _requestGateway();
   }
+}
+
+bool _matchesRequest(HlsPlaybackLease lease, HlsPlaybackRequest request) {
+  if (lease.deliveryId != request.deliveryId) return false;
+  final expected = request.expectedAuthority;
+  return expected == null || lease.authority == expected;
 }
 
 void _logFailure(Object error, StackTrace stackTrace) {

@@ -18,6 +18,10 @@ impl SegmentedAssetRevision {
             .expect("segmented asset revision exhausted");
         Self(*last)
     }
+
+    pub const fn value(self) -> u64 {
+        self.0
+    }
 }
 
 impl HlsPreparedAssetAuthority {
@@ -55,5 +59,17 @@ impl super::SegmentedCache {
                 record.snapshot.phase == super::SegmentedPhase::Ready
                     && record.snapshot.authority.as_ref() == Some(authority)
             })
+    }
+
+    pub fn resolve_prepared_authority(
+        &self,
+        post: &str,
+        representation_id: &str,
+        asset_revision: u64,
+    ) -> Option<HlsPreparedAssetAuthority> {
+        let authority = self.snapshot(post).authority?;
+        (authority.representation_id().fingerprint() == representation_id
+            && authority.asset_revision().value() == asset_revision)
+            .then_some(authority)
     }
 }

@@ -83,6 +83,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   FfiFocusUpdate dco_decode_box_autoadd_ffi_focus_update(dynamic raw);
 
   @protected
+  FfiHlsPreparedAssetAuthority
+  dco_decode_box_autoadd_ffi_hls_prepared_asset_authority(dynamic raw);
+
+  @protected
   FfiMediaDim dco_decode_box_autoadd_ffi_media_dim(dynamic raw);
 
   @protected
@@ -151,6 +155,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiHlsPlaybackSession dco_decode_ffi_hls_playback_session(dynamic raw);
+
+  @protected
+  FfiHlsPreparedAssetAuthority dco_decode_ffi_hls_prepared_asset_authority(
+    dynamic raw,
+  );
 
   @protected
   FfiMediaDelivery dco_decode_ffi_media_delivery(dynamic raw);
@@ -222,6 +231,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiFeedRepost? dco_decode_opt_box_autoadd_ffi_feed_repost(dynamic raw);
+
+  @protected
+  FfiHlsPreparedAssetAuthority?
+  dco_decode_opt_box_autoadd_ffi_hls_prepared_asset_authority(dynamic raw);
 
   @protected
   FfiMediaDim? dco_decode_opt_box_autoadd_ffi_media_dim(dynamic raw);
@@ -300,6 +313,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiFocusUpdate sse_decode_box_autoadd_ffi_focus_update(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiHlsPreparedAssetAuthority
+  sse_decode_box_autoadd_ffi_hls_prepared_asset_authority(
     SseDeserializer deserializer,
   );
 
@@ -386,6 +405,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   FfiHlsPlaybackSession sse_decode_ffi_hls_playback_session(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FfiHlsPreparedAssetAuthority sse_decode_ffi_hls_prepared_asset_authority(
     SseDeserializer deserializer,
   );
 
@@ -483,6 +507,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  FfiHlsPreparedAssetAuthority?
+  sse_decode_opt_box_autoadd_ffi_hls_prepared_asset_authority(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   FfiMediaDim? sse_decode_opt_box_autoadd_ffi_media_dim(
     SseDeserializer deserializer,
   );
@@ -573,6 +603,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_ffi_focus_update(
     FfiFocusUpdate self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_ffi_hls_prepared_asset_authority(
+    FfiHlsPreparedAssetAuthority self,
     SseSerializer serializer,
   );
 
@@ -678,6 +714,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_ffi_hls_playback_session(
     FfiHlsPlaybackSession self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ffi_hls_prepared_asset_authority(
+    FfiHlsPreparedAssetAuthority self,
     SseSerializer serializer,
   );
 
@@ -801,6 +843,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_opt_box_autoadd_ffi_feed_repost(
     FfiFeedRepost? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_ffi_hls_prepared_asset_authority(
+    FfiHlsPreparedAssetAuthority? self,
     SseSerializer serializer,
   );
 

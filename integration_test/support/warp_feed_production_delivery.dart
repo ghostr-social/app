@@ -6,6 +6,8 @@ import 'package:ghostr/core/media/video_playback_capabilities.dart';
 import 'package:ghostr/core/network/delivery_network_status.dart';
 import 'package:ghostr/features/settings/domain/app_settings.dart';
 import 'package:ghostr/features/video_catalog/data/rust_feed_remote_source.dart';
+import 'package:ghostr/features/video_inventory/domain/hls_playback_gateway_port.dart';
+import 'package:ghostr/platform/media/ffi_hls_playback_gateway.dart';
 import 'package:ghostr/platform/media/ffi_video_gateway.dart';
 
 import 'progressive_device_resources.dart';
@@ -15,8 +17,11 @@ import 'warp_feed_preparation_probe.dart';
 import 'warp_feed_rust_probe.dart';
 
 Future<ProductionVideoDelivery> buildWarpFeedProductionDelivery(
-  WarpFeedProductionDeliveryInput input,
-) {
+  WarpFeedProductionDeliveryInput input, {
+  VideoPlaybackCapabilities playbackCapabilities =
+      VideoPlaybackCapabilities.progressiveOnly,
+  HlsPlaybackGatewayPort? hlsPlaybackGateway,
+}) {
   return buildProductionVideoDelivery(
     input.settings,
     ProductionVideoDeliveryEnvironment(
@@ -28,10 +33,11 @@ Future<ProductionVideoDelivery> buildWarpFeedProductionDelivery(
         supportDirectoryProvider: () async =>
             Directory(input.resources.cachePath),
         gateway: WarpDeviceFfiVideoGateway(input.resources.origin.origin),
+        hlsPlaybackGateway: hlsPlaybackGateway ?? const FfiHlsPlaybackGateway(),
         preparationUpdates: input.preparation,
         networkStatus: input.network,
       ),
-      playbackCapabilities: VideoPlaybackCapabilities.progressiveOnly,
+      playbackCapabilities: playbackCapabilities,
     ),
   );
 }
@@ -57,12 +63,14 @@ final class WarpDeviceFfiVideoGateway extends FfiVideoGateway {
     Uri? deviceIntegrationOrigin,
     DeliveryNetworkStatus initialNetwork = DeliveryNetworkStatus.unavailable,
   }) {
-    return super.start(
-      settings,
-      cacheDirectory,
-      deviceIntegrationOrigin: origin,
-      initialNetwork: initialNetwork,
-    ).then(_includeNativeDiagnostic);
+    return super
+        .start(
+          settings,
+          cacheDirectory,
+          deviceIntegrationOrigin: origin,
+          initialNetwork: initialNetwork,
+        )
+        .then(_includeNativeDiagnostic);
   }
 }
 

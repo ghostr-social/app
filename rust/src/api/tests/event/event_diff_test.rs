@@ -12,6 +12,7 @@ fn snapshot(startable: bool, bytes: u64) -> DeliverySnapshot {
         failed: false,
         detail: None,
         authority: None,
+        hls_authority: None,
     }
 }
 

@@ -11,10 +11,13 @@ async fn issues_and_releases_a_loopback_hls_playback_session() {
         .await
         .expect("gateway endpoint");
 
-    let session = ffi_acquire_hls_playback(vec![
-        "https://media.example/master.m3u8".to_owned(),
-        "https://mirror.example/master.m3u8".to_owned(),
-    ])
+    let session = ffi_acquire_hls_playback(
+        None,
+        vec![
+            "https://media.example/master.m3u8".to_owned(),
+            "https://mirror.example/master.m3u8".to_owned(),
+        ],
+    )
     .await
     .expect("HLS session");
 
@@ -25,6 +28,9 @@ async fn issues_and_releases_a_loopback_hls_playback_session() {
         endpoint.split(':').nth(1).and_then(|raw| raw.parse().ok())
     );
     assert!(playback.path().ends_with("/index.m3u8"));
+    assert_eq!(session.delivery_id, None);
+    assert_eq!(session.representation_id, None);
+    assert_eq!(session.asset_revision, None);
     assert!(ffi_release_hls_playback(session.session_id.clone()).await);
     assert!(!ffi_release_hls_playback(session.session_id).await);
     assert!(!ffi_release_hls_playback("not-a-session".to_owned()).await);

@@ -66,7 +66,24 @@ extension _VideoPlayerSurfaceFrameCorrelation on _VideoPlayerSurfaceState {
     }
     attempt?.firstFrameRendered();
     _nativeFrameObserved = true;
+    _reportHlsFirstFrame();
     _schedulePresentedFrame();
+  }
+
+  void _reportHlsFirstFrame() {
+    final authority = widget.request.hlsAuthority;
+    final callback = widget.request.onHlsFirstFrameRendered;
+    if (_playbackMedia is! ProxiedHlsVideoMediaSource ||
+        authority == null ||
+        callback == null ||
+        widget.request.playbackDeliveryId != authority.deliveryId) {
+      return;
+    }
+    try {
+      callback(authority);
+    } on Object catch (error, stackTrace) {
+      _logFrameCorrelationFailure('HLS feedback', error, stackTrace);
+    }
   }
 }
 

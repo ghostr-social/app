@@ -22,3 +22,17 @@ pub async fn start(directory: &Path, max_storage_bytes: u64) -> anyhow::Result<S
     )
     .await
 }
+
+pub async fn start_with_device_origin(
+    directory: &Path,
+    max_storage_bytes: u64,
+    origin: String,
+) -> anyhow::Result<String> {
+    ffi_start_engine(
+        directory.to_string_lossy().to_string(),
+        configuration(max_storage_bytes),
+        Some(origin),
+        FfiDeliveryNetworkStatus::wifi(1),
+    )
+    .await
+}

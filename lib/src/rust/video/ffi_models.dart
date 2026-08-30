@@ -9,14 +9,25 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 class FfiHlsPlaybackSession {
   final String sessionId;
   final String playbackUrl;
+  final String? deliveryId;
+  final String? representationId;
+  final BigInt? assetRevision;
 
   const FfiHlsPlaybackSession({
     required this.sessionId,
     required this.playbackUrl,
+    this.deliveryId,
+    this.representationId,
+    this.assetRevision,
   });
 
   @override
-  int get hashCode => sessionId.hashCode ^ playbackUrl.hashCode;
+  int get hashCode =>
+      sessionId.hashCode ^
+      playbackUrl.hashCode ^
+      deliveryId.hashCode ^
+      representationId.hashCode ^
+      assetRevision.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -24,5 +35,33 @@ class FfiHlsPlaybackSession {
       other is FfiHlsPlaybackSession &&
           runtimeType == other.runtimeType &&
           sessionId == other.sessionId &&
-          playbackUrl == other.playbackUrl;
+          playbackUrl == other.playbackUrl &&
+          deliveryId == other.deliveryId &&
+          representationId == other.representationId &&
+          assetRevision == other.assetRevision;
+}
+
+class FfiHlsPreparedAssetAuthority {
+  final String deliveryId;
+  final String representationId;
+  final BigInt assetRevision;
+
+  const FfiHlsPreparedAssetAuthority({
+    required this.deliveryId,
+    required this.representationId,
+    required this.assetRevision,
+  });
+
+  @override
+  int get hashCode =>
+      deliveryId.hashCode ^ representationId.hashCode ^ assetRevision.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FfiHlsPreparedAssetAuthority &&
+          runtimeType == other.runtimeType &&
+          deliveryId == other.deliveryId &&
+          representationId == other.representationId &&
+          assetRevision == other.assetRevision;
 }

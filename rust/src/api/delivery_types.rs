@@ -54,6 +54,12 @@ pub struct FfiDeliveryEvent {
     pub(crate) representation_id: Option<String>,
     /// Exact progressive capability bound to the observed content revision.
     pub(crate) asset_id: Option<String>,
+    /// Cache-certified HLS post identity; separate from progressive authority.
+    pub(crate) hls_delivery_id: Option<String>,
+    /// Exact HLS representation for the prepared cache cohort.
+    pub(crate) hls_representation_id: Option<String>,
+    /// Monotonic HLS cache asset revision.
+    pub(crate) hls_asset_revision: Option<u64>,
 }
 
 /// What the native cache has proved for one exact playback asset.

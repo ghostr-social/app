@@ -1,3 +1,4 @@
+import 'package:ghostr/core/media/hls_playback_authority.dart';
 import 'package:ghostr/core/media/playback_asset_authority.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
 
@@ -13,6 +14,7 @@ final class VideoDeliverySnapshot {
     this.eta,
     this.detail,
     this.authority,
+    this.hlsAuthority,
   });
 
   final PlaybackDeliveryId deliveryId;
@@ -22,6 +24,7 @@ final class VideoDeliverySnapshot {
   final Duration? eta;
   final String? detail;
   final PlaybackAssetAuthority? authority;
+  final HlsPlaybackAuthority? hlsAuthority;
 }
 
 /// Live readiness emitted by the delivery engine for focused media.

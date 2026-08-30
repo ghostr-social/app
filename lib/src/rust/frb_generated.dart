@@ -94,6 +94,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 
 abstract class RustLibApi extends BaseApi {
   Future<FfiHlsPlaybackSession> crateVideoNativeGatewayFfiAcquireHlsPlayback({
+    FfiHlsPreparedAssetAuthority? authority,
     required List<String> sourceUrls,
   });
 
@@ -205,12 +206,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @override
   Future<FfiHlsPlaybackSession> crateVideoNativeGatewayFfiAcquireHlsPlayback({
+    FfiHlsPreparedAssetAuthority? authority,
     required List<String> sourceUrls,
   }) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_opt_box_autoadd_ffi_hls_prepared_asset_authority(
+            authority,
+            serializer,
+          );
           sse_encode_list_String(sourceUrls, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
@@ -224,7 +230,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateVideoNativeGatewayFfiAcquireHlsPlaybackConstMeta,
-        argValues: [sourceUrls],
+        argValues: [authority, sourceUrls],
         apiImpl: this,
       ),
     );
@@ -233,7 +239,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateVideoNativeGatewayFfiAcquireHlsPlaybackConstMeta =>
       const TaskConstMeta(
         debugName: "ffi_acquire_hls_playback",
-        argNames: ["sourceUrls"],
+        argNames: ["authority", "sourceUrls"],
       );
 
   @override
@@ -1209,6 +1215,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiHlsPreparedAssetAuthority
+  dco_decode_box_autoadd_ffi_hls_prepared_asset_authority(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_ffi_hls_prepared_asset_authority(raw);
+  }
+
+  @protected
   FfiMediaDim dco_decode_box_autoadd_ffi_media_dim(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_ffi_media_dim(raw);
@@ -1281,8 +1294,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   FfiDeliveryEvent dco_decode_ffi_delivery_event(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 9)
-      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
+    if (arr.length != 12)
+      throw Exception('unexpected arr length: expect 12 but see ${arr.length}');
     return FfiDeliveryEvent(
       postId: dco_decode_String(arr[0]),
       kind: dco_decode_ffi_delivery_event_kind(arr[1]),
@@ -1293,6 +1306,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       detail: dco_decode_opt_String(arr[6]),
       representationId: dco_decode_opt_String(arr[7]),
       assetId: dco_decode_opt_String(arr[8]),
+      hlsDeliveryId: dco_decode_opt_String(arr[9]),
+      hlsRepresentationId: dco_decode_opt_String(arr[10]),
+      hlsAssetRevision: dco_decode_opt_box_autoadd_u_64(arr[11]),
     );
   }
 
@@ -1496,11 +1512,29 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   FfiHlsPlaybackSession dco_decode_ffi_hls_playback_session(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
     return FfiHlsPlaybackSession(
       sessionId: dco_decode_String(arr[0]),
       playbackUrl: dco_decode_String(arr[1]),
+      deliveryId: dco_decode_opt_String(arr[2]),
+      representationId: dco_decode_opt_String(arr[3]),
+      assetRevision: dco_decode_opt_box_autoadd_u_64(arr[4]),
+    );
+  }
+
+  @protected
+  FfiHlsPreparedAssetAuthority dco_decode_ffi_hls_prepared_asset_authority(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return FfiHlsPreparedAssetAuthority(
+      deliveryId: dco_decode_String(arr[0]),
+      representationId: dco_decode_String(arr[1]),
+      assetRevision: dco_decode_u_64(arr[2]),
     );
   }
 
@@ -1815,6 +1849,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiHlsPreparedAssetAuthority?
+  dco_decode_opt_box_autoadd_ffi_hls_prepared_asset_authority(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null
+        ? null
+        : dco_decode_box_autoadd_ffi_hls_prepared_asset_authority(raw);
+  }
+
+  @protected
   FfiMediaDim? dco_decode_opt_box_autoadd_ffi_media_dim(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_ffi_media_dim(raw);
@@ -1985,6 +2028,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiHlsPreparedAssetAuthority
+  sse_decode_box_autoadd_ffi_hls_prepared_asset_authority(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_ffi_hls_prepared_asset_authority(deserializer));
+  }
+
+  @protected
   FfiMediaDim sse_decode_box_autoadd_ffi_media_dim(
     SseDeserializer deserializer,
   ) {
@@ -2078,6 +2130,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_detail = sse_decode_opt_String(deserializer);
     var var_representationId = sse_decode_opt_String(deserializer);
     var var_assetId = sse_decode_opt_String(deserializer);
+    var var_hlsDeliveryId = sse_decode_opt_String(deserializer);
+    var var_hlsRepresentationId = sse_decode_opt_String(deserializer);
+    var var_hlsAssetRevision = sse_decode_opt_box_autoadd_u_64(deserializer);
     return FfiDeliveryEvent(
       postId: var_postId,
       kind: var_kind,
@@ -2088,6 +2143,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       detail: var_detail,
       representationId: var_representationId,
       assetId: var_assetId,
+      hlsDeliveryId: var_hlsDeliveryId,
+      hlsRepresentationId: var_hlsRepresentationId,
+      hlsAssetRevision: var_hlsAssetRevision,
     );
   }
 
@@ -2344,9 +2402,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_sessionId = sse_decode_String(deserializer);
     var var_playbackUrl = sse_decode_String(deserializer);
+    var var_deliveryId = sse_decode_opt_String(deserializer);
+    var var_representationId = sse_decode_opt_String(deserializer);
+    var var_assetRevision = sse_decode_opt_box_autoadd_u_64(deserializer);
     return FfiHlsPlaybackSession(
       sessionId: var_sessionId,
       playbackUrl: var_playbackUrl,
+      deliveryId: var_deliveryId,
+      representationId: var_representationId,
+      assetRevision: var_assetRevision,
+    );
+  }
+
+  @protected
+  FfiHlsPreparedAssetAuthority sse_decode_ffi_hls_prepared_asset_authority(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_deliveryId = sse_decode_String(deserializer);
+    var var_representationId = sse_decode_String(deserializer);
+    var var_assetRevision = sse_decode_u_64(deserializer);
+    return FfiHlsPreparedAssetAuthority(
+      deliveryId: var_deliveryId,
+      representationId: var_representationId,
+      assetRevision: var_assetRevision,
     );
   }
 
@@ -2772,6 +2851,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  FfiHlsPreparedAssetAuthority?
+  sse_decode_opt_box_autoadd_ffi_hls_prepared_asset_authority(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_ffi_hls_prepared_asset_authority(
+        deserializer,
+      ));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   FfiMediaDim? sse_decode_opt_box_autoadd_ffi_media_dim(
     SseDeserializer deserializer,
   ) {
@@ -2998,6 +3093,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_ffi_hls_prepared_asset_authority(
+    FfiHlsPreparedAssetAuthority self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_ffi_hls_prepared_asset_authority(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_ffi_media_dim(
     FfiMediaDim self,
     SseSerializer serializer,
@@ -3099,6 +3203,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_String(self.detail, serializer);
     sse_encode_opt_String(self.representationId, serializer);
     sse_encode_opt_String(self.assetId, serializer);
+    sse_encode_opt_String(self.hlsDeliveryId, serializer);
+    sse_encode_opt_String(self.hlsRepresentationId, serializer);
+    sse_encode_opt_box_autoadd_u_64(self.hlsAssetRevision, serializer);
   }
 
   @protected
@@ -3285,6 +3392,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.sessionId, serializer);
     sse_encode_String(self.playbackUrl, serializer);
+    sse_encode_opt_String(self.deliveryId, serializer);
+    sse_encode_opt_String(self.representationId, serializer);
+    sse_encode_opt_box_autoadd_u_64(self.assetRevision, serializer);
+  }
+
+  @protected
+  void sse_encode_ffi_hls_prepared_asset_authority(
+    FfiHlsPreparedAssetAuthority self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.deliveryId, serializer);
+    sse_encode_String(self.representationId, serializer);
+    sse_encode_u_64(self.assetRevision, serializer);
   }
 
   @protected
@@ -3637,6 +3758,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_box_autoadd_ffi_feed_repost(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_ffi_hls_prepared_asset_authority(
+    FfiHlsPreparedAssetAuthority? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_ffi_hls_prepared_asset_authority(self, serializer);
     }
   }
 

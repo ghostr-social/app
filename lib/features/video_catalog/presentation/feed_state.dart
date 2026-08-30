@@ -1,9 +1,15 @@
+import 'package:ghostr/core/media/hls_playback_authority.dart';
+import 'package:ghostr/core/media/playback_delivery_id.dart';
+import 'package:ghostr/core/media/video_media_source.dart';
+import 'package:ghostr/core/media/video_representation_id.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_kind.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_roster.dart';
 import 'package:ghostr/features/video_catalog/domain/profile_id.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_follow_state.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_preparation_reducer.dart';
+
+part 'feed_state_hls.dart';
 
 sealed class FeedState {
   const FeedState(this.kind);
@@ -48,6 +54,7 @@ class FeedLoaded extends FeedState {
         notice,
         follows ?? FeedFollowState.unavailable(),
         FeedPlaybackPreparation.unmanaged(),
+        FeedHlsReadiness.empty(),
       ),
     );
   }
@@ -147,21 +154,31 @@ class FeedLoaded extends FeedState {
 }
 
 final class _FeedLoadedPresentation {
-  const _FeedLoadedPresentation(this.notice, this.follows, this.preparation);
+  const _FeedLoadedPresentation(
+    this.notice,
+    this.follows,
+    this.preparation,
+    this.hls,
+  );
 
   final String? notice;
   final FeedFollowState follows;
   final FeedPlaybackPreparation preparation;
+  final FeedHlsReadiness hls;
 
   _FeedLoadedPresentation withNotice(String? updated) {
-    return _FeedLoadedPresentation(updated, follows, preparation);
+    return _FeedLoadedPresentation(updated, follows, preparation, hls);
   }
 
   _FeedLoadedPresentation withFollows(FeedFollowState updated) {
-    return _FeedLoadedPresentation(notice, updated, preparation);
+    return _FeedLoadedPresentation(notice, updated, preparation, hls);
   }
 
   _FeedLoadedPresentation withPreparation(FeedPlaybackPreparation updated) {
-    return _FeedLoadedPresentation(notice, follows, updated);
+    return _FeedLoadedPresentation(notice, follows, updated, hls);
+  }
+
+  _FeedLoadedPresentation withHls(FeedHlsReadiness updated) {
+    return _FeedLoadedPresentation(notice, follows, preparation, updated);
   }
 }

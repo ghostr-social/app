@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show ChangeNotifier, setEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:ghostr/core/media/hls_playback_authority.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/features/comments/presentation/comments_sheet.dart';
 import 'package:ghostr/core/media/prepared_progressive_playback.dart';
@@ -25,6 +26,7 @@ import 'package:ghostr/shared/widgets/loading_panel.dart';
 export 'feed_screen_bindings.dart';
 
 part 'feed_screen_actions.dart';
+part 'feed_screen_hls_playback.dart';
 part 'feed_screen_page_playback_controller.dart';
 part 'feed_screen_pages.dart';
 

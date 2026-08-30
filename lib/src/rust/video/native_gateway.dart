@@ -10,8 +10,10 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 // These functions are ignored because they are not marked as `pub`: `acquire_hls_playback`, `release_hls_playback`
 
 Future<FfiHlsPlaybackSession> ffiAcquireHlsPlayback({
+  FfiHlsPreparedAssetAuthority? authority,
   required List<String> sourceUrls,
 }) => RustLib.instance.api.crateVideoNativeGatewayFfiAcquireHlsPlayback(
+  authority: authority,
   sourceUrls: sourceUrls,
 );
 

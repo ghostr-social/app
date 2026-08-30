@@ -25,6 +25,14 @@ impl FfiDeliveryNetworkStatus {
             generation: 0,
         }
     }
+
+    #[frb(ignore)]
+    pub const fn wifi(generation: u64) -> Self {
+        Self {
+            network_class: FfiDeliveryNetworkClass::Wifi,
+            generation,
+        }
+    }
 }
 
 impl From<FfiDeliveryNetworkStatus> for DeliveryNetworkStatus {

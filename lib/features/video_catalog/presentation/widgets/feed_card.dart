@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:ghostr/core/media/hls_playback_authority.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/core/media/prepared_progressive_playback.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
@@ -22,6 +23,9 @@ final class FeedCardPlayback {
     this.surfaceScope,
     this.preparedOnly = false,
     this.keepWarmWhenInactive = false,
+    this.hlsAuthority,
+    this.onHlsFirstFrameRendered,
+    this.onPlaybackMediaReleased,
   });
 
   final VideoPlaybackPort port;
@@ -30,6 +34,9 @@ final class FeedCardPlayback {
   final VideoPlaybackSurfaceScope? surfaceScope;
   final bool preparedOnly;
   final bool keepWarmWhenInactive;
+  final HlsPlaybackAuthority? hlsAuthority;
+  final ValueChanged<HlsPlaybackAuthority>? onHlsFirstFrameRendered;
+  final VoidCallback? onPlaybackMediaReleased;
 }
 
 final class FeedCardPlaybackSource {
@@ -84,6 +91,9 @@ class FeedCard extends StatelessWidget {
                 mode: mode,
                 surfaceScope: playback.surfaceScope,
                 keepWarmWhenInactive: playback.keepWarmWhenInactive,
+                hlsAuthority: playback.hlsAuthority,
+                onHlsFirstFrameRendered: playback.onHlsFirstFrameRendered,
+                onPlaybackMediaReleased: playback.onPlaybackMediaReleased,
               ),
             ),
           ),

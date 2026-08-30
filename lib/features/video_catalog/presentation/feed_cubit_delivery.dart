@@ -17,6 +17,14 @@ extension FeedCubitDelivery on FeedCubit {
 
   void _acceptDeliveryUpdate(VideoDeliverySnapshot snapshot) {
     _delivery[snapshot.deliveryId] = snapshot;
+    final current = state;
+    if (current is FeedLoaded) {
+      final projected = current.withHlsAuthority(
+        snapshot.deliveryId,
+        snapshot.hlsAuthority,
+      );
+      if (!identical(projected, current)) emit(projected);
+    }
     if (snapshot.phase == VideoDeliveryPhase.failed) {
       _rememberActiveFailure(snapshot.deliveryId);
     }
@@ -42,6 +50,7 @@ extension FeedCubitDelivery on FeedCubit {
       posts: current.posts,
       delivery: _delivery,
       preparation: current.preparation,
+      verifiedHlsAuthorities: current.verifiedHlsAuthorities,
     );
   }
 

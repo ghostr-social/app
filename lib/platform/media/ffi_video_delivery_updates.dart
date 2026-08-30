@@ -1,3 +1,4 @@
+import 'package:ghostr/core/media/hls_playback_authority.dart';
 import 'package:ghostr/core/media/playback_asset_authority.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/video_representation_id.dart';
@@ -55,7 +56,32 @@ VideoDeliverySnapshot _snapshot(FfiDeliveryEvent event) {
         : Duration(milliseconds: event.etaMs!.toInt()),
     detail: event.detail,
     authority: _authority(event, deliveryId),
+    hlsAuthority: _hlsAuthority(event, deliveryId),
   );
+}
+
+HlsPlaybackAuthority? _hlsAuthority(
+  FfiDeliveryEvent event,
+  PlaybackDeliveryId deliveryId,
+) {
+  final nativeDelivery = event.hlsDeliveryId;
+  final representation = event.hlsRepresentationId;
+  final revision = event.hlsAssetRevision;
+  if (nativeDelivery == null && representation == null && revision == null) {
+    return null;
+  }
+  if (nativeDelivery == null || representation == null || revision == null) {
+    throw const FormatException('Incomplete HLS delivery authority.');
+  }
+  final authority = HlsPlaybackAuthority(
+    deliveryId: PlaybackDeliveryId.parse(nativeDelivery),
+    representationId: VideoRepresentationId.parse(representation),
+    assetRevision: HlsPlaybackAssetRevision.parse(revision),
+  );
+  if (authority.deliveryId != deliveryId) {
+    throw const FormatException('HLS delivery authority mismatch.');
+  }
+  return authority;
 }
 
 PlaybackAssetAuthority? _authority(

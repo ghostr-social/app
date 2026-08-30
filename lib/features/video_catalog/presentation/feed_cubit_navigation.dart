@@ -94,7 +94,7 @@ extension FeedCubitNavigation on FeedCubit {
       notice: current.notice,
       follows: current.follows,
     );
-    return _realignPreparation(current, moved);
+    return _realignHls(current, _realignPreparation(current, moved));
   }
 
   bool _excludesWatched(FeedLoaded current) {

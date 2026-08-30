@@ -6,3 +6,4 @@ pub(crate) mod focus_mapping;
 pub(crate) mod playback_mapping;
 pub(crate) mod snapshot_view;
 pub(crate) mod snapshots;
+mod snapshots_hls;

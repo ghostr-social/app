@@ -16,6 +16,7 @@ extension ProgressiveDeviceOriginLifecycle on ProgressiveDeviceOrigin {
   }
 
   Future<void> _handle(HttpRequest request) async {
+    if (await _handleHls(request)) return;
     final range = _requestedRange(request, ProgressiveMp4Fixture.bytes.length);
     final entry = ProgressiveOriginRequest(
       request.method,

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:ghostr/core/errors/app_failure.dart';
+import 'package:ghostr/core/media/hls_playback_authority.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/presentation/disposal_safe_cubit.dart';
@@ -48,6 +49,7 @@ part 'feed_cubit_update_loading.dart';
 part 'feed_update_state.dart';
 part 'feed_cubit_updates.dart';
 part 'feed_cubit_delivery.dart';
+part 'feed_cubit_hls.dart';
 part 'feed_cubit_rescue_state.dart';
 part 'feed_cubit_preparation.dart';
 

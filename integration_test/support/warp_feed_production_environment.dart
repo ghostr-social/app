@@ -1,5 +1,7 @@
 import 'package:ghostr/app/build_production_dependencies.dart';
 import 'package:ghostr/app/production_video_delivery.dart';
+import 'package:ghostr/core/media/video_playback_capabilities.dart';
+import 'package:ghostr/features/video_inventory/domain/hls_playback_gateway_port.dart';
 import 'package:ndk/ndk.dart';
 import 'package:sembast/sembast_memory.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,8 +23,11 @@ ProductionDependenciesEnvironment warpFeedProductionEnvironment(
   Ndk ndk,
   ProgressiveDeviceResources resources,
   WarpFeedPreparationProbe preparation,
-  WarpFeedProductionCapture capture,
-) {
+  WarpFeedProductionCapture capture, {
+  VideoPlaybackCapabilities playbackCapabilities =
+      VideoPlaybackCapabilities.progressiveOnly,
+  HlsPlaybackGatewayPort? hlsPlaybackGateway,
+}) {
   return ProductionDependenciesEnvironment(
     preferencesLoader: SharedPreferences.getInstance,
     nostrServicesBuilder: (settings) {
@@ -34,14 +39,18 @@ ProductionDependenciesEnvironment warpFeedProductionEnvironment(
       return nostr;
     },
     videoDeliveryBuilder: (settings, nostr) async {
-      final delivery = await buildWarpFeedProductionDelivery((
-        settings: settings,
-        nostr: nostr,
-        resources: resources,
-        preparation: preparation,
-        rustProbe: capture.rustProbe,
-        network: capture.network,
-      ));
+      final delivery = await buildWarpFeedProductionDelivery(
+        (
+          settings: settings,
+          nostr: nostr,
+          resources: resources,
+          preparation: preparation,
+          rustProbe: capture.rustProbe,
+          network: capture.network,
+        ),
+        playbackCapabilities: playbackCapabilities,
+        hlsPlaybackGateway: hlsPlaybackGateway,
+      );
       capture.delivery = delivery;
       return delivery;
     },

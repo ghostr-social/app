@@ -1,5 +1,5 @@
 use crate::delivery::start_progressive_delivery;
-use crate::hls::playback::{HlsPlaybackGateway, NativeHlsPlaybackSession};
+use crate::hls::playback::HlsPlaybackGateway;
 use crate::hls::sessions::HlsSessions;
 use crate::progressive::capabilities::ProgressiveCapabilityId;
 use crate::progressive::route::ProgressiveState;
@@ -15,6 +15,7 @@ use nostr_sdk::Client;
 use std::{io, path::PathBuf, sync::Arc};
 use tokio::{net::TcpListener, sync::watch};
 
+mod hls_playback;
 mod media;
 mod progressive;
 
@@ -103,22 +104,6 @@ impl GatewayRuntime {
     /// Returns an error when the store cannot apply or persist the new budget.
     pub async fn set_storage_budget(&self, budget: u64) -> anyhow::Result<()> {
         self.progressive.store.set_storage_budget(budget).await
-    }
-
-    /// Acquires a secure HLS playback session for validated sources.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error when the sources are invalid or session capacity is exhausted.
-    pub async fn acquire_hls(
-        &self,
-        sources: Vec<String>,
-    ) -> anyhow::Result<NativeHlsPlaybackSession> {
-        self.hls.acquire(sources).await
-    }
-
-    pub async fn release_hls(&self, session_id: &str) -> bool {
-        self.hls.release(session_id).await
     }
 }
 
