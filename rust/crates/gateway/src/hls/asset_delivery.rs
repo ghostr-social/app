@@ -3,7 +3,7 @@ use crate::hls::asset_request::AssetRangeRequest;
 use crate::hls::asset_response::{self, validate};
 use crate::hls::cached;
 use crate::hls::routes::parsed_resource;
-use crate::hls::sessions::{HlsResourceId, HlsSessionId};
+use crate::hls::sessions::{HlsPlaybackBinding, HlsResourceId, HlsSessionId};
 use crate::router::GatewayHttpState;
 use axum::body::Body;
 use axum::extract::{Path, State};
@@ -58,13 +58,13 @@ impl AssetCall {
             return self.full(resource.url, range).await;
         }
         if range.locally_unsatisfiable() {
-            return self.local_unsatisfiable(&resource.url, range);
+            return self.local_unsatisfiable(&resource.url, range).await;
         }
         self.ranged(resource.url, range).await
     }
 
     async fn full(&self, url: Url, range: AssetRangeRequest) -> Result<Response<Body>, StatusCode> {
-        if let Some(object) = self.state.segmented.object(url.as_str()) {
+        if let Some(object) = self.playback_object(&url).await? {
             return cached::response(&object, range);
         }
         let transfer = self.open(&url, range, None).await?;
@@ -72,14 +72,13 @@ impl AssetCall {
         transfer.into_proxy(envelope)
     }
 
-    fn local_unsatisfiable(
+    async fn local_unsatisfiable(
         &self,
         url: &Url,
         range: AssetRangeRequest,
     ) -> Result<Response<Body>, StatusCode> {
-        self.state
-            .segmented
-            .object(url.as_str())
+        self.playback_object(url)
+            .await?
             .map_or_else(asset_response::local_unsatisfiable, |object| {
                 cached::response(&object, range)
             })
@@ -90,7 +89,7 @@ impl AssetCall {
         url: Url,
         range: AssetRangeRequest,
     ) -> Result<Response<Body>, StatusCode> {
-        let object = self.state.segmented.object(url.as_str());
+        let object = self.playback_object(&url).await?;
         let fence = self.fence(&url).await?;
         let plan = fence
             .plan(
@@ -139,6 +138,19 @@ impl AssetCall {
             .await
             .map_err(bad_gateway)?;
         owns.then_some(()).ok_or(StatusCode::BAD_GATEWAY)
+    }
+
+    async fn playback_object(&self, url: &Url) -> Result<Option<CachedHlsObject>, StatusCode> {
+        let binding = self
+            .state
+            .hls_sessions
+            .playback_binding(&self.session)
+            .await
+            .ok_or(StatusCode::NOT_FOUND)?;
+        Ok(match binding {
+            HlsPlaybackBinding::Prepared(asset) => asset.object(url.as_str()),
+            HlsPlaybackBinding::Unprepared(_) => self.state.segmented.object(url.as_str()),
+        })
     }
 }
 

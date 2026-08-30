@@ -9,6 +9,7 @@ mod focus_reclamation_test;
 mod generation_test;
 mod http_freshness_test;
 mod prepared_authority_aba_test;
+mod prepared_authority_capture_test;
 mod prepared_authority_fixture;
 mod prepared_authority_publication_test;
 mod prepared_authority_retirement_test;

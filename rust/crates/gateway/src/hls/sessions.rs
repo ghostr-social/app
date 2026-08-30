@@ -11,6 +11,8 @@ use tokio::sync::Mutex;
 use tokio::time::{timeout_at, Instant};
 
 pub use crate::hls::types::{HlsResourceId, HlsSessionId, HlsSessionLimits};
+mod prepared;
+pub(crate) use prepared::HlsPlaybackBinding;
 
 #[derive(Clone)]
 pub struct HlsSessions {
@@ -39,6 +41,10 @@ impl HlsSessions {
     /// Returns an error for invalid sources or exhausted session capacity.
     pub async fn acquire(&self, sources: Vec<String>) -> Result<HlsSessionId> {
         let sources = validated_sources(sources)?;
+        self.admit(HlsSession::new(sources, Instant::now())).await
+    }
+
+    async fn admit(&self, session: HlsSession) -> Result<HlsSessionId> {
         let now = Instant::now();
         let mut state = self.state.lock().await;
         state.prune(now, self.limits.idle_ttl);
@@ -46,9 +52,7 @@ impl HlsSessions {
             bail!("secure HLS session capacity is exhausted");
         }
         let id = state.unique_id();
-        state
-            .sessions
-            .insert(id.clone(), HlsSession::new(sources, now));
+        state.sessions.insert(id.clone(), session);
         Ok(id)
     }
 

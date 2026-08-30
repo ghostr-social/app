@@ -1,4 +1,4 @@
-use crate::hls::sessions::{HlsResourceId, HlsSessionId};
+use crate::hls::sessions::{HlsPlaybackBinding, HlsResourceId, HlsSessionId};
 use crate::hls::transfer::HlsTransfer;
 use crate::router::GatewayHttpState;
 use anyhow::{bail, Result};
@@ -32,11 +32,23 @@ pub(crate) async fn root_manifest(
     Path(raw_session): Path<String>,
 ) -> Result<Response<Body>, StatusCode> {
     let session = HlsSessionId::parse(&raw_session).ok_or(StatusCode::NOT_FOUND)?;
-    let sources = state
+    let binding = state
         .hls_sessions
-        .sources(&session)
+        .playback_binding(&session)
         .await
         .ok_or(StatusCode::NOT_FOUND)?;
+    let sources = match binding {
+        HlsPlaybackBinding::Prepared(asset) => {
+            let manifest = prepared_manifest(&state, &session, &asset, asset.root_source())
+                .await
+                .map_err(|error| {
+                    log::warn!("Prepared HLS manifest failed: {error:#}");
+                    StatusCode::BAD_GATEWAY
+                })?;
+            return manifest_response(manifest);
+        }
+        HlsPlaybackBinding::Unprepared(sources) => sources,
+    };
     for source in sources {
         if let Ok(manifest) = fetch_manifest(&state, &session, source, CacheUse::Fresh).await {
             return manifest_response(manifest);
@@ -71,6 +83,9 @@ async fn fetch_manifest(
     source: Url,
     cache_use: CacheUse,
 ) -> Result<String> {
+    if let Some(manifest) = prepared_manifest_if_bound(state, session, &source).await? {
+        return Ok(manifest);
+    }
     if let Some(manifest) = cached_manifest(state, session, &source, cache_use).await {
         return manifest;
     }
@@ -91,6 +106,39 @@ async fn fetch_manifest(
     state
         .hls_sessions
         .rewrite_manifest(session, &body, &final_url)
+        .await
+}
+
+async fn prepared_manifest_if_bound(
+    state: &GatewayHttpState,
+    session: &HlsSessionId,
+    source: &Url,
+) -> Result<Option<String>> {
+    let binding = state
+        .hls_sessions
+        .playback_binding(session)
+        .await
+        .ok_or_else(|| anyhow::anyhow!("secure HLS session is unavailable"))?;
+    let HlsPlaybackBinding::Prepared(asset) = binding else {
+        return Ok(None);
+    };
+    prepared_manifest(state, session, &asset, source.as_str())
+        .await
+        .map(Some)
+}
+
+async fn prepared_manifest(
+    state: &GatewayHttpState,
+    session: &HlsSessionId,
+    asset: &ghostr_delivery::segmented::PreparedHlsPlaybackAsset,
+    source: &str,
+) -> Result<String> {
+    let object = asset
+        .object(source)
+        .ok_or_else(|| anyhow::anyhow!("prepared HLS manifest is outside its pinned cohort"))?;
+    state
+        .hls_sessions
+        .rewrite_manifest(session, &object.body, &object.final_url)
         .await
 }
 

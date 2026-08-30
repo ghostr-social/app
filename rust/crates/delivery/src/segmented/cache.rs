@@ -17,6 +17,8 @@ mod generation;
 pub(in crate::segmented) use generation::{CachedHlsGenerationHasher, HlsCacheMetadata};
 mod invalidation;
 mod objects;
+mod playback_asset;
+pub use playback_asset::PreparedHlsPlaybackAsset;
 mod staged;
 mod staged_object;
 pub(in crate::segmented) use staged_object::AssemblySeed;

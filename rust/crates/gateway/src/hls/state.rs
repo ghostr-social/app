@@ -1,6 +1,7 @@
 use crate::hls::asset_generation::{AssetFence, AssetRegistry};
 use crate::hls::types::{random_id, random_secret, HlsSessionId};
 use core::time::Duration;
+use ghostr_delivery::segmented::PreparedHlsPlaybackAsset;
 use reqwest::Url;
 use std::collections::HashMap;
 use tokio::time::Instant;
@@ -43,6 +44,7 @@ pub(crate) struct HlsSession {
     pub last_used: Instant,
     pub secret: [u8; 32],
     assets: AssetRegistry,
+    prepared: Option<PreparedHlsPlaybackAsset>,
 }
 
 impl HlsSession {
@@ -52,7 +54,18 @@ impl HlsSession {
             last_used: now,
             secret: random_secret(),
             assets: AssetRegistry::new(),
+            prepared: None,
         }
+    }
+
+    pub fn prepared(sources: Vec<Url>, asset: PreparedHlsPlaybackAsset, now: Instant) -> Self {
+        let mut session = Self::new(sources, now);
+        session.prepared = Some(asset);
+        session
+    }
+
+    pub fn prepared_asset(&self) -> Option<PreparedHlsPlaybackAsset> {
+        self.prepared.clone()
     }
 
     pub(in crate::hls) fn asset_fence(

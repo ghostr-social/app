@@ -10,6 +10,8 @@ pub mod debug_clear;
 pub mod delivery;
 pub mod free_space;
 pub mod hls_origin;
+pub mod hls_prepared_origin;
+pub mod hls_prepared_session;
 #[cfg(feature = "video-debug-web")]
 pub mod media_origin;
 pub mod progressive;
