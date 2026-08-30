@@ -66,8 +66,9 @@ fn planner_commands_preserve_the_exact_forecast_request_profile() {
 }
 
 fn generated_actions() -> crate::adaptive::GeneratedActions {
-    let mut input = snapshot(1, 8_000_000, 1_000, 20);
+    let mut input = snapshot(2, 8_000_000, 1_000, 20);
     let observed_at_ms = input.observed_at_ms;
+    input.candidates[1].layout = MediaLayout::Unknown;
     let candidate = &mut input.candidates[0];
     candidate.layout = MediaLayout::Unknown;
     set_reliable_total_bytes(candidate, 800_000, observed_at_ms);

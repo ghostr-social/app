@@ -5,6 +5,7 @@ mod raw_http;
 
 use core::time::Duration;
 use delivery_fixture::evidence::DeliveryEvidence as _;
+use delivery_fixture::head_window::serve_visible_current;
 use delivery_fixture::items::{focus_now, unsized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
@@ -18,10 +19,14 @@ const HEAD_RESPONSE: &[u8] = b"HTTP/1.1 200 OK\r\nContent-Length: 8\r\nAccept-Ra
 async fn learned_head_resolves_the_exact_authoritative_decision() {
     let (url, request) = spawn_raw_server(HEAD_RESPONSE).await;
     let harness = start_harness("warp-head-outcome", DeliveryOptions::default());
-    harness
-        .handle
-        .update_focus(focus_now(vec![unsized_item("post", &url)], 0, 0));
+    let current = serve_visible_current().await;
+    harness.handle.update_focus(focus_now(
+        vec![current.item(), unsized_item("future", &url)],
+        0,
+        0,
+    ));
 
+    current.assert_get_without_head().await;
     let request = request.await.expect("valid test fixture");
     assert!(request.starts_with(b"HEAD "));
     let history = wait_for_head(&harness.handle).await;

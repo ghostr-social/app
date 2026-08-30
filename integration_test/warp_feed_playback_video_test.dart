@@ -5,6 +5,7 @@ import 'package:integration_test/integration_test.dart';
 
 import 'support/device_qoe_targets.dart';
 import 'support/device_playback_probe.dart';
+import 'support/progressive_device_origin.dart';
 import 'support/warp_feed_playback_journey.dart';
 
 void main() {
@@ -27,10 +28,15 @@ Future<PlaybackFocus> _openSignedFeed(
   WidgetTester tester,
   WarpFeedPlaybackJourney journey,
 ) async {
+  final parallelPrefixes = journey.resources.origin.rendezvousFirstChunks({
+    '/current.mp4',
+    '/next.mp4',
+  });
   await tester.pumpWidget(journey.app);
   journey.load();
   await journey.waitForCaption(tester, 0);
   final startup = await journey.waitForPublishedFocus(tester, 0);
+  await journey.waitForFirstChunkRendezvous(tester, parallelPrefixes);
   await journey.waitForFirstFrame(tester, startup);
   await journey.waitForPlaying(tester, startup);
   await journey.waitForPreparation(tester);

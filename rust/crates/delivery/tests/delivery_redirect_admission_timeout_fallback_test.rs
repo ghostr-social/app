@@ -5,6 +5,7 @@ mod delivery_redirect_admission_timeout_origin;
 
 use core::num::NonZeroUsize;
 use core::time::Duration;
+use delivery_fixture::head_window::serve_visible_current;
 use delivery_fixture::items::{focus_now, unsized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::{media_client, start_harness_with_requests};
@@ -25,9 +26,13 @@ async fn expired_redirect_admission_yields_to_body() {
     let mut options = DeliveryOptions::default();
     options.tuning.max_requests_per_authority = Some(NonZeroUsize::MIN);
     let harness = start_harness_with_requests("redirect-head-timeout", options, requests);
-    harness
-        .handle
-        .update_focus(focus_now(vec![unsized_item("current", &origin.url)], 0, 0));
+    let current = serve_visible_current().await;
+    harness.handle.update_focus(focus_now(
+        vec![current.item(), unsized_item("future", &origin.url)],
+        0,
+        0,
+    ));
+    current.assert_get_without_head().await;
     tokio::time::timeout(Duration::from_secs(30), origin.head_started)
         .await
         .expect("HEAD request start")

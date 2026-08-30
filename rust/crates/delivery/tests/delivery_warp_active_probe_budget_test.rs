@@ -5,6 +5,7 @@ mod raw_http;
 
 use core::time::Duration;
 use delivery_fixture::evidence::DeliveryEvidence as _;
+use delivery_fixture::head_window::serve_visible_current;
 use delivery_fixture::items::{focus_now, unsized_item};
 use delivery_fixture::options::serial_long_retry_options;
 use delivery_fixture::start_harness;
@@ -16,9 +17,13 @@ async fn an_active_head_occupies_the_manager_request_budget() {
     let first = spawn_stalled_headers().await;
     let second = spawn_stalled_headers().await;
     let harness = start_harness("warp-active-probe-budget", serial_long_retry_options(1));
-    harness
-        .handle
-        .update_focus(focus_now(vec![unsized_item("first", &first.url)], 0, 0));
+    let current = serve_visible_current().await;
+    current.establish(&harness.handle).await;
+    harness.handle.update_focus(focus_now(
+        vec![current.item(), unsized_item("first", &first.url)],
+        0,
+        0,
+    ));
     tokio::time::timeout(Duration::from_secs(2), first.request_started)
         .await
         .expect("HEAD starts in time")
@@ -26,10 +31,12 @@ async fn an_active_head_occupies_the_manager_request_budget() {
     let revision = harness.handle.latest_plan().expect("initial plan").revision;
     let before = harness.handle.evaluation_snapshot().budget;
 
-    harness
-        .handle
-        .update_focus(focus_now(vec![unsized_item("second", &second.url)], 0, 0));
-    wait_for_plan_after(&harness.handle, revision, "second").await;
+    harness.handle.update_focus(focus_now(
+        vec![current.item(), unsized_item("second", &second.url)],
+        0,
+        0,
+    ));
+    wait_for_plan_after(&harness.handle, revision, "current").await;
     let after = harness.handle.evaluation_snapshot().budget;
 
     assert!(after.observations > before.observations);

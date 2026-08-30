@@ -9,7 +9,7 @@ fn adaptive_dag_generates_response_ready_promotion_and_control_actions() {
         .iter()
         .map(|item| &item.node.kind)
         .collect();
-    assert!(kinds.iter().any(|kind| matches!(kind, ActionKind::Head)));
+    assert!(!kinds.iter().any(|kind| matches!(kind, ActionKind::Head)));
     assert!(kinds
         .iter()
         .any(|kind| matches!(kind, ActionKind::Prefix(_))));

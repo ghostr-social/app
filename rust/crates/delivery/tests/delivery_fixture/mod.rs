@@ -21,6 +21,7 @@ pub mod full_recovery_stats;
 pub mod gated_failure;
 mod harness;
 mod harness_requests;
+pub mod head_window;
 pub mod hedge_tail_assertions;
 pub mod hedge_tail_origin;
 pub mod hedge_tail_stats;

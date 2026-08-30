@@ -4,6 +4,7 @@
 mod delivery_fixture;
 
 use core::time::Duration;
+use delivery_fixture::head_window::serve_visible_current;
 use delivery_fixture::items::{focus_now, unsized_item};
 use delivery_fixture::media::{hit_log, hits, media_body, serve_recording, HitLog};
 use delivery_fixture::options::DeliveryOptions;
@@ -21,11 +22,15 @@ async fn delivery_manager_probes_unknown_size_posts() {
         ..options.params
     };
     let harness = start_harness("ghostr-delivery-probe", options);
+    let current = serve_visible_current().await;
 
-    harness
-        .handle
-        .update_focus(focus_now(vec![unsized_item("aa11", &origin)], 0, 0));
+    harness.handle.update_focus(focus_now(
+        vec![current.item(), unsized_item("aa11", &origin)],
+        0,
+        0,
+    ));
 
+    current.assert_get_without_head().await;
     let requests = wait_for_head_and_body(&log).await;
     assert_eq!(requests[0], "origin:HEAD:full");
     assert_eq!(requests[1], "origin:GET:0-3");

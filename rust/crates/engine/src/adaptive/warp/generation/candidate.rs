@@ -1,7 +1,10 @@
 use super::allocation::{classify, resources, AllocationSpec};
 use super::builder::{Builder, NodeInput, TransferInput};
 use super::{GeneratedAction, PlannerCommand};
-use crate::adaptive::{ActionKind, CandidateSnapshot, MediaLayout};
+use crate::adaptive::{
+    ActionKind, Allocation, CandidateSnapshot, MediaLayout, PlayabilitySnapshot,
+    PreemptionAuthority,
+};
 use crate::ByteRange;
 
 mod transform;
@@ -32,7 +35,8 @@ impl Builder<'_> {
             .context
             .candidate(&candidate.post)
             .is_some_and(|item| item.head_probe != super::super::HeadProbeHistory::Unobserved);
-        if !candidate.needs_bootstrap() || head_suppressed {
+        let current = candidate.post == self.snapshot.playback.current;
+        if !candidate.needs_bootstrap() || current || head_suppressed {
             return;
         }
         let kind = ActionKind::Head;
@@ -89,7 +93,8 @@ impl Builder<'_> {
         if self.contains(candidate, &kind) {
             return;
         }
-        let allocation = self.allocation(candidate, AllocationSpec::range(range, source, 0));
+        let mut allocation = self.allocation(candidate, AllocationSpec::range(range, source, 0));
+        protect_current_prefix(self.snapshot, candidate, &mut allocation);
         let input = TransferInput::optional_exploration(kind, allocation, &[]);
         let _ = self.push_transfer(candidate, input);
     }
@@ -159,6 +164,16 @@ impl Builder<'_> {
         let allocation = self.allocation(candidate, AllocationSpec::cache(range, source));
         let input = TransferInput::delivery(kind, allocation, &[]);
         let _ = self.push_transfer(candidate, input);
+    }
+}
+
+fn protect_current_prefix(
+    snapshot: &PlayabilitySnapshot,
+    candidate: &CandidateSnapshot,
+    allocation: &mut Allocation,
+) {
+    if candidate.post == snapshot.playback.current {
+        allocation.authority = PreemptionAuthority::PlaybackCritical;
     }
 }
 

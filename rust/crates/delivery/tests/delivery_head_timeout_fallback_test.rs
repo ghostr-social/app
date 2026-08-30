@@ -5,6 +5,7 @@ mod delivery_head_timeout_origin;
 
 use core::num::NonZeroUsize;
 use core::time::Duration;
+use delivery_fixture::head_window::serve_visible_current;
 use delivery_fixture::items::{focus_now, unsized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
@@ -15,9 +16,13 @@ async fn stalled_head_yields_to_body_before_startup_deadline() {
     let mut options = DeliveryOptions::default();
     options.tuning.max_requests_per_authority = Some(NonZeroUsize::MIN);
     let harness = start_harness("head-timeout-fallback", options);
-    harness
-        .handle
-        .update_focus(focus_now(vec![unsized_item("current", &origin.url)], 0, 0));
+    let current = serve_visible_current().await;
+    harness.handle.update_focus(focus_now(
+        vec![current.item(), unsized_item("future", &origin.url)],
+        0,
+        0,
+    ));
+    current.assert_get_without_head().await;
 
     let requests = tokio::time::timeout(Duration::from_secs(4), origin.requests)
         .await
