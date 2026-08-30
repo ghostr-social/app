@@ -69,6 +69,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   bool _isObserving = false;
   bool _nativeFrameObserved = false;
   bool _controllerPresented = false;
+  bool _retainedWarmController = false;
   bool _presentationScheduled = false;
   bool _presentationReported = false;
   bool _isClosing = false;

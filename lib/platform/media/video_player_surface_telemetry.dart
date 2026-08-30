@@ -1,6 +1,21 @@
 part of 'video_player_playback_port.dart';
 
 extension _VideoPlayerSurfaceTelemetry on _VideoPlayerSurfaceState {
+  void _activateReadyPlayback() {
+    final controller = _controller;
+    final primesFrame =
+        widget.request.reservesPreparedDecoder || _retainedWarmController;
+    _retainedWarmController = false;
+    if (primesFrame &&
+        controller != null &&
+        controller.value.isInitialized &&
+        _controllerPresented &&
+        _nativeFrameObserved) {
+      _beginObservation(controller.value);
+    }
+    _syncPlayback();
+  }
+
   PlaybackSession? _openPlaybackSession() {
     final videoId = widget.videoId;
     final deliveryId = _resolvedPlaybackDeliveryId(

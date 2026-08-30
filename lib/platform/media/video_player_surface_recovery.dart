@@ -144,7 +144,7 @@ extension _VideoPlayerSurfaceRecovery on _VideoPlayerSurfaceState {
       _startLoad();
       return;
     }
-    _syncPlayback();
+    _activateReadyPlayback();
   }
 
   void _deferRecovery() {

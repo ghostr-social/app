@@ -3,6 +3,7 @@ part of 'video_player_playback_port.dart';
 extension _VideoPlayerSurfaceCommands on _VideoPlayerSurfaceState {
   void _leaveActivePlayback() {
     if (widget.request.keepWarmWhenInactive) {
+      _retainedWarmController = _controller != null;
       _endObservation(_controller?.value);
       _playbackSession = null;
       _playbackPhase = null;
@@ -14,6 +15,7 @@ extension _VideoPlayerSurfaceCommands on _VideoPlayerSurfaceState {
   }
 
   void _coverPlayback() {
+    _retainedWarmController = false;
     _loadRequested = false;
     _cancelPendingLoad();
     final controller = _controller;

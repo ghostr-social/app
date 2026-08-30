@@ -121,6 +121,7 @@ extension _VideoPlayerSurfaceLoading on _VideoPlayerSurfaceState {
 
   void _relinquishController(VideoPlayerController controller) {
     if (_controller != controller) return;
+    _retainedWarmController = false;
     _releasePreparation();
     _controller = null;
     final superseded = _controllerSuperseded;

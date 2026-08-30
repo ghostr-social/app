@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/video_media_source.dart';
 import 'package:ghostr/core/media/video_representation_id.dart';
+import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
 import 'package:ghostr/features/video_catalog/domain/video_post.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_preparation.dart';
@@ -18,20 +19,18 @@ import 'feed_preparation_updates.dart';
 import 'feed_preparation_video_player_platform.dart';
 import 'feed_screen_harness.dart';
 import 'sample_data.dart';
-
 part 'feed_preparation_fixture_assets.dart';
 
 final class FeedPreparationFixture {
   FeedPreparationFixture({int postCount = 3})
     : posts = List.generate(postCount, _preparationPost);
-
   final platform = FeedPreparationVideoPlayerPlatform();
   final updates = ControlledPlaybackPreparationUpdates();
   final List<VideoPost> posts;
-
   Future<void> pump(
     WidgetTester tester, {
     VideoPlaybackPort? playbackPort,
+    FeedFocusPort? focus,
   }) async {
     VideoPlayerPlatform.instance = platform;
     final repository = FakeVideoCatalogRepository(forYouFeed: posts);
@@ -45,6 +44,7 @@ final class FeedPreparationFixture {
         repository,
         options: FeedScreenHarnessOptions(
           playbackPort: playback,
+          focus: focus,
           preparationUpdates: updates,
           watch: FeedWatchDependencies(tracker: tracker),
         ),

@@ -45,6 +45,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: port.buildSurface(_request(scope, true))),
     );
+    expect(telemetry.presentations, hasLength(2));
     await settleVideoPlayerTasks(tester);
 
     expect(platform.dataSources, hasLength(1));
