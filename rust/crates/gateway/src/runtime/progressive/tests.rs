@@ -11,6 +11,8 @@ use ghostr_engine::{DeliveryKind, PostId, VideoMeta};
 
 #[cfg(not(feature = "video-debug-web"))]
 mod cache_wake_test;
+#[cfg(not(feature = "video-debug-web"))]
+mod known_extent_test;
 
 #[test]
 fn issuance_requires_the_active_selected_rendition_not_only_the_advertised_root() {

@@ -89,7 +89,7 @@ fn blocked_ranges(candidate: &CandidateSnapshot) -> Vec<ByteRange> {
         candidate
             .in_flight
             .iter()
-            .filter(|active| active.identity_current)
+            .filter(|active| active.identity_current && !active.cancelling)
             .map(|active| active.effective_bytes),
     );
     crate::media_timeline::normalize(blocked)

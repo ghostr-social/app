@@ -13,7 +13,6 @@ use rust_lib_ghostr::api::focus_control::{
 use rust_lib_ghostr::api::network_control::FfiDeliveryNetworkStatus;
 use rust_lib_ghostr::api::playback_control::ffi_report_playback;
 use rust_lib_ghostr::api::playback_types::{FfiPlaybackObservation, FfiPlaybackPhase};
-use std::collections::HashMap;
 use support::fixtures::temp_directory;
 
 const FALLBACK_ID: &str = "url-9749fdddd453caaca021690db04c6aeaa579386dd6e8fb127cd82c47a3d52f55";
@@ -39,7 +38,7 @@ fn configuration(data_usage: FfiDataUsageLevel, max_storage_bytes: u64) -> FfiEn
     }
 }
 #[tokio::test]
-async fn starts_the_engine_and_serves_the_delivery_surface() {
+async fn starts_the_engine_and_rejects_unavailable_playback() {
     let directory = temp_directory("ghostr-engine-start");
     let endpoint = ffi_start_engine(
         directory.to_string_lossy().to_string(),
@@ -81,18 +80,8 @@ async fn starts_the_engine_and_serves_the_delivery_surface() {
         .await
         .expect("config update");
 
-    let url = ffi_playback_url(progressive_item(FALLBACK_ID))
-        .await
-        .expect("playback url");
-    let playback = reqwest::Url::parse(&url).expect("valid playback URL");
-    let query: HashMap<_, _> = playback.query_pairs().into_owned().collect();
-    assert_eq!(
-        playback.origin().ascii_serialization(),
-        format!("http://{endpoint}")
-    );
-    assert_eq!(playback.path(), "/video.mp4");
-    assert_eq!(query.get("id").map(String::as_str), Some(FALLBACK_ID));
-    assert!(query.get("cap").is_some_and(|cap| !cap.is_empty()));
+    let playback = ffi_playback_url(progressive_item(FALLBACK_ID)).await;
+    assert!(playback.is_err(), "unavailable media is not player-ready");
 
     let rejected = ffi_set_delivery_config(configuration(FfiDataUsageLevel::Balanced, 0)).await;
     assert!(rejected.is_err());

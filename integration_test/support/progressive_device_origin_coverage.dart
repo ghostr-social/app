@@ -2,6 +2,21 @@ part of 'progressive_device_origin.dart';
 
 typedef ProgressiveOriginByteRange = ({int start, int end});
 
+bool progressiveReplayCrossesMissingFrontiers(
+  List<ProgressiveOriginRequest> requests,
+  List<ProgressiveOriginByteRange> missing,
+) {
+  if (requests.length != missing.length) return false;
+  for (var index = 0; index < missing.length; index++) {
+    final start = requests[index].range?.start ?? 0;
+    final servedEnd = start + requests[index].servedBytes;
+    if (start > missing[index].start || servedEnd <= missing[index].start) {
+      return false;
+    }
+  }
+  return true;
+}
+
 final class ProgressiveOriginCoverage {
   factory ProgressiveOriginCoverage.fromRequests(
     Iterable<ProgressiveOriginRequest> requests, {

@@ -1,6 +1,16 @@
 part of 'warp_feed_playback_journey.dart';
 
 extension WarpFeedPlaybackJourneyAssertions on WarpFeedPlaybackJourney {
+  void expectSinglePlayerAttempt(PlaybackFocus focus) {
+    final session = telemetry.probe.sessionFor(focus);
+    final evidence = _playbackEvidence(focus);
+    expect(session, isNotNull, reason: evidence);
+    final attempts = playerStages.attemptsFor(session!.deliveryId);
+    expect(attempts, hasLength(1), reason: evidence);
+    expect(attempts.single.firstFrameAt, isNotNull, reason: evidence);
+    expect(attempts.single.isTerminal, isFalse, reason: evidence);
+  }
+
   Future<void> verifyReadyBurstPlayback(
     WarpFeedPreparationObservation snapshot,
     List<PlaybackFocus> focuses,

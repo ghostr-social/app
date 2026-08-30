@@ -14,6 +14,7 @@ pub(crate) struct ActiveAction {
     promotion_opportunity: Option<PromotionOpportunity>,
     committed_until_ms: u64,
     launched_at_ms: u64,
+    io_finished: bool,
     cancelling: bool,
     hedged: bool,
 }
@@ -59,6 +60,10 @@ impl ActiveAction {
         self.launched_at_ms
     }
 
+    pub(crate) fn io_finished(&self) -> bool {
+        self.io_finished
+    }
+
     pub(crate) fn hedged(&self) -> bool {
         self.hedged
     }
@@ -78,6 +83,7 @@ impl InFlightChunks {
                 promotion_opportunity: active.response_phase.opportunity(),
                 committed_until_ms: active.committed_until_ms,
                 launched_at_ms: active.launched_at_ms,
+                io_finished: active.io_finished(),
                 cancelling: active.cancelling,
                 hedged: self.hedges.contains_key(&active.action_id),
             })

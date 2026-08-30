@@ -34,6 +34,7 @@ impl DeliveryWorker {
         transfer: PlannedTransfer,
         decision: &mut Option<DecisionToken>,
         selected: &mut Option<SelectedCommit>,
+        hedge_primary: Option<ghostr_engine::ActionId>,
     ) -> Option<ghostr_engine::ActionId> {
         let admitted = match self.prepare_admission(transfer) {
             Ok(admitted) => admitted,
@@ -42,7 +43,8 @@ impl DeliveryWorker {
                 return None;
             }
         };
-        self.prepare_grant(admitted, decision, selected).await
+        self.prepare_grant(admitted, decision, selected, hedge_primary)
+            .await
     }
 
     fn prepare_admission(
@@ -72,6 +74,7 @@ impl DeliveryWorker {
         admitted: AdmittedGrant,
         decision: &mut Option<DecisionToken>,
         selected: &mut Option<SelectedCommit>,
+        hedge_primary: Option<ghostr_engine::ActionId>,
     ) -> Option<ghostr_engine::ActionId> {
         let AdmittedGrant {
             transfer,
@@ -93,6 +96,7 @@ impl DeliveryWorker {
                     },
                     decision,
                     selected,
+                    hedge_primary,
                 )
                 .await
             }
@@ -108,6 +112,7 @@ impl DeliveryWorker {
         mut prepared: PreparedGrant,
         decision: &mut Option<DecisionToken>,
         selected: &mut Option<SelectedCommit>,
+        hedge_primary: Option<ghostr_engine::ActionId>,
     ) -> Option<ghostr_engine::ActionId> {
         let action = prepared.transfer.action();
         let bound = decision.is_some();
@@ -120,8 +125,14 @@ impl DeliveryWorker {
                 return None;
             }
         }
+        if !self.authorize_selected_hedge(hedge_primary) {
+            self.reject_superseded(prepared.transfer, action, bound, prepared.admission_claim)
+                .await;
+            return None;
+        }
         let result = self.commit_selected(selected, prepared.resources, prepared.observed_at_ms);
         if result == CommitResult::Rejected {
+            self.release_selected_hedge(hedge_primary);
             self.reject_commit(prepared.transfer, action, bound, prepared.admission_claim)
                 .await;
             return None;
@@ -143,6 +154,16 @@ impl DeliveryWorker {
             self.request_immediate_replan();
         }
         Some(action)
+    }
+
+    fn authorize_selected_hedge(&self, primary: Option<ghostr_engine::ActionId>) -> bool {
+        primary.map_or(true, |action| self.downloads.authorize_hedge(action))
+    }
+
+    fn release_selected_hedge(&self, primary: Option<ghostr_engine::ActionId>) {
+        if let Some(action) = primary {
+            self.downloads.release_hedge_authorization(action);
+        }
     }
 }
 

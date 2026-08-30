@@ -40,6 +40,7 @@ pub(super) fn planned_work(
     let selected_transfers =
         mapping::selected_transfers(state, inputs.present, &warp, allocation.mode);
     let retained = mapping::retained_actions(inputs.in_flight, &warp);
+    let retained_posts = mapping::retained_posts(inputs.in_flight, &retained);
     let evictions = allocation.evictions.clone();
     let discovery_demand = allocation.discovery_demand;
     PlannedWork {
@@ -47,6 +48,7 @@ pub(super) fn planned_work(
         transfers,
         selected_transfers,
         retained,
+        retained_posts,
         evictions,
         emergency,
         discovery_demand,
@@ -75,6 +77,7 @@ fn empty_work() -> PlannedWork {
         transfers: Vec::new(),
         selected_transfers: Vec::new(),
         retained: Default::default(),
+        retained_posts: Default::default(),
         evictions: Vec::new(),
         emergency: false,
         discovery_demand: ghostr_engine::adaptive::DiscoveryDemand::Expand,

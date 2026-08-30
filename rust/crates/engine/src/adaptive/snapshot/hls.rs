@@ -2,6 +2,10 @@ use super::{FeedOffset, ViewProbability};
 use crate::{ActionId, PostId};
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+#[path = "hls/pending_request_test.rs"]
+mod pending_request_test;
+
 const MIB: u64 = 1024 * 1024;
 const MINIMUM_BLOCK_BYTES: u64 = 128 * 1024;
 const MAXIMUM_BLOCK_BYTES: u64 = 512 * 1024;
@@ -141,6 +145,20 @@ pub struct HlsCandidateSnapshot {
 }
 
 impl HlsCandidateSnapshot {
+    pub fn pending_request_source(
+        &self,
+        requested_bytes: u64,
+        available_storage_bytes: u64,
+    ) -> Option<&str> {
+        let (stage, source) = self.pending()?;
+        if !self.cursor.transport.opens_request() {
+            return None;
+        }
+        let block = self.cursor.block_bytes(stage, requested_bytes)?;
+        let peak = self.cursor.peak_storage_bytes(block)?;
+        (peak <= available_storage_bytes).then_some(source)
+    }
+
     pub(crate) fn pending(&self) -> Option<(HlsBootstrapStage, &str)> {
         match &self.state {
             HlsBootstrapState::Pending { stage, source } => Some((*stage, source)),

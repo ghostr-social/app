@@ -108,6 +108,14 @@ impl DownloadWorkers {
         self.active.link_hedge(primary, alternate)
     }
 
+    pub(super) fn authorize_hedge(&self, primary: ghostr_engine::ActionId) -> bool {
+        self.active.authorize_hedge(primary)
+    }
+
+    pub(super) fn release_hedge_authorization(&self, primary: ghostr_engine::ActionId) {
+        self.active.release_hedge_authorization(primary);
+    }
+
     pub(super) fn complete_hedge_winner(&mut self, action: ghostr_engine::ActionId) -> bool {
         self.active.complete_hedge_winner(action)
     }

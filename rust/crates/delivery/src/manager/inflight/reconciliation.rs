@@ -19,12 +19,13 @@ impl InFlightChunks {
     pub(crate) fn contains_transfer(&self, transfer: &PlannedTransfer) -> bool {
         self.transfers
             .values()
-            .any(|active| !active.cancelling && action_matches(active, transfer))
+            .any(|active| action_matches(active, transfer))
     }
 
     fn cancel_unplanned(&mut self, planned: &[PlannedTransfer], retained: &HashSet<ActionId>) {
         for (action, active) in &mut self.transfers {
-            active.policy_retained = false;
+            let committed = retained.contains(action);
+            active.policy_retained = committed;
             if active.cancelling {
                 continue;
             }
@@ -37,8 +38,6 @@ impl InFlightChunks {
                 }
                 continue;
             }
-            let committed = retained.contains(action);
-            active.policy_retained = committed;
             if !committed && !active.io_finished() {
                 active.cancel();
             }
@@ -88,7 +87,9 @@ impl InFlightChunks {
             let Some(victim) = self.lower_priority_victim(current, &priority[rank + 1..]) else {
                 return;
             };
-            self.cancel_action(victim);
+            if !self.cancel_action(victim) {
+                return;
+            }
         }
     }
 
@@ -127,7 +128,19 @@ fn can_yield(active: &ActiveChunk, request: &RangeRequest) -> bool {
 
 fn action_matches(active: &ActiveChunk, transfer: &PlannedTransfer) -> bool {
     active.identity == transfer.identity
-        && retrieval_matches(active.effective_request, transfer.retrieval)
+        && retrieval_action_matches(
+            active.launched_request,
+            active.effective_request,
+            transfer.retrieval,
+        )
+}
+
+fn retrieval_action_matches(
+    launched: ghostr_engine::adaptive::RetrievalRequest,
+    effective: ghostr_engine::adaptive::RetrievalRequest,
+    planned: ghostr_engine::adaptive::RetrievalRequest,
+) -> bool {
+    retrieval_matches(effective, planned) || retrieval_matches(launched, planned)
 }
 
 fn retrieval_matches(
@@ -138,11 +151,11 @@ fn retrieval_matches(
         (
             ghostr_engine::adaptive::RetrievalRequest::FetchRange {
                 bytes: active,
-                promotion: None,
+                promotion: _,
             },
             ghostr_engine::adaptive::RetrievalRequest::FetchRange {
                 bytes: planned,
-                promotion: None,
+                promotion: _,
             },
         ) => active.start < planned.end && planned.start < active.end,
         _ => active == planned,

@@ -29,6 +29,7 @@ impl DeliveryState {
         }
         let same_current =
             update.current_post().is_some() && update.current_post() == self.focus.current();
+        self.reconcile_provisional_handoff(&update, same_current, observed_at_ms);
         self.focus_generation = if same_current {
             update.generation.covering(self.focus_generation)
         } else {

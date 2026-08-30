@@ -83,7 +83,11 @@ fn hedge(
     candidate: &ghostr_engine::adaptive::CandidateSnapshot,
 ) -> Option<(HedgeInput, ghostr_engine::adaptive::IdentityProof, String)> {
     let active = evidence.active;
-    if active.cancelling() || active.hedged() || !primary_is_current(evidence) {
+    if active.cancelling()
+        || active.io_finished()
+        || active.hedged()
+        || !primary_is_current(evidence)
+    {
         return None;
     }
     let primary = origin(candidate, active.identity().source().as_str())?;

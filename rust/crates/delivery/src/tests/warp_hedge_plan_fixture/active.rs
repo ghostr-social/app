@@ -22,10 +22,7 @@ pub(super) fn actions(
     case: HedgeCase,
 ) -> Vec<crate::manager::inflight::ActiveAction> {
     let range = ByteRange::new(0, 64_000);
-    let chunk = ChunkId {
-        post,
-        range,
-    };
+    let chunk = ChunkId { post, range };
     let mut active = InFlightChunks::new();
     let primary = attempt(&mut active, state, chunk.clone(), PRIMARY);
     insert(
@@ -37,6 +34,9 @@ pub(super) fn actions(
             launched_at_ms: case.primary_launched_at_ms(),
         },
     );
+    if case.terminal() {
+        primary.mark_io_finished();
+    }
     link::alternate(
         &mut active,
         link::Input {

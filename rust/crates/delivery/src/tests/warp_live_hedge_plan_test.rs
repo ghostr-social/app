@@ -45,6 +45,14 @@ fn alternate_validator_rotation_revokes_sparse_mirror_authority() {
     assert_no_hedge(work);
 }
 
+#[test]
+fn terminal_primary_cannot_schedule_or_launch_an_alternate_hedge() {
+    let work = mirror_plan(HedgeCase::Terminal);
+
+    assert!(work.hedge_tails.is_empty());
+    assert_no_hedge(work);
+}
+
 fn assert_no_hedge(work: crate::manager::plan::PlannedWork) {
     assert!(work
         .warp

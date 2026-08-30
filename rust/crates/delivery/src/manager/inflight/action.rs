@@ -1,5 +1,5 @@
+use super::lifecycle::AttemptLifecycle;
 use crate::chunk::cancel::CancelHandle;
-use core::sync::atomic::{AtomicBool, Ordering};
 use ghostr_engine::adaptive::RetrievalRequest;
 use ghostr_engine::origin_model::{AdmissionClaim, OriginAttemptProfile};
 use ghostr_engine::representation::TransferIdentity;
@@ -14,7 +14,7 @@ pub(crate) struct ChunkAttempt {
     identity: TransferIdentity,
     id: ActionId,
     profile: OriginAttemptProfile,
-    io_finished: Arc<AtomicBool>,
+    lifecycle: Arc<AttemptLifecycle>,
 }
 
 pub(crate) struct ActionRegistration<'a> {
@@ -42,7 +42,7 @@ impl ChunkAttempt {
             identity,
             id,
             profile,
-            io_finished: Arc::new(AtomicBool::new(false)),
+            lifecycle: Arc::new(AttemptLifecycle::default()),
         }
     }
 
@@ -65,7 +65,7 @@ impl ChunkAttempt {
     }
 
     pub(crate) fn mark_io_finished(&self) {
-        self.io_finished.store(true, Ordering::Release);
+        self.lifecycle.mark_io_finished();
     }
 }
 
@@ -92,7 +92,7 @@ pub(super) struct ActiveChunk {
     pub(super) committed_network_bytes: u64,
     pub(super) uncommitted_network_prefix_bytes: u64,
     pub(super) policy_retained: bool,
-    io_finished: Arc<AtomicBool>,
+    lifecycle: Arc<AttemptLifecycle>,
     pub(super) host: String,
     pub(super) committed_until_ms: u64,
     pub(super) launched_at_ms: u64,
@@ -133,7 +133,7 @@ impl ActiveChunk {
             committed_network_bytes,
             uncommitted_network_prefix_bytes,
             policy_retained: false,
-            io_finished: Arc::clone(&registration.attempt.io_finished),
+            lifecycle: Arc::clone(&registration.attempt.lifecycle),
             host: registration.host,
             committed_until_ms: registration.committed_until_ms,
             launched_at_ms: registration.launched_at_ms,
@@ -150,17 +150,31 @@ impl ActiveChunk {
     }
 
     pub(super) fn io_finished(&self) -> bool {
-        self.io_finished.load(Ordering::Acquire)
+        self.lifecycle.io_finished()
     }
 
-    pub(super) fn cancel(&mut self) {
-        if !self.cancelling {
-            self.cancelling = true;
-            if let Some(action) = &self.store_action {
-                action.revoke();
-            }
-            self.handle.cancel();
+    pub(super) fn authorize_hedge(&self) -> bool {
+        self.lifecycle.authorize_hedge()
+    }
+
+    pub(super) fn hedge_authorized(&self) -> bool {
+        self.lifecycle.hedge_authorized()
+    }
+
+    pub(super) fn release_hedge(&self) {
+        self.lifecycle.release_hedge();
+    }
+
+    pub(super) fn cancel(&mut self) -> bool {
+        if self.cancelling || !self.lifecycle.begin_cancel() {
+            return false;
         }
+        self.cancelling = true;
+        if let Some(action) = &self.store_action {
+            action.revoke();
+        }
+        self.handle.cancel();
+        true
     }
 }
 

@@ -50,6 +50,17 @@ pub(super) fn retained_actions(
     retained
 }
 
+pub(super) fn retained_posts(
+    in_flight: &[ActiveAction],
+    retained: &HashSet<ghostr_engine::ActionId>,
+) -> HashSet<PostId> {
+    in_flight
+        .iter()
+        .filter(|active| retained.contains(&active.action_id()))
+        .map(|active| active.post().clone())
+        .collect()
+}
+
 fn contiguous_end(ranges: &[ByteRange]) -> u64 {
     let mut end = 0;
     for range in ghostr_engine::media_timeline::normalize(ranges.to_vec()) {

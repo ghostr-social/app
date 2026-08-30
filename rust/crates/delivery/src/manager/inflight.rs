@@ -11,6 +11,7 @@ mod action;
 mod cancellation;
 mod hedge;
 mod http_generation;
+mod lifecycle;
 mod network_reservation;
 mod promotion;
 mod reconciliation;

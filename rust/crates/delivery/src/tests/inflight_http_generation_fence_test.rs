@@ -3,7 +3,9 @@ use crate::chunk::cancel::{cancel_pair, CancelToken};
 use crate::manager::inflight::{ChunkAttempt, InFlightChunks};
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::catalog::Catalog;
-use ghostr_engine::representation::{HttpGenerationKey, HttpGenerationLease, TransferIdentity};
+use ghostr_engine::representation::{
+    HttpGenerationAuthority, HttpGenerationKey, HttpGenerationLease, TransferIdentity,
+};
 use ghostr_engine::{ByteRange, ChunkId, DeliveryKind, PostId, VideoMeta};
 
 const SOURCE: &str = "https://a.example/video";
@@ -32,6 +34,28 @@ fn only_the_exact_http_generation_keeps_concurrent_work_alive() {
         "ABA epoch must fence the old response"
     );
     assert!(!replacement_token.is_cancelled());
+}
+
+#[test]
+fn head_authority_defers_to_pending_body_headers_but_fences_open_stale_work() {
+    let identity = identity();
+    let chunk = ChunkId {
+        post: identity.post().clone(),
+        range: ByteRange::new(0, 8),
+    };
+    let mut active = InFlightChunks::new();
+    let (pending, pending_token) = insert(&mut active, &identity, &chunk);
+    let original = generation(1);
+
+    active.enforce_http_authority(
+        &identity,
+        &HttpGenerationAuthority::Trusted(original.clone()),
+    );
+    assert!(!pending_token.is_cancelled());
+    assert!(active.adopt_http_generation(&pending, &original));
+
+    active.enforce_http_authority(&identity, &HttpGenerationAuthority::Trusted(generation(2)));
+    assert!(pending_token.is_cancelled());
 }
 
 fn insert(

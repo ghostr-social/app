@@ -1,21 +1,22 @@
-use axum::body::{Body, Bytes};
+use axum::body::Body;
 use axum::extract::State;
-use axum::http::{header, HeaderMap, Method, StatusCode};
+use axum::http::{header, HeaderMap, Method, StatusCode, Uri};
 use axum::response::Response;
 use axum::routing::get;
 use axum::Router;
-use core::convert::Infallible;
-use core::ops::Range;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 
+mod active_request;
 mod request;
+pub use active_request::ActiveRequest;
 
 type OriginState = (u64, mpsc::Sender<ActiveRequest>);
 
 pub struct ControlledOrigin {
     pub url: String,
+    base_url: String,
     requests: mpsc::Receiver<ActiveRequest>,
 }
 
@@ -27,17 +28,24 @@ impl ControlledOrigin {
         let address = listener.local_addr().expect("concurrency origin address");
         let (requests, observed) = mpsc::channel(8);
         let app = Router::new()
-            .route("/video.mp4", get(response).head(response))
+            .route("/{video}", get(response).head(response))
             .with_state((total, requests));
         tokio::spawn(async move {
             axum::serve(listener, app)
                 .await
                 .expect("valid test fixture");
         });
+        let base_url = format!("http://{address}");
+        let url = format!("{base_url}/video.mp4");
         Self {
-            url: format!("http://{address}/video.mp4"),
+            url,
+            base_url,
             requests: observed,
         }
+    }
+
+    pub fn url_for(&self, id: &str) -> String {
+        format!("{}/{id}.mp4", self.base_url)
     }
 
     pub async fn next(&mut self) -> ActiveRequest {
@@ -45,24 +53,10 @@ impl ControlledOrigin {
     }
 }
 
-pub struct ActiveRequest {
-    pub range: Range<u64>,
-    body: mpsc::Sender<Result<Bytes, Infallible>>,
-}
-
-impl ActiveRequest {
-    pub async fn send_byte(&self) -> bool {
-        self.body.send(Ok(Bytes::from_static(&[7]))).await.is_ok()
-    }
-
-    pub fn is_open(&self) -> bool {
-        !self.body.is_closed()
-    }
-}
-
 async fn response(
     State((total, requests)): State<OriginState>,
     method: Method,
+    uri: Uri,
     headers: HeaderMap,
 ) -> Response {
     if method == Method::HEAD {
@@ -74,7 +68,14 @@ async fn response(
     let content_range =
         requested.map(|range| format!("bytes {}-{}/{}", range.start, range.end - 1, total));
     let (body, stream) = mpsc::channel(8);
-    requests.send(ActiveRequest { range, body }).await.ok();
+    requests
+        .send(ActiveRequest {
+            path: uri.path().to_owned(),
+            range,
+            body,
+        })
+        .await
+        .ok();
     reply(
         content_range
             .as_ref()

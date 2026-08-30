@@ -9,6 +9,7 @@ use crate::manager::reconcile_warp::{self, WarpDirective};
 use crate::manager::selected_commit::SelectedCommit;
 use crate::manager::DeliveryWorker;
 use crate::mutable_priority_queue::ForegroundSlots;
+use ghostr_engine::ActionId;
 
 struct SelectedGrant<'a> {
     directive: &'a WarpDirective,
@@ -96,11 +97,14 @@ impl DeliveryWorker {
                 return PlannedGrantDisposition::Reconciled;
             };
             let alternate = transfer.id();
+            let hedge_primary = selected_hedge_primary(selected.directive, &alternate);
             if let Some(action) = self
-                .grant(transfer, selected.decision, selected.commit)
+                .grant(transfer, selected.decision, selected.commit, hedge_primary)
                 .await
             {
                 self.link_selected_hedge(selected.directive, &alternate, action);
+            } else if hedge_primary.is_some() {
+                return PlannedGrantDisposition::Reconciled;
             }
         }
         PlannedGrantDisposition::Reconciled
@@ -133,7 +137,7 @@ impl DeliveryWorker {
         }
         let active_hosts = self.downloads.active_hosts();
         if let Some(transfer) = self.queue.pop_for_idle_host(&active_hosts) {
-            let _ = self.grant(transfer, &mut None, &mut None).await;
+            let _ = self.grant(transfer, &mut None, &mut None, None).await;
         }
     }
 
@@ -152,5 +156,18 @@ impl DeliveryWorker {
     fn progressive_capacity(&self) -> usize {
         self.connection_ceiling()
             .saturating_sub(self.segmented.active_len())
+    }
+}
+
+fn selected_hedge_primary(
+    directive: &WarpDirective,
+    alternate: &crate::manager::plan::PlannedTransferId,
+) -> Option<ActionId> {
+    match directive {
+        WarpDirective::Hedge {
+            primary,
+            alternate: selected,
+        } if selected == alternate => Some(*primary),
+        _ => None,
     }
 }

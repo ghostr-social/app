@@ -48,6 +48,7 @@ VIDEO_PROGRESSIVE_ANDROID_TESTS := \
 	integration_test/warp_feed_visible_motion_video_test.dart \
 	integration_test/warp_feed_rapid_swipe_instrumentation_video_test.dart \
 	integration_test/warp_feed_adaptive_warm_back_video_test.dart \
+	integration_test/warp_feed_startup_singleflight_video_test.dart \
 	integration_test/warp_feed_player_verified_rescue_video_test.dart \
 	integration_test/warp_feed_bandwidth_recovery_video_test.dart
 VIDEO_ANDROID_PHYSICAL_TESTS := $(VIDEO_ANDROID_INTEGRATION_TESTS) \

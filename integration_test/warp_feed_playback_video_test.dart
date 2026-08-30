@@ -19,6 +19,7 @@ void main() {
     final startup = await _openSignedFeed(tester, journey);
     expect(journey.feedRepository, isA<AccountScopedVideoFeedRepository>());
     _expectSignedFeed(journey, startup);
+    journey.expectSinglePlayerAttempt(startup);
     final finalFocus = await _rapidSwipes(tester, journey);
     await _expectInitialAndFinalPlayback(tester, journey, startup, finalFocus);
   });

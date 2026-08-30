@@ -77,20 +77,7 @@ impl DeliveryWorker {
         decision: Option<DecisionToken>,
         commit: &mut Option<SelectedCommit>,
     ) {
-        let outcome = match self.commit_cancel(action, commit) {
-            CancelCommit::Cancelled => DecisionOutcome::Succeeded {
-                bytes: 0,
-                elapsed_ms: 0,
-            },
-            CancelCommit::Missing => DecisionOutcome::Failed {
-                class: "warp_cancel_action_missing".into(),
-                elapsed_ms: 0,
-            },
-            CancelCommit::ResourceRejected => DecisionOutcome::Failed {
-                class: "warp_resource_commit_rejected".into(),
-                elapsed_ms: 0,
-            },
-        };
+        let outcome = cancel_outcome(self.commit_cancel(action, commit));
         if let Some(token) = decision {
             self.commands.resolve_decision_token(&token, outcome);
         }
@@ -144,6 +131,7 @@ impl DeliveryWorker {
         if selected != alternate || self.downloads.link_hedge(*primary, action) {
             return;
         }
+        self.downloads.release_hedge_authorization(*primary);
         self.downloads.cancel_hedge_loser(action);
         self.commands.resolve_decision(
             action,
@@ -153,6 +141,20 @@ impl DeliveryWorker {
             },
             time::unix_time_ms(),
         );
+    }
+}
+
+fn cancel_outcome(commit: CancelCommit) -> DecisionOutcome {
+    match commit {
+        CancelCommit::Cancelled => DecisionOutcome::Succeeded {
+            bytes: 0,
+            elapsed_ms: 0,
+        },
+        CancelCommit::Missing => DecisionOutcome::Superseded,
+        CancelCommit::ResourceRejected => DecisionOutcome::Failed {
+            class: "warp_resource_commit_rejected".into(),
+            elapsed_ms: 0,
+        },
     }
 }
 

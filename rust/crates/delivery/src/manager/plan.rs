@@ -53,6 +53,7 @@ pub(crate) struct PlannedWork {
     pub transfers: Vec<PlannedTransfer>,
     pub selected_transfers: Vec<PlannedTransfer>,
     pub retained: HashSet<ActionId>,
+    pub retained_posts: HashSet<PostId>,
     pub evictions: Vec<Eviction>,
     pub emergency: bool,
     pub discovery_demand: DiscoveryDemand,

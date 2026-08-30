@@ -45,6 +45,7 @@ impl InFlightChunks {
             let accepted = match authority {
                 HttpGenerationAuthority::Trusted(lease) => {
                     active.http_generation.as_ref() == Some(lease)
+                        || awaiting_generation_admission(active)
                 }
                 HttpGenerationAuthority::Unknown(_) => false,
             };
@@ -85,4 +86,10 @@ impl InFlightChunks {
             .then(|| active.response_generation_fence.clone())
             .flatten()
     }
+}
+
+fn awaiting_generation_admission(active: &super::ActiveChunk) -> bool {
+    active.http_generation.is_none()
+        && active.response_phase != super::ResponsePhase::Opened
+        && !active.cancelling
 }

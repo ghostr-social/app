@@ -165,6 +165,17 @@ impl Catalog {
         self.lookup(post)?.binding.transfer(url)
     }
 
+    pub fn deliverable_transfer_identity(
+        &self,
+        post: &PostId,
+        url: &str,
+    ) -> Option<TransferIdentity> {
+        let entry = self.lookup(post)?;
+        (!entry.is_quarantined())
+            .then(|| entry.binding.transfer(url))
+            .flatten()
+    }
+
     pub fn lookup(&self, post: &PostId) -> Option<&CatalogEntry> {
         self.entries.get(post)
     }

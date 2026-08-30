@@ -29,8 +29,11 @@ fn live_action_snapshot_holds_its_reservation_until_terminal_ack() {
     assert_eq!(snapshot[0].effective_bytes(), chunk.range);
     assert_eq!(snapshot[0].identity(), &identity);
     assert_eq!(snapshot[0].committed_until_ms(), 5_000);
+    assert!(!snapshot[0].io_finished());
     attempt.mark_io_finished();
-    assert_eq!(active.actions().len(), 1);
+    let terminal = active.actions();
+    assert_eq!(terminal.len(), 1);
+    assert!(terminal[0].io_finished());
     active.finish(&attempt);
     assert!(active.actions().is_empty());
 }

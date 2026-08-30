@@ -1,9 +1,9 @@
 use crate::manager::inflight::ActiveAction;
 use crate::manager::state::DeliveryState;
+use core::time::Duration;
 use ghostr_engine::adaptive::StorageSnapshot;
 use ghostr_engine::host_stats::ThroughputSample;
 use std::collections::HashMap;
-use core::time::Duration;
 
 pub(in crate::tests) struct PlanScenario<'a> {
     pub(in crate::tests) state: DeliveryState,
@@ -25,5 +25,32 @@ impl PlanScenario<'_> {
             self.connection_capacity,
         )
         .expect("valid throughput sample")
+    }
+}
+
+#[derive(Clone, Copy, Default)]
+pub(super) struct PlanRunOptions<'a> {
+    pub(super) watch: Option<&'a ghostr_engine::watch_model::WatchModel>,
+    pub(super) per_authority_limit: Option<usize>,
+    pub(super) hls: Option<&'a [ghostr_engine::adaptive::HlsCandidateSnapshot]>,
+}
+
+impl<'a> PlanRunOptions<'a> {
+    pub(super) fn with_watch(mut self, model: &'a ghostr_engine::watch_model::WatchModel) -> Self {
+        self.watch = Some(model);
+        self
+    }
+
+    pub(super) const fn with_per_authority_limit(mut self, limit: usize) -> Self {
+        self.per_authority_limit = Some(limit);
+        self
+    }
+
+    pub(super) const fn with_hls(
+        mut self,
+        candidates: &'a [ghostr_engine::adaptive::HlsCandidateSnapshot],
+    ) -> Self {
+        self.hls = Some(candidates);
+        self
     }
 }

@@ -58,6 +58,24 @@ impl DeliveryWorker {
         prepared.release(&self.ctx.store).await;
     }
 
+    pub(super) async fn reject_superseded(
+        &mut self,
+        prepared: PreparedTransfer,
+        action: ActionId,
+        bound: bool,
+        admission_claim: Option<AdmissionClaim>,
+    ) {
+        if bound {
+            self.commands.resolve_decision(
+                action,
+                DecisionOutcome::Superseded,
+                time::unix_time_ms(),
+            );
+        }
+        self.release_admission(admission_claim);
+        prepared.release(&self.ctx.store).await;
+    }
+
     pub(super) fn reject_grant(
         &mut self,
         post: &PostId,

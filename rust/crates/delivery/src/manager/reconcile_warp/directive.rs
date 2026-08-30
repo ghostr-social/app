@@ -87,18 +87,7 @@ fn retained_posts(planned: &PlannedWork, advanced: bool) -> HashSet<PostId> {
             .map(|item| item.post.clone())
             .collect();
     }
-    planned
-        .snapshot
-        .iter()
-        .flat_map(|snapshot| &snapshot.candidates)
-        .filter(|candidate| {
-            candidate
-                .in_flight
-                .iter()
-                .any(|active| planned.retained.contains(&active.action_id))
-        })
-        .map(|candidate| candidate.post.clone())
-        .collect()
+    planned.retained_posts.clone()
 }
 
 pub(crate) fn directive_for(

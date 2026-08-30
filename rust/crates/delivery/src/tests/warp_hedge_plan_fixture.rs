@@ -22,6 +22,7 @@ pub(super) enum HedgeCase {
     BeforeTail,
     Linked,
     PrimaryUnavailable,
+    Terminal,
 }
 
 impl HedgeCase {
@@ -34,6 +35,10 @@ impl HedgeCase {
 
     const fn linked(self) -> bool {
         matches!(self, Self::Linked)
+    }
+
+    const fn terminal(self) -> bool {
+        matches!(self, Self::Terminal)
     }
 }
 

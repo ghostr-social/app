@@ -24,6 +24,7 @@ pub(crate) struct DeliveryState {
     discovery_watch: Option<watch::Sender<DiscoveryDemand>>,
     candidates: CandidatePriority,
     current_authority: CurrentAuthority,
+    provisional_focus_handoff: provisional_handoff::ProvisionalFocusHandoff,
     playback: PlaybackStatus,
     latest_presentation_sequence: u64,
     pending_presentation: Option<PlaybackPresentation>,
@@ -56,6 +57,7 @@ mod playback;
 mod playback_evidence;
 mod player_preparation;
 mod presentation;
+mod provisional_handoff;
 pub(crate) use presentation::PresentationAdmission;
 #[cfg(test)]
 #[path = "state/probes_axiom_test.rs"]
@@ -76,6 +78,7 @@ impl DeliveryState {
             discovery_watch: None,
             candidates: CandidatePriority::default(),
             current_authority: CurrentAuthority::Provisional,
+            provisional_focus_handoff: Default::default(),
             playback: PlaybackStatus::default(),
             latest_presentation_sequence: 0,
             pending_presentation: None,
@@ -145,6 +148,7 @@ impl DeliveryState {
         self.focus = FocusState::new();
         self.candidates = CandidatePriority::default();
         self.current_authority = CurrentAuthority::Provisional;
+        self.provisional_focus_handoff.clear();
         self.playback.discard_session();
         self.pending_presentation = None;
         self.hls_focus.clear();

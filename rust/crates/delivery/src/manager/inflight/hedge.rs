@@ -3,8 +3,20 @@ use super::{CompletionStatus, InFlightChunks};
 use ghostr_engine::ActionId;
 
 impl InFlightChunks {
+    pub(crate) fn authorize_hedge(&self, primary: ActionId) -> bool {
+        self.transfers
+            .get(&primary)
+            .is_some_and(ActiveChunk::authorize_hedge)
+    }
+
+    pub(crate) fn release_hedge_authorization(&self, primary: ActionId) {
+        if let Some(active) = self.transfers.get(&primary) {
+            active.release_hedge();
+        }
+    }
+
     pub(crate) fn link_hedge(&mut self, primary: ActionId, alternate: ActionId) -> bool {
-        if !self.can_link_hedge(primary, alternate) {
+        if !self.can_link_hedge(primary, alternate) || !self.ensure_hedge_authorized(primary) {
             return false;
         }
         self.hedges.insert(primary, alternate);
@@ -45,6 +57,12 @@ impl InFlightChunks {
             && self.transfers.contains_key(&alternate)
             && !self.hedges.contains_key(&primary)
             && !self.hedges.contains_key(&alternate)
+    }
+
+    fn ensure_hedge_authorized(&self, primary: ActionId) -> bool {
+        self.transfers
+            .get(&primary)
+            .is_some_and(|active| active.hedge_authorized() || active.authorize_hedge())
     }
 
     fn hedge_already_lost(&self, winner: ActionId, loser: ActionId) -> bool {

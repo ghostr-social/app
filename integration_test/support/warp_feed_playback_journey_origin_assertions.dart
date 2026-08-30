@@ -80,7 +80,7 @@ extension WarpFeedPlaybackJourneyOriginAssertions on WarpFeedPlaybackJourney {
       reason: evidence,
     );
     expect(
-      finalCoverage.isReplayCompleteWithin(
+      finalCoverage.hasReplayIntegrityWithin(
         cancellationOverlapBudgetBytes: deviceCancellationWasteTargetBytes,
       ),
       isTrue,
@@ -115,6 +115,13 @@ extension WarpFeedPlaybackJourneyOriginAssertions on WarpFeedPlaybackJourney {
           delta.prior.duplicateBytes,
       reason: delta.evidence,
     );
+    if (!delta.prior.isComplete) {
+      expect(
+        delta.finalCoverage.uniqueBytes,
+        greaterThan(delta.prior.uniqueBytes),
+        reason: delta.evidence,
+      );
+    }
   }
 
   void _expectReplayRequests(
@@ -132,5 +139,10 @@ extension WarpFeedPlaybackJourneyOriginAssertions on WarpFeedPlaybackJourney {
     );
     final expected = prior.isComplete ? 0 : prior.missingRanges.length;
     expect(added, hasLength(expected), reason: evidence);
+    expect(
+      progressiveReplayCrossesMissingFrontiers(added, prior.missingRanges),
+      isTrue,
+      reason: evidence,
+    );
   }
 }

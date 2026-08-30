@@ -52,6 +52,17 @@ impl DeliveryState {
         posts[start..end].to_vec()
     }
 
+    pub(super) fn provisional_future_posts(&self) -> Vec<PostId> {
+        let posts = self.planning_window_posts();
+        let Some(current) = self.focus.current() else {
+            return Vec::new();
+        };
+        let Some(index) = posts.iter().position(|post| post == current) else {
+            return Vec::new();
+        };
+        posts.into_iter().skip(index.saturating_add(1)).collect()
+    }
+
     pub(super) fn preparation_posts(&self) -> HashSet<PostId> {
         self.planning_window_posts().into_iter().collect()
     }

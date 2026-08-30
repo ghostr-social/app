@@ -21,9 +21,10 @@ pub(super) async fn issue(
         store_wake.as_mut().enable();
         cache_wake.as_mut().enable();
         let snapshot = state.store.media_snapshot(post).await?;
-        if snapshot
-            .binding()
-            .is_some_and(|binding| binding_is_current(&state.cache, post, expected, binding))
+        if snapshot.total_len().is_some()
+            && snapshot
+                .binding()
+                .is_some_and(|binding| binding_is_current(&state.cache, post, expected, binding))
         {
             return state.capabilities.issue(&snapshot).await;
         }

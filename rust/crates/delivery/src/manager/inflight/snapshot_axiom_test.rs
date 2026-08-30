@@ -28,8 +28,24 @@ impl ActiveAction {
             promotion_opportunity: None,
             committed_until_ms,
             launched_at_ms: 0,
+            io_finished: false,
             cancelling: false,
             hedged: false,
         }
+    }
+
+    pub(crate) fn cancelling_for_test(mut self) -> Self {
+        self.cancelling = true;
+        self
+    }
+
+    pub(crate) fn hedged_for_test(mut self) -> Self {
+        self.hedged = true;
+        self
+    }
+
+    pub(crate) fn effective_bytes_for_test(mut self, bytes: ByteRange) -> Self {
+        self.effective_bytes = bytes;
+        self
     }
 }

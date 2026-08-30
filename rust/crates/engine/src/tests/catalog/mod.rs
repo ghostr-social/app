@@ -1,4 +1,5 @@
 mod catalog_bitrate_test;
+mod catalog_deliverable_identity_test;
 mod catalog_evidence_precedence_test;
 mod catalog_facts_merge_test;
 mod catalog_legacy_evidence_decay_test;

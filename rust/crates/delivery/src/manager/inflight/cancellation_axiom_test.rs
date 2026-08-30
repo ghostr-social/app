@@ -13,7 +13,6 @@ impl InFlightChunks {
         else {
             return false;
         };
-        active.cancel();
-        true
+        active.cancel()
     }
 }
