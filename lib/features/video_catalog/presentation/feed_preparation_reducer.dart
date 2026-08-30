@@ -147,7 +147,10 @@ final class FeedPreparationReducer {
     return FeedPlaybackPreparation.managed(
       revision: plan.revision,
       current: promoted,
-      upcoming: _startableWindow(plan.upcoming, upcomingMedia),
+      upcoming: _startableWindow([
+        if (plan.current != null) plan.current!,
+        ...plan.upcoming,
+      ], upcomingMedia),
     );
   }
 
