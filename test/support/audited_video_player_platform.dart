@@ -68,7 +68,9 @@ class AuditedVideoPlayerPlatform extends VideoPlayerPlatform {
   }
 
   @override
-  Future<void> seekTo(int textureId, Duration position) async {}
+  Future<void> seekTo(int textureId, Duration position) async {
+    commands.add('seek:$textureId:${position.inMilliseconds}');
+  }
 
   @override
   Future<Duration> getPosition(int textureId) async => Duration.zero;

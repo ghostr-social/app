@@ -132,11 +132,12 @@ extension _VideoPlayerSurfaceCommands on _VideoPlayerSurfaceState {
     VideoPlaybackMode mode,
     int intent,
   ) async {
-    final retainsWarmPosition = _retainedWarmController;
+    final preservesPreparedPosition =
+        _retainedWarmController || widget.request.reservesPreparedDecoder;
     _endObservation(controller.value);
     await widget.handoff.deactivate(controller);
     if (_ownsPlaybackIntent(controller, active, mode, intent) &&
-        !retainsWarmPosition) {
+        !preservesPreparedPosition) {
       await controller.seekTo(Duration.zero);
     }
   }
