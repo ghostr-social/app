@@ -52,6 +52,8 @@ part 'warp_feed_playback_journey_store_assertions.dart';
 part 'warp_feed_playback_journey_link_wait.dart';
 part 'warp_feed_playback_journey_decision_wait.dart';
 part 'warp_feed_playback_journey_pair_wait.dart';
+part 'warp_feed_playback_journey_promotion_wait.dart';
+part 'warp_feed_playback_journey_loop_reopen.dart';
 
 final class WarpFeedPlaybackJourney {
   WarpFeedPlaybackJourney._(this.runtime);

@@ -115,8 +115,8 @@ impl PartialRangeStore {
                 self.commit_session_response(binding, state, total).await?;
                 return Ok(true);
             }
-            let retire_http = state.authority.retires_http_generation();
-            self.commit_staged_single_response(binding, total, retire_http)
+            let policy = self.staged_commit_policy(state, total).await?;
+            self.commit_staged_single_response(binding, total, policy)
                 .await
                 .context("commit complete staged response")?;
             return Ok(true);

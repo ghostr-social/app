@@ -43,6 +43,7 @@ VIDEO_PLAYER_CONTRACT_TESTS := \
 	integration_test/video_player_adapter_identity_contract_test.dart
 VIDEO_PROGRESSIVE_ANDROID_TESTS := \
 	integration_test/progressive_delivery_video_test.dart \
+	integration_test/warp_feed_progressive_loop_reopen_video_test.dart \
 	integration_test/warp_feed_playback_video_test.dart \
 	integration_test/warp_feed_visible_motion_video_test.dart \
 	integration_test/warp_feed_rapid_swipe_instrumentation_video_test.dart \

@@ -1,4 +1,4 @@
-use super::{PartialRangeStore, SingleResponseState, SingleResponseStorage};
+use super::{PartialRangeStore, SingleResponseState, SingleResponseStorage, StagedCommitPolicy};
 use crate::partial_range_disk as disk;
 use crate::partial_range_manifest::RangeManifest;
 use crate::partial_range_store::cleanup_debt::CleanupScope;
@@ -97,7 +97,7 @@ impl PartialRangeStore {
         &self,
         binding: &RepresentationBinding,
         total: u64,
-        retire_http: bool,
+        policy: StagedCommitPolicy,
     ) -> Result<()> {
         let key = binding.post().as_str();
         ensure!(
@@ -108,9 +108,9 @@ impl PartialRangeStore {
         disk::save_manifest(&self.paths.single_response_manifest(key), &manifest).await?;
         let mut entries = self.entries.lock().await;
         let old_accounted = self.entry(&mut entries, key).await?.accounted;
-        self.publish_staged_response(key, total, retire_http)
+        self.publish_staged_response(key, total, policy.retire_http)
             .await?;
-        self.record_staged_commit(&mut entries, key, manifest, retire_http)
+        self.record_staged_commit(&mut entries, key, manifest, policy)
             .await;
         let pending = self.take_sparse_response_bytes(key).await;
         self.finish_replacement_cleanup(key, old_accounted.saturating_add(pending))
@@ -140,11 +140,13 @@ impl PartialRangeStore {
         entries: &mut crate::partial_range_store::Entries,
         key: &str,
         manifest: RangeManifest,
-        retire_http: bool,
+        policy: StagedCommitPolicy,
     ) {
-        self.advance_content_revision(key).await;
+        if !policy.preserve_revision {
+            self.advance_content_revision(key).await;
+        }
         self.source_generations.lock().await.remove(key);
-        if retire_http {
+        if policy.retire_http {
             self.http_generations.lock().await.remove(key);
         }
         let entry = entries.get_mut(key).expect("staged response entry");

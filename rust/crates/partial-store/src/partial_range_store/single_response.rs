@@ -7,6 +7,7 @@ use ghostr_engine::adaptive::WholeBodyContract;
 use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
 
 mod commit;
+mod continuity;
 mod finish;
 mod lifecycle;
 mod open;
@@ -19,6 +20,7 @@ mod test_support;
 mod transaction;
 mod write;
 pub(in crate::partial_range_store) use commit::{CommitPhase, CommitTarget, ResponseCommit};
+use continuity::StagedCommitPolicy;
 pub(in crate::partial_range_store) use session::SessionResponse;
 pub(super) use state::{
     accepted_total, ResponseOwner, ResponseOwnerRef, SingleResponseAuthority, SingleResponseState,

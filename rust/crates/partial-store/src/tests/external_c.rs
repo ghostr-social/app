@@ -58,6 +58,8 @@ mod partial_range_staged_response_reload_test;
 mod partial_range_staged_sparse_resume_test;
 #[path = "../../tests/partial_range_staged_sparse_takeover_test.rs"]
 mod partial_range_staged_sparse_takeover_test;
+#[path = "../../tests/partial_range_staged_stale_validator_revision_test.rs"]
+mod partial_range_staged_stale_validator_revision_test;
 #[path = "../../tests/partial_range_staged_takeover_test.rs"]
 mod partial_range_staged_takeover_test;
 #[path = "../../tests/partial_range_stale_action_release_test.rs"]
