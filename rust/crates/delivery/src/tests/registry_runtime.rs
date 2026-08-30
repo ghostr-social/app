@@ -36,6 +36,7 @@ mod probe_history_retention_test;
 mod probe_range_capability_test;
 mod probe_representation_change_test;
 mod probe_representation_fence_test;
+mod probe_timeout_body_requirement_test;
 mod projection_canonical_retarget_test;
 mod projection_focus_stability_test;
 mod projection_post_focus_stability_test;

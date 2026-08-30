@@ -59,6 +59,7 @@ impl PlanEvidence {
                 independent_sources: &self.string_sets,
                 whole_body_exhaustions: &self.exhausted_caps,
                 completed_head_probes: &self.completed_probes,
+                unavailable_head_probes: &HashSet::new(),
                 in_flight: active,
                 active_head_probes: &[],
                 hls_candidates: &[],

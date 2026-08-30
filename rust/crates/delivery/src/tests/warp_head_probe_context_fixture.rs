@@ -43,6 +43,7 @@ pub(super) fn plan_at(
             independent_sources: &HashMap::new(),
             whole_body_exhaustions: &HashMap::new(),
             completed_head_probes: completed,
+            unavailable_head_probes: &HashSet::new(),
             in_flight: &[],
             active_head_probes: active,
             hls_candidates: &[],

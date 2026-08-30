@@ -44,6 +44,7 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
             independent_sources: &independent_sources,
             whole_body_exhaustions: &whole_body_exhaustions,
             completed_head_probes: &completed_head_probes,
+            unavailable_head_probes: &HashSet::new(),
             in_flight: &[],
             active_head_probes: &[],
             hls_candidates: &[],

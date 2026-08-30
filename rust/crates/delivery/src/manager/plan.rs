@@ -30,6 +30,7 @@ pub(crate) struct PlanInputs<'a> {
     pub independent_sources: &'a HashMap<PostId, HashSet<String>>,
     pub whole_body_exhaustions: &'a HashMap<TransferIdentity, WholeBodyExhaustion>,
     pub completed_head_probes: &'a HashSet<TransferIdentity>,
+    pub unavailable_head_probes: &'a HashSet<TransferIdentity>,
     pub in_flight: &'a [ActiveAction],
     pub active_head_probes: &'a [TransferIdentity],
     pub hls_candidates: &'a [ghostr_engine::adaptive::HlsCandidateSnapshot],

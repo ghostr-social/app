@@ -90,6 +90,9 @@ impl DeliveryWorker {
         let completed_head_probes = self
             .probes
             .current_completed_identities(self.state.catalog());
+        let unavailable_head_probes = self
+            .probes
+            .current_unavailable_identities(self.state.catalog());
         let inputs = PlanInputs {
             stats: self.keeper.stats(),
             retry: &self.retry,
@@ -101,6 +104,7 @@ impl DeliveryWorker {
             independent_sources: &cycle.independent_sources,
             whole_body_exhaustions: &cycle.whole_body_exhaustions,
             completed_head_probes: &completed_head_probes,
+            unavailable_head_probes: &unavailable_head_probes,
             in_flight: &cycle.in_flight,
             active_head_probes: &cycle.active_head_probes,
             hls_candidates: &cycle.hls_candidates,

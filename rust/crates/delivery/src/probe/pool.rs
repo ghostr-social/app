@@ -26,6 +26,7 @@ pub(crate) struct MetadataProbePool {
     probing: HashMap<PostId, ActiveProbe>,
     probed: HashMap<TransferIdentity, CompletedHeadProbe>,
     deferred: HashSet<PostId>,
+    head_unavailable: HashSet<TransferIdentity>,
 }
 
 struct ActiveProbe {
@@ -49,6 +50,7 @@ impl MetadataProbePool {
             probing: HashMap::new(),
             probed: HashMap::new(),
             deferred: HashSet::new(),
+            head_unavailable: HashSet::new(),
         }
     }
 
@@ -76,6 +78,7 @@ impl MetadataProbePool {
     ) {
         self.probing.remove(identity.post());
         self.deferred.remove(identity.post());
+        self.head_unavailable.remove(identity);
         self.probed.insert(
             identity.clone(),
             CompletedHeadProbe::new(stamp, observed_size),
@@ -91,12 +94,24 @@ impl MetadataProbePool {
         self.deferred.insert(post.clone());
     }
 
+    pub fn require_body(&mut self, identity: &TransferIdentity) {
+        self.defer_to_body(identity.post());
+        self.head_unavailable.insert(identity.clone());
+    }
+
     pub fn body_finished(&mut self, post: &PostId) {
         self.deferred.remove(post);
+        self.head_unavailable
+            .retain(|identity| identity.post() != post);
     }
 
     pub(crate) fn reconcile_bodies(&mut self, active: &HashSet<PostId>) {
-        self.deferred.retain(|post| active.contains(post));
+        let unavailable = &self.head_unavailable;
+        self.deferred.retain(|post| {
+            active.contains(post) || unavailable.iter().any(|item| item.post() == post)
+        });
+        self.head_unavailable
+            .retain(|identity| self.deferred.contains(identity.post()));
     }
 
     pub fn clear(&mut self) {
@@ -105,6 +120,7 @@ impl MetadataProbePool {
             .for_each(|probe| probe.result_current = false);
         self.probed.clear();
         self.deferred.clear();
+        self.head_unavailable.clear();
     }
 
     pub(crate) fn representation_changed(&mut self, post: &PostId) {
@@ -113,6 +129,8 @@ impl MetadataProbePool {
         }
         self.probed.retain(|identity, _| identity.post() != post);
         self.deferred.remove(post);
+        self.head_unavailable
+            .retain(|identity| identity.post() != post);
     }
 
     /// Active probes remain counted until completion; only completed
@@ -121,6 +139,8 @@ impl MetadataProbePool {
         self.probed
             .retain(|identity, _| retained.contains(identity.post()));
         self.deferred.retain(|post| retained.contains(post));
+        self.head_unavailable
+            .retain(|identity| retained.contains(identity.post()));
     }
 
     /// Successful HEAD history only; transient probe availability stays a launch-time check.
@@ -132,6 +152,22 @@ impl MetadataProbePool {
             .iter()
             .filter(|(identity, history)| history.current(catalog, identity))
             .map(|(identity, _)| identity.clone())
+            .collect()
+    }
+
+    pub(crate) fn current_unavailable_identities(
+        &self,
+        catalog: &Catalog,
+    ) -> HashSet<TransferIdentity> {
+        self.head_unavailable
+            .iter()
+            .filter(|identity| {
+                catalog
+                    .transfer_identity(identity.post(), identity.source().as_str())
+                    .as_ref()
+                    == Some(*identity)
+            })
+            .cloned()
             .collect()
     }
 

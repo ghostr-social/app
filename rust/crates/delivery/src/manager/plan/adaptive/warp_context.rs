@@ -98,7 +98,10 @@ fn head_probe_history(
     inputs: &PlanInputs<'_>,
 ) -> HeadProbeHistory {
     let post = &candidate.post;
-    if completed_head_is_current(state, candidate, inputs)
+    if current_head_is_in(state, candidate, inputs.unavailable_head_probes) {
+        return HeadProbeHistory::Completed;
+    }
+    if current_head_is_in(state, candidate, inputs.completed_head_probes)
         && !crate::probe::pool::evidence_needs_head_refresh(
             &candidate.evidence,
             historical_size(state, candidate),
@@ -134,10 +137,10 @@ fn historical_size(
     })
 }
 
-fn completed_head_is_current(
+fn current_head_is_in(
     state: &DeliveryState,
     candidate: &ghostr_engine::adaptive::CandidateSnapshot,
-    inputs: &PlanInputs<'_>,
+    identities: &std::collections::HashSet<ghostr_engine::representation::TransferIdentity>,
 ) -> bool {
     let Some(source) = candidate.preferred_source.as_deref() else {
         return false;
@@ -146,7 +149,7 @@ fn completed_head_is_current(
         .catalog()
         .transfer_identity(&candidate.post, source)
         .as_ref()
-        .is_some_and(|identity| inputs.completed_head_probes.contains(identity))
+        .is_some_and(|identity| identities.contains(identity))
 }
 
 fn apply_feedback(

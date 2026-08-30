@@ -4,7 +4,7 @@ use crate::delivery_events::DecisionClaim;
 use crate::manager::failure::{origin_failure_class, FailureClass};
 use crate::manager::transfers::{ProbeDone, ProbeObservation};
 use crate::manager::DeliveryWorker;
-use crate::probe::media::ProbeResult;
+use crate::probe::media::{is_usefulness_timeout, ProbeResult};
 use ghostr_engine::adaptive::DecisionOutcome;
 use ghostr_engine::representation::TransferIdentity;
 use ghostr_net::media_log_identity::MediaLogIdentity;
@@ -104,6 +104,9 @@ impl DeliveryWorker {
         identity: &TransferIdentity,
         error: &anyhow::Error,
     ) -> DecisionOutcome {
+        if is_usefulness_timeout(error) {
+            return self.finish_expired_probe(identity);
+        }
         let Some(class) = origin_failure_class(error) else {
             self.probes.release(identity.post());
             return DecisionOutcome::Failed {
@@ -121,6 +124,18 @@ impl DeliveryWorker {
         }
         DecisionOutcome::Failed {
             class: failure_name(class).into(),
+            elapsed_ms: 0,
+        }
+    }
+
+    fn finish_expired_probe(&mut self, identity: &TransferIdentity) -> DecisionOutcome {
+        warn!(
+            "HEAD usefulness deadline expired for {}; deferring to body",
+            MediaLogIdentity::from_url(identity.source().as_str())
+        );
+        self.probes.require_body(identity);
+        DecisionOutcome::Failed {
+            class: "warp_head_probe_deadline_deferred_to_body".into(),
             elapsed_ms: 0,
         }
     }

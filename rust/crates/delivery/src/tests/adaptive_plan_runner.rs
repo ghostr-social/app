@@ -56,6 +56,7 @@ fn run_with_inputs(
     let independent_sources = HashMap::new();
     let whole_body_exhaustions = HashMap::new();
     let completed_head_probes = HashSet::new();
+    let unavailable_head_probes = HashSet::new();
     let revisions = HashMap::new();
     let finalized = HashSet::new();
     let inputs = PlanInputs {
@@ -69,6 +70,7 @@ fn run_with_inputs(
         independent_sources: &independent_sources,
         whole_body_exhaustions: &whole_body_exhaustions,
         completed_head_probes: &completed_head_probes,
+        unavailable_head_probes: &unavailable_head_probes,
         in_flight: scenario.in_flight,
         active_head_probes: &[],
         hls_candidates: &[],

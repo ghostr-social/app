@@ -48,6 +48,7 @@ fn stored_mirror_generation_controls_continuation_source_and_extent() {
             independent_sources: &independent_sources,
             whole_body_exhaustions: &whole_body_exhaustions,
             completed_head_probes: &completed_head_probes,
+            unavailable_head_probes: &HashSet::new(),
             in_flight: &[],
             active_head_probes: &[],
             hls_candidates: &[],

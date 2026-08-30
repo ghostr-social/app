@@ -3,7 +3,6 @@
 //! client. Body requests remain exclusively owned by policy grants.
 
 use anyhow::{Context as _, Result};
-use core::future::Future;
 use core::time::Duration;
 use ghostr_engine::adaptive::PreemptionAuthority;
 use ghostr_engine::evidence::EvidenceValidator;
@@ -18,7 +17,9 @@ use ghostr_net::transfer_timeouts::TransferTimeouts;
 use reqwest::header::{HeaderValue, ACCEPT_ENCODING};
 use tokio::time::Instant;
 
+mod deadline;
 mod response_headers;
+pub(crate) use deadline::is_usefulness_timeout;
 
 /// What one probe learned about a media URL.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -100,13 +101,13 @@ async fn send_head(
     Duration,
     ghostr_engine::evidence::EvidenceTime,
 )> {
-    let admitted = spec
+    let action_deadline = deadline::head_usefulness();
+    let request = spec
         .requests
         .get(spec.url, spec.priority)?
         .header(ACCEPT_ENCODING, HeaderValue::from_static("identity"))
-        .head()
-        .admit_for(spec.timeouts.admission)
-        .await?;
+        .head();
+    let admitted = deadline::admit(request, action_deadline, spec.timeouts.admission).await?;
     let network = spec
         .network
         .map_or(NetworkClass::Unavailable, ProbeNetwork::network_class);
@@ -121,21 +122,10 @@ async fn send_head(
         crate::manager::time::unix_time_ms(),
     ));
     let started = Instant::now();
-    let deadline = started + spec.timeouts.headers;
-    let response = await_headers(admitted.send_with_redirect_deadline(deadline), deadline).await?;
+    let response = deadline::send(admitted, action_deadline, spec.timeouts.headers).await?;
     let observed = crate::manager::time::evidence_time();
     let ttfb = response.origin_elapsed(started.elapsed());
     Ok((response, ttfb, observed))
-}
-
-async fn await_headers(
-    sending: impl Future<Output = Result<MediaResponse>>,
-    deadline: Instant,
-) -> Result<MediaResponse> {
-    tokio::time::timeout_at(deadline, sending)
-        .await
-        .context("probe response headers timed out")?
-        .context("probe request failed")
 }
 
 fn facts_from_head(
@@ -166,7 +156,7 @@ fn conclude(stats: &mut HostStats, url: &str, outcome: Result<ProbeFacts>) -> Re
         }
         Err(error) => {
             let host = host_of(url);
-            if let Some(host) = &host.filter(|_| !is_admission_timeout(&error)) {
+            if let Some(host) = &host.filter(|_| !is_local_timeout(&error)) {
                 stats.record_failure(host);
             }
             Err(error)
@@ -186,6 +176,7 @@ fn result_from(facts: ProbeFacts) -> ProbeResult {
     }
 }
 
-fn is_admission_timeout(error: &anyhow::Error) -> bool {
+fn is_local_timeout(error: &anyhow::Error) -> bool {
     error.is::<ghostr_net::media_request_executor::MediaRequestAdmissionTimeout>()
+        || is_usefulness_timeout(error)
 }
