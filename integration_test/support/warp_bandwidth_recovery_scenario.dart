@@ -51,3 +51,9 @@ Future<void> runWarpBandwidthRecoveryScenario(WidgetTester tester) async {
   final recovery = await _traverseImpairedFeed(tester, opened, impaired);
   await _recoverSharedLink(tester, opened, impaired, recovery);
 }
+
+Future<void> runWarpBandwidthWarmReturnScenario(WidgetTester tester) async {
+  final opened = await _openPacedFeed(tester);
+  final impaired = await _impairSharedLink(tester, opened);
+  await _traverseImpairedWarmReturn(tester, opened, impaired);
+}

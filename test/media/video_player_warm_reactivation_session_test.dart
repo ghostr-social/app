@@ -17,7 +17,7 @@ import '../support/recording_player_preparation_feedback.dart';
 import '../support/video_player_surface_pump.dart';
 
 void main() {
-  testWidgets('warm reactivation presents a new session without reload', (
+  testWidgets('warm reactivation preserves its controller and playhead', (
     tester,
   ) async {
     final platform = FakeVideoPlayerPlatform();
@@ -42,6 +42,7 @@ void main() {
       MaterialApp(home: port.buildSurface(_request(scope, false))),
     );
     await settleVideoPlayerTasks(tester);
+    expect(platform.calls, isNot(contains('seekTo')));
     await tester.pumpWidget(
       MaterialApp(home: port.buildSurface(_request(scope, true))),
     );

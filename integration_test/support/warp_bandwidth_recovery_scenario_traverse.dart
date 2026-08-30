@@ -1,6 +1,17 @@
 part of 'warp_bandwidth_recovery_scenario.dart';
 
+typedef _WarmReturn = ({PlaybackFocus focus, int afterRevision});
+
 Future<_RecoveryFocus> _traverseImpairedFeed(
+  WidgetTester tester,
+  _PacedFeed opened,
+  _ImpairedFeed impaired,
+) async {
+  final returned = await _traverseImpairedWarmReturn(tester, opened, impaired);
+  return _waitForRecoveryBaseline(tester, opened, impaired, returned);
+}
+
+Future<_WarmReturn> _traverseImpairedWarmReturn(
   WidgetTester tester,
   _PacedFeed opened,
   _ImpairedFeed impaired,
@@ -51,7 +62,7 @@ Future<WarpSwipeBurst> _swipeBackwardUnderLoss(
   return reverse;
 }
 
-Future<_RecoveryFocus> _returnToThird(
+Future<_WarmReturn> _returnToThird(
   WidgetTester tester,
   _PacedFeed opened,
   _ImpairedFeed impaired,
@@ -70,8 +81,5 @@ Future<_RecoveryFocus> _returnToThird(
   await journey.waitForPlaying(tester, focus);
   await journey.verifyReadyPlayback(impaired.ready.snapshot, focus, releasedAt);
   expect(journey.focus.hadTransportRescue, isFalse);
-  return _waitForRecoveryBaseline(tester, opened, impaired, (
-    focus: focus,
-    afterRevision: cursor,
-  ));
+  return (focus: focus, afterRevision: cursor);
 }
