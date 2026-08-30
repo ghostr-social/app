@@ -131,7 +131,14 @@ impl InitialCounts {
 }
 
 fn origin_limit(snapshot: &PlayabilitySnapshot, emergency: bool) -> Option<usize> {
-    emergency.then_some(snapshot.network.connection_capacity.max(1))
+    let reserve_ceiling = snapshot.network.connection_ceiling.saturating_sub(1).max(1);
+    emergency.then_some(
+        snapshot
+            .network
+            .connection_capacity
+            .max(2)
+            .min(reserve_ceiling),
+    )
 }
 
 fn ordered_mode(current_emergency: bool, ready: usize, target: usize) -> ControlMode {

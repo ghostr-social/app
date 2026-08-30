@@ -21,6 +21,26 @@ fn emergency_reserve_shares_slots_across_canonical_authority_aliases() {
         .count();
 
     assert!(plan.ready_reserve.target >= 2, "{plan:#?}");
+    assert_eq!(admitted, 2, "{plan:#?}");
+}
+
+#[test]
+fn emergency_reserve_keeps_the_final_connection_for_current_playback() {
+    let mut input = snapshot(3, 20_000_000, 0, u16::MAX);
+    input.network.connection_capacity = 1;
+    input.network.connection_ceiling = 2;
+    set_source(&mut input, 0, "https://current.example/video");
+    set_source(&mut input, 1, "https://example.com/one");
+    set_source(&mut input, 2, "https://example.com/two");
+
+    let plan = AdaptivePlayabilityPolicy.plan(&input);
+    let futures = [PostId::new("p1"), PostId::new("p2")];
+    let admitted = plan
+        .allocations
+        .iter()
+        .filter(|work| futures.contains(&work.post))
+        .count();
+
     assert_eq!(admitted, 1, "{plan:#?}");
 }
 

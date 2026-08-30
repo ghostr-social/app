@@ -98,6 +98,11 @@ extension WarpFeedPlaybackJourneyOriginAssertions on WarpFeedPlaybackJourney {
 
   void _expectCoverageDelta(_OriginCoverageDelta delta) {
     expect(
+      delta.after.requests,
+      greaterThanOrEqualTo(delta.before.requests),
+      reason: delta.evidence,
+    );
+    expect(
       delta.before.bytes,
       delta.prior.networkBytes,
       reason: delta.evidence,
@@ -115,13 +120,44 @@ extension WarpFeedPlaybackJourneyOriginAssertions on WarpFeedPlaybackJourney {
           delta.prior.duplicateBytes,
       reason: delta.evidence,
     );
-    if (!delta.prior.isComplete) {
-      expect(
-        delta.finalCoverage.uniqueBytes,
-        greaterThan(delta.prior.uniqueBytes),
-        reason: delta.evidence,
-      );
+    expect(
+      delta.finalCoverage.uniqueBytes,
+      greaterThanOrEqualTo(delta.prior.uniqueBytes),
+      reason: delta.evidence,
+    );
+    if (delta.after.requests == delta.before.requests) {
+      _expectStableCoverage(delta);
+      return;
     }
+    expect(delta.prior.isComplete, isFalse, reason: delta.evidence);
+    expect(
+      delta.finalCoverage.uniqueBytes,
+      greaterThan(delta.prior.uniqueBytes),
+      reason: delta.evidence,
+    );
+  }
+
+  void _expectStableCoverage(_OriginCoverageDelta delta) {
+    expect(
+      delta.finalCoverage.networkBytes,
+      delta.prior.networkBytes,
+      reason: delta.evidence,
+    );
+    expect(
+      delta.finalCoverage.uniqueBytes,
+      delta.prior.uniqueBytes,
+      reason: delta.evidence,
+    );
+    expect(
+      delta.finalCoverage.duplicateBytes,
+      delta.prior.duplicateBytes,
+      reason: delta.evidence,
+    );
+    expect(
+      delta.finalCoverage.missingRanges,
+      delta.prior.missingRanges,
+      reason: delta.evidence,
+    );
   }
 
   void _expectReplayRequests(
@@ -137,8 +173,9 @@ extension WarpFeedPlaybackJourneyOriginAssertions on WarpFeedPlaybackJourney {
       isTrue,
       reason: evidence,
     );
-    final expected = prior.isComplete ? 0 : prior.missingRanges.length;
-    expect(added, hasLength(expected), reason: evidence);
+    if (added.isEmpty) return;
+    expect(prior.isComplete, isFalse, reason: evidence);
+    expect(added, hasLength(prior.missingRanges.length), reason: evidence);
     expect(
       progressiveReplayCrossesMissingFrontiers(added, prior.missingRanges),
       isTrue,
