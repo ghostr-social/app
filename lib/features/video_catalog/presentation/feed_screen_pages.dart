@@ -22,13 +22,19 @@ extension _FeedScreenPages on _FeedScreenState {
           itemBuilder: (_, index) =>
               _feedPage(context, state, index, warmPreviousDepth),
         ),
-        ..._reserveHosts(state),
+        ..._reserveHosts(state, playbackIds.length),
       ],
     );
   }
 
-  Iterable<Widget> _reserveHosts(FeedLoaded state) sync* {
+  Iterable<Widget> _reserveHosts(
+    FeedLoaded state,
+    int pagePlaybackCount,
+  ) sync* {
     if (!_isVisible || _memoryConstrained) return;
+    var remaining =
+        warpMaximumConcurrentPlaybackControllers - pagePlaybackCount;
+    if (remaining <= 0) return;
     for (
       var index = state.activeIndex + _pageHostedFutureDepth + 1;
       index < state.posts.length;
@@ -41,6 +47,8 @@ extension _FeedScreenPages on _FeedScreenState {
         key: ValueKey('warp-reserve-${post.id.value}'),
         child: Offstage(child: _reserveSurface(post, prepared)),
       );
+      remaining--;
+      if (remaining == 0) return;
     }
   }
 
@@ -88,6 +96,9 @@ extension _FeedScreenPages on _FeedScreenState {
     if (current || _keepsWarmPrevious(previousDistance, warmPreviousDepth)) {
       return FeedCardPlaybackSource.direct(state.posts[index].media);
     }
+    if (_isPageHostedHls(state, index)) {
+      return FeedCardPlaybackSource.direct(state.posts[index].media);
+    }
     return null;
   }
 
@@ -121,13 +132,23 @@ extension _FeedScreenPages on _FeedScreenState {
       index++
     ) {
       final media = state.posts[index].media;
-      if (state.preparation.forMedia(media) == null) {
+      final preparedProgressive = state.preparation.forMedia(media) != null;
+      final preparedHls = _isPageHostedHls(state, index);
+      if (!preparedProgressive && !preparedHls) {
         canReplenish = true;
       } else {
         prepared++;
       }
     }
     return (prepared: prepared, canReplenish: canReplenish);
+  }
+
+  bool _isPageHostedHls(FeedLoaded state, int index) {
+    final distance = index - state.activeIndex;
+    if (!_isVisible || distance < 1 || distance > _pageHostedFutureDepth) {
+      return false;
+    }
+    return state.hlsAuthorityFor(state.posts[index].media) != null;
   }
 
   PreparedProgressivePlayback? _preparedPlayback(FeedLoaded state, int index) {

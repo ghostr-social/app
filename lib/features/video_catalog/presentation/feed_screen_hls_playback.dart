@@ -40,6 +40,7 @@ extension _FeedScreenHlsPlayback on _FeedScreenState {
       isActive: _isVisible && isCurrent,
       preparedOnly: !isCurrent,
       keepWarmWhenInactive: !isCurrent,
+      reservesPreparedDecoder: authority != null,
       surfaceScope: _playbackSurfaceScope,
       hlsAuthority: authority,
       onHlsFirstFrameRendered: cubit.hlsFirstFrameRendered,

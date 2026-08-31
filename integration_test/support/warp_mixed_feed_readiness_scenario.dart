@@ -8,6 +8,8 @@ import 'package:ghostr/core/media/video_representation_id.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
 import 'package:ghostr/features/video_catalog/domain/video_delivery_updates.dart';
 import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
+import 'package:ghostr/features/video_catalog/presentation/widgets/feed_card.dart';
+import 'package:video_player/video_player.dart';
 
 import 'device_playback_probe.dart';
 import 'device_qoe_targets.dart';
@@ -21,6 +23,7 @@ part 'warp_mixed_feed_readiness_scenario_wait.dart';
 part 'warp_mixed_feed_readiness_scenario_evidence.dart';
 part 'warp_mixed_feed_readiness_scenario_state_evidence.dart';
 part 'warp_mixed_feed_readiness_scenario_hls.dart';
+part 'warp_mixed_feed_readiness_scenario_hls_preparation.dart';
 
 Future<void> runWarpMixedFeedReadinessScenario(WidgetTester tester) async {
   final runtime = await WarpMixedFeedRuntime.start();
@@ -34,7 +37,8 @@ Future<void> runWarpMixedFeedReadinessScenario(WidgetTester tester) async {
     runtime,
     hlsDeliveryId,
   );
-  final hlsLease = await _consumeHls(tester, runtime);
+  final prepared = await _waitForPreparedHls(tester, runtime, hlsDeliveryId);
+  final hlsLease = await _consumeHls(tester, runtime, prepared);
   await _consumeThird(tester, runtime);
   _expectHlsAuthorityBridge(runtime, structural, hlsLease);
 }
@@ -71,7 +75,6 @@ Future<VideoDeliverySnapshot> _waitForStructuralHls(
     structural = _structuralHls(runtime, deliveryId);
     return structural != null && _isPlayerReady(runtime, 2);
   });
-  expect(_isPlayerReady(runtime, 1), isFalse);
   expect(_isPlayerReady(runtime, 2), isTrue);
   expect(_hasPresented(runtime, 1), isFalse);
   _reportHlsState(runtime, structural!, 'beforeSwipe');

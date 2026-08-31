@@ -23,6 +23,7 @@ final class FeedCardPlayback {
     this.surfaceScope,
     this.preparedOnly = false,
     this.keepWarmWhenInactive = false,
+    this.reservesPreparedDecoder = false,
     this.hlsAuthority,
     this.onHlsFirstFrameRendered,
     this.onHlsDecodedReadinessRevoked,
@@ -34,6 +35,7 @@ final class FeedCardPlayback {
   final VideoPlaybackSurfaceScope? surfaceScope;
   final bool preparedOnly;
   final bool keepWarmWhenInactive;
+  final bool reservesPreparedDecoder;
   final HlsPlaybackAuthority? hlsAuthority;
   final ValueChanged<HlsPlaybackAuthority>? onHlsFirstFrameRendered;
   final ValueChanged<HlsPlaybackAuthority>? onHlsDecodedReadinessRevoked;
@@ -91,6 +93,7 @@ class FeedCard extends StatelessWidget {
                 mode: mode,
                 surfaceScope: playback.surfaceScope,
                 keepWarmWhenInactive: playback.keepWarmWhenInactive,
+                reservesPreparedDecoder: playback.reservesPreparedDecoder,
                 hlsAuthority: playback.hlsAuthority,
                 onHlsFirstFrameRendered: playback.onHlsFirstFrameRendered,
                 onHlsDecodedReadinessRevoked:

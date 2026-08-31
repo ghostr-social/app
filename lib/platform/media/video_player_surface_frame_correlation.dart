@@ -23,6 +23,9 @@ extension _VideoPlayerSurfaceFrameCorrelation on _VideoPlayerSurfaceState {
     _resetPresentationEvidence();
     _preparationAttempt = attempt;
     _firstFrameAttempt = frameAttempt;
+    _correlatedHlsAuthority = frameAttempt == null
+        ? null
+        : widget.request.hlsAuthority;
     if (frameAttempt == null) return;
     try {
       frameAttempt.listen(
@@ -40,6 +43,7 @@ extension _VideoPlayerSurfaceFrameCorrelation on _VideoPlayerSurfaceState {
   ) {
     if (identical(_firstFrameAttempt, frameAttempt)) {
       _firstFrameAttempt = null;
+      _correlatedHlsAuthority = null;
     }
     _resetPresentationEvidence();
     _releaseFrameAttemptSafely(frameAttempt);
@@ -71,11 +75,14 @@ extension _VideoPlayerSurfaceFrameCorrelation on _VideoPlayerSurfaceState {
   }
 
   void _reportHlsFirstFrame() {
-    final authority = widget.request.hlsAuthority;
+    final authority = _correlatedHlsAuthority;
     final callback = widget.request.onHlsFirstFrameRendered;
     if (_playbackMedia is! ProxiedHlsVideoMediaSource ||
+        !_nativeFrameObserved ||
+        !_controllerPresented ||
         _reportedHlsAuthority != null ||
         authority == null ||
+        widget.request.hlsAuthority != authority ||
         callback == null ||
         widget.request.playbackDeliveryId != authority.deliveryId) {
       return;

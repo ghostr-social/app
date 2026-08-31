@@ -3,6 +3,7 @@ part of 'warp_mixed_feed_readiness_scenario.dart';
 Future<WarpHlsLeaseEvidence> _consumeHls(
   WidgetTester tester,
   WarpMixedFeedRuntime runtime,
+  _PreparedHlsEvidence prepared,
 ) async {
   final cursor = _focusCursor(runtime);
   await _swipeUp(tester);
@@ -14,6 +15,7 @@ Future<WarpHlsLeaseEvidence> _consumeHls(
   final lease = _expectExactHlsLease(runtime, presentation!);
   await _pumpFor(tester, const Duration(milliseconds: 500));
   _expectStableHls(runtime, focus);
+  _expectPreparedHlsHandoff(tester, runtime, prepared, lease);
   _reportHlsFrame(runtime, focus, presentation, lease);
   return lease;
 }

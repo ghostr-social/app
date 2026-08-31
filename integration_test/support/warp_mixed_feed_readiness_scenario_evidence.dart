@@ -19,6 +19,10 @@ bool _isPlayerReady(WarpMixedFeedRuntime runtime, int eventIndex) {
   if (state is! FeedLoaded) return false;
   final id = runtime.events[eventIndex].id;
   final post = state.posts.singleWhere((post) => post.id.value == id);
+  final hlsAuthority = state.hlsAuthorityFor(post.media);
+  if (hlsAuthority != null) {
+    return state.isHlsPlayerVerified(hlsAuthority);
+  }
   return state.preparation.isPlayerVerified(post.media);
 }
 

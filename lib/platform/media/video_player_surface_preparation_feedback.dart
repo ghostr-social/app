@@ -71,12 +71,14 @@ extension _VideoPlayerSurfacePreparationFeedback on _VideoPlayerSurfaceState {
   void _finishPluginInitialization() {
     _controllerPresented = true;
     _preparationAttempt?.initialized();
+    _reportHlsFirstFrame();
     _schedulePresentedFrame();
   }
 
   void _failPreparation(PlayerPreparationFailureKind failure) {
     final frameAttempt = _firstFrameAttempt;
     _firstFrameAttempt = null;
+    _correlatedHlsAuthority = null;
     if (frameAttempt != null) _releaseFrameAttemptSafely(frameAttempt);
     _preparationAttempt?.failed(failure);
   }
@@ -86,6 +88,7 @@ extension _VideoPlayerSurfacePreparationFeedback on _VideoPlayerSurfaceState {
     _reportedHlsAuthority = null;
     final frameAttempt = _firstFrameAttempt;
     _firstFrameAttempt = null;
+    _correlatedHlsAuthority = null;
     if (frameAttempt != null) _releaseFrameAttemptSafely(frameAttempt);
     _preparationAttempt?.release();
     _preparationAttempt = null;

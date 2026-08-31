@@ -52,6 +52,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   PlaybackSession? _playbackSession;
   PlayerPreparationAttempt? _preparationAttempt;
   RenderedFirstFrameAttempt? _firstFrameAttempt;
+  HlsPlaybackAuthority? _correlatedHlsAuthority;
   HlsPlaybackAuthority? _reportedHlsAuthority;
   late PlaybackAssetAuthority? _playbackAuthority = widget.request.authority;
   PlaybackPhase? _playbackPhase;
