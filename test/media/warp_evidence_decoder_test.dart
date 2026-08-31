@@ -57,6 +57,25 @@ void main() {
 
     expect(plan.decisionSequence, isNull);
   });
+
+  test('decoder counts a canonical HLS frame as ordered ready', () {
+    final reserve = WarpReadyReserve.fromJson({
+      'target': 1,
+      'ready': 1,
+      'structural': 1,
+      'protected': 1,
+      'recovery_horizon_ms': 500,
+      'underflow_risk_bps': 0,
+      'ready_coverage_ms': 0,
+      'candidates': [
+        {'post': 'private-hls', 'kind': 'Hls', 'state': 'HlsReady'},
+      ],
+    });
+
+    expect(reserve.orderedReady, 1);
+    expect(reserve.candidateKinds.single, WarpReserveCandidateKind.hls);
+    expect(reserve.candidateStates.single, WarpReserveCandidateState.ready);
+  });
 }
 
 const _evidenceJson = r'''

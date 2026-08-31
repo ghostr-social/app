@@ -22,12 +22,16 @@ impl PlayerPreparationReport {
         &self.authority.post
     }
 
-    pub fn binding(&self) -> &RepresentationBinding {
-        &self.authority.binding
+    pub fn progressive_binding(&self) -> Option<&RepresentationBinding> {
+        self.authority.progressive_binding()
     }
 
-    pub fn revision(&self) -> ContentRevision {
-        self.authority.revision
+    pub fn progressive_revision(&self) -> Option<ContentRevision> {
+        self.authority.progressive_revision()
+    }
+
+    pub fn hls_authority(&self) -> Option<&crate::segmented::HlsPreparedAssetAuthority> {
+        self.authority.hls_authority()
     }
 
     pub fn sequence(&self) -> u64 {

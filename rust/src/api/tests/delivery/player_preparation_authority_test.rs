@@ -43,7 +43,11 @@ async fn assert_mapping(fixture: &AuthorityFixture) {
         .expect("test fixture precondition must hold");
     assert_eq!(report.post().as_str(), "clip");
     assert_eq!(
-        report.binding().representation().fingerprint(),
+        report
+            .progressive_binding()
+            .expect("progressive authority")
+            .representation()
+            .fingerprint(),
         fixture.representation
     );
     assert_eq!(report.player_capability_generation(), 1);

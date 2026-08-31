@@ -1,5 +1,8 @@
+import 'package:ghostr/core/media/hls_playback_authority.dart';
 import 'package:ghostr/core/media/playback_asset_authority.dart';
 import 'package:ghostr/features/video_inventory/domain/player_preparation_feedback_port.dart';
+
+part 'recording_player_preparation_hls.dart';
 
 enum RecordedPreparationState {
   initializing,
@@ -18,10 +21,16 @@ typedef RecordedPreparation = ({
 final class RecordingPlayerPreparationFeedback
     implements PlayerPreparationFeedbackPort {
   final events = <RecordedPreparation>[];
+  final hlsEvents = <RecordedHlsPreparation>[];
 
   @override
   PlayerPreparationAttempt prepare(PlaybackAssetAuthority authority) {
     return _RecordingAttempt(this, authority);
+  }
+
+  @override
+  PlayerPreparationAttempt prepareHls(HlsPlaybackAuthority authority) {
+    return _RecordingHlsAttempt(this, authority);
   }
 
   void _record(
@@ -30,6 +39,14 @@ final class RecordingPlayerPreparationFeedback
     PlayerPreparationFailureKind? failure,
   ]) {
     events.add((authority: authority, state: state, failure: failure));
+  }
+
+  void _recordHls(
+    HlsPlaybackAuthority authority,
+    RecordedPreparationState state, [
+    PlayerPreparationFailureKind? failure,
+  ]) {
+    hlsEvents.add((authority: authority, state: state, failure: failure));
   }
 }
 

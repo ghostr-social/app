@@ -28,7 +28,11 @@ async fn selected_derived_representation_keeps_feed_source_and_exact_player_auth
         .try_player_preparation()
         .expect("test fixture precondition must hold");
     assert_eq!(
-        report.binding().representation().fingerprint(),
+        report
+            .progressive_binding()
+            .expect("progressive authority")
+            .representation()
+            .fingerprint(),
         fixture.representation
     );
 }

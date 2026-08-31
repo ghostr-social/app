@@ -1,4 +1,4 @@
-use super::{FeedOffset, ViewProbability};
+use super::{FeedOffset, PlayerPreparation, ViewProbability};
 use crate::{ActionId, PostId};
 use serde::{Deserialize, Serialize};
 
@@ -142,6 +142,7 @@ pub struct HlsCandidateSnapshot {
     pub startup_value_ms: u64,
     pub cursor: HlsObjectCursor,
     pub state: HlsBootstrapState,
+    pub player_preparation: PlayerPreparation,
 }
 
 impl HlsCandidateSnapshot {
@@ -168,6 +169,10 @@ impl HlsCandidateSnapshot {
 
     pub(crate) const fn ready(&self) -> bool {
         matches!(self.state, HlsBootstrapState::Ready)
+    }
+
+    pub(crate) const fn player_ready(&self) -> bool {
+        self.ready() && matches!(self.player_preparation, PlayerPreparation::FirstFrameRendered)
     }
 
     pub(super) fn source(&self) -> Option<&str> {

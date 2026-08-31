@@ -1,7 +1,13 @@
 use super::ranges::uncovered_bytes;
+use super::reserve_candidate::ReserveCandidate;
 use super::sources::{best_origin, delivery_ms};
-use super::{CandidateSnapshot, MediaLayout, PlayabilitySnapshot, PlayerPreparation};
+use super::{
+    CandidateSnapshot, HlsBootstrapState, MediaLayout, PlayabilitySnapshot, PlayerPreparation,
+};
 use crate::playback::EstimateConfidence;
+
+mod coverage;
+mod hls_followup;
 
 const MAX_READY_VIDEOS: usize = 5;
 const RESERVE_RISK_BPS: u16 = 500;
@@ -15,8 +21,8 @@ pub(super) struct ReserveTarget {
     pub(super) underflow_risk_bps: u16,
 }
 
-pub(super) fn candidates(snapshot: &PlayabilitySnapshot) -> Vec<&CandidateSnapshot> {
-    let mut candidates: Vec<_> = snapshot
+pub(super) fn candidates(snapshot: &PlayabilitySnapshot) -> Vec<ReserveCandidate<'_>> {
+    let progressive = snapshot
         .candidates
         .iter()
         .filter(|candidate| {
@@ -24,15 +30,22 @@ pub(super) fn candidates(snapshot: &PlayabilitySnapshot) -> Vec<&CandidateSnapsh
                 && !candidate.direct_playback_blocked
                 && candidate.feed_offset.value() > 0
         })
-        .collect();
-    candidates.sort_by_key(|candidate| candidate.feed_offset.magnitude());
+        .map(ReserveCandidate::Progressive);
+    let hls = snapshot
+        .hls_candidates
+        .iter()
+        .filter(|candidate| candidate.feed_offset.value() > 0)
+        .filter(|candidate| !matches!(candidate.state, HlsBootstrapState::Failed))
+        .map(ReserveCandidate::Hls);
+    let mut candidates: Vec<_> = progressive.chain(hls).collect();
+    candidates.sort_by_key(|candidate| candidate.offset().magnitude());
     candidates.truncate(MAX_READY_VIDEOS);
     candidates
 }
 
 pub(super) fn target(
     snapshot: &PlayabilitySnapshot,
-    candidates: &[&CandidateSnapshot],
+    candidates: &[ReserveCandidate<'_>],
 ) -> ReserveTarget {
     let recovery_horizon_ms = recovery_horizon(snapshot, candidates);
     let lambda = swipe_lambda(snapshot, recovery_horizon_ms);
@@ -79,6 +92,13 @@ pub(super) fn is_in_flight(candidate: &CandidateSnapshot) -> bool {
         .all(|range| uncovered_bytes(*range, &covered) == 0)
 }
 
+pub(super) fn allows_progressive_followup(
+    snapshot: &PlayabilitySnapshot,
+    candidate: &CandidateSnapshot,
+) -> bool {
+    hls_followup::allows(snapshot, candidate)
+}
+
 pub(super) fn readiness_ranges(candidate: &CandidateSnapshot) -> Vec<crate::ByteRange> {
     if candidate.direct_playback_blocked {
         return Vec::new();
@@ -98,21 +118,27 @@ pub(super) fn readiness_ranges(candidate: &CandidateSnapshot) -> Vec<crate::Byte
     ranges
 }
 
-pub(super) fn ready_coverage_ms(candidates: &[&CandidateSnapshot], horizon_ms: u64) -> u64 {
-    candidates
-        .iter()
-        .map(|candidate| weighted_coverage(candidate, horizon_ms))
-        .sum()
+pub(super) fn ready_coverage_ms(candidates: &[ReserveCandidate<'_>], horizon_ms: u64) -> u64 {
+    coverage::ready(candidates, horizon_ms)
 }
 
-fn recovery_horizon(snapshot: &PlayabilitySnapshot, candidates: &[&CandidateSnapshot]) -> u64 {
+fn recovery_horizon(snapshot: &PlayabilitySnapshot, candidates: &[ReserveCandidate<'_>]) -> u64 {
     candidates
         .iter()
-        .filter(|candidate| !is_structural(candidate))
-        .filter_map(|candidate| candidate_recovery(snapshot, candidate))
+        .filter_map(|candidate| reserve_recovery(snapshot, *candidate))
         .min()
         .unwrap_or(MIN_RECOVERY_HORIZON_MS)
         .clamp(MIN_RECOVERY_HORIZON_MS, MAX_RECOVERY_HORIZON_MS)
+}
+
+fn reserve_recovery(snapshot: &PlayabilitySnapshot, candidate: ReserveCandidate<'_>) -> Option<u64> {
+    match candidate {
+        ReserveCandidate::Progressive(candidate) if !is_structural(candidate) => {
+            candidate_recovery(snapshot, candidate)
+        }
+        ReserveCandidate::Hls(candidate) if !candidate.ready() => Some(candidate.startup_value_ms),
+        _ => None,
+    }
 }
 
 fn candidate_recovery(
@@ -162,21 +188,4 @@ fn poisson_tail_bps(lambda: f64, count: usize) -> u16 {
         cumulative += term;
     }
     ((1.0 - cumulative).clamp(0.0, 1.0) * 10_000.0).ceil() as u16
-}
-
-fn weighted_coverage(candidate: &CandidateSnapshot, horizon_ms: u64) -> u64 {
-    if !is_ready(candidate) {
-        return 0;
-    }
-    let playable = contiguous_playable_ms(candidate).min(horizon_ms);
-    (playable as f64 * candidate.view_probability.value()).floor() as u64
-}
-
-fn contiguous_playable_ms(candidate: &CandidateSnapshot) -> u64 {
-    candidate
-        .playable_ranges
-        .iter()
-        .take_while(|playable| uncovered_bytes(playable.bytes, &candidate.present) == 0)
-        .map(|playable| playable.playable_ms)
-        .sum()
 }

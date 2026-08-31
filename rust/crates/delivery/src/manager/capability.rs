@@ -74,11 +74,15 @@ impl DeliveryWorker {
         envelope: PlayerPreparationEnvelope,
     ) {
         let post = envelope.report().post().clone();
+        let progressive = envelope.report().progressive_binding().is_some();
         let decoder_unsupported =
-            envelope.report().failure_kind() == Some(DECODER_UNSUPPORTED_FAILURE);
-        let outcome = self
-            .state
-            .apply_player_preparation_at(envelope.report().clone(), unix_time_ms());
+            progressive && envelope.report().failure_kind() == Some(DECODER_UNSUPPORTED_FAILURE);
+        let outcome = if self.segmented.accepts_player_preparation(envelope.report()) {
+            self.state
+                .apply_player_preparation_at(envelope.report().clone(), unix_time_ms())
+        } else {
+            PlayerPreparationActorOutcome::Rejected
+        };
         if outcome == PlayerPreparationActorOutcome::Applied {
             self.capability
                 .observe(self.state.client_capability_revision(), &self.ctx.events);

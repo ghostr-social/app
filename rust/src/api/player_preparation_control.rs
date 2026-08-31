@@ -11,6 +11,7 @@ use ghostr_delivery::cache_registry::CacheRegistry;
 use ghostr_delivery::delivery_events::{
     DeliveryHandle, PlayerPreparationAuthority, PlayerPreparationDisposition,
 };
+use ghostr_delivery::segmented::SegmentedCache;
 use ghostr_gateway::progressive::capabilities::ProgressiveCapabilities;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::sync::Arc;
@@ -26,6 +27,7 @@ pub(crate) struct PlayerPreparationContext {
     pub(super) delivery: DeliveryHandle,
     pub(super) tracked: TrackedItems,
     pub(super) cache: CacheRegistry,
+    pub(super) segmented: SegmentedCache,
 }
 
 #[frb]
@@ -42,6 +44,7 @@ pub async fn ffi_report_player_preparation(
         delivery: engine.gateway.delivery(),
         tracked: engine.tracked.clone(),
         cache: progressive.cache.clone(),
+        segmented: engine.gateway.segmented(),
     };
     confirm_player_preparation(&context, input).await
 }

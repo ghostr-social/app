@@ -1,4 +1,4 @@
-use super::next_reserve::infeasibility;
+use super::next_reserve::{hls_stage, infeasibility};
 use super::{range, RangeSnapshot};
 use ghostr_engine::adaptive::{
     ReadyReserveEvidence, ReserveCandidateEvidence, ReserveCandidateState,
@@ -47,6 +47,20 @@ enum ReserveCandidateSnapshot {
         post_id: String,
         reason: &'static str,
     },
+    HlsReady {
+        post_id: String,
+    },
+    HlsStructural {
+        post_id: String,
+    },
+    HlsInFlight {
+        post_id: String,
+        stage: &'static str,
+    },
+    HlsPending {
+        post_id: String,
+        stage: &'static str,
+    },
 }
 
 pub(super) fn snapshot(value: &ReadyReserveEvidence) -> ReadyReserveSnapshot {
@@ -83,6 +97,20 @@ fn candidate(value: &ReserveCandidateEvidence) -> ReserveCandidateSnapshot {
         ReserveCandidateState::Infeasible { reason } => ReserveCandidateSnapshot::Infeasible {
             post_id,
             reason: infeasibility(*reason),
+        },
+        ReserveCandidateState::HlsReady => ReserveCandidateSnapshot::HlsReady { post_id },
+        ReserveCandidateState::HlsStructural => {
+            ReserveCandidateSnapshot::HlsStructural { post_id }
+        }
+        ReserveCandidateState::HlsInFlight { stage } => {
+            ReserveCandidateSnapshot::HlsInFlight {
+                post_id,
+                stage: hls_stage(*stage),
+            }
+        }
+        ReserveCandidateState::HlsPending { stage } => ReserveCandidateSnapshot::HlsPending {
+            post_id,
+            stage: hls_stage(*stage),
         },
     }
 }

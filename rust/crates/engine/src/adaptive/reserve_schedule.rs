@@ -6,9 +6,13 @@ use super::plan::{
 };
 use super::reserve_model::readiness_ranges;
 use super::reserve_origins::OriginSlots;
+use super::reserve_candidate::ReserveCandidate;
 use super::reserves::{planned_bytes, sibling_planned_bytes};
 use super::sources::best_origin;
 use super::{CandidateSnapshot, MediaLayout, PlayabilitySnapshot};
+
+mod outcome;
+use outcome::{probing, unavailable, ScheduleOutcome};
 
 #[derive(Clone, Copy)]
 pub(super) struct ScheduleInputs<'a> {
@@ -21,12 +25,16 @@ pub(super) struct ScheduleInputs<'a> {
 
 pub(super) fn fill(
     plan: &mut AllocationPlan,
-    candidates: &[&CandidateSnapshot],
+    candidates: &[ReserveCandidate<'_>],
     evidence: &mut [ReserveCandidateEvidence],
     inputs: ScheduleInputs<'_>,
 ) {
     let mut protected = 0;
-    let mut origins = OriginSlots::new(candidates, inputs.origin_candidate_limit);
+    let progressive: Vec<_> = candidates
+        .iter()
+        .filter_map(|candidate| candidate.progressive())
+        .collect();
+    let mut origins = OriginSlots::new(&progressive, inputs.origin_candidate_limit);
     for (candidate, item) in candidates.iter().zip(evidence) {
         if protected >= inputs.required {
             return;
@@ -35,6 +43,12 @@ pub(super) fn fill(
             protected += 1;
             continue;
         }
+        let Some(candidate) = candidate.progressive() else {
+            if matches!(item.state, ReserveCandidateState::HlsPending { .. }) {
+                return;
+            }
+            continue;
+        };
         if item.state != ReserveCandidateState::Unprepared || !origins.available(candidate) {
             continue;
         }
@@ -46,11 +60,6 @@ pub(super) fn fill(
         protected += usize::from(outcome.protected);
         item.state = outcome.state;
     }
-}
-
-struct ScheduleOutcome {
-    state: ReserveCandidateState,
-    protected: bool,
 }
 
 fn schedule_candidate(
@@ -174,22 +183,4 @@ fn first_playable_ms(candidate: &CandidateSnapshot) -> u64 {
         .playable_ranges
         .first()
         .map_or(1, |playable| playable.playable_ms.max(1))
-}
-
-fn probing(candidate: &CandidateSnapshot) -> ScheduleOutcome {
-    let state = match candidate.layout {
-        MediaLayout::Unknown => ReserveCandidateState::Probing,
-        _ => ReserveCandidateState::Unprepared,
-    };
-    ScheduleOutcome {
-        state,
-        protected: false,
-    }
-}
-
-fn unavailable(reason: NextReserveInfeasibility) -> ScheduleOutcome {
-    ScheduleOutcome {
-        state: ReserveCandidateState::Infeasible { reason },
-        protected: false,
-    }
 }

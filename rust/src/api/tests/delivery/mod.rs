@@ -32,6 +32,7 @@ mod player_preparation_authority_test;
 mod player_preparation_capability_renewal_test;
 mod player_preparation_derived_fixture;
 mod player_preparation_derived_test;
+mod player_preparation_hls_authority_test;
 mod player_preparation_manager_authority;
 mod player_preparation_manager_confirmation_test;
 mod player_preparation_manager_environment;

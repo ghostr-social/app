@@ -59,11 +59,17 @@ void main() {
     events.add({'version': 1, 'attemptToken': currentToken});
     await settleVideoPlayerTasks(tester);
     expect(verified, [current]);
-    expect(feedback.events, isEmpty);
+    expect(feedback.hlsStatesFor(current), [
+      RecordedPreparationState.initializing,
+      RecordedPreparationState.initialized,
+      RecordedPreparationState.firstFrameRendered,
+    ]);
 
     await tester.pumpWidget(const SizedBox());
     await settleVideoPlayerTasks(tester);
     expect(released, [current]);
+    expect(feedback.hlsEvents.last.authority, current);
+    expect(feedback.hlsEvents.last.state, RecordedPreparationState.released);
   });
 }
 

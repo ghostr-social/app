@@ -28,6 +28,12 @@ mod hls_cache_pressure;
 mod hls_cooling_evidence;
 #[path = "warp_planner_hls_current_risk_test.rs"]
 mod hls_current_risk;
+#[path = "warp_planner_hls_failed_reserve_test.rs"]
+mod hls_failed_reserve;
+#[path = "warp_planner_current_hls_reserve_test.rs"]
+mod current_hls_reserve;
+#[path = "warp_planner_hls_ready_reserve_test.rs"]
+mod hls_ready_reserve;
 #[path = "warp_planner_hls_cursor_test.rs"]
 mod hls_cursor;
 #[path = "warp_planner_hls_network_class_test.rs"]

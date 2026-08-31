@@ -20,6 +20,8 @@ pub(super) struct HlsCandidateState {
     legacy_segmented_storage_available_bytes: u64,
     #[serde(default, skip_serializing_if = "HlsObjectCursor::is_default")]
     cursor: HlsObjectCursor,
+    #[serde(default, skip_serializing_if = "is_unverified")]
+    player_preparation: crate::adaptive::PlayerPreparation,
     state: HlsState,
 }
 
@@ -50,6 +52,7 @@ impl HlsCandidateState {
             startup_value_ms: value.startup_value_ms,
             legacy_segmented_storage_available_bytes: 0,
             cursor: value.cursor,
+            player_preparation: value.player_preparation,
             state: HlsState::capture(&value.state, privacy),
         }
     }
@@ -62,6 +65,7 @@ impl HlsCandidateState {
                 .expect("captured probability remains valid"),
             startup_value_ms: self.startup_value_ms,
             cursor: self.cursor,
+            player_preparation: self.player_preparation,
             state: self.state.snapshot(),
         }
     }
@@ -69,6 +73,10 @@ impl HlsCandidateState {
 
 const fn is_zero(value: &u64) -> bool {
     *value == 0
+}
+
+fn is_unverified(value: &crate::adaptive::PlayerPreparation) -> bool {
+    *value == crate::adaptive::PlayerPreparation::Unverified
 }
 
 impl HlsState {

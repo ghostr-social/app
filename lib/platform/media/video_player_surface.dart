@@ -51,6 +51,7 @@ class _VideoPlayerSurfaceState extends State<_VideoPlayerSurface> {
   final Completer<void> _closing = Completer<void>();
   PlaybackSession? _playbackSession;
   PlayerPreparationAttempt? _preparationAttempt;
+  HlsPlaybackAuthority? _preparationHlsAuthority;
   RenderedFirstFrameAttempt? _firstFrameAttempt;
   HlsPlaybackAuthority? _correlatedHlsAuthority;
   HlsPlaybackAuthority? _reportedHlsAuthority;

@@ -56,7 +56,7 @@ impl DeliveryWorker {
         let in_flight = self.downloads.actions();
         let active_head_probes = self.probes.active_identities();
         let navigation = self.state.navigation(observed_at_ms);
-        let hls_candidates = self.segmented.planning_candidates(navigation);
+        let hls_candidates = self.segmented.planning_candidates(navigation, &self.state);
         let segmented_storage_available_bytes = self.segmented.available_bytes();
         let segmented_storage_used_bytes = self.segmented.used_bytes();
         let segmented_storage_capacity_bytes = crate::segmented::SegmentedCache::capacity_bytes();

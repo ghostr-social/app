@@ -30,8 +30,8 @@ impl FastStartEvidence {
     }
 
     fn matches(&self, report: &PlayerPreparationReport, generation: Option<u64>) -> bool {
-        report.binding() == &self.binding
-            && report.revision() == self.revision
+        report.progressive_binding() == Some(&self.binding)
+            && report.progressive_revision() == Some(self.revision)
             && generation == Some(report.player_capability_generation())
     }
 }

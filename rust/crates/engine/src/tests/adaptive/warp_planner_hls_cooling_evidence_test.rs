@@ -72,6 +72,7 @@ fn candidate(post: PostId) -> HlsCandidateSnapshot {
         view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
         startup_value_ms: 2_000,
         cursor: Default::default(),
+        player_preparation: Default::default(),
         state: HlsBootstrapState::Pending {
             stage: HlsBootstrapStage::RootManifest,
             source: "https://hls.example/root.m3u8".to_owned(),

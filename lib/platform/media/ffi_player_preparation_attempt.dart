@@ -1,10 +1,10 @@
 part of 'ffi_player_preparation_feedback_port.dart';
 
 final class _FfiPlayerPreparationAttempt implements PlayerPreparationAttempt {
-  _FfiPlayerPreparationAttempt(this._owner, this._authority, this._attempt);
+  _FfiPlayerPreparationAttempt(this._owner, this._identity, this._attempt);
 
   final FfiPlayerPreparationFeedbackPort _owner;
-  final PlaybackAssetAuthority _authority;
+  final _PlayerPreparationIdentity _identity;
   final BigInt _attempt;
   var _sequence = BigInt.zero;
   var _terminal = false;
@@ -53,7 +53,7 @@ final class _FfiPlayerPreparationAttempt implements PlayerPreparationAttempt {
     _sequence += BigInt.one;
     _owner._send(
       _owner._report(
-        _authority,
+        _identity,
         _attempt,
         _sequence,
         state,

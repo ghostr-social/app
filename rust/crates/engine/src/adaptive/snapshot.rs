@@ -2,6 +2,7 @@ use super::{FeedOffset, PromotionOpportunity, RetrievalRequest};
 use crate::media_timeline::StartupFootprint;
 use crate::playback::{EstimateConfidence, PlaybackPhase};
 use crate::{ActionId, ByteRange, PostId};
+use serde::{Deserialize, Serialize};
 
 mod hls;
 #[cfg(test)]
@@ -93,7 +94,8 @@ pub enum MediaLayout {
     RequiresCompleteFile,
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum PlayerPreparation {
     #[default]
     Unverified,

@@ -1,4 +1,5 @@
 use super::SegmentedDelivery;
+use crate::manager::state::DeliveryState;
 use crate::segmented::SegmentedPhase;
 use ghostr_engine::adaptive::{HlsBootstrapState, HlsCandidateSnapshot, NavigationSnapshot};
 
@@ -6,6 +7,7 @@ impl SegmentedDelivery {
     pub(crate) fn planning_candidates(
         &self,
         navigation: NavigationSnapshot,
+        state: &DeliveryState,
     ) -> Vec<HlsCandidateSnapshot> {
         self.targets
             .iter()
@@ -16,6 +18,7 @@ impl SegmentedDelivery {
                 startup_value_ms: self.startup_eta_ms,
                 cursor: self.planning_cursor(&target.post),
                 state: self.planning_state(&target.post),
+                player_preparation: self.player_preparation(&target.post, state),
             })
             .collect()
     }
@@ -34,6 +37,29 @@ impl SegmentedDelivery {
             .filter(|active| active.network.network_active())
             .map(|active| active.pending.url.as_str())
             .collect()
+    }
+
+    pub(crate) fn accepts_player_preparation(
+        &self,
+        report: &crate::delivery_events::PlayerPreparationReport,
+    ) -> bool {
+        report
+            .hls_authority()
+            .is_none_or(|authority| self.cache.accepts_prepared_authority(authority))
+    }
+
+    fn player_preparation(
+        &self,
+        post: &ghostr_engine::PostId,
+        state: &DeliveryState,
+    ) -> ghostr_engine::adaptive::PlayerPreparation {
+        self.cache
+            .snapshot(post.as_str())
+            .authority
+            .as_ref()
+            .map_or(Default::default(), |authority| {
+                state.hls_player_preparation(authority)
+            })
     }
 
     fn planning_state(&self, post: &ghostr_engine::PostId) -> HlsBootstrapState {

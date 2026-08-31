@@ -33,7 +33,7 @@ pub(super) fn build(
 }
 
 struct ReserveWindow<'a> {
-    candidates: Vec<&'a super::CandidateSnapshot>,
+    candidates: Vec<super::reserve_candidate::ReserveCandidate<'a>>,
     target: ReserveTarget,
     evidence: Vec<ReserveCandidateEvidence>,
     counts: InitialCounts,

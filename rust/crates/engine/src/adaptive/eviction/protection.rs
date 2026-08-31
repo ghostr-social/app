@@ -9,7 +9,7 @@ pub(super) fn selected(snapshot: &PlayabilitySnapshot) -> HashSet<PostId> {
     let mut selected: HashSet<_> = candidates
         .iter()
         .take(count)
-        .map(|candidate| candidate.post.clone())
+        .map(|candidate| candidate.post().clone())
         .collect();
     selected.extend(
         candidates
@@ -17,7 +17,7 @@ pub(super) fn selected(snapshot: &PlayabilitySnapshot) -> HashSet<PostId> {
             .zip(evidence)
             .filter(|(_, item)| super::super::reserve_evidence::is_protected_state(&item.state))
             .take(count)
-            .map(|(candidate, _)| candidate.post.clone()),
+            .map(|(candidate, _)| candidate.post().clone()),
     );
     selected
 }

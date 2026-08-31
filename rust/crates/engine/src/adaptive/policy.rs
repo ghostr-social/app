@@ -30,7 +30,7 @@ impl AdaptivePlayabilityPolicy {
         reserve_policy: ReserveModePolicy,
     ) -> AllocationPlan {
         let Some(current) = current_candidate(snapshot) else {
-            return hls_frontier_plan(snapshot);
+            return hls_frontier_plan(snapshot, reserve_policy);
         };
         let emergency = snapshot.playback.authority == super::CurrentAuthority::Canonical
             && endangered(snapshot, current);
@@ -85,7 +85,10 @@ fn append_followup(
 }
 
 fn append_upcoming(plan: &mut AllocationPlan, snapshot: &PlayabilitySnapshot, storage_room: u64) {
-    for candidate in upcoming_candidates(snapshot) {
+    for candidate in upcoming_candidates(snapshot)
+        .into_iter()
+        .filter(|candidate| super::reserve_model::allows_progressive_followup(snapshot, candidate))
+    {
         let transfer =
             speculative_budget(snapshot).saturating_sub(sibling_planned_bytes(plan, snapshot));
         let storage = storage_room.saturating_sub(planned_bytes(plan));
@@ -118,6 +121,7 @@ fn append_emergency_transition(
     let budget = transfer.min(storage_room.saturating_sub(planned_bytes(plan)));
     let candidate = upcoming_candidates(snapshot)
         .into_iter()
+        .filter(|candidate| super::reserve_model::allows_progressive_followup(snapshot, candidate))
         .find(|candidate| !missing(candidate).is_empty());
     if let Some(candidate) = candidate {
         append_candidate(
@@ -155,17 +159,36 @@ fn empty_frontier_plan() -> AllocationPlan {
     }
 }
 
-fn hls_frontier_plan(snapshot: &PlayabilitySnapshot) -> AllocationPlan {
+fn hls_frontier_plan(
+    snapshot: &PlayabilitySnapshot,
+    mode_policy: ReserveModePolicy,
+) -> AllocationPlan {
     let mut plan = empty_frontier_plan();
+    let Some(current) = current_hls(snapshot) else {
+        return plan;
+    };
     let current_at_risk = snapshot.playback.authority == super::CurrentAuthority::Canonical
-        && snapshot
-            .hls_candidates
-            .iter()
-            .any(|item| item.post == snapshot.playback.current && !item.ready());
-    if current_at_risk {
-        plan.mode = super::ControlMode::Emergency;
-    }
+        && !current.player_ready();
+    build_ready_reserve(
+        &mut plan,
+        snapshot,
+        ReserveInputs {
+            transfer_budget: speculative_budget(snapshot),
+            storage_room: snapshot.storage.available_bytes(),
+            current_emergency: current_at_risk,
+            current_protected: !current_at_risk,
+            mode_policy,
+        },
+    );
+    finalize(&mut plan, snapshot);
     plan
+}
+
+fn current_hls(snapshot: &PlayabilitySnapshot) -> Option<&super::HlsCandidateSnapshot> {
+    snapshot
+        .hls_candidates
+        .iter()
+        .find(|candidate| candidate.post == snapshot.playback.current)
 }
 
 fn finalize(plan: &mut AllocationPlan, snapshot: &PlayabilitySnapshot) {

@@ -1,16 +1,5 @@
 part of 'warp_evidence_models.dart';
 
-enum WarpReserveCandidateState {
-  unprepared,
-  ready,
-  structural,
-  inFlight,
-  probing,
-  preparing,
-  planned,
-  infeasible,
-}
-
 final class WarpReadyReserve {
   const WarpReadyReserve({
     required this.target,
@@ -24,6 +13,7 @@ final class WarpReadyReserve {
     required this.candidateCount,
     required this.candidatePostIds,
     this.candidateStates = const [],
+    this.candidateKinds = const [],
   });
 
   factory WarpReadyReserve.fromJson(Map<String, Object?> json) {
@@ -47,6 +37,9 @@ final class WarpReadyReserve {
       candidateStates: values
           .map((item) => _warpCandidateState(_warpRequired(item, 'state')))
           .toList(growable: false),
+      candidateKinds: values
+          .map((item) => _warpCandidateKind(item['kind']))
+          .toList(growable: false),
     );
   }
 
@@ -61,6 +54,7 @@ final class WarpReadyReserve {
   final int candidateCount;
   final List<String> candidatePostIds;
   final List<WarpReserveCandidateState> candidateStates;
+  final List<WarpReserveCandidateKind> candidateKinds;
 }
 
 int _warpOrderedReady(Map<String, Object?> json, List<Object?> candidates) {
@@ -70,22 +64,11 @@ int _warpOrderedReady(Map<String, Object?> json, List<Object?> candidates) {
   var ready = 0;
   for (final candidate in candidates) {
     final value = _warpObject(candidate, 'candidate');
-    if (_warpVariantName(_warpRequired(value, 'state')) != 'Ready') break;
+    if (_warpCandidateState(_warpRequired(value, 'state')) !=
+        WarpReserveCandidateState.ready) {
+      break;
+    }
     ready += 1;
   }
   return ready;
-}
-
-WarpReserveCandidateState _warpCandidateState(Object? value) {
-  return switch (_warpVariantName(value)) {
-    'Unprepared' => WarpReserveCandidateState.unprepared,
-    'Ready' => WarpReserveCandidateState.ready,
-    'Structural' => WarpReserveCandidateState.structural,
-    'InFlight' => WarpReserveCandidateState.inFlight,
-    'Probing' => WarpReserveCandidateState.probing,
-    'Preparing' => WarpReserveCandidateState.preparing,
-    'Planned' => WarpReserveCandidateState.planned,
-    'Infeasible' => WarpReserveCandidateState.infeasible,
-    final state => throw FormatException('Invalid reserve state: $state'),
-  };
 }

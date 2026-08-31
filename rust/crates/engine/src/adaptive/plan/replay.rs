@@ -61,7 +61,11 @@ fn project_reserve(plan: &mut AllocationPlan, post: &impl Fn(&str) -> String) {
         | NextReserveEvidence::Structural { post: id, .. }
         | NextReserveEvidence::InFlight { post: id }
         | NextReserveEvidence::Granted { post: id, .. }
-        | NextReserveEvidence::Infeasible { post: id, .. } => {
+        | NextReserveEvidence::Infeasible { post: id, .. }
+        | NextReserveEvidence::HlsReady { post: id }
+        | NextReserveEvidence::HlsStructural { post: id }
+        | NextReserveEvidence::HlsInFlight { post: id, .. }
+        | NextReserveEvidence::HlsPending { post: id, .. } => {
             *id = crate::PostId::new(post(id.as_str()));
         }
     }

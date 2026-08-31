@@ -41,6 +41,7 @@ async fn store_validation_failure_is_proven_not_admitted() {
         delivery,
         tracked,
         cache: CacheRegistry::new(),
+        segmented: Default::default(),
     };
 
     assert_eq!(

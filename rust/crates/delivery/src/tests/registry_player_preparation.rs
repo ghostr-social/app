@@ -1,6 +1,6 @@
+mod decoder_capability_claim_scope_test;
 mod decoder_capability_evidence_test;
 mod decoder_capability_integrity_persistence_test;
-mod decoder_capability_claim_scope_test;
 mod decoder_capability_validator_generation_test;
 mod decoder_capability_validatorless_epoch_test;
 mod decoder_post_start_fallback_test;
@@ -11,6 +11,8 @@ mod player_preparation_deep_scope_test;
 mod player_preparation_epoch_ack_test;
 mod player_preparation_fixture;
 mod player_preparation_focus_test;
+mod player_preparation_hls_authority_test;
+mod player_preparation_hls_fixture;
 mod player_preparation_lifecycle;
 mod player_preparation_mailbox_test;
 mod player_preparation_missing_initial_replay_test;

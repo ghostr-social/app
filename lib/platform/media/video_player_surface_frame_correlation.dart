@@ -22,6 +22,10 @@ extension _VideoPlayerSurfaceFrameCorrelation on _VideoPlayerSurfaceState {
   ) {
     _resetPresentationEvidence();
     _preparationAttempt = attempt;
+    _preparationHlsAuthority =
+        attempt != null && _playbackMedia is ProxiedHlsVideoMediaSource
+        ? widget.request.hlsAuthority
+        : null;
     _firstFrameAttempt = frameAttempt;
     _correlatedHlsAuthority = frameAttempt == null
         ? null
@@ -68,6 +72,7 @@ extension _VideoPlayerSurfaceFrameCorrelation on _VideoPlayerSurfaceState {
         !identical(_firstFrameAttempt, frameAttempt)) {
       return;
     }
+    if (!_preparationFeedbackIsCurrent(attempt)) return;
     attempt?.firstFrameRendered();
     _nativeFrameObserved = true;
     _reportHlsFirstFrame();

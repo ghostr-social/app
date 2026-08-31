@@ -1,9 +1,13 @@
 use super::RetrievalRequest;
-use crate::media_timeline::StartupFootprint;
 use crate::{ActionId, ByteRange, PostId};
 use serde::{Deserialize, Serialize};
 
 mod replay;
+mod reserve;
+pub use reserve::{
+    ControlMode, NextReserveEvidence, NextReserveInfeasibility, ReadyReserveEvidence,
+    ReserveCandidateEvidence, ReserveCandidateKind, ReserveCandidateState,
+};
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 pub struct CandidateUtility {
@@ -30,102 +34,6 @@ pub enum AllocationReason {
     MediaLayoutDiscovery,
     NextStartability,
     UsefulCommitment,
-}
-
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub enum NextReserveInfeasibility {
-    CurrentUnprotected,
-    NoLiveOrigin,
-    PolicyDenied,
-    NoTransferBudget,
-    NoStorageCapacity,
-}
-
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-pub enum ControlMode {
-    Emergency,
-    Safety,
-    #[default]
-    Normal,
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-pub enum ReserveCandidateState {
-    #[default]
-    Unprepared,
-    Ready {
-        startup: StartupFootprint,
-    },
-    Structural {
-        startup: StartupFootprint,
-    },
-    InFlight,
-    Probing,
-    Preparing {
-        ranges: Vec<ByteRange>,
-    },
-    Planned {
-        ranges: Vec<ByteRange>,
-    },
-    Infeasible {
-        reason: NextReserveInfeasibility,
-    },
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct ReserveCandidateEvidence {
-    pub post: PostId,
-    pub state: ReserveCandidateState,
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-pub struct ReadyReserveEvidence {
-    pub target: usize,
-    pub ready: usize,
-    pub structural: usize,
-    pub protected: usize,
-    pub recovery_horizon_ms: u64,
-    pub underflow_risk_bps: u16,
-    pub ready_coverage_ms: u64,
-    pub candidates: Vec<ReserveCandidateEvidence>,
-}
-
-impl ReadyReserveEvidence {
-    pub fn ordered_ready(&self) -> usize {
-        self.candidates
-            .iter()
-            .take_while(|item| matches!(item.state, ReserveCandidateState::Ready { .. }))
-            .count()
-    }
-
-    pub fn ordered_target_satisfied(&self) -> bool {
-        self.ordered_ready() >= self.target
-    }
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-pub enum NextReserveEvidence {
-    #[default]
-    NotApplicable,
-    Ready {
-        post: PostId,
-        startup: StartupFootprint,
-    },
-    Structural {
-        post: PostId,
-        startup: StartupFootprint,
-    },
-    InFlight {
-        post: PostId,
-    },
-    Granted {
-        post: PostId,
-        range: ByteRange,
-    },
-    Infeasible {
-        post: PostId,
-        reason: NextReserveInfeasibility,
-    },
 }
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]

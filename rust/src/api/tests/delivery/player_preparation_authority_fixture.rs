@@ -61,6 +61,7 @@ impl AuthorityFixture {
             delivery,
             tracked,
             cache,
+            segmented: Default::default(),
         };
         Self {
             context,

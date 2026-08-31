@@ -92,6 +92,7 @@ fn candidate(stage: HlsBootstrapStage) -> HlsCandidateSnapshot {
         view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
         startup_value_ms: 2_000,
         cursor: Default::default(),
+        player_preparation: Default::default(),
         state: HlsBootstrapState::Pending {
             stage,
             source: SOURCE.into(),

@@ -1,5 +1,12 @@
 part of 'warp_mixed_feed_readiness_scenario.dart';
 
+PlaybackDeliveryId _hlsDeliveryId(WarpMixedFeedRuntime runtime) {
+  final state = runtime.graph.cubit.state as FeedLoaded;
+  final eventId = runtime.events[1].id;
+  final post = state.posts.singleWhere((post) => post.id.value == eventId);
+  return post.media.playbackDeliveryId!;
+}
+
 void _reportHlsState(
   WarpMixedFeedRuntime runtime,
   VideoDeliverySnapshot structural,

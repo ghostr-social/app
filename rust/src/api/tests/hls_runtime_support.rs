@@ -7,7 +7,18 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 pub(crate) async fn prepared() -> (GatewayRuntime, SegmentedSnapshot, PathBuf) {
+    let (runtime, snapshot, root, _) = prepared_with_meta().await;
+    (runtime, snapshot, root)
+}
+
+pub(crate) async fn prepared_with_meta() -> (
+    GatewayRuntime,
+    SegmentedSnapshot,
+    PathBuf,
+    crate::engine::VideoMeta,
+) {
     let source = hls_runtime_origin::start().await;
+    let meta = hls_meta(&source);
     let root = unique_root();
     let (_, runtime, _) = GatewayRuntime::start(
         configuration(root.clone(), &source),
@@ -16,7 +27,7 @@ pub(crate) async fn prepared() -> (GatewayRuntime, SegmentedSnapshot, PathBuf) {
     .await
     .expect("gateway start");
     assert_eq!(
-        runtime.delivery().update_focus(focus(&source)),
+        runtime.delivery().update_focus(focus(meta.clone())),
         FocusAdmission::Accepted
     );
     let cache = runtime.segmented();
@@ -35,7 +46,7 @@ pub(crate) async fn prepared() -> (GatewayRuntime, SegmentedSnapshot, PathBuf) {
     })
     .await
     .expect("prepared HLS authority");
-    (runtime, snapshot, root)
+    (runtime, snapshot, root, meta)
 }
 
 fn configuration(cache_directory: PathBuf, source: &str) -> GatewayConfiguration {
@@ -52,14 +63,17 @@ fn configuration(cache_directory: PathBuf, source: &str) -> GatewayConfiguration
     }
 }
 
-fn focus(source: &str) -> DeliveryFocus {
-    let meta = crate::engine::VideoMeta {
+fn hls_meta(source: &str) -> crate::engine::VideoMeta {
+    crate::engine::VideoMeta {
         urls: vec![source.to_owned()],
         delivery: crate::engine::DeliveryKind::Hls,
         sha256: None,
         size_bytes: None,
         duration_ms: Some(4_000),
-    };
+    }
+}
+
+fn focus(meta: crate::engine::VideoMeta) -> DeliveryFocus {
     DeliveryFocus::compatibility(
         vec![FocusItem {
             post: crate::engine::PostId::new("stream"),

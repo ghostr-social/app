@@ -4,12 +4,14 @@ extension _VideoPlayerSurfacePreparationFeedback on _VideoPlayerSurfaceState {
   PlayerPreparationAttempt? _preparePreparation() {
     final authority = _playbackAuthority;
     final media = _playbackMedia;
-    if (authority == null ||
-        media is! ProxiedProgressiveVideoMediaSource ||
-        !_proxyMatches(media, authority)) {
-      return null;
+    if (authority != null &&
+        media is ProxiedProgressiveVideoMediaSource &&
+        _proxyMatches(media, authority)) {
+      return widget.preparationFeedback.prepare(authority);
     }
-    return widget.preparationFeedback.prepare(authority);
+    final hlsAuthority = widget.request.hlsAuthority;
+    if (hlsAuthority == null || !_hlsRequestMatches(hlsAuthority)) return null;
+    return widget.preparationFeedback.prepareHls(hlsAuthority);
   }
 
   void _schedulePresentedFrame() {
@@ -69,8 +71,10 @@ extension _VideoPlayerSurfacePreparationFeedback on _VideoPlayerSurfaceState {
   }
 
   void _finishPluginInitialization() {
+    final attempt = _preparationAttempt;
+    if (!_preparationFeedbackIsCurrent(attempt)) return;
     _controllerPresented = true;
-    _preparationAttempt?.initialized();
+    attempt?.initialized();
     _reportHlsFirstFrame();
     _schedulePresentedFrame();
   }
@@ -80,7 +84,9 @@ extension _VideoPlayerSurfacePreparationFeedback on _VideoPlayerSurfaceState {
     _firstFrameAttempt = null;
     _correlatedHlsAuthority = null;
     if (frameAttempt != null) _releaseFrameAttemptSafely(frameAttempt);
-    _preparationAttempt?.failed(failure);
+    if (_preparationFeedbackIsCurrent(_preparationAttempt)) {
+      _preparationAttempt?.failed(failure);
+    }
   }
 
   void _releasePreparation() {
@@ -92,6 +98,7 @@ extension _VideoPlayerSurfacePreparationFeedback on _VideoPlayerSurfaceState {
     if (frameAttempt != null) _releaseFrameAttemptSafely(frameAttempt);
     _preparationAttempt?.release();
     _preparationAttempt = null;
+    _preparationHlsAuthority = null;
     _resetPresentationEvidence();
     if (hlsAuthority != null) _revokeHlsDecodedReadiness(hlsAuthority);
   }
@@ -143,6 +150,18 @@ extension _VideoPlayerSurfacePreparationFeedback on _VideoPlayerSurfaceState {
       _lifecycle.track(_disposeSafely(controller));
     }
     _startLoad();
+  }
+
+  bool _preparationFeedbackIsCurrent(PlayerPreparationAttempt? attempt) {
+    if (attempt == null) return true;
+    final authority = _preparationHlsAuthority;
+    return authority == null || _hlsRequestMatches(authority);
+  }
+
+  bool _hlsRequestMatches(HlsPlaybackAuthority authority) {
+    return _playbackMedia is ProxiedHlsVideoMediaSource &&
+        widget.request.hlsAuthority == authority &&
+        widget.request.playbackDeliveryId == authority.deliveryId;
   }
 }
 

@@ -1,8 +1,11 @@
+import 'package:ghostr/core/media/hls_playback_authority.dart';
 import 'package:ghostr/core/media/playback_asset_authority.dart';
 import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/features/video_inventory/domain/player_preparation_feedback_port.dart';
 
 part 'warp_feed_player_stage_queries.dart';
+part 'warp_feed_player_stage_hls.dart';
+part 'warp_feed_player_stage_hls_evidence.dart';
 
 typedef WarpFeedStageClock = Duration Function();
 
@@ -12,6 +15,7 @@ final class WarpFeedPlayerStageProbe implements PlayerPreparationFeedbackPort {
   final PlayerPreparationFeedbackPort _delegate;
   final WarpFeedStageClock _clock;
   final _evidence = <WarpFeedPlayerStageEvidence>[];
+  final _hlsEvidence = <WarpFeedHlsPlayerStageEvidence>[];
 
   @override
   PlayerPreparationAttempt prepare(PlaybackAssetAuthority authority) {
@@ -23,6 +27,10 @@ final class WarpFeedPlayerStageProbe implements PlayerPreparationFeedbackPort {
       _clock,
     );
   }
+
+  @override
+  PlayerPreparationAttempt prepareHls(HlsPlaybackAuthority authority) =>
+      _recordHlsPreparation(this, authority);
 }
 
 final class WarpFeedPlayerStageEvidence {

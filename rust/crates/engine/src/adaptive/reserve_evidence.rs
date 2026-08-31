@@ -1,15 +1,17 @@
 use super::plan::{
     NextReserveEvidence, NextReserveInfeasibility, ReserveCandidateEvidence, ReserveCandidateState,
 };
-use super::reserve_model::{is_in_flight, is_ready, is_structural};
-use super::CandidateSnapshot;
+use super::reserve_candidate::ReserveCandidate;
 
-pub(super) fn initial(candidates: &[&CandidateSnapshot]) -> Vec<ReserveCandidateEvidence> {
+mod state;
+
+pub(super) fn initial(candidates: &[ReserveCandidate<'_>]) -> Vec<ReserveCandidateEvidence> {
     candidates
         .iter()
         .map(|candidate| ReserveCandidateEvidence {
-            post: candidate.post.clone(),
-            state: initial_state(candidate),
+            post: candidate.post().clone(),
+            kind: candidate.kind(),
+            state: state::for_candidate(*candidate),
         })
         .collect()
 }
@@ -17,21 +19,27 @@ pub(super) fn initial(candidates: &[&CandidateSnapshot]) -> Vec<ReserveCandidate
 pub(super) fn count_ready(evidence: &[ReserveCandidateEvidence]) -> usize {
     evidence
         .iter()
-        .filter(|item| matches!(item.state, ReserveCandidateState::Ready { .. }))
+        .filter(|item| state::is_ready_state(&item.state))
         .count()
 }
 
 pub(super) fn count_ordered_ready(evidence: &[ReserveCandidateEvidence]) -> usize {
     evidence
         .iter()
-        .take_while(|item| matches!(item.state, ReserveCandidateState::Ready { .. }))
+        .take_while(|item| state::is_ready_state(&item.state))
         .count()
 }
 
 pub(super) fn count_structural(evidence: &[ReserveCandidateEvidence]) -> usize {
     evidence
         .iter()
-        .filter(|item| matches!(item.state, ReserveCandidateState::Structural { .. }))
+        .filter(|item| {
+            matches!(
+                item.state,
+                ReserveCandidateState::Structural { .. }
+                    | ReserveCandidateState::HlsStructural
+            )
+        })
         .count()
 }
 
@@ -49,13 +57,21 @@ pub(super) fn is_protected_state(state: &ReserveCandidateState) -> bool {
             | ReserveCandidateState::Structural { .. }
             | ReserveCandidateState::InFlight
             | ReserveCandidateState::Planned { .. }
+            | ReserveCandidateState::HlsReady
+            | ReserveCandidateState::HlsStructural
+            | ReserveCandidateState::HlsInFlight { .. }
     )
 }
 
 pub(super) fn reject_first_unprepared(evidence: &mut [ReserveCandidateEvidence]) {
     if let Some(item) = evidence
         .iter_mut()
-        .find(|item| item.state == ReserveCandidateState::Unprepared)
+        .find(|item| {
+            matches!(
+                item.state,
+                ReserveCandidateState::Unprepared | ReserveCandidateState::HlsPending { .. }
+            )
+        })
     {
         item.state = ReserveCandidateState::Infeasible {
             reason: NextReserveInfeasibility::CurrentUnprotected,
@@ -75,25 +91,23 @@ pub(super) fn immediate_next(evidence: &[ReserveCandidateEvidence]) -> NextReser
             granted(item, ranges)
         }
         ReserveCandidateState::Infeasible { reason } => infeasible(item, *reason),
+        ReserveCandidateState::HlsReady => NextReserveEvidence::HlsReady {
+            post: item.post.clone(),
+        },
+        ReserveCandidateState::HlsStructural => NextReserveEvidence::HlsStructural {
+            post: item.post.clone(),
+        },
+        ReserveCandidateState::HlsInFlight { stage } => NextReserveEvidence::HlsInFlight {
+            post: item.post.clone(),
+            stage: *stage,
+        },
+        ReserveCandidateState::HlsPending { stage } => NextReserveEvidence::HlsPending {
+            post: item.post.clone(),
+            stage: *stage,
+        },
         ReserveCandidateState::Unprepared | ReserveCandidateState::Probing => {
             NextReserveEvidence::NotApplicable
         }
-    }
-}
-
-fn initial_state(candidate: &CandidateSnapshot) -> ReserveCandidateState {
-    if is_ready(candidate) {
-        ReserveCandidateState::Ready {
-            startup: candidate.startup.clone().expect("ready startup"),
-        }
-    } else if is_structural(candidate) {
-        ReserveCandidateState::Structural {
-            startup: candidate.startup.clone().expect("structural startup"),
-        }
-    } else if is_in_flight(candidate) {
-        ReserveCandidateState::InFlight
-    } else {
-        preparing_state(candidate)
     }
 }
 
@@ -104,21 +118,6 @@ fn structural(
     NextReserveEvidence::Structural {
         post: item.post.clone(),
         startup: startup.clone(),
-    }
-}
-
-fn preparing_state(candidate: &CandidateSnapshot) -> ReserveCandidateState {
-    let ranges: Vec<_> = candidate
-        .in_flight
-        .iter()
-        .filter(|active| active.identity_current)
-        .filter(|active| !active.cancelling)
-        .map(|active| active.effective_bytes)
-        .collect();
-    if ranges.is_empty() {
-        ReserveCandidateState::Unprepared
-    } else {
-        ReserveCandidateState::Preparing { ranges }
     }
 }
 

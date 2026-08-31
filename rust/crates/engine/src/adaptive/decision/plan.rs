@@ -165,7 +165,11 @@ fn sanitize_next(value: &mut NextReserveEvidence, privacy: &DecisionPrivacy) {
         | NextReserveEvidence::Structural { post, .. }
         | NextReserveEvidence::InFlight { post }
         | NextReserveEvidence::Granted { post, .. }
-        | NextReserveEvidence::Infeasible { post, .. } => Some(post),
+        | NextReserveEvidence::Infeasible { post, .. }
+        | NextReserveEvidence::HlsReady { post }
+        | NextReserveEvidence::HlsStructural { post }
+        | NextReserveEvidence::HlsInFlight { post, .. }
+        | NextReserveEvidence::HlsPending { post, .. } => Some(post),
         NextReserveEvidence::NotApplicable => None,
     };
     if let Some(post) = post {

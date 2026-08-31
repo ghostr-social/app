@@ -29,3 +29,4 @@ grep -Fq 'integration_test/warp_feed_adaptive_warm_back_video_test.dart' "$makef
 grep -Fq 'integration_test/warp_feed_startup_singleflight_video_test.dart' "$makefile"
 grep -Fq 'integration_test/warp_feed_player_verified_rescue_video_test.dart' "$makefile"
 grep -Fq 'integration_test/warp_feed_bandwidth_recovery_video_test.dart' "$makefile"
+grep -Fq 'integration_test/warp_feed_mixed_hls_readiness_video_test.dart' "$makefile"

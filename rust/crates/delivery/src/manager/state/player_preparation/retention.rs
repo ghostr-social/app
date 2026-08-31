@@ -18,6 +18,9 @@ pub(super) fn retain_preparations(
 }
 
 pub(super) fn abandon(capabilities: &mut ClientCapabilityModel, report: &PlayerPreparationReport) {
+    if report.progressive_binding().is_none() {
+        return;
+    }
     capabilities.abandon(
         report.player_capability_generation(),
         CapabilityAttempt::new(report.client_epoch(), report.attempt_generation()),

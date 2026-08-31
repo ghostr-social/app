@@ -9,6 +9,7 @@ extension _VideoPlayerSurfaceKeys on _VideoPlayerSurfaceDependencies {
         request.media.inventoryPlaybackIdentity,
         request.videoId,
         request.playbackDeliveryId,
+        request.hlsAuthority,
       ));
     }
     return _exactSurfaceKeys.putIfAbsent(

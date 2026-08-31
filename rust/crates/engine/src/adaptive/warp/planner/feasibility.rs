@@ -66,7 +66,7 @@ fn semantic_decisions(
     let window = semantic_window(input);
     let guardrail = SemanticGuardrail::new(config.semantic_top_k, config.semantic_epsilon_micros);
     let reserve = (config.reserve_progress_policy == ReserveProgressPolicy::OrderedReadiness)
-        .then(|| reserve_progress::target_post(input.base))
+        .then(|| reserve_progress::target_post(input.snapshot, input.base))
         .flatten();
     window
         .iter()
@@ -125,11 +125,11 @@ fn hls_semantic(
 ) -> Option<(i32, SemanticCandidate)> {
     let context = input.context.candidate(&candidate.post)?;
     if candidate.feed_offset.value() < 0
-        || (candidate.feed_offset.value() == 0 && candidate.ready())
+        || (candidate.feed_offset.value() == 0 && candidate.player_ready())
     {
         return None;
     }
-    (!candidate.ready()).then(|| {
+    (!candidate.player_ready()).then(|| {
         (
             candidate.feed_offset.value(),
             SemanticCandidate::new(candidate.post.clone(), context.semantic, false),

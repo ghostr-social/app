@@ -40,6 +40,7 @@ async fn projects_every_certified_upcoming_asset_in_feed_order() {
                 .enumerate()
                 .map(|(index, id)| ReserveCandidateEvidence {
                     post: PostId::new(id),
+                    kind: Default::default(),
                     state: match index {
                         1 => ReserveCandidateState::Structural {
                             startup: startup.clone(),

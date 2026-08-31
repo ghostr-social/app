@@ -4,7 +4,7 @@ use crate::client_capability::{
     ClientCapabilityStatus,
 };
 use crate::delivery_events::{PlayerPreparationActorOutcome, PlayerPreparationReport};
-use ghostr_engine::adaptive::{PlannerCapability, PlayerPreparation, TransformCapability};
+use ghostr_engine::adaptive::{PlannerCapability, TransformCapability};
 use ghostr_engine::PostId;
 use ghostr_partial_store::partial_range_store::ContentRevision;
 use std::collections::HashMap;
@@ -13,6 +13,7 @@ mod claim;
 mod epoch;
 mod evidence;
 mod fallback;
+mod projection;
 mod retention;
 use evidence::{capability_profile, capability_signal};
 use retention::{abandon, retain_preparations};
@@ -106,20 +107,6 @@ impl DeliveryState {
         self.client_capabilities = model;
     }
 
-    pub(crate) fn player_preparation(
-        &self,
-        post: &PostId,
-        revision: Option<ContentRevision>,
-    ) -> PlayerPreparation {
-        self.player_preparations
-            .get(post)
-            .filter(|report| self.player_authority_is_current(report))
-            .filter(|report| Some(report.revision()) == revision)
-            .map_or(PlayerPreparation::Unverified, |report| {
-                report.engine_state()
-            })
-    }
-
     pub(crate) fn prune_player_preparations(
         &mut self,
         revisions: &HashMap<PostId, ContentRevision>,
@@ -130,9 +117,12 @@ impl DeliveryState {
             &mut self.client_capabilities,
             |post, report| {
                 !report.is_terminal()
-                    || revisions
-                        .get(post)
-                        .is_some_and(|revision| *revision == report.revision())
+                    || report.hls_authority().is_some()
+                    || report.progressive_revision().is_some_and(|current| {
+                        revisions
+                            .get(post)
+                            .is_some_and(|revision| *revision == current)
+                    })
             },
         );
     }
@@ -141,6 +131,7 @@ impl DeliveryState {
         let allowed = self.preparation_posts();
         let catalog = &self.catalog;
         let transformed = &self.transformed_posts;
+        let hls_focus = &self.hls_focus;
         retain_preparations(
             &mut self.player_preparations,
             &mut self.client_capabilities,
@@ -149,14 +140,21 @@ impl DeliveryState {
                     .get(post)
                     .cloned()
                     .or_else(|| catalog.binding(post));
-                allowed.contains(post) && binding.as_ref() == Some(report.binding())
+                allowed.contains(post)
+                    && report.progressive_binding().map_or_else(
+                        || hls_focus.contains(post),
+                        |report_binding| binding.as_ref() == Some(report_binding),
+                    )
             },
         );
     }
 
     fn player_authority_is_current(&self, report: &PlayerPreparationReport) -> bool {
         self.preparation_posts().contains(report.post())
-            && self.playback_binding(report.post()).as_ref() == Some(report.binding())
+            && report.progressive_binding().map_or_else(
+                || self.hls_focus.contains(report.post()),
+                |binding| self.playback_binding(report.post()).as_ref() == Some(binding),
+            )
     }
 
     fn recoverable_transform(&self, post: &PostId) -> Option<crate::transform::TransformProfile> {
@@ -176,7 +174,8 @@ impl DeliveryState {
         report: &PlayerPreparationReport,
         now_ms: u64,
     ) -> Option<CapabilityObservation> {
-        let profile = capability_profile(&self.catalog, report.post(), report.binding(), now_ms)?;
+        let binding = report.progressive_binding()?;
+        let profile = capability_profile(&self.catalog, report.post(), binding, now_ms)?;
         let signal = capability_signal(report)?;
         Some(CapabilityObservation::new(
             report.player_capability_generation(),

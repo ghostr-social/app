@@ -52,6 +52,7 @@ fn candidate() -> HlsCandidateSnapshot {
         view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
         startup_value_ms: 750,
         cursor: HlsObjectCursor::new(7, 256 * 1024, Some(300 * 1024), HlsTransport::ResumeRange),
+        player_preparation: Default::default(),
         state: HlsBootstrapState::Pending {
             stage: HlsBootstrapStage::Initialization,
             source: "https://tail.example/init.mp4".into(),

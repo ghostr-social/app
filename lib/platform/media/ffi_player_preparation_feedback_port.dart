@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:developer' as developer;
 
+import 'package:ghostr/core/media/hls_playback_authority.dart';
 import 'package:ghostr/core/media/playback_asset_authority.dart';
 import 'package:ghostr/features/video_inventory/domain/player_preparation_feedback_port.dart';
 import 'package:ghostr/platform/media/video_player_capability_generation.dart';
@@ -10,6 +11,7 @@ import 'package:ghostr/src/rust/api/player_preparation_control.dart';
 
 part 'ffi_player_preparation_attempt.dart';
 part 'ffi_player_preparation_feedback_drain.dart';
+part 'ffi_player_preparation_identity.dart';
 
 typedef RustPlayerPreparationReporter =
     Future<FfiPlayerPreparationDisposition> Function({
@@ -57,7 +59,16 @@ final class FfiPlayerPreparationFeedbackPort
   PlayerPreparationAttempt prepare(PlaybackAssetAuthority authority) {
     return _FfiPlayerPreparationAttempt(
       this,
-      authority,
+      _PlayerPreparationIdentity.progressive(authority),
+      BigInt.from(++_nextAttemptGeneration),
+    );
+  }
+
+  @override
+  PlayerPreparationAttempt prepareHls(HlsPlaybackAuthority authority) {
+    return _FfiPlayerPreparationAttempt(
+      this,
+      _PlayerPreparationIdentity.hls(authority),
       BigInt.from(++_nextAttemptGeneration),
     );
   }
@@ -134,16 +145,16 @@ final class FfiPlayerPreparationFeedbackPort
   }
 
   FfiPlayerPreparationReport _report(
-    PlaybackAssetAuthority authority,
+    _PlayerPreparationIdentity identity,
     BigInt attempt,
     BigInt sequence,
     FfiPlayerPreparationState state, {
     String? failureKind,
   }) {
     return FfiPlayerPreparationReport(
-      postId: authority.deliveryId.value,
-      representationId: authority.representationId.value,
-      assetId: authority.assetId.value,
+      postId: identity.postId,
+      representationId: identity.representationId,
+      assetId: identity.assetId,
       playerCapabilityGeneration: _playerCapabilityGeneration,
       clientEpoch: _clientEpoch,
       attemptGeneration: attempt,

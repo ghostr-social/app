@@ -20,7 +20,25 @@ pub(super) async fn validate_asset(
     context: &PlayerPreparationContext,
     input: &FfiPlayerPreparationReport,
 ) -> Result<PlayerPreparationAuthority, AssetValidationError> {
-    let candidate = load_candidate(context, input).await?;
+    let post = validated_post(input)?;
+    let meta = context
+        .tracked
+        .meta(post.as_str())
+        .ok_or(AssetValidationError::Rejected)?;
+    match meta.delivery {
+        DeliveryKind::Progressive => validate_progressive(context, input, post, &meta).await,
+        DeliveryKind::Hls => validate_hls(context, input, post),
+    }
+}
+
+async fn validate_progressive(
+    context: &PlayerPreparationContext,
+    input: &FfiPlayerPreparationReport,
+    post: PostId,
+    meta: &VideoMeta,
+) -> Result<PlayerPreparationAuthority, AssetValidationError> {
+    let candidate = load_candidate(context, post).await?;
+    validate_binding(context, input, meta, &candidate)?;
     ensure_capability(context, input, &candidate).await?;
     let binding = candidate.binding()?.clone();
     ensure_revision(context, &candidate, &binding).await?;
@@ -29,20 +47,24 @@ pub(super) async fn validate_asset(
         .ok_or(AssetValidationError::Rejected)
 }
 
-async fn load_candidate(
+fn validate_hls(
     context: &PlayerPreparationContext,
     input: &FfiPlayerPreparationReport,
-) -> Result<CandidateAsset, AssetValidationError> {
-    validate_post_id(&input.post_id).map_err(|error| {
-        log::debug!("Rejected player preparation post id: {error:#}");
-        AssetValidationError::Rejected
-    })?;
-    let post = PostId::new(input.post_id.clone());
-    let meta = context
-        .tracked
-        .meta(post.as_str())
+    post: PostId,
+) -> Result<PlayerPreparationAuthority, AssetValidationError> {
+    let revision = parse_hls_asset_revision(&input.asset_id)?;
+    let authority = context
+        .segmented
+        .resolve_prepared_authority(post.as_str(), &input.representation_id, revision)
         .ok_or(AssetValidationError::Rejected)?;
-    require(meta.delivery == DeliveryKind::Progressive)?;
+    PlayerPreparationAuthority::try_new_hls(authority, &input.asset_id)
+        .ok_or(AssetValidationError::Rejected)
+}
+
+async fn load_candidate(
+    context: &PlayerPreparationContext,
+    post: PostId,
+) -> Result<CandidateAsset, AssetValidationError> {
     let snapshot = context
         .store
         .media_snapshot(post.as_str())
@@ -51,9 +73,27 @@ async fn load_candidate(
             log::debug!("Player preparation media snapshot is unavailable: {error:#}");
             AssetValidationError::Unavailable
         })?;
-    let candidate = CandidateAsset { post, snapshot };
-    validate_binding(context, input, &meta, &candidate)?;
-    Ok(candidate)
+    Ok(CandidateAsset { post, snapshot })
+}
+
+fn validated_post(input: &FfiPlayerPreparationReport) -> Result<PostId, AssetValidationError> {
+    validate_post_id(&input.post_id).map_err(|error| {
+        log::debug!("Rejected player preparation post id: {error:#}");
+        AssetValidationError::Rejected
+    })?;
+    Ok(PostId::new(input.post_id.clone()))
+}
+
+fn parse_hls_asset_revision(asset_id: &str) -> Result<u64, AssetValidationError> {
+    let raw = asset_id
+        .strip_prefix("hls-v1:")
+        .ok_or(AssetValidationError::Rejected)?;
+    require(!raw.is_empty() && raw.bytes().all(|byte| byte.is_ascii_digit()))?;
+    let revision = raw
+        .parse::<u64>()
+        .map_err(|_| AssetValidationError::Rejected)?;
+    require(revision > 0 && raw == revision.to_string())?;
+    Ok(revision)
 }
 
 fn validate_binding(

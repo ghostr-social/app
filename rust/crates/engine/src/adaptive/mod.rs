@@ -20,6 +20,7 @@ mod navigation;
 mod plan;
 mod policy;
 mod ranges;
+mod reserve_candidate;
 mod reserve_evidence;
 mod reserve_model;
 mod reserve_origins;
@@ -53,7 +54,8 @@ pub use navigation::{FeedOffset, NavigationDirection, NavigationHistory};
 pub use plan::{
     Allocation, AllocationPlan, AllocationReason, CandidateUtility, ControlMode, DiscoveryDemand,
     Eviction, EvictionReason, NextReserveEvidence, NextReserveInfeasibility, PreemptionAuthority,
-    ReadyReserveEvidence, ReserveCandidateEvidence, ReserveCandidateState, RetainedAllocation,
+    ReadyReserveEvidence, ReserveCandidateEvidence, ReserveCandidateKind, ReserveCandidateState,
+    RetainedAllocation,
 };
 pub use policy::AdaptivePlayabilityPolicy;
 pub use retrieval::{

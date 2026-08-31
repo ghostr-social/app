@@ -36,7 +36,7 @@ pub(super) fn select(inputs: RescueInputs<'_>) -> Option<RescuePlan> {
     let progress = ordered.then(|| {
         reserve_progress::action_ids(inputs.input.snapshot, inputs.input.base, inputs.frontier)
     });
-    if ordered && reserve_progress::underflow(inputs.input.base) {
+    if ordered && reserve_progress::underflow(inputs.input.snapshot, inputs.input.base) {
         return select_from(&inputs, progress.as_deref());
     }
     select_from(&inputs, None)
@@ -46,7 +46,10 @@ fn select_from(inputs: &RescueInputs<'_>, progress: Option<&[u16]>) -> Option<Re
     inputs
         .frontier
         .iter()
-        .filter(|node| node.forecast.ready_playback_ms > 0)
+        .filter(|node| {
+            node.forecast.ready_playback_ms > 0
+                || progress.is_some_and(|ids| ids.contains(&node.id))
+        })
         .filter(|node| progress.is_none_or(|ids| ids.contains(&node.id)))
         .filter_map(|node| candidate(inputs, node))
         .min_by_key(plan_key)

@@ -1,3 +1,4 @@
+import 'package:ghostr/core/media/hls_playback_authority.dart';
 import 'package:ghostr/core/media/playback_asset_authority.dart';
 
 const warpMaximumConcurrentPlayerPreparations = 8;
@@ -26,6 +27,8 @@ abstract interface class PlayerPreparationAttempt {
 
 abstract interface class PlayerPreparationFeedbackPort {
   PlayerPreparationAttempt prepare(PlaybackAssetAuthority authority);
+
+  PlayerPreparationAttempt prepareHls(HlsPlaybackAuthority authority);
 }
 
 final class NoopPlayerPreparationFeedbackPort
@@ -34,6 +37,11 @@ final class NoopPlayerPreparationFeedbackPort
 
   @override
   PlayerPreparationAttempt prepare(PlaybackAssetAuthority authority) {
+    return const _NoopPlayerPreparationAttempt();
+  }
+
+  @override
+  PlayerPreparationAttempt prepareHls(HlsPlaybackAuthority authority) {
     return const _NoopPlayerPreparationAttempt();
   }
 }

@@ -13,10 +13,11 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 
 import '../support/audited_video_player_platform.dart';
 import '../support/drain_test_microtasks.dart';
+import '../support/recording_player_preparation_feedback.dart';
 import '../support/video_player_surface_pump.dart';
 
 void main() {
-  testWidgets('early HLS frame cannot verify a newer authority revision', (
+  testWidgets('stale HLS frame and runtime failure cannot affect a rollover', (
     tester,
   ) async {
     final platform = AuditedVideoPlayerPlatform(autoInitialize: false);
@@ -28,7 +29,11 @@ void main() {
       tokenFactory: () => token,
     );
     final verified = <HlsPlaybackAuthority>[];
-    final port = VideoPlayerPlaybackPort(renderedFirstFrames: frames);
+    final feedback = RecordingPlayerPreparationFeedback();
+    final port = VideoPlayerPlaybackPort(
+      preparationFeedback: feedback,
+      renderedFirstFrames: frames,
+    );
     addTearDown(() async {
       await frames.dispose();
       await events.close();
@@ -39,17 +44,28 @@ void main() {
       port,
       _request(_authority(1), verified),
     );
-    events.add({'version': 1, 'attemptToken': _token});
-    await tester.runAsync(drainTestMicrotasks);
     await pumpVideoPlayerSurface(
       tester,
       port,
       _request(_authority(2), verified),
     );
+    events.add({'version': 1, 'attemptToken': _token});
+    await tester.runAsync(drainTestMicrotasks);
     platform.initialize(0);
+    await settleVideoPlayerTasks(tester);
+    platform.fail(0);
+    await settleVideoPlayerTasks(tester);
     await settleVideoPlayerTasks(tester);
 
     expect(verified, isEmpty);
+    expect(
+      feedback.hlsEvents.where(
+        (event) =>
+            event.state == RecordedPreparationState.firstFrameRendered ||
+            event.state == RecordedPreparationState.failed,
+      ),
+      isEmpty,
+    );
   });
 }
 

@@ -34,7 +34,7 @@ async fn admitted_attempt_finishes_under_its_original_revision_after_renewal() {
         .try_player_preparation()
         .expect("test fixture precondition must hold");
     assert_eq!(rendered.state(), PlayerPreparationState::FirstFrameRendered);
-    assert_eq!(rendered.revision(), original);
+    assert_eq!(rendered.progressive_revision(), Some(original));
 
     report.sequence = 3;
     report.state = FfiPlayerPreparationState::Released;
@@ -46,7 +46,7 @@ async fn admitted_attempt_finishes_under_its_original_revision_after_renewal() {
         .try_player_preparation()
         .expect("test fixture precondition must hold");
     assert_eq!(released.state(), PlayerPreparationState::Released);
-    assert_eq!(released.revision(), original);
+    assert_eq!(released.progressive_revision(), Some(original));
 
     report.sequence = 4;
     assert!(report_player_preparation(&fixture.context, report)

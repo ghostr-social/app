@@ -1,5 +1,7 @@
 use super::{range, RangeSnapshot};
-use ghostr_engine::adaptive::{NextReserveEvidence, NextReserveInfeasibility};
+use ghostr_engine::adaptive::{
+    HlsBootstrapStage, NextReserveEvidence, NextReserveInfeasibility,
+};
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -23,6 +25,20 @@ pub(super) enum NextReserveSnapshot {
         post_id: String,
         reason: &'static str,
     },
+    HlsReady {
+        post_id: String,
+    },
+    HlsStructural {
+        post_id: String,
+    },
+    HlsInFlight {
+        post_id: String,
+        stage: &'static str,
+    },
+    HlsPending {
+        post_id: String,
+        stage: &'static str,
+    },
 }
 
 pub(super) fn snapshot(value: &NextReserveEvidence) -> NextReserveSnapshot {
@@ -45,6 +61,29 @@ pub(super) fn snapshot(value: &NextReserveEvidence) -> NextReserveSnapshot {
             post_id: post.as_str().to_owned(),
             reason: infeasibility(*reason),
         },
+        NextReserveEvidence::HlsReady { post } => NextReserveSnapshot::HlsReady {
+            post_id: post.as_str().to_owned(),
+        },
+        NextReserveEvidence::HlsStructural { post } => NextReserveSnapshot::HlsStructural {
+            post_id: post.as_str().to_owned(),
+        },
+        NextReserveEvidence::HlsInFlight { post, stage } => NextReserveSnapshot::HlsInFlight {
+            post_id: post.as_str().to_owned(),
+            stage: hls_stage(*stage),
+        },
+        NextReserveEvidence::HlsPending { post, stage } => NextReserveSnapshot::HlsPending {
+            post_id: post.as_str().to_owned(),
+            stage: hls_stage(*stage),
+        },
+    }
+}
+
+pub(super) const fn hls_stage(value: HlsBootstrapStage) -> &'static str {
+    match value {
+        HlsBootstrapStage::RootManifest => "root_manifest",
+        HlsBootstrapStage::ChildPlaylist => "child_playlist",
+        HlsBootstrapStage::Initialization => "initialization",
+        HlsBootstrapStage::FirstSegment => "first_segment",
     }
 }
 

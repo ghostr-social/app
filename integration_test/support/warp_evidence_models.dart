@@ -11,6 +11,7 @@ part 'warp_evidence_metrics.dart';
 part 'warp_evidence_metrics_adaptation.dart';
 part 'warp_evidence_plan.dart';
 part 'warp_evidence_plan_parsing.dart';
+part 'warp_evidence_reserve_candidate.dart';
 part 'warp_evidence_ready_reserve.dart';
 part 'warp_evidence_plan_network.dart';
 part 'warp_evidence_transfer.dart';

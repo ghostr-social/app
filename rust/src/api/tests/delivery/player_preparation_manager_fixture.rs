@@ -80,6 +80,7 @@ fn player_context(
         delivery,
         tracked: authority.tracked.clone(),
         cache: authority.cache.clone(),
+        segmented: Default::default(),
     }
 }
 

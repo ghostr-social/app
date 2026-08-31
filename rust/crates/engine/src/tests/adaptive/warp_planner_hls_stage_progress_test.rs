@@ -16,6 +16,7 @@ fn current_initialization_stage_remains_worth_selecting_at_the_production_envelo
         view_probability: ViewProbability::new(1.0).expect("valid test fixture"),
         startup_value_ms: 750,
         cursor: Default::default(),
+        player_preparation: Default::default(),
         state: HlsBootstrapState::Pending {
             stage: HlsBootstrapStage::Initialization,
             source: "https://hls.example/init.mp4".to_owned(),
