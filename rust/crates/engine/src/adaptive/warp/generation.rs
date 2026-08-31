@@ -6,8 +6,8 @@ mod continuation;
 mod hls;
 mod hls_prediction;
 mod ladders;
-mod prediction;
 mod policies;
+mod prediction;
 mod quality;
 mod request_profile;
 mod value;
@@ -24,7 +24,7 @@ use crate::{ActionId, PostId};
 
 pub(crate) use policies::{
     HlsGenerationPolicy, OriginAdmissionGenerationPolicy, PromotionGenerationPolicy,
-    WarpGenerationPolicies,
+    RangeAliasGenerationPolicy, WarpGenerationPolicies,
 };
 
 #[derive(Clone, Copy)]

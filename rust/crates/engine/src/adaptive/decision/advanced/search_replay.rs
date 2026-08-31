@@ -27,6 +27,8 @@ pub struct RecordedWarpSearchInput {
     reserve_threshold_bps: Option<u16>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     reserve_degraded_reason: Option<RecordedReserveDegradedReason>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    reserve_progress_action_ids: Vec<u16>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]

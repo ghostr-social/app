@@ -20,20 +20,17 @@ Future<_RecoveredEvidence> _measureRecovery(
   final window = await journey.waitForConfirmedLinkWindow(
     tester,
     active.profile.generation,
-    minimumDuration: const Duration(microseconds: 1),
+    minimumDuration: const Duration(milliseconds: 500),
   );
   _expectRecoveryWindow(active.request, active.profile, window);
   final focus = active.burst.focuses.last;
+  final confirmedAtEpochMs = _recoveryConfirmationFence(recovery);
   final paired = await _waitForRecoveryPair(tester, journey, (
     recovery: recovery,
     focus: focus,
-    confirmedAtEpochMs: window.confirmedAtEpochMs,
+    confirmedAtEpochMs: confirmedAtEpochMs,
   ));
-  _reportNetworkResponse(
-    'recovery',
-    paired.decision,
-    window.confirmedAtEpochMs,
-  );
+  _reportNetworkResponse('recovery', paired.decision, confirmedAtEpochMs);
   return (
     profile: active.profile,
     window: window,
@@ -42,6 +39,10 @@ Future<_RecoveredEvidence> _measureRecovery(
     focus: focus,
     frontierPath: recovery.frontier.firstUnreadyPath,
   );
+}
+
+int _recoveryConfirmationFence(_RecoveryFocus recovery) {
+  return recovery.recoveryTrigger.confirmedEvent!.confirmedAtEpochMs!;
 }
 
 void _expectRecoveryWindow(

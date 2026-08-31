@@ -20,6 +20,7 @@ void main() {
     ));
 
     expect(frontier.readyDepth, 2);
+    expect(frontier.activationPath, '/third');
     expect(frontier.firstUnreadyPath, '/fourth');
     expect(frontier.transitionPaths, {'/fourth'});
     expect(

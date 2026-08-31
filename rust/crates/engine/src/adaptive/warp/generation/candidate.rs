@@ -135,7 +135,9 @@ impl Builder<'_> {
         let Some(source) = self.admitted_request_source(candidate, &kind) else {
             return;
         };
-        if self.contains(candidate, &kind) {
+        if self.contains_promotable_range_transfer(candidate, source, range)
+            || self.contains(candidate, &kind)
+        {
             return;
         }
         let allocation = self.allocation(
@@ -161,6 +163,9 @@ impl Builder<'_> {
         let Some(source) = self.admitted_request_source(candidate, &kind) else {
             return;
         };
+        if self.contains_promotable_range_transfer(candidate, source, range) {
+            return;
+        }
         let allocation = self.allocation(candidate, AllocationSpec::cache(range, source));
         let input = TransferInput::delivery(kind, allocation, &[]);
         let _ = self.push_transfer(candidate, input);

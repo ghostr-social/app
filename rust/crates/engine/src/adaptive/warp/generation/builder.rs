@@ -5,7 +5,8 @@ use super::{
     ActiveControl, GeneratedAction, GeneratedActions, PlannerCommand, PlannerContext,
     PromotionGenerationPolicy, WarpGenerationInput, WarpGenerationPolicies,
 };
-use crate::adaptive::{AllocationPlan, CandidateSnapshot, PlayabilitySnapshot};
+use crate::adaptive::{AllocationPlan, CandidateSnapshot, PlayabilitySnapshot, RetrievalRequest};
+use crate::ByteRange;
 
 mod admission;
 mod transfer;
@@ -62,10 +63,7 @@ impl<'a> NodeInput<'a> {
 }
 
 impl<'a> Builder<'a> {
-    pub(super) fn new(
-        input: WarpGenerationInput<'a>,
-        policies: WarpGenerationPolicies,
-    ) -> Self {
+    pub(super) fn new(input: WarpGenerationInput<'a>, policies: WarpGenerationPolicies) -> Self {
         Self {
             snapshot: input.snapshot,
             base: input.base,
@@ -162,6 +160,30 @@ impl<'a> Builder<'a> {
         self.actions
             .iter()
             .any(|item| item.node.post == candidate.post && &item.node.kind == kind)
+    }
+
+    pub(super) fn contains_promotable_range_transfer(
+        &self,
+        candidate: &CandidateSnapshot,
+        source: &str,
+        bytes: ByteRange,
+    ) -> bool {
+        if self.generation_policies.range_alias
+            == super::RangeAliasGenerationPolicy::LegacyIndependentActions
+        {
+            return false;
+        }
+        self.actions.iter().any(|item| {
+            item.node.post == candidate.post
+                && matches!(&item.command, PlannerCommand::Transfer(allocation)
+                    if allocation.source == source
+                        && matches!(allocation.request,
+                            RetrievalRequest::FetchRange {
+                                bytes: owned,
+                                promotion: Some(grant),
+                            } if owned == bytes && candidate.total_bytes
+                                .is_some_and(|total| grant.maximum_bytes >= total)))
+        })
     }
 
     pub(super) fn finish(self) -> GeneratedActions {

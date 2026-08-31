@@ -1,9 +1,9 @@
-use super::warp_planner_test_assertions::set_source;
 use crate::adaptive::{
     AdaptivePlayabilityPolicy, HardBudget, InFlightAction, PlannerContext, ResourceCost,
     WarpPlanner, WarpPlannerInput,
 };
 use crate::origin_model::OriginModel;
+use crate::tests::adaptive::warp_planner_test_assertions::set_source;
 use crate::tests::adaptive_support::snapshot;
 use crate::{ActionId, ByteRange, PostId};
 

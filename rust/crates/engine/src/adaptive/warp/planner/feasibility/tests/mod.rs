@@ -1,5 +1,6 @@
 mod actionable_semantic_test;
 mod degraded_reserve_test;
+mod reserve_semantic_scope_test;
 mod semantic_readiness_test;
 mod transform_rescue_test;
 mod unsupported_playback_test;

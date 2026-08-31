@@ -36,42 +36,29 @@ Future<_PacedFeed> _openPacedFeed(WidgetTester tester) async {
   final window = await journey.waitForConfirmedLinkWindow(
     tester,
     profile.generation,
-    minimumDuration: const Duration(milliseconds: 750),
-  );
-  final decision = await journey.waitForDecision(
-    tester,
-    (item) =>
-        item.observedAtMs > window.confirmedAtEpochMs &&
-        item.networkThroughputBps > 0 &&
-        item.appliesMeasuredNetworkRate,
-  );
-  debugPrint(
-    'WARP_LINK baseline at=${decision.observedAtMs} '
-    'throughput_bps=${decision.networkThroughputBps} '
-    'planner_Bps=${decision.plannerNetworkRateBytesPerSecond}',
+    minimumDuration: const Duration(milliseconds: 1500),
   );
   final generation = journey.focus.generationFor(startup)!;
-  final plan = await journey.waitForPlan(
+  final paired = await _waitForBaselinePair(
     tester,
-    (item) =>
-        item.observedAtMs == decision.observedAtMs &&
-        item.networkStatusGeneration == 1 &&
-        item.networkClass == WarpNetworkClass.wifi &&
-        item.coversFocusGeneration(generation) &&
-        item.plan.workBreadth >= 2,
+    journey,
+    window.confirmedAtEpochMs,
+    generation,
   );
+  _reportBaseline(paired.decision);
   final trigger = origin.armBandwidthChangeAfterNextConfirmedChunk(
     _transitionPaths,
     bandwidthKbps: 700,
   );
-  journey.reportPlan(plan);
+  journey.reportPlan(paired.plan);
   return (
     journey: journey,
     startup: startup,
     focusGeneration: generation,
     lossTrigger: trigger,
     fastProfile: profile,
-    baselineDecision: decision,
+    baselineDecision: paired.decision,
+    baselinePlanRevision: paired.plan.revision,
   );
 }
 

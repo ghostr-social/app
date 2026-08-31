@@ -11,12 +11,11 @@ Future<_PairedBandwidthEvidence> _waitForRecoveryPair(
   WarpFeedPlaybackJourney journey,
   _RecoveryResponseQuery query,
 ) async {
-  final retained = await journey.evidence.page();
   final pair = await journey.waitForDecisionPlanPair(
     tester,
     (decision, plan) => _isRecoveryPair(decision, plan, journey, query),
     afterSequence: query.recovery.decision.sequence,
-    afterRevision: retained.planPage.beforeOldestRetainedRevision,
+    afterRevision: query.recovery.planRevision,
   );
   journey.reportPlan(pair.plan);
   return pair;

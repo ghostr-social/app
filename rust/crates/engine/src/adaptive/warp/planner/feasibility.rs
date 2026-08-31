@@ -1,4 +1,5 @@
-use super::types::{SemanticDecision, WarpPlannerConfig, WarpPlannerInput};
+use super::reserve_progress;
+use super::types::{ReserveProgressPolicy, SemanticDecision, WarpPlannerConfig, WarpPlannerInput};
 use crate::adaptive::{
     ActionKind, ActionNode, HardBudget, PlannerCapability, PlayerPreparation, ReserveConstraint,
     SemanticCandidate, SemanticGuardrail,
@@ -64,11 +65,18 @@ fn semantic_decisions(
 ) -> Vec<SemanticDecision> {
     let window = semantic_window(input);
     let guardrail = SemanticGuardrail::new(config.semantic_top_k, config.semantic_epsilon_micros);
+    let reserve = (config.reserve_progress_policy == ReserveProgressPolicy::OrderedReadiness)
+        .then(|| reserve_progress::target_post(input.base))
+        .flatten();
     window
         .iter()
         .map(|candidate| SemanticDecision {
             post: candidate.post.clone(),
-            admission: guardrail.admit(candidate, &window),
+            admission: if reserve == Some(&candidate.post) {
+                guardrail.admit_reserve(candidate, &window)
+            } else {
+                guardrail.admit(candidate, &window)
+            },
         })
         .collect()
 }

@@ -14,6 +14,12 @@ pub(crate) enum PromotionGenerationPolicy {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum RangeAliasGenerationPolicy {
+    LegacyIndependentActions,
+    PromotableDominance,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum OriginAdmissionGenerationPolicy {
     LegacyUnclassified,
     TypedIntent,
@@ -23,6 +29,7 @@ pub(crate) enum OriginAdmissionGenerationPolicy {
 pub(crate) struct WarpGenerationPolicies {
     pub(crate) hls: HlsGenerationPolicy,
     pub(crate) promotion: PromotionGenerationPolicy,
+    pub(crate) range_alias: RangeAliasGenerationPolicy,
     pub(crate) origin_admission: OriginAdmissionGenerationPolicy,
 }
 
@@ -31,6 +38,7 @@ impl WarpGenerationPolicies {
         Self {
             hls: HlsGenerationPolicy::BoundedObjectCursor,
             promotion: PromotionGenerationPolicy::ObservedResponse,
+            range_alias: RangeAliasGenerationPolicy::PromotableDominance,
             origin_admission: OriginAdmissionGenerationPolicy::TypedIntent,
         }
     }

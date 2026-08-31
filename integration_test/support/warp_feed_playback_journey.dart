@@ -48,10 +48,12 @@ part 'warp_feed_playback_journey_wait.dart';
 part 'warp_feed_playback_journey_wait_core.dart';
 part 'warp_feed_playback_journey_origin_wait.dart';
 part 'warp_feed_playback_journey_origin_assertions.dart';
+part 'warp_feed_playback_journey_store_contract.dart';
 part 'warp_feed_playback_journey_store_assertions.dart';
 part 'warp_feed_playback_journey_link_wait.dart';
 part 'warp_feed_playback_journey_decision_wait.dart';
 part 'warp_feed_playback_journey_pair_wait.dart';
+part 'warp_feed_playback_journey_pair_diagnostics.dart';
 part 'warp_feed_playback_journey_promotion_wait.dart';
 part 'warp_feed_playback_journey_loop_reopen.dart';
 

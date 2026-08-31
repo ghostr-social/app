@@ -19,6 +19,13 @@ pub struct WarpPlannerConfig {
     pub(crate) semantic_epsilon_micros: u64,
     pub(crate) safety_rescue_bps: u16,
     pub(crate) emergency_rescue_bps: u16,
+    pub(crate) reserve_progress_policy: ReserveProgressPolicy,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum ReserveProgressPolicy {
+    LegacyCoverage,
+    OrderedReadiness,
 }
 
 impl Default for WarpPlannerConfig {
@@ -30,6 +37,7 @@ impl Default for WarpPlannerConfig {
             semantic_epsilon_micros: 0,
             safety_rescue_bps: 9_500,
             emergency_rescue_bps: 9_900,
+            reserve_progress_policy: ReserveProgressPolicy::OrderedReadiness,
         }
     }
 }

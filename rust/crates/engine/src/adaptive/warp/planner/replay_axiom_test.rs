@@ -1,6 +1,7 @@
 use super::*;
 use crate::adaptive::{
     HlsGenerationPolicy, OriginAdmissionGenerationPolicy, PromotionGenerationPolicy,
+    RangeAliasGenerationPolicy,
 };
 
 impl WarpPlanner {
@@ -38,6 +39,19 @@ impl WarpPlanner {
             input,
             WarpGenerationPolicies {
                 origin_admission: OriginAdmissionGenerationPolicy::LegacyUnclassified,
+                ..WarpGenerationPolicies::current()
+            },
+        )
+    }
+
+    pub(crate) fn plan_legacy_range_aliases_for_test(
+        &mut self,
+        input: WarpPlannerInput<'_>,
+    ) -> WarpPlanningDecision {
+        self.plan_with_generation_policies(
+            input,
+            WarpGenerationPolicies {
+                range_alias: RangeAliasGenerationPolicy::LegacyIndependentActions,
                 ..WarpGenerationPolicies::current()
             },
         )

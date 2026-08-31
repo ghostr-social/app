@@ -49,7 +49,7 @@ Future<void> _verifyReverseReuse(
   debugPrint('WARP_REVERSE origin_before=$before origin_after=$after');
   debugPrint('WARP_REVERSE_REQUESTS ${journey.originRequestEvidence(ids)}');
   journey.verifyReplayOriginUse(before, after);
-  await journey.waitForReplayStoreCoverage(tester, ids);
+  await journey.waitForNativeStoreCoverage(tester, ids);
   expect(journey.hadPlaybackError, isFalse);
   expect(journey.focus.hadTransportRescue, isFalse);
 }

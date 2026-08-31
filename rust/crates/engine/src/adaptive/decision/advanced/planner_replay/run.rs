@@ -68,6 +68,7 @@ impl RecordedPlannerConfig {
             semantic_epsilon_micros: self.semantic_epsilon_micros,
             safety_rescue_bps: self.safety_rescue_bps,
             emergency_rescue_bps: self.emergency_rescue_bps,
+            reserve_progress_policy: self.reserve_progress_policy.restore(),
         })
     }
 }

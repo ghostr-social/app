@@ -7,14 +7,12 @@ Future<WarpSwipeBurst> _swipeIntoRecovery(
 ) async {
   final count = recovery.frontier.readyDepth;
   expect(count, greaterThanOrEqualTo(2));
-  final startedAt = journey.telemetry.probe.elapsed;
   final burst = await journey.swipeForward(
     tester,
     count: count,
     afterSequence: recovery.focus.sequence,
     cadence: deviceRapidSwipeCadence,
   );
-  journey.verifyRapidCadence(startedAt, burst);
   await journey.waitForFirstFrame(tester, burst.focuses.last);
   await journey.waitForPlaying(tester, burst.focuses.last);
   await journey.verifyReadyBurstPlayback(

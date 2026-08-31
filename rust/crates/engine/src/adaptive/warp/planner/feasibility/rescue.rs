@@ -1,4 +1,7 @@
-use super::super::types::{SemanticDecision, WarpPlannerConfig, WarpPlannerInput};
+use super::super::reserve_progress;
+use super::super::types::{
+    ReserveProgressPolicy, SemanticDecision, WarpPlannerConfig, WarpPlannerInput,
+};
 use crate::adaptive::{
     ActionNode, ControlMode, HardBudget, RescueChanceEvidence, RescueTimingQuantile, ResourceCost,
 };
@@ -25,15 +28,27 @@ pub(super) struct RescuePlan {
     pub chance: RescueChanceEvidence,
 }
 
-pub(super) fn select(_inputs: RescueInputs<'_>) -> Option<RescuePlan> {
-    if _inputs.input.base.mode == ControlMode::Normal {
+pub(super) fn select(inputs: RescueInputs<'_>) -> Option<RescuePlan> {
+    if inputs.input.base.mode == ControlMode::Normal {
         return None;
     }
-    _inputs
+    let ordered = inputs.config.reserve_progress_policy == ReserveProgressPolicy::OrderedReadiness;
+    let progress = ordered.then(|| {
+        reserve_progress::action_ids(inputs.input.snapshot, inputs.input.base, inputs.frontier)
+    });
+    if ordered && reserve_progress::underflow(inputs.input.base) {
+        return select_from(&inputs, progress.as_deref());
+    }
+    select_from(&inputs, None)
+}
+
+fn select_from(inputs: &RescueInputs<'_>, progress: Option<&[u16]>) -> Option<RescuePlan> {
+    inputs
         .frontier
         .iter()
         .filter(|node| node.forecast.ready_playback_ms > 0)
-        .filter_map(|node| candidate(&_inputs, node))
+        .filter(|node| progress.is_none_or(|ids| ids.contains(&node.id)))
+        .filter_map(|node| candidate(inputs, node))
         .min_by_key(plan_key)
 }
 

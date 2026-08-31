@@ -68,6 +68,21 @@ impl SemanticGuardrail {
         rescued(rank)
     }
 
+    pub(crate) fn admit_reserve(
+        self,
+        candidate: &SemanticCandidate,
+        window: &[SemanticCandidate],
+    ) -> SemanticAdmission {
+        let admission = self.admit(candidate, window);
+        if admission.admissible {
+            return admission;
+        }
+        window
+            .iter()
+            .position(|item| item.post == candidate.post)
+            .map_or_else(rejected, rescued)
+    }
+
     fn normal(
         self,
         candidate: &SemanticCandidate,

@@ -32,6 +32,7 @@ pub(crate) fn capture(
         reserve: Some(super::super::reserve::capture(input.reserve(), privacy)),
         reserve_threshold_bps: input.reserve_threshold_bps(),
         reserve_degraded_reason: input.reserve_degraded_reason().map(Into::into),
+        reserve_progress_action_ids: input.reserve_progress_action_ids().to_vec(),
     })
 }
 

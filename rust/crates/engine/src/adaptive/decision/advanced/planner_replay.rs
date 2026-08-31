@@ -1,5 +1,10 @@
 mod capture;
+mod range_alias_policy;
+mod reserve_progress_policy;
 mod run;
+
+use range_alias_policy::{is_legacy_range_alias, RecordedRangeAliasGenerationPolicy};
+use reserve_progress_policy::{is_legacy_reserve_progress, RecordedReserveProgressPolicy};
 
 use crate::adaptive::{
     AllocationPlan, HlsGenerationPolicy, OriginAdmissionGenerationPolicy, PlannerContext,
@@ -33,6 +38,8 @@ pub struct RecordedPlannerReplayCapsule {
     hls_generation_policy: RecordedHlsGenerationPolicy,
     #[serde(default, skip_serializing_if = "is_legacy_promotion_generation")]
     promotion_generation_policy: RecordedPromotionGenerationPolicy,
+    #[serde(default, skip_serializing_if = "is_legacy_range_alias")]
+    range_alias_generation_policy: RecordedRangeAliasGenerationPolicy,
     #[serde(default, skip_serializing_if = "is_legacy_origin_admission_generation")]
     origin_admission_generation_policy: RecordedOriginAdmissionGenerationPolicy,
 }
@@ -131,6 +138,8 @@ struct RecordedPlannerConfig {
     semantic_epsilon_micros: u64,
     safety_rescue_bps: u16,
     emergency_rescue_bps: u16,
+    #[serde(default, skip_serializing_if = "is_legacy_reserve_progress")]
+    reserve_progress_policy: RecordedReserveProgressPolicy,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -161,9 +170,7 @@ fn is_legacy_promotion_generation(value: &RecordedPromotionGenerationPolicy) -> 
     *value == RecordedPromotionGenerationPolicy::LegacyLatentGrant
 }
 
-fn is_legacy_origin_admission_generation(
-    value: &RecordedOriginAdmissionGenerationPolicy,
-) -> bool {
+fn is_legacy_origin_admission_generation(value: &RecordedOriginAdmissionGenerationPolicy) -> bool {
     *value == RecordedOriginAdmissionGenerationPolicy::LegacyUnclassified
 }
 
@@ -172,6 +179,7 @@ impl RecordedPlannerReplayCapsule {
         WarpGenerationPolicies {
             hls: self.hls_generation_policy.restore(),
             promotion: self.promotion_generation_policy.restore(),
+            range_alias: self.range_alias_generation_policy.restore(),
             origin_admission: self.origin_admission_generation_policy.restore(),
         }
     }

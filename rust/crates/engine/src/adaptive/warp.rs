@@ -26,10 +26,11 @@ pub use generation::{
 };
 pub(crate) use generation::{
     HlsGenerationPolicy, OriginAdmissionGenerationPolicy, PromotionGenerationPolicy,
-    WarpGenerationInput, WarpGenerationPolicies,
+    RangeAliasGenerationPolicy, WarpGenerationInput, WarpGenerationPolicies,
 };
 pub(crate) use planner::{
-    PlannerReplayCapsule, PlannerReplayState, SearchReplayInput, SearchReplayMode,
+    PlannerReplayCapsule, PlannerReplayState, ReserveProgressPolicy, SearchReplayInput,
+    SearchReplayMode,
 };
 pub use planner::{
     RescueChanceEvidence, RescueTimingQuantile, ReserveAuthorityOccupancy, ReserveConstraint,

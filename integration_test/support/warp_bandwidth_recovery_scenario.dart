@@ -10,6 +10,7 @@ import 'warp_feed_playback_journey.dart';
 import 'warp_recovery_frontier.dart';
 
 part 'warp_bandwidth_recovery_scenario_open.dart';
+part 'warp_bandwidth_recovery_scenario_baseline.dart';
 part 'warp_bandwidth_recovery_scenario_impair.dart';
 part 'warp_bandwidth_recovery_scenario_traverse.dart';
 part 'warp_bandwidth_recovery_scenario_recover.dart';
@@ -19,6 +20,7 @@ part 'warp_bandwidth_recovery_scenario_recovery_swipe.dart';
 part 'warp_bandwidth_recovery_scenario_recovery_activation.dart';
 part 'warp_bandwidth_recovery_scenario_recovery_evidence.dart';
 part 'warp_bandwidth_recovery_scenario_recovery_response.dart';
+part 'warp_bandwidth_recovery_scenario_origin_acceptance.dart';
 part 'warp_bandwidth_recovery_scenario_acceptance.dart';
 
 typedef _PacedFeed = ({
@@ -28,6 +30,7 @@ typedef _PacedFeed = ({
   ProgressiveOriginBandwidthTrigger lossTrigger,
   ProgressiveOriginLinkProfile fastProfile,
   WarpDecisionRecord baselineDecision,
+  int baselinePlanRevision,
 });
 
 typedef _ImpairedFeed = ({
@@ -40,6 +43,7 @@ typedef _ImpairedFeed = ({
 typedef _RecoveryFocus = ({
   PlaybackFocus focus,
   WarpDecisionRecord decision,
+  int planRevision,
   WarpReadyWindow ready,
   WarpRecoveryFrontier frontier,
   ProgressiveOriginBandwidthTrigger recoveryTrigger,

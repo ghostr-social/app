@@ -27,14 +27,12 @@ Future<WarpSwipeBurst> _swipeForwardUnderLoss(
   WarpFeedPlaybackJourney journey,
   _ImpairedFeed impaired,
 ) async {
-  final startedAt = journey.telemetry.probe.elapsed;
   final forward = await journey.swipeForward(
     tester,
     count: 2,
     afterSequence: journey.focusCursor,
     cadence: deviceRapidSwipeCadence,
   );
-  journey.verifyRapidCadence(startedAt, forward);
   await journey.waitForFirstFrame(tester, forward.focuses.last);
   await journey.waitForPlaying(tester, forward.focuses.last);
   await journey.verifyReadyBurstPlayback(

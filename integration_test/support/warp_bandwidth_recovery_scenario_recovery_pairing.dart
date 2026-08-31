@@ -20,14 +20,15 @@ Future<_RecoveryFocus> _waitForRecoveryBaseline(
   final ready = await _waitForRecoveryReady(tester, journey, query.focus);
   final frontier = _recoveryFrontier(journey, ready);
   final trigger = journey.resources.origin
-      .armBandwidthChangeAfterNextConfirmedChunk(
-        frontier.transitionPaths,
-        bandwidthKbps: 2500,
-      );
+      .armBandwidthChangeAfterNextConfirmedChunk({
+        ...frontier.transitionPaths,
+        frontier.activationPath,
+      }, bandwidthKbps: 2500);
   journey.reportPlan(pair.plan);
   return (
     focus: query.focus,
     decision: pair.decision,
+    planRevision: pair.plan.revision,
     ready: ready,
     frontier: frontier,
     recoveryTrigger: trigger,

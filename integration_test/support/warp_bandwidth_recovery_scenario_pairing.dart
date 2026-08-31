@@ -11,12 +11,11 @@ Future<_PairedBandwidthEvidence> _waitForLossPair(
   int confirmedAtEpochMs,
 ) async {
   final journey = opened.journey;
-  final retained = await journey.evidence.page();
   final pair = await journey.waitForDecisionPlanPair(
     tester,
     (decision, plan) => _isLossPair(decision, plan, opened, confirmedAtEpochMs),
     afterSequence: opened.baselineDecision.sequence,
-    afterRevision: retained.planPage.beforeOldestRetainedRevision,
+    afterRevision: opened.baselinePlanRevision,
   );
   journey.reportPlan(pair.plan);
   return pair;

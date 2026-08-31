@@ -17,7 +17,7 @@ extension WarpFeedPlaybackJourneyPromotionWait on WarpFeedPlaybackJourney {
       evidence = _promotionEvidence(resources.origin, id);
       return _isCompletePromotion(evidence);
     });
-    await waitForReplayStoreCoverage(tester, [id]);
+    await waitForNativeStoreCoverage(tester, [id]);
     return evidence;
   }
 }

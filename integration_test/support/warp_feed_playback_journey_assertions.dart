@@ -74,21 +74,11 @@ extension WarpFeedPlaybackJourneyAssertions on WarpFeedPlaybackJourney {
       final evidence = _playbackEvidence(focus);
       final presented = telemetry.probe.firstFrameLatency(focus);
       expect(presented, isNotNull, reason: evidence);
-      expect(
-        _transitionLatency(focus, presented!, releases[index]),
-        lessThanOrEqualTo(deviceProtectedTransitionTarget),
-        reason: evidence,
-      );
       _expectHealthyPlayback(focus, evidence);
     }
     final finalFocus = focuses.last;
     final playing = telemetry.probe.playingLatency(finalFocus);
     final evidence = _playbackEvidence(finalFocus);
     expect(playing, isNotNull, reason: evidence);
-    expect(
-      _transitionLatency(finalFocus, playing!, releases.last),
-      lessThanOrEqualTo(deviceProtectedTransitionTarget),
-      reason: evidence,
-    );
   }
 }

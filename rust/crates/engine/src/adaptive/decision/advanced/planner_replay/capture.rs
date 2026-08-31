@@ -45,6 +45,7 @@ fn projected(
         last_feedback: value.last_feedback(),
         hls_generation_policy: value.generation_policies().hls.into(),
         promotion_generation_policy: value.generation_policies().promotion.into(),
+        range_alias_generation_policy: value.generation_policies().range_alias.into(),
         origin_admission_generation_policy: value.generation_policies().origin_admission.into(),
     })
 }
@@ -77,6 +78,7 @@ fn config(value: crate::adaptive::WarpPlannerConfig) -> Option<RecordedPlannerCo
         semantic_epsilon_micros: value.semantic_epsilon_micros,
         safety_rescue_bps: value.safety_rescue_bps,
         emergency_rescue_bps: value.emergency_rescue_bps,
+        reserve_progress_policy: value.reserve_progress_policy.into(),
     })
 }
 
@@ -119,6 +121,7 @@ impl RecordedPlannerReplayCapsule {
             last_feedback: None,
             hls_generation_policy: Default::default(),
             promotion_generation_policy: Default::default(),
+            range_alias_generation_policy: Default::default(),
             origin_admission_generation_policy: Default::default(),
         }
     }

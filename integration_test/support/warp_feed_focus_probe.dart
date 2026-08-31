@@ -1,3 +1,4 @@
+import 'package:ghostr/core/media/playback_delivery_id.dart';
 import 'package:ghostr/core/media/playback_video_id.dart';
 import 'package:ghostr/features/video_catalog/domain/feed_focus_port.dart';
 
@@ -14,6 +15,7 @@ final class WarpFeedFocusProbe implements FeedFocusPort {
   final _published = <String, PlaybackFocus>{};
   final _occurrences = <PlaybackFocus>[];
   final _generations = <int, BigInt>{};
+  final _deliveries = <String, PlaybackDeliveryId>{};
 
   List<PlaybackFocus> get occurrences => List.unmodifiable(_occurrences);
 
@@ -23,6 +25,7 @@ final class WarpFeedFocusProbe implements FeedFocusPort {
 
   @override
   void focusChanged(FeedFocus focus) {
+    _rememberDeliveries(focus);
     final id = PlaybackVideoId.parse(focus.current.id);
     final occurrence = _playback.markFocus(
       id,
@@ -37,6 +40,8 @@ final class WarpFeedFocusProbe implements FeedFocusPort {
   }
 
   PlaybackFocus? publishedFor(String eventId) => _published[eventId];
+
+  PlaybackDeliveryId? deliveryForEvent(String eventId) => _deliveries[eventId];
 
   BigInt? generationFor(PlaybackFocus occurrence) {
     return _generations[occurrence.sequence];
@@ -62,5 +67,12 @@ final class WarpFeedFocusProbe implements FeedFocusPort {
       if (cause == null || item.cause == cause) return item;
     }
     return null;
+  }
+
+  void _rememberDeliveries(FeedFocus focus) {
+    for (final post in focus.window) {
+      final deliveryId = post.media.playbackDeliveryId;
+      if (deliveryId != null) _deliveries[post.id.value] = deliveryId;
+    }
   }
 }

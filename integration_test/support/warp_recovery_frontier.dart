@@ -9,13 +9,12 @@ typedef WarpRecoveryFrontierQuery = ({
   int candidateCount,
   int minimumReadyDepth,
 });
-
 typedef WarpRecoveryFrontier = ({
+  String activationPath,
   int readyDepth,
   String firstUnreadyPath,
   Set<String> transitionPaths,
 });
-
 WarpRecoveryFrontier warpRecoveryFrontier(WarpRecoveryFrontierQuery query) {
   final depth = query.orderedReady;
   _validateRecoveryDepth(query);
@@ -27,6 +26,7 @@ WarpRecoveryFrontier warpRecoveryFrontier(WarpRecoveryFrontierQuery query) {
     throw StateError('The ordered frontier is already player-ready.');
   }
   return (
+    activationPath: query.candidatePaths[depth - 1],
     readyDepth: depth,
     firstUnreadyPath: firstUnready,
     transitionPaths: transition,

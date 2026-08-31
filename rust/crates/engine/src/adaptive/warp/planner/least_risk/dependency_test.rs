@@ -8,7 +8,7 @@ fn degraded_choice_never_skips_an_unfinished_dependency() {
     let dependent = node(2, range(2), 1, 1).requiring(&[1]);
 
     assert_eq!(
-        choose(&[root, dependent])
+        choose(&[root, dependent], &[])
             .action
             .expect("valid test fixture")
             .id,
@@ -29,9 +29,24 @@ fn degraded_choice_advances_readiness_before_zero_gain_head() {
     );
 
     assert_eq!(
-        choose(&[head, whole])
+        choose(&[head, whole], &[])
             .action
             .expect("valid test fixture")
+            .id,
+        2
+    );
+}
+
+#[test]
+fn preferred_terminal_selects_its_unfinished_dependency_root() {
+    let unrelated = node(1, range(1), 1, 2_000);
+    let root = node(2, ActionKind::Head, 10, 0);
+    let terminal = node(3, range(3), 20, 2_000).requiring(&[2]);
+
+    assert_eq!(
+        choose(&[unrelated, root, terminal], &[3])
+            .action
+            .expect("preferred dependency root")
             .id,
         2
     );

@@ -15,8 +15,12 @@ pub(crate) enum SearchReplayMode {
 }
 
 impl SearchReplayMode {
-    pub(super) fn capture(decision: &SearchDecision, degraded: bool) -> Self {
-        if degraded {
+    pub(super) fn capture(
+        decision: &SearchDecision,
+        degraded: bool,
+        reserve_progress: bool,
+    ) -> Self {
+        if degraded || reserve_progress {
             return Self::LeastRisk;
         }
         if !decision.used_greedy_fallback {
@@ -40,6 +44,7 @@ pub(crate) struct SearchReplayInput {
     pub(crate) beam: BeamConfig,
     pub(crate) prices: ResourcePrices,
     pub(crate) scores: Vec<ScoredSearchPlan>,
+    pub(crate) reserve_progress_action_ids: Vec<u16>,
 }
 
 impl SearchReplayInput {
@@ -79,6 +84,10 @@ impl SearchReplayInput {
         &self.scores
     }
 
+    pub(crate) fn reserve_progress_action_ids(&self) -> &[u16] {
+        &self.reserve_progress_action_ids
+    }
+
     pub(crate) fn run(&self) -> Option<SearchDecision> {
         match self.mode {
             SearchReplayMode::Beam => self.run_beam(),
@@ -88,7 +97,10 @@ impl SearchReplayInput {
             SearchReplayMode::GreedyLatency => {
                 Some(self.run_greedy(SearchPruneReason::PlannerLatency))
             }
-            SearchReplayMode::LeastRisk => Some(least_risk::choose(&self.nodes)),
+            SearchReplayMode::LeastRisk => Some(least_risk::choose(
+                &self.nodes,
+                &self.reserve_progress_action_ids,
+            )),
         }
     }
 

@@ -1,6 +1,4 @@
-use super::{
-    GeneratedActions, WarpActionGenerator, WarpGenerationInput, WarpGenerationPolicies,
-};
+use super::{GeneratedActions, WarpActionGenerator, WarpGenerationInput, WarpGenerationPolicies};
 use crate::adaptive::{AllocationPlan, PlannerContext, PlayabilitySnapshot};
 use crate::origin_model::OriginModel;
 

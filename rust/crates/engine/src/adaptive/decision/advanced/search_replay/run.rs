@@ -11,7 +11,11 @@ use crate::adaptive::{
     SegmentedStorageBudget,
 };
 use crate::RequestAuthority;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
+
+#[cfg(test)]
+#[path = "run/progress_validation_test.rs"]
+mod progress_validation_test;
 
 pub(in crate::adaptive::decision) fn verify(
     input: &RecordedWarpSearchInput,
@@ -33,6 +37,9 @@ impl RecordedWarpSearchInput {
         if mode != SearchReplayMode::Beam && !self.scores.is_empty() {
             return None;
         }
+        if !valid_progress(mode, &self.reserve_progress_action_ids, &nodes) {
+            return None;
+        }
         Some(SearchReplayInput {
             mode,
             reserve: restore_reserve(self.reserve.as_ref())?,
@@ -46,9 +53,21 @@ impl RecordedWarpSearchInput {
                 .iter()
                 .map(RecordedSearchScore::restore)
                 .collect(),
+            reserve_progress_action_ids: self.reserve_progress_action_ids.clone(),
             nodes,
         })
     }
+}
+
+fn valid_progress(mode: SearchReplayMode, ids: &[u16], nodes: &[ActionNode]) -> bool {
+    if ids.is_empty() {
+        return true;
+    }
+    if mode != SearchReplayMode::LeastRisk {
+        return false;
+    }
+    let unique: BTreeSet<_> = ids.iter().copied().collect();
+    unique.len() == ids.len() && ids.iter().all(|id| nodes.iter().any(|node| node.id == *id))
 }
 
 impl RecordedSearchReplayMode {

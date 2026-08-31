@@ -1,9 +1,13 @@
 use super::{
-    feasibility, least_risk, simulation, SearchReplayInput, SearchReplayMode, WarpPlanner,
-    WarpPlannerInput,
+    feasibility, least_risk, reserve_progress, simulation, ReserveProgressPolicy,
+    SearchReplayInput, SearchReplayMode, WarpPlanner, WarpPlannerInput,
 };
 use crate::adaptive::warp::ScoredSearchPlan;
-use crate::adaptive::{SearchDecision, TwinSearchContext, WarpSearch};
+use crate::adaptive::{ReserveConstraint, SearchDecision, TwinSearchContext, WarpSearch};
+
+#[cfg(test)]
+#[path = "search_run/protected_reserve_selection_test.rs"]
+mod protected_reserve_selection_test;
 
 impl WarpPlanner {
     pub(super) fn search(
@@ -11,9 +15,16 @@ impl WarpPlanner {
         input: &WarpPlannerInput<'_>,
         feasible: &feasibility::FeasibleActions,
     ) -> (SearchDecision, SearchReplayInput) {
-        if feasible.reserve.degraded {
-            let search = least_risk::choose(&feasible.nodes);
-            let replay = self.replay_input(feasible, &search, Vec::new());
+        let progress =
+            if self.config.reserve_progress_policy == ReserveProgressPolicy::OrderedReadiness {
+                reserve_progress::action_ids(input.snapshot, input.base, &feasible.nodes)
+            } else {
+                Vec::new()
+            };
+        if feasible.reserve.degraded || !progress.is_empty() {
+            let preferred = protected_progress_ids(&feasible.reserve, progress);
+            let search = least_risk::choose(&feasible.nodes, &preferred);
+            let replay = self.replay_input(feasible, &search, Vec::new(), preferred);
             return (search, replay);
         }
         self.search_priced(input, feasible)
@@ -25,7 +36,7 @@ impl WarpPlanner {
         feasible: &feasibility::FeasibleActions,
     ) -> (SearchDecision, SearchReplayInput) {
         let (search, scores) = self.run_priced_search(input, feasible);
-        let replay = self.replay_input(feasible, &search, scores);
+        let replay = self.replay_input(feasible, &search, scores, Vec::new());
         (search, replay)
     }
 
@@ -50,8 +61,13 @@ impl WarpPlanner {
         feasible: &feasibility::FeasibleActions,
         search: &SearchDecision,
         scores: Vec<ScoredSearchPlan>,
+        reserve_progress_action_ids: Vec<u16>,
     ) -> SearchReplayInput {
-        let mode = SearchReplayMode::capture(search, feasible.reserve.degraded);
+        let mode = SearchReplayMode::capture(
+            search,
+            feasible.reserve.degraded,
+            !reserve_progress_action_ids.is_empty(),
+        );
         SearchReplayInput {
             mode,
             reserve: feasible.reserve.clone(),
@@ -66,6 +82,15 @@ impl WarpPlanner {
             } else {
                 Vec::new()
             },
+            reserve_progress_action_ids,
         }
+    }
+}
+
+fn protected_progress_ids(reserve: &ReserveConstraint, discovered: Vec<u16>) -> Vec<u16> {
+    if reserve.degraded {
+        discovered
+    } else {
+        reserve.protected_action_ids.clone()
     }
 }

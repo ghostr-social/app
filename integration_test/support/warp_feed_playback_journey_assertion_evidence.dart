@@ -3,8 +3,10 @@ part of 'warp_feed_playback_journey.dart';
 extension WarpFeedPlaybackJourneyAssertionEvidence on WarpFeedPlaybackJourney {
   String _playbackEvidence(PlaybackFocus focus) {
     final session = telemetry.probe.sessionFor(focus);
+    final activation = telemetry.probe.activationFor(focus);
+    final correlated = session ?? activation;
     final events = telemetry.probe.observations
-        .where((event) => event.observation.session == session)
+        .where((event) => event.observation.session == correlated)
         .map((event) {
           final observation = event.observation;
           return '${observation.phase.name}@${event.elapsed.inMilliseconds}:'
@@ -12,10 +14,12 @@ extension WarpFeedPlaybackJourneyAssertionEvidence on WarpFeedPlaybackJourney {
               'buffer=${observation.bufferedExtent.inMilliseconds}';
         })
         .join('|');
-    final stages = session == null
+    final stages = correlated == null
         ? ''
-        : _playerAttemptEvidence(session.deliveryId);
+        : _playerAttemptEvidence(correlated.deliveryId);
     return 'video=${focus.videoId.value} focus_ms=${focus.startedAt.inMilliseconds} '
+        'activation=${activation?.deliveryId.value}/'
+        '${activation?.generation} '
         'delivery=${session?.deliveryId.value} generation=${session?.generation} '
         'events=$events attempts=$stages origin=${_originEvidence()}';
   }

@@ -2,12 +2,11 @@ part of 'warp_feed_playback_journey.dart';
 
 typedef _ReplayStoreExpectation = ({
   PlaybackDeliveryId deliveryId,
-  BigInt bytes,
   BigInt total,
 });
 
 extension WarpFeedPlaybackJourneyStoreAssertions on WarpFeedPlaybackJourney {
-  Future<void> waitForReplayStoreCoverage(
+  Future<void> waitForNativeStoreCoverage(
     WidgetTester tester,
     Iterable<String> ids,
   ) async {
@@ -15,37 +14,35 @@ extension WarpFeedPlaybackJourneyStoreAssertions on WarpFeedPlaybackJourney {
     try {
       await _wait(tester, () => expected.values.every(_hasStoreCoverage));
     } on TestFailure {
-      fail('Replay store coverage timed out: ${_coverageEvidence(expected)}');
+      fail('Native store coverage timed out: ${_coverageEvidence(expected)}');
     }
   }
 
+  void expectNativeStoreCoverage(Iterable<String> ids) {
+    final expected = {for (final id in ids) id: _storeExpectation(id)};
+    expect(
+      expected.values.every(_hasStoreCoverage),
+      isTrue,
+      reason: 'Invalid native store history: ${_coverageEvidence(expected)}',
+    );
+  }
+
   _ReplayStoreExpectation _storeExpectation(String id) {
-    final state = cubit.state as FeedLoaded;
-    final post = state.posts.singleWhere((post) {
-      final path = Uri.parse(post.media.remoteUrl!).path;
-      return path.endsWith('/$id.mp4');
-    });
-    final coverage = resources.origin.coverageFor(id);
+    final event = _eventForOriginId(events, id);
+    final deliveryId = focus.deliveryForEvent(event.id);
+    if (deliveryId == null) throw StateError('No delivery identity for $id.');
     return (
-      deliveryId: post.media.playbackDeliveryId!,
-      bytes: BigInt.from(coverage.uniqueBytes),
-      total: BigInt.from(coverage.objectLength),
+      deliveryId: deliveryId,
+      total: BigInt.from(resources.origin.objectLength),
     );
   }
 
   bool _hasStoreCoverage(_ReplayStoreExpectation expected) {
-    final snapshot = _latestDelivery(expected.deliveryId);
-    return snapshot?.bytesPresent == expected.bytes &&
-        snapshot?.totalBytes == expected.total;
-  }
-
-  VideoDeliverySnapshot? _latestDelivery(PlaybackDeliveryId deliveryId) {
-    for (final observation in graph.deliveryProbe.observations.reversed) {
-      if (observation.snapshot.deliveryId == deliveryId) {
-        return observation.snapshot;
-      }
-    }
-    return null;
+    return warpNativeStoreHistoryIsValid(
+      graph.deliveryProbe.observations.map((item) => item.snapshot),
+      expected.deliveryId,
+      expected.total,
+    );
   }
 
   String _coverageEvidence(Map<String, _ReplayStoreExpectation> expected) {
@@ -61,7 +58,7 @@ extension WarpFeedPlaybackJourneyStoreAssertions on WarpFeedPlaybackJourney {
           (observation) => observation.snapshot.deliveryId == item.deliveryId,
         )
         .toList();
-    return '${entry.key}=expected:${item.bytes}/${item.total},'
+    return '${entry.key}=native_total:${item.total},'
         'latest:${_observationEvidence(history.lastOrNull)},'
         'peak:${_peakBytes(history)},'
         'history:${history.reversed.take(6).map(_observationEvidence).join("|")}';

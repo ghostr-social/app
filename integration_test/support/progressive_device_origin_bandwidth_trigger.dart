@@ -3,14 +3,19 @@ part of 'progressive_device_origin.dart';
 final class ProgressiveOriginBandwidthTrigger {
   ProgressiveOriginBandwidthTrigger._(
     Set<String> paths,
+    this._minimumRemainingBytes,
     this._apply,
     Duration timeout,
   ) : _paths = Set.unmodifiable(_validateBandwidthPaths(paths)) {
     if (timeout <= Duration.zero) throw ArgumentError.value(timeout);
+    if (_minimumRemainingBytes <= 0) {
+      throw ArgumentError.value(_minimumRemainingBytes);
+    }
     _watchdog = Timer(timeout, _fail);
   }
 
   final Set<String> _paths;
+  final int _minimumRemainingBytes;
   final ProgressiveOriginLinkProfile Function() _apply;
   final _reached = Completer<void>();
   late final Timer _watchdog;
@@ -32,6 +37,7 @@ final class ProgressiveOriginBandwidthTrigger {
   ) {
     if (isReached || !hasMore || event == null) return;
     if (!_paths.contains(request.path)) return;
+    if (!_hasEnoughRemaining(request, event)) return;
     requestSequence = event.requestSequence;
     path = request.path;
     requestRange = request.range;
@@ -39,6 +45,15 @@ final class ProgressiveOriginBandwidthTrigger {
     profile = _apply();
     _watchdog.cancel();
     _reached.complete();
+  }
+
+  bool _hasEnoughRemaining(
+    ProgressiveOriginRequest request,
+    ProgressiveOriginChunkEvent event,
+  ) {
+    final responseEnd =
+        request.range?.end ?? ProgressiveMp4Fixture.bytes.length;
+    return responseEnd - event.end >= _minimumRemainingBytes;
   }
 
   void cancel() {

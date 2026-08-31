@@ -4,6 +4,7 @@ extension ProgressiveOriginBandwidthTriggerControl on ProgressiveDeviceOrigin {
   ProgressiveOriginBandwidthTrigger armBandwidthChangeAfterNextConfirmedChunk(
     Set<String> paths, {
     required int bandwidthKbps,
+    int minimumRemainingBytes = 1,
     Duration timeout = const Duration(seconds: 10),
   }) {
     if (_pacing.current == null) {
@@ -14,6 +15,7 @@ extension ProgressiveOriginBandwidthTriggerControl on ProgressiveDeviceOrigin {
     }
     final trigger = ProgressiveOriginBandwidthTrigger._(
       paths,
+      minimumRemainingBytes,
       () => setBandwidthKbps(bandwidthKbps),
       timeout,
     );

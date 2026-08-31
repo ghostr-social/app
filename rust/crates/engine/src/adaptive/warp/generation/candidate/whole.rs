@@ -1,7 +1,9 @@
 use super::super::allocation::AllocationSpec;
 use super::super::builder::{Builder, TransferInput};
+use super::super::{GeneratedAction, PlannerCommand};
 use crate::adaptive::{
-    ActionKind, CandidateSnapshot, MediaLayout, BOOTSTRAP_DIRECT_FETCH_BYTES, REQUEST_SLICE_BYTES,
+    ActionKind, CandidateSnapshot, MediaLayout, RetrievalRequest, BOOTSTRAP_DIRECT_FETCH_BYTES,
+    REQUEST_SLICE_BYTES,
 };
 
 impl Builder<'_> {
@@ -17,6 +19,9 @@ impl Builder<'_> {
             maximum_bytes: maximum,
         };
         let source = self.admitted_request_source(candidate, &kind)?;
+        if promotable_range_owns_whole(self, candidate, maximum, source) {
+            return None;
+        }
         if self.contains(candidate, &kind) {
             return self.action_id(candidate, |item| {
                 matches!(item, ActionKind::FetchWhole { .. })
@@ -63,4 +68,46 @@ fn whole_is_owned(candidate: &CandidateSnapshot) -> bool {
         .in_flight
         .iter()
         .any(|active| active.identity_current)
+}
+
+fn promotable_range_owns_whole(
+    builder: &Builder<'_>,
+    candidate: &CandidateSnapshot,
+    total: u64,
+    source: &str,
+) -> bool {
+    if builder.generation_policies.range_alias
+        == super::super::RangeAliasGenerationPolicy::LegacyIndependentActions
+        || candidate.layout == MediaLayout::RequiresCompleteFile
+        || candidate.present.is_empty()
+        || candidate.direct_playback_blocked
+        || builder.direct_playback_blocked(candidate)
+    {
+        return false;
+    }
+    builder
+        .actions
+        .iter()
+        .any(|action| range_promotion_covers(action, candidate, total, source))
+}
+
+fn range_promotion_covers(
+    action: &GeneratedAction,
+    candidate: &CandidateSnapshot,
+    total: u64,
+    source: &str,
+) -> bool {
+    if action.node.post != candidate.post {
+        return false;
+    }
+    let PlannerCommand::Transfer(allocation) = &action.command else {
+        return false;
+    };
+    matches!(
+        allocation.request,
+        RetrievalRequest::FetchRange {
+            promotion: Some(grant),
+            ..
+        } if allocation.source == source && grant.maximum_bytes >= total
+    )
 }

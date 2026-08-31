@@ -4,6 +4,7 @@ mod feedback;
 mod least_risk;
 mod replay;
 mod reserve;
+mod reserve_progress;
 mod reset;
 mod search_replay;
 mod search_run;
@@ -17,6 +18,7 @@ pub use reserve::{
     ReserveDegradedReason,
 };
 pub(crate) use search_replay::{SearchReplayInput, SearchReplayMode};
+pub(crate) use types::ReserveProgressPolicy;
 pub use types::{SemanticDecision, WarpPlannerConfig, WarpPlannerInput, WarpPlanningDecision};
 
 use super::{

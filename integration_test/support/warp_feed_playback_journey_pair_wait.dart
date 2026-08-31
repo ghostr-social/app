@@ -26,7 +26,6 @@ extension WarpFeedPlaybackJourneyPairWait on WarpFeedPlaybackJourney {
 
 final class _WarpPairWait {
   _WarpPairWait(this.journey, this.tester, this.query);
-
   final WarpFeedPlaybackJourney journey;
   final WidgetTester tester;
   final _WarpPairWaitQuery query;
@@ -36,7 +35,7 @@ final class _WarpPairWait {
   Future<WarpDecisionPlanPair> run() async {
     final watch = Stopwatch()..start();
     while (watch.elapsed < query.timeout) {
-      final page = await _samplePlans();
+      final page = await _drainPlanBacklog();
       final pair = await _matchingPair();
       if (pair != null) return pair;
       if (!page.hasMore) await journey._tickAndSample(tester);
@@ -46,21 +45,13 @@ final class _WarpPairWait {
     fail('WARP decision/plan pair timed out after ${query.timeout}.');
   }
 
-  Future<void> _reportPairDiagnostics() async {
-    final decisions = await journey.evidence.decisions();
-    for (final decision in decisions.records) {
-      if (decision.sequence <= query.afterSequence) continue;
-      final plans = _plans
-          .where((plan) => plan.sharesPlanningCycleWith(decision))
-          .toList(growable: false);
-      final accepted = plans.any((plan) => query.accepts(decision, plan));
-      debugPrint(
-        'WARP_PAIR sequence=${decision.sequence} at=${decision.observedAtMs} '
-        'throughput_bps=${decision.networkThroughputBps} '
-        'planner_Bps=${decision.plannerNetworkRateBytesPerSecond} '
-        'plans=${plans.map(_pairPlanSummary).join('|')} accepted=$accepted',
-      );
+  Future<WarpPlanPage> _drainPlanBacklog() async {
+    var page = await _samplePlans();
+    final target = page.latestRetainedRevision;
+    while ((_cursor ?? query.afterRevision) < target) {
+      page = await _samplePlans();
     }
+    return page;
   }
 
   Future<WarpPlanPage> _samplePlans() async {
@@ -86,7 +77,3 @@ final class _WarpPairWait {
     ));
   }
 }
-
-String _pairPlanSummary(WarpPlanEvidence plan) =>
-    '${plan.revision}:${plan.networkStatusGeneration}:'
-    '${plan.focusCoversFrom}-${plan.focusGeneration}:${plan.plan.workBreadth}';
