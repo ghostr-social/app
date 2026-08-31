@@ -30,5 +30,7 @@ grep -Fq 'integration_test/warp_feed_startup_singleflight_video_test.dart' "$mak
 grep -Fq 'integration_test/warp_feed_player_verified_rescue_video_test.dart' "$makefile"
 grep -Fq 'integration_test/warp_feed_bandwidth_recovery_video_test.dart' "$makefile"
 grep -Fq 'integration_test/warp_feed_mixed_hls_readiness_video_test.dart' "$makefile"
+grep -Fq 'integration_test/video_player_lifecycle_contract_test.dart' "$makefile"
+grep -Fq 'integration_test/video_player_hls_authority_reactivation_contract_test.dart' "$makefile"
 grep -Fq '$(MAKE) video-android-offline-restart' "$makefile"
 grep -Fq 'ANDROID_PHYSICAL_SERIAL="$(ANDROID_PHYSICAL_SERIAL)"' "$makefile"

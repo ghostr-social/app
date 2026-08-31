@@ -53,7 +53,9 @@ VIDEO_PROGRESSIVE_ANDROID_TESTS := \
 	integration_test/warp_feed_mixed_hls_readiness_video_test.dart \
 	integration_test/warp_feed_bandwidth_recovery_video_test.dart
 VIDEO_ANDROID_PHYSICAL_TESTS := $(VIDEO_ANDROID_INTEGRATION_TESTS) \
-	$(VIDEO_PROGRESSIVE_ANDROID_TESTS)
+	$(VIDEO_PROGRESSIVE_ANDROID_TESTS) \
+	integration_test/video_player_lifecycle_contract_test.dart \
+	integration_test/video_player_hls_authority_reactivation_contract_test.dart
 VIDEO_PROGRESSIVE_FLUTTER_TESTS := \
 	test/media/warp_ready_window_acceptance_test.dart \
 	test/core/media/remote_playback_delivery_id_test.dart \
