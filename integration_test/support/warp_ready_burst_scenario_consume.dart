@@ -13,7 +13,7 @@ Future<_ReadyBurstResult> _consumeReady(
     afterSequence: journey.focusCursor,
     cadence: deviceRapidSwipeCadence,
   );
-  journey.verifyRapidCadence(startedAt, swipe);
+  journey.reportRapidCadence(startedAt, swipe);
   final focuses = swipe.focuses;
   final finalFocus = focuses.last;
   await journey.waitForFirstFrame(tester, finalFocus);

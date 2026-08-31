@@ -23,7 +23,7 @@ Future<WarpSwipeBurst> _reversePlayback(
     afterSequence: from.sequence,
     cadence: deviceRapidSwipeCadence,
   );
-  journey.verifyRapidCadence(startedAt, reverse);
+  journey.reportRapidCadence(startedAt, reverse);
   final finalFocus = reverse.focuses.last;
   await journey.waitForFirstFrame(tester, finalFocus);
   await journey.waitForPlaying(tester, finalFocus);

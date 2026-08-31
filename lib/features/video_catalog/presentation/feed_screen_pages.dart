@@ -3,9 +3,10 @@ part of 'feed_screen.dart';
 extension _FeedScreenPages on _FeedScreenState {
   Widget _feedPages(BuildContext context, FeedLoaded state) {
     final warmPreviousDepth = _warmPreviousDepth(state);
+    final playbackIds = _pagePlaybackIds(state, warmPreviousDepth);
     _pagePlayback.synchronize(
-      playbackIds: _pagePlaybackIds(state, warmPreviousDepth),
-      keepAliveIds: _pageKeepAliveIds(state, warmPreviousDepth),
+      playbackIds: playbackIds,
+      keepAliveIds: playbackIds,
     );
     return Stack(
       fit: StackFit.expand,
@@ -29,7 +30,7 @@ extension _FeedScreenPages on _FeedScreenState {
   Iterable<Widget> _reserveHosts(FeedLoaded state) sync* {
     if (!_isVisible || _memoryConstrained) return;
     for (
-      var index = state.activeIndex + 2;
+      var index = state.activeIndex + _pageHostedFutureDepth + 1;
       index < state.posts.length;
       index++
     ) {
@@ -102,15 +103,6 @@ extension _FeedScreenPages on _FeedScreenState {
     };
   }
 
-  Set<VideoPostId> _pageKeepAliveIds(FeedLoaded state, int warmPreviousDepth) {
-    return {
-      for (var index = 0; index <= state.activeIndex; index++)
-        if (index == state.activeIndex ||
-            _keepsWarmPrevious(state.activeIndex - index, warmPreviousDepth))
-          state.posts[index].id,
-    };
-  }
-
   int _warmPreviousDepth(FeedLoaded state) {
     if (!_isVisible || _memoryConstrained) return 0;
     final demand = _futureRetentionDemand(state);
@@ -140,10 +132,15 @@ extension _FeedScreenPages on _FeedScreenState {
 
   PreparedProgressivePlayback? _preparedPlayback(FeedLoaded state, int index) {
     if (index == state.activeIndex) return state.preparation.current;
-    if (_isVisible && index == state.activeIndex + 1) {
-      return state.preparation.forMedia(state.posts[index].media);
+    final distance = index - state.activeIndex;
+    if (!_isVisible || distance < 1 || distance > _pageHostedFutureDepth) {
+      return null;
     }
-    return null;
+    return state.preparation.forMedia(state.posts[index].media);
+  }
+
+  int get _pageHostedFutureDepth {
+    return _memoryConstrained ? 1 : _preparedSwipePageDepth;
   }
 
   Widget _feedCard(
@@ -163,6 +160,7 @@ extension _FeedScreenPages on _FeedScreenState {
   }
 }
 
+const _preparedSwipePageDepth = 3;
 const _playerRetention = FeedPlayerRetention(
   maximumControllers: warpMaximumConcurrentPlaybackControllers,
   minimumPrevious: 2,

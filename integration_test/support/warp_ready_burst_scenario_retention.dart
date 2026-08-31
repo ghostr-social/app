@@ -4,7 +4,7 @@ Future<void> runWarpAdaptiveWarmBackScenario(WidgetTester tester) async {
   final opened = await _openFeed(tester);
   final ready = await _waitForReady(tester, opened);
   final burst = await _consumeReady(tester, opened, ready);
-  final retained = _pageControllers(tester, burst.focuses);
+  final retained = _pageControllers(tester, opened.journey, burst.focuses);
   final next = await _consumeReplenished(tester, opened, ready, burst);
   _expectMountedControllers(tester, retained);
   final reverse = await _reversePlayback(tester, opened.journey, next);
@@ -13,12 +13,30 @@ Future<void> runWarpAdaptiveWarmBackScenario(WidgetTester tester) async {
 
 Map<PlaybackVideoId, VideoPlayerController> _pageControllers(
   WidgetTester tester,
+  WarpFeedPlaybackJourney journey,
   Iterable<PlaybackFocus> focuses,
 ) {
   return {
-    for (final focus in focuses)
+    for (final focus in focuses.map(
+      (focus) => _reportWarmTarget(journey, focus),
+    ))
       focus.videoId: _pageController(tester, focus.videoId),
   };
+}
+
+PlaybackFocus _reportWarmTarget(
+  WarpFeedPlaybackJourney journey,
+  PlaybackFocus focus,
+) {
+  final state = journey.cubit.state as FeedLoaded;
+  final post = state.posts.singleWhere(
+    (post) => post.id.value == focus.videoId.value,
+  );
+  debugPrint(
+    'WARP_WARM_TARGET id=${focus.videoId.value} '
+    'caption=${post.caption} media=${post.media.remoteUrl}',
+  );
+  return focus;
 }
 
 VideoPlayerController _pageController(
