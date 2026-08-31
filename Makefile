@@ -112,7 +112,8 @@ HAWK_REVISION_SHORT := 98efa9f
 	video-demo \
 	video-user-e2e-prerequisite-check video-user-e2e-impairments \
 	video-delivery-target-contract-test video-android-emulator-tests \
-	video-android-physical-tests video-player-contract-target-test \
+	video-android-physical-tests video-android-offline-restart \
+	video-player-contract-target-test \
 	video-player-contract video-player-contract-android video-player-contract-ios \
 	video-progressive-suite-contract-test video-progressive-suite \
 	video-progressive-android \
@@ -182,6 +183,7 @@ video-delivery-target-contract-test: ## Verify stable browser and Android video 
 	sh test/tool/video_browser_impairment_target_contract_test.sh
 	sh test/tool/video_android_emulator_target_contract_test.sh
 	sh test/tool/video_android_physical_target_contract_test.sh
+	sh test/tool/video_android_offline_restart_target_contract_test.sh
 
 video-android-emulator-tests: ## Run the device video playback matrix on emulator-5580.
 	$(FLUTTER) test $(VIDEO_ANDROID_INTEGRATION_TESTS) -d "$(VIDEO_ANDROID_EMULATOR_SERIAL)"
@@ -236,6 +238,13 @@ video-android-physical-tests: ## Run the device video playback matrix on physica
 		qemu=$$(printf '%s' "$$raw_qemu" | tr -d '\r'); \
 		test "$$qemu" != 1 || { echo "ANDROID_PHYSICAL_SERIAL must identify physical hardware." >&2; exit 1; }
 	$(FLUTTER) test --no-uninstall $(VIDEO_ANDROID_PHYSICAL_TESTS) -d "$(ANDROID_PHYSICAL_SERIAL)"
+	$(MAKE) video-android-offline-restart \
+		ANDROID_PHYSICAL_SERIAL="$(ANDROID_PHYSICAL_SERIAL)"
+
+video-android-offline-restart: ## Verify cold-process offline feed and media restore.
+	@test -n "$(ANDROID_PHYSICAL_SERIAL)" || { echo "Set ANDROID_PHYSICAL_SERIAL to an attached device serial." >&2; exit 1; }
+	@case "$(ANDROID_PHYSICAL_SERIAL)" in emulator-*) echo "ANDROID_PHYSICAL_SERIAL must identify physical hardware." >&2; exit 1;; esac
+	tool/run_video_android_offline_restart.sh "$(ANDROID_PHYSICAL_SERIAL)"
 
 native-coverage-contract-test: ## Test the per-file native coverage contract.
 	sh test/tool/native_coverage_contract_test.sh

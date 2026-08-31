@@ -3,6 +3,7 @@ mod engine_relay_configuration_test;
 mod runtime_event_query_test;
 mod runtime_feed_watch_lifecycle_test;
 mod runtime_load_more_dispatch_test;
+mod runtime_persistent_event_cache_restart_test;
 mod runtime_relay_configuration_pool_test;
 mod runtime_start_gate_test;
 mod session_generation_test;

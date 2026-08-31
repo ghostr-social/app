@@ -17,6 +17,8 @@ final class WarpFeedPlayerStageProbe implements PlayerPreparationFeedbackPort {
   final _evidence = <WarpFeedPlayerStageEvidence>[];
   final _hlsEvidence = <WarpFeedHlsPlayerStageEvidence>[];
 
+  int get progressiveAttemptCount => _evidence.length;
+
   @override
   PlayerPreparationAttempt prepare(PlaybackAssetAuthority authority) {
     final evidence = WarpFeedPlayerStageEvidence(authority, _clock());

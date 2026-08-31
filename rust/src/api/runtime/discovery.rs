@@ -5,6 +5,7 @@
 
 use crate::api::feed::decisions::LoadMoreAction;
 use crate::api::feed::state::FeedState;
+use crate::discovery::cache::EventCache;
 use crate::discovery::execution::relay_executor::RelayPlanExecutor;
 use crate::discovery::feed::spec::FeedSpec;
 use crate::discovery::feed::store::FeedId;
@@ -52,8 +53,20 @@ impl DiscoveryRuntime {
     /// Starts the scheduler and the outcome pump. Discovery begins at
     /// the balanced data-usage level, like the delivery manager;
     /// `ffi_set_delivery_config` adjusts it live.
+    #[cfg(any(
+        test,
+        all(
+            feature = "video-debug-web",
+            debug_assertions,
+            not(any(target_os = "android", target_os = "ios"))
+        )
+    ))]
     pub(crate) async fn start(boot: DiscoveryBoot) -> Self {
-        crate::api::runtime::start::start(boot).await
+        crate::api::runtime::start::start(boot, None).await
+    }
+
+    pub(crate) async fn start_with_cache(boot: DiscoveryBoot, cache: Arc<EventCache>) -> Self {
+        crate::api::runtime::start::start(boot, Some(cache)).await
     }
 
     /// Opens the feed, starts its first-page queries, and returns the

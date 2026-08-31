@@ -17,6 +17,7 @@ ghostr-media-model = { path = "../media-model" }
 anyhow = { workspace = true }
 log = { workspace = true }
 nostr-sdk = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
 tokio = { workspace = true }

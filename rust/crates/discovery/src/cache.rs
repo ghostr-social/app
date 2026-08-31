@@ -7,7 +7,9 @@
 //! answers. `MAX_CACHED_EVENTS` defines the in-memory bound.
 
 pub mod database;
+mod durable;
 pub(crate) mod merge;
+pub(crate) mod persistence;
 pub mod session;
 
 use log::warn;
@@ -27,6 +29,7 @@ use crate::session_generation::SessionGeneration;
 /// Read side of the client's database, scoped to one viewer.
 pub struct EventCache {
     database: Arc<dyn NostrDatabase>,
+    persistence: Option<persistence::EventCachePersistence>,
     session: Mutex<EventCacheSession>,
 }
 
@@ -38,6 +41,7 @@ impl EventCache {
     pub fn new(database: Arc<dyn NostrDatabase>) -> Self {
         Self {
             database,
+            persistence: None,
             session: Mutex::new(EventCacheSession::initial()),
         }
     }
@@ -56,6 +60,7 @@ impl EventCache {
         session.retain_admitted(&mut stored);
         let admitted = self.write(&fetched).await;
         session.admit(&admitted);
+        self.persist_after_write(&session, &admitted).await;
         Some(merged(fetched, stored))
     }
 
@@ -90,6 +95,7 @@ impl EventCache {
         }
         let admitted = self.write(events).await;
         session.admit(&admitted);
+        self.persist_after_write(&session, &admitted).await;
         true
     }
 
@@ -113,17 +119,32 @@ impl EventCache {
         if !session.matches(generation) {
             return None;
         }
-        if !session.adopt(viewer) {
+        if viewer == ViewerScope::Unknown {
             return Some(false);
         }
-        self.wipe().await;
-        Some(true)
+        let previous = session.viewer();
+        if previous == viewer {
+            return Some(false);
+        }
+        let replaced = session.adopt(viewer);
+        self.bind_viewer(&mut session, viewer, replaced).await;
+        Some(replaced)
     }
 
     pub async fn reset_session(&self, generation: SessionGeneration) {
         let mut session = self.session.lock().await;
         session.reset(generation);
         self.wipe().await;
+    }
+
+    pub async fn reset_session_for(&self, generation: SessionGeneration, viewer: ViewerScope) {
+        let mut session = self.session.lock().await;
+        session.reset(generation);
+        self.wipe().await;
+        if viewer != ViewerScope::Unknown {
+            session.adopt(viewer);
+        }
+        self.restore_bound_viewer(&mut session, viewer).await;
     }
 
     pub(super) async fn is_current(&self, generation: SessionGeneration) -> bool {

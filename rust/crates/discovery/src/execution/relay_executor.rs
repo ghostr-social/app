@@ -66,6 +66,11 @@ impl RelayPlanExecutor {
         std::sync::Arc::clone(&self.cache)
     }
 
+    pub fn with_cache(mut self, cache: Arc<EventCache>) -> Self {
+        self.cache = cache;
+        self
+    }
+
     /// Live outbox fan-out change (`ffi_set_delivery_config`): the next
     /// query of every open feed uses the new cap.
     pub fn set_data_usage(&self, level: DataUsageLevel) {

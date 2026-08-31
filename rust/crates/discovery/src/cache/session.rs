@@ -41,6 +41,10 @@ impl EventCacheSession {
         self.admitted = Some(HashSet::new());
     }
 
+    pub(super) fn viewer(&self) -> ViewerScope {
+        self.viewer
+    }
+
     pub(super) fn adopt(&mut self, viewer: ViewerScope) -> bool {
         if viewer == ViewerScope::Unknown {
             return false;
@@ -57,6 +61,10 @@ impl EventCacheSession {
         if let Some(admitted) = &mut self.admitted {
             admitted.extend(event_ids.iter().copied());
         }
+    }
+
+    pub(super) fn restore(&mut self, event_ids: &[EventId]) {
+        self.admitted = Some(event_ids.iter().copied().collect());
     }
 
     pub(super) fn retain_admitted(&self, events: &mut Vec<Event>) {

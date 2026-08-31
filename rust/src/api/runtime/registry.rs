@@ -2,7 +2,7 @@
 
 use crate::api::runtime::discovery::{DiscoveryBoot, DiscoveryRuntime};
 use crate::api::runtime::tracked_items::TrackedItems;
-use crate::discovery::cache::client_with_event_cache;
+use crate::discovery::cache::{client_with_event_cache, EventCache};
 use anyhow::bail;
 use core::sync::atomic::{AtomicBool, Ordering};
 use flutter_rust_bridge::frb;
@@ -42,18 +42,23 @@ pub(crate) async fn start_and_install(
 ) -> anyhow::Result<String> {
     let _permit = START_GATE.acquire(|| INSTALLED.get().is_some())?;
     let bootstrap = configuration.relays.clone();
+    let cache_root = configuration.cache_directory.clone();
     // Never `Client::default()`: the shared client must retain verified
     // events for session-scoped cache union and deduplication.
     let client = Arc::new(client_with_event_cache());
     let (endpoint, runtime, demand) =
         GatewayRuntime::start(configuration, std::sync::Arc::clone(&client)).await?;
-    let discovery = DiscoveryRuntime::start(DiscoveryBoot {
-        client,
-        demand,
-        bootstrap,
-        search_relays,
-        candidates: Some(runtime.delivery()),
-    })
+    let cache = Arc::new(EventCache::persistent(&cache_root));
+    let discovery = DiscoveryRuntime::start_with_cache(
+        DiscoveryBoot {
+            client,
+            demand,
+            bootstrap,
+            search_relays,
+            candidates: Some(runtime.delivery()),
+        },
+        cache,
+    )
     .await;
     install(endpoint.clone(), runtime, discovery);
     Ok(endpoint)

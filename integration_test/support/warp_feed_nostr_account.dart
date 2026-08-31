@@ -9,12 +9,19 @@ final class WarpFeedNostrAccount {
 
   factory WarpFeedNostrAccount.create() {
     final keys = const Bip340EventSignerFactory().generateKeyPair();
+    return WarpFeedNostrAccount.fromPrivateKey(keys.$1);
+  }
+
+  factory WarpFeedNostrAccount.fromPrivateKey(String privateKey) {
+    final publicKey = const Bip340EventSignerFactory().derivePublicKey(
+      privateKey,
+    );
     return WarpFeedNostrAccount._(
       buildNdk(),
-      AuthSecret.parse(Nip19.encodePrivateKey(keys.$1)),
+      AuthSecret.parse(Nip19.encodePrivateKey(privateKey)),
       NostrIdentity.parse(
-        publicKeyHex: keys.$2,
-        npub: Nip19.encodePubKey(keys.$2),
+        publicKeyHex: publicKey,
+        npub: Nip19.encodePubKey(publicKey),
       ),
     );
   }

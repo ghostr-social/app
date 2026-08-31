@@ -26,6 +26,9 @@ extension ProgressiveDeviceOriginLifecycle on ProgressiveDeviceOrigin {
     );
     requests.add(entry);
     _requestSequences[entry] = ++_nextRequestSequence;
+    if (_availability == ProgressiveOriginAvailability.unavailable) {
+      return _rejectUnavailable(request.response, entry);
+    }
     if (request.method == 'HEAD') {
       entry._blockHead();
       _heldHeads.add(request.response);
@@ -33,6 +36,16 @@ extension ProgressiveDeviceOriginLifecycle on ProgressiveDeviceOrigin {
     }
     final completed = await _write(request.response, range, entry);
     if (completed) _completed.add(entry);
+  }
+
+  Future<void> _rejectUnavailable(
+    HttpResponse response,
+    ProgressiveOriginRequest request,
+  ) async {
+    response.statusCode = HttpStatus.serviceUnavailable;
+    response.headers.contentLength = 0;
+    await response.close();
+    request._finish(ProgressiveOriginRequestOutcome.completed, _clock.elapsed);
   }
 
   void _recordBytes(ProgressiveOriginRequest request, int count) {

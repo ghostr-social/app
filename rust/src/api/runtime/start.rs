@@ -5,6 +5,7 @@ use crate::api::runtime::configuration;
 use crate::api::runtime::discovery::{
     pump_outcomes, DiscoveryBoot, DiscoveryRuntime, OutcomeSinks, SharedFeedState,
 };
+use crate::discovery::cache::EventCache;
 use crate::discovery::execution::relay_executor::RelayPlanExecutor;
 use crate::discovery::outbox::bootstrap::OutboxBootstrap;
 use crate::discovery::outbox::directory::OutboxDirectory;
@@ -18,7 +19,7 @@ use crate::engine::DataUsageLevel;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{mpsc, watch, RwLock};
 
-pub(super) async fn start(boot: DiscoveryBoot) -> DiscoveryRuntime {
+pub(super) async fn start(boot: DiscoveryBoot, cache: Option<Arc<EventCache>>) -> DiscoveryRuntime {
     let relay_pool = configuration::initialize_relay_pool(
         std::sync::Arc::clone(&boot.client),
         boot.bootstrap.clone(),
@@ -32,6 +33,10 @@ pub(super) async fn start(boot: DiscoveryBoot) -> DiscoveryRuntime {
         std::sync::Arc::clone(&outbox),
         DataUsageLevel::Balanced,
     );
+    let executor = match cache {
+        Some(cache) => executor.with_cache(cache),
+        None => executor,
+    };
     let pipeline = DiscoveryPipeline::start(
         executor.clone(),
         std::sync::Arc::clone(&outbox),

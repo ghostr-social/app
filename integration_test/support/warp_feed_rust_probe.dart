@@ -10,8 +10,16 @@ final class WarpFeedRustProbe implements RustFeedPort {
 
   final RustFeedPort _delegate;
   final List<String> _evidence = [];
+  final List<FfiFeedUpdate> _updates = [];
 
   String get evidence => _evidence.join(',');
+
+  bool settledWithEvent(String eventId) {
+    return _updates.any((update) {
+      return update.stage == FfiFeedStage.settled &&
+          update.posts.any((post) => post.eventId == eventId);
+    });
+  }
 
   @override
   Future<RustFeedAccountSession> captureSession(
@@ -35,6 +43,7 @@ final class WarpFeedRustProbe implements RustFeedPort {
   @override
   Stream<FfiFeedUpdate> feedUpdates(RustFeedId feedId) {
     return _delegate.feedUpdates(feedId).map((update) {
+      _updates.add(update);
       _evidence.add(
         '${update.stage.name}:${update.revision}:${update.posts.length}',
       );

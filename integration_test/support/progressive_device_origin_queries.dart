@@ -1,6 +1,9 @@
 part of 'progressive_device_origin.dart';
 
 extension ProgressiveDeviceOriginQueries on ProgressiveDeviceOrigin {
+  bool get isUnavailable =>
+      _availability == ProgressiveOriginAvailability.unavailable;
+
   Uri get origin =>
       Uri(scheme: 'http', host: _server.address.address, port: _server.port);
 

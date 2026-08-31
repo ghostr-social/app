@@ -13,6 +13,7 @@ mod candidate_registry_bound_test;
 mod deletion_enrichment_support;
 mod deletion_failure_support;
 mod event_cache_support;
+mod failing_wipe_database;
 mod feed_store_support;
 mod outbox_support;
 mod profile_enrichment_support;

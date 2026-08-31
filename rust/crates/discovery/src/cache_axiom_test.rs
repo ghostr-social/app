@@ -1,8 +1,20 @@
 use super::*;
 
 use nostr_sdk::Client;
+use std::path::Path;
 
 impl EventCache {
+    pub(in super::super) fn persistent_with_database(
+        database: Arc<dyn NostrDatabase>,
+        root: &Path,
+    ) -> Self {
+        Self {
+            database,
+            persistence: Some(persistence::EventCachePersistence::new(root)),
+            session: Mutex::new(EventCacheSession::initial()),
+        }
+    }
+
     /// Uses a private pool: the client's seen-ID database is deliberately
     /// eventless so late relay work cannot mutate account cache state.
     pub(in super::super) fn of(_client: &Client) -> Self {

@@ -15,31 +15,7 @@ import 'warp_feed_production_graph.dart';
 import 'warp_feed_relay.dart';
 
 part 'warp_feed_production_graph_dependencies.dart';
-
-Future<WarpFeedProductionGraph> buildWarpFeedProductionGraph(
-  ProgressiveDeviceResources resources,
-  WarpFeedRelay relay,
-  DataUsageLevel dataUsage, {
-  VideoPlaybackCapabilities playbackCapabilities =
-      VideoPlaybackCapabilities.progressiveOnly,
-  HlsPlaybackGatewayPort? hlsPlaybackGateway,
-}) async {
-  SharedPreferences.setMockInitialValues(_settings(relay, dataUsage));
-  final build = _newBuild();
-  try {
-    final dependencies = await _buildDependencies(
-      build,
-      resources,
-      playbackCapabilities,
-      hlsPlaybackGateway,
-    );
-    await build.account.activate(build.capture.nostr!);
-    return _composeGraph(build, dependencies);
-  } on Object {
-    await _closeFailedBuild(build);
-    rethrow;
-  }
-}
+part 'warp_feed_production_graph_relay.dart';
 
 typedef _WarpFeedBuild = ({
   WarpFeedNostrAccount account,
@@ -49,8 +25,8 @@ typedef _WarpFeedBuild = ({
   WarpFeedProductionCapture capture,
 });
 
-_WarpFeedBuild _newBuild() {
-  final account = WarpFeedNostrAccount.create();
+_WarpFeedBuild _newBuild(WarpFeedNostrAccount? providedAccount) {
+  final account = providedAccount ?? WarpFeedNostrAccount.create();
   final telemetry = ProgressiveDeviceTelemetry();
   final metrics = WarpFeedPreparationMetrics(
     () => telemetry.probe.elapsed,
@@ -83,9 +59,8 @@ WarpFeedProductionGraph _composeGraph(
   ));
 }
 
-Map<String, Object> _settings(WarpFeedRelay relay, DataUsageLevel dataUsage) =>
-    {
-      'ghostr.settings.relays': <String>[relay.uri.toString()],
-      'ghostr.settings.searchRelays': <String>[],
-      'ghostr.settings.dataUsage': dataUsage.name,
-    };
+Map<String, Object> _settings(Uri relay, DataUsageLevel dataUsage) => {
+  'ghostr.settings.relays': <String>[relay.toString()],
+  'ghostr.settings.searchRelays': <String>[],
+  'ghostr.settings.dataUsage': dataUsage.name,
+};

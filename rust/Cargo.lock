@@ -813,6 +813,7 @@ dependencies = [
  "ghostr-media-model",
  "log",
  "nostr-sdk",
+ "serde",
  "serde_json",
  "sha2",
  "tokio",

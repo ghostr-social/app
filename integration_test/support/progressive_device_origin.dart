@@ -38,12 +38,15 @@ part 'progressive_device_origin_lifecycle.dart';
 
 enum ProgressiveOriginValidator { none, stableStrong }
 
+enum ProgressiveOriginAvailability { available, unavailable }
+
 final class ProgressiveDeviceOrigin {
   ProgressiveDeviceOrigin._(
     this._server,
     this._responseChunkBytes,
     this._pacing,
     this._validator,
+    this._availability,
   );
 
   static Future<ProgressiveDeviceOrigin> start({
@@ -51,14 +54,18 @@ final class ProgressiveDeviceOrigin {
     ProgressiveOriginPacing pacing =
         const ProgressiveOriginPacing.perResponseDelay(Duration.zero),
     ProgressiveOriginValidator validator = ProgressiveOriginValidator.none,
+    ProgressiveOriginAvailability availability =
+        ProgressiveOriginAvailability.available,
+    int port = 0,
   }) async {
     if (responseChunkBytes <= 0) throw ArgumentError.value(responseChunkBytes);
-    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, port);
     final origin = ProgressiveDeviceOrigin._(
       server,
       responseChunkBytes,
       _ProgressiveOriginPacer(pacing),
       validator,
+      availability,
     );
     origin._subscription = server.listen(origin._dispatch);
     return origin;
@@ -68,6 +75,7 @@ final class ProgressiveDeviceOrigin {
   final int _responseChunkBytes;
   final _ProgressiveOriginPacer _pacing;
   final ProgressiveOriginValidator _validator;
+  final ProgressiveOriginAvailability _availability;
   final requests = <ProgressiveOriginRequest>[];
   final _completed = <ProgressiveOriginRequest>[];
   final _heldHeads = <HttpResponse>[];

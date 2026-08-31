@@ -2,6 +2,7 @@
 
 use crate::api::runtime::discovery::{lock, DiscoveryRuntime};
 use crate::api::runtime::registry;
+use crate::discovery::cache::ViewerScope;
 use core::error::Error;
 use core::fmt::{Display, Formatter};
 use flutter_rust_bridge::frb;
@@ -51,10 +52,14 @@ impl DiscoveryRuntime {
     pub(super) async fn reset_session(&self, expected_account: Option<PublicKey>) {
         let mut transition = self.relay_pool.begin_reset().await;
         let generation = lock(&self.state).reset_session();
+        let viewer = expected_account.map_or(ViewerScope::SignedOut, ViewerScope::SignedIn);
         let _ = self.handle.reset_session().await;
         self.bootstrap.reset_session(generation);
         self.outbox.write().await.reset_session(generation);
-        self.executor.cache().reset_session(generation).await;
+        self.executor
+            .cache()
+            .reset_session_for(generation, viewer)
+            .await;
         let _ = self.client.database().wipe().await;
         transition.reset_session(generation, expected_account).await;
     }
