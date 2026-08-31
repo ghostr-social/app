@@ -58,7 +58,6 @@ Future<_PacedFeed> _openPacedFeed(WidgetTester tester) async {
     lossTrigger: trigger,
     fastProfile: profile,
     baselineDecision: paired.decision,
-    baselinePlanRevision: paired.plan.revision,
   );
 }
 

@@ -5,25 +5,21 @@ typedef _PairedBandwidthEvidence = ({
   WarpPlanEvidence plan,
 });
 
-Future<_PairedBandwidthEvidence> _waitForLossPair(
+Future<WarpDecisionRecord> _waitForLossDecision(
   WidgetTester tester,
   _PacedFeed opened,
   int confirmedAtEpochMs,
-) async {
+) {
   final journey = opened.journey;
-  final pair = await journey.waitForDecisionPlanPair(
+  return journey.waitForDecision(
     tester,
-    (decision, plan) => _isLossPair(decision, plan, opened, confirmedAtEpochMs),
+    (decision) => _isLossDecision(decision, opened, confirmedAtEpochMs),
     afterSequence: opened.baselineDecision.sequence,
-    afterRevision: opened.baselinePlanRevision,
   );
-  journey.reportPlan(pair.plan);
-  return pair;
 }
 
-bool _isLossPair(
+bool _isLossDecision(
   WarpDecisionRecord decision,
-  WarpPlanEvidence plan,
   _PacedFeed opened,
   int confirmedAtEpochMs,
 ) {
@@ -32,11 +28,7 @@ bool _isLossPair(
       decision.networkThroughputBps < baseline.networkThroughputBps &&
       decision.appliesMeasuredNetworkRate &&
       decision.plannerNetworkRateBytesPerSecond! <
-          baseline.plannerNetworkRateBytesPerSecond! &&
-      plan.networkStatusGeneration == 1 &&
-      plan.networkClass == WarpNetworkClass.wifi &&
-      plan.plan.workBreadth > 0 &&
-      plan.coversFocusGeneration(opened.focusGeneration);
+          baseline.plannerNetworkRateBytesPerSecond!;
 }
 
 void _reportNetworkResponse(

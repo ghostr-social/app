@@ -30,7 +30,6 @@ typedef _PacedFeed = ({
   ProgressiveOriginBandwidthTrigger lossTrigger,
   ProgressiveOriginLinkProfile fastProfile,
   WarpDecisionRecord baselineDecision,
-  int baselinePlanRevision,
 });
 
 typedef _ImpairedFeed = ({

@@ -29,19 +29,14 @@ Future<_ImpairedFeed> _impairSharedLink(
     minimumDuration: const Duration(milliseconds: 1500),
   );
   _expectImpairmentWindow(window);
-  final paired = await _waitForLossPair(
+  final decision = await _waitForLossDecision(
     tester,
     opened,
     window.confirmedAtEpochMs,
   );
-  _reportNetworkResponse('loss', paired.decision, window.confirmedAtEpochMs);
+  _reportNetworkResponse('loss', decision, window.confirmedAtEpochMs);
   final ready = await _waitForImpairedReady(tester, opened);
-  return (
-    profile: profile,
-    window: window,
-    decision: paired.decision,
-    ready: ready,
-  );
+  return (profile: profile, window: window, decision: decision, ready: ready);
 }
 
 void _expectImpairmentWindow(ProgressiveOriginLinkWindow window) {
