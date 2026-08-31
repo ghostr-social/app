@@ -11,7 +11,12 @@ fn shifted_partial_overlap_is_not_ordered_reserve_progress() {
     let mut state = snapshot(6, 2_500_000, 20_000, 120);
     state.candidates[0].present = vec![ByteRange::new(0, 3_750_000)];
     for candidate in &mut state.candidates[1..=4] {
-        candidate.present = candidate.startup.as_ref().unwrap().ranges().to_vec();
+        candidate.present = candidate
+            .startup
+            .as_ref()
+            .expect("reserve startup")
+            .ranges()
+            .to_vec();
     }
     let base = AdaptivePlayabilityPolicy.plan(&state);
     let work = base

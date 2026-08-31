@@ -33,7 +33,12 @@ fn scenario(commitment_ms: u64) -> (PlayabilitySnapshot, AllocationPlan) {
     input.commitment_ms = commitment_ms;
     input.candidates[0].present = vec![ByteRange::new(0, 3_750_000)];
     for candidate in &mut input.candidates[1..=4] {
-        candidate.present = candidate.startup.as_ref().unwrap().ranges().to_vec();
+        candidate.present = candidate
+            .startup
+            .as_ref()
+            .expect("reserve startup")
+            .ranges()
+            .to_vec();
     }
     input.candidates[5].player_preparation = PlayerPreparation::Unverified;
     input.candidates[1].in_flight.push(InFlightAction::range(
@@ -66,7 +71,6 @@ fn plan(
         &context,
     ))
 }
-
 fn assert_fills_fifth(decision: &WarpPlanningDecision) {
     let selected = decision.selected.as_ref().expect("fifth reserve transfer");
     let reserve = &decision.reserve;

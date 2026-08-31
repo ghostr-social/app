@@ -99,15 +99,11 @@ fn candidate(value: &ReserveCandidateEvidence) -> ReserveCandidateSnapshot {
             reason: infeasibility(*reason),
         },
         ReserveCandidateState::HlsReady => ReserveCandidateSnapshot::HlsReady { post_id },
-        ReserveCandidateState::HlsStructural => {
-            ReserveCandidateSnapshot::HlsStructural { post_id }
-        }
-        ReserveCandidateState::HlsInFlight { stage } => {
-            ReserveCandidateSnapshot::HlsInFlight {
-                post_id,
-                stage: hls_stage(*stage),
-            }
-        }
+        ReserveCandidateState::HlsStructural => ReserveCandidateSnapshot::HlsStructural { post_id },
+        ReserveCandidateState::HlsInFlight { stage } => ReserveCandidateSnapshot::HlsInFlight {
+            post_id,
+            stage: hls_stage(*stage),
+        },
         ReserveCandidateState::HlsPending { stage } => ReserveCandidateSnapshot::HlsPending {
             post_id,
             stage: hls_stage(*stage),

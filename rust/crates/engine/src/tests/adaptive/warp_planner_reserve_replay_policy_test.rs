@@ -13,7 +13,12 @@ fn marker_free_capsule_replays_historical_coverage_first_selection() {
     state.commitment_ms = 3_000;
     state.candidates[0].present = vec![ByteRange::new(0, 3_750_000)];
     for candidate in &mut state.candidates[1..=4] {
-        candidate.present = candidate.startup.as_ref().unwrap().ranges().to_vec();
+        candidate.present = candidate
+            .startup
+            .as_ref()
+            .expect("reserve startup")
+            .ranges()
+            .to_vec();
     }
     let base = AdaptivePlayabilityPolicy.plan(&state);
     let context = PlannerContext::explicitly_unavailable(&state);
@@ -25,7 +30,12 @@ fn marker_free_capsule_replays_historical_coverage_first_selection() {
         &context,
     ));
     assert_ne!(
-        decision.selected.as_ref().unwrap().node.post,
+        decision
+            .selected
+            .as_ref()
+            .expect("selected legacy action")
+            .node
+            .post,
         PostId::new("p5")
     );
     let record = DecisionRecord::capture_warp(WarpDecisionRecordInput {

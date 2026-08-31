@@ -36,8 +36,7 @@ pub(super) fn count_structural(evidence: &[ReserveCandidateEvidence]) -> usize {
         .filter(|item| {
             matches!(
                 item.state,
-                ReserveCandidateState::Structural { .. }
-                    | ReserveCandidateState::HlsStructural
+                ReserveCandidateState::Structural { .. } | ReserveCandidateState::HlsStructural
             )
         })
         .count()
@@ -64,15 +63,12 @@ pub(super) fn is_protected_state(state: &ReserveCandidateState) -> bool {
 }
 
 pub(super) fn reject_first_unprepared(evidence: &mut [ReserveCandidateEvidence]) {
-    if let Some(item) = evidence
-        .iter_mut()
-        .find(|item| {
-            matches!(
-                item.state,
-                ReserveCandidateState::Unprepared | ReserveCandidateState::HlsPending { .. }
-            )
-        })
-    {
+    if let Some(item) = evidence.iter_mut().find(|item| {
+        matches!(
+            item.state,
+            ReserveCandidateState::Unprepared | ReserveCandidateState::HlsPending { .. }
+        )
+    }) {
         item.state = ReserveCandidateState::Infeasible {
             reason: NextReserveInfeasibility::CurrentUnprotected,
         };

@@ -12,7 +12,12 @@ fn inflight_fifth_reserve_does_not_launch_an_unrelated_continuation() {
     input.commitment_ms = 20_000;
     input.candidates[0].present = vec![ByteRange::new(0, 3_750_000)];
     for candidate in &mut input.candidates[1..=4] {
-        candidate.present = candidate.startup.as_ref().unwrap().ranges().to_vec();
+        candidate.present = candidate
+            .startup
+            .as_ref()
+            .expect("reserve startup")
+            .ranges()
+            .to_vec();
     }
     input.candidates[5].player_preparation = PlayerPreparation::Unverified;
     input.candidates[5].in_flight.push(InFlightAction::range(

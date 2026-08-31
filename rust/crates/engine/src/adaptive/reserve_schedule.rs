@@ -4,9 +4,9 @@ use super::plan::{
     AllocationPlan, AllocationReason, NextReserveInfeasibility, ReserveCandidateEvidence,
     ReserveCandidateState,
 };
+use super::reserve_candidate::ReserveCandidate;
 use super::reserve_model::readiness_ranges;
 use super::reserve_origins::OriginSlots;
-use super::reserve_candidate::ReserveCandidate;
 use super::reserves::{planned_bytes, sibling_planned_bytes};
 use super::sources::best_origin;
 use super::{CandidateSnapshot, MediaLayout, PlayabilitySnapshot};

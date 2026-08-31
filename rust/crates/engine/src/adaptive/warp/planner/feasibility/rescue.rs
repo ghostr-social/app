@@ -28,7 +28,7 @@ pub(super) struct RescuePlan {
     pub chance: RescueChanceEvidence,
 }
 
-pub(super) fn select(inputs: RescueInputs<'_>) -> Option<RescuePlan> {
+pub(super) fn select(inputs: &RescueInputs<'_>) -> Option<RescuePlan> {
     if inputs.input.base.mode == ControlMode::Normal {
         return None;
     }
@@ -37,9 +37,9 @@ pub(super) fn select(inputs: RescueInputs<'_>) -> Option<RescuePlan> {
         reserve_progress::action_ids(inputs.input.snapshot, inputs.input.base, inputs.frontier)
     });
     if ordered && reserve_progress::underflow(inputs.input.snapshot, inputs.input.base) {
-        return select_from(&inputs, progress.as_deref());
+        return select_from(inputs, progress.as_deref());
     }
-    select_from(&inputs, None)
+    select_from(inputs, None)
 }
 
 fn select_from(inputs: &RescueInputs<'_>, progress: Option<&[u16]>) -> Option<RescuePlan> {

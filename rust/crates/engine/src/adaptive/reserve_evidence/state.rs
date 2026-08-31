@@ -1,11 +1,7 @@
-use super::super::plan::{
-    NextReserveInfeasibility, ReserveCandidateState,
-};
+use super::super::plan::{NextReserveInfeasibility, ReserveCandidateState};
 use super::super::reserve_candidate::ReserveCandidate;
 use super::super::reserve_model::{is_in_flight, is_ready, is_structural};
-use super::super::{
-    CandidateSnapshot, HlsBootstrapState, HlsCandidateSnapshot, PlayerPreparation,
-};
+use super::super::{CandidateSnapshot, HlsBootstrapState, HlsCandidateSnapshot, PlayerPreparation};
 
 pub(super) fn for_candidate(candidate: ReserveCandidate<'_>) -> ReserveCandidateState {
     match candidate {
@@ -51,8 +47,7 @@ fn hls(candidate: &HlsCandidateSnapshot) -> ReserveCandidateState {
             cancelling: false,
             ..
         } => ReserveCandidateState::HlsInFlight { stage: *stage },
-        HlsBootstrapState::Active { stage, .. }
-        | HlsBootstrapState::Pending { stage, .. } => {
+        HlsBootstrapState::Active { stage, .. } | HlsBootstrapState::Pending { stage, .. } => {
             ReserveCandidateState::HlsPending { stage: *stage }
         }
         HlsBootstrapState::Failed => ReserveCandidateState::Infeasible {

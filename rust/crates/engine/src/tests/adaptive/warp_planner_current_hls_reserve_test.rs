@@ -10,7 +10,9 @@ use crate::PostId;
 fn failed_decoder_makes_current_hls_unsafe_and_blocks_future_reserve() {
     let mut state = snapshot(2, 20_000_000, 20_000, 120);
     state.candidates.remove(0);
-    state.hls_candidates.push(hls(0, HlsBootstrapState::Ready, PlayerPreparation::Failed));
+    state
+        .hls_candidates
+        .push(hls(0, HlsBootstrapState::Ready, PlayerPreparation::Failed));
 
     let plan = AdaptivePlayabilityPolicy.plan(&state);
 
@@ -22,7 +24,10 @@ fn failed_decoder_makes_current_hls_unsafe_and_blocks_future_reserve() {
             reason: NextReserveInfeasibility::CurrentUnprotected,
         },
     );
-    assert!(plan.allocations.iter().all(|work| work.post != PostId::new("p1")));
+    assert!(plan
+        .allocations
+        .iter()
+        .all(|work| work.post != PostId::new("p1")));
 }
 
 #[test]
@@ -66,7 +71,10 @@ fn rendered_current_hls_still_publishes_the_mixed_future_reserve() {
         plan.ready_reserve.candidates[0].state,
         ReserveCandidateState::HlsPending { .. }
     ));
-    assert!(plan.allocations.iter().all(|work| work.post != PostId::new("p2")));
+    assert!(plan
+        .allocations
+        .iter()
+        .all(|work| work.post != PostId::new("p2")));
 }
 
 fn hls(

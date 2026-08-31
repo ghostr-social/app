@@ -172,7 +172,11 @@ impl HlsCandidateSnapshot {
     }
 
     pub(crate) const fn player_ready(&self) -> bool {
-        self.ready() && matches!(self.player_preparation, PlayerPreparation::FirstFrameRendered)
+        self.ready()
+            && matches!(
+                self.player_preparation,
+                PlayerPreparation::FirstFrameRendered
+            )
     }
 
     pub(super) fn source(&self) -> Option<&str> {

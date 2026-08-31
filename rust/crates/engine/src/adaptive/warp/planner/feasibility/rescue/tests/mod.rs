@@ -44,7 +44,7 @@ fn select_path_at(
         },
     }];
     let budget = HardBudget::new(limits, 2);
-    select(RescueInputs {
+    select(&RescueInputs {
         input: &planner_input,
         frontier,
         semantic: &semantic,

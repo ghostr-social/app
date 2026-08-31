@@ -21,9 +21,7 @@ fn contiguous_playable_ms(candidate: &CandidateSnapshot) -> u64 {
     candidate
         .playable_ranges
         .iter()
-        .take_while(|playable| {
-            super::uncovered_bytes(playable.bytes, &candidate.present) == 0
-        })
+        .take_while(|playable| super::uncovered_bytes(playable.bytes, &candidate.present) == 0)
         .map(|playable| playable.playable_ms)
         .sum()
 }

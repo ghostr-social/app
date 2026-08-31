@@ -23,7 +23,10 @@ fn decoded_hls_prefix_advances_to_the_later_progressive_deficit() {
     let base = AdaptivePlayabilityPolicy.plan(&state);
 
     assert_eq!(base.ready_reserve.target, 2);
-    assert_eq!(base.ready_reserve.candidates[0].state, ReserveCandidateState::HlsReady);
+    assert_eq!(
+        base.ready_reserve.candidates[0].state,
+        ReserveCandidateState::HlsReady
+    );
     assert_eq!(
         first_deficit(&state, &base).map(|candidate| &candidate.post),
         Some(&PostId::new("p2")),

@@ -1,7 +1,5 @@
 use super::{range, RangeSnapshot};
-use ghostr_engine::adaptive::{
-    HlsBootstrapStage, NextReserveEvidence, NextReserveInfeasibility,
-};
+use ghostr_engine::adaptive::{HlsBootstrapStage, NextReserveEvidence, NextReserveInfeasibility};
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]

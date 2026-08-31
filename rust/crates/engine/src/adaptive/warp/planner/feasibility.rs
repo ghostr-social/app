@@ -29,7 +29,7 @@ pub(super) fn apply(
 ) -> FeasibleActions {
     let budget = hard_budget::build(input, network_bytes);
     let semantic = semantic_decisions(input, config);
-    let rescue = rescue::select(rescue::RescueInputs {
+    let rescue = rescue::select(&rescue::RescueInputs {
         input,
         frontier,
         semantic: &semantic,

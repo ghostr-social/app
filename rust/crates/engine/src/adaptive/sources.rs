@@ -6,10 +6,10 @@ pub(super) fn best_origin(candidate: &CandidateSnapshot) -> Option<&OriginHealth
     best_origin_where(candidate, |_| true)
 }
 
-pub(super) fn best_origin_where<'a>(
-    candidate: &'a CandidateSnapshot,
+pub(super) fn best_origin_where(
+    candidate: &CandidateSnapshot,
     mut admitted: impl FnMut(&OriginHealth) -> bool,
-) -> Option<&'a OriginHealth> {
+) -> Option<&OriginHealth> {
     if let Some(preferred) = candidate.preferred_source.as_deref() {
         if let Some(origin) = candidate
             .origins

@@ -23,17 +23,31 @@ pub enum ControlMode {
 pub enum ReserveCandidateState {
     #[default]
     Unprepared,
-    Ready { startup: StartupFootprint },
-    Structural { startup: StartupFootprint },
+    Ready {
+        startup: StartupFootprint,
+    },
+    Structural {
+        startup: StartupFootprint,
+    },
     InFlight,
     Probing,
-    Preparing { ranges: Vec<ByteRange> },
-    Planned { ranges: Vec<ByteRange> },
-    Infeasible { reason: NextReserveInfeasibility },
+    Preparing {
+        ranges: Vec<ByteRange>,
+    },
+    Planned {
+        ranges: Vec<ByteRange>,
+    },
+    Infeasible {
+        reason: NextReserveInfeasibility,
+    },
     HlsReady,
     HlsStructural,
-    HlsInFlight { stage: super::super::HlsBootstrapStage },
-    HlsPending { stage: super::super::HlsBootstrapStage },
+    HlsInFlight {
+        stage: super::super::HlsBootstrapStage,
+    },
+    HlsPending {
+        stage: super::super::HlsBootstrapStage,
+    },
 }
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
@@ -85,13 +99,37 @@ impl ReadyReserveEvidence {
 pub enum NextReserveEvidence {
     #[default]
     NotApplicable,
-    Ready { post: PostId, startup: StartupFootprint },
-    Structural { post: PostId, startup: StartupFootprint },
-    InFlight { post: PostId },
-    Granted { post: PostId, range: ByteRange },
-    Infeasible { post: PostId, reason: NextReserveInfeasibility },
-    HlsReady { post: PostId },
-    HlsStructural { post: PostId },
-    HlsInFlight { post: PostId, stage: super::super::HlsBootstrapStage },
-    HlsPending { post: PostId, stage: super::super::HlsBootstrapStage },
+    Ready {
+        post: PostId,
+        startup: StartupFootprint,
+    },
+    Structural {
+        post: PostId,
+        startup: StartupFootprint,
+    },
+    InFlight {
+        post: PostId,
+    },
+    Granted {
+        post: PostId,
+        range: ByteRange,
+    },
+    Infeasible {
+        post: PostId,
+        reason: NextReserveInfeasibility,
+    },
+    HlsReady {
+        post: PostId,
+    },
+    HlsStructural {
+        post: PostId,
+    },
+    HlsInFlight {
+        post: PostId,
+        stage: super::super::HlsBootstrapStage,
+    },
+    HlsPending {
+        post: PostId,
+        stage: super::super::HlsBootstrapStage,
+    },
 }

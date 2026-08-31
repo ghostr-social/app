@@ -12,7 +12,12 @@ fn reserve_rescue_does_not_broaden_ordinary_semantic_admission() {
     let mut input = snapshot(7, 2_500_000, 20_000, 120);
     input.candidates[0].present = vec![ByteRange::new(0, 3_750_000)];
     for candidate in &mut input.candidates[1..=4] {
-        candidate.present = candidate.startup.as_ref().unwrap().ranges().to_vec();
+        candidate.present = candidate
+            .startup
+            .as_ref()
+            .expect("reserve startup")
+            .ranges()
+            .to_vec();
     }
     for candidate in &mut input.candidates[5..] {
         candidate.player_preparation = PlayerPreparation::Unverified;

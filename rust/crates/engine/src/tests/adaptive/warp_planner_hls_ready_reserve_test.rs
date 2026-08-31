@@ -1,7 +1,7 @@
 use crate::adaptive::{
     AdaptivePlayabilityPolicy, FeedOffset, HlsBootstrapStage, HlsBootstrapState,
-    HlsCandidateSnapshot, PlannerCommand, PlannerContext, PlayerPreparation,
-    ReserveCandidateKind, ReserveCandidateState, ViewProbability, WarpPlanner, WarpPlannerInput,
+    HlsCandidateSnapshot, PlannerCommand, PlannerContext, PlayerPreparation, ReserveCandidateKind,
+    ReserveCandidateState, ViewProbability, WarpPlanner, WarpPlannerInput,
 };
 use crate::origin_model::OriginModel;
 use crate::tests::adaptive_support::snapshot;
@@ -20,8 +20,14 @@ fn exact_decoded_hls_is_the_first_ready_reserve() {
 
     state.hls_candidates[0].player_preparation = PlayerPreparation::FirstFrameRendered;
     let ready = AdaptivePlayabilityPolicy.plan(&state);
-    assert_eq!(ready.ready_reserve.candidates[0].kind, ReserveCandidateKind::Hls);
-    assert_eq!(ready.ready_reserve.candidates[0].state, ReserveCandidateState::HlsReady);
+    assert_eq!(
+        ready.ready_reserve.candidates[0].kind,
+        ReserveCandidateKind::Hls
+    );
+    assert_eq!(
+        ready.ready_reserve.candidates[0].state,
+        ReserveCandidateState::HlsReady
+    );
     assert_eq!(ready.ready_reserve.ordered_ready(), 1);
 }
 
@@ -38,7 +44,10 @@ fn pending_nearest_hls_fences_and_wins_before_farther_progressive() {
     state.network.connection_ceiling = 1;
     state.network.per_authority_request_limit = 1;
     let base = AdaptivePlayabilityPolicy.plan(&state);
-    assert!(base.allocations.iter().all(|work| work.post != PostId::new("p2")));
+    assert!(base
+        .allocations
+        .iter()
+        .all(|work| work.post != PostId::new("p2")));
     assert_eq!(
         base.ready_reserve.candidates[0].state,
         ReserveCandidateState::HlsPending {
@@ -78,10 +87,16 @@ fn current_playback_emergency_still_wins_before_hls_reserve() {
         &OriginModel::default(),
         &context,
     ));
-    assert_eq!(decision.selected.expect("current rescue").node.post, PostId::new("p0"));
+    assert_eq!(
+        decision.selected.expect("current rescue").node.post,
+        PostId::new("p0")
+    );
 }
 
-fn mixed(state: HlsBootstrapState, preparation: PlayerPreparation) -> crate::adaptive::PlayabilitySnapshot {
+fn mixed(
+    state: HlsBootstrapState,
+    preparation: PlayerPreparation,
+) -> crate::adaptive::PlayabilitySnapshot {
     let mut snapshot = snapshot(3, 20_000_000, 20_000, 0);
     snapshot.candidates.remove(1);
     snapshot.hls_candidates.push(HlsCandidateSnapshot {

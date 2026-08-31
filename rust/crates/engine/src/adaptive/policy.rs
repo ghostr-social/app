@@ -17,15 +17,14 @@ pub struct AdaptivePlayabilityPolicy;
 
 impl AdaptivePlayabilityPolicy {
     pub fn plan(self, snapshot: &PlayabilitySnapshot) -> AllocationPlan {
-        self.plan_with_reserve(snapshot, ReserveModePolicy::Ordered)
+        Self::plan_with_reserve(snapshot, ReserveModePolicy::Ordered)
     }
 
     pub(super) fn plan_legacy_replay(self, snapshot: &PlayabilitySnapshot) -> AllocationPlan {
-        self.plan_with_reserve(snapshot, ReserveModePolicy::LegacyAggregate)
+        Self::plan_with_reserve(snapshot, ReserveModePolicy::LegacyAggregate)
     }
 
     fn plan_with_reserve(
-        self,
         snapshot: &PlayabilitySnapshot,
         reserve_policy: ReserveModePolicy,
     ) -> AllocationPlan {

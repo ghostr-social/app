@@ -102,22 +102,22 @@ pub(super) fn terminal_identity(record: &DecisionRecord) -> String {
 
 fn legacy(record: &DecisionRecord) -> DecisionReplayStatus {
     let replayed = AdaptivePlayabilityPolicy.plan_legacy_replay(&record.replay_state.snapshot());
-    policy_status(record, plan_identity::legacy(&replayed))
+    policy_status(record, &plan_identity::legacy(&replayed))
 }
 
 fn ordered(record: &DecisionRecord) -> DecisionReplayStatus {
     let replayed = AdaptivePlayabilityPolicy.plan(&record.replay_state.snapshot());
-    policy_status(record, plan_identity::ordered(&replayed))
+    policy_status(record, &plan_identity::ordered(&replayed))
 }
 
-fn policy_status(record: &DecisionRecord, replayed_hash: String) -> DecisionReplayStatus {
+fn policy_status(record: &DecisionRecord, replayed_hash: &str) -> DecisionReplayStatus {
     if verify_terminal_evidence(record).is_err() {
         return DecisionReplayStatus::PlanMismatch;
     }
     if state_identity(&record.replay_state).0 != record.state_hash {
         return DecisionReplayStatus::StateHashMismatch;
     }
-    if replayed_hash == record.replay_plan_hash {
+    if replayed_hash == record.replay_plan_hash.as_str() {
         DecisionReplayStatus::Verified
     } else {
         DecisionReplayStatus::PlanMismatch

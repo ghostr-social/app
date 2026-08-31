@@ -5,11 +5,11 @@ use crate::adaptive::{
 use crate::PostId;
 
 #[cfg(test)]
-#[path = "reserve_progress/partial_overlap_test.rs"]
-mod partial_overlap_test;
-#[cfg(test)]
 #[path = "reserve_progress/hls_ready_prefix_test.rs"]
 mod hls_ready_prefix_test;
+#[cfg(test)]
+#[path = "reserve_progress/partial_overlap_test.rs"]
+mod partial_overlap_test;
 
 pub(super) fn action_ids(
     snapshot: &PlayabilitySnapshot,
@@ -99,7 +99,9 @@ fn progress_target<'a>(
     match target.state {
         ReserveCandidateState::HlsPending { .. } => Some(target),
         ReserveCandidateState::Planned { .. } | ReserveCandidateState::Preparing { .. } => {
-            readiness_allocations(base, &target.post).next().map(|_| target)
+            readiness_allocations(base, &target.post)
+                .next()
+                .map(|_| target)
         }
         _ => None,
     }

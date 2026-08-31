@@ -131,7 +131,10 @@ fn recovery_horizon(snapshot: &PlayabilitySnapshot, candidates: &[ReserveCandida
         .clamp(MIN_RECOVERY_HORIZON_MS, MAX_RECOVERY_HORIZON_MS)
 }
 
-fn reserve_recovery(snapshot: &PlayabilitySnapshot, candidate: ReserveCandidate<'_>) -> Option<u64> {
+fn reserve_recovery(
+    snapshot: &PlayabilitySnapshot,
+    candidate: ReserveCandidate<'_>,
+) -> Option<u64> {
     match candidate {
         ReserveCandidate::Progressive(candidate) if !is_structural(candidate) => {
             candidate_recovery(snapshot, candidate)
