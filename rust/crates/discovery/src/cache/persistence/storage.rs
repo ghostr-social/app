@@ -1,8 +1,8 @@
 use super::MAX_SNAPSHOT_BYTES;
-use anyhow::{ensure, Context};
+use anyhow::{ensure, Context as _};
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 
 pub(super) async fn read(path: &Path) -> anyhow::Result<Option<Vec<u8>>> {
     let file = match tokio::fs::File::open(path).await {

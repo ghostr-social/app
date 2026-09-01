@@ -1,9 +1,9 @@
 //! Shared fixtures for the session event pool's tests.
 
 use crate::cache::{session_event_database, EventCache};
+use core::sync::atomic::{AtomicU64, Ordering};
 use nostr_sdk::prelude::*;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 static NEXT_ROOT: AtomicU64 = AtomicU64::new(0);

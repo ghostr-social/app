@@ -1,7 +1,7 @@
 use crate::cache::cacheable_event;
 use crate::cache::database::MAX_CACHED_EVENTS;
 use crate::cache::session::ViewerScope;
-use anyhow::{ensure, Context};
+use anyhow::{ensure, Context as _};
 use nostr_sdk::{Event, PublicKey};
 use serde::{Deserialize, Serialize};
 

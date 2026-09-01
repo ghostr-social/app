@@ -54,9 +54,10 @@ impl PartialRangeStore {
         if checksums.is_empty() {
             return Ok(SparseContinuity::Unproven);
         }
-        match checksums_match(&self.paths.single_response(key), &checksums).await? {
-            true => Ok(SparseContinuity::Confirmed),
-            false => Ok(SparseContinuity::Conflicted),
+        if checksums_match(&self.paths.single_response(key), &checksums).await? {
+            Ok(SparseContinuity::Confirmed)
+        } else {
+            Ok(SparseContinuity::Conflicted)
         }
     }
 
