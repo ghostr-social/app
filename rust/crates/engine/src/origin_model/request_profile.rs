@@ -48,7 +48,7 @@ impl OriginRequestProfile {
         self.media
     }
 
-    pub(crate) const fn with_transport(self, method: RequestMethod, planned_bytes: u64) -> Self {
+    const fn with_transport(self, method: RequestMethod, planned_bytes: u64) -> Self {
         Self::new(method, planned_bytes, self.media)
     }
 
