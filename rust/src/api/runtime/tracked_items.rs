@@ -68,6 +68,11 @@ impl TrackedItems {
         self.changed.notify_waiters();
     }
 
+    /// The newest focus generation the watcher tracks, if any.
+    pub(crate) fn focus_generation(&self) -> Option<u64> {
+        self.read().latest_focus_generation
+    }
+
     pub(crate) fn level(&self) -> DataUsageLevel {
         self.read().level
     }

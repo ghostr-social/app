@@ -2,6 +2,8 @@
 //! progress back out as FFI events.
 
 pub(crate) mod candidates;
+pub(crate) mod causal_eta;
+pub(crate) mod emit;
 pub(crate) mod focus_mapping;
 pub(crate) mod playback_mapping;
 pub(crate) mod snapshot_view;
