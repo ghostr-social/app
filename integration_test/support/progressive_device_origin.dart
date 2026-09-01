@@ -13,7 +13,9 @@ export 'progressive_origin_pacing.dart';
 
 part 'progressive_device_origin_response.dart';
 part 'progressive_device_origin_hls.dart';
+part 'progressive_device_origin_models.dart';
 part 'progressive_device_origin_range.dart';
+part 'progressive_device_origin_range_semantics.dart';
 part 'progressive_device_origin_request.dart';
 part 'progressive_device_origin_body_queries.dart';
 part 'progressive_device_origin_coverage.dart';
@@ -36,10 +38,6 @@ part 'progressive_device_origin_queries.dart';
 part 'progressive_device_origin_rendezvous_control.dart';
 part 'progressive_device_origin_lifecycle.dart';
 
-enum ProgressiveOriginValidator { none, stableStrong }
-
-enum ProgressiveOriginAvailability { available, unavailable }
-
 final class ProgressiveDeviceOrigin {
   ProgressiveDeviceOrigin._(
     this._server,
@@ -47,6 +45,8 @@ final class ProgressiveDeviceOrigin {
     this._pacing,
     this._validator,
     this._availability,
+    this._rangeSemantics,
+    this._rangeSemanticsById,
   );
 
   static Future<ProgressiveDeviceOrigin> start({
@@ -56,6 +56,9 @@ final class ProgressiveDeviceOrigin {
     ProgressiveOriginValidator validator = ProgressiveOriginValidator.none,
     ProgressiveOriginAvailability availability =
         ProgressiveOriginAvailability.available,
+    ProgressiveOriginRangeSemantics rangeSemantics =
+        ProgressiveOriginRangeSemantics.coherent,
+    Map<String, ProgressiveOriginRangeSemantics> rangeSemanticsById = const {},
     int port = 0,
   }) async {
     if (responseChunkBytes <= 0) throw ArgumentError.value(responseChunkBytes);
@@ -66,6 +69,8 @@ final class ProgressiveDeviceOrigin {
       _ProgressiveOriginPacer(pacing),
       validator,
       availability,
+      rangeSemantics,
+      Map.unmodifiable(rangeSemanticsById),
     );
     origin._subscription = server.listen(origin._dispatch);
     return origin;
@@ -76,6 +81,8 @@ final class ProgressiveDeviceOrigin {
   final _ProgressiveOriginPacer _pacing;
   final ProgressiveOriginValidator _validator;
   final ProgressiveOriginAvailability _availability;
+  final ProgressiveOriginRangeSemantics _rangeSemantics;
+  final Map<String, ProgressiveOriginRangeSemantics> _rangeSemanticsById;
   final requests = <ProgressiveOriginRequest>[];
   final _completed = <ProgressiveOriginRequest>[];
   final _heldHeads = <HttpResponse>[];

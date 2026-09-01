@@ -31,9 +31,9 @@ extension _ProgressiveDeviceOriginResponse on ProgressiveDeviceOrigin {
     ProgressiveOriginRequest request,
   ) async {
     final bytes = ProgressiveMp4Fixture.bytes;
-    final span = range ?? (start: 0, end: bytes.length);
-    _configure(response, range, span, bytes.length);
-    await _streamChunks(response, bytes, span, request);
+    final plan = _responsePlan(request.path, range, bytes.length);
+    _configure(response, plan);
+    await _streamChunks(response, bytes, plan.span, request);
     await _closeResponse(response);
   }
 
@@ -68,22 +68,17 @@ extension _ProgressiveDeviceOriginResponse on ProgressiveDeviceOrigin {
     }
   }
 
-  void _configure(
-    HttpResponse response,
-    ({int start, int end})? range,
-    ({int start, int end}) span,
-    int total,
-  ) {
-    response.statusCode = range == null
-        ? HttpStatus.ok
-        : HttpStatus.partialContent;
+  void _configure(HttpResponse response, _ProgressiveOriginResponsePlan plan) {
+    response.statusCode = plan.statusCode;
     response.headers.contentType = ContentType('video', 'mp4');
     response.bufferOutput = false;
-    response.headers.contentLength = span.end - span.start;
+    response.headers.contentLength = plan.span.end - plan.span.start;
     response.headers.set(HttpHeaders.acceptRangesHeader, 'bytes');
     if (_validator == ProgressiveOriginValidator.stableStrong) {
       response.headers.set(HttpHeaders.etagHeader, '"warp-fixture-v1"');
     }
-    if (range != null) _setContentRange(response, span, total);
+    if (plan.contentRange case final contentRange?) {
+      response.headers.set(HttpHeaders.contentRangeHeader, contentRange);
+    }
   }
 }

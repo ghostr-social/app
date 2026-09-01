@@ -12,13 +12,6 @@ part of 'progressive_device_origin.dart';
   );
 }
 
-void _setContentRange(
-  HttpResponse response,
-  ({int start, int end}) range,
-  int total,
-) {
-  response.headers.set(
-    HttpHeaders.contentRangeHeader,
-    'bytes ${range.start}-${range.end - 1}/$total',
-  );
+String _contentRangeValue(({int start, int end}) range, int total) {
+  return 'bytes ${range.start}-${range.end - 1}/$total';
 }

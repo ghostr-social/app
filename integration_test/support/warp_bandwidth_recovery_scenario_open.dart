@@ -15,10 +15,14 @@ const _transitionPaths = {
 
 Future<_PacedFeed> _openPacedFeed(WidgetTester tester) async {
   final journey = await WarpFeedPlaybackJourney.start(
-    eventCount: 10,
-    validator: ProgressiveOriginValidator.stableStrong,
-    dataUsage: DataUsageLevel.aggressive,
-    pacing: const ProgressiveOriginPacing.sharedBandwidth(2500),
+    options: const WarpFeedDeviceOptions(
+      events: SignedWarpFeedConfig(eventCount: 10),
+      dataUsage: DataUsageLevel.aggressive,
+      origin: WarpFeedOriginOptions(
+        validator: ProgressiveOriginValidator.stableStrong,
+        pacing: ProgressiveOriginPacing.sharedBandwidth(2500),
+      ),
+    ),
   );
   addTearDown(journey.close);
   final origin = journey.resources.origin;

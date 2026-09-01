@@ -39,9 +39,13 @@ Future<void> runWarpProgressiveLoopReopenScenario(WidgetTester tester) async {
 
 Future<_OpenedLoopFeed> _openLoopFeed(WidgetTester tester) async {
   final journey = await WarpFeedPlaybackJourney.start(
-    eventCount: 3,
-    validator: ProgressiveOriginValidator.stableStrong,
-    dataUsage: DataUsageLevel.aggressive,
+    options: const WarpFeedDeviceOptions(
+      events: SignedWarpFeedConfig(eventCount: 3),
+      dataUsage: DataUsageLevel.aggressive,
+      origin: WarpFeedOriginOptions(
+        validator: ProgressiveOriginValidator.stableStrong,
+      ),
+    ),
   );
   addTearDown(journey.close);
   await tester.pumpWidget(journey.app);

@@ -25,11 +25,15 @@ Future<_OpenedFeed> _openFeed(WidgetTester tester) async {
 
 Future<WarpFeedPlaybackJourney> _startJourney() async {
   final journey = await WarpFeedPlaybackJourney.start(
-    eventCount: 7,
-    validator: ProgressiveOriginValidator.stableStrong,
-    dataUsage: DataUsageLevel.aggressive,
-    pacing: const ProgressiveOriginPacing.perResponseDelay(
-      Duration(milliseconds: 100),
+    options: const WarpFeedDeviceOptions(
+      events: SignedWarpFeedConfig(eventCount: 7),
+      dataUsage: DataUsageLevel.aggressive,
+      origin: WarpFeedOriginOptions(
+        validator: ProgressiveOriginValidator.stableStrong,
+        pacing: ProgressiveOriginPacing.perResponseDelay(
+          Duration(milliseconds: 100),
+        ),
+      ),
     ),
   );
   addTearDown(journey.close);

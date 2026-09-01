@@ -2,23 +2,26 @@ import 'package:ndk/ndk.dart';
 
 import 'progressive_device_origin.dart';
 import 'progressive_mp4_fixture.dart';
+import 'warp_feed_event_config.dart';
 
 Future<List<Nip01Event>> signedWarpFeedEvents(
   ProgressiveDeviceOrigin origin, {
-  int count = 3,
+  SignedWarpFeedConfig config = const SignedWarpFeedConfig(),
 }) async {
-  RangeError.checkValueInInterval(count, 1, _labels.length, 'count');
+  final count = config.eventCount;
+  RangeError.checkValueInInterval(count, 1, _labels.length, 'eventCount');
   final signer = const Bip340EventSignerFactory().createWithNewKeyPair();
   final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
   try {
     final events = <Nip01Event>[];
     for (var index = 0; index < count; index += 1) {
       final label = _labels[index];
+      final sources = config.sourcesFor(label);
       final event = Nip01Event(
         pubKey: signer.getPublicKey(),
         kind: 22,
         createdAt: now - index,
-        tags: _videoTags(origin.urlFor(label), label, now - index),
+        tags: _videoTags(origin, sources, now - index),
         content: 'WARP signed $label',
       );
       final signed = await signer.sign(event);
@@ -49,13 +52,19 @@ const _labels = [
   'tenth',
 ];
 
-List<List<String>> _videoTags(Uri url, String label, int publishedAt) => [
-  ['title', 'WARP $label'],
+List<List<String>> _videoTags(
+  ProgressiveDeviceOrigin origin,
+  WarpFeedEventSources sources,
+  int publishedAt,
+) => [
+  ['title', 'WARP ${sources.primaryLabel}'],
   ['published_at', '$publishedAt'],
-  ['alt', 'WARP signed $label'],
+  ['alt', 'WARP signed ${sources.primaryLabel}'],
   [
     'imeta',
-    'url $url',
+    'url ${origin.urlFor(sources.primaryLabel)}',
+    if (sources.fallbackLabel case final fallback?)
+      'fallback ${origin.urlFor(fallback)}',
     'm video/mp4',
     'size ${ProgressiveMp4Fixture.bytes.length}',
     'duration 6',

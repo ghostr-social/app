@@ -11,6 +11,7 @@ import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'device_playback_probe.dart';
 import 'progressive_device_origin.dart';
 import 'progressive_device_resources.dart';
+import 'warp_feed_event_config.dart';
 import 'warp_feed_events.dart';
 import 'warp_feed_production_graph.dart';
 import 'warp_feed_production_graph_build.dart';

@@ -13,10 +13,12 @@ final class ProgressiveDeviceResources {
     ProgressiveOriginPacing pacing =
         const ProgressiveOriginPacing.perResponseDelay(Duration.zero),
     ProgressiveOriginValidator validator = ProgressiveOriginValidator.none,
+    Map<String, ProgressiveOriginRangeSemantics> rangeSemanticsById = const {},
   }) async {
     final origin = await ProgressiveDeviceOrigin.start(
       pacing: pacing,
       validator: validator,
+      rangeSemanticsById: rangeSemanticsById,
     );
     try {
       final cache = await Directory.systemTemp.createTemp(

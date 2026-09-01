@@ -2,12 +2,16 @@ import 'package:ghostr/features/settings/domain/data_usage_level.dart';
 import 'package:ndk/ndk.dart';
 
 import 'device_resource_ownership.dart';
-import 'progressive_device_origin.dart';
 import 'progressive_device_resources.dart';
+import 'warp_feed_device_options.dart';
+import 'warp_feed_event_config.dart';
 import 'warp_feed_events.dart';
 import 'warp_feed_production_graph.dart';
 import 'warp_feed_production_graph_build.dart';
 import 'warp_feed_relay.dart';
+
+export 'warp_feed_event_config.dart';
+export 'warp_feed_device_options.dart';
 
 final class WarpFeedDeviceRuntime {
   WarpFeedDeviceRuntime._({
@@ -18,33 +22,28 @@ final class WarpFeedDeviceRuntime {
   });
 
   static Future<WarpFeedDeviceRuntime> start({
-    int eventCount = 3,
-    ProgressiveOriginValidator validator = ProgressiveOriginValidator.none,
-    DataUsageLevel dataUsage = DataUsageLevel.balanced,
-    ProgressiveOriginPacing pacing =
-        const ProgressiveOriginPacing.perResponseDelay(
-          Duration(milliseconds: 4),
-        ),
+    WarpFeedDeviceOptions options = const WarpFeedDeviceOptions(),
   }) async {
     return transferDeviceResourceOwnership(
       acquire: () => ProgressiveDeviceResources.start(
-        pacing: pacing,
-        validator: validator,
+        pacing: options.origin.pacing,
+        validator: options.origin.validator,
+        rangeSemanticsById: options.origin.rangeSemanticsById,
       ),
       build: (resources) =>
-          _startWithResources(resources, eventCount, dataUsage),
+          _startWithResources(resources, options.events, options.dataUsage),
       release: (resources) => resources.close(),
     );
   }
 
   static Future<WarpFeedDeviceRuntime> _startWithResources(
     ProgressiveDeviceResources resources,
-    int eventCount,
+    SignedWarpFeedConfig eventConfig,
     DataUsageLevel dataUsage,
   ) async {
     final events = await signedWarpFeedEvents(
       resources.origin,
-      count: eventCount,
+      config: eventConfig,
     );
     final relay = await WarpFeedRelay.start(events);
     return _build(resources, relay, events, dataUsage);

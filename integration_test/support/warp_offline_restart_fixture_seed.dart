@@ -8,7 +8,10 @@ Future<WarpOfflineRestartFixture> _startOfflineSeed() async {
   );
   WarpFeedRelay? relay;
   try {
-    final events = await signedWarpFeedEvents(resources.origin, count: 1);
+    final events = await signedWarpFeedEvents(
+      resources.origin,
+      config: const SignedWarpFeedConfig(eventCount: 1),
+    );
     relay = await WarpFeedRelay.start(events);
     final graph = await _offlineGraph(resources, relay.uri);
     final manifest = _offlineManifest(events.single.id, resources, relay);

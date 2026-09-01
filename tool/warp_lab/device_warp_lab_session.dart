@@ -17,11 +17,15 @@ final class DeviceWarpLabSession implements WarpLabSession {
   ) async {
     final profile = WarpLabProfile.forDestination(destination);
     final runtime = await WarpFeedDeviceRuntime.start(
-      eventCount: profile.eventCount,
-      validator: profile.validator,
-      dataUsage: profile.dataUsage,
-      pacing: ProgressiveOriginPacing.perResponseDelay(
-        profile.responseChunkDelay,
+      options: WarpFeedDeviceOptions(
+        events: SignedWarpFeedConfig(eventCount: profile.eventCount),
+        dataUsage: profile.dataUsage,
+        origin: WarpFeedOriginOptions(
+          validator: profile.validator,
+          pacing: ProgressiveOriginPacing.perResponseDelay(
+            profile.responseChunkDelay,
+          ),
+        ),
       ),
     );
     return DeviceWarpLabSession._(runtime);

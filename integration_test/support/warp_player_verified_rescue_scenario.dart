@@ -34,9 +34,13 @@ final class _PlayerVerifiedRescueScenario {
 
   static Future<_PlayerVerifiedRescueScenario> open() async {
     final journey = await WarpFeedPlaybackJourney.start(
-      eventCount: 4,
-      validator: ProgressiveOriginValidator.stableStrong,
-      dataUsage: DataUsageLevel.aggressive,
+      options: const WarpFeedDeviceOptions(
+        events: SignedWarpFeedConfig(eventCount: 4),
+        dataUsage: DataUsageLevel.aggressive,
+        origin: WarpFeedOriginOptions(
+          validator: ProgressiveOriginValidator.stableStrong,
+        ),
+      ),
     );
     final bodyGate = journey.resources.origin.holdBeforeFirstBody({
       '/next.mp4',

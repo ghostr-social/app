@@ -11,7 +11,6 @@ import 'package:ghostr/features/video_catalog/presentation/feed_cubit.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_observation.dart';
 import 'package:ghostr/features/video_inventory/domain/playback_preparation.dart';
 import 'package:ghostr/core/network/delivery_network_status.dart';
-import 'package:ghostr/features/settings/domain/data_usage_level.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:ndk/ndk.dart';
 
@@ -31,6 +30,9 @@ import 'warp_feed_production_graph.dart';
 import 'warp_feed_relay.dart';
 import 'warp_feed_surface.dart';
 import 'warp_ready_window_acceptance.dart';
+
+export 'warp_feed_device_options.dart';
+export 'warp_feed_event_config.dart';
 
 part 'warp_feed_playback_journey_ui.dart';
 part 'warp_feed_playback_journey_assertions.dart';
@@ -61,31 +63,18 @@ final class WarpFeedPlaybackJourney {
   WarpFeedPlaybackJourney._(this.runtime);
 
   static Future<WarpFeedPlaybackJourney> start({
-    int eventCount = 3,
-    ProgressiveOriginValidator validator = ProgressiveOriginValidator.none,
-    DataUsageLevel dataUsage = DataUsageLevel.balanced,
-    ProgressiveOriginPacing pacing =
-        const ProgressiveOriginPacing.perResponseDelay(
-          Duration(milliseconds: 4),
-        ),
+    WarpFeedDeviceOptions options = const WarpFeedDeviceOptions(),
   }) async {
-    final runtime = await WarpFeedDeviceRuntime.start(
-      eventCount: eventCount,
-      validator: validator,
-      dataUsage: dataUsage,
-      pacing: pacing,
-    );
+    final runtime = await WarpFeedDeviceRuntime.start(options: options);
     return WarpFeedPlaybackJourney._(runtime);
   }
 
   final WarpFeedDeviceRuntime runtime;
   final playbackErrorSamples = <Duration>[];
-
   ProgressiveDeviceResources get resources => runtime.resources;
   WarpFeedRelay get relay => runtime.relay;
   List<Nip01Event> get events => runtime.events;
   WarpFeedProductionGraph get graph => runtime.graph;
-
   FeedCubit get cubit => graph.cubit;
   VideoPlaybackPort get playback => graph.playback;
   ProgressiveDeviceTelemetry get telemetry => graph.telemetry;
