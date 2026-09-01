@@ -52,3 +52,7 @@ app.*.map.json
 # Android release signing (never commit; keep private backups)
 /android/key.properties
 /android/app/ghostr-release.jks
+
+# WARP device-evidence raw logs (small summaries are committed)
+/evidence/warp/*/stdout.log
+/evidence/warp/*/logcat.log

@@ -135,7 +135,8 @@ HAWK_REVISION_SHORT := 98efa9f
 	video-user-e2e-prerequisite-check video-user-e2e-impairments \
 	video-delivery-target-contract-test video-android-emulator-tests \
 	video-android-physical-tests video-android-offline-restart \
-	video-android-lifecycle \
+	video-android-lifecycle video-android-physical-evidence \
+	warp-evidence-contract-test \
 	video-player-contract-target-test \
 	video-player-contract video-player-contract-android video-player-contract-ios \
 	video-progressive-suite-contract-test video-progressive-suite \
@@ -267,6 +268,14 @@ video-android-physical-tests: ## Run the device video playback matrix on physica
 		ANDROID_PHYSICAL_SERIAL="$(ANDROID_PHYSICAL_SERIAL)"
 	$(MAKE) video-android-lifecycle \
 		ANDROID_PHYSICAL_SERIAL="$(ANDROID_PHYSICAL_SERIAL)"
+
+warp-evidence-contract-test: ## Test the WARP evidence-capture runner.
+	sh test/tool/run_warp_evidence_test.sh
+
+video-android-physical-evidence: warp-evidence-contract-test ## Run the physical matrix and retain evidence under evidence/warp.
+	@test -n "$(ANDROID_PHYSICAL_SERIAL)" || { echo "Set ANDROID_PHYSICAL_SERIAL to an attached device serial." >&2; exit 1; }
+	tool/run_warp_evidence.sh "$(ANDROID_PHYSICAL_SERIAL)" physical-matrix \
+		$(MAKE) video-android-physical-tests ANDROID_PHYSICAL_SERIAL="$(ANDROID_PHYSICAL_SERIAL)"
 
 video-android-offline-restart: ## Verify cold-process offline feed and media restore.
 	@test -n "$(ANDROID_PHYSICAL_SERIAL)" || { echo "Set ANDROID_PHYSICAL_SERIAL to an attached device serial." >&2; exit 1; }
