@@ -8,7 +8,7 @@ use ghostr_engine::adaptive::ResourceCost;
 
 mod adaptation;
 #[cfg(test)]
-#[path = "completion_observability/tests.rs"]
+#[path = "completion_observability/completion_observability_axiom_test.rs"]
 pub(crate) mod axiom_test_support;
 mod outcome;
 mod policy_limit;
