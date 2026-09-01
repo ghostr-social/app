@@ -131,7 +131,7 @@ impl EventCache {
         Some(replaced)
     }
 
-    pub(crate) async fn reset_session(&self, generation: SessionGeneration) {
+    pub(super) async fn reset_session(&self, generation: SessionGeneration) {
         let mut session = self.session.lock().await;
         session.reset(generation);
         self.wipe().await;
