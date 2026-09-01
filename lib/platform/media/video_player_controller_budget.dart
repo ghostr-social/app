@@ -107,6 +107,14 @@ final class _VideoPlayerControllerBudget {
 
   bool get _isExhausted => _quarantined >= _limit;
 
+  VideoPlaybackCapacitySnapshot get snapshot => (
+    inUse: _inUse,
+    outstanding: _outstanding.length,
+    retiring: _outstanding.where((permit) => permit._retirement != null).length,
+    waiting: _waiters.length,
+    quarantined: _quarantined,
+  );
+
   void constrainTo(int limit) {
     _memoryConstrained = true;
     _limit = limit.clamp(1, maximum);

@@ -54,7 +54,10 @@ part 'video_player_surface_telemetry.dart';
 part 'video_player_teardown_gate.dart';
 
 class VideoPlayerPlaybackPort
-    implements VideoPlaybackPort, VideoPlaybackMemoryPressurePort {
+    implements
+        VideoPlaybackPort,
+        VideoPlaybackMemoryPressurePort,
+        VideoPlaybackCapacityPort {
   VideoPlayerPlaybackPort({
     VideoPlayerControllerDisposer controllerDisposer =
         disposeVideoPlayerController,
@@ -91,6 +94,10 @@ class VideoPlayerPlaybackPort
 
   @override
   void reportMemoryPressure() => _dependencies.controllerBudget.constrainTo(2);
+
+  @override
+  VideoPlaybackCapacitySnapshot get capacitySnapshot =>
+      _dependencies.controllerBudget.snapshot;
 }
 
 final class _VideoPlayerSurfaceDependencies {

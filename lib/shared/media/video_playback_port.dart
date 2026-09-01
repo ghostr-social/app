@@ -102,3 +102,33 @@ abstract interface class VideoPlaybackPort {
 abstract interface class VideoPlaybackMemoryPressurePort {
   void reportMemoryPressure();
 }
+
+typedef VideoPlaybackCapacitySnapshot = ({
+  int inUse,
+  int outstanding,
+  int retiring,
+  int waiting,
+  int quarantined,
+});
+
+const VideoPlaybackCapacitySnapshot emptyVideoPlaybackCapacitySnapshot = (
+  inUse: 0,
+  outstanding: 0,
+  retiring: 0,
+  waiting: 0,
+  quarantined: 0,
+);
+
+extension VideoPlaybackCapacityState on VideoPlaybackCapacitySnapshot {
+  bool get isQuiescent => this == emptyVideoPlaybackCapacitySnapshot;
+}
+
+abstract interface class VideoPlaybackCapacityPort {
+  VideoPlaybackCapacitySnapshot get capacitySnapshot;
+}
+
+VideoPlaybackCapacitySnapshot videoPlaybackCapacityOf(VideoPlaybackPort port) {
+  return port is VideoPlaybackCapacityPort
+      ? (port as VideoPlaybackCapacityPort).capacitySnapshot
+      : emptyVideoPlaybackCapacitySnapshot;
+}

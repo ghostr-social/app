@@ -22,7 +22,10 @@ part 'gateway_video_playback_surface.dart';
 /// gateway so playback starts on partial bytes; local files and
 /// already-proxied streams stay on the delegate chain.
 final class GatewayVideoPlaybackPort
-    implements VideoPlaybackPort, VideoPlaybackMemoryPressurePort {
+    implements
+        VideoPlaybackPort,
+        VideoPlaybackMemoryPressurePort,
+        VideoPlaybackCapacityPort {
   GatewayVideoPlaybackPort({
     required VideoPlaybackPort delegate,
     required ProgressivePlaybackGatewayPort gateway,
@@ -56,6 +59,10 @@ final class GatewayVideoPlaybackPort
       (delegate as VideoPlaybackMemoryPressurePort).reportMemoryPressure();
     }
   }
+
+  @override
+  VideoPlaybackCapacitySnapshot get capacitySnapshot =>
+      videoPlaybackCapacityOf(_delegate);
 }
 
 final class _GatewayProgressivePlaybackRefresh

@@ -15,7 +15,10 @@ part 'hls_video_playback_surface.dart';
 part 'hls_video_playback_lease_surface.dart';
 
 final class HlsVideoPlaybackPort
-    implements VideoPlaybackPort, VideoPlaybackMemoryPressurePort {
+    implements
+        VideoPlaybackPort,
+        VideoPlaybackMemoryPressurePort,
+        VideoPlaybackCapacityPort {
   const HlsVideoPlaybackPort({
     required VideoPlaybackPort delegate,
     required HlsPlaybackGatewayPort gateway,
@@ -57,6 +60,10 @@ final class HlsVideoPlaybackPort
       (delegate as VideoPlaybackMemoryPressurePort).reportMemoryPressure();
     }
   }
+
+  @override
+  VideoPlaybackCapacitySnapshot get capacitySnapshot =>
+      videoPlaybackCapacityOf(_delegate);
 }
 
 bool _requiresGateway(VideoMediaSource media) {

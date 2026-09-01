@@ -3,7 +3,8 @@ import 'package:ghostr/core/media/video_media_cache_identity.dart';
 import 'package:ghostr/shared/media/video_playback_port.dart';
 import 'package:ghostr/shared/widgets/async_state_panel.dart';
 
-final class UnsupportedVideoPlaybackPort implements VideoPlaybackPort {
+final class UnsupportedVideoPlaybackPort
+    implements VideoPlaybackPort, VideoPlaybackCapacityPort {
   const UnsupportedVideoPlaybackPort();
 
   @override
@@ -13,6 +14,10 @@ final class UnsupportedVideoPlaybackPort implements VideoPlaybackPort {
       onPlaybackMediaReleased: request.onPlaybackMediaReleased,
     );
   }
+
+  @override
+  VideoPlaybackCapacitySnapshot get capacitySnapshot =>
+      emptyVideoPlaybackCapacitySnapshot;
 }
 
 final class _UnsupportedVideoPlaybackSurface extends StatefulWidget {
