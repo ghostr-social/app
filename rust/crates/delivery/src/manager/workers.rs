@@ -6,6 +6,7 @@ use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
 use ghostr_engine::{ChunkId, PostId};
 use std::collections::HashSet;
 
+mod hedge;
 mod http_generation;
 mod start;
 pub(crate) use start::PreparedTransfer;
@@ -98,30 +99,6 @@ impl DownloadWorkers {
 
     pub(super) fn can_cancel_action(&self, action: ghostr_engine::ActionId) -> bool {
         self.active.can_cancel_action(action)
-    }
-
-    pub(super) fn link_hedge(
-        &mut self,
-        primary: ghostr_engine::ActionId,
-        alternate: ghostr_engine::ActionId,
-    ) -> bool {
-        self.active.link_hedge(primary, alternate)
-    }
-
-    pub(super) fn authorize_hedge(&self, primary: ghostr_engine::ActionId) -> bool {
-        self.active.authorize_hedge(primary)
-    }
-
-    pub(super) fn release_hedge_authorization(&self, primary: ghostr_engine::ActionId) {
-        self.active.release_hedge_authorization(primary);
-    }
-
-    pub(super) fn complete_hedge_winner(&mut self, action: ghostr_engine::ActionId) -> bool {
-        self.active.complete_hedge_winner(action)
-    }
-
-    pub(super) fn cancel_hedge_loser(&mut self, action: ghostr_engine::ActionId) -> bool {
-        self.active.cancel_hedge_loser(action)
     }
 
     pub(super) fn observe_response(

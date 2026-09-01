@@ -36,22 +36,18 @@ pub(super) fn planned_work(
     let decision_models = observability::models(&snapshot, inputs, allocation.mode);
     let shadow_prices = observability::shadow_prices(&snapshot, occupancy.total() as u64);
     let emergency = has_playback_critical_work(&allocation);
-    let transfers = Vec::new();
     let selected_transfers =
         mapping::selected_transfers(state, inputs.present, &warp, allocation.mode);
     let retained = mapping::retained_actions(inputs.in_flight, &warp);
     let retained_posts = mapping::retained_posts(inputs.in_flight, &retained);
-    let evictions = allocation.evictions.clone();
-    let discovery_demand = allocation.discovery_demand;
     PlannedWork {
-        plan: allocation,
-        transfers,
+        transfers: Vec::new(),
         selected_transfers,
         retained,
         retained_posts,
-        evictions,
+        evictions: allocation.evictions.clone(),
         emergency,
-        discovery_demand,
+        discovery_demand: allocation.discovery_demand,
         snapshot: Some(snapshot),
         decision_models,
         shadow_prices,
@@ -61,6 +57,7 @@ pub(super) fn planned_work(
         planner_cpu_micros: 0,
         warp: Some(warp),
         player_preparations: Vec::new(),
+        plan: allocation,
     }
 }
 
