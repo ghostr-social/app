@@ -50,7 +50,7 @@ void main() {
 
     final loaded = cubit.state as FeedLoaded;
     expect(loaded.roster.active.id.value, 'second');
-    expect(loaded.posts.map((post) => post.id.value), ['second']);
+    expect(loaded.posts.map((post) => post.id.value), ['first', 'second']);
     expect(focus.focuses.skip(1).map((item) => item.cause), [
       FeedFocusCause.userNavigation,
       FeedFocusCause.rosterChange,
