@@ -13,9 +13,9 @@ pub struct NativeHlsPlaybackSession {
 }
 
 pub struct HlsPlaybackRequest {
-    pub(crate) authority: HlsPreparedAssetAuthority,
-    pub(crate) raw_sources: Vec<String>,
-    pub(crate) sources: Vec<Url>,
+    pub(super) authority: HlsPreparedAssetAuthority,
+    pub(super) raw_sources: Vec<String>,
+    pub(super) sources: Vec<Url>,
 }
 
 impl HlsPlaybackRequest {
