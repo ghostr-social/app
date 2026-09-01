@@ -137,7 +137,11 @@ impl SegmentedDelivery {
                     .insert(post.clone(), (*next).with_attempt(attempt));
             }
             Advance::Ready => {
-                self.cache.mark_stage_ready(post, active.pending.generation);
+                self.cache.mark_stage_ready_for_playback(
+                    post,
+                    active.pending.generation,
+                    &active.pending.playback_manifest,
+                );
             }
         }
         Ok(())

@@ -131,6 +131,7 @@ fn empty_record(generation: u64, item: &SegmentedFocusItem) -> FocusRecord {
         representation_id: item.representation_id.clone(),
         sources: Vec::new(),
         root_source: None,
+        playback_manifest_source: None,
         protected: false,
         snapshot: SegmentedSnapshot::default(),
         objects: Vec::new(),

@@ -1,56 +1,29 @@
-use super::objects::insert;
-
-use super::{
-    CachedHlsObject, HlsPreparedAssetAuthority, SegmentedAssetRevision, SegmentedCache,
-    SegmentedPhase, SegmentedSnapshot,
-};
+use super::{SegmentedCache, SegmentedPhase, SegmentedSnapshot};
 use ghostr_engine::PostId;
 
+mod publication;
+
 impl SegmentedCache {
+    pub(crate) fn mark_stage_ready_for_playback(
+        &self,
+        post: &PostId,
+        generation: u64,
+        playback_manifest: &str,
+    ) -> bool {
+        let published =
+            publication::publish_ready(&mut self.lock(), post, generation, playback_manifest);
+        if published {
+            self.changed.notify_waiters();
+        }
+        published
+    }
+
+    #[cfg(test)]
     pub(crate) fn mark_stage_ready(&self, post: &PostId, generation: u64) -> bool {
-        let mut state = self.lock();
-        let Some(record) = state.focus.get_mut(post) else {
+        let Some(root) = self.root_source(post) else {
             return false;
         };
-        if record.generation != generation
-            || record.preparing.is_some()
-            || record.assembly_bytes != 0
-            || !record.staged.iter().all(|object| object.is_assembled())
-        {
-            return false;
-        }
-        let staged = core::mem::take(&mut record.staged);
-        record.reserved_bytes = 0;
-        let staged = staged
-            .into_iter()
-            .map(|object| object.into_prepared())
-            .collect::<Option<Vec<_>>>()
-            .expect("validated complete HLS objects");
-        let keys = staged
-            .iter()
-            .map(|prepared| prepared.object.request_url.clone())
-            .collect::<Vec<_>>();
-        for prepared in staged {
-            let key = prepared.object.request_url.clone();
-            insert(&mut state, key, CachedHlsObject::from_prepared(prepared));
-        }
-        let revision = SegmentedAssetRevision::allocate(&mut state.last_asset_revision);
-        let record = state
-            .focus
-            .get_mut(post)
-            .expect("validated HLS focus record");
-        record.objects = keys;
-        record.snapshot.phase = SegmentedPhase::Ready;
-        record.snapshot.eta_ms = Some(0);
-        record.snapshot.detail = None;
-        record.snapshot.authority = Some(HlsPreparedAssetAuthority::new(
-            post.clone(),
-            record.representation_id.clone(),
-            revision,
-        ));
-        drop(state);
-        self.changed.notify_waiters();
-        true
+        self.mark_stage_ready_for_playback(post, generation, &root)
     }
 
     pub(crate) fn mark_stage_failed(&self, post: &PostId, generation: u64, detail: String) -> bool {
@@ -68,6 +41,7 @@ impl SegmentedCache {
         record.staged.clear();
         record.preparing = None;
         record.root_source = None;
+        record.playback_manifest_source = None;
         record.reserved_bytes = 0;
         record.assembly_bytes = 0;
         record.snapshot = SegmentedSnapshot::default();
@@ -143,6 +117,7 @@ impl SegmentedCache {
         if phase == SegmentedPhase::Failed {
             record.staged.clear();
             record.root_source = None;
+            record.playback_manifest_source = None;
             record.reserved_bytes = 0;
             record.assembly_bytes = 0;
             record.snapshot.bytes_present = 0;

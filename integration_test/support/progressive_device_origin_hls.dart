@@ -11,12 +11,17 @@ extension ProgressiveDeviceOriginHls on ProgressiveDeviceOrigin {
   Future<bool> _handleHls(HttpRequest request) async {
     final parts = request.uri.pathSegments;
     if (parts.length != 3 || parts.first != 'hls') return false;
-    final bytes = _hlsAsset(parts.last);
+    final bytes = ProgressiveDeviceHlsAssets.resolve(parts[1], parts.last);
     if (bytes == null) {
       request.response.statusCode = HttpStatus.notFound;
       await request.response.close();
       return true;
     }
+    await _serveHls(request, bytes);
+    return true;
+  }
+
+  Future<void> _serveHls(HttpRequest request, List<int> bytes) async {
     final entry = ProgressiveOriginRequest(
       request.method,
       request.uri.path,
@@ -26,13 +31,12 @@ extension ProgressiveDeviceOriginHls on ProgressiveDeviceOrigin {
     requests.add(entry);
     _requestSequences[entry] = ++_nextRequestSequence;
     await _writeHls(request, entry, bytes);
-    return true;
   }
 
   Future<void> _writeHls(
     HttpRequest request,
     ProgressiveOriginRequest entry,
-    Uint8List bytes,
+    List<int> bytes,
   ) async {
     final response = request.response;
     response.headers.contentType = _hlsContentType(request.uri.path);
@@ -44,13 +48,6 @@ extension ProgressiveDeviceOriginHls on ProgressiveDeviceOrigin {
     entry._finish(ProgressiveOriginRequestOutcome.completed, _clock.elapsed);
     _completed.add(entry);
   }
-}
-
-Uint8List? _hlsAsset(String asset) {
-  if (asset == 'index.m3u8') {
-    return Uint8List.fromList(utf8.encode(DeterministicHlsFixture.playlist));
-  }
-  return DeterministicHlsFixture.assets[asset];
 }
 
 ContentType _hlsContentType(String path) => path.endsWith('.m3u8')

@@ -50,6 +50,7 @@ fn invalidate_references(state: &mut CacheState, key: &str) -> Vec<(PostId, u64)
 
 fn invalidate(record: &mut FocusRecord) {
     record.root_source = None;
+    record.playback_manifest_source = None;
     record.objects.clear();
     record.staged.clear();
     record.preparing = None;

@@ -47,7 +47,16 @@ impl PreparedAuthorityFixture {
     }
 
     pub(super) fn publish(&self, generation: u64, body: &[u8]) -> CachedHlsGeneration {
-        let object = object(&self.root, body);
+        self.stage(generation, &self.root, body);
+        assert!(self.cache.mark_stage_ready(&self.post, generation));
+        self.cache
+            .object(&self.root)
+            .expect("published object")
+            .generation()
+    }
+
+    pub(super) fn stage(&self, generation: u64, url: &str, body: &[u8]) {
+        let object = object(url, body);
         assert!(self.cache.mark_stage_preparing(
             &self.post,
             generation,
@@ -58,11 +67,6 @@ impl PreparedAuthorityFixture {
             .cache
             .store_stage_object(&self.post, generation, object)
             .is_some());
-        assert!(self.cache.mark_stage_ready(&self.post, generation));
-        self.cache
-            .object(&self.root)
-            .expect("published object")
-            .generation()
     }
 
     pub(super) fn authority(&self) -> HlsPreparedAssetAuthority {

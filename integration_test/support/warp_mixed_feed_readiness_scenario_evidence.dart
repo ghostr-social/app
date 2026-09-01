@@ -45,7 +45,7 @@ String _evidence(WarpMixedFeedRuntime runtime) {
   return 'Mixed WARP timeout: state=${runtime.graph.cubit.state.runtimeType}, '
       'focus=${focuses.join('|')}, '
       'delivery=${runtime.graph.deliveryProbe.evidence}, '
-      'hlsManifest=${runtime.resources.origin.hlsRequestsFor('index.m3u8')}, '
+      'hlsRequests=${_hlsRequestEvidence(runtime.resources.origin)}, '
       'hlsSegment=${runtime.resources.origin.hlsRequestsFor('index0.m4s')}.';
 }
 
@@ -64,7 +64,9 @@ void _reportHlsFrame(
     'frameUs=${frame.inMicroseconds} '
     'gatewayAcquisitions=${runtime.hlsGateway.acquisitions.length} '
     'activeLeases=${runtime.hlsGateway.activeFor(lease.deliveryId).length} '
-    'manifestRequests=${origin.hlsRequestsFor('index.m3u8')} '
+    'rootRequests=${origin.hlsRequestsFor('index.m3u8')} '
+    'selectedRequests=${origin.hlsRequestsFor('selected.m3u8')} '
+    'alternateRequests=${origin.hlsRequestsFor('alternate.m3u8')} '
     'initRequests=${origin.hlsRequestsFor('init.mp4')} '
     'segment0Requests=${origin.hlsRequestsFor('index0.m4s')} '
     'rescued=${_firstRescueAfter(runtime, focus.sequence) != null}',

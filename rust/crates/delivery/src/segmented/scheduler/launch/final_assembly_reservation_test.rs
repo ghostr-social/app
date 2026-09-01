@@ -44,6 +44,7 @@ fn pending() -> Pending {
         generation_restarts: 0,
         source_index: 0,
         root_source: URL.to_owned(),
+        playback_manifest: URL.to_owned(),
         stage: HlsBootstrapStage::Initialization,
         url: URL.to_owned(),
         after_init: None,

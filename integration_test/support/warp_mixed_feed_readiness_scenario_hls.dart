@@ -57,7 +57,10 @@ void _expectStableHls(WarpMixedFeedRuntime runtime, PlaybackFocus focus) {
   );
   expect(runtime.graph.telemetry.probe.firstFrameLatency(focus), isNotNull);
   expect(find.text('Video unavailable'), findsNothing);
-  expect(runtime.resources.origin.hlsRequestsFor('index.m3u8'), greaterThan(0));
+  _expectSelectedHlsRequests(
+    runtime,
+    _hlsRequestEvidence(runtime.resources.origin),
+  );
   expect(runtime.resources.origin.hlsRequestsFor('index0.m4s'), greaterThan(0));
 }
 

@@ -119,6 +119,7 @@ struct FocusRecord {
     representation_id: ghostr_engine::representation::RepresentationId,
     sources: Vec<String>,
     root_source: Option<String>,
+    playback_manifest_source: Option<String>,
     protected: bool,
     snapshot: SegmentedSnapshot,
     objects: Vec<String>,

@@ -6,12 +6,13 @@ use core::sync::atomic::Ordering;
 
 pub(super) async fn manifest(state: State<HlsOrigin>) -> Response<Body> {
     if state.master {
-        return response(
-            &state,
-            "root",
-            "application/vnd.apple.mpegurl",
-            b"#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1000000\nchild.m3u8\n",
-        );
+        let body = if state.multivariant {
+            b"#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1000000\nchild.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=5000000\nalternate.m3u8\n"
+                .as_slice()
+        } else {
+            b"#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1000000\nchild.m3u8\n".as_slice()
+        };
+        return response(&state, "root", "application/vnd.apple.mpegurl", body);
     }
     response(
         &state,

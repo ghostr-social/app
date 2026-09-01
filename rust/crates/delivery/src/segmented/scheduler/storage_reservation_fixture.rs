@@ -35,6 +35,7 @@ pub(super) fn pending(post: &str) -> Pending {
         generation_restarts: 0,
         source_index: 0,
         root_source: format!("https://{post}.example/root.m3u8"),
+        playback_manifest: format!("https://{post}.example/root.m3u8"),
         stage: HlsBootstrapStage::Initialization,
         url: format!("https://{post}.example/init.mp4"),
         after_init: Some(format!("https://{post}.example/first.m4s")),

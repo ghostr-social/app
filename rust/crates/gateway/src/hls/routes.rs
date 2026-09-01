@@ -15,6 +15,8 @@ use reqwest::Url;
 use std::sync::Arc;
 
 pub(crate) use crate::hls::asset_delivery::asset;
+mod root;
+pub(crate) use root::root_manifest;
 
 #[cfg(test)]
 mod tests;
@@ -25,36 +27,6 @@ const HLS_CONTENT_TYPE: &str = "application/vnd.apple.mpegurl";
 enum CacheUse {
     Fresh,
     Existing,
-}
-
-pub(crate) async fn root_manifest(
-    State(state): State<Arc<GatewayHttpState>>,
-    Path(raw_session): Path<String>,
-) -> Result<Response<Body>, StatusCode> {
-    let session = HlsSessionId::parse(&raw_session).ok_or(StatusCode::NOT_FOUND)?;
-    let binding = state
-        .hls_sessions
-        .playback_binding(&session)
-        .await
-        .ok_or(StatusCode::NOT_FOUND)?;
-    let sources = match binding {
-        HlsPlaybackBinding::Prepared(asset) => {
-            let manifest = prepared_manifest(&state, &session, &asset, asset.root_source())
-                .await
-                .map_err(|error| {
-                    log::warn!("Prepared HLS manifest failed: {error:#}");
-                    StatusCode::BAD_GATEWAY
-                })?;
-            return manifest_response(manifest);
-        }
-        HlsPlaybackBinding::Unprepared(sources) => sources,
-    };
-    for source in sources {
-        if let Ok(manifest) = fetch_manifest(&state, &session, source, CacheUse::Fresh).await {
-            return manifest_response(manifest);
-        }
-    }
-    Err(StatusCode::BAD_GATEWAY)
 }
 
 pub(crate) async fn nested_manifest(

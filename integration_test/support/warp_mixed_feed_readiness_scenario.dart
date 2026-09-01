@@ -26,6 +26,7 @@ part 'warp_mixed_feed_readiness_scenario_evidence.dart';
 part 'warp_mixed_feed_readiness_scenario_state_evidence.dart';
 part 'warp_mixed_feed_readiness_scenario_hls.dart';
 part 'warp_mixed_feed_readiness_scenario_hls_preparation.dart';
+part 'warp_mixed_feed_readiness_scenario_hls_requests.dart';
 part 'warp_mixed_feed_readiness_scenario_hls_cleanup.dart';
 part 'warp_mixed_feed_readiness_scenario_reserve.dart';
 
@@ -85,16 +86,4 @@ Future<VideoDeliverySnapshot> _waitForStructuralHls(
   expect(_hasPresented(runtime, 1), isFalse);
   _reportHlsState(runtime, structural!, 'beforeSwipe');
   return structural!;
-}
-
-Future<void> _consumeThird(
-  WidgetTester tester,
-  WarpMixedFeedRuntime runtime,
-) async {
-  final cursor = _focusCursor(runtime);
-  await _swipeUp(tester);
-  final focus = await _waitForFocus(tester, runtime, 2, after: cursor);
-  await _waitForNativeFrame(tester, runtime, focus);
-  expect(runtime.graph.focus.hadTransportRescue, isFalse);
-  expect(find.text('Video unavailable'), findsNothing);
 }

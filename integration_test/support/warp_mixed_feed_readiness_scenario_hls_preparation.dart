@@ -3,8 +3,7 @@ part of 'warp_mixed_feed_readiness_scenario.dart';
 typedef _PreparedHlsEvidence = ({
   WarpHlsLeaseEvidence lease,
   VideoPlayerController controller,
-  int manifestRequests,
-  int initRequests,
+  _HlsRequestEvidence requests,
 });
 
 Future<_PreparedHlsEvidence> _waitForPreparedHls(
@@ -16,17 +15,16 @@ Future<_PreparedHlsEvidence> _waitForPreparedHls(
     final origin = runtime.resources.origin;
     return _isPlayerReady(runtime, 1) &&
         runtime.hlsGateway.activeFor(deliveryId).length == 1 &&
-        origin.hlsRequestsFor('index.m3u8') > 0 &&
-        origin.hlsRequestsFor('init.mp4') > 0 &&
-        origin.hlsRequestsFor('index0.m4s') > 0;
+        _hasPreparedHlsRequests(origin);
   });
   expect(_hasPresented(runtime, 1), isFalse, reason: _evidence(runtime));
   final origin = runtime.resources.origin;
+  final requests = _hlsRequestEvidence(origin);
+  _expectSelectedHlsRequests(runtime, requests);
   return (
     lease: runtime.hlsGateway.activeFor(deliveryId).single,
     controller: _hlsController(tester, runtime, deliveryId),
-    manifestRequests: origin.hlsRequestsFor('index.m3u8'),
-    initRequests: origin.hlsRequestsFor('init.mp4'),
+    requests: requests,
   );
 }
 
@@ -53,8 +51,9 @@ void _expectPreparedHlsHandoff(
     reason: _evidence(runtime),
   );
   final origin = runtime.resources.origin;
-  expect(origin.hlsRequestsFor('index.m3u8'), prepared.manifestRequests);
-  expect(origin.hlsRequestsFor('init.mp4'), prepared.initRequests);
+  final requests = _hlsRequestEvidence(origin);
+  _expectSelectedHlsRequests(runtime, requests);
+  expect(requests, prepared.requests, reason: _evidence(runtime));
 }
 
 VideoPlayerController _hlsController(

@@ -12,7 +12,7 @@ Future<List<Nip01Event>> signedWarpMixedFeedEvents(
     final sources = [
       _MixedSource(origin.urlFor('current'), 'current', 'video/mp4'),
       _MixedSource(
-        origin.hlsUrlFor('hls'),
+        origin.hlsUrlFor('multivariant'),
         'hls',
         'application/vnd.apple.mpegurl',
       ),

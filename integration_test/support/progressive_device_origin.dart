@@ -5,7 +5,7 @@ import 'dart:io';
 import 'dart:math' show max;
 import 'dart:typed_data';
 
-import 'deterministic_hls_fixture.dart';
+import 'progressive_device_origin_hls_assets.dart';
 import 'progressive_mp4_fixture.dart';
 import 'progressive_origin_pacing.dart';
 

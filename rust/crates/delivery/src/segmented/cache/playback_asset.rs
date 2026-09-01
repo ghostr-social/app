@@ -1,9 +1,13 @@
-use super::{CachedHlsObject, HlsPreparedAssetAuthority, SegmentedCache, SegmentedPhase};
+use super::{
+    CacheState, CachedHlsObject, FocusRecord, HlsPreparedAssetAuthority, SegmentedCache,
+    SegmentedPhase,
+};
 
 #[derive(Clone)]
 pub struct PreparedHlsPlaybackAsset {
     authority: HlsPreparedAssetAuthority,
     root_source: String,
+    playback_manifest_source: String,
     objects: Vec<PreparedHlsPlaybackObject>,
 }
 
@@ -22,11 +26,20 @@ impl PreparedHlsPlaybackAsset {
         &self.root_source
     }
 
+    pub fn playback_manifest_source(&self) -> &str {
+        &self.playback_manifest_source
+    }
+
     pub fn object(&self, url: &str) -> Option<CachedHlsObject> {
         self.objects
             .iter()
             .find(|known| known.matches(url))
             .map(|known| known.object.clone())
+    }
+
+    fn contains_required_manifests(&self) -> bool {
+        self.object(self.root_source()).is_some()
+            && self.object(self.playback_manifest_source()).is_some()
     }
 }
 
@@ -48,27 +61,47 @@ impl SegmentedCache {
     ) -> Option<PreparedHlsPlaybackAsset> {
         let state = self.lock();
         let record = state.focus.get(authority.post())?;
-        if record.snapshot.phase != SegmentedPhase::Ready
-            || record.snapshot.authority.as_ref() != Some(authority)
-            || record.sources != sources
-        {
-            return None;
-        }
-        let objects = record
-            .objects
-            .iter()
-            .map(|key| {
-                Some(PreparedHlsPlaybackObject {
-                    request_url: key.clone(),
-                    object: state.objects.get(key)?.clone(),
-                })
-            })
-            .collect::<Option<Vec<_>>>()?;
-        let asset = PreparedHlsPlaybackAsset {
-            authority: authority.clone(),
-            root_source: record.root_source.clone()?,
-            objects,
-        };
-        asset.object(asset.root_source()).map(|_| asset)
+        prepared_record_matches(record, authority, sources)
+            .then(|| captured_asset(&state, record, authority))?
     }
+}
+
+fn prepared_record_matches(
+    record: &FocusRecord,
+    authority: &HlsPreparedAssetAuthority,
+    sources: &[String],
+) -> bool {
+    record.snapshot.phase == SegmentedPhase::Ready
+        && record.snapshot.authority.as_ref() == Some(authority)
+        && record.sources == sources
+}
+
+fn captured_asset(
+    state: &CacheState,
+    record: &FocusRecord,
+    authority: &HlsPreparedAssetAuthority,
+) -> Option<PreparedHlsPlaybackAsset> {
+    let asset = PreparedHlsPlaybackAsset {
+        authority: authority.clone(),
+        root_source: record.root_source.clone()?,
+        playback_manifest_source: record.playback_manifest_source.clone()?,
+        objects: captured_objects(state, record)?,
+    };
+    asset.contains_required_manifests().then_some(asset)
+}
+
+fn captured_objects(
+    state: &CacheState,
+    record: &FocusRecord,
+) -> Option<Vec<PreparedHlsPlaybackObject>> {
+    record
+        .objects
+        .iter()
+        .map(|key| {
+            Some(PreparedHlsPlaybackObject {
+                request_url: key.clone(),
+                object: state.objects.get(key)?.clone(),
+            })
+        })
+        .collect()
 }

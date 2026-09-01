@@ -75,3 +75,15 @@ WarpPlanEvidence _reportHlsReserve(
   expect(reserve.ready, greaterThanOrEqualTo(1));
   return record;
 }
+
+Future<void> _consumeThird(
+  WidgetTester tester,
+  WarpMixedFeedRuntime runtime,
+) async {
+  final cursor = _focusCursor(runtime);
+  await _swipeUp(tester);
+  final focus = await _waitForFocus(tester, runtime, 2, after: cursor);
+  await _waitForNativeFrame(tester, runtime, focus);
+  expect(runtime.graph.focus.hadTransportRescue, isFalse);
+  expect(find.text('Video unavailable'), findsNothing);
+}

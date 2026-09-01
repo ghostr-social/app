@@ -11,6 +11,7 @@ pub(super) struct Pending {
     pub generation_restarts: u8,
     pub source_index: usize,
     pub root_source: String,
+    pub playback_manifest: String,
     pub stage: HlsBootstrapStage,
     pub url: String,
     pub after_init: Option<String>,
@@ -30,6 +31,7 @@ impl Pending {
             generation_restarts: 0,
             source_index,
             root_source: url.clone(),
+            playback_manifest: url.clone(),
             stage: HlsBootstrapStage::RootManifest,
             url,
             after_init: None,
@@ -89,9 +91,11 @@ impl Pending {
     fn advance_manifest(&self, object: &PreparedObject) -> Result<Advance> {
         match inspect_hls_bootstrap(&object.body, &object.final_url)? {
             HlsBootstrap::Master { variant } if self.stage == HlsBootstrapStage::RootManifest => {
+                let playback_manifest = variant.to_string();
                 Ok(Advance::Pending(Box::new(Self {
                     stage: HlsBootstrapStage::ChildPlaylist,
-                    url: variant.to_string(),
+                    url: playback_manifest.clone(),
+                    playback_manifest,
                     after_init: None,
                     continuation: None,
                     ..self.clone()

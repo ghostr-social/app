@@ -13,31 +13,37 @@ pub struct HlsOrigin {
     hits: Arc<AtomicUsize>,
     paths: Arc<Mutex<Vec<&'static str>>>,
     master: bool,
+    multivariant: bool,
     cacheable: bool,
 }
 
 impl HlsOrigin {
     pub async fn start() -> (Self, String) {
-        Self::start_with(false, false).await
+        Self::start_with(false, false, false).await
     }
 
     pub async fn start_master() -> (Self, String) {
-        Self::start_with(true, false).await
+        Self::start_with(true, false, false).await
     }
 
     pub async fn start_cacheable() -> (Self, String) {
-        Self::start_with(false, true).await
+        Self::start_with(false, false, true).await
     }
 
     pub async fn start_cacheable_master() -> (Self, String) {
-        Self::start_with(true, true).await
+        Self::start_with(true, false, true).await
     }
 
-    async fn start_with(master: bool, cacheable: bool) -> (Self, String) {
+    pub async fn start_cacheable_multivariant() -> (Self, String) {
+        Self::start_with(true, true, true).await
+    }
+
+    async fn start_with(master: bool, multivariant: bool, cacheable: bool) -> (Self, String) {
         let origin = Self {
             hits: Arc::new(AtomicUsize::new(0)),
             paths: Arc::new(Mutex::new(Vec::new())),
             master,
+            multivariant,
             cacheable,
         };
         let listener = TcpListener::bind("127.0.0.1:0")

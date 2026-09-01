@@ -13,6 +13,7 @@ mod prepared_authority_capture_test;
 mod prepared_authority_fixture;
 mod prepared_authority_publication_test;
 mod prepared_authority_retirement_test;
+mod prepared_playback_manifest_capture_test;
 mod protected_shared_reclaim_test;
 mod source_roster_owner_removal_test;
 mod source_roster_reuse_test;
