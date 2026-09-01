@@ -18,16 +18,10 @@ mod inflight_reserve_wait;
 mod orchestration;
 #[path = "warp_planner_probe_history_test.rs"]
 mod probe_history;
-#[path = "warp_range_alias_generation_replay_test.rs"]
-mod range_alias_generation_replay;
 #[path = "warp_planner_request_authority_test.rs"]
 mod request_authority;
 #[path = "warp_planner_request_occupancy_test.rs"]
 mod request_occupancy;
-#[path = "warp_planner_reserve_replay_policy_test.rs"]
-mod reserve_replay_policy;
-#[path = "warp_planner_reserve_replenishment_selection_test.rs"]
-mod reserve_replenishment_selection;
 #[path = "warp_planner_semantic_enforcement_test.rs"]
 mod semantic_enforcement;
 #[path = "warp_streamable_partial_fixture.rs"]

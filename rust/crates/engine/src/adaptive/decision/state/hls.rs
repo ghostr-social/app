@@ -1,9 +1,7 @@
 use super::super::privacy::DecisionPrivacy;
 use crate::adaptive::{
-    FeedOffset, HlsBootstrapStage, HlsBootstrapState, HlsCandidateSnapshot, HlsObjectCursor,
-    ViewProbability,
+    HlsBootstrapStage, HlsBootstrapState, HlsCandidateSnapshot, HlsObjectCursor,
 };
-use crate::{ActionId, PostId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -56,19 +54,6 @@ impl HlsCandidateState {
             state: HlsState::capture(&value.state, privacy),
         }
     }
-
-    pub(super) fn snapshot(&self) -> HlsCandidateSnapshot {
-        HlsCandidateSnapshot {
-            post: PostId::new(&self.post),
-            feed_offset: FeedOffset::new(self.feed_offset),
-            view_probability: ViewProbability::new(self.view_probability)
-                .expect("captured probability remains valid"),
-            startup_value_ms: self.startup_value_ms,
-            cursor: self.cursor,
-            player_preparation: self.player_preparation,
-            state: self.state.snapshot(),
-        }
-    }
 }
 
 const fn is_zero(value: &u64) -> bool {
@@ -101,30 +86,6 @@ impl HlsState {
             },
             HlsBootstrapState::Ready => Self::Ready,
             HlsBootstrapState::Failed => Self::Failed,
-        }
-    }
-
-    fn snapshot(&self) -> HlsBootstrapState {
-        match self {
-            Self::Pending { stage, source } => HlsBootstrapState::Pending {
-                stage: *stage,
-                source: source.clone(),
-            },
-            Self::Active {
-                action_id,
-                stage,
-                source,
-                committed_until_ms,
-                cancelling,
-            } => HlsBootstrapState::Active {
-                action: ActionId::new(*action_id),
-                stage: *stage,
-                source: source.clone(),
-                committed_until_ms: *committed_until_ms,
-                cancelling: *cancelling,
-            },
-            Self::Ready => HlsBootstrapState::Ready,
-            Self::Failed => HlsBootstrapState::Failed,
         }
     }
 }

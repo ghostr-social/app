@@ -42,7 +42,7 @@ fn open_body_failures_lower_only_continuation_success() {
 }
 
 fn promotion_success_bps(origins: &OriginModel) -> u16 {
-    let (_, planned) = planned_with_model(Some(200_000), false, origins);
+    let (_, planned) = planned_with_model(Some(200_000), origins);
     planned
         .generated
         .actions

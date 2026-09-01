@@ -10,7 +10,6 @@ pub(in crate::adaptive::decision) struct WarpCapture {
     pub decision: RecordedWarpDecision,
     pub admissible_candidates: Vec<String>,
     pub chosen_action: Option<DecisionAction>,
-    pub random_seed: u64,
 }
 
 pub(in crate::adaptive::decision) fn capture(
@@ -23,11 +22,9 @@ pub(in crate::adaptive::decision) fn capture(
         .map(|item| action(item, value.prices, privacy));
     let chosen_action = selected.as_ref().map(project);
     let evaluation = value.evaluation.map(RecordedTwinEvaluation::from);
-    let random_seed = value.common_random_seed;
     WarpCapture {
         admissible_candidates: admissible(value, privacy),
         chosen_action,
-        random_seed,
         decision: RecordedWarpDecision {
             selected,
             admissible_actions: recorded_actions(value, &value.admissible_action_ids, privacy),

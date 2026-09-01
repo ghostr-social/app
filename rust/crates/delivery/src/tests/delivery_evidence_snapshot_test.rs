@@ -60,9 +60,7 @@ fn delivery_evidence_json_is_bounded_versioned_and_privacy_safe() {
         serde_json::from_str(&decisions).expect("valid test fixture");
     assert_eq!(decisions["schema_version"], 1);
     assert!(decisions["decisions"]["records"].is_array());
-    assert_eq!(decisions["integrity"][0]["sequence"], sequence);
-    assert_eq!(decisions["integrity"][0]["status"], "verified");
-    assert_eq!(decisions["integrity"][0]["search_status"], "verified");
+    assert_eq!(decisions["decisions"]["records"][0]["sequence"], sequence);
 }
 
 fn plan() -> AllocationPlan {

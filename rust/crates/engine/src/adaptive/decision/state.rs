@@ -5,13 +5,12 @@ mod request;
 
 use super::privacy::DecisionPrivacy;
 use candidate::CandidateState;
-use codes::{authority, authority_code, confidence, confidence_code, phase, phase_code};
+use codes::{authority_code, confidence_code, phase_code};
 use serde::{Deserialize, Serialize};
 
 use crate::adaptive::{
     NavigationSnapshot, NetworkSnapshot, PlayabilitySnapshot, PlaybackSnapshot, StorageSnapshot,
 };
-use crate::PostId;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub(super) struct ReplayState {
@@ -55,28 +54,6 @@ impl ReplayState {
                 .collect(),
         }
     }
-
-    pub(super) fn snapshot(&self) -> PlayabilitySnapshot {
-        PlayabilitySnapshot {
-            observed_at_ms: self.observed_at_ms,
-            commitment_ms: self.commitment_ms,
-            request_slice_bytes: self.request_slice_bytes,
-            playback: self.playback.snapshot(),
-            network: self.network.snapshot(),
-            storage: StorageSnapshot::new(self.storage.budget_bytes, self.storage.used_bytes),
-            navigation: self.navigation.snapshot(),
-            candidates: self
-                .candidates
-                .iter()
-                .map(CandidateState::snapshot)
-                .collect(),
-            hls_candidates: self
-                .hls_candidates
-                .iter()
-                .map(hls::HlsCandidateState::snapshot)
-                .collect(),
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -94,15 +71,6 @@ impl PlaybackState {
             authority: authority_code(value.authority),
             phase: phase_code(value.phase),
             buffer_ahead_ms: value.buffer_ahead_ms,
-        }
-    }
-
-    fn snapshot(&self) -> PlaybackSnapshot {
-        PlaybackSnapshot {
-            current: PostId::new(&self.current),
-            authority: authority(self.authority),
-            phase: phase(self.phase),
-            buffer_ahead_ms: self.buffer_ahead_ms,
         }
     }
 }
@@ -133,20 +101,6 @@ impl NetworkState {
             confidence: confidence_code(value.confidence),
         }
     }
-
-    fn snapshot(self) -> NetworkSnapshot {
-        NetworkSnapshot {
-            throughput_bps: self.throughput_bps,
-            rtt_ms: self.rtt_ms,
-            packet_loss_bps: self.packet_loss_bps,
-            connection_capacity: self.connection_capacity,
-            connection_ceiling: self.connection_ceiling,
-            per_authority_request_limit: self
-                .per_authority_request_limit
-                .unwrap_or(self.connection_ceiling),
-            confidence: confidence(self.confidence),
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -175,13 +129,6 @@ impl NavigationState {
         Self {
             forward: value.forward_swipes_per_minute,
             backward: value.backward_swipes_per_minute,
-        }
-    }
-
-    fn snapshot(self) -> NavigationSnapshot {
-        NavigationSnapshot {
-            forward_swipes_per_minute: self.forward,
-            backward_swipes_per_minute: self.backward,
         }
     }
 }

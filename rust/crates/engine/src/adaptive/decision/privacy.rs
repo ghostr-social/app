@@ -10,7 +10,6 @@ pub struct DecisionPrivacy {
 #[derive(Clone)]
 enum PrivacyMode {
     Key([u8; 32]),
-    Passthrough,
 }
 
 impl DecisionPrivacy {
@@ -20,20 +19,11 @@ impl DecisionPrivacy {
         }
     }
 
-    pub(super) const fn passthrough() -> Self {
-        Self {
-            mode: PrivacyMode::Passthrough,
-        }
-    }
-
     pub(super) fn post(&self, value: &str) -> String {
         self.digest(b"post", value)
     }
 
     pub(super) fn source(&self, value: &str) -> String {
-        if matches!(self.mode, PrivacyMode::Passthrough) {
-            return value.to_owned();
-        }
         let Some(authority) = RequestAuthority::from_url(value) else {
             return self.digest(b"invalid-source", value);
         };
@@ -43,10 +33,6 @@ impl DecisionPrivacy {
     }
 
     pub(super) fn authority(&self, value: &str) -> String {
-        if matches!(self.mode, PrivacyMode::Passthrough) {
-            return RequestAuthority::from_url(value)
-                .map_or_else(|| value.to_owned(), |item| item.as_str().to_owned());
-        }
         let Some(authority) = RequestAuthority::from_url(value) else {
             return format!(
                 "https://{}.invalid",
@@ -64,9 +50,7 @@ impl DecisionPrivacy {
     }
 
     fn digest(&self, domain: &[u8], value: &str) -> String {
-        let PrivacyMode::Key(key) = self.mode else {
-            return value.to_owned();
-        };
+        let PrivacyMode::Key(key) = self.mode;
         let mut digest = Sha256::new();
         digest.update(key);
         digest.update(domain);

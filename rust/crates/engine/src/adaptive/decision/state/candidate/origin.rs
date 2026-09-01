@@ -23,15 +23,4 @@ impl OriginState {
             failure_bps: value.failure_bps,
         }
     }
-
-    pub(super) fn origin(&self) -> OriginHealth {
-        OriginHealth {
-            source: self.source.clone(),
-            available: self.available,
-            throughput_bps: self.throughput_bps,
-            rtt_ms: self.rtt_ms,
-            packet_loss_bps: self.packet_loss_bps,
-            failure_bps: self.failure_bps,
-        }
-    }
 }

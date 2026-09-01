@@ -136,13 +136,3 @@ pub enum ProbeClaimRefusal {
     EvidenceComplete,
     IdentityMissing,
 }
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum DecisionReplayStatus {
-    Verified,
-    UnsupportedSchema,
-    StateHashMismatch,
-    PlanMismatch,
-    AdvancedReplayUnavailable,
-}

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::adaptive::{PromotionGrant, RetrievalRequest, WholeBodyContract, WholeFetchReason};
+use crate::adaptive::{RetrievalRequest, WholeBodyContract, WholeFetchReason};
 use crate::media_timeline::{StartupFootprint, StartupProvenance};
 use crate::ByteRange;
 
@@ -16,10 +16,6 @@ impl RangeState {
             start: value.start,
             end: value.end,
         }
-    }
-
-    pub(super) fn range(self) -> ByteRange {
-        ByteRange::new(self.start, self.end)
     }
 }
 
@@ -45,19 +41,6 @@ impl StartupState {
                 StartupProvenance::ClassicMp4V1 => 1,
             },
         }
-    }
-
-    pub(super) fn startup(&self) -> StartupFootprint {
-        let provenance = match self.provenance {
-            0 => StartupProvenance::WholeObjectV1,
-            _ => StartupProvenance::ClassicMp4V1,
-        };
-        StartupFootprint::new(
-            self.ranges.iter().copied().map(RangeState::range).collect(),
-            self.playable_ms,
-            provenance,
-        )
-        .expect("captured startup footprint remains valid")
     }
 }
 
@@ -91,50 +74,6 @@ impl RequestState {
             },
         }
     }
-
-    pub(super) fn request(self) -> RetrievalRequest {
-        match self {
-            Self::Range {
-                bytes,
-                promotion_bytes,
-                promotion_until_ms,
-            } => range_request(bytes, promotion_bytes, promotion_until_ms),
-            Self::Whole {
-                maximum_bytes,
-                exact,
-                reason,
-            } => whole_request(maximum_bytes, exact, reason),
-        }
-    }
-}
-
-fn range_request(bytes: RangeState, maximum: Option<u64>, until: Option<u64>) -> RetrievalRequest {
-    let promotion = maximum
-        .zip(until)
-        .map(|(maximum_bytes, valid_until_ms)| PromotionGrant {
-            maximum_bytes,
-            valid_until_ms,
-        });
-    RetrievalRequest::FetchRange {
-        bytes: bytes.range(),
-        promotion,
-    }
-}
-
-fn whole_request(maximum: u64, exact: bool, reason: u8) -> RetrievalRequest {
-    let contract = if exact {
-        WholeBodyContract::Exact {
-            expected_bytes: maximum,
-        }
-    } else {
-        WholeBodyContract::Capped {
-            maximum_bytes: maximum,
-        }
-    };
-    RetrievalRequest::FetchWhole {
-        contract,
-        reason: fetch_reason(reason),
-    }
 }
 
 fn reason_code(value: WholeFetchReason) -> u8 {
@@ -142,13 +81,5 @@ fn reason_code(value: WholeFetchReason) -> u8 {
         WholeFetchReason::DirectCrossover => 0,
         WholeFetchReason::PromotedResponse => 1,
         WholeFetchReason::PlannedCompletion => 2,
-    }
-}
-
-fn fetch_reason(value: u8) -> WholeFetchReason {
-    match value {
-        0 => WholeFetchReason::DirectCrossover,
-        1 => WholeFetchReason::PromotedResponse,
-        _ => WholeFetchReason::PlannedCompletion,
     }
 }

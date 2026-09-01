@@ -1,7 +1,6 @@
-use super::least_risk;
 use crate::adaptive::{
     ActionNode, BeamConfig, HardBudget, ReserveConstraint, ReserveDegradedReason, ResourcePrices,
-    SearchDecision, SearchPruneReason, WarpSearch,
+    SearchDecision, SearchPruneReason,
 };
 
 use super::super::search::ScoredSearchPlan;
@@ -86,66 +85,5 @@ impl SearchReplayInput {
 
     pub(crate) fn reserve_progress_action_ids(&self) -> &[u16] {
         &self.reserve_progress_action_ids
-    }
-
-    pub(crate) fn run(&self) -> Option<SearchDecision> {
-        match self.mode {
-            SearchReplayMode::Beam => self.run_beam(),
-            SearchReplayMode::GreedyExpansion => {
-                Some(self.run_greedy(SearchPruneReason::ExpansionLimit))
-            }
-            SearchReplayMode::GreedyLatency => {
-                Some(self.run_greedy(SearchPruneReason::PlannerLatency))
-            }
-            SearchReplayMode::LeastRisk => Some(least_risk::choose(
-                &self.nodes,
-                &self.reserve_progress_action_ids,
-            )),
-        }
-    }
-
-    fn run_beam(&self) -> Option<SearchDecision> {
-        let search = WarpSearch::new(self.beam.without_latency_limit()).with_prices(self.prices);
-        let mut cursor = ScoreCursor::new(&self.scores);
-        let mut scorer = |actions: &[ActionNode]| cursor.score(actions);
-        let decision = search.choose_first_recorded(&self.nodes, self.budget.clone(), &mut scorer);
-        cursor.complete().then_some(decision)
-    }
-
-    fn run_greedy(&self, reason: SearchPruneReason) -> SearchDecision {
-        WarpSearch::new(self.beam)
-            .with_prices(self.prices)
-            .choose_first_greedy(&self.nodes, &self.budget, reason)
-    }
-}
-
-struct ScoreCursor<'a> {
-    expected: &'a [ScoredSearchPlan],
-    next: usize,
-    mismatch: bool,
-}
-
-impl<'a> ScoreCursor<'a> {
-    const fn new(expected: &'a [ScoredSearchPlan]) -> Self {
-        Self {
-            expected,
-            next: 0,
-            mismatch: false,
-        }
-    }
-
-    fn score(&mut self, actions: &[ActionNode]) -> i64 {
-        let Some(expected) = self.expected.get(self.next) else {
-            self.mismatch = true;
-            return 0;
-        };
-        self.next += 1;
-        let ids: Vec<_> = actions.iter().map(|action| action.id).collect();
-        self.mismatch |= ids != expected.action_ids;
-        expected.score_micros
-    }
-
-    const fn complete(&self) -> bool {
-        !self.mismatch && self.next == self.expected.len()
     }
 }

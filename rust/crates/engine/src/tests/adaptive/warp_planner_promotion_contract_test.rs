@@ -1,11 +1,5 @@
-#[path = "warp_planner_promotion_contract_test/legacy_test.rs"]
-mod legacy;
 #[path = "warp_planner_promotion_contract_test/open_body_model_test.rs"]
 mod open_body_model;
-#[path = "warp_planner_promotion_contract_test/open_body_replay_test.rs"]
-mod open_body_replay;
-#[path = "decision_record_warp_promotion_replay_test.rs"]
-mod replay;
 #[path = "warp_planner_promotion_support.rs"]
 pub(super) mod support;
 use crate::adaptive::{CompletionTimes, PlannerCommand, PromotionGrant, ResourceCost};

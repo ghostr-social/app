@@ -1,7 +1,7 @@
 use super::plan_evidence::PlanEvidencePage;
 use super::{DecisionLog, DeliveryHandle, PlanEvidence, PlayerPreparationClaim};
 use crate::evaluation::EvaluationSnapshot;
-use ghostr_engine::adaptive::{AllocationPlan, DecisionRecord, DecisionReplayStatus};
+use ghostr_engine::adaptive::AllocationPlan;
 use ghostr_engine::origin_model::NetworkClass;
 use serde::Serialize;
 
@@ -19,14 +19,6 @@ struct DeliveryEvidencePage {
 struct DecisionEvidenceSnapshot {
     schema_version: u16,
     decisions: super::DecisionHistorySnapshot,
-    integrity: Vec<DecisionIntegrityEvidence>,
-}
-
-#[derive(Serialize)]
-struct DecisionIntegrityEvidence {
-    sequence: u64,
-    status: DecisionReplayStatus,
-    search_status: DecisionReplayStatus,
 }
 
 #[derive(Serialize)]
@@ -79,27 +71,10 @@ impl DeliveryHandle {
     ///
     /// Returns an error when the retained history cannot be serialized as JSON.
     pub fn decision_history_json(&self) -> serde_json::Result<String> {
-        let decisions = self.decisions.snapshot();
-        let integrity = decisions
-            .records
-            .iter()
-            .map(DecisionIntegrityEvidence::capture)
-            .collect();
         serde_json::to_string(&DecisionEvidenceSnapshot {
             schema_version: SCHEMA_VERSION,
-            decisions,
-            integrity,
+            decisions: self.decisions.snapshot(),
         })
-    }
-}
-
-impl DecisionIntegrityEvidence {
-    fn capture(record: &DecisionRecord) -> Self {
-        Self {
-            sequence: record.sequence,
-            status: record.integrity_status(),
-            search_status: record.search_integrity_status(),
-        }
     }
 }
 

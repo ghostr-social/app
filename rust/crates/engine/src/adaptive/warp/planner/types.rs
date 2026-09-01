@@ -24,7 +24,6 @@ pub struct WarpPlannerConfig {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum ReserveProgressPolicy {
-    LegacyCoverage,
     OrderedReadiness,
 }
 

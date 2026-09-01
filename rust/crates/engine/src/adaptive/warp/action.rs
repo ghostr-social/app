@@ -43,13 +43,9 @@ impl ActionForecast {
         }
     }
 
+    #[cfg(test)]
     pub(crate) const fn with_quality(mut self, gain_micros: u64) -> Self {
         self.quality_gain_micros = gain_micros;
-        self
-    }
-
-    pub(crate) const fn with_cache_reuse(mut self, probability_bps: u16) -> Self {
-        self.cache_reuse_bps = clamp_bps(probability_bps);
         self
     }
 }

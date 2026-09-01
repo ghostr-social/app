@@ -4,8 +4,6 @@ use super::RecordedHlsBootstrapStage;
 use crate::adaptive::ActionKind;
 use serde::{Deserialize, Serialize};
 
-mod restore;
-
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum RecordedWarpActionKind {

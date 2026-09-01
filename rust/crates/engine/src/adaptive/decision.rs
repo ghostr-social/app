@@ -4,10 +4,8 @@ mod advanced;
 mod executed;
 mod model;
 mod plan;
-mod plan_identity;
 mod privacy;
 mod record;
-mod replay;
 mod state;
 mod types;
 
@@ -27,8 +25,8 @@ pub use executed::ExecutedRequest;
 pub use privacy::DecisionPrivacy;
 pub use record::{DecisionRecord, DecisionRecordInput, WarpDecisionRecordInput};
 pub use types::{
-    DecisionAction, DecisionModelInput, DecisionOutcome, DecisionReplayStatus, ModelQuantiles,
-    ProbeClaimRefusal, PrunedCandidate, PrunedReason, ShadowPrices,
+    DecisionAction, DecisionModelInput, DecisionOutcome, ModelQuantiles, ProbeClaimRefusal,
+    PrunedCandidate, PrunedReason, ShadowPrices,
 };
 
 impl DecisionPrivacy {

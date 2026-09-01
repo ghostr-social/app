@@ -79,13 +79,4 @@ pub(super) fn assert_promotion_trace(handle: &DeliveryHandle, action_id: u64, va
         })
     );
     assert!(record.get("actual_resources").is_none());
-    let sequence = &record["sequence"];
-    let integrity = evidence["integrity"]
-        .as_array()
-        .expect("integrity records")
-        .iter()
-        .find(|item| item["sequence"] == *sequence)
-        .expect("promotion integrity");
-    assert_eq!(integrity["status"], "verified");
-    assert_eq!(integrity["search_status"], "verified");
 }

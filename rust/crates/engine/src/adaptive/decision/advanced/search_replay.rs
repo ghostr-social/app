@@ -4,14 +4,9 @@ use super::{
 };
 use serde::{Deserialize, Serialize};
 
-mod action;
 mod capture;
-mod reserve;
-mod run;
 
 pub(super) use capture::capture;
-pub(in crate::adaptive::decision) use reserve::verify as verify_reserve;
-pub(in crate::adaptive::decision) use run::verify;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RecordedWarpSearchInput {

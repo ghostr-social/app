@@ -18,14 +18,7 @@ impl From<RangeAliasGenerationPolicy> for RecordedRangeAliasGenerationPolicy {
     }
 }
 
-impl RecordedRangeAliasGenerationPolicy {
-    pub(super) const fn restore(self) -> RangeAliasGenerationPolicy {
-        match self {
-            Self::LegacyIndependentActions => RangeAliasGenerationPolicy::LegacyIndependentActions,
-            Self::PromotableDominance => RangeAliasGenerationPolicy::PromotableDominance,
-        }
-    }
-}
+impl RecordedRangeAliasGenerationPolicy {}
 
 pub(super) fn is_legacy_range_alias(value: &RecordedRangeAliasGenerationPolicy) -> bool {
     *value == RecordedRangeAliasGenerationPolicy::LegacyIndependentActions

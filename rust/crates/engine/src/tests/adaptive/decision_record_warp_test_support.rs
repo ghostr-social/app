@@ -7,9 +7,7 @@ use crate::adaptive::{
 use crate::tests::adaptive_support::snapshot;
 use crate::PostId;
 
-mod action;
 mod allocation;
-pub(super) use action::add_generated_action;
 pub(super) use allocation::allocation;
 
 pub(super) fn decision(

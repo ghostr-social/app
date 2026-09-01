@@ -112,29 +112,6 @@ impl HardBudget {
         self.segmented_storage
     }
 
-    pub(crate) fn from_replay(
-        state: (
-            ResourceCost,
-            u16,
-            usize,
-            BTreeMap<RequestAuthority, usize>,
-            Vec<ActionNode>,
-            Option<SegmentedStorageBudget>,
-        ),
-    ) -> Option<Self> {
-        let (remaining, request_width, per_origin_requests, origins, pending_rescue, segmented) =
-            state;
-        let budget = Self {
-            remaining,
-            request_width,
-            per_origin_requests,
-            origins,
-            pending_rescue: Vec::new(),
-            segmented_storage: segmented,
-        };
-        budget.protect(&pending_rescue)
-    }
-
     pub(in crate::adaptive::warp) const fn with_segmented_storage(
         mut self,
         budget: SegmentedStorageBudget,

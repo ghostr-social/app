@@ -2,12 +2,6 @@
 mod catalog_stale_bitrate_test;
 #[path = "warp_planner_current_hls_reserve_test.rs"]
 mod current_hls_reserve;
-#[path = "decision_record_ordered_reserve_replay_test.rs"]
-mod decision_record_ordered_reserve_replay_test;
-#[path = "decision_record_warp_retry_compatibility_test.rs"]
-mod decision_record_warp_retry_compatibility_test;
-#[path = "decision_record_warp_retry_evidence_test.rs"]
-mod decision_record_warp_retry_evidence_test;
 #[path = "warp_planner_feedback_cursor_test.rs"]
 mod feedback_cursor;
 #[path = "warp_planner_feedback_resource_revision_test.rs"]
@@ -42,14 +36,8 @@ mod hls_origin_ranking;
 mod hls_ready_reserve;
 #[path = "warp_planner_hls_stage_progress_test.rs"]
 mod hls_stage_progress;
-#[path = "warp_planner_network_class_crossover_support.rs"]
-mod network_class_crossover_support;
 #[path = "warp_planner_network_class_forecast_test.rs"]
 mod network_class_forecast;
-#[path = "warp_planner_network_class_replay_test.rs"]
-mod network_class_replay;
-#[path = "warp_planner_network_class_selection_test.rs"]
-mod network_class_selection;
 #[path = "warp_planner_network_class_support.rs"]
 mod network_class_support;
 #[path = "warp_planner_network_refill_test.rs"]

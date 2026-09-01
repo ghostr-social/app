@@ -27,8 +27,7 @@ pub(crate) use generation::{
     RangeAliasGenerationPolicy, WarpGenerationInput, WarpGenerationPolicies,
 };
 pub(crate) use planner::{
-    PlannerReplayCapsule, PlannerReplayState, ReserveProgressPolicy, SearchReplayInput,
-    SearchReplayMode,
+    PlannerReplayCapsule, ReserveProgressPolicy, SearchReplayInput, SearchReplayMode,
 };
 pub use planner::{
     RescueChanceEvidence, RescueTimingQuantile, ReserveAuthorityOccupancy, ReserveConstraint,

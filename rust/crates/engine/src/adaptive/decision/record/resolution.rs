@@ -25,11 +25,6 @@ impl DecisionRecord {
         }
         self.eventual_outcome = outcome;
         self.actual_resources = resources;
-        self.terminal_evidence_hash = Some(super::replay::terminal_identity(self));
         true
     }
 }
-
-#[cfg(test)]
-#[path = "resolution_axiom_test.rs"]
-pub(crate) mod axiom_test_support;

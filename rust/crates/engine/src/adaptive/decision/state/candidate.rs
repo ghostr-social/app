@@ -2,13 +2,9 @@ mod codes;
 mod origin;
 
 use super::request::{RangeState, RequestState, StartupState};
-use crate::adaptive::{
-    CandidateSnapshot, FeedOffset, InFlightAction, PlayableRange, PromotionOpportunity,
-    ViewProbability,
-};
+use crate::adaptive::{CandidateSnapshot, InFlightAction, PlayableRange, PromotionOpportunity};
 use crate::evidence::EvidenceAssessment;
-use crate::{ActionId, PostId};
-use codes::{layout, layout_code, preparation, preparation_code};
+use codes::{layout_code, preparation_code};
 use origin::OriginState;
 use serde::{Deserialize, Serialize};
 
@@ -81,38 +77,6 @@ impl CandidateState {
             evidence: value.evidence.clone(),
         }
     }
-
-    pub(super) fn snapshot(&self) -> CandidateSnapshot {
-        CandidateSnapshot {
-            post: PostId::new(&self.post),
-            feed_offset: FeedOffset::new(self.feed_offset),
-            view_probability: ViewProbability::new(self.view_probability)
-                .expect("captured probability remains valid"),
-            retrieval_eligible: self.retrieval_eligible,
-            total_bytes: self.total_bytes,
-            bitrate_bps: self.bitrate_bps,
-            duration_ms: self.duration_ms,
-            layout: layout(self.layout),
-            preferred_source: self.preferred_source.clone(),
-            startup: self.startup.as_ref().map(StartupState::startup),
-            player_preparation: preparation(self.player_preparation),
-            direct_playback_blocked: self.direct_playback_blocked,
-            timeline_probe: self.timeline_probe.map(PlayableState::playable),
-            playable_ranges: self
-                .playable_ranges
-                .iter()
-                .copied()
-                .map(PlayableState::playable)
-                .collect(),
-            demanded: self.demanded.map(RangeState::range),
-            present: restore_ranges(&self.present),
-            finalized: self.finalized,
-            recently_evicted: restore_ranges(&self.recently_evicted),
-            in_flight: self.in_flight.iter().map(InFlightState::action).collect(),
-            origins: self.origins.iter().map(OriginState::origin).collect(),
-            evidence: self.evidence.clone(),
-        }
-    }
 }
 
 const fn is_false(value: &bool) -> bool {
@@ -130,13 +94,6 @@ impl PlayableState {
         Self {
             bytes: RangeState::capture(value.bytes),
             playable_ms: value.playable_ms,
-        }
-    }
-
-    fn playable(self) -> PlayableRange {
-        PlayableRange {
-            bytes: self.bytes.range(),
-            playable_ms: self.playable_ms,
         }
     }
 }
@@ -169,20 +126,6 @@ impl InFlightState {
             cancelling: value.cancelling,
         }
     }
-
-    fn action(&self) -> InFlightAction {
-        InFlightAction {
-            action_id: ActionId::new(self.action_id),
-            request: self.request.request(),
-            effective_bytes: self.effective_bytes.range(),
-            reserved_storage_bytes: self.reserved_storage_bytes,
-            promotion_opportunity: self.promotion_opportunity,
-            source: self.source.clone(),
-            committed_until_ms: self.committed_until_ms,
-            identity_current: self.identity_current,
-            cancelling: self.cancelling,
-        }
-    }
 }
 
 fn map_playable(values: &[PlayableRange]) -> Vec<PlayableState> {
@@ -191,8 +134,4 @@ fn map_playable(values: &[PlayableRange]) -> Vec<PlayableState> {
 
 fn map_ranges(values: &[crate::ByteRange]) -> Vec<RangeState> {
     values.iter().copied().map(RangeState::capture).collect()
-}
-
-fn restore_ranges(values: &[RangeState]) -> Vec<crate::ByteRange> {
-    values.iter().copied().map(RangeState::range).collect()
 }

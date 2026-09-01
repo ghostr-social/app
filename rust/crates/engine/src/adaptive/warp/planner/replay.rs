@@ -1,7 +1,6 @@
-use super::{WarpPlanner, WarpPlannerConfig, WarpPlannerInput, WarpPlanningDecision};
+use super::{WarpPlanner, WarpPlannerConfig, WarpPlannerInput};
 use crate::adaptive::{
-    AllocationPlan, NetworkTokenBucket, PlannerContext, ResourcePrices, ShadowPriceController,
-    WarpGenerationPolicies,
+    AllocationPlan, NetworkTokenBucket, PlannerContext, ResourcePrices, WarpGenerationPolicies,
 };
 use crate::origin_model::OriginModel;
 
@@ -39,24 +38,6 @@ impl PlannerReplayCapsule {
             generation_policies,
             sources: sources(input),
         }
-    }
-
-    pub(crate) fn run(
-        &self,
-        snapshot: &crate::adaptive::PlayabilitySnapshot,
-    ) -> WarpPlanningDecision {
-        let mut planner = WarpPlanner {
-            config: self.config,
-            twin: crate::adaptive::DigitalTwin::new(self.config.twin),
-            prices: ShadowPriceController::from_prices(self.controller_prices),
-            network: self.network.clone(),
-            price_epoch: self.price_epoch,
-            last_feedback: self.last_feedback,
-        };
-        planner.plan_with_generation_policies(
-            WarpPlannerInput::new(snapshot, &self.base, &self.origins, &self.context),
-            self.generation_policies,
-        )
     }
 
     pub(crate) const fn complete(&self) -> bool {
@@ -102,37 +83,6 @@ impl PlannerReplayCapsule {
     pub(crate) fn sources(&self) -> &[String] {
         &self.sources
     }
-
-    pub(crate) fn restored(
-        base: AllocationPlan,
-        origins: OriginModel,
-        context: PlannerContext,
-        state: PlannerReplayState,
-        sources: Vec<String>,
-    ) -> Self {
-        Self {
-            complete: true,
-            base,
-            origins,
-            context,
-            config: state.config,
-            controller_prices: state.controller_prices,
-            network: state.network,
-            price_epoch: state.price_epoch,
-            last_feedback: state.last_feedback,
-            generation_policies: state.generation_policies,
-            sources,
-        }
-    }
-}
-
-pub(crate) struct PlannerReplayState {
-    pub config: WarpPlannerConfig,
-    pub controller_prices: ResourcePrices,
-    pub network: Option<NetworkTokenBucket>,
-    pub price_epoch: u64,
-    pub last_feedback: Option<crate::adaptive::ResourceFeedback>,
-    pub generation_policies: WarpGenerationPolicies,
 }
 
 fn sources(input: &WarpPlannerInput<'_>) -> Vec<String> {
@@ -143,7 +93,3 @@ fn sources(input: &WarpPlannerInput<'_>) -> Vec<String> {
     values.dedup();
     values
 }
-
-#[cfg(test)]
-#[path = "replay_axiom_test.rs"]
-pub(crate) mod axiom_test_support;

@@ -23,16 +23,12 @@ pub(in crate::adaptive::decision) use executed::{
 pub use hls::RecordedHlsBootstrapStage;
 pub use kind::RecordedWarpActionKind;
 use origin_intent::RecordedOriginAdmissionIntent;
-pub(in crate::adaptive::decision) use planner_replay::verify as verify_planner_replay;
 pub use planner_replay::RecordedPlannerReplayCapsule;
 pub use reserve::{
     RecordedRescueChanceEvidence, RecordedRescueTimingQuantile, RecordedReserveAuthorityOccupancy,
     RecordedReserveDegradedReason, RecordedWarpReserve,
 };
 pub use search_replay::RecordedWarpSearchInput;
-pub(in crate::adaptive::decision) use search_replay::{
-    verify as verify_search_replay, verify_reserve as verify_search_reserve,
-};
 
 use serde::{Deserialize, Serialize};
 

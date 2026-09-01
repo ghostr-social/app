@@ -11,7 +11,6 @@ impl DecisionRecord {
             return false;
         }
         self.chosen_action_id = Some(action.value());
-        self.terminal_evidence_hash = Some(super::replay::terminal_identity(self));
         true
     }
 
@@ -33,7 +32,6 @@ impl DecisionRecord {
         }
         self.chosen_action_id = Some(action.value());
         self.executed_request = Some(executed);
-        self.terminal_evidence_hash = Some(super::replay::terminal_identity(self));
         true
     }
 

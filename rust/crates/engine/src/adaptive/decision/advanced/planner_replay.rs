@@ -1,14 +1,12 @@
 mod capture;
 mod range_alias_policy;
 mod reserve_progress_policy;
-mod run;
 
 use range_alias_policy::{is_legacy_range_alias, RecordedRangeAliasGenerationPolicy};
 use reserve_progress_policy::{is_legacy_reserve_progress, RecordedReserveProgressPolicy};
 
 use crate::adaptive::{
     AllocationPlan, HlsGenerationPolicy, OriginAdmissionGenerationPolicy, PlannerContext,
-    WarpGenerationPolicies,
 };
 use crate::origin_model::OriginModel;
 use serde::{Deserialize, Serialize};
@@ -77,14 +75,7 @@ impl From<HlsGenerationPolicy> for RecordedHlsGenerationPolicy {
     }
 }
 
-impl RecordedHlsGenerationPolicy {
-    const fn restore(self) -> HlsGenerationPolicy {
-        match self {
-            Self::LegacyWholeStage => HlsGenerationPolicy::LegacyWholeStage,
-            Self::BoundedObjectCursor => HlsGenerationPolicy::BoundedObjectCursor,
-        }
-    }
-}
+impl RecordedHlsGenerationPolicy {}
 
 impl From<crate::adaptive::PromotionGenerationPolicy> for RecordedPromotionGenerationPolicy {
     fn from(value: crate::adaptive::PromotionGenerationPolicy) -> Self {
@@ -97,16 +88,7 @@ impl From<crate::adaptive::PromotionGenerationPolicy> for RecordedPromotionGener
     }
 }
 
-impl RecordedPromotionGenerationPolicy {
-    const fn restore(self) -> crate::adaptive::PromotionGenerationPolicy {
-        match self {
-            Self::LegacyLatentGrant => {
-                crate::adaptive::PromotionGenerationPolicy::LegacyLatentGrant
-            }
-            Self::ObservedResponse => crate::adaptive::PromotionGenerationPolicy::ObservedResponse,
-        }
-    }
-}
+impl RecordedPromotionGenerationPolicy {}
 
 impl From<OriginAdmissionGenerationPolicy> for RecordedOriginAdmissionGenerationPolicy {
     fn from(value: OriginAdmissionGenerationPolicy) -> Self {
@@ -117,14 +99,7 @@ impl From<OriginAdmissionGenerationPolicy> for RecordedOriginAdmissionGeneration
     }
 }
 
-impl RecordedOriginAdmissionGenerationPolicy {
-    const fn restore(self) -> OriginAdmissionGenerationPolicy {
-        match self {
-            Self::LegacyUnclassified => OriginAdmissionGenerationPolicy::LegacyUnclassified,
-            Self::TypedIntent => OriginAdmissionGenerationPolicy::TypedIntent,
-        }
-    }
-}
+impl RecordedOriginAdmissionGenerationPolicy {}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 struct RecordedPlannerConfig {
@@ -174,16 +149,6 @@ fn is_legacy_origin_admission_generation(value: &RecordedOriginAdmissionGenerati
     *value == RecordedOriginAdmissionGenerationPolicy::LegacyUnclassified
 }
 
-impl RecordedPlannerReplayCapsule {
-    fn generation_policies(&self) -> WarpGenerationPolicies {
-        WarpGenerationPolicies {
-            hls: self.hls_generation_policy.restore(),
-            promotion: self.promotion_generation_policy.restore(),
-            range_alias: self.range_alias_generation_policy.restore(),
-            origin_admission: self.origin_admission_generation_policy.restore(),
-        }
-    }
-}
+impl RecordedPlannerReplayCapsule {}
 
 pub(in crate::adaptive::decision) use capture::capture;
-pub(in crate::adaptive::decision) use run::verify;

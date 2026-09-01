@@ -13,13 +13,6 @@ impl RecordedOriginAdmissionIntent {
     pub(super) const fn is_delivery(&self) -> bool {
         matches!(self, Self::Delivery)
     }
-
-    pub(super) const fn restore(self) -> OriginAdmissionIntent {
-        match self {
-            Self::Delivery => OriginAdmissionIntent::Delivery,
-            Self::OptionalExploration => OriginAdmissionIntent::OptionalExploration,
-        }
-    }
 }
 
 impl From<OriginAdmissionIntent> for RecordedOriginAdmissionIntent {

@@ -48,11 +48,6 @@ impl BeamConfig {
             self.max_latency_us,
         )
     }
-
-    pub(super) const fn without_latency_limit(mut self) -> Self {
-        self.max_latency_us = u64::MAX;
-        self
-    }
 }
 
 pub struct WarpSearch {
@@ -88,6 +83,7 @@ impl WarpSearch {
         self.choose(nodes, budget, &mut scorer)
     }
 
+    #[cfg(test)]
     pub(crate) fn choose_first_recorded<F>(
         &self,
         nodes: &[ActionNode],
@@ -98,15 +94,6 @@ impl WarpSearch {
         F: FnMut(&[ActionNode]) -> i64,
     {
         self.choose(nodes, budget, scorer)
-    }
-
-    pub(super) fn choose_first_greedy(
-        &self,
-        nodes: &[ActionNode],
-        budget: &HardBudget,
-        reason: SearchPruneReason,
-    ) -> SearchDecision {
-        self.greedy(nodes, budget, reason)
     }
 
     fn choose<F>(&self, nodes: &[ActionNode], budget: HardBudget, scorer: &mut F) -> SearchDecision

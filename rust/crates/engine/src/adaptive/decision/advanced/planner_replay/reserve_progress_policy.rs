@@ -12,17 +12,7 @@ pub(super) enum RecordedReserveProgressPolicy {
 impl From<ReserveProgressPolicy> for RecordedReserveProgressPolicy {
     fn from(value: ReserveProgressPolicy) -> Self {
         match value {
-            ReserveProgressPolicy::LegacyCoverage => Self::LegacyCoverage,
             ReserveProgressPolicy::OrderedReadiness => Self::OrderedReadiness,
-        }
-    }
-}
-
-impl RecordedReserveProgressPolicy {
-    pub(super) const fn restore(self) -> ReserveProgressPolicy {
-        match self {
-            Self::LegacyCoverage => ReserveProgressPolicy::LegacyCoverage,
-            Self::OrderedReadiness => ReserveProgressPolicy::OrderedReadiness,
         }
     }
 }

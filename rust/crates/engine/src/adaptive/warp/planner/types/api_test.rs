@@ -1,4 +1,4 @@
-use super::{ReserveProgressPolicy, WarpPlannerConfig};
+use super::WarpPlannerConfig;
 
 impl WarpPlannerConfig {
     pub(crate) const fn with_rescue_thresholds(
@@ -8,11 +8,6 @@ impl WarpPlannerConfig {
     ) -> Self {
         self.safety_rescue_bps = clamp_bps(safety_bps);
         self.emergency_rescue_bps = clamp_bps(emergency_bps);
-        self
-    }
-
-    pub(crate) const fn with_legacy_reserve_progress_for_test(mut self) -> Self {
-        self.reserve_progress_policy = ReserveProgressPolicy::LegacyCoverage;
         self
     }
 }

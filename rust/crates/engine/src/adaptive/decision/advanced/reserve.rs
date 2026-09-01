@@ -85,27 +85,6 @@ pub(in crate::adaptive::decision) fn capture(
     }
 }
 
-pub(in crate::adaptive::decision) fn restore(
-    value: &RecordedWarpReserve,
-) -> Option<ReserveConstraint> {
-    Some(ReserveConstraint {
-        reserved_request_slots: value.reserved_request_slots,
-        reserved_network_bytes: value.reserved_network_bytes,
-        reserved_storage_bytes: value.reserved_storage_bytes,
-        reserved_cpu_ms: value.reserved_cpu_ms,
-        global_request_width: value.global_request_width,
-        authority_occupancy: value
-            .authority_occupancy
-            .iter()
-            .map(authority::restore)
-            .collect::<Option<Vec<_>>>()?,
-        protected_action_ids: value.protected_action_ids.clone(),
-        chance: value.chance.map(RescueChanceEvidence::from),
-        degraded: value.degraded,
-        degraded_reason: value.degraded_reason.map(ReserveDegradedReason::from),
-    })
-}
-
 impl From<RescueChanceEvidence> for RecordedRescueChanceEvidence {
     fn from(value: RescueChanceEvidence) -> Self {
         Self {

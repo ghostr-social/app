@@ -19,37 +19,22 @@ mod context_support;
 pub(in crate::tests::adaptive::warp_tests) fn generated_actions(
     observed_body_bytes: Option<u64>,
 ) -> GeneratedActions {
-    planned(observed_body_bytes, false).1.generated
+    planned(observed_body_bytes).1.generated
 }
 
-pub(super) fn legacy_generated_actions(observed_body_bytes: Option<u64>) -> GeneratedActions {
-    planned(observed_body_bytes, true).1.generated
-}
-
-pub(super) fn legacy_zero_delta_generated_actions() -> GeneratedActions {
-    planned_with_reservation(None, true, &OriginModel::default(), Some(800_000))
-        .1
-        .generated
-}
-
-pub(super) fn planned(
-    observed_body_bytes: Option<u64>,
-    legacy: bool,
-) -> (Snapshot, WarpPlanningDecision) {
-    planned_with_model(observed_body_bytes, legacy, &OriginModel::default())
+pub(super) fn planned(observed_body_bytes: Option<u64>) -> (Snapshot, WarpPlanningDecision) {
+    planned_with_model(observed_body_bytes, &OriginModel::default())
 }
 
 pub(super) fn planned_with_model(
     observed_body_bytes: Option<u64>,
-    legacy: bool,
     origins: &OriginModel,
 ) -> (Snapshot, WarpPlanningDecision) {
-    planned_with_reservation(observed_body_bytes, legacy, origins, None)
+    planned_with_reservation(observed_body_bytes, origins, None)
 }
 
 fn planned_with_reservation(
     observed_body_bytes: Option<u64>,
-    legacy: bool,
     origins: &OriginModel,
     reserved_storage_bytes: Option<u64>,
 ) -> (Snapshot, WarpPlanningDecision) {
@@ -68,11 +53,7 @@ fn planned_with_reservation(
     let base = AdaptivePlayabilityPolicy.plan(&input);
     let context = context_support::context(&input, active_id, &post, MIRROR);
     let planner_input = WarpPlannerInput::new(&input, &base, origins, &context);
-    let decision = if legacy {
-        WarpPlanner::default().plan_legacy_promotions_for_test(planner_input)
-    } else {
-        WarpPlanner::default().plan(planner_input)
-    };
+    let decision = WarpPlanner::default().plan(planner_input);
     (input, decision)
 }
 

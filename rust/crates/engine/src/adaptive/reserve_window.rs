@@ -10,7 +10,6 @@ use super::PlayabilitySnapshot;
 #[derive(Clone, Copy)]
 pub(super) enum ReserveModePolicy {
     Ordered,
-    LegacyAggregate,
 }
 
 #[derive(Clone, Copy)]
@@ -90,12 +89,6 @@ impl<'a> ReserveWindow<'a> {
                 self.counts.ordered_ready,
                 self.target.count,
             ),
-            ReserveModePolicy::LegacyAggregate => legacy_mode(
-                inputs.current_emergency,
-                self.counts.ready,
-                self.counts.structural,
-                self.target.count,
-            ),
         }
     }
 
@@ -147,16 +140,6 @@ fn ordered_mode(current_emergency: bool, ready: usize, target: usize) -> Control
         ready,
         target,
     )
-}
-
-fn legacy_mode(
-    current_emergency: bool,
-    ready: usize,
-    structural: usize,
-    target: usize,
-) -> ControlMode {
-    let empty = target > 0 && ready + structural == 0;
-    mode(current_emergency || empty, ready, target)
 }
 
 fn mode(emergency: bool, ready: usize, target: usize) -> ControlMode {

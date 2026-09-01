@@ -12,7 +12,7 @@ mod selection;
 mod simulation;
 mod types;
 
-pub(crate) use replay::{PlannerReplayCapsule, PlannerReplayState};
+pub(crate) use replay::PlannerReplayCapsule;
 pub use reserve::{
     RescueChanceEvidence, RescueTimingQuantile, ReserveAuthorityOccupancy, ReserveConstraint,
     ReserveDegradedReason,

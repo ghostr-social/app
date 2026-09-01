@@ -1,5 +1,4 @@
 use super::{DecisionPrivacy, RecordedReserveAuthorityOccupancy, ReserveAuthorityOccupancy};
-use crate::RequestAuthority;
 
 pub(super) fn capture(
     value: &ReserveAuthorityOccupancy,
@@ -18,14 +17,4 @@ pub(super) fn sorted(
 ) -> Vec<RecordedReserveAuthorityOccupancy> {
     values.sort_by(|left, right| left.authority_id.cmp(&right.authority_id));
     values
-}
-
-pub(super) fn restore(
-    value: &RecordedReserveAuthorityOccupancy,
-) -> Option<ReserveAuthorityOccupancy> {
-    Some(ReserveAuthorityOccupancy {
-        authority: RequestAuthority::from_url(&value.authority_id)?,
-        occupied_request_slots: usize::try_from(value.occupied_request_slots).ok()?,
-        request_width: value.request_width,
-    })
 }

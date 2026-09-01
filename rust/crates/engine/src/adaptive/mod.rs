@@ -38,17 +38,17 @@ pub use allocation::REQUEST_SLICE_BYTES;
 pub use catalog_snapshot::{candidate_snapshot, candidate_snapshot_at, CandidateEvidence};
 pub use decision::{
     DecisionAction, DecisionModelInput, DecisionOutcome, DecisionPrivacy, DecisionRecord,
-    DecisionRecordInput, DecisionReplayStatus, ExecutedRequest, ModelQuantiles, ProbeClaimRefusal,
-    PrunedCandidate, PrunedReason, RecordedAllocationReason, RecordedCandidateUtility,
-    RecordedExecutedRequest, RecordedHlsBootstrapStage, RecordedPlannerReplayCapsule,
-    RecordedPlannerRetryAvailability, RecordedPlannerRetryEvidence, RecordedPreemptionAuthority,
-    RecordedPromotionGrant, RecordedPrunedSearchPlan, RecordedRescueChanceEvidence,
-    RecordedRescueTimingQuantile, RecordedReserveAuthorityOccupancy, RecordedReserveDegradedReason,
-    RecordedResourceCost, RecordedResourcePrices, RecordedRetainedSearchPlan,
-    RecordedRetrievalRequest, RecordedSearchPruneReason, RecordedTransfer, RecordedTransformKind,
-    RecordedTwinEvaluation, RecordedWarpAction, RecordedWarpActionKind, RecordedWarpCommand,
-    RecordedWarpDecision, RecordedWarpReserve, RecordedWarpSearch, RecordedWarpSearchInput,
-    RecordedWholeBodyContract, RecordedWholeFetchReason, ShadowPrices, WarpDecisionRecordInput,
+    DecisionRecordInput, ExecutedRequest, ModelQuantiles, ProbeClaimRefusal, PrunedCandidate,
+    PrunedReason, RecordedAllocationReason, RecordedCandidateUtility, RecordedExecutedRequest,
+    RecordedHlsBootstrapStage, RecordedPlannerReplayCapsule, RecordedPlannerRetryAvailability,
+    RecordedPlannerRetryEvidence, RecordedPreemptionAuthority, RecordedPromotionGrant,
+    RecordedPrunedSearchPlan, RecordedRescueChanceEvidence, RecordedRescueTimingQuantile,
+    RecordedReserveAuthorityOccupancy, RecordedReserveDegradedReason, RecordedResourceCost,
+    RecordedResourcePrices, RecordedRetainedSearchPlan, RecordedRetrievalRequest,
+    RecordedSearchPruneReason, RecordedTransfer, RecordedTransformKind, RecordedTwinEvaluation,
+    RecordedWarpAction, RecordedWarpActionKind, RecordedWarpCommand, RecordedWarpDecision,
+    RecordedWarpReserve, RecordedWarpSearch, RecordedWarpSearchInput, RecordedWholeBodyContract,
+    RecordedWholeFetchReason, ShadowPrices, WarpDecisionRecordInput,
 };
 pub use navigation::{FeedOffset, NavigationDirection, NavigationHistory};
 pub use plan::{
@@ -92,7 +92,7 @@ pub(crate) use warp::{
     WarpSearch,
 };
 pub(crate) use warp::{
-    HlsGenerationPolicy, OriginAdmissionGenerationPolicy, PlannerReplayCapsule, PlannerReplayState,
+    HlsGenerationPolicy, OriginAdmissionGenerationPolicy, PlannerReplayCapsule,
     PromotionGenerationPolicy, RangeAliasGenerationPolicy, WarpGenerationPolicies,
 };
 
