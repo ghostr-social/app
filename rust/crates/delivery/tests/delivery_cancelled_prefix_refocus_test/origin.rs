@@ -24,7 +24,7 @@ pub(super) async fn next_prefix(origin: &mut ControlledOrigin) -> ActiveRequest 
 
 fn covers_prefix(request: &ActiveRequest) -> bool {
     request.path == "/p6.mp4"
-        && request.range.start <= PREFIX.start
+        && request.range.start == PREFIX.start
         && request.range.end >= PREFIX.end
 }
 

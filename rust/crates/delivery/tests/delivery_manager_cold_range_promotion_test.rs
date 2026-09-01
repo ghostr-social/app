@@ -22,9 +22,11 @@ type OriginState = (Arc<Vec<u8>>, Arc<AtomicUsize>);
 async fn cold_zero_start_range_promotes_one_live_200_without_restart() {
     let body = vec![7; BODY_LEN];
     let (origin, gets) = serve_range_blind(body.clone()).await;
-    let mut options = DeliveryOptions::default();
-    options.level = DataUsageLevel::Aggressive;
-    options.params = EngineParams::default();
+    let options = DeliveryOptions {
+        level: DataUsageLevel::Aggressive,
+        params: EngineParams::default(),
+        ..DeliveryOptions::default()
+    };
     let harness = start_harness("cold-range-promotion", options);
     let items = vec![
         sized_item(
