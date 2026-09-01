@@ -6,12 +6,12 @@ use ghostr_gateway::runtime::{GatewayConfiguration, GatewayRuntime};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-pub(crate) async fn prepared() -> (GatewayRuntime, SegmentedSnapshot, PathBuf) {
+pub(super) async fn prepared() -> (GatewayRuntime, SegmentedSnapshot, PathBuf) {
     let (runtime, snapshot, root, _) = prepared_with_meta().await;
     (runtime, snapshot, root)
 }
 
-pub(crate) async fn prepared_with_meta() -> (
+pub(super) async fn prepared_with_meta() -> (
     GatewayRuntime,
     SegmentedSnapshot,
     PathBuf,

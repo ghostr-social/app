@@ -4,7 +4,7 @@ use axum::routing::get;
 use axum::Router;
 use tokio::net::TcpListener;
 
-pub(crate) async fn start() -> String {
+pub(super) async fn start() -> String {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("HLS bind");
     let address = listener.local_addr().expect("HLS address");
     let router = Router::new()
@@ -14,7 +14,7 @@ pub(crate) async fn start() -> String {
     format!("http://{address}/index.m3u8")
 }
 
-pub(crate) fn origin(source: &str) -> String {
+pub(super) fn origin(source: &str) -> String {
     source
         .strip_suffix("index.m3u8")
         .expect("fixture source suffix")
