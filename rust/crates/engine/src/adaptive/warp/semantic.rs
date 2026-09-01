@@ -68,7 +68,7 @@ impl SemanticGuardrail {
         rescued(rank)
     }
 
-    pub(crate) fn admit_reserve(
+    pub(super) fn admit_reserve(
         self,
         candidate: &SemanticCandidate,
         window: &[SemanticCandidate],

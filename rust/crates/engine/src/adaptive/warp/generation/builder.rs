@@ -53,10 +53,7 @@ impl<'a> NodeInput<'a> {
         self
     }
 
-    pub(super) const fn with_intent(
-        mut self,
-        intent: crate::origin_model::OriginAdmissionIntent,
-    ) -> Self {
+    const fn with_intent(mut self, intent: crate::origin_model::OriginAdmissionIntent) -> Self {
         self.intent = intent;
         self
     }

@@ -78,7 +78,7 @@ pub struct ReadyReserveEvidence {
 }
 
 impl ReadyReserveEvidence {
-    pub fn ordered_ready(&self) -> usize {
+    pub(crate) fn ordered_ready(&self) -> usize {
         self.candidates
             .iter()
             .take_while(|item| {

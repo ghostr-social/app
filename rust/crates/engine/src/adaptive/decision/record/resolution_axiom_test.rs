@@ -15,6 +15,7 @@ impl DecisionRecord {
     ) {
         assert!(matches!(schema_version, 1 | 4));
         self.schema_version = schema_version;
-        self.replay_plan_hash = super::super::plan_identity::capture_legacy(allocation, privacy);
+        let sanitized = super::super::plan::sanitized(allocation, privacy);
+        self.replay_plan_hash = super::super::plan_identity::legacy(&sanitized);
     }
 }

@@ -43,7 +43,7 @@ impl WarpGenerationPolicies {
         }
     }
 
-    pub(crate) const fn apply_origin(
+    pub(super) const fn apply_origin(
         self,
         value: ActionValue,
         intent: OriginAdmissionIntent,

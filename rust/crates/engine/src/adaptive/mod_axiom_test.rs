@@ -1,3 +1,3 @@
 use super::*;
 
-pub(crate) use warp::{predicted_ready_gain, ActionFrontier, WarpActionGenerator};
+pub(crate) use warp::{ActionFrontier, WarpActionGenerator};

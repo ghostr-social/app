@@ -60,7 +60,7 @@ impl PromotionOpportunity {
         self.contract
     }
 
-    pub const fn request_profile(self, body_bytes: u64) -> OriginRequestProfile {
+    pub(crate) const fn request_profile(self, body_bytes: u64) -> OriginRequestProfile {
         self.trigger_profile.request_profile(body_bytes)
     }
 }

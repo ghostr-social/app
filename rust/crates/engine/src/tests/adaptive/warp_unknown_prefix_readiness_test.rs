@@ -1,4 +1,4 @@
-use crate::adaptive::axiom_test_support::predicted_ready_gain;
+use crate::adaptive::axiom_test_support::WarpActionGenerator;
 use crate::adaptive::{ActionKind, CandidateSnapshot, MediaLayout, PlayableRange};
 use crate::tests::adaptive_support::snapshot;
 use crate::ByteRange;
@@ -55,13 +55,16 @@ fn an_unknown_layout_does_not_credit_its_synthetic_bootstrap() {
         ActionKind::Prefix(ByteRange::new(0, 262_144)),
         ActionKind::FetchRange(ByteRange::new(0, 262_144)),
     ] {
-        assert_eq!(predicted_ready_gain(&candidate, &action, false), 0);
+        assert_eq!(
+            WarpActionGenerator::predicted_ready_gain(&candidate, &action, false),
+            0
+        );
     }
 }
 
 fn gain(present: &[(u64, u64)], action: ByteRange, blocked: bool) -> u64 {
     let candidate = candidate(present);
-    predicted_ready_gain(&candidate, &ActionKind::FetchRange(action), blocked)
+    WarpActionGenerator::predicted_ready_gain(&candidate, &ActionKind::FetchRange(action), blocked)
 }
 
 fn candidate(present: &[(u64, u64)]) -> CandidateSnapshot {

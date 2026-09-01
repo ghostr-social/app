@@ -2,9 +2,9 @@ use super::{ErrorReason, OriginObservation, OriginOutcome, OriginQuery};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct OpenBodyObservation {
-    pub query: OriginQuery,
-    pub observed_at_ms: u64,
-    pub outcome: OriginOutcome,
+    pub(crate) query: OriginQuery,
+    pub(crate) observed_at_ms: u64,
+    pub(crate) outcome: OriginOutcome,
     pub throughput_bps: Option<u64>,
 }
 

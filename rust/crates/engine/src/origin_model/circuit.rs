@@ -56,7 +56,7 @@ impl CircuitBreaker {
         self.backoff_level = self.backoff_level.saturating_add(1);
     }
 
-    pub(super) fn defer_recovery(&mut self, at_ms: u64) {
+    fn defer_recovery(&mut self, at_ms: u64) {
         self.last_at_ms = at_ms;
         self.back_off(at_ms, true);
     }

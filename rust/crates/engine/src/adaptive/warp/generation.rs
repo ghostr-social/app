@@ -121,20 +121,6 @@ impl GeneratedActions {
 
 pub struct WarpActionGenerator;
 
-#[cfg(test)]
-pub(crate) fn predicted_ready_gain(
-    candidate: &crate::adaptive::CandidateSnapshot,
-    action: &super::ActionKind,
-    direct_playback_blocked: bool,
-) -> u64 {
-    prediction::ready_gain(
-        candidate,
-        action,
-        &crate::adaptive::AllocationPlan::default(),
-        direct_playback_blocked,
-    )
-}
-
 impl WarpActionGenerator {
     pub(super) fn generate_with_policy(
         input: WarpGenerationInput<'_>,

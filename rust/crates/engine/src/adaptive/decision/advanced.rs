@@ -117,7 +117,7 @@ pub struct RecordedWarpAction {
     pub command: RecordedWarpCommand,
     pub resources: RecordedResourceCost,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub authorized_resources: Option<RecordedResourceCost>,
+    pub(crate) authorized_resources: Option<RecordedResourceCost>,
     #[serde(
         default,
         skip_serializing_if = "RecordedOriginAdmissionIntent::is_delivery"

@@ -123,7 +123,7 @@ impl ActionNode {
         self
     }
 
-    pub(crate) fn with_request_profile(
+    pub(super) fn with_request_profile(
         mut self,
         profile: Option<crate::origin_model::OriginRequestProfile>,
     ) -> Self {

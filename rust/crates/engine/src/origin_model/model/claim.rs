@@ -105,7 +105,7 @@ impl OriginModel {
         }
     }
 
-    pub fn admission_block_reason(
+    pub(crate) fn admission_block_reason(
         &self,
         query: &OriginQuery,
         now: u64,

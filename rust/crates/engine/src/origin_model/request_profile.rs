@@ -15,14 +15,14 @@ pub struct OpenBodyProfile {
 }
 
 impl OpenBodyProfile {
-    pub const fn from_request(profile: OriginRequestProfile) -> Self {
+    pub(crate) const fn from_request(profile: OriginRequestProfile) -> Self {
         Self {
             method: profile.method,
             media: profile.media,
         }
     }
 
-    pub const fn request_profile(self, body_bytes: u64) -> OriginRequestProfile {
+    pub(crate) const fn request_profile(self, body_bytes: u64) -> OriginRequestProfile {
         OriginRequestProfile::new(self.method, body_bytes, self.media)
     }
 }
@@ -40,7 +40,7 @@ impl OriginRequestProfile {
         self.method
     }
 
-    pub const fn planned_bytes(self) -> u64 {
+    pub(crate) const fn planned_bytes(self) -> u64 {
         self.planned_bytes
     }
 
@@ -48,7 +48,7 @@ impl OriginRequestProfile {
         self.media
     }
 
-    pub const fn with_transport(self, method: RequestMethod, planned_bytes: u64) -> Self {
+    pub(crate) const fn with_transport(self, method: RequestMethod, planned_bytes: u64) -> Self {
         Self::new(method, planned_bytes, self.media)
     }
 

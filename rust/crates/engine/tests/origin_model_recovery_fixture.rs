@@ -3,7 +3,7 @@ use crate::origin_model::{
     OriginContext, OriginModel, OriginObservation, OriginQuery, RequestMethod,
 };
 
-pub(super) const URL: &str = "https://recovered.example/video.mp4";
+const URL: &str = "https://recovered.example/video.mp4";
 
 pub(super) fn query(method: RequestMethod, bytes: u64) -> OriginQuery {
     query_at(URL, method, bytes)

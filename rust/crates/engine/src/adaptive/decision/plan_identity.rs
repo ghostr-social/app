@@ -5,11 +5,6 @@ use sha2::{Digest as _, Sha256};
 
 const ORDERED_RESERVE_DOMAIN: &[u8] = b"ghostr-ordered-ready-reserve-v1\0";
 
-#[cfg(test)]
-pub(super) fn capture_legacy(value: &AllocationPlan, privacy: &DecisionPrivacy) -> String {
-    legacy(&plan::sanitized(value, privacy))
-}
-
 pub(super) fn legacy(value: &AllocationPlan) -> String {
     hash(value, None)
 }
