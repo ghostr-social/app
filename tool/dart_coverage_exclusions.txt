@@ -56,5 +56,6 @@ lib/features/video_inventory/domain/playback_preparation_updates.dart
 lib/features/video_inventory/domain/progressive_playback_gateway_port.dart
 lib/features/video_inventory/domain/screen_awake_port.dart
 lib/platform/media/cache_directory_provider.dart
+lib/platform/media/rendered_first_frame_protocol.dart
 lib/shared/media/video_playback_port.dart
 lib/shared/theme/app_tokens.dart
