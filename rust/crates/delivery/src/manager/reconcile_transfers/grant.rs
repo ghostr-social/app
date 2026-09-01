@@ -157,7 +157,7 @@ impl DeliveryWorker {
     }
 
     fn authorize_selected_hedge(&self, primary: Option<ghostr_engine::ActionId>) -> bool {
-        primary.map_or(true, |action| self.downloads.authorize_hedge(action))
+        primary.is_none_or(|action| self.downloads.authorize_hedge(action))
     }
 
     fn release_selected_hedge(&self, primary: Option<ghostr_engine::ActionId>) {

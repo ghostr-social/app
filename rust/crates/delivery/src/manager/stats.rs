@@ -127,10 +127,7 @@ impl StatsKeeper {
 }
 
 fn is_local_probe_timeout<T>(outcome: &anyhow::Result<T>) -> bool {
-    is_admission_timeout(outcome)
-        || outcome
-            .as_ref()
-            .is_err_and(|error| is_usefulness_timeout(error))
+    is_admission_timeout(outcome) || outcome.as_ref().is_err_and(is_usefulness_timeout)
 }
 
 fn is_admission_timeout<T>(outcome: &anyhow::Result<T>) -> bool {
