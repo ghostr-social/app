@@ -10,7 +10,7 @@ pub(super) struct HlsPreparationFixture {
     pub(super) cache: SegmentedCache,
     pub(super) state: DeliveryState,
     pub(super) segmented: crate::segmented::scheduler::SegmentedDelivery,
-    pub(super) authority: HlsPreparedAssetAuthority,
+    authority: HlsPreparedAssetAuthority,
 }
 
 impl HlsPreparationFixture {

@@ -7,10 +7,11 @@ use crate::manager::DeliveryWorker;
 use ghostr_engine::adaptive::ResourceCost;
 
 mod adaptation;
+#[cfg(test)]
+#[path = "completion_observability/tests.rs"]
+pub(crate) mod axiom_test_support;
 mod outcome;
 mod policy_limit;
-#[cfg(test)]
-pub(crate) mod tests;
 #[cfg(test)]
 use adaptation::exploration_cost;
 use outcome::{decision_outcome, result_bytes};

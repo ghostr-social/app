@@ -65,7 +65,7 @@ pub(crate) struct PlannedWork {
     pub network_refill_deadline_ms: Option<u64>,
     pub planner_cpu_micros: u64,
     pub warp: Option<ghostr_engine::adaptive::WarpPlanningDecision>,
-    pub(crate) player_preparations: Vec<crate::delivery_events::PlayerPreparationClaim>,
+    pub(super) player_preparations: Vec<crate::delivery_events::PlayerPreparationClaim>,
 }
 
 impl PlannedWork {

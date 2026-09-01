@@ -29,7 +29,7 @@ impl SegmentedFocusItem {
         &self.post
     }
 
-    pub(crate) fn representation_id(&self) -> &RepresentationId {
+    fn representation_id(&self) -> &RepresentationId {
         &self.representation_id
     }
 

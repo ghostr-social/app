@@ -30,7 +30,7 @@ impl PlayerPreparationReport {
         self.authority.progressive_revision()
     }
 
-    pub fn hls_authority(&self) -> Option<&crate::segmented::HlsPreparedAssetAuthority> {
+    pub(crate) fn hls_authority(&self) -> Option<&crate::segmented::HlsPreparedAssetAuthority> {
         self.authority.hls_authority()
     }
 

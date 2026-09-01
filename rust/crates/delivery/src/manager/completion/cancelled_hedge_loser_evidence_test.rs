@@ -1,5 +1,5 @@
 use super::{completion_use, CompletionUse};
-use crate::manager::completion_observability::tests::hedge_metric_fixture;
+use crate::manager::completion_observability::axiom_test_support::hedge_metric_fixture;
 use crate::manager::inflight::CompletionStatus;
 
 #[test]

@@ -1,6 +1,14 @@
 use super::*;
 
 impl InFlightChunks {
+    pub(crate) fn next_attempt(
+        &mut self,
+        chunk: ChunkId,
+        identity: TransferIdentity,
+    ) -> ChunkAttempt {
+        ChunkAttempt::new(chunk, identity, self.next_action_id())
+    }
+
     pub(crate) fn insert(
         &mut self,
         attempt: &ChunkAttempt,

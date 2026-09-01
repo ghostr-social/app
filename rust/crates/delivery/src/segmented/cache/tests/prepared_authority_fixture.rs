@@ -8,15 +8,15 @@ use std::sync::Arc;
 use url::Url;
 
 pub(super) struct PreparedAuthorityFixture {
-    pub cache: SegmentedCache,
-    pub post: PostId,
-    pub representation: RepresentationId,
+    pub(super) cache: SegmentedCache,
+    pub(super) post: PostId,
+    pub(super) representation: RepresentationId,
     root: String,
     protected: bool,
 }
 
 impl PreparedAuthorityFixture {
-    pub fn new(root: &str, protected: bool) -> Self {
+    pub(super) fn new(root: &str, protected: bool) -> Self {
         let mut fixture = Self {
             cache: SegmentedCache::new(),
             post: PostId::new("post"),
@@ -28,7 +28,7 @@ impl PreparedAuthorityFixture {
         fixture
     }
 
-    pub fn replace_focus(&mut self, generation: u64, root: &str, protected: bool) {
+    pub(super) fn replace_focus(&mut self, generation: u64, root: &str, protected: bool) {
         self.root = root.to_owned();
         self.protected = protected;
         self.representation = representation(root);
@@ -46,7 +46,7 @@ impl PreparedAuthorityFixture {
         );
     }
 
-    pub fn publish(&self, generation: u64, body: &[u8]) -> CachedHlsGeneration {
+    pub(super) fn publish(&self, generation: u64, body: &[u8]) -> CachedHlsGeneration {
         let object = object(&self.root, body);
         assert!(self.cache.mark_stage_preparing(
             &self.post,
@@ -65,7 +65,7 @@ impl PreparedAuthorityFixture {
             .generation()
     }
 
-    pub fn authority(&self) -> HlsPreparedAssetAuthority {
+    pub(super) fn authority(&self) -> HlsPreparedAssetAuthority {
         self.cache
             .snapshot(self.post.as_str())
             .authority

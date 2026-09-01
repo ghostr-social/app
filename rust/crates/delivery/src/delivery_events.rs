@@ -44,7 +44,6 @@ use plan_evidence::PlanEvidenceHistory;
 pub(crate) use plan_evidence::PlanPublicationContext;
 pub use playback_presentation::{PlaybackPresentation, PlaybackPresentationIngress};
 pub(crate) use player_preparation::PlayerPreparationActorOutcome;
-pub(crate) use player_preparation::DECODER_UNSUPPORTED_FAILURE;
 pub use player_preparation::{
     PlayerPreparationAdmission, PlayerPreparationAttempt, PlayerPreparationAuthority,
     PlayerPreparationClaim, PlayerPreparationDisposition, PlayerPreparationFollowup,

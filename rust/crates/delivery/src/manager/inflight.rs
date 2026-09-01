@@ -60,12 +60,6 @@ impl InFlightChunks {
         ChunkAttempt::new_with_profile(chunk, identity, self.next_action_id(), profile)
     }
 
-    #[cfg(test)]
-    pub fn next_attempt(&mut self, chunk: ChunkId, identity: TransferIdentity) -> ChunkAttempt {
-        let profile = action::test_profile(chunk.range.len());
-        self.next_attempt_with_profile(chunk, identity, profile)
-    }
-
     pub(super) fn next_action_id(&mut self) -> ActionId {
         self.next_id = self
             .next_id
@@ -86,7 +80,7 @@ impl InFlightChunks {
             .collect()
     }
 
-    pub(crate) fn body_identities(&self) -> HashSet<TransferIdentity> {
+    pub(super) fn body_identities(&self) -> HashSet<TransferIdentity> {
         self.transfers
             .values()
             .map(|active| active.identity.clone())

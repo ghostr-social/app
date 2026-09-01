@@ -61,7 +61,7 @@ impl StatsKeeper {
         &mut self.stats
     }
 
-    pub(crate) fn mark_origin_model_changed(&mut self) {
+    pub(super) fn mark_origin_model_changed(&mut self) {
         self.dirty = true;
     }
 

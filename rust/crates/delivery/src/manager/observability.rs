@@ -98,7 +98,7 @@ fn readiness_event(planned: &PlannedWork, observed_at_ms: u64) -> ReadinessMetri
     )
 }
 
-pub(super) fn readiness_event_for(
+fn readiness_event_for(
     reserve: &ghostr_engine::adaptive::ReadyReserveEvidence,
     scheduled_work: bool,
     observed_at_ms: u64,
@@ -124,7 +124,7 @@ pub(super) fn readiness_event_for(
     }
 }
 
-pub(super) fn reserve_underflow(reserve: &ghostr_engine::adaptive::ReadyReserveEvidence) -> bool {
+fn reserve_underflow(reserve: &ghostr_engine::adaptive::ReadyReserveEvidence) -> bool {
     !reserve.ordered_target_satisfied()
 }
 
@@ -150,3 +150,7 @@ fn byte_millis(bytes: u64, duration_ms: u64) -> u64 {
         .saturating_mul(u128::from(duration_ms))
         .min(u128::from(u64::MAX)) as u64
 }
+
+#[cfg(test)]
+#[path = "observability_ordered_ready_test.rs"]
+mod ordered_ready_test;

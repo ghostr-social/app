@@ -31,7 +31,7 @@ pub(crate) struct ActionRegistration<'a> {
 }
 
 impl ChunkAttempt {
-    pub(crate) fn new_with_profile(
+    pub(super) fn new_with_profile(
         chunk: ChunkId,
         identity: TransferIdentity,
         id: ActionId,
@@ -44,12 +44,6 @@ impl ChunkAttempt {
             profile,
             lifecycle: Arc::new(AttemptLifecycle::default()),
         }
-    }
-
-    #[cfg(test)]
-    pub(crate) fn new(chunk: ChunkId, identity: TransferIdentity, id: ActionId) -> Self {
-        let profile = test_profile(chunk.range.len());
-        Self::new_with_profile(chunk, identity, id, profile)
     }
 
     pub(crate) fn id(&self) -> ActionId {
@@ -67,17 +61,6 @@ impl ChunkAttempt {
     pub(crate) fn mark_io_finished(&self) {
         self.lifecycle.mark_io_finished();
     }
-}
-
-#[cfg(test)]
-pub(super) fn test_profile(bytes: u64) -> OriginAttemptProfile {
-    use ghostr_engine::origin_model::{MediaClass, OriginRequestProfile, RequestMethod};
-
-    OriginAttemptProfile::new(OriginRequestProfile::new(
-        RequestMethod::RangeGet,
-        bytes,
-        MediaClass::ProgressiveMp4,
-    ))
 }
 
 pub(super) struct ActiveChunk {
@@ -186,3 +169,7 @@ pub(crate) enum CompletionStatus {
     HedgeLoser,
     Superseded,
 }
+
+#[cfg(test)]
+#[path = "action_axiom_test.rs"]
+mod axiom_test_support;

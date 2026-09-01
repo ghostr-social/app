@@ -1,4 +1,4 @@
-use super::observability::{readiness_event_for, reserve_underflow};
+use super::{readiness_event_for, reserve_underflow};
 use ghostr_engine::adaptive::{
     ReadyReserveEvidence, ReserveCandidateEvidence, ReserveCandidateState,
 };

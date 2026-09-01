@@ -51,7 +51,10 @@ impl HlsPreparedAssetAuthority {
 }
 
 impl super::SegmentedCache {
-    pub fn accepts_prepared_authority(&self, authority: &HlsPreparedAssetAuthority) -> bool {
+    pub(in crate::segmented) fn accepts_prepared_authority(
+        &self,
+        authority: &HlsPreparedAssetAuthority,
+    ) -> bool {
         self.lock()
             .focus
             .get(authority.post())
