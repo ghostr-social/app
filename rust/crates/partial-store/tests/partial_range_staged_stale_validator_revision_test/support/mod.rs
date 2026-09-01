@@ -4,15 +4,15 @@ use std::path::PathBuf;
 
 mod publication;
 mod setup;
-pub(crate) use setup::seeded_fixture;
+pub(super) use setup::seeded_fixture;
 
-pub(crate) const LONG_BODY: &[u8] = b"old! data";
+pub(super) const LONG_BODY: &[u8] = b"old! data";
 pub(crate) const NEW_BODY: &[u8] = b"new data";
 pub(super) const OLD_PREFIX: &[u8] = b"old!";
 pub(super) const SOURCE: &str = "https://cdn.example/clip.mp4";
 pub(super) const STRONG_ETAG: &str = "\"stable\"";
 
-pub struct Fixture {
+pub(crate) struct Fixture {
     root: PathBuf,
     store: PartialRangeStore,
     transfer: TransferIdentity,
@@ -20,7 +20,7 @@ pub struct Fixture {
 }
 
 impl Fixture {
-    pub(crate) async fn revision(&self) -> ContentRevision {
+    pub(super) async fn revision(&self) -> ContentRevision {
         self.store
             .media_snapshot("clip")
             .await
@@ -28,7 +28,7 @@ impl Fixture {
             .revision()
     }
 
-    pub(crate) async fn current_bytes(&self, length: usize) -> Vec<u8> {
+    pub(super) async fn current_bytes(&self, length: usize) -> Vec<u8> {
         self.store
             .read_range("clip", 0..length as u64)
             .await
@@ -36,7 +36,7 @@ impl Fixture {
             .expect("current body")
     }
 
-    pub(crate) fn cleanup(self) {
+    pub(super) fn cleanup(self) {
         let root = self.root.clone();
         drop(self);
         crate::tests::store_fixture::discard(&root);

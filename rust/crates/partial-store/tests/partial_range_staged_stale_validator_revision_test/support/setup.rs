@@ -5,7 +5,7 @@ use ghostr_engine::{ByteRange, DeliveryKind, PostId, VideoMeta};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-pub async fn seeded_fixture() -> Fixture {
+pub(in super::super) async fn seeded_fixture() -> Fixture {
     let root = crate::tests::store_fixture::temp_root("staged-stale-validator-revision");
     let store = crate::tests::store_fixture::plain_store(root.clone(), Arc::new(Mutex::new(0)));
     let mut catalog = Catalog::new();
