@@ -5,7 +5,7 @@ use std::collections::HashSet;
 pub(crate) struct FailingWipeDatabase(MemoryDatabase);
 
 impl FailingWipeDatabase {
-    pub(crate) fn new() -> Self {
+    pub(super) fn new() -> Self {
         Self(MemoryDatabase::with_opts(MemoryDatabaseOptions {
             events: true,
             max_events: Some(64),

@@ -23,13 +23,13 @@ pub(crate) struct EventCachePersistence {
 }
 
 impl EventCachePersistence {
-    pub(crate) fn new(root: &Path) -> Self {
+    pub(super) fn new(root: &Path) -> Self {
         Self {
             path: snapshot_path(root),
         }
     }
 
-    pub(crate) async fn load(&self, viewer: ViewerScope) -> Vec<Event> {
+    pub(super) async fn load(&self, viewer: ViewerScope) -> Vec<Event> {
         if viewer == ViewerScope::Unknown {
             return Vec::new();
         }
@@ -44,7 +44,7 @@ impl EventCachePersistence {
         }
     }
 
-    pub(crate) async fn store(&self, viewer: ViewerScope, events: &[Event]) {
+    pub(super) async fn store(&self, viewer: ViewerScope, events: &[Event]) {
         if viewer == ViewerScope::Unknown {
             return;
         }

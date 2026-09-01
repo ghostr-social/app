@@ -131,19 +131,21 @@ impl EventCache {
         Some(replaced)
     }
 
-    pub async fn reset_session(&self, generation: SessionGeneration) {
+    pub(crate) async fn reset_session(&self, generation: SessionGeneration) {
         let mut session = self.session.lock().await;
         session.reset(generation);
         self.wipe().await;
     }
 
     pub async fn reset_session_for(&self, generation: SessionGeneration, viewer: ViewerScope) {
+        if viewer == ViewerScope::Unknown {
+            self.reset_session(generation).await;
+            return;
+        }
         let mut session = self.session.lock().await;
         session.reset(generation);
         self.wipe().await;
-        if viewer != ViewerScope::Unknown {
-            session.adopt(viewer);
-        }
+        session.adopt(viewer);
         self.restore_bound_viewer(&mut session, viewer).await;
     }
 

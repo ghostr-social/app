@@ -61,21 +61,21 @@ pub(crate) fn persistent_cache(root: &Path, database: Arc<dyn NostrDatabase>) ->
 pub(crate) struct PersistentCacheFixture(PathBuf);
 
 impl PersistentCacheFixture {
-    pub(crate) fn new(label: &str) -> Self {
+    pub(super) fn new(label: &str) -> Self {
         let sequence = NEXT_ROOT.fetch_add(1, Ordering::Relaxed);
         let name = format!("ghostr-{label}-{}-{sequence}", std::process::id());
         Self(std::env::temp_dir().join(name))
     }
 
-    pub(crate) fn cache(&self) -> EventCache {
+    pub(super) fn cache(&self) -> EventCache {
         EventCache::persistent(&self.0)
     }
 
-    pub(crate) fn root(&self) -> &Path {
+    pub(super) fn root(&self) -> &Path {
         &self.0
     }
 
-    pub(crate) fn snapshot(&self) -> PathBuf {
+    pub(super) fn snapshot(&self) -> PathBuf {
         crate::cache::persistence::snapshot_path(&self.0)
     }
 }
