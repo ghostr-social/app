@@ -78,11 +78,13 @@ async fn send_bytes(request: &ActiveRequest) {
 }
 
 fn options() -> DeliveryOptions {
-    let mut options = DeliveryOptions::default();
-    options.params = EngineParams {
-        chunk_bytes: 1_024 * 1_024,
-        balanced_concurrency: 2,
-        ..base_params()
+    let mut options = DeliveryOptions {
+        params: EngineParams {
+            chunk_bytes: 1_024 * 1_024,
+            balanced_concurrency: 2,
+            ..base_params()
+        },
+        ..DeliveryOptions::default()
     };
     options.tuning.max_requests_per_authority = NonZeroUsize::new(2);
     options
