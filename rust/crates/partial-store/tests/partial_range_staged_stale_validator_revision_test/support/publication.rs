@@ -3,7 +3,7 @@ use crate::partial_range_store::ResponseOpenResult;
 use ghostr_engine::adaptive::WholeBodyContract;
 
 impl Fixture {
-    pub async fn publish_full_body(&self, body: &[u8]) {
+    pub(crate) async fn publish_full_body(&self, body: &[u8]) {
         let action = self
             .store
             .reserve_action(&self.transfer, 2, body.len() as u64)
@@ -40,7 +40,7 @@ impl Fixture {
         self.store.release_action(&action).await;
     }
 
-    pub async fn stale_lease_rejected(&self, expected_bytes: usize) -> bool {
+    pub(crate) async fn stale_lease_rejected(&self, expected_bytes: usize) -> bool {
         let action = self
             .store
             .reserve_action(&self.transfer, 3, expected_bytes as u64)
