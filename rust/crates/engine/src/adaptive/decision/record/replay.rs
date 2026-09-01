@@ -101,7 +101,7 @@ pub(super) fn terminal_identity(record: &DecisionRecord) -> String {
 }
 
 fn legacy(record: &DecisionRecord) -> DecisionReplayStatus {
-    let replayed = AdaptivePlayabilityPolicy.plan_legacy_replay(&record.replay_state.snapshot());
+    let replayed = AdaptivePlayabilityPolicy::plan_legacy_replay(&record.replay_state.snapshot());
     policy_status(record, &plan_identity::legacy(&replayed))
 }
 

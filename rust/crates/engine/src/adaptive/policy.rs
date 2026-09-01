@@ -20,7 +20,7 @@ impl AdaptivePlayabilityPolicy {
         Self::plan_with_reserve(snapshot, ReserveModePolicy::Ordered)
     }
 
-    pub(super) fn plan_legacy_replay(self, snapshot: &PlayabilitySnapshot) -> AllocationPlan {
+    pub(super) fn plan_legacy_replay(snapshot: &PlayabilitySnapshot) -> AllocationPlan {
         Self::plan_with_reserve(snapshot, ReserveModePolicy::LegacyAggregate)
     }
 
