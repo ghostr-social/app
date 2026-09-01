@@ -9,6 +9,9 @@ void main() {
     expect(evidence.planPage.latestRetainedRevision, 9);
     expect(evidence.planPage.records.single.decisionSequence, 12);
     expect(evidence.planPage.records.single.networkStatusGeneration, 3);
+    expect(evidence.planPage.records.single.playerVerifiedPostIds, {
+      'opaque-ready',
+    });
     expect(
       evidence.planPage.records.single.networkClass,
       WarpNetworkClass.wifi,
@@ -81,7 +84,7 @@ void main() {
 const _evidenceJson = r'''
 {
   "schema_version":1,
-  "plan_page":{"oldest_retained_revision":4,"latest_retained_revision":9,"cursor_truncated":false,"has_more":false,"records":[{"revision":9,"decision_sequence":12,"observed_at_ms":100,"current_post_id":"opaque-post","focus_generation":8,"focus_covers_from":7,"network_status_generation":3,"network_class":"Wifi","network_profile_generation":0,"plan":{"allocations":[],"retained":[],"evictions":[],"discovery_demand":"Hold","mode":"Safety","ready_reserve":{"target":2,"ready":2,"structural":2,"protected":1,"recovery_horizon_ms":1500,"underflow_risk_bps":100,"ready_coverage_ms":6000,"candidates":[{"post":"p1","state":{"Ready":{}}},{"post":"p2","state":"Unprepared"},{"post":"p3","state":{"Ready":{}}}]},"next_reserve":"NotApplicable"}}]},
+  "plan_page":{"oldest_retained_revision":4,"latest_retained_revision":9,"cursor_truncated":false,"has_more":false,"records":[{"revision":9,"decision_sequence":12,"observed_at_ms":100,"current_post_id":"opaque-post","player_verified_post_ids":["opaque-ready"],"focus_generation":8,"focus_covers_from":7,"network_status_generation":3,"network_class":"Wifi","network_profile_generation":0,"plan":{"allocations":[],"retained":[],"evictions":[],"discovery_demand":"Hold","mode":"Safety","ready_reserve":{"target":2,"ready":2,"structural":2,"protected":1,"recovery_horizon_ms":1500,"underflow_risk_bps":100,"ready_coverage_ms":6000,"candidates":[{"post":"p1","state":{"Ready":{}}},{"post":"p2","state":"Unprepared"},{"post":"p3","state":{"Ready":{}}}]},"next_reserve":"NotApplicable"}}]},
   "evaluation":{
     "user_visible":{"swipe_to_first_frame":{"samples":4,"p50_ms":300,"p95_ms":700,"p99_ms":900},"startup_sessions":4,"startup_failures":0,"startup_failure_rate_bps":0,"stall_events":0,"stall_ms":0,"stall_ratio_bps":0,"first_frame_quality_bps":10000,"watch_weighted_quality_bps":10000,"quality_discontinuities":0},
     "efficiency":{"total_bytes":1000,"useful_watched_bytes":700,"aborted_bytes":100,"duplicate_hedge_bytes":50,"completable_probe_bytes":25,"full_downloads_never_useful":0,"request_count":5,"playable_videos":4,"requests_per_playable_milli":1250,"connection_restarts_avoided_by_promotion":1,"cpu_micros":10,"storage_byte_ms":20},

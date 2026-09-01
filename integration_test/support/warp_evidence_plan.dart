@@ -6,6 +6,7 @@ final class WarpPlanEvidence {
     required this.decisionSequence,
     required this.observedAtMs,
     required this.currentPostId,
+    this.playerVerifiedPostIds = const {},
     required this.focusGeneration,
     required this.focusCoversFrom,
     required this.networkStatusGeneration,
@@ -22,6 +23,7 @@ final class WarpPlanEvidence {
             : null,
         observedAtMs: _warpInt(json, 'observed_at_ms'),
         currentPostId: _warpOptionalString(json, 'current_post_id'),
+        playerVerifiedPostIds: _warpStringSet(json, 'player_verified_post_ids'),
         focusGeneration: _warpOptionalInt(json, 'focus_generation'),
         focusCoversFrom: _warpOptionalInt(json, 'focus_covers_from'),
         networkStatusGeneration: _warpInt(json, 'network_status_generation'),
@@ -34,6 +36,7 @@ final class WarpPlanEvidence {
   final int? decisionSequence;
   final int observedAtMs;
   final String? currentPostId;
+  final Set<String> playerVerifiedPostIds;
   final int? focusGeneration;
   final int? focusCoversFrom;
   final int networkStatusGeneration;
@@ -49,6 +52,17 @@ final class WarpPlanEvidence {
     final value = generation.toInt();
     return first <= value && value <= last;
   }
+}
+
+Set<String> _warpStringSet(Map<String, Object?> json, String field) {
+  return Set.unmodifiable(
+    _warpList(json, field).map((value) {
+      if (value is! String || value.isEmpty) {
+        throw FormatException('$field must contain non-empty strings.');
+      }
+      return value;
+    }),
+  );
 }
 
 final class WarpAllocationPlan {
