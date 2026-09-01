@@ -15,7 +15,10 @@ fn cached_response_keeps_the_cache_allocation_as_its_body_owner() {
 
     let response = response(&object, AssetRangeRequest::Full).expect("valid test fixture");
 
-    assert_eq!(Arc::strong_count(&body), 2);
+    // The test, the cached object and the response body share one allocation.
+    assert_eq!(Arc::strong_count(&body), 3);
     drop(response);
+    assert_eq!(Arc::strong_count(&body), 2);
+    drop(object);
     assert_eq!(Arc::strong_count(&body), 1);
 }

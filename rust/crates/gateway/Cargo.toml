@@ -42,6 +42,7 @@ tokio-stream = { workspace = true }
 ghostr-delivery = { path = "../delivery", features = ["test"] }
 ghostr-discovery = { path = "../discovery" }
 ghostr-engine = { path = "../engine", features = ["test"] }
+ghostr-partial-store = { path = "../partial-store", features = ["test"] }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["test-util"] }
 tower = { workspace = true }
