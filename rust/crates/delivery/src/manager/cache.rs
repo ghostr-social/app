@@ -32,10 +32,14 @@ impl DeliveryWorker {
     }
 
     async fn cache_video(&self, post: PostId) -> Option<CacheVideo> {
-        if !self.is_servable(&post) {
-            return None;
-        }
         let entry = self.state.catalog().lookup(&post)?;
+        if !self.is_servable(&post) {
+            return Some(CacheVideo {
+                id: post.0,
+                meta: entry.meta.clone(),
+                status: CacheStatus::Failed,
+            });
+        }
         let snapshot = self.ctx.store.media_snapshot(post.as_str()).await.ok()?;
         if !snapshot
             .binding()

@@ -27,6 +27,9 @@ pub(crate) struct DeliverySnapshotAuthority {
     pub asset_id: String,
 }
 
+const DECODER_UNSUPPORTED_DETAIL: &str = "decoder unsupported";
+const ALL_SOURCES_FAILED_DETAIL: &str = "all sources failed";
+
 /// Everything a snapshot is computed from.
 pub(crate) struct SnapshotInput<'a> {
     pub meta: &'a VideoMeta,
@@ -35,6 +38,8 @@ pub(crate) struct SnapshotInput<'a> {
     pub stored_total: Option<u64>,
     pub params: &'a EngineParams,
     pub playback_blocked: bool,
+    /// Every origin is retired: terminal until a source revives.
+    pub exhausted: bool,
     pub authority: Option<DeliverySnapshotAuthority>,
 }
 
@@ -46,12 +51,20 @@ pub(crate) fn compute_snapshot(post: &PostId, input: SnapshotInput<'_>) -> Deliv
         bytes_present: input.ranges.iter().map(ByteRange::len).sum(),
         total_bytes: input.stored_total.or(input.meta.size_bytes),
         eta_ms: None,
-        failed: input.playback_blocked,
-        detail: input
-            .playback_blocked
-            .then(|| "decoder unsupported".to_owned()),
+        failed: input.playback_blocked || input.exhausted,
+        detail: failure_detail(&input),
         authority: input.authority,
         hls_authority: None,
+    }
+}
+
+fn failure_detail(input: &SnapshotInput<'_>) -> Option<String> {
+    if input.playback_blocked {
+        Some(DECODER_UNSUPPORTED_DETAIL.to_owned())
+    } else if input.exhausted {
+        Some(ALL_SOURCES_FAILED_DETAIL.to_owned())
+    } else {
+        None
     }
 }
 

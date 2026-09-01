@@ -16,6 +16,7 @@ fn cached_decoder_blocked_representation_is_failed_not_startable() {
             stored_total: None,
             params: &params,
             playback_blocked: true,
+            exhausted: false,
             authority: None,
         },
     );

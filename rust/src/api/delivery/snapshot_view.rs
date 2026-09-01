@@ -17,6 +17,8 @@ pub(crate) struct SnapshotView {
     pub stored_total: Option<u64>,
     pub meta: Option<VideoMeta>,
     pub playback_blocked: bool,
+    /// Every origin of the post is retired; the item cannot become startable.
+    pub exhausted: bool,
     pub authority: Option<DeliverySnapshotAuthority>,
 }
 
@@ -37,6 +39,7 @@ pub(crate) async fn capture(
     };
     let representation_id = binding.representation().fingerprint().to_owned();
     let playback_blocked = context.cache.is_playback_blocked(id, binding);
+    let exhausted = !current.status.is_servable();
     let authority = context
         .capabilities
         .issue(&snapshot)
@@ -55,6 +58,7 @@ pub(crate) async fn capture(
         stored_total: snapshot.total_len(),
         meta: Some(current.meta),
         playback_blocked,
+        exhausted,
         authority,
     })
 }
@@ -65,6 +69,7 @@ fn empty() -> SnapshotView {
         stored_total: None,
         meta: None,
         playback_blocked: false,
+        exhausted: false,
         authority: None,
     }
 }

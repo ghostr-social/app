@@ -58,6 +58,7 @@ pub(crate) async fn emit_post(
         stored_total: view.stored_total,
         params: pass.params,
         playback_blocked: view.playback_blocked,
+        exhausted: view.exhausted,
         authority: view.authority,
     };
     let current = compute_snapshot(&post, input);

@@ -11,6 +11,15 @@ pub enum CacheStatus {
     Ready,
     Partial,
     Complete,
+    /// Every source of the post is retired: nothing more can be fetched
+    /// until one revives, so the gateway must not promise its bytes.
+    Failed,
+}
+
+impl CacheStatus {
+    pub const fn is_servable(self) -> bool {
+        !matches!(self, Self::Failed)
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -81,7 +90,10 @@ impl CacheRegistry {
     }
 
     pub fn matches_binding(&self, id: &str, binding: &RepresentationBinding) -> bool {
-        !self.is_playback_blocked(id, binding) && self.video_for_binding(id, binding).is_some()
+        !self.is_playback_blocked(id, binding)
+            && self
+                .video_for_binding(id, binding)
+                .is_some_and(|video| video.status.is_servable())
     }
 
     pub fn video_for_binding(
@@ -110,7 +122,9 @@ impl CacheRegistry {
         }
         match entries.by_id.get(id) {
             Some(None) => true,
-            Some(Some(video)) => binding.matches_or_derives_from(&video.meta),
+            Some(Some(video)) => {
+                video.status.is_servable() && binding.matches_or_derives_from(&video.meta)
+            }
             None => false,
         }
     }
