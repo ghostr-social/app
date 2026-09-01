@@ -7,7 +7,8 @@ pub async fn serve(prefix: Vec<u8>, total: u64) -> String {
     tokio::spawn(async move {
         let (mut socket, _) = listener.accept().await.expect("accept");
         let mut request = vec![0; 4_096];
-        socket.read(&mut request).await.expect("request");
+        let request_bytes = socket.read(&mut request).await.expect("request");
+        assert!(request_bytes > 0, "request closed before sending bytes");
         let head = format!(
             "HTTP/1.1 200 OK\r\nContent-Length: {total}\r\n\
              Content-Type: video/mp4\r\nETag: \"promoted-stall\"\r\n\r\n"
