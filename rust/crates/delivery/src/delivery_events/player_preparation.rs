@@ -2,8 +2,19 @@ use ghostr_engine::adaptive::PlayerPreparation;
 
 const MAX_FAILURE_KIND_BYTES: usize = 128;
 pub const DECODER_UNSUPPORTED_FAILURE: &str = "decoderUnsupported";
+pub const INVALID_VIDEO_TRACK_FAILURE: &str = "invalidVideoTrack";
+
+pub(crate) fn definitive_capability_failure(failure: Option<&str>) -> bool {
+    matches!(
+        failure,
+        Some(INVALID_VIDEO_TRACK_FAILURE | DECODER_UNSUPPORTED_FAILURE)
+    )
+}
 
 mod authority;
+#[cfg(test)]
+#[path = "player_preparation/definitive_capability_failure_test.rs"]
+mod definitive_capability_failure_test;
 mod followup;
 mod ingress;
 mod report;

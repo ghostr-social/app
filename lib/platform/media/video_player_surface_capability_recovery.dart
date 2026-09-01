@@ -1,6 +1,14 @@
 part of 'video_player_playback_port.dart';
 
 extension _VideoPlayerSurfaceCapabilityRecovery on _VideoPlayerSurfaceState {
+  Future<void> _rejectInvisibleTrack(VideoPlayerController controller) {
+    final canSelectFallback = _preparationAttempt != null;
+    _failPreparation(PlayerPreparationFailureKind.invalidVideoTrack);
+    return canSelectFallback
+        ? _rejectControllerForCapability(controller)
+        : _rejectControllerPermanently(controller);
+  }
+
   Future<void> _rejectControllerForCapability(
     VideoPlayerController controller,
   ) {

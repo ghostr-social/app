@@ -12,7 +12,7 @@ import '../support/scripted_video_player_platform.dart';
 import '../support/video_player_surface_pump.dart';
 
 void main() {
-  testWidgets('zero-size decoded track reports one permanent failure', (
+  testWidgets('zero-size decoded track waits for a replacement capability', (
     tester,
   ) async {
     VideoPlayerPlatform.instance = ScriptedVideoPlayerPlatform(
@@ -40,6 +40,8 @@ void main() {
       feedback.events.last.failure,
       PlayerPreparationFailureKind.invalidVideoTrack,
     );
+    expect(find.bySemanticsLabel('Loading video'), findsOneWidget);
+    expect(find.text('Video unavailable'), findsNothing);
   });
 }
 

@@ -43,6 +43,7 @@ pub use plan_evidence::PlanEvidence;
 use plan_evidence::PlanEvidenceHistory;
 pub(crate) use plan_evidence::PlanPublicationContext;
 pub use playback_presentation::{PlaybackPresentation, PlaybackPresentationIngress};
+pub(crate) use player_preparation::definitive_capability_failure;
 pub(crate) use player_preparation::PlayerPreparationActorOutcome;
 pub use player_preparation::{
     PlayerPreparationAdmission, PlayerPreparationAttempt, PlayerPreparationAuthority,

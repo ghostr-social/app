@@ -1,6 +1,6 @@
 use crate::client_capability::{CapabilitySignal, ClientCapabilityProfile};
 use crate::delivery_events::{
-    PlayerPreparationReport, PlayerPreparationState, DECODER_UNSUPPORTED_FAILURE,
+    definitive_capability_failure, PlayerPreparationReport, PlayerPreparationState,
 };
 use ghostr_engine::catalog::Catalog;
 use ghostr_engine::evidence::{Confidence, EvidenceAssessment, EvidenceField, EvidenceValue};
@@ -71,12 +71,7 @@ pub(super) fn capability_signal(report: &PlayerPreparationReport) -> Option<Capa
         PlayerPreparationState::Initializing => Some(CapabilitySignal::Initializing),
         PlayerPreparationState::FirstFrameRendered => Some(CapabilitySignal::FirstFrameRendered),
         PlayerPreparationState::Released => Some(CapabilitySignal::Released),
-        PlayerPreparationState::Failed
-            if matches!(
-                report.failure_kind(),
-                Some("invalidVideoTrack" | DECODER_UNSUPPORTED_FAILURE)
-            ) =>
-        {
+        PlayerPreparationState::Failed if definitive_capability_failure(report.failure_kind()) => {
             Some(CapabilitySignal::UnsupportedFailure)
         }
         PlayerPreparationState::Failed => Some(CapabilitySignal::InconclusiveFailure),

@@ -2,7 +2,7 @@ use crate::client_capability::{
     load_client_capabilities, save_client_capabilities, ClientCapabilityModel,
 };
 use crate::delivery_events::{
-    PlayerPreparationActorOutcome, PlayerPreparationEnvelope, DECODER_UNSUPPORTED_FAILURE,
+    definitive_capability_failure, PlayerPreparationActorOutcome, PlayerPreparationEnvelope,
 };
 use crate::manager::quality::prepare_rendition_switch;
 use crate::manager::time::unix_time_ms;
@@ -12,6 +12,16 @@ use core::time::Duration;
 use log::warn;
 use std::path::PathBuf;
 use tokio::sync::mpsc::UnboundedSender;
+
+#[cfg(test)]
+#[path = "capability/fallback_environment.rs"]
+mod fallback_environment;
+#[cfg(test)]
+#[path = "capability/fallback_fixture.rs"]
+mod fallback_fixture;
+#[cfg(test)]
+#[path = "capability/invalid_track_fallback_test.rs"]
+mod invalid_track_fallback_test;
 
 pub(super) struct CapabilityKeeper {
     path: PathBuf,
@@ -76,7 +86,7 @@ impl DeliveryWorker {
         let post = envelope.report().post().clone();
         let progressive = envelope.report().progressive_binding().is_some();
         let decoder_unsupported =
-            progressive && envelope.report().failure_kind() == Some(DECODER_UNSUPPORTED_FAILURE);
+            progressive && definitive_capability_failure(envelope.report().failure_kind());
         let outcome = if self.segmented.accepts_player_preparation(envelope.report()) {
             self.state
                 .apply_player_preparation_at(envelope.report().clone(), unix_time_ms())

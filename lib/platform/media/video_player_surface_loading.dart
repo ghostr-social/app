@@ -64,8 +64,7 @@ extension _VideoPlayerSurfaceLoading on _VideoPlayerSurfaceState {
       if (await _acceptController(controller)) _finishPluginInitialization();
     } on _InvisibleVideoTrack catch (error, stackTrace) {
       _logInitializationFailure(error, stackTrace);
-      _failPreparation(PlayerPreparationFailureKind.invalidVideoTrack);
-      await _rejectControllerPermanently(controller);
+      await _rejectInvisibleTrack(controller);
     } on Object catch (error, stackTrace) {
       await _handlePreparationFailure(controller, error, stackTrace);
     }
