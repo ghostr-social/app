@@ -4,7 +4,7 @@ import 'package:ghostr/features/video_catalog/presentation/feed_state.dart';
 import 'package:ghostr/features/video_catalog/presentation/widgets/feed_page_view.dart';
 
 void main() {
-  testWidgets('a changed active page repositions the visible feed', (
+  testWidgets('an active page change repositions without user navigation', (
     tester,
   ) async {
     final page = ValueNotifier(0);
@@ -32,6 +32,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Page 2'), findsOneWidget);
-    expect(changes.last, 2);
+    expect(changes, isEmpty);
   });
 }

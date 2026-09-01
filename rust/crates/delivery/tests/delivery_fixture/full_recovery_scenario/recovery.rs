@@ -56,17 +56,15 @@ impl Scenario {
             0,
             0,
         ));
-        let trial = self.origin.next_within("Full recovery trial").await;
-        assert_eq!(trial.method.as_str(), "GET");
-        assert_eq!(trial.path, "/trial.mp4");
-        assert_eq!(trial.range, None);
+        let trial = self.next_trial_request().await;
         assert_eq!(trial.encoding.as_deref(), Some("identity"));
         trial
     }
 
     pub(super) async fn assert_trial_open(&mut self, trial: &ObservedRequest) {
         trial.send(1).await;
-        self.origin.assert_quiet().await;
+        self.assert_no_competing_trial().await;
+        self.assert_trial_lease();
         assert_admission(
             &self.stats_path(),
             &self.trial_query(),

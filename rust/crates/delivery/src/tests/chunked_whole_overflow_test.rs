@@ -44,15 +44,17 @@ async fn chunked_whole_above_its_cap_rolls_back_without_harming_seed() {
     )
     .await;
     assert_eq!(observed.received_bytes, 9);
-    let error = observed
-        .result
-    .expect_err("cap+1 must fail");
+    let error = observed.result.expect_err("cap+1 must fail");
 
     let limit = crate::chunk::whole_body_limit::from_error(&error).expect("valid test fixture");
     assert_eq!(limit.maximum_bytes(), 8);
     assert_eq!(limit.received_bytes(), 9);
     assert_eq!(
-        fixture.store.read_range("post", 0..4).await.expect("valid test fixture"),
+        fixture
+            .store
+            .read_range("post", 0..4)
+            .await
+            .expect("valid test fixture"),
         Some(b"old!".to_vec())
     );
     assert_eq!(*fixture.used.lock().await, 4);

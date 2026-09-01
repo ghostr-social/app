@@ -1,13 +1,13 @@
 use crate::delivery_events::{DeliveryCandidate, DeliveryPlayback};
 use crate::manager::quality::select_rendition;
 use crate::manager::state::DeliveryState;
+use core::time::Duration;
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::playback::{
     PlaybackObservation, PlaybackObservationSequence, PlaybackPhase, PlaybackSession,
 };
 use ghostr_engine::video_rendition::VideoRendition;
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
-use core::time::Duration;
 
 #[test]
 fn runtime_quality_waits_for_both_playback_and_measured_network_evidence() {

@@ -27,6 +27,18 @@ impl CommandReceiver {
         );
     }
 
+    pub fn publish_causal_focused_plan(
+        &mut self,
+        observed_at_ms: u64,
+        current: Option<PostId>,
+        generation: u64,
+        plan: AllocationPlan,
+    ) {
+        let context = PlanPublicationContext::new(observed_at_ms, current)
+            .with_focus(Some(generation), Some(generation));
+        self.plans.publish_focused(context, plan, Vec::new());
+    }
+
     pub fn publish_focused_plan_with_startup(
         &mut self,
         observed_at_ms: u64,

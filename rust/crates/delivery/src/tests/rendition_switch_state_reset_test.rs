@@ -3,13 +3,13 @@ use crate::manager::quality::{prepare_rendition_switch, select_rendition};
 use crate::manager::retry::{RetryBook, RetryPolicy};
 use crate::manager::state::DeliveryState;
 use crate::probe::pool::MetadataProbePool;
+use core::time::Duration;
 use ghostr_engine::host_stats::{HostStats, ThroughputSample};
 use ghostr_engine::playback::{
     PlaybackObservation, PlaybackObservationSequence, PlaybackPhase, PlaybackSession,
 };
 use ghostr_engine::video_rendition::VideoRendition;
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
-use core::time::Duration;
 
 #[test]
 fn selected_rendition_resets_representation_fenced_delivery_state() {
@@ -63,8 +63,8 @@ fn playback(post: PostId) -> DeliveryPlayback {
 fn slow_stats() -> HostStats {
     let mut stats = HostStats::new();
     for second in 1..=8 {
-        let sample =
-            ThroughputSample::new(200_000, Duration::from_secs(1), second * 1_000, 1).expect("valid test fixture");
+        let sample = ThroughputSample::new(200_000, Duration::from_secs(1), second * 1_000, 1)
+            .expect("valid test fixture");
         stats.record_host_throughput("high.example", sample);
     }
     stats

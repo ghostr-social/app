@@ -59,7 +59,7 @@ async fn clear_cancels_selected_transform_without_publishing_output() {
         .into_iter()
         .find(cancelled_transform)
         .expect("cancelled Transform decision");
-    assert_eq!(record.schema_version, 3);
+    assert_eq!(record.schema_version, 4);
     let actual = record.actual_resources.expect("cancelled CPU evidence");
     assert!(actual.cpu_ms > 0);
     assert_eq!(actual.storage_bytes, 0);

@@ -1,4 +1,7 @@
-use super::{DeliveryNetworkStatus, DeliveryPlayback, FocusGeneration, TransportRescue};
+use super::{
+    DeliveryNetworkStatus, DeliveryPlayback, FocusGeneration, TransportRescue,
+    TransportRescueFeedback,
+};
 use ghostr_engine::evidence::NostrMetadataEvidence;
 use ghostr_engine::video_rendition::VideoRendition;
 use ghostr_engine::{DataUsageLevel, PostId, PreviewDescriptor, VideoMeta};
@@ -73,6 +76,8 @@ impl DeliveryFocus {
 pub enum DeliveryCommand {
     Candidate(DeliveryCandidate),
     Focus(DeliveryFocus),
+    #[doc(hidden)]
+    RescueFeedback(TransportRescueFeedback),
     Playback(DeliveryPlayback),
     Config(DataUsageLevel),
     NetworkStatus(DeliveryNetworkStatus),

@@ -1,9 +1,9 @@
 //! Async load/save of host stats snapshots in the cache directory.
 
 use crate::manager::stats::{load_host_stats, save_host_stats};
+use core::time::Duration;
 use ghostr_engine::host_stats::HostStats;
 use std::path::PathBuf;
-use core::time::Duration;
 
 fn temp_path(name: &str) -> PathBuf {
     let file = format!("ghostr_host_stats_{}_{name}.json", std::process::id());

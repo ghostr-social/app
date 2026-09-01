@@ -3,6 +3,7 @@ use core::sync::atomic::{AtomicU8, Ordering};
 const CANCEL_REQUESTED: u8 = 1;
 const IO_FINISHED: u8 = 2;
 const HEDGE_AUTHORIZED: u8 = 4;
+const BODY_RECEIVED: u8 = 8;
 
 #[derive(Debug, Default)]
 pub(super) struct AttemptLifecycle {
@@ -16,6 +17,14 @@ impl AttemptLifecycle {
 
     pub(super) fn io_finished(&self) -> bool {
         self.has(IO_FINISHED)
+    }
+
+    pub(super) fn mark_body_received(&self) {
+        self.phase.fetch_or(BODY_RECEIVED, Ordering::AcqRel);
+    }
+
+    pub(super) fn body_received(&self) -> bool {
+        self.has(BODY_RECEIVED)
     }
 
     pub(super) fn begin_cancel(&self) -> bool {

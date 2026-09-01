@@ -29,12 +29,24 @@ async fn a_whole_response_covered_by_the_prefix_opens_without_promotion() {
     assert_eq!(actions[0].action_id(), attempt.id());
     assert_eq!(actions[0].effective_bytes(), ByteRange::new(0, 8));
     assert_eq!(actions[0].reserved_storage_bytes(), 8);
-    assert!(!fixture.handle.decision_history_json().expect("history").contains("\"command\":\"promote\""));
+    assert!(!fixture
+        .handle
+        .decision_history_json()
+        .expect("history")
+        .contains("\"command\":\"promote\""));
     let finished = fixture.worker.finish_response_attempt_for_test(&attempt);
-    assert_eq!(finished.network_reservation().expect("reservation").committed_bytes(), 8);
+    assert_eq!(
+        finished
+            .network_reservation()
+            .expect("reservation")
+            .committed_bytes(),
+        8
+    );
     fixture.store.release_action(&action).await;
     drop(fixture.store);
-    tokio::fs::remove_dir_all(fixture.root).await.expect("fixture cleanup");
+    tokio::fs::remove_dir_all(fixture.root)
+        .await
+        .expect("fixture cleanup");
 }
 
 pub(super) fn covered_response() -> OpenedResponse {

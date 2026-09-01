@@ -1,6 +1,7 @@
 use crate::hls_manifest::MAX_HLS_MANIFEST_BYTES;
 use crate::hls_manifest_attributes::quoted_attribute;
 use anyhow::{bail, ensure, Context as _, Result};
+use core::fmt;
 use url::Url;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -8,6 +9,17 @@ pub enum HlsBootstrap {
     Master { variant: Url },
     Media { init: Option<Url>, segment: Url },
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct UnsupportedHlsFeature;
+
+impl fmt::Display for UnsupportedHlsFeature {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("unsupported HLS playlist feature")
+    }
+}
+
+impl std::error::Error for UnsupportedHlsFeature {}
 
 /// Inspects a bounded HLS manifest and resolves its first playable resource.
 ///
@@ -47,7 +59,7 @@ impl Scan {
             return Ok(());
         }
         if forbidden(line) {
-            bail!("unsupported HLS playlist feature");
+            return Err(UnsupportedHlsFeature.into());
         }
         if self.awaiting_variant && line.starts_with('#') {
             bail!("HLS variant declaration is missing its URI");

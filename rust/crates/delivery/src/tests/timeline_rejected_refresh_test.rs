@@ -1,9 +1,9 @@
 use crate::tests::media_timeline_fixture::classic_moov;
 use crate::tests::timeline_manager_fixture::TimelineManagerFixture;
 use crate::tests::timeline_parser_fixture::GatedTimelineParser;
+use core::time::Duration;
 use ghostr_engine::media_timeline::{parse_mp4_segments, MediaSegment};
 use std::sync::Arc;
-use core::time::Duration;
 
 #[tokio::test]
 async fn contradictory_additive_evidence_withdraws_the_preserved_timeline() {
@@ -11,7 +11,8 @@ async fn contradictory_additive_evidence_withdraws_the_preserved_timeline() {
     let ready = parse_mp4_segments(&[MediaSegment::new(0, &moov)]).expect("valid test fixture");
     let (parser, mut started) = GatedTimelineParser::rejecting_refresh(ready);
     let _release = ReleaseAll(std::sync::Arc::clone(&parser));
-    let mut fixture = TimelineManagerFixture::new(std::sync::Arc::<GatedTimelineParser>::clone(&parser)).await;
+    let mut fixture =
+        TimelineManagerFixture::new(std::sync::Arc::<GatedTimelineParser>::clone(&parser)).await;
 
     fixture.focus();
     step(&mut fixture).await;
@@ -30,7 +31,9 @@ async fn contradictory_additive_evidence_withdraws_the_preserved_timeline() {
 
     parser.release(1);
     await_no_timeline(&mut fixture).await;
-    tokio::fs::remove_dir_all(fixture.root).await.expect("valid test fixture");
+    tokio::fs::remove_dir_all(fixture.root)
+        .await
+        .expect("valid test fixture");
     assert!(preserved.is_some());
 }
 
@@ -44,11 +47,9 @@ impl Drop for ReleaseAll {
 }
 
 async fn step(fixture: &mut TimelineManagerFixture) {
-    assert!(
-        tokio::time::timeout(Duration::from_secs(1), fixture.step())
-            .await
-            .expect("valid test fixture")
-    );
+    assert!(tokio::time::timeout(Duration::from_secs(1), fixture.step())
+        .await
+        .expect("valid test fixture"));
 }
 
 async fn await_timeline(fixture: &mut TimelineManagerFixture) {

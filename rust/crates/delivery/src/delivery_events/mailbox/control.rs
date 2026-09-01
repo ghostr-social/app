@@ -1,24 +1,24 @@
 use crate::delivery_events::DeliveryCommand;
 use std::collections::VecDeque;
 
-pub(super) fn replace(pending: &mut VecDeque<DeliveryCommand>, mut command: DeliveryCommand) {
+mod focus;
+
+pub(super) fn replace(pending: &mut VecDeque<DeliveryCommand>, command: DeliveryCommand) {
+    let command = match command {
+        DeliveryCommand::Focus(update) => return focus::replace(pending, update),
+        command => command,
+    };
     if let Some(index) = pending.iter().position(|old| same_kind(old, &command)) {
         if !supersedes(&command, &pending[index]) {
             return;
         }
-        let previous = pending.remove(index).expect("located command");
-        inherit_focus_lineage(&mut command, &previous);
+        pending.remove(index).expect("located command");
     }
     pending.push_back(command);
 }
 
-fn inherit_focus_lineage(new: &mut DeliveryCommand, previous: &DeliveryCommand) {
-    let (DeliveryCommand::Focus(new), DeliveryCommand::Focus(previous)) = (new, previous) else {
-        return;
-    };
-    if new.current_post().is_some() && new.current_post() == previous.current_post() {
-        new.generation = new.generation.covering(previous.generation);
-    }
+pub(super) fn compact_for_delivery(pending: &mut VecDeque<DeliveryCommand>) {
+    focus::compact_for_delivery(pending);
 }
 
 fn same_kind(left: &DeliveryCommand, right: &DeliveryCommand) -> bool {

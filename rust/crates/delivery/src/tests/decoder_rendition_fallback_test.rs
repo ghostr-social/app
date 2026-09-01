@@ -41,10 +41,19 @@ fn inactive_decoder_rejection_selects_missing_bitrate_alternative() {
         Some(DECODER_UNSUPPORTED_FAILURE),
     )));
 
-    let selected = state.select_capability_fallback(&post, 0).expect("valid test fixture");
+    let selected = state
+        .select_capability_fallback(&post, 0)
+        .expect("valid test fixture");
 
     assert_ne!(selected.representation(), old.representation());
-    assert_eq!(state.catalog().lookup(&post).expect("valid test fixture").meta, meta("avc"));
+    assert_eq!(
+        state
+            .catalog()
+            .lookup(&post)
+            .expect("valid test fixture")
+            .meta,
+        meta("avc")
+    );
     assert_eq!(
         state.apply_player_preparation_at(
             report(
@@ -79,6 +88,8 @@ fn report(
     )
     .expect("valid test fixture");
     let observation =
-        PlayerPreparationObservation::try_new(state, failure.map(str::to_owned), sequence).expect("valid test fixture");
-    PlayerPreparationReport::try_new(authority, attempt, sequence, observation).expect("valid test fixture")
+        PlayerPreparationObservation::try_new(state, failure.map(str::to_owned), sequence)
+            .expect("valid test fixture");
+    PlayerPreparationReport::try_new(authority, attempt, sequence, observation)
+        .expect("valid test fixture")
 }

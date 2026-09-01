@@ -9,7 +9,8 @@ mod types;
 
 pub(crate) use events::{
     AdaptationMetricEvent, BudgetMetricEvent, IntegrityMetricEvent, PlaybackMetricEvent,
-    PresentationMetricEvent, ReadinessMetricEvent, SemanticMetricEvent, TransferMetricEvent,
+    PresentationMetricEvent, ReadinessMetricEvent, SemanticMetricEvent, SemanticMetricRollup,
+    TransferMetricEvent,
 };
 pub(crate) use ledger::EvaluationLedger;
 pub use tracker::EvaluationTracker;

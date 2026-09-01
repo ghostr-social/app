@@ -1,8 +1,9 @@
-
 use crate::chunk::cancel::cancel_pair;
 use crate::debug::network::NetworkThrottle;
 use crate::manager::inflight::ChunkAttempt;
-use crate::manager::transfers::{spawn_chunk, ChunkLaunch, InternalEvent, TransferContext, TransferEvent};
+use crate::manager::transfers::{
+    spawn_chunk, ChunkLaunch, InternalEvent, TransferContext, TransferEvent,
+};
 use crate::manager::{response_open, traffic};
 use crate::tests::support::temp_directory;
 use ghostr_engine::adaptive::RetrievalRequest;
@@ -31,12 +32,21 @@ async fn panicking_transfer_reports_terminal_and_releases_its_reservation() {
     ));
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(PostId::new("post"), meta());
-    let identity = binding.transfer("https://panic.example/video").expect("valid test fixture");
-    store.bind_representation(binding).await.expect("valid test fixture");
-    let action = store.reserve_action(&identity, 1, 4).await.expect("valid test fixture");
+    let identity = binding
+        .transfer("https://panic.example/video")
+        .expect("valid test fixture");
+    store
+        .bind_representation(binding)
+        .await
+        .expect("valid test fixture");
+    let action = store
+        .reserve_action(&identity, 1, 4)
+        .await
+        .expect("valid test fixture");
     let (events_sender, mut events) = mpsc::unbounded_channel();
     let (publisher, _traffic) = traffic::channel(events_sender.clone(), 4);
-    let (responses, _response_receiver) = response_open::channel(core::time::Duration::from_secs(1));
+    let (responses, _response_receiver) =
+        response_open::channel(core::time::Duration::from_secs(1));
     let ctx = TransferContext {
         requests: MediaRequestExecutor::new(
             Arc::new(PanicClient),
@@ -72,12 +82,16 @@ async fn panicking_transfer_reports_terminal_and_releases_its_reservation() {
         network_class: ghostr_engine::origin_model::NetworkClass::Unavailable,
     });
 
-    let InternalEvent::Transfer(TransferEvent::ChunkDone(done)) = events.recv().await.expect("valid test fixture")
+    let InternalEvent::Transfer(TransferEvent::ChunkDone(done)) =
+        events.recv().await.expect("valid test fixture")
     else {
         panic!("chunk terminal event")
     };
     assert!(done.outcome.is_err());
-    store.reserve_action(&identity, 2, 4).await.expect("valid test fixture");
+    store
+        .reserve_action(&identity, 2, 4)
+        .await
+        .expect("valid test fixture");
     std::fs::remove_dir_all(root).expect("valid test fixture");
 }
 

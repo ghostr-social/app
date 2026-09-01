@@ -1,5 +1,5 @@
-use crate::qoe::axiom_test_support::WatchOutcome;
 use crate::delivery_events::FocusTransition;
+use crate::qoe::axiom_test_support::WatchOutcome;
 use crate::qoe::WatchLearner;
 use crate::tests::watch_model_fixture::{focus, playback};
 use ghostr_engine::playback::PlaybackPhase;

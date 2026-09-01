@@ -23,12 +23,18 @@ async fn internal_first_covered_response_publishes_the_same_whole_state() {
     assert_eq!(actions[0].action_id(), attempt.id());
     assert_eq!(actions[0].effective_bytes(), ByteRange::new(0, 8));
     assert_eq!(actions[0].request(), planned_completion());
-    assert!(!fixture.handle.decision_history_json().expect("history").contains("\"command\":\"promote\""));
+    assert!(!fixture
+        .handle
+        .decision_history_json()
+        .expect("history")
+        .contains("\"command\":\"promote\""));
 
     fixture.worker.finish_response_attempt_for_test(&attempt);
     fixture.store.release_action(&action).await;
     drop(fixture.store);
-    tokio::fs::remove_dir_all(fixture.root).await.expect("fixture cleanup");
+    tokio::fs::remove_dir_all(fixture.root)
+        .await
+        .expect("fixture cleanup");
 }
 
 fn planned_completion() -> RetrievalRequest {

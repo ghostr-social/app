@@ -1,13 +1,13 @@
 use crate::delivery_events::{DeliveryCandidate, DeliveryPlayback};
 use crate::manager::quality::select_rendition;
 use crate::manager::state::DeliveryState;
+use core::time::Duration;
 use ghostr_engine::host_stats::{HostStats, ThroughputSample};
 use ghostr_engine::playback::{
     PlaybackObservation, PlaybackObservationSequence, PlaybackPhase, PlaybackSession,
 };
 use ghostr_engine::video_rendition::VideoRendition;
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
-use core::time::Duration;
 
 #[test]
 fn measured_throughput_and_buffer_risk_switch_the_playing_catalog_representation() {
@@ -31,7 +31,12 @@ fn measured_throughput_and_buffer_risk_switch_the_playing_catalog_representation
 
     assert_eq!(binding.post(), &post);
     assert_eq!(
-        state.catalog().lookup(&post).expect("valid test fixture").meta.urls,
+        state
+            .catalog()
+            .lookup(&post)
+            .expect("valid test fixture")
+            .meta
+            .urls,
         ["https://low.example/video.mp4"]
     );
 }
@@ -53,8 +58,8 @@ fn playback(post: PostId) -> DeliveryPlayback {
 fn slow_stats() -> HostStats {
     let mut stats = HostStats::new();
     for second in 1..=8 {
-        let sample =
-            ThroughputSample::new(200_000, Duration::from_secs(1), second * 1_000, 1).expect("valid test fixture");
+        let sample = ThroughputSample::new(200_000, Duration::from_secs(1), second * 1_000, 1)
+            .expect("valid test fixture");
         stats.record_host_throughput("high.example", sample);
     }
     stats

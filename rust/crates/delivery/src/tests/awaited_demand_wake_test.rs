@@ -50,13 +50,15 @@ async fn awaited_demand_is_delivered_and_advances_lane_fairness() {
         timelines: &mut timelines,
     };
     let wake = wait_for_channel_wake(&mut sources, &mut control_interval, &mut cursor)
-    .await
-    .expect("demand wake");
+        .await
+        .expect("demand wake");
 
     assert!(matches!(wake, Wake::Demand(actual) if actual == signal));
     assert_eq!(
         cursor.choose(&[false, false, false, false, false, false, true, false, false]),
         Some(WakeLane::Internal)
     );
-    tokio::fs::remove_dir_all(root).await.expect("valid test fixture");
+    tokio::fs::remove_dir_all(root)
+        .await
+        .expect("valid test fixture");
 }

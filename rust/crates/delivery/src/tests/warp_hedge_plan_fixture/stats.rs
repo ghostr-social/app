@@ -1,14 +1,15 @@
 use super::{HedgeCase, ALTERNATE, OBSERVED_AT_MS, PRIMARY};
+use core::time::Duration;
 use ghostr_engine::host_stats::{HostStats, ThroughputSample};
 use ghostr_engine::origin_model::{
     ErrorReason, MediaClass, NetworkClass, OriginContext, OriginObservation, OriginQuery,
     RequestMethod,
 };
-use core::time::Duration;
 
 pub(super) fn model(case: HedgeCase) -> HostStats {
     let mut stats = HostStats::new();
-    let sample = ThroughputSample::new(2_000_000, Duration::from_secs(1), 1, 1).expect("valid test fixture");
+    let sample =
+        ThroughputSample::new(2_000_000, Duration::from_secs(1), 1, 1).expect("valid test fixture");
     stats.record_overall_throughput(sample);
     observe(&mut stats, PRIMARY, 900, 500_000);
     observe(&mut stats, ALTERNATE, 20, 20_000_000);

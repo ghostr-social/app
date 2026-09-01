@@ -1,11 +1,11 @@
 use super::support::{pressure::fill_and_refuse, temp_directory};
 use crate::manager::pressure::capacity_changed;
+use core::time::Duration;
 use ghostr_partial_store::partial_range_store::capacity::{Limits, StoreCapacity};
 use ghostr_partial_store::partial_range_store::free_space::FreeSpace;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::Path;
 use std::sync::Arc;
-use core::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::timeout;
 
@@ -21,7 +21,10 @@ impl FreeSpace for PlentyOfSpace {
 async fn capacity_change_before_wait_subscription_is_not_lost() {
     let (store, root) = bounded_store();
     let refusal = fill_and_refuse(&store).await;
-    store.set_storage_budget(16).await.expect("valid test fixture");
+    store
+        .set_storage_budget(16)
+        .await
+        .expect("valid test fixture");
     let mut changes = store.capacity_changes();
 
     let changed = timeout(

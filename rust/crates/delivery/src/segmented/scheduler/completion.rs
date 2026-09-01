@@ -5,6 +5,7 @@ use crate::segmented::cache::StageLease;
 use crate::segmented::fetch::{FetchFailure, OriginTelemetry};
 use crate::segmented::prepare::PreparedComplete;
 use ghostr_engine::origin_model::ErrorReason;
+use ghostr_hls_manifest::hls_manifest::UnsupportedHlsFeature;
 
 mod terminal;
 use terminal::{terminal, TerminalContext, TerminalInput};
@@ -117,12 +118,12 @@ impl SegmentedDelivery {
             .pending
             .advance(&stage.object.object)
             .map_err(|error| {
-                FetchFailure::admitted(
-                    error,
-                    ErrorReason::InvalidResponse,
-                    completed.telemetry,
-                    completed.bytes,
-                )
+                let reason = if error.downcast_ref::<UnsupportedHlsFeature>().is_some() {
+                    ErrorReason::Policy
+                } else {
+                    ErrorReason::InvalidResponse
+                };
+                FetchFailure::admitted(error, reason, completed.telemetry, completed.bytes)
             })?;
         if !stage.lease.commit_complete(stage.object) {
             return Err(FetchFailure::superseded(

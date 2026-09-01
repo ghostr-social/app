@@ -3,9 +3,9 @@ use crate::manager::timeline::axiom_test_support::TimelineInput;
 use crate::manager::timeline::axiom_test_support::TimelineParse;
 use crate::manager::timeline::axiom_test_support::TimelineParser;
 use crate::manager::timeline::{TimelineRejection, TimelineTerminal};
+use core::sync::atomic::{AtomicUsize, Ordering};
 use ghostr_engine::media_timeline::MediaTimeline;
 use ghostr_engine::media_timeline::TimelineParseControl;
-use core::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use tokio::sync::mpsc;
 

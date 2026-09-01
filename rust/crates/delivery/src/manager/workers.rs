@@ -2,9 +2,10 @@
 
 use crate::manager::inflight::{ActiveAction, ChunkAttempt, FinishedAction, InFlightChunks};
 use crate::manager::plan::PlannedTransfer;
+use ghostr_engine::catalog::Catalog;
 use ghostr_engine::representation::{RepresentationBinding, TransferIdentity};
-use ghostr_engine::{ChunkId, PostId};
-use std::collections::HashSet;
+use ghostr_engine::{ByteRange, ChunkId, PostId};
+use std::collections::{HashMap, HashSet};
 
 mod hedge;
 mod http_generation;
@@ -79,6 +80,20 @@ impl DownloadWorkers {
 
     pub(super) fn cancel_obsolete(&mut self, binding: &RepresentationBinding) {
         self.active.cancel_obsolete(binding);
+    }
+
+    pub(super) fn cancel_without_body(&mut self, posts: &HashSet<PostId>) {
+        self.active.cancel_without_body(posts);
+    }
+
+    pub(super) fn cancel_covered_without_body(
+        &mut self,
+        present: &HashMap<PostId, Vec<ByteRange>>,
+        transformed: &HashMap<PostId, RepresentationBinding>,
+        catalog: &Catalog,
+    ) {
+        self.active
+            .cancel_covered_without_body(present, transformed, catalog);
     }
 
     pub fn active_hosts(&self) -> HashSet<String> {

@@ -41,6 +41,7 @@ part 'video_player_playback_handoff_reconciliation.dart';
 part 'video_player_playback_handoff_state.dart';
 part 'video_player_playback_handoff_teardown.dart';
 part 'video_player_surface.dart';
+part 'video_player_surface_activity.dart';
 part 'video_player_surface_capability_recovery.dart';
 part 'video_player_surface_controller_acceptance.dart';
 part 'video_player_surface_commands.dart';

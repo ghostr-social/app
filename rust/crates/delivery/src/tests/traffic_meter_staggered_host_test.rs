@@ -1,6 +1,6 @@
 use crate::manager::traffic::{TrafficEvent, TrafficMeter, TrafficWindow, TransferKey};
-use ghostr_engine::host_stats::HostStats;
 use core::time::Duration;
+use ghostr_engine::host_stats::HostStats;
 use tokio::time::Instant;
 
 #[test]
@@ -59,5 +59,8 @@ fn progress(transfer: TransferKey, bytes: u64, at: Instant) -> TrafficEvent {
 }
 
 fn rate(stats: &HostStats, host: &str) -> f64 {
-    stats.host_throughput(host).expect("valid test fixture").bytes_per_second()
+    stats
+        .host_throughput(host)
+        .expect("valid test fixture")
+        .bytes_per_second()
 }

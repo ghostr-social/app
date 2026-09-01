@@ -14,6 +14,13 @@ impl ActiveRequest {
         self.body.send(Ok(Bytes::from_static(&[7]))).await.is_ok()
     }
 
+    pub async fn send_bytes(&self, length: usize) -> bool {
+        self.body
+            .send(Ok(Bytes::from(vec![7; length])))
+            .await
+            .is_ok()
+    }
+
     pub fn is_open(&self) -> bool {
         !self.body.is_closed()
     }

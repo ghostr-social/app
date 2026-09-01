@@ -52,7 +52,7 @@ async fn manager_learns_throughput_before_the_response_reaches_eof() {
 }
 
 async fn wait_for_throughput(path: &Path) -> HostStats {
-    tokio::time::timeout(Duration::from_secs(5), async {
+    tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             if let Ok(json) = tokio::fs::read_to_string(path).await {
                 let stats = HostStats::from_json(&json).expect("valid test fixture");

@@ -3,12 +3,14 @@
 mod delivery_fixture;
 
 use delivery_fixture::clean_eof_origin::serve;
-use delivery_fixture::decision::wait_for_history;
+use delivery_fixture::decision::history::wait_for_history_with_limit;
 use delivery_fixture::items::{focus_now, unsized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness;
+use std::time::Duration;
 
 const DIGEST: &str = "9f9f5111f7b27a781f1f1ddde5ebc2dd2b796bfc7365c9c28b548e564176929f";
+const EVIDENCE_WAIT_LIMIT: Duration = Duration::from_secs(30);
 
 #[tokio::test]
 async fn clean_eof_verified_bytes_become_integrity_evidence() {
@@ -20,8 +22,9 @@ async fn clean_eof_verified_bytes_become_integrity_evidence() {
     harness.handle.update_focus(focus_now(vec![item], 0, 0));
     origin.wait_whole_started().await;
     origin.release();
-    wait_for_history(&harness.handle, has_verified_complete).await;
+    wait_for_history_with_limit(&harness.handle, EVIDENCE_WAIT_LIMIT, has_verified_complete).await;
 
+    assert_eq!(origin.gets(), 2, "range recovery must precede whole GET");
     assert!(harness.root.join("aa11.video").exists());
     assert!(harness.root.join("aa11.verified").exists());
     std::fs::remove_dir_all(&harness.root).ok();

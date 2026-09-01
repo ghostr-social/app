@@ -66,7 +66,11 @@ async fn rejected_commit_rolls_back_the_exact_store_delta_without_cancelling() {
     assert_eq!(extension.additional_bytes(), 12);
     assert!(fixture.active.activate_promotion(&preflight, 50));
     assert!(fixture.active.rollback_promotion(&preflight));
-    fixture.store.rollback_action(extension).await.expect("valid test fixture");
+    fixture
+        .store
+        .rollback_action(extension)
+        .await
+        .expect("valid test fixture");
 
     let retry = fixture
         .store
@@ -74,7 +78,11 @@ async fn rejected_commit_rolls_back_the_exact_store_delta_without_cancelling() {
         .await
         .expect("valid test fixture");
     assert_eq!(retry.additional_bytes(), 12);
-    fixture.store.rollback_action(retry).await.expect("valid test fixture");
+    fixture
+        .store
+        .rollback_action(retry)
+        .await
+        .expect("valid test fixture");
     assert!(!fixture.token.is_cancelled());
     fixture.cleanup().await;
 }

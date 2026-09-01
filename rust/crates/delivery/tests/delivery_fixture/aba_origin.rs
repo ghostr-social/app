@@ -1,14 +1,15 @@
-//! Controlled range origin for an A→B→A stale-completion scenario.
+//! Controlled request-aware origin for stale-completion scenarios.
 
 use core::sync::atomic::{AtomicUsize, Ordering};
 use core::time::Duration;
 use std::sync::Arc;
-use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+use tokio::io::AsyncWriteExt as _;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Semaphore;
 
+mod request;
 mod response;
-use response::{is_head, write_head, write_range_headers};
+use response::{is_head, write_body_headers, write_head};
 
 #[derive(Clone)]
 pub struct AbaOrigin {
@@ -43,9 +44,9 @@ pub async fn serve(bytes: Vec<u8>) -> (String, AbaOrigin) {
 }
 
 async fn answer(mut socket: TcpStream, bytes: Arc<Vec<u8>>, gate: AbaOrigin) {
-    let mut request = [0u8; 4096];
-    let read = socket.read(&mut request).await.unwrap_or(0);
-    if is_head(&request[..read]) {
+    let mut request = request::read_line(&mut socket).await;
+    if is_head(&request) {
+        request::complete_headers(&mut socket, &mut request).await;
         write_head(&mut socket, bytes.len()).await;
         return;
     }
@@ -57,12 +58,13 @@ async fn answer(mut socket: TcpStream, bytes: Arc<Vec<u8>>, gate: AbaOrigin) {
             .expect("first gate")
             .forget();
     }
-    write_range_headers(&mut socket, bytes.len()).await;
+    request::complete_headers(&mut socket, &mut request).await;
+    let range = write_body_headers(&mut socket, &request, bytes.len()).await;
     if attempt == 1 {
         core::future::pending::<()>().await;
     }
     gate.bodies.acquire().await.expect("body gate").forget();
-    let _ = socket.write_all(&bytes).await;
+    let _ = socket.write_all(&bytes[range]).await;
     let _ = socket.shutdown().await;
 }
 

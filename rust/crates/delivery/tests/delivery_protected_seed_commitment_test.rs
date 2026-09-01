@@ -27,7 +27,7 @@ async fn promotion_never_restarts_bytes_owned_by_an_open_request() {
     harness.handle.update_focus(focus_now(items.clone(), 0, 0));
 
     let seed = next_request(&mut ahead).await;
-    assert_eq!(seed.range, 0..64);
+    assert_eq!(seed.range, 0..96);
     send(&seed, 32).await;
     wait_for_ranges(&harness.store, "ahead", &[(0, 32)]).await;
 
@@ -36,16 +36,10 @@ async fn promotion_never_restarts_bytes_owned_by_an_open_request() {
     assert!(seed.is_open(), "focus promotion retains the seed body");
     let _demand = demand::blocked(&harness, "ahead", ByteRange::new(0, 96)).await;
     expect_no_request(&mut ahead).await;
-    send(&seed, 32).await;
+    send(&seed, 64).await;
     drop(seed);
-    wait_for_ranges(&harness.store, "ahead", &[(0, 64)]).await;
-
-    let suffix = next_request(&mut ahead).await;
-    assert_eq!(suffix.range, 64..96);
-    send(&suffix, 32).await;
     wait_for_ranges(&harness.store, "ahead", &[(0, 96)]).await;
     expect_no_request(&mut ahead).await;
-    drop(suffix);
 
     harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();

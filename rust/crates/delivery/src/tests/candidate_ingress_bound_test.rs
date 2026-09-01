@@ -19,8 +19,22 @@ fn candidate_ingress_reports_saturation_without_growing_its_backlog() {
         CandidateAdmission::Saturated
     );
 
-    assert_eq!(receiver.try_candidate().expect("valid test fixture").post.as_str(), "a");
-    assert_eq!(receiver.try_candidate().expect("valid test fixture").post.as_str(), "b");
+    assert_eq!(
+        receiver
+            .try_candidate()
+            .expect("valid test fixture")
+            .post
+            .as_str(),
+        "a"
+    );
+    assert_eq!(
+        receiver
+            .try_candidate()
+            .expect("valid test fixture")
+            .post
+            .as_str(),
+        "b"
+    );
     assert!(receiver.try_candidate().is_none());
 }
 

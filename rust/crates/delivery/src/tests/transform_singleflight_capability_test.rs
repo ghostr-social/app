@@ -1,5 +1,7 @@
-
-use crate::delivery_events::{PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationObservation, PlayerPreparationReport, PlayerPreparationState};
+use crate::delivery_events::{
+    PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationObservation,
+    PlayerPreparationReport, PlayerPreparationState,
+};
 use crate::tests::player_preparation_fixture::state;
 use crate::transform::{TransformLimits, TransformProfile, TransformTrigger};
 use ghostr_engine::adaptive::{PlannerCapability, TransformKind};
@@ -63,9 +65,10 @@ fn apply(
     let (sequence, status) = evidence;
     let failure =
         (status == PlayerPreparationState::Failed).then(|| "invalidVideoTrack".to_owned());
-    let observation = PlayerPreparationObservation::try_new(status, failure, sequence).expect("valid test fixture");
-    let report =
-        PlayerPreparationReport::try_new(authority, attempt, sequence, observation).expect("valid test fixture");
+    let observation = PlayerPreparationObservation::try_new(status, failure, sequence)
+        .expect("valid test fixture");
+    let report = PlayerPreparationReport::try_new(authority, attempt, sequence, observation)
+        .expect("valid test fixture");
     assert!(state.apply_player_preparation(report));
 }
 

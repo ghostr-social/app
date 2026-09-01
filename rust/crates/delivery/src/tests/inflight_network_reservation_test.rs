@@ -42,6 +42,12 @@ async fn clear_keeps_the_reservation_until_cancelled_io_reports_done() {
 
     let finished = fixture.active.finish_with_resources(&fixture.attempt);
     assert_eq!(finished.status(), CompletionStatus::Cancelled);
-    assert_eq!(finished.network_reservation().expect("valid test fixture").committed_bytes(), 4);
+    assert_eq!(
+        finished
+            .network_reservation()
+            .expect("valid test fixture")
+            .committed_bytes(),
+        4
+    );
     fixture.cleanup().await;
 }

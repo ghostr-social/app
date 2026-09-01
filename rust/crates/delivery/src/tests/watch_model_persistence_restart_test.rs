@@ -24,7 +24,9 @@ async fn learned_watch_predictions_survive_an_atomic_privacy_safe_restart() {
         .await
         .expect("valid test fixture");
     let restored = load_playback_learning(&path).await;
-    let json = tokio::fs::read_to_string(&path).await.expect("valid test fixture");
+    let json = tokio::fs::read_to_string(&path)
+        .await
+        .expect("valid test fixture");
 
     assert_eq!(restored.watch.predict(&context, 20).p50_ms(), expected);
     assert_eq!(restored.watch.revision(), model.revision());

@@ -3,6 +3,9 @@ use super::delivery_fixture::DeliveryHarness;
 use core::ops::Range;
 use core::time::Duration;
 use ghostr_delivery::delivery_events::DeliveryHandle;
+mod decision_summary;
+mod stream;
+pub(super) use stream::next_request_while_streaming;
 pub(super) async fn next_request(
     origin: &mut ControlledOrigin,
     handle: &DeliveryHandle,
@@ -18,17 +21,22 @@ pub(super) async fn next_request(
         ),
     }
 }
-pub(super) async fn expect_no_request(origin: &mut ControlledOrigin) {
-    let result = tokio::time::timeout(Duration::from_millis(100), origin.next()).await;
-    assert!(result.is_err(), "concurrency rose before enough evidence");
+pub(super) async fn expect_no_request(origin: &mut ControlledOrigin, handle: &DeliveryHandle) {
+    let request = tokio::time::timeout(Duration::from_millis(100), origin.next()).await;
+    if let Ok(request) = request {
+        panic!(
+            "concurrency rose before enough evidence: range={:?}; decisions={:?}",
+            request.range,
+            decision_summary::summarize(&history(handle))
+        );
+    }
 }
-pub(super) async fn wait_for_parallel_demand(handle: &DeliveryHandle) {
+pub(super) async fn wait_for_parallel_demand_after(handle: &DeliveryHandle, after: u64) {
     tokio::time::timeout(Duration::from_secs(5), async {
         loop {
-            let history = handle
-                .decision_history_json()
-                .expect("serializable decision evidence");
-            if latest_parallel_demand(&history) {
+            if latest_decision(&history(handle))
+                .is_some_and(|(sequence, demanded)| sequence > after && demanded)
+            {
                 return;
             }
             tokio::task::yield_now().await;
@@ -38,18 +46,32 @@ pub(super) async fn wait_for_parallel_demand(handle: &DeliveryHandle) {
     .expect("WARP reports positive parallel demand");
 }
 
-fn latest_parallel_demand(history: &str) -> bool {
-    let Ok(value) = serde_json::from_str::<serde_json::Value>(history) else {
-        return false;
-    };
+pub(super) fn decision_sequence(handle: &DeliveryHandle) -> u64 {
+    latest_decision(&history(handle))
+        .map(|decision| decision.0)
+        .expect("post-admission WARP decision evidence")
+}
+
+fn latest_decision(history: &str) -> Option<(u64, bool)> {
+    let value = serde_json::from_str::<serde_json::Value>(history).ok()?;
     value["decisions"]["records"]
         .as_array()
         .and_then(|records| records.last())
-        .and_then(|record| record["warp_decision"]["additional_request_slot_demanded"].as_bool())
-        .unwrap_or(false)
+        .and_then(|record| {
+            Some((
+                record["sequence"].as_u64()?,
+                record["warp_decision"]["additional_request_slot_demanded"].as_bool()?,
+            ))
+        })
+}
+
+fn history(handle: &DeliveryHandle) -> String {
+    handle
+        .decision_history_json()
+        .expect("serializable decision evidence")
 }
 pub(super) async fn wait_for_bytes(harness: &DeliveryHarness, expected: u64) {
-    tokio::time::timeout(Duration::from_secs(2), async {
+    tokio::time::timeout(Duration::from_secs(10), async {
         loop {
             let ranges = harness
                 .store

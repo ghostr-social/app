@@ -1,6 +1,11 @@
 part of 'video_player_playback_port.dart';
 
 extension _VideoPlayerSurfaceCapabilityRecovery on _VideoPlayerSurfaceState {
+  bool get _awaitsHlsTransportRescue =>
+      _playbackMedia is ProxiedHlsVideoMediaSource &&
+      widget.request.playbackDeliveryId != null &&
+      widget.request.hlsAuthority == null;
+
   Future<void> _rejectInvisibleTrack(VideoPlayerController controller) {
     final canSelectFallback = _preparationAttempt != null;
     _failPreparation(PlayerPreparationFailureKind.invalidVideoTrack);

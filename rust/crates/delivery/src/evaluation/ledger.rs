@@ -1,6 +1,7 @@
 use super::events::{
     AdaptationMetricEvent, BudgetMetricEvent, IntegrityMetricEvent, PlaybackMetricEvent,
-    PresentationMetricEvent, ReadinessMetricEvent, SemanticMetricEvent, TransferMetricEvent,
+    PresentationMetricEvent, ReadinessMetricEvent, SemanticMetricEvent, SemanticMetricRollup,
+    TransferMetricEvent,
 };
 use super::{EvaluationSnapshot, EvaluationTracker};
 use ghostr_engine::PostId;
@@ -54,6 +55,10 @@ impl EvaluationLedger {
 
     pub(crate) fn semantic(&self, event: SemanticMetricEvent) {
         self.lock().semantic(event);
+    }
+
+    pub(crate) fn semantic_rollup(&self, event: SemanticMetricRollup) {
+        self.lock().semantic_rollup(event);
     }
 
     pub(crate) fn integrity(&self, event: IntegrityMetricEvent) {

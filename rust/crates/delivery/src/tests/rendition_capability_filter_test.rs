@@ -36,7 +36,9 @@ fn quality_selection_never_reselects_decoder_blocked_rendition() {
         PlayerPreparationState::Failed,
         Some(DECODER_UNSUPPORTED_FAILURE),
     );
-    state.select_capability_fallback(&post, 0).expect("valid test fixture");
+    state
+        .select_capability_fallback(&post, 0)
+        .expect("valid test fixture");
     assert!(state.apply_playback(&playback(post)).is_accepted());
 
     assert!(select_rendition(&mut state, &fast_stats(), 8_000).is_none());
@@ -96,7 +98,8 @@ fn fast_stats() -> HostStats {
     for second in 1..=8 {
         stats.record_host_throughput(
             "media.example",
-            ThroughputSample::new(3_000_000, Duration::from_secs(1), second * 1_000, 1).expect("valid test fixture"),
+            ThroughputSample::new(3_000_000, Duration::from_secs(1), second * 1_000, 1)
+                .expect("valid test fixture"),
         );
     }
     stats

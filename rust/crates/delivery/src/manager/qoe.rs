@@ -1,6 +1,9 @@
-use crate::delivery_events::{DeliveryFocus, DeliveryPlayback, PlaybackPresentation};
+use crate::delivery_events::{
+    DeliveryFocus, DeliveryPlayback, PlaybackPresentation, TransportRescueFeedback,
+};
 use crate::evaluation::{
     EvaluationLedger, PlaybackMetricEvent, PresentationMetricEvent, SemanticMetricEvent,
+    SemanticMetricRollup,
 };
 use crate::manager::transfers::{InternalEvent, MaintenanceEvent};
 use crate::qoe::{load_playback_learning, save_playback_learning, QoeTracker, WatchLearner};
@@ -55,6 +58,17 @@ impl QoeKeeper {
                 transport_substitution: true,
             });
         }
+        self.dirty = true;
+    }
+
+    pub fn note_rescue_feedback(&mut self, feedback: TransportRescueFeedback) {
+        self.tracker.note_rescue_feedback(feedback);
+        let rank_displacement = feedback.rank_displacement_total();
+        self.evaluation.semantic_rollup(SemanticMetricRollup {
+            rank_displacement,
+            semantic_regret_micros: rank_displacement.saturating_mul(1_000_000),
+            transport_substitutions: feedback.substitutions(),
+        });
         self.dirty = true;
     }
 

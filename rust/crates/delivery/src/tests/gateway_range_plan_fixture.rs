@@ -1,16 +1,16 @@
-use crate::manager::plan::axiom_test_support::planned_work;
 use crate::delivery_events::{DeliveryFocus, FocusItem};
+use crate::manager::plan::axiom_test_support::planned_work;
 use crate::manager::plan::{PlanInputs, PlannedWork};
 use crate::manager::retry::{RetryBook, RetryPolicy};
 use crate::manager::state::DeliveryState;
 use crate::tests::adaptive_plan_fixture::playback_for;
 use crate::tests::media_timeline_fixture::install_classic_timeline;
+use core::time::Duration;
 use ghostr_engine::adaptive::StorageSnapshot;
 use ghostr_engine::catalog::LearnedFacts;
 use ghostr_engine::host_stats::{HostStats, ThroughputSample};
 use ghostr_engine::{ByteRange, DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
 use std::collections::{HashMap, HashSet};
-use core::time::Duration;
 
 pub(super) fn demand_plan(demanded: ByteRange) -> PlannedWork {
     build_demand_plan(demanded, false)
@@ -67,7 +67,8 @@ fn build_demand_plan(demanded: ByteRange, buffered: bool) -> PlannedWork {
 fn stats(buffered: bool) -> HostStats {
     let mut stats = HostStats::new();
     if buffered {
-        let sample = ThroughputSample::new(1_000_000, Duration::from_secs(1), 1_000, 1).expect("valid test fixture");
+        let sample = ThroughputSample::new(1_000_000, Duration::from_secs(1), 1_000, 1)
+            .expect("valid test fixture");
         stats.record_overall_throughput(sample);
         stats.record_host_throughput("media.example", sample);
     }

@@ -2,15 +2,17 @@ use crate::manager::timeline::axiom_test_support::TimelineIncomplete;
 use crate::manager::timeline::axiom_test_support::TimelineInput;
 use crate::manager::timeline::axiom_test_support::TimelineParse;
 use crate::manager::timeline::axiom_test_support::TimelineParser;
-use crate::manager::timeline::{TimelineCoordinator, TimelineEvidence, TimelineResult, TimelineTerminal};
+use crate::manager::timeline::{
+    TimelineCoordinator, TimelineEvidence, TimelineResult, TimelineTerminal,
+};
 use crate::tests::demand_lease_fixture::{binding, catalog};
 use crate::tests::support::temp_directory;
+use core::sync::atomic::{AtomicUsize, Ordering};
 use ghostr_engine::media_timeline::TimelineParseControl;
 use ghostr_engine::PostId;
 use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::PathBuf;
-use core::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
@@ -33,11 +35,24 @@ impl CancellationHarness {
         ));
         let catalog = catalog(&["post"]);
         let binding = binding(&catalog, "post");
-        store.bind_representation(binding.clone()).await.expect("valid test fixture");
-        store.set_total_len("post", 32).await.expect("valid test fixture");
-        store.write_range("post", 0, b"abcdefgh").await.expect("valid test fixture");
-        let snapshot = store.media_snapshot("post").await.expect("valid test fixture");
-        let evidence = TimelineEvidence::from_snapshot(&binding, &snapshot).expect("valid test fixture");
+        store
+            .bind_representation(binding.clone())
+            .await
+            .expect("valid test fixture");
+        store
+            .set_total_len("post", 32)
+            .await
+            .expect("valid test fixture");
+        store
+            .write_range("post", 0, b"abcdefgh")
+            .await
+            .expect("valid test fixture");
+        let snapshot = store
+            .media_snapshot("post")
+            .await
+            .expect("valid test fixture");
+        let evidence =
+            TimelineEvidence::from_snapshot(&binding, &snapshot).expect("valid test fixture");
         let (parser, started) = CancellationParser::new();
         let coordinator = TimelineCoordinator::with_parser(store, Arc::new(parser), 1);
         Self {

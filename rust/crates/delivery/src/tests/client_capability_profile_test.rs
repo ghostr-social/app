@@ -1,5 +1,7 @@
-
-use crate::client_capability::{CapabilityAttempt, CapabilityEvent, CapabilityObservation, CapabilitySignal, ClientCapabilityModel, ClientCapabilityProfile, ClientCapabilityStatus};
+use crate::client_capability::{
+    CapabilityAttempt, CapabilityEvent, CapabilityObservation, CapabilitySignal,
+    ClientCapabilityModel, ClientCapabilityProfile, ClientCapabilityStatus,
+};
 
 #[test]
 fn capability_generalizes_success_conservatively_and_bounds_unknown_tests() {

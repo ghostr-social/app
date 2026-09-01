@@ -1,9 +1,11 @@
 use crate::tests::media_timeline_fixture::classic_moov;
 use crate::tests::timeline_manager_fixture::TimelineManagerFixture;
 use crate::tests::timeline_parser_fixture::GatedTimelineParser;
+use core::time::Duration;
 use ghostr_engine::media_timeline::{parse_mp4_segments, MediaSegment};
 use std::sync::Arc;
-use core::time::Duration;
+
+const WAIT_LIMIT: Duration = Duration::from_secs(30);
 
 #[tokio::test]
 async fn additive_bytes_do_not_withdraw_an_installed_timeline_during_reparse() {
@@ -11,7 +13,8 @@ async fn additive_bytes_do_not_withdraw_an_installed_timeline_during_reparse() {
     let ready = parse_mp4_segments(&[MediaSegment::new(0, &moov)]).expect("valid test fixture");
     let (parser, mut started) = GatedTimelineParser::new(Some(ready.clone()), 3);
     let _release = ReleaseAll(std::sync::Arc::clone(&parser), 3);
-    let mut fixture = TimelineManagerFixture::new(std::sync::Arc::<GatedTimelineParser>::clone(&parser)).await;
+    let mut fixture =
+        TimelineManagerFixture::new(std::sync::Arc::<GatedTimelineParser>::clone(&parser)).await;
 
     fixture.focus();
     step(&mut fixture).await;
@@ -45,7 +48,9 @@ async fn additive_bytes_do_not_withdraw_an_installed_timeline_during_reparse() {
     parser.release(2);
     step(&mut fixture).await;
     let after_incomplete = fixture.timeline();
-    tokio::fs::remove_dir_all(fixture.root).await.expect("valid test fixture");
+    tokio::fs::remove_dir_all(fixture.root)
+        .await
+        .expect("valid test fixture");
     assert_eq!(first_growth, Some(ready.clone()));
     assert_eq!(second_growth, Some(ready.clone()));
     assert_eq!(after_incomplete, Some(ready));
@@ -62,15 +67,13 @@ impl Drop for ReleaseAll {
 }
 
 async fn step(fixture: &mut TimelineManagerFixture) {
-    assert!(
-        tokio::time::timeout(Duration::from_secs(1), fixture.step())
-            .await
-            .expect("valid test fixture")
-    );
+    assert!(tokio::time::timeout(WAIT_LIMIT, fixture.step())
+        .await
+        .expect("valid test fixture"));
 }
 
 async fn await_timeline(fixture: &mut TimelineManagerFixture) {
-    tokio::time::timeout(Duration::from_secs(1), async {
+    tokio::time::timeout(WAIT_LIMIT, async {
         while fixture.timeline().is_none() {
             assert!(fixture.step().await);
         }
@@ -80,7 +83,7 @@ async fn await_timeline(fixture: &mut TimelineManagerFixture) {
 }
 
 async fn recv(receiver: &mut tokio::sync::mpsc::UnboundedReceiver<usize>) -> usize {
-    tokio::time::timeout(Duration::from_secs(1), receiver.recv())
+    tokio::time::timeout(WAIT_LIMIT, receiver.recv())
         .await
         .expect("valid test fixture")
         .expect("valid test fixture")

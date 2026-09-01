@@ -181,8 +181,8 @@ class _FeedPageViewState extends State<FeedPageView> {
       0,
       widget.model.keys.length - 1,
     );
+    _reportedKey = widget.model.keys[target];
     if (_controller.page?.round() != target) _controller.jumpToPage(target);
-    _commit(widget.model.keys[target]);
   }
 
   @override

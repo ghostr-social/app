@@ -60,6 +60,7 @@ fn startup() -> StartupFootprint {
 fn candidate(post: &str, state: ReserveCandidateState) -> ReserveCandidateEvidence {
     ReserveCandidateEvidence {
         post: PostId::new(post),
+        kind: Default::default(),
         state,
     }
 }

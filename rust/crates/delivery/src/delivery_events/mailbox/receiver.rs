@@ -19,13 +19,16 @@ impl MailboxReceiver {
     }
 
     pub(in crate::delivery_events) fn try_control(&self) -> Option<DeliveryCommand> {
-        self.lock().controls.pop_front()
+        let mut state = self.lock();
+        super::control::compact_for_delivery(&mut state.controls);
+        state.controls.pop_front()
     }
 
     pub(in crate::delivery_events) fn try_controls_through_focus(
         &self,
     ) -> Option<Vec<DeliveryCommand>> {
         let mut state = self.lock();
+        super::control::compact_for_delivery(&mut state.controls);
         let index = state
             .controls
             .iter()

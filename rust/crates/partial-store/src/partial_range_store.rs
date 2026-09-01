@@ -33,6 +33,8 @@ mod representation;
 mod response;
 mod single_response;
 mod sparse_intent;
+#[cfg(any(test, feature = "test"))]
+mod test_support;
 mod transform;
 mod writes;
 

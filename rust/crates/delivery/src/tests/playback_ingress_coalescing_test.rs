@@ -1,9 +1,9 @@
 use crate::delivery_events::{command_channel, DeliveryCommand, DeliveryPlayback};
+use core::time::Duration;
 use ghostr_engine::playback::{
     PlaybackObservation, PlaybackObservationSequence, PlaybackPhase, PlaybackSession,
 };
 use ghostr_engine::PostId;
-use core::time::Duration;
 
 #[test]
 fn a_late_stale_sample_cannot_replace_newer_pending_playback_evidence() {

@@ -1,4 +1,3 @@
-
 use crate::delivery_events::{command_channel, DeliveryFocus, DeliveryHandle, FocusItem};
 use crate::manager::timeline::axiom_test_support::TimelineParser;
 use crate::manager::DeliveryWorker;
@@ -34,12 +33,18 @@ impl TimelineManagerFixture {
         let meta = media_meta();
         let mut catalog = Catalog::new();
         let binding = catalog.upsert(post.clone(), meta.clone());
-        store.bind_representation(binding).await.expect("valid test fixture");
+        store
+            .bind_representation(binding)
+            .await
+            .expect("valid test fixture");
         store
             .write_range(post.as_str(), 0, &[0; 512])
             .await
             .expect("valid test fixture");
-        store.set_total_len(post.as_str(), 2_048).await.expect("valid test fixture");
+        store
+            .set_total_len(post.as_str(), 2_048)
+            .await
+            .expect("valid test fixture");
         let (handle, commands) = command_channel();
         let (_demand, demand) = demand_channel();
         let config = timeline_manager_environment::config(std::sync::Arc::clone(&store), &root);

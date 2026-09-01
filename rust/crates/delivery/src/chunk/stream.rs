@@ -7,6 +7,7 @@ use crate::chunk::sink::{ChunkWrite, ResponseWriteMode};
 use crate::chunk::traffic::{ChunkTraffic, WholeBodyCompletion};
 use crate::debug::network::NetworkThrottle;
 use anyhow::{bail, ensure, Context as _, Result};
+use core::future::Future;
 use core::num::NonZeroU64;
 use core::time::Duration;
 use ghostr_engine::adaptive::{RetrievalRequest, WholeBodyContract};
@@ -17,6 +18,10 @@ mod progress;
 pub(crate) use progress::Streamed;
 mod store;
 use store::{store_bytes, StoreInput};
+
+#[cfg(test)]
+#[path = "stream/cancellation_priority_test.rs"]
+mod cancellation_priority_test;
 
 pub(crate) struct StreamInput<'a, 'spec, W: ChunkWrite + ?Sized> {
     pub response: MediaResponse,
@@ -92,14 +97,26 @@ async fn stream_whole<W: ChunkWrite + ?Sized>(
 async fn next_input<W: ChunkWrite + ?Sized>(
     input: &mut StreamInput<'_, '_, W>,
 ) -> Result<Option<bytes::Bytes>> {
-    let next = tokio::select! {
-        () = input.cancel.cancelled() => Ok(None),
-        chunk = next_chunk(&mut input.response, input.spec.timeouts.idle) => chunk,
-    }?;
+    let body = next_chunk(&mut input.response, input.spec.timeouts.idle);
+    let next = select_next(input.cancel, body).await?;
     if let Some(chunk) = &next {
         input.traffic.received(chunk.len() as u64);
     }
     Ok(next)
+}
+
+async fn select_next<F>(cancel: &CancelToken, body: F) -> Result<Option<bytes::Bytes>>
+where
+    F: Future<Output = Result<Option<bytes::Bytes>>>,
+{
+    if cancel.is_cancelled() {
+        return Ok(None);
+    }
+    tokio::select! {
+        biased;
+        () = cancel.cancelled() => Ok(None),
+        chunk = body => chunk,
+    }
 }
 
 async fn next_chunk(response: &mut MediaResponse, idle: Duration) -> Result<Option<bytes::Bytes>> {

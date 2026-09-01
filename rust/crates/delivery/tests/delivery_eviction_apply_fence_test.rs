@@ -2,13 +2,14 @@
 
 mod delivery_fixture;
 
-use core::time::Duration;
-use delivery_fixture::full_disk::{discard, limits, spaced_store};
 use delivery_fixture::evidence::DeliveryEvidence as _;
+use delivery_fixture::full_disk::{discard, limits, spaced_store};
 use delivery_fixture::items::{focus_now, seed_range, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::start_harness_with_store;
+use delivery_fixture::wait::wait_for_file_with_limit;
 use std::sync::Arc;
+use std::time::Duration;
 
 const UNREACHABLE: &str = "http://127.0.0.1:9/video.mp4";
 
@@ -36,14 +37,29 @@ async fn missed_policy_eviction_never_launches_its_dependent_allocation() {
     );
 
     harness.handle.update_focus(focus_now(items, 0, 0));
-    tokio::time::sleep(Duration::from_millis(250)).await;
+    // The single actor consumes this zero-debounce save only after its rejected reconcile ends.
+    wait_for_file_with_limit(&root.join("qoe_stats.json"), Duration::from_secs(30)).await;
 
     assert_eq!(harness.store.used_bytes().await, 100);
+    let decisions = harness.handle.decision_history();
     assert!(
-        harness.handle.decision_history().records.is_empty(),
-        "a rejected planning transaction must not publish an orphan decision"
+        decisions.records.is_empty(),
+        "a rejected planning transaction published {decisions:#?}"
     );
     assert!(harness.handle.plan_history().is_empty());
+    assert_eq!(
+        harness.handle.evaluation_snapshot().budget.observations,
+        0,
+        "a rejected plan must not corrupt applied-plan metrics"
+    );
+    let evidence = harness.handle.evidence_page_json(0, 0).expect("evidence");
+    let evidence: serde_json::Value = serde_json::from_str(&evidence).expect("evidence schema");
+    assert!(
+        evidence["evaluation"]["efficiency"]["cpu_micros"]
+            .as_u64()
+            .is_some_and(|value| value > 0),
+        "a rejected plan must retain its measured planner cost"
+    );
     assert_eq!(
         harness
             .store

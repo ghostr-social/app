@@ -32,7 +32,9 @@ Future<ProductionVideoDelivery> buildWarpFeedProductionDelivery(
       adapters: ProductionVideoDeliveryAdapters(
         supportDirectoryProvider: () async =>
             Directory(input.resources.cachePath),
-        gateway: WarpDeviceFfiVideoGateway(input.resources.origin.origin),
+        gateway: WarpDeviceFfiVideoGateway(
+          input.deviceIntegrationOrigin ?? input.resources.origin.origin,
+        ),
         hlsPlaybackGateway: hlsPlaybackGateway ?? const FfiHlsPlaybackGateway(),
         preparationUpdates: input.preparation,
         networkStatus: input.network,
@@ -49,6 +51,7 @@ typedef WarpFeedProductionDeliveryInput = ({
   WarpFeedPreparationProbe preparation,
   WarpFeedRustProbe rustProbe,
   WarpControlledNetworkStatus network,
+  Uri? deviceIntegrationOrigin,
 });
 
 final class WarpDeviceFfiVideoGateway extends FfiVideoGateway {

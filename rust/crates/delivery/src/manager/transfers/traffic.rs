@@ -59,6 +59,9 @@ impl ChunkTraffic for TransferTraffic {
     }
 
     fn wrote(&mut self, bytes: u64) {
+        if bytes > 0 {
+            self.attempt.mark_body_received();
+        }
         if self.opened {
             self.publisher
                 .progress(self.transfer, bytes, Instant::now());

@@ -1,7 +1,7 @@
 use crate::manager::traffic::{channel, TrafficMeter, TransferKey, SAMPLE_INTERVAL};
 use crate::manager::transfers::InternalEvent;
-use ghostr_engine::host_stats::HostStats;
 use core::time::Duration;
+use ghostr_engine::host_stats::HostStats;
 use tokio::sync::mpsc;
 use tokio::time::Instant;
 

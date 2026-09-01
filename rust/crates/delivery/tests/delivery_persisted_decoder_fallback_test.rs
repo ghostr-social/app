@@ -3,12 +3,13 @@ mod persisted_decoder_support;
 
 use core::time::Duration;
 use delivery_fixture::options::DeliveryOptions;
+use delivery_fixture::wait::wait_for_file;
 use delivery_fixture::{start_harness_at, temp_directory};
 use ghostr_delivery::delivery_events::{
     DeliveryCandidate, DeliveryFocus, FocusItem, PlayerPreparationDisposition,
 };
 use ghostr_engine::PostId;
-use persisted_decoder_support::{initializing, rendition};
+use persisted_decoder_support::{initializing, rendition, verified_rendition};
 use serde_json::json;
 
 #[tokio::test]
@@ -17,7 +18,7 @@ async fn persisted_decoder_rejection_switches_primary_during_reconcile() {
     tokio::fs::create_dir_all(&root)
         .await
         .expect("valid test fixture");
-    let high = rendition("high");
+    let high = verified_rendition("high").await;
     let low = rendition("low");
     let snapshot = json!({
         "generation": 7,
@@ -70,13 +71,18 @@ async fn persisted_decoder_rejection_switches_primary_during_reconcile() {
         harness.cache.videos().first().map(|video| &video.meta),
         Some(&advertised)
     );
+    wait_for_file(&root.join("adaptive.verified")).await;
+    let media = harness
+        .store
+        .media_snapshot("adaptive")
+        .await
+        .expect("current media snapshot");
+    let binding = media.binding().cloned().expect("current media binding");
+    let report = initializing(binding, media.revision());
     let admission = harness.handle.player_preparation_admission();
     let disposition = harness
         .handle
-        .confirm_player_preparation_initial(
-            admission,
-            initializing(&PostId::new("adaptive"), &advertised),
-        )
+        .confirm_player_preparation_initial(admission, report)
         .await;
     assert_eq!(disposition, PlayerPreparationDisposition::Applied);
     tokio::time::timeout(Duration::from_secs(2), async {

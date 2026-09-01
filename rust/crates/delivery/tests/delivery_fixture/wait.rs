@@ -1,21 +1,17 @@
-//! Event-driven waiting on the partial-range store: registers on the
-//! change notifier before every re-check, with a hard deadline.
+//! Event-driven waits register before re-checking and use hard deadlines.
 
-use core::ops::Range;
-use core::time::Duration;
+use core::{ops::Range, time::Duration};
 use ghostr_delivery::cache_registry::CacheRegistry;
 use ghostr_delivery::progressive_posts::ServablePosts;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
-use tokio::time::{timeout_at, Instant};
+use tokio::time::Instant;
+
+mod event;
 
 const WAIT_LIMIT: Duration = Duration::from_secs(10);
 
 pub async fn wait_for_ranges(store: &PartialRangeStore, key: &str, want: &[(u64, u64)]) {
-    wait_until(store, key, |ranges| {
-        want.iter()
-            .all(|(start, end)| covered(ranges, *start, *end))
-    })
-    .await;
+    event::wait_for_ranges(store, key, want).await;
 }
 
 pub async fn wait_until(
@@ -23,38 +19,23 @@ pub async fn wait_until(
     key: &str,
     ready: impl Fn(&[Range<u64>]) -> bool,
 ) {
-    let deadline = Instant::now() + WAIT_LIMIT;
-    let notify = store.change_notifier();
-    loop {
-        let changed = notify.notified();
-        let ranges = store.present_ranges(key).await.expect("present ranges");
-        if ready(&ranges) {
-            return;
-        }
-        assert!(
-            timeout_at(deadline, changed).await.is_ok(),
-            "timed out waiting on ranges of {key}: {ranges:?}"
-        );
-    }
+    event::wait_until(store, key, ready).await;
 }
 
 pub async fn wait_total_len(store: &PartialRangeStore, key: &str, expected: u64) {
-    let deadline = Instant::now() + WAIT_LIMIT;
-    let notify = store.change_notifier();
-    loop {
-        let changed = notify.notified();
-        if store.total_len(key).await.expect("total len") == Some(expected) {
-            return;
-        }
-        assert!(
-            timeout_at(deadline, changed).await.is_ok(),
-            "timed out waiting on the total length of {key}"
-        );
-    }
+    event::wait_total_len(store, key, expected).await;
+}
+
+pub fn covered(ranges: &[Range<u64>], start: u64, end: u64) -> bool {
+    event::covered(ranges, start, end)
 }
 
 pub async fn wait_for_file(path: &std::path::Path) {
-    let deadline = Instant::now() + WAIT_LIMIT;
+    wait_for_file_with_limit(path, WAIT_LIMIT).await;
+}
+
+pub async fn wait_for_file_with_limit(path: &std::path::Path, limit: Duration) {
+    let deadline = Instant::now() + limit;
     while !path.exists() {
         assert!(
             Instant::now() < deadline,
@@ -89,10 +70,4 @@ pub async fn wait_cache_first(cache: &CacheRegistry, expected: &str) {
         assert!(Instant::now() < deadline, "cache order did not update");
         tokio::task::yield_now().await;
     }
-}
-
-pub fn covered(ranges: &[Range<u64>], start: u64, end: u64) -> bool {
-    ranges
-        .iter()
-        .any(|range| range.start <= start && range.end >= end)
 }

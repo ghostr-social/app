@@ -61,6 +61,10 @@ impl ChunkAttempt {
     pub(crate) fn mark_io_finished(&self) {
         self.lifecycle.mark_io_finished();
     }
+
+    pub(crate) fn mark_body_received(&self) {
+        self.lifecycle.mark_body_received();
+    }
 }
 
 pub(super) struct ActiveChunk {
@@ -134,6 +138,10 @@ impl ActiveChunk {
 
     pub(super) fn io_finished(&self) -> bool {
         self.lifecycle.io_finished()
+    }
+
+    pub(super) fn body_received(&self) -> bool {
+        self.lifecycle.body_received()
     }
 
     pub(super) fn authorize_hedge(&self) -> bool {

@@ -1,9 +1,19 @@
-//! Raw TCP fixture that answers one ranged request with a 206 header
-//! for `total` bytes, sends only `prefix`, then stalls forever.
+//! Raw TCP fixture that answers one body request coherently, sends only
+//! `prefix`, then stalls forever.
 
-use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+use core::ops::Range;
+use request::Request;
+use tokio::io::AsyncWriteExt as _;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::oneshot;
+
+mod request;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum BodyKind {
+    Whole,
+    Range(Range<u64>),
+}
 
 pub async fn serve_stalling(prefix: Vec<u8>, total: u64) -> String {
     serve_stalling_signaled(prefix, total).await.0
@@ -12,48 +22,43 @@ pub async fn serve_stalling(prefix: Vec<u8>, total: u64) -> String {
 pub async fn serve_stalling_signaled(
     prefix: Vec<u8>,
     total: u64,
-) -> (String, oneshot::Receiver<()>) {
+) -> (String, oneshot::Receiver<BodyKind>) {
     let listener = TcpListener::bind("127.0.0.1:0")
         .await
         .expect("bind stall fixture");
     let address = listener.local_addr().expect("stall address");
     let (started, observed) = oneshot::channel();
-    tokio::spawn(async move {
-        let mut started = Some(started);
-        loop {
-            let (mut socket, _) = listener.accept().await.expect("stall accept");
-            let mut request = vec![0u8; 4096];
-            let read = socket.read(&mut request).await.unwrap_or(0);
-            if request[..read].starts_with(b"HEAD ") {
-                write_head(&mut socket, total).await;
-                continue;
-            }
-            started.take().expect("first range").send(()).ok();
-            stall(&mut socket, &prefix, total).await;
-            return;
-        }
-    });
+    tokio::spawn(serve(listener, prefix, total, started));
     (format!("http://{address}/video.mp4"), observed)
 }
 
-async fn stall(socket: &mut TcpStream, prefix: &[u8], total: u64) {
-    let head = format!(
-        "HTTP/1.1 206 Partial Content\r\nContent-Range: bytes 0-{}/{total}\r\n\
-         Content-Length: {total}\r\nContent-Type: video/mp4\r\n\
-         ETag: \"fixture-stall\"\r\n\r\n",
-        total - 1
-    );
-    let _ = socket.write_all(head.as_bytes()).await;
-    let _ = socket.write_all(prefix).await;
-    let _ = socket.flush().await;
-    core::future::pending::<()>().await;
+async fn serve(
+    listener: TcpListener,
+    prefix: Vec<u8>,
+    total: u64,
+    started: oneshot::Sender<BodyKind>,
+) {
+    loop {
+        let (mut socket, _) = listener.accept().await.expect("stall accept");
+        match request::read(&mut socket, total).await {
+            Request::Head => request::write_probe(&mut socket, total).await,
+            Request::Body(body) => {
+                started.send(body.kind()).ok();
+                stall(&mut socket, &prefix, total, body).await;
+                return;
+            }
+        }
+    }
 }
 
-async fn write_head(socket: &mut TcpStream, total: u64) {
-    let head = format!(
-        "HTTP/1.1 200 OK\r\nContent-Length: {total}\r\n\
-         Accept-Ranges: bytes\r\nContent-Type: video/mp4\r\n\
-         ETag: \"fixture-stall\"\r\n\r\n"
-    );
-    socket.write_all(head.as_bytes()).await.ok();
+async fn stall(socket: &mut TcpStream, prefix: &[u8], total: u64, body: request::BodyRequest) {
+    body.write_response(socket, total).await;
+    let range = body.range(total);
+    let requested = range.end - range.start;
+    let delivered = prefix
+        .len()
+        .min(usize::try_from(requested).unwrap_or(usize::MAX));
+    let _ = socket.write_all(&prefix[..delivered]).await;
+    let _ = socket.flush().await;
+    core::future::pending::<()>().await;
 }

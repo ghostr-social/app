@@ -1,5 +1,6 @@
-
-use crate::delivery_events::{command_channel, CandidateAdmission, DeliveryCandidate, DeliveryFocus, FocusAdmission};
+use crate::delivery_events::{
+    command_channel, CandidateAdmission, DeliveryCandidate, DeliveryFocus, FocusAdmission,
+};
 use ghostr_engine::{DataUsageLevel, DeliveryKind, PostId, VideoMeta};
 
 #[tokio::test]

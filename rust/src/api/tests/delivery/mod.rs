@@ -45,5 +45,7 @@ mod repost_candidate_priority_test;
 mod selected_rendition_fixture;
 mod tracked_focus_generation_test;
 mod watcher_hls_stream_test;
+mod watcher_progressive_eta_test;
+mod watcher_progressive_exhaustion_test;
 mod watcher_representation_fence_test;
 mod watcher_stream_test;

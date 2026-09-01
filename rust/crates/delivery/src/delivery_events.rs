@@ -51,7 +51,9 @@ pub use player_preparation::{
     PlayerPreparationIngress, PlayerPreparationObservation, PlayerPreparationReport,
     PlayerPreparationState,
 };
-pub use transport::{DeliveryPlayback, TransportRescue, TransportRescueReason};
+pub use transport::{
+    DeliveryPlayback, TransportRescue, TransportRescueFeedback, TransportRescueReason,
+};
 
 const DEFAULT_CANDIDATE_CAPACITY: usize = 32;
 

@@ -1,7 +1,7 @@
 use crate::manager::hedge_tail::{HedgeTailTimers, HedgeTailWake};
 use crate::manager::transfers::InternalEvent;
-use ghostr_engine::ActionId;
 use core::time::Duration;
+use ghostr_engine::ActionId;
 
 #[tokio::test(start_paused = true)]
 async fn hedge_tail_wakes_at_the_exact_action_p95_deadline() {
@@ -14,7 +14,8 @@ async fn hedge_tail_wakes_at_the_exact_action_p95_deadline() {
     assert!(receiver.try_recv().is_err());
 
     tokio::time::advance(Duration::from_millis(1)).await;
-    let InternalEvent::HedgeTail(reached) = receiver.recv().await.expect("valid test fixture") else {
+    let InternalEvent::HedgeTail(reached) = receiver.recv().await.expect("valid test fixture")
+    else {
         panic!("expected hedge-tail wake")
     };
     assert_eq!(reached, wake);

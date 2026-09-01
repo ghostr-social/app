@@ -71,5 +71,6 @@ fn pending_current(cursor: HlsObjectCursor) -> HlsCandidateSnapshot {
             stage: HlsBootstrapStage::RootManifest,
             source: "https://media.example/root.m3u8".into(),
         },
+        player_preparation: Default::default(),
     }
 }

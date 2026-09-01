@@ -5,7 +5,7 @@ use crate::hls_manifest_attributes::quoted_attribute;
 use crate::hls_manifest_names::{attribute, tag};
 use crate::hls_manifest_tags::{action, HlsTagAction};
 
-pub use crate::hls_bootstrap::{inspect_hls_bootstrap, HlsBootstrap};
+pub use crate::hls_bootstrap::{inspect_hls_bootstrap, HlsBootstrap, UnsupportedHlsFeature};
 
 pub const MAX_HLS_MANIFEST_BYTES: usize = 1024 * 1024;
 pub const MAX_HLS_ASSET_BYTES: usize = 8 * 1024 * 1024;

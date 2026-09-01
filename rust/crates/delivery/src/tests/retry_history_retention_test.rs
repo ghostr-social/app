@@ -30,10 +30,7 @@ fn evicted_retry_history_is_dropped_without_reviving_retained_sources() {
 }
 
 fn retire(retry: &mut RetryBook, post: &PostId, url: &str) -> Retry {
-    retry.note_failure(
-        Source::new(post.clone(), url),
-        FailureClass::Permanent,
-    )
+    retry.note_failure(Source::new(post.clone(), url), FailureClass::Permanent)
 }
 
 fn url(id: &str) -> String {

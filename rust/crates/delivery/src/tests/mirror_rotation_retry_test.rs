@@ -10,10 +10,7 @@ fn a_failed_source_yields_immediately_to_an_untried_mirror() {
     let urls = vec![primary.clone(), mirror.clone()];
     let mut retry = RetryBook::new(RetryPolicy::default());
 
-    let decision = retry.note_failure(
-        Source::new(post.clone(), &primary),
-        FailureClass::Transient,
-    );
+    let decision = retry.note_failure(Source::new(post.clone(), &primary), FailureClass::Transient);
 
     assert!(matches!(decision, Retry::After(_)));
     assert!(retry.has_ready_alternative(&post, &primary, &urls));

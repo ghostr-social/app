@@ -3,9 +3,9 @@ use crate::manager::concurrency::{
     HlsDemand, RequestConcurrencyLimits,
 };
 use crate::manager::traffic::OverallTrafficWindow;
-use ghostr_engine::concurrency::{ConcurrencyOccupancy, NetworkSetback};
 use core::num::NonZeroUsize;
 use core::time::Duration;
+use ghostr_engine::concurrency::{ConcurrencyOccupancy, NetworkSetback};
 
 #[test]
 fn traffic_windows_preserve_aggregate_rate_occupancy_and_latency() {

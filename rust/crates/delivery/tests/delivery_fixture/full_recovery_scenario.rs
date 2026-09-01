@@ -8,6 +8,7 @@ use std::path::PathBuf;
 
 mod lease;
 mod recovery;
+mod trial_request;
 
 pub(super) const CHUNK_BYTES: u64 = 4_096;
 

@@ -18,14 +18,18 @@ async fn field_correctness_learning_survives_restart_without_raw_event_data() {
     let mut expected = FieldReliabilityModel::default();
     expected.observe(CalibrationLabel::new(context.clone(), false, 10));
 
-    save_field_reliability(&path, &expected).await.expect("valid test fixture");
+    save_field_reliability(&path, &expected)
+        .await
+        .expect("valid test fixture");
     let restored = load_field_reliability(&path).await;
 
     assert_eq!(
         restored.estimate(&context, 10),
         expected.estimate(&context, 10)
     );
-    let json = tokio::fs::read_to_string(&path).await.expect("valid test fixture");
+    let json = tokio::fs::read_to_string(&path)
+        .await
+        .expect("valid test fixture");
     assert!(!json.contains("raw_event"));
     let _ = tokio::fs::remove_file(path).await;
 }

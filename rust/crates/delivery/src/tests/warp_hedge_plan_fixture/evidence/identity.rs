@@ -31,7 +31,10 @@ fn learn_generation(
     etag: &str,
     observed_at_ms: u64,
 ) {
-    let identity = state.catalog().transfer_identity(post, source).expect("valid test fixture");
+    let identity = state
+        .catalog()
+        .transfer_identity(post, source)
+        .expect("valid test fixture");
     let observation = HttpObservation::new(
         LearnedFacts {
             content_length: Some(1_000_000),
@@ -49,8 +52,14 @@ fn learn_generation(
 }
 
 fn verify(state: &mut DeliveryState, post: &PostId, source: &str) {
-    let identity = state.catalog().transfer_identity(post, source).expect("valid test fixture");
-    let generation = state.catalog().http_generation_for(&identity).expect("valid test fixture");
+    let identity = state
+        .catalog()
+        .transfer_identity(post, source)
+        .expect("valid test fixture");
+    let generation = state
+        .catalog()
+        .http_generation_for(&identity)
+        .expect("valid test fixture");
     assert!(state.catalog_mut().record_verified_hash_for_generation(
         &identity,
         &"11".repeat(32),

@@ -1,13 +1,11 @@
-use axum::body::Body;
-use axum::extract::{Path, State};
-use axum::http::{header, HeaderMap, StatusCode};
-use axum::response::Response;
 use axum::routing::get;
 use axum::Router;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::Semaphore;
+
+mod response;
 
 #[derive(Clone)]
 struct OriginState {
@@ -35,7 +33,7 @@ impl CoolingPlanOrigin {
             release: Arc::new(Semaphore::new(0)),
         };
         let app = Router::new()
-            .route("/{kind}", get(media))
+            .route("/{kind}", get(response::media).head(response::media))
             .with_state(state.clone());
         tokio::spawn(async move {
             axum::serve(listener, app)
@@ -72,44 +70,4 @@ impl CoolingPlanOrigin {
     pub fn release(&self) {
         self.state.release.add_permits(4);
     }
-}
-
-async fn media(
-    Path(kind): Path<String>,
-    State(state): State<OriginState>,
-    headers: HeaderMap,
-) -> Response {
-    if kind == "cooling" {
-        state.failures.fetch_add(1, Ordering::SeqCst);
-        return Response::builder()
-            .status(StatusCode::INTERNAL_SERVER_ERROR)
-            .body(Body::empty())
-            .expect("valid test fixture");
-    }
-    state.useful.fetch_add(1, Ordering::SeqCst);
-    state.started.add_permits(1);
-    state
-        .release
-        .acquire()
-        .await
-        .expect("valid test fixture")
-        .forget();
-    ranged_response(&headers)
-}
-
-fn ranged_response(headers: &HeaderMap) -> Response {
-    let value = headers[header::RANGE].to_str().expect("valid test fixture");
-    let (start, end) = value
-        .trim_start_matches("bytes=")
-        .split_once('-')
-        .expect("valid test fixture");
-    let start: u64 = start.parse().expect("valid test fixture");
-    let end = end.parse::<u64>().unwrap_or(63).min(63);
-    Response::builder()
-        .status(StatusCode::PARTIAL_CONTENT)
-        .header(header::CONTENT_TYPE, "video/mp4")
-        .header(header::ETAG, "\"fixture-cooling\"")
-        .header(header::CONTENT_RANGE, format!("bytes {start}-{end}/64"))
-        .body(Body::from(vec![7; (end - start + 1) as usize]))
-        .expect("valid test fixture")
 }

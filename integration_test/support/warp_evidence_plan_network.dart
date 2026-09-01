@@ -81,6 +81,10 @@ extension WarpPlanRetentionCursor on WarpPlanPage {
   int get beforeOldestRetainedRevision {
     return oldestRetainedRevision > 0 ? oldestRetainedRevision - 1 : 0;
   }
+
+  int get beforeLatestRetainedRevision {
+    return latestRetainedRevision > 0 ? latestRetainedRevision - 1 : 0;
+  }
 }
 
 bool _sameRetainedAction(WarpPlanTransfer left, WarpPlanTransfer right) {

@@ -12,7 +12,7 @@ mod response;
 pub const PROBE_BYTES: usize = 65_536;
 pub const PARALLEL_BYTES: usize = 4_096;
 pub const TRIAL_BYTES: usize = 900_000;
-const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
+pub(super) const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub(super) type BodySender = mpsc::Sender<Result<Bytes, Infallible>>;
 pub(super) type OriginState = mpsc::Sender<ObservedRequest>;
@@ -82,5 +82,10 @@ impl ObservedRequest {
     pub async fn finish(mut self, bytes: usize) {
         self.send(bytes).await;
         self.body.take();
+    }
+
+    pub async fn await_cancellation(mut self) {
+        let body = self.body.take().expect("GET body");
+        body.closed().await;
     }
 }

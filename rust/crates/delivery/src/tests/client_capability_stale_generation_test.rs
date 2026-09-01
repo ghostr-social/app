@@ -1,5 +1,7 @@
-
-use crate::client_capability::{CapabilityAttempt, CapabilityEvent, CapabilityObservation, CapabilitySignal, ClientCapabilityModel, ClientCapabilityProfile, ClientCapabilityStatus};
+use crate::client_capability::{
+    CapabilityAttempt, CapabilityEvent, CapabilityObservation, CapabilitySignal,
+    ClientCapabilityModel, ClientCapabilityProfile, ClientCapabilityStatus,
+};
 
 #[test]
 fn stale_terminal_cannot_replace_the_active_player_capability_generation() {

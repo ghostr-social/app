@@ -34,15 +34,15 @@ pub async fn report_unsupported(
     store: &PartialRangeStore,
     binding: RepresentationBinding,
 ) {
-    let epoch = store
+    let revision = store
         .media_snapshot("post")
         .await
         .expect("valid test fixture")
-        .content_epoch();
+        .revision();
     let authority = PlayerPreparationAuthority::try_new(
         ghostr_engine::PostId::new("post"),
         binding,
-        epoch,
+        revision,
         "asset",
     )
     .expect("valid test fixture");
@@ -81,9 +81,10 @@ async fn send(
             .confirm_player_preparation_initial(admission, report)
             .await
     } else {
+        let binding = report.progressive_binding().expect("progressive authority");
         let claim = PlayerPreparationClaim::try_new(
             report.post().clone(),
-            report.binding().representation().fingerprint(),
+            binding.representation().fingerprint(),
             "asset",
         )
         .expect("valid test fixture");

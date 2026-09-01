@@ -3,10 +3,10 @@ use crate::chunk::cancel::cancel_pair;
 use crate::chunk::downloader::{download_chunk_observed, ChunkExecution};
 use crate::chunk::sink::TransferChunkSink;
 use crate::debug::network::NetworkThrottle;
+use core::time::Duration;
 use ghostr_engine::adaptive::WholeBodyContract;
 use ghostr_engine::host_stats::HostStats;
 use ghostr_engine::origin_model::OriginOutcome;
-use core::time::Duration;
 
 #[tokio::test]
 async fn oversized_content_length_is_learned_without_reading_or_blame() {
@@ -57,7 +57,11 @@ async fn oversized_content_length_is_learned_without_reading_or_blame() {
         OriginOutcome::Success
     ));
     assert_eq!(
-        fixture.store.read_range("post", 0..4).await.expect("valid test fixture"),
+        fixture
+            .store
+            .read_range("post", 0..4)
+            .await
+            .expect("valid test fixture"),
         Some(b"old!".to_vec())
     );
     origin.release.notify_one();

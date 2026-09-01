@@ -3,6 +3,7 @@
 
 mod persistence;
 mod presentation;
+mod rescue_feedback;
 mod stats;
 mod watch;
 

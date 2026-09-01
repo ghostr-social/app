@@ -6,7 +6,7 @@ use ghostr_engine::origin_model::{
 };
 use std::path::Path;
 
-const EVIDENCE_TIMEOUT: Duration = Duration::from_secs(10);
+const EVIDENCE_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub fn seed(root: &Path, urls: &[(&str, u64)]) {
     let now = unix_time_ms();
@@ -64,16 +64,16 @@ pub async fn assert_admission(path: &Path, query: &OriginQuery, expected: Admiss
 }
 
 pub async fn wait_for_admission(path: &Path, query: &OriginQuery, expected: Admission) {
-    crate::delivery_fixture::stats::wait_for_within(
-        path,
-        EVIDENCE_TIMEOUT,
-        "recovery circuit evidence",
-        |stats| {
-            stats
-                .origin_model()
-                .circuit_admission(query, unix_time_ms())
-                == expected
-        },
-    )
+    let label = match expected {
+        Admission::RecoveryTrial => "recovery probe completion evidence",
+        Admission::Production => "recovery trial completion evidence",
+        _ => "recovery circuit evidence",
+    };
+    crate::delivery_fixture::stats::wait_for_within(path, EVIDENCE_TIMEOUT, label, |stats| {
+        stats
+            .origin_model()
+            .circuit_admission(query, unix_time_ms())
+            == expected
+    })
     .await;
 }

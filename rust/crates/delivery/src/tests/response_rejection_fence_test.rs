@@ -11,10 +11,12 @@ async fn manager_rejection_fences_the_paused_response_before_another_plan() {
         .register_promotable_response_for_test(&fixture.post, SOURCE, valid_until_ms)
         .await;
 
-    assert!(!fixture
-        .worker
-        .reject_unselected_response_for_test(&attempt, &action, &response())
-        .await);
+    assert!(
+        !fixture
+            .worker
+            .reject_unselected_response_for_test(&attempt, &action, &response())
+            .await
+    );
     let actions = fixture.worker.active_actions_for_test();
     assert_eq!(actions.len(), 1);
     assert!(actions[0].cancelling());

@@ -52,7 +52,14 @@ fn superseded_token_cannot_bind_the_newest_decision() {
         outcome(&history, expired_sequence),
         &DecisionOutcome::Superseded
     );
-    assert_eq!(history.records.last().expect("valid test fixture").chosen_action_id, Some(2));
+    assert_eq!(
+        history
+            .records
+            .last()
+            .expect("valid test fixture")
+            .chosen_action_id,
+        Some(2)
+    );
 }
 
 #[test]

@@ -8,11 +8,14 @@ use std::path::PathBuf;
 
 mod run;
 mod support;
-use support::{admit, executor, expect_queued, spec, ObservedTraffic, BODY_BYTES};
+use support::{admit, executor, expect_queued, spec, ObservedTraffic};
+pub(super) const BODY_BYTES: u64 = support::BODY_BYTES;
 
 pub(super) struct Observation {
     pub concurrency: usize,
-    pub throughput: f64,
+    pub throughput_samples: u64,
+    pub bytes_written: u64,
+    pub excluded: core::time::Duration,
 }
 
 struct ObservationFixture {
@@ -52,13 +55,20 @@ impl ObservationFixture {
         let mut stats = HostStats::new();
         let mut traffic = ObservedTraffic::default();
         let host = host_of(&self.url).expect("valid test fixture");
-        run::download(&mut self, &mut stats, &mut traffic).await;
-        let throughput = stats.expected_throughput(&host);
+        let (result, elapsed) = run::download(&mut self, &mut stats, &mut traffic).await;
+        let estimate = stats
+            .host_throughput(&host)
+            .expect("completed transfer trains its origin");
+        let trained = core::time::Duration::from_secs_f64(
+            result.bytes_written as f64 / estimate.bytes_per_second(),
+        );
         let concurrency = traffic.concurrency;
         std::fs::remove_dir_all(self.root).ok();
         Observation {
             concurrency,
-            throughput,
+            throughput_samples: estimate.sample_count(),
+            bytes_written: result.bytes_written,
+            excluded: elapsed.saturating_sub(trained),
         }
     }
 }

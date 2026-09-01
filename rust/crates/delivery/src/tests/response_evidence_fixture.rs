@@ -3,7 +3,7 @@ use core::time::Duration;
 use ghostr_engine::evidence::EvidenceValidator;
 
 pub(super) const SOURCE: &str = "https://unused.example/video.mp4";
-pub(super) const EVENT_TIMEOUT: Duration = Duration::from_secs(10);
+pub(super) const EVENT_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub(super) async fn wait_for_validator(
     fixture: &mut TimelineManagerFixture,

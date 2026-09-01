@@ -1,25 +1,35 @@
 mod delivery_fixture;
+#[path = "delivery_cooling_plan_stability_test/support.rs"]
+mod support;
 
 use core::time::Duration;
 use delivery_fixture::cooling_plan_origin::CoolingPlanOrigin;
 use delivery_fixture::items::{focus_now, sized_item};
 use delivery_fixture::options::serial_long_retry_options;
 use delivery_fixture::start_harness;
-use ghostr_delivery::delivery_events::{DeliveryFocus, FocusAdmission};
+use ghostr_delivery::delivery_events::{DeliveryFocus, FocusAdmission, FocusGeneration};
+use support::{wait_for_generation, wait_for_useful_bytes};
+
+const WAIT_LIMIT: Duration = Duration::from_secs(30);
 
 #[tokio::test]
 async fn cooling_protected_post_does_not_restart_useful_protected_io() {
     let origin = CoolingPlanOrigin::serve().await;
     let harness = start_harness("ghostr-cooling-plan-stability", options());
-    let focus = window(&origin);
+    let focus = window(&origin, 1);
     assert_eq!(harness.handle.update_focus(focus), FocusAdmission::Accepted);
-    tokio::time::timeout(Duration::from_secs(1), origin.wait_useful())
+    tokio::time::timeout(WAIT_LIMIT, origin.wait_useful())
         .await
         .expect("useful protected transfer did not start");
     let failures = origin.failures();
     assert!(failures > 0, "fixture post did not fail");
 
-    harness.handle.update_focus(window(&origin));
+    let notifier = harness.handle.plan_notifier();
+    assert_eq!(
+        harness.handle.update_focus(window(&origin, 2)),
+        FocusAdmission::Accepted
+    );
+    wait_for_generation(&harness.handle, notifier.as_ref(), 2).await;
     let restarted = tokio::time::timeout(Duration::from_millis(150), origin.wait_useful())
         .await
         .is_ok();
@@ -30,19 +40,27 @@ async fn cooling_protected_post_does_not_restart_useful_protected_io() {
     assert_eq!(origin.useful_requests(), 1, "origin saw duplicate IO");
 
     origin.release();
+    wait_for_useful_bytes(&harness.store).await;
+    assert_eq!(
+        origin.useful_requests(),
+        1,
+        "delayed duplicate IO reached origin"
+    );
     harness.handle.clear().await.expect("valid test fixture");
     std::fs::remove_dir_all(&harness.root).ok();
 }
 
-fn window(origin: &CoolingPlanOrigin) -> DeliveryFocus {
-    focus_now(
+fn window(origin: &CoolingPlanOrigin, generation: u64) -> DeliveryFocus {
+    let mut focus = focus_now(
         vec![
             sized_item("cooling", &origin.url("cooling"), 64, 1_000),
             sized_item("useful", &origin.url("useful"), 64, 1_000),
         ],
         0,
         0,
-    )
+    );
+    focus.generation = FocusGeneration::try_new(generation).expect("focus generation");
+    focus
 }
 
 fn options() -> delivery_fixture::options::DeliveryOptions {

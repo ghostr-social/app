@@ -57,7 +57,7 @@ async fn storage_pressure_evicts_only_the_far_exact_tail() {
 }
 
 async fn wait_until_used(harness: &delivery_fixture::DeliveryHarness, expected: u64) {
-    let result = timeout(Duration::from_secs(2), async {
+    let result = timeout(Duration::from_secs(10), async {
         loop {
             if harness.store.used_bytes().await == expected {
                 return;

@@ -7,7 +7,7 @@ import '../frb_generated.dart';
 import 'delivery_types.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 /// The creator identity a feed row renders, including the
 /// shortened-npub fallback when no metadata is known.
@@ -223,11 +223,12 @@ class FfiFeedRepost {
 /// The outer NIP-18 occurrence that lifted an original into the feed.
 enum FfiFeedRepostTarget { specificEvent, coordinate }
 
-/// One feed to open, as Dart names it. `Main` reads the signed-in
-/// viewer from `viewer_pubkey` (hex or npub); `Hashtag` reads the tag
-/// from `value` (leading `#` optional); `Search` reads the query from
-/// `value`, as typed; `Profile` reads every creator key from `creators` — one for a
-/// profile grid, the whole follow set for the Following feed.
+/// One feed to open, as Dart names it.
+///
+/// `Main` reads the signed-in viewer from `viewer_pubkey` (hex or npub);
+/// `Hashtag` reads the tag from `value` (leading `#` optional); `Search` reads the
+/// query from `value`, as typed; `Profile` reads every creator key from `creators`
+/// — one for a profile grid, the whole follow set for the Following feed.
 class FfiFeedSpec {
   final FfiFeedKind kind;
   final String? value;
@@ -274,10 +275,11 @@ enum FfiFeedStage {
   failed,
 }
 
-/// One feed-stream update: the feed's full ordered snapshot, newest
-/// first. Snapshots replace the previous list wholesale — chosen over
-/// diffs so the Dart side has nothing to reconcile; `revision` is the
-/// feed store's monotonic revision for cheap deduplication.
+/// One feed-stream update: the feed's full ordered snapshot, newest first.
+///
+/// Snapshots replace the previous list wholesale — chosen over diffs so the Dart
+/// side has nothing to reconcile; `revision` is the feed store's monotonic
+/// revision for cheap deduplication.
 class FfiFeedUpdate {
   final String feedId;
   final BigInt revision;

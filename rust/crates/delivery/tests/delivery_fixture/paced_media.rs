@@ -11,6 +11,8 @@ use tokio::net::TcpListener;
 use tokio::sync::{mpsc, Notify};
 use tokio_stream::wrappers::ReceiverStream;
 
+mod request;
+
 #[derive(Clone)]
 struct Media {
     total: u64,
@@ -45,13 +47,15 @@ async fn response(State(media): State<Media>, method: Method, headers: HeaderMap
         return builder(StatusCode::OK, media.total, None, Body::empty());
     }
     tokio::time::sleep(media.header_delay).await;
-    let (start, end) = requested(&headers, media.total);
+    let requested = request::parse(&headers, media.total);
+    let (start, end) = requested.unwrap_or((0, media.total - 1));
     let length = end - start + 1;
-    let range = format!("bytes {start}-{end}/{}", media.total);
+    let status = requested.map_or(StatusCode::OK, |_| StatusCode::PARTIAL_CONTENT);
+    let range = requested.map(|_| format!("bytes {start}-{end}/{}", media.total));
     builder(
-        StatusCode::PARTIAL_CONTENT,
+        status,
         length,
-        Some(range),
+        range,
         stalled_body(length, media.body_delay, media.release),
     )
 }
@@ -88,14 +92,4 @@ fn builder(status: StatusCode, length: u64, range: Option<String>, body: Body) -
         builder = builder.header(header::CONTENT_RANGE, range);
     }
     builder.body(body).expect("paced response")
-}
-
-fn requested(headers: &HeaderMap, total: u64) -> (u64, u64) {
-    let value = headers[header::RANGE].to_str().expect("valid test fixture");
-    let value = value.strip_prefix("bytes=").expect("valid test fixture");
-    let (start, end) = value.split_once('-').expect("valid test fixture");
-    (
-        start.parse().expect("valid test fixture"),
-        end.parse().unwrap_or(total - 1).min(total - 1),
-    )
 }

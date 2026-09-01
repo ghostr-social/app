@@ -70,7 +70,7 @@ impl DeliveryWorker {
         planned: PlannedWork,
         stored: &PlanningStoreState,
     ) {
-        self.schedule_hedge_tail_wakes(&planned.hedge_tails, observed_at_ms);
+        self.schedule_hedge_tail_wakes(&planned.hedge_tails);
         self.schedule_network_refill_wake(planned.network_refill_deadline_ms);
         if !self
             .apply_policy_evictions(&planned.evictions, &stored.revisions)

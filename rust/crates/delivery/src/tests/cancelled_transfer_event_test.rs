@@ -1,6 +1,6 @@
-use crate::manager::transfers::axiom_test_support::chunk_event;
 use crate::chunk::downloader::ChunkResult;
 use crate::manager::inflight::InFlightChunks;
+use crate::manager::transfers::axiom_test_support::chunk_event;
 use crate::manager::transfers::TransferEvent;
 use crate::tests::support::planned_transfer;
 use ghostr_engine::adaptive::PreemptionAuthority;

@@ -21,7 +21,10 @@ fn delivery_evidence_json_is_bounded_versioned_and_privacy_safe() {
     let snapshot: serde_json::Value = serde_json::from_str(&encoded).expect("valid JSON");
     assert_eq!(snapshot["schema_version"], 1);
     assert_eq!(
-        snapshot["plan_page"]["records"].as_array().expect("valid test fixture").len(),
+        snapshot["plan_page"]["records"]
+            .as_array()
+            .expect("valid test fixture")
+            .len(),
         64
     );
     assert_eq!(snapshot["plan_page"]["records"][0]["revision"], 1);
@@ -36,16 +39,25 @@ fn delivery_evidence_json_is_bounded_versioned_and_privacy_safe() {
     assert!(!encoded.contains(SOURCE));
     assert!(snapshot["evaluation"]["readiness"].is_object());
 
-    let tail = handle.evidence_page_json(64, usize::MAX).expect("valid test fixture");
+    let tail = handle
+        .evidence_page_json(64, usize::MAX)
+        .expect("valid test fixture");
     let tail: serde_json::Value = serde_json::from_str(&tail).expect("valid test fixture");
-    assert_eq!(tail["plan_page"]["records"].as_array().expect("valid test fixture").len(), 2);
+    assert_eq!(
+        tail["plan_page"]["records"]
+            .as_array()
+            .expect("valid test fixture")
+            .len(),
+        2
+    );
     assert_eq!(tail["plan_page"]["records"][0]["revision"], 65);
     assert_eq!(tail["plan_page"]["has_more"], false);
 
     let work = work();
     let (sequence, _token) = selected_warp(&handle, &commands, &work);
     let decisions = handle.decision_history_json().expect("decision JSON");
-    let decisions: serde_json::Value = serde_json::from_str(&decisions).expect("valid test fixture");
+    let decisions: serde_json::Value =
+        serde_json::from_str(&decisions).expect("valid test fixture");
     assert_eq!(decisions["schema_version"], 1);
     assert!(decisions["decisions"]["records"].is_array());
     assert_eq!(decisions["integrity"][0]["sequence"], sequence);

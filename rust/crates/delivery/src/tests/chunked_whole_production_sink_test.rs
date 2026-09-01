@@ -54,16 +54,28 @@ async fn chunked_whole_keeps_seed_readable_until_atomic_eof_commit() {
         () = &mut staged => {}
     }
     assert_eq!(
-        fixture.store.read_range("post", 0..4).await.expect("valid test fixture"),
+        fixture
+            .store
+            .read_range("post", 0..4)
+            .await
+            .expect("valid test fixture"),
         Some(b"old!".to_vec())
     );
     origin.release.notify_one();
     assert_eq!(
-        download.await.result.expect("valid test fixture").total_bytes,
+        download
+            .await
+            .result
+            .expect("valid test fixture")
+            .total_bytes,
         Some(8)
     );
     assert_eq!(
-        fixture.store.read_range("post", 0..8).await.expect("valid test fixture"),
+        fixture
+            .store
+            .read_range("post", 0..8)
+            .await
+            .expect("valid test fixture"),
         Some(b"new!body".to_vec())
     );
     fixture.store.release_action(&fixture.action).await;

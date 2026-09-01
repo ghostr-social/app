@@ -47,6 +47,7 @@ async fn certificate_stays_bound_to_the_planning_snapshot() {
         ready_reserve: ReadyReserveEvidence {
             candidates: vec![ReserveCandidateEvidence {
                 post: post.clone(),
+                kind: Default::default(),
                 state: ReserveCandidateState::Ready { startup },
             }],
             ..Default::default()

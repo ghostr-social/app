@@ -12,6 +12,7 @@ import 'progressive_origin_pacing.dart';
 export 'progressive_origin_pacing.dart';
 
 part 'progressive_device_origin_response.dart';
+part 'progressive_device_origin_detached_response.dart';
 part 'progressive_device_origin_hls.dart';
 part 'progressive_device_origin_models.dart';
 part 'progressive_device_origin_range.dart';

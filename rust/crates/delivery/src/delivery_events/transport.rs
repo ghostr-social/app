@@ -1,3 +1,7 @@
+mod rescue_feedback;
+
+pub use rescue_feedback::TransportRescueFeedback;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TransportRescueReason {
     EtaUnavailable,

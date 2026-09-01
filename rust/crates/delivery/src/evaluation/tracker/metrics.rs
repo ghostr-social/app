@@ -3,7 +3,9 @@ mod efficiency;
 mod readiness;
 
 use super::{average, unit_rate, EvaluationTracker};
-use crate::evaluation::events::{BudgetMetricEvent, IntegrityMetricEvent, SemanticMetricEvent};
+use crate::evaluation::events::{
+    BudgetMetricEvent, IntegrityMetricEvent, SemanticMetricEvent, SemanticMetricRollup,
+};
 use crate::evaluation::types::EvaluationSnapshot;
 
 impl EvaluationTracker {
@@ -55,6 +57,19 @@ impl EvaluationTracker {
             .semantic_regret_micros
             .saturating_add(event.semantic_regret_micros);
         metrics.transport_substitutions += u64::from(event.transport_substitution);
+    }
+
+    pub(crate) fn semantic_rollup(&mut self, event: SemanticMetricRollup) {
+        let metrics = &mut self.metrics.semantics;
+        metrics.rank_displacement = metrics
+            .rank_displacement
+            .saturating_add(event.rank_displacement);
+        metrics.semantic_regret_micros = metrics
+            .semantic_regret_micros
+            .saturating_add(event.semantic_regret_micros);
+        metrics.transport_substitutions = metrics
+            .transport_substitutions
+            .saturating_add(event.transport_substitutions);
     }
 
     pub(crate) fn integrity(&mut self, event: IntegrityMetricEvent) {

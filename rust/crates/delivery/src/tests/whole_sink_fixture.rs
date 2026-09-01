@@ -45,12 +45,24 @@ pub(super) async fn fixture(prefix: &str, url: &str, seed: Option<&[u8]>) -> Sin
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(PostId::new("post"), meta(url));
     let identity = binding.transfer(url).expect("valid test fixture");
-    store.bind_representation(binding).await.expect("valid test fixture");
-    store.select_transfer(identity.clone()).await.expect("valid test fixture");
+    store
+        .bind_representation(binding)
+        .await
+        .expect("valid test fixture");
+    store
+        .select_transfer(identity.clone())
+        .await
+        .expect("valid test fixture");
     if let Some(bytes) = seed {
-        store.write_range("post", 0, bytes).await.expect("valid test fixture");
+        store
+            .write_range("post", 0, bytes)
+            .await
+            .expect("valid test fixture");
     }
-    let action = store.reserve_action(&identity, 1, 64).await.expect("valid test fixture");
+    let action = store
+        .reserve_action(&identity, 1, 64)
+        .await
+        .expect("valid test fixture");
     SinkFixture {
         root,
         store,

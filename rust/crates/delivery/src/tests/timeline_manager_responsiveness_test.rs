@@ -1,15 +1,16 @@
 use crate::tests::media_timeline_fixture::classic_moov;
 use crate::tests::timeline_manager_fixture::TimelineManagerFixture;
 use crate::tests::timeline_parser_fixture::GatedTimelineParser;
-use ghostr_engine::media_timeline::{parse_mp4_segments, MediaSegment};
 use core::time::Duration;
+use ghostr_engine::media_timeline::{parse_mp4_segments, MediaSegment};
 
 #[tokio::test]
 async fn control_wakes_bypass_a_blocked_parse_and_stale_geometry_never_installs() {
     let moov = classic_moov(100, 10);
     let ready = parse_mp4_segments(&[MediaSegment::new(0, &moov)]).expect("valid test fixture");
     let (parser, mut started) = GatedTimelineParser::new(Some(ready), 2);
-    let mut fixture = TimelineManagerFixture::new(std::sync::Arc::<GatedTimelineParser>::clone(&parser)).await;
+    let mut fixture =
+        TimelineManagerFixture::new(std::sync::Arc::<GatedTimelineParser>::clone(&parser)).await;
 
     fixture.focus();
     assert!(fixture.step().await);
@@ -32,5 +33,7 @@ async fn control_wakes_bypass_a_blocked_parse_and_stale_geometry_never_installs(
     assert!(fixture.step().await);
     assert!(fixture.timeline().is_none());
 
-    tokio::fs::remove_dir_all(fixture.root).await.expect("valid test fixture");
+    tokio::fs::remove_dir_all(fixture.root)
+        .await
+        .expect("valid test fixture");
 }

@@ -1,11 +1,11 @@
 use crate::delivery_events::{DeliveryFocus, DeliveryPlayback, FocusItem};
 use crate::manager::state::DeliveryState;
 use crate::playback_admission::{PlaybackAdmission, PlaybackRejection};
+use core::time::Duration;
 use ghostr_engine::playback::{
     PlaybackObservation, PlaybackObservationSequence, PlaybackPhase, PlaybackSession,
 };
 use ghostr_engine::{DataUsageLevel, DeliveryKind, EngineParams, PostId, VideoMeta};
-use core::time::Duration;
 
 #[test]
 fn state_accepts_only_current_session_and_increasing_sequence() {

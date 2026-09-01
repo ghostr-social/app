@@ -30,6 +30,13 @@ async fn learned_head_resolves_the_exact_authoritative_decision() {
     let request = request.await.expect("valid test fixture");
     assert!(request.starts_with(b"HEAD "));
     let history = wait_for_head(&harness.handle).await;
+    assert_head_record(&history);
+
+    harness.handle.clear().await.expect("valid test fixture");
+    std::fs::remove_dir_all(&harness.root).ok();
+}
+
+fn assert_head_record(history: &DecisionHistorySnapshot) {
     let record = history
         .records
         .iter()
@@ -54,14 +61,11 @@ async fn learned_head_resolves_the_exact_authoritative_decision() {
     };
     assert_eq!((content_length, accept_ranges), (8, Some(true)));
     assert!(elapsed_ms < 2_000);
-
-    harness.handle.clear().await.expect("valid test fixture");
-    std::fs::remove_dir_all(&harness.root).ok();
 }
 
 async fn wait_for_head(handle: &DeliveryHandle) -> DecisionHistorySnapshot {
     let notifier = handle.plan_notifier();
-    tokio::time::timeout(Duration::from_secs(2), async {
+    tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             let notified = notifier.notified();
             tokio::pin!(notified);

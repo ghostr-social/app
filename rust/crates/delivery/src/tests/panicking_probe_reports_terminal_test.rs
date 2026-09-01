@@ -1,13 +1,14 @@
-
 #[path = "panicking_probe_reports_terminal_test/fixture.rs"]
 mod fixture;
 
 use crate::delivery_events::{CommandReceiver, DecisionClaim, DeliveryHandle};
-use crate::manager::transfers::{spawn_probe, InternalEvent, ProbeDone, ProbeLaunch, TransferEvent};
+use crate::manager::transfers::{
+    spawn_probe, InternalEvent, ProbeDone, ProbeLaunch, TransferEvent,
+};
 use crate::tests::decision_log_fixture::outcome;
+use core::time::Duration;
 use ghostr_engine::adaptive::DecisionOutcome;
 use ghostr_engine::representation::TransferIdentity;
-use core::time::Duration;
 
 #[tokio::test]
 async fn panicking_probe_reports_a_terminal_event() {

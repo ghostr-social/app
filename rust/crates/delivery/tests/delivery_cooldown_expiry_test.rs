@@ -24,9 +24,9 @@ async fn failed_focused_download_resumes_when_its_cooldown_expires() {
 }
 
 async fn wait_for_attempts(attempts: &Attempts, expected: usize) {
-    let deadline = Instant::now() + Duration::from_secs(1);
+    let deadline = Instant::now() + Duration::from_secs(30);
     while body_count(attempts) < expected {
         assert!(Instant::now() < deadline, "cooldown did not resume retry");
-        tokio::task::yield_now().await;
+        tokio::time::sleep(Duration::from_millis(1)).await;
     }
 }

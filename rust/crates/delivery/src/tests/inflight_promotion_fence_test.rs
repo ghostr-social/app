@@ -32,8 +32,11 @@ async fn observed_promotable_headers_publish_an_opportunity_without_admitting_bo
     let after = fixture.active.actions().remove(0);
     assert_eq!(after.request(), before.request());
     assert_eq!(after.effective_bytes(), before.effective_bytes());
-    assert_eq!(after.reserved_storage_bytes(), before.reserved_storage_bytes());
-        assert!(fixture
+    assert_eq!(
+        after.reserved_storage_bytes(),
+        before.reserved_storage_bytes()
+    );
+    assert!(fixture
         .active
         .preflight_promotion(&fixture.target, 50)
         .is_ok());

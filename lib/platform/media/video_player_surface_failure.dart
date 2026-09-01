@@ -7,8 +7,13 @@ extension _VideoPlayerSurfaceFailure on _VideoPlayerSurfaceState {
     StackTrace stackTrace,
   ) async {
     _logInitializationFailure(error, stackTrace);
-    if (_decoderUnsupported(error)) {
-      _failPreparation(PlayerPreparationFailureKind.decoderUnsupported);
+    final decoderUnsupported = _decoderUnsupported(error);
+    if (decoderUnsupported || _awaitsHlsTransportRescue) {
+      _failPreparation(
+        decoderUnsupported
+            ? PlayerPreparationFailureKind.decoderUnsupported
+            : PlayerPreparationFailureKind.initialization,
+      );
       await _rejectControllerForCapability(controller);
       return;
     }
@@ -27,7 +32,7 @@ extension _VideoPlayerSurfaceFailure on _VideoPlayerSurfaceState {
         ? PlayerPreparationFailureKind.decoderUnsupported
         : PlayerPreparationFailureKind.runtimePlayback;
     _failPreparation(failure);
-    final rejection = decoderUnsupported
+    final rejection = decoderUnsupported || _awaitsHlsTransportRescue
         ? _rejectControllerForCapability(controller)
         : _rejectController(controller);
     _lifecycle.track(rejection);

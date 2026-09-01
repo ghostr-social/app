@@ -1,6 +1,7 @@
-
-use crate::delivery_events::{command_channel, DeliveryCommand, DeliveryFocus, DeliveryNetworkStatus};
 use crate::debug::network::NetworkProfile;
+use crate::delivery_events::{
+    command_channel, DeliveryCommand, DeliveryFocus, DeliveryNetworkStatus,
+};
 use ghostr_engine::origin_model::NetworkClass;
 use ghostr_engine::DataUsageLevel;
 
@@ -28,7 +29,9 @@ fn focus_batch_preserves_earlier_controls_and_leaves_the_suffix() {
         .update_network_profile(NetworkProfile::default())
         .expect("valid test fixture");
 
-    let commands = receiver.try_controls_through_focus().expect("valid test fixture");
+    let commands = receiver
+        .try_controls_through_focus()
+        .expect("valid test fixture");
 
     assert!(matches!(
         commands.as_slice(),

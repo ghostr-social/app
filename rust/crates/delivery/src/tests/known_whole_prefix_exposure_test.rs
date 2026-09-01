@@ -56,7 +56,11 @@ async fn capped_whole_with_a_declared_length_exposes_its_live_prefix() {
     }
     origin.release.notify_one();
     assert_eq!(
-        download.await.result.expect("valid test fixture").bytes_written,
+        download
+            .await
+            .result
+            .expect("valid test fixture")
+            .bytes_written,
         8
     );
     fixture.store.release_action(&fixture.action).await;

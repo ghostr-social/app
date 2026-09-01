@@ -1,14 +1,26 @@
 part of 'progressive_device_origin.dart';
 
 extension ProgressiveDeviceOriginHls on ProgressiveDeviceOrigin {
+  Uri get encryptedHlsUrl => Uri.parse(
+    'http://${_server.address.address}:${_server.port}$_encryptedHlsPath',
+  );
+
   Uri hlsUrlFor(String id) => Uri.parse(
     'http://${_server.address.address}:${_server.port}/hls/$id/index.m3u8',
   );
+
+  List<ProgressiveOriginRequest> get encryptedHlsRequests => requests
+      .where((request) => request.path == _encryptedHlsPath)
+      .toList(growable: false);
 
   int hlsRequestsFor(String asset) =>
       requests.where((request) => request.path.endsWith('/$asset')).length;
 
   Future<bool> _handleHls(HttpRequest request) async {
+    if (request.uri.path == _encryptedHlsPath) {
+      await _serveHls(request, utf8.encode(_encryptedVodManifest));
+      return true;
+    }
     final parts = request.uri.pathSegments;
     if (parts.length != 3 || parts.first != 'hls') return false;
     final bytes = ProgressiveDeviceHlsAssets.resolve(parts[1], parts.last);
@@ -53,3 +65,15 @@ extension ProgressiveDeviceOriginHls on ProgressiveDeviceOrigin {
 ContentType _hlsContentType(String path) => path.endsWith('.m3u8')
     ? ContentType('application', 'vnd.apple.mpegurl')
     : ContentType('video', path.endsWith('.mp4') ? 'mp4' : 'iso.segment');
+
+const _encryptedHlsPath = '/encrypted/index.m3u8';
+
+const _encryptedVodManifest = '''#EXTM3U
+#EXT-X-VERSION:7
+#EXT-X-TARGETDURATION:1
+#EXT-X-KEY:METHOD=AES-128,URI="key.bin"
+#EXT-X-MAP:URI="init.mp4"
+#EXTINF:1.0,
+index0.m4s
+#EXT-X-ENDLIST
+''';

@@ -51,5 +51,6 @@ fn candidate(index: usize) -> HlsCandidateSnapshot {
             stage: HlsBootstrapStage::FirstSegment,
             source: format!("https://{index}.example/segment.m4s"),
         },
+        player_preparation: Default::default(),
     }
 }

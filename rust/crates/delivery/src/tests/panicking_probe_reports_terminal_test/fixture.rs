@@ -5,6 +5,7 @@ use crate::manager::traffic;
 use crate::manager::transfers::TransferContext;
 use crate::tests::decision_log_fixture::{head_identity, selected_head};
 use crate::tests::support::temp_directory;
+use core::time::Duration;
 use ghostr_net::media_request_executor::{MediaRequestExecutor, MediaRequestLimits};
 use ghostr_net::outbound_media_client::MediaHttpRequests;
 use ghostr_net::transfer_timeouts::TransferTimeouts;
@@ -12,7 +13,6 @@ use ghostr_partial_store::partial_range_store::capacity::StoreCapacity;
 use ghostr_partial_store::partial_range_store::PartialRangeStore;
 use std::path::PathBuf;
 use std::sync::Arc;
-use core::time::Duration;
 use tokio::sync::Mutex;
 
 pub(super) struct TrackedHead {

@@ -24,7 +24,11 @@ fn selected_cancel_targets_the_exact_obsolete_action() {
     let WarpDirective::Cancel(selected) = execution.directive else {
         panic!("one exact cancel must be selected");
     };
-    let other = if selected == ActionId::new(1) { ActionId::new(2) } else { ActionId::new(1) };
+    let other = if selected == ActionId::new(1) {
+        ActionId::new(2)
+    } else {
+        ActionId::new(1)
+    };
 
     assert!([ActionId::new(1), ActionId::new(2)].contains(&selected));
     assert!(!execution.retained.contains(&selected));

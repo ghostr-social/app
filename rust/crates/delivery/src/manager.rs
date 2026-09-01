@@ -22,6 +22,7 @@ pub(crate) mod cooldown_timers;
 mod create;
 pub mod failure;
 mod focus_lease;
+mod focus_preemption;
 mod focus_retry;
 pub(crate) mod hedge_tail;
 pub(crate) mod immediate_replan;

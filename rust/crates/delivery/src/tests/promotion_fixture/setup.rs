@@ -27,9 +27,17 @@ pub(super) async fn store_setup() -> StoreSetup {
     );
     let mut catalog = Catalog::new();
     let binding = catalog.upsert(PostId::new("post"), meta());
-    let identity = binding.transfer("https://origin.test/video").expect("valid test fixture");
-    store.bind_representation(binding).await.expect("valid test fixture");
-    let action = store.reserve_action(&identity, 1, 4).await.expect("valid test fixture");
+    let identity = binding
+        .transfer("https://origin.test/video")
+        .expect("valid test fixture");
+    store
+        .bind_representation(binding)
+        .await
+        .expect("valid test fixture");
+    let action = store
+        .reserve_action(&identity, 1, 4)
+        .await
+        .expect("valid test fixture");
     StoreSetup {
         root,
         store,

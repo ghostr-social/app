@@ -46,16 +46,16 @@ impl PlanPublicationContext {
         }
     }
 
+    pub(crate) const fn with_decision_sequence(mut self, sequence: Option<u64>) -> Self {
+        self.decision_sequence = sequence;
+        self
+    }
+
     pub(crate) fn with_player_preparations(
         mut self,
         preparations: Vec<PlayerPreparationClaim>,
     ) -> Self {
         self.player_preparations = preparations;
-        self
-    }
-
-    pub(crate) const fn with_decision_sequence(mut self, sequence: Option<u64>) -> Self {
-        self.decision_sequence = sequence;
         self
     }
 

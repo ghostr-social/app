@@ -27,12 +27,7 @@ Future<WarpFeedProductionGraph> buildWarpFeedProductionGraphForRelay(
   SharedPreferences.setMockInitialValues(_settings(relay, options.dataUsage));
   final build = _newBuild(options.account);
   try {
-    final dependencies = await _buildDependencies(
-      build,
-      resources,
-      options.playbackCapabilities,
-      options.hlsPlaybackGateway,
-    );
+    final dependencies = await _buildDependencies(build, resources, options);
     await build.account.activate(build.capture.nostr!);
     return _composeGraph(build, dependencies);
   } on Object {
@@ -47,10 +42,12 @@ final class WarpFeedProductionGraphOptions {
     this.account,
     this.playbackCapabilities = VideoPlaybackCapabilities.progressiveOnly,
     this.hlsPlaybackGateway,
+    this.deviceIntegrationOrigin,
   });
 
   final DataUsageLevel dataUsage;
   final WarpFeedNostrAccount? account;
   final VideoPlaybackCapabilities playbackCapabilities;
   final HlsPlaybackGatewayPort? hlsPlaybackGateway;
+  final Uri? deviceIntegrationOrigin;
 }

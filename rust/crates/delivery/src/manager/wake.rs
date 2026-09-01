@@ -109,6 +109,9 @@ impl DeliveryWorker {
         match command {
             DeliveryCommand::Candidate(candidate) => self.state.apply_candidate(candidate),
             DeliveryCommand::Focus(focus) => self.apply_focus_command(focus),
+            DeliveryCommand::RescueFeedback(feedback) => {
+                self.qoe.note_rescue_feedback(feedback);
+            }
             DeliveryCommand::Playback(playback) => self.apply_playback(&playback),
             DeliveryCommand::Config(level) => {
                 self.state.apply_level(level);
@@ -128,6 +131,8 @@ impl DeliveryWorker {
 
     fn apply_focus_command(&mut self, focus: crate::delivery_events::DeliveryFocus) {
         let previous = self.state.focus().current().cloned();
+        let receding =
+            crate::manager::focus_preemption::receding_future_posts(previous.as_ref(), &focus);
         let segmented_focus = focus.clone();
         let hls_changed = self.segmented.changed_hls_sources(&segmented_focus);
         let hls_cooldown_resets = self.segmented.hls_cooldown_resets(&segmented_focus);
@@ -135,6 +140,7 @@ impl DeliveryWorker {
         if !self.state.apply_focus(focus, observed_at_ms) {
             return;
         }
+        self.downloads.cancel_without_body(&receding);
         self.qoe.note_focus(&segmented_focus, observed_at_ms);
         self.segmented.set_startup_eta_ms(self.qoe.startup_eta_ms());
         let segmented_changed = self.segmented.apply_focus(&segmented_focus);

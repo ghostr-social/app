@@ -6,7 +6,8 @@ use ghostr_engine::PreviewDescriptor;
 fn duplicate_focus_previews_resolve_to_the_first_valid_descriptor() {
     let (mut state, post, meta) = candidate_state();
     let first = PreviewDescriptor::inline_blurhash("000000").expect("valid test fixture");
-    let second = PreviewDescriptor::inline_blurhash("LEHV6nWB2yk8pyo0adR*.7kCMdnj").expect("valid test fixture");
+    let second = PreviewDescriptor::inline_blurhash("LEHV6nWB2yk8pyo0adR*.7kCMdnj")
+        .expect("valid test fixture");
     let mut update = focus(post.clone(), meta);
     update.previews = vec![
         FocusPreview {
@@ -21,7 +22,11 @@ fn duplicate_focus_previews_resolve_to_the_first_valid_descriptor() {
 
     assert!(state.apply_focus(update, 2));
     assert_eq!(
-        state.catalog().lookup(&post).expect("valid test fixture").preview(),
+        state
+            .catalog()
+            .lookup(&post)
+            .expect("valid test fixture")
+            .preview(),
         Some(first)
     );
 }

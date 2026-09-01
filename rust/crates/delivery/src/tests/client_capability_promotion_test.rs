@@ -1,9 +1,9 @@
-
-use crate::client_capability::{CapabilityAttempt, CapabilityEvent, CapabilityObservation, CapabilitySignal, ClientCapabilityModel, ClientCapabilityProfile, ClientCapabilityStatus};
-use ghostr_engine::evidence::EvidenceValidator;
-use ghostr_engine::representation::{
-    HttpGenerationKey, HttpGenerationLease, HttpGenerationStamp,
+use crate::client_capability::{
+    CapabilityAttempt, CapabilityEvent, CapabilityObservation, CapabilitySignal,
+    ClientCapabilityModel, ClientCapabilityProfile, ClientCapabilityStatus,
 };
+use ghostr_engine::evidence::EvidenceValidator;
+use ghostr_engine::representation::{HttpGenerationKey, HttpGenerationLease, HttpGenerationStamp};
 use ghostr_engine::PostId;
 
 const SOURCE: &str = "https://media.example/video.mp4";
@@ -31,7 +31,13 @@ fn local_verification_during_an_attempt_waits_for_a_verified_attempt() {
     assert_eq!(model.status(11, &verified), ClientCapabilityStatus::Unknown);
     assert_eq!(model.status(11, &mutable), ClientCapabilityStatus::Unknown);
     let state = serde_json::to_value(model.state()).expect("valid test fixture");
-    assert_eq!(state["records"].as_array().expect("valid test fixture").len(), 0);
+    assert_eq!(
+        state["records"]
+            .as_array()
+            .expect("valid test fixture")
+            .len(),
+        0
+    );
 }
 
 #[test]
@@ -65,16 +71,13 @@ fn profile(persistent: bool) -> ClientCapabilityProfile {
 }
 
 fn mutable_profile(validator: &str) -> ClientCapabilityProfile {
-    let validator = EvidenceValidator::strong_etag(format!("\"{validator}\"")).expect("valid test fixture");
+    let validator =
+        EvidenceValidator::strong_etag(format!("\"{validator}\"")).expect("valid test fixture");
     let key = HttpGenerationKey::try_new(SOURCE, Some(validator)).expect("valid test fixture");
     let generation = HttpGenerationStamp::from_trusted(
         HttpGenerationLease::try_new(key, 1).expect("valid test fixture"),
     );
-    profile(false).with_volatile_authority(
-        &PostId::new("post"),
-        SOURCE,
-        Some(generation),
-    )
+    profile(false).with_volatile_authority(&PostId::new("post"), SOURCE, Some(generation))
 }
 
 fn observe(

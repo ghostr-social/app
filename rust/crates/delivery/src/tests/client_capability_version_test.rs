@@ -1,5 +1,7 @@
-
-use crate::client_capability::{CapabilityAttempt, CapabilityEvent, CapabilityObservation, CapabilitySignal, ClientCapabilityModel, ClientCapabilityProfile, ClientCapabilityStatus};
+use crate::client_capability::{
+    CapabilityAttempt, CapabilityEvent, CapabilityObservation, CapabilitySignal,
+    ClientCapabilityModel, ClientCapabilityProfile, ClientCapabilityStatus,
+};
 
 #[test]
 fn first_frame_evidence_is_versioned_and_persisted() {

@@ -64,7 +64,7 @@ async fn selected_transform_publishes_exact_derived_representation() {
                 if bytes == OUTPUT.len() as u64 && elapsed_ms > 0)
         })
         .expect("timed terminal Transform decision");
-    assert_eq!(record.schema_version, 3);
+    assert_eq!(record.schema_version, 4);
     let actual = record.actual_resources.expect("actual Transform resources");
     assert_eq!(actual.network_bytes, 0);
     assert_eq!(actual.storage_bytes, OUTPUT.len() as u64);

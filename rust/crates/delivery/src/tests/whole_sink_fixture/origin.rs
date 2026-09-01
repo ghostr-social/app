@@ -10,7 +10,9 @@ pub(crate) struct SplitOrigin {
 }
 
 pub(crate) async fn split(prefix: &'static [u8], suffix: &'static [u8]) -> SplitOrigin {
-    let listener = TcpListener::bind("127.0.0.1:0").await.expect("valid test fixture");
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("valid test fixture");
     let address = listener.local_addr().expect("valid test fixture");
     let release = Arc::new(Notify::new());
     let body_release = std::sync::Arc::clone(&release);

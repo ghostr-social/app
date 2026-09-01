@@ -48,7 +48,7 @@ void main() {
     expect(changes, [1]);
   });
 
-  testWidgets('authoritative roster revision reconciles a pending target', (
+  testWidgets('authoritative synchronization does not invent a user swipe', (
     tester,
   ) async {
     final rebuild = ValueNotifier(0);
@@ -80,7 +80,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Page 0'), findsOneWidget);
-    expect(changes, [1, 0]);
+    expect(changes, [1]);
   });
 }
 

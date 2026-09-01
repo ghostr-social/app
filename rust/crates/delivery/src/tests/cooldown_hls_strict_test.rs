@@ -16,5 +16,8 @@ fn hls_cooldown_cannot_be_bypassed_by_focus_or_playback_demand() {
     assert!(!retry.expedite_demand(&post, 8));
     assert!(retry.is_cooling(&post), "demand bypassed HLS backoff");
     assert!(retry.warm_up(&post, cooldown));
-    assert!(retry.cool_down(post).is_some(), "strict wake leaked a credit");
+    assert!(
+        retry.cool_down(post).is_some(),
+        "strict wake leaked a credit"
+    );
 }

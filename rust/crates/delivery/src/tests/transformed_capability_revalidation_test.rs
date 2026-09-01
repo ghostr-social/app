@@ -1,5 +1,7 @@
-
-use crate::delivery_events::{PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationObservation, PlayerPreparationReport, PlayerPreparationState};
+use crate::delivery_events::{
+    PlayerPreparationAttempt, PlayerPreparationAuthority, PlayerPreparationObservation,
+    PlayerPreparationReport, PlayerPreparationState,
+};
 use crate::tests::player_preparation_fixture::state;
 use ghostr_engine::adaptive::{PlannerCapability, TransformKind};
 use ghostr_engine::representation::RepresentationBinding;
@@ -56,7 +58,8 @@ fn apply(
         "asset",
     )
     .expect("valid test fixture");
-    let observation = PlayerPreparationObservation::try_new(status, None, sequence * 100).expect("valid test fixture");
+    let observation = PlayerPreparationObservation::try_new(status, None, sequence * 100)
+        .expect("valid test fixture");
     let report = PlayerPreparationReport::try_new(
         authority,
         PlayerPreparationAttempt::try_new(1, 1, 1).expect("valid test fixture"),

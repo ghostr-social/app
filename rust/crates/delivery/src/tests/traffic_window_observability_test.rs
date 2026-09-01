@@ -1,8 +1,8 @@
 use super::support::temp_directory;
 use crate::manager::stats::StatsKeeper;
 use crate::manager::traffic::{channel, TransferKey};
-use log::{Level, LevelFilter, Log, Metadata, Record};
 use core::time::Duration;
+use log::{Level, LevelFilter, Log, Metadata, Record};
 use tokio::sync::mpsc;
 use tokio::time::Instant;
 

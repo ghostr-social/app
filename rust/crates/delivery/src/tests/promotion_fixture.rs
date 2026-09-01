@@ -45,10 +45,8 @@ impl PromotionFixture {
     }
 
     pub(super) fn observe_headers(&mut self, observed_at_ms: u64) {
-        assert!(self.active.observe_headers(
-            &self.attempt,
-            &response(),
-            observed_at_ms
-        ));
+        assert!(self
+            .active
+            .observe_headers(&self.attempt, &response(), observed_at_ms));
     }
 }

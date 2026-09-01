@@ -112,7 +112,7 @@ final class FeedReadySelector {
       return _stay(intendedIndex, FeedReadyReason.historyTraversal);
     }
     if (intended == null) {
-      return _stay(intendedIndex, FeedReadyReason.unknownDelivery);
+      return _unknownDelivery(evidence, fromIndex, intendedIndex, graceExpired);
     }
     final ready = _firstReady(evidence, fromIndex, intendedIndex);
     final wait =
@@ -125,6 +125,21 @@ final class FeedReadySelector {
       return _stay(intendedIndex, FeedReadyReason.noReadyAlternative);
     }
     return _rescue(intended, intendedIndex, ready, graceExpired);
+  }
+
+  FeedReadyDecision _unknownDelivery(
+    FeedReadinessEvidence evidence,
+    int fromIndex,
+    int intendedIndex,
+    bool graceExpired,
+  ) {
+    final ready = _firstReady(evidence, fromIndex, intendedIndex);
+    if (graceExpired && ready != intendedIndex) {
+      return _rescue(null, intendedIndex, ready, true);
+    }
+    return graceExpired
+        ? _stay(intendedIndex, FeedReadyReason.unknownDelivery)
+        : _wait(intendedIndex, FeedReadyReason.unknownDelivery);
   }
 
   int _firstReady(FeedReadinessEvidence evidence, int from, int intended) {
@@ -146,27 +161,37 @@ FeedReadyDecision _stay(int index, FeedReadyReason reason) => FeedReadyDecision(
   selectedIndex: index,
 );
 
-FeedReadyDecision _wait(int index) => FeedReadyDecision(
+FeedReadyDecision _wait(
+  int index, [
+  FeedReadyReason reason = FeedReadyReason.shortEta,
+]) => FeedReadyDecision(
   action: FeedReadyAction.wait,
-  reason: FeedReadyReason.shortEta,
+  reason: reason,
   intendedIndex: index,
   selectedIndex: index,
 );
 
 FeedReadyDecision _rescue(
-  VideoDeliverySnapshot intended,
+  VideoDeliverySnapshot? intended,
   int intendedIndex,
   int selectedIndex,
   bool graceExpired,
 ) => FeedReadyDecision(
   action: FeedReadyAction.rescue,
-  reason: graceExpired
-      ? FeedReadyReason.graceExpired
-      : intended.phase == VideoDeliveryPhase.failed
-      ? FeedReadyReason.deliveryFailed
-      : intended.eta == null
-      ? FeedReadyReason.etaUnavailable
-      : FeedReadyReason.etaTooLong,
+  reason: _rescueReason(intended, graceExpired),
   intendedIndex: intendedIndex,
   selectedIndex: selectedIndex,
 );
+
+FeedReadyReason _rescueReason(
+  VideoDeliverySnapshot? intended,
+  bool graceExpired,
+) {
+  if (graceExpired) return FeedReadyReason.graceExpired;
+  if (intended?.phase == VideoDeliveryPhase.failed) {
+    return FeedReadyReason.deliveryFailed;
+  }
+  return intended?.eta == null
+      ? FeedReadyReason.etaUnavailable
+      : FeedReadyReason.etaTooLong;
+}

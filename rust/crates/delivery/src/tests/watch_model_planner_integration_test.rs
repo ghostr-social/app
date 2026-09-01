@@ -22,7 +22,9 @@ fn learned_reach_changes_deadlines_without_becoming_semantic_relevance() {
         .iter()
         .find(|candidate| candidate.post == p1)
         .expect("valid test fixture");
-    let evidence = decision.planner_candidate_evidence(&p1).expect("valid test fixture");
+    let evidence = decision
+        .planner_candidate_evidence(&p1)
+        .expect("valid test fixture");
 
     assert!((candidate.view_probability.value() - reach).abs() < f64::EPSILON);
     assert_eq!(evidence.semantic, SemanticScore::Unavailable { rank: 1 },);

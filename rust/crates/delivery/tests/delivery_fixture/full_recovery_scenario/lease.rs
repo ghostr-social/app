@@ -1,7 +1,9 @@
 use super::Scenario;
 use crate::delivery_fixture::evidence::DeliveryEvidence as _;
-use crate::delivery_fixture::full_recovery_origin::PROBE_BYTES;
-use ghostr_engine::adaptive::{DecisionRecord, RecordedRetrievalRequest, RecordedWarpCommand};
+use crate::delivery_fixture::full_recovery_origin::{PROBE_BYTES, TRIAL_BYTES};
+use ghostr_engine::adaptive::{
+    DecisionRecord, RecordedRetrievalRequest, RecordedWarpCommand, RecordedWholeBodyContract,
+};
 
 impl Scenario {
     pub(super) async fn assert_method_specific_lease(&self) {
@@ -18,6 +20,28 @@ impl Scenario {
         );
         assert!(history.records.iter().any(bound_capped_full));
         assert!(history.records.iter().any(bound_range));
+    }
+
+    pub(super) fn assert_trial_lease(&self) {
+        let history = self.harness.handle.decision_history();
+        assert_eq!(
+            history
+                .records
+                .iter()
+                .filter(|record| is_full(record))
+                .count(),
+            2,
+            "one probe and one trial Full may be selected"
+        );
+        assert_eq!(
+            history
+                .records
+                .iter()
+                .filter(|record| executed_trial(record))
+                .count(),
+            1,
+            "one Full recovery trial may execute"
+        );
     }
 }
 
@@ -42,6 +66,20 @@ fn bound_range(record: &DecisionRecord) -> bool {
     record.executed_request.is_some()
         && selected_request(record)
             .is_some_and(|request| matches!(request, RecordedRetrievalRequest::FetchRange { .. }))
+}
+
+fn executed_trial(record: &DecisionRecord) -> bool {
+    match record.executed_request.as_ref().map(|item| item.request) {
+        Some(RecordedRetrievalRequest::FetchWhole {
+            contract: RecordedWholeBodyContract::Exact { expected_bytes },
+            ..
+        }) => expected_bytes == TRIAL_BYTES as u64,
+        Some(RecordedRetrievalRequest::FetchWhole {
+            contract: RecordedWholeBodyContract::Capped { maximum_bytes },
+            ..
+        }) => maximum_bytes == TRIAL_BYTES as u64,
+        _ => false,
+    }
 }
 
 fn selected_request(record: &DecisionRecord) -> Option<&RecordedRetrievalRequest> {

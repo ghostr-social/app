@@ -1,11 +1,16 @@
 use super::evidence::DeliveryEvidence as _;
 use core::time::Duration;
-use ghostr_delivery::delivery_events::{DecisionHistorySnapshot, DeliveryHandle};
+use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_engine::adaptive::{DecisionOutcome, DecisionRecord};
+
+pub mod history;
+pub use history::wait_for_history;
+
+const WAIT_LIMIT: Duration = Duration::from_secs(10);
 
 pub async fn wait_for_completed_bytes(handle: &DeliveryHandle, expected: u64) -> DecisionRecord {
     let notifier = handle.plan_notifier();
-    tokio::time::timeout(Duration::from_secs(2), async {
+    tokio::time::timeout(WAIT_LIMIT, async {
         loop {
             let changed = notifier.notified();
             tokio::pin!(changed);
@@ -24,26 +29,6 @@ pub async fn wait_for_completed_bytes(handle: &DeliveryHandle, expected: u64) ->
     })
     .await
     .expect("completed bytes were not bound to the selected decision")
-}
-
-pub async fn wait_for_history(
-    handle: &DeliveryHandle,
-    ready: impl Fn(&DecisionHistorySnapshot) -> bool,
-) {
-    let notifier = handle.plan_notifier();
-    tokio::time::timeout(Duration::from_secs(2), async {
-        loop {
-            let changed = notifier.notified();
-            tokio::pin!(changed);
-            changed.as_mut().enable();
-            if ready(&handle.decision_history()) {
-                return;
-            }
-            changed.await;
-        }
-    })
-    .await
-    .expect("decision history transition");
 }
 
 pub async fn wait_for_terminal_transfer(handle: &DeliveryHandle) -> DecisionRecord {

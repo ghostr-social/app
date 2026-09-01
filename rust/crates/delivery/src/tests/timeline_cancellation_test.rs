@@ -33,5 +33,7 @@ async fn cancelled_parse_frees_its_slot_and_is_never_terminally_memoized() {
         .dispatch(core::slice::from_ref(&fixture.post));
     assert_eq!(fixture.next_started().await, 1);
     assert_eq!(fixture.next_result().await.post(), &fixture.post);
-    tokio::fs::remove_dir_all(fixture.root).await.expect("valid test fixture");
+    tokio::fs::remove_dir_all(fixture.root)
+        .await
+        .expect("valid test fixture");
 }

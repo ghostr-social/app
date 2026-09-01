@@ -79,6 +79,13 @@ pub struct SemanticMetricEvent {
     pub(crate) transport_substitution: bool,
 }
 
+#[derive(Clone, Copy, Debug, Default)]
+pub struct SemanticMetricRollup {
+    pub(crate) rank_displacement: u64,
+    pub(crate) semantic_regret_micros: u64,
+    pub(crate) transport_substitutions: u64,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum IntegrityMetricEvent {
     HashMismatch,

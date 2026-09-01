@@ -6,6 +6,10 @@ use crate::chunk::sink::{ChunkWrite, LocalStoreFailure, ResponseWriteMode};
 use crate::debug::network::NetworkThrottle;
 use anyhow::{Context as _, Result};
 
+#[cfg(test)]
+#[path = "store/cancellation_priority_test.rs"]
+mod cancellation_priority_test;
+
 const PACED_WRITE_BYTES: usize = 16 * 1024;
 
 pub(super) struct StoreInput<'a, W: ChunkWrite + ?Sized> {
@@ -65,10 +69,14 @@ async fn pace_or_cancel(
     bytes: u64,
     cancel: &CancelToken,
 ) -> bool {
+    if cancel.is_cancelled() {
+        return true;
+    }
     let Some(throttle) = network else {
         return false;
     };
     tokio::select! {
+        biased;
         () = cancel.cancelled() => true,
         () = throttle.pace(bytes) => false,
     }

@@ -3,17 +3,17 @@ part of 'warp_feed_production_graph_build.dart';
 Future<AppDependencies> _buildDependencies(
   _WarpFeedBuild build,
   ProgressiveDeviceResources resources,
-  VideoPlaybackCapabilities playbackCapabilities,
-  HlsPlaybackGatewayPort? hlsPlaybackGateway,
+  WarpFeedProductionGraphOptions options,
 ) {
-  final environment = warpFeedProductionEnvironment(
-    build.account.ndk,
-    resources,
-    build.preparation,
-    build.capture,
-    playbackCapabilities: playbackCapabilities,
-    hlsPlaybackGateway: hlsPlaybackGateway,
-  );
+  final environment = warpFeedProductionEnvironment((
+    ndk: build.account.ndk,
+    resources: resources,
+    preparation: build.preparation,
+    capture: build.capture,
+    playbackCapabilities: options.playbackCapabilities,
+    hlsPlaybackGateway: options.hlsPlaybackGateway,
+    deviceIntegrationOrigin: options.deviceIntegrationOrigin,
+  ));
   return buildProductionDependencies(environment);
 }
 

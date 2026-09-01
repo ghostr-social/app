@@ -51,7 +51,15 @@ VIDEO_PROGRESSIVE_ANDROID_TESTS := \
 	integration_test/warp_feed_startup_singleflight_video_test.dart \
 	integration_test/warp_feed_player_verified_rescue_video_test.dart \
 	integration_test/warp_feed_mixed_hls_readiness_video_test.dart \
-	integration_test/warp_feed_bandwidth_recovery_video_test.dart
+	integration_test/warp_feed_bandwidth_recovery_video_test.dart \
+	integration_test/warp_feed_ignored_range_video_test.dart \
+	integration_test/warp_feed_malformed_range_rescue_video_test.dart \
+	integration_test/warp_feed_origin_timeout_fallback_video_test.dart \
+	integration_test/warp_feed_long_session_boundedness_video_test.dart \
+	integration_test/warp_feed_cache_pressure_video_test.dart \
+	integration_test/warp_feed_invalid_track_rendition_fallback_video_test.dart \
+	integration_test/warp_feed_unsupported_hls_rescue_video_test.dart \
+	integration_test/warp_feed_stale_validator_rotation_video_test.dart
 VIDEO_ANDROID_PHYSICAL_TESTS := $(VIDEO_ANDROID_INTEGRATION_TESTS) \
 	$(VIDEO_PROGRESSIVE_ANDROID_TESTS) \
 	integration_test/video_player_lifecycle_contract_test.dart \
@@ -78,10 +86,22 @@ VIDEO_PROGRESSIVE_FLUTTER_TESTS := \
 	test/media/progressive_device_origin_staged_nonblocking_test.dart \
 	test/media/progressive_device_origin_staged_rendezvous_test.dart \
 	test/media/progressive_device_origin_staged_zero_arrival_timeout_test.dart \
+	test/media/progressive_device_origin_ignored_range_test.dart \
+	test/media/progressive_device_origin_malformed_range_test.dart \
+	test/media/progressive_device_origin_range_override_test.dart \
 	test/media/progressive_device_origin_test.dart \
 	test/media/progressive_device_origin_useful_overlap_test.dart \
+	test/media/progressive_device_resources_range_semantics_test.dart \
 	test/media/progressive_device_resources_test.dart \
 	test/media/progressive_device_wait_deadline_test.dart \
+	test/media/warp_feed_device_options_test.dart \
+	test/media/warp_cache_pressure_storage_test.dart \
+	test/media/warp_feed_event_fallback_config_test.dart \
+	test/media/warp_feed_event_fallback_tag_test.dart \
+	test/media/warp_evidence_decoder_test.dart \
+	test/media/video_player_capacity_snapshot_test.dart \
+	test/media/unsupported_hls_device_origin_test.dart \
+	test/media/warp_validator_rotation_fixture_test.dart \
 	test/media/device_ready_burst_qoe_target_test.dart \
 	test/media/warp_decision_material_history_test.dart \
 	test/media/warp_decision_capacity_history_test.dart \
@@ -115,6 +135,7 @@ HAWK_REVISION_SHORT := 98efa9f
 	video-user-e2e-prerequisite-check video-user-e2e-impairments \
 	video-delivery-target-contract-test video-android-emulator-tests \
 	video-android-physical-tests video-android-offline-restart \
+	video-android-lifecycle \
 	video-player-contract-target-test \
 	video-player-contract video-player-contract-android video-player-contract-ios \
 	video-progressive-suite-contract-test video-progressive-suite \
@@ -186,6 +207,8 @@ video-delivery-target-contract-test: ## Verify stable browser and Android video 
 	sh test/tool/video_android_emulator_target_contract_test.sh
 	sh test/tool/video_android_physical_target_contract_test.sh
 	sh test/tool/video_android_offline_restart_target_contract_test.sh
+	sh test/tool/video_android_lifecycle_target_contract_test.sh
+	sh test/tool/video_android_lifecycle_runner_exit_test.sh
 
 video-android-emulator-tests: ## Run the device video playback matrix on emulator-5580.
 	$(FLUTTER) test $(VIDEO_ANDROID_INTEGRATION_TESTS) -d "$(VIDEO_ANDROID_EMULATOR_SERIAL)"
@@ -242,11 +265,18 @@ video-android-physical-tests: ## Run the device video playback matrix on physica
 	$(FLUTTER) test --no-uninstall $(VIDEO_ANDROID_PHYSICAL_TESTS) -d "$(ANDROID_PHYSICAL_SERIAL)"
 	$(MAKE) video-android-offline-restart \
 		ANDROID_PHYSICAL_SERIAL="$(ANDROID_PHYSICAL_SERIAL)"
+	$(MAKE) video-android-lifecycle \
+		ANDROID_PHYSICAL_SERIAL="$(ANDROID_PHYSICAL_SERIAL)"
 
 video-android-offline-restart: ## Verify cold-process offline feed and media restore.
 	@test -n "$(ANDROID_PHYSICAL_SERIAL)" || { echo "Set ANDROID_PHYSICAL_SERIAL to an attached device serial." >&2; exit 1; }
 	@case "$(ANDROID_PHYSICAL_SERIAL)" in emulator-*) echo "ANDROID_PHYSICAL_SERIAL must identify physical hardware." >&2; exit 1;; esac
 	tool/run_video_android_offline_restart.sh "$(ANDROID_PHYSICAL_SERIAL)"
+
+video-android-lifecycle: ## Verify physical Android HOME and foreground playback.
+	@test -n "$(ANDROID_PHYSICAL_SERIAL)" || { echo "Set ANDROID_PHYSICAL_SERIAL to an attached device serial." >&2; exit 1; }
+	@case "$(ANDROID_PHYSICAL_SERIAL)" in emulator-*) echo "ANDROID_PHYSICAL_SERIAL must identify physical hardware." >&2; exit 1;; esac
+	tool/run_video_android_lifecycle.sh "$(ANDROID_PHYSICAL_SERIAL)"
 
 native-coverage-contract-test: ## Test the per-file native coverage contract.
 	sh test/tool/native_coverage_contract_test.sh

@@ -14,25 +14,33 @@ final class ProgressiveOriginPreBodyGate {
   final Duration _timeout;
   final _reached = Completer<void>();
   final _released = Completer<void>();
+  final _peerClosed = Completer<void>();
   Timer? _watchdog;
   var _timedOut = false;
 
   Future<void> get reached => _reached.future;
+  Future<void> get peerClosed => _peerClosed.future;
   bool get isReached => _reached.isCompleted;
   bool get isReleased => _released.isCompleted;
   bool get timedOut => _timedOut;
 
   Future<void> _beforeFirstBody(ProgressiveOriginRequest request) async {
-    if (isReleased ||
-        request.servedBytes != 0 ||
-        !_paths.contains(request.path)) {
-      return;
-    }
+    if (!_matches(request)) return;
     if (!_reached.isCompleted) {
       _watchdog = Timer(_timeout, _failOpen);
       _reached.complete();
     }
     await _released.future;
+  }
+
+  bool _matches(ProgressiveOriginRequest request) =>
+      !isReleased && _tracks(request);
+
+  bool _tracks(ProgressiveOriginRequest request) =>
+      request.servedBytes == 0 && _paths.contains(request.path);
+
+  void _observePeerClosed(ProgressiveOriginRequest request) {
+    if (_tracks(request) && !_peerClosed.isCompleted) _peerClosed.complete();
   }
 
   void release() {

@@ -1,4 +1,4 @@
-//! A stale A1 completion cannot evict the newer A2 transfer grant.
+//! A delayed cancelled A1 response cannot start A3 after A2 owns the post.
 
 mod delivery_fixture;
 mod range_fixture;
@@ -13,7 +13,7 @@ use ghostr_engine::{DataUsageLevel, EngineParams};
 use range_fixture::stall::serve_stalling_signaled;
 
 #[tokio::test]
-async fn delivery_manager_ignores_stale_completion_after_focus_returns_to_a() {
+async fn delayed_cancelled_response_does_not_restart_the_returned_focus() {
     let bytes = b"abcdefgh".to_vec();
     let (a_url, origin) = serve(bytes.clone()).await;
     let (b_url, b_started) = serve_stalling_signaled(Vec::new(), 8).await;
@@ -39,7 +39,7 @@ async fn delivery_manager_ignores_stale_completion_after_focus_returns_to_a() {
     assert_eq!(
         origin.hits(),
         2,
-        "stale completion started a duplicate A transfer"
+        "delayed cancelled response started a duplicate A transfer"
     );
 
     origin.release_body();

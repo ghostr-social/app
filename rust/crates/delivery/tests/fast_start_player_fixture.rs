@@ -1,18 +1,13 @@
 use core::time::Duration;
 use ghostr_delivery::delivery_events::*;
+use PlayerPreparationState as State;
 
 pub async fn report_failed(
     handle: &DeliveryHandle,
     authority: PlayerPreparationAuthority,
     generation: u64,
 ) {
-    report(
-        handle,
-        authority,
-        generation,
-        PlayerPreparationState::Failed,
-    )
-    .await;
+    report(handle, authority, generation, State::Failed).await;
 }
 
 pub async fn report_ready(
@@ -20,48 +15,51 @@ pub async fn report_ready(
     authority: PlayerPreparationAuthority,
     generation: u64,
 ) {
-    report(
-        handle,
-        authority,
-        generation,
-        PlayerPreparationState::FirstFrameRendered,
-    )
-    .await;
+    report(handle, authority, generation, State::FirstFrameRendered).await;
+}
+
+pub async fn report_rejected(
+    handle: &DeliveryHandle,
+    authority: PlayerPreparationAuthority,
+    generation: u64,
+) {
+    let attempt =
+        PlayerPreparationAttempt::try_new(generation, generation, 1).expect("valid test fixture");
+    let disposition = send(handle, authority, attempt, (1, State::Initializing)).await;
+    assert_eq!(disposition, PlayerPreparationDisposition::Rejected);
 }
 
 async fn report(
     handle: &DeliveryHandle,
     authority: PlayerPreparationAuthority,
     generation: u64,
-    terminal: PlayerPreparationState,
+    terminal: State,
 ) {
     let attempt =
         PlayerPreparationAttempt::try_new(generation, generation, 1).expect("valid test fixture");
-    send(
-        handle,
-        authority.clone(),
-        attempt,
-        (1, PlayerPreparationState::Initializing),
-    )
-    .await;
+    assert_applied(send(handle, authority.clone(), attempt, (1, State::Initializing)).await);
     tokio::time::sleep(Duration::from_millis(20)).await;
-    send(handle, authority, attempt, (2, terminal)).await;
+    assert_applied(send(handle, authority, attempt, (2, terminal)).await);
+}
+
+fn assert_applied(disposition: PlayerPreparationDisposition) {
+    assert_eq!(disposition, PlayerPreparationDisposition::Applied);
 }
 
 async fn send(
     handle: &DeliveryHandle,
     authority: PlayerPreparationAuthority,
     attempt: PlayerPreparationAttempt,
-    evidence: (u64, PlayerPreparationState),
-) {
+    evidence: (u64, State),
+) -> PlayerPreparationDisposition {
     let (sequence, state) = evidence;
-    let failure = (state == PlayerPreparationState::Failed).then(|| "invalidVideoTrack".to_owned());
+    let failure = (state == State::Failed).then(|| "invalidVideoTrack".to_owned());
     let observation = PlayerPreparationObservation::try_new(state, failure, sequence * 100)
         .expect("valid test fixture");
     let report =
         PlayerPreparationReport::try_new(authority, attempt, sequence, observation.clone())
             .expect("valid test fixture");
-    let disposition = if sequence == 1 {
+    if sequence == 1 {
         let admission = handle.player_preparation_admission();
         handle
             .confirm_player_preparation_initial(admission, report)
@@ -69,17 +67,16 @@ async fn send(
     } else {
         let claim = PlayerPreparationClaim::try_new(
             report.post().clone(),
-            report.binding().representation().fingerprint(),
+            report
+                .progressive_binding()
+                .expect("progressive authority")
+                .representation()
+                .fingerprint(),
             "asset",
         )
         .expect("valid test fixture");
         let followup = PlayerPreparationFollowup::try_new(claim, attempt, sequence, observation)
             .expect("valid test fixture");
         handle.confirm_player_preparation_followup(followup).await
-    };
-    assert_eq!(
-        disposition,
-        PlayerPreparationDisposition::Applied,
-        "fixture preparation should be admitted"
-    );
+    }
 }

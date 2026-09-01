@@ -33,6 +33,10 @@ extension _ProgressiveDeviceOriginResponse on ProgressiveDeviceOrigin {
     final bytes = ProgressiveMp4Fixture.bytes;
     final plan = _responsePlan(request.path, range, bytes.length);
     _configure(response, plan);
+    if (_preBodyGate?._matches(request) ?? false) {
+      await _writeDetachedResponse(response, bytes, plan.span, request);
+      return;
+    }
     await _streamChunks(response, bytes, plan.span, request);
     await _closeResponse(response);
   }

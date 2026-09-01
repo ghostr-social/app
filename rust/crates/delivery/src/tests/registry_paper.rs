@@ -1,8 +1,10 @@
 mod decision_resource_resolution_test;
+mod hedge_tail_elapsed_deadline_test;
 mod hls_delivery_transition_state_test;
 mod hls_root_availability_test;
 mod hls_selected_source_cooldown_test;
 mod hls_source_roster_reconciliation_test;
+mod inflight_fallback_takeover_cancellation_test;
 mod inflight_http_generation_fence_test;
 mod inflight_policy_limit_fence_test;
 mod malformed_response_generation_revocation_test;

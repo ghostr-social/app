@@ -46,6 +46,14 @@ impl HedgeTailTimers {
         }
     }
 
+    pub(crate) fn reconcile_now(
+        &mut self,
+        deadlines: &[HedgeTailWake],
+        events: &UnboundedSender<InternalEvent>,
+    ) {
+        self.reconcile(deadlines, crate::manager::time::unix_time_ms(), events);
+    }
+
     pub(crate) fn finish(&mut self, wake: HedgeTailWake) -> bool {
         if self.active.get(&wake.action).map(|timer| timer.wake) != Some(wake) {
             return false;
@@ -94,13 +102,9 @@ impl Drop for HedgeTailTimers {
 }
 
 impl crate::manager::DeliveryWorker {
-    pub(super) fn schedule_hedge_tail_wakes(
-        &mut self,
-        deadlines: &[HedgeTailWake],
-        observed_at_ms: u64,
-    ) {
+    pub(super) fn schedule_hedge_tail_wakes(&mut self, deadlines: &[HedgeTailWake]) {
         self.hedge_tail_timers
-            .reconcile(deadlines, observed_at_ms, &self.ctx.events);
+            .reconcile_now(deadlines, &self.ctx.events);
     }
 
     pub(super) fn consume_hedge_tail_wake(&mut self, wake: HedgeTailWake) {
