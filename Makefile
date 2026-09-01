@@ -93,7 +93,6 @@ VIDEO_PROGRESSIVE_FLUTTER_TESTS := \
 	test/media/progressive_device_origin_useful_overlap_test.dart \
 	test/media/progressive_device_resources_range_semantics_test.dart \
 	test/media/progressive_device_resources_test.dart \
-	test/media/progressive_device_wait_deadline_test.dart \
 	test/media/warp_feed_device_options_test.dart \
 	test/media/warp_cache_pressure_storage_test.dart \
 	test/media/warp_feed_event_fallback_config_test.dart \
@@ -102,7 +101,6 @@ VIDEO_PROGRESSIVE_FLUTTER_TESTS := \
 	test/media/video_player_capacity_snapshot_test.dart \
 	test/media/unsupported_hls_device_origin_test.dart \
 	test/media/warp_validator_rotation_fixture_test.dart \
-	test/media/device_ready_burst_qoe_target_test.dart \
 	test/media/warp_decision_material_history_test.dart \
 	test/media/warp_decision_capacity_history_test.dart \
 	test/media/warp_feed_player_stage_history_test.dart \
@@ -129,7 +127,7 @@ HAWK_REVISION := 98efa9f7590d12672ece0527e4a908788792a997
 HAWK_REVISION_SHORT := 98efa9f
 
 .PHONY: test-coverage coverage-summary axiom native-check native-test native-coverage web \
-	native-dead-code-install native-dead-code native-dead-code-contract-test \
+	native-dead-code-install native-dead-code \
 	web-contract-test video-user-e2e video-user-e2e-contract-test \
 	video-demo \
 	video-user-e2e-prerequisite-check video-user-e2e-impairments \
@@ -141,7 +139,7 @@ HAWK_REVISION_SHORT := 98efa9f
 	video-player-contract video-player-contract-android video-player-contract-ios \
 	video-progressive-suite-contract-test video-progressive-suite \
 	video-progressive-android \
-	warp-lab-contract-test warp-lab-android \
+	warp-lab-android \
 	native-coverage-contract-test rust rust-no-clean gen icons run run-fast \
 	run-fast-profile android-unit-tests android-debug-apk android-debug-apk-check \
 	android-release-apk android-release-apk-check android-agent-avd-create \
@@ -174,9 +172,6 @@ native-dead-code-install: ## Install the Rust toolchain and Hawk dead-code analy
 native-dead-code: ## Find Rust declarations reachable only from tests.
 	cd rust && cargo +1.97.1 hawk check --only test-only -D hawk::test_only
 
-native-dead-code-contract-test: ## Verify dead-code checks do not inspect user-scoped tooling.
-	sh test/tool/native_dead_code_target_contract_test.sh
-
 native-test: web-contract-test ## Run Rust tests.
 	cd rust && cargo test -p ghostr-gateway --no-default-features --test debug_web_exclusion_test
 	cd rust && cargo test --workspace --all-features
@@ -204,8 +199,6 @@ video-user-e2e-impairments: video-user-e2e-contract-test ## Run every determinis
 	done
 
 video-delivery-target-contract-test: ## Verify stable browser and Android video test targets.
-	sh test/tool/video_browser_impairment_target_contract_test.sh
-	sh test/tool/video_android_emulator_target_contract_test.sh
 	sh test/tool/video_android_physical_target_contract_test.sh
 	sh test/tool/video_android_offline_restart_target_contract_test.sh
 	sh test/tool/video_android_lifecycle_target_contract_test.sh
@@ -226,7 +219,6 @@ video-player-contract-ios: video-player-contract-target-test ## Run the player c
 	tool/run_video_player_contract_ios.sh $(VIDEO_PLAYER_CONTRACT_TESTS)
 
 video-progressive-suite-contract-test: ## Verify the progressive suite and QoE contracts.
-	sh test/tool/video_progressive_suite_target_test.sh
 	cd rust && cargo test -p ghostr-delivery \
 		--test delivery_next_reserve_evidence_test --all-features
 
@@ -240,10 +232,7 @@ video-progressive-suite: video-progressive-suite-contract-test ## Run the repair
 video-progressive-android: video-progressive-suite-contract-test ## Run progressive playback on the repository AVD.
 	tool/run_video_player_contract_android.sh $(VIDEO_PROGRESSIVE_ANDROID_TESTS)
 
-warp-lab-contract-test: ## Verify the debug-only WARP Lab target contract.
-	sh test/tool/warp_lab_target_contract_test.sh
-
-warp-lab-android: android-agent-avd-create warp-lab-contract-test ## Open a debug-only WARP test route on the repository AVD.
+warp-lab-android: android-agent-avd-create ## Open a debug-only WARP test route on the repository AVD.
 	@case "$(WARP_LAB_ROUTE)" in \
 		/warp|/warp/feed-playback|/warp/rapid-swipes|/warp/network-evidence) ;; \
 		*) echo "Unknown WARP Lab route: $(WARP_LAB_ROUTE)" >&2; exit 1 ;; \

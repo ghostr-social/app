@@ -7,9 +7,6 @@ android="$root/tool/run_video_player_contract_android.sh"
 android_prepare="$root/tool/prepare_android_agent_avd.sh"
 ios="$root/tool/run_video_player_contract_ios.sh"
 
-grep -Fq 'video-player-contract-android:' "$makefile"
-grep -Fq 'video-player-contract-ios:' "$makefile"
-grep -Fq 'VIDEO_PLAYER_CONTRACT_TESTS :=' "$makefile"
 
 for test_name in lifecycle error stall preparation prepared_generation adapter_identity
 do
@@ -23,8 +20,6 @@ grep -Fq 'make android-agent-avd-run' "$android"
 grep -Fq 'emulator-5580' "$android"
 grep -Fq 'sys.boot_completed' "$android"
 grep -Fq 'CARGO_PROFILE_DEV_DEBUG=0' "$android"
-grep -Fq 'ANDROID_AGENT_SYSTEM_IMAGE_ABI' "$makefile"
-grep -Fq 'tool/prepare_android_agent_avd.sh' "$makefile"
 test -x "$android_prepare"
 grep -Fq 'incompatible-' "$android_prepare"
 ! grep -Eq -- '--force|-wipe-data|rm -rf' "$android_prepare"

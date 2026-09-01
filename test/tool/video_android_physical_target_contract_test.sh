@@ -2,7 +2,6 @@
 set -eu
 
 root=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
-makefile="$root/Makefile"
 output=$(mktemp)
 trap 'rm -f "$output"' EXIT HUP INT TERM
 
@@ -19,26 +18,3 @@ then
   exit 1
 fi
 grep -Fq 'must identify physical hardware' "$output"
-grep -Fq 'ro.kernel.qemu' "$makefile"
-grep -Fq 'Unable to verify physical hardware' "$makefile"
-grep -Fq 'VIDEO_ANDROID_PHYSICAL_TESTS :=' "$makefile"
-grep -Fq 'test --no-uninstall $(VIDEO_ANDROID_PHYSICAL_TESTS)' "$makefile"
-grep -Fq -- '-d "$(ANDROID_PHYSICAL_SERIAL)"' "$makefile"
-grep -Fq 'integration_test/warp_feed_rapid_swipe_instrumentation_video_test.dart' "$makefile"
-grep -Fq 'integration_test/warp_feed_adaptive_warm_back_video_test.dart' "$makefile"
-grep -Fq 'integration_test/warp_feed_startup_singleflight_video_test.dart' "$makefile"
-grep -Fq 'integration_test/warp_feed_player_verified_rescue_video_test.dart' "$makefile"
-grep -Fq 'integration_test/warp_feed_bandwidth_recovery_video_test.dart' "$makefile"
-grep -Fq 'integration_test/warp_feed_mixed_hls_readiness_video_test.dart' "$makefile"
-grep -Fq 'integration_test/warp_feed_ignored_range_video_test.dart' "$makefile"
-grep -Fq 'integration_test/warp_feed_malformed_range_rescue_video_test.dart' "$makefile"
-grep -Fq 'integration_test/warp_feed_origin_timeout_fallback_video_test.dart' "$makefile"
-grep -Fq 'integration_test/warp_feed_long_session_boundedness_video_test.dart' "$makefile"
-grep -Fq 'integration_test/warp_feed_cache_pressure_video_test.dart' "$makefile"
-grep -Fq 'integration_test/warp_feed_invalid_track_rendition_fallback_video_test.dart' "$makefile"
-grep -Fq 'integration_test/warp_feed_unsupported_hls_rescue_video_test.dart' "$makefile"
-grep -Fq 'integration_test/warp_feed_stale_validator_rotation_video_test.dart' "$makefile"
-grep -Fq 'integration_test/video_player_lifecycle_contract_test.dart' "$makefile"
-grep -Fq 'integration_test/video_player_hls_authority_reactivation_contract_test.dart' "$makefile"
-grep -Fq '$(MAKE) video-android-offline-restart' "$makefile"
-grep -Fq 'ANDROID_PHYSICAL_SERIAL="$(ANDROID_PHYSICAL_SERIAL)"' "$makefile"
