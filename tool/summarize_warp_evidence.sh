@@ -31,10 +31,10 @@ if test -s "$dir/stdout.log"; then
     /^[0-9]+:[0-9]+ \+[0-9]+/ {
       cur = counter()
       if ($0 ~ /: loading .*integration_test\//) {
-        match($0, /integration_test\/[a-z0-9_]+\.dart/); next_file = substr($0, RSTART, RLENGTH)
-        if (next_file != file) {
+        match($0, /integration_test\/[a-z0-9_]+\.dart/); upcoming = substr($0, RSTART, RLENGTH)
+        if (upcoming != file) {
           if (file != "") print "| " file " | " cur " | " verdict(start, cur) " |"
-          file = next_file; start = cur
+          file = upcoming; start = cur
         }
       }
       last = cur
@@ -50,7 +50,7 @@ if grep -aq 'WARP_QOE' "$dir/stdout.log" 2>/dev/null; then
     tr '\r' '\n' <"$dir/stdout.log" | grep -a 'WARP_QOE' |
       grep -oE "(^|[[:space:]])$metric=-?[0-9]+" | sed -E 's/.*=//' | sort -n |
       awk -v m="$metric" '{ v[NR] = $1 } END {
-        if (NR == 0) next
+        if (NR == 0) exit
         p50 = v[int((NR + 1) / 2)]; p95 = v[int(NR * 0.95) < 1 ? 1 : int(NR * 0.95)]
         printf "| %s | %d | %d | %d | %d | %d | ms |\n", m, NR, v[1], p50, p95, v[NR] }'
   done
