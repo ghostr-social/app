@@ -9,7 +9,7 @@ bool _hasStalledIntended(
       .where((snapshot) => snapshot.deliveryId == deliveryId);
   if (matches.isEmpty) return false;
   final latest = matches.last;
-  return latest.phase == VideoDeliveryPhase.preparing && latest.eta == null;
+  return latest.phase == VideoDeliveryPhase.preparing;
 }
 
 WarpFeedPlayerStageEvidence? _readyStageFor(

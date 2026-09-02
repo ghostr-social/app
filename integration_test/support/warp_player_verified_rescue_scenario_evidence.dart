@@ -73,7 +73,9 @@ extension _PlayerVerifiedRescueEvidence on _PlayerVerifiedRescueScenario {
         .toList();
     expect(matches, isNotEmpty);
     expect(matches.last.phase, VideoDeliveryPhase.preparing);
-    expect(matches.last.eta, isNull);
+    final eta = matches.last.eta;
+    expect(eta, isNotNull);
+    expect(eta!, greaterThan(const FeedReadySelector().grace));
   }
 }
 
