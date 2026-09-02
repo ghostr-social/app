@@ -39,7 +39,7 @@ extension _OriginTimeoutFallbackAssertions on _OriginTimeoutFallbackScenario {
     PlaybackFocus focus,
     _OriginTimeoutEvidence evidence,
   ) async {
-    expect(primaryGate.isReleased, isFalse);
+    expect(primaryGate.isPeerClosed, isTrue);
     final attempts = journey.playerStages.attemptsFor(nextId);
     expect(
       warpOriginTimeoutDecodedStage(attempts, evidence.stage.authority),

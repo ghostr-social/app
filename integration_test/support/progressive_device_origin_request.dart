@@ -24,6 +24,15 @@ final class ProgressiveOriginRequest {
   Duration? firstByteAt;
   Duration? lastByteAt;
   Duration? finishedAt;
+  Duration? peerClosedAt;
+  final _peerClosed = Completer<void>();
+
+  bool get isPeerClosed => _peerClosed.isCompleted;
+
+  void _recordPeerClosed(Duration elapsed) {
+    peerClosedAt ??= elapsed;
+    if (!_peerClosed.isCompleted) _peerClosed.complete();
+  }
 
   void _blockHead() {
     outcome = ProgressiveOriginRequestOutcome.headBlocked;

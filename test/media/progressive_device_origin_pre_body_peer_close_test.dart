@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../integration_test/support/progressive_device_origin.dart';
 
 void main() {
-  test('pre-body gate observes an exact client close before release', () async {
+  test('pre-body gate serves nothing to a peer that closed before release', () async {
     final origin = await ProgressiveDeviceOrigin.start(
       responseChunkBytes: 1024,
     );
@@ -30,17 +30,17 @@ void main() {
     client.close(force: true);
     await gate.peerClosed.timeout(const Duration(seconds: 1));
     expect(receivedBytes, 0);
-    expect(origin.requestsFor('next').single.servedBytes, 0);
+    final held = origin.requestsFor('next').single;
+    expect(gate.isPeerClosed, isTrue);
+    expect(held.peerClosedAt, isNotNull);
 
     gate.release();
-    await _waitForTerminal(origin.requestsFor('next').single);
+    await _waitForTerminal(held);
+    expect(held.outcome, ProgressiveOriginRequestOutcome.clientCanceled);
+    expect(held.servedBytes, 0);
     expect(
-      origin.requestsFor('next').single.outcome,
-      ProgressiveOriginRequestOutcome.clientCanceled,
-    );
-    expect(
-      origin.requestsFor('next').single.servedBytes,
-      lessThanOrEqualTo(1024),
+      origin.activeIncompleteRequestSequences,
+      isNot(contains(origin.requestSequenceFor(held))),
     );
   });
 }

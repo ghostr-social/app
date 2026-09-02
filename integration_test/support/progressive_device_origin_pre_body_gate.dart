@@ -22,6 +22,7 @@ final class ProgressiveOriginPreBodyGate {
   Future<void> get peerClosed => _peerClosed.future;
   bool get isReached => _reached.isCompleted;
   bool get isReleased => _released.isCompleted;
+  bool get isPeerClosed => _peerClosed.isCompleted;
   bool get timedOut => _timedOut;
 
   Future<void> _beforeFirstBody(ProgressiveOriginRequest request) async {
@@ -30,7 +31,10 @@ final class ProgressiveOriginPreBodyGate {
       _watchdog = Timer(_timeout, _failOpen);
       _reached.complete();
     }
-    await _released.future;
+    await Future.any<void>([_released.future, request._peerClosed.future]);
+    if (request.isPeerClosed) {
+      throw const ProgressiveOriginPeerClosedBeforeRelease();
+    }
   }
 
   bool _matches(ProgressiveOriginRequest request) =>
@@ -52,4 +56,16 @@ final class ProgressiveOriginPreBodyGate {
     _timedOut = true;
     release();
   }
+}
+
+const _peerClosedBeforeReleaseMessage =
+    'Progressive origin peer closed before the pre-body gate released.';
+
+/// The held client dropped its connection before the gate released, so the
+/// origin serves it nothing and records the request as client-cancelled.
+final class ProgressiveOriginPeerClosedBeforeRelease implements Exception {
+  const ProgressiveOriginPeerClosedBeforeRelease();
+
+  @override
+  String toString() => _peerClosedBeforeReleaseMessage;
 }

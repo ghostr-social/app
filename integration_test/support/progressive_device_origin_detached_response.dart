@@ -26,9 +26,14 @@ extension _ProgressiveDeviceOriginDetachedResponse on ProgressiveDeviceOrigin {
     ProgressiveOriginRequest request,
   ) => socket.listen(
     (_) {},
-    onError: (_, _) => _preBodyGate?._observePeerClosed(request),
-    onDone: () => _preBodyGate?._observePeerClosed(request),
+    onError: (_, _) => _peerClosed(request),
+    onDone: () => _peerClosed(request),
   );
+
+  void _peerClosed(ProgressiveOriginRequest request) {
+    request._recordPeerClosed(_clock.elapsed);
+    _preBodyGate?._observePeerClosed(request);
+  }
 
   Future<void> _streamSocketChunks(
     Socket socket,

@@ -1,5 +1,9 @@
 part of 'warp_origin_timeout_fallback_scenario.dart';
 
+/// How long after the fallback completes the stalled primary may still be
+/// open before the engine is judged to have kept it alive.
+const _primaryDropGrace = Duration(seconds: 2);
+
 extension _OriginTimeoutFallbackRelease on _OriginTimeoutFallbackScenario {
   Future<void> expectTransientPrimaryFailure(WidgetTester tester) async {
     final pair = await journey.waitForDecisionPlanPair(tester, (item, plan) {
@@ -19,6 +23,7 @@ extension _OriginTimeoutFallbackRelease on _OriginTimeoutFallbackScenario {
     WidgetTester tester,
     _OriginTimeoutEvidence evidence,
   ) async {
+    await _expectPrimaryDroppedBeforeRelease(evidence);
     primaryGate.release();
     final watch = Stopwatch()..start();
     while (evidence.primary.outcome ==
@@ -40,5 +45,31 @@ extension _OriginTimeoutFallbackRelease on _OriginTimeoutFallbackScenario {
     );
     _expectOnePrimaryGet();
     _expectBoundedExactFallback();
+  }
+
+  /// The engine must drop the stalled primary's connection on its own once
+  /// the fallback has delivered the bytes, before the origin ever releases it.
+  Future<void> _expectPrimaryDroppedBeforeRelease(
+    _OriginTimeoutEvidence evidence,
+  ) async {
+    try {
+      await primaryGate.peerClosed.timeout(_primaryDropGrace);
+    } on TimeoutException {
+      fail(
+        'Stalled primary was not dropped by the client before release; '
+        'primary=${evidence.primary.outcome.name}/'
+        '${evidence.primary.servedBytes}',
+      );
+    }
+    expect(primaryGate.isPeerClosed, isTrue);
+    final closedAt = evidence.primary.peerClosedAt;
+    expect(closedAt, isNotNull);
+    final fallbackFinishedAt = evidence.fallback.last.finishedAt!;
+    expect(closedAt!, lessThan(fallbackFinishedAt));
+    debugPrint(
+      'WARP_ORIGIN_TIMEOUT peer_closed_ms=${closedAt.inMilliseconds} '
+      'fallback_started_ms=${evidence.fallback.first.startedAt.inMilliseconds} '
+      'fallback_finished_ms=${fallbackFinishedAt.inMilliseconds}',
+    );
   }
 }
