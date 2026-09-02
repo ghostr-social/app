@@ -41,7 +41,7 @@ Rules for adding a run:
 |---|---|---|
 | `warp_feed_adaptive_warm_back` | no `VideoPlayer` mounted under a retained page key | intermittent: passes alone on this head and on `6d015337`, fails after other files in the same installation; no transport rescue in its focus trace |
 | `warp_feed_player_verified_rescue` | "WARP candidate evidence timed out; gateTimedOut=false" | intermittent: passes alone (`targeted-rerun`, `isolation-warm-back-and-rescue`) |
-| `warp_feed_origin_timeout_fallback` | stage 3, `Expected: <0> Actual: <16384>`: the stalled primary served one 16 KB chunk after release instead of being cancelled proactively | pre-existing (same on `4d983a42`); product gap: cancel the retired primary's in-flight request at failover, not when its bytes arrive (paper §9.6) |
+| `warp_feed_origin_timeout_fallback` | stage 3, `Expected: <0> Actual: <16384>` | **re-diagnosed 2026-09-02**: not an engine gap. Logcat shows the primary's Transient chunk failure at +15 s (idle deadline), i.e. the client dropped the held socket before release; the fixture counted one write the kernel accepted into the half-closed socket. Fixed by peer-close accounting in the origin fixture and a stage-3 claim that the drop precedes release (proven: peer closed at 16.6 s, fallback started at 16.7 s). Stage 1 (`waitForVerifiedFallback`) remains intermittent (3 of 6 runs): after the full fallback body lands, the reserve player for that post is re-created (~17.6 s) and does not render within 25 s. Next gap to investigate. |
 | `warp_feed_long_session_boundedness` | `warp_long_session_scenario_assertions.dart:13` expected false, got true | inherited from the previous agent's uncommitted slice (`7c08ccc5`); never green |
 | `warp_feed_cache_pressure` | journey timed out after 30 s (handoffs=3, requests=12, active={}) | inherited, never green |
 | `warp_feed_unsupported_hls_rescue` | `warp_unsupported_hls_rescue_scenario_assertions.dart:72` expected false, got true | inherited, never green |
@@ -814,5 +814,284 @@ WARP_ANDROID_FOREGROUND_DIAGNOSTICS
 WARP_ANDROID_LIFECYCLE_RESUMED.
 WARP_ANDROID_LIFECYCLE_READY session=1
 WARP_ANDROID_LIFECYCLE_BACKGROUND states=resumed|inactive|hidden|paused
+```
+
+
+## Run `20260902T051208Z-314742d3db-22e0d933-origin-timeout-peer-close`
+
+- command: `flutter test --no-uninstall --no-pub integration_test/warp_feed_origin_timeout_fallback_video_test.dart -d 22e0d933 `
+- commit: `314742d3db66eb081ef72e8cc46d7e17ba9a225d` (dirty_files=7)
+- device: ro.product.model=M2012K11AG ro.build.version.release=13 ro.kernel.qemu= 
+- exit: 1
+
+| test file | last progress | result |
+|---|---|---|
+| integration_test/warp_feed_origin_timeout_fallback_video_test.dart | +0 -1 | FAIL |
+
+### WARP markers
+
+```
+WARP_ORIGIN_TIMEOUT peer_closed_ms=16599 fallback_started_ms=16663 fallback_finished_ms=17324
+```
+
+
+## Run `20260902T051335Z-314742d3db-22e0d933-gate-consumers-after-peer-close`
+
+- command: `flutter test --no-uninstall --no-pub integration_test/warp_feed_player_verified_rescue_video_test.dart integration_test/warp_feed_long_session_boundedness_video_test.dart integration_test/warp_feed_mixed_hls_readiness_video_test.dart -d 22e0d933 `
+- commit: `314742d3db66eb081ef72e8cc46d7e17ba9a225d` (dirty_files=8)
+- device: ro.product.model=M2012K11AG ro.build.version.release=13 ro.kernel.qemu= 
+- exit: 1
+
+| test file | last progress | result |
+|---|---|---|
+| integration_test/warp_feed_player_verified_rescue_video_test.dart | +0 -1 | FAIL |
+| integration_test/warp_feed_long_session_boundedness_video_test.dart | +0 -2 | FAIL |
+| integration_test/warp_feed_mixed_hls_readiness_video_test.dart | +1 -2 | pass |
+
+### WARP markers
+
+```
+WARP_DECISION_HISTORY retained=64 first=3 latest=307
+WARP_DECISION sequence=3 at=1788326043906 throughput_bps=33554432 planner_Bps=4194304 slot_demand=false action=2 outcome=failed detail=Transient bytes=null elapsed_ms=15235 selected=prefix:transfer:2670cd137d5e0a0d2a1403eb09f5fb75:https://29f08b56b3eeeabc6da441d112a0a90d.invalid/b8675dd3640f948a39a6d65c76e79bf1:0-65536:target=null executed=2670cd137d5e0a0d2a1403eb09f5fb75:https://29f08b56b3eeeabc6da441d112a0a90d.invalid/b8675dd3640f948a39a6d65c76e79bf1:0-65536
+WARP_DECISION sequence=245 at=1788326056129 throughput_bps=1125965 planner_Bps=140745 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=246 at=1788326056229 throughput_bps=1125965 planner_Bps=140745 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=247 at=1788326056251 throughput_bps=1125965 planner_Bps=140745 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=248 at=1788326056317 throughput_bps=1050271 planner_Bps=131283 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=249 at=1788326056336 throughput_bps=1050271 planner_Bps=131283 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=250 at=1788326056429 throughput_bps=1050271 planner_Bps=131283 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=251 at=1788326056529 throughput_bps=1050271 planner_Bps=131283 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=252 at=1788326056629 throughput_bps=1050271 planner_Bps=131283 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=253 at=1788326056729 throughput_bps=1050271 planner_Bps=131283 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=254 at=1788326056753 throughput_bps=1050271 planner_Bps=131283 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=255 at=1788326056819 throughput_bps=979666 planner_Bps=122458 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=256 at=1788326056836 throughput_bps=979666 planner_Bps=122458 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=257 at=1788326056929 throughput_bps=979666 planner_Bps=122458 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=258 at=1788326057029 throughput_bps=979666 planner_Bps=122458 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=259 at=1788326057129 throughput_bps=979666 planner_Bps=122458 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=260 at=1788326057149 throughput_bps=979666 planner_Bps=122458 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=261 at=1788326057229 throughput_bps=979666 planner_Bps=122458 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=262 at=1788326057251 throughput_bps=979666 planner_Bps=122458 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=263 at=1788326057320 throughput_bps=913934 planner_Bps=114241 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=264 at=1788326057338 throughput_bps=913934 planner_Bps=114241 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=265 at=1788326057429 throughput_bps=913934 planner_Bps=114241 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=266 at=1788326057529 throughput_bps=913934 planner_Bps=114241 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=267 at=1788326057629 throughput_bps=913934 planner_Bps=114241 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=268 at=1788326057729 throughput_bps=913934 planner_Bps=114241 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=269 at=1788326057750 throughput_bps=913934 planner_Bps=114241 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=270 at=1788326057822 throughput_bps=852494 planner_Bps=106561 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=271 at=1788326057840 throughput_bps=852494 planner_Bps=106561 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=272 at=1788326057859 throughput_bps=852494 planner_Bps=106561 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=273 at=1788326057929 throughput_bps=852494 planner_Bps=106561 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=274 at=1788326058029 throughput_bps=852494 planner_Bps=106561 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=275 at=1788326058130 throughput_bps=852494 planner_Bps=106561 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=276 at=1788326058230 throughput_bps=852494 planner_Bps=106561 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=277 at=1788326058251 throughput_bps=852494 planner_Bps=106561 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=278 at=1788326058323 throughput_bps=795295 planner_Bps=99411 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=279 at=1788326058343 throughput_bps=795295 planner_Bps=99411 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=280 at=1788326058364 throughput_bps=795295 planner_Bps=99411 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=281 at=1788326058430 throughput_bps=795295 planner_Bps=99411 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=282 at=1788326058530 throughput_bps=795295 planner_Bps=99411 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=283 at=1788326058630 throughput_bps=795295 planner_Bps=99411 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=284 at=1788326058730 throughput_bps=795295 planner_Bps=99411 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=285 at=1788326058750 throughput_bps=795295 planner_Bps=99411 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=286 at=1788326058824 throughput_bps=741934 planner_Bps=92741 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=287 at=1788326058844 throughput_bps=741934 planner_Bps=92741 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=288 at=1788326058930 throughput_bps=741934 planner_Bps=92741 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=289 at=1788326059030 throughput_bps=741934 planner_Bps=92741 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=290 at=1788326059130 throughput_bps=741934 planner_Bps=92741 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=291 at=1788326059151 throughput_bps=741934 planner_Bps=92741 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=292 at=1788326059171 throughput_bps=741934 planner_Bps=92741 slot_demand=true action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=293 at=1788326059191 throughput_bps=741934 planner_Bps=92741 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=294 at=1788326059208 throughput_bps=741934 planner_Bps=92741 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=295 at=1788326059230 throughput_bps=741934 planner_Bps=92741 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=296 at=1788326059247 throughput_bps=741934 planner_Bps=92741 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=297 at=1788326059275 throughput_bps=741934 planner_Bps=92741 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=298 at=1788326059325 throughput_bps=741934 planner_Bps=92741 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=299 at=1788326059344 throughput_bps=741934 planner_Bps=92741 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=300 at=1788326059431 throughput_bps=741934 planner_Bps=92741 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=301 at=1788326059530 throughput_bps=741934 planner_Bps=92741 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=302 at=1788326059630 throughput_bps=741934 planner_Bps=92741 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=303 at=1788326059730 throughput_bps=741934 planner_Bps=92741 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=304 at=1788326059750 throughput_bps=741934 planner_Bps=92741 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=305 at=1788326059830 throughput_bps=741934 planner_Bps=92741 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=306 at=1788326059931 throughput_bps=741934 planner_Bps=92741 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=307 at=1788326060080 throughput_bps=741934 planner_Bps=92741 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_LONG_CANCEL sequence=126 selected=45d269df563ddd17c40a22b4f4fcc144 executed=45d269df563ddd17c40a22b4f4fcc144 bytes=0
+WARP_LONG_CANCEL peerClosed=true originAcceptedBytes=0
+WARP_HLS_STATE stage=beforeSwipe active=0 projected=baffc99500bd61b48125c8394a1e8df16614dda272b3f096440d12922cad98d4:b723b0f10e9a68683e88afbe8cbf9eb32991aadd407bb0537401313ea947ca4b:1 history=36:preparing:0:null|38:preparing:0:null|41:preparing:109:null|131:preparing:109:null|136:preparing:480:null|225:preparing:480:null|229:preparing:1290:null|322:preparing:1290:null|328:startable:6347:baffc99500bd61b48125c8394a1e8df16614dda272b3f096440d12922cad98d4:b723b0f10e9a68683e88afbe8cbf9eb32991aadd407bb0537401313ea947ca4b:1
+WARP_HLS_RESERVE revision=230 mode=Safety target=2 ordered=1 ready=1 kinds=WarpReserveCandidateKind.hls|WarpReserveCandidateKind.progressive candidates=d12abe0814caafd20be1206aedf87d81|a38f559f6a7c169daa152f61ba2a383d
+WARP_HLS_FRAME delivery=baffc99500bd61b48125c8394a1e8df16614dda272b3f096440d12922cad98d4 representation=b723b0f10e9a68683e88afbe8cbf9eb32991aadd407bb0537401313ea947ca4b session=ad046228737de02fb581bcfa571a766bcead51ebddc14bb13ec5cb59b7c2e18c generation=2 frameUs=68855 gatewayAcquisitions=1 activeLeases=1 rootRequests=1 selectedRequests=1 alternateRequests=0 initRequests=1 segment0Requests=1 rescued=false
+WARP_HLS_STATE stage=afterThird active=2 projected=baffc99500bd61b48125c8394a1e8df16614dda272b3f096440d12922cad98d4:b723b0f10e9a68683e88afbe8cbf9eb32991aadd407bb0537401313ea947ca4b:1 history=36:preparing:0:null|38:preparing:0:null|41:preparing:109:null|131:preparing:109:null|136:preparing:480:null|225:preparing:480:null|229:preparing:1290:null|322:preparing:1290:null|328:startable:6347:baffc99500bd61b48125c8394a1e8df16614dda272b3f096440d12922cad98d4:b723b0f10e9a68683e88afbe8cbf9eb32991aadd407bb0537401313ea947ca4b:1
+WARP_HLS_AUTH structural=baffc99500bd61b48125c8394a1e8df16614dda272b3f096440d12922cad98d4:b723b0f10e9a68683e88afbe8cbf9eb32991aadd407bb0537401313ea947ca4b:1 request=baffc99500bd61b48125c8394a1e8df16614dda272b3f096440d12922cad98d4:b723b0f10e9a68683e88afbe8cbf9eb32991aadd407bb0537401313ea947ca4b:1 lease=baffc99500bd61b48125c8394a1e8df16614dda272b3f096440d12922cad98d4:b723b0f10e9a68683e88afbe8cbf9eb32991aadd407bb0537401313ea947ca4b:1 gatewayAcquisitions=1
+WARP_HLS_CLEANUP delivery=baffc99500bd61b48125c8394a1e8df16614dda272b3f096440d12922cad98d4 authority=baffc99500bd61b48125c8394a1e8df16614dda272b3f096440d12922cad98d4:b723b0f10e9a68683e88afbe8cbf9eb32991aadd407bb0537401313ea947ca4b:1 lifecycle=initializing|initialized|firstFrameRendered|released activeLeases=0
+```
+
+### First-frame lines
+
+```
+WARP_HLS_CLEANUP delivery=baffc99500bd61b48125c8394a1e8df16614dda272b3f096440d12922cad98d4 authority=baffc99500bd61b48125c8394a1e8df16614dda272b3f096440d12922ca
+```
+
+## Run `20260902T051836Z-314742d3db-22e0d933-origin-timeout-peer-close-2`
+
+- command: `flutter test --no-uninstall --no-pub integration_test/warp_feed_origin_timeout_fallback_video_test.dart -d 22e0d933 `
+- commit: `314742d3db66eb081ef72e8cc46d7e17ba9a225d` (dirty_files=10)
+- device: ro.product.model=M2012K11AG ro.build.version.release=13 ro.kernel.qemu= 
+- exit: 1
+
+| test file | last progress | result |
+|---|---|---|
+| integration_test/warp_feed_origin_timeout_fallback_video_test.dart | +0 -1 | FAIL |
+
+### WARP markers
+
+```
+WARP_DECISION_HISTORY retained=64 first=410 latest=473
+WARP_DECISION sequence=410 at=1788326367663 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=411 at=1788326367763 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=412 at=1788326367863 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=413 at=1788326367963 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=414 at=1788326368040 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=415 at=1788326368062 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=416 at=1788326368162 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=417 at=1788326368262 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=418 at=1788326368363 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=419 at=1788326368463 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=420 at=1788326368540 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=421 at=1788326368563 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=422 at=1788326368622 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=423 at=1788326368662 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=424 at=1788326368763 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=425 at=1788326368864 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=426 at=1788326368878 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=427 at=1788326368963 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=428 at=1788326369040 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=429 at=1788326369072 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=430 at=1788326369163 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=431 at=1788326369263 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=432 at=1788326369363 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=433 at=1788326369463 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=434 at=1788326369540 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=435 at=1788326369562 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=436 at=1788326369619 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=437 at=1788326369663 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=438 at=1788326369764 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=439 at=1788326369863 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=440 at=1788326369963 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=441 at=1788326370040 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=442 at=1788326370062 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=443 at=1788326370084 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=444 at=1788326370141 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=445 at=1788326370163 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=446 at=1788326370263 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=447 at=1788326370363 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=448 at=1788326370463 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=449 at=1788326370540 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=450 at=1788326370562 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=451 at=1788326370624 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=452 at=1788326370663 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=453 at=1788326370763 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=454 at=1788326370863 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=455 at=1788326370963 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=456 at=1788326370978 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=457 at=1788326371040 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=458 at=1788326371062 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=459 at=1788326371163 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=460 at=1788326371263 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=461 at=1788326371363 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=462 at=1788326371463 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=463 at=1788326371540 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=464 at=1788326371565 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=465 at=1788326371626 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=466 at=1788326371663 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=467 at=1788326371763 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=468 at=1788326371863 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=469 at=1788326371963 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=470 at=1788326372040 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=471 at=1788326372062 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=472 at=1788326372163 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=473 at=1788326372274 throughput_bps=2360251 planner_Bps=295031 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+```
+
+
+## Run `20260902T051938Z-314742d3db-22e0d933-origin-timeout-peer-close-3`
+
+- command: `flutter test --no-uninstall --no-pub integration_test/warp_feed_origin_timeout_fallback_video_test.dart -d 22e0d933 `
+- commit: `314742d3db66eb081ef72e8cc46d7e17ba9a225d` (dirty_files=11)
+- device: ro.product.model=M2012K11AG ro.build.version.release=13 ro.kernel.qemu= 
+- exit: 1
+
+| test file | last progress | result |
+|---|---|---|
+| integration_test/warp_feed_origin_timeout_fallback_video_test.dart | +0 -1 | FAIL |
+
+### WARP markers
+
+```
+WARP_DECISION_HISTORY retained=64 first=404 latest=467
+WARP_DECISION sequence=404 at=1788326430918 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=405 at=1788326431018 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=406 at=1788326431032 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=407 at=1788326431118 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=408 at=1788326431195 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=409 at=1788326431217 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=410 at=1788326431318 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=411 at=1788326431417 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=412 at=1788326431517 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=413 at=1788326431532 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=414 at=1788326431617 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=415 at=1788326431718 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=416 at=1788326431818 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=417 at=1788326431918 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=418 at=1788326432017 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=419 at=1788326432033 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=420 at=1788326432118 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=421 at=1788326432194 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=422 at=1788326432217 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=423 at=1788326432233 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=424 at=1788326432321 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=425 at=1788326432419 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=426 at=1788326432519 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=427 at=1788326432533 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=428 at=1788326432618 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=429 at=1788326432718 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=430 at=1788326432818 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=431 at=1788326432918 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=432 at=1788326433018 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=433 at=1788326433032 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=434 at=1788326433118 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=435 at=1788326433194 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=436 at=1788326433218 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=437 at=1788326433317 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=438 at=1788326433418 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=439 at=1788326433518 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=440 at=1788326433532 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=441 at=1788326433619 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=442 at=1788326433636 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=443 at=1788326433677 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=444 at=1788326433718 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=445 at=1788326433818 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=446 at=1788326433917 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=447 at=1788326434017 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=448 at=1788326434033 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=449 at=1788326434117 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=450 at=1788326434196 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=451 at=1788326434219 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=452 at=1788326434317 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=453 at=1788326434334 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=454 at=1788326434417 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=455 at=1788326434518 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=456 at=1788326434532 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=457 at=1788326434617 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=458 at=1788326434717 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=459 at=1788326434817 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=460 at=1788326434918 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=461 at=1788326435017 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=462 at=1788326435033 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=463 at=1788326435117 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=464 at=1788326435196 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=465 at=1788326435236 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=466 at=1788326435335 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
+WARP_DECISION sequence=467 at=1788326435435 throughput_bps=3083335 planner_Bps=385416 slot_demand=false action=null outcome=succeeded detail=null bytes=0 elapsed_ms=0 selected=null:null:null:null:null-null:target=null executed=null:null:null-null
 ```
 
