@@ -78,10 +78,7 @@ pub(super) fn record(decision: &WarpPlanningDecision) -> DecisionRecord {
     record_for(decision, &state)
 }
 
-pub(super) fn record_for(
-    decision: &WarpPlanningDecision,
-    state: &PlayabilitySnapshot,
-) -> DecisionRecord {
+fn record_for(decision: &WarpPlanningDecision, state: &PlayabilitySnapshot) -> DecisionRecord {
     DecisionRecord::capture_warp(WarpDecisionRecordInput {
         sequence: 9,
         snapshot: state,

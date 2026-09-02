@@ -22,7 +22,7 @@ impl PreparedHlsPlaybackAsset {
         &self.authority
     }
 
-    pub fn root_source(&self) -> &str {
+    pub(super) fn root_source(&self) -> &str {
         &self.root_source
     }
 

@@ -61,7 +61,7 @@ impl DeliveryWatchContext {
     }
 
     /// Lets the watcher read causal plans for readiness ETAs.
-    pub(crate) fn with_delivery(mut self, delivery: DeliveryHandle) -> Self {
+    pub(super) fn with_delivery(mut self, delivery: DeliveryHandle) -> Self {
         self.delivery = Some(delivery);
         self
     }

@@ -58,7 +58,7 @@ pub struct ModelQuantiles {
     pub(super) source_id: String,
     pub(super) success: ProbabilityEstimateRecord,
     pub(super) range_compliance: ProbabilityEstimateRecord,
-    pub(crate) ttfb_ms: QuantileRecord,
+    pub(super) ttfb_ms: QuantileRecord,
     pub(super) throughput_bps: QuantileRecord,
     pub(super) effective_samples: u64,
     pub(super) adapting: bool,
@@ -92,7 +92,7 @@ pub enum PrunedReason {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PrunedCandidate {
     pub(super) post_id: String,
-    pub(crate) reasons: Vec<PrunedReason>,
+    pub(super) reasons: Vec<PrunedReason>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

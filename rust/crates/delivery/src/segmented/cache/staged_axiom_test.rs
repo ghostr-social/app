@@ -51,3 +51,12 @@ impl SegmentedCache {
         true
     }
 }
+
+impl SegmentedCache {
+    pub(crate) fn mark_stage_ready(&self, post: &PostId, generation: u64) -> bool {
+        let Some(root) = self.root_source(post) else {
+            return false;
+        };
+        self.mark_stage_ready_for_playback(post, generation, &root)
+    }
+}

@@ -116,20 +116,10 @@ impl NetworkTokenBucket {
     }
 }
 
-impl NetworkTokenBucket {
-    #[cfg(test)]
-    pub(crate) const fn from_replay(parts: (u64, u64, u64, u64, u64, u64)) -> Self {
-        Self {
-            capacity: parts.0,
-            refill_per_second: parts.1,
-            tokens: parts.2,
-            updated_at_ms: parts.3,
-            refill_milli_bytes: parts.4,
-            debt_bytes: parts.5,
-        }
-    }
-}
-
 const fn is_zero(value: &u64) -> bool {
     *value == 0
 }
+
+#[cfg(test)]
+#[path = "network_axiom_test.rs"]
+mod axiom_test_support;

@@ -34,16 +34,16 @@ impl SearchReplayMode {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct SearchReplayInput {
-    pub(crate) mode: SearchReplayMode,
-    pub(crate) reserve: ReserveConstraint,
-    pub(crate) reserve_threshold_bps: Option<u16>,
-    pub(crate) reserve_degraded_reason: Option<ReserveDegradedReason>,
-    pub(crate) nodes: Vec<ActionNode>,
-    pub(crate) budget: HardBudget,
-    pub(crate) beam: BeamConfig,
-    pub(crate) prices: ResourcePrices,
-    pub(crate) scores: Vec<ScoredSearchPlan>,
-    pub(crate) reserve_progress_action_ids: Vec<u16>,
+    pub(super) mode: SearchReplayMode,
+    pub(super) reserve: ReserveConstraint,
+    pub(super) reserve_threshold_bps: Option<u16>,
+    pub(super) reserve_degraded_reason: Option<ReserveDegradedReason>,
+    pub(super) nodes: Vec<ActionNode>,
+    pub(super) budget: HardBudget,
+    pub(super) beam: BeamConfig,
+    pub(super) prices: ResourcePrices,
+    pub(super) scores: Vec<ScoredSearchPlan>,
+    pub(super) reserve_progress_action_ids: Vec<u16>,
 }
 
 impl SearchReplayInput {

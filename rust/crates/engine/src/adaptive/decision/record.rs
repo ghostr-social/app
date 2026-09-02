@@ -17,7 +17,7 @@ mod resolution;
 pub(super) const UNSEALED_WARP_SCHEMA_VERSION: u16 = 2;
 pub(super) const WARP_SCHEMA_VERSION: u16 = 3;
 pub(super) const CAPABILITY_SCHEMA_VERSION: u16 = 4;
-pub(super) const ORDERED_RESERVE_SCHEMA_VERSION: u16 = 5;
+const ORDERED_RESERVE_SCHEMA_VERSION: u16 = 5;
 #[derive(Clone, Copy)]
 pub struct DecisionRecordInput<'a> {
     pub sequence: u64,
@@ -42,11 +42,11 @@ pub struct WarpDecisionRecordInput<'a> {
 pub struct DecisionRecord {
     pub schema_version: u16,
     pub sequence: u64,
-    pub(crate) admissible_candidates: Vec<String>,
-    pub(crate) retained_plans: Vec<DecisionAction>,
-    pub(crate) pruned: Vec<PrunedCandidate>,
-    pub(crate) model_quantiles: Vec<ModelQuantiles>,
-    pub(crate) shadow_prices: ShadowPrices,
+    admissible_candidates: Vec<String>,
+    retained_plans: Vec<DecisionAction>,
+    pruned: Vec<PrunedCandidate>,
+    model_quantiles: Vec<ModelQuantiles>,
+    shadow_prices: ShadowPrices,
     pub chosen_action: Option<DecisionAction>,
     pub chosen_action_id: Option<u64>,
     pub eventual_outcome: DecisionOutcome,

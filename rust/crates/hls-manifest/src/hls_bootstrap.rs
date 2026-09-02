@@ -19,7 +19,7 @@ impl fmt::Display for UnsupportedHlsFeature {
     }
 }
 
-impl std::error::Error for UnsupportedHlsFeature {}
+impl core::error::Error for UnsupportedHlsFeature {}
 
 /// Inspects a bounded HLS manifest and resolves its first playable resource.
 ///

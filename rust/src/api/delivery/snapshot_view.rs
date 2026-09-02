@@ -12,7 +12,7 @@ pub(crate) struct SnapshotViewContext<'a> {
     pub capabilities: &'a ProgressiveCapabilities,
 }
 
-pub(crate) struct SnapshotView {
+pub(super) struct SnapshotView {
     pub ranges: Vec<ByteRange>,
     pub stored_total: Option<u64>,
     pub meta: Option<VideoMeta>,
@@ -22,7 +22,7 @@ pub(crate) struct SnapshotView {
     pub authority: Option<DeliverySnapshotAuthority>,
 }
 
-pub(crate) async fn capture(
+pub(super) async fn capture(
     context: SnapshotViewContext<'_>,
     id: &str,
     meta: &VideoMeta,

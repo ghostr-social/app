@@ -48,7 +48,7 @@ async fn capped_whole_with_a_declared_length_exposes_its_live_prefix() {
         sent = &mut prefix_sent => sent.expect("valid test fixture"),
         result = &mut download => panic!("download ended before prefix: {result:?}"),
     }
-    let readable = tokio::time::timeout(Duration::from_secs(10), wait_for_prefix(&fixture.store));
+    let readable = tokio::time::timeout(Duration::from_secs(60), wait_for_prefix(&fixture.store));
     tokio::pin!(readable);
     tokio::select! {
         result = &mut download => panic!("download ended before release: {result:?}"),

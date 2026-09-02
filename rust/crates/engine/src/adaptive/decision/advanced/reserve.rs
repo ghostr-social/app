@@ -9,40 +9,40 @@ mod authority;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RecordedWarpReserve {
-    pub(crate) reserved_request_slots: u16,
-    pub(crate) reserved_network_bytes: u64,
-    pub(crate) degraded: bool,
+    reserved_request_slots: u16,
+    reserved_network_bytes: u64,
+    degraded: bool,
     #[serde(default, skip_serializing_if = "is_zero_u64")]
-    pub(crate) reserved_storage_bytes: u64,
+    reserved_storage_bytes: u64,
     #[serde(default, skip_serializing_if = "is_zero_u64")]
-    pub(crate) reserved_cpu_ms: u64,
+    reserved_cpu_ms: u64,
     #[serde(default, skip_serializing_if = "is_zero_u16")]
-    pub(crate) global_request_width: u16,
+    global_request_width: u16,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub(crate) authority_occupancy: Vec<RecordedReserveAuthorityOccupancy>,
+    authority_occupancy: Vec<RecordedReserveAuthorityOccupancy>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub(crate) protected_action_ids: Vec<u16>,
+    protected_action_ids: Vec<u16>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) chance: Option<RecordedRescueChanceEvidence>,
+    chance: Option<RecordedRescueChanceEvidence>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(super) degraded_reason: Option<RecordedReserveDegradedReason>,
+    degraded_reason: Option<RecordedReserveDegradedReason>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RecordedReserveAuthorityOccupancy {
-    pub(crate) authority_id: String,
-    pub(crate) occupied_request_slots: u64,
-    pub(crate) request_width: u16,
+    authority_id: String,
+    occupied_request_slots: u64,
+    request_width: u16,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RecordedRescueChanceEvidence {
-    pub(crate) deadline_ms: u64,
-    pub(crate) threshold_bps: u16,
-    pub(crate) achieved_success_bps: u16,
-    pub(crate) transport_success_bps: u16,
-    pub(crate) timing_quantile: RecordedRescueTimingQuantile,
-    pub(crate) timing_completion_ms: u64,
+    deadline_ms: u64,
+    threshold_bps: u16,
+    achieved_success_bps: u16,
+    transport_success_bps: u16,
+    timing_quantile: RecordedRescueTimingQuantile,
+    timing_completion_ms: u64,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]

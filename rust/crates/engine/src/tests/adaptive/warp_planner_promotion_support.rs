@@ -22,7 +22,7 @@ pub(in crate::tests::adaptive::warp_tests) fn generated_actions(
     planned(observed_body_bytes).1.generated
 }
 
-pub(super) fn planned(observed_body_bytes: Option<u64>) -> (Snapshot, WarpPlanningDecision) {
+fn planned(observed_body_bytes: Option<u64>) -> (Snapshot, WarpPlanningDecision) {
     planned_with_model(observed_body_bytes, &OriginModel::default())
 }
 

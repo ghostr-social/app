@@ -18,14 +18,6 @@ impl SegmentedCache {
         published
     }
 
-    #[cfg(test)]
-    pub(crate) fn mark_stage_ready(&self, post: &PostId, generation: u64) -> bool {
-        let Some(root) = self.root_source(post) else {
-            return false;
-        };
-        self.mark_stage_ready_for_playback(post, generation, &root)
-    }
-
     pub(crate) fn mark_stage_failed(&self, post: &PostId, generation: u64, detail: String) -> bool {
         self.mark_terminal(post, generation, SegmentedPhase::Failed, Some(detail))
     }

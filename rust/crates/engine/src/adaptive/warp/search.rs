@@ -83,19 +83,6 @@ impl WarpSearch {
         self.choose(nodes, budget, &mut scorer)
     }
 
-    #[cfg(test)]
-    pub(crate) fn choose_first_recorded<F>(
-        &self,
-        nodes: &[ActionNode],
-        budget: HardBudget,
-        scorer: &mut F,
-    ) -> SearchDecision
-    where
-        F: FnMut(&[ActionNode]) -> i64,
-    {
-        self.choose(nodes, budget, scorer)
-    }
-
     fn choose<F>(&self, nodes: &[ActionNode], budget: HardBudget, scorer: &mut F) -> SearchDecision
     where
         F: FnMut(&[ActionNode]) -> i64,
@@ -180,3 +167,7 @@ fn static_score(actions: &[ActionNode], prices: ResourcePrices) -> i64 {
         sum.saturating_add(action.value.total(action.resources, prices))
     })
 }
+
+#[cfg(test)]
+#[path = "search_axiom_test.rs"]
+mod axiom_test_support;

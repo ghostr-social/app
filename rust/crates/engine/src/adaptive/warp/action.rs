@@ -42,12 +42,6 @@ impl ActionForecast {
             cache_reuse_bps: 0,
         }
     }
-
-    #[cfg(test)]
-    pub(crate) const fn with_quality(mut self, gain_micros: u64) -> Self {
-        self.quality_gain_micros = gain_micros;
-        self
-    }
 }
 
 impl Default for ActionForecast {
@@ -105,7 +99,7 @@ impl ActionNode {
         authorized
     }
 
-    pub(crate) const fn with_resource_authority(mut self, resources: ResourceCost) -> Self {
+    pub(super) const fn with_resource_authority(mut self, resources: ResourceCost) -> Self {
         self.resource_authority = Some(resources);
         self
     }
@@ -131,7 +125,7 @@ impl ActionNode {
         self.request_profile
     }
 
-    pub(crate) const fn with_origin_admission_intent(
+    pub(super) const fn with_origin_admission_intent(
         mut self,
         intent: crate::origin_model::OriginAdmissionIntent,
     ) -> Self {
@@ -180,3 +174,7 @@ const fn clamp_bps(value: u16) -> u16 {
         value
     }
 }
+
+#[cfg(test)]
+#[path = "action_axiom_test.rs"]
+mod axiom_test_support;

@@ -34,7 +34,7 @@ fn replace_latest(
     pending.push_back(DeliveryCommand::Focus(update));
 }
 
-pub(super) fn make_room(pending: &mut VecDeque<DeliveryCommand>, indices: [usize; 3]) {
+fn make_room(pending: &mut VecDeque<DeliveryCommand>, indices: [usize; 3]) {
     let focuses = indices.map(|index| focus_at(pending, index));
     let removable = if same_current(&focuses[1], &focuses[2]) {
         indices[2]

@@ -59,12 +59,7 @@ fn evidenced_origins() -> OriginModel {
     model
 }
 
-pub(super) const fn evidence(
-    class: NetworkClass,
-    rate: u64,
-    ttfb: u64,
-    sample: u64,
-) -> NetworkEvidence {
+const fn evidence(class: NetworkClass, rate: u64, ttfb: u64, sample: u64) -> NetworkEvidence {
     NetworkEvidence {
         class,
         rate,
@@ -73,7 +68,7 @@ pub(super) const fn evidence(
     }
 }
 
-pub(super) fn record(model: &mut OriginModel, source: &str, evidence: NetworkEvidence) {
+fn record(model: &mut OriginModel, source: &str, evidence: NetworkEvidence) {
     for (method, bytes) in [
         (
             RequestMethod::RangeGet,
