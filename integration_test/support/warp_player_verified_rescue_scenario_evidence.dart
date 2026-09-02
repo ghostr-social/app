@@ -35,7 +35,7 @@ extension _PlayerVerifiedRescueEvidence on _PlayerVerifiedRescueScenario {
     expect(bodyGate.timedOut, isFalse);
     final state = journey.cubit.state as FeedLoaded;
     expect(state.activeIndex, 3);
-    expect(focus.rescue?.reason, FeedTransportRescueReason.etaUnavailable);
+    expect(focus.rescue?.reason, FeedTransportRescueReason.etaTooLong);
     expect(focus.rescue?.rankDisplacement, 2);
     expect(focus.rescue?.wait, Duration.zero);
     await journey.waitForCaption(tester, 3);
