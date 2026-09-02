@@ -11,6 +11,8 @@ use ghostr_delivery::delivery_events::DeliveryHandle;
 use ghostr_delivery::segmented::SegmentedPhase;
 use ghostr_engine::DeliveryKind;
 
+/// Well under the retry book's cooldown, so a retried rejection is caught.
+const PROMPT_FAILURE_LIMIT: Duration = Duration::from_millis(1_500);
 const WAIT_LIMIT: Duration = Duration::from_secs(10);
 const ENCRYPTED_MANIFEST: &[u8] = b"HTTP/1.1 200 OK\r\n\
 Content-Type: application/vnd.apple.mpegurl\r\n\
@@ -21,20 +23,25 @@ Connection: close\r\n\r\n\
 
 #[tokio::test]
 async fn encrypted_manifest_is_a_typed_media_policy_failure() {
-    let responses = vec![ENCRYPTED_MANIFEST, ENCRYPTED_MANIFEST];
+    let responses = vec![ENCRYPTED_MANIFEST];
     let (source, requests) = raw_http::spawn_response_sequence(responses).await;
     let mut options = DeliveryOptions::default();
     options.tuning.retry.permanent_attempts = 2;
     let harness = start_harness("hls-unsupported-manifest", options);
     let mut item = sized_item("stream", &source, 81, 4_000);
     item.meta.delivery = DeliveryKind::Hls;
+    let started = tokio::time::Instant::now();
     harness.handle.update_focus(focus_now(vec![item], 0, 0));
 
     tokio::time::timeout(WAIT_LIMIT, requests)
         .await
-        .expect("unsupported manifest retry")
+        .expect("unsupported manifest fetched once")
         .expect("valid test fixture");
     let snapshot = wait_for_failure(&harness).await;
+    assert!(
+        started.elapsed() < PROMPT_FAILURE_LIMIT,
+        "a media-policy rejection must fail before any retry cooldown"
+    );
     assert_eq!(
         snapshot.detail.as_deref(),
         Some("HLS bootstrap was blocked by media policy")

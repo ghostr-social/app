@@ -6,6 +6,7 @@ mod header_limit_test;
 mod header_timeout_test;
 mod idle_timeout_test;
 mod partial_block_geometry_test;
+mod policy_disposition_test;
 mod resumed_status_header_limit_test;
 mod staged_commitment_fence_test;
 mod staged_queue_timing_test;

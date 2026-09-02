@@ -13,11 +13,10 @@ final class _WarpUnsupportedHlsRescueDriver {
   FeedLoaded get feed => graph.cubit.state as FeedLoaded;
   ProgressiveDeviceOrigin get progressive => runtime.resources.origin;
 
-  PlaybackDeliveryId get failedDeliveryId =>
-      feed.posts[0].media.playbackDeliveryId!;
-
-  PlaybackDeliveryId get alternateDeliveryId =>
-      feed.posts[1].media.playbackDeliveryId!;
+  /// Captured while the feed is loaded: the cleanup stages run after the
+  /// surface is unmounted, when the cubit no longer holds a loaded state.
+  late final PlaybackDeliveryId failedDeliveryId;
+  late final PlaybackDeliveryId alternateDeliveryId;
 
   Future<void> run() async {
     await _mount();
@@ -33,6 +32,8 @@ final class _WarpUnsupportedHlsRescueDriver {
     await tester.pumpWidget(MaterialApp(home: WarpFeedSurface(graph: graph)));
     unawaited(graph.cubit.load());
     await _wait(_isLoaded);
+    failedDeliveryId = feed.posts[0].media.playbackDeliveryId!;
+    alternateDeliveryId = feed.posts[1].media.playbackDeliveryId!;
   }
 
   bool _isLoaded() {

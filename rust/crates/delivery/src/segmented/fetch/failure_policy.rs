@@ -53,8 +53,10 @@ impl FailurePolicy {
             | ErrorReason::Tls
             | ErrorReason::Http4xx
             | ErrorReason::RangeNoncompliant
-            | ErrorReason::InvalidResponse
-            | ErrorReason::Policy => Self::retry(FailureClass::Permanent),
+            | ErrorReason::InvalidResponse => Self::retry(FailureClass::Permanent),
+            // A media-policy verdict is deterministic and local: retrying it
+            // only delays the terminal `failed` evidence the feed rescues on.
+            ErrorReason::Policy => Self::terminal(),
             ErrorReason::Unknown => Self::retry(FailureClass::Transient),
         }
     }
