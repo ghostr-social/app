@@ -16,5 +16,20 @@ async fn causal_plan_change_streams_progressive_playback_eta() {
     watcher.publish_causal_plan(175);
     let planned = watcher.next().await;
     assert_eq!(planned.kind, FfiDeliveryEventKind::Progress);
-    assert_eq!(planned.eta_ms, Some(175));
+    assert_eq!(
+        planned.eta_ms,
+        Some(200),
+        "ETA is rounded up to 100 ms buckets"
+    );
+}
+
+#[tokio::test]
+async fn eta_drift_inside_a_bucket_streams_nothing() {
+    let mut watcher = fixture::ProgressiveEtaWatcher::start().await;
+    watcher.next().await;
+    watcher.publish_causal_plan(175);
+    assert_eq!(watcher.next().await.eta_ms, Some(200));
+
+    watcher.publish_causal_plan(190);
+    watcher.expect_quiet().await;
 }

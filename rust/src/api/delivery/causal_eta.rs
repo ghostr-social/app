@@ -10,6 +10,13 @@ use ghostr_delivery::delivery_events::{DeliveryHandle, PlanEvidence};
 use std::sync::Arc;
 use tokio::sync::Notify;
 
+/// Plans are republished on every material event and their delivery
+/// estimates drift by a few milliseconds each time; an event per drift
+/// would flood the feed with progress updates that change no decision.
+/// The ETA is therefore rounded up to this bucket, which is well under
+/// the selector's grace interval.
+const ETA_BUCKET_MS: u64 = 100;
+
 /// Wakes the watcher when a new plan is published; idle without a handle.
 pub(crate) fn plan_notifier(delivery: Option<&DeliveryHandle>) -> Arc<Notify> {
     delivery.map_or_else(|| Arc::new(Notify::new()), DeliveryHandle::plan_notifier)
@@ -47,6 +54,11 @@ fn causal_eta_ms(
         .filter(|allocation| allocation.expected_playable_gain_ms > 0)
         .map(|allocation| allocation.utility.expected_delivery_ms)
         .min()
+        .map(bucketed)
+}
+
+const fn bucketed(eta_ms: u64) -> u64 {
+    eta_ms.div_ceil(ETA_BUCKET_MS).saturating_mul(ETA_BUCKET_MS)
 }
 
 fn is_causal(plan: &PlanEvidence, focus_generation: Option<u64>) -> bool {

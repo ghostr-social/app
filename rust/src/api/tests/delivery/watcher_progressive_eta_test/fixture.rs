@@ -56,6 +56,14 @@ impl ProgressiveEtaWatcher {
         );
     }
 
+    pub(super) async fn expect_quiet(&mut self) {
+        let quiet = tokio::time::timeout(Duration::from_millis(300), self.events.recv()).await;
+        assert!(
+            quiet.is_err(),
+            "no event expected inside one ETA bucket: {quiet:?}"
+        );
+    }
+
     pub(super) async fn next(&mut self) -> FfiDeliveryEvent {
         tokio::time::timeout(Duration::from_secs(2), self.events.recv())
             .await
