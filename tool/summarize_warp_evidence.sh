@@ -20,17 +20,26 @@ printf -- '- exit: %s\n\n' "$(cat "$dir/exit.txt")"
 if test -s "$dir/stdout.log"; then
   printf '| test file | last progress | result |\n|---|---|---|\n'
   tr '\r' '\n' <"$dir/stdout.log" | awk '
-    /: loading .*integration_test\// {
-      if (file != "") print "| " file " | " last " | " verdict(last, prev) " |"
-      match($0, /integration_test\/[a-z0-9_]+\.dart/); file = substr($0, RSTART, RLENGTH); prev = last
+    function counter(   c) { c = $2; if ($3 ~ /^-[0-9]+:?$/) c = c " " $3; sub(/:$/, "", c); return c }
+    function failures(c) { return (c ~ /-/) ? substr(c, index(c, "-") + 1) + 0 : 0 }
+    function passes(c) { return substr(c, 2) + 0 }
+    function verdict(start, finish) {
+      if (failures(finish) > failures(start)) return "FAIL"
+      if (passes(finish) > passes(start)) return "pass"
+      return "not run (stopped)"
     }
-    /^[0-9]+:[0-9]+ \+[0-9]+/ { last = $2 }
-    END { if (file != "") print "| " file " | " last " | " verdict(last, prev) " |" }
-    function verdict(now, before) {
-      if (now ~ /-/) return "FAIL"
-      if (now == before) return "no progress"
-      return "pass"
-    }'
+    /^[0-9]+:[0-9]+ \+[0-9]+/ {
+      cur = counter()
+      if ($0 ~ /: loading .*integration_test\//) {
+        match($0, /integration_test\/[a-z0-9_]+\.dart/); next_file = substr($0, RSTART, RLENGTH)
+        if (next_file != file) {
+          if (file != "") print "| " file " | " cur " | " verdict(start, cur) " |"
+          file = next_file; start = cur
+        }
+      }
+      last = cur
+    }
+    END { if (file != "") print "| " file " | " last " | " verdict(start, last) " |" }'
   printf '\n'
 fi
 
