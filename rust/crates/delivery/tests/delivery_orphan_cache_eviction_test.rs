@@ -6,10 +6,23 @@ use delivery_fixture::items::{focus_now, seed_range, sized_item};
 use delivery_fixture::options::DeliveryOptions;
 use delivery_fixture::pressure_origin::serve;
 use delivery_fixture::start_harness_with_store;
+use std::path::PathBuf;
 use std::sync::Arc;
 
-#[tokio::test]
-async fn current_playback_reclaims_cached_media_outside_the_feed_working_set() {
+#[test]
+fn current_playback_reclaims_cached_media_outside_the_feed_working_set() {
+    let root = {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("test runtime");
+        runtime.block_on(reclaim_cached_orphan())
+    };
+    // Runtime shutdown joins pending filesystem work before removing its root.
+    discard(&root);
+}
+
+async fn reclaim_cached_orphan() -> PathBuf {
     let mut origin = serve().await;
     let fixture = spaced_store("ghostr-orphan-cache-room", limits(32, 0), 10_000);
     let orphan = sized_item("orphan", &origin.url, 32, 1_000);
@@ -50,5 +63,5 @@ async fn current_playback_reclaims_cached_media_outside_the_feed_working_set() {
     assert!(harness.store.used_bytes().await <= 32);
     harness.handle.clear().await.expect("valid test fixture");
     drop(harness);
-    discard(&root);
+    root
 }
