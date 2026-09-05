@@ -4,6 +4,10 @@ use ghostr_engine::representation::SourceGeneration;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+#[cfg(test)]
+#[path = "partial_range_generation_disk/selection_test.rs"]
+mod selection_test;
+
 #[derive(Deserialize, Serialize)]
 pub struct StoredGeneration {
     pub representation: String,
@@ -37,7 +41,8 @@ fn validated(mut stored: StoredGeneration) -> Option<StoredGeneration> {
         stored.generation.strong_etag(),
         stored.generation.total_bytes(),
     )
-    .ok()?;
+    .ok()?
+    .with_request_selection(stored.generation.request_selection());
     stored.generation = generation;
     Some(stored)
 }

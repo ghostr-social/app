@@ -71,6 +71,7 @@ async fn promotion_expired_at_headers_is_rejected_before_store_open() -> anyhow:
         None,
         ResponseWriteMode::SingleResponse(WholeBodyContract::Exact { expected_bytes: 16 }),
         HttpResponseEvidence {
+            request_selection: None,
             final_url: "https://origin.test/video".into(),
             status: 200,
             content_type: Some("video/mp4".into()),

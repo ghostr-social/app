@@ -3,11 +3,18 @@ use crate::evaluation::IntegrityMetricEvent;
 use crate::manager::time::unix_time_ms;
 use crate::manager::DeliveryWorker;
 use ghostr_engine::concurrency::NetworkSetback;
-use ghostr_engine::playback::PlaybackPhase;
+use ghostr_engine::playback::{PlaybackPhase, PlaybackStatus};
+
+#[cfg(test)]
+#[path = "playback/stall_episode_test.rs"]
+mod stall_episode_test;
+#[cfg(test)]
+#[path = "playback/test_support.rs"]
+mod test_support;
 
 impl DeliveryWorker {
     pub(super) fn apply_playback(&mut self, playback: &DeliveryPlayback) {
-        let stalled = playback.observation.phase() == PlaybackPhase::NetworkStalled;
+        let stalled = starts_stall_episode(self.state.playback(), playback);
         let post = playback.session.post().clone();
         let observed_at_ms = unix_time_ms();
         let false_streamability = stalled_or_failed_streamability(
@@ -35,6 +42,14 @@ impl DeliveryWorker {
             self.note_network_setback(NetworkSetback::Stall);
         }
     }
+}
+
+fn starts_stall_episode(previous: &PlaybackStatus, update: &DeliveryPlayback) -> bool {
+    update.observation.phase() == PlaybackPhase::NetworkStalled
+        && (previous.session() != Some(&update.session)
+            || previous
+                .observation()
+                .is_none_or(|value| value.phase() != PlaybackPhase::NetworkStalled))
 }
 
 fn stalled_or_failed_streamability(

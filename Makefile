@@ -182,6 +182,20 @@ web-contract-test: ## Verify that the web tool is Rust-only.
 	sh test/tool/web_lifecycle_contract_test.sh
 	sh test/tool/web_untrusted_owner_contract_test.sh
 
+video-live-android-contract-test: ## Verify the live physical-device runner contract.
+	sh test/tool/video_live_android_target_test.sh
+	python3 test/tool/live_video_prior_corpus_test.py
+
+video-live-android-tests: video-live-android-contract-test ## Test real Nostr relays and media on the signed-in phone.
+	sh tool/run_video_live_android.sh "$(ANDROID_PHYSICAL_SERIAL)"
+
+video-live-android-evidence: video-live-android-contract-test ## Capture real Nostr playback evidence.
+	sh tool/run_video_live_android_evidence.sh "$(ANDROID_PHYSICAL_SERIAL)"
+
+.PHONY: video-live-origin-test
+video-live-origin-test: ## Verify selected sparse generations against a real public media origin.
+	cd rust && cargo test -p ghostr-delivery --all-features --lib live_origin_vary_preserves -- --ignored
+
 video-user-e2e-contract-test: ## Test the deterministic local video E2E harness.
 	node --test test/tool/video_user_e2e/*_test.mjs
 

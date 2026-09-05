@@ -10,15 +10,18 @@ pub struct MediaResponse {
     lease: Option<RequestLease>,
     failed: bool,
     redirect_admission_wait_nanos: u64,
+    selection: selection::ResponseSelection,
 }
 
 mod head;
+pub(super) mod selection;
 
 impl MediaResponse {
     pub(super) fn new(
         inner: Response,
         lease: RequestLease,
         redirect_admission_wait: Duration,
+        selection: selection::ResponseSelection,
     ) -> Self {
         Self {
             head: head::ResponseHead::capture(&inner),
@@ -27,6 +30,7 @@ impl MediaResponse {
             failed: false,
             redirect_admission_wait_nanos: u64::try_from(redirect_admission_wait.as_nanos())
                 .unwrap_or(u64::MAX),
+            selection,
         }
     }
 
@@ -44,6 +48,14 @@ impl MediaResponse {
 
     pub fn content_length(&self) -> Option<u64> {
         self.head.content_length
+    }
+
+    pub fn request_selection(&self) -> Option<ghostr_engine::representation::RequestSelection> {
+        self.selection.identity()
+    }
+
+    pub fn retention(&self) -> crate::media_retention::MediaRetention {
+        self.selection.retention(self.headers(), self.url())
     }
 
     pub fn redirect_admission_wait(&self) -> Duration {

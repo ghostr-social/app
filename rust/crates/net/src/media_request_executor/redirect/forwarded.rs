@@ -26,6 +26,13 @@ impl ForwardedRequest {
         &self.url
     }
 
+    pub(super) fn selection(
+        &self,
+        headers: &HeaderMap,
+    ) -> super::super::response::selection::ResponseSelection {
+        super::super::response::selection::ResponseSelection::capture(&self.headers, headers)
+    }
+
     pub(super) fn redirected(mut self, target: &Url) -> Result<Self> {
         let authority =
             RequestAuthority::from_url(target.as_str()).context("redirect authority is invalid")?;

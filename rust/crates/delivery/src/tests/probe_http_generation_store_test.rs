@@ -41,6 +41,7 @@ async fn validated_lengthless_head_installs_durable_http_generation() {
 
 fn result() -> ProbeResult {
     ProbeResult {
+        request_selection: None,
         final_url: REDIRECTED.into(),
         observed: EvidenceTime::ordered(10, 1),
         content_length: None,

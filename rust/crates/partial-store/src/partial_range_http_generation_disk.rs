@@ -4,6 +4,10 @@ use ghostr_engine::representation::HttpGenerationKey;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+#[cfg(test)]
+#[path = "partial_range_http_generation_disk/selection_test.rs"]
+mod selection_test;
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct StoredHttpGeneration {
     pub representation: String,
@@ -29,8 +33,9 @@ pub async fn load(path: &Path) -> Result<StoredHttpGenerationLoad> {
         Ok(stored) => stored,
         Err(_) => return Ok(StoredHttpGenerationLoad::Invalid),
     };
-    let key =
-        HttpGenerationKey::try_new(stored.key.final_url(), stored.key.validator().cloned()).ok();
+    let key = HttpGenerationKey::try_new(stored.key.final_url(), stored.key.validator().cloned())
+        .ok()
+        .map(|key| key.with_request_selection(stored.key.request_selection()));
     Ok(match key {
         Some(key) => StoredHttpGenerationLoad::Valid(StoredHttpGeneration { key, ..stored }),
         None => StoredHttpGenerationLoad::Invalid,

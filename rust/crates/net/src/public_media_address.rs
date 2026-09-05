@@ -28,8 +28,7 @@ pub fn validate_url(url: &Url) -> Result<()> {
     if !url.username().is_empty() || url.password().is_some() {
         return Err(permanent("media URL credentials are forbidden"));
     }
-    let expected_port = if url.scheme() == "https" { 443 } else { 80 };
-    if url.port_or_known_default() != Some(expected_port) {
+    if matches!(url.port_or_known_default(), None | Some(0)) {
         return Err(permanent("media URL port is not allowed"));
     }
     let host = url

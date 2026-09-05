@@ -6,10 +6,12 @@ use std::fmt;
 mod derived;
 mod http_generation;
 mod identity;
+mod request_selection;
 pub use http_generation::{
     HttpGenerationAuthority, HttpGenerationEpoch, HttpGenerationKey, HttpGenerationLease,
     HttpGenerationStamp, InvalidHttpGeneration,
 };
+pub use request_selection::RequestSelection;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct RepresentationId(String);
@@ -26,6 +28,8 @@ pub struct SourceGeneration {
     final_url: String,
     strong_etag: String,
     total_bytes: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    request_selection: Option<RequestSelection>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -103,6 +107,7 @@ impl SourceGeneration {
             final_url: final_url.into(),
             strong_etag: strong_etag.into(),
             total_bytes,
+            request_selection: None,
         };
         generation
             .is_valid()

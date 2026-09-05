@@ -42,6 +42,7 @@ async fn unhosted_outcomes_do_not_dirty_or_persist_host_stats() {
         post,
         url: "still not a URL".to_owned(),
         outcome: Ok(ProbeResult {
+            request_selection: None,
             final_url: "still not a URL".to_owned(),
             observed: 1.into(),
             content_length: Some(1),

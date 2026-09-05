@@ -22,3 +22,5 @@ mod transient_response_cancellation_test;
 mod transient_response_retention_test;
 
 mod cold_reclaim_test;
+#[path = "../../tests/partial_range_selected_whole_cancellation_test.rs"]
+mod partial_range_selected_whole_cancellation_test;

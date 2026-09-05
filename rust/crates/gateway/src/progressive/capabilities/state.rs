@@ -12,6 +12,15 @@ pub(super) struct CapabilityState {
 }
 
 impl CapabilityState {
+    pub(super) fn existing(
+        &self,
+        authority: &ProgressiveAssetAuthority,
+    ) -> Option<ProgressiveCapabilityId> {
+        self.entries
+            .iter()
+            .find_map(|(id, lease)| (lease.authority == *authority).then(|| id.clone()))
+    }
+
     pub(super) fn prune(&mut self, now: Instant, ttl: Duration) {
         self.entries
             .retain(|_, lease| now.duration_since(lease.last_used) < ttl);
@@ -22,10 +31,7 @@ impl CapabilityState {
         authority: &ProgressiveAssetAuthority,
         now: Instant,
     ) -> Option<ProgressiveCapabilityId> {
-        let id = self
-            .entries
-            .iter()
-            .find_map(|(id, lease)| (lease.authority == *authority).then(|| id.clone()))?;
+        let id = self.existing(authority)?;
         self.entries.get_mut(&id)?.last_used = now;
         Some(id)
     }

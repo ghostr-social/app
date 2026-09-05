@@ -40,15 +40,15 @@ pub(super) async fn capture(
     let representation_id = binding.representation().fingerprint().to_owned();
     let playback_blocked = context.cache.is_playback_blocked(id, binding);
     let exhausted = !current.status.is_servable();
-    let authority = context
-        .capabilities
-        .issue(&snapshot)
-        .await
-        .ok()
-        .map(|asset| DeliverySnapshotAuthority {
-            representation_id,
-            asset_id: asset.as_str().to_owned(),
-        });
+    let authority =
+        context
+            .capabilities
+            .existing(&snapshot)
+            .await
+            .map(|asset| DeliverySnapshotAuthority {
+                representation_id,
+                asset_id: asset.as_str().to_owned(),
+            });
     Ok(SnapshotView {
         ranges: snapshot
             .ranges()

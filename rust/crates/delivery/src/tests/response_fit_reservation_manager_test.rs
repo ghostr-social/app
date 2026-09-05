@@ -64,6 +64,7 @@ pub(super) fn covered_response() -> OpenedResponse {
         None,
         ResponseWriteMode::SingleResponse(contract),
         HttpResponseEvidence {
+            request_selection: None,
             final_url: SOURCE.into(),
             status: 200,
             content_type: Some("video/mp4".into()),

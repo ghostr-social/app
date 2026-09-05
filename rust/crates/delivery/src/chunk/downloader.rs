@@ -113,6 +113,7 @@ pub struct OpenedResponse {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HttpResponseEvidence {
+    pub(crate) request_selection: Option<ghostr_engine::representation::RequestSelection>,
     pub final_url: String,
     pub status: u16,
     pub content_type: Option<String>,

@@ -79,6 +79,7 @@ fn response(
         None,
         ResponseWriteMode::Sparse,
         HttpResponseEvidence {
+            request_selection: None,
             final_url: final_url.into(),
             status: 200,
             content_type: None,

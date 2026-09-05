@@ -89,5 +89,5 @@ impl QueuedFixture {
 }
 
 pub(super) async fn cancel_queued_transfer() -> ChunkResult {
-    QueuedFixture::new().await.cancel().await
+    Box::pin(QueuedFixture::new().await.cancel()).await
 }

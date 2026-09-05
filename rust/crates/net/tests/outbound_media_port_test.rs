@@ -1,7 +1,7 @@
 use ghostr_net::outbound_media_client::MediaHttpClient;
 
 #[test]
-fn default_media_transport_rejects_unexpected_ports() {
+fn public_media_transport_preserves_explicit_nonzero_ports() {
     let client = MediaHttpClient::public().expect("fixture");
     for url in [
         "https://1.1.1.1:22/video",
@@ -9,10 +9,11 @@ fn default_media_transport_rejects_unexpected_ports() {
         "http://1.1.1.1:443/video",
     ] {
         assert!(
-            client.get(url).is_err(),
-            "unexpected media transport: {url}"
+            client.get(url).is_ok(),
+            "public HTTP media port rejected: {url}"
         );
     }
     assert!(client.get("https://1.1.1.1:443/video").is_ok());
     assert!(client.get("http://1.1.1.1:80/video").is_ok());
+    assert!(client.get("https://1.1.1.1:0/video").is_err());
 }

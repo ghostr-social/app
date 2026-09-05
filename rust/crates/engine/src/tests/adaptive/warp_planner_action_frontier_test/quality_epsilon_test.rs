@@ -6,7 +6,7 @@ use crate::adaptive::EpsilonBuckets;
 fn epsilon_pruning_keeps_a_material_quality_difference() {
     let mut lower = action(1, 64_000, 100, 2_000);
     lower.forecast = lower.forecast.with_quality(100_000);
-    let mut higher = action(2, 70_000, 100, 2_000);
+    let mut higher = action(2, 64_000, 100, 2_000);
     higher.forecast = higher.forecast.with_quality(200_001);
 
     let frontier = ActionFrontier::prune(

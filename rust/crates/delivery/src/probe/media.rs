@@ -24,6 +24,7 @@ pub(crate) use deadline::is_usefulness_timeout;
 /// What one probe learned about a media URL.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProbeResult {
+    pub(crate) request_selection: Option<ghostr_engine::representation::RequestSelection>,
     pub final_url: String,
     pub observed: ghostr_engine::evidence::EvidenceTime,
     pub content_length: Option<u64>,
@@ -72,6 +73,7 @@ pub async fn probe(spec: ProbeSpec<'_>, stats: &mut HostStats) -> ObservedProbe 
 }
 
 struct ProbeFacts {
+    request_selection: Option<ghostr_engine::representation::RequestSelection>,
     final_url: String,
     observed: ghostr_engine::evidence::EvidenceTime,
     content_length: Option<u64>,
@@ -134,6 +136,7 @@ fn facts_from_head(
     observed: ghostr_engine::evidence::EvidenceTime,
 ) -> ProbeFacts {
     ProbeFacts {
+        request_selection: response.request_selection(),
         final_url: response.url().to_string(),
         observed,
         content_length: response_headers::content_length(response),
@@ -166,6 +169,7 @@ fn conclude(stats: &mut HostStats, url: &str, outcome: Result<ProbeFacts>) -> Re
 
 fn result_from(facts: ProbeFacts) -> ProbeResult {
     ProbeResult {
+        request_selection: facts.request_selection,
         final_url: facts.final_url,
         observed: facts.observed,
         content_length: facts.content_length,

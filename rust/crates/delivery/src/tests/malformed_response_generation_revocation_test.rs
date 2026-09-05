@@ -81,6 +81,7 @@ fn response(observation: ResponseObservation, validator: &str, order: u64) -> Op
         None,
         ResponseWriteMode::Sparse,
         HttpResponseEvidence {
+            request_selection: None,
             final_url: SOURCE.into(),
             status: 200,
             content_type: None,

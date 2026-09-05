@@ -64,7 +64,8 @@ fn opened_observation(
             observed,
             headers.validator.clone(),
         )
-        .with_final_url(headers.final_url.clone()),
+        .with_final_url(headers.final_url.clone())
+        .with_request_selection(headers.request_selection),
     )
 }
 

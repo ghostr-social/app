@@ -1,4 +1,4 @@
-use super::{ActionKind, ActionNode, ResourcePrices};
+use super::ActionNode;
 use crate::adaptive::EpsilonBuckets;
 use std::collections::BTreeSet;
 
@@ -52,49 +52,35 @@ fn with_dependencies(actions: &[ActionNode], mut retained: Vec<ActionNode>) -> V
 
 fn dominates(left: &ActionNode, right: &ActionNode) -> bool {
     left.id != right.id
-        && left.post == right.post
-        && broader_unlock(&left.kind, &right.kind)
-        && no_worse(left, right)
-        && !no_worse(right, left)
-}
-
-fn no_worse(left: &ActionNode, right: &ActionNode) -> bool {
-    left.forecast.ready_playback_ms >= right.forecast.ready_playback_ms
-        && left.forecast.quality_gain_micros >= right.forecast.quality_gain_micros
-        && left.forecast.success_bps >= right.forecast.success_bps
-        && left.forecast.completion.expected_ms <= right.forecast.completion.expected_ms
-        && left.forecast.completion.p95_ms <= right.forecast.completion.p95_ms
-        && left.forecast.completion.p99_ms <= right.forecast.completion.p99_ms
-        && left.forecast.completion.cvar_ms <= right.forecast.completion.cvar_ms
+        && equivalent_effects(left, right)
+        && left.forecast == right.forecast
         && left.resources.no_more_than(right.resources)
-        && static_value(left) >= static_value(right)
+        && left.resources != right.resources
 }
 
-fn static_value(action: &ActionNode) -> i64 {
-    action
-        .value
-        .total(action.resources, ResourcePrices::default())
+// Forecast summaries cannot prove stochastic dominance (WARP §6.4).
+// In particular, equal coverage estimates do not identify the same bytes.
+fn equivalent_effects(left: &ActionNode, right: &ActionNode) -> bool {
+    (
+        &left.post,
+        &left.kind,
+        &left.origin,
+        &left.requires,
+        left.value,
+    ) == (
+        &right.post,
+        &right.kind,
+        &right.origin,
+        &right.requires,
+        right.value,
+    ) && equivalent_admission(left, right)
 }
 
-fn broader_unlock(left: &ActionKind, right: &ActionKind) -> bool {
-    let (Some(left), Some(right)) = (unlock(left), unlock(right)) else {
-        return core::mem::discriminant(left) == core::mem::discriminant(right);
-    };
-    left >= right
-}
-
-fn unlock(action: &ActionKind) -> Option<u8> {
-    match action {
-        ActionKind::Head => Some(0),
-        ActionKind::Prefix(_) | ActionKind::Tail(_) => Some(1),
-        ActionKind::FetchRange(_) | ActionKind::Hedge { .. } => Some(2),
-        ActionKind::FetchWhole { .. }
-        | ActionKind::HlsBootstrap { .. }
-        | ActionKind::Promote { .. }
-        | ActionKind::CacheUpgrade(_) => Some(3),
-        ActionKind::Transform(_) => Some(4),
-        ActionKind::Cancel(_) => None,
-    }
+fn equivalent_admission(left: &ActionNode, right: &ActionNode) -> bool {
+    left.request_profile() == right.request_profile()
+        && left.origin_admission_intent() == right.origin_admission_intent()
+        && left.resource_authority() == right.resource_authority()
+        && left.request() == right.request()
 }
 
 fn epsilon_merge(actions: Vec<ActionNode>, epsilon: EpsilonBuckets) -> Vec<ActionNode> {
@@ -111,8 +97,8 @@ fn epsilon_merge(actions: Vec<ActionNode>, epsilon: EpsilonBuckets) -> Vec<Actio
 }
 
 fn near(left: &ActionNode, right: &ActionNode, epsilon: EpsilonBuckets) -> bool {
-    epsilon_compatible(&left.kind, &right.kind)
-        && left.post == right.post
+    equivalent_effects(left, right)
+        && equivalent_resource_interactions(left, right)
         && left
             .forecast
             .completion
@@ -136,9 +122,8 @@ fn near(left: &ActionNode, right: &ActionNode, epsilon: EpsilonBuckets) -> bool 
             <= epsilon.quality_micros()
 }
 
-fn epsilon_compatible(left: &ActionKind, right: &ActionKind) -> bool {
-    if matches!(left, ActionKind::Promote { .. }) || matches!(right, ActionKind::Promote { .. }) {
-        return left == right;
-    }
-    unlock(left) == unlock(right)
+fn equivalent_resource_interactions(left: &ActionNode, right: &ActionNode) -> bool {
+    left.resources.storage_bytes == right.resources.storage_bytes
+        && left.resources.cpu_ms == right.resources.cpu_ms
+        && left.resources.requests == right.resources.requests
 }

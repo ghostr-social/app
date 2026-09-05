@@ -17,7 +17,8 @@ impl DeliveryWorker {
             result.observed,
             result.validator.clone(),
         )
-        .with_final_url(result.final_url.clone());
+        .with_final_url(result.final_url.clone())
+        .with_request_selection(result.request_selection);
         let stamp = self
             .state
             .catalog_mut()

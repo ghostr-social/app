@@ -149,10 +149,12 @@ pub(super) async fn send(
             .context("validate media response headers")?;
         visited.insert(visit_key(result.request.url()));
         let Some(target) = redirect_target(&result.response)? else {
+            let selection = result.request.selection(result.response.headers());
             return Ok(MediaResponse::new(
                 result.response,
                 result.lease,
                 admission_wait,
+                selection,
             ));
         };
         ensure!(followed < MAX_REDIRECTS, "media redirect limit exceeded");

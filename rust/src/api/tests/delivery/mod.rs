@@ -45,6 +45,8 @@ mod preparation_route_fixture;
 mod repost_candidate_priority_test;
 mod selected_rendition_fixture;
 mod tracked_focus_generation_test;
+mod watcher_capability_pressure_test;
+mod watcher_failed_snapshot_dedup_test;
 mod watcher_hls_stream_test;
 mod watcher_progressive_eta_test;
 mod watcher_progressive_exhaustion_test;
