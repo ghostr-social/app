@@ -53,6 +53,5 @@ app.*.map.json
 /android/key.properties
 /android/app/ghostr-release.jks
 
-# WARP device-evidence raw logs (small summaries are committed)
-/evidence/warp/*/stdout.log
-/evidence/warp/*/logcat.log
+# Local evidence artifacts
+/evidence/
