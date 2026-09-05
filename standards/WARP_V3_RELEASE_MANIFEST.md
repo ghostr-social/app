@@ -1,8 +1,9 @@
-# WARP v3 native release manifest — candidate
+# WARP v3 native release manifest
 
-Status: validation in progress; not approved for a production release.
+Status: native CORE/3 local integration validated; no production deployment performed.
 Baseline: WARP-v3-final.md revision 3.0, 4 September 2026.
-Working branch based on ec364531; raw device runs record uncommitted-source hashes.
+Implementation: 39c00cd4; local merge: 18624a78; host-test cleanup: 3cfab223.
+Raw device runs record source fingerprints, with explicit post-run attestations.
 
 ## Profiles and platform boundary
 
@@ -93,6 +94,7 @@ physical matrix passes 26 cases, followed by two offline restart phases and a
 real HOME/foreground case. The normal ARM64 app is installed and cold-launched
 successfully; the welcome screen was visually checked, with no account configured.
 Axiom passes all 3,409 Rust files, including Clippy, rustdoc, and semantic policies.
-The final native test rerun is pending. The [audit](WARP_V3_IMPLEMENTATION_STATUS.md)
+`make native-test` passes all 2,375 tests across 450 target results. The landing
+page dry-run validation also passes. The [audit](WARP_V3_IMPLEMENTATION_STATUS.md)
 records source attestation and command results. No measured optimization gain or
 Internet-service reliability guarantee is claimed.

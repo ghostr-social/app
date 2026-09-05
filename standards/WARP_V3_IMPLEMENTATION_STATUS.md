@@ -1,8 +1,8 @@
 # WARP v3 implementation audit
 
 Authority: [WARP-v3-final.md](../WARP-v3-final.md), revision 3.0, 4 September 2026.
-The complete physical matrix, normal ARM64 app launch, Flutter analysis, and
-Flutter coverage gates pass. Final native host verification is in progress.
+The complete physical matrix, normal ARM64 app launch, Flutter analysis,
+Flutter coverage, native tests, and full-workspace Axiom gates pass.
 
 ## Scope and changes
 
@@ -57,10 +57,12 @@ implementation pack has not been supplied or found in the workspace.
 | `flutter analyze --no-pub` | Pass; no issues |
 | `make test-coverage` | Pass; 1,890 tests |
 | `make coverage-summary` | Pass; 98.80% (14,741/14,920), all 493 modules and executable-source representation |
-| `make native-test` | Previous pass: 2,374 tests; rerun includes cancellation before EOF |
+| `make native-test` | Pass; 2,375 tests across 450 target results |
 | `make axiom` | Pass; all 3,409 Rust files, Clippy, rustdoc, and semantic policies |
 | Complete physical matrix, offline restart, HOME/foreground | Pass; 26 matrix cases + two offline phases + one lifecycle case |
 | Normal ARM64 app | Build/ABI check, installation, cold launch, and visible welcome screen pass |
+| `make site-check` | Pass; preserved landing-page deployment dry run |
+| `make warp-evidence-contract-test` | Pass |
 
 The [acceptance map](WARP_V3_ACCEPTANCE.md) links the concrete automated entry
 points. The [release manifest](WARP_V3_RELEASE_MANIFEST.md) pins dependencies,
@@ -104,14 +106,21 @@ Fixture regressions:
 [warp_cache_manifest_eviction_race_test.dart](../test/media/warp_cache_manifest_eviction_race_test.dart)
 and [warp_feed_relay_shutdown_test.dart](../test/media/warp_feed_relay_shutdown_test.dart).
 
+The native orphan-cache regression also owns its test runtime explicitly and
+removes its temporary directory only after shutdown joins pending filesystem
+work. The full suite exposed the earlier cleanup race as `DirectoryNotEmpty`;
+all playback and capacity assertions remain intact.
+
 Final physical evidence is recorded in
 [evidence/warp/20260905T104209Z-ec364531d3-22e0d933-physical-matrix](../evidence/warp/20260905T104209Z-ec364531d3-22e0d933-physical-matrix).
 Completed host logs are collected alongside the device results. Earlier runs
 remain diagnostic evidence for their recorded source states.
 
-## Remaining before completion
+## Source and validation scope
 
-Finish the final native host checks and record their results before merging.
+The changes are integrated into local `main`, preserving the landing page and
+its deployment workflow. The [host verification record](../evidence/warp/20260905T104209Z-ec364531d3-22e0d933-physical-matrix/host-verification.txt)
+records the final commands, counts, and environments.
 The phone run changed only a host-only Rust test assertion; the source-change
 attestation reconstructs the exact original fingerprint and confirms unchanged
 production and device-test sources. The normal app was visually checked at the

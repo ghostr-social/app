@@ -1,7 +1,7 @@
-# WARP v3 acceptance map — candidate
+# WARP v3 acceptance map
 
-The complete physical matrix and Flutter suite pass; final native host checks
-are pending in the [audit](WARP_V3_IMPLEMENTATION_STATUS.md). These are the
+The complete physical matrix, Flutter suite, native suite, and Axiom pass as
+recorded in the [audit](WARP_V3_IMPLEMENTATION_STATUS.md). These are the
 concrete regression entry points, not a claim that every Cartesian combination
 of media, device, network, and failure has been tested.
 
@@ -64,7 +64,7 @@ of media, device, network, and failure has been tested.
 | U05 | [warp_feed_playback_video_test.dart](../integration_test/warp_feed_playback_video_test.dart) | Ordinary Nostr media without WARP sidecars |
 
 The remaining R, V, J, and U extension-specific cases are not applicable to this
-CORE/3 candidate because their profiles are disabled. R01 and R14 apply to local
+CORE/3 implementation because their profiles are disabled. R01 and R14 apply to local
 compiled indexes and are included above. Optional-controller unit tests do not
 constitute permission to enable LOOKAHEAD/1.
 

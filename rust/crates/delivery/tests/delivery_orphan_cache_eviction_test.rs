@@ -54,13 +54,19 @@ async fn reclaim_cached_orphan() -> PathBuf {
     })
     .await
     .expect("current body completes after reclaim");
-    assert!(harness
-        .store
-        .present_ranges("orphan")
-        .await
-        .expect("valid test fixture")
-        .is_empty());
-    assert!(harness.store.used_bytes().await <= 32);
+    assert!(
+        harness
+            .store
+            .present_ranges("orphan")
+            .await
+            .expect("valid test fixture")
+            .is_empty(),
+        "reclaimed orphan must not retain payload ranges"
+    );
+    assert!(
+        harness.store.used_bytes().await <= 32,
+        "current playback must fit within the 32-byte cache budget"
+    );
     harness.handle.clear().await.expect("valid test fixture");
     drop(harness);
     root
